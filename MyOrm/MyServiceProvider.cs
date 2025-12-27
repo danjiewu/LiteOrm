@@ -1,5 +1,4 @@
-﻿using Castle.Core.Logging;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MyOrm.Common;
 using MyOrm.Service;
