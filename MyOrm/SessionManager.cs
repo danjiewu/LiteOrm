@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using MyOrm.MyOrm;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -38,7 +37,10 @@ namespace MyOrm
         {
             _daoContextPoolFactory = daoContextPoolFactory ?? throw new ArgumentNullException(nameof(daoContextPoolFactory));
             _logger = logger;
+            ID = (Guid.NewGuid().GetHashCode() % 10000 + 10000) % 10000;
         }
+
+        public int ID { get; }
 
         /// <summary>
         /// 进入当前上下文（设置 SessionManager.Current = this）
@@ -50,16 +52,12 @@ namespace MyOrm
             var previousCurrent = Current;
 
             // 设置当前实例为 Current
-            Current = this;
+            Current = CreateCopy();
 
             // 返回一个作用域对象，在作用域结束时恢复之前的 Current
             return new ContextScope(() =>
             {
-                // 如果当前还是这个实例，则恢复之前的 Current
-                if (Current == this)
-                {
-                    Current = previousCurrent;
-                }
+                Current = previousCurrent;
             });
         }
 
@@ -102,11 +100,11 @@ namespace MyOrm
                 {
                     try
                     {
-                        CommitInternal();
+                        RollbackInternal();
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, $"重置时提交事务失败");
+                        _logger?.LogError(ex, $"重置时回滚事务失败");
                     }
                 }
 
@@ -300,22 +298,6 @@ namespace MyOrm
         /// </summary>
         public DAOContext GetDaoContext(string name = null)
         {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                // 获取默认连接池名称
-                name = _daoContextPoolFactory.DefaultConnectionName;
-
-                if (string.IsNullOrWhiteSpace(name) && _daoContextPoolFactory.Connections.Count > 0)
-                {
-                    name = _daoContextPoolFactory.Connections[0].Name;
-                }
-
-                if (string.IsNullOrWhiteSpace(name))
-                {
-                    throw new InvalidOperationException("未指定连接池名称且未配置默认连接池");
-                }
-            }
-
             lock (_syncLock)
             {
                 if (!_daoContexts.TryGetValue(name, out DAOContext context))
@@ -389,12 +371,12 @@ namespace MyOrm
 
             if (disposing)
             {
-                // 如果有活动的事务，提交它（而不是回滚）
+                // 如果有活动的事务，回滚
                 if (InTransaction)
                 {
                     try
                     {
-                        // 尝试提交事务
+                        // 尝试回滚事务
                         RollbackInternal();
                         _logger?.LogDebug("Dispose时回滚事务成功");
                     }

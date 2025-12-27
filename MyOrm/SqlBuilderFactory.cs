@@ -1,24 +1,27 @@
 ﻿using MyOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace MyOrm
 {
-    public class SqlBuilderFactory:ISqlBuilderFactory
+    public class SqlBuilderFactory : ISqlBuilderFactory
     {
-        public Dictionary<Type, SqlBuilder> RegisteredSqlBuilders { get; } = new Dictionary<Type, SqlBuilder>();
+        public static readonly SqlBuilderFactory Instance = new SqlBuilderFactory();
+        public Dictionary<Type, SqlBuilder> registeredSqlBuilders { get; } = new();
 
         public void RegisterSqlBuilder(Type providerType, SqlBuilder sqlBuilder)
         {
-            RegisteredSqlBuilders[providerType] = sqlBuilder;
+            registeredSqlBuilders[providerType] = sqlBuilder;
         }
+
         public virtual SqlBuilder GetSqlBuilder(Type providerType)
         {
             if (providerType == null) throw new ArgumentNullException("providerType");
-            if (RegisteredSqlBuilders.ContainsKey(providerType)) return RegisteredSqlBuilders[providerType];
+            if (registeredSqlBuilders.ContainsKey(providerType)) return registeredSqlBuilders[providerType];
             var connectionTypeName = providerType.Name;
             connectionTypeName = connectionTypeName.ToUpper();
             if (connectionTypeName.Contains("ORACLE"))
@@ -30,6 +33,11 @@ namespace MyOrm
             else if (connectionTypeName.Contains("SQLITE"))
                 return SQLite.SQLiteBuilder.Instance;
             else return SqlBuilder.Instance;
+        }
+
+        ISqlBuilder ISqlBuilderFactory.GetSqlBuilder(Type providerType)
+        {
+            return GetSqlBuilder(providerType);
         }
     }
 }

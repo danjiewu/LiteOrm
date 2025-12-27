@@ -8,14 +8,20 @@ using System.Linq.Expressions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MyOrm.Service
 {
     [AutoRegister(ServiceLifetime.Singleton)]
     public abstract class ServiceBase
     {
-        public ServiceBase()
+        private readonly IServiceProvider? _serviceProvider;
+
+        protected ServiceBase()
         {
+            _serviceProvider = null;
+
             Type serviceType = this.GetType();
 
             if (serviceType.IsGenericType)
@@ -29,6 +35,18 @@ namespace MyOrm.Service
             }
         }
 
+        /// <summary>
+        /// Construct with an explicit IServiceProvider for better testability.
+        /// If null is passed the static MyServiceProvider.Current is used.
+        /// </summary>
+        protected ServiceBase(IServiceProvider serviceProvider)
+            : this()
+        {
+            _serviceProvider = serviceProvider;
+        }
+
+        public virtual IServiceProvider ServiceProvider => _serviceProvider ?? MyServiceProvider.Current;
+
         public virtual string ServiceName
         {
             get;
@@ -39,13 +57,7 @@ namespace MyOrm.Service
     public class EntityViewService<TView> : ServiceBase, IEntityViewService<TView>, IEntityViewService
          where TView : new()
     {
-        protected virtual IObjectViewDAO<TView> ObjectViewDAO
-        {
-            get
-            {
-                return MyServiceProvider.Current.GetRequiredService<IObjectViewDAO<TView>>();
-            }
-        }
+        protected virtual IObjectViewDAO<TView> ObjectViewDAO => ServiceProvider.GetRequiredService<IObjectViewDAO<TView>>();
 
 
         #region IEntityViewService<T> 成员
@@ -57,91 +69,91 @@ namespace MyOrm.Service
 
         public virtual TView GetObject(object id, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).GetObject(id);
+            return ObjectViewDAO.WithArgs(tableArgs).GetObject(id);
         }
 
         public virtual bool ExistsID(object id, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).Exists(new object[] { id });
+            return ObjectViewDAO.WithArgs(tableArgs).Exists(new object[] { id });
         }
 
         public virtual bool Exists(Condition condition, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).Exists(condition);
+            return ObjectViewDAO.WithArgs(tableArgs).Exists(condition);
         }
         public virtual bool Exists(Expression<Func<TView, bool>> expression, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).Exists(expression);
+            return ObjectViewDAO.WithArgs(tableArgs).Exists(expression);
         }
 
         public virtual int Count(Condition condition = null, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).Count(condition);
+            return ObjectViewDAO.WithArgs(tableArgs).Count(condition);
         }
 
         public virtual int Count(Expression<Func<TView, bool>> expression, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).Count(expression);
+            return ObjectViewDAO.WithArgs(tableArgs).Count(expression);
         }
 
         public void ForEach(Condition condition, Action<TView> func, params string[] tableArgs)
         {
-            (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).ForEach(condition, func);
+            ObjectViewDAO.WithArgs(tableArgs).ForEach(condition, func);
         }
 
         public void ForEach(Expression<Func<TView, bool>> expression, Action<TView> func, params string[] tableArgs)
         {
-            (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).ForEach(expression, func);
+            ObjectViewDAO.WithArgs(tableArgs).ForEach(expression, func);
         }
 
         public virtual TView SearchOne(Condition condition, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).SearchOne(condition);
+            return ObjectViewDAO.WithArgs(tableArgs).SearchOne(condition);
         }
 
         public virtual TView SearchOne(Expression<Func<TView, bool>> expression, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).SearchOne(expression);
+            return ObjectViewDAO.WithArgs(tableArgs).SearchOne(expression);
         }
 
         public virtual List<TView> Search(Condition condition = null, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).Search(condition);
+            return ObjectViewDAO.WithArgs(tableArgs).Search(condition);
         }
 
         public List<TView> Search(Expression<Func<TView, bool>> expression, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).Search(expression);
+            return ObjectViewDAO.WithArgs(tableArgs).Search(expression);
         }
         public virtual List<TView> SearchWithOrder(Condition condition, Sorting[] orderBy = null, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).Search(condition, orderBy);
+            return ObjectViewDAO.WithArgs(tableArgs).Search(condition, orderBy);
         }
 
         public List<TView> SearchWithOrder(Expression<Func<TView, bool>> expression, Sorting[] orderBy = null, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).Search(expression, orderBy);
+            return ObjectViewDAO.WithArgs(tableArgs).Search(expression, orderBy);
         }
 
         public virtual List<TView> SearchSection(Condition condition, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs)
         {
             SectionSet section = new SectionSet() { StartIndex = startIndex, SectionSize = sectionSize, Orders = orderBy };
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).SearchSection(condition, section);
+            return ObjectViewDAO.WithArgs(tableArgs).SearchSection(condition, section);
         }
         public List<TView> SearchSection(Expression<Func<TView, bool>> expression, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs)
         {
             SectionSet section = new SectionSet() { StartIndex = startIndex, SectionSize = sectionSize, Orders = orderBy };
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).SearchSection(expression, section);
+            return ObjectViewDAO.WithArgs(tableArgs).SearchSection(expression, section);
         }
 
         public virtual List<TView> SearchSection(Condition condition, SectionSet section, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).SearchSection(condition, section);
+            return ObjectViewDAO.WithArgs(tableArgs).SearchSection(condition, section);
         }
 
         public List<TView> SearchSection(Expression<Func<TView, bool>> expression, SectionSet section, params string[] tableArgs)
         {
-            return (tableArgs == null ? ObjectViewDAO : ObjectViewDAO.WithArgs(tableArgs)).SearchSection(expression, section);
+            return ObjectViewDAO.WithArgs(tableArgs).SearchSection(expression, section);
         }
 
         #endregion
@@ -184,13 +196,7 @@ namespace MyOrm.Service
         where TView : T, new()
         where T : new()
     {
-        protected virtual IObjectDAO<T> ObjectDAO
-        {
-            get
-            {
-                return MyServiceProvider.Current.GetRequiredService<IObjectDAO<T>>();
-            }
-        }
+        protected virtual IObjectDAO<T> ObjectDAO => ServiceProvider.GetRequiredService<IObjectDAO<T>>();
 
         #region IEntityService<T> 成员
 
@@ -211,12 +217,12 @@ namespace MyOrm.Service
 
         public int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Condition condition)
         {
-            return ObjectDAO.UpdateValues(updateValues, condition);
+            return ObjectDAO.UpdateAllValues(updateValues, condition);
         }
 
         public int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Expression<Func<T, bool>> expression)
         {
-            return ObjectDAO.UpdateValues(updateValues, expression);
+            return ObjectDAO.UpdateAllValues(updateValues, expression);
         }
 
         public bool UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, params object[] keys)
@@ -234,13 +240,44 @@ namespace MyOrm.Service
                         InsertCore(entityOp.Entity);
                         break;
                     case OpDef.Update:
-                        InsertCore(entityOp.Entity);
+                        UpdateCore(entityOp.Entity);
                         break;
                     case OpDef.Delete:
-                        InsertCore(entityOp.Entity);
+                        DeleteCore(entityOp.Entity);
                         break;
                 }
             }
+        }
+
+        // Async variants for batch operations
+        public virtual Task BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => Batch(entities), cancellationToken);
+        }
+
+        public virtual Task BatchInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => BatchInsert(entities), cancellationToken);
+        }
+
+        public virtual Task BatchUpdateAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => BatchUpdate(entities), cancellationToken);
+        }
+
+        public virtual Task BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => BatchUpdateOrInsert(entities), cancellationToken);
+        }
+
+        public virtual Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => BatchDelete(entities), cancellationToken);
+        }
+
+        public virtual Task BatchDeleteIDAsync(IEnumerable<int> ids, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => BatchDeleteID(ids), cancellationToken);
         }
 
         public virtual bool UpdateOrInsert(T entity)
@@ -322,17 +359,31 @@ namespace MyOrm.Service
 
         protected virtual bool InsertCore(T entity)
         {
-            return (entity is IArged ? ObjectDAO.WithArgs(((IArged)entity).TableArgs) : ObjectDAO).Insert(entity);
+            if (entity is IArged arg)
+                return ObjectDAO.WithArgs(arg.TableArgs).Insert(entity);
+            return ObjectDAO.Insert(entity);
         }
 
         protected virtual bool UpdateCore(T entity)
         {
-            return (entity is IArged ? ObjectDAO.WithArgs(((IArged)entity).TableArgs) : ObjectDAO).Update(entity);
+            if (entity is IArged arg)
+                return ObjectDAO.WithArgs(arg.TableArgs).Update(entity);
+            return ObjectDAO.Update(entity);
         }
 
         protected virtual UpdateOrInsertResult UpdateOrInsertCore(T entity)
         {
-            if ((entity is IArged ? ObjectViewDAO.WithArgs(((IArged)entity).TableArgs) : ObjectViewDAO).Exists(entity))
+            bool exists;
+            if (entity is IArged arg)
+            {
+                exists = ObjectViewDAO.WithArgs(arg.TableArgs).Exists(entity);
+            }
+            else
+            {
+                exists = ObjectViewDAO.Exists(entity);
+            }
+
+            if (exists)
                 return UpdateCore(entity) ? UpdateOrInsertResult.Updated : UpdateOrInsertResult.Failed;
             else
                 return InsertCore(entity) ? UpdateOrInsertResult.Inserted : UpdateOrInsertResult.Failed;
@@ -345,7 +396,9 @@ namespace MyOrm.Service
 
         protected virtual bool DeleteCore(T entity)
         {
-            return (entity is IArged ? ObjectDAO.WithArgs(((IArged)entity).TableArgs) : ObjectDAO).Delete(entity);
+            if (entity is IArged arg)
+                return ObjectDAO.WithArgs(arg.TableArgs).Delete(entity);
+            return ObjectDAO.Delete(entity);
         }
         #endregion
 
@@ -427,9 +480,6 @@ namespace MyOrm.Service
         }
 
         #endregion
-
-
-
     }
 
     public class EntityService<T> : EntityService<T, T>

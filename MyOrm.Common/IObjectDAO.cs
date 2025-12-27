@@ -35,7 +35,7 @@ namespace MyOrm.Common
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
         /// <param name="expression">更新的条件表达式</param>
         /// <returns>更新的记录数</returns>
-        int UpdateValues(IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression);
+        int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression);
 
         /// <summary>
         /// 更新或添加对象，若存在则更新，若不存在则添加
@@ -88,7 +88,7 @@ namespace MyOrm.Common
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
         /// <param name="condition">更新的条件</param>
         /// <returns>更新的记录数</returns>
-        int UpdateValues(IEnumerable<KeyValuePair<string, object>> values, Condition condition);
+        int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Condition condition);
         /// <summary>
         /// 根据主键更新数据
         /// </summary>

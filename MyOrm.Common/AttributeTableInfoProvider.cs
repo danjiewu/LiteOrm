@@ -6,8 +6,9 @@ using System.Data;
 using System.Collections.ObjectModel;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
+using MyOrm.Common;
 
-namespace MyOrm.Common
+namespace MyOrm
 {
     /// <summary>
     /// 根据Attribute的表信息提供者
@@ -18,15 +19,14 @@ namespace MyOrm.Common
         private Dictionary<PropertyInfo, ColumnDefinition> columnCache = new Dictionary<PropertyInfo, ColumnDefinition>();
         private Dictionary<Type, TableView> tableViewCache = new Dictionary<Type, TableView>();
         private ISqlBuilderFactory _sqlBuilderFactory;
-
-        public AttributeTableInfoProvider(ISqlBuilderFactory sqlBuilderFactory)
-        {
-            _sqlBuilderFactory = sqlBuilderFactory;
-        }
-
-        public string DefaultConnectionName { get; set; }
-
+        private IDataSourceProvider _dataSourceProvider;
         private readonly object SyncLock = new object();
+
+        public AttributeTableInfoProvider(ISqlBuilderFactory sqlBuilderFactory, IDataSourceProvider dataSourceProvider)
+        {
+            _sqlBuilderFactory = sqlBuilderFactory ?? throw new ArgumentNullException(nameof(sqlBuilderFactory));
+            _dataSourceProvider = dataSourceProvider ?? throw new ArgumentNullException(nameof(dataSourceProvider));
+        }
 
         /// <summary>
         /// 根据对象类型得到对应的数据库表定义
@@ -84,7 +84,7 @@ namespace MyOrm.Common
                     if (!columnCache.ContainsKey(property))
                     {
                         TableAttribute tableAttribute = objectType.GetAttribute<TableAttribute>();
-                        columnCache[property] = GenerateColumnDefinition(property, _sqlBuilderFactory.GetSqlBuilder(Date));
+                        columnCache[property] = GenerateColumnDefinition(property, _sqlBuilderFactory.GetSqlBuilder(_dataSourceProvider.GetDataSource(tableAttribute.DataSource).ProviderType));
                     }
                 }
             }
@@ -107,7 +107,7 @@ namespace MyOrm.Common
                         columns.Add(column);
                     }
                 }
-                return new TableDefinition(objectType, columns) { Name = tableName, DataSource = tableAttribute.DataSource ?? DefaultConnectionName };
+                return new TableDefinition(objectType, columns) { Name = tableName, DataSource = tableAttribute.DataSource ?? _dataSourceProvider.DefaultDataSourceName };
             }
             return null;
         }
@@ -295,7 +295,7 @@ namespace MyOrm.Common
         {
             ForeignColumnAttribute foreignColumnAttribute = column.Property.GetAttribute<ForeignColumnAttribute>();
             string primeProperty = String.IsNullOrEmpty(foreignColumnAttribute.Property) ? column.PropertyName : foreignColumnAttribute.Property;
-            Type primeType = foreignColumnAttribute.Foreign as Type;            
+            Type primeType = foreignColumnAttribute.Foreign as Type;
             string foreignTable = primeType == null ? (string)foreignColumnAttribute.Foreign : primeType.Name;
             ColumnRef targetColumn = null;
             if (!joinedTables.ContainsKey(foreignTable))

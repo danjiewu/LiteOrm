@@ -13,7 +13,7 @@ namespace MyOrm
     /// </summary>
     public class SqlBuilder : IConditionSqlBuilder, ISqlBuilder
     {
-        public static readonly SqlBuilder Instance = new SqlBuilder();       
+        public static readonly SqlBuilder Instance = new SqlBuilder();
 
         private Dictionary<Type, DbType> typeToDbTypeCache = new Dictionary<Type, DbType>();
         public SqlBuilder()
@@ -220,7 +220,7 @@ namespace MyOrm
         /// <param name="conditionSet">查询条件的集合</param>
         /// <param name="outputParams">供输出的参数列表，在该列表中添加SQL参数</param>
         /// <returns>生成的SQL语句，null表示无条件</returns>
-        protected string BuildConditionSetSql(SqlBuildContext context, ConditionSet conditionSet, ICollection<KeyValuePair<string,object>> outputParams)
+        protected string BuildConditionSetSql(SqlBuildContext context, ConditionSet conditionSet, ICollection<KeyValuePair<string, object>> outputParams)
         {
             List<string> conditions = new List<string>();
             foreach (Condition subConditon in conditionSet.SubConditions)
@@ -239,7 +239,7 @@ namespace MyOrm
         /// <param name="expressionCondition">表示查询条件的表达式</param>
         /// <param name="outputParams">供输出的参数列表，在该列表中添加SQL参数</param>
         /// <returns>生成的SQL语句，null表示无条件</returns>
-        protected string BuildExpressionConditionSql(SqlBuildContext context, ExpressionCondition expressionCondition, ICollection<KeyValuePair<string,object>> outputParams)
+        protected string BuildExpressionConditionSql(SqlBuildContext context, ExpressionCondition expressionCondition, ICollection<KeyValuePair<string, object>> outputParams)
         {
             List<string> conditions = new List<string>();
             ExpressionParser parser = new ExpressionParser(this, context);
@@ -358,7 +358,7 @@ namespace MyOrm
         /// <returns></returns>
         public virtual string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
-            if (!String.IsNullOrEmpty(where)) where= " \nwhere " + where;
+            if (!String.IsNullOrEmpty(where)) where = " \nwhere " + where;
             return String.Format("select * from (\nselect {0}, Row_Number() over (Order by {1}) as Row_Number \nfrom {2} {3}) TempTable \nwhere Row_Number > {4} and Row_Number <= {5}", select, orderBy, from, where, startIndex, startIndex + sectionSize);
         }
 
@@ -467,7 +467,7 @@ namespace MyOrm
     /// <summary>
     /// 自定义Condition转换为sql语句的接口
     /// </summary>
-    public interface IConditionSqlBuilder
+    public interface IConditionSqlBuilder 
     {
         /// <summary>
         /// 生成sql语句

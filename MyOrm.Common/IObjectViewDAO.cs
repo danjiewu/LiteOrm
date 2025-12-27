@@ -33,14 +33,12 @@ namespace MyOrm.Common
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <param name="func">调用的函数委托</param>
-        /// <param name="tableArgs">表名参数</param>
         void ForEach(Condition condition, Action<T> func);
         /// <summary>
         /// 根据条件表达式遍历对象
         /// </summary>
         /// <param name="expression">查询表达式</param>
         /// <param name="func">调用的函数委托</param>
-        /// <param name="tableArgs">表名参数</param>
         void ForEach(Expression<Func<T, bool>> expression, Action<T> func);
         /// <summary>
         /// 根据条件获取单个对象

@@ -142,7 +142,7 @@ namespace MyOrm
 
             // 泛型服务构建（仅根容器）
             if (service == null && serviceType.IsGenericType)
-                service = BuildGenericService(serviceType, null);
+                service = BuildGenericService(serviceType);
 
             // 缓存Singleton服务
             if (service != null)
@@ -152,10 +152,10 @@ namespace MyOrm
         }
 
         // 泛型服务构建
-        private object? BuildGenericService(Type serviceType, object? serviceKey)
+        private object? BuildGenericService(Type serviceType)
         {
             var builder = _defaultProvider.GetService<IGenericServiceBuilder>();
-            return builder?.BuildGenericService(serviceType, serviceKey);
+            return builder?.BuildGenericService(serviceType);
         }
 
         // 显式接口实现
@@ -321,6 +321,9 @@ namespace MyOrm
             private readonly ConcurrentDictionary<Type, object> _scopedCache = new();
             private readonly ConcurrentDictionary<(Type, object?), object> _keyedScopedCache = new();
 
+            // 新增：保存 SessionManager.EnterContext() 返回的作用域恢复句柄
+            private IDisposable? _sessionContextScope;
+
             public IServiceProvider ServiceProvider { get; }
             public IServiceScope ParentScope => _parentScope;
 
@@ -338,9 +341,24 @@ namespace MyOrm
                     rootProvider,
                     _scopedCache,
                     _keyedScopedCache);
+
+                // 尝试在作用域创建时解析并进入 SessionManager 上下文（容错）
+                try
+                {
+                    var sm = ServiceProvider.GetService<SessionManager>();
+                    if (sm != null)
+                    {
+                        // EnterContext 会设置 SessionManager.Current = this，并返回一个 IDisposable 用于恢复之前的 Current
+                        _sessionContextScope = sm.EnterContext();
+                    }
+                }
+                catch
+                {
+                    // 容错：不要抛出异常，避免影响作用域创建流程
+                }
             }
 
-            public bool IsDisposed=> _disposed;
+            public bool IsDisposed => _disposed;
 
             // 优化作用域Dispose：避免重复释放和栈操作冲突
             public void Dispose()
@@ -358,6 +376,10 @@ namespace MyOrm
                 {
                     try
                     {
+                        if (_sessionContextScope != null)
+                        {
+                            try { _sessionContextScope.Dispose(); } catch { }
+                        }
                         // 释放作用域缓存
                         _scopedCache.Values.OfType<IDisposable>().ToList().ForEach(d =>
                         {
@@ -457,7 +479,7 @@ namespace MyOrm
                 // 泛型服务构建
                 if (scopedService == null && serviceType.IsGenericType)
                 {
-                    scopedService = BuildGenericService(serviceType, null);
+                    scopedService = BuildGenericService(serviceType);
                     if (scopedService != null)
                         _scopedCache.TryAdd(serviceType, scopedService);
                 }
@@ -495,7 +517,7 @@ namespace MyOrm
                 // 泛型服务构建
                 if (keyedService == null && serviceType.IsGenericType)
                 {
-                    keyedService = BuildGenericService(serviceType, serviceKey);
+                    keyedService = BuildGenericService(serviceType);
                     if (keyedService != null)
                         _keyedScopedCache.TryAdd((serviceType, serviceKey), keyedService);
                 }
@@ -504,10 +526,10 @@ namespace MyOrm
             }
 
             // 泛型服务构建（作用域内）
-            private object? BuildGenericService(Type serviceType, object? serviceKey)
+            private object? BuildGenericService(Type serviceType)
             {
                 var builder = _defaultScopedProvider.GetService<IGenericServiceBuilder>();
-                return builder?.BuildGenericService(serviceType, serviceKey);
+                return builder?.BuildGenericService(serviceType);
             }
 
             // 作用域内创建子作用域
@@ -551,7 +573,7 @@ namespace MyOrm
     #region 泛型服务构建器
     public interface IGenericServiceBuilder
     {
-        object? BuildGenericService(Type serviceType, object? serviceKey);
+        object? BuildGenericService(Type serviceType);
         Dictionary<Type, Type> ServiceTypeMap { get; }
     }
 
@@ -573,7 +595,7 @@ namespace MyOrm
 
         public Dictionary<Type, Type> ServiceTypeMap => _serviceTypeMap;
 
-        public object? BuildGenericService(Type serviceType, object? serviceKey)
+        public object? BuildGenericService(Type serviceType)
         {
             if (!serviceType.IsGenericType) return null;
 

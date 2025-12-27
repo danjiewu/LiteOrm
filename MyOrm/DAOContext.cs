@@ -13,18 +13,18 @@ namespace MyOrm
         private readonly object _syncLock = new object();
         private bool _isLocked = false;
         private int _lockCount = 0; // 支持重入锁
-        public DAOContext(IDbConnection connection)
+        public DAOContext(DbConnection connection)
         {
             DbConnection = connection ?? throw new ArgumentNullException(nameof(connection));
             ProviderType = connection.GetType();
             LastActiveTime = DateTime.Now;
         }
-        public DAOContext(IDbConnection connection, DAOContextPool pool):this(connection)
+        public DAOContext(DbConnection connection, DAOContextPool pool) : this(connection)
         {
-            Pool= pool;
+            Pool = pool;
         }
         public Type ProviderType { get; }
-        public IDbConnection DbConnection { get; protected set; }
+        public DbConnection DbConnection { get; protected set; }
         public DAOContextPool Pool { get; }
         public DateTime LastActiveTime { get; set; }
         public IDbTransaction CurrentTransaction { get; private set; }
@@ -143,11 +143,6 @@ namespace MyOrm
                     LastActiveTime = DateTime.Now;
                 }
             }
-        }
-
-        public IDbCommand CreateDbCommand()
-        {
-            return new DbCommandProxy(DbConnection.CreateCommand(), this);
         }
 
         /// <summary>

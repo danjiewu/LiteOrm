@@ -17,9 +17,6 @@ namespace MyOrm
     /// <typeparam name="T">实体类型</typeparam>
     public class ObjectViewDAO<T> : ObjectDAOBase, IObjectViewDAO<T>, IObjectViewDAO where T : new()
     {
-        public ObjectViewDAO(SqlBuilderFactory sqlBuilderFactory) : base(sqlBuilderFactory)
-        {
-        }
         #region 属性
         /// <summary>
         /// 实体对象类型

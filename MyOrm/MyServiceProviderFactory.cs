@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MyOrm.Common;
-using MyOrm.MyOrm;
 using MyOrm.Service;
 using System;
 using System.Collections.Generic;
@@ -26,7 +25,7 @@ namespace MyOrm
             // 添加MyOrm全局服务
             services.AddMyOrm();
             // 添加自动注册服务
-            
+
             return services;
         }
 
@@ -122,31 +121,14 @@ namespace MyOrm
         /// <returns>服务集合</returns>
         public static IServiceCollection AddMyOrm(this IServiceCollection services)
         {
-            return services.AddMyOrm(null);
-        }
-
-        /// <summary>
-        /// 添加 MyOrm 服务（传入 IConfiguration）
-        /// </summary>
-        /// <param name="services">服务集合</param>
-        /// <param name="configuration">配置</param>
-        /// <returns>服务集合</returns>
-        public static IServiceCollection AddMyOrm(this IServiceCollection services, IConfiguration configuration)
-        {
             // 注册 SqlBuilderFactory 为单例
-            services.AddSingleton<SqlBuilderFactory>();
+            services.AddSingleton<ISqlBuilderFactory>(sp => SqlBuilderFactory.Instance);
             // 注册 DAOContextPoolFactory
-            services.AddDAOContextPoolFactory(configuration);
-
-            // 注册 TableInfoProvider（这里使用工厂方法，因为需要 DAOContextPoolFactory）
-            services.AddSingleton<TableInfoProvider>(serviceProvider =>
-            {
-                var factory = serviceProvider.GetRequiredService<DAOContextPoolFactory>();
-                return new AttributeTableInfoProvider(serviceProvider)
-                {
-                    DefaultConnectionName = factory.DefaultConnectionName
-                };
-            });
+            services.AddSingleton<DAOContextPoolFactory>();
+            // 注册 DataSourceProvider
+            services.AddDataSourceProvider();
+            // 注册 TableInfoProvider
+            services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
 
             // 注册 SessionManager 为 Scoped（每个请求一个会话）
             services.AddScoped<SessionManager>();
@@ -160,37 +142,28 @@ namespace MyOrm
             return services;
         }
 
-        /// <summary>
-        /// 添加 DAOContextPoolFactory 服务
-        /// </summary>
-        /// <param name="services">服务集合</param>
-        /// <param name="configuration">配置</param>
-        /// <returns>服务集合</returns>
-        public static IServiceCollection AddDAOContextPoolFactory(
-            this IServiceCollection services,
-            IConfiguration configuration = null)
+        public static IServiceCollection AddDataSourceProvider(this IServiceCollection services, IConfiguration configuration = null)
         {
             if (services == null)
                 throw new ArgumentNullException(nameof(services));
 
             // 注册工厂为单例
-            services.TryAddSingleton<DAOContextPoolFactory>(serviceProvider =>
+            services.TryAddSingleton<IDataSourceProvider>(serviceProvider =>
             {
                 // 如果传入配置，使用传入的配置
                 if (configuration != null)
                 {
-                    return new DAOContextPoolFactory(configuration);
+                    return new DataSourceProvider(configuration);
                 }
 
                 // 否则尝试从服务提供者获取配置
                 var config = serviceProvider.GetService<IConfiguration>();
                 if (config?.GetSection("MyOrm") != null)
                 {
-                    return new DAOContextPoolFactory(config.GetSection("MyOrm"));
+                    return new DataSourceProvider(config.GetSection("MyOrm"));
                 }
 
-                // 如果没有配置，创建空的工厂
-                return new DAOContextPoolFactory();
+                return new DataSourceProvider(config);
             });
 
             return services;
@@ -276,38 +249,6 @@ namespace MyOrm
         {
             var serviceType = typeof(IEntityViewService<>).MakeGenericType(entityType);
             return serviceProvider.GetRequiredService(serviceType) as IEntityViewService;
-        }
-
-        /// <summary>
-        /// 获取 DAOContextPoolFactory
-        /// </summary>
-        /// <param name="serviceProvider">服务提供者</param>
-        /// <returns>连接池工厂</returns>
-        public static DAOContextPoolFactory GetDAOContextPoolFactory(this IServiceProvider serviceProvider)
-        {
-            return serviceProvider.GetRequiredService<DAOContextPoolFactory>();
-        }
-
-        /// <summary>
-        /// 获取数据库上下文
-        /// </summary>
-        /// <param name="serviceProvider">服务提供者</param>
-        /// <param name="poolName">连接池名称</param>
-        /// <returns>数据库上下文</returns>
-        public static DAOContext GetDAOContext(this IServiceProvider serviceProvider, string poolName = null)
-        {
-            var factory = serviceProvider.GetDAOContextPoolFactory();
-            return factory.PickContext(poolName);
-        }
-
-        /// <summary>
-        /// 获取 SessionManager
-        /// </summary>
-        /// <param name="serviceProvider">服务提供者</param>
-        /// <returns>会话管理器</returns>
-        public static SessionManager GetSessionManager(this IServiceProvider serviceProvider)
-        {
-            return serviceProvider.GetRequiredService<SessionManager>();
         }
     }
 

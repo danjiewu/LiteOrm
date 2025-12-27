@@ -21,11 +21,6 @@ namespace MyOrm
     [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
     public abstract class ObjectDAOBase
     {
-        private readonly SqlBuilderFactory _sqlBuilderFactory;
-        public ObjectDAOBase(SqlBuilderFactory sqlBuilderFactory)
-        {
-            _sqlBuilderFactory = sqlBuilderFactory;
-        }
         #region 预定义变量
         /// <summary>
         /// 表示SQL查询中条件语句的标记
@@ -85,12 +80,10 @@ namespace MyOrm
         /// </summary>
         protected internal virtual SqlBuilder SqlBuilder
         {
-            get { return _sqlBuilderFactory.GetSqlBuilder(DAOContext.ProviderType); }
+            get { return SqlBuilderFactory.Instance.GetSqlBuilder(DAOContext.ProviderType); }
         }
 
-        private Lazy<SessionManager> sessionManager = new Lazy<SessionManager>(() => SessionManager.Current);
-
-        public SessionManager Session { get => sessionManager.Value; }
+        public SessionManager Session => SessionManager.Current;
 
         public DAOContext DAOContext { get => Session.GetDaoContext(TableDefinition.DataSource); }
 
@@ -218,7 +211,7 @@ namespace MyOrm
         /// <returns></returns>
         public virtual IDbCommand NewCommand()
         {
-            return DAOContext.CreateDbCommand();
+            return new DbCommandProxy(DAOContext, SqlBuilder);
         }
 
         /// <summary>
@@ -415,7 +408,7 @@ namespace MyOrm
             foreach (ColumnDefinition column in TableDefinition.Columns)
             {
                 if (column.IsTimestamp)
-                {
+                {                
                     IDbDataParameter param = command.CreateParameter();
                     param.Size = column.Length;
                     param.DbType = column.DbType;

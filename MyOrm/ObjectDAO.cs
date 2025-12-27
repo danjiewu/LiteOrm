@@ -6,21 +6,19 @@ using MyOrm.Common;
 using System.Linq.Expressions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MyOrm
 {
     /// <summary>
-    /// 实体类的增删改操作
+    /// 实体类增删改等实现
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    public class ObjectDAO<T> : ObjectDAOBase, IObjectDAO<T>, IObjectDAO
+    public class ObjectDAO<T> : ObjectDAOBase, IObjectDAO<T>, IObjectDAO, IObjectDAOAsync<T>, IObjectDAOAsync
     {
-        public ObjectDAO(SqlBuilderFactory sqlBuilderFactory) : base(sqlBuilderFactory)
-        {
-        }
-
         /// <summary>
-        /// 实体类的类型
+        /// 实体对象类型
         /// </summary>
         public override Type ObjectType
         {
@@ -32,7 +30,7 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// 标识列
+        /// 识别列
         /// </summary>
         protected ColumnDefinition IdentityColumn
         {
@@ -45,9 +43,9 @@ namespace MyOrm
 
         protected override SqlBuildContext SqlBuildContext { get { base.SqlBuildContext.SingleTable = true; return base.SqlBuildContext; } set => base.SqlBuildContext = value; }
 
-        #region 预定义Command
+        #region 预构建Command
         /// <summary>
-        /// 实现插入操作的IDbCommand
+        /// 实体插入命令
         /// </summary>
         protected virtual IDbCommand MakeInsertCommand()
         {
@@ -77,9 +75,6 @@ namespace MyOrm
             return command;
         }
 
-        /// <summary>
-        /// 实现更新操作的IDbCommand
-        /// </summary>
         protected virtual IDbCommand MakeUpdateCommand()
         {
             IDbCommand command = NewCommand();
@@ -104,9 +99,6 @@ namespace MyOrm
             return command;
         }
 
-        /// <summary>
-        /// 实现删除操作的IDbCommand
-        /// </summary>
         protected virtual IDbCommand MakeDeleteCommand()
         {
             IDbCommand command = NewCommand();
@@ -114,9 +106,6 @@ namespace MyOrm
             return command;
         }
 
-        /// <summary>
-        /// 实现更新或添加操作的IDbCommand
-        /// </summary>
         protected virtual IDbCommand MakeUpdateOrInsertCommand()
         {
             IDbCommand command = NewCommand();
@@ -162,12 +151,7 @@ namespace MyOrm
 
         #endregion
 
-        #region 方法
-        /// <summary>
-        /// 将对象添加到数据库
-        /// </summary>
-        /// <param name="t">待添加的对象</param>
-        /// <returns>添加后的对象</returns>
+        #region CRUD
         public virtual bool Insert(T t)
         {
             var insertCommand = MakeInsertCommand();
@@ -197,13 +181,6 @@ namespace MyOrm
             return true;
         }
 
-
-
-        /// <summary>
-        /// 将一组对象批量插入到数据库。
-        /// 默认逐条调用 <see cref="Insert(T)"/>。
-        /// </summary>
-        /// <param name="values">要插入的对象集合。</param>
         public virtual void BatchInsert(IEnumerable<T> values)
         {
             foreach (T t in values)
@@ -212,11 +189,6 @@ namespace MyOrm
             }
         }
 
-        /// <summary>
-        /// 将对象更新到数据库
-        /// </summary>
-        /// <param name="t">待更新的对象</param>
-        /// <returns>是否成功更新</returns>
         public virtual bool Update(T t, object timestamp = null)
         {
             if (t == null) throw new ArgumentNullException("t");
@@ -236,12 +208,6 @@ namespace MyOrm
             return updateCommand.ExecuteNonQuery() > 0;
         }
 
-
-        /// <summary>
-        /// 更新或添加对象，若存在则更新，若不存在则添加
-        /// </summary>
-        /// <param name="t">待更新或添加的对象</param>
-        /// <returns>指示更新还是添加</returns>
         public virtual UpdateOrInsertResult UpdateOrInsert(T t)
         {
             if (t == null) throw new ArgumentNullException("t");
@@ -269,7 +235,7 @@ namespace MyOrm
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
         /// <param name="condition">更新的条件</param>
         /// <returns>更新的记录数</returns>
-        public virtual int UpdateValues(IEnumerable<KeyValuePair<string, object>> values, Condition condition)
+        public virtual int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Condition condition)
         {
             List<string> strSets = new List<string>();
             ParamList paramValues = new ParamList();
@@ -293,7 +259,7 @@ namespace MyOrm
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
         /// <param name="condition">更新的条件表达式</param>
         /// <returns>更新的记录数</returns>
-        public int UpdateValues(IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression)
+        public int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression)
         {
             List<string> strSets = new List<string>();
             ExpressionParser parser = new ExpressionParser(SqlBuilder, SqlBuildContext);
@@ -329,7 +295,7 @@ namespace MyOrm
             {
                 condition.Add(new SimpleCondition(column.PropertyName, keys[i++]));
             }
-            return UpdateValues(values, condition) > 0;
+            return UpdateAllValues(values, condition) > 0;
         }
 
         /// <summary>
@@ -410,6 +376,101 @@ namespace MyOrm
         {
             return Delete((T)o);
         }
+        #endregion
+
+        #region IObjectDAOAsync implementations (wrappers)
+
+        public virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => Insert(t), cancellationToken);
+        }
+
+        public virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => BatchInsert(values), cancellationToken);
+        }
+
+        public virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => Update(t, timestamp), cancellationToken);
+        }
+
+        public virtual Task<UpdateOrInsertResult> UpdateOrInsertAsync(T t, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => UpdateOrInsert(t), cancellationToken);
+        }
+
+        public virtual Task<int> UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => UpdateAllValues(values, expression), cancellationToken);
+        }
+
+        public virtual Task<bool> DeleteAsync(T t, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => Delete(t), cancellationToken);
+        }
+
+        public virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => DeleteByKeys(keys), cancellationToken);
+        }
+
+        public virtual Task<int> DeleteAsync(Condition condition, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => Delete(condition), cancellationToken);
+        }
+
+        // non-generic async wrappers
+        Task<bool> IObjectDAOAsync.InsertAsync(object o, CancellationToken cancellationToken)
+        {
+            return InsertAsync((T)o, cancellationToken);
+        }
+
+        Task IObjectDAOAsync.BatchInsertAsync(IEnumerable values, CancellationToken cancellationToken)
+        {
+            if (values is IEnumerable<T>)
+                return BatchInsertAsync(values as IEnumerable<T>, cancellationToken);
+            else
+            {
+                List<T> list = new List<T>();
+                foreach (T entity in values)
+                {
+                    list.Add(entity);
+                }
+                return BatchInsertAsync(list, cancellationToken);
+            }
+        }
+
+        Task<bool> IObjectDAOAsync.UpdateAsync(object o, CancellationToken cancellationToken)
+        {
+            return UpdateAsync((T)o, null, cancellationToken);
+        }
+
+        Task<UpdateOrInsertResult> IObjectDAOAsync.UpdateOrInsertAsync(object o, CancellationToken cancellationToken)
+        {
+            return UpdateOrInsertAsync((T)o, cancellationToken);
+        }
+
+        Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Condition condition, CancellationToken cancellationToken)
+        {
+            return Task.Run(() => UpdateAllValues(values, condition), cancellationToken);
+        }
+
+        Task<bool> IObjectDAOAsync.DeleteAsync(object o, CancellationToken cancellationToken)
+        {
+            return DeleteAsync((T)o, cancellationToken);
+        }
+
+        Task<bool> IObjectDAOAsync.DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken)
+        {
+            return DeleteByKeysAsync(keys, cancellationToken);
+        }
+
+        Task<int> IObjectDAOAsync.DeleteAsync(Condition condition, CancellationToken cancellationToken)
+        {
+            return DeleteAsync(condition, cancellationToken);
+        }
+
         #endregion
     }
 }

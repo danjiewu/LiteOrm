@@ -22,8 +22,6 @@ namespace LogRecord
 
     public class AccountingLogDAO : ObjectDAO<AccountingLog>
     {
-        public AccountingLogDAO(SqlBuilderFactory sqlBuilderFactory) : base(sqlBuilderFactory) { }
-
         public override void BatchInsert(IEnumerable<AccountingLog> entities)
         {
             MySqlBulkCopy bulkCopy = new MySqlBulkCopy(Connection as MySqlConnection, DAOContext.CurrentTransaction as MySqlTransaction);
@@ -45,7 +43,7 @@ namespace LogRecord
                 var row = dt.NewRow();
                 foreach (DataColumn column in dt.Columns)
                 {
-                    row[column.ColumnName] = entity[column.ColumnName];
+                    row[column.ColumnName] = entity[column.ColumnName] ?? DBNull.Value;
                 }
                 dt.Rows.Add(row);
             }
@@ -57,16 +55,7 @@ namespace LogRecord
     {
         public override void BatchInsert(IEnumerable<AccountingLog> entities)
         {
-            base.BatchInsert(entities);
-            Task.Run(() =>
-            {
-                using IServiceScope scope = MyServiceProvider.Current.CreateScope();
-                var sessionService = MyServiceProvider.Current.GetRequiredService<ISessionService>();
-                foreach (var entity in entities)
-                {
-                    sessionService.UpdateSession(entity);
-                }
-            });
+            base.BatchInsert(entities);            
         }
     }
     public class SessionService : EntityService<Session>, ISessionService

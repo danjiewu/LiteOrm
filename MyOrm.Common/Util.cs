@@ -14,7 +14,7 @@ namespace MyOrm
     public static class Util
     {
         private static Dictionary<Type, Dictionary<Enum, string>> enumTypeName = new Dictionary<Type, Dictionary<Enum, string>>();
-        public static int MaxExpandedLogLength { get; set; } = 100;
+        public static int MaxExpandedLogLength { get; set; } = 10;
         public static T Parse<T>(string displayName) where T : struct, Enum
         {
             if (!enumTypeName.ContainsKey(typeof(T)))

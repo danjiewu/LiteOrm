@@ -16,6 +16,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 
@@ -23,6 +24,7 @@ namespace MyOrm.Test
 {
     class Program
     {
+        private static readonly SemaphoreSlim _batchSemaphore = new SemaphoreSlim(4); // 并发度 4
         static void Main(string[] args)
         {
             OracleConfiguration.BindByName = true;
@@ -48,14 +50,35 @@ namespace MyOrm.Test
             // 使用ServiceProvider
             var serviceProvider = host.Services;
             var scope = serviceProvider.CreateScope();
-            using var sessionScope = scope.ServiceProvider.GetRequiredService<SessionManager>().EnterContext();
             var service = scope.ServiceProvider.GetRequiredService<IAccountintLogService>();
-            var logs = service.SearchSection(null, new SectionSet() { SectionSize = 1000 }, "202512");
-            for (int i = 0; i < 100; i++)
+            var logs = service.SearchSection(null, new SectionSet() { SectionSize = 1000 }, "202501");
+
+
+            for (int i = 0; i < 15; i++)
             {
-                Console.WriteLine($"第{i}轮：");
-                Task.WaitAny(Task.Delay(500),
-                Task.Run(() => { service.BatchInsert(logs); }));
+                int cur = i;
+                Console.WriteLine($"第{cur}轮.Session:{SessionManager.Current.ID}");
+                Task.Run(async () =>
+                {
+                    await _batchSemaphore.WaitAsync();
+                    try
+                    {
+                        Console.WriteLine($"第{cur}轮开始.Session:{SessionManager.Current.ID}");
+                        using (var session = SessionManager.Current.EnterContext())
+                        {
+                            Console.WriteLine($"第{cur}轮BatchInsert:Session:{SessionManager.Current.ID}");
+                            var service = scope.ServiceProvider.GetRequiredService<IAccountintLogService>();
+                            service.BatchInsert(logs);
+                        }
+                    }
+                    finally
+                    {
+                        Console.WriteLine($"第{cur}轮完成.Session:{SessionManager.Current.ID}");
+                        _batchSemaphore.Release();
+                    }
+                });
+
+                Task.Delay(100).Wait();
             }
 
             Console.ReadKey();

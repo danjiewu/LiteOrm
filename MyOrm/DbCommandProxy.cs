@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using System.Data;
 using System.Data.Common;
+using MyOrm.Common;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MyOrm
 {
@@ -16,21 +19,23 @@ namespace MyOrm
         /// </summary>
         /// <param name="dbCommand"></param>
         /// <param name="context"></param>
-        public DbCommandProxy(IDbCommand dbCommand, DAOContext context)
+        public DbCommandProxy(DAOContext context, ISqlBuilder sqlBuilder)
         {
-            Target = dbCommand ?? throw new ArgumentNullException(nameof(dbCommand));
-            Context = context ?? throw new ArgumentNullException(nameof(context)); ;
+            Context = context ?? throw new ArgumentNullException(nameof(context));
+            SqlBuilder = sqlBuilder ?? throw new ArgumentNullException(nameof(sqlBuilder));
+            Target = context.DbConnection.CreateCommand();
         }
 
         /// <summary>
         /// Ä¿±êCommand
         /// </summary>
-        public IDbCommand Target
+        public DbCommand Target
         {
             get;
         }
 
         public DAOContext Context { get; }
+        public ISqlBuilder SqlBuilder { get; }
 
         protected virtual void PreExcuteCommand(ExcuteType excuteType)
         {
@@ -59,7 +64,7 @@ namespace MyOrm
             set
             {
                 commandText = value;
-                Target.CommandText = SqlBuilder.Instance.ReplaceSqlName(value);
+                Target.CommandText = SqlBuilder.ReplaceSqlName(value);
             }
         }
 
@@ -78,7 +83,7 @@ namespace MyOrm
         public IDbConnection Connection
         {
             get { return Target.Connection; }
-            set { Target.Connection = value; }
+            set { (Target as IDbCommand).Connection = value; }
         }
 
         public IDbDataParameter CreateParameter()
@@ -94,6 +99,30 @@ namespace MyOrm
                 int ret = Target.ExecuteNonQuery();
                 PostExcuteCommand(ExcuteType.ExecuteNonQuery);
                 return ret;
+            }
+            finally
+            {
+                Context.ReleaseLock();
+            }
+        }
+
+        public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                PreExcuteCommand(ExcuteType.ExecuteNonQuery);
+                if (Target is DbCommand dbCmd)
+                {
+                    int ret = await dbCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    PostExcuteCommand(ExcuteType.ExecuteNonQuery);
+                    return ret;
+                }
+                else
+                {
+                    int ret = await Task.Run(() => Target.ExecuteNonQuery(), cancellationToken).ConfigureAwait(false);
+                    PostExcuteCommand(ExcuteType.ExecuteNonQuery);
+                    return ret;
+                }
             }
             finally
             {
@@ -131,6 +160,23 @@ namespace MyOrm
             }
         }
 
+        public async Task<IDataReader> ExecuteReaderAsync(CommandBehavior behavior = CommandBehavior.Default, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                PreExcuteCommand(ExcuteType.ExecuteReader);
+
+                var task = Target.ExecuteReaderAsync(behavior, cancellationToken);
+                IDataReader ret = await task.ConfigureAwait(false);
+                PostExcuteCommand(ExcuteType.ExecuteReader);
+                return ret;
+            }
+            finally
+            {
+                Context.ReleaseLock();
+            }
+        }
+
         public object ExecuteScalar()
         {
             try
@@ -146,13 +192,28 @@ namespace MyOrm
             }
         }
 
+        public async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                PreExcuteCommand(ExcuteType.ExecuteScalar);
+                var ret = await Target.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                PostExcuteCommand(ExcuteType.ExecuteScalar);
+                return ret;
+            }
+            finally
+            {
+                Context.ReleaseLock();
+            }
+        }
+
         public IDataParameterCollection Parameters
         {
             get { return Target.Parameters; }
         }
 
         public void Prepare()
-        {            
+        {
             if (Context != null) Transaction = Context.CurrentTransaction;
             Context.EnsureConnectionOpen();
             Target.Prepare();
@@ -161,7 +222,7 @@ namespace MyOrm
         public IDbTransaction Transaction
         {
             get { return Target.Transaction; }
-            set { Target.Transaction = value; }
+            set { (Target as IDbCommand).Transaction = value; }
         }
 
         public UpdateRowSource UpdatedRowSource
