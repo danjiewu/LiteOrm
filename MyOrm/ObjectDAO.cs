@@ -1,0 +1,415 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Data;
+using MyOrm.Common;
+using System.Linq.Expressions;
+using Microsoft.Extensions.DependencyInjection;
+using System.Collections;
+
+namespace MyOrm
+{
+    /// <summary>
+    /// 实体类的增删改操作
+    /// </summary>
+    /// <typeparam name="T">实体类型</typeparam>
+    public class ObjectDAO<T> : ObjectDAOBase, IObjectDAO<T>, IObjectDAO
+    {
+        public ObjectDAO(SqlBuilderFactory sqlBuilderFactory) : base(sqlBuilderFactory)
+        {
+        }
+
+        /// <summary>
+        /// 实体类的类型
+        /// </summary>
+        public override Type ObjectType
+        {
+            get { return typeof(T); }
+        }
+        protected override Table Table
+        {
+            get { return TableInfoProvider.GetTableDefinition(ObjectType); }
+        }
+
+        /// <summary>
+        /// 标识列
+        /// </summary>
+        protected ColumnDefinition IdentityColumn
+        {
+            get
+            {
+                foreach (ColumnDefinition column in TableDefinition.Columns) if (column.IsIdentity) return column;
+                return null;
+            }
+        }
+
+        protected override SqlBuildContext SqlBuildContext { get { base.SqlBuildContext.SingleTable = true; return base.SqlBuildContext; } set => base.SqlBuildContext = value; }
+
+        #region 预定义Command
+        /// <summary>
+        /// 实现插入操作的IDbCommand
+        /// </summary>
+        protected virtual IDbCommand MakeInsertCommand()
+        {
+            IDbCommand command = NewCommand();
+            StringBuilder strColumns = new StringBuilder();
+            StringBuilder strValues = new StringBuilder();
+            foreach (ColumnDefinition column in TableDefinition.Columns)
+            {
+                if (!column.IsIdentity && column.Mode.CanInsert())
+                {
+                    if (strColumns.Length != 0) strColumns.Append(",");
+                    if (strValues.Length != 0) strValues.Append(",");
+
+                    strColumns.Append(ToSqlName(column.Name));
+                    strValues.Append(ToSqlParam(column.PropertyName));
+                    IDbDataParameter param = command.CreateParameter();
+                    param.Size = column.Length;
+                    param.DbType = column.DbType;
+                    param.ParameterName = ToParamName(column.PropertyName);
+                    command.Parameters.Add(param);
+                }
+            }
+
+            command.CommandText = IdentityColumn == null ?
+                String.Format("insert into {0} ({1}) \nvalues ({2})", ToSqlName(FactTableName), strColumns, strValues)
+                : SqlBuilder.BuildIdentityInsertSQL(command, IdentityColumn, FactTableName, strColumns.ToString(), strValues.ToString());
+            return command;
+        }
+
+        /// <summary>
+        /// 实现更新操作的IDbCommand
+        /// </summary>
+        protected virtual IDbCommand MakeUpdateCommand()
+        {
+            IDbCommand command = NewCommand();
+            StringBuilder strColumns = new StringBuilder();
+            foreach (ColumnDefinition column in TableDefinition.Columns)
+            {
+                if (column.Mode.CanUpdate() && !column.IsPrimaryKey)
+                {
+                    if (strColumns.Length != 0) strColumns.Append(",");
+                    strColumns.AppendFormat("{0} = {1}", ToSqlName(column.Name), ToSqlParam(column.PropertyName));
+                    IDbDataParameter param = command.CreateParameter();
+                    param.Size = column.Length;
+                    param.DbType = column.DbType;
+                    param.ParameterName = ToParamName(column.PropertyName);
+                    command.Parameters.Add(param);
+                }
+            }
+
+            string strTimestamp = MakeTimestampCondition(command);
+            if (strTimestamp != null) strTimestamp = " and " + strTimestamp;
+            command.CommandText = String.Format("update {0} set {1} \nwhere{2} ", ToSqlName(FactTableName), strColumns, MakeIsKeyCondition(command) + strTimestamp);
+            return command;
+        }
+
+        /// <summary>
+        /// 实现删除操作的IDbCommand
+        /// </summary>
+        protected virtual IDbCommand MakeDeleteCommand()
+        {
+            IDbCommand command = NewCommand();
+            command.CommandText = String.Format("delete from {0} \nwhere{1}", ToSqlName(FactTableName), MakeIsKeyCondition(command));
+            return command;
+        }
+
+        /// <summary>
+        /// 实现更新或添加操作的IDbCommand
+        /// </summary>
+        protected virtual IDbCommand MakeUpdateOrInsertCommand()
+        {
+            IDbCommand command = NewCommand();
+            StringBuilder strColumns = new StringBuilder();
+            StringBuilder strValues = new StringBuilder();
+            StringBuilder strUpdateColumns = new StringBuilder();
+            foreach (ColumnDefinition column in TableDefinition.Columns)
+            {
+                bool columnAdded = false;
+                if (!column.IsIdentity && column.Mode.CanInsert())
+                {
+                    if (strColumns.Length != 0) strColumns.Append(",");
+                    if (strValues.Length != 0) strValues.Append(",");
+
+                    strColumns.Append(ToSqlName(column.Name));
+                    strValues.Append(ToSqlParam(column.PropertyName));
+                    columnAdded = true;
+                }
+
+                if (column.Mode.CanUpdate() && !column.IsPrimaryKey)
+                {
+                    if (strUpdateColumns.Length != 0) strUpdateColumns.Append(",");
+                    strUpdateColumns.AppendFormat("{0} = {1}", ToSqlName(column.Name), ToSqlParam(column.PropertyName));
+                    columnAdded = true;
+                }
+
+                if (columnAdded)
+                {
+                    IDbDataParameter param = command.CreateParameter();
+                    param.DbType = column.DbType;
+                    param.Size = column.Length;
+                    param.ParameterName = ToParamName(column.PropertyName);
+                    command.Parameters.Add(param);
+                }
+            }
+            string insertCommandText = IdentityColumn == null ? String.Format("insert into {0} ({1}) \nvalues ({2})", ToSqlName(FactTableName), strColumns, strValues)
+                : SqlBuilder.BuildIdentityInsertSQL(command, IdentityColumn, ToSqlName(FactTableName), strColumns.ToString(), strValues.ToString());
+            string updateCommandText = String.Format("update {0} set {1} \nwhere{2};", ToSqlName(FactTableName), strUpdateColumns, MakeIsKeyCondition(command));
+
+            command.CommandText = String.Format("BEGIN if exists(select 1 from {0} \nwhere{1}) begin {2} select -1; end else begin {3} end END;", ToSqlName(FactTableName), MakeIsKeyCondition(command), updateCommandText, insertCommandText);
+            return command;
+        }
+
+        #endregion
+
+        #region 方法
+        /// <summary>
+        /// 将对象添加到数据库
+        /// </summary>
+        /// <param name="t">待添加的对象</param>
+        /// <returns>添加后的对象</returns>
+        public virtual bool Insert(T t)
+        {
+            var insertCommand = MakeInsertCommand();
+            if (t == null) throw new ArgumentNullException("t");
+            foreach (IDataParameter param in insertCommand.Parameters)
+            {
+                ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
+                param.Value = ConvertToDBValue(column.GetValue(t), column);
+            }
+            if (IdentityColumn == null)
+            {
+                insertCommand.ExecuteNonQuery();
+            }
+            else
+            {
+                IDataParameter param = insertCommand.Parameters.Contains(ToParamName(IdentityColumn.PropertyName)) ? (IDataParameter)insertCommand.Parameters[ToParamName(IdentityColumn.PropertyName)] : null;
+                if (param != null && param.Direction == ParameterDirection.Output)
+                {
+                    insertCommand.ExecuteNonQuery();
+                    IdentityColumn.SetValue(t, ConvertValue(param.Value, IdentityColumn.PropertyType));
+                }
+                else
+                {
+                    IdentityColumn.SetValue(t, ConvertValue(insertCommand.ExecuteScalar(), IdentityColumn.PropertyType));
+                }
+            }
+            return true;
+        }
+
+
+
+        /// <summary>
+        /// 将一组对象批量插入到数据库。
+        /// 默认逐条调用 <see cref="Insert(T)"/>。
+        /// </summary>
+        /// <param name="values">要插入的对象集合。</param>
+        public virtual void BatchInsert(IEnumerable<T> values)
+        {
+            foreach (T t in values)
+            {
+                Insert(t);
+            }
+        }
+
+        /// <summary>
+        /// 将对象更新到数据库
+        /// </summary>
+        /// <param name="t">待更新的对象</param>
+        /// <returns>是否成功更新</returns>
+        public virtual bool Update(T t, object timestamp = null)
+        {
+            if (t == null) throw new ArgumentNullException("t");
+            var updateCommand = MakeUpdateCommand();
+            foreach (IDataParameter param in updateCommand.Parameters)
+            {
+                if (ToNativeName(param.ParameterName) == TimestampParamName)
+                {
+                    param.Value = timestamp;
+                }
+                else
+                {
+                    ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
+                    param.Value = ConvertToDBValue(column.GetValue(t), column);
+                }
+            }
+            return updateCommand.ExecuteNonQuery() > 0;
+        }
+
+
+        /// <summary>
+        /// 更新或添加对象，若存在则更新，若不存在则添加
+        /// </summary>
+        /// <param name="t">待更新或添加的对象</param>
+        /// <returns>指示更新还是添加</returns>
+        public virtual UpdateOrInsertResult UpdateOrInsert(T t)
+        {
+            if (t == null) throw new ArgumentNullException("t");
+            var updateOrInsertCommand = MakeUpdateOrInsertCommand();
+            foreach (IDataParameter param in updateOrInsertCommand.Parameters)
+            {
+                ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
+                param.Value = ConvertToDBValue(column.GetValue(t), column);
+            }
+            int ret = Convert.ToInt32(updateOrInsertCommand.ExecuteScalar());
+            if (ret >= 0)
+            {
+                if (IdentityColumn != null) IdentityColumn.SetValue(t, ret);
+                return UpdateOrInsertResult.Inserted;
+            }
+            else
+            {
+                return UpdateOrInsertResult.Updated;
+            }
+        }
+
+        /// <summary>
+        /// 根据条件更新数据
+        /// </summary>
+        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
+        /// <param name="condition">更新的条件</param>
+        /// <returns>更新的记录数</returns>
+        public virtual int UpdateValues(IEnumerable<KeyValuePair<string, object>> values, Condition condition)
+        {
+            List<string> strSets = new List<string>();
+            ParamList paramValues = new ParamList();
+            foreach (KeyValuePair<string, object> value in values)
+            {
+                Column column = Table.GetColumn(value.Key);
+                if (column == null) throw new Exception(String.Format("Property \"{0}\" does not exist in type \"{1}\".", value.Key, Table.DefinitionType.FullName));
+                strSets.Add(column.FormattedName(SqlBuilder) + "=" + ToSqlParam(paramValues.Count.ToString()));
+                paramValues.Add(paramValues.Count.ToString(), value.Value);
+            }
+            string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray()) + " \nwhere" + SqlBuilder.BuildConditionSql(SqlBuildContext, condition, paramValues);
+            using (IDbCommand command = MakeNamedParamCommand(updateSql, paramValues))
+            {
+                return command.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
+        /// 根据条件表达式更新数据
+        /// </summary>
+        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
+        /// <param name="condition">更新的条件表达式</param>
+        /// <returns>更新的记录数</returns>
+        public int UpdateValues(IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression)
+        {
+            List<string> strSets = new List<string>();
+            ExpressionParser parser = new ExpressionParser(SqlBuilder, SqlBuildContext);
+            foreach (KeyValuePair<string, object> value in values)
+            {
+                Column column = Table.GetColumn(value.Key);
+                if (column == null) throw new Exception(String.Format("Property \"{0}\" does not exist in type \"{1}\".", value.Key, Table.DefinitionType.FullName));
+                strSets.Add(column.FormattedName(SqlBuilder) + "=" + parser.AddArgument(value.Value));
+            }
+
+            parser.Visit(expression);
+            string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray());
+            if (!String.IsNullOrEmpty(parser.Result)) updateSql += " \nwhere" + parser.Result;
+            using (IDbCommand command = MakeNamedParamCommand(updateSql, parser.Arguments))
+            {
+                return command.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
+        /// 根据主键更新数据
+        /// </summary>
+        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
+        /// <param name="keys">主键</param>
+        /// <returns>更新是否成功</returns>
+        public virtual bool UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys)
+        {
+            ThrowExceptionIfNoKeys();
+            ThrowExceptionIfWrongKeys(keys);
+            ConditionSet condition = new ConditionSet();
+            int i = 0;
+            foreach (ColumnDefinition column in TableDefinition.Keys)
+            {
+                condition.Add(new SimpleCondition(column.PropertyName, keys[i++]));
+            }
+            return UpdateValues(values, condition) > 0;
+        }
+
+        /// <summary>
+        /// 将对象从数据库删除
+        /// </summary>
+        /// <param name="t">待删除的对象</param>
+        /// <returns>是否成功删除</returns>
+        public virtual bool Delete(T t)
+        {
+            if (t == null) throw new ArgumentNullException("t");
+            return DeleteByKeys(GetKeyValues(t));
+        }
+
+        /// <summary>
+        /// 根据条件删除对象
+        /// </summary>
+        /// <param name="condition">条件</param>
+        /// <returns>删除对象数量</returns>
+        public virtual int Delete(Condition condition)
+        {
+            using (IDbCommand command = MakeConditionCommand("delete from @Table@ \nwhere@Condition@", condition))
+            {
+                return command.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
+        /// 将指定主键的对象从数据库删除
+        /// </summary>
+        /// <param name="keys">待删除的对象的主键</param>
+        /// <returns>是否成功删除</returns>
+        public virtual bool DeleteByKeys(params object[] keys)
+        {
+            ThrowExceptionIfWrongKeys(keys);
+            var deleteCommand = MakeDeleteCommand();
+            int i = 0;
+            foreach (IDataParameter param in deleteCommand.Parameters)
+            {
+                param.Value = ConvertToDBValue(keys[i], TableDefinition.Keys[i]);
+                i++;
+            }
+            return deleteCommand.ExecuteNonQuery() > 0;
+        }
+        #endregion
+
+        #region IObjectDAO Members
+
+        bool IObjectDAO.Insert(object o)
+        {
+            return Insert((T)o);
+        }
+        void IObjectDAO.BatchInsert(IEnumerable values)
+        {
+            if (values is IEnumerable<T>)
+                BatchInsert(values as IEnumerable<T>);
+            else
+            {
+                List<T> list = new List<T>();
+                foreach (T entity in values)
+                {
+                    list.Add(entity);
+                }
+                BatchInsert(list);
+            }
+        }
+
+        bool IObjectDAO.Update(object o)
+        {
+            return Update((T)o);
+        }
+
+        UpdateOrInsertResult IObjectDAO.UpdateOrInsert(object o)
+        {
+            return UpdateOrInsert((T)o);
+        }
+
+        bool IObjectDAO.Delete(object o)
+        {
+            return Delete((T)o);
+        }
+        #endregion
+    }
+}

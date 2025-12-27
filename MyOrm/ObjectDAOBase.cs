@@ -1,0 +1,587 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Text;
+using System.Data;
+using System.Text.RegularExpressions;
+using MyOrm.Common;
+using System.Data.Common;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Collections.Specialized;
+using Microsoft.Extensions.DependencyInjection;
+using MyOrm.Service;
+using System.Linq;
+
+namespace MyOrm
+{
+    /// <summary>
+    /// 提供常用操作
+    /// </summary>
+    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
+    public abstract class ObjectDAOBase
+    {
+        private readonly SqlBuilderFactory _sqlBuilderFactory;
+        public ObjectDAOBase(SqlBuilderFactory sqlBuilderFactory)
+        {
+            _sqlBuilderFactory = sqlBuilderFactory;
+        }
+        #region 预定义变量
+        /// <summary>
+        /// 表示SQL查询中条件语句的标记
+        /// </summary>
+        public const string ParamCondition = "@Condition@";
+        /// <summary>
+        /// 表示SQL查询中表名的标记
+        /// </summary>
+        public const string ParamTable = "@Table@";
+        /// <summary>
+        /// 表示SQL查询中多表连接的标记
+        /// </summary>
+        public const string ParamFromTable = "@FromTable@";
+        /// <summary>
+        /// 表示SQL查询中所有字段的标记
+        /// </summary>
+        public const string ParamAllFields = "@AllFields@";
+
+        protected const string TimestampParamName = "0";
+        #endregion
+
+        #region 私有变量
+        private ReadOnlyCollection<Column> selectColumns;
+        private string allFieldsSql = null;
+        private string tableName = null;
+        private string fromTable = null;
+        private ArgumentOutOfRangeException ExceptionWrongKeys;
+        #endregion
+
+        #region 属性
+        /// <summary>
+        /// 实体对象类型
+        /// </summary>
+        public abstract Type ObjectType
+        {
+            get;
+        }
+
+        /// <summary>
+        /// 表信息
+        /// </summary>
+        protected abstract Table Table
+        {
+            get;
+        }
+
+        /// <summary>
+        /// 表定义
+        /// </summary>
+        protected TableDefinition TableDefinition
+        {
+            get { return Table.Definition; }
+        }
+
+        /// <summary>
+        /// 构建SQL语句的SQLBuilder
+        /// </summary>
+        protected internal virtual SqlBuilder SqlBuilder
+        {
+            get { return _sqlBuilderFactory.GetSqlBuilder(DAOContext.ProviderType); }
+        }
+
+        private Lazy<SessionManager> sessionManager = new Lazy<SessionManager>(() => SessionManager.Current);
+
+        public SessionManager Session { get => sessionManager.Value; }
+
+        public DAOContext DAOContext { get => Session.GetDaoContext(TableDefinition.DataSource); }
+
+        /// <summary>
+        /// 表名参数
+        /// </summary>
+        public string[] TableNameArgs { get; set; }
+
+        public object WithArgs(params string[] args)
+        {
+            ObjectDAOBase newDAO = MemberwiseClone() as ObjectDAOBase;
+            newDAO.TableNameArgs = args;
+            return newDAO;
+        }
+
+        private SqlBuildContext sqlBuildContext;
+        /// <summary>
+        /// 创建SQL执行上下文
+        /// </summary>
+        /// <returns></returns>
+        protected virtual SqlBuildContext SqlBuildContext
+        {
+            get
+            {
+                if (sqlBuildContext == null) sqlBuildContext = new SqlBuildContext() { Table = Table, TableInfoProvider = TableInfoProvider, TableNameArgs = TableNameArgs };
+                return sqlBuildContext;
+
+            }
+            set { sqlBuildContext = value; }
+        }
+
+        private Lazy<TableInfoProvider> tableInfoProvider = new Lazy<TableInfoProvider>(() => MyServiceProvider.Current.GetRequiredService<TableInfoProvider>());
+
+        /// <summary>
+        /// 表信息提供者
+        /// </summary>
+        protected virtual TableInfoProvider TableInfoProvider
+        {
+            get => tableInfoProvider.Value;
+        }
+
+        /// <summary>
+        /// 数据库连接
+        /// </summary>
+        public IDbConnection Connection
+        {
+            get { return DAOContext.DbConnection; }
+        }
+
+        /// <summary>
+        /// 表名
+        /// </summary>
+        protected string TableName
+        {
+            get
+            {
+                if (tableName == null) tableName = Table.Name;
+                return tableName;
+            }
+        }
+
+        /// <summary>
+        /// 实际表名
+        /// </summary>
+        public string FactTableName { get { return SqlBuildContext.GetTableNameWithArgs(TableDefinition.Name); } }
+
+        /// <summary>
+        /// 查询时使用的相关联的多个表
+        /// </summary>
+        protected virtual string From
+        {
+            get
+            {
+                if (fromTable == null)
+                {
+                    fromTable = SqlBuildContext.GetTableNameWithArgs(Table.FormattedExpression(SqlBuilder));
+                }
+                return fromTable;
+            }
+        }
+
+        /// <summary>
+        /// 查询时需要获取的所有列
+        /// </summary>
+        protected virtual ReadOnlyCollection<Column> SelectColumns
+        {
+            get
+            {
+                if (selectColumns == null)
+                {
+                    selectColumns = Table.Columns.Where(column =>
+                    {
+                        while (column is ForeignColumn foreignColumn) column = foreignColumn.TargetColumn.Column;
+                        if (column is ColumnDefinition columnDefinition)
+                            return columnDefinition.Mode.CanRead();
+                        else
+                            return true;
+                    }).ToList().AsReadOnly();
+                }
+                return selectColumns;
+            }
+        }
+
+        /// <summary>
+        /// 查询时需要获取的所有字段的Sql
+        /// </summary>
+        protected string AllFieldsSql
+        {
+            get
+            {
+                if (allFieldsSql == null)
+                {
+                    allFieldsSql = GetSelectFieldsSQL(SelectColumns);
+                }
+                return allFieldsSql;
+            }
+        }
+        #endregion
+
+        #region 方法
+
+        /// <summary>
+        /// 创建IDbCommand
+        /// </summary>
+        /// <returns></returns>
+        public virtual IDbCommand NewCommand()
+        {
+            return DAOContext.CreateDbCommand();
+        }
+
+        /// <summary>
+        /// 生成select部分的sql
+        /// </summary>
+        /// <param name="selectColumns">需要select的列集合</param>
+        /// <returns>生成的sql</returns>
+        protected string GetSelectFieldsSQL(IEnumerable<Column> selectColumns)
+        {
+            StringBuilder strAllFields = new StringBuilder();
+            foreach (Column column in selectColumns)
+            {
+                if (strAllFields.Length != 0) strAllFields.Append(",");
+                strAllFields.Append(column.FormattedExpression(SqlBuilder));
+                if (!String.Equals(column.Name, column.PropertyName, StringComparison.OrdinalIgnoreCase)) strAllFields.Append(" " + SqlBuilder.ToSqlName(column.PropertyName));
+            }
+            return strAllFields.ToString();
+        }
+
+        /// <summary>
+        /// 生成orderby部分的sql
+        /// </summary>
+        /// <param name="orders">排序项的集合，按优先级顺序排列</param>
+        /// <returns></returns>
+        protected string GetOrderBySQL(Sorting[] orders)
+        {
+            StringBuilder orderBy = new StringBuilder();
+            if (orders == null || orders.Length == 0)
+            {
+                if (TableDefinition.Keys.Count != 0)
+                {
+                    foreach (ColumnDefinition key in TableDefinition.Keys)
+                    {
+                        if (orderBy.Length != 0) orderBy.Append(",");
+                        orderBy.AppendFormat("{0}.{1}", Table.FormattedName(SqlBuilder), key.FormattedName(SqlBuilder));
+                    }
+                }
+                else
+                {
+                    //TODO: OrderBy one column or all columns?
+                    throw new Exception("No columns or keys to sort by.");
+                }
+            }
+            else
+            {
+                foreach (Sorting sorting in orders)
+                {
+                    Column column = Table.GetColumn(sorting.PropertyName);
+                    if (column == null) throw new ArgumentException(String.Format("Type \"{0}\" does not have property \"{1}\"", ObjectType.Name, sorting.PropertyName), "section");
+                    if (orderBy.Length > 0) orderBy.Append(",");
+                    orderBy.Append(column.FormattedExpression(SqlBuilder));
+                    orderBy.Append(sorting.Direction == ListSortDirection.Ascending ? " asc" : " desc");
+                }
+            }
+            return orderBy.ToString();
+        }
+
+        /// <summary>
+        /// 根据SQL语句和参数建立IDbCommand
+        /// </summary>
+        /// <param name="SQL">SQL语句，SQL中可以包含参数信息，参数名为以0开始的递增整数，对应paramValues中值的下标</param>
+        /// <param name="paramValues">参数值，需要与SQL中的参数一一对应，为空时表示没有参数</param>
+        /// <returns>IDbCommand</returns>
+        public IDbCommand MakeParamCommand(string SQL, IEnumerable paramValues)
+        {
+            int paramIndex = 0;
+            ParamList paramList = new ParamList();
+            if (paramValues != null)
+                foreach (object paramValue in paramValues)
+                {
+                    paramList.Add(Convert.ToString(paramIndex++), paramValue);
+
+                }
+            return MakeNamedParamCommand(SQL, paramList);
+        }
+
+        /// <summary>
+        /// 根据SQL语句和参数建立IDbCommand
+        /// </summary>
+        /// <param name="SQL">SQL语句，SQL中可以包含参数信息，参数名为以0开始的递增整数，对应paramValues中值的下标</param>
+        /// <param name="paramValues">参数值，需要与SQL中的参数一一对应，为空时表示没有参数</param>
+        /// <returns>IDbCommand</returns>
+        public IDbCommand MakeParamCommand(string SQL, params object[] paramValues)
+        {
+            return MakeParamCommand(SQL, (IEnumerable)paramValues);
+        }
+
+        /// <summary>
+        /// 根据SQL语句和命名的参数建立IDbCommand
+        /// </summary>
+        /// <param name="SQL">SQL语句，SQL中可以包含已命名的参数</param>
+        /// <param name="paramValues">参数列表，为空时表示没有参数。Key需要与SQL中的参数名称对应</param>
+        /// <returns>IDbCommand</returns>
+        public IDbCommand MakeNamedParamCommand(string SQL, IEnumerable<KeyValuePair<string, object>> paramValues, SqlBuildContext context = null)
+        {
+            IDbCommand command = NewCommand();
+            command.CommandText = ReplaceParam(SQL, context);
+            AddParamsToCommand(command, paramValues);
+            return command;
+        }
+
+        /// <summary>
+        /// 将参数添加到IDbCommand中
+        /// </summary>
+        /// <param name="command">需要添加参数的IDbCommand</param>
+        /// <param name="paramValues">参数列表，包括参数名称和值，为空时表示没有参数</param>
+        public void AddParamsToCommand(IDbCommand command, IEnumerable<KeyValuePair<string, object>> paramValues)
+        {
+            if (paramValues != null)
+                foreach (KeyValuePair<string, object> paramSet in paramValues)
+                {
+                    IDbDataParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName(ToNativeName(paramSet.Key));
+                    object value = paramSet.Value ?? DBNull.Value;
+                    if (value is Enum || value.GetType() == typeof(bool))
+                    {
+                        value = Convert.ToInt32(value);
+                    }
+                    param.Value = value;
+                    command.Parameters.Add(param);
+                }
+        }
+
+        /// <summary>
+        /// 根据SQL语句和条件建立IDbCommand
+        /// </summary>
+        /// <param name="SQLWithParam">带参数的SQL语句
+        /// <example>"select @AllFields@ from @FromTable@ where @Condition@"表示从表中查询所有符合条件的记录</example>
+        /// <example>"select count(*) from @FromTable@ "表示从表中所有记录的数量，condition参数需为空</example>
+        /// <example>"delete from @Table@ where @Condition@"表示从表中删除所有符合条件的记录</example>
+        /// </param>        
+        /// <param name="condition">条件，为null时表示无条件</param>
+        /// <returns>IDbCommand</returns> 
+        public IDbCommand MakeConditionCommand(string SQLWithParam, Condition condition)
+        {
+            ParamList paramList = new ParamList();
+            var context = SqlBuildContext;
+            string strCondition = SqlBuilder.BuildConditionSql(context, condition, paramList);
+            if (String.IsNullOrEmpty(strCondition)) strCondition = " 1 = 1 ";
+            return MakeNamedParamCommand(SQLWithParam.Replace(ParamCondition, strCondition), paramList);
+        }
+
+        /// <summary>
+        /// 替换Sql中的标记为实际Sql
+        /// </summary>
+        /// <param name="SQLWithParam">包含标记的Sql语句</param>
+        /// <param name="context">Sql生成的上下文</param>
+        /// <returns></returns>
+        protected virtual string ReplaceParam(string SQLWithParam, SqlBuildContext context = null)
+        {
+            if (context == null)
+            {
+                context = SqlBuildContext;
+            }
+            string tableName = context.GetTableNameWithArgs(Table.FormattedName(SqlBuilder));
+            return SQLWithParam.Replace(ParamTable, tableName).Replace(ParamFromTable, From);
+        }
+
+        /// <summary>
+        /// 为command创建根据主键查询的条件，在command中添加参数并返回where条件的语句
+        /// </summary>
+        /// <param name="command">要创建条件的数据库命令</param>
+        /// <returns>where条件的语句</returns>
+        protected string MakeIsKeyCondition(IDbCommand command)
+        {
+            ThrowExceptionIfNoKeys();
+            string tableAlias = SqlBuildContext.TableAliasName;
+            StringBuilder strConditions = new StringBuilder();
+            foreach (ColumnDefinition key in TableDefinition.Keys)
+            {
+                if (strConditions.Length != 0) strConditions.Append(" and ");
+                string columnName = tableAlias == null ? (SqlBuildContext.SingleTable ? key.FormattedName(SqlBuilder) : key.FormattedExpression(SqlBuilder)) : String.Format("[{0}].[{1}]", tableAlias, key.Name);
+                strConditions.AppendFormat("{0} = {1}", columnName, ToSqlParam(key.PropertyName));
+                if (!command.Parameters.Contains(key.PropertyName))
+                {
+                    IDbDataParameter param = command.CreateParameter();
+                    param.Size = key.Length;
+                    param.DbType = key.DbType;
+                    param.ParameterName = ToParamName(key.PropertyName);
+                    command.Parameters.Add(param);
+                }
+            }
+            return strConditions.ToString();
+        }
+
+        /// <summary>
+        /// 为command创建根据时间戳的条件，在command中添加参数并返回where条件的语句
+        /// </summary>
+        /// <param name="command">要创建条件的数据库命令</param>
+        /// <param name="isView">是否是查询，若是查询则关联多个表</param>
+        /// <returns>where条件的语句</returns>
+        protected string MakeTimestampCondition(IDbCommand command, bool isView = true)
+        {
+            foreach (ColumnDefinition column in TableDefinition.Columns)
+            {
+                if (column.IsTimestamp)
+                {
+                    IDbDataParameter param = command.CreateParameter();
+                    param.Size = column.Length;
+                    param.DbType = column.DbType;
+                    param.ParameterName = ToParamName(TimestampParamName);
+                    command.Parameters.Add(param);
+                    return String.Format("{0}.{1} = {2}", ToSqlName(isView ? FactTableName : TableDefinition.Name), ToSqlName(column.Name), ToSqlParam(TimestampParamName)); ;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 获取对象的主键值
+        /// </summary>
+        /// <param name="o">对象</param>
+        /// <returns>主键值，多个主键按照属性名称顺序排列</returns>
+        protected virtual object[] GetKeyValues(object o)
+        {
+            List<object> values = new List<object>();
+            foreach (ColumnDefinition key in TableDefinition.Keys)
+            {
+                values.Add(key.GetValue(o));
+            }
+            return values.ToArray();
+        }
+
+        /// <summary>
+        /// 将数据库取得的值转化为对象属性类型所对应的值
+        /// </summary>
+        /// <param name="dbValue">数据库取得的值</param>
+        /// <param name="objectType">对象属性的类型</param>
+        /// <returns>对象属性类型所对应的值</returns>
+        protected virtual object ConvertValue(object dbValue, Type objectType)
+        {
+            if (dbValue == null || dbValue == DBNull.Value)
+                return null;
+
+            objectType = Nullable.GetUnderlyingType(objectType) ?? objectType;
+
+            if (objectType.IsInstanceOfType(dbValue))
+                return dbValue;
+            //else if (objectType == typeof(TimeSpan)) return TimeSpan.FromTicks(Convert.ToInt64(dbValue));
+            else if (objectType.IsEnum && (dbValue.GetType().IsValueType || dbValue.GetType() == typeof(string))) return Enum.ToObject(objectType, Convert.ToInt32(dbValue));
+            else if (objectType == typeof(bool) && dbValue is string && bool.TryParse((string)dbValue, out bool result))
+            {
+                // 处理字符串类型的布尔值
+                return result;
+            }
+            if (objectType == typeof(bool))
+            {
+                // 处理整数类型的布尔值
+                return Convert.ToInt32(dbValue) != 0;
+            }
+            return Convert.ChangeType(dbValue, objectType);
+        }
+
+        /// <summary>
+        /// 将对象的属性值转化为数据库中的值
+        /// </summary>
+        /// <param name="value">值</param>
+        /// <param name="column">列定义</param>
+        /// <returns>数据库中的值</returns>
+        protected virtual object ConvertToDBValue(object value, ColumnDefinition column)//TODO:
+        {
+            if (value == null) return DBNull.Value;
+            //Type objectType = column.PropertyType;
+            //objectType = Nullable.GetUnderlyingType(objectType) ?? objectType;
+            //if (objectType == typeof(TimeSpan)) return ((TimeSpan)value).Ticks;
+            return value;
+        }
+
+        /// <summary>
+        /// 检查是否存在主键，若不存在则抛出异常
+        /// </summary>
+        protected void ThrowExceptionIfNoKeys()
+        {
+            if (TableDefinition.Keys.Count == 0)
+            {
+                throw new Exception(String.Format("No key definition found in type \"{0}\", please set the value of property \"IsPrimaryKey\" of key column to true.", Table.DefinitionType.FullName));
+            }
+        }
+
+        /// <summary>
+        /// 检查是否对象类型是否匹配
+        /// </summary>
+        protected void ThrowExceptionIfTypeNotMatch(Type type)
+        {
+            if (!ObjectType.IsAssignableFrom(type))
+            {
+                throw new Exception(String.Format("Type {0} not match object type {1}.", type.FullName, ObjectType.FullName));
+            }
+        }
+
+        /// <summary>
+        /// 检查主键数目是否正确，否则抛出异常
+        /// </summary>
+        /// <param name="keys">主键</param>
+        protected void ThrowExceptionIfWrongKeys(params object[] keys)
+        {
+            if (keys.Length != TableDefinition.Keys.Count)
+            {
+                if (ExceptionWrongKeys == null)
+                {
+                    List<string> strKeys = new List<string>();
+                    foreach (ColumnDefinition key in TableDefinition.Keys) strKeys.Add(key.Name);
+                    ExceptionWrongKeys = new ArgumentOutOfRangeException("keys", String.Format("Wrong keys' number. Type \"{0}\" has {1} key(s):'{2}'.", Table.DefinitionType.FullName, strKeys.Count, String.Join("','", strKeys.ToArray())));
+                }
+                throw ExceptionWrongKeys;
+            }
+        }
+
+        /// <summary>
+        /// 名称转化为数据库合法名称
+        /// </summary>
+        /// <param name="name">字符串名称</param>
+        /// <returns>数据库合法名称</returns>
+        protected string ToSqlName(string name)
+        {
+            return SqlBuilder.ToSqlName(name);
+        }
+
+        /// <summary>
+        /// 原始名称转化为数据库参数
+        /// </summary>
+        /// <param name="nativeName">原始名称</param>
+        /// <returns>数据库参数</returns>
+        protected string ToSqlParam(string nativeName)
+        {
+            return SqlBuilder.ToSqlParam(nativeName);
+        }
+
+        /// <summary>
+        /// 原始名称转化为参数名称
+        /// </summary>
+        /// <param name="nativeName">原始名称</param>
+        /// <returns>参数名称</returns>
+        protected string ToParamName(string nativeName)
+        {
+            return SqlBuilder.ToParamName(nativeName);
+        }
+
+        /// <summary>
+        /// 参数名称转化为原始名称
+        /// </summary>
+        /// <param name="paramName">参数名称</param>
+        /// <returns>原始名称</returns>
+        protected string ToNativeName(string paramName)
+        {
+            return SqlBuilder.ToNativeName(paramName);
+        }
+        #endregion
+    }
+
+    public static class ObjectDAOExt
+    {
+        public static IObjectDAO<T> WithArgs<T>(this IObjectDAO<T> dao, params string[] args)
+        {
+            if (args == null || args.Length == 0) return dao;
+            ObjectDAOBase dAOBase = dao as ObjectDAOBase;
+            return dAOBase.WithArgs(args) as IObjectDAO<T>;
+        }
+        public static IObjectViewDAO<T> WithArgs<T>(this IObjectViewDAO<T> dao, params string[] args)
+        {
+            if (args == null || args.Length == 0) return dao;
+            ObjectDAOBase dAOBase = dao as ObjectDAOBase;
+            return dAOBase.WithArgs(args) as IObjectViewDAO<T>;
+        }
+    }
+}

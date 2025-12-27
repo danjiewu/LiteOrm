@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MyOrm", "MyOrm\MyOrm.csproj", "{6CD0EB4F-6DC2-4297-AEA9-7168C407FAE5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MyOrm.Common", "MyOrm.Common\MyOrm.Common.csproj", "{E0ACFA3D-3BAD-4E47-BD5A-5ED72022B93E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MyOrm.Test", "MyOrm.Test\MyOrm.Test.csproj", "{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyOrm.ASPNetCore", "MyOrm.ASPNetCore\MyOrm.ASPNetCore.csproj", "{35C1FEB5-4077-4BAA-81CA-357A34730655}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6CD0EB4F-6DC2-4297-AEA9-7168C407FAE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6CD0EB4F-6DC2-4297-AEA9-7168C407FAE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6CD0EB4F-6DC2-4297-AEA9-7168C407FAE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6CD0EB4F-6DC2-4297-AEA9-7168C407FAE5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E0ACFA3D-3BAD-4E47-BD5A-5ED72022B93E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E0ACFA3D-3BAD-4E47-BD5A-5ED72022B93E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E0ACFA3D-3BAD-4E47-BD5A-5ED72022B93E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E0ACFA3D-3BAD-4E47-BD5A-5ED72022B93E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35C1FEB5-4077-4BAA-81CA-357A34730655}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35C1FEB5-4077-4BAA-81CA-357A34730655}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35C1FEB5-4077-4BAA-81CA-357A34730655}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35C1FEB5-4077-4BAA-81CA-357A34730655}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
+		VisualSVNWorkingCopyRoot = .
+	EndGlobalSection
+	GlobalSection(SubversionScc) = preSolution
+		Svn-Managed = True
+		Manager = AnkhSVN - Subversion Support for Visual Studio
+	EndGlobalSection
+EndGlobal

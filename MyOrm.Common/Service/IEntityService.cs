@@ -1,0 +1,396 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Collections;
+using MyOrm.Common;
+using System.ComponentModel;
+using System.Linq.Expressions;
+using Microsoft.Extensions.Logging;
+
+namespace MyOrm.Service
+{
+    /// <summary>
+    /// 实体类更改接口
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    [Service]
+    [ServicePermission(false)]
+    [ServiceLog(LogLevel= LogLevel.Information)]
+    public interface IEntityService<T> : IEntityService
+    {
+        /// <summary>
+        /// 新增实体
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <returns>
+        /// true:成功
+        /// false:失败</returns>
+        bool Insert(T entity);
+        /// <summary>
+        /// 更新实体
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <returns>
+        /// true:成功
+        /// false:失败</returns>
+        bool Update(T entity);
+        /// <summary>
+        /// 根据条件和字段内容更新值
+        /// </summary>
+        /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
+        /// <param name="expression">查询表达式<example>f=>f.Name == "Simth"</example><example>f=>f.Name.CompareTo("David") > 0</example><example>f=>!f.Name.StartsWith("T")</example></param>
+        /// <returns></returns>
+        int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Expression<Func<T, bool>> expression);
+        /// <summary>
+        /// 实体存在则更新，否则新增
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <returns></returns>
+        bool UpdateOrInsert(T entity);
+        /// <summary>
+        /// 批量新增实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        [Transaction]
+        void BatchInsert(IEnumerable<T> entities);
+        /// <summary>
+        /// 批量更新实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        [Transaction]
+        void BatchUpdate(IEnumerable<T> entities);
+        /// <summary>
+        /// 批量更新或新增实体，实体存在则更新，否则新增
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        [Transaction]
+        void BatchUpdateOrInsert(IEnumerable<T> entities);
+        /// <summary>
+        /// 批量删除实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        [Transaction]
+        void BatchDelete(IEnumerable<T> entities);
+        /// <summary>
+        /// 批量操作实体，操作类型可以为新增、更新或删除
+        /// </summary>
+        /// <param name="entities">实体操作列表</param>
+        [Transaction]
+        void Batch(IEnumerable<EntityOperation<T>> entities);
+    }
+    /// <summary>
+    /// 实体类更改接口
+    /// </summary>
+    [ServicePermission(false)]
+    public interface IEntityService
+    {
+        /// <summary>
+        /// 新增实体
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <returns>
+        /// true:成功
+        /// false:失败</returns>
+        bool Insert(object entity);
+        /// <summary>
+        /// 更新实体
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <returns>
+        /// true:成功
+        /// false:失败</returns>
+        bool Update(object entity);
+        /// <summary>
+        /// 根据条件和字段内容更新值
+        /// </summary>
+        /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
+        /// <param name="condition">更新条件</param>
+        /// <returns>更改记录数</returns>
+        int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Condition condition);
+        /// <summary>
+        /// 根据主键和字段内容更新值
+        /// </summary>
+        /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
+        /// <param name="keys">主键</param>
+        /// <returns>
+        /// true:成功
+        /// false:失败</returns>
+        bool UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, params object[] keys);
+
+        /// <summary>
+        /// 实体存在则更新，否则新增
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <returns>
+        /// true:成功
+        /// false:失败</returns>
+        bool UpdateOrInsert(object entity);
+        /// <summary>
+        /// 根据ID删除实体
+        /// </summary>
+        /// <param name="id">待删除id</param>
+        /// <returns>
+        /// true:成功
+        /// false:失败</returns>
+        bool DeleteID(object id);
+        /// <summary>
+        /// 批量新增实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        [Transaction]
+        void BatchInsert(IEnumerable entities);
+        /// <summary>
+        /// 批量更新实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        [Transaction]
+        void BatchUpdate(IEnumerable entities);
+        /// <summary>
+        /// 批量更新或新增实体，实体存在则更新，否则新增
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        [Transaction]
+        void BatchUpdateOrInsert(IEnumerable entities);
+        /// <summary>
+        /// 批量删除实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        [Transaction]
+        void BatchDelete(IEnumerable entities);
+        /// <summary>
+        /// 批量根据ID删除实体
+        /// </summary>
+        /// <param name="ids">待删除id</param>
+        [Service]
+        [Transaction]
+        void BatchDeleteID(IEnumerable<int> ids);
+    }
+
+    /// <summary>
+    /// 实体类查询接口
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    [Service]
+    [ServicePermission(true)]
+    [ServiceLog(LogLevel = LogLevel.Debug)]
+    public interface IEntityViewService<T> : IEntityViewService
+    {
+        /// <summary>
+        /// 获取实体
+        /// </summary>
+        /// <param name="id">实体主键</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>id对应实体，若不存在则返回null</returns>
+        new T GetObject(object id, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件获取单个实体
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
+        new T SearchOne(Condition condition, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件获取单个实体
+        /// </summary>
+        /// <param name="expression">查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
+        T SearchOne(Expression<Func<T, bool>> expression, params string[] tableArgs);
+        /// <summary>
+        /// 根据查询表达式检查是否存在记录
+        /// </summary>
+        /// <param name="expression">查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>是否存在记录</returns>
+        [Service]
+        bool Exists(Expression<Func<T, bool>> expression, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件表达式获取记录总数
+        /// </summary>
+        /// <param name="expression">查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的记录总数</returns>
+        int Count(Expression<Func<T, bool>> expression, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件遍历对象
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="func">调用的函数委托</param>
+        /// <param name="tableArgs">表名参数</param>
+        void ForEach(Condition condition, Action<T> func, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件表达式遍历对象
+        /// </summary>
+        /// <param name="expression">查询表达式</param>
+        /// <param name="func">调用的函数委托</param>
+        /// <param name="tableArgs">表名参数</param>
+        void ForEach(Expression<Func<T, bool>> expression, Action<T> func, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件获取实体列表
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的实体列表</returns>
+        new List<T> Search(Condition condition = null, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件表达式获取实体列表,支持数值比较、逻辑操作等 
+        /// <para>Search(f=>f.Name == "Smith")</para>
+        /// <para>Search(f=>f.Age > 30 &amp;&amp; f.DepartmentID == 10)</para>
+        /// <para>Search(f=>f.Name.Contains("aa") || !f.Name.EndsWith("d"))</para>
+        /// <para>Search(f=>f.Name.CompareTo("Tom") > 0)</para>
+        /// <para>Search(f=>new List&lt;int&gt;{1,2,3,4,5}.Contains(f.ID))</para>
+        /// </summary>
+        /// <param name="expression">查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的实体列表</returns>
+        List<T> Search(Expression<Func<T, bool>> expression, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件查询
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的对象列表</returns>
+        new List<T> SearchWithOrder(Condition condition, Sorting[] orderBy = null, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件表达式查询
+        /// </summary>
+        /// <param name="expression">查询表达式</param>
+        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的对象列表</returns>
+        /// <seealso cref="Search(Expression{Func{T, bool}}) "/>
+        List<T> SearchWithOrder(Expression<Func<T, bool>> expression, Sorting[] orderBy = null, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件分页查询
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="startIndex">起始记录数</param>
+        /// <param name="sectionSize">获取记录条数</param>
+        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的分页对象列表</returns>
+        new List<T> SearchSection(Condition condition, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件表达式分页查询
+        /// </summary>
+        /// <param name="expression">查询表达式</param>
+        /// <param name="startIndex">起始记录数</param>
+        /// <param name="sectionSize">获取记录条数</param>
+        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的分页对象列表</returns>
+        /// <seealso cref="Search(Expression{Func{T, bool}})"/>
+        List<T> SearchSection(Expression<Func<T, bool>> expression, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件分页查询
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="section">分页设置</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的分页对象列表</returns>
+        new List<T> SearchSection(Condition condition, SectionSet section, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件表达式分页查询
+        /// </summary>
+        /// <param name="expression">查询表达式</param>
+        /// <param name="section">分页设置</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的分页对象列表</returns>
+        /// <seealso cref="Search(Expression{Func{T, bool}})"/>
+        List<T> SearchSection(Expression<Func<T, bool>> expression, SectionSet section, params string[] tableArgs);
+    }
+
+    [ServicePermission(true)]
+    [ServiceLog(LogLevel = LogLevel.Debug)]
+    public interface IEntityViewService
+    {
+        /// <summary>
+        /// 获取实体
+        /// </summary>
+        /// <param name="id">实体主键</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>id对应实体，若不存在则返回null</returns>
+        object GetObject(object id, params string[] tableArgs);
+        /// <summary>
+        /// 检测ID是否存在
+        /// </summary>
+        /// <param name="id">实体主键</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>是否存在记录</returns>
+        [Service]
+        bool ExistsID(object id, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件检查是否存在记录
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>是否存在记录</returns>
+        [Service]
+        bool Exists(Condition condition, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件获取记录总数
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的记录总数</returns>
+        [Service]
+        int Count(Condition condition = null, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件获取单个实体
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
+        object SearchOne(Condition condition, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件获取实体列表
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的实体列表</returns>
+        IList Search(Condition condition = null, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件查询
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的对象列表</returns>
+        IList SearchWithOrder(Condition condition, Sorting[] orderBy = null, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件分页查询
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="startIndex">起始记录数</param>
+        /// <param name="sectionSize">获取记录条数</param>
+        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的分页对象列表</returns>
+        IList SearchSection(Condition condition, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs);
+        /// <summary>
+        /// 根据条件分页查询
+        /// </summary>
+        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="section">分页设置</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>符合条件的分页对象列表</returns>
+        IList SearchSection(Condition condition, SectionSet section, params string[] tableArgs);
+    }
+
+    [Serializable]
+    public class EntityOperation<T>
+    {
+        public OpDef Operation { get; set; }
+        public T Entity { get; set; }
+    }
+
+    [Serializable]
+    public enum OpDef
+    {
+        Nothing,
+        Insert,
+        Update,
+        Delete
+    }
+}
