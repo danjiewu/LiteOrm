@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,7 +17,7 @@ namespace MyOrm
         private bool _disposed = false;
 
         private ConcurrentDictionary<string, DAOContext> _daoContexts = new ConcurrentDictionary<string, DAOContext>(StringComparer.OrdinalIgnoreCase);
-        private Stack<string> _sqlStack = new Stack<string>();
+        private LinkedList<string> _sqlStack = new LinkedList<string>();
         private string _currentTransactionId;
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
         private static readonly AsyncLocal<SessionManager> _currentAsyncLocal = new AsyncLocal<SessionManager>();
@@ -67,7 +68,7 @@ namespace MyOrm
         /// <summary>
         /// SQL语句堆栈（用于调试）
         /// </summary>
-        public Stack<string> SqlStack => _sqlStack;
+        public IReadOnlyCollection<string> SqlStack => _sqlStack;
 
         /// <summary>
         /// 是否在事务中
@@ -123,6 +124,18 @@ namespace MyOrm
                     ReturnAllContexts();
                 }
                 return true;
+            }
+        }
+
+        public void PushSql(string sql)
+        {
+            lock (_syncLock)
+            {
+                _sqlStack.AddFirst(sql);
+                while (_sqlStack.Count > 20)
+                {
+                    _sqlStack.RemoveLast();
+                }
             }
         }
 
@@ -396,8 +409,8 @@ namespace MyOrm
             private bool _disposed = false;
 
             public ContextScope(SessionManager sessionManager)
-            {                
-                _sessionManager = sessionManager?? throw new ArgumentNullException(nameof(sessionManager));  
+            {
+                _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
                 _prevSessionManager = Current;
                 Current = _sessionManager;
             }
@@ -494,6 +507,34 @@ namespace MyOrm
                 await action(sm);
                 return true;
             }, isolationLevel);
+        }
+
+        public static Task<TResult> ExecuteInSessionAsync<TResult>(
+    this SessionManager sessionManager,
+    Func<TResult> func,
+    CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() =>
+            {
+                using (var session = sessionManager.EnterContext())
+                {
+                    return func();
+                }
+            }, cancellationToken);
+        }
+
+        public static Task ExecuteInSessionAsync(
+            this SessionManager sessionManager,
+            Action action,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() =>
+            {
+                using (var session = sessionManager.EnterContext())
+                {
+                    action();
+                }
+            }, cancellationToken);
         }
     }
 }

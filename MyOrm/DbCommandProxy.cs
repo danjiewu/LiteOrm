@@ -42,7 +42,7 @@ namespace MyOrm
             Context.AcquireLock();
             Context.EnsureConnectionOpen();
             Transaction = Context.CurrentTransaction;
-            SessionManager.Current.SqlStack.Push(CommandText);
+            SessionManager.Current.PushSql(CommandText);
         }
 
         protected virtual void PostExcuteCommand(ExcuteType excuteType)

@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -7,35 +9,69 @@ namespace MyOrm.Common
 {
     [Serializable]
     [Table]
-    public abstract class ObjectBase : ICopyable, ICloneable, ILogable
+    public abstract class ObjectBase : ICopyable<ObjectBase>, ICloneable, ILogable
     {
-        public virtual void CopyFrom(object target)
+        // 使用 ConcurrentDictionary 代替 Dictionary + lock
+        private static readonly ConcurrentDictionary<Type, string[]> _logPropertiesCache =
+            new ConcurrentDictionary<Type, string[]>();
+
+        // 添加缓存来提升性能
+        private static readonly ConcurrentDictionary<Type, PropertyInfo[]> _propertiesCache =
+            new ConcurrentDictionary<Type, PropertyInfo[]>();
+
+        public virtual void CopyFrom(ObjectBase target)
         {
-            if (!(target is ObjectBase)) return;
-            Type type = this.GetType();
-            if (type.IsSubclassOf(target.GetType())) type = target.GetType();
-            foreach (PropertyInfo property in type.GetProperties())
+            if (target == null) throw new ArgumentNullException(nameof(target));
+  
+
+            Type sourceType = target.GetType();
+            Type targetType = this.GetType();
+
+            // 确定要复制的属性范围
+            Type copyType = targetType.IsAssignableFrom(sourceType) ? sourceType : targetType;
+
+            foreach (var property in GetProperties(copyType))
             {
                 if (property.CanRead && property.CanWrite && property.GetIndexParameters().Length == 0)
                 {
-                    property.SetValueFast(this, property.GetValueFast(target));
+                    try
+                    {
+                        var value = property.GetValueFast(target);
+                        property.SetValueFast(this, value);
+                    }
+                    catch
+                    {
+                        // 可选：记录日志或忽略无法复制的属性
+                        continue;
+                    }
                 }
             }
         }
 
-        [Column(false)]
         public virtual object this[string propertyName]
         {
             get
             {
-                PropertyInfo property = this.GetType().GetProperty(propertyName);
-                if (propertyName == null) throw new ArgumentOutOfRangeException(propertyName);
+                if (string.IsNullOrEmpty(propertyName))
+                    throw new ArgumentException("Property name cannot be null or empty", nameof(propertyName));
+
+                var property = this.GetType().GetProperty(propertyName);
+                if (property == null)
+                    throw new ArgumentOutOfRangeException(nameof(propertyName),
+                        $"Property '{propertyName}' not found on type {this.GetType().Name}");
+
                 return property.GetValueFast(this);
             }
             set
             {
-                PropertyInfo property = this.GetType().GetProperty(propertyName);
-                if (propertyName == null) throw new ArgumentOutOfRangeException(propertyName);
+                if (string.IsNullOrEmpty(propertyName))
+                    throw new ArgumentException("Property name cannot be null or empty", nameof(propertyName));
+
+                var property = this.GetType().GetProperty(propertyName);
+                if (property == null)
+                    throw new ArgumentOutOfRangeException(nameof(propertyName),
+                        $"Property '{propertyName}' not found on type {this.GetType().Name}");
+
                 property.SetValueFast(this, value);
             }
         }
@@ -45,59 +81,70 @@ namespace MyOrm.Common
             return MemberwiseClone();
         }
 
-        private static Dictionary<Type, string[]> toLogProperties = new Dictionary<Type, string[]>();
-
         protected virtual string[] ToLogProperties()
         {
-            if (!toLogProperties.ContainsKey(this.GetType()))
+            var type = this.GetType();
+            return _logPropertiesCache.GetOrAdd(type, t =>
             {
-                lock (toLogProperties)
+                var properties = GetProperties(t);
+                var logProperties = new List<string>();
+
+                foreach (var property in properties)
                 {
-                    if (!toLogProperties.ContainsKey(this.GetType()))
+                    if (property.GetIndexParameters().Length == 0)
                     {
-                        List<string> logProperties = new List<string>();
-                        foreach (PropertyInfo property in this.GetType().GetProperties())
+                        var logAttribute = property.GetCustomAttribute<LogAttribute>();
+                        // 默认记录属性，除非明确设置为 false
+                        if (logAttribute == null || logAttribute.Enabled)
                         {
-                            if (property.GetIndexParameters().Length == 0)
-                            {
-                                LogAttribute att = property.GetAttribute<LogAttribute>();
-                                if (att == null || att.Enabled == true) { logProperties.Add(property.Name); }
-                            }
+                            logProperties.Add(property.Name);
                         }
-                        toLogProperties[this.GetType()] = logProperties.ToArray();
                     }
                 }
-            }
-            return toLogProperties[this.GetType()];
+
+                return logProperties.ToArray();
+            });
         }
 
         public virtual string ToLog(object target)
         {
-            string[] properties = ToLogProperties();
-            StringBuilder sb = new StringBuilder();
-            if (properties != null)
+            var properties = ToLogProperties();
+            if (properties == null || properties.Length == 0)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            var type = this.GetType();
+
+            if (target != null && target.GetType() == type)
             {
-                if (target != null && target.GetType() == this.GetType())
-                    foreach (string propertyName in properties)
+                // 对比模式：只记录变化的属性
+                foreach (var propertyName in properties)
+                {
+                    var property = type.GetProperty(propertyName);
+                    if (property == null) continue;
+
+                    var thisValue = property.GetValueFast(this);
+                    var targetValue = property.GetValueFast(target);
+
+                    if (!Equals(thisValue, targetValue))
                     {
-                        object o = this[propertyName];
-                        if (!Equals(o, ((ObjectBase)target)[propertyName]))
-                        {
-                            if (sb.Length > 0) sb.Append(",");
-                            sb.AppendFormat("{0}:{1}", propertyName, o);
-                        }
+                        AppendProperty(sb, propertyName, thisValue);
                     }
-                else
-                    foreach (string propertyName in properties)
-                    {
-                        string strProperty = Convert.ToString(this[propertyName]);
-                        if (!String.IsNullOrEmpty(strProperty))
-                        {
-                            if (sb.Length > 0) sb.Append(",");
-                            sb.AppendFormat("{0}:{1}", propertyName, strProperty);
-                        }
-                    }
+                }
             }
+            else
+            {
+                // 完整记录模式
+                foreach (var propertyName in properties)
+                {
+                    var property = type.GetProperty(propertyName);
+                    if (property == null) continue;
+
+                    var value = property.GetValueFast(this);
+                    AppendProperty(sb, propertyName, value);
+                }
+            }
+
             return sb.ToString();
         }
 
@@ -105,10 +152,51 @@ namespace MyOrm.Common
         {
             return ToLog(null);
         }
+
+        #region Helper Methods
+
+        private static PropertyInfo[] GetProperties(Type type)
+        {
+            return _propertiesCache.GetOrAdd(type, t =>
+                t.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                 .Where(p => p.GetIndexParameters().Length == 0)
+                 .ToArray());
+        }
+
+        private static void AppendProperty(StringBuilder sb, string propertyName, object value)
+        {
+            if (value == null || (value is string str && string.IsNullOrEmpty(str)))
+                return;
+
+            if (sb.Length > 0)
+                sb.Append(", ");
+
+            sb.Append(propertyName);
+            sb.Append(':');
+            sb.Append(FormatValue(value));
+        }
+
+        private static string FormatValue(object value)
+        {
+            if (value == null) return "null";
+
+            // 处理特殊类型的格式化
+            if (value is DateTime dateTime)
+                return dateTime.ToString("yyyy-MM-dd HH:mm:ss");
+            if (value is bool boolean)
+                return boolean ? "true" : "false";
+            if (value is IFormattable formattable)
+                return formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture);
+
+            return value.ToString();
+        }
+
+        #endregion
     }
-    public interface ICopyable
+
+    public interface ICopyable<in T>
     {
-        void CopyFrom(object target);
+        void CopyFrom(T source);
     }
 
     public interface ILogable

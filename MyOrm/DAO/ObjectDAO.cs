@@ -382,42 +382,42 @@ namespace MyOrm
 
         public virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
         {
-            return Task.Run(() => Insert(t), cancellationToken);
+            return Session.ExecuteInSessionAsync(() => Insert(t), cancellationToken);
         }
 
         public virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
         {
-            return Task.Run(() => BatchInsert(values), cancellationToken);
+            return Session.ExecuteInSessionAsync(() => BatchInsert(values), cancellationToken);
         }
 
         public virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
         {
-            return Task.Run(() => Update(t, timestamp), cancellationToken);
+            return Session.ExecuteInSessionAsync(() => Update(t, timestamp), cancellationToken);
         }
 
         public virtual Task<UpdateOrInsertResult> UpdateOrInsertAsync(T t, CancellationToken cancellationToken = default)
         {
-            return Task.Run(() => UpdateOrInsert(t), cancellationToken);
+            return Session.ExecuteInSessionAsync(() => UpdateOrInsert(t), cancellationToken);
         }
 
         public virtual Task<int> UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
         {
-            return Task.Run(() => UpdateAllValues(values, expression), cancellationToken);
+            return Session.ExecuteInSessionAsync(() => UpdateAllValues(values, expression), cancellationToken);
         }
 
         public virtual Task<bool> DeleteAsync(T t, CancellationToken cancellationToken = default)
         {
-            return Task.Run(() => Delete(t), cancellationToken);
+            return Session.ExecuteInSessionAsync(() => Delete(t), cancellationToken);
         }
 
         public virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return Task.Run(() => DeleteByKeys(keys), cancellationToken);
+            return Session.ExecuteInSessionAsync(() => DeleteByKeys(keys), cancellationToken);
         }
 
         public virtual Task<int> DeleteAsync(Condition condition, CancellationToken cancellationToken = default)
         {
-            return Task.Run(() => Delete(condition), cancellationToken);
+            return Session.ExecuteInSessionAsync(() => Delete(condition), cancellationToken);
         }
 
         // non-generic async wrappers
@@ -453,7 +453,7 @@ namespace MyOrm
 
         Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Condition condition, CancellationToken cancellationToken)
         {
-            return Task.Run(() => UpdateAllValues(values, condition), cancellationToken);
+            return Session.ExecuteInSessionAsync(() => UpdateAllValues(values, condition), cancellationToken);
         }
 
         Task<bool> IObjectDAOAsync.DeleteAsync(object o, CancellationToken cancellationToken)

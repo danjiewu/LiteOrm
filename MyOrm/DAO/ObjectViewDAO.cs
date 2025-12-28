@@ -8,6 +8,8 @@ using System.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Data.Common;
 using System.Linq.Expressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MyOrm
 {
@@ -15,7 +17,7 @@ namespace MyOrm
     /// 实体类的查询操作
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    public class ObjectViewDAO<T> : ObjectDAOBase, IObjectViewDAO<T>, IObjectViewDAO where T : new()
+    public class ObjectViewDAO<T> : ObjectDAOBase, IObjectViewDAO<T>, IObjectViewDAOAsync<T>, IObjectViewDAO, IObjectViewDAOAsync where T : new()
     {
         #region 属性
         /// <summary>
@@ -308,6 +310,133 @@ namespace MyOrm
         IList IObjectViewDAO.SearchSection(Condition condition, SectionSet section)
         {
             return SearchSection(condition, section);
+        }
+
+        #endregion
+
+        #region IObjectViewDAOAsync implementations
+
+        public virtual Task<T> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => GetObject(keys), cancellationToken);
+        }
+
+        Task<object> IObjectViewDAOAsync.GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => (object)GetObject(keys), cancellationToken);
+        }
+
+        public virtual Task<int> CountAsync(Condition condition, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => Count(condition), cancellationToken);
+        }
+
+        public virtual Task<int> CountAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => Count(expression), cancellationToken);
+        }
+
+        public virtual Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => Exists(o), cancellationToken);
+        }
+
+        public virtual Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => ExistsKey(keys), cancellationToken);
+        }
+
+        public virtual Task<bool> ExistsAsync(Condition condition, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => Exists(condition), cancellationToken);
+        }
+
+        public virtual Task<bool> ExistsAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => Exists(expression), cancellationToken);
+        }
+
+        public virtual Task<T> SearchOneAsync(Condition condition, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => SearchOne(condition), cancellationToken);
+        }
+
+        Task<object> IObjectViewDAOAsync.SearchOneAsync(Condition condition, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => (object)SearchOne(condition), cancellationToken);
+        }
+
+        public virtual Task<T> SearchOneAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => SearchOne(expression), cancellationToken);
+        }
+
+        public virtual Task ForEachAsync(Condition condition, Func<T, Task> func, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() =>
+            {
+                var list = Search(condition);
+                return list;
+            }, cancellationToken).ContinueWith(async t =>
+            {
+                // unwrap and execute callbacks sequentially
+                var list = await t;
+                foreach (var item in list)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await func(item).ConfigureAwait(false);
+                }
+            }, cancellationToken).Unwrap();
+        }
+
+        public virtual Task ForEachAsync(Expression<Func<T, bool>> expression, Func<T, Task> func, CancellationToken cancellationToken = default)
+        {
+            return ForEachAsync(Condition.Exp(expression), func, cancellationToken);
+        }
+
+        public virtual Task<List<T>> SearchAsync(Condition condition = null, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => Search(condition), cancellationToken);
+        }
+
+        Task<IList> IObjectViewDAOAsync.SearchAsync(Condition condition, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => (IList)Search(condition), cancellationToken);
+        }
+
+        public virtual Task<List<T>> SearchAsync(Condition condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => Search(condition, orderBy), cancellationToken);
+        }
+
+        Task<IList> IObjectViewDAOAsync.SearchAsync(Condition condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => (IList)Search(condition, orderBy), cancellationToken);
+        }
+
+        public virtual Task<List<T>> SearchAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => Search(expression), cancellationToken);
+        }
+
+        public virtual Task<List<T>> SearchAsync(Expression<Func<T, bool>> expression, Sorting[] orderBy, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => Search(expression, orderBy), cancellationToken);
+        }
+
+        public virtual Task<List<T>> SearchSectionAsync(Condition condition, SectionSet section, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => SearchSection(condition, section), cancellationToken);
+        }
+
+        Task<IList> IObjectViewDAOAsync.SearchSectionAsync(Condition condition, SectionSet section, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => (IList)SearchSection(condition, section), cancellationToken);
+        }
+
+        public virtual Task<List<T>> SearchSectionAsync(Expression<Func<T, bool>> expression, SectionSet section, CancellationToken cancellationToken = default)
+        {
+            return Session.ExecuteInSessionAsync(() => SearchSection(expression, section), cancellationToken);
         }
 
         #endregion
