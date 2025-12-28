@@ -24,7 +24,7 @@ namespace MyOrm.SqlServer
         public override string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
             if (startIndex == 0)
-                return String.Format("select top {0} {1} \nfrom {2} \nwhere{3} Order by {4} ", sectionSize, select, from, where, orderBy);
+                return $"select top {sectionSize} {select} \nfrom {from} \nwhere {where} Order by {orderBy} ";
             else
                 return base.GetSelectSectionSql(select, from, where, orderBy, startIndex, sectionSize);
         }

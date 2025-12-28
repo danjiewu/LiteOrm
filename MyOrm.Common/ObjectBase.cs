@@ -18,7 +18,7 @@ namespace MyOrm.Common
             {
                 if (property.CanRead && property.CanWrite && property.GetIndexParameters().Length == 0)
                 {
-                    property.SetVal(this, property.GetVal(target));
+                    property.SetValueFast(this, property.GetValueFast(target));
                 }
             }
         }
@@ -30,13 +30,13 @@ namespace MyOrm.Common
             {
                 PropertyInfo property = this.GetType().GetProperty(propertyName);
                 if (propertyName == null) throw new ArgumentOutOfRangeException(propertyName);
-                return property.GetVal(this);
+                return property.GetValueFast(this);
             }
             set
             {
                 PropertyInfo property = this.GetType().GetProperty(propertyName);
                 if (propertyName == null) throw new ArgumentOutOfRangeException(propertyName);
-                property.SetVal(this, value);
+                property.SetValueFast(this, value);
             }
         }
 

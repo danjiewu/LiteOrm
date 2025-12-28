@@ -37,13 +37,10 @@ namespace MyOrm
         {
             _daoContextPoolFactory = daoContextPoolFactory ?? throw new ArgumentNullException(nameof(daoContextPoolFactory));
             _logger = logger;
-            ID = (Guid.NewGuid().GetHashCode() % 10000 + 10000) % 10000;
         }
 
-        public int ID { get; }
-
         /// <summary>
-        /// 进入当前上下文（设置 SessionManager.Current = this）
+        /// 进入当前上下文，置 SessionManager.Current 为为当前实例的副本
         /// </summary>
         /// <returns>上下文作用域对象，在 Dispose 时恢复之前的 Current</returns>
         public IDisposable EnterContext()
@@ -51,14 +48,8 @@ namespace MyOrm
             // 保存当前的 Current
             var previousCurrent = Current;
 
-            // 设置当前实例为 Current
-            Current = CreateCopy();
-
             // 返回一个作用域对象，在作用域结束时恢复之前的 Current
-            return new ContextScope(() =>
-            {
-                Current = previousCurrent;
-            });
+            return new ContextScope(CreateCopy());
         }
 
         /// <summary>
@@ -89,13 +80,13 @@ namespace MyOrm
         public string CurrentTransactionId => _currentTransactionId;
 
         /// <summary>
-        /// 重置会话（清除所有状态）
+        /// 启动会话（清除所有状态）
         /// </summary>
-        public bool Reset()
+        public bool Start()
         {
             lock (_syncLock)
             {
-                // 如果还有活动的事务，提交它
+                // 如果还有活动的事务，回滚
                 if (InTransaction)
                 {
                     try
@@ -109,7 +100,6 @@ namespace MyOrm
                 }
 
                 _sqlStack.Clear();
-                ReturnAllContexts();
                 return true;
             }
         }
@@ -241,9 +231,6 @@ namespace MyOrm
             // 清理事务状态
             _currentTransactionId = null;
 
-            // 事务结束后归还所有连接
-            ReturnAllContexts();
-
             _logger?.LogDebug($"事务提交完成。Transaction ID: {_currentTransactionId}, 成功: {success}");
 
             if (!success)
@@ -280,9 +267,6 @@ namespace MyOrm
             // 清理事务状态
             _currentTransactionId = null;
 
-            // 归还所有连接
-            ReturnAllContexts();
-
             _logger?.LogDebug($"事务回滚完成。Transaction ID: {_currentTransactionId}, 返回: {success}");
 
             if (!success)
@@ -294,8 +278,15 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// 获取数据库上下文
+        /// Retrieves a DAOContext instance associated with the specified name, creating or obtaining it from the pool
+        /// if necessary.
         /// </summary>
+        /// <remarks>If a transaction is active and the retrieved context is not already in a transaction,
+        /// a transaction is automatically started on the context. The returned context is cached for subsequent calls
+        /// with the same name within the current scope.</remarks>
+        /// <param name="name">The name of the DAO context to retrieve. If null, the default context is used.</param>
+        /// <returns>A DAOContext instance corresponding to the specified name. If the context does not exist, a new one is
+        /// obtained from the pool.</returns>
         public DAOContext GetDaoContext(string name = null)
         {
             lock (_syncLock)
@@ -353,7 +344,6 @@ namespace MyOrm
                     _logger?.LogError(ex, $"归还连接失败。连接池: {context.Pool?.Name}");
                 }
             }
-
             _daoContexts.Clear();
         }
 
@@ -401,19 +391,22 @@ namespace MyOrm
         /// </summary>
         private class ContextScope : IDisposable
         {
-            private readonly Action _disposeAction;
+            private readonly SessionManager _prevSessionManager;
+            private readonly SessionManager _sessionManager;
             private bool _disposed = false;
 
-            public ContextScope(Action disposeAction)
-            {
-                _disposeAction = disposeAction ?? throw new ArgumentNullException(nameof(disposeAction));
+            public ContextScope(SessionManager sessionManager)
+            {                
+                _sessionManager = sessionManager?? throw new ArgumentNullException(nameof(sessionManager));  
+                _prevSessionManager = Current;
+                Current = _sessionManager;
             }
 
             public void Dispose()
             {
                 if (_disposed) return;
-
-                _disposeAction();
+                Current = _prevSessionManager;
+                _sessionManager.Dispose();
                 _disposed = true;
             }
         }

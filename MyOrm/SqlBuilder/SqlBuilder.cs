@@ -139,7 +139,7 @@ namespace MyOrm
                 {
                     return extCondtionBuilders[conditon.GetType()].BuildConditionSql(context, conditon, outputParams);
                 }
-                else throw new Exception(String.Format("Unsupported condition type \"{0}\"! Please register ConditionBuilder before call BuildConditionSql method.", conditon.GetType().FullName));
+                else throw new Exception($"Unsupported condition type \"{conditon.GetType().FullName}\"! Please register ConditionBuilder before call BuildConditionSql method.");
             }
         }
 
@@ -157,15 +157,15 @@ namespace MyOrm
             Type foreignType = condition.ForeignType;
             if (foreignType == null)
             {
-                if (joinedColumn == null) throw new ArgumentException(String.Format("Property {0} not exists.", condition.JoinedProperty), condition.JoinedProperty);
-                if (joinedColumn.ForeignType == null) throw new ArgumentException(String.Format("Property {0} does not point to a foreign type.", condition.JoinedProperty), condition.JoinedProperty);
+                if (joinedColumn == null) throw new ArgumentException($"Property {condition.JoinedProperty} not exists.", condition.JoinedProperty);
+                if (joinedColumn.ForeignType == null) throw new ArgumentException($"Property {condition.JoinedProperty} does not point to a foreign type.", condition.JoinedProperty);
                 foreignType = joinedColumn.ForeignType;
             }
 
             TableDefinition foreignTable = context.TableInfoProvider.GetTableDefinition(foreignType);
             ColumnDefinition foreignColumn = foreignTable.GetColumn(condition.ForeignProperty);
 
-            if (!String.Equals(foreignTable.DataSource, tableDefinition.DataSource, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException(String.Format("ForeignCondition between different data source is not supported. Type {0}'s data source is {1} and type {2}'s data source is {3}. ", context.Table.DefinitionType.FullName, foreignTable.DataSource, foreignTable.ObjectType.FullName, tableDefinition.DataSource));
+            if (!String.Equals(foreignTable.DataSource, tableDefinition.DataSource, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException($"ForeignCondition between different data source is not supported. Type {context.Table.DefinitionType.FullName}'s data source is {foreignTable.DataSource} and type {foreignTable.ObjectType.FullName}'s data source is {tableDefinition.DataSource}. ");
 
             if (joinedColumn == null && foreignColumn == null)
             {
@@ -173,7 +173,7 @@ namespace MyOrm
                 {
                     if (column.ForeignType == foreignType)
                     {
-                        if (joinedColumn != null || foreignColumn != null) throw new ArgumentException(String.Format("Undefined relation between Type {0} and Type {1}. Please specify the ForeignCondition.JoinedProperty.", context.Table.DefinitionType.FullName, foreignTable.ObjectType.FullName), "condition");
+                        if (joinedColumn != null || foreignColumn != null) throw new ArgumentException($"Undefined relation between Type {context.Table.DefinitionType.FullName} and Type {foreignTable.ObjectType.FullName}. Please specify the ForeignCondition.JoinedProperty.", "condition");
                         joinedColumn = column;
                     }
                 }
@@ -182,35 +182,30 @@ namespace MyOrm
                 {
                     if (column.ForeignType == context.Table.DefinitionType)
                     {
-                        if (joinedColumn != null || foreignColumn != null) throw new ArgumentException(String.Format("Uncertain relation between Type {0} and Type {1}. Please specify the ForeignCondition.JoinedProperty.", context.Table.DefinitionType.FullName, foreignTable.ObjectType.FullName), "condition");
+                        if (joinedColumn != null || foreignColumn != null) throw new ArgumentException($"Uncertain relation between Type {context.Table.DefinitionType.FullName} and Type {foreignTable.ObjectType.FullName}. Please specify the ForeignCondition.JoinedProperty.", "condition");
                         foreignColumn = column;
                     }
                 }
-                if (joinedColumn == null && foreignColumn == null) throw new ArgumentException(String.Format("No relation between Type {0} and Type {1}", context.Table.DefinitionType.FullName, foreignTable.ObjectType.FullName), "condition");
+                if (joinedColumn == null && foreignColumn == null) throw new ArgumentException($"No relation between Type {context.Table.DefinitionType.FullName} and Type {foreignTable.ObjectType.FullName}", "condition");
             }
 
             if (foreignColumn == null)
             {
-                if (foreignTable.Keys.Count != 1) throw new ArgumentException(String.Format("Type \"{0}\" does not support foreign condition,which only take effect on type with one and only key column.", foreignType.FullName), "condition");
+                if (foreignTable.Keys.Count != 1) throw new ArgumentException($"Type \"{foreignType.FullName}\" does not support foreign condition,which only take effect on type with one and only key column.", "condition");
                 foreignColumn = foreignTable.Keys[0];
             }
             else if (joinedColumn == null)
             {
-                if (context.Table.Definition.Keys.Count != 1) throw new ArgumentException(String.Format("Type \"{0}\" does not support foreign condition,which only take effect on type with one and only key column.", context.Table.DefinitionType.FullName), "condition");
+                if (context.Table.Definition.Keys.Count != 1) throw new ArgumentException($"Type \"{context.Table.DefinitionType.FullName}\" does not support foreign condition,which only take effect on type with one and only key column.", "condition");
                 joinedColumn = context.Table.Definition.Keys[0];
             }
 
             string tableAlias = context.TableAliasName ?? context.GetTableNameWithArgs(context.Table.Name);
             string foreignTableAlias = "T" + context.Sequence;
-            return String.Format("{0}exists (select 1 \nfrom {1} {2} \nwhere {3}.{4} = {5}.{6} and ({7}))",
-                condition.Opposite ? "not " : null,
-                foreignTable.FormattedName(this),
-                ToSqlName(foreignTableAlias),
-                ToSqlName(tableAlias),
-                joinedColumn.FormattedName(this),
-                ToSqlName(foreignTableAlias),
-                foreignColumn.FormattedName(this),
-                BuildConditionSql(new SqlBuildContext() { TableInfoProvider = context.TableInfoProvider, TableAliasName = foreignTableAlias, Sequence = context.Sequence + 1, Table = foreignTable, TableNameArgs = context.TableNameArgs }, condition.Condition, outputParams));
+            string opposite = condition.Opposite ? "not " : "";
+            string innerCondition = BuildConditionSql(new SqlBuildContext() { TableInfoProvider = context.TableInfoProvider, TableAliasName = foreignTableAlias, Sequence = context.Sequence + 1, Table = foreignTable, TableNameArgs = context.TableNameArgs }, condition.Condition, outputParams);
+
+            return $"{opposite}exists (select 1 \nfrom {foreignTable.FormattedName(this)} {ToSqlName(foreignTableAlias)} \nwhere {ToSqlName(tableAlias)}.{joinedColumn.FormattedName(this)} = {ToSqlName(foreignTableAlias)}.{foreignColumn.FormattedName(this)} and ({innerCondition}))";
         }
 
         /// <summary>
@@ -229,7 +224,8 @@ namespace MyOrm
                 if (!String.IsNullOrEmpty(str)) conditions.Add(str);
             }
             if (conditions.Count == 0) return null;
-            return String.Format("{0} ({1})", conditionSet.Opposite ? "not" : null, String.Join(" " + conditionSet.JoinType + " ", conditions.ToArray()));
+            string joiner = " " + conditionSet.JoinType + " ";
+            return $"{(conditionSet.Opposite ? "not" : "")} ({String.Join(joiner, conditions.ToArray())})";
         }
 
         /// <summary>
@@ -262,16 +258,16 @@ namespace MyOrm
         protected string BuildSimpleConditionSql(SqlBuildContext context, SimpleCondition simpleCondition, ICollection<KeyValuePair<string, object>> outputParams)
         {
             Column column = context.Table.GetColumn(simpleCondition.Property);
-            if (column == null) throw new Exception(String.Format("Property \"{0}\" does not exist in type \"{1}\".", simpleCondition.Property, context.Table.DefinitionType.FullName));
+            if (column == null) throw new Exception($"Property \"{simpleCondition.Property}\" does not exist in type \"{context.Table.DefinitionType.FullName}\".");
             string tableAlias = context.TableAliasName;
-            string columnName = tableAlias == null ? (context.SingleTable ? column.FormattedName(this) : column.FormattedExpression(this)) : String.Format("[{0}].[{1}]", tableAlias, column.Name);
+            string columnName = tableAlias == null ? (context.SingleTable ? column.FormattedName(this) : column.FormattedExpression(this)) : $"[{tableAlias}].[{column.Name}]";
 
             string expression = columnName;
             object value = simpleCondition.Value;
-            string strOpposite = simpleCondition.Opposite ? "not" : null;
+            string strOpposite = simpleCondition.Opposite ? "not " : "";
 
             if ((simpleCondition.Value == null || simpleCondition.Value == DBNull.Value) && simpleCondition.Operator == ConditionOperator.Equals)
-                return string.Format("{0} is {1} null", expression, strOpposite);
+                return $"{expression} is {strOpposite}null";
 
             ConditionOperator positiveOp = simpleCondition.Operator;
             if (positiveOp == ConditionOperator.Contains || positiveOp == ConditionOperator.EndsWith || positiveOp == ConditionOperator.StartsWith)
@@ -281,28 +277,40 @@ namespace MyOrm
             {
                 case ConditionOperator.Equals:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return String.Format(simpleCondition.Opposite ? "{0} <> {1}" : "{0} = {1}", expression, ToSqlParam(paramIndex.ToString()));
+                    {
+                        string p = ToSqlParam(paramIndex.ToString());
+                        return simpleCondition.Opposite ? $"{expression} <> {p}" : $"{expression} = {p}";
+                    }
                 case ConditionOperator.LargerThan:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return String.Format(simpleCondition.Opposite ? "{0} <= {1}" : "{0} > {1}", expression, ToSqlParam(paramIndex.ToString()));
+                    {
+                        string p = ToSqlParam(paramIndex.ToString());
+                        return simpleCondition.Opposite ? $"{expression} <= {p}" : $"{expression} > {p}";
+                    }
                 case ConditionOperator.SmallerThan:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return String.Format(simpleCondition.Opposite ? "{0} >= {1}" : "{0} < {1}", expression, ToSqlParam(paramIndex.ToString()));
+                    {
+                        string p = ToSqlParam(paramIndex.ToString());
+                        return simpleCondition.Opposite ? $"{expression} >= {p}" : $"{expression} < {p}";
+                    }
                 case ConditionOperator.Like:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return String.Format(@"{0} {1} like {2}", expression, strOpposite, ToSqlParam(paramIndex.ToString()));
+                    return $"{expression} {strOpposite}like {ToSqlParam(paramIndex.ToString())}";
                 case ConditionOperator.StartsWith:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return String.Format(@"{0} {1} like {2} escape '{3}'", expression, strOpposite, ConcatSql(ToSqlParam(paramIndex.ToString()), "'%'"), LikeEscapeChar);
+                    string strlike = ConcatSql(ToSqlParam(paramIndex.ToString()), "'%'");
+                    return $"{expression} {strOpposite} like {strlike} escape '{LikeEscapeChar}'";
                 case ConditionOperator.EndsWith:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return String.Format(@"{0} {1} like {2} escape '{3}'", expression, strOpposite, ConcatSql("'%'", ToSqlParam(paramIndex.ToString())), LikeEscapeChar);
+                    strlike = ConcatSql("'%'", ToSqlParam(paramIndex.ToString()));       
+                    return $"{expression} {strOpposite} like {strlike} escape '{LikeEscapeChar}'";
                 case ConditionOperator.Contains:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return String.Format(@"{0} {1} like {2} escape '{3}'", expression, strOpposite, ConcatSql("'%'", ToSqlParam(paramIndex.ToString()), "'%'"), LikeEscapeChar);
+                    strlike = ConcatSql("'%'", ToSqlParam(paramIndex.ToString()), "'%'");
+                    return $"{expression} {strOpposite} like {strlike} escape '{LikeEscapeChar}'";
                 case ConditionOperator.RegexpLike:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return String.Format(@"{0} regexp_like({1},{2})", strOpposite, expression, ToSqlParam(paramIndex.ToString()));
+                    return $"{strOpposite}regexp_like({expression},{ToSqlParam(paramIndex.ToString())})";
                 case ConditionOperator.In:
                     List<string> paramNames = new List<string>();
                     foreach (object item in value as IEnumerable)
@@ -311,7 +319,7 @@ namespace MyOrm
                         paramNames.Add(ToSqlParam(paramIndex.ToString()));
                         paramIndex++;
                     }
-                    return String.Format("{0} {1} in ({2})", expression, strOpposite, String.Join(",", paramNames.ToArray()));
+                    return $"{expression} {strOpposite}in ({String.Join(",", paramNames.ToArray())})";
                 default:
                     return string.Empty;
             }
@@ -333,7 +341,7 @@ namespace MyOrm
         /// <returns></returns>
         public virtual string BuildIdentityInsertSQL(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
-            return String.Format("BEGIN insert into {0} ({1}) \nvalues ({2}); {3} END;", ToSqlName(tableName), strColumns, strValues, "select @@IDENTITY as [ID];");
+            return $"BEGIN insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues}); select @@IDENTITY as [ID]; END;";
         }
 
         /// <summary>
@@ -358,8 +366,9 @@ namespace MyOrm
         /// <returns></returns>
         public virtual string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
-            if (!String.IsNullOrEmpty(where)) where = " \nwhere " + where;
-            return String.Format("select * from (\nselect {0}, Row_Number() over (Order by {1}) as Row_Number \nfrom {2} {3}) TempTable \nwhere Row_Number > {4} and Row_Number <= {5}", select, orderBy, from, where, startIndex, startIndex + sectionSize);
+            if (!String.IsNullOrEmpty(where)) where = "\nwhere " + where;
+            int endIndex = startIndex + sectionSize;
+            return $"select * from (\nselect {select}, Row_Number() over (Order by {orderBy}) as Row_Number \nfrom {from} {where}) TempTable \nwhere Row_Number > {startIndex} and Row_Number <= {endIndex}";
         }
 
         /// <summary>
@@ -370,7 +379,7 @@ namespace MyOrm
         public virtual string ToSqlName(string name)
         {
             if (name == null) throw new ArgumentNullException("name");
-            return String.Join(".", Array.ConvertAll(name.Split('.'), n => String.Format("[{0}]", n)));
+            return String.Join(".", Array.ConvertAll(name.Split('.'), n => $"[{n}]"));
         }
 
         /// <summary>
@@ -380,7 +389,7 @@ namespace MyOrm
         /// <returns>数据库参数</returns>
         public virtual string ToSqlParam(string nativeName)
         {
-            return String.Format("@{0}", nativeName);
+            return $"@{nativeName}";
         }
 
         /// <summary>

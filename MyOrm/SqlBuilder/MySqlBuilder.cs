@@ -20,12 +20,12 @@ namespace MyOrm.MySql
         /// <returns>SQL语句</returns>
         public override string ConcatSql(params string[] strs)
         {
-            return String.Format("CONCAT({0})", String.Join(",", strs));
+            return $"CONCAT({String.Join(",", strs)})";
         }
 
         public override string BuildIdentityInsertSQL(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
-            return String.Format("insert into {0} ({1}) \nvalues ({2});\n{3};", ToSqlName(tableName), strColumns, strValues, "select @@IDENTITY as [ID];");
+            return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues});\nselect @@IDENTITY as [ID];";
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace MyOrm.MySql
         /// <returns>参数名称</returns>
         public override string ToParamName(string nativeName)
         {
-            return String.Format("@{0}", nativeName);
+            return $"@{nativeName}";
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace MyOrm.MySql
         /// <returns></returns>
         public override string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
-            return String.Format("select {0} \nfrom {1} \nwhere {2} Order by {3} limit {4},{5} ", select, from, where, orderBy, startIndex, sectionSize);
+            return $"select {select} \nfrom {from} \nwhere {where} Order by {orderBy} limit {startIndex},{sectionSize}";
         }
     }
 }

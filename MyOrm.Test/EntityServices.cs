@@ -33,7 +33,7 @@ namespace LogRecord
             {
                 if (!column.IsIdentity && column.Mode.CanInsert())
                 {
-                    dt.Columns.Add(column.PropertyName, column.PropertyType.GetUnderlyingType());
+                    dt.Columns.Add(column.PropertyName, Nullable.GetUnderlyingType(column.PropertyType) ?? column.PropertyType);
                     bulkCopy.ColumnMappings.Add(new MySqlBulkCopyColumnMapping(columnIndex++, column.Name));
                 }
             }
@@ -55,7 +55,7 @@ namespace LogRecord
     {
         public override void BatchInsert(IEnumerable<AccountingLog> entities)
         {
-            base.BatchInsert(entities);            
+            base.BatchInsert(entities);
         }
     }
     public class SessionService : EntityService<Session>, ISessionService

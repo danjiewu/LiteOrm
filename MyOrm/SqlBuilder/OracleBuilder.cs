@@ -44,7 +44,7 @@ namespace MyOrm.Oracle
                 strColumns += "," + ToSqlName(identityColumn.Name);
                 strValues += "," + identityColumn.IdentityExpression;
             }
-            return String.Format("insert into {0} \n({1})\nvalues ({2}) \nreturning {3} into {4}", ToSqlName(tableName), strColumns, strValues, ToSqlName(identityColumn.Name), ToSqlParam(identityColumn.PropertyName));
+            return $"insert into {ToSqlName(tableName)} \n({strColumns})\nvalues ({strValues}) \nreturning {ToSqlName(identityColumn.Name)} into {ToSqlParam(identityColumn.PropertyName)}";
         }
 
         /// <summary>
@@ -81,7 +81,7 @@ namespace MyOrm.Oracle
         public override string ToSqlParam(string nativeName)
         {
             if (nativeName == null) throw new ArgumentNullException("nativeName");
-            return ":" + nativeName;
+            return $":{nativeName}";
         }
 
         public override string ToParamName(string nativeName)

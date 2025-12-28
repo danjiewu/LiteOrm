@@ -45,7 +45,7 @@ namespace MyOrm.Service
                 try
                 {
                     InProcess = true;
-                    sessionManager.Reset();
+                    sessionManager.Start();
                     LogBeforeInvoke(logger, invocation);
                     var timer = Stopwatch.StartNew();
                     InvokeWithTransaction(invocation);
@@ -76,22 +76,7 @@ namespace MyOrm.Service
             {
                 if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
                 {
-                    try
-                    {
-                        sessionManager.BeginTransaction();
-                        invocation.Proceed();
-                        sessionManager.Commit();
-                    }
-                    catch
-                    {
-                        //TODO:保存当前会话状态以便排查问题
-                        try
-                        {
-                            sessionManager.Rollback();
-                        }
-                        catch { }
-                        throw;
-                    }
+                    sessionManager.ExecuteInTransaction(sm => invocation.Proceed());
                 }
                 else
                 {

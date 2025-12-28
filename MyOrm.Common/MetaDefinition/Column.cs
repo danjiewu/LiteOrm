@@ -161,7 +161,7 @@ namespace MyOrm.Common
             if (target == null) throw new ArgumentNullException("target");
             try
             {
-                Property.SetVal(target, value);
+                Property.SetValueFast(target, value);
             }
             catch (Exception e)
             {
@@ -177,7 +177,7 @@ namespace MyOrm.Common
         public virtual object GetValue(object target)
         {
             if (target == null) throw new ArgumentNullException("target");
-            return Property.GetVal(target);
+            return Property.GetValueFast(target);
         }
 
         /// <summary>

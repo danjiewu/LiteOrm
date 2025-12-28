@@ -15,7 +15,7 @@ namespace MyOrm.SQLite
         public static readonly new SQLiteBuilder Instance = new SQLiteBuilder();
         public override string BuildIdentityInsertSQL(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
-            return String.Format("insert into {0} ({1}) \nvalues ({2});\n{3};", ToSqlName(tableName), strColumns, strValues, "SELECT last_insert_rowid() as [ID];");
+            return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues});\nSELECT last_insert_rowid() as [ID];";
         }
     }
 }

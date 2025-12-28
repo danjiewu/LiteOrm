@@ -24,8 +24,9 @@ namespace MyOrm.Test
 {
     class Program
     {
-        private static readonly SemaphoreSlim _batchSemaphore = new SemaphoreSlim(4); // 并发度 4
-        static void Main(string[] args)
+        private static readonly SemaphoreSlim _batchSemaphore = new SemaphoreSlim(1); // 并发度 1
+        private static Task currentTask = Task.CompletedTask;
+        static async Task Main(string[] args)
         {
             OracleConfiguration.BindByName = true;
             OracleBuilder.Instance.IdentitySource = OracleIdentitySourceType.Sequence;
@@ -54,31 +55,33 @@ namespace MyOrm.Test
             var logs = service.SearchSection(null, new SectionSet() { SectionSize = 1000 }, "202501");
 
 
-            for (int i = 0; i < 15; i++)
+            for (int i = 0; i < 1000; i++)
             {
                 int cur = i;
-                Console.WriteLine($"第{cur}轮.Session:{SessionManager.Current.ID}");
-                Task.Run(async () =>
+                Console.WriteLine($"第{cur}轮开始.");
+                _batchSemaphore.Wait();
+                Console.WriteLine($"第{cur}轮任务创建.");                
+
+                // 创建新任务
+                currentTask = Task.Run(async () =>
                 {
-                    await _batchSemaphore.WaitAsync();
                     try
-                    {
-                        Console.WriteLine($"第{cur}轮开始.Session:{SessionManager.Current.ID}");
+                    {                        
                         using (var session = SessionManager.Current.EnterContext())
-                        {
-                            Console.WriteLine($"第{cur}轮BatchInsert:Session:{SessionManager.Current.ID}");
+                        {                            
+                            Console.WriteLine($"第{cur}轮BatchInsert");
                             var service = scope.ServiceProvider.GetRequiredService<IAccountintLogService>();
                             service.BatchInsert(logs);
                         }
                     }
                     finally
                     {
-                        Console.WriteLine($"第{cur}轮完成.Session:{SessionManager.Current.ID}");
                         _batchSemaphore.Release();
+                        Console.WriteLine($"第{cur}轮完成.");
                     }
                 });
 
-                Task.Delay(100).Wait();
+                await Task.Delay(100);
             }
 
             Console.ReadKey();

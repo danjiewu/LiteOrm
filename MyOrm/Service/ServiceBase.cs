@@ -2,12 +2,9 @@
 using System.Collections.Generic;
 using System.Collections;
 using MyOrm.Common;
-using System.ComponentModel;
-using System.Security.Principal;
 using System.Linq.Expressions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,7 +19,7 @@ namespace MyOrm.Service
         {
             _serviceProvider = null;
 
-            Type serviceType = this.GetType();
+            Type serviceType = GetType();
 
             if (serviceType.IsGenericType)
             {
