@@ -1,6 +1,7 @@
 ﻿using MyOrm.Common;
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
@@ -13,7 +14,20 @@ namespace MyOrm
 {
     public static class Util
     {
-        private static Dictionary<Type, Dictionary<Enum, string>> enumTypeName = new Dictionary<Type, Dictionary<Enum, string>>();
+        private static ConcurrentDictionary<Type, ConcurrentDictionary<Enum, string>> enumTypeName = new ConcurrentDictionary<Type, ConcurrentDictionary<Enum, string>>();
+
+        public static string GetServiceName(Type serviceType)
+        {
+            if (serviceType.IsGenericType)
+            {
+                int backtickIndex = serviceType.Name.IndexOf('`');
+                return serviceType.Name.Substring(0, backtickIndex) + "<" + String.Join(",", from t in serviceType.GetGenericArguments() select t.Name) + ">";
+            }
+            else
+            {
+                return serviceType.Name;
+            }
+        }
         public static int MaxExpandedLogLength { get; set; } = 10;
         public static T Parse<T>(string displayName) where T : struct, Enum
         {
@@ -53,14 +67,14 @@ namespace MyOrm
             {
                 InitlizeEnumName(enumType);
             }
-            Dictionary<Enum, string> enumNames = enumTypeName[enumType];
+            ConcurrentDictionary<Enum, string> enumNames = enumTypeName[enumType];
             if (!enumNames.ContainsKey(value)) enumNames[value] = value.ToString();
             return enumNames[value];
         }
 
         private static void InitlizeEnumName(Type enumType)
         {
-            Dictionary<Enum, string> enumNames = new Dictionary<Enum, string>();
+            ConcurrentDictionary<Enum, string> enumNames = new ConcurrentDictionary<Enum, string>();
             foreach (FieldInfo field in enumType.GetFields(BindingFlags.Public | BindingFlags.Static))
             {
                 object[] displayAttrs = field.GetCustomAttributes(typeof(DisplayAttribute), true);
@@ -87,7 +101,7 @@ namespace MyOrm
             enumTypeName[enumType] = enumNames;
         }
 
-        public static string ToDisplayText(Type type, SimpleCondition condtion)
+        public static string ToDisplayText(Type type, BinaryStatement condtion)
         {
             return GetProperty(type, condtion.Property).DisplayName + ToDisplayText(condtion.Operator, condtion.Opposite, condtion.Value);
         }
@@ -99,13 +113,13 @@ namespace MyOrm
         /// <param name="opposite">是否为非</param>
         /// <param name="value">用于比较的值</param>
         /// <returns></returns>
-        public static string ToDisplayText(ConditionOperator op, bool opposite, object value)
+        public static string ToDisplayText(BinaryOperator op, bool opposite, object value)
         {
             StringBuilder sb = new StringBuilder();
             if (opposite) sb.AppendFormat("不");
             switch (op)
             {
-                case ConditionOperator.In:
+                case BinaryOperator.In:
                     List<string> values = new List<string>();
                     foreach (object o in value as IEnumerable)
                     {
@@ -113,28 +127,28 @@ namespace MyOrm
                     }
                     sb.AppendFormat("在{0}中", String.Join(",", values.ToArray()));
                     break;
-                case ConditionOperator.LargerThan:
+                case BinaryOperator.GreaterThan:
                     sb.AppendFormat("大于{0}", ToDisplayText(value));
                     break;
-                case ConditionOperator.SmallerThan:
+                case BinaryOperator.LessThan:
                     sb.AppendFormat("小于{0}", ToDisplayText(value));
                     break;
-                case ConditionOperator.Contains:
+                case BinaryOperator.Contains:
                     sb.AppendFormat("包含{0}", ToDisplayText(value));
                     break;
-                case ConditionOperator.Like:
+                case BinaryOperator.Like:
                     sb.AppendFormat("匹配{0}", ToDisplayText(value));
                     break;
-                case ConditionOperator.RegexpLike:
+                case BinaryOperator.RegexpLike:
                     sb.AppendFormat("正则匹配{0}", ToDisplayText(value));
                     break;
-                case ConditionOperator.Equals:
+                case BinaryOperator.Equal:
                     sb.AppendFormat("等于{0}", ToDisplayText(value));
                     break;
-                case ConditionOperator.EndsWith:
+                case BinaryOperator.EndsWith:
                     sb.AppendFormat("以{0}结尾", ToDisplayText(value));
                     break;
-                case ConditionOperator.StartsWith:
+                case BinaryOperator.StartsWith:
                     sb.AppendFormat("以{0}开头", ToDisplayText(value));
                     break;
                 default:
@@ -239,7 +253,7 @@ namespace MyOrm
             return conditions;
         }
 
-        private static Dictionary<Type, PropertyDescriptorCollection> typeProperties = new Dictionary<Type, PropertyDescriptorCollection>();
+        private static ConcurrentDictionary<Type, PropertyDescriptorCollection> typeProperties = new ConcurrentDictionary<Type, PropertyDescriptorCollection>();
 
         public static PropertyDescriptorCollection GetFilterProperties(Type type)
         {

@@ -8,22 +8,25 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Castle.DynamicProxy;
 using System.ComponentModel;
+using System.Collections.Concurrent;
+using System.Threading;
+using MyOrm.Common;
 
 namespace MyOrm.Service
 {
     /// <summary>
     /// 服务调用代理
     /// </summary>
-    public class ServiceInvokeProxy : IInterceptor
+    public class ServiceInvokeInterceptor : IInterceptor
     {
-        private string _serviceName;
-        private readonly Dictionary<MethodInfo, ServiceDescription> _methodDescriptions = new();
-        [ThreadStatic]
-        private static bool InProcess;
-
-        public ServiceInvokeProxy(string serviceName)
+        private readonly ConcurrentDictionary<MethodInfo, ServiceDescription> _methodDescriptions = new();
+        private static readonly AsyncLocal<bool> _inProcess = new AsyncLocal<bool>();
+        private ILogger logger;
+        public static bool InProcess { get => _inProcess.Value; set => _inProcess.Value = value; }
+        public ServiceInvokeInterceptor(ILoggerFactory loggerFactory)
         {
-            _serviceName = serviceName;
+            if (loggerFactory == null) throw new ArgumentNullException(nameof(loggerFactory));
+            logger = loggerFactory.CreateLogger<ServiceInvokeInterceptor>();
         }
 
         /// <summary>  
@@ -33,12 +36,19 @@ namespace MyOrm.Service
         /// <returns>目标方法的返回值。</returns>  
         public void Intercept(IInvocation invocation)
         {
-            ILogger logger = MyServiceProvider.Current.GetService<ILoggerFactory>()
-                        .CreateLogger(_serviceName);
             var sessionManager = SessionManager.Current;
             if (InProcess)//如果已在会话中，不再记录日志和处理事务
             {
-                invocation.Proceed();
+                try
+                {
+                    invocation.Proceed();
+                }
+                catch (Exception e)
+                {
+                    e = e.UnwrapTargetInvocationException();
+                    LogException(logger, invocation, e);
+                    throw e;
+                }
             }
             else
             {
@@ -51,7 +61,7 @@ namespace MyOrm.Service
                     InvokeWithTransaction(invocation);
                     timer.Stop();
                     LogAfterInvoke(logger, invocation, timer.Elapsed);
-                    InProcess = false;
+                   
                 }
                 catch (Exception e)
                 {
@@ -60,8 +70,10 @@ namespace MyOrm.Service
                     throw e;
                 }
                 finally
-                {
+                { 
+                    InProcess = false;                   
                     sessionManager.Finish();
+                    
                 }
             }
         }
@@ -92,10 +104,10 @@ namespace MyOrm.Service
             var innerExp = e.UnwrapTargetInvocationException();
             var argsLog = Util.GetLogString(GetLogArgs(invocation));
             if (innerExp is ServiceException)
-                logger.LogWarning("<Exception>{Service}.{Method}({Args}) {Message}", _serviceName, serviceDesc.MethodName,
+                logger.LogWarning("<Exception>{Service}.{Method}({Args}) {Message}", serviceDesc.ServiceName, serviceDesc.MethodName,
                     argsLog, innerExp.Message);
             else
-                logger.LogError("<Exception>{Service}.{Method}({Args}) {Exception}", _serviceName, serviceDesc.MethodName,
+                logger.LogError("<Exception>{Service}.{Method}({Args}) {Exception}", serviceDesc.ServiceName, serviceDesc.MethodName,
                     argsLog, innerExp);
         }
 
@@ -104,10 +116,9 @@ namespace MyOrm.Service
             var serviceDesc = GetDescription(invocation);
             var returnLog = (serviceDesc.LogFormat & LogFormat.ReturnValue) == LogFormat.ReturnValue
                 ? Util.GetLogString(invocation.ReturnValue, 0) : null;
-
             logger.Log(serviceDesc.LogLevel,
                 "<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
-                 _serviceName, serviceDesc.MethodName,
+                 serviceDesc.ServiceName, serviceDesc.MethodName,
                 elapsedTime.TotalSeconds, returnLog);
         }
 
@@ -122,7 +133,7 @@ namespace MyOrm.Service
 
                 logger.Log(serviceDesc.LogLevel,
                     "<Invoke>{Service}.{Method}({Args})",
-                    _serviceName, serviceDesc.MethodName, argsLog);
+                    serviceDesc.ServiceName, serviceDesc.MethodName, argsLog);
             }
         }
 
@@ -147,11 +158,9 @@ namespace MyOrm.Service
                 {
                     if (!_methodDescriptions.ContainsKey(invocation.Method))
                     {
-                        var desc = new ServiceDescription(invocation.Method.Name);
-                        // 加载特性配置
-                        desc.LoadFromAttributes(invocation);
-                        // 加载参数日志配置
-                        desc.LoadParameterLogConfig(invocation);
+                        var desc = new ServiceDescription();
+                        // 加载属性值
+                        desc.LoadFrom(invocation);
 
                         _methodDescriptions[invocation.Method] = desc;
                     }
@@ -166,10 +175,10 @@ namespace MyOrm.Service
     /// <summary>
     ///  动态服务生成
     /// </summary>
-    public class ServiceFactoryGenerator : IInterceptor
+    public class ServiceFactoryInterceptor : IInterceptor
     {
         protected IServiceProvider ServiceProvider { get; }
-        public ServiceFactoryGenerator(IServiceProvider serviceProvider)
+        public ServiceFactoryInterceptor(IServiceProvider serviceProvider)
         {
             ServiceProvider = serviceProvider;
         }
@@ -179,53 +188,14 @@ namespace MyOrm.Service
         }
     }
 
-
-    public static class ServiceProxyHelper
+    public static class ServiceInterceptorExt
     {
-        // 创建服务调用代理
-        public static T CreateServiceInvokeProxy<T>(T target, string serviceName) where T : class
-        {
-            return CreateServiceInvokeProxy(typeof(T), target, serviceName) as T;
-        }
-
-        // 创建服务调用代理（非泛型）
-        public static object CreateServiceInvokeProxy(Type targetType, object target, string serviceName)
-        {
-            if (!targetType.IsInterface)
-                throw new ArgumentException("Target type must be an interface", targetType.Name);
-            ProxyGenerator proxy = new ProxyGenerator();
-            var invokeProxy = new ServiceInvokeProxy(serviceName);
-            return proxy.CreateInterfaceProxyWithTarget(targetType, target, invokeProxy);
-        }
-
-        public static IServiceCollection AddServiceFactory<T>(this IServiceCollection services) where T : class
-        {
-            services.AddSingleton<T>(sp =>
-            {
-                if (!typeof(T).IsInterface)
-                    throw new ArgumentException("Target type must be an interface", typeof(T).Name);
-                ProxyGenerator proxy = new ProxyGenerator();
-                var factoryProxy = new ServiceFactoryGenerator(sp);
-                return proxy.CreateInterfaceProxyWithoutTarget<T>(factoryProxy);
-            });
-            return services;
-        }
-        public static IServiceCollection AddServiceFactory(this IServiceCollection services, Type serviceFactoryType)
-        {
-            services.AddSingleton(serviceFactoryType, sp =>
-            {
-                if (!serviceFactoryType.IsInterface)
-                    throw new ArgumentException("Target type must be an interface", serviceFactoryType.Name);
-                ProxyGenerator proxy = new ProxyGenerator();
-                var factoryProxy = new ServiceFactoryGenerator(sp);
-                return proxy.CreateInterfaceProxyWithoutTarget(serviceFactoryType, factoryProxy);
-            });
-            return services;
-        }
-
         // 服务描述扩展方法
-        public static void LoadFromAttributes(this ServiceDescription desc, IInvocation invocation)
+        public static void LoadFrom(this ServiceDescription desc, IInvocation invocation)
         {
+            desc.ServiceName = Util.GetServiceName(invocation.TargetType);
+            desc.MethodName = invocation.Method.Name;
+
             // 日志特性
             var logAtt = GetServiceAttribute<ServiceLogAttribute>(invocation);
             if (logAtt != null)
@@ -252,19 +222,8 @@ namespace MyOrm.Service
             var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
             if (serviceAtt != null)
                 desc.IsService = serviceAtt.IsService;
-        }
 
-        private static T GetServiceAttribute<T>(IInvocation invocation) where T : Attribute
-        {
-            return invocation.Method.GetCustomAttribute<T>()
-                            ?? invocation.MethodInvocationTarget?.GetCustomAttribute<T>()
-                            ?? invocation.TargetType.GetCustomAttribute<T>()
-                            ?? invocation.Method.DeclaringType.GetCustomAttribute<T>();
-        }
-
-        // 加载参数日志配置
-        public static void LoadParameterLogConfig(this ServiceDescription desc, IInvocation invocation)
-        {
+            // 参数日志格式
             var parameters = invocation.Method.GetParameters();
             desc.ArgsLogable = new bool[parameters.Length];
 
@@ -284,6 +243,14 @@ namespace MyOrm.Service
 
                 desc.ArgsLogable[i] = logAtts.Length > 0 ? logAtts[0].Enabled : true;
             }
+        }
+
+        private static T GetServiceAttribute<T>(IInvocation invocation) where T : Attribute
+        {
+            return invocation.Method.GetCustomAttribute<T>()
+                            ?? invocation.MethodInvocationTarget?.GetCustomAttribute<T>()
+                            ?? invocation.TargetType.GetCustomAttribute<T>()
+                            ?? invocation.Method.DeclaringType.GetCustomAttribute<T>();
         }
         public static Exception UnwrapTargetInvocationException(this Exception ex)
         {

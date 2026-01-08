@@ -14,7 +14,7 @@ using static System.Collections.Specialized.BitVector32;
 
 namespace LogRecord
 {
-    public interface IAccountintLogService : IEntityService<AccountingLog>, IEntityViewService<AccountingLog> { }
+    public interface IAccountingLogService : IEntityService<AccountingLog>, IEntityServiceAsync<AccountingLog>, IEntityViewService<AccountingLog>, IEntityViewServiceAsync<AccountingLog> { }
     public interface ISessionService : IEntityService<Session>, IEntityViewService<Session>
     {
         Session? UpdateSession(AccountingLog log);
@@ -51,7 +51,7 @@ namespace LogRecord
             bulkCopy.WriteToServer(dt);
         }
     }
-    public class AccountintLogService : EntityService<AccountingLog>, IAccountintLogService
+    public class AccountintLogService : EntityService<AccountingLog>, IAccountingLogService
     {
         public override void BatchInsert(IEnumerable<AccountingLog> entities)
         {
@@ -63,7 +63,7 @@ namespace LogRecord
         public Session? UpdateSession(AccountingLog log)
         {
             if (log.AcctOutputOctets % 100 != 23) return null;
-            var session = SearchOne(t => t.AcctSessionId == log.AcctSessionId);
+            var session = SearchOne(Statement.Property(nameof(AccountingLog.AcctSessionId), log.AcctSessionId));
             if (session == null)
             {
                 session = new Session()

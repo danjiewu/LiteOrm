@@ -4,6 +4,7 @@ using System.Text;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Data.Common;
+using System.Collections.Concurrent;
 
 namespace MyOrm.Common
 {
@@ -20,7 +21,7 @@ namespace MyOrm.Common
 
         #region 私有变量
         private ReadOnlyCollection<Column> columns;
-        private Dictionary<string, Column> namedColumnCache = new Dictionary<string, Column>(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<string, Column> namedColumnCache = new ConcurrentDictionary<string, Column>(StringComparer.OrdinalIgnoreCase);
         #endregion
 
         /// <summary>
@@ -50,7 +51,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 属性名对应列的缓存
         /// </summary>
-        protected Dictionary<string, Column> NamedColumnCache
+        protected ConcurrentDictionary<string, Column> NamedColumnCache
         {
             get
             {
@@ -60,7 +61,7 @@ namespace MyOrm.Common
                     {
                         if (namedColumnCache.Count == 0)
                             foreach (Column column in Columns)
-                                namedColumnCache.Add(column.PropertyName, column);
+                                namedColumnCache[column.PropertyName] = column;
                     }
                 }
                 return namedColumnCache;
@@ -139,6 +140,11 @@ namespace MyOrm.Common
         public string DataSource { get; protected internal set; }
 
         /// <summary>
+        /// 数据提供程序类型，如Microsoft.Data.SqlClient.SqlConnection
+        /// </summary>
+        public Type DataProviderType { get; protected internal set; }
+
+        /// <summary>
         /// 数据库表的列定义
         /// </summary>
         public new ReadOnlyCollection<ColumnDefinition> Columns { get; }
@@ -173,11 +179,6 @@ namespace MyOrm.Common
         {
             return base.GetColumn(propertyName) as ColumnDefinition;
         }
-
-        public TableDefinition WithArgs(params string[] tableNameArgs)
-        {
-            return new TableDefinition(ObjectType, Columns) { Name = String.Format(this.Name, tableNameArgs) };
-        }
     }
 
     /// <summary>
@@ -193,12 +194,12 @@ namespace MyOrm.Common
         {
             this.tableDefinition = table;
             Name = table.Name;
-            columns = table.Columns.Select(column=> new ColumnRef(this, column)).ToList().AsReadOnly();
+            columns = table.Columns.Select(column => new ColumnRef(this, column)).ToList().AsReadOnly();
         }
 
         private TableDefinition tableDefinition;
         private ReadOnlyCollection<ColumnRef> columns;
-        private Dictionary<string, ColumnRef> namedColumnCache = new Dictionary<string, ColumnRef>();
+        private ConcurrentDictionary<string, ColumnRef> namedColumnCache = new ConcurrentDictionary<string, ColumnRef>();
 
         /// <summary>
         /// 对应数据库表的定义
@@ -219,14 +220,14 @@ namespace MyOrm.Common
         /// <summary>
         /// 属性名对应列的缓存
         /// </summary>
-        protected Dictionary<string, ColumnRef> NamedColumnCache
+        protected ConcurrentDictionary<string, ColumnRef> NamedColumnCache
         {
             get
             {
                 if (namedColumnCache.Count == 0)
                 {
                     foreach (ColumnRef column in Columns)
-                        namedColumnCache.Add(column.Column.PropertyName, column);
+                        namedColumnCache[column.Column.PropertyName] = column;
                 }
                 return namedColumnCache;
             }

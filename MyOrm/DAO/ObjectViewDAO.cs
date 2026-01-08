@@ -17,7 +17,7 @@ namespace MyOrm
     /// 实体类的查询操作
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    public class ObjectViewDAO<T> : ObjectDAOBase, IObjectViewDAO<T>, IObjectViewDAOAsync<T>, IObjectViewDAO, IObjectViewDAOAsync where T : new()
+    public class ObjectViewDAO<T> : ObjectDAOBase, IObjectViewDAO<T> where T : new()
     {
         #region 属性
         /// <summary>
@@ -31,7 +31,7 @@ namespace MyOrm
         /// <summary>
         /// 查询关联表
         /// </summary>
-        protected override Table Table
+        public override Table Table
         {
             get { return TableInfoProvider.GetTableView(ObjectType); }
         }
@@ -44,7 +44,7 @@ namespace MyOrm
         protected virtual IDbCommand MakeGetObjectCommand()
         {
             IDbCommand command = NewCommand();
-            command.CommandText = String.Format("select {0} \nfrom {1} \nwhere {2}", AllFieldsSql, From, MakeIsKeyCondition(command));
+            command.CommandText = $"select {AllFieldsSql} \nfrom {From} \nwhere {MakeIsKeyCondition(command)}";
             return command;
         }
 
@@ -69,7 +69,7 @@ namespace MyOrm
                     command.Parameters.Add(param);
                 }
             }
-            command.CommandText = String.Format("select count(1) \nfrom {0} \nwhere {1}", ToSqlName(Table.Definition.Name), strConditions);
+            command.CommandText = $"select count(1) \nfrom {ToSqlName(Table.Definition.Name)} \nwhere {strConditions}";
             return command;
         }
         #endregion
@@ -102,33 +102,9 @@ namespace MyOrm
         /// </summary>
         /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
         /// <returns>符合条件的对象个数</returns>
-        public virtual int Count(Condition condition)
+        public virtual int Count(Statement condition)
         {
             using (IDbCommand command = MakeConditionCommand("select count(*) \nfrom @FromTable@ \nwhere @Condition@", condition))
-            {
-                return Convert.ToInt32(command.ExecuteScalar());
-            }
-        }
-
-        public bool Exists(Expression<Func<T, bool>> expression)
-        {
-            ExpressionParser parser = new ExpressionParser(SqlBuilder, SqlBuildContext);
-            parser.Visit(expression);
-            string where = null;
-            if (!String.IsNullOrEmpty(parser.Result)) { where = " \nwhere " + parser.Result; }
-            using (IDbCommand command = MakeNamedParamCommand("select 1 \nfrom @FromTable@ " + where, parser.Arguments))
-            {
-                return command.ExecuteScalar() != null;
-            }
-        }
-
-        public int Count(Expression<Func<T, bool>> expression)
-        {
-            ExpressionParser parser = new ExpressionParser(SqlBuilder, SqlBuildContext);
-            parser.Visit(expression);
-            string where = null;
-            if (!String.IsNullOrEmpty(parser.Result)) { where = " \nwhere " + parser.Result; }
-            using (IDbCommand command = MakeNamedParamCommand("select count(*) \nfrom @FromTable@ " + where, parser.Arguments))
             {
                 return Convert.ToInt32(command.ExecuteScalar());
             }
@@ -168,7 +144,7 @@ namespace MyOrm
         /// </summary>
         /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
         /// <returns>是否存在</returns>
-        public virtual bool Exists(Condition condition)
+        public virtual bool Exists(Statement condition)
         {
             using (IDbCommand command = MakeConditionCommand("select 1 \nfrom @FromTable@ \nwhere @Condition@", condition))
             {
@@ -176,7 +152,7 @@ namespace MyOrm
             }
         }
 
-        public void ForEach(Condition condition, Action<T> func)
+        public void ForEach(Statement condition, Action<T> func)
         {
             using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@" + (condition == null ? null : " \nwhere @Condition@"), condition))
             {
@@ -187,28 +163,12 @@ namespace MyOrm
             }
         }
 
-        public void ForEach(Expression<Func<T, bool>> expression, Action<T> func)
-        {
-            ForEach(Condition.Exp(expression), func);
-        }
-
-        /// <summary>
-        /// 根据单个条件查询
-        /// </summary>
-        /// <param name="name">属性名</param>
-        /// <param name="value">值</param>
-        /// <returns>符合条件的对象列表</returns>
-        public List<T> Search(string name, object value)
-        {
-            return Search(new SimpleCondition(name, value));
-        }
-
         /// <summary>
         /// 根据条件查询，多个条件以逻辑与连接
         /// </summary>
         /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
         /// <returns>符合条件的对象列表</returns>
-        public virtual List<T> Search(Condition condition)
+        public virtual List<T> Search(Statement condition)
         {
             using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@" + (condition == null ? null : " \nwhere @Condition@"), condition))
             {
@@ -222,7 +182,7 @@ namespace MyOrm
         /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <returns>符合条件的对象列表</returns>
-        public virtual List<T> Search(Condition condition, params Sorting[] orderBy)
+        public virtual List<T> Search(Statement condition, params Sorting[] orderBy)
         {
             if (orderBy == null || orderBy.Length == 0) return Search(condition);
             else
@@ -237,7 +197,7 @@ namespace MyOrm
         /// </summary>
         /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
         /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
-        public virtual T SearchOne(Condition condition)
+        public virtual T SearchOne(Statement condition)
         {
             using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ \nwhere @Condition@", condition))
             {
@@ -245,15 +205,6 @@ namespace MyOrm
             }
         }
 
-        /// <summary>
-        /// 获取单个符合条件的对象
-        /// </summary>
-        /// <param name="expression">查询表达式</param>
-        /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
-        public T SearchOne(Expression<Func<T, bool>> expression)
-        {
-            return SearchOne(Condition.Exp(expression));
-        }
 
         /// <summary>
         /// 分页查询
@@ -261,26 +212,13 @@ namespace MyOrm
         /// <param name="condition">查询条件</param>
         /// <param name="section">分页设定</param>
         /// <returns></returns>
-        public virtual List<T> SearchSection(Condition condition, SectionSet section)
+        public virtual List<T> SearchSection(Statement condition, SectionSet section)
         {
             string sql = SqlBuilder.GetSelectSectionSql(AllFieldsSql, From, ParamCondition, GetOrderBySQL(section.Orders), section.StartIndex, section.SectionSize);
             using (IDbCommand command = MakeConditionCommand(sql, condition))
             {
                 return GetAll(command);
             }
-        }
-        public List<T> Search(Expression<Func<T, bool>> expression)
-        {
-            return Search(Condition.Exp(expression));
-        }
-        public List<T> Search(Expression<Func<T, bool>> expression, params Sorting[] orderby)
-        {
-            return Search(Condition.Exp(expression), orderby);
-        }
-
-        public List<T> SearchSection(Expression<Func<T, bool>> expression, SectionSet section)
-        {
-            return SearchSection(Condition.Exp(expression), section);
         }
 
         #endregion
@@ -292,22 +230,22 @@ namespace MyOrm
             return GetObject(keys);
         }
 
-        object IObjectViewDAO.SearchOne(Condition condition)
+        object IObjectViewDAO.SearchOne(Statement condition)
         {
             return SearchOne(condition);
         }
 
-        IList IObjectViewDAO.Search(Condition condition)
+        IList IObjectViewDAO.Search(Statement condition)
         {
             return Search(condition);
         }
 
-        IList IObjectViewDAO.Search(Condition condition, params Sorting[] orderBy)
+        IList IObjectViewDAO.Search(Statement condition, params Sorting[] orderBy)
         {
             return Search(condition, orderBy);
         }
 
-        IList IObjectViewDAO.SearchSection(Condition condition, SectionSet section)
+        IList IObjectViewDAO.SearchSection(Statement condition, SectionSet section)
         {
             return SearchSection(condition, section);
         }
@@ -318,62 +256,52 @@ namespace MyOrm
 
         public virtual Task<T> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => GetObject(keys), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => GetObject(keys), cancellationToken);
         }
 
         Task<object> IObjectViewDAOAsync.GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => (object)GetObject(keys), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => (object)GetObject(keys), cancellationToken);
         }
 
-        public virtual Task<int> CountAsync(Condition condition, CancellationToken cancellationToken = default)
+        public virtual Task<int> CountAsync(Statement condition, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Count(condition), cancellationToken);
-        }
-
-        public virtual Task<int> CountAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
-        {
-            return Session.ExecuteInSessionAsync(() => Count(expression), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Count(condition), cancellationToken);
         }
 
         public virtual Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Exists(o), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Exists(o), cancellationToken);
         }
 
         public virtual Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => ExistsKey(keys), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => ExistsKey(keys), cancellationToken);
         }
 
-        public virtual Task<bool> ExistsAsync(Condition condition, CancellationToken cancellationToken = default)
+        public virtual Task<bool> ExistsAsync(Statement condition, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Exists(condition), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Exists(condition), cancellationToken);
         }
 
         public virtual Task<bool> ExistsAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Exists(expression), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Exists(expression), cancellationToken);
         }
 
-        public virtual Task<T> SearchOneAsync(Condition condition, CancellationToken cancellationToken = default)
+        public virtual Task<T> SearchOneAsync(Statement condition, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => SearchOne(condition), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => SearchOne(condition), cancellationToken);
         }
 
-        Task<object> IObjectViewDAOAsync.SearchOneAsync(Condition condition, CancellationToken cancellationToken = default)
+        Task<object> IObjectViewDAOAsync.SearchOneAsync(Statement condition, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => (object)SearchOne(condition), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => (object)SearchOne(condition), cancellationToken);
         }
 
-        public virtual Task<T> SearchOneAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
+        public virtual Task ForEachAsync(Statement condition, Func<T, Task> func, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => SearchOne(expression), cancellationToken);
-        }
-
-        public virtual Task ForEachAsync(Condition condition, Func<T, Task> func, CancellationToken cancellationToken = default)
-        {
-            return Session.ExecuteInSessionAsync(() =>
+            return CurrentSession.ExecuteInSessionAsync(() =>
             {
                 var list = Search(condition);
                 return list;
@@ -389,54 +317,34 @@ namespace MyOrm
             }, cancellationToken).Unwrap();
         }
 
-        public virtual Task ForEachAsync(Expression<Func<T, bool>> expression, Func<T, Task> func, CancellationToken cancellationToken = default)
+        public virtual Task<List<T>> SearchAsync(Statement condition = null, CancellationToken cancellationToken = default)
         {
-            return ForEachAsync(Condition.Exp(expression), func, cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Search(condition), cancellationToken);
         }
 
-        public virtual Task<List<T>> SearchAsync(Condition condition = null, CancellationToken cancellationToken = default)
+        Task<IList> IObjectViewDAOAsync.SearchAsync(Statement condition, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Search(condition), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => (IList)Search(condition), cancellationToken);
         }
 
-        Task<IList> IObjectViewDAOAsync.SearchAsync(Condition condition, CancellationToken cancellationToken = default)
+        public virtual Task<List<T>> SearchAsync(Statement condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => (IList)Search(condition), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Search(condition, orderBy), cancellationToken);
         }
 
-        public virtual Task<List<T>> SearchAsync(Condition condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
+        Task<IList> IObjectViewDAOAsync.SearchAsync(Statement condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Search(condition, orderBy), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => (IList)Search(condition, orderBy), cancellationToken);
         }
 
-        Task<IList> IObjectViewDAOAsync.SearchAsync(Condition condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
+        public virtual Task<List<T>> SearchSectionAsync(Statement condition, SectionSet section, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => (IList)Search(condition, orderBy), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => SearchSection(condition, section), cancellationToken);
         }
 
-        public virtual Task<List<T>> SearchAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
+        Task<IList> IObjectViewDAOAsync.SearchSectionAsync(Statement condition, SectionSet section, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Search(expression), cancellationToken);
-        }
-
-        public virtual Task<List<T>> SearchAsync(Expression<Func<T, bool>> expression, Sorting[] orderBy, CancellationToken cancellationToken = default)
-        {
-            return Session.ExecuteInSessionAsync(() => Search(expression, orderBy), cancellationToken);
-        }
-
-        public virtual Task<List<T>> SearchSectionAsync(Condition condition, SectionSet section, CancellationToken cancellationToken = default)
-        {
-            return Session.ExecuteInSessionAsync(() => SearchSection(condition, section), cancellationToken);
-        }
-
-        Task<IList> IObjectViewDAOAsync.SearchSectionAsync(Condition condition, SectionSet section, CancellationToken cancellationToken = default)
-        {
-            return Session.ExecuteInSessionAsync(() => (IList)SearchSection(condition, section), cancellationToken);
-        }
-
-        public virtual Task<List<T>> SearchSectionAsync(Expression<Func<T, bool>> expression, SectionSet section, CancellationToken cancellationToken = default)
-        {
-            return Session.ExecuteInSessionAsync(() => SearchSection(expression, section), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => (IList)SearchSection(condition, section), cancellationToken);
         }
 
         #endregion

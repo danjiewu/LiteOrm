@@ -8,16 +8,10 @@ namespace MyOrm.Service
     [Serializable]
     public class ServiceDescription
     {
-        public ServiceDescription(string methodName)
-        {
-            MethodName = methodName;
-            LogLevel = LogLevel.Debug;
-            LogFormat = LogFormat.Full;
-        }
-
-        public string MethodName { get; private set; }
-        public LogLevel LogLevel { get; set; }
-        public LogFormat LogFormat { get; set; }
+        public string ServiceName { get; set; }
+        public string MethodName { get; set; }
+        public LogLevel LogLevel { get; set; } = LogLevel.Debug;
+        public LogFormat LogFormat { get; set; } = LogFormat.Full;
         public bool[] ArgsLogable { get; set; }
         public bool IsTransaction { get; set; }
         public bool IsService { get; set; }

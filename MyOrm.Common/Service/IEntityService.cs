@@ -6,6 +6,8 @@ using MyOrm.Common;
 using System.ComponentModel;
 using System.Linq.Expressions;
 using Microsoft.Extensions.Logging;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MyOrm.Service
 {
@@ -15,7 +17,7 @@ namespace MyOrm.Service
     /// <typeparam name="T"></typeparam>
     [Service]
     [ServicePermission(false)]
-    [ServiceLog(LogLevel= LogLevel.Information)]
+    [ServiceLog(LogLevel = LogLevel.Information)]
     public interface IEntityService<T> : IEntityService
     {
         /// <summary>
@@ -34,13 +36,6 @@ namespace MyOrm.Service
         /// true:成功
         /// false:失败</returns>
         bool Update(T entity);
-        /// <summary>
-        /// 根据条件和字段内容更新值
-        /// </summary>
-        /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
-        /// <param name="expression">查询表达式<example>f=>f.Name == "Simth"</example><example>f=>f.Name.CompareTo("David") > 0</example><example>f=>!f.Name.StartsWith("T")</example></param>
-        /// <returns></returns>
-        int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Expression<Func<T, bool>> expression);
         /// <summary>
         /// 实体存在则更新，否则新增
         /// </summary>
@@ -78,10 +73,27 @@ namespace MyOrm.Service
         [Transaction]
         void Batch(IEnumerable<EntityOperation<T>> entities);
     }
+
+    /// <summary>
+    /// 异步版本 - 泛型实体更改接口
+    /// </summary>
+    public interface IEntityServiceAsync<T> : IEntityServiceAsync
+    {
+        Task<bool> InsertAsync(T entity, CancellationToken cancellationToken = default);
+        Task<bool> UpdateAsync(T entity, CancellationToken cancellationToken = default);
+        Task<bool> UpdateOrInsertAsync(T entity, CancellationToken cancellationToken = default);
+        Task BatchInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+        Task BatchUpdateAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+        Task BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+        Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+        Task BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default);
+    }
+
     /// <summary>
     /// 实体类更改接口
     /// </summary>
     [ServicePermission(false)]
+    [AutoRegister(false)]
     public interface IEntityService
     {
         /// <summary>
@@ -106,7 +118,7 @@ namespace MyOrm.Service
         /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
         /// <param name="condition">更新条件</param>
         /// <returns>更改记录数</returns>
-        int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Condition condition);
+        int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Statement condition);
         /// <summary>
         /// 根据主键和字段内容更新值
         /// </summary>
@@ -167,6 +179,25 @@ namespace MyOrm.Service
     }
 
     /// <summary>
+    /// 异步版本 - 非泛型实体更改接口
+    /// </summary>
+    [AutoRegister(false)]
+    public interface IEntityServiceAsync
+    {
+        Task<bool> InsertAsync(object entity, CancellationToken cancellationToken = default);
+        Task<bool> UpdateAsync(object entity, CancellationToken cancellationToken = default);
+        Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Statement condition, CancellationToken cancellationToken = default);
+        Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, object[] keys, CancellationToken cancellationToken = default);
+        Task<bool> UpdateOrInsertAsync(object entity, CancellationToken cancellationToken = default);
+        Task<bool> DeleteIDAsync(object id, CancellationToken cancellationToken = default);
+        Task BatchInsertAsync(IEnumerable entities, CancellationToken cancellationToken = default);
+        Task BatchUpdateAsync(IEnumerable entities, CancellationToken cancellationToken = default);
+        Task BatchUpdateOrInsertAsync(IEnumerable entities, CancellationToken cancellationToken = default);
+        Task BatchDeleteAsync(IEnumerable entities, CancellationToken cancellationToken = default);
+        Task BatchDeleteIDAsync(IEnumerable<int> ids, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>
     /// 实体类查询接口
     /// </summary>
     /// <typeparam name="T"></typeparam>
@@ -188,62 +219,21 @@ namespace MyOrm.Service
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
-        new T SearchOne(Condition condition, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件获取单个实体
-        /// </summary>
-        /// <param name="expression">查询表达式</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
-        T SearchOne(Expression<Func<T, bool>> expression, params string[] tableArgs);
-        /// <summary>
-        /// 根据查询表达式检查是否存在记录
-        /// </summary>
-        /// <param name="expression">查询表达式</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>是否存在记录</returns>
-        [Service]
-        bool Exists(Expression<Func<T, bool>> expression, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件表达式获取记录总数
-        /// </summary>
-        /// <param name="expression">查询表达式</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的记录总数</returns>
-        int Count(Expression<Func<T, bool>> expression, params string[] tableArgs);
+        new T SearchOne(Statement condition, params string[] tableArgs);
         /// <summary>
         /// 根据条件遍历对象
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <param name="func">调用的函数委托</param>
         /// <param name="tableArgs">表名参数</param>
-        void ForEach(Condition condition, Action<T> func, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件表达式遍历对象
-        /// </summary>
-        /// <param name="expression">查询表达式</param>
-        /// <param name="func">调用的函数委托</param>
-        /// <param name="tableArgs">表名参数</param>
-        void ForEach(Expression<Func<T, bool>> expression, Action<T> func, params string[] tableArgs);
+        void ForEach(Statement condition, Action<T> func, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取实体列表
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
-        new List<T> Search(Condition condition = null, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件表达式获取实体列表,支持数值比较、逻辑操作等 
-        /// <para>Search(f=>f.Name == "Smith")</para>
-        /// <para>Search(f=>f.Age > 30 &amp;&amp; f.DepartmentID == 10)</para>
-        /// <para>Search(f=>f.Name.Contains("aa") || !f.Name.EndsWith("d"))</para>
-        /// <para>Search(f=>f.Name.CompareTo("Tom") > 0)</para>
-        /// <para>Search(f=>new List&lt;int&gt;{1,2,3,4,5}.Contains(f.ID))</para>
-        /// </summary>
-        /// <param name="expression">查询表达式</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的实体列表</returns>
-        List<T> Search(Expression<Func<T, bool>> expression, params string[] tableArgs);
+        new List<T> Search(Statement condition = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件查询
         /// </summary>
@@ -251,16 +241,7 @@ namespace MyOrm.Service
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的对象列表</returns>
-        new List<T> SearchWithOrder(Condition condition, Sorting[] orderBy = null, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件表达式查询
-        /// </summary>
-        /// <param name="expression">查询表达式</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的对象列表</returns>
-        /// <seealso cref="Search(Expression{Func{T, bool}}) "/>
-        List<T> SearchWithOrder(Expression<Func<T, bool>> expression, Sorting[] orderBy = null, params string[] tableArgs);
+        new List<T> SearchWithOrder(Statement condition, Sorting[] orderBy = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件分页查询
         /// </summary>
@@ -270,18 +251,7 @@ namespace MyOrm.Service
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的分页对象列表</returns>
-        new List<T> SearchSection(Condition condition, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件表达式分页查询
-        /// </summary>
-        /// <param name="expression">查询表达式</param>
-        /// <param name="startIndex">起始记录数</param>
-        /// <param name="sectionSize">获取记录条数</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的分页对象列表</returns>
-        /// <seealso cref="Search(Expression{Func{T, bool}})"/>
-        List<T> SearchSection(Expression<Func<T, bool>> expression, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs);
+        new List<T> SearchSection(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件分页查询
         /// </summary>
@@ -289,20 +259,26 @@ namespace MyOrm.Service
         /// <param name="section">分页设置</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的分页对象列表</returns>
-        new List<T> SearchSection(Condition condition, SectionSet section, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件表达式分页查询
-        /// </summary>
-        /// <param name="expression">查询表达式</param>
-        /// <param name="section">分页设置</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的分页对象列表</returns>
-        /// <seealso cref="Search(Expression{Func{T, bool}})"/>
-        List<T> SearchSection(Expression<Func<T, bool>> expression, SectionSet section, params string[] tableArgs);
+        new List<T> SearchSection(Statement condition, SectionSet section, params string[] tableArgs);
+    }
+
+    /// <summary>
+    /// 异步版本 - 泛型实体查询接口
+    /// </summary>
+    public interface IEntityViewServiceAsync<T> : IEntityViewServiceAsync
+    {
+        Task<T> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<T> SearchOneAsync(Statement condition, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task ForEachAsync(Statement condition, Func<T, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<List<T>> SearchAsync(Statement condition = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<List<T>> SearchWithOrderAsync(Statement condition, Sorting[] orderBy = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<List<T>> SearchSectionAsync(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<List<T>> SearchSectionAsync(Statement condition, SectionSet section, string[] tableArgs = null, CancellationToken cancellationToken = default);
     }
 
     [ServicePermission(true)]
     [ServiceLog(LogLevel = LogLevel.Debug)]
+    [AutoRegister(false)]
     public interface IEntityViewService
     {
         /// <summary>
@@ -327,7 +303,7 @@ namespace MyOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>是否存在记录</returns>
         [Service]
-        bool Exists(Condition condition, params string[] tableArgs);
+        bool Exists(Statement condition, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取记录总数
         /// </summary>
@@ -335,21 +311,21 @@ namespace MyOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的记录总数</returns>
         [Service]
-        int Count(Condition condition = null, params string[] tableArgs);
+        int Count(Statement condition = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取单个实体
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
-        object SearchOne(Condition condition, params string[] tableArgs);
+        object SearchOne(Statement condition, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取实体列表
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
-        IList Search(Condition condition = null, params string[] tableArgs);
+        IList Search(Statement condition = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件查询
         /// </summary>
@@ -357,7 +333,7 @@ namespace MyOrm.Service
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的对象列表</returns>
-        IList SearchWithOrder(Condition condition, Sorting[] orderBy = null, params string[] tableArgs);
+        IList SearchWithOrder(Statement condition, Sorting[] orderBy = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件分页查询
         /// </summary>
@@ -367,7 +343,7 @@ namespace MyOrm.Service
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的分页对象列表</returns>
-        IList SearchSection(Condition condition, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs);
+        IList SearchSection(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件分页查询
         /// </summary>
@@ -375,7 +351,24 @@ namespace MyOrm.Service
         /// <param name="section">分页设置</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的分页对象列表</returns>
-        IList SearchSection(Condition condition, SectionSet section, params string[] tableArgs);
+        IList SearchSection(Statement condition, SectionSet section, params string[] tableArgs);
+    }
+
+    /// <summary>
+    /// 异步版本 - 非泛型实体查询接口
+    /// </summary>
+    [AutoRegister(false)]
+    public interface IEntityViewServiceAsync
+    {
+        Task<object> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<bool> ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<bool> ExistsAsync(Statement condition, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<int> CountAsync(Statement condition = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<object> SearchOneAsync(Statement condition, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<IList> SearchAsync(Statement condition = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<IList> SearchWithOrderAsync(Statement condition, Sorting[] orderBy = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<IList> SearchSectionAsync(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<IList> SearchSectionAsync(Statement condition, SectionSet section, string[] tableArgs = null, CancellationToken cancellationToken = default);
     }
 
     [Serializable]

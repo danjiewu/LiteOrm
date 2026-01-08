@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using MyOrm.Common;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,6 +11,7 @@ using System.Threading.Tasks;
 
 namespace MyOrm
 {
+    [AutoRegister(ServiceLifetime.Scoped)]
     public class SessionManager : IDisposable
     {
         private readonly DAOContextPoolFactory _daoContextPoolFactory;
@@ -28,7 +31,7 @@ namespace MyOrm
         public static SessionManager Current
         {
             get => _currentAsyncLocal.Value;
-            internal set => _currentAsyncLocal.Value = value;
+            set => _currentAsyncLocal.Value = value;
         }
 
         /// <summary>
@@ -44,13 +47,13 @@ namespace MyOrm
         /// 进入当前上下文，置 SessionManager.Current 为为当前实例的副本
         /// </summary>
         /// <returns>上下文作用域对象，在 Dispose 时恢复之前的 Current</returns>
-        public IDisposable EnterContext()
+        public IDisposable EnterContext(bool newSession = true)
         {
-            // 保存当前的 Current
-            var previousCurrent = Current;
-
-            // 返回一个作用域对象，在作用域结束时恢复之前的 Current
-            return new ContextScope(CreateCopy());
+            if (newSession)
+                // 返回一个作用域对象，在作用域结束时恢复之前的 Current
+                return new ContextScope(CreateCopy());
+            else
+                return new ContextScope(this);
         }
 
         /// <summary>
@@ -114,7 +117,7 @@ namespace MyOrm
             {
                 try
                 {
-                    if (!InTransaction)
+                    if (InTransaction)
                     {
                         CommitInternal();
                     }
@@ -290,18 +293,10 @@ namespace MyOrm
             return success;
         }
 
-        /// <summary>
-        /// Retrieves a DAOContext instance associated with the specified name, creating or obtaining it from the pool
-        /// if necessary.
-        /// </summary>
-        /// <remarks>If a transaction is active and the retrieved context is not already in a transaction,
-        /// a transaction is automatically started on the context. The returned context is cached for subsequent calls
-        /// with the same name within the current scope.</remarks>
-        /// <param name="name">The name of the DAO context to retrieve. If null, the default context is used.</param>
-        /// <returns>A DAOContext instance corresponding to the specified name. If the context does not exist, a new one is
-        /// obtained from the pool.</returns>
+
         public DAOContext GetDaoContext(string name = null)
         {
+            if (name == null) name = "_";
             lock (_syncLock)
             {
                 if (!_daoContexts.TryGetValue(name, out DAOContext context))
@@ -418,9 +413,16 @@ namespace MyOrm
             public void Dispose()
             {
                 if (_disposed) return;
-                Current = _prevSessionManager;
-                _sessionManager.Dispose();
-                _disposed = true;
+                // 即使Dispose抛出异常，也要尝试恢复之前的SessionManager
+                try
+                {
+                    _sessionManager.Dispose();
+                }
+                finally
+                {
+                    Current = _prevSessionManager;
+                    _disposed = true;
+                }
             }
         }
         #endregion

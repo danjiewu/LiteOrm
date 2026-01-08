@@ -1,32 +1,128 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.ComponentModel;
 using System.Linq;
 
 namespace MyOrm.Common
 {
-    /// <summary>
-    /// 分页查询时的分页设定
-    /// </summary>
     [Serializable]
     public class SectionSet
     {
         /// <summary>
         /// 需要得到的起始记录号
         /// </summary>
-        public int StartIndex { get; set; }
+        public int StartIndex { get; private set; }
+
         /// <summary>
         /// 需要得到的记录数
         /// </summary>
-        public int SectionSize { get; set; }
+        public int SectionSize { get; private set; }
+
         /// <summary>
         /// 排序项的集合，按优先级顺序排列
         /// </summary>
-        public Sorting[] Orders { get; set; }
+        public List<Sorting> Orders { get; private set; } = new List<Sorting>();
+
+        /// <summary>
+        /// 创建分页设置（使用默认值）
+        /// </summary>
+        public SectionSet() { }
+
+        /// <summary>
+        /// 创建分页设置
+        /// </summary>
+        public SectionSet(int startIndex, int sectionSize)
+        {
+            StartIndex = startIndex;
+            SectionSize = sectionSize;
+        }
+
+        /// <summary>
+        /// 创建分页设置
+        /// </summary>
+        public SectionSet(int startIndex, int sectionSize, params Sorting[] orders)
+        {
+            StartIndex = startIndex;
+            SectionSize = sectionSize;
+            if (orders != null)
+                Orders.AddRange(orders);
+        }
+
+        /// <summary>
+        /// 设置分页起始位置
+        /// </summary>
+        public SectionSet StartAt(int startIndex)
+        {
+            StartIndex = startIndex;
+            return this;
+        }
+
+        /// <summary>
+        /// 设置分页大小
+        /// </summary>
+        public SectionSet Take(int sectionSize)
+        {
+            SectionSize = sectionSize;
+            return this;
+        }
+
+        /// <summary>
+        /// 添加升序排序
+        /// </summary>
+        public SectionSet OrderBy(string propertyName)
+        {
+            Orders.Add(new Sorting(propertyName, ListSortDirection.Ascending));
+            return this;
+        }
+
+        /// <summary>
+        /// 添加降序排序
+        /// </summary>
+        public SectionSet OrderByDescending(string propertyName)
+        {
+            Orders.Add(new Sorting(propertyName, ListSortDirection.Descending));
+            return this;
+        }
+
+        /// <summary>
+        /// 添加自定义排序
+        /// </summary>
+        public SectionSet OrderBy(string propertyName, ListSortDirection direction)
+        {
+            Orders.Add(new Sorting(propertyName, direction));
+            return this;
+        }
+
+        /// <summary>
+        /// 清除所有排序
+        /// </summary>
+        public SectionSet ClearOrders()
+        {
+            Orders.Clear();
+            return this;
+        }
+
+        /// <summary>
+        /// 快速创建一个分页设置
+        /// </summary>
+        public static SectionSet Create(int startIndex, int sectionSize)
+        {
+            return new SectionSet(startIndex, sectionSize);
+        }
+
+        /// <summary>
+        /// 快速创建一个分页设置（带配置）
+        /// </summary>
+        public static SectionSet Create(int startIndex, int sectionSize, Action<SectionSet> configure)
+        {
+            var section = new SectionSet(startIndex, sectionSize);
+            configure?.Invoke(section);
+            return section;
+        }
+
         public override string ToString()
         {
-            if (Orders != null && Orders.Length > 0)
+            if (Orders != null && Orders.Count > 0)
             {
                 return $"Start:{StartIndex} Size:{SectionSize} Orders:{string.Join(",", Orders.Select(o => o.ToString()))}";
             }

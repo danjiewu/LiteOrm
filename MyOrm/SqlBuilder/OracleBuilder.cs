@@ -70,7 +70,7 @@ namespace MyOrm.Oracle
         public override string ToSqlName(string name)
         {
             if (name == null) throw new ArgumentNullException("name");
-            return String.Join(".", Array.ConvertAll(name.Split('.'), n => String.Format("\"{0}\"", n.ToUpper())));
+            return String.Join(".", Array.ConvertAll(name.Split('.'), n => $"\"{n.ToUpper()}\""));
         }
 
         /// <summary>

@@ -1,16 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Globalization;
-using System.Linq;
-using System.Net.Http;
-using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using MyOrm.Common;
 using MyOrm.Service;
 
@@ -20,40 +13,53 @@ namespace MyOrm.AspNetCore
     {
         private readonly RequestDelegate _next;
         private readonly IServiceProvider _rootProvider;
+        private readonly ILogger<MyServiceScopeMiddleware> _logger;
 
-        // 注入自定义根ServiceProvider（需提前注册为服务）
-        public MyServiceScopeMiddleware(RequestDelegate next, IServiceProvider rootProvider)
+        public MyServiceScopeMiddleware(
+            RequestDelegate next,
+            IServiceProvider rootProvider,
+            ILogger<MyServiceScopeMiddleware> logger)
         {
             _next = next;
             _rootProvider = rootProvider;
+            _logger = logger;
         }
 
-        public async Task InvokeAsync(HttpContext context)
+        public async Task InvokeAsync(HttpContext context, SessionManager sessionManager)
         {
-            // 使用自定义根Provider创建Scope
-            using var customScope = _rootProvider.CreateScope();
-            using var sessionManager = customScope.ServiceProvider.GetRequiredService<SessionManager>();
-            using var sessionScope = sessionManager.EnterContext();
-            // 替换请求的RequestServices为自定义Scope的Provider
-            var originalRequestServices = context.RequestServices;
-            context.RequestServices = customScope.ServiceProvider;
+            var requestId = context.TraceIdentifier;
+            var method = context.Request.Method;
+            var path = context.Request.Path;
+            var queryString = context.Request.QueryString.Value;
+            using var scope = sessionManager.EnterContext(false);
             try
             {
-                    await _next(context);
+                await _next(context);
+            }
+            catch (Exception ex)
+            {
+                // 简化日志：只记录异常类型、请求ID和路径
+                _logger.LogError(
+                    "异常: {ExceptionType} - {RequestId} {Method} {Path}{QueryString}",
+                    ex.GetType().Name,
+                    requestId,
+                    method,
+                    path,
+                    queryString);
+
+                throw; // 重新抛出异常
             }
             finally
             {
-                // 恢复原始RequestServices（可选，防止后续中间件异常）
-                context.RequestServices = originalRequestServices;
+                scope.Dispose();
             }
         }
     }
-
     public static class MyServiceScopeMiddlewareExtensions
     {
         public static IApplicationBuilder UseMyOrm(this IApplicationBuilder builder)
         {
-            return builder.UseMiddleware<MyServiceScopeMiddleware>(builder.ApplicationServices);
+            return builder.UseMiddleware<MyServiceScopeMiddleware>();
         }
     }
 }

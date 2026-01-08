@@ -1,4 +1,5 @@
-﻿using MyOrm.Common;
+﻿using Microsoft.Extensions.DependencyInjection;
+using MyOrm.Common;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,6 +12,7 @@ namespace MyOrm
     /// <summary>
     /// DAOContextPool 工厂类
     /// </summary>
+    [AutoRegister(ServiceLifetime.Singleton)]
     public class DAOContextPoolFactory : IDisposable
     {
         private readonly ConcurrentDictionary<string, DAOContextPool> _pools = new(StringComparer.OrdinalIgnoreCase);

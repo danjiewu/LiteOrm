@@ -14,45 +14,28 @@ namespace MyOrm.Common
     public static class ConditionConvert
     {
         /// <summary>
-        /// 判定对象是否符合给定的条件
-        /// </summary>
-        /// <param name="condition">用来判定的条件</param>
-        /// <param name="target">判定对象</param>
-        /// <returns>判定结果</returns>
-        public static EnsureResult Ensure(this Condition condition, object target)
-        {
-            if (condition == null) return EnsureResult.True;
-            else if (condition is SimpleCondition)
-                return Ensure(condition as SimpleCondition, target);
-            else if (condition is ConditionSet)
-                return Ensure(condition as ConditionSet, target);
-            else
-                return EnsureResult.Undetermined;
-        }
-
-        /// <summary>
         /// 将属性和字符串转换为简单查询条件
         /// </summary>
         /// <param name="property">属性</param>
         /// <param name="text">表示查询语句的字符串,可以使用"=","&lt;","&gt;","!","%","*","&lt;=","&gt;="为起始字符表示条件符号 </param>
         /// <returns>简单查询条件</returns>
-        public static SimpleCondition ParseCondition(PropertyDescriptor property, string text)
+        public static BinaryStatement ParseCondition(PropertyDescriptor property, string text)
         {
-            if (text == null) return new SimpleCondition(property.Name, null);
+            if (text == null) return Statement.Property(property.Name, null);
             if (text.Length > 1)
             {
                 switch (text.Substring(0, 2))
                 {
                     case "<=":
-                        return new SimpleCondition(property.Name, ConditionOperator.LargerThan, ParseValue(property, text.Substring(2)), true);
+                        return Statement.Property(property.Name, BinaryOperator.LessThanOrEqual, ParseValue(property, text.Substring(2)));
                     case ">=":
-                        return new SimpleCondition(property.Name, ConditionOperator.SmallerThan, ParseValue(property, text.Substring(2)), true);
+                        return Statement.Property(property.Name, BinaryOperator.GreaterThanOrEqual, ParseValue(property, text.Substring(2)));
                 }
             }
-            bool opposite = false;
+            BinaryOperator mask = BinaryOperator.Equal;
             if (text.Length > 0 && text[0] == '!')
             {
-                opposite = true;
+                mask = BinaryOperator.Not;
                 text = text.Substring(1);
             }
 
@@ -61,22 +44,22 @@ namespace MyOrm.Common
                 switch (text[0])
                 {
                     case '=':
-                        return new SimpleCondition(property.Name, ConditionOperator.Equals, ParseValue(property, text.Substring(1)), opposite);
+                        return Statement.Property(property.Name, BinaryOperator.Equal | mask, ParseValue(property, text.Substring(1)));
                     case '>':
-                        return new SimpleCondition(property.Name, ConditionOperator.LargerThan, ParseValue(property, text.Substring(1)), opposite);
+                        return Statement.Property(property.Name, BinaryOperator.GreaterThan | mask, ParseValue(property, text.Substring(1)));
                     case '<':
-                        return new SimpleCondition(property.Name, ConditionOperator.SmallerThan, ParseValue(property, text.Substring(1)), opposite);
+                        return Statement.Property(property.Name, BinaryOperator.LessThan | mask, ParseValue(property, text.Substring(1)));
                     case '%':
-                        return new SimpleCondition(property.Name, ConditionOperator.Contains, text.Substring(1).Trim(), opposite);
+                        return Statement.Property(property.Name, BinaryOperator.Contains | mask, text.Substring(1).Trim());
                     case '*':
-                        return new SimpleCondition(property.Name, ConditionOperator.Like, text.Substring(1).Trim(), opposite);
+                        return Statement.Property(property.Name, BinaryOperator.Like | mask, text.Substring(1).Trim());
                     case '$':
-                       return new SimpleCondition(property.Name, ConditionOperator.RegexpLike, text.Substring(1).Trim(), opposite);
+                        return Statement.Property(property.Name, BinaryOperator.RegexpLike | mask, text.Substring(1).Trim());
                 }
             }
             else
             {
-                return new SimpleCondition(property.Name, ConditionOperator.Equals, null, opposite);
+                return Statement.Property(property.Name, BinaryOperator.Equal | mask, null);
             }
             if (text.IndexOf(',') >= 0)
             {
@@ -85,9 +68,9 @@ namespace MyOrm.Common
                 {
                     values.Add(ParseValue(property, value));
                 }
-                return new SimpleCondition(property.Name, ConditionOperator.In, values.ToArray(), opposite);
+                return Statement.Property(property.Name, BinaryOperator.In | mask, values.ToArray());
             }
-            return new SimpleCondition(property.Name, ConditionOperator.Equals, ParseValue(property, text), opposite);
+            return Statement.Property(property.Name, BinaryOperator.Equal | mask, ParseValue(property, text));
         }
 
         /// <summary>
@@ -134,11 +117,11 @@ namespace MyOrm.Common
         /// <param name="opposite">是否为非</param>
         /// <param name="value">用于比较的值</param>
         /// <returns></returns>
-        public static string ToText(ConditionOperator op, bool opposite, object value)
+        public static string ToText(BinaryOperator op, bool opposite, object value)
         {
             switch (op)
             {
-                case ConditionOperator.In:
+                case BinaryOperator.In:
                     List<string> values = new List<string>();
                     foreach (object o in value as IEnumerable)
                     {
@@ -146,12 +129,12 @@ namespace MyOrm.Common
                     }
                     string str = String.Join(",", values.ToArray());
                     return opposite ? "!" + ToText(str, "<>=*%".ToCharArray()) : ToText(str, "!<>=*%".ToCharArray());
-                case ConditionOperator.LargerThan: return opposite ? "<=" + ToText(value) : ">" + ToText(value, '=');
-                case ConditionOperator.SmallerThan: return opposite ? ">=" + ToText(value) : "<" + ToText(value, '=');
-                case ConditionOperator.Like: return (opposite ? "!*" : "*") + ToText(value);
-                case ConditionOperator.Contains: return (opposite ? "!%" : "%") + ToText(value);
-                case ConditionOperator.RegexpLike: return (opposite ? "!$" : "$") + ToText(value);
-                case ConditionOperator.Equals:
+                case BinaryOperator.GreaterThan: return opposite ? "<=" + ToText(value) : ">" + ToText(value, '=');
+                case BinaryOperator.LessThan: return opposite ? ">=" + ToText(value) : "<" + ToText(value, '=');
+                case BinaryOperator.Like: return (opposite ? "!*" : "*") + ToText(value);
+                case BinaryOperator.Contains: return (opposite ? "!%" : "%") + ToText(value);
+                case BinaryOperator.RegexpLike: return (opposite ? "!$" : "$") + ToText(value);
+                case BinaryOperator.Equal:
                     str = ToText(value);
                     if (value != null && (str == String.Empty || "<>=*%$".IndexOf(str[0]) >= 0 || (str[0] == '!' && !opposite) || str.IndexOf(',') >= 0))
                         str = '=' + str;

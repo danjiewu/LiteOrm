@@ -9,7 +9,7 @@ using MyOrm;
 namespace DAL.Data
 {
     [Serializable]
-    public abstract class EntityBase : ObjectBase, ICopyable, ICloneable, ILogable
+    public abstract class EntityBase : ObjectBase
     {
         [Browsable(false)]
         [DisplayName("序号")]

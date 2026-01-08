@@ -1,17 +1,16 @@
-﻿using MyOrm.Common;
+﻿using Microsoft.Extensions.DependencyInjection;
+using MyOrm.Common;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Collections.Concurrent;
+
 
 namespace MyOrm
 {
+    [AutoRegister(ServiceLifetime.Singleton)]
     public class SqlBuilderFactory : ISqlBuilderFactory
     {
         public static readonly SqlBuilderFactory Instance = new SqlBuilderFactory();
-        public Dictionary<Type, SqlBuilder> registeredSqlBuilders { get; } = new();
+        public  ConcurrentDictionary<Type, SqlBuilder> registeredSqlBuilders { get; } = new();
 
         public void RegisterSqlBuilder(Type providerType, SqlBuilder sqlBuilder)
         {

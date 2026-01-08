@@ -15,7 +15,7 @@ namespace MyOrm
     /// 实体类增删改等实现
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    public class ObjectDAO<T> : ObjectDAOBase, IObjectDAO<T>, IObjectDAO, IObjectDAOAsync<T>, IObjectDAOAsync
+    public class ObjectDAO<T> : ObjectDAOBase, IObjectDAO<T>
     {
         /// <summary>
         /// 实体对象类型
@@ -24,7 +24,7 @@ namespace MyOrm
         {
             get { return typeof(T); }
         }
-        protected override Table Table
+        public override Table Table
         {
             get { return TableInfoProvider.GetTableDefinition(ObjectType); }
         }
@@ -235,7 +235,7 @@ namespace MyOrm
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
         /// <param name="condition">更新的条件</param>
         /// <returns>更新的记录数</returns>
-        public virtual int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Condition condition)
+        public virtual int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Statement condition)
         {
             List<string> strSets = new List<string>();
             ParamList paramValues = new ParamList();
@@ -246,34 +246,8 @@ namespace MyOrm
                 strSets.Add(column.FormattedName(SqlBuilder) + "=" + ToSqlParam(paramValues.Count.ToString()));
                 paramValues.Add(paramValues.Count.ToString(), value.Value);
             }
-            string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray()) + " \nwhere" + SqlBuilder.BuildConditionSql(SqlBuildContext, condition, paramValues);
+            string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray()) + " \nwhere" + condition.ToSql(SqlBuildContext, SqlBuilder, paramValues);
             using (IDbCommand command = MakeNamedParamCommand(updateSql, paramValues))
-            {
-                return command.ExecuteNonQuery();
-            }
-        }
-
-        /// <summary>
-        /// 根据条件表达式更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="condition">更新的条件表达式</param>
-        /// <returns>更新的记录数</returns>
-        public int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression)
-        {
-            List<string> strSets = new List<string>();
-            ExpressionParser parser = new ExpressionParser(SqlBuilder, SqlBuildContext);
-            foreach (KeyValuePair<string, object> value in values)
-            {
-                Column column = Table.GetColumn(value.Key);
-                if (column == null) throw new Exception(String.Format("Property \"{0}\" does not exist in type \"{1}\".", value.Key, Table.DefinitionType.FullName));
-                strSets.Add(column.FormattedName(SqlBuilder) + "=" + parser.AddArgument(value.Value));
-            }
-
-            parser.Visit(expression);
-            string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray());
-            if (!String.IsNullOrEmpty(parser.Result)) updateSql += " \nwhere" + parser.Result;
-            using (IDbCommand command = MakeNamedParamCommand(updateSql, parser.Arguments))
             {
                 return command.ExecuteNonQuery();
             }
@@ -289,11 +263,11 @@ namespace MyOrm
         {
             ThrowExceptionIfNoKeys();
             ThrowExceptionIfWrongKeys(keys);
-            ConditionSet condition = new ConditionSet();
+            StatementSet condition = new StatementSet();
             int i = 0;
             foreach (ColumnDefinition column in TableDefinition.Keys)
             {
-                condition.Add(new SimpleCondition(column.PropertyName, keys[i++]));
+                condition.Add(Statement.Property(column.PropertyName, keys[i++]));
             }
             return UpdateAllValues(values, condition) > 0;
         }
@@ -314,7 +288,7 @@ namespace MyOrm
         /// </summary>
         /// <param name="condition">条件</param>
         /// <returns>删除对象数量</returns>
-        public virtual int Delete(Condition condition)
+        public virtual int Delete(Statement condition)
         {
             using (IDbCommand command = MakeConditionCommand("delete from @Table@ \nwhere@Condition@", condition))
             {
@@ -382,42 +356,38 @@ namespace MyOrm
 
         public virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Insert(t), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Insert(t), cancellationToken);
         }
 
         public virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => BatchInsert(values), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => BatchInsert(values), cancellationToken);
         }
 
         public virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Update(t, timestamp), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Update(t, timestamp), cancellationToken);
         }
 
         public virtual Task<UpdateOrInsertResult> UpdateOrInsertAsync(T t, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => UpdateOrInsert(t), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => UpdateOrInsert(t), cancellationToken);
         }
 
-        public virtual Task<int> UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
-        {
-            return Session.ExecuteInSessionAsync(() => UpdateAllValues(values, expression), cancellationToken);
-        }
 
         public virtual Task<bool> DeleteAsync(T t, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Delete(t), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Delete(t), cancellationToken);
         }
 
         public virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => DeleteByKeys(keys), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => DeleteByKeys(keys), cancellationToken);
         }
 
-        public virtual Task<int> DeleteAsync(Condition condition, CancellationToken cancellationToken = default)
+        public virtual Task<int> DeleteAsync(Statement condition, CancellationToken cancellationToken = default)
         {
-            return Session.ExecuteInSessionAsync(() => Delete(condition), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Delete(condition), cancellationToken);
         }
 
         // non-generic async wrappers
@@ -451,9 +421,9 @@ namespace MyOrm
             return UpdateOrInsertAsync((T)o, cancellationToken);
         }
 
-        Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Condition condition, CancellationToken cancellationToken)
+        Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Statement condition, CancellationToken cancellationToken)
         {
-            return Session.ExecuteInSessionAsync(() => UpdateAllValues(values, condition), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => UpdateAllValues(values, condition), cancellationToken);
         }
 
         Task<bool> IObjectDAOAsync.DeleteAsync(object o, CancellationToken cancellationToken)
@@ -466,7 +436,7 @@ namespace MyOrm
             return DeleteByKeysAsync(keys, cancellationToken);
         }
 
-        Task<int> IObjectDAOAsync.DeleteAsync(Condition condition, CancellationToken cancellationToken)
+        Task<int> IObjectDAOAsync.DeleteAsync(Statement condition, CancellationToken cancellationToken)
         {
             return DeleteAsync(condition, cancellationToken);
         }

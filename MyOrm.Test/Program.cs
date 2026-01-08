@@ -38,8 +38,7 @@ namespace MyOrm.Test
                 .Build();
 
             var host = Host.CreateDefaultBuilder(args)
-
-            .UseServiceProviderFactory(new MyServiceProviderFactory())
+            .RegisterMyOrm()
             .ConfigureServices(services =>
             {
                 services.AddSingleton<IConfiguration>(configuration)
@@ -50,38 +49,20 @@ namespace MyOrm.Test
 
             // 使用ServiceProvider
             var serviceProvider = host.Services;
-            var scope = serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IAccountintLogService>();
-            var logs = service.SearchSection(null, new SectionSet() { SectionSize = 1000 }, "202501");
+            var dao = serviceProvider.GetRequiredService<IObjectDAO<Session>>();
+            var service = serviceProvider.GetRequiredService<IAccountingLogService>();
+            Expression<Func<AccountingLog,bool>> exp = l => l.AcctStartTime <= DateTime.Now,
+            var logs = service.SearchSection(exp, new SectionSet().Take(1000), "202501");
 
 
             for (int i = 0; i < 1000; i++)
             {
                 int cur = i;
-                Console.WriteLine($"第{cur}轮开始.");
-                _batchSemaphore.Wait();
-                Console.WriteLine($"第{cur}轮任务创建.");                
-
+                Console.WriteLine($"第{cur}轮任务创建.");
+                //currentTask.Wait();
+                Console.WriteLine($"第{cur}轮任务开始.");
                 // 创建新任务
-                currentTask = Task.Run(async () =>
-                {
-                    try
-                    {                        
-                        using (var session = SessionManager.Current.EnterContext())
-                        {                            
-                            Console.WriteLine($"第{cur}轮BatchInsert");
-                            var service = scope.ServiceProvider.GetRequiredService<IAccountintLogService>();
-                            service.BatchInsert(logs);
-                        }
-                    }
-                    finally
-                    {
-                        _batchSemaphore.Release();
-                        Console.WriteLine($"第{cur}轮完成.");
-                    }
-                });
-
-                await Task.Delay(100);
+                service.BatchInsert(logs);
             }
 
             Console.ReadKey();

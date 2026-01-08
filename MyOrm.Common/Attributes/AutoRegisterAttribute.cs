@@ -7,10 +7,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MyOrm.Common
 {
-    [AttributeUsage(AttributeTargets.Class,Inherited = true, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = true, AllowMultiple = false)]
     public class AutoRegisterAttribute : Attribute
     {
-        public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Scoped;
+        public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Transient;
 
         // 支持多个服务类型
         public Type[]? ServiceTypes { get; set; }

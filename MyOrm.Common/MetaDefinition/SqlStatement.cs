@@ -9,11 +9,6 @@ namespace MyOrm.Common
     /// </summary>
     public abstract class SqlStatement
     {
-        /// <summary>
-        /// Sql名称的格式
-        /// </summary>
-        public const string SqlNameFormat = "[{0}]";
-
         private string name;
         /// <summary>
         /// 名称

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using MyOrm.Common;
 using System;
 using System.Collections;
@@ -10,6 +11,7 @@ using System.Threading.Tasks;
 
 namespace MyOrm
 {
+    [AutoRegister(ServiceLifetime.Singleton)]
     public class DataSourceProvider : IDataSourceProvider
     {
         private ConcurrentDictionary<string, DataSourceConfig> _connections = new(StringComparer.OrdinalIgnoreCase);
@@ -25,7 +27,7 @@ namespace MyOrm
         {
             if (configuration == null)
                 throw new ArgumentNullException(nameof(configuration));
-            LoadConfiguration(configuration);
+            LoadConfiguration(configuration.GetSection("MyOrm"));
         }
 
         public DataSourceConfig GetDataSource(string name)

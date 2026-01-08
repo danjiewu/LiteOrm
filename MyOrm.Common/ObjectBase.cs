@@ -22,7 +22,7 @@ namespace MyOrm.Common
         public virtual void CopyFrom(ObjectBase target)
         {
             if (target == null) throw new ArgumentNullException(nameof(target));
-  
+
 
             Type sourceType = target.GetType();
             Type targetType = this.GetType();
@@ -208,4 +208,18 @@ namespace MyOrm.Common
     {
         string[] TableArgs { get; }
     }
+
+    /// <summary>
+    /// 根据属性名访问属性值
+    /// </summary>
+    public interface IIndexedProperty
+    {
+        /// <summary>
+        /// 根据属性名设置和获取属性值
+        /// </summary>
+        /// <param name="propertyName">属性名</param>
+        /// <returns>属性的值</returns>
+        object this[string propertyName] { get; set; }
+    }
+
 }

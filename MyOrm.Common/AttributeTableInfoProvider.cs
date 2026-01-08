@@ -7,17 +7,19 @@ using System.Collections.ObjectModel;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
 using MyOrm.Common;
+using System.Collections.Concurrent;
 
 namespace MyOrm
 {
     /// <summary>
     /// 根据Attribute的表信息提供者
     /// </summary>
+    [AutoRegister(ServiceLifetime.Singleton, serviceTypes: typeof(TableInfoProvider))]
     public class AttributeTableInfoProvider : TableInfoProvider
     {
-        private Dictionary<Type, TableDefinition> tableInfoCache = new Dictionary<Type, TableDefinition>();
-        private Dictionary<PropertyInfo, ColumnDefinition> columnCache = new Dictionary<PropertyInfo, ColumnDefinition>();
-        private Dictionary<Type, TableView> tableViewCache = new Dictionary<Type, TableView>();
+        private ConcurrentDictionary<Type, TableDefinition> tableInfoCache = new ConcurrentDictionary<Type, TableDefinition>();
+        private ConcurrentDictionary<PropertyInfo, ColumnDefinition> columnCache = new ConcurrentDictionary<PropertyInfo, ColumnDefinition>();
+        private ConcurrentDictionary<Type, TableView> tableViewCache = new ConcurrentDictionary<Type, TableView>();
         private ISqlBuilderFactory _sqlBuilderFactory;
         private IDataSourceProvider _dataSourceProvider;
         private readonly object SyncLock = new object();
@@ -107,7 +109,7 @@ namespace MyOrm
                         columns.Add(column);
                     }
                 }
-                return new TableDefinition(objectType, columns) { Name = tableName, DataSource = tableAttribute.DataSource ?? _dataSourceProvider.DefaultDataSourceName };
+                return new TableDefinition(objectType, columns) { Name = tableName, DataProviderType = _dataSourceProvider.GetDataSource(tableAttribute.DataSource).ProviderType, DataSource = tableAttribute.DataSource ?? _dataSourceProvider.DefaultDataSourceName };
             }
             return null;
         }
@@ -189,7 +191,7 @@ namespace MyOrm
         private TableView GenerateTableView(Type objectType)
         {
             TableJoinAttribute[] atts = (TableJoinAttribute[])objectType.GetCustomAttributes(typeof(TableJoinAttribute), true);
-            Dictionary<string, JoinedTable> joinedTables = new Dictionary<string, JoinedTable>(StringComparer.OrdinalIgnoreCase);
+            ConcurrentDictionary<string, JoinedTable> joinedTables = new ConcurrentDictionary<string, JoinedTable>(StringComparer.OrdinalIgnoreCase);
 
             foreach (TableJoinAttribute tableJoin in atts)
             {
@@ -200,7 +202,7 @@ namespace MyOrm
                     joinedTable.Name = tableJoin.AliasName;
                 joinedTable.FilterExpression = tableJoin.FilterExpression;
                 if (joinedTables.ContainsKey(joinedTable.Name)) throw new ArgumentException(String.Format("Duplicate table alias name \"{0}\"", joinedTable.Name));
-                joinedTables.Add(joinedTable.Name, joinedTable);
+                joinedTables[joinedTable.Name] = joinedTable;
             }
 
             List<Column> columns = new List<Column>();
@@ -291,7 +293,7 @@ namespace MyOrm
             return tableView;
         }
 
-        private static ColumnRef GetTargetColumn(Dictionary<string, JoinedTable> joinedTables, ForeignColumn column, HashSet<JoinedTable> usedTables)
+        private static ColumnRef GetTargetColumn(ConcurrentDictionary<string, JoinedTable> joinedTables, ForeignColumn column, HashSet<JoinedTable> usedTables)
         {
             ForeignColumnAttribute foreignColumnAttribute = column.Property.GetAttribute<ForeignColumnAttribute>();
             string primeProperty = String.IsNullOrEmpty(foreignColumnAttribute.Property) ? column.PropertyName : foreignColumnAttribute.Property;
@@ -328,7 +330,7 @@ namespace MyOrm
             return targetColumn;
         }
 
-        private void JoinColumn(Dictionary<string, JoinedTable> joinedTables, Queue<ColumnRef> columnRefs)
+        private void JoinColumn(ConcurrentDictionary<string, JoinedTable> joinedTables, Queue<ColumnRef> columnRefs)
         {
             ColumnRef columnRef = columnRefs.Dequeue();
             Column column = columnRef.Column;
@@ -356,7 +358,7 @@ namespace MyOrm
                     foreignKeys.Add(columnRef);
                     joinedTable.FilterExpression = column.ForeignTable.FilterExpression;
                     joinedTable.ForeignKeys = foreignKeys.AsReadOnly();
-                    joinedTables.Add(joinedTable.Name, joinedTable);
+                    joinedTables[joinedTable.Name] = joinedTable;
 
                     foreach (Column lcolumn in foreignTable.Columns)
                     {

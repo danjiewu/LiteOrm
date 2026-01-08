@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace LogRecord
 {
-    [Table("AccountingLog_{0}",DataSource ="Radius")]
+    [Table("AccountingLog_{0}", DataSource = "Radius")]
     public class AccountingLog : ObjectBase, IArged
     {
         [Column(IsPrimaryKey = true, IsIdentity = true)]
@@ -109,7 +109,7 @@ namespace LogRecord
         /// </summary>
         public DateTime EtlTime { get; set; }
 
-        string[] IArged.TableArgs => new string[] { (RequestDate ?? DateTime.Now).ToString("yyyyMM") };    
+        string[] IArged.TableArgs => new string[] { (RequestDate ?? DateTime.Now).ToString("yyyyMM") };
 
     }
 }

@@ -18,7 +18,7 @@ namespace MyOrm
     /// <summary>
     /// 提供常用操作
     /// </summary>
-    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public abstract class ObjectDAOBase
     {
         #region 预定义变量
@@ -62,7 +62,7 @@ namespace MyOrm
         /// <summary>
         /// 表信息
         /// </summary>
-        protected abstract Table Table
+        public abstract Table Table
         {
             get;
         }
@@ -70,7 +70,7 @@ namespace MyOrm
         /// <summary>
         /// 表定义
         /// </summary>
-        protected TableDefinition TableDefinition
+        public TableDefinition TableDefinition
         {
             get { return Table.Definition; }
         }
@@ -80,12 +80,12 @@ namespace MyOrm
         /// </summary>
         protected internal virtual SqlBuilder SqlBuilder
         {
-            get { return SqlBuilderFactory.Instance.GetSqlBuilder(DAOContext.ProviderType); }
+            get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType); }
         }
 
-        public SessionManager Session => SessionManager.Current;
+        public SessionManager CurrentSession => SessionManager.Current;
 
-        public DAOContext DAOContext { get => Session.GetDaoContext(TableDefinition.DataSource); }
+        public DAOContext DAOContext { get => CurrentSession.GetDaoContext(TableDefinition.DataSource); }
 
         /// <summary>
         /// 表名参数
@@ -115,20 +115,18 @@ namespace MyOrm
             set { sqlBuildContext = value; }
         }
 
-        private Lazy<TableInfoProvider> tableInfoProvider = new Lazy<TableInfoProvider>(() => MyServiceProvider.Current.GetRequiredService<TableInfoProvider>());
-
         /// <summary>
         /// 表信息提供者
         /// </summary>
-        protected virtual TableInfoProvider TableInfoProvider
+        public TableInfoProvider TableInfoProvider
         {
-            get => tableInfoProvider.Value;
+            get; set;
         }
 
         /// <summary>
         /// 数据库连接
         /// </summary>
-        public IDbConnection Connection
+        public DbConnection Connection
         {
             get { return DAOContext.DbConnection; }
         }
@@ -136,7 +134,7 @@ namespace MyOrm
         /// <summary>
         /// 表名
         /// </summary>
-        protected string TableName
+        public string TableName
         {
             get
             {
@@ -236,10 +234,10 @@ namespace MyOrm
         /// </summary>
         /// <param name="orders">排序项的集合，按优先级顺序排列</param>
         /// <returns></returns>
-        protected string GetOrderBySQL(Sorting[] orders)
+        protected string GetOrderBySQL(IList<Sorting> orders)
         {
             StringBuilder orderBy = new StringBuilder();
-            if (orders == null || orders.Length == 0)
+            if (orders == null || orders.Count == 0)
             {
                 if (TableDefinition.Keys.Count != 0)
                 {
@@ -345,11 +343,16 @@ namespace MyOrm
         /// </param>        
         /// <param name="condition">条件，为null时表示无条件</param>
         /// <returns>IDbCommand</returns> 
-        public IDbCommand MakeConditionCommand(string SQLWithParam, Condition condition)
+        public IDbCommand MakeConditionCommand(string SQLWithParam, Statement condition)
         {
             ParamList paramList = new ParamList();
             var context = SqlBuildContext;
-            string strCondition = SqlBuilder.BuildConditionSql(context, condition, paramList);
+            string strCondition = null;
+            if (condition != null)
+            {
+                strCondition = condition.ToSql(context, SqlBuilder, paramList);
+            }
+
             if (String.IsNullOrEmpty(strCondition)) strCondition = " 1 = 1 ";
             return MakeNamedParamCommand(SQLWithParam.Replace(ParamCondition, strCondition), paramList);
         }
@@ -408,7 +411,7 @@ namespace MyOrm
             foreach (ColumnDefinition column in TableDefinition.Columns)
             {
                 if (column.IsTimestamp)
-                {                
+                {
                     IDbDataParameter param = command.CreateParameter();
                     param.Size = column.Length;
                     param.DbType = column.DbType;

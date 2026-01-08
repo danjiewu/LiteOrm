@@ -12,7 +12,7 @@ namespace MyOrm.Common
     /// 实体类的增删改等基本操作的泛型接口
     /// </summary>
     /// <typeparam name="T">实体类类型</typeparam>
-    public interface IObjectDAO<T> : IObjectDAO
+    public interface IObjectDAO<T> : IObjectDAOAsync<T>, IObjectDAO
     {
         /// <summary>
         /// 添加对象
@@ -28,14 +28,6 @@ namespace MyOrm.Common
         /// <param name="timestamp">时间戳</param>
         /// <returns>是否成功更新</returns>
         bool Update(T o, object timestamp = null);
-
-        /// <summary>
-        /// 根据条件表达式更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="expression">更新的条件表达式</param>
-        /// <returns>更新的记录数</returns>
-        int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression);
 
         /// <summary>
         /// 更新或添加对象，若存在则更新，若不存在则添加
@@ -57,7 +49,8 @@ namespace MyOrm.Common
     /// <summary>
     /// 实体类的增删改等基本操作的非泛型接口
     /// </summary>
-    public interface IObjectDAO
+    [AutoRegister(false)]
+    public interface IObjectDAO: IObjectDAOAsync
     {
         /// <summary>
         /// 添加对象
@@ -88,7 +81,7 @@ namespace MyOrm.Common
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
         /// <param name="condition">更新的条件</param>
         /// <returns>更新的记录数</returns>
-        int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Condition condition);
+        int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Statement condition);
         /// <summary>
         /// 根据主键更新数据
         /// </summary>
@@ -116,7 +109,7 @@ namespace MyOrm.Common
         /// </summary>
         /// <param name="condition">条件</param>
         /// <returns>删除对象数量</returns>
-        int Delete(Condition condition);
+        int Delete(Statement condition);
     }
     #endregion
 

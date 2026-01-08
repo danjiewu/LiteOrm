@@ -5,6 +5,7 @@ using MyOrm.Common;
 using System.Text.RegularExpressions;
 using System.Collections;
 using System.Data;
+using System.Collections.Concurrent;
 
 namespace MyOrm
 {
@@ -15,7 +16,7 @@ namespace MyOrm
     {
         public static readonly SqlBuilder Instance = new SqlBuilder();
 
-        private Dictionary<Type, DbType> typeToDbTypeCache = new Dictionary<Type, DbType>();
+        private ConcurrentDictionary<Type, DbType> typeToDbTypeCache = new ConcurrentDictionary<Type, DbType>();
         public SqlBuilder()
         {
             InitTypeToDbType();
@@ -101,7 +102,7 @@ namespace MyOrm
         /// </summary>
         protected static Regex sqlNameRegex = new Regex(@"\[([^\]]+)\]");
 
-        private Dictionary<Type, IConditionSqlBuilder> extCondtionBuilders = new Dictionary<Type, IConditionSqlBuilder>();
+        private ConcurrentDictionary<Type, IConditionSqlBuilder> extCondtionBuilders = new ConcurrentDictionary<Type, IConditionSqlBuilder>();
         #endregion
 
         /// <summary>
@@ -131,8 +132,6 @@ namespace MyOrm
                 return BuildConditionSetSql(context, conditon as ConditionSet, outputParams);
             else if (conditon is ForeignCondition)
                 return BuildForeignConditionSql(context, conditon as ForeignCondition, outputParams);
-            else if (conditon is ExpressionCondition)
-                return BuildExpressionConditionSql(context, conditon as ExpressionCondition, outputParams);
             else
             {
                 if (extCondtionBuilders.ContainsKey(conditon.GetType()))
@@ -229,26 +228,6 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// 根据表达式条件生成SQL语句与SQL参数
-        /// </summary>
-        /// <param name="context">用来生成SQL的上下文</param>
-        /// <param name="expressionCondition">表示查询条件的表达式</param>
-        /// <param name="outputParams">供输出的参数列表，在该列表中添加SQL参数</param>
-        /// <returns>生成的SQL语句，null表示无条件</returns>
-        protected string BuildExpressionConditionSql(SqlBuildContext context, ExpressionCondition expressionCondition, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            List<string> conditions = new List<string>();
-            ExpressionParser parser = new ExpressionParser(this, context);
-            parser.ArgumentsStartIndex = outputParams.Count;
-            parser.Visit(expressionCondition.Expression);
-            foreach (var v in parser.Arguments)
-            {
-                outputParams.Add(new KeyValuePair<string, object>(v.Key, v.Value));
-            }
-            return parser.Result;
-        }
-
-        /// <summary>
         /// 根据简单查询条件生成SQL语句与SQL参数
         /// </summary>
         /// <param name="context">用来生成SQL的上下文</param>
@@ -266,52 +245,52 @@ namespace MyOrm
             object value = simpleCondition.Value;
             string strOpposite = simpleCondition.Opposite ? "not " : "";
 
-            if ((simpleCondition.Value == null || simpleCondition.Value == DBNull.Value) && simpleCondition.Operator == ConditionOperator.Equals)
+            if ((simpleCondition.Value == null || simpleCondition.Value == DBNull.Value) && simpleCondition.Operator == BinaryOperator.Equal)
                 return $"{expression} is {strOpposite}null";
 
-            ConditionOperator positiveOp = simpleCondition.Operator;
-            if (positiveOp == ConditionOperator.Contains || positiveOp == ConditionOperator.EndsWith || positiveOp == ConditionOperator.StartsWith)
+            BinaryOperator positiveOp = simpleCondition.Operator;
+            if (positiveOp == BinaryOperator.Contains || positiveOp == BinaryOperator.EndsWith || positiveOp == BinaryOperator.StartsWith)
                 value = ToSqlLikeValue(Convert.ToString(value));
             int paramIndex = outputParams.Count;
             switch (simpleCondition.Operator)
             {
-                case ConditionOperator.Equals:
+                case BinaryOperator.Equal:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
                     {
                         string p = ToSqlParam(paramIndex.ToString());
                         return simpleCondition.Opposite ? $"{expression} <> {p}" : $"{expression} = {p}";
                     }
-                case ConditionOperator.LargerThan:
+                case BinaryOperator.GreaterThan:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
                     {
                         string p = ToSqlParam(paramIndex.ToString());
                         return simpleCondition.Opposite ? $"{expression} <= {p}" : $"{expression} > {p}";
                     }
-                case ConditionOperator.SmallerThan:
+                case BinaryOperator.LessThan:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
                     {
                         string p = ToSqlParam(paramIndex.ToString());
                         return simpleCondition.Opposite ? $"{expression} >= {p}" : $"{expression} < {p}";
                     }
-                case ConditionOperator.Like:
+                case BinaryOperator.Like:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return $"{expression} {strOpposite}like {ToSqlParam(paramIndex.ToString())}";
-                case ConditionOperator.StartsWith:
+                    return $"{expression} {strOpposite} like {ToSqlParam(paramIndex.ToString())}";
+                case BinaryOperator.StartsWith:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
                     string strlike = ConcatSql(ToSqlParam(paramIndex.ToString()), "'%'");
                     return $"{expression} {strOpposite} like {strlike} escape '{LikeEscapeChar}'";
-                case ConditionOperator.EndsWith:
+                case BinaryOperator.EndsWith:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
                     strlike = ConcatSql("'%'", ToSqlParam(paramIndex.ToString()));       
                     return $"{expression} {strOpposite} like {strlike} escape '{LikeEscapeChar}'";
-                case ConditionOperator.Contains:
+                case BinaryOperator.Contains:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
                     strlike = ConcatSql("'%'", ToSqlParam(paramIndex.ToString()), "'%'");
                     return $"{expression} {strOpposite} like {strlike} escape '{LikeEscapeChar}'";
-                case ConditionOperator.RegexpLike:
+                case BinaryOperator.RegexpLike:
                     outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
                     return $"{strOpposite}regexp_like({expression},{ToSqlParam(paramIndex.ToString())})";
-                case ConditionOperator.In:
+                case BinaryOperator.In:
                     List<string> paramNames = new List<string>();
                     foreach (object item in value as IEnumerable)
                     {
