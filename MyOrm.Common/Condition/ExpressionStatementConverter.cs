@@ -309,10 +309,12 @@ namespace MyOrm.Common
                 // CompareTo 返回比较结果，需要与 0 比较
                 // 这里返回相等比较，实际会在二元表达式中替换
                 return new BinaryStatement(left, BinaryOperator.Equal, right);
+            }else if(methodName== "ToString" && node.Arguments.Count == 0) { 
+
             }
 
-            // 其他实例方法作为函数调用
-            return CreateFunctionStatement(node);
+                // 其他实例方法作为函数调用
+                return CreateFunctionStatement(node);
         }
 
         private Statement HandleStaticMethod(MethodCallExpression node)
@@ -362,10 +364,7 @@ namespace MyOrm.Common
             foreach (var arg in node.Arguments)
             {
                 var param = ConvertInternal(arg);
-                if (param != null)
-                {
-                    parameters.Add(param);
-                }
+                parameters.Add(param);
             }
 
             // 方法名作为函数名
@@ -424,104 +423,5 @@ namespace MyOrm.Common
         }
 
         #endregion
-    }
-
-    /// <summary>
-    /// Expression 到 Statement 的扩展方法
-    /// </summary>
-    public static class ExpressionToStatementExtensions
-    {
-        /// <summary>
-        /// 将 Lambda 表达式转换为 Statement
-        /// </summary>
-        public static Statement ToStatement<T>(this Expression<Func<T, bool>> expression)
-        {
-            if (expression == null)
-                throw new ArgumentNullException(nameof(expression));
-
-            var converter = new ExpressionStatementConverter(expression.Parameters[0]);
-            return converter.Convert(expression.Body);
-        }
-
-        /// <summary>
-        /// 将属性选择表达式转换为 Statement
-        /// </summary>
-        public static Statement ToStatement<T, TResult>(this Expression<Func<T, TResult>> expression)
-        {
-            if (expression == null)
-                throw new ArgumentNullException(nameof(expression));
-
-            var converter = new ExpressionStatementConverter(expression.Parameters[0]);
-            return converter.Convert(expression.Body);
-        }
-
-        /// <summary>
-        /// 从表达式中获取属性名
-        /// </summary>
-        public static string GetPropertyName<T, TProp>(this Expression<Func<T, TProp>> expression)
-        {
-            if (expression == null)
-                throw new ArgumentNullException(nameof(expression));
-
-            if (expression.Body is MemberExpression memberExpression)
-            {
-                return memberExpression.Member.Name;
-            }
-            else if (expression.Body is UnaryExpression unaryExpression &&
-                     unaryExpression.Operand is MemberExpression unaryMember)
-            {
-                return unaryMember.Member.Name;
-            }
-
-            throw new ArgumentException("表达式必须是属性访问表达式", nameof(expression));
-        }
-
-        /// <summary>
-        /// 创建属性 Statement
-        /// </summary>
-        public static Statement Prop<T>(this Expression<Func<T, object>> expression)
-        {
-            var propertyName = expression.GetPropertyName();
-            return Statement.Property(propertyName);
-        }
-
-        /// <summary>
-        /// 创建属性 Statement（强类型）
-        /// </summary>
-        public static Statement Prop<T, TProp>(this Expression<Func<T, TProp>> expression)
-        {
-            var propertyName = expression.GetPropertyName();
-            return Statement.Property(propertyName);
-        }
-    }
-
-    /// <summary>
-    /// 简化的查询构建工具
-    /// </summary>
-    public static class Query
-    {
-        /// <summary>
-        /// 创建属性 Statement
-        /// </summary>
-        public static Statement Prop<T>(Expression<Func<T, object>> expression)
-        {
-            return expression.Prop();
-        }
-
-        /// <summary>
-        /// 创建属性 Statement（强类型）
-        /// </summary>
-        public static Statement Prop<T, TProp>(Expression<Func<T, TProp>> expression)
-        {
-            return expression.Prop();
-        }
-
-        /// <summary>
-        /// 创建条件 Statement
-        /// </summary>
-        public static Statement Where<T>(Expression<Func<T, bool>> expression)
-        {
-            return expression.ToStatement();
-        }
     }
 }

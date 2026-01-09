@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -51,9 +52,8 @@ namespace MyOrm.Test
             var serviceProvider = host.Services;
             var dao = serviceProvider.GetRequiredService<IObjectDAO<Session>>();
             var service = serviceProvider.GetRequiredService<IAccountingLogService>();
-            Expression<Func<AccountingLog,bool>> exp = l => l.AcctStartTime <= DateTime.Now,
-            var logs = service.SearchSection(exp, new SectionSet().Take(1000), "202501");
-
+            var s = Statement.Exp<AccountingLog>(l => new List<long> { 1, 2, 3, 4, 5 }.Contains(l.Id));
+            var logs = service.SearchSection(s, new SectionSet().OrderBy("RequestDate"), "202501");
 
             for (int i = 0; i < 1000; i++)
             {

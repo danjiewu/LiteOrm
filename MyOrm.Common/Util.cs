@@ -15,6 +15,7 @@ namespace MyOrm
     public static class Util
     {
         private static ConcurrentDictionary<Type, ConcurrentDictionary<Enum, string>> enumTypeName = new ConcurrentDictionary<Type, ConcurrentDictionary<Enum, string>>();
+        private static ConcurrentDictionary<Type, ConcurrentDictionary<string, Enum>> enumNameValue = new ConcurrentDictionary<Type, ConcurrentDictionary<string, Enum>>();
 
         public static string GetServiceName(Type serviceType)
         {
@@ -31,14 +32,11 @@ namespace MyOrm
         public static int MaxExpandedLogLength { get; set; } = 10;
         public static T Parse<T>(string displayName) where T : struct, Enum
         {
-            if (!enumTypeName.ContainsKey(typeof(T)))
+            if (!enumNameValue.ContainsKey(typeof(T)))
             {
                 InitlizeEnumName(typeof(T));
             }
-            foreach (KeyValuePair<Enum, string> pair in enumTypeName[typeof(T)])
-            {
-                if (pair.Value == displayName) return (T)pair.Key;
-            }
+            if (enumNameValue[typeof(T)].TryGetValue(displayName, out Enum r)) return (T)r;
             T res;
             if (Enum.TryParse<T>(displayName, false, out res)) return res;
             if (Enum.TryParse<T>(displayName, true, out res)) return res;
@@ -75,86 +73,35 @@ namespace MyOrm
         private static void InitlizeEnumName(Type enumType)
         {
             ConcurrentDictionary<Enum, string> enumNames = new ConcurrentDictionary<Enum, string>();
+            ConcurrentDictionary<string, Enum> nameValues = new ConcurrentDictionary<string, Enum>();
             foreach (FieldInfo field in enumType.GetFields(BindingFlags.Public | BindingFlags.Static))
             {
                 object[] displayAttrs = field.GetCustomAttributes(typeof(DisplayAttribute), true);
                 object[] displayNameAttrs = field.GetCustomAttributes(typeof(DisplayNameAttribute), true);
                 object[] descriptionAtts = field.GetCustomAttributes(typeof(DescriptionAttribute), true);
+                string displayName = null;
                 if (displayAttrs.Length > 0)
                 {
                     DisplayAttribute att = (DisplayAttribute)displayAttrs[0];
-                    enumNames[(Enum)field.GetValue(null)] = att.Name ?? field.Name;
+                    displayName = att.Name ?? field.Name;
                 }
                 else if (displayNameAttrs.Length > 0)
                 {
                     DisplayNameAttribute att = (DisplayNameAttribute)displayNameAttrs[0];
-                    enumNames[(Enum)field.GetValue(null)] = att.DisplayName ?? field.Name;
+                    displayName = att.DisplayName ?? field.Name;
                 }
                 else if (descriptionAtts.Length > 0)
                 {
                     DescriptionAttribute att = (DescriptionAttribute)descriptionAtts[0];
-                    enumNames[(Enum)field.GetValue(null)] = att.Description ?? field.Name;
+                    displayName = att.Description ?? field.Name;
                 }
                 else
-                    enumNames[(Enum)field.GetValue(null)] = field.Name;
+                    displayName = field.Name;
+                enumNames[(Enum)field.GetValue(null)] = displayName;
+                nameValues[displayName] = (Enum)field.GetValue(null);
             }
             enumTypeName[enumType] = enumNames;
-        }
-
-        public static string ToDisplayText(Type type, BinaryStatement condtion)
-        {
-            return GetProperty(type, condtion.Property).DisplayName + ToDisplayText(condtion.Operator, condtion.Opposite, condtion.Value);
-        }
-
-        /// <summary>
-        ///  根据条件生成用于显示的文本
-        /// </summary>
-        /// <param name="op">条件类型</param>
-        /// <param name="opposite">是否为非</param>
-        /// <param name="value">用于比较的值</param>
-        /// <returns></returns>
-        public static string ToDisplayText(BinaryOperator op, bool opposite, object value)
-        {
-            StringBuilder sb = new StringBuilder();
-            if (opposite) sb.AppendFormat("不");
-            switch (op)
-            {
-                case BinaryOperator.In:
-                    List<string> values = new List<string>();
-                    foreach (object o in value as IEnumerable)
-                    {
-                        values.Add(ToDisplayText(o));
-                    }
-                    sb.AppendFormat("在{0}中", String.Join(",", values.ToArray()));
-                    break;
-                case BinaryOperator.GreaterThan:
-                    sb.AppendFormat("大于{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.LessThan:
-                    sb.AppendFormat("小于{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.Contains:
-                    sb.AppendFormat("包含{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.Like:
-                    sb.AppendFormat("匹配{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.RegexpLike:
-                    sb.AppendFormat("正则匹配{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.Equal:
-                    sb.AppendFormat("等于{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.EndsWith:
-                    sb.AppendFormat("以{0}结尾", ToDisplayText(value));
-                    break;
-                case BinaryOperator.StartsWith:
-                    sb.AppendFormat("以{0}开头", ToDisplayText(value));
-                    break;
-                default:
-                    sb.Append(ToDisplayText(value)); break;
-            }
-            return sb.ToString();
+            enumNameValue[enumType] = nameValues;
         }
 
         /// <summary>
@@ -241,9 +188,9 @@ namespace MyOrm
             else return "{" + Convert.ToString(o) + "}";
         }
 
-        public static List<SimpleCondition> ParseQueryCondition(IEnumerable<KeyValuePair<string, string>> queryString, Type type)
+        public static List<Statement> ParseQueryCondition(IEnumerable<KeyValuePair<string, string>> queryString, Type type)
         {
-            List<SimpleCondition> conditions = new List<SimpleCondition>();
+            List<Statement> conditions = new List<Statement>();
             foreach (KeyValuePair<string, string> param in queryString)
             {
                 PropertyDescriptor property = GetFilterProperties(type).Find(param.Key, true);
