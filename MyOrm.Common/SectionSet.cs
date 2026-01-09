@@ -94,30 +94,11 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// 清除所有排序
-        /// </summary>
-        public SectionSet ClearOrders()
-        {
-            Orders.Clear();
-            return this;
-        }
-
-        /// <summary>
         /// 快速创建一个分页设置
         /// </summary>
         public static SectionSet Create(int startIndex, int sectionSize)
         {
             return new SectionSet(startIndex, sectionSize);
-        }
-
-        /// <summary>
-        /// 快速创建一个分页设置（带配置）
-        /// </summary>
-        public static SectionSet Create(int startIndex, int sectionSize, Action<SectionSet> configure)
-        {
-            var section = new SectionSet(startIndex, sectionSize);
-            configure?.Invoke(section);
-            return section;
         }
 
         public override string ToString()

@@ -99,89 +99,8 @@ namespace MyOrm
                     enumNames[(Enum)field.GetValue(null)] = field.Name;
             }
             enumTypeName[enumType] = enumNames;
-        }
+        }  
 
-        public static string ToDisplayText(Type type, BinaryStatement condtion)
-        {
-            return GetProperty(type, condtion.Property).DisplayName + ToDisplayText(condtion.Operator, condtion.Opposite, condtion.Value);
-        }
-
-        /// <summary>
-        ///  根据条件生成用于显示的文本
-        /// </summary>
-        /// <param name="op">条件类型</param>
-        /// <param name="opposite">是否为非</param>
-        /// <param name="value">用于比较的值</param>
-        /// <returns></returns>
-        public static string ToDisplayText(BinaryOperator op, bool opposite, object value)
-        {
-            StringBuilder sb = new StringBuilder();
-            if (opposite) sb.AppendFormat("不");
-            switch (op)
-            {
-                case BinaryOperator.In:
-                    List<string> values = new List<string>();
-                    foreach (object o in value as IEnumerable)
-                    {
-                        values.Add(ToDisplayText(o));
-                    }
-                    sb.AppendFormat("在{0}中", String.Join(",", values.ToArray()));
-                    break;
-                case BinaryOperator.GreaterThan:
-                    sb.AppendFormat("大于{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.LessThan:
-                    sb.AppendFormat("小于{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.Contains:
-                    sb.AppendFormat("包含{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.Like:
-                    sb.AppendFormat("匹配{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.RegexpLike:
-                    sb.AppendFormat("正则匹配{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.Equal:
-                    sb.AppendFormat("等于{0}", ToDisplayText(value));
-                    break;
-                case BinaryOperator.EndsWith:
-                    sb.AppendFormat("以{0}结尾", ToDisplayText(value));
-                    break;
-                case BinaryOperator.StartsWith:
-                    sb.AppendFormat("以{0}开头", ToDisplayText(value));
-                    break;
-                default:
-                    sb.Append(ToDisplayText(value)); break;
-            }
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// 根据值生成显示的文本
-        /// </summary>
-        /// <param name="value">值</param>
-        /// <returns></returns>
-        public static string ToDisplayText(object value)
-        {
-            if (value == null) return "空";
-            if (value is Enum) return GetDisplayName((Enum)value);
-            else if (value is bool) return (bool)value ? "是" : "否";
-            return Convert.ToString(value);
-        }
-
-        /// <summary>
-        /// 根据值生成文本
-        /// </summary>
-        /// <param name="value">值</param>
-        /// <returns></returns>
-        public static string ToText(object value)
-        {
-            if (value == null) return "";
-            if (value is Enum) return GetDisplayName((Enum)value);
-            else if (value is bool) return (bool)value ? "是" : "否";
-            return Convert.ToString(value);
-        }
         public static string GetLogString(object[] values)
         {
             var sb = new StringBuilder();
@@ -241,9 +160,9 @@ namespace MyOrm
             else return "{" + Convert.ToString(o) + "}";
         }
 
-        public static List<SimpleCondition> ParseQueryCondition(IEnumerable<KeyValuePair<string, string>> queryString, Type type)
+        public static List<Statement> ParseQueryCondition(IEnumerable<KeyValuePair<string, string>> queryString, Type type)
         {
-            List<SimpleCondition> conditions = new List<SimpleCondition>();
+            List<Statement> conditions = new List<Statement>();
             foreach (KeyValuePair<string, string> param in queryString)
             {
                 PropertyDescriptor property = GetFilterProperties(type).Find(param.Key, true);

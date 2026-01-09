@@ -12,7 +12,7 @@ namespace MyOrm
     /// <summary>
     /// 生成Sql语句的辅助类
     /// </summary>
-    public class SqlBuilder : IConditionSqlBuilder, ISqlBuilder
+    public class SqlBuilder : ISqlBuilder
     {
         public static readonly SqlBuilder Instance = new SqlBuilder();
 
@@ -101,208 +101,9 @@ namespace MyOrm
         /// 查找列名、表名等的正则表达式
         /// </summary>
         protected static Regex sqlNameRegex = new Regex(@"\[([^\]]+)\]");
-
-        private ConcurrentDictionary<Type, IConditionSqlBuilder> extCondtionBuilders = new ConcurrentDictionary<Type, IConditionSqlBuilder>();
         #endregion
 
-        /// <summary>
-        /// 注册自定义条件SQL生成类
-        /// </summary>
-        /// <param name="conditionType">自定义条件类型</param>
-        /// <param name="conditionBuilder">自定义条件SQL生成类</param>
-        public void RegisterConditionBuilder(Type conditionType, IConditionSqlBuilder conditionBuilder)
-        {
-            extCondtionBuilders[conditionType] = conditionBuilder;
-        }
 
-        /// <summary>
-        /// 根据查询条件生成SQL语句与SQL参数
-        /// </summary>
-        /// <param name="context">用来生成SQL的上下文</param>
-        /// <param name="conditon">查询条件，可为查询条件集合或单个条件，为空表示无条件</param>
-        /// <param name="outputParams">供输出的参数列表，在该列表中添加SQL参数</param>
-        /// <returns>生成的SQL语句，null表示无条件</returns>
-        public virtual string BuildConditionSql(SqlBuildContext context, Condition conditon, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            if (conditon == null)
-                return null;
-            else if (conditon is SimpleCondition)
-                return BuildSimpleConditionSql(context, conditon as SimpleCondition, outputParams);
-            else if (conditon is ConditionSet)
-                return BuildConditionSetSql(context, conditon as ConditionSet, outputParams);
-            else if (conditon is ForeignCondition)
-                return BuildForeignConditionSql(context, conditon as ForeignCondition, outputParams);
-            else
-            {
-                if (extCondtionBuilders.ContainsKey(conditon.GetType()))
-                {
-                    return extCondtionBuilders[conditon.GetType()].BuildConditionSql(context, conditon, outputParams);
-                }
-                else throw new Exception($"Unsupported condition type \"{conditon.GetType().FullName}\"! Please register ConditionBuilder before call BuildConditionSql method.");
-            }
-        }
-
-        /// <summary>
-        /// 根据外部对象查询条件生成SQL语句与SQL参数
-        /// </summary>
-        /// <param name="context">用来生成SQL的上下文</param>
-        /// <param name="condition">外部对象的查询条件</param>
-        /// <param name="outputParams">供输出的参数列表，在该列表中添加SQL参数</param>
-        /// <returns>生成的SQL语句，null表示无条件</returns>
-        protected string BuildForeignConditionSql(SqlBuildContext context, ForeignCondition condition, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            TableDefinition tableDefinition = context.Table.Definition;
-            ColumnDefinition joinedColumn = tableDefinition.GetColumn(condition.JoinedProperty);
-            Type foreignType = condition.ForeignType;
-            if (foreignType == null)
-            {
-                if (joinedColumn == null) throw new ArgumentException($"Property {condition.JoinedProperty} not exists.", condition.JoinedProperty);
-                if (joinedColumn.ForeignType == null) throw new ArgumentException($"Property {condition.JoinedProperty} does not point to a foreign type.", condition.JoinedProperty);
-                foreignType = joinedColumn.ForeignType;
-            }
-
-            TableDefinition foreignTable = context.TableInfoProvider.GetTableDefinition(foreignType);
-            ColumnDefinition foreignColumn = foreignTable.GetColumn(condition.ForeignProperty);
-
-            if (!String.Equals(foreignTable.DataSource, tableDefinition.DataSource, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException($"ForeignCondition between different data source is not supported. Type {context.Table.DefinitionType.FullName}'s data source is {foreignTable.DataSource} and type {foreignTable.ObjectType.FullName}'s data source is {tableDefinition.DataSource}. ");
-
-            if (joinedColumn == null && foreignColumn == null)
-            {
-                foreach (ColumnDefinition column in tableDefinition.Columns)
-                {
-                    if (column.ForeignType == foreignType)
-                    {
-                        if (joinedColumn != null || foreignColumn != null) throw new ArgumentException($"Undefined relation between Type {context.Table.DefinitionType.FullName} and Type {foreignTable.ObjectType.FullName}. Please specify the ForeignCondition.JoinedProperty.", "condition");
-                        joinedColumn = column;
-                    }
-                }
-
-                foreach (ColumnDefinition column in foreignTable.Columns)
-                {
-                    if (column.ForeignType == context.Table.DefinitionType)
-                    {
-                        if (joinedColumn != null || foreignColumn != null) throw new ArgumentException($"Uncertain relation between Type {context.Table.DefinitionType.FullName} and Type {foreignTable.ObjectType.FullName}. Please specify the ForeignCondition.JoinedProperty.", "condition");
-                        foreignColumn = column;
-                    }
-                }
-                if (joinedColumn == null && foreignColumn == null) throw new ArgumentException($"No relation between Type {context.Table.DefinitionType.FullName} and Type {foreignTable.ObjectType.FullName}", "condition");
-            }
-
-            if (foreignColumn == null)
-            {
-                if (foreignTable.Keys.Count != 1) throw new ArgumentException($"Type \"{foreignType.FullName}\" does not support foreign condition,which only take effect on type with one and only key column.", "condition");
-                foreignColumn = foreignTable.Keys[0];
-            }
-            else if (joinedColumn == null)
-            {
-                if (context.Table.Definition.Keys.Count != 1) throw new ArgumentException($"Type \"{context.Table.DefinitionType.FullName}\" does not support foreign condition,which only take effect on type with one and only key column.", "condition");
-                joinedColumn = context.Table.Definition.Keys[0];
-            }
-
-            string tableAlias = context.TableAliasName ?? context.GetTableNameWithArgs(context.Table.Name);
-            string foreignTableAlias = "T" + context.Sequence;
-            string opposite = condition.Opposite ? "not " : "";
-            string innerCondition = BuildConditionSql(new SqlBuildContext() { TableInfoProvider = context.TableInfoProvider, TableAliasName = foreignTableAlias, Sequence = context.Sequence + 1, Table = foreignTable, TableNameArgs = context.TableNameArgs }, condition.Condition, outputParams);
-
-            return $"{opposite}exists (select 1 \nfrom {foreignTable.FormattedName(this)} {ToSqlName(foreignTableAlias)} \nwhere {ToSqlName(tableAlias)}.{joinedColumn.FormattedName(this)} = {ToSqlName(foreignTableAlias)}.{foreignColumn.FormattedName(this)} and ({innerCondition}))";
-        }
-
-        /// <summary>
-        /// 根据查询条件集合生成SQL语句与SQL参数
-        /// </summary>
-        /// <param name="context">用来生成SQL的上下文</param>
-        /// <param name="conditionSet">查询条件的集合</param>
-        /// <param name="outputParams">供输出的参数列表，在该列表中添加SQL参数</param>
-        /// <returns>生成的SQL语句，null表示无条件</returns>
-        protected string BuildConditionSetSql(SqlBuildContext context, ConditionSet conditionSet, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            List<string> conditions = new List<string>();
-            foreach (Condition subConditon in conditionSet.SubConditions)
-            {
-                string str = BuildConditionSql(context, subConditon, outputParams);
-                if (!String.IsNullOrEmpty(str)) conditions.Add(str);
-            }
-            if (conditions.Count == 0) return null;
-            string joiner = " " + conditionSet.JoinType + " ";
-            return $"{(conditionSet.Opposite ? "not" : "")} ({String.Join(joiner, conditions.ToArray())})";
-        }
-
-        /// <summary>
-        /// 根据简单查询条件生成SQL语句与SQL参数
-        /// </summary>
-        /// <param name="context">用来生成SQL的上下文</param>
-        /// <param name="simpleCondition">简单查询条件</param>
-        /// <param name="outputParams">参数列表，在该列表中添加SQL参数</param>
-        /// <returns>生成的SQL语句</returns>
-        protected string BuildSimpleConditionSql(SqlBuildContext context, SimpleCondition simpleCondition, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            Column column = context.Table.GetColumn(simpleCondition.Property);
-            if (column == null) throw new Exception($"Property \"{simpleCondition.Property}\" does not exist in type \"{context.Table.DefinitionType.FullName}\".");
-            string tableAlias = context.TableAliasName;
-            string columnName = tableAlias == null ? (context.SingleTable ? column.FormattedName(this) : column.FormattedExpression(this)) : $"[{tableAlias}].[{column.Name}]";
-
-            string expression = columnName;
-            object value = simpleCondition.Value;
-            string strOpposite = simpleCondition.Opposite ? "not " : "";
-
-            if ((simpleCondition.Value == null || simpleCondition.Value == DBNull.Value) && simpleCondition.Operator == BinaryOperator.Equal)
-                return $"{expression} is {strOpposite}null";
-
-            BinaryOperator positiveOp = simpleCondition.Operator;
-            if (positiveOp == BinaryOperator.Contains || positiveOp == BinaryOperator.EndsWith || positiveOp == BinaryOperator.StartsWith)
-                value = ToSqlLikeValue(Convert.ToString(value));
-            int paramIndex = outputParams.Count;
-            switch (simpleCondition.Operator)
-            {
-                case BinaryOperator.Equal:
-                    outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    {
-                        string p = ToSqlParam(paramIndex.ToString());
-                        return simpleCondition.Opposite ? $"{expression} <> {p}" : $"{expression} = {p}";
-                    }
-                case BinaryOperator.GreaterThan:
-                    outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    {
-                        string p = ToSqlParam(paramIndex.ToString());
-                        return simpleCondition.Opposite ? $"{expression} <= {p}" : $"{expression} > {p}";
-                    }
-                case BinaryOperator.LessThan:
-                    outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    {
-                        string p = ToSqlParam(paramIndex.ToString());
-                        return simpleCondition.Opposite ? $"{expression} >= {p}" : $"{expression} < {p}";
-                    }
-                case BinaryOperator.Like:
-                    outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return $"{expression} {strOpposite} like {ToSqlParam(paramIndex.ToString())}";
-                case BinaryOperator.StartsWith:
-                    outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    string strlike = ConcatSql(ToSqlParam(paramIndex.ToString()), "'%'");
-                    return $"{expression} {strOpposite} like {strlike} escape '{LikeEscapeChar}'";
-                case BinaryOperator.EndsWith:
-                    outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    strlike = ConcatSql("'%'", ToSqlParam(paramIndex.ToString()));       
-                    return $"{expression} {strOpposite} like {strlike} escape '{LikeEscapeChar}'";
-                case BinaryOperator.Contains:
-                    outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    strlike = ConcatSql("'%'", ToSqlParam(paramIndex.ToString()), "'%'");
-                    return $"{expression} {strOpposite} like {strlike} escape '{LikeEscapeChar}'";
-                case BinaryOperator.RegexpLike:
-                    outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), value));
-                    return $"{strOpposite}regexp_like({expression},{ToSqlParam(paramIndex.ToString())})";
-                case BinaryOperator.In:
-                    List<string> paramNames = new List<string>();
-                    foreach (object item in value as IEnumerable)
-                    {
-                        outputParams.Add(new KeyValuePair<string, object>(paramIndex.ToString(), item));
-                        paramNames.Add(ToSqlParam(paramIndex.ToString()));
-                        paramIndex++;
-                    }
-                    return $"{expression} {strOpposite}in ({String.Join(",", paramNames.ToArray())})";
-                default:
-                    return string.Empty;
-            }
-        }
 
         public virtual string ToSqlLikeValue(string value)
         {
@@ -450,21 +251,6 @@ namespace MyOrm
             }
             return sb.ToString();
         }
-    }
-
-    /// <summary>
-    /// 自定义Condition转换为sql语句的接口
-    /// </summary>
-    public interface IConditionSqlBuilder 
-    {
-        /// <summary>
-        /// 生成sql语句
-        /// </summary>
-        /// <param name="context">生成sql的上下文</param>
-        /// <param name="customConditon">自定义Condition</param>
-        /// <param name="outputParams">存放参数的集合</param>
-        /// <returns>生成的sql字符串</returns>
-        string BuildConditionSql(SqlBuildContext context, Condition customConditon, ICollection<KeyValuePair<string, object>> outputParams);
     }
 }
 

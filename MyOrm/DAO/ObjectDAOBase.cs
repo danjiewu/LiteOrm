@@ -108,7 +108,7 @@ namespace MyOrm
         {
             get
             {
-                if (sqlBuildContext == null) sqlBuildContext = new SqlBuildContext() { Table = Table, TableInfoProvider = TableInfoProvider, TableNameArgs = TableNameArgs };
+                if (sqlBuildContext == null) sqlBuildContext = new SqlBuildContext() { Table = Table, TableNameArgs = TableNameArgs };
                 return sqlBuildContext;
 
             }

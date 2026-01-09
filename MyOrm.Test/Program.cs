@@ -51,18 +51,12 @@ namespace MyOrm.Test
             var serviceProvider = host.Services;
             var dao = serviceProvider.GetRequiredService<IObjectDAO<Session>>();
             var service = serviceProvider.GetRequiredService<IAccountingLogService>();
-            Expression<Func<AccountingLog,bool>> exp = l => l.AcctStartTime <= DateTime.Now,
-            var logs = service.SearchSection(exp, new SectionSet().Take(1000), "202501");
+            var logs = service.SearchSection(l => l.RequestDate < l.AcctStartTime + new TimeSpan(0, 1, 0) && l.Id.ToString().Length == 10, new SectionSet().Take(1000), "202501");
 
 
-            for (int i = 0; i < 1000; i++)
+            foreach (var log in logs)
             {
-                int cur = i;
-                Console.WriteLine($"第{cur}轮任务创建.");
-                //currentTask.Wait();
-                Console.WriteLine($"第{cur}轮任务开始.");
-                // 创建新任务
-                service.BatchInsert(logs);
+                Console.WriteLine($"{log.Id}: {log.RequestDate} - {log.AcctStartTime} = {log.RequestDate - log.AcctStartTime}");
             }
 
             Console.ReadKey();

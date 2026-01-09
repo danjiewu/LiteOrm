@@ -11,10 +11,6 @@ namespace MyOrm.Common
     public class SqlBuildContext
     {
         /// <summary>
-        /// 表信息提供者
-        /// </summary>
-        public TableInfoProvider TableInfoProvider { get; set; }
-        /// <summary>
         /// 表别名
         /// </summary>
         public string TableAliasName { get; set; }

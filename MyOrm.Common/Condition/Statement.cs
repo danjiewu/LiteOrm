@@ -110,6 +110,28 @@ namespace MyOrm.Common
         {
             return new BinaryStatement(left, BinaryOperator.LessThanOrEqual, right);
         }
+        public static Statement operator !(Statement operand)
+        {
+            return new UnaryStatement(UnaryOperator.Not, operand);
+        }
+        public static Statement operator ~(Statement operand)
+        {
+            return new UnaryStatement(UnaryOperator.BitwiseNot, operand);
+        }
+        public static Statement operator -(Statement operand)
+        {
+            return new UnaryStatement(UnaryOperator.Nagive, operand);
+        }
+         public static Expression<Func<T,bool>> Expression<T>(Expression<Func<T, bool>> expression)
+        {
+            return expression;
+        }
+
+        public static implicit operator Statement(LambdaExpression expression)
+        {
+            var converter = new ExpressionStatementConverter(expression.Parameters[0]);
+            return converter.Convert(expression.Body);
+        }
     }
 
     public class ExpressionStatement<T> : Statement
@@ -339,6 +361,11 @@ namespace MyOrm.Common
             }
             else
                 return Value.ToString();
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(Value,obj)|| obj is ValueStatement vs && Equals(Value, vs.Value); 
         }
     }
 

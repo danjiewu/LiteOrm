@@ -235,24 +235,6 @@ namespace MyOrm.Service
         /// <returns>符合条件的实体列表</returns>
         new List<T> Search(Statement condition = null, params string[] tableArgs);
         /// <summary>
-        /// 根据条件查询
-        /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的对象列表</returns>
-        new List<T> SearchWithOrder(Statement condition, Sorting[] orderBy = null, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件分页查询
-        /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
-        /// <param name="startIndex">起始记录数</param>
-        /// <param name="sectionSize">获取记录条数</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的分页对象列表</returns>
-        new List<T> SearchSection(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs);
-        /// <summary>
         /// 根据条件分页查询
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
@@ -271,8 +253,6 @@ namespace MyOrm.Service
         Task<T> SearchOneAsync(Statement condition, string[] tableArgs = null, CancellationToken cancellationToken = default);
         Task ForEachAsync(Statement condition, Func<T, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default);
         Task<List<T>> SearchAsync(Statement condition = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
-        Task<List<T>> SearchWithOrderAsync(Statement condition, Sorting[] orderBy = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
-        Task<List<T>> SearchSectionAsync(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
         Task<List<T>> SearchSectionAsync(Statement condition, SectionSet section, string[] tableArgs = null, CancellationToken cancellationToken = default);
     }
 
@@ -327,24 +307,6 @@ namespace MyOrm.Service
         /// <returns>符合条件的实体列表</returns>
         IList Search(Statement condition = null, params string[] tableArgs);
         /// <summary>
-        /// 根据条件查询
-        /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的对象列表</returns>
-        IList SearchWithOrder(Statement condition, Sorting[] orderBy = null, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件分页查询
-        /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
-        /// <param name="startIndex">起始记录数</param>
-        /// <param name="sectionSize">获取记录条数</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的分页对象列表</returns>
-        IList SearchSection(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs);
-        /// <summary>
         /// 根据条件分页查询
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
@@ -366,8 +328,6 @@ namespace MyOrm.Service
         Task<int> CountAsync(Statement condition = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
         Task<object> SearchOneAsync(Statement condition, string[] tableArgs = null, CancellationToken cancellationToken = default);
         Task<IList> SearchAsync(Statement condition = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
-        Task<IList> SearchWithOrderAsync(Statement condition, Sorting[] orderBy = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
-        Task<IList> SearchSectionAsync(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
         Task<IList> SearchSectionAsync(Statement condition, SectionSet section, string[] tableArgs = null, CancellationToken cancellationToken = default);
     }
 

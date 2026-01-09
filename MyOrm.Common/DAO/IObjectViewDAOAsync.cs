@@ -20,7 +20,6 @@ namespace MyOrm.Common
         Task ForEachAsync(Statement condition, Func<T, Task> func, CancellationToken cancellationToken = default);
 
         Task<List<T>> SearchAsync(Statement condition = null, CancellationToken cancellationToken = default);
-        Task<List<T>> SearchAsync(Statement condition, Sorting[] orderBy, CancellationToken cancellationToken = default);
         Task<List<T>> SearchSectionAsync(Statement condition, SectionSet section, CancellationToken cancellationToken = default);
         Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default);
         Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default);
@@ -39,7 +38,6 @@ namespace MyOrm.Common
         Task<object> SearchOneAsync(Statement condition, CancellationToken cancellationToken = default);
 
         Task<IList> SearchAsync(Statement condition, CancellationToken cancellationToken = default);
-        Task<IList> SearchAsync(Statement condition, Sorting[] orderBy, CancellationToken cancellationToken = default);
 
         Task<IList> SearchSectionAsync(Statement condition, SectionSet section, CancellationToken cancellationToken = default);
 

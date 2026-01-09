@@ -43,14 +43,6 @@ namespace MyOrm.Common
         new List<T> Search(Statement condition = null);
 
         /// <summary>
-        /// 根据条件查询
-        /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <returns>符合条件的对象列表</returns>
-        new List<T> Search(Statement condition, params Sorting[] orderBy);
-
-        /// <summary>
         /// 分页查询
         /// </summary>
         /// <param name="condition">查询条件</param>
@@ -115,14 +107,6 @@ namespace MyOrm.Common
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象列表</returns>
         IList Search(Statement condition);
-
-        /// <summary>
-        /// 根据条件查询
-        /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <returns>符合条件的对象列表</returns>
-        IList Search(Statement condition, params Sorting[] orderBy);
 
         /// <summary>
         /// 分页查询

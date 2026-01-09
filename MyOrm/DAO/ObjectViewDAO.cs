@@ -170,26 +170,10 @@ namespace MyOrm
         /// <returns>符合条件的对象列表</returns>
         public virtual List<T> Search(Statement condition)
         {
-            using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@" + (condition == null ? null : " \nwhere @Condition@"), condition))
+            using (IDbCommand command = MakeConditionCommand($"select {AllFieldsSql} \nfrom {From}" + (condition == null ? null : $" \nwhere {ParamCondition}"), condition))
             {
                 return GetAll(command);
             }
-        }
-
-        /// <summary>
-        /// 根据条件查询，多个条件以逻辑与连接
-        /// </summary>
-        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <returns>符合条件的对象列表</returns>
-        public virtual List<T> Search(Statement condition, params Sorting[] orderBy)
-        {
-            if (orderBy == null || orderBy.Length == 0) return Search(condition);
-            else
-                using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@" + (condition == null ? null : " \nwhere @Condition@") + " order by " + GetOrderBySQL(orderBy), condition))
-                {
-                    return GetAll(command);
-                }
         }
 
         /// <summary>
@@ -204,7 +188,6 @@ namespace MyOrm
                 return GetOne(command);
             }
         }
-
 
         /// <summary>
         /// 分页查询
@@ -238,11 +221,6 @@ namespace MyOrm
         IList IObjectViewDAO.Search(Statement condition)
         {
             return Search(condition);
-        }
-
-        IList IObjectViewDAO.Search(Statement condition, params Sorting[] orderBy)
-        {
-            return Search(condition, orderBy);
         }
 
         IList IObjectViewDAO.SearchSection(Statement condition, SectionSet section)
@@ -325,16 +303,6 @@ namespace MyOrm
         Task<IList> IObjectViewDAOAsync.SearchAsync(Statement condition, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => (IList)Search(condition), cancellationToken);
-        }
-
-        public virtual Task<List<T>> SearchAsync(Statement condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
-        {
-            return CurrentSession.ExecuteInSessionAsync(() => Search(condition, orderBy), cancellationToken);
-        }
-
-        Task<IList> IObjectViewDAOAsync.SearchAsync(Statement condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
-        {
-            return CurrentSession.ExecuteInSessionAsync(() => (IList)Search(condition, orderBy), cancellationToken);
         }
 
         public virtual Task<List<T>> SearchSectionAsync(Statement condition, SectionSet section, CancellationToken cancellationToken = default)
