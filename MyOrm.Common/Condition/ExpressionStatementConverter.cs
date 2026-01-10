@@ -104,26 +104,26 @@ namespace MyOrm.Common
                 };
                 return res;
             }
-
             var left = ConvertInternal(node.Left);
             var right = ConvertInternal(node.Right);
 
-            if (left == null || right == null)
-            {
-                throw new ArgumentException($"无法转换二元表达式: {node}");
-            }
-
             // 处理逻辑运算符
-            if (node.NodeType == ExpressionType.AndAlso)
+            switch (node.NodeType)
             {
-                return left.And(right);
+                case ExpressionType.AndAlso:
+                case ExpressionType.And:
+                    return left.And(right);
+                case ExpressionType.Or:
+                case ExpressionType.OrElse:
+                    return left.Or(right);
+                case ExpressionType.Add:
+                    if (node.Left.Type == typeof(string) || node.Right.Type == typeof(string))
+                        return new BinaryStatement(left, BinaryOperator.Concat, right);
+                    else
+                        return new BinaryStatement(left, BinaryOperator.Add, right);
+                default:
+                    return new BinaryStatement(left, op, right);
             }
-            else if (node.NodeType == ExpressionType.OrElse)
-            {
-                return left.Or(right);
-            }
-
-            return new BinaryStatement(left, op, right);
         }
 
         private Statement ConvertUnary(UnaryExpression node)
@@ -187,7 +187,16 @@ namespace MyOrm.Common
                     return Statement.Property(fieldInfo.Name);
                 }
             }
-            //TODO:处理特殊属性 如 Length, Count 等
+
+            if (IsFunction(node))
+            {
+                // 处理字符串或数组的 Length 属性
+                var targetExpr = node.Expression;
+                if (targetExpr == null) return new FunctionStatement(node.Member.Name);
+                else
+                    return new FunctionStatement(node.Member.Name, ConvertInternal(targetExpr));
+            }
+
             if (new ParameterExpressionDetector().ContainsParameter(node))
             {
                 // 处理复杂属性访问（如 x => x.Address.City）
@@ -204,6 +213,21 @@ namespace MyOrm.Common
             }
             else// 处理常量成员访问（如 DateTime.Now）
                 return EvaluateExpression(node);
+        }
+
+        private static bool IsFunction(MemberExpression node)
+        {
+            switch (node.Member.Name)
+            {
+                case "Length":
+                    return node.Type == typeof(int) && (node.Expression.Type == typeof(string) || typeof(Array).IsAssignableFrom(node.Expression.Type));
+                case "Now":
+                    return node.Type == typeof(DateTime);
+                case "Today":
+                    return node.Type == typeof(DateTime);
+                default:
+                    return false;
+            }
         }
 
         private Statement ConvertNewArray(NewArrayExpression node)

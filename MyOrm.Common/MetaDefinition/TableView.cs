@@ -67,7 +67,7 @@ namespace MyOrm.Common
         public override string FormattedExpression(ISqlBuilder sqlBuilder)
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("\n{0} join {1} {2} on ", JoinType, base.FormattedExpression(sqlBuilder), FormattedName(sqlBuilder));
+            sb.Append($"\n{JoinType} join {base.FormattedExpression(sqlBuilder)} {FormattedName(sqlBuilder)} on ");
             bool isFirst = true;
             for (int i = 0; i < ForeignKeys.Count; i++)
             {
@@ -79,7 +79,7 @@ namespace MyOrm.Common
                 {
                     sb.Append(" and ");
                 }
-                sb.AppendFormat("{0} = {1}", ForeignKeys[i].FormattedExpression(sqlBuilder), ForeignPrimeKeys[i].FormattedExpression(sqlBuilder));
+                sb.Append($"{ForeignKeys[i].FormattedExpression(sqlBuilder)} = {ForeignPrimeKeys[i].FormattedExpression(sqlBuilder)}");
             }
             if (!String.IsNullOrEmpty(FilterExpression))
             {
@@ -87,7 +87,7 @@ namespace MyOrm.Common
                 {
                     sb.Append(" and ");
                 }
-                sb.Append(sqlBuilder.ReplaceSqlName(FilterExpression));
+                sb.Append(FilterExpression);
             }
             return sb.ToString();
 

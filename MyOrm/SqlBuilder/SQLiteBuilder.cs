@@ -13,6 +13,12 @@ namespace MyOrm.SQLite
     public class SQLiteBuilder : SqlBuilder
     {
         public static readonly new SQLiteBuilder Instance = new SQLiteBuilder();
+        protected override void InitializeFunctionMappings(Dictionary<string, string> functionMappings)
+        {
+            functionMappings["Length"] = "LENGTH";
+            functionMappings["IndexOf"] = "INSTR";       // INSTR(str, substr)
+            functionMappings["Substring"] = "SUBSTR";
+        }
         public override string BuildIdentityInsertSQL(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
             return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues});\nSELECT last_insert_rowid() as [ID];";

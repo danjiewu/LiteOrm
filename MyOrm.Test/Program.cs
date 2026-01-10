@@ -58,6 +58,7 @@ namespace MyOrm.Test
             {
                 Console.WriteLine($"{log.Id}, {log.UserName}, {log.AcctInputOctets}, {log.AcctOutputOctets}");
             }
+            Console.WriteLine("Finished. Press any key to exit.");
 
             Console.ReadKey();
         }
