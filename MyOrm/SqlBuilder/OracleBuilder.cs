@@ -26,6 +26,14 @@ namespace MyOrm.Oracle
             base.InitTypeToDbType();
             RegisterDbType(typeof(Boolean), DbType.Byte);
         }
+
+        protected override void InitializeFunctionMappings(Dictionary<string, string> functionMappings)
+        {
+            functionMappings["Length"] = "LENGTH";
+            functionMappings["IndexOf"] = "INSTR";       // INSTR(str, substr)
+            functionMappings["Substring"] = "SUBSTR";
+        }
+
         public override string BuildIdentityInsertSQL(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
             IDbDataParameter param = command.CreateParameter();
@@ -52,7 +60,7 @@ namespace MyOrm.Oracle
         /// </summary>
         /// <param name="strs">需要连接的sql字符串</param>
         /// <returns>SQL语句</returns>
-        public override string ConcatSql(params string[] strs)
+        public override string BuildConcatSql(params string[] strs)
         {
             return String.Join("||", strs);
         }

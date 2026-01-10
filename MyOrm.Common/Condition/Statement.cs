@@ -122,7 +122,7 @@ namespace MyOrm.Common
         {
             return new UnaryStatement(UnaryOperator.Nagive, operand);
         }
-         public static Expression<Func<T,bool>> Expression<T>(Expression<Func<T, bool>> expression)
+        public static Expression<Func<T, bool>> Expr<T>(Expression<Func<T, bool>> expression)
         {
             return expression;
         }
@@ -318,24 +318,22 @@ namespace MyOrm.Common
             if (Value == null) return "NULL";
             else if (Value is IEnumerable enumerable && !(Value is string))
             {
-                StringBuilder sb = new StringBuilder('(');
+                StringBuilder sb = new StringBuilder();
                 foreach (var item in enumerable)
                 {
+                    if (sb.Length > 0) sb.Append(", ");
                     if (item is Statement s)
                     {
-                        if (sb.Length > 0) sb.Append(", ");
                         sb.Append(s.ToSql(context, sqlBuilder, outputParams));
                     }
                     else
                     {
                         string paramName = outputParams.Count.ToString();
                         outputParams.Add(new(sqlBuilder.ToParamName(paramName), item));
-                        if (sb.Length > 0) sb.Append(", ");
                         sb.Append(sqlBuilder.ToSqlParam(paramName));
                     }
                 }
-                sb.Append(')');
-                return sb.ToString();
+                return $"({sb})";
             }
             else
             {
@@ -350,14 +348,7 @@ namespace MyOrm.Common
             if (Value == null) return "NULL";
             else if (Value is IEnumerable enumerable && !(Value is string))
             {
-                StringBuilder sb = new StringBuilder('(');
-                foreach (var item in enumerable)
-                {
-                    if (sb.Length > 0) sb.Append(", ");
-                    sb.Append(item);
-                }
-                sb.Append(')');
-                return sb.ToString();
+                return $"({String.Join(",", enumerable)})";
             }
             else
                 return Value.ToString();
@@ -365,7 +356,7 @@ namespace MyOrm.Common
 
         public override bool Equals(object obj)
         {
-            return Equals(Value,obj)|| obj is ValueStatement vs && Equals(Value, vs.Value); 
+            return Equals(Value, obj) || obj is ValueStatement vs && Equals(Value, vs.Value);
         }
     }
 
@@ -406,30 +397,12 @@ namespace MyOrm.Common
         /// <inheritdoc/>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            StringBuilder sb = new StringBuilder();
-            sb.Append(FunctionName);
-            sb.Append('(');
-            for (int i = 0; i < Parameters.Count; i++)
-            {
-                if (i > 0) sb.Append(", ");
-                sb.Append(Parameters[i].ToSql(context, sqlBuilder, outputParams));
-            }
-            sb.Append(')');
-            return sb.ToString();
+            return sqlBuilder.BuildFunctionSql(FunctionName, Parameters.Select(p => p.ToSql(context, sqlBuilder, outputParams)).ToArray());
         }
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
-            sb.Append(FunctionName);
-            sb.Append('(');
-            for (int i = 0; i < Parameters.Count; i++)
-            {
-                if (i > 0) sb.Append(", ");
-                sb.Append(Parameters[i]);
-            }
-            sb.Append(')');
-            return sb.ToString();
+            return $"{FunctionName}({String.Join(",", Parameters)})";
         }
     }
 
@@ -439,7 +412,8 @@ namespace MyOrm.Common
     /// </summary>
     public class BinaryStatement : Statement
     {
-        private static Dictionary<BinaryOperator, string> operatorSymbols = new(){
+        private static Dictionary<BinaryOperator, string> operatorSymbols = new()
+        {
             { BinaryOperator.Equal,"=" },
             { BinaryOperator.GreaterThan,">" },
             { BinaryOperator.LessThan,"<" },
@@ -468,9 +442,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 无参构造
         /// </summary>
-        public BinaryStatement()
-        {
-        }
+        public BinaryStatement() { }
 
         /// <summary>
         /// 使用左右表达式与操作符构造条件语句。
@@ -498,7 +470,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 获取不含 Not 标志的原始操作符（例如 Not|In => In）。
         /// </summary>
-        public BinaryOperator OriginOperator => Operator & (BinaryOperator.Not - 1);
+        public BinaryOperator OriginOperator => Operator & ~BinaryOperator.Not;
 
         /// <summary>
         /// 右侧语句
@@ -510,7 +482,7 @@ namespace MyOrm.Common
         /// - 对于 REGEXP_LIKE，生成形如 <c>REGEXP_LIKE(left,right)</c> 的调用。
         /// - 对于 equals 且右值为 NULL，生成 IS NULL / IS NOT NULL。
         /// - 对于 LIKE/StartsWith/EndsWith/Contains 等，会依据右侧是 ValueStatement 还是表达式生成带参数或带通配符的 SQL，并为需要的值添加参数到 <paramref name="outputParams"/>。
-        /// - 对于复杂字符串拼接或需要转义的情况，使用 <see cref="ISqlBuilder.ConcatSql"/> 以便兼容不同数据库的拼接语法。
+        /// - 对于复杂字符串拼接或需要转义的情况，使用 <see cref="ISqlBuilder.BuildConcatSql"/> 以便兼容不同数据库的拼接语法。
         /// </remarks>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
@@ -531,7 +503,7 @@ namespace MyOrm.Common
                     else
                         return $"{Left.ToSql(context, sqlBuilder, outputParams)} {op} {Right.ToSql(context, sqlBuilder, outputParams)}";
                 case BinaryOperator.Concat:
-                    return sqlBuilder.ConcatSql(Left.ToSql(context, sqlBuilder, outputParams), Right.ToSql(context, sqlBuilder, outputParams));
+                    return sqlBuilder.BuildConcatSql(Left.ToSql(context, sqlBuilder, outputParams), Right.ToSql(context, sqlBuilder, outputParams));
                 case BinaryOperator.Contains:
                 case BinaryOperator.EndsWith:
                 case BinaryOperator.StartsWith:
@@ -558,11 +530,11 @@ namespace MyOrm.Common
                         switch (OriginOperator)
                         {
                             case BinaryOperator.StartsWith:
-                                right = sqlBuilder.ConcatSql(right, "%"); break;
+                                right = sqlBuilder.BuildConcatSql(right, "%"); break;
                             case BinaryOperator.EndsWith:
-                                right = sqlBuilder.ConcatSql("%", right); break;
+                                right = sqlBuilder.BuildConcatSql("%", right); break;
                             case BinaryOperator.Contains:
-                                right = sqlBuilder.ConcatSql("%", right, "%"); break;
+                                right = sqlBuilder.BuildConcatSql("%", right, "%"); break;
                         }
                         return $@"{left} {op} {right} escape '\\'";
                     }
@@ -589,7 +561,6 @@ namespace MyOrm.Common
         /// </summary>
         public StatementSet()
         {
-            Items = new List<Statement>();
         }
 
         /// <summary>
@@ -598,7 +569,7 @@ namespace MyOrm.Common
         /// <param name="items">语句项</param>
         public StatementSet(params Statement[] items)
         {
-            Items = items.ToList();
+            Items.AddRange(items);
         }
 
         /// <summary>
@@ -609,7 +580,10 @@ namespace MyOrm.Common
         public StatementSet(StatementJoinType joinType, params Statement[] items)
         {
             JoinType = joinType;
-            Items = items.ToList();
+            foreach (var item in items)
+            {
+                Add(item);
+            }
         }
 
         /// <summary>
@@ -620,7 +594,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 集合中的语句项
         /// </summary>
-        public List<Statement> Items { get; set; }
+        public List<Statement> Items { get; } = new List<Statement>();
 
         public int Count => Items.Count;
 
@@ -628,7 +602,10 @@ namespace MyOrm.Common
 
         public void Add(Statement item)
         {
-            Items.Add(item);
+            if (item is StatementSet set && set.JoinType == JoinType)
+                Items.AddRange(set.Items);
+            else
+                Items.Add(item);
         }
 
         public void Clear()
@@ -659,32 +636,29 @@ namespace MyOrm.Common
         /// <inheritdoc/>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            StringBuilder sb = new StringBuilder();
-            string joinStr = JoinType == StatementJoinType.And ? " AND " : (JoinType == StatementJoinType.Or ? " OR " : ",");
-            sb.Append('(');
-            for (int i = 0; i < Items.Count; i++)
+            if (JoinType == StatementJoinType.Concat)
+                return sqlBuilder.BuildConcatSql(Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).ToArray());
+            string joinStr = JoinType switch
             {
-                if (i > 0) sb.Append(joinStr);
-                sb.Append(Items[i].ToSql(context, sqlBuilder, outputParams));
-            }
-            sb.Append(')');
-            return sb.ToString();
+                StatementJoinType.And => " AND ",
+                StatementJoinType.Or => " OR ",
+                StatementJoinType.Concat => " || ",
+                _ => ","
+            };
+            return $"({String.Join(joinStr, Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)))})";
         }
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
-            string joinStr = JoinType == StatementJoinType.And ? " AND " : (JoinType == StatementJoinType.Or ? " OR " : ",");
-            sb.Append('(');
-            for (int i = 0; i < Items.Count; i++)
+            string joinStr = JoinType switch
             {
-                if (i > 0) sb.Append(joinStr);
-                sb.Append(Items[i]);
-            }
-            sb.Append(')');
-            return sb.ToString();
+                StatementJoinType.And => " AND ",
+                StatementJoinType.Or => " OR ",
+                StatementJoinType.Concat => " || ",
+                _ => ","
+            };
+            return $"({String.Join(joinStr, Items)})";
         }
-
 
         IEnumerator IEnumerable.GetEnumerator()
         {
@@ -697,12 +671,22 @@ namespace MyOrm.Common
     /// </summary>
     public enum StatementJoinType
     {
-        /// <summary>使用 AND 连接</summary>
-        And,
-        /// <summary>使用 OR 连接</summary>
-        Or,
-        /// <summary>使用逗号连接（通常用于列列表）</summary>
-        Comma
+        /// <summary>
+        /// 默认连接（通常用于列表）
+        /// </summary>
+        Default = 0,
+        /// <summary>
+        /// 使用 AND 连接
+        /// </summary>
+        And = 1,
+        /// <summary>
+        /// 使用 OR 连接
+        /// </summary>
+        Or = 2,
+        /// <summary>
+        /// 使用字符串连接符连接（通常用于字符串拼接）
+        /// </summary>
+        Concat = 3
     }
 
     /// <summary>
@@ -721,7 +705,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 按位取反
         /// </summary>
-        BitwiseNot = 2
+        BitwiseNot = 2,
     }
 
     /// <summary>
@@ -837,7 +821,7 @@ namespace MyOrm.Common
         /// <param name="func">处理上下文并返回 SQL 字符串的委托</param>
         public GeneralSqlStatement(Expression<Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, string>> func)
         {
-            sqlHandler = func;
+            sqlHandler = func ?? throw new ArgumentNullException(nameof(func));
         }
 
         private Expression<Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, string>> sqlHandler;
@@ -890,63 +874,29 @@ namespace MyOrm.Common
         }
     }
 
-
     /// <summary>
     /// 
     /// </summary>
     public static class StatementExt
     {
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="left"></param>
-        /// <param name="right"></param>
-        /// <returns></returns>
-        public static Statement And(this Statement left, Statement right)
+        public static StatementSet And(this Statement left, Statement right)
         {
-            if (left == null) return right;
-            else if (right == null) return left;
-            StatementSet leftSet = left as StatementSet;
-            StatementSet rightSet = right as StatementSet;
-            if (leftSet?.JoinType == StatementJoinType.And && rightSet?.JoinType == StatementJoinType.And)
-            {
-                foreach (var item in rightSet.Items)
-                {
-                    leftSet.Add(item);
-                }
-                return leftSet;
-            }
-            else if (leftSet?.JoinType == StatementJoinType.And)
-            {
-                leftSet.Add(right);
-                return leftSet;
-            }
-            else if (rightSet?.JoinType == StatementJoinType.And)
-            {
-                rightSet.Add(left);
-                return rightSet;
-            }
-            else
-                return new StatementSet(left, right);
+            return Join(left, right, StatementJoinType.And);
         }
 
-        public static Statement Or(this Statement left, Statement right)
+        public static StatementSet Or(this Statement left, Statement right)
         {
-            if (left == null || right == null) return null;
-            StatementSet leftSet = left as StatementSet;
-            StatementSet rightSet = right as StatementSet;
-            if (leftSet?.JoinType == StatementJoinType.Or)
-            {
-                leftSet.Add(right);
-                return leftSet;
-            }
-            else if (rightSet?.JoinType == StatementJoinType.Or)
-            {
-                rightSet.Add(left);
-                return rightSet;
-            }
-            else
-                return new StatementSet(StatementJoinType.Or, left, right);
+            return Join(left, right, StatementJoinType.Or);
+        }
+
+        public static StatementSet Concat(this Statement left, Statement right)
+        {
+            return Join(left, right, StatementJoinType.Concat);
+        }
+
+        public static StatementSet Join(this Statement left, Statement right, StatementJoinType joinType = StatementJoinType.Default)
+        {
+            return new StatementSet(joinType, left, right);
         }
     }
 }

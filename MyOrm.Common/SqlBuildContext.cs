@@ -30,7 +30,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 
         /// </summary>
-        public string[] TableNameArgs { get; set; } = { };
+        public string[] TableNameArgs { get; set; } = Array.Empty<string>();
 
         public string GetTableNameWithArgs(string oraginTableName)
         {

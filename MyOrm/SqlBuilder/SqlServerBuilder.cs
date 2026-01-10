@@ -11,6 +11,11 @@ namespace MyOrm.SqlServer
     {
         public static readonly new SqlServerBuilder Instance = new SqlServerBuilder();
 
+        protected override void InitializeFunctionMappings(Dictionary<string, string> functionMappings)
+        {
+            functionMappings["Length"] = "LEN";
+            functionMappings["IndexOf"] = "CHARINDEX";   // CHARINDEX(substr, str)
+        }
         /// <summary>
         /// 生成分页查询的SQL语句
         /// </summary>

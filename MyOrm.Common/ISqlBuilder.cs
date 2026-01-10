@@ -6,14 +6,16 @@ using MyOrm;
 namespace MyOrm.Common
 {
     public interface ISqlBuilder
-    {        string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize);
+    {  
+        string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize);
         string ReplaceSqlName(string sql);
         string ToNativeName(string paramName);
         string ToParamName(string nativeName);
         string ToSqlName(string name);
         string ToSqlParam(string nativeName);
         string ToSqlLikeValue(string value);
-        string ConcatSql(params string[] strs);
+        string BuildFunctionSql(string functionName, params string[] args);
+        string BuildConcatSql(params string[] strs);
         DbType GetDbType(Type type);
         /// <summary>
         /// 获取指定数据类型的默认长度

@@ -263,7 +263,7 @@ namespace MyOrm
         {
             ThrowExceptionIfNoKeys();
             ThrowExceptionIfWrongKeys(keys);
-            StatementSet condition = new StatementSet();
+            StatementSet condition = new StatementSet(StatementJoinType.And);
             int i = 0;
             foreach (ColumnDefinition column in TableDefinition.Keys)
             {

@@ -24,7 +24,15 @@ namespace LogRecord
     {
         public override void BatchInsert(IEnumerable<AccountingLog> entities)
         {
-            MySqlBulkCopy bulkCopy = new MySqlBulkCopy(Connection as MySqlConnection, DAOContext.CurrentTransaction as MySqlTransaction);
+            
+        }
+    }
+
+    public class MysqlBulkInsertProvider : IBulkInsertProvider
+    {
+        public void BulkInsert(IDbConnection connection, IEnumerable<T> entities, string tableName) where T : class
+        {
+            MySqlBulkCopy bulkCopy = new MySqlBulkCopy(connection as MySqlConnection, DAOContext.CurrentTransaction as MySqlTransaction);
             bulkCopy.DestinationTableName = FactTableName;
             bulkCopy.ConflictOption = MySqlBulkLoaderConflictOption.Replace;
             DataTable dt = new DataTable();
@@ -43,6 +51,7 @@ namespace LogRecord
                 var row = dt.NewRow();
                 foreach (DataColumn column in dt.Columns)
                 {
+                    column.
                     row[column.ColumnName] = entity[column.ColumnName] ?? DBNull.Value;
                 }
                 dt.Rows.Add(row);

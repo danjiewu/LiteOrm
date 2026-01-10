@@ -17,9 +17,24 @@ namespace MyOrm
         public static readonly SqlBuilder Instance = new SqlBuilder();
 
         private ConcurrentDictionary<Type, DbType> typeToDbTypeCache = new ConcurrentDictionary<Type, DbType>();
+
+        private Dictionary<string, string> _functionMappings = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase)
+        {
+            ["ToUpper"] = "UPPER",
+            ["ToLower"] = "LOWER",
+            ["Now"] = "CURRENT_TIMESTAMP",
+            ["Today"] = "CURRENT_DATE",
+            ["Max"] = "GREATEST",
+            ["Min"] = "LEAST"
+        };
+
+        // 初始化映射字典（抽象方法，子类必须实现）
+        protected virtual void InitializeFunctionMappings(Dictionary<string, string> functionMappings) { }
+
         public SqlBuilder()
         {
             InitTypeToDbType();
+            InitializeFunctionMappings(_functionMappings);
         }
 
         protected virtual void InitTypeToDbType()
@@ -49,6 +64,33 @@ namespace MyOrm
         public void RegisterDbType(Type type, DbType dbType)
         {
             typeToDbTypeCache[type] = dbType;
+        }
+
+        // 替换函数名的核心方法
+        public virtual string ReplaceFunctionName(string functionName)
+        {
+            if (string.IsNullOrWhiteSpace(functionName))
+                return functionName;
+
+            string key = functionName.Trim();
+
+            // 如果找到映射则返回数据库函数名，否则返回原名称
+            return _functionMappings.TryGetValue(key, out string dbFunctionName)
+                ? dbFunctionName
+                : functionName;
+        }
+
+        public virtual string BuildFunctionSql(string functionName, params string[] args)
+        {
+            switch (functionName.ToUpper())
+            {
+                case "NOW":
+                    return "CURRENT_TIMESTAMP";
+                case "TODAY":
+                    return "CURRENT_DATE";
+            }
+            string dbFunctionName = ReplaceFunctionName(functionName);
+            return $"{dbFunctionName}({string.Join(", ", args)})";
         }
 
         /// <summary>
@@ -92,7 +134,7 @@ namespace MyOrm
         /// <summary>
         /// SQL语句中like条件中的转义符
         /// </summary>
-        public const char LikeEscapeChar = '/';
+        public const char LikeEscapeChar = '\\';
         /// <summary>
         /// 对like条件的字符串内容中的转义符进行替换的正则表达
         /// </summary>
@@ -102,9 +144,6 @@ namespace MyOrm
         /// </summary>
         protected static Regex sqlNameRegex = new Regex(@"\[([^\]]+)\]");
         #endregion
-
-
-
         public virtual string ToSqlLikeValue(string value)
         {
             return sqlLikeEscapeReg.Replace(value, LikeEscapeChar + "$1");
@@ -129,7 +168,7 @@ namespace MyOrm
         /// </summary>
         /// <param name="strs">需要连接的sql字符串</param>
         /// <returns>SQL语句</returns>
-        public virtual string ConcatSql(params string[] strs)
+        public virtual string BuildConcatSql(params string[] strs)
         {
             return String.Join(" + ", strs);
         }
@@ -147,8 +186,7 @@ namespace MyOrm
         public virtual string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
             if (!String.IsNullOrEmpty(where)) where = "\nwhere " + where;
-            int endIndex = startIndex + sectionSize;
-            return $"select * from (\nselect {select}, Row_Number() over (Order by {orderBy}) as Row_Number \nfrom {from} {where}) TempTable \nwhere Row_Number > {startIndex} and Row_Number <= {endIndex}";
+            return $"select * from (\nselect {select}, Row_Number() over (Order by {orderBy}) as Row_Number \nfrom {from} {where}) TempTable \nwhere Row_Number > {startIndex} and Row_Number <= {startIndex + sectionSize}";
         }
 
         /// <summary>

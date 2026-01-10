@@ -13,12 +13,19 @@ namespace MyOrm.MySql
     public class MySqlBuilder : SqlBuilder
     {
         public static readonly new MySqlBuilder Instance = new MySqlBuilder();
+
+        protected override void InitializeFunctionMappings(Dictionary<string, string> functionMappings)
+        {
+            // 只需添加名称不同的映射
+            functionMappings["Length"] = "CHAR_LENGTH";  // 字符数
+            functionMappings["IndexOf"] = "LOCATE";      // LOCATE(substr, str)
+        }
         /// <summary>
         /// 连接各字符串的SQL语句
         /// </summary>
         /// <param name="strs">需要连接的sql字符串</param>
         /// <returns>SQL语句</returns>
-        public override string ConcatSql(params string[] strs)
+        public override string BuildConcatSql(params string[] strs)
         {
             return $"CONCAT({String.Join(",", strs)})";
         }
