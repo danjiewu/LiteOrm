@@ -15,10 +15,6 @@ namespace MyOrm.Common
     /// </summary>
     public abstract class Statement
     {
-        private static int GetHashCode(params object[] states)
-        {
-            int hash = 0;
-        }
         /// <summary>
         /// 将当前语句转换为 SQL 字符串片段。
         /// </summary>
@@ -397,81 +393,83 @@ namespace MyOrm.Common
         {
             return Value == null ? 0 : Value.GetHashCode();
         }
+    }
+
+    /// <summary>
+    /// 表示函数调用语句，例如 <c>SUM(column)</c>、<c>COALESCE(a,b)</c> 等。
+    /// </summary>
+    public class FunctionStatement : Statement
+    {
+        /// <summary>
+        /// 构造函数，初始化空参数列表。
+        /// </summary>
+        public FunctionStatement()
+        {
+            Parameters = new List<Statement>();
+        }
 
         /// <summary>
-        /// 表示函数调用语句，例如 <c>SUM(column)</c>、<c>COALESCE(a,b)</c> 等。
+        /// 使用函数名与参数构造函数语句。
         /// </summary>
-        public class FunctionStatement : Statement
+        /// <param name="functionName">函数名</param>
+        /// <param name="parameters">参数语句列表</param>
+        public FunctionStatement(string functionName, params Statement[] parameters)
         {
-            /// <summary>
-            /// 构造函数，初始化空参数列表。
-            /// </summary>
-            public FunctionStatement()
-            {
-                Parameters = new List<Statement>();
-            }
-
-            /// <summary>
-            /// 使用函数名与参数构造函数语句。
-            /// </summary>
-            /// <param name="functionName">函数名</param>
-            /// <param name="parameters">参数语句列表</param>
-            public FunctionStatement(string functionName, params Statement[] parameters)
-            {
-                FunctionName = functionName;
-                Parameters = parameters.ToList();
-            }
-
-            /// <summary>
-            /// 函数名
-            /// </summary>
-            public string FunctionName { get; set; }
-
-            /// <summary>
-            /// 参数语句列表
-            /// </summary>
-            public List<Statement> Parameters { get; set; }
-
-            /// <inheritdoc/>
-            public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-            {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < Parameters.Count; i++)
-                {
-                    if (i > 0) sb.Append(", ");
-                    sb.Append(Parameters[i].ToSql(context, sqlBuilder, outputParams));
-                }
-                return $"{FunctionName}({sb})";
-            }
-
-            public override string ToString()
-            {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < Parameters.Count; i++)
-                {
-                    if (i > 0) sb.Append(", ");
-                    sb.Append(Parameters[i]);
-                }
-                return $"{FunctionName}({sb})";
-            }
-
-            public override bool Equals(object obj)
-            {
-                return obj is FunctionStatement p && p.FunctionName == FunctionName && Parameters.SequenceEqual(p.Parameters);
-            }
-
-            public override int GetHashCode()
-            {
-                return FunctionName.GetHashCode() ^ Parameters.GetHashCode();
-            }
+            FunctionName = functionName;
+            Parameters = parameters.ToList();
+        }
 
         /// <summary>
-        /// 二元条件语句，例如 <c>a = b</c>, <c>name LIKE '%abc%'</c>, <c>id IN (1,2,3)</c> 等。
-        /// 支持带 NOT 前缀的操作（例如 NOT IN、NOT LIKE）。
+        /// 函数名
         /// </summary>
-        public class BinaryStatement : Statement
+        public string FunctionName { get; set; }
+
+        /// <summary>
+        /// 参数语句列表
+        /// </summary>
+        public List<Statement> Parameters { get; set; }
+
+        /// <inheritdoc/>
+        public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            private static Dictionary<BinaryOperator, string> operatorSymbols = new(){
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < Parameters.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append(Parameters[i].ToSql(context, sqlBuilder, outputParams));
+            }
+            return $"{FunctionName}({sb})";
+        }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < Parameters.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append(Parameters[i]);
+            }
+            return $"{FunctionName}({sb})";
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is FunctionStatement p && p.FunctionName == FunctionName && Parameters.SequenceEqual(p.Parameters);
+        }
+
+        public override int GetHashCode()
+        {
+            return FunctionName.GetHashCode() ^ Parameters.GetHashCode();
+        }
+    }
+
+    /// <summary>
+    /// 二元条件语句，例如 <c>a = b</c>, <c>name LIKE '%abc%'</c>, <c>id IN (1,2,3)</c> 等。
+    /// 支持带 NOT 前缀的操作（例如 NOT IN、NOT LIKE）。
+    /// </summary>
+    public class BinaryStatement : Statement
+    {
+        private static Dictionary<BinaryOperator, string> operatorSymbols = new(){
             { BinaryOperator.Equal,"=" },
             { BinaryOperator.GreaterThan,">" },
             { BinaryOperator.LessThan,"<" },
@@ -497,509 +495,509 @@ namespace MyOrm.Common
             { BinaryOperator.Concat,"||" }
         };
 
-            /// <summary>
-            /// 无参构造
-            /// </summary>
-            public BinaryStatement()
+        /// <summary>
+        /// 无参构造
+        /// </summary>
+        public BinaryStatement()
+        {
+        }
+
+        /// <summary>
+        /// 使用左右表达式与操作符构造条件语句。
+        /// </summary>
+        /// <param name="left">左侧语句</param>
+        /// <param name="oper">二元操作符</param>
+        /// <param name="right">右侧语句</param>
+        public BinaryStatement(Statement left, BinaryOperator oper, Statement right)
+        {
+            Left = left;
+            Operator = oper;
+            Right = right;
+        }
+
+        /// <summary>
+        /// 左侧语句
+        /// </summary>
+        public Statement Left { get; set; }
+
+        /// <summary>
+        /// 使用的操作符（可能包含 Not 标志）
+        /// </summary>
+        public BinaryOperator Operator { get; set; }
+
+        /// <summary>
+        /// 获取不含 Not 标志的原始操作符（例如 Not|In => In）。
+        /// </summary>
+        public BinaryOperator OriginOperator => Operator & (BinaryOperator.Not - 1);
+
+        /// <summary>
+        /// 右侧语句
+        /// </summary>
+        public Statement Right { get; set; }
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// - 对于 REGEXP_LIKE，生成形如 <c>REGEXP_LIKE(left,right)</c> 的调用。
+        /// - 对于 equals 且右值为 NULL，生成 IS NULL / IS NOT NULL。
+        /// - 对于 LIKE/StartsWith/EndsWith/Contains 等，会依据右侧是 ValueStatement 还是表达式生成带参数或带通配符的 SQL，并为需要的值添加参数到 <paramref name="outputParams"/>。
+        /// - 对于复杂字符串拼接或需要转义的情况，使用 <see cref="ISqlBuilder.ConcatSql"/> 以便兼容不同数据库的拼接语法。
+        /// </remarks>
+        public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            string op = String.Empty;
+            operatorSymbols.TryGetValue(Operator, out op);
+            switch (OriginOperator)
             {
-            }
-
-            /// <summary>
-            /// 使用左右表达式与操作符构造条件语句。
-            /// </summary>
-            /// <param name="left">左侧语句</param>
-            /// <param name="oper">二元操作符</param>
-            /// <param name="right">右侧语句</param>
-            public BinaryStatement(Statement left, BinaryOperator oper, Statement right)
-            {
-                Left = left;
-                Operator = oper;
-                Right = right;
-            }
-
-            /// <summary>
-            /// 左侧语句
-            /// </summary>
-            public Statement Left { get; set; }
-
-            /// <summary>
-            /// 使用的操作符（可能包含 Not 标志）
-            /// </summary>
-            public BinaryOperator Operator { get; set; }
-
-            /// <summary>
-            /// 获取不含 Not 标志的原始操作符（例如 Not|In => In）。
-            /// </summary>
-            public BinaryOperator OriginOperator => Operator & (BinaryOperator.Not - 1);
-
-            /// <summary>
-            /// 右侧语句
-            /// </summary>
-            public Statement Right { get; set; }
-
-            /// <inheritdoc/>
-            /// <remarks>
-            /// - 对于 REGEXP_LIKE，生成形如 <c>REGEXP_LIKE(left,right)</c> 的调用。
-            /// - 对于 equals 且右值为 NULL，生成 IS NULL / IS NOT NULL。
-            /// - 对于 LIKE/StartsWith/EndsWith/Contains 等，会依据右侧是 ValueStatement 还是表达式生成带参数或带通配符的 SQL，并为需要的值添加参数到 <paramref name="outputParams"/>。
-            /// - 对于复杂字符串拼接或需要转义的情况，使用 <see cref="ISqlBuilder.ConcatSql"/> 以便兼容不同数据库的拼接语法。
-            /// </remarks>
-            public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-            {
-                string op = String.Empty;
-                operatorSymbols.TryGetValue(Operator, out op);
-                switch (OriginOperator)
-                {
-                    case BinaryOperator.RegexpLike:
-                        return $"{op}({Left.ToSql(context, sqlBuilder, outputParams)},{Right.ToSql(context, sqlBuilder, outputParams)})";
-                    case BinaryOperator.Equal:
-                        if (Right == null || Right is ValueStatement vs && vs.Value == null)
-                        {
-                            if (Operator == BinaryOperator.Equal)
-                                return $"{Left.ToSql(context, sqlBuilder, outputParams)} is null";
-                            else
-                                return $"{Left.ToSql(context, sqlBuilder, outputParams)} is not null";
-                        }
-                        else if (Left == null || Left is ValueStatement vsl && vsl.Value == null)
-                        {
-                            if (Operator == BinaryOperator.Equal)
-                                return $"{Right.ToSql(context, sqlBuilder, outputParams)} is null";
-                            else
-                                return $"{Right.ToSql(context, sqlBuilder, outputParams)} is not null";
-                        }
+                case BinaryOperator.RegexpLike:
+                    return $"{op}({Left.ToSql(context, sqlBuilder, outputParams)},{Right.ToSql(context, sqlBuilder, outputParams)})";
+                case BinaryOperator.Equal:
+                    if (Right == null || Right is ValueStatement vs && vs.Value == null)
+                    {
+                        if (Operator == BinaryOperator.Equal)
+                            return $"{Left.ToSql(context, sqlBuilder, outputParams)} is null";
                         else
-                            return $"{Left.ToSql(context, sqlBuilder, outputParams)} {op} {Right.ToSql(context, sqlBuilder, outputParams)}";
-                    case BinaryOperator.Concat:
-                        return sqlBuilder.ConcatSql(Left.ToSql(context, sqlBuilder, outputParams), Right.ToSql(context, sqlBuilder, outputParams));
-                    case BinaryOperator.Contains:
-                    case BinaryOperator.EndsWith:
-                    case BinaryOperator.StartsWith:
-                        if (Right is ValueStatement vs2)
-                        {
-                            string paramName = outputParams.Count.ToString();
-                            string val = sqlBuilder.ToSqlLikeValue(vs2.Value?.ToString());
-                            switch (OriginOperator)
-                            {
-                                case BinaryOperator.StartsWith:
-                                    val = $"{val}%"; break;
-                                case BinaryOperator.EndsWith:
-                                    val = $"%{val}"; break;
-                                case BinaryOperator.Contains:
-                                    val = $"%{val}%"; break;
-                            }
-                            outputParams.Add(new KeyValuePair<string, object>(sqlBuilder.ToParamName(paramName), val));
-                            return $@"{Left.ToSql(context, sqlBuilder, outputParams)} {op} {sqlBuilder.ToSqlParam(paramName)} escape '\\'";
-                        }
+                            return $"{Left.ToSql(context, sqlBuilder, outputParams)} is not null";
+                    }
+                    else if (Left == null || Left is ValueStatement vsl && vsl.Value == null)
+                    {
+                        if (Operator == BinaryOperator.Equal)
+                            return $"{Right.ToSql(context, sqlBuilder, outputParams)} is null";
                         else
-                        {
-                            string left = Left.ToSql(context, sqlBuilder, outputParams);
-                            string right = $@"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({Right.ToSql(context, sqlBuilder, outputParams)},'\\', '\\\\'),'_', '\\_'),'%', '\\%'),'/', '\\/'),'[', '\\['),']', '\\]')";
-                            switch (OriginOperator)
-                            {
-                                case BinaryOperator.StartsWith:
-                                    right = sqlBuilder.ConcatSql(right, "%"); break;
-                                case BinaryOperator.EndsWith:
-                                    right = sqlBuilder.ConcatSql("%", right); break;
-                                case BinaryOperator.Contains:
-                                    right = sqlBuilder.ConcatSql("%", right, "%"); break;
-                            }
-                            return $@"{left} {op} {right} escape '\\'";
-                        }
-                    default:
+                            return $"{Right.ToSql(context, sqlBuilder, outputParams)} is not null";
+                    }
+                    else
                         return $"{Left.ToSql(context, sqlBuilder, outputParams)} {op} {Right.ToSql(context, sqlBuilder, outputParams)}";
-                }
+                case BinaryOperator.Concat:
+                    return sqlBuilder.ConcatSql(Left.ToSql(context, sqlBuilder, outputParams), Right.ToSql(context, sqlBuilder, outputParams));
+                case BinaryOperator.Contains:
+                case BinaryOperator.EndsWith:
+                case BinaryOperator.StartsWith:
+                    if (Right is ValueStatement vs2)
+                    {
+                        string paramName = outputParams.Count.ToString();
+                        string val = sqlBuilder.ToSqlLikeValue(vs2.Value?.ToString());
+                        switch (OriginOperator)
+                        {
+                            case BinaryOperator.StartsWith:
+                                val = $"{val}%"; break;
+                            case BinaryOperator.EndsWith:
+                                val = $"%{val}"; break;
+                            case BinaryOperator.Contains:
+                                val = $"%{val}%"; break;
+                        }
+                        outputParams.Add(new KeyValuePair<string, object>(sqlBuilder.ToParamName(paramName), val));
+                        return $@"{Left.ToSql(context, sqlBuilder, outputParams)} {op} {sqlBuilder.ToSqlParam(paramName)} escape '\\'";
+                    }
+                    else
+                    {
+                        string left = Left.ToSql(context, sqlBuilder, outputParams);
+                        string right = $@"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({Right.ToSql(context, sqlBuilder, outputParams)},'\\', '\\\\'),'_', '\\_'),'%', '\\%'),'/', '\\/'),'[', '\\['),']', '\\]')";
+                        switch (OriginOperator)
+                        {
+                            case BinaryOperator.StartsWith:
+                                right = sqlBuilder.ConcatSql(right, "%"); break;
+                            case BinaryOperator.EndsWith:
+                                right = sqlBuilder.ConcatSql("%", right); break;
+                            case BinaryOperator.Contains:
+                                right = sqlBuilder.ConcatSql("%", right, "%"); break;
+                        }
+                        return $@"{left} {op} {right} escape '\\'";
+                    }
+                default:
+                    return $"{Left.ToSql(context, sqlBuilder, outputParams)} {op} {Right.ToSql(context, sqlBuilder, outputParams)}";
             }
+        }
 
-            public override string ToString()
-            {
-                string op = String.Empty;
-                if (!operatorSymbols.TryGetValue(Operator, out op)) op = Operator.ToString();
-                return $"{Left} {op} {Right}";
-            }
+        public override string ToString()
+        {
+            string op = String.Empty;
+            if (!operatorSymbols.TryGetValue(Operator, out op)) op = Operator.ToString();
+            return $"{Left} {op} {Right}";
+        }
+    }
+
+    /// <summary>
+    /// 多语句集合（AND / OR / 逗号分隔），通常用于组合多个条件或生成列列表等。
+    /// </summary>
+    public class StatementSet : Statement, ICollection<Statement>
+    {
+        /// <summary>
+        /// 构造并初始化空集合。
+        /// </summary>
+        public StatementSet()
+        {
+            Items = new List<Statement>();
         }
 
         /// <summary>
-        /// 多语句集合（AND / OR / 逗号分隔），通常用于组合多个条件或生成列列表等。
+        /// 使用一组语句初始化集合。
         /// </summary>
-        public class StatementSet : Statement, ICollection<Statement>
+        /// <param name="items">语句项</param>
+        public StatementSet(params Statement[] items)
         {
-            /// <summary>
-            /// 构造并初始化空集合。
-            /// </summary>
-            public StatementSet()
-            {
-                Items = new List<Statement>();
-            }
-
-            /// <summary>
-            /// 使用一组语句初始化集合。
-            /// </summary>
-            /// <param name="items">语句项</param>
-            public StatementSet(params Statement[] items)
-            {
-                Items = items.ToList();
-            }
-
-            /// <summary>
-            /// 使用指定连接类型和语句项初始化集合。
-            /// </summary>
-            /// <param name="joinType">连接类型（And/Or/Comma）</param>
-            /// <param name="items">语句项</param>
-            public StatementSet(StatementJoinType joinType, params Statement[] items)
-            {
-                JoinType = joinType;
-                Items = items.ToList();
-            }
-
-            /// <summary>
-            /// 集合的连接类型
-            /// </summary>
-            public StatementJoinType JoinType { get; set; }
-
-            /// <summary>
-            /// 集合中的语句项
-            /// </summary>
-            public List<Statement> Items { get; set; }
-
-            public int Count => Items.Count;
-
-            public bool IsReadOnly => false;
-
-            public void Add(Statement item)
-            {
-                Items.Add(item);
-            }
-
-            public void Clear()
-            {
-                Items.Clear();
-            }
-
-            public bool Contains(Statement item)
-            {
-                return Items.Contains(item);
-            }
-
-            public void CopyTo(Statement[] array, int arrayIndex)
-            {
-                Items.CopyTo(array, arrayIndex);
-            }
-
-            public IEnumerator<Statement> GetEnumerator()
-            {
-                return Items.GetEnumerator();
-            }
-
-            public bool Remove(Statement item)
-            {
-                return Items.Remove(item);
-            }
-
-            /// <inheritdoc/>
-            public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-            {
-                StringBuilder sb = new StringBuilder();
-                string joinStr = JoinType == StatementJoinType.And ? " AND " : (JoinType == StatementJoinType.Or ? " OR " : ",");
-                for (int i = 0; i < Items.Count; i++)
-                {
-                    if (i > 0) sb.Append(joinStr);
-                    sb.Append(Items[i].ToSql(context, sqlBuilder, outputParams));
-                }
-                return $"({sb})";
-            }
-
-            public override string ToString()
-            {
-                StringBuilder sb = new StringBuilder();
-                string joinStr = JoinType == StatementJoinType.And ? " AND " : (JoinType == StatementJoinType.Or ? " OR " : ",");
-                for (int i = 0; i < Items.Count; i++)
-                {
-                    if (i > 0) sb.Append(joinStr);
-                    sb.Append(Items[i]);
-                }
-                return $"({sb})";
-            }
-
-
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
+            Items = items.ToList();
         }
 
         /// <summary>
-        /// 语句集合的连接类型枚举。
+        /// 使用指定连接类型和语句项初始化集合。
         /// </summary>
-        public enum StatementJoinType
+        /// <param name="joinType">连接类型（And/Or/Comma）</param>
+        /// <param name="items">语句项</param>
+        public StatementSet(StatementJoinType joinType, params Statement[] items)
         {
-            /// <summary>使用 AND 连接</summary>
-            And,
-            /// <summary>使用 OR 连接</summary>
-            Or,
-            /// <summary>使用逗号连接（通常用于列列表）</summary>
-            Comma
+            JoinType = joinType;
+            Items = items.ToList();
         }
 
         /// <summary>
-        /// 单目操作符
+        /// 集合的连接类型
         /// </summary>
-        public enum UnaryOperator
+        public StatementJoinType JoinType { get; set; }
+
+        /// <summary>
+        /// 集合中的语句项
+        /// </summary>
+        public List<Statement> Items { get; set; }
+
+        public int Count => Items.Count;
+
+        public bool IsReadOnly => false;
+
+        public void Add(Statement item)
         {
-            /// <summary>
-            /// 逻辑取反
-            /// </summary>
-            Not = 0,
-            /// <summary>
-            /// 负号
-            /// </summary>
-            Nagive = 1,
-            /// <summary>
-            /// 按位取反
-            /// </summary>
-            BitwiseNot = 2
+            Items.Add(item);
+        }
+
+        public void Clear()
+        {
+            Items.Clear();
+        }
+
+        public bool Contains(Statement item)
+        {
+            return Items.Contains(item);
+        }
+
+        public void CopyTo(Statement[] array, int arrayIndex)
+        {
+            Items.CopyTo(array, arrayIndex);
+        }
+
+        public IEnumerator<Statement> GetEnumerator()
+        {
+            return Items.GetEnumerator();
+        }
+
+        public bool Remove(Statement item)
+        {
+            return Items.Remove(item);
+        }
+
+        /// <inheritdoc/>
+        public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            StringBuilder sb = new StringBuilder();
+            string joinStr = JoinType == StatementJoinType.And ? " AND " : (JoinType == StatementJoinType.Or ? " OR " : ",");
+            for (int i = 0; i < Items.Count; i++)
+            {
+                if (i > 0) sb.Append(joinStr);
+                sb.Append(Items[i].ToSql(context, sqlBuilder, outputParams));
+            }
+            return $"({sb})";
+        }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            string joinStr = JoinType == StatementJoinType.And ? " AND " : (JoinType == StatementJoinType.Or ? " OR " : ",");
+            for (int i = 0; i < Items.Count; i++)
+            {
+                if (i > 0) sb.Append(joinStr);
+                sb.Append(Items[i]);
+            }
+            return $"({sb})";
+        }
+
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
+
+    /// <summary>
+    /// 语句集合的连接类型枚举。
+    /// </summary>
+    public enum StatementJoinType
+    {
+        /// <summary>使用 AND 连接</summary>
+        And,
+        /// <summary>使用 OR 连接</summary>
+        Or,
+        /// <summary>使用逗号连接（通常用于列列表）</summary>
+        Comma
+    }
+
+    /// <summary>
+    /// 单目操作符
+    /// </summary>
+    public enum UnaryOperator
+    {
+        /// <summary>
+        /// 逻辑取反
+        /// </summary>
+        Not = 0,
+        /// <summary>
+        /// 负号
+        /// </summary>
+        Nagive = 1,
+        /// <summary>
+        /// 按位取反
+        /// </summary>
+        BitwiseNot = 2
+    }
+
+    /// <summary>
+    /// 双目操作符
+    /// </summary>
+    public enum BinaryOperator
+    {
+        /// <summary>
+        /// 相等
+        /// </summary>
+        Equal = 0,
+        /// <summary>
+        /// 大于
+        /// </summary>
+        GreaterThan = 1,
+        /// <summary>
+        /// 小于
+        /// </summary>
+        LessThan = 2,
+        /// <summary>
+        /// 以指定字符串为开始（作为字符串比较）
+        /// </summary>
+        StartsWith = 3,
+        /// <summary>
+        /// 以指定字符串为结尾（作为字符串比较）
+        /// </summary>
+        EndsWith = 4,
+        /// <summary>
+        /// 包含指定字符串（作为字符串比较）
+        /// </summary>
+        Contains = 5,
+        /// <summary>
+        /// 匹配字符串格式（作为字符串比较）
+        /// </summary>
+        Like = 6,
+        /// <summary>
+        /// 包含在集合中
+        /// </summary>
+        In = 7,
+        /// <summary>
+        /// 正则表达式匹配
+        /// </summary>
+        RegexpLike = 8,
+        /// <summary>
+        /// 加法
+        /// </summary>
+        Add = 9,
+        /// <summary>
+        /// 减法
+        /// </summary>
+        Subtract = 10,
+        /// <summary>
+        /// 乘法
+        /// </summary>
+        Multiply = 11,
+        /// <summary>
+        /// 除法
+        /// </summary>
+        Divide = 12,
+        /// <summary>
+        /// 字符串连接
+        /// </summary>
+        Concat = 13,
+        /// <summary>
+        /// 逻辑非 
+        /// </summary>
+        Not = 64,
+        /// <summary>
+        /// 不等于
+        /// </summary>
+        NotEqual = Equal | Not,
+        /// <summary>
+        /// 不小于
+        /// </summary>
+        GreaterThanOrEqual = LessThan | Not,
+        /// <summary>
+        /// 不大于
+        /// </summary>
+        LessThanOrEqual = GreaterThan | Not,
+        /// <summary>
+        /// 不以指定字符串为开始
+        /// </summary>
+        NotStartsWith = StartsWith | Not,
+        /// <summary>
+        /// 不以指定字符串为结尾
+        /// </summary>
+        NotEndsWith = EndsWith | Not,
+        /// <summary>
+        /// 不包含指定字符串（作为字符串比较）
+        /// </summary>
+        NotContains = Contains | Not,
+        /// <summary>
+        /// 不匹配字符串格式（作为字符串比较）
+        /// </summary>
+        NotLike = Like | Not,
+        /// <summary>
+        /// 不包含在集合中
+        /// </summary>
+        NotIn = In | Not,
+        /// <summary>
+        /// 不匹配正则表达式
+        /// </summary>
+        NotRegexpLike = RegexpLike | Not
+    }
+
+    public static class BinaryOperatorExt
+    {
+        public static bool IsNot(this BinaryOperator oper)
+        {
+            return (oper & BinaryOperator.Not) == BinaryOperator.Not;
+        }
+
+        public static BinaryOperator Origin(this BinaryOperator oper)
+        {
+            return oper | (~BinaryOperator.Not);
+        }
+
+        public static BinaryOperator Opposite(this BinaryOperator oper)
+        {
+            return oper ^ BinaryOperator.Not;
+        }
+    }
+    /// <summary>
+    /// 通过委托生成的 SQL 片段。
+    /// </summary>
+    public class GeneralSqlStatement : Statement
+    {
+        /// <summary>
+        /// 使用委托构造，可以在生成 SQL 时依据上下文动态生成字符串。
+        /// </summary>
+        /// <param name="func">处理上下文并返回 SQL 字符串的委托</param>
+        public GeneralSqlStatement(Expression<Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, string>> func)
+        {
+            sqlHandler = func;
+        }
+
+        private Expression<Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, string>> sqlHandler;
+        /// <inheritdoc/>
+        public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            return sqlHandler?.Compile()?.Invoke(context, sqlBuilder, outputParams);
+        }
+
+        public override string ToString()
+        {
+            return sqlHandler?.ToString();
+        }
+    }
+
+    /// <summary>
+    /// 表示静态原始 SQL 片段。
+    /// </summary>
+    public class RawSqlStatement : Statement
+    {
+        /// <summary>
+        /// 无参构造。
+        /// </summary>
+        public RawSqlStatement()
+        {
         }
 
         /// <summary>
-        /// 双目操作符
+        /// 使用指定 SQL 字符串构造。
         /// </summary>
-        public enum BinaryOperator
+        /// <param name="sql">原始 SQL 片段</param>
+        public RawSqlStatement(string sql)
         {
-            /// <summary>
-            /// 相等
-            /// </summary>
-            Equal = 0,
-            /// <summary>
-            /// 大于
-            /// </summary>
-            GreaterThan = 1,
-            /// <summary>
-            /// 小于
-            /// </summary>
-            LessThan = 2,
-            /// <summary>
-            /// 以指定字符串为开始（作为字符串比较）
-            /// </summary>
-            StartsWith = 3,
-            /// <summary>
-            /// 以指定字符串为结尾（作为字符串比较）
-            /// </summary>
-            EndsWith = 4,
-            /// <summary>
-            /// 包含指定字符串（作为字符串比较）
-            /// </summary>
-            Contains = 5,
-            /// <summary>
-            /// 匹配字符串格式（作为字符串比较）
-            /// </summary>
-            Like = 6,
-            /// <summary>
-            /// 包含在集合中
-            /// </summary>
-            In = 7,
-            /// <summary>
-            /// 正则表达式匹配
-            /// </summary>
-            RegexpLike = 8,
-            /// <summary>
-            /// 加法
-            /// </summary>
-            Add = 9,
-            /// <summary>
-            /// 减法
-            /// </summary>
-            Subtract = 10,
-            /// <summary>
-            /// 乘法
-            /// </summary>
-            Multiply = 11,
-            /// <summary>
-            /// 除法
-            /// </summary>
-            Divide = 12,
-            /// <summary>
-            /// 字符串连接
-            /// </summary>
-            Concat = 13,
-            /// <summary>
-            /// 逻辑非 
-            /// </summary>
-            Not = 64,
-            /// <summary>
-            /// 不等于
-            /// </summary>
-            NotEqual = Equal | Not,
-            /// <summary>
-            /// 不小于
-            /// </summary>
-            GreaterThanOrEqual = LessThan | Not,
-            /// <summary>
-            /// 不大于
-            /// </summary>
-            LessThanOrEqual = GreaterThan | Not,
-            /// <summary>
-            /// 不以指定字符串为开始
-            /// </summary>
-            NotStartsWith = StartsWith | Not,
-            /// <summary>
-            /// 不以指定字符串为结尾
-            /// </summary>
-            NotEndsWith = EndsWith | Not,
-            /// <summary>
-            /// 不包含指定字符串（作为字符串比较）
-            /// </summary>
-            NotContains = Contains | Not,
-            /// <summary>
-            /// 不匹配字符串格式（作为字符串比较）
-            /// </summary>
-            NotLike = Like | Not,
-            /// <summary>
-            /// 不包含在集合中
-            /// </summary>
-            NotIn = In | Not,
-            /// <summary>
-            /// 不匹配正则表达式
-            /// </summary>
-            NotRegexpLike = RegexpLike | Not
-        }
-
-        public static class BinaryOperatorExt
-        {
-            public static bool IsNot(this BinaryOperator oper)
-            {
-                return (oper & BinaryOperator.Not) == BinaryOperator.Not;
-            }
-
-            public static BinaryOperator Origin(this BinaryOperator oper)
-            {
-                return oper | (~BinaryOperator.Not);
-            }
-
-            public static BinaryOperator Opposite(this BinaryOperator oper)
-            {
-                return oper ^ BinaryOperator.Not;
-            }
-        }
-        /// <summary>
-        /// 通过委托生成的 SQL 片段。
-        /// </summary>
-        public class GeneralSqlStatement : Statement
-        {
-            /// <summary>
-            /// 使用委托构造，可以在生成 SQL 时依据上下文动态生成字符串。
-            /// </summary>
-            /// <param name="func">处理上下文并返回 SQL 字符串的委托</param>
-            public GeneralSqlStatement(Expression<Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, string>> func)
-            {
-                sqlHandler = func;
-            }
-
-            private Expression<Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, string>> sqlHandler;
-            /// <inheritdoc/>
-            public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-            {
-                return sqlHandler?.Compile()?.Invoke(context, sqlBuilder, outputParams);
-            }
-
-            public override string ToString()
-            {
-                return sqlHandler?.ToString();
-            }
+            Sql = sql;
         }
 
         /// <summary>
-        /// 表示静态原始 SQL 片段。
+        /// 指定的静态 SQL 字符串。
         /// </summary>
-        public class RawSqlStatement : Statement
+        public string Sql { get; set; }
+        /// <inheritdoc/>
+        public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            /// <summary>
-            /// 无参构造。
-            /// </summary>
-            public RawSqlStatement()
-            {
-            }
-
-            /// <summary>
-            /// 使用指定 SQL 字符串构造。
-            /// </summary>
-            /// <param name="sql">原始 SQL 片段</param>
-            public RawSqlStatement(string sql)
-            {
-                Sql = sql;
-            }
-
-            /// <summary>
-            /// 指定的静态 SQL 字符串。
-            /// </summary>
-            public string Sql { get; set; }
-            /// <inheritdoc/>
-            public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-            {
-                return Sql;
-            }
-
-            public override string ToString()
-            {
-                return Sql;
-            }
+            return Sql;
         }
 
+        public override string ToString()
+        {
+            return Sql;
+        }
+    }
 
+
+    /// <summary>
+    /// 
+    /// </summary>
+    public static class StatementExt
+    {
         /// <summary>
         /// 
         /// </summary>
-        public static class StatementExt
+        /// <param name="left"></param>
+        /// <param name="right"></param>
+        /// <returns></returns>
+        public static Statement And(this Statement left, Statement right)
         {
-            /// <summary>
-            /// 
-            /// </summary>
-            /// <param name="left"></param>
-            /// <param name="right"></param>
-            /// <returns></returns>
-            public static Statement And(this Statement left, Statement right)
+            if (left == null) return right;
+            else if (right == null) return left;
+            StatementSet leftSet = left as StatementSet;
+            StatementSet rightSet = right as StatementSet;
+            if (leftSet?.JoinType == StatementJoinType.And && rightSet?.JoinType == StatementJoinType.And)
             {
-                if (left == null) return right;
-                else if (right == null) return left;
-                StatementSet leftSet = left as StatementSet;
-                StatementSet rightSet = right as StatementSet;
-                if (leftSet?.JoinType == StatementJoinType.And && rightSet?.JoinType == StatementJoinType.And)
+                foreach (var item in rightSet.Items)
                 {
-                    foreach (var item in rightSet.Items)
-                    {
-                        leftSet.Add(item);
-                    }
-                    return leftSet;
+                    leftSet.Add(item);
                 }
-                else if (leftSet?.JoinType == StatementJoinType.And)
-                {
-                    leftSet.Add(right);
-                    return leftSet;
-                }
-                else if (rightSet?.JoinType == StatementJoinType.And)
-                {
-                    rightSet.Add(left);
-                    return rightSet;
-                }
-                else
-                    return new StatementSet(left, right);
+                return leftSet;
             }
+            else if (leftSet?.JoinType == StatementJoinType.And)
+            {
+                leftSet.Add(right);
+                return leftSet;
+            }
+            else if (rightSet?.JoinType == StatementJoinType.And)
+            {
+                rightSet.Add(left);
+                return rightSet;
+            }
+            else
+                return new StatementSet(left, right);
+        }
 
-            public static Statement Or(this Statement left, Statement right)
+        public static Statement Or(this Statement left, Statement right)
+        {
+            if (left == null || right == null) return null;
+            StatementSet leftSet = left as StatementSet;
+            StatementSet rightSet = right as StatementSet;
+            if (leftSet?.JoinType == StatementJoinType.Or)
             {
-                if (left == null || right == null) return null;
-                StatementSet leftSet = left as StatementSet;
-                StatementSet rightSet = right as StatementSet;
-                if (leftSet?.JoinType == StatementJoinType.Or)
-                {
-                    leftSet.Add(right);
-                    return leftSet;
-                }
-                else if (rightSet?.JoinType == StatementJoinType.Or)
-                {
-                    rightSet.Add(left);
-                    return rightSet;
-                }
-                else
-                    return new StatementSet(StatementJoinType.Or, left, right);
+                leftSet.Add(right);
+                return leftSet;
             }
+            else if (rightSet?.JoinType == StatementJoinType.Or)
+            {
+                rightSet.Add(left);
+                return rightSet;
+            }
+            else
+                return new StatementSet(StatementJoinType.Or, left, right);
         }
     }
+}
