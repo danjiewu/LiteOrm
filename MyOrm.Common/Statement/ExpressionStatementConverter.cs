@@ -243,7 +243,7 @@ namespace MyOrm.Common
                 }
             }
 
-            return new ValueStatement(items);
+            return new StatementSet(items);
         }
 
         private Statement ConvertListInit(ListInitExpression node)
@@ -261,7 +261,7 @@ namespace MyOrm.Common
                 }
             }
 
-            return new ValueStatement(items);
+            return new StatementSet(items);
         }
 
         #endregion
@@ -394,6 +394,16 @@ namespace MyOrm.Common
                 }
 
                 return new BinaryStatement(left, BinaryOperator.Equal, right);
+            }
+            else if (methodName == "Contains")
+            {
+                var left = ConvertInternal(node.Object);
+                var right = node.Arguments.Count > 0 ? ConvertInternal(node.Arguments[0]) : null;
+                if (left == null || right == null)
+                {
+                    throw new ArgumentException($"无法解析 Contains 方法调用: {node}");
+                }
+                return new BinaryStatement(right, BinaryOperator.In, left); 
             }
             else if (methodName == "CompareTo")
             {
@@ -536,28 +546,26 @@ namespace MyOrm.Common
                 _ => BinaryOperator.Equal
             };
         }
-
         #endregion
-    }
 
-
-    public class ParameterExpressionDetector : ExpressionVisitor
-    {
-        private bool _hasParameter = false;
-        /// <summary>
-        /// 检查表达式中是否包含参数
-        /// </summary>
-        public bool ContainsParameter(Expression expression)
+        public class ParameterExpressionDetector : ExpressionVisitor
         {
-            _hasParameter = false;
-            Visit(expression);
-            return _hasParameter;
-        }
+            private bool _hasParameter = false;
+            /// <summary>
+            /// 检查表达式中是否包含参数
+            /// </summary>
+            public bool ContainsParameter(Expression expression)
+            {
+                _hasParameter = false;
+                Visit(expression);
+                return _hasParameter;
+            }
 
-        protected override Expression VisitParameter(ParameterExpression node)
-        {
-            _hasParameter = true;
-            return base.VisitParameter(node);
+            protected override Expression VisitParameter(ParameterExpression node)
+            {
+                _hasParameter = true;
+                return base.VisitParameter(node);
+            }
         }
     }
 
@@ -568,28 +576,28 @@ namespace MyOrm.Common
     {
         public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
         {
-            return entityViewService.Search(Statement.Exp(expression));
+            return entityViewService.Search(Statement.Exp(expression).Statement);
         }
         public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
         {
-            return entityViewService.SearchOne(Statement.Exp(expression));
+            return entityViewService.SearchOne(Statement.Exp(expression).Statement);
         }
         public static List<T> SearchSection<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, SectionSet sectionSet, params string[] tableArgs)
         {
-            return entityViewService.SearchSection(Statement.Exp(expression), sectionSet, tableArgs);
+            return entityViewService.SearchSection(Statement.Exp(expression).Statement, sectionSet, tableArgs);
         }
 
         public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression)
         {
-            return entityViewService.SearchAsync(Statement.Exp(expression));
+            return entityViewService.SearchAsync(Statement.Exp(expression).Statement);
         }
         public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression)
         {
-            return entityViewService.SearchOneAsync(Statement.Exp(expression));
+            return entityViewService.SearchOneAsync(Statement.Exp(expression).Statement);
         }
         public static Task<List<T>> SearchSectionAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, SectionSet sectionSet, params string[] tableArgs)
         {
-            return entityViewService.SearchSectionAsync(Statement.Exp(expression), sectionSet, tableArgs);
+            return entityViewService.SearchSectionAsync(Statement.Exp(expression).Statement, sectionSet, tableArgs);
         }
     }
 }

@@ -30,11 +30,34 @@ namespace MyOrm.Common
         }
 
         /// <summary>
+        /// 使用一组语句初始化集合。
+        /// </summary>
+        /// <param name="items">语句项</param>
+        public StatementSet(IEnumerable<Statement> items)
+        {
+            Items.AddRange(items);
+        }
+
+        /// <summary>
         /// 使用指定连接类型和语句项初始化集合。
         /// </summary>
         /// <param name="joinType">连接类型（And/Or/Comma）</param>
         /// <param name="items">语句项</param>
         public StatementSet(StatementJoinType joinType, params Statement[] items)
+        {
+            JoinType = joinType;
+            foreach (var item in items)
+            {
+                Add(item);
+            }
+        }
+
+        /// <summary>
+        /// 使用指定连接类型和语句项初始化集合。
+        /// </summary>
+        /// <param name="joinType">连接类型（And/Or/Comma）</param>
+        /// <param name="items">语句项</param>
+        public StatementSet(StatementJoinType joinType, IEnumerable<Statement> items)
         {
             JoinType = joinType;
             foreach (var item in items)

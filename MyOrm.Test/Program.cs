@@ -51,7 +51,7 @@ namespace MyOrm.Test
             var serviceProvider = host.Services;
             var dao = serviceProvider.GetRequiredService<IObjectDAO<Session>>();
             var service = serviceProvider.GetRequiredService<IAccountingLogService>();
-            var logs = await service.SearchSectionAsync(l => Math.Max(l.AcctInputOctets.Value, l.AcctOutputOctets.Value).ToString().Length - Math.Min(l.AcctInputOctets.Value, l.AcctOutputOctets.Value).ToString().Length == 3, new SectionSet().Take(1000), "202512");
+            var logs = await service.SearchSectionAsync(l => new int[] { 1, 2, 3, 4, 5 }.Contains(l.AcctStatusType.Value), new SectionSet().Take(1000), "202501");
 
             //service.BatchInsert(logs);
 

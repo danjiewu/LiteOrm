@@ -61,7 +61,7 @@ namespace MyOrm.Common
         }
 
         // 添加这个方法以支持从 Expression 创建
-        public static Statement Exp<T>(Expression<Func<T, bool>> expression)
+        public static ExpressionStatement<T> Exp<T>(Expression<Func<T, bool>> expression)
         {
             return new ExpressionStatement<T>(expression);
         }

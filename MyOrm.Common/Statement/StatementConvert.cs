@@ -1,10 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Microsoft.VisualBasic;
 using MyOrm.Common;
-using System.ComponentModel;
+using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
+using System.Linq;
+using System.Text;
 
 namespace MyOrm.Common
 {
@@ -21,7 +23,7 @@ namespace MyOrm.Common
         /// <returns>简单查询条件</returns>
         public static BinaryStatement Parse(PropertyDescriptor property, string text)
         {
-            if (text == null) return Statement.Property(property.Name, null);
+            if (String.IsNullOrEmpty(text)) return Statement.Property(property.Name, null);
             if (text.Length > 1)
             {
                 switch (text.Substring(0, 2))
@@ -114,32 +116,49 @@ namespace MyOrm.Common
         /// 根据条件生成用于解析的字符串
         /// </summary>
         /// <param name="op">条件类型</param>
-        /// <param name="opposite">是否为非</param>
         /// <param name="value">用于比较的值</param>
         /// <returns></returns>
-        public static string ToText(BinaryOperator op, bool opposite, object value)
+        public static string ToText(BinaryOperator op, object value)
         {
             switch (op)
             {
+                case BinaryOperator.Equal:
+                    string str = ToText(value);
+                    if (String.IsNullOrEmpty(str) || "!<>=*%$".IndexOf(str[0]) >= 0 || str.IndexOf(',') >= 0)
+                        return '=' + str;
+                    else
+                        return str;
+                case BinaryOperator.NotEqual:
+                    str = ToText(value);
+                    if (!String.IsNullOrEmpty(str) && ("<>=*%$".IndexOf(str[0]) >= 0 || str.IndexOf(',') >= 0))
+                        return "!=" + str;
+                    else
+                        return "!" + str;
                 case BinaryOperator.In:
                     List<string> values = new List<string>();
                     foreach (object o in value as IEnumerable)
                     {
                         values.Add(ToText(o));
                     }
-                    string str = String.Join(",", values.ToArray());
-                    return opposite ? "!" + ToText(str, "<>=*%".ToCharArray()) : ToText(str, "!<>=*%".ToCharArray());
-                case BinaryOperator.GreaterThan: return opposite ? "<=" + ToText(value) : ">" + ToText(value, '=');
-                case BinaryOperator.LessThan: return opposite ? ">=" + ToText(value) : "<" + ToText(value, '=');
-                case BinaryOperator.Like: return (opposite ? "!*" : "*") + ToText(value);
-                case BinaryOperator.Contains: return (opposite ? "!%" : "%") + ToText(value);
-                case BinaryOperator.RegexpLike: return (opposite ? "!$" : "$") + ToText(value);
-                case BinaryOperator.Equal:
-                    str = ToText(value);
-                    if (value != null && (str == String.Empty || "<>=*%$".IndexOf(str[0]) >= 0 || (str[0] == '!' && !opposite) || str.IndexOf(',') >= 0))
-                        str = '=' + str;
-                    return (opposite ? "!" : "") + str;
-                default: return (opposite ? "!" : "") + ToText(value, "!<>=*%$".ToCharArray());
+                    return ToText(String.Join(",", values), "!<>=*%$".ToCharArray());
+                case BinaryOperator.NotIn:
+                    values = new List<string>();
+                    foreach (object o in value as IEnumerable)
+                    {
+                        values.Add(ToText(o));
+                    }
+                    return "!" + ToText(String.Join(",", values), "<>=*%$".ToCharArray());
+                case BinaryOperator.GreaterThan: return ">" + ToText(value, '=');
+                case BinaryOperator.GreaterThanOrEqual: return ">=" + ToText(value);
+                case BinaryOperator.LessThan: return "<" + ToText(value, '=');
+                case BinaryOperator.LessThanOrEqual: return "<=" + ToText(value);
+                case BinaryOperator.Like: return "*" + ToText(value);
+                case BinaryOperator.NotLike: return "!*" + ToText(value);
+                case BinaryOperator.Contains: return "%" + ToText(value);
+                case BinaryOperator.NotContains: return "!%" + ToText(value);
+                case BinaryOperator.RegexpLike: return "$" + ToText(value);
+                case BinaryOperator.NotRegexpLike: return "!$" + ToText(value);
+                default: return ToText(value, "!<>=*%$".ToCharArray());
             }
         }
 
