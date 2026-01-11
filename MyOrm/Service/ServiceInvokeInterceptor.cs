@@ -1,23 +1,24 @@
-﻿using System;
+﻿using Castle.DynamicProxy;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using MyOrm.Common;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Text;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
-using Castle.DynamicProxy;
-using System.ComponentModel;
-using System.Collections.Concurrent;
+using System.Reflection;
+using System.Text;
 using System.Threading;
-using MyOrm.Common;
+using System.Threading.Tasks;
 
 namespace MyOrm.Service
 {
     /// <summary>
     /// 服务调用代理
     /// </summary>
-    public class ServiceInvokeInterceptor : IInterceptor
+    public class ServiceInvokeInterceptor : IInterceptor, IAsyncInterceptor
     {
         private readonly ConcurrentDictionary<MethodInfo, ServiceDescription> _methodDescriptions = new();
         private static readonly AsyncLocal<bool> _inProcess = new AsyncLocal<bool>();
@@ -35,6 +36,11 @@ namespace MyOrm.Service
         /// <param name="invocation">目标方法</param>
         /// <returns>目标方法的返回值。</returns>  
         public void Intercept(IInvocation invocation)
+        {
+            this.ToInterceptor().Intercept(invocation);
+        }
+
+        public void InterceptSynchronous(IInvocation invocation)
         {
             var sessionManager = SessionManager.Current;
             if (InProcess)//如果已在会话中，不再记录日志和处理事务
@@ -61,7 +67,7 @@ namespace MyOrm.Service
                     InvokeWithTransaction(invocation);
                     timer.Stop();
                     LogAfterInvoke(logger, invocation, timer.Elapsed);
-                   
+
                 }
                 catch (Exception e)
                 {
@@ -70,12 +76,39 @@ namespace MyOrm.Service
                     throw e;
                 }
                 finally
-                { 
-                    InProcess = false;                   
+                {
+                    InProcess = false;
                     sessionManager.Finish();
-                    
+
                 }
             }
+        }
+
+        public void InterceptAsynchronous(IInvocation invocation)
+        {
+            invocation.ReturnValue = InterceptAsyncCore(invocation);
+        }
+
+        public void InterceptAsynchronous<TResult>(IInvocation invocation)
+        {
+            invocation.ReturnValue = InterceptAsyncCore<TResult>(invocation);
+        }
+
+        private async Task InterceptAsyncCore(IInvocation invocation)
+        {
+            Console.WriteLine($"[Async Before] {invocation.Method.Name}");
+            invocation.Proceed();
+            await (Task)invocation.ReturnValue;
+            Console.WriteLine($"[Async After] {invocation.Method.Name}");
+        }
+
+        private async Task<TResult> InterceptAsyncCore<TResult>(IInvocation invocation)
+        {
+            Console.WriteLine($"[Async<T> Before] {invocation.Method.Name}");
+            invocation.Proceed();
+            TResult result = await (Task<TResult>)invocation.ReturnValue;
+            Console.WriteLine($"[Async<T> After] {invocation.Method.Name} => {result}");
+            return result;
         }
 
         // 事务处理逻辑
