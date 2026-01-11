@@ -70,18 +70,6 @@ namespace MyOrm.Service
             return ObjectViewDAO.WithArgs(tableArgs).Search(condition);
         }
 
-        public virtual List<TView> SearchWithOrder(Statement condition, Sorting[] orderBy = null, params string[] tableArgs)
-        {
-            return ObjectViewDAO.WithArgs(tableArgs).Search(condition, orderBy);
-        }
-
-        public virtual List<TView> SearchSection(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy = null, params string[] tableArgs)
-        {
-            SectionSet section = new SectionSet(startIndex, sectionSize);
-            section.Orders.AddRange(orderBy ?? Array.Empty<Sorting>());
-            return ObjectViewDAO.WithArgs(tableArgs).SearchSection(condition, section);
-        }
-
         public virtual List<TView> SearchSection(Statement condition, SectionSet section, params string[] tableArgs)
         {
             return ObjectViewDAO.WithArgs(tableArgs).SearchSection(condition, section);
@@ -105,21 +93,11 @@ namespace MyOrm.Service
         {
             return Search(condition, tableArgs);
         }
-
-        IList IEntityViewService.SearchSection(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy, params string[] tableArgs)
-        {
-            return SearchSection(condition, startIndex, sectionSize, orderBy, tableArgs);
-        }
-
         IList IEntityViewService.SearchSection(Statement condition, SectionSet section, params string[] tableArgs)
         {
             return SearchSection(condition, section, tableArgs);
         }
 
-        IList IEntityViewService.SearchWithOrder(Statement condition, Sorting[] orderBy, params string[] tableArgs)
-        {
-            return SearchWithOrder(condition, orderBy, tableArgs);
-        }
         #endregion
 
         #region IEntityViewServiceAsync 实现
@@ -154,16 +132,6 @@ namespace MyOrm.Service
             return SessionManager.Current.ExecuteInSessionAsync(() => (IList)Search(condition, tableArgs), cancellationToken);
         }
 
-        Task<IList> IEntityViewServiceAsync.SearchWithOrderAsync(Statement condition, Sorting[] orderBy = null, string[] tableArgs = null, CancellationToken cancellationToken = default)
-        {
-            return SessionManager.Current.ExecuteInSessionAsync(() => (IList)SearchWithOrder(condition, orderBy, tableArgs), cancellationToken);
-        }
-
-        Task<IList> IEntityViewServiceAsync.SearchSectionAsync(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy = null, string[] tableArgs = null, CancellationToken cancellationToken = default)
-        {
-            return SessionManager.Current.ExecuteInSessionAsync(() => (IList)SearchSection(condition, startIndex, sectionSize, orderBy, tableArgs), cancellationToken);
-        }
-
         Task<IList> IEntityViewServiceAsync.SearchSectionAsync(Statement condition, SectionSet section, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return SessionManager.Current.ExecuteInSessionAsync(() => (IList)SearchSection(condition, section, tableArgs), cancellationToken);
@@ -184,7 +152,6 @@ namespace MyOrm.Service
             return SessionManager.Current.ExecuteInSessionAsync(() => Exists(expression, tableArgs), cancellationToken);
         }
 
-
         public virtual Task ForEachAsync(Statement condition, Func<TView, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return SessionManager.Current.ExecuteInSessionAsync(async () =>
@@ -196,16 +163,6 @@ namespace MyOrm.Service
         public virtual Task<List<TView>> SearchAsync(Statement condition, string[] tableArgs, CancellationToken cancellationToken)
         {
             return SessionManager.Current.ExecuteInSessionAsync(() => Search(condition, tableArgs), cancellationToken);
-        }
-
-        public virtual Task<List<TView>> SearchWithOrderAsync(Statement condition, Sorting[] orderBy, string[] tableArgs, CancellationToken cancellationToken)
-        {
-            return SessionManager.Current.ExecuteInSessionAsync(() => SearchWithOrder(condition, orderBy, tableArgs), cancellationToken);
-        }
-
-        public virtual Task<List<TView>> SearchSectionAsync(Statement condition, int startIndex, int sectionSize, Sorting[] orderBy, string[] tableArgs, CancellationToken cancellationToken)
-        {
-            return SessionManager.Current.ExecuteInSessionAsync(() => SearchSection(condition, startIndex, sectionSize, orderBy, tableArgs), cancellationToken);
         }
 
         public virtual Task<List<TView>> SearchSectionAsync(Statement condition, SectionSet section, string[] tableArgs, CancellationToken cancellationToken)

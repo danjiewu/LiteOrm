@@ -56,12 +56,7 @@ namespace MyOrm.Test
 
             foreach (var log in logs)
             {
-                int cur = i;
-                Console.WriteLine($"第{cur}轮任务创建.");
-                //currentTask.Wait();
-                Console.WriteLine($"第{cur}轮任务开始.");
-                // 创建新任务
-                service.BatchInsert(logs);
+                Console.WriteLine($"{log.Id}, {log.UserName}, {log.AcctInputOctets}, {log.AcctOutputOctets}");
             }
 
             Console.ReadKey();

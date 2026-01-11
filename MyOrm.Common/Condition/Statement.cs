@@ -49,8 +49,7 @@ namespace MyOrm.Common
         // 添加这个方法以支持从 Expression 创建
         public static Statement Exp<T>(Expression<Func<T, bool>> expression)
         {
-            var converter = new ExpressionStatementConverter(expression.Parameters[0]);
-            return converter.Convert(expression.Body);
+            return new ExpressionStatement<T>(expression);
         }
 
         public static readonly ValueStatement Null = new ValueStatement();

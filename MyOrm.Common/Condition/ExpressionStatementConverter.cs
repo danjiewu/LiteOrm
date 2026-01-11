@@ -1,3 +1,4 @@
+using MyOrm.Service;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -57,6 +58,8 @@ namespace MyOrm.Common
                     return ConvertListInit(listInit);
                 case MethodCallExpression methodCall:
                     return ConvertMethodCall(methodCall);
+                case NewExpression newExpression:
+                    return EvaluateExpression(newExpression);
                 default:
                     throw new NotSupportedException($"不支持的表达式类型: {node.NodeType} ({node.GetType().Name})");
             }
@@ -64,6 +67,44 @@ namespace MyOrm.Common
 
         private Statement ConvertBinary(BinaryExpression node)
         {
+            // 将表达式节点类型转换为 BinaryOperator
+            BinaryOperator op = ConvertExpressionTypeToBinaryOperator(node.NodeType);
+
+            // 特殊处理 CompareTo 方法调用
+            if (node.Left is MethodCallExpression leftCallExpression && leftCallExpression.Method.Name == "CompareTo")
+            {
+                if (!EvaluateExpression(node.Right).Equals(0)) throw new ArgumentException($"CompareTo 方法只能与 0 进行比较: {node}");
+                BinaryStatement res = ConvertMethodCall(leftCallExpression) as BinaryStatement;
+                res.Operator = op switch
+                {
+                    BinaryOperator.Equal => BinaryOperator.Equal,
+                    BinaryOperator.NotEqual => BinaryOperator.NotEqual,
+                    BinaryOperator.GreaterThan => BinaryOperator.GreaterThan,
+                    BinaryOperator.GreaterThanOrEqual => BinaryOperator.GreaterThanOrEqual,
+                    BinaryOperator.LessThan => BinaryOperator.LessThan,
+                    BinaryOperator.LessThanOrEqual => BinaryOperator.LessThanOrEqual,
+                    _ => throw new ArgumentException($"CompareTo 方法只能用 ==, !=, >, >=, <, <= 进行比较: {node}")
+                };
+                return res;
+            }
+            else if (node.Right is MethodCallExpression rightCallExpression && rightCallExpression.Method.Name == "CompareTo")
+            {
+                if (!EvaluateExpression(node.Left).Equals(0)) throw new ArgumentException($"CompareTo 方法只能与 0 进行比较: {node}");
+                BinaryStatement res = ConvertMethodCall(rightCallExpression) as BinaryStatement;
+                // 反转操作符
+                res.Operator = op switch
+                {
+                    BinaryOperator.Equal => BinaryOperator.Equal,
+                    BinaryOperator.NotEqual => BinaryOperator.NotEqual,
+                    BinaryOperator.GreaterThan => BinaryOperator.LessThan,
+                    BinaryOperator.GreaterThanOrEqual => BinaryOperator.LessThanOrEqual,
+                    BinaryOperator.LessThan => BinaryOperator.GreaterThan,
+                    BinaryOperator.LessThanOrEqual => BinaryOperator.GreaterThanOrEqual,
+                    _ => throw new ArgumentException($"CompareTo 方法只能用 ==, !=, >, >=, <, <= 进行比较: {node}")
+                };
+                return res;
+            }
+
             var left = ConvertInternal(node.Left);
             var right = ConvertInternal(node.Right);
 
@@ -81,9 +122,6 @@ namespace MyOrm.Common
             {
                 return left.Or(right);
             }
-
-            // 将表达式节点类型转换为 BinaryOperator
-            BinaryOperator op = ConvertExpressionTypeToBinaryOperator(node.NodeType);
 
             return new BinaryStatement(left, op, right);
         }
@@ -113,8 +151,29 @@ namespace MyOrm.Common
             }
         }
 
+        private ValueStatement EvaluateExpression(Expression node)
+        {
+            try
+            {
+                // 尝试计算 Expression 的值
+                var lambda = Expression.Lambda(node);
+                var compiled = lambda.Compile();
+                var value = compiled.DynamicInvoke();
+                return new ValueStatement(value);
+            }
+            catch
+            {
+                throw new ArgumentException($"无法计算 Expression 的值: {node}");
+            }
+        }
+
         private Statement ConvertMember(MemberExpression node)
         {
+            if (Nullable.GetUnderlyingType(node.Member.DeclaringType) != null && node.Member.Name == "Value")
+            {
+                // 处理 Nullable<T>.Value  
+                return ConvertInternal(node.Expression);
+            }
             // 处理参数属性访问（如 x => x.Name）
             if (node.Expression is ParameterExpression paramExpr &&
                 (_rootParameter == null || paramExpr == _rootParameter))
@@ -128,9 +187,23 @@ namespace MyOrm.Common
                     return Statement.Property(fieldInfo.Name);
                 }
             }
-
-            // 处理常量成员访问（如 DateTime.Now）
-            return EvaluateMemberValue(node);
+            //TODO:处理特殊属性 如 Length, Count 等
+            if (new ParameterExpressionDetector().ContainsParameter(node))
+            {
+                // 处理复杂属性访问（如 x => x.Address.City）
+                var parts = new List<string>();
+                Expression current = node;
+                while (current is MemberExpression memberExpr)
+                {
+                    parts.Add(memberExpr.Member.Name);
+                    current = memberExpr.Expression;
+                }
+                parts.Reverse();
+                var propertyName = string.Join(".", parts);
+                return Statement.Property(propertyName);
+            }
+            else// 处理常量成员访问（如 DateTime.Now）
+                return EvaluateExpression(node);
         }
 
         private Statement ConvertNewArray(NewArrayExpression node)
@@ -242,10 +315,14 @@ namespace MyOrm.Common
                 case "Equals":
                     if (right == null) throw new ArgumentException("Equals 方法需要参数");
                     return new BinaryStatement(left, BinaryOperator.Equal, right);
-
+                case "Compare":
+                    if (right == null) throw new ArgumentException("Compare 方法需要两个参数");
+                    return new BinaryStatement(left, BinaryOperator.Equal, right);
+                case "CompareTo":
+                    if (right == null) throw new ArgumentException("CompareTo 方法需要参数");
+                    return new BinaryStatement(left, BinaryOperator.Equal, right);
                 default:
-                    // 其他字符串方法作为函数调用
-                    return CreateFunctionStatement(node);
+                    return ConvertMethodCallDefault(node, true);
             }
         }
 
@@ -273,8 +350,7 @@ namespace MyOrm.Common
                 return new BinaryStatement(value, BinaryOperator.In, collection);
             }
 
-            // 其他 Enumerable 方法作为函数调用
-            return CreateFunctionStatement(node);
+            return ConvertMethodCallDefault(node, true);
         }
 
         private Statement HandleInstanceMethod(MethodCallExpression node)
@@ -298,8 +374,9 @@ namespace MyOrm.Common
             {
                 // CompareTo 方法通常在二元表达式中处理
                 // 这里返回一个二元表达式，具体比较在 ConvertBinary 中处理
+                if (node.Arguments.Count < 1) throw new ArgumentException("CompareTo 方法需要参数");
                 var left = ConvertInternal(node.Object);
-                var right = node.Arguments.Count > 0 ? ConvertInternal(node.Arguments[0]) : null;
+                var right = ConvertInternal(node.Arguments[0]);
 
                 if (left == null || right == null)
                 {
@@ -309,12 +386,23 @@ namespace MyOrm.Common
                 // CompareTo 返回比较结果，需要与 0 比较
                 // 这里返回相等比较，实际会在二元表达式中替换
                 return new BinaryStatement(left, BinaryOperator.Equal, right);
-            }else if(methodName== "ToString" && node.Arguments.Count == 0) { 
-
             }
+            else
+                return ConvertMethodCallDefault(node, methodName != "ToString");
+        }
 
-                // 其他实例方法作为函数调用
-                return CreateFunctionStatement(node);
+        private Statement ConvertMethodCallDefault(MethodCallExpression node, bool useFunction)
+        {
+            if (new ParameterExpressionDetector().ContainsParameter(node))
+            {
+                if (useFunction)
+                    // 其他方法作为函数调用
+                    return CreateFunctionStatement(node);
+                else
+                    return ConvertInternal(node.Object);
+            }
+            else
+                return EvaluateExpression(node);
         }
 
         private Statement HandleStaticMethod(MethodCallExpression node)
@@ -341,9 +429,25 @@ namespace MyOrm.Common
 
                 return new BinaryStatement(left, BinaryOperator.Equal, right);
             }
+            else if (methodName == "Compare")
+            {
+                if (node.Arguments.Count < 2)
+                {
+                    throw new ArgumentException("Compare 需要两个参数");
+                }
 
-            // 其他静态方法作为函数调用
-            return CreateFunctionStatement(node);
+                var left = ConvertInternal(node.Arguments[0]);
+                var right = ConvertInternal(node.Arguments[1]);
+
+                if (left == null || right == null)
+                {
+                    throw new ArgumentException($"无法解析 Compare 方法调用: {node}");
+                }
+
+                return new BinaryStatement(left, BinaryOperator.Equal, right);
+            }
+
+            return ConvertMethodCallDefault(node, true);
         }
 
         private Statement CreateFunctionStatement(MethodCallExpression node)
@@ -364,7 +468,10 @@ namespace MyOrm.Common
             foreach (var arg in node.Arguments)
             {
                 var param = ConvertInternal(arg);
-                parameters.Add(param);
+                if (param != null)
+                {
+                    parameters.Add(param);
+                }
             }
 
             // 方法名作为函数名
@@ -384,23 +491,6 @@ namespace MyOrm.Common
 
         #region 辅助方法
 
-        private Statement EvaluateMemberValue(MemberExpression node)
-        {
-            try
-            {
-                // 尝试计算成员表达式的值
-                var lambda = Expression.Lambda(node);
-                var compiled = lambda.Compile();
-                var value = compiled.DynamicInvoke();
-
-                return new ValueStatement(value);
-            }
-            catch
-            {
-                throw new ArgumentException($"无法计算成员表达式的值: {node}");
-            }
-        }
-
         private BinaryOperator ConvertExpressionTypeToBinaryOperator(ExpressionType expressionType)
         {
             return expressionType switch
@@ -418,10 +508,64 @@ namespace MyOrm.Common
                 ExpressionType.Multiply => BinaryOperator.Multiply,
                 ExpressionType.MultiplyChecked => BinaryOperator.Multiply,
                 ExpressionType.Divide => BinaryOperator.Divide,
-                _ => throw new NotSupportedException($"不支持的二元操作符: {expressionType}")
+                _ => BinaryOperator.Equal
             };
         }
 
         #endregion
+    }
+
+
+    public class ParameterExpressionDetector : ExpressionVisitor
+    {
+        private bool _hasParameter = false;
+        /// <summary>
+        /// 检查表达式中是否包含参数
+        /// </summary>
+        public bool ContainsParameter(Expression expression)
+        {
+            _hasParameter = false;
+            Visit(expression);
+            return _hasParameter;
+        }
+
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            _hasParameter = true;
+            return base.VisitParameter(node);
+        }
+    }
+
+    /// <summary>
+    /// Expression 到 Statement 的扩展方法
+    /// </summary>
+    public static class ExpressionToStatementExtensions
+    {
+
+        public static List<T> Search<T>(this IObjectViewDAO<T> dao, Expression<Func<T, bool>> expression)
+        {
+            var condition = expression.ToStatement();
+            return dao.Search(condition);
+        }
+
+        public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
+        {
+            return entityViewService.Search(expression.ToStatement());
+        }
+        public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
+        {
+            return entityViewService.SearchOne(expression.ToStatement());
+        }
+        public static List<T> SearchSection<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, SectionSet sectionSet, params string[] tableArgs)
+        {
+            return entityViewService.SearchSection(Statement.Exp(expression), sectionSet, tableArgs);
+        }
+        /// <summary>
+        /// 将 Lambda 表达式转换为 Statement
+        /// </summary>
+        public static Statement ToStatement<T>(this Expression<Func<T, bool>> expression)
+        {
+            return Statement.Exp(expression);
+        }
     }
 }
