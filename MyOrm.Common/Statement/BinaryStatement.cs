@@ -167,7 +167,7 @@ namespace MyOrm.Common
 
         public override int GetHashCode()
         {
-            return OrderedHashCodes(GetType().GetHashCode() , Operator.GetHashCode() , (Left?.GetHashCode() ?? 0) , (Right?.GetHashCode() ?? 0));
+            return OrderedHashCodes(GetType().GetHashCode(), Operator.GetHashCode(), (Left?.GetHashCode() ?? 0), (Right?.GetHashCode() ?? 0));
         }
     }
 

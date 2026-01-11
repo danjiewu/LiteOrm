@@ -140,7 +140,7 @@ namespace MyOrm.Common
 
         public override int GetHashCode()
         {
-            return OrderedHashCodes(GetType().GetHashCode() , JoinType.GetHashCode(), Items.Sum(s => s?.GetHashCode() ?? 0));
+            return OrderedHashCodes(GetType().GetHashCode(), JoinType.GetHashCode(), Items.Sum(s => s?.GetHashCode() ?? 0));
         }
     }
 

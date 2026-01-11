@@ -148,7 +148,7 @@ namespace MyOrm.Common
         {
             return new BinaryStatement(left, BinaryOperator.LessThanOrEqual, right);
         }
-    }    
+    }
     public static class StatementExt
     {
         public static StatementSet And(this Statement left, Statement right)
