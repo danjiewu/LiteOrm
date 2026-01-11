@@ -17,104 +17,30 @@ namespace LogRecord
     public interface IAccountingLogService : IEntityService<AccountingLog>, IEntityServiceAsync<AccountingLog>, IEntityViewService<AccountingLog>, IEntityViewServiceAsync<AccountingLog> { }
     public interface ISessionService : IEntityService<Session>, IEntityViewService<Session>
     {
-        Session? UpdateSession(AccountingLog log);
-    }
-
-    public class AccountingLogDAO : ObjectDAO<AccountingLog>
-    {
-        public override void BatchInsert(IEnumerable<AccountingLog> entities)
-        {
-            
-        }
     }
 
     public class MysqlBulkInsertProvider : IBulkInsertProvider
     {
-        public void BulkInsert(IDbConnection connection, IEnumerable<T> entities, string tableName) where T : class
+        public Type DbConnectionType => typeof(MySqlConnection);
+
+        public int BulkInsert(DataTable dt, DAOContext context)
         {
-            MySqlBulkCopy bulkCopy = new MySqlBulkCopy(connection as MySqlConnection, DAOContext.CurrentTransaction as MySqlTransaction);
-            bulkCopy.DestinationTableName = FactTableName;
+            if (dt == null) throw new ArgumentNullException(nameof(dt));
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            MySqlBulkCopy bulkCopy = new MySqlBulkCopy(context.DbConnection as MySqlConnection, context.CurrentTransaction as MySqlTransaction);
+            bulkCopy.DestinationTableName = dt.TableName;
             bulkCopy.ConflictOption = MySqlBulkLoaderConflictOption.Replace;
-            DataTable dt = new DataTable();
-            int columnIndex = 0;
-            foreach (ColumnDefinition column in TableDefinition.Columns)
+            for (int i = 0; i < dt.Columns.Count; i++)
             {
-                if (!column.IsIdentity && column.Mode.CanInsert())
-                {
-                    dt.Columns.Add(column.PropertyName, Nullable.GetUnderlyingType(column.PropertyType) ?? column.PropertyType);
-                    bulkCopy.ColumnMappings.Add(new MySqlBulkCopyColumnMapping(columnIndex++, column.Name));
-                }
+                bulkCopy.ColumnMappings.Add(new MySqlBulkCopyColumnMapping(i, dt.Columns[i].ColumnName));
             }
-            dt.BeginInit();
-            foreach (AccountingLog entity in entities)
-            {
-                var row = dt.NewRow();
-                foreach (DataColumn column in dt.Columns)
-                {
-                    column.
-                    row[column.ColumnName] = entity[column.ColumnName] ?? DBNull.Value;
-                }
-                dt.Rows.Add(row);
-            }
-            dt.EndInit();
-            bulkCopy.WriteToServer(dt);
+            return bulkCopy.WriteToServer(dt).RowsInserted;
         }
     }
     public class AccountintLogService : EntityService<AccountingLog>, IAccountingLogService
     {
-        public override void BatchInsert(IEnumerable<AccountingLog> entities)
-        {
-            base.BatchInsert(entities);
-        }
     }
     public class SessionService : EntityService<Session>, ISessionService
-    {
-        public Session? UpdateSession(AccountingLog log)
-        {
-            if (log.AcctOutputOctets % 100 != 23) return null;
-            var session = SearchOne(Statement.Property(nameof(AccountingLog.AcctSessionId), log.AcctSessionId));
-            if (session == null)
-            {
-                session = new Session()
-                {
-                    AcctSessionId = log.AcctSessionId,
-                    Status = log.AcctStatusType == 2 ? SessionStatus.Inactive : SessionStatus.Active,
-                    UserName = log.UserName,
-                    NasIP = log.NasIpAddress,
-                    ClientIP = log.FramedIpAddress,
-                    CreatedTime = DateTime.Now,
-                    ClientMac = log.MacAddress,
-                    AcctInputOctets = log.AcctInputOctets,
-                    AcctOutputOctets = log.AcctOutputOctets,
-                    LoginTime = log.AcctStatusType == 1 ? log.RequestDate : log.AcctStartTime
-                };
-                Insert(session);
-            }
-            else
-            {
-                if (log.AcctStatusType == 1)
-                {
-                    session.Status = SessionStatus.Active;
-                    session.LoginTime = log.RequestDate;
-                }
-                else if (log.AcctStatusType == 2)
-                {
-                    session.Status = SessionStatus.Inactive;
-                }
-                else if (log.AcctStatusType == 3)
-                {
-                    if (session.LoginTime == null) session.LoginTime = log.AcctStartTime;
-                    session.Status = SessionStatus.Active;
-                    session.AcctInputOctets = log.AcctInputOctets;
-                    session.AcctOutputOctets = log.AcctOutputOctets;
-                }
-                if (!String.IsNullOrEmpty(log.NasIpAddress)) session.NasIP = log.NasIpAddress;
-                if (!String.IsNullOrEmpty(log.MacAddress)) session.ClientMac = log.MacAddress;
-                if (!String.IsNullOrEmpty(log.FramedIpAddress)) session.ClientIP = log.FramedIpAddress;
-                session.UpdateTime = log.RequestDate;
-                Update(session);
-            }
-            return session;
-        }
+    {        
     }
 }

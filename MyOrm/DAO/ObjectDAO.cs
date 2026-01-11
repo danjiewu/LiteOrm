@@ -183,9 +183,38 @@ namespace MyOrm
 
         public virtual void BatchInsert(IEnumerable<T> values)
         {
-            foreach (T t in values)
+            var provider = BulkInsertProviderFactory.GetProvider(TableDefinition.DataProviderType);
+            if (provider != null)
             {
-                Insert(t);
+                DataTable dt = new DataTable(FactTableName);
+                List<ColumnDefinition> insertableColumns = new List<ColumnDefinition>();
+                foreach (ColumnDefinition column in TableDefinition.Columns)
+                {
+                    if (!column.IsIdentity && column.Mode.CanInsert())
+                    {
+                        dt.Columns.Add(new DataColumn(column.Name, Nullable.GetUnderlyingType(column.PropertyType) ?? column.PropertyType));
+                        insertableColumns.Add(column);
+                    }
+                }
+                dt.BeginInit();
+                foreach (T t in values)
+                {
+                    DataRow dr = dt.NewRow();
+                    foreach (ColumnDefinition column in insertableColumns)
+                    {
+                        dr[column.Name] = ConvertToDBValue(column.GetValue(t), column) ?? DBNull.Value;
+                    }
+                    dt.Rows.Add(dr);
+                }
+                dt.EndInit();
+                provider.BulkInsert(dt, DAOContext);
+            }
+            else
+            {
+                foreach (T t in values)
+                {
+                    Insert(t);
+                }
             }
         }
 
