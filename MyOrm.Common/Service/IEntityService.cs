@@ -144,6 +144,7 @@ namespace MyOrm.Service
         /// <returns>
         /// true:成功
         /// false:失败</returns>
+        [Service]
         bool DeleteID(object id);
         /// <summary>
         /// 批量新增实体
@@ -173,9 +174,8 @@ namespace MyOrm.Service
         /// 批量根据ID删除实体
         /// </summary>
         /// <param name="ids">待删除id</param>
-        [Service]
         [Transaction]
-        void BatchDeleteID(IEnumerable<int> ids);
+        void BatchDeleteID(IEnumerable ids);
     }
 
     /// <summary>
@@ -194,7 +194,7 @@ namespace MyOrm.Service
         Task BatchUpdateAsync(IEnumerable entities, CancellationToken cancellationToken = default);
         Task BatchUpdateOrInsertAsync(IEnumerable entities, CancellationToken cancellationToken = default);
         Task BatchDeleteAsync(IEnumerable entities, CancellationToken cancellationToken = default);
-        Task BatchDeleteIDAsync(IEnumerable<int> ids, CancellationToken cancellationToken = default);
+        Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

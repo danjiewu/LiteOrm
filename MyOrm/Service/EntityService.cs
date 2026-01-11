@@ -88,7 +88,7 @@ namespace MyOrm.Service
             return SessionManager.Current.ExecuteInSessionAsync(() => BatchDelete(entities), cancellationToken);
         }
 
-        public virtual Task BatchDeleteIDAsync(IEnumerable<int> ids, CancellationToken cancellationToken = default)
+        public virtual Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default)
         {
             return SessionManager.Current.ExecuteInSessionAsync(() => BatchDeleteID(ids), cancellationToken);
         }
@@ -173,7 +173,7 @@ namespace MyOrm.Service
             }
         }
 
-        public virtual void BatchDeleteID(IEnumerable<int> ids)
+        public virtual void BatchDeleteID(IEnumerable ids)
         {
             foreach (object id in ids)
             {

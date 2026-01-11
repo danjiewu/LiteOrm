@@ -11,7 +11,7 @@ namespace MyOrm.Common
     /// <summary>
     /// 从字符串生成条件，条件转换为字符串，以及判定对象是否符合条件等操作的静态类
     /// </summary>
-    public static class ConditionConvert
+    public static class StatementConvert
     {
         /// <summary>
         /// 将属性和字符串转换为简单查询条件
@@ -19,7 +19,7 @@ namespace MyOrm.Common
         /// <param name="property">属性</param>
         /// <param name="text">表示查询语句的字符串,可以使用"=","&lt;","&gt;","!","%","*","&lt;=","&gt;="为起始字符表示条件符号 </param>
         /// <returns>简单查询条件</returns>
-        public static BinaryStatement ParseCondition(PropertyDescriptor property, string text)
+        public static BinaryStatement Parse(PropertyDescriptor property, string text)
         {
             if (text == null) return Statement.Property(property.Name, null);
             if (text.Length > 1)

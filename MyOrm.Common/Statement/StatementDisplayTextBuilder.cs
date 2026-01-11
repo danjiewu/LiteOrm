@@ -41,7 +41,7 @@ namespace MyOrm.Common
         }
         public string ToDisplayText(StatementSet set)
         {
-            string joiner = set.JoinType switch { StatementJoinType.And => " 且 ", StatementJoinType.Or => " 或 ", StatementJoinType.Comma => "," };
+            string joiner = set.JoinType switch { StatementJoinType.And => " 且 ", StatementJoinType.Or => " 或 ", StatementJoinType.Default => ",", StatementJoinType.Concat => "" };
             return $"({String.Join(joiner, set.Items.Select(s => ToDisplayText(s)))})";
         }
 

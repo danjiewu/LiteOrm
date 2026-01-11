@@ -42,7 +42,8 @@ namespace MyOrm.Test
             {
                 services.AddSingleton<IConfiguration>(configuration)
                         .AddLogging(builder =>
-                            builder.AddConsole());
+                            builder.AddConsole()
+                            .SetMinimumLevel(LogLevel.Debug));
             })
             .Build();
 
@@ -50,9 +51,9 @@ namespace MyOrm.Test
             var serviceProvider = host.Services;
             var dao = serviceProvider.GetRequiredService<IObjectDAO<Session>>();
             var service = serviceProvider.GetRequiredService<IAccountingLogService>();
-            var logs = service.SearchSection(l => Math.Max(l.AcctInputOctets.Value, l.AcctOutputOctets.Value) < l.AcctOutputOctets * 2, new SectionSet().Take(1000), "202512");
+            var logs = await service.SearchSectionAsync(l => Math.Max(l.AcctInputOctets.Value, l.AcctOutputOctets.Value).ToString().Length - Math.Min(l.AcctInputOctets.Value, l.AcctOutputOctets.Value).ToString().Length == 3, new SectionSet().Take(1000), "202512");
 
-            service.BatchInsert(logs);
+            //service.BatchInsert(logs);
 
             foreach (var log in logs)
             {
@@ -62,6 +63,6 @@ namespace MyOrm.Test
 
             Console.ReadKey();
         }
-}
+    }
 
 }

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace MyOrm.Common
 {
@@ -565,31 +566,30 @@ namespace MyOrm.Common
     /// </summary>
     public static class ExpressionToStatementExtensions
     {
-
-        public static List<T> Search<T>(this IObjectViewDAO<T> dao, Expression<Func<T, bool>> expression)
-        {
-            var condition = expression.ToStatement();
-            return dao.Search(condition);
-        }
-
         public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
         {
-            return entityViewService.Search(expression.ToStatement());
+            return entityViewService.Search(Statement.Exp(expression));
         }
         public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
         {
-            return entityViewService.SearchOne(expression.ToStatement());
+            return entityViewService.SearchOne(Statement.Exp(expression));
         }
         public static List<T> SearchSection<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, SectionSet sectionSet, params string[] tableArgs)
         {
             return entityViewService.SearchSection(Statement.Exp(expression), sectionSet, tableArgs);
         }
-        /// <summary>
-        /// 将 Lambda 表达式转换为 Statement
-        /// </summary>
-        public static Statement ToStatement<T>(this Expression<Func<T, bool>> expression)
+
+        public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression)
         {
-            return Statement.Exp(expression);
+            return entityViewService.SearchAsync(Statement.Exp(expression));
+        }
+        public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression)
+        {
+            return entityViewService.SearchOneAsync(Statement.Exp(expression));
+        }
+        public static Task<List<T>> SearchSectionAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, SectionSet sectionSet, params string[] tableArgs)
+        {
+            return entityViewService.SearchSectionAsync(Statement.Exp(expression), sectionSet, tableArgs);
         }
     }
 }

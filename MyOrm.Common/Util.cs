@@ -195,7 +195,7 @@ namespace MyOrm
             {
                 PropertyDescriptor property = GetFilterProperties(type).Find(param.Key, true);
                 if (property != null)
-                    conditions.Add(ConditionConvert.ParseCondition(property, param.Value));
+                    conditions.Add(StatementConvert.Parse(property, param.Value));
             }
             return conditions;
         }

@@ -66,7 +66,7 @@ namespace MyOrm.Service
                     var timer = Stopwatch.StartNew();
                     InvokeWithTransaction(invocation);
                     timer.Stop();
-                    LogAfterInvoke(logger, invocation, timer.Elapsed);
+                    LogAfterInvoke(logger, invocation, invocation.ReturnValue, timer.Elapsed);
 
                 }
                 catch (Exception e)
@@ -96,19 +96,146 @@ namespace MyOrm.Service
 
         private async Task InterceptAsyncCore(IInvocation invocation)
         {
-            Console.WriteLine($"[Async Before] {invocation.Method.Name}");
-            invocation.Proceed();
-            await (Task)invocation.ReturnValue;
-            Console.WriteLine($"[Async After] {invocation.Method.Name}");
+            var sessionManager = SessionManager.Current;
+
+            // 检查是否已经在处理中
+            if (InProcess)
+            {
+                try
+                {
+                    invocation.Proceed();
+                    await (Task)invocation.ReturnValue;
+                }
+                catch (Exception e)
+                {
+                    e = e.UnwrapTargetInvocationException();
+                    LogException(logger, invocation, e);
+                    throw;
+                }
+            }
+            else
+            {
+                try
+                {
+                    InProcess = true;
+                    sessionManager.Start();
+                    LogBeforeInvoke(logger, invocation);
+                    var timer = Stopwatch.StartNew();
+
+                    // 执行异步方法，处理事务
+                    await InvokeWithTransactionAsync(invocation);
+
+                    timer.Stop();
+                    LogAfterInvoke(logger, invocation, null, timer.Elapsed);
+                }
+                catch (Exception e)
+                {
+                    e = e.UnwrapTargetInvocationException();
+                    LogException(logger, invocation, e);
+                    throw;
+                }
+                finally
+                {
+                    InProcess = false;
+                    sessionManager.Finish();
+                }
+            }
         }
 
         private async Task<TResult> InterceptAsyncCore<TResult>(IInvocation invocation)
         {
-            Console.WriteLine($"[Async<T> Before] {invocation.Method.Name}");
-            invocation.Proceed();
-            TResult result = await (Task<TResult>)invocation.ReturnValue;
-            Console.WriteLine($"[Async<T> After] {invocation.Method.Name} => {result}");
-            return result;
+            var sessionManager = SessionManager.Current;
+
+            if (InProcess)
+            {
+                try
+                {
+                    invocation.Proceed();
+                    TResult result = await (Task<TResult>)invocation.ReturnValue;
+                    return result;
+                }
+                catch (Exception e)
+                {
+                    e = e.UnwrapTargetInvocationException();
+                    LogException(logger, invocation, e);
+                    throw;
+                }
+            }
+            else
+            {
+                try
+                {
+                    InProcess = true;
+                    sessionManager.Start();
+                    LogBeforeInvoke(logger, invocation);
+                    var timer = Stopwatch.StartNew();
+                    // 执行异步方法，处理事务
+                    TResult result = await InvokeWithTransactionAsync<TResult>(invocation);
+                    timer.Stop();
+                    LogAfterInvoke(logger, invocation, result, timer.Elapsed);
+                    return result;
+                }
+                catch (Exception e)
+                {
+                    e = e.UnwrapTargetInvocationException();
+                    LogException(logger, invocation, e);
+                    throw;
+                }
+                finally
+                {
+                    InProcess = false;
+                    sessionManager.Finish();
+                }
+            }
+        }
+
+        // 异步事务处理逻辑（针对返回Task的异步方法）
+        private async Task InvokeWithTransactionAsync(IInvocation invocation)
+        {
+            var serviceDesc = GetDescription(invocation);
+            var sessionManager = SessionManager.Current;
+
+            // 使用SemaphoreSlim替代lock，以支持异步等待
+            if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
+            {
+                // 假设SessionManager有异步执行事务的方法
+                // 如果没有，你需要实现一个异步版本
+                await sessionManager.ExecuteInTransactionAsync(async sm =>
+                {
+                    invocation.Proceed();
+                    await (Task)invocation.ReturnValue;
+                });
+            }
+            else
+            {
+                invocation.Proceed();
+                await (Task)invocation.ReturnValue;
+            }
+        }
+
+        // 异步事务处理逻辑（针对返回Task<TResult>的异步方法）
+        private async Task<TResult> InvokeWithTransactionAsync<TResult>(IInvocation invocation)
+        {
+            var serviceDesc = GetDescription(invocation);
+            var sessionManager = SessionManager.Current;
+
+            if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
+            {
+                // 假设SessionManager有异步执行事务的方法
+                TResult result = default;
+                await sessionManager.ExecuteInTransactionAsync(async sm =>
+                {
+                    invocation.Proceed();
+                    result = await (Task<TResult>)invocation.ReturnValue;
+                    return result;
+                });
+                return result;
+            }
+            else
+            {
+                invocation.Proceed();
+                return await (Task<TResult>)invocation.ReturnValue;
+            }
         }
 
         // 事务处理逻辑
@@ -131,6 +258,31 @@ namespace MyOrm.Service
         }
 
         #region 日志相关方法
+    
+        protected virtual void LogBeforeInvoke(ILogger logger, IInvocation invocation)
+        {
+            var serviceDesc = GetDescription(invocation);
+            if (logger.IsEnabled(serviceDesc.LogLevel))
+            {
+                var argsLog = (serviceDesc.LogFormat & LogFormat.Args) == LogFormat.Args
+                    ? Util.GetLogString(GetLogArgs(invocation)) : null;
+
+                logger.Log(serviceDesc.LogLevel,
+                    "<Invoke>{Service}.{Method}({Args})",
+                    serviceDesc.ServiceName, serviceDesc.MethodName, argsLog);
+            }
+        }
+
+        protected virtual void LogAfterInvoke(ILogger logger, IInvocation invocation, object result, TimeSpan elapsedTime)
+        {
+            var serviceDesc = GetDescription(invocation);
+            var returnLog = (serviceDesc.LogFormat & LogFormat.ReturnValue) == LogFormat.ReturnValue
+                ? Util.GetLogString(result, 0) : null;
+            logger.Log(serviceDesc.LogLevel,
+                "<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
+                 serviceDesc.ServiceName, serviceDesc.MethodName,
+                elapsedTime.TotalSeconds, returnLog);
+        }
         protected virtual void LogException(ILogger logger, IInvocation invocation, Exception e)
         {
             var serviceDesc = GetDescription(invocation);
@@ -144,31 +296,6 @@ namespace MyOrm.Service
                     argsLog, innerExp);
         }
 
-        protected virtual void LogAfterInvoke(ILogger logger, IInvocation invocation, TimeSpan elapsedTime)
-        {
-            var serviceDesc = GetDescription(invocation);
-            var returnLog = (serviceDesc.LogFormat & LogFormat.ReturnValue) == LogFormat.ReturnValue
-                ? Util.GetLogString(invocation.ReturnValue, 0) : null;
-            logger.Log(serviceDesc.LogLevel,
-                "<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
-                 serviceDesc.ServiceName, serviceDesc.MethodName,
-                elapsedTime.TotalSeconds, returnLog);
-        }
-
-        protected virtual void LogBeforeInvoke(ILogger logger, IInvocation invocation)
-        {
-            var serviceDesc = GetDescription(invocation);
-
-            if (logger.IsEnabled(serviceDesc.LogLevel))
-            {
-                var argsLog = (serviceDesc.LogFormat & LogFormat.Args) == LogFormat.Args
-                    ? Util.GetLogString(GetLogArgs(invocation)) : null;
-
-                logger.Log(serviceDesc.LogLevel,
-                    "<Invoke>{Service}.{Method}({Args})",
-                    serviceDesc.ServiceName, serviceDesc.MethodName, argsLog);
-            }
-        }
 
         protected virtual object[] GetLogArgs(IInvocation invocation)
         {
@@ -202,23 +329,6 @@ namespace MyOrm.Service
             return _methodDescriptions[invocation.Method];
         }
         #endregion
-
-    }
-
-    /// <summary>
-    ///  动态服务生成
-    /// </summary>
-    public class ServiceFactoryInterceptor : IInterceptor
-    {
-        protected IServiceProvider ServiceProvider { get; }
-        public ServiceFactoryInterceptor(IServiceProvider serviceProvider)
-        {
-            ServiceProvider = serviceProvider;
-        }
-        public void Intercept(IInvocation invocation)
-        {
-            invocation.ReturnValue = ServiceProvider.GetService(invocation.Method.ReturnType);
-        }
     }
 
     public static class ServiceInterceptorExt
@@ -291,6 +401,22 @@ namespace MyOrm.Service
             while (inner is TargetInvocationException && inner.InnerException != null)
                 inner = inner.InnerException;
             return inner;
+        }
+    }
+
+    /// <summary>
+    ///  动态服务生成
+    /// </summary>
+    public class ServiceFactoryInterceptor : IInterceptor
+    {
+        protected IServiceProvider ServiceProvider { get; }
+        public ServiceFactoryInterceptor(IServiceProvider serviceProvider)
+        {
+            ServiceProvider = serviceProvider;
+        }
+        public void Intercept(IInvocation invocation)
+        {
+            invocation.ReturnValue = ServiceProvider.GetService(invocation.Method.ReturnType);
         }
     }
 }

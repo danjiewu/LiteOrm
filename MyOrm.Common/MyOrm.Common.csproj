@@ -20,7 +20,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <None Remove="Condition\Statement.cs~RF9eb797.TMP" />
+	  <None Remove="Statement\Statement.cs~RF9eb797.TMP" />
 	</ItemGroup>
 
 	<ItemGroup>
