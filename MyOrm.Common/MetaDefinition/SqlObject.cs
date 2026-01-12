@@ -7,7 +7,7 @@ namespace MyOrm.Common
     /// <summary>
     /// SQL项
     /// </summary>
-    public abstract class SqlStatement
+    public abstract class SqlObject
     {
         private string name;
         /// <summary>

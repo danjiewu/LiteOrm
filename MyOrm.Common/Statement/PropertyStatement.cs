@@ -39,7 +39,7 @@ namespace MyOrm.Common
         /// </remarks>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            Column column = context.Table.GetColumn(PropertyName);
+            SqlColumn column = context.Table.GetColumn(PropertyName);
             if (column == null) throw new Exception($"Property \"{PropertyName}\" does not exist in type \"{context.Table.DefinitionType.FullName}\". ");
             string tableAlias = context.TableAliasName;
             return tableAlias == null ? (context.SingleTable ? column.FormattedName(sqlBuilder) : column.FormattedExpression(sqlBuilder)) : $"[{tableAlias}].[{column.Name}]";

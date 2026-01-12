@@ -21,7 +21,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 表信息
         /// </summary>
-        public Table Table { get; set; }
+        public SqlTable Table { get; set; }
         /// <summary>
         /// 序列，用来生成表别名
         /// </summary>

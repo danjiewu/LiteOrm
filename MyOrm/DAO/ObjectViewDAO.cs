@@ -31,7 +31,7 @@ namespace MyOrm
         /// <summary>
         /// 查询关联表
         /// </summary>
-        public override Table Table
+        public override SqlTable Table
         {
             get { return TableInfoProvider.GetTableView(ObjectType); }
         }
@@ -413,7 +413,7 @@ namespace MyOrm
         {
             T t = new T();
             int i = 0;
-            foreach (Column column in SelectColumns)
+            foreach (SqlColumn column in SelectColumns)
             {
                 column.SetValue(t, record.IsDBNull(i) ? null : ConvertValue(record[i], column.PropertyType));
                 i++;

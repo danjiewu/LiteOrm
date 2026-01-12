@@ -10,13 +10,13 @@ namespace MyOrm.Common
     /// <summary>
     /// 列的引用
     /// </summary>
-    public class ColumnRef : SqlStatement
+    public class ColumnRef : SqlObject
     {
         /// <summary>
         /// 创建列的引用
         /// </summary>
         /// <param name="column">列信息</param>
-        public ColumnRef(Column column)
+        public ColumnRef(SqlColumn column)
         {
             Name = column.Name;
             this.column = column;
@@ -27,7 +27,7 @@ namespace MyOrm.Common
         /// </summary>
         /// <param name="table">表</param>
         /// <param name="column">列引用</param>
-        public ColumnRef(TableRef table, Column column)
+        public ColumnRef(TableRef table, SqlColumn column)
         {
             Name = column.Name;
             this.column = column;
@@ -44,11 +44,11 @@ namespace MyOrm.Common
             internal set { table = value; }
         }
 
-        private Column column;
+        private SqlColumn column;
         /// <summary>
         /// 列信息
         /// </summary>
-        public Column Column
+        public SqlColumn Column
         {
             get { return column; }
         }
@@ -66,7 +66,7 @@ namespace MyOrm.Common
     /// <summary>
     /// 关联外表的列信息
     /// </summary>
-    public class ForeignColumn : Column
+    public class ForeignColumn : SqlColumn
     {
         internal ForeignColumn(PropertyInfo property) : base(property) { }
 
@@ -101,7 +101,7 @@ namespace MyOrm.Common
     /// <summary>
     /// 基本列信息
     /// </summary>
-    public abstract class Column : SqlStatement
+    public abstract class SqlColumn : SqlObject
     {
         private PropertyInfo property;
 
@@ -109,7 +109,7 @@ namespace MyOrm.Common
         /// 构造函数
         /// </summary>
         /// <param name="property">列对应的实体属性</param>
-        internal Column(PropertyInfo property)
+        internal SqlColumn(PropertyInfo property)
         {
             this.property = property;
             PropertyName = Name = property.Name;
@@ -118,7 +118,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 所属的表信息
         /// </summary>
-        public Table Table { get; internal set; }
+        public SqlTable Table { get; internal set; }
 
         /// <summary>
         /// 属性名
@@ -192,7 +192,7 @@ namespace MyOrm.Common
     /// <summary>
     /// 数据库列信息
     /// </summary>
-    public class ColumnDefinition : Column
+    public class ColumnDefinition : SqlColumn
     {
         /// <summary>
         /// 构造函数

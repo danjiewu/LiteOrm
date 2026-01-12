@@ -239,5 +239,16 @@ namespace MyOrm
             }
             return typeProperties[type].Find(property, true);
         }
+
+        /// <summary>
+        /// 插入键值对
+        /// </summary>
+        /// <param name="list">列表</param>
+        /// <param name="key">键</param>
+        /// <param name="value">值</param>
+        public static void Add(this ICollection<KeyValuePair<string, object>> list, string key, object value)
+        {
+            list.Add(new KeyValuePair<string, object>(key, value));
+        }
     }
 }

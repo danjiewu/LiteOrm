@@ -11,17 +11,17 @@ namespace MyOrm.Common
     /// <summary>
     /// 数据库表定义
     /// </summary>
-    public abstract class Table : SqlStatement
+    public abstract class SqlTable : SqlObject
     {
-        internal Table(ICollection<Column> columns)
+        internal SqlTable(ICollection<SqlColumn> columns)
         {
-            this.columns = new List<Column>(columns).AsReadOnly();
-            foreach (Column column in columns) column.Table = this;
+            this.columns = new List<SqlColumn>(columns).AsReadOnly();
+            foreach (SqlColumn column in columns) column.Table = this;
         }
 
         #region 私有变量
-        private ReadOnlyCollection<Column> columns;
-        private ConcurrentDictionary<string, Column> namedColumnCache = new ConcurrentDictionary<string, Column>(StringComparer.OrdinalIgnoreCase);
+        private ReadOnlyCollection<SqlColumn> columns;
+        private ConcurrentDictionary<string, SqlColumn> namedColumnCache = new ConcurrentDictionary<string, SqlColumn>(StringComparer.OrdinalIgnoreCase);
         #endregion
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 数据库表的列信息，包括关联的外部列
         /// </summary>
-        public ReadOnlyCollection<Column> Columns
+        public ReadOnlyCollection<SqlColumn> Columns
         {
             get { return columns; }
         }
@@ -51,7 +51,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 属性名对应列的缓存
         /// </summary>
-        protected ConcurrentDictionary<string, Column> NamedColumnCache
+        protected ConcurrentDictionary<string, SqlColumn> NamedColumnCache
         {
             get
             {
@@ -60,7 +60,7 @@ namespace MyOrm.Common
                     lock (namedColumnCache)
                     {
                         if (namedColumnCache.Count == 0)
-                            foreach (Column column in Columns)
+                            foreach (SqlColumn column in Columns)
                                 namedColumnCache[column.PropertyName] = column;
                     }
                 }
@@ -73,10 +73,10 @@ namespace MyOrm.Common
         /// </summary>
         /// <param name="propertyName">属性名</param>
         /// <returns>列定义，列名不存在则返回null</returns>
-        public virtual Column GetColumn(string propertyName)
+        public virtual SqlColumn GetColumn(string propertyName)
         {
             if (String.IsNullOrEmpty(propertyName)) return null;
-            Column column;
+            SqlColumn column;
             NamedColumnCache.TryGetValue(propertyName, out column);
             return column;
         }
@@ -110,10 +110,10 @@ namespace MyOrm.Common
     /// <summary>
     /// 数据库表的定义
     /// </summary>
-    public class TableDefinition : Table
+    public class TableDefinition : SqlTable
     {
         internal TableDefinition(Type objectType, ICollection<ColumnDefinition> columns) :
-            base(new List<ColumnDefinition>(columns).ConvertAll<Column>(column => column))
+            base(new List<ColumnDefinition>(columns).ConvertAll<SqlColumn>(column => column))
         {
             this.ObjectType = objectType;
             Columns = new List<ColumnDefinition>(columns).AsReadOnly();
@@ -184,7 +184,7 @@ namespace MyOrm.Common
     /// <summary>
     /// 数据库表的引用
     /// </summary>
-    public abstract class TableRef : SqlStatement
+    public abstract class TableRef : SqlObject
     {
         /// <summary>
         /// 创建数据库表的引用

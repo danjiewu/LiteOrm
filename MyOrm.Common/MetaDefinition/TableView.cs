@@ -97,7 +97,7 @@ namespace MyOrm.Common
     /// <summary>
     /// 用于查询的关联表
     /// </summary>
-    public class TableView : Table
+    public class TableView : SqlTable
     {
         /// <summary>
         /// 创建用于查询的关联表
@@ -105,7 +105,7 @@ namespace MyOrm.Common
         /// <param name="table">主表</param>
         /// <param name="joinedTables">关联的外表</param>
         /// <param name="columns">查询的列集合</param>
-        public TableView(TableDefinition table, ICollection<JoinedTable> joinedTables, ICollection<Column> columns)
+        public TableView(TableDefinition table, ICollection<JoinedTable> joinedTables, ICollection<SqlColumn> columns)
             : base(columns)
         {
             this.table = table;

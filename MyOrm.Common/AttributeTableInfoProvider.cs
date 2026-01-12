@@ -205,7 +205,7 @@ namespace MyOrm
                 joinedTables[joinedTable.Name] = joinedTable;
             }
 
-            List<Column> columns = new List<Column>();
+            List<SqlColumn> columns = new List<SqlColumn>();
             foreach (PropertyInfo property in objectType.GetProperties())
             {
                 ColumnDefinition column = GetColumnDefinition(property, objectType);
@@ -222,7 +222,7 @@ namespace MyOrm
             }
 
             Queue<ColumnRef> columnRefs = new Queue<ColumnRef>();
-            foreach (Column column in columns)
+            foreach (SqlColumn column in columns)
             {
                 columnRefs.Enqueue(new ColumnRef(column));
             }
@@ -233,7 +233,7 @@ namespace MyOrm
 
             HashSet<JoinedTable> usedTables = new HashSet<JoinedTable>();
 
-            foreach (Column column in columns)
+            foreach (SqlColumn column in columns)
             {
                 if (column is ForeignColumn)
                 {
@@ -333,7 +333,7 @@ namespace MyOrm
         private void JoinColumn(ConcurrentDictionary<string, JoinedTable> joinedTables, Queue<ColumnRef> columnRefs)
         {
             ColumnRef columnRef = columnRefs.Dequeue();
-            Column column = columnRef.Column;
+            SqlColumn column = columnRef.Column;
             if (column.ForeignType != null)
             {
                 bool foreignTypeExists = false;
@@ -360,7 +360,7 @@ namespace MyOrm
                     joinedTable.ForeignKeys = foreignKeys.AsReadOnly();
                     joinedTables[joinedTable.Name] = joinedTable;
 
-                    foreach (Column lcolumn in foreignTable.Columns)
+                    foreach (SqlColumn lcolumn in foreignTable.Columns)
                     {
                         columnRefs.Enqueue(new ColumnRef(joinedTable, lcolumn));
                     }

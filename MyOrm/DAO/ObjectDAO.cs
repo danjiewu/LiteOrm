@@ -24,7 +24,7 @@ namespace MyOrm
         {
             get { return typeof(T); }
         }
-        public override Table Table
+        public override SqlTable Table
         {
             get { return TableInfoProvider.GetTableDefinition(ObjectType); }
         }
@@ -267,10 +267,10 @@ namespace MyOrm
         public virtual int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Statement condition)
         {
             List<string> strSets = new List<string>();
-            ParamList paramValues = new ParamList();
+            List<KeyValuePair<string, object>> paramValues = new List<KeyValuePair<string, object>>();
             foreach (KeyValuePair<string, object> value in values)
             {
-                Column column = Table.GetColumn(value.Key);
+                SqlColumn column = Table.GetColumn(value.Key);
                 if (column == null) throw new Exception(String.Format("Property \"{0}\" does not exist in type \"{1}\".", value.Key, Table.DefinitionType.FullName));
                 strSets.Add(column.FormattedName(SqlBuilder) + "=" + ToSqlParam(paramValues.Count.ToString()));
                 paramValues.Add(paramValues.Count.ToString(), value.Value);

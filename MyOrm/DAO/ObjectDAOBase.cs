@@ -43,7 +43,7 @@ namespace MyOrm
         #endregion
 
         #region 私有变量
-        private ReadOnlyCollection<Column> selectColumns;
+        private ReadOnlyCollection<SqlColumn> selectColumns;
         private string allFieldsSql = null;
         private string tableName = null;
         private string fromTable = null;
@@ -62,7 +62,7 @@ namespace MyOrm
         /// <summary>
         /// 表信息
         /// </summary>
-        public abstract Table Table
+        public abstract SqlTable Table
         {
             get;
         }
@@ -166,7 +166,7 @@ namespace MyOrm
         /// <summary>
         /// 查询时需要获取的所有列
         /// </summary>
-        protected virtual ReadOnlyCollection<Column> SelectColumns
+        protected virtual ReadOnlyCollection<SqlColumn> SelectColumns
         {
             get
             {
@@ -217,10 +217,10 @@ namespace MyOrm
         /// </summary>
         /// <param name="selectColumns">需要select的列集合</param>
         /// <returns>生成的sql</returns>
-        protected string GetSelectFieldsSQL(IEnumerable<Column> selectColumns)
+        protected string GetSelectFieldsSQL(IEnumerable<SqlColumn> selectColumns)
         {
             StringBuilder strAllFields = new StringBuilder();
-            foreach (Column column in selectColumns)
+            foreach (SqlColumn column in selectColumns)
             {
                 if (strAllFields.Length != 0) strAllFields.Append(",");
                 strAllFields.Append(column.FormattedExpression(SqlBuilder));
@@ -257,7 +257,7 @@ namespace MyOrm
             {
                 foreach (Sorting sorting in orders)
                 {
-                    Column column = Table.GetColumn(sorting.PropertyName);
+                    SqlColumn column = Table.GetColumn(sorting.PropertyName);
                     if (column == null) throw new ArgumentException(String.Format("Type \"{0}\" does not have property \"{1}\"", ObjectType.Name, sorting.PropertyName), "section");
                     if (orderBy.Length > 0) orderBy.Append(",");
                     orderBy.Append(column.FormattedExpression(SqlBuilder));
@@ -276,7 +276,7 @@ namespace MyOrm
         public IDbCommand MakeParamCommand(string SQL, IEnumerable paramValues)
         {
             int paramIndex = 0;
-            ParamList paramList = new ParamList();
+            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
             if (paramValues != null)
                 foreach (object paramValue in paramValues)
                 {
@@ -345,7 +345,7 @@ namespace MyOrm
         /// <returns>IDbCommand</returns> 
         public IDbCommand MakeConditionCommand(string SQLWithParam, Statement condition)
         {
-            ParamList paramList = new ParamList();
+            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
             var context = SqlBuildContext;
             string strCondition = null;
             if (condition != null)
