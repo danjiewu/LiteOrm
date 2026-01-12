@@ -30,12 +30,21 @@ namespace MyOrm.Common
         /// 单表模式，字段名前无需加表名
         /// </summary>
         public bool SingleTable { get; set; } = false;
-        public string ArgPrefix { get; set; }
         /// <summary>
-        /// 
+        /// 参数前缀，用于生成SQL参数名
+        /// </summary>
+        public string ArgPrefix { get; set; }
+        
+        /// <summary>
+        /// 表名参数，用于动态生成表名
         /// </summary>
         public string[] TableNameArgs { get; set; } = Array.Empty<string>();
 
+        /// <summary>
+        /// 获取带参数的表名
+        /// </summary>
+        /// <param name="oraginTableName">原始表名（可能包含格式化占位符）</param>
+        /// <returns>格式化后的表名</returns>
         public string GetTableNameWithArgs(string oraginTableName)
         {
             if (TableNameArgs != null && TableNameArgs.Length > 0)

@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// äºŒå…ƒæ¡ä»¶è¯­å¥ï¼Œä¾‹å¦‚ <c>a = b</c>, <c>name LIKE '%abc%'</c>, <c>id IN (1,2,3)</c> ç­‰ã€‚
-    /// æ”¯æŒå¸¦ NOT å‰ç¼€çš„æ“ä½œï¼ˆä¾‹å¦‚ NOT INã€NOT LIKEï¼‰ã€‚
+    /// ¶şÔªÌõ¼ş±í´ïÊ½£¬ÀıÈç <c>a = b</c>, <c>name LIKE '%abc%'</c>, <c>id IN (1,2,3)</c> µÈ¡£
+    /// Ö§³Ö´ø NOT Ç°×ºµÄ²Ù×÷£¨ÀıÈç NOT IN¡¢NOT LIKE£©¡£
     /// </summary>
-    public sealed class BinaryStatement : Statement
+    public sealed class BinaryExpr : Expr
     {
         private static Dictionary<BinaryOperator, string> operatorSymbols = new()
         {
@@ -40,17 +40,17 @@ namespace MyOrm.Common
         };
 
         /// <summary>
-        /// æ— å‚æ„é€ 
+        /// ÎŞ²Î¹¹Ôì
         /// </summary>
-        public BinaryStatement() { }
+        public BinaryExpr() { }
 
         /// <summary>
-        /// ä½¿ç”¨å·¦å³è¡¨è¾¾å¼ä¸æ“ä½œç¬¦æ„é€ æ¡ä»¶è¯­å¥ã€‚
+        /// Ê¹ÓÃ×óÓÒ±í´ïÊ½Óë²Ù×÷·û¹¹ÔìÌõ¼ş±í´ïÊ½¡£
         /// </summary>
-        /// <param name="left">å·¦ä¾§è¯­å¥</param>
-        /// <param name="oper">äºŒå…ƒæ“ä½œç¬¦</param>
-        /// <param name="right">å³ä¾§è¯­å¥</param>
-        public BinaryStatement(Statement left, BinaryOperator oper, Statement right)
+        /// <param name="left">×ó²à±í´ïÊ½</param>
+        /// <param name="oper">¶şÔª²Ù×÷·û</param>
+        /// <param name="right">ÓÒ²à±í´ïÊ½</param>
+        public BinaryExpr(Expr left, BinaryOperator oper, Expr right)
         {
             Left = left;
             Operator = oper;
@@ -58,31 +58,31 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// å·¦ä¾§è¯­å¥
+        /// ×ó²à±í´ïÊ½
         /// </summary>
-        public Statement Left { get; set; }
+        public Expr Left { get; set; }
 
         /// <summary>
-        /// ä½¿ç”¨çš„æ“ä½œç¬¦ï¼ˆå¯èƒ½åŒ…å« Not æ ‡å¿—ï¼‰
+        /// Ê¹ÓÃµÄ²Ù×÷·û£¨¿ÉÄÜ°üº¬ Not ±êÖ¾£©
         /// </summary>
         public BinaryOperator Operator { get; set; }
 
         /// <summary>
-        /// è·å–ä¸å« Not æ ‡å¿—çš„åŸå§‹æ“ä½œç¬¦ï¼ˆä¾‹å¦‚ Not|In => Inï¼‰ã€‚
+        /// »ñÈ¡²»º¬ Not ±êÖ¾µÄÔ­Ê¼²Ù×÷·û£¨ÀıÈç Not|In => In£©¡£
         /// </summary>
         public BinaryOperator OriginOperator => Operator & ~BinaryOperator.Not;
 
         /// <summary>
-        /// å³ä¾§è¯­å¥
+        /// ÓÒ²à±í´ïÊ½
         /// </summary>
-        public Statement Right { get; set; }
+        public Expr Right { get; set; }
 
         /// <inheritdoc/>
         /// <remarks>
-        /// - å¯¹äº REGEXP_LIKEï¼Œç”Ÿæˆå½¢å¦‚ <c>REGEXP_LIKE(left,right)</c> çš„è°ƒç”¨ã€‚
-        /// - å¯¹äº equals ä¸”å³å€¼ä¸º NULLï¼Œç”Ÿæˆ IS NULL / IS NOT NULLã€‚
-        /// - å¯¹äº LIKE/StartsWith/EndsWith/Contains ç­‰ï¼Œä¼šä¾æ®å³ä¾§æ˜¯ ValueStatement è¿˜æ˜¯è¡¨è¾¾å¼ç”Ÿæˆå¸¦å‚æ•°æˆ–å¸¦é€šé…ç¬¦çš„ SQLï¼Œå¹¶ä¸ºéœ€è¦çš„å€¼æ·»åŠ å‚æ•°åˆ° <paramref name="outputParams"/>ã€‚
-        /// - å¯¹äºå¤æ‚å­—ç¬¦ä¸²æ‹¼æ¥æˆ–éœ€è¦è½¬ä¹‰çš„æƒ…å†µï¼Œä½¿ç”¨ <see cref="ISqlBuilder.BuildConcatSql"/> ä»¥ä¾¿å…¼å®¹ä¸åŒæ•°æ®åº“çš„æ‹¼æ¥è¯­æ³•ã€‚
+        /// - ¶ÔÓÚ REGEXP_LIKE£¬Éú³ÉĞÎÈç <c>REGEXP_LIKE(left,right)</c> µÄµ÷ÓÃ¡£
+        /// - ¶ÔÓÚ equals ÇÒÓÒÖµÎª NULL£¬Éú³É IS NULL / IS NOT NULL¡£
+        /// - ¶ÔÓÚ LIKE/StartsWith/EndsWith/Contains µÈ£¬»áÒÀ¾İÓÒ²àÊÇ ValueExpr »¹ÊÇ±í´ïÊ½Éú³É´ø²ÎÊı»ò´øÍ¨Åä·ûµÄ SQL£¬²¢ÎªĞèÒªµÄÖµÌí¼Ó²ÎÊıµ½ <paramref name="outputParams"/>¡£
+        /// - ¶ÔÓÚ¸´ÔÓ×Ö·û´®Æ´½Ó»òĞèÒª×ªÒåµÄÇé¿ö£¬Ê¹ÓÃ <see cref="ISqlBuilder.BuildConcatSql"/> ÒÔ±ã¼æÈİ²»Í¬Êı¾İ¿âµÄÆ´½ÓÓï·¨¡£
         /// </remarks>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
@@ -93,14 +93,14 @@ namespace MyOrm.Common
                 case BinaryOperator.RegexpLike:
                     return $"{op}({Left.ToSql(context, sqlBuilder, outputParams)},{Right.ToSql(context, sqlBuilder, outputParams)})";
                 case BinaryOperator.Equal:
-                    if (Right == null || Right is ValueStatement vs && vs.Value == null)
+                    if (Right == null || Right is ValueExpr vs && vs.Value == null)
                     {
                         if (Operator == BinaryOperator.Equal)
                             return $"{Left.ToSql(context, sqlBuilder, outputParams)} is null";
                         else
                             return $"{Left.ToSql(context, sqlBuilder, outputParams)} is not null";
                     }
-                    else if (Left == null || Left is ValueStatement vsl && vsl.Value == null)
+                    else if (Left == null || Left is ValueExpr vsl && vsl.Value == null)
                     {
                         if (Operator == BinaryOperator.Equal)
                             return $"{Right.ToSql(context, sqlBuilder, outputParams)} is null";
@@ -114,7 +114,7 @@ namespace MyOrm.Common
                 case BinaryOperator.Contains:
                 case BinaryOperator.EndsWith:
                 case BinaryOperator.StartsWith:
-                    if (Right is ValueStatement vs2)
+                    if (Right is ValueExpr vs2)
                     {
                         string paramName = outputParams.Count.ToString();
                         string val = sqlBuilder.ToSqlLikeValue(vs2.Value?.ToString());
@@ -150,6 +150,10 @@ namespace MyOrm.Common
             }
         }
 
+        /// <summary>
+        /// ·µ»Ø±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£
+        /// </summary>
+        /// <returns>±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£</returns>
         public override string ToString()
         {
             string op = String.Empty;
@@ -157,14 +161,23 @@ namespace MyOrm.Common
             return $"{Left} {op} {Right}";
         }
 
+        /// <summary>
+        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// </summary>
+        /// <param name="obj">ÒªÓëµ±Ç°¶ÔÏó½øĞĞ±È½ÏµÄ¶ÔÏó¡£</param>
+        /// <returns>Èç¹ûÖ¸¶¨µÄ¶ÔÏóµÈÓÚµ±Ç°¶ÔÏó£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
         public override bool Equals(object obj)
         {
-            return obj is BinaryStatement b &&
+            return obj is BinaryExpr b &&
                    b.Operator == Operator &&
                    Equals(b.Left, Left) &&
                    Equals(b.Right, Right);
         }
 
+        /// <summary>
+        /// ×÷ÎªÄ¬ÈÏ¹şÏ£º¯Êı¡£
+        /// </summary>
+        /// <returns>µ±Ç°¶ÔÏóµÄ¹şÏ£´úÂë¡£</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), Operator.GetHashCode(), (Left?.GetHashCode() ?? 0), (Right?.GetHashCode() ?? 0));
@@ -172,120 +185,138 @@ namespace MyOrm.Common
     }
 
     /// <summary>
-    /// åŒç›®æ“ä½œç¬¦
+    /// Ë«Ä¿²Ù×÷·û
     /// </summary>
     public enum BinaryOperator
     {
         /// <summary>
-        /// ç›¸ç­‰
+        /// ÏàµÈ
         /// </summary>
         Equal = 0,
         /// <summary>
-        /// å¤§äº
+        /// ´óÓÚ
         /// </summary>
         GreaterThan = 1,
         /// <summary>
-        /// å°äº
+        /// Ğ¡ÓÚ
         /// </summary>
         LessThan = 2,
         /// <summary>
-        /// ä»¥æŒ‡å®šå­—ç¬¦ä¸²ä¸ºå¼€å§‹ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
+        /// ÒÔÖ¸¶¨×Ö·û´®Îª¿ªÊ¼£¨×÷Îª×Ö·û´®±È½Ï£©
         /// </summary>
         StartsWith = 3,
         /// <summary>
-        /// ä»¥æŒ‡å®šå­—ç¬¦ä¸²ä¸ºç»“å°¾ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
+        /// ÒÔÖ¸¶¨×Ö·û´®Îª½áÎ²£¨×÷Îª×Ö·û´®±È½Ï£©
         /// </summary>
         EndsWith = 4,
         /// <summary>
-        /// åŒ…å«æŒ‡å®šå­—ç¬¦ä¸²ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
+        /// °üº¬Ö¸¶¨×Ö·û´®£¨×÷Îª×Ö·û´®±È½Ï£©
         /// </summary>
         Contains = 5,
         /// <summary>
-        /// åŒ¹é…å­—ç¬¦ä¸²æ ¼å¼ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
+        /// Æ¥Åä×Ö·û´®¸ñÊ½£¨×÷Îª×Ö·û´®±È½Ï£©
         /// </summary>
         Like = 6,
         /// <summary>
-        /// åŒ…å«åœ¨é›†åˆä¸­
+        /// °üº¬ÔÚ¼¯ºÏÖĞ
         /// </summary>
         In = 7,
         /// <summary>
-        /// æ­£åˆ™è¡¨è¾¾å¼åŒ¹é…
+        /// ÕıÔò±í´ïÊ½Æ¥Åä
         /// </summary>
         RegexpLike = 8,
         /// <summary>
-        /// åŠ æ³•
+        /// ¼Ó·¨
         /// </summary>
         Add = 9,
         /// <summary>
-        /// å‡æ³•
+        /// ¼õ·¨
         /// </summary>
         Subtract = 10,
         /// <summary>
-        /// ä¹˜æ³•
+        /// ³Ë·¨
         /// </summary>
         Multiply = 11,
         /// <summary>
-        /// é™¤æ³•
+        /// ³ı·¨
         /// </summary>
         Divide = 12,
         /// <summary>
-        /// å­—ç¬¦ä¸²è¿æ¥
+        /// ×Ö·û´®Á¬½Ó
         /// </summary>
         Concat = 13,
         /// <summary>
-        /// é€»è¾‘é 
+        /// Âß¼­·Ç 
         /// </summary>
         Not = 64,
         /// <summary>
-        /// ä¸ç­‰äº
+        /// ²»µÈÓÚ
         /// </summary>
         NotEqual = Equal | Not,
         /// <summary>
-        /// ä¸å°äº
+        /// ²»Ğ¡ÓÚ
         /// </summary>
         GreaterThanOrEqual = LessThan | Not,
         /// <summary>
-        /// ä¸å¤§äº
+        /// ²»´óÓÚ
         /// </summary>
         LessThanOrEqual = GreaterThan | Not,
         /// <summary>
-        /// ä¸ä»¥æŒ‡å®šå­—ç¬¦ä¸²ä¸ºå¼€å§‹
+        /// ²»ÒÔÖ¸¶¨×Ö·û´®Îª¿ªÊ¼
         /// </summary>
         NotStartsWith = StartsWith | Not,
         /// <summary>
-        /// ä¸ä»¥æŒ‡å®šå­—ç¬¦ä¸²ä¸ºç»“å°¾
+        /// ²»ÒÔÖ¸¶¨×Ö·û´®Îª½áÎ²
         /// </summary>
         NotEndsWith = EndsWith | Not,
         /// <summary>
-        /// ä¸åŒ…å«æŒ‡å®šå­—ç¬¦ä¸²ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
+        /// ²»°üº¬Ö¸¶¨×Ö·û´®£¨×÷Îª×Ö·û´®±È½Ï£©
         /// </summary>
         NotContains = Contains | Not,
         /// <summary>
-        /// ä¸åŒ¹é…å­—ç¬¦ä¸²æ ¼å¼ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
+        /// ²»Æ¥Åä×Ö·û´®¸ñÊ½£¨×÷Îª×Ö·û´®±È½Ï£©
         /// </summary>
         NotLike = Like | Not,
         /// <summary>
-        /// ä¸åŒ…å«åœ¨é›†åˆä¸­
+        /// ²»°üº¬ÔÚ¼¯ºÏÖĞ
         /// </summary>
         NotIn = In | Not,
         /// <summary>
-        /// ä¸åŒ¹é…æ­£åˆ™è¡¨è¾¾å¼
+        /// ²»Æ¥ÅäÕıÔò±í´ïÊ½
         /// </summary>
         NotRegexpLike = RegexpLike | Not
     }
 
+    /// <summary>
+    /// ¶şÔª²Ù×÷·ûµÄÀ©Õ¹·½·¨
+    /// </summary>
     public static class BinaryOperatorExt
     {
+        /// <summary>
+        /// ¼ì²é²Ù×÷·ûÊÇ·ñ°üº¬NOT±êÖ¾
+        /// </summary>
+        /// <param name="oper">Òª¼ì²éµÄ¶şÔª²Ù×÷·û</param>
+        /// <returns>Èç¹û²Ù×÷·û°üº¬NOT±êÖ¾Ôò·µ»Øtrue£¬·ñÔò·µ»Øfalse</returns>
         public static bool IsNot(this BinaryOperator oper)
         {
             return (oper & BinaryOperator.Not) == BinaryOperator.Not;
         }
 
-        public static BinaryOperator Origin(this BinaryOperator oper)
+        /// <summary>
+        /// »ñÈ¡²Ù×÷·ûµÄÔ­Ê¼²Ù×÷·û£¨È¥³ıNOT±êÖ¾£©
+        /// </summary>
+        /// <param name="oper">Òª»ñÈ¡Ô­Ê¼²Ù×÷·ûµÄ¶şÔª²Ù×÷·û</param>
+        /// <returns>È¥³ıNOT±êÖ¾ºóµÄÔ­Ê¼²Ù×÷·û</returns>
+        public static BinaryOperator Positive(this BinaryOperator oper)
         {
             return oper | (~BinaryOperator.Not);
         }
 
+        /// <summary>
+        /// »ñÈ¡²Ù×÷·ûµÄÏà·´²Ù×÷·û£¨Ìí¼Ó»òÈ¥³ıNOT±êÖ¾£©
+        /// </summary>
+        /// <param name="oper">Òª»ñÈ¡Ïà·´²Ù×÷·ûµÄ¶şÔª²Ù×÷·û</param>
+        /// <returns>Ïà·´µÄ²Ù×÷·û</returns>
         public static BinaryOperator Opposite(this BinaryOperator oper)
         {
             return oper ^ BinaryOperator.Not;

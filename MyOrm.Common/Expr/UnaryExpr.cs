@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,32 +6,35 @@ using System.Threading.Tasks;
 
 namespace MyOrm.Common
 {
-    public sealed class UnaryStatement : Statement
+    /// <summary>
+    /// ±íÊ¾µ¥Ä¿ÔËËã±í´ïÊ½£¨Èç NOT ÔËËã£©¡£
+    /// </summary>
+    public sealed class UnaryExpr : Expr
     {
         /// <summary>
-        /// æ— å‚æ„é€ ã€‚
+        /// ÎŞ²Î¹¹Ôì¡£
         /// </summary>
-        public UnaryStatement()
+        public UnaryExpr()
         {
         }
         /// <summary>
-        /// ä½¿ç”¨å•ç›®æ“ä½œç¬¦ä¸æ“ä½œå¯¹è±¡æ„é€ è¯­å¥ã€‚
+        /// Ê¹ÓÃµ¥Ä¿²Ù×÷·ûÓë²Ù×÷¶ÔÏó¹¹Ôì±í´ïÊ½¡£
         /// </summary>
-        /// <param name="oper">å•ç›®æ“ä½œç¬¦</param>
-        /// <param name="operand">æ“ä½œå¯¹è±¡</param>
-        public UnaryStatement(UnaryOperator oper, Statement operand)
+        /// <param name="oper">µ¥Ä¿²Ù×÷·û</param>
+        /// <param name="operand">²Ù×÷¶ÔÏó</param>
+        public UnaryExpr(UnaryOperator oper, Expr operand)
         {
             Operator = oper;
             Operand = operand;
         }
         /// <summary>
-        /// å•ç›®æ“ä½œç¬¦
+        /// µ¥Ä¿²Ù×÷·û
         /// </summary>
         public UnaryOperator Operator { get; set; }
         /// <summary>
-        /// æ“ä½œå¯¹è±¡
+        /// ²Ù×÷¶ÔÏó
         /// </summary>
-        public Statement Operand { get; set; }
+        public Expr Operand { get; set; } = Null;
         /// <inheritdoc/>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
@@ -48,6 +51,7 @@ namespace MyOrm.Common
             }
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
             switch (Operator)
@@ -63,11 +67,14 @@ namespace MyOrm.Common
             }
         }
 
+
+        /// <inheritdoc/>
         public override bool Equals(object obj)
         {
-            return obj is UnaryStatement p && p.Operator == Operator && Equals(p.Operand, Operand);
+            return obj is UnaryExpr p && p.Operator == Operator && Equals(p.Operand, Operand);
         }
 
+        /// <inheritdoc/>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), Operator.GetHashCode(), Operand.GetHashCode());
@@ -75,20 +82,20 @@ namespace MyOrm.Common
     }
 
     /// <summary>
-    /// å•ç›®æ“ä½œç¬¦
+    /// µ¥Ä¿²Ù×÷·û
     /// </summary>
     public enum UnaryOperator
     {
         /// <summary>
-        /// é€»è¾‘å–å
+        /// Âß¼­È¡·´
         /// </summary>
         Not = 0,
         /// <summary>
-        /// è´Ÿå·
+        /// ¸ººÅ
         /// </summary>
         Nagive = 1,
         /// <summary>
-        /// æŒ‰ä½å–å
+        /// °´Î»È¡·´
         /// </summary>
         BitwiseNot = 2,
     }

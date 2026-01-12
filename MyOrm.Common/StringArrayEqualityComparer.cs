@@ -6,9 +6,22 @@ using System.Threading.Tasks;
 
 namespace MyOrm.Common
 {
+    /// <summary>
+    /// 字符串数组相等比较器，实现顺序敏感的比较
+    /// </summary>
     public class StringArrayEqualityComparer : IEqualityComparer<string[]>
     {
+        /// <summary>
+        /// StringArrayEqualityComparer的单例实例
+        /// </summary>
         public static readonly StringArrayEqualityComparer Instance = new StringArrayEqualityComparer();
+        
+        /// <summary>
+        /// 比较两个字符串数组是否相等（顺序敏感）
+        /// </summary>
+        /// <param name="x">第一个字符串数组</param>
+        /// <param name="y">第二个字符串数组</param>
+        /// <returns>如果两个数组长度相同且对应位置的元素相等，则返回true；否则返回false</returns>
         public bool Equals(string[] x, string[] y)
         {
             if (ReferenceEquals(x, y)) return true;
@@ -23,6 +36,11 @@ namespace MyOrm.Common
             return true;
         }
 
+        /// <summary>
+        /// 获取字符串数组的哈希码
+        /// </summary>
+        /// <param name="obj">字符串数组</param>
+        /// <returns>数组的哈希码</returns>
         public int GetHashCode(string[] obj)
         {
             if (obj == null) return 0;

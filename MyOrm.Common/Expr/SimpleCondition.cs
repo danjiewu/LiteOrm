@@ -12,9 +12,16 @@ namespace MyOrm.Common
 {
     /// <summary>
     /// 简单查询条件
+    /// <see cref="Expr"/>    /// 
+    /// <code>
+    /// SimpleCondition condition = new SimpleCondition("Age", ConditionOperator.LargerThan, 18);
+    /// 替换为
+    /// Expr.Property("Age", ConditionOperator.LargerThan, 18)
+    /// 或通过condition.ToExpr()方法转换
+    /// </code>
     /// </summary>
     [Serializable]
-    [Obsolete("使用BinaryStatement、PropertyStatement替代")]
+    [Obsolete("使用Expr替代")]
     public sealed class SimpleCondition
     {
         /// <summary>
@@ -87,7 +94,11 @@ namespace MyOrm.Common
         [XmlAttribute]
         public ConditionOperator Operator { get; set; }
 
-        public BinaryStatement ToStatement()
+        /// <summary>
+        /// 将当前简单条件转换为二元语句。
+        /// </summary>
+        /// <returns>转换后的二元语句。</returns>
+        public BinaryExpr ToExpr()
         {
             BinaryOperator op = Operator switch
             {
@@ -103,7 +114,7 @@ namespace MyOrm.Common
                 _ => throw new NotSupportedException($"不支持的条件操作符：{Operator}"),
             };
             if (Opposite) op |= BinaryOperator.Not;
-            return Statement.Property(Property, op, Value);
+            return Expr.Property(Property, op, Value);
         }
 
         /// <summary>

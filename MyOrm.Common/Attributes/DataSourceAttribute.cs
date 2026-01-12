@@ -4,6 +4,9 @@ using System.Text;
 
 namespace MyOrm.Common
 {
+    /// <summary>
+    /// 数据源特性，用于指定类、结构体或接口对应的数据库连接
+    /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, AllowMultiple = false, Inherited = true)]
     public class DataSourceAttribute : System.Attribute
     {

@@ -11,11 +11,19 @@ using System.Text;
 
 namespace MyOrm
 {
+    /// <summary>
+    /// 工具类，提供各种实用方法
+    /// </summary>
     public static class Util
     {
         private static ConcurrentDictionary<Type, ConcurrentDictionary<Enum, string>> enumTypeName = new ConcurrentDictionary<Type, ConcurrentDictionary<Enum, string>>();
         private static ConcurrentDictionary<Type, ConcurrentDictionary<string, Enum>> enumNameValue = new ConcurrentDictionary<Type, ConcurrentDictionary<string, Enum>>();
 
+        /// <summary>
+        /// 获取服务类型的名称
+        /// </summary>
+        /// <param name="serviceType">服务类型</param>
+        /// <returns>服务名称</returns>
         public static string GetServiceName(Type serviceType)
         {
             if (serviceType.IsGenericType)
@@ -28,7 +36,18 @@ namespace MyOrm
                 return serviceType.Name;
             }
         }
+        
+        /// <summary>
+        /// 最大展开日志长度
+        /// </summary>
         public static int MaxExpandedLogLength { get; set; } = 10;
+        
+        /// <summary>
+        /// 解析枚举的显示名称
+        /// </summary>
+        /// <typeparam name="T">枚举类型</typeparam>
+        /// <param name="displayName">显示名称</param>
+        /// <returns>枚举值</returns>
         public static T Parse<T>(string displayName) where T : struct, Enum
         {
             if (!enumNameValue.ContainsKey(typeof(T)))
@@ -42,6 +61,12 @@ namespace MyOrm
             return res;
         }
 
+        /// <summary>
+        /// 解析枚举的显示名称
+        /// </summary>
+        /// <param name="enumType">枚举类型</param>
+        /// <param name="displayName">显示名称</param>
+        /// <returns>枚举值</returns>
         public static object Parse(Type enumType, string displayName)
         {
             if (!enumTypeName.ContainsKey(enumType))
@@ -55,6 +80,11 @@ namespace MyOrm
             return Enum.Parse(enumType, displayName, false);
         }
 
+        /// <summary>
+        /// 获取枚举值的显示名称
+        /// </summary>
+        /// <param name="value">枚举值</param>
+        /// <returns>显示名称</returns>
         public static string GetDisplayName(Enum value)
         {
             if (value == null) return null;
@@ -69,6 +99,10 @@ namespace MyOrm
             return enumNames[value];
         }
 
+        /// <summary>
+        /// 初始化枚举名称缓存
+        /// </summary>
+        /// <param name="enumType">枚举类型</param>
         private static void InitlizeEnumName(Type enumType)
         {
             ConcurrentDictionary<Enum, string> enumNames = new ConcurrentDictionary<Enum, string>();
@@ -107,7 +141,7 @@ namespace MyOrm
         /// 根据值生成显示的文本
         /// </summary>
         /// <param name="value">值</param>
-        /// <returns></returns>
+        /// <returns>显示文本</returns>
         public static string ToDisplayText(object value)
         {
             if (value == null) return "空";
@@ -120,7 +154,7 @@ namespace MyOrm
         /// 根据值生成文本
         /// </summary>
         /// <param name="value">值</param>
-        /// <returns></returns>
+        /// <returns>文本</returns>
         public static string ToText(object value)
         {
             if (value == null) return "";
@@ -128,6 +162,12 @@ namespace MyOrm
             else if (value is bool) return (bool)value ? "是" : "否";
             return Convert.ToString(value);
         }
+        
+        /// <summary>
+        /// 获取对象数组的日志字符串
+        /// </summary>
+        /// <param name="values">对象数组</param>
+        /// <returns>日志字符串</returns>
         public static string GetLogString(object[] values)
         {
             var sb = new StringBuilder();
@@ -140,6 +180,11 @@ namespace MyOrm
             return sb.ToString();
         }
 
+        /// <summary>
+        /// 获取集合的日志字符串
+        /// </summary>
+        /// <param name="values">集合</param>
+        /// <returns>日志字符串</returns>
         public static string GetLogString(ICollection values)
         {
             var sb = new StringBuilder();
@@ -152,6 +197,12 @@ namespace MyOrm
             return sb.ToString();
         }
 
+        /// <summary>
+        /// 获取对象的日志字符串
+        /// </summary>
+        /// <param name="o">对象</param>
+        /// <param name="expandDepth">展开深度</param>
+        /// <returns>日志字符串</returns>
         public static string GetLogString(object o, int expandDepth)
         {
             if (o == null) return "null";
@@ -187,20 +238,31 @@ namespace MyOrm
             else return "{" + Convert.ToString(o) + "}";
         }
 
-        public static List<Statement> ParseQueryCondition(IEnumerable<KeyValuePair<string, string>> queryString, Type type)
+        /// <summary>
+        /// 解析查询条件
+        /// </summary>
+        /// <param name="queryString">查询字符串键值对</param>
+        /// <param name="type">实体类型</param>
+        /// <returns>条件语句列表</returns>
+        public static List<Expr> ParseQueryCondition(IEnumerable<KeyValuePair<string, string>> queryString, Type type)
         {
-            List<Statement> conditions = new List<Statement>();
+            List<Expr> conditions = new List<Expr>();
             foreach (KeyValuePair<string, string> param in queryString)
             {
                 PropertyDescriptor property = GetFilterProperties(type).Find(param.Key, true);
                 if (property != null)
-                    conditions.Add(StatementConvert.Parse(property, param.Value));
+                    conditions.Add(ExprConvert.Parse(property, param.Value));
             }
             return conditions;
         }
 
         private static ConcurrentDictionary<Type, PropertyDescriptorCollection> typeProperties = new ConcurrentDictionary<Type, PropertyDescriptorCollection>();
 
+        /// <summary>
+        /// 获取类型的过滤属性集合
+        /// </summary>
+        /// <param name="type">实体类型</param>
+        /// <returns>属性描述符集合</returns>
         public static PropertyDescriptorCollection GetFilterProperties(Type type)
         {
             if (!typeProperties.ContainsKey(type))
@@ -210,6 +272,10 @@ namespace MyOrm
             return typeProperties[type];
         }
 
+        /// <summary>
+        /// 生成类型的属性集合
+        /// </summary>
+        /// <param name="type">实体类型</param>
         private static void GenerateProperties(Type type)
         {
             List<PropertyDescriptor> properties = new List<PropertyDescriptor>();
@@ -230,6 +296,12 @@ namespace MyOrm
             typeProperties[type] = new PropertyDescriptorCollection(properties.ToArray(), true);
         }
 
+        /// <summary>
+        /// 获取类型的指定属性
+        /// </summary>
+        /// <param name="type">实体类型</param>
+        /// <param name="property">属性名称</param>
+        /// <returns>属性描述符</returns>
         public static PropertyDescriptor GetProperty(Type type, string property)
         {
             if (!typeProperties.ContainsKey(type))
@@ -240,9 +312,9 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// 插入键值对
+        /// 向键值对集合添加新项（扩展方法）
         /// </summary>
-        /// <param name="list">列表</param>
+        /// <param name="list">键值对集合</param>
         /// <param name="key">键</param>
         /// <param name="value">值</param>
         public static void Add(this ICollection<KeyValuePair<string, object>> list, string key, object value)

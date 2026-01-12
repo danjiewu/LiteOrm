@@ -10,10 +10,51 @@ using System.Collections.Concurrent;
 namespace MyOrm
 {
     /// <summary>
-    /// 生成Sql语句的辅助类
+    /// SQL语句生成辅助类 - 提供数据库无关的SQL生成功能
+    /// </summary>
+    /// <remarks>
+    /// SqlBuilder 是一个抽象SQL生成器类，提供了生成各种SQL语句的基础功能。
+    /// 它实现了 ISqlBuilder 接口，为不同的数据库系统提供了可扩展的基础。
+    /// 
+    /// 主要功能包括：
+    /// 1. SQL语句生成 - 生成 SELECT、INSERT、UPDATE、DELETE 等 SQL 语句
+    /// 2. 名称转换 - 将 .NET 命名转换为 SQL 数据库命名约定
+    /// 3. 参数处理 - 生成数据库特定的参数名称和格式
+    /// 4. 类型映射 - 将 .NET 类型映射到数据库 DbType
+    /// 5. 函数映射 - 映射 .NET 函数到 SQL 函数
+    /// 6. 条件生成 - 生成 WHERE 子句的条件语句
+    /// 7. 表达式处理 - 将 Lambda 表达式转换为 SQL 条件
+    /// 8. 子类可扩展性 - 通过虚方法允许子类自定义SQL生成逻辑
+    /// 
+    /// 该类有多个具体实现用于不同的数据库：
+    /// - SqlServerBuilder - SQL Server 特定的实现
+    /// - MySqlBuilder - MySQL 特定的实现
+    /// - OracleBuilder - Oracle 特定的实现
+    /// - SQLiteBuilder - SQLite 特定的实现
+    /// 
+    /// 使用示例：
+    /// <code>
+    /// // 通常由框架自动选择合适的实现
+    /// ISqlBuilder builder = SqlBuilderFactory.Instance.GetSqlBuilder(typeof(SqlConnection));
+    /// 
+    /// // 名称转换
+    /// string sqlName = builder.ToSqlName(\"UserName\"); // 可能返回 \"[UserName]\" 或 \"`UserName`\"
+    /// 
+    /// // 参数名称生成
+    /// string paramName = builder.ToSqlParam(\"id\"); // 可能返回 \"@id\" 或 \":id\"
+    /// 
+    /// // 类型映射
+    /// DbType dbType = builder.ToDbType(typeof(string)); // 返回 DbType.String
+    /// </code>
+    /// </remarks>
+    /// <summary>
+    /// SQL 语句构建器基类。
     /// </summary>
     public class SqlBuilder : ISqlBuilder
     {
+        /// <summary>
+        /// 获取默认的 <see cref="SqlBuilder"/> 实例。
+        /// </summary>
         public static readonly SqlBuilder Instance = new SqlBuilder();
 
         private ConcurrentDictionary<Type, DbType> typeToDbTypeCache = new ConcurrentDictionary<Type, DbType>();
@@ -28,15 +69,24 @@ namespace MyOrm
             ["Min"] = "LEAST"
         };
 
-        // 初始化映射字典（抽象方法，子类必须实现）
+        /// <summary>
+        /// 初始化函数映射关系（子类重写此方法以提供特定数据库的函数映射）。
+        /// </summary>
+        /// <param name="functionMappings">函数映射字典。</param>
         protected virtual void InitializeFunctionMappings(Dictionary<string, string> functionMappings) { }
 
+        /// <summary>
+        /// 初始化 <see cref="SqlBuilder"/> 类的新实例。
+        /// </summary>
         public SqlBuilder()
         {
             InitTypeToDbType();
             InitializeFunctionMappings(_functionMappings);
         }
 
+        /// <summary>
+        /// 初始化类型到 <see cref="DbType"/> 的映射关系。
+        /// </summary>
         protected virtual void InitTypeToDbType()
         {
             typeToDbTypeCache[typeof(Enum)] = DbType.Int32;
@@ -61,12 +111,21 @@ namespace MyOrm
             typeToDbTypeCache[typeof(DateTimeOffset)] = DbType.DateTimeOffset;
         }
 
+        /// <summary>
+        /// 注册类型到 <see cref="DbType"/> 的映射关系。
+        /// </summary>
+        /// <param name="type">.NET 类型。</param>
+        /// <param name="dbType">数据库类型。</param>
         public void RegisterDbType(Type type, DbType dbType)
         {
             typeToDbTypeCache[type] = dbType;
         }
 
-        // 替换函数名的核心方法
+        /// <summary>
+        /// 替换函数名为数据库特定的函数名。
+        /// </summary>
+        /// <param name="functionName">原始函数名。</param>
+        /// <returns>替换后的函数名。</returns>
         public virtual string ReplaceFunctionName(string functionName)
         {
             if (string.IsNullOrWhiteSpace(functionName))
@@ -80,6 +139,12 @@ namespace MyOrm
                 : functionName;
         }
 
+        /// <summary>
+        /// 构建函数调用的 SQL 片段。
+        /// </summary>
+        /// <param name="functionName">函数名。</param>
+        /// <param name="args">参数列表。</param>
+        /// <returns>构建后的 SQL 片段。</returns>
         public virtual string BuildFunctionSql(string functionName, params string[] args)
         {
             switch (functionName.ToUpper())
@@ -144,6 +209,11 @@ namespace MyOrm
         /// </summary>
         protected static Regex sqlNameRegex = new Regex(@"\[([^\]]+)\]");
         #endregion
+        /// <summary>
+        /// 将字符串内容转义为适合 Like 查询的值。
+        /// </summary>
+        /// <param name="value">要转义的字符串。</param>
+        /// <returns>转义后的字符串。</returns>
         public virtual string ToSqlLikeValue(string value)
         {
             return sqlLikeEscapeReg.Replace(value, LikeEscapeChar + "$1");

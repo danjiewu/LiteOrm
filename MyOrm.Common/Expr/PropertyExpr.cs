@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,35 +7,35 @@ using System.Threading.Tasks;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// è¡¨ç¤ºå®ä½“å±æ€§ï¼ˆåˆ—ï¼‰çš„è¯­å¥ï¼Œä¾‹å¦‚ç”¨äºç”Ÿæˆ "Table.Column" æˆ–åˆ—çš„è¡¨è¾¾å¼ã€‚
+    /// ±íÊ¾ÊµÌåÊôĞÔ£¨ÁĞ£©µÄ±í´ïÊ½£¬ÀıÈçÓÃÓÚÉú³É "Table.Column" »òÁĞµÄ±í´ïÊ½¡£
     /// </summary>
-    public sealed class PropertyStatement : Statement
+    public sealed class PropertyExpr : Expr
     {
         /// <summary>
-        /// ç”¨äºåºåˆ—åŒ–/ååºåˆ—åŒ– çš„æ— å‚æ„é€ ã€‚
+        /// ÓÃÓÚĞòÁĞ»¯/·´ĞòÁĞ»¯ µÄÎŞ²Î¹¹Ôì¡£
         /// </summary>
-        public PropertyStatement()
+        public PropertyExpr()
         {
         }
 
         /// <summary>
-        /// ä½¿ç”¨å±æ€§åæ„é€ ä¸€ä¸ªå±æ€§è¯­å¥ã€‚
+        /// Ê¹ÓÃÊôĞÔÃû¹¹ÔìÒ»¸öÊôĞÔ±í´ïÊ½¡£
         /// </summary>
-        /// <param name="propertyName">å±æ€§ï¼ˆåˆ—ï¼‰åç§°</param>
-        public PropertyStatement(string propertyName)
+        /// <param name="propertyName">ÊôĞÔ£¨ÁĞ£©Ãû³Æ</param>
+        public PropertyExpr(string propertyName)
         {
             PropertyName = propertyName;
         }
 
         /// <summary>
-        /// å±æ€§ï¼ˆåˆ—ï¼‰åç§°
+        /// ÊôĞÔ£¨ÁĞ£©Ãû³Æ
         /// </summary>
         public string PropertyName { get; set; }
 
         /// <inheritdoc/>
         /// <remarks>
-        /// ä¼šæ ¹æ®ä¸Šä¸‹æ–‡ï¼ˆæ˜¯å¦å•è¡¨æŸ¥è¯¢ã€æ˜¯å¦å­˜åœ¨è¡¨åˆ«åï¼‰é€‰æ‹©ä½¿ç”¨åˆ—çš„æ ¼å¼åŒ–åç§°æˆ–è¡¨è¾¾å¼ã€‚
-        /// å¦‚æœå±æ€§ä¸å­˜åœ¨åˆ™æŠ›å‡ºå¼‚å¸¸ã€‚
+        /// »á¸ù¾İÉÏÏÂÎÄ£¨ÊÇ·ñµ¥±í²éÑ¯¡¢ÊÇ·ñ´æÔÚ±í±ğÃû£©Ñ¡ÔñÊ¹ÓÃÁĞµÄ¸ñÊ½»¯Ãû³Æ»ò±í´ïÊ½¡£
+        /// Èç¹ûÊôĞÔ²»´æÔÚÔòÅ×³öÒì³£¡£
         /// </remarks>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
@@ -45,16 +45,29 @@ namespace MyOrm.Common
             return tableAlias == null ? (context.SingleTable ? column.FormattedName(sqlBuilder) : column.FormattedExpression(sqlBuilder)) : $"[{tableAlias}].[{column.Name}]";
         }
 
+        /// <summary>
+        /// ·µ»Ø±íÊ¾µ±Ç°ÊôĞÔµÄ×Ö·û´®¡£
+        /// </summary>
+        /// <returns>±íÊ¾µ±Ç°ÊôĞÔµÄ×Ö·û´®¡£</returns>
         public override string ToString()
         {
             return $"[{PropertyName}]";
         }
 
+        /// <summary>
+        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// </summary>
+        /// <param name="obj">ÒªÓëµ±Ç°¶ÔÏó½øĞĞ±È½ÏµÄ¶ÔÏó¡£</param>
+        /// <returns>Èç¹ûÖ¸¶¨µÄ¶ÔÏóµÈÓÚµ±Ç°¶ÔÏó£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
         public override bool Equals(object obj)
         {
-            return obj is PropertyStatement p && p.PropertyName == PropertyName;
+            return obj is PropertyExpr p && p.PropertyName == PropertyName;
         }
 
+        /// <summary>
+        /// ×÷ÎªÄ¬ÈÏ¹şÏ£º¯Êı¡£
+        /// </summary>
+        /// <returns>µ±Ç°¶ÔÏóµÄ¹şÏ£´úÂë¡£</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), PropertyName?.GetHashCode() ?? 0);

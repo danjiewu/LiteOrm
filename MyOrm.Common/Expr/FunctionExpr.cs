@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,38 +7,38 @@ using System.Threading.Tasks;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// è¡¨ç¤ºå‡½æ•°è°ƒç”¨è¯­å¥ï¼Œä¾‹å¦‚ <c>SUM(column)</c>ã€<c>COALESCE(a,b)</c> ç­‰ã€‚
+    /// ±íÊ¾º¯Êıµ÷ÓÃ±í´ïÊ½£¬ÀıÈç <c>SUM(column)</c>¡¢<c>COALESCE(a,b)</c> µÈ¡£
     /// </summary>
-    public sealed class FunctionStatement : Statement
+    public sealed class FunctionExpr : Expr
     {
         /// <summary>
-        /// æ„é€ å‡½æ•°ï¼Œåˆå§‹åŒ–ç©ºå‚æ•°åˆ—è¡¨ã€‚
+        /// ¹¹Ôìº¯Êı£¬³õÊ¼»¯¿Õ²ÎÊıÁĞ±í¡£
         /// </summary>
-        public FunctionStatement()
+        public FunctionExpr()
         {
-            Parameters = new List<Statement>();
+            Parameters = new List<Expr>();
         }
 
         /// <summary>
-        /// ä½¿ç”¨å‡½æ•°åä¸å‚æ•°æ„é€ å‡½æ•°è¯­å¥ã€‚
+        /// Ê¹ÓÃº¯ÊıÃûÓë²ÎÊı¹¹Ôìº¯Êı±í´ïÊ½¡£
         /// </summary>
-        /// <param name="functionName">å‡½æ•°å</param>
-        /// <param name="parameters">å‚æ•°è¯­å¥åˆ—è¡¨</param>
-        public FunctionStatement(string functionName, params Statement[] parameters)
+        /// <param name="functionName">º¯ÊıÃû</param>
+        /// <param name="parameters">²ÎÊı±í´ïÊ½ÁĞ±í</param>
+        public FunctionExpr(string functionName, params Expr[] parameters)
         {
             FunctionName = functionName;
             Parameters = parameters.ToList();
         }
 
         /// <summary>
-        /// å‡½æ•°å
+        /// º¯ÊıÃû
         /// </summary>
         public string FunctionName { get; set; }
 
         /// <summary>
-        /// å‚æ•°è¯­å¥åˆ—è¡¨
+        /// ²ÎÊı±í´ïÊ½ÁĞ±í
         /// </summary>
-        public List<Statement> Parameters { get; set; }
+        public List<Expr> Parameters { get; set; }
 
         /// <inheritdoc/>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
@@ -46,16 +46,29 @@ namespace MyOrm.Common
             return sqlBuilder.BuildFunctionSql(FunctionName, Parameters.Select(p => p.ToSql(context, sqlBuilder, outputParams)).ToArray());
         }
 
+        /// <summary>
+        /// ·µ»Ø±íÊ¾µ±Ç°º¯ÊıµÄ×Ö·û´®¡£
+        /// </summary>
+        /// <returns>±íÊ¾µ±Ç°º¯ÊıµÄ×Ö·û´®¡£</returns>
         public override string ToString()
         {
             return $"{FunctionName}({String.Join(",", Parameters)})";
         }
 
+        /// <summary>
+        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// </summary>
+        /// <param name="obj">ÒªÓëµ±Ç°¶ÔÏó½øĞĞ±È½ÏµÄ¶ÔÏó¡£</param>
+        /// <returns>Èç¹ûÖ¸¶¨µÄ¶ÔÏóµÈÓÚµ±Ç°¶ÔÏó£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
         public override bool Equals(object obj)
         {
-            return obj is FunctionStatement f && f.FunctionName == FunctionName && f.Parameters.SequenceEqual(Parameters);
+            return obj is FunctionExpr f && f.FunctionName == FunctionName && f.Parameters.SequenceEqual(Parameters);
         }
 
+        /// <summary>
+        /// ×÷ÎªÄ¬ÈÏ¹şÏ£º¯Êı¡£
+        /// </summary>
+        /// <returns>µ±Ç°¶ÔÏóµÄ¹şÏ£´úÂë¡£</returns>
         public override int GetHashCode()
         {
             unchecked

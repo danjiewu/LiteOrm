@@ -8,45 +8,173 @@ using System.Threading.Tasks;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// �첽�棺ʵ����ͼ��ѯ�����ķ��ͽӿ�
+    /// 异步版：实体视图查询操作的泛型接口
     /// </summary>
-    /// <typeparam name="T">ʵ��������</typeparam>
+    /// <typeparam name="T">实体类类型</typeparam>
     public interface IObjectViewDAOAsync<T>
     {
+        /// <summary>
+        /// 异步根据主键获取对象
+        /// </summary>
+        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回找到的对象，如果未找到则返回null</returns>
         Task<T> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default);
 
-        Task<T> SearchOneAsync(Statement condition, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 异步根据条件查询单个对象
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回找到的对象，如果未找到则返回null</returns>
+        Task<T> SearchOneAsync(Expr condition, CancellationToken cancellationToken = default);
 
-        Task ForEachAsync(Statement condition, Func<T, Task> func, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 异步遍历符合条件的对象并对每个对象执行指定操作
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="func">要对每个对象执行的操作</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务</returns>
+        Task ForEachAsync(Expr condition, Func<T, Task> func, CancellationToken cancellationToken = default);
 
-        Task<List<T>> SearchAsync(Statement condition = null, CancellationToken cancellationToken = default);
-        Task<List<T>> SearchAsync(Statement condition, Sorting[] orderBy, CancellationToken cancellationToken = default);
-        Task<List<T>> SearchSectionAsync(Statement condition, SectionSet section, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 异步根据条件查询对象列表
+        /// </summary>
+        /// <param name="condition">查询条件，如果为null则查询所有对象</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象列表</returns>
+        Task<List<T>> SearchAsync(Expr condition = null, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// 异步根据条件和排序查询对象列表
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="orderBy">排序规则数组</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象列表</returns>
+        Task<List<T>> SearchAsync(Expr condition, Sorting[] orderBy, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// 异步根据条件、分页和排序查询对象列表
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="section">分页设置</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象列表</returns>
+        Task<List<T>> SearchSectionAsync(Expr condition, SectionSet section, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// 异步检查指定主键的对象是否存在
+        /// </summary>
+        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象是否存在</returns>
         Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// 异步检查指定对象是否存在（根据主键判断）
+        /// </summary>
+        /// <param name="o">要检查的对象</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象是否存在</returns>
         Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default);
-        Task<bool> ExistsAsync(Statement condition, CancellationToken cancellationToken = default);
-        Task<int> CountAsync(Statement condition, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// 异步检查符合条件的对象是否存在
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回符合条件的对象是否存在</returns>
+        Task<bool> ExistsAsync(Expr condition, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// 异步统计符合条件的对象数量
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象数量</returns>
+        Task<int> CountAsync(Expr condition, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
-    /// �첽�棺ʵ����ͼ��ѯ�����ķǷ��ͽӿ�
+    /// 异步版：实体视图查询操作的非泛型接口
     /// </summary>
     [AutoRegister(false)]
     public interface IObjectViewDAOAsync
     {
+        /// <summary>
+        /// 异步根据主键获取对象
+        /// </summary>
+        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回找到的对象，如果未找到则返回null</returns>
         Task<object> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default);
 
-        Task<object> SearchOneAsync(Statement condition, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 异步根据条件查询单个对象
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回找到的对象，如果未找到则返回null</returns>
+        Task<object> SearchOneAsync(Expr condition, CancellationToken cancellationToken = default);
 
-        Task<IList> SearchAsync(Statement condition, CancellationToken cancellationToken = default);
-        Task<IList> SearchAsync(Statement condition, Sorting[] orderBy, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 异步根据条件查询对象列表
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象列表</returns>
+        Task<IList> SearchAsync(Expr condition, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// 异步根据条件和排序查询对象列表
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="orderBy">排序规则数组</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象列表</returns>
+        Task<IList> SearchAsync(Expr condition, Sorting[] orderBy, CancellationToken cancellationToken = default);
 
-        Task<IList> SearchSectionAsync(Statement condition, SectionSet section, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 异步根据条件、分页和排序查询对象列表
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="section">分页设置</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象列表</returns>
+        Task<IList> SearchSectionAsync(Expr condition, SectionSet section, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// 异步检查指定主键的对象是否存在
+        /// </summary>
+        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象是否存在</returns>
         Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// 异步检查指定对象是否存在（根据主键判断）
+        /// </summary>
+        /// <param name="o">要检查的对象</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象是否存在</returns>
         Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default);
-        Task<bool> ExistsAsync(Statement condition, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// 异步检查符合条件的对象是否存在
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回符合条件的对象是否存在</returns>
+        Task<bool> ExistsAsync(Expr condition, CancellationToken cancellationToken = default);
 
-        Task<int> CountAsync(Statement condition, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// 异步统计符合条件的对象数量
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回对象数量</returns>
+        Task<int> CountAsync(Expr condition, CancellationToken cancellationToken = default);
     }
 }

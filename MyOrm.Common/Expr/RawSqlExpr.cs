@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,28 +7,28 @@ using System.Threading.Tasks;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// è¡¨ç¤ºé™æ€åŸå§‹ SQL ç‰‡æ®µã€‚
+    /// ±íÊ¾¾²Ì¬Ô­Ê¼ SQL Æ¬¶Î±í´ïÊ½¡£
     /// </summary>
-    public sealed class RawSqlStatement : Statement
+    public sealed class RawSqlExpr : Expr
     {
         /// <summary>
-        /// æ— å‚æ„é€ ã€‚
+        /// ÎŞ²Î¹¹Ôì¡£
         /// </summary>
-        public RawSqlStatement()
+        public RawSqlExpr()
         {
         }
 
         /// <summary>
-        /// ä½¿ç”¨æŒ‡å®š SQL å­—ç¬¦ä¸²æ„é€ ã€‚
+        /// Ê¹ÓÃÖ¸¶¨ SQL ×Ö·û´®¹¹Ôì¡£
         /// </summary>
-        /// <param name="sql">åŸå§‹ SQL ç‰‡æ®µ</param>
-        public RawSqlStatement(string sql)
+        /// <param name="sql">Ô­Ê¼ SQL Æ¬¶Î</param>
+        public RawSqlExpr(string sql)
         {
             Sql = sql;
         }
 
         /// <summary>
-        /// æŒ‡å®šçš„é™æ€ SQL å­—ç¬¦ä¸²ã€‚
+        /// Ö¸¶¨µÄ¾²Ì¬ SQL ×Ö·û´®¡£
         /// </summary>
         public string Sql { get; set; }
         /// <inheritdoc/>
@@ -37,16 +37,29 @@ namespace MyOrm.Common
             return Sql;
         }
 
+        /// <summary>
+        /// ·µ»Ø±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£
+        /// </summary>
+        /// <returns>±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£</returns>
         public override string ToString()
         {
             return Sql;
         }
 
+        /// <summary>
+        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// </summary>
+        /// <param name="obj">ÒªÓëµ±Ç°¶ÔÏó½øĞĞ±È½ÏµÄ¶ÔÏó¡£</param>
+        /// <returns>Èç¹ûÖ¸¶¨µÄ¶ÔÏóµÈÓÚµ±Ç°¶ÔÏó£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
         public override bool Equals(object obj)
         {
-            return obj is RawSqlStatement r && r.Sql == Sql;
+            return obj is RawSqlExpr r && r.Sql == Sql;
         }
 
+        /// <summary>
+        /// ×÷ÎªÄ¬ÈÏ¹şÏ£º¯Êı¡£
+        /// </summary>
+        /// <returns>µ±Ç°¶ÔÏóµÄ¹şÏ£´úÂë¡£</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), Sql?.GetHashCode() ?? 0);

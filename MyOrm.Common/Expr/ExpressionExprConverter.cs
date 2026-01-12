@@ -11,25 +11,25 @@ using System.Threading.Tasks;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// 将 Lambda 表达式转换为 Statement 对象树的纯转换器
+    /// 将 Lambda 表达式转换为 Expr 对象树的转换器
     /// </summary>
-    public class ExpressionStatementConverter
+    public class ExpressionExprConverter
     {
         private readonly ParameterExpression _rootParameter;
 
         /// <summary>
-        /// 初始化 ExpressionStatementConverter
+        /// 初始化 ExpressionExprConverter
         /// </summary>
         /// <param name="rootParameter">Lambda 表达式的根参数</param>
-        public ExpressionStatementConverter(ParameterExpression rootParameter = null)
+        public ExpressionExprConverter(ParameterExpression rootParameter = null)
         {
             _rootParameter = rootParameter;
         }
 
         /// <summary>
-        /// 将 Lambda 表达式转换为 Statement
+        /// 将 Lambda 表达式转换为 Expr
         /// </summary>
-        public Statement Convert(Expression expression)
+        public Expr Convert(Expression expression)
         {
             if (expression == null) throw new ArgumentNullException(nameof(expression));
             var stmt = ConvertInternal(expression);
@@ -39,7 +39,7 @@ namespace MyOrm.Common
 
         #region 基础表达式处理
 
-        private Statement ConvertInternal(Expression node)
+        private Expr ConvertInternal(Expression node)
         {
             switch (node)
             {
@@ -50,9 +50,9 @@ namespace MyOrm.Common
                 case MemberExpression member:
                     return ConvertMember(member);
                 case ConstantExpression constant:
-                    return new ValueStatement(constant.Value);
+                    return new ValueExpr(constant.Value);
                 case ParameterExpression param:
-                    throw new NotSupportedException($"参数表达式 '{param.Name}' 不能直接转换为 Statement");
+                    throw new NotSupportedException($"参数表达式 '{param.Name}' 不能直接转换为 Expr");
                 case NewArrayExpression newArray:
                     return ConvertNewArray(newArray);
                 case ListInitExpression listInit:
@@ -66,7 +66,7 @@ namespace MyOrm.Common
             }
         }
 
-        private Statement ConvertBinary(BinaryExpression node)
+        private Expr ConvertBinary(BinaryExpression node)
         {
             // 将表达式节点类型转换为 BinaryOperator
             BinaryOperator op = ConvertExpressionTypeToBinaryOperator(node.NodeType);
@@ -75,7 +75,7 @@ namespace MyOrm.Common
             if (node.Left is MethodCallExpression leftCallExpression && leftCallExpression.Method.Name == "CompareTo")
             {
                 if (!EvaluateExpression(node.Right).Equals(0)) throw new ArgumentException($"CompareTo 方法只能与 0 进行比较: {node}");
-                BinaryStatement res = ConvertMethodCall(leftCallExpression) as BinaryStatement;
+                BinaryExpr res = ConvertMethodCall(leftCallExpression) as BinaryExpr;
                 res.Operator = op switch
                 {
                     BinaryOperator.Equal => BinaryOperator.Equal,
@@ -91,7 +91,7 @@ namespace MyOrm.Common
             else if (node.Right is MethodCallExpression rightCallExpression && rightCallExpression.Method.Name == "CompareTo")
             {
                 if (!EvaluateExpression(node.Left).Equals(0)) throw new ArgumentException($"CompareTo 方法只能与 0 进行比较: {node}");
-                BinaryStatement res = ConvertMethodCall(rightCallExpression) as BinaryStatement;
+                BinaryExpr res = ConvertMethodCall(rightCallExpression) as BinaryExpr;
                 // 反转操作符
                 res.Operator = op switch
                 {
@@ -119,15 +119,15 @@ namespace MyOrm.Common
                     return left.Or(right);
                 case ExpressionType.Add:
                     if (node.Left.Type == typeof(string) || node.Right.Type == typeof(string))
-                        return new BinaryStatement(left, BinaryOperator.Concat, right);
+                        return new BinaryExpr(left, BinaryOperator.Concat, right);
                     else
-                        return new BinaryStatement(left, BinaryOperator.Add, right);
+                        return new BinaryExpr(left, BinaryOperator.Add, right);
                 default:
-                    return new BinaryStatement(left, op, right);
+                    return new BinaryExpr(left, op, right);
             }
         }
 
-        private Statement ConvertUnary(UnaryExpression node)
+        private Expr ConvertUnary(UnaryExpression node)
         {
             var operand = ConvertInternal(node.Operand);
 
@@ -139,11 +139,11 @@ namespace MyOrm.Common
             switch (node.NodeType)
             {
                 case ExpressionType.OnesComplement:
-                    return new UnaryStatement(UnaryOperator.BitwiseNot, operand);
+                    return new UnaryExpr(UnaryOperator.BitwiseNot, operand);
                 case ExpressionType.Not:
-                    return new UnaryStatement(UnaryOperator.Not, operand);
+                    return new UnaryExpr(UnaryOperator.Not, operand);
                 case ExpressionType.Negate:
-                    return new UnaryStatement(UnaryOperator.Nagive, operand);
+                    return new UnaryExpr(UnaryOperator.Nagive, operand);
                 case ExpressionType.Convert:
                     // 类型转换通常不需要特殊处理
                     return operand;
@@ -152,7 +152,7 @@ namespace MyOrm.Common
             }
         }
 
-        private ValueStatement EvaluateExpression(Expression node)
+        private ValueExpr EvaluateExpression(Expression node)
         {
             try
             {
@@ -160,7 +160,7 @@ namespace MyOrm.Common
                 var lambda = Expression.Lambda(node);
                 var compiled = lambda.Compile();
                 var value = compiled.DynamicInvoke();
-                return new ValueStatement(value);
+                return new ValueExpr(value);
             }
             catch
             {
@@ -168,7 +168,7 @@ namespace MyOrm.Common
             }
         }
 
-        private Statement ConvertMember(MemberExpression node)
+        private Expr ConvertMember(MemberExpression node)
         {
             if (Nullable.GetUnderlyingType(node.Member.DeclaringType) != null && node.Member.Name == "Value")
             {
@@ -181,11 +181,11 @@ namespace MyOrm.Common
             {
                 if (node.Member is PropertyInfo propertyInfo)
                 {
-                    return Statement.Property(propertyInfo.Name);
+                    return Expr.Property(propertyInfo.Name);
                 }
                 else if (node.Member is FieldInfo fieldInfo)
                 {
-                    return Statement.Property(fieldInfo.Name);
+                    return Expr.Property(fieldInfo.Name);
                 }
             }
 
@@ -193,9 +193,9 @@ namespace MyOrm.Common
             {
                 // 处理字符串或数组的 Length 属性
                 var targetExpr = node.Expression;
-                if (targetExpr == null) return new FunctionStatement(node.Member.Name);
+                if (targetExpr == null) return new FunctionExpr(node.Member.Name);
                 else
-                    return new FunctionStatement(node.Member.Name, ConvertInternal(targetExpr));
+                    return new FunctionExpr(node.Member.Name, ConvertInternal(targetExpr));
             }
 
             if (new ParameterExpressionDetector().ContainsParameter(node))
@@ -210,7 +210,7 @@ namespace MyOrm.Common
                 }
                 parts.Reverse();
                 var propertyName = string.Join(".", parts);
-                return Statement.Property(propertyName);
+                return Expr.Property(propertyName);
             }
             else// 处理常量成员访问（如 DateTime.Now）
                 return EvaluateExpression(node);
@@ -231,9 +231,9 @@ namespace MyOrm.Common
             }
         }
 
-        private Statement ConvertNewArray(NewArrayExpression node)
+        private Expr ConvertNewArray(NewArrayExpression node)
         {
-            var items = new List<Statement>();
+            var items = new List<Expr>();
             foreach (var expression in node.Expressions)
             {
                 var item = ConvertInternal(expression);
@@ -243,12 +243,12 @@ namespace MyOrm.Common
                 }
             }
 
-            return new StatementSet(items);
+            return new ExprSet(items);
         }
 
-        private Statement ConvertListInit(ListInitExpression node)
+        private Expr ConvertListInit(ListInitExpression node)
         {
-            var items = new List<Statement>();
+            var items = new List<Expr>();
             foreach (var init in node.Initializers)
             {
                 foreach (var arg in init.Arguments)
@@ -261,14 +261,14 @@ namespace MyOrm.Common
                 }
             }
 
-            return new StatementSet(items);
+            return new ExprSet(items);
         }
 
         #endregion
 
         #region 方法调用处理
 
-        private Statement ConvertMethodCall(MethodCallExpression node)
+        private Expr ConvertMethodCall(MethodCallExpression node)
         {
             // 处理字符串方法
             if (node.Method.DeclaringType == typeof(string))
@@ -292,12 +292,12 @@ namespace MyOrm.Common
             return HandleStaticMethod(node);
         }
 
-        private Statement HandleStringMethod(MethodCallExpression node)
+        private Expr HandleStringMethod(MethodCallExpression node)
         {
             var methodName = node.Method.Name;
 
-            Statement left = null;
-            Statement right = null;
+            Expr left = null;
+            Expr right = null;
 
             if (node.Object != null)
             {
@@ -323,35 +323,35 @@ namespace MyOrm.Common
             {
                 case "StartsWith":
                     if (right == null) throw new ArgumentException("StartsWith 方法需要参数");
-                    return new BinaryStatement(left, BinaryOperator.StartsWith, right);
+                    return new BinaryExpr(left, BinaryOperator.StartsWith, right);
 
                 case "EndsWith":
                     if (right == null) throw new ArgumentException("EndsWith 方法需要参数");
-                    return new BinaryStatement(left, BinaryOperator.EndsWith, right);
+                    return new BinaryExpr(left, BinaryOperator.EndsWith, right);
 
                 case "Contains":
                     if (right == null) throw new ArgumentException("Contains 方法需要参数");
-                    return new BinaryStatement(left, BinaryOperator.Contains, right);
+                    return new BinaryExpr(left, BinaryOperator.Contains, right);
 
                 case "Concat":
                     if (right == null) throw new ArgumentException("Concat 方法需要参数");
-                    return new BinaryStatement(left, BinaryOperator.Concat, right);
+                    return new BinaryExpr(left, BinaryOperator.Concat, right);
 
                 case "Equals":
                     if (right == null) throw new ArgumentException("Equals 方法需要参数");
-                    return new BinaryStatement(left, BinaryOperator.Equal, right);
+                    return new BinaryExpr(left, BinaryOperator.Equal, right);
                 case "Compare":
                     if (right == null) throw new ArgumentException("Compare 方法需要两个参数");
-                    return new BinaryStatement(left, BinaryOperator.Equal, right);
+                    return new BinaryExpr(left, BinaryOperator.Equal, right);
                 case "CompareTo":
                     if (right == null) throw new ArgumentException("CompareTo 方法需要参数");
-                    return new BinaryStatement(left, BinaryOperator.Equal, right);
+                    return new BinaryExpr(left, BinaryOperator.Equal, right);
                 default:
                     return ConvertMethodCallDefault(node, true);
             }
         }
 
-        private Statement HandleEnumerableMethod(MethodCallExpression node)
+        private Expr HandleEnumerableMethod(MethodCallExpression node)
         {
             var methodName = node.Method.Name;
 
@@ -372,13 +372,13 @@ namespace MyOrm.Common
                 }
 
                 // SQL 中是 value IN collection，所以需要反转
-                return new BinaryStatement(value, BinaryOperator.In, collection);
+                return new BinaryExpr(value, BinaryOperator.In, collection);
             }
 
             return ConvertMethodCallDefault(node, true);
         }
 
-        private Statement HandleInstanceMethod(MethodCallExpression node)
+        private Expr HandleInstanceMethod(MethodCallExpression node)
         {
             var methodName = node.Method.Name;
 
@@ -393,7 +393,7 @@ namespace MyOrm.Common
                     throw new ArgumentException($"无法解析 Equals 方法调用: {node}");
                 }
 
-                return new BinaryStatement(left, BinaryOperator.Equal, right);
+                return new BinaryExpr(left, BinaryOperator.Equal, right);
             }
             else if (methodName == "Contains")
             {
@@ -403,7 +403,7 @@ namespace MyOrm.Common
                 {
                     throw new ArgumentException($"无法解析 Contains 方法调用: {node}");
                 }
-                return new BinaryStatement(right, BinaryOperator.In, left); 
+                return new BinaryExpr(right, BinaryOperator.In, left); 
             }
             else if (methodName == "CompareTo")
             {
@@ -420,19 +420,19 @@ namespace MyOrm.Common
 
                 // CompareTo 返回比较结果，需要与 0 比较
                 // 这里返回相等比较，实际会在二元表达式中替换
-                return new BinaryStatement(left, BinaryOperator.Equal, right);
+                return new BinaryExpr(left, BinaryOperator.Equal, right);
             }
             else
                 return ConvertMethodCallDefault(node, methodName != "ToString");
         }
 
-        private Statement ConvertMethodCallDefault(MethodCallExpression node, bool useFunction)
+        private Expr ConvertMethodCallDefault(MethodCallExpression node, bool useFunction)
         {
             if (new ParameterExpressionDetector().ContainsParameter(node))
             {
                 if (useFunction)
                     // 其他方法作为函数调用
-                    return CreateFunctionStatement(node);
+                    return CreateFunctionExpr(node);
                 else
                     return ConvertInternal(node.Object);
             }
@@ -440,7 +440,7 @@ namespace MyOrm.Common
                 return EvaluateExpression(node);
         }
 
-        private Statement HandleStaticMethod(MethodCallExpression node)
+        private Expr HandleStaticMethod(MethodCallExpression node)
         {
             // 处理常见静态方法
             var methodName = node.Method.Name;
@@ -462,7 +462,7 @@ namespace MyOrm.Common
                     throw new ArgumentException($"无法解析 object.Equals 方法调用: {node}");
                 }
 
-                return new BinaryStatement(left, BinaryOperator.Equal, right);
+                return new BinaryExpr(left, BinaryOperator.Equal, right);
             }
             else if (methodName == "Compare")
             {
@@ -479,15 +479,15 @@ namespace MyOrm.Common
                     throw new ArgumentException($"无法解析 Compare 方法调用: {node}");
                 }
 
-                return new BinaryStatement(left, BinaryOperator.Equal, right);
+                return new BinaryExpr(left, BinaryOperator.Equal, right);
             }
 
             return ConvertMethodCallDefault(node, true);
         }
 
-        private Statement CreateFunctionStatement(MethodCallExpression node)
+        private Expr CreateFunctionExpr(MethodCallExpression node)
         {
-            var parameters = new List<Statement>();
+            var parameters = new List<Expr>();
 
             // 添加对象实例（非静态方法）
             if (node.Object != null)
@@ -519,7 +519,7 @@ namespace MyOrm.Common
                 functionName = node.Method.Name.ToUpper();
             }
 
-            return new FunctionStatement(functionName, parameters.ToArray());
+            return new FunctionExpr(functionName, parameters.ToArray());
         }
 
         #endregion
@@ -548,12 +548,17 @@ namespace MyOrm.Common
         }
         #endregion
 
+        /// <summary>
+        /// 参数表达式检测器。
+        /// </summary>
         public class ParameterExpressionDetector : ExpressionVisitor
         {
             private bool _hasParameter = false;
             /// <summary>
-            /// 检查表达式中是否包含参数
+            /// 检查表达式中是否包含参数。
             /// </summary>
+            /// <param name="expression">要检查的表达式。</param>
+            /// <returns>如果包含参数则返回 true，否则返回 false。</returns>
             public bool ContainsParameter(Expression expression)
             {
                 _hasParameter = false;
@@ -561,43 +566,16 @@ namespace MyOrm.Common
                 return _hasParameter;
             }
 
+            /// <summary>
+            /// 访问参数表达式。
+            /// </summary>
+            /// <param name="node">参数表达式节点。</param>
+            /// <returns>处理后的表达式节点。</returns>
             protected override Expression VisitParameter(ParameterExpression node)
             {
                 _hasParameter = true;
                 return base.VisitParameter(node);
             }
-        }
-    }
-
-    /// <summary>
-    /// Expression 到 Statement 的扩展方法
-    /// </summary>
-    public static class ExpressionToStatementExtensions
-    {
-        public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
-        {
-            return entityViewService.Search(Statement.Exp(expression).Statement);
-        }
-        public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
-        {
-            return entityViewService.SearchOne(Statement.Exp(expression).Statement);
-        }
-        public static List<T> SearchSection<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, SectionSet sectionSet, params string[] tableArgs)
-        {
-            return entityViewService.SearchSection(Statement.Exp(expression).Statement, sectionSet, tableArgs);
-        }
-
-        public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression)
-        {
-            return entityViewService.SearchAsync(Statement.Exp(expression).Statement);
-        }
-        public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression)
-        {
-            return entityViewService.SearchOneAsync(Statement.Exp(expression).Statement);
-        }
-        public static Task<List<T>> SearchSectionAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, SectionSet sectionSet, params string[] tableArgs)
-        {
-            return entityViewService.SearchSectionAsync(Statement.Exp(expression).Statement, sectionSet, tableArgs);
         }
     }
 }

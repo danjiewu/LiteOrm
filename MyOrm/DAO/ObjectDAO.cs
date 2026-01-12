@@ -12,25 +12,41 @@ using System.Threading.Tasks;
 namespace MyOrm
 {
     /// <summary>
-    /// ʵ������ɾ�ĵ�ʵ��
+    /// 实体类数据访问对象实现 - 负责增删改等操作
     /// </summary>
-    /// <typeparam name="T">ʵ������</typeparam>
+    /// <typeparam name="T">实体类型</typeparam>
+    /// <remarks>
+    /// ObjectDAO&lt;T&gt; 是 IObjectDAO&lt;T&gt; 接口的实现，提供针对特定实体类型的数据访问操作。
+    /// 
+    /// 主要功能包括：
+    /// 1. 插入操作 - 向数据库插入新的实体记录
+    /// 2. 更新操作 - 更新现有的实体记录
+    /// 3. 删除操作 - 删除指定的实体记录
+    /// 4. 批量操作 - 支持批量插入、更新、删除等操作
+    /// 5. 事务支持 - 支持事务处理以确保数据一致性
+    /// 
+    /// 该类继承自 ObjectDAOBase，使用泛型参数 T 来指定具体的实体类型，
+    /// 提供强类型的数据访问接口。
+    /// </remarks>
     public class ObjectDAO<T> : ObjectDAOBase, IObjectDAO<T>
     {
         /// <summary>
-        /// ʵ���������
+        /// 实体对象类型
         /// </summary>
         public override Type ObjectType
         {
             get { return typeof(T); }
         }
+        /// <summary>
+        /// 获取实体对应的数据库表元数据。
+        /// </summary>
         public override SqlTable Table
         {
             get { return TableInfoProvider.GetTableDefinition(ObjectType); }
         }
 
         /// <summary>
-        /// ʶ����
+        /// 识别列
         /// </summary>
         protected ColumnDefinition IdentityColumn
         {
@@ -41,11 +57,14 @@ namespace MyOrm
             }
         }
 
+        /// <summary>
+        /// 获取或设置用于生成 SQL 的上下文。
+        /// </summary>
         protected override SqlBuildContext SqlBuildContext { get { base.SqlBuildContext.SingleTable = true; return base.SqlBuildContext; } set => base.SqlBuildContext = value; }
 
-        #region Ԥ����Command
+        #region 预构建Command
         /// <summary>
-        /// ʵ���������
+        /// 实体插入命令
         /// </summary>
         protected virtual IDbCommand MakeInsertCommand()
         {
@@ -75,6 +94,10 @@ namespace MyOrm
             return command;
         }
 
+        /// <summary>
+        /// 构建实体更新命令。
+        /// </summary>
+        /// <returns>返回更新命令实例。</returns>
         protected virtual IDbCommand MakeUpdateCommand()
         {
             IDbCommand command = NewCommand();
@@ -99,6 +122,10 @@ namespace MyOrm
             return command;
         }
 
+        /// <summary>
+        /// 构建实体删除命令。
+        /// </summary>
+        /// <returns>返回删除命令实例。</returns>
         protected virtual IDbCommand MakeDeleteCommand()
         {
             IDbCommand command = NewCommand();
@@ -106,6 +133,10 @@ namespace MyOrm
             return command;
         }
 
+        /// <summary>
+        /// 构建更新或插入（Upsert）命令。
+        /// </summary>
+        /// <returns>返回更新或插入命令实例。</returns>
         protected virtual IDbCommand MakeUpdateOrInsertCommand()
         {
             IDbCommand command = NewCommand();
@@ -152,6 +183,12 @@ namespace MyOrm
         #endregion
 
         #region CRUD
+        /// <summary>
+        /// 将实体对象插入到数据库中。
+        /// </summary>
+        /// <param name="t">要插入的实体对象。</param>
+        /// <returns>如果插入成功则返回 true。</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
         public virtual bool Insert(T t)
         {
             var insertCommand = MakeInsertCommand();
@@ -181,6 +218,10 @@ namespace MyOrm
             return true;
         }
 
+        /// <summary>
+        /// 批量插入实体对象到数据库中。
+        /// </summary>
+        /// <param name="values">要插入的实体对象集合。</param>
         public virtual void BatchInsert(IEnumerable<T> values)
         {
             var provider = BulkInsertProviderFactory.GetProvider(TableDefinition.DataProviderType);
@@ -218,6 +259,13 @@ namespace MyOrm
             }
         }
 
+        /// <summary>
+        /// 更新数据库中的实体对象。
+        /// </summary>
+        /// <param name="t">要更新的实体对象。</param>
+        /// <param name="timestamp">时间戳值，用于乐观并发控制。</param>
+        /// <returns>如果更新成功则返回 true。</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
         public virtual bool Update(T t, object timestamp = null)
         {
             if (t == null) throw new ArgumentNullException("t");
@@ -237,6 +285,12 @@ namespace MyOrm
             return updateCommand.ExecuteNonQuery() > 0;
         }
 
+        /// <summary>
+        /// 更新或插入实体对象到数据库中。
+        /// </summary>
+        /// <param name="t">要更新或插入的实体对象。</param>
+        /// <returns>操作结果，指示是插入还是更新。</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
         public virtual UpdateOrInsertResult UpdateOrInsert(T t)
         {
             if (t == null) throw new ArgumentNullException("t");
@@ -259,12 +313,12 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ����������������
+        /// 根据条件更新数据
         /// </summary>
-        /// <param name="values">��Ҫ���µ����Լ���ֵ��keyΪ��������valueΪ��ֵ</param>
-        /// <param name="condition">���µ�����</param>
-        /// <returns>���µļ�¼��</returns>
-        public virtual int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Statement condition)
+        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
+        /// <param name="condition">更新的条件</param>
+        /// <returns>更新的记录数</returns>
+        public virtual int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expr condition)
         {
             List<string> strSets = new List<string>();
             List<KeyValuePair<string, object>> paramValues = new List<KeyValuePair<string, object>>();
@@ -283,29 +337,29 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ����������������
+        /// 根据主键更新数据
         /// </summary>
-        /// <param name="values">��Ҫ���µ����Լ���ֵ��keyΪ��������valueΪ��ֵ</param>
-        /// <param name="keys">����</param>
-        /// <returns>�����Ƿ�ɹ�</returns>
+        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
+        /// <param name="keys">主键</param>
+        /// <returns>更新是否成功</returns>
         public virtual bool UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys)
         {
             ThrowExceptionIfNoKeys();
             ThrowExceptionIfWrongKeys(keys);
-            StatementSet condition = new StatementSet(StatementJoinType.And);
+            ExprSet condition = new ExprSet(ExprJoinType.And);
             int i = 0;
             foreach (ColumnDefinition column in TableDefinition.Keys)
             {
-                condition.Add(Statement.Property(column.PropertyName, keys[i++]));
+                condition.Add(Expr.Property(column.PropertyName, keys[i++]));
             }
             return UpdateAllValues(values, condition) > 0;
         }
 
         /// <summary>
-        /// ����������ݿ�ɾ��
+        /// 将对象从数据库删除
         /// </summary>
-        /// <param name="t">��ɾ���Ķ���</param>
-        /// <returns>�Ƿ�ɹ�ɾ��</returns>
+        /// <param name="t">待删除的对象</param>
+        /// <returns>是否成功删除</returns>
         public virtual bool Delete(T t)
         {
             if (t == null) throw new ArgumentNullException("t");
@@ -313,11 +367,11 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ��������ɾ������
+        /// 根据条件删除对象
         /// </summary>
-        /// <param name="condition">����</param>
-        /// <returns>ɾ����������</returns>
-        public virtual int Delete(Statement condition)
+        /// <param name="condition">条件</param>
+        /// <returns>删除对象数量</returns>
+        public virtual int Delete(Expr condition)
         {
             using (IDbCommand command = MakeConditionCommand("delete from @Table@ \nwhere@Condition@", condition))
             {
@@ -326,10 +380,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ��ָ�������Ķ�������ݿ�ɾ��
+        /// 将指定主键的对象从数据库删除
         /// </summary>
-        /// <param name="keys">��ɾ���Ķ��������</param>
-        /// <returns>�Ƿ�ɹ�ɾ��</returns>
+        /// <param name="keys">待删除的对象的主键</param>
+        /// <returns>是否成功删除</returns>
         public virtual bool DeleteByKeys(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
@@ -383,38 +437,81 @@ namespace MyOrm
 
         #region IObjectDAOAsync implementations (wrappers)
 
+        /// <summary>
+        /// 异步将实体对象插入到数据库中。
+        /// </summary>
+        /// <param name="t">要插入的实体对象。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，如果插入成功则返回 true。</returns>
         public virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => Insert(t), cancellationToken);
         }
 
+        /// <summary>
+        /// 异步批量插入实体对象到数据库中。
+        /// </summary>
+        /// <param name="values">要插入的实体对象集合。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务。</returns>
         public virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => BatchInsert(values), cancellationToken);
         }
 
+        /// <summary>
+        /// 异步更新数据库中的实体对象。
+        /// </summary>
+        /// <param name="t">要更新的实体对象。</param>
+        /// <param name="timestamp">时间戳值，用于乐观并发控制。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，如果更新成功则返回 true。</returns>
         public virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => Update(t, timestamp), cancellationToken);
         }
 
+        /// <summary>
+        /// 异步更新或插入实体对象到数据库中。
+        /// </summary>
+        /// <param name="t">要更新或插入的实体对象。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，返回操作结果，指示是插入还是更新。</returns>
         public virtual Task<UpdateOrInsertResult> UpdateOrInsertAsync(T t, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => UpdateOrInsert(t), cancellationToken);
         }
 
 
+        /// <summary>
+        /// 异步将对象从数据库删除。
+        /// </summary>
+        /// <param name="t">待删除的对象。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，如果删除成功则返回 true。</returns>
         public virtual Task<bool> DeleteAsync(T t, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => Delete(t), cancellationToken);
         }
 
+        /// <summary>
+        /// 异步将指定主键的对象从数据库删除。
+        /// </summary>
+        /// <param name="keys">待删除的对象的主键。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，如果删除成功则返回 true。</returns>
         public virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => DeleteByKeys(keys), cancellationToken);
         }
 
-        public virtual Task<int> DeleteAsync(Statement condition, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步根据条件删除对象。
+        /// </summary>
+        /// <param name="condition">条件。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，返回删除对象数量。</returns>
+        public virtual Task<int> DeleteAsync(Expr condition, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => Delete(condition), cancellationToken);
         }
@@ -450,7 +547,7 @@ namespace MyOrm
             return UpdateOrInsertAsync((T)o, cancellationToken);
         }
 
-        Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Statement condition, CancellationToken cancellationToken)
+        Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr condition, CancellationToken cancellationToken)
         {
             return CurrentSession.ExecuteInSessionAsync(() => UpdateAllValues(values, condition), cancellationToken);
         }
@@ -465,7 +562,7 @@ namespace MyOrm
             return DeleteByKeysAsync(keys, cancellationToken);
         }
 
-        Task<int> IObjectDAOAsync.DeleteAsync(Statement condition, CancellationToken cancellationToken)
+        Task<int> IObjectDAOAsync.DeleteAsync(Expr condition, CancellationToken cancellationToken)
         {
             return DeleteAsync(condition, cancellationToken);
         }

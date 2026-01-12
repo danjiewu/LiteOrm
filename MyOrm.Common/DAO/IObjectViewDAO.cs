@@ -27,20 +27,20 @@ namespace MyOrm.Common
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
-        new T SearchOne(Statement condition);
+        new T SearchOne(Expr condition);
         /// <summary>
         /// 根据条件遍历对象
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <param name="func">调用的函数委托</param>
-        void ForEach(Statement condition, Action<T> func);
+        void ForEach(Expr condition, Action<T> func);
 
         /// <summary>
         /// 根据条件查询
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象列表</returns>
-        new List<T> Search(Statement condition = null);
+        new List<T> Search(Expr condition = null);
 
         /// <summary>
         /// 根据条件查询
@@ -48,7 +48,7 @@ namespace MyOrm.Common
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <returns>符合条件的对象列表</returns>
-        new List<T> Search(Statement condition, params Sorting[] orderBy);
+        new List<T> Search(Expr condition, params Sorting[] orderBy);
 
         /// <summary>
         /// 分页查询
@@ -56,7 +56,7 @@ namespace MyOrm.Common
         /// <param name="condition">查询条件</param>
         /// <param name="section">分页设定</param>
         /// <returns></returns>
-        new List<T> SearchSection(Statement condition, SectionSet section);
+        new List<T> SearchSection(Expr condition, SectionSet section);
     }
     #endregion
 
@@ -93,28 +93,28 @@ namespace MyOrm.Common
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <returns>是否存在</returns>
-        bool Exists(Statement condition);
+        bool Exists(Expr condition);
 
         /// <summary>
         /// 得到满足条件的对象个数
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <returns>满足条件的对象个数</returns>
-        int Count(Statement condition);
+        int Count(Expr condition);
 
         /// <summary>
         /// 根据条件获取单个对象
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
-        Object SearchOne(Statement condition);
+        Object SearchOne(Expr condition);
 
         /// <summary>
         /// 根据条件查询
         /// </summary>
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象列表</returns>
-        IList Search(Statement condition);
+        IList Search(Expr condition);
 
         /// <summary>
         /// 根据条件查询
@@ -122,7 +122,7 @@ namespace MyOrm.Common
         /// <param name="condition">查询条件，若为null则表示没有条件</param>
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <returns>符合条件的对象列表</returns>
-        IList Search(Statement condition, params Sorting[] orderBy);
+        IList Search(Expr condition, params Sorting[] orderBy);
 
         /// <summary>
         /// 分页查询
@@ -130,7 +130,7 @@ namespace MyOrm.Common
         /// <param name="condition">查询条件</param>
         /// <param name="section">分页设定</param>
         /// <returns></returns>
-        IList SearchSection(Statement condition, SectionSet section);
+        IList SearchSection(Expr condition, SectionSet section);
     }
     #endregion
 }

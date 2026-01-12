@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Data;
-using System.Text.RegularExpressions;
 using MyOrm.Common;
 using System.Data.Common;
 using System.Collections.ObjectModel;
@@ -16,33 +15,49 @@ using System.Linq;
 namespace MyOrm
 {
     /// <summary>
-    /// Ìá¹©³£ÓÃ²Ù×÷
+    /// æä¾›å¸¸ç”¨çš„æ•°æ®è®¿é—®æ“ä½œåŸºç±»
     /// </summary>
+    /// <remarks>
+    /// ObjectDAOBase æ˜¯ä¸€ä¸ªæŠ½è±¡åŸºç±»ï¼Œä¸ºå„ç§æ•°æ®è®¿é—®å¯¹è±¡(DAO)æä¾›é€šç”¨çš„æ“ä½œæ–¹æ³•ã€‚
+    /// å®ƒå°è£…äº†ä¸æ•°æ®åº“äº¤äº’çš„å¸¸è§æ“ä½œï¼Œå¦‚ç”ŸæˆSQLè¯­å¥ã€åˆ›å»ºæ•°æ®åº“å‘½ä»¤ã€å¤„ç†å‚æ•°ç­‰ã€‚
+    /// 
+    /// ä¸»è¦åŠŸèƒ½åŒ…æ‹¬ï¼š
+    /// 1. SQLè¯­å¥å’Œå‘½ä»¤æ„å»º - æ ¹æ®å¯¹è±¡ç±»å‹å’Œè¡¨å®šä¹‰ç”ŸæˆSQLè¯­å¥
+    /// 2. å‚æ•°å¤„ç† - å¤„ç†å¸¦å‚æ•°çš„SQLè¯­å¥å’Œå‘½åå‚æ•°
+    /// 3. æ¡ä»¶æ„å»º - åŸºäºæ¡ä»¶å¯¹è±¡ç”ŸæˆWHEREå­å¥
+    /// 4. æ•°æ®è½¬æ¢ - åœ¨æ•°æ®åº“å€¼å’Œå¯¹è±¡å±æ€§å€¼ä¹‹é—´è¿›è¡Œè½¬æ¢
+    /// 5. æ’åºå’Œå­—æ®µé€‰æ‹© - å¤„ç†ORDER BYå­å¥å’ŒSELECTå­—æ®µåˆ—è¡¨
+    /// 
+    /// è¯¥ç±»é€šè¿‡ä¾èµ–æ³¨å…¥æ¡†æ¶è‡ªåŠ¨æ³¨å†Œä¸ºå•ä¾‹ã€‚
+    /// </remarks>
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public abstract class ObjectDAOBase
     {
-        #region Ô¤¶¨Òå±äÁ¿
+        #region é¢„å®šä¹‰å˜é‡
         /// <summary>
-        /// ±íÊ¾SQL²éÑ¯ÖĞÌõ¼şÓï¾äµÄ±ê¼Ç
+        /// è¡¨ç¤ºSQLæŸ¥è¯¢ä¸­æ¡ä»¶è¯­å¥çš„æ ‡è®°
         /// </summary>
         public const string ParamCondition = "@Condition@";
         /// <summary>
-        /// ±íÊ¾SQL²éÑ¯ÖĞ±íÃûµÄ±ê¼Ç
+        /// è¡¨ç¤ºSQLæŸ¥è¯¢ä¸­è¡¨åçš„æ ‡è®°
         /// </summary>
         public const string ParamTable = "@Table@";
         /// <summary>
-        /// ±íÊ¾SQL²éÑ¯ÖĞ¶à±íÁ¬½ÓµÄ±ê¼Ç
+        /// è¡¨ç¤ºSQLæŸ¥è¯¢ä¸­å¤šè¡¨è¿æ¥çš„æ ‡è®°
         /// </summary>
         public const string ParamFromTable = "@FromTable@";
         /// <summary>
-        /// ±íÊ¾SQL²éÑ¯ÖĞËùÓĞ×Ö¶ÎµÄ±ê¼Ç
+        /// è¡¨ç¤ºSQLæŸ¥è¯¢ä¸­æ‰€æœ‰å­—æ®µçš„æ ‡è®°
         /// </summary>
         public const string ParamAllFields = "@AllFields@";
 
+        /// <summary>
+        /// æ—¶é—´æˆ³å‚æ•°çš„å†…éƒ¨åç§°ã€‚
+        /// </summary>
         protected const string TimestampParamName = "0";
         #endregion
 
-        #region Ë½ÓĞ±äÁ¿
+        #region ç§æœ‰å˜é‡
         private ReadOnlyCollection<SqlColumn> selectColumns;
         private string allFieldsSql = null;
         private string tableName = null;
@@ -50,9 +65,9 @@ namespace MyOrm
         private ArgumentOutOfRangeException ExceptionWrongKeys;
         #endregion
 
-        #region ÊôĞÔ
+        #region å±æ€§
         /// <summary>
-        /// ÊµÌå¶ÔÏóÀàĞÍ
+        /// å®ä½“å¯¹è±¡ç±»å‹
         /// </summary>
         public abstract Type ObjectType
         {
@@ -60,7 +75,7 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ±íĞÅÏ¢
+        /// è¡¨ä¿¡æ¯
         /// </summary>
         public abstract SqlTable Table
         {
@@ -68,7 +83,7 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ±í¶¨Òå
+        /// è¡¨å®šä¹‰
         /// </summary>
         public TableDefinition TableDefinition
         {
@@ -76,22 +91,33 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ¹¹½¨SQLÓï¾äµÄSQLBuilder
+        /// æ„å»ºSQLè¯­å¥çš„SQLBuilder
         /// </summary>
         protected internal virtual SqlBuilder SqlBuilder
         {
             get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType); }
         }
 
+        /// <summary>
+        /// è·å–å½“å‰ä¼šè¯ç®¡ç†å™¨
+        /// </summary>
         public SessionManager CurrentSession => SessionManager.Current;
 
+        /// <summary>
+        /// è·å–å½“å‰æ•°æ®è®¿é—®å¯¹è±¡ä¸Šä¸‹æ–‡
+        /// </summary>
         public DAOContext DAOContext { get => CurrentSession.GetDaoContext(TableDefinition.DataSource); }
 
         /// <summary>
-        /// ±íÃû²ÎÊı
+        /// è¡¨åå‚æ•°
         /// </summary>
         public string[] TableNameArgs { get; set; }
 
+        /// <summary>
+        /// ä½¿ç”¨æŒ‡å®šçš„å‚æ•°åˆ›å»ºæ–°çš„DAOå®ä¾‹
+        /// </summary>
+        /// <param name="args">è¡¨åå‚æ•°</param>
+        /// <returns>æ–°çš„DAOå®ä¾‹</returns>
         public object WithArgs(params string[] args)
         {
             ObjectDAOBase newDAO = MemberwiseClone() as ObjectDAOBase;
@@ -101,7 +127,7 @@ namespace MyOrm
 
         private SqlBuildContext sqlBuildContext;
         /// <summary>
-        /// ´´½¨SQLÖ´ĞĞÉÏÏÂÎÄ
+        /// åˆ›å»ºSQLæ‰§è¡Œä¸Šä¸‹æ–‡
         /// </summary>
         /// <returns></returns>
         protected virtual SqlBuildContext SqlBuildContext
@@ -116,7 +142,7 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ±íĞÅÏ¢Ìá¹©Õß
+        /// è¡¨ä¿¡æ¯æä¾›è€…
         /// </summary>
         public TableInfoProvider TableInfoProvider
         {
@@ -124,7 +150,7 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// Êı¾İ¿âÁ¬½Ó
+        /// æ•°æ®åº“è¿æ¥
         /// </summary>
         public DbConnection Connection
         {
@@ -132,7 +158,7 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ±íÃû
+        /// è¡¨å
         /// </summary>
         public string TableName
         {
@@ -144,12 +170,12 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// Êµ¼Ê±íÃû
+        /// å®é™…è¡¨å
         /// </summary>
         public string FactTableName { get { return SqlBuildContext.GetTableNameWithArgs(TableDefinition.Name); } }
 
         /// <summary>
-        /// ²éÑ¯Ê±Ê¹ÓÃµÄÏà¹ØÁªµÄ¶à¸ö±í
+        /// æŸ¥è¯¢æ—¶ä½¿ç”¨çš„ç›¸å…³è”çš„å¤šä¸ªè¡¨
         /// </summary>
         protected virtual string From
         {
@@ -164,7 +190,7 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ²éÑ¯Ê±ĞèÒª»ñÈ¡µÄËùÓĞÁĞ
+        /// æŸ¥è¯¢æ—¶éœ€è¦è·å–çš„æ‰€æœ‰åˆ—
         /// </summary>
         protected virtual ReadOnlyCollection<SqlColumn> SelectColumns
         {
@@ -186,7 +212,7 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ²éÑ¯Ê±ĞèÒª»ñÈ¡µÄËùÓĞ×Ö¶ÎµÄSql
+        /// æŸ¥è¯¢æ—¶éœ€è¦è·å–çš„æ‰€æœ‰å­—æ®µçš„Sql
         /// </summary>
         protected string AllFieldsSql
         {
@@ -201,10 +227,10 @@ namespace MyOrm
         }
         #endregion
 
-        #region ·½·¨
+        #region æ–¹æ³•
 
         /// <summary>
-        /// ´´½¨IDbCommand
+        /// åˆ›å»ºIDbCommand
         /// </summary>
         /// <returns></returns>
         public virtual IDbCommand NewCommand()
@@ -213,10 +239,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// Éú³Éselect²¿·ÖµÄsql
+        /// ç”Ÿæˆselectéƒ¨åˆ†çš„sql
         /// </summary>
-        /// <param name="selectColumns">ĞèÒªselectµÄÁĞ¼¯ºÏ</param>
-        /// <returns>Éú³ÉµÄsql</returns>
+        /// <param name="selectColumns">éœ€è¦selectçš„åˆ—é›†åˆ</param>
+        /// <returns>ç”Ÿæˆçš„sql</returns>
         protected string GetSelectFieldsSQL(IEnumerable<SqlColumn> selectColumns)
         {
             StringBuilder strAllFields = new StringBuilder();
@@ -230,9 +256,9 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// Éú³Éorderby²¿·ÖµÄsql
+        /// ç”Ÿæˆorderbyéƒ¨åˆ†çš„sql
         /// </summary>
-        /// <param name="orders">ÅÅĞòÏîµÄ¼¯ºÏ£¬°´ÓÅÏÈ¼¶Ë³ĞòÅÅÁĞ</param>
+        /// <param name="orders">æ’åºé¡¹çš„é›†åˆï¼ŒæŒ‰ä¼˜å…ˆçº§é¡ºåºæ’åˆ—</param>
         /// <returns></returns>
         protected string GetOrderBySQL(IList<Sorting> orders)
         {
@@ -268,10 +294,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ¸ù¾İSQLÓï¾äºÍ²ÎÊı½¨Á¢IDbCommand
+        /// æ ¹æ®SQLè¯­å¥å’Œå‚æ•°å»ºç«‹IDbCommand
         /// </summary>
-        /// <param name="SQL">SQLÓï¾ä£¬SQLÖĞ¿ÉÒÔ°üº¬²ÎÊıĞÅÏ¢£¬²ÎÊıÃûÎªÒÔ0¿ªÊ¼µÄµİÔöÕûÊı£¬¶ÔÓ¦paramValuesÖĞÖµµÄÏÂ±ê</param>
-        /// <param name="paramValues">²ÎÊıÖµ£¬ĞèÒªÓëSQLÖĞµÄ²ÎÊıÒ»Ò»¶ÔÓ¦£¬Îª¿ÕÊ±±íÊ¾Ã»ÓĞ²ÎÊı</param>
+        /// <param name="SQL">SQLè¯­å¥ï¼ŒSQLä¸­å¯ä»¥åŒ…å«å‚æ•°ä¿¡æ¯ï¼Œå‚æ•°åä¸ºä»¥0å¼€å§‹çš„é€’å¢æ•´æ•°ï¼Œå¯¹åº”paramValuesä¸­å€¼çš„ä¸‹æ ‡</param>
+        /// <param name="paramValues">å‚æ•°å€¼ï¼Œéœ€è¦ä¸SQLä¸­çš„å‚æ•°ä¸€ä¸€å¯¹åº”ï¼Œä¸ºç©ºæ—¶è¡¨ç¤ºæ²¡æœ‰å‚æ•°</param>
         /// <returns>IDbCommand</returns>
         public IDbCommand MakeParamCommand(string SQL, IEnumerable paramValues)
         {
@@ -287,10 +313,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ¸ù¾İSQLÓï¾äºÍ²ÎÊı½¨Á¢IDbCommand
+        /// æ ¹æ®SQLè¯­å¥å’Œå‚æ•°å»ºç«‹IDbCommand
         /// </summary>
-        /// <param name="SQL">SQLÓï¾ä£¬SQLÖĞ¿ÉÒÔ°üº¬²ÎÊıĞÅÏ¢£¬²ÎÊıÃûÎªÒÔ0¿ªÊ¼µÄµİÔöÕûÊı£¬¶ÔÓ¦paramValuesÖĞÖµµÄÏÂ±ê</param>
-        /// <param name="paramValues">²ÎÊıÖµ£¬ĞèÒªÓëSQLÖĞµÄ²ÎÊıÒ»Ò»¶ÔÓ¦£¬Îª¿ÕÊ±±íÊ¾Ã»ÓĞ²ÎÊı</param>
+        /// <param name="SQL">SQLè¯­å¥ï¼ŒSQLä¸­å¯ä»¥åŒ…å«å‚æ•°ä¿¡æ¯ï¼Œå‚æ•°åä¸ºä»¥0å¼€å§‹çš„é€’å¢æ•´æ•°ï¼Œå¯¹åº”paramValuesä¸­å€¼çš„ä¸‹æ ‡</param>
+        /// <param name="paramValues">å‚æ•°å€¼ï¼Œéœ€è¦ä¸SQLä¸­çš„å‚æ•°ä¸€ä¸€å¯¹åº”ï¼Œä¸ºç©ºæ—¶è¡¨ç¤ºæ²¡æœ‰å‚æ•°</param>
         /// <returns>IDbCommand</returns>
         public IDbCommand MakeParamCommand(string SQL, params object[] paramValues)
         {
@@ -298,12 +324,13 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ¸ù¾İSQLÓï¾äºÍÃüÃûµÄ²ÎÊı½¨Á¢IDbCommand
+        /// æ ¹æ® SQL è¯­å¥å’Œå‘½åçš„å‚æ•°å»ºç«‹ <see cref="IDbCommand"/>ã€‚
         /// </summary>
-        /// <param name="SQL">SQLÓï¾ä£¬SQLÖĞ¿ÉÒÔ°üº¬ÒÑÃüÃûµÄ²ÎÊı</param>
-        /// <param name="paramValues">²ÎÊıÁĞ±í£¬Îª¿ÕÊ±±íÊ¾Ã»ÓĞ²ÎÊı¡£KeyĞèÒªÓëSQLÖĞµÄ²ÎÊıÃû³Æ¶ÔÓ¦</param>
-        /// <returns>IDbCommand</returns>
-        public IDbCommand MakeNamedParamCommand(string SQL, IEnumerable<KeyValuePair<string, object>> paramValues, SqlBuildContext context = null)
+        /// <param name="SQL">SQL è¯­å¥ï¼ŒSQL ä¸­å¯ä»¥åŒ…å«å·²å‘½åçš„å‚æ•°ã€‚</param>
+        /// <param name="paramValues">å‚æ•°åˆ—è¡¨ï¼Œä¸ºç©ºæ—¶è¡¨ç¤ºæ²¡æœ‰å‚æ•°ã€‚Key éœ€è¦ä¸ SQL ä¸­çš„å‚æ•°åç§°å¯¹åº”ã€‚</param>
+        /// <param name="context">SQL æ„å»ºä¸Šä¸‹æ–‡ã€‚</param>
+        /// <returns>IDbCommand å®ä¾‹ã€‚</returns>
+        public IDbCommand MakeNamedParamCommand(string SQL, IEnumerable<KeyValuePair<string, object>> paramValues, SqlBuildContext context = null)   
         {
             IDbCommand command = NewCommand();
             command.CommandText = ReplaceParam(SQL, context);
@@ -312,10 +339,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ½«²ÎÊıÌí¼Óµ½IDbCommandÖĞ
+        /// å°†å‚æ•°æ·»åŠ åˆ°IDbCommandä¸­
         /// </summary>
-        /// <param name="command">ĞèÒªÌí¼Ó²ÎÊıµÄIDbCommand</param>
-        /// <param name="paramValues">²ÎÊıÁĞ±í£¬°üÀ¨²ÎÊıÃû³ÆºÍÖµ£¬Îª¿ÕÊ±±íÊ¾Ã»ÓĞ²ÎÊı</param>
+        /// <param name="command">éœ€è¦æ·»åŠ å‚æ•°çš„IDbCommand</param>
+        /// <param name="paramValues">å‚æ•°åˆ—è¡¨ï¼ŒåŒ…æ‹¬å‚æ•°åç§°å’Œå€¼ï¼Œä¸ºç©ºæ—¶è¡¨ç¤ºæ²¡æœ‰å‚æ•°</param>
         public void AddParamsToCommand(IDbCommand command, IEnumerable<KeyValuePair<string, object>> paramValues)
         {
             if (paramValues != null)
@@ -334,16 +361,16 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ¸ù¾İSQLÓï¾äºÍÌõ¼ş½¨Á¢IDbCommand
+        /// æ ¹æ®SQLè¯­å¥å’Œæ¡ä»¶å»ºç«‹IDbCommand
         /// </summary>
-        /// <param name="SQLWithParam">´ø²ÎÊıµÄSQLÓï¾ä
-        /// <example>"select @AllFields@ from @FromTable@ where @Condition@"±íÊ¾´Ó±íÖĞ²éÑ¯ËùÓĞ·ûºÏÌõ¼şµÄ¼ÇÂ¼</example>
-        /// <example>"select count(*) from @FromTable@ "±íÊ¾´Ó±íÖĞËùÓĞ¼ÇÂ¼µÄÊıÁ¿£¬condition²ÎÊıĞèÎª¿Õ</example>
-        /// <example>"delete from @Table@ where @Condition@"±íÊ¾´Ó±íÖĞÉ¾³ıËùÓĞ·ûºÏÌõ¼şµÄ¼ÇÂ¼</example>
-        /// </param>        
-        /// <param name="condition">Ìõ¼ş£¬ÎªnullÊ±±íÊ¾ÎŞÌõ¼ş</param>
-        /// <returns>IDbCommand</returns> 
-        public IDbCommand MakeConditionCommand(string SQLWithParam, Statement condition)
+        /// <param name="SQLWithParam">å¸¦å‚æ•°çš„SQLè¯­å¥
+        /// <example>"select @AllFields@ from @FromTable@ where @Condition@"è¡¨ç¤ºä»è¡¨ä¸­æŸ¥è¯¢æ‰€æœ‰ç¬¦åˆæ¡ä»¶çš„è®°å½•</example>
+        /// <example>"select count(*) from @FromTable@ "è¡¨ç¤ºä»è¡¨ä¸­æ‰€æœ‰è®°å½•çš„æ•°é‡ï¼Œconditionå‚æ•°éœ€ä¸ºç©º</example>
+        /// <example>"delete from @Table@ where @Condition@"è¡¨ç¤ºä»è¡¨ä¸­åˆ é™¤æ‰€æœ‰ç¬¦åˆæ¡ä»¶çš„è®°å½•</example>
+        /// </param>
+        /// <param name="condition">æ¡ä»¶ï¼Œä¸ºnullæ—¶è¡¨ç¤ºæ— æ¡ä»¶</param>
+        /// <returns>IDbCommand</returns>
+        public IDbCommand MakeConditionCommand(string SQLWithParam, Expr condition)
         {
             List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
             var context = SqlBuildContext;
@@ -358,10 +385,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// Ìæ»»SqlÖĞµÄ±ê¼ÇÎªÊµ¼ÊSql
+        /// æ›¿æ¢Sqlä¸­çš„æ ‡è®°ä¸ºå®é™…Sql
         /// </summary>
-        /// <param name="SQLWithParam">°üº¬±ê¼ÇµÄSqlÓï¾ä</param>
-        /// <param name="context">SqlÉú³ÉµÄÉÏÏÂÎÄ</param>
+        /// <param name="SQLWithParam">åŒ…å«æ ‡è®°çš„Sqlè¯­å¥</param>
+        /// <param name="context">Sqlç”Ÿæˆçš„ä¸Šä¸‹æ–‡</param>
         /// <returns></returns>
         protected virtual string ReplaceParam(string SQLWithParam, SqlBuildContext context = null)
         {
@@ -374,10 +401,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// Îªcommand´´½¨¸ù¾İÖ÷¼ü²éÑ¯µÄÌõ¼ş£¬ÔÚcommandÖĞÌí¼Ó²ÎÊı²¢·µ»ØwhereÌõ¼şµÄÓï¾ä
+        /// ä¸ºcommandåˆ›å»ºæ ¹æ®ä¸»é”®æŸ¥è¯¢çš„æ¡ä»¶ï¼Œåœ¨commandä¸­æ·»åŠ å‚æ•°å¹¶è¿”å›whereæ¡ä»¶çš„è¯­å¥
         /// </summary>
-        /// <param name="command">Òª´´½¨Ìõ¼şµÄÊı¾İ¿âÃüÁî</param>
-        /// <returns>whereÌõ¼şµÄÓï¾ä</returns>
+        /// <param name="command">è¦åˆ›å»ºæ¡ä»¶çš„æ•°æ®åº“å‘½ä»¤</param>
+        /// <returns>whereæ¡ä»¶çš„è¯­å¥</returns>
         protected string MakeIsKeyCondition(IDbCommand command)
         {
             ThrowExceptionIfNoKeys();
@@ -401,11 +428,11 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// Îªcommand´´½¨¸ù¾İÊ±¼ä´ÁµÄÌõ¼ş£¬ÔÚcommandÖĞÌí¼Ó²ÎÊı²¢·µ»ØwhereÌõ¼şµÄÓï¾ä
+        /// ä¸ºcommandåˆ›å»ºæ ¹æ®æ—¶é—´æˆ³çš„æ¡ä»¶ï¼Œåœ¨commandä¸­æ·»åŠ å‚æ•°å¹¶è¿”å›whereæ¡ä»¶çš„è¯­å¥
         /// </summary>
-        /// <param name="command">Òª´´½¨Ìõ¼şµÄÊı¾İ¿âÃüÁî</param>
-        /// <param name="isView">ÊÇ·ñÊÇ²éÑ¯£¬ÈôÊÇ²éÑ¯Ôò¹ØÁª¶à¸ö±í</param>
-        /// <returns>whereÌõ¼şµÄÓï¾ä</returns>
+        /// <param name="command">è¦åˆ›å»ºæ¡ä»¶çš„æ•°æ®åº“å‘½ä»¤</param>
+        /// <param name="isView">æ˜¯å¦æ˜¯æŸ¥è¯¢ï¼Œè‹¥æ˜¯æŸ¥è¯¢åˆ™å…³è”å¤šä¸ªè¡¨</param>
+        /// <returns>whereæ¡ä»¶çš„è¯­å¥</returns>
         protected string MakeTimestampCondition(IDbCommand command, bool isView = true)
         {
             foreach (ColumnDefinition column in TableDefinition.Columns)
@@ -424,10 +451,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// »ñÈ¡¶ÔÏóµÄÖ÷¼üÖµ
+        /// è·å–å¯¹è±¡çš„ä¸»é”®å€¼
         /// </summary>
-        /// <param name="o">¶ÔÏó</param>
-        /// <returns>Ö÷¼üÖµ£¬¶à¸öÖ÷¼ü°´ÕÕÊôĞÔÃû³ÆË³ĞòÅÅÁĞ</returns>
+        /// <param name="o">å¯¹è±¡</param>
+        /// <returns>ä¸»é”®å€¼ï¼Œå¤šä¸ªä¸»é”®æŒ‰ç…§å±æ€§åç§°é¡ºåºæ’åˆ—</returns>
         protected virtual object[] GetKeyValues(object o)
         {
             List<object> values = new List<object>();
@@ -439,11 +466,11 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ½«Êı¾İ¿âÈ¡µÃµÄÖµ×ª»¯Îª¶ÔÏóÊôĞÔÀàĞÍËù¶ÔÓ¦µÄÖµ
+        /// å°†æ•°æ®åº“å–å¾—çš„å€¼è½¬åŒ–ä¸ºå¯¹è±¡å±æ€§ç±»å‹æ‰€å¯¹åº”çš„å€¼
         /// </summary>
-        /// <param name="dbValue">Êı¾İ¿âÈ¡µÃµÄÖµ</param>
-        /// <param name="objectType">¶ÔÏóÊôĞÔµÄÀàĞÍ</param>
-        /// <returns>¶ÔÏóÊôĞÔÀàĞÍËù¶ÔÓ¦µÄÖµ</returns>
+        /// <param name="dbValue">æ•°æ®åº“å–å¾—çš„å€¼</param>
+        /// <param name="objectType">å¯¹è±¡å±æ€§çš„ç±»å‹</param>
+        /// <returns>å¯¹è±¡å±æ€§ç±»å‹æ‰€å¯¹åº”çš„å€¼</returns>
         protected virtual object ConvertValue(object dbValue, Type objectType)
         {
             if (dbValue == null || dbValue == DBNull.Value)
@@ -457,23 +484,23 @@ namespace MyOrm
             else if (objectType.IsEnum && (dbValue.GetType().IsValueType || dbValue.GetType() == typeof(string))) return Enum.ToObject(objectType, Convert.ToInt32(dbValue));
             else if (objectType == typeof(bool) && dbValue is string && bool.TryParse((string)dbValue, out bool result))
             {
-                // ´¦Àí×Ö·û´®ÀàĞÍµÄ²¼¶ûÖµ
+                // å¤„ç†å­—ç¬¦ä¸²ç±»å‹çš„å¸ƒå°”å€¼
                 return result;
             }
             if (objectType == typeof(bool))
             {
-                // ´¦ÀíÕûÊıÀàĞÍµÄ²¼¶ûÖµ
+                // å¤„ç†æ•´æ•°ç±»å‹çš„å¸ƒå°”å€¼
                 return Convert.ToInt32(dbValue) != 0;
             }
             return Convert.ChangeType(dbValue, objectType);
         }
 
         /// <summary>
-        /// ½«¶ÔÏóµÄÊôĞÔÖµ×ª»¯ÎªÊı¾İ¿âÖĞµÄÖµ
+        /// å°†å¯¹è±¡çš„å±æ€§å€¼è½¬åŒ–ä¸ºæ•°æ®åº“ä¸­çš„å€¼
         /// </summary>
-        /// <param name="value">Öµ</param>
-        /// <param name="column">ÁĞ¶¨Òå</param>
-        /// <returns>Êı¾İ¿âÖĞµÄÖµ</returns>
+        /// <param name="value">å€¼</param>
+        /// <param name="column">åˆ—å®šä¹‰</param>
+        /// <returns>æ•°æ®åº“ä¸­çš„å€¼</returns>
         protected virtual object ConvertToDBValue(object value, ColumnDefinition column)//TODO:
         {
             if (value == null) return DBNull.Value;
@@ -483,9 +510,11 @@ namespace MyOrm
             return value;
         }
 
+
         /// <summary>
-        /// ¼ì²éÊÇ·ñ´æÔÚÖ÷¼ü£¬Èô²»´æÔÚÔòÅ×³öÒì³£
+        /// å¦‚æœæ²¡æœ‰å®šä¹‰ä¸»é”®åˆ™æŠ›å‡ºå¼‚å¸¸
         /// </summary>
+        /// <exception cref="Exception"></exception>
         protected void ThrowExceptionIfNoKeys()
         {
             if (TableDefinition.Keys.Count == 0)
@@ -495,8 +524,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ¼ì²éÊÇ·ñ¶ÔÏóÀàĞÍÊÇ·ñÆ¥Åä
+        /// å¦‚æœç±»å‹ä¸åŒ¹é…åˆ™æŠ›å‡ºå¼‚å¸¸
         /// </summary>
+        /// <param name="type"></param>
+        /// <exception cref="Exception"></exception>
         protected void ThrowExceptionIfTypeNotMatch(Type type)
         {
             if (!ObjectType.IsAssignableFrom(type))
@@ -506,9 +537,9 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ¼ì²éÖ÷¼üÊıÄ¿ÊÇ·ñÕıÈ·£¬·ñÔòÅ×³öÒì³£
+        /// å¦‚æœä¸»é”®æ•°é‡ä¸åŒ¹é…åˆ™æŠ›å‡ºå¼‚å¸¸
         /// </summary>
-        /// <param name="keys">Ö÷¼ü</param>
+        /// <param name="keys"></param>
         protected void ThrowExceptionIfWrongKeys(params object[] keys)
         {
             if (keys.Length != TableDefinition.Keys.Count)
@@ -524,40 +555,40 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// Ãû³Æ×ª»¯ÎªÊı¾İ¿âºÏ·¨Ãû³Æ
+        /// å°†åç§°è½¬æ¢ä¸ºSQLä¸­çš„åç§°æ ¼å¼
         /// </summary>
-        /// <param name="name">×Ö·û´®Ãû³Æ</param>
-        /// <returns>Êı¾İ¿âºÏ·¨Ãû³Æ</returns>
+        /// <param name="name"></param>
+        /// <returns></returns>
         protected string ToSqlName(string name)
         {
             return SqlBuilder.ToSqlName(name);
         }
 
         /// <summary>
-        /// Ô­Ê¼Ãû³Æ×ª»¯ÎªÊı¾İ¿â²ÎÊı
+        /// å°†åç§°è½¬æ¢ä¸ºSQLå‚æ•°çš„åç§°æ ¼å¼
         /// </summary>
-        /// <param name="nativeName">Ô­Ê¼Ãû³Æ</param>
-        /// <returns>Êı¾İ¿â²ÎÊı</returns>
+        /// <param name="nativeName"></param>
+        /// <returns></returns>
         protected string ToSqlParam(string nativeName)
         {
             return SqlBuilder.ToSqlParam(nativeName);
         }
 
         /// <summary>
-        /// Ô­Ê¼Ãû³Æ×ª»¯Îª²ÎÊıÃû³Æ
+        /// å°†åç§°è½¬æ¢ä¸ºSQLå‚æ•°çš„åç§°æ ¼å¼
         /// </summary>
-        /// <param name="nativeName">Ô­Ê¼Ãû³Æ</param>
-        /// <returns>²ÎÊıÃû³Æ</returns>
+        /// <param name="nativeName"></param>
+        /// <returns></returns>
         protected string ToParamName(string nativeName)
         {
             return SqlBuilder.ToParamName(nativeName);
         }
 
         /// <summary>
-        /// ²ÎÊıÃû³Æ×ª»¯ÎªÔ­Ê¼Ãû³Æ
+        /// å°†å‚æ•°åç§°è½¬æ¢ä¸ºæœ¬åœ°åç§°æ ¼å¼
         /// </summary>
-        /// <param name="paramName">²ÎÊıÃû³Æ</param>
-        /// <returns>Ô­Ê¼Ãû³Æ</returns>
+        /// <param name="paramName"></param>
+        /// <returns></returns>
         protected string ToNativeName(string paramName)
         {
             return SqlBuilder.ToNativeName(paramName);
@@ -565,14 +596,49 @@ namespace MyOrm
         #endregion
     }
 
+    /// <summary>
+    /// ObjectDAOBase çš„æ‰©å±•æ–¹æ³•ç±»
+    /// </summary>
+    /// <remarks>
+    /// ObjectDAOExt æä¾›äº† IObjectDAO&lt;T&gt; å’Œ IObjectViewDAO&lt;T&gt; æ¥å£çš„æ‰©å±•æ–¹æ³•ã€‚
+    /// 
+    /// ä¸»è¦åŠŸèƒ½ï¼š
+    /// 1. WithArgs æ‰©å±•æ–¹æ³• - ä¸ºDAOå¯¹è±¡è®¾ç½®åŠ¨æ€è¡¨åå‚æ•°
+    /// 
+    /// è¿™äº›æ‰©å±•æ–¹æ³•æä¾›äº†ä¸€ç§æµç•…çš„APIæ¥å¤„ç†å‚æ•°åŒ–çš„è¡¨åï¼Œ
+    /// å…è®¸åœ¨è¿è¡Œæ—¶åŠ¨æ€æŒ‡å®šè¡¨åæˆ–å…¶ä»–å‚æ•°ã€‚
+    /// 
+    /// ä½¿ç”¨ç¤ºä¾‹ï¼š
+    /// <code>
+    /// var dao = serviceProvider.GetService&lt;IObjectDAO&lt;User&gt;&gt;();
+    /// // ä¸ºè¡¨åå‚æ•°åˆ›å»ºæ–°çš„DAOå®ä¾‹
+    /// var specificTableDao = dao.WithArgs("User_2024");
+    /// // è¿›è¡Œæ•°æ®æ“ä½œ
+    /// var users = await specificTableDao.SearchAsync(Expr.Property("Age") &gt; 18);
+    /// </code>
+    /// </remarks>
     public static class ObjectDAOExt
     {
+        /// <summary>
+        /// ä½¿ç”¨æŒ‡å®šçš„å‚æ•°åˆ›å»ºæ–°çš„DAOå®ä¾‹
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="dao"></param>
+        /// <param name="args"></param>
+        /// <returns></returns>
         public static IObjectDAO<T> WithArgs<T>(this IObjectDAO<T> dao, params string[] args)
         {
             if (args == null || args.Length == 0) return dao;
             ObjectDAOBase dAOBase = dao as ObjectDAOBase;
             return dAOBase.WithArgs(args) as IObjectDAO<T>;
         }
+        /// <summary>
+        /// ä½¿ç”¨æŒ‡å®šçš„å‚æ•°åˆ›å»ºæ–°çš„DAOå®ä¾‹
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="dao"></param>
+        /// <param name="args"></param>
+        /// <returns></returns>
         public static IObjectViewDAO<T> WithArgs<T>(this IObjectViewDAO<T> dao, params string[] args)
         {
             if (args == null || args.Length == 0) return dao;

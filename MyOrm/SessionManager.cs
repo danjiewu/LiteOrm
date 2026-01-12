@@ -11,6 +11,62 @@ using System.Threading.Tasks;
 
 namespace MyOrm
 {
+    /// <summary>
+    /// 会话管理器 - 管理数据库会话、事务和连接
+    /// </summary>
+    /// <remarks>
+    /// SessionManager 是一个关键的会话管理类，负责管理数据库连接、事务和异步上下文。
+    /// 
+    /// 主要功能包括：
+    /// 1. 会话上下文管理 - 通过 AsyncLocal 管理异步上下文中的会话
+    /// 2. 连接池管理 - 使用 DAOContextPoolFactory 获取和管理连接
+    /// 3. 事务处理 - 支持事务的开始、提交和回滚
+    /// 4. 隔离级别控制 - 设置和管理事务的隔离级别
+    /// 5. SQL日志记录 - 记录执行的SQL语句用于调试和监控
+    /// 6. 异步支持 - 提供异步执行方法以支持异步编程
+    /// 7. 资源管理 - 实现 IDisposable 接口确保资源正确释放
+    /// 8. 会话生命周期 - 支持进入和退出会话的操作
+    /// 9. 批量操作支持 - 提供批量操作的上下文管理
+    /// 
+    /// 该类通过依赖注入框架以 Scoped 方式注册，每个请求/任务有一个实例。
+    /// 使用 AsyncLocal 确保在异步调用中正确维护会话上下文。
+    /// 
+    /// 使用示例：
+    /// <code>
+    /// var sessionManager = serviceProvider.GetRequiredService&lt;SessionManager&gt;();
+    /// 
+    /// // 进入会话
+    /// using (sessionManager.Enter())
+    /// {
+    ///     try
+    ///     {
+    ///         // 开始事务
+    ///         sessionManager.BeginTransaction();
+    ///         
+    ///         // 执行数据库操作
+    ///         var user = userService.GetObject(userId);
+    ///         user.Name = \"New Name\";
+    ///         userService.Update(user);
+    ///         
+    ///         // 提交事务
+    ///         sessionManager.CommitTransaction();
+    ///     }
+    ///     catch
+    ///     {
+    ///         // 回滚事务
+    ///         sessionManager.RollbackTransaction();
+    ///         throw;
+    ///     }
+    /// }
+    /// 
+    /// // 异步操作
+    /// await sessionManager.ExecuteInSessionAsync(async () =&gt;
+    /// {
+    ///     var data = await service.GetAsync(id);
+    ///     return data;
+    /// });
+    /// </code>
+    /// </remarks>
     [AutoRegister(ServiceLifetime.Scoped)]
     public class SessionManager : IDisposable
     {
@@ -47,7 +103,7 @@ namespace MyOrm
         /// 进入当前上下文，置 SessionManager.Current 为为当前实例的副本
         /// </summary>
         /// <returns>上下文作用域对象，在 Dispose 时恢复之前的 Current</returns>
-        public IDisposable EnterContext(bool newSession = true)
+        public IDisposable Enter(bool newSession = true)
         {
             if (newSession)
                 // 返回一个作用域对象，在作用域结束时恢复之前的 Current
@@ -130,6 +186,10 @@ namespace MyOrm
             }
         }
 
+        /// <summary>
+        /// 将SQL语句推入堆栈（用于调试和日志记录）
+        /// </summary>
+        /// <param name="sql">SQL语句</param>
         public void PushSql(string sql)
         {
             lock (_syncLock)
@@ -294,6 +354,11 @@ namespace MyOrm
         }
 
 
+        /// <summary>
+        /// 获取指定名称的DAO上下文
+        /// </summary>
+        /// <param name="name">上下文名称，如果为null则使用默认名称"_"</param>
+        /// <returns>DAO上下文实例</returns>
         public DAOContext GetDaoContext(string name = null)
         {
             if (name == null) name = "_";
@@ -357,12 +422,17 @@ namespace MyOrm
 
         #region IDisposable 实现
 
+        ///<inheritdoc/> 
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        /// <param name="disposing">是否为显式调用</param>
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed) return;
@@ -389,6 +459,9 @@ namespace MyOrm
             _disposed = true;
         }
 
+        /// <summary>
+        /// 析构函数
+        /// </summary>
         ~SessionManager()
         {
             Dispose(false);
@@ -511,20 +584,35 @@ namespace MyOrm
             }, isolationLevel);
         }
 
+        /// <summary>
+        /// 在会话中异步执行函数
+        /// </summary>
+        /// <typeparam name="TResult">返回类型</typeparam>
+        /// <param name="sessionManager">会话管理器</param>
+        /// <param name="func">要执行的函数</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务结果</returns>
         public static Task<TResult> ExecuteInSessionAsync<TResult>(
-    this SessionManager sessionManager,
-    Func<TResult> func,
-    CancellationToken cancellationToken = default)
+            this SessionManager sessionManager,
+            Func<TResult> func,
+            CancellationToken cancellationToken = default)
         {
             return Task.Run(() =>
             {
-                using (var session = sessionManager.EnterContext())
+                using (var session = sessionManager.Enter())
                 {
                     return func();
                 }
             }, cancellationToken);
         }
 
+        /// <summary>
+        /// 在会话中异步执行操作
+        /// </summary>
+        /// <param name="sessionManager">会话管理器</param>
+        /// <param name="action">要执行的操作</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
         public static Task ExecuteInSessionAsync(
             this SessionManager sessionManager,
             Action action,
@@ -532,7 +620,7 @@ namespace MyOrm
         {
             return Task.Run(() =>
             {
-                using (var session = sessionManager.EnterContext())
+                using (var session = sessionManager.Enter())
                 {
                     action();
                 }

@@ -13,7 +13,7 @@ namespace MyOrm.Common
     /// <summary>
     /// 从字符串生成条件，条件转换为字符串，以及判定对象是否符合条件等操作的静态类
     /// </summary>
-    public static class StatementConvert
+    public static class ExprConvert
     {
         /// <summary>
         /// 将属性和字符串转换为简单查询条件
@@ -21,17 +21,17 @@ namespace MyOrm.Common
         /// <param name="property">属性</param>
         /// <param name="text">表示查询语句的字符串,可以使用"=","&lt;","&gt;","!","%","*","&lt;=","&gt;="为起始字符表示条件符号 </param>
         /// <returns>简单查询条件</returns>
-        public static BinaryStatement Parse(PropertyDescriptor property, string text)
+        public static BinaryExpr Parse(PropertyDescriptor property, string text)
         {
-            if (String.IsNullOrEmpty(text)) return Statement.Property(property.Name, null);
+            if (String.IsNullOrEmpty(text)) return Expr.Property(property.Name, null);
             if (text.Length > 1)
             {
                 switch (text.Substring(0, 2))
                 {
                     case "<=":
-                        return Statement.Property(property.Name, BinaryOperator.LessThanOrEqual, ParseValue(property, text.Substring(2)));
+                        return Expr.Property(property.Name, BinaryOperator.LessThanOrEqual, ParseValue(property, text.Substring(2)));
                     case ">=":
-                        return Statement.Property(property.Name, BinaryOperator.GreaterThanOrEqual, ParseValue(property, text.Substring(2)));
+                        return Expr.Property(property.Name, BinaryOperator.GreaterThanOrEqual, ParseValue(property, text.Substring(2)));
                 }
             }
             BinaryOperator mask = BinaryOperator.Equal;
@@ -46,22 +46,22 @@ namespace MyOrm.Common
                 switch (text[0])
                 {
                     case '=':
-                        return Statement.Property(property.Name, BinaryOperator.Equal | mask, ParseValue(property, text.Substring(1)));
+                        return Expr.Property(property.Name, BinaryOperator.Equal | mask, ParseValue(property, text.Substring(1)));
                     case '>':
-                        return Statement.Property(property.Name, BinaryOperator.GreaterThan | mask, ParseValue(property, text.Substring(1)));
+                        return Expr.Property(property.Name, BinaryOperator.GreaterThan | mask, ParseValue(property, text.Substring(1)));
                     case '<':
-                        return Statement.Property(property.Name, BinaryOperator.LessThan | mask, ParseValue(property, text.Substring(1)));
+                        return Expr.Property(property.Name, BinaryOperator.LessThan | mask, ParseValue(property, text.Substring(1)));
                     case '%':
-                        return Statement.Property(property.Name, BinaryOperator.Contains | mask, text.Substring(1).Trim());
+                        return Expr.Property(property.Name, BinaryOperator.Contains | mask, text.Substring(1).Trim());
                     case '*':
-                        return Statement.Property(property.Name, BinaryOperator.Like | mask, text.Substring(1).Trim());
+                        return Expr.Property(property.Name, BinaryOperator.Like | mask, text.Substring(1).Trim());
                     case '$':
-                        return Statement.Property(property.Name, BinaryOperator.RegexpLike | mask, text.Substring(1).Trim());
+                        return Expr.Property(property.Name, BinaryOperator.RegexpLike | mask, text.Substring(1).Trim());
                 }
             }
             else
             {
-                return Statement.Property(property.Name, BinaryOperator.Equal | mask, null);
+                return Expr.Property(property.Name, BinaryOperator.Equal | mask, null);
             }
             if (text.IndexOf(',') >= 0)
             {
@@ -70,9 +70,9 @@ namespace MyOrm.Common
                 {
                     values.Add(ParseValue(property, value));
                 }
-                return Statement.Property(property.Name, BinaryOperator.In | mask, values.ToArray());
+                return Expr.Property(property.Name, BinaryOperator.In | mask, values.ToArray());
             }
-            return Statement.Property(property.Name, BinaryOperator.Equal | mask, ParseValue(property, text));
+            return Expr.Property(property.Name, BinaryOperator.Equal | mask, ParseValue(property, text));
         }
 
         /// <summary>

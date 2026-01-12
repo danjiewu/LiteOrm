@@ -5,12 +5,19 @@ using System.Text;
 namespace MyOrm.SqlServer
 {
     /// <summary>
-    /// SqlServer生成Sql语句的辅助类
+    /// SQL Server 生成 SQL 语句的辅助类。
     /// </summary>
     public class SqlServerBuilder : SqlBuilder
     {
+        /// <summary>
+        /// 获取 <see cref="SqlServerBuilder"/> 的单例实例。
+        /// </summary>
         public static readonly new SqlServerBuilder Instance = new SqlServerBuilder();
 
+        /// <summary>
+        /// 初始化函数映射关系。
+        /// </summary>
+        /// <param name="functionMappings">函数映射字典。</param>
         protected override void InitializeFunctionMappings(Dictionary<string, string> functionMappings)
         {
             functionMappings["Length"] = "LEN";

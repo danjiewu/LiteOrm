@@ -51,7 +51,9 @@ namespace MyOrm.Test
             var serviceProvider = host.Services;
             var dao = serviceProvider.GetRequiredService<IObjectDAO<Session>>();
             var service = serviceProvider.GetRequiredService<IAccountingLogService>();
-            var logs = await service.SearchSectionAsync(l => new int[] { 1, 2, 3, 4, 5 }.Contains(l.AcctStatusType.Value), new SectionSet().Take(1000), "202501");
+            var ids = new[] { 1, 2, 3 };
+            Expr inCondition = Expr.Property("Id") == 123;
+            var logs = await service.SearchSectionAsync(inCondition, new SectionSet().Take(1000), new string[] { "202501" });
 
             //service.BatchInsert(logs);
 
@@ -61,7 +63,7 @@ namespace MyOrm.Test
             }
             Console.WriteLine("Finished. Press any key to exit.");
 
-            Console.ReadKey();
+
         }
     }
 

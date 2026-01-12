@@ -9,125 +9,133 @@ namespace MyOrm.Common
 {
     #region IObjectDAO<T>
     /// <summary>
-    /// ÊµÌåÀàµÄÔöÉ¾¸ÄµÈ»ù±¾²Ù×÷µÄ·ºÐÍ½Ó¿Ú
+    /// å®žä½“ç±»çš„å¢žåˆ æ”¹ç­‰åŸºæœ¬æ“ä½œçš„æ³›åž‹æŽ¥å£
     /// </summary>
-    /// <typeparam name="T">ÊµÌåÀàÀàÐÍ</typeparam>
+    /// <typeparam name="T">å®žä½“ç±»ç±»åž‹</typeparam>
     public interface IObjectDAO<T> : IObjectDAOAsync<T>, IObjectDAO
     {
         /// <summary>
-        /// Ìí¼Ó¶ÔÏó
+        /// æ·»åŠ å¯¹è±¡
         /// </summary>
-        /// <param name="o">´ýÌí¼ÓµÄ¶ÔÏó</param>
-        /// <returns>ÊÇ·ñ³É¹¦Ìí¼Ó</returns>
+        /// <param name="o">å¾…æ·»åŠ çš„å¯¹è±¡</param>
+        /// <returns>æ˜¯å¦æˆåŠŸæ·»åŠ </returns>
         bool Insert(T o);
+        /// <summary>
+        /// æ‰¹é‡æ·»åŠ å¯¹è±¡
+        /// </summary>
+        /// <param name="values">å¾…æ·»åŠ çš„å¯¹è±¡é›†åˆ</param>
         void BatchInsert(IEnumerable<T> values);
         /// <summary>
-        /// ¸üÐÂ¶ÔÏó
+        /// æ›´æ–°å¯¹è±¡
         /// </summary>
-        /// <param name="o">´ý¸üÐÂµÄ¶ÔÏó</param>
-        /// <param name="timestamp">Ê±¼ä´Á</param>
-        /// <returns>ÊÇ·ñ³É¹¦¸üÐÂ</returns>
+        /// <param name="o">å¾…æ›´æ–°çš„å¯¹è±¡</param>
+        /// <param name="timestamp">æ—¶é—´æˆ³</param>
+        /// <returns>æ˜¯å¦æˆåŠŸæ›´æ–°</returns>
         bool Update(T o, object timestamp = null);
 
         /// <summary>
-        /// ¸üÐÂ»òÌí¼Ó¶ÔÏó£¬Èô´æÔÚÔò¸üÐÂ£¬Èô²»´æÔÚÔòÌí¼Ó
+        /// æ›´æ–°æˆ–æ·»åŠ å¯¹è±¡ï¼Œè‹¥å­˜åœ¨åˆ™æ›´æ–°ï¼Œè‹¥ä¸å­˜åœ¨åˆ™æ·»åŠ 
         /// </summary>
-        /// <param name="o">´ý¸üÐÂ»òÌí¼ÓµÄ¶ÔÏó</param>
-        /// <returns>ÊÇ·ñ¸üÐÂ»òÌí¼Ó</returns>
+        /// <param name="o">å¾…æ›´æ–°æˆ–æ·»åŠ çš„å¯¹è±¡</param>
+        /// <returns>æ˜¯å¦æ›´æ–°æˆ–æ·»åŠ </returns>
         UpdateOrInsertResult UpdateOrInsert(T o);
 
         /// <summary>
-        /// É¾³ý¶ÔÏó
+        /// åˆ é™¤å¯¹è±¡
         /// </summary>
-        /// <param name="o">´ýÉ¾³ýµÄ¶ÔÏó</param>
-        /// <returns>ÊÇ·ñ³É¹¦É¾³ý</returns>
+        /// <param name="o">å¾…åˆ é™¤çš„å¯¹è±¡</param>
+        /// <returns>æ˜¯å¦æˆåŠŸåˆ é™¤</returns>
         bool Delete(T o);
     }
     #endregion
 
     #region IObjectDAO
     /// <summary>
-    /// ÊµÌåÀàµÄÔöÉ¾¸ÄµÈ»ù±¾²Ù×÷µÄ·Ç·ºÐÍ½Ó¿Ú
+    /// å®žä½“ç±»çš„å¢žåˆ æ”¹ç­‰åŸºæœ¬æ“ä½œçš„éžæ³›åž‹æŽ¥å£
     /// </summary>
     [AutoRegister(false)]
     public interface IObjectDAO: IObjectDAOAsync
     {
         /// <summary>
-        /// Ìí¼Ó¶ÔÏó
+        /// æ·»åŠ å¯¹è±¡
         /// </summary>
-        /// <param name="o">´ýÌí¼ÓµÄ¶ÔÏó</param>
-        /// <returns>ÊÇ·ñ³É¹¦Ìí¼Ó</returns>
+        /// <param name="o">å¾…æ·»åŠ çš„å¯¹è±¡</param>
+        /// <returns>æ˜¯å¦æˆåŠŸæ·»åŠ </returns>
         bool Insert(Object o);
 
+        /// <summary>
+        /// æ‰¹é‡æ·»åŠ å¯¹è±¡
+        /// </summary>
+        /// <param name="values">å¾…æ·»åŠ çš„å¯¹è±¡é›†åˆ</param>
         void BatchInsert(IEnumerable values);
 
         /// <summary>
-        /// ¸üÐÂ¶ÔÏó
+        /// æ›´æ–°å¯¹è±¡
         /// </summary>
-        /// <param name="o">´ý¸üÐÂµÄ¶ÔÏó</param>
-        /// <returns>ÊÇ·ñ³É¹¦¸üÐÂ</returns>
+        /// <param name="o">å¾…æ›´æ–°çš„å¯¹è±¡</param>
+        /// <returns>æ˜¯å¦æˆåŠŸæ›´æ–°</returns>
         bool Update(Object o);
 
         /// <summary>
-        /// ¸üÐÂ»òÌí¼Ó¶ÔÏó£¬Èô´æÔÚÔò¸üÐÂ£¬Èô²»´æÔÚÔòÌí¼Ó
+        /// æ›´æ–°æˆ–æ·»åŠ å¯¹è±¡ï¼Œè‹¥å­˜åœ¨åˆ™æ›´æ–°ï¼Œè‹¥ä¸å­˜åœ¨åˆ™æ·»åŠ 
         /// </summary>
-        /// <param name="o">´ý¸üÐÂ»òÌí¼ÓµÄ¶ÔÏó</param>
-        /// <returns>ÊÇ·ñ¸üÐÂ»òÌí¼Ó</returns>
+        /// <param name="o">å¾…æ›´æ–°æˆ–æ·»åŠ çš„å¯¹è±¡</param>
+        /// <returns>æ˜¯å¦æ›´æ–°æˆ–æ·»åŠ </returns>
         UpdateOrInsertResult UpdateOrInsert(Object o);
 
         /// <summary>
-        /// ¸ù¾ÝÌõ¼þ¸üÐÂÊý¾Ý
+        /// æ ¹æ®æ¡ä»¶æ›´æ–°æ•°æ®
         /// </summary>
-        /// <param name="values">ÐèÒª¸üÐÂµÄÊôÐÔ¼°ÊýÖµ£¬keyÎªÊôÐÔÃû£¬valueÎªÊýÖµ</param>
-        /// <param name="condition">¸üÐÂµÄÌõ¼þ</param>
-        /// <returns>¸üÐÂµÄ¼ÇÂ¼Êý</returns>
-        int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Statement condition);
+        /// <param name="values">éœ€è¦æ›´æ–°çš„å±žæ€§åŠæ•°å€¼ï¼Œkeyä¸ºå±žæ€§åï¼Œvalueä¸ºæ•°å€¼</param>
+        /// <param name="condition">æ›´æ–°çš„æ¡ä»¶</param>
+        /// <returns>æ›´æ–°çš„è®°å½•æ•°</returns>
+        int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expr condition);
         /// <summary>
-        /// ¸ù¾ÝÖ÷¼ü¸üÐÂÊý¾Ý
+        /// æ ¹æ®ä¸»é”®æ›´æ–°æ•°æ®
         /// </summary>
-        /// <param name="values">ÐèÒª¸üÐÂµÄÊôÐÔ¼°ÊýÖµ£¬keyÎªÊôÐÔÃû£¬valueÎªÊýÖµ</param>
-        /// <param name="keys">Ö÷¼ü£¬¶à¸öÖ÷¼ü°´ÕÕÖ÷¼üÃûË³ÐòÅÅÁÐ</param>
-        /// <returns>¸üÐÂÊÇ·ñ³É¹¦</returns>
+        /// <param name="values">éœ€è¦æ›´æ–°çš„å±žæ€§åŠæ•°å€¼ï¼Œkeyä¸ºå±žæ€§åï¼Œvalueä¸ºæ•°å€¼</param>
+        /// <param name="keys">ä¸»é”®ï¼Œå¤šä¸ªä¸»é”®æŒ‰ç…§ä¸»é”®åé¡ºåºæŽ’åˆ—</param>
+        /// <returns>æ›´æ–°æ˜¯å¦æˆåŠŸ</returns>
         bool UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys);
 
         /// <summary>
-        /// É¾³ý¶ÔÏó
+        /// åˆ é™¤å¯¹è±¡
         /// </summary>
-        /// <param name="o">´ýÉ¾³ýµÄ¶ÔÏó</param>
-        /// <returns>ÊÇ·ñ³É¹¦É¾³ý</returns>
+        /// <param name="o">å¾…åˆ é™¤çš„å¯¹è±¡</param>
+        /// <returns>æ˜¯å¦æˆåŠŸåˆ é™¤</returns>
         bool Delete(Object o);
 
         /// <summary>
-        /// ¸ù¾ÝÖ÷¼üÉ¾³ý¶ÔÏó
+        /// æ ¹æ®ä¸»é”®åˆ é™¤å¯¹è±¡
         /// </summary>
-        /// <param name="keys">Ö÷¼ü£¬¶à¸öÖ÷¼ü°´ÕÕÖ÷¼üÃûË³ÐòÅÅÁÐ</param>
-        /// <returns>ÊÇ·ñ³É¹¦É¾³ý</returns>
+        /// <param name="keys">ä¸»é”®ï¼Œå¤šä¸ªä¸»é”®æŒ‰ç…§ä¸»é”®åé¡ºåºæŽ’åˆ—</param>
+        /// <returns>æ˜¯å¦æˆåŠŸåˆ é™¤</returns>
         bool DeleteByKeys(params object[] keys);
 
         /// <summary>
-        /// ¸ù¾ÝÌõ¼þÉ¾³ý¶ÔÏó
+        /// æ ¹æ®æ¡ä»¶åˆ é™¤å¯¹è±¡
         /// </summary>
-        /// <param name="condition">Ìõ¼þ</param>
-        /// <returns>É¾³ý¶ÔÏóÊýÁ¿</returns>
-        int Delete(Statement condition);
+        /// <param name="condition">æ¡ä»¶</param>
+        /// <returns>åˆ é™¤å¯¹è±¡æ•°é‡</returns>
+        int Delete(Expr condition);
     }
     #endregion
 
     /// <summary>
-    /// ²åÈë»ò¸üÐÂ²Ù×÷µÄ·µ»Ø½á¹û
+    /// æ’å…¥æˆ–æ›´æ–°æ“ä½œçš„è¿”å›žç»“æžœ
     /// </summary>
     public enum UpdateOrInsertResult
     {
         /// <summary>
-        /// ²åÈë³É¹¦
+        /// æ’å…¥æˆåŠŸ
         /// </summary>
         Inserted,
         /// <summary>
-        /// ¸üÐÂ³É¹¦
+        /// æ›´æ–°æˆåŠŸ
         /// </summary>
         Updated,
         /// <summary>
-        /// Ê§°Ü
+        /// å¤±è´¥
         /// </summary>
         Failed
     }

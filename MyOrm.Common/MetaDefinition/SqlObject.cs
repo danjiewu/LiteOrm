@@ -5,13 +5,13 @@ using System.Text;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// SQL项
+    /// SQL 对象基类。
     /// </summary>
     public abstract class SqlObject
     {
         private string name;
         /// <summary>
-        /// 名称
+        /// 获取或设置 SQL 对象的名称。
         /// </summary>
         public virtual string Name
         {
@@ -23,27 +23,27 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// 格式化的名称
+        /// 使用指定的 SQL 构建器获取格式化后的名称。
         /// </summary>
-        /// <param name="sqlBuilder"></param>
-        /// <returns></returns>
+        /// <param name="sqlBuilder">SQL 构建器实例。</param>
+        /// <returns>格式化后的名称字符串。</returns>
         public virtual string FormattedName(ISqlBuilder sqlBuilder)
         {
             return sqlBuilder.ToSqlName(Name);
         }
 
         /// <summary>
-        /// 格式化的表达式
+        /// 使用指定的 SQL 构建器获取格式化后的 SQL 表达式片段。
         /// </summary>
-        /// <param name="sqlBuilder"></param>
-        /// <returns></returns>
+        /// <param name="sqlBuilder">SQL 构建器实例。</param>
+        /// <returns>格式化后的 SQL 表达式字符串。</returns>
         public abstract string FormattedExpression(ISqlBuilder sqlBuilder);
 
 
         /// <summary>
-        /// 得到名称的字符串
+        /// 获取对象的字符串表示形式。
         /// </summary>
-        /// <returns></returns>
+        /// <returns>包含名称的字符串。</returns>
         public override string ToString()
         {
             return Name;

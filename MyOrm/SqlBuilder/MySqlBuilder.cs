@@ -8,12 +8,19 @@ using System.Text.RegularExpressions;
 namespace MyOrm.MySql
 {
     /// <summary>
-    /// MySql生成Sql语句的辅助类
+    /// MySQL 生成 SQL 语句的辅助类。
     /// </summary>
     public class MySqlBuilder : SqlBuilder
     {
+        /// <summary>
+        /// 获取 <see cref="MySqlBuilder"/> 的单例实例。
+        /// </summary>
         public static readonly new MySqlBuilder Instance = new MySqlBuilder();
 
+        /// <summary>
+        /// 初始化函数映射关系。
+        /// </summary>
+        /// <param name="functionMappings">函数映射字典。</param>
         protected override void InitializeFunctionMappings(Dictionary<string, string> functionMappings)
         {
             // 只需添加名称不同的映射
@@ -29,7 +36,15 @@ namespace MyOrm.MySql
         {
             return $"CONCAT({String.Join(",", strs)})";
         }
-
+        /// <summary>
+        /// 构建插入并返回自增标识的 SQL 语句。
+        /// </summary>
+        /// <param name="command">数据库命令对象。</param>
+        /// <param name="identityColumn">标识列定义。</param>
+        /// <param name="tableName">表名。</param>
+        /// <param name="strColumns">插入列名部分。</param>
+        /// <param name="strValues">插入值名部分。</param>
+        /// <returns>构建后的 SQL 语句。</returns>
         public override string BuildIdentityInsertSQL(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
             return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues});\nselect @@IDENTITY as [ID];";

@@ -8,14 +8,14 @@ using System.Linq.Expressions;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// ÁĞµÄÒıÓÃ
+    /// åˆ—çš„å¼•ç”¨
     /// </summary>
     public class ColumnRef : SqlObject
     {
         /// <summary>
-        /// ´´½¨ÁĞµÄÒıÓÃ
+        /// åˆ›å»ºåˆ—çš„å¼•ç”¨
         /// </summary>
-        /// <param name="column">ÁĞĞÅÏ¢</param>
+        /// <param name="column">åˆ—ä¿¡æ¯</param>
         public ColumnRef(SqlColumn column)
         {
             Name = column.Name;
@@ -23,10 +23,10 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// ´´½¨Ö¸¶¨±íµÄÁĞÒıÓÃ
+        /// åˆ›å»ºæŒ‡å®šè¡¨çš„åˆ—å¼•ç”¨
         /// </summary>
-        /// <param name="table">±í</param>
-        /// <param name="column">ÁĞÒıÓÃ</param>
+        /// <param name="table">è¡¨</param>
+        /// <param name="column">åˆ—å¼•ç”¨</param>
         public ColumnRef(TableRef table, SqlColumn column)
         {
             Name = column.Name;
@@ -36,7 +36,7 @@ namespace MyOrm.Common
 
         private TableRef table;
         /// <summary>
-        /// ÁĞËùÔÚµÄ±í
+        /// åˆ—æ‰€åœ¨çš„è¡¨
         /// </summary>
         public TableRef Table
         {
@@ -46,7 +46,7 @@ namespace MyOrm.Common
 
         private SqlColumn column;
         /// <summary>
-        /// ÁĞĞÅÏ¢
+        /// åˆ—ä¿¡æ¯
         /// </summary>
         public SqlColumn Column
         {
@@ -54,7 +54,7 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// ¸ñÊ½»¯µÄ±í´ïÊ½
+        /// æ ¼å¼åŒ–çš„è¡¨è¾¾å¼
         /// </summary>
         public override string FormattedExpression(ISqlBuilder sqlBuilder)
         {
@@ -64,19 +64,19 @@ namespace MyOrm.Common
     }
 
     /// <summary>
-    /// ¹ØÁªÍâ±íµÄÁĞĞÅÏ¢
+    /// å…³è”å¤–è¡¨çš„åˆ—ä¿¡æ¯
     /// </summary>
     public class ForeignColumn : SqlColumn
     {
         internal ForeignColumn(PropertyInfo property) : base(property) { }
 
         /// <summary>
-        /// Ö¸ÏòµÄÁĞ
+        /// æŒ‡å‘çš„åˆ—
         /// </summary>
         public ColumnRef TargetColumn { get; internal set; }
 
         /// <summary>
-        /// ¸ñÊ½»¯µÄ±í´ïÊ½
+        /// æ ¼å¼åŒ–çš„è¡¨è¾¾å¼
         /// </summary>
         public override string FormattedExpression(ISqlBuilder sqlBuilder)
         {
@@ -84,7 +84,7 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// Ãû³Æ
+        /// åç§°
         /// </summary>
         public override string Name
         {
@@ -99,16 +99,16 @@ namespace MyOrm.Common
     }
 
     /// <summary>
-    /// »ù±¾ÁĞĞÅÏ¢
+    /// åŸºæœ¬åˆ—ä¿¡æ¯
     /// </summary>
     public abstract class SqlColumn : SqlObject
     {
         private PropertyInfo property;
 
         /// <summary>
-        /// ¹¹Ôìº¯Êı
+        /// æ„é€ å‡½æ•°
         /// </summary>
-        /// <param name="property">ÁĞ¶ÔÓ¦µÄÊµÌåÊôĞÔ</param>
+        /// <param name="property">åˆ—å¯¹åº”çš„å®ä½“å±æ€§</param>
         internal SqlColumn(PropertyInfo property)
         {
             this.property = property;
@@ -116,17 +116,17 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// ËùÊôµÄ±íĞÅÏ¢
+        /// æ‰€å±çš„è¡¨ä¿¡æ¯
         /// </summary>
         public SqlTable Table { get; internal set; }
 
         /// <summary>
-        /// ÊôĞÔÃû
+        /// å±æ€§å
         /// </summary>
         public string PropertyName { get; private set; }
 
         /// <summary>
-        /// ÁĞËù¶ÔÓ¦µÄÊôĞÔÀàĞÍ
+        /// åˆ—æ‰€å¯¹åº”çš„å±æ€§ç±»å‹
         /// </summary>
         /// 
         public Type PropertyType
@@ -135,27 +135,30 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// ÁĞ¶ÔÓ¦µÄÊôĞÔ
+        /// åˆ—å¯¹åº”çš„å±æ€§
         /// </summary>
         public PropertyInfo Property { get { return property; } }
 
         /// <summary>
-        /// ¹ØÁªµÄÍâ²¿¶ÔÏóÀàĞÍ
+        /// å…³è”çš„å¤–éƒ¨å¯¹è±¡ç±»å‹
         /// </summary>
         public Type ForeignType { get { return ForeignTable?.ForeignType; } }
 
-
-        public ForeignTable ForeignTable { get; internal set; }
         /// <summary>
-        /// ¹ØÁªµÄÍâ²¿¶ÔÏó±ğÃû
+        /// å…³è”çš„å¤–éƒ¨è¡¨ä¿¡æ¯
+        /// </summary>
+        public ForeignTable ForeignTable { get; internal set; }
+
+        /// <summary>
+        /// å…³è”çš„å¤–éƒ¨å¯¹è±¡åˆ«å
         /// </summary>
         public string ForeignAlias { get; internal set; }
 
         /// <summary>
-        /// ¸³Öµ
+        /// èµ‹å€¼
         /// </summary>
-        /// <param name="target">Òª¸³ÖµµÄ¶ÔÏó</param>
-        /// <param name="value">Öµ</param>
+        /// <param name="target">è¦èµ‹å€¼çš„å¯¹è±¡</param>
+        /// <param name="value">å€¼</param>
         public virtual void SetValue(object target, object value)
         {
             if (target == null) throw new ArgumentNullException("target");
@@ -170,10 +173,10 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// È¡Öµ
+        /// å–å€¼
         /// </summary>
-        /// <param name="target">¶ÔÏó</param>
-        /// <returns>Öµ</returns>
+        /// <param name="target">å¯¹è±¡</param>
+        /// <returns>å€¼</returns>
         public virtual object GetValue(object target)
         {
             if (target == null) throw new ArgumentNullException("target");
@@ -181,7 +184,7 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// ¸ñÊ½»¯µÄ±í´ïÊ½
+        /// æ ¼å¼åŒ–çš„è¡¨è¾¾å¼
         /// </summary>
         public override string FormattedExpression(ISqlBuilder sqlBuilder)
         {
@@ -190,14 +193,14 @@ namespace MyOrm.Common
     }
 
     /// <summary>
-    /// Êı¾İ¿âÁĞĞÅÏ¢
+    /// æ•°æ®åº“åˆ—ä¿¡æ¯
     /// </summary>
     public class ColumnDefinition : SqlColumn
     {
         /// <summary>
-        /// ¹¹Ôìº¯Êı
+        /// æ„é€ å‡½æ•°
         /// </summary>
-        /// <param name="property">ÁĞ¶ÔÓ¦µÄÊµÌåÊôĞÔ</param>
+        /// <param name="property">åˆ—å¯¹åº”çš„å®ä½“å±æ€§</param>
         internal ColumnDefinition(PropertyInfo property)
             : base(property)
         {
@@ -205,119 +208,122 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// ÊÇ·ñÊÇÖ÷¼ü
+        /// æ˜¯å¦æ˜¯ä¸»é”®
         /// </summary>
         public bool IsPrimaryKey { get; internal set; }
 
         /// <summary>
-        /// ÊÇ·ñÊÇ×ÔÔö³¤±êÊ¶
+        /// æ˜¯å¦æ˜¯è‡ªå¢é•¿æ ‡è¯†
         /// </summary>
         public bool IsIdentity { get; internal set; }
 
         /// <summary>
-        /// ÊÇ·ñÊÇÊ±¼ä´Á
+        /// æ˜¯å¦æ˜¯æ—¶é—´æˆ³
         /// </summary>
         public bool IsTimestamp { get; set; }
 
         /// <summary>
-        /// ±êÊ¶±í´ïÊ½
+        /// æ ‡è¯†è¡¨è¾¾å¼
         /// </summary>
         public string IdentityExpression { get; internal set; }
 
         /// <summary>
-        /// ÊÇ·ñÊÇË÷Òı
+        /// æ˜¯å¦æ˜¯ç´¢å¼•
         /// </summary>
         public bool IsIndex { get; internal set; }
 
         /// <summary>
-        /// ÊÇ·ñÎ¨Ò»
+        /// æ˜¯å¦å”¯ä¸€
         /// </summary>
         public bool IsUnique { get; internal set; }
 
         /// <summary>
-        /// ³¤¶È
+        /// é•¿åº¦
         /// </summary>
         public int Length { get; internal set; }
 
         /// <summary>
-        /// Êı¾İ¿âÀàĞÍ
+        /// æ•°æ®åº“ç±»å‹
         /// </summary>
         public DbType DbType { get; internal set; }
 
         /// <summary>
-        /// ÊÇ·ñÔÊĞíÎª¿Õ
+        /// æ˜¯å¦å…è®¸ä¸ºç©º
         /// </summary>
         public bool AllowNull { get; internal set; }
 
         /// <summary>
-        /// ÁĞ²Ù×÷Ä£Ê½
+        /// åˆ—æ“ä½œæ¨¡å¼
         /// </summary>
         public ColumnMode Mode { get; internal set; }
     }
 
     /// <summary>
-    /// ÁĞ²Ù×÷Ä£Ê½
+    /// åˆ—æ“ä½œæ¨¡å¼
     /// </summary>
     [Flags]
     public enum ColumnMode
     {
         /// <summary>
-        /// ËùÓĞ²Ù×÷
+        /// æ‰€æœ‰æ“ä½œ
         /// </summary>
         Full = Read | Update | Insert,
         /// <summary>
-        /// ÎŞ
+        /// æ— 
         /// </summary>
         None = 0,
         /// <summary>
-        /// ´ÓÊı¾İ¿âÖĞ¶Á
+        /// ä»æ•°æ®åº“ä¸­è¯»
         /// </summary>
         Read = 1,
         /// <summary>
-        /// ÏòÊı¾İ¿â¸üĞÂ
+        /// å‘æ•°æ®åº“æ›´æ–°
         /// </summary>
         Update = 2,
         /// <summary>
-        /// ÏòÊı¾İ¿âÌí¼Ó
+        /// å‘æ•°æ®åº“æ·»åŠ 
         /// </summary>
         Insert = 4,
         /// <summary>
-        /// Ö»Ğ´
+        /// åªå†™
         /// </summary>
         Write = Insert | Update,
         /// <summary>
-        /// ²»¿É¸ü¸Ä
+        /// ä¸å¯æ›´æ”¹
         /// </summary>
         Final = Insert | Read
     }
 
+    /// <summary>
+    /// åˆ—æ“ä½œæ¨¡å¼çš„æ‰©å±•æ–¹æ³•
+    /// </summary>
     public static class ColumnModeExt
     {
         /// <summary>
-        /// ÊÇ·ñ¿ÉÒÔ²åÈë
+        /// æ£€æŸ¥åˆ—æ¨¡å¼æ˜¯å¦å…è®¸æ’å…¥æ“ä½œ
         /// </summary>
-        /// <param name="mode"></param>
-        /// <returns></returns>
+        /// <param name="mode">åˆ—æ“ä½œæ¨¡å¼</param>
+        /// <returns>å¦‚æœå…è®¸æ’å…¥åˆ™è¿”å›trueï¼Œå¦åˆ™è¿”å›false</returns>
         public static bool CanInsert(this ColumnMode mode)
         {
             return (mode & ColumnMode.Insert) != ColumnMode.None;
         }
 
         /// <summary>
-        /// ÊÇ·ñ¿ÉÒÔ¸üĞÂ
+        /// æ£€æŸ¥åˆ—æ¨¡å¼æ˜¯å¦å…è®¸æ›´æ–°æ“ä½œ
         /// </summary>
-        /// <param name="mode"></param>
-        /// <returns></returns>
+        /// <param name="mode">åˆ—æ“ä½œæ¨¡å¼</param>
+        /// <returns>å¦‚æœå…è®¸æ›´æ–°åˆ™è¿”å›trueï¼Œå¦åˆ™è¿”å›false</returns>
         public static bool CanUpdate(this ColumnMode mode)
         {
             return (mode & ColumnMode.Update) != ColumnMode.None;
         }
 
         /// <summary>
-        /// ÊÇ·ñ¿ÉÒÔ¶ÁÈ¡
+        /// æ£€æŸ¥åˆ—æ¨¡å¼æ˜¯å¦å…è®¸è¯»å–æ“ä½œ
         /// </summary>
-        /// <param name="mode"></param>
-        /// <returns></returns>
+        /// <param name="mode">åˆ—æ“ä½œæ¨¡å¼</param>
+        /// <returns>å¦‚æœå…è®¸è¯»å–åˆ™è¿”å›trueï¼Œå¦åˆ™è¿”å›false</returns>
         public static bool CanRead(this ColumnMode mode)
         {
             return (mode & ColumnMode.Read) != ColumnMode.None;

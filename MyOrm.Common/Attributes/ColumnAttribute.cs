@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Data;
@@ -6,13 +6,13 @@ using System.Data;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// Êı¾İ¿âÁĞ¶¨Òå
+    /// æ•°æ®åº“åˆ—ç‰¹æ€§ï¼Œç”¨äºæ ‡è¯†å®ä½“å±æ€§å¯¹åº”çš„æ•°æ®åº“åˆ—ã€‚
     /// </summary>
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public class ColumnAttribute : Attribute
     {
         /// <summary>
-        /// Ä¬ÈÏ¹¹Ôìº¯Êı
+        /// åˆå§‹åŒ– <see cref="ColumnAttribute"/> ç±»çš„æ–°å®ä¾‹ã€‚
         /// </summary>
         public ColumnAttribute()
         {
@@ -22,9 +22,9 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// ¹¹Ôìº¯Êı
-        /// <param name="isColumn">ÊÇ·ñÊÇÊı¾İ¿âÁĞ</param>
+        /// åˆå§‹åŒ– <see cref="ColumnAttribute"/> ç±»çš„æ–°å®ä¾‹ï¼ŒæŒ‡å®šæ˜¯å¦ä¸ºæ•°æ®åº“åˆ—ã€‚
         /// </summary>
+        /// <param name="isColumn">æ˜¯å¦æ˜ å°„åˆ°æ•°æ®åº“åˆ—ã€‚</param>
         public ColumnAttribute(bool isColumn)
             : this()
         {
@@ -32,9 +32,9 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// Ö¸¶¨ÁĞÃûµÄ¹¹Ôìº¯Êı
+        /// åˆå§‹åŒ– <see cref="ColumnAttribute"/> ç±»çš„æ–°å®ä¾‹ï¼Œå¹¶æŒ‡å®šåˆ—åã€‚
         /// </summary>
-        /// <param name="columnName">ÁĞÃû</param>
+        /// <param name="columnName">æ•°æ®åº“åˆ—åã€‚</param>
         public ColumnAttribute(string columnName)
             : this(true)
         {
@@ -44,7 +44,7 @@ namespace MyOrm.Common
         private readonly bool isColumn = true;
 
         /// <summary>
-        /// ÊÇ·ñÊÇÊı¾İ¿âÁĞ
+        /// è·å–ä¸€ä¸ªå€¼ï¼Œè¯¥å€¼æŒ‡ç¤ºè¯¥å±æ€§æ˜¯å¦æ˜ å°„åˆ°æ•°æ®åº“åˆ—ã€‚
         /// </summary>
         public bool IsColumn
         {
@@ -52,92 +52,58 @@ namespace MyOrm.Common
         }
 
         /// <summary>
-        /// Êı¾İ¿âÁĞÃû
+        /// è·å–æˆ–è®¾ç½®æ•°æ®åº“åˆ—åã€‚
         /// </summary>
         public string ColumnName { get; set; }
 
         /// <summary>
-        /// ÊÇ·ñÊÇÖ÷¼ü
+        /// è·å–æˆ–è®¾ç½®ä¸€ä¸ªå€¼ï¼Œè¯¥å€¼æŒ‡ç¤ºè¯¥åˆ—æ˜¯å¦ä¸ºä¸»é”®ã€‚
         /// </summary>
         public bool IsPrimaryKey { get; set; }
 
         /// <summary>
-        /// ÊÇ·ñÊÇ×ÔÔö³¤±êÊ¶
+        /// è·å–æˆ–è®¾ç½®ä¸€ä¸ªå€¼ï¼Œè¯¥å€¼æŒ‡ç¤ºè¯¥åˆ—æ˜¯å¦ä¸ºæ ‡è¯†åˆ—ï¼ˆè‡ªå¢ï¼‰ã€‚
         /// </summary>
         public bool IsIdentity { get; set; }
 
         /// <summary>
-        /// ÊÇ·ñÊÇÊ±¼ä´Á
+        /// è·å–æˆ–è®¾ç½®ä¸€ä¸ªå€¼ï¼Œè¯¥å€¼æŒ‡ç¤ºè¯¥åˆ—æ˜¯å¦ä¸ºæ—¶é—´æˆ³åˆ—ã€‚
         /// </summary>
         public bool IsTimestamp { get; set; }
+
         /// <summary>
-        /// ×ÔÔö³¤ÁĞ±í´ïÊ½
+        /// è·å–æˆ–è®¾ç½®æ ‡è¯†åˆ—ï¼ˆè‡ªå¢ï¼‰çš„è¡¨è¾¾å¼ï¼ˆå¦‚åºåˆ—åç§°ï¼‰ã€‚
         /// </summary>
         public string IdentityExpression { get; set; }
 
         /// <summary>
-        /// ÊÇ·ñÊÇË÷Òı
+        /// è·å–æˆ–è®¾ç½®ä¸€ä¸ªå€¼ï¼Œè¯¥å€¼æŒ‡ç¤ºè¯¥åˆ—æ˜¯å¦åº”åˆ›å»ºç´¢å¼•ã€‚
         /// </summary>
         public bool IsIndex { get; set; }
 
         /// <summary>
-        /// ÊÇ·ñÎ¨Ò»
+        /// è·å–æˆ–è®¾ç½®ä¸€ä¸ªå€¼ï¼Œè¯¥å€¼æŒ‡ç¤ºè¯¥åˆ—æ˜¯å¦å…·æœ‰å”¯ä¸€çº¦æŸã€‚
         /// </summary>
         public bool IsUnique { get; set; }
 
         /// <summary>
-        /// Êı¾İ¿âÁĞ³¤¶È
+        /// è·å–æˆ–è®¾ç½®æ•°æ®åº“åˆ—çš„é•¿åº¦ã€‚
         /// </summary>
         public int Length { get; set; }
 
         /// <summary>
-        /// Êı¾İ¿âÁĞÊı¾İÀàĞÍ
+        /// è·å–æˆ–è®¾ç½®æ•°æ®åº“åˆ—çš„æ•°æ®ç±»å‹ã€‚
         /// </summary>
         public DbType DbType { get; set; }
 
         /// <summary>
-        /// ÁĞÀàĞÍ
-        /// </summary>
-        public ColumnMode ColumnMode { get; set; }
-
-        /// <summary>
-        /// ÊÇ·ñÔÊĞíÎª¿Õ
+        /// è·å–æˆ–è®¾ç½®ä¸€ä¸ªå€¼ï¼Œè¯¥å€¼æŒ‡ç¤ºè¯¥åˆ—æ˜¯å¦å…è®¸ä¸ºç©ºã€‚
         /// </summary>
         public bool AllowNull { get; set; }
-    }
-
-    /// <summary>
-    /// ¹ØÁªÁĞĞÅÏ¢
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public class ForeignColumnAttribute : Attribute
-    {
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="foreignType">¹ØÁªµÄÍâ²¿¶ÔÏóÀàĞÍ</param>
-        public ForeignColumnAttribute(Type foreignType)
-        {
-            this.Foreign = foreignType;
-        }
 
         /// <summary>
-        /// 
+        /// è·å–æˆ–è®¾ç½®åˆ—æ˜ å°„æ¨¡å¼ã€‚
         /// </summary>
-        /// <param name="foreignName">¹ØÁªµÄÍâ²¿±íÃû³Æ</param>
-        public ForeignColumnAttribute(string foreignName)
-        {
-            this.Foreign = foreignName;
-        }
-
-        /// <summary>
-        /// ¹ØÁªµÄÍâ²¿±í£¬¿ÉÒÔÎªÍâ²¿±í¶ÔÓ¦µÄType£¬Ò²¿ÉÒÔÎªTableJoinÖĞµÄAliasName
-        /// </summary>
-        public object Foreign { get; private set; }
-
-        ///<summary>
-        /// ¹ØÁªµÄÍâ²¿¶ÔÏóÊôĞÔ
-        /// </summary>
-        public string Property { get; set; }
-    }
+        public ColumnMode ColumnMode { get; set; }
+    }    
 }

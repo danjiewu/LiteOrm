@@ -24,6 +24,11 @@ namespace MyOrm
         private IDataSourceProvider _dataSourceProvider;
         private readonly object SyncLock = new object();
 
+        /// <summary>
+        /// 初始化 <see cref="AttributeTableInfoProvider"/> 类的新实例。
+        /// </summary>
+        /// <param name="sqlBuilderFactory">SQL 构建器工厂。</param>
+        /// <param name="dataSourceProvider">数据源提供者。</param>
         public AttributeTableInfoProvider(ISqlBuilderFactory sqlBuilderFactory, IDataSourceProvider dataSourceProvider)
         {
             _sqlBuilderFactory = sqlBuilderFactory ?? throw new ArgumentNullException(nameof(sqlBuilderFactory));

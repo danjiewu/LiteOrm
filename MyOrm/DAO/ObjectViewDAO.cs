@@ -14,14 +14,30 @@ using System.Threading.Tasks;
 namespace MyOrm
 {
     /// <summary>
-    /// ʵ����Ĳ�ѯ����
+    /// 实体类的查询数据访问对象实现
     /// </summary>
-    /// <typeparam name="T">ʵ������</typeparam>
+    /// <typeparam name="T">实体类型</typeparam>
+    /// <remarks>
+    /// ObjectViewDAO&lt;T&gt; 是 IObjectViewDAO&lt;T&gt; 接口的实现，提供针对特定实体类型的查询操作。
+    /// 
+    /// 主要功能包括：
+    /// 1. 单对象查询 - 根据主键获取单个实体对象
+    /// 2. 列表查询 - 根据条件获取实体对象列表
+    /// 3. 分页查询 - 支持带分页参数的查询操作
+    /// 4. 存在性检查 - 检查实体是否存在于数据库中
+    /// 5. 关联查询 - 支持多表关联查询以获取关联的实体数据
+    /// 6. 异步查询 - 提供基于 Task 的异步查询方法
+    /// 7. 动态条件查询 - 支持使用 Lambda 表达式或 Expr 对象构建动态查询条件
+    /// 
+    /// 该类继承自 ObjectDAOBase 并实现了相应的查询接口，
+    /// 处理复杂的SQL生成、参数处理和数据映射工作。
+    /// 它支持与 TableJoinAttribute 定义的多表关联进行查询。
+    /// </remarks>
     public class ObjectViewDAO<T> : ObjectDAOBase, IObjectViewDAO<T> where T : new()
     {
-        #region ����
+        #region 属性
         /// <summary>
-        /// ʵ���������
+        /// 实体对象类型
         /// </summary>
         public override Type ObjectType
         {
@@ -29,7 +45,7 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ��ѯ������
+        /// 查询关联表
         /// </summary>
         public override SqlTable Table
         {
@@ -37,9 +53,9 @@ namespace MyOrm
         }
         #endregion
 
-        #region Ԥ����Command
+        #region 预定义Command
         /// <summary>
-        /// ʵ�ֻ�ȡ���������IDbCommand
+        /// 实现获取对象操作的IDbCommand
         /// </summary>
         protected virtual IDbCommand MakeGetObjectCommand()
         {
@@ -49,7 +65,7 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ʵ�ּ������Ƿ���ڲ�����IDbCommand
+        /// 实现检查对象是否存在操作的IDbCommand
         /// </summary>
         protected virtual IDbCommand MakeObjectExistsCommand()
         {
@@ -74,13 +90,13 @@ namespace MyOrm
         }
         #endregion
 
-        #region ����
+        #region 方法
 
         /// <summary>
-        /// ����������ȡ����
+        /// 根据主键获取对象
         /// </summary>
-        /// <param name="keys">�����������������������˳������</param>
-        /// <returns>�������������򷵻�null</returns>
+        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
+        /// <returns>对象，若不存在则返回null</returns>
         public virtual T GetObject(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
@@ -98,11 +114,11 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ��ȡ���������Ķ������
+        /// 获取符合条件的对象个数
         /// </summary>
-        /// <param name="condition">��������ֵ���б�����Ϊnull���ʾû������</param>
-        /// <returns>���������Ķ������</returns>
-        public virtual int Count(Statement condition)
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <returns>符合条件的对象个数</returns>
+        public virtual int Count(Expr condition)
         {
             using (IDbCommand command = MakeConditionCommand("select count(*) \nfrom @FromTable@ \nwhere @Condition@", condition))
             {
@@ -111,10 +127,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// �ж϶����Ƿ����
+        /// 判断对象是否存在
         /// </summary>
-        /// <param name="o">����</param>
-        /// <returns>�Ƿ����</returns>
+        /// <param name="o">对象</param>
+        /// <returns>是否存在</returns>
         public virtual bool Exists(object o)
         {
             if (o == null) return false;
@@ -122,10 +138,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// �ж�������Ӧ�Ķ����Ƿ����
+        /// 判断主键对应的对象是否存在
         /// </summary>
-        /// <param name="keys">���������������������˳������</param>
-        /// <returns>�Ƿ����</returns>
+        /// <param name="keys">主键，多个主键按照名称顺序排列</param>
+        /// <returns>是否存在</returns>
         public virtual bool ExistsKey(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
@@ -140,11 +156,11 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// �жϷ��������Ķ����Ƿ����
+        /// 判断符合条件的对象是否存在
         /// </summary>
-        /// <param name="condition">��������ֵ���б�����Ϊnull���ʾû������</param>
-        /// <returns>�Ƿ����</returns>
-        public virtual bool Exists(Statement condition)
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <returns>是否存在</returns>
+        public virtual bool Exists(Expr condition)
         {
             using (IDbCommand command = MakeConditionCommand("select 1 \nfrom @FromTable@ \nwhere @Condition@", condition))
             {
@@ -152,7 +168,12 @@ namespace MyOrm
             }
         }
 
-        public void ForEach(Statement condition, Action<T> func)
+        /// <summary>
+        /// 对符合条件的每个对象执行指定操作
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="func">要对每个对象执行的操作</param>
+        public void ForEach(Expr condition, Action<T> func)
         {
             using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@" + (condition == null ? null : " \nwhere @Condition@"), condition))
             {
@@ -164,11 +185,11 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ����������ѯ������������߼�������
+        /// 根据条件查询，多个条件以逻辑与连接
         /// </summary>
-        /// <param name="condition">��������ֵ���б�����Ϊnull���ʾû������</param>
-        /// <returns>���������Ķ����б�</returns>
-        public virtual List<T> Search(Statement condition)
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <returns>符合条件的对象列表</returns>
+        public virtual List<T> Search(Expr condition)
         {
             using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@" + (condition == null ? null : " \nwhere @Condition@"), condition))
             {
@@ -177,12 +198,12 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ����������ѯ������������߼�������
+        /// 根据条件查询，多个条件以逻辑与连接
         /// </summary>
-        /// <param name="condition">��������ֵ���б�����Ϊnull���ʾû������</param>
-        /// <param name="orderBy">����˳����Ϊnull���ʾ��ָ��˳��</param>
-        /// <returns>���������Ķ����б�</returns>
-        public virtual List<T> Search(Statement condition, params Sorting[] orderBy)
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
+        /// <returns>符合条件的对象列表</returns>
+        public virtual List<T> Search(Expr condition, params Sorting[] orderBy)
         {
             if (orderBy == null || orderBy.Length == 0) return Search(condition);
             else
@@ -193,11 +214,11 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ��ȡ�������������Ķ���
+        /// 获取单个符合条件的对象
         /// </summary>
-        /// <param name="condition">��������ֵ���б�����Ϊnull���ʾû������</param>
-        /// <returns>��һ�����������Ķ������������򷵻�null</returns>
-        public virtual T SearchOne(Statement condition)
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
+        public virtual T SearchOne(Expr condition)
         {
             using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ \nwhere @Condition@", condition))
             {
@@ -207,12 +228,12 @@ namespace MyOrm
 
 
         /// <summary>
-        /// ��ҳ��ѯ
+        /// 分页查询
         /// </summary>
-        /// <param name="condition">��ѯ����</param>
-        /// <param name="section">��ҳ�趨</param>
+        /// <param name="condition">查询条件</param>
+        /// <param name="section">分页设定</param>
         /// <returns></returns>
-        public virtual List<T> SearchSection(Statement condition, SectionSet section)
+        public virtual List<T> SearchSection(Expr condition, SectionSet section)
         {
             string sql = SqlBuilder.GetSelectSectionSql(AllFieldsSql, From, ParamCondition, GetOrderBySQL(section.Orders), section.StartIndex, section.SectionSize);
             using (IDbCommand command = MakeConditionCommand(sql, condition))
@@ -225,27 +246,54 @@ namespace MyOrm
 
         #region IObjectViewDAO Members
 
+        /// <summary>
+        /// 根据主键获取对象（接口实现）
+        /// </summary>
+        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
+        /// <returns>对象，若不存在则返回null</returns>
         object IObjectViewDAO.GetObject(params object[] keys)
         {
             return GetObject(keys);
         }
 
-        object IObjectViewDAO.SearchOne(Statement condition)
+        /// <summary>
+        /// 获取单个符合条件的对象（接口实现）
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
+        object IObjectViewDAO.SearchOne(Expr condition)
         {
             return SearchOne(condition);
         }
 
-        IList IObjectViewDAO.Search(Statement condition)
+        /// <summary>
+        /// 根据条件查询，多个条件以逻辑与连接（接口实现）
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <returns>符合条件的对象列表</returns>
+        IList IObjectViewDAO.Search(Expr condition)
         {
             return Search(condition);
         }
 
-        IList IObjectViewDAO.Search(Statement condition, params Sorting[] orderBy)
+        /// <summary>
+        /// 根据条件查询，多个条件以逻辑与连接（接口实现）
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
+        /// <returns>符合条件的对象列表</returns>
+        IList IObjectViewDAO.Search(Expr condition, params Sorting[] orderBy)
         {
             return Search(condition, orderBy);
         }
 
-        IList IObjectViewDAO.SearchSection(Statement condition, SectionSet section)
+        /// <summary>
+        /// 分页查询（接口实现）
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="section">分页设定</param>
+        /// <returns>分页查询结果</returns>
+        IList IObjectViewDAO.SearchSection(Expr condition, SectionSet section)
         {
             return SearchSection(condition, section);
         }
@@ -254,52 +302,113 @@ namespace MyOrm
 
         #region IObjectViewDAOAsync implementations
 
+        /// <summary>
+        /// 根据主键异步获取对象
+        /// </summary>
+        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含对象，若不存在则返回null</returns>
         public virtual Task<T> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => GetObject(keys), cancellationToken);
         }
 
-        Task<object> IObjectViewDAOAsync.GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 根据主键异步获取对象（接口实现）
+        /// </summary>
+        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含对象，若不存在则返回null</returns>
+        Task<object> IObjectViewDAOAsync.GetObjectAsync(object[] keys, CancellationToken cancellationToken)
         {
             return CurrentSession.ExecuteInSessionAsync(() => (object)GetObject(keys), cancellationToken);
         }
 
-        public virtual Task<int> CountAsync(Statement condition, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步获取符合条件的对象个数
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含符合条件的对象个数</returns>
+        public virtual Task<int> CountAsync(Expr condition, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => Count(condition), cancellationToken);
         }
 
+        /// <summary>
+        /// 异步判断对象是否存在
+        /// </summary>
+        /// <param name="o">对象</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
         public virtual Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => Exists(o), cancellationToken);
         }
 
+        /// <summary>
+        /// 异步判断主键对应的对象是否存在
+        /// </summary>
+        /// <param name="keys">主键，多个主键按照名称顺序排列</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
         public virtual Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => ExistsKey(keys), cancellationToken);
         }
 
-        public virtual Task<bool> ExistsAsync(Statement condition, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步判断符合条件的对象是否存在
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
+        public virtual Task<bool> ExistsAsync(Expr condition, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => Exists(condition), cancellationToken);
         }
 
+        /// <summary>
+        /// 异步判断符合条件的对象是否存在（使用表达式）
+        /// </summary>
+        /// <param name="expression">Lambda表达式条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
         public virtual Task<bool> ExistsAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => Exists(expression), cancellationToken);
         }
 
-        public virtual Task<T> SearchOneAsync(Statement condition, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步获取单个符合条件的对象
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含第一个符合条件的对象，若不存在则返回null</returns>
+        public virtual Task<T> SearchOneAsync(Expr condition, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => SearchOne(condition), cancellationToken);
         }
 
-        Task<object> IObjectViewDAOAsync.SearchOneAsync(Statement condition, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步获取单个符合条件的对象（接口实现）
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含第一个符合条件的对象，若不存在则返回null</returns>
+        Task<object> IObjectViewDAOAsync.SearchOneAsync(Expr condition, CancellationToken cancellationToken)
         {
             return CurrentSession.ExecuteInSessionAsync(() => (object)SearchOne(condition), cancellationToken);
         }
 
-        public virtual Task ForEachAsync(Statement condition, Func<T, Task> func, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步对符合条件的每个对象执行指定操作
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="func">要对每个对象执行的异步操作</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务</returns>
+        public virtual Task ForEachAsync(Expr condition, Func<T, Task> func, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() =>
             {
@@ -317,55 +426,96 @@ namespace MyOrm
             }, cancellationToken).Unwrap();
         }
 
-        public virtual Task<List<T>> SearchAsync(Statement condition = null, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步根据条件查询，多个条件以逻辑与连接
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
+        public virtual Task<List<T>> SearchAsync(Expr condition = null, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => Search(condition), cancellationToken);
         }
 
-        Task<IList> IObjectViewDAOAsync.SearchAsync(Statement condition, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步根据条件查询，多个条件以逻辑与连接（接口实现）
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
+        Task<IList> IObjectViewDAOAsync.SearchAsync(Expr condition, CancellationToken cancellationToken)
         {
             return CurrentSession.ExecuteInSessionAsync(() => (IList)Search(condition), cancellationToken);
         }
 
-        public virtual Task<List<T>> SearchAsync(Statement condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步根据条件查询，多个条件以逻辑与连接
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
+        public virtual Task<List<T>> SearchAsync(Expr condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => Search(condition, orderBy), cancellationToken);
         }
 
-        Task<IList> IObjectViewDAOAsync.SearchAsync(Statement condition, Sorting[] orderBy, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步根据条件查询，多个条件以逻辑与连接（接口实现）
+        /// </summary>
+        /// <param name="condition">属性名与值的列表，若为null则表示没有条件</param>
+        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
+        Task<IList> IObjectViewDAOAsync.SearchAsync(Expr condition, Sorting[] orderBy, CancellationToken cancellationToken)
         {
             return CurrentSession.ExecuteInSessionAsync(() => (IList)Search(condition, orderBy), cancellationToken);
         }
 
-        public virtual Task<List<T>> SearchSectionAsync(Statement condition, SectionSet section, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步分页查询
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="section">分页设定</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含分页查询结果</returns>
+        public virtual Task<List<T>> SearchSectionAsync(Expr condition, SectionSet section, CancellationToken cancellationToken = default)
         {
             return CurrentSession.ExecuteInSessionAsync(() => SearchSection(condition, section), cancellationToken);
         }
 
-        Task<IList> IObjectViewDAOAsync.SearchSectionAsync(Statement condition, SectionSet section, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// 异步分页查询（接口实现）
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <param name="section">分页设定</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含分页查询结果</returns>
+        Task<IList> IObjectViewDAOAsync.SearchSectionAsync(Expr condition, SectionSet section, CancellationToken cancellationToken)
         {
             return CurrentSession.ExecuteInSessionAsync(() => (IList)SearchSection(condition, section), cancellationToken);
         }
 
         #endregion
 
-        #region ���÷���
+        #region 常用方法
 
         /// <summary>
-        /// �滻Sql�еı��Ϊʵ��Sql
+        /// 替换 SQL 中的标记为实际 SQL。
         /// </summary>
-        /// <param name="SQLWithParam">������ǵ�Sql��䣬��ǿ���ΪParamAllFields��ParamFromTable</param>
-        /// <returns></returns>
+        /// <param name="SQLWithParam">包含标记的 SQL 语句，标记可以为 ParamAllFields，ParamFromTable。</param>
+        /// <param name="context">SQL 构建上下文。</param>
+        /// <returns>替换后的 SQL 语句。</returns>
         protected override string ReplaceParam(string SQLWithParam, SqlBuildContext context = null)
         {
             return base.ReplaceParam(SQLWithParam, context).Replace(ParamAllFields, AllFieldsSql);
         }
 
         /// <summary>
-        /// ��ȡ���м�¼��ת��Ϊ���󼯺ϣ���ѯAllFieldsSQLʱ����
+        /// 读取所有记录并转化为对象集合，查询AllFieldsSQL时可用
         /// </summary>
-        /// <param name="reader">ֻ�������</param>
-        /// <returns>�����б�</returns>
+        /// <param name="reader">只读结果集</param>
+        /// <returns>对象列表</returns>
         private List<T> ReadAll(IDataReader reader)
         {
             List<T> results = new List<T>();
@@ -377,11 +527,11 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ��ȡ���м�¼��ת��Ϊ���󼯺ϣ���ѯAllFieldsSQLʱ����
+        /// 读取所有记录并转化为对象集合，查询AllFieldsSQL时可用
         /// </summary>
-        /// <param name="reader">ֻ�������</param>
-        /// <param name="count">��ѯ�������</param>
-        /// <returns>�����б�</returns>
+        /// <param name="reader">只读结果集</param>
+        /// <param name="count">查询结果条数</param>
+        /// <returns>对象列表</returns>
         private List<T> Read(IDataReader reader, int count)
         {
             List<T> results = new List<T>();
@@ -395,20 +545,20 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ��IDataReader�ж�ȡһ����¼ת��Ϊ�������޼�¼�򷵻�null
+        /// 从IDataReader中读取一条记录转化为对象，若无记录则返回null
         /// </summary>
         /// <param name="dataReader">IDataReader</param>
-        /// <returns>�������޼�¼�򷵻�null</returns>
+        /// <returns>对象，若无记录则返回null</returns>
         private T ReadOne(IDataReader dataReader)
         {
             return dataReader.Read() ? ConvertToObject(dataReader) : default(T);
         }
 
         /// <summary>
-        /// ��һ�м�¼ת��Ϊ����
+        /// 将一行记录转化为对象
         /// </summary>
-        /// <param name="record">һ�м�¼</param>
-        /// <returns>����</returns>
+        /// <param name="record">一行记录</param>
+        /// <returns>对象</returns>
         protected virtual T ConvertToObject(IDataRecord record)
         {
             T t = new T();
@@ -422,9 +572,9 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ִ��IDbCommand����ȡ���м�¼��ת��Ϊ����ļ��ϣ���ѯAllFieldsSQLʱ����
+        /// 执行IDbCommand，读取所有记录并转化为对象的集合，查询AllFieldsSQL时可用
         /// </summary>
-        /// <param name="command">��ִ�е�IDbCommand</param>
+        /// <param name="command">待执行的IDbCommand</param>
         /// <returns></returns>
         protected List<T> GetAll(IDbCommand command)
         {
@@ -435,10 +585,10 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ִ��IDbCommand����ȡ���м�¼��ת��Ϊ����ļ��ϣ���ѯAllFieldsSQLʱ����
+        /// 执行IDbCommand，读取所有记录并转化为对象的集合，查询AllFieldsSQL时可用
         /// </summary>
-        /// <param name="command">��ִ�е�IDbCommand</param>
-        /// <param name="count">��ѯ�������</param>
+        /// <param name="command">待执行的IDbCommand</param>
+        /// <param name="count">查询结果条数</param>
         /// <returns></returns>
         protected List<T> GetAll(IDbCommand command, int count)
         {
@@ -449,9 +599,9 @@ namespace MyOrm
         }
 
         /// <summary>
-        /// ִ��IDbCommand����ȡһ����¼��ת��Ϊ�������󣬲�ѯAllFieldsSQLʱ����
+        /// 执行IDbCommand，读取一条记录并转化为单个对象，查询AllFieldsSQL时可用
         /// </summary>
-        /// <param name="command">��ִ�е�IDbCommand</param>
+        /// <param name="command">待执行的IDbCommand</param>
         /// <returns></returns>
         protected T GetOne(IDbCommand command)
         {

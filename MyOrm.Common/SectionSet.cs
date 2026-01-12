@@ -5,6 +5,9 @@ using System.Linq;
 
 namespace MyOrm.Common
 {
+    /// <summary>
+    /// 分页设置类，用于数据库查询的分页和排序
+    /// </summary>
     [Serializable]
     public class SectionSet
     {
@@ -111,6 +114,10 @@ namespace MyOrm.Common
         }
 
 
+        /// <summary>
+        /// 返回表示当前对象的字符串
+        /// </summary>
+        /// <returns>表示当前对象的字符串</returns>
         public override string ToString()
         {
             if (Orders != null && Orders.Count > 0)
@@ -143,6 +150,10 @@ namespace MyOrm.Common
         /// <param name="direction">排序方向</param>
         public Sorting(string propertyName, ListSortDirection direction) { PropertyName = propertyName; Direction = direction; }
 
+        /// <summary>
+        /// 返回表示当前对象的字符串
+        /// </summary>
+        /// <returns>表示当前对象的字符串</returns>
         public override string ToString()
         {
             return $"{PropertyName} {(Direction == ListSortDirection.Ascending ? "asc" : "desc")}";

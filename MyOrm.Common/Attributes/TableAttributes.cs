@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Data;
@@ -6,28 +6,28 @@ using System.Data;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// Êı¾İ¿â±íÊôĞÔ£¬ÓÃÀ´±êÊ¶¶ÔÏó¶ÔÓ¦µÄÊı¾İ¿â±í
+    /// æ•°æ®åº“è¡¨ç‰¹æ€§ï¼Œç”¨äºæ ‡è¯†å®ä½“ç±»å¯¹åº”çš„æ•°æ®åº“è¡¨ã€‚
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, AllowMultiple = false, Inherited = true)]
     public class TableAttribute : System.Attribute
     {
         /// <summary>
-        /// Ä¬ÈÏ¹¹Ôìº¯Êı
+        /// åˆå§‹åŒ– <see cref="TableAttribute"/> ç±»çš„æ–°å®ä¾‹ã€‚
         /// </summary>
         public TableAttribute() { }
         /// <summary>
-        /// Ö¸¶¨±íÃûµÄ¹¹Ôìº¯Êı
+        /// åˆå§‹åŒ– <see cref="TableAttribute"/> ç±»çš„æ–°å®ä¾‹ï¼Œå¹¶æŒ‡å®šè¡¨åã€‚
         /// </summary>
-        /// <param name="tableName">±íÃû</param>
+        /// <param name="tableName">æ•°æ®åº“è¡¨åã€‚</param>
         public TableAttribute(string tableName) { TableName = tableName; }
 
         /// <summary>
-        /// Êı¾İ¿â±íÃû
+        /// è·å–æˆ–è®¾ç½®æ•°æ®åº“è¡¨åã€‚
         /// </summary>
         public string TableName { get; set; }
 
         /// <summary>
-        /// Êı¾İÔ´Ãû³Æ£¬¶ÔÓ¦ÅäÖÃÎÄ¼şÖĞConnectionStringsÖĞÃû³Æ£¬Îª¿ÕÔòÈ¡Ä¬ÈÏÊı¾İÔ´
+        /// è·å–æˆ–è®¾ç½®æ•°æ®æºåç§°ã€‚è¯¥åç§°é€šå¸¸å¯¹åº”äºé…ç½®æ–‡ä»¶ä¸­ ConnectionStrings èŠ‚ç‚¹çš„åç§°ã€‚
         /// </summary>
         public string DataSource { get; set; }
     }   

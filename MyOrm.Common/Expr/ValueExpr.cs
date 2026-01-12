@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,36 +8,36 @@ using System.Threading.Tasks;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// è¡¨ç¤ºä¸€ä¸ªå€¼å¸¸é‡æˆ–ä¸€ç»„å¸¸é‡ï¼ˆç”¨äº IN åˆ—è¡¨ï¼‰çš„è¯­å¥ã€‚
+    /// ±íÊ¾Ò»¸öÖµ³£Á¿»òÒ»×é³£Á¿£¨ÓÃÓÚ IN ÁĞ±í£©µÄ±í´ïÊ½¡£
     /// </summary>
-    public sealed class ValueStatement : Statement
+    public sealed class ValueExpr : Expr
     {
         /// <summary>
-        /// æ— å‚æ„é€ ã€‚
+        /// ÎŞ²Î¹¹Ôì¡£
         /// </summary>
-        public ValueStatement()
+        public ValueExpr()
         {
         }
 
         /// <summary>
-        /// ä½¿ç”¨å€¼æ„é€  ValueStatementã€‚
+        /// Ê¹ÓÃÖµ¹¹Ôì ValueExpr¡£
         /// </summary>
-        /// <param name="value">å€¼ï¼Œå¯ä»¥æ˜¯å•ä¸ªå€¼æˆ–å¯æšä¸¾é›†åˆï¼ˆç”¨äº INï¼‰</param>
-        public ValueStatement(object value)
+        /// <param name="value">Öµ£¬¿ÉÒÔÊÇµ¥¸öÖµ»ò¿ÉÃ¶¾Ù¼¯ºÏ£¨ÓÃÓÚ IN£©</param>
+        public ValueExpr(object value)
         {
             Value = value;
         }
 
         /// <summary>
-        /// å¸¸é‡å€¼æˆ–é›†åˆ
+        /// ³£Á¿Öµ»ò¼¯ºÏ
         /// </summary>
         public object Value { get; set; }
 
         /// <inheritdoc/>
         /// <remarks>
-        /// - å¦‚æœå€¼ä¸º nullï¼Œè¿”å› "NULL"ã€‚
-        /// - å¦‚æœå€¼ä¸ºé›†åˆï¼ˆä¸”ä¸æ˜¯å­—ç¬¦ä¸²ï¼‰ï¼Œå°†ä¸ºé›†åˆä¸­æ¯ä¸ªå…ƒç´ ç”Ÿæˆå‚æ•°å¹¶è¿”å›ç±»ä¼¼ "( @p0, @p1, ... )" çš„å­—ç¬¦ä¸²ï¼Œé€‚ç”¨äº IN è¡¨è¾¾å¼ã€‚
-        /// - å¦åˆ™ç”Ÿæˆå•ä¸ªå‚æ•°å¹¶è¿”å›å¯¹åº”çš„å‚æ•°å ä½ç¬¦ã€‚
+        /// - Èç¹ûÖµÎª null£¬·µ»Ø "NULL"¡£
+        /// - Èç¹ûÖµÎª¼¯ºÏ£¨ÇÒ²»ÊÇ×Ö·û´®£©£¬½«Îª¼¯ºÏÖĞÃ¿¸öÔªËØÉú³É²ÎÊı²¢·µ»ØÀàËÆ "( @p0, @p1, ... )" µÄ×Ö·û´®£¬ÊÊÓÃÓÚ IN ±í´ïÊ½¡£
+        /// - ·ñÔòÉú³Éµ¥¸ö²ÎÊı²¢·µ»Ø¶ÔÓ¦µÄ²ÎÊıÕ¼Î»·û¡£
         /// </remarks>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
@@ -47,8 +47,8 @@ namespace MyOrm.Common
                 StringBuilder sb = new StringBuilder();
                 foreach (var item in enumerable)
                 {
-                    if (sb.Length > 0) sb.Append(", ");
-                    if (item is Statement s)
+                    if (sb.Length > 0) sb.Append(",");
+                    if (item is Expr s)
                     {
                         sb.Append(s.ToSql(context, sqlBuilder, outputParams));
                     }
@@ -69,6 +69,12 @@ namespace MyOrm.Common
             }
         }
 
+        /// <inheritdoc/>
+        /// <remarks>
+        /// - Èç¹ûÖµÎª null£¬·µ»Ø "NULL"¡£
+        /// - Èç¹ûÖµÎª¼¯ºÏ£¨ÇÒ²»ÊÇ×Ö·û´®£©£¬·µ»ØÀàËÆ "( val1, val2, ... )" µÄ×Ö·û´®£¬ÊÊÓÃÓÚ IN ±í´ïÊ½¡£
+        /// - ·ñÔò·µ»ØÖµµÄ×Ö·û´®±íÊ¾ĞÎÊ½¡£
+        /// </remarks>
         public override string ToString()
         {
             if (Value == null) return "NULL";
@@ -80,11 +86,13 @@ namespace MyOrm.Common
                 return Value.ToString();
         }
 
+        /// <inheritdoc/>
         public override bool Equals(object obj)
         {
-            return obj is ValueStatement vs && Equals(Value, vs.Value);
+            return obj is ValueExpr vs && Equals(Value, vs.Value);
         }
 
+        /// <inheritdoc/>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), Value?.GetHashCode() ?? 0);

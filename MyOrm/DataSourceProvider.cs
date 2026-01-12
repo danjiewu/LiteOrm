@@ -11,10 +11,58 @@ using System.Threading.Tasks;
 
 namespace MyOrm
 {
+    /// <summary>
+    /// 数据源提供程序 - 管理和提供数据库连接配置
+    /// </summary>
+    /// <remarks>
+    /// DataSourceProvider 是一个数据源管理类，负责从应用程序配置中读取和管理数据库连接配置。
+    /// 
+    /// 主要功能包括：
+    /// 1. 配置加载 - 从 IConfiguration 中加载 MyOrm 节点的数据库配置
+    /// 2. 数据源查询 - 根据名称查询数据源配置
+    /// 3. 默认数据源管理 - 管理默认的数据源名称
+    /// 4. 多数据源支持 - 支持多个数据源的配置和管理
+    /// 5. 线程安全 - 使用 ConcurrentDictionary 确保线程安全
+    /// 6. 配置验证 - 验证数据源配置的有效性
+    /// 
+    /// 该类通过依赖注入框架以单例方式注册，在应用启动时由依赖注入容器创建。
+    /// 配置应该在应用配置文件中的 \"MyOrm\" 节点下定义。
+    /// 
+    /// 配置示例：
+    /// <code>
+    /// \"MyOrm\": {
+    ///   \"DataSources\": [
+    ///     {
+    ///       \"Name\": \"DefaultConnection\",
+    ///       \"ConnectionString\": \"Server=.;Database=MyDB;...\",
+    ///       \"ProviderType\": \"System.Data.SqlClient.SqlConnection\"
+    ///     },
+    ///     {
+    ///       \"Name\": \"MySqlConnection\",
+    ///       \"ConnectionString\": \"Server=localhost;Database=MyDB;...\",
+    ///       \"ProviderType\": \"MySql.Data.MySqlClient.MySqlConnection\"
+    ///     }
+    ///   ],
+    ///   \"DefaultDataSourceName\": \"DefaultConnection\"
+    /// }
+    /// </code>
+    /// 
+    /// 使用示例：
+    /// <code>
+    /// var provider = serviceProvider.GetRequiredService&lt;IDataSourceProvider&gt;();
+    /// 
+    /// // 获取默认数据源
+    /// var defaultConfig = provider.GetDataSource(null);
+    /// 
+    /// // 获取指定数据源
+    /// var mysqlConfig = provider.GetDataSource(\"MySqlConnection\");
+    /// </code>
+    /// </remarks>
     [AutoRegister(ServiceLifetime.Singleton)]
     public class DataSourceProvider : IDataSourceProvider
     {
         private ConcurrentDictionary<string, DataSourceConfig> _connections = new(StringComparer.OrdinalIgnoreCase);
+        
         /// <summary>
         /// 默认连接名称
         /// </summary>
@@ -23,6 +71,10 @@ namespace MyOrm
             get; set;
         }
 
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="configuration">应用程序配置</param>
         public DataSourceProvider(IConfiguration configuration)
         {
             if (configuration == null)
@@ -30,6 +82,11 @@ namespace MyOrm
             LoadConfiguration(configuration.GetSection("MyOrm"));
         }
 
+        /// <summary>
+        /// 获取指定名称的数据源配置
+        /// </summary>
+        /// <param name="name">数据源名称，如果为空则使用默认数据源</param>
+        /// <returns>数据源配置，如果不存在则返回null</returns>
         public DataSourceConfig GetDataSource(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
@@ -49,6 +106,7 @@ namespace MyOrm
         /// <summary>
         /// 从 MyOrm 配置节点加载配置
         /// </summary>
+        /// <param name="configuration">MyOrm配置节点</param>
         public void LoadConfiguration(IConfiguration configuration)
         {
             if (configuration == null)
@@ -83,13 +141,24 @@ namespace MyOrm
             }
         }
 
+        /// <summary>
+        /// 获取所有数据源配置
+        /// </summary>
         public ICollection<DataSourceConfig> DataSources => _connections.Values;
 
+        /// <summary>
+        /// 返回一个枚举器，用于遍历所有数据源配置
+        /// </summary>
+        /// <returns>数据源配置的枚举器</returns>
         public IEnumerator<DataSourceConfig> GetEnumerator()
         {
             return _connections.Values.GetEnumerator();
         }
 
+        /// <summary>
+        /// 返回一个枚举器，用于遍历所有数据源配置
+        /// </summary>
+        /// <returns>数据源配置的枚举器</returns>
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();

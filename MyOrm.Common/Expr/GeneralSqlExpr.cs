@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// é€šè¿‡å§”æ‰˜ç”Ÿæˆçš„ SQL ç‰‡æ®µã€‚
+    /// Í¨¹ıÎ¯ÍĞÉú³ÉµÄ SQL Æ¬¶Î±í´ïÊ½¡£
     /// </summary>
-    public sealed class GeneralSqlStatement : Statement
+    public sealed class GeneralSqlExpr : Expr
     {
         /// <summary>
-        /// ä½¿ç”¨å§”æ‰˜æ„é€ ï¼Œå¯ä»¥åœ¨ç”Ÿæˆ SQL æ—¶ä¾æ®ä¸Šä¸‹æ–‡åŠ¨æ€ç”Ÿæˆå­—ç¬¦ä¸²ã€‚
+        /// Ê¹ÓÃÎ¯ÍĞ¹¹Ôì£¬¿ÉÒÔÔÚÉú³É SQL Ê±ÒÀ¾İÉÏÏÂÎÄ¶¯Ì¬Éú³É×Ö·û´®¡£
         /// </summary>
-        /// <param name="func">å¤„ç†ä¸Šä¸‹æ–‡å¹¶è¿”å› SQL å­—ç¬¦ä¸²çš„å§”æ‰˜</param>
-        public GeneralSqlStatement(Expression<Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, string>> func)
+        /// <param name="func">´¦ÀíÉÏÏÂÎÄ²¢·µ»Ø SQL ×Ö·û´®µÄÎ¯ÍĞ</param>
+        public GeneralSqlExpr(Expression<Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, string>> func)
         {
             sqlHandler = func ?? throw new ArgumentNullException(nameof(func));
         }
@@ -28,16 +28,29 @@ namespace MyOrm.Common
             return sqlHandler?.Compile()?.Invoke(context, sqlBuilder, outputParams);
         }
 
+        /// <summary>
+        /// ·µ»Ø±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£
+        /// </summary>
+        /// <returns>±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£</returns>
         public override string ToString()
         {
             return sqlHandler?.ToString();
         }
 
+        /// <summary>
+        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// </summary>
+        /// <param name="obj">ÒªÓëµ±Ç°¶ÔÏó½øĞĞ±È½ÏµÄ¶ÔÏó¡£</param>
+        /// <returns>Èç¹ûÖ¸¶¨µÄ¶ÔÏóµÈÓÚµ±Ç°¶ÔÏó£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
         public override bool Equals(object obj)
         {
-            return obj is GeneralSqlStatement g && g.sqlHandler.ToString() == sqlHandler.ToString();
+            return obj is GeneralSqlExpr g && g.sqlHandler.ToString() == sqlHandler.ToString();
         }
 
+        /// <summary>
+        /// ×÷ÎªÄ¬ÈÏ¹şÏ£º¯Êı¡£
+        /// </summary>
+        /// <returns>µ±Ç°¶ÔÏóµÄ¹şÏ£´úÂë¡£</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), sqlHandler.ToString().GetHashCode());
