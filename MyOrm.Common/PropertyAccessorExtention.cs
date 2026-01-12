@@ -5,10 +5,10 @@ using System.Reflection;
 
 public static class PropertyAccessorExtension
 {
-    private static readonly ConcurrentDictionary<string, Func<object, object>> _getterCache = new();
-    private static readonly ConcurrentDictionary<string, Action<object, object>> _setterCache = new();
+    private static readonly ConcurrentDictionary<string, Func<object, object>> _getterCache = new ConcurrentDictionary<string, Func<object, object>>();
+    private static readonly ConcurrentDictionary<string, Action<object, object>> _setterCache = new ConcurrentDictionary<string, Action<object, object>>();
 
-    public static object? GetValueFast(this PropertyInfo property, object instance)
+    public static object GetValueFast(this PropertyInfo property, object instance)
     {
         if (property == null) throw new ArgumentNullException(nameof(property));
         if (instance == null) return null;

@@ -9,7 +9,7 @@ namespace MyOrm.Common
 {
     public class StatementDisplayTextBuilder
     {
-        public Type Type { get; init; }
+        public Type Type { get; }
         public StatementDisplayTextBuilder(Type entityType)
         {
             Type = entityType;

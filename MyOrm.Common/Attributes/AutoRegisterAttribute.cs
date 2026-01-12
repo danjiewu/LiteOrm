@@ -13,7 +13,7 @@ namespace MyOrm.Common
         public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Transient;
 
         // 支持多个服务类型
-        public Type[]? ServiceTypes { get; set; }
+        public Type[] ServiceTypes { get; set; }
         public bool Enabled { get; } = true;
         // 构造函数重载
         public AutoRegisterAttribute() { }
