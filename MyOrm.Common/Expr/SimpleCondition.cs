@@ -161,7 +161,7 @@ namespace MyOrm.Common
         /// <returns></returns>
         public override bool Equals(object obj)
         {
-            if (obj == null || obj.GetType() != typeof(SimpleCondition)) return false;
+            if (obj is null || obj.GetType() != typeof(SimpleCondition)) return false;
             SimpleCondition condition = (SimpleCondition)obj;
             return condition.Property == Property && condition.Operator == Operator && Equals(condition.Value, Value);
         }
@@ -173,8 +173,8 @@ namespace MyOrm.Common
         public override int GetHashCode()
         {
             int hash = (int)Operator;
-            if (Property != null) hash += Property.GetHashCode();
-            if (Value != null) hash += Value.GetHashCode();
+            if (Property is not null) hash += Property.GetHashCode();
+            if (Value is not null) hash += Value.GetHashCode();
             return hash;
         }
     }

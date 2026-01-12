@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Text.Json.Serialization;
 
 
 namespace MyOrm.Common
@@ -9,6 +10,13 @@ namespace MyOrm.Common
     /// <summary>
     /// 抽象表达式基类。子类应实现 <see cref="ToSql"/> 将表达式转换为 SQL 片段并把所需参数写入。
     /// </summary>
+    [JsonDerivedType(typeof(BinaryExpr), typeDiscriminator: "binary")]
+    [JsonDerivedType(typeof(ExprSet), typeDiscriminator: "set")]
+    [JsonDerivedType(typeof(FunctionExpr), typeDiscriminator: "func")]
+    [JsonDerivedType(typeof(StaticSqlExpr), typeDiscriminator: "static")]
+    [JsonDerivedType(typeof(PropertyExpr), typeDiscriminator: "prop")]
+    [JsonDerivedType(typeof(UnaryExpr), typeDiscriminator: "unary")]
+    [JsonDerivedType(typeof(ValueExpr), typeDiscriminator: "value")]
     public abstract class Expr
     {
         /// <summary>
@@ -21,7 +29,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 表示空值的表达式
         /// </summary>
-        public static readonly ValueExpr Null = new ValueExpr();
+        public static readonly ValueExpr Empty = new ValueExpr();
 
         /// <summary>
         /// 用于哈希计算的种子值。
@@ -71,11 +79,7 @@ namespace MyOrm.Common
         /// <returns>二元表达式</returns>
         public static BinaryExpr Property(string propertyName, object value)
         {
-            return new BinaryExpr()
-            {
-                Left = new PropertyExpr(propertyName),
-                Right = new ValueExpr(value)
-            };
+            return new BinaryExpr(new PropertyExpr(propertyName), BinaryOperator.Equal, new ValueExpr(value));
         }
 
         /// <summary>
@@ -87,12 +91,7 @@ namespace MyOrm.Common
         /// <returns>二元表达式</returns>
         public static BinaryExpr Property(string propertyName, BinaryOperator oper, object value)
         {
-            return new BinaryExpr()
-            {
-                Left = new PropertyExpr(propertyName),
-                Operator = oper,
-                Right = new ValueExpr(value)
-            };
+            return new BinaryExpr(new PropertyExpr(propertyName), oper, new ValueExpr(value));
         }
 
         /// <summary>
@@ -101,9 +100,9 @@ namespace MyOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="expression">Lambda表达式</param>
         /// <returns>表达式语句</returns>
-        public static LamdaExpr<T> Exp<T>(Expression<Func<T, bool>> expression)
+        public static Expr Exp<T>(Expression<Func<T, bool>> expression)
         {
-            return new LamdaExpr<T>(expression);
+            return new LambdaExprConverter(expression).ToExpr();
         }
 
         /// <summary>
@@ -169,10 +168,9 @@ namespace MyOrm.Common
         /// <returns>两个表达式的逻辑与组合</returns>
         public static Expr operator &(Expr left, Expr right)
         {
-            if (left == null) return right;
-            else if (right == null) return left;
-            else
-                return left.And(right);
+            if (left is null) return right;
+            else if (right is null) return left;
+            else return left.And(right);
         }
 
         /// <summary>
@@ -183,7 +181,7 @@ namespace MyOrm.Common
         /// <returns>两个表达式的逻辑或组合</returns>
         public static Expr operator |(Expr left, Expr right)
         {
-            if (left == null || right == null) return Null;
+            if (left is null || right is null) return Empty;
             return left.Or(right);
         }
 
@@ -261,7 +259,7 @@ namespace MyOrm.Common
     /// <summary>
     /// Expr类的扩展方法，提供便捷的表达式组合操作
     /// </summary>
-    public static class ExprExt
+    public static class ExprExtentions
     {
         /// <summary>
         /// 使用AND逻辑运算符组合两个表达式

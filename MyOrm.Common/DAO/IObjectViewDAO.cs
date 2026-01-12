@@ -25,38 +25,38 @@ namespace MyOrm.Common
         /// <summary>
         /// 根据条件获取单个对象
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
-        new T SearchOne(Expr condition);
+        new T SearchOne(Expr expr);
         /// <summary>
         /// 根据条件遍历对象
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="func">调用的函数委托</param>
-        void ForEach(Expr condition, Action<T> func);
+        void ForEach(Expr expr, Action<T> func);
 
         /// <summary>
         /// 根据条件查询
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象列表</returns>
-        new List<T> Search(Expr condition = null);
+        new List<T> Search(Expr expr = null);
 
         /// <summary>
         /// 根据条件查询
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <returns>符合条件的对象列表</returns>
-        new List<T> Search(Expr condition, params Sorting[] orderBy);
+        new List<T> Search(Expr expr, params Sorting[] orderBy);
 
         /// <summary>
         /// 分页查询
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="section">分页设定</param>
         /// <returns></returns>
-        new List<T> SearchSection(Expr condition, SectionSet section);
+        new List<T> SearchSection(Expr expr, PageSection section);
     }
     #endregion
 
@@ -91,46 +91,46 @@ namespace MyOrm.Common
         /// <summary>
         /// 根据条件检查对象是否存在
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>是否存在</returns>
-        bool Exists(Expr condition);
+        bool Exists(Expr expr);
 
         /// <summary>
         /// 得到满足条件的对象个数
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>满足条件的对象个数</returns>
-        int Count(Expr condition);
+        int Count(Expr expr);
 
         /// <summary>
         /// 根据条件获取单个对象
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
-        Object SearchOne(Expr condition);
+        Object SearchOne(Expr expr);
 
         /// <summary>
         /// 根据条件查询
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象列表</returns>
-        IList Search(Expr condition);
+        IList Search(Expr expr);
 
         /// <summary>
         /// 根据条件查询
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <returns>符合条件的对象列表</returns>
-        IList Search(Expr condition, params Sorting[] orderBy);
+        IList Search(Expr expr, params Sorting[] orderBy);
 
         /// <summary>
         /// 分页查询
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="section">分页设定</param>
         /// <returns></returns>
-        IList SearchSection(Expr condition, SectionSet section);
+        IList SearchSection(Expr expr, PageSection section);
     }
     #endregion
 }

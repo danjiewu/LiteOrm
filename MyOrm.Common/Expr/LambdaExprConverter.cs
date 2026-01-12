@@ -13,28 +13,41 @@ namespace MyOrm.Common
     /// <summary>
     /// 将 Lambda 表达式转换为 Expr 对象树的转换器
     /// </summary>
-    public class ExpressionExprConverter
+    public class LambdaExprConverter
     {
         private readonly ParameterExpression _rootParameter;
-
+        private readonly LambdaExpression _expression;
         /// <summary>
         /// 初始化 ExpressionExprConverter
         /// </summary>
-        /// <param name="rootParameter">Lambda 表达式的根参数</param>
-        public ExpressionExprConverter(ParameterExpression rootParameter = null)
+        /// <param name="expression">Lambda 表达式</param>
+        public LambdaExprConverter(LambdaExpression expression)
         {
-            _rootParameter = rootParameter;
+            if(expression is null) throw new ArgumentNullException(nameof(expression));
+            _expression = expression;
+            _rootParameter = expression.Parameters.FirstOrDefault();
         }
 
         /// <summary>
         /// 将 Lambda 表达式转换为 Expr
+        /// <return>转换后的 Expr</return>
         /// </summary>
-        public Expr Convert(Expression expression)
+        public Expr ToExpr()
         {
-            if (expression == null) throw new ArgumentNullException(nameof(expression));
-            var stmt = ConvertInternal(expression);
-            if (stmt == null) throw new ArgumentException($"无法转换表达式: {expression}");
+            var stmt = ConvertInternal(_expression.Body);
+            if (stmt is null) throw new ArgumentException($"无法转换表达式: {_expression.Body}");
             return stmt;
+        }
+
+        /// <summary>
+        /// 将 Lambda 表达式转换为 Expr
+        /// <param name="expression">Lambda 表达式</param>"
+        /// <return>转换后的 Expr</return>
+        /// </summary>
+        public static Expr ToExpr(LambdaExpression expression)
+        {
+            var converter = new LambdaExprConverter(expression);
+            return converter.ToExpr();
         }
 
         #region 基础表达式处理
@@ -131,7 +144,7 @@ namespace MyOrm.Common
         {
             var operand = ConvertInternal(node.Operand);
 
-            if (operand == null)
+            if (operand is null)
             {
                 throw new ArgumentException($"无法转换一元表达式: {node}");
             }
@@ -170,14 +183,14 @@ namespace MyOrm.Common
 
         private Expr ConvertMember(MemberExpression node)
         {
-            if (Nullable.GetUnderlyingType(node.Member.DeclaringType) != null && node.Member.Name == "Value")
+            if (Nullable.GetUnderlyingType(node.Member.DeclaringType) is not null && node.Member.Name == "Value")
             {
                 // 处理 Nullable<T>.Value  
                 return ConvertInternal(node.Expression);
             }
             // 处理参数属性访问（如 x => x.Name）
             if (node.Expression is ParameterExpression paramExpr &&
-                (_rootParameter == null || paramExpr == _rootParameter))
+                (_rootParameter is null || paramExpr == _rootParameter))
             {
                 if (node.Member is PropertyInfo propertyInfo)
                 {
@@ -193,7 +206,7 @@ namespace MyOrm.Common
             {
                 // 处理字符串或数组的 Length 属性
                 var targetExpr = node.Expression;
-                if (targetExpr == null) return new FunctionExpr(node.Member.Name);
+                if (targetExpr is null) return new FunctionExpr(node.Member.Name);
                 else
                     return new FunctionExpr(node.Member.Name, ConvertInternal(targetExpr));
             }
@@ -237,7 +250,7 @@ namespace MyOrm.Common
             foreach (var expression in node.Expressions)
             {
                 var item = ConvertInternal(expression);
-                if (item != null)
+                if (item is not null)
                 {
                     items.Add(item);
                 }
@@ -254,7 +267,7 @@ namespace MyOrm.Common
                 foreach (var arg in init.Arguments)
                 {
                     var item = ConvertInternal(arg);
-                    if (item != null)
+                    if (item is not null)
                     {
                         items.Add(item);
                     }
@@ -283,7 +296,7 @@ namespace MyOrm.Common
             }
 
             // 处理对象方法
-            if (node.Object != null)
+            if (node.Object is not null)
             {
                 return HandleInstanceMethod(node);
             }
@@ -299,7 +312,7 @@ namespace MyOrm.Common
             Expr left = null;
             Expr right = null;
 
-            if (node.Object != null)
+            if (node.Object is not null)
             {
                 left = ConvertInternal(node.Object);
                 if (node.Arguments.Count > 0)
@@ -314,7 +327,7 @@ namespace MyOrm.Common
                 right = node.Arguments.Count > 1 ? ConvertInternal(node.Arguments[1]) : null;
             }
 
-            if (left == null)
+            if (left is null)
             {
                 throw new ArgumentException($"无法解析字符串方法调用: {node}");
             }
@@ -322,29 +335,29 @@ namespace MyOrm.Common
             switch (methodName)
             {
                 case "StartsWith":
-                    if (right == null) throw new ArgumentException("StartsWith 方法需要参数");
+                    if (right is null) throw new ArgumentException("StartsWith 方法需要参数");
                     return new BinaryExpr(left, BinaryOperator.StartsWith, right);
 
                 case "EndsWith":
-                    if (right == null) throw new ArgumentException("EndsWith 方法需要参数");
+                    if (right is null) throw new ArgumentException("EndsWith 方法需要参数");
                     return new BinaryExpr(left, BinaryOperator.EndsWith, right);
 
                 case "Contains":
-                    if (right == null) throw new ArgumentException("Contains 方法需要参数");
+                    if (right is null) throw new ArgumentException("Contains 方法需要参数");
                     return new BinaryExpr(left, BinaryOperator.Contains, right);
 
                 case "Concat":
-                    if (right == null) throw new ArgumentException("Concat 方法需要参数");
+                    if (right is null) throw new ArgumentException("Concat 方法需要参数");
                     return new BinaryExpr(left, BinaryOperator.Concat, right);
 
                 case "Equals":
-                    if (right == null) throw new ArgumentException("Equals 方法需要参数");
+                    if (right is null) throw new ArgumentException("Equals 方法需要参数");
                     return new BinaryExpr(left, BinaryOperator.Equal, right);
                 case "Compare":
-                    if (right == null) throw new ArgumentException("Compare 方法需要两个参数");
+                    if (right is null) throw new ArgumentException("Compare 方法需要两个参数");
                     return new BinaryExpr(left, BinaryOperator.Equal, right);
                 case "CompareTo":
-                    if (right == null) throw new ArgumentException("CompareTo 方法需要参数");
+                    if (right is null) throw new ArgumentException("CompareTo 方法需要参数");
                     return new BinaryExpr(left, BinaryOperator.Equal, right);
                 default:
                     return ConvertMethodCallDefault(node, true);
@@ -366,7 +379,7 @@ namespace MyOrm.Common
                 var collection = ConvertInternal(node.Arguments[0]);
                 var value = ConvertInternal(node.Arguments[1]);
 
-                if (collection == null || value == null)
+                if (collection is null || value is null)
                 {
                     throw new ArgumentException($"无法解析 Contains 方法调用: {node}");
                 }
@@ -388,7 +401,7 @@ namespace MyOrm.Common
                 var left = ConvertInternal(node.Object);
                 var right = node.Arguments.Count > 0 ? ConvertInternal(node.Arguments[0]) : null;
 
-                if (left == null || right == null)
+                if (left is null || right is null)
                 {
                     throw new ArgumentException($"无法解析 Equals 方法调用: {node}");
                 }
@@ -399,7 +412,7 @@ namespace MyOrm.Common
             {
                 var left = ConvertInternal(node.Object);
                 var right = node.Arguments.Count > 0 ? ConvertInternal(node.Arguments[0]) : null;
-                if (left == null || right == null)
+                if (left is null || right is null)
                 {
                     throw new ArgumentException($"无法解析 Contains 方法调用: {node}");
                 }
@@ -413,7 +426,7 @@ namespace MyOrm.Common
                 var left = ConvertInternal(node.Object);
                 var right = ConvertInternal(node.Arguments[0]);
 
-                if (left == null || right == null)
+                if (left is null || right is null)
                 {
                     throw new ArgumentException($"无法解析 CompareTo 方法调用: {node}");
                 }
@@ -457,7 +470,7 @@ namespace MyOrm.Common
                 var left = ConvertInternal(node.Arguments[0]);
                 var right = ConvertInternal(node.Arguments[1]);
 
-                if (left == null || right == null)
+                if (left is null || right is null)
                 {
                     throw new ArgumentException($"无法解析 object.Equals 方法调用: {node}");
                 }
@@ -474,7 +487,7 @@ namespace MyOrm.Common
                 var left = ConvertInternal(node.Arguments[0]);
                 var right = ConvertInternal(node.Arguments[1]);
 
-                if (left == null || right == null)
+                if (left is null || right is null)
                 {
                     throw new ArgumentException($"无法解析 Compare 方法调用: {node}");
                 }
@@ -490,10 +503,10 @@ namespace MyOrm.Common
             var parameters = new List<Expr>();
 
             // 添加对象实例（非静态方法）
-            if (node.Object != null)
+            if (node.Object is not null)
             {
                 var obj = ConvertInternal(node.Object);
-                if (obj != null)
+                if (obj is not null)
                 {
                     parameters.Add(obj);
                 }
@@ -503,7 +516,7 @@ namespace MyOrm.Common
             foreach (var arg in node.Arguments)
             {
                 var param = ConvertInternal(arg);
-                if (param != null)
+                if (param is not null)
                 {
                     parameters.Add(param);
                 }

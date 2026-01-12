@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace MyOrm.Common
@@ -12,7 +13,7 @@ namespace MyOrm.Common
     /// </summary>
     public sealed class BinaryExpr : Expr
     {
-        private static Dictionary<BinaryOperator, string> operatorSymbols = new()
+        private static Dictionary<BinaryOperator, string> operatorSymbols = new Dictionary<BinaryOperator, string>()
         {
             { BinaryOperator.Equal,"=" },
             { BinaryOperator.GreaterThan,">" },
@@ -93,14 +94,14 @@ namespace MyOrm.Common
                 case BinaryOperator.RegexpLike:
                     return $"{op}({Left.ToSql(context, sqlBuilder, outputParams)},{Right.ToSql(context, sqlBuilder, outputParams)})";
                 case BinaryOperator.Equal:
-                    if (Right == null || Right is ValueExpr vs && vs.Value == null)
+                    if (Right is null || Right is ValueExpr vs && vs.Value is null)
                     {
                         if (Operator == BinaryOperator.Equal)
                             return $"{Left.ToSql(context, sqlBuilder, outputParams)} is null";
                         else
                             return $"{Left.ToSql(context, sqlBuilder, outputParams)} is not null";
                     }
-                    else if (Left == null || Left is ValueExpr vsl && vsl.Value == null)
+                    else if (Left is null || Left is ValueExpr vsl && vsl.Value is null)
                     {
                         if (Operator == BinaryOperator.Equal)
                             return $"{Right.ToSql(context, sqlBuilder, outputParams)} is null";
@@ -187,6 +188,7 @@ namespace MyOrm.Common
     /// <summary>
     /// Ë«Ä¿²Ù×÷·û
     /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum BinaryOperator
     {
         /// <summary>

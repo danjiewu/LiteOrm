@@ -59,10 +59,10 @@ namespace MyOrm.Common
         /// <summary>
         /// 异步根据条件删除对象
         /// </summary>
-        /// <param name="condition">条件</param>
+        /// <param name="expr">条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回删除对象数量</returns>
-        Task<int> DeleteAsync(Expr condition, CancellationToken cancellationToken = default);
+        Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default);
         
         /// <summary>
         /// 异步根据主键删除对象
@@ -115,10 +115,10 @@ namespace MyOrm.Common
         /// 异步根据条件更新数据
         /// </summary>
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="condition">更新的条件</param>
+        /// <param name="expr">更新的条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回更新的记录数</returns>
-        Task<int> UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr condition, CancellationToken cancellationToken = default);
+        Task<int> UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr expr, CancellationToken cancellationToken = default);
         
         /// <summary>
         /// 异步删除对象
@@ -139,9 +139,9 @@ namespace MyOrm.Common
         /// <summary>
         /// 异步根据条件删除对象
         /// </summary>
-        /// <param name="condition">条件</param>
+        /// <param name="expr">条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回删除对象数量</returns>
-        Task<int> DeleteAsync(Expr condition, CancellationToken cancellationToken = default);
+        Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default);
     }
 }

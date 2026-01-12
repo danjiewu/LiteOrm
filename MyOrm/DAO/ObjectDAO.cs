@@ -88,7 +88,7 @@ namespace MyOrm
                 }
             }
 
-            command.CommandText = IdentityColumn == null ?
+            command.CommandText = IdentityColumn is null ?
                 String.Format("insert into {0} ({1}) \nvalues ({2})", ToSqlName(FactTableName), strColumns, strValues)
                 : SqlBuilder.BuildIdentityInsertSQL(command, IdentityColumn, FactTableName, strColumns.ToString(), strValues.ToString());
             return command;
@@ -117,7 +117,7 @@ namespace MyOrm
             }
 
             string strTimestamp = MakeTimestampCondition(command);
-            if (strTimestamp != null) strTimestamp = " and " + strTimestamp;
+            if (strTimestamp is not null) strTimestamp = " and " + strTimestamp;
             command.CommandText = String.Format("update {0} set {1} \nwhere{2} ", ToSqlName(FactTableName), strColumns, MakeIsKeyCondition(command) + strTimestamp);
             return command;
         }
@@ -172,7 +172,7 @@ namespace MyOrm
                     command.Parameters.Add(param);
                 }
             }
-            string insertCommandText = IdentityColumn == null ? String.Format("insert into {0} ({1}) \nvalues ({2})", ToSqlName(FactTableName), strColumns, strValues)
+            string insertCommandText = IdentityColumn is null ? String.Format("insert into {0} ({1}) \nvalues ({2})", ToSqlName(FactTableName), strColumns, strValues)
                 : SqlBuilder.BuildIdentityInsertSQL(command, IdentityColumn, ToSqlName(FactTableName), strColumns.ToString(), strValues.ToString());
             string updateCommandText = String.Format("update {0} set {1} \nwhere{2};", ToSqlName(FactTableName), strUpdateColumns, MakeIsKeyCondition(command));
 
@@ -192,20 +192,20 @@ namespace MyOrm
         public virtual bool Insert(T t)
         {
             var insertCommand = MakeInsertCommand();
-            if (t == null) throw new ArgumentNullException("t");
+            if (t is null) throw new ArgumentNullException("t");
             foreach (IDataParameter param in insertCommand.Parameters)
             {
                 ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
                 param.Value = ConvertToDBValue(column.GetValue(t), column);
             }
-            if (IdentityColumn == null)
+            if (IdentityColumn is null)
             {
                 insertCommand.ExecuteNonQuery();
             }
             else
             {
                 IDataParameter param = insertCommand.Parameters.Contains(ToParamName(IdentityColumn.PropertyName)) ? (IDataParameter)insertCommand.Parameters[ToParamName(IdentityColumn.PropertyName)] : null;
-                if (param != null && param.Direction == ParameterDirection.Output)
+                if (param is not null && param.Direction == ParameterDirection.Output)
                 {
                     insertCommand.ExecuteNonQuery();
                     IdentityColumn.SetValue(t, ConvertValue(param.Value, IdentityColumn.PropertyType));
@@ -225,7 +225,7 @@ namespace MyOrm
         public virtual void BatchInsert(IEnumerable<T> values)
         {
             var provider = BulkInsertProviderFactory.GetProvider(TableDefinition.DataProviderType);
-            if (provider != null)
+            if (provider is not null)
             {
                 DataTable dt = new DataTable(FactTableName);
                 List<ColumnDefinition> insertableColumns = new List<ColumnDefinition>();
@@ -268,7 +268,7 @@ namespace MyOrm
         /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
         public virtual bool Update(T t, object timestamp = null)
         {
-            if (t == null) throw new ArgumentNullException("t");
+            if (t is null) throw new ArgumentNullException("t");
             var updateCommand = MakeUpdateCommand();
             foreach (IDataParameter param in updateCommand.Parameters)
             {
@@ -293,7 +293,7 @@ namespace MyOrm
         /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
         public virtual UpdateOrInsertResult UpdateOrInsert(T t)
         {
-            if (t == null) throw new ArgumentNullException("t");
+            if (t is null) throw new ArgumentNullException("t");
             var updateOrInsertCommand = MakeUpdateOrInsertCommand();
             foreach (IDataParameter param in updateOrInsertCommand.Parameters)
             {
@@ -303,7 +303,7 @@ namespace MyOrm
             int ret = Convert.ToInt32(updateOrInsertCommand.ExecuteScalar());
             if (ret >= 0)
             {
-                if (IdentityColumn != null) IdentityColumn.SetValue(t, ret);
+                if (IdentityColumn is not null) IdentityColumn.SetValue(t, ret);
                 return UpdateOrInsertResult.Inserted;
             }
             else
@@ -316,20 +316,20 @@ namespace MyOrm
         /// 根据条件更新数据
         /// </summary>
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="condition">更新的条件</param>
+        /// <param name="expr">更新的条件</param>
         /// <returns>更新的记录数</returns>
-        public virtual int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expr condition)
+        public virtual int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expr expr)
         {
             List<string> strSets = new List<string>();
             List<KeyValuePair<string, object>> paramValues = new List<KeyValuePair<string, object>>();
             foreach (KeyValuePair<string, object> value in values)
             {
                 SqlColumn column = Table.GetColumn(value.Key);
-                if (column == null) throw new Exception(String.Format("Property \"{0}\" does not exist in type \"{1}\".", value.Key, Table.DefinitionType.FullName));
+                if (column is null) throw new Exception(String.Format("Property \"{0}\" does not exist in type \"{1}\".", value.Key, Table.DefinitionType.FullName));
                 strSets.Add(column.FormattedName(SqlBuilder) + "=" + ToSqlParam(paramValues.Count.ToString()));
                 paramValues.Add(paramValues.Count.ToString(), value.Value);
             }
-            string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray()) + " \nwhere" + condition.ToSql(SqlBuildContext, SqlBuilder, paramValues);
+            string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray()) + " \nwhere" + expr.ToSql(SqlBuildContext, SqlBuilder, paramValues);
             using (IDbCommand command = MakeNamedParamCommand(updateSql, paramValues))
             {
                 return command.ExecuteNonQuery();
@@ -346,13 +346,13 @@ namespace MyOrm
         {
             ThrowExceptionIfNoKeys();
             ThrowExceptionIfWrongKeys(keys);
-            ExprSet condition = new ExprSet(ExprJoinType.And);
+            ExprSet expr = new ExprSet(ExprJoinType.And);
             int i = 0;
             foreach (ColumnDefinition column in TableDefinition.Keys)
             {
-                condition.Add(Expr.Property(column.PropertyName, keys[i++]));
+                expr.Add(Expr.Property(column.PropertyName, keys[i++]));
             }
-            return UpdateAllValues(values, condition) > 0;
+            return UpdateAllValues(values, expr) > 0;
         }
 
         /// <summary>
@@ -362,18 +362,18 @@ namespace MyOrm
         /// <returns>是否成功删除</returns>
         public virtual bool Delete(T t)
         {
-            if (t == null) throw new ArgumentNullException("t");
+            if (t is null) throw new ArgumentNullException("t");
             return DeleteByKeys(GetKeyValues(t));
         }
 
         /// <summary>
         /// 根据条件删除对象
         /// </summary>
-        /// <param name="condition">条件</param>
+        /// <param name="expr">条件</param>
         /// <returns>删除对象数量</returns>
-        public virtual int Delete(Expr condition)
+        public virtual int Delete(Expr expr)
         {
-            using (IDbCommand command = MakeConditionCommand("delete from @Table@ \nwhere@Condition@", condition))
+            using (IDbCommand command = MakeConditionCommand("delete from @Table@ \nwhere@Condition@", expr))
             {
                 return command.ExecuteNonQuery();
             }
@@ -508,12 +508,12 @@ namespace MyOrm
         /// <summary>
         /// 异步根据条件删除对象。
         /// </summary>
-        /// <param name="condition">条件。</param>
+        /// <param name="expr">条件。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，返回删除对象数量。</returns>
-        public virtual Task<int> DeleteAsync(Expr condition, CancellationToken cancellationToken = default)
+        public virtual Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Delete(condition), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => Delete(expr), cancellationToken);
         }
 
         // non-generic async wrappers
@@ -547,9 +547,9 @@ namespace MyOrm
             return UpdateOrInsertAsync((T)o, cancellationToken);
         }
 
-        Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr condition, CancellationToken cancellationToken)
+        Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr expr, CancellationToken cancellationToken)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => UpdateAllValues(values, condition), cancellationToken);
+            return CurrentSession.ExecuteInSessionAsync(() => UpdateAllValues(values, expr), cancellationToken);
         }
 
         Task<bool> IObjectDAOAsync.DeleteAsync(object o, CancellationToken cancellationToken)
@@ -562,9 +562,9 @@ namespace MyOrm
             return DeleteByKeysAsync(keys, cancellationToken);
         }
 
-        Task<int> IObjectDAOAsync.DeleteAsync(Expr condition, CancellationToken cancellationToken)
+        Task<int> IObjectDAOAsync.DeleteAsync(Expr expr, CancellationToken cancellationToken)
         {
-            return DeleteAsync(condition, cancellationToken);
+            return DeleteAsync(expr, cancellationToken);
         }
 
         #endregion

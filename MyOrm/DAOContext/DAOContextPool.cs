@@ -129,7 +129,7 @@ namespace MyOrm
         /// <exception cref="ArgumentNullException">当 <paramref name="context"/> 为 null 时抛出。</exception>
         public void ReturnContext(DAOContext context)
         {
-            if (context == null)
+            if (context is null)
                 throw new ArgumentNullException(nameof(context));
 
             if (_disposed)
@@ -163,7 +163,7 @@ namespace MyOrm
 
         private bool IsContextValid(DAOContext context)
         {
-            if (context == null)
+            if (context is null)
                 return false;
 
             // 检查连接是否存活
@@ -191,7 +191,7 @@ namespace MyOrm
         private DAOContext CreateNewContext()
         {
             var connection = Activator.CreateInstance(ProviderType) as DbConnection;
-            if (connection == null)
+            if (connection is null)
                 throw new InvalidOperationException($"无法创建类型为 {ProviderType} 的数据库连接");
 
             connection.ConnectionString = ConnectionString;

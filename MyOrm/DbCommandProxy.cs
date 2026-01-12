@@ -322,7 +322,7 @@ namespace MyOrm
         /// </summary>
         public void Prepare()
         {
-            if (Context != null) Transaction = Context.CurrentTransaction;
+            if (Context is not null) Transaction = Context.CurrentTransaction;
             Context.EnsureConnectionOpen();
             Target.Prepare();
         }

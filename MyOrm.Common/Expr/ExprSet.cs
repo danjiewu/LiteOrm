@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace MyOrm.Common
@@ -74,7 +75,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 集合中的表达式项
         /// </summary>
-        public List<Expr> Items { get; } = new List<Expr>();
+        public List<Expr> Items { get; set; } = new List<Expr>();
 
         /// <summary>
         /// 获取集合中包含的表达式项数。
@@ -92,11 +93,10 @@ namespace MyOrm.Common
         /// <param name="item">要添加的表达式对象。</param>
         public void Add(Expr item)
         {
-            if (item == null) item = Null;
             if (item is ExprSet set && set.JoinType == JoinType)
                 Items.AddRange(set.Items);
             else
-                Items.Add(item);
+                Items.Add(item ?? Empty);
         }
 
         /// <summary>
@@ -217,6 +217,7 @@ namespace MyOrm.Common
     /// <summary>
     /// 表达式集合的连接类型枚举。
     /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ExprJoinType
     {
         /// <summary>

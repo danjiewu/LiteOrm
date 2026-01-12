@@ -41,8 +41,7 @@ namespace MyOrm.Common
         /// </remarks>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (Value == null) return "NULL";
-            else if (Value is IEnumerable enumerable && !(Value is string))
+            if (Value is IEnumerable enumerable && !(Value is string))
             {
                 StringBuilder sb = new StringBuilder();
                 foreach (var item in enumerable)
@@ -77,10 +76,16 @@ namespace MyOrm.Common
         /// </remarks>
         public override string ToString()
         {
-            if (Value == null) return "NULL";
+            if (Value is null) return "NULL";
             else if (Value is IEnumerable enumerable && !(Value is string))
             {
-                return $"({String.Join(",", enumerable)})";
+                StringBuilder sb = new StringBuilder(); 
+                foreach (var item in enumerable)
+                {
+                    if (sb.Length > 0) sb.Append(",");
+                    sb.Append(item?.ToString() ?? "NULL");
+                }
+                return $"({sb})";
             }
             else
                 return Value.ToString();

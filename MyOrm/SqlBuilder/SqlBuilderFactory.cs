@@ -71,7 +71,7 @@ namespace MyOrm
         /// <returns>SQL 构建器实例。</returns>
         public virtual SqlBuilder GetSqlBuilder(Type providerType)
         {
-            if (providerType == null) throw new ArgumentNullException("providerType");
+            if (providerType is null) throw new ArgumentNullException("providerType");
             if (RegisteredSqlBuilders.ContainsKey(providerType)) return RegisteredSqlBuilders[providerType];
             var connectionTypeName = providerType.Name;
             connectionTypeName = connectionTypeName.ToUpper();

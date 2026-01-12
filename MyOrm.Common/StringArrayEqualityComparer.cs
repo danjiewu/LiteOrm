@@ -25,7 +25,7 @@ namespace MyOrm.Common
         public bool Equals(string[] x, string[] y)
         {
             if (ReferenceEquals(x, y)) return true;
-            if (x == null || y == null) return false;
+            if (x is null || y is null) return false;
             if (x.Length != y.Length) return false;
 
             // 顺序敏感的比较
@@ -43,7 +43,7 @@ namespace MyOrm.Common
         /// <returns>数组的哈希码</returns>
         public int GetHashCode(string[] obj)
         {
-            if (obj == null) return 0;
+            if (obj is null) return 0;
 
             // 计算数组的哈希码
             int hash = 17;

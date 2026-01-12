@@ -87,7 +87,7 @@ namespace MyOrm
         /// <returns>显示名称</returns>
         public static string GetDisplayName(Enum value)
         {
-            if (value == null) return null;
+            if (value is null) return null;
 
             Type enumType = value.GetType();
             if (!enumTypeName.ContainsKey(enumType))
@@ -144,7 +144,7 @@ namespace MyOrm
         /// <returns>显示文本</returns>
         public static string ToDisplayText(object value)
         {
-            if (value == null) return "空";
+            if (value is null) return "空";
             if (value is Enum) return GetDisplayName((Enum)value);
             else if (value is bool) return (bool)value ? "是" : "否";
             return Convert.ToString(value);
@@ -157,7 +157,7 @@ namespace MyOrm
         /// <returns>文本</returns>
         public static string ToText(object value)
         {
-            if (value == null) return "";
+            if (value is null) return "";
             if (value is Enum) return GetDisplayName((Enum)value);
             else if (value is bool) return (bool)value ? "是" : "否";
             return Convert.ToString(value);
@@ -205,7 +205,7 @@ namespace MyOrm
         /// <returns>日志字符串</returns>
         public static string GetLogString(object o, int expandDepth)
         {
-            if (o == null) return "null";
+            if (o is null) return "null";
             else if (o is String) return (string)o;
             else if (o is byte[])
             {
@@ -250,7 +250,7 @@ namespace MyOrm
             foreach (KeyValuePair<string, string> param in queryString)
             {
                 PropertyDescriptor property = GetFilterProperties(type).Find(param.Key, true);
-                if (property != null)
+                if (property is not null)
                     conditions.Add(ExprConvert.Parse(property, param.Value));
             }
             return conditions;
@@ -281,7 +281,7 @@ namespace MyOrm
             List<PropertyDescriptor> properties = new List<PropertyDescriptor>();
             foreach (PropertyDescriptor property in TypeDescriptor.GetProperties(type))
             {
-                if (property.Attributes[typeof(ColumnAttribute)] == null)
+                if (property.Attributes[typeof(ColumnAttribute)] is null)
                     properties.Add(property);
                 else
                 {

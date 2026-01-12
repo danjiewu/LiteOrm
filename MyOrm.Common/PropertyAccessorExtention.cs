@@ -20,8 +20,8 @@ public static class PropertyAccessorExtension
     /// <exception cref="ArgumentNullException">当property为null时抛出</exception>
     public static object GetValueFast(this PropertyInfo property, object instance)
     {
-        if (property == null) throw new ArgumentNullException(nameof(property));
-        if (instance == null) return null;
+        if (property is null) throw new ArgumentNullException(nameof(property));
+        if (instance is null) return null;
 
         string cacheKey = $"{property.DeclaringType.FullName}.{property.Name}";
 
@@ -56,8 +56,8 @@ public static class PropertyAccessorExtension
     /// <exception cref="ArgumentNullException">当property或instance为null时抛出</exception>
     public static void SetValueFast(this PropertyInfo property, object instance, object value)
     {
-        if (property == null) throw new ArgumentNullException(nameof(property));
-        if (instance == null) throw new ArgumentNullException(nameof(instance));
+        if (property is null) throw new ArgumentNullException(nameof(property));
+        if (instance is null) throw new ArgumentNullException(nameof(instance));
 
         string cacheKey = $"{property.DeclaringType.FullName}.{property.Name}.set";
 

@@ -52,8 +52,8 @@ namespace MyOrm.Test
             var dao = serviceProvider.GetRequiredService<IObjectDAO<Session>>();
             var service = serviceProvider.GetRequiredService<IAccountingLogService>();
             var ids = new[] { 1, 2, 3 };
-            Expr inCondition = Expr.Property("Id") == 123;
-            var logs = await service.SearchSectionAsync(inCondition, new SectionSet().Take(1000), new string[] { "202501" });
+            var inCondition = Expr.Exp<AccountingLog>(l => ids.Contains(l.AcctStatusType.Value));
+            var logs = service.SearchSection(inCondition, new PageSection().Take(1000), ["202501"]);
 
             //service.BatchInsert(logs);
 

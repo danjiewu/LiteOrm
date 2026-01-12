@@ -97,11 +97,11 @@ namespace MyOrm.Service
         /// 根据条件更新多个字段的值
         /// </summary>
         /// <param name="updateValues">要更新的字段及其值</param>
-        /// <param name="condition">更新条件</param>
+        /// <param name="expr">更新条件</param>
         /// <returns>更新的记录数</returns>
-        public virtual int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Expr condition)
+        public virtual int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr)
         {
-            return ObjectDAO.UpdateAllValues(updateValues, condition);
+            return ObjectDAO.UpdateAllValues(updateValues, expr);
         }
 
         /// <summary>
@@ -277,11 +277,11 @@ namespace MyOrm.Service
         /// <summary>
         /// 根据条件删除实体
         /// </summary>
-        /// <param name="condition">删除条件</param>
+        /// <param name="expr">删除条件</param>
         /// <returns>删除的记录数</returns>
-        public virtual int Delete(Expr condition)
+        public virtual int Delete(Expr expr)
         {
-            return ObjectDAO.Delete(condition);
+            return ObjectDAO.Delete(expr);
         }
 
         /// <summary>
@@ -548,12 +548,12 @@ namespace MyOrm.Service
         /// 异步根据条件更新多个字段的值。
         /// </summary>
         /// <param name="updateValues">要更新的字段及其值。</param>
-        /// <param name="condition">更新条件。</param>
+        /// <param name="expr">更新条件。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>受影响的行数。</returns>
-        public Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Expr condition, CancellationToken cancellationToken = default)
+        public Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => UpdateValues(updateValues, condition), cancellationToken);
+            return SessionManager.Current.ExecuteInSessionAsync(() => UpdateValues(updateValues, expr), cancellationToken);
         }
 
         /// <summary>

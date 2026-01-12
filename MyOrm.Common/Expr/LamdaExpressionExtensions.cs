@@ -9,84 +9,89 @@ using System.Threading.Tasks;
 namespace MyOrm.Common
 {
     /// <summary>
-    /// Expression 到 Expr 的扩展方法
+    /// 提供针对 Lambda 表达式到 Expr 对象的扩展方法，简化实体查询操作。
     /// </summary>
     public static class LamdaExpressionExtensions
     {
         /// <summary>
-        /// 使用Lambda表达式搜索实体
+        /// 使用 Lambda 表达式搜索实体。
         /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="entityViewService">实体视图服务</param>
-        /// <param name="expression">搜索条件的Lambda表达式</param>
-        /// <returns>符合条件的实体列表</returns>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">实体视图服务实例。</param>
+        /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
+        /// <returns>符合条件的实体对象列表。</returns>
         public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
         {
-            return entityViewService.Search(Expr.Exp(expression).InnerExpr);
+            return entityViewService.Search(Expr.Exp(expression));
         }
 
         /// <summary>
-        /// 使用Lambda表达式搜索单个实体
+        /// 使用 Lambda 表达式搜索单个实体。
         /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="entityViewService">实体视图服务</param>
-        /// <param name="expression">搜索条件的Lambda表达式</param>
-        /// <returns>符合条件的单个实体，如果没有找到则返回null</returns>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">实体视图服务实例。</param>
+        /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
+        /// <returns>第一个符合条件的实体对象；如果没有找到则返回 null。</returns>
         public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
         {
-            return entityViewService.SearchOne(Expr.Exp(expression).InnerExpr);
+            return entityViewService.SearchOne(Expr.Exp(expression));
         }
 
         /// <summary>
-        /// 使用Lambda表达式分页搜索实体
+        /// 使用 Lambda 表达式分页搜索实体。
         /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="entityViewService">实体视图服务</param>
-        /// <param name="expression">搜索条件的Lambda表达式</param>
-        /// <param name="sectionSet">分页设置</param>
-        /// <param name="tableArgs">表参数</param>
-        /// <returns>符合条件的实体列表</returns>
-        public static List<T> SearchSection<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, SectionSet sectionSet, params string[] tableArgs)
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">实体视图服务实例。</param>
+        /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
+        /// <param name="sectionSet">分页及排序设置。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <returns>符合条件的实体对象分页列表。</returns>
+        public static List<T> SearchSection<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, PageSection sectionSet, params string[] tableArgs)
         {
-            return entityViewService.SearchSection(Expr.Exp(expression).InnerExpr, sectionSet, tableArgs);
+            return entityViewService.SearchSection(Expr.Exp(expression), sectionSet, tableArgs);
         }
 
         /// <summary>
-        /// 使用Lambda表达式异步搜索实体
+        /// 使用 Lambda 表达式异步搜索实体。
         /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="entityViewService">异步实体视图服务</param>
-        /// <param name="expression">搜索条件的Lambda表达式</param>
-        /// <returns>符合条件的实体列表的任务</returns>
-        public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default, params string[] tableArgs)
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">支持异步操作的实体视图服务实例。</param>
+        /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <param name="cancellationToken">取消操作的令牌。</param>
+        /// <returns>表示异步搜索操作的任务，结果包含符合条件的实体对象列表。</returns>
+        public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return entityViewService.SearchAsync(Expr.Exp(expression).InnerExpr, cancellationToken, tableArgs);
+            return entityViewService.SearchAsync(Expr.Exp(expression), tableArgs, cancellationToken);
         }
 
         /// <summary>
-        /// 使用Lambda表达式异步搜索单个实体
+        /// 使用 Lambda 表达式异步搜索单个实体。
         /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="entityViewService">异步实体视图服务</param>
-        /// <param name="expression">搜索条件的Lambda表达式</param>
-        /// <returns>符合条件的单个实体的任务，如果没有找到则返回null</returns>
-        public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default, params string[] tableArgs)
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">支持异步操作的实体视图服务实例。</param>
+        /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <param name="cancellationToken">取消操作的令牌。</param>
+        /// <returns>表示异步搜索操作的任务，结果包含符合条件的单个实体对象，未找到则返回 null。</returns>
+        public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return entityViewService.SearchOneAsync(Expr.Exp(expression).InnerExpr, cancellationToken, tableArgs);
+            return entityViewService.SearchOneAsync(Expr.Exp(expression), tableArgs, cancellationToken);
         }
 
         /// <summary>
-        /// 使用Lambda表达式异步分页搜索实体
+        /// 使用 Lambda 表达式异步分页搜索实体。
         /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="entityViewService">异步实体视图服务</param>
-        /// <param name="expression">搜索条件的Lambda表达式</param>
-        /// <param name="sectionSet">分页设置</param>
-        /// <param name="tableArgs">表参数</param>
-        /// <returns>符合条件的实体列表的任务</returns>
-        public static Task<List<T>> SearchSectionAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, SectionSet sectionSet, CancellationToken cancellationToken = default, params string[] tableArgs)
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">支持异步操作的实体视图服务实例。</param>
+        /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
+        /// <param name="sectionSet">分页及排序设置。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <param name="cancellationToken">取消操作的令牌。</param>
+        /// <returns>表示异步搜索操作的任务，结果包含符合条件的实体对象分页列表。</returns>
+        public static Task<List<T>> SearchSectionAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, PageSection sectionSet, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return entityViewService.SearchSectionAsync(Expr.Exp(expression).InnerExpr, sectionSet, cancellationToken, tableArgs);
+            return entityViewService.SearchSectionAsync(Expr.Exp(expression), sectionSet, tableArgs, cancellationToken);
         }
     }
 }

@@ -134,7 +134,7 @@ namespace MyOrm
         {
             get
             {
-                if (sqlBuildContext == null) sqlBuildContext = new SqlBuildContext() { Table = Table, TableInfoProvider = TableInfoProvider, TableNameArgs = TableNameArgs };
+                if (sqlBuildContext is null) sqlBuildContext = new SqlBuildContext() { Table = Table, TableInfoProvider = TableInfoProvider, TableNameArgs = TableNameArgs };
                 return sqlBuildContext;
 
             }
@@ -164,7 +164,7 @@ namespace MyOrm
         {
             get
             {
-                if (tableName == null) tableName = Table.Name;
+                if (tableName is null) tableName = Table.Name;
                 return tableName;
             }
         }
@@ -181,7 +181,7 @@ namespace MyOrm
         {
             get
             {
-                if (fromTable == null)
+                if (fromTable is null)
                 {
                     fromTable = SqlBuildContext.GetTableNameWithArgs(Table.FormattedExpression(SqlBuilder));
                 }
@@ -196,7 +196,7 @@ namespace MyOrm
         {
             get
             {
-                if (selectColumns == null)
+                if (selectColumns is null)
                 {
                     selectColumns = Table.Columns.Where(column =>
                     {
@@ -218,7 +218,7 @@ namespace MyOrm
         {
             get
             {
-                if (allFieldsSql == null)
+                if (allFieldsSql is null)
                 {
                     allFieldsSql = GetSelectFieldsSQL(SelectColumns);
                 }
@@ -263,7 +263,7 @@ namespace MyOrm
         protected string GetOrderBySQL(IList<Sorting> orders)
         {
             StringBuilder orderBy = new StringBuilder();
-            if (orders == null || orders.Count == 0)
+            if (orders is null || orders.Count == 0)
             {
                 if (TableDefinition.Keys.Count != 0)
                 {
@@ -284,7 +284,7 @@ namespace MyOrm
                 foreach (Sorting sorting in orders)
                 {
                     SqlColumn column = Table.GetColumn(sorting.PropertyName);
-                    if (column == null) throw new ArgumentException(String.Format("Type \"{0}\" does not have property \"{1}\"", ObjectType.Name, sorting.PropertyName), "section");
+                    if (column is null) throw new ArgumentException(String.Format("Type \"{0}\" does not have property \"{1}\"", ObjectType.Name, sorting.PropertyName), "section");
                     if (orderBy.Length > 0) orderBy.Append(",");
                     orderBy.Append(column.FormattedExpression(SqlBuilder));
                     orderBy.Append(sorting.Direction == ListSortDirection.Ascending ? " asc" : " desc");
@@ -303,7 +303,7 @@ namespace MyOrm
         {
             int paramIndex = 0;
             List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
-            if (paramValues != null)
+            if (paramValues is not null)
                 foreach (object paramValue in paramValues)
                 {
                     paramList.Add(Convert.ToString(paramIndex++), paramValue);
@@ -345,7 +345,7 @@ namespace MyOrm
         /// <param name="paramValues">参数列表，包括参数名称和值，为空时表示没有参数</param>
         public void AddParamsToCommand(IDbCommand command, IEnumerable<KeyValuePair<string, object>> paramValues)
         {
-            if (paramValues != null)
+            if (paramValues is not null)
                 foreach (KeyValuePair<string, object> paramSet in paramValues)
                 {
                     IDbDataParameter param = command.CreateParameter();
@@ -365,19 +365,19 @@ namespace MyOrm
         /// </summary>
         /// <param name="SQLWithParam">带参数的SQL语句
         /// <example>"select @AllFields@ from @FromTable@ where @Condition@"表示从表中查询所有符合条件的记录</example>
-        /// <example>"select count(*) from @FromTable@ "表示从表中所有记录的数量，condition参数需为空</example>
+        /// <example>"select count(*) from @FromTable@ "表示从表中所有记录的数量，expr参数需为空</example>
         /// <example>"delete from @Table@ where @Condition@"表示从表中删除所有符合条件的记录</example>
         /// </param>
-        /// <param name="condition">条件，为null时表示无条件</param>
+        /// <param name="expr">条件，为null时表示无条件</param>
         /// <returns>IDbCommand</returns>
-        public IDbCommand MakeConditionCommand(string SQLWithParam, Expr condition)
+        public IDbCommand MakeConditionCommand(string SQLWithParam, Expr expr)
         {
             List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
             var context = SqlBuildContext;
             string strCondition = null;
-            if (condition != null)
+            if (expr is not null)
             {
-                strCondition = condition.ToSql(context, SqlBuilder, paramList);
+                strCondition = expr.ToSql(context, SqlBuilder, paramList);
             }
 
             if (String.IsNullOrEmpty(strCondition)) strCondition = " 1 = 1 ";
@@ -392,7 +392,7 @@ namespace MyOrm
         /// <returns></returns>
         protected virtual string ReplaceParam(string SQLWithParam, SqlBuildContext context = null)
         {
-            if (context == null)
+            if (context is null)
             {
                 context = SqlBuildContext;
             }
@@ -408,12 +408,11 @@ namespace MyOrm
         protected string MakeIsKeyCondition(IDbCommand command)
         {
             ThrowExceptionIfNoKeys();
-            string tableAlias = SqlBuildContext.TableAliasName;
             StringBuilder strConditions = new StringBuilder();
             foreach (ColumnDefinition key in TableDefinition.Keys)
             {
                 if (strConditions.Length != 0) strConditions.Append(" and ");
-                string columnName = tableAlias == null ? (SqlBuildContext.SingleTable ? key.FormattedName(SqlBuilder) : key.FormattedExpression(SqlBuilder)) : String.Format("[{0}].[{1}]", tableAlias, key.Name);
+                string columnName = SqlBuildContext.SingleTable ? key.FormattedName(SqlBuilder) : key.FormattedExpression(SqlBuilder);
                 strConditions.AppendFormat("{0} = {1}", columnName, ToSqlParam(key.PropertyName));
                 if (!command.Parameters.Contains(key.PropertyName))
                 {
@@ -473,7 +472,7 @@ namespace MyOrm
         /// <returns>对象属性类型所对应的值</returns>
         protected virtual object ConvertValue(object dbValue, Type objectType)
         {
-            if (dbValue == null || dbValue == DBNull.Value)
+            if (dbValue is null || dbValue == DBNull.Value)
                 return null;
 
             objectType = Nullable.GetUnderlyingType(objectType) ?? objectType;
@@ -503,7 +502,7 @@ namespace MyOrm
         /// <returns>数据库中的值</returns>
         protected virtual object ConvertToDBValue(object value, ColumnDefinition column)//TODO:
         {
-            if (value == null) return DBNull.Value;
+            if (value is null) return DBNull.Value;
             //Type objectType = column.PropertyType;
             //objectType = Nullable.GetUnderlyingType(objectType) ?? objectType;
             //if (objectType == typeof(TimeSpan)) return ((TimeSpan)value).Ticks;
@@ -544,7 +543,7 @@ namespace MyOrm
         {
             if (keys.Length != TableDefinition.Keys.Count)
             {
-                if (ExceptionWrongKeys == null)
+                if (ExceptionWrongKeys is null)
                 {
                     List<string> strKeys = new List<string>();
                     foreach (ColumnDefinition key in TableDefinition.Keys) strKeys.Add(key.Name);
@@ -628,7 +627,7 @@ namespace MyOrm
         /// <returns></returns>
         public static IObjectDAO<T> WithArgs<T>(this IObjectDAO<T> dao, params string[] args)
         {
-            if (args == null || args.Length == 0) return dao;
+            if (args is null || args.Length == 0) return dao;
             ObjectDAOBase dAOBase = dao as ObjectDAOBase;
             return dAOBase.WithArgs(args) as IObjectDAO<T>;
         }
@@ -641,7 +640,7 @@ namespace MyOrm
         /// <returns></returns>
         public static IObjectViewDAO<T> WithArgs<T>(this IObjectViewDAO<T> dao, params string[] args)
         {
-            if (args == null || args.Length == 0) return dao;
+            if (args is null || args.Length == 0) return dao;
             ObjectDAOBase dAOBase = dao as ObjectDAOBase;
             return dAOBase.WithArgs(args) as IObjectViewDAO<T>;
         }

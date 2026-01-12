@@ -77,7 +77,7 @@ namespace MyOrm.Service
         /// <param name="loggerFactory">日志工厂</param>
         public ServiceInvokeInterceptor(ILoggerFactory loggerFactory)
         {
-            if (loggerFactory == null) throw new ArgumentNullException(nameof(loggerFactory));
+            if (loggerFactory is null) throw new ArgumentNullException(nameof(loggerFactory));
             logger = loggerFactory.CreateLogger<ServiceInvokeInterceptor>();
         }
 
@@ -464,7 +464,7 @@ namespace MyOrm.Service
 
             // 日志特性
             var logAtt = GetServiceAttribute<ServiceLogAttribute>(invocation);
-            if (logAtt != null)
+            if (logAtt is not null)
             {
                 desc.LogFormat = logAtt.LogFormat;
                 desc.LogLevel = logAtt.LogLevel;
@@ -472,7 +472,7 @@ namespace MyOrm.Service
 
             // 权限特性
             var permAtt = GetServiceAttribute<ServicePermissionAttribute>(invocation);
-            if (permAtt != null)
+            if (permAtt is not null)
             {
                 desc.AllowAnonymous = permAtt.AllowAnonymous;
                 if (!string.IsNullOrEmpty(permAtt.AllowRoles))
@@ -481,12 +481,12 @@ namespace MyOrm.Service
 
             // 事务特性
             var transAtt = GetServiceAttribute<TransactionAttribute>(invocation);
-            if (transAtt != null)
+            if (transAtt is not null)
                 desc.IsTransaction = transAtt.IsTransaction;
 
             // 服务特性
             var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
-            if (serviceAtt != null)
+            if (serviceAtt is not null)
                 desc.IsService = serviceAtt.IsService;
 
             // 参数日志格式
@@ -500,7 +500,7 @@ namespace MyOrm.Service
                 if (logAtts.Length == 0)
                 {
                     var targetMethod = invocation.MethodInvocationTarget;
-                    if (targetMethod != null)
+                    if (targetMethod is not null)
                     {
                         var targetParams = targetMethod.GetParameters();
                         logAtts = (LogAttribute[])targetParams[i].GetCustomAttributes(typeof(LogAttribute), true);
@@ -527,7 +527,7 @@ namespace MyOrm.Service
         public static Exception UnwrapTargetInvocationException(this Exception ex)
         {
             var inner = ex;
-            while (inner is TargetInvocationException && inner.InnerException != null)
+            while (inner is TargetInvocationException && inner.InnerException is not null)
                 inner = inner.InnerException;
             return inner;
         }

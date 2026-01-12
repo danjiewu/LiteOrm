@@ -42,7 +42,7 @@ namespace MyOrm
         /// <returns>表定义</returns>
         public override TableDefinition GetTableDefinition(Type objectType)
         {
-            if (objectType == null) return null;
+            if (objectType is null) return null;
             if (!tableInfoCache.ContainsKey(objectType))
             {
                 lock (SyncLock)
@@ -61,7 +61,7 @@ namespace MyOrm
         /// <returns>表信息</returns>
         public override TableView GetTableView(Type objectType)
         {
-            if (objectType == null) return null;
+            if (objectType is null) return null;
             if (!tableViewCache.ContainsKey(objectType))
             {
                 lock (SyncLock)
@@ -83,7 +83,7 @@ namespace MyOrm
         /// <returns>数据库列定义</returns>
         private ColumnDefinition GetColumnDefinition(PropertyInfo property, Type objectType)
         {
-            if (property == null) return null;
+            if (property is null) return null;
             if (!columnCache.ContainsKey(property))
             {
                 lock (SyncLock)
@@ -101,7 +101,7 @@ namespace MyOrm
         private TableDefinition GenerateTableDefinition(Type objectType)
         {
             TableAttribute tableAttribute = objectType.GetAttribute<TableAttribute>();
-            if (tableAttribute != null)
+            if (tableAttribute is not null)
             {
                 string tableName = tableAttribute.TableName;
                 if (String.IsNullOrEmpty(tableName)) tableName = objectType.Name;
@@ -109,7 +109,7 @@ namespace MyOrm
                 foreach (PropertyInfo property in objectType.GetProperties())
                 {
                     ColumnDefinition column = GetColumnDefinition(property, objectType);
-                    if (column != null)
+                    if (column is not null)
                     {
                         columns.Add(column);
                     }
@@ -124,9 +124,9 @@ namespace MyOrm
             if (property.GetIndexParameters().Length != 0) return null;
             ForeignTypeAttribute foreignTypeAttr = property.GetAttribute<ForeignTypeAttribute>();
 
-            if (property.GetAttribute<ForeignColumnAttribute>() != null) return null;
+            if (property.GetAttribute<ForeignColumnAttribute>() is not null) return null;
             ColumnAttribute columnAttribute = property.GetAttribute<ColumnAttribute>();
-            if (columnAttribute != null)
+            if (columnAttribute is not null)
             {
                 if (!columnAttribute.IsColumn)
                 {
@@ -143,13 +143,13 @@ namespace MyOrm
                     column.IsIndex = columnAttribute.IsIndex;
                     column.DbType = columnAttribute.DbType == DbType.Object ? sqlBuilder.GetDbType(property.PropertyType) : columnAttribute.DbType;
                     column.Length = columnAttribute.Length == 0 ? sqlBuilder.GetDefaultLength(column.DbType) : columnAttribute.Length;
-                    column.AllowNull = columnAttribute.AllowNull && (property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(property.PropertyType) != null : true);
+                    column.AllowNull = columnAttribute.AllowNull && (property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(property.PropertyType) is not null : true);
                     column.Mode = columnAttribute.ColumnMode & ((property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None));
-                    if (foreignTypeAttr != null)
+                    if (foreignTypeAttr is not null)
                     {
                         column.ForeignTable = new ForeignTable() { ForeignType = foreignTypeAttr.ObjectType, FilterExpression = foreignTypeAttr.FilterExpression };
                     }
-                    column.ForeignAlias = foreignTypeAttr == null ? null : foreignTypeAttr.Alias;
+                    column.ForeignAlias = foreignTypeAttr is null ? null : foreignTypeAttr.Alias;
                     return column;
                 }
             }
@@ -160,12 +160,12 @@ namespace MyOrm
                 column.Mode = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
                 column.DbType = sqlBuilder.GetDbType(property.PropertyType);
                 column.Length = sqlBuilder.GetDefaultLength(column.DbType);
-                column.AllowNull = property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(column.PropertyType) != null : true;
-                if (foreignTypeAttr != null)
+                column.AllowNull = property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(column.PropertyType) is not null : true;
+                if (foreignTypeAttr is not null)
                 {
                     column.ForeignTable = new ForeignTable() { ForeignType = foreignTypeAttr.ObjectType, FilterExpression = foreignTypeAttr.FilterExpression };
                 }
-                column.ForeignAlias = foreignTypeAttr == null ? null : foreignTypeAttr.Alias;
+                column.ForeignAlias = foreignTypeAttr is null ? null : foreignTypeAttr.Alias;
                 return column;
             }
         }
@@ -175,12 +175,12 @@ namespace MyOrm
             if (property.GetIndexParameters().Length != 0) return null;
 
             ForeignColumnAttribute foreignColumnAttribute = property.GetAttribute<ForeignColumnAttribute>();
-            if (foreignColumnAttribute != null)
+            if (foreignColumnAttribute is not null)
             {
                 ForeignTypeAttribute foreignTypeAttr = property.GetAttribute<ForeignTypeAttribute>();
 
                 ForeignColumn foreignColumn = new ForeignColumn(property);
-                if (foreignTypeAttr != null)
+                if (foreignTypeAttr is not null)
                 {
                     foreignColumn.ForeignTable = new ForeignTable() { ForeignType = foreignTypeAttr.ObjectType, FilterExpression = foreignTypeAttr.FilterExpression };
                     foreignColumn.ForeignAlias = foreignTypeAttr.Alias;
@@ -214,7 +214,7 @@ namespace MyOrm
             foreach (PropertyInfo property in objectType.GetProperties())
             {
                 ColumnDefinition column = GetColumnDefinition(property, objectType);
-                if (column != null)
+                if (column is not null)
                 {
                     columns.Add(column);
                 }
@@ -223,7 +223,7 @@ namespace MyOrm
             foreach (PropertyInfo property in objectType.GetProperties())
             {
                 ForeignColumn foreignColumn = GenerateForeignColumn(property);
-                if (foreignColumn != null) columns.Add(foreignColumn);
+                if (foreignColumn is not null) columns.Add(foreignColumn);
             }
 
             Queue<ColumnRef> columnRefs = new Queue<ColumnRef>();
@@ -251,7 +251,7 @@ namespace MyOrm
 
             foreach (TableJoinAttribute tableJoin in atts)
             {
-                if (tableJoin.Source == null)
+                if (tableJoin.Source is null)
                 {
                     List<ColumnRef> foreignKeys = new List<ColumnRef>();
                     foreach (string keyName in tableJoin.ForeignKeys.Split(','))
@@ -277,13 +277,13 @@ namespace MyOrm
                         {
                             if (joinedTable.TableDefinition.ObjectType == sourceType)
                             {
-                                if (sourceTable == null)
+                                if (sourceTable is null)
                                     sourceTable = joinedTable;
                                 else
                                     throw new ArgumentException(String.Format("Undeterminate table. More than one table of type {0} joined.", sourceType));
                             }
                         }
-                        if (sourceTable == null)
+                        if (sourceTable is null)
                             throw new ArgumentException(String.Format("Source table type {0} does not exist in joined tables.", sourceType));
                     }
                     List<ColumnRef> foreignKeys = new List<ColumnRef>();
@@ -303,24 +303,24 @@ namespace MyOrm
             ForeignColumnAttribute foreignColumnAttribute = column.Property.GetAttribute<ForeignColumnAttribute>();
             string primeProperty = String.IsNullOrEmpty(foreignColumnAttribute.Property) ? column.PropertyName : foreignColumnAttribute.Property;
             Type primeType = foreignColumnAttribute.Foreign as Type;
-            string foreignTable = primeType == null ? (string)foreignColumnAttribute.Foreign : primeType.Name;
+            string foreignTable = primeType is null ? (string)foreignColumnAttribute.Foreign : primeType.Name;
             ColumnRef targetColumn = null;
             if (!joinedTables.ContainsKey(foreignTable))
                 throw new ArgumentException(String.Format("Foreign table name {0} of property {1} does not exist in joined tables.", foreignColumnAttribute.Foreign, column.PropertyName));
 
             targetColumn = joinedTables[foreignTable].GetColumn(primeProperty);
-            if (targetColumn == null)
+            if (targetColumn is null)
             {
                 var property = joinedTables[foreignTable].TableDefinition.ObjectType.GetProperty(primeProperty);
-                if (property != null)
+                if (property is not null)
                 {
                     ForeignColumn foreignColumn = GenerateForeignColumn(property);
-                    if (foreignColumn != null) targetColumn = GetTargetColumn(joinedTables, foreignColumn, usedTables);
+                    if (foreignColumn is not null) targetColumn = GetTargetColumn(joinedTables, foreignColumn, usedTables);
                 }
             }
 
             JoinedTable usedTable = joinedTables[foreignTable];
-            while (usedTable != null)
+            while (usedTable is not null)
             {
                 usedTables.Add(usedTable);
                 if (usedTable.ForeignKeys.Count > 0)
@@ -329,7 +329,7 @@ namespace MyOrm
                     usedTable = null;
             }
 
-            if (targetColumn == null)
+            if (targetColumn is null)
                 throw new ArgumentException(String.Format("Foreign property {0} does not exist in type {1}.", primeProperty, joinedTables[foreignTable].TableDefinition.ObjectType));
 
             return targetColumn;
@@ -339,7 +339,7 @@ namespace MyOrm
         {
             ColumnRef columnRef = columnRefs.Dequeue();
             SqlColumn column = columnRef.Column;
-            if (column.ForeignType != null)
+            if (column.ForeignType is not null)
             {
                 bool foreignTypeExists = false;
                 foreach (JoinedTable joinedTable in joinedTables.Values)

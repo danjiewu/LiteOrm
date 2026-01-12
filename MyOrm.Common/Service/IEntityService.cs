@@ -216,9 +216,9 @@ namespace MyOrm.Service
         /// 根据条件和字段内容更新值
         /// </summary>
         /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
-        /// <param name="condition">更新条件</param>
+        /// <param name="expr">更新条件</param>
         /// <returns>更改记录数</returns>
-        int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Expr condition);
+        int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr);
         /// <summary>
         /// 根据主键和字段内容更新值
         /// </summary>
@@ -304,10 +304,10 @@ namespace MyOrm.Service
         /// 异步根据条件和字段内容更新值
         /// </summary>
         /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
-        /// <param name="condition">更新条件</param>
+        /// <param name="expr">更新条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>更改记录数</returns>
-        Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Expr condition, CancellationToken cancellationToken = default);
+        Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据主键和字段内容更新值
@@ -394,32 +394,32 @@ namespace MyOrm.Service
         /// <summary>
         /// 根据条件获取单个实体
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
-        new T SearchOne(Expr condition, params string[] tableArgs);
+        new T SearchOne(Expr expr, params string[] tableArgs);
         /// <summary>
         /// 根据条件遍历对象
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="func">调用的函数委托</param>
         /// <param name="tableArgs">表名参数</param>
-        void ForEach(Expr condition, Action<T> func, params string[] tableArgs);
+        void ForEach(Expr expr, Action<T> func, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取实体列表
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
-        new List<T> Search(Expr condition = null, params string[] tableArgs);
+        new List<T> Search(Expr expr = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件分页查询
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="section">分页设置</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的分页对象列表</returns>
-        new List<T> SearchSection(Expr condition, SectionSet section, params string[] tableArgs);
+        new List<T> SearchSection(Expr expr, PageSection section, params string[] tableArgs);
     }
 
     /// <summary>
@@ -435,45 +435,45 @@ namespace MyOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>id对应实体，若不存在则返回null</returns>
-        new Task<T> GetObjectAsync(object id, CancellationToken cancellationToken = default, params string[] tableArgs);
+        new Task<T> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件获取单个实体
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
-        new Task<T> SearchOneAsync(Expr condition, CancellationToken cancellationToken = default, params string[] tableArgs);
+        new Task<T> SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件遍历对象
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="func">调用的异步函数委托</param>
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
-        Task ForEachAsync(Expr condition, Func<T, Task> func, CancellationToken cancellationToken = default, params string[] tableArgs);
+        Task ForEachAsync(Expr expr, Func<T, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件获取实体列表
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的实体列表</returns>
-        new Task<List<T>> SearchAsync(Expr condition = null, CancellationToken cancellationToken = default, params string[] tableArgs);
+        new Task<List<T>> SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件分页查询
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="section">分页设置</param>
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的分页对象列表</returns>
-        new Task<List<T>> SearchSectionAsync(Expr condition, SectionSet section, CancellationToken cancellationToken = default, params string[] tableArgs);
+        new Task<List<T>> SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs = null, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -502,41 +502,41 @@ namespace MyOrm.Service
         /// <summary>
         /// 根据条件检查是否存在记录
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>是否存在记录</returns>
         [Service]
-        bool Exists(Expr condition, params string[] tableArgs);
+        bool Exists(Expr expr, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取记录总数
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的记录总数</returns>
         [Service]
-        int Count(Expr condition = null, params string[] tableArgs);
+        int Count(Expr expr = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取单个实体
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
-        object SearchOne(Expr condition, params string[] tableArgs);
+        object SearchOne(Expr expr, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取实体列表
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
-        IList Search(Expr condition = null, params string[] tableArgs);
+        IList Search(Expr expr = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件分页查询
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="section">分页设置</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的分页对象列表</returns>
-        IList SearchSection(Expr condition, SectionSet section, params string[] tableArgs);
+        IList SearchSection(Expr expr, PageSection section, params string[] tableArgs);
     }
 
     /// <summary>
@@ -552,7 +552,7 @@ namespace MyOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>id对应实体，若不存在则返回null</returns>
-        Task<object> GetObjectAsync(object id, CancellationToken cancellationToken = default, params string[] tableArgs);
+        Task<object> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步检测ID是否存在
@@ -561,53 +561,53 @@ namespace MyOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在记录</returns>
-        Task<bool> ExistsIDAsync(object id, CancellationToken cancellationToken = default, params string[] tableArgs);
+        Task<bool> ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件检查是否存在记录
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在记录</returns>
-        Task<bool> ExistsAsync(Expr condition, CancellationToken cancellationToken = default, params string[] tableArgs);
+        Task<bool> ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件获取记录总数
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的记录总数</returns>
-        Task<int> CountAsync(Expr condition = null, CancellationToken cancellationToken = default, params string[] tableArgs);
+        Task<int> CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件获取单个实体
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
-        Task<object> SearchOneAsync(Expr condition, CancellationToken cancellationToken = default, params string[] tableArgs);
+        Task<object> SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件获取实体列表
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的实体列表</returns>
-        Task<IList> SearchAsync(Expr condition = null, CancellationToken cancellationToken = default, params string[] tableArgs);
+        Task<IList> SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件分页查询
         /// </summary>
-        /// <param name="condition">查询条件，若为null则表示没有条件</param>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="section">分页设置</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <param name="tableArgs">表名参数</param>
         /// 
         /// <returns>符合条件的分页对象列表</returns>
-        Task<IList> SearchSectionAsync(Expr condition, SectionSet section, CancellationToken cancellationToken = default, params string[] tableArgs);
+        Task<IList> SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs = null, CancellationToken cancellationToken = default);
     }
 }

@@ -77,7 +77,7 @@ namespace MyOrm
         /// <param name="configuration">应用程序配置</param>
         public DataSourceProvider(IConfiguration configuration)
         {
-            if (configuration == null)
+            if (configuration is null)
                 throw new ArgumentNullException(nameof(configuration));
             LoadConfiguration(configuration.GetSection("MyOrm"));
         }
@@ -109,7 +109,7 @@ namespace MyOrm
         /// <param name="configuration">MyOrm配置节点</param>
         public void LoadConfiguration(IConfiguration configuration)
         {
-            if (configuration == null)
+            if (configuration is null)
                 throw new ArgumentNullException(nameof(configuration));
 
             // 加载默认连接名称
@@ -117,7 +117,7 @@ namespace MyOrm
 
             // 加载连接配置
             var connectionsSection = configuration.GetSection("ConnectionStrings");
-            if (connectionsSection != null && connectionsSection.GetChildren().Any())
+            if (connectionsSection is not null && connectionsSection.GetChildren().Any())
             {
                 _connections = new(StringComparer.OrdinalIgnoreCase);
 

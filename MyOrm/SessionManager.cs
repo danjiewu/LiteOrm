@@ -361,7 +361,7 @@ namespace MyOrm
         /// <returns>DAO上下文实例</returns>
         public DAOContext GetDaoContext(string name = null)
         {
-            if (name == null) name = "_";
+            if (name is null) name = "_";
             lock (_syncLock)
             {
                 if (!_daoContexts.TryGetValue(name, out DAOContext context))
@@ -403,7 +403,7 @@ namespace MyOrm
                 var context = kvp.Value;
                 try
                 {
-                    if (context.Pool != null)
+                    if (context.Pool is not null)
                     {
                         context.Pool.ReturnContext(context);
                     }
@@ -512,10 +512,10 @@ namespace MyOrm
         public static T ExecuteInTransaction<T>(this SessionManager sessionManager, Func<SessionManager, T> action,
             IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
         {
-            if (sessionManager == null)
+            if (sessionManager is null)
                 throw new ArgumentNullException(nameof(sessionManager));
 
-            if (action == null)
+            if (action is null)
                 throw new ArgumentNullException(nameof(action));
 
             sessionManager.BeginTransaction(isolationLevel);
@@ -551,10 +551,10 @@ namespace MyOrm
         public static async Task<T> ExecuteInTransactionAsync<T>(this SessionManager sessionManager, Func<SessionManager, Task<T>> action,
             IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
         {
-            if (sessionManager == null)
+            if (sessionManager is null)
                 throw new ArgumentNullException(nameof(sessionManager));
 
-            if (action == null)
+            if (action is null)
                 throw new ArgumentNullException(nameof(action));
 
             sessionManager.BeginTransaction(isolationLevel);

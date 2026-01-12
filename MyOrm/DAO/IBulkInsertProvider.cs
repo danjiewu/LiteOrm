@@ -69,7 +69,7 @@ namespace MyOrm
     /// 
     /// // 获取指定连接类型的提供程序
     /// var provider = BulkInsertProviderFactory.GetProvider(typeof(SqlConnection));
-    /// if (provider != null)
+    /// if (provider is not null)
     /// {
     ///     int rowsInserted = provider.BulkInsert(dataTable, daoContext);
     /// }
@@ -97,7 +97,7 @@ namespace MyOrm
         /// </remarks>
         public static void RegisterProvider(IBulkInsertProvider provider)
         {
-            if (provider == null) throw new ArgumentNullException(nameof(provider));
+            if (provider is null) throw new ArgumentNullException(nameof(provider));
             _providers[provider.DbConnectionType] = provider;
         }
         

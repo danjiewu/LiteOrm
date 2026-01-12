@@ -87,9 +87,9 @@ namespace MyOrm.Common
         /// 根据条件更新数据
         /// </summary>
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="condition">更新的条件</param>
+        /// <param name="expr">更新的条件</param>
         /// <returns>更新的记录数</returns>
-        int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expr condition);
+        int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expr expr);
         /// <summary>
         /// 根据主键更新数据
         /// </summary>
@@ -115,9 +115,9 @@ namespace MyOrm.Common
         /// <summary>
         /// 根据条件删除对象
         /// </summary>
-        /// <param name="condition">条件</param>
+        /// <param name="expr">条件</param>
         /// <returns>删除对象数量</returns>
-        int Delete(Expr condition);
+        int Delete(Expr expr);
     }
     #endregion
 

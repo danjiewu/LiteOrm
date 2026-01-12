@@ -88,7 +88,7 @@ namespace MyOrm
         /// <summary>
         /// 获取是否在事务中
         /// </summary>
-        public bool InTransaction => CurrentTransaction != null;
+        public bool InTransaction => CurrentTransaction is not null;
         
         /// <summary>
         /// 获取是否已锁定

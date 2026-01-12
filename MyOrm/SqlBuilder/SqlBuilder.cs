@@ -266,7 +266,7 @@ namespace MyOrm
         /// <returns>数据库合法名称</returns>
         public virtual string ToSqlName(string name)
         {
-            if (name == null) throw new ArgumentNullException("name");
+            if (name is null) throw new ArgumentNullException("name");
             return String.Join(".", Array.ConvertAll(name.Split('.'), n => $"[{n}]"));
         }
 
@@ -320,7 +320,7 @@ namespace MyOrm
         /// <returns></returns>
         protected string ReplaceSqlName(string sql, char left, char right, Func<char, char> handler = null)
         {
-            if (sql == null) return null;
+            if (sql is null) return null;
             StringBuilder sb = new StringBuilder();
             bool passNext = false;
             Stack<char> stack = new Stack<char>();
@@ -347,7 +347,7 @@ namespace MyOrm
                             sb.Append(ch); break;
                         case '\\': sb.Append(ch); passNext = true; break;
                         default:
-                            if (handler != null)
+                            if (handler is not null)
                             {
                                 sb.Append(handler(ch));
                             }

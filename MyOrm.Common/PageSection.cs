@@ -9,7 +9,7 @@ namespace MyOrm.Common
     /// 分页设置类，用于数据库查询的分页和排序
     /// </summary>
     [Serializable]
-    public class SectionSet
+    public class PageSection
     {
         /// <summary>
         /// 需要得到的起始记录号
@@ -29,12 +29,12 @@ namespace MyOrm.Common
         /// <summary>
         /// 创建分页设置（使用默认值）
         /// </summary>
-        public SectionSet() { }
+        public PageSection() { }
 
         /// <summary>
         /// 创建分页设置
         /// </summary>
-        public SectionSet(int startIndex, int sectionSize)
+        public PageSection(int startIndex, int sectionSize)
         {
             StartIndex = startIndex;
             SectionSize = sectionSize;
@@ -43,18 +43,18 @@ namespace MyOrm.Common
         /// <summary>
         /// 创建分页设置
         /// </summary>
-        public SectionSet(int startIndex, int sectionSize, params Sorting[] orders)
+        public PageSection(int startIndex, int sectionSize, params Sorting[] orders)
         {
             StartIndex = startIndex;
             SectionSize = sectionSize;
-            if (orders != null)
+            if (orders is not null)
                 Orders.AddRange(orders);
         }
 
         /// <summary>
         /// 设置分页起始位置
         /// </summary>
-        public SectionSet StartAt(int startIndex)
+        public PageSection StartAt(int startIndex)
         {
             StartIndex = startIndex;
             return this;
@@ -63,7 +63,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 设置分页大小
         /// </summary>
-        public SectionSet Take(int sectionSize)
+        public PageSection Take(int sectionSize)
         {
             SectionSize = sectionSize;
             return this;
@@ -72,7 +72,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 添加升序排序
         /// </summary>
-        public SectionSet OrderBy(string propertyName)
+        public PageSection OrderBy(string propertyName)
         {
             Orders.Add(new Sorting(propertyName, ListSortDirection.Ascending));
             return this;
@@ -81,7 +81,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 添加降序排序
         /// </summary>
-        public SectionSet OrderByDesc(string propertyName)
+        public PageSection OrderByDesc(string propertyName)
         {
             Orders.Add(new Sorting(propertyName, ListSortDirection.Descending));
             return this;
@@ -90,7 +90,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 添加自定义排序
         /// </summary>
-        public SectionSet OrderBy(string propertyName, ListSortDirection direction)
+        public PageSection OrderBy(string propertyName, ListSortDirection direction)
         {
             Orders.Add(new Sorting(propertyName, direction));
             return this;
@@ -99,7 +99,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 清除所有排序
         /// </summary>
-        public SectionSet ClearOrders()
+        public PageSection ClearOrders()
         {
             Orders.Clear();
             return this;
@@ -108,9 +108,9 @@ namespace MyOrm.Common
         /// <summary>
         /// 快速创建一个分页设置
         /// </summary>
-        public static SectionSet Create(int startIndex, int sectionSize)
+        public static PageSection Create(int startIndex, int sectionSize)
         {
-            return new SectionSet(startIndex, sectionSize);
+            return new PageSection(startIndex, sectionSize);
         }
 
 
@@ -120,7 +120,7 @@ namespace MyOrm.Common
         /// <returns>表示当前对象的字符串</returns>
         public override string ToString()
         {
-            if (Orders != null && Orders.Count > 0)
+            if (Orders is not null && Orders.Count > 0)
             {
                 return $"Start:{StartIndex} Size:{SectionSize} Orders:{string.Join(",", Orders.Select(o => o.ToString()))}";
             }

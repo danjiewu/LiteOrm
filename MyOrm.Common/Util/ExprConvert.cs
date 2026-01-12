@@ -88,7 +88,7 @@ namespace MyOrm.Common
             value = value.Trim();
             if (value.Length == 0) return null;
             Type type = property.PropertyType;
-            if (Nullable.GetUnderlyingType(type) != null) type = Nullable.GetUnderlyingType(type);
+            if (Nullable.GetUnderlyingType(type) is not null) type = Nullable.GetUnderlyingType(type);
             if (type.IsEnum)
             {
                 if (Int32.TryParse(value, out int i)) return Enum.ToObject(type, i);

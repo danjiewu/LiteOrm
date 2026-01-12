@@ -187,7 +187,7 @@ namespace MyOrm
             List<Type> serviceTypes = new List<Type>();
 
             // 1. 若特性指定了ServiceTypes，直接使用
-            if (attribute?.ServiceTypes != null && attribute.ServiceTypes.Any())
+            if (attribute?.ServiceTypes is not null && attribute.ServiceTypes.Any())
             {
                 serviceTypes.AddRange(attribute.ServiceTypes);
             }
@@ -215,8 +215,8 @@ namespace MyOrm
             var interceptAttribute = implementationType.GetCustomAttribute<InterceptAttribute>() ??
                                    implementationType.GetInterfaces()
                                        .Select(i => i.GetCustomAttribute<InterceptAttribute>())
-                                       .FirstOrDefault(a => a != null);
-            if (interceptAttribute != null)
+                                       .FirstOrDefault(a => a is not null);
+            if (interceptAttribute is not null)
             {
                 registration.EnableInterfaceInterceptors();
             }

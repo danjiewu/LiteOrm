@@ -97,12 +97,12 @@ namespace MyOrm.Service
         /// <summary>
         /// 判断符合条件的对象是否存在
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="tableArgs">表参数</param>
         /// <returns>是否存在</returns>
-        public virtual bool Exists(Expr condition, params string[] tableArgs)
+        public virtual bool Exists(Expr expr, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).Exists(condition);
+            return ObjectViewDAO.WithArgs(tableArgs).Exists(expr);
         }
 
         /// <summary>
@@ -119,57 +119,57 @@ namespace MyOrm.Service
         /// <summary>
         /// 获取符合条件的对象个数
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="tableArgs">表参数</param>
         /// <returns>符合条件的对象个数</returns>
-        public virtual int Count(Expr condition = null, params string[] tableArgs)
+        public virtual int Count(Expr expr = null, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).Count(condition);
+            return ObjectViewDAO.WithArgs(tableArgs).Count(expr);
         }
 
         /// <summary>
         /// 对符合条件的每个对象执行指定操作
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="func">要执行的操作</param>
         /// <param name="tableArgs">表参数</param>
-        public virtual void ForEach(Expr condition, Action<TView> func, params string[] tableArgs)
+        public virtual void ForEach(Expr expr, Action<TView> func, params string[] tableArgs)
         {
-            ObjectViewDAO.WithArgs(tableArgs).ForEach(condition, func);
+            ObjectViewDAO.WithArgs(tableArgs).ForEach(expr, func);
         }
 
         /// <summary>
         /// 获取单个符合条件的视图对象
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="tableArgs">表参数</param>
         /// <returns>第一个符合条件的视图对象，若不存在则返回null</returns>
-        public virtual TView SearchOne(Expr condition, params string[] tableArgs)
+        public virtual TView SearchOne(Expr expr, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).SearchOne(condition);
+            return ObjectViewDAO.WithArgs(tableArgs).SearchOne(expr);
         }
 
         /// <summary>
         /// 根据条件查询视图对象列表
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="tableArgs">表参数</param>
         /// <returns>符合条件的视图对象列表</returns>
-        public virtual List<TView> Search(Expr condition = null, params string[] tableArgs)
+        public virtual List<TView> Search(Expr expr = null, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).Search(condition);
+            return ObjectViewDAO.WithArgs(tableArgs).Search(expr);
         }
 
         /// <summary>
         /// 分页查询视图对象
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="section">分页设置</param>
         /// <param name="tableArgs">表参数</param>
         /// <returns>分页后的视图对象列表</returns>
-        public virtual List<TView> SearchSection(Expr condition, SectionSet section, params string[] tableArgs)
+        public virtual List<TView> SearchSection(Expr expr, PageSection section, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).SearchSection(condition, section);
+            return ObjectViewDAO.WithArgs(tableArgs).SearchSection(expr, section);
         }
 
         #endregion
@@ -181,42 +181,42 @@ namespace MyOrm.Service
             return GetObject(id, tableArgs);
         }
 
-        object IEntityViewService.SearchOne(Expr condition, params string[] tableArgs)
+        object IEntityViewService.SearchOne(Expr expr, params string[] tableArgs)
         {
-            return SearchOne(condition, tableArgs);
+            return SearchOne(expr, tableArgs);
         }
 
-        IList IEntityViewService.Search(Expr condition, params string[] tableArgs)
+        IList IEntityViewService.Search(Expr expr, params string[] tableArgs)
         {
-            return Search(condition, tableArgs);
+            return Search(expr, tableArgs);
         }
-        IList IEntityViewService.SearchSection(Expr condition, SectionSet section, params string[] tableArgs)
+        IList IEntityViewService.SearchSection(Expr expr, PageSection section, params string[] tableArgs)
         {
-            return SearchSection(condition, section, tableArgs);
+            return SearchSection(expr, section, tableArgs);
         }
 
         #endregion
 
         #region IEntityViewServiceAsync 成员
 
-        Task<object> IEntityViewServiceAsync.GetObjectAsync(object id, CancellationToken cancellationToken, params string[] tableArgs)
+        Task<object> IEntityViewServiceAsync.GetObjectAsync(object id, string[] tableArgs, CancellationToken cancellationToken)
         {
             return SessionManager.Current.ExecuteInSessionAsync(() => (object)GetObject(id, tableArgs), cancellationToken);
         }
 
-        Task<object> IEntityViewServiceAsync.SearchOneAsync(Expr condition,CancellationToken cancellationToken, params string[] tableArgs)
+        Task<object> IEntityViewServiceAsync.SearchOneAsync(Expr expr,string[] tableArgs, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => (object)SearchOne(condition, tableArgs), cancellationToken);
+            return SessionManager.Current.ExecuteInSessionAsync(() => (object)SearchOne(expr, tableArgs), cancellationToken);
         }
 
-        Task<IList> IEntityViewServiceAsync.SearchAsync(Expr condition, CancellationToken cancellationToken, params string[] tableArgs)
+        Task<IList> IEntityViewServiceAsync.SearchAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => (IList)Search(condition, tableArgs), cancellationToken);
+            return SessionManager.Current.ExecuteInSessionAsync(() => (IList)Search(expr, tableArgs), cancellationToken);
         }
 
-        Task<IList> IEntityViewServiceAsync.SearchSectionAsync(Expr condition, SectionSet section, CancellationToken cancellationToken, params string[] tableArgs)
+        Task<IList> IEntityViewServiceAsync.SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => (IList)SearchSection(condition, section, tableArgs), cancellationToken);
+            return SessionManager.Current.ExecuteInSessionAsync(() => (IList)SearchSection(expr, section, tableArgs), cancellationToken);
         }
 
         #endregion
@@ -230,7 +230,7 @@ namespace MyOrm.Service
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>视图对象，若不存在则返回null</returns>
-        public virtual Task<TView> GetObjectAsync(object id, CancellationToken cancellationToken = default, params string[] tableArgs)
+        public virtual Task<TView> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return SessionManager.Current.ExecuteInSessionAsync(() => GetObject(id, tableArgs), cancellationToken);
         }
@@ -242,7 +242,7 @@ namespace MyOrm.Service
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在</returns>
-        public virtual Task<bool> ExistsIDAsync(object id, CancellationToken cancellationToken = default, params string[] tableArgs)
+        public virtual Task<bool> ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return SessionManager.Current.ExecuteInSessionAsync(() => ExistsID(id, tableArgs), cancellationToken);
         }
@@ -250,13 +250,13 @@ namespace MyOrm.Service
         /// <summary>
         /// 异步判断符合条件的对象是否存在
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在</returns>
-        public virtual Task<bool> ExistsAsync(Expr condition, CancellationToken cancellationToken = default, params string[] tableArgs)
+        public virtual Task<bool> ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Exists(condition, tableArgs), cancellationToken);
+            return SessionManager.Current.ExecuteInSessionAsync(() => Exists(expr, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -266,7 +266,7 @@ namespace MyOrm.Service
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在</returns>
-        public virtual Task<bool> ExistsAsync(Expression<Func<TView, bool>> expression, CancellationToken cancellationToken = default, params string[] tableArgs)
+        public virtual Task<bool> ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return SessionManager.Current.ExecuteInSessionAsync(() => Exists(expression, tableArgs), cancellationToken);
         }
@@ -274,66 +274,66 @@ namespace MyOrm.Service
         /// <summary>
         /// 异步获取符合条件的对象个数
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的对象个数</returns>
-        public virtual Task<int> CountAsync(Expr condition = null, CancellationToken cancellationToken = default, params string[] tableArgs)
+        public virtual Task<int> CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Count(condition, tableArgs), cancellationToken);
+            return SessionManager.Current.ExecuteInSessionAsync(() => Count(expr, tableArgs), cancellationToken);
         }
 
         /// <summary>
         /// 异步对符合条件的每个对象执行指定的操作。
         /// </summary>
-        /// <param name="condition">查询条件。</param>
+        /// <param name="expr">查询条件。</param>
         /// <param name="func">要执行的异步操作。</param>
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>返回异步操作任务。</returns>
-        public virtual Task ForEachAsync(Expr condition, Func<TView, Task> func, CancellationToken cancellationToken = default, params string[] tableArgs)
+        public virtual Task ForEachAsync(Expr expr, Func<TView, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return SessionManager.Current.ExecuteInSessionAsync(async () =>
             {
-                await ObjectViewDAO.WithArgs(tableArgs).ForEachAsync(condition, func, cancellationToken);
+                await ObjectViewDAO.WithArgs(tableArgs).ForEachAsync(expr, func, cancellationToken);
             }, cancellationToken);
         }
 
         /// <summary>
         /// 异步获取单个符合条件的视图对象
         /// </summary>
-        /// <param name="condition">查询条件</param>
+        /// <param name="expr">查询条件</param>
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>第一个符合条件的视图对象，若不存在则返回null</returns>
-        public virtual Task<TView> SearchOneAsync(Expr condition, CancellationToken cancellationToken = default, params string[] tableArgs)
+        public virtual Task<TView> SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => SearchOne(condition, tableArgs), cancellationToken);
+            return SessionManager.Current.ExecuteInSessionAsync(() => SearchOne(expr, tableArgs), cancellationToken);
         }
 
         /// <summary>
         /// 异步查询符合条件的实体列表。
         /// </summary>
-        /// <param name="condition">查询条件。</param>
+        /// <param name="expr">查询条件。</param>
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>实体列表结果。</returns>
-        public virtual Task<List<TView>> SearchAsync(Expr condition, CancellationToken cancellationToken = default, params string[] tableArgs)
+        public virtual Task<List<TView>> SearchAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Search(condition, tableArgs), cancellationToken);
+            return SessionManager.Current.ExecuteInSessionAsync(() => Search(expr, tableArgs), cancellationToken);
         }
 
         /// <summary>
         /// 异步分页查询符合条件的实体列表。
         /// </summary>
-        /// <param name="condition">查询条件。</param>
+        /// <param name="expr">查询条件。</param>
         /// <param name="section">分页配置。</param>
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>分页结果列表。</returns>
-        public virtual Task<List<TView>> SearchSectionAsync(Expr condition, SectionSet section, CancellationToken cancellationToken = default, params string[] tableArgs)
+        public virtual Task<List<TView>> SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => SearchSection(condition, section, tableArgs), cancellationToken);
+            return SessionManager.Current.ExecuteInSessionAsync(() => SearchSection(expr, section, tableArgs), cancellationToken);
         }
         #endregion
     }

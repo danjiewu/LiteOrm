@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace MyOrm.Common
@@ -34,7 +35,7 @@ namespace MyOrm.Common
         /// <summary>
         /// 操作对象
         /// </summary>
-        public Expr Operand { get; set; } = Null;
+        public Expr Operand { get; set; }
         /// <inheritdoc/>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
@@ -84,6 +85,7 @@ namespace MyOrm.Common
     /// <summary>
     /// 单目操作符
     /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum UnaryOperator
     {
         /// <summary>

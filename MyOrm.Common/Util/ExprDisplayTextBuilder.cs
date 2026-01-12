@@ -16,7 +16,7 @@ namespace MyOrm.Common
         /// 获取实体类型
         /// </summary>
         public Type Type { get; }
-        
+
         /// <summary>
         /// 使用指定的实体类型初始化ExprDisplayTextBuilder
         /// </summary>
@@ -35,7 +35,7 @@ namespace MyOrm.Common
         {
             return $"{ToDisplayText(condition.Operator)} {ToDisplayText(condition.Operand)}";
         }
-        
+
         /// <summary>
         /// 将属性表达式转换为显示文本
         /// </summary>
@@ -44,19 +44,10 @@ namespace MyOrm.Common
         public string ToDisplayText(PropertyExpr property)
         {
             var prop = Util.GetProperty(Type, property.PropertyName);
-            if (prop == null) throw new ArgumentException($"属性'{property.PropertyName}'在类型'{Type.FullName}'中不存在或不可读", property.PropertyName);
+            if (prop is null) throw new ArgumentException($"属性'{property.PropertyName}'在类型'{Type.FullName}'中不存在或不可读", property.PropertyName);
             return prop.DisplayName;
         }
 
-        /// <summary>
-        /// 将原始SQL片段表达式转换为显示文本
-        /// </summary>
-        /// <param name="rawSqlExpr">原始SQL片段表达式</param>
-        /// <returns>显示文本</returns>
-        public string ToDisplayText(RawSqlExpr rawSqlExpr)
-        {
-            return $"{{SQL:{rawSqlExpr.Sql}}}";
-        }
 
         /// <summary>
         /// 将值表达式转换为显示文本
@@ -67,7 +58,7 @@ namespace MyOrm.Common
         {
             return Util.ToDisplayText(valueExpr.Value);
         }
-        
+
         /// <summary>
         /// 将函数表达式转换为显示文本
         /// </summary>
@@ -77,7 +68,7 @@ namespace MyOrm.Common
         {
             return $"{functionExpr.FunctionName}({String.Join(", ", functionExpr.Parameters.Select(arg => ToDisplayText(arg)))})";
         }
-        
+
         /// <summary>
         /// 将表达式集合转换为显示文本
         /// </summary>
@@ -106,13 +97,13 @@ namespace MyOrm.Common
                 return ToDisplayText(unary);
             if (condition is ExprSet set)
                 return ToDisplayText(set);
-            if (condition is RawSqlExpr rawSql)
-                return ToDisplayText(rawSql);
             if (condition is FunctionExpr function)
                 return ToDisplayText(function);
+            if (condition is LambdaExpr lambdaExpr)
+                return ToDisplayText(lambdaExpr.InnerExpr);
             return condition.ToString();
-        }        
-        
+        }
+
         /// <summary>
         /// 将一元操作符转换为显示文本
         /// </summary>
@@ -128,7 +119,7 @@ namespace MyOrm.Common
                 default: return op.ToString();
             }
         }
-        
+
         /// <summary>
         /// 将二元操作符转换为显示格式字符串
         /// </summary>

@@ -65,7 +65,7 @@ namespace MyOrm.Common
         /// <exception cref="ArgumentNullException">当target为null时抛出</exception>
         public virtual void CopyFrom(ObjectBase target)
         {
-            if (target == null) throw new ArgumentNullException(nameof(target));
+            if (target is null) throw new ArgumentNullException(nameof(target));
 
 
             Type sourceType = target.GetType();
@@ -107,7 +107,7 @@ namespace MyOrm.Common
                     throw new ArgumentException("Property name cannot be null or empty", nameof(propertyName));
 
                 var property = this.GetType().GetProperty(propertyName);
-                if (property == null)
+                if (property is null)
                     throw new ArgumentOutOfRangeException(nameof(propertyName),
                         $"Property '{propertyName}' not found on type {this.GetType().Name}");
 
@@ -119,7 +119,7 @@ namespace MyOrm.Common
                     throw new ArgumentException("Property name cannot be null or empty", nameof(propertyName));
 
                 var property = this.GetType().GetProperty(propertyName);
-                if (property == null)
+                if (property is null)
                     throw new ArgumentOutOfRangeException(nameof(propertyName),
                         $"Property '{propertyName}' not found on type {this.GetType().Name}");
 
@@ -154,7 +154,7 @@ namespace MyOrm.Common
                     {
                         var logAttribute = property.GetCustomAttribute<LogAttribute>();
                         // 默认记录属性，除非明确设置为 false
-                        if (logAttribute == null || logAttribute.Enabled)
+                        if (logAttribute is null || logAttribute.Enabled)
                         {
                             logProperties.Add(property.Name);
                         }
@@ -173,19 +173,19 @@ namespace MyOrm.Common
         public virtual string ToLog(object target)
         {
             var properties = ToLogProperties();
-            if (properties == null || properties.Length == 0)
+            if (properties is null || properties.Length == 0)
                 return string.Empty;
 
             var sb = new StringBuilder();
             var type = this.GetType();
 
-            if (target != null && target.GetType() == type)
+            if (target is not null && target.GetType() == type)
             {
                 // 对比模式：只记录变化的属性
                 foreach (var propertyName in properties)
                 {
                     var property = type.GetProperty(propertyName);
-                    if (property == null) continue;
+                    if (property is null) continue;
 
                     var thisValue = property.GetValueFast(this);
                     var targetValue = property.GetValueFast(target);
@@ -202,7 +202,7 @@ namespace MyOrm.Common
                 foreach (var propertyName in properties)
                 {
                     var property = type.GetProperty(propertyName);
-                    if (property == null) continue;
+                    if (property is null) continue;
 
                     var value = property.GetValueFast(this);
                     AppendProperty(sb, propertyName, value);
@@ -233,7 +233,7 @@ namespace MyOrm.Common
 
         private static void AppendProperty(StringBuilder sb, string propertyName, object value)
         {
-            if (value == null || (value is string str && string.IsNullOrEmpty(str)))
+            if (value is null || (value is string str && string.IsNullOrEmpty(str)))
                 return;
 
             if (sb.Length > 0)
@@ -246,7 +246,7 @@ namespace MyOrm.Common
 
         private static string FormatValue(object value)
         {
-            if (value == null) return "null";
+            if (value is null) return "null";
 
             // 处理特殊类型的格式化
             if (value is DateTime dateTime)

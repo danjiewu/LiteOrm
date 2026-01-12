@@ -108,7 +108,7 @@ namespace MyOrm.Oracle
         /// <returns>Oracle 兼容的 SQL 名称。</returns>
         public override string ToSqlName(string name)
         {
-            if (name == null) throw new ArgumentNullException("name");
+            if (name is null) throw new ArgumentNullException("name");
             return String.Join(".", Array.ConvertAll(name.Split('.'), n => $"\"{n.ToUpper()}\""));
         }
 
@@ -119,7 +119,7 @@ namespace MyOrm.Oracle
         /// <returns>数据库参数。</returns>
         public override string ToSqlParam(string nativeName)
         {
-            if (nativeName == null) throw new ArgumentNullException("nativeName");
+            if (nativeName is null) throw new ArgumentNullException("nativeName");
             return $":{nativeName}";
         }
 
@@ -130,7 +130,7 @@ namespace MyOrm.Oracle
         /// <returns>参数名称。</returns>
         public override string ToParamName(string nativeName)
         {
-            if (nativeName == null) throw new ArgumentNullException("nativeName");
+            if (nativeName is null) throw new ArgumentNullException("nativeName");
             return nativeName;
         }
 
@@ -141,7 +141,7 @@ namespace MyOrm.Oracle
         /// <returns>通用名称。</returns>
         public override string ToNativeName(string paramName)
         {
-            if (paramName == null) throw new ArgumentNullException("paramName");
+            if (paramName is null) throw new ArgumentNullException("paramName");
             return paramName.TrimStart(':');
         }
     }

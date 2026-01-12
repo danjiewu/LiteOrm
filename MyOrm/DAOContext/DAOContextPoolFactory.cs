@@ -133,10 +133,10 @@ namespace MyOrm
         /// </summary>
         public void ReturnContext(DAOContext context)
         {
-            if (context == null)
+            if (context is null)
                 throw new ArgumentNullException(nameof(context));
 
-            if (context.Pool == null)
+            if (context.Pool is null)
             {
                 throw new InvalidOperationException("DAOContext 没有关联的连接池");
             }

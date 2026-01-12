@@ -47,7 +47,7 @@ namespace MyOrm.Common
         /// <returns>格式化后的表名</returns>
         public string GetTableNameWithArgs(string oraginTableName)
         {
-            if (TableNameArgs != null && TableNameArgs.Length > 0)
+            if (TableNameArgs is not null && TableNameArgs.Length > 0)
             {
                 return String.Format(oraginTableName, TableNameArgs.Select(s => ArgPrefix + s).ToArray());
             }

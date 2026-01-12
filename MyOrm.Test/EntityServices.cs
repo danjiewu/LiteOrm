@@ -25,8 +25,8 @@ namespace LogRecord
 
         public int BulkInsert(DataTable dt, DAOContext context)
         {
-            if (dt == null) throw new ArgumentNullException(nameof(dt));
-            if (context == null) throw new ArgumentNullException(nameof(context));
+            if (dt is null) throw new ArgumentNullException(nameof(dt));
+            if (context is null) throw new ArgumentNullException(nameof(context));
             MySqlBulkCopy bulkCopy = new MySqlBulkCopy(context.DbConnection as MySqlConnection, context.CurrentTransaction as MySqlTransaction);
             bulkCopy.DestinationTableName = dt.TableName;
             bulkCopy.ConflictOption = MySqlBulkLoaderConflictOption.Replace;
