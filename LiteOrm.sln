@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LiteOrm", "LiteOrm\LiteOrm.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LiteOrm.Common", "LiteOrm.Common\LiteOrm.Common.csproj", "{E0ACFA3D-3BAD-4E47-BD5A-5ED72022B93E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LiteOrm.Test", "LiteOrm.Test\LiteOrm.Test.csproj", "{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.ASPNetCore", "LiteOrm.ASPNetCore\LiteOrm.ASPNetCore.csproj", "{35C1FEB5-4077-4BAA-81CA-357A34730655}"
 EndProject
 Global
@@ -45,18 +43,6 @@ Global
 		{E0ACFA3D-3BAD-4E47-BD5A-5ED72022B93E}.Release|x64.Build.0 = Release|Any CPU
 		{E0ACFA3D-3BAD-4E47-BD5A-5ED72022B93E}.Release|x86.ActiveCfg = Release|Any CPU
 		{E0ACFA3D-3BAD-4E47-BD5A-5ED72022B93E}.Release|x86.Build.0 = Release|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Debug|x64.Build.0 = Debug|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Debug|x86.Build.0 = Debug|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Release|Any CPU.Build.0 = Release|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Release|x64.ActiveCfg = Release|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Release|x64.Build.0 = Release|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Release|x86.ActiveCfg = Release|Any CPU
-		{00EF0E38-35D3-40A3-A777-1C2C0AD9A458}.Release|x86.Build.0 = Release|Any CPU
 		{35C1FEB5-4077-4BAA-81CA-357A34730655}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{35C1FEB5-4077-4BAA-81CA-357A34730655}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{35C1FEB5-4077-4BAA-81CA-357A34730655}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -74,8 +60,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		VisualSVNWorkingCopyRoot = .
 		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
+		VisualSVNWorkingCopyRoot = .
 	EndGlobalSection
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True
