@@ -1,6 +1,6 @@
-# MyOrm.Core
+# LiteOrm.Core
 
-MyOrm.Core 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架，旨在提供简单、灵活且强大的数据库操作能力。它可以运行在 .NET Standard 2.0 和 .NET 8.0+ 环境下。
+LiteOrm.Core 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架，旨在提供简单、灵活且强大的数据库操作能力。它可以运行在 .NET Standard 2.0 和 .NET 8.0+ 环境下。
 
 ## 主要特性
 
@@ -54,11 +54,11 @@ public class UserService : EntityService<User>, IUserService
 
 ### 3. 在 ASP.NET Core 中启动配置
 
-在 `Program.cs` 中注册 MyOrm 服务：
+在 `Program.cs` 中注册 LiteOrm 服务：
 
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
-    .RegisterMyOrm() // 注册 MyOrm 和 Autofac
+    .RegisterLiteOrm() // 注册 LiteOrm 和 Autofac
     .ConfigureServices(services => {
         // 配置数据库连接等
     })
@@ -92,7 +92,7 @@ public class MyController : ControllerBase
 
 ## 查询语句示例 (Expr)
 
-MyOrm 提供了一套强大的表达式构建工具：
+LiteOrm 提供了一套强大的表达式构建工具：
 
 ```csharp
 // 组合条件
@@ -111,10 +111,10 @@ var results = await service.SearchAsync(condition | inCondition);
 
 ## 项目结构
 
-*   `MyOrm.Common`: 核心抽象、映射特性、表达式定义 (`Expr`) 和基础接口。
-*   `MyOrm`: 核心实现、DAO、数据库驱动特定的 SQL 生成器。
-*   `MyOrm.ASPNetCore`: 与 ASP.NET Core 框架的集成支持。
-*   `MyOrm.Test`: 单元测试和示例代码。
+*   `LiteOrm.Common`: 核心抽象、映射特性、表达式定义 (`Expr`) 和基础接口。
+*   `LiteOrm`: 核心实现、DAO、数据库驱动特定的 SQL 生成器。
+*   `LiteOrm.ASPNetCore`: 与 ASP.NET Core 框架的集成支持。
+*   `LiteOrm.Test`: 单元测试和示例代码。
 
 ## 开源协议
 
