@@ -97,6 +97,21 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 添加多个排序
+        /// </summary>
+        public PageSection OrderBy(params (string propertyName, ListSortDirection direction)[] orders)
+        {
+            if (orders is not null)
+            {
+                foreach (var (propertyName, direction) in orders)
+                {
+                    Orders.Add(new Sorting(propertyName, direction));
+                }
+            }
+            return this;
+        }
+
+        /// <summary>
         /// 清除所有排序
         /// </summary>
         public PageSection ClearOrders()

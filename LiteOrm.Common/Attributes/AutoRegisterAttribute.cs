@@ -16,7 +16,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 服务生命周期，默认为Transient
         /// </summary>
-        public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Transient;
+        public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Singleton;
 
         /// <summary>
         /// 支持多个服务类型
@@ -27,7 +27,12 @@ namespace LiteOrm.Common
         /// 是否启用自动注册
         /// </summary>
         public bool Enabled { get; } = true;
-        
+
+        /// <summary>
+        /// 服务唯一标识
+        /// </summary>
+        public object Key { get; set; }
+
         /// <summary>
         /// 默认构造函数
         /// </summary>

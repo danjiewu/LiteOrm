@@ -76,7 +76,7 @@ namespace LiteOrm.Common
         /// <returns>显示文本</returns>
         public string ToDisplayText(ExprSet set)
         {
-            string joiner = set.JoinType switch { ExprJoinType.And => " 且 ", ExprJoinType.Or => " 或 ", ExprJoinType.Default => ",", ExprJoinType.Concat => "", _ => "," };
+            string joiner = set.JoinType switch { ExprJoinType.And => " 且 ", ExprJoinType.Or => " 或 ", ExprJoinType.List => ",", ExprJoinType.Concat => "", _ => "," };
             return $"({String.Join(joiner, set.Items.Select(s => ToDisplayText(s)))})";
         }
 

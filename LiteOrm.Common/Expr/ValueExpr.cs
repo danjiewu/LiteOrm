@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace LiteOrm.Common
@@ -27,6 +28,12 @@ namespace LiteOrm.Common
         {
             Value = value;
         }
+
+        /// <summary>
+        /// 表示这是一个值类型表达式。
+        /// </summary>
+        [JsonIgnore]
+        public override bool IsValue => true;
 
         /// <summary>
         /// 常量值或集合

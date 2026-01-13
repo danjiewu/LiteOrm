@@ -91,6 +91,11 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 批量插入提供程序工厂
+        /// </summary>
+        public BulkProviderFactory BulkFactory { get; set; }
+
+        /// <summary>
         /// 构建SQL语句的SQLBuilder
         /// </summary>
         protected internal virtual SqlBuilder SqlBuilder
@@ -330,7 +335,7 @@ namespace LiteOrm
         /// <param name="paramValues">参数列表，为空时表示没有参数。Key 需要与 SQL 中的参数名称对应。</param>
         /// <param name="context">SQL 构建上下文。</param>
         /// <returns>IDbCommand 实例。</returns>
-        public IDbCommand MakeNamedParamCommand(string SQL, IEnumerable<KeyValuePair<string, object>> paramValues, SqlBuildContext context = null)   
+        public IDbCommand MakeNamedParamCommand(string SQL, IEnumerable<KeyValuePair<string, object>> paramValues, SqlBuildContext context = null)
         {
             IDbCommand command = NewCommand();
             command.CommandText = ReplaceParam(SQL, context);

@@ -224,7 +224,7 @@ namespace LiteOrm
         /// <param name="values">要插入的实体对象集合。</param>
         public virtual void BatchInsert(IEnumerable<T> values)
         {
-            var provider = BulkInsertProviderFactory.GetProvider(TableDefinition.DataProviderType);
+            var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType);
             if (provider is not null)
             {
                 DataTable dt = new DataTable(FactTableName);
@@ -248,7 +248,7 @@ namespace LiteOrm
                     dt.Rows.Add(dr);
                 }
                 dt.EndInit();
-                provider.BulkInsert(dt, DAOContext);
+                provider.BulkInsert(dt, Connection, DAOContext.CurrentTransaction);
             }
             else
             {

@@ -13,26 +13,31 @@ namespace LiteOrm.Common
     /// <summary>
     /// 通过委托生成的 SQL 片段表达式。
     /// </summary>
-    public sealed class StaticSqlExpr : Expr
+    public sealed class GenericSqlExpr : Expr
     {
         /// <summary>
         /// 默认构造函数。
         /// </summary>
-        public StaticSqlExpr() { }
+        public GenericSqlExpr() { }
         /// <summary>
         /// 使用委托构造，可以在生成 SQL 时依据上下文动态生成字符串。
         /// </summary>
         /// <param name="key">表达式的唯一键</param>
-        public StaticSqlExpr(string key)
+        public GenericSqlExpr(string key)
         {
             Key = key;
         }
 
-        private SqlExpression SqlHandler => String.IsNullOrEmpty(Key) ? null : registry[Key];
+        private SqlExpression SqlHandler => String.IsNullOrEmpty(Key) ? null : registry[Key].SqlHandler;
+
         /// <summary>
         /// 表达式的唯一键
-        /// 
+        /// </summary> 
         public string Key { get; set; }
+        /// <summary>
+        /// 指示当前表达式是否为值类型表达式。
+        /// </summary>
+        public override bool IsValue => String.IsNullOrEmpty(Key) ? false : registry[Key].IsValue;
         /// <inheritdoc/>
         public override string ToSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
@@ -55,7 +60,7 @@ namespace LiteOrm.Common
         /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
         public override bool Equals(object obj)
         {
-            return obj is StaticSqlExpr g && g.Key == Key;
+            return obj is GenericSqlExpr g && g.Key == Key;
         }
 
         /// <summary>
@@ -68,31 +73,39 @@ namespace LiteOrm.Common
         }
 
         #region 静态注册表
-        private static ConcurrentDictionary<string, SqlExpression> registry = new ConcurrentDictionary<string, SqlExpression>();
+        private class InnerSqlExpr
+        {
+            public bool IsValue { get; set; }
+            public SqlExpression SqlHandler { get; set; }
+        }
+
+        private static ConcurrentDictionary<string, InnerSqlExpr> registry = new ConcurrentDictionary<string, InnerSqlExpr>();
 
         /// <summary>
         /// 注册一个静态 SQL 表达式。
         /// <param name="key">表达式的唯一键</param>
         /// <param name="func">处理上下文并返回 SQL 字符串的委托</param> 
+        /// <param name="isValue">指示该表达式是否为值类型表达式</param>
         /// </summary>
-        public static StaticSqlExpr Register(string key, SqlExpression func)
+        public static GenericSqlExpr Register(string key, SqlExpression func, bool isValue = false)
         {
             if (key is null) throw new ArgumentNullException(nameof(key));
             if (func is null) throw new ArgumentNullException(nameof(func));
             if (registry.ContainsKey(key)) throw new ArgumentException($"键'{key}'已存在注册表中", nameof(key));
-            var expr = new StaticSqlExpr(key);
-            registry[key] = func;
-            return expr;
+            registry[key] = new InnerSqlExpr { IsValue = isValue, SqlHandler = func };
+            return new GenericSqlExpr(key);
         }
 
-        /// <summary>
-        /// 
-        public static StaticSqlExpr GetStaticSqlExpr(string key)
+        ///<summary>
+        /// 获取已注册的静态 SQL 表达式。
+        /// <para name="key">表达式的唯一键</para>
+        /// </summary>
+        public static GenericSqlExpr GetStaticSqlExpr(string key)
         {
             if (key is null) throw new ArgumentNullException(nameof(key));
             if (registry.TryGetValue(key, out var expr))
             {
-                return new StaticSqlExpr(key);
+                return new GenericSqlExpr(key);
             }
             throw new KeyNotFoundException($"键'{key}'在注册表中未找到");
         }

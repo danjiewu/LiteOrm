@@ -32,12 +32,7 @@ namespace LiteOrm
     /// 3. 后置回调 - 在容器构建完成后进行初始化
     /// 4. SessionManager设置 - 设置全局的 SessionManager 实例
     /// 
-    /// 使用示例：
-    /// <code>
-    /// var builder = new ContainerBuilder();
-    /// builder.RegisterModule&lt;LiteOrmModule&gt;();
-    /// var container = builder.Build();
-    /// </code>
+    /// RegisterLiteOrm
     /// </remarks>
     public class LiteOrmModule : Module
     {
@@ -75,18 +70,14 @@ namespace LiteOrm
     /// 
     /// 使用示例：
     /// <code>
-    /// var builder = Host.CreateDefaultBuilder(args);
-    /// builder.ConfigureServices(services => { })
-    ///        .UseServiceProviderFactory(new AutofacServiceProviderFactory())
-    ///        .ConfigureContainer&lt;ContainerBuilder&gt;(b =&gt;
-    ///        {
-    ///            b.RegisterModule&lt;LiteOrmModule&gt;();
-    ///        })
-    ///        .Build()
-    ///        .Run();
+    /// var builder = Host.CreateDefaultBuilder(args)
+    ///     .RegisterLiteOrm()
+    ///     .ConfigureServices(services =>
+    ///         ...
+    ///     );
     /// </code>
     /// </remarks>
-    public static class MyServiceProviderExt
+    public static class LiteOrmServiceProviderExtensions
     {
         /// <summary>
         /// 注册LiteOrm框架到主机构建器
@@ -98,7 +89,6 @@ namespace LiteOrm
             return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
                 .ConfigureContainer<ContainerBuilder>((builder, containerBuilder) =>
                 {
-                    // 1. 注册基础设施模块
                     containerBuilder.RegisterModule<LiteOrmModule>();
                 });
         }
@@ -122,7 +112,7 @@ namespace LiteOrm
                 {
                     builder.RegisterType(interceptorType)
                            .AsSelf()
-                           .SingleInstance();  // 拦截器通常是单例
+                           .SingleInstance();  // 拦截器为单例
                 }
             }
             return builder;
@@ -186,16 +176,16 @@ namespace LiteOrm
             ServiceLifetime lifetime = attribute?.Lifetime ?? ServiceLifetime.Scoped;
             List<Type> serviceTypes = new List<Type>();
 
-            // 1. 若特性指定了ServiceTypes，直接使用
+            // 若特性指定了ServiceTypes，直接使用
             if (attribute?.ServiceTypes is not null && attribute.ServiceTypes.Any())
             {
                 serviceTypes.AddRange(attribute.ServiceTypes);
             }
-            // 2. 否则自动获取所有实现的接口（排除系统接口如IDisposable）
+            // 否则自动获取所有实现的接口（排除系统接口如IDisposable）
             else
             {
                 foreach (var serviceType in implementationType.GetInterfaces()
-                    .Where(i => !i.Namespace.StartsWith("System.") 
+                    .Where(i => !i.Namespace.StartsWith("System.")
                              && (i.GetCustomAttribute<AutoRegisterAttribute>()?.Enabled ?? true)))
                 {
                     if (implementationType.IsGenericTypeDefinition && serviceType.IsGenericType)
@@ -225,9 +215,20 @@ namespace LiteOrm
                 serviceTypes.Add(implementationType);
             }
 
-            registration.As(serviceTypes.ToArray())
-               .PropertiesAutowired()
-               .SetLifetime(lifetime);
+            if (attribute?.Key != null)
+            {
+                foreach(var serviceType in serviceTypes)
+                {
+                    registration.Keyed(attribute.Key, serviceType);
+                }
+            }
+            else
+            {
+                registration.As(serviceTypes.ToArray());
+            }
+
+            registration.PropertiesAutowired()
+            .SetLifetime(lifetime);
             return registration;
         }
 
@@ -251,52 +252,6 @@ namespace LiteOrm
                 ServiceLifetime.Transient => registration.InstancePerDependency(),
                 _ => throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null)
             };
-        }
-
-        /// <summary>
-        /// 获取实体服务
-        /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="serviceProvider">服务提供者</param>
-        /// <returns>实体服务</returns>
-        public static IEntityService<T> GetEntityService<T>(this IServiceProvider serviceProvider)
-        {
-            return serviceProvider.GetRequiredService<IEntityService<T>>();
-        }
-
-        /// <summary>
-        /// 获取实体服务
-        /// </summary>
-        /// <param name="serviceProvider">服务提供者</param>
-        /// <param name="entityType">实体类型</param>
-        /// <returns>实体服务</returns>
-        public static IEntityService GetEntityService(this IServiceProvider serviceProvider, Type entityType)
-        {
-            var serviceType = typeof(IEntityService<>).MakeGenericType(entityType);
-            return serviceProvider.GetRequiredService(serviceType) as IEntityService;
-        }
-
-        /// <summary>
-        /// 获取实体视图服务
-        /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="serviceProvider">服务提供者</param>
-        /// <returns>实体视图服务</returns>
-        public static IEntityViewService<T> GetEntityViewService<T>(this IServiceProvider serviceProvider)
-        {
-            return serviceProvider.GetRequiredService<IEntityViewService<T>>();
-        }
-
-        /// <summary>
-        /// 获取实体视图服务
-        /// </summary>
-        /// <param name="serviceProvider">服务提供者</param>
-        /// <param name="entityType">实体类型</param>
-        /// <returns>实体视图服务</returns>
-        public static IEntityViewService GetEntityViewService(this IServiceProvider serviceProvider, Type entityType)
-        {
-            var serviceType = typeof(IEntityViewService<>).MakeGenericType(entityType);
-            return serviceProvider.GetRequiredService(serviceType) as IEntityViewService;
         }
     }
 

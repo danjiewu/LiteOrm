@@ -10,13 +10,7 @@ namespace LiteOrm.Common
     /// <summary>
     /// 抽象表达式基类。子类应实现 <see cref="ToSql"/> 将表达式转换为 SQL 片段并把所需参数写入。
     /// </summary>
-    [JsonDerivedType(typeof(BinaryExpr), typeDiscriminator: "binary")]
-    [JsonDerivedType(typeof(ExprSet), typeDiscriminator: "set")]
-    [JsonDerivedType(typeof(FunctionExpr), typeDiscriminator: "func")]
-    [JsonDerivedType(typeof(StaticSqlExpr), typeDiscriminator: "static")]
-    [JsonDerivedType(typeof(PropertyExpr), typeDiscriminator: "prop")]
-    [JsonDerivedType(typeof(UnaryExpr), typeDiscriminator: "unary")]
-    [JsonDerivedType(typeof(ValueExpr), typeDiscriminator: "value")]
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
     public abstract class Expr
     {
         /// <summary>
@@ -29,7 +23,13 @@ namespace LiteOrm.Common
         /// <summary>
         /// 表示空值的表达式
         /// </summary>
-        public static readonly ValueExpr Empty = new ValueExpr();
+        public static readonly ValueExpr Null = new ValueExpr();
+
+        /// <summary>
+        /// 指示当前表达式是否为值类型表达式。
+        /// </summary>
+        [JsonIgnore]
+        public virtual bool IsValue => false;
 
         /// <summary>
         /// 用于哈希计算的种子值。
@@ -181,7 +181,7 @@ namespace LiteOrm.Common
         /// <returns>两个表达式的逻辑或组合</returns>
         public static Expr operator |(Expr left, Expr right)
         {
-            if (left is null || right is null) return Empty;
+            if (left is null || right is null) return Null;
             return left.Or(right);
         }
 
@@ -292,7 +292,7 @@ namespace LiteOrm.Common
         /// <param name="right">右操作数表达式</param>
         /// <param name="joinType">表达式连接类型，默认为Default</param>
         /// <returns>组合后的表达式集合</returns>
-        public static ExprSet Join(this Expr left, Expr right, ExprJoinType joinType = ExprJoinType.Default) => new ExprSet(joinType, left, right);
+        public static ExprSet Join(this Expr left, Expr right, ExprJoinType joinType = ExprJoinType.List) => new ExprSet(joinType, left, right);
 
         /// <summary>
         /// 取反操作
@@ -371,6 +371,5 @@ namespace LiteOrm.Common
         /// <param name="right">右端表达式</param>
         /// <returns>二元表达式</returns>
         public static BinaryExpr Union(this Expr left, BinaryOperator op, Expr right) => new BinaryExpr(left, op, right);
-
     }
 }

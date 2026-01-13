@@ -17,6 +17,8 @@ using System.Linq.Expressions;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 
 
 namespace LiteOrm.Test
@@ -27,8 +29,6 @@ namespace LiteOrm.Test
         {
             OracleConfiguration.BindByName = true;
             OracleBuilder.Instance.IdentitySource = OracleIdentitySourceType.Sequence;
-
-            BulkInsertProviderFactory.RegisterProvider(new MysqlBulkInsertProvider());
             var configuration = new ConfigurationBuilder()
                     .SetBasePath(Directory.GetCurrentDirectory()) // 设置配置文件目录
                     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true) // 加载JSON配置
@@ -52,17 +52,20 @@ namespace LiteOrm.Test
             var dao = serviceProvider.GetRequiredService<IObjectDAO<Session>>();
             var service = serviceProvider.GetRequiredService<IAccountingLogService>();
             var ids = new[] { 1, 2, 3 };
-            var inCondition = Expr.Exp<AccountingLog>(l => ids.Contains(l.AcctStatusType.Value));
-            var logs = service.SearchSection(inCondition, new PageSection().Take(1000), ["202501"]);
+            var inCondition = Expr.Exp<AccountingLog>(l => ids.Contains(l.AcctStatusType.Value) && l.AcctInputOctets > 0 && l.Id.ToString().Length == 5);
+            var json = JsonSerializer.Serialize(inCondition, new JsonSerializerOptions { WriteIndented = true });
+            Console.WriteLine(json);
+            var expr = JsonSerializer.Deserialize<Expr>(json);
+            Console.WriteLine(expr);
+            var logs = service.SearchSection(expr, new PageSection().Take(1000), ["202501"]);
 
-            //service.BatchInsert(logs);
+            service.BatchInsert(logs);
 
             foreach (var log in logs)
             {
                 Console.WriteLine($"{log.Id}, {log.UserName}, {log.AcctInputOctets}, {log.AcctOutputOctets}");
             }
             Console.WriteLine("Finished. Press any key to exit.");
-
 
         }
     }

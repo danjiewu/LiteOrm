@@ -10,7 +10,7 @@ namespace LiteOrm.Common
 {
 
     /// <summary>
-    /// 多表达式集合（AND / OR / 逗号分隔），通常用于组合多个条件或生成列列表等。
+    /// 多表达式集合（AND / OR / 逗号 / 字符串拼接分隔），通常用于组合多个条件或生成列列表等。
     /// </summary>
     public sealed class ExprSet : Expr, ICollection<Expr>
     {
@@ -27,7 +27,10 @@ namespace LiteOrm.Common
         /// <param name="items">表达式项</param>
         public ExprSet(params Expr[] items)
         {
-            Items.AddRange(items);
+            foreach (var item in items)
+            {
+                Add(item);
+            }
         }
 
         /// <summary>
@@ -36,7 +39,10 @@ namespace LiteOrm.Common
         /// <param name="items">表达式项</param>
         public ExprSet(IEnumerable<Expr> items)
         {
-            Items.AddRange(items);
+            foreach (var item in items)
+            {
+                Add(item);
+            }
         }
 
         /// <summary>
@@ -67,6 +73,13 @@ namespace LiteOrm.Common
             }
         }
 
+
+        /// <summary>
+        /// 指示当前表达式是否为值类型表达式，仅在连接类型为 <see cref="ExprJoinType.List"/> 及 <see cref="ExprJoinType.Concat"/> 时为 true。
+        /// </summary>
+        [JsonIgnore]
+        public override bool IsValue => JoinType == ExprJoinType.List || JoinType == ExprJoinType.Concat;
+
         /// <summary>
         /// 集合的连接类型
         /// </summary>
@@ -75,7 +88,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 集合中的表达式项
         /// </summary>
-        public List<Expr> Items { get; set; } = new List<Expr>();
+        public List<Expr> Items { get; } = new List<Expr>();
 
         /// <summary>
         /// 获取集合中包含的表达式项数。
@@ -93,10 +106,24 @@ namespace LiteOrm.Common
         /// <param name="item">要添加的表达式对象。</param>
         public void Add(Expr item)
         {
+            if (item is null) item = Null;
             if (item is ExprSet set && set.JoinType == JoinType)
                 Items.AddRange(set.Items);
-            else
-                Items.Add(item ?? Empty);
+            else if (item.IsValue == IsValue)
+                Items.Add(item);
+            else throw new ArgumentException($"无法将表达式项添加到集合中，表达式项的 IsValue 属性必须与集合的 IsValue 属性相同。", nameof(item));
+        }
+
+        /// <summary>
+        /// 将一组表达式项添加到集合中。
+        /// </summary>
+        /// <param name="items">要添加的表达式对象集合。</param>
+        public void AddRange(IEnumerable<Expr> items)
+        {
+            foreach (var item in items)
+            {
+                Add(item);
+            }
         }
 
         /// <summary>
@@ -223,7 +250,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 默认连接（通常用于列表）
         /// </summary>
-        Default = 0,
+        List = 0,
         /// <summary>
         /// 使用 AND 连接
         /// </summary>

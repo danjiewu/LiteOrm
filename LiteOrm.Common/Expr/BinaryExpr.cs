@@ -59,24 +59,30 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 是否为值表达式（加、减、乘、除、连接）
+        /// </summary>
+        [JsonIgnore]
+        public override bool IsValue =>
+            Operator >= BinaryOperator.Add && Operator <= BinaryOperator.Concat;
+        /// <summary>
         /// 左侧表达式
         /// </summary>
         public Expr Left { get; set; }
-
+        /// <summary>
+        /// 右侧表达式
+        /// </summary>
+        public Expr Right { get; set; }
         /// <summary>
         /// 使用的操作符（可能包含 Not 标志）
         /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public BinaryOperator Operator { get; set; }
 
         /// <summary>
         /// 获取不含 Not 标志的原始操作符（例如 Not|In => In）。
         /// </summary>
+        [JsonIgnore]
         public BinaryOperator OriginOperator => Operator & ~BinaryOperator.Not;
-
-        /// <summary>
-        /// 右侧表达式
-        /// </summary>
-        public Expr Right { get; set; }
 
         /// <inheritdoc/>
         /// <remarks>
