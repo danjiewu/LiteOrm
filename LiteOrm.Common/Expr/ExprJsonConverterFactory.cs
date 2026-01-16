@@ -1,0 +1,415 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace LiteOrm.Common
+{
+
+    /// <summary>
+    /// 表达式 JSON 转换器工厂
+    /// </summary>
+    internal class ExprJsonConverterFactory : JsonConverterFactory
+    {
+        public override bool CanConvert(Type typeToConvert)
+        {
+            return typeof(Expr).IsAssignableFrom(typeToConvert);
+        }
+
+        public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
+        {
+            return (JsonConverter)Activator.CreateInstance(
+                typeof(ExprJsonConverter<>).MakeGenericType(typeToConvert));
+        }
+        private class ExprJsonConverter<T> : JsonConverter<T> where T : Expr
+        {
+            private static readonly JsonSerializerOptions _compactOptions = new JsonSerializerOptions
+            {
+                WriteIndented = false,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            private static readonly Dictionary<BinaryOperator, string> _operatorToJson = new Dictionary<BinaryOperator, string>
+        {
+            { BinaryOperator.Equal, "==" },
+            { BinaryOperator.NotEqual, "!=" },
+            { BinaryOperator.GreaterThan, ">" },
+            { BinaryOperator.GreaterThanOrEqual, ">=" },
+            { BinaryOperator.LessThan, "<" },
+            { BinaryOperator.LessThanOrEqual, "<=" },
+            { BinaryOperator.Add, "+" },
+            { BinaryOperator.Subtract, "-" },
+            { BinaryOperator.Multiply, "*" },
+            { BinaryOperator.Divide, "/" },
+            { BinaryOperator.Concat, "||" },
+            { BinaryOperator.In, "in" },
+            { BinaryOperator.NotIn, "notin" },
+            { BinaryOperator.Like, "like" },
+            { BinaryOperator.NotLike, "notlike" },
+            { BinaryOperator.Contains, "contains" },
+            { BinaryOperator.NotContains, "notcontains" },
+            { BinaryOperator.StartsWith, "startswith" },
+            { BinaryOperator.NotStartsWith, "notstartswith" },
+            { BinaryOperator.EndsWith, "endswith" },
+            { BinaryOperator.NotEndsWith, "notendswith" },
+            { BinaryOperator.RegexpLike, "regexp" },
+            { BinaryOperator.NotRegexpLike, "notregexp" }
+        };
+
+            private static readonly Dictionary<string, BinaryOperator> _jsonToOperator = new Dictionary<string, BinaryOperator>(StringComparer.OrdinalIgnoreCase);
+
+            static ExprJsonConverter()
+            {
+                foreach (var kvp in _operatorToJson)
+                {
+                    _jsonToOperator[kvp.Value] = kvp.Key;
+                }
+                // 兼容性符号
+                _jsonToOperator["="] = BinaryOperator.Equal;
+                _jsonToOperator["<>"] = BinaryOperator.NotEqual;
+            }
+
+            public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                if (reader.TokenType == JsonTokenType.Null) return null;
+
+                Expr result;
+                if (reader.TokenType != JsonTokenType.StartObject)
+                {
+                    result = new ValueExpr(ReadNative(ref reader, options));
+                }
+                else
+                {
+                    Utf8JsonReader tempReader = reader;
+                    tempReader.Read();
+                    if (tempReader.TokenType != JsonTokenType.PropertyName)
+                    {
+                        result = new ValueExpr(ReadNative(ref reader, options));
+                    }
+                    else if (tempReader.ValueTextEquals("@"))
+                    {
+                        reader.Read(); // 跳过 @
+                        reader.Read(); // 读取属性值
+                        string propName = reader.GetString();
+                        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject) ;
+                        result = new PropertyExpr(propName);
+                    }
+                    else if (tempReader.ValueTextEquals("$"))
+                    {
+                        reader.Read(); // 跳过 $
+                        reader.Read(); // 读取 typeMark
+                        string mark = reader.GetString();
+
+                        if (_jsonToOperator.TryGetValue(mark, out var bopSymbol))
+                        {
+                            result = ReadBinary(ref reader, options, bopSymbol);
+                        }
+                        else if (Enum.TryParse<BinaryOperator>(mark, true, out var bop))
+                        {
+                            result = ReadBinary(ref reader, options, bop);
+                        }
+                        else
+                        {
+                            result = mark switch
+                            {
+                                "bin" => ReadBinary(ref reader, options, null),
+                                "set" => ReadSet(ref reader, options),
+                                "func" => ReadFunction(ref reader, options),
+                                "prop" => ReadProperty(ref reader, options),
+                                "unary" => ReadUnary(ref reader, options),
+                                "sql" => ReadSql(ref reader, options),
+                                "value" => ReadValueBody(ref reader, options),
+                                _ => new ValueExpr(ReadNative(ref reader, options))
+                            };
+                        }
+                    }
+                    else
+                    {
+                        result = new ValueExpr(ReadNative(ref reader, options));
+                    }
+                }
+
+                return (T)result;
+            }
+
+            public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
+            {               
+                WriteExpr(writer, value, options);
+            }
+
+            private void WriteExpr(Utf8JsonWriter writer, Expr value, JsonSerializerOptions options)
+            {
+                if (value is null)
+                {
+                    writer.WriteNullValue();
+                    return;
+                }
+
+                if (value is ValueExpr ve)
+                {
+                    writer.WriteRawValue(JsonSerializer.Serialize(ve.Value, _compactOptions));
+                    return;
+                }
+
+                if (value is PropertyExpr pe)
+                {
+                    writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, string> { { "@", pe.PropertyName } }, _compactOptions));
+                    return;
+                }
+
+                if (value is LambdaExpr lambda)
+                {
+                    WriteExpr(writer, lambda.InnerExpr, options);
+                    return;
+                }
+
+                writer.WriteStartObject();
+                string mark = value switch
+                {
+                    BinaryExpr be => _operatorToJson.TryGetValue(be.Operator, out var symbol) ? symbol : be.Operator.ToString().ToLower(),
+                    ExprSet => "set",
+                    FunctionExpr => "func",
+                    UnaryExpr => "unary",
+                    GenericSqlExpr => "sql",
+                    _ => value.GetType().Name.Replace("Expr", "").ToLower()
+                };
+                writer.WritePropertyName("$");
+                WriteStringUnescaped(writer, mark);
+
+                switch (value)
+                {
+                    case BinaryExpr be:
+                        writer.WritePropertyName("Left");
+                        JsonSerializer.Serialize(writer, be.Left, options);
+                        writer.WritePropertyName("Right");
+                        JsonSerializer.Serialize(writer, be.Right, options);
+                        break;
+                    case ExprSet set:
+                        writer.WritePropertyName(set.JoinType.ToString());
+                        JsonSerializer.Serialize(writer, set.Items, options);
+                        break;
+                    case FunctionExpr fe:
+                        writer.WritePropertyName(fe.FunctionName);
+                        JsonSerializer.Serialize(writer, fe.Parameters, options);
+                        break;
+                    case UnaryExpr ue:
+                        writer.WritePropertyName("Operator");
+                        JsonSerializer.Serialize(writer, ue.Operator, options);
+                        writer.WritePropertyName("Operand");
+                        JsonSerializer.Serialize(writer, ue.Operand, options);
+                        break;
+                    case GenericSqlExpr ge:
+                        writer.WriteString("Key", ge.Key);
+                        writer.WritePropertyName("Arg");
+                        JsonSerializer.Serialize(writer, ge.Arg, options);
+                        break;
+                }
+                writer.WriteEndObject();
+            }
+
+            /// <summary>
+            /// 手不转义 HTML 敏感字符的 JSON 字符串值
+            /// </summary>
+            private void WriteStringUnescaped(Utf8JsonWriter writer, string value)
+            {
+                // 使用 UnsafeRelaxedJsonEscaping 编码并包裹引号后直接写入原文
+                string encoded = JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(value);
+                writer.WriteRawValue($"\"{encoded}\"");
+            }
+
+            private object ReadNative(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                switch (reader.TokenType)
+                {
+                    case JsonTokenType.String: return reader.GetString();
+                    case JsonTokenType.Number:
+                        if (reader.TryGetInt64(out long l)) return l;
+                        return reader.GetDouble();
+                    case JsonTokenType.True: return true;
+                    case JsonTokenType.False: return false;
+                    case JsonTokenType.Null: return null;
+                    case JsonTokenType.StartObject:
+                        var dict = new Dictionary<string, object>();
+                        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                        {
+                            string prop = reader.GetString();
+                            reader.Read();
+                            dict[prop] = ReadNative(ref reader, options);
+                        }
+                        return dict;
+                    case JsonTokenType.StartArray:
+                        var list = new List<object>();
+                        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+                        {
+                            list.Add(ReadNative(ref reader, options));
+                        }
+                        return list;
+                    default:
+                        return JsonSerializer.Deserialize<object>(ref reader, options);
+                }
+            }
+
+            private BinaryExpr ReadBinary(ref Utf8JsonReader reader, JsonSerializerOptions options, BinaryOperator? op = null)
+            {
+                var be = new BinaryExpr();
+                if (op.HasValue) be.Operator = op.Value;
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+
+                    if (reader.ValueTextEquals("Left"))
+                    {
+                        reader.Read();
+                        be.Left = JsonSerializer.Deserialize<Expr>(ref reader, options);
+                    }
+                    else if (reader.ValueTextEquals("Operator"))
+                    {
+                        reader.Read();
+                        be.Operator = JsonSerializer.Deserialize<BinaryOperator>(ref reader, options);
+                    }
+                    else if (reader.ValueTextEquals("Right"))
+                    {
+                        reader.Read();
+                        be.Right = JsonSerializer.Deserialize<Expr>(ref reader, options);
+                    }
+                    else
+                    {
+                        reader.Read();
+                        reader.Skip();
+                    }
+                }
+                return be;
+            }
+
+            private ExprSet ReadSet(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                var set = new ExprSet();
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+
+                    string prop = reader.GetString();
+                    if (Enum.TryParse<ExprJoinType>(prop, out var jt))
+                    {
+                        set.JoinType = jt;
+                        reader.Read();
+                        var items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
+                        if (items != null) set.AddRange(items);
+                    }
+                    else
+                    {
+                        reader.Read();
+                        reader.Skip();
+                    }
+                }
+                return set;
+            }
+
+            private FunctionExpr ReadFunction(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                var fe = new FunctionExpr();
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                    fe.FunctionName = reader.GetString();
+                    reader.Read();
+                    var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
+                    if (parameters != null) fe.Parameters.AddRange(parameters);
+                }
+                return fe;
+            }
+
+            private PropertyExpr ReadProperty(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                string name = null;
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                    if (reader.ValueTextEquals("PropertyName"))
+                    {
+                        reader.Read();
+                        name = reader.GetString();
+                    }
+                    else
+                    {
+                        reader.Read();
+                        reader.Skip();
+                    }
+                }
+                return new PropertyExpr(name);
+            }
+
+            private UnaryExpr ReadUnary(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                var ue = new UnaryExpr();
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                    if (reader.ValueTextEquals("Operator"))
+                    {
+                        reader.Read();
+                        ue.Operator = JsonSerializer.Deserialize<UnaryOperator>(ref reader, options);
+                    }
+                    else if (reader.ValueTextEquals("Operand"))
+                    {
+                        reader.Read();
+                        ue.Operand = JsonSerializer.Deserialize<Expr>(ref reader, options);
+                    }
+                    else
+                    {
+                        reader.Read();
+                        reader.Skip();
+                    }
+                }
+                return ue;
+            }
+
+            private GenericSqlExpr ReadSql(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                var ge = new GenericSqlExpr();
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                    if (reader.ValueTextEquals("Key"))
+                    {
+                        reader.Read();
+                        ge.Key = reader.GetString();
+                    }
+                    else if (reader.ValueTextEquals("Arg"))
+                    {
+                        reader.Read();
+                        ge.Arg = ReadNative(ref reader, options);
+                    }
+                    else
+                    {
+                        reader.Read();
+                        reader.Skip();
+                    }
+                }
+                return ge;
+            }
+
+            private ValueExpr ReadValueBody(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                object val = null;
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                    if (reader.ValueTextEquals("Value"))
+                    {
+                        reader.Read();
+                        val = ReadNative(ref reader, options);
+                    }
+                    else
+                    {
+                        reader.Read();
+                        reader.Skip();
+                    }
+                }
+                return new ValueExpr(val);
+            }
+        }
+    }
+}
