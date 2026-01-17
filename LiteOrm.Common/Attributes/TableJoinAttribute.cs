@@ -1,11 +1,11 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// Êı¾İ¿â±íÔÚ²éÑ¯Ê±µÄ¹ØÁª¹ØÏµ
+    /// æ•°æ®åº“è¡¨åœ¨æŸ¥è¯¢æ—¶çš„å…³è”å…³ç³»
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
     public class TableJoinAttribute : System.Attribute
@@ -17,11 +17,11 @@ namespace LiteOrm.Common
         private object _sourceTable;
 
         /// <summary>
-        /// Ö¸¶¨Ô´±í£¬¹ØÁªµÄ¶ÔÏóÀàĞÍºÍÍâ¼üÉú³É¹ØÁªĞÅÏ¢
+        /// æŒ‡å®šæºè¡¨ï¼Œå…³è”çš„å¯¹è±¡ç±»å‹å’Œå¤–é”®ç”Ÿæˆå…³è”ä¿¡æ¯
         /// </summary>
-        /// <param name="sourceTable">¹ØÁªµÄÔ´±í</param>
-        /// <param name="targetType">¹ØÁªµÄ¶ÔÏóÀàĞÍ</param>
-        /// <param name="foreignKeys">Íâ¼ü</param>
+        /// <param name="sourceTable">å…³è”çš„æºè¡¨</param>
+        /// <param name="targetType">å…³è”çš„å¯¹è±¡ç±»å‹</param>
+        /// <param name="foreignKeys">å¤–é”®</param>
         public TableJoinAttribute(string sourceTable, Type targetType, string foreignKeys)
         {
             this._sourceTable = sourceTable;
@@ -31,11 +31,11 @@ namespace LiteOrm.Common
 
 
         /// <summary>
-        /// Ö¸¶¨Ô´±í£¬¹ØÁªµÄ¶ÔÏóÀàĞÍºÍÍâ¼üÉú³É¹ØÁªĞÅÏ¢
+        /// æŒ‡å®šæºè¡¨ï¼Œå…³è”çš„å¯¹è±¡ç±»å‹å’Œå¤–é”®ç”Ÿæˆå…³è”ä¿¡æ¯
         /// </summary>
-        /// <param name="sourceTable">¹ØÁªµÄÔ´±í</param>
-        /// <param name="targetType">¹ØÁªµÄ¶ÔÏóÀàĞÍ</param>
-        /// <param name="foreignKeys">Íâ¼ü</param>
+        /// <param name="sourceTable">å…³è”çš„æºè¡¨</param>
+        /// <param name="targetType">å…³è”çš„å¯¹è±¡ç±»å‹</param>
+        /// <param name="foreignKeys">å¤–é”®</param>
         public TableJoinAttribute(Type sourceTable, Type targetType, string foreignKeys)
         {
             this._sourceTable = sourceTable;
@@ -44,10 +44,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// Ö¸¶¨¹ØÁªµÄ¶ÔÏóÀàĞÍºÍÍâ¼üÉú³É¹ØÁªĞÅÏ¢
+        /// æŒ‡å®šå…³è”çš„å¯¹è±¡ç±»å‹å’Œå¤–é”®ç”Ÿæˆå…³è”ä¿¡æ¯
         /// </summary>
-        /// <param name="targetType">¹ØÁªµÄ¶ÔÏóÀàĞÍ</param>
-        /// <param name="foreignKey">Íâ¼ü</param>
+        /// <param name="targetType">å…³è”çš„å¯¹è±¡ç±»å‹</param>
+        /// <param name="foreignKey">å¤–é”®</param>
         public TableJoinAttribute(Type targetType, string foreignKey)
         {
             this._targetType = targetType;
@@ -55,7 +55,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// Ô´±í£¬¿ÉÒÔÊÇ×Ö·û´®£¬Ò²¿ÉÒÔÊÇ¶ÔÓ¦µÄ¶ÔÏóÀàĞÍ
+        /// æºè¡¨ï¼Œå¯ä»¥æ˜¯å­—ç¬¦ä¸²ï¼Œä¹Ÿå¯ä»¥æ˜¯å¯¹åº”çš„å¯¹è±¡ç±»å‹
         /// </summary>
         public object Source
         {
@@ -63,7 +63,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ¹ØÁªµÄ¶ÔÏóÀàĞÍ
+        /// å…³è”çš„å¯¹è±¡ç±»å‹
         /// </summary>
         public Type TargetType
         {
@@ -71,7 +71,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ±ğÃû
+        /// åˆ«å
         /// </summary>
         public string AliasName
         {
@@ -80,7 +80,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ¹ØÁªÀàĞÍ£¬Ä¬ÈÏÎªTableJoinType.Left
+        /// å…³è”ç±»å‹ï¼Œé»˜è®¤ä¸ºTableJoinType.Left
         /// </summary>
         public TableJoinType JoinType
         {
@@ -89,7 +89,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// Íâ¼ü£¬¶à¸öÍâ¼üÒÔ","·Ö¸ô£¬°´ÕÕÖ÷¼üË³ĞòÅÅÁĞ
+        /// å¤–é”®ï¼Œå¤šä¸ªå¤–é”®ä»¥","åˆ†éš”ï¼ŒæŒ‰ç…§ä¸»é”®é¡ºåºæ’åˆ—
         /// </summary>
         public string ForeignKeys
         {
@@ -97,7 +97,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// É¸Ñ¡Ìõ¼ş
+        /// ç­›é€‰æ¡ä»¶
         /// </summary>
         public string FilterExpression { get; set; }
     }

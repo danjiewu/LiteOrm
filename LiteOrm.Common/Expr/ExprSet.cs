@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -12,22 +12,22 @@ namespace LiteOrm.Common
 {
 
     /// <summary>
-    /// ±í´ïÊ½¼¯ºÏ£¬Ö§³Ö AND / OR / ¶ººÅ / ×Ö·û´®Æ´½Ó·Ö¸ô¡£Í¨³£ÓÃÓÚÂß¼­×éºÏ»ò¶àÑ¡ÖµÁĞ±í²éÑ¯¡£
+    /// è¡¨è¾¾å¼é›†åˆï¼Œæ”¯æŒ AND / OR / é€—å· / å­—ç¬¦ä¸²æ‹¼æ¥åˆ†éš”ã€‚é€šå¸¸ç”¨äºé€»è¾‘ç»„åˆæˆ–å¤šé€‰å€¼åˆ—è¡¨æŸ¥è¯¢ã€‚
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class ExprSet : Expr, ICollection<Expr>
     {
         /// <summary>
-        /// ¹¹Ôì²¢³õÊ¼»¯¿Õ¼¯ºÏ¡£
+        /// æ„é€ å¹¶åˆå§‹åŒ–ç©ºé›†åˆã€‚
         /// </summary>
         public ExprSet()
         {
         }
 
         /// <summary>
-        /// Ê¹ÓÃÒ»×é±í´ïÊ½³õÊ¼»¯¼¯ºÏ¡£
+        /// ä½¿ç”¨ä¸€ç»„è¡¨è¾¾å¼åˆå§‹åŒ–é›†åˆã€‚
         /// </summary>
-        /// <param name="items">±í´ïÊ½Ïî</param>
+        /// <param name="items">è¡¨è¾¾å¼é¡¹</param>
         public ExprSet(params Expr[] items)
         {
             foreach (var item in items)
@@ -37,9 +37,9 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// Ê¹ÓÃÒ»×é±í´ïÊ½³õÊ¼»¯¼¯ºÏ¡£
+        /// ä½¿ç”¨ä¸€ç»„è¡¨è¾¾å¼åˆå§‹åŒ–é›†åˆã€‚
         /// </summary>
-        /// <param name="items">±í´ïÊ½Ïî</param>
+        /// <param name="items">è¡¨è¾¾å¼é¡¹</param>
         public ExprSet(IEnumerable<Expr> items)
         {
             foreach (var item in items)
@@ -49,10 +49,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// Ê¹ÓÃÖ¸¶¨Á¬½ÓÀàĞÍºÍ±í´ïÊ½Ïî³õÊ¼»¯¼¯ºÏ¡£
+        /// ä½¿ç”¨æŒ‡å®šè¿æ¥ç±»å‹å’Œè¡¨è¾¾å¼é¡¹åˆå§‹åŒ–é›†åˆã€‚
         /// </summary>
-        /// <param name="joinType">Á¬½ÓÀàĞÍ£¨And/Or/Comma£©</param>
-        /// <param name="items">±í´ïÊ½Ïî</param>
+        /// <param name="joinType">è¿æ¥ç±»å‹ï¼ˆAnd/Or/Commaï¼‰</param>
+        /// <param name="items">è¡¨è¾¾å¼é¡¹</param>
         public ExprSet(ExprJoinType joinType, params Expr[] items)
         {
             JoinType = joinType;
@@ -63,10 +63,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// Ê¹ÓÃÖ¸¶¨Á¬½ÓÀàĞÍºÍ±í´ïÊ½Ïî³õÊ¼»¯¼¯ºÏ¡£
+        /// ä½¿ç”¨æŒ‡å®šè¿æ¥ç±»å‹å’Œè¡¨è¾¾å¼é¡¹åˆå§‹åŒ–é›†åˆã€‚
         /// </summary>
-        /// <param name="joinType">Á¬½ÓÀàĞÍ£¨And/Or/Comma£©</param>
-        /// <param name="items">±í´ïÊ½Ïî</param>
+        /// <param name="joinType">è¿æ¥ç±»å‹ï¼ˆAnd/Or/Commaï¼‰</param>
+        /// <param name="items">è¡¨è¾¾å¼é¡¹</param>
         public ExprSet(ExprJoinType joinType, IEnumerable<Expr> items)
         {
             JoinType = joinType;
@@ -77,36 +77,36 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// Ö¸Ê¾µ±Ç°±í´ïÊ½ÊÇ·ñÎªÖµÀàĞÍ±í´ïÊ½£¬½öÔÚÁ¬½ÓÀàĞÍÎª <see cref="ExprJoinType.List"/> ¼° <see cref="ExprJoinType.Concat"/> Ê±Îª true¡£
+        /// æŒ‡ç¤ºå½“å‰è¡¨è¾¾å¼æ˜¯å¦ä¸ºå€¼ç±»å‹è¡¨è¾¾å¼ï¼Œä»…åœ¨è¿æ¥ç±»å‹ä¸º <see cref="ExprJoinType.List"/> åŠ <see cref="ExprJoinType.Concat"/> æ—¶ä¸º trueã€‚
         /// </summary>
         [JsonIgnore]
         public override bool IsValue => JoinType == ExprJoinType.List || JoinType == ExprJoinType.Concat;
 
         /// <summary>
-        /// ¼¯ºÏµÄÁ¬½ÓÀàĞÍ
+        /// é›†åˆçš„è¿æ¥ç±»å‹
         /// </summary>
         public ExprJoinType JoinType { get; set; }
 
         /// <summary>
-        /// ¼¯ºÏÖĞµÄ±í´ïÊ½Ïî
+        /// é›†åˆä¸­çš„è¡¨è¾¾å¼é¡¹
         /// </summary>
         public ReadOnlyCollection<Expr> Items => items.AsReadOnly();
         private List<Expr> items = new List<Expr>();
 
         /// <summary>
-        /// »ñÈ¡¼¯ºÏÖĞ°üº¬µÄ±í´ïÊ½ÏîÊı¡£
+        /// è·å–é›†åˆä¸­åŒ…å«çš„è¡¨è¾¾å¼é¡¹æ•°ã€‚
         /// </summary>
         public int Count => items.Count;
 
         /// <summary>
-        /// »ñÈ¡Ò»¸öÖµ£¬¸ÃÖµÖ¸Ê¾¼¯ºÏÊÇ·ñÎªÖ»¶Á¡£
+        /// è·å–ä¸€ä¸ªå€¼ï¼Œè¯¥å€¼æŒ‡ç¤ºé›†åˆæ˜¯å¦ä¸ºåªè¯»ã€‚
         /// </summary>
         public bool IsReadOnly => false;
 
         /// <summary>
-        /// ½«±í´ïÊ½ÏîÌí¼Óµ½¼¯ºÏÖĞ¡£
+        /// å°†è¡¨è¾¾å¼é¡¹æ·»åŠ åˆ°é›†åˆä¸­ã€‚
         /// </summary>
-        /// <param name="item">ÒªÌí¼ÓµÄ±í´ïÊ½¶ÔÏó¡£</param>
+        /// <param name="item">è¦æ·»åŠ çš„è¡¨è¾¾å¼å¯¹è±¡ã€‚</param>
         public void Add(Expr item)
         {
             if (item is null) item = Null;
@@ -114,13 +114,13 @@ namespace LiteOrm.Common
                 items.AddRange(set.Items);
             else if (item.IsValue == IsValue)
                 items.Add(item);
-            else throw new ArgumentException($"ÎŞ·¨½«±í´ïÊ½ÏîÌí¼Óµ½¼¯ºÏÖĞ£¬±í´ïÊ½ÏîµÄ IsValue ÊôĞÔ±ØĞëÓë¼¯ºÏµÄ IsValue ÊôĞÔÏàÍ¬¡£", nameof(item));
+            else throw new ArgumentException($"æ— æ³•å°†è¡¨è¾¾å¼é¡¹æ·»åŠ åˆ°é›†åˆä¸­ï¼Œè¡¨è¾¾å¼é¡¹çš„ IsValue å±æ€§å¿…é¡»ä¸é›†åˆçš„ IsValue å±æ€§ç›¸åŒã€‚", nameof(item));
         }
 
         /// <summary>
-        /// ½«Ò»×é±í´ïÊ½ÏîÌí¼Óµ½¼¯ºÏÖĞ¡£
+        /// å°†ä¸€ç»„è¡¨è¾¾å¼é¡¹æ·»åŠ åˆ°é›†åˆä¸­ã€‚
         /// </summary>
-        /// <param name="items">ÒªÌí¼ÓµÄ±í´ïÊ½¶ÔÏó¼¯ºÏ¡£</param>
+        /// <param name="items">è¦æ·»åŠ çš„è¡¨è¾¾å¼å¯¹è±¡é›†åˆã€‚</param>
         public void AddRange(IEnumerable<Expr> items)
         {
             foreach (var item in items)
@@ -130,7 +130,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ´Ó¼¯ºÏÖĞÒÆ³ıËùÓĞ±í´ïÊ½Ïî¡£
+        /// ä»é›†åˆä¸­ç§»é™¤æ‰€æœ‰è¡¨è¾¾å¼é¡¹ã€‚
         /// </summary>
         public void Clear()
         {
@@ -138,48 +138,48 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// È·¶¨¼¯ºÏÊÇ·ñ°üº¬ÌØ¶¨µÄ±í´ïÊ½Ïî¡£
+        /// ç¡®å®šé›†åˆæ˜¯å¦åŒ…å«ç‰¹å®šçš„è¡¨è¾¾å¼é¡¹ã€‚
         /// </summary>
-        /// <param name="item">ÒªÔÚ¼¯ºÏÖĞ²éÕÒµÄ¶ÔÏó¡£</param>
-        /// <returns>Èç¹ûÔÚ¼¯ºÏÖĞÕÒµ½£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
+        /// <param name="item">è¦åœ¨é›†åˆä¸­æŸ¥æ‰¾çš„å¯¹è±¡ã€‚</param>
+        /// <returns>å¦‚æœåœ¨é›†åˆä¸­æ‰¾åˆ°ï¼Œåˆ™ä¸º trueï¼›å¦åˆ™ä¸º falseã€‚</returns>
         public bool Contains(Expr item)
         {
             return items.Contains(item);
         }
 
         /// <summary>
-        /// ´ÓÌØ¶¨µÄÊı×éË÷Òı¿ªÊ¼£¬½«¼¯ºÏµÄÔªËØ¸´ÖÆµ½Ò»¸öÊı×éÖĞ¡£
+        /// ä»ç‰¹å®šçš„æ•°ç»„ç´¢å¼•å¼€å§‹ï¼Œå°†é›†åˆçš„å…ƒç´ å¤åˆ¶åˆ°ä¸€ä¸ªæ•°ç»„ä¸­ã€‚
         /// </summary>
-        /// <param name="array">×÷Îª´Ó¼¯ºÏ¸´ÖÆµÄÔªËØµÄÄ¿±êµÄÒ»Î¬Êı×é¡£</param>
-        /// <param name="arrayIndex">Êı×éÖĞ¸´ÖÆ¿ªÊ¼´¦µÄ´ÓÁã¿ªÊ¼µÄË÷Òı¡£</param>
+        /// <param name="array">ä½œä¸ºä»é›†åˆå¤åˆ¶çš„å…ƒç´ çš„ç›®æ ‡çš„ä¸€ç»´æ•°ç»„ã€‚</param>
+        /// <param name="arrayIndex">æ•°ç»„ä¸­å¤åˆ¶å¼€å§‹å¤„çš„ä»é›¶å¼€å§‹çš„ç´¢å¼•ã€‚</param>
         public void CopyTo(Expr[] array, int arrayIndex)
         {
             items.CopyTo(array, arrayIndex);
         }
 
         /// <summary>
-        /// ·µ»ØÒ»¸öÑ­»··ÃÎÊ¼¯ºÏµÄÃ¶¾ÙÆ÷¡£
+        /// è¿”å›ä¸€ä¸ªå¾ªç¯è®¿é—®é›†åˆçš„æšä¸¾å™¨ã€‚
         /// </summary>
-        /// <returns>ÓÃÓÚÑ­»··ÃÎÊ¼¯ºÏµÄÃ¶¾ÙÆ÷¡£</returns>
+        /// <returns>ç”¨äºå¾ªç¯è®¿é—®é›†åˆçš„æšä¸¾å™¨ã€‚</returns>
         public IEnumerator<Expr> GetEnumerator()
         {
             return items.GetEnumerator();
         }
 
         /// <summary>
-        /// ´Ó¼¯ºÏÖĞÒÆ³ıÌØ¶¨±í´ïÊ½ÏîµÄµÚÒ»¸öÆ¥ÅäÏî¡£
+        /// ä»é›†åˆä¸­ç§»é™¤ç‰¹å®šè¡¨è¾¾å¼é¡¹çš„ç¬¬ä¸€ä¸ªåŒ¹é…é¡¹ã€‚
         /// </summary>
-        /// <param name="item">Òª´Ó¼¯ºÏÖĞÒÆ³ıµÄ¶ÔÏó¡£</param>
-        /// <returns>Èç¹û´Ó¼¯ºÏÖĞ³É¹¦ÒÆ³ı£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
+        /// <param name="item">è¦ä»é›†åˆä¸­ç§»é™¤çš„å¯¹è±¡ã€‚</param>
+        /// <returns>å¦‚æœä»é›†åˆä¸­æˆåŠŸç§»é™¤ï¼Œåˆ™ä¸º trueï¼›å¦åˆ™ä¸º falseã€‚</returns>
         public bool Remove(Expr item)
         {
             return items.Remove(item);
         }
 
         /// <summary>
-        /// ·µ»Ø±íÊ¾µ±Ç°¼¯ºÏ±í´ïÊ½µÄ×Ö·û´®¡£
+        /// è¿”å›è¡¨ç¤ºå½“å‰é›†åˆè¡¨è¾¾å¼çš„å­—ç¬¦ä¸²ã€‚
         /// </summary>
-        /// <returns>±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£</returns>
+        /// <returns>è¡¨ç¤ºå½“å‰è¡¨è¾¾å¼çš„å­—ç¬¦ä¸²ã€‚</returns>
         public override string ToString()
         {
             string joinStr;
@@ -199,10 +199,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// ç¡®å®šæŒ‡å®šçš„å¯¹è±¡æ˜¯å¦ç­‰äºå½“å‰å¯¹è±¡ã€‚
         /// </summary>
-        /// <param name="obj">ÒªÓëµ±Ç°¶ÔÏó½øĞĞ±È½ÏµÄ¶ÔÏó¡£</param>
-        /// <returns>Èç¹ûÖ¸¶¨µÄ¶ÔÏóµÈÓÚµ±Ç°¶ÔÏó£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
+        /// <param name="obj">è¦ä¸å½“å‰å¯¹è±¡è¿›è¡Œæ¯”è¾ƒçš„å¯¹è±¡ã€‚</param>
+        /// <returns>å¦‚æœæŒ‡å®šçš„å¯¹è±¡ç­‰äºå½“å‰å¯¹è±¡ï¼Œåˆ™ä¸º trueï¼›å¦åˆ™ä¸º falseã€‚</returns>
         public override bool Equals(object obj)
         {
             if (obj is ExprSet set)
@@ -221,9 +221,9 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ×÷ÎªÄ¬ÈÏ¹şÏ£º¯Êı¡£
+        /// ä½œä¸ºé»˜è®¤å“ˆå¸Œå‡½æ•°ã€‚
         /// </summary>
-        /// <returns>µ±Ç°¶ÔÏóµÄ¹şÏ£´úÂë¡£</returns>
+        /// <returns>å½“å‰å¯¹è±¡çš„å“ˆå¸Œä»£ç ã€‚</returns>
         public override int GetHashCode()
         {
             if (JoinType == ExprJoinType.List || JoinType == ExprJoinType.Concat)
@@ -237,25 +237,25 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// ±í´ïÊ½¼¯ºÏµÄÁ¬½ÓÀàĞÍÃ¶¾Ù¡£
+    /// è¡¨è¾¾å¼é›†åˆçš„è¿æ¥ç±»å‹æšä¸¾ã€‚
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ExprJoinType
     {
         /// <summary>
-        /// Ä¬ÈÏÁ¬½Ó£¨Í¨³£ÓÃÓÚÁĞ±í£©
+        /// é»˜è®¤è¿æ¥ï¼ˆé€šå¸¸ç”¨äºåˆ—è¡¨ï¼‰
         /// </summary>
         List = 0,
         /// <summary>
-        /// Ê¹ÓÃ AND Á¬½Ó
+        /// ä½¿ç”¨ AND è¿æ¥
         /// </summary>
         And = 1,
         /// <summary>
-        /// Ê¹ÓÃ OR Á¬½Ó
+        /// ä½¿ç”¨ OR è¿æ¥
         /// </summary>
         Or = 2,
         /// <summary>
-        /// Ê¹ÓÃ×Ö·û´®Á¬½Ó·ûÁ¬½Ó£¨Í¨³£ÓÃÓÚ×Ö·û´®Æ´½Ó£©
+        /// ä½¿ç”¨å­—ç¬¦ä¸²è¿æ¥ç¬¦è¿æ¥ï¼ˆé€šå¸¸ç”¨äºå­—ç¬¦ä¸²æ‹¼æ¥ï¼‰
         /// </summary>
         Concat = 3
     }

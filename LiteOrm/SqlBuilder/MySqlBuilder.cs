@@ -5,28 +5,18 @@ using System.Data;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace LiteOrm.MySql
+namespace LiteOrm.SqlBuilder
 {
     /// <summary>
     /// MySQL 生成 SQL 语句的辅助类。
     /// </summary>
-    public class MySqlBuilder : SqlBuilder
+    public class MySqlBuilder : BaseSqlBuilder
     {
         /// <summary>
         /// 获取 <see cref="MySqlBuilder"/> 的单例实例。
         /// </summary>
         public static readonly new MySqlBuilder Instance = new MySqlBuilder();
-
-        /// <summary>
-        /// 初始化函数映射关系。
-        /// </summary>
-        /// <param name="functionMappings">函数映射字典。</param>
-        protected override void InitializeFunctionMappings(Dictionary<string, string> functionMappings)
-        {
-            // 只需添加名称不同的映射
-            functionMappings["Length"] = "CHAR_LENGTH";  // 字符数
-            functionMappings["IndexOf"] = "LOCATE";      // LOCATE(substr, str)
-        }
+        
         /// <summary>
         /// 连接各字符串的SQL语句
         /// </summary>

@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ±íÊ¾Ò»¸ö°üº¬ Lambda ±í´ïÊ½µÄ SQL Éú³É±í´ïÊ½ÈİÆ÷¡£
+    /// è¡¨ç¤ºä¸€ä¸ªåŒ…å« Lambda è¡¨è¾¾å¼çš„ SQL ç”Ÿæˆè¡¨è¾¾å¼å®¹å™¨ã€‚
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class LambdaExpr : Expr
@@ -17,23 +17,23 @@ namespace LiteOrm.Common
         private Expr _expr;
 
         /// <summary>
-        /// ÎŞ²Î¹¹Ôìº¯Êı¡£
+        /// æ— å‚æ„é€ å‡½æ•°ã€‚
         /// </summary>
         public LambdaExpr()
         {
         }
 
         /// <summary>
-        /// Ê¹ÓÃ Lambda ±í´ïÊ½³õÊ¼»¯±í´ïÊ½¡£
+        /// ä½¿ç”¨ Lambda è¡¨è¾¾å¼åˆå§‹åŒ–è¡¨è¾¾å¼ã€‚
         /// </summary>
-        /// <param name="expression">Lambda ±í´ïÊ½£¬ÀıÈç£ºx => x.Name == "John"</param>
+        /// <param name="expression">Lambda è¡¨è¾¾å¼ï¼Œä¾‹å¦‚ï¼šx => x.Name == "John"</param>
         public LambdaExpr(LambdaExpression expression)
         {
             Expression = expression ?? throw new ArgumentNullException(nameof(expression)); ;
         }
 
         /// <summary>
-        /// »ñÈ¡ Lambda ±í´ïÊ½¡£
+        /// è·å– Lambda è¡¨è¾¾å¼ã€‚
         /// </summary>
         public LambdaExpression Expression
         {
@@ -41,7 +41,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// »ñÈ¡×ª»»ºóµÄ±í´ïÊ½¶ÔÏó¡£
+        /// è·å–è½¬æ¢åçš„è¡¨è¾¾å¼å¯¹è±¡ã€‚
         /// </summary>
         public Expr InnerExpr
         {

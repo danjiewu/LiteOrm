@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
@@ -6,7 +6,7 @@ using System.Data;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// Ìá¹© Type Óë DbType Ö®¼äµÄË«ÏòÓ³Éä¹¤¾ßÀà¡£
+    /// æä¾› Type ä¸ DbType ä¹‹é—´çš„åŒå‘æ˜ å°„å·¥å…·ç±»ã€‚
     /// </summary>
     public static class DbTypeMap
     {
@@ -14,7 +14,7 @@ namespace LiteOrm.Common
         private static readonly ConcurrentDictionary<DbType, Type> _dbTypeToType = new();
 
         /// <summary>
-        /// ³õÊ¼»¯ <see cref="DbTypeMap"/> ÀàµÄ¾²Ì¬¹¹Ôìº¯Êı¡£
+        /// åˆå§‹åŒ– <see cref="DbTypeMap"/> ç±»çš„é™æ€æ„é€ å‡½æ•°ã€‚
         /// </summary>
         static DbTypeMap()
         {
@@ -49,17 +49,17 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ×¢²áË«ÏòÓ³Éä¹ØÏµ¡£
+        /// æ³¨å†ŒåŒå‘æ˜ å°„å…³ç³»ã€‚
         /// </summary>
         public static void Set(Type type, DbType dbType)
         {
             _typeToDbType[type] = dbType;
-            // ·´ÏòÓ³Éä£ºÈç¹û´æÔÚ¶à¸öÀàĞÍÓ³Éäµ½Í¬Ò»¸ö DbType£¬ºóÕß×¢²áµÄ½«¸²¸ÇÖ®Ç°µÄÓ³Éä
+            // åå‘æ˜ å°„ï¼šå¦‚æœå­˜åœ¨å¤šä¸ªç±»å‹æ˜ å°„åˆ°åŒä¸€ä¸ª DbTypeï¼Œåè€…æ³¨å†Œçš„å°†è¦†ç›–ä¹‹å‰çš„æ˜ å°„
             _dbTypeToType[dbType] = type;
         }
 
         /// <summary>
-        /// »ñÈ¡ Type ¶ÔÓ¦µÄ DbType¡£
+        /// è·å– Type å¯¹åº”çš„ DbTypeã€‚
         /// </summary>
         public static DbType GetDbType(Type type)
         {
@@ -72,7 +72,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// »ñÈ¡ DbType ¶ÔÓ¦µÄ Type¡£
+        /// è·å– DbType å¯¹åº”çš„ Typeã€‚
         /// </summary>
         public static Type GetType(DbType dbType)
         {
@@ -80,10 +80,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// »ñÈ¡Ö¸¶¨Êı¾İ¿âÀàĞÍµÄÄ¬ÈÏ³¤¶È¡£
+        /// è·å–æŒ‡å®šæ•°æ®åº“ç±»å‹çš„é»˜è®¤é•¿åº¦ã€‚
         /// </summary>
-        /// <param name="columnType">Êı¾İ¿âÁĞµÄÊı¾İÀàĞÍ¡£</param>
-        /// <returns>Ä¬ÈÏ´æ´¢³¤¶È¡£</returns>
+        /// <param name="columnType">æ•°æ®åº“åˆ—çš„æ•°æ®ç±»å‹ã€‚</param>
+        /// <returns>é»˜è®¤å­˜å‚¨é•¿åº¦ã€‚</returns>
         public static int GetDefaultLength(DbType columnType)
         {
             switch (columnType)
@@ -110,7 +110,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ½« DbType ×ª»»Îª¶ÔÓ¦µÄ .NET ÀàĞÍ¡£
+        /// å°† DbType è½¬æ¢ä¸ºå¯¹åº”çš„ .NET ç±»å‹ã€‚
         /// </summary>
         public static Type ToType(this DbType dbType)
         {
@@ -118,7 +118,7 @@ namespace LiteOrm.Common
         }
 
         ///<summary>
-        /// »ñÈ¡ÀàĞÍµÄ»ù´¡ÀàĞÍ¡£Èç¹ûÊÇ Nullable&lt;T&gt; Ôò·µ»Ø T£¬·ñÔò·µ»ØÔ­ÀàĞÍ¡£
+        /// è·å–ç±»å‹çš„åŸºç¡€ç±»å‹ã€‚å¦‚æœæ˜¯ Nullable&lt;T&gt; åˆ™è¿”å› Tï¼Œå¦åˆ™è¿”å›åŸç±»å‹ã€‚
         /// </summary>
         public static Type GetUnderlyingType(this Type type)
         {

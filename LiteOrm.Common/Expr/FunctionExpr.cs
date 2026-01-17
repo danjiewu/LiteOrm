@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ±íÊ¾º¯Êıµ÷ÓÃ±í´ïÊ½£¬ÀıÈç <c>SUM(column)</c>¡¢<c>COALESCE(a,b)</c> µÈ¡£
+    /// è¡¨ç¤ºå‡½æ•°è°ƒç”¨è¡¨è¾¾å¼ï¼Œä¾‹å¦‚ <c>SUM(column)</c>ã€<c>COALESCE(a,b)</c> ç­‰ã€‚
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class FunctionExpr : Expr
     {
         /// <summary>
-        /// ¹¹Ôìº¯Êı£¬³õÊ¼»¯¿Õ²ÎÊıÁĞ±í¡£
+        /// æ„é€ å‡½æ•°ï¼Œåˆå§‹åŒ–ç©ºå‚æ•°åˆ—è¡¨ã€‚
         /// </summary>
         public FunctionExpr()
         {
@@ -22,10 +22,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// Ê¹ÓÃº¯ÊıÃûÓë²ÎÊı¹¹Ôìº¯Êı±í´ïÊ½¡£
+        /// ä½¿ç”¨å‡½æ•°åä¸å‚æ•°æ„é€ å‡½æ•°è¡¨è¾¾å¼ã€‚
         /// </summary>
-        /// <param name="functionName">º¯ÊıÃû</param>
-        /// <param name="parameters">²ÎÊı±í´ïÊ½ÁĞ±í</param>
+        /// <param name="functionName">å‡½æ•°å</param>
+        /// <param name="parameters">å‚æ•°è¡¨è¾¾å¼åˆ—è¡¨</param>
         public FunctionExpr(string functionName, params Expr[] parameters)
         {
             FunctionName = functionName;
@@ -33,42 +33,42 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// º¯Êı±í´ïÊ½ÎªÖµÀàĞÍ
+        /// å‡½æ•°è¡¨è¾¾å¼ä¸ºå€¼ç±»å‹
         /// </summary>
         public override bool IsValue => true;
         /// <summary>
-        /// º¯ÊıÃû
+        /// å‡½æ•°å
         /// </summary>
         public string FunctionName { get; set; }
 
         /// <summary>
-        /// ²ÎÊı±í´ïÊ½ÁĞ±í
+        /// å‚æ•°è¡¨è¾¾å¼åˆ—è¡¨
         /// </summary>
         public List<Expr> Parameters { get; }
 
         /// <summary>
-        /// ·µ»Ø±íÊ¾µ±Ç°º¯ÊıµÄ×Ö·û´®¡£
+        /// è¿”å›è¡¨ç¤ºå½“å‰å‡½æ•°çš„å­—ç¬¦ä¸²ã€‚
         /// </summary>
-        /// <returns>±íÊ¾µ±Ç°º¯ÊıµÄ×Ö·û´®¡£</returns>
+        /// <returns>è¡¨ç¤ºå½“å‰å‡½æ•°çš„å­—ç¬¦ä¸²ã€‚</returns>
         public override string ToString()
         {
             return $"{FunctionName}({String.Join(",", Parameters)})";
         }
 
         /// <summary>
-        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// ç¡®å®šæŒ‡å®šçš„å¯¹è±¡æ˜¯å¦ç­‰äºå½“å‰å¯¹è±¡ã€‚
         /// </summary>
-        /// <param name="obj">ÒªÓëµ±Ç°¶ÔÏó½øĞĞ±È½ÏµÄ¶ÔÏó¡£</param>
-        /// <returns>Èç¹ûÖ¸¶¨µÄ¶ÔÏóµÈÓÚµ±Ç°¶ÔÏó£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
+        /// <param name="obj">è¦ä¸å½“å‰å¯¹è±¡è¿›è¡Œæ¯”è¾ƒçš„å¯¹è±¡ã€‚</param>
+        /// <returns>å¦‚æœæŒ‡å®šçš„å¯¹è±¡ç­‰äºå½“å‰å¯¹è±¡ï¼Œåˆ™ä¸º trueï¼›å¦åˆ™ä¸º falseã€‚</returns>
         public override bool Equals(object obj)
         {
             return obj is FunctionExpr f && f.FunctionName == FunctionName && f.Parameters.SequenceEqual(Parameters);
         }
 
         /// <summary>
-        /// ×÷ÎªÄ¬ÈÏ¹şÏ£º¯Êı¡£
+        /// ä½œä¸ºé»˜è®¤å“ˆå¸Œå‡½æ•°ã€‚
         /// </summary>
-        /// <returns>µ±Ç°¶ÔÏóµÄ¹şÏ£´úÂë¡£</returns>
+        /// <returns>å½“å‰å¯¹è±¡çš„å“ˆå¸Œä»£ç ã€‚</returns>
         public override int GetHashCode()
         {
             unchecked

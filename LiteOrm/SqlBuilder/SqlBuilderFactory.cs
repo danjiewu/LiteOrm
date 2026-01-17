@@ -4,7 +4,7 @@ using System;
 using System.Collections.Concurrent;
 
 
-namespace LiteOrm
+namespace LiteOrm.SqlBuilder
 {
     /// <summary>
     /// Sql 构建器工厂类 - 根据数据库连接类型提供相应的 Sql 构建器
@@ -53,14 +53,14 @@ namespace LiteOrm
         /// <summary>
         /// 已注册的 SQL 构建器集合。
         /// </summary>
-        public ConcurrentDictionary<Type, SqlBuilder> RegisteredSqlBuilders { get; } = new();
+        public ConcurrentDictionary<Type, BaseSqlBuilder> RegisteredSqlBuilders { get; } = new();
 
         /// <summary>
         /// 注册 SQL 构建器。
         /// </summary>
         /// <param name="providerType">提供程序类型。</param>
         /// <param name="sqlBuilder">SQL 构建器实例。</param>
-        public void RegisterSqlBuilder(Type providerType, SqlBuilder sqlBuilder)
+        public void RegisterSqlBuilder(Type providerType, BaseSqlBuilder sqlBuilder)
         {
             RegisteredSqlBuilders[providerType] = sqlBuilder;
         }
@@ -70,23 +70,23 @@ namespace LiteOrm
         /// </summary>
         /// <param name="providerType">提供程序类型。</param>
         /// <returns>SQL 构建器实例。</returns>
-        public virtual SqlBuilder GetSqlBuilder(Type providerType)
+        public virtual BaseSqlBuilder GetSqlBuilder(Type providerType)
         {
             if (providerType is null) throw new ArgumentNullException("providerType");
             if (RegisteredSqlBuilders.ContainsKey(providerType)) return RegisteredSqlBuilders[providerType];
             var connectionTypeName = providerType.Name;
             connectionTypeName = connectionTypeName.ToUpper();
             if (connectionTypeName.Contains("ORACLE"))
-                return Oracle.OracleBuilder.Instance;
+                return OracleBuilder.Instance;
             else if (connectionTypeName.Contains("MYSQL"))
-                return MySql.MySqlBuilder.Instance;
+                return MySqlBuilder.Instance;
             else if (connectionTypeName.Contains("SQLSERVER"))
-                return SqlServer.SqlServerBuilder.Instance;
+                return SqlServerBuilder.Instance;
             else if (connectionTypeName.Contains("POSTGRE"))
-                return PostgreSql.PostgreSqlBuilder.Instance;
+                return PostgreSqlBuilder.Instance;
             else if (connectionTypeName.Contains("SQLITE"))
-                return SQLite.SQLiteBuilder.Instance;
-            else return SqlBuilder.Instance;
+                return SQLiteBuilder.Instance;
+            else return BaseSqlBuilder.Instance;
         }
 
         /// <summary>

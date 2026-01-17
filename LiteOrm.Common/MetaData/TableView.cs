@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Collections.ObjectModel;
@@ -6,14 +6,14 @@ using System.Collections.ObjectModel;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ±íÊ¾Ò»¸öÁªºÏ²éÑ¯µÄÍâ²¿±í¡£
+    /// è¡¨ç¤ºä¸€ä¸ªè”åˆæŸ¥è¯¢çš„å¤–éƒ¨è¡¨ã€‚
     /// </summary>
     public class JoinedTable : TableRef
     {
         /// <summary>
-        /// Ê¹ÓÃÖ¸¶¨µÄÍâ²¿±í¶¨Òå³õÊ¼»¯ÁªºÏ±í¡£
+        /// ä½¿ç”¨æŒ‡å®šçš„å¤–éƒ¨è¡¨å®šä¹‰åˆå§‹åŒ–è”åˆè¡¨ã€‚
         /// </summary>
-        /// <param name="foreignTable">Íâ²¿±íµÄ¶¨ÒåĞÅÏ¢¡£</param>
+        /// <param name="foreignTable">å¤–éƒ¨è¡¨çš„å®šä¹‰ä¿¡æ¯ã€‚</param>
         public JoinedTable(TableDefinition foreignTable)
             : base(foreignTable)
         {
@@ -31,7 +31,7 @@ namespace LiteOrm.Common
         private ReadOnlyCollection<ColumnRef> _foreignKeys = new List<ColumnRef>().AsReadOnly();
         private readonly TableDefinition _foreignTable;
         /// <summary>
-        /// »ñÈ¡»òÄÚ²¿ÉèÖÃ¹ØÁªÍâ²¿±íµÄÁĞ¼¯ºÏ¡£
+        /// è·å–æˆ–å†…éƒ¨è®¾ç½®å…³è”å¤–éƒ¨è¡¨çš„åˆ—é›†åˆã€‚
         /// </summary>
         public ReadOnlyCollection<ColumnRef> ForeignKeys
         {
@@ -39,18 +39,18 @@ namespace LiteOrm.Common
             internal set
             {
                 if (value == null) throw new ArgumentNullException(nameof(value));
-                if (value.Count != _foreignPrimeKeys.Count) throw new ArgumentException("Íâ¼üÊıÁ¿ÓëÄ¿±êÖ÷¼üÊıÁ¿²»Ò»ÖÂ¡£");
+                if (value.Count != _foreignPrimeKeys.Count) throw new ArgumentException("å¤–é”®æ•°é‡ä¸ç›®æ ‡ä¸»é”®æ•°é‡ä¸ä¸€è‡´ã€‚");
                 _foreignKeys = value;
             }
         }
 
         /// <summary>
-        /// ÁªºÏ²éÑ¯Á¬½ÓÀàĞÍ£¨Èç Left Join£©¡£
+        /// è”åˆæŸ¥è¯¢è¿æ¥ç±»å‹ï¼ˆå¦‚ Left Joinï¼‰ã€‚
         /// </summary>
         public TableJoinType JoinType { get; set; }
 
         /// <summary>
-        /// »ñÈ¡¹ØÁªÍâ²¿±íµÄÄ¿±êÖ÷¼üÁĞ¼¯ºÏ¡£
+        /// è·å–å…³è”å¤–éƒ¨è¡¨çš„ç›®æ ‡ä¸»é”®åˆ—é›†åˆã€‚
         /// </summary>
         public ReadOnlyCollection<ColumnRef> ForeignPrimeKeys
         {
@@ -58,11 +58,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ¹ØÁª²éÑ¯Ê±µÄÉ¸Ñ¡±í´ïÊ½£¨ÓÉ Filter ÊôĞÔ¶¨Òå£©¡£
+        /// å…³è”æŸ¥è¯¢æ—¶çš„ç­›é€‰è¡¨è¾¾å¼ï¼ˆç”± Filter å±æ€§å®šä¹‰ï¼‰ã€‚
         /// </summary>
         public string FilterExpression { get; set; }
         /// <summary>
-        /// »ñÈ¡¸ñÊ½»¯ºóµÄ SQL JOIN ±í´ïÆ¬¶Î¡£
+        /// è·å–æ ¼å¼åŒ–åçš„ SQL JOIN è¡¨è¾¾ç‰‡æ®µã€‚
         /// </summary>
         public override string FormattedExpression(ISqlBuilder sqlBuilder)
         {
@@ -95,16 +95,16 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// µ±Ç°¶ÔÏó¹ØÁª²éÑ¯ÊÓÍ¼¶¨Òå¡£
+    /// å½“å‰å¯¹è±¡å…³è”æŸ¥è¯¢è§†å›¾å®šä¹‰ã€‚
     /// </summary>
     public class TableView : SqlTable
     {
         /// <summary>
-        /// ³õÊ¼»¯¸ÃÊÓÍ¼¶¨Òå¡£
+        /// åˆå§‹åŒ–è¯¥è§†å›¾å®šä¹‰ã€‚
         /// </summary>
-        /// <param name="table">»ù±í£¨Ö÷±í£©¶¨Òå¡£</param>
-        /// <param name="joinedTables">Ïà¹ØÁªµÄÍâ²¿±í¼¯ºÏ¡£</param>
-        /// <param name="columns">ÊÓÍ¼ÖĞ°üº¬µÄËùÓĞÁĞĞÅÏ¢¡£</param>
+        /// <param name="table">åŸºè¡¨ï¼ˆä¸»è¡¨ï¼‰å®šä¹‰ã€‚</param>
+        /// <param name="joinedTables">ç›¸å…³è”çš„å¤–éƒ¨è¡¨é›†åˆã€‚</param>
+        /// <param name="columns">è§†å›¾ä¸­åŒ…å«çš„æ‰€æœ‰åˆ—ä¿¡æ¯ã€‚</param>
         public TableView(TableDefinition table, ICollection<JoinedTable> joinedTables, ICollection<SqlColumn> columns)
             : base(columns)
         {
@@ -117,7 +117,7 @@ namespace LiteOrm.Common
         private ReadOnlyCollection<JoinedTable> _joinedTables;
 
         /// <summary>
-        /// »ñÈ¡¸ñÊ½»¯ºóµÄÁªºÏ±í¼¯ºÏ£¨ÒÑ´¦ÀíÒÀÀµÅÅĞò£©¡£
+        /// è·å–æ ¼å¼åŒ–åçš„è”åˆè¡¨é›†åˆï¼ˆå·²å¤„ç†ä¾èµ–æ’åºï¼‰ã€‚
         /// </summary>
         public ReadOnlyCollection<JoinedTable> JoinedTables
         {
@@ -138,7 +138,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ¼ì²é±í¼ÓÔØÒÀÀµ¹ØÏµ¡£
+        /// æ£€æŸ¥è¡¨åŠ è½½ä¾èµ–å…³ç³»ã€‚
         /// </summary>
         private bool CheckDependOn(JoinedTable tableToCheck, JoinedTable baseTable)
         {
@@ -156,7 +156,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// »ñÈ¡¸ñÊ½»¯ºóµÄ FROM ²¿·Ö SQL Æ¬¶Î¡£
+        /// è·å–æ ¼å¼åŒ–åçš„ FROM éƒ¨åˆ† SQL ç‰‡æ®µã€‚
         /// </summary>
         public override string FormattedExpression(ISqlBuilder sqlBuilder)
         {
@@ -169,7 +169,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// »ñÈ¡¶ÔÓ¦µÄ±í¶¨ÒåĞÅÏ¢¡£
+        /// è·å–å¯¹åº”çš„è¡¨å®šä¹‰ä¿¡æ¯ã€‚
         /// </summary>
         public override TableDefinition Definition
         {
@@ -178,28 +178,28 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// ÁªºÏ²éÑ¯µÄÁ¬½Ó·½Ê½¡£
+    /// è”åˆæŸ¥è¯¢çš„è¿æ¥æ–¹å¼ã€‚
     /// </summary>
     public enum TableJoinType
     {
         /// <summary>
-        /// ÄÚÁ¬½Ó
+        /// å†…è¿æ¥
         /// </summary>
         Inner,
         /// <summary>
-        /// ×óÁ¬½Ó
+        /// å·¦è¿æ¥
         /// </summary>
         Left,
         /// <summary>
-        /// ÓÒÁ¬½Ó
+        /// å³è¿æ¥
         /// </summary>
         Right,
         /// <summary>
-        /// È«ÍâÁ¬½Ó
+        /// å…¨å¤–è¿æ¥
         /// </summary>
         Outer,
         /// <summary>
-        /// ½»²æÁ¬½Ó
+        /// äº¤å‰è¿æ¥
         /// </summary>
         Cross
     }

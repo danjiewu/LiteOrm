@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Data;
@@ -10,51 +10,51 @@ namespace LiteOrm.Common
 {
     #region IObjectViewDAO<T>
     /// <summary>
-    /// ÊµÌåÀàµÄ²éÑ¯Êý¾Ý·ÃÎÊ¶ÔÏóµÄ·ºÐÍ½Ó¿Ú
+    /// å®žä½“ç±»çš„æŸ¥è¯¢æ•°æ®è®¿é—®å¯¹è±¡çš„æ³›åž‹æŽ¥å£
     /// </summary>
-    /// <typeparam name="T">ÊµÌåÀàÀàÐÍ</typeparam>
+    /// <typeparam name="T">å®žä½“ç±»ç±»åž‹</typeparam>
     public interface IObjectViewDAO<T> : IObjectViewDAOAsync<T>, IObjectViewDAO
     {
         /// <summary>
-        /// ¸ù¾ÝÖ÷¼ü»ñÈ¡¶ÔÏó
+        /// æ ¹æ®ä¸»é”®èŽ·å–å¯¹è±¡
         /// </summary>
-        /// <param name="keys">Ö÷¼ü£¬¶à¸öÖ÷¼ü°´ÕÕÖ÷¼üÃûË³ÐòÅÅÁÐ</param>
+        /// <param name="keys">ä¸»é”®ï¼Œå¤šä¸ªä¸»é”®æŒ‰ç…§ä¸»é”®åé¡ºåºæŽ’åˆ—</param>
         /// <returns></returns>
         new T GetObject(params object[] keys);
 
         /// <summary>
-        /// »ñÈ¡µ¥¸ö·ûºÏÌõ¼þµÄ¶ÔÏó
+        /// èŽ·å–å•ä¸ªç¬¦åˆæ¡ä»¶çš„å¯¹è±¡
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ£¬ÈôÎªnullÔò±íÊ¾Ã»ÓÐÌõ¼þ</param>
-        /// <returns>µÚÒ»¸ö·ûºÏÌõ¼þµÄ¶ÔÏó£¬Èô²»´æÔÚÔò·µ»Ønull</returns>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶ï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºæ²¡æœ‰æ¡ä»¶</param>
+        /// <returns>ç¬¬ä¸€ä¸ªç¬¦åˆæ¡ä»¶çš„å¯¹è±¡ï¼Œè‹¥ä¸å­˜åœ¨åˆ™è¿”å›žnull</returns>
         new T SearchOne(Expr expr);
         /// <summary>
-        /// ±éÀúÃ¿¸ö·ûºÏÌõ¼þµÄ¶ÔÏó
+        /// éåŽ†æ¯ä¸ªç¬¦åˆæ¡ä»¶çš„å¯¹è±¡
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ£¬ÈôÎªnullÔò±íÊ¾Ã»ÓÐÌõ¼þ</param>
-        /// <param name="func">Òªµ÷ÓÃµÄº¯ÊýÎ¯ÍÐ</param>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶ï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºæ²¡æœ‰æ¡ä»¶</param>
+        /// <param name="func">è¦è°ƒç”¨çš„å‡½æ•°å§”æ‰˜</param>
         void ForEach(Expr expr, Action<T> func);
 
         /// <summary>
-        /// ¸ù¾ÝÌõ¼þ²éÑ¯
+        /// æ ¹æ®æ¡ä»¶æŸ¥è¯¢
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ£¬ÈôÎªnullÔò±íÊ¾Ã»ÓÐÌõ¼þ</param>
-        /// <returns>·ûºÏÌõ¼þµÄ¶ÔÏóÁÐ±í</returns>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶ï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºæ²¡æœ‰æ¡ä»¶</param>
+        /// <returns>ç¬¦åˆæ¡ä»¶çš„å¯¹è±¡åˆ—è¡¨</returns>
         new List<T> Search(Expr expr = null);
 
         /// <summary>
-        /// ¸ù¾ÝÌõ¼þ²éÑ¯
+        /// æ ¹æ®æ¡ä»¶æŸ¥è¯¢
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ£¬ÈôÎªnullÔò±íÊ¾Ã»ÓÐÌõ¼þ</param>
-        /// <param name="orderBy">ÅÅÁÐË³Ðò£¬ÈôÎªnullÔò±íÊ¾²»Ö¸¶¨Ë³Ðò</param>
-        /// <returns>·ûºÏÌõ¼þµÄ¶ÔÏóÁÐ±í</returns>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶ï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºæ²¡æœ‰æ¡ä»¶</param>
+        /// <param name="orderBy">æŽ’åˆ—é¡ºåºï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºä¸æŒ‡å®šé¡ºåº</param>
+        /// <returns>ç¬¦åˆæ¡ä»¶çš„å¯¹è±¡åˆ—è¡¨</returns>
         new List<T> Search(Expr expr, params Sorting[] orderBy);
 
         /// <summary>
-        /// ·ÖÒ³²éÑ¯
+        /// åˆ†é¡µæŸ¥è¯¢
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ</param>
-        /// <param name="section">·ÖÒ³Éè¶¨</param>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶</param>
+        /// <param name="section">åˆ†é¡µè®¾å®š</param>
         /// <returns></returns>
         new List<T> SearchSection(Expr expr, PageSection section);
     }
@@ -62,73 +62,73 @@ namespace LiteOrm.Common
 
     #region IObjectViewDAO
     /// <summary>
-    /// ÊµÌåÀàµÄ²éÑ¯Êý¾Ý·ÃÎÊ¶ÔÏóµÄ·Ç·ºÐÍ½Ó¿Ú
+    /// å®žä½“ç±»çš„æŸ¥è¯¢æ•°æ®è®¿é—®å¯¹è±¡çš„éžæ³›åž‹æŽ¥å£
     /// </summary>
     [AutoRegister(false)]
     public interface IObjectViewDAO : IObjectViewDAOAsync
     {
         /// <summary>
-        /// ¸ù¾ÝÖ÷¼ü»ñÈ¡¶ÔÏó
+        /// æ ¹æ®ä¸»é”®èŽ·å–å¯¹è±¡
         /// </summary>
-        /// <param name="keys">Ö÷¼ü£¬¶à¸öÖ÷¼ü°´ÕÕÖ÷¼üÃûË³ÐòÅÅÁÐ</param>
+        /// <param name="keys">ä¸»é”®ï¼Œå¤šä¸ªä¸»é”®æŒ‰ç…§ä¸»é”®åé¡ºåºæŽ’åˆ—</param>
         /// <returns></returns>
         Object GetObject(params object[] keys);
 
         /// <summary>
-        /// ÅÐ¶ÏÖ÷¼ü¶ÔÓ¦µÄ¶ÔÏóÊÇ·ñ´æÔÚ
+        /// åˆ¤æ–­ä¸»é”®å¯¹åº”çš„å¯¹è±¡æ˜¯å¦å­˜åœ¨
         /// </summary>
-        /// <param name="keys">Ö÷¼ü£¬¶à¸öÖ÷¼ü°´ÕÕÖ÷¼üÃûË³ÐòÅÅÁÐ</param>
-        /// <returns>ÊÇ·ñ´æÔÚ</returns>
+        /// <param name="keys">ä¸»é”®ï¼Œå¤šä¸ªä¸»é”®æŒ‰ç…§ä¸»é”®åé¡ºåºæŽ’åˆ—</param>
+        /// <returns>æ˜¯å¦å­˜åœ¨</returns>
         bool ExistsKey(params object[] keys);
 
         /// <summary>
-        /// ÅÐ¶Ï¶ÔÏóÊÇ·ñ´æÔÚ
+        /// åˆ¤æ–­å¯¹è±¡æ˜¯å¦å­˜åœ¨
         /// </summary>
-        /// <param name="o">¶ÔÏó</param>
-        /// <returns>ÊÇ·ñ´æÔÚ</returns>
+        /// <param name="o">å¯¹è±¡</param>
+        /// <returns>æ˜¯å¦å­˜åœ¨</returns>
         bool Exists(object o);
 
         /// <summary>
-        /// ÅÐ¶Ï·ûºÏÌõ¼þµÄ¶ÔÏóÊÇ·ñ´æÔÚ
+        /// åˆ¤æ–­ç¬¦åˆæ¡ä»¶çš„å¯¹è±¡æ˜¯å¦å­˜åœ¨
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ£¬ÈôÎªnullÔò±íÊ¾Ã»ÓÐÌõ¼þ</param>
-        /// <returns>ÊÇ·ñ´æÔÚ</returns>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶ï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºæ²¡æœ‰æ¡ä»¶</param>
+        /// <returns>æ˜¯å¦å­˜åœ¨</returns>
         bool Exists(Expr expr);
 
         /// <summary>
-        /// µÃµ½·ûºÏÌõ¼þµÄ¶ÔÏó¸öÊý
+        /// å¾—åˆ°ç¬¦åˆæ¡ä»¶çš„å¯¹è±¡ä¸ªæ•°
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ£¬ÈôÎªnullÔò±íÊ¾Ã»ÓÐÌõ¼þ</param>
-        /// <returns>·ûºÏÌõ¼þµÄ¶ÔÏóÊýÁ¿</returns>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶ï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºæ²¡æœ‰æ¡ä»¶</param>
+        /// <returns>ç¬¦åˆæ¡ä»¶çš„å¯¹è±¡æ•°é‡</returns>
         int Count(Expr expr);
 
         /// <summary>
-        /// »ñÈ¡µ¥¸ö·ûºÏÌõ¼þµÄ¶ÔÏó
+        /// èŽ·å–å•ä¸ªç¬¦åˆæ¡ä»¶çš„å¯¹è±¡
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ£¬ÈôÎªnullÔò±íÊ¾Ã»ÓÐÌõ¼þ</param>
-        /// <returns>µÚÒ»¸ö·ûºÏÌõ¼þµÄ¶ÔÏó£¬Èô²»´æÔÚÔò·µ»Ønull</returns>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶ï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºæ²¡æœ‰æ¡ä»¶</param>
+        /// <returns>ç¬¬ä¸€ä¸ªç¬¦åˆæ¡ä»¶çš„å¯¹è±¡ï¼Œè‹¥ä¸å­˜åœ¨åˆ™è¿”å›žnull</returns>
         Object SearchOne(Expr expr);
 
         /// <summary>
-        /// ¸ù¾ÝÌõ¼þ²éÑ¯
+        /// æ ¹æ®æ¡ä»¶æŸ¥è¯¢
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ£¬ÈôÎªnullÔò±íÊ¾Ã»ÓÐÌõ¼þ</param>
-        /// <returns>·ûºÏÌõ¼þµÄ¶ÔÏóÁÐ±í</returns>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶ï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºæ²¡æœ‰æ¡ä»¶</param>
+        /// <returns>ç¬¦åˆæ¡ä»¶çš„å¯¹è±¡åˆ—è¡¨</returns>
         IList Search(Expr expr);
 
         /// <summary>
-        /// ¸ù¾ÝÌõ¼þ²éÑ¯
+        /// æ ¹æ®æ¡ä»¶æŸ¥è¯¢
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ£¬ÈôÎªnullÔò±íÊ¾Ã»ÓÐÌõ¼þ</param>
-        /// <param name="orderBy">ÅÅÁÐË³Ðò£¬ÈôÎªnullÔò±íÊ¾²»Ö¸¶¨Ë³Ðò</param>
-        /// <returns>·ûºÏÌõ¼þµÄ¶ÔÏóÁÐ±í</returns>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶ï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºæ²¡æœ‰æ¡ä»¶</param>
+        /// <param name="orderBy">æŽ’åˆ—é¡ºåºï¼Œè‹¥ä¸ºnullåˆ™è¡¨ç¤ºä¸æŒ‡å®šé¡ºåº</param>
+        /// <returns>ç¬¦åˆæ¡ä»¶çš„å¯¹è±¡åˆ—è¡¨</returns>
         IList Search(Expr expr, params Sorting[] orderBy);
 
         /// <summary>
-        /// ·ÖÒ³²éÑ¯
+        /// åˆ†é¡µæŸ¥è¯¢
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼þ</param>
-        /// <param name="section">·ÖÒ³Éè¶¨</param>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶</param>
+        /// <param name="section">åˆ†é¡µè®¾å®š</param>
         /// <returns></returns>
         IList SearchSection(Expr expr, PageSection section);
     }

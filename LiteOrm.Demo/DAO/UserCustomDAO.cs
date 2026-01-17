@@ -1,4 +1,4 @@
-using LiteOrm.Common;
+ï»¿using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -8,21 +8,21 @@ using System.Data;
 namespace LiteOrm.Demo
 {
     /// <summary>
-    /// ×Ô¶¨ÒåÓÃ»§Êı¾İ·ÃÎÊÊµÏÖ
+    /// è‡ªå®šä¹‰ç”¨æˆ·æ•°æ®è®¿é—®å®ç°
     /// </summary>
     /// <remarks>
-    /// ¼Ì³Ğ×Ô ObjectViewDAO<UserView> ÒÔ»ñµÃ»ù±¾µÄ²éÑ¯ÄÜÁ¦¡£
-    /// Í¨¹ı±ê¼Ç [AutoRegister] ×Ô¶¯×¢²áµ½ DI ÈİÆ÷¡£
+    /// ç»§æ‰¿è‡ª ObjectViewDAO<UserView> ä»¥è·å¾—åŸºæœ¬çš„æŸ¥è¯¢èƒ½åŠ›ã€‚
+    /// é€šè¿‡æ ‡è®° [AutoRegister] è‡ªåŠ¨æ³¨å†Œåˆ° DI å®¹å™¨ã€‚
     /// </remarks>
     public class UserCustomDAO : ObjectViewDAO<UserView>, DAO.IUserCustomDAO
     {
         public Task<List<UserView>> GetActiveUsersByDeptAsync(string deptName, CancellationToken cancellationToken = default)
         {
-            // Ê¹ÓÃ»ùÀàÌá¹©µÄ MakeConditionCommand ¹¹½¨¸´ÔÓ²éÑ¯
-            // ÕâÀïÑİÊ¾Ê¹ÓÃ Join µÄÊÖ¶¯ SQL »òÕßÊÇ×éºÏ Expr
+            // ä½¿ç”¨åŸºç±»æä¾›çš„ MakeConditionCommand æ„å»ºå¤æ‚æŸ¥è¯¢
+            // è¿™é‡Œæ¼”ç¤ºä½¿ç”¨ Join çš„æ‰‹åŠ¨ SQL æˆ–è€…æ˜¯ç»„åˆ Expr
             var expr = Expr.Property("DeptName") == deptName & Expr.Property("Age") > 18;
 
-            // Ò²¿ÉÒÔÖ±½ÓĞ´Ô­Éú SQL ÑİÊ¾
+            // ä¹Ÿå¯ä»¥ç›´æ¥å†™åŸç”Ÿ SQL æ¼”ç¤º
             string sql = "SELECT @AllFields@ FROM @FromTable@ WHERE [Dept].[Name] = @0 AND Age > 18";
 
             return CurrentSession.ExecuteInSessionAsync(() =>

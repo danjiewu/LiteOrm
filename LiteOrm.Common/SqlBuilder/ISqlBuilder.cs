@@ -80,9 +80,9 @@ namespace LiteOrm.Common
         /// 实现应负责函数名和参数在目标数据库中的兼容性处理。
         /// </summary>
         /// <param name="functionName">函数名。</param>
-        /// <param name="args">函数参数（可选）。</param>
+        /// <param name="args">函数参数列表。</param>
         /// <returns>返回构建好的函数调用 SQL 片段。</returns>
-        string BuildFunctionSql(string functionName, params string[] args);
+        string BuildFunctionSql(string functionName, IList<KeyValuePair<string, Expr>> args);
 
         /// <summary>
         /// 构建多个字符串连接的 SQL 表达式，兼容目标数据库的连接语法。

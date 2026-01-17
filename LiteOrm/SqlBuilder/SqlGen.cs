@@ -1,4 +1,5 @@
 ﻿using LiteOrm.Common;
+using LiteOrm.SqlBuilder;
 using System;
 using System.Collections.Generic;
 
@@ -82,6 +83,10 @@ namespace LiteOrm
             /// </summary>
             public List<KeyValuePair<string, object>> Params { get; }
 
+            /// <summary>
+            /// 返回表示当前 SQL 生成结果的字符串。
+            /// </summary>
+            /// <returns></returns>
             public override string ToString()
             {
                 return $"SQL: {Sql} \nParams : {String.Join("\n", Params)}";

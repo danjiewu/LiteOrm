@@ -1,4 +1,4 @@
-using LiteOrm.Common;
+ï»¿using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -7,12 +7,12 @@ using System.Threading;
 namespace LiteOrm.Demo.DAO
 {
     /// <summary>
-    /// ×Ô¶¨ÒåÓÃ»§Êı¾İ·ÃÎÊ½Ó¿Ú - Õ¹Ê¾ÈçºÎÀ©Õ¹±ê×¼ DAO
+    /// è‡ªå®šä¹‰ç”¨æˆ·æ•°æ®è®¿é—®æ¥å£ - å±•ç¤ºå¦‚ä½•æ‰©å±•æ ‡å‡† DAO
     /// </summary>
     public interface IUserCustomDAO : IObjectViewDAO<UserView>
     {
         /// <summary>
-        /// ×Ô¶¨Òå²éÑ¯£º°´²¿ÃÅÃû³Æ»ñÈ¡»îÔ¾ÓÃ»§
+        /// è‡ªå®šä¹‰æŸ¥è¯¢ï¼šæŒ‰éƒ¨é—¨åç§°è·å–æ´»è·ƒç”¨æˆ·
         /// </summary>
         Task<List<UserView>> GetActiveUsersByDeptAsync(string deptName, CancellationToken cancellationToken = default);
     }

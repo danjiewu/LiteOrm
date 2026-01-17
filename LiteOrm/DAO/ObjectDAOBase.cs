@@ -1,5 +1,6 @@
-using LiteOrm.Common;
+﻿using LiteOrm.Common;
 using LiteOrm.Service;
+using LiteOrm.SqlBuilder;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections;
@@ -99,7 +100,7 @@ namespace LiteOrm
         /// <summary>
         /// 构建SQL语句的SQLBuilder
         /// </summary>
-        protected internal virtual SqlBuilder SqlBuilder
+        protected internal virtual BaseSqlBuilder SqlBuilder
         {
             get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType); }
         }
@@ -291,7 +292,7 @@ namespace LiteOrm
                 foreach (Sorting sorting in orders)
                 {
                     SqlColumn column = Table.GetColumn(sorting.PropertyName);
-                    if (column is null) throw new ArgumentException(String.Format("Type \"{0}\" does not have property \"{1}\"", ObjectType.Name, sorting.PropertyName), "section");
+                    if (column is null) throw new ArgumentException($"Type \"{ObjectType.Name}\" does not have property \"{sorting.PropertyName}\"", "section");
                     if (orderBy.Length > 0) orderBy.Append(",");
                     orderBy.Append(column.FormattedExpression(SqlBuilder));
                     orderBy.Append(sorting.Direction == ListSortDirection.Ascending ? " asc" : " desc");
@@ -472,7 +473,7 @@ namespace LiteOrm
                     param.DbType = column.DbType;
                     param.ParameterName = ToParamName(TimestampParamName);
                     command.Parameters.Add(param);
-                    return String.Format("{0}.{1} = {2}", ToSqlName(isView ? FactTableName : TableDefinition.Name), ToSqlName(column.Name), ToSqlParam(TimestampParamName)); ;
+                    return $"{ToSqlName(isView ? FactTableName : TableDefinition.Name)}.{ToSqlName(column.Name)} = {ToSqlParam(TimestampParamName)}"; ;
                 }
             }
             return null;
@@ -523,7 +524,7 @@ namespace LiteOrm
         {
             if (TableDefinition.Keys.Count == 0)
             {
-                throw new Exception(String.Format("No key definition found in type \"{0}\", please set the value of property \"IsPrimaryKey\" of key column to true.", Table.DefinitionType.FullName));
+                throw new Exception($"No key definition found in type \"{Table.DefinitionType.FullName}\", please set the value of property \"IsPrimaryKey\" of key column to true.");
             }
         }
 
@@ -536,7 +537,7 @@ namespace LiteOrm
         {
             if (!ObjectType.IsAssignableFrom(type))
             {
-                throw new Exception(String.Format("Type {0} not match object type {1}.", type.FullName, ObjectType.FullName));
+                throw new Exception($"Type {type.FullName} not match object type {ObjectType.FullName}.");
             }
         }
 
@@ -552,7 +553,7 @@ namespace LiteOrm
                 {
                     List<string> strKeys = new List<string>();
                     foreach (ColumnDefinition key in TableDefinition.Keys) strKeys.Add(key.Name);
-                    _exceptionWrongKeys = new ArgumentOutOfRangeException("keys", String.Format("Wrong keys' number. Type \"{0}\" has {1} key(s):'{2}'.", Table.DefinitionType.FullName, strKeys.Count, String.Join("','", strKeys.ToArray())));
+                    _exceptionWrongKeys = new ArgumentOutOfRangeException("keys", $"Wrong keys' number. Type \"{Table.DefinitionType.FullName}\" has {strKeys.Count} key(s):'{String.Join("','", strKeys.ToArray())}'.");
                 }
                 throw _exceptionWrongKeys;
             }

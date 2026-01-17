@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Text;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ±í´ïÊ½ SQL ×ª»»Æ÷¡£
+    /// è¡¨è¾¾å¼ SQL è½¬æ¢å™¨ã€‚
     /// </summary>
     public static class ExprSqlConverter
     {
@@ -39,13 +39,13 @@ namespace LiteOrm.Common
         };
 
         /// <summary>
-        /// ½«µ±Ç°±í´ïÊ½×ª»»Îª SQL ×Ö·û´®Æ¬¶Î¡£
+        /// å°†å½“å‰è¡¨è¾¾å¼è½¬æ¢ä¸º SQL å­—ç¬¦ä¸²ç‰‡æ®µã€‚
         /// </summary>
-        /// <param name="expr">±í´ïÊ½¡£</param>
-        /// <param name="context">Éú³É SQL µÄÉÏÏÂÎÄ»·¾³£¬°üº¬±íĞÅÏ¢¡¢±ğÃûµÈ¡£</param>
-        /// <param name="sqlBuilder">Ìá¹©Êı¾İ¿âÌØ¶¨µÄ SQL ¹¹½¨¹¦ÄÜµÄ¹¤×÷Àà¡£</param>
-        /// <param name="outputParams">Êä³ö²ÎÊı¼¯ºÏ£¬¶ÔÓ¦ÓÚ´Ë¹¹½¨¹ı³ÌÖĞ²úÉúµÄ±í´ïÊ½²ÎÊıÓëÔ¤¶¨ÒåµÄÊµ¼ÊÖµ£¨ÓÃÓÚ²ÎÊı»¯²éÑ¯£©¡£</param>
-        /// <returns>±íÊ¾¸Ã±í´ïÊ½µÄ SQL ×Ö·û´®Æ¬¶Î£¬Í¨³£´øÓĞ²ÎÊıÕ¼Î»·û¡£</returns>
+        /// <param name="expr">è¡¨è¾¾å¼ã€‚</param>
+        /// <param name="context">ç”Ÿæˆ SQL çš„ä¸Šä¸‹æ–‡ç¯å¢ƒï¼ŒåŒ…å«è¡¨ä¿¡æ¯ã€åˆ«åç­‰ã€‚</param>
+        /// <param name="sqlBuilder">æä¾›æ•°æ®åº“ç‰¹å®šçš„ SQL æ„å»ºåŠŸèƒ½çš„å·¥ä½œç±»ã€‚</param>
+        /// <param name="outputParams">è¾“å‡ºå‚æ•°é›†åˆï¼Œå¯¹åº”äºæ­¤æ„å»ºè¿‡ç¨‹ä¸­äº§ç”Ÿçš„è¡¨è¾¾å¼å‚æ•°ä¸é¢„å®šä¹‰çš„å®é™…å€¼ï¼ˆç”¨äºå‚æ•°åŒ–æŸ¥è¯¢ï¼‰ã€‚</param>
+        /// <returns>è¡¨ç¤ºè¯¥è¡¨è¾¾å¼çš„ SQL å­—ç¬¦ä¸²ç‰‡æ®µï¼Œé€šå¸¸å¸¦æœ‰å‚æ•°å ä½ç¬¦ã€‚</returns>
         public static string ToSql(this Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (expr is null) return string.Empty;
@@ -182,7 +182,7 @@ namespace LiteOrm.Common
 
         private static string ToSql(FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            return sqlBuilder.BuildFunctionSql(expr.FunctionName, expr.Parameters.Select(p => p.ToSql(context, sqlBuilder, outputParams)).ToArray());
+            return sqlBuilder.BuildFunctionSql(expr.FunctionName, expr.Parameters.Select(p => new KeyValuePair<string, Expr>(p.ToSql(context, sqlBuilder, outputParams), p)).ToList());
         }
 
         private static string ToSql(LambdaExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)

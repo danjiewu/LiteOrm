@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Data;
@@ -59,7 +59,7 @@ namespace LiteOrm.Common
         public override string FormattedExpression(ISqlBuilder sqlBuilder)
         {
             return Table == null ? Column.FormattedExpression(sqlBuilder) :
-                String.Format("{0}.{1}", Table.FormattedName(sqlBuilder), Column.FormattedName(sqlBuilder));
+                $"{Table.FormattedName(sqlBuilder)}.{Column.FormattedName(sqlBuilder)}";
         }
     }
 
@@ -168,7 +168,7 @@ namespace LiteOrm.Common
             }
             catch (Exception e)
             {
-                throw new InvalidOperationException(String.Format("Value {0} can not be assigned to {1}.{2}", value, Property.DeclaringType.Name, Property.Name), e);
+                throw new InvalidOperationException($"Value {value} can not be assigned to {Property.DeclaringType.Name}.{Property.Name}", e);
             }
         }
         
@@ -189,7 +189,7 @@ namespace LiteOrm.Common
         /// </summary>
         public override string FormattedExpression(ISqlBuilder sqlBuilder)
         {
-            return String.Format("{0}.{1}", Table.FormattedName(sqlBuilder), FormattedName(sqlBuilder));
+            return $"{Table.FormattedName(sqlBuilder)}.{FormattedName(sqlBuilder)}";
         }
     }
 

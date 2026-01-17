@@ -6,12 +6,12 @@ using System.Collections;
 using System.Data;
 using System.Text.RegularExpressions;
 
-namespace LiteOrm.Oracle
+namespace LiteOrm.SqlBuilder
 {
     /// <summary>
     /// Oracle 生成 SQL 语句的辅助类。
     /// </summary>
-    public class OracleBuilder : SqlBuilder
+    public class OracleBuilder : BaseSqlBuilder
     {
         /// <summary>
         /// 初始化 <see cref="OracleBuilder"/> 类的新实例。
@@ -30,16 +30,6 @@ namespace LiteOrm.Oracle
         /// 获取 <see cref="OracleBuilder"/> 的单例实例。
         /// </summary>
         public static readonly new OracleBuilder Instance = new OracleBuilder();
-        /// <summary>
-        /// 初始化函数映射关系。
-        /// </summary>
-        /// <param name="functionMappings">函数映射字典。</param>
-        protected override void InitializeFunctionMappings(Dictionary<string, string> functionMappings)
-        {
-            functionMappings["Length"] = "LENGTH";
-            functionMappings["IndexOf"] = "INSTR";       // INSTR(str, substr)
-            functionMappings["Substring"] = "SUBSTR";
-        }
 
         /// <summary>
         /// 返回指定类型对应的Oracle数据库类型。

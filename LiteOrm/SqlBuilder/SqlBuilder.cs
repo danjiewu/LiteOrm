@@ -6,8 +6,10 @@ using System.Text.RegularExpressions;
 using System.Collections;
 using System.Data;
 using System.Collections.Concurrent;
+using System.Collections.Specialized;
+using System.Linq;
 
-namespace LiteOrm
+namespace LiteOrm.SqlBuilder
 {
     /// <summary>
     /// SQL 语句生成辅助类 - 提供数据库无关的 SQL 生成功能。
@@ -46,15 +48,18 @@ namespace LiteOrm
     /// DbType dbType = builder.ToDbType(typeof(string)); // 返回 DbType.String
     /// </code>
     /// </remarks>
-    public class SqlBuilder : ISqlBuilder
-    {
+    public class BaseSqlBuilder : ISqlBuilder
+    {           
+        
         /// <summary>
-        /// 获取默认的 <see cref="SqlBuilder"/> 实例。
+        /// 获取默认的 <see cref="BaseSqlBuilder"/> 实例。
         /// </summary>
-        public static readonly SqlBuilder Instance = new SqlBuilder();
+        public static readonly BaseSqlBuilder Instance = new BaseSqlBuilder();
 
         private readonly Dictionary<string, string> _functionMappings = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase)
-        {
+        {            
+            ["Length"] = "LENGTH",
+            ["IndexOf"] = "CHARINDEX",
             ["Substring"] = "SUBSTR",
             ["ToUpper"] = "UPPER",
             ["ToLower"] = "LOWER",
@@ -63,55 +68,7 @@ namespace LiteOrm
             ["Max"] = "GREATEST",
             ["Min"] = "LEAST",
             ["IfNull"] = "COALESCE"
-        };
-
-        /// <summary>
-        /// 初始化函数映射关系（子类重写此方法以提供特定数据库的函数映射）。
-        /// </summary>
-        /// <param name="functionMappings">函数映射字典。</param>
-        protected virtual void InitializeFunctionMappings(Dictionary<string, string> functionMappings) { }
-
-        /// <summary>
-        /// 初始化 <see cref="SqlBuilder"/> 类的新实例。
-        /// </summary>
-        public SqlBuilder()
-        {
-            InitializeFunctionMappings(_functionMappings);
-        }
-
-        /// <summary>
-        /// 替换函数名为数据库特定的函数名。
-        /// </summary>
-        /// <param name="functionName">原始函数名。</param>
-        /// <returns>替换后的函数名。</returns>
-        public virtual string ReplaceFunctionName(string functionName)
-        {
-            if (string.IsNullOrWhiteSpace(functionName))
-                return functionName;
-
-            string key = functionName.Trim();
-
-            // 如果找到映射则返回数据库函数名，否则返回原名称
-            return _functionMappings.TryGetValue(key, out string dbFunctionName)
-                ? dbFunctionName
-                : functionName;
-        }
-
-        private Dictionary<string, Func<string, string[], string>> functionSqlHandlers = new Dictionary<string, Func<string, string[], string>>(StringComparer.OrdinalIgnoreCase);
-
-        /// <summary>
-        /// 注册自定义函数 SQL 处理程序。
-        /// </summary>
-        /// <param name="functionName">函数名称。</param>
-        /// <param name="handler">处理程序委托，接收函数名和参数数组，返回 SQL 字符串。</param>
-        /// <returns>返回是否注册成功。</returns>
-        public bool RegisterFunctionSqlHandler(string functionName, Func<string, string[], string> handler)
-        {
-            if (string.IsNullOrWhiteSpace(functionName) || handler is null)
-                return false;
-            functionSqlHandlers[functionName] = handler;
-            return true;
-        }
+        };      
 
         /// <summary>
         /// 构建函数调用的 SQL 片段。
@@ -119,25 +76,22 @@ namespace LiteOrm
         /// <param name="functionName">函数名。</param>
         /// <param name="args">参数列表。</param>
         /// <returns>构建后的 SQL 片段。</returns>
-        public virtual string BuildFunctionSql(string functionName, params string[] args)
+        public string BuildFunctionSql(string functionName, IList<KeyValuePair<string, Expr>> args)
         {
-            functionName = ReplaceFunctionName(functionName);
-            switch (functionName.ToUpper())
+            if (string.IsNullOrWhiteSpace(functionName))
+                throw new ArgumentNullException(nameof(functionName));
+            Type type = this.GetType();
+            while (typeof(BaseSqlBuilder).IsAssignableFrom(type))
             {
-                case "CURRENT_TIMESTAMP":
-                case "CURRENT_DATE":
-                    return functionName;
-                case "SUBSTR":
-                case "SUBSTRING":
-                    if (args.Length >= 2)
-                        args[1] += "+1";
-                    break;
-            }
-            if(functionSqlHandlers.TryGetValue(functionName, out var handler))
+                if(GetSqlHandlerMap(type).TryGetFunctionSqlHandler(functionName, out var handler))
+                    return handler(functionName, args);
+                type = type.BaseType;
+            }  
+            if(_functionMappings.TryGetValue(functionName, out string mappedName))
             {
-                return handler(functionName, args);
+                functionName = mappedName;
             }
-            return $"{functionName}({string.Join(", ", args)})";
+            return $"{functionName}({string.Join(", ", args.Select(a=>a.Key))})";
         }
 
         #region 内部字段与正则表达式
@@ -479,8 +433,66 @@ namespace LiteOrm
         {
             return $"INSERT INTO {ToSqlName(tableName)} ({columns}) \nVALUES {string.Join(",", valuesList)}";
         }
+
+        
+        internal class SqlHandlerMap {
+            private readonly ConcurrentDictionary<string, Func<string, IList<KeyValuePair<string, Expr>>, string>> FunctionSqlHandlers = new ConcurrentDictionary<string, Func<string, IList<KeyValuePair<string, Expr>>, string>>(StringComparer.OrdinalIgnoreCase);
+            public bool RegisterFunctionSqlHandler(string functionName, Func<string, IList<KeyValuePair<string, Expr>>, string> handler)
+            {
+                if (string.IsNullOrWhiteSpace(functionName) || handler is null)
+                    return false;
+                FunctionSqlHandlers[functionName] = handler;
+                return true;
+            }
+
+            public  bool TryGetFunctionSqlHandler(string functionName, out Func<string, IList<KeyValuePair<string, Expr>>, string> handler)
+            {
+                return FunctionSqlHandlers.TryGetValue(functionName, out handler);
+            }
+        }
+
+        private static readonly ConcurrentDictionary<Type, SqlHandlerMap> _sqlHandlerMaps = new ConcurrentDictionary<Type, SqlHandlerMap>();
+        internal static SqlHandlerMap GetSqlHandlerMap<T>() where T : BaseSqlBuilder
+        {
+            return _sqlHandlerMaps.GetOrAdd(typeof(T), t => new SqlHandlerMap());
+        }   
+
+        internal static SqlHandlerMap GetSqlHandlerMap(Type type)
+        {
+            return _sqlHandlerMaps.GetOrAdd(type, t => new SqlHandlerMap());
+        }
     }
 
-}
+    /// <summary>
+    /// SqlBuilder 扩展方法
+    /// </summary>
+    public static class SqlHandlerMapExtensions
+    {
+        /// <summary>
+        /// 注册函数的 SQL 语句处理器
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="sqlBuilder"></param>
+        /// <param name="functionName"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public static bool RegisterFunctionSqlHandler<T>(this T sqlBuilder, string functionName, Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
+        {
+                return BaseSqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, handler);
+        }
 
+    /// <summary>
+    /// 获取函数的 SQL 语句处理器
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="sqlBuilder"></param>
+    /// <param name="functionName"></param>
+    /// <param name="handler"></param>
+    /// <returns></returns>
+        public static bool TryGetFunctionSqlHandler<T>(this T sqlBuilder, string functionName, out Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
+         {
+                return BaseSqlBuilder.GetSqlHandlerMap<T>().TryGetFunctionSqlHandler(functionName, out handler);
+        }
+    }
+}
 

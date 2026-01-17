@@ -1,6 +1,6 @@
 # LiteOrm
 
-LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架，旨在提供简单、灵活且强大的数据库操作能力。它可以运行在 .NET Standard 2.0 和 .NET 8.0+ 环境下。
+LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架，提供简单、灵活的数据库操作。
 
 ## 主要特性
 
@@ -8,7 +8,7 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架�
 *   **灵活的表达式引擎**：基于 `Expr` 的查询构建器，支持复杂的条件组合（And, Or, Not, In, Like 等）。
 *   **实体服务模式**：提供统一的 `IEntityService<T>` 和 `IEntityViewService<T>` 接口，封装常用的 CRUD 操作。
 *   **异步支持**：所有核心操作均提供基于 `Task` 的异步版本。
-*   **声明式映射**：使用 `[Table]`, `[Column]`, `[ForeignType]` 等特性轻松定义实体与数据库表的映射关系。
+*   **声明式映射**：使用 `[Table]`, `[Column]`, `[ForeignType]` 等特性定义实体与数据库表的映射关系。
 *   **高性能批量操作**：支持大批量数据的插入、更新和删除。
 *   **Autofac 与 ASP.NET Core 集成**：提供便捷的扩展方法，通过 Autofac 实现自动服务注册和拦截。
 *   **高级查询支持**：支持子查询、连接查询（Join）、正则匹配等。
@@ -27,10 +27,9 @@ dotnet add package LiteOrm
 ```
 
 
-
 ## 快速入门 
 
-使用 LiteOrm 进行基本的数据库操作非常简单。以下是一个完整的示例，展示了如何定义实体、创建服务接口、配置 ASP.NET Core，并执行查询操作。
+使用 LiteOrm 进行基本的数据库操作简单易上手。以下是一个完整的示例，展示了如何定义实体、创建服务接口、配置 ASP.NET Core，并执行查询操作。
 
 ### 1. 定义实体
 
@@ -78,7 +77,9 @@ var host = Host.CreateDefaultBuilder(args)
 ```
 
 ### 4. 配置文件说明 (appsettings.json)
+
 连接字符串与 Provider 配置：
+
 ```json
 {
   "LiteOrm": {
@@ -123,7 +124,7 @@ public class MyController : ControllerBase
 
 ## 查询表达式 (Expr) 
 
-LiteOrm 提供了一套极其强大且灵活的表达式构建工具，支持 Lambda 转换、JSON 序列化、SQL 自动生成。
+LiteOrm 提供了一套表达式构建工具，支持 Lambda 转换、JSON 序列化、SQL 自动生成。
 
 ### 1. 基础表达式构建
 ```csharp
@@ -157,7 +158,7 @@ Expr deserialized = JsonSerializer.Deserialize<Expr>(json);
 ```
 
 ### 4. SQL 自动生成 (SqlGen)
-您可以手动使用 `SqlGen` 将逻辑表达式转换为 SQL，这在调试或需要自定义执行逻辑时非常有用。
+可以手动使用 `SqlGen` 将逻辑表达式转换为 SQL，这在调试或需要自定义执行逻辑时非常有用。
 ```csharp
 var expr = (Expr.Property("Age") > 18) & (Expr.Property("UserName").Contains("admin"));
 var sqlGen = new SqlGen(typeof(User));
@@ -188,7 +189,7 @@ var users = await userService.SearchAsync(u => u.Age > 20);
 ```
 
 ### 2. 动态分表路由 (IArged)
-通过实现 `IArged` 接口，可以轻松实现按月或按维度自动路由物理表。
+通过实现 `IArged` 接口，可以实现按月或按维度自动路由物理表。
 ```csharp
 [Table("SALES_{0}")] // 物理表名占位符
 public class SalesRecord : IArged
@@ -208,8 +209,8 @@ await salesService.InsertAsync(new SalesRecord { SaleTime = DateTime.Now });
 #### 声明式事务 (推荐)
 通过 `[Transaction]` 特性配合 AOP 拦截器实现无侵入的事务控制，支持跨服务、跨数据源的事务一致性保证。（方法内部同步调用方式，异步方式不在事务中）
 ```csharp
-public interface IOrderService : IEntityService<Order>,  IEntityViewService<OrderView>,
-                                    IEntityServiceAsync<Order>, IEntityViewServiceAsync<OrderView> 
+public interface IOrderService : IEntityService<Order>,  IEntityViewService<OrderView>, 
+    IEntityServiceAsync<Order>, IEntityViewServiceAsync<OrderView> 
 {
     [Transaction] // 方法执行时自动开启、提交或回滚事务
     Task<bool> CreateOrderAsync(Order order, List<OrderItem> items);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Data;
@@ -83,7 +83,7 @@ namespace LiteOrm
             }
 
             command.CommandText = IdentityColumn is null ?
-                String.Format("insert into {0} ({1}) \nvalues ({2})", ToSqlName(FactTableName), strColumns, strValues)
+                $"insert into {ToSqlName(FactTableName)} ({strColumns}) \nvalues ({strValues})"
                 : SqlBuilder.BuildIdentityInsertSql(command, IdentityColumn, FactTableName, strColumns.ToString(), strValues.ToString());
             return command;
         }
@@ -112,7 +112,7 @@ namespace LiteOrm
 
             string strTimestamp = MakeTimestampCondition(command);
             if (strTimestamp is not null) strTimestamp = " and " + strTimestamp;
-            command.CommandText = String.Format("update {0} set {1} \nwhere{2} ", ToSqlName(FactTableName), strColumns, MakeIsKeyCondition(command) + strTimestamp);
+            command.CommandText = $"update {ToSqlName(FactTableName)} set {strColumns} \nwhere{MakeIsKeyCondition(command) + strTimestamp} ";
             return command;
         }
 
@@ -123,7 +123,7 @@ namespace LiteOrm
         protected virtual IDbCommand MakeDeleteCommand()
         {
             IDbCommand command = NewCommand();
-            command.CommandText = String.Format("delete from {0} \nwhere{1}", ToSqlName(FactTableName), MakeIsKeyCondition(command));
+            command.CommandText = $"delete from {ToSqlName(FactTableName)} \nwhere{MakeIsKeyCondition(command)}";
             return command;
         }
 
@@ -166,11 +166,11 @@ namespace LiteOrm
                     command.Parameters.Add(param);
                 }
             }
-            string insertCommandText = IdentityColumn is null ? String.Format("insert into {0} ({1}) \nvalues ({2})", ToSqlName(FactTableName), strColumns, strValues)
-                : SqlBuilder.BuildIdentityInsertSql(command, IdentityColumn, ToSqlName(FactTableName), strColumns.ToString(), strValues.ToString());
-            string updateCommandText = String.Format("update {0} set {1} \nwhere{2};", ToSqlName(FactTableName), strUpdateColumns, MakeIsKeyCondition(command));
+            string insertCommandText = IdentityColumn is null ? $"insert into {ToSqlName(FactTableName)} ({strColumns}) \nvalues ({strValues})"
+                : SqlBuilder.BuildIdentityInsertSql(command, IdentityColumn, FactTableName, strColumns.ToString(), strValues.ToString());
+            string updateCommandText = $"update {ToSqlName(FactTableName)} set {strUpdateColumns} \nwhere{MakeIsKeyCondition(command)};";
 
-            command.CommandText = String.Format("BEGIN if exists(select 1 from {0} \nwhere{1}) begin {2} select -1; end else begin {3} end END;", ToSqlName(FactTableName), MakeIsKeyCondition(command), updateCommandText, insertCommandText);
+            command.CommandText = $"BEGIN if exists(select 1 from {ToSqlName(FactTableName)} \nwhere{MakeIsKeyCondition(command)}) begin {updateCommandText} select -1; end else begin {insertCommandText} end END;";
             return command;
         }
 
@@ -386,7 +386,7 @@ namespace LiteOrm
             foreach (KeyValuePair<string, object> value in values)
             {
                 SqlColumn column = Table.GetColumn(value.Key);
-                if (column is null) throw new Exception(String.Format("Property \"{0}\" does not exist in type \"{1}\".", value.Key, Table.DefinitionType.FullName));
+                if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
                 strSets.Add(column.FormattedName(SqlBuilder) + "=" + ToSqlParam(paramValues.Count.ToString()));
                 paramValues.Add(paramValues.Count.ToString(), value.Value);
             }

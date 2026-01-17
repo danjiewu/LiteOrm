@@ -206,7 +206,7 @@ namespace LiteOrm
                 else
                     joinedTable.Name = tableJoin.AliasName;
                 joinedTable.FilterExpression = tableJoin.FilterExpression;
-                if (joinedTables.ContainsKey(joinedTable.Name)) throw new ArgumentException(String.Format("Duplicate table alias name \"{0}\"", joinedTable.Name));
+                if (joinedTables.ContainsKey(joinedTable.Name)) throw new ArgumentException($"Duplicate table alias name \"{joinedTable.Name}\"");
                 joinedTables[joinedTable.Name] = joinedTable;
             }
 
@@ -267,7 +267,7 @@ namespace LiteOrm
                     {
                         string sourceName = (string)tableJoin.Source;
                         if (!joinedTables.ContainsKey(sourceName))
-                            throw new ArgumentException(String.Format("Source table \"{0}\" does not exist in joined tables.", sourceName));
+                            throw new ArgumentException($"Source table \"{sourceName}\" does not exist in joined tables.");
                         sourceTable = joinedTables[sourceName];
                     }
                     else
@@ -280,11 +280,11 @@ namespace LiteOrm
                                 if (sourceTable is null)
                                     sourceTable = joinedTable;
                                 else
-                                    throw new ArgumentException(String.Format("Undeterminate table. More than one table of type {0} joined.", sourceType));
+                                    throw new ArgumentException($"Undeterminate table. More than one table of type {sourceType} joined.");
                             }
                         }
                         if (sourceTable is null)
-                            throw new ArgumentException(String.Format("Source table type {0} does not exist in joined tables.", sourceType));
+                            throw new ArgumentException($"Source table type {sourceType} does not exist in joined tables.");
                     }
                     List<ColumnRef> foreignKeys = new List<ColumnRef>();
                     foreach (string keyName in tableJoin.ForeignKeys.Split(','))
@@ -306,7 +306,7 @@ namespace LiteOrm
             string foreignTable = primeType is null ? (string)foreignColumnAttribute.Foreign : primeType.Name;
             ColumnRef targetColumn = null;
             if (!joinedTables.ContainsKey(foreignTable))
-                throw new ArgumentException(String.Format("Foreign table name {0} of property {1} does not exist in joined tables.", foreignColumnAttribute.Foreign, column.PropertyName));
+                throw new ArgumentException($"Foreign table name {foreignColumnAttribute.Foreign} of property {column.PropertyName} does not exist in joined tables.");
 
             targetColumn = joinedTables[foreignTable].GetColumn(primeProperty);
             if (targetColumn is null)
@@ -330,7 +330,7 @@ namespace LiteOrm
             }
 
             if (targetColumn is null)
-                throw new ArgumentException(String.Format("Foreign property {0} does not exist in type {1}.", primeProperty, joinedTables[foreignTable].TableDefinition.ObjectType));
+                throw new ArgumentException($"Foreign property {primeProperty} does not exist in type {joinedTables[foreignTable].TableDefinition.ObjectType}.");
 
             return targetColumn;
         }

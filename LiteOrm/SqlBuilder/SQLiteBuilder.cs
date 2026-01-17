@@ -5,28 +5,17 @@ using LiteOrm.Common;
 using System.Collections;
 using System.Data;
 
-namespace LiteOrm.SQLite
+namespace LiteOrm.SqlBuilder
 {
     /// <summary>
     /// SQLite SQL 构建器。
     /// </summary>
-    public class SQLiteBuilder : SqlBuilder
+    public class SQLiteBuilder : BaseSqlBuilder
     {
         /// <summary>
         /// SQLite SQL 构建器实例。
         /// </summary>
         public static readonly new SQLiteBuilder Instance = new SQLiteBuilder();
-
-        /// <summary>
-        /// 初始化函数映射关系。
-        /// </summary>
-        /// <param name="functionMappings">函数映射字典。</param>
-        protected override void InitializeFunctionMappings(Dictionary<string, string> functionMappings)
-        {
-            functionMappings["Length"] = "LENGTH";
-            functionMappings["IndexOf"] = "INSTR";       // INSTR(str, substr)
-            functionMappings["Substring"] = "SUBSTR";
-        }
 
         /// <summary>
         /// 返回指定类型对应的Sqlite数据库类型。

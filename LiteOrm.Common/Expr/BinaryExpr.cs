@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ¶şÔªÌõ¼ş±í´ïÊ½£¬ÀıÈç <c>a = b</c>, <c>name LIKE '%abc%'</c>, <c>id IN (1,2,3)</c> µÈ¡£
-    /// Ö§³Ö´ø NOT Ç°×ºµÄ²Ù×÷£¨ÀıÈç NOT IN¡¢NOT LIKE£©¡£
+    /// äºŒå…ƒæ¡ä»¶è¡¨è¾¾å¼ï¼Œä¾‹å¦‚ <c>a = b</c>, <c>name LIKE '%abc%'</c>, <c>id IN (1,2,3)</c> ç­‰ã€‚
+    /// æ”¯æŒå¸¦ NOT å‰ç¼€çš„æ“ä½œï¼ˆä¾‹å¦‚ NOT INã€NOT LIKEï¼‰ã€‚
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class BinaryExpr : Expr
@@ -30,16 +30,16 @@ namespace LiteOrm.Common
         };
 
         /// <summary>
-        /// ÎŞ²Î¹¹Ôì
+        /// æ— å‚æ„é€ 
         /// </summary>
         public BinaryExpr() { }
 
         /// <summary>
-        /// Ê¹ÓÃ×óÓÒ±í´ïÊ½Óë²Ù×÷·û¹¹ÔìÌõ¼ş±í´ïÊ½¡£
+        /// ä½¿ç”¨å·¦å³è¡¨è¾¾å¼ä¸æ“ä½œç¬¦æ„é€ æ¡ä»¶è¡¨è¾¾å¼ã€‚
         /// </summary>
-        /// <param name="left">×ó²à±í´ïÊ½</param>
-        /// <param name="oper">¶şÔª²Ù×÷·û</param>
-        /// <param name="right">ÓÒ²à±í´ïÊ½</param>
+        /// <param name="left">å·¦ä¾§è¡¨è¾¾å¼</param>
+        /// <param name="oper">äºŒå…ƒæ“ä½œç¬¦</param>
+        /// <param name="right">å³ä¾§è¡¨è¾¾å¼</param>
         public BinaryExpr(Expr left, BinaryOperator oper, Expr right)
         {
             Left = left;
@@ -48,34 +48,34 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ÊÇ·ñÎªÖµ±í´ïÊ½£¨¼Ó¡¢¼õ¡¢³Ë¡¢³ı¡¢Á¬½Ó£©
+        /// æ˜¯å¦ä¸ºå€¼è¡¨è¾¾å¼ï¼ˆåŠ ã€å‡ã€ä¹˜ã€é™¤ã€è¿æ¥ï¼‰
         /// </summary>
         public override bool IsValue =>
             Operator >= BinaryOperator.Add && Operator <= BinaryOperator.Concat;
         /// <summary>
-        /// ×ó²à±í´ïÊ½
+        /// å·¦ä¾§è¡¨è¾¾å¼
         /// </summary>
         public Expr Left { get; set; }
         /// <summary>
-        /// ÓÒ²à±í´ïÊ½
+        /// å³ä¾§è¡¨è¾¾å¼
         /// </summary>
         public Expr Right { get; set; }
         /// <summary>
-        /// Ê¹ÓÃµÄ²Ù×÷·û£¨¿ÉÄÜ°üº¬ Not ±êÖ¾£©
+        /// ä½¿ç”¨çš„æ“ä½œç¬¦ï¼ˆå¯èƒ½åŒ…å« Not æ ‡å¿—ï¼‰
         /// </summary>
         public BinaryOperator Operator { get; set; }
 
         /// <summary>
-        /// »ñÈ¡²»º¬ Not ±êÖ¾µÄÔ­Ê¼²Ù×÷·û£¨ÀıÈç Not|In => In£©¡£
+        /// è·å–ä¸å« Not æ ‡å¿—çš„åŸå§‹æ“ä½œç¬¦ï¼ˆä¾‹å¦‚ Not|In => Inï¼‰ã€‚
         /// </summary>
         public BinaryOperator OriginOperator => Operator.Positive();
 
         /// <summary>
-        /// ·´×ªµ±Ç°±í´ïÊ½µÄ×óÓÒ±í´ïÊ½£¬²¢¸ù¾İĞèÒªµ÷Õû²Ù×÷·ûÒÔ±£³Ö±í´ïÊ½½á¹û²»±ä¡£
+        /// åè½¬å½“å‰è¡¨è¾¾å¼çš„å·¦å³è¡¨è¾¾å¼ï¼Œå¹¶æ ¹æ®éœ€è¦è°ƒæ•´æ“ä½œç¬¦ä»¥ä¿æŒè¡¨è¾¾å¼ç»“æœä¸å˜ã€‚
         /// </summary>
-        /// <param name="keepResult">±í´ïÊ½½á¹ûÊÇ·ñ±£³Ö²»±ä</param>
-        /// <returns>·´×ª½á¹û</returns>
-        /// <exception cref="InvalidOperationException">µ±²Ù×÷·û²»Ö§³ÖµÈ¼Û·´×ªÊ±Å×³ö</exception>
+        /// <param name="keepResult">è¡¨è¾¾å¼ç»“æœæ˜¯å¦ä¿æŒä¸å˜</param>
+        /// <returns>åè½¬ç»“æœ</returns>
+        /// <exception cref="InvalidOperationException">å½“æ“ä½œç¬¦ä¸æ”¯æŒç­‰ä»·åè½¬æ—¶æŠ›å‡º</exception>
 
         public BinaryExpr Reverse(bool keepResult = false)
         {
@@ -92,16 +92,16 @@ namespace LiteOrm.Common
                     BinaryOperator.NotEqual => BinaryOperator.NotEqual,
                     BinaryOperator.Add => BinaryOperator.Add,
                     BinaryOperator.Multiply => BinaryOperator.Multiply,  
-                    _ => throw new InvalidOperationException($"²Ù×÷·û: {Operator}²»Ö§³ÖµÈ¼Û·´×ª")
+                    _ => throw new InvalidOperationException($"æ“ä½œç¬¦: {Operator}ä¸æ”¯æŒç­‰ä»·åè½¬")
                 };
             }
             return newExpr;
         }
 
         /// <summary>
-        /// ·µ»Ø±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£
+        /// è¿”å›è¡¨ç¤ºå½“å‰è¡¨è¾¾å¼çš„å­—ç¬¦ä¸²ã€‚
         /// </summary>
-        /// <returns>±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£</returns>
+        /// <returns>è¡¨ç¤ºå½“å‰è¡¨è¾¾å¼çš„å­—ç¬¦ä¸²ã€‚</returns>
         public override string ToString()
         {
             if (!operatorTexts.TryGetValue(Operator, out string op)) op = Operator.ToString();
@@ -109,10 +109,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// ç¡®å®šæŒ‡å®šçš„å¯¹è±¡æ˜¯å¦ç­‰äºå½“å‰å¯¹è±¡ã€‚
         /// </summary>
-        /// <param name="obj">ÒªÓëµ±Ç°¶ÔÏó½øĞĞ±È½ÏµÄ¶ÔÏó¡£</param>
-        /// <returns>Èç¹ûÖ¸¶¨µÄ¶ÔÏóµÈÓÚµ±Ç°¶ÔÏó£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
+        /// <param name="obj">è¦ä¸å½“å‰å¯¹è±¡è¿›è¡Œæ¯”è¾ƒçš„å¯¹è±¡ã€‚</param>
+        /// <returns>å¦‚æœæŒ‡å®šçš„å¯¹è±¡ç­‰äºå½“å‰å¯¹è±¡ï¼Œåˆ™ä¸º trueï¼›å¦åˆ™ä¸º falseã€‚</returns>
         public override bool Equals(object obj)
         {
             return obj is BinaryExpr b &&
@@ -122,9 +122,9 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ×÷ÎªÄ¬ÈÏ¹şÏ£º¯Êı¡£
+        /// ä½œä¸ºé»˜è®¤å“ˆå¸Œå‡½æ•°ã€‚
         /// </summary>
-        /// <returns>µ±Ç°¶ÔÏóµÄ¹şÏ£´úÂë¡£</returns>
+        /// <returns>å½“å‰å¯¹è±¡çš„å“ˆå¸Œä»£ç ã€‚</returns>
         public override int GetHashCode()
         {
             return
@@ -134,139 +134,139 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// Ë«Ä¿²Ù×÷·û
+    /// åŒç›®æ“ä½œç¬¦
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum BinaryOperator
     {
         /// <summary>
-        /// ÏàµÈ
+        /// ç›¸ç­‰
         /// </summary>
         Equal = 0,
         /// <summary>
-        /// ´óÓÚ
+        /// å¤§äº
         /// </summary>
         GreaterThan = 1,
         /// <summary>
-        /// Ğ¡ÓÚ
+        /// å°äº
         /// </summary>
         LessThan = 2,
         /// <summary>
-        /// ÒÔÖ¸¶¨×Ö·û´®Îª¿ªÊ¼£¨×÷Îª×Ö·û´®±È½Ï£©
+        /// ä»¥æŒ‡å®šå­—ç¬¦ä¸²ä¸ºå¼€å§‹ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
         /// </summary>
         StartsWith = 3,
         /// <summary>
-        /// ÒÔÖ¸¶¨×Ö·û´®Îª½áÎ²£¨×÷Îª×Ö·û´®±È½Ï£©
+        /// ä»¥æŒ‡å®šå­—ç¬¦ä¸²ä¸ºç»“å°¾ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
         /// </summary>
         EndsWith = 4,
         /// <summary>
-        /// °üº¬Ö¸¶¨×Ö·û´®£¨×÷Îª×Ö·û´®±È½Ï£©
+        /// åŒ…å«æŒ‡å®šå­—ç¬¦ä¸²ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
         /// </summary>
         Contains = 5,
         /// <summary>
-        /// Æ¥Åä×Ö·û´®¸ñÊ½£¨×÷Îª×Ö·û´®±È½Ï£©
+        /// åŒ¹é…å­—ç¬¦ä¸²æ ¼å¼ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
         /// </summary>
         Like = 6,
         /// <summary>
-        /// °üº¬ÔÚ¼¯ºÏÖĞ
+        /// åŒ…å«åœ¨é›†åˆä¸­
         /// </summary>
         In = 7,
         /// <summary>
-        /// ÕıÔò±í´ïÊ½Æ¥Åä
+        /// æ­£åˆ™è¡¨è¾¾å¼åŒ¹é…
         /// </summary>
         RegexpLike = 8,
         /// <summary>
-        /// ¼Ó·¨
+        /// åŠ æ³•
         /// </summary>
         Add = 9,
         /// <summary>
-        /// ¼õ·¨
+        /// å‡æ³•
         /// </summary>
         Subtract = 10,
         /// <summary>
-        /// ³Ë·¨
+        /// ä¹˜æ³•
         /// </summary>
         Multiply = 11,
         /// <summary>
-        /// ³ı·¨
+        /// é™¤æ³•
         /// </summary>
         Divide = 12,
         /// <summary>
-        /// ×Ö·û´®Á¬½Ó
+        /// å­—ç¬¦ä¸²è¿æ¥
         /// </summary>
         Concat = 13,
         /// <summary>
-        /// Âß¼­·Ç 
+        /// é€»è¾‘é 
         /// </summary>
         Not = 64,
         /// <summary>
-        /// ²»µÈÓÚ
+        /// ä¸ç­‰äº
         /// </summary>
         NotEqual = Equal | Not,
         /// <summary>
-        /// ²»Ğ¡ÓÚ
+        /// ä¸å°äº
         /// </summary>
         GreaterThanOrEqual = LessThan | Not,
         /// <summary>
-        /// ²»´óÓÚ
+        /// ä¸å¤§äº
         /// </summary>
         LessThanOrEqual = GreaterThan | Not,
         /// <summary>
-        /// ²»ÒÔÖ¸¶¨×Ö·û´®Îª¿ªÊ¼
+        /// ä¸ä»¥æŒ‡å®šå­—ç¬¦ä¸²ä¸ºå¼€å§‹
         /// </summary>
         NotStartsWith = StartsWith | Not,
         /// <summary>
-        /// ²»ÒÔÖ¸¶¨×Ö·û´®Îª½áÎ²
+        /// ä¸ä»¥æŒ‡å®šå­—ç¬¦ä¸²ä¸ºç»“å°¾
         /// </summary>
         NotEndsWith = EndsWith | Not,
         /// <summary>
-        /// ²»°üº¬Ö¸¶¨×Ö·û´®£¨×÷Îª×Ö·û´®±È½Ï£©
+        /// ä¸åŒ…å«æŒ‡å®šå­—ç¬¦ä¸²ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
         /// </summary>
         NotContains = Contains | Not,
         /// <summary>
-        /// ²»Æ¥Åä×Ö·û´®¸ñÊ½£¨×÷Îª×Ö·û´®±È½Ï£©
+        /// ä¸åŒ¹é…å­—ç¬¦ä¸²æ ¼å¼ï¼ˆä½œä¸ºå­—ç¬¦ä¸²æ¯”è¾ƒï¼‰
         /// </summary>
         NotLike = Like | Not,
         /// <summary>
-        /// ²»°üº¬ÔÚ¼¯ºÏÖĞ
+        /// ä¸åŒ…å«åœ¨é›†åˆä¸­
         /// </summary>
         NotIn = In | Not,
         /// <summary>
-        /// ²»Æ¥ÅäÕıÔò±í´ïÊ½
+        /// ä¸åŒ¹é…æ­£åˆ™è¡¨è¾¾å¼
         /// </summary>
         NotRegexpLike = RegexpLike | Not
     }
 
     /// <summary>
-    /// ¶şÔª²Ù×÷·ûµÄÀ©Õ¹·½·¨
+    /// äºŒå…ƒæ“ä½œç¬¦çš„æ‰©å±•æ–¹æ³•
     /// </summary>
     public static class BinaryOperatorExt
     {
         /// <summary>
-        /// ¼ì²é²Ù×÷·ûÊÇ·ñ°üº¬NOT±êÖ¾
+        /// æ£€æŸ¥æ“ä½œç¬¦æ˜¯å¦åŒ…å«NOTæ ‡å¿—
         /// </summary>
-        /// <param name="oper">Òª¼ì²éµÄ¶şÔª²Ù×÷·û</param>
-        /// <returns>Èç¹û²Ù×÷·û°üº¬NOT±êÖ¾Ôò·µ»Øtrue£¬·ñÔò·µ»Øfalse</returns>
+        /// <param name="oper">è¦æ£€æŸ¥çš„äºŒå…ƒæ“ä½œç¬¦</param>
+        /// <returns>å¦‚æœæ“ä½œç¬¦åŒ…å«NOTæ ‡å¿—åˆ™è¿”å›trueï¼Œå¦åˆ™è¿”å›false</returns>
         public static bool IsNot(this BinaryOperator oper)
         {
             return (oper & BinaryOperator.Not) == BinaryOperator.Not;
         }
 
         /// <summary>
-        /// »ñÈ¡²Ù×÷·ûµÄÔ­Ê¼²Ù×÷·û£¨È¥³ıNOT±êÖ¾£©
+        /// è·å–æ“ä½œç¬¦çš„åŸå§‹æ“ä½œç¬¦ï¼ˆå»é™¤NOTæ ‡å¿—ï¼‰
         /// </summary>
-        /// <param name="oper">Òª»ñÈ¡Ô­Ê¼²Ù×÷·ûµÄ¶şÔª²Ù×÷·û</param>
-        /// <returns>È¥³ıNOT±êÖ¾ºóµÄÔ­Ê¼²Ù×÷·û</returns>
+        /// <param name="oper">è¦è·å–åŸå§‹æ“ä½œç¬¦çš„äºŒå…ƒæ“ä½œç¬¦</param>
+        /// <returns>å»é™¤NOTæ ‡å¿—åçš„åŸå§‹æ“ä½œç¬¦</returns>
         public static BinaryOperator Positive(this BinaryOperator oper)
         {
             return oper & ~BinaryOperator.Not;
         }
 
         /// <summary>
-        /// »ñÈ¡²Ù×÷·ûµÄÏà·´²Ù×÷·û£¨Ìí¼Ó»òÈ¥³ıNOT±êÖ¾£©
+        /// è·å–æ“ä½œç¬¦çš„ç›¸åæ“ä½œç¬¦ï¼ˆæ·»åŠ æˆ–å»é™¤NOTæ ‡å¿—ï¼‰
         /// </summary>
-        /// <param name="oper">Òª»ñÈ¡Ïà·´²Ù×÷·ûµÄ¶şÔª²Ù×÷·û</param>
-        /// <returns>Ïà·´µÄ²Ù×÷·û</returns>
+        /// <param name="oper">è¦è·å–ç›¸åæ“ä½œç¬¦çš„äºŒå…ƒæ“ä½œç¬¦</param>
+        /// <returns>ç›¸åçš„æ“ä½œç¬¦</returns>
         public static BinaryOperator Opposite(this BinaryOperator oper)
         {
             return oper ^ BinaryOperator.Not;

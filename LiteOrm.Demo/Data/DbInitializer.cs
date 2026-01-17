@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
@@ -22,11 +22,11 @@ namespace LiteOrm.Demo.Data
             using var connection = new SqliteConnection(connectionString);
             await connection.OpenAsync();
 
-            Console.WriteLine("--- Êı¾İ¿â½á¹¹¼ì²é ---");
+            Console.WriteLine("--- æ•°æ®åº“ç»“æ„æ£€æŸ¥ ---");
 
             await EnsureTablesCreatedAsync(connection);
 
-            // ¼ì²éÊÇ·ñÓĞÊı¾İ£¬ÈôÃ»ÓĞÔòÍ¬²½³õÊ¼ÑİÊ¾Êı¾İ
+            // æ£€æŸ¥æ˜¯å¦æœ‰æ•°æ®ï¼Œè‹¥æ²¡æœ‰åˆ™åŒæ­¥åˆå§‹æ¼”ç¤ºæ•°æ®
             var userService = services.GetRequiredService<IUserService>();
             var deptService = services.GetRequiredService<IDepartmentService>();
             var salesService = services.GetRequiredService<ISalesService>();
@@ -40,11 +40,11 @@ namespace LiteOrm.Demo.Data
         private static async Task EnsureTablesCreatedAsync(SqliteConnection connection)
         {
             string currentMonth = DateTime.Now.ToString("yyyyMM");
-            // ´Ë´¦Ê¹ÓÃÔ­Éú SQL À´³õÊ¼»¯½á¹¹£¬ÒòÎª DDL Í¨³£³¬³ö ORM Ö°Ôğ·¶Î§
+            // æ­¤å¤„ä½¿ç”¨åŸç”Ÿ SQL æ¥åˆå§‹åŒ–ç»“æ„ï¼Œå› ä¸º DDL é€šå¸¸è¶…å‡º ORM èŒè´£èŒƒå›´
             string[] createTableSqls = {
                 @"CREATE TABLE IF NOT EXISTS Departments (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT, ParentId INTEGER, ManagerId INTEGER);",
                 @"CREATE TABLE IF NOT EXISTS Users (Id INTEGER PRIMARY KEY AUTOINCREMENT, UserName TEXT, Age INTEGER, CreateTime DATETIME, DeptId INTEGER);",
-                // Ö§³Ö·Ö±íÏÔÊ¾ (µ±Ç°ÔÂ·İ)
+                // æ”¯æŒåˆ†è¡¨æ˜¾ç¤º (å½“å‰æœˆä»½)
                 $@"CREATE TABLE IF NOT EXISTS Sales_{currentMonth} (Id INTEGER PRIMARY KEY AUTOINCREMENT, ProductId INTEGER, ProductName TEXT, Amount INTEGER NOT NULL, SaleTime DATETIME NOT NULL, ShipTime DATETIME, SalesUserId INTEGER);"
             };
 
@@ -57,49 +57,49 @@ namespace LiteOrm.Demo.Data
 
         private static async Task SeedDataWithServicesAsync(IUserService userService, IDepartmentService deptService, ISalesService salesService)
         {
-            // ´Ë´¦ÑİÊ¾´Ó·şÎñÖĞ»ñÈ¡ÒÀÀµ£¬ËäÈ»¿ÉÒÔÖ±½Ó¹¹Ôì
-            // µ«Êµ¼ÊÏîÄ¿ÖĞ½¨ÒéÍ¨¹ı¹¹Ôìº¯Êı×¢Èë
+            // æ­¤å¤„æ¼”ç¤ºä»æœåŠ¡ä¸­è·å–ä¾èµ–ï¼Œè™½ç„¶å¯ä»¥ç›´æ¥æ„é€ 
+            // ä½†å®é™…é¡¹ç›®ä¸­å»ºè®®é€šè¿‡æ„é€ å‡½æ•°æ³¨å…¥
             
-            Console.WriteLine("--- Ê¹ÓÃ Service ½Ó¿Ú½øĞĞÊı¾İ³õÊ¼»¯ ---");
+            Console.WriteLine("--- ä½¿ç”¨ Service æ¥å£è¿›è¡Œæ•°æ®åˆå§‹åŒ– ---");
 
-            // 1. ×¼±¸²¿ÃÅÊı¾İ
+            // 1. å‡†å¤‡éƒ¨é—¨æ•°æ®
             var depts = new List<Department>
             {
-                new() { Id = 1, Name = "¼¯ÍÅ×Ü²¿" },
-                new() { Id = 2, Name = "ÑĞ·¢ÖĞĞÄ", ParentId = 1 },
-                new() { Id = 3, Name = "ÊĞ³¡²¿", ParentId = 1 },
-                new() { Id = 4, Name = "ÏúÊÛ²¿", ParentId = 1 },       
-                new() { Id = 5, Name = "ÈË¹¤ÖÇÄÜÊµÑéÊÒ", ParentId = 2 },
-                new() { Id = 6, Name = "²ÆÎñ²¿", ParentId = 1 },
-                new() { Id = 7, Name = "ÈËÁ¦×ÊÔ´²¿", ParentId = 1 },
-                new() { Id = 8, Name = "ÉÏº£ÑĞ·¢²¿", ParentId = 2 },
-                new() { Id = 9, Name = "¹ãÖİ·Ö¹«Ë¾", ParentId = 4 }
+                new() { Id = 1, Name = "é›†å›¢æ€»éƒ¨" },
+                new() { Id = 2, Name = "ç ”å‘ä¸­å¿ƒ", ParentId = 1 },
+                new() { Id = 3, Name = "å¸‚åœºéƒ¨", ParentId = 1 },
+                new() { Id = 4, Name = "é”€å”®éƒ¨", ParentId = 1 },       
+                new() { Id = 5, Name = "äººå·¥æ™ºèƒ½å®éªŒå®¤", ParentId = 2 },
+                new() { Id = 6, Name = "è´¢åŠ¡éƒ¨", ParentId = 1 },
+                new() { Id = 7, Name = "äººåŠ›èµ„æºéƒ¨", ParentId = 1 },
+                new() { Id = 8, Name = "ä¸Šæµ·ç ”å‘éƒ¨", ParentId = 2 },
+                new() { Id = 9, Name = "å¹¿å·åˆ†å…¬å¸", ParentId = 4 }
             };
 
-            // Ê¹ÓÃ BatchInsert Ìá¸ßĞ§ÂÊ
+            // ä½¿ç”¨ BatchInsert æé«˜æ•ˆç‡
             await deptService.BatchInsertAsync(depts);
 
-            // 2. ×¼±¸ÓÃ»§Êı¾İ
+            // 2. å‡†å¤‡ç”¨æˆ·æ•°æ®
             var users = new List<User>
             {
                 new() { Id = 1, UserName = "Admin", Age = 35, CreateTime = DateTime.Now, DeptId = 1 },
-                new() { Id = 2, UserName = "ÑĞ·¢¸ºÔğÈË", Age = 32, CreateTime = DateTime.Now, DeptId = 2 },
-                new() { Id = 3, UserName = "ÕÅÈı", Age = 25, CreateTime = DateTime.Now, DeptId = 2 },
-                new() { Id = 4, UserName = "ÀîËÄ", Age = 28, CreateTime = DateTime.Now, DeptId = 2 },
-                new() { Id = 5, UserName = "ÍõÎå", Age = 30, CreateTime = DateTime.Now, DeptId = 3 },
-                new() { Id = 6, UserName = "ÏîÄ¿¾­Àí", Age = 33, CreateTime = DateTime.Now, DeptId = 4 },
-                new() { Id = 7, UserName = "Ç®Æß", Age = 26, CreateTime = DateTime.Now, DeptId = 4 },
-                new() { Id = 8, UserName = "²ÆÎñ¸ºÔğÈË", Age = 38, CreateTime = DateTime.Now, DeptId = 6 },
-                new() { Id = 9, UserName = "²ÆÎñÖúÀí", Age = 24, CreateTime = DateTime.Now, DeptId = 6 },
+                new() { Id = 2, UserName = "ç ”å‘è´Ÿè´£äºº", Age = 32, CreateTime = DateTime.Now, DeptId = 2 },
+                new() { Id = 3, UserName = "å¼ ä¸‰", Age = 25, CreateTime = DateTime.Now, DeptId = 2 },
+                new() { Id = 4, UserName = "æå››", Age = 28, CreateTime = DateTime.Now, DeptId = 2 },
+                new() { Id = 5, UserName = "ç‹äº”", Age = 30, CreateTime = DateTime.Now, DeptId = 3 },
+                new() { Id = 6, UserName = "é¡¹ç›®ç»ç†", Age = 33, CreateTime = DateTime.Now, DeptId = 4 },
+                new() { Id = 7, UserName = "é’±ä¸ƒ", Age = 26, CreateTime = DateTime.Now, DeptId = 4 },
+                new() { Id = 8, UserName = "è´¢åŠ¡è´Ÿè´£äºº", Age = 38, CreateTime = DateTime.Now, DeptId = 6 },
+                new() { Id = 9, UserName = "è´¢åŠ¡åŠ©ç†", Age = 24, CreateTime = DateTime.Now, DeptId = 6 },
                 new() { Id = 10, UserName = "HRBP-Lucy", Age = 29, CreateTime = DateTime.Now, DeptId = 7 },
-                new() { Id = 11, UserName = "ÀÏÍõ", Age = 40, CreateTime = DateTime.Now, DeptId = 8 },
-                new() { Id = 12, UserName = "Ğ¡Àî", Age = 22, CreateTime = DateTime.Now, DeptId = 9 }
+                new() { Id = 11, UserName = "è€ç‹", Age = 40, CreateTime = DateTime.Now, DeptId = 8 },
+                new() { Id = 12, UserName = "å°æ", Age = 22, CreateTime = DateTime.Now, DeptId = 9 }
             };
 
             await userService.BatchInsertAsync(users);
 
-            // 3. ÉèÖÃ²¿ÃÅ¸ºÔğÈË (ÑİÊ¾ UpdateAsync)
-            // ÖØĞÂ»ñÈ¡²¿ÃÅ½øĞĞ¸üĞÂ
+            // 3. è®¾ç½®éƒ¨é—¨è´Ÿè´£äºº (æ¼”ç¤º UpdateAsync)
+            // é‡æ–°è·å–éƒ¨é—¨è¿›è¡Œæ›´æ–°
             var updateDepts = new List<Department>();
             
             async Task MarkManager(int deptId, int managerId) {
@@ -107,34 +107,34 @@ namespace LiteOrm.Demo.Data
                 if(d != null) { d.ManagerId = managerId; updateDepts.Add(d); }
             }
 
-            await MarkManager(1, 1);  // ×Ü²¿¸ºÔğÈË: Admin
-            await MarkManager(2, 2);  // ÑĞ·¢ÖĞĞÄ¸ºÔğÈË: ÑĞ·¢¸ºÔğÈË
-            await MarkManager(4, 6);  // ÏúÊÛ²¿¸ºÔğÈË: ÏîÄ¿¾­Àí
-            await MarkManager(6, 8);  // ²ÆÎñ²¿¸ºÔğÈË: ²ÆÎñ¸ºÔğÈË
-            await MarkManager(7, 10); // ÈËÊÂ¸ºÔğÈË: Lucy
-            await MarkManager(8, 11); // ÉÏº£¸ºÔğÈË
-            await MarkManager(9, 12); // ¹ãÖİ¸ºÔğÈË
+            await MarkManager(1, 1);  // æ€»éƒ¨è´Ÿè´£äºº: Admin
+            await MarkManager(2, 2);  // ç ”å‘ä¸­å¿ƒè´Ÿè´£äºº: ç ”å‘è´Ÿè´£äºº
+            await MarkManager(4, 6);  // é”€å”®éƒ¨è´Ÿè´£äºº: é¡¹ç›®ç»ç†
+            await MarkManager(6, 8);  // è´¢åŠ¡éƒ¨è´Ÿè´£äºº: è´¢åŠ¡è´Ÿè´£äºº
+            await MarkManager(7, 10); // äººäº‹è´Ÿè´£äºº: Lucy
+            await MarkManager(8, 11); // ä¸Šæµ·è´Ÿè´£äºº
+            await MarkManager(9, 12); // å¹¿å·è´Ÿè´£äºº
 
-            // ÑİÊ¾ BatchUpdate (ÅúÁ¿¸üĞÂ¶ÔÏóÒÑ´æÔÚµÄÊµÀı)
+            // æ¼”ç¤º BatchUpdate (æ‰¹é‡æ›´æ–°å¯¹è±¡å·²å­˜åœ¨çš„å®ä¾‹)
             await deptService.BatchUpdateAsync(updateDepts);
 
-            // 4. ×¼±¸ÏúÊÛ¼ÇÂ¼ (Ô­ SeedSalesDataAsync ÄÚÈİ£¬´Ë´¦¸ÄÎª·şÎñµ÷ÓÃ)
+            // 4. å‡†å¤‡é”€å”®è®°å½• (åŸ SeedSalesDataAsync å†…å®¹ï¼Œæ­¤å¤„æ”¹ä¸ºæœåŠ¡è°ƒç”¨)
             string currentMonth = DateTime.Now.ToString("yyyyMM");
             int count = 50;
-            Console.WriteLine($"--- ÑİÊ¾ IArged ·Ö±íÊı¾İ²åÈë (Sales_{currentMonth})£¬Éú³É {count} ÌõËæ»úÏúÊÛ¼ÇÂ¼ ---");
+            Console.WriteLine($"--- æ¼”ç¤º IArged åˆ†è¡¨æ•°æ®æ’å…¥ (Sales_{currentMonth})ï¼Œç”Ÿæˆ {count} æ¡éšæœºé”€å”®è®°å½• ---");
 
             var productPool = new[]
             {
-                (Id: 101, Name: "±Ê¼Ç±¾µçÄÔ", Price: 5999),
-                (Id: 102, Name: "ÏÔÊ¾Æ÷", Price: 1299),
-                (Id: 103, Name: "»úĞµ¼üÅÌ", Price: 499),
-                (Id: 201, Name: "ÎŞÏßÊó±ê", Price: 199),
-                (Id: 202, Name: "ÈËÌå¹¤Ñ§ÒÎ", Price: 1599),
-                (Id: 301, Name: "Type-C À©Õ¹Îë", Price: 259),
-                (Id: 302, Name: "4K ÉãÏñÍ·", Price: 699),
-                (Id: 401, Name: "¿ÕÆø¾»»¯Æ÷", Price: 2499),
-                (Id: 402, Name: "¼ÓÊªÆ÷", Price: 3299),
-                (Id: 501, Name: "µç¾º±Ê¼Ç±¾", Price: 8999),
+                (Id: 101, Name: "ç¬”è®°æœ¬ç”µè„‘", Price: 5999),
+                (Id: 102, Name: "æ˜¾ç¤ºå™¨", Price: 1299),
+                (Id: 103, Name: "æœºæ¢°é”®ç›˜", Price: 499),
+                (Id: 201, Name: "æ— çº¿é¼ æ ‡", Price: 199),
+                (Id: 202, Name: "äººä½“å·¥å­¦æ¤…", Price: 1599),
+                (Id: 301, Name: "Type-C æ‰©å±•å", Price: 259),
+                (Id: 302, Name: "4K æ‘„åƒå¤´", Price: 699),
+                (Id: 401, Name: "ç©ºæ°”å‡€åŒ–å™¨", Price: 2499),
+                (Id: 402, Name: "åŠ æ¹¿å™¨", Price: 3299),
+                (Id: 501, Name: "ç”µç«ç¬”è®°æœ¬", Price: 8999),
             };
 
             var userIds = new[] { 3, 4, 6, 7, 11, 12 };
@@ -146,7 +146,7 @@ namespace LiteOrm.Demo.Data
             {
                 var p = productPool[random.Next(productPool.Length)];
                 var saleTime = saleDateBase.AddDays(random.Next(25)).AddHours(random.Next(8, 20)).AddMinutes(random.Next(60));
-                // Ëæ»úÒ»²¿·Ö¶©µ¥ÒÑ·¢»õ
+                // éšæœºä¸€éƒ¨åˆ†è®¢å•å·²å‘è´§
                 DateTime? shipTime = random.NextDouble() > 0.2 ? saleTime.AddHours(random.Next(2, 72)) : null;
 
                 records.Add(new SalesRecord
@@ -162,7 +162,7 @@ namespace LiteOrm.Demo.Data
 
             await salesService.BatchInsertAsync(records);
 
-            Console.WriteLine("È«Á¿³õÊ¼»¯Êı¾İÌî³äÍê³É¡£");
+            Console.WriteLine("å…¨é‡åˆå§‹åŒ–æ•°æ®å¡«å……å®Œæˆã€‚");
         }
     }
 }

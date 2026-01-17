@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -8,46 +8,46 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ��ѯ����ʽ���ࡣ
+    /// 查询表达式基类。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public abstract class Expr
     {
         /// <summary>
-        /// ��ֵ������ʽת��Ϊֵ����ʽ��
+        /// 将值类型隐式转换为值表达式。
         /// </summary>
-        /// <param name="value">ֵ������ֵ��</param>
-        /// <returns>ֵ����ʽ��</returns>
+        /// <param name="value">值类型数值。</param>
+        /// <returns>值表达式。</returns>
         public static implicit operator Expr(ValueType value) => new ValueExpr(value);
 
         /// <summary>
-        /// ���ַ�����ʽת��Ϊֵ����ʽ��
+        /// 将字符串隐式转换为值表达式。
         /// </summary>
-        /// <param name="value">�ַ�����</param>
-        /// <returns>ֵ����ʽ��</returns>
+        /// <param name="value">字符串。</param>
+        /// <returns>值表达式。</returns>
         public static implicit operator Expr(string value) => new ValueExpr(value);
 
         /// <summary>
-        /// ��ʾ��ֵ�ı���ʽ��
+        /// 表示空值的表达式。
         /// </summary>
         public static readonly ValueExpr Null = new ValueExpr();
 
         /// <summary>
-        /// ָʾ��ǰ����ʽ�Ƿ�Ϊֵ���ͱ���ʽ��
+        /// 指示当前表达式是否为值类型表达式。
         /// </summary>
         [JsonIgnore]
         public virtual bool IsValue => false;
 
         /// <summary>
-        /// ���ڹ�ϣ���������ֵ��
+        /// 用于哈希计算的种子值。
         /// </summary>
         protected const int HashSeed = 31;
 
         /// <summary>
-        /// �������ϣֵ��ϳ�һ����Ϲ�ϣֵ��
+        /// 将多个哈希值组合成一个组合哈希值。
         /// </summary>
-        /// <param name="hashcodes">Ҫ��ϵĹ�ϣֵ���С�</param>
-        /// <returns>��Ϻ�Ĺ�ϣֵ��</returns>
+        /// <param name="hashcodes">要组合的哈希值序列。</param>
+        /// <returns>组合后的哈希值。</returns>
         protected static int OrderedHashCodes(params int[] hashcodes)
         {
             unchecked
@@ -62,110 +62,110 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// �������Ա���ʽ��
+        /// 创建属性表达式。
         /// </summary>
-        /// <param name="propertyName">�������ơ�</param>
-        /// <returns>���Ա���ʽ��</returns>
+        /// <param name="propertyName">属性名称。</param>
+        /// <returns>属性表达式。</returns>
         public static PropertyExpr Property(string propertyName)
         {
             return new PropertyExpr(propertyName);
         }
 
         /// <summary>
-        /// ����һ�����Ե���ֵ�Ķ�Ԫ����ʽ��
+        /// 创建一个属性等于值的二元表达式。
         /// </summary>
-        /// <param name="propertyName">�������ơ�</param>
-        /// <param name="value">�Ƚ�ֵ��</param>
-        /// <returns>��Ԫ����ʽ��</returns>
+        /// <param name="propertyName">属性名称。</param>
+        /// <param name="value">比较值。</param>
+        /// <returns>二元表达式。</returns>
         public static BinaryExpr Property(string propertyName, object value)
         {
             return new BinaryExpr(new PropertyExpr(propertyName), BinaryOperator.Equal, new ValueExpr(value));
         }
 
         /// <summary>
-        /// ����һ��ָ���������Ķ�Ԫ����ʽ��
+        /// 创建一个指定操作符的二元表达式。
         /// </summary>
-        /// <param name="propertyName">�������ơ�</param>
-        /// <param name="oper">��Ԫ��������</param>
-        /// <param name="value">�Ƚ�ֵ��</param>
-        /// <returns>��Ԫ����ʽ��</returns>
+        /// <param name="propertyName">属性名称。</param>
+        /// <param name="oper">二元操作符。</param>
+        /// <param name="value">比较值。</param>
+        /// <returns>二元表达式。</returns>
         public static BinaryExpr Property(string propertyName, BinaryOperator oper, object value)
         {
             return new BinaryExpr(new PropertyExpr(propertyName), oper, new ValueExpr(value));
         }
 
         /// <summary>
-        /// �ӱ���ʽ������ Lambda ����ʽ��װ��
+        /// 从表达式树创建 Lambda 表达式封装。
         /// </summary>
-        /// <typeparam name="T">ʵ�����͡�</typeparam>
-        /// <param name="expression">Lambda ����ʽ��</param>
-        /// <returns>����ʽ����</returns>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="expression">Lambda 表达式。</param>
+        /// <returns>表达式对象。</returns>
         public static Expr Exp<T>(Expression<Func<T, bool>> expression)
         {
             return new LambdaExprConverter(expression).ToExpr();
         }
 
         /// <summary>
-        /// ������ȶ�Ԫ����ʽ��
+        /// 创建相等二元表达式。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>��ȶ�Ԫ����ʽ��</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>相等二元表达式。</returns>
         public static Expr operator ==(Expr left, Expr right)
         {
             return new BinaryExpr(left, BinaryOperator.Equal, right);
         }
 
         /// <summary>
-        /// ���������ڶ�Ԫ����ʽ��
+        /// 创建不等于二元表达式。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>�����ڶ�Ԫ����ʽ��</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>不等于二元表达式。</returns>
         public static Expr operator !=(Expr left, Expr right)
         {
             return new BinaryExpr(left, BinaryOperator.NotEqual, right);
         }
 
         /// <summary>
-        /// ȷ��ָ���Ķ����Ƿ���ڵ�ǰ����
+        /// 确定指定的对象是否等于当前对象。
         /// </summary>
-        /// <param name="obj">Ҫ�ȽϵĶ���</param>
-        /// <returns>��������Ϊ true��</returns>
+        /// <param name="obj">要比较的对象。</param>
+        /// <returns>如果相等则为 true。</returns>
         public override bool Equals(object obj)
         {
             return base.Equals(obj);
         }
 
         /// <summary>
-        /// ��ȡ��ǰ����Ĺ�ϣ���롣
+        /// 获取当前对象的哈希代码。
         /// </summary>
-        /// <returns>��ϣ���롣</returns>
+        /// <returns>哈希代码。</returns>
         public override int GetHashCode()
         {
             return base.GetHashCode();
         }
 
         /// <summary>
-        /// ���� true �������
+        /// 重载 true 运算符。
         /// </summary>
-        /// <param name="a">����ʽ��</param>
-        /// <returns>�������ʽΪ null �򷵻� true��</returns>
+        /// <param name="a">表达式。</param>
+        /// <returns>如果表达式为 null 则返回 true。</returns>
         public static bool operator true(Expr a) => a is null;
 
         /// <summary>
-        /// ���� false �������
+        /// 重载 false 运算符。
         /// </summary>
-        /// <param name="a">����ʽ��</param>
-        /// <returns>ʼ�շ��� false��</returns>
+        /// <param name="a">表达式。</param>
+        /// <returns>始终返回 false。</returns>
         public static bool operator false(Expr a) => false;
 
         /// <summary>
-        /// �߼�������� &amp;��
+        /// 逻辑与运算符 &amp;。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>�����߼���ı���ʽ���ϡ�</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>包含逻辑与的表达式集合。</returns>
         public static Expr operator &(Expr left, Expr right)
         {
             if (left is null) return right;
@@ -174,11 +174,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// �߼�������� |��
+        /// 逻辑或运算符 |。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>�����߼���ı���ʽ���ϡ�</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>包含逻辑或的表达式集合。</returns>
         public static Expr operator |(Expr left, Expr right)
         {
             if (left is null || right is null) return Null;
@@ -186,119 +186,119 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// �ӷ���Ԫ����� +��
+        /// 加法二元运算符 +。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>�ӷ���Ԫ����ʽ��</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>加法二元表达式。</returns>
         public static Expr operator +(Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.Add, right);
 
         /// <summary>
-        /// ������Ԫ����� -��
+        /// 减法二元运算符 -。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>������Ԫ����ʽ��</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>减法二元表达式。</returns>
         public static Expr operator -(Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.Subtract, right);
 
         /// <summary>
-        /// �˷���Ԫ����� *��
+        /// 乘法二元运算符 *。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>�˷���Ԫ����ʽ��</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>乘法二元表达式。</returns>
         public static Expr operator *(Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.Multiply, right);
 
         /// <summary>
-        /// ������Ԫ����� /��
+        /// 除法二元运算符 /。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>������Ԫ����ʽ��</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>除法二元表达式。</returns>
         public static Expr operator /(Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.Divide, right);
 
         /// <summary>
-        /// ���ڱȽ϶�Ԫ����� >��
+        /// 大于比较二元运算符 >。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>���ڱȽ϶�Ԫ����ʽ��</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>大于比较二元表达式。</returns>
         public static Expr operator >(Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.GreaterThan, right);
 
         /// <summary>
-        /// С�ڱȽ϶�Ԫ����� &lt;��
+        /// 小于比较二元运算符 &lt;。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>С�ڱȽ϶�Ԫ����ʽ��</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>小于比较二元表达式。</returns>
         public static Expr operator <(Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.LessThan, right);
 
         /// <summary>
-        /// ���ڵ��ڱȽ϶�Ԫ����� &gt;=��
+        /// 大于等于比较二元运算符 &gt;=。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>���ڵ��ڱȽ϶�Ԫ����ʽ��</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>大于等于比较二元表达式。</returns>
         public static Expr operator >=(Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.GreaterThanOrEqual, right);
 
         /// <summary>
-        /// С�ڵ��ڱȽ϶�Ԫ����� &lt;=��
+        /// 小于等于比较二元运算符 &lt;=。
         /// </summary>
-        /// <param name="left">���������</param>
-        /// <param name="right">�Ҳ�������</param>
-        /// <returns>С�ڵ��ڱȽ϶�Ԫ����ʽ��</returns>
+        /// <param name="left">左操作数。</param>
+        /// <param name="right">右操作数。</param>
+        /// <returns>小于等于比较二元表达式。</returns>
         public static Expr operator <=(Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.LessThanOrEqual, right);
 
         /// <summary>
-        /// �߼�������� !��
+        /// 逻辑非运算符 !。
         /// </summary>
-        /// <param name="expr">Ҫȡ���ı���ʽ��</param>
-        /// <returns>һ���µı���ʽ����ʾָ������ʽ���߼��ǡ�</returns>
+        /// <param name="expr">要取反的表达式。</param>
+        /// <returns>一个新的表达式，表示指定表达式的逻辑非。</returns>
         public static Expr operator !(Expr expr) => expr?.Not();
     }
     /// <summary>
-    /// Expr �����չ�������ṩ��ݵı���ʽ��Ϲ��ܡ�
+    /// Expr 类的扩展方法，提供便捷的表达式组合功能。
     /// </summary>
     public static class ExprExtensions
     {
         /// <summary>
-        /// ʹ�� AND �߼������������ʽ��
+        /// 使用 AND 逻辑组合两个表达式。
         /// </summary>
-        /// <param name="left">��˲�ѯ����ʽ��</param>
-        /// <param name="right">�Ҷ˲�ѯ����ʽ��</param>
-        /// <returns>��Ϻ�ı���ʽ���ϡ�</returns>
+        /// <param name="left">左端查询表达式。</param>
+        /// <param name="right">右端查询表达式。</param>
+        /// <returns>组合后的表达式集合。</returns>
         public static ExprSet And(this Expr left, Expr right) => Join(left, right, ExprJoinType.And);
 
         /// <summary>
-        /// ʹ�� OR �߼������������ʽ��
+        /// 使用 OR 逻辑组合两个表达式。
         /// </summary>
-        /// <param name="left">��˲�ѯ����ʽ��</param>
-        /// <param name="right">�Ҷ˲�ѯ����ʽ��</param>
-        /// <returns>��Ϻ�ı���ʽ���ϡ�</returns>
+        /// <param name="left">左端查询表达式。</param>
+        /// <param name="right">右端查询表达式。</param>
+        /// <returns>组合后的表达式集合。</returns>
         public static ExprSet Or(this Expr left, Expr right) => Join(left, right, ExprJoinType.Or);
 
         /// <summary>
-        /// ʹ�� CONCAT �߼������������ʽ��
+        /// 使用 CONCAT 逻辑组合两个表达式。
         /// </summary>
-        /// <param name="left">��˲�ѯ����ʽ��</param>
-        /// <param name="right">�Ҷ˲�ѯ����ʽ��</param>
-        /// <returns>��Ϻ�ı���ʽ���ϡ�</returns>
+        /// <param name="left">左端查询表达式。</param>
+        /// <param name="right">右端查询表达式。</param>
+        /// <returns>组合后的表达式集合。</returns>
         public static ExprSet Concat(this Expr left, Expr right) => Join(left, right, ExprJoinType.Concat);
 
         /// <summary>
-        /// ʹ��ָ�����������������������ʽ��
+        /// 使用指定的连接类型组合两个表达式。
         /// </summary>
-        /// <param name="left">��˲�ѯ����ʽ��</param>
-        /// <param name="right">�Ҷ˲�ѯ����ʽ��</param>
-        /// <param name="joinType">����ʽ�������ͣ�Ĭ��Ϊ List��</param>
-        /// <returns>��Ϻ�ı���ʽ���ϡ�</returns>
+        /// <param name="left">左端查询表达式。</param>
+        /// <param name="right">右端查询表达式。</param>
+        /// <param name="joinType">表达式集合类型，默认为 List。</param>
+        /// <returns>组合后的表达式集合。</returns>
         public static ExprSet Join(this Expr left, Expr right, ExprJoinType joinType = ExprJoinType.List) => new ExprSet(joinType, left, right);
 
         /// <summary>
-        /// ȡ��������
+        /// 取反操作。
         /// </summary>
-        /// <param name="expr">Ҫȡ���ı���ʽ��</param>
-        /// <returns>һ���µı���ʽ����ʾָ������ʽ���߼��ǡ�</returns>
+        /// <param name="expr">要取反的表达式。</param>
+        /// <returns>一个新的表达式，表示指定表达式的逻辑非。</returns>
         public static Expr Not(this Expr expr)
         {
             if (expr is BinaryExpr binaryExpr)
@@ -308,68 +308,68 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ���� In ��Ԫ����ʽ��
+        /// 创建 In 二元表达式。
         /// </summary>
-        /// <param name="expr">Ҫƥ��ı���ʽ��</param>
-        /// <param name="values">��ѯֵ�ļ��ϡ�</param>
-        /// <returns>In ��Ԫ����ʽ��</returns>
+        /// <param name="expr">要匹配的表达式。</param>
+        /// <param name="values">查询值的集合。</param>
+        /// <returns>In 二元表达式。</returns>
         public static BinaryExpr In(this Expr expr, IEnumerable values) => new BinaryExpr(expr, BinaryOperator.In, new ValueExpr(values));
 
         /// <summary>
-        /// ���� Not In ��Ԫ����ʽ��
+        /// 创建 Not In 二元表达式。
         /// </summary>
-        /// <param name="expr">Ҫƥ��ı���ʽ��</param>
-        /// <param name="values">��ѯֵ��һ�����顣</param>
-        /// <returns>NotIn ��Ԫ����ʽ��</returns>
+        /// <param name="expr">要匹配的表达式。</param>
+        /// <param name="values">查询值的一个数组。</param>
+        /// <returns>NotIn 二元表达式。</returns>
         public static BinaryExpr In(this Expr expr, params object[] values) => new BinaryExpr(expr, BinaryOperator.NotIn, new ValueExpr(values));
 
         /// <summary>
-        /// ���� Like ��Ԫ����ʽ��
+        /// 创建 Like 二元表达式。
         /// </summary>
-        /// <param name="expr">Ҫƥ��ı���ʽ��</param>
-        /// <param name="like">Like ƥ��ģʽ��</param>
-        /// <returns>Like ��Ԫ����ʽ��</returns>
+        /// <param name="expr">要匹配的表达式。</param>
+        /// <param name="like">Like 匹配模式。</param>
+        /// <returns>Like 二元表达式。</returns>
         public static BinaryExpr Like(this Expr expr, string like) => new BinaryExpr(expr, BinaryOperator.Like, new ValueExpr(like));
 
         /// <summary>
-        /// �������ʽƥ���Ԫ����ʽ��
+        /// 正则表达式匹配二元表达式。
         /// </summary>
-        /// <param name="expr">Ҫƥ��ı���ʽ��</param>
-        /// <param name="regex">�������ʽ��</param>
-        /// <returns>RegexpLike ��Ԫ����ʽ��</returns>
+        /// <param name="expr">要匹配的表达式。</param>
+        /// <param name="regex">正则表达式。</param>
+        /// <returns>RegexpLike 二元表达式。</returns>
         public static BinaryExpr RegexpLike(this Expr expr, string regex) => new BinaryExpr(expr, BinaryOperator.RegexpLike, new ValueExpr(regex));
 
         /// <summary>
-        /// ����ƥ�䣨LIKE '%str%'���Ķ�Ԫ����ʽ��
+        /// 包含匹配（LIKE '%str%'）的二元表达式。
         /// </summary>
-        /// <param name="expr">Ҫƥ��ı���ʽ��</param>
-        /// <param name="str">Ҫ�������ַ�����</param>
-        /// <returns>Contains ��Ԫ����ʽ��</returns>
+        /// <param name="expr">要匹配的表达式。</param>
+        /// <param name="str">要包含的字符串。</param>
+        /// <returns>Contains 二元表达式。</returns>
         public static BinaryExpr Contains(this Expr expr, string str) => new BinaryExpr(expr, BinaryOperator.Contains, new ValueExpr(str));
 
         /// <summary>
-        /// ǰ׺ƥ�䣨LIKE 'str%'���Ķ�Ԫ����ʽ��
+        /// 前缀匹配（LIKE 'str%'）的二元表达式。
         /// </summary>
-        /// <param name="expr">Ҫƥ��ı���ʽ��</param>
-        /// <param name="str">��ʼ���ַ�����</param>
-        /// <returns>StartsWith ��Ԫ����ʽ��</returns>
+        /// <param name="expr">要匹配的表达式。</param>
+        /// <param name="str">开始的字符串。</param>
+        /// <returns>StartsWith 二元表达式。</returns>
         public static BinaryExpr StartsWith(this Expr expr, string str) => new BinaryExpr(expr, BinaryOperator.StartsWith, new ValueExpr(str));
 
         /// <summary>
-        /// ��׺ƥ�䣨LIKE '%str'���Ķ�Ԫ����ʽ��
+        /// 后缀匹配（LIKE '%str'）的二元表达式。
         /// </summary>
-        /// <param name="expr">Ҫƥ��ı���ʽ��</param>
-        /// <param name="str">��β���ַ�����</param>
-        /// <returns>EndsWith ��Ԫ����ʽ��</returns>
+        /// <param name="expr">要匹配的表达式。</param>
+        /// <param name="str">结尾的字符串。</param>
+        /// <returns>EndsWith 二元表达式。</returns>
         public static BinaryExpr EndsWith(this Expr expr, string str) => new BinaryExpr(expr, BinaryOperator.EndsWith, new ValueExpr(str));
 
         /// <summary>
-        /// ʹ��ָ���Ķ�Ԫ�����������������ʽ��
+        /// 使用指定的二元操作符组合两个表达式。
         /// </summary>
-        /// <param name="left">��˱���ʽ��</param>
-        /// <param name="op">��Ԫ��������</param>
-        /// <param name="right">�Ҷ˱���ʽ��</param>
-        /// <returns>��Ԫ����ʽ��</returns>
+        /// <param name="left">左端表达式。</param>
+        /// <param name="op">二元操作符。</param>
+        /// <param name="right">右端表达式。</param>
+        /// <returns>二元表达式。</returns>
         public static BinaryExpr Union(this Expr left, BinaryOperator op, Expr right) => new BinaryExpr(left, op, right);
     }
 }

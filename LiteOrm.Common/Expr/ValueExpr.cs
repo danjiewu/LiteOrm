@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,43 +9,43 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ±íÊ¾Ò»¸öÖµ£¨»òÒ»×é³£Á¿Öµ£¬Èç IN ÁĞ±í£©µÄ±í´ïÊ½¡£
+    /// è¡¨ç¤ºä¸€ä¸ªå€¼ï¼ˆæˆ–ä¸€ç»„å¸¸é‡å€¼ï¼Œå¦‚ IN åˆ—è¡¨ï¼‰çš„è¡¨è¾¾å¼ã€‚
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class ValueExpr : Expr
     {
         /// <summary>
-        /// ÎŞ²Î¹¹Ôì¡£
+        /// æ— å‚æ„é€ ã€‚
         /// </summary>
         public ValueExpr()
         {
         }
 
         /// <summary>
-        /// Ê¹ÓÃÖµ¹¹Ôì ValueExpr¡£
+        /// ä½¿ç”¨å€¼æ„é€  ValueExprã€‚
         /// </summary>
-        /// <param name="value">Öµ£¬¿ÉÒÔÊÇµ¥¸öÖµ»ò¿ÉÃ¶¾Ù¼¯ºÏ£¨ÓÃÓÚ IN£©</param>
+        /// <param name="value">å€¼ï¼Œå¯ä»¥æ˜¯å•ä¸ªå€¼æˆ–å¯æšä¸¾é›†åˆï¼ˆç”¨äº INï¼‰</param>
         public ValueExpr(object value)
         {
             Value = value;
         }
 
         /// <summary>
-        /// ±íÊ¾ÕâÊÇÒ»¸öÖµÀàĞÍ±í´ïÊ½¡£
+        /// è¡¨ç¤ºè¿™æ˜¯ä¸€ä¸ªå€¼ç±»å‹è¡¨è¾¾å¼ã€‚
         /// </summary>
         [JsonIgnore]
         public override bool IsValue => true;
 
         /// <summary>
-        /// ±í´ïÊ½°üº¬µÄÊµ¼ÊÖµ¡£
+        /// è¡¨è¾¾å¼åŒ…å«çš„å®é™…å€¼ã€‚
         /// </summary>
         public object Value { get; set; }
 
         /// <inheritdoc/>
         /// <remarks>
-        /// - ?? null "NULL"¡£
-        /// - Èç¹ûÖµÎª¼¯ºÏ£¨ÇÒ²»ÊÇ×Ö·û´®£©£¬·µ»ØÀàËÆ "( val1, val2, ... )" µÄ×Ö·û´®£¬ÊÊÓÃÓÚ IN ±í´ïÊ½¡£
-        /// - ·ñÔò·µ»ØÖµµÄ×Ö·û´®±íÊ¾ĞÎÊ½¡£
+        /// - ?? null "NULL"ã€‚
+        /// - å¦‚æœå€¼ä¸ºé›†åˆï¼ˆä¸”ä¸æ˜¯å­—ç¬¦ä¸²ï¼‰ï¼Œè¿”å›ç±»ä¼¼ "( val1, val2, ... )" çš„å­—ç¬¦ä¸²ï¼Œé€‚ç”¨äº IN è¡¨è¾¾å¼ã€‚
+        /// - å¦åˆ™è¿”å›å€¼çš„å­—ç¬¦ä¸²è¡¨ç¤ºå½¢å¼ã€‚
         /// </remarks>
         public override string ToString()
         {

@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,40 +9,40 @@ using System.Threading.Tasks;
 
 namespace LiteOrm.Common
 {
-    using SqlExpression = Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, object, string>;
+    using SqlGenerateHandler = Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, object, string>;
     /// <summary>
-    /// Í¨¹ıÎ¯ÍĞÉú³ÉµÄ SQL Æ¬¶Î±í´ïÊ½Àà¡£
+    /// é€šè¿‡å§”æ‰˜ç”Ÿæˆçš„ SQL ç‰‡æ®µè¡¨è¾¾å¼ç±»ã€‚
     /// </summary>
     [System.Text.Json.Serialization.JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class GenericSqlExpr : Expr
     {
         /// <summary>
-        /// Ä¬ÈÏ¹¹Ôìº¯Êı¡£
+        /// é»˜è®¤æ„é€ å‡½æ•°ã€‚
         /// </summary>
         public GenericSqlExpr() { }
         /// <summary>
-        /// Ê¹ÓÃÎ¯ÍĞ¹¹Ôì£¬·µ»ØÉú³É SQL Ê±ËùĞèµÄ¶¯Ì¬Æ¬¶Î×Ö·û´®¡£
+        /// ä½¿ç”¨å§”æ‰˜æ„é€ ï¼Œè¿”å›ç”Ÿæˆ SQL æ—¶æ‰€éœ€çš„åŠ¨æ€ç‰‡æ®µå­—ç¬¦ä¸²ã€‚
         /// </summary>
-        /// <param name="key">±í´ïÊ½Î¨Ò»¼ü¡£</param>
+        /// <param name="key">è¡¨è¾¾å¼å”¯ä¸€é”®ã€‚</param>
         public GenericSqlExpr(string key)
         {
             Key = key;
         }
 
         /// <summary>
-        /// Éú³É¸Ã SQL ËùĞèÎ¯ÍĞµÄÄÚ²¿²ÎÊı¡£
+        /// ç”Ÿæˆè¯¥ SQL æ‰€éœ€å§”æ‰˜çš„å†…éƒ¨å‚æ•°ã€‚
         /// </summary>
         public object Arg { get; set; }
 
-        private SqlExpression SqlHandler => String.IsNullOrEmpty(Key) ? null : _registry[Key].SqlHandler;
+        private SqlGenerateHandler SqlHandler => String.IsNullOrEmpty(Key) ? null : _registry[Key].SqlHandler;
 
         /// <summary>
-        /// ±í´ïÊ½Î¨Ò»¼ü¡£
+        /// è¡¨è¾¾å¼å”¯ä¸€é”®ã€‚
         /// </summary> 
         public string Key { get; set; }
 
         /// <summary>
-        /// ±íÊ¾¸Ã±í´ïÊ½ÊÇ·ñÎªÖµÀàĞÍ±í´ïÊ½¡£
+        /// è¡¨ç¤ºè¯¥è¡¨è¾¾å¼æ˜¯å¦ä¸ºå€¼ç±»å‹è¡¨è¾¾å¼ã€‚
         /// </summary>
         public override bool IsValue => String.IsNullOrEmpty(Key) ? false : _registry[Key].IsValue;
 
@@ -53,49 +53,49 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ·µ»Ø±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£
+        /// è¿”å›è¡¨ç¤ºå½“å‰è¡¨è¾¾å¼çš„å­—ç¬¦ä¸²ã€‚
         /// </summary>
-        /// <returns>±íÊ¾µ±Ç°±í´ïÊ½µÄ×Ö·û´®¡£</returns>
+        /// <returns>è¡¨ç¤ºå½“å‰è¡¨è¾¾å¼çš„å­—ç¬¦ä¸²ã€‚</returns>
         public override string ToString()
         {
             return $"[Sql:{Key}]";
         }
 
         /// <summary>
-        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// ç¡®å®šæŒ‡å®šçš„å¯¹è±¡æ˜¯å¦ç­‰äºå½“å‰å¯¹è±¡ã€‚
         /// </summary>
-        /// <param name="obj">ÒªÓëµ±Ç°¶ÔÏó½øĞĞ±È½ÏµÄ¶ÔÏó¡£</param>
-        /// <returns>Èç¹ûÖ¸¶¨µÄ¶ÔÏóµÈÓÚµ±Ç°¶ÔÏó£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
+        /// <param name="obj">è¦ä¸å½“å‰å¯¹è±¡è¿›è¡Œæ¯”è¾ƒçš„å¯¹è±¡ã€‚</param>
+        /// <returns>å¦‚æœæŒ‡å®šçš„å¯¹è±¡ç­‰äºå½“å‰å¯¹è±¡ï¼Œåˆ™ä¸º trueï¼›å¦åˆ™ä¸º falseã€‚</returns>
         public override bool Equals(object obj)
         {
             return obj is GenericSqlExpr g && g.Key == Key;
         }
 
         /// <summary>
-        /// »ñÈ¡Ä¬ÈÏ¹şÏ£Âë¡£
+        /// è·å–é»˜è®¤å“ˆå¸Œç ã€‚
         /// </summary>
-        /// <returns>µ±Ç°¶ÔÏóµÄ¹şÏ£´úÂë¡£</returns>
+        /// <returns>å½“å‰å¯¹è±¡çš„å“ˆå¸Œä»£ç ã€‚</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), Key?.GetHashCode() ?? 0);
         }
 
-        #region ¾²Ì¬×¢²á±í
+        #region é™æ€æ³¨å†Œè¡¨
         private class InnerSqlExpr
         {
             public bool IsValue { get; set; }
-            public SqlExpression SqlHandler { get; set; }
+            public SqlGenerateHandler SqlHandler { get; set; }
         }
 
         private static readonly ConcurrentDictionary<string, InnerSqlExpr> _registry = new ConcurrentDictionary<string, InnerSqlExpr>();
 
         /// <summary>
-        /// ×¢²áÒ»¸ö¶¯Ì¬ SQL ±í´ïÊ½Àà¡£
-        /// <param name="key">±í´ïÊ½Î¨Ò»¼ü¡£</param>
-        /// <param name="func">Éú³É¸Ã±í´ïÊ½ SQL ×Ö·û´®µÄÎ¯ÍĞ¡£</param> 
-        /// <param name="isValue">Ö¸Ê¾¸Ã±í´ïÊ½ÊÇ·ñÎªÖµÀàĞÍ±í´ïÊ½¡£</param>
+        /// æ³¨å†Œä¸€ä¸ªåŠ¨æ€ SQL è¡¨è¾¾å¼ç±»ã€‚
+        /// <param name="key">è¡¨è¾¾å¼å”¯ä¸€é”®ã€‚</param>
+        /// <param name="func">ç”Ÿæˆè¯¥è¡¨è¾¾å¼ SQL å­—ç¬¦ä¸²çš„å§”æ‰˜ã€‚</param> 
+        /// <param name="isValue">æŒ‡ç¤ºè¯¥è¡¨è¾¾å¼æ˜¯å¦ä¸ºå€¼ç±»å‹è¡¨è¾¾å¼ã€‚</param>
         /// </summary>
-        public static GenericSqlExpr Register(string key, SqlExpression func, bool isValue = false)
+        public static GenericSqlExpr Register(string key, SqlGenerateHandler func, bool isValue = false)
         {
             if (key is null) throw new ArgumentNullException(nameof(key));
             if (func is null) throw new ArgumentNullException(nameof(func));
@@ -108,8 +108,8 @@ namespace LiteOrm.Common
         }
 
         ///<summary>
-        /// »ñÈ¡ÒÑ×¢²áµÄ¾²Ì¬ SQL ±í´ïÊ½¡£
-        /// <para name="key">±í´ïÊ½Î¨Ò»¼ü¡£</para>
+        /// è·å–å·²æ³¨å†Œçš„é™æ€ SQL è¡¨è¾¾å¼ã€‚
+        /// <para name="key">è¡¨è¾¾å¼å”¯ä¸€é”®ã€‚</para>
         /// </summary>
         public static GenericSqlExpr GetStaticSqlExpr(string key)
         {
@@ -118,15 +118,15 @@ namespace LiteOrm.Common
             {
                 return new GenericSqlExpr(key);
             }
-            throw new KeyNotFoundException($"¼ü '{key}' ÔÚ×¢²á±íÖĞÎ´ÕÒµ½¡£");
+            throw new KeyNotFoundException($"é”® '{key}' åœ¨æ³¨å†Œè¡¨ä¸­æœªæ‰¾åˆ°ã€‚");
         }
 
         /// <summary>
-        /// »ñÈ¡ÒÑ×¢²áµÄ¾²Ì¬ SQL ±í´ïÊ½²¢ÉèÖÃ²ÎÊı¡£
+        /// è·å–å·²æ³¨å†Œçš„é™æ€ SQL è¡¨è¾¾å¼å¹¶è®¾ç½®å‚æ•°ã€‚
         /// </summary>
-        /// <param name="key">±í´ïÊ½Î¨Ò»¼ü¡£</param>
-        /// <param name="arg">²ÎÊı¡£</param>
-        /// <returns>GenericSqlExpr ÊµÀı¡£</returns>
+        /// <param name="key">è¡¨è¾¾å¼å”¯ä¸€é”®ã€‚</param>
+        /// <param name="arg">å‚æ•°ã€‚</param>
+        /// <returns>GenericSqlExpr å®ä¾‹ã€‚</returns>
         public static GenericSqlExpr Get(string key, object arg)
         {
             var expr = GetStaticSqlExpr(key);

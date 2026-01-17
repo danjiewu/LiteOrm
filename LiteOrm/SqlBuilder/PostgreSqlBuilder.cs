@@ -4,12 +4,12 @@ using System.Collections.Generic;
 using System.Data;
 using System.Text;
 
-namespace LiteOrm.PostgreSql
+namespace LiteOrm.SqlBuilder
 {
     /// <summary>
     /// PostgreSql 生成 SQL 语句的辅助类。
     /// </summary>
-    public class PostgreSqlBuilder : SqlBuilder
+    public class PostgreSqlBuilder : BaseSqlBuilder
     {
         /// <summary>
         /// 构建带有标识列或序列插入的 SQL 语句。

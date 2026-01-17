@@ -1,4 +1,4 @@
-using LiteOrm.Service;
+ï»¿using LiteOrm.Service;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ½« Lambda ±í´ïÊ½×ª»»Îª Expr ±í´ïÊ½¶ÔÏóµÄ×ª»»Àà¡£
+    /// å°† Lambda è¡¨è¾¾å¼è½¬æ¢ä¸º Expr è¡¨è¾¾å¼å¯¹è±¡çš„è½¬æ¢ç±»ã€‚
     /// </summary>
     public class LambdaExprConverter
     {
@@ -35,10 +35,171 @@ namespace LiteOrm.Common
         private readonly ParameterExpression _rootParameter;
         private readonly LambdaExpression _expression;
         private readonly ParameterExpressionDetector _parameterDetector = new ParameterExpressionDetector();
+
+        private static readonly Dictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodNameHandlers = new Dictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<MethodInfo, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodHandlers = new Dictionary<MethodInfo, Func<MethodCallExpression, LambdaExprConverter, Expr>>();
+
+        static LambdaExprConverter()
+        {
+            RegisterDefaultHandlers();
+        }
+
+        private static void RegisterDefaultHandlers()
+        {
+            // String methods
+            RegisterMethodHandler("StartsWith", (node, converter) =>
+            {
+                if (node.Method.DeclaringType != typeof(string)) return null;
+                var left = converter.Convert(node.Object);
+                var right = converter.Convert(node.Arguments[0]);
+                return new BinaryExpr(left, BinaryOperator.StartsWith, right);
+            });
+
+            RegisterMethodHandler("EndsWith", (node, converter) =>
+            {
+                if (node.Method.DeclaringType != typeof(string)) return null;
+                var left = converter.Convert(node.Object);
+                var right = converter.Convert(node.Arguments[0]);
+                return new BinaryExpr(left, BinaryOperator.EndsWith, right);
+            });
+
+            RegisterMethodHandler("Contains", (node, converter) =>
+            {
+                if (node.Method.DeclaringType == typeof(string))
+                {
+                    var left = converter.Convert(node.Object);
+                    var right = converter.Convert(node.Arguments[0]);
+                    return new BinaryExpr(left, BinaryOperator.Contains, right);
+                }
+                if (node.Method.DeclaringType == typeof(Enumerable) || typeof(IEnumerable).IsAssignableFrom(node.Method.DeclaringType))
+                {
+                    // Enumerable.Contains(source, value) OR list.Contains(value)
+                    Expr collection = null;
+                    Expr value = null;
+                    if (node.Method.IsStatic)
+                    {
+                        collection = converter.Convert(node.Arguments[0]);
+                        value = converter.Convert(node.Arguments[1]);
+                    }
+                    else
+                    {
+                        collection = converter.Convert(node.Object);
+                        value = converter.Convert(node.Arguments[0]);
+                    }
+                    return new BinaryExpr(value, BinaryOperator.In, collection);
+                }
+                return null;
+            });
+
+            RegisterMethodHandler("Concat", (node, converter) =>
+            {
+                if (node.Method.DeclaringType != typeof(string)) return null;
+                Expr left = node.Object != null ? converter.Convert(node.Object) : converter.Convert(node.Arguments[0]);
+                Expr right = node.Object != null ? converter.Convert(node.Arguments[0]) : converter.Convert(node.Arguments[1]);
+                return new BinaryExpr(left, BinaryOperator.Concat, right);
+            });
+
+            RegisterMethodHandler("Equals", (node, converter) =>
+            {
+                Expr left = null;
+                Expr right = null;
+                if (node.Object != null)
+                {
+                    left = converter.Convert(node.Object);
+                    right = converter.Convert(node.Arguments[0]);
+                }
+                else
+                {
+                    left = converter.Convert(node.Arguments[0]);
+                    right = converter.Convert(node.Arguments[1]);
+                }
+                return new BinaryExpr(left, BinaryOperator.Equal, right);
+            });
+
+            RegisterMethodHandler("Compare", (node, converter) =>
+            {
+                var left = converter.Convert(node.Arguments[0]);
+                var right = converter.Convert(node.Arguments[1]);
+                return new BinaryExpr(left, BinaryOperator.Equal, right);
+            });
+
+            RegisterMethodHandler("CompareTo", (node, converter) =>
+            {
+                var left = node.Object != null ? converter.Convert(node.Object) : converter.Convert(node.Arguments[0]);
+                var right = node.Object != null ? converter.Convert(node.Arguments[0]) : converter.Convert(node.Arguments[1]);
+                return new BinaryExpr(left, BinaryOperator.Equal, right);
+            });
+        }
+
         /// <summary>
-        /// ³õÊ¼»¯ LambdaExprConverter¡£
+        /// æ³¨å†Œæ–¹æ³•è°ƒç”¨è½¬æ¢å¥æŸ„ã€‚
         /// </summary>
-        /// <param name="expression">Lambda ±í´ïÊ½¡£</param>
+        /// <param name="methodName">æ–¹æ³•åç§°ã€‚</param>
+        /// <param name="handler">å¤„ç†å¥æŸ„ã€‚</param>
+        public static void RegisterMethodHandler(string methodName, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
+        {
+            _methodNameHandlers[methodName] = handler;
+        }
+
+        /// <summary>
+        /// æ³¨å†Œæ–¹æ³•è°ƒç”¨è½¬æ¢å¥æŸ„ã€‚
+        /// </summary>
+        /// <param name="methodInfo">æ–¹æ³•ä¿¡æ¯ã€‚</param>
+        /// <param name="handler">å¤„ç†å¥æŸ„ã€‚</param>
+        public static void RegisterMethodHandler(MethodInfo methodInfo, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
+        {
+            _methodHandlers[methodInfo] = handler;
+        }
+
+        /// <summary>
+        /// æ³¨å†Œæ–¹æ³•è°ƒç”¨è½¬æ¢å¥æŸ„ã€‚
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="methodExpr">æ–¹æ³•è°ƒç”¨è¡¨è¾¾å¼ã€‚</param>
+        /// <param name="handler">å¤„ç†å¥æŸ„ã€‚</param>
+        public static void RegisterMethodHandler<T>(Expression<Action<T>> methodExpr, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
+        {
+            if (methodExpr.Body is MethodCallExpression mce)
+            {
+                RegisterMethodHandler(mce.Method, handler);
+            }
+            else
+            {
+                throw new ArgumentException("è¡¨è¾¾å¼å¿…é¡»æ˜¯æ–¹æ³•è°ƒç”¨ã€‚");
+            }
+        }
+
+        /// <summary>
+        /// æ³¨å†Œæ–¹æ³•è°ƒç”¨è½¬æ¢å¥æŸ„ã€‚
+        /// </summary>
+        /// <param name="methodExpr">æ–¹æ³•è°ƒç”¨è¡¨è¾¾å¼ã€‚</param>
+        /// <param name="handler">å¤„ç†å¥æŸ„ã€‚</param>
+        public static void RegisterMethodHandler(Expression<Action> methodExpr, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
+        {
+            if (methodExpr.Body is MethodCallExpression mce)
+            {
+                RegisterMethodHandler(mce.Method, handler);
+            }
+            else
+            {
+                throw new ArgumentException("è¡¨è¾¾å¼å¿…é¡»æ˜¯æ–¹æ³•è°ƒç”¨ã€‚");
+            }
+        }
+
+        /// <summary>
+        /// è½¬æ¢è¡¨è¾¾å¼èŠ‚ç‚¹ã€‚
+        /// </summary>
+        /// <param name="node">è¡¨è¾¾å¼èŠ‚ç‚¹ã€‚</param>
+        /// <returns>è½¬æ¢åçš„ Exprã€‚</returns>
+        public Expr Convert(Expression node)
+        {
+            return ConvertInternal(node);
+        }
+
+        /// <summary>
+        /// åˆå§‹åŒ– LambdaExprConverterã€‚
+        /// </summary>
+        /// <param name="expression">Lambda è¡¨è¾¾å¼ã€‚</param>
         public LambdaExprConverter(LambdaExpression expression)
         {
             if (expression is null) throw new ArgumentNullException(nameof(expression));
@@ -47,20 +208,20 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ½« Lambda ±í´ïÊ½×ª»»Îª Expr¡£
-        /// <returns>×ª»»ºóµÄ Expr¡£</returns>
+        /// å°† Lambda è¡¨è¾¾å¼è½¬æ¢ä¸º Exprã€‚
+        /// <returns>è½¬æ¢åçš„ Exprã€‚</returns>
         /// </summary>
         public Expr ToExpr()
         {
             var stmt = ConvertInternal(_expression.Body);
-            if (stmt is null) throw new ArgumentException($"ÎŞ·¨×ª»»±í´ïÊ½: {_expression.Body}");
+            if (stmt is null) throw new ArgumentException($"æ— æ³•è½¬æ¢è¡¨è¾¾å¼: {_expression.Body}");
             return stmt;
         }
 
         /// <summary>
-        /// ½« Lambda ±í´ïÊ½×ª»»Îª Expr¡£
-        /// <param name="expression">Lambda ±í´ïÊ½¡£</param>
-        /// <returns>×ª»»ºóµÄ Expr¡£</returns>
+        /// å°† Lambda è¡¨è¾¾å¼è½¬æ¢ä¸º Exprã€‚
+        /// <param name="expression">Lambda è¡¨è¾¾å¼ã€‚</param>
+        /// <returns>è½¬æ¢åçš„ Exprã€‚</returns>
         /// </summary>
         public static Expr ToExpr(LambdaExpression expression)
         {
@@ -68,7 +229,7 @@ namespace LiteOrm.Common
             return converter.ToExpr();
         }
 
-        #region ±í´ïÊ½×ª»»ºËĞÄÂß¼­
+        #region è¡¨è¾¾å¼è½¬æ¢æ ¸å¿ƒé€»è¾‘
 
         private Expr ConvertInternal(Expression node)
         {
@@ -84,7 +245,7 @@ namespace LiteOrm.Common
                     if (constant.Value is Expr exprValue) return exprValue;
                     return new ValueExpr(constant.Value);
                 case ParameterExpression param:
-                    throw new NotSupportedException($"²ÎÊı±í´ïÊ½ '{param.Name}' ²»ÄÜÖ±½Ó×ª»»Îª Expr");
+                    throw new NotSupportedException($"å‚æ•°è¡¨è¾¾å¼ '{param.Name}' ä¸èƒ½ç›´æ¥è½¬æ¢ä¸º Expr");
                 case NewArrayExpression newArray:
                     return ConvertNewArray(newArray);
                 case ListInitExpression listInit:
@@ -94,7 +255,7 @@ namespace LiteOrm.Common
                 case NewExpression newExpression:
                     return EvaluateToExpr(newExpression);
                 default:
-                    throw new NotSupportedException($"²»Ö§³ÖµÄ±í´ïÊ½ÀàĞÍ: {node.NodeType} ({node.GetType().Name})");
+                    throw new NotSupportedException($"ä¸æ”¯æŒçš„è¡¨è¾¾å¼ç±»å‹: {node.NodeType} ({node.GetType().Name})");
             }
         }
 
@@ -105,11 +266,11 @@ namespace LiteOrm.Common
                 return _parameterDetector.ContainsParameter(node.Left) || _parameterDetector.ContainsParameter(node.Right) ? new FunctionExpr("COALESCE", ConvertInternal(node.Left), ConvertInternal(node.Right)) : EvaluateToExpr(node);
             }
 
-            // ÌØÊâ´¦Àí CompareTo ·½·¨µ÷ÓÃ
+            // ç‰¹æ®Šå¤„ç† CompareTo æ–¹æ³•è°ƒç”¨
             if (node.Left is MethodCallExpression leftCallExpression && leftCallExpression.Method.Name == "CompareTo")
             {
                 var compareRight = EvaluateToExpr(node.Right);
-                if (!(compareRight is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo ·½·¨Ö»ÄÜÓë 0 ½øĞĞ±È½Ï: {node}");
+                if (!(compareRight is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo æ–¹æ³•åªèƒ½ä¸ 0 è¿›è¡Œæ¯”è¾ƒ: {node}");
                 BinaryExpr res = ConvertMethodCall(leftCallExpression) as BinaryExpr;
                 if (_operatorMappings.TryGetValue(node.NodeType, out var op))
                     res.Operator = op switch
@@ -120,18 +281,18 @@ namespace LiteOrm.Common
                         BinaryOperator.GreaterThanOrEqual => BinaryOperator.GreaterThanOrEqual,
                         BinaryOperator.LessThan => BinaryOperator.LessThan,
                         BinaryOperator.LessThanOrEqual => BinaryOperator.LessThanOrEqual,
-                        _ => throw new ArgumentException($"CompareTo ·½·¨Ö»ÄÜÊ¹ÓÃ ==, !=, >, >=, <, <= ½øĞĞ±È½Ï: {node}")
+                        _ => throw new ArgumentException($"CompareTo æ–¹æ³•åªèƒ½ä½¿ç”¨ ==, !=, >, >=, <, <= è¿›è¡Œæ¯”è¾ƒ: {node}")
                     };
-                else throw new ArgumentException($"CompareTo ·½·¨Ö»ÄÜÊ¹ÓÃ ==, !=, >, >=, <, <= ½øĞĞ±È½Ï: {node}");
+                else throw new ArgumentException($"CompareTo æ–¹æ³•åªèƒ½ä½¿ç”¨ ==, !=, >, >=, <, <= è¿›è¡Œæ¯”è¾ƒ: {node}");
                 return res;
             }
             else if (node.Right is MethodCallExpression rightCallExpression && rightCallExpression.Method.Name == "CompareTo")
             {
                 var compareLeft = EvaluateToExpr(node.Left);
-                if (!(compareLeft is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo ·½·¨Ö»ÄÜÓë 0 ½øĞĞ±È½Ï: {node}");
+                if (!(compareLeft is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo æ–¹æ³•åªèƒ½ä¸ 0 è¿›è¡Œæ¯”è¾ƒ: {node}");
                 BinaryExpr res = ConvertMethodCall(rightCallExpression) as BinaryExpr;
                 if (_operatorMappings.TryGetValue(node.NodeType, out var op))
-                    // ·´×ª²Ù×÷·û
+                    // åè½¬æ“ä½œç¬¦
                     res.Operator = op switch
                     {
                         BinaryOperator.Equal => BinaryOperator.Equal,
@@ -140,15 +301,15 @@ namespace LiteOrm.Common
                         BinaryOperator.GreaterThanOrEqual => BinaryOperator.LessThanOrEqual,
                         BinaryOperator.LessThan => BinaryOperator.GreaterThan,
                         BinaryOperator.LessThanOrEqual => BinaryOperator.GreaterThanOrEqual,
-                        _ => throw new ArgumentException($"CompareTo ·½·¨Ö»ÄÜÊ¹ÓÃ ==, !=, >, >=, <, <= ½øĞĞ±È½Ï: {node}")
+                        _ => throw new ArgumentException($"CompareTo æ–¹æ³•åªèƒ½ä½¿ç”¨ ==, !=, >, >=, <, <= è¿›è¡Œæ¯”è¾ƒ: {node}")
                     };
-                else throw new ArgumentException($"CompareTo ·½·¨Ö»ÄÜÊ¹ÓÃ ==, !=, >, >=, <, <= ½øĞĞ±È½Ï: {node}");
+                else throw new ArgumentException($"CompareTo æ–¹æ³•åªèƒ½ä½¿ç”¨ ==, !=, >, >=, <, <= è¿›è¡Œæ¯”è¾ƒ: {node}");
                 return res;
             }
             var left = ConvertInternal(node.Left);
             var right = ConvertInternal(node.Right);
 
-            // ´¦ÀíÂß¼­ÔËËã·û
+            // å¤„ç†é€»è¾‘è¿ç®—ç¬¦
             switch (node.NodeType)
             {
                 case ExpressionType.AndAlso:
@@ -166,7 +327,7 @@ namespace LiteOrm.Common
                     if (_operatorMappings.TryGetValue(node.NodeType, out var op))
                         return new BinaryExpr(left, op, right);
                     else
-                        throw new NotSupportedException($"²»Ö§³ÖµÄ¶şÔª²Ù×÷·û: {node.NodeType}");
+                        throw new NotSupportedException($"ä¸æ”¯æŒçš„äºŒå…ƒæ“ä½œç¬¦: {node.NodeType}");
             }
         }
 
@@ -176,7 +337,7 @@ namespace LiteOrm.Common
 
             if (operand is null)
             {
-                throw new ArgumentException($"ÎŞ·¨×ª»»Ò»Ôª±í´ïÊ½: {node}");
+                throw new ArgumentException($"æ— æ³•è½¬æ¢ä¸€å…ƒè¡¨è¾¾å¼: {node}");
             }
 
             switch (node.NodeType)
@@ -188,10 +349,10 @@ namespace LiteOrm.Common
                 case ExpressionType.Negate:
                     return new UnaryExpr(UnaryOperator.Nagive, operand);
                 case ExpressionType.Convert:
-                    // ÀàĞÍ×ª»»Í¨³£²»ĞèÒª¶îÍâ´¦Àí
+                    // ç±»å‹è½¬æ¢é€šå¸¸ä¸éœ€è¦é¢å¤–å¤„ç†
                     return operand;
                 default:
-                    throw new NotSupportedException($"²»Ö§³ÖµÄÒ»Ôª²Ù×÷·û: {node.NodeType}");
+                    throw new NotSupportedException($"ä¸æ”¯æŒçš„ä¸€å…ƒæ“ä½œç¬¦: {node.NodeType}");
             }
         }
 
@@ -199,7 +360,7 @@ namespace LiteOrm.Common
         {
             try
             {
-                // ³¢ÊÔ¼ÆËã Expression µÄÖµ
+                // å°è¯•è®¡ç®— Expression çš„å€¼
                 var lambda = Expression.Lambda(node);
                 var compiled = lambda.Compile();
                 var value = compiled.DynamicInvoke();
@@ -208,7 +369,7 @@ namespace LiteOrm.Common
             }
             catch
             {
-                throw new ArgumentException($"ÎŞ·¨¼ÆËã Expression µÄÖµ: {node}");
+                throw new ArgumentException($"æ— æ³•è®¡ç®— Expression çš„å€¼: {node}");
             }
         }
 
@@ -216,10 +377,10 @@ namespace LiteOrm.Common
         {
             if (Nullable.GetUnderlyingType(node.Member.DeclaringType) is not null && node.Member.Name == "Value")
             {
-                // ´¦Àí Nullable<T>.Value  
+                // å¤„ç† Nullable<T>.Value  
                 return ConvertInternal(node.Expression);
             }
-            // ´¦ÀíÊôĞÔ·ÃÎÊ£¬Èç x => x.Name
+            // å¤„ç†å±æ€§è®¿é—®ï¼Œå¦‚ x => x.Name
             if (node.Expression is ParameterExpression paramExpr &&
                 (_rootParameter is null || paramExpr == _rootParameter))
             {
@@ -235,7 +396,7 @@ namespace LiteOrm.Common
 
             if (IsFunction(node))
             {
-                // ´¦Àí×Ö·û´®»òÊı×éµÄ³¤ÊôĞÔ Length µÈ
+                // å¤„ç†å­—ç¬¦ä¸²æˆ–æ•°ç»„çš„é•¿å±æ€§ Length ç­‰
                 var targetExpr = node.Expression;
                 if (targetExpr is null) return new FunctionExpr(node.Member.Name);
                 else
@@ -244,7 +405,7 @@ namespace LiteOrm.Common
 
             if (new ParameterExpressionDetector().ContainsParameter(node))
             {
-                // ´¦ÀíÇ¶Ì×ÊôĞÔ·ÃÎÊ£¬Èç x => x.Address.City
+                // å¤„ç†åµŒå¥—å±æ€§è®¿é—®ï¼Œå¦‚ x => x.Address.City
                 var parts = new List<string>();
                 Expression current = node;
                 while (current is MemberExpression memberExpr)
@@ -256,7 +417,7 @@ namespace LiteOrm.Common
                 var propertyName = string.Join(".", parts);
                 return Expr.Property(propertyName);
             }
-            else// ´¦Àí¾²Ì¬³ÉÔ±·ÃÎÊ£¬Èç DateTime.Now
+            else// å¤„ç†é™æ€æˆå‘˜è®¿é—®ï¼Œå¦‚ DateTime.Now
                 return EvaluateToExpr(node);
         }
 
@@ -310,172 +471,42 @@ namespace LiteOrm.Common
 
         #endregion
 
-        #region ·½·¨µ÷ÓÃ´¦Àí
+        #region æ–¹æ³•è°ƒç”¨å¤„ç†
 
         private Expr ConvertMethodCall(MethodCallExpression node)
         {
-            // ´¦Àí×Ö·û´®·½·¨
-            if (node.Method.DeclaringType == typeof(string))
+            if (_methodHandlers.TryGetValue(node.Method, out var handler))
             {
-                return HandleStringMethod(node);
+                var result = handler(node, this);
+                if (result != null) return result;
             }
 
-            // ´¦Àí Enumerable À©Õ¹·½·¨
-            if (node.Method.DeclaringType == typeof(Enumerable))
+            if (_methodNameHandlers.TryGetValue(node.Method.Name, out var nameHandler))
             {
-                return HandleEnumerableMethod(node);
+                var result = nameHandler(node, this);
+                if (result != null) return result;
             }
 
-            // ´¦ÀíÊµÀı·½·¨
-            if (node.Object is not null)
+            if (!_parameterDetector.ContainsParameter(node))
             {
-                return HandleInstanceMethod(node);
+                return EvaluateToExpr(node);
             }
 
-            // ´¦Àí¾²Ì¬·½·¨
-            return HandleStaticMethod(node);
+            // é»˜è®¤å¤„ç†é€»è¾‘
+            bool useFunction = node.Method.Name != "ToString";
+            return ConvertMethodCallDefault(node, useFunction);
         }
 
-        private Expr HandleStringMethod(MethodCallExpression node)
-        {
-            var methodName = node.Method.Name;
+        #endregion
 
-            Expr left = null;
-            Expr right = null;
-
-            if (node.Object is not null)
-            {
-                left = ConvertInternal(node.Object);
-                if (node.Arguments.Count > 0)
-                {
-                    right = ConvertInternal(node.Arguments[0]);
-                }
-            }
-            else
-            {
-                // ¾²Ì¬·½·¨µ÷ÓÃÈç string.Concat
-                left = node.Arguments.Count > 0 ? ConvertInternal(node.Arguments[0]) : null;
-                right = node.Arguments.Count > 1 ? ConvertInternal(node.Arguments[1]) : null;
-            }
-
-            if (left is null)
-            {
-                throw new ArgumentException($"ÎŞ·¨½âÎö×Ö·û´®·½·¨µ÷ÓÃ: {node}");
-            }
-
-            switch (methodName)
-            {
-                case "StartsWith":
-                    if (right is null) throw new ArgumentException("StartsWith ·½·¨ĞèÒª²ÎÊı");
-                    return new BinaryExpr(left, BinaryOperator.StartsWith, right);
-
-                case "EndsWith":
-                    if (right is null) throw new ArgumentException("EndsWith ·½·¨ĞèÒª²ÎÊı");
-                    return new BinaryExpr(left, BinaryOperator.EndsWith, right);
-
-                case "Contains":
-                    if (right is null) throw new ArgumentException("Contains ·½·¨ĞèÒª²ÎÊı");
-                    return new BinaryExpr(left, BinaryOperator.Contains, right);
-
-                case "Concat":
-                    if (right is null) throw new ArgumentException("Concat ·½·¨ĞèÒª²ÎÊı");
-                    return new BinaryExpr(left, BinaryOperator.Concat, right);
-
-                case "Equals":
-                    if (right is null) throw new ArgumentException("Equals ·½·¨ĞèÒª²ÎÊı");
-                    return new BinaryExpr(left, BinaryOperator.Equal, right);
-                case "Compare":
-                    if (right is null) throw new ArgumentException("Compare ·½·¨ĞèÒªÁ½¸ö²ÎÊı");
-                    return new BinaryExpr(left, BinaryOperator.Equal, right);
-                case "CompareTo":
-                    if (right is null) throw new ArgumentException("CompareTo ·½·¨ĞèÒª²ÎÊı");
-                    return new BinaryExpr(left, BinaryOperator.Equal, right);
-                default:
-                    return ConvertMethodCallDefault(node, true);
-            }
-        }
-
-        private Expr HandleEnumerableMethod(MethodCallExpression node)
-        {
-            var methodName = node.Method.Name;
-
-            if (methodName == "Contains")
-            {
-                // Enumerable.Contains(source, value)
-                if (node.Arguments.Count < 2)
-                {
-                    throw new ArgumentException("Contains ·½·¨ĞèÒªÁ½¸ö²ÎÊı");
-                }
-
-                var collection = ConvertInternal(node.Arguments[0]);
-                var value = ConvertInternal(node.Arguments[1]);
-
-                if (collection is null || value is null)
-                {
-                    throw new ArgumentException($"ÎŞ·¨½âÎö Contains ·½·¨²ÎÊı: {node}");
-                }
-
-                // SQL ÖĞÎª value IN collection£¬Òò´ËĞèÒª·­×ª
-                return new BinaryExpr(value, BinaryOperator.In, collection);
-            }
-
-            return ConvertMethodCallDefault(node, true);
-        }
-
-        private Expr HandleInstanceMethod(MethodCallExpression node)
-        {
-            var methodName = node.Method.Name;
-
-            // ´¦ÀíÍ¨ÓÃÊµÀı·½·¨
-            if (methodName == "Equals")
-            {
-                var left = ConvertInternal(node.Object);
-                var right = node.Arguments.Count > 0 ? ConvertInternal(node.Arguments[0]) : null;
-
-                if (left is null || right is null)
-                {
-                    throw new ArgumentException($"ÎŞ·¨½âÎö Equals ·½·¨²ÎÊı: {node}");
-                }
-
-                return new BinaryExpr(left, BinaryOperator.Equal, right);
-            }
-            else if (methodName == "Contains")
-            {
-                var left = ConvertInternal(node.Object);
-                var right = node.Arguments.Count > 0 ? ConvertInternal(node.Arguments[0]) : null;
-                if (left is null || right is null)
-                {
-                    throw new ArgumentException($"ÎŞ·¨½âÎö Contains ·½·¨²ÎÊı: {node}");
-                }
-                return new BinaryExpr(right, BinaryOperator.In, left);
-            }
-            else if (methodName == "CompareTo")
-            {
-                // CompareTo ·½·¨Í¨³£ÔÚ¶şÔª±í´ïÊ½ÖĞ´¦Àí
-                // ÕâÀï·µ»ØÒ»¸öµÈÔª±í´ïÊ½£¬¾ßÌåµÄ±È½Ï²Ù×÷ÔÚ ConvertBinary ÖĞÌæ»»
-                if (node.Arguments.Count < 1) throw new ArgumentException("CompareTo ·½·¨ĞèÒª²ÎÊı");
-                var left = ConvertInternal(node.Object);
-                var right = ConvertInternal(node.Arguments[0]);
-
-                if (left is null || right is null)
-                {
-                    throw new ArgumentException($"ÎŞ·¨½âÎö CompareTo ·½·¨²ÎÊı: {node}");
-                }
-
-                // CompareTo ·µ»Ø±È½Ï½á¹û£¬ÆäºóĞèÒªÓë 0 ±È½Ï
-                // ÕâÀï·µ»ØµÈÖµ±È½Ï£¬Êµ¼Ê»áÔÚ¶şÔª±í´ïÊ½ÖĞÌæ»»
-                return new BinaryExpr(left, BinaryOperator.Equal, right);
-            }
-            else
-                return ConvertMethodCallDefault(node, methodName != "ToString");
-        }
+        #region å†…éƒ¨å¤„ç†é€»è¾‘
 
         private Expr ConvertMethodCallDefault(MethodCallExpression node, bool useFunction)
         {
-            if (new ParameterExpressionDetector().ContainsParameter(node))
+            if (_parameterDetector.ContainsParameter(node))
             {
                 if (useFunction)
-                    // ½«Íâ²¿·½·¨ÊÓÎªº¯Êıµ÷ÓÃ
+                    // å°†å¤–éƒ¨æ–¹æ³•è§†ä¸ºå‡½æ•°è°ƒç”¨
                     return CreateFunctionExpr(node);
                 else
                     return ConvertInternal(node.Object);
@@ -484,56 +515,11 @@ namespace LiteOrm.Common
                 return EvaluateToExpr(node);
         }
 
-        private Expr HandleStaticMethod(MethodCallExpression node)
-        {
-            // ´¦Àí³£ÓÃ¾²Ì¬·½·¨
-            var methodName = node.Method.Name;
-            var declaringType = node.Method.DeclaringType;
-
-            if (declaringType == typeof(object) && methodName == "Equals")
-            {
-                // object.Equals(a, b)
-                if (node.Arguments.Count < 2)
-                {
-                    throw new ArgumentException("object.Equals ĞèÒªÁ½¸ö²ÎÊı");
-                }
-
-                var left = ConvertInternal(node.Arguments[0]);
-                var right = ConvertInternal(node.Arguments[1]);
-
-                if (left is null || right is null)
-                {
-                    throw new ArgumentException($"ÎŞ·¨½âÎö object.Equals ·½·¨²ÎÊı: {node}");
-                }
-
-                return new BinaryExpr(left, BinaryOperator.Equal, right);
-            }
-            else if (methodName == "Compare")
-            {
-                if (node.Arguments.Count < 2)
-                {
-                    throw new ArgumentException("Compare ĞèÒªÁ½¸ö²ÎÊı");
-                }
-
-                var left = ConvertInternal(node.Arguments[0]);
-                var right = ConvertInternal(node.Arguments[1]);
-
-                if (left is null || right is null)
-                {
-                    throw new ArgumentException($"ÎŞ·¨½âÎö Compare ·½·¨²ÎÊı: {node}");
-                }
-
-                return new BinaryExpr(left, BinaryOperator.Equal, right);
-            }
-
-            return ConvertMethodCallDefault(node, true);
-        }
-
         private Expr CreateFunctionExpr(MethodCallExpression node)
         {
             var parameters = new List<Expr>();
 
-            // Ìí¼Ó¶ÔÏóÊµÀı£¨Èç¹ûÊÇ·Ç¾²Ì¬·½·¨£©
+            // æ·»åŠ å¯¹è±¡å®ä¾‹ï¼ˆå¦‚æœæ˜¯éé™æ€æ–¹æ³•ï¼‰
             if (node.Object is not null)
             {
                 var obj = ConvertInternal(node.Object);
@@ -543,7 +529,7 @@ namespace LiteOrm.Common
                 }
             }
 
-            // Ìí¼Ó·½·¨²ÎÊı
+            // æ·»åŠ æ–¹æ³•å‚æ•°
             foreach (var arg in node.Arguments)
             {
                 var param = ConvertInternal(arg);
@@ -553,31 +539,32 @@ namespace LiteOrm.Common
                 }
             }
 
-            // ·½·¨Ãû×÷Îªº¯ÊıÃû
+            // æ–¹æ³•åä½œä¸ºå‡½æ•°å
             var functionName = node.Method.Name;
 
-            // ÌØÊâ´¦ÀíÒ»Ğ©³£ÓÃÀà
+            // ç‰¹æ®Šå¤„ç†ä¸€äº›å¸¸ç”¨ç±»
             if (node.Method.DeclaringType == typeof(Math))
             {
-                // Math Àà·½·¨Í¨³£Ö±½ÓÊ¹ÓÃÔ­Ãû»ò´óĞ´Ó³Éä
+                // Math ç±»æ–¹æ³•é€šå¸¸ç›´æ¥ä½¿ç”¨åŸåæˆ–å¤§å†™æ˜ å°„
                 functionName = node.Method.Name.ToUpper();
             }
 
             return new FunctionExpr(functionName, parameters.ToArray());
         }
+
         #endregion
 
         /// <summary>
-        /// ±í´ïÊ½²ÎÊı¼ì²âÆ÷
+        /// è¡¨è¾¾å¼å‚æ•°æ£€æµ‹å™¨
         /// </summary>
         public class ParameterExpressionDetector : ExpressionVisitor
         {
             private bool _hasParameter = false;
             /// <summary>
-            /// ¼ì²é±í´ïÊ½ÖĞÊÇ·ñ°üº¬²ÎÊıÒıÓÃ
+            /// æ£€æŸ¥è¡¨è¾¾å¼ä¸­æ˜¯å¦åŒ…å«å‚æ•°å¼•ç”¨
             /// </summary>
-            /// <param name="expression">ÒªÔÚ¼ì²éµÄ±í´ïÊ½¡£</param>
-            /// <returns>Èç¹û°üº¬²ÎÊıÒıÓÃÔò·µ»Ø true£¬·ñÔò·µ»Ø false¡£</returns>
+            /// <param name="expression">è¦åœ¨æ£€æŸ¥çš„è¡¨è¾¾å¼ã€‚</param>
+            /// <returns>å¦‚æœåŒ…å«å‚æ•°å¼•ç”¨åˆ™è¿”å› trueï¼Œå¦åˆ™è¿”å› falseã€‚</returns>
             public bool ContainsParameter(Expression expression)
             {
                 _hasParameter = false;
@@ -586,10 +573,10 @@ namespace LiteOrm.Common
             }
 
             /// <summary>
-            /// ·ÃÎÊ²ÎÊı±í´ïÊ½¡£
+            /// è®¿é—®å‚æ•°è¡¨è¾¾å¼ã€‚
             /// </summary>
-            /// <param name="node">²ÎÊı±í´ïÊ½½Úµã¡£</param>
-            /// <returns>·µ»Ø´¦ÀíºóµÄ±í´ïÊ½½Úµã¡£</returns>
+            /// <param name="node">å‚æ•°è¡¨è¾¾å¼èŠ‚ç‚¹ã€‚</param>
+            /// <returns>è¿”å›å¤„ç†åçš„è¡¨è¾¾å¼èŠ‚ç‚¹ã€‚</returns>
             protected override Expression VisitParameter(ParameterExpression node)
             {
                 _hasParameter = true;

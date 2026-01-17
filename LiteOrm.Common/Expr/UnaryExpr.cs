@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,33 +8,33 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ±íÊ¾µ¥Ä¿ÔËËã±í´ïÊ½£¨Èç NOT ÔËËã£©¡£
+    /// è¡¨ç¤ºå•ç›®è¿ç®—è¡¨è¾¾å¼ï¼ˆå¦‚ NOT è¿ç®—ï¼‰ã€‚
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class UnaryExpr : Expr
     {
         /// <summary>
-        /// ÎŞ²Î¹¹Ôì¡£
+        /// æ— å‚æ„é€ ã€‚
         /// </summary>
         public UnaryExpr()
         {
         }
         /// <summary>
-        /// Ê¹ÓÃµ¥Ä¿²Ù×÷·ûÓë²Ù×÷¶ÔÏó¹¹Ôì±í´ïÊ½¡£
+        /// ä½¿ç”¨å•ç›®æ“ä½œç¬¦ä¸æ“ä½œå¯¹è±¡æ„é€ è¡¨è¾¾å¼ã€‚
         /// </summary>
-        /// <param name="oper">µ¥Ä¿²Ù×÷·û</param>
-        /// <param name="operand">²Ù×÷¶ÔÏó</param>
+        /// <param name="oper">å•ç›®æ“ä½œç¬¦</param>
+        /// <param name="operand">æ“ä½œå¯¹è±¡</param>
         public UnaryExpr(UnaryOperator oper, Expr operand)
         {
             Operator = oper;
             Operand = operand;
         }
         /// <summary>
-        /// µ¥Ä¿²Ù×÷·û
+        /// å•ç›®æ“ä½œç¬¦
         /// </summary>
         public UnaryOperator Operator { get; set; }
         /// <summary>
-        /// ²Ù×÷¶ÔÏó
+        /// æ“ä½œå¯¹è±¡
         /// </summary>
         public Expr Operand { get; set; }
 
@@ -69,21 +69,21 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// µ¥Ä¿²Ù×÷·û
+    /// å•ç›®æ“ä½œç¬¦
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum UnaryOperator
     {
         /// <summary>
-        /// Âß¼­È¡·´
+        /// é€»è¾‘å–å
         /// </summary>
         Not = 0,
         /// <summary>
-        /// ¸ººÅ
+        /// è´Ÿå·
         /// </summary>
         Nagive = 1,
         /// <summary>
-        /// °´Î»È¡·´
+        /// æŒ‰ä½å–å
         /// </summary>
         BitwiseNot = 2,
     }

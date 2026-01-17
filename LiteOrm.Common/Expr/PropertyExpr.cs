@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,55 +8,55 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ±íÊ¾ÊµÌåÊôĞÔ£¨ÁĞ£©µÄ±í´ïÊ½¡£´¦Àí±íÃû»ò±ğÃûµÄ¸ñÊ½¡£
+    /// è¡¨ç¤ºå®ä½“å±æ€§ï¼ˆåˆ—ï¼‰çš„è¡¨è¾¾å¼ã€‚å¤„ç†è¡¨åæˆ–åˆ«åçš„æ ¼å¼ã€‚
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class PropertyExpr : Expr
     {
         /// <summary>
-        /// ÓÃÓÚĞòÁĞ»¯/·´ĞòÁĞ»¯ µÄÎŞ²Î¹¹Ôì¡£
+        /// ç”¨äºåºåˆ—åŒ–/ååºåˆ—åŒ– çš„æ— å‚æ„é€ ã€‚
         /// </summary>
         public PropertyExpr()
         {
         }
 
         /// <summary>
-        /// Ê¹ÓÃÊôĞÔÃû¹¹ÔìÒ»¸öÊôĞÔ±í´ïÊ½¡£
+        /// ä½¿ç”¨å±æ€§åæ„é€ ä¸€ä¸ªå±æ€§è¡¨è¾¾å¼ã€‚
         /// </summary>
-        /// <param name="propertyName">ÊôĞÔ£¨ÁĞ£©Ãû³Æ</param>
+        /// <param name="propertyName">å±æ€§ï¼ˆåˆ—ï¼‰åç§°</param>
         public PropertyExpr(string propertyName)
         {
             PropertyName = propertyName;
         }
 
         /// <summary>
-        /// ÊôĞÔ£¨ÁĞ£©Ãû³Æ
+        /// å±æ€§ï¼ˆåˆ—ï¼‰åç§°
         /// </summary>
         public string PropertyName { get; set; }
 
         /// <summary>
-        /// ·µ»Ø±íÊ¾µ±Ç°ÊôĞÔµÄ×Ö·û´®¡£
+        /// è¿”å›è¡¨ç¤ºå½“å‰å±æ€§çš„å­—ç¬¦ä¸²ã€‚
         /// </summary>
-        /// <returns>±íÊ¾µ±Ç°ÊôĞÔµÄ×Ö·û´®¡£</returns>
+        /// <returns>è¡¨ç¤ºå½“å‰å±æ€§çš„å­—ç¬¦ä¸²ã€‚</returns>
         public override string ToString()
         {
             return $"[{PropertyName}]";
         }
 
         /// <summary>
-        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// ç¡®å®šæŒ‡å®šçš„å¯¹è±¡æ˜¯å¦ç­‰äºå½“å‰å¯¹è±¡ã€‚
         /// </summary>
-        /// <param name="obj">ÒªÓëµ±Ç°¶ÔÏó½øĞĞ±È½ÏµÄ¶ÔÏó¡£</param>
-        /// <returns>Èç¹ûÖ¸¶¨µÄ¶ÔÏóµÈÓÚµ±Ç°¶ÔÏó£¬ÔòÎª true£»·ñÔòÎª false¡£</returns>
+        /// <param name="obj">è¦ä¸å½“å‰å¯¹è±¡è¿›è¡Œæ¯”è¾ƒçš„å¯¹è±¡ã€‚</param>
+        /// <returns>å¦‚æœæŒ‡å®šçš„å¯¹è±¡ç­‰äºå½“å‰å¯¹è±¡ï¼Œåˆ™ä¸º trueï¼›å¦åˆ™ä¸º falseã€‚</returns>
         public override bool Equals(object obj)
         {
             return obj is PropertyExpr p && p.PropertyName == PropertyName;
         }
 
         /// <summary>
-        /// ×÷ÎªÄ¬ÈÏ¹şÏ£º¯Êı¡£
+        /// ä½œä¸ºé»˜è®¤å“ˆå¸Œå‡½æ•°ã€‚
         /// </summary>
-        /// <returns>µ±Ç°¶ÔÏóµÄ¹şÏ£´úÂë¡£</returns>
+        /// <returns>å½“å‰å¯¹è±¡çš„å“ˆå¸Œä»£ç ã€‚</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), PropertyName?.GetHashCode() ?? 0);
