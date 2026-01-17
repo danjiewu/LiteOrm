@@ -112,7 +112,7 @@ namespace LiteOrm.Common
             if (item is null) item = Null;
             if (item is ExprSet set && set.JoinType == JoinType)
                 items.AddRange(set.Items);
-            else if (item.IsValue == IsValue)
+            else if (item.IsValue == IsValue || item is FunctionExpr)
                 items.Add(item);
             else throw new ArgumentException($"无法将表达式项添加到集合中，表达式项的 IsValue 属性必须与集合的 IsValue 属性相同。", nameof(item));
         }

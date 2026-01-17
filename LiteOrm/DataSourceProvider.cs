@@ -30,21 +30,19 @@ namespace LiteOrm
     /// 
     /// 配置示例：
     /// <code>
-    /// \"LiteOrm\": {
-    ///   \"DataSources\": [
-    ///     {
-    ///       \"Name\": \"DefaultConnection\",
-    ///       \"ConnectionString\": \"Server=.;Database=MyDB;...\",
-    ///       \"ProviderType\": \"System.Data.SqlClient.SqlConnection\"
-    ///     },
-    ///     {
-    ///       \"Name\": \"MySqlConnection\",
-    ///       \"ConnectionString\": \"Server=localhost;Database=MyDB;...\",
-    ///       \"ProviderType\": \"MySql.Data.MySqlClient.MySqlConnection\"
-    ///     }
-    ///   ],
-    ///   \"DefaultDataSourceName\": \"DefaultConnection\"
-    /// }
+    ///{
+    ///  "LiteOrm": {
+    ///    "Default": "DefaultConnection",
+    ///    "ConnectionStrings": [
+    ///      {
+    ///        "Name": "DefaultConnection",
+    ///        "ConnectionString": "Data Source=demo.db",
+    ///        "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+    ///        "PoolSize": 10
+    ///      }
+    ///    ]
+    ///  }
+    ///}
     /// </code>
     /// 
     /// 使用示例：

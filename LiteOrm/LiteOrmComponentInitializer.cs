@@ -3,7 +3,10 @@ using LiteOrm.Common;
 using LiteOrm.SqlBuilder;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 
 
@@ -27,6 +30,92 @@ namespace LiteOrm
             SessionManager.Current = componentContext.Resolve<SessionManager>();
             TableInfoProvider.Default = componentContext.Resolve<TableInfoProvider>();
             RegisterSqlFunctions();
+            RegisterDefaultLambdaHandlers();
+        }
+
+        private void RegisterDefaultLambdaHandlers()
+        {
+            // String methods
+            LambdaExprConverter.RegisterMethodHandler(typeof(string), "StartsWith", (node, converter) =>
+            {
+                var left = converter.Convert(node.Object);
+                var right = converter.Convert(node.Arguments[0]);
+                return new BinaryExpr(left, BinaryOperator.StartsWith, right);
+            });
+
+            LambdaExprConverter.RegisterMethodHandler(typeof(string), "EndsWith", (node, converter) =>
+            {
+                var left = converter.Convert(node.Object);
+                var right = converter.Convert(node.Arguments[0]);
+                return new BinaryExpr(left, BinaryOperator.EndsWith, right);
+            });
+
+            LambdaExprConverter.RegisterMethodHandler(typeof(string), "Contains", (node, converter) =>
+            {
+                var left = converter.Convert(node.Object);
+                var right = converter.Convert(node.Arguments[0]);
+                return new BinaryExpr(left, BinaryOperator.Contains, right);
+            });
+
+            LambdaExprConverter.RegisterMethodHandler("Contains", (node, converter) =>
+            {
+                if (node.Method.DeclaringType == typeof(Enumerable) || typeof(IEnumerable).IsAssignableFrom(node.Method.DeclaringType))
+                {
+                    // Enumerable.Contains(source, value) OR list.Contains(value)
+                    Expr collection = null;
+                    Expr value = null;
+                    if (node.Method.IsStatic)
+                    {
+                        collection = converter.Convert(node.Arguments[0]);
+                        value = converter.Convert(node.Arguments[1]);
+                    }
+                    else
+                    {
+                        collection = converter.Convert(node.Object);
+                        value = converter.Convert(node.Arguments[0]);
+                    }
+                    return new BinaryExpr(value, BinaryOperator.In, collection);
+                }
+                return null;
+            });
+
+            LambdaExprConverter.RegisterMethodHandler(typeof(string), "Concat", (node, converter) =>
+            {
+                Expr left = node.Object != null ? converter.Convert(node.Object) : converter.Convert(node.Arguments[0]);
+                Expr right = node.Object != null ? converter.Convert(node.Arguments[0]) : converter.Convert(node.Arguments[1]);
+                return new BinaryExpr(left, BinaryOperator.Concat, right);
+            });
+
+            LambdaExprConverter.RegisterMethodHandler("Equals", (node, converter) =>
+            {
+                Expr left = null;
+                Expr right = null;
+                if (node.Object != null)
+                {
+                    left = converter.Convert(node.Object);
+                    right = converter.Convert(node.Arguments[0]);
+                }
+                else
+                {
+                    left = converter.Convert(node.Arguments[0]);
+                    right = converter.Convert(node.Arguments[1]);
+                }
+                return new BinaryExpr(left, BinaryOperator.Equal, right);
+            });
+
+            LambdaExprConverter.RegisterMethodHandler("Compare", (node, converter) =>
+            {
+                var left = converter.Convert(node.Arguments[0]);
+                var right = converter.Convert(node.Arguments[1]);
+                return new BinaryExpr(left, BinaryOperator.Equal, right);
+            });
+
+            LambdaExprConverter.RegisterMethodHandler("CompareTo", (node, converter) =>
+            {
+                var left = node.Object != null ? converter.Convert(node.Object) : converter.Convert(node.Arguments[0]);
+                var right = node.Object != null ? converter.Convert(node.Arguments[0]) : converter.Convert(node.Arguments[1]);
+                return new BinaryExpr(left, BinaryOperator.Equal, right);
+            });
         }
 
         private void RegisterSqlFunctions()

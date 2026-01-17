@@ -12,6 +12,11 @@ namespace LiteOrm.SqlBuilder
     public class PostgreSqlBuilder : BaseSqlBuilder
     {
         /// <summary>
+        /// PostgreSql SQL 构建器实例。
+        /// </summary>
+        public static readonly new PostgreSqlBuilder Instance = new PostgreSqlBuilder();
+
+        /// <summary>
         /// 构建带有标识列或序列插入的 SQL 语句。
         /// </summary>
         /// <param name="command">数据库命令对象。</param>

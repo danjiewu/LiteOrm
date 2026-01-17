@@ -158,10 +158,11 @@ namespace LiteOrm.Demo
             Console.WriteLine("\n[QueryResults] 使用 Expr 进行实际查询展示:");
             string currentMonth = DateTime.Now.ToString("yyyyMM");
 
-            // 示例 1: 查询年龄 > 25 且用户名第二个字为 "三" 的用户
-            var expr1 = Expr.Exp<UserView>(u => u.Age > 25 && u.UserName.Substring(1,1)== "三");
-            var users1 = await userService.SearchAsync(u => u.Age > 25 && u.UserName.Substring(1) == "三");
-            Console.WriteLine($"\n[示例 1] 年龄 > 25 且用户名第二个字为 '三':");
+            // 示例 1: 查询年龄 > 25 且用户名第三至第四个字为 "经理" 的用户
+            var expr1 = Expr.Exp<UserView>(u => u.Age > 25 && u.UserName.Substring(2,2)== "经理");
+            Console.WriteLine(new SqlGen(typeof(UserView)).ToSql(expr1)); // 触发 SQL 生成，验证表达式有效性
+            var users1 = await userService.SearchAsync(expr1);
+            Console.WriteLine($"\n[示例 1] 年龄 > 25 且用户名第三至第四个字为 '经理':");
             Console.WriteLine($"  Expr 序列化结果: {JsonSerializer.Serialize(expr1, jsonOptions)}");
             Console.WriteLine($"  查询结果数量: {users1.Count}");
             foreach (var user in users1)

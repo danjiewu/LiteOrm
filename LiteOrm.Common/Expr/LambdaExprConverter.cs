@@ -37,99 +37,7 @@ namespace LiteOrm.Common
         private readonly ParameterExpressionDetector _parameterDetector = new ParameterExpressionDetector();
 
         private static readonly Dictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodNameHandlers = new Dictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
-        private static readonly Dictionary<MethodInfo, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodHandlers = new Dictionary<MethodInfo, Func<MethodCallExpression, LambdaExprConverter, Expr>>();
-
-        static LambdaExprConverter()
-        {
-            RegisterDefaultHandlers();
-        }
-
-        private static void RegisterDefaultHandlers()
-        {
-            // String methods
-            RegisterMethodHandler("StartsWith", (node, converter) =>
-            {
-                if (node.Method.DeclaringType != typeof(string)) return null;
-                var left = converter.Convert(node.Object);
-                var right = converter.Convert(node.Arguments[0]);
-                return new BinaryExpr(left, BinaryOperator.StartsWith, right);
-            });
-
-            RegisterMethodHandler("EndsWith", (node, converter) =>
-            {
-                if (node.Method.DeclaringType != typeof(string)) return null;
-                var left = converter.Convert(node.Object);
-                var right = converter.Convert(node.Arguments[0]);
-                return new BinaryExpr(left, BinaryOperator.EndsWith, right);
-            });
-
-            RegisterMethodHandler("Contains", (node, converter) =>
-            {
-                if (node.Method.DeclaringType == typeof(string))
-                {
-                    var left = converter.Convert(node.Object);
-                    var right = converter.Convert(node.Arguments[0]);
-                    return new BinaryExpr(left, BinaryOperator.Contains, right);
-                }
-                if (node.Method.DeclaringType == typeof(Enumerable) || typeof(IEnumerable).IsAssignableFrom(node.Method.DeclaringType))
-                {
-                    // Enumerable.Contains(source, value) OR list.Contains(value)
-                    Expr collection = null;
-                    Expr value = null;
-                    if (node.Method.IsStatic)
-                    {
-                        collection = converter.Convert(node.Arguments[0]);
-                        value = converter.Convert(node.Arguments[1]);
-                    }
-                    else
-                    {
-                        collection = converter.Convert(node.Object);
-                        value = converter.Convert(node.Arguments[0]);
-                    }
-                    return new BinaryExpr(value, BinaryOperator.In, collection);
-                }
-                return null;
-            });
-
-            RegisterMethodHandler("Concat", (node, converter) =>
-            {
-                if (node.Method.DeclaringType != typeof(string)) return null;
-                Expr left = node.Object != null ? converter.Convert(node.Object) : converter.Convert(node.Arguments[0]);
-                Expr right = node.Object != null ? converter.Convert(node.Arguments[0]) : converter.Convert(node.Arguments[1]);
-                return new BinaryExpr(left, BinaryOperator.Concat, right);
-            });
-
-            RegisterMethodHandler("Equals", (node, converter) =>
-            {
-                Expr left = null;
-                Expr right = null;
-                if (node.Object != null)
-                {
-                    left = converter.Convert(node.Object);
-                    right = converter.Convert(node.Arguments[0]);
-                }
-                else
-                {
-                    left = converter.Convert(node.Arguments[0]);
-                    right = converter.Convert(node.Arguments[1]);
-                }
-                return new BinaryExpr(left, BinaryOperator.Equal, right);
-            });
-
-            RegisterMethodHandler("Compare", (node, converter) =>
-            {
-                var left = converter.Convert(node.Arguments[0]);
-                var right = converter.Convert(node.Arguments[1]);
-                return new BinaryExpr(left, BinaryOperator.Equal, right);
-            });
-
-            RegisterMethodHandler("CompareTo", (node, converter) =>
-            {
-                var left = node.Object != null ? converter.Convert(node.Object) : converter.Convert(node.Arguments[0]);
-                var right = node.Object != null ? converter.Convert(node.Arguments[0]) : converter.Convert(node.Arguments[1]);
-                return new BinaryExpr(left, BinaryOperator.Equal, right);
-            });
-        }
+        private static readonly Dictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>> _typeMethodHandlers = new Dictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>>();
 
         /// <summary>
         /// 注册方法调用转换句柄。
@@ -144,31 +52,13 @@ namespace LiteOrm.Common
         /// <summary>
         /// 注册方法调用转换句柄。
         /// </summary>
-        /// <param name="methodInfo">方法信息。</param>
+        /// <param name="type">所属类型。</param>
+        /// <param name="methodName">方法名称。</param>
         /// <param name="handler">处理句柄。</param>
         public static void RegisterMethodHandler(Type type, string methodName, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
         {
-            _methodHandlers[methodInfo] = handler;
+            _typeMethodHandlers[(type, methodName)] = handler;
         }
-
-        /// <summary>
-        /// 注册方法调用转换句柄。
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="methodExpr">方法调用表达式。</param>
-        /// <param name="handler">处理句柄。</param>
-        public static void RegisterMethodHandler<T>(Expression<Action<T>> methodExpr, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
-        {
-            if (methodExpr.Body is MethodCallExpression mce)
-            {
-                RegisterMethodHandler(mce.Method, handler);
-            }
-            else
-            {
-                throw new ArgumentException("表达式必须是方法调用。");
-            }
-        }
-
 
         /// <summary>
         /// 转换表达式节点。
@@ -459,9 +349,10 @@ namespace LiteOrm.Common
 
         private Expr ConvertMethodCall(MethodCallExpression node)
         {
-            if (_methodHandlers.TryGetValue(node.Method, out var handler))
+
+            if (node.Method.DeclaringType != null && _typeMethodHandlers.TryGetValue((node.Method.DeclaringType, node.Method.Name), out var typeMethodHandler))
             {
-                var result = handler(node, this);
+                var result = typeMethodHandler(node, this);
                 if (result != null) return result;
             }
 
