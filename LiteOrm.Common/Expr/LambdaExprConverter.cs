@@ -146,7 +146,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="methodInfo">方法信息。</param>
         /// <param name="handler">处理句柄。</param>
-        public static void RegisterMethodHandler(MethodInfo methodInfo, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
+        public static void RegisterMethodHandler(Type type, string methodName, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
         {
             _methodHandlers[methodInfo] = handler;
         }
@@ -169,22 +169,6 @@ namespace LiteOrm.Common
             }
         }
 
-        /// <summary>
-        /// 注册方法调用转换句柄。
-        /// </summary>
-        /// <param name="methodExpr">方法调用表达式。</param>
-        /// <param name="handler">处理句柄。</param>
-        public static void RegisterMethodHandler(Expression<Action> methodExpr, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
-        {
-            if (methodExpr.Body is MethodCallExpression mce)
-            {
-                RegisterMethodHandler(mce.Method, handler);
-            }
-            else
-            {
-                throw new ArgumentException("表达式必须是方法调用。");
-            }
-        }
 
         /// <summary>
         /// 转换表达式节点。
