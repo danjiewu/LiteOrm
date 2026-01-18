@@ -81,9 +81,10 @@ namespace LiteOrm
 
             LambdaExprConverter.RegisterMethodHandler(typeof(string), "Concat", (node, converter) =>
             {
-                Expr left = node.Object != null ? converter.Convert(node.Object) : converter.Convert(node.Arguments[0]);
-                Expr right = node.Object != null ? converter.Convert(node.Arguments[0]) : converter.Convert(node.Arguments[1]);
-                return new BinaryExpr(left, BinaryOperator.Concat, right);
+                if (node.Method.IsStatic)                
+                    return new ExprSet( ExprJoinType.Concat, converter.Convert(node.Arguments[0]) as IEnumerable<Expr>);
+                else
+                    return new BinaryExpr(converter.Convert(node.Object), BinaryOperator.Concat, converter.Convert(node.Arguments[0]));
             });
 
             LambdaExprConverter.RegisterMethodHandler("Equals", (node, converter) =>
