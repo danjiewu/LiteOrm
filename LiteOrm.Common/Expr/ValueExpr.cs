@@ -9,44 +9,46 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 表示一个值（或一组常量值，如 IN 列表）的表达式。
+    /// 表示一个常量值或一组集合值（用于 IN 查询）的表达式。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class ValueExpr : Expr
     {
         /// <summary>
-        /// 无参构造。
+        /// 创建空的 ValueExpr。
         /// </summary>
         public ValueExpr()
         {
         }
 
         /// <summary>
-        /// 使用值构造 ValueExpr。
+        /// 使用指定的值初始化 ValueExpr。
         /// </summary>
-        /// <param name="value">值，可以是单个值或可枚举集合（用于 IN）</param>
+        /// <param name="value">具体的值（如数字、字符串、日期）或可枚举集合（用于 IN 子句）。</param>
         public ValueExpr(object value)
         {
             Value = value;
         }
 
         /// <summary>
-        /// 表示这是一个值类型表达式。
+        /// 指示该表达式代表一个值。
         /// </summary>
         [JsonIgnore]
         public override bool IsValue => true;
 
         /// <summary>
-        /// 表达式包含的实际值。
+        /// 获取或设置该表达式持有的原始对象值。
         /// </summary>
         public object Value { get; set; }
 
-        /// <inheritdoc/>
-        /// <remarks>
-        /// - ?? null "NULL"。
-        /// - 如果值为集合（且不是字符串），返回类似 "( val1, val2, ... )" 的字符串，适用于 IN 表达式。
-        /// - 否则返回值的字符串表示形式。
-        /// </remarks>
+        /// <summary>
+        /// 返回当前值的预览字符串。
+        /// </summary>
+        /// <returns>
+        /// - 值为 null 时返回 "NULL"。
+        /// - 值为集合（非字符串）时返回类似 "(v1, v2, v3)" 的格式。
+        /// - 否则返回值的字符串形式。
+        /// </returns>
         public override string ToString()
         {
             if (Value is null) return "NULL";
@@ -64,13 +66,17 @@ namespace LiteOrm.Common
                 return Value.ToString();
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// 确定值是否相等。
+        /// </summary>
         public override bool Equals(object obj)
         {
             return obj is ValueExpr vs && Equals(Value, vs.Value);
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// 生成哈希值。
+        /// </summary>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), Value?.GetHashCode() ?? 0);

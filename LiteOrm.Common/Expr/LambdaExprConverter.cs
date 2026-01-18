@@ -11,10 +11,12 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 将 Lambda 表达式转换为 Expr 表达式对象的转换类。
+    /// 将 Lambda 表达式转换为框架通用的 Expr 模型。
+    /// 处理常见的成员访问、二元/一元运算以及重写部分常用的 C# 方法调用映射。
     /// </summary>
     public class LambdaExprConverter
     {
+        // 维护 C# 表达式节点类型到内部操作符的快速映射
         private static readonly Dictionary<ExpressionType, BinaryOperator> _operatorMappings = new Dictionary<ExpressionType, BinaryOperator>
         {
             { ExpressionType.Equal, BinaryOperator.Equal },
@@ -32,48 +34,97 @@ namespace LiteOrm.Common
             { ExpressionType.Divide, BinaryOperator.Divide }
         };
 
-        private readonly ParameterExpression _rootParameter;
-        private readonly LambdaExpression _expression;
-        private readonly ParameterExpressionDetector _parameterDetector = new ParameterExpressionDetector();
+        private readonly ParameterExpression _rootParameter; // 跟踪 Lambda 的主参数（通常是实体变量）
+        private readonly LambdaExpression _expression; // 原始 Lambda 对象
+        private readonly ParameterExpressionDetector _parameterDetector = new ParameterExpressionDetector(); // 检测表达式是否包含 Lambda 参数
 
+        // 处理器字典：映射方法名/成员名到自定义转换逻辑
         private static readonly Dictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodNameHandlers = new Dictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>> _typeMethodHandlers = new Dictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>>();
 
+        private static readonly Dictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>> _memberNameHandlers = new Dictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>> _typeMemberHandlers = new Dictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>>();
+
+
         /// <summary>
-        /// 注册方法调用转换句柄。
+        /// 默认的方法处理器：将方法名作为 SQL 函数名生成 FunctionExpr。
         /// </summary>
-        /// <param name="methodName">方法名称。</param>
-        /// <param name="handler">处理句柄。</param>
-        public static void RegisterMethodHandler(string methodName, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
+        public static Func<MethodCallExpression, LambdaExprConverter, Expr> DefaultFunctionHandler => (node, converter) =>
         {
-            _methodNameHandlers[methodName] = handler;
+            return converter.CreateFunctionExpr(node);
+        };
+
+        /// <summary>
+        /// 默认的成员处理器：将成员（属性/字段）名映射为 FunctionExpr 或 PropertyExpr。
+        /// </summary>
+        public static Func<MemberExpression, LambdaExprConverter, Expr> DefaultMemberHandler => (node, converter) =>
+        {
+            return node.Expression is null ? new FunctionExpr(node.Member.Name) : new FunctionExpr(node.Member.Name, converter.Convert(node.Expression));
+        };
+
+        /// <summary>
+        /// 注册全局的方法转换逻辑。
+        /// </summary>
+        /// <param name="methodName">待拦截的方法名称。</param>
+        /// <param name="handler">处理逻辑，若为 null 则使用默认处理器。</param>
+        public static void RegisterMethodHandler(string methodName, Func<MethodCallExpression, LambdaExprConverter, Expr> handler = null)
+        {
+            _methodNameHandlers[methodName] = handler ?? DefaultFunctionHandler;
         }
 
         /// <summary>
-        /// 注册方法调用转换句柄。
+        /// 注册特定类型的方法转换逻辑。
         /// </summary>
-        /// <param name="type">所属类型。</param>
-        /// <param name="methodName">方法名称。</param>
-        /// <param name="handler">处理句柄。</param>
-        public static void RegisterMethodHandler(Type type, string methodName, Func<MethodCallExpression, LambdaExprConverter, Expr> handler)
+        /// <param name="type">目标类型。</param>
+        /// <param name="methodName">方法名称。若不指定，则扫描并注册所有公开方法。</param>
+        /// <param name="handler">处理逻辑。</param>
+        public static void RegisterMethodHandler(Type type, string methodName = null, Func<MethodCallExpression, LambdaExprConverter, Expr> handler = null)
         {
-            _typeMethodHandlers[(type, methodName)] = handler;
+            handler ??= DefaultFunctionHandler;
+            if (methodName == null)
+            {
+                // 批量注册该类型的所有实例或静态公开方法
+                foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance))
+                {
+                    if (method.Name != "ToString")
+                        _typeMethodHandlers[(type, method.Name)] = handler;
+                }
+            }
+            else
+                _typeMethodHandlers[(type, methodName)] = handler;
         }
 
         /// <summary>
-        /// 转换表达式节点。
+        /// 注册成员（属性/字段）的转换逻辑。
         /// </summary>
-        /// <param name="node">表达式节点。</param>
-        /// <returns>转换后的 Expr。</returns>
+        public static void RegisterMemberHandler(string memberName, Func<MemberExpression, LambdaExprConverter, Expr> handler = null)
+        {
+            _memberNameHandlers[memberName] = handler ?? DefaultMemberHandler;
+        }
+
+        /// <summary>
+        /// 注册特定类型的成员转换逻辑。
+        /// </summary>
+        public static void RegisterMemberHandler(Type type, string memberName, Func<MemberExpression, LambdaExprConverter, Expr> handler = null)
+        {
+            if (String.IsNullOrEmpty(memberName)) throw new ArgumentNullException(nameof(memberName));
+            _typeMemberHandlers[(type, memberName)] = handler ?? DefaultMemberHandler;
+        }
+
+        /// <summary>
+        /// 转换表达式节点为 Expr 对象。
+        /// </summary>
+        /// <param name="node">C# 表达式节点。</param>
+        /// <returns>Expr 模型。</returns>
         public Expr Convert(Expression node)
         {
             return ConvertInternal(node);
         }
 
         /// <summary>
-        /// 初始化 LambdaExprConverter。
+        /// 构造转换器。
         /// </summary>
-        /// <param name="expression">Lambda 表达式。</param>
+        /// <param name="expression">目标 Lambda 表达式。</param>
         public LambdaExprConverter(LambdaExpression expression)
         {
             if (expression is null) throw new ArgumentNullException(nameof(expression));
@@ -82,8 +133,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 将 Lambda 表达式转换为 Expr。
-        /// <returns>转换后的 Expr。</returns>
+        /// 执行整体转换并将根节点转为 Expr。
         /// </summary>
         public Expr ToExpr()
         {
@@ -93,9 +143,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 将 Lambda 表达式转换为 Expr。
-        /// <param name="expression">Lambda 表达式。</param>
-        /// <returns>转换后的 Expr。</returns>
+        /// 静态便捷入口，将 Lambda 表达式转换为 Expr 模型。
         /// </summary>
         public static Expr ToExpr(LambdaExpression expression)
         {
@@ -107,6 +155,7 @@ namespace LiteOrm.Common
 
         private Expr ConvertInternal(Expression node)
         {
+            // 基于节点类型的递归下降转换
             switch (node)
             {
                 case BinaryExpression binary:
@@ -119,6 +168,7 @@ namespace LiteOrm.Common
                     if (constant.Value is Expr exprValue) return exprValue;
                     return new ValueExpr(constant.Value);
                 case ParameterExpression param:
+                    // 裸参数不直接转换（通常作为成员访问的基础）
                     throw new NotSupportedException($"参数表达式 '{param.Name}' 不能直接转换为 Expr");
                 case NewArrayExpression newArray:
                     return ConvertNewArray(newArray);
@@ -127,6 +177,7 @@ namespace LiteOrm.Common
                 case MethodCallExpression methodCall:
                     return ConvertMethodCall(methodCall);
                 case NewExpression newExpression:
+                    // 只要不涉及 Lambda 参数，便尝试在本地执行并取结果
                     return EvaluateToExpr(newExpression);
                 default:
                     throw new NotSupportedException($"不支持的表达式类型: {node.NodeType} ({node.GetType().Name})");
@@ -135,12 +186,13 @@ namespace LiteOrm.Common
 
         private Expr ConvertBinary(BinaryExpression node)
         {
+            // 处理 ?? 运算符，依赖参数时转为 COALESCE 函数，否则本地计算
             if (node.NodeType == ExpressionType.Coalesce)
             {
                 return _parameterDetector.ContainsParameter(node.Left) || _parameterDetector.ContainsParameter(node.Right) ? new FunctionExpr("COALESCE", ConvertInternal(node.Left), ConvertInternal(node.Right)) : EvaluateToExpr(node);
             }
 
-            // 特殊处理 CompareTo 方法调用
+            // 特殊处理 CompareTo 调用 (a.CompareTo(b) op 0) -> 扁平化为直接的 BinaryExpr (a op b)
             if (node.Left is MethodCallExpression leftCallExpression && leftCallExpression.Method.Name == "CompareTo")
             {
                 var compareRight = EvaluateToExpr(node.Right);
@@ -183,7 +235,7 @@ namespace LiteOrm.Common
             var left = ConvertInternal(node.Left);
             var right = ConvertInternal(node.Right);
 
-            // 处理逻辑运算符
+            // 处理逻辑 AND/OR 及加法字符串连接重载
             switch (node.NodeType)
             {
                 case ExpressionType.AndAlso:
@@ -193,6 +245,7 @@ namespace LiteOrm.Common
                 case ExpressionType.OrElse:
                     return left.Or(right);
                 case ExpressionType.Add:
+                    // 字符串拼接映射
                     if (node.Left.Type == typeof(string) || node.Right.Type == typeof(string))
                         return new BinaryExpr(left, BinaryOperator.Concat, right);
                     else
@@ -230,11 +283,14 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 计算表达式的值。如果表达式依赖于 Lambda 参数，则无法计算。
+        /// </summary>
         private Expr EvaluateToExpr(Expression node)
         {
             try
             {
-                // 尝试计算 Expression 的值
+                // 编译并执行不含参数的子表达式
                 var lambda = Expression.Lambda(node);
                 var compiled = lambda.Compile();
                 var value = compiled.DynamicInvoke();
@@ -249,12 +305,27 @@ namespace LiteOrm.Common
 
         private Expr ConvertMember(MemberExpression node)
         {
+            // Nullable<T>.Value 自动降级处理
             if (Nullable.GetUnderlyingType(node.Member.DeclaringType) is not null && node.Member.Name == "Value")
             {
-                // 处理 Nullable<T>.Value  
                 return ConvertInternal(node.Expression);
             }
-            // 处理属性访问，如 x => x.Name
+
+            // 1. 优先匹配已注册的类型成员处理器 (如 DateTime.Now)
+            if (node.Member.DeclaringType != null && _typeMemberHandlers.TryGetValue((node.Member.DeclaringType, node.Member.Name), out var typeMemberHandler))
+            {
+                var result = typeMemberHandler(node, this);
+                if (result is not null) return result;
+            }
+
+            // 2. 匹配已注册的通用名称处理器 (如 Length)
+            if (_memberNameHandlers.TryGetValue(node.Member.Name, out var nameMemberHandler))
+            {
+                var result = nameMemberHandler(node, this);
+                if (result is not null) return result;
+            }
+
+            // 3. 处理直接的实体参数访问 (映射为数据库列)
             if (node.Expression is ParameterExpression paramExpr &&
                 (_rootParameter is null || paramExpr == _rootParameter))
             {
@@ -268,18 +339,9 @@ namespace LiteOrm.Common
                 }
             }
 
-            if (IsFunction(node))
+            // 4. 处理嵌套属性路径，例如 x => x.Address.Street -> "Address.Street"
+            if (_parameterDetector.ContainsParameter(node))
             {
-                // 处理字符串或数组的长属性 Length 等
-                var targetExpr = node.Expression;
-                if (targetExpr is null) return new FunctionExpr(node.Member.Name);
-                else
-                    return new FunctionExpr(node.Member.Name, ConvertInternal(targetExpr));
-            }
-
-            if (new ParameterExpressionDetector().ContainsParameter(node))
-            {
-                // 处理嵌套属性访问，如 x => x.Address.City
                 var parts = new List<string>();
                 Expression current = node;
                 while (current is MemberExpression memberExpr)
@@ -291,26 +353,13 @@ namespace LiteOrm.Common
                 var propertyName = string.Join(".", parts);
                 return Expr.Property(propertyName);
             }
-            else// 处理静态成员访问，如 DateTime.Now
+            else
+                // 5. 不依赖参数的成员访问（闭包/静态量）在本地计算结果
                 return EvaluateToExpr(node);
         }
 
-        private static bool IsFunction(MemberExpression node)
-        {
-            switch (node.Member.Name)
-            {
-                case "Length":
-                    return node.Type == typeof(int) && (node.Expression.Type == typeof(string) || typeof(Array).IsAssignableFrom(node.Expression.Type));
-                case "Now":
-                    return node.Type == typeof(DateTime);
-                case "Today":
-                    return node.Type == typeof(DateTime);
-                default:
-                    return false;
-            }
-        }
-
         private Expr ConvertNewArray(NewArrayExpression node)
+
         {
             var items = new List<Expr>();
             foreach (var expression in node.Expressions)
@@ -349,46 +398,31 @@ namespace LiteOrm.Common
 
         private Expr ConvertMethodCall(MethodCallExpression node)
         {
+            Type type = node.Method.DeclaringType;
 
-            if (node.Method.DeclaringType != null && _typeMethodHandlers.TryGetValue((node.Method.DeclaringType, node.Method.Name), out var typeMethodHandler))
+            if (type != null && _typeMethodHandlers.TryGetValue((type, node.Method.Name), out var typeMethodHandler))
             {
                 var result = typeMethodHandler(node, this);
-                if (result != null) return result;
+                if (result is not null) return result;
             }
 
             if (_methodNameHandlers.TryGetValue(node.Method.Name, out var nameHandler))
             {
                 var result = nameHandler(node, this);
-                if (result != null) return result;
+                if (result is not null) return result;
             }
 
-            if (!_parameterDetector.ContainsParameter(node))
-            {
+            if (type.IsPrimitive)
+                return DefaultFunctionHandler(node, this);
+            else if (_parameterDetector.ContainsParameter(node))
+                return ConvertInternal(node.Object);
+            else
                 return EvaluateToExpr(node);
-            }
-
-            // 默认处理逻辑
-            bool useFunction = node.Method.Name != "ToString";
-            return ConvertMethodCallDefault(node, useFunction);
         }
 
         #endregion
 
         #region 内部处理逻辑
-
-        private Expr ConvertMethodCallDefault(MethodCallExpression node, bool useFunction)
-        {
-            if (_parameterDetector.ContainsParameter(node))
-            {
-                if (useFunction)
-                    // 将外部方法视为函数调用
-                    return CreateFunctionExpr(node);
-                else
-                    return ConvertInternal(node.Object);
-            }
-            else
-                return EvaluateToExpr(node);
-        }
 
         private Expr CreateFunctionExpr(MethodCallExpression node)
         {
@@ -414,17 +448,7 @@ namespace LiteOrm.Common
                 }
             }
 
-            // 方法名作为函数名
-            var functionName = node.Method.Name;
-
-            // 特殊处理一些常用类
-            if (node.Method.DeclaringType == typeof(Math))
-            {
-                // Math 类方法通常直接使用原名或大写映射
-                functionName = node.Method.Name.ToUpper();
-            }
-
-            return new FunctionExpr(functionName, parameters.ToArray());
+            return new FunctionExpr(node.Method.Name, parameters.ToArray());
         }
 
         #endregion

@@ -58,7 +58,6 @@ namespace LiteOrm.SqlBuilder
 
         private readonly Dictionary<string, string> _functionMappings = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase)
         {
-            ["Length"] = "LENGTH",
             ["IndexOf"] = "CHARINDEX",
             ["Substring"] = "SUBSTR",
             ["ToUpper"] = "UPPER",
@@ -66,8 +65,7 @@ namespace LiteOrm.SqlBuilder
             ["Now"] = "CURRENT_TIMESTAMP",
             ["Today"] = "CURRENT_DATE",
             ["Max"] = "GREATEST",
-            ["Min"] = "LEAST",
-            ["IfNull"] = "COALESCE"
+            ["Min"] = "LEAST"
         };
 
         /// <summary>

@@ -50,6 +50,7 @@ namespace LiteOrm.Common
         {
             if (expr is null) return string.Empty;
 
+            // 根据 Expr 的具体类型，分发到对应的 SQL 转换逻辑
             if (expr is BinaryExpr binary) return ToSql(binary, context, sqlBuilder, outputParams);
             if (expr is UnaryExpr unary) return ToSql(unary, context, sqlBuilder, outputParams);
             if (expr is ValueExpr value) return ToSql(value, context, sqlBuilder, outputParams);
@@ -69,8 +70,10 @@ namespace LiteOrm.Common
             switch (expr.OriginOperator)
             {
                 case BinaryOperator.RegexpLike:
+                    // 正则表达式匹配通常使用特定的函数调用语法
                     return $"{op}({expr.Left.ToSql(context, sqlBuilder, outputParams)},{expr.Right.ToSql(context, sqlBuilder, outputParams)})";
                 case BinaryOperator.Equal:
+                    // 特殊处理 NULL 值的比较：在 SQL 中 a = NULL 始终为假，必须使用 IS NULL
                     if (expr.Right is null || expr.Right is ValueExpr vs && vs.Value is null)
                     {
                         if (expr.Operator == BinaryOperator.Equal)
@@ -88,12 +91,15 @@ namespace LiteOrm.Common
                     else
                         return $"{expr.Left.ToSql(context, sqlBuilder, outputParams)} {op} {expr.Right.ToSql(context, sqlBuilder, outputParams)}";
                 case BinaryOperator.Concat:
+                    // 字符串拼接逻辑委托给具体的 sqlBuilder，因为不同数据库的语法差异很大（如 || vs CONCAT）
                     return sqlBuilder.BuildConcatSql(expr.Left.ToSql(context, sqlBuilder, outputParams), expr.Right.ToSql(context, sqlBuilder, outputParams));
                 case BinaryOperator.Contains:
                 case BinaryOperator.EndsWith:
                 case BinaryOperator.StartsWith:
+                    // 处理 LIKE 相关的模糊查询
                     if (expr.Right is ValueExpr vs2)
                     {
+                        // 参数化处理：将包含通配符的字符串作为参数传入，避免 SQL 注入
                         string paramName = outputParams.Count.ToString();
                         string val = sqlBuilder.ToSqlLikeValue(vs2.Value?.ToString());
                         switch (expr.OriginOperator)
@@ -106,10 +112,12 @@ namespace LiteOrm.Common
                                 val = $"%{val}%"; break;
                         }
                         outputParams.Add(new KeyValuePair<string, object>(sqlBuilder.ToParamName(paramName), val));
+                        // 使用 escape 子句转义用户输入中的特殊字符
                         return $@"{expr.Left.ToSql(context, sqlBuilder, outputParams)} {op} {sqlBuilder.ToSqlParam(paramName)} escape '{Const.LikeEscapeChar}'";
                     }
                     else
                     {
+                        // 若右侧不是常量而是表达式，则需要生成复杂的嵌套 REPLACE 来转义特殊字符
                         string left = expr.Left.ToSql(context, sqlBuilder, outputParams);
                         string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({expr.Right.ToSql(context, sqlBuilder, outputParams)},'{Const.LikeEscapeChar}', '{Const.LikeEscapeChar}{Const.LikeEscapeChar}'),'_', '{Const.LikeEscapeChar}_'),'%', '{Const.LikeEscapeChar}%'),'/', '{Const.LikeEscapeChar}/'),'[', '{Const.LikeEscapeChar}['),']', '{Const.LikeEscapeChar}]')";
                         switch (expr.OriginOperator)
@@ -130,6 +138,7 @@ namespace LiteOrm.Common
 
         private static string ToSql(UnaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
+            // 处理一元操作符
             switch (expr.Operator)
             {
                 case UnaryOperator.Not:
@@ -148,12 +157,14 @@ namespace LiteOrm.Common
             if (expr.Value == null)
             {
                 return "NULL";
-            }else if (IsNumericType(expr.Value.GetType()))
+            }else if (expr.Value.GetType().IsPrimitive)
             {
+                // 数值类型通常直接以字面量形式输出，较为高效
                 return expr.Value.ToString();
             }
             else if (expr.Value is IEnumerable enumerable && !(expr.Value is string))
             {
+                // 处理 IN (...) 集合
                 StringBuilder sb = new StringBuilder();
                 foreach (var item in enumerable)
                 {
@@ -164,6 +175,7 @@ namespace LiteOrm.Common
                     }
                     else
                     {
+                        // 对集合中的每个元素进行参数化
                         string paramName = outputParams.Count.ToString();
                         outputParams.Add(new(sqlBuilder.ToParamName(paramName), item));
                         sb.Append(sqlBuilder.ToSqlParam(paramName));
@@ -173,36 +185,16 @@ namespace LiteOrm.Common
             }
             else
             {
+                // 其他类型（如字符串、日期）通过参数化处理以保证安全
                 string paramName = outputParams.Count.ToString();
                 outputParams.Add(new(sqlBuilder.ToParamName(paramName), expr.Value));
                 return sqlBuilder.ToSqlParam(paramName);
             }
         }
 
-        // 判断是否为数字类型
-        private static bool IsNumericType(Type type)
-        {
-            switch (Type.GetTypeCode(type))
-            {
-                case TypeCode.Byte:
-                case TypeCode.SByte:
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                case TypeCode.Single:
-                case TypeCode.Double:
-                case TypeCode.Decimal:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
         private static string ToSql(PropertyExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
+            // 将属性名映射为带限定符的列名，如 [User].[Name] 或 [Name]
             SqlColumn column = context.Table.GetColumn(expr.PropertyName);
             if (column is null) throw new Exception($"Property \"{expr.PropertyName}\" does not exist in type \"{context.Table.DefinitionType.FullName}\". ");
             string tableAlias = context.TableAliasName;
@@ -211,6 +203,7 @@ namespace LiteOrm.Common
 
         private static string ToSql(FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
+            // 分发给具体的 sqlBuilder 生成数据库对应的函数 SQL
             return sqlBuilder.BuildFunctionSql(expr.FunctionName, expr.Parameters.Select(p => new KeyValuePair<string, Expr>(p.ToSql(context, sqlBuilder, outputParams), p)).ToList());
         }
 
@@ -226,6 +219,7 @@ namespace LiteOrm.Common
 
         private static string ToSql(ExprSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
+            // 处理组合表达式集合 (AND/OR/CONCAT)
             if (expr.JoinType == ExprJoinType.Concat)
                 return sqlBuilder.BuildConcatSql(expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).ToArray());
             string joinStr;

@@ -12,22 +12,23 @@ namespace LiteOrm.Common
 {
 
     /// <summary>
-    /// 表达式集合，支持 AND / OR / 逗号 / 字符串拼接分隔。通常用于逻辑组合或多选值列表查询。
+    /// 表达式集合，支持通过逻辑运算符（AND / OR）或连接符（Comma / Concat）组合一组子表达式。
+    /// 常用于构建复合 WHERE 条件（AND/OR 组）或 SQL 列表（如 IN (@p1, @p2)）。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class ExprSet : Expr, ICollection<Expr>
     {
         /// <summary>
-        /// 构造并初始化空集合。
+        /// 构造空集合。
         /// </summary>
         public ExprSet()
         {
         }
 
         /// <summary>
-        /// 使用一组表达式初始化集合。
+        /// 使用一组现有的表达式初始化集合。
         /// </summary>
-        /// <param name="items">表达式项</param>
+        /// <param name="items">要加入集合的子项。</param>
         public ExprSet(params Expr[] items)
         {
             foreach (var item in items)
@@ -37,9 +38,9 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 使用一组表达式初始化集合。
+        /// 使用一组表达式序列初始化集合。
         /// </summary>
-        /// <param name="items">表达式项</param>
+        /// <param name="items">要加入集合的子项序列。</param>
         public ExprSet(IEnumerable<Expr> items)
         {
             foreach (var item in items)
@@ -49,10 +50,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 使用指定连接类型和表达式项初始化集合。
+        /// 使用指定的连接类型和一组初始表达式初始化集合。
         /// </summary>
-        /// <param name="joinType">连接类型（And/Or/Comma）</param>
-        /// <param name="items">表达式项</param>
+        /// <param name="joinType">集合内元素的逻辑连接方式。</param>
+        /// <param name="items">初始子项。</param>
         public ExprSet(ExprJoinType joinType, params Expr[] items)
         {
             JoinType = joinType;
@@ -63,10 +64,8 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 使用指定连接类型和表达式项初始化集合。
+        /// 使用指定的连接类型和子项序列初始化集合。
         /// </summary>
-        /// <param name="joinType">连接类型（And/Or/Comma）</param>
-        /// <param name="items">表达式项</param>
         public ExprSet(ExprJoinType joinType, IEnumerable<Expr> items)
         {
             JoinType = joinType;
@@ -77,18 +76,19 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 指示当前表达式是否为值类型表达式，仅在连接类型为 <see cref="ExprJoinType.List"/> 及 <see cref="ExprJoinType.Concat"/> 时为 true。
+        /// 指示当前集合是否作为值列表存在（如 LIST 形式的 IN 参数或 CONCAT 形式的拼接）。
+        /// 返回 true 表示该集合整体可作为一个计算值。
         /// </summary>
         [JsonIgnore]
         public override bool IsValue => JoinType == ExprJoinType.List || JoinType == ExprJoinType.Concat;
 
         /// <summary>
-        /// 集合的连接类型
+        /// 获取或设置该集合中子项的 SQL 连接模式。
         /// </summary>
         public ExprJoinType JoinType { get; set; }
 
         /// <summary>
-        /// 集合中的表达式项
+        /// 获取当前集合中所有子表达式的只读列表。
         /// </summary>
         public ReadOnlyCollection<Expr> Items => items.AsReadOnly();
         private List<Expr> items = new List<Expr>();
@@ -104,14 +104,20 @@ namespace LiteOrm.Common
         public bool IsReadOnly => false;
 
         /// <summary>
-        /// 将表达式项添加到集合中。
+        /// 向集合中添加一个表达式。
         /// </summary>
-        /// <param name="item">要添加的表达式对象。</param>
+        /// <param name="item">要添加的子表达式。</param>
+        /// <remarks>
+        /// - 若添加具有相同 JoinType 的 ExprSet，会将其子项平铺添加，以简化树结构和括弧生成的冗余。
+        /// - 添加时会验证 IsValue 属性的兼容性。
+        /// </remarks>
         public void Add(Expr item)
         {
             if (item is null) item = Null;
-            if (item is ExprSet set && set.JoinType == JoinType)
+            // 拍平相同逻辑类型的嵌套集合或列表类型集合 (如将 (A AND B) AND C 优化为 A AND B AND C)
+            if (item is ExprSet set && (set.JoinType == JoinType || set.JoinType ==  ExprJoinType.List))
                 items.AddRange(set.Items);
+            // 确保逻辑节点类型一致或为通用函数调用
             else if (item.IsValue == IsValue || item is FunctionExpr)
                 items.Add(item);
             else throw new ArgumentException($"无法将表达式项添加到集合中，表达式项的 IsValue 属性必须与集合的 IsValue 属性相同。", nameof(item));
@@ -177,9 +183,9 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 返回表示当前集合表达式的字符串。
+        /// 返回当前表达式集合的字符串预览。
         /// </summary>
-        /// <returns>表示当前表达式的字符串。</returns>
+        /// <returns>带有连接词的括号形式字符串，如 "(A AND B AND C)"。</returns>
         public override string ToString()
         {
             string joinStr;
@@ -199,19 +205,21 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 确定指定的对象是否等于当前对象。
+        /// 比较两个 ExprSet 是否逻辑等价。
+        /// 对于 AND/OR 类型集合，元素顺序不影响等价性；
+        /// 对于 LIST/CONCAT 类型集合，顺序敏感。
         /// </summary>
-        /// <param name="obj">要与当前对象进行比较的对象。</param>
-        /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
         public override bool Equals(object obj)
         {
             if (obj is ExprSet set)
             {
                 if (set.JoinType != JoinType) return false;
+                // 对于顺序敏感的连接
                 if (JoinType == ExprJoinType.List || JoinType == ExprJoinType.Concat)
                     return Enumerable.SequenceEqual(items, set.items);
                 else
                 {
+                    // 对于无序逻辑连接，使用集合比较提高鲁棒性
                     var thisSet = new HashSet<Expr>(items);
                     var otherSet = new HashSet<Expr>(set.items);
                     return thisSet.Count == otherSet.Count && thisSet.SetEquals(otherSet);
@@ -221,9 +229,8 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 作为默认哈希函数。
+        /// 生成哈希值，确保逻辑等价的集合哈希值尽可能一致。
         /// </summary>
-        /// <returns>当前对象的哈希代码。</returns>
         public override int GetHashCode()
         {
             if (JoinType == ExprJoinType.List || JoinType == ExprJoinType.Concat)
@@ -237,25 +244,25 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// 表达式集合的连接类型枚举。
+    /// 表达式集合的逻辑连接模式。
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ExprJoinType
     {
         /// <summary>
-        /// 默认连接（通常用于列表）
+        /// 逗号分隔的列表（通常用于构建 IN (@p1, @p2, ...)）
         /// </summary>
         List = 0,
         /// <summary>
-        /// 使用 AND 连接
+        /// 逻辑 AND 连接
         /// </summary>
         And = 1,
         /// <summary>
-        /// 使用 OR 连接
+        /// 逻辑 OR 连接
         /// </summary>
         Or = 2,
         /// <summary>
-        /// 使用字符串连接符连接（通常用于字符串拼接）
+        /// 字符串或其它值的 Concat 连接
         /// </summary>
         Concat = 3
     }

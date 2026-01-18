@@ -13,24 +13,33 @@ namespace LiteOrm.Common
     /// </summary>
     internal class ExprJsonConverterFactory : JsonConverterFactory
     {
+        // 检查类型是否为 Expr 或其子类
         public override bool CanConvert(Type typeToConvert)
         {
             return typeof(Expr).IsAssignableFrom(typeToConvert);
         }
 
+        // 创建针对特定 Expr 子类的泛型转换器
         public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
         {
             return (JsonConverter)Activator.CreateInstance(
                 typeof(ExprJsonConverter<>).MakeGenericType(typeToConvert));
         }
+
+        /// <summary>
+        /// 针对 Expr 及其子类的自定义 JSON 序列化器。
+        /// 采用紧凑型设计，支持字面量直接序列化（ValueExpr）和带类型标识符（$）的复杂转换。
+        /// </summary>
         private class ExprJsonConverter<T> : JsonConverter<T> where T : Expr
         {
+            // 使用非转义编码器，避免 HTML 字符被转义，提高 SQL 表达式的可读性
             private static readonly JsonSerializerOptions _compactOptions = new JsonSerializerOptions
             {
                 WriteIndented = false,
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
 
+            // 维护 C# 操作符与 JSON 短标识的映射
             private static readonly Dictionary<BinaryOperator, string> _operatorToJson = new Dictionary<BinaryOperator, string>
         {
             { BinaryOperator.Equal, "==" },
@@ -76,18 +85,21 @@ namespace LiteOrm.Common
                 if (reader.TokenType == JsonTokenType.Null) return null;
 
                 Expr result;
+                // 若 JSON 为字面量（字符串、数字、布尔），直接映射为 ValueExpr
                 if (reader.TokenType != JsonTokenType.StartObject)
                 {
                     result = new ValueExpr(ReadNative(ref reader, options));
                 }
                 else
                 {
+                    // 探查对象属性以确定 Expr 类型
                     Utf8JsonReader tempReader = reader;
                     tempReader.Read();
                     if (tempReader.TokenType != JsonTokenType.PropertyName)
                     {
                         result = new ValueExpr(ReadNative(ref reader, options));
                     }
+                    // 快捷方式：{"@": "PropName"} 映射为 PropertyExpr
                     else if (tempReader.ValueTextEquals("@"))
                     {
                         reader.Read(); // 跳过 @
@@ -96,22 +108,26 @@ namespace LiteOrm.Common
                         while (reader.Read() && reader.TokenType != JsonTokenType.EndObject) ;
                         result = new PropertyExpr(propName);
                     }
+                    // 标准方式：{"$": "typeMark", ...}
                     else if (tempReader.ValueTextEquals("$"))
                     {
                         reader.Read(); // 跳过 $
                         reader.Read(); // 读取 typeMark
                         string mark = reader.GetString();
 
+                        // 优先按操作符短标识识别（如 ==, in, contains）
                         if (_jsonToOperator.TryGetValue(mark, out var bopSymbol))
                         {
                             result = ReadBinary(ref reader, options, bopSymbol);
                         }
+                        // 其次按枚举名识别
                         else if (Enum.TryParse<BinaryOperator>(mark, true, out var bop))
                         {
                             result = ReadBinary(ref reader, options, bop);
                         }
                         else
                         {
+                            // 最后按特殊类型标识识别
                             result = mark switch
                             {
                                 "bin" => ReadBinary(ref reader, options, null),
@@ -127,6 +143,7 @@ namespace LiteOrm.Common
                     }
                     else
                     {
+                        // 兜底：作为普通值对象
                         result = new ValueExpr(ReadNative(ref reader, options));
                     }
                 }
@@ -147,12 +164,14 @@ namespace LiteOrm.Common
                     return;
                 }
 
+                // 优化序列化格式：基本值类型直接写入
                 if (value is ValueExpr ve)
                 {
                     writer.WriteRawValue(JsonSerializer.Serialize(ve.Value, _compactOptions));
                     return;
                 }
 
+                // 优化序列化格式：PropertyExpr 使用简写的 @ 标识
                 if (value is PropertyExpr pe)
                 {
                     writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, string> { { "@", pe.PropertyName } }, _compactOptions));
@@ -165,6 +184,7 @@ namespace LiteOrm.Common
                     return;
                 }
 
+                // 复杂表达式使用 $ 标识符
                 writer.WriteStartObject();
                 string mark = value switch
                 {

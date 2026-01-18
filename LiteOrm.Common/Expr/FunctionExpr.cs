@@ -8,13 +8,14 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 表示函数调用表达式，例如 <c>SUM(column)</c>、<c>COALESCE(a,b)</c> 等。
+    /// 表示数据库函数调用表达式，例如 <c>SUM(Column)</c>、<c>COALESCE(Arg1, Arg2)</c> 等。
+    /// 此类通用性高，可代表任何数据库端的内置函数或用户自定义函数。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class FunctionExpr : Expr
     {
         /// <summary>
-        /// 构造函数，初始化空参数列表。
+        /// 默认构造，初始化空的参数列表。
         /// </summary>
         public FunctionExpr()
         {
@@ -22,10 +23,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 使用函数名与参数构造函数表达式。
+        /// 使用函数名及对应的参数表达式初始化 FunctionExpr。
         /// </summary>
-        /// <param name="functionName">函数名</param>
-        /// <param name="parameters">参数表达式列表</param>
+        /// <param name="functionName">SQL 函数名。</param>
+        /// <param name="parameters">传入函数的参数表达式集合。</param>
         public FunctionExpr(string functionName, params Expr[] parameters)
         {
             FunctionName = functionName;
@@ -33,30 +34,30 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 函数表达式为值类型
+        /// 函数表达式通常被视为带返回值的表达式。
         /// </summary>
         public override bool IsValue => true;
+
         /// <summary>
-        /// 函数名
+        /// 获取或设置目标 SQL 函数名称。
         /// </summary>
         public string FunctionName { get; set; }
 
         /// <summary>
-        /// 参数表达式列表
+        /// 获取当前函数的参数列表。
         /// </summary>
         public List<Expr> Parameters { get; }
 
         /// <summary>
-        /// 返回表示当前函数的字符串。
+        /// 返回针对该函数的字符串预览（如 "SUM(Column)"）。
         /// </summary>
-        /// <returns>表示当前函数的字符串。</returns>
         public override string ToString()
         {
             return $"{FunctionName}({String.Join(",", Parameters)})";
         }
 
         /// <summary>
-        /// 确定指定的对象是否等于当前对象。
+        /// 深度比较两个函数调用是否一致。
         /// </summary>
         /// <param name="obj">要与当前对象进行比较的对象。</param>
         /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>

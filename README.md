@@ -165,11 +165,50 @@ var sqlGen = new SqlGen(typeof(User));
 var result = sqlGen.ToSql(expr);
 
 Console.WriteLine($"生成 SQL: {result.Sql}");
-// 获取参数化查询的参数映射
-foreach (var p in result.Params)
-{
-    Console.WriteLine($"{p.Key} = {p.Value}");
+    // 获取参数化查询的参数映射
+    foreach (var p in result.Params)
+    {
+        Console.WriteLine($"{p.Key} = {p.Value}");
+    }
 }
+```
+
+### 5. 注册自定义表达式扩展与 SQL方言构造器
+
+您可以通过自定义 Lambda 转换逻辑及为特定数据库增加 SQL 函数映射来扩展 LiteOrm 的表达式能力。
+
+#### 注册 Lambda 方法/属性转换
+```csharp
+
+// DateTime.Now -> SQL Now()
+LambdaExprConverter.RegisterMemberHandler(typeof(DateTime), "Now");
+// 注册 Math 类的所有方法（默认转换为对应的函数调用）
+LambdaExprConverter.RegisterMethodHandler(typeof(Math));
+// 注册 String.Contains 为 BinaryOperator.Contains 表达式
+LambdaExprConverter.RegisterMethodHandler(typeof(string), "Contains", (node, converter) =>
+{
+    var left = converter.Convert(node.Object);
+    var right = converter.Convert(node.Arguments[0]);
+    return new BinaryExpr(left, BinaryOperator.Contains, right);
+});
+```
+
+#### 注册数据库方言 SQL 函数
+```csharp
+// 注册跨库通用的 SQL 映射
+BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (functionName, args) => "CURRENT_TIMESTAMP");
+
+// 特殊处理 IndexOf 和 Substring，支持 C# 到 SQL 的索引转换 (0-based -> 1-based)
+BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (functionName, args) => args.Count > 2 ?
+    $"INSTR({args[0].Key}, {args[1].Key}, {args[2].Key}+1)-1" : $"INSTR({args[0].Key}, {args[1].Key})-1");
+BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (name, args) => args.Count > 2 ?
+    $"SUBSTR({args[0].Key}, {args[1].Key}+1, {args[2].Key})" : $"SUBSTR({args[0].Key}, {args[1].Key}+1)");
+
+// 为特定方言（如 MySQL、SQLite）注册特定的日期加法逻辑
+MySqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
+    (functionName, args) => $"DATE_ADD({args[0].Key}, INTERVAL {args[1].Key} {functionName.Substring(3).ToUpper().TrimEnd('S')})");
+SQLiteBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
+    (functionName, args) => $"DATE({args[0].Key}, CAST({args[1].Key} AS TEXT)||' {functionName.Substring(3).ToLower()}')");
 ```
 
 ## 高级功能示例

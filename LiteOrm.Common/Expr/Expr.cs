@@ -14,26 +14,26 @@ namespace LiteOrm.Common
     public abstract class Expr
     {
         /// <summary>
-        /// 将值类型隐式转换为值表达式。
+        /// 将值类型（如 int, DateTime, bool）隐式转换为值表达式。
         /// </summary>
         /// <param name="value">值类型数值。</param>
-        /// <returns>值表达式。</returns>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator Expr(ValueType value) => new ValueExpr(value);
 
         /// <summary>
         /// 将字符串隐式转换为值表达式。
         /// </summary>
-        /// <param name="value">字符串。</param>
-        /// <returns>值表达式。</returns>
+        /// <param name="value">字符串值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator Expr(string value) => new ValueExpr(value);
 
         /// <summary>
-        /// 表示空值的表达式。
+        /// 表示 SQL NULL 的表达式。
         /// </summary>
         public static readonly ValueExpr Null = new ValueExpr();
 
         /// <summary>
-        /// 指示当前表达式是否为值类型表达式。
+        /// 指示当前表达式是否代表一个具体的值（而非谓词/条件）。
         /// </summary>
         [JsonIgnore]
         public virtual bool IsValue => false;
@@ -131,7 +131,7 @@ namespace LiteOrm.Common
         /// 确定指定的对象是否等于当前对象。
         /// </summary>
         /// <param name="obj">要比较的对象。</param>
-        /// <returns>如果相等则为 true。</returns>
+        /// <returns>二者内容逻辑相等则为 true。</returns>
         public override bool Equals(object obj)
         {
             return base.Equals(obj);
@@ -140,32 +140,19 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取当前对象的哈希代码。
         /// </summary>
-        /// <returns>哈希代码。</returns>
+        /// <returns>基于内容生成的哈希代码。</returns>
         public override int GetHashCode()
         {
             return base.GetHashCode();
         }
 
         /// <summary>
-        /// 重载 true 运算符。
-        /// </summary>
-        /// <param name="a">表达式。</param>
-        /// <returns>如果表达式为 null 则返回 true。</returns>
-        public static bool operator true(Expr a) => a is null;
-
-        /// <summary>
-        /// 重载 false 运算符。
-        /// </summary>
-        /// <param name="a">表达式。</param>
-        /// <returns>始终返回 false。</returns>
-        public static bool operator false(Expr a) => false;
-
-        /// <summary>
-        /// 逻辑与运算符 &amp;。
+        /// 逻辑与运算符 &amp; 的重载。
+        /// 允许使用 expr1 &amp; expr2 构建复合条件。
         /// </summary>
         /// <param name="left">左操作数。</param>
         /// <param name="right">右操作数。</param>
-        /// <returns>包含逻辑与的表达式集合。</returns>
+        /// <returns>组合后的 AND 表达式。</returns>
         public static Expr operator &(Expr left, Expr right)
         {
             if (left is null) return right;
@@ -174,11 +161,12 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 逻辑或运算符 |。
+        /// 逻辑或运算符 | 的重载。
+        /// 允许使用 expr1 | expr2 构建复合条件。
         /// </summary>
         /// <param name="left">左操作数。</param>
         /// <param name="right">右操作数。</param>
-        /// <returns>包含逻辑或的表达式集合。</returns>
+        /// <returns>组合后的 OR 表达式。</returns>
         public static Expr operator |(Expr left, Expr right)
         {
             if (left is null || right is null) return Null;
@@ -250,126 +238,96 @@ namespace LiteOrm.Common
         public static Expr operator <=(Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.LessThanOrEqual, right);
 
         /// <summary>
-        /// 逻辑非运算符 !。
+        /// 逻辑非运算符 ! 的重载。
         /// </summary>
         /// <param name="expr">要取反的表达式。</param>
-        /// <returns>一个新的表达式，表示指定表达式的逻辑非。</returns>
+        /// <returns>逻辑取反后的表达式。</returns>
         public static Expr operator !(Expr expr) => expr?.Not();
     }
+
     /// <summary>
-    /// Expr 类的扩展方法，提供便捷的表达式组合功能。
+    /// Expr 类的扩展方法，提供流式调用的表达式组合功能。
     /// </summary>
     public static class ExprExtensions
     {
         /// <summary>
-        /// 使用 AND 逻辑组合两个表达式。
+        /// 使用 AND 逻辑组合当前表达式与另一个表达式。
         /// </summary>
-        /// <param name="left">左端查询表达式。</param>
-        /// <param name="right">右端查询表达式。</param>
-        /// <returns>组合后的表达式集合。</returns>
+        /// <param name="left">当前查询表达式。</param>
+        /// <param name="right">待组合的查询表达式。</param>
+        /// <returns>组合后的表达式集合（AND）。</returns>
         public static ExprSet And(this Expr left, Expr right) => Join(left, right, ExprJoinType.And);
 
         /// <summary>
-        /// 使用 OR 逻辑组合两个表达式。
+        /// 使用 OR 逻辑组合当前表达式与另一个表达式。
         /// </summary>
-        /// <param name="left">左端查询表达式。</param>
-        /// <param name="right">右端查询表达式。</param>
-        /// <returns>组合后的表达式集合。</returns>
+        /// <param name="left">当前查询表达式。</param>
+        /// <param name="right">待组合的查询表达式。</param>
+        /// <returns>组合后的表达式集合（OR）。</returns>
         public static ExprSet Or(this Expr left, Expr right) => Join(left, right, ExprJoinType.Or);
 
         /// <summary>
-        /// 使用 CONCAT 逻辑组合两个表达式。
+        /// 使用 CONCAT (字符串拼接) 逻辑组合两个表达式。
         /// </summary>
-        /// <param name="left">左端查询表达式。</param>
-        /// <param name="right">右端查询表达式。</param>
-        /// <returns>组合后的表达式集合。</returns>
+        /// <param name="left">左端表达式。</param>
+        /// <param name="right">右端表达式。</param>
+        /// <returns>组合后的表达式集合（CONCAT）。</returns>
         public static ExprSet Concat(this Expr left, Expr right) => Join(left, right, ExprJoinType.Concat);
 
         /// <summary>
         /// 使用指定的连接类型组合两个表达式。
         /// </summary>
-        /// <param name="left">左端查询表达式。</param>
-        /// <param name="right">右端查询表达式。</param>
-        /// <param name="joinType">表达式集合类型，默认为 List。</param>
-        /// <returns>组合后的表达式集合。</returns>
+        /// <param name="left">左端表达式。</param>
+        /// <param name="right">右端表达式。</param>
+        /// <param name="joinType">连接方式（And/Or/List/Concat）。</param>
+        /// <returns>新的表达式集合。</returns>
         public static ExprSet Join(this Expr left, Expr right, ExprJoinType joinType = ExprJoinType.List) => new ExprSet(joinType, left, right);
 
         /// <summary>
-        /// 取反操作。
+        /// 执行逻辑取反操作（如：NOT (condition)）。
         /// </summary>
         /// <param name="expr">要取反的表达式。</param>
-        /// <returns>一个新的表达式，表示指定表达式的逻辑非。</returns>
-        public static Expr Not(this Expr expr)
-        {
-            if (expr is BinaryExpr binaryExpr)
-                return new BinaryExpr(binaryExpr.Left, binaryExpr.Operator.Opposite(), binaryExpr.Right);
-            else
-                return new UnaryExpr(UnaryOperator.Not, expr);
-        }
+        /// <returns>取反后的 UnaryExpr。</returns>
+        public static UnaryExpr Not(this Expr expr) => new UnaryExpr(UnaryOperator.Not, expr);
 
         /// <summary>
-        /// 创建 In 二元表达式。
+        /// 创建相等比较表达式。
         /// </summary>
-        /// <param name="expr">要匹配的表达式。</param>
-        /// <param name="values">查询值的集合。</param>
-        /// <returns>In 二元表达式。</returns>
-        public static BinaryExpr In(this Expr expr, IEnumerable values) => new BinaryExpr(expr, BinaryOperator.In, new ValueExpr(values));
+        public static BinaryExpr Equal(this Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.Equal, right);
 
         /// <summary>
-        /// 创建 Not In 二元表达式。
+        /// 创建不相等比较表达式。
         /// </summary>
-        /// <param name="expr">要匹配的表达式。</param>
-        /// <param name="values">查询值的一个数组。</param>
-        /// <returns>NotIn 二元表达式。</returns>
-        public static BinaryExpr In(this Expr expr, params object[] values) => new BinaryExpr(expr, BinaryOperator.NotIn, new ValueExpr(values));
+        public static BinaryExpr NotEqual(this Expr left, Expr right) => new BinaryExpr(left, BinaryOperator.NotEqual, right);
 
         /// <summary>
-        /// 创建 Like 二元表达式。
+        /// 创建 IN 集合包含表达式。
         /// </summary>
-        /// <param name="expr">要匹配的表达式。</param>
-        /// <param name="like">Like 匹配模式。</param>
-        /// <returns>Like 二元表达式。</returns>
-        public static BinaryExpr Like(this Expr expr, string like) => new BinaryExpr(expr, BinaryOperator.Like, new ValueExpr(like));
+        public static BinaryExpr In(this Expr left, IEnumerable items) => new BinaryExpr(left, BinaryOperator.In, new ValueExpr(items));
 
         /// <summary>
-        /// 正则表达式匹配二元表达式。
+        /// 创建 NOT IN 集合不包含表达式。
         /// </summary>
-        /// <param name="expr">要匹配的表达式。</param>
-        /// <param name="regex">正则表达式。</param>
-        /// <returns>RegexpLike 二元表达式。</returns>
-        public static BinaryExpr RegexpLike(this Expr expr, string regex) => new BinaryExpr(expr, BinaryOperator.RegexpLike, new ValueExpr(regex));
+        public static BinaryExpr NotIn(this Expr left, IEnumerable items) => new BinaryExpr(left, BinaryOperator.NotIn, new ValueExpr(items));
 
         /// <summary>
-        /// 包含匹配（LIKE '%str%'）的二元表达式。
+        /// 创建模糊匹配表达式 (LIKE)。
         /// </summary>
-        /// <param name="expr">要匹配的表达式。</param>
-        /// <param name="str">要包含的字符串。</param>
-        /// <returns>Contains 二元表达式。</returns>
-        public static BinaryExpr Contains(this Expr expr, string str) => new BinaryExpr(expr, BinaryOperator.Contains, new ValueExpr(str));
+        public static BinaryExpr Like(this Expr left, string pattern) => new BinaryExpr(left, BinaryOperator.Like, pattern);
 
         /// <summary>
-        /// 前缀匹配（LIKE 'str%'）的二元表达式。
+        /// 创建包含字符串表达式 (Contains)。
         /// </summary>
-        /// <param name="expr">要匹配的表达式。</param>
-        /// <param name="str">开始的字符串。</param>
-        /// <returns>StartsWith 二元表达式。</returns>
-        public static BinaryExpr StartsWith(this Expr expr, string str) => new BinaryExpr(expr, BinaryOperator.StartsWith, new ValueExpr(str));
+        public static BinaryExpr Contains(this Expr left, string text) => new BinaryExpr(left, BinaryOperator.Contains, text);
 
         /// <summary>
-        /// 后缀匹配（LIKE '%str'）的二元表达式。
+        /// 创建以指定字符串开头的表达式 (StartsWith)。
         /// </summary>
-        /// <param name="expr">要匹配的表达式。</param>
-        /// <param name="str">结尾的字符串。</param>
-        /// <returns>EndsWith 二元表达式。</returns>
-        public static BinaryExpr EndsWith(this Expr expr, string str) => new BinaryExpr(expr, BinaryOperator.EndsWith, new ValueExpr(str));
+        public static BinaryExpr StartsWith(this Expr left, string text) => new BinaryExpr(left, BinaryOperator.StartsWith, text);
 
         /// <summary>
-        /// 使用指定的二元操作符组合两个表达式。
+        /// 创建以指定字符串结尾的表达式 (EndsWith)。
         /// </summary>
-        /// <param name="left">左端表达式。</param>
-        /// <param name="op">二元操作符。</param>
-        /// <param name="right">右端表达式。</param>
-        /// <returns>二元表达式。</returns>
-        public static BinaryExpr Union(this Expr left, BinaryOperator op, Expr right) => new BinaryExpr(left, op, right);
+        public static BinaryExpr EndsWith(this Expr left, string text) => new BinaryExpr(left, BinaryOperator.EndsWith, text);
     }
 }

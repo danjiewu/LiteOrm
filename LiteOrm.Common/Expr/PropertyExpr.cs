@@ -8,46 +8,50 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 表示实体属性（列）的表达式。处理表名或别名的格式。
+    /// 表示数据库列或实体属性引用的表达式。
+    /// 在生成的 SQL 中，它通常被解析为带有表限定符和定界符的列名。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class PropertyExpr : Expr
     {
         /// <summary>
-        /// 用于序列化/反序列化 的无参构造。
+        /// 无参构造，主要用于 JSON 反序列化。
         /// </summary>
         public PropertyExpr()
         {
         }
 
         /// <summary>
-        /// 使用属性名构造一个属性表达式。
+        /// 使用属性名称初始化 PropertyExpr。
         /// </summary>
-        /// <param name="propertyName">属性（列）名称</param>
+        /// <param name="propertyName">实体对应的属性名称（通常与数据库列名映射）。</param>
         public PropertyExpr(string propertyName)
         {
             PropertyName = propertyName;
         }
 
         /// <summary>
-        /// 属性（列）名称
+        /// 实体属性表达式是值类型表达式。
+        /// </summary>
+        [JsonIgnore]
+        public override bool IsValue => true;
+
+        /// <summary>
+        /// 获取或设置目标属性（列）的名称。
         /// </summary>
         public string PropertyName { get; set; }
 
         /// <summary>
-        /// 返回表示当前属性的字符串。
+        /// 返回针对该属性的预览字符串（如 "[PropName]"）。
         /// </summary>
-        /// <returns>表示当前属性的字符串。</returns>
         public override string ToString()
         {
             return $"[{PropertyName}]";
         }
 
         /// <summary>
-        /// 确定指定的对象是否等于当前对象。
+        /// 比较两个 PropertyExpr 是否引用同一个属性。
         /// </summary>
-        /// <param name="obj">要与当前对象进行比较的对象。</param>
-        /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
         public override bool Equals(object obj)
         {
             return obj is PropertyExpr p && p.PropertyName == PropertyName;

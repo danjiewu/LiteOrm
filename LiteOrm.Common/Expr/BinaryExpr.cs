@@ -8,12 +8,20 @@ using System.Threading.Tasks;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 二元条件表达式，例如 <c>a = b</c>, <c>name LIKE '%abc%'</c>, <c>id IN (1,2,3)</c> 等。
-    /// 支持带 NOT 前缀的操作（例如 NOT IN、NOT LIKE）。
+    /// 二元条件表达式。
+    /// 代表 [Left] [Operator] [Right] 结构，例如：
+    /// - <c>id = 1</c>
+    /// - <c>name LIKE '%abc%'</c>
+    /// - <c>score &gt; 90</c>
+    /// - <c>id IN (1, 2, 3)</c>
     /// </summary>
+    /// <remarks>
+    /// 支持位运算标志（Not）来表示反向操作（如 NOT IN, NOT LIKE）。
+    /// </remarks>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class BinaryExpr : Expr
     {
+        // 映射操作符到基础 SQL 符号
         private static Dictionary<BinaryOperator, string> operatorTexts = new Dictionary<BinaryOperator, string>()
         {
             { BinaryOperator.Equal,"=" },
@@ -30,16 +38,16 @@ namespace LiteOrm.Common
         };
 
         /// <summary>
-        /// 无参构造
+        /// 创建空的二元表达式。
         /// </summary>
         public BinaryExpr() { }
 
         /// <summary>
-        /// 使用左右表达式与操作符构造条件表达式。
+        /// 使用指定的左右操作数和操作符初始化二元表达式。
         /// </summary>
-        /// <param name="left">左侧表达式</param>
+        /// <param name="left">左侧表达式（通常是 PropertyExpr）</param>
         /// <param name="oper">二元操作符</param>
-        /// <param name="right">右侧表达式</param>
+        /// <param name="right">右侧表达式（通常是 ValueExpr 或另一个 PropertyExpr）</param>
         public BinaryExpr(Expr left, BinaryOperator oper, Expr right)
         {
             Left = left;
@@ -48,35 +56,37 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 是否为值表达式（加、减、乘、除、连接）
+        /// 指示该表达式是否为返回值的表达式（如加减乘除、字符串拼接），而非布尔判断条件。
         /// </summary>
         public override bool IsValue =>
             Operator >= BinaryOperator.Add && Operator <= BinaryOperator.Concat;
+
         /// <summary>
-        /// 左侧表达式
+        /// 获取或设置左侧子表达式。
         /// </summary>
         public Expr Left { get; set; }
+
         /// <summary>
-        /// 右侧表达式
+        /// 获取或设置右侧子表达式。
         /// </summary>
         public Expr Right { get; set; }
+
         /// <summary>
-        /// 使用的操作符（可能包含 Not 标志）
+        /// 获取或设置二元操作符。
         /// </summary>
         public BinaryOperator Operator { get; set; }
 
         /// <summary>
-        /// 获取不含 Not 标志的原始操作符（例如 Not|In => In）。
+        /// 获取去掉 NOT 标志后的原始操作符（例如 Not|In => In）。
         /// </summary>
         public BinaryOperator OriginOperator => Operator.Positive();
 
         /// <summary>
-        /// 反转当前表达式的左右表达式，并根据需要调整操作符以保持表达式结果不变。
+        /// 反转当前表达式的左右表达式位置，并尽可能保持原本的逻辑结果（例如 "a &gt; b" 变为 "b &lt; a"）。
         /// </summary>
-        /// <param name="keepResult">表达式结果是否保持不变</param>
-        /// <returns>反转结果</returns>
-        /// <exception cref="InvalidOperationException">当操作符不支持等价反转时抛出</exception>
-
+        /// <param name="keepResult">若为 true，则根据对称性调整操作符以确保逻辑结果不变。</param>
+        /// <returns>反转后的新 BinaryExpr。</returns>
+        /// <exception cref="InvalidOperationException">当操作符不支持逻辑反转（如 StartsWith）时抛出。</exception>
         public BinaryExpr Reverse(bool keepResult = false)
         {
             BinaryExpr newExpr = new BinaryExpr(Right, Operator, Left);
@@ -99,9 +109,8 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 返回表示当前表达式的字符串。
+        /// 返回当前表达式的字符串预览（非最终 SQL）。
         /// </summary>
-        /// <returns>表示当前表达式的字符串。</returns>
         public override string ToString()
         {
             if (!operatorTexts.TryGetValue(Operator, out string op)) op = Operator.ToString();
@@ -109,10 +118,8 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 确定指定的对象是否等于当前对象。
+        /// 比较两个 BinaryExpr 是否相等。
         /// </summary>
-        /// <param name="obj">要与当前对象进行比较的对象。</param>
-        /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
         public override bool Equals(object obj)
         {
             return obj is BinaryExpr b &&
@@ -134,7 +141,7 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// 双目操作符
+    /// 支持的二元操作符列表，包括比较、模糊匹配、包含及基本算术运算。
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum BinaryOperator
@@ -196,7 +203,7 @@ namespace LiteOrm.Common
         /// </summary>
         Concat = 13,
         /// <summary>
-        /// 逻辑非 
+        /// 逻辑非标志（用于组合生成 NOT IN, NOT LIKE 等）。
         /// </summary>
         Not = 64,
         /// <summary>
@@ -238,35 +245,29 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// 二元操作符的扩展方法
+    /// 为二元操作符提供的便捷扩展工具。
     /// </summary>
     public static class BinaryOperatorExt
     {
         /// <summary>
-        /// 检查操作符是否包含NOT标志
+        /// 检查指定的操作符是否带有 NOT 标志。
         /// </summary>
-        /// <param name="oper">要检查的二元操作符</param>
-        /// <returns>如果操作符包含NOT标志则返回true，否则返回false</returns>
         public static bool IsNot(this BinaryOperator oper)
         {
             return (oper & BinaryOperator.Not) == BinaryOperator.Not;
         }
 
         /// <summary>
-        /// 获取操作符的原始操作符（去除NOT标志）
+        /// 提取剥离了 NOT 标志的正向操作符。
         /// </summary>
-        /// <param name="oper">要获取原始操作符的二元操作符</param>
-        /// <returns>去除NOT标志后的原始操作符</returns>
         public static BinaryOperator Positive(this BinaryOperator oper)
         {
             return oper & ~BinaryOperator.Not;
         }
 
         /// <summary>
-        /// 获取操作符的相反操作符（添加或去除NOT标志）
+        /// 获取当前操作符的对立版本（即取反或撤销取反）。
         /// </summary>
-        /// <param name="oper">要获取相反操作符的二元操作符</param>
-        /// <returns>相反的操作符</returns>
         public static BinaryOperator Opposite(this BinaryOperator oper)
         {
             return oper ^ BinaryOperator.Not;

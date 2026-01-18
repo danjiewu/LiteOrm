@@ -29,6 +29,10 @@ namespace LiteOrm.Demo
         {
             Console.WriteLine("\n=== Expr 表达式全示例展示 ===");
 
+            SqlGen sqlGen = new SqlGen(typeof(UserView));
+            var expr = Expr.Exp<UserView>(u => String.Concat(new string[] { u.DeptName, u.UserName }).Length==10 && u.CreateTime.AddDays(10) > DateTime.Now && u.UserName.Substring(2, 2) == "经理");
+            Console.WriteLine(sqlGen.ToSql(expr));
+
             ShowBinaryExpr();
             ShowValueExpr();
             ShowPropertyExpr();
