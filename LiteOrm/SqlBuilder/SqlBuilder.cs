@@ -49,15 +49,15 @@ namespace LiteOrm.SqlBuilder
     /// </code>
     /// </remarks>
     public class BaseSqlBuilder : ISqlBuilder
-    {           
-        
+    {
+
         /// <summary>
         /// 获取默认的 <see cref="BaseSqlBuilder"/> 实例。
         /// </summary>
         public static readonly BaseSqlBuilder Instance = new BaseSqlBuilder();
 
         private readonly Dictionary<string, string> _functionMappings = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase)
-        {            
+        {
             ["Length"] = "LENGTH",
             ["IndexOf"] = "CHARINDEX",
             ["Substring"] = "SUBSTR",
@@ -68,7 +68,7 @@ namespace LiteOrm.SqlBuilder
             ["Max"] = "GREATEST",
             ["Min"] = "LEAST",
             ["IfNull"] = "COALESCE"
-        };      
+        };
 
         /// <summary>
         /// 构建函数调用的 SQL 片段。
@@ -83,15 +83,15 @@ namespace LiteOrm.SqlBuilder
             Type type = this.GetType();
             while (typeof(BaseSqlBuilder).IsAssignableFrom(type))
             {
-                if(GetSqlHandlerMap(type).TryGetFunctionSqlHandler(functionName, out var handler))
+                if (GetSqlHandlerMap(type).TryGetFunctionSqlHandler(functionName, out var handler))
                     return handler(functionName, args);
                 type = type.BaseType;
-            }  
-            if(_functionMappings.TryGetValue(functionName, out string mappedName))
+            }
+            if (_functionMappings.TryGetValue(functionName, out string mappedName))
             {
                 functionName = mappedName;
             }
-            return $"{functionName}({string.Join(", ", args.Select(a=>a.Key))})";
+            return $"{functionName}({string.Join(", ", args.Select(a => a.Key))})";
         }
 
         #region 内部字段与正则表达式
@@ -434,18 +434,18 @@ namespace LiteOrm.SqlBuilder
             return $"INSERT INTO {ToSqlName(tableName)} ({columns}) \nVALUES {string.Join(",", valuesList)}";
         }
 
-        
-        internal class SqlHandlerMap {
+
+        internal class SqlHandlerMap
+        {
             private readonly ConcurrentDictionary<string, Func<string, IList<KeyValuePair<string, Expr>>, string>> FunctionSqlHandlers = new ConcurrentDictionary<string, Func<string, IList<KeyValuePair<string, Expr>>, string>>(StringComparer.OrdinalIgnoreCase);
-            public bool RegisterFunctionSqlHandler(string functionName, Func<string, IList<KeyValuePair<string, Expr>>, string> handler)
+            public void RegisterFunctionSqlHandler(string functionName, Func<string, IList<KeyValuePair<string, Expr>>, string> handler)
             {
-                if (string.IsNullOrWhiteSpace(functionName) || handler is null)
-                    return false;
+                if (string.IsNullOrWhiteSpace(functionName)) throw new ArgumentNullException(nameof(functionName));
+                if (handler == null) throw new ArgumentNullException(nameof(handler));
                 FunctionSqlHandlers[functionName] = handler;
-                return true;
             }
 
-            public  bool TryGetFunctionSqlHandler(string functionName, out Func<string, IList<KeyValuePair<string, Expr>>, string> handler)
+            public bool TryGetFunctionSqlHandler(string functionName, out Func<string, IList<KeyValuePair<string, Expr>>, string> handler)
             {
                 return FunctionSqlHandlers.TryGetValue(functionName, out handler);
             }
@@ -455,7 +455,7 @@ namespace LiteOrm.SqlBuilder
         internal static SqlHandlerMap GetSqlHandlerMap<T>() where T : BaseSqlBuilder
         {
             return _sqlHandlerMaps.GetOrAdd(typeof(T), t => new SqlHandlerMap());
-        }   
+        }
 
         internal static SqlHandlerMap GetSqlHandlerMap(Type type)
         {
@@ -476,22 +476,37 @@ namespace LiteOrm.SqlBuilder
         /// <param name="functionName"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public static bool RegisterFunctionSqlHandler<T>(this T sqlBuilder, string functionName, Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
+        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, string functionName, Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
         {
-                return BaseSqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, handler);
+            BaseSqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, handler);
         }
 
-    /// <summary>
-    /// 获取函数的 SQL 语句处理器
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="sqlBuilder"></param>
-    /// <param name="functionName"></param>
-    /// <param name="handler"></param>
-    /// <returns></returns>
+        /// <summary>
+        /// 注册多个函数的 SQL 语句处理器
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="sqlBuilder"></param>
+        /// <param name="functionNames"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, IEnumerable<string> functionNames, Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
+        {
+            foreach (string functionName in functionNames)
+            {
+                BaseSqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, handler);
+            }
+        }
+        /// <summary>
+        /// 获取函数的 SQL 语句处理器
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="sqlBuilder"></param>
+        /// <param name="functionName"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
         public static bool TryGetFunctionSqlHandler<T>(this T sqlBuilder, string functionName, out Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
-         {
-                return BaseSqlBuilder.GetSqlHandlerMap<T>().TryGetFunctionSqlHandler(functionName, out handler);
+        {
+            return BaseSqlBuilder.GetSqlHandlerMap<T>().TryGetFunctionSqlHandler(functionName, out handler);
         }
     }
 }

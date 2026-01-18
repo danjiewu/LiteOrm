@@ -159,7 +159,7 @@ namespace LiteOrm.Demo
             string currentMonth = DateTime.Now.ToString("yyyyMM");
 
             // 示例 1: 查询年龄 > 25 且用户名第三至第四个字为 "经理" 的用户
-            var expr1 = Expr.Exp<UserView>(u => u.Age > 25 && u.UserName.Substring(2,2)== "经理");
+            var expr1 = Expr.Exp<UserView>(u => u.Age > 25 && u.CreateTime.AddDays(10)> DateTime.Now && u.UserName.Substring(2,2)== "经理");
             Console.WriteLine(new SqlGen(typeof(UserView)).ToSql(expr1)); // 触发 SQL 生成，验证表达式有效性
             var users1 = await userService.SearchAsync(expr1);
             Console.WriteLine($"\n[示例 1] 年龄 > 25 且用户名第三至第四个字为 '经理':");

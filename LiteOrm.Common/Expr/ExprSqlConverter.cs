@@ -145,7 +145,14 @@ namespace LiteOrm.Common
 
         private static string ToSql(ValueExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (expr.Value is IEnumerable enumerable && !(expr.Value is string))
+            if (expr.Value == null)
+            {
+                return "NULL";
+            }else if (IsNumericType(expr.Value.GetType()))
+            {
+                return expr.Value.ToString();
+            }
+            else if (expr.Value is IEnumerable enumerable && !(expr.Value is string))
             {
                 StringBuilder sb = new StringBuilder();
                 foreach (var item in enumerable)
@@ -169,6 +176,28 @@ namespace LiteOrm.Common
                 string paramName = outputParams.Count.ToString();
                 outputParams.Add(new(sqlBuilder.ToParamName(paramName), expr.Value));
                 return sqlBuilder.ToSqlParam(paramName);
+            }
+        }
+
+        // 判断是否为数字类型
+        private static bool IsNumericType(Type type)
+        {
+            switch (Type.GetTypeCode(type))
+            {
+                case TypeCode.Byte:
+                case TypeCode.SByte:
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                case TypeCode.Decimal:
+                    return true;
+                default:
+                    return false;
             }
         }
 

@@ -16,10 +16,10 @@ namespace LiteOrm
     /// 在应用程序的依赖注入容器中为 LiteOrm 组件提供初始化逻辑。
     /// </summary>
     /// <remarks>此类通常注册为单例，负责在应用程序启动期间配置核心 LiteOrm 服务，例如会话管理和表信息提供程序。它应被用于确保 LiteOrm 组件在使用之前已正确设置。</remarks>
-    [AutoRegister(Lifetime =ServiceLifetime.Singleton)]
+    [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public class LiteOrmComponentInitializer : IComponentInitializer
     {
-        
+
         /// <summary>
         /// 使用指定的组件上下文初始化应用程序范围的服务并注册自定义 SQL 函数。
         /// </summary>
@@ -130,13 +130,13 @@ namespace LiteOrm
                         $"SUBSTR({args[0].Key}, {args[1].Key}+1, {args[2].Key})" : $"SUBSTR({args[0].Key}, {args[1].Key}+1)");
 
             // SQLite
-            SQLiteBuilder.Instance.RegisterFunctionSqlHandler("AddHours", (functionName, args) => $"DATETIME({args[0].Key}, '+' || {args[1].Key} || ' hours')");
+            SQLiteBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
+                (functionName, args) => $"DATE({args[0].Key}, CAST({args[1].Key} AS TEXT)||' {functionName.Substring(3).ToLower()}')");
 
             // MySQL
             MySqlBuilder.Instance.RegisterFunctionSqlHandler("LENGTH", (functionName, args) => $"CHAR_LENGTH({args[0].Key})");
-            MySqlBuilder.Instance.RegisterFunctionSqlHandler("DateAdd", (functionName, args) => $"DATE_ADD({args[0].Key}, INTERVAL {args[2].Key} {args[1].Key.ToUpper()})");
-            MySqlBuilder.Instance.RegisterFunctionSqlHandler("DateSub", (functionName, args) => $"DATE_SUB({args[0].Key}, INTERVAL {args[2].Key} {args[1].Key.ToUpper()})");
-            MySqlBuilder.Instance.RegisterFunctionSqlHandler("DateDiff", (functionName, args) => $"TIMESTAMPDIFF({args[0].Key}, {args[1].Key}, {args[2].Key})");
+            MySqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
+                (functionName, args) => $"DATE_ADD({args[0].Key}, INTERVAL {args[1].Key} {functionName.Substring(3).ToUpper().TrimEnd('S')})");
 
             // Oracle
             OracleBuilder.Instance.RegisterFunctionSqlHandler("IfNull", (name, args) => $"NVL({args[0].Key}, {args[1].Key})");
