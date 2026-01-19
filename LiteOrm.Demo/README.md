@@ -104,7 +104,7 @@ Console.WriteLine($"  (Age > 10 AND Age < 20) OR DeptId == 1: {set}");
 ```
 
 ### 2. Lambda 表达式转换
-LiteOrm 支持有限的 C# Lambda 表达式转换为 `Expr` 对象并且支持 `Expr` 的JSON 序列化与反序列化。
+LiteOrm 支持常见的 C# Lambda 表达式转换为 `Expr` 对象，并且可以通过注册自定义表达式与 SQL方言构造器进行扩展，见[ 10.自定义 Lambda 表达式转换与 SQL 函数映射扩展](#link10)。
 
 **代码示例：**
 ```csharp
@@ -166,7 +166,7 @@ var deserializedExpr = JsonSerializer.Deserialize<Expr>(json, jsonOptions);
 
 **代码示例：**
 ```csharp
-var expr = (Expr.Property(nameof(User.Age)) > 18) & (Expr.Property(nameof(User.UserName)).Contains("admin"));
+var expr = (Expr.Property(nameof(User.Age)) > 18) & (Expr.Property(nameof(User.UserName)).Contains("admin_"));
 var sqlGen = new SqlGen(typeof(User));
 var result = sqlGen.ToSql(expr);
 Console.WriteLine($"  Expr: {expr}");
@@ -518,6 +518,47 @@ fail: LiteOrm.Service.ServiceInvokeInterceptor[0]
 ...
 事务执行失败并已回滚: 模拟异常，测试事务回滚
 回滚成功：用户未创建
+```
+
+<a name="link10"></a>
+
+### 10.自定义 Lambda 表达式转换与 SQL 函数映射扩展
+
+您可以通过自定义 Lambda 转换逻辑及为特定数据库增加 SQL 函数映射来扩展 LiteOrm 的表达式能力。（示例代码已在 LiteOrm 中默认实现，无需重复注册）
+
+#### 注册 Lambda 方法/属性转换
+```csharp
+
+// DateTime.Now 解析为 CURRENT_TIMESTAMP，需配合 SQL 函数注册使用
+LambdaExprConverter.RegisterMemberHandler(typeof(DateTime), "Now");
+// 注册 Math 类的所有方法（默认转换为对应的函数调用）
+LambdaExprConverter.RegisterMethodHandler(typeof(Math));
+// 注册 String.Contains 为 BinaryOperator.Contains 表达式
+LambdaExprConverter.RegisterMethodHandler(typeof(string), "Contains", (node, converter) =>
+{
+    var left = converter.Convert(node.Object);
+    var right = converter.Convert(node.Arguments[0]);
+    return new BinaryExpr(left, BinaryOperator.Contains, right);
+});
+```
+
+#### 注册数据库方言 SQL 函数
+
+```csharp
+// Now 函数映射为 CURRENT_TIMESTAMP（对应 DateTime.Now 解析结果）
+BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (functionName, args) => "CURRENT_TIMESTAMP");
+
+// 特殊处理 IndexOf 和 Substring，支持 C# 到 SQL 的索引转换 (0-based -> 1-based)
+BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (functionName, args) => args.Count > 2 ?
+    $"INSTR({args[0].Key}, {args[1].Key}, {args[2].Key}+1)-1" : $"INSTR({args[0].Key}, {args[1].Key})-1");
+BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (name, args) => args.Count > 2 ?
+    $"SUBSTR({args[0].Key}, {args[1].Key}+1, {args[2].Key})" : $"SUBSTR({args[0].Key}, {args[1].Key}+1)");
+
+// 为特定数据库（如 MySQL、SQLite）注册特定的日期加法逻辑
+MySqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
+    (functionName, args) => $"DATE_ADD({args[0].Key}, INTERVAL {args[1].Key} {functionName.Substring(3).ToUpper().TrimEnd('S')})");
+SQLiteBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
+    (functionName, args) => $"DATE({args[0].Key}, CAST({args[1].Key} AS TEXT)||' {functionName.Substring(3).ToLower()}')");
 ```
 
 ## 代码结构
