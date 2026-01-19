@@ -188,6 +188,7 @@ namespace LiteOrm.Common
         /// <returns>带有连接词的括号形式字符串，如 "(A AND B AND C)"。</returns>
         public override string ToString()
         {
+            if(Items.Count == 0) return string.Empty;
             string joinStr;
             switch (JoinType)
             {

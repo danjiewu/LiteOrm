@@ -410,7 +410,7 @@ namespace LiteOrm
                 strCondition = expr.ToSql(context, SqlBuilder, paramList);
             }
 
-            if (String.IsNullOrEmpty(strCondition)) strCondition = " 1 = 1 ";
+            if (String.IsNullOrWhiteSpace(strCondition)) strCondition = "1=1";
             return MakeNamedParamCommand(sqlWithParam.Replace(ParamCondition, strCondition), paramList);
         }
 

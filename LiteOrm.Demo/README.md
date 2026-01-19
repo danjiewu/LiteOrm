@@ -104,7 +104,7 @@ Console.WriteLine($"  (Age > 10 AND Age < 20) OR DeptId == 1: {set}");
 ```
 
 ### 2. Lambda 表达式转换
-LiteOrm 支持常见的 C# Lambda 表达式转换为 `Expr` 对象，并且可以通过注册自定义表达式与 SQL方言构造器进行扩展，见[ 10.自定义 Lambda 表达式转换与 SQL 函数映射扩展](#link10)。
+LiteOrm 支持常见的 C# Lambda 表达式转换为 `Expr` 对象，并且可以通过注册自定义表达式与 SQL方言构造器进行扩展，见[ 10.自定义 Lambda 表达式转换与 SQL 函数映射扩展](#10自定义-lambda-表达式转换与-sql-函数映射扩展)。
 
 **代码示例：**
 ```csharp
@@ -519,8 +519,6 @@ fail: LiteOrm.Service.ServiceInvokeInterceptor[0]
 事务执行失败并已回滚: 模拟异常，测试事务回滚
 回滚成功：用户未创建
 ```
-
-<a name="link10"></a>
 
 ### 10.自定义 Lambda 表达式转换与 SQL 函数映射扩展
 
