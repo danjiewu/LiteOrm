@@ -86,7 +86,7 @@ namespace LiteOrm.Common
                 // 批量注册该类型的所有实例或静态公开方法
                 foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance))
                 {
-                    if (method.Name != "ToString")
+                    if (method.Name != "ToString" && method.Name != "Equals" && method.Name != "GetHashCode")
                         _typeMethodHandlers[(type, method.Name)] = handler;
                 }
             }
@@ -166,7 +166,7 @@ namespace LiteOrm.Common
                     return ConvertMember(member);
                 case ConstantExpression constant:
                     if (constant.Value is Expr exprValue) return exprValue;
-                    return new ValueExpr(constant.Value);
+                    return new ValueExpr(constant.Value) { IsConst = constant.Type.IsPrimitive };
                 case ParameterExpression param:
                     // 裸参数不直接转换（通常作为成员访问的基础）
                     throw new NotSupportedException($"参数表达式 '{param.Name}' 不能直接转换为 Expr");
@@ -190,7 +190,7 @@ namespace LiteOrm.Common
             if (node.NodeType == ExpressionType.Coalesce)
             {
                 return _parameterDetector.ContainsParameter(node.Left) || _parameterDetector.ContainsParameter(node.Right) ? new FunctionExpr("COALESCE", ConvertInternal(node.Left), ConvertInternal(node.Right)) : EvaluateToExpr(node);
-            }         
+            }
 
             var left = ConvertInternal(node.Left);
             var right = ConvertInternal(node.Right);

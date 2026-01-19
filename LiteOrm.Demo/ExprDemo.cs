@@ -160,7 +160,6 @@ namespace LiteOrm.Demo
 
             // 示例 1: 查询年龄 > 25 且用户名第三至第四个字为 "经理" 的用户
             var expr1 = Expr.Exp<UserView>(u => u.Age > 25 && u.CreateTime.AddDays(10) > DateTime.Now && u.UserName.Substring(2, 2) == "经理");
-            Console.WriteLine(new SqlGen(typeof(UserView)).ToSql(expr1)); // 触发 SQL 生成，验证表达式有效性
             var users1 = await userService.SearchAsync(expr1);
             Console.WriteLine($"\n[示例 1] 年龄 > 25 且用户名第三至第四个字为 '经理':");
             Console.WriteLine($"  Expr 序列化结果: {JsonSerializer.Serialize(expr1, jsonOptions)}");
@@ -308,7 +307,7 @@ namespace LiteOrm.Demo
 
             // 使用 Expr.Exp<T> 将 C# Lambda 转换为 Expr 对象
             // 这种方式最接近原生的 LINQ 写法
-            var lambdaExpr = Expr.Exp<SalesRecordView>(s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains("机"));
+            var lambdaExpr = Expr.Exp<SalesRecordView>(s => (s.ShipTime ?? DateTime.Now.AddDays(-1)) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains("机"));
 
             Console.WriteLine("  C# Lambda: s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains(\"机\")");
             Console.WriteLine($"  转换结果 Expr: {lambdaExpr}");

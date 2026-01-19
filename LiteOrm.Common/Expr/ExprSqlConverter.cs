@@ -68,6 +68,7 @@ namespace LiteOrm.Common
             string op = String.Empty;
             _operatorSymbols.TryGetValue(expr.Operator, out op);
             switch (expr.OriginOperator)
+
             {
                 case BinaryOperator.RegexpLike:
                     // 正则表达式匹配通常使用特定的函数调用语法
@@ -158,11 +159,11 @@ namespace LiteOrm.Common
             {
                 return "NULL";
             }
-            else if (expr.Value is bool b)
+            else if (expr.IsConst && expr.Value is bool b)
             {
                 return b ? "1" : "0";
             }
-            else if (expr.Value.GetType().IsPrimitive)
+            else if (expr.IsConst && expr.Value.GetType().IsPrimitive)
             {
                 // 数值类型通常直接以字面量形式输出，较为高效
                 return expr.Value.ToString();
@@ -224,7 +225,7 @@ namespace LiteOrm.Common
 
         private static string ToSql(ExprSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if(expr.Items.Count == 0)
+            if (expr.Items.Count == 0)
                 return string.Empty;
             // 处理组合表达式集合 (AND/OR/CONCAT)
             else if (expr.JoinType == ExprJoinType.Concat)

@@ -99,6 +99,15 @@ namespace LiteOrm.Common
                     {
                         result = new ValueExpr(ReadNative(ref reader, options));
                     }
+                    // 快捷方式：{"=": "PropName"} 映射为 Const 类型 ValueExpr
+                    else if (tempReader.ValueTextEquals("="))
+                    {
+                        reader.Read(); // 跳过 =
+                        reader.Read(); // 读取属性值
+                        result = new ValueExpr(ReadNative(ref reader, options)) { IsConst = true };
+                        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject) ;
+                        ;
+                    }
                     // 快捷方式：{"@": "PropName"} 映射为 PropertyExpr
                     else if (tempReader.ValueTextEquals("@"))
                     {
@@ -137,6 +146,7 @@ namespace LiteOrm.Common
                                 "unary" => ReadUnary(ref reader, options),
                                 "sql" => ReadSql(ref reader, options),
                                 "value" => ReadValueBody(ref reader, options),
+                                "const" => ReadValueBody(ref reader, options, true),
                                 _ => new ValueExpr(ReadNative(ref reader, options))
                             };
                         }
@@ -152,7 +162,7 @@ namespace LiteOrm.Common
             }
 
             public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
-            {               
+            {
                 WriteExpr(writer, value, options);
             }
 
@@ -167,7 +177,15 @@ namespace LiteOrm.Common
                 // 优化序列化格式：基本值类型直接写入
                 if (value is ValueExpr ve)
                 {
-                    writer.WriteRawValue(JsonSerializer.Serialize(ve.Value, _compactOptions));
+                    if (ve.IsConst && ve.Value is not null)
+                    {
+                        // 常量值使用快捷方式 {"=": value}
+                        writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, object> { { "=", ve.Value } }, _compactOptions));
+                    }
+                    else
+                    {
+                        writer.WriteRawValue(JsonSerializer.Serialize(ve.Value, _compactOptions));
+                    }
                     return;
                 }
 
@@ -411,7 +429,7 @@ namespace LiteOrm.Common
                 return ge;
             }
 
-            private ValueExpr ReadValueBody(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            private ValueExpr ReadValueBody(ref Utf8JsonReader reader, JsonSerializerOptions options, bool isConst = false)
             {
                 object val = null;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
@@ -428,7 +446,7 @@ namespace LiteOrm.Common
                         reader.Skip();
                     }
                 }
-                return new ValueExpr(val);
+                return new ValueExpr(val) { IsConst = isConst };
             }
         }
     }

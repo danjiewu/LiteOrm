@@ -40,22 +40,22 @@ namespace LiteOrm.AspNetCore
     /// }
     /// </code>
     /// </remarks>
-    public class MyServiceScopeMiddleware
+    public class LiteOrmScopeMiddleware
     {
         private readonly RequestDelegate _next;
         private readonly IServiceProvider _rootProvider;
-        private readonly ILogger<MyServiceScopeMiddleware> _logger;
+        private readonly ILogger<LiteOrmScopeMiddleware> _logger;
 
         /// <summary>
-        /// 初始化 <see cref="MyServiceScopeMiddleware"/> 类的新实例。
+        /// 初始化 <see cref="LiteOrmScopeMiddleware"/> 类的新实例。
         /// </summary>
         /// <param name="next">请求管道中的下一个中间件。</param>
         /// <param name="rootProvider">根服务提供程序。</param>
         /// <param name="logger">日志记录器。</param>
-        public MyServiceScopeMiddleware(
+        public LiteOrmScopeMiddleware(
             RequestDelegate next,
             IServiceProvider rootProvider,
-            ILogger<MyServiceScopeMiddleware> logger)
+            ILogger<LiteOrmScopeMiddleware> logger)
         {
             _next = next;
             _rootProvider = rootProvider;
@@ -100,9 +100,9 @@ namespace LiteOrm.AspNetCore
     }
 
     /// <summary>
-    /// <see cref="MyServiceScopeMiddleware"/> 的扩展方法。
+    /// <see cref="LiteOrmScopeMiddleware"/> 的扩展方法。
     /// </summary>
-    public static class MyServiceScopeMiddlewareExtensions
+    public static class LiteOrmScopeMiddlewareExtensions
     {
         /// <summary>
         /// 在 HTTP 请求管道中启用 LiteOrm 服务范围中间件。
@@ -111,7 +111,7 @@ namespace LiteOrm.AspNetCore
         /// <returns>配置后的应用程序生成器。</returns>
         public static IApplicationBuilder UseLiteOrm(this IApplicationBuilder builder)
         {
-            return builder.UseMiddleware<MyServiceScopeMiddleware>();
+            return builder.UseMiddleware<LiteOrmScopeMiddleware>();
         }
     }
 }

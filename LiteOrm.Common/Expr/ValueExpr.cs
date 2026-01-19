@@ -42,6 +42,11 @@ namespace LiteOrm.Common
         public object Value { get; set; }
 
         /// <summary>
+        /// 
+        /// </summary>
+        public bool IsConst { get; set; }
+
+        /// <summary>
         /// 返回当前值的预览字符串。
         /// </summary>
         /// <returns>
