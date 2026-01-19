@@ -190,48 +190,8 @@ namespace LiteOrm.Common
             if (node.NodeType == ExpressionType.Coalesce)
             {
                 return _parameterDetector.ContainsParameter(node.Left) || _parameterDetector.ContainsParameter(node.Right) ? new FunctionExpr("COALESCE", ConvertInternal(node.Left), ConvertInternal(node.Right)) : EvaluateToExpr(node);
-            }
+            }         
 
-            // 特殊处理 CompareTo 调用 (a.CompareTo(b) op 0) -> 扁平化为直接的 BinaryExpr (a op b)
-            if (node.Left is MethodCallExpression leftCallExpression && leftCallExpression.Method.Name == "CompareTo")
-            {
-                var compareRight = EvaluateToExpr(node.Right);
-                if (!(compareRight is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo 方法只能与 0 进行比较: {node}");
-                BinaryExpr res = ConvertMethodCall(leftCallExpression) as BinaryExpr;
-                if (_operatorMappings.TryGetValue(node.NodeType, out var op))
-                    res.Operator = op switch
-                    {
-                        BinaryOperator.Equal => BinaryOperator.Equal,
-                        BinaryOperator.NotEqual => BinaryOperator.NotEqual,
-                        BinaryOperator.GreaterThan => BinaryOperator.GreaterThan,
-                        BinaryOperator.GreaterThanOrEqual => BinaryOperator.GreaterThanOrEqual,
-                        BinaryOperator.LessThan => BinaryOperator.LessThan,
-                        BinaryOperator.LessThanOrEqual => BinaryOperator.LessThanOrEqual,
-                        _ => throw new ArgumentException($"CompareTo 方法只能使用 ==, !=, >, >=, <, <= 进行比较: {node}")
-                    };
-                else throw new ArgumentException($"CompareTo 方法只能使用 ==, !=, >, >=, <, <= 进行比较: {node}");
-                return res;
-            }
-            else if (node.Right is MethodCallExpression rightCallExpression && rightCallExpression.Method.Name == "CompareTo")
-            {
-                var compareLeft = EvaluateToExpr(node.Left);
-                if (!(compareLeft is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo 方法只能与 0 进行比较: {node}");
-                BinaryExpr res = ConvertMethodCall(rightCallExpression) as BinaryExpr;
-                if (_operatorMappings.TryGetValue(node.NodeType, out var op))
-                    // 反转操作符
-                    res.Operator = op switch
-                    {
-                        BinaryOperator.Equal => BinaryOperator.Equal,
-                        BinaryOperator.NotEqual => BinaryOperator.NotEqual,
-                        BinaryOperator.GreaterThan => BinaryOperator.LessThan,
-                        BinaryOperator.GreaterThanOrEqual => BinaryOperator.LessThanOrEqual,
-                        BinaryOperator.LessThan => BinaryOperator.GreaterThan,
-                        BinaryOperator.LessThanOrEqual => BinaryOperator.GreaterThanOrEqual,
-                        _ => throw new ArgumentException($"CompareTo 方法只能使用 ==, !=, >, >=, <, <= 进行比较: {node}")
-                    };
-                else throw new ArgumentException($"CompareTo 方法只能使用 ==, !=, >, >=, <, <= 进行比较: {node}");
-                return res;
-            }
             var left = ConvertInternal(node.Left);
             var right = ConvertInternal(node.Right);
 
@@ -252,7 +212,38 @@ namespace LiteOrm.Common
                         return new BinaryExpr(left, BinaryOperator.Add, right);
                 default:
                     if (_operatorMappings.TryGetValue(node.NodeType, out var op))
+                    {
+                        // 特殊处理 CompareTo 调用 (a.CompareTo(b) op 0) -> 扁平化为直接的 BinaryExpr (a op b)
+                        if (node.Left is MethodCallExpression leftCallExpression && leftCallExpression.Method.Name == "CompareTo")
+                        {
+                            if (!(right is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo 方法只能与 0 进行比较: {node}");
+                            if (left is BinaryExpr be)
+                            {
+                                left = be.Left;
+                                right = be.Right;
+                            }
+                            else if (left is FunctionExpr fe && fe.Parameters.Count == 2)
+                            {
+                                left = fe.Parameters[0];
+                                right = fe.Parameters[1];
+                            }
+                        }
+                        else if (node.Right is MethodCallExpression rightCallExpression && rightCallExpression.Method.Name == "CompareTo")
+                        {
+                            if (!(left is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo 方法只能与 0 进行比较: {node}");
+                            if (right is BinaryExpr be)
+                            {
+                                left = be.Right;
+                                right = be.Left;
+                            }
+                            else if (right is FunctionExpr fe && fe.Parameters.Count == 2)
+                            {
+                                left = fe.Parameters[1];
+                                right = fe.Parameters[0];
+                            }
+                        }
                         return new BinaryExpr(left, op, right);
+                    }
                     else
                         throw new NotSupportedException($"不支持的二元操作符: {node.NodeType}");
             }

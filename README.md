@@ -5,13 +5,15 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架�
 ## 主要特性
 
 *   **多数据库支持**：原生支持 SQL Server, MySQL (MariaDB), Oracle, 和 SQLite。
-*   **灵活的表达式引擎**：基于 `Expr` 的查询构建器，支持复杂的条件组合（And, Or, Not, In, Like 等）。
-*   **实体服务模式**：提供统一的 `IEntityService<T>` 和 `IEntityViewService<T>` 接口，封装常用的 CRUD 操作。
+*   **灵活的查询引擎**：基于 `Expr` 的查询构建器，支持复杂的条件组合（And, Or, Not, In, Like 等）、连接查询（Join）、正则匹配等。
+*   **动态查询生成**：支持根据条件动态生成查询语句，简化复杂查询的构建。
+*   **自定义扩展**：允许注册自定义的 Lambda 表达式转换器和 SQL 函数映射，强大的扩展能力可以实现任意函数到 SQL 的映射。
+*   **实体服务模式**：提供统一的 `ObjectDAO`、`ObjectViewDAO` 以及 `IEntityService<T>` 和 `IEntityViewService<T>` 接口及实现，封装三层常用的 CRUD 操作。
 *   **异步支持**：所有核心操作均提供基于 `Task` 的异步版本。
 *   **声明式映射**：使用 `[Table]`, `[Column]`, `[ForeignType]` 等特性定义实体与数据库表的映射关系。
 *   **高性能批量操作**：支持大批量数据的插入、更新和删除。
 *   **Autofac 与 ASP.NET Core 集成**：提供便捷的扩展方法，通过 Autofac 实现自动服务注册和拦截。
-*   **高级查询支持**：支持子查询、连接查询（Join）、正则匹配等。
+
 
 ## 环境要求
 
@@ -180,7 +182,7 @@ Console.WriteLine($"生成 SQL: {result.Sql}");
 #### 注册 Lambda 方法/属性转换
 ```csharp
 
-// DateTime.Now -> SQL Now()
+// DateTime.Now 解析为 CURRENT_TIMESTAMP，需配合 SQL 函数注册使用
 LambdaExprConverter.RegisterMemberHandler(typeof(DateTime), "Now");
 // 注册 Math 类的所有方法（默认转换为对应的函数调用）
 LambdaExprConverter.RegisterMethodHandler(typeof(Math));
@@ -195,7 +197,7 @@ LambdaExprConverter.RegisterMethodHandler(typeof(string), "Contains", (node, con
 
 #### 注册数据库方言 SQL 函数
 ```csharp
-// 注册跨库通用的 SQL 映射
+// Now 函数映射为 CURRENT_TIMESTAMP（对应 DateTime.Now 解析结果）
 BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (functionName, args) => "CURRENT_TIMESTAMP");
 
 // 特殊处理 IndexOf 和 Substring，支持 C# 到 SQL 的索引转换 (0-based -> 1-based)
@@ -204,7 +206,7 @@ BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (functionName, arg
 BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (name, args) => args.Count > 2 ?
     $"SUBSTR({args[0].Key}, {args[1].Key}+1, {args[2].Key})" : $"SUBSTR({args[0].Key}, {args[1].Key}+1)");
 
-// 为特定方言（如 MySQL、SQLite）注册特定的日期加法逻辑
+// 为特定数据库（如 MySQL、SQLite）注册特定的日期加法逻辑
 MySqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
     (functionName, args) => $"DATE_ADD({args[0].Key}, INTERVAL {args[1].Key} {functionName.Substring(3).ToUpper().TrimEnd('S')})");
 SQLiteBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
@@ -266,8 +268,8 @@ public class OrderService : EntityService<Order,OrderView>, IOrderService
 ```csharp
 await SessionManager.Current.ExecuteInTransactionAsync(async (sm) =>
 {
-    await userService.UpdateAsync(user);
-    await logService.InsertAsync(new UserLog { UserId = user.Id, Action = "Update Profile" });
+    userService.Update(user);
+    logService.Insert(new UserLog { UserId = user.Id, Action = "Update Profile" });
     // 异常自动回滚，正常结束自动提交
 });
 ```

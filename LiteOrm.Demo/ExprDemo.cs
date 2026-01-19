@@ -29,10 +29,6 @@ namespace LiteOrm.Demo
         {
             Console.WriteLine("\n=== Expr 表达式全示例展示 ===");
 
-            SqlGen sqlGen = new SqlGen(typeof(UserView));
-            var expr = Expr.Exp<UserView>(u => String.Concat(new string[] { u.DeptName, u.UserName }).Length==10 && u.CreateTime.AddDays(10) > DateTime.Now && u.UserName.Substring(2, 2) == "经理");
-            Console.WriteLine(sqlGen.ToSql(expr));
-
             ShowBinaryExpr();
             ShowValueExpr();
             ShowPropertyExpr();
@@ -163,7 +159,7 @@ namespace LiteOrm.Demo
             string currentMonth = DateTime.Now.ToString("yyyyMM");
 
             // 示例 1: 查询年龄 > 25 且用户名第三至第四个字为 "经理" 的用户
-            var expr1 = Expr.Exp<UserView>(u => u.Age > 25 && u.CreateTime.AddDays(10)> DateTime.Now && u.UserName.Substring(2,2)== "经理");
+            var expr1 = Expr.Exp<UserView>(u => u.Age > 25 && u.CreateTime.AddDays(10) > DateTime.Now && u.UserName.Substring(2, 2) == "经理");
             Console.WriteLine(new SqlGen(typeof(UserView)).ToSql(expr1)); // 触发 SQL 生成，验证表达式有效性
             var users1 = await userService.SearchAsync(expr1);
             Console.WriteLine($"\n[示例 1] 年龄 > 25 且用户名第三至第四个字为 '经理':");
@@ -176,7 +172,7 @@ namespace LiteOrm.Demo
 
             // 示例 2: 3天前的订单且未发货，按金额降序取前10条
             var threeDaysAgo = DateTime.Now.AddDays(-3);
-            var expr2 = Expr.Exp<SalesRecordView>(s => s.SaleTime < threeDaysAgo && s.ShipTime == null); 
+            var expr2 = Expr.Exp<SalesRecordView>(s => s.SaleTime < threeDaysAgo && s.ShipTime == null);
             // 如果指明分表参数，使用 SearchSection 演示分页及排序
             var sales2 = await salesService.SearchSectionAsync(expr2, new PageSection(0, 10).OrderByDesc(nameof(SalesRecord.Amount)), [currentMonth]);
             Console.WriteLine($"\n[示例 2] 3天前的订单且未发货，按金额降序取前10条:");
