@@ -85,17 +85,10 @@ namespace LiteOrm
         /// <param name="excuteType">执行类型。</param>
         protected virtual void PreExcuteCommand(ExcuteType excuteType)
         {
-            if (!_isLocked)
-            {
-                Monitor.Enter(Context.SyncLock);
-                _isLocked = true;
-            }
             Context.EnsureConnectionOpen();
             Transaction = Context.CurrentTransaction;
             SessionManager.Current.PushSql(CommandText);
         }
-
-        private bool _isLocked = false;
 
         /// <summary>
         /// 在执行数据库命令之后的处理逻辑。
@@ -172,6 +165,7 @@ namespace LiteOrm
         /// <returns>受影响的行数。</returns>
         public int ExecuteNonQuery()
         {
+            using var scope = Context.AcquireScope();
             PreExcuteCommand(ExcuteType.ExecuteNonQuery);
             int ret = Target.ExecuteNonQuery();
             PostExcuteCommand(ExcuteType.ExecuteNonQuery);
@@ -185,6 +179,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，其结果为受影响的行数。</returns>
         public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
         {
+            using var scope = await Context.AcquireScopeAsync(cancellationToken);
             PreExcuteCommand(ExcuteType.ExecuteNonQuery);
             if (Target is DbCommand dbCmd)
             {
@@ -209,7 +204,7 @@ namespace LiteOrm
         public IDataReader ExecuteReader(CommandBehavior behavior)
         {
             PreExcuteCommand(ExcuteType.ExecuteReader);
-            IDataReader ret = Target.ExecuteReader(behavior);
+            IDataReader ret = new LockableDataReader(Target.ExecuteReader(behavior), Context.AcquireScope());
             PostExcuteCommand(ExcuteType.ExecuteReader);
             return ret;
 
@@ -221,9 +216,8 @@ namespace LiteOrm
         /// <returns>一个 <see cref="IDataReader"/> 对象。</returns>
         public IDataReader ExecuteReader()
         {
-
             PreExcuteCommand(ExcuteType.ExecuteReader);
-            IDataReader ret = Target.ExecuteReader();
+            IDataReader ret = new LockableDataReader(Target.ExecuteReader(), Context.AcquireScope());
             PostExcuteCommand(ExcuteType.ExecuteReader);
             return ret;
         }
@@ -239,7 +233,7 @@ namespace LiteOrm
             PreExcuteCommand(ExcuteType.ExecuteReader);
 
             var task = Target.ExecuteReaderAsync(behavior, cancellationToken);
-            IDataReader ret = await task.ConfigureAwait(false);
+            IDataReader ret = new LockableDataReader(await task.ConfigureAwait(false), await Context.AcquireScopeAsync(cancellationToken).ConfigureAwait(false));
             PostExcuteCommand(ExcuteType.ExecuteReader);
             return ret;
         }
@@ -250,6 +244,7 @@ namespace LiteOrm
         /// <returns>结果集中第一行的第一列。</returns>
         public object ExecuteScalar()
         {
+            using var scope = Context.AcquireScope();
             PreExcuteCommand(ExcuteType.ExecuteScalar);
             object ret = Target.ExecuteScalar();
             PostExcuteCommand(ExcuteType.ExecuteScalar);
@@ -264,7 +259,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，其结果为结果集中第一行的第一列。</returns>
         public async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken = default)
         {
-
+            using var scope = await Context.AcquireScopeAsync(cancellationToken);
             PreExcuteCommand(ExcuteType.ExecuteScalar);
             var ret = await Target.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
             PostExcuteCommand(ExcuteType.ExecuteScalar);
@@ -284,11 +279,7 @@ namespace LiteOrm
         /// </summary>
         public void Prepare()
         {
-            if (!_isLocked)
-            {
-                Monitor.Enter(Context.SyncLock);
-                _isLocked = true;
-            }
+            using var scope = Context.AcquireScope();
             if (Context is not null) Transaction = Context.CurrentTransaction;
             Context.EnsureConnectionOpen();
             Target.Prepare();
@@ -322,11 +313,7 @@ namespace LiteOrm
         public void Dispose()
         {
             Target.Dispose();
-            if (_isLocked)
-            {
-                _isLocked = false;
-                Monitor.Exit(Context.SyncLock);
-            }
+
         }
         #endregion
     }

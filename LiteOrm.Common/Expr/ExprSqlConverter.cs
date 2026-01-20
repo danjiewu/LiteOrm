@@ -68,7 +68,6 @@ namespace LiteOrm.Common
             string op = String.Empty;
             _operatorSymbols.TryGetValue(expr.Operator, out op);
             switch (expr.OriginOperator)
-
             {
                 case BinaryOperator.RegexpLike:
                     // 正则表达式匹配通常使用特定的函数调用语法
@@ -225,23 +224,19 @@ namespace LiteOrm.Common
 
         private static string ToSql(ExprSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (expr.Items.Count == 0)
-                return string.Empty;
-            // 处理组合表达式集合 (AND/OR/CONCAT)
-            else if (expr.JoinType == ExprJoinType.Concat)
-                return sqlBuilder.BuildConcatSql(expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).ToArray());
-            string joinStr;
             switch (expr.JoinType)
             {
-                case ExprJoinType.And: joinStr = " AND "; break;
-                case ExprJoinType.Or: joinStr = " OR "; break;
-                case ExprJoinType.Concat: joinStr = " || "; break;
-                default: joinStr = ","; break;
+                case ExprJoinType.And:
+                case ExprJoinType.Or:
+                    var subExprs = expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).Where(s => !String.IsNullOrEmpty(s)).ToList();
+                    if (subExprs.Count == 0) return string.Empty;
+                    else if (subExprs.Count == 1) return subExprs[0];
+                    else return $"({String.Join($" {expr.JoinType} ", subExprs)})";
+                case ExprJoinType.Concat:
+                    return sqlBuilder.BuildConcatSql(expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).ToArray());
+                default:
+                    return $"({String.Join($",", expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).Where(s => !String.IsNullOrEmpty(s)))})";
             }
-            if (expr.IsValue)
-                return $"({String.Join(joinStr, expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)))})";
-            else
-                return $"({String.Join(joinStr, expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).Where(s => !String.IsNullOrEmpty(s)))})";
         }
     }
 }

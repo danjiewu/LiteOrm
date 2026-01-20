@@ -43,22 +43,18 @@ namespace LiteOrm.AspNetCore
     public class LiteOrmScopeMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly IServiceProvider _rootProvider;
         private readonly ILogger<LiteOrmScopeMiddleware> _logger;
 
         /// <summary>
         /// 初始化 <see cref="LiteOrmScopeMiddleware"/> 类的新实例。
         /// </summary>
         /// <param name="next">请求管道中的下一个中间件。</param>
-        /// <param name="rootProvider">根服务提供程序。</param>
         /// <param name="logger">日志记录器。</param>
         public LiteOrmScopeMiddleware(
             RequestDelegate next,
-            IServiceProvider rootProvider,
             ILogger<LiteOrmScopeMiddleware> logger)
         {
             _next = next;
-            _rootProvider = rootProvider;
             _logger = logger;
         }
 
@@ -68,13 +64,14 @@ namespace LiteOrm.AspNetCore
         /// <param name="context">HTTP 上下文。</param>
         /// <param name="sessionManager">会话管理器。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public async Task InvokeAsync(HttpContext context, SessionManager sessionManager)
+        public async Task InvokeAsync(HttpContext context)
         {
             var requestId = context.TraceIdentifier;
             var method = context.Request.Method;
             var path = context.Request.Path;
             var queryString = context.Request.QueryString.Value;
-            using var scope = sessionManager.Enter(false);
+            SessionManager sessionManager = context.RequestServices.GetRequiredService<SessionManager>();
+            SessionManager.Current = sessionManager;
             try
             {
                 await _next(context);
@@ -94,7 +91,8 @@ namespace LiteOrm.AspNetCore
             }
             finally
             {
-                scope.Dispose();
+                SessionManager.Current = null;
+                sessionManager.Dispose();
             }
         }
     }

@@ -166,7 +166,7 @@ namespace LiteOrm.Common
                     return ConvertMember(member);
                 case ConstantExpression constant:
                     if (constant.Value is Expr exprValue) return exprValue;
-                    return new ValueExpr(constant.Value) { IsConst = constant.Type.IsPrimitive };
+                    return new ValueExpr(constant.Value) { IsConst = constant.Type.IsPrimitive || constant.Value == null };
                 case ParameterExpression param:
                     // 裸参数不直接转换（通常作为成员访问的基础）
                     throw new NotSupportedException($"参数表达式 '{param.Name}' 不能直接转换为 Expr");

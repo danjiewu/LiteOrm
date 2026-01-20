@@ -222,7 +222,7 @@ namespace LiteOrm
             var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert());
             if (provider is not null)
             {
-                lock (DAOContext.SyncLock)
+                using (var scope = DAOContext.AcquireScope())
                 {
                     provider.BulkInsert(ToDataTable(values, insertableColumns), Connection, DAOContext.CurrentTransaction);
                 }

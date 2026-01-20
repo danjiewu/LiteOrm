@@ -99,17 +99,17 @@ namespace LiteOrm.Common
                     {
                         result = new ValueExpr(ReadNative(ref reader, options));
                     }
-                    // 快捷方式：{"=": "PropName"} 映射为 Const 类型 ValueExpr
-                    else if (tempReader.ValueTextEquals("="))
+                    // 快捷方式：{"@": "PropName"} 映射为非 Const 类型 ValueExpr
+                    else if (tempReader.ValueTextEquals("@"))
                     {
-                        reader.Read(); // 跳过 =
+                        reader.Read(); // 跳过 :
                         reader.Read(); // 读取属性值
-                        result = new ValueExpr(ReadNative(ref reader, options)) { IsConst = true };
+                        result = new ValueExpr(ReadNative(ref reader, options)) { IsConst = false };
                         while (reader.Read() && reader.TokenType != JsonTokenType.EndObject) ;
                         ;
                     }
-                    // 快捷方式：{"@": "PropName"} 映射为 PropertyExpr
-                    else if (tempReader.ValueTextEquals("@"))
+                    // 快捷方式：{"#": "PropName"} 映射为 PropertyExpr
+                    else if (tempReader.ValueTextEquals("#"))
                     {
                         reader.Read(); // 跳过 @
                         reader.Read(); // 读取属性值
@@ -147,14 +147,14 @@ namespace LiteOrm.Common
                                 "sql" => ReadSql(ref reader, options),
                                 "value" => ReadValueBody(ref reader, options),
                                 "const" => ReadValueBody(ref reader, options, true),
-                                _ => new ValueExpr(ReadNative(ref reader, options))
+                                _ => new ValueExpr(ReadNative(ref reader, options)) { IsConst = true }
                             };
                         }
                     }
                     else
                     {
                         // 兜底：作为普通值对象
-                        result = new ValueExpr(ReadNative(ref reader, options));
+                        result = new ValueExpr(ReadNative(ref reader, options)) { IsConst = true };
                     }
                 }
 
@@ -177,22 +177,22 @@ namespace LiteOrm.Common
                 // 优化序列化格式：基本值类型直接写入
                 if (value is ValueExpr ve)
                 {
-                    if (ve.IsConst && ve.Value is not null)
+                    if (ve.IsConst)
                     {
-                        // 常量值使用快捷方式 {"=": value}
-                        writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, object> { { "=", ve.Value } }, _compactOptions));
+                        writer.WriteRawValue(JsonSerializer.Serialize(ve.Value, _compactOptions));                        
                     }
                     else
                     {
-                        writer.WriteRawValue(JsonSerializer.Serialize(ve.Value, _compactOptions));
+                        // 常量值使用快捷方式 {"@": value}
+                        writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, object> { { "@", ve.Value } }, _compactOptions));
                     }
                     return;
                 }
 
-                // 优化序列化格式：PropertyExpr 使用简写的 @ 标识
+                // 优化序列化格式：PropertyExpr 使用简写的 # 标识
                 if (value is PropertyExpr pe)
                 {
-                    writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, string> { { "@", pe.PropertyName } }, _compactOptions));
+                    writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, string> { { "#", pe.PropertyName } }, _compactOptions));
                     return;
                 }
 

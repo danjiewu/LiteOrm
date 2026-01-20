@@ -147,13 +147,13 @@ var deserializedExpr = JsonSerializer.Deserialize<Expr>(json, jsonOptions);
   "And": [
     {
       "$": ">",
-      "Left": {"@":"Age"},
+      "Left": {"#":"Age"},
       "Right": 18
     },
     {
       "$": "contains",
-      "Left": {"@":"UserName"},
-      "Right": "admin"
+      "Left": {"#":"UserName"},
+      "Right": {"@":"admin"}
     }
   ]
 }
@@ -351,14 +351,14 @@ foreach (var sale in directorOrders)
   "And": [
     {
       "$": ">",
-      "Left": {"@":"Age"},
+      "Left": {"#":"Age"},
       "Right": 25
     },
     {
       "$": "==",
       "Left": {
         "$": "func",
-        "Length": [{"@":"UserName"}
+        "Length": [{"#":"UserName"}
         ]
       },
       "Right": 2
@@ -375,12 +375,12 @@ foreach (var sale in directorOrders)
   "And": [
     {
       "$": "<",
-      "Left": {"@":"SaleTime"},
-      "Right": "2026-01-12T07:58:12.3609501+08:00"
+      "Left": {"#":"SaleTime"},
+      "Right": {"@":"2026-01-12T07:58:12.3609501+08:00"}
     },
     {
       "$": "==",
-      "Left": {"@":"ShipTime"},
+      "Left": {"#":"ShipTime"},
       "Right": null
     }
   ]
@@ -400,8 +400,8 @@ foreach (var sale in directorOrders)
     },
     {
       "$": ">",
-      "Left": {"@":"SaleTime"},
-      "Right": "2026-01-12T07:58:12.3609501+08:00"
+      "Left": {"#":"SaleTime"},
+      "Right": {"@":"2026-01-12T07:58:12.3609501+08:00"}
     }
   ]
 }

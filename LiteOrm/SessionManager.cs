@@ -102,13 +102,10 @@ namespace LiteOrm
         /// 进入当前上下文，置 SessionManager.Current 为为当前实例的副本
         /// </summary>
         /// <returns>上下文作用域对象，在 Dispose 时恢复之前的 Current</returns>
-        public IDisposable Enter(bool newSession = true)
+        public IDisposable CreateScope()
         {
-            if (newSession)
-                // 返回一个作用域对象，在作用域结束时恢复之前的 Current
-                return new ContextScope(CreateCopy());
-            else
-                return new ContextScope(this);
+            // 返回一个作用域对象，在作用域结束时恢复之前的 Current
+            return new ContextScope(CreateCopy());
         }
 
         /// <summary>
@@ -598,7 +595,7 @@ namespace LiteOrm
         {
             return Task.Run(() =>
             {
-                using (var session = sessionManager.Enter())
+                using (var session = sessionManager.CreateScope())
                 {
                     return func();
                 }
@@ -619,7 +616,7 @@ namespace LiteOrm
         {
             return Task.Run(() =>
             {
-                using (var session = sessionManager.Enter())
+                using (var session = sessionManager.CreateScope())
                 {
                     action();
                 }

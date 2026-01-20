@@ -1,0 +1,443 @@
+﻿using System;
+using System.Data;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace LiteOrm
+{
+    /// <summary>
+    /// 提供一个带锁保护的 <see cref="IDataReader"/> 包装类。
+    /// </summary>
+    /// <remarks>
+    /// 该类用于在执行查询并返回读取器时，保持对 <see cref="DAOContext"/> 的锁定，
+    /// 直到数据读取完毕并释放此包装器。这确保了在延迟读取期间，底层连接不会被其他线程占用。
+    /// </remarks>
+    public class LockableDataReader : IDataReader, IAsyncDisposable
+    {
+        /// <summary>
+        /// 内部包装的原始数据读取器。
+        /// </summary>
+        private readonly IDataReader _innerReader;
+
+        /// <summary>
+        /// 锁定的作用域对象，释放此对象将释放底层上下文的信号量。
+        /// </summary>
+        private readonly IDisposable _scope;
+
+        /// <summary>
+        /// 指示对象是否已被释放。
+        /// </summary>
+        private bool _disposed;
+
+        /// <summary>
+        /// 初始化 <see cref="LockableDataReader"/> 类的新实例。
+        /// </summary>
+        /// <param name="innerReader">内部数据读取器实例。</param>
+        /// <param name="scope">需要管理的锁定作用域。</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="innerReader"/> 或 <paramref name="scope"/> 为 null 时抛出。</exception>
+        public LockableDataReader(IDataReader innerReader, IDisposable scope)
+        {
+            _innerReader = innerReader ?? throw new ArgumentNullException(nameof(innerReader));
+            _scope = scope ?? throw new ArgumentNullException(nameof(scope));
+        }
+
+        #region 锁管理
+        /// <summary>
+        /// 确保当前对象未被释放。
+        /// </summary>
+        /// <exception cref="ObjectDisposedException">当对象已释放时抛出。</exception>
+        private void EnsureNotDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(LockableDataReader));
+        }
+        #endregion
+
+        #region IDataReader 实现 - 转发到内部 Reader
+        /// <summary>
+        /// 获取指定列的列值。
+        /// </summary>
+        /// <param name="i">列的从零开始的索引。</param>
+        public object this[int i]
+        {
+            get
+            {
+                EnsureNotDisposed();
+                return _innerReader[i];
+            }
+        }
+
+        /// <summary>
+        /// 获取具有指定名称的列的列值。
+        /// </summary>
+        /// <param name="name">列名。</param>
+        public object this[string name]
+        {
+            get
+            {
+                EnsureNotDisposed();
+                return _innerReader[name];
+            }
+        }
+
+        /// <summary>
+        /// 获取一个值，该值指示当前行的嵌套深度。
+        /// </summary>
+        public int Depth
+        {
+            get
+            {
+                EnsureNotDisposed();
+                return _innerReader.Depth;
+            }
+        }
+
+        /// <summary>
+        /// 获取一个值，该值指示数据读取器是否已关闭。
+        /// </summary>
+        public bool IsClosed
+        {
+            get
+            {
+                // 即使 disposed 也返回内部状态
+                return _disposed || _innerReader.IsClosed;
+            }
+        }
+
+        /// <summary>
+        /// 获取通过执行 SQL 语句而更改、插入或删除的行数。
+        /// </summary>
+        public int RecordsAffected
+        {
+            get
+            {
+                EnsureNotDisposed();
+                return _innerReader.RecordsAffected;
+            }
+        }
+
+        /// <summary>
+        /// 获取当前行中的列数。
+        /// </summary>
+        public int FieldCount
+        {
+            get
+            {
+                EnsureNotDisposed();
+                return _innerReader.FieldCount;
+            }
+        }
+
+        /// <summary>
+        /// 关闭 <see cref="IDataReader"/> 对象，并释放关联的作用域锁。
+        /// </summary>
+        public void Close()
+        {
+            if (!_disposed)
+            {
+                try
+                {
+                    _innerReader.Close();
+                }
+                finally
+                {
+                    _scope.Dispose();
+                }
+                _disposed = true;
+            }
+        }
+
+        /// <summary>
+        /// 将读取器推进到结果集的下一条记录。
+        /// </summary>
+        /// <returns>如果还有更多行，则为 true；否则为 false。</returns>
+        public bool Read()
+        {
+            EnsureNotDisposed();
+            return _innerReader.Read();
+        }
+
+        /// <summary>
+        /// 在读取批处理 SQL 语句的结果时，使数据读取器前进到下一个结果。
+        /// </summary>
+        /// <returns>如果还有更多结果集，则为 true；否则为 false。</returns>
+        public bool NextResult()
+        {
+            EnsureNotDisposed();
+            return _innerReader.NextResult();
+        }
+
+        /// <summary>
+        /// 获取指定列的布尔值。
+        /// </summary>
+        public bool GetBoolean(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetBoolean(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的 8 位无符号整数值。
+        /// </summary>
+        public byte GetByte(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetByte(i);
+        }
+
+        /// <summary>
+        /// 从指定列偏移量开始，将字节流从指定的列索引读入作为偏移量开始的缓冲区。
+        /// </summary>
+        public long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetBytes(i, fieldOffset, buffer, bufferoffset, length);
+        }
+
+        /// <summary>
+        /// 获取指定列的字符值。
+        /// </summary>
+        public char GetChar(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetChar(i);
+        }
+
+        /// <summary>
+        /// 从指定列偏移量开始，将字符流从指定的列索引读入作为偏移量开始的缓冲区。
+        /// </summary>
+        public long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetChars(i, fieldoffset, buffer, bufferoffset, length);
+        }
+
+        /// <summary>
+        /// 返回指定列序号的 <see cref="IDataReader"/>。
+        /// </summary>
+        public IDataReader GetData(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetData(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的数据类型名称。
+        /// </summary>
+        public string GetDataTypeName(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetDataTypeName(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的日期和时间数据值。
+        /// </summary>
+        public DateTime GetDateTime(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetDateTime(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的固定精度数值。
+        /// </summary>
+        public decimal GetDecimal(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetDecimal(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的双精度浮点数。
+        /// </summary>
+        public double GetDouble(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetDouble(i);
+        }
+
+        /// <summary>
+        /// 获取作为指定列类型的 <see cref="Type"/>。
+        /// </summary>
+        public Type GetFieldType(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetFieldType(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的单精度浮点数。
+        /// </summary>
+        public float GetFloat(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetFloat(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的全局唯一标识符 (GUID) 值。
+        /// </summary>
+        public Guid GetGuid(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetGuid(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的 16 位有符号整数值。
+        /// </summary>
+        public short GetInt16(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetInt16(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的 32 位有符号整数值。
+        /// </summary>
+        public int GetInt32(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetInt32(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的 64 位有符号整数值。
+        /// </summary>
+        public long GetInt64(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetInt64(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的名称。
+        /// </summary>
+        public string GetName(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetName(i);
+        }
+
+        /// <summary>
+        /// 返回指定列的索引。
+        /// </summary>
+        public int GetOrdinal(string name)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetOrdinal(name);
+        }
+
+        /// <summary>
+        /// 返回一个 <see cref="DataTable"/>，它描述 <see cref="IDataReader"/> 的列元数据。
+        /// </summary>
+        public DataTable GetSchemaTable()
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetSchemaTable();
+        }
+
+        /// <summary>
+        /// 获取指定列的字符串值。
+        /// </summary>
+        public string GetString(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetString(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的值。
+        /// </summary>
+        public object GetValue(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetValue(i);
+        }
+
+        /// <summary>
+        /// 获取当前行所有列的值。
+        /// </summary>
+        public int GetValues(object[] values)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetValues(values);
+        }
+
+        /// <summary>
+        /// 获取一个值，该值指示列是否包含空值。
+        /// </summary>
+        public bool IsDBNull(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.IsDBNull(i);
+        }
+        #endregion
+
+        #region IDisposable 和 IAsyncDisposable 实现
+        /// <summary>
+        /// 释放由当前 <see cref="LockableDataReader"/> 占用的资源。
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// 释放由当前 <see cref="LockableDataReader"/> 占用的托管资源和可选的非托管资源。
+        /// </summary>
+        /// <param name="disposing">如果为 true，则释放托管资源和非托管资源。</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    try
+                    {
+                        _innerReader.Dispose();
+                    }
+                    finally
+                    {
+                        _scope.Dispose();
+                    }
+                }
+                _disposed = true;
+            }
+        }
+
+        /// <summary>
+        /// 以异步方式释放由当前 <see cref="LockableDataReader"/> 占用的资源。
+        /// </summary>
+        public async ValueTask DisposeAsync()
+        {
+            await DisposeAsyncCore().ConfigureAwait(false);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// 核心异步释放逻辑。
+        /// </summary>
+        protected virtual async ValueTask DisposeAsyncCore()
+        {
+            if (!_disposed)
+            {
+                if (_innerReader is IAsyncDisposable asyncDisposable)
+                {
+                    await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                }
+                else
+                {
+                    _innerReader.Dispose();
+                }
+
+                _scope.Dispose();
+                _disposed = true;
+            }
+        }
+        #endregion
+    }
+}

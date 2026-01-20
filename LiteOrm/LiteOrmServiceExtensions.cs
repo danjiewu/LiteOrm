@@ -13,43 +13,6 @@ using Autofac.Extras.DynamicProxy;
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm Autofac模块 - 用于注册LiteOrm框架的核心服务
-    /// </summary>
-    /// <remarks>
-    /// LiteOrmModule 是一个 Autofac 模块，负责注册和配置 LiteOrm 框架的所有核心服务。
-    /// 它扩展了 Autofac.Module，在模块加载时自动进行服务注册。
-    /// 
-    /// 主要功能包括：
-    /// 1. 拦截器注册 - 注册所有需要拦截的服务
-    /// 2. 自动服务注册 - 根据自动注册特性注册服务实例
-    /// 3. 后置回调 - 在容器构建完成后进行初始化
-    /// 4. SessionManager设置 - 设置全局的 SessionManager 实例
-    /// 
-    /// RegisterLiteOrm
-    /// </remarks>
-    public class LiteOrmModule : Autofac.Module
-    {
-        /// <summary>
-        /// 加载模块配置，注册所有LiteOrm框架的核心服务
-        /// </summary>
-        /// <param name="builder">Autofac容器构建器</param>
-        /// <remarks>
-        /// 此方法在容器构建时自动调用，完成所有必要的服务注册。
-        /// </remarks>
-        protected override void Load(ContainerBuilder builder)
-        {
-            builder.RegisterAutoService()
-                .RegisterBuildCallback(c =>
-                {
-                    // 注册后置回调
-                    foreach (var initializer in c.Resolve<IEnumerable<IComponentInitializer>>())
-                        initializer.Initialize(c);
-
-                });
-        }
-    }
-
-    /// <summary>
     /// LiteOrm服务提供者扩展方法集合
     /// </summary>
     /// <remarks>
@@ -59,8 +22,7 @@ namespace LiteOrm
     /// 主要功能包括：
     /// 1. 框架初始化 - 在宿主构建时初始化 LiteOrm 框架
     /// 2. Autofac集成 - 将 Autofac 集成到依赖注入系统
-    /// 3. 数据源配置 - 注册和配置数据源
-    /// 4. 服务注册 - 注册所有LiteOrm相关的服务
+    /// 3. 服务注册 - 注册所有LiteOrm相关的服务
     /// 
     /// 使用示例：
     /// <code>
@@ -83,7 +45,13 @@ namespace LiteOrm
             return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
                 .ConfigureContainer<ContainerBuilder>((builder, containerBuilder) =>
                 {
-                    containerBuilder.RegisterModule<LiteOrmModule>();
+                    containerBuilder.RegisterAutoService()
+                    .RegisterBuildCallback(c =>
+                    {
+                        // 注册后置回调
+                        foreach (var initializer in c.Resolve<IEnumerable<IComponentInitializer>>())
+                        initializer.Initialize(c);
+                    });
                 });
         }
 
