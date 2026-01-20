@@ -308,9 +308,9 @@ namespace LiteOrm
         /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含对象，若不存在则返回null</returns>
-        public virtual Task<T> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
+        public async virtual Task<T> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => GetObject(keys), cancellationToken);
+            return await Task.Run(() => GetObject(keys), cancellationToken);
         }
 
         /// <summary>
@@ -319,9 +319,9 @@ namespace LiteOrm
         /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含对象，若不存在则返回null</returns>
-        Task<object> IObjectViewDAOAsync.GetObjectAsync(object[] keys, CancellationToken cancellationToken)
+        async Task<object> IObjectViewDAOAsync.GetObjectAsync(object[] keys, CancellationToken cancellationToken)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => (object)GetObject(keys), cancellationToken);
+            return await Task.Run(() => (object)GetObject(keys), cancellationToken);
         }
 
         /// <summary>
@@ -330,9 +330,9 @@ namespace LiteOrm
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象个数</returns>
-        public virtual Task<int> CountAsync(Expr expr, CancellationToken cancellationToken = default)
+        public async virtual Task<int> CountAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Count(expr), cancellationToken);
+            return await Task.Run(() => Count(expr), cancellationToken);
         }
 
         /// <summary>
@@ -341,9 +341,9 @@ namespace LiteOrm
         /// <param name="o">对象</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
-        public virtual Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Exists(o), cancellationToken);
+            return await Task.Run(() => Exists(o), cancellationToken);
         }
 
         /// <summary>
@@ -352,9 +352,9 @@ namespace LiteOrm
         /// <param name="keys">主键，多个主键按照名称顺序排列</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
-        public virtual Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => ExistsKey(keys), cancellationToken);
+            return await Task.Run(() => ExistsKey(keys), cancellationToken);
         }
 
         /// <summary>
@@ -363,9 +363,9 @@ namespace LiteOrm
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
-        public virtual Task<bool> ExistsAsync(Expr expr, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> ExistsAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Exists(expr), cancellationToken);
+            return await Task.Run(() => Exists(expr), cancellationToken);
         }
 
         /// <summary>
@@ -374,9 +374,9 @@ namespace LiteOrm
         /// <param name="expression">Lambda表达式条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
-        public virtual Task<bool> ExistsAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> ExistsAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Exists(expression), cancellationToken);
+            return await Task.Run(() => Exists(expression), cancellationToken);
         }
 
         /// <summary>
@@ -385,9 +385,9 @@ namespace LiteOrm
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含第一个符合条件的对象，若不存在则返回null</returns>
-        public virtual Task<T> SearchOneAsync(Expr expr, CancellationToken cancellationToken = default)
+        public async virtual Task<T> SearchOneAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => SearchOne(expr), cancellationToken);
+            return await Task.Run(() => SearchOne(expr), cancellationToken);
         }
 
         /// <summary>
@@ -396,9 +396,9 @@ namespace LiteOrm
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含第一个符合条件的对象，若不存在则返回null</returns>
-        Task<object> IObjectViewDAOAsync.SearchOneAsync(Expr expr, CancellationToken cancellationToken)
+        async Task<object> IObjectViewDAOAsync.SearchOneAsync(Expr expr, CancellationToken cancellationToken)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => (object)SearchOne(expr), cancellationToken);
+            return await Task.Run(() => (object)SearchOne(expr), cancellationToken);
         }
 
         /// <summary>
@@ -408,9 +408,9 @@ namespace LiteOrm
         /// <param name="func">要对每个对象执行的异步操作</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务</returns>
-        public virtual Task ForEachAsync(Expr expr, Func<T, Task> func, CancellationToken cancellationToken = default)
+        public async virtual Task ForEachAsync(Expr expr, Func<T, Task> func, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() =>
+            await Task.Run(() =>
             {
                 var list = Search(expr);
                 return list;
@@ -432,9 +432,9 @@ namespace LiteOrm
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
-        public virtual Task<List<T>> SearchAsync(Expr expr = null, CancellationToken cancellationToken = default)
+        public async virtual Task<List<T>> SearchAsync(Expr expr = null, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Search(expr), cancellationToken);
+            return await Task.Run(() => Search(expr), cancellationToken);
         }
 
         /// <summary>
@@ -443,9 +443,9 @@ namespace LiteOrm
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
-        Task<IList> IObjectViewDAOAsync.SearchAsync(Expr expr, CancellationToken cancellationToken)
+        async Task<IList> IObjectViewDAOAsync.SearchAsync(Expr expr, CancellationToken cancellationToken)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => (IList)Search(expr), cancellationToken);
+            return await Task.Run(() => (IList)Search(expr), cancellationToken);
         }
 
         /// <summary>
@@ -455,9 +455,9 @@ namespace LiteOrm
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
-        public virtual Task<List<T>> SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken = default)
+        public async virtual Task<List<T>> SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Search(expr, orderBy), cancellationToken);
+            return await Task.Run(() => Search(expr, orderBy), cancellationToken);
         }
 
         /// <summary>
@@ -467,9 +467,9 @@ namespace LiteOrm
         /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
-        Task<IList> IObjectViewDAOAsync.SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken)
+        async Task<IList> IObjectViewDAOAsync.SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => (IList)Search(expr, orderBy), cancellationToken);
+            return await Task.Run(() => (IList)Search(expr, orderBy), cancellationToken);
         }
 
         /// <summary>
@@ -479,9 +479,9 @@ namespace LiteOrm
         /// <param name="section">分页设定</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含分页查询结果</returns>
-        public virtual Task<List<T>> SearchSectionAsync(Expr expr, PageSection section, CancellationToken cancellationToken = default)
+        public async virtual Task<List<T>> SearchSectionAsync(Expr expr, PageSection section, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => SearchSection(expr, section), cancellationToken);
+            return await Task.Run(() => SearchSection(expr, section), cancellationToken);
         }
 
         /// <summary>
@@ -491,9 +491,9 @@ namespace LiteOrm
         /// <param name="section">分页设定</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含分页查询结果</returns>
-        Task<IList> IObjectViewDAOAsync.SearchSectionAsync(Expr expr, PageSection section, CancellationToken cancellationToken)
+        async Task<IList> IObjectViewDAOAsync.SearchSectionAsync(Expr expr, PageSection section, CancellationToken cancellationToken)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => (IList)SearchSection(expr, section), cancellationToken);
+            return await Task.Run(() => (IList)SearchSection(expr, section), cancellationToken);
         }
 
         #endregion

@@ -504,9 +504,9 @@ namespace LiteOrm
         /// <param name="t">要插入的实体对象。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，如果插入成功则返回 true。</returns>
-        public virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Insert(t), cancellationToken);
+            return await Task.Run(() => Insert(t), cancellationToken);
         }
 
         /// <summary>
@@ -515,9 +515,9 @@ namespace LiteOrm
         /// <param name="values">要插入的实体对象集合。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
+        public async virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(async () =>
+            await Task.Run(async () =>
             {
                 var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType);
                 var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert());
@@ -562,9 +562,9 @@ namespace LiteOrm
         /// <param name="timestamp">时间戳值，用于乐观并发控制。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，如果更新成功则返回 true。</returns>
-        public virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Update(t, timestamp), cancellationToken);
+            return await Task.Run(() => Update(t, timestamp), cancellationToken);
         }
 
         /// <summary>
@@ -573,9 +573,9 @@ namespace LiteOrm
         /// <param name="t">要更新或插入的实体对象。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，返回操作结果，指示是插入还是更新。</returns>
-        public virtual Task<UpdateOrInsertResult> UpdateOrInsertAsync(T t, CancellationToken cancellationToken = default)
+        public async virtual Task<UpdateOrInsertResult> UpdateOrInsertAsync(T t, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => UpdateOrInsert(t), cancellationToken);
+            return await Task.Run(() => UpdateOrInsert(t), cancellationToken);
         }
 
 
@@ -585,9 +585,9 @@ namespace LiteOrm
         /// <param name="t">待删除的对象。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，如果删除成功则返回 true。</returns>
-        public virtual Task<bool> DeleteAsync(T t, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> DeleteAsync(T t, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Delete(t), cancellationToken);
+            return await Task.Run(() => Delete(t), cancellationToken);
         }
 
         /// <summary>
@@ -596,9 +596,9 @@ namespace LiteOrm
         /// <param name="keys">待删除的对象的主键。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，如果删除成功则返回 true。</returns>
-        public virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => DeleteByKeys(keys), cancellationToken);
+            return await Task.Run(() => DeleteByKeys(keys), cancellationToken);
         }
 
         /// <summary>
@@ -607,21 +607,21 @@ namespace LiteOrm
         /// <param name="expr">条件。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，返回删除对象数量。</returns>
-        public virtual Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default)
+        public async virtual Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => Delete(expr), cancellationToken);
+            return await Task.Run(() => Delete(expr), cancellationToken);
         }
 
         // non-generic async wrappers
-        Task<bool> IObjectDAOAsync.InsertAsync(object o, CancellationToken cancellationToken)
+        async Task<bool> IObjectDAOAsync.InsertAsync(object o, CancellationToken cancellationToken)
         {
-            return InsertAsync((T)o, cancellationToken);
+            return await InsertAsync((T)o, cancellationToken);
         }
 
-        Task IObjectDAOAsync.BatchInsertAsync(IEnumerable values, CancellationToken cancellationToken)
+        async Task IObjectDAOAsync.BatchInsertAsync(IEnumerable values, CancellationToken cancellationToken)
         {
             if (values is IEnumerable<T>)
-                return BatchInsertAsync(values as IEnumerable<T>, cancellationToken);
+                await BatchInsertAsync(values as IEnumerable<T>, cancellationToken);
             else
             {
                 List<T> list = new List<T>();
@@ -629,38 +629,38 @@ namespace LiteOrm
                 {
                     list.Add(entity);
                 }
-                return BatchInsertAsync(list, cancellationToken);
+                await BatchInsertAsync(list, cancellationToken);
             }
         }
 
-        Task<bool> IObjectDAOAsync.UpdateAsync(object o, CancellationToken cancellationToken)
+        async Task<bool> IObjectDAOAsync.UpdateAsync(object o, CancellationToken cancellationToken)
         {
-            return UpdateAsync((T)o, null, cancellationToken);
+            return await UpdateAsync((T)o, null, cancellationToken);
         }
 
-        Task<UpdateOrInsertResult> IObjectDAOAsync.UpdateOrInsertAsync(object o, CancellationToken cancellationToken)
+        async Task<UpdateOrInsertResult> IObjectDAOAsync.UpdateOrInsertAsync(object o, CancellationToken cancellationToken)
         {
-            return UpdateOrInsertAsync((T)o, cancellationToken);
+            return await UpdateOrInsertAsync((T)o, cancellationToken);
         }
 
-        Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr expr, CancellationToken cancellationToken)
+        async Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr expr, CancellationToken cancellationToken)
         {
-            return CurrentSession.ExecuteInSessionAsync(() => UpdateAllValues(values, expr), cancellationToken);
+            return await Task.Run(() => UpdateAllValues(values, expr), cancellationToken);
         }
 
-        Task<bool> IObjectDAOAsync.DeleteAsync(object o, CancellationToken cancellationToken)
+        async Task<bool> IObjectDAOAsync.DeleteAsync(object o, CancellationToken cancellationToken)
         {
-            return DeleteAsync((T)o, cancellationToken);
+            return await DeleteAsync((T)o, cancellationToken);
         }
 
-        Task<bool> IObjectDAOAsync.DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken)
+        async Task<bool> IObjectDAOAsync.DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken)
         {
-            return DeleteByKeysAsync(keys, cancellationToken);
+            return await DeleteByKeysAsync(keys, cancellationToken);
         }
 
-        Task<int> IObjectDAOAsync.DeleteAsync(Expr expr, CancellationToken cancellationToken)
+        async Task<int> IObjectDAOAsync.DeleteAsync(Expr expr, CancellationToken cancellationToken)
         {
-            return DeleteAsync(expr, cancellationToken);
+            return await DeleteAsync(expr, cancellationToken);
         }
 
         #endregion

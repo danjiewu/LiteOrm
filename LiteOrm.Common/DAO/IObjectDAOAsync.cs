@@ -135,7 +135,7 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回是否成功删除</returns>
         Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// 异步根据条件删除对象
         /// </summary>

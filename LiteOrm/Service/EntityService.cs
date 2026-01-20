@@ -159,9 +159,9 @@ namespace LiteOrm.Service
         /// <param name="entities">实体操作集合。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public virtual Task BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default)
+        public async virtual Task BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Batch(entities), cancellationToken);
+            await Task.Run(() => Batch(entities), cancellationToken);
         }
 
         /// <summary>
@@ -173,9 +173,9 @@ namespace LiteOrm.Service
         /// <param name="entities">要插入的实体集合。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public virtual Task BatchInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        public async virtual Task BatchInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => BatchInsert(entities), cancellationToken);
+            await Task.Run(() => BatchInsert(entities), cancellationToken);
         }
 
         /// <summary>
@@ -187,9 +187,9 @@ namespace LiteOrm.Service
         /// <param name="entities">要更新的实体集合。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public virtual Task BatchUpdateAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        public async virtual Task BatchUpdateAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => BatchUpdate(entities), cancellationToken);
+            await Task.Run(() => BatchUpdate(entities), cancellationToken);
         }
 
         /// <summary>
@@ -202,9 +202,9 @@ namespace LiteOrm.Service
         /// <param name="entities">要处理的实体集合。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public virtual Task BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        public async virtual Task BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => BatchUpdateOrInsert(entities), cancellationToken);
+            await Task.Run(() => BatchUpdateOrInsert(entities), cancellationToken);
         }
 
         /// <summary>
@@ -217,9 +217,9 @@ namespace LiteOrm.Service
         /// <param name="entities">要删除的实体集合。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public virtual Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
+        public async virtual Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => BatchDelete(entities), cancellationToken);
+            await Task.Run(() => BatchDelete(entities), cancellationToken);
         }
 
         /// <summary>
@@ -232,9 +232,9 @@ namespace LiteOrm.Service
         /// <param name="ids">要删除的实体 ID 集合。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public virtual Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default)
+        public async virtual Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => BatchDeleteID(ids), cancellationToken);
+            await Task.Run(() => BatchDeleteID(ids), cancellationToken);
         }
 
         /// <summary>
@@ -247,9 +247,9 @@ namespace LiteOrm.Service
         /// <param name="entity">要插入的实体。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务，任务结果为是否插入成功。</returns>
-        public virtual Task<bool> InsertAsync(T entity, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> InsertAsync(T entity, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Insert(entity), cancellationToken);
+            return await Task.Run(() => Insert(entity), cancellationToken);
         }
 
         /// <summary>
@@ -262,9 +262,9 @@ namespace LiteOrm.Service
         /// <param name="entity">要更新的实体。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务，任务结果为是否更新成功。</returns>
-        public virtual Task<bool> UpdateAsync(T entity, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> UpdateAsync(T entity, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Update(entity), cancellationToken);
+            return await Task.Run(() => Update(entity), cancellationToken);
         }
 
         /// <summary>
@@ -278,9 +278,9 @@ namespace LiteOrm.Service
         /// <param name="entity">要更新或插入的实体。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务，任务结果为是否操作成功。</returns>
-        public virtual Task<bool> UpdateOrInsertAsync(T entity, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> UpdateOrInsertAsync(T entity, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => UpdateOrInsert(entity), cancellationToken);
+            return await Task.Run(() => UpdateOrInsert(entity), cancellationToken);
         }
 
         /// <summary>
@@ -663,9 +663,9 @@ namespace LiteOrm.Service
         /// <param name="entity">要插入的实体对象。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，任务结果为是否插入成功。</returns>
-        Task<bool> IEntityServiceAsync.InsertAsync(object entity, CancellationToken cancellationToken)
+        async Task<bool> IEntityServiceAsync.InsertAsync(object entity, CancellationToken cancellationToken)
         {
-            return InsertAsync((T)entity, cancellationToken);
+            return await InsertAsync((T)entity, cancellationToken);
         }
 
         /// <summary>
@@ -674,9 +674,9 @@ namespace LiteOrm.Service
         /// <param name="entity">要更新的实体对象。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，任务结果为是否更新成功。</returns>
-        Task<bool> IEntityServiceAsync.UpdateAsync(object entity, CancellationToken cancellationToken)
+        async Task<bool> IEntityServiceAsync.UpdateAsync(object entity, CancellationToken cancellationToken)
         {
-            return UpdateAsync((T)entity, cancellationToken);
+            return await UpdateAsync((T)entity, cancellationToken);
         }
 
         /// <summary>
@@ -686,9 +686,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，任务结果为删除的记录数。</returns>
-        Task<int> IEntityServiceAsync.DeleteAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
+        async Task<int> IEntityServiceAsync.DeleteAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return DeleteAsync(expr, tableArgs, cancellationToken);
+            return await DeleteAsync(expr, tableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -697,9 +697,9 @@ namespace LiteOrm.Service
         /// <param name="entity">要处理的实体对象。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，任务结果为是否操作成功。</returns>
-        Task<bool> IEntityServiceAsync.UpdateOrInsertAsync(object entity, CancellationToken cancellationToken)
+        async Task<bool> IEntityServiceAsync.UpdateOrInsertAsync(object entity, CancellationToken cancellationToken)
         {
-            return UpdateOrInsertAsync((T)entity, cancellationToken);
+            return await UpdateOrInsertAsync((T)entity, cancellationToken);
         }
 
         /// <summary>
@@ -708,9 +708,9 @@ namespace LiteOrm.Service
         /// <param name="entities">实体集合。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务。</returns>
-        Task IEntityServiceAsync.BatchInsertAsync(IEnumerable entities, CancellationToken cancellationToken)
+        async Task IEntityServiceAsync.BatchInsertAsync(IEnumerable entities, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => ((IEntityService)this).BatchInsert(entities), cancellationToken);
+            await Task.Run(() => ((IEntityService)this).BatchInsert(entities), cancellationToken);
         }
 
         /// <summary>
@@ -719,9 +719,9 @@ namespace LiteOrm.Service
         /// <param name="entities">实体集合。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务。</returns>
-        Task IEntityServiceAsync.BatchUpdateAsync(IEnumerable entities, CancellationToken cancellationToken)
+        async Task IEntityServiceAsync.BatchUpdateAsync(IEnumerable entities, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => ((IEntityService)this).BatchUpdate(entities), cancellationToken);
+            await Task.Run(() => ((IEntityService)this).BatchUpdate(entities), cancellationToken);
         }
 
         /// <summary>
@@ -730,9 +730,9 @@ namespace LiteOrm.Service
         /// <param name="entities">实体集合。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务。</returns>
-        Task IEntityServiceAsync.BatchUpdateOrInsertAsync(IEnumerable entities, CancellationToken cancellationToken)
+        async Task IEntityServiceAsync.BatchUpdateOrInsertAsync(IEnumerable entities, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => ((IEntityService)this).BatchUpdateOrInsert(entities), cancellationToken);
+            await Task.Run(() => ((IEntityService)this).BatchUpdateOrInsert(entities), cancellationToken);
         }
 
         /// <summary>
@@ -741,9 +741,9 @@ namespace LiteOrm.Service
         /// <param name="entities">实体集合。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务。</returns>
-        Task IEntityServiceAsync.BatchDeleteAsync(IEnumerable entities, CancellationToken cancellationToken)
+        async Task IEntityServiceAsync.BatchDeleteAsync(IEnumerable entities, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => ((IEntityService)this).BatchDelete(entities), cancellationToken);
+            await Task.Run(() => ((IEntityService)this).BatchDelete(entities), cancellationToken);
         }
 
         #endregion
@@ -758,9 +758,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>受影响的行数。</returns>
-        public Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr, string[] tableArgs, CancellationToken cancellationToken = default)
+        public async Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr, string[] tableArgs, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => UpdateValues(updateValues, expr, tableArgs), cancellationToken);
+            return await Task.Run(() => UpdateValues(updateValues, expr, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -770,9 +770,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>受影响的行数。</returns>
-        public Task<int> DeleteAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async Task<int> DeleteAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Delete(expr, tableArgs), cancellationToken);
+            return await Task.Run(() => Delete(expr, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -783,9 +783,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>是否更新成功。</returns>
-        public Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, object[] keys, string[] tableArgs, CancellationToken cancellationToken = default)
+        public async Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, object[] keys, string[] tableArgs, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => UpdateValues(updateValues, keys, tableArgs), cancellationToken);
+            return await Task.Run(() => UpdateValues(updateValues, keys, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -795,9 +795,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>是否删除成功。</returns>
-        public Task<bool> DeleteIDAsync(object id, string[] tableArgs, CancellationToken cancellationToken = default)
+        public async Task<bool> DeleteIDAsync(object id, string[] tableArgs, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => DeleteID(id, tableArgs), cancellationToken);
+            return await Task.Run(() => DeleteID(id, tableArgs), cancellationToken);
         }
 
         #endregion

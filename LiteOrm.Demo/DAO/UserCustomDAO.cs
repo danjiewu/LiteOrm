@@ -16,7 +16,7 @@ namespace LiteOrm.Demo
     /// </remarks>
     public class UserCustomDAO : ObjectViewDAO<UserView>, DAO.IUserCustomDAO
     {
-        public Task<List<UserView>> GetActiveUsersByDeptAsync(string deptName, CancellationToken cancellationToken = default)
+        public async Task<List<UserView>> GetActiveUsersByDeptAsync(string deptName, CancellationToken cancellationToken = default)
         {
             // 使用基类提供的 MakeConditionCommand 构建复杂查询
             // 这里演示使用 Join 的手动 SQL 或者是组合 Expr
@@ -25,7 +25,7 @@ namespace LiteOrm.Demo
             // 也可以直接写原生 SQL 演示
             string sql = "SELECT @AllFields@ FROM @FromTable@ WHERE [Dept].[Name] = @0 AND Age > 18";
 
-            return CurrentSession.ExecuteInSessionAsync(() =>
+            return await Task.Run(() =>
             {
                 using var command = MakeParamCommand(ReplaceParam(sql), deptName);
                 //using var command = MakeConditionCommand("SELECT @AllFields@ FROM @FromTable@ WHERE @Condition@", expr);

@@ -80,6 +80,8 @@ namespace LiteOrm
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
         private static readonly AsyncLocal<SessionManager> _currentAsyncLocal = new AsyncLocal<SessionManager>();
 
+        public string SessionID { get; }= Guid.NewGuid().ToString("N");
+
         /// <summary>
         /// 当前异步上下文的会话管理器
         /// </summary>
@@ -105,14 +107,14 @@ namespace LiteOrm
         public IDisposable CreateScope()
         {
             // 返回一个作用域对象，在作用域结束时恢复之前的 Current
-            return new ContextScope(CreateCopy());
+            return new ContextScope(this);
         }
 
         /// <summary>
         /// 创建当前 SessionManager 的一个副本
         /// </summary>
         /// <returns>新的 SessionManager 实例</returns>
-        public SessionManager CreateCopy()
+        private SessionManager CreateCopy()
         {
             return new SessionManager(
                 _daoContextPoolFactory,
@@ -151,7 +153,7 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, $"重置时回滚事务失败");
+                        _logger?.LogError(ex, $"Session {SessionID} 重置时回滚事务失败");
                     }
                 }
 
@@ -216,7 +218,7 @@ namespace LiteOrm
                 _currentTransactionId = Guid.NewGuid().ToString();
                 _currentIsolationLevel = isolationLevel;
 
-                _logger?.LogDebug($"开始事务。Transaction ID: {_currentTransactionId}, 隔离级别: {isolationLevel}");
+                _logger?.LogDebug($"Session {SessionID} 开始事务。Transaction ID: {_currentTransactionId}, 隔离级别: {isolationLevel}");
 
                 // 为所有已存在的上下文开启事务
                 foreach (var context in _daoContexts.Values)
@@ -230,7 +232,7 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, $"为连接池 {context.Pool?.Name} 开启事务失败");
+                        _logger?.LogError(ex, $"Session {SessionID} 为连接池 {context.Pool?.Name} 开启事务失败");
                         // 如果某个连接开启事务失败，回滚并抛出异常
                         RollbackInternal();
                         throw new InvalidOperationException($"开启事务失败: {ex.Message}", ex);
@@ -251,7 +253,7 @@ namespace LiteOrm
             {
                 if (!InTransaction)
                 {
-                    _logger?.LogWarning("不在事务中，无法提交");
+                    _logger?.LogWarning($"Session {SessionID} 不在事务中，无法提交");
                     return false;
                 }
 
@@ -269,7 +271,7 @@ namespace LiteOrm
             {
                 if (!InTransaction)
                 {
-                    _logger?.LogWarning("不在事务中，无法回滚");
+                    _logger?.LogWarning($"Session {SessionID} 不在事务中，无法回滚");
                     return false;
                 }
 
@@ -295,7 +297,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"提交事务失败。连接池: {context.Pool?.Name}");
+                    _logger?.LogError(ex, $"Session {SessionID} 提交事务失败。连接池: {context.Pool?.Name}");
                     success = false;
                 }
             }
@@ -303,7 +305,7 @@ namespace LiteOrm
             // 清理事务状态
             _currentTransactionId = null;
 
-            _logger?.LogDebug($"事务提交完成。Transaction ID: {_currentTransactionId}, 成功: {success}");
+            _logger?.LogDebug($"Session {SessionID} 事务提交完成。Transaction ID: {_currentTransactionId}, 成功: {success}");
 
             if (!success)
             {
@@ -331,7 +333,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"回滚事务失败。连接池: {context.Pool?.Name}");
+                    _logger?.LogError(ex, $"Session {SessionID} 回滚事务失败。连接池: {context.Pool?.Name}");
                     success = false;
                 }
             }
@@ -339,7 +341,7 @@ namespace LiteOrm
             // 清理事务状态
             _currentTransactionId = null;
 
-            _logger?.LogDebug($"事务回滚完成。Transaction ID: {_currentTransactionId}, 返回: {success}");
+            _logger?.LogDebug($"Session {SessionID} 事务回滚完成。Transaction ID: {_currentTransactionId}, 返回: {success}");
 
             if (!success)
             {
@@ -376,7 +378,7 @@ namespace LiteOrm
                         {
                             // 如果开启事务失败，归还连接并抛出异常
                             _daoContextPoolFactory.ReturnContext(context);
-                            _logger?.LogError(ex, $"开启事务失败。连接池: {name}");
+                            _logger?.LogError(ex, $"Session {SessionID} 开启事务失败。连接池: {name}");
                             throw;
                         }
                     }
@@ -410,7 +412,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"归还连接失败。连接池: {context.Pool?.Name}");
+                    _logger?.LogError(ex, $"Session {SessionID} 归还连接失败。连接池: {context.Pool?.Name}");
                 }
             }
             _daoContexts.Clear();
@@ -468,15 +470,16 @@ namespace LiteOrm
         /// </summary>
         private class ContextScope : IDisposable
         {
-            private readonly SessionManager _prevSessionManager;
             private readonly SessionManager _sessionManager;
+            private readonly SessionManager _previousSessionManager;
             private bool _disposed = false;
 
             public ContextScope(SessionManager sessionManager)
             {
-                _sessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
-                _prevSessionManager = Current;
+                _previousSessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
+                _sessionManager = sessionManager.CreateCopy();
                 Current = _sessionManager;
+
             }
 
             public void Dispose()
@@ -489,7 +492,7 @@ namespace LiteOrm
                 }
                 finally
                 {
-                    Current = _prevSessionManager;
+                    Current = _previousSessionManager;
                     _disposed = true;
                 }
             }
@@ -578,49 +581,6 @@ namespace LiteOrm
                 await action(sm);
                 return true;
             }, isolationLevel);
-        }
-
-        /// <summary>
-        /// 在会话中异步执行函数
-        /// </summary>
-        /// <typeparam name="TResult">返回类型</typeparam>
-        /// <param name="sessionManager">会话管理器</param>
-        /// <param name="func">要执行的函数</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>异步任务结果</returns>
-        public static Task<TResult> ExecuteInSessionAsync<TResult>(
-            this SessionManager sessionManager,
-            Func<TResult> func,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() =>
-            {
-                using (var session = sessionManager.CreateScope())
-                {
-                    return func();
-                }
-            }, cancellationToken);
-        }
-
-        /// <summary>
-        /// 在会话中异步执行操作
-        /// </summary>
-        /// <param name="sessionManager">会话管理器</param>
-        /// <param name="action">要执行的操作</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>异步任务</returns>
-        public static Task ExecuteInSessionAsync(
-            this SessionManager sessionManager,
-            Action action,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() =>
-            {
-                using (var session = sessionManager.CreateScope())
-                {
-                    action();
-                }
-            }, cancellationToken);
         }
     }
 }

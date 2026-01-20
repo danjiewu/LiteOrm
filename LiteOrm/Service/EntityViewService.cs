@@ -199,24 +199,24 @@ namespace LiteOrm.Service
 
         #region IEntityViewServiceAsync 成员
 
-        Task<object> IEntityViewServiceAsync.GetObjectAsync(object id, string[] tableArgs, CancellationToken cancellationToken)
+        async Task<object> IEntityViewServiceAsync.GetObjectAsync(object id, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => (object)GetObject(id, tableArgs), cancellationToken);
+            return await Task.Run(() => (object)GetObject(id, tableArgs), cancellationToken);
         }
 
-        Task<object> IEntityViewServiceAsync.SearchOneAsync(Expr expr,string[] tableArgs, CancellationToken cancellationToken)
+        async Task<object> IEntityViewServiceAsync.SearchOneAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => (object)SearchOne(expr, tableArgs), cancellationToken);
+            return await Task.Run(() => (object)SearchOne(expr, tableArgs), cancellationToken);
         }
 
-        Task<IList> IEntityViewServiceAsync.SearchAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
+        async Task<IList> IEntityViewServiceAsync.SearchAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => (IList)Search(expr, tableArgs), cancellationToken);
+            return await Task.Run(() => (IList)Search(expr, tableArgs), cancellationToken);
         }
 
-        Task<IList> IEntityViewServiceAsync.SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs, CancellationToken cancellationToken)
+        async Task<IList> IEntityViewServiceAsync.SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => (IList)SearchSection(expr, section, tableArgs), cancellationToken);
+            return await Task.Run(() => (IList)SearchSection(expr, section, tableArgs), cancellationToken);
         }
 
         #endregion
@@ -230,9 +230,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>视图对象，若不存在则返回null</returns>
-        public virtual Task<TView> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<TView> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => GetObject(id, tableArgs), cancellationToken);
+            return await Task.Run(() => GetObject(id, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -242,9 +242,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在</returns>
-        public virtual Task<bool> ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => ExistsID(id, tableArgs), cancellationToken);
+            return await Task.Run(() => ExistsID(id, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -254,9 +254,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在</returns>
-        public virtual Task<bool> ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Exists(expr, tableArgs), cancellationToken);
+            return await Task.Run(() => Exists(expr, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -266,9 +266,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在</returns>
-        public virtual Task<bool> ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Exists(expression, tableArgs), cancellationToken);
+            return await Task.Run(() => Exists(expression, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -278,9 +278,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的对象个数</returns>
-        public virtual Task<int> CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<int> CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Count(expr, tableArgs), cancellationToken);
+            return await Task.Run(() => Count(expr, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -291,12 +291,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>返回异步操作任务。</returns>
-        public virtual Task ForEachAsync(Expr expr, Func<TView, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task ForEachAsync(Expr expr, Func<TView, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(async () =>
-            {
-                await ObjectViewDAO.WithArgs(tableArgs).ForEachAsync(expr, func, cancellationToken);
-            }, cancellationToken);
+            await ObjectViewDAO.WithArgs(tableArgs).ForEachAsync(expr, func, cancellationToken);
         }
 
         /// <summary>
@@ -306,9 +303,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>第一个符合条件的视图对象，若不存在则返回null</returns>
-        public virtual Task<TView> SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<TView> SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => SearchOne(expr, tableArgs), cancellationToken);
+            return await Task.Run(() => SearchOne(expr, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -318,9 +315,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>实体列表结果。</returns>
-        public virtual Task<List<TView>> SearchAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<List<TView>> SearchAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => Search(expr, tableArgs), cancellationToken);
+            return await Task.Run(() => Search(expr, tableArgs), cancellationToken);
         }
 
         /// <summary>
@@ -331,9 +328,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>分页结果列表。</returns>
-        public virtual Task<List<TView>> SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<List<TView>> SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return SessionManager.Current.ExecuteInSessionAsync(() => SearchSection(expr, section, tableArgs), cancellationToken);
+            return await Task.Run(() => SearchSection(expr, section, tableArgs), cancellationToken);
         }
         #endregion
     }
