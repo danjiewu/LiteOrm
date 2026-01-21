@@ -82,7 +82,7 @@ namespace LiteOrm.SqlBuilder
         /// <returns></returns>
         public override string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
-            return $"select {select} \nfrom {from} \nwhere {where} Order by {orderBy} limit {startIndex},{sectionSize}";
+            return $"select {select} \nfrom {from} {where} Order by {orderBy} limit {startIndex},{sectionSize}";
         }
     }
 }

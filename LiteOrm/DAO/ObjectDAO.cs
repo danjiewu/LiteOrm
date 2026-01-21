@@ -60,9 +60,9 @@ namespace LiteOrm
         /// <summary>
         /// 实体插入命令
         /// </summary>
-        protected virtual IDbCommand MakeInsertCommand()
+        protected virtual DbCommandProxy MakeInsertCommand()
         {
-            IDbCommand command = NewCommand();
+            DbCommandProxy command = NewCommand();
             StringBuilder strColumns = new StringBuilder();
             StringBuilder strValues = new StringBuilder();
             foreach (ColumnDefinition column in TableDefinition.Columns)
@@ -92,9 +92,9 @@ namespace LiteOrm
         /// 构建实体更新命令。
         /// </summary>
         /// <returns>返回更新命令实例。</returns>
-        protected virtual IDbCommand MakeUpdateCommand()
+        protected virtual DbCommandProxy MakeUpdateCommand()
         {
-            IDbCommand command = NewCommand();
+            DbCommandProxy command = NewCommand();
             StringBuilder strColumns = new StringBuilder();
             foreach (ColumnDefinition column in TableDefinition.Columns)
             {
@@ -120,9 +120,9 @@ namespace LiteOrm
         /// 构建实体删除命令。
         /// </summary>
         /// <returns>返回删除命令实例。</returns>
-        protected virtual IDbCommand MakeDeleteCommand()
+        protected virtual DbCommandProxy MakeDeleteCommand()
         {
-            IDbCommand command = NewCommand();
+            DbCommandProxy command = NewCommand();
             command.CommandText = $"delete from {ToSqlName(FactTableName)} \nwhere{MakeIsKeyCondition(command)}";
             return command;
         }
@@ -131,9 +131,9 @@ namespace LiteOrm
         /// 构建更新或插入（Upsert）命令。
         /// </summary>
         /// <returns>返回更新或插入命令实例。</returns>
-        protected virtual IDbCommand MakeUpdateOrInsertCommand()
+        protected virtual DbCommandProxy MakeUpdateOrInsertCommand()
         {
-            IDbCommand command = NewCommand();
+            DbCommandProxy command = NewCommand();
             StringBuilder strColumns = new StringBuilder();
             StringBuilder strValues = new StringBuilder();
             StringBuilder strUpdateColumns = new StringBuilder();
@@ -288,7 +288,7 @@ namespace LiteOrm
         /// <remarks>一次性批量插入不支持返回自增列</remarks>
         protected virtual void BatchInsertInternal(IEnumerable<T> values)
         {
-            using IDbCommand command = NewCommand();
+            using var command = NewCommand();
             StringBuilder strColumns = new StringBuilder();
             List<string> valuesList = new List<string>();
             var insertColumns = TableDefinition.Columns.Where(col => !col.IsIdentity && col.Mode.CanInsert());
@@ -390,11 +390,11 @@ namespace LiteOrm
                 strSets.Add(column.FormattedName(SqlBuilder) + "=" + ToSqlParam(paramValues.Count.ToString()));
                 paramValues.Add(paramValues.Count.ToString(), value.Value);
             }
-            string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray()) + " \nwhere" + expr.ToSql(SqlBuildContext, SqlBuilder, paramValues);
-            using (IDbCommand command = MakeNamedParamCommand(updateSql, paramValues))
-            {
-                return command.ExecuteNonQuery();
-            }
+            string where = expr.ToSql(SqlBuildContext, SqlBuilder, paramValues);
+            if(!string.IsNullOrWhiteSpace(where))where = $"where {where}";
+            string updateSql = $"update @Table@ set {String.Join(",", strSets.ToArray())} \n{where}";
+            using var command = MakeNamedParamCommand(updateSql, paramValues);
+            return command.ExecuteNonQuery();
         }
 
         /// <summary>
@@ -434,10 +434,8 @@ namespace LiteOrm
         /// <returns>删除对象数量</returns>
         public virtual int Delete(Expr expr)
         {
-            using (IDbCommand command = MakeConditionCommand("delete from @Table@ \nwhere@Condition@", expr))
-            {
-                return command.ExecuteNonQuery();
-            }
+            using var command = MakeConditionCommand("delete from @Table@ @Where@", expr);
+            return command.ExecuteNonQuery();
         }
 
         /// <summary>
@@ -506,10 +504,34 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果插入成功则返回 true。</returns>
         public async virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Insert(t), cancellationToken);
+            if (t is null) throw new ArgumentNullException("t");
+            using var insertCommand = MakeInsertCommand();
+            foreach (IDataParameter param in insertCommand.Parameters)
+            {
+                ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
+                param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+            }
+            if (IdentityColumn is null)
+            {
+                await insertCommand.ExecuteNonQueryAsync(cancellationToken);
+            }
+            else
+            {
+                IDataParameter param = insertCommand.Parameters.Contains(ToParamName(IdentityColumn.PropertyName)) ? (IDataParameter)insertCommand.Parameters[ToParamName(IdentityColumn.PropertyName)] : null;
+                if (param is not null && param.Direction == ParameterDirection.Output)
+                {
+                    await insertCommand.ExecuteNonQueryAsync(cancellationToken);
+                    IdentityColumn.SetValue(t, ConvertFromDbValue(param.Value, IdentityColumn.PropertyType));
+                }
+                else
+                {
+                    IdentityColumn.SetValue(t, ConvertFromDbValue(await insertCommand.ExecuteScalarAsync(cancellationToken), IdentityColumn.PropertyType));
+                }
+            }
+            return true;
         }
 
-        /// <summary>
+        /// <summary>   
         /// 异步批量插入实体对象到数据库中。
         /// </summary>
         /// <param name="values">要插入的实体对象集合。</param>
@@ -517,42 +539,81 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
         {
-            await Task.Run(async () =>
+            var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType);
+            var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert());
+            if (provider is not null)
             {
-                var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType);
-                var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert());
-                if (provider is not null)
+                using (var scope = await DAOContext.AcquireScopeAsync(cancellationToken))
                 {
-                    provider.BulkInsert(ToDataTable(values, insertableColumns), Connection, DAOContext.CurrentTransaction);
+                    await Task.Run(() => provider.BulkInsert(ToDataTable(values, insertableColumns), Connection, DAOContext.CurrentTransaction), cancellationToken);
                 }
-                else if (SqlBuilder.SupportBatchInsert)
+            }
+            else if (SqlBuilder.SupportBatchInsert)
+            {
+                int batchSize = (100 / insertableColumns.Count() + 1) * 100;
+                var batch = new List<T>(batchSize);
+                foreach (var item in values)
                 {
-                    int batchSize = (100 / insertableColumns.Count() + 1) * 100;
-                    var batch = new List<T>(batchSize);
-                    foreach (var item in values)
-                    {
-                        batch.Add(item);
-                        if (batch.Count >= batchSize)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            await Task.Run(() => BatchInsertInternal(batch), cancellationToken);
-                            batch.Clear();
-                        }
-                    }
-                    if (batch.Count > 0)
+                    batch.Add(item);
+                    if (batch.Count >= batchSize)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        await Task.Run(() => BatchInsertInternal(batch), cancellationToken);
+                        await BatchInsertInternalAsync(batch, cancellationToken);
+                        batch.Clear();
                     }
                 }
-                else
-                    foreach (T t in values)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        await Task.Run(() => Insert(t), cancellationToken);
-                    }
+                if (batch.Count > 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await BatchInsertInternalAsync(batch, cancellationToken);
+                }
+            }
+            else
+                foreach (T t in values)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await InsertAsync(t, cancellationToken);
+                }
+        }
 
-            });
+        /// <summary>
+        /// 异步一次性批量插入实体集合
+        /// </summary>
+        /// <param name="values">要插入的实体集合</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <remarks>一次性批量插入不支持返回自增列</remarks>
+        protected virtual async Task BatchInsertInternalAsync(IEnumerable<T> values, CancellationToken cancellationToken)
+        {
+            using DbCommandProxy command = NewCommand();
+            StringBuilder strColumns = new StringBuilder();
+            List<string> valuesList = new List<string>();
+            var insertColumns = TableDefinition.Columns.Where(col => !col.IsIdentity && col.Mode.CanInsert());
+            foreach (ColumnDefinition column in insertColumns)
+            {
+                if (strColumns.Length != 0) strColumns.Append(",");
+                strColumns.Append(ToSqlName(column.Name));
+            }
+            int paramIndex = 0;
+            foreach (var item in values)
+            {
+                StringBuilder strValuesRepeat = new StringBuilder();
+                foreach (ColumnDefinition column in insertColumns)
+                {
+                    if (strValuesRepeat.Length != 0) strValuesRepeat.Append(",");
+                    strValuesRepeat.Append(ToSqlParam(paramIndex.ToString()));
+                    IDbDataParameter param = command.CreateParameter();
+                    param.Size = column.Length;
+                    param.DbType = column.DbType;
+                    param.Value = ConvertToDbValue(column.GetValue(item), column.DbType);
+                    param.ParameterName = ToParamName(paramIndex.ToString());
+                    command.Parameters.Add(param);
+                    paramIndex++;
+                }
+                valuesList.Add($"({strValuesRepeat})");
+            }
+
+            command.CommandText = SqlBuilder.BuildBatchInsertSql(FactTableName, strColumns.ToString(), valuesList);
+            await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
         /// <summary>
@@ -564,7 +625,21 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果更新成功则返回 true。</returns>
         public async virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Update(t, timestamp), cancellationToken);
+            if (t is null) throw new ArgumentNullException("t");
+            using var updateCommand = MakeUpdateCommand();
+            foreach (IDataParameter param in updateCommand.Parameters)
+            {
+                if (ToNativeName(param.ParameterName) == TimestampParamName)
+                {
+                    param.Value = timestamp;
+                }
+                else
+                {
+                    ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
+                    param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                }
+            }
+            return await updateCommand.ExecuteNonQueryAsync(cancellationToken) > 0;
         }
 
         /// <summary>
@@ -575,7 +650,23 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，返回操作结果，指示是插入还是更新。</returns>
         public async virtual Task<UpdateOrInsertResult> UpdateOrInsertAsync(T t, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => UpdateOrInsert(t), cancellationToken);
+            if (t is null) throw new ArgumentNullException("t");
+            using var updateOrInsertCommand = MakeUpdateOrInsertCommand();
+            foreach (IDataParameter param in updateOrInsertCommand.Parameters)
+            {
+                ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
+                param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+            }
+            int ret = Convert.ToInt32(await updateOrInsertCommand.ExecuteScalarAsync(cancellationToken));
+            if (ret >= 0)
+            {
+                if (IdentityColumn is not null) IdentityColumn.SetValue(t, ret);
+                return UpdateOrInsertResult.Inserted;
+            }
+            else
+            {
+                return UpdateOrInsertResult.Updated;
+            }
         }
 
 
@@ -587,7 +678,8 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果删除成功则返回 true。</returns>
         public async virtual Task<bool> DeleteAsync(T t, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Delete(t), cancellationToken);
+            if (t is null) throw new ArgumentNullException("t");
+            return await DeleteByKeysAsync(GetKeyValues(t), cancellationToken);
         }
 
         /// <summary>
@@ -598,7 +690,15 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果删除成功则返回 true。</returns>
         public async virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => DeleteByKeys(keys), cancellationToken);
+            ThrowExceptionIfWrongKeys(keys);
+            using var deleteCommand = MakeDeleteCommand();
+            int i = 0;
+            foreach (IDataParameter param in deleteCommand.Parameters)
+            {
+                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
+                i++;
+            }
+            return await deleteCommand.ExecuteNonQueryAsync(cancellationToken) > 0;
         }
 
         /// <summary>
@@ -609,7 +709,8 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，返回删除对象数量。</returns>
         public async virtual Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Delete(expr), cancellationToken);
+            using var command = MakeConditionCommand("delete from @Table@ @Where@", expr);
+            return await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
         // non-generic async wrappers
@@ -643,9 +744,47 @@ namespace LiteOrm
             return await UpdateOrInsertAsync((T)o, cancellationToken);
         }
 
-        async Task<int> IObjectDAOAsync.UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr expr, CancellationToken cancellationToken)
+        /// <summary>
+        /// 异步根据条件更新数据
+        /// </summary>
+        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
+        /// <param name="expr">更新的条件</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含更新的记录数</returns>
+        public async Task<int> UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr expr, CancellationToken cancellationToken)
         {
-            return await Task.Run(() => UpdateAllValues(values, expr), cancellationToken);
+            List<string> strSets = new List<string>();
+            List<KeyValuePair<string, object>> paramValues = new List<KeyValuePair<string, object>>();
+            foreach (KeyValuePair<string, object> value in values)
+            {
+                SqlColumn column = Table.GetColumn(value.Key);
+                if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
+                strSets.Add(column.FormattedName(SqlBuilder) + "=" + ToSqlParam(paramValues.Count.ToString()));
+                paramValues.Add(paramValues.Count.ToString(), value.Value);
+            }
+            string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray()) + " \nwhere" + expr.ToSql(SqlBuildContext, SqlBuilder, paramValues);
+            using var command = MakeNamedParamCommand(updateSql, paramValues);
+            return await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 异步根据主键更新数据
+        /// </summary>
+        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
+        /// <param name="keys">主键</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含更新是否成功</returns>
+        public async Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> values, object[] keys, CancellationToken cancellationToken)
+        {
+            ThrowExceptionIfNoKeys();
+            ThrowExceptionIfWrongKeys(keys);
+            ExprSet expr = new ExprSet(ExprJoinType.And);
+            int i = 0;
+            foreach (ColumnDefinition column in TableDefinition.Keys)
+            {
+                expr.Add(Expr.Property(column.PropertyName, keys[i++]));
+            }
+            return await UpdateAllValuesAsync(values, expr, cancellationToken) > 0;
         }
 
         async Task<bool> IObjectDAOAsync.DeleteAsync(object o, CancellationToken cancellationToken)

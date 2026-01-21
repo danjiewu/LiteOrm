@@ -27,7 +27,7 @@ namespace LiteOrm.SqlBuilder
         public override string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
             if (startIndex == 0)
-                return $"select top {sectionSize} {select} \nfrom {from} \nwhere {where} Order by {orderBy} ";
+                return $"select top {sectionSize} {select} \nfrom {from} {where} Order by {orderBy} ";
             else
                 return base.GetSelectSectionSql(select, from, where, orderBy, startIndex, sectionSize);
         }

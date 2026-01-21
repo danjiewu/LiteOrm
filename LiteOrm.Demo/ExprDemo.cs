@@ -25,7 +25,7 @@ namespace LiteOrm.Demo
         /// <summary>
         /// 运行所有演示示例
         /// </summary>
-        public static async Task RunAllExamplesAsync(IUserService userService, ISalesService salesService, IDepartmentService deptService, IUserCustomDAO userCustomDao)
+        public static async Task RunAllExamplesAsync(ServiceFactory factory)
         {
             Console.WriteLine("\n=== Expr 表达式全示例展示 ===");
 
@@ -38,11 +38,11 @@ namespace LiteOrm.Demo
             ShowExprConvert();
             ShowSqlGeneration();
 
-            await ShowJoinQueryAsync(deptService);
-            await ShowArgedQueryAsync(salesService);
-            await ShowQueryResultsAsync(userService, salesService);
-            await ShowPerformanceComparisonAsync(salesService);
-            await ShowCustomDaoDemoAsync(userCustomDao);
+            await ShowJoinQueryAsync(factory.DepartmentService);
+            await ShowArgedQueryAsync(factory.SalesService);
+            await ShowQueryResultsAsync(factory.UserService, factory.SalesService);
+            await ShowPerformanceComparisonAsync(factory.SalesService);
+            await ShowCustomDaoDemoAsync(factory.UserCustomDAO);
         }
 
         /// <summary>
@@ -60,27 +60,27 @@ namespace LiteOrm.Demo
             }
         }
 
-        public static async Task RunThreeTierDemo(IBusinessService businessService, IUserService userService, ISalesService salesService)
+        public static async Task RunThreeTierDemo(ServiceFactory factory)
         {
             var newUser = new User { UserName = "ThreeTierUser", Age = 25 };
             var initialSale = new SalesRecord { ProductName = "Starter Pack", Amount = 1 };
 
-            userService.DeleteAsync(u => u.UserName == newUser.UserName, null).Wait();
+            factory.UserService.DeleteAsync(u => u.UserName == newUser.UserName, null).Wait();
             Console.WriteLine($"正在尝试通过事务注册用户 {newUser.UserName} 并执行初始销售...");
 
             try
             {
-                bool success = await businessService.RegisterUserWithInitialSaleAsync(newUser, initialSale);
+                bool success = await factory.BusinessService.RegisterUserWithInitialSaleAsync(newUser, initialSale);
                 if (success)
                 {
                     Console.WriteLine("事务执行成功，用户和订单已同时保存");
 
                     // 验证
-                    var savedUser = await userService.GetByUserNameAsync(newUser.UserName);
+                    var savedUser = await factory.UserService.GetByUserNameAsync(newUser.UserName);
                     if (savedUser != null)
                     {
                         Console.WriteLine($"验证成功，用户 ID={savedUser.Id}, 用户名={savedUser.UserName}");
-                        var sales = await salesService.SearchAsync(s => s.SalesUserId == savedUser.Id, [DateTime.Now.ToString("yyyyMM")]);
+                        var sales = await factory.SalesService.SearchAsync(s => s.SalesUserId == savedUser.Id, [DateTime.Now.ToString("yyyyMM")]);
                         Console.WriteLine($"该用户订单数 {sales.Count}");
                         foreach (SalesRecordView sale in sales)
                         {
@@ -92,7 +92,7 @@ namespace LiteOrm.Demo
             catch (Exception ex)
             {
                 Console.WriteLine($"事务执行失败并已回滚: {ex.Message}");
-                var savedUser = await userService.GetByUserNameAsync(newUser.UserName);
+                var savedUser = await factory.UserService.GetByUserNameAsync(newUser.UserName);
                 if (savedUser != null)
                 {
                     Console.WriteLine($"回滚失败，用户 ID={savedUser.Id}, 用户名={savedUser.UserName}");

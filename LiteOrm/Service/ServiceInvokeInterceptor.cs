@@ -108,7 +108,7 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    LogException(_logger, invocation, e);
+                    LogException(invocation, e);
                     throw e;
                 }
             }
@@ -117,25 +117,23 @@ namespace LiteOrm.Service
                 try
                 {
                     InProcess = true;
-                    sessionManager.Start();
-                    LogBeforeInvoke(_logger, invocation);
+                    sessionManager.Reset();
+                    LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
                     InvokeWithTransaction(invocation);
                     timer.Stop();
-                    LogAfterInvoke(_logger, invocation, invocation.ReturnValue, timer.Elapsed);
+                    LogAfterInvoke(invocation, invocation.ReturnValue, timer.Elapsed);
 
                 }
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    LogException(_logger, invocation, e);
+                    LogException(invocation, e);
                     throw e;
                 }
                 finally
                 {
                     InProcess = false;
-                    sessionManager.Finish();
-
                 }
             }
         }
@@ -181,7 +179,7 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    LogException(_logger, invocation, e);
+                    LogException(invocation, e);
                     throw;
                 }
             }
@@ -190,26 +188,25 @@ namespace LiteOrm.Service
                 try
                 {
                     InProcess = true;
-                    sessionManager.Start();
-                    LogBeforeInvoke(_logger, invocation);
+                    sessionManager.Reset();
+                    LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
 
                     // 执行异步方法，处理事务
                     await InvokeWithTransactionAsync(invocation);
 
                     timer.Stop();
-                    LogAfterInvoke(_logger, invocation, null, timer.Elapsed);
+                    LogAfterInvoke(invocation, null, timer.Elapsed);
                 }
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    LogException(_logger, invocation, e);
+                    LogException(invocation, e);
                     throw;
                 }
                 finally
                 {
                     InProcess = false;
-                    sessionManager.Finish();
                 }
             }
         }
@@ -234,7 +231,7 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    LogException(_logger, invocation, e);
+                    LogException(invocation, e);
                     throw;
                 }
             }
@@ -243,25 +240,24 @@ namespace LiteOrm.Service
                 try
                 {
                     InProcess = true;
-                    sessionManager.Start();
-                    LogBeforeInvoke(_logger, invocation);
+                    sessionManager.Reset();
+                    LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
                     // 执行异步方法，处理事务
                     TResult result = await InvokeWithTransactionAsync<TResult>(invocation);
                     timer.Stop();
-                    LogAfterInvoke(_logger, invocation, result, timer.Elapsed);
+                    LogAfterInvoke(invocation, result, timer.Elapsed);
                     return result;
                 }
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    LogException(_logger, invocation, e);
+                    LogException(invocation, e);
                     throw;
                 }
                 finally
                 {
                     InProcess = false;
-                    sessionManager.Finish();
                 }
             }
         }
@@ -351,18 +347,17 @@ namespace LiteOrm.Service
         /// <summary>
         /// 记录方法调用前的日志
         /// </summary>
-        /// <param name="logger">日志记录器</param>
         /// <param name="invocation">方法调用信息</param>
-        protected virtual void LogBeforeInvoke(ILogger logger, IInvocation invocation)
+        protected virtual void LogBeforeInvoke(IInvocation invocation)
         {
             var serviceDesc = GetDescription(invocation);
-            if (logger.IsEnabled(serviceDesc.LogLevel))
+            if (_logger.IsEnabled(serviceDesc.LogLevel))
             {
                 var argsLog = (serviceDesc.LogFormat & LogFormat.Args) == LogFormat.Args
                     ? Util.GetLogString(GetLogArgs(invocation)) : null;
 
-                logger.Log(serviceDesc.LogLevel,
-                    "<Invoke>{Service}.{Method}({Args})",
+                _logger.Log(serviceDesc.LogLevel,
+                    "[{SessionID}]<Invoke>{Service}.{Method}({Args})", SessionManager.Current?.SessionID,
                     serviceDesc.ServiceName, serviceDesc.MethodName, argsLog);
             }
         }
@@ -370,37 +365,38 @@ namespace LiteOrm.Service
         /// <summary>
         /// 记录方法调用后的日志
         /// </summary>
-        /// <param name="logger">日志记录器</param>
         /// <param name="invocation">方法调用信息</param>
         /// <param name="result">方法返回值</param>
         /// <param name="elapsedTime">方法执行耗时</param>
-        protected virtual void LogAfterInvoke(ILogger logger, IInvocation invocation, object result, TimeSpan elapsedTime)
+        protected virtual void LogAfterInvoke(IInvocation invocation, object result, TimeSpan elapsedTime)
         {
             var serviceDesc = GetDescription(invocation);
-            var returnLog = (serviceDesc.LogFormat & LogFormat.ReturnValue) == LogFormat.ReturnValue
+            if (_logger.IsEnabled(serviceDesc.LogLevel))
+            {
+                var returnLog = (serviceDesc.LogFormat & LogFormat.ReturnValue) == LogFormat.ReturnValue
                 ? Util.GetLogString(result, 0) : null;
-            logger.Log(serviceDesc.LogLevel,
-                "<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
-                 serviceDesc.ServiceName, serviceDesc.MethodName,
-                elapsedTime.TotalSeconds, returnLog);
+                _logger.Log(serviceDesc.LogLevel,
+                    "[{SessionID}]<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
+                     SessionManager.Current?.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
+                    elapsedTime.TotalSeconds, returnLog);
+            }
         }
 
         /// <summary>
         /// 记录异常日志
         /// </summary>
-        /// <param name="logger">日志记录器</param>
         /// <param name="invocation">方法调用信息</param>
         /// <param name="e">异常对象</param>
-        protected virtual void LogException(ILogger logger, IInvocation invocation, Exception e)
+        protected virtual void LogException(IInvocation invocation, Exception e)
         {
             var serviceDesc = GetDescription(invocation);
             var innerExp = e.UnwrapTargetInvocationException();
             var argsLog = Util.GetLogString(GetLogArgs(invocation));
             if (innerExp is ServiceException)
-                logger.LogWarning("<Exception>{Service}.{Method}({Args}) {Message}", serviceDesc.ServiceName, serviceDesc.MethodName,
+                _logger.LogWarning("[{SessionID}]<Exception>{Service}.{Method}({Args}) {Message}", SessionManager.Current?.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
                     argsLog, innerExp.Message);
             else
-                logger.LogError("<Exception>{Service}.{Method}({Args}) {Exception}", serviceDesc.ServiceName, serviceDesc.MethodName,
+                _logger.LogError("[{SessionID}]<Exception>{Service}.{Method}({Args}) {Exception}", SessionManager.Current?.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
                     argsLog, innerExp);
         }
 

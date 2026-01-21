@@ -39,7 +39,7 @@ namespace LiteOrm
         /// <summary>
         /// 表示SQL查询中条件语句的标记
         /// </summary>
-        public const string ParamCondition = "@Condition@";
+        public const string ParamWhere = "@Where@";
         /// <summary>
         /// 表示SQL查询中表名的标记
         /// </summary>
@@ -241,7 +241,7 @@ namespace LiteOrm
         /// 创建IDbCommand
         /// </summary>
         /// <returns></returns>
-        public virtual IDbCommand NewCommand()
+        public virtual DbCommandProxy NewCommand()
         {
             return new DbCommandProxy(DAOContext, SqlBuilder);
         }
@@ -307,7 +307,7 @@ namespace LiteOrm
         /// <param name="sql">SQL 语句，SQL 中可以包含参数信息，参数名为以 0 开始的递增整数，对应 paramValues 中值的下标</param>
         /// <param name="paramValues">参数值，需要与 SQL 中的参数一一对应，为空时表示没有参数</param>
         /// <returns>IDbCommand</returns>
-        public IDbCommand MakeParamCommand(string sql, IEnumerable paramValues)
+        public DbCommandProxy MakeParamCommand(string sql, IEnumerable paramValues)
         {
             int paramIndex = 0;
             List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
@@ -326,7 +326,7 @@ namespace LiteOrm
         /// <param name="sql">SQL 语句，SQL 中可以包含参数信息，参数名为以 0 开始的递增整数，对应 paramValues 中值的下标</param>
         /// <param name="paramValues">参数值，需要与 SQL 中的参数一一对应，为空时表示没有参数</param>
         /// <returns>IDbCommand</returns>
-        public IDbCommand MakeParamCommand(string sql, params object[] paramValues)
+        public DbCommandProxy MakeParamCommand(string sql, params object[] paramValues)
         {
             return MakeParamCommand(sql, (IEnumerable)paramValues);
         }
@@ -338,9 +338,9 @@ namespace LiteOrm
         /// <param name="paramValues">参数列表，为空时表示没有参数。Key 需要与 SQL 中的参数名称对应。</param>
         /// <param name="context">SQL 构建上下文。</param>
         /// <returns>IDbCommand 实例。</returns>
-        public IDbCommand MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues, SqlBuildContext context = null)
+        public DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues, SqlBuildContext context = null)
         {
-            IDbCommand command = NewCommand();
+            DbCommandProxy command = NewCommand();
             command.CommandText = ReplaceParam(sql, context);
             AddParamsToCommand(command, paramValues);
             return command;
@@ -391,16 +391,16 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 根据SQL语句和条件建立IDbCommand
+        /// 根据SQL语句和条件建立DbCommandProxy
         /// </summary>
         /// <param name="sqlWithParam">带参数的SQL语句
-        /// <example>"select @AllFields@ from @FromTable@ where @Condition@"表示从表中查询所有符合条件的记录</example>
+        /// <example>"select @AllFields@ from @FromTable@ @Where@"表示从表中查询所有符合条件的记录</example>
         /// <example>"select count(*) from @FromTable@ "表示从表中所有记录的数量，expr参数需为空</example>
-        /// <example>"delete from @Table@ where @Condition@"表示从表中删除所有符合条件的记录</example>
+        /// <example>"delete from @Table@ @Where@"表示从表中删除所有符合条件的记录</example>
         /// </param>
         /// <param name="expr">条件，为null时表示无条件</param>
-        /// <returns>IDbCommand</returns>
-        public IDbCommand MakeConditionCommand(string sqlWithParam, Expr expr)
+        /// <returns>DbCommandProxy</returns>
+        public DbCommandProxy MakeConditionCommand(string sqlWithParam, Expr expr)
         {
             List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
             var context = SqlBuildContext;
@@ -410,8 +410,8 @@ namespace LiteOrm
                 strCondition = expr.ToSql(context, SqlBuilder, paramList);
             }
 
-            if (String.IsNullOrWhiteSpace(strCondition)) strCondition = "1=1";
-            return MakeNamedParamCommand(sqlWithParam.Replace(ParamCondition, strCondition), paramList);
+            if (!string.IsNullOrWhiteSpace(strCondition)) strCondition = $"\nwhere {strCondition}";
+            return MakeNamedParamCommand(sqlWithParam.Replace(ParamWhere, strCondition), paramList);
         }
 
         /// <summary>

@@ -161,7 +161,22 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default)
         {
-            await Task.Run(() => Batch(entities), cancellationToken);
+            foreach (EntityOperation<T> entityOp in entities)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                switch (entityOp.Operation)
+                {
+                    case OpDef.Insert:
+                        await InsertCoreAsync(entityOp.Entity, cancellationToken);
+                        break;
+                    case OpDef.Update:
+                        await UpdateCoreAsync(entityOp.Entity, cancellationToken);
+                        break;
+                    case OpDef.Delete:
+                        await DeleteCoreAsync(entityOp.Entity, cancellationToken);
+                        break;
+                }
+            }
         }
 
         /// <summary>
@@ -175,7 +190,16 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            await Task.Run(() => BatchInsert(entities), cancellationToken);
+            if (typeof(IArged).IsAssignableFrom(typeof(T)))
+            {
+                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                foreach (var group in groups)
+                {
+                    await ObjectDAO.WithArgs(group.Key).BatchInsertAsync(group, cancellationToken);
+                }
+            }
+            else
+                await ObjectDAO.BatchInsertAsync(entities, cancellationToken);
         }
 
         /// <summary>
@@ -189,7 +213,11 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchUpdateAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            await Task.Run(() => BatchUpdate(entities), cancellationToken);
+            foreach (T entity in entities)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await UpdateCoreAsync(entity, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -204,7 +232,11 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            await Task.Run(() => BatchUpdateOrInsert(entities), cancellationToken);
+            foreach (T entity in entities)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await UpdateOrInsertAsync(entity, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -219,7 +251,11 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            await Task.Run(() => BatchDelete(entities), cancellationToken);
+            foreach (T entity in entities)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await DeleteCoreAsync(entity, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -234,7 +270,11 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default)
         {
-            await Task.Run(() => BatchDeleteID(ids), cancellationToken);
+            foreach (object id in ids)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await DeleteIDCoreAsync(id, null, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -249,7 +289,7 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务，任务结果为是否插入成功。</returns>
         public async virtual Task<bool> InsertAsync(T entity, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Insert(entity), cancellationToken);
+            return await InsertCoreAsync(entity, cancellationToken);
         }
 
         /// <summary>
@@ -264,23 +304,28 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务，任务结果为是否更新成功。</returns>
         public async virtual Task<bool> UpdateAsync(T entity, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Update(entity), cancellationToken);
+            return await UpdateCoreAsync(entity, cancellationToken);
         }
 
         /// <summary>
         /// 异步更新或插入实体。
-        /// </summary>
+        /// </summary> 
         /// <remarks>
-        /// 该方法在会话上下文中异步执行更新或插入操作。先检查实体是否已存在：
-        /// 如果主键存在则执行更新，否则执行插入操作。
-        /// 如果实体实现了 IArged 接口，会自动使用其分表参数。
+        /// 该方法在会话上下文中异步执行更新或插入操作，根据实体的主键值决定是更新还是插入。
         /// </remarks>
         /// <param name="entity">要更新或插入的实体。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务，任务结果为是否操作成功。</returns>
         public async virtual Task<bool> UpdateOrInsertAsync(T entity, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => UpdateOrInsert(entity), cancellationToken);
+            switch (await UpdateOrInsertCoreAsync(entity, cancellationToken))
+            {
+                case UpdateOrInsertResult.Inserted:
+                case UpdateOrInsertResult.Updated:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         /// <summary>
@@ -326,8 +371,8 @@ namespace LiteOrm.Service
         /// 根据实体的主键值删除相应的数据库记录。实体必须包含有效的主键值。
         /// 如果实体实现了 IArged 接口，会自动使用其分表参数。
         /// </remarks>
-        /// <param name="entity">要删除的实体。</param>
-        /// <returns>是否删除成功。</returns>
+        /// <param name="entity">要删除的实体</param>
+        /// <returns>是否删除成功</returns>
         public virtual bool Delete(T entity)
         {
             return DeleteCore(entity);
@@ -710,7 +755,17 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         async Task IEntityServiceAsync.BatchInsertAsync(IEnumerable entities, CancellationToken cancellationToken)
         {
-            await Task.Run(() => ((IEntityService)this).BatchInsert(entities), cancellationToken);
+            if (entities is IEnumerable<T> typed)
+                await BatchInsertAsync(typed, cancellationToken);
+            else
+            {
+                var list = new List<T>();
+                foreach (object entity in entities)
+                {
+                    list.Add((T)entity);
+                }
+                await BatchInsertAsync(list, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -721,7 +776,17 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         async Task IEntityServiceAsync.BatchUpdateAsync(IEnumerable entities, CancellationToken cancellationToken)
         {
-            await Task.Run(() => ((IEntityService)this).BatchUpdate(entities), cancellationToken);
+            if (entities is IEnumerable<T> typed)
+                await BatchUpdateAsync(typed, cancellationToken);
+            else
+            {
+                var list = new List<T>();
+                foreach (object entity in entities)
+                {
+                    list.Add((T)entity);
+                }
+                await BatchUpdateAsync(list, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -732,7 +797,17 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         async Task IEntityServiceAsync.BatchUpdateOrInsertAsync(IEnumerable entities, CancellationToken cancellationToken)
         {
-            await Task.Run(() => ((IEntityService)this).BatchUpdateOrInsert(entities), cancellationToken);
+            if (entities is IEnumerable<T> typed)
+                await BatchUpdateOrInsertAsync(typed, cancellationToken);
+            else
+            {
+                var list = new List<T>();
+                foreach (object entity in entities)
+                {
+                    list.Add((T)entity);
+                }
+                await BatchUpdateOrInsertAsync(list, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -743,7 +818,17 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         async Task IEntityServiceAsync.BatchDeleteAsync(IEnumerable entities, CancellationToken cancellationToken)
         {
-            await Task.Run(() => ((IEntityService)this).BatchDelete(entities), cancellationToken);
+            if (entities is IEnumerable<T> typed)
+                await BatchDeleteAsync(typed, cancellationToken);
+            else
+            {
+                var list = new List<T>();
+                foreach (object entity in entities)
+                {
+                    list.Add((T)entity);
+                }
+                await BatchDeleteAsync(list, cancellationToken);
+            }
         }
 
         #endregion
@@ -760,7 +845,7 @@ namespace LiteOrm.Service
         /// <returns>受影响的行数。</returns>
         public async Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr, string[] tableArgs, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => UpdateValues(updateValues, expr, tableArgs), cancellationToken);
+            return await ObjectDAO.WithArgs(tableArgs).UpdateAllValuesAsync(updateValues, expr, cancellationToken);
         }
 
         /// <summary>
@@ -772,7 +857,7 @@ namespace LiteOrm.Service
         /// <returns>受影响的行数。</returns>
         public async Task<int> DeleteAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Delete(expr, tableArgs), cancellationToken);
+            return await ObjectDAO.WithArgs(tableArgs).DeleteAsync(expr, cancellationToken);
         }
 
         /// <summary>
@@ -784,8 +869,8 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>是否更新成功。</returns>
         public async Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, object[] keys, string[] tableArgs, CancellationToken cancellationToken = default)
-        {
-            return await Task.Run(() => UpdateValues(updateValues, keys, tableArgs), cancellationToken);
+        {            
+            return await ObjectDAO.WithArgs(tableArgs).UpdateValuesAsync(updateValues, keys, cancellationToken);
         }
 
         /// <summary>
@@ -797,7 +882,86 @@ namespace LiteOrm.Service
         /// <returns>是否删除成功。</returns>
         public async Task<bool> DeleteIDAsync(object id, string[] tableArgs, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => DeleteID(id, tableArgs), cancellationToken);
+            return await DeleteIDCoreAsync(id, tableArgs, cancellationToken);
+        }
+
+        #endregion
+
+        #region Core Async Methods
+
+        /// <summary>
+        /// 核心异步插入逻辑。
+        /// </summary>
+        /// <param name="entity">要插入的实体对象。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>是否插入成功。</returns>
+        protected virtual async Task<bool> InsertCoreAsync(T entity, CancellationToken cancellationToken = default)
+        {
+            if (entity is IArged arg)
+                return await ObjectDAO.WithArgs(arg.TableArgs).InsertAsync(entity, cancellationToken);
+            return await ObjectDAO.InsertAsync(entity, cancellationToken);
+        }
+
+        /// <summary>
+        /// 核心异步更新逻辑。
+        /// </summary>
+        /// <param name="entity">要更新的实体对象。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>是否更新成功。</returns>
+        protected virtual async Task<bool> UpdateCoreAsync(T entity, CancellationToken cancellationToken = default)
+        {
+            if (entity is IArged arg)
+                return await ObjectDAO.WithArgs(arg.TableArgs).UpdateAsync(entity, null, cancellationToken);
+            return await ObjectDAO.UpdateAsync(entity, null, cancellationToken);
+        }
+
+        /// <summary>
+        /// 核心异步更新或插入逻辑。
+        /// </summary>
+        /// <param name="entity">要处理的实体对象。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>操作结果。</returns>
+        protected virtual async Task<UpdateOrInsertResult> UpdateOrInsertCoreAsync(T entity, CancellationToken cancellationToken = default)
+        {
+            bool exists;
+            if (entity is IArged arg)
+            {
+                exists = await ObjectViewDAO.WithArgs(arg.TableArgs).ExistsAsync(entity, cancellationToken);
+            }
+            else
+            {
+                exists = await ObjectViewDAO.ExistsAsync(entity, cancellationToken);
+            }
+
+            if (exists)
+                return await UpdateCoreAsync(entity, cancellationToken) ? UpdateOrInsertResult.Updated : UpdateOrInsertResult.Failed;
+            else
+                return await InsertCoreAsync(entity, cancellationToken) ? UpdateOrInsertResult.Inserted : UpdateOrInsertResult.Failed;
+        }
+
+        /// <summary>
+        /// 核心异步基于 ID 的删除逻辑。
+        /// </summary>
+        /// <param name="id">实体的主键值。</param>
+        /// <param name="tableArgs">表名参数。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>是否删除成功。</returns>
+        protected virtual async Task<bool> DeleteIDCoreAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        {
+            return await ObjectDAO.WithArgs(tableArgs).DeleteByKeysAsync(new object[] { id }, cancellationToken);
+        }
+
+        /// <summary>
+        /// 核心异步删除逻辑。
+        /// </summary>
+        /// <param name="entity">要删除的实体对象。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>是否删除成功。</returns>
+        protected virtual async Task<bool> DeleteCoreAsync(T entity, CancellationToken cancellationToken = default)
+        {
+            if (entity is IArged arg)
+                return await ObjectDAO.WithArgs(arg.TableArgs).DeleteAsync(entity, cancellationToken);
+            return await ObjectDAO.DeleteAsync(entity, cancellationToken);
         }
 
         #endregion

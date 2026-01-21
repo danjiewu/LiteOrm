@@ -40,6 +40,20 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 使用 Lambda 表达式搜索实体，并指定排序项。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">实体视图服务实例。</param>
+        /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
+        /// <param name="orderby">排序项。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <returns>符合条件的实体对象列表。</returns>
+        public static List<T> SearchWithOrder<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, Sorting[] orderby, params string[] tableArgs)
+        {
+            return entityViewService.SearchWithOrder(Expr.Exp(expression), orderby, tableArgs);
+        }
+
+        /// <summary>
         /// 使用 Lambda 表达式搜索单个实体。
         /// </summary>
         /// <typeparam name="T">实体类型。</typeparam>
@@ -106,6 +120,21 @@ namespace LiteOrm.Common
         public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityViewService.SearchAsync(Expr.Exp(expression), tableArgs, cancellationToken);
+        }
+
+        /// <summary>
+        /// 使用 Lambda 表达式异步搜索实体，并指定排序项。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">支持异步操作的实体视图服务实例。</param>
+        /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
+        /// <param name="orderby">排序项。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <param name="cancellationToken">取消操作的令牌。</param>
+        /// <returns>表示异步搜索操作的任务，结果包含符合条件的实体对象列表。</returns>
+        public static Task<List<T>> SearchWithOrderAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, Sorting[] orderby, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        {
+            return entityViewService.SearchWithOrderAsync(Expr.Exp(expression), orderby, tableArgs, cancellationToken);
         }
 
         /// <summary>

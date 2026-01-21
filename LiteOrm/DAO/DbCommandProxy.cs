@@ -204,7 +204,7 @@ namespace LiteOrm
         public IDataReader ExecuteReader(CommandBehavior behavior)
         {
             PreExcuteCommand(ExcuteType.ExecuteReader);
-            IDataReader ret = new LockableDataReader(Target.ExecuteReader(behavior), Context.AcquireScope());
+            IDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), Context.AcquireScope());
             PostExcuteCommand(ExcuteType.ExecuteReader);
             return ret;
 
@@ -217,7 +217,7 @@ namespace LiteOrm
         public IDataReader ExecuteReader()
         {
             PreExcuteCommand(ExcuteType.ExecuteReader);
-            IDataReader ret = new LockableDataReader(Target.ExecuteReader(), Context.AcquireScope());
+            IDataReader ret = new AutoLockDataReader(Target.ExecuteReader(), Context.AcquireScope());
             PostExcuteCommand(ExcuteType.ExecuteReader);
             return ret;
         }
@@ -233,7 +233,7 @@ namespace LiteOrm
             PreExcuteCommand(ExcuteType.ExecuteReader);
 
             var task = Target.ExecuteReaderAsync(behavior, cancellationToken);
-            IDataReader ret = new LockableDataReader(await task.ConfigureAwait(false), await Context.AcquireScopeAsync(cancellationToken).ConfigureAwait(false));
+            IDataReader ret = new AutoLockDataReader(await task.ConfigureAwait(false), await Context.AcquireScopeAsync(cancellationToken).ConfigureAwait(false));
             PostExcuteCommand(ExcuteType.ExecuteReader);
             return ret;
         }

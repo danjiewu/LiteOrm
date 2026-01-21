@@ -13,7 +13,7 @@ namespace LiteOrm.Common
     /// 实体类的增删改等基本操作的异步泛型接口
     /// </summary>
     /// <typeparam name="T">实体类类型</typeparam>
-    public interface IObjectDAOAsync<T>
+    public interface IObjectDAOAsync<T>: IObjectDAOAsync
     {
         /// <summary>
         /// 异步添加对象
@@ -54,23 +54,7 @@ namespace LiteOrm.Common
         /// <param name="o">待删除的对象</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回是否成功删除</returns>
-        Task<bool> DeleteAsync(T o, CancellationToken cancellationToken = default);
-        
-        /// <summary>
-        /// 异步根据条件删除对象
-        /// </summary>
-        /// <param name="expr">条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，返回删除对象数量</returns>
-        Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default);
-        
-        /// <summary>
-        /// 异步根据主键删除对象
-        /// </summary>
-        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，返回是否成功删除</returns>
-        Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default);
+        Task<bool> DeleteAsync(T o, CancellationToken cancellationToken = default);  
     }
 
     /// <summary>
@@ -119,7 +103,15 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回更新的记录数</returns>
         Task<int> UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr expr, CancellationToken cancellationToken = default);
-        
+
+        /// <summary>
+        /// 异步根据主键更新数据
+        /// </summary>
+        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
+        /// <param name="keys">主键</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，返回是否成功</returns>
+        Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> values, object[] keys, CancellationToken cancellationToken = default);
         /// <summary>
         /// 异步删除对象
         /// </summary>

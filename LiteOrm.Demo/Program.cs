@@ -12,6 +12,11 @@ using LiteOrm.Demo.DAO;
 // 使用 RegisterLiteOrm 从 appsettings.json 自动配置
 var host = Host.CreateDefaultBuilder(args)
     .RegisterLiteOrm()
+    .ConfigureServices(services =>
+    {
+        // 注册应用程序服务
+        services.AddServiceGenerator<ServiceFactory>();
+    })
     .Build();
 
 Console.WriteLine("--- LiteOrm 示例程序 (DI & Configuration) ---");
@@ -25,18 +30,14 @@ using (var initScope = host.Services.CreateScope())
 using (var scope = host.Services.CreateScope())
 {
     // 从容器中获取服务
-    var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-    var deptService = scope.ServiceProvider.GetRequiredService<IDepartmentService>();
-    var salesService = scope.ServiceProvider.GetRequiredService<ISalesService>();
-    var businessService = scope.ServiceProvider.GetRequiredService<IBusinessService>();
-    var userDao = scope.ServiceProvider.GetRequiredService<IUserCustomDAO>();
+    var serviceFactory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 
     Console.WriteLine("\n[1] 表达式全功能演示展示...");
     // 运行表达式全示例演示
-    await ExprDemo.RunAllExamplesAsync(userService, salesService, deptService, userDao);
+    await ExprDemo.RunAllExamplesAsync(serviceFactory);
 
     Console.WriteLine("\n[2] 三层架构与事务处理演示展示...");
-    await ExprDemo.RunThreeTierDemo(businessService, userService, salesService);
+    await ExprDemo.RunThreeTierDemo(serviceFactory);
 }
 
 await host.RunAsync();

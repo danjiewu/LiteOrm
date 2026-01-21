@@ -1,14 +1,16 @@
 ﻿using Autofac;
 using Autofac.Builder;
 using Autofac.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection;
+using Autofac.Extras.DynamicProxy;
+using Castle.DynamicProxy;
 using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Extensions.Hosting;
-using Autofac.Extras.DynamicProxy;
 
 namespace LiteOrm
 {
@@ -50,7 +52,7 @@ namespace LiteOrm
                     {
                         // 注册后置回调
                         foreach (var initializer in c.Resolve<IEnumerable<IComponentInitializer>>())
-                        initializer.Initialize(c);
+                            initializer.Initialize(c);
                     });
                 });
         }
@@ -189,6 +191,25 @@ namespace LiteOrm
                 ServiceLifetime.Transient => registration.InstancePerDependency(),
                 _ => throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null)
             };
+        }
+
+        /// <summary>
+        /// 注册服务生成器，将接口获取服务通过动态代理转换为从 ServiceProvider 获取服务
+        /// </summary>
+        /// <typeparam name="TService">获取服务的接口，提供返回服务的属性或方法</typeparam>
+        /// <param name="services">服务集合</param>
+        /// <param name="lifetime">服务生命周期</param>
+        /// <returns></returns>
+        public static IServiceCollection AddServiceGenerator<TService>(
+            this IServiceCollection services,
+            ServiceLifetime lifetime = ServiceLifetime.Scoped)
+            where TService : class
+        {
+            var serviceDescriptor = new ServiceDescriptor(typeof(TService),
+                sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget<TService>(sp.GetRequiredService<ServiceGenerateInterceptor>()),
+                lifetime);
+            services.Add(serviceDescriptor);
+            return services;
         }
     }
 

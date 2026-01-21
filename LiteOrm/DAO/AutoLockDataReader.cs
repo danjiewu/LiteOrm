@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,7 +14,7 @@ namespace LiteOrm
     /// 该类用于在执行查询并返回读取器时，保持对 <see cref="DAOContext"/> 的锁定，
     /// 直到数据读取完毕并释放此包装器。这确保了在延迟读取期间，底层连接不会被其他线程占用。
     /// </remarks>
-    public class LockableDataReader : IDataReader, IAsyncDisposable
+    public class AutoLockDataReader : IDataReader, IAsyncDisposable
     {
         /// <summary>
         /// 内部包装的原始数据读取器。
@@ -31,12 +32,12 @@ namespace LiteOrm
         private bool _disposed;
 
         /// <summary>
-        /// 初始化 <see cref="LockableDataReader"/> 类的新实例。
+        /// 初始化 <see cref="AutoLockDataReader"/> 类的新实例。
         /// </summary>
         /// <param name="innerReader">内部数据读取器实例。</param>
         /// <param name="scope">需要管理的锁定作用域。</param>
         /// <exception cref="ArgumentNullException">当 <paramref name="innerReader"/> 或 <paramref name="scope"/> 为 null 时抛出。</exception>
-        public LockableDataReader(IDataReader innerReader, IDisposable scope)
+        public AutoLockDataReader(IDataReader innerReader, IDisposable scope)
         {
             _innerReader = innerReader ?? throw new ArgumentNullException(nameof(innerReader));
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -50,7 +51,7 @@ namespace LiteOrm
         private void EnsureNotDisposed()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(LockableDataReader));
+                throw new ObjectDisposedException(nameof(AutoLockDataReader));
         }
         #endregion
 
@@ -155,6 +156,21 @@ namespace LiteOrm
         public bool Read()
         {
             EnsureNotDisposed();
+            return _innerReader.Read();
+        }
+
+        /// <summary>
+        /// 异步将读取器推进到结果集的下一条记录。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>如果还有更多行，则为 true；否则为 false。</returns>
+        public async Task<bool> ReadAsync(CancellationToken cancellationToken = default)
+        {
+            EnsureNotDisposed();
+            if (_innerReader is DbDataReader dbReader)
+            {
+                return await dbReader.ReadAsync(cancellationToken).ConfigureAwait(false);
+            }
             return _innerReader.Read();
         }
 
@@ -378,7 +394,7 @@ namespace LiteOrm
 
         #region IDisposable 和 IAsyncDisposable 实现
         /// <summary>
-        /// 释放由当前 <see cref="LockableDataReader"/> 占用的资源。
+        /// 释放由当前 <see cref="AutoLockDataReader"/> 占用的资源。
         /// </summary>
         public void Dispose()
         {
@@ -387,7 +403,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 释放由当前 <see cref="LockableDataReader"/> 占用的托管资源和可选的非托管资源。
+        /// 释放由当前 <see cref="AutoLockDataReader"/> 占用的托管资源和可选的非托管资源。
         /// </summary>
         /// <param name="disposing">如果为 true，则释放托管资源和非托管资源。</param>
         protected virtual void Dispose(bool disposing)
@@ -410,7 +426,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 以异步方式释放由当前 <see cref="LockableDataReader"/> 占用的资源。
+        /// 以异步方式释放由当前 <see cref="AutoLockDataReader"/> 占用的资源。
         /// </summary>
         public async ValueTask DisposeAsync()
         {

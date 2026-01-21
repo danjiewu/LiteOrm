@@ -34,16 +34,14 @@ namespace LiteOrm.Demo.Services
         {
             // 1. 插入用户记录，会自动使用同一个事务上下文环境
             user.CreateTime = DateTime.Now;
-            //await _userService.InsertAsync(user);
-            _userService.Insert(user);
+            await _userService.InsertAsync(user);
 
             // 2. 补全销售记录的用户 ID (Insert 后生成的 ID 会自动回填到实体的 Id 属性)
             firstSale.SalesUserId = user.Id;
             firstSale.SaleTime = DateTime.Now;
 
             // 3. 插入销售记录，同样会自动使用同一个事务上下文环境
-            //await _salesService.InsertAsync(firstSale);
-            _salesService.Insert(firstSale);
+            await _salesService.InsertAsync(firstSale);  
 
             throw new Exception("模拟异常，触发事务回滚");
 

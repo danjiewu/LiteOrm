@@ -57,20 +57,22 @@ namespace LiteOrm
         /// <summary>
         /// 实现获取对象操作的IDbCommand
         /// </summary>
-        protected virtual IDbCommand MakeGetObjectCommand()
+        protected virtual DbCommandProxy MakeGetObjectCommand()
         {
-            IDbCommand command = NewCommand();
-            command.CommandText = $"select {AllFieldsSql} \nfrom {From} \nwhere {MakeIsKeyCondition(command)}";
+            DbCommandProxy command = NewCommand();
+            string where = MakeIsKeyCondition(command);
+            if(!string.IsNullOrEmpty(where)) where = $"\nwhere {where}";
+            command.CommandText = $"select {AllFieldsSql} \nfrom {From} {where}";
             return command;
         }
 
         /// <summary>
         /// 实现检查对象是否存在操作的IDbCommand
         /// </summary>
-        protected virtual IDbCommand MakeObjectExistsCommand()
+        protected virtual DbCommandProxy MakeObjectExistsCommand()
         {
             ThrowExceptionIfNoKeys();
-            IDbCommand command = NewCommand();
+            DbCommandProxy command = NewCommand();
             StringBuilder strConditions = new StringBuilder();
             foreach (ColumnDefinition key in TableDefinition.Keys)
             {
@@ -120,10 +122,8 @@ namespace LiteOrm
         /// <returns>符合条件的对象个数</returns>
         public virtual int Count(Expr expr)
         {
-            using (IDbCommand command = MakeConditionCommand("select count(*) \nfrom @FromTable@ \nwhere @Condition@", expr))
-            {
-                return Convert.ToInt32(command.ExecuteScalar());
-            }
+            using var command = MakeConditionCommand("select count(*) \nfrom @FromTable@ @Where@", expr);
+            return Convert.ToInt32(command.ExecuteScalar());
         }
 
         /// <summary>
@@ -162,10 +162,8 @@ namespace LiteOrm
         /// <returns>是否存在</returns>
         public virtual bool Exists(Expr expr)
         {
-            using (IDbCommand command = MakeConditionCommand("select 1 \nfrom @FromTable@ \nwhere @Condition@", expr))
-            {
-                return command.ExecuteScalar() is not null;
-            }
+            using var command = MakeConditionCommand("select 1 \nfrom @FromTable@ @Where@", expr);
+            return command.ExecuteScalar() is not null;
         }
 
         /// <summary>
@@ -175,12 +173,10 @@ namespace LiteOrm
         /// <param name="func">要对每个对象执行的操作</param>
         public void ForEach(Expr expr, Action<T> func)
         {
-            using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@" + (expr is null ? null : " \nwhere @Condition@"), expr))
+            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@", expr);
+            using (IDataReader reader = command.ExecuteReader())
             {
-                using (IDataReader reader = command.ExecuteReader())
-                {
-                    func(ReadOne(reader));
-                }
+                func(ReadOne(reader));
             }
         }
 
@@ -191,10 +187,8 @@ namespace LiteOrm
         /// <returns>符合条件的对象列表</returns>
         public virtual List<T> Search(Expr expr)
         {
-            using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@" + (expr is null ? null : " \nwhere @Condition@"), expr))
-            {
-                return GetAll(command);
-            }
+            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@", expr);
+            return GetAll(command);
         }
 
         /// <summary>
@@ -207,10 +201,10 @@ namespace LiteOrm
         {
             if (orderBy is null || orderBy.Length == 0) return Search(expr);
             else
-                using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@" + (expr is null ? null : " \nwhere @Condition@") + " order by " + GetOrderBySql(orderBy), expr))
-                {
-                    return GetAll(command);
-                }
+            {
+                using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@ order by " + GetOrderBySql(orderBy), expr);
+                return GetAll(command);
+            }
         }
 
         /// <summary>
@@ -220,10 +214,8 @@ namespace LiteOrm
         /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
         public virtual T SearchOne(Expr expr)
         {
-            using (IDbCommand command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ \nwhere @Condition@", expr))
-            {
-                return GetOne(command);
-            }
+            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@", expr);
+            return GetOne(command);
         }
 
 
@@ -235,11 +227,9 @@ namespace LiteOrm
         /// <returns></returns>
         public virtual List<T> SearchSection(Expr expr, PageSection section)
         {
-            string sql = SqlBuilder.GetSelectSectionSql(AllFieldsSql, From, ParamCondition, GetOrderBySql(section.Orders), section.StartIndex, section.SectionSize);
-            using (IDbCommand command = MakeConditionCommand(sql, expr))
-            {
-                return GetAll(command);
-            }
+            string sql = SqlBuilder.GetSelectSectionSql(AllFieldsSql, From, ParamWhere, GetOrderBySql(section.Orders), section.StartIndex, section.SectionSize);
+            using var command = MakeConditionCommand(sql, expr);
+            return GetAll(command);
         }
 
         #endregion
@@ -310,7 +300,15 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含对象，若不存在则返回null</returns>
         public async virtual Task<T> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => GetObject(keys), cancellationToken);
+            ThrowExceptionIfWrongKeys(keys);
+            using var getObjectCommand = MakeGetObjectCommand();
+            int i = 0;
+            foreach (IDataParameter param in getObjectCommand.Parameters)
+            {
+                param.Value = ConvertToDbValue(keys[i], Table.Definition.Keys[i].DbType);
+                i++;
+            }
+            return await GetOneAsync(getObjectCommand, cancellationToken);
         }
 
         /// <summary>
@@ -321,7 +319,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含对象，若不存在则返回null</returns>
         async Task<object> IObjectViewDAOAsync.GetObjectAsync(object[] keys, CancellationToken cancellationToken)
         {
-            return await Task.Run(() => (object)GetObject(keys), cancellationToken);
+            return await GetObjectAsync(keys, cancellationToken);
         }
 
         /// <summary>
@@ -332,7 +330,8 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象个数</returns>
         public async virtual Task<int> CountAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Count(expr), cancellationToken);
+            using var command = MakeConditionCommand("select count(*) \nfrom @FromTable@ @Where@", expr);
+            return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
         }
 
         /// <summary>
@@ -343,7 +342,8 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
         public async virtual Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Exists(o), cancellationToken);
+            if (o is null) return false;
+            return await ExistsKeyAsync(GetKeyValues(o), cancellationToken);
         }
 
         /// <summary>
@@ -354,7 +354,15 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
         public async virtual Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => ExistsKey(keys), cancellationToken);
+            ThrowExceptionIfWrongKeys(keys);
+            using var objectExistsCommand = MakeObjectExistsCommand();
+            int i = 0;
+            foreach (IDataParameter param in objectExistsCommand.Parameters)
+            {
+                param.Value = ConvertToDbValue(keys[i], Table.Definition.Keys[i].DbType);
+                i++;
+            }
+            return Convert.ToInt32(await objectExistsCommand.ExecuteScalarAsync(cancellationToken)) > 0;
         }
 
         /// <summary>
@@ -365,7 +373,8 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
         public async virtual Task<bool> ExistsAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Exists(expr), cancellationToken);
+            using var command = MakeConditionCommand("select 1 \nfrom @FromTable@ @Where@", expr);
+            return await command.ExecuteScalarAsync(cancellationToken) is not null;
         }
 
         /// <summary>
@@ -376,7 +385,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
         public async virtual Task<bool> ExistsAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Exists(expression), cancellationToken);
+            return await ExistsAsync(Expr.Exp(expression), cancellationToken);
         }
 
         /// <summary>
@@ -387,7 +396,8 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含第一个符合条件的对象，若不存在则返回null</returns>
         public async virtual Task<T> SearchOneAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => SearchOne(expr), cancellationToken);
+            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@", expr);
+            return await GetOneAsync(command, cancellationToken);
         }
 
         /// <summary>
@@ -398,7 +408,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含第一个符合条件的对象，若不存在则返回null</returns>
         async Task<object> IObjectViewDAOAsync.SearchOneAsync(Expr expr, CancellationToken cancellationToken)
         {
-            return await Task.Run(() => (object)SearchOne(expr), cancellationToken);
+            return await SearchOneAsync(expr, cancellationToken);
         }
 
         /// <summary>
@@ -410,20 +420,12 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务</returns>
         public async virtual Task ForEachAsync(Expr expr, Func<T, Task> func, CancellationToken cancellationToken = default)
         {
-            await Task.Run(() =>
+            var list = await SearchAsync(expr, cancellationToken);
+            foreach (var item in list)
             {
-                var list = Search(expr);
-                return list;
-            }, cancellationToken).ContinueWith(async t =>
-            {
-                // unwrap and execute callbacks sequentially
-                var list = await t;
-                foreach (var item in list)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await func(item).ConfigureAwait(false);
-                }
-            }, cancellationToken).Unwrap();
+                cancellationToken.ThrowIfCancellationRequested();
+                await func(item).ConfigureAwait(false);
+            }
         }
 
         /// <summary>
@@ -434,7 +436,8 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
         public async virtual Task<List<T>> SearchAsync(Expr expr = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Search(expr), cancellationToken);
+            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@", expr);
+            return await GetAllAsync(command, cancellationToken);
         }
 
         /// <summary>
@@ -445,7 +448,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
         async Task<IList> IObjectViewDAOAsync.SearchAsync(Expr expr, CancellationToken cancellationToken)
         {
-            return await Task.Run(() => (IList)Search(expr), cancellationToken);
+            return await SearchAsync(expr, cancellationToken);
         }
 
         /// <summary>
@@ -457,7 +460,10 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
         public async virtual Task<List<T>> SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Search(expr, orderBy), cancellationToken);
+            if (orderBy is null || orderBy.Length == 0) return await SearchAsync(expr, cancellationToken);
+            
+            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@ order by " + GetOrderBySql(orderBy), expr);
+            return await GetAllAsync(command, cancellationToken);
         }
 
         /// <summary>
@@ -469,7 +475,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
         async Task<IList> IObjectViewDAOAsync.SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken)
         {
-            return await Task.Run(() => (IList)Search(expr, orderBy), cancellationToken);
+            return await SearchAsync(expr, orderBy, cancellationToken);
         }
 
         /// <summary>
@@ -481,7 +487,9 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含分页查询结果</returns>
         public async virtual Task<List<T>> SearchSectionAsync(Expr expr, PageSection section, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => SearchSection(expr, section), cancellationToken);
+            string sql = SqlBuilder.GetSelectSectionSql(AllFieldsSql, From, ParamWhere, GetOrderBySql(section.Orders), section.StartIndex, section.SectionSize);
+            using var command = MakeConditionCommand(sql, expr);
+            return await GetAllAsync(command, cancellationToken);
         }
 
         /// <summary>
@@ -493,7 +501,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含分页查询结果</returns>
         async Task<IList> IObjectViewDAOAsync.SearchSectionAsync(Expr expr, PageSection section, CancellationToken cancellationToken)
         {
-            return await Task.Run(() => (IList)SearchSection(expr, section), cancellationToken);
+            return await SearchSectionAsync(expr, section, cancellationToken);
         }
 
         #endregion
@@ -576,7 +584,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="command">待执行的 IDbCommand</param>
         /// <returns></returns>
-        protected List<T> GetAll(IDbCommand command)
+        protected List<T> GetAll(DbCommandProxy command)
         {
             using (IDataReader reader = command.ExecuteReader())
             {
@@ -590,7 +598,7 @@ namespace LiteOrm
         /// <param name="command">待执行的 IDbCommand</param>
         /// <param name="count">查询结果条数</param>
         /// <returns></returns>
-        protected List<T> GetAll(IDbCommand command, int count)
+        protected List<T> GetAll(DbCommandProxy command, int count)
         {
             using (IDataReader reader = command.ExecuteReader())
             {
@@ -603,13 +611,80 @@ namespace LiteOrm
         /// </summary>
         /// <param name="command">待执行的 IDbCommand</param>
         /// <returns></returns>
-        protected T GetOne(IDbCommand command)
+        protected T GetOne(DbCommandProxy command)
         {
             using (IDataReader reader = command.ExecuteReader())
             {
                 return ReadOne(reader);
             }
         }
+
+        /// <summary>
+        /// 异步读取所有记录并转化为对象集合
+        /// </summary>
+        private async Task<List<T>> ReadAllAsync(IDataReader reader, CancellationToken cancellationToken)
+        {
+            List<T> results = new List<T>();
+            if (reader is AutoLockDataReader autoLockReader)
+            {
+                while (await autoLockReader.ReadAsync(cancellationToken))
+                {
+                    results.Add(ConvertToObject(reader));
+                }
+            }
+            else
+            {
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    results.Add(ConvertToObject(reader));
+                }
+            }
+            return results;
+        }
+
+        /// <summary>
+        /// 从IDataReader中异步读取一条记录转化为对象
+        /// </summary>
+        private async Task<T> ReadOneAsync(IDataReader reader, CancellationToken cancellationToken)
+        {
+            if (reader is AutoLockDataReader autoLockReader)
+            {
+                return await autoLockReader.ReadAsync(cancellationToken) ? ConvertToObject(reader) : default(T);
+            }
+            return reader.Read() ? ConvertToObject(reader) : default(T);
+        }
+
+        /// <summary>
+        /// 异步执行 IDbCommand，读取所有记录并转化为对象的集合
+        /// </summary>
+        protected async Task<List<T>> GetAllAsync(IDataReader reader, CancellationToken cancellationToken)
+        {
+            return await ReadAllAsync(reader, cancellationToken);
+        }
+
+        /// <summary>
+        /// 异步执行 IDbCommand，读取所有记录并转化为对象的集合
+        /// </summary>
+        protected async Task<List<T>> GetAllAsync(DbCommandProxy command, CancellationToken cancellationToken)
+        {
+            using (IDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken))
+            {
+                return await ReadAllAsync(reader, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// 异步执行 IDbCommand，读取一条记录并转化为单个对象
+        /// </summary>
+        protected async Task<T> GetOneAsync(DbCommandProxy command, CancellationToken cancellationToken)
+        {
+            using (IDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken))
+            {
+                return await ReadOneAsync(reader, cancellationToken);
+            }
+        }
+        
         #endregion
     }
 }

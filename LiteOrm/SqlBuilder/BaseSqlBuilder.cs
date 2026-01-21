@@ -159,7 +159,6 @@ namespace LiteOrm.SqlBuilder
         /// <returns>分页 SQL 语句。</returns>
         public virtual string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
-            if (!String.IsNullOrEmpty(where)) where = "\nwhere " + where;
             return $"select * from (\nselect {select}, Row_Number() over (Order by {orderBy}) as Row_Number \nfrom {from} {where}) TempTable \nwhere Row_Number > {startIndex} and Row_Number <= {startIndex + sectionSize}";
         }
 

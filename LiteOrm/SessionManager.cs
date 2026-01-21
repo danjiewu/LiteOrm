@@ -80,7 +80,10 @@ namespace LiteOrm
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
         private static readonly AsyncLocal<SessionManager> _currentAsyncLocal = new AsyncLocal<SessionManager>();
 
-        public string SessionID { get; }= Guid.NewGuid().ToString("N");
+        /// <summary>
+        /// 唯一会话ID
+        /// </summary>
+        public string SessionID { get; } = Guid.NewGuid().ToString("N").Substring(0, 8);
 
         /// <summary>
         /// 当前异步上下文的会话管理器
@@ -106,8 +109,14 @@ namespace LiteOrm
         /// <returns>上下文作用域对象，在 Dispose 时恢复之前的 Current</returns>
         public IDisposable CreateScope()
         {
+            EnsureNotDisposed();
             // 返回一个作用域对象，在作用域结束时恢复之前的 Current
-            return new ContextScope(this);
+            return new SessionScope(this);
+        }
+
+        private void EnsureNotDisposed()
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(SessionManager));
         }
 
         /// <summary>
@@ -138,48 +147,14 @@ namespace LiteOrm
         public string CurrentTransactionId => _currentTransactionId;
 
         /// <summary>
-        /// 启动会话（清除所有状态）
+        /// 清除所有状态（SqlStack）
         /// </summary>
-        public bool Start()
+        public bool Reset()
         {
+            EnsureNotDisposed();
             lock (_syncLock)
             {
-                // 如果还有活动的事务，回滚
-                if (InTransaction)
-                {
-                    try
-                    {
-                        RollbackInternal();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogError(ex, $"Session {SessionID} 重置时回滚事务失败");
-                    }
-                }
-
                 _sqlStack.Clear();
-                return true;
-            }
-        }
-
-        /// <summary>
-        /// 完成会话（归还所有连接）
-        /// </summary>
-        public bool Finish()
-        {
-            lock (_syncLock)
-            {
-                try
-                {
-                    if (InTransaction)
-                    {
-                        CommitInternal();
-                    }
-                }
-                finally
-                {
-                    ReturnAllContexts();
-                }
                 return true;
             }
         }
@@ -190,6 +165,7 @@ namespace LiteOrm
         /// <param name="sql">SQL语句</param>
         public void PushSql(string sql)
         {
+            EnsureNotDisposed();
             lock (_syncLock)
             {
                 _sqlStack.AddFirst(sql);
@@ -207,6 +183,7 @@ namespace LiteOrm
         /// <returns>是否成功开始</returns>
         public bool BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
         {
+            EnsureNotDisposed();
             lock (_syncLock)
             {
                 if (InTransaction)
@@ -218,7 +195,7 @@ namespace LiteOrm
                 _currentTransactionId = Guid.NewGuid().ToString();
                 _currentIsolationLevel = isolationLevel;
 
-                _logger?.LogDebug($"Session {SessionID} 开始事务。Transaction ID: {_currentTransactionId}, 隔离级别: {isolationLevel}");
+                _logger?.LogDebug($"会话 {SessionID} 开始事务。Transaction ID: {_currentTransactionId}, 隔离级别: {isolationLevel}");
 
                 // 为所有已存在的上下文开启事务
                 foreach (var context in _daoContexts.Values)
@@ -232,7 +209,7 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, $"Session {SessionID} 为连接池 {context.Pool?.Name} 开启事务失败");
+                        _logger?.LogError(ex, $"会话 {SessionID} 为连接池 {context.Pool?.Name} 开启事务失败");
                         // 如果某个连接开启事务失败，回滚并抛出异常
                         RollbackInternal();
                         throw new InvalidOperationException($"开启事务失败: {ex.Message}", ex);
@@ -249,11 +226,12 @@ namespace LiteOrm
         /// <returns>是否成功提交</returns>
         public bool Commit()
         {
+            EnsureNotDisposed();
             lock (_syncLock)
             {
                 if (!InTransaction)
                 {
-                    _logger?.LogWarning($"Session {SessionID} 不在事务中，无法提交");
+                    _logger?.LogWarning($"会话 {SessionID} 不在事务中，无法提交");
                     return false;
                 }
 
@@ -267,11 +245,12 @@ namespace LiteOrm
         /// <returns>是否成功回滚</returns>
         public bool Rollback()
         {
+            EnsureNotDisposed();
             lock (_syncLock)
             {
                 if (!InTransaction)
                 {
-                    _logger?.LogWarning($"Session {SessionID} 不在事务中，无法回滚");
+                    _logger?.LogWarning($"会话 {SessionID} 不在事务中，无法回滚");
                     return false;
                 }
 
@@ -297,7 +276,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"Session {SessionID} 提交事务失败。连接池: {context.Pool?.Name}");
+                    _logger?.LogError(ex, $"会话 {SessionID} 提交事务失败。连接池: {context.Pool?.Name}");
                     success = false;
                 }
             }
@@ -305,7 +284,7 @@ namespace LiteOrm
             // 清理事务状态
             _currentTransactionId = null;
 
-            _logger?.LogDebug($"Session {SessionID} 事务提交完成。Transaction ID: {_currentTransactionId}, 成功: {success}");
+            _logger?.LogDebug($"会话 {SessionID} 事务提交完成。Transaction ID: {_currentTransactionId}, 成功: {success}");
 
             if (!success)
             {
@@ -333,7 +312,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"Session {SessionID} 回滚事务失败。连接池: {context.Pool?.Name}");
+                    _logger?.LogError(ex, $"会话 {SessionID} 回滚事务失败。连接池: {context.Pool?.Name}");
                     success = false;
                 }
             }
@@ -341,7 +320,7 @@ namespace LiteOrm
             // 清理事务状态
             _currentTransactionId = null;
 
-            _logger?.LogDebug($"Session {SessionID} 事务回滚完成。Transaction ID: {_currentTransactionId}, 返回: {success}");
+            _logger?.LogDebug($"会话 {SessionID} 事务回滚完成。Transaction ID: {_currentTransactionId}, 返回: {success}");
 
             if (!success)
             {
@@ -359,6 +338,7 @@ namespace LiteOrm
         /// <returns>DAO上下文实例</returns>
         public DAOContext GetDaoContext(string name = null)
         {
+            EnsureNotDisposed();
             if (name is null) name = "_";
             lock (_syncLock)
             {
@@ -378,7 +358,7 @@ namespace LiteOrm
                         {
                             // 如果开启事务失败，归还连接并抛出异常
                             _daoContextPoolFactory.ReturnContext(context);
-                            _logger?.LogError(ex, $"Session {SessionID} 开启事务失败。连接池: {name}");
+                            _logger?.LogError(ex, $"会话 {SessionID} 开启事务失败。连接池: {name}");
                             throw;
                         }
                     }
@@ -412,7 +392,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"Session {SessionID} 归还连接失败。连接池: {context.Pool?.Name}");
+                    _logger?.LogError(ex, $"会话 {SessionID} 归还连接失败。连接池: {context.Pool?.Name}");
                 }
             }
             _daoContexts.Clear();
@@ -434,7 +414,7 @@ namespace LiteOrm
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed) return;
-
+            _disposed = true;
             if (disposing)
             {
                 // 如果有活动的事务，回滚
@@ -453,8 +433,7 @@ namespace LiteOrm
                 }
                 //归还所有连接
                 ReturnAllContexts();
-            }
-            _disposed = true;
+            }            
         }
 
         /// <summary>
@@ -466,15 +445,15 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 上下文作用域
+        /// 会话作用域
         /// </summary>
-        private class ContextScope : IDisposable
+        private class SessionScope : IDisposable
         {
             private readonly SessionManager _sessionManager;
             private readonly SessionManager _previousSessionManager;
             private bool _disposed = false;
 
-            public ContextScope(SessionManager sessionManager)
+            public SessionScope(SessionManager sessionManager)
             {
                 _previousSessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
                 _sessionManager = sessionManager.CreateCopy();

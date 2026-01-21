@@ -1,0 +1,191 @@
+﻿using LiteOrm.Common;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace LiteOrm.Service
+{
+    /// <summary>
+    /// 异步版本 - 泛型实体更改接口
+    /// </summary>
+    /// <typeparam name="T">实体类型</typeparam>
+    public interface IEntityServiceAsync<T> : IEntityServiceAsync
+    {
+        /// <summary>
+        /// 异步新增实体
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>操作结果，true表示成功，false表示失败</returns>
+        Task<bool> InsertAsync(T entity, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步更新实体
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>操作结果，true表示成功，false表示失败</returns>
+        Task<bool> UpdateAsync(T entity, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步更新或新增实体（实体存在则更新，否则新增）
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>操作结果，true表示成功，false表示失败</returns>
+        Task<bool> UpdateOrInsertAsync(T entity, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量新增实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
+        Task BatchInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量更新实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
+        Task BatchUpdateAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量更新或新增实体（实体存在则更新，否则新增）
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
+        Task BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量删除实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
+        Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量操作实体（操作类型可以为新增、更新或删除）
+        /// </summary>
+        /// <param name="entities">实体操作列表</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
+        Task BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default);
+    }
+
+
+    /// <summary>
+    /// 异步版本 - 非泛型实体更改接口
+    /// </summary>
+    [AutoRegister(false)]
+    public interface IEntityServiceAsync
+    {
+        /// <summary>
+        /// 异步新增实体
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>操作结果，true表示成功，false表示失败</returns>
+        Task<bool> InsertAsync(object entity, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步更新实体
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>操作结果，true表示成功，false表示失败</returns>
+        Task<bool> UpdateAsync(object entity, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步根据条件和字段内容更新值
+        /// </summary>
+        /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
+        /// <param name="expr">更新条件</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>更改记录数</returns>
+        Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr, string[] tableArgs, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步根据主键和字段内容更新值
+        /// </summary>
+        /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
+        /// <param name="keys">主键</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>操作结果，true表示成功，false表示失败</returns>
+        Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, object[] keys, string[] tableArgs, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步更新或新增实体（实体存在则更新，否则新增）
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>操作结果，true表示成功，false表示失败</returns>
+        Task<bool> UpdateOrInsertAsync(object entity, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步根据ID删除实体
+        /// </summary>
+        /// <param name="id">待删除id</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>操作结果，true表示成功，false表示失败</returns>
+        Task<bool> DeleteIDAsync(object id, string[] tableArgs, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步根据条件删除实体
+        /// </summary>
+        /// <param name="expr">删除条件</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>受影响的行数</returns>
+        Task<int> DeleteAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量新增实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
+        Task BatchInsertAsync(IEnumerable entities, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量更新实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
+        Task BatchUpdateAsync(IEnumerable entities, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量更新或新增实体（实体存在则更新，否则新增）
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
+        Task BatchUpdateOrInsertAsync(IEnumerable entities, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量删除实体
+        /// </summary>
+        /// <param name="entities">实体列表</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
+        Task BatchDeleteAsync(IEnumerable entities, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量根据ID删除实体
+        /// </summary>
+        /// <param name="ids">待删除id</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务</returns>
+        Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default);
+    }
+}

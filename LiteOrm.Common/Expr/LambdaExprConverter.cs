@@ -1,6 +1,7 @@
 ﻿using LiteOrm.Service;
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -39,11 +40,11 @@ namespace LiteOrm.Common
         private readonly ParameterExpressionDetector _parameterDetector = new ParameterExpressionDetector(); // 检测表达式是否包含 Lambda 参数
 
         // 处理器字典：映射方法名/成员名到自定义转换逻辑
-        private static readonly Dictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodNameHandlers = new Dictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
-        private static readonly Dictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>> _typeMethodHandlers = new Dictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>>();
+        private static readonly ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodNameHandlers = new ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>> _typeMethodHandlers = new ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>>();
 
-        private static readonly Dictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>> _memberNameHandlers = new Dictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
-        private static readonly Dictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>> _typeMemberHandlers = new Dictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>>();
+        private static readonly ConcurrentDictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>> _memberNameHandlers = new ConcurrentDictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>> _typeMemberHandlers = new ConcurrentDictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>>();
 
 
         /// <summary>

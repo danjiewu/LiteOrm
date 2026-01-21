@@ -161,6 +161,18 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
+        /// 根据条件查询视图对象列表，并指定排序项
+        /// </summary>
+        /// <param name="expr">查询条件</param>
+        /// <param name="orderby">排序项</param>
+        /// <param name="tableArgs">表参数</param>
+        /// <returns>符合条件的视图对象列表</returns>
+        public virtual List<TView> SearchWithOrder(Expr expr, Sorting[] orderby, params string[] tableArgs)
+        {
+            return ObjectViewDAO.WithArgs(tableArgs).Search(expr, orderby);
+        }
+
+        /// <summary>
         /// 分页查询视图对象
         /// </summary>
         /// <param name="expr">查询条件</param>
@@ -190,6 +202,12 @@ namespace LiteOrm.Service
         {
             return Search(expr, tableArgs);
         }
+
+        IList IEntityViewService.SearchWithOrder(Expr expr, Sorting[] orderby, params string[] tableArgs)
+        {
+            return SearchWithOrder(expr, orderby, tableArgs);
+        }
+
         IList IEntityViewService.SearchSection(Expr expr, PageSection section, params string[] tableArgs)
         {
             return SearchSection(expr, section, tableArgs);
@@ -201,22 +219,27 @@ namespace LiteOrm.Service
 
         async Task<object> IEntityViewServiceAsync.GetObjectAsync(object id, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return await Task.Run(() => (object)GetObject(id, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).GetObjectAsync(new object[] { id }, cancellationToken);
         }
 
         async Task<object> IEntityViewServiceAsync.SearchOneAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return await Task.Run(() => (object)SearchOne(expr, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchOneAsync(expr, cancellationToken);
         }
 
         async Task<IList> IEntityViewServiceAsync.SearchAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return await Task.Run(() => (IList)Search(expr, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, cancellationToken);
+        }
+
+        async Task<IList> IEntityViewServiceAsync.SearchWithOrderAsync(Expr expr, Sorting[] orderby, string[] tableArgs, CancellationToken cancellationToken)
+        {
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, orderby, cancellationToken);
         }
 
         async Task<IList> IEntityViewServiceAsync.SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return await Task.Run(() => (IList)SearchSection(expr, section, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchSectionAsync(expr, section, cancellationToken);
         }
 
         #endregion
@@ -232,7 +255,7 @@ namespace LiteOrm.Service
         /// <returns>视图对象，若不存在则返回null</returns>
         public async virtual Task<TView> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => GetObject(id, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).GetObjectAsync(new object[] { id }, cancellationToken);
         }
 
         /// <summary>
@@ -244,7 +267,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public async virtual Task<bool> ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => ExistsID(id, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).ExistsKeyAsync(new object[] { id }, cancellationToken);
         }
 
         /// <summary>
@@ -256,7 +279,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public async virtual Task<bool> ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Exists(expr, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).ExistsAsync(expr, cancellationToken);
         }
 
         /// <summary>
@@ -268,7 +291,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public async virtual Task<bool> ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Exists(expression, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).ExistsAsync(expression, cancellationToken);
         }
 
         /// <summary>
@@ -280,7 +303,7 @@ namespace LiteOrm.Service
         /// <returns>符合条件的对象个数</returns>
         public async virtual Task<int> CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Count(expr, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).CountAsync(expr, cancellationToken);
         }
 
         /// <summary>
@@ -305,7 +328,7 @@ namespace LiteOrm.Service
         /// <returns>第一个符合条件的视图对象，若不存在则返回null</returns>
         public async virtual Task<TView> SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => SearchOne(expr, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchOneAsync(expr, cancellationToken);
         }
 
         /// <summary>
@@ -315,9 +338,22 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>实体列表结果。</returns>
-        public async virtual Task<List<TView>> SearchAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<List<TView>> SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Search(expr, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, cancellationToken);
+        }
+
+        /// <summary>
+        /// 异步查询符合条件的实体列表，并指定排序项。
+        /// </summary>
+        /// <param name="expr">查询条件。</param>
+        /// <param name="orderby">排序设置。</param>
+        /// <param name="tableArgs">表名参数。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>实体列表结果。</returns>
+        public async virtual Task<List<TView>> SearchWithOrderAsync(Expr expr, Sorting[] orderby, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        {
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, orderby, cancellationToken);
         }
 
         /// <summary>
@@ -330,7 +366,7 @@ namespace LiteOrm.Service
         /// <returns>分页结果列表。</returns>
         public async virtual Task<List<TView>> SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => SearchSection(expr, section, tableArgs), cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchSectionAsync(expr, section, cancellationToken);
         }
         #endregion
     }
