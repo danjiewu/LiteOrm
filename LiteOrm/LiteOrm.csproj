@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.0.2.0</AssemblyVersion>
-		<FileVersion>8.0.2.0</FileVersion>
+		<AssemblyVersion>8.0.3.0</AssemblyVersion>
+		<FileVersion>8.0.3.0</FileVersion>
 		<TargetFrameworks>netstandard2.0;net8.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.0.2</VersionPrefix>
+		<VersionPrefix>8.0.3</VersionPrefix>
 		<Nullable>disable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -15,7 +15,7 @@
 		<PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
-		<PackageReleaseNotes>增加自定义函数SQL构造和Lambda表达式解析的支持</PackageReleaseNotes>
+		<PackageReleaseNotes>优化异步方式</PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

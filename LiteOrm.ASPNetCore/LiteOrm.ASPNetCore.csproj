@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	  <AssemblyVersion>8.0.2.0</AssemblyVersion>
-	  <FileVersion>8.0.2.0</FileVersion>
+	  <AssemblyVersion>8.0.3.0</AssemblyVersion>
+	  <FileVersion>8.0.3.0</FileVersion>
 	  <TargetFrameworks>net8.0;</TargetFrameworks>
 	  <GenerateDocumentationFile>True</GenerateDocumentationFile>
 	  <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	  <VersionPrefix>8.0.2</VersionPrefix>
+	  <VersionPrefix>8.0.3</VersionPrefix>
     <Nullable>disable</Nullable>
   </PropertyGroup>
 

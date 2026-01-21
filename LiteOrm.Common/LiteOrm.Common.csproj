@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net8.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.0.2.0</AssemblyVersion>
-    <FileVersion>8.0.2.0</FileVersion>
+    <AssemblyVersion>8.0.3.0</AssemblyVersion>
+    <FileVersion>8.0.3.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.0.2</VersionPrefix>
+    <VersionPrefix>8.0.3</VersionPrefix>
     <Nullable>disable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
