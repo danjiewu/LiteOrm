@@ -33,10 +33,11 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型。</typeparam>
         /// <param name="entityViewService">实体视图服务实例。</param>
         /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>符合条件的实体对象列表。</returns>
-        public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
+        public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null)
         {
-            return entityViewService.Search(Expr.Exp(expression));
+            return entityViewService.Search(Expr.Exp(expression), tableArgs);
         }
 
         /// <summary>
@@ -59,10 +60,11 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型。</typeparam>
         /// <param name="entityViewService">实体视图服务实例。</param>
         /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>第一个符合条件的实体对象；如果没有找到则返回 null。</returns>
-        public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression)
+        public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null)
         {
-            return entityViewService.SearchOne(Expr.Exp(expression));
+            return entityViewService.SearchOne(Expr.Exp(expression),tableArgs);
         }
 
         /// <summary>
