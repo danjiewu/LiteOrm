@@ -31,5 +31,7 @@ namespace LiteOrm.Common
         /// 表名参数，用于动态生成表名
         /// </summary>
         public string[] TableNameArgs { get; set; } = Array.Empty<string>();
+
+        private Dictionary<string, TableDefinition>  nameTableDefMap = new Dictionary<string, TableDefinition>(StringComparer.OrdinalIgnoreCase);
     }
 }

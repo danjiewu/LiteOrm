@@ -58,6 +58,7 @@ namespace LiteOrm.Common
             if (expr is FunctionExpr func) return ToSql(func, context, sqlBuilder, outputParams);
             if (expr is LambdaExpr lambda) return ToSql(lambda, context, sqlBuilder, outputParams);
             if (expr is GenericSqlExpr generic) return ToSql(generic, context, sqlBuilder, outputParams);
+            if (expr is ForeignExpr foreign) return ToSql(foreign, context, sqlBuilder, outputParams);
             if (expr is ExprSet set) return ToSql(set, context, sqlBuilder, outputParams);
 
             throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
@@ -69,6 +70,12 @@ namespace LiteOrm.Common
             _operatorSymbols.TryGetValue(expr.Operator, out op);
             switch (expr.OriginOperator)
             {
+                case BinaryOperator.In:
+                    string inleft = expr.Left.ToSql(context, sqlBuilder, outputParams);
+                    string inright = expr.Right.ToSql(context, sqlBuilder, outputParams);
+                    // 处理 IN () 空集合的特殊情况
+                    if (string.IsNullOrWhiteSpace(inright) || inright.Trim() == "()") return expr.Operator.IsNot() ? string.Empty : "0=1";
+                    else return $"{inleft} {op} {inright}";
                 case BinaryOperator.RegexpLike:
                     // 正则表达式匹配通常使用特定的函数调用语法
                     return $"{op}({expr.Left.ToSql(context, sqlBuilder, outputParams)},{expr.Right.ToSql(context, sqlBuilder, outputParams)})";
@@ -170,23 +177,23 @@ namespace LiteOrm.Common
             else if (expr.Value is IEnumerable enumerable && !(expr.Value is string))
             {
                 // 处理 IN (...) 集合
-                StringBuilder sb = new StringBuilder();
+                List<string> strs = new List<string>();
                 foreach (var item in enumerable)
                 {
-                    if (sb.Length > 0) sb.Append(",");
-                    if (item is Expr s)
+                    if (item is Expr e)
                     {
-                        sb.Append(s.ToSql(context, sqlBuilder, outputParams));
+                        string s = e.ToSql(context, sqlBuilder, outputParams);
+                        if (!string.IsNullOrWhiteSpace(s)) strs.Add(s);
                     }
                     else
                     {
                         // 对集合中的每个元素进行参数化
                         string paramName = outputParams.Count.ToString();
                         outputParams.Add(new(sqlBuilder.ToParamName(paramName), item));
-                        sb.Append(sqlBuilder.ToSqlParam(paramName));
+                        strs.Add(sqlBuilder.ToSqlParam(paramName));
                     }
                 }
-                return $"({sb})";
+                return strs.Count == 0 ? string.Empty : $"({string.Join(",", strs)})";
             }
             else
             {
@@ -204,6 +211,31 @@ namespace LiteOrm.Common
             if (column is null) throw new Exception($"Property \"{expr.PropertyName}\" does not exist in type \"{context.Table.DefinitionType.FullName}\". ");
             string tableAlias = context.TableAliasName;
             return tableAlias is null ? (context.SingleTable ? column.FormattedName(sqlBuilder) : column.FormattedExpression(sqlBuilder)) : $"[{tableAlias}].[{column.Name}]";
+        }
+
+        private static string ToSql(ForeignExpr foreginExpr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            // 生成外键表达式的 SQL
+            SqlColumn column = context.Table.GetColumn(foreginExpr.Foreign);
+            if (column is null) throw new InvalidOperationException($"Foreign key \"{foreginExpr.Foreign}\" not found.");
+            ForeignTable foreignTable = column.ForeignTable;
+            if (foreignTable == null) throw new Exception($"Foreign key \"{foreginExpr.Foreign}\" does not reference a valid foreign type.");
+            TableDefinition foreignTableDef = TableInfoProvider.Default.GetTableDefinition(foreignTable.ForeignType);
+            if (foreignTableDef is null) throw new Exception($"Foreign table \"{foreginExpr.Foreign}\" not found.");
+            SqlBuildContext foreignContext = new SqlBuildContext()
+            {
+                Table = foreignTableDef,
+                Sequence = context.Sequence + 1,
+                TableAliasName = $"T{context.Sequence}",
+            };
+            string innerSql = foreginExpr.InnerExpr.ToSql(foreignContext, sqlBuilder, outputParams);
+            string columnSql = context.TableAliasName == null ? column.FormattedExpression(sqlBuilder) : sqlBuilder.ToSqlName($"{context.TableAliasName}.{column.Name}");
+            string keySql = foreignTableDef.Keys.Count == 1 ?
+                sqlBuilder.ToSqlName($"{foreignContext.TableAliasName}.{foreignTableDef.Keys[0].Name}") :
+                throw new InvalidOperationException("Foreign table has multiple keys.");
+            context.Sequence = foreignContext.Sequence;
+            return $"EXISTS(SELECT 1 FROM {foreignTableDef.FormattedName(sqlBuilder)} {foreignContext.TableAliasName} " +
+                $"\nWHERE {columnSql} = {keySql} AND {innerSql})";
         }
 
         private static string ToSql(FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
@@ -224,18 +256,19 @@ namespace LiteOrm.Common
 
         private static string ToSql(ExprSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
+            var subExprs = expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).Where(s => !String.IsNullOrEmpty(s)).ToList();
+            if (subExprs.Count == 0) return string.Empty;
             switch (expr.JoinType)
             {
                 case ExprJoinType.And:
                 case ExprJoinType.Or:
-                    var subExprs = expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).Where(s => !String.IsNullOrEmpty(s)).ToList();
-                    if (subExprs.Count == 0) return string.Empty;
-                    else if (subExprs.Count == 1) return subExprs[0];
+                    if (subExprs.Count == 1) return subExprs[0];
                     else return $"({String.Join($" {expr.JoinType} ", subExprs)})";
                 case ExprJoinType.Concat:
-                    return sqlBuilder.BuildConcatSql(expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).ToArray());
+                    // 字符串拼接逻辑委托给具体的 sqlBuilder，因为不同数据库的语法差异很大（如 || vs CONCAT）
+                    return sqlBuilder.BuildConcatSql(subExprs.ToArray());
                 default:
-                    return $"({String.Join($",", expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).Where(s => !String.IsNullOrEmpty(s)))})";
+                    return $"({String.Join($",", subExprs)})";
             }
         }
     }

@@ -33,6 +33,7 @@ namespace LiteOrm.Demo
             ShowValueExpr();
             ShowPropertyExpr();
             ShowUnaryExpr();
+            ShowForeignExpr();
             ShowExprSet();
             ShowLambdaExpr();
             ShowExprConvert();
@@ -212,6 +213,17 @@ namespace LiteOrm.Demo
             {
                 Console.WriteLine($"    - ID:{sale.Id}, 产品:{sale.ProductName}, 金额:{sale.Amount}, 业务员:{sale.UserName}, 销售时间:{sale.SaleTime:yyyy-MM-dd HH:mm} 发货时间:{sale.ShipTime:yyyy-MM-dd HH:mm}");
             }
+
+            // 示例 4: 使用 ForeignExpr 查询所有属于 '销售部' 的用户
+            var expr4 = Expr.Foreign(nameof(User.DeptId), Expr.Property(nameof(Department.Name)) == "销售部");
+            var users4 = await userService.SearchAsync(expr4);
+            Console.WriteLine($"\n[示例 4] 属于 '销售部' 的用户 (使用 ForeignExpr / EXISTS 子查询):");
+            Console.WriteLine($"  Expr 序列化结果: {JsonSerializer.Serialize(expr4, jsonOptions)}");
+            Console.WriteLine($"  查询结果数量: {users4.Count}");
+            foreach (var user in users4)
+            {
+                Console.WriteLine($"    - ID:{user.Id}, 账号:{user.UserName}, 部门:{user.DeptName}");
+            }
         }
 
         public static void ShowExprConvert()
@@ -285,6 +297,23 @@ namespace LiteOrm.Demo
             Console.WriteLine("\n[PropertyExpr] 属性表达式:");
             Expr p1 = Expr.Property("CreateTime");
             Console.WriteLine($"  Property: {p1}");
+        }
+
+        public static void ShowForeignExpr()
+        {
+            Console.WriteLine("\n[ForeignExpr] 外键表达式 (EXISTS 关联查询):");
+
+            // 示例 1: 查询所属部门名称包含 "销售" 的用户
+            // DeptId 是 User 的属性，且标记了 [ForeignType(typeof(Department))]
+            // 这个表达式会生成一个 EXISTS 子查询来过滤 User 表
+            Expr f1 = Expr.Foreign(nameof(User.DeptId), Expr.Property(nameof(Department.Name)).Contains("销售"));
+
+            Console.WriteLine($"  用户所属部门名称包含 '销售': {f1}");
+
+            // 示例 2: 查询销售记录，其中关联的用户年龄大于 30
+            // SalesUserId 是 SalesRecord 的属性，标记了 [ForeignType(typeof(User))]
+            Expr f2 = Expr.Foreign(nameof(SalesRecord.SalesUserId), Expr.Property(nameof(User.Age)) > 30);
+            Console.WriteLine($"  销售记录其关联用户年龄 > 30: {f2}");
         }
 
         public static void ShowUnaryExpr()

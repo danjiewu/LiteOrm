@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Xml.Linq;
 
 namespace LiteOrm.Common
 {
@@ -147,6 +148,7 @@ namespace LiteOrm.Common
                                 "sql" => ReadSql(ref reader, options),
                                 "value" => ReadValueBody(ref reader, options),
                                 "const" => ReadValueBody(ref reader, options, true),
+                                "for" => ReadForeign(ref reader, options),
                                 _ => new ValueExpr(ReadNative(ref reader, options)) { IsConst = true }
                             };
                         }
@@ -179,7 +181,7 @@ namespace LiteOrm.Common
                 {
                     if (ve.IsConst)
                     {
-                        writer.WriteRawValue(JsonSerializer.Serialize(ve.Value, _compactOptions));                        
+                        writer.WriteRawValue(JsonSerializer.Serialize(ve.Value, _compactOptions));
                     }
                     else
                     {
@@ -211,6 +213,8 @@ namespace LiteOrm.Common
                     FunctionExpr => "func",
                     UnaryExpr => "unary",
                     GenericSqlExpr => "sql",
+                    ValueExpr vve => vve.IsConst ? "const" : "value",
+                    ForeignExpr => "for",
                     _ => value.GetType().Name.Replace("Expr", "").ToLower()
                 };
                 writer.WritePropertyName("$");
@@ -242,6 +246,14 @@ namespace LiteOrm.Common
                         writer.WriteString("Key", ge.Key);
                         writer.WritePropertyName("Arg");
                         JsonSerializer.Serialize(writer, ge.Arg, options);
+                        break;
+                    case ValueExpr vve:
+                        writer.WritePropertyName("Value");
+                        JsonSerializer.Serialize(writer, vve.Value, options);
+                        break;
+                    case ForeignExpr fe:
+                        writer.WritePropertyName(fe.Foreign);
+                        JsonSerializer.Serialize(writer, fe.InnerExpr, options);
                         break;
                 }
                 writer.WriteEndObject();
@@ -377,6 +389,28 @@ namespace LiteOrm.Common
                     }
                 }
                 return new PropertyExpr(name);
+            }
+
+            private ForeignExpr ReadForeign(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                string foreign = null;
+                Expr expr = null;
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                {
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                    if (foreign == null)
+                    {
+                        foreign = reader.GetString();
+                        reader.Read();
+                        expr = JsonSerializer.Deserialize<Expr>(ref reader, options);
+                    }
+                    else
+                    {
+                        reader.Read();
+                        reader.Skip();
+                    }
+                }
+                return new ForeignExpr(foreign, expr);
             }
 
             private UnaryExpr ReadUnary(ref Utf8JsonReader reader, JsonSerializerOptions options)

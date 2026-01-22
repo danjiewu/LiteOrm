@@ -72,6 +72,17 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件。
+        /// </summary>
+        /// <param name="foreignPropertyName">当前实体中具有 ForeignType 特性的外键属性名称。</param>
+        /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
+        /// <returns>外键表达式。</returns>
+        public static ForeignExpr Foreign(string foreignPropertyName, Expr innerExpr)
+        {
+            return new ForeignExpr(foreignPropertyName, innerExpr);
+        }
+
+        /// <summary>
         /// 创建一个属性等于值的二元表达式。
         /// </summary>
         /// <param name="propertyName">属性名称。</param>
