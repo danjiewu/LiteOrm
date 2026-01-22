@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+
 
 namespace LiteOrm.SqlBuilder
 {
@@ -83,6 +85,20 @@ namespace LiteOrm.SqlBuilder
         public override string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
             return $"select {select} \nfrom {from} {where} Order by {orderBy} limit {startIndex},{sectionSize}";
+        }
+
+        /// <summary>
+        /// 获取自增标识 SQL 片段。
+        /// </summary>
+        protected override string GetAutoIncrementSql() => "AUTO_INCREMENT";
+
+        /// <summary>
+        /// 生成添加多个列的 SQL 语句。
+        /// </summary>
+        public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
+        {
+            var colSqls = columns.Select(c => $"ADD {ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
+            return $"ALTER TABLE {ToSqlName(tableName)} {string.Join(", ", colSqls)}";
         }
     }
 }

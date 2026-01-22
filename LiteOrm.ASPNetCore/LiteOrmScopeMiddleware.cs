@@ -64,13 +64,12 @@ namespace LiteOrm.AspNetCore
         /// <param name="context">HTTP 上下文。</param>
         /// <param name="sessionManager">会话管理器。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public async Task InvokeAsync(HttpContext context)
+        public async Task InvokeAsync(HttpContext context,SessionManager sessionManager)
         {
             var requestId = context.TraceIdentifier;
             var method = context.Request.Method;
             var path = context.Request.Path;
             var queryString = context.Request.QueryString.Value;
-            SessionManager sessionManager = context.RequestServices.GetRequiredService<SessionManager>();
             SessionManager.Current = sessionManager;
             try
             {

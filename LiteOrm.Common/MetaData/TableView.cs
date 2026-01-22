@@ -61,38 +61,10 @@ namespace LiteOrm.Common
         /// 关联查询时的筛选表达式（由 Filter 属性定义）。
         /// </summary>
         public string FilterExpression { get; set; }
-        /// <summary>
-        /// 获取格式化后的 SQL JOIN 表达片段。
-        /// </summary>
-        public override string FormattedExpression(ISqlBuilder sqlBuilder)
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.Append($"\n{JoinType.ToString().ToLower()} join {base.FormattedExpression(sqlBuilder)} {FormattedName(sqlBuilder)} on ");
-            bool isFirst = true;
-            for (int i = 0; i < ForeignKeys.Count; i++)
-            {
-                if (isFirst)
-                {
-                    isFirst = false;
-                }
-                else
-                {
-                    sb.Append(" and ");
-                }
-                sb.Append($"{ForeignKeys[i].FormattedExpression(sqlBuilder)} = {ForeignPrimeKeys[i].FormattedExpression(sqlBuilder)}");
-            }
-            if (!String.IsNullOrEmpty(FilterExpression))
-            {
-                if (!isFirst)
-                {
-                    sb.Append(" and ");
-                }
-                sb.Append(FilterExpression);
-            }
-            return sb.ToString();
 
-        }
     }
+
+
 
     /// <summary>
     /// 当前对象关联查询视图定义。
@@ -156,22 +128,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 获取格式化后的 FROM 部分 SQL 片段。
-        /// </summary>
-        public override string FormattedExpression(ISqlBuilder sqlBuilder)
-        {
-            StringBuilder sb = new StringBuilder(_table.FormattedName(sqlBuilder) + " " + FormattedName(sqlBuilder));
-            foreach (JoinedTable joinedTable in JoinedTables)
-            {
-                sb.Append(joinedTable.FormattedExpression(sqlBuilder));
-            }
-            return sb.ToString();
-        }
-
-        /// <summary>
         /// 获取对应的表定义信息。
         /// </summary>
         public override TableDefinition Definition
+
         {
             get { return _table; }
         }

@@ -2,12 +2,17 @@
 using LiteOrm.Common;
 using LiteOrm.SqlBuilder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
+
+
 
 
 namespace LiteOrm
@@ -19,6 +24,17 @@ namespace LiteOrm
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public class LiteOrmComponentInitializer : IComponentInitializer
     {
+        private readonly ILogger<LiteOrmComponentInitializer> _logger;
+
+        /// <summary>
+        /// 初始化 <see cref="LiteOrmComponentInitializer"/> 类的新实例。
+        /// </summary>
+        /// <param name="logger">日志记录器。</param>
+        public LiteOrmComponentInitializer(ILogger<LiteOrmComponentInitializer> logger = null)
+        {
+            _logger = logger;
+        }
+
         /// <summary>
         /// 使用指定的组件上下文初始化应用程序范围的服务并注册自定义 SQL 函数。
         /// </summary>
@@ -36,7 +52,209 @@ namespace LiteOrm
             RegisterLambdaMemberHandlers();
             // 注册 Lambda 表达式转换到 Expr 对象的方法句柄 (如 StartsWith, Contains)
             RegisterLambdaMethodHandlers();
+
+            // 自动建表同步
+            SyncTables(componentContext);
         }
+
+        /// <summary>
+        /// 自动同步数据库表结构
+        /// </summary>
+        private void SyncTables(IComponentContext componentContext)
+        {
+            var dataSourceProvider = componentContext.Resolve<IDataSourceProvider>();
+            var tableInfoProvider = componentContext.Resolve<TableInfoProvider>();
+            var sqlBuilderFactory = componentContext.Resolve<ISqlBuilderFactory>();
+            var daoContextPoolFactory = componentContext.Resolve<DAOContextPoolFactory>();
+
+            var syncDataSources = dataSourceProvider.Where(ds => ds.SyncTable).ToList();
+            if (!syncDataSources.Any()) return;
+
+            _logger?.LogInformation("开始自动同步数据库表结构...");
+
+            var assemblies = AssemblyAnalyzer.GetAllReferencedAssemblies();
+            var tableTypes = assemblies.SelectMany(a => a.GetTypes())
+                                       .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null)
+                                       .ToList();
+
+
+            // 按数据源和表名分组
+            var tableGroups = tableTypes.GroupBy(t =>
+            {
+                var attr = t.GetCustomAttribute<TableAttribute>();
+                return (DataSource: attr.DataSource ?? dataSourceProvider.DefaultDataSourceName, TableName: attr.TableName ?? t.Name);
+            }).ToList();
+
+            var syncTasks = syncDataSources.Select(async ds =>
+            {
+                var sqlBuilder = sqlBuilderFactory.GetSqlBuilder(ds.ProviderType);
+                var pool = daoContextPoolFactory.GetPool(ds.Name);
+                if (pool == null) return;
+
+                var currentDsGroups = tableGroups.Where(g => string.Equals(g.Key.DataSource, ds.Name, StringComparison.OrdinalIgnoreCase)).ToList();
+
+                try
+                {
+                    if (currentDsGroups.Any())
+                    {
+                        _logger?.LogInformation("正在同步数据源 '{DataSource}'，共 {Count} 个表定义", ds.Name, currentDsGroups.Count);
+
+                        var context = pool.PeekContextInternal();
+                        try
+                        {
+                            using (await context.AcquireScopeAsync())
+                            {
+                                foreach (var group in currentDsGroups)
+                                {
+                                    string tableName = group.Key.TableName;
+                                    // 合并该表的所有列定义
+                                    var allColumns = new Dictionary<string, ColumnDefinition>(StringComparer.OrdinalIgnoreCase);
+                                    TableDefinition firstTableDef = null;
+
+                                    foreach (var type in group)
+                                    {
+                                        var tableDef = tableInfoProvider.GetTableDefinition(type);
+                                        if (tableDef == null) continue;
+                                        if (firstTableDef == null) firstTableDef = tableDef;
+
+                                        foreach (var col in tableDef.Columns)
+                                        {
+                                            if (!allColumns.ContainsKey(col.Name))
+                                                allColumns[col.Name] = col;
+                                        }
+                                    }
+
+                                    if (firstTableDef == null || allColumns.Count == 0) continue;
+
+                                    if (!TableExists(context, sqlBuilder, tableName))
+
+                                    {
+                                        _logger?.LogInformation("正在数据源 '{DataSource}' 中创建表 '{TableName}'", ds.Name, tableName);
+                                        // 创建表，使用合并后的列
+                                        string createSql = sqlBuilder.BuildCreateTableSql(tableName, allColumns.Values);
+                                        _logger?.LogInformation(createSql);
+                                        ExecuteSql(context, createSql);
+                                    }
+                                    else
+
+                                    {
+                                        // 检查补全列
+                                        var existingColumns = GetTableColumns(context, sqlBuilder.ToSqlName(tableName));
+                                        var missingColumns = allColumns.Values.Where(col => !existingColumns.Contains(col.Name)).ToList();
+                                        if (missingColumns.Any())
+                                        {
+                                            _logger?.LogInformation("正在向数据源 '{DataSource}' 的表 '{TableName}' 添加 {Count} 个新列", ds.Name, tableName, missingColumns.Count);
+                                            string addColsSql = sqlBuilder.BuildAddColumnsSql(tableName, missingColumns);
+                                            ExecuteSql(context, addColsSql);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            pool.ReturnContext(context);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "同步数据源 '{DataSource}' 时发生异常", ds.Name);
+                    throw; // Re-throw to be caught by Task.WhenAll
+                }
+                finally
+                {
+                    pool.MarkInitialized();
+                }
+            }).ToArray();
+
+
+            try
+            {
+                Task.WhenAll(syncTasks).GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // Task.WhenAll catches all exceptions but only re-throws the first one.
+                // Log is already done inside each task.
+                throw;
+            }
+
+            _logger?.LogInformation("数据库表结构同步完成");
+        }
+
+
+
+        private void ExecuteSql(DAOContext context, string sql)
+
+        {
+            try
+            {
+                using (var cmd = context.DbConnection.CreateCommand())
+                {
+                    cmd.CommandText = sql;
+                    context.EnsureConnectionOpen();
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning("执行同步 SQL 失败: {Sql} {ErrorMessage}", sql, ex.Message);
+                throw;
+            }
+        }
+
+
+        private HashSet<string> GetTableColumns(DAOContext context, string tableName)
+        {
+            var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            context.EnsureConnectionOpen();
+            try
+            {
+                using (var cmd = context.DbConnection.CreateCommand())
+                {
+                    cmd.CommandText = $"SELECT * FROM {tableName} WHERE 1=0";
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            columns.Add(reader.GetName(i));
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback
+                var schema = context.DbConnection.GetSchema("Columns", new[] { null, null, tableName });
+                foreach (System.Data.DataRow row in schema.Rows)
+                {
+                    columns.Add(row["COLUMN_NAME"].ToString());
+                }
+            }
+            return columns;
+        }
+
+
+
+        private bool TableExists(DAOContext context, ISqlBuilder sqlBuilder, string tableName)
+        {
+            try
+            {
+                using (var cmd = context.DbConnection.CreateCommand())
+                {
+                    cmd.CommandText = sqlBuilder.BuildTableExistsSql(tableName);
+                    context.EnsureConnectionOpen();
+                    cmd.ExecuteScalar();
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
 
         /// <summary>
         /// 注册 Lambda 表达式中的成员访问处理器。
@@ -58,7 +276,7 @@ namespace LiteOrm
         /// </summary>
         private void RegisterLambdaMethodHandlers()
         {
-            
+
             // 批量注册常用类型的公开方法（使用默认映射，即：方法名 -> SQL函数名）
             LambdaExprConverter.RegisterMethodHandler(typeof(DateTime));
             LambdaExprConverter.RegisterMethodHandler(typeof(Math));
@@ -114,7 +332,7 @@ namespace LiteOrm
             {
                 List<Expr> args = new List<Expr>();
                 // 处理实例方法调用 "a".Concat("b")
-                if(node.Object!=null)args.Add(converter.Convert(node.Object));
+                if (node.Object != null) args.Add(converter.Convert(node.Object));
 
                 if (node.Arguments.Count == 1)
                 {
@@ -132,13 +350,13 @@ namespace LiteOrm
                     {
                         args.Add(converter.Convert(arg));
                     }
-                }                    
-                return new ExprSet(ExprJoinType.Concat,args);
+                }
+                return new ExprSet(ExprJoinType.Concat, args);
             });
 
             // 相等性比较映射
             LambdaExprConverter.RegisterMethodHandler("Equals", (node, converter) =>
-            {              
+            {
                 Expr left = null;
                 Expr right = null;
                 if (node.Object != null)
@@ -156,7 +374,7 @@ namespace LiteOrm
 
             // ToString 通常在 SQL 中作为字段引用或忽略，这里默认引用对象本身
             LambdaExprConverter.RegisterMethodHandler("ToString", (node, converter) =>
-            {               
+            {
                 return converter.Convert(node.Object);
             });
 

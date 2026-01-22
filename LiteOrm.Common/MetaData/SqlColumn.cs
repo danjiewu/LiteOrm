@@ -52,16 +52,10 @@ namespace LiteOrm.Common
         {
             get { return _column; }
         }
-
-        /// <summary>
-        /// 格式化的表达式
-        /// </summary>
-        public override string FormattedExpression(ISqlBuilder sqlBuilder)
-        {
-            return Table == null ? Column.FormattedExpression(sqlBuilder) :
-                $"{Table.FormattedName(sqlBuilder)}.{Column.FormattedName(sqlBuilder)}";
-        }
     }
+
+
+
 
     /// <summary>
     /// 关联外表的列信息
@@ -75,13 +69,7 @@ namespace LiteOrm.Common
         /// </summary>
         public ColumnRef TargetColumn { get; internal set; }
 
-        /// <summary>
-        /// 格式化的表达式
-        /// </summary>
-        public override string FormattedExpression(ISqlBuilder sqlBuilder)
-        {
-            return TargetColumn.FormattedExpression(sqlBuilder);
-        }
+
 
         /// <summary>
         /// 名称
@@ -183,15 +171,10 @@ namespace LiteOrm.Common
             if (target == null) throw new ArgumentNullException("target");
             return Property.GetValueFast(target);
         }
-
-        /// <summary>
-        /// 格式化的表达式
-        /// </summary>
-        public override string FormattedExpression(ISqlBuilder sqlBuilder)
-        {
-            return $"{Table.FormattedName(sqlBuilder)}.{FormattedName(sqlBuilder)}";
-        }
     }
+
+
+
 
     /// <summary>
     /// 数据库列信息

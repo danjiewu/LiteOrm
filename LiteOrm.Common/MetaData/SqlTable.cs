@@ -97,15 +97,9 @@ namespace LiteOrm.Common
         {
             return Name;
         }
-
-        /// <summary>
-        /// 格式化的表达式
-        /// </summary>
-        public override string FormattedExpression(ISqlBuilder sqlBuilder)
-        {
-            return FormattedName(sqlBuilder);
-        }
     }
+
+
 
     /// <summary>
     /// 数据库表的定义
@@ -245,15 +239,9 @@ namespace LiteOrm.Common
             NamedColumnCache.TryGetValue(propertyName, out column);
             return column;
         }
-
-        /// <summary>
-        /// 格式化的表达式
-        /// </summary>
-        public override string FormattedExpression(ISqlBuilder sqlBuilder)
-        {
-            return _tableDefinition.FormattedExpression(sqlBuilder);
-        }
     }
+
+
 
     /// <summary>
     /// 外部表信息，用于描述关联的外部表

@@ -98,8 +98,14 @@ namespace LiteOrm
                 KeepAliveDuration = config.KeepAliveDuration
             };
 
+            if (!config.SyncTable)
+            {
+                pool.MarkInitialized();
+            }
+
             _pools.TryAdd(config.Name, pool);
         }
+
 
         /// <summary>
         /// 获取连接池

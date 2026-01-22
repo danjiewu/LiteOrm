@@ -77,7 +77,7 @@ namespace LiteOrm
             foreach (ColumnDefinition key in TableDefinition.Keys)
             {
                 if (strConditions.Length != 0) strConditions.Append(" and ");
-                strConditions.AppendFormat("{0} = {1}", ToSqlName(key.Name), ToSqlParam(key.PropertyName));
+                strConditions.AppendFormat("{0} = {1}", SqlBuilder.ToSqlQualifiedName(FactTableName, key.Name), ToSqlParam(key.PropertyName));
                 if (!command.Parameters.Contains(key.PropertyName))
                 {
                     IDbDataParameter param = command.CreateParameter();
@@ -87,7 +87,7 @@ namespace LiteOrm
                     command.Parameters.Add(param);
                 }
             }
-            command.CommandText = $"select count(1) \nfrom {ToSqlName(Table.Definition.Name)} \nwhere {strConditions}";
+            command.CommandText = $"select count(1) \nfrom {ToSqlName(FactTableName)} \nwhere {strConditions}";
             return command;
         }
         #endregion

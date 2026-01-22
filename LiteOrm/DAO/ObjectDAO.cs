@@ -387,10 +387,11 @@ namespace LiteOrm
             {
                 SqlColumn column = Table.GetColumn(value.Key);
                 if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
-                strSets.Add(column.FormattedName(SqlBuilder) + "=" + ToSqlParam(paramValues.Count.ToString()));
+                strSets.Add(SqlBuilder.ToSqlName(column.Name) + "=" + ToSqlParam(paramValues.Count.ToString()));
                 paramValues.Add(paramValues.Count.ToString(), value.Value);
             }
             string where = expr.ToSql(SqlBuildContext, SqlBuilder, paramValues);
+
             if(!string.IsNullOrWhiteSpace(where))where = $"where {where}";
             string updateSql = $"update @Table@ set {String.Join(",", strSets.ToArray())} \n{where}";
             using var command = MakeNamedParamCommand(updateSql, paramValues);
@@ -759,10 +760,11 @@ namespace LiteOrm
             {
                 SqlColumn column = Table.GetColumn(value.Key);
                 if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
-                strSets.Add(column.FormattedName(SqlBuilder) + "=" + ToSqlParam(paramValues.Count.ToString()));
+                strSets.Add(SqlBuilder.ToSqlName(column.Name) + "=" + ToSqlParam(paramValues.Count.ToString()));
                 paramValues.Add(paramValues.Count.ToString(), value.Value);
             }
             string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray()) + " \nwhere" + expr.ToSql(SqlBuildContext, SqlBuilder, paramValues);
+
             using var command = MakeNamedParamCommand(updateSql, paramValues);
             return await command.ExecuteNonQueryAsync(cancellationToken);
         }

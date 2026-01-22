@@ -174,6 +174,70 @@ namespace LiteOrm.SqlBuilder
         }
 
         /// <summary>
+        /// 将表名和列名拼接并转换为数据库合法名称 (如 [Table].[Column])。
+        /// </summary>
+        public virtual string ToSqlQualifiedName(string tableName, string columnName)
+        {
+            return $"{ToSqlName(tableName)}.{ToSqlName(columnName)}";
+        }
+
+        /// <summary>
+        /// 根据 SQL 对象类型生成对应的 SQL 表达式片段。
+        /// </summary>
+        public virtual string BuildExpression(SqlObject sqlObject)
+        {
+            if (sqlObject == null) return null;
+
+            if (sqlObject is ColumnRef columnRef)
+            {
+                return columnRef.Table == null ? BuildExpression(columnRef.Column) :
+                    ToSqlQualifiedName(columnRef.Table.Name, columnRef.Column.Name);
+            }
+            if (sqlObject is ForeignColumn foreignColumn)
+            {
+                return BuildExpression(foreignColumn.TargetColumn);
+            }
+            if (sqlObject is SqlColumn sqlColumn)
+            {
+                return ToSqlQualifiedName(sqlColumn.Table.Name, sqlColumn.Name);
+            }
+            if (sqlObject is TableView tableView)
+            {
+                StringBuilder sb = new StringBuilder(ToSqlName(tableView.Definition.Name) + " " + ToSqlName(tableView.Name));
+                foreach (var joined in tableView.JoinedTables)
+                {
+                    sb.Append(BuildExpression(joined));
+                }
+                return sb.ToString();
+            }
+
+            if (sqlObject is JoinedTable joinedTable)
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append($"\n{joinedTable.JoinType.ToString().ToLower()} join {ToSqlName(joinedTable.TableDefinition.Name)} {ToSqlName(joinedTable.Name)} on ");
+                bool isFirst = true;
+                for (int i = 0; i < joinedTable.ForeignKeys.Count; i++)
+                {
+                    if (isFirst) isFirst = false;
+                    else sb.Append(" and ");
+                    sb.Append($"{BuildExpression(joinedTable.ForeignKeys[i])} = {BuildExpression(joinedTable.ForeignPrimeKeys[i])}");
+                }
+                if (!string.IsNullOrEmpty(joinedTable.FilterExpression))
+                {
+                    if (!isFirst) sb.Append(" and ");
+                    sb.Append(joinedTable.FilterExpression);
+                }
+                return sb.ToString();
+            }
+            if (sqlObject is SqlTable sqlTable)
+            {
+                return ToSqlName(sqlTable.Name);
+            }
+
+            return ToSqlName(sqlObject.Name);
+        }
+
+        /// <summary>
         /// 原始名称转化为数据库参数
         /// </summary>
         /// <param name="nativeName">原始名称</param>
@@ -430,6 +494,89 @@ namespace LiteOrm.SqlBuilder
         {
             return $"INSERT INTO {ToSqlName(tableName)} ({columns}) \nVALUES {string.Join(",", valuesList)}";
         }
+
+        /// <summary>
+        /// 生成创建表的 SQL 语句。
+        /// </summary>
+        /// <param name="tableName">表名。</param>
+        /// <param name="columns">列定义集合。</param>
+        public virtual string BuildCreateTableSql(string tableName, IEnumerable<ColumnDefinition> columns)
+
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendFormat("CREATE TABLE {0} (", ToSqlName(tableName));
+            bool first = true;
+            foreach (var column in columns)
+            {
+                if (!first) sb.Append(",");
+                sb.AppendFormat("\n  {0} {1}", ToSqlName(column.Name), GetSqlType(column));
+                if (column.IsPrimaryKey) sb.Append(" PRIMARY KEY");
+                if (column.IsIdentity) sb.Append(" " + GetAutoIncrementSql());
+                if (!column.AllowNull) sb.Append(" NOT NULL");
+                first = false;
+            }
+            sb.Append("\n)");
+            return sb.ToString();
+        }
+
+
+        /// <summary>
+        /// 生成检查表是否存在的 SQL 语句。
+        /// </summary>
+        public virtual string BuildTableExistsSql(string tableName)
+        {
+            return $"SELECT 1 FROM {ToSqlName(tableName)} WHERE 1=0";
+        }
+
+        /// <summary>
+        /// 生成添加列的 SQL 语句。
+        /// </summary>
+        public virtual string BuildAddColumnSql(string tableName, ColumnDefinition column)
+        {
+            string sqlType = GetSqlType(column);
+            string nullSql = column.AllowNull ? " NULL" : (column.IsIdentity ? "" : " NOT NULL");
+            return $"ALTER TABLE {ToSqlName(tableName)} ADD {ToSqlName(column.Name)} {sqlType}{nullSql}";
+        }
+
+        /// <summary>
+        /// 生成添加多个列的 SQL 语句。
+        /// </summary>
+        public virtual string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
+        {
+            var colSqls = columns.Select(c => $"{ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
+            return $"ALTER TABLE {ToSqlName(tableName)} ADD {string.Join(", ", colSqls)}";
+        }
+
+        /// <summary>
+        /// 获取自增标识的 SQL 片段。
+        /// </summary>
+        protected virtual string GetAutoIncrementSql() => "IDENTITY(1,1)";
+
+        /// <summary>
+        /// 根据列定义获取数据库列类型。
+        /// </summary>
+        protected virtual string GetSqlType(ColumnDefinition column)
+        {
+            switch (column.DbType)
+            {
+                case DbType.String:
+                case DbType.AnsiString:
+                    return column.Length > 0 && column.Length <= 4000 ? $"VARCHAR({column.Length})" : "TEXT";
+                case DbType.Int32: return "INT";
+                case DbType.Int64: return "BIGINT";
+                case DbType.Boolean: return "BIT";
+                case DbType.DateTime: return "DATETIME";
+                case DbType.Decimal: return "DECIMAL(18,2)";
+                case DbType.Double: return "DOUBLE";
+                case DbType.Single: return "FLOAT";
+                case DbType.Byte: return "TINYINT";
+                case DbType.Int16: return "SMALLINT";
+                case DbType.Guid: return "GUID";
+                case DbType.Binary: return "BLOB";
+                default: return "VARCHAR(255)";
+            }
+        }
+
 
 
         internal class SqlHandlerMap

@@ -229,9 +229,8 @@ namespace LiteOrm
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，其结果为一个 <see cref="IDataReader"/> 对象。</returns>
         public async Task<IDataReader> ExecuteReaderAsync(CommandBehavior behavior = CommandBehavior.Default, CancellationToken cancellationToken = default)
-        {
+        {            
             PreExcuteCommand(ExcuteType.ExecuteReader);
-
             var task = Target.ExecuteReaderAsync(behavior, cancellationToken);
             IDataReader ret = new AutoLockDataReader(await task.ConfigureAwait(false), await Context.AcquireScopeAsync(cancellationToken).ConfigureAwait(false));
             PostExcuteCommand(ExcuteType.ExecuteReader);

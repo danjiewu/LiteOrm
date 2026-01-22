@@ -50,6 +50,7 @@ namespace LiteOrm
         private readonly Queue<DAOContext> _pool = new Queue<DAOContext>();
         private readonly object _poolLock = new object();
         private bool _disposed = false;
+        private readonly TaskCompletionSource<bool> _initializeTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         /// <summary>
         /// 获取或设置连接池的最大大小。
@@ -90,6 +91,23 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 标记连接池已完成初始化并可以提供服务。
+        /// </summary>
+        public void MarkInitialized()
+        {
+            _initializeTcs.TrySetResult(true);
+        }
+
+        /// <summary>
+        /// 等待连接池初始化完成。
+        /// </summary>
+        /// <returns>返回等待任务。</returns>
+        public Task WaitForInitializationAsync()
+        {
+            return _initializeTcs.Task;
+        }
+
+        /// <summary>
         /// 从连接池中获取一个可用的DAO上下文。
         /// </summary>
         /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
@@ -99,6 +117,18 @@ namespace LiteOrm
             if (_disposed)
                 throw new ObjectDisposedException(nameof(DAOContextPool));
 
+            // 等待初始化完成（如自动建表同步）
+            _initializeTcs.Task.Wait();
+
+            return PeekContextInternal();
+        }
+
+        /// <summary>
+        /// 内部获取DAO上下文，不进行初始化检查。
+        /// </summary>
+        /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
+        internal DAOContext PeekContextInternal()
+        {
             lock (_poolLock)
             {
                 // 尝试从池中获取可用的上下文
@@ -121,6 +151,7 @@ namespace LiteOrm
                 return CreateNewContext();
             }
         }
+
 
         /// <summary>
         /// 将DAO上下文返回到连接池中。

@@ -114,30 +114,18 @@ namespace LiteOrm
             DefaultDataSourceName = configuration["Default"];
 
             // 加载连接配置
-            var connectionsSection = configuration.GetSection("ConnectionStrings");
-            if (connectionsSection is not null && connectionsSection.GetChildren().Any())
+            var connections = configuration.GetSection("ConnectionStrings").Get<List<DataSourceConfig>>();
+            if (connections != null && connections.Any())
             {
                 _connections = new(StringComparer.OrdinalIgnoreCase);
-
-                foreach (var section in connectionsSection.GetChildren())
+                foreach (var config in connections)
                 {
-                    var dbConfig = new DataSourceConfig
-                    {
-                        Name = section["Name"],
-                        ConnectionString = section["ConnectionString"],
-                        Provider = section["Provider"]
-                    };
-
-                    if (TimeSpan.TryParse(section["KeepAliveDuration"], out TimeSpan timeSpan))
-                        dbConfig.KeepAliveDuration = timeSpan;
-
-                    if (Int32.TryParse(section["PoolSize"], out int poolSize))
-                        dbConfig.PoolSize = poolSize;
-
-                    _connections[dbConfig.Name] = dbConfig;
+                    if (!string.IsNullOrEmpty(config.Name))
+                        _connections[config.Name] = config;
                 }
             }
         }
+
 
         /// <summary>
         /// 获取所有数据源配置

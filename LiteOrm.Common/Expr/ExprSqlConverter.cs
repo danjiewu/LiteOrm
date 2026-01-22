@@ -210,8 +210,9 @@ namespace LiteOrm.Common
             SqlColumn column = context.Table.GetColumn(expr.PropertyName);
             if (column is null) throw new Exception($"Property \"{expr.PropertyName}\" does not exist in type \"{context.Table.DefinitionType.FullName}\". ");
             string tableAlias = context.TableAliasName;
-            return tableAlias is null ? (context.SingleTable ? column.FormattedName(sqlBuilder) : column.FormattedExpression(sqlBuilder)) : $"[{tableAlias}].[{column.Name}]";
+            return tableAlias is null ? (context.SingleTable ? sqlBuilder.ToSqlName(column.Name) : sqlBuilder.BuildExpression(column)) : $"[{tableAlias}].[{column.Name}]";
         }
+
 
         private static string ToSql(ForeignExpr foreginExpr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
@@ -229,14 +230,16 @@ namespace LiteOrm.Common
                 TableAliasName = $"T{context.Sequence}",
             };
             string innerSql = foreginExpr.InnerExpr.ToSql(foreignContext, sqlBuilder, outputParams);
-            string columnSql = context.TableAliasName == null ? column.FormattedExpression(sqlBuilder) : sqlBuilder.ToSqlName($"{context.TableAliasName}.{column.Name}");
+            string columnSql = context.TableAliasName == null ? sqlBuilder.BuildExpression(column) : sqlBuilder.ToSqlName($"{context.TableAliasName}.{column.Name}");
             string keySql = foreignTableDef.Keys.Count == 1 ?
                 sqlBuilder.ToSqlName($"{foreignContext.TableAliasName}.{foreignTableDef.Keys[0].Name}") :
                 throw new InvalidOperationException("Foreign table has multiple keys.");
             context.Sequence = foreignContext.Sequence;
-            return $"EXISTS(SELECT 1 FROM {foreignTableDef.FormattedName(sqlBuilder)} {foreignContext.TableAliasName} " +
+            return $"EXISTS(SELECT 1 FROM {sqlBuilder.ToSqlName(foreignTableDef.Name)} {foreignContext.TableAliasName} " +
                 $"\nWHERE {columnSql} = {keySql} AND {innerSql})";
         }
+
+
 
         private static string ToSql(FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {

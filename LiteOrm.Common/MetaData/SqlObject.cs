@@ -22,23 +22,6 @@ namespace LiteOrm.Common
             }
         }
 
-        /// <summary>
-        /// 使用指定的 SQL 构建器获取格式化后的名称。
-        /// </summary>
-        /// <param name="sqlBuilder">SQL 构建器实例。</param>
-        /// <returns>格式化后的名称字符串。</returns>
-        public virtual string FormattedName(ISqlBuilder sqlBuilder)
-        {
-            return sqlBuilder.ToSqlName(Name);
-        }
-
-        /// <summary>
-        /// 使用指定的 SQL 构建器获取格式化后的 SQL 表达式片段。
-        /// </summary>
-        /// <param name="sqlBuilder">SQL 构建器实例。</param>
-        /// <returns>格式化后的 SQL 表达式字符串。</returns>
-        public abstract string FormattedExpression(ISqlBuilder sqlBuilder);
-
 
         /// <summary>
         /// 获取对象的字符串表示形式。

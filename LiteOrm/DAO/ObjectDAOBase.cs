@@ -191,11 +191,13 @@ namespace LiteOrm
             {
                 if (_fromTable is null)
                 {
-                    _fromTable = GetTableNameWithArgs(Table.FormattedExpression(SqlBuilder));
+                    _fromTable = GetTableNameWithArgs(SqlBuilder.BuildExpression(Table));
                 }
                 return _fromTable;
             }
         }
+
+
 
         /// <summary>
         /// 查询时需要获取的所有列
@@ -257,11 +259,13 @@ namespace LiteOrm
             foreach (SqlColumn column in selectColumns)
             {
                 if (strAllFields.Length != 0) strAllFields.Append(",");
-                strAllFields.Append(column.FormattedExpression(SqlBuilder));
+                strAllFields.Append(SqlBuilder.BuildExpression(column));
                 if (!String.Equals(column.Name, column.PropertyName, StringComparison.OrdinalIgnoreCase)) strAllFields.Append(" " + SqlBuilder.ToSqlName(column.PropertyName));
             }
             return strAllFields.ToString();
         }
+
+
 
         /// <summary>
         /// 生成 orderby 部分的 SQL
@@ -278,8 +282,9 @@ namespace LiteOrm
                     foreach (ColumnDefinition key in TableDefinition.Keys)
                     {
                         if (orderBy.Length != 0) orderBy.Append(",");
-                        orderBy.AppendFormat("{0}.{1}", Table.FormattedName(SqlBuilder), key.FormattedName(SqlBuilder));
+                        orderBy.AppendFormat("{0}.{1}", SqlBuilder.ToSqlName(FactTableName), SqlBuilder.ToSqlName(key.Name));
                     }
+
                 }
                 else
                 {
@@ -294,9 +299,10 @@ namespace LiteOrm
                     SqlColumn column = Table.GetColumn(sorting.PropertyName);
                     if (column is null) throw new ArgumentException($"Type \"{ObjectType.Name}\" does not have property \"{sorting.PropertyName}\"", "section");
                     if (orderBy.Length > 0) orderBy.Append(",");
-                    orderBy.Append(column.FormattedExpression(SqlBuilder));
+                    orderBy.Append(SqlBuilder.BuildExpression(column));
                     orderBy.Append(sorting.Direction == ListSortDirection.Ascending ? " asc" : " desc");
                 }
+
             }
             return orderBy.ToString();
         }
@@ -426,8 +432,9 @@ namespace LiteOrm
             {
                 context = SqlBuildContext;
             }
-            string tableName = GetTableNameWithArgs(Table.FormattedName(SqlBuilder), context.TableNameArgs);
+            string tableName = GetTableNameWithArgs(SqlBuilder.ToSqlName(Table.Name), context.TableNameArgs);
             return sqlWithParam.Replace(ParamTable, tableName).Replace(ParamFromTable, From);
+
         }
 
         /// <summary>
@@ -442,8 +449,9 @@ namespace LiteOrm
             foreach (ColumnDefinition key in TableDefinition.Keys)
             {
                 if (strConditions.Length != 0) strConditions.Append(" and ");
-                string columnName = SqlBuildContext.SingleTable ? key.FormattedName(SqlBuilder) : key.FormattedExpression(SqlBuilder);
+                string columnName = SqlBuildContext.SingleTable ? SqlBuilder.ToSqlName(key.Name) : SqlBuilder.BuildExpression(key);
                 strConditions.AppendFormat("{0} = {1}", columnName, ToSqlParam(key.PropertyName));
+
                 if (!command.Parameters.Contains(key.PropertyName))
                 {
                     IDbDataParameter param = command.CreateParameter();

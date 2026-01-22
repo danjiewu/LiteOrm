@@ -61,6 +61,21 @@ namespace LiteOrm.Common
         string ToSqlName(string name);
 
         /// <summary>
+        /// 将表名和列名拼接并转换为数据库合法名称 (如 [Table].[Column])。
+        /// </summary>
+        /// <param name="tableName">表名。</param>
+        /// <param name="columnName">列名。</param>
+        /// <returns>返回拼接后的合法名称。</returns>
+        string ToSqlQualifiedName(string tableName, string columnName);
+
+        /// <summary>
+        /// 根据 SQL 对象类型生成对应的 SQL 表达式片段。
+        /// </summary>
+        /// <param name="sqlObject">SQL 对象（如表、列、引用等）。</param>
+        /// <returns>生成的 SQL 字符串。</returns>
+        string BuildExpression(SqlObject sqlObject);
+
+        /// <summary>
         /// 将本地参数名或变量名格式化为 SQL 中使用的参数占位符。
         /// 例如将参数名转换为 "@param" 或 ":param" 等形式。
         /// </summary>
@@ -121,5 +136,37 @@ namespace LiteOrm.Common
         /// <param name="valuesList">每个实体的占位符集合（例如 "(@0,@1,@2)"）。</param>
         /// <returns>返回目标数据库可执行的批量插入 SQL 字符串。</returns>
         string BuildBatchInsertSql(string tableName, string columns, List<string> valuesList);
+
+        /// <summary>
+        /// 生成创建表的 SQL 语句。
+        /// </summary>
+        /// <param name="tableName">表名。</param>
+        /// <param name="columns">列定义集合。</param>
+        /// <returns>返回创建表的 SQL 字符串。</returns>
+        string BuildCreateTableSql(string tableName, IEnumerable<ColumnDefinition> columns);
+
+
+        /// <summary>
+        /// 生成检查表是否存在的 SQL 语句。
+        /// </summary>
+        /// <param name="tableName">表名。</param>
+        /// <returns>返回检查表是否存在的 SQL 字符串。</returns>
+        string BuildTableExistsSql(string tableName);
+
+        /// <summary>
+        /// 生成添加列的 SQL 语句。
+        /// </summary>
+        /// <param name="tableName">表名。</param>
+        /// <param name="column">列定义。</param>
+        /// <returns>返回添加列的 SQL 字符串。</returns>
+        string BuildAddColumnSql(string tableName, ColumnDefinition column);
+
+        /// <summary>
+        /// 生成添加多个列的 SQL 语句。
+        /// </summary>
+        /// <param name="tableName">表名。</param>
+        /// <param name="columns">列定义集合。</param>
+        /// <returns>返回添加列的 SQL 字符串。</returns>
+        string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns);
     }
 }

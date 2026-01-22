@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Text;
+
 
 namespace LiteOrm.SqlBuilder
 {
@@ -50,5 +52,32 @@ namespace LiteOrm.SqlBuilder
             if (name is null) throw new ArgumentNullException("name");
             return String.Join(".", Array.ConvertAll(name.Split('.'), n => $"\"{n.ToLower()}\""));
         }
+
+        /// <summary>
+        /// 获取自增标识 SQL 片段。
+        /// </summary>
+        protected override string GetAutoIncrementSql() => "";
+
+        /// <summary>
+        /// 获取 PostgreSql 列类型。
+        /// </summary>
+        protected override string GetSqlType(ColumnDefinition column)
+        {
+            if (column.IsIdentity)
+            {
+                return column.DbType == DbType.Int64 ? "BIGSERIAL" : "SERIAL";
+            }
+            return base.GetSqlType(column);
+        }
+
+        /// <summary>
+        /// 生成添加多个列的 SQL 语句。
+        /// </summary>
+        public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
+        {
+            var colSqls = columns.Select(c => $"ADD COLUMN {ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
+            return $"ALTER TABLE {ToSqlName(tableName)} {string.Join(", ", colSqls)}";
+        }
     }
 }
+

@@ -4,6 +4,8 @@ using System.Text;
 using LiteOrm.Common;
 using System.Collections;
 using System.Data;
+using System.Linq;
+
 
 namespace LiteOrm.SqlBuilder
 {
@@ -60,6 +62,30 @@ namespace LiteOrm.SqlBuilder
         public override string BuildIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
             return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues});\nSELECT last_insert_rowid() as [ID];";
+        }
+
+        /// <summary>
+        /// 获取自增标识 SQL 片段。
+        /// </summary>
+        protected override string GetAutoIncrementSql() => "AUTOINCREMENT";
+
+        /// <summary>
+        /// 获取 SQLite 列类型。对于主键自增列，必须使用 INTEGER。
+        /// </summary>
+        protected override string GetSqlType(ColumnDefinition column)
+        {
+            if (column.IsPrimaryKey && column.IsIdentity) return "INTEGER";
+            return base.GetSqlType(column);
+        }
+
+        /// <summary>
+        /// 生成添加多个列的 SQL 语句。
+        /// </summary>
+        public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
+        {
+            var sqlName = ToSqlName(tableName);
+            var colSqls = columns.Select(c => $"ALTER TABLE {sqlName} ADD COLUMN {ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
+            return string.Join(";", colSqls);
         }
     }
 }

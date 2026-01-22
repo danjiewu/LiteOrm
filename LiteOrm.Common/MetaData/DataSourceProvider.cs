@@ -39,6 +39,11 @@ namespace LiteOrm.Common
         public int PoolSize { get; set; } = 16;
 
         /// <summary>
+        /// 是否开启自动建表同步
+        /// </summary>
+        public bool SyncTable { get; set; }
+
+        /// <summary>
         /// 获取提供程序类型
         /// </summary>
         public Type ProviderType

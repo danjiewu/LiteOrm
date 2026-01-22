@@ -39,11 +39,11 @@ namespace LiteOrm.Demo.Data
 
         private static async Task EnsureTablesCreatedAsync(SqliteConnection connection)
         {
+            // Departments 和 Users 表由 LiteOrm 的 SyncTable 功能在 LiteOrmComponentInitializer 中自动同步。
+            // 此处仅对动态分表初始化（SyncTable 目前仅同步固定表名定义）。
+
             string currentMonth = DateTime.Now.ToString("yyyyMM");
-            // 此处使用原生 SQL 来初始化结构，因为 DDL 通常超出 ORM 职责范围
             string[] createTableSqls = {
-                @"CREATE TABLE IF NOT EXISTS Departments (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT, ParentId INTEGER, ManagerId INTEGER);",
-                @"CREATE TABLE IF NOT EXISTS Users (Id INTEGER PRIMARY KEY AUTOINCREMENT, UserName TEXT, Age INTEGER, CreateTime DATETIME, DeptId INTEGER);",
                 // 支持分表显示 (当前月份)
                 $@"CREATE TABLE IF NOT EXISTS Sales_{currentMonth} (Id INTEGER PRIMARY KEY AUTOINCREMENT, ProductId INTEGER, ProductName TEXT, Amount INTEGER NOT NULL, SaleTime DATETIME NOT NULL, ShipTime DATETIME, SalesUserId INTEGER);"
             };
@@ -54,6 +54,7 @@ namespace LiteOrm.Demo.Data
                 await cmd.ExecuteNonQueryAsync();
             }
         }
+
 
         private static async Task SeedDataWithServicesAsync(IUserService userService, IDepartmentService deptService, ISalesService salesService)
         {

@@ -18,7 +18,6 @@ namespace LiteOrm
     public class AttributeTableInfoProvider : TableInfoProvider
     {
         private readonly ConcurrentDictionary<Type, TableDefinition> _tableInfoCache = new ConcurrentDictionary<Type, TableDefinition>();
-        private readonly ConcurrentDictionary<PropertyInfo, ColumnDefinition> _columnCache = new ConcurrentDictionary<PropertyInfo, ColumnDefinition>();
         private readonly ConcurrentDictionary<Type, TableView> _tableViewCache = new ConcurrentDictionary<Type, TableView>();
         private readonly ISqlBuilderFactory _sqlBuilderFactory;
         private readonly IDataSourceProvider _dataSourceProvider;
@@ -43,15 +42,15 @@ namespace LiteOrm
         public override TableDefinition GetTableDefinition(Type objectType)
         {
             if (objectType is null) return null;
-            if (!_tableInfoCache.ContainsKey(objectType))
+            if (_tableInfoCache.TryGetValue(objectType, out var tableDef)) return tableDef;
+
+            lock (_syncLock)
             {
-                lock (_syncLock)
-                {
-                    if (!_tableInfoCache.ContainsKey(objectType))
-                        _tableInfoCache[objectType] = GenerateTableDefinition(objectType);
-                }
+                if (_tableInfoCache.TryGetValue(objectType, out tableDef)) return tableDef;
+                tableDef = GenerateTableDefinition(objectType);
+                if (tableDef != null) _tableInfoCache[objectType] = tableDef;
+                return tableDef;
             }
-            return _tableInfoCache[objectType];
         }
 
         /// <summary>
@@ -62,61 +61,40 @@ namespace LiteOrm
         public override TableView GetTableView(Type objectType)
         {
             if (objectType is null) return null;
-            if (!_tableViewCache.ContainsKey(objectType))
+            if (_tableViewCache.TryGetValue(objectType, out var tableView)) return tableView;
+
+            lock (_syncLock)
             {
-                lock (_syncLock)
-                {
-                    if (!_tableViewCache.ContainsKey(objectType))
-                        _tableViewCache[objectType] = GenerateTableView(objectType);
-                }
+                if (_tableViewCache.TryGetValue(objectType, out tableView)) return tableView;
+                tableView = GenerateTableView(objectType);
+                if (tableView != null) _tableViewCache[objectType] = tableView;
+                return tableView;
             }
-            return _tableViewCache[objectType];
         }
 
         #region
 
-        /// <summary>
-        /// 根据属性得到对应字段的数据库列定义
-        /// </summary>
-        /// <param name="property">对象的属性</param>
-        /// <param name="objectType">对象类型</param>
-        /// <returns>数据库列定义</returns>
-        private ColumnDefinition GetColumnDefinition(PropertyInfo property, Type objectType)
-        {
-            if (property is null) return null;
-            if (!_columnCache.ContainsKey(property))
-            {
-                lock (_syncLock)
-                {
-                    if (!_columnCache.ContainsKey(property))
-                    {
-                        TableAttribute tableAttribute = objectType.GetAttribute<TableAttribute>();
-                        _columnCache[property] = GenerateColumnDefinition(property, _sqlBuilderFactory.GetSqlBuilder(_dataSourceProvider.GetDataSource(tableAttribute.DataSource).ProviderType));
-                    }
-                }
-            }
-            return _columnCache[property];
-        }
-
         private TableDefinition GenerateTableDefinition(Type objectType)
         {
             TableAttribute tableAttribute = objectType.GetAttribute<TableAttribute>();
-            if (tableAttribute is not null)
+            if (tableAttribute is null) return null;
+
+            string tableName = tableAttribute.TableName;
+            if (String.IsNullOrEmpty(tableName)) tableName = objectType.Name;
+
+            var dsConfig = _dataSourceProvider.GetDataSource(tableAttribute.DataSource);
+            var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType);
+
+            List<ColumnDefinition> columns = new List<ColumnDefinition>();
+            foreach (PropertyInfo property in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
-                string tableName = tableAttribute.TableName;
-                if (String.IsNullOrEmpty(tableName)) tableName = objectType.Name;
-                List<ColumnDefinition> columns = new List<ColumnDefinition>();
-                foreach (PropertyInfo property in objectType.GetProperties())
+                ColumnDefinition column = GenerateColumnDefinition(property, sqlBuilder);
+                if (column is not null)
                 {
-                    ColumnDefinition column = GetColumnDefinition(property, objectType);
-                    if (column is not null)
-                    {
-                        columns.Add(column);
-                    }
+                    columns.Add(column);
                 }
-                return new TableDefinition(objectType, columns) { Name = tableName, DataProviderType = _dataSourceProvider.GetDataSource(tableAttribute.DataSource).ProviderType, DataSource = tableAttribute.DataSource ?? _dataSourceProvider.DefaultDataSourceName };
             }
-            return null;
+            return new TableDefinition(objectType, columns) { Name = tableName, DataProviderType = dsConfig.ProviderType, DataSource = tableAttribute.DataSource ?? _dataSourceProvider.DefaultDataSourceName };
         }
 
         private ColumnDefinition GenerateColumnDefinition(PropertyInfo property, ISqlBuilder sqlBuilder)
@@ -195,12 +173,20 @@ namespace LiteOrm
 
         private TableView GenerateTableView(Type objectType)
         {
+            var tableDef = GetTableDefinition(objectType);
+            if (tableDef == null) return null;
+
+            var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(tableDef.DataProviderType);
+
             TableJoinAttribute[] atts = (TableJoinAttribute[])objectType.GetCustomAttributes(typeof(TableJoinAttribute), true);
             ConcurrentDictionary<string, JoinedTable> joinedTables = new ConcurrentDictionary<string, JoinedTable>(StringComparer.OrdinalIgnoreCase);
 
             foreach (TableJoinAttribute tableJoin in atts)
             {
-                JoinedTable joinedTable = new JoinedTable(GetTableDefinition(tableJoin.TargetType));
+                var targetTableDef = GetTableDefinition(tableJoin.TargetType);
+                if (targetTableDef == null) continue;
+
+                JoinedTable joinedTable = new JoinedTable(targetTableDef);
                 if (String.IsNullOrEmpty(tableJoin.AliasName))
                     tableJoin.AliasName = joinedTable.Name = tableJoin.TargetType.Name;
                 else
@@ -211,16 +197,16 @@ namespace LiteOrm
             }
 
             List<SqlColumn> columns = new List<SqlColumn>();
-            foreach (PropertyInfo property in objectType.GetProperties())
+            foreach (PropertyInfo property in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
-                ColumnDefinition column = GetColumnDefinition(property, objectType);
+                ColumnDefinition column = GenerateColumnDefinition(property, sqlBuilder);
                 if (column is not null)
                 {
                     columns.Add(column);
                 }
             }
 
-            foreach (PropertyInfo property in objectType.GetProperties())
+            foreach (PropertyInfo property in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 ForeignColumn foreignColumn = GenerateForeignColumn(property);
                 if (foreignColumn is not null) columns.Add(foreignColumn);
@@ -247,7 +233,7 @@ namespace LiteOrm
                 }
             }
 
-            TableView tableView = new TableView(GetTableDefinition(objectType), usedTables, columns) { Name = objectType.Name };
+            TableView tableView = new TableView(tableDef, usedTables, columns) { Name = objectType.Name };
 
             foreach (TableJoinAttribute tableJoin in atts)
             {

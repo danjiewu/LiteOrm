@@ -4,7 +4,9 @@ using System.Text;
 using LiteOrm.Common;
 using System.Collections;
 using System.Data;
+using System.Linq;
 using System.Text.RegularExpressions;
+
 
 namespace LiteOrm.SqlBuilder
 {
@@ -147,6 +149,34 @@ namespace LiteOrm.SqlBuilder
         }
 
         /// <summary>
+        /// 获取自增标识 SQL 片段。
+        /// </summary>
+        protected override string GetAutoIncrementSql() => "GENERATED AS IDENTITY";
+
+        /// <summary>
+        /// 获取 Oracle 列 type。
+        /// </summary>
+        protected override string GetSqlType(ColumnDefinition column)
+        {
+            switch (column.DbType)
+            {
+                case DbType.String:
+                case DbType.AnsiString:
+                    return column.Length > 0 && column.Length <= 4000 ? $"VARCHAR2({column.Length})" : "CLOB";
+                case DbType.Int16:
+                case DbType.Int32:
+                case DbType.Int64:
+                    return "NUMBER";
+                case DbType.DateTime:
+                    return "TIMESTAMP";
+                case DbType.Boolean:
+                    return "NUMBER(1)";
+                default:
+                    return base.GetSqlType(column);
+            }
+        }
+
+        /// <summary>
         /// 将 Oracle 参数名转换为通用名称（去掉冒号前缀）。
         /// </summary>
         /// <param name="paramName">参数名称。</param>
@@ -155,6 +185,15 @@ namespace LiteOrm.SqlBuilder
         {
             if (paramName is null) throw new ArgumentNullException("paramName");
             return paramName.TrimStart(':');
+        }
+
+        /// <summary>
+        /// 生成添加多个列的 SQL 语句。
+        /// </summary>
+        public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
+        {
+            var colSqls = columns.Select(c => $"{ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
+            return $"ALTER TABLE {ToSqlName(tableName)} ADD ({string.Join(", ", colSqls)})";
         }
     }
 
