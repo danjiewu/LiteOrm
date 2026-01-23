@@ -479,20 +479,19 @@ public class BusinessService : IBusinessService
 
     public async Task<bool> RegisterUserWithInitialSaleAsync(User user, SalesRecord firstSale)
     {
-        // 1. 添加用户，必须使用同步方法以确保事务一致性
+        // 1. 添加用户
         user.CreateTime = DateTime.Now;
-        //await _userService.InsertAsync(user);
-        _userService.Insert(user);
+        await _userService.InsertAsync(user);
 
         // 2. 设置销售记录的用户ID (Insert 后自增ID已填充到实体中)
         firstSale.SalesUserId = user.Id;
         firstSale.SaleTime = DateTime.Now;
 
-        // 3. 添加销售记录，必须使用同步方法以确保事务一致性
-        //await _salesService.InsertAsync(firstSale);
-        _salesService.Insert(firstSale);
+        // 3. 添加销售记录
+        await _salesService.InsertAsync(firstSale);
 
-        throw new Exception("模拟异常，测试事务回滚");
+        // 如果需要测试回滚，可以取消下一行的注释
+        // throw new Exception("模拟异常，测试事务回滚");
 
         // 如果其中任何一步失败，或者抛出异常，事务将自动由 ServiceInvokeInterceptor 回滚
         return true;

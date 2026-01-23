@@ -1,8 +1,6 @@
 ﻿using LiteOrm.Common;
-using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -52,6 +50,7 @@ namespace LiteOrm.Service
         /// <param name="entities">实体列表</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [Transaction]
         Task BatchInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -60,6 +59,7 @@ namespace LiteOrm.Service
         /// <param name="entities">实体列表</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [Transaction]
         Task BatchUpdateAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -68,6 +68,7 @@ namespace LiteOrm.Service
         /// <param name="entities">实体列表</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [Transaction]
         Task BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -76,6 +77,7 @@ namespace LiteOrm.Service
         /// <param name="entities">实体列表</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [Transaction]
         Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -84,6 +86,7 @@ namespace LiteOrm.Service
         /// <param name="entities">实体操作列表</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [Transaction]
         Task BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default);
     }
 
@@ -162,6 +165,7 @@ namespace LiteOrm.Service
         /// <param name="entities">实体列表</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [Transaction]
         Task BatchInsertAsync(IEnumerable entities, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -170,6 +174,7 @@ namespace LiteOrm.Service
         /// <param name="entities">实体列表</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [Transaction]
         Task BatchUpdateAsync(IEnumerable entities, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -178,6 +183,7 @@ namespace LiteOrm.Service
         /// <param name="entities">实体列表</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [Transaction]
         Task BatchUpdateOrInsertAsync(IEnumerable entities, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -186,6 +192,7 @@ namespace LiteOrm.Service
         /// <param name="entities">实体列表</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [Transaction]
         Task BatchDeleteAsync(IEnumerable entities, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -194,6 +201,7 @@ namespace LiteOrm.Service
         /// <param name="ids">待删除id</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [Transaction]
         Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default);
     }
 }

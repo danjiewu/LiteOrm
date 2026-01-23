@@ -248,7 +248,7 @@ await salesService.InsertAsync(new SalesRecord { SaleTime = DateTime.Now });
 支持显式事务管理和基于特性的自动事务管理。
 
 #### 声明式事务 (推荐)
-通过 `[Transaction]` 特性配合 AOP 拦截器实现无侵入的事务控制，支持跨服务、跨数据源的事务一致性保证。（方法内部同步调用方式，异步方式不在事务中）
+通过 `[Transaction]` 特性配合 AOP 拦截器实现无侵入的事务控制，支持跨服务、跨数据源的事务一致性保证。
 ```csharp
 public interface IOrderService : IEntityService<Order>,  IEntityViewService<OrderView>, 
     IEntityServiceAsync<Order>, IEntityViewServiceAsync<OrderView> 
