@@ -54,6 +54,7 @@ namespace LiteOrm.Service
     /// await service.BatchInsertAsync(users);
     /// </code>
     /// </remarks>
+    [AutoRegister(ServiceLifetime.Scoped)]
     public class EntityService<T, TView> : EntityViewService<TView>, IEntityService<T>, IEntityServiceAsync<T>, IEntityService, IEntityServiceAsync
     where TView : T, new()
     where T : new()
@@ -885,6 +886,17 @@ namespace LiteOrm.Service
             return await DeleteIDCoreAsync(id, tableArgs, cancellationToken);
         }
 
+        /// <summary>
+        /// 异步删除实体。
+        /// </summary>
+        /// <param name="entity">要删除的实体。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，任务结果为是否删除成功。</returns>
+        public async virtual Task<bool> DeleteAsync(T entity, CancellationToken cancellationToken = default)
+        {
+            return await DeleteCoreAsync(entity, cancellationToken);
+        }
+
         #endregion
 
         #region Core Async Methods
@@ -975,6 +987,7 @@ namespace LiteOrm.Service
     /// 它简化了在这种常见场景中的类型参数传递。
     /// </remarks>
     /// <typeparam name="T">实体类型，同时也是实体视图类型。</typeparam>
+    [AutoRegister(ServiceLifetime.Scoped)]
     public class EntityService<T> : EntityService<T, T>
         where T : new()
     {

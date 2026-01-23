@@ -23,12 +23,12 @@ namespace LiteOrm.Demo
             var expr = Expr.Property("DeptName") == deptName & Expr.Property("Age") > 18;
 
             // 也可以直接写原生 SQL 演示
-            string sql = "SELECT @AllFields@ FROM @FromTable@ WHERE [Dept].[Name] = @0 AND Age > 18";
+            string sql = $"SELECT {AllFieldsSql} FROM {ParamFromTable} WHERE [Dept].[Name] = @0 AND Age > 18";
 
             return await Task.Run(() =>
             {
-                using var command = MakeParamCommand(ReplaceParam(sql), deptName);
-                //using var command = MakeConditionCommand("SELECT @AllFields@ FROM @FromTable@ WHERE @Condition@", expr);
+                using var command = MakeParamCommand(sql, deptName);
+                //using var command = MakeConditionCommand($"SELECT {ParamAllFields} FROM {ParamFromTable} {ParamWhere}", expr);
                 return GetAll(command);
             }, cancellationToken);
         }

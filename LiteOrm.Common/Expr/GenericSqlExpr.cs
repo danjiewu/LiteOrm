@@ -68,7 +68,7 @@ namespace LiteOrm.Common
         /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
         public override bool Equals(object obj)
         {
-            return obj is GenericSqlExpr g && g.Key == Key;
+            return obj is GenericSqlExpr g && g.Key == Key && ValueExpr.ValuesEquals(g.Arg, Arg);
         }
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace LiteOrm.Common
         /// <returns>当前对象的哈希代码。</returns>
         public override int GetHashCode()
         {
-            return OrderedHashCodes(GetType().GetHashCode(), Key?.GetHashCode() ?? 0);
+            return OrderedHashCodes(GetType().GetHashCode(), Key?.GetHashCode() ?? 0, ValueExpr.GetValueHashCode(Arg));
         }
 
         #region 静态注册表

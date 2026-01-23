@@ -235,6 +235,13 @@ namespace LiteOrm
                 return _allFieldsSql;
             }
         }
+
+        /// <summary>
+        /// 将条件字符串转换为 SQL WHERE 子句。
+        /// </summary>
+        /// <param name="where">条件字符串。</param>
+        /// <returns>生成的 WHERE 子句。</returns>
+        protected string ToWhereSql(string where) => string.IsNullOrEmpty(where) ? string.Empty : $"\nwhere {where}";
         #endregion
 
         #region 方法
@@ -342,18 +349,14 @@ namespace LiteOrm
         /// </summary>
         /// <param name="sql">SQL 语句，SQL 中可以包含已命名的参数。</param>
         /// <param name="paramValues">参数列表，为空时表示没有参数。Key 需要与 SQL 中的参数名称对应。</param>
-        /// <param name="context">SQL 构建上下文。</param>
         /// <returns>IDbCommand 实例。</returns>
-        public DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues, SqlBuildContext context = null)
+        public DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues)
         {
             DbCommandProxy command = NewCommand();
-            command.CommandText = ReplaceParam(sql, context);
+            command.CommandText = ReplaceParam(sql);
             AddParamsToCommand(command, paramValues);
             return command;
         }
-
-        private const string tableNamePattern = @"^[a-zA-Z0-9_]*$";
-        private static readonly Regex tableNameRegex = new Regex(tableNamePattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         /// <summary>
         /// 获取带参数的表名
@@ -364,19 +367,7 @@ namespace LiteOrm
         public string GetTableNameWithArgs(string originTableName, string[] tableNameArgs = null)
         {
             var args = tableNameArgs ?? TableNameArgs?.ToArray();
-            if (args is not null && args.Length > 0)
-            {
-                //检查args内容是否合法，防止格式化字符串注入攻击
-                foreach (var arg in args)
-                {
-                    if (!tableNameRegex.IsMatch(arg))
-                    {
-                        throw new ArgumentException("表名参数包含非法字符。", nameof(tableNameArgs));
-                    }
-                }
-                return String.Format(originTableName, args);
-            }
-            return originTableName;
+            return SqlBuilder.GetTableNameWithArgs(originTableName, args);
         }
 
         /// <summary>
@@ -400,9 +391,9 @@ namespace LiteOrm
         /// 根据SQL语句和条件建立DbCommandProxy
         /// </summary>
         /// <param name="sqlWithParam">带参数的SQL语句
-        /// <example>"select @AllFields@ from @FromTable@ @Where@"表示从表中查询所有符合条件的记录</example>
-        /// <example>"select count(*) from @FromTable@ "表示从表中所有记录的数量，expr参数需为空</example>
-        /// <example>"delete from @Table@ @Where@"表示从表中删除所有符合条件的记录</example>
+        /// <example>$"select {ParamAllFields} from {ParamFromTable} {ParamWhere}"表示从表中查询所有符合条件的记录</example>
+        /// <example>$"select count(*) from {ParamFromTable} "表示从表中所有记录的数量，expr参数需为空</example>
+        /// <example>$"delete from {ParamTable} {ParamWhere}"表示从表中删除所有符合条件的记录</example>
         /// </param>
         /// <param name="expr">条件，为null时表示无条件</param>
         /// <returns>DbCommandProxy</returns>
@@ -416,23 +407,17 @@ namespace LiteOrm
                 strCondition = expr.ToSql(context, SqlBuilder, paramList);
             }
 
-            if (!string.IsNullOrWhiteSpace(strCondition)) strCondition = $"\nwhere {strCondition}";
-            return MakeNamedParamCommand(sqlWithParam.Replace(ParamWhere, strCondition), paramList);
+            return MakeNamedParamCommand(sqlWithParam.Replace(ParamWhere, ToWhereSql(strCondition)), paramList);
         }
 
         /// <summary>
         /// 替换 SQL 中的标记为实际 SQL
         /// </summary>
         /// <param name="sqlWithParam">包含标记的 SQL 语句</param>
-        /// <param name="context">SQL 生成的上下文</param>
         /// <returns></returns>
-        protected virtual string ReplaceParam(string sqlWithParam, SqlBuildContext context = null)
+        protected virtual string ReplaceParam(string sqlWithParam)
         {
-            if (context is null)
-            {
-                context = SqlBuildContext;
-            }
-            string tableName = GetTableNameWithArgs(SqlBuilder.ToSqlName(Table.Name), context.TableNameArgs);
+            string tableName = GetTableNameWithArgs(SqlBuilder.ToSqlName(Table.Name), SqlBuildContext.TableNameArgs);
             return sqlWithParam.Replace(ParamTable, tableName).Replace(ParamFromTable, From);
 
         }
@@ -446,11 +431,10 @@ namespace LiteOrm
         {
             ThrowExceptionIfNoKeys();
             StringBuilder strConditions = new StringBuilder();
-            foreach (ColumnDefinition key in TableDefinition.Keys)
+            foreach (ColumnDefinition key in Table.Keys)
             {
                 if (strConditions.Length != 0) strConditions.Append(" and ");
-                string columnName = SqlBuildContext.SingleTable ? SqlBuilder.ToSqlName(key.Name) : SqlBuilder.BuildExpression(key);
-                strConditions.AppendFormat("{0} = {1}", columnName, ToSqlParam(key.PropertyName));
+                strConditions.Append($"{ToColumnSql(key)} = {ToSqlParam(key.PropertyName)}");
 
                 if (!command.Parameters.Contains(key.PropertyName))
                 {
@@ -468,23 +452,35 @@ namespace LiteOrm
         /// 为command创建根据时间戳的条件，在command中添加参数并返回where条件的语句
         /// </summary>
         /// <param name="command">要创建条件的数据库命令</param>
-        /// <param name="isView">是否是查询，若是查询则关联多个表</param>
+        /// <param name="timestamp">时间戳</param>
         /// <returns>where条件的语句</returns>
-        protected string MakeTimestampCondition(IDbCommand command, bool isView = true)
+        protected string MakeTimestampCondition(IDbCommand command, object timestamp)
         {
-            foreach (ColumnDefinition column in TableDefinition.Columns)
+            foreach (var column in Table.Columns)
             {
-                if (column.IsTimestamp)
+                var columnDef = column.Definition;
+                if (columnDef.IsTimestamp)
                 {
                     IDbDataParameter param = command.CreateParameter();
-                    param.Size = column.Length;
-                    param.DbType = column.DbType;
+                    param.Size = columnDef.Length;
+                    param.DbType = columnDef.DbType;
                     param.ParameterName = ToParamName(TimestampParamName);
+                    param.Value = ConvertToDbValue(timestamp, columnDef.DbType);
                     command.Parameters.Add(param);
-                    return $"{ToSqlName(isView ? FactTableName : TableDefinition.Name)}.{ToSqlName(column.Name)} = {ToSqlParam(TimestampParamName)}"; ;
+                    return $"{ToColumnSql(column)} = {ToSqlParam(TimestampParamName)}"; ;
                 }
             }
             return null;
+        }
+
+        /// <summary>
+        /// 数据列转换为 SQL 格式名称
+        /// </summary>
+        /// <param name="column">数据列</param>
+        /// <returns>数据列对应的 SQL 名称</returns>
+        protected string ToColumnSql(SqlColumn column)
+        {
+            return SqlBuildContext.SingleTable ? SqlBuilder.ToSqlName(column.Name) : SqlBuilder.BuildExpression(column);
         }
 
         /// <summary>
@@ -607,56 +603,5 @@ namespace LiteOrm
             return SqlBuilder.ToNativeName(paramName);
         }
         #endregion
-    }
-
-    /// <summary>
-    /// ObjectDAOBase 的扩展方法类
-    /// </summary>
-    /// <remarks>
-    /// ObjectDAOExt 提供了 IObjectDAO&lt;T&gt; 和 IObjectViewDAO&lt;T&gt; 接口的扩展方法。
-    /// 
-    /// 主要功能：
-    /// 1. WithArgs 扩展方法 - 为DAO对象设置动态表名参数
-    /// 
-    /// 这些扩展方法提供了一种流畅的API来处理参数化的表名，
-    /// 允许在运行时动态指定表名或其他参数。
-    /// 
-    /// 使用示例：
-    /// <code>
-    /// var dao = serviceProvider.GetService&lt;IObjectDAO&lt;User&gt;&gt;();
-    /// // 为表名参数创建新的DAO实例
-    /// var specificTableDao = dao.WithArgs("User_2024");
-    /// // 进行数据操作
-    /// var users = await specificTableDao.SearchAsync(Expr.Property("Age") &gt; 18);
-    /// </code>
-    /// </remarks>
-    public static class ObjectDAOExt
-    {
-        /// <summary>
-        /// 使用指定的参数创建新的DAO实例
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="dao"></param>
-        /// <param name="args"></param>
-        /// <returns></returns>
-        public static IObjectDAO<T> WithArgs<T>(this IObjectDAO<T> dao, params string[] args)
-        {
-            if (args is null || args.Length == 0) return dao;
-            ObjectDAOBase dAOBase = dao as ObjectDAOBase;
-            return dAOBase.WithArgs(args) as IObjectDAO<T>;
-        }
-        /// <summary>
-        /// 使用指定的参数创建新的DAO实例
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="dao"></param>
-        /// <param name="args"></param>
-        /// <returns></returns>
-        public static IObjectViewDAO<T> WithArgs<T>(this IObjectViewDAO<T> dao, params string[] args)
-        {
-            if (args is null || args.Length == 0) return dao;
-            ObjectDAOBase dAOBase = dao as ObjectDAOBase;
-            return dAOBase.WithArgs(args) as IObjectViewDAO<T>;
-        }
     }
 }

@@ -9,6 +9,7 @@ using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
+using Autofac.Core;
 
 namespace LiteOrm
 {
@@ -29,6 +30,7 @@ namespace LiteOrm
     /// 该类继承自 ObjectDAOBase，使用泛型参数 T 来指定具体的实体类型，
     /// 提供强类型的数据访问接口。
     /// </remarks>
+    [AutoRegister(ServiceLifetime.Scoped)]
     public class ObjectDAO<T> : ObjectDAOBase, IObjectDAO<T>
     {
         /// <summary>
@@ -54,7 +56,10 @@ namespace LiteOrm
         /// <summary>
         /// 获取或设置用于生成 SQL 的上下文。
         /// </summary>
-        protected override SqlBuildContext SqlBuildContext { get { base.SqlBuildContext.SingleTable = true; return base.SqlBuildContext; } set => base.SqlBuildContext = value; }
+        protected override SqlBuildContext SqlBuildContext
+        {
+            get { base.SqlBuildContext.SingleTable = true; return base.SqlBuildContext; }
+        }
 
         #region 预构建Command
         /// <summary>
@@ -92,7 +97,7 @@ namespace LiteOrm
         /// 构建实体更新命令。
         /// </summary>
         /// <returns>返回更新命令实例。</returns>
-        protected virtual DbCommandProxy MakeUpdateCommand()
+        protected virtual DbCommandProxy MakeUpdateCommand(T t, object timestamp = null)
         {
             DbCommandProxy command = NewCommand();
             StringBuilder strColumns = new StringBuilder();
@@ -109,10 +114,14 @@ namespace LiteOrm
                     command.Parameters.Add(param);
                 }
             }
-
-            string strTimestamp = MakeTimestampCondition(command);
-            if (strTimestamp is not null) strTimestamp = " and " + strTimestamp;
-            command.CommandText = $"update {ToSqlName(FactTableName)} set {strColumns} \nwhere{MakeIsKeyCondition(command) + strTimestamp} ";
+            string strTimestamp = MakeTimestampCondition(command,timestamp);
+            if (!String.IsNullOrEmpty(strTimestamp)) strTimestamp = $" and {strTimestamp}";
+            command.CommandText = $"update {ToSqlName(FactTableName)} set {strColumns} {ToWhereSql(MakeIsKeyCondition(command) + strTimestamp)}";
+            foreach (IDataParameter param in command.Parameters)
+            {
+                ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
+                param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+            }
             return command;
         }
 
@@ -120,10 +129,16 @@ namespace LiteOrm
         /// 构建实体删除命令。
         /// </summary>
         /// <returns>返回删除命令实例。</returns>
-        protected virtual DbCommandProxy MakeDeleteCommand()
+        protected virtual DbCommandProxy MakeDeleteCommand(params object[] keys)
         {
             DbCommandProxy command = NewCommand();
-            command.CommandText = $"delete from {ToSqlName(FactTableName)} \nwhere{MakeIsKeyCondition(command)}";
+            command.CommandText = $"delete from {ToSqlName(FactTableName)} {ToWhereSql(MakeIsKeyCondition(command))}";
+            int i = 0;
+            foreach (IDataParameter param in command.Parameters)
+            {
+                param.Value = ConvertToDbValue(keys[i], Table.Keys[i].DbType);
+                i++;
+            }
             return command;
         }
 
@@ -139,7 +154,7 @@ namespace LiteOrm
             StringBuilder strUpdateColumns = new StringBuilder();
             foreach (ColumnDefinition column in TableDefinition.Columns)
             {
-                bool columnAdded = false;
+                bool addColumn = false;
                 if (!column.IsIdentity && column.Mode.CanInsert())
                 {
                     if (strColumns.Length != 0) strColumns.Append(",");
@@ -147,17 +162,17 @@ namespace LiteOrm
 
                     strColumns.Append(ToSqlName(column.Name));
                     strValues.Append(ToSqlParam(column.PropertyName));
-                    columnAdded = true;
+                    addColumn = true;
                 }
 
                 if (column.Mode.CanUpdate() && !column.IsPrimaryKey)
                 {
                     if (strUpdateColumns.Length != 0) strUpdateColumns.Append(",");
                     strUpdateColumns.AppendFormat("{0} = {1}", ToSqlName(column.Name), ToSqlParam(column.PropertyName));
-                    columnAdded = true;
+                    addColumn = true;
                 }
 
-                if (columnAdded)
+                if (addColumn)
                 {
                     IDbDataParameter param = command.CreateParameter();
                     param.DbType = column.DbType;
@@ -168,9 +183,9 @@ namespace LiteOrm
             }
             string insertCommandText = IdentityColumn is null ? $"insert into {ToSqlName(FactTableName)} ({strColumns}) \nvalues ({strValues})"
                 : SqlBuilder.BuildIdentityInsertSql(command, IdentityColumn, FactTableName, strColumns.ToString(), strValues.ToString());
-            string updateCommandText = $"update {ToSqlName(FactTableName)} set {strUpdateColumns} \nwhere{MakeIsKeyCondition(command)};";
+            string updateCommandText = $"update {ToSqlName(FactTableName)} set {strUpdateColumns} {ToWhereSql(MakeIsKeyCondition(command))};";
 
-            command.CommandText = $"BEGIN if exists(select 1 from {ToSqlName(FactTableName)} \nwhere{MakeIsKeyCondition(command)}) begin {updateCommandText} select -1; end else begin {insertCommandText} end END;";
+            command.CommandText = $"BEGIN if exists(select 1 from {ToSqlName(FactTableName)} {ToWhereSql(MakeIsKeyCondition(command))}) begin {updateCommandText} select -1; end else begin {insertCommandText} end END;";
             return command;
         }
 
@@ -329,20 +344,7 @@ namespace LiteOrm
         /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
         public virtual bool Update(T t, object timestamp = null)
         {
-            if (t is null) throw new ArgumentNullException("t");
-            using var updateCommand = MakeUpdateCommand();
-            foreach (IDataParameter param in updateCommand.Parameters)
-            {
-                if (ToNativeName(param.ParameterName) == TimestampParamName)
-                {
-                    param.Value = timestamp;
-                }
-                else
-                {
-                    ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
-                    param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
-                }
-            }
+            using var updateCommand = MakeUpdateCommand(t, timestamp);           
             return updateCommand.ExecuteNonQuery() > 0;
         }
 
@@ -387,13 +389,11 @@ namespace LiteOrm
             {
                 SqlColumn column = Table.GetColumn(value.Key);
                 if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
-                strSets.Add(SqlBuilder.ToSqlName(column.Name) + "=" + ToSqlParam(paramValues.Count.ToString()));
+                strSets.Add($"{SqlBuilder.ToSqlName(column.Name)} ={ToSqlParam(paramValues.Count.ToString())}");
                 paramValues.Add(paramValues.Count.ToString(), value.Value);
             }
             string where = expr.ToSql(SqlBuildContext, SqlBuilder, paramValues);
-
-            if(!string.IsNullOrWhiteSpace(where))where = $"where {where}";
-            string updateSql = $"update @Table@ set {String.Join(",", strSets.ToArray())} \n{where}";
+            string updateSql = $"update {ParamTable} set {String.Join(",", strSets.ToArray())} {ToWhereSql(where)}";
             using var command = MakeNamedParamCommand(updateSql, paramValues);
             return command.ExecuteNonQuery();
         }
@@ -410,7 +410,7 @@ namespace LiteOrm
             ThrowExceptionIfWrongKeys(keys);
             ExprSet expr = new ExprSet(ExprJoinType.And);
             int i = 0;
-            foreach (ColumnDefinition column in TableDefinition.Keys)
+            foreach (ColumnDefinition column in Table.Keys)
             {
                 expr.Add(Expr.Property(column.PropertyName, keys[i++]));
             }
@@ -435,7 +435,7 @@ namespace LiteOrm
         /// <returns>删除对象数量</returns>
         public virtual int Delete(Expr expr)
         {
-            using var command = MakeConditionCommand("delete from @Table@ @Where@", expr);
+            using var command = MakeConditionCommand($"delete from {ParamTable} {ParamWhere}", expr);
             return command.ExecuteNonQuery();
         }
 
@@ -447,13 +447,7 @@ namespace LiteOrm
         public virtual bool DeleteByKeys(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var deleteCommand = MakeDeleteCommand();
-            int i = 0;
-            foreach (IDataParameter param in deleteCommand.Parameters)
-            {
-                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
-                i++;
-            }
+            using var deleteCommand = MakeDeleteCommand(keys);
             return deleteCommand.ExecuteNonQuery() > 0;
         }
         #endregion
@@ -626,20 +620,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果更新成功则返回 true。</returns>
         public async virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
         {
-            if (t is null) throw new ArgumentNullException("t");
-            using var updateCommand = MakeUpdateCommand();
-            foreach (IDataParameter param in updateCommand.Parameters)
-            {
-                if (ToNativeName(param.ParameterName) == TimestampParamName)
-                {
-                    param.Value = timestamp;
-                }
-                else
-                {
-                    ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
-                    param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
-                }
-            }
+            using var updateCommand = MakeUpdateCommand(t, timestamp);
             return await updateCommand.ExecuteNonQueryAsync(cancellationToken) > 0;
         }
 
@@ -692,13 +673,7 @@ namespace LiteOrm
         public async virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var deleteCommand = MakeDeleteCommand();
-            int i = 0;
-            foreach (IDataParameter param in deleteCommand.Parameters)
-            {
-                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
-                i++;
-            }
+            using var deleteCommand = MakeDeleteCommand(keys);
             return await deleteCommand.ExecuteNonQueryAsync(cancellationToken) > 0;
         }
 
@@ -710,7 +685,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，返回删除对象数量。</returns>
         public async virtual Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand("delete from @Table@ @Where@", expr);
+            using var command = MakeConditionCommand($"delete from {ParamTable} {ParamWhere}", expr);
             return await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
@@ -763,7 +738,7 @@ namespace LiteOrm
                 strSets.Add(SqlBuilder.ToSqlName(column.Name) + "=" + ToSqlParam(paramValues.Count.ToString()));
                 paramValues.Add(paramValues.Count.ToString(), value.Value);
             }
-            string updateSql = "update @Table@ set " + String.Join(",", strSets.ToArray()) + " \nwhere" + expr.ToSql(SqlBuildContext, SqlBuilder, paramValues);
+            string updateSql = $"update {ParamTable} set {String.Join(",", strSets.ToArray())} {ToWhereSql(expr.ToSql(SqlBuildContext, SqlBuilder, paramValues))}";
 
             using var command = MakeNamedParamCommand(updateSql, paramValues);
             return await command.ExecuteNonQueryAsync(cancellationToken);

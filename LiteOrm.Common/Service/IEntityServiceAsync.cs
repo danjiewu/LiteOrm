@@ -39,6 +39,14 @@ namespace LiteOrm.Service
         Task<bool> UpdateOrInsertAsync(T entity, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// 异步删除实体
+        /// </summary>
+        /// <param name="entity">待删除的实体</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>操作结果，true表示成功，false表示失败</returns>
+        Task<bool> DeleteAsync(T entity, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// 异步批量新增实体
         /// </summary>
         /// <param name="entities">实体列表</param>

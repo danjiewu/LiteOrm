@@ -101,6 +101,9 @@ namespace LiteOrm.SqlBuilder
         /// 用于识别 SQL 对象名称（如 [TableName]）的正则表达式。
         /// </summary>
         protected static Regex _sqlNameRegex = new Regex(@"\[([^\]]+)\]");
+
+        private const string tableNamePattern = @"^[a-zA-Z0-9_]*$";
+        private static readonly Regex tableNameRegex = new Regex(tableNamePattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
         #endregion
 
         /// <summary>
@@ -541,10 +544,48 @@ namespace LiteOrm.SqlBuilder
         /// <summary>
         /// 生成添加多个列的 SQL 语句。
         /// </summary>
+        /// <param name="tableName">表名。</param>
+        /// <param name="columns">列定义集合。</param>
         public virtual string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
             var colSqls = columns.Select(c => $"{ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
             return $"ALTER TABLE {ToSqlName(tableName)} ADD {string.Join(", ", colSqls)}";
+        }
+
+        /// <summary>
+        /// 生成创建索引的 SQL 语句。
+        /// </summary>
+        /// <param name="tableName">表名。</param>
+        /// <param name="column">列定义。</param>
+        /// <returns>返回创建索引的 SQL 字符串。</returns>
+        public virtual string BuildCreateIndexSql(string tableName, ColumnDefinition column)
+        {
+            string indexName = $"IX_{tableName}_{column.Name}";
+            string unique = column.IsUnique ? "UNIQUE " : "";
+            return $"CREATE {unique}INDEX {ToSqlName(indexName)} ON {ToSqlName(tableName)} ({ToSqlName(column.Name)})";
+        }
+
+        /// <summary>
+        /// 获取带参数的表名。
+        /// </summary>
+        /// <param name="originTableName">原始表名（可能包含格式化占位符）。</param>
+        /// <param name="args">表名参数。</param>
+        /// <returns>格式化后的表名。</returns>
+        public virtual string GetTableNameWithArgs(string originTableName, string[] args)
+        {
+            if (args is not null && args.Length > 0)
+            {
+                //检查args内容是否合法，防止格式化字符串注入攻击
+                foreach (var arg in args)
+                {
+                    if (!tableNameRegex.IsMatch(arg))
+                    {
+                        throw new ArgumentException("表名参数包含非法字符。", nameof(args));
+                    }
+                }
+                return String.Format(originTableName, args);
+            }
+            return originTableName;
         }
 
         /// <summary>
@@ -579,22 +620,6 @@ namespace LiteOrm.SqlBuilder
 
 
 
-        internal class SqlHandlerMap
-        {
-            private readonly ConcurrentDictionary<string, Func<string, IList<KeyValuePair<string, Expr>>, string>> FunctionSqlHandlers = new ConcurrentDictionary<string, Func<string, IList<KeyValuePair<string, Expr>>, string>>(StringComparer.OrdinalIgnoreCase);
-            public void RegisterFunctionSqlHandler(string functionName, Func<string, IList<KeyValuePair<string, Expr>>, string> handler)
-            {
-                if (string.IsNullOrWhiteSpace(functionName)) throw new ArgumentNullException(nameof(functionName));
-                if (handler == null) throw new ArgumentNullException(nameof(handler));
-                FunctionSqlHandlers[functionName] = handler;
-            }
-
-            public bool TryGetFunctionSqlHandler(string functionName, out Func<string, IList<KeyValuePair<string, Expr>>, string> handler)
-            {
-                return FunctionSqlHandlers.TryGetValue(functionName, out handler);
-            }
-        }
-
         private static readonly ConcurrentDictionary<Type, SqlHandlerMap> _sqlHandlerMaps = new ConcurrentDictionary<Type, SqlHandlerMap>();
         internal static SqlHandlerMap GetSqlHandlerMap<T>() where T : BaseSqlBuilder
         {
@@ -604,53 +629,6 @@ namespace LiteOrm.SqlBuilder
         internal static SqlHandlerMap GetSqlHandlerMap(Type type)
         {
             return _sqlHandlerMaps.GetOrAdd(type, t => new SqlHandlerMap());
-        }
-    }
-
-    /// <summary>
-    /// SqlBuilder 扩展方法
-    /// </summary>
-    public static class SqlHandlerMapExtensions
-    {
-        /// <summary>
-        /// 注册函数的 SQL 语句处理器
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="sqlBuilder"></param>
-        /// <param name="functionName"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, string functionName, Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
-        {
-            BaseSqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, handler);
-        }
-
-        /// <summary>
-        /// 注册多个函数的 SQL 语句处理器
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="sqlBuilder"></param>
-        /// <param name="functionNames"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, IEnumerable<string> functionNames, Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
-        {
-            foreach (string functionName in functionNames)
-            {
-                BaseSqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, handler);
-            }
-        }
-        /// <summary>
-        /// 获取函数的 SQL 语句处理器
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="sqlBuilder"></param>
-        /// <param name="functionName"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public static bool TryGetFunctionSqlHandler<T>(this T sqlBuilder, string functionName, out Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
-        {
-            return BaseSqlBuilder.GetSqlHandlerMap<T>().TryGetFunctionSqlHandler(functionName, out handler);
         }
     }
 }

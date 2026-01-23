@@ -82,6 +82,46 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 使用 Lambda 表达式检查是否存在符合条件的实体。
+        /// </summary>
+        public static bool Exists<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, params string[] tableArgs)
+        {
+            return entityViewService.Exists(Expr.Exp(expression), tableArgs);
+        }
+
+        /// <summary>
+        /// 使用 Lambda 表达式获取符合条件的实体总数。
+        /// </summary>
+        public static int Count<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, params string[] tableArgs)
+        {
+            return entityViewService.Count(Expr.Exp(expression), tableArgs);
+        }
+
+        /// <summary>
+        /// 使用 Lambda 表达式异步检查是否存在符合条件的实体。
+        /// </summary>
+        public static Task<bool> ExistsAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        {
+            return entityViewService.ExistsAsync(Expr.Exp(expression), tableArgs, cancellationToken);
+        }
+
+        /// <summary>
+        /// 使用 Lambda 表达式异步获取符合条件的实体总数。
+        /// </summary>
+        public static Task<int> CountAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        {
+            return entityViewService.CountAsync(Expr.Exp(expression), tableArgs, cancellationToken);
+        }
+
+        /// <summary>
+        /// 使用 Lambda 表达式异步根据主键删除实体。
+        /// </summary>
+        public static Task<bool> DeleteIDAsync<T>(this IEntityServiceAsync<T> entityService, object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        {
+            return entityService.DeleteIDAsync(id, tableArgs, cancellationToken);
+        }
+
+        /// <summary>
         /// 使用 Lambda 表达式异步删除符合条件的实体。
         /// </summary>
         /// <typeparam name="T">实体类型。</typeparam>
@@ -90,7 +130,7 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步删除操作的任务，结果包含受影响的行数。</returns>
-        public static Task<int> DeleteAsync<T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, bool>> expression, string[] tableArgs, CancellationToken cancellationToken = default)
+        public static Task<int> DeleteAsync<T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityService.DeleteAsync(Expr.Exp(expression), tableArgs, cancellationToken);
         }
@@ -105,7 +145,7 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步更新操作的任务，结果包含受影响的行数。</returns>
-        public static Task<int> UpdateValuesAsync<T>(this IEntityServiceAsync<T> entityService, IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression, string[] tableArgs, CancellationToken cancellationToken = default)
+        public static Task<int> UpdateValuesAsync<T>(this IEntityServiceAsync<T> entityService, IEnumerable<KeyValuePair<string, object>> values, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityService.UpdateValuesAsync(values, Expr.Exp(expression), tableArgs, cancellationToken);
         }

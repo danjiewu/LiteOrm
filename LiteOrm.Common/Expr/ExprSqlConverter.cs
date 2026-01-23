@@ -226,6 +226,7 @@ namespace LiteOrm.Common
             SqlBuildContext foreignContext = new SqlBuildContext()
             {
                 Table = foreignTableDef,
+                TableNameArgs = context.TableNameArgs,
                 Sequence = context.Sequence + 1,
                 TableAliasName = $"T{context.Sequence}",
             };
@@ -235,11 +236,10 @@ namespace LiteOrm.Common
                 sqlBuilder.ToSqlName($"{foreignContext.TableAliasName}.{foreignTableDef.Keys[0].Name}") :
                 throw new InvalidOperationException("Foreign table has multiple keys.");
             context.Sequence = foreignContext.Sequence;
-            return $"EXISTS(SELECT 1 FROM {sqlBuilder.ToSqlName(foreignTableDef.Name)} {foreignContext.TableAliasName} " +
+            string tableName = sqlBuilder.GetTableNameWithArgs(sqlBuilder.ToSqlName(foreignTableDef.Name), context.TableNameArgs);
+            return $"EXISTS(SELECT 1 FROM {tableName} {foreignContext.TableAliasName} " +
                 $"\nWHERE {columnSql} = {keySql} AND {innerSql})";
         }
-
-
 
         private static string ToSql(FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {

@@ -168,5 +168,21 @@ namespace LiteOrm.Common
         /// <param name="columns">列定义集合。</param>
         /// <returns>返回添加列的 SQL 字符串。</returns>
         string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns);
+
+        /// <summary>
+        /// 生成创建索引的 SQL 语句。
+        /// </summary>
+        /// <param name="tableName">表名。</param>
+        /// <param name="column">列定义。</param>
+        /// <returns>返回创建索引的 SQL 字符串。</returns>
+        string BuildCreateIndexSql(string tableName, ColumnDefinition column);
+
+        /// <summary>
+        /// 获取带参数的表名。
+        /// </summary>
+        /// <param name="originTableName">原始表名（可能包含格式化占位符）。</param>
+        /// <param name="args">表名参数。</param>
+        /// <returns>格式化后的表名。</returns>
+        string GetTableNameWithArgs(string originTableName, string[] args);
     }
 }

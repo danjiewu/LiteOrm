@@ -36,6 +36,22 @@ namespace LiteOrm.Common
         {
             Foreign = foreign;
             InnerExpr = expr;
-        }       
+        }
+
+        /// <summary>
+        /// 比较两个 ForeignExpr 是否相等。
+        /// </summary>
+        public override bool Equals(object obj)
+        {
+            return obj is ForeignExpr f && f.Foreign == Foreign && Equals(f.InnerExpr, InnerExpr);
+        }
+
+        /// <summary>
+        /// 生成哈希值。
+        /// </summary>
+        public override int GetHashCode()
+        {
+            return OrderedHashCodes(GetType().GetHashCode(), Foreign?.GetHashCode() ?? 0, InnerExpr?.GetHashCode() ?? 0);
+        }
     }
 }

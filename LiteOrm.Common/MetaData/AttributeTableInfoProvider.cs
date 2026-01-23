@@ -83,6 +83,11 @@ namespace LiteOrm
             if (String.IsNullOrEmpty(tableName)) tableName = objectType.Name;
 
             var dsConfig = _dataSourceProvider.GetDataSource(tableAttribute.DataSource);
+            if (dsConfig == null)
+            {
+                throw new InvalidOperationException($"Data source '{tableAttribute.DataSource ?? "default"}' not found for type '{objectType.FullName}'. Check your configuration.");
+            }
+
             var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType);
 
             List<ColumnDefinition> columns = new List<ColumnDefinition>();

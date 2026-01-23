@@ -10,6 +10,7 @@ using System.Data.Common;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LiteOrm
 {
@@ -33,6 +34,7 @@ namespace LiteOrm
     /// 处理复杂的SQL生成、参数处理和数据映射工作。
     /// 它支持与 TableJoinAttribute 定义的多表关联进行查询。
     /// </remarks>
+    [AutoRegister(ServiceLifetime.Scoped)]
     public class ObjectViewDAO<T> : ObjectDAOBase, IObjectViewDAO<T> where T : new()
     {
         #region 属性
@@ -61,15 +63,15 @@ namespace LiteOrm
         {
             DbCommandProxy command = NewCommand();
             string where = MakeIsKeyCondition(command);
-            if(!string.IsNullOrEmpty(where)) where = $"\nwhere {where}";
-            command.CommandText = $"select {AllFieldsSql} \nfrom {From} {where}";
+            command.CommandText = $"select {AllFieldsSql} \nfrom {From} {ToWhereSql(where)}";
             return command;
         }
+
 
         /// <summary>
         /// 实现检查对象是否存在操作的IDbCommand
         /// </summary>
-        protected virtual DbCommandProxy MakeObjectExistsCommand()
+        protected virtual DbCommandProxy MakeObjectExistsCommand(params object[] keys)
         {
             ThrowExceptionIfNoKeys();
             DbCommandProxy command = NewCommand();
@@ -84,10 +86,11 @@ namespace LiteOrm
                     param.Size = key.Length;
                     param.DbType = key.DbType;
                     param.ParameterName = ToParamName(key.PropertyName);
+                    param.Value = ConvertToDbValue(keys[command.Parameters.Count], key.DbType);
                     command.Parameters.Add(param);
                 }
             }
-            command.CommandText = $"select count(1) \nfrom {ToSqlName(FactTableName)} \nwhere {strConditions}";
+            command.CommandText = $"select count(1) \nfrom {ToSqlName(FactTableName)} {ToWhereSql(strConditions.ToString())}";
             return command;
         }
         #endregion
@@ -122,7 +125,7 @@ namespace LiteOrm
         /// <returns>符合条件的对象个数</returns>
         public virtual int Count(Expr expr)
         {
-            using var command = MakeConditionCommand("select count(*) \nfrom @FromTable@ @Where@", expr);
+            using var command = MakeConditionCommand($"select count(*) \nfrom {ParamFromTable} {ParamWhere}", expr);
             return Convert.ToInt32(command.ExecuteScalar());
         }
 
@@ -145,13 +148,7 @@ namespace LiteOrm
         public virtual bool ExistsKey(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var objectExistsCommand = MakeObjectExistsCommand();
-            int i = 0;
-            foreach (IDataParameter param in objectExistsCommand.Parameters)
-            {
-                param.Value = ConvertToDbValue(keys[i], Table.Definition.Keys[i].DbType);
-                i++;
-            }
+            using var objectExistsCommand = MakeObjectExistsCommand(keys);
             return Convert.ToInt32(objectExistsCommand.ExecuteScalar()) > 0;
         }
 
@@ -162,7 +159,7 @@ namespace LiteOrm
         /// <returns>是否存在</returns>
         public virtual bool Exists(Expr expr)
         {
-            using var command = MakeConditionCommand("select 1 \nfrom @FromTable@ @Where@", expr);
+            using var command = MakeConditionCommand($"select 1 \nfrom {ParamFromTable} {ParamWhere}", expr);
             return command.ExecuteScalar() is not null;
         }
 
@@ -173,7 +170,7 @@ namespace LiteOrm
         /// <param name="func">要对每个对象执行的操作</param>
         public void ForEach(Expr expr, Action<T> func)
         {
-            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@", expr);
+            using var command = MakeConditionCommand($"select {ParamAllFields} \nfrom {ParamFromTable} {ParamWhere}", expr);
             using (IDataReader reader = command.ExecuteReader())
             {
                 func(ReadOne(reader));
@@ -187,7 +184,7 @@ namespace LiteOrm
         /// <returns>符合条件的对象列表</returns>
         public virtual List<T> Search(Expr expr)
         {
-            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@", expr);
+            using var command = MakeConditionCommand($"select {ParamAllFields} \nfrom {ParamFromTable} {ParamWhere}", expr);
             return GetAll(command);
         }
 
@@ -202,7 +199,7 @@ namespace LiteOrm
             if (orderBy is null || orderBy.Length == 0) return Search(expr);
             else
             {
-                using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@ order by " + GetOrderBySql(orderBy), expr);
+                using var command = MakeConditionCommand($"select {ParamAllFields} \nfrom {ParamFromTable} {ParamWhere} order by " + GetOrderBySql(orderBy), expr);
                 return GetAll(command);
             }
         }
@@ -214,7 +211,7 @@ namespace LiteOrm
         /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
         public virtual T SearchOne(Expr expr)
         {
-            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@", expr);
+            using var command = MakeConditionCommand($"select {ParamAllFields} \nfrom {ParamFromTable} {ParamWhere}", expr);
             return GetOne(command);
         }
 
@@ -330,7 +327,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象个数</returns>
         public async virtual Task<int> CountAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand("select count(*) \nfrom @FromTable@ @Where@", expr);
+            using var command = MakeConditionCommand($"select count(*) \nfrom {ParamFromTable} {ParamWhere}", expr);
             return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
         }
 
@@ -355,13 +352,7 @@ namespace LiteOrm
         public async virtual Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var objectExistsCommand = MakeObjectExistsCommand();
-            int i = 0;
-            foreach (IDataParameter param in objectExistsCommand.Parameters)
-            {
-                param.Value = ConvertToDbValue(keys[i], Table.Definition.Keys[i].DbType);
-                i++;
-            }
+            using var objectExistsCommand = MakeObjectExistsCommand(keys);
             return Convert.ToInt32(await objectExistsCommand.ExecuteScalarAsync(cancellationToken)) > 0;
         }
 
@@ -373,7 +364,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
         public async virtual Task<bool> ExistsAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand("select 1 \nfrom @FromTable@ @Where@", expr);
+            using var command = MakeConditionCommand($"select 1 \nfrom {ParamFromTable} {ParamWhere}", expr);
             return await command.ExecuteScalarAsync(cancellationToken) is not null;
         }
 
@@ -396,7 +387,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含第一个符合条件的对象，若不存在则返回null</returns>
         public async virtual Task<T> SearchOneAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@", expr);
+            using var command = MakeConditionCommand($"select {ParamAllFields} \nfrom {ParamFromTable} {ParamWhere}", expr);
             return await GetOneAsync(command, cancellationToken);
         }
 
@@ -436,7 +427,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
         public async virtual Task<List<T>> SearchAsync(Expr expr = null, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@", expr);
+            using var command = MakeConditionCommand($"select {ParamAllFields} \nfrom {ParamFromTable} {ParamWhere}", expr);
             return await GetAllAsync(command, cancellationToken);
         }
 
@@ -461,8 +452,8 @@ namespace LiteOrm
         public async virtual Task<List<T>> SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken = default)
         {
             if (orderBy is null || orderBy.Length == 0) return await SearchAsync(expr, cancellationToken);
-            
-            using var command = MakeConditionCommand("select @AllFields@ \nfrom @FromTable@ @Where@ order by " + GetOrderBySql(orderBy), expr);
+
+            using var command = MakeConditionCommand($"select {ParamAllFields} \nfrom {ParamFromTable} {ParamWhere} order by " + GetOrderBySql(orderBy), expr);
             return await GetAllAsync(command, cancellationToken);
         }
 
@@ -512,11 +503,10 @@ namespace LiteOrm
         /// 替换 SQL 中的标记为实际 SQL。
         /// </summary>
         /// <param name="sqlWithParam">包含标记的 SQL 语句，标记可以为 ParamAllFields，ParamFromTable。</param>
-        /// <param name="context">SQL 构建上下文。</param>
         /// <returns>替换后的 SQL 语句。</returns>
-        protected override string ReplaceParam(string sqlWithParam, SqlBuildContext context = null)
+        protected override string ReplaceParam(string sqlWithParam)
         {
-            return base.ReplaceParam(sqlWithParam, context).Replace(ParamAllFields, AllFieldsSql);
+            return base.ReplaceParam(sqlWithParam).Replace(ParamAllFields, AllFieldsSql);
         }
 
         /// <summary>
@@ -684,7 +674,7 @@ namespace LiteOrm
                 return await ReadOneAsync(reader, cancellationToken);
             }
         }
-        
+
         #endregion
     }
 }

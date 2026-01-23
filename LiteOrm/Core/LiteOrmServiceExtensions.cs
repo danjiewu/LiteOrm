@@ -44,10 +44,11 @@ namespace LiteOrm
         /// <returns>配置后的主机构建器</returns>
         public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder)
         {
+            var callingAssembly = Assembly.GetCallingAssembly();
             return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
                 .ConfigureContainer<ContainerBuilder>((builder, containerBuilder) =>
                 {
-                    containerBuilder.RegisterAutoService()
+                    containerBuilder.RegisterAutoService(callingAssembly)
                     .RegisterBuildCallback(c =>
                     {
                         // 注册后置回调
@@ -67,12 +68,29 @@ namespace LiteOrm
             this ContainerBuilder builder,
             params Assembly[] assemblies)
         {
-            // 若未指定程序集，扫描当前应用域已加载的所有程序集（排除系统程序集）
-            var targetAssemblies = assemblies.Any()
-                ? assemblies
-                : AssemblyAnalyzer.GetAllReferencedAssemblies();
+            var assemblyList = new HashSet<Assembly>();
 
-            foreach (var assembly in targetAssemblies)
+            // 自动加上 LiteOrm 和 LiteOrm.Common 的 Assembly
+            assemblyList.Add(typeof(LiteOrmServiceProviderExtensions).Assembly);
+            assemblyList.Add(typeof(AutoRegisterAttribute).Assembly);
+
+            // 若指定了程序集，则加入指定列表；否则扫描引用程序集
+            if (assemblies.Any())
+            {
+                foreach (var assembly in assemblies)
+                {
+                    assemblyList.Add(assembly);
+                }
+            }
+            else
+            {
+                foreach (var assembly in AssemblyAnalyzer.GetAllReferencedAssemblies())
+                {
+                    assemblyList.Add(assembly);
+                }
+            }
+
+            foreach (var assembly in assemblyList)
             {
                 assembly.GetTypes()
                      .Where(t => !t.IsAbstract && !t.IsInterface &&
@@ -210,28 +228,6 @@ namespace LiteOrm
                 lifetime);
             services.Add(serviceDescriptor);
             return services;
-        }
-    }
-
-    /// <summary>
-    /// 程序集分析器
-    /// </summary>
-    public static class AssemblyAnalyzer
-    {
-        /// <summary>
-        /// 获取所有直接引用的程序集名称（包括未加载的）
-        /// </summary>
-        /// <param name="entryAssembly">入口程序集，如果为null则使用当前入口程序集或执行程序集</param>
-        /// <returns>所有引用的程序集集合</returns>
-        public static IEnumerable<Assembly> GetAllReferencedAssemblies(Assembly entryAssembly = null)
-        {
-            entryAssembly ??= Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-            var result = new List<AssemblyName>();
-            result.Add(entryAssembly.GetName());
-            result.AddRange(entryAssembly.GetReferencedAssemblies());
-            return result.GroupBy(an => an.FullName).Select(g => g.First()).Where(a => !a.FullName.StartsWith("System.") && !a.FullName.StartsWith("Microsoft."))
-                    .Select(Assembly.Load)
-                    .Where(a => !a.IsDynamic);
         }
     }
 }
