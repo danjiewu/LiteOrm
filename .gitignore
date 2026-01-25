@@ -35,3 +35,4 @@ msbuild.err
 msbuild.wrn
 /.vs
 
+/BenchmarkDotNet.Artifacts
