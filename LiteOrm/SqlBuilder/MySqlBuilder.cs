@@ -7,12 +7,12 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 
-namespace LiteOrm.SqlBuilder
+namespace LiteOrm
 {
     /// <summary>
     /// MySQL 生成 SQL 语句的辅助类。
     /// </summary>
-    public class MySqlBuilder : BaseSqlBuilder
+    public class MySqlBuilder : SqlBuilder
     {
         /// <summary>
         /// 获取 <see cref="MySqlBuilder"/> 的单例实例。
@@ -28,6 +28,24 @@ namespace LiteOrm.SqlBuilder
         {
             return $"CONCAT({String.Join(",", strs)})";
         }
+
+        /// <summary>
+        /// 是否支持带自增列的批量插入并返回首个 ID。
+        /// </summary>
+        public override bool SupportBatchInsertWithIdentity => true;
+
+        /// <summary>
+        /// 转化为数据库合法名称
+        /// </summary>
+
+        /// <param name="name">字符串名称</param>
+        /// <returns>数据库合法名称</returns>
+        public override string ToSqlName(string name)
+        {
+            if (name is null) throw new ArgumentNullException("name");
+            return String.Join(".", Array.ConvertAll(name.Split('.'), n => $"`{n}`"));
+        }
+
         /// <summary>
         /// 构建插入并返回自增标识的 SQL 语句。
         /// </summary>
@@ -39,8 +57,18 @@ namespace LiteOrm.SqlBuilder
         /// <returns>构建后的 SQL 语句。</returns>
         public override string BuildIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
-            return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues});\nselect @@IDENTITY as [ID];";
+            return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues});\nselect LAST_INSERT_ID() as `ID`;";
         }
+
+        /// <summary>
+        /// 生成带标识列的批量插入 SQL，返回首个插入的 ID。
+        /// </summary>
+        public override string BuildBatchIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
+        {
+            return $"{BuildBatchInsertSql(tableName, columns, valuesList)};\nselect LAST_INSERT_ID() as `ID`;";
+        }
+
+
 
         /// <summary>
         /// 参数名称转化为原始名称
@@ -93,12 +121,29 @@ namespace LiteOrm.SqlBuilder
         protected override string GetAutoIncrementSql() => "AUTO_INCREMENT";
 
         /// <summary>
-        /// 生成添加多个列的 SQL 语句。
+        /// 生成加多个列的 SQL 语句。
         /// </summary>
         public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
             var colSqls = columns.Select(c => $"ADD {ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
             return $"ALTER TABLE {ToSqlName(tableName)} {string.Join(", ", colSqls)}";
+        }
+
+        /// <summary>
+        /// 生成更新或插入（Upsert）的 SQL 语句 (MySQL 风格)。
+        /// 使用 INSERT ... ON DUPLICATE KEY UPDATE 语法实现。
+        /// </summary>
+        /// <param name="command">数据库命令。</param>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="insertColumns">插入列。</param>
+        /// <param name="insertValues">插入值。</param>
+        /// <param name="updateSets">更新集。</param>
+        /// <param name="keyColumns">关键列。</param>
+        /// <param name="identityColumn">标识列。</param>
+        /// <returns>返回 MySQL Upsert SQL 字符串。成功插入返回自增 ID，更新则返回 -1。</returns>
+        public override string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn)
+        {
+            return $"INSERT INTO {ToSqlName(tableName)} ({insertColumns}) VALUES ({insertValues}) ON DUPLICATE KEY UPDATE {updateSets}; SELECT IF(ROW_COUNT() = 1, LAST_INSERT_ID(), -1);";
         }
     }
 }

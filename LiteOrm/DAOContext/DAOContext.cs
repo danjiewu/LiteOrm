@@ -6,6 +6,8 @@ using System.Data;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
+using LiteOrm;
+using System.Collections.Concurrent;
 
 namespace LiteOrm
 {
@@ -41,6 +43,7 @@ namespace LiteOrm
         {
             DbConnection = connection ?? throw new ArgumentNullException(nameof(connection));
             ProviderType = connection.GetType();
+            SqlBuilder = SqlBuilderFactory.Instance.GetSqlBuilder(ProviderType);
             LastActiveTime = DateTime.Now;
         }
 
@@ -53,6 +56,13 @@ namespace LiteOrm
         {
             Pool = pool;
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public  SqlBuilder SqlBuilder { get; }
+
+        public ConcurrentDictionary<(Type, string), DbCommandProxy> PreparedCommands { get;  }= new ConcurrentDictionary<(Type, string), DbCommandProxy>();
 
         /// <summary>
         /// 获取当前数据库提供程序的类型。

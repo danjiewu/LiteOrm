@@ -108,6 +108,7 @@ namespace LiteOrm
             ForeignTypeAttribute foreignTypeAttr = property.GetAttribute<ForeignTypeAttribute>();
 
             if (property.GetAttribute<ForeignColumnAttribute>() is not null) return null;
+            
             ColumnAttribute columnAttribute = property.GetAttribute<ColumnAttribute>();
             if (columnAttribute is not null)
             {
@@ -138,10 +139,13 @@ namespace LiteOrm
             }
             else
             {
+                DbType dbType = sqlBuilder.GetDbType(property.PropertyType);
+                if (dbType == DbType.Object) return null;
+
                 ColumnDefinition column = new ColumnDefinition(property);
                 column.Name = property.Name;
                 column.Mode = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
-                column.DbType = sqlBuilder.GetDbType(property.PropertyType);
+                column.DbType = dbType;
                 column.Length = DbTypeMap.GetDefaultLength(column.DbType);
                 column.AllowNull = property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(column.PropertyType) is not null : true;
                 if (foreignTypeAttr is not null)

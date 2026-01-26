@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using LiteOrm.Common;
 
-namespace LiteOrm.SqlBuilder
+namespace LiteOrm
 {
     internal class SqlHandlerMap
     {

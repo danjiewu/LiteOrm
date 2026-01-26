@@ -31,9 +31,13 @@ namespace LiteOrm.Common
         /// <param name="items">要加入集合的子项。</param>
         public ExprSet(params Expr[] items)
         {
-            foreach (var item in items)
+            if (items != null)
             {
-                Add(item);
+                int len = items.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    Add(items[i]);
+                }
             }
         }
 
@@ -43,9 +47,20 @@ namespace LiteOrm.Common
         /// <param name="items">要加入集合的子项序列。</param>
         public ExprSet(IEnumerable<Expr> items)
         {
-            foreach (var item in items)
+            if (items != null)
             {
-                Add(item);
+                if (items is IList<Expr> list)
+                {
+                    int count = list.Count;
+                    for (int i = 0; i < count; i++) Add(list[i]);
+                }
+                else
+                {
+                    foreach (var item in items)
+                    {
+                        Add(item);
+                    }
+                }
             }
         }
 
@@ -57,9 +72,13 @@ namespace LiteOrm.Common
         public ExprSet(ExprJoinType joinType, params Expr[] items)
         {
             JoinType = joinType;
-            foreach (var item in items)
+            if (items != null)
             {
-                Add(item);
+                int len = items.Length;
+                for (int i = 0; i < len; i++)
+                {
+                    Add(items[i]);
+                }
             }
         }
 
@@ -69,11 +88,23 @@ namespace LiteOrm.Common
         public ExprSet(ExprJoinType joinType, IEnumerable<Expr> items)
         {
             JoinType = joinType;
-            foreach (var item in items)
+            if (items != null)
             {
-                Add(item);
+                if (items is IList<Expr> list)
+                {
+                    int count = list.Count;
+                    for (int i = 0; i < count; i++) Add(list[i]);
+                }
+                else
+                {
+                    foreach (var item in items)
+                    {
+                        Add(item);
+                    }
+                }
             }
         }
+
 
         /// <summary>
         /// 指示当前集合是否作为值列表存在（如 LIST 形式的 IN 参数或 CONCAT 形式的拼接）。
@@ -99,8 +130,16 @@ namespace LiteOrm.Common
         public int Count => items.Count;
 
         /// <summary>
+        /// 获取指定索引处的表达式项。
+        /// </summary>
+        /// <param name="index">集合中要获取的项的索引。</param>
+        /// <returns>指定索引处的表达式项。</returns>
+        public Expr this[int index] => items[index];
+
+        /// <summary>
         /// 获取一个值，该值指示集合是否为只读。
         /// </summary>
+
         public bool IsReadOnly => false;
 
         /// <summary>
@@ -115,8 +154,12 @@ namespace LiteOrm.Common
         {
             if (item is null) item = Null;
             // 拍平相同逻辑类型的嵌套集合或列表类型集合 (如将 (A AND B) AND C 优化为 A AND B AND C)
-            if (item is ExprSet set && (set.JoinType == JoinType || set.JoinType ==  ExprJoinType.List))
-                items.AddRange(set.Items);
+            if (item is ExprSet set && (set.JoinType == JoinType || set.JoinType == ExprJoinType.List))
+            {
+                var otherItems = set.items;
+                int count = otherItems.Count;
+                for (int i = 0; i < count; i++) items.Add(otherItems[i]);
+            }
             // 确保逻辑节点类型一致或为通用函数调用
             else if (item.IsValue == IsValue || item is FunctionExpr)
                 items.Add(item);
@@ -129,11 +172,20 @@ namespace LiteOrm.Common
         /// <param name="items">要添加的表达式对象集合。</param>
         public void AddRange(IEnumerable<Expr> items)
         {
-            foreach (var item in items)
+            if (items is IList<Expr> list)
             {
-                Add(item);
+                int count = list.Count;
+                for (int i = 0; i < count; i++) Add(list[i]);
+            }
+            else
+            {
+                foreach (var item in items)
+                {
+                    Add(item);
+                }
             }
         }
+
 
         /// <summary>
         /// 从集合中移除所有表达式项。
@@ -188,7 +240,8 @@ namespace LiteOrm.Common
         /// <returns>带有连接词的括号形式字符串，如 "(A AND B AND C)"。</returns>
         public override string ToString()
         {
-            if(Items.Count == 0) return string.Empty;
+            int count = items.Count;
+            if (count == 0) return string.Empty;
             string joinStr;
             switch (JoinType)
             {
@@ -199,6 +252,7 @@ namespace LiteOrm.Common
             }
             return $"({String.Join(joinStr, items)})";
         }
+
 
         IEnumerator IEnumerable.GetEnumerator()
         {
@@ -214,16 +268,41 @@ namespace LiteOrm.Common
         {
             if (obj is ExprSet set)
             {
-                if (set.JoinType != JoinType) return false;
+                if (set.JoinType != JoinType || items.Count != set.items.Count) return false;
                 // 对于顺序敏感的连接
                 if (JoinType == ExprJoinType.List || JoinType == ExprJoinType.Concat)
-                    return Enumerable.SequenceEqual(items, set.items);
+                {
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        if (!Object.Equals(items[i], set.items[i])) return false;
+                    }
+                    return true;
+                }
                 else
                 {
-                    // 对于无序逻辑连接，使用集合比较提高鲁棒性
-                    var thisSet = new HashSet<Expr>(items);
-                    var otherSet = new HashSet<Expr>(set.items);
-                    return thisSet.Count == otherSet.Count && thisSet.SetEquals(otherSet);
+                    // 对于无序逻辑连接
+                    if (items.Count == 0) return true;
+                    if (items.Count == 1) return items[0].Equals(set.items[0]);
+
+                    // 使用集合比较提高鲁棒性 (降级到 HashSet 如果项数较多)
+                    if (items.Count > 10)
+                    {
+                        var thisSet = new HashSet<Expr>(items);
+                        var otherSet = new HashSet<Expr>(set.items);
+                        return thisSet.SetEquals(otherSet);
+                    }
+                    
+                    // 项数较少时，直接双重循环
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        bool found = false;
+                        for (int j = 0; j < set.items.Count; j++)
+                        {
+                            if (items[i].Equals(set.items[j])) { found = true; break; }
+                        }
+                        if (!found) return false;
+                    }
+                    return true;
                 }
             }
             return false;
@@ -234,13 +313,27 @@ namespace LiteOrm.Common
         /// </summary>
         public override int GetHashCode()
         {
+            int hashcode = GetType().GetHashCode();
+            hashcode = (hashcode * HashSeed) + (int)JoinType;
+
             if (JoinType == ExprJoinType.List || JoinType == ExprJoinType.Concat)
-                return OrderedHashCodes(new int[] { GetType().GetHashCode(), (int)JoinType }.Concat(items.Select(s => s?.GetHashCode() ?? 0)).ToArray());
+            {
+                for (int i = 0; i < items.Count; i++)
+                {
+                    hashcode = (hashcode * HashSeed) + (items[i]?.GetHashCode() ?? 0);
+                }
+            }
             else
-                return OrderedHashCodes(GetType().GetHashCode(), (int)JoinType, items
-                .Select(item => item?.GetHashCode() ?? 0)
-                .Distinct()
-                .Sum());
+            {
+                int itemsHashSum = 0;
+                for (int i = 0; i < items.Count; i++)
+                {
+                    itemsHashSum = unchecked(itemsHashSum + (items[i]?.GetHashCode() ?? 0));
+                }
+                hashcode = (hashcode * HashSeed) + itemsHashSum;
+            }
+            return hashcode;
         }
+
     }
 }

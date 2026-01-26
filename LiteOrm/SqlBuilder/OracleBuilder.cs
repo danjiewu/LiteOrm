@@ -8,12 +8,12 @@ using System.Linq;
 using System.Text.RegularExpressions;
 
 
-namespace LiteOrm.SqlBuilder
+namespace LiteOrm
 {
     /// <summary>
     /// Oracle 生成 SQL 语句的辅助类。
     /// </summary>
-    public class OracleBuilder : BaseSqlBuilder
+    public class OracleBuilder : SqlBuilder
     {
         /// <summary>
         /// 初始化 <see cref="OracleBuilder"/> 类的新实例。
@@ -103,6 +103,52 @@ namespace LiteOrm.SqlBuilder
         public override string BuildConcatSql(params string[] strs)
         {
             return String.Join("||", strs);
+        }
+
+        /// <summary>
+        /// 生成更新或插入（Upsert）的 SQL 语句 (Oracle MERGE 风格)。
+        /// 使用 MERGE INTO ... USING DUAL 语法实现。
+        /// </summary>
+        /// <param name="command">数据库命令。</param>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="insertColumns">插入列。</param>
+        /// <param name="insertValues">插入值。</param>
+        /// <param name="updateSets">更新集。</param>
+        /// <param name="keyColumns">关键关联列。</param>
+        /// <param name="identityColumn">标识列。</param>
+        /// <returns>返回 Oracle Upsert SQL 字符串。</returns>
+        public override string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn)
+        {
+            string table = ToSqlName(tableName);
+            string where = string.Join(" AND ", keyColumns.Select(c => $"t.{ToSqlName(c.Name)} = {ToSqlParam(c.PropertyName)}"));
+
+            if (identityColumn != null)
+            {
+                IDbDataParameter param = command.CreateParameter();
+                param.Direction = ParameterDirection.Output;
+                param.Size = identityColumn.Length;
+                param.DbType = identityColumn.DbType;
+                param.ParameterName = ToParamName("0");
+                if (!command.Parameters.Contains(param.ParameterName))
+                {
+                    command.Parameters.Add(param);
+                }
+
+                if (IdentitySource == OracleIdentitySourceType.Sequence)
+                {
+                    insertColumns += "," + ToSqlName(identityColumn.Name);
+                    insertValues += "," + (String.IsNullOrEmpty(identityColumn.IdentityExpression) ? tableName + "_seq.nextval" : identityColumn.IdentityExpression + ".nextval");
+                }
+                else if (IdentitySource == OracleIdentitySourceType.Expression)
+                {
+                    insertColumns += "," + ToSqlName(identityColumn.Name);
+                    insertValues += "," + identityColumn.IdentityExpression;
+                }
+            }
+
+            return $@"MERGE INTO {table} t USING DUAL ON ({where})
+WHEN MATCHED THEN UPDATE SET {updateSets}
+WHEN NOT MATCHED THEN INSERT ({insertColumns}) VALUES ({insertValues}) RETURNING {ToSqlName(identityColumn.Name)} INTO {ToSqlParam("0")}";
         }
 
         /// <summary>

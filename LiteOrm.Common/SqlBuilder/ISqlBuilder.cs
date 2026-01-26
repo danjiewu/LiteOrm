@@ -12,10 +12,6 @@ namespace LiteOrm.Common
     public interface ISqlBuilder
     {
         /// <summary>
-        /// 是否支持批量插入操作。
-        /// </summary>
-        bool SupportBatchInsert { get; }
-        /// <summary>
         /// 是否支持在插入时启用标识列插入。
         /// </summary>
         bool SupportIdentityInsert { get; }
@@ -152,6 +148,19 @@ namespace LiteOrm.Common
         /// <param name="tableName">表名。</param>
         /// <returns>返回检查表是否存在的 SQL 字符串。</returns>
         string BuildTableExistsSql(string tableName);
+
+        /// <summary>
+        /// 生成更新或插入（Upsert）的 SQL 语句。
+        /// </summary>
+        /// <param name="command">数据库命令对象。</param>
+        /// <param name="tableName">表名。</param>
+        /// <param name="insertColumns">插入列名集合。</param>
+        /// <param name="insertValues">插入占位符集合。</param>
+        /// <param name="updateSets">更新赋值集合。</param>
+        /// <param name="keyColumns">主键或唯一键列定义集合。</param>
+        /// <param name="identityColumn">标识列定义。</param>
+        /// <returns>返回目标数据库可执行的 Upsert SQL 字符串。</returns>
+        string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn);
 
         /// <summary>
         /// 生成添加列的 SQL 语句。

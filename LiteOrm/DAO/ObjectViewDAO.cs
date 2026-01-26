@@ -71,7 +71,7 @@ namespace LiteOrm
         /// <summary>
         /// 实现检查对象是否存在操作的IDbCommand
         /// </summary>
-        protected virtual DbCommandProxy MakeObjectExistsCommand(params object[] keys)
+        protected virtual DbCommandProxy MakeObjectExistsCommand()
         {
             ThrowExceptionIfNoKeys();
             DbCommandProxy command = NewCommand();
@@ -79,20 +79,17 @@ namespace LiteOrm
             foreach (ColumnDefinition key in TableDefinition.Keys)
             {
                 if (strConditions.Length != 0) strConditions.Append(" and ");
-                strConditions.AppendFormat("{0} = {1}", SqlBuilder.ToSqlQualifiedName(FactTableName, key.Name), ToSqlParam(key.PropertyName));
-                if (!command.Parameters.Contains(key.PropertyName))
-                {
-                    IDbDataParameter param = command.CreateParameter();
-                    param.Size = key.Length;
-                    param.DbType = key.DbType;
-                    param.ParameterName = ToParamName(key.PropertyName);
-                    param.Value = ConvertToDbValue(keys[command.Parameters.Count], key.DbType);
-                    command.Parameters.Add(param);
-                }
+                strConditions.AppendFormat("{0} = {1}", ToColumnSql(key), ToSqlParam(key.PropertyName));
+                IDbDataParameter param = command.CreateParameter();
+                param.Size = key.Length;
+                param.DbType = key.DbType;
+                param.ParameterName = ToParamName(key.PropertyName);
+                command.Parameters.Add(param);
             }
-            command.CommandText = $"select count(1) \nfrom {ToSqlName(FactTableName)} {ToWhereSql(strConditions.ToString())}";
+            command.CommandText = $"select 1 \nfrom {FactTableName} {ToWhereSql(strConditions.ToString())}";
             return command;
         }
+
         #endregion
 
         #region 方法
@@ -105,11 +102,11 @@ namespace LiteOrm
         public virtual T GetObject(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var getObjectCommand = MakeGetObjectCommand();
+            var getObjectCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "GetObject"), _ => MakeGetObjectCommand());
             int i = 0;
             foreach (IDataParameter param in getObjectCommand.Parameters)
             {
-                param.Value = ConvertToDbValue(keys[i], Table.Definition.Keys[i].DbType);
+                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
                 i++;
             }
             using (IDataReader reader = getObjectCommand.ExecuteReader())
@@ -117,6 +114,7 @@ namespace LiteOrm
                 return ReadOne(reader);
             }
         }
+
 
         /// <summary>
         /// 获取符合条件的对象个数
@@ -148,9 +146,16 @@ namespace LiteOrm
         public virtual bool ExistsKey(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var objectExistsCommand = MakeObjectExistsCommand(keys);
+            var objectExistsCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "ExistsKey"), _ => MakeObjectExistsCommand());
+            int i = 0;
+            foreach (IDataParameter param in objectExistsCommand.Parameters)
+            {
+                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
+                i++;
+            }
             return Convert.ToInt32(objectExistsCommand.ExecuteScalar()) > 0;
         }
+
 
         /// <summary>
         /// 判断符合条件的对象是否存在
@@ -298,15 +303,16 @@ namespace LiteOrm
         public async virtual Task<T> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var getObjectCommand = MakeGetObjectCommand();
+            var getObjectCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "GetObject"), _ => MakeGetObjectCommand());
             int i = 0;
             foreach (IDataParameter param in getObjectCommand.Parameters)
             {
-                param.Value = ConvertToDbValue(keys[i], Table.Definition.Keys[i].DbType);
+                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
                 i++;
             }
-            return await GetOneAsync(getObjectCommand, cancellationToken);
+            return await GetOneAsync(getObjectCommand, cancellationToken).ConfigureAwait(false);
         }
+
 
         /// <summary>
         /// 根据主键异步获取对象（接口实现）
@@ -352,9 +358,16 @@ namespace LiteOrm
         public async virtual Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var objectExistsCommand = MakeObjectExistsCommand(keys);
-            return Convert.ToInt32(await objectExistsCommand.ExecuteScalarAsync(cancellationToken)) > 0;
+            var objectExistsCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "ExistsKey"), _ => MakeObjectExistsCommand());
+            int i = 0;
+            foreach (IDataParameter param in objectExistsCommand.Parameters)
+            {
+                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
+                i++;
+            }
+            return Convert.ToInt32(await objectExistsCommand.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)) > 0;
         }
+
 
         /// <summary>
         /// 异步判断符合条件的对象是否存在
@@ -428,8 +441,9 @@ namespace LiteOrm
         public async virtual Task<List<T>> SearchAsync(Expr expr = null, CancellationToken cancellationToken = default)
         {
             using var command = MakeConditionCommand($"select {ParamAllFields} \nfrom {ParamFromTable} {ParamWhere}", expr);
-            return await GetAllAsync(command, cancellationToken);
+            return await GetAllAsync(command, cancellationToken).ConfigureAwait(false);
         }
+
 
         /// <summary>
         /// 异步根据条件查询，多个条件以逻辑与连接（接口实现）
@@ -560,14 +574,15 @@ namespace LiteOrm
         protected virtual T ConvertToObject(IDataRecord record)
         {
             T t = new T();
-            int i = 0;
-            foreach (SqlColumn column in SelectColumns)
+            int count = SelectColumns.Length;
+            for (int i = 0; i < count; i++)
             {
+                SqlColumn column = SelectColumns[i];
                 column.SetValue(t, record.IsDBNull(i) ? null : ConvertFromDbValue(record[i], column.PropertyType));
-                i++;
             }
             return t;
         }
+
 
         /// <summary>
         /// 执行 IDbCommand，读取所有记录并转化为对象的集合，查询 AllFieldsSql 时可用
@@ -617,7 +632,14 @@ namespace LiteOrm
             List<T> results = new List<T>();
             if (reader is AutoLockDataReader autoLockReader)
             {
-                while (await autoLockReader.ReadAsync(cancellationToken))
+                while (await autoLockReader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    results.Add(ConvertToObject(reader));
+                }
+            }
+            else if (reader is DbDataReader dbReader)
+            {
+                while (await dbReader.ReadAsync(cancellationToken).ConfigureAwait(false))
                 {
                     results.Add(ConvertToObject(reader));
                 }
@@ -640,18 +662,15 @@ namespace LiteOrm
         {
             if (reader is AutoLockDataReader autoLockReader)
             {
-                return await autoLockReader.ReadAsync(cancellationToken) ? ConvertToObject(reader) : default(T);
+                return await autoLockReader.ReadAsync(cancellationToken).ConfigureAwait(false) ? ConvertToObject(reader) : default(T);
+            }
+            if (reader is DbDataReader dbReader)
+            {
+                return await dbReader.ReadAsync(cancellationToken).ConfigureAwait(false) ? ConvertToObject(reader) : default(T);
             }
             return reader.Read() ? ConvertToObject(reader) : default(T);
         }
 
-        /// <summary>
-        /// 异步执行 IDbCommand，读取所有记录并转化为对象的集合
-        /// </summary>
-        protected async Task<List<T>> GetAllAsync(IDataReader reader, CancellationToken cancellationToken)
-        {
-            return await ReadAllAsync(reader, cancellationToken);
-        }
 
         /// <summary>
         /// 异步执行 IDbCommand，读取所有记录并转化为对象的集合
@@ -674,7 +693,6 @@ namespace LiteOrm
                 return await ReadOneAsync(reader, cancellationToken);
             }
         }
-
         #endregion
     }
 }

@@ -7,12 +7,12 @@ using System.Data;
 using System.Linq;
 
 
-namespace LiteOrm.SqlBuilder
+namespace LiteOrm
 {
     /// <summary>
     /// SQLite SQL 构建器。
     /// </summary>
-    public class SQLiteBuilder : BaseSqlBuilder
+    public class SQLiteBuilder : SqlBuilder
     {
         /// <summary>
         /// SQLite SQL 构建器实例。
@@ -30,6 +30,24 @@ namespace LiteOrm.SqlBuilder
             Type underlyingType = type.GetUnderlyingType();
             if (underlyingType == typeof(DateTime) || underlyingType == typeof(TimeSpan) || underlyingType == typeof(DateTimeOffset)) return DbType.String;
             return base.GetDbType(type);
+        }
+
+        /// <summary>
+        /// 生成更新或插入（Upsert）的 SQL 语句 (SQLite 风格)。
+        /// 使用 INSERT ... ON CONFLICT (...) DO UPDATE SET 语法。
+        /// </summary>
+        /// <param name="command">数据库命令。</param>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="insertColumns">插入列。</param>
+        /// <param name="insertValues">插入值。</param>
+        /// <param name="updateSets">更新集。</param>
+        /// <param name="keyColumns">冲突关键列。</param>
+        /// <param name="identityColumn">标识列。</param>
+        /// <returns>返回 SQLite Upsert SQL 字符串。</returns>
+        public override string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn)
+        {
+            string keys = string.Join(",", keyColumns.Select(c => ToSqlName(c.Name)));
+            return $"INSERT INTO {ToSqlName(tableName)} ({insertColumns}) VALUES ({insertValues}) ON CONFLICT ({keys}) DO UPDATE SET {updateSets}; SELECT last_insert_rowid();";
         }
 
         /// <summary>
@@ -79,8 +97,22 @@ namespace LiteOrm.SqlBuilder
         }
 
         /// <summary>
+        /// 是否支持带自增列的批量插入并返回首个 ID。
+        /// </summary>
+        public override bool SupportBatchInsertWithIdentity => true;
+
+        /// <summary>
+        /// 生成带标识列的批量插入 SQL，返回首个插入的 ID。
+        /// </summary>
+        public override string BuildBatchIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
+        {
+            return $"{BuildBatchInsertSql(tableName, columns, valuesList)}; select last_insert_rowid() - ({valuesList.Count - 1}) as [ID];";
+        }
+
+        /// <summary>
         /// 生成添加多个列的 SQL 语句。
         /// </summary>
+
         public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
             var sqlName = ToSqlName(tableName);

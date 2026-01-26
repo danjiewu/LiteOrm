@@ -1,6 +1,6 @@
 ﻿using LiteOrm.Common;
 using LiteOrm.Service;
-using LiteOrm.SqlBuilder;
+using LiteOrm;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections;
@@ -12,7 +12,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
+
 
 namespace LiteOrm
 {
@@ -60,12 +60,13 @@ namespace LiteOrm
         #endregion
 
         #region 私有变量
-        private ReadOnlyCollection<SqlColumn> _selectColumns;
+        private SqlColumn[] _selectColumnsArray;
         private string _allFieldsSql = null;
         private string _tableName = null;
         private string _fromTable = null;
         private ArgumentOutOfRangeException _exceptionWrongKeys;
         #endregion
+
 
         #region 属性
         /// <summary>
@@ -100,7 +101,7 @@ namespace LiteOrm
         /// <summary>
         /// 构建SQL语句的SQLBuilder
         /// </summary>
-        protected internal virtual BaseSqlBuilder SqlBuilder
+        protected internal virtual SqlBuilder SqlBuilder
         {
             get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType); }
         }
@@ -202,24 +203,25 @@ namespace LiteOrm
         /// <summary>
         /// 查询时需要获取的所有列
         /// </summary>
-        protected virtual ReadOnlyCollection<SqlColumn> SelectColumns
+        protected virtual SqlColumn[]  SelectColumns
         {
             get
             {
-                if (_selectColumns is null)
+                if (_selectColumnsArray is null)
                 {
-                    _selectColumns = Table.Columns.Where(column =>
+                    _selectColumnsArray = Table.Columns.Where(column =>
                     {
                         while (column is ForeignColumn foreignColumn) column = foreignColumn.TargetColumn.Column;
                         if (column is ColumnDefinition columnDefinition)
                             return columnDefinition.Mode.CanRead();
                         else
                             return true;
-                    }).ToList().AsReadOnly();
+                    }).ToArray();
                 }
-                return _selectColumns;
+                return _selectColumnsArray;
             }
         }
+
 
         /// <summary>
         /// 查询时需要获取的所有字段的 SQL
@@ -263,14 +265,19 @@ namespace LiteOrm
         protected string GetSelectFieldsSql(IEnumerable<SqlColumn> selectColumns)
         {
             StringBuilder strAllFields = new StringBuilder();
-            foreach (SqlColumn column in selectColumns)
+            SqlColumn[] columns = selectColumns as SqlColumn[] ?? selectColumns.ToArray();
+            int len = columns.Length;
+            for (int i = 0; i < len; i++)
             {
-                if (strAllFields.Length != 0) strAllFields.Append(",");
+                SqlColumn column = columns[i];
+                if (i > 0) strAllFields.Append(",");
                 strAllFields.Append(SqlBuilder.BuildExpression(column));
-                if (!String.Equals(column.Name, column.PropertyName, StringComparison.OrdinalIgnoreCase)) strAllFields.Append(" " + SqlBuilder.ToSqlName(column.PropertyName));
+                if (!String.Equals(column.Name, column.PropertyName, StringComparison.OrdinalIgnoreCase))
+                    strAllFields.Append(" " + SqlBuilder.ToSqlName(column.PropertyName));
             }
             return strAllFields.ToString();
         }
+
 
 
 
@@ -431,9 +438,12 @@ namespace LiteOrm
         {
             ThrowExceptionIfNoKeys();
             StringBuilder strConditions = new StringBuilder();
-            foreach (ColumnDefinition key in Table.Keys)
+            var keys = Table.Keys;
+            int count = keys.Count;
+            for (int i = 0; i < count; i++)
             {
-                if (strConditions.Length != 0) strConditions.Append(" and ");
+                ColumnDefinition key = keys[i];
+                if (i > 0) strConditions.Append(" and ");
                 strConditions.Append($"{ToColumnSql(key)} = {ToSqlParam(key.PropertyName)}");
 
                 if (!command.Parameters.Contains(key.PropertyName))
@@ -447,6 +457,7 @@ namespace LiteOrm
             }
             return strConditions.ToString();
         }
+
 
         /// <summary>
         /// 为command创建根据时间戳的条件，在command中添加参数并返回where条件的语句
@@ -602,6 +613,7 @@ namespace LiteOrm
         {
             return SqlBuilder.ToNativeName(paramName);
         }
+
         #endregion
     }
 }

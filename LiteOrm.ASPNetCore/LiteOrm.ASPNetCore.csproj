@@ -3,7 +3,7 @@
   <PropertyGroup>
 	  <AssemblyVersion>8.0.3.0</AssemblyVersion>
 	  <FileVersion>8.0.3.0</FileVersion>
-	  <TargetFrameworks>net8.0;</TargetFrameworks>
+	  <TargetFrameworks>net8.0;net10.0;</TargetFrameworks>
 	  <GenerateDocumentationFile>True</GenerateDocumentationFile>
 	  <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	  <VersionPrefix>8.0.3</VersionPrefix>

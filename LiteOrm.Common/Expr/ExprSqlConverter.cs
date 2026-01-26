@@ -177,6 +177,30 @@ namespace LiteOrm.Common
             else if (expr.Value is IEnumerable enumerable && !(expr.Value is string))
             {
                 // 处理 IN (...) 集合
+                if (enumerable is IList enumerableList)
+                {
+                    int enumCount = enumerableList.Count;
+                    if (enumCount == 0) return string.Empty;
+                    StringBuilder sb = new StringBuilder("(");
+                    for (int i = 0; i < enumCount; i++)
+                    {
+                        var item = enumerableList[i];
+                        if (i > 0) sb.Append(",");
+                        if (item is Expr e)
+                        {
+                            sb.Append(e.ToSql(context, sqlBuilder, outputParams));
+                        }
+                        else
+                        {
+                            string paramName = outputParams.Count.ToString();
+                            outputParams.Add(new(sqlBuilder.ToParamName(paramName), item));
+                            sb.Append(sqlBuilder.ToSqlParam(paramName));
+                        }
+                    }
+                    sb.Append(")");
+                    return sb.ToString();
+                }
+
                 List<string> strs = new List<string>();
                 foreach (var item in enumerable)
                 {
@@ -195,6 +219,7 @@ namespace LiteOrm.Common
                 }
                 return strs.Count == 0 ? string.Empty : $"({string.Join(",", strs)})";
             }
+
             else
             {
                 // 其他类型（如字符串、日期）通过参数化处理以保证安全
@@ -244,8 +269,17 @@ namespace LiteOrm.Common
         private static string ToSql(FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             // 分发给具体的 sqlBuilder 生成数据库对应的函数 SQL
-            return sqlBuilder.BuildFunctionSql(expr.FunctionName, expr.Parameters.Select(p => new KeyValuePair<string, Expr>(p.ToSql(context, sqlBuilder, outputParams), p)).ToList());
+            var parameters = expr.Parameters;
+            int count = parameters.Count;
+            var args = new List<KeyValuePair<string, Expr>>(count);
+            for (int i = 0; i < count; i++)
+            {
+                Expr p = parameters[i];
+                args.Add(new KeyValuePair<string, Expr>(p.ToSql(context, sqlBuilder, outputParams), p));
+            }
+            return sqlBuilder.BuildFunctionSql(expr.FunctionName, args);
         }
+
 
         private static string ToSql(LambdaExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
@@ -259,20 +293,49 @@ namespace LiteOrm.Common
 
         private static string ToSql(ExprSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            var subExprs = expr.Items.Select(s => s.ToSql(context, sqlBuilder, outputParams)).Where(s => !String.IsNullOrEmpty(s)).ToList();
-            if (subExprs.Count == 0) return string.Empty;
-            switch (expr.JoinType)
+            int count = expr.Count;
+            if (count == 0) return string.Empty;
+
+            if (expr.JoinType == ExprJoinType.And || expr.JoinType == ExprJoinType.Or)
             {
-                case ExprJoinType.And:
-                case ExprJoinType.Or:
-                    if (subExprs.Count == 1) return subExprs[0];
-                    else return $"({String.Join($" {expr.JoinType} ", subExprs)})";
-                case ExprJoinType.Concat:
-                    // 字符串拼接逻辑委托给具体的 sqlBuilder，因为不同数据库的语法差异很大（如 || vs CONCAT）
-                    return sqlBuilder.BuildConcatSql(subExprs.ToArray());
-                default:
-                    return $"({String.Join($",", subExprs)})";
+                if (count == 1) return expr[0].ToSql(context, sqlBuilder, outputParams);
+                
+                StringBuilder sb = new StringBuilder("(");
+                bool first = true;
+                string joinStr = expr.JoinType == ExprJoinType.And ? " AND " : " OR ";
+                for (int i = 0; i < count; i++)
+                {
+                    string s = expr[i].ToSql(context, sqlBuilder, outputParams);
+                    if (string.IsNullOrEmpty(s)) continue;
+                    if (!first) sb.Append(joinStr);
+                    sb.Append(s);
+                    first = false;
+                }
+                sb.Append(")");
+                return first ? string.Empty : sb.ToString();
+            }
+            else if (expr.JoinType == ExprJoinType.Concat)
+            {
+                string[] subExprs = new string[count];
+                for (int i = 0; i < count; i++) subExprs[i] = expr[i].ToSql(context, sqlBuilder, outputParams);
+                return sqlBuilder.BuildConcatSql(subExprs);
+            }
+            else
+            {
+                StringBuilder sb = new StringBuilder("(");
+                bool first = true;
+                for (int i = 0; i < count; i++)
+                {
+                    string s = expr[i].ToSql(context, sqlBuilder, outputParams);
+                    if (string.IsNullOrEmpty(s)) continue;
+                    if (!first) sb.Append(",");
+                    sb.Append(s);
+                    first = false;
+                }
+                sb.Append(")");
+                return first ? string.Empty : sb.ToString();
             }
         }
+
     }
 }

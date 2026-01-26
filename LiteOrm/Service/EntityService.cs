@@ -518,33 +518,6 @@ namespace LiteOrm.Service
             return ObjectDAO.Update(entity);
         }
 
-        /// <summary>
-        /// 核心更新或插入逻辑。
-        /// </summary>
-        /// <remarks>
-        /// 这是内部使用的核心更新或插入方法。首先检查实体是否已存在：
-        /// 通过查询相同主键的记录来判断。如果存在则执行更新，否则执行插入。
-        /// 处理 IArged 接口的分表参数，支持分表场景。
-        /// </remarks>
-        /// <param name="entity">要处理的实体对象。</param>
-        /// <returns>操作结果（已插入、已更新或失败）。</returns>
-        protected virtual UpdateOrInsertResult UpdateOrInsertCore(T entity)
-        {
-            bool exists;
-            if (entity is IArged arg)
-            {
-                exists = ObjectViewDAO.WithArgs(arg.TableArgs).Exists(entity);
-            }
-            else
-            {
-                exists = ObjectViewDAO.Exists(entity);
-            }
-
-            if (exists)
-                return UpdateCore(entity) ? UpdateOrInsertResult.Updated : UpdateOrInsertResult.Failed;
-            else
-                return InsertCore(entity) ? UpdateOrInsertResult.Inserted : UpdateOrInsertResult.Failed;
-        }
 
         /// <summary>
         /// 核心基于 ID 的删除逻辑。
@@ -935,20 +908,22 @@ namespace LiteOrm.Service
         /// <returns>操作结果。</returns>
         protected virtual async Task<UpdateOrInsertResult> UpdateOrInsertCoreAsync(T entity, CancellationToken cancellationToken = default)
         {
-            bool exists;
+            var dao = ObjectDAO;
             if (entity is IArged arg)
             {
-                exists = await ObjectViewDAO.WithArgs(arg.TableArgs).ExistsAsync(entity, cancellationToken);
+                dao = dao.WithArgs(arg.TableArgs);
             }
-            else
-            {
-                exists = await ObjectViewDAO.ExistsAsync(entity, cancellationToken);
-            }
+            return await dao.UpdateOrInsertAsync(entity, cancellationToken);
+        }
 
-            if (exists)
-                return await UpdateCoreAsync(entity, cancellationToken) ? UpdateOrInsertResult.Updated : UpdateOrInsertResult.Failed;
-            else
-                return await InsertCoreAsync(entity, cancellationToken) ? UpdateOrInsertResult.Inserted : UpdateOrInsertResult.Failed;
+        protected virtual UpdateOrInsertResult UpdateOrInsertCore(T entity)
+        {
+            var dao = ObjectDAO;
+            if (entity is IArged arg)
+            {
+                dao = dao.WithArgs(arg.TableArgs);
+            }
+            return dao.UpdateOrInsert(entity);
         }
 
         /// <summary>

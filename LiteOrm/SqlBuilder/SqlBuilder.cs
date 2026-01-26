@@ -9,7 +9,7 @@ using System.Collections.Concurrent;
 using System.Collections.Specialized;
 using System.Linq;
 
-namespace LiteOrm.SqlBuilder
+namespace LiteOrm
 {
     /// <summary>
     /// SQL 语句生成辅助类 - 提供数据库无关的 SQL 生成功能。
@@ -48,13 +48,13 @@ namespace LiteOrm.SqlBuilder
     /// DbType dbType = builder.ToDbType(typeof(string)); // 返回 DbType.String
     /// </code>
     /// </remarks>
-    public class BaseSqlBuilder : ISqlBuilder
+    public class SqlBuilder : ISqlBuilder
     {
 
         /// <summary>
-        /// 获取默认的 <see cref="BaseSqlBuilder"/> 实例。
+        /// 获取默认的 <see cref="SqlBuilder"/> 实例。
         /// </summary>
-        public static readonly BaseSqlBuilder Instance = new BaseSqlBuilder();
+        public static readonly SqlBuilder Instance = new SqlBuilder();
 
         private readonly Dictionary<string, string> _functionMappings = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase)
         {
@@ -79,7 +79,7 @@ namespace LiteOrm.SqlBuilder
             if (string.IsNullOrWhiteSpace(functionName))
                 throw new ArgumentNullException(nameof(functionName));
             Type type = this.GetType();
-            while (typeof(BaseSqlBuilder).IsAssignableFrom(type))
+            while (typeof(SqlBuilder).IsAssignableFrom(type))
             {
                 if (GetSqlHandlerMap(type).TryGetFunctionSqlHandler(functionName, out var handler))
                     return handler(functionName, args);
@@ -89,8 +89,19 @@ namespace LiteOrm.SqlBuilder
             {
                 functionName = mappedName;
             }
-            return $"{functionName}({string.Join(", ", args.Select(a => a.Key))})";
+
+            StringBuilder sb = new StringBuilder(functionName);
+            sb.Append("(");
+            int count = args.Count;
+            for (int i = 0; i < count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append(args[i].Key);
+            }
+            sb.Append(")");
+            return sb.ToString();
         }
+
 
         #region 内部字段与正则表达式
         /// <summary>
@@ -105,11 +116,6 @@ namespace LiteOrm.SqlBuilder
         private const string tableNamePattern = @"^[a-zA-Z0-9_]*$";
         private static readonly Regex tableNameRegex = new Regex(tableNamePattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
         #endregion
-
-        /// <summary>
-        /// 是否支持批量插入。
-        /// </summary>
-        public virtual bool SupportBatchInsert => true;
 
         /// <summary>
         /// 是否支持标识列插入。
@@ -137,8 +143,9 @@ namespace LiteOrm.SqlBuilder
         /// <returns>生成的 SQL 语句。</returns>
         public virtual string BuildIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
-            return $"BEGIN insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues}); select @@IDENTITY as [ID]; END;";
+            return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues}); select @@IDENTITY as [ID];";
         }
+
 
         /// <summary>
         /// 连接各字符串的 SQL 语句
@@ -487,6 +494,11 @@ namespace LiteOrm.SqlBuilder
         }
 
         /// <summary>
+        /// 是否支持带自增列的批量插入并返回首个 ID。
+        /// </summary>
+        public virtual bool SupportBatchInsertWithIdentity => false;
+
+        /// <summary>
         /// 生成批量插入的 SQL 语句。
         /// </summary>
         /// <param name="tableName">目标表名。</param>
@@ -497,6 +509,21 @@ namespace LiteOrm.SqlBuilder
         {
             return $"INSERT INTO {ToSqlName(tableName)} ({columns}) \nVALUES {string.Join(",", valuesList)}";
         }
+
+        /// <summary>
+        /// 生成带标识列的批量插入 SQL，返回首个插入的 ID。
+        /// </summary>
+        /// <param name="command">数据库命令对象。</param>
+        /// <param name="identityColumn">标识列定义。</param>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="columns">插入的列名集合。</param>
+        /// <param name="valuesList">占位符集合。</param>
+        /// <returns>生成的 SQL 语句。</returns>
+        public virtual string BuildBatchIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
+        {
+            return BuildBatchInsertSql(tableName, columns, valuesList);
+        }
+
 
         /// <summary>
         /// 生成创建表的 SQL 语句。
@@ -529,6 +556,26 @@ namespace LiteOrm.SqlBuilder
         public virtual string BuildTableExistsSql(string tableName)
         {
             return $"SELECT 1 FROM {ToSqlName(tableName)} WHERE 1=0";
+        }
+
+        /// <summary>
+        /// 生成更新或插入（Upsert）的 SQL 语句。
+        /// </summary>
+        /// <param name="command">数据库命令对象。</param>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="insertColumns">插入操作的列名集合（逗号分隔）。</param>
+        /// <param name="insertValues">插入操作的占位符集合（逗号分隔）。</param>
+        /// <param name="updateSets">更新操作的赋值子句（例如 "Col1=@p1, Col2=@p2"）。</param>
+        /// <param name="keyColumns">用于判断记录是否存在的关键列（通常为主键或唯一索引列）。</param>
+        /// <param name="identityColumn">自增标识列定义（如果有），用于返回新插入的 ID。</param>
+        /// <returns>返回适用于目标数据库的 Upsert SQL 字符串。通常的正数返回表示插入的 ID，-1 表示更新成功。</returns>
+        public virtual string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn)
+        {
+            string where = string.Join(" AND ", keyColumns.Select(c => $"{ToSqlName(c.Name)} = {ToSqlParam(c.PropertyName)}"));
+            string insertSql = identityColumn is null ? $"INSERT INTO {ToSqlName(tableName)} ({insertColumns}) VALUES ({insertValues})"
+                : BuildIdentityInsertSql(command, identityColumn, tableName, insertColumns, insertValues);
+            string updateSql = $"UPDATE {ToSqlName(tableName)} SET {updateSets} WHERE {where}";
+            return $"BEGIN IF EXISTS(SELECT 1 FROM {ToSqlName(tableName)} WHERE {where}) BEGIN {updateSql}; SELECT -1; END ELSE BEGIN {insertSql}; END END;";
         }
 
         /// <summary>
@@ -621,7 +668,7 @@ namespace LiteOrm.SqlBuilder
 
 
         private static readonly ConcurrentDictionary<Type, SqlHandlerMap> _sqlHandlerMaps = new ConcurrentDictionary<Type, SqlHandlerMap>();
-        internal static SqlHandlerMap GetSqlHandlerMap<T>() where T : BaseSqlBuilder
+        internal static SqlHandlerMap GetSqlHandlerMap<T>() where T : SqlBuilder
         {
             return _sqlHandlerMaps.GetOrAdd(typeof(T), t => new SqlHandlerMap());
         }

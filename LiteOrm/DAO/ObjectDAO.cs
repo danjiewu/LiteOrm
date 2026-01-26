@@ -52,10 +52,37 @@ namespace LiteOrm
         /// 识别列
         /// </summary>
         protected ColumnDefinition IdentityColumn => TableDefinition.Columns.FirstOrDefault(col => col.IsIdentity);
+        private ColumnDefinition[] _insertableColumns;
+        private ColumnDefinition[] _updatableColumns;
+
+        private ColumnDefinition[] InsertableColumns
+        {
+            get
+            {
+                if (_insertableColumns is null)
+                {
+                    _insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
+                }
+                return _insertableColumns;
+            }
+        }
+
+        private ColumnDefinition[] UpdatableColumns
+        {
+            get
+            {
+                if (_updatableColumns is null)
+                {
+                    _updatableColumns = TableDefinition.Columns.Where(column => !column.IsPrimaryKey && column.Mode.CanUpdate()).ToArray();
+                }
+                return _updatableColumns;
+            }
+        }
 
         /// <summary>
         /// 获取或设置用于生成 SQL 的上下文。
         /// </summary>
+
         protected override SqlBuildContext SqlBuildContext
         {
             get { base.SqlBuildContext.SingleTable = true; return base.SqlBuildContext; }
@@ -70,21 +97,24 @@ namespace LiteOrm
             DbCommandProxy command = NewCommand();
             StringBuilder strColumns = new StringBuilder();
             StringBuilder strValues = new StringBuilder();
-            foreach (ColumnDefinition column in TableDefinition.Columns)
+            ColumnDefinition[] columns = InsertableColumns;
+            int count = columns.Length;
+            for (int i = 0; i < count; i++)
             {
-                if (!column.IsIdentity && column.Mode.CanInsert())
+                ColumnDefinition column = columns[i];
+                if (i > 0)
                 {
-                    if (strColumns.Length != 0) strColumns.Append(",");
-                    if (strValues.Length != 0) strValues.Append(",");
-
-                    strColumns.Append(ToSqlName(column.Name));
-                    strValues.Append(ToSqlParam(column.PropertyName));
-                    IDbDataParameter param = command.CreateParameter();
-                    param.Size = column.Length;
-                    param.DbType = column.DbType;
-                    param.ParameterName = ToParamName(column.PropertyName);
-                    command.Parameters.Add(param);
+                    strColumns.Append(",");
+                    strValues.Append(",");
                 }
+
+                strColumns.Append(ToSqlName(column.Name));
+                strValues.Append(ToSqlParam(column.PropertyName));
+                IDbDataParameter param = command.CreateParameter();
+                param.Size = column.Length;
+                param.DbType = column.DbType;
+                param.ParameterName = ToParamName(column.PropertyName);
+                command.Parameters.Add(param);
             }
 
             command.CommandText = IdentityColumn is null ?
@@ -93,86 +123,82 @@ namespace LiteOrm
             return command;
         }
 
+
         /// <summary>
         /// 构建实体更新命令。
         /// </summary>
         /// <returns>返回更新命令实例。</returns>
-        protected virtual DbCommandProxy MakeUpdateCommand(T t, object timestamp = null)
+        protected virtual DbCommandProxy MakeUpdateCommand(bool withTimestamp)
         {
             DbCommandProxy command = NewCommand();
             StringBuilder strColumns = new StringBuilder();
-            foreach (ColumnDefinition column in TableDefinition.Columns)
+            ColumnDefinition[] columns = UpdatableColumns;
+            int count = columns.Length;
+            for (int i = 0; i < count; i++)
             {
-                if (column.Mode.CanUpdate() && !column.IsPrimaryKey)
-                {
-                    if (strColumns.Length != 0) strColumns.Append(",");
-                    strColumns.AppendFormat("{0} = {1}", ToSqlName(column.Name), ToSqlParam(column.PropertyName));
-                    IDbDataParameter param = command.CreateParameter();
-                    param.Size = column.Length;
-                    param.DbType = column.DbType;
-                    param.ParameterName = ToParamName(column.PropertyName);
-                    command.Parameters.Add(param);
-                }
+                ColumnDefinition column = columns[i];
+                if (i > 0) strColumns.Append(",");
+                strColumns.AppendFormat("{0} = {1}", ToSqlName(column.Name), ToSqlParam(column.PropertyName));
+                IDbDataParameter param = command.CreateParameter();
+                param.Size = column.Length;
+                param.DbType = column.DbType;
+                param.ParameterName = ToParamName(column.PropertyName);
+                command.Parameters.Add(param);
             }
-            string strTimestamp = MakeTimestampCondition(command,timestamp);
+            string strTimestamp = withTimestamp ? MakeTimestampCondition(command, null) : null;
             if (!String.IsNullOrEmpty(strTimestamp)) strTimestamp = $" and {strTimestamp}";
             command.CommandText = $"update {ToSqlName(FactTableName)} set {strColumns} {ToWhereSql(MakeIsKeyCondition(command) + strTimestamp)}";
-            foreach (IDataParameter param in command.Parameters)
-            {
-                ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
-                param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
-            }
             return command;
         }
+
 
         /// <summary>
         /// 构建实体删除命令。
         /// </summary>
         /// <returns>返回删除命令实例。</returns>
-        protected virtual DbCommandProxy MakeDeleteCommand(params object[] keys)
+        protected virtual DbCommandProxy MakeDeleteCommand()
         {
             DbCommandProxy command = NewCommand();
             command.CommandText = $"delete from {ToSqlName(FactTableName)} {ToWhereSql(MakeIsKeyCondition(command))}";
-            int i = 0;
-            foreach (IDataParameter param in command.Parameters)
-            {
-                param.Value = ConvertToDbValue(keys[i], Table.Keys[i].DbType);
-                i++;
-            }
             return command;
         }
 
+
         /// <summary>
         /// 构建更新或插入（Upsert）命令。
+        /// 该命令会根据数据库类型生成对应的原子 Upsert 语句（如 MySQL 的 ON DUPLICATE KEY UPDATE 或 SQL Server 的 IF EXISTS）。
         /// </summary>
-        /// <returns>返回更新或插入命令实例。</returns>
+        /// <returns>返回更新或插入命令代理实例。</returns>
         protected virtual DbCommandProxy MakeUpdateOrInsertCommand()
         {
             DbCommandProxy command = NewCommand();
             StringBuilder strColumns = new StringBuilder();
             StringBuilder strValues = new StringBuilder();
             StringBuilder strUpdateColumns = new StringBuilder();
+
             foreach (ColumnDefinition column in TableDefinition.Columns)
             {
-                bool addColumn = false;
+                bool handled = false;
                 if (!column.IsIdentity && column.Mode.CanInsert())
                 {
-                    if (strColumns.Length != 0) strColumns.Append(",");
-                    if (strValues.Length != 0) strValues.Append(",");
-
+                    if (strColumns.Length != 0)
+                    {
+                        strColumns.Append(",");
+                        strValues.Append(",");
+                    }
                     strColumns.Append(ToSqlName(column.Name));
                     strValues.Append(ToSqlParam(column.PropertyName));
-                    addColumn = true;
+                    handled = true;
                 }
 
                 if (column.Mode.CanUpdate() && !column.IsPrimaryKey)
                 {
                     if (strUpdateColumns.Length != 0) strUpdateColumns.Append(",");
                     strUpdateColumns.AppendFormat("{0} = {1}", ToSqlName(column.Name), ToSqlParam(column.PropertyName));
-                    addColumn = true;
+                    handled = true;
                 }
 
-                if (addColumn)
+                if (handled)
                 {
                     IDbDataParameter param = command.CreateParameter();
                     param.DbType = column.DbType;
@@ -181,11 +207,8 @@ namespace LiteOrm
                     command.Parameters.Add(param);
                 }
             }
-            string insertCommandText = IdentityColumn is null ? $"insert into {ToSqlName(FactTableName)} ({strColumns}) \nvalues ({strValues})"
-                : SqlBuilder.BuildIdentityInsertSql(command, IdentityColumn, FactTableName, strColumns.ToString(), strValues.ToString());
-            string updateCommandText = $"update {ToSqlName(FactTableName)} set {strUpdateColumns} {ToWhereSql(MakeIsKeyCondition(command))};";
 
-            command.CommandText = $"BEGIN if exists(select 1 from {ToSqlName(FactTableName)} {ToWhereSql(MakeIsKeyCondition(command))}) begin {updateCommandText} select -1; end else begin {insertCommandText} end END;";
+            command.CommandText = SqlBuilder.BuildUpsertSql(command, FactTableName, strColumns.ToString(), strValues.ToString(), strUpdateColumns.ToString(), TableDefinition.Keys, IdentityColumn);
             return command;
         }
 
@@ -201,19 +224,24 @@ namespace LiteOrm
         public virtual bool Insert(T t)
         {
             if (t is null) throw new ArgumentNullException("t");
-            using var insertCommand = MakeInsertCommand();
-            foreach (IDataParameter param in insertCommand.Parameters)
+            var insertCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "Insert"), _ => MakeInsertCommand());
+            var columns = InsertableColumns;
+            int count = columns.Length;
+            var parameters = insertCommand.Parameters;
+            for (int i = 0; i < count; i++)
             {
-                ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
+                var column = columns[i];
+                var param = (IDataParameter)parameters[i];
                 param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
             }
+
             if (IdentityColumn is null)
             {
                 insertCommand.ExecuteNonQuery();
             }
             else
             {
-                IDataParameter param = insertCommand.Parameters.Contains(ToParamName(IdentityColumn.PropertyName)) ? (IDataParameter)insertCommand.Parameters[ToParamName(IdentityColumn.PropertyName)] : null;
+                IDataParameter param = insertCommand.Parameters[ToParamName(IdentityColumn.PropertyName)] as IDataParameter;
                 if (param is not null && param.Direction == ParameterDirection.Output)
                 {
                     insertCommand.ExecuteNonQuery();
@@ -227,6 +255,7 @@ namespace LiteOrm
             return true;
         }
 
+
         /// <summary>
         /// 批量插入实体对象到数据库中。
         /// </summary>
@@ -234,7 +263,7 @@ namespace LiteOrm
         public virtual void BatchInsert(IEnumerable<T> values)
         {
             var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType);
-            var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert());
+            var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
             if (provider is not null)
             {
                 using (var scope = DAOContext.AcquireScope())
@@ -242,52 +271,119 @@ namespace LiteOrm
                     provider.BulkInsert(ToDataTable(values, insertableColumns), Connection, DAOContext.CurrentTransaction);
                 }
             }
-            else if (SqlBuilder.SupportBatchInsert)
+            else
             {
-                int batchSize = (100 / insertableColumns.Count() + 1) * 100;
+                int columnCount = Math.Max(insertableColumns.Length, 1);
+                int batchSize = 100 / columnCount * 10;
+                if (batchSize == 0) batchSize = 1;
+
+                long nextManualId = 0;
+                bool idExists = false;
                 var batch = new List<T>(batchSize);
                 foreach (var item in values)
                 {
-                    batch.Add(item);
-                    if (batch.Count >= batchSize)
+                    if (!idExists && IdentityColumn is not null && !SqlBuilder.SupportBatchInsertWithIdentity)
                     {
-                        BatchInsertInternal(batch);
+                        Insert(item);
+                        nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)) + 1;
+                        idExists = true;
+                        continue;
+                    }
+
+                    batch.Add(item);
+                    if (batch.Count == batchSize)
+                    {
+                        DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchInsert" + batchSize), _ => MakeBatchInsertCommand(batchSize));
+                        SetParameterValues(insertableColumns, batch, command);
+
+                        if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                        {
+                            object res = command.ExecuteScalar();
+                            if (res != null && res != DBNull.Value)
+                            {
+                                nextManualId = Convert.ToInt64(res);
+                                idExists = true;
+                            }
+                        }
+                        else
+                        {
+                            command.ExecuteNonQuery();
+                        }
+                        if (idExists) UpdateBatchIds(batch, ref nextManualId);
                         batch.Clear();
                     }
                 }
                 if (batch.Count > 0)
                 {
-                    BatchInsertInternal(batch);
+                    using DbCommandProxy command = MakeBatchInsertCommand(batch.Count);
+                    SetParameterValues(insertableColumns, batch, command);
+
+                    if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                    {
+                        object res = command.ExecuteScalar();
+                        if (res != null && res != DBNull.Value)
+                        {
+                            nextManualId = Convert.ToInt64(res);
+                            idExists = true;
+                        }
+                    }
+                    else
+                    {
+                        command.ExecuteNonQuery();
+                    }
+
+                    if (idExists) UpdateBatchIds(batch, ref nextManualId);
+                    batch.Clear();
                 }
             }
-            else
-                foreach (T t in values) Insert(t);
+        }
+
+        private void SetParameterValues(ColumnDefinition[] insertableColumns, List<T> batch, DbCommandProxy command)
+        {
+            int paramIndex = 0;
+            var parameters = command.Parameters;
+            int columnCount = insertableColumns.Length;
+            int batchCount = batch.Count;
+
+            for (int i = 0; i < batchCount; i++)
+            {
+                T item = batch[i];
+                for (int j = 0; j < columnCount; j++)
+                {
+                    ColumnDefinition column = insertableColumns[j];
+                    var param = (IDataParameter)parameters[paramIndex++];
+                    param.Value = ConvertToDbValue(column.GetValue(item), column.DbType);
+                }
+            }
         }
 
         /// <summary>
-        /// Creates a DataTable containing rows and columns based on the specified values and column definitions.
+        /// 更新批量操作中的实体 ID。
         /// </summary>
-        /// <remarks>The resulting DataTable uses the FactTableName as its table name. All property values
-        /// are converted to database-compatible types; null values are represented as DBNull.Value. The order of
-        /// columns in the DataTable matches the order of the columns parameter.</remarks>
-        /// <param name="values">The collection of objects to be converted into rows of the DataTable. Each object represents a single row.</param>
-        /// <param name="columns">The collection of column definitions specifying the column names, types, and value extraction logic for the
-        /// DataTable.</param>
-        /// <returns>A DataTable populated with the provided values and columns. Each row corresponds to an item in the values
-        /// collection, and each column is defined by the columns parameter.</returns>
-        protected DataTable ToDataTable(IEnumerable<T> values, IEnumerable<ColumnDefinition> columns)
+        protected virtual void UpdateBatchIds(List<T> batch, ref long firstId)
+        {
+            int count = batch.Count;
+            for (int i = 0; i < count; i++)
+            {
+                IdentityColumn.SetValue(batch[i], ConvertFromDbValue(firstId++, IdentityColumn.PropertyType));
+            }
+        }
+
+        protected DataTable ToDataTable(IEnumerable<T> values, ColumnDefinition[] columns)
         {
             DataTable dt = new DataTable(FactTableName);
-            foreach (ColumnDefinition column in columns)
+            int columnCount = columns.Length;
+            for (int i = 0; i < columnCount; i++)
             {
-                dt.Columns.Add(new DataColumn(column.Name, column.PropertyType.GetUnderlyingType()));
+                dt.Columns.Add(new DataColumn(columns[i].Name, columns[i].PropertyType.GetUnderlyingType()));
             }
             dt.BeginInit();
             foreach (T t in values)
             {
                 DataRow dr = dt.NewRow();
-                foreach (ColumnDefinition column in columns)
+                for (int i = 0; i < columnCount; i++)
                 {
+                    ColumnDefinition column = columns[i];
                     dr[column.Name] = ConvertToDbValue(column.GetValue(t), column.DbType) ?? DBNull.Value;
                 }
                 dt.Rows.Add(dr);
@@ -297,43 +393,53 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 一次性批量插入实体集合
+        /// 创建一次性批量插入实体集合的Command
         /// </summary>
-        /// <param name="values">要插入的实体集合</param>
+        /// <param name="batchSize">要插入的实体集合数量</param>
         /// <remarks>一次性批量插入不支持返回自增列</remarks>
-        protected virtual void BatchInsertInternal(IEnumerable<T> values)
+        protected virtual DbCommandProxy MakeBatchInsertCommand(int batchSize)
         {
-            using var command = NewCommand();
+            DbCommandProxy command = NewCommand();
             StringBuilder strColumns = new StringBuilder();
-            List<string> valuesList = new List<string>();
-            var insertColumns = TableDefinition.Columns.Where(col => !col.IsIdentity && col.Mode.CanInsert());
-            foreach (ColumnDefinition column in insertColumns)
+            List<string> valuesList = new List<string>(batchSize);
+            ColumnDefinition[] insertColumns = InsertableColumns;
+            int columnCount = insertColumns.Length;
+
+            for (int j = 0; j < columnCount; j++)
             {
-                if (strColumns.Length != 0) strColumns.Append(",");
-                strColumns.Append(ToSqlName(column.Name));
+                if (j > 0) strColumns.Append(",");
+                strColumns.Append(ToSqlName(insertColumns[j].Name));
             }
+
             int paramIndex = 0;
-            foreach (var item in values)
+            for (int i = 0; i < batchSize; i++)
             {
                 StringBuilder strValuesRepeat = new StringBuilder();
-                foreach (ColumnDefinition column in insertColumns)
+                for (int j = 0; j < columnCount; j++)
                 {
+                    ColumnDefinition column = insertColumns[j];
                     if (strValuesRepeat.Length != 0) strValuesRepeat.Append(",");
-                    strValuesRepeat.Append(ToSqlParam(paramIndex.ToString()));
+
+                    string idxStr = paramIndex.ToString();
+                    strValuesRepeat.Append(ToSqlParam(idxStr));
                     IDbDataParameter param = command.CreateParameter();
                     param.Size = column.Length;
                     param.DbType = column.DbType;
-                    param.Value = ConvertToDbValue(column.GetValue(item), column.DbType);
-                    param.ParameterName = ToParamName(paramIndex.ToString());
+                    param.ParameterName = ToParamName(idxStr);
                     command.Parameters.Add(param);
                     paramIndex++;
                 }
                 valuesList.Add($"({strValuesRepeat})");
             }
 
-            command.CommandText = SqlBuilder.BuildBatchInsertSql(FactTableName, strColumns.ToString(), valuesList);
-            command.ExecuteNonQuery();
+            if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                command.CommandText = SqlBuilder.BuildBatchIdentityInsertSql(command, IdentityColumn, FactTableName, strColumns.ToString(), valuesList);
+            else
+                command.CommandText = SqlBuilder.BuildBatchInsertSql(FactTableName, strColumns.ToString(), valuesList);
+            return command;
         }
+
+
 
         /// <summary>
         /// 更新数据库中的实体对象。
@@ -344,36 +450,87 @@ namespace LiteOrm
         /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
         public virtual bool Update(T t, object timestamp = null)
         {
-            using var updateCommand = MakeUpdateCommand(t, timestamp);           
+            var updateCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, timestamp == null ? "Update" : "UpdateWithTimestamp"), _ => MakeUpdateCommand(timestamp != null));
+            var updatableColumns = UpdatableColumns;
+            var keys = TableDefinition.Keys;
+            int updatableCount = updatableColumns.Length;
+            int keyCount = keys.Count;
+            var parameters = updateCommand.Parameters;
+            int paramIndex = 0;
+
+            for (int i = 0; i < updatableCount; i++)
+            {
+                var column = updatableColumns[i];
+                ((IDataParameter)parameters[paramIndex++]).Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+            }
+
+            for (int i = 0; i < keyCount; i++)
+            {
+                var key = keys[i];
+                ((IDataParameter)parameters[paramIndex++]).Value = ConvertToDbValue(key.GetValue(t), key.DbType);
+            }
+
+            if (timestamp != null)
+            {
+                var timestampCol = TableDefinition.Columns.First(c => c.IsTimestamp);
+                ((IDataParameter)parameters[paramIndex]).Value = ConvertToDbValue(timestamp, timestampCol.DbType);
+            }
+
             return updateCommand.ExecuteNonQuery() > 0;
         }
 
         /// <summary>
-        /// 更新或插入实体对象到数据库中。
+        /// 执行更新或插入（Upsert）操作。
+        /// 如果记录存在（基于主键/唯一键）则更新，否则执行插入。
         /// </summary>
-        /// <param name="t">要更新或插入的实体对象。</param>
-        /// <returns>操作结果，指示是插入还是更新。</returns>
-        /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
+        /// <param name="t">要处理的实体对象。</param>
+        /// <returns>操作结果：<see cref="UpdateOrInsertResult.Inserted"/> 或 <see cref="UpdateOrInsertResult.Updated"/>。</returns>
         public virtual UpdateOrInsertResult UpdateOrInsert(T t)
         {
             if (t is null) throw new ArgumentNullException("t");
-            using var updateOrInsertCommand = MakeUpdateOrInsertCommand();
-            foreach (IDataParameter param in updateOrInsertCommand.Parameters)
+            var command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "UpdateOrInsert"), _ => MakeUpdateOrInsertCommand());
+            foreach (IDataParameter param in command.Parameters)
             {
-                ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
-                param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                if (param.Direction == ParameterDirection.Input || param.Direction == ParameterDirection.InputOutput)
+                {
+                    ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
+                    param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                }
             }
-            int ret = Convert.ToInt32(updateOrInsertCommand.ExecuteScalar());
-            if (ret >= 0)
+
+            if (IdentityColumn != null)
             {
-                if (IdentityColumn is not null) IdentityColumn.SetValue(t, ret);
+                string propertyName = ToParamName(IdentityColumn.PropertyName);
+                IDataParameter param = null;
+                foreach (IDataParameter p in command.Parameters)
+                    if (p.Direction == ParameterDirection.Output)
+                    {
+                        param = p;
+                        break;
+                    }
+                if (param != null)
+                {
+                    command.ExecuteNonQuery();
+                    int ret = Convert.ToInt32(param.Value);
+                    if (ret > 0)
+                    {
+                        IdentityColumn.SetValue(t, ConvertFromDbValue(param.Value, IdentityColumn.PropertyType));
+                        return UpdateOrInsertResult.Inserted;
+                    }
+                    return UpdateOrInsertResult.Updated;
+                }
+            }
+
+            object res = command.ExecuteScalar();
+            int retVal = Convert.ToInt32(res);
+            if (retVal > 0)
+            {
+                if (IdentityColumn is not null) IdentityColumn.SetValue(t, ConvertFromDbValue(res, IdentityColumn.PropertyType));
                 return UpdateOrInsertResult.Inserted;
             }
-            else
-            {
-                return UpdateOrInsertResult.Updated;
-            }
+            return UpdateOrInsertResult.Updated;
         }
+
 
         /// <summary>
         /// 根据条件更新数据
@@ -447,9 +604,19 @@ namespace LiteOrm
         public virtual bool DeleteByKeys(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var deleteCommand = MakeDeleteCommand(keys);
+            var deleteCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "Delete"), _ => MakeDeleteCommand());
+            int count = deleteCommand.Parameters.Count;
+            var parameters = deleteCommand.Parameters;
+            var keyColumns = Table.Keys;
+
+            for (int i = 0; i < count; i++)
+            {
+                ((IDataParameter)parameters[i]).Value = ConvertToDbValue(keys[i], keyColumns[i].DbType);
+            }
             return deleteCommand.ExecuteNonQuery() > 0;
         }
+
+
         #endregion
 
         #region IObjectDAO Members
@@ -478,18 +645,13 @@ namespace LiteOrm
             return Update((T)o);
         }
 
-        UpdateOrInsertResult IObjectDAO.UpdateOrInsert(object o)
-        {
-            return UpdateOrInsert((T)o);
-        }
-
         bool IObjectDAO.Delete(object o)
         {
             return Delete((T)o);
         }
         #endregion
 
-        #region IObjectDAOAsync implementations (wrappers)
+        #region IObjectDAOAsync implementations
 
         /// <summary>
         /// 异步将实体对象插入到数据库中。
@@ -500,31 +662,39 @@ namespace LiteOrm
         public async virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
         {
             if (t is null) throw new ArgumentNullException("t");
-            using var insertCommand = MakeInsertCommand();
-            foreach (IDataParameter param in insertCommand.Parameters)
+            var insertCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "Insert"), _ => MakeInsertCommand());
+            var columns = InsertableColumns;
+            int count = columns.Length;
+            var parameters = insertCommand.Parameters;
+
+            for (int i = 0; i < count; i++)
             {
-                ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
-                param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                var column = columns[i];
+                ((IDataParameter)parameters[i]).Value = ConvertToDbValue(column.GetValue(t), column.DbType);
             }
+
             if (IdentityColumn is null)
             {
-                await insertCommand.ExecuteNonQueryAsync(cancellationToken);
+                await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                IDataParameter param = insertCommand.Parameters.Contains(ToParamName(IdentityColumn.PropertyName)) ? (IDataParameter)insertCommand.Parameters[ToParamName(IdentityColumn.PropertyName)] : null;
+                string propertyName = ToParamName(IdentityColumn.PropertyName);
+                IDataParameter param = insertCommand.Parameters.Contains(propertyName) ? (IDataParameter)insertCommand.Parameters[propertyName] : null;
                 if (param is not null && param.Direction == ParameterDirection.Output)
                 {
-                    await insertCommand.ExecuteNonQueryAsync(cancellationToken);
+                    await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     IdentityColumn.SetValue(t, ConvertFromDbValue(param.Value, IdentityColumn.PropertyType));
                 }
                 else
                 {
-                    IdentityColumn.SetValue(t, ConvertFromDbValue(await insertCommand.ExecuteScalarAsync(cancellationToken), IdentityColumn.PropertyType));
+                    IdentityColumn.SetValue(t, ConvertFromDbValue(await insertCommand.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false), IdentityColumn.PropertyType));
                 }
             }
+
             return true;
         }
+
 
         /// <summary>   
         /// 异步批量插入实体对象到数据库中。
@@ -535,81 +705,84 @@ namespace LiteOrm
         public async virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
         {
             var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType);
-            var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert());
+            var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
             if (provider is not null)
             {
-                using (var scope = await DAOContext.AcquireScopeAsync(cancellationToken))
+                using (var scope = await DAOContext.AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    await Task.Run(() => provider.BulkInsert(ToDataTable(values, insertableColumns), Connection, DAOContext.CurrentTransaction), cancellationToken);
+                    await Task.Run(() => provider.BulkInsert(ToDataTable(values, insertableColumns), Connection, DAOContext.CurrentTransaction), cancellationToken).ConfigureAwait(false);
                 }
             }
-            else if (SqlBuilder.SupportBatchInsert)
+            else
             {
-                int batchSize = (100 / insertableColumns.Count() + 1) * 100;
+                int columnCount = Math.Max(insertableColumns.Length, 1);
+                int batchSize = 100 / columnCount * 10;
+                if (batchSize == 0) batchSize = 1;
+
+                long nextManualId = 0;
+                bool idExists = false;
                 var batch = new List<T>(batchSize);
                 foreach (var item in values)
                 {
-                    batch.Add(item);
-                    if (batch.Count >= batchSize)
+                    if (!idExists && IdentityColumn is not null && !SqlBuilder.SupportBatchInsertWithIdentity)
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        await BatchInsertInternalAsync(batch, cancellationToken);
+                        var res = await InsertAsync(item);
+                        if (res)
+                        {
+                            nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)) + 1;
+                            idExists = true;
+                        }
+                        continue;
+                    }
+
+                    batch.Add(item);
+                    if (batch.Count == batchSize)
+                    {
+                        DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchInsert" + batchSize), _ => MakeBatchInsertCommand(batchSize));
+                        SetParameterValues(insertableColumns, batch, command);
+
+                        if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                        {
+                            object res = await command.ExecuteScalarAsync();
+                            if (res != null && res != DBNull.Value)
+                            {
+                                nextManualId = Convert.ToInt64(res);
+                                idExists = true;
+                            }
+                        }
+                        else
+                        {
+                            await command.ExecuteNonQueryAsync();
+                        }
+                        if (idExists) UpdateBatchIds(batch, ref nextManualId);
                         batch.Clear();
                     }
                 }
                 if (batch.Count > 0)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await BatchInsertInternalAsync(batch, cancellationToken);
+                    using DbCommandProxy command = MakeBatchInsertCommand(batch.Count);
+                    SetParameterValues(insertableColumns, batch, command);
+
+                    if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                    {
+                        object res = await command.ExecuteScalarAsync();
+                        if (res != null && res != DBNull.Value)
+                        {
+                            nextManualId = Convert.ToInt64(res);
+                            idExists = true;
+                        }
+                    }
+                    else
+                    {
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    if (idExists) UpdateBatchIds(batch, ref nextManualId);
+                    batch.Clear();
                 }
             }
-            else
-                foreach (T t in values)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await InsertAsync(t, cancellationToken);
-                }
         }
 
-        /// <summary>
-        /// 异步一次性批量插入实体集合
-        /// </summary>
-        /// <param name="values">要插入的实体集合</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <remarks>一次性批量插入不支持返回自增列</remarks>
-        protected virtual async Task BatchInsertInternalAsync(IEnumerable<T> values, CancellationToken cancellationToken)
-        {
-            using DbCommandProxy command = NewCommand();
-            StringBuilder strColumns = new StringBuilder();
-            List<string> valuesList = new List<string>();
-            var insertColumns = TableDefinition.Columns.Where(col => !col.IsIdentity && col.Mode.CanInsert());
-            foreach (ColumnDefinition column in insertColumns)
-            {
-                if (strColumns.Length != 0) strColumns.Append(",");
-                strColumns.Append(ToSqlName(column.Name));
-            }
-            int paramIndex = 0;
-            foreach (var item in values)
-            {
-                StringBuilder strValuesRepeat = new StringBuilder();
-                foreach (ColumnDefinition column in insertColumns)
-                {
-                    if (strValuesRepeat.Length != 0) strValuesRepeat.Append(",");
-                    strValuesRepeat.Append(ToSqlParam(paramIndex.ToString()));
-                    IDbDataParameter param = command.CreateParameter();
-                    param.Size = column.Length;
-                    param.DbType = column.DbType;
-                    param.Value = ConvertToDbValue(column.GetValue(item), column.DbType);
-                    param.ParameterName = ToParamName(paramIndex.ToString());
-                    command.Parameters.Add(param);
-                    paramIndex++;
-                }
-                valuesList.Add($"({strValuesRepeat})");
-            }
-
-            command.CommandText = SqlBuilder.BuildBatchInsertSql(FactTableName, strColumns.ToString(), valuesList);
-            await command.ExecuteNonQueryAsync(cancellationToken);
-        }
 
         /// <summary>
         /// 异步更新数据库中的实体对象。
@@ -620,35 +793,84 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果更新成功则返回 true。</returns>
         public async virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
         {
-            using var updateCommand = MakeUpdateCommand(t, timestamp);
-            return await updateCommand.ExecuteNonQueryAsync(cancellationToken) > 0;
+            var updateCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, timestamp == null ? "Update" : "UpdateWithTimestamp"), _ => MakeUpdateCommand(timestamp != null));
+            var updatableColumns = UpdatableColumns;
+            var keys = TableDefinition.Keys;
+            int updatableCount = updatableColumns.Length;
+            int keyCount = keys.Count;
+            var parameters = updateCommand.Parameters;
+            int paramIndex = 0;
+
+            for (int i = 0; i < updatableCount; i++)
+            {
+                var column = updatableColumns[i];
+                ((IDataParameter)parameters[paramIndex++]).Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+            }
+
+            for (int i = 0; i < keyCount; i++)
+            {
+                var key = keys[i];
+                ((IDataParameter)parameters[paramIndex++]).Value = ConvertToDbValue(key.GetValue(t), key.DbType);
+            }
+
+            if (timestamp != null)
+            {
+                var timestampCol = TableDefinition.Columns.First(c => c.IsTimestamp);
+                ((IDataParameter)parameters[paramIndex]).Value = ConvertToDbValue(timestamp, timestampCol.DbType);
+            }
+            return await updateCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
         }
 
         /// <summary>
-        /// 异步更新或插入实体对象到数据库中。
+        /// 异步执行更新或插入（Upsert）操作。
         /// </summary>
-        /// <param name="t">要更新或插入的实体对象。</param>
+        /// <param name="t">要处理的实体对象。</param>
         /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>表示异步操作的任务，返回操作结果，指示是插入还是更新。</returns>
+        /// <returns>表示异步操作的任务，结果为操作结果类型。</returns>
         public async virtual Task<UpdateOrInsertResult> UpdateOrInsertAsync(T t, CancellationToken cancellationToken = default)
         {
             if (t is null) throw new ArgumentNullException("t");
-            using var updateOrInsertCommand = MakeUpdateOrInsertCommand();
-            foreach (IDataParameter param in updateOrInsertCommand.Parameters)
+            var command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "UpdateOrInsert"), _ => MakeUpdateOrInsertCommand());
+            foreach (IDataParameter param in command.Parameters)
             {
-                ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
-                param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                if (param.Direction == ParameterDirection.Input || param.Direction == ParameterDirection.InputOutput)
+                {
+                    ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
+                    param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                }
             }
-            int ret = Convert.ToInt32(await updateOrInsertCommand.ExecuteScalarAsync(cancellationToken));
-            if (ret >= 0)
+
+            if (IdentityColumn != null)
             {
-                if (IdentityColumn is not null) IdentityColumn.SetValue(t, ret);
+                string propertyName = ToParamName(IdentityColumn.PropertyName);
+                IDataParameter param = null;
+                foreach (IDataParameter p in command.Parameters)
+                    if (p.Direction == ParameterDirection.Output)
+                    {
+                        param = p;
+                        break;
+                    }
+                if (param != null)
+                {
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    int ret = Convert.ToInt32(param.Value);
+                    if (ret > 0)
+                    {
+                        IdentityColumn.SetValue(t, ConvertFromDbValue(param.Value, IdentityColumn.PropertyType));
+                        return UpdateOrInsertResult.Inserted;
+                    }
+                    return UpdateOrInsertResult.Updated;
+                }
+            }
+
+            object res = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            int retVal = Convert.ToInt32(res);
+            if (retVal > 0)
+            {
+                if (IdentityColumn is not null) IdentityColumn.SetValue(t, ConvertFromDbValue(res, IdentityColumn.PropertyType));
                 return UpdateOrInsertResult.Inserted;
             }
-            else
-            {
-                return UpdateOrInsertResult.Updated;
-            }
+            return UpdateOrInsertResult.Updated;
         }
 
 
@@ -661,7 +883,7 @@ namespace LiteOrm
         public async virtual Task<bool> DeleteAsync(T t, CancellationToken cancellationToken = default)
         {
             if (t is null) throw new ArgumentNullException("t");
-            return await DeleteByKeysAsync(GetKeyValues(t), cancellationToken);
+            return await DeleteByKeysAsync(GetKeyValues(t), cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -673,9 +895,16 @@ namespace LiteOrm
         public async virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var deleteCommand = MakeDeleteCommand(keys);
-            return await deleteCommand.ExecuteNonQueryAsync(cancellationToken) > 0;
+            var deleteCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "Delete"), _ => MakeDeleteCommand());
+            int i = 0;
+            foreach (IDataParameter param in deleteCommand.Parameters)
+            {
+                param.Value = ConvertToDbValue(keys[i], Table.Keys[i].DbType);
+                i++;
+            }
+            return await deleteCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
         }
+
 
         /// <summary>
         /// 异步根据条件删除对象。
@@ -686,19 +915,20 @@ namespace LiteOrm
         public async virtual Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default)
         {
             using var command = MakeConditionCommand($"delete from {ParamTable} {ParamWhere}", expr);
-            return await command.ExecuteNonQueryAsync(cancellationToken);
+            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
+
 
         // non-generic async wrappers
         async Task<bool> IObjectDAOAsync.InsertAsync(object o, CancellationToken cancellationToken)
         {
-            return await InsertAsync((T)o, cancellationToken);
+            return await InsertAsync((T)o, cancellationToken).ConfigureAwait(false);
         }
 
         async Task IObjectDAOAsync.BatchInsertAsync(IEnumerable values, CancellationToken cancellationToken)
         {
             if (values is IEnumerable<T>)
-                await BatchInsertAsync(values as IEnumerable<T>, cancellationToken);
+                await BatchInsertAsync(values as IEnumerable<T>, cancellationToken).ConfigureAwait(false);
             else
             {
                 List<T> list = new List<T>();
@@ -706,19 +936,15 @@ namespace LiteOrm
                 {
                     list.Add(entity);
                 }
-                await BatchInsertAsync(list, cancellationToken);
+                await BatchInsertAsync(list, cancellationToken).ConfigureAwait(false);
             }
         }
 
         async Task<bool> IObjectDAOAsync.UpdateAsync(object o, CancellationToken cancellationToken)
         {
-            return await UpdateAsync((T)o, null, cancellationToken);
+            return await UpdateAsync((T)o, null, cancellationToken).ConfigureAwait(false);
         }
 
-        async Task<UpdateOrInsertResult> IObjectDAOAsync.UpdateOrInsertAsync(object o, CancellationToken cancellationToken)
-        {
-            return await UpdateOrInsertAsync((T)o, cancellationToken);
-        }
 
         /// <summary>
         /// 异步根据条件更新数据
@@ -741,7 +967,7 @@ namespace LiteOrm
             string updateSql = $"update {ParamTable} set {String.Join(",", strSets.ToArray())} {ToWhereSql(expr.ToSql(SqlBuildContext, SqlBuilder, paramValues))}";
 
             using var command = MakeNamedParamCommand(updateSql, paramValues);
-            return await command.ExecuteNonQueryAsync(cancellationToken);
+            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -761,23 +987,25 @@ namespace LiteOrm
             {
                 expr.Add(Expr.Property(column.PropertyName, keys[i++]));
             }
-            return await UpdateAllValuesAsync(values, expr, cancellationToken) > 0;
+            return await UpdateAllValuesAsync(values, expr, cancellationToken).ConfigureAwait(false) > 0;
         }
+
 
         async Task<bool> IObjectDAOAsync.DeleteAsync(object o, CancellationToken cancellationToken)
         {
-            return await DeleteAsync((T)o, cancellationToken);
+            return await DeleteAsync((T)o, cancellationToken).ConfigureAwait(false);
         }
 
         async Task<bool> IObjectDAOAsync.DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken)
         {
-            return await DeleteByKeysAsync(keys, cancellationToken);
+            return await DeleteByKeysAsync(keys, cancellationToken).ConfigureAwait(false);
         }
 
         async Task<int> IObjectDAOAsync.DeleteAsync(Expr expr, CancellationToken cancellationToken)
         {
-            return await DeleteAsync(expr, cancellationToken);
+            return await DeleteAsync(expr, cancellationToken).ConfigureAwait(false);
         }
+
 
         #endregion
     }

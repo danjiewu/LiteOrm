@@ -1,5 +1,5 @@
 ﻿using LiteOrm.Common;
-using LiteOrm.SqlBuilder;
+using LiteOrm;
 using System;
 using System.Collections.Generic;
 

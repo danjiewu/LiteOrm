@@ -59,7 +59,7 @@ namespace LiteOrm.Common
             if (Value is null) return "NULL";
             else if (Value is IEnumerable enumerable && !(Value is string))
             {
-                StringBuilder sb = new StringBuilder(); 
+                StringBuilder sb = new StringBuilder();
                 foreach (var item in enumerable)
                 {
                     if (sb.Length > 0) sb.Append(",");
@@ -76,53 +76,9 @@ namespace LiteOrm.Common
         /// </summary>
         public override bool Equals(object obj)
         {
-            if (!(obj is ValueExpr vs)) return false;
-            return ValuesEquals(Value, vs.Value);
-        }
-
-        internal static bool ValuesEquals(object val1, object val2)
-        {
-            if (val1 == null) return val2 == null;
-            if (val2 == null) return false;
-
-            if (val1.Equals(val2)) return true;
-
-            // 处理数值比较（例如 int 和 long 的比较）
-            if (IsNumeric(val1) && IsNumeric(val2))
-            {
-                try
-                {
-                    return Convert.ToDecimal(val1) == Convert.ToDecimal(val2);
-                }
-                catch
-                {
-                    return Convert.ToDouble(val1) == Convert.ToDouble(val2);
-                }
-            }
-
-            // 处理集合相等（用于 IN 查询）
-            if (val1 is IEnumerable valSeq && val2 is IEnumerable objSeq && !(val1 is string) && !(val2 is string))
-            {
-                var enum1 = valSeq.GetEnumerator();
-                var enum2 = objSeq.GetEnumerator();
-                while (true)
-                {
-                    bool next1 = enum1.MoveNext();
-                    bool next2 = enum2.MoveNext();
-                    if (next1 != next2) return false;
-                    if (!next1) return true;
-                    if (!ValuesEquals(enum1.Current, enum2.Current)) return false;
-                }
-            }
-
-            return false;
-        }
-
-        internal static bool IsNumeric(object value)
-        {
-            return value is sbyte || value is byte || value is short || value is ushort ||
-                   value is int || value is uint || value is long || value is ulong ||
-                   value is float || value is double || value is decimal;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj is not ValueExpr vs) return false;
+            return ValueEquality.ValueEquals(Value, vs.Value);
         }
 
         /// <summary>
@@ -130,30 +86,9 @@ namespace LiteOrm.Common
         /// </summary>
         public override int GetHashCode()
         {
-            return OrderedHashCodes(GetType().GetHashCode(), GetValueHashCode(Value));
+            return OrderedHashCodes(GetType().GetHashCode(), ValueEquality.GetValueHashCode(Value));
         }
 
-        internal static int GetValueHashCode(object val)
-        {
-            if (val == null) return 0;
-
-            if (IsNumeric(val))
-            {
-                try { return Convert.ToDecimal(val).GetHashCode(); }
-                catch { return Convert.ToDouble(val).GetHashCode(); }
-            }
-
-            if (val is IEnumerable enumerable && !(val is string))
-            {
-                int h = 0;
-                foreach (var item in enumerable)
-                {
-                    h = (h * HashSeed) + GetValueHashCode(item);
-                }
-                return h;
-            }
-
-            return val.GetHashCode();
-        }
     }
 }
+

@@ -34,10 +34,10 @@ namespace LiteOrm.Common
         bool Update(T o, object timestamp = null);
 
         /// <summary>
-        /// 更新或添加对象，若存在则更新，若不存在则添加
+        /// 更新或插入对象
         /// </summary>
-        /// <param name="o">待更新或添加的对象</param>
-        /// <returns>是否更新或添加</returns>
+        /// <param name="o">待处理的对象</param>
+        /// <returns>操作结果</returns>
         UpdateOrInsertResult UpdateOrInsert(T o);
 
         /// <summary>
@@ -75,13 +75,6 @@ namespace LiteOrm.Common
         /// <param name="o">待更新的对象</param>
         /// <returns>是否成功更新</returns>
         bool Update(Object o);
-
-        /// <summary>
-        /// 更新或添加对象，若存在则更新，若不存在则添加
-        /// </summary>
-        /// <param name="o">待更新或添加的对象</param>
-        /// <returns>是否更新或添加</returns>
-        UpdateOrInsertResult UpdateOrInsert(Object o);
 
         /// <summary>
         /// 根据条件更新数据

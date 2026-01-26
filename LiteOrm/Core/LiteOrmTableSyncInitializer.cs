@@ -1,6 +1,6 @@
 using Autofac;
 using LiteOrm.Common;
-using LiteOrm.SqlBuilder;
+using LiteOrm;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;

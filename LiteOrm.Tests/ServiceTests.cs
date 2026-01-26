@@ -101,6 +101,31 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public async Task EntityService_BatchInsert_ShouldWork()
+        {
+            // Arrange
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+            var users = Enumerable.Range(1, 10).Select(i => new TestUser
+            {
+                Name = $"Batch User {i}",
+                Age = 20 + i,
+                CreateTime = DateTime.Now
+            }).ToList();
+
+            // Act
+            await service.BatchInsertAsync(users);
+            var retrievedUsers = await viewService.SearchAsync(u => u.Name.StartsWith("Batch User"));
+
+            // Assert
+            Assert.Equal(10, retrievedUsers.Count);
+            foreach (var user in retrievedUsers)
+            {
+                Assert.Contains("Batch User", user.Name);
+            }
+        }
+
+        [Fact]
         public async Task EntityViewService_JoinQuery_ShouldWork()
         {
             // Arrange
@@ -222,7 +247,36 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public async Task EntityService_BatchInsert_WithIdentity_ShouldPopulateIds()
+        {
+            // Arrange
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+            
+            var users = new List<TestUser>();
+            for (int i = 1; i <= 5; i++)
+            {
+                users.Add(new TestUser { Name = $"BatchId {i}", Age = 20 + i, CreateTime = DateTime.Now });
+            }
+
+            // Act
+            await service.BatchInsertAsync(users);
+
+            // Assert
+            Assert.All(users, u => Assert.True(u.Id > 0));
+            // Verify sequential IDs
+            for (int i = 1; i < users.Count; i++)
+            {
+                Assert.Equal(users[i - 1].Id + 1, users[i].Id);
+            }
+
+            // Cleanup
+            await service.BatchDeleteAsync(users);
+        }
+
+        [Fact]
         public async Task EntityService_UpdateValues_ShouldWork()
+
         {
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();

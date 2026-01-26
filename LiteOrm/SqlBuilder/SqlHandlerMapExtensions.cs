@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using LiteOrm.Common;
 
-namespace LiteOrm.SqlBuilder
+namespace LiteOrm
 {
     /// <summary>
     /// SqlBuilder À©Õ¹·½·¨
@@ -17,9 +17,9 @@ namespace LiteOrm.SqlBuilder
         /// <param name="functionName"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, string functionName, Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
+        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, string functionName, Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : SqlBuilder
         {
-            BaseSqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, handler);
+            SqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, handler);
         }
 
         /// <summary>
@@ -30,11 +30,11 @@ namespace LiteOrm.SqlBuilder
         /// <param name="functionNames"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, IEnumerable<string> functionNames, Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
+        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, IEnumerable<string> functionNames, Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : SqlBuilder
         {
             foreach (string functionName in functionNames)
             {
-                BaseSqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, handler);
+                SqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, handler);
             }
         }
         /// <summary>
@@ -45,9 +45,9 @@ namespace LiteOrm.SqlBuilder
         /// <param name="functionName"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public static bool TryGetFunctionSqlHandler<T>(this T sqlBuilder, string functionName, out Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : BaseSqlBuilder
+        public static bool TryGetFunctionSqlHandler<T>(this T sqlBuilder, string functionName, out Func<string, IList<KeyValuePair<string, Expr>>, string> handler) where T : SqlBuilder
         {
-            return BaseSqlBuilder.GetSqlHandlerMap<T>().TryGetFunctionSqlHandler(functionName, out handler);
+            return SqlBuilder.GetSqlHandlerMap<T>().TryGetFunctionSqlHandler(functionName, out handler);
         }
     }
 }

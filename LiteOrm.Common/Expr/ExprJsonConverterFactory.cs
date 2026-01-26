@@ -275,8 +275,10 @@ namespace LiteOrm.Common
                 {
                     case JsonTokenType.String: return reader.GetString();
                     case JsonTokenType.Number:
-                        if (reader.TryGetInt64(out long l)) return l;
-                        return reader.GetDouble();
+                        if (reader.TryGetInt32(out int i)) return i;
+                        else if (reader.TryGetInt64(out long l)) return l;
+                        else if (reader.TryGetDecimal(out decimal d)) return d;
+                        else return reader.GetDouble();
                     case JsonTokenType.True: return true;
                     case JsonTokenType.False: return false;
                     case JsonTokenType.Null: return null;

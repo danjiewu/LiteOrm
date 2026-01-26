@@ -203,11 +203,19 @@ namespace LiteOrm
         /// <returns>一个 <see cref="IDataReader"/> 对象。</returns>
         public IDataReader ExecuteReader(CommandBehavior behavior)
         {
-            PreExcuteCommand(ExcuteType.ExecuteReader);
-            IDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), Context.AcquireScope());
-            PostExcuteCommand(ExcuteType.ExecuteReader);
-            return ret;
-
+            var scope = Context.AcquireScope();
+            try
+            {
+                PreExcuteCommand(ExcuteType.ExecuteReader);
+                IDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), scope);
+                PostExcuteCommand(ExcuteType.ExecuteReader);
+                return ret;
+            }
+            catch
+            {
+                scope.Dispose();
+                throw;
+            }
         }
 
         /// <summary>
@@ -216,10 +224,17 @@ namespace LiteOrm
         /// <returns>一个 <see cref="IDataReader"/> 对象。</returns>
         public IDataReader ExecuteReader()
         {
-            PreExcuteCommand(ExcuteType.ExecuteReader);
-            IDataReader ret = new AutoLockDataReader(Target.ExecuteReader(), Context.AcquireScope());
-            PostExcuteCommand(ExcuteType.ExecuteReader);
-            return ret;
+            return ExecuteReader(CommandBehavior.Default);
+        }
+
+        /// <summary>
+        /// 异步执行 SQL 语句并返回 <see cref="IDataReader"/>。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，其结果为一个 <see cref="IDataReader"/> 对象。</returns>
+        public Task<IDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
+        {
+            return ExecuteReaderAsync(CommandBehavior.Default, cancellationToken);
         }
 
         /// <summary>
@@ -229,12 +244,22 @@ namespace LiteOrm
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，其结果为一个 <see cref="IDataReader"/> 对象。</returns>
         public async Task<IDataReader> ExecuteReaderAsync(CommandBehavior behavior = CommandBehavior.Default, CancellationToken cancellationToken = default)
-        {            
-            PreExcuteCommand(ExcuteType.ExecuteReader);
-            var task = Target.ExecuteReaderAsync(behavior, cancellationToken);
-            IDataReader ret = new AutoLockDataReader(await task.ConfigureAwait(false), await Context.AcquireScopeAsync(cancellationToken).ConfigureAwait(false));
-            PostExcuteCommand(ExcuteType.ExecuteReader);
-            return ret;
+        {
+            var scope = await Context.AcquireScopeAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                PreExcuteCommand(ExcuteType.ExecuteReader);
+                IDataReader reader = await Target.ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
+                IDataReader ret = new AutoLockDataReader(reader, scope);
+                PostExcuteCommand(ExcuteType.ExecuteReader);
+                return ret;
+            }
+
+            catch
+            {
+                scope.Dispose();
+                throw;
+            }
         }
 
         /// <summary>
