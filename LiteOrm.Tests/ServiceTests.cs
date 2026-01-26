@@ -322,13 +322,14 @@ namespace LiteOrm.Tests
         {
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateValue", Age = 10, CreateTime = DateTime.Now };
             await service.InsertAsync(user);
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await service.UpdateValuesAsync(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateValue"), null);
+            int affected = await dataDao.UpdateAllValuesAsync(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateValue"));
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
             // Assert

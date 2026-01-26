@@ -120,24 +120,6 @@ namespace LiteOrm.Common
         Task<UpdateOrInsertResult> UpdateOrInsertAsync(object o, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// 异步根据条件更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="expr">更新的条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，返回更新的记录数</returns>
-        Task<int> UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr expr, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// 异步根据主键更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="keys">主键</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，返回是否成功</returns>
-        Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> values, object[] keys, CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// 异步批量更新或插入对象
         /// </summary>
         /// <param name="values">待处理的对象集合</param>

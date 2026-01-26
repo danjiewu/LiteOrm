@@ -33,7 +33,7 @@ namespace LiteOrm
     /// 该类通过依赖注入框架自动注册为单例。
     /// </remarks>
     [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
-    public abstract class ObjectDAOBase
+    public abstract class DAOBase
     {
         #region 预定义变量
         /// <summary>
@@ -119,20 +119,7 @@ namespace LiteOrm
         /// <summary>
         /// 表名参数
         /// </summary>
-        public ReadOnlyCollection<string> TableNameArgs { get; internal set; }
-
-        /// <summary>
-        /// 使用指定的参数创建新的DAO实例
-        /// </summary>
-        /// <param name="args">表名参数</param>
-        /// <returns>新的DAO实例</returns>
-        public object WithArgs(params string[] args)
-        {
-            ObjectDAOBase newDAO = MemberwiseClone() as ObjectDAOBase;
-            newDAO.TableNameArgs = args.ToList().AsReadOnly();
-            newDAO._sqlBuildContext = null;
-            return newDAO;
-        }
+        public string[] TableNameArgs { get; internal set; }
 
         private SqlBuildContext _sqlBuildContext;
         /// <summary>
@@ -288,7 +275,7 @@ namespace LiteOrm
             StringBuilder orderBy = new StringBuilder();
             if (orders is null || orders.Count == 0)
             {
-                if (TableDefinition.Keys.Count != 0)
+                if (TableDefinition.Keys.Length != 0)
                 {
                     foreach (ColumnDefinition key in TableDefinition.Keys)
                     {
@@ -436,7 +423,7 @@ namespace LiteOrm
             ThrowExceptionIfNoKeys();
             StringBuilder strConditions = new StringBuilder();
             var keys = Table.Keys;
-            int count = keys.Count;
+            int count = keys.Length;
             for (int i = 0; i < count; i++)
             {
                 ColumnDefinition key = keys[i];
@@ -534,7 +521,7 @@ namespace LiteOrm
         /// <exception cref="Exception"></exception>
         protected void ThrowExceptionIfNoKeys()
         {
-            if (TableDefinition.Keys.Count == 0)
+            if (TableDefinition.Keys.Length == 0)
             {
                 throw new Exception($"No key definition found in type \"{Table.DefinitionType.FullName}\", please set the value of property \"IsPrimaryKey\" of key column to true.");
             }
@@ -559,7 +546,7 @@ namespace LiteOrm
         /// <param name="keys"></param>
         protected void ThrowExceptionIfWrongKeys(params object[] keys)
         {
-            if (keys.Length != TableDefinition.Keys.Count)
+            if (keys.Length != TableDefinition.Keys.Length)
             {
                 if (_exceptionWrongKeys is null)
                 {

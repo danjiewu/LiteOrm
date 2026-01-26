@@ -35,7 +35,7 @@ namespace LiteOrm
     /// 它支持与 TableJoinAttribute 定义的多表关联进行查询。
     /// </remarks>
     [AutoRegister(ServiceLifetime.Scoped)]
-    public partial class ObjectViewDAO<T> : ObjectDAOBase, IObjectViewDAO<T> where T : new()
+    public partial class ObjectViewDAO<T> : DAOBase, IObjectViewDAO<T> where T : new()
     {
         #region 方法
 

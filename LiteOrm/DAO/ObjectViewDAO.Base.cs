@@ -1,10 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Data;
-using System.Collections;
 using LiteOrm.Common;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,6 +28,19 @@ namespace LiteOrm
         public override SqlTable Table
         {
             get { return TableInfoProvider.GetTableView(ObjectType); }
+        }
+
+        /// <summary>
+        /// 使用指定的参数创建新的DAO实例
+        /// </summary>
+        /// <param name="args">表名参数</param>
+        /// <returns>新的DAO实例</returns>
+        public ObjectViewDAO<T> WithArgs(params string[] args)
+        {
+            ObjectViewDAO<T> newDAO = MemberwiseClone() as ObjectViewDAO<T>;
+            newDAO.TableNameArgs = args;
+            newDAO.SqlBuildContext = null;
+            return newDAO;
         }
         #endregion
 

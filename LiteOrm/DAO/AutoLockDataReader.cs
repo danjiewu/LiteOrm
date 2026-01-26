@@ -163,15 +163,20 @@ namespace LiteOrm
         /// 异步将读取器推进到结果集的下一条记录。
         /// </summary>
         /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>如果还有更多行，则为 true；否则为 false。</returns>
-        public async Task<bool> ReadAsync(CancellationToken cancellationToken = default)
+        /// <returns>表示异步操作的任务，其结果为如果还有更多行则为 true，否则为 false。</returns>
+        public Task<bool> ReadAsync(CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
-            if (_innerReader is DbDataReader dbReader)
+
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<bool>(cancellationToken);
+
+            if (_innerReader is DbDataReader dbDataReader)
             {
-                return await dbReader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                return dbDataReader.ReadAsync(cancellationToken);
             }
-            return _innerReader.Read();
+
+            return Task.FromResult(_innerReader.Read());
         }
 
         /// <summary>

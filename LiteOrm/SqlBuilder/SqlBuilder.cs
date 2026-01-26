@@ -613,6 +613,32 @@ namespace LiteOrm
             return $"CREATE {unique}INDEX {ToSqlName(indexName)} ON {ToSqlName(tableName)} ({ToSqlName(column.Name)})";
         }
 
+        public virtual string BuildBatchIDExistsSql(string tableName, ColumnDefinition[] keyColumns, int batchSize)
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < keyColumns.Length; i++)
+            {
+                if (i > 0) sb.Append(",");
+                sb.Append(ToSqlName(keyColumns[i].Name));
+            }
+            string sqlKeys = sb.ToString();
+            sb = new StringBuilder($"SELECT {sqlKeys} FROM {ToSqlName(tableName)} WHERE {sqlKeys} IN (");
+            for (int b = 0; b < batchSize; b++)
+            {
+                if (b > 0) sb.Append(",");
+                if (keyColumns.Length > 1) sb.Append("(");
+                for (int i = 0; i < keyColumns.Length; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    string keyParam = "p" + b;
+                    sb.Append(ToSqlParam(keyParam));
+                }
+                if (keyColumns.Length > 1) sb.Append(")");
+            }
+            sb.Append(")");
+            return sb.ToString();
+        }
+
         /// <summary>
         /// 生成批量更新的 SQL 语句。默认采用 CASE WHEN 方式实现。
         /// 当主键为单列时，WHERE 条件会优化为 IN 语句。

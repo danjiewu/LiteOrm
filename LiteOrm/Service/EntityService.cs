@@ -23,10 +23,9 @@ namespace LiteOrm.Service
     /// 2. 更新操作 - Update() 和 UpdateAsync() 方法用于更新现有的实体
     /// 3. 删除操作 - Delete() 和 DeleteAsync() 方法用于删除指定的实体
     /// 4. 批量操作 - Batch()、BatchInsert()、BatchUpdate() 等批量操作方法
-    /// 5. 字段级更新 - UpdateValues() 方法允许更新指定的字段
-    /// 6. 异步支持 - 提供基于 Task 的异步方法以支持异步编程
-    /// 7. 事务支持 - 通过 SessionManager 支持事务处理
-    /// 8. 查询操作 - 继承自 EntityViewService，提供各种查询能力
+    /// 5. 异步支持 - 提供基于 Task 的异步方法以支持异步编程
+    /// 6. 事务支持 - 通过 SessionManager 支持事务处理
+    /// 7. 查询操作 - 继承自 EntityViewService，提供各种查询能力
     /// 
     /// 该类继承自 EntityViewService&lt;TView&gt; 并实现了 IEntityService&lt;T&gt; 和 IEntityServiceAsync&lt;T&gt; 接口，
     /// 提供强类型的业务服务。
@@ -62,7 +61,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 获取或设置实体数据访问对象。
         /// </summary>
-        public IObjectDAO<T> ObjectDAO { get; set; }
+        public ObjectDAO<T> ObjectDAO { get; set; }
 
         #region IEntityService<T> 成员
 
@@ -92,36 +91,6 @@ namespace LiteOrm.Service
         public virtual bool Update(T entity)
         {
             return UpdateCore(entity);
-        }
-
-        /// <summary>
-        /// 根据条件更新多个字段的值。
-        /// </summary>
-        /// <remarks>
-        /// 此方法允许通过 Lambda 表达式条件批量更新满足条件的所有记录的指定字段。
-        /// </remarks>
-        /// <param name="updateValues">要更新的字段及其值。键为字段名，值为新的字段值。</param>
-        /// <param name="expr">更新条件表达式，用于筛选要更新的记录。</param>
-        /// <param name="tableArgs">表名参数，用于支持分表场景。</param>
-        /// <returns>更新的记录数。</returns>
-        public virtual int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr, params string[] tableArgs)
-        {
-            return ObjectDAO.WithArgs(tableArgs).UpdateAllValues(updateValues, expr);
-        }
-
-        /// <summary>
-        /// 根据主键更新多个字段的值。
-        /// </summary>
-        /// <remarks>
-        /// 此方法根据实体的主键值快速更新指定字段，性能优于基于整个实体的更新操作。
-        /// </remarks>
-        /// <param name="updateValues">要更新的字段及其值。键为字段名，值为新的字段值。</param>
-        /// <param name="keys">主键值数组，对应实体的主键列。</param>
-        /// <param name="tableArgs">表名参数，用于支持分表场景。</param>
-        /// <returns>是否更新成功。</returns>
-        public virtual bool UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, object[] keys, params string[] tableArgs)
-        {
-            return ObjectDAO.WithArgs(tableArgs).UpdateValues(updateValues, keys);
         }
 
         /// <summary>
@@ -821,19 +790,6 @@ namespace LiteOrm.Service
         #region IEntityServiceAsync<T> 成员
 
         /// <summary>
-        /// 异步根据条件更新多个字段的值。
-        /// </summary>
-        /// <param name="updateValues">要更新的字段及其值。</param>
-        /// <param name="expr">更新条件。</param>
-        /// <param name="tableArgs">表名参数。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>受影响的行数。</returns>
-        public async Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr, string[] tableArgs, CancellationToken cancellationToken = default)
-        {
-            return await ObjectDAO.WithArgs(tableArgs).UpdateAllValuesAsync(updateValues, expr, cancellationToken);
-        }
-
-        /// <summary>
         /// 异步根据条件删除实体。
         /// </summary>
         /// <param name="expr">删除条件。</param>
@@ -843,19 +799,6 @@ namespace LiteOrm.Service
         public async Task<int> DeleteAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await ObjectDAO.WithArgs(tableArgs).DeleteAsync(expr, cancellationToken);
-        }
-
-        /// <summary>
-        /// 异步根据主键更新多个字段的值。
-        /// </summary>
-        /// <param name="updateValues">要更新的字段及其值。</param>
-        /// <param name="keys">主键值。</param>
-        /// <param name="tableArgs">表名参数。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>是否更新成功。</returns>
-        public async Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, object[] keys, string[] tableArgs, CancellationToken cancellationToken = default)
-        {            
-            return await ObjectDAO.WithArgs(tableArgs).UpdateValuesAsync(updateValues, keys, cancellationToken);
         }
 
         /// <summary>

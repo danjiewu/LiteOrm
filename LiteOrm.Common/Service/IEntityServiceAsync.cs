@@ -114,26 +114,6 @@ namespace LiteOrm.Service
         Task<bool> UpdateAsync(object entity, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// 异步根据条件和字段内容更新值
-        /// </summary>
-        /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
-        /// <param name="expr">更新条件</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>更改记录数</returns>
-        Task<int> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr, string[] tableArgs, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// 异步根据主键和字段内容更新值
-        /// </summary>
-        /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
-        /// <param name="keys">主键</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>操作结果，true表示成功，false表示失败</returns>
-        Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> updateValues, object[] keys, string[] tableArgs, CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// 异步更新或新增实体（实体存在则更新，否则新增）
         /// </summary>
         /// <param name="entity">实体</param>

@@ -12,22 +12,6 @@ namespace LiteOrm.Common
     public interface ISqlBuilder
     {
         /// <summary>
-        /// 是否支持在插入时启用标识列插入。
-        /// </summary>
-        bool SupportIdentityInsert { get; }
-        /// <summary>
-        /// 生成分页查询的 SQL 语句。
-        /// </summary>
-        /// <param name="select">SELECT 子句（列或表达式）。</param>
-        /// <param name="from">FROM 子句（表或子查询）。</param>
-        /// <param name="where">WHERE 子句（可为 null 或空）。</param>
-        /// <param name="orderBy">ORDER BY 子句（可为 null 或空）。</param>
-        /// <param name="startIndex">分页起始索引（从 0 开始）。</param>
-        /// <param name="sectionSize">分页大小（每页行数）。</param>
-        /// <returns>返回目标数据库可执行的分页 SQL 字符串。</returns>
-        string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize);
-
-        /// <summary>
         /// 替换 SQL 中的命名占位符或标识符为目标数据库的命名格式。
         /// </summary>
         /// <param name="sql">原始 SQL 字符串。</param>
@@ -55,14 +39,6 @@ namespace LiteOrm.Common
         /// <param name="name">源名称。</param>
         /// <returns>返回适用于 SQL 的名称。</returns>
         string ToSqlName(string name);
-
-        /// <summary>
-        /// 将表名和列名拼接并转换为数据库合法名称 (如 [Table].[Column])。
-        /// </summary>
-        /// <param name="tableName">表名。</param>
-        /// <param name="columnName">列名。</param>
-        /// <returns>返回拼接后的合法名称。</returns>
-        string ToSqlQualifiedName(string tableName, string columnName);
 
         /// <summary>
         /// 根据 SQL 对象类型生成对应的 SQL 表达式片段。
@@ -123,78 +99,6 @@ namespace LiteOrm.Common
         /// <param name="type">要映射的 .NET 类型。</param>
         /// <returns>返回对应的 <see cref="DbType"/> 值。</returns>
         DbType GetDbType(Type type);
-
-        /// <summary>
-        /// 生成批量插入的 SQL 语句。
-        /// </summary>
-        /// <param name="tableName">目标表名。</param>
-        /// <param name="columns">插入的列名集合（逗号分隔的 SQL 名称）。</param>
-        /// <param name="valuesList">每个实体的占位符集合（例如 "(@0,@1,@2)"）。</param>
-        /// <returns>返回目标数据库可执行的批量插入 SQL 字符串。</returns>
-        string BuildBatchInsertSql(string tableName, string columns, List<string> valuesList);
-
-        /// <summary>
-        /// 生成创建表的 SQL 语句。
-        /// </summary>
-        /// <param name="tableName">表名。</param>
-        /// <param name="columns">列定义集合。</param>
-        /// <returns>返回创建表的 SQL 字符串。</returns>
-        string BuildCreateTableSql(string tableName, IEnumerable<ColumnDefinition> columns);
-
-
-        /// <summary>
-        /// 生成检查表是否存在的 SQL 语句。
-        /// </summary>
-        /// <param name="tableName">表名。</param>
-        /// <returns>返回检查表是否存在的 SQL 字符串。</returns>
-        string BuildTableExistsSql(string tableName);
-
-        /// <summary>
-        /// 生成更新或插入（Upsert）的 SQL 语句。
-        /// </summary>
-        /// <param name="command">数据库命令对象。</param>
-        /// <param name="tableName">表名。</param>
-        /// <param name="insertColumns">插入列名集合。</param>
-        /// <param name="insertValues">插入占位符集合。</param>
-        /// <param name="updateSets">更新赋值集合。</param>
-        /// <param name="keyColumns">主键或唯一键列定义集合。</param>
-        /// <param name="identityColumn">标识列定义。</param>
-        /// <returns>返回目标数据库可执行的 Upsert SQL 字符串。</returns>
-        string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn);
-
-        /// <summary>
-        /// 生成添加列的 SQL 语句。
-        /// </summary>
-        /// <param name="tableName">表名。</param>
-        /// <param name="column">列定义。</param>
-        /// <returns>返回添加列的 SQL 字符串。</returns>
-        string BuildAddColumnSql(string tableName, ColumnDefinition column);
-
-        /// <summary>
-        /// 生成添加多个列的 SQL 语句。
-        /// </summary>
-        /// <param name="tableName">表名。</param>
-        /// <param name="columns">列定义集合。</param>
-        /// <returns>返回添加列的 SQL 字符串。</returns>
-        string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns);
-
-        /// <summary>
-        /// 生成创建索引的 SQL 语句。
-        /// </summary>
-        /// <param name="tableName">表名。</param>
-        /// <param name="column">列定义。</param>
-        /// <returns>返回创建索引的 SQL 字符串。</returns>
-        string BuildCreateIndexSql(string tableName, ColumnDefinition column);
-
-        /// <summary>
-        /// 生成批量更新的 SQL 语句。
-        /// </summary>
-        /// <param name="tableName">目标表名。</param>
-        /// <param name="updatableColumns">可更新列集合。</param>
-        /// <param name="keyColumns">主键列集合。</param>
-        /// <param name="batchSize">批次大小。</param>
-        /// <returns>返回目标数据库可执行的批量更新 SQL 字符串。</returns>
-        string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize);
 
         /// <summary>
         /// 获取带参数的表名。

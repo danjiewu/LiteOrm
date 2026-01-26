@@ -60,7 +60,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 获取或设置用于视图查询的数据访问对象。
         /// </summary>
-        public IObjectViewDAO<TView> ObjectViewDAO { get; set; }
+        public ObjectViewDAO<TView> ObjectViewDAO { get; set; }
 
         #region IEntityViewService<TView> 成员
 

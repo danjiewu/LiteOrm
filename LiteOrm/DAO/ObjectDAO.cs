@@ -31,7 +31,7 @@ namespace LiteOrm
     /// 提供强类型的数据访问接口。
     /// </remarks>
     [AutoRegister(ServiceLifetime.Scoped)]
-    public partial class ObjectDAO<T> : ObjectDAOBase, IObjectDAO<T>
+    public partial class ObjectDAO<T> : DAOBase, IObjectDAO<T>
     {
         #region CRUD
         /// <summary>
@@ -95,7 +95,7 @@ namespace LiteOrm
                 int columnCount = insertableColumns.Length;
                 if (columnCount == 0) return;
                 int batchSize = DAOContext.ParamCountLimit / 10 / columnCount * 10;
-                if (batchSize == 0) batchSize = 1;
+                if (batchSize == 0) batchSize = Math.Max(DAOContext.ParamCountLimit / columnCount, 1);
 
                 long nextManualId = 0;
                 bool idExists = false;
@@ -172,7 +172,7 @@ namespace LiteOrm
             var updatableColumns = UpdatableColumns;
             var keys = TableDefinition.Keys;
             int updatableCount = updatableColumns.Length;
-            int keyCount = keys.Count;
+            int keyCount = keys.Length;
             var parameters = updateCommand.Parameters;
             int paramIndex = 0;
 
@@ -235,65 +235,113 @@ namespace LiteOrm
 
         /// <summary>
         /// 批量更新或插入实体对象。
-        /// 当主键为单列时，先查询已存在记录进行筛选，再分批执行插入和更新，提高效率。
+        /// 通过分批查询已存在记录进行筛选，再分批执行插入和更新，提高效率。
         /// </summary>
         /// <param name="values">要处理的实体对象集合。</param>
         public virtual void BatchUpdateOrInsert(IEnumerable<T> values)
         {
             if (values is null) throw new ArgumentNullException(nameof(values));
 
+            var list = values.ToList();
+            if (list.Count == 0) return;
+
             var keyColumns = TableDefinition.Keys;
-            if (keyColumns.Count == 1)
+            if (keyColumns.Length == 0)
             {
-                var keyColumn = keyColumns[0];
-                var list = values.ToList();
-                if (list.Count == 0) return;
+                BatchInsert(list);
+                return;
+            }
 
-                var existingIds = new HashSet<object>();
-                int paramLimit = DAOContext.ParamCountLimit;
+            var existingIds = new HashSet<List<object>>(new ListEqualityComparer<object>());
+            int paramsPerKey = keyColumns.Length;
+            int batchSize = DAOContext.ParamCountLimit / 10 / paramsPerKey * 10;
+            if (batchSize == 0) batchSize = 1;
 
-                for (int i = 0; i < list.Count; i += paramLimit)
+            var batch = new List<T>(batchSize);
+            var command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchIDExists" + batchSize), _ => MakeBatchIDExistsCommand(batchSize));
+
+            foreach (var item in list)
+            {
+                bool validId = true;
+                for (int j = 0; j < keyColumns.Length; j++)
                 {
-                    var batch = list.Skip(i).Take(paramLimit).ToList();
-                    var batchKeys = batch.Select(v => keyColumn.GetValue(v)).Where(v => v != null && v != DBNull.Value).ToList();
-                    if (batchKeys.Count == 0) continue;
+                    if (keyColumns[j].GetValue(item) == null || keyColumns[j].GetValue(item) == DBNull.Value)
+                    {
+                        validId = false;
+                        break;
+                    }
+                }
 
-                    var expr = Expr.In(keyColumn.PropertyName, batchKeys);
-                    var querySql = $"select {ToSqlName(keyColumn.Name)} from {ParamTable} {ParamWhere}";
-                    using var command = MakeConditionCommand(querySql, expr);
-                    using var reader = command.ExecuteReader();
+                if (!validId) continue;
+
+                for (int j = 0; j < keyColumns.Length; j++)
+                {
+                    ((IDataParameter)command.Parameters[batch.Count * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].DbType);
+                }
+
+                batch.Add(item);
+                if (batch.Count == batchSize)
+                {
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            List<object> keyValues = new List<object>();
+                            for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                            existingIds.Add(keyValues);
+                        }
+                    }
+                    batch.Clear();
+                }
+            }
+
+            if (batch.Count > 0)
+            {
+                using var cmd = MakeBatchIDExistsCommand(batch.Count);
+                for (int i = 0; i < batch.Count; i++)
+                {
+                    for (int j = 0; j < keyColumns.Length; j++)
+                    {
+                        ((IDataParameter)cmd.Parameters[i * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
+                    }
+                }
+                using (var reader = cmd.ExecuteReader())
+                {
                     while (reader.Read())
                     {
-                        existingIds.Add(ConvertFromDbValue(reader[0], keyColumn.PropertyType));
+                        List<object> keyValues = new List<object>();
+                        for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                        existingIds.Add(keyValues);
                     }
                 }
-
-                var toUpdate = new List<T>();
-                var toInsert = new List<T>();
-
-                foreach (var item in list)
-                {
-                    var keyValue = keyColumn.GetValue(item);
-                    if (keyValue != null && existingIds.Contains(keyValue))
-                    {
-                        toUpdate.Add(item);
-                    }
-                    else
-                    {
-                        toInsert.Add(item);
-                    }
-                }
-
-                if (toInsert.Count > 0) BatchInsert(toInsert);
-                if (toUpdate.Count > 0) BatchUpdate(toUpdate);
             }
-            else
+
+            var toUpdate = new List<T>();
+            var toInsert = new List<T>();
+
+            foreach (var item in list)
             {
-                foreach (var t in values)
+                List<object> keyValues = new List<object>();
+                bool validId = true;
+                for (int i = 0; i < keyColumns.Length; i++)
                 {
-                    UpdateOrInsert(t);
+                    var val = keyColumns[i].GetValue(item);
+                    if (val == null || val == DBNull.Value)
+                    {
+                        validId = false;
+                        break;
+                    }
+                    keyValues.Add(val);
                 }
+
+                if (validId && existingIds.Contains(keyValues))
+                    toUpdate.Add(item);
+                else
+                    toInsert.Add(item);
             }
+
+            if (toInsert.Count > 0) BatchInsert(toInsert);
+            if (toUpdate.Count > 0) BatchUpdate(toUpdate);
         }
 
         /// <summary>
@@ -348,48 +396,6 @@ namespace LiteOrm
             return UpdateOrInsertResult.Updated;
         }
 
-
-        /// <summary>
-        /// 根据条件更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="expr">更新的条件</param>
-        /// <returns>更新的记录数</returns>
-        public virtual int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expr expr)
-        {
-            List<string> strSets = new List<string>();
-            List<KeyValuePair<string, object>> paramValues = new List<KeyValuePair<string, object>>();
-            foreach (KeyValuePair<string, object> value in values)
-            {
-                SqlColumn column = Table.GetColumn(value.Key);
-                if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
-                strSets.Add($"{SqlBuilder.ToSqlName(column.Name)} ={ToSqlParam(paramValues.Count.ToString())}");
-                paramValues.Add(paramValues.Count.ToString(), value.Value);
-            }
-            string where = expr.ToSql(SqlBuildContext, SqlBuilder, paramValues);
-            string updateSql = $"update {ParamTable} set {String.Join(",", strSets.ToArray())} {ToWhereSql(where)}";
-            using var command = MakeNamedParamCommand(updateSql, paramValues);
-            return command.ExecuteNonQuery();
-        }
-
-        /// <summary>
-        /// 根据主键更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="keys">主键</param>
-        /// <returns>更新是否成功</returns>
-        public virtual bool UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys)
-        {
-            ThrowExceptionIfNoKeys();
-            ThrowExceptionIfWrongKeys(keys);
-            ExprSet expr = new ExprSet(ExprJoinType.And);
-            int i = 0;
-            foreach (ColumnDefinition column in Table.Keys)
-            {
-                expr.Add(Expr.Property(column.PropertyName, keys[i++]));
-            }
-            return UpdateAllValues(values, expr) > 0;
-        }
 
         /// <summary>
         /// 将对象从数据库删除
@@ -583,7 +589,7 @@ namespace LiteOrm
             var updatableColumns = UpdatableColumns;
             var keys = TableDefinition.Keys;
             int updatableCount = updatableColumns.Length;
-            int keyCount = keys.Count;
+            int keyCount = keys.Length;
             var parameters = updateCommand.Parameters;
             int paramIndex = 0;
 
@@ -648,7 +654,7 @@ namespace LiteOrm
 
         /// <summary>
         /// 异步批量更新或插入实体对象。
-        /// 当主键为单列时，采用优化的筛选机制分批处理。
+        /// 通过分批查询已存在记录进行筛选，再分批执行插入和更新，提高效率。
         /// </summary>
         /// <param name="values">要处理的实体集。</param>
         /// <param name="cancellationToken">取消令牌。</param>
@@ -656,70 +662,131 @@ namespace LiteOrm
         {
             if (values is null) throw new ArgumentNullException(nameof(values));
 
+            var list = values.ToList();
+            if (list.Count == 0) return;
+
             var keyColumns = TableDefinition.Keys;
-            if (keyColumns.Count == 1)
+            if (keyColumns.Length == 0)
             {
-                var keyColumn = keyColumns[0];
-                var list = values.ToList();
-                if (list.Count == 0) return;
+                await BatchInsertAsync(list, cancellationToken).ConfigureAwait(false);
+                return;
+            }
 
-                var existingIds = new HashSet<object>();
-                int paramLimit = DAOContext.ParamCountLimit;
+            var existingIds = new HashSet<List<object>>(new ListEqualityComparer<object>());
+            int paramsPerKey = keyColumns.Length;
+            int batchSize = DAOContext.ParamCountLimit / 10 / paramsPerKey * 10;
+            if (batchSize == 0) batchSize = 1;
 
-                for (int i = 0; i < list.Count; i += paramLimit)
+            var batch = new List<T>(batchSize);
+            var command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchIDExists" + batchSize), _ => MakeBatchIDExistsCommand(batchSize));
+
+            foreach (var item in list)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                bool validId = true;
+                for (int j = 0; j < keyColumns.Length; j++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var batch = list.Skip(i).Take(paramLimit).ToList();
-                    var batchKeys = batch.Select(v => keyColumn.GetValue(v)).Where(v => v != null && v != DBNull.Value).ToList();
-                    if (batchKeys.Count == 0) continue;
+                    if (keyColumns[j].GetValue(item) == null || keyColumns[j].GetValue(item) == DBNull.Value)
+                    {
+                        validId = false;
+                        break;
+                    }
+                }
 
-                    var expr = Expr.In(keyColumn.PropertyName, batchKeys);
-                    var querySql = $"select {ToSqlName(keyColumn.Name)} from {ParamTable} {ParamWhere}";
-                    using var command = MakeConditionCommand(querySql, expr);
-                    using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+                if (!validId) continue;
+
+                for (int j = 0; j < keyColumns.Length; j++)
+                {
+                    ((IDataParameter)command.Parameters[batch.Count * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].DbType);
+                }
+
+                batch.Add(item);
+                if (batch.Count == batchSize)
+                {
+                    using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+                    {
+                        if (reader is AutoLockDataReader autoLockReader)
+                        {
+                            while (await autoLockReader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                            {
+                                List<object> keyValues = new List<object>();
+                                for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(autoLockReader[i], keyColumns[i].PropertyType));
+                                existingIds.Add(keyValues);
+                            }
+                        }
+                        else
+                        {
+                            while (reader.Read())
+                            {
+                                List<object> keyValues = new List<object>();
+                                for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                                existingIds.Add(keyValues);
+                            }
+                        }
+                    }
+                    batch.Clear();
+                }
+            }
+
+            if (batch.Count > 0)
+            {
+                using var cmd = MakeBatchIDExistsCommand(batch.Count);
+                for (int i = 0; i < batch.Count; i++)
+                {
+                    for (int j = 0; j < keyColumns.Length; j++)
+                    {
+                        ((IDataParameter)cmd.Parameters[i * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
+                    }
+                }
+                using (var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+                {
                     if (reader is AutoLockDataReader autoLockReader)
                     {
                         while (await autoLockReader.ReadAsync(cancellationToken).ConfigureAwait(false))
                         {
-                            existingIds.Add(ConvertFromDbValue(autoLockReader[0], keyColumn.PropertyType));
+                            List<object> keyValues = new List<object>();
+                            for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(autoLockReader[i], keyColumns[i].PropertyType));
+                            existingIds.Add(keyValues);
                         }
                     }
                     else
                     {
                         while (reader.Read())
                         {
-                            existingIds.Add(ConvertFromDbValue(reader[0], keyColumn.PropertyType));
+                            List<object> keyValues = new List<object>();
+                            for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                            existingIds.Add(keyValues);
                         }
                     }
                 }
-
-                var toUpdate = new List<T>();
-                var toInsert = new List<T>();
-
-                foreach (var item in list)
-                {
-                    var keyValue = keyColumn.GetValue(item);
-                    if (keyValue != null && existingIds.Contains(keyValue))
-                    {
-                        toUpdate.Add(item);
-                    }
-                    else
-                    {
-                        toInsert.Add(item);
-                    }
-                }
-
-                if (toInsert.Count > 0) await BatchInsertAsync(toInsert, cancellationToken).ConfigureAwait(false);
-                if (toUpdate.Count > 0) await BatchUpdateAsync(toUpdate, cancellationToken).ConfigureAwait(false);
             }
-            else
+
+            var toUpdate = new List<T>();
+            var toInsert = new List<T>();
+
+            foreach (var item in list)
             {
-                foreach (var t in values)
+                List<object> keyValues = new List<object>();
+                bool validId = true;
+                for (int i = 0; i < keyColumns.Length; i++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await UpdateOrInsertAsync(t, cancellationToken).ConfigureAwait(false);
+                    var val = keyColumns[i].GetValue(item);
+                    if (val == null || val == DBNull.Value)
+                    {
+                        validId = false;
+                        break;
+                    }
+                    keyValues.Add(val);
                 }
+
+                if (validId && existingIds.Contains(keyValues))
+                    toUpdate.Add(item);
+                else
+                    toInsert.Add(item);
             }
+
+            if (toInsert.Count > 0) await BatchInsertAsync(toInsert, cancellationToken).ConfigureAwait(false);
+            if (toUpdate.Count > 0) await BatchUpdateAsync(toUpdate, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -820,50 +887,5 @@ namespace LiteOrm
         }
 
         #endregion
-
-        /// <summary>
-        /// 异步根据条件更新数据
-        /// 根据条件更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="expr">更新的条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含更新的记录数</returns>
-        public async Task<int> UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, Expr expr, CancellationToken cancellationToken = default)
-        {
-            List<string> strSets = new List<string>();
-            List<KeyValuePair<string, object>> paramValues = new List<KeyValuePair<string, object>>();
-            foreach (KeyValuePair<string, object> value in values)
-            {
-                SqlColumn column = Table.GetColumn(value.Key);
-                if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
-                strSets.Add(SqlBuilder.ToSqlName(column.Name) + "=" + ToSqlParam(paramValues.Count.ToString()));
-                paramValues.Add(paramValues.Count.ToString(), value.Value);
-            }
-            string updateSql = $"update {ParamTable} set {String.Join(",", strSets.ToArray())} {ToWhereSql(expr.ToSql(SqlBuildContext, SqlBuilder, paramValues))}";
-
-            using var command = MakeNamedParamCommand(updateSql, paramValues);
-            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// 异步根据主键更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="keys">主键</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含更新是否成功</returns>
-        public async Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> values, object[] keys, CancellationToken cancellationToken = default)
-        {
-            ThrowExceptionIfNoKeys();
-            ThrowExceptionIfWrongKeys(keys);
-            ExprSet expr = new ExprSet(ExprJoinType.And);
-            int i = 0;
-            foreach (ColumnDefinition column in TableDefinition.Keys)
-            {
-                expr.Add(Expr.Property(column.PropertyName, keys[i++]));
-            }
-            return await UpdateAllValuesAsync(values, expr, cancellationToken).ConfigureAwait(false) > 0;
-        }
     }
 }

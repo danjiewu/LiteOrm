@@ -44,7 +44,7 @@ namespace LiteOrm
         private void SyncTables(IComponentContext componentContext)
         {
             var dataSourceProvider = componentContext.Resolve<IDataSourceProvider>();
-            var sqlBuilderFactory = componentContext.Resolve<ISqlBuilderFactory>();
+            var sqlBuilderFactory = componentContext.Resolve<SqlBuilderFactory>();
             var tableInfoProvider = componentContext.Resolve<TableInfoProvider>();
             var daoContextPoolFactory = componentContext.Resolve<DAOContextPoolFactory>();
 
@@ -269,7 +269,7 @@ namespace LiteOrm
         /// <param name="sqlBuilder">SQL 构建器。</param>
         /// <param name="tableName">原始表名。</param>
         /// <returns>如果表存在则返回 true，否则返回 false。</returns>
-        private async Task<bool> TableExistsAsync(DAOContext context, ISqlBuilder sqlBuilder, string tableName)
+        private async Task<bool> TableExistsAsync(DAOContext context, SqlBuilder sqlBuilder, string tableName)
         {
             try
             {

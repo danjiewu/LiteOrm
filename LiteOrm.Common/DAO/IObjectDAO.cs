@@ -107,21 +107,6 @@ namespace LiteOrm.Common
         void BatchUpdateOrInsert(IEnumerable values);
 
         /// <summary>
-        /// 根据条件更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="expr">更新的条件</param>
-        /// <returns>更新的记录数</returns>
-        int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, Expr expr);
-        /// <summary>
-        /// 根据主键更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
-        /// <returns>更新是否成功</returns>
-        bool UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys);
-
-        /// <summary>
         /// 删除对象
         /// </summary>
         /// <param name="o">待删除的对象</param>

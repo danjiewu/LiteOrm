@@ -27,6 +27,19 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 使用指定的参数创建新的DAO实例
+        /// </summary>
+        /// <param name="args">表名参数</param>
+        /// <returns>新的DAO实例</returns>
+        public ObjectDAO<T> WithArgs(params string[] args)
+        {
+            ObjectDAO<T> newDAO = MemberwiseClone() as ObjectDAO<T>;
+            newDAO.TableNameArgs = args;
+            newDAO.SqlBuildContext = null;
+            return newDAO;
+        }
+
+        /// <summary>
         /// 识别列
         /// </summary>
         protected ColumnDefinition IdentityColumn => TableDefinition.Columns.FirstOrDefault(col => col.IsIdentity);
@@ -253,6 +266,7 @@ namespace LiteOrm
                 foreach (var col in updatableColumns)
                 {
                     IDbDataParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName("p" + command.Parameters.Count);
                     param.Size = col.Length;
                     param.DbType = col.DbType;
                     command.Parameters.Add(param);
@@ -260,17 +274,35 @@ namespace LiteOrm
                 foreach (var key in keyColumns)
                 {
                     IDbDataParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName("p" + command.Parameters.Count);
                     param.Size = key.Length;
                     param.DbType = key.DbType;
                     command.Parameters.Add(param);
                 }
             }
+            return command;
+        }
 
-            for (int i = 0; i < command.Parameters.Count; i++)
+        /// <summary>
+        /// 创建批量更新命令。
+        /// </summary>
+        protected virtual DbCommandProxy MakeBatchIDExistsCommand(int batchSize)
+        {
+            var keyColumns = TableDefinition.Keys;
+
+            DbCommandProxy command = NewCommand();
+            command.CommandText = SqlBuilder.BuildBatchIDExistsSql(FactTableName, keyColumns, batchSize);
+            for (int b = 0; b < batchSize; b++)
             {
-                ((IDataParameter)command.Parameters[i]).ParameterName = ToParamName("p" + i);
+                foreach (var key in keyColumns)
+                {
+                    IDbDataParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName("p" + command.Parameters.Count);
+                    param.Size = key.Length;
+                    param.DbType = key.DbType;
+                    command.Parameters.Add(param);
+                }
             }
-
             return command;
         }
 

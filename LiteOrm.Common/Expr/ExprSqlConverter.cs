@@ -257,7 +257,7 @@ namespace LiteOrm.Common
             };
             string innerSql = foreginExpr.InnerExpr.ToSql(foreignContext, sqlBuilder, outputParams);
             string columnSql = context.TableAliasName == null ? sqlBuilder.BuildExpression(column) : sqlBuilder.ToSqlName($"{context.TableAliasName}.{column.Name}");
-            string keySql = foreignTableDef.Keys.Count == 1 ?
+            string keySql = foreignTableDef.Keys.Length == 1 ?
                 sqlBuilder.ToSqlName($"{foreignContext.TableAliasName}.{foreignTableDef.Keys[0].Name}") :
                 throw new InvalidOperationException("Foreign table has multiple keys.");
             context.Sequence = foreignContext.Sequence;

@@ -138,25 +138,6 @@ namespace LiteOrm.Service
         /// false:失败</returns>
         bool Update(object entity);
         /// <summary>
-        /// 根据条件和字段内容更新值
-        /// </summary>
-        /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
-        /// <param name="expr">更新条件</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>更改记录数</returns>
-        int UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, Expr expr, params string[] tableArgs);
-        /// <summary>
-        /// 根据主键和字段内容更新值
-        /// </summary>
-        /// <param name="updateValues">字段内容，Key为字段名，Value为更新的值</param>
-        /// <param name="keys">主键</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>
-        /// true:成功
-        /// false:失败</returns>
-        bool UpdateValues(IEnumerable<KeyValuePair<string, object>> updateValues, object[] keys, params string[] tableArgs);
-
-        /// <summary>
         /// 实体存在则更新，否则新增
         /// </summary>
         /// <param name="entity">实体</param>
