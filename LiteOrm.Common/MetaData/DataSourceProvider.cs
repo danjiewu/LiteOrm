@@ -39,6 +39,11 @@ namespace LiteOrm.Common
         public int PoolSize { get; set; } = 16;
 
         /// <summary>
+        /// 数据库参数最大数量限制，为0表示无限制，默认为1000
+        /// </summary>
+        public int ParamCountLimit { get; set; } = 1000;
+
+        /// <summary>
         /// 是否开启自动建表同步
         /// </summary>
         public bool SyncTable { get; set; }

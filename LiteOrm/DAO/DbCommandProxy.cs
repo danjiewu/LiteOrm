@@ -85,7 +85,6 @@ namespace LiteOrm
         /// <param name="excuteType">执行类型。</param>
         protected virtual void PreExcuteCommand(ExcuteType excuteType)
         {
-            Context.EnsureConnectionOpen();
             Transaction = Context.CurrentTransaction;
             SessionManager.Current.PushSql(CommandText);
         }
@@ -305,7 +304,6 @@ namespace LiteOrm
         {
             using var scope = Context.AcquireScope();
             if (Context is not null) Transaction = Context.CurrentTransaction;
-            Context.EnsureConnectionOpen();
             Target.Prepare();
         }
 

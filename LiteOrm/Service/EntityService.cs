@@ -233,11 +233,16 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            foreach (T entity in entities)
+            if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                await UpdateOrInsertAsync(entity, cancellationToken);
+                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                foreach (var group in groups)
+                {
+                    await ObjectDAO.WithArgs(group.Key).BatchUpdateOrInsertAsync(group, cancellationToken);
+                }
             }
+            else
+                await ObjectDAO.BatchUpdateOrInsertAsync(entities, cancellationToken);
         }
 
         /// <summary>
@@ -442,10 +447,16 @@ namespace LiteOrm.Service
         /// <param name="entities">要处理的实体集合。</param>
         public virtual void BatchUpdateOrInsert(IEnumerable<T> entities)
         {
-            foreach (T entity in entities)
+            if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                UpdateOrInsert(entity);
+                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                foreach (var group in groups)
+                {
+                    ObjectDAO.WithArgs(group.Key).BatchUpdateOrInsert(group);
+                }
             }
+            else
+                ObjectDAO.BatchUpdateOrInsert(entities);
         }
 
         /// <summary>

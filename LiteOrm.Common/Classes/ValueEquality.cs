@@ -5,6 +5,9 @@ using System.Text;
 
 namespace LiteOrm.Common
 {
+    /// <summary>
+    /// 值比较工具类
+    /// </summary>
     public static class ValueEquality
     {
         // 缓存类型到转换器的映射
@@ -61,6 +64,13 @@ namespace LiteOrm.Common
             return false;
         }
 
+        /// <summary>
+        /// 判断值相等
+        /// </summary>
+        /// <param name="val1">左值</param>
+        /// <param name="val2">右值</param>
+        /// <param name="depth">递归深度</param>
+        /// <returns></returns>
         public static bool ValueEquals(object? val1, object? val2, int depth = 0)
         {
             if (val1 is null && val2 is null) return true;
@@ -73,6 +83,7 @@ namespace LiteOrm.Common
             {
                 return dbl1 == dbl2;
             }
+            //递归最大深度限制
             if (depth >= 10)
             {
                 return val1.Equals(val2);

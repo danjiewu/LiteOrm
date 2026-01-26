@@ -107,7 +107,7 @@ namespace LiteOrm
 
         /// <summary>
         /// 生成更新或插入（Upsert）的 SQL 语句 (Oracle MERGE 风格)。
-        /// 使用 MERGE INTO ... USING DUAL 语法实现。
+        /// 使用 MERGE INTO ... USING DUAL 语法实现，但不能更新插入节点的标识列。
         /// </summary>
         /// <param name="command">数据库命令。</param>
         /// <param name="tableName">目标表名。</param>
@@ -148,7 +148,7 @@ namespace LiteOrm
 
             return $@"MERGE INTO {table} t USING DUAL ON ({where})
 WHEN MATCHED THEN UPDATE SET {updateSets}
-WHEN NOT MATCHED THEN INSERT ({insertColumns}) VALUES ({insertValues}) RETURNING {ToSqlName(identityColumn.Name)} INTO {ToSqlParam("0")}";
+WHEN NOT MATCHED THEN INSERT ({insertColumns}) VALUES ({insertValues})";
         }
 
         /// <summary>
@@ -240,6 +240,48 @@ WHEN NOT MATCHED THEN INSERT ({insertColumns}) VALUES ({insertValues}) RETURNING
         {
             var colSqls = columns.Select(c => $"{ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
             return $"ALTER TABLE {ToSqlName(tableName)} ADD ({string.Join(", ", colSqls)})";
+        }
+
+        /// <summary>
+        /// 生成 Oracle 专用的批量更新 SQL 语句（使用匿名 PL/SQL 块）。
+        /// 针对 Oracle 优化：不直接使用全局默认的 CASE WHEN 方式，而是采用更稳定的 BEGIN...END 块驱动多条 UPDATE 语句。
+        /// </summary>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="updatableColumns">可更新列集合。</param>
+        /// <param name="keyColumns">主键列集合。</param>
+        /// <param name="batchSize">批次大小。</param>
+        /// <returns>返回 Oracle 可执行的批量更新 SQL 字符串。</returns>
+        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("BEGIN");
+
+            int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
+
+            for (int b = 0; b < batchSize; b++)
+            {
+                sb.AppendFormat("  UPDATE {0} SET ", ToSqlName(tableName));
+                for (int i = 0; i < updatableColumns.Length; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    var col = updatableColumns[i];
+                    string valParam = "p" + (b * paramsPerRecord + i);
+                    sb.AppendFormat("{0} = {1}", ToSqlName(col.Name), ToSqlParam(valParam));
+                }
+
+                sb.Append(" WHERE ");
+                for (int k = 0; k < keyColumns.Length; k++)
+                {
+                    if (k > 0) sb.Append(" AND ");
+                    var key = keyColumns[k];
+                    string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
+                    sb.AppendFormat("{0} = {1}", ToSqlName(key.Name), ToSqlParam(keyParam));
+                }
+                sb.AppendLine(";");
+            }
+
+            sb.Append("END;");
+            return sb.ToString();
         }
     }
 

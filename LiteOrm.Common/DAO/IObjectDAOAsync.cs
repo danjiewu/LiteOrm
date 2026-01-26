@@ -30,6 +30,14 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务</returns>
         Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量更新对象
+        /// </summary>
+        /// <param name="values">待更新的对象集合</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务</returns>
+        Task BatchUpdateAsync(IEnumerable<T> values, CancellationToken cancellationToken = default);
         
         /// <summary>
         /// 异步更新对象
@@ -47,6 +55,14 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务结果为操作结果</returns>
         Task<UpdateOrInsertResult> UpdateOrInsertAsync(T o, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量更新或插入对象
+        /// </summary>
+        /// <param name="values">待更新或插入的对象集合</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务</returns>
+        Task BatchUpdateOrInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default);
         
         /// <summary>
         /// 异步删除对象
@@ -78,6 +94,14 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务</returns>
         Task BatchInsertAsync(IEnumerable values, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量更新对象
+        /// </summary>
+        /// <param name="values">待更新的对象集合</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务</returns>
+        Task BatchUpdateAsync(IEnumerable values, CancellationToken cancellationToken = default);
         
         /// <summary>
         /// 异步更新对象
@@ -87,6 +111,14 @@ namespace LiteOrm.Common
         /// <returns>表示异步操作的任务，返回是否成功更新</returns>
         Task<bool> UpdateAsync(object o, CancellationToken cancellationToken = default);        
       
+        /// <summary>
+        /// 异步更新或插入对象
+        /// </summary>
+        /// <param name="o">待处理的对象</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>异步任务结果为操作结果</returns>
+        Task<UpdateOrInsertResult> UpdateOrInsertAsync(object o, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// 异步根据条件更新数据
         /// </summary>
@@ -104,6 +136,15 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回是否成功</returns>
         Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> values, object[] keys, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量更新或插入对象
+        /// </summary>
+        /// <param name="values">待处理的对象集合</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务</returns>
+        Task BatchUpdateOrInsertAsync(IEnumerable values, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// 异步删除对象
         /// </summary>

@@ -275,6 +275,48 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public async Task EntityService_BatchUpdateOrInsert_ShouldWork()
+        {
+            // Arrange
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+
+            // 1. Initial insert
+            var users = new List<TestUser>
+            {
+                new TestUser { Name = "Upsert A", Age = 10, CreateTime = DateTime.Now },
+                new TestUser { Name = "Upsert B", Age = 20, CreateTime = DateTime.Now }
+            };
+            await service.BatchInsertAsync(users);
+
+            // 2. Prepare mixed batch: one update, one new
+            var existingUser = users[0];
+            existingUser.Age = 15; // Changed
+
+            var newUser = new TestUser { Name = "Upsert C", Age = 30, CreateTime = DateTime.Now };
+
+            var batch = new List<TestUser> { existingUser, newUser };
+
+            // Act
+            await service.BatchUpdateOrInsertAsync(batch);
+
+            // Assert
+            var allUsers = await viewService.SearchAsync(Expr.Exp<TestUser>(u => u.Name!.StartsWith("Upsert")));
+            Assert.Equal(3, allUsers.Count);
+
+            var retrievedA = allUsers.FirstOrDefault(u => u.Name == "Upsert A");
+            Assert.NotNull(retrievedA);
+            Assert.Equal(15, retrievedA.Age);
+
+            var retrievedC = allUsers.FirstOrDefault(u => u.Name == "Upsert C");
+            Assert.NotNull(retrievedC);
+            Assert.True(retrievedC.Id > 0);
+
+            // Cleanup
+            await service.BatchDeleteAsync(allUsers);
+        }
+
+        [Fact]
         public async Task EntityService_UpdateValues_ShouldWork()
 
         {

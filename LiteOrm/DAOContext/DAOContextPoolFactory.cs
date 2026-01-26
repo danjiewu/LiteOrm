@@ -95,7 +95,8 @@ namespace LiteOrm
             {
                 Name = config.Name,
                 PoolSize = config.PoolSize,
-                KeepAliveDuration = config.KeepAliveDuration
+                KeepAliveDuration = config.KeepAliveDuration,
+                ParamCountLimit = config.ParamCountLimit
             };
 
             if (!config.SyncTable)

@@ -86,6 +86,7 @@ namespace LiteOrm
                         {
                             using (await context.AcquireScopeAsync())
                             {
+                                await context.EnsureConnectionOpenAsync();
                                 foreach (var group in currentDsGroups)
                                 {
                                     string tableName = group.Key.TableName;
@@ -109,11 +110,11 @@ namespace LiteOrm
                                     if (firstTableDef == null || allColumns.Count == 0) continue;
 
                                     // 检查表是否存在
-                                    if (!TableExists(context, sqlBuilder, tableName))
+                                    if (!await TableExistsAsync(context, sqlBuilder, tableName))
                                     {
                                         _logger?.LogInformation("正在数据源 '{DataSource}' 中创建表 '{TableName}'", ds.Name, tableName);
                                         string createSql = sqlBuilder.BuildCreateTableSql(tableName, allColumns.Values);
-                                        ExecuteSql(context, createSql);
+                                        await ExecuteSqlAsync(context, createSql);
 
                                         // 创建索引 (包含索引列和唯一列)
                                         foreach (var col in allColumns.Values.Where(c => c.IsIndex || c.IsUnique))
@@ -121,7 +122,7 @@ namespace LiteOrm
                                             try
                                             {
                                                 string indexSql = sqlBuilder.BuildCreateIndexSql(tableName, col);
-                                                ExecuteSql(context, indexSql);
+                                                await ExecuteSqlAsync(context, indexSql);
                                             }
                                             catch (Exception ex)
                                             {
@@ -132,13 +133,13 @@ namespace LiteOrm
                                     else
                                     {
                                         // 表已存在，检查并补全缺失列
-                                        var existingColumns = GetTableColumns(context, sqlBuilder.ToSqlName(tableName));
+                                        var existingColumns = await GetTableColumnsAsync(context, sqlBuilder.ToSqlName(tableName));
                                         var missingColumns = allColumns.Values.Where(col => !existingColumns.Contains(col.Name)).ToList();
                                         if (missingColumns.Any())
                                         {
                                             _logger?.LogInformation("正在向数据源 '{DataSource}' 的表 '{TableName}' 添加 {Count} 个新列", ds.Name, tableName, missingColumns.Count);
                                             string addColsSql = sqlBuilder.BuildAddColumnsSql(tableName, missingColumns);
-                                            ExecuteSql(context, addColsSql);
+                                            await ExecuteSqlAsync(context, addColsSql);
 
                                             // 为新添加的列创建索引 (已有列不用新建索引)
                                             foreach (var col in missingColumns.Where(c => c.IsIndex || c.IsUnique))
@@ -146,7 +147,7 @@ namespace LiteOrm
                                                 try
                                                 {
                                                     string indexSql = sqlBuilder.BuildCreateIndexSql(tableName, col);
-                                                    ExecuteSql(context, indexSql);
+                                                    await ExecuteSqlAsync(context, indexSql);
                                                 }
                                                 catch (Exception ex)
                                                 {
@@ -189,11 +190,11 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 执行同步 SQL 语句。
+        /// 异步执行同步 SQL 语句。
         /// </summary>
         /// <param name="context">数据库上下文。</param>
         /// <param name="sql">要执行的 SQL 语句。</param>
-        private void ExecuteSql(DAOContext context, string sql)
+        private async Task ExecuteSqlAsync(DAOContext context, string sql)
         {
             try
             {
@@ -201,8 +202,10 @@ namespace LiteOrm
                 using (var cmd = context.DbConnection.CreateCommand())
                 {
                     cmd.CommandText = sql;
-                    context.EnsureConnectionOpen();
-                    cmd.ExecuteNonQuery();
+                    if (cmd is System.Data.Common.DbCommand dbCmd)
+                        await dbCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    else
+                        await Task.Run(() => cmd.ExecuteNonQuery()).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -213,25 +216,37 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 获取数据库中已存在的列名集合。
+        /// 异步获取数据库中已存在的列名集合。
         /// </summary>
         /// <param name="context">数据库上下文。</param>
         /// <param name="tableName">已转义的表名。</param>
         /// <returns>列名集合。</returns>
-        private HashSet<string> GetTableColumns(DAOContext context, string tableName)
+        private async Task<HashSet<string>> GetTableColumnsAsync(DAOContext context, string tableName)
         {
             var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            context.EnsureConnectionOpen();
             try
             {
                 using (var cmd = context.DbConnection.CreateCommand())
                 {
                     cmd.CommandText = $"SELECT * FROM {tableName} WHERE 1=0";
-                    using (var reader = cmd.ExecuteReader())
+                    if (cmd is System.Data.Common.DbCommand dbCmd)
                     {
-                        for (int i = 0; i < reader.FieldCount; i++)
+                        using (var reader = await dbCmd.ExecuteReaderAsync().ConfigureAwait(false))
                         {
-                            columns.Add(reader.GetName(i));
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                columns.Add(reader.GetName(i));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                columns.Add(reader.GetName(i));
+                            }
                         }
                     }
                 }
@@ -248,21 +263,23 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 检查表是否存在。
+        /// 异步检查表是否存在。
         /// </summary>
         /// <param name="context">数据库上下文。</param>
         /// <param name="sqlBuilder">SQL 构建器。</param>
         /// <param name="tableName">原始表名。</param>
         /// <returns>如果表存在则返回 true，否则返回 false。</returns>
-        private bool TableExists(DAOContext context, ISqlBuilder sqlBuilder, string tableName)
+        private async Task<bool> TableExistsAsync(DAOContext context, ISqlBuilder sqlBuilder, string tableName)
         {
             try
             {
                 using (var cmd = context.DbConnection.CreateCommand())
                 {
                     cmd.CommandText = sqlBuilder.BuildTableExistsSql(tableName);
-                    context.EnsureConnectionOpen();
-                    cmd.ExecuteScalar();
+                    if (cmd is System.Data.Common.DbCommand dbCmd)
+                        await dbCmd.ExecuteScalarAsync().ConfigureAwait(false);
+                    else
+                        await Task.Run(() => cmd.ExecuteScalar()).ConfigureAwait(false);
                     return true;
                 }
             }

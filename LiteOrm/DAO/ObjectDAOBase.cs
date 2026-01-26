@@ -59,7 +59,7 @@ namespace LiteOrm
         protected const string TimestampParamName = "0";
         #endregion
 
-        #region 私有变量
+        #region 私人变量
         private SqlColumn[] _selectColumnsArray;
         private string _allFieldsSql = null;
         private string _tableName = null;
@@ -278,9 +278,6 @@ namespace LiteOrm
             return strAllFields.ToString();
         }
 
-
-
-
         /// <summary>
         /// 生成 orderby 部分的 SQL
         /// </summary>
@@ -434,7 +431,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="command">要创建条件的数据库命令</param>
         /// <returns>where条件的语句</returns>
-        protected string MakeIsKeyCondition(IDbCommand command)
+        protected string MakeKeyCondition(IDbCommand command)
         {
             ThrowExceptionIfNoKeys();
             StringBuilder strConditions = new StringBuilder();

@@ -60,14 +60,23 @@ namespace LiteOrm
         /// <summary>
         /// 
         /// </summary>
-        public  SqlBuilder SqlBuilder { get; }
+        public SqlBuilder SqlBuilder { get; }
 
-        public ConcurrentDictionary<(Type, string), DbCommandProxy> PreparedCommands { get;  }= new ConcurrentDictionary<(Type, string), DbCommandProxy>();
+
+        /// <summary>
+        /// 预定义Command
+        /// </summary>
+        public ConcurrentDictionary<(Type, string), DbCommandProxy> PreparedCommands { get; } = new ConcurrentDictionary<(Type, string), DbCommandProxy>();
 
         /// <summary>
         /// 获取当前数据库提供程序的类型。
         /// </summary>
         public Type ProviderType { get; }
+
+        /// <summary>
+        /// 最大参数数量，0表示无限制，默认为1000
+        /// </summary>
+        public int ParamCountLimit { get; set; } = 1000;
 
         /// <summary>
         /// 获取底层的数据库连接。
@@ -145,8 +154,38 @@ namespace LiteOrm
 
                 try
                 {
-                    EnsureConnectionOpen();
                     CurrentTransaction = DbConnection.BeginTransaction(isolationLevel);
+                    return true;
+                }
+                catch
+                {
+                    CurrentTransaction?.Dispose();
+                    CurrentTransaction = null;
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 异步开始一个新事务。
+        /// </summary>
+        /// <param name="isolationLevel">事务的隔离级别，默认为 <see cref="IsolationLevel.ReadCommitted"/>。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，如果事务成功开始返回 true；如果当前已在事务中则返回 false。</returns>
+        public async Task<bool> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted, CancellationToken cancellationToken = default)
+        {
+            using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
+            {
+                if (InTransaction)
+                    return false;
+
+                try
+                {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
+                    CurrentTransaction = await DbConnection.BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
+#else
+                    CurrentTransaction = DbConnection.BeginTransaction(isolationLevel);
+#endif
                     return true;
                 }
                 catch
@@ -184,6 +223,39 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 异步提交当前活动事务。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，如果成功提交返回 true；如果没有活动事务则返回 false。</returns>
+        public async Task<bool> CommitAsync(CancellationToken cancellationToken = default)
+        {
+            using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
+            {
+                if (!InTransaction)
+                    return false;
+
+                try
+                {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
+                    if (CurrentTransaction is DbTransaction dbTrans)
+                        await dbTrans.CommitAsync(cancellationToken).ConfigureAwait(false);
+                    else
+                        CurrentTransaction.Commit();
+#else
+                    CurrentTransaction.Commit();
+#endif
+                    return true;
+                }
+                finally
+                {
+                    CurrentTransaction?.Dispose();
+                    CurrentTransaction = null;
+                    LastActiveTime = DateTime.Now;
+                }
+            }
+        }
+
+        /// <summary>
         /// 回滚当前活动事务并释放相关资源。
         /// </summary>
         /// <returns>如果成功回滚返回 true；如果没有活动事务则返回 false。</returns>
@@ -209,6 +281,39 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 异步回滚当前活动事务。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，如果成功回滚返回 true；如果没有活动事务则返回 false。</returns>
+        public async Task<bool> RollbackAsync(CancellationToken cancellationToken = default)
+        {
+            using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
+            {
+                if (!InTransaction)
+                    return false;
+
+                try
+                {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
+                    if (CurrentTransaction is DbTransaction dbTrans)
+                        await dbTrans.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                    else
+                        CurrentTransaction.Rollback();
+#else
+                    CurrentTransaction.Rollback();
+#endif
+                    return true;
+                }
+                finally
+                {
+                    CurrentTransaction?.Dispose();
+                    CurrentTransaction = null;
+                    LastActiveTime = DateTime.Now;
+                }
+            }
+        }
+
+        /// <summary>
         /// 确保底层的数据库连接已开启。如果连接处于关闭状态，则执行打开操作。
         /// </summary>
         public void EnsureConnectionOpen()
@@ -216,6 +321,19 @@ namespace LiteOrm
             if (DbConnection.State == ConnectionState.Closed)
             {
                 DbConnection.Open();
+            }
+        }
+
+        /// <summary>
+        /// 异步确保底层的数据库连接已开启。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务。</returns>
+        public async Task EnsureConnectionOpenAsync(CancellationToken cancellationToken = default)
+        {
+            if (DbConnection.State == ConnectionState.Closed)
+            {
+                await DbConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 

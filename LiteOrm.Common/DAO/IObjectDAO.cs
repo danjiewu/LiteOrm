@@ -26,6 +26,11 @@ namespace LiteOrm.Common
         /// <param name="values">待添加的对象集合</param>
         void BatchInsert(IEnumerable<T> values);
         /// <summary>
+        /// 批量更新对象
+        /// </summary>
+        /// <param name="values">待更新的对象集合</param>
+        void BatchUpdate(IEnumerable<T> values);
+        /// <summary>
         /// 更新对象
         /// </summary>
         /// <param name="o">待更新的对象</param>
@@ -39,6 +44,12 @@ namespace LiteOrm.Common
         /// <param name="o">待处理的对象</param>
         /// <returns>操作结果</returns>
         UpdateOrInsertResult UpdateOrInsert(T o);
+
+        /// <summary>
+        /// 批量更新或插入对象
+        /// </summary>
+        /// <param name="values">待处理的对象集合</param>
+        void BatchUpdateOrInsert(IEnumerable<T> values);
 
         /// <summary>
         /// 删除对象
@@ -70,11 +81,30 @@ namespace LiteOrm.Common
         void BatchInsert(IEnumerable values);
 
         /// <summary>
+        /// 批量更新对象
+        /// </summary>
+        /// <param name="values">待更新的对象集合</param>
+        void BatchUpdate(IEnumerable values);
+
+        /// <summary>
         /// 更新对象
         /// </summary>
         /// <param name="o">待更新的对象</param>
         /// <returns>是否成功更新</returns>
         bool Update(Object o);
+
+        /// <summary>
+        /// 更新或插入对象
+        /// </summary>
+        /// <param name="o">待处理的对象</param>
+        /// <returns>操作结果类型</returns>
+        UpdateOrInsertResult UpdateOrInsert(object o);
+
+        /// <summary>
+        /// 批量更新或插入对象
+        /// </summary>
+        /// <param name="values">待处理的对象集合</param>
+        void BatchUpdateOrInsert(IEnumerable values);
 
         /// <summary>
         /// 根据条件更新数据

@@ -187,6 +187,16 @@ namespace LiteOrm.Common
         string BuildCreateIndexSql(string tableName, ColumnDefinition column);
 
         /// <summary>
+        /// 生成批量更新的 SQL 语句。
+        /// </summary>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="updatableColumns">可更新列集合。</param>
+        /// <param name="keyColumns">主键列集合。</param>
+        /// <param name="batchSize">批次大小。</param>
+        /// <returns>返回目标数据库可执行的批量更新 SQL 字符串。</returns>
+        string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize);
+
+        /// <summary>
         /// 获取带参数的表名。
         /// </summary>
         /// <param name="originTableName">原始表名（可能包含格式化占位符）。</param>

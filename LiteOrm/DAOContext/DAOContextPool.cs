@@ -78,6 +78,11 @@ namespace LiteOrm
         public string Name { get; set; }
 
         /// <summary>
+        /// 最大参数数量限制，0表示无限制，默认为1000。
+        /// </summary>
+        public int ParamCountLimit { get; set; } = 1000;
+
+        /// <summary>
         /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
         /// </summary>
         /// <param name="providerType">数据库提供程序类型。</param>
@@ -124,6 +129,22 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 异步从连接池中获取一个可用的DAO上下文。
+        /// </summary>
+        /// <returns>表示异步操作的任务，结果为一个可用的 <see cref="DAOContext"/> 实例。</returns>
+        /// <exception cref="ObjectDisposedException">当连接池已被释放时抛出。</exception>
+        public async Task<DAOContext> PeekContextAsync()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(DAOContextPool));
+
+            // 等待初始化完成（如自动建表同步）
+            await _initializeTcs.Task.ConfigureAwait(false);
+
+            return await PeekContextInternalAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// 内部获取DAO上下文，不进行初始化检查。
         /// </summary>
         /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
@@ -150,6 +171,44 @@ namespace LiteOrm
                 // 池为空，创建新连接
                 return CreateNewContext();
             }
+        }
+
+        /// <summary>
+        /// 内部异步获取DAO上下文，不进行初始化检查。
+        /// </summary>
+        /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
+        internal async Task<DAOContext> PeekContextInternalAsync()
+        {
+            DAOContext contextToUse = null;
+            lock (_poolLock)
+            {
+                // 尝试从池中获取可用的上下文
+                while (_pool.Count > 0)
+                {
+                    var context = _pool.Dequeue();
+
+                    // 检查连接是否仍然有效
+                    if (IsContextValid(context))
+                    {
+                        contextToUse = context;
+                        break;
+                    }
+
+                    // 无效则销毁
+                    context.Dispose();
+                }
+            }
+
+            if (contextToUse != null)
+            {
+                await contextToUse.EnsureConnectionOpenAsync().ConfigureAwait(false);
+                return contextToUse;
+            }
+
+            // 池为空，创建新连接
+            var newContext = CreateNewContext();
+            await newContext.EnsureConnectionOpenAsync().ConfigureAwait(false);
+            return newContext;
         }
 
 

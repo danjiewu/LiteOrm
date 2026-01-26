@@ -68,6 +68,7 @@ namespace LiteOrm
             ["Min"] = "LEAST"
         };
 
+
         /// <summary>
         /// 构建函数调用的 SQL 片段。
         /// </summary>
@@ -610,6 +611,76 @@ namespace LiteOrm
             string indexName = $"IX_{tableName}_{column.Name}";
             string unique = column.IsUnique ? "UNIQUE " : "";
             return $"CREATE {unique}INDEX {ToSqlName(indexName)} ON {ToSqlName(tableName)} ({ToSqlName(column.Name)})";
+        }
+
+        /// <summary>
+        /// 生成批量更新的 SQL 语句。默认采用 CASE WHEN 方式实现。
+        /// 当主键为单列时，WHERE 条件会优化为 IN 语句。
+        /// </summary>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="updatableColumns">可更新列集合。</param>
+        /// <param name="keyColumns">主键列集合。</param>
+        /// <param name="batchSize">批次大小。</param>
+        /// <returns>返回目标数据库可执行的批量更新 SQL 字符串。</returns>
+        public virtual string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendFormat("UPDATE {0} SET ", ToSqlName(tableName));
+
+            int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
+
+            for (int i = 0; i < updatableColumns.Length; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                var col = updatableColumns[i];
+                sb.AppendFormat("{0} = CASE ", ToSqlName(col.Name));
+                for (int b = 0; b < batchSize; b++)
+                {
+                    sb.Append(" WHEN ");
+                    for (int k = 0; k < keyColumns.Length; k++)
+                    {
+                        if (k > 0) sb.Append(" AND ");
+                        var key = keyColumns[k];
+                        string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
+                        sb.AppendFormat("{0} = {1}", ToSqlName(key.Name), ToSqlParam(keyParam));
+                    }
+                    string valParam = "p" + (b * paramsPerRecord + i);
+                    sb.AppendFormat(" THEN {0}", ToSqlParam(valParam));
+                }
+                sb.Append(" END");
+            }
+
+            sb.Append(" WHERE ");
+            if (keyColumns.Length == 1)
+            {
+                var key = keyColumns[0];
+                sb.AppendFormat("{0} IN (", ToSqlName(key.Name));
+                for (int b = 0; b < batchSize; b++)
+                {
+                    if (b > 0) sb.Append(", ");
+                    string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length);
+                    sb.Append(ToSqlParam(keyParam));
+                }
+                sb.Append(")");
+            }
+            else
+            {
+                for (int b = 0; b < batchSize; b++)
+                {
+                    if (b > 0) sb.Append(" OR ");
+                    sb.Append("(");
+                    for (int k = 0; k < keyColumns.Length; k++)
+                    {
+                        if (k > 0) sb.Append(" AND ");
+                        var key = keyColumns[k];
+                        string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
+                        sb.AppendFormat("{0} = {1}", ToSqlName(key.Name), ToSqlParam(keyParam));
+                    }
+                    sb.Append(")");
+                }
+            }
+
+            return sb.ToString();
         }
 
         /// <summary>

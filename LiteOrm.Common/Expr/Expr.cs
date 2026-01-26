@@ -106,6 +106,17 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 创建一个 IN 表达式。
+        /// </summary>
+        /// <param name="propertyName">属性名称。</param>
+        /// <param name="values">包含值的集合。</param>
+        /// <returns>IN 表达式。</returns>
+        public static Expr In(string propertyName, IEnumerable values)
+        {
+            return new BinaryExpr(new PropertyExpr(propertyName), BinaryOperator.In, new ValueExpr(values));
+        }
+
+        /// <summary>
         /// 从表达式树创建 Lambda 表达式封装。
         /// </summary>
         /// <typeparam name="T">实体类型。</typeparam>
