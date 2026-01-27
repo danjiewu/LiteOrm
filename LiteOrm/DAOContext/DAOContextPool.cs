@@ -287,7 +287,7 @@ namespace LiteOrm
             connection.ConnectionString = ConnectionString;
 
             var context = new DAOContext(connection, this);
-
+            context.EnsureConnectionOpen();
             return context;
         }
 

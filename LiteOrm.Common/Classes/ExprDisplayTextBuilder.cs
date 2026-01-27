@@ -127,7 +127,8 @@ namespace LiteOrm.Common
         /// <returns>显示格式字符串，使用{0}作为占位符</returns>
         public string ToDisplayFormat(BinaryOperator op)
         {
-            StringBuilder sb = new StringBuilder();
+            Span<char> initialBuffer = stackalloc char[128];
+            var sb = new ValueStringBuilder(initialBuffer);
             if (op.IsNot()) sb.Append("不");
             switch (op.Positive())
             {
@@ -150,9 +151,12 @@ namespace LiteOrm.Common
                 case BinaryOperator.StartsWith:
                     sb.Append("以{0}开头"); break;
                 default:
-                    sb.Append(op.Positive() + "{0}"); break;
+                    sb.Append(op.Positive().ToString());
+                    sb.Append("{0}"); break;
             }
-            return sb.ToString();
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
         /// <summary>

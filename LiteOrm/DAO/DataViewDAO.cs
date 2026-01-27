@@ -32,16 +32,16 @@ namespace LiteOrm
         /// <returns>符合条件的数据表</returns>
         public virtual DataTable Search(Expr expr)
         {
-            using var command = MakeConditionCommand($"select {ParamAllFields} \nfrom {ParamFromTable} {ParamWhere}", expr);
+            using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
             return GetDataTable(command);
         }
 
         /// <summary>
-        /// 根据条件查询数据，并指定输出列
+        /// 根据属性查询列表数据
         /// </summary>
-        /// <param name="propertyNames">需要输出的属性名集合</param>
+        /// <param name="propertyNames">要查询的属性名数组</param>
         /// <param name="expr">查询条件</param>
-        /// <returns>符合条件的数据表</returns>
+        /// <returns>查询结果数据表</returns>
         public virtual DataTable Search(string[] propertyNames,Expr expr)
         {
             string fieldsSql = ParamAllFields;
@@ -50,36 +50,36 @@ namespace LiteOrm
                 var columns = propertyNames.Select(p => Table.GetColumn(p)).Where(c => c != null);
                 fieldsSql = GetSelectFieldsSql(columns);
             }
-            using var command = MakeConditionCommand($"select {fieldsSql} \nfrom {ParamFromTable} {ParamWhere}", expr);
+            using var command = MakeConditionCommand($"SELECT {fieldsSql} \nFROM {ParamFromTable} {ParamWhere}", expr);
             return GetDataTable(command);
         }
 
         /// <summary>
-        /// 根据条件查询数据并排序
+        /// 根据条件查询列表数据并进行排序
         /// </summary>
         /// <param name="expr">查询条件</param>
-        /// <param name="orderBy">排序项</param>
-        /// <returns>符合条件的数据表</returns>
+        /// <param name="orderBy">排序项集合</param>
+        /// <returns>查询结果数据表</returns>
         public virtual DataTable Search(Expr expr, params Sorting[] orderBy)
         {
             if (orderBy == null || orderBy.Length == 0) return Search(expr);
-            using var command = MakeConditionCommand($"select {ParamAllFields} \nfrom {ParamFromTable} {ParamWhere} order by " + GetOrderBySql(orderBy), expr);
+            using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere} ORDER BY " + GetOrderBySql(orderBy), expr);
             return GetDataTable(command);
         }
 
         /// <summary>
-        /// 根据条件查询数据并排序，并指定输出列
+        /// 根据条件查询指定列的数据并进行排序
         /// </summary>
-        /// <param name="propertyNames">需要输出的属性名集合</param>
+        /// <param name="propertyNames">要查询的属性名数组</param>
         /// <param name="expr">查询条件</param>
-        /// <param name="orderBy">排序项</param>
-        /// <returns>符合条件的数据表</returns>
+        /// <param name="orderBy">排序项集合</param>
+        /// <returns>查询结果数据表</returns>
         public virtual DataTable Search(string[] propertyNames, Expr expr, params Sorting[] orderBy)
         {
             var columns = propertyNames.Select(p => Table.GetColumn(p)).Where(c => c != null);
             string fieldsSql = GetSelectFieldsSql(columns);
-            string orderBySql = (orderBy == null || orderBy.Length == 0) ? string.Empty : " order by " + GetOrderBySql(orderBy);
-            using var command = MakeConditionCommand($"select {fieldsSql} \nfrom {ParamFromTable} {ParamWhere}{orderBySql}", expr);
+            string orderBySql = (orderBy == null || orderBy.Length == 0) ? string.Empty : " ORDER BY " + GetOrderBySql(orderBy);
+            using var command = MakeConditionCommand($"SELECT {fieldsSql} \nFROM {ParamFromTable} {ParamWhere}{orderBySql}", expr);
             return GetDataTable(command);
         }
 

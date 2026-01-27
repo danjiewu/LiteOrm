@@ -97,24 +97,25 @@ namespace LiteOrm.Service
         /// 批量处理实体操作（插入、更新、删除）。
         /// </summary>
         /// <remarks>
-        /// 此方法接收一个 EntityOperation 集合，根据每个操作的类型执行相应的数据库操作。
-        /// 支持在单个批处理中混合执行插入、更新、删除操作。
+        /// 将所有操作按类型分组，并分别执行批量插入、批量更新或批量删除，以提高性能。
         /// </remarks>
         /// <param name="entities">实体操作集合，每个项目包含实体和操作类型（插入、更新或删除）。</param>
         public virtual void Batch(IEnumerable<EntityOperation<T>> entities)
         {
-            foreach (EntityOperation<T> entityOp in entities)
+            var groups = entities.GroupBy(e => e.Operation);
+            foreach (var group in groups)
             {
-                switch (entityOp.Operation)
+                var items = group.Select(e => e.Entity);
+                switch (group.Key)
                 {
                     case OpDef.Insert:
-                        InsertCore(entityOp.Entity);
+                        BatchInsert(items);
                         break;
                     case OpDef.Update:
-                        UpdateCore(entityOp.Entity);
+                        BatchUpdate(items);
                         break;
                     case OpDef.Delete:
-                        DeleteCore(entityOp.Entity);
+                        BatchDelete(items);
                         break;
                 }
             }
@@ -124,26 +125,28 @@ namespace LiteOrm.Service
         /// 异步批量处理实体操作（插入、更新、删除）。
         /// </summary>
         /// <remarks>
-        /// 该方法在会话上下文中异步执行批量操作，支持事务处理和异步编程模型。
+        /// 将所有操作按类型分组，并分别异步执行批量插入、批量更新或批量删除。
         /// </remarks>
         /// <param name="entities">实体操作集合。</param>
-        /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default)
         {
-            foreach (EntityOperation<T> entityOp in entities)
+            var groups = entities.GroupBy(e => e.Operation);
+            foreach (var group in groups)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                switch (entityOp.Operation)
+                var items = group.Select(e => e.Entity);
+                switch (group.Key)
                 {
                     case OpDef.Insert:
-                        await InsertCoreAsync(entityOp.Entity, cancellationToken);
+                        await BatchInsertAsync(items, cancellationToken);
                         break;
                     case OpDef.Update:
-                        await UpdateCoreAsync(entityOp.Entity, cancellationToken);
+                        await BatchUpdateAsync(items, cancellationToken);
                         break;
                     case OpDef.Delete:
-                        await DeleteCoreAsync(entityOp.Entity, cancellationToken);
+                        await BatchDeleteAsync(items, cancellationToken);
                         break;
                 }
             }
@@ -176,18 +179,23 @@ namespace LiteOrm.Service
         /// 异步批量更新实体。
         /// </summary>
         /// <remarks>
-        /// 该方法在会话上下文中异步执行批量更新操作，逐个更新集合中的每个实体。
+        /// 该方法在会话上下文中异步执行批量更新操作，支持分表场景。
         /// </remarks>
         /// <param name="entities">要更新的实体集合。</param>
-        /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchUpdateAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            foreach (T entity in entities)
+            if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                await UpdateCoreAsync(entity, cancellationToken);
+                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                foreach (var group in groups)
+                {
+                    await ObjectDAO.WithArgs(group.Key).BatchUpdateAsync(group, cancellationToken);
+                }
             }
+            else
+                await ObjectDAO.BatchUpdateAsync(entities, cancellationToken);
         }
 
         /// <summary>
@@ -218,19 +226,23 @@ namespace LiteOrm.Service
         /// 异步批量删除实体。
         /// </summary>
         /// <remarks>
-        /// 该方法在会话上下文中异步执行批量删除操作，逐个删除集合中的每个实体。
-        /// 实体必须包含有效的主键值。
+        /// 该方法在会话上下文中异步执行批量删除操作，支持分表场景。
         /// </remarks>
         /// <param name="entities">要删除的实体集合。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            foreach (T entity in entities)
+            if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                await DeleteCoreAsync(entity, cancellationToken);
+                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                foreach (var group in groups)
+                {
+                    await ObjectDAO.WithArgs(group.Key).BatchDeleteAsync(group, cancellationToken);
+                }
             }
+            else
+                await ObjectDAO.BatchDeleteAsync(entities, cancellationToken);
         }
 
         /// <summary>
@@ -394,16 +406,21 @@ namespace LiteOrm.Service
         /// 批量更新实体。
         /// </summary>
         /// <remarks>
-        /// 此方法逐个更新集合中的每个实体。每个实体更新都基于其主键值。
-        /// 如果实体实现了 IArged 接口，会自动使用其分表参数。
+        /// 此方法批量更新集合中的每个实体，支持分表场景。
         /// </remarks>
         /// <param name="entities">要更新的实体集合。</param>
         public virtual void BatchUpdate(IEnumerable<T> entities)
         {
-            foreach (T entity in entities)
+                if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                UpdateCore(entity);
+                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                foreach (var group in groups)
+                {
+                    ObjectDAO.WithArgs(group.Key).BatchUpdate(group);
+                }
             }
+            else
+                ObjectDAO.BatchUpdate(entities);
         }
 
         /// <summary>
@@ -432,17 +449,21 @@ namespace LiteOrm.Service
         /// 批量删除实体。
         /// </summary>
         /// <remarks>
-        /// 此方法根据实体集合中每个实体的主键值逐个删除它们。
-        /// 实体必须包含有效的主键值。
-        /// 如果实体实现了 IArged 接口，会自动使用其分表参数。
+        /// 此方法批量删除实体集合，支持分表场景。
         /// </remarks>
         /// <param name="entities">要删除的实体集合。</param>
         public virtual void BatchDelete(IEnumerable<T> entities)
         {
-            foreach (T entity in entities)
+            if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                DeleteCore(entity);
+                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                foreach (var group in groups)
+                {
+                    ObjectDAO.WithArgs(group.Key).BatchDelete(group);
+                }
             }
+            else
+                ObjectDAO.BatchDelete(entities);
         }
 
         /// <summary>

@@ -16,7 +16,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 无操作
         /// </summary>
-        Nothing,
+        None,
 
         /// <summary>
         /// 新增操作

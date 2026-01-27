@@ -57,6 +57,12 @@ namespace LiteOrm.Common
         /// <param name="o">待删除的对象</param>
         /// <returns>是否成功删除</returns>
         bool Delete(T o);
+
+        /// <summary>
+        /// 批量删除对象
+        /// </summary>
+        /// <param name="values">待删除的对象集合</param>
+        void BatchDelete(IEnumerable<T> values);
     }
     #endregion
 
@@ -112,6 +118,18 @@ namespace LiteOrm.Common
         /// <param name="o">待删除的对象</param>
         /// <returns>是否成功删除</returns>
         bool Delete(Object o);
+
+        /// <summary>
+        /// 批量删除对象
+        /// </summary>
+        /// <param name="values">待删除的对象集合</param>
+        void BatchDelete(IEnumerable values);
+
+        /// <summary>
+        /// 批量根据主键删除对象
+        /// </summary>
+        /// <param name="keys">主键集合</param>
+        void BatchDeleteByKeys(IEnumerable keys);
 
         /// <summary>
         /// 根据主键删除对象

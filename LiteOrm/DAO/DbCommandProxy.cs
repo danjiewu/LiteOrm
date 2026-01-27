@@ -25,15 +25,15 @@ namespace LiteOrm
     /// 6. 锁管理 - 管理上下文的锁以确保线程安全
     /// 7. 异步支持 - 支持异步命令执行
     /// 
-    /// 该类实现了 IDbCommand 接口，可以作为标准 DbCommand 的替代品使用。
+    /// 该类继承自 DbCommand 接口，可以作为标准 DbCommand 的替代品使用。
     /// 通常由 ObjectDAOBase 的 NewCommand() 方法创建。
     /// 
     /// 使用示例：
     /// <code>
     /// var command = dao.NewCommand();
-    /// command.CommandText = \"select * from users where id = @id\";
+    /// command.CommandText = "select * from users where id = @id";
     /// var param = command.CreateParameter();
-    /// param.ParameterName = \"@id\";
+    /// param.ParameterName = "@id";
     /// param.Value = 123;
     /// command.Parameters.Add(param);
     /// 
@@ -47,7 +47,7 @@ namespace LiteOrm
     /// }
     /// </code>
     /// </remarks>
-    public class DbCommandProxy : IDbCommand
+    public class DbCommandProxy : DbCommand, IDbCommand
     {
         /// <summary>
         /// 初始化 <see cref="DbCommandProxy"/> 类的新实例。
@@ -79,40 +79,45 @@ namespace LiteOrm
         /// </summary>
         public ISqlBuilder SqlBuilder { get; }
 
+        #region DbCommand Overrides
+
         /// <summary>
-        /// 在执行数据库命令之前的处理逻辑。
+        /// 获取或设置该 <see cref="DbCommand"/> 使用的 <see cref="DbConnection"/>。
         /// </summary>
-        /// <param name="excuteType">执行类型。</param>
-        protected virtual void PreExcuteCommand(ExcuteType excuteType)
+        protected override DbConnection DbConnection
         {
-            Transaction = Context.CurrentTransaction;
-            SessionManager.Current.PushSql(CommandText);
+            get => Target.Connection;
+            set => Target.Connection = value;
         }
 
         /// <summary>
-        /// 在执行数据库命令之后的处理逻辑。
+        /// 获取 <see cref="DbParameterCollection"/>。
         /// </summary>
-        /// <param name="excuteType">执行类型。</param>
-        protected virtual void PostExcuteCommand(ExcuteType excuteType)
-        {
-            Context.LastActiveTime = DateTime.Now;
-        }
-
-        #region IDbCommand Members
+        protected override DbParameterCollection DbParameterCollection => Target.Parameters;
 
         /// <summary>
-        /// 尝试取消 <see cref="IDbCommand"/> 的执行。
+        /// 获取或设置其在该中执行 .NET 数据提供程序的 Command 对象的事务。
         /// </summary>
-        public void Cancel()
+        protected override DbTransaction DbTransaction
         {
-            Target.Cancel();
+            get => Target.Transaction;
+            set => Target.Transaction = value;
+        }
+
+        /// <summary>
+        /// 获取或设置一个值，该值指示该命令对象是否应在定制的 Windows 窗体设计器控件中可见。
+        /// </summary>
+        public override bool DesignTimeVisible
+        {
+            get => Target.DesignTimeVisible;
+            set => Target.DesignTimeVisible = value;
         }
 
         private string commandText;
         /// <summary>
         /// 获取或设置要对数据源执行的文本命令。
         /// </summary>
-        public string CommandText
+        public override string CommandText
         {
             get { return commandText; }
             set
@@ -125,7 +130,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取或设置在终止执行命令的尝试并生成错误之前的等待时间（以秒为单位）。
         /// </summary>
-        public int CommandTimeout
+        public override int CommandTimeout
         {
             get { return Target.CommandTimeout; }
             set { Target.CommandTimeout = value; }
@@ -134,35 +139,51 @@ namespace LiteOrm
         /// <summary>
         /// 指示或设置如何解释 <see cref="CommandText"/> 属性。
         /// </summary>
-        public CommandType CommandType
+        public override CommandType CommandType
         {
             get { return Target.CommandType; }
             set { Target.CommandType = value; }
         }
 
         /// <summary>
-        /// 获取或设置该 <see cref="IDbCommand"/> 实例使用的 <see cref="IDbConnection"/>。
+        /// 获取或设置当 <see cref="IDataAdapter.Update(DataSet)"/> 使用 <see cref="IDataAdapter"/> 时如何将查询结果应用于 <see cref="DataRow"/>。
         /// </summary>
-        public IDbConnection Connection
+        public override UpdateRowSource UpdatedRowSource
         {
-            get { return Target.Connection; }
-            set { (Target as IDbCommand).Connection = value; }
+            get { return Target.UpdatedRowSource; }
+            set { Target.UpdatedRowSource = value; }
         }
 
         /// <summary>
-        /// 创建 <see cref="IDbDataParameter"/> 对象的新实例。
+        /// 尝试取消 <see cref="DbCommand"/> 的执行。
         /// </summary>
-        /// <returns>IDbDataParameter 对象。</returns>
-        public IDbDataParameter CreateParameter()
+        public override void Cancel()
+        {
+            Target.Cancel();
+        }
+
+        /// <summary>
+        /// 创建 <see cref="DbParameter"/> 对象的新实例。
+        /// </summary>
+        /// <returns>DbParameter 对象。</returns>
+        protected override DbParameter CreateDbParameter()
         {
             return Target.CreateParameter();
+        }
+
+        /// <summary>
+        /// 针对 <see cref="DbConnection"/> 执行 <see cref="CommandText"/>，并返回 <see cref="DbDataReader"/>。
+        /// </summary>
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
+        {
+            return ExecuteReader(behavior);
         }
 
         /// <summary>
         /// 对连接对象执行 SQL 语句，并返回受影响的行数。
         /// </summary>
         /// <returns>受影响的行数。</returns>
-        public int ExecuteNonQuery()
+        public override int ExecuteNonQuery()
         {
             using var scope = Context.AcquireScope();
             PreExcuteCommand(ExcuteType.ExecuteNonQuery);
@@ -172,41 +193,111 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 异步执行 SQL 语句并返回受影响的行数。
+        /// 对连接对象执行 SQL 语句，并返回受影响的行数。
         /// </summary>
         /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>表示异步操作的任务，其结果为受影响的行数。</returns>
-        public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
+        /// <returns>受影响的行数。</returns>
+        public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
         {
             using var scope = await Context.AcquireScopeAsync(cancellationToken);
             PreExcuteCommand(ExcuteType.ExecuteNonQuery);
-            if (Target is DbCommand dbCmd)
-            {
-                int ret = await dbCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                PostExcuteCommand(ExcuteType.ExecuteNonQuery);
-                return ret;
-            }
-            else
-            {
-                int ret = await Task.Run(() => Target.ExecuteNonQuery(), cancellationToken).ConfigureAwait(false);
-                PostExcuteCommand(ExcuteType.ExecuteNonQuery);
-                return ret;
-            }
-
+            int ret = await Target.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            PostExcuteCommand(ExcuteType.ExecuteNonQuery);
+            return ret;
         }
+
+        /// <summary>
+        /// 执行查询，并返回查询所返回的结果集中第一行的第一列。忽略额外的列或行。
+        /// </summary>
+        /// <returns>结果集中第一行的第一列。</returns>
+        public override object ExecuteScalar()
+        {
+            using var scope = Context.AcquireScope();
+            PreExcuteCommand(ExcuteType.ExecuteScalar);
+            object ret = Target.ExecuteScalar();
+            PostExcuteCommand(ExcuteType.ExecuteScalar);
+            return ret;
+        }
+
+        /// <summary>
+        /// 异步执行查询，并返回查询所返回的结果集中第一行的第一列。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，其结果为结果集中第一行的第一列。</returns>
+        public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken = default)
+        {
+            using var scope = await Context.AcquireScopeAsync(cancellationToken);
+            PreExcuteCommand(ExcuteType.ExecuteScalar);
+            var ret = await Target.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            PostExcuteCommand(ExcuteType.ExecuteScalar);
+            return ret;
+        }
+
+        /// <summary>
+        /// 在数据源上创建该命令的准备好的或编译的版本。
+        /// </summary>
+        public override void Prepare()
+        {
+            using var scope = Context.AcquireScope();
+            if (Context is not null) Transaction = Context.CurrentTransaction as DbTransaction;
+            Target.Prepare();
+        }
+
+        #endregion
+
+        /// <summary>
+        /// 在执行数据库命令之前的处理逻辑。
+        /// </summary>
+        /// <param name="excuteType">执行类型。</param>
+        protected virtual void PreExcuteCommand(ExcuteType excuteType)
+        {
+            Transaction = Context.CurrentTransaction as DbTransaction;
+            SessionManager.Current.PushSql(CommandText);
+        }
+
+        /// <summary>
+        /// 在执行数据库命令之后的处理逻辑。
+        /// </summary>
+        /// <param name="excuteType">执行类型。</param>
+        protected virtual void PostExcuteCommand(ExcuteType excuteType)
+        {
+            Context.LastActiveTime = DateTime.Now;
+        }
+
+        #region IDbCommand Members (Explicit implementations for compatibility)
+
+        IDbConnection IDbCommand.Connection
+        {
+            get => Connection;
+            set => Connection = value as DbConnection;
+        }
+
+        IDbTransaction IDbCommand.Transaction
+        {
+            get => Transaction;
+            set => Transaction = value as DbTransaction;
+        }
+
+        IDataParameterCollection IDbCommand.Parameters => Parameters;
+
+        IDbDataParameter IDbCommand.CreateParameter() => CreateParameter();
+
+        #endregion
+
+        #region Execute Methods
 
         /// <summary>
         /// 对 <see cref="Connection"/> 执行 <see cref="CommandText"/>，并使用 <see cref="CommandBehavior"/> 值之一返回 <see cref="IDataReader"/>。
         /// </summary>
         /// <param name="behavior">命令行为特性。</param>
         /// <returns>一个 <see cref="IDataReader"/> 对象。</returns>
-        public IDataReader ExecuteReader(CommandBehavior behavior)
+        public new DbDataReader ExecuteReader(CommandBehavior behavior)
         {
             var scope = Context.AcquireScope();
             try
             {
                 PreExcuteCommand(ExcuteType.ExecuteReader);
-                IDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), scope);
+                DbDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), scope);
                 PostExcuteCommand(ExcuteType.ExecuteReader);
                 return ret;
             }
@@ -217,21 +308,25 @@ namespace LiteOrm
             }
         }
 
+        IDataReader IDbCommand.ExecuteReader(CommandBehavior behavior) => ExecuteReader(behavior);
+
         /// <summary>
         /// 对 <see cref="Connection"/> 执行 <see cref="CommandText"/>，并返回 <see cref="IDataReader"/>。
         /// </summary>
         /// <returns>一个 <see cref="IDataReader"/> 对象。</returns>
-        public IDataReader ExecuteReader()
+        public new DbDataReader ExecuteReader()
         {
             return ExecuteReader(CommandBehavior.Default);
         }
+
+        IDataReader IDbCommand.ExecuteReader() => ExecuteReader();
 
         /// <summary>
         /// 异步执行 SQL 语句并返回 <see cref="IDataReader"/>。
         /// </summary>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，其结果为一个 <see cref="IDataReader"/> 对象。</returns>
-        public Task<IDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
+        public new Task<DbDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
         {
             return ExecuteReaderAsync(CommandBehavior.Default, cancellationToken);
         }
@@ -242,14 +337,14 @@ namespace LiteOrm
         /// <param name="behavior">命令行为特性。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，其结果为一个 <see cref="IDataReader"/> 对象。</returns>
-        public async Task<IDataReader> ExecuteReaderAsync(CommandBehavior behavior = CommandBehavior.Default, CancellationToken cancellationToken = default)
+        public new async Task<DbDataReader> ExecuteReaderAsync(CommandBehavior behavior = CommandBehavior.Default, CancellationToken cancellationToken = default)
         {
             var scope = await Context.AcquireScopeAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 PreExcuteCommand(ExcuteType.ExecuteReader);
-                IDataReader reader = await Target.ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
-                IDataReader ret = new AutoLockDataReader(reader, scope);
+                DbDataReader reader = await Target.ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
+                DbDataReader ret = new AutoLockDataReader(reader, scope);
                 PostExcuteCommand(ExcuteType.ExecuteReader);
                 return ret;
             }
@@ -261,70 +356,6 @@ namespace LiteOrm
             }
         }
 
-        /// <summary>
-        /// 执行查询，并返回查询所返回的结果集中第一行的第一列。忽略额外的列或行。
-        /// </summary>
-        /// <returns>结果集中第一行的第一列。</returns>
-        public object ExecuteScalar()
-        {
-            using var scope = Context.AcquireScope();
-            PreExcuteCommand(ExcuteType.ExecuteScalar);
-            object ret = Target.ExecuteScalar();
-            PostExcuteCommand(ExcuteType.ExecuteScalar);
-            return ret;
-
-        }
-
-        /// <summary>
-        /// 异步执行查询，并返回查询所返回的结果集中第一行的第一列。
-        /// </summary>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>表示异步操作的任务，其结果为结果集中第一行的第一列。</returns>
-        public async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken = default)
-        {
-            using var scope = await Context.AcquireScopeAsync(cancellationToken);
-            PreExcuteCommand(ExcuteType.ExecuteScalar);
-            var ret = await Target.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-            PostExcuteCommand(ExcuteType.ExecuteScalar);
-            return ret;
-        }
-
-        /// <summary>
-        /// 获取 <see cref="IDataParameterCollection"/>。
-        /// </summary>
-        public IDataParameterCollection Parameters
-        {
-            get { return Target.Parameters; }
-        }
-
-        /// <summary>
-        /// 在数据源上创建该命令的准备好的或编译的版本。
-        /// </summary>
-        public void Prepare()
-        {
-            using var scope = Context.AcquireScope();
-            if (Context is not null) Transaction = Context.CurrentTransaction;
-            Target.Prepare();
-        }
-
-        /// <summary>
-        /// 获取或设置在其中执行 .NET 数据提供程序的 Command 对象的事务。
-        /// </summary>
-        public IDbTransaction Transaction
-        {
-            get { return Target.Transaction; }
-            set { (Target as IDbCommand).Transaction = value; }
-        }
-
-        /// <summary>
-        /// 获取或设置当 <see cref="IDataAdapter.Update(DataSet)"/> 使用 <see cref="IDataAdapter"/> 时如何将查询结果应用于 <see cref="DataRow"/>。
-        /// </summary>
-        public UpdateRowSource UpdatedRowSource
-        {
-            get { return Target.UpdatedRowSource; }
-            set { Target.UpdatedRowSource = value; }
-        }
-
         #endregion
 
         #region IDisposable Members
@@ -332,10 +363,14 @@ namespace LiteOrm
         /// <summary>
         /// 释放由该 <see cref="DbCommandProxy"/> 使用的资源。
         /// </summary>
-        public void Dispose()
+        /// <param name="disposing">如果为 true，则释放托管资源和非托管资源。</param>
+        protected override void Dispose(bool disposing)
         {
-            Target.Dispose();
-
+            if (disposing)
+            {
+                Target.Dispose();
+            }
+            base.Dispose(disposing);
         }
         #endregion
     }

@@ -59,13 +59,16 @@ namespace LiteOrm.Common
             if (Value is null) return "NULL";
             else if (Value is IEnumerable enumerable && !(Value is string))
             {
-                StringBuilder sb = new StringBuilder();
+                Span<char> initialBuffer = stackalloc char[128];
+                var sb = new ValueStringBuilder(initialBuffer);
                 foreach (var item in enumerable)
                 {
                     if (sb.Length > 0) sb.Append(",");
                     sb.Append(item?.ToString() ?? "NULL");
                 }
-                return $"({sb})";
+                string result = $"({sb.ToString()})";
+                sb.Dispose();
+                return result;
             }
             else
                 return Value.ToString();

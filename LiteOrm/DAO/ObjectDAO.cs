@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Data;
+using System.Data.Common;
 using LiteOrm.Common;
 using System.Linq.Expressions;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,8 +32,412 @@ namespace LiteOrm
     /// 提供强类型的数据访问接口。
     /// </remarks>
     [AutoRegister(ServiceLifetime.Scoped)]
-    public partial class ObjectDAO<T> : DAOBase, IObjectDAO<T>
+    public class ObjectDAO<T> : DAOBase, IObjectDAO<T>
     {
+        /// <summary>
+        /// 实体对象类型
+        /// </summary>
+        public override Type ObjectType
+        {
+            get { return typeof(T); }
+        }
+        /// <summary>
+        /// 获取实体对应的数据库表元数据。
+        /// </summary>
+        public override SqlTable Table
+        {
+            get { return TableInfoProvider.GetTableDefinition(ObjectType); }
+        }
+
+        /// <summary>
+        /// 使用指定的参数创建新的DAO实例
+        /// </summary>
+        /// <param name="args">表名参数</param>
+        /// <returns>新的DAO实例</returns>
+        public ObjectDAO<T> WithArgs(params string[] args)
+        {
+            ObjectDAO<T> newDAO = MemberwiseClone() as ObjectDAO<T>;
+            newDAO.TableNameArgs = args;
+            newDAO.SqlBuildContext = null;
+            return newDAO;
+        }
+
+        /// <summary>
+        /// 识别列
+        /// </summary>
+        protected ColumnDefinition IdentityColumn => TableDefinition.Columns.FirstOrDefault(col => col.IsIdentity);
+        private ColumnDefinition[] _insertableColumns;
+        private ColumnDefinition[] _updatableColumns;
+
+        private ColumnDefinition[] InsertableColumns
+        {
+            get
+            {
+                if (_insertableColumns is null)
+                {
+                    _insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
+                }
+                return _insertableColumns;
+            }
+        }
+
+        private ColumnDefinition[] UpdatableColumns
+        {
+            get
+            {
+                if (_updatableColumns is null)
+                {
+                    _updatableColumns = TableDefinition.Columns.Where(column => !column.IsPrimaryKey && column.Mode.CanUpdate()).ToArray();
+                }
+                return _updatableColumns;
+            }
+        }
+
+        /// <summary>
+        /// 获取或设置用于生成 SQL 的上下文。
+        /// </summary>
+
+        protected override SqlBuildContext SqlBuildContext
+        {
+            get { base.SqlBuildContext.SingleTable = true; return base.SqlBuildContext; }
+        }
+
+        #region 预构建Command
+        /// <summary>
+        /// 实体插入命令
+        /// </summary>
+        protected virtual DbCommandProxy MakeInsertCommand()
+        {
+            DbCommandProxy command = NewCommand();
+            Span<char> colBuf = stackalloc char[256];
+            Span<char> valBuf = stackalloc char[256];
+            var strColumns = new ValueStringBuilder(colBuf);
+            var strValues = new ValueStringBuilder(valBuf);
+            
+            ColumnDefinition[] columns = InsertableColumns;
+            int count = columns.Length;
+            for (int i = 0; i < count; i++)
+            {
+                ColumnDefinition column = columns[i];
+                if (i > 0)
+                {
+                    strColumns.Append(",");
+                    strValues.Append(",");
+                }
+
+                strColumns.Append(ToSqlName(column.Name));
+                strValues.Append(ToSqlParam(column.PropertyName));
+                DbParameter param = command.CreateParameter();
+                param.Size = column.Length;
+                param.DbType = column.DbType;
+                param.ParameterName = ToParamName(column.PropertyName);
+                command.Parameters.Add(param);
+            }
+
+            command.CommandText = IdentityColumn is null ?
+                $"INSERT INTO {ToSqlName(FactTableName)} ({strColumns.ToString()}) \nVALUES ({strValues.ToString()})"
+                : SqlBuilder.BuildIdentityInsertSql(command, IdentityColumn, FactTableName, strColumns.ToString(), strValues.ToString());
+            
+            strColumns.Dispose();
+            strValues.Dispose();
+            return command;
+        }
+
+
+        /// <summary>
+        /// 构建实体更新命令。
+        /// </summary>
+        /// <returns>返回更新命令实例。</returns>
+        protected virtual DbCommandProxy MakeUpdateCommand(bool withTimestamp)
+        {
+            DbCommandProxy command = NewCommand();
+            Span<char> colBuf = stackalloc char[512];
+            var strColumns = new ValueStringBuilder(colBuf);
+            ColumnDefinition[] columns = UpdatableColumns;
+            int count = columns.Length;
+            for (int i = 0; i < count; i++)
+            {
+                ColumnDefinition column = columns[i];
+                if (i > 0) strColumns.Append(",");
+                strColumns.Append(ToSqlName(column.Name));
+                strColumns.Append(" = ");
+                strColumns.Append(ToSqlParam(column.PropertyName));
+                DbParameter param = command.CreateParameter();
+                param.Size = column.Length;
+                param.DbType = column.DbType;
+                param.ParameterName = ToParamName(column.PropertyName);
+                command.Parameters.Add(param);
+            }
+            string strTimestamp = withTimestamp ? MakeTimestampCondition(command, null) : null;
+            if (!String.IsNullOrEmpty(strTimestamp)) strTimestamp = $" AND {strTimestamp}";
+            command.CommandText = $"UPDATE {ToSqlName(FactTableName)} SET {strColumns.ToString()} {ToWhereSql(MakeKeyCondition(command) + strTimestamp)}";
+            strColumns.Dispose();
+            return command;
+        }
+
+
+        /// <summary>
+        /// 构建实体删除命令。
+        /// </summary>
+        /// <returns>返回删除命令实例。</returns>
+        protected virtual DbCommandProxy MakeDeleteCommand()
+        {
+            DbCommandProxy command = NewCommand();
+            command.CommandText = $"DELETE FROM {ToSqlName(FactTableName)} {ToWhereSql(MakeKeyCondition(command))}";
+            return command;
+        }
+
+        /// <summary>
+        /// 创建一次性批量插入实体集合的Command
+        /// </summary>
+        /// <param name="batchSize">要插入的实体集合数量</param>
+        /// <remarks>一次性批量插入不支持返回自增列</remarks>
+        protected virtual DbCommandProxy MakeBatchInsertCommand(int batchSize)
+        {
+            DbCommandProxy command = NewCommand();
+            Span<char> colBuf = stackalloc char[512];
+            var strColumns = new ValueStringBuilder(colBuf);
+            List<string> valuesList = new List<string>(batchSize);
+            ColumnDefinition[] insertColumns = InsertableColumns;
+            int columnCount = insertColumns.Length;
+
+            for (int j = 0; j < columnCount; j++)
+            {
+                if (j > 0) strColumns.Append(",");
+                strColumns.Append(ToSqlName(insertColumns[j].Name));
+            }
+
+            int paramIndex = 0;
+            for (int i = 0; i < batchSize; i++)
+            {
+                var strValuesRepeat = ValueStringBuilder.Create(128);
+                for (int j = 0; j < columnCount; j++)
+                {
+                    ColumnDefinition column = insertColumns[j];
+                    if (strValuesRepeat.Length != 0) strValuesRepeat.Append(",");
+
+                    string idxStr = paramIndex.ToString();
+                    strValuesRepeat.Append(ToSqlParam(idxStr));
+                    DbParameter param = command.CreateParameter();
+                    param.Size = column.Length;
+                    param.DbType = column.DbType;
+                    param.ParameterName = ToParamName(idxStr);
+                    command.Parameters.Add(param);
+                    paramIndex++;
+                }
+                valuesList.Add($"({strValuesRepeat.ToString()})");
+                strValuesRepeat.Dispose();
+            }
+
+            string columnsStr = strColumns.ToString();
+            if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                command.CommandText = SqlBuilder.BuildBatchIdentityInsertSql(command, IdentityColumn, FactTableName, columnsStr, valuesList);
+            else
+                command.CommandText = SqlBuilder.BuildBatchInsertSql(FactTableName, columnsStr, valuesList);
+            
+            strColumns.Dispose();
+            return command;
+        }
+
+        /// <summary>
+        /// 创建批量更新命令。
+        /// </summary>
+        protected virtual DbCommandProxy MakeBatchUpdateCommand(int batchSize)
+        {
+            ColumnDefinition[] updatableColumns = UpdatableColumns;
+            var keyColumns = TableDefinition.Keys.ToArray();
+
+            DbCommandProxy command = NewCommand();
+            command.CommandText = SqlBuilder.BuildBatchUpdateSql(FactTableName, updatableColumns, keyColumns, batchSize);
+
+            for (int b = 0; b < batchSize; b++)
+            {
+                foreach (var col in updatableColumns)
+                {
+                    DbParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName("p" + command.Parameters.Count);
+                    param.Size = col.Length;
+                    param.DbType = col.DbType;
+                    command.Parameters.Add(param);
+                }
+                foreach (var key in keyColumns)
+                {
+                    DbParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName("p" + command.Parameters.Count);
+                    param.Size = key.Length;
+                    param.DbType = key.DbType;
+                    command.Parameters.Add(param);
+                }
+            }
+            return command;
+        }
+
+        /// <summary>
+        /// 创建批量更新命令。
+        /// </summary>
+        protected virtual DbCommandProxy MakeBatchIDExistsCommand(int batchSize)
+        {
+            var keyColumns = TableDefinition.Keys;
+
+            DbCommandProxy command = NewCommand();
+            command.CommandText = SqlBuilder.BuildBatchIDExistsSql(FactTableName, keyColumns, batchSize);
+            for (int b = 0; b < batchSize; b++)
+            {
+                foreach (var key in keyColumns)
+                {
+                    DbParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName("p" + command.Parameters.Count);
+                    param.Size = key.Length;
+                    param.DbType = key.DbType;
+                    command.Parameters.Add(param);
+                }
+            }
+            return command;
+        }
+
+        /// <summary>
+        /// 创建批量删除命令。
+        /// </summary>
+        protected virtual DbCommandProxy MakeBatchDeleteCommand(int batchSize)
+        {
+            ColumnDefinition[] keyColumns = TableDefinition.Keys.ToArray();
+
+            DbCommandProxy command = NewCommand();
+            command.CommandText = SqlBuilder.BuildBatchDeleteSql(FactTableName, keyColumns, batchSize);
+
+            for (int b = 0; b < batchSize; b++)
+            {
+                foreach (var key in keyColumns)
+                {
+                    DbParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName("p" + command.Parameters.Count);
+                    param.Size = key.Length;
+                    param.DbType = key.DbType;
+                    command.Parameters.Add(param);
+                }
+            }
+            return command;
+        }
+
+        #endregion
+
+        #region Helpers
+
+        private void SetParameterValues(ColumnDefinition[] insertableColumns, List<T> batch, DbCommandProxy command)
+        {
+            int paramIndex = 0;
+            var parameters = command.Parameters;
+            int columnCount = insertableColumns.Length;
+            int batchCount = batch.Count;
+
+            for (int i = 0; i < batchCount; i++)
+            {
+                T item = batch[i];
+                for (int j = 0; j < columnCount; j++)
+                {
+                    ColumnDefinition column = insertableColumns[j];
+                    var param = (DbParameter)parameters[paramIndex++];
+                    param.Value = ConvertToDbValue(column.GetValue(item), column.DbType);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 更新批量操作中的实体 ID。
+        /// </summary>
+        protected virtual void UpdateBatchIds(List<T> batch, ref long firstId)
+        {
+            int count = batch.Count;
+            for (int i = 0; i < count; i++)
+            {
+                IdentityColumn.SetValue(batch[i], ConvertFromDbValue(firstId++, IdentityColumn.PropertyType));
+            }
+        }
+
+        protected DataTable ToDataTable(IEnumerable<T> values, ColumnDefinition[] columns)
+        {
+            DataTable dt = new DataTable(FactTableName);
+            int columnCount = columns.Length;
+            for (int i = 0; i < columnCount; i++)
+            {
+                dt.Columns.Add(new DataColumn(columns[i].Name, columns[i].PropertyType.GetUnderlyingType()));
+            }
+            dt.BeginInit();
+            foreach (T t in values)
+            {
+                DataRow dr = dt.NewRow();
+                for (int i = 0; i < columnCount; i++)
+                {
+                    ColumnDefinition column = columns[i];
+                    dr[column.Name] = ConvertToDbValue(column.GetValue(t), column.DbType) ?? DBNull.Value;
+                }
+                dt.Rows.Add(dr);
+            }
+            dt.EndInit();
+            return dt;
+        }
+
+        private void SetBatchUpdateParameterValues(ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, List<T> batch, DbCommandProxy command)
+        {
+            int paramIndex = 0;
+            var parameters = command.Parameters;
+            int updatableCount = updatableColumns.Length;
+            int keyCount = keyColumns.Length;
+            int batchCount = batch.Count;
+
+            for (int i = 0; i < batchCount; i++)
+            {
+                T item = batch[i];
+                for (int j = 0; j < updatableCount; j++)
+                {
+                    ColumnDefinition column = updatableColumns[j];
+                    ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(column.GetValue(item), column.DbType);
+                }
+                for (int j = 0; j < keyCount; j++)
+                {
+                    ColumnDefinition key = keyColumns[j];
+                    ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(key.GetValue(item), key.DbType);
+                }
+            }
+        }
+
+        private void SetBatchDeleteParameterValues(ColumnDefinition[] keyColumns, List<T> batch, DbCommandProxy command)
+        {
+            int paramIndex = 0;
+            var parameters = command.Parameters;
+            int keyCount = keyColumns.Length;
+            int batchCount = batch.Count;
+
+            for (int i = 0; i < batchCount; i++)
+            {
+                T item = batch[i];
+                for (int j = 0; j < keyCount; j++)
+                {
+                    ColumnDefinition key = keyColumns[j];
+                    ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(key.GetValue(item), key.DbType);
+                }
+            }
+        }
+
+        private void SetBatchDeleteByKeysParameterValues(ColumnDefinition[] keyColumns, List<object[]> batch, DbCommandProxy command)
+        {
+            int paramIndex = 0;
+            var parameters = command.Parameters;
+            int keyCount = keyColumns.Length;
+            int batchCount = batch.Count;
+
+            for (int i = 0; i < batchCount; i++)
+            {
+                object[] keys = batch[i];
+                for (int j = 0; j < keyCount; j++)
+                {
+                    ColumnDefinition key = keyColumns[j];
+                    ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(keys[j], key.DbType);
+                }
+            }
+        }
+        #endregion
+
         #region CRUD
         /// <summary>
         /// 将实体对象插入到数据库中。
@@ -50,7 +455,7 @@ namespace LiteOrm
             for (int i = 0; i < count; i++)
             {
                 var column = columns[i];
-                var param = (IDataParameter)parameters[i];
+                var param = (DbParameter)parameters[i];
                 param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
             }
 
@@ -60,7 +465,7 @@ namespace LiteOrm
             }
             else
             {
-                IDataParameter param = insertCommand.Parameters[ToParamName(IdentityColumn.PropertyName)] as IDataParameter;
+                DbParameter param = insertCommand.Parameters[ToParamName(IdentityColumn.PropertyName)] as DbParameter;
                 if (param is not null && param.Direction == ParameterDirection.Output)
                 {
                     insertCommand.ExecuteNonQuery();
@@ -179,19 +584,19 @@ namespace LiteOrm
             for (int i = 0; i < updatableCount; i++)
             {
                 var column = updatableColumns[i];
-                ((IDataParameter)parameters[paramIndex++]).Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(column.GetValue(t), column.DbType);
             }
 
             for (int i = 0; i < keyCount; i++)
             {
                 var key = keys[i];
-                ((IDataParameter)parameters[paramIndex++]).Value = ConvertToDbValue(key.GetValue(t), key.DbType);
+                ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(key.GetValue(t), key.DbType);
             }
 
             if (timestamp != null)
             {
                 var timestampCol = TableDefinition.Columns.First(c => c.IsTimestamp);
-                ((IDataParameter)parameters[paramIndex]).Value = ConvertToDbValue(timestamp, timestampCol.DbType);
+                ((DbParameter)parameters[paramIndex]).Value = ConvertToDbValue(timestamp, timestampCol.DbType);
             }
 
             return updateCommand.ExecuteNonQuery() > 0;
@@ -276,7 +681,7 @@ namespace LiteOrm
 
                 for (int j = 0; j < keyColumns.Length; j++)
                 {
-                    ((IDataParameter)command.Parameters[batch.Count * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].DbType);
+                    ((DbParameter)command.Parameters[batch.Count * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].DbType);
                 }
 
                 batch.Add(item);
@@ -294,7 +699,6 @@ namespace LiteOrm
                     batch.Clear();
                 }
             }
-
             if (batch.Count > 0)
             {
                 using var cmd = MakeBatchIDExistsCommand(batch.Count);
@@ -302,7 +706,7 @@ namespace LiteOrm
                 {
                     for (int j = 0; j < keyColumns.Length; j++)
                     {
-                        ((IDataParameter)cmd.Parameters[i * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
+                        ((DbParameter)cmd.Parameters[i * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
                     }
                 }
                 using (var reader = cmd.ExecuteReader())
@@ -353,49 +757,13 @@ namespace LiteOrm
         public virtual UpdateOrInsertResult UpdateOrInsert(T t)
         {
             if (t is null) throw new ArgumentNullException("t");
-            var command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "UpdateOrInsert"), _ => MakeUpdateOrInsertCommand());
-            foreach (IDataParameter param in command.Parameters)
+            if (Update(t))
             {
-                if (param.Direction == ParameterDirection.Input || param.Direction == ParameterDirection.InputOutput)
-                {
-                    ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
-                    param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
-                }
+                return UpdateOrInsertResult.Updated;
             }
-
-            if (IdentityColumn != null)
-            {
-                string propertyName = ToParamName(IdentityColumn.PropertyName);
-                IDataParameter param = null;
-                foreach (IDataParameter p in command.Parameters)
-                    if (p.Direction == ParameterDirection.Output)
-                    {
-                        param = p;
-                        break;
-                    }
-                if (param != null)
-                {
-                    command.ExecuteNonQuery();
-                    int ret = Convert.ToInt32(param.Value);
-                    if (ret > 0)
-                    {
-                        IdentityColumn.SetValue(t, ConvertFromDbValue(param.Value, IdentityColumn.PropertyType));
-                        return UpdateOrInsertResult.Inserted;
-                    }
-                    return UpdateOrInsertResult.Updated;
-                }
-            }
-
-            object res = command.ExecuteScalar();
-            int retVal = Convert.ToInt32(res);
-            if (retVal > 0)
-            {
-                if (IdentityColumn is not null) IdentityColumn.SetValue(t, ConvertFromDbValue(res, IdentityColumn.PropertyType));
-                return UpdateOrInsertResult.Inserted;
-            }
-            return UpdateOrInsertResult.Updated;
+            Insert(t);
+            return UpdateOrInsertResult.Inserted;
         }
-
 
         /// <summary>
         /// 将对象从数据库删除
@@ -415,7 +783,7 @@ namespace LiteOrm
         /// <returns>删除对象数量</returns>
         public virtual int Delete(Expr expr)
         {
-            using var command = MakeConditionCommand($"delete from {ParamTable} {ParamWhere}", expr);
+            using var command = MakeConditionCommand($"DELETE FROM {ParamTable} {ParamWhere}", expr);
             return command.ExecuteNonQuery();
         }
 
@@ -434,11 +802,92 @@ namespace LiteOrm
 
             for (int i = 0; i < count; i++)
             {
-                ((IDataParameter)parameters[i]).Value = ConvertToDbValue(keys[i], keyColumns[i].DbType);
+                ((DbParameter)parameters[i]).Value = ConvertToDbValue(keys[i], keyColumns[i].DbType);
             }
             return deleteCommand.ExecuteNonQuery() > 0;
         }
 
+        /// <summary>
+        /// 批量删除实体对象。
+        /// </summary>
+        /// <param name="values">要删除的实体对象集合。</param>
+        public virtual void BatchDelete(IEnumerable<T> values)
+        {
+            if (values is null) throw new ArgumentNullException(nameof(values));
+
+            var keyColumns = TableDefinition.Keys.ToArray();
+            int paramsPerDelete = keyColumns.Length;
+            if (paramsPerDelete == 0) return;
+
+            int batchSize = DAOContext.ParamCountLimit / 10 / paramsPerDelete * 10;
+            if (batchSize == 0) batchSize = Math.Max(DAOContext.ParamCountLimit / paramsPerDelete, 1);
+
+            var batch = new List<T>(batchSize);
+            foreach (var item in values)
+            {
+                batch.Add(item);
+                if (batch.Count == batchSize)
+                {
+                    DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchDelete" + batchSize), _ => MakeBatchDeleteCommand(batchSize));
+                    SetBatchDeleteParameterValues(keyColumns, batch, command);
+                    command.ExecuteNonQuery();
+                    batch.Clear();
+                }
+            }
+            if (batch.Count > 0)
+            {
+                using DbCommandProxy command = MakeBatchDeleteCommand(batch.Count);
+                SetBatchDeleteParameterValues(keyColumns, batch, command);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
+        /// 批量根据主键删除实体对象。
+        /// </summary>
+        /// <param name="keys">主键集合。</param>
+        public virtual void BatchDeleteByKeys(IEnumerable keys)
+        {
+            if (keys is null) throw new ArgumentNullException(nameof(keys));
+
+            var keyColumns = TableDefinition.Keys.ToArray();
+            int paramsPerDelete = keyColumns.Length;
+            if (paramsPerDelete == 0) return;
+
+            int batchSize = DAOContext.ParamCountLimit / 10 / paramsPerDelete * 10;
+            if (batchSize == 0) batchSize = Math.Max(DAOContext.ParamCountLimit / paramsPerDelete, 1);
+
+            var batch = new List<object[]>(batchSize);
+            foreach (var item in keys)
+            {
+                object[] keyValues;
+                if (paramsPerDelete == 1)
+                {
+                    keyValues = new object[] { item };
+                }
+                else
+                {
+                    keyValues = item as object[];
+                    if (keyValues == null || keyValues.Length != paramsPerDelete)
+                        throw new ArgumentException($"Composite key requires object[{paramsPerDelete}]");
+                }
+
+                batch.Add(keyValues);
+                if (batch.Count == batchSize)
+                {
+                    DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchDelete" + batchSize), _ => MakeBatchDeleteCommand(batchSize));
+                    SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
+                    command.ExecuteNonQuery();
+                    batch.Clear();
+                }
+            }
+            if (batch.Count > 0)
+            {
+                using DbCommandProxy command = MakeBatchDeleteCommand(batch.Count);
+                SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
+                command.ExecuteNonQuery();
+            }
+        }
 
         #endregion
 
@@ -461,7 +910,7 @@ namespace LiteOrm
             for (int i = 0; i < count; i++)
             {
                 var column = columns[i];
-                ((IDataParameter)parameters[i]).Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                ((DbParameter)parameters[i]).Value = ConvertToDbValue(column.GetValue(t), column.DbType);
             }
 
             if (IdentityColumn is null)
@@ -471,7 +920,7 @@ namespace LiteOrm
             else
             {
                 string propertyName = ToParamName(IdentityColumn.PropertyName);
-                IDataParameter param = insertCommand.Parameters.Contains(propertyName) ? (IDataParameter)insertCommand.Parameters[propertyName] : null;
+                DbParameter param = insertCommand.Parameters.Contains(propertyName) ? (DbParameter)insertCommand.Parameters[propertyName] : null;
                 if (param is not null && param.Direction == ParameterDirection.Output)
                 {
                     await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -518,7 +967,7 @@ namespace LiteOrm
                 {
                     if (!idExists && IdentityColumn is not null && !SqlBuilder.SupportBatchInsertWithIdentity)
                     {
-                        var res = await InsertAsync(item);
+                        var res = await InsertAsync(item, cancellationToken);
                         if (res)
                         {
                             nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)) + 1;
@@ -535,7 +984,7 @@ namespace LiteOrm
 
                         if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                         {
-                            object res = await command.ExecuteScalarAsync();
+                            object res = await command.ExecuteScalarAsync(cancellationToken);
                             if (res != null && res != DBNull.Value)
                             {
                                 nextManualId = Convert.ToInt64(res);
@@ -544,7 +993,7 @@ namespace LiteOrm
                         }
                         else
                         {
-                            await command.ExecuteNonQueryAsync();
+                            await command.ExecuteNonQueryAsync(cancellationToken);
                         }
                         if (idExists) UpdateBatchIds(batch, ref nextManualId);
                         batch.Clear();
@@ -557,7 +1006,7 @@ namespace LiteOrm
 
                     if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                     {
-                        object res = await command.ExecuteScalarAsync();
+                        object res = await command.ExecuteScalarAsync(cancellationToken);
                         if (res != null && res != DBNull.Value)
                         {
                             nextManualId = Convert.ToInt64(res);
@@ -566,7 +1015,7 @@ namespace LiteOrm
                     }
                     else
                     {
-                        await command.ExecuteNonQueryAsync();
+                        await command.ExecuteNonQueryAsync(cancellationToken);
                     }
 
                     if (idExists) UpdateBatchIds(batch, ref nextManualId);
@@ -596,19 +1045,19 @@ namespace LiteOrm
             for (int i = 0; i < updatableCount; i++)
             {
                 var column = updatableColumns[i];
-                ((IDataParameter)parameters[paramIndex++]).Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(column.GetValue(t), column.DbType);
             }
 
             for (int i = 0; i < keyCount; i++)
             {
                 var key = keys[i];
-                ((IDataParameter)parameters[paramIndex++]).Value = ConvertToDbValue(key.GetValue(t), key.DbType);
+                ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(key.GetValue(t), key.DbType);
             }
 
             if (timestamp != null)
             {
                 var timestampCol = TableDefinition.Columns.First(c => c.IsTimestamp);
-                ((IDataParameter)parameters[paramIndex]).Value = ConvertToDbValue(timestamp, timestampCol.DbType);
+                ((DbParameter)parameters[paramIndex]).Value = ConvertToDbValue(timestamp, timestampCol.DbType);
             }
             return await updateCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
         }
@@ -634,7 +1083,6 @@ namespace LiteOrm
             var batch = new List<T>(batchSize);
             foreach (var t in values)
             {
-                cancellationToken.ThrowIfCancellationRequested();
                 batch.Add(t);
                 if (batch.Count == batchSize)
                 {
@@ -697,7 +1145,7 @@ namespace LiteOrm
 
                 for (int j = 0; j < keyColumns.Length; j++)
                 {
-                    ((IDataParameter)command.Parameters[batch.Count * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].DbType);
+                    ((DbParameter)command.Parameters[batch.Count * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].DbType);
                 }
 
                 batch.Add(item);
@@ -705,23 +1153,11 @@ namespace LiteOrm
                 {
                     using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        if (reader is AutoLockDataReader autoLockReader)
+                        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                         {
-                            while (await autoLockReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                            {
-                                List<object> keyValues = new List<object>();
-                                for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(autoLockReader[i], keyColumns[i].PropertyType));
-                                existingIds.Add(keyValues);
-                            }
-                        }
-                        else
-                        {
-                            while (reader.Read())
-                            {
-                                List<object> keyValues = new List<object>();
-                                for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
-                                existingIds.Add(keyValues);
-                            }
+                            List<object> keyValues = new List<object>();
+                            for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                            existingIds.Add(keyValues);
                         }
                     }
                     batch.Clear();
@@ -735,28 +1171,16 @@ namespace LiteOrm
                 {
                     for (int j = 0; j < keyColumns.Length; j++)
                     {
-                        ((IDataParameter)cmd.Parameters[i * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
+                        ((DbParameter)cmd.Parameters[i * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
                     }
                 }
                 using (var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    if (reader is AutoLockDataReader autoLockReader)
+                    while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        while (await autoLockReader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                        {
-                            List<object> keyValues = new List<object>();
-                            for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(autoLockReader[i], keyColumns[i].PropertyType));
-                            existingIds.Add(keyValues);
-                        }
-                    }
-                    else
-                    {
-                        while (reader.Read())
-                        {
-                            List<object> keyValues = new List<object>();
-                            for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
-                            existingIds.Add(keyValues);
-                        }
+                        List<object> keyValues = new List<object>();
+                        for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                        existingIds.Add(keyValues);
                     }
                 }
             }
@@ -798,55 +1222,20 @@ namespace LiteOrm
         public async virtual Task<UpdateOrInsertResult> UpdateOrInsertAsync(T t, CancellationToken cancellationToken = default)
         {
             if (t is null) throw new ArgumentNullException("t");
-            var command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "UpdateOrInsert"), _ => MakeUpdateOrInsertCommand());
-            foreach (IDataParameter param in command.Parameters)
+            if (await UpdateAsync(t, null, cancellationToken).ConfigureAwait(false))
             {
-                if (param.Direction == ParameterDirection.Input || param.Direction == ParameterDirection.InputOutput)
-                {
-                    ColumnDefinition column = TableDefinition.GetColumn(ToNativeName(param.ParameterName));
-                    param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
-                }
+                return UpdateOrInsertResult.Updated;
             }
-
-            if (IdentityColumn != null)
-            {
-                string propertyName = ToParamName(IdentityColumn.PropertyName);
-                IDataParameter param = null;
-                foreach (IDataParameter p in command.Parameters)
-                    if (p.Direction == ParameterDirection.Output)
-                    {
-                        param = p;
-                        break;
-                    }
-                if (param != null)
-                {
-                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                    int ret = Convert.ToInt32(param.Value);
-                    if (ret > 0)
-                    {
-                        IdentityColumn.SetValue(t, ConvertFromDbValue(param.Value, IdentityColumn.PropertyType));
-                        return UpdateOrInsertResult.Inserted;
-                    }
-                    return UpdateOrInsertResult.Updated;
-                }
-            }
-
-            object res = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-            int retVal = Convert.ToInt32(res);
-            if (retVal > 0)
-            {
-                if (IdentityColumn is not null) IdentityColumn.SetValue(t, ConvertFromDbValue(res, IdentityColumn.PropertyType));
-                return UpdateOrInsertResult.Inserted;
-            }
-            return UpdateOrInsertResult.Updated;
+            await InsertAsync(t, cancellationToken).ConfigureAwait(false);
+            return UpdateOrInsertResult.Inserted;
         }
 
 
         /// <summary>
-        /// 异步将对象从数据库删除。
+        /// 将对象 from 数据库删除
         /// </summary>
-        /// <param name="t">待删除的对象。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
+        /// <param name="t">待删除的对象</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，如果删除成功则返回 true。</returns>
         public async virtual Task<bool> DeleteAsync(T t, CancellationToken cancellationToken = default)
         {
@@ -865,7 +1254,7 @@ namespace LiteOrm
             ThrowExceptionIfWrongKeys(keys);
             var deleteCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "Delete"), _ => MakeDeleteCommand());
             int i = 0;
-            foreach (IDataParameter param in deleteCommand.Parameters)
+            foreach (DbParameter param in deleteCommand.Parameters)
             {
                 param.Value = ConvertToDbValue(keys[i], Table.Keys[i].DbType);
                 i++;
@@ -882,8 +1271,280 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，返回删除对象数量。</returns>
         public async virtual Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand($"delete from {ParamTable} {ParamWhere}", expr);
+            using var command = MakeConditionCommand($"DELETE FROM {ParamTable} {ParamWhere}", expr);
             return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// 异步批量删除实体对象。
+        /// </summary>
+        /// <param name="values">要删除的实体对象集合。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        public async virtual Task BatchDeleteAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
+        {
+            if (values is null) throw new ArgumentNullException(nameof(values));
+
+            var keyColumns = TableDefinition.Keys.ToArray();
+            int paramsPerDelete = keyColumns.Length;
+            if (paramsPerDelete == 0) return;
+
+            int batchSize = DAOContext.ParamCountLimit / 10 / paramsPerDelete * 10;
+            if (batchSize == 0) batchSize = Math.Max(DAOContext.ParamCountLimit / paramsPerDelete, 1);
+
+            var batch = new List<T>(batchSize);
+            foreach (var item in values)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                batch.Add(item);
+                if (batch.Count == batchSize)
+                {
+                    DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchDelete" + batchSize), _ => MakeBatchDeleteCommand(batchSize));
+                    SetBatchDeleteParameterValues(keyColumns, batch, command);
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    batch.Clear();
+                }
+            }
+            if (batch.Count > 0)
+            {
+                using DbCommandProxy command = MakeBatchDeleteCommand(batch.Count);
+                SetBatchDeleteParameterValues(keyColumns, batch, command);
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// 异步批量根据主键删除实体对象。
+        /// </summary>
+        /// <param name="keys">主键集合。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        public async virtual Task BatchDeleteByKeysAsync(IEnumerable keys, CancellationToken cancellationToken = default)
+        {
+            if (keys is null) throw new ArgumentNullException(nameof(keys));
+
+            var keyColumns = TableDefinition.Keys.ToArray();
+            int paramsPerDelete = keyColumns.Length;
+            if (paramsPerDelete == 0) return;
+
+            int batchSize = DAOContext.ParamCountLimit / 10 / paramsPerDelete * 10;
+            if (batchSize == 0) batchSize = Math.Max(DAOContext.ParamCountLimit / paramsPerDelete, 1);
+
+            var batch = new List<object[]>(batchSize);
+            foreach (var item in keys)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                object[] keyValues;
+                if (paramsPerDelete == 1)
+                {
+                    keyValues = new object[] { item };
+                }
+                else
+                {
+                    keyValues = item as object[];
+                    if (keyValues == null || keyValues.Length != paramsPerDelete)
+                        throw new ArgumentException($"Composite key requires object[{paramsPerDelete}]");
+                }
+
+                batch.Add(keyValues);
+                if (batch.Count == batchSize)
+                {
+                    DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchDelete" + batchSize), _ => MakeBatchDeleteCommand(batchSize));
+                    SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    batch.Clear();
+                }
+            }
+            if (batch.Count > 0)
+            {
+                using DbCommandProxy command = MakeBatchDeleteCommand(batch.Count);
+                SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        #endregion
+
+        #region IObjectDAO Members
+
+        bool IObjectDAO.Insert(object o)
+        {
+            return Insert((T)o);
+        }
+        void IObjectDAO.BatchInsert(IEnumerable values)
+        {
+            if (values is IEnumerable<T> typed)
+                BatchInsert(typed);
+            else
+            {
+                List<T> list = new List<T>();
+                foreach (T entity in values)
+                {
+                    list.Add((T)entity);
+                }
+                BatchInsert(list);
+            }
+        }
+
+        bool IObjectDAO.Update(object o)
+        {
+            return Update((T)o);
+        }
+
+        UpdateOrInsertResult IObjectDAO.UpdateOrInsert(object o)
+        {
+            return UpdateOrInsert((T)o);
+        }
+
+        void IObjectDAO.BatchUpdateOrInsert(IEnumerable values)
+        {
+            if (values is IEnumerable<T> typed)
+                BatchUpdateOrInsert(typed);
+            else
+            {
+                List<T> list = new List<T>();
+                foreach (T entity in values)
+                {
+                    list.Add((T)entity);
+                }
+                BatchUpdateOrInsert(list);
+            }
+        }
+
+        void IObjectDAO.BatchUpdate(IEnumerable values)
+        {
+            if (values is IEnumerable<T> typed)
+                BatchUpdate(typed);
+            else
+            {
+                List<T> list = new List<T>();
+                foreach (T entity in values)
+                {
+                    list.Add((T)entity);
+                }
+                BatchUpdate(list);
+            }
+        }
+
+        bool IObjectDAO.Delete(object o)
+        {
+            return Delete((T)o);
+        }
+
+        void IObjectDAO.BatchDelete(IEnumerable values)
+        {
+            if (values is IEnumerable<T> typed)
+                BatchDelete(typed);
+            else
+            {
+                List<T> list = new List<T>();
+                foreach (object entity in values)
+                {
+                    list.Add((T)entity);
+                }
+                BatchDelete(list);
+            }
+        }
+
+        void IObjectDAO.BatchDeleteByKeys(IEnumerable keys)
+        {
+            BatchDeleteByKeys(keys);
+        }
+        #endregion
+
+        #region IObjectDAOAsync implementations
+
+        async Task<bool> IObjectDAOAsync.InsertAsync(object o, CancellationToken cancellationToken)
+        {
+            return await InsertAsync((T)o, cancellationToken).ConfigureAwait(false);
+        }
+
+        async Task IObjectDAOAsync.BatchInsertAsync(IEnumerable values, CancellationToken cancellationToken)
+        {
+            if (values is IEnumerable<T> typed)
+                await BatchInsertAsync(typed, cancellationToken).ConfigureAwait(false);
+            else
+            {
+                List<T> list = new List<T>();
+                foreach (T entity in values)
+                {
+                    list.Add((T)entity);
+                }
+                await BatchInsertAsync(list, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        async Task<bool> IObjectDAOAsync.UpdateAsync(object o, CancellationToken cancellationToken)
+        {
+            return await UpdateAsync((T)o, null, cancellationToken).ConfigureAwait(false);
+        }
+
+        async Task<UpdateOrInsertResult> IObjectDAOAsync.UpdateOrInsertAsync(object o, CancellationToken cancellationToken)
+        {
+            return await UpdateOrInsertAsync((T)o, cancellationToken).ConfigureAwait(false);
+        }
+
+        async Task IObjectDAOAsync.BatchUpdateAsync(IEnumerable values, CancellationToken cancellationToken)
+        {
+            if (values is IEnumerable<T> typed)
+                await BatchUpdateAsync(typed, cancellationToken).ConfigureAwait(false);
+            else
+            {
+                List<T> list = new List<T>();
+                foreach (T entity in values)
+                {
+                    list.Add((T)entity);
+                }
+                await BatchUpdateAsync(list, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        async Task IObjectDAOAsync.BatchUpdateOrInsertAsync(IEnumerable values, CancellationToken cancellationToken)
+        {
+            if (values is IEnumerable<T> typed)
+                await BatchUpdateOrInsertAsync(typed, cancellationToken).ConfigureAwait(false);
+            else
+            {
+                List<T> list = new List<T>();
+                foreach (T entity in values)
+                {
+                    list.Add((T)entity);
+                }
+                await BatchUpdateOrInsertAsync(list, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        async Task<bool> IObjectDAOAsync.DeleteAsync(object o, CancellationToken cancellationToken)
+        {
+            return await DeleteAsync((T)o, cancellationToken).ConfigureAwait(false);
+        }
+
+        async Task IObjectDAOAsync.BatchDeleteAsync(IEnumerable values, CancellationToken cancellationToken)
+        {
+            if (values is IEnumerable<T> typed)
+                await BatchDeleteAsync(typed, cancellationToken).ConfigureAwait(false);
+            else
+            {
+                List<T> list = new List<T>();
+                foreach (object entity in values)
+                {
+                    list.Add((T)entity);
+                }
+                await BatchDeleteAsync(list, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        async Task IObjectDAOAsync.BatchDeleteByKeysAsync(IEnumerable keys, CancellationToken cancellationToken)
+        {
+            await BatchDeleteByKeysAsync(keys, cancellationToken).ConfigureAwait(false);
+        }
+
+        async Task<bool> IObjectDAOAsync.DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken)
+        {
+            return await DeleteByKeysAsync(keys, cancellationToken).ConfigureAwait(false);
+        }
+
+        async Task<int> IObjectDAOAsync.DeleteAsync(Expr expr, CancellationToken cancellationToken)
+        {
+            return await DeleteAsync(expr, cancellationToken).ConfigureAwait(false);
         }
 
         #endregion

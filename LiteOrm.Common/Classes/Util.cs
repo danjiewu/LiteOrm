@@ -173,14 +173,16 @@ namespace LiteOrm
         /// <returns>日志字符串</returns>
         public static string GetLogString(object[] values)
         {
-            var sb = new StringBuilder();
+            var sb = ValueStringBuilder.Create(128);
             int expand = values.Length > MaxExpandedLogLength ? 0 : 1;
             foreach (var o in values)
             {
                 if (sb.Length > 0) sb.Append(",");
                 sb.Append(Util.GetLogString(o, expand));
             }
-            return sb.ToString();
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
         /// <summary>
@@ -190,14 +192,16 @@ namespace LiteOrm
         /// <returns>日志字符串</returns>
         public static string GetLogString(ICollection values)
         {
-            var sb = new StringBuilder();
+            var sb = ValueStringBuilder.Create(128);
             int expand = values.Count > MaxExpandedLogLength ? 0 : 1;
             foreach (var o in values)
             {
                 if (sb.Length > 0) sb.Append(",");
                 sb.Append(Util.GetLogString(o, expand));
             }
-            return sb.ToString();
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
         /// <summary>
@@ -225,13 +229,15 @@ namespace LiteOrm
                 int count = o is Array ? ((Array)o).Length : ((ICollection)o).Count;
                 if (expandDepth > 0 && count <= MaxExpandedLogLength)
                 {
-                    StringBuilder sb = new StringBuilder();
+                    var sb = ValueStringBuilder.Create(128);
                     foreach (object value in (IEnumerable)o)
                     {
                         if (sb.Length > 0) sb.Append(",");
                         sb.Append(GetLogString(value, expandDepth - 1));
                     }
-                    return "{" + sb.ToString() + "}";
+                    string result = "{" + sb.ToString() + "}";
+                    sb.Dispose();
+                    return result;
                 }
                 else
                 {

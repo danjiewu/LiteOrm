@@ -57,7 +57,7 @@ namespace LiteOrm
         /// <returns>构建后的 SQL 语句。</returns>
         public override string BuildIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
-            return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues});\nselect LAST_INSERT_ID() as `ID`;";
+            return $"INSERT INTO {ToSqlName(tableName)} ({strColumns}) \nVALUES ({strValues});\nSELECT LAST_INSERT_ID() AS `ID`;";
         }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace LiteOrm
         /// </summary>
         public override string BuildBatchIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
         {
-            return $"{BuildBatchInsertSql(tableName, columns, valuesList)};\nselect LAST_INSERT_ID() as `ID`;";
+            return $"{BuildBatchInsertSql(tableName, columns, valuesList)};\nSELECT LAST_INSERT_ID() AS `ID`;";
         }
 
 
@@ -112,7 +112,7 @@ namespace LiteOrm
         /// <returns></returns>
         public override string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
-            return $"select {select} \nfrom {from} {where} Order by {orderBy} limit {startIndex},{sectionSize}";
+            return $"SELECT {select} \nFROM {from} {where} ORDER BY {orderBy} LIMIT {startIndex},{sectionSize}";
         }
 
         /// <summary>
@@ -130,20 +130,56 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 生成更新或插入（Upsert）的 SQL 语句 (MySQL 风格)。
-        /// 使用 INSERT ... ON DUPLICATE KEY UPDATE 语法实现。
+        /// 生成 MySQL 专用的批量更新 SQL 语句（采用 JOIN 方式）。
         /// </summary>
-        /// <param name="command">数据库命令。</param>
-        /// <param name="tableName">目标表名。</param>
-        /// <param name="insertColumns">插入列。</param>
-        /// <param name="insertValues">插入值。</param>
-        /// <param name="updateSets">更新集。</param>
-        /// <param name="keyColumns">关键列。</param>
-        /// <param name="identityColumn">标识列。</param>
-        /// <returns>返回 MySQL Upsert SQL 字符串。成功插入返回自增 ID，更新则返回 -1。</returns>
-        public override string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn)
+        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
         {
-            return $"INSERT INTO {ToSqlName(tableName)} ({insertColumns}) VALUES ({insertValues}) ON DUPLICATE KEY UPDATE {updateSets}; SELECT IF(ROW_COUNT() = 1, LAST_INSERT_ID(), -1);";
+            var sb = ValueStringBuilder.Create(2048);
+            string sqlTableName = ToSqlName(tableName);
+            int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
+
+            sb.Append("UPDATE ");
+            sb.Append(sqlTableName);
+            sb.Append(" T");
+            sb.Append("\nINNER JOIN (");
+            for (int b = 0; b < batchSize; b++)
+            {
+                if (b > 0) sb.Append("\n  UNION ALL ");
+                sb.Append("SELECT ");
+                for (int i = 0; i < paramsPerRecord; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    sb.Append(ToSqlParam("p" + (b * paramsPerRecord + i)));
+                    if (b == 0) 
+                    {
+                        sb.Append(" AS ");
+                        sb.Append(ToSqlName("v" + i));
+                    }
+                }
+            }
+            sb.Append(") S ON ");
+            for (int k = 0; k < keyColumns.Length; k++)
+            {
+                if (k > 0) sb.Append(" AND ");
+                sb.Append("T.");
+                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(" = S.");
+                sb.Append(ToSqlName("v" + (updatableColumns.Length + k)));
+            }
+
+            sb.Append("\nSET ");
+            for (int i = 0; i < updatableColumns.Length; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append("T.");
+                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(" = S.");
+                sb.Append(ToSqlName("v" + i));
+            }
+
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
     }
 }

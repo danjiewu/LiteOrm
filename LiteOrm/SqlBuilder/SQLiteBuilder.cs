@@ -33,24 +33,6 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 生成更新或插入（Upsert）的 SQL 语句 (SQLite 风格)。
-        /// 使用 INSERT ... ON CONFLICT (...) DO UPDATE SET 语法。
-        /// </summary>
-        /// <param name="command">数据库命令。</param>
-        /// <param name="tableName">目标表名。</param>
-        /// <param name="insertColumns">插入列。</param>
-        /// <param name="insertValues">插入值。</param>
-        /// <param name="updateSets">更新集。</param>
-        /// <param name="keyColumns">冲突关键列。</param>
-        /// <param name="identityColumn">标识列。</param>
-        /// <returns>返回 SQLite Upsert SQL 字符串。</returns>
-        public override string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn)
-        {
-            string keys = string.Join(",", keyColumns.Select(c => ToSqlName(c.Name)));
-            return $"INSERT INTO {ToSqlName(tableName)} ({insertColumns}) VALUES ({insertValues}) ON CONFLICT ({keys}) DO UPDATE SET {updateSets}; SELECT last_insert_rowid();";
-        }
-
-        /// <summary>
         /// 将对象值转换为数据库值，Sqlite 中 DateTime、TimeSpan 类型将被转换为字符串存储。
         /// </summary>
         /// <param name="value">要转换的对象值。</param>
@@ -79,7 +61,7 @@ namespace LiteOrm
         /// </summary>
         public override string BuildIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
-            return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues});\nSELECT last_insert_rowid() as [ID];";
+            return $"INSERT INTO {ToSqlName(tableName)} ({strColumns}) \nVALUES ({strValues});\nSELECT LAST_INSERT_ROWID() AS [ID];";
         }
 
         /// <summary>
@@ -106,7 +88,7 @@ namespace LiteOrm
         /// </summary>
         public override string BuildBatchIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
         {
-            return $"{BuildBatchInsertSql(tableName, columns, valuesList)}; select last_insert_rowid() - ({valuesList.Count - 1}) as [ID];";
+            return $"{BuildBatchInsertSql(tableName, columns, valuesList)}; SELECT LAST_INSERT_ROWID() - ({valuesList.Count - 1}) AS [ID];";
         }
 
         /// <summary>
@@ -118,6 +100,81 @@ namespace LiteOrm
             var sqlName = ToSqlName(tableName);
             var colSqls = columns.Select(c => $"ALTER TABLE {sqlName} ADD COLUMN {ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
             return string.Join(";", colSqls);
+        }
+
+        /// <summary>
+        /// 生成 SQLite 专用的批量更新 SQL 语句。鉴于 SQLite 版本的广泛度，继续采用 CASE WHEN 方式以保证兼容性。
+        /// </summary>
+        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        {
+            var sb = ValueStringBuilder.Create(2048);
+            sb.Append("UPDATE ");
+            sb.Append(ToSqlName(tableName));
+            sb.Append(" SET ");
+
+            int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
+
+            for (int i = 0; i < updatableColumns.Length; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                var col = updatableColumns[i];
+                sb.Append(ToSqlName(col.Name));
+                sb.Append(" = CASE ");
+                for (int b = 0; b < batchSize; b++)
+                {
+                    sb.Append(" WHEN ");
+                    for (int k = 0; k < keyColumns.Length; k++)
+                    {
+                        if (k > 0) sb.Append(" AND ");
+                        var key = keyColumns[k];
+                        string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
+                        sb.Append(ToSqlName(key.Name));
+                        sb.Append(" = ");
+                        sb.Append(ToSqlParam(keyParam));
+                    }
+                    string valParam = "p" + (b * paramsPerRecord + i);
+                    sb.Append(" THEN ");
+                    sb.Append(ToSqlParam(valParam));
+                }
+                sb.Append(" END");
+            }
+
+            sb.Append(" WHERE ");
+            if (keyColumns.Length == 1)
+            {
+                var key = keyColumns[0];
+                sb.Append(ToSqlName(key.Name));
+                sb.Append(" IN (");
+                for (int b = 0; b < batchSize; b++)
+                {
+                    if (b > 0) sb.Append(", ");
+                    string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length);
+                    sb.Append(ToSqlParam(keyParam));
+                }
+                sb.Append(")");
+            }
+            else
+            {
+                for (int b = 0; b < batchSize; b++)
+                {
+                    if (b > 0) sb.Append(" OR ");
+                    sb.Append("(");
+                    for (int k = 0; k < keyColumns.Length; k++)
+                    {
+                        if (k > 0) sb.Append(" AND ");
+                        var key = keyColumns[k];
+                        string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
+                        sb.Append(ToSqlName(key.Name));
+                        sb.Append(" = ");
+                        sb.Append(ToSqlParam(keyParam));
+                    }
+                    sb.Append(")");
+                }
+            }
+
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
     }
 }

@@ -49,57 +49,91 @@ namespace LiteOrm.Common
         public static string ToSql(this Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (expr is null) return string.Empty;
-
-            // 根据 Expr 的具体类型，分发到对应的 SQL 转换逻辑
-            if (expr is BinaryExpr binary) return ToSql(binary, context, sqlBuilder, outputParams);
-            if (expr is UnaryExpr unary) return ToSql(unary, context, sqlBuilder, outputParams);
-            if (expr is ValueExpr value) return ToSql(value, context, sqlBuilder, outputParams);
-            if (expr is PropertyExpr prop) return ToSql(prop, context, sqlBuilder, outputParams);
-            if (expr is FunctionExpr func) return ToSql(func, context, sqlBuilder, outputParams);
-            if (expr is LambdaExpr lambda) return ToSql(lambda, context, sqlBuilder, outputParams);
-            if (expr is GenericSqlExpr generic) return ToSql(generic, context, sqlBuilder, outputParams);
-            if (expr is ForeignExpr foreign) return ToSql(foreign, context, sqlBuilder, outputParams);
-            if (expr is ExprSet set) return ToSql(set, context, sqlBuilder, outputParams);
-
-            throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
+            var sb = ValueStringBuilder.Create(128);
+            ToSql(ref sb, expr, context, sqlBuilder, outputParams);
+            string res = sb.ToString();
+            sb.Dispose();
+            return res;
         }
 
-        private static string ToSql(BinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            if (expr is null) return;
+
+            // 根据 Expr 的具体类型，分发到对应的 SQL 转换逻辑
+            if (expr is BinaryExpr binary) ToSql(ref sb, binary, context, sqlBuilder, outputParams);
+            else if (expr is UnaryExpr unary) ToSql(ref sb, unary, context, sqlBuilder, outputParams);
+            else if (expr is ValueExpr value) ToSql(ref sb, value, context, sqlBuilder, outputParams);
+            else if (expr is PropertyExpr prop) ToSql(ref sb, prop, context, sqlBuilder, outputParams);
+            else if (expr is FunctionExpr func) ToSql(ref sb, func, context, sqlBuilder, outputParams);
+            else if (expr is LambdaExpr lambda) ToSql(ref sb, lambda, context, sqlBuilder, outputParams);
+            else if (expr is GenericSqlExpr generic) ToSql(ref sb, generic, context, sqlBuilder, outputParams);
+            else if (expr is ForeignExpr foreign) ToSql(ref sb, foreign, context, sqlBuilder, outputParams);
+            else if (expr is ExprSet set) ToSql(ref sb, set, context, sqlBuilder, outputParams);
+            else
+                throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
+        }
+
+
+        private static void ToSql(ref ValueStringBuilder sb, BinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             string op = String.Empty;
             _operatorSymbols.TryGetValue(expr.Operator, out op);
             switch (expr.OriginOperator)
             {
                 case BinaryOperator.In:
-                    string inleft = expr.Left.ToSql(context, sqlBuilder, outputParams);
-                    string inright = expr.Right.ToSql(context, sqlBuilder, outputParams);
-                    // 处理 IN () 空集合的特殊情况
-                    if (string.IsNullOrWhiteSpace(inright) || inright.Trim() == "()") return expr.Operator.IsNot() ? string.Empty : "0=1";
-                    else return $"{inleft} {op} {inright}";
+                    var inrightSb = ValueStringBuilder.Create(64);
+                    ToSql(ref inrightSb, expr.Right, context, sqlBuilder, outputParams);
+                    ReadOnlySpan<char> inright = inrightSb.AsSpan();
+                    if (inright.Length == 0)
+                    {
+                        // IN 后面没有内容，视为空集合
+                        if (!expr.Operator.IsNot()) sb.Append("0=1");
+                    }
+                    else
+                    {
+                        ToSql(ref sb, expr.Left, context, sqlBuilder, outputParams);
+                        sb.Append(" ");
+                        sb.Append(op);
+                        sb.Append(" ");
+                        sb.Append(inright);
+                    }
+                    inrightSb.Dispose();
+                    break;
                 case BinaryOperator.RegexpLike:
                     // 正则表达式匹配通常使用特定的函数调用语法
-                    return $"{op}({expr.Left.ToSql(context, sqlBuilder, outputParams)},{expr.Right.ToSql(context, sqlBuilder, outputParams)})";
+                    sb.Append(op);
+                    sb.Append("(");
+                    ToSql(ref sb, expr.Left, context, sqlBuilder, outputParams);
+                    sb.Append(",");
+                    ToSql(ref sb, expr.Right, context, sqlBuilder, outputParams);
+                    sb.Append(")");
+                    break;
                 case BinaryOperator.Equal:
                     // 特殊处理 NULL 值的比较：在 SQL 中 a = NULL 始终为假，必须使用 IS NULL
                     if (expr.Right is null || expr.Right is ValueExpr vs && vs.Value is null)
                     {
-                        if (expr.Operator == BinaryOperator.Equal)
-                            return $"{expr.Left.ToSql(context, sqlBuilder, outputParams)} is null";
-                        else
-                            return $"{expr.Left.ToSql(context, sqlBuilder, outputParams)} is not null";
+                        ToSql(ref sb, expr.Left, context, sqlBuilder, outputParams);
+                        sb.Append(expr.Operator == BinaryOperator.Equal ? " IS NULL" : " IS NOT NULL");
                     }
                     else if (expr.Left is null || expr.Left is ValueExpr vsl && vsl.Value is null)
                     {
-                        if (expr.Operator == BinaryOperator.Equal)
-                            return $"{expr.Right.ToSql(context, sqlBuilder, outputParams)} is null";
-                        else
-                            return $"{expr.Right.ToSql(context, sqlBuilder, outputParams)} is not null";
+                        ToSql(ref sb, expr.Right, context, sqlBuilder, outputParams);
+                        sb.Append(expr.Operator == BinaryOperator.Equal ? " IS NULL" : " IS NOT NULL");
                     }
                     else
-                        return $"{expr.Left.ToSql(context, sqlBuilder, outputParams)} {op} {expr.Right.ToSql(context, sqlBuilder, outputParams)}";
+                    {
+                        ToSql(ref sb, expr.Left, context, sqlBuilder, outputParams);
+                        sb.Append(" ");
+                        sb.Append(op);
+                        sb.Append(" ");
+                        ToSql(ref sb, expr.Right, context, sqlBuilder, outputParams);
+                    }
+                    break;
                 case BinaryOperator.Concat:
                     // 字符串拼接逻辑委托给具体的 sqlBuilder，因为不同数据库的语法差异很大（如 || vs CONCAT）
-                    return sqlBuilder.BuildConcatSql(expr.Left.ToSql(context, sqlBuilder, outputParams), expr.Right.ToSql(context, sqlBuilder, outputParams));
+                    sb.Append(sqlBuilder.BuildConcatSql(expr.Left.ToSql(context, sqlBuilder, outputParams), expr.Right.ToSql(context, sqlBuilder, outputParams)));
+                    break;
                 case BinaryOperator.Contains:
                 case BinaryOperator.EndsWith:
                 case BinaryOperator.StartsWith:
@@ -120,13 +154,20 @@ namespace LiteOrm.Common
                         }
                         outputParams.Add(new KeyValuePair<string, object>(sqlBuilder.ToParamName(paramName), val));
                         // 使用 escape 子句转义用户输入中的特殊字符
-                        return $@"{expr.Left.ToSql(context, sqlBuilder, outputParams)} {op} {sqlBuilder.ToSqlParam(paramName)} escape '{Const.LikeEscapeChar}'";
+                        ToSql(ref sb, expr.Left, context, sqlBuilder, outputParams);
+                        sb.Append(" ");
+                        sb.Append(op);
+                        sb.Append(" ");
+                        sb.Append(sqlBuilder.ToSqlParam(paramName));
+                        sb.Append(" ESCAPE '");
+                        sb.Append(Const.LikeEscapeChar);
+                        sb.Append("'");
                     }
                     else
                     {
                         // 若右侧不是常量而是表达式，则需要生成复杂的嵌套 REPLACE 来转义特殊字符
-                        string left = expr.Left.ToSql(context, sqlBuilder, outputParams);
-                        string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({expr.Right.ToSql(context, sqlBuilder, outputParams)},'{Const.LikeEscapeChar}', '{Const.LikeEscapeChar}{Const.LikeEscapeChar}'),'_', '{Const.LikeEscapeChar}_'),'%', '{Const.LikeEscapeChar}%'),'/', '{Const.LikeEscapeChar}/'),'[', '{Const.LikeEscapeChar}['),']', '{Const.LikeEscapeChar}]')";
+                        string nestedRight = expr.Right.ToSql(context, sqlBuilder, outputParams);
+                        string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({nestedRight},'{Const.LikeEscapeChar}', '{Const.LikeEscapeChar}{Const.LikeEscapeChar}'),'_', '{Const.LikeEscapeChar}_'),'%', '{Const.LikeEscapeChar}%'),'/', '{Const.LikeEscapeChar}/'),'[', '{Const.LikeEscapeChar}['),']', '{Const.LikeEscapeChar}]')";
                         switch (expr.OriginOperator)
                         {
                             case BinaryOperator.StartsWith:
@@ -136,110 +177,103 @@ namespace LiteOrm.Common
                             case BinaryOperator.Contains:
                                 right = sqlBuilder.BuildConcatSql("%", right, "%"); break;
                         }
-                        return $@"{left} {op} {right} escape '{Const.LikeEscapeChar}'";
+                        ToSql(ref sb, expr.Left, context, sqlBuilder, outputParams);
+                        sb.Append(" ");
+                        sb.Append(op);
+                        sb.Append(" ");
+                        sb.Append(right);
+                        sb.Append(" ESCAPE '");
+                        sb.Append(Const.LikeEscapeChar);
+                        sb.Append("'");
                     }
+                    break;
                 default:
-                    return $"{expr.Left.ToSql(context, sqlBuilder, outputParams)} {op} {expr.Right.ToSql(context, sqlBuilder, outputParams)}";
+                    ToSql(ref sb, expr.Left, context, sqlBuilder, outputParams);
+                    sb.Append(" ");
+                    sb.Append(op);
+                    sb.Append(" ");
+                    ToSql(ref sb, expr.Right, context, sqlBuilder, outputParams);
+                    break;
             }
         }
 
-        private static string ToSql(UnaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, UnaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             // 处理一元操作符
             switch (expr.Operator)
             {
                 case UnaryOperator.Not:
-                    return $"NOT {expr.Operand.ToSql(context, sqlBuilder, outputParams)}";
+                    sb.Append("NOT ");
+                    break;
                 case UnaryOperator.Nagive:
-                    return $"-{expr.Operand.ToSql(context, sqlBuilder, outputParams)}";
+                    sb.Append("-");
+                    break;
                 case UnaryOperator.BitwiseNot:
-                    return $"~{expr.Operand.ToSql(context, sqlBuilder, outputParams)}";
-                default:
-                    return expr.Operand.ToSql(context, sqlBuilder, outputParams);
+                    sb.Append("~");
+                    break;
             }
+            ToSql(ref sb, expr.Operand, context, sqlBuilder, outputParams);
         }
 
-        private static string ToSql(ValueExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, ValueExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (expr.Value == null)
             {
-                return "NULL";
+                sb.Append("NULL");
             }
             else if (expr.IsConst && expr.Value is bool b)
             {
-                return b ? "1" : "0";
+                sb.Append(b ? "1" : "0");
             }
             else if (expr.IsConst && expr.Value.GetType().IsPrimitive)
             {
                 // 数值类型通常直接以字面量形式输出，较为高效
-                return expr.Value.ToString();
+                sb.Append(expr.Value.ToString());
             }
             else if (expr.Value is IEnumerable enumerable && !(expr.Value is string))
             {
                 // 处理 IN (...) 集合
-                if (enumerable is IList enumerableList)
-                {
-                    int enumCount = enumerableList.Count;
-                    if (enumCount == 0) return string.Empty;
-                    StringBuilder sb = new StringBuilder("(");
-                    for (int i = 0; i < enumCount; i++)
-                    {
-                        var item = enumerableList[i];
-                        if (i > 0) sb.Append(",");
-                        if (item is Expr e)
-                        {
-                            sb.Append(e.ToSql(context, sqlBuilder, outputParams));
-                        }
-                        else
-                        {
-                            string paramName = outputParams.Count.ToString();
-                            outputParams.Add(new(sqlBuilder.ToParamName(paramName), item));
-                            sb.Append(sqlBuilder.ToSqlParam(paramName));
-                        }
-                    }
-                    sb.Append(")");
-                    return sb.ToString();
-                }
 
-                List<string> strs = new List<string>();
+                bool first = true;
                 foreach (var item in enumerable)
                 {
+                    if (first) sb.Append('(');
+                    else sb.Append(',');
                     if (item is Expr e)
                     {
-                        string s = e.ToSql(context, sqlBuilder, outputParams);
-                        if (!string.IsNullOrWhiteSpace(s)) strs.Add(s);
+                        ToSql(ref sb, e, context, sqlBuilder, outputParams);
                     }
                     else
                     {
                         // 对集合中的每个元素进行参数化
                         string paramName = outputParams.Count.ToString();
                         outputParams.Add(new(sqlBuilder.ToParamName(paramName), item));
-                        strs.Add(sqlBuilder.ToSqlParam(paramName));
+                        sb.Append(sqlBuilder.ToSqlParam(paramName));
                     }
+                    first = false;
                 }
-                return strs.Count == 0 ? string.Empty : $"({string.Join(",", strs)})";
+                if(!first)sb.Append(')');
             }
-
             else
             {
                 // 其他类型（如字符串、日期）通过参数化处理以保证安全
                 string paramName = outputParams.Count.ToString();
                 outputParams.Add(new(sqlBuilder.ToParamName(paramName), expr.Value));
-                return sqlBuilder.ToSqlParam(paramName);
+                sb.Append(sqlBuilder.ToSqlParam(paramName));
             }
         }
 
-        private static string ToSql(PropertyExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, PropertyExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             // 将属性名映射为带限定符的列名，如 [User].[Name] 或 [Name]
             SqlColumn column = context.Table.GetColumn(expr.PropertyName);
             if (column is null) throw new Exception($"Property \"{expr.PropertyName}\" does not exist in type \"{context.Table.DefinitionType.FullName}\". ");
             string tableAlias = context.TableAliasName;
-            return tableAlias is null ? (context.SingleTable ? sqlBuilder.ToSqlName(column.Name) : sqlBuilder.BuildExpression(column)) : $"[{tableAlias}].[{column.Name}]";
+            sb.Append(tableAlias is null ? (context.SingleTable ? sqlBuilder.ToSqlName(column.Name) : sqlBuilder.BuildExpression(column)) : $"[{tableAlias}].[{column.Name}]");
         }
 
 
-        private static string ToSql(ForeignExpr foreginExpr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, ForeignExpr foreginExpr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             // 生成外键表达式的 SQL
             SqlColumn column = context.Table.GetColumn(foreginExpr.Foreign);
@@ -255,18 +289,31 @@ namespace LiteOrm.Common
                 Sequence = context.Sequence + 1,
                 TableAliasName = $"T{context.Sequence}",
             };
-            string innerSql = foreginExpr.InnerExpr.ToSql(foreignContext, sqlBuilder, outputParams);
+
             string columnSql = context.TableAliasName == null ? sqlBuilder.BuildExpression(column) : sqlBuilder.ToSqlName($"{context.TableAliasName}.{column.Name}");
             string keySql = foreignTableDef.Keys.Length == 1 ?
                 sqlBuilder.ToSqlName($"{foreignContext.TableAliasName}.{foreignTableDef.Keys[0].Name}") :
                 throw new InvalidOperationException("Foreign table has multiple keys.");
-            context.Sequence = foreignContext.Sequence;
             string tableName = sqlBuilder.GetTableNameWithArgs(sqlBuilder.ToSqlName(foreignTableDef.Name), context.TableNameArgs);
-            return $"EXISTS(SELECT 1 FROM {tableName} {foreignContext.TableAliasName} " +
-                $"\nWHERE {columnSql} = {keySql} AND {innerSql})";
+
+            sb.Append("EXISTS(SELECT 1 FROM ");
+            sb.Append(tableName);
+            sb.Append(" ");
+            sb.Append(foreignContext.TableAliasName);
+            sb.Append(" \nWHERE ");
+            sb.Append(columnSql);
+            sb.Append(" = ");
+            sb.Append(keySql);
+            sb.Append(" AND ");
+
+            ToSql(ref sb, foreginExpr.InnerExpr, foreignContext, sqlBuilder, outputParams);
+
+            sb.Append(")");
+
+            context.Sequence = foreignContext.Sequence;
         }
 
-        private static string ToSql(FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             // 分发给具体的 sqlBuilder 生成数据库对应的函数 SQL
             var parameters = expr.Parameters;
@@ -277,65 +324,63 @@ namespace LiteOrm.Common
                 Expr p = parameters[i];
                 args.Add(new KeyValuePair<string, Expr>(p.ToSql(context, sqlBuilder, outputParams), p));
             }
-            return sqlBuilder.BuildFunctionSql(expr.FunctionName, args);
+            sb.Append(sqlBuilder.BuildFunctionSql(expr.FunctionName, args));
         }
 
 
-        private static string ToSql(LambdaExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, LambdaExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            return expr.InnerExpr.ToSql(context, sqlBuilder, outputParams);
+            ToSql(ref sb, expr.InnerExpr, context, sqlBuilder, outputParams);
         }
 
-        private static string ToSql(GenericSqlExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, GenericSqlExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            return expr.GenerateSql(context, sqlBuilder, outputParams);
+            sb.Append(expr.GenerateSql(context, sqlBuilder, outputParams));
         }
 
-        private static string ToSql(ExprSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, ExprSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             int count = expr.Count;
-            if (count == 0) return string.Empty;
+            if (count == 0) return;
 
-            if (expr.JoinType == ExprJoinType.And || expr.JoinType == ExprJoinType.Or)
-            {
-                if (count == 1) return expr[0].ToSql(context, sqlBuilder, outputParams);
-                
-                StringBuilder sb = new StringBuilder("(");
-                bool first = true;
-                string joinStr = expr.JoinType == ExprJoinType.And ? " AND " : " OR ";
-                for (int i = 0; i < count; i++)
-                {
-                    string s = expr[i].ToSql(context, sqlBuilder, outputParams);
-                    if (string.IsNullOrEmpty(s)) continue;
-                    if (!first) sb.Append(joinStr);
-                    sb.Append(s);
-                    first = false;
-                }
-                sb.Append(")");
-                return first ? string.Empty : sb.ToString();
-            }
-            else if (expr.JoinType == ExprJoinType.Concat)
+            if (expr.JoinType == ExprJoinType.Concat)
             {
                 string[] subExprs = new string[count];
                 for (int i = 0; i < count; i++) subExprs[i] = expr[i].ToSql(context, sqlBuilder, outputParams);
-                return sqlBuilder.BuildConcatSql(subExprs);
+                sb.Append(sqlBuilder.BuildConcatSql(subExprs));
+                return;
             }
-            else
+
+            bool isLogical = expr.JoinType == ExprJoinType.And || expr.JoinType == ExprJoinType.Or;
+            string joinStr = expr.JoinType switch
             {
-                StringBuilder sb = new StringBuilder("(");
-                bool first = true;
-                for (int i = 0; i < count; i++)
+                ExprJoinType.And => " AND ",
+                ExprJoinType.Or => " OR ",
+                _ => ","
+            };
+
+            if (count > 1 || !isLogical) sb.Append("(");
+
+            bool first = true;
+            for (int i = 0; i < count; i++)
+            {
+                int lenBefore = sb.Length;
+                if (!first) sb.Append(joinStr);
+                int lenWithJoin = sb.Length;
+
+                ToSql(ref sb, expr[i], context, sqlBuilder, outputParams);
+
+                if (sb.Length == lenWithJoin)
                 {
-                    string s = expr[i].ToSql(context, sqlBuilder, outputParams);
-                    if (string.IsNullOrEmpty(s)) continue;
-                    if (!first) sb.Append(",");
-                    sb.Append(s);
+                    // Nothing was appended, revert joinStr
+                    if (!first) sb.Length = lenBefore;
+                }
+                else
+                {
                     first = false;
                 }
-                sb.Append(")");
-                return first ? string.Empty : sb.ToString();
             }
+            if (count > 1 || !isLogical) sb.Append(")");
         }
-
     }
 }

@@ -8,7 +8,7 @@ namespace LiteOrm.Common
     /// <summary>
     /// 值比较工具类
     /// </summary>
-    public static class ValueEquality
+    public class ValueEquality
     {
         // 缓存类型到转换器的映射
         private static readonly Dictionary<Type, Func<object, decimal?>> DecimalConverters =

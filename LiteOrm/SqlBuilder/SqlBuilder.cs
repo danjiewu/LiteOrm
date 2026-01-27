@@ -91,7 +91,9 @@ namespace LiteOrm
                 functionName = mappedName;
             }
 
-            StringBuilder sb = new StringBuilder(functionName);
+            Span<char> initialBuffer = stackalloc char[128];
+            var sb = new ValueStringBuilder(initialBuffer);
+            sb.Append(functionName);
             sb.Append("(");
             int count = args.Count;
             for (int i = 0; i < count; i++)
@@ -100,7 +102,9 @@ namespace LiteOrm
                 sb.Append(args[i].Key);
             }
             sb.Append(")");
-            return sb.ToString();
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
 
@@ -144,7 +148,7 @@ namespace LiteOrm
         /// <returns>生成的 SQL 语句。</returns>
         public virtual string BuildIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
-            return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues}); select @@IDENTITY as [ID];";
+            return $"INSERT INTO {ToSqlName(tableName)} ({strColumns}) \nVALUES ({strValues}); SELECT @@IDENTITY AS [ID];";
         }
 
 
@@ -170,7 +174,7 @@ namespace LiteOrm
         /// <returns>分页 SQL 语句。</returns>
         public virtual string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
-            return $"select * from (\nselect {select}, Row_Number() over (Order by {orderBy}) as Row_Number \nfrom {from} {where}) TempTable \nwhere Row_Number > {startIndex} and Row_Number <= {startIndex + sectionSize}";
+            return $"SELECT * FROM (\nSELECT {select}, ROW_NUMBER() OVER (ORDER BY {orderBy}) AS Row_Number \nFROM {from} {where}) TempTable \nWHERE Row_Number > {startIndex} AND Row_Number <= {startIndex + sectionSize}";
         }
 
         /// <summary>
@@ -214,31 +218,49 @@ namespace LiteOrm
             }
             if (sqlObject is TableView tableView)
             {
-                StringBuilder sb = new StringBuilder(ToSqlName(tableView.Definition.Name) + " " + ToSqlName(tableView.Name));
+                Span<char> initialBuffer = stackalloc char[256];
+                var sb = new ValueStringBuilder(initialBuffer);
+                sb.Append(ToSqlName(tableView.Definition.Name));
+                sb.Append(" ");
+                sb.Append(ToSqlName(tableView.Name));
                 foreach (var joined in tableView.JoinedTables)
                 {
                     sb.Append(BuildExpression(joined));
                 }
-                return sb.ToString();
+                string result = sb.ToString();
+                sb.Dispose();
+                return result;
             }
 
             if (sqlObject is JoinedTable joinedTable)
             {
-                StringBuilder sb = new StringBuilder();
-                sb.Append($"\n{joinedTable.JoinType.ToString().ToLower()} join {ToSqlName(joinedTable.TableDefinition.Name)} {ToSqlName(joinedTable.Name)} on ");
+                Span<char> initialBuffer = stackalloc char[512];
+                var sb = new ValueStringBuilder(initialBuffer);
+                sb.Append("\n");
+                sb.Append(joinedTable.JoinType.ToString().ToUpper());
+                sb.Append(" JOIN ");
+                sb.Append(ToSqlName(joinedTable.TableDefinition.Name));
+                sb.Append(" ");
+                sb.Append(ToSqlName(joinedTable.Name));
+                sb.Append(" ON ");
+                
                 bool isFirst = true;
                 for (int i = 0; i < joinedTable.ForeignKeys.Count; i++)
                 {
                     if (isFirst) isFirst = false;
-                    else sb.Append(" and ");
-                    sb.Append($"{BuildExpression(joinedTable.ForeignKeys[i])} = {BuildExpression(joinedTable.ForeignPrimeKeys[i])}");
+                    else sb.Append(" AND ");
+                    sb.Append(BuildExpression(joinedTable.ForeignKeys[i]));
+                    sb.Append(" = ");
+                    sb.Append(BuildExpression(joinedTable.ForeignPrimeKeys[i]));
                 }
                 if (!string.IsNullOrEmpty(joinedTable.FilterExpression))
                 {
-                    if (!isFirst) sb.Append(" and ");
+                    if (!isFirst) sb.Append(" AND ");
                     sb.Append(joinedTable.FilterExpression);
                 }
-                return sb.ToString();
+                string result = sb.ToString();
+                sb.Dispose();
+                return result;
             }
             if (sqlObject is SqlTable sqlTable)
             {
@@ -299,7 +321,7 @@ namespace LiteOrm
         protected string ReplaceSqlName(string sql, char left, char right, Func<char, char> handler = null)
         {
             if (sql is null) return null;
-            StringBuilder sb = new StringBuilder();
+            var sb = ValueStringBuilder.Create(sql.Length);
             bool passNext = false;
             Stack<char> stack = new Stack<char>();
             foreach (char ch in sql)
@@ -335,7 +357,9 @@ namespace LiteOrm
                     }
                 }
             }
-            return sb.ToString();
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
         /// <summary>
@@ -534,20 +558,32 @@ namespace LiteOrm
         public virtual string BuildCreateTableSql(string tableName, IEnumerable<ColumnDefinition> columns)
 
         {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("CREATE TABLE {0} (", ToSqlName(tableName));
+            var sb = ValueStringBuilder.Create(512);
+            sb.Append("CREATE TABLE ");
+            sb.Append(ToSqlName(tableName));
+            sb.Append(" (");
             bool first = true;
             foreach (var column in columns)
             {
                 if (!first) sb.Append(",");
-                sb.AppendFormat("\n  {0} {1}", ToSqlName(column.Name), GetSqlType(column));
+                sb.Append("\n  ");
+                sb.Append(ToSqlName(column.Name));
+                sb.Append(" ");
+                sb.Append(GetSqlType(column));
+
                 if (column.IsPrimaryKey) sb.Append(" PRIMARY KEY");
-                if (column.IsIdentity) sb.Append(" " + GetAutoIncrementSql());
+                if (column.IsIdentity) 
+                {
+                    sb.Append(" ");
+                    sb.Append(GetAutoIncrementSql());
+                }
                 if (!column.AllowNull) sb.Append(" NOT NULL");
                 first = false;
             }
             sb.Append("\n)");
-            return sb.ToString();
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
 
@@ -557,26 +593,6 @@ namespace LiteOrm
         public virtual string BuildTableExistsSql(string tableName)
         {
             return $"SELECT 1 FROM {ToSqlName(tableName)} WHERE 1=0";
-        }
-
-        /// <summary>
-        /// 生成更新或插入（Upsert）的 SQL 语句。
-        /// </summary>
-        /// <param name="command">数据库命令对象。</param>
-        /// <param name="tableName">目标表名。</param>
-        /// <param name="insertColumns">插入操作的列名集合（逗号分隔）。</param>
-        /// <param name="insertValues">插入操作的占位符集合（逗号分隔）。</param>
-        /// <param name="updateSets">更新操作的赋值子句（例如 "Col1=@p1, Col2=@p2"）。</param>
-        /// <param name="keyColumns">用于判断记录是否存在的关键列（通常为主键或唯一索引列）。</param>
-        /// <param name="identityColumn">自增标识列定义（如果有），用于返回新插入的 ID。</param>
-        /// <returns>返回适用于目标数据库的 Upsert SQL 字符串。通常的正数返回表示插入的 ID，-1 表示更新成功。</returns>
-        public virtual string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn)
-        {
-            string where = string.Join(" AND ", keyColumns.Select(c => $"{ToSqlName(c.Name)} = {ToSqlParam(c.PropertyName)}"));
-            string insertSql = identityColumn is null ? $"INSERT INTO {ToSqlName(tableName)} ({insertColumns}) VALUES ({insertValues})"
-                : BuildIdentityInsertSql(command, identityColumn, tableName, insertColumns, insertValues);
-            string updateSql = $"UPDATE {ToSqlName(tableName)} SET {updateSets} WHERE {where}";
-            return $"BEGIN IF EXISTS(SELECT 1 FROM {ToSqlName(tableName)} WHERE {where}) BEGIN {updateSql}; SELECT -1; END ELSE BEGIN {insertSql}; END END;";
         }
 
         /// <summary>
@@ -615,14 +631,23 @@ namespace LiteOrm
 
         public virtual string BuildBatchIDExistsSql(string tableName, ColumnDefinition[] keyColumns, int batchSize)
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = ValueStringBuilder.Create(1024);
             for (int i = 0; i < keyColumns.Length; i++)
             {
                 if (i > 0) sb.Append(",");
                 sb.Append(ToSqlName(keyColumns[i].Name));
             }
             string sqlKeys = sb.ToString();
-            sb = new StringBuilder($"SELECT {sqlKeys} FROM {ToSqlName(tableName)} WHERE {sqlKeys} IN (");
+            sb.Clear();
+            
+            sb.Append("SELECT ");
+            sb.Append(sqlKeys);
+            sb.Append(" FROM ");
+            sb.Append(ToSqlName(tableName));
+            sb.Append(" WHERE ");
+            sb.Append(sqlKeys);
+            sb.Append(" IN (");
+            
             for (int b = 0; b < batchSize; b++)
             {
                 if (b > 0) sb.Append(",");
@@ -630,62 +655,40 @@ namespace LiteOrm
                 for (int i = 0; i < keyColumns.Length; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    string keyParam = "p" + b;
+                    string keyParam = "p" + (b * keyColumns.Length + i);
                     sb.Append(ToSqlParam(keyParam));
                 }
                 if (keyColumns.Length > 1) sb.Append(")");
             }
             sb.Append(")");
-            return sb.ToString();
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
         /// <summary>
-        /// 生成批量更新的 SQL 语句。默认采用 CASE WHEN 方式实现。
-        /// 当主键为单列时，WHERE 条件会优化为 IN 语句。
+        /// 生成批量删除的 SQL 语句。
         /// </summary>
         /// <param name="tableName">目标表名。</param>
-        /// <param name="updatableColumns">可更新列集合。</param>
         /// <param name="keyColumns">主键列集合。</param>
         /// <param name="batchSize">批次大小。</param>
-        /// <returns>返回目标数据库可执行的批量更新 SQL 字符串。</returns>
-        public virtual string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        /// <returns>返回目标数据库可执行的批量删除 SQL 字符串。</returns>
+        public virtual string BuildBatchDeleteSql(string tableName, ColumnDefinition[] keyColumns, int batchSize)
         {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("UPDATE {0} SET ", ToSqlName(tableName));
-
-            int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
-
-            for (int i = 0; i < updatableColumns.Length; i++)
-            {
-                if (i > 0) sb.Append(", ");
-                var col = updatableColumns[i];
-                sb.AppendFormat("{0} = CASE ", ToSqlName(col.Name));
-                for (int b = 0; b < batchSize; b++)
-                {
-                    sb.Append(" WHEN ");
-                    for (int k = 0; k < keyColumns.Length; k++)
-                    {
-                        if (k > 0) sb.Append(" AND ");
-                        var key = keyColumns[k];
-                        string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
-                        sb.AppendFormat("{0} = {1}", ToSqlName(key.Name), ToSqlParam(keyParam));
-                    }
-                    string valParam = "p" + (b * paramsPerRecord + i);
-                    sb.AppendFormat(" THEN {0}", ToSqlParam(valParam));
-                }
-                sb.Append(" END");
-            }
-
+            var sb = ValueStringBuilder.Create(1024);
+            sb.Append("DELETE FROM ");
+            sb.Append(ToSqlName(tableName));
             sb.Append(" WHERE ");
+
             if (keyColumns.Length == 1)
             {
                 var key = keyColumns[0];
-                sb.AppendFormat("{0} IN (", ToSqlName(key.Name));
+                sb.Append(ToSqlName(key.Name));
+                sb.Append(" IN (");
                 for (int b = 0; b < batchSize; b++)
                 {
                     if (b > 0) sb.Append(", ");
-                    string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length);
-                    sb.Append(ToSqlParam(keyParam));
+                    sb.Append(ToSqlParam("p" + b));
                 }
                 sb.Append(")");
             }
@@ -699,14 +702,76 @@ namespace LiteOrm
                     {
                         if (k > 0) sb.Append(" AND ");
                         var key = keyColumns[k];
-                        string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
-                        sb.AppendFormat("{0} = {1}", ToSqlName(key.Name), ToSqlParam(keyParam));
+                        string keyParam = "p" + (b * keyColumns.Length + k);
+                        sb.Append(ToSqlName(key.Name));
+                        sb.Append(" = ");
+                        sb.Append(ToSqlParam(keyParam));
                     }
                     sb.Append(")");
                 }
             }
 
-            return sb.ToString();
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
+        }
+
+        /// <summary>
+        /// 生成批量更新的 SQL 语句。采用 JOIN 方式实现以提高性能。
+        /// </summary>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="updatableColumns">可更新列集合。</param>
+        /// <param name="keyColumns">主键列集合。</param>
+        /// <param name="batchSize">批次大小。</param>
+        /// <returns>返回目标数据库可执行的批量更新 SQL 字符串。</returns>
+        public virtual string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        {
+            var sb = ValueStringBuilder.Create(2048);
+            string sqlTableName = ToSqlName(tableName);
+            int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
+
+            sb.Append("UPDATE T SET ");
+            for (int i = 0; i < updatableColumns.Length; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(" = S.");
+                sb.Append(ToSqlName("v" + i));
+            }
+
+            sb.Append(" FROM ");
+            sb.Append(sqlTableName);
+            sb.Append(" T");
+            sb.Append("\nINNER JOIN (");
+
+            for (int b = 0; b < batchSize; b++)
+            {
+                if (b > 0) sb.Append("\n  UNION ALL ");
+                sb.Append("SELECT ");
+                for (int i = 0; i < paramsPerRecord; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    sb.Append(ToSqlParam("p" + (b * paramsPerRecord + i)));
+                    if (b == 0) 
+                    {
+                        sb.Append(" AS ");
+                        sb.Append(ToSqlName("v" + i));
+                    }
+                }
+            }
+            sb.Append(") S ON ");
+            for (int k = 0; k < keyColumns.Length; k++)
+            {
+                if (k > 0) sb.Append(" AND ");
+                sb.Append("T.");
+                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(" = S.");
+                sb.Append(ToSqlName("v" + (updatableColumns.Length + k)));
+            }
+
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
         /// <summary>

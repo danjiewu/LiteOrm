@@ -70,7 +70,15 @@ namespace LiteOrm.Common
         /// <param name="o">待删除的对象</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回是否成功删除</returns>
-        Task<bool> DeleteAsync(T o, CancellationToken cancellationToken = default);  
+        Task<bool> DeleteAsync(T o, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量删除对象
+        /// </summary>
+        /// <param name="items">待删除的对象集合</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务</returns>
+        Task BatchDeleteAsync(IEnumerable<T> items, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -134,7 +142,23 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回是否成功删除</returns>
         Task<bool> DeleteAsync(object o, CancellationToken cancellationToken = default);
-        
+
+        /// <summary>
+        /// 异步批量删除对象
+        /// </summary>
+        /// <param name="values">待删除的对象集合</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务</returns>
+        Task BatchDeleteAsync(IEnumerable values, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// 异步批量根据主键删除对象
+        /// </summary>
+        /// <param name="keys">主键集合</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务</returns>
+        Task BatchDeleteByKeysAsync(IEnumerable keys, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// 异步根据主键删除对象
         /// </summary>

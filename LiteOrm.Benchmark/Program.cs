@@ -11,7 +11,6 @@ namespace LiteOrm.Benchmark
         static void Main(string[] args)
         {
             var config = ManualConfig.Create(DefaultConfig.Instance)
-                .AddJob(Job.ShortRun.WithToolchain(InProcessEmitToolchain.Instance))
                 .WithOptions(ConfigOptions.DisableOptimizationsValidator);
             var summary = BenchmarkRunner.Run<OrmBenchmark>(config, args);
         }

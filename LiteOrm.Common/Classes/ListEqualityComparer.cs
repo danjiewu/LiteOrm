@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace LiteOrm
+namespace LiteOrm.Common
 {
     public class ListEqualityComparer<T> : IEqualityComparer<List<T>>
     {

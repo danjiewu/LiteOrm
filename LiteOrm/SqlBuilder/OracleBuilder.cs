@@ -72,7 +72,7 @@ namespace LiteOrm
                 strColumns += "," + ToSqlName(identityColumn.Name);
                 strValues += "," + identityColumn.IdentityExpression;
             }
-            return $"insert into {ToSqlName(tableName)} \n({strColumns})\nvalues ({strValues}) \nreturning {ToSqlName(identityColumn.Name)} into {ToSqlParam(identityColumn.PropertyName)}";
+            return $"INSERT INTO {ToSqlName(tableName)} \n({strColumns})\nVALUES ({strValues}) \nRETURNING {ToSqlName(identityColumn.Name)} INTO {ToSqlParam(identityColumn.PropertyName)}";
         }
 
         /// <summary>
@@ -84,15 +84,23 @@ namespace LiteOrm
         /// <returns>返回 Oracle 可执行的批量插入 SQL 字符串。</returns>
         public override string BuildBatchInsertSql(string tableName, string columns, List<string> valuesList)
         {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine("INSERT ALL");
+            var sb = ValueStringBuilder.Create(1024);
+            sb.Append("INSERT ALL\n");
             string sqlTableName = ToSqlName(tableName);
             foreach (var values in valuesList)
             {
-                sb.AppendLine($"  INTO {sqlTableName} ({columns}) VALUES {values}");
+                sb.Append("  INTO ");
+                sb.Append(sqlTableName);
+                sb.Append(" (");
+                sb.Append(columns);
+                sb.Append(") VALUES ");
+                sb.Append(values);
+                sb.Append("\n");
             }
             sb.Append("SELECT * FROM DUAL");
-            return sb.ToString();
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
         /// <summary>
@@ -103,52 +111,6 @@ namespace LiteOrm
         public override string BuildConcatSql(params string[] strs)
         {
             return String.Join("||", strs);
-        }
-
-        /// <summary>
-        /// 生成更新或插入（Upsert）的 SQL 语句 (Oracle MERGE 风格)。
-        /// 使用 MERGE INTO ... USING DUAL 语法实现，但不能更新插入节点的标识列。
-        /// </summary>
-        /// <param name="command">数据库命令。</param>
-        /// <param name="tableName">目标表名。</param>
-        /// <param name="insertColumns">插入列。</param>
-        /// <param name="insertValues">插入值。</param>
-        /// <param name="updateSets">更新集。</param>
-        /// <param name="keyColumns">关键关联列。</param>
-        /// <param name="identityColumn">标识列。</param>
-        /// <returns>返回 Oracle Upsert SQL 字符串。</returns>
-        public override string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn)
-        {
-            string table = ToSqlName(tableName);
-            string where = string.Join(" AND ", keyColumns.Select(c => $"t.{ToSqlName(c.Name)} = {ToSqlParam(c.PropertyName)}"));
-
-            if (identityColumn != null)
-            {
-                IDbDataParameter param = command.CreateParameter();
-                param.Direction = ParameterDirection.Output;
-                param.Size = identityColumn.Length;
-                param.DbType = identityColumn.DbType;
-                param.ParameterName = ToParamName("0");
-                if (!command.Parameters.Contains(param.ParameterName))
-                {
-                    command.Parameters.Add(param);
-                }
-
-                if (IdentitySource == OracleIdentitySourceType.Sequence)
-                {
-                    insertColumns += "," + ToSqlName(identityColumn.Name);
-                    insertValues += "," + (String.IsNullOrEmpty(identityColumn.IdentityExpression) ? tableName + "_seq.nextval" : identityColumn.IdentityExpression + ".nextval");
-                }
-                else if (IdentitySource == OracleIdentitySourceType.Expression)
-                {
-                    insertColumns += "," + ToSqlName(identityColumn.Name);
-                    insertValues += "," + identityColumn.IdentityExpression;
-                }
-            }
-
-            return $@"MERGE INTO {table} t USING DUAL ON ({where})
-WHEN MATCHED THEN UPDATE SET {updateSets}
-WHEN NOT MATCHED THEN INSERT ({insertColumns}) VALUES ({insertValues})";
         }
 
         /// <summary>
@@ -253,20 +215,24 @@ WHEN NOT MATCHED THEN INSERT ({insertColumns}) VALUES ({insertValues})";
         /// <returns>返回 Oracle 可执行的批量更新 SQL 字符串。</returns>
         public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
         {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine("BEGIN");
+            var sb = ValueStringBuilder.Create(2048);
+            sb.Append("BEGIN\n");
 
             int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
 
             for (int b = 0; b < batchSize; b++)
             {
-                sb.AppendFormat("  UPDATE {0} SET ", ToSqlName(tableName));
+                sb.Append("  UPDATE ");
+                sb.Append(ToSqlName(tableName));
+                sb.Append(" SET ");
                 for (int i = 0; i < updatableColumns.Length; i++)
                 {
                     if (i > 0) sb.Append(", ");
                     var col = updatableColumns[i];
                     string valParam = "p" + (b * paramsPerRecord + i);
-                    sb.AppendFormat("{0} = {1}", ToSqlName(col.Name), ToSqlParam(valParam));
+                    sb.Append(ToSqlName(col.Name));
+                    sb.Append(" = ");
+                    sb.Append(ToSqlParam(valParam));
                 }
 
                 sb.Append(" WHERE ");
@@ -275,13 +241,17 @@ WHEN NOT MATCHED THEN INSERT ({insertColumns}) VALUES ({insertValues})";
                     if (k > 0) sb.Append(" AND ");
                     var key = keyColumns[k];
                     string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
-                    sb.AppendFormat("{0} = {1}", ToSqlName(key.Name), ToSqlParam(keyParam));
+                    sb.Append(ToSqlName(key.Name));
+                    sb.Append(" = ");
+                    sb.Append(ToSqlParam(keyParam));
                 }
-                sb.AppendLine(";");
+                sb.Append(";\n");
             }
 
             sb.Append("END;");
-            return sb.ToString();
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
     }
 

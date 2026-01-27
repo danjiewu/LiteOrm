@@ -7,6 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using LiteOrm.Demo.Models;
 using LiteOrm.Demo.Services;
 using LiteOrm.Common;
+using System.Data.Common;
+using System.Linq;
 
 namespace LiteOrm.Demo.Data
 {
@@ -16,15 +18,12 @@ namespace LiteOrm.Demo.Data
         {
             var configuration = services.GetRequiredService<IConfiguration>();
             
-            var connectionString = configuration.GetSection("LiteOrm:ConnectionStrings:0:ConnectionString").Value 
-                                   ?? "Data Source=demo.db";
-
-            using var connection = new SqliteConnection(connectionString);
-            await connection.OpenAsync();
+            var contextPoolFactory = services.GetRequiredService<DAOContextPoolFactory>();
+            var context = contextPoolFactory.PeekContext(); // 确保初始化连接池
 
             Console.WriteLine("--- 数据库结构检查 ---");
 
-            await EnsureTablesCreatedAsync(connection);
+            await EnsureTablesCreatedAsync(services, context.DbConnection);
 
             // 检查是否有数据，若没有则同步初始演示数据
             var userService = services.GetRequiredService<IUserService>();
@@ -35,23 +34,58 @@ namespace LiteOrm.Demo.Data
             {
                 await SeedDataWithServicesAsync(userService, deptService, salesService);
             }
+            contextPoolFactory.ReturnContext(context);
         }
 
-        private static async Task EnsureTablesCreatedAsync(SqliteConnection connection)
+        private static async Task EnsureTablesCreatedAsync(IServiceProvider services, DbConnection connection)
         {
             // Departments 和 Users 表由 LiteOrm 的 SyncTable 功能在 LiteOrmComponentInitializer 中自动同步。
             // 此处仅对动态分表初始化（SyncTable 目前仅同步固定表名定义）。
 
-            string currentMonth = DateTime.Now.ToString("yyyyMM");
-            string[] createTableSqls = {
-                // 支持分表显示 (当前月份)
-                $@"CREATE TABLE IF NOT EXISTS Sales_{currentMonth} (Id INTEGER PRIMARY KEY AUTOINCREMENT, ProductId INTEGER, ProductName TEXT, Amount INTEGER NOT NULL, SaleTime DATETIME NOT NULL, ShipTime DATETIME, SalesUserId INTEGER);"
-            };
+            var tableInfoProvider = services.GetRequiredService<TableInfoProvider>();
+            var sqlBuilderFactory = services.GetRequiredService<SqlBuilderFactory>();
+            var sqlBuilder = sqlBuilderFactory.GetSqlBuilder(connection.GetType());
 
-            foreach (var sql in createTableSqls)
+            string currentMonth = DateTime.Now.ToString("yyyyMM");
+            var tableDef = tableInfoProvider.GetTableDefinition(typeof(SalesRecord));
+            string tableName = string.Format(tableDef.Name, currentMonth);
+
+            // 检查表是否存在
+            bool exists = false;
+            try
             {
-                using var cmd = new SqliteCommand(sql, connection);
-                await cmd.ExecuteNonQueryAsync();
+                using var checkCmd = connection.CreateCommand();
+                checkCmd.CommandText = sqlBuilder.BuildTableExistsSql(tableName);
+                await checkCmd.ExecuteScalarAsync();
+                exists = true;
+            }
+            catch
+            {
+                exists = false;
+            }
+
+            if (!exists)
+            {
+                Console.WriteLine($"正在创建分表: {tableName}");
+                string createSql = sqlBuilder.BuildCreateTableSql(tableName, tableDef.Columns);
+                using (var cmd = connection.CreateCommand())
+                {
+                    cmd.CommandText = createSql;
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                // 创建辅助索引
+                foreach (var col in tableDef.Columns.Where(c => c.IsIndex || c.IsUnique))
+                {
+                    try
+                    {
+                        string indexSql = sqlBuilder.BuildCreateIndexSql(tableName, col);
+                        using var idxCmd = connection.CreateCommand();
+                        idxCmd.CommandText = indexSql;
+                        await idxCmd.ExecuteNonQueryAsync();
+                    }
+                    catch { }
+                }
             }
         }
 

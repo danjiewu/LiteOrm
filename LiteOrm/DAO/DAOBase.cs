@@ -190,7 +190,7 @@ namespace LiteOrm
         /// <summary>
         /// 查询时需要获取的所有列
         /// </summary>
-        protected virtual SqlColumn[]  SelectColumns
+        protected virtual SqlColumn[] SelectColumns
         {
             get
             {
@@ -230,7 +230,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="where">条件字符串。</param>
         /// <returns>生成的 WHERE 子句。</returns>
-        protected string ToWhereSql(string where) => string.IsNullOrEmpty(where) ? string.Empty : $"\nwhere {where}";
+        protected string ToWhereSql(string where) => string.IsNullOrEmpty(where) ? string.Empty : $"\nWHERE {where}";
         #endregion
 
         #region 方法
@@ -251,7 +251,8 @@ namespace LiteOrm
         /// <returns>生成的 SQL</returns>
         protected string GetSelectFieldsSql(IEnumerable<SqlColumn> selectColumns)
         {
-            StringBuilder strAllFields = new StringBuilder();
+            Span<char> initialBuffer = stackalloc char[256];
+            var strAllFields = new ValueStringBuilder(initialBuffer);
             SqlColumn[] columns = selectColumns as SqlColumn[] ?? selectColumns.ToArray();
             int len = columns.Length;
             for (int i = 0; i < len; i++)
@@ -260,9 +261,14 @@ namespace LiteOrm
                 if (i > 0) strAllFields.Append(",");
                 strAllFields.Append(SqlBuilder.BuildExpression(column));
                 if (!String.Equals(column.Name, column.PropertyName, StringComparison.OrdinalIgnoreCase))
-                    strAllFields.Append(" " + SqlBuilder.ToSqlName(column.PropertyName));
+                {
+                    strAllFields.Append(" AS ");
+                    strAllFields.Append(SqlBuilder.ToSqlName(column.PropertyName));
+                }
             }
-            return strAllFields.ToString();
+            string result = strAllFields.ToString();
+            strAllFields.Dispose();
+            return result;
         }
 
         /// <summary>
@@ -272,7 +278,7 @@ namespace LiteOrm
         /// <returns></returns>
         protected string GetOrderBySql(IList<Sorting> orders)
         {
-            StringBuilder orderBy = new StringBuilder();
+            var orderBy = ValueStringBuilder.Create(128);
             if (orders is null || orders.Count == 0)
             {
                 if (TableDefinition.Keys.Length != 0)
@@ -280,14 +286,16 @@ namespace LiteOrm
                     foreach (ColumnDefinition key in TableDefinition.Keys)
                     {
                         if (orderBy.Length != 0) orderBy.Append(",");
-                        orderBy.AppendFormat("{0}.{1}", SqlBuilder.ToSqlName(FactTableName), SqlBuilder.ToSqlName(key.Name));
+                        orderBy.Append(SqlBuilder.ToSqlName(FactTableName));
+                        orderBy.Append(".");
+                        orderBy.Append(SqlBuilder.ToSqlName(key.Name));
                     }
-
                 }
                 else
                 {
-                    //TODO: OrderBy one column or all columns?
-                    throw new Exception("No columns or keys to sort by.");
+                    orderBy.Append(SqlBuilder.ToSqlName(FactTableName));
+                    orderBy.Append(".");
+                    orderBy.Append(SqlBuilder.ToSqlName(TableDefinition.Columns[0].Name));
                 }
             }
             else
@@ -298,11 +306,12 @@ namespace LiteOrm
                     if (column is null) throw new ArgumentException($"Type \"{ObjectType.Name}\" does not have property \"{sorting.PropertyName}\"", "section");
                     if (orderBy.Length > 0) orderBy.Append(",");
                     orderBy.Append(SqlBuilder.BuildExpression(column));
-                    orderBy.Append(sorting.Direction == ListSortDirection.Ascending ? " asc" : " desc");
+                    orderBy.Append(sorting.Direction == ListSortDirection.Ascending ? " ASC" : " DESC");
                 }
-
             }
-            return orderBy.ToString();
+            string result = orderBy.ToString();
+            orderBy.Dispose();
+            return result;
         }
 
         /// <summary>
@@ -366,12 +375,12 @@ namespace LiteOrm
         /// </summary>
         /// <param name="command">需要添加参数的IDbCommand</param>
         /// <param name="paramValues">参数列表，包括参数名称和值，为空时表示没有参数</param>
-        public void AddParamsToCommand(IDbCommand command, IEnumerable<KeyValuePair<string, object>> paramValues)
+        public void AddParamsToCommand(DbCommand command, IEnumerable<KeyValuePair<string, object>> paramValues)
         {
             if (paramValues is not null)
                 foreach (KeyValuePair<string, object> para in paramValues)
                 {
-                    IDbDataParameter param = command.CreateParameter();
+                    DbParameter param = command.CreateParameter();
                     param.ParameterName = ToParamName(ToNativeName(para.Key));
                     param.Value = SqlBuilder.ConvertToDbValue(para.Value);
                     command.Parameters.Add(param);
@@ -418,28 +427,32 @@ namespace LiteOrm
         /// </summary>
         /// <param name="command">要创建条件的数据库命令</param>
         /// <returns>where条件的语句</returns>
-        protected string MakeKeyCondition(IDbCommand command)
+        protected string MakeKeyCondition(DbCommand command)
         {
             ThrowExceptionIfNoKeys();
-            StringBuilder strConditions = new StringBuilder();
+            var strConditions = ValueStringBuilder.Create(128);
             var keys = Table.Keys;
             int count = keys.Length;
             for (int i = 0; i < count; i++)
             {
                 ColumnDefinition key = keys[i];
-                if (i > 0) strConditions.Append(" and ");
-                strConditions.Append($"{ToColumnSql(key)} = {ToSqlParam(key.PropertyName)}");
+                if (i > 0) strConditions.Append(" AND ");
+                strConditions.Append(ToColumnSql(key));
+                strConditions.Append(" = ");
+                strConditions.Append(ToSqlParam(key.PropertyName));
 
                 if (!command.Parameters.Contains(key.PropertyName))
                 {
-                    IDbDataParameter param = command.CreateParameter();
+                    DbParameter param = command.CreateParameter();
                     param.Size = key.Length;
                     param.DbType = key.DbType;
                     param.ParameterName = ToParamName(key.PropertyName);
                     command.Parameters.Add(param);
                 }
             }
-            return strConditions.ToString();
+            string result = strConditions.ToString();
+            strConditions.Dispose();
+            return result;
         }
 
 
@@ -449,14 +462,14 @@ namespace LiteOrm
         /// <param name="command">要创建条件的数据库命令</param>
         /// <param name="timestamp">时间戳</param>
         /// <returns>where条件的语句</returns>
-        protected string MakeTimestampCondition(IDbCommand command, object timestamp)
+        protected string MakeTimestampCondition(DbCommand command, object timestamp)
         {
             foreach (var column in Table.Columns)
             {
                 var columnDef = column.Definition;
                 if (columnDef.IsTimestamp)
                 {
-                    IDbDataParameter param = command.CreateParameter();
+                    DbParameter param = command.CreateParameter();
                     param.Size = columnDef.Length;
                     param.DbType = columnDef.DbType;
                     param.ParameterName = ToParamName(TimestampParamName);

@@ -43,6 +43,7 @@ namespace LiteOrm.Demo
             await ShowArgedQueryAsync(factory.SalesService);
             await ShowQueryResultsAsync(factory.UserService, factory.SalesService);
             await ShowPerformanceComparisonAsync(factory.SalesService);
+            await ShowBatchUpdatePerformanceAsync(factory.SalesService);
             await ShowCustomDaoDemoAsync(factory.UserCustomDAO);
         }
 
@@ -142,6 +143,46 @@ namespace LiteOrm.Demo
 
             int deletedCount = await salesService.DeleteAsync(Expr.Property(nameof(SalesRecord.ProductName)) == "TestPerf", [currentMonth]);
             Console.WriteLine($"清理测试数据完成，删除记录数: {deletedCount}");
+        }
+
+        public static async Task ShowBatchUpdatePerformanceAsync(ISalesService salesService)
+        {
+            Console.WriteLine("\n--- 性能对比 (BatchUpdate) vs 循环更新 (Update) 耗时对比 ---");
+            string currentMonth = DateTime.Now.ToString("yyyyMM");
+            int testCount = 1000;
+
+            // 准备数据
+            var testData = Enumerable.Range(1, testCount).Select(i => new SalesRecord
+            {
+                ProductName = "TestUpdatePerf",
+                Amount = i,
+                SaleTime = DateTime.Now
+            }).ToList();
+            await salesService.BatchInsertAsync(testData);
+
+            // 获取刚插入的数据用于更新
+            var records = await salesService.SearchAsync(Expr.Property(nameof(SalesRecord.ProductName)) == "TestUpdatePerf", [currentMonth]);
+            
+            // 循环更新
+            var sw = Stopwatch.StartNew();
+            foreach (var item in records)
+            {
+                item.Amount += 100;
+                await salesService.UpdateAsync(item);
+            }
+            sw.Stop();
+            Console.WriteLine($"循环更新 {records.Count} 条: {sw.ElapsedMilliseconds} ms");
+
+            // 批量更新
+            var recordsToUpdate = records.Select(r => { r.Amount += 100; return r; }).ToList();
+            sw.Restart();
+            await salesService.BatchUpdateAsync(recordsToUpdate);
+            sw.Stop();
+            Console.WriteLine($"BatchUpdate 批量更新 {recordsToUpdate.Count} 条: {sw.ElapsedMilliseconds} ms");
+
+            // 清理
+            await salesService.DeleteAsync(Expr.Property(nameof(SalesRecord.ProductName)) == "TestUpdatePerf", [currentMonth]);
+            Console.WriteLine("清理测试数据完成。");
         }
 
         public static async Task ShowJoinQueryAsync(IDepartmentService deptService)

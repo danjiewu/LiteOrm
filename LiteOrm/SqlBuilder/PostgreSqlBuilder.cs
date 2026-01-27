@@ -29,7 +29,7 @@ namespace LiteOrm
         /// <returns>构建后的 SQL 语句。</returns>
         public override string BuildIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
-            return $"insert into {ToSqlName(tableName)} ({strColumns}) \nvalues ({strValues}) RETURNING {ToSqlName(identityColumn.Name)}";
+            return $"INSERT INTO {ToSqlName(tableName)} ({strColumns}) \nVALUES ({strValues}) RETURNING {ToSqlName(identityColumn.Name)}";
         }
 
         /// <summary>
@@ -40,25 +40,6 @@ namespace LiteOrm
         public override string ToParamName(string nativeName)
         {
             return $"@{nativeName}";
-        }
-
-        /// <summary>
-        /// 生成更新或插入（Upsert）的 SQL 语句 (PostgreSQL 风格)。
-        /// 使用 INSERT ... ON CONFLICT (...) DO UPDATE SET 语法实现。
-        /// </summary>
-        /// <param name="command">数据库命令。</param>
-        /// <param name="tableName">目标表名。</param>
-        /// <param name="insertColumns">插入列。</param>
-        /// <param name="insertValues">插入值。</param>
-        /// <param name="updateSets">更新集。</param>
-        /// <param name="keyColumns">冲突判断列（必须有唯一约束）。</param>
-        /// <param name="identityColumn">标识列。</param>
-        /// <returns>返回 PostgreSQL Upsert SQL 字符串。通过 xmax 区分插入（返回 ID）还是更新（返回 -1）。</returns>
-        public override string BuildUpsertSql(IDbCommand command, string tableName, string insertColumns, string insertValues, string updateSets, IEnumerable<ColumnDefinition> keyColumns, ColumnDefinition identityColumn)
-        {
-            string keys = string.Join(",", keyColumns.Select(c => ToSqlName(c.Name)));
-            string idCol = identityColumn != null ? ToSqlName(identityColumn.Name) : "1";
-            return $"INSERT INTO {ToSqlName(tableName)} ({insertColumns}) VALUES ({insertValues}) ON CONFLICT ({keys}) DO UPDATE SET {updateSets} RETURNING CASE WHEN xmax = 0 THEN {idCol} ELSE -1 END;";
         }
 
         /// <summary>
@@ -96,6 +77,57 @@ namespace LiteOrm
         {
             var colSqls = columns.Select(c => $"ADD COLUMN {ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
             return $"ALTER TABLE {ToSqlName(tableName)} {string.Join(", ", colSqls)}";
+        }
+
+        /// <summary>
+        /// 生成 PostgreSql 专用的批量更新 SQL 语句（采用 JOIN 方式）。
+        /// </summary>
+        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        {
+            var sb = ValueStringBuilder.Create(2048);
+            string sqlTableName = ToSqlName(tableName);
+            int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
+
+            sb.Append("UPDATE ");
+            sb.Append(sqlTableName);
+            sb.Append(" T SET ");
+            for (int i = 0; i < updatableColumns.Length; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(" = S.");
+                sb.Append(ToSqlName("v" + i));
+            }
+
+            sb.Append("\nFROM (");
+            for (int b = 0; b < batchSize; b++)
+            {
+                if (b > 0) sb.Append("\n  UNION ALL ");
+                sb.Append("SELECT ");
+                for (int i = 0; i < paramsPerRecord; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    sb.Append(ToSqlParam("p" + (b * paramsPerRecord + i)));
+                    if (b == 0) 
+                    {
+                        sb.Append(" AS ");
+                        sb.Append(ToSqlName("v" + i));
+                    }
+                }
+            }
+            sb.Append(") S WHERE ");
+            for (int k = 0; k < keyColumns.Length; k++)
+            {
+                if (k > 0) sb.Append(" AND ");
+                sb.Append("T.");
+                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(" = S.");
+                sb.Append(ToSqlName("v" + (updatableColumns.Length + k)));
+            }
+
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
     }
 }

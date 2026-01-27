@@ -14,12 +14,12 @@ namespace LiteOrm
     /// 该类用于在执行查询并返回读取器时，保持对 <see cref="DAOContext"/> 的锁定，
     /// 直到数据读取完毕并释放此包装器。这确保了在延迟读取期间，底层连接不会被其他线程占用。
     /// </remarks>
-    public class AutoLockDataReader : IDataReader, IAsyncDisposable
+    public class AutoLockDataReader : DbDataReader, IAsyncDisposable
     {
         /// <summary>
         /// 内部包装的原始数据读取器。
         /// </summary>
-        private readonly IDataReader _innerReader;
+        private readonly DbDataReader _innerReader;
 
         /// <summary>
         /// 锁定的作用域对象，释放此对象将释放底层上下文的信号量。
@@ -37,7 +37,7 @@ namespace LiteOrm
         /// <param name="innerReader">内部数据读取器实例。</param>
         /// <param name="scope">需要管理的锁定作用域。</param>
         /// <exception cref="ArgumentNullException">当 <paramref name="innerReader"/> 或 <paramref name="scope"/> 为 null 时抛出。</exception>
-        public AutoLockDataReader(IDataReader innerReader, IDisposable scope)
+        public AutoLockDataReader(DbDataReader innerReader, IDisposable scope)
         {
             _innerReader = innerReader ?? throw new ArgumentNullException(nameof(innerReader));
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
@@ -60,7 +60,7 @@ namespace LiteOrm
         /// 获取指定列的列值。
         /// </summary>
         /// <param name="i">列的从零开始的索引。</param>
-        public object this[int i]
+        public override object this[int i]
         {
             get
             {
@@ -73,7 +73,7 @@ namespace LiteOrm
         /// 获取具有指定名称的列的列值。
         /// </summary>
         /// <param name="name">列名。</param>
-        public object this[string name]
+        public override object this[string name]
         {
             get
             {
@@ -85,7 +85,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取一个值，该值指示当前行的嵌套深度。
         /// </summary>
-        public int Depth
+        public override int Depth
         {
             get
             {
@@ -97,7 +97,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取一个值，该值指示数据读取器是否已关闭。
         /// </summary>
-        public bool IsClosed
+        public override bool IsClosed
         {
             get
             {
@@ -109,7 +109,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取通过执行 SQL 语句而更改、插入或删除的行数。
         /// </summary>
-        public int RecordsAffected
+        public override int RecordsAffected
         {
             get
             {
@@ -121,7 +121,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取当前行中的列数。
         /// </summary>
-        public int FieldCount
+        public override int FieldCount
         {
             get
             {
@@ -131,29 +131,31 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 关闭 <see cref="IDataReader"/> 对象，并释放关联的作用域锁。
+        /// 获取一个值，该值指示 <see cref="DbDataReader"/> 是否包含一行或多行。
         /// </summary>
-        public void Close()
+        public override bool HasRows
         {
-            if (!_disposed)
+            get
             {
-                try
-                {
-                    _innerReader.Close();
-                }
-                finally
-                {
-                    _scope.Dispose();
-                }
-                _disposed = true;
+                EnsureNotDisposed();
+                return _innerReader.HasRows;
             }
+        }
+
+        /// <summary>
+        /// 关闭 <see cref="IDataReader"/> 对象。
+        /// </summary>
+        public override void Close()
+        {
+            EnsureNotDisposed();
+            _innerReader.Close();
         }
 
         /// <summary>
         /// 将读取器推进到结果集的下一条记录。
         /// </summary>
         /// <returns>如果还有更多行，则为 true；否则为 false。</returns>
-        public bool Read()
+        public override bool Read()
         {
             EnsureNotDisposed();
             return _innerReader.Read();
@@ -164,35 +166,37 @@ namespace LiteOrm
         /// </summary>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，其结果为如果还有更多行则为 true，否则为 false。</returns>
-        public Task<bool> ReadAsync(CancellationToken cancellationToken = default)
+        public override Task<bool> ReadAsync(CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
-
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<bool>(cancellationToken);
-
-            if (_innerReader is DbDataReader dbDataReader)
-            {
-                return dbDataReader.ReadAsync(cancellationToken);
-            }
-
-            return Task.FromResult(_innerReader.Read());
+            return _innerReader.ReadAsync(cancellationToken);
         }
 
         /// <summary>
         /// 在读取批处理 SQL 语句的结果时，使数据读取器前进到下一个结果。
         /// </summary>
         /// <returns>如果还有更多结果集，则为 true；否则为 false。</returns>
-        public bool NextResult()
+        public override bool NextResult()
         {
             EnsureNotDisposed();
             return _innerReader.NextResult();
         }
 
         /// <summary>
+        /// 异步在读取批处理 SQL 语句的结果时，使数据读取器前进到下一个结果。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，其结果为如果还有更多结果集则为 true，否则为 false。</returns>
+        public override Task<bool> NextResultAsync(CancellationToken cancellationToken = default)
+        {
+            EnsureNotDisposed();
+            return _innerReader.NextResultAsync(cancellationToken);
+        }
+
+        /// <summary>
         /// 获取指定列的布尔值。
         /// </summary>
-        public bool GetBoolean(int i)
+        public override bool GetBoolean(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetBoolean(i);
@@ -201,7 +205,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的 8 位无符号整数值。
         /// </summary>
-        public byte GetByte(int i)
+        public override byte GetByte(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetByte(i);
@@ -210,7 +214,7 @@ namespace LiteOrm
         /// <summary>
         /// 从指定列偏移量开始，将字节流从指定的列索引读入作为偏移量开始的缓冲区。
         /// </summary>
-        public long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
+        public override long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
         {
             EnsureNotDisposed();
             return _innerReader.GetBytes(i, fieldOffset, buffer, bufferoffset, length);
@@ -219,7 +223,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的字符值。
         /// </summary>
-        public char GetChar(int i)
+        public override char GetChar(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetChar(i);
@@ -228,7 +232,7 @@ namespace LiteOrm
         /// <summary>
         /// 从指定列偏移量开始，将字符流从指定的列索引读入作为偏移量开始的缓冲区。
         /// </summary>
-        public long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
+        public override long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
         {
             EnsureNotDisposed();
             return _innerReader.GetChars(i, fieldoffset, buffer, bufferoffset, length);
@@ -237,16 +241,16 @@ namespace LiteOrm
         /// <summary>
         /// 返回指定列序号的 <see cref="IDataReader"/>。
         /// </summary>
-        public IDataReader GetData(int i)
+        protected override DbDataReader GetDbDataReader(int i)
         {
             EnsureNotDisposed();
-            return _innerReader.GetData(i);
+            return _innerReader.GetData(i) as DbDataReader;
         }
 
         /// <summary>
         /// 获取指定列的数据类型名称。
         /// </summary>
-        public string GetDataTypeName(int i)
+        public override string GetDataTypeName(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetDataTypeName(i);
@@ -255,7 +259,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的日期和时间数据值。
         /// </summary>
-        public DateTime GetDateTime(int i)
+        public override DateTime GetDateTime(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetDateTime(i);
@@ -264,7 +268,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的固定精度数值。
         /// </summary>
-        public decimal GetDecimal(int i)
+        public override decimal GetDecimal(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetDecimal(i);
@@ -273,7 +277,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的双精度浮点数。
         /// </summary>
-        public double GetDouble(int i)
+        public override double GetDouble(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetDouble(i);
@@ -282,7 +286,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取作为指定列类型的 <see cref="Type"/>。
         /// </summary>
-        public Type GetFieldType(int i)
+        public override Type GetFieldType(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetFieldType(i);
@@ -291,7 +295,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的单精度浮点数。
         /// </summary>
-        public float GetFloat(int i)
+        public override float GetFloat(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetFloat(i);
@@ -300,7 +304,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的全局唯一标识符 (GUID) 值。
         /// </summary>
-        public Guid GetGuid(int i)
+        public override Guid GetGuid(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetGuid(i);
@@ -309,7 +313,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的 16 位有符号整数值。
         /// </summary>
-        public short GetInt16(int i)
+        public override short GetInt16(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetInt16(i);
@@ -318,7 +322,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的 32 位有符号整数值。
         /// </summary>
-        public int GetInt32(int i)
+        public override int GetInt32(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetInt32(i);
@@ -327,7 +331,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的 64 位有符号整数值。
         /// </summary>
-        public long GetInt64(int i)
+        public override long GetInt64(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetInt64(i);
@@ -336,7 +340,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的名称。
         /// </summary>
-        public string GetName(int i)
+        public override string GetName(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetName(i);
@@ -345,7 +349,7 @@ namespace LiteOrm
         /// <summary>
         /// 返回指定列的索引。
         /// </summary>
-        public int GetOrdinal(string name)
+        public override int GetOrdinal(string name)
         {
             EnsureNotDisposed();
             return _innerReader.GetOrdinal(name);
@@ -354,16 +358,29 @@ namespace LiteOrm
         /// <summary>
         /// 返回一个 <see cref="DataTable"/>，它描述 <see cref="IDataReader"/> 的列元数据。
         /// </summary>
-        public DataTable GetSchemaTable()
+        public override DataTable GetSchemaTable()
         {
             EnsureNotDisposed();
             return _innerReader.GetSchemaTable();
         }
 
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
+        /// <summary>
+        /// 异步返回一个 <see cref="DataTable"/>，它描述 <see cref="IDataReader"/> 的列元数据。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，其结果为 DataTable。</returns>
+        public override Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetSchemaTableAsync(cancellationToken);
+        }
+#endif
+
         /// <summary>
         /// 获取指定列的字符串值。
         /// </summary>
-        public string GetString(int i)
+        public override string GetString(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetString(i);
@@ -372,7 +389,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取指定列的值。
         /// </summary>
-        public object GetValue(int i)
+        public override object GetValue(int i)
         {
             EnsureNotDisposed();
             return _innerReader.GetValue(i);
@@ -381,7 +398,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取当前行所有列的值。
         /// </summary>
-        public int GetValues(object[] values)
+        public override int GetValues(object[] values)
         {
             EnsureNotDisposed();
             return _innerReader.GetValues(values);
@@ -390,10 +407,57 @@ namespace LiteOrm
         /// <summary>
         /// 获取一个值，该值指示列是否包含空值。
         /// </summary>
-        public bool IsDBNull(int i)
+        public override bool IsDBNull(int i)
         {
             EnsureNotDisposed();
             return _innerReader.IsDBNull(i);
+        }
+
+        /// <summary>
+        /// 异步获取一个值，该值指示列是否包含空值。
+        /// </summary>
+        /// <param name="i">列的从零开始的索引。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，其结果为如果列包含空值则为 true，否则为 false。</returns>
+        public override Task<bool> IsDBNullAsync(int i, CancellationToken cancellationToken = default)
+        {
+            EnsureNotDisposed();
+            return _innerReader.IsDBNullAsync(i, cancellationToken);
+        }
+
+        /// <summary>
+        /// 以异步方式获取指定列的值。
+        /// </summary>
+        /// <typeparam name="T">要返回的对象类型。</typeparam>
+        /// <param name="i">列的从零开始的索引。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，其结果为指定列的值。</returns>
+        public override Task<T> GetFieldValueAsync<T>(int i, CancellationToken cancellationToken = default)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetFieldValueAsync<T>(i, cancellationToken);
+        }
+
+        /// <summary>
+        /// 获取指定列的值。
+        /// </summary>
+        /// <typeparam name="T">要返回的对象类型。</typeparam>
+        /// <param name="i">列的从零开始的索引。</param>
+        /// <returns>指定列的值。</returns>
+        public override T GetFieldValue<T>(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetFieldValue<T>(i);
+        }
+
+        /// <summary>
+        /// 返回可用于循环访问结果集中的行的枚举数。
+        /// </summary>
+        /// <returns>可用于循环访问结果集中的行的枚举数。</returns>
+        public override System.Collections.IEnumerator GetEnumerator()
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetEnumerator();
         }
         #endregion
 
@@ -401,7 +465,7 @@ namespace LiteOrm
         /// <summary>
         /// 释放由当前 <see cref="AutoLockDataReader"/> 占用的资源。
         /// </summary>
-        public void Dispose()
+        public new void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
@@ -411,7 +475,7 @@ namespace LiteOrm
         /// 释放由当前 <see cref="AutoLockDataReader"/> 占用的托管资源和可选的非托管资源。
         /// </summary>
         /// <param name="disposing">如果为 true，则释放托管资源和非托管资源。</param>
-        protected virtual void Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
             if (!_disposed)
             {
@@ -426,16 +490,28 @@ namespace LiteOrm
                         _scope.Dispose();
                     }
                 }
+                base.Dispose(disposing);
                 _disposed = true;
             }
         }
 
+
         /// <summary>
         /// 以异步方式释放由当前 <see cref="AutoLockDataReader"/> 占用的资源。
         /// </summary>
+        /// <returns>表示异步操作的任务。</returns>
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
+        public override async ValueTask DisposeAsync()
+#else
         public async ValueTask DisposeAsync()
+#endif
         {
             await DisposeAsyncCore().ConfigureAwait(false);
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
+            await base.DisposeAsync();
+#else
+            base.Dispose();
+#endif
             GC.SuppressFinalize(this);
         }
 
@@ -446,6 +522,9 @@ namespace LiteOrm
         {
             if (!_disposed)
             {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
+                await _innerReader.DisposeAsync().ConfigureAwait(false);
+#else
                 if (_innerReader is IAsyncDisposable asyncDisposable)
                 {
                     await asyncDisposable.DisposeAsync().ConfigureAwait(false);
@@ -454,6 +533,7 @@ namespace LiteOrm
                 {
                     _innerReader.Dispose();
                 }
+#endif
 
                 _scope.Dispose();
                 _disposed = true;

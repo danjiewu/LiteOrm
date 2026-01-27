@@ -30,7 +30,7 @@ namespace LiteOrm
         public override string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
         {
             if (startIndex == 0)
-                return $"select top {sectionSize} {select} \nfrom {from} {where} Order by {orderBy} ";
+                return $"SELECT TOP {sectionSize} {select} \nFROM {from} {where} ORDER BY {orderBy} ";
             else
                 return base.GetSelectSectionSql(select, from, where, orderBy, startIndex, sectionSize);
         }
@@ -45,7 +45,7 @@ namespace LiteOrm
         /// </summary>
         public override string BuildBatchIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
         {
-            return $"{BuildBatchInsertSql(tableName, columns, valuesList)}; select SCOPE_IDENTITY() - ({valuesList.Count - 1}) as [ID];";
+            return $"{BuildBatchInsertSql(tableName, columns, valuesList)}; SELECT SCOPE_IDENTITY() - ({valuesList.Count - 1}) AS [ID];";
         }
     }
 }
