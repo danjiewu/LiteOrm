@@ -95,6 +95,7 @@ namespace LiteOrm
             {
                 Name = config.Name,
                 PoolSize = config.PoolSize,
+                MaxPoolSize = config.MaxPoolSize,
                 KeepAliveDuration = config.KeepAliveDuration,
                 ParamCountLimit = config.ParamCountLimit
             };

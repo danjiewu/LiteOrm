@@ -243,7 +243,7 @@ namespace LiteOrm
                 sb.Append(" ");
                 sb.Append(ToSqlName(joinedTable.Name));
                 sb.Append(" ON ");
-                
+
                 bool isFirst = true;
                 for (int i = 0; i < joinedTable.ForeignKeys.Count; i++)
                 {
@@ -532,7 +532,18 @@ namespace LiteOrm
         /// <returns>返回目标数据库可执行的批量插入 SQL 字符串。</returns>
         public virtual string BuildBatchInsertSql(string tableName, string columns, List<string> valuesList)
         {
-            return $"INSERT INTO {ToSqlName(tableName)} ({columns}) \nVALUES {string.Join(",", valuesList)}";
+            var sb = ValueStringBuilder.Create(valuesList.Count * 20);
+            sb.Append("INSERT INTO ");
+            sb.Append(ToSqlName(tableName));
+            sb.Append(" (");
+            sb.Append(columns);
+            sb.Append(") \nVALUES ");
+            for (int i = 0; i < valuesList.Count; i++)
+            {
+                if (i > 0) sb.Append(",");
+                sb.Append(valuesList[i]);
+            }
+            return sb.ToString();
         }
 
         /// <summary>
@@ -572,7 +583,7 @@ namespace LiteOrm
                 sb.Append(GetSqlType(column));
 
                 if (column.IsPrimaryKey) sb.Append(" PRIMARY KEY");
-                if (column.IsIdentity) 
+                if (column.IsIdentity)
                 {
                     sb.Append(" ");
                     sb.Append(GetAutoIncrementSql());
@@ -629,6 +640,13 @@ namespace LiteOrm
             return $"CREATE {unique}INDEX {ToSqlName(indexName)} ON {ToSqlName(tableName)} ({ToSqlName(column.Name)})";
         }
 
+        /// <summary>
+        /// 生成批量检查 ID 是否存在的 SQL 语句。
+        /// </summary>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="keyColumns">主键列定义数组。</param>
+        /// <param name="batchSize">批量大小。</param>
+        /// <returns>生成的 SQL 语句。</returns>
         public virtual string BuildBatchIDExistsSql(string tableName, ColumnDefinition[] keyColumns, int batchSize)
         {
             var sb = ValueStringBuilder.Create(1024);
@@ -639,7 +657,7 @@ namespace LiteOrm
             }
             string sqlKeys = sb.ToString();
             sb.Clear();
-            
+
             sb.Append("SELECT ");
             sb.Append(sqlKeys);
             sb.Append(" FROM ");
@@ -647,7 +665,7 @@ namespace LiteOrm
             sb.Append(" WHERE ");
             sb.Append(sqlKeys);
             sb.Append(" IN (");
-            
+
             for (int b = 0; b < batchSize; b++)
             {
                 if (b > 0) sb.Append(",");
@@ -752,7 +770,7 @@ namespace LiteOrm
                 {
                     if (i > 0) sb.Append(", ");
                     sb.Append(ToSqlParam("p" + (b * paramsPerRecord + i)));
-                    if (b == 0) 
+                    if (b == 0)
                     {
                         sb.Append(" AS ");
                         sb.Append(ToSqlName("v" + i));

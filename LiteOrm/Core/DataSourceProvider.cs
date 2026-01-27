@@ -33,7 +33,7 @@ namespace LiteOrm
     ///{
     ///  "LiteOrm": {
     ///    "Default": "DefaultConnection",
-    ///    "ConnectionStrings": [
+    ///    "DataSources": [
     ///      {
     ///        "Name": "DefaultConnection",
     ///        "ConnectionString": "Data Source=demo.db",
@@ -59,6 +59,9 @@ namespace LiteOrm
     [AutoRegister(ServiceLifetime.Singleton)]
     public class DataSourceProvider : IDataSourceProvider
     {
+        /// <summary>
+        /// 存储数据源配置的内部缓存，键为数据源名称（不区分大小写）
+        /// </summary>
         private ConcurrentDictionary<string, DataSourceConfig> _connections = new(StringComparer.OrdinalIgnoreCase);
         
         /// <summary>
@@ -113,8 +116,10 @@ namespace LiteOrm
             // 加载默认连接名称
             DefaultDataSourceName = configuration["Default"];
 
-            // 加载连接配置
-            var connections = configuration.GetSection("ConnectionStrings").Get<List<DataSourceConfig>>();
+            // 从配置节点中读取 "DataSources" 节并映射为 DataSourceConfig 列表
+            var connections = configuration.GetSection("DataSources").Get<List<DataSourceConfig>>();
+            
+            // 如果配置中定义了有效的数据源集合，则更新内部缓存
             if (connections != null && connections.Any())
             {
                 _connections = new(StringComparer.OrdinalIgnoreCase);

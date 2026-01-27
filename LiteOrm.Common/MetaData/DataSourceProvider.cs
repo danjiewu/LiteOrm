@@ -34,14 +34,19 @@ namespace LiteOrm.Common
         public TimeSpan KeepAliveDuration { get; set; }
         
         /// <summary>
-        /// 连接池大小，默认为16
+        /// 连接池大小（允许在池中缓存的最大连接数），默认为16
         /// </summary>
         public int PoolSize { get; set; } = 16;
 
         /// <summary>
-        /// 数据库参数最大数量限制，为0表示无限制，默认为1000
+        /// 最大连接数限制，默认为100
         /// </summary>
-        public int ParamCountLimit { get; set; } = 1000;
+        public int MaxPoolSize { get; set; } = 100;
+
+        /// <summary>
+        /// 数据库参数最大数量限制，为0表示无限制，默认为2000
+        /// </summary>
+        public int ParamCountLimit { get; set; } = 2000;
 
         /// <summary>
         /// 是否开启自动建表同步

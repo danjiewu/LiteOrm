@@ -74,9 +74,9 @@ namespace LiteOrm
         public Type ProviderType { get; }
 
         /// <summary>
-        /// 最大参数数量，0表示无限制，默认为1000
+        /// 最大参数数量，0表示无限制，默认为2000
         /// </summary>
-        public int ParamCountLimit { get; set; } = 1000;
+        public int ParamCountLimit { get; set; } = 2000;
 
         /// <summary>
         /// 获取底层的数据库连接。
@@ -341,7 +341,7 @@ namespace LiteOrm
         /// 重置上下文状态。通常在连接池回收连接时内部调用。
         /// </summary>
         /// <remarks>
-        /// 如果连接处于事务中，此方法会尝试回滚事务并重置最后活动时间。
+        /// 如果连接处于事务中，此方法会尝试回滚事务。
         /// </remarks>
         internal void Reset()
         {
@@ -357,7 +357,6 @@ namespace LiteOrm
                         CurrentTransaction = null;
                     }
                 }
-                LastActiveTime = DateTime.Now;
             }
         }
 
@@ -381,6 +380,7 @@ namespace LiteOrm
                 Reset();
                 DbConnection?.Dispose();
                 _semaphore.Dispose();
+                Pool?.OnContextDisposed();
             }
         }
 

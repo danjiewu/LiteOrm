@@ -287,7 +287,7 @@ namespace LiteOrm
         #region Execute Methods
 
         /// <summary>
-        /// 对 <see cref="Connection"/> 执行 <see cref="CommandText"/>，并使用 <see cref="CommandBehavior"/> 值之一返回 <see cref="IDataReader"/>。
+        /// 对 <see cref="DbConnection"/> 执行 <see cref="CommandText"/>，并使用 <see cref="CommandBehavior"/> 值之一返回 <see cref="IDataReader"/>。
         /// </summary>
         /// <param name="behavior">命令行为特性。</param>
         /// <returns>一个 <see cref="IDataReader"/> 对象。</returns>
@@ -311,7 +311,7 @@ namespace LiteOrm
         IDataReader IDbCommand.ExecuteReader(CommandBehavior behavior) => ExecuteReader(behavior);
 
         /// <summary>
-        /// 对 <see cref="Connection"/> 执行 <see cref="CommandText"/>，并返回 <see cref="IDataReader"/>。
+        /// 对 <see cref="DbConnection"/> 执行 <see cref="CommandText"/>，并返回 <see cref="IDataReader"/>。
         /// </summary>
         /// <returns>一个 <see cref="IDataReader"/> 对象。</returns>
         public new DbDataReader ExecuteReader()

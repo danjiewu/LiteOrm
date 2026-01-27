@@ -14,7 +14,6 @@ namespace LiteOrm.Benchmark
                 .WithOptions(ConfigOptions.DisableOptimizationsValidator);
             var summary = BenchmarkRunner.Run<OrmBenchmark>(config, args);
         }
-
     }
 }
 

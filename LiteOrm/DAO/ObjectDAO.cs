@@ -354,6 +354,12 @@ namespace LiteOrm
             }
         }
 
+        /// <summary>
+        /// 将对象集合转换为 DataTable。
+        /// </summary>
+        /// <param name="values">包含要转换的数据的对象集合。</param>
+        /// <param name="columns">要在 DataTable 中创建的列定义集合。</param>
+        /// <returns>返回填充了集合数据的 DataTable 实例。</returns>
         protected DataTable ToDataTable(IEnumerable<T> values, ColumnDefinition[] columns)
         {
             DataTable dt = new DataTable(FactTableName);

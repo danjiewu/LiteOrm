@@ -18,7 +18,7 @@ namespace LiteOrm
     /// LiteOrm服务提供者扩展方法集合
     /// </summary>
     /// <remarks>
-    /// MyServiceProviderExt 提供了用于集成 LiteOrm 框架到依赖注入容器的扩展方法。
+    /// LiteOrmServiceProviderExtensions 提供了用于集成 LiteOrm 框架到依赖注入容器的扩展方法。
     /// 它简化了 LiteOrm 框架与 ASP.NET Core 宿主的集成过程。
     /// 
     /// 主要功能包括：

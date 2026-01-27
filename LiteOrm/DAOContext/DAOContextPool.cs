@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LiteOrm
@@ -51,36 +52,56 @@ namespace LiteOrm
         private readonly object _poolLock = new object();
         private bool _disposed = false;
         private readonly TaskCompletionSource<bool> _initializeTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private SemaphoreSlim _semaphore = new SemaphoreSlim(100, 100);
+        private int _maxPoolSize = 100;
 
         /// <summary>
-        /// 获取或设置连接池的最大大小。
+        /// 获取或设置连接池的缓冲大小（闲置连接数量）。
         /// </summary>
         public int PoolSize { get; set; } = 20;
-        
+
+        /// <summary>
+        /// 获取或设置连接池的最大连接数限制。
+        /// </summary>
+        public int MaxPoolSize
+        {
+            get => _maxPoolSize;
+            set
+            {
+                if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value), "最大连接数必须大于 0");
+                if (_maxPoolSize != value)
+                {
+                    _maxPoolSize = value;
+                    _semaphore?.Dispose();
+                    _semaphore = new SemaphoreSlim(value, value);
+                }
+            }
+        }
+
         /// <summary>
         /// 获取数据库提供程序类型。
         /// </summary>
         public Type ProviderType { get; }
-        
+
         /// <summary>
         /// 获取数据库连接字符串。
         /// </summary>
         public string ConnectionString { get; }
-        
+
         /// <summary>
         /// 获取或设置连接在池中的最长存活时间。
         /// </summary>
         public TimeSpan KeepAliveDuration { get; set; } = TimeSpan.FromMinutes(30);
-        
+
         /// <summary>
         /// 获取或设置连接池的名称。
         /// </summary>
         public string Name { get; set; }
 
         /// <summary>
-        /// 最大参数数量限制，0表示无限制，默认为1000。
+        /// 最大参数数量限制，0表示无限制，默认为2000。
         /// </summary>
-        public int ParamCountLimit { get; set; } = 1000;
+        public int ParamCountLimit { get; set; } = 2000;
 
         /// <summary>
         /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
@@ -101,15 +122,6 @@ namespace LiteOrm
         public void MarkInitialized()
         {
             _initializeTcs.TrySetResult(true);
-        }
-
-        /// <summary>
-        /// 等待连接池初始化完成。
-        /// </summary>
-        /// <returns>返回等待任务。</returns>
-        public Task WaitForInitializationAsync()
-        {
-            return _initializeTcs.Task;
         }
 
         /// <summary>
@@ -164,13 +176,15 @@ namespace LiteOrm
                         return context;
                     }
 
-                    // 无效则销毁
+                    // 无效则销毁，这会通对应的信号量释放计数
                     context.Dispose();
                 }
-
-                // 池为空，创建新连接
-                return CreateNewContext();
             }
+
+            // 池为空，创建新连接
+            var newContext = CreateNewContext();
+            newContext.EnsureConnectionOpen();
+            return newContext;
         }
 
         /// <summary>
@@ -204,6 +218,7 @@ namespace LiteOrm
                 await contextToUse.EnsureConnectionOpenAsync().ConfigureAwait(false);
                 return contextToUse;
             }
+
 
             // 池为空，创建新连接
             var newContext = CreateNewContext();
@@ -240,14 +255,24 @@ namespace LiteOrm
                     return;
                 }
 
-                // 如果池已满，销毁多余连接
+                // 如果池已满，销毁最旧的连接并添加新连接
                 if (_pool.Count >= PoolSize)
                 {
-                    _pool.Dequeue()?.Dispose();
-                    return;
+                    _pool.Dequeue().Dispose();
                 }
 
                 _pool.Enqueue(context);
+            }
+        }
+
+        /// <summary>
+        /// 当连接被释放时调用，用于释放信号量计数。
+        /// </summary>
+        internal void OnContextDisposed()
+        {
+            if (!_disposed)
+            {
+                try { _semaphore.Release(); } catch { }
             }
         }
 
@@ -280,15 +305,20 @@ namespace LiteOrm
 
         private DAOContext CreateNewContext()
         {
-            var connection = Activator.CreateInstance(ProviderType) as DbConnection;
-            if (connection is null)
-                throw new InvalidOperationException($"无法创建类型为 {ProviderType} 的数据库连接");
+            if (!_semaphore.Wait(10000))
+                throw new InvalidOperationException("已达到最大连接数限制，无法创建新连接。");
+            try
+            {
+                var connection = Activator.CreateInstance(ProviderType) as DbConnection;
+                if (connection is null)
+                    throw new InvalidOperationException($"无法创建类型为 {ProviderType} 的数据库连接");
 
-            connection.ConnectionString = ConnectionString;
+                connection.ConnectionString = ConnectionString;
 
-            var context = new DAOContext(connection, this);
-            context.EnsureConnectionOpen();
-            return context;
+                var context = new DAOContext(connection, this);
+                return context;
+            }
+            finally { _semaphore.Release(); }
         }
 
 
@@ -321,6 +351,7 @@ namespace LiteOrm
 
                     _disposed = true;
                 }
+                _semaphore?.Dispose();
             }
         }
     }

@@ -16,10 +16,21 @@ namespace LiteOrm
     [AutoRegister(ServiceLifetime.Scoped)]
     public class DataViewDAO<T> : DAOBase
     {
+        /// <summary>
+        /// 获取当前实体的类型
+        /// </summary>
         public override Type ObjectType => typeof(T);
 
+        /// <summary>
+        /// 获取实体的数据库表元数据
+        /// </summary>
         public override SqlTable Table => TableInfoProvider.GetTableView(ObjectType);
 
+        /// <summary>
+        /// 替换 SQL 中的占位符，例如将 {ParamAllFields} 替换为实际的字段列表
+        /// </summary>
+        /// <param name="sqlWithParam">包含占位符的 SQL 语句</param>
+        /// <returns>替换后的 SQL 语句</returns>
         protected override string ReplaceParam(string sqlWithParam)
         {
             return base.ReplaceParam(sqlWithParam).Replace(ParamAllFields, AllFieldsSql);
@@ -42,7 +53,7 @@ namespace LiteOrm
         /// <param name="propertyNames">要查询的属性名数组</param>
         /// <param name="expr">查询条件</param>
         /// <returns>查询结果数据表</returns>
-        public virtual DataTable Search(string[] propertyNames,Expr expr)
+        public virtual DataTable Search(string[] propertyNames, Expr expr)
         {
             string fieldsSql = ParamAllFields;
             if (propertyNames != null && propertyNames.Length > 0)
@@ -90,7 +101,7 @@ namespace LiteOrm
         /// <param name="expr">查询条件</param>
         /// <param name="section">分页设定</param>
         /// <returns>分页后的数据表</returns>
-        public virtual DataTable SearchSection(string[] propertyNames,Expr expr, PageSection section)
+        public virtual DataTable SearchSection(string[] propertyNames, Expr expr, PageSection section)
         {
             string fieldsSql = (propertyNames == null || propertyNames.Length == 0) ? AllFieldsSql : GetSelectFieldsSql(propertyNames.Select(p => Table.GetColumn(p)).Where(c => c != null));
             string sql = SqlBuilder.GetSelectSectionSql(fieldsSql, From, ParamWhere, GetOrderBySql(section.Orders), section.StartIndex, section.SectionSize);
@@ -100,14 +111,36 @@ namespace LiteOrm
 
 
         /// <summary>
-        /// 执行命令并将结果填充到 DataTable
+        /// 执行命令并将结果填充到 DataTable，使用 SqlBuilder 进行数据转换
         /// </summary>
         protected DataTable GetDataTable(DbCommandProxy command)
         {
             using (var reader = command.ExecuteReader())
             {
                 DataTable dt = new DataTable();
-                dt.Load(reader);
+                int fieldCount = reader.FieldCount;
+                SqlColumn[] columns = new SqlColumn[fieldCount];
+                for (int i = 0; i < fieldCount; i++)
+                {
+                    string name = reader.GetName(i);
+                    SqlColumn column = Table.GetColumn(name);
+                    columns[i] = column;
+                    Type propertyType = column?.PropertyType ?? reader.GetFieldType(i);
+                    dt.Columns.Add(name, propertyType.GetUnderlyingType());
+                }
+
+                dt.BeginLoadData();
+                while (reader.Read())
+                {
+                    DataRow dr = dt.NewRow();
+                    for (int i = 0; i < fieldCount; i++)
+                    {
+                        object value = reader.GetValue(i);
+                        dr[i] = ConvertFromDbValue(value, columns[i]?.PropertyType) ?? DBNull.Value;
+                    }
+                    dt.Rows.Add(dr);
+                }
+                dt.EndLoadData();
                 return dt;
             }
         }

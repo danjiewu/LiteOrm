@@ -891,6 +891,11 @@ namespace LiteOrm.Service
             return await dao.UpdateOrInsertAsync(entity, cancellationToken);
         }
 
+        /// <summary>
+        /// 核心同步更新或插入逻辑。
+        /// </summary>
+        /// <param name="entity">要处理的实体对象。</param>
+        /// <returns>操作结果枚举。</returns>
         protected virtual UpdateOrInsertResult UpdateOrInsertCore(T entity)
         {
             var dao = ObjectDAO;

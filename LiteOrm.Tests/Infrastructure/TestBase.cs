@@ -25,10 +25,10 @@ namespace LiteOrm.Tests.Infrastructure
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["LiteOrm:Default"] = "DefaultConnection",
-                        ["LiteOrm:ConnectionStrings:0:Name"] = "DefaultConnection",
-                        ["LiteOrm:ConnectionStrings:0:ConnectionString"] = $"Data Source={_dbFile}",
-                        ["LiteOrm:ConnectionStrings:0:Provider"] = "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
-                        ["LiteOrm:ConnectionStrings:0:SyncTable"] = "true"
+                        ["LiteOrm:DataSources:0:Name"] = "DefaultConnection",
+                        ["LiteOrm:DataSources:0:ConnectionString"] = $"Data Source={_dbFile}",
+                        ["LiteOrm:DataSources:0:Provider"] = "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+                        ["LiteOrm:DataSources:0:SyncTable"] = "true"
                     });
                 })
                 .RegisterLiteOrm()
