@@ -61,11 +61,11 @@ namespace LiteOrm.Common
             get
             {
                 if (string.IsNullOrEmpty(Provider))
-                    throw new InvalidOperationException("数据库提供程序未指定");
+                    throw new InvalidOperationException("Database provider not specified");
 
                 var type = Type.GetType(Provider);
                 if (type == null)
-                    throw new TypeLoadException($"无法加载数据库提供程序类型: {Provider}");
+                    throw new TypeLoadException($"Unable to load database provider type: {Provider}");
 
                 return type;
             }

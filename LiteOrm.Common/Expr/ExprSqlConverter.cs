@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace LiteOrm.Common
 {
@@ -367,8 +366,7 @@ namespace LiteOrm.Common
 
                 if (sb.Length == lenWithJoin)
                 {
-                    // Nothing was appended, revert joinStr
-                    if (!first) sb.Length = lenBefore;
+                    sb.Length = lenBefore;
                 }
                 else
                 {

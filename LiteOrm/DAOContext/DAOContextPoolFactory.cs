@@ -73,12 +73,12 @@ namespace LiteOrm
                 {
                     if (string.IsNullOrWhiteSpace(config.Name))
                     {
-                        throw new InvalidOperationException("连接配置中 Name 不能为空");
+                        throw new InvalidOperationException("Name cannot be empty in connection configuration");
                     }
 
                     if (_pools.ContainsKey(config.Name))
                     {
-                        throw new InvalidOperationException($"重复的连接池名称: {config.Name}");
+                        throw new InvalidOperationException($"Duplicate connection pool name: {config.Name}");
                     }
 
                     CreatePool(config);
@@ -122,7 +122,7 @@ namespace LiteOrm
             }
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("连接池名称不能为空", nameof(name));
+                throw new ArgumentException("Connection pool name cannot be empty", nameof(name));
             }
             return _pools[name];
         }
@@ -146,7 +146,7 @@ namespace LiteOrm
 
             if (context.Pool is null)
             {
-                throw new InvalidOperationException("DAOContext 没有关联的连接池");
+                throw new InvalidOperationException("DAOContext has no associated connection pool");
             }
 
             context.Pool.ReturnContext(context);

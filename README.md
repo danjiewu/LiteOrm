@@ -1,6 +1,6 @@
 # LiteOrm
 
-LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架，旨在提供简单、灵活且高效的数据库操作体验。它结合了微 ORM 的性能和完整 ORM 的易用性，特别适合对性能要求极高且需要灵活处理复杂 SQL 的场景。
+LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架，旨在提供简单、灵活且高效的数据库操作体验。它原生支持经典三层架构，结合了微 ORM 的性能和完整 ORM 的易用性，特别适合对性能要求高且需要灵活处理复杂 SQL 的场景。
 
 [![NuGet](https://img.shields.io/nuget/v/LiteOrm.svg)](https://www.nuget.org/packages/LiteOrm/)
 [![License](https://img.shields.io/github/license/danjiewu/LiteOrm.svg)](LICENSE)
@@ -11,10 +11,10 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架�
 *   **多数据库原生支持**：内建支持 SQL Server, MySQL (MariaDB), Oracle, 和 SQLite，支持各方言的高性能分页与函数。
 *   **灵活的查询引擎**：基于 `Expr` 的逻辑表达系统，支持 Lambda 自动转换、JSON 序列化、复杂的嵌套条件组合（And/Or/In/Like/Join）。
 *   **企业级 AOP 事务**：支持声明式事务（`[Transaction]` 特性），自动平衡跨服务、跨数据源的事务一致性与连接管理。
-*   **自动化关联 (Join)**：通过 `[ForeignColumn]` 特性实现无损的表关联查询，自动生成高效 SQL，无需手写 JOIN 语句。
+*   **自动化关联 (Join)**：通过 `[TableJoin]`、 `[ForeignType]`、`[ForeignColumn]` 特性实现无损的表关联查询，自动生成高效 SQL，无需手写 JOIN 语句。
 *   **动态分表路由**：原生支持 `IArged` 接口，解决海量数据下的动态水平拆分（分表）路由需求。
-*   **高性能批量处理**：预留针对特定数据库的 `IBulkProvider` 接口，可通过 `MySqlBulkCopy` 等方式极大提高插入效率，支持万级数据快速导入。
-*   **模块化与可扩展性**：支持自定义 SQL 函数 Handler、自定义类型转换器，可完美适配各种业务特殊的 SQL 方言。
+*   **高性能批量处理**：预留 `IBulkProvider` 接口，可针对特定数据库采用方式（如 `MySqlBulkCopy` ）极大提高插入效率。
+*   **模块化与可扩展性**：支持自定义 SQL 函数 Handler、自定义类型转换器，可适配各种业务特殊的 SQL 方言。
 
 ## 环境要求
 
@@ -65,18 +65,34 @@ var host = Host.CreateDefaultBuilder(args)
 {
   "LiteOrm": {
     "Default": "DefaultConnection",
-    "ConnectionStrings": [
+    "DataSources": [
       {
         "Name": "DefaultConnection",
-        "ConnectionString": "Server=localhost;Database=demo;Uid=root;Pwd=p@ssword;",
-        "Provider": "MySqlConnector.MySqlConnection, MySqlConnector",
+        "ConnectionString": "Data Source=demo.db",
+        "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+        "KeepAliveDuration": "00:10:00",
         "PoolSize": 20,
-        "MaxPoolSize": 100
+        "MaxPoolSize": 100,
+        "ParamCountLimit": 2000
       }
     ]
   }
 }
 ```
+
+**配置参数详解：**
+
+| 参数名 | 默认值 | 说明 |
+| :--- | :--- | :--- |
+| **Default** | - | 默认数据源名称，如果实体未指定数据源则使用此项。 |
+| **Name** | - | 必填，连接池标识。 |
+| **ConnectionString** | - | 必填，物理连接字符串。 |
+| **Provider** | - | 必填，DbConnection 实现类的类型全名（Assembly Qualified Name）。 |
+| **PoolSize** | 20 | 基础连接池容量，超过此数量的数据库空闲连接会被释放。 |
+| **MaxPoolSize** | 100 | 最大并发连接限制，防止耗尽数据库资源。 |
+| **KeepAliveDuration** | 10min | 连接空闲存活时间，超过此时间后空闲连接将被物理关闭。 |
+| **ParamCountLimit** | 2000 | 单条 SQL 支持的最大参数个数，批量操作时参数超过此限制会自动分批执行，避免触发 DB 限制。 |
+| **SyncTable** | false | 是否在启动时自动检测实体类并尝试同步数据库表结构。 |
 
 ### 3. 执行查询与操作
 
@@ -92,9 +108,8 @@ public class MyService(IEntityService<User> userService)
         var page = await userService.SearchSectionAsync(u => u.CreateTime > DateTime.Today.AddDays(-7), 
                                                         new PageSection(0, 10, Sorting.Desc(nameof(User.Id))));
                                                         
-        // 3. 批量更新部分字段
-        await userService.UpdateValuesAsync(new Dictionary<string, object> { ["STATUS"] = 1 }, 
-                                           u => u.Id < 100);
+        // 3. 批量更新
+        await userService.BatchUpdateAsync(page);
     }
 }
 ```
@@ -113,30 +128,48 @@ Expr expr = Expr.Exp<User>(u => u.Age > 18 && u.UserName.Contains("admin"));
 `Expr` 节点支持直接序列化为 JSON，方便前端动态传递复杂配置化的过滤规则。
 
 ### SQL 生成器 (SqlGen)
-可以独立于 DAO 使用 `SqlGen` 生成参数化 SQL：
+可以独立于 DAO 使用 `SqlGen` 生成参数化 SQL，方便开发调试：
 ```csharp
 var res = new SqlGen(typeof(User)).ToSql(u => u.Id == 123);
 // res.Sql -> SELECT ... FROM USERS WHERE ID = @0
 ```
 
+## Demo 示例项目
+
+我们提供了一个完整的示例项目 [LiteOrm.Demo](./LiteOrm.Demo)，涵盖了以下核心特性的详尽演示：
+
+- **表达式系统 (Expr)**：二元/一元、Lambda 转换、JSON 序列化。
+- **自动化关联 (Join)**：利用特性实现多级表关联带出。
+- **动态分表 (IArged)**：按参数自动路由物理表。
+- **声明式事务**：基于 AOP 的无侵入事务控制。
+- **性能优化**：BatchInsert 与单条插入耗时对比。
+
+运行 Demo 项目：
+```bash
+dotnet run --project LiteOrm.Demo/LiteOrm.Demo.csproj
+```
+
 ## 性能测试
 
-LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基于 `LiteOrm.Benchmark` 项目在本地环境下的部分测试结果参考：
 
-| 框架 | 1000条插入 (ms) | 1000条更新 (ms) | 关联查询 (ms) | 内存分配 |
+LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基于 `LiteOrm.Benchmark` 项目（1000 条记录插入/更新/查询，MySQL 8.0 环境）的最新测试结果对比：
+
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | 关联查询 (ms) | 内存分配 (Insert) |
 | :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **~15ms** | **~25ms** | **~8ms** | **极低** |
-| Dapper | ~14ms | ~24ms | ~12ms | 极低 |
-| SqlSugar | ~35ms | ~48ms | ~22ms | 中 |
-| EF Core | ~120ms | ~180ms | ~45ms | 高 |
+| **LiteOrm** | **~10.0 ms** | **~15.4 ms** | **~10.4 ms** | **~1.7 MB** |
+| Dapper | ~99.5 ms | ~114.4 ms | ~10.4 ms | ~2.4 MB |
+| FreeSql | ~16.1 ms | ~27.4 ms | ~11.4 ms | ~4.5 MB |
+| SqlSugar | ~15.2 ms | ~33.4 ms | ~21.1 ms | ~4.5 MB |
+| EF Core | ~136.7 ms | ~118.4 ms | ~18.0 ms | ~17.7 MB |
 
-> *注：测试基于 MySQL 8.0 物理连接，由 `LiteOrm.Benchmark` 项目生成。*
+> *注：测试数据取自 `LiteOrm.Benchmark` 生成的最新报告（BatchCount=1000）。完整测试报告请参考：[LiteOrm 性能评测报告](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)。*
+
 
 ## 模块说明
 
 *   **LiteOrm.Common**: 核心元数据定义、`Expr` 表达式系统、基础工具类。
 *   **LiteOrm**: 核心 ORM 逻辑、SQL 构建器实现、DAO 基类、Session/Transaction 管理单元。
-*   **LiteOrm.ASPNetCore**: 针对 ASP.NET Core 的扩展支持，提供声明式事务 AOP 拦截器。
+*   **LiteOrm.ASPNetCore**: 针对 ASP.NET Core 的扩展支持（待开发）。
 *   **LiteOrm.Demo**: 详尽的示例项目，涵盖了几乎所有核心特性的代码演示。
 *   **LiteOrm.Benchmark**: 性能测试工程，包含与常见 ORM 的对比。
 

@@ -23,27 +23,45 @@
 在 `Program.cs` 中增加 `RegisterLiteOrm()` 调用即可自动完成服务扫描与多数据源注册：
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrm() // 一键集成
+    .RegisterLiteOrm() // 自动扫描 [AutoRegister] 特性并初始化连接池
     .Build();
 ```
 
 ### 2. 配置说明 (appsettings.json)
-连接字符串与 Provider 配置：
+连接池与数据源配置：
 ```json
 {
   "LiteOrm": {
     "Default": "DefaultConnection",
-    "ConnectionStrings": [
+    "DataSources": [
       {
         "Name": "DefaultConnection",
         "ConnectionString": "Data Source=demo.db",
         "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
-        "KeepAliveDuration": "00:10:00"
+        "KeepAliveDuration": "00:10:00",
+        "PoolSize": 20,
+        "MaxPoolSize": 100,
+        "ParamCountLimit": 2000
       }
     ]
   }
 }
 ```
+
+**配置参数详解：**
+
+| 参数名 | 默认值 | 说明 |
+| :--- | :--- | :--- |
+| **Default** | - | 默认数据源名称，如果实体未指定数据源则使用此项。 |
+| **Name** | - | 必填，连接池标识。 |
+| **ConnectionString** | - | 必填，物理连接字符串。 |
+| **Provider** | - | 必填，DbConnection 实现类的类型全名（Assembly Qualified Name）。 |
+| **PoolSize** | 20 | 基础连接池容量，超过此数量的数据库空闲连接会被释放。 |
+| **MaxPoolSize** | 100 | 最大并发连接限制，防止耗尽数据库资源。 |
+| **KeepAliveDuration** | 10min | 连接空闲存活时间，超过此时间后空闲连接将被物理关闭。 |
+| **ParamCountLimit** | 2000 | 单条 SQL 支持的最大参数个数，批量操作时参数超过此限制会自动分批执行，避免触发 DB 限制。 |
+| **SyncTable** | false | 是否在启动时自动检测实体类并尝试同步数据库表结构。 |
+
 
 ## 核心功能演示与输出结果
 

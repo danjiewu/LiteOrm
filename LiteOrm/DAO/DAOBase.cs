@@ -1,18 +1,13 @@
 ﻿using LiteOrm.Common;
 using LiteOrm.Service;
-using LiteOrm;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
-using System.Text;
-
 
 namespace LiteOrm
 {

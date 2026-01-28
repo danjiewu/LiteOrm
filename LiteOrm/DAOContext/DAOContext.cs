@@ -1,7 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using LiteOrm.Common;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Data;
 using System.Data.Common;
 using System.Threading;
@@ -124,7 +121,7 @@ namespace LiteOrm
                 return new DAOScope(_semaphore);
             }
 
-            throw new TimeoutException("无法获取数据库上下文锁定");
+            throw new TimeoutException("Unable to acquire database context lock");
         }
 
         /// <summary>
@@ -138,7 +135,7 @@ namespace LiteOrm
             {
                 return new DAOScope(_semaphore);
             }
-            throw new TimeoutException("无法获取数据库上下文锁定");
+            throw new TimeoutException("Unable to acquire database context lock");
         }
 
         /// <summary>
