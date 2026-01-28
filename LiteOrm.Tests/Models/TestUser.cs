@@ -18,7 +18,7 @@ namespace LiteOrm.Tests.Models
         public DateTime CreateTime { get; set; }
 
         [Column("DeptId")]
-        [ForeignType(typeof(TestDepartment))]
+        [ForeignType(typeof(TestDepartment), Alias ="Dept")]
         public int DeptId { get; set; }
     }
 

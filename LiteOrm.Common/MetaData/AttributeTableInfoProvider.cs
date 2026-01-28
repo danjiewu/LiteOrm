@@ -231,18 +231,16 @@ namespace LiteOrm
                 JoinColumn(joinedTables, columnRefs);
             }
 
-            HashSet<JoinedTable> usedTables = new HashSet<JoinedTable>();
-
             foreach (SqlColumn column in columns)
             {
                 if (column is ForeignColumn)
                 {
                     ForeignColumn foreignColumn = column as ForeignColumn;
-                    foreignColumn.TargetColumn = GetTargetColumn(joinedTables, foreignColumn, usedTables);
+                    foreignColumn.TargetColumn = GetTargetColumn(joinedTables, foreignColumn);
                 }
             }
 
-            TableView tableView = new TableView(tableDef, usedTables, columns) { Name = objectType.Name };
+            TableView tableView = new TableView(tableDef, joinedTables.Values, columns) { Name = objectType.Name };
 
             foreach (TableJoinAttribute tableJoin in atts)
             {
@@ -293,7 +291,7 @@ namespace LiteOrm
             return tableView;
         }
 
-        private static ColumnRef GetTargetColumn(ConcurrentDictionary<string, JoinedTable> joinedTables, ForeignColumn column, HashSet<JoinedTable> usedTables)
+        private static ColumnRef GetTargetColumn(ConcurrentDictionary<string, JoinedTable> joinedTables, ForeignColumn column)
         {
             ForeignColumnAttribute foreignColumnAttribute = column.Property.GetAttribute<ForeignColumnAttribute>();
             string primeProperty = String.IsNullOrEmpty(foreignColumnAttribute.Property) ? column.PropertyName : foreignColumnAttribute.Property;
@@ -310,14 +308,14 @@ namespace LiteOrm
                 if (property is not null)
                 {
                     ForeignColumn foreignColumn = GenerateForeignColumn(property);
-                    if (foreignColumn is not null) targetColumn = GetTargetColumn(joinedTables, foreignColumn, usedTables);
+                    if (foreignColumn is not null) targetColumn = GetTargetColumn(joinedTables, foreignColumn);
                 }
             }
 
             JoinedTable usedTable = joinedTables[foreignTable];
             while (usedTable is not null)
             {
-                usedTables.Add(usedTable);
+                usedTable.Used = true;
                 if (usedTable.ForeignKeys.Count > 0)
                     usedTable = usedTable.ForeignKeys[0].Table as JoinedTable;
                 else

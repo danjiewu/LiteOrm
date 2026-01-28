@@ -113,7 +113,7 @@ namespace LiteOrm
             Span<char> valBuf = stackalloc char[256];
             var strColumns = new ValueStringBuilder(colBuf);
             var strValues = new ValueStringBuilder(valBuf);
-            
+
             ColumnDefinition[] columns = InsertableColumns;
             int count = columns.Length;
             for (int i = 0; i < count; i++)
@@ -137,7 +137,7 @@ namespace LiteOrm
             command.CommandText = IdentityColumn is null ?
                 $"INSERT INTO {ToSqlName(FactTableName)} ({strColumns.ToString()}) \nVALUES ({strValues.ToString()})"
                 : SqlBuilder.BuildIdentityInsertSql(command, IdentityColumn, FactTableName, strColumns.ToString(), strValues.ToString());
-            
+
             strColumns.Dispose();
             strValues.Dispose();
             return command;
@@ -234,7 +234,7 @@ namespace LiteOrm
                 command.CommandText = SqlBuilder.BuildBatchIdentityInsertSql(command, IdentityColumn, FactTableName, columnsStr, valuesList);
             else
                 command.CommandText = SqlBuilder.BuildBatchInsertSql(FactTableName, columnsStr, valuesList);
-            
+
             strColumns.Dispose();
             return command;
         }
@@ -273,7 +273,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 创建批量更新命令。
+        /// 创建批量ID查询命令。
         /// </summary>
         protected virtual DbCommandProxy MakeBatchIDExistsCommand(int batchSize)
         {
@@ -820,32 +820,7 @@ namespace LiteOrm
         public virtual void BatchDelete(IEnumerable<T> values)
         {
             if (values is null) throw new ArgumentNullException(nameof(values));
-
-            var keyColumns = TableDefinition.Keys.ToArray();
-            int paramsPerDelete = keyColumns.Length;
-            if (paramsPerDelete == 0) return;
-
-            int batchSize = DAOContext.ParamCountLimit / 10 / paramsPerDelete * 10;
-            if (batchSize == 0) batchSize = Math.Max(DAOContext.ParamCountLimit / paramsPerDelete, 1);
-
-            var batch = new List<T>(batchSize);
-            foreach (var item in values)
-            {
-                batch.Add(item);
-                if (batch.Count == batchSize)
-                {
-                    DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchDelete" + batchSize), _ => MakeBatchDeleteCommand(batchSize));
-                    SetBatchDeleteParameterValues(keyColumns, batch, command);
-                    command.ExecuteNonQuery();
-                    batch.Clear();
-                }
-            }
-            if (batch.Count > 0)
-            {
-                using DbCommandProxy command = MakeBatchDeleteCommand(batch.Count);
-                SetBatchDeleteParameterValues(keyColumns, batch, command);
-                command.ExecuteNonQuery();
-            }
+            BatchDeleteByKeys(values.Select(GetKeyValues));
         }
 
         /// <summary>
@@ -866,17 +841,9 @@ namespace LiteOrm
             var batch = new List<object[]>(batchSize);
             foreach (var item in keys)
             {
-                object[] keyValues;
-                if (paramsPerDelete == 1)
-                {
-                    keyValues = new object[] { item };
-                }
-                else
-                {
-                    keyValues = item as object[];
-                    if (keyValues == null || keyValues.Length != paramsPerDelete)
-                        throw new ArgumentException($"Composite key requires object[{paramsPerDelete}]");
-                }
+                object[] keyValues = item as object[];
+                if (keyValues == null || keyValues.Length != paramsPerDelete)
+                    throw new ArgumentException($"Composite key requires object[{paramsPerDelete}]");
 
                 batch.Add(keyValues);
                 if (batch.Count == batchSize)
@@ -1289,33 +1256,7 @@ namespace LiteOrm
         public async virtual Task BatchDeleteAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
         {
             if (values is null) throw new ArgumentNullException(nameof(values));
-
-            var keyColumns = TableDefinition.Keys.ToArray();
-            int paramsPerDelete = keyColumns.Length;
-            if (paramsPerDelete == 0) return;
-
-            int batchSize = DAOContext.ParamCountLimit / 10 / paramsPerDelete * 10;
-            if (batchSize == 0) batchSize = Math.Max(DAOContext.ParamCountLimit / paramsPerDelete, 1);
-
-            var batch = new List<T>(batchSize);
-            foreach (var item in values)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                batch.Add(item);
-                if (batch.Count == batchSize)
-                {
-                    DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchDelete" + batchSize), _ => MakeBatchDeleteCommand(batchSize));
-                    SetBatchDeleteParameterValues(keyColumns, batch, command);
-                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                    batch.Clear();
-                }
-            }
-            if (batch.Count > 0)
-            {
-                using DbCommandProxy command = MakeBatchDeleteCommand(batch.Count);
-                SetBatchDeleteParameterValues(keyColumns, batch, command);
-                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            }
+            await BatchDeleteByKeysAsync(values.Select(GetKeyValues), cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1338,17 +1279,9 @@ namespace LiteOrm
             foreach (var item in keys)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                object[] keyValues;
-                if (paramsPerDelete == 1)
-                {
-                    keyValues = new object[] { item };
-                }
-                else
-                {
-                    keyValues = item as object[];
-                    if (keyValues == null || keyValues.Length != paramsPerDelete)
-                        throw new ArgumentException($"Composite key requires object[{paramsPerDelete}]");
-                }
+                object[] keyValues = item as object[];
+                if (keyValues == null || keyValues.Length != paramsPerDelete)
+                    throw new ArgumentException($"Composite key requires object[{paramsPerDelete}]");
 
                 batch.Add(keyValues);
                 if (batch.Count == batchSize)

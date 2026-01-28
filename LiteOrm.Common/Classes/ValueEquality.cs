@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
@@ -123,6 +124,12 @@ namespace LiteOrm.Common
             return val1.Equals(val2);
         }
 
+        /// <summary>
+        /// 获取值的哈希码。
+        /// </summary>
+        /// <param name="val">对象值。</param>
+        /// <param name="depth">递归深度。</param>
+        /// <returns>哈希码。</returns>
         public static int GetValueHashCode(object? val, int depth = 0)
         {
             if (val is null) return 0;

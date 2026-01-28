@@ -117,9 +117,6 @@ namespace LiteOrm
         /// 用于识别 SQL 对象名称（如 [TableName]）的正则表达式。
         /// </summary>
         protected static Regex _sqlNameRegex = new Regex(@"\[([^\]]+)\]");
-
-        private const string tableNamePattern = @"^[a-zA-Z0-9_]*$";
-        private static readonly Regex tableNameRegex = new Regex(tableNamePattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
         #endregion
 
         /// <summary>
@@ -199,75 +196,83 @@ namespace LiteOrm
         /// <summary>
         /// 根据 SQL 对象类型生成对应的 SQL 表达式片段。
         /// </summary>
-        public virtual string BuildExpression(SqlObject sqlObject)
+        public virtual string BuildExpression(SqlObject sqlObject, params string[] tableNameArgs)
         {
             if (sqlObject == null) return null;
+            var sb = ValueStringBuilder.Create(128);
+            BuildExpression(ref sb, sqlObject, tableNameArgs);
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
+        }
+
+        private void BuildExpression(ref ValueStringBuilder sb, SqlObject sqlObject, params string[] tableNameArgs)
+        {
+            if (tableNameArgs == null) tableNameArgs = Array.Empty<string>();
+            if (sqlObject == null) return;
 
             if (sqlObject is ColumnRef columnRef)
             {
-                return columnRef.Table == null ? BuildExpression(columnRef.Column) :
-                    ToSqlQualifiedName(columnRef.Table.Name, columnRef.Column.Name);
+                if (columnRef.Table == null) BuildExpression(ref sb, columnRef.Column, tableNameArgs);
+                else sb.Append(ToSqlQualifiedName(columnRef.Table.Name, columnRef.Column.Name));
+                return;
             }
             if (sqlObject is ForeignColumn foreignColumn)
             {
-                return BuildExpression(foreignColumn.TargetColumn);
+                BuildExpression(ref sb, foreignColumn.TargetColumn, tableNameArgs);
+                return;
             }
             if (sqlObject is SqlColumn sqlColumn)
             {
-                return ToSqlQualifiedName(sqlColumn.Table.Name, sqlColumn.Name);
+                sb.Append(ToSqlQualifiedName(sqlColumn.Table.Name, sqlColumn.Name));
+                return;
             }
             if (sqlObject is TableView tableView)
             {
-                Span<char> initialBuffer = stackalloc char[256];
-                var sb = new ValueStringBuilder(initialBuffer);
-                sb.Append(ToSqlName(tableView.Definition.Name));
+                sb.Append(string.Format(tableView.Definition.Name, tableNameArgs));
                 sb.Append(" ");
                 sb.Append(ToSqlName(tableView.Name));
                 foreach (var joined in tableView.JoinedTables)
                 {
-                    sb.Append(BuildExpression(joined));
+                    if (joined.Used) BuildExpression(ref sb, joined, tableNameArgs);
                 }
-                string result = sb.ToString();
-                sb.Dispose();
-                return result;
+                return;
             }
 
             if (sqlObject is JoinedTable joinedTable)
             {
-                Span<char> initialBuffer = stackalloc char[512];
-                var sb = new ValueStringBuilder(initialBuffer);
                 sb.Append("\n");
                 sb.Append(joinedTable.JoinType.ToString().ToUpper());
                 sb.Append(" JOIN ");
-                sb.Append(ToSqlName(joinedTable.TableDefinition.Name));
+                sb.Append(ToSqlName(string.Format(joinedTable.TableDefinition.Name, tableNameArgs)));
                 sb.Append(" ");
                 sb.Append(ToSqlName(joinedTable.Name));
                 sb.Append(" ON ");
 
                 bool isFirst = true;
-                for (int i = 0; i < joinedTable.ForeignKeys.Count; i++)
+                int count = joinedTable.ForeignKeys.Count;
+                for (int i = 0; i < count; i++)
                 {
-                    if (isFirst) isFirst = false;
-                    else sb.Append(" AND ");
-                    sb.Append(BuildExpression(joinedTable.ForeignKeys[i]));
+                    if (!isFirst) sb.Append(" AND ");
+                    BuildExpression(ref sb, joinedTable.ForeignKeys[i], tableNameArgs);
                     sb.Append(" = ");
-                    sb.Append(BuildExpression(joinedTable.ForeignPrimeKeys[i]));
+                    BuildExpression(ref sb, joinedTable.ForeignPrimeKeys[i], tableNameArgs);
+                    isFirst = false;
                 }
                 if (!string.IsNullOrEmpty(joinedTable.FilterExpression))
                 {
                     if (!isFirst) sb.Append(" AND ");
                     sb.Append(joinedTable.FilterExpression);
                 }
-                string result = sb.ToString();
-                sb.Dispose();
-                return result;
+                return;
             }
             if (sqlObject is SqlTable sqlTable)
             {
-                return ToSqlName(sqlTable.Name);
+                sb.Append(ToSqlName(string.Format(sqlTable.Name, tableNameArgs)));
+                return;
             }
 
-            return ToSqlName(sqlObject.Name);
+            sb.Append(ToSqlName(sqlObject.Name));
         }
 
         /// <summary>
@@ -790,29 +795,6 @@ namespace LiteOrm
             string result = sb.ToString();
             sb.Dispose();
             return result;
-        }
-
-        /// <summary>
-        /// 获取带参数的表名。
-        /// </summary>
-        /// <param name="originTableName">原始表名（可能包含格式化占位符）。</param>
-        /// <param name="args">表名参数。</param>
-        /// <returns>格式化后的表名。</returns>
-        public virtual string GetTableNameWithArgs(string originTableName, string[] args)
-        {
-            if (args is not null && args.Length > 0)
-            {
-                //检查args内容是否合法，防止格式化字符串注入攻击
-                foreach (var arg in args)
-                {
-                    if (!tableNameRegex.IsMatch(arg))
-                    {
-                        throw new ArgumentException("表名参数包含非法字符。", nameof(args));
-                    }
-                }
-                return String.Format(originTableName, args);
-            }
-            return originTableName;
         }
 
         /// <summary>

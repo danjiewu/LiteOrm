@@ -303,6 +303,10 @@ namespace LiteOrm
             }
         }
 
+        /// <summary>
+        /// 创建一个新的数据库连接上下文。
+        /// </summary>
+        /// <returns>新创建的 <see cref="DAOContext"/> 实例。</returns>
         private DAOContext CreateNewContext()
         {
             if (!_semaphore.Wait(10000))
@@ -318,7 +322,11 @@ namespace LiteOrm
                 var context = new DAOContext(connection, this);
                 return context;
             }
-            finally { _semaphore.Release(); }
+            catch
+            {
+                _semaphore.Release();
+                throw;
+            }
         }
 
 

@@ -58,13 +58,14 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 
+        /// 获取针对当前数据库连接类型的 SQL 构建器。
         /// </summary>
         public SqlBuilder SqlBuilder { get; }
 
 
         /// <summary>
-        /// 预定义Command
+        /// 已准备好的 SQL 命令代理缓存。
+        /// 键为实体类型和操作名称的组合，用于避免在同一上下文生命周期内重复构建相同的 DbCommand。
         /// </summary>
         public ConcurrentDictionary<(Type, string), DbCommandProxy> PreparedCommands { get; } = new ConcurrentDictionary<(Type, string), DbCommandProxy>();
 

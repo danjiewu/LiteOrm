@@ -252,7 +252,7 @@ namespace LiteOrm
         protected virtual void PreExcuteCommand(ExcuteType excuteType)
         {
             Transaction = Context.CurrentTransaction as DbTransaction;
-            SessionManager.Current.PushSql(CommandText);
+            SessionManager.Current.PushSql(Target.CommandText);
         }
 
         /// <summary>

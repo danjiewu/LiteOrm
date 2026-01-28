@@ -22,7 +22,6 @@ using System.IO;
 namespace LiteOrm.Benchmark
 {
     [MemoryDiagnoser]
-    [MediumRunJob]
     public class OrmBenchmark
     {
         private IHost _host;
@@ -31,7 +30,7 @@ namespace LiteOrm.Benchmark
 
         private string? _connectionString;
 
-        [Params(100, 1000)]
+        [Params(100, 1000,10000)]
         public int BatchCount { get; set; }
         [GlobalSetup]
         public void Setup()

@@ -130,7 +130,7 @@ namespace LiteOrm
         {
             get
             {
-                if (_sqlBuildContext is null) _sqlBuildContext = new SqlBuildContext() { Table = Table, TableNameArgs = TableNameArgs?.ToArray() };
+                if (_sqlBuildContext is null) _sqlBuildContext = new SqlBuildContext(Table, null, TableNameArgs);
                 return _sqlBuildContext;
 
             }
@@ -168,7 +168,7 @@ namespace LiteOrm
         /// <summary>
         /// 实际表名
         /// </summary>
-        public string FactTableName { get { return GetTableNameWithArgs(TableDefinition.Name); } }
+        public string FactTableName { get { return SqlBuildContext.FactTableName; } }
 
         /// <summary>
         /// 查询时使用的相关联的多个表
@@ -179,13 +179,11 @@ namespace LiteOrm
             {
                 if (_fromTable is null)
                 {
-                    _fromTable = GetTableNameWithArgs(SqlBuilder.BuildExpression(Table));
+                    _fromTable = SqlBuilder.BuildExpression(Table, TableNameArgs);
                 }
                 return _fromTable;
             }
         }
-
-
 
         /// <summary>
         /// 查询时需要获取的所有列
@@ -359,18 +357,6 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 获取带参数的表名
-        /// </summary>
-        /// <param name="originTableName">原始表名（可能包含格式化占位符）</param>
-        /// <param name="tableNameArgs">表名参数</param>
-        /// <returns>格式化后的表名</returns>
-        public string GetTableNameWithArgs(string originTableName, string[] tableNameArgs = null)
-        {
-            var args = tableNameArgs ?? TableNameArgs?.ToArray();
-            return SqlBuilder.GetTableNameWithArgs(originTableName, args);
-        }
-
-        /// <summary>
         /// 将参数添加到IDbCommand中
         /// </summary>
         /// <param name="command">需要添加参数的IDbCommand</param>
@@ -407,7 +393,7 @@ namespace LiteOrm
                 strCondition = expr.ToSql(context, SqlBuilder, paramList);
             }
 
-            return MakeNamedParamCommand(sqlWithParam.Replace(ParamWhere, ToWhereSql(strCondition)), paramList);
+            return MakeNamedParamCommand(ReplaceParam(sqlWithParam.Replace(ParamWhere, ToWhereSql(strCondition))), paramList);
         }
 
         /// <summary>
@@ -417,9 +403,7 @@ namespace LiteOrm
         /// <returns></returns>
         protected virtual string ReplaceParam(string sqlWithParam)
         {
-            string tableName = GetTableNameWithArgs(SqlBuilder.ToSqlName(Table.Name), SqlBuildContext.TableNameArgs);
-            return sqlWithParam.Replace(ParamTable, tableName).Replace(ParamFromTable, From);
-
+            return sqlWithParam.Replace(ParamTable, SqlBuildContext.FactTableName).Replace(ParamFromTable, From);
         }
 
         /// <summary>
@@ -496,7 +480,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="o">对象</param>
         /// <returns>主键值，多个主键按照属性名称顺序排列</returns>
-        protected virtual object[] GetKeyValues(object o)
+        protected virtual object[] GetKeyValues<T>(T o)
         {
             List<object> values = new List<object>();
             foreach (ColumnDefinition key in TableDefinition.Keys)

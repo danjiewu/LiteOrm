@@ -252,7 +252,7 @@ namespace LiteOrm.Common
                     }
                     first = false;
                 }
-                if(!first)sb.Append(')');
+                if (!first) sb.Append(')');
             }
             else
             {
@@ -275,41 +275,36 @@ namespace LiteOrm.Common
 
         private static void ToSql(ref ValueStringBuilder sb, ForeignExpr foreginExpr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            // 生成外键表达式的 SQL
-            SqlColumn column = context.Table.GetColumn(foreginExpr.Foreign);
-            if (column is null) throw new InvalidOperationException($"Foreign key \"{foreginExpr.Foreign}\" not found.");
-            ForeignTable foreignTable = column.ForeignTable;
-            if (foreignTable == null) throw new Exception($"Foreign key \"{foreginExpr.Foreign}\" does not reference a valid foreign type.");
-            TableDefinition foreignTableDef = TableInfoProvider.Default.GetTableDefinition(foreignTable.ForeignType);
-            if (foreignTableDef is null) throw new Exception($"Foreign table \"{foreginExpr.Foreign}\" not found.");
-            SqlBuildContext foreignContext = new SqlBuildContext()
+            TableView tableView = TableInfoProvider.Default.GetTableView(context.Table.DefinitionType);
+            var joinedTable = tableView.JoinedTables.FirstOrDefault(joined => joined.Name == foreginExpr.Foreign);
+            if (joinedTable == null) throw new ArgumentException($"Foregin table {foreginExpr.Foreign} not exists in {context.Table.DefinitionType}");
+            SqlBuildContext foreignContext = new SqlBuildContext(joinedTable.TableDefinition, $"T{context.Sequence}", context.TableNameArgs)
             {
-                Table = foreignTableDef,
-                TableNameArgs = context.TableNameArgs,
-                Sequence = context.Sequence + 1,
-                TableAliasName = $"T{context.Sequence}",
+                Sequence = context.Sequence + 1
             };
 
-            string columnSql = context.TableAliasName == null ? sqlBuilder.BuildExpression(column) : sqlBuilder.ToSqlName($"{context.TableAliasName}.{column.Name}");
-            string keySql = foreignTableDef.Keys.Length == 1 ?
-                sqlBuilder.ToSqlName($"{foreignContext.TableAliasName}.{foreignTableDef.Keys[0].Name}") :
-                throw new InvalidOperationException("Foreign table has multiple keys.");
-            string tableName = sqlBuilder.GetTableNameWithArgs(sqlBuilder.ToSqlName(foreignTableDef.Name), context.TableNameArgs);
+            string foreginTableName = sqlBuilder.ToSqlName(foreignContext.FactTableName);
+            string baseTableName = sqlBuilder.ToSqlName(context.TableAliasName == null ? context.FactTableName : context.TableAliasName);
 
             sb.Append("EXISTS(SELECT 1 FROM ");
-            sb.Append(tableName);
+            sb.Append(foreginTableName);
             sb.Append(" ");
-            sb.Append(foreignContext.TableAliasName);
+            sb.Append(sqlBuilder.ToSqlName(foreignContext.TableAliasName));
             sb.Append(" \nWHERE ");
-            sb.Append(columnSql);
-            sb.Append(" = ");
-            sb.Append(keySql);
+            for (int i = 0; i < joinedTable.ForeignKeys.Count; i++)
+            {
+                if (i > 0) sb.Append(" AND ");
+                sb.Append(sqlBuilder.ToSqlName(foreignContext.TableAliasName));
+                sb.Append('.');
+                sb.Append(joinedTable.ForeignPrimeKeys[i].Name);
+                sb.Append(" = ");
+                sb.Append(baseTableName);
+                sb.Append('.');
+                sb.Append(joinedTable.ForeignKeys[i].Name);
+            }
             sb.Append(" AND ");
-
             ToSql(ref sb, foreginExpr.InnerExpr, foreignContext, sqlBuilder, outputParams);
-
             sb.Append(")");
-
             context.Sequence = foreignContext.Sequence;
         }
 

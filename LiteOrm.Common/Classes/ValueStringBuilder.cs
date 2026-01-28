@@ -1,15 +1,22 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Buffers;
 
 namespace LiteOrm.Common
 {
+    /// <summary>
+    /// 提供一种高效的、基于栈或池的字符串构建器，支持 ReadOnlySpan 操作以减少内存分配。
+    /// </summary>
     public ref struct ValueStringBuilder
     {
         private char[]? _arrayToReturnToPool;
         private Span<char> _chars;
         private int _length;
 
-        // 构造函数：接受一个初始的栈缓冲区
+        /// <summary>
+        /// 使用指定的初始缓冲区初始化 <see cref="ValueStringBuilder"/> 的新实例。
+        /// </summary>
+        /// <param name="initialBuffer">初始字符缓冲区。</param>
         public ValueStringBuilder(Span<char> initialBuffer)
         {
             _arrayToReturnToPool = null;
@@ -17,6 +24,12 @@ namespace LiteOrm.Common
             _length = 0;
         }
 
+        /// <summary>
+        /// 创建一个具有指定初始容量的 <see cref="ValueStringBuilder"/> 实例。
+        /// 缓冲区将从 <see cref="ArrayPool{T}.Shared"/> 租借。
+        /// </summary>
+        /// <param name="initialCapacity">初始容量，默认为 128。</param>
+        /// <returns>一个新的 <see cref="ValueStringBuilder"/> 实例。</returns>
         public static ValueStringBuilder Create(int initialCapacity = 128)
         {
             char[] array = ArrayPool<char>.Shared.Rent(initialCapacity);
@@ -26,7 +39,9 @@ namespace LiteOrm.Common
             };
         }
 
-        // 属性：当前长度和容量
+        /// <summary>
+        /// 获取或设置当前构建器中字符的长度。
+        /// </summary>
         public int Length
         {
             get => _length;
@@ -37,14 +52,20 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 获取当前构建器的总容量。
+        /// </summary>
         public int Capacity => _chars.Length;
 
-        // 核心：追加字符串（优化了空值和单字符情况）
+        /// <summary>
+        /// 将指定字符串的副本追加到此实例。
+        /// </summary>
+        /// <param name="value">要追加的字符串。</param>
         public void Append(string? value)
         {
             if (string.IsNullOrEmpty(value)) return;
 
-            if (value.Length == 1)
+            if (value!.Length == 1)
             {
                 Append(value[0]);
                 return;
@@ -53,14 +74,20 @@ namespace LiteOrm.Common
             Append(value.AsSpan());
         }
 
-        // 追加字符
+        /// <summary>
+        /// 将指定 Unicode 字符的副本追加到此实例。
+        /// </summary>
+        /// <param name="c">要追加的字符。</param>
         public void Append(char c)
         {
             if (_length >= _chars.Length) Grow(1);
             _chars[_length++] = c;
         }
 
-        // 追加字符序列（最高效的方法）
+        /// <summary>
+        /// 将指定字符序列的副本追加到此实例。
+        /// </summary>
+        /// <param name="value">要追加的字符序列。</param>
         public void Append(ReadOnlySpan<char> value)
         {
             if (value.IsEmpty) return;
@@ -72,7 +99,9 @@ namespace LiteOrm.Common
             _length += valueLength;
         }
 
-        // 清空内容（复用缓冲区）
+        /// <summary>
+        /// 从此实例中移除所有字符，使长度为零。
+        /// </summary>
         public void Clear() => _length = 0;
 
         // 确保容量足够
@@ -106,10 +135,15 @@ namespace LiteOrm.Common
         /// </summary>
         public override string ToString() => _chars.Slice(0, _length).ToString();
 
-        // 获取只读的字符序列（无分配）
+        /// <summary>
+        /// 获取表示当前内容的只读字符序列。
+        /// </summary>
+        /// <returns>只读字符序列。</returns>
         public ReadOnlySpan<char> AsSpan() => _chars.Slice(0, _length);
 
-        // 释放租借的数组回池中
+        /// <summary>
+        /// 释放由此实例使用的资源，包括归还租借的数组到池中。
+        /// </summary>
         public void Dispose()
         {
             if (_arrayToReturnToPool != null)

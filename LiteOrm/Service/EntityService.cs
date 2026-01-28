@@ -876,11 +876,11 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 核心异步更新或插入逻辑。
+        /// 异步更新或插入实体集合的核心逻辑。
         /// </summary>
-        /// <param name="entity">要处理的实体对象。</param>
+        /// <param name="entity">待处理的实体对象。</param>
         /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>操作结果。</returns>
+        /// <returns>操作结果枚举。</returns>
         protected virtual async Task<UpdateOrInsertResult> UpdateOrInsertCoreAsync(T entity, CancellationToken cancellationToken = default)
         {
             var dao = ObjectDAO;

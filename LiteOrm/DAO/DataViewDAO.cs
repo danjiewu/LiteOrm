@@ -17,20 +17,20 @@ namespace LiteOrm
     public class DataViewDAO<T> : DAOBase
     {
         /// <summary>
-        /// 获取当前实体的类型
+        /// 获取实体对象类型。
         /// </summary>
         public override Type ObjectType => typeof(T);
 
         /// <summary>
-        /// 获取实体的数据库表元数据
+        /// 获取实体对应的数据库表或视图元数据。
         /// </summary>
         public override SqlTable Table => TableInfoProvider.GetTableView(ObjectType);
 
         /// <summary>
-        /// 替换 SQL 中的占位符，例如将 {ParamAllFields} 替换为实际的字段列表
+        /// 替换 SQL 语句中的占位符参数。
         /// </summary>
-        /// <param name="sqlWithParam">包含占位符的 SQL 语句</param>
-        /// <returns>替换后的 SQL 语句</returns>
+        /// <param name="sqlWithParam">包含占位符的 SQL 字符串。</param>
+        /// <returns>替换参数后的 SQL 字符串。</returns>
         protected override string ReplaceParam(string sqlWithParam)
         {
             return base.ReplaceParam(sqlWithParam).Replace(ParamAllFields, AllFieldsSql);

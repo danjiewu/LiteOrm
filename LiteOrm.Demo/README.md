@@ -4,11 +4,11 @@
 
 ## 项目概述
 
-`LiteOrm.Demo` 展示了 LiteOrm 在 .NET 8 环境下的核心特性，包括依赖注入集成、强大的表达式系统、自动化配置、分表查询、关联查询以及性能优化技巧。
+`LiteOrm.Demo` 展示了 LiteOrm 在 .NET 8 / 10 环境下的核心特性，包括依赖注入集成、强大的表达式系统、自动化配置、分表查询、关联查询以及性能优化技巧。
 
 ## 如何运行
 
-1. 确保已安装 .NET 8 SDK。
+1. 确保已安装 .NET 8 或更高版本的 SDK。
 2. 导航至项目根目录或 `LiteOrm.Demo` 目录。
 3. 执行以下命令：
    ```bash
@@ -104,16 +104,14 @@ Console.WriteLine($"  (Age > 10 AND Age < 20) OR DeptId == 1: {set}");
 ```
 
 ### 2. Lambda 表达式转换
-LiteOrm 支持常见的 C# Lambda 表达式转换为 `Expr` 对象，并且可以通过注册自定义表达式与 SQL方言构造器进行扩展，见[ 10.自定义 Lambda 表达式转换与 SQL 函数映射扩展](#10自定义-lambda-表达式转换与-sql-函数映射扩展)。
+LiteOrm 支持通过 `EntityServiceExtensions` 将 C# Lambda 表达式自动转换为 `Expr` 对象，这种方式最接近原生的 LINQ 写法。
 
 **代码示例：**
 ```csharp
 Console.WriteLine("\n[LambdaExpr] Lambda 表达式转换演示:");
-// 使用 Expr.Exp<T> 将 C# Lambda 转换为 Expr 对象，这种方式最接近原生的 LINQ 写法
-// EntityViewService<T> 的 Search / SearchSection 方法均支持传入 Lambda 表达式
-var lambdaExpr = Expr.Exp<SalesRecordView>(s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains("电"));
-Console.WriteLine("  C# Lambda: s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains(\"电\")");
-Console.WriteLine($"  转换后的 Expr: {lambdaExpr}");
+// 直接在 SearchAsync 中使用 Lambda，由扩展方法自动完成转换
+var sales = await salesService.SearchAsync(s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains("电"));
+Console.WriteLine($"  查询结果数量: {sales.Count}");
 ```
 
 **示例输出：**
@@ -280,31 +278,26 @@ public class SalesRecord : IArged
 ```
 
 ### 7. 综合查询示例 (SearchAsync / SearchSectionAsync)
-演示了通过 `Expr` 构建复杂条件、结合分页排序 (`PageSection`)、异步执行以及自定义 SQL 片段 (`GenericSqlExpr`)。
+演示了通过 `Expr` 构建复杂条件、结合分页排序 (`PageSection`)、异步执行以及自定义 SQL 模板 (`GenericSqlExpr`)。
 
 **代码示例：**
 ```csharp
 string currentMonth = DateTime.Now.ToString("yyyyMM");
 
-// 示例 1: 查询年龄大于 25 且名字长度为 2 的用户
-var expr1 = Expr.Exp<UserView>(u => u.Age > 25 && u.UserName.Length == 2);
+// 示例 1: 使用 Lambda 异步查询（推荐）
 var users1 = await userService.SearchAsync(u => u.Age > 25 && u.UserName.Length == 2);
 Console.WriteLine($"\n[示例 1] 年龄 > 25 且名字长度为 2:");
-Console.WriteLine($"  Expr 序列化结果: {JsonSerializer.Serialize(expr1, jsonOptions)}");
-Console.WriteLine($"  查询结果数量: {users1.Count}");
 foreach (var user in users1)
 {
-    Console.WriteLine($"    - ID:{user.Id}, 账号:{user.UserName}, 年龄:{user.Age}, 部门:{user.DeptName}, 创建日期:{user.CreateTime:yyyy-MM-dd}");
+    Console.WriteLine($"    - ID:{user.Id}, 账号:{user.UserName}, 年龄:{user.Age}, 部门:{user.DeptName}");
 }
 
-// 示例 2: 3天前销售且未发货的订单，并按金额降序取前10条
+// 示例 2: 组合条件 + 分页 + 排序
 var threeDaysAgo = DateTime.Now.AddDays(-3);
-var expr2 = Expr.Exp<SalesRecordView>(s => s.SaleTime < threeDaysAgo && s.ShipTime == null);
-// 增加按销售金额排序，使用 SearchSection 演示排序功能
-var sales2 = await salesService.SearchSectionAsync(expr2, new PageSection(0, 10).OrderByDesc(nameof(SalesRecord.Amount)), [currentMonth]);
+// 筛选 3 天内且未发货的订单，按金额降序取前 10 条
+var section = new PageSection(0, 10).OrderByDesc(nameof(SalesRecord.Amount));
+var sales2 = await salesService.SearchSectionAsync(s => s.SaleTime < threeDaysAgo && s.ShipTime == null, section, [currentMonth]);
 Console.WriteLine($"\n[示例 2] 3天前销售且未发货的订单({currentMonth}月份)，并按金额降序取前10条:");
-Console.WriteLine($"  Expr 序列化结果: {JsonSerializer.Serialize(expr2, jsonOptions)}");
-Console.WriteLine($"  查询结果数量: {sales2.Count}");
 foreach (var sale in sales2)
 {
     Console.WriteLine($"    - ID:{sale.Id}, 产品:{sale.ProductName}, 金额:{sale.Amount}, 销售员:{sale.UserName}, 销售时间:{sale.SaleTime:yyyy-MM-dd HH:mm} 发货时间:{sale.ShipTime:yyyy-MM-dd HH:mm}");
@@ -335,8 +328,6 @@ var complexExpr = GenericSqlExpr.Get("DirectorDeptOrders", directorId) & Expr.Pr
 var directorOrders = await salesService.SearchAsync(complexExpr, [currentMonth]);
 
 Console.WriteLine($"\n[示例 3] 销售总监(ID:{directorId})负责部门及下级部门 3 天内的订单 ({currentMonth}):");
-Console.WriteLine($"  Expr 序列化结果: {JsonSerializer.Serialize(complexExpr, jsonOptions)}");
-Console.WriteLine($"  结果数量: {directorOrders.Count}");
 foreach (var sale in directorOrders)
 {
     Console.WriteLine($"    - ID:{sale.Id}, 产品:{sale.ProductName}, 金额:{sale.Amount}, 销售员:{sale.UserName}, 销售时间:{sale.SaleTime:yyyy-MM-dd HH:mm} 发货时间:{sale.ShipTime:yyyy-MM-dd HH:mm}");
@@ -346,25 +337,6 @@ foreach (var sale in directorOrders)
 **示例输出：**
 ```text
 [示例 1] 年龄 > 25 且名字长度为 2:
-  Expr 序列化结果: {
-  "$": "set",
-  "And": [
-    {
-      "$": ">",
-      "Left": {"#":"Age"},
-      "Right": 25
-    },
-    {
-      "$": "==",
-      "Left": {
-        "$": "func",
-        "Length": [{"#":"UserName"}
-        ]
-      },
-      "Right": 2
-    }
-  ]
-}
   查询结果数量: 3
     - ID:4, 账号:李四, 年龄:28, 部门:研发中心, 创建日期:2026-01-15
     ...

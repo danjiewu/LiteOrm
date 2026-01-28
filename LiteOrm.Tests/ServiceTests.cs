@@ -68,7 +68,7 @@ namespace LiteOrm.Tests
         {
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
             var user = new TestUser { Name = "Original", Age = 20, CreateTime = DateTime.Now };
             await service.InsertAsync(user);
 
@@ -460,7 +460,7 @@ namespace LiteOrm.Tests
             // Arrange
             var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
 
             var dept = new TestDepartment { Name = "Foreign Dept" };
             await deptService.InsertAsync(dept);
@@ -471,7 +471,7 @@ namespace LiteOrm.Tests
             // Act
             // 使用 ForeignExpr 进行关联查询 (基于 EXISTS 子查询)
             // 查找所属部门名称为 "Foreign Dept" 的用户
-            var users = await viewService.SearchAsync(Expr.Foreign("DeptId", Expr.Property("Name") == "Foreign Dept"));
+            var users = await viewService.SearchAsync(Expr.Foreign("Dept", Expr.Property("Name") == "Foreign Dept"));
 
             // Assert
             Assert.Single(users);
@@ -484,7 +484,7 @@ namespace LiteOrm.Tests
             // Arrange
             var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
 
             var dept1 = new TestDepartment { Name = "Dept 1" };
             await deptService.InsertAsync(dept1);
@@ -498,7 +498,7 @@ namespace LiteOrm.Tests
             // Act
             // 查找年龄为 30 且所属部门名为 "Dept 1" 的用户
             var users = await viewService.SearchAsync(
-                (Expr.Property("Age") == 30) & Expr.Foreign("DeptId", Expr.Property("Name") == "Dept 1")
+                (Expr.Property("Age") == 30) & Expr.Foreign("Dept", Expr.Property("Name") == "Dept 1")
             );
 
             // Assert
