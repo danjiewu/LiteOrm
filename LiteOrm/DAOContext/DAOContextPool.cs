@@ -68,7 +68,7 @@ namespace LiteOrm
             get => _maxPoolSize;
             set
             {
-                if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value), "最大连接数必须大于 0");
+                if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value), "Max connection count must be greater than 0");
                 if (_maxPoolSize != value)
                 {
                     _maxPoolSize = value;
@@ -310,12 +310,12 @@ namespace LiteOrm
         private DAOContext CreateNewContext()
         {
             if (!_semaphore.Wait(10000))
-                throw new InvalidOperationException("已达到最大连接数限制，无法创建新连接。");
+                throw new InvalidOperationException("Maximum connection limit reached, cannot create a new connection.");
             try
             {
                 var connection = Activator.CreateInstance(ProviderType) as DbConnection;
                 if (connection is null)
-                    throw new InvalidOperationException($"无法创建类型为 {ProviderType} 的数据库连接");
+                    throw new InvalidOperationException($"Unable to create database connection of type {ProviderType}");
 
                 connection.ConnectionString = ConnectionString;
 

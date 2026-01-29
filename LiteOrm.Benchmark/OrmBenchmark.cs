@@ -1,27 +1,20 @@
 ﻿using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Running;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using SqlSugar;
-using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Service;
-using System;
 using Dapper;
 using FreeSql;
 using MySqlConnector;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using System.IO;
 
 
 namespace LiteOrm.Benchmark
 {
     [MemoryDiagnoser]
+    [MediumRunJob]
     public class OrmBenchmark
     {
         private IHost _host;
@@ -30,7 +23,7 @@ namespace LiteOrm.Benchmark
 
         private string? _connectionString;
 
-        [Params(100, 1000,10000)]
+        [Params(100, 1000, 5000)]
         public int BatchCount { get; set; }
         [GlobalSetup]
         public void Setup()
@@ -198,8 +191,13 @@ namespace LiteOrm.Benchmark
         {
             using (var conn = new MySqlConnection(_connectionString!))
             {
-                var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Dapper", Age = 25, Email = "dapper@test.com", CreateTime = DateTime.Now }).ToList();
-                await conn.ExecuteAsync("INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime) VALUES (@Name, @Age, @Email, @CreateTime)", users);
+                await conn.OpenAsync();
+                using (var trans = await conn.BeginTransactionAsync())
+                {
+                    var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Dapper", Age = 25, Email = "dapper@test.com", CreateTime = DateTime.Now }).ToList();
+                    await conn.ExecuteAsync("INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime) VALUES (@Name, @Age, @Email, @CreateTime)", users, trans);
+                    await trans.CommitAsync();
+                }
             }
         }
 
@@ -277,14 +275,19 @@ namespace LiteOrm.Benchmark
         {
             using (var conn = new MySqlConnection(_connectionString!))
             {
+                await conn.OpenAsync();
                 var users = (await conn.QueryAsync<BenchmarkUser>($"SELECT * FROM BenchmarkUser LIMIT {BatchCount}")).ToList();
-                foreach (var u in users)
+                using (var trans = await conn.BeginTransactionAsync())
                 {
-                    u.Name = "Dapper" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                    u.Age = _random.Next(20, 60);
-                    u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
+                    foreach (var u in users)
+                    {
+                        u.Name = "Dapper" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                        u.Age = _random.Next(20, 60);
+                        u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
+                    }
+                    await conn.ExecuteAsync("UPDATE BenchmarkUser SET Name = @Name, Age = @Age, Email = @Email WHERE Id = @Id", users, trans);
+                    await trans.CommitAsync();
                 }
-                await conn.ExecuteAsync("UPDATE BenchmarkUser SET Name = @Name, Age = @Age, Email = @Email WHERE Id = @Id", users);
             }
         }
 
@@ -369,16 +372,21 @@ namespace LiteOrm.Benchmark
         {
             using (var conn = new MySqlConnection(_connectionString!))
             {
+                await conn.OpenAsync();
                 var sql = "SELECT * FROM BenchmarkUser LIMIT " + (BatchCount / 2);
                 var existingUsers = (await conn.QueryAsync<BenchmarkUser>(sql)).ToList();
-                foreach (var u in existingUsers) { u.Name = "Dapper_Upsert_U"; u.Age = _random.Next(20, 60); }
-                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Id = 0, Name = "Dapper_Upsert_I", Age = _random.Next(20, 60), Email = $"dapper_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
-                var all = existingUsers.Concat(newUsers).ToList();
-                var upsertSql = @"
+                using (var trans = await conn.BeginTransactionAsync())
+                {
+                    foreach (var u in existingUsers) { u.Name = "Dapper_Upsert_U"; u.Age = _random.Next(20, 60); }
+                    var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Id = 0, Name = "Dapper_Upsert_I", Age = _random.Next(20, 60), Email = $"dapper_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
+                    var all = existingUsers.Concat(newUsers).ToList();
+                    var upsertSql = @"
                     INSERT INTO BenchmarkUser (Id, Name, Age, Email, CreateTime) 
                     VALUES (NULLIF(@Id, 0), @Name, @Age, @Email, @CreateTime) 
                     ON DUPLICATE KEY UPDATE Name = VALUES(Name), Age = VALUES(Age), Email = VALUES(Email)";
-                await conn.ExecuteAsync(upsertSql, all);
+                    await conn.ExecuteAsync(upsertSql, all, trans);
+                    await trans.CommitAsync();
+                }
             }
         }
 

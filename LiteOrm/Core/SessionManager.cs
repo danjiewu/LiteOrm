@@ -212,7 +212,7 @@ namespace LiteOrm
                         _logger?.LogError(ex, $"会话 {SessionID} 为连接池 {context.Pool?.Name} 开启事务失败");
                         // 如果某个连接开启事务失败，回滚并抛出异常
                         RollbackInternal();
-                        throw new InvalidOperationException($"开启事务失败: {ex.Message}", ex);
+                        throw new InvalidOperationException($"Failed to start transaction: {ex.Message}", ex);
                     }
                 }
 
@@ -288,7 +288,7 @@ namespace LiteOrm
 
             if (!success)
             {
-                throw new InvalidOperationException("提交事务时发生错误");
+                throw new InvalidOperationException("An error occurred while committing the transaction");
             }
 
             return success;
@@ -324,7 +324,7 @@ namespace LiteOrm
 
             if (!success)
             {
-                throw new InvalidOperationException("回滚事务时发生错误");
+                throw new InvalidOperationException("An error occurred while rolling back the transaction");
             }
 
             return success;

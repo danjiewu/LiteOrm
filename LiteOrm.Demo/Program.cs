@@ -5,8 +5,6 @@ using LiteOrm;
 using LiteOrm.Demo;
 using LiteOrm.Demo.Services;
 using LiteOrm.Demo.Data;
-using LiteOrm.Demo.Models;
-using LiteOrm.Demo.DAO;
 
 
 // 使用 RegisterLiteOrm 从 appsettings.json 自动配置

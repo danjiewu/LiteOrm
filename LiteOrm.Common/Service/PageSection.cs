@@ -121,15 +121,6 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 快速创建一个分页设置
-        /// </summary>
-        public static PageSection Create(int startIndex, int sectionSize)
-        {
-            return new PageSection(startIndex, sectionSize);
-        }
-
-
-        /// <summary>
         /// 返回表示当前对象的字符串
         /// </summary>
         /// <returns>表示当前对象的字符串</returns>
@@ -164,6 +155,19 @@ namespace LiteOrm.Common
         /// <param name="propertyName">排序属性名</param>
         /// <param name="direction">排序方向</param>
         public Sorting(string propertyName, ListSortDirection direction) { PropertyName = propertyName; Direction = direction; }
+
+        /// <summary>
+        /// 创建升序排序项
+        /// </summary>
+        /// <param name="propertyName">属性名</param>
+        /// <returns></returns>
+        public static Sorting Asc(string propertyName) => new Sorting(propertyName, ListSortDirection.Ascending);
+        /// <summary>
+        /// 创建降序排序项
+        /// </summary>
+        /// <param name="propertyName">属性名</param>
+        /// <returns></returns>
+        public static Sorting Desc(string propertyName) => new Sorting(propertyName, ListSortDirection.Descending);        
 
         /// <summary>
         /// 返回表示当前对象的字符串

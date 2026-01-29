@@ -39,7 +39,7 @@ namespace LiteOrm.Common
             internal set
             {
                 if (value == null) throw new ArgumentNullException(nameof(value));
-                if (value.Count != _foreignPrimeKeys.Count) throw new ArgumentException("外键数量与目标主键数量不一致。");
+                if (value.Count != _foreignPrimeKeys.Count) throw new ArgumentException("The number of foreign keys does not match the target primary keys.");
                 _foreignKeys = value;
             }
         }

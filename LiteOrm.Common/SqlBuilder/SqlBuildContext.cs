@@ -45,7 +45,7 @@ namespace LiteOrm.Common
             {
                 if (!tableNameRegex.IsMatch(arg))
                 {
-                    throw new ArgumentException("表名参数包含非法字符。", nameof(tableNameArgs));
+                    throw new ArgumentException("Table name parameter contains illegal characters.", nameof(tableNameArgs));
                 }
             }
             Table = table;

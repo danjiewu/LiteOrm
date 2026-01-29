@@ -1,13 +1,9 @@
-﻿using LiteOrm.Service;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LiteOrm.Common
 {
@@ -231,7 +227,7 @@ namespace LiteOrm.Common
                         }
                         else if (node.Right is MethodCallExpression rightCallExpression && rightCallExpression.Method.Name == "CompareTo")
                         {
-                            if (!(left is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo 方法只能与 0 进行比较: {node}");
+                            if (!(left is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo method can only be compared with 0: {node}");
                             if (right is BinaryExpr be)
                             {
                                 left = be.Right;
@@ -246,7 +242,7 @@ namespace LiteOrm.Common
                         return new BinaryExpr(left, op, right);
                     }
                     else
-                        throw new NotSupportedException($"不支持的二元操作符: {node.NodeType}");
+                        throw new NotSupportedException($"Unsupported binary operator: {node.NodeType}");
             }
         }
 
@@ -256,7 +252,7 @@ namespace LiteOrm.Common
 
             if (operand is null)
             {
-                throw new ArgumentException($"无法转换一元表达式: {node}");
+                throw new ArgumentException($"Unable to convert unary expression: {node}");
             }
 
             switch (node.NodeType)
@@ -271,7 +267,7 @@ namespace LiteOrm.Common
                     // 类型转换通常不需要额外处理
                     return operand;
                 default:
-                    throw new NotSupportedException($"不支持的一元操作符: {node.NodeType}");
+                    throw new NotSupportedException($"Unsupported unary operator: {node.NodeType}");
             }
         }
 
@@ -291,7 +287,7 @@ namespace LiteOrm.Common
             }
             catch
             {
-                throw new ArgumentException($"无法计算 Expression 的值: {node}");
+                throw new ArgumentException($"Unable to evaluate the value of Expression: {node}");
             }
         }
 
