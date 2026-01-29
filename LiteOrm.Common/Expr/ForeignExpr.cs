@@ -18,7 +18,7 @@ namespace LiteOrm.Common
         public Expr InnerExpr { get; set; }
 
         /// <summary>
-        /// 获取或设置当前实体中定义关联关系的属性名称（该属性需标记 ForeignType 特性）。
+        /// 获取或设置当前实体中关联的外部实体别名。
         /// </summary>
         public new string Foreign { get; set; }
 
@@ -28,9 +28,9 @@ namespace LiteOrm.Common
         public ForeignExpr() { }
 
         /// <summary>
-        /// 使用指定的外键属性名和内部表达式初始化 <see cref="ForeignExpr"/> 类的新实例。
+        /// 使用指定的外部实体别名和内部表达式初始化 <see cref="ForeignExpr"/> 类的新实例。
         /// </summary>
-        /// <param name="foreign">外键属性名称。</param>
+        /// <param name="foreign">外部实体别名。</param>
         /// <param name="expr">内部过滤表达式。</param>
         public ForeignExpr(string foreign, Expr expr)
         {

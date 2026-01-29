@@ -181,11 +181,12 @@ namespace LiteOrm.Common
                 {
                     if (ve.IsConst)
                     {
+                        // 常量值直接序列化
                         writer.WriteRawValue(JsonSerializer.Serialize(ve.Value, _compactOptions));
                     }
                     else
                     {
-                        // 常量值使用快捷方式 {"@": value}
+                        // 变量值使用快捷方式 {"@": value}
                         writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, object> { { "@", ve.Value } }, _compactOptions));
                     }
                     return;
@@ -237,9 +238,7 @@ namespace LiteOrm.Common
                         JsonSerializer.Serialize(writer, fe.Parameters, options);
                         break;
                     case UnaryExpr ue:
-                        writer.WritePropertyName("Operator");
-                        JsonSerializer.Serialize(writer, ue.Operator, options);
-                        writer.WritePropertyName("Operand");
+                        writer.WritePropertyName(ue.Operator.ToString());
                         JsonSerializer.Serialize(writer, ue.Operand, options);
                         break;
                     case GenericSqlExpr ge:
@@ -338,22 +337,39 @@ namespace LiteOrm.Common
             private ExprSet ReadSet(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 var set = new ExprSet();
+                bool success = false;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
                     string prop = reader.GetString();
-                    if (Enum.TryParse<ExprJoinType>(prop, out var jt))
+                    if (prop == "JoinType")
                     {
-                        set.JoinType = jt;
+                        reader.Read();
+                        set.JoinType = JsonSerializer.Deserialize<ExprJoinType>(ref reader, options);
+                        success = true;
+                    }
+                    else if (prop == "Items")
+                    {
                         reader.Read();
                         var items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
                         if (items != null) set.AddRange(items);
                     }
                     else
                     {
-                        reader.Read();
-                        reader.Skip();
+                        if (!success && Enum.TryParse<ExprJoinType>(prop, out var jt))
+                        {
+                            success = true;
+                            set.JoinType = jt;
+                            reader.Read();
+                            var items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
+                            if (items != null) set.AddRange(items);
+                        }
+                        else
+                        {
+                            reader.Read();
+                            reader.Skip();
+                        }
                     }
                 }
                 return set;
@@ -365,10 +381,34 @@ namespace LiteOrm.Common
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                    fe.FunctionName = reader.GetString();
-                    reader.Read();
-                    var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
-                    if (parameters != null) fe.Parameters.AddRange(parameters);
+                    string prop = reader.GetString();
+                    if (prop == "FunctionName")
+                    {
+                        reader.Read();
+                        fe.FunctionName = reader.GetString();
+                        continue;
+                    }
+                    else if (prop == "Parameters")
+                    {
+                        reader.Read();
+                        var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
+                        if (parameters != null) fe.Parameters.AddRange(parameters);
+                    }
+                    else
+                    {
+                        if (fe.FunctionName == null)
+                        {
+                            fe.FunctionName = prop;
+                            reader.Read();
+                            var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
+                            if (parameters != null) fe.Parameters.AddRange(parameters);
+                        }
+                        else
+                        {
+                            reader.Read();
+                            reader.Skip();
+                        }
+                    }
                 }
                 return fe;
             }
@@ -395,46 +435,72 @@ namespace LiteOrm.Common
 
             private ForeignExpr ReadForeign(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
-                string foreign = null;
-                Expr expr = null;
+                ForeignExpr foreignExpr = new ForeignExpr();
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                    if (foreign == null)
+                    string prop = reader.GetString();
+                    if (prop == "Foreign")
                     {
-                        foreign = reader.GetString();
                         reader.Read();
-                        expr = JsonSerializer.Deserialize<Expr>(ref reader, options);
+                        foreignExpr.Foreign = reader.GetString();
+                    }
+                    else if (prop == "InnerExpr")
+                    {
+                        reader.Read();
+                        foreignExpr.InnerExpr = JsonSerializer.Deserialize<Expr>(ref reader, options);
                     }
                     else
                     {
-                        reader.Read();
-                        reader.Skip();
+                        if (foreignExpr.Foreign == null)
+                        {
+                            foreignExpr.Foreign = prop;
+                            reader.Read();
+                            foreignExpr.InnerExpr = JsonSerializer.Deserialize<Expr>(ref reader, options);
+                        }
+                        else
+                        {
+                            reader.Read();
+                            reader.Skip();
+                        }
                     }
                 }
-                return new ForeignExpr(foreign, expr);
+                return foreignExpr;
             }
 
             private UnaryExpr ReadUnary(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 var ue = new UnaryExpr();
+                bool success = false;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                    if (reader.ValueTextEquals("Operator"))
+                    string prop = reader.GetString();
+                    if (prop == "Operator")
                     {
                         reader.Read();
                         ue.Operator = JsonSerializer.Deserialize<UnaryOperator>(ref reader, options);
+                        success = true;
                     }
-                    else if (reader.ValueTextEquals("Operand"))
+                    else if (prop == "Operand")
                     {
                         reader.Read();
                         ue.Operand = JsonSerializer.Deserialize<Expr>(ref reader, options);
                     }
                     else
                     {
-                        reader.Read();
-                        reader.Skip();
+                        if (!success && Enum.TryParse<UnaryOperator>(prop, out var parsedOp))
+                        {
+                            success = true;
+                            ue.Operator = parsedOp;
+                            reader.Read();
+                            ue.Operand = JsonSerializer.Deserialize<Expr>(ref reader, options);
+                        }
+                        else
+                        {
+                            reader.Read();
+                            reader.Skip();
+                        }
                     }
                 }
                 return ue;

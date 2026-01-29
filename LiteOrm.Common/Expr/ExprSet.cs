@@ -172,17 +172,10 @@ namespace LiteOrm.Common
         /// <param name="items">要添加的表达式对象集合。</param>
         public void AddRange(IEnumerable<Expr> items)
         {
-            if (items is IList<Expr> list)
+
+            foreach (var item in items)
             {
-                int count = list.Count;
-                for (int i = 0; i < count; i++) Add(list[i]);
-            }
-            else
-            {
-                foreach (var item in items)
-                {
-                    Add(item);
-                }
+                Add(item);
             }
         }
 
@@ -291,7 +284,7 @@ namespace LiteOrm.Common
                         var otherSet = new HashSet<Expr>(set.items);
                         return thisSet.SetEquals(otherSet);
                     }
-                    
+
                     // 项数较少时，直接双重循环
                     for (int i = 0; i < items.Count; i++)
                     {
