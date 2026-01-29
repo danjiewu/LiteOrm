@@ -144,8 +144,9 @@ Expr expr = Expr.Exp<User>(u => u.Age > 18 && u.UserName.Contains("admin"));
 ### SQL 生成器 (SqlGen)
 可以独立于 DAO 使用 `SqlGen` 生成参数化 SQL，方便开发调试：
 ```csharp
-var res = new SqlGen(typeof(User)).ToSql(u => u.Id == 123);
-// res.Sql -> SELECT ... FROM USERS WHERE ID = @0
+var expr = (Expr.Property(nameof(User.Age)) > 18) & (Expr.Property(nameof(User.UserName)).Contains("admin_"));
+var res = new SqlGen(typeof(User)).ToSql(expr);
+// res.Sql -> (`User`.`Age` > @0 AND `User`.`UserName` LIKE @1 ESCAPE '/')
 ```
 
 ## Demo 示例项目

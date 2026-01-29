@@ -226,13 +226,12 @@ namespace LiteOrm.Common
             }
             else if (expr.IsConst && expr.Value.GetType().IsPrimitive)
             {
-                // 数值类型通常直接以字面量形式输出，较为高效
+                // 数值类型常量直接以字面量形式输出，较为高效
                 sb.Append(expr.Value.ToString());
             }
             else if (expr.Value is IEnumerable enumerable && !(expr.Value is string))
             {
                 // 处理 IN (...) 集合
-
                 bool first = true;
                 foreach (var item in enumerable)
                 {

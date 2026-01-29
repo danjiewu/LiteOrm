@@ -45,18 +45,7 @@ namespace LiteOrm.Demo.Demos
 
             var deserializedExpr = JsonSerializer.Deserialize<Expr>(json, jsonOptions);
             Console.WriteLine($"  反序列化后 Expr 类型: {deserializedExpr?.GetType().Name}");
-            Console.WriteLine($"  反序列化后 Expr 内容: {deserializedExpr}");
-
-            json = "{\r\n  \"$\": \"set\",\r\n  \"And\": [\r\n    {\r\n      \"$\": \">\",\r\n      " +
-                "\"Left\": {\r\n        \"$\": \"func\",\r\n  \"FunctionName\": \"COALESCE\",\r\n      \"Parameters\": [{\"#\":\"ShipTime\"},\r\n          {\r\n            \"$\": \"func\"," +
-                "\r\n            \"AddDays\": [\r\n              {\r\n                \"$\": \"func\",\r\n                \"Now\": []\r\n              },-1\r\n" +
-                "            ]\r\n          }\r\n        ]\r\n      },\r\n      \"Right\": {\r\n        \"$\": \"+\",\r\n        " +
-                "\"Left\": {\"#\":\"SaleTime\"},\r\n        \"Right\": {\"@\":\"3.00:00:00\"}\r\n      }\r\n    }," +
-                "\r\n    {\r\n      \"$\": \"contains\",\r\n      \"Left\": {\"#\":\"ProductName\"},\r\n      " +
-                "\"Right\": {\"@\":\"机\"}\r\n    }\r\n  ]\r\n}";
-            deserializedExpr = JsonSerializer.Deserialize<Expr>(json, jsonOptions);
-            Console.WriteLine($"  构造反序列化后 Expr 类型: {deserializedExpr?.GetType().Name}");
-            Console.WriteLine($"  构造反序列化后 Expr 内容: {deserializedExpr}");
+            Console.WriteLine($"  反序列化后 Expr 内容: {deserializedExpr}");            
         }
 
         public static void ShowExprConvert()
