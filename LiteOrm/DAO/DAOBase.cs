@@ -308,6 +308,17 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 获取预定义的 DbCommand
+        /// </summary>
+        /// <param name="methodName">方法名称</param>
+        /// <param name="newCommandHandler">新的命令处理器</param>
+        /// <returns></returns>
+        protected DbCommandProxy GetPreparedCommand(string methodName, Func<DbCommandProxy> newCommandHandler)
+        {
+            if (TableNameArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableNameArgs);
+            return DAOContext.PreparedCommands.GetOrAdd((ObjectType, methodName), _ => newCommandHandler());
+        }
+        /// <summary>
         /// 根据 SQL 语句和参数建立 IDbCommand
         /// </summary>
         /// <param name="sql">SQL 语句，SQL 中可以包含参数信息，参数名为以 0 开始的递增整数，对应 paramValues 中值的下标</param>

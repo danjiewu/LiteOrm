@@ -272,7 +272,7 @@ namespace LiteOrm
         public virtual T GetObject(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var getObjectCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "GetObject"), _ => MakeGetObjectCommand());
+            var getObjectCommand = GetPreparedCommand("GetObject", MakeGetObjectCommand);
             int i = 0;
             foreach (DbParameter param in getObjectCommand.Parameters)
             {
@@ -316,7 +316,7 @@ namespace LiteOrm
         public virtual bool ExistsKey(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var objectExistsCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "ExistsKey"), _ => MakeObjectExistsCommand());
+            var objectExistsCommand = GetPreparedCommand("ExistsKey", MakeObjectExistsCommand);
             int i = 0;
             foreach (DbParameter param in objectExistsCommand.Parameters)
             {
@@ -417,7 +417,7 @@ namespace LiteOrm
         public async virtual Task<T> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var getObjectCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "GetObject"), _ => MakeGetObjectCommand());
+            var getObjectCommand = GetPreparedCommand("GetObject", MakeGetObjectCommand);
             int i = 0;
             foreach (DbParameter param in getObjectCommand.Parameters)
             {
@@ -461,7 +461,7 @@ namespace LiteOrm
         public async virtual Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var objectExistsCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "ExistsKey"), _ => MakeObjectExistsCommand());
+            var objectExistsCommand = GetPreparedCommand("ExistsKey", MakeObjectExistsCommand);
             int i = 0;
             foreach (DbParameter param in objectExistsCommand.Parameters)
             {

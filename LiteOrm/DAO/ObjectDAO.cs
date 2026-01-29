@@ -451,7 +451,7 @@ namespace LiteOrm
         public virtual bool Insert(T t)
         {
             if (t is null) throw new ArgumentNullException("t");
-            var insertCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "Insert"), _ => MakeInsertCommand());
+            var insertCommand = GetPreparedCommand("Insert", MakeInsertCommand);
             var columns = InsertableColumns;
             int count = columns.Length;
             var parameters = insertCommand.Parameters;
@@ -521,7 +521,7 @@ namespace LiteOrm
                     batch.Add(item);
                     if (batch.Count == batchSize)
                     {
-                        DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchInsert" + batchSize), _ => MakeBatchInsertCommand(batchSize));
+                        DbCommandProxy command = GetPreparedCommand("BatchInsert" + batchSize, () => MakeBatchInsertCommand(batchSize));
                         SetParameterValues(insertableColumns, batch, command);
 
                         if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
@@ -576,7 +576,7 @@ namespace LiteOrm
         /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
         public virtual bool Update(T t, object timestamp = null)
         {
-            var updateCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, timestamp == null ? "Update" : "UpdateWithTimestamp"), _ => MakeUpdateCommand(timestamp != null));
+            var updateCommand = GetPreparedCommand(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateCommand(timestamp != null));
             var updatableColumns = UpdatableColumns;
             var keys = TableDefinition.Keys;
             int updatableCount = updatableColumns.Length;
@@ -627,7 +627,7 @@ namespace LiteOrm
                 batch.Add(item);
                 if (batch.Count == batchSize)
                 {
-                    DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchUpdate" + batchSize), _ => MakeBatchUpdateCommand(batchSize));
+                    DbCommandProxy command = GetPreparedCommand("BatchUpdate" + batchSize, () => MakeBatchUpdateCommand(batchSize));
                     SetBatchUpdateParameterValues(updatableColumns, keyColumns, batch, command);
                     command.ExecuteNonQuery();
                     batch.Clear();
@@ -666,7 +666,7 @@ namespace LiteOrm
             if (batchSize == 0) batchSize = 1;
 
             var batch = new List<T>(batchSize);
-            var command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchIDExists" + batchSize), _ => MakeBatchIDExistsCommand(batchSize));
+            var command = GetPreparedCommand("BatchIDExists" + batchSize, () => MakeBatchIDExistsCommand(batchSize));
 
             foreach (var item in list)
             {
@@ -798,7 +798,7 @@ namespace LiteOrm
         public virtual bool DeleteByKeys(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var deleteCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "Delete"), _ => MakeDeleteCommand());
+            var deleteCommand = GetPreparedCommand("Delete", MakeDeleteCommand);
             int count = deleteCommand.Parameters.Count;
             var parameters = deleteCommand.Parameters;
             var keyColumns = Table.Keys;
@@ -845,7 +845,7 @@ namespace LiteOrm
                 batch.Add(keyValues);
                 if (batch.Count == batchSize)
                 {
-                    DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchDelete" + batchSize), _ => MakeBatchDeleteCommand(batchSize));
+                    DbCommandProxy command = GetPreparedCommand("BatchDelete" + batchSize, () => MakeBatchDeleteCommand(batchSize));
                     SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
                     command.ExecuteNonQuery();
                     batch.Clear();
@@ -872,7 +872,7 @@ namespace LiteOrm
         public async virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
         {
             if (t is null) throw new ArgumentNullException("t");
-            var insertCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "Insert"), _ => MakeInsertCommand());
+            var insertCommand = GetPreparedCommand("Insert", MakeInsertCommand);
             var columns = InsertableColumns;
             int count = columns.Length;
             var parameters = insertCommand.Parameters;
@@ -949,7 +949,7 @@ namespace LiteOrm
                     batch.Add(item);
                     if (batch.Count == batchSize)
                     {
-                        DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchInsert" + batchSize), _ => MakeBatchInsertCommand(batchSize));
+                        DbCommandProxy command = GetPreparedCommand("BatchInsert" + batchSize, () => MakeBatchInsertCommand(batchSize));
                         SetParameterValues(insertableColumns, batch, command);
 
                         if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
@@ -1004,7 +1004,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果更新成功则返回 true。</returns>
         public async virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
         {
-            var updateCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, timestamp == null ? "Update" : "UpdateWithTimestamp"), _ => MakeUpdateCommand(timestamp != null));
+            var updateCommand = GetPreparedCommand(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateCommand(timestamp != null));
             var updatableColumns = UpdatableColumns;
             var keys = TableDefinition.Keys;
             int updatableCount = updatableColumns.Length;
@@ -1056,7 +1056,7 @@ namespace LiteOrm
                 batch.Add(t);
                 if (batch.Count == batchSize)
                 {
-                    DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchUpdate" + batchSize), _ => MakeBatchUpdateCommand(batchSize));
+                    DbCommandProxy command = GetPreparedCommand("BatchUpdate" + batchSize, () => MakeBatchUpdateCommand(batchSize));
                     SetBatchUpdateParameterValues(updatableColumns, keyColumns, batch, command);
                     await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     batch.Clear();
@@ -1096,7 +1096,7 @@ namespace LiteOrm
             if (batchSize == 0) batchSize = 1;
 
             var batch = new List<T>(batchSize);
-            var command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchIDExists" + batchSize), _ => MakeBatchIDExistsCommand(batchSize));
+            var command = GetPreparedCommand("BatchIDExists" + batchSize, () => MakeBatchIDExistsCommand(batchSize));
 
             foreach (var item in list)
             {
@@ -1222,7 +1222,7 @@ namespace LiteOrm
         public async virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var deleteCommand = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "Delete"), _ => MakeDeleteCommand());
+            var deleteCommand = GetPreparedCommand("Delete", MakeDeleteCommand);
             int i = 0;
             foreach (DbParameter param in deleteCommand.Parameters)
             {
@@ -1283,7 +1283,7 @@ namespace LiteOrm
                 batch.Add(keyValues);
                 if (batch.Count == batchSize)
                 {
-                    DbCommandProxy command = DAOContext.PreparedCommands.GetOrAdd((ObjectType, "BatchDelete" + batchSize), _ => MakeBatchDeleteCommand(batchSize));
+                    DbCommandProxy command = GetPreparedCommand("BatchDelete" + batchSize, () => MakeBatchDeleteCommand(batchSize));
                     SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
                     await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                     batch.Clear();
