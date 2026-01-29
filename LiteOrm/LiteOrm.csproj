@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.0.4.0</AssemblyVersion>
-		<FileVersion>8.0.4.0</FileVersion>
+		<AssemblyVersion>8.0.5.0</AssemblyVersion>
+		<FileVersion>8.0.5.0</FileVersion>
 		<TargetFrameworks>netstandard2.0;net8.0;net10.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.0.4</VersionPrefix>
+		<VersionPrefix>8.0.5</VersionPrefix>
 		<Nullable>disable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -15,7 +15,7 @@
 		<PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
-		<PackageReleaseNotes>优化批量操作效率</PackageReleaseNotes>
+		<PackageReleaseNotes>修复带参数表缓存更新问题</PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
