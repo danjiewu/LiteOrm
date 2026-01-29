@@ -379,6 +379,15 @@ namespace LiteOrm
                 DbConnection?.Dispose();
                 _semaphore.Dispose();
                 Pool?.OnContextDisposed();
+                try
+                {
+                    foreach (var cmd in PreparedCommands.Values)
+                    {
+                        cmd.Dispose();
+                    }
+                    PreparedCommands.Clear();
+                }
+                catch { }
             }
         }
 
