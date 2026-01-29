@@ -8,7 +8,7 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架�
 ## 主要特性
 
 *   **极速性能**：深度优化反射与元数据处理，在基准测试中性能接近原生 Dapper，远超传统大型 ORM（如 EF Core）。
-*   **多数据库原生支持**：内建支持 SQL Server, MySQL (MariaDB), Oracle, 和 SQLite，支持各方言的高性能分页与函数。
+*   **多数据库原生支持**：内建支持 SQL Server, MySQL (MariaDB), Oracle, PostgreSQL 和 SQLite，支持各方言的高性能分页与函数。
 *   **灵活的查询引擎**：基于 `Expr` 的逻辑表达系统，支持 Lambda 自动转换、JSON 序列化、复杂的嵌套条件组合（And/Or/In/Like/Join）。
 *   **企业级 AOP 事务**：支持声明式事务（`[Transaction]` 特性），自动平衡跨服务、跨数据源的事务一致性与连接管理。
 *   **自动化关联 (Join)**：通过 `[TableJoin]`、 `[ForeignType]`、`[ForeignColumn]` 特性实现无损的表关联查询，自动生成高效 SQL，无需手写 JOIN 语句。
@@ -20,6 +20,19 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架�
 
 *   **.NET 8.0 / 10.0** 或更高版本
 *   **.NET Standard 2.0** (兼容 .NET Framework 4.6.1+)
+*   **支持的数据库**：
+    *   Microsoft SQL Server 2012 及以上
+    *   MySQL 5.7 及以上 (含 MariaDB)
+    *   Oracle 11g 及以上
+    *   PostgreSQL 9.4 及以上
+    *   SQLite 3.x
+    *   其他数据库可通过实现自定义 `SqlBuilder` 进行扩展。  
+*   **第三方依赖库**：
+    * Autofac
+    * Autofac.Extras.DynamicProxy
+    * Autofac.Extensions.DependencyInjection
+    * Castle.Core
+    * Castle.Core.AsyncInterceptor
 
 ## 安装
 
@@ -73,7 +86,8 @@ var host = Host.CreateDefaultBuilder(args)
         "KeepAliveDuration": "00:10:00",
         "PoolSize": 20,
         "MaxPoolSize": 100,
-        "ParamCountLimit": 2000
+        "ParamCountLimit": 2000,
+        "SyncTable": true
       }
     ]
   }
@@ -85,10 +99,10 @@ var host = Host.CreateDefaultBuilder(args)
 | 参数名 | 默认值 | 说明 |
 | :--- | :--- | :--- |
 | **Default** | - | 默认数据源名称，如果实体未指定数据源则使用此项。 |
-| **Name** | - | 必填，连接池标识。 |
+| **Name** | - | 必填，数据源名称。 |
 | **ConnectionString** | - | 必填，物理连接字符串。 |
 | **Provider** | - | 必填，DbConnection 实现类的类型全名（Assembly Qualified Name）。 |
-| **PoolSize** | 20 | 基础连接池容量，超过此数量的数据库空闲连接会被释放。 |
+| **PoolSize** | 16 | 基础连接池容量，超过此数量的数据库空闲连接会被释放。 |
 | **MaxPoolSize** | 100 | 最大并发连接限制，防止耗尽数据库资源。 |
 | **KeepAliveDuration** | 10min | 连接空闲存活时间，超过此时间后空闲连接将被物理关闭。 |
 | **ParamCountLimit** | 2000 | 单条 SQL 支持的最大参数个数，批量操作时参数超过此限制会自动分批执行，避免触发 DB 限制。 |
@@ -136,7 +150,7 @@ var res = new SqlGen(typeof(User)).ToSql(u => u.Id == 123);
 
 ## Demo 示例项目
 
-我们提供了一个完整的示例项目 [LiteOrm.Demo](./LiteOrm.Demo)，涵盖了以下核心特性的详尽演示：
+我们提供了一个完整的示例项目 [LiteOrm.Demo](./LiteOrm.Demo)，涵盖了以下核心特性的演示：
 
 - **表达式系统 (Expr)**：二元/一元、Lambda 转换、JSON 序列化。
 - **自动化关联 (Join)**：利用特性实现多级表关联带出。
@@ -162,7 +176,7 @@ LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基
 | SqlSugar | ~15.2 ms | ~33.4 ms | ~21.1 ms | ~4.5 MB |
 | EF Core | ~136.7 ms | ~118.4 ms | ~18.0 ms | ~17.7 MB |
 
-> *注：测试数据取自 `LiteOrm.Benchmark` 生成的最新报告（BatchCount=1000）。完整测试报告请参考：[LiteOrm 性能评测报告](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)。*
+> *注：测试数据取自 `LiteOrm.Benchmark` 生成的最新报告（BatchCount=1000）。完整测试报告请参考：[LiteOrm 性能评测报告](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md).*
 
 
 ## 模块说明
@@ -170,7 +184,7 @@ LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基
 *   **LiteOrm.Common**: 核心元数据定义、`Expr` 表达式系统、基础工具类。
 *   **LiteOrm**: 核心 ORM 逻辑、SQL 构建器实现、DAO 基类、Session/Transaction 管理单元。
 *   **LiteOrm.ASPNetCore**: 针对 ASP.NET Core 的扩展支持（待开发）。
-*   **LiteOrm.Demo**: 详尽的示例项目，涵盖了几乎所有核心特性的代码演示。
+*   **LiteOrm.Demo**: 示例项目，涵盖了几乎所有核心特性的代码演示。
 *   **LiteOrm.Benchmark**: 性能测试工程，包含与常见 ORM 的对比。
 
 ## 贡献与反馈

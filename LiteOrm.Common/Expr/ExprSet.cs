@@ -160,7 +160,7 @@ namespace LiteOrm.Common
             // 确保逻辑节点类型一致或为通用函数调用
             else if (item.IsValue == IsValue || item is FunctionExpr)
                 items.Add(item);
-            else throw new ArgumentException($"无法将表达式项添加到集合中，表达式项的 IsValue 属性必须与集合的 IsValue 属性相同。", nameof(item));
+            else throw new ArgumentException($"Failed to add the expression item to the collection. The IsValue property of the expression item must match the IsValue property of the collection.", nameof(item));
         }
 
         /// <summary>

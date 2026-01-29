@@ -50,6 +50,7 @@ namespace LiteOrm
     /// </remarks>
     public class SqlBuilder : ISqlBuilder
     {
+        private static readonly ConcurrentDictionary<Type, Type> _enumUnderlyingTypeCache = new ConcurrentDictionary<Type, Type>();
 
         /// <summary>
         /// 获取默认的 <see cref="SqlBuilder"/> 实例。
@@ -117,6 +118,7 @@ namespace LiteOrm
         /// 用于识别 SQL 对象名称（如 [TableName]）的正则表达式。
         /// </summary>
         protected static Regex _sqlNameRegex = new Regex(@"\[([^\]]+)\]");
+
         #endregion
 
         /// <summary>
@@ -454,7 +456,8 @@ namespace LiteOrm
                 {
                     return value.ToString();
                 }
-                return Convert.ChangeType(value, Enum.GetUnderlyingType(type));
+                Type underlyingType = _enumUnderlyingTypeCache.GetOrAdd(type, t => Enum.GetUnderlyingType(t));
+                return Convert.ChangeType(value, underlyingType);
             }
 
             // 根据 dbType 进行特定转换

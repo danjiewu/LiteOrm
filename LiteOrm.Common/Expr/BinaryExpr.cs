@@ -84,13 +84,13 @@ namespace LiteOrm.Common
         /// <summary>
         /// 反转当前表达式的左右表达式位置，并尽可能保持原本的逻辑结果（例如 "a &gt; b" 变为 "b &lt; a"）。
         /// </summary>
-        /// <param name="keepResult">若为 true，则根据对称性调整操作符以确保逻辑结果不变。</param>
+        /// <param name="keepEquivalent">若为 true，则根据对称性调整操作符以确保逻辑结果不变。</param>
         /// <returns>反转后的新 BinaryExpr。</returns>
         /// <exception cref="InvalidOperationException">当操作符不支持逻辑反转（如 StartsWith）时抛出。</exception>
-        public BinaryExpr Reverse(bool keepResult = false)
+        public BinaryExpr Reverse(bool keepEquivalent = false)
         {
             BinaryExpr newExpr = new BinaryExpr(Right, Operator, Left);
-            if (!keepResult)
+            if (!keepEquivalent)
             {
                 newExpr.Operator = Operator switch
                 {
@@ -102,7 +102,7 @@ namespace LiteOrm.Common
                     BinaryOperator.NotEqual => BinaryOperator.NotEqual,
                     BinaryOperator.Add => BinaryOperator.Add,
                     BinaryOperator.Multiply => BinaryOperator.Multiply,  
-                    _ => throw new InvalidOperationException($"操作符: {Operator}不支持等价反转")
+                    _ => throw new InvalidOperationException($"Operator: {Operator} does not support equivalent reversal")
                 };
             }
             return newExpr;

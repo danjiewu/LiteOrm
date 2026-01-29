@@ -44,7 +44,7 @@ namespace LiteOrm.Common
         public string ToDisplayText(PropertyExpr property)
         {
             var prop = Util.GetProperty(Type, property.PropertyName);
-            if (prop is null) throw new ArgumentException($"属性'{property.PropertyName}'在类型'{Type.FullName}'中不存在或不可读", property.PropertyName);
+            if (prop is null) throw new ArgumentException($"Property '{property.PropertyName}' does not exist or is not readable in type '{Type.FullName}'", property.PropertyName);
             return prop.DisplayName;
         }
 

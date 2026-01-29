@@ -135,7 +135,7 @@ namespace LiteOrm.Common
         public Expr ToExpr()
         {
             var stmt = ConvertInternal(_expression.Body);
-            if (stmt is null) throw new ArgumentException($"无法转换表达式: {_expression.Body}");
+            if (stmt is null) throw new ArgumentException($"Unable to convert expression: {_expression.Body}");
             return stmt;
         }
 
@@ -166,7 +166,7 @@ namespace LiteOrm.Common
                     return new ValueExpr(constant.Value) { IsConst = constant.Type.IsPrimitive || constant.Value == null };
                 case ParameterExpression param:
                     // 裸参数不直接转换（通常作为成员访问的基础）
-                    throw new NotSupportedException($"参数表达式 '{param.Name}' 不能直接转换为 Expr");
+                    throw new NotSupportedException($"Parameter expression '{param.Name}' cannot be converted directly to Expr");
                 case NewArrayExpression newArray:
                     return ConvertNewArray(newArray);
                 case ListInitExpression listInit:
@@ -177,7 +177,7 @@ namespace LiteOrm.Common
                     // 只要不涉及 Lambda 参数，便尝试在本地执行并取结果
                     return EvaluateToExpr(newExpression);
                 default:
-                    throw new NotSupportedException($"不支持的表达式类型: {node.NodeType} ({node.GetType().Name})");
+                    throw new NotSupportedException($"Unsupported expression type: {node.NodeType} ({node.GetType().Name})");
             }
         }
 
@@ -213,7 +213,7 @@ namespace LiteOrm.Common
                         // 特殊处理 CompareTo 调用 (a.CompareTo(b) op 0) -> 扁平化为直接的 BinaryExpr (a op b)
                         if (node.Left is MethodCallExpression leftCallExpression && leftCallExpression.Method.Name == "CompareTo")
                         {
-                            if (!(right is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo 方法只能与 0 进行比较: {node}");
+                            if (!(right is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo method can only be compared with 0: {node}");
                             if (left is BinaryExpr be)
                             {
                                 left = be.Left;

@@ -268,7 +268,26 @@ namespace LiteOrm.Common
             SqlColumn column = context.Table.GetColumn(expr.PropertyName);
             if (column is null) throw new Exception($"Property \"{expr.PropertyName}\" does not exist in type \"{context.Table.DefinitionType.FullName}\". ");
             string tableAlias = context.TableAliasName;
-            sb.Append(tableAlias is null ? (context.SingleTable ? sqlBuilder.ToSqlName(column.Name) : sqlBuilder.BuildExpression(column)) : $"[{tableAlias}].[{column.Name}]");
+
+            if (tableAlias is null)
+            {
+                if (context.SingleTable)
+                {
+                    sb.Append(sqlBuilder.ToSqlName(column.Name));
+                }
+                else
+                {
+                    sb.Append(sqlBuilder.BuildExpression(column));
+                }
+            }
+            else
+            {
+                sb.Append('[');
+                sb.Append(tableAlias);
+                sb.Append("].[");
+                sb.Append(column.Name);
+                sb.Append(']');
+            }
         }
 
 
