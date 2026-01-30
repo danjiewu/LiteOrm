@@ -16,19 +16,19 @@ namespace LiteOrm.Common
         // 维护 C# 表达式节点类型到内部操作符的快速映射
         private static readonly Dictionary<ExpressionType, object> _operatorMappings = new()
         {
-            { ExpressionType.Equal, LogicBinaryOperator.Equal },
-            { ExpressionType.NotEqual, LogicBinaryOperator.NotEqual },
-            { ExpressionType.GreaterThan, LogicBinaryOperator.GreaterThan },
-            { ExpressionType.GreaterThanOrEqual, LogicBinaryOperator.GreaterThanOrEqual },
-            { ExpressionType.LessThan, LogicBinaryOperator.LessThan },
-            { ExpressionType.LessThanOrEqual, LogicBinaryOperator.LessThanOrEqual },
-            { ExpressionType.Add, ValueBinaryOperator.Add },
-            { ExpressionType.AddChecked, ValueBinaryOperator.Add },
-            { ExpressionType.Subtract, ValueBinaryOperator.Subtract },
-            { ExpressionType.SubtractChecked, ValueBinaryOperator.Subtract },
-            { ExpressionType.Multiply, ValueBinaryOperator.Multiply },
-            { ExpressionType.MultiplyChecked, ValueBinaryOperator.Multiply },
-            { ExpressionType.Divide, ValueBinaryOperator.Divide }
+            { ExpressionType.Equal, LogicOperator.Equal },
+            { ExpressionType.NotEqual, LogicOperator.NotEqual },
+            { ExpressionType.GreaterThan, LogicOperator.GreaterThan },
+            { ExpressionType.GreaterThanOrEqual, LogicOperator.GreaterThanOrEqual },
+            { ExpressionType.LessThan, LogicOperator.LessThan },
+            { ExpressionType.LessThanOrEqual, LogicOperator.LessThanOrEqual },
+            { ExpressionType.Add, ValueOperator.Add },
+            { ExpressionType.AddChecked, ValueOperator.Add },
+            { ExpressionType.Subtract, ValueOperator.Subtract },
+            { ExpressionType.SubtractChecked, ValueOperator.Subtract },
+            { ExpressionType.Multiply, ValueOperator.Multiply },
+            { ExpressionType.MultiplyChecked, ValueOperator.Multiply },
+            { ExpressionType.Divide, ValueOperator.Divide }
         };
 
         private readonly ParameterExpression _rootParameter; // 跟踪 Lambda 的主参数（通常是实体变量）
@@ -56,7 +56,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static Func<MemberExpression, LambdaExprConverter, Expr> DefaultMemberHandler => (node, converter) =>
         {
-            return node.Expression is null ? new FunctionExpr(node.Member.Name) : new FunctionExpr(node.Member.Name, converter.Convert(node.Expression) as ValueTypeExpr);
+            return node.Expression is null ? new FunctionExpr(node.Member.Name) : new FunctionExpr(node.Member.Name, converter.AsValue(converter.Convert(node.Expression)));
         };
 
         /// <summary>
@@ -216,9 +216,9 @@ namespace LiteOrm.Common
                 case ExpressionType.Add:
                     // 字符串拼接映射
                     if (node.Left.Type == typeof(string) || node.Right.Type == typeof(string))
-                        return new ValueBinaryExpr(AsValue(left), ValueBinaryOperator.Concat, AsValue(right));
+                        return new ValueBinaryExpr(AsValue(left), ValueOperator.Concat, AsValue(right));
                     else
-                        return new ValueBinaryExpr(AsValue(left), ValueBinaryOperator.Add, AsValue(right));
+                        return new ValueBinaryExpr(AsValue(left), ValueOperator.Add, AsValue(right));
                 default:
                     if (_operatorMappings.TryGetValue(node.NodeType, out var op))
                     {
@@ -262,10 +262,10 @@ namespace LiteOrm.Common
                             }
                         }
 
-                        if (op is ValueBinaryOperator vop)
+                        if (op is ValueOperator vop)
                             return new ValueBinaryExpr(left as ValueTypeExpr, vop, AsValue(right));
                         else
-                            return new LogicBinaryExpr(left as ValueTypeExpr, (LogicBinaryOperator)op, AsValue(right));
+                            return new LogicBinaryExpr(left as ValueTypeExpr, (LogicOperator)op, AsValue(right));
                     }
                     else
                         throw new NotSupportedException($"Unsupported binary operator: {node.NodeType}");
@@ -284,11 +284,11 @@ namespace LiteOrm.Common
             switch (node.NodeType)
             {
                 case ExpressionType.OnesComplement:
-                    return new ValueUnaryExpr(ValueUnaryOperator.BitwiseNot, operand as ValueTypeExpr);
+                    return new UnaryExpr(UnaryOperator.BitwiseNot, operand as ValueTypeExpr);
                 case ExpressionType.Not:
                     return new NotExpr(operand as LogicExpr);
                 case ExpressionType.Negate:
-                    return new ValueUnaryExpr(ValueUnaryOperator.Nagive, operand as ValueTypeExpr);
+                    return new UnaryExpr(UnaryOperator.Nagive, operand as ValueTypeExpr);
                 case ExpressionType.Convert:
                     // 类型转换通常不需要额外处理
                     return operand;
@@ -384,12 +384,12 @@ namespace LiteOrm.Common
                 }
             }
 
-            return new ValueExprSet(items);
+            return new ValueSet(items);
         }
 
         private Expr ExprSet(List<ValueTypeExpr> items)
         {
-            return new ValueExprSet(items);
+            return new ValueSet(items);
         }
 
         private Expr ConvertListInit(ListInitExpression node)
@@ -407,7 +407,7 @@ namespace LiteOrm.Common
                 }
             }
 
-            return new ValueExprSet(items);
+            return new ValueSet(items);
         }
 
         #endregion

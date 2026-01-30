@@ -1,4 +1,5 @@
 ﻿using LiteOrm;
+using LiteOrm.Common;
 using LiteOrm.Demo;
 using LiteOrm.Demo.Data;
 using LiteOrm.Demo.Services;
@@ -35,6 +36,28 @@ using (var scope = host.Services.CreateScope())
 
     Console.WriteLine("\n[2] 三层架构与事务处理演示展示...");
     await ExprDemo.RunThreeTierDemo(serviceFactory);
+    List<Expr> exprs = new List<Expr>
+    {
+        new ValueExpr(123),
+        new PropertyExpr("Name"),
+        new UnaryExpr
+        {
+            Operator = UnaryOperator.BitwiseNot,
+            Operand = 1
+        },
+        new LogicBinaryExpr
+        {
+            Left = new PropertyExpr("Age"),
+            Operator = LogicOperator.GreaterThan,
+            Right = new ValueExpr(18)
+        },
+        new LogicSet(
+            LogicJoinType.And,
+            new PropertyExpr("Status") > 1,
+            new ValueExpr("Active") == 0
+        )
+    };
+    exprs.Skip(0).Take(5);
 }
 
 await host.RunAsync();

@@ -10,11 +10,11 @@ namespace LiteOrm.Common
     /// 值类型表达式集合，用于列表（IN 参数）或字符串拼接（CONCAT）。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class ValueExprSet : ValueTypeExpr, ICollection<ValueTypeExpr>
+    public sealed class ValueSet : ValueTypeExpr, ICollection<ValueTypeExpr>
     {
-        public ValueExprSet() { }
+        public ValueSet() { }
 
-        public ValueExprSet(params ValueTypeExpr[] items)
+        public ValueSet(params ValueTypeExpr[] items)
         {
             if (items != null)
             {
@@ -22,7 +22,7 @@ namespace LiteOrm.Common
             }
         }
 
-        public ValueExprSet(IEnumerable<ValueTypeExpr> items)
+        public ValueSet(IEnumerable<ValueTypeExpr> items)
         {
             if (items != null)
             {
@@ -30,7 +30,7 @@ namespace LiteOrm.Common
             }
         }
 
-        public ValueExprSet(ValueJoinType joinType, params ValueTypeExpr[] items)
+        public ValueSet(ValueJoinType joinType, params ValueTypeExpr[] items)
         {
             JoinType = joinType;
             if (items != null)
@@ -39,7 +39,7 @@ namespace LiteOrm.Common
             }
         }
 
-        public ValueExprSet(ValueJoinType joinType, IEnumerable<ValueTypeExpr> items)
+        public ValueSet(ValueJoinType joinType, IEnumerable<ValueTypeExpr> items)
         {
             JoinType = joinType;
             if (items != null)
@@ -63,7 +63,7 @@ namespace LiteOrm.Common
         public void Add(ValueTypeExpr item)
         {
             if (item is null) item = Null;
-            if (item is ValueExprSet set && set.JoinType == JoinType)
+            if (item is ValueSet set && set.JoinType == JoinType)
             {
                 items.AddRange(set.items);
             }
@@ -98,7 +98,7 @@ namespace LiteOrm.Common
 
         public override bool Equals(object obj)
         {
-            if (obj is ValueExprSet set)
+            if (obj is ValueSet set)
             {
                 if (set.JoinType != JoinType || items.Count != set.items.Count) return false;
                 // 顺序敏感比较

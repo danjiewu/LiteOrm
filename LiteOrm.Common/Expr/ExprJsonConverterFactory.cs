@@ -40,39 +40,39 @@ namespace LiteOrm.Common
             };
 
             // 维护 C# 操作符与 JSON 短标识的映射
-            private static readonly Dictionary<LogicBinaryOperator, string> _logicOperatorToJson = new()
+            private static readonly Dictionary<LogicOperator, string> _logicOperatorToJson = new()
             {
-                { LogicBinaryOperator.Equal, "==" },
-                { LogicBinaryOperator.NotEqual, "!=" },
-                { LogicBinaryOperator.GreaterThan, ">" },
-                { LogicBinaryOperator.GreaterThanOrEqual, ">=" },
-                { LogicBinaryOperator.LessThan, "<" },
-                { LogicBinaryOperator.LessThanOrEqual, "<=" },
-                { LogicBinaryOperator.In, "in" },
-                { LogicBinaryOperator.NotIn, "notin" },
-                { LogicBinaryOperator.Like, "like" },
-                { LogicBinaryOperator.NotLike, "notlike" },
-                { LogicBinaryOperator.Contains, "contains" },
-                { LogicBinaryOperator.NotContains, "notcontains" },
-                { LogicBinaryOperator.StartsWith, "startswith" },
-                { LogicBinaryOperator.NotStartsWith, "notstartswith" },
-                { LogicBinaryOperator.EndsWith, "endswith" },
-                { LogicBinaryOperator.NotEndsWith, "notendswith" },
-                { LogicBinaryOperator.RegexpLike, "regexp" },
-                { LogicBinaryOperator.NotRegexpLike, "notregexp" }
+                { LogicOperator.Equal, "==" },
+                { LogicOperator.NotEqual, "!=" },
+                { LogicOperator.GreaterThan, ">" },
+                { LogicOperator.GreaterThanOrEqual, ">=" },
+                { LogicOperator.LessThan, "<" },
+                { LogicOperator.LessThanOrEqual, "<=" },
+                { LogicOperator.In, "in" },
+                { LogicOperator.NotIn, "notin" },
+                { LogicOperator.Like, "like" },
+                { LogicOperator.NotLike, "notlike" },
+                { LogicOperator.Contains, "contains" },
+                { LogicOperator.NotContains, "notcontains" },
+                { LogicOperator.StartsWith, "startswith" },
+                { LogicOperator.NotStartsWith, "notstartswith" },
+                { LogicOperator.EndsWith, "endswith" },
+                { LogicOperator.NotEndsWith, "notendswith" },
+                { LogicOperator.RegexpLike, "regexp" },
+                { LogicOperator.NotRegexpLike, "notregexp" }
             };
 
-            private static readonly Dictionary<ValueBinaryOperator, string> _valueOperatorToJson = new()
+            private static readonly Dictionary<ValueOperator, string> _valueOperatorToJson = new()
             {
-                { ValueBinaryOperator.Add, "+" },
-                { ValueBinaryOperator.Subtract, "-" },
-                { ValueBinaryOperator.Multiply, "*" },
-                { ValueBinaryOperator.Divide, "/" },
-                { ValueBinaryOperator.Concat, "||" }
+                { ValueOperator.Add, "+" },
+                { ValueOperator.Subtract, "-" },
+                { ValueOperator.Multiply, "*" },
+                { ValueOperator.Divide, "/" },
+                { ValueOperator.Concat, "||" }
             };
 
-            private static readonly Dictionary<string, LogicBinaryOperator> _jsonToLogicOperator = new(StringComparer.OrdinalIgnoreCase);
-            private static readonly Dictionary<string, ValueBinaryOperator> _jsonToValueOperator = new(StringComparer.OrdinalIgnoreCase);
+            private static readonly Dictionary<string, LogicOperator> _jsonToLogicOperator = new(StringComparer.OrdinalIgnoreCase);
+            private static readonly Dictionary<string, ValueOperator> _jsonToValueOperator = new(StringComparer.OrdinalIgnoreCase);
 
             static ExprJsonConverter()
             {
@@ -85,8 +85,8 @@ namespace LiteOrm.Common
                     _jsonToValueOperator[kvp.Value] = kvp.Key;
                 }
                 // 兼容性符号
-                _jsonToLogicOperator["="] = LogicBinaryOperator.Equal;
-                _jsonToLogicOperator["<>"] = LogicBinaryOperator.NotEqual;
+                _jsonToLogicOperator["="] = LogicOperator.Equal;
+                _jsonToLogicOperator["<>"] = LogicOperator.NotEqual;
             }
 
             public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -133,6 +133,7 @@ namespace LiteOrm.Common
                         reader.Read();
                         var operand = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
                         result = new NotExpr(operand);
+                        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject) ;
                     }
                     // 标准方式：{"$": "typeMark", ...}
                     else if (tempReader.ValueTextEquals("$"))
@@ -155,11 +156,11 @@ namespace LiteOrm.Common
                             result = ReadValueBinary(ref reader, options, vbopSymbol);
                         }
                         // 其次按枚举名识别
-                        else if (Enum.TryParse<LogicBinaryOperator>(mark, true, out var lbop))
+                        else if (Enum.TryParse<LogicOperator>(mark, true, out var lbop))
                         {
                             result = ReadLogicBinary(ref reader, options, lbop);
                         }
-                        else if (Enum.TryParse<ValueBinaryOperator>(mark, true, out var vbop))
+                        else if (Enum.TryParse<ValueOperator>(mark, true, out var vbop))
                         {
                             result = ReadValueBinary(ref reader, options, vbop);
                         }
@@ -236,7 +237,7 @@ namespace LiteOrm.Common
                     writer.WriteStartObject();
                     writer.WritePropertyName("!");
                     JsonSerializer.Serialize(writer, ne.Operand, options);
-                    writer.WriteStartObject();
+                    writer.WriteEndObject();
                     return;
                 }
 
@@ -252,11 +253,11 @@ namespace LiteOrm.Common
                 {
                     LogicBinaryExpr be => _logicOperatorToJson.TryGetValue(be.Operator, out var symbol) ? symbol : "logic",
                     ValueBinaryExpr be => _valueOperatorToJson.TryGetValue(be.Operator, out var symbol) ? symbol : "bin",
-                    LogicExprSet => "set",
-                    ValueExprSet => "vset",
+                    LogicSet => "set",
+                    ValueSet => "vset",
                     FunctionExpr => "func",
                     NotExpr => "not",
-                    ValueUnaryExpr => "unary",
+                    UnaryExpr => "unary",
                     GenericSqlExpr => "sql",
                     ValueExpr vve => vve.IsConst ? "const" : "value",
                     ForeignExpr => "for",
@@ -279,11 +280,11 @@ namespace LiteOrm.Common
                         writer.WritePropertyName("Right");
                         JsonSerializer.Serialize(writer, be.Right, options);
                         break;
-                    case LogicExprSet set:
+                    case LogicSet set:
                         writer.WritePropertyName(set.JoinType.ToString());
                         JsonSerializer.Serialize(writer, set.Items, options);
                         break;
-                    case ValueExprSet set:
+                    case ValueSet set:
                         writer.WritePropertyName(set.JoinType.ToString());
                         JsonSerializer.Serialize(writer, set.Items, options);
                         break;
@@ -295,7 +296,7 @@ namespace LiteOrm.Common
                         writer.WritePropertyName("Operand");
                         JsonSerializer.Serialize(writer, ue.Operand, options);
                         break;
-                    case ValueUnaryExpr ue:
+                    case UnaryExpr ue:
                         writer.WritePropertyName(ue.Operator.ToString());
                         JsonSerializer.Serialize(writer, ue.Operand, options);
                         break;
@@ -360,9 +361,9 @@ namespace LiteOrm.Common
                 }
             }
 
-            private LogicBinaryExpr ReadLogicBinary(ref Utf8JsonReader reader, JsonSerializerOptions options, LogicBinaryOperator? op = null)
+            private LogicBinaryExpr ReadLogicBinary(ref Utf8JsonReader reader, JsonSerializerOptions options, LogicOperator? op = null)
             {
-                LogicBinaryOperator finalOp = op ?? LogicBinaryOperator.Equal;
+                LogicOperator finalOp = op ?? LogicOperator.Equal;
                 ValueTypeExpr left = null;
                 ValueTypeExpr right = null;
 
@@ -381,11 +382,11 @@ namespace LiteOrm.Common
                         if (reader.TokenType == JsonTokenType.String)
                         {
                             string opStr = reader.GetString();
-                            if (Enum.TryParse<LogicBinaryOperator>(opStr, true, out var lbop)) finalOp = lbop;
+                            if (Enum.TryParse<LogicOperator>(opStr, true, out var lbop)) finalOp = lbop;
                         }
                         else
                         {
-                            finalOp = (LogicBinaryOperator)reader.GetInt32();
+                            finalOp = (LogicOperator)reader.GetInt32();
                         }
                     }
                     else if (reader.ValueTextEquals("Right"))
@@ -403,9 +404,9 @@ namespace LiteOrm.Common
                 return new LogicBinaryExpr(left, finalOp, right);
             }
 
-            private ValueBinaryExpr ReadValueBinary(ref Utf8JsonReader reader, JsonSerializerOptions options, ValueBinaryOperator? op = null)
+            private ValueBinaryExpr ReadValueBinary(ref Utf8JsonReader reader, JsonSerializerOptions options, ValueOperator? op = null)
             {
-                ValueBinaryOperator finalOp = op ?? ValueBinaryOperator.Add;
+                ValueOperator finalOp = op ?? ValueOperator.Add;
                 ValueTypeExpr left = null;
                 ValueTypeExpr right = null;
 
@@ -424,11 +425,11 @@ namespace LiteOrm.Common
                         if (reader.TokenType == JsonTokenType.String)
                         {
                             string opStr = reader.GetString();
-                            if (Enum.TryParse<ValueBinaryOperator>(opStr, true, out var vbop)) finalOp = vbop;
+                            if (Enum.TryParse<ValueOperator>(opStr, true, out var vbop)) finalOp = vbop;
                         }
                         else
                         {
-                            finalOp = (ValueBinaryOperator)reader.GetInt32();
+                            finalOp = (ValueOperator)reader.GetInt32();
                         }
                     }
                     else if (reader.ValueTextEquals("Right"))
@@ -446,7 +447,7 @@ namespace LiteOrm.Common
                 return new ValueBinaryExpr(left, finalOp, right);
             }
 
-            private LogicExprSet ReadLogicSet(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            private LogicSet ReadLogicSet(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 LogicJoinType joinType = LogicJoinType.And;
                 List<LogicExpr> items = null;
@@ -492,10 +493,10 @@ namespace LiteOrm.Common
                     }
                 }
 
-                return new LogicExprSet(joinType, items);
+                return new LogicSet(joinType, items);
             }
 
-            private ValueExprSet ReadValueSet(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            private ValueSet ReadValueSet(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 ValueJoinType joinType = ValueJoinType.List;
                 List<ValueTypeExpr> items = null;
@@ -542,7 +543,7 @@ namespace LiteOrm.Common
                     }
                 }
 
-                return new ValueExprSet(joinType, items);
+                return new ValueSet(joinType, items);
             }
 
             private FunctionExpr ReadFunction(ref Utf8JsonReader reader, JsonSerializerOptions options)
@@ -641,7 +642,6 @@ namespace LiteOrm.Common
             private NotExpr ReadNot(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 LogicExpr operand = null;
-                bool success = false;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
@@ -660,9 +660,9 @@ namespace LiteOrm.Common
                 return new NotExpr(operand);
             }
 
-            private ValueUnaryExpr ReadValueUnary(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            private UnaryExpr ReadValueUnary(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
-                ValueUnaryOperator op = ValueUnaryOperator.Nagive;
+                UnaryOperator op = UnaryOperator.Nagive;
                 ValueTypeExpr operand = null;
                 bool success = false;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
@@ -675,11 +675,11 @@ namespace LiteOrm.Common
                         if (reader.TokenType == JsonTokenType.String)
                         {
                             string opStr = reader.GetString();
-                            if (Enum.TryParse<ValueUnaryOperator>(opStr, true, out var vop)) op = vop;
+                            if (Enum.TryParse<UnaryOperator>(opStr, true, out var vop)) op = vop;
                         }
                         else
                         {
-                            op = (ValueUnaryOperator)reader.GetInt32();
+                            op = (UnaryOperator)reader.GetInt32();
                         }
                         success = true;
                     }
@@ -690,7 +690,7 @@ namespace LiteOrm.Common
                     }
                     else
                     {
-                        if (!success && Enum.TryParse<ValueUnaryOperator>(prop, out var parsedOp))
+                        if (!success && Enum.TryParse<UnaryOperator>(prop, out var parsedOp))
                         {
                             success = true;
                             op = parsedOp;
@@ -704,7 +704,7 @@ namespace LiteOrm.Common
                         }
                     }
                 }
-                return new ValueUnaryExpr(op, operand);
+                return new UnaryExpr(op, operand);
             }
 
             private GenericSqlExpr ReadSql(ref Utf8JsonReader reader, JsonSerializerOptions options)

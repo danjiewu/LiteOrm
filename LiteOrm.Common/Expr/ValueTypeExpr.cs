@@ -29,7 +29,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static LogicExpr operator ==(ValueTypeExpr left, ValueTypeExpr right)
         {
-            return new LogicBinaryExpr(left, LogicBinaryOperator.Equal, right);
+            return new LogicBinaryExpr(left, LogicOperator.Equal, right);
         }
 
         /// <summary>
@@ -37,58 +37,58 @@ namespace LiteOrm.Common
         /// </summary>
         public static LogicExpr operator !=(ValueTypeExpr left, ValueTypeExpr right)
         {
-            return new LogicBinaryExpr(left, LogicBinaryOperator.NotEqual, right);
+            return new LogicBinaryExpr(left, LogicOperator.NotEqual, right);
         }
 
         /// <summary>
         /// 大于比较二元运算符 >。
         /// </summary>
-        public static LogicExpr operator >(ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicBinaryOperator.GreaterThan, right);
+        public static LogicExpr operator >(ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.GreaterThan, right);
 
         /// <summary>
         /// 小于比较二元运算符 &lt;。
         /// </summary>
-        public static LogicExpr operator <(ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicBinaryOperator.LessThan, right);
+        public static LogicExpr operator <(ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.LessThan, right);
 
         /// <summary>
         /// 大于等于比较二元运算符 &gt;=。
         /// </summary>
-        public static LogicExpr operator >=(ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicBinaryOperator.GreaterThanOrEqual, right);
+        public static LogicExpr operator >=(ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.GreaterThanOrEqual, right);
 
         /// <summary>
         /// 小于等于比较二元运算符 &lt;=。
         /// </summary>
-        public static LogicExpr operator <=(ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicBinaryOperator.LessThanOrEqual, right);
+        public static LogicExpr operator <=(ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.LessThanOrEqual, right);
 
         /// <summary>
         /// 加法二元运算符 +。
         /// </summary>
-        public static ValueTypeExpr operator +(ValueTypeExpr left, ValueTypeExpr right) => new ValueBinaryExpr(left, ValueBinaryOperator.Add, right);
+        public static ValueTypeExpr operator +(ValueTypeExpr left, ValueTypeExpr right) => new ValueBinaryExpr(left, ValueOperator.Add, right);
 
         /// <summary>
         /// 减法二元运算符 -。
         /// </summary>
-        public static ValueTypeExpr operator -(ValueTypeExpr left, ValueTypeExpr right) => new ValueBinaryExpr(left, ValueBinaryOperator.Subtract, right);
+        public static ValueTypeExpr operator -(ValueTypeExpr left, ValueTypeExpr right) => new ValueBinaryExpr(left, ValueOperator.Subtract, right);
 
         /// <summary>
         /// 乘法二元运算符 *。
         /// </summary>
-        public static ValueTypeExpr operator *(ValueTypeExpr left, ValueTypeExpr right) => new ValueBinaryExpr(left, ValueBinaryOperator.Multiply, right);
+        public static ValueTypeExpr operator *(ValueTypeExpr left, ValueTypeExpr right) => new ValueBinaryExpr(left, ValueOperator.Multiply, right);
 
         /// <summary>
         /// 除法二元运算符 /。
         /// </summary>
-        public static ValueTypeExpr operator /(ValueTypeExpr left, ValueTypeExpr right) => new ValueBinaryExpr(left, ValueBinaryOperator.Divide, right);
+        public static ValueTypeExpr operator /(ValueTypeExpr left, ValueTypeExpr right) => new ValueBinaryExpr(left, ValueOperator.Divide, right);
 
         /// <summary>
         /// 一元负号运算符 - 的重载。
         /// </summary>
-        public static ValueTypeExpr operator -(ValueTypeExpr expr) => new ValueUnaryExpr(ValueUnaryOperator.Nagive, expr);
+        public static ValueTypeExpr operator -(ValueTypeExpr expr) => new UnaryExpr(UnaryOperator.Nagive, expr);
 
         /// <summary>
         /// 按位取反运算符 ~ 的重载。
         /// </summary>
-        public static ValueTypeExpr operator ~(ValueTypeExpr expr) => new ValueUnaryExpr(ValueUnaryOperator.BitwiseNot, expr);
+        public static ValueTypeExpr operator ~(ValueTypeExpr expr) => new UnaryExpr(UnaryOperator.BitwiseNot, expr);
 
 
         public override bool Equals(object obj)

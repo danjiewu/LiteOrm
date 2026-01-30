@@ -9,16 +9,12 @@ namespace LiteOrm.Common
     public enum UnaryOperator
     {
         /// <summary>
-        /// 逻辑非 (NOT)
-        /// </summary>
-        Not = 0,
-        /// <summary>
         /// 算术负号 (-)
         /// </summary>
-        Nagive = 1,
+        Nagive = 0,
         /// <summary>
         /// 按位取反 (~)
         /// </summary>
-        BitwiseNot = 2,
+        BitwiseNot = 1,
     }
 }

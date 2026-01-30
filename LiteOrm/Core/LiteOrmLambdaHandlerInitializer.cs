@@ -49,21 +49,21 @@ namespace LiteOrm
             {
                 var left = converter.Convert(node.Object) as ValueTypeExpr;
                 var right = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
-                return new LogicBinaryExpr(left, LogicBinaryOperator.StartsWith, right);
+                return new LogicBinaryExpr(left, LogicOperator.StartsWith, right);
             });
 
             LambdaExprConverter.RegisterMethodHandler(typeof(string), "EndsWith", (node, converter) =>
             {
                 var left = converter.Convert(node.Object) as ValueTypeExpr;
                 var right = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
-                return new LogicBinaryExpr(left, LogicBinaryOperator.EndsWith, right);
+                return new LogicBinaryExpr(left, LogicOperator.EndsWith, right);
             });
 
             LambdaExprConverter.RegisterMethodHandler(typeof(string), "Contains", (node, converter) =>
             {
                 var left = converter.Convert(node.Object) as ValueTypeExpr;
                 var right = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
-                return new LogicBinaryExpr(left, LogicBinaryOperator.Contains, right);
+                return new LogicBinaryExpr(left, LogicOperator.Contains, right);
             });
 
             LambdaExprConverter.RegisterMethodHandler("Contains", (node, converter) =>
@@ -82,7 +82,7 @@ namespace LiteOrm
                         collection = converter.Convert(node.Object) as ValueTypeExpr;
                         value = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
                     }
-                    return new LogicBinaryExpr(value, LogicBinaryOperator.In, collection);
+                    return new LogicBinaryExpr(value, LogicOperator.In, collection);
                 }
                 return null;
             });
@@ -107,7 +107,7 @@ namespace LiteOrm
                         args.Add(converter.Convert(arg) as ValueTypeExpr);
                     }
                 }
-                return new ValueExprSet(ValueJoinType.Concat, args);
+                return new ValueSet(ValueJoinType.Concat, args);
             });
 
             LambdaExprConverter.RegisterMethodHandler("Equals", (node, converter) =>
@@ -124,7 +124,7 @@ namespace LiteOrm
                     left = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
                     right = converter.Convert(node.Arguments[1]) as ValueTypeExpr;
                 }
-                return new LogicBinaryExpr(left, LogicBinaryOperator.Equal, right);
+                return new LogicBinaryExpr(left, LogicOperator.Equal, right);
             });
 
             LambdaExprConverter.RegisterMethodHandler("ToString", (node, converter) =>
@@ -136,14 +136,14 @@ namespace LiteOrm
             {
                 var left = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
                 var right = converter.Convert(node.Arguments[1]) as ValueTypeExpr;
-                return new LogicBinaryExpr(left, LogicBinaryOperator.Equal, right);
+                return new LogicBinaryExpr(left, LogicOperator.Equal, right);
             });
 
             LambdaExprConverter.RegisterMethodHandler("CompareTo", (node, converter) =>
             {
                 var left = node.Object != null ? converter.Convert(node.Object) as ValueTypeExpr : converter.Convert(node.Arguments[0]) as ValueTypeExpr;
                 var right = node.Object != null ? converter.Convert(node.Arguments[0]) as ValueTypeExpr : converter.Convert(node.Arguments[1]) as ValueTypeExpr;
-                return new LogicBinaryExpr(left, LogicBinaryOperator.Equal, right);
+                return new LogicBinaryExpr(left, LogicOperator.Equal, right);
             });
         }
     }

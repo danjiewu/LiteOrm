@@ -8,25 +8,25 @@ namespace LiteOrm.Common
         /// <summary>
         /// 检查指定的操作符是否含有 NOT 标志。
         /// </summary>
-        public static bool IsNot(this LogicBinaryOperator oper)
+        public static bool IsNot(this LogicOperator oper)
         {
-            return (oper & LogicBinaryOperator.Not) == LogicBinaryOperator.Not;
+            return (oper & LogicOperator.Not) == LogicOperator.Not;
         }
 
         /// <summary>
         /// 获取去掉 NOT 标志后的正向操作符。
         /// </summary>
-        public static LogicBinaryOperator Positive(this LogicBinaryOperator oper)
+        public static LogicOperator Positive(this LogicOperator oper)
         {
-            return oper & ~LogicBinaryOperator.Not;
+            return oper & ~LogicOperator.Not;
         }
 
         /// <summary>
         /// 获取当前操作符的反向版本（取反）。
         /// </summary>
-        public static LogicBinaryOperator Opposite(this LogicBinaryOperator oper)
+        public static LogicOperator Opposite(this LogicOperator oper)
         {
-            return oper ^ LogicBinaryOperator.Not;
+            return oper ^ LogicOperator.Not;
         }
     }
 }

@@ -11,20 +11,20 @@ namespace LiteOrm.Common
     public sealed class LogicBinaryExpr : LogicExpr
     {
         // 映射操作符到基础 SQL 符号
-        private static readonly Dictionary<LogicBinaryOperator, string> operatorTexts = new()
+        private static readonly Dictionary<LogicOperator, string> operatorTexts = new()
         {
-            { LogicBinaryOperator.Equal,"=" },
-            { LogicBinaryOperator.GreaterThan,">" },
-            { LogicBinaryOperator.LessThan,"<" },
-            { LogicBinaryOperator.NotEqual,"!=" },
-            { LogicBinaryOperator.GreaterThanOrEqual,">=" },
-            { LogicBinaryOperator.LessThanOrEqual,"<=" },
-            { LogicBinaryOperator.Like,"LIKE" },
-            { LogicBinaryOperator.StartsWith,"LIKE" },
-            { LogicBinaryOperator.EndsWith,"LIKE" },
-            { LogicBinaryOperator.Contains,"LIKE" },
-            { LogicBinaryOperator.In,"IN" },
-            { LogicBinaryOperator.RegexpLike,"REGEXP_LIKE" }
+            { LogicOperator.Equal,"=" },
+            { LogicOperator.GreaterThan,">" },
+            { LogicOperator.LessThan,"<" },
+            { LogicOperator.NotEqual,"!=" },
+            { LogicOperator.GreaterThanOrEqual,">=" },
+            { LogicOperator.LessThanOrEqual,"<=" },
+            { LogicOperator.Like,"LIKE" },
+            { LogicOperator.StartsWith,"LIKE" },
+            { LogicOperator.EndsWith,"LIKE" },
+            { LogicOperator.Contains,"LIKE" },
+            { LogicOperator.In,"IN" },
+            { LogicOperator.RegexpLike,"REGEXP_LIKE" }
         };
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 使用指定的左右操作数和操作符初始化逻辑二元表达式。
         /// </summary>
-        public LogicBinaryExpr(ValueTypeExpr left, LogicBinaryOperator oper, ValueTypeExpr right)
+        public LogicBinaryExpr(ValueTypeExpr left, LogicOperator oper, ValueTypeExpr right)
         {
             Left = left;
             Operator = oper;
@@ -55,15 +55,15 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置二元操作符。
         /// </summary>
-        public LogicBinaryOperator Operator { get; set; }
+        public LogicOperator Operator { get; set; }
 
         /// <summary>
         /// 获取去掉 NOT 标志后的原始操作符（例如 Not|In => In）。
         /// </summary>
-        public LogicBinaryOperator OriginOperator => Operator.Positive();
+        public LogicOperator OriginOperator => Operator.Positive();
 
         /// <summary>
-        /// 反转当前表达式的左右表达式位置，并尽可能保持原本的逻辑结果（例如 "a > b" 变为 "b < a"）。
+        /// 反转当前表达式的左右表达式位置，并尽可能保持原本的逻辑结果（例如 "a &gt; b" 变为 "b &lt; a"）。
         /// </summary>
         public LogicBinaryExpr Reverse(bool keepEquivalent = false)
         {
@@ -72,12 +72,12 @@ namespace LiteOrm.Common
             {
                 newExpr.Operator = Operator switch
                 {
-                    LogicBinaryOperator.GreaterThan => LogicBinaryOperator.LessThan,
-                    LogicBinaryOperator.LessThan => LogicBinaryOperator.GreaterThan,
-                    LogicBinaryOperator.GreaterThanOrEqual => LogicBinaryOperator.LessThanOrEqual,
-                    LogicBinaryOperator.LessThanOrEqual => LogicBinaryOperator.GreaterThanOrEqual,
-                    LogicBinaryOperator.Equal => LogicBinaryOperator.Equal,
-                    LogicBinaryOperator.NotEqual => LogicBinaryOperator.NotEqual,
+                    LogicOperator.GreaterThan => LogicOperator.LessThan,
+                    LogicOperator.LessThan => LogicOperator.GreaterThan,
+                    LogicOperator.GreaterThanOrEqual => LogicOperator.LessThanOrEqual,
+                    LogicOperator.LessThanOrEqual => LogicOperator.GreaterThanOrEqual,
+                    LogicOperator.Equal => LogicOperator.Equal,
+                    LogicOperator.NotEqual => LogicOperator.NotEqual,
                     _ => throw new InvalidOperationException($"Operator: {Operator} does not support equivalent reversal")
                 };
             }

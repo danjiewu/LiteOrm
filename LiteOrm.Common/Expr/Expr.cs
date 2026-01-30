@@ -75,7 +75,7 @@ namespace LiteOrm.Common
         /// <returns>二元表达式。</returns>
         public static LogicBinaryExpr Property(string propertyName, object value)
         {
-            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicBinaryOperator.Equal, new ValueExpr(value));
+            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.Equal, new ValueExpr(value));
         }
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace LiteOrm.Common
         /// <param name="oper">二元操作符。</param>
         /// <param name="value">比较值。</param>
         /// <returns>二元表达式。</returns>
-        public static LogicBinaryExpr Property(string propertyName, LogicBinaryOperator oper, object value)
+        public static LogicBinaryExpr Property(string propertyName, LogicOperator oper, object value)
         {
             return new LogicBinaryExpr(new PropertyExpr(propertyName), oper, new ValueExpr(value));
         }
@@ -98,7 +98,7 @@ namespace LiteOrm.Common
         /// <returns>IN 表达式。</returns>
         public static LogicBinaryExpr In(string propertyName, IEnumerable values)
         {
-            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicBinaryOperator.In, new ValueExpr(values));
+            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.In, new ValueExpr(values));
         }
 
         /// <summary>

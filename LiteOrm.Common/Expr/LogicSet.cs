@@ -10,11 +10,11 @@ namespace LiteOrm.Common
     /// 逻辑表达式集合，支持通过 AND 或 OR 组合一组子表达式。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class LogicExprSet : LogicExpr, ICollection<LogicExpr>
+    public sealed class LogicSet : LogicExpr, ICollection<LogicExpr>
     {
-        public LogicExprSet() { }
+        public LogicSet() { }
 
-        public LogicExprSet(params LogicExpr[] items)
+        public LogicSet(params LogicExpr[] items)
         {
             if (items != null)
             {
@@ -22,7 +22,7 @@ namespace LiteOrm.Common
             }
         }
 
-        public LogicExprSet(IEnumerable<LogicExpr> items)
+        public LogicSet(IEnumerable<LogicExpr> items)
         {
             if (items != null)
             {
@@ -30,7 +30,7 @@ namespace LiteOrm.Common
             }
         }
 
-        public LogicExprSet(LogicJoinType joinType, params LogicExpr[] items)
+        public LogicSet(LogicJoinType joinType, params LogicExpr[] items)
         {
             JoinType = joinType;
             if (items != null)
@@ -39,7 +39,7 @@ namespace LiteOrm.Common
             }
         }
 
-        public LogicExprSet(LogicJoinType joinType, IEnumerable<LogicExpr> items)
+        public LogicSet(LogicJoinType joinType, IEnumerable<LogicExpr> items)
         {
             JoinType = joinType;
             if (items != null)
@@ -61,7 +61,7 @@ namespace LiteOrm.Common
         public void Add(LogicExpr item)
         {
             if (item is null) return;
-            if (item is LogicExprSet set && set.JoinType == JoinType)
+            if (item is LogicSet set && set.JoinType == JoinType)
             {
                 items.AddRange(set.items);
             }
@@ -97,7 +97,7 @@ namespace LiteOrm.Common
 
         public override bool Equals(object obj)
         {
-            if (obj is LogicExprSet set)
+            if (obj is LogicSet set)
             {
                 if (set.JoinType != JoinType || items.Count != set.items.Count) return false;
                 if (items.Count == 0) return true;

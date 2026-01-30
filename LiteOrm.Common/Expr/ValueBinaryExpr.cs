@@ -10,18 +10,18 @@ namespace LiteOrm.Common
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class ValueBinaryExpr : ValueTypeExpr
     {
-        private static readonly Dictionary<ValueBinaryOperator, string> operatorTexts = new()
+        private static readonly Dictionary<ValueOperator, string> operatorTexts = new()
         {
-            { ValueBinaryOperator.Add,"+"  },
-            { ValueBinaryOperator.Subtract,"-" },
-            { ValueBinaryOperator.Multiply,"*" },
-            { ValueBinaryOperator.Divide,"/" },
-            { ValueBinaryOperator.Concat,"||" }
+            { ValueOperator.Add,"+"  },
+            { ValueOperator.Subtract,"-" },
+            { ValueOperator.Multiply,"*" },
+            { ValueOperator.Divide,"/" },
+            { ValueOperator.Concat,"||" }
         };
 
         public ValueBinaryExpr() { }
 
-        public ValueBinaryExpr(ValueTypeExpr left, ValueBinaryOperator oper, ValueTypeExpr right)
+        public ValueBinaryExpr(ValueTypeExpr left, ValueOperator oper, ValueTypeExpr right)
         {
             Left = left;
             Operator = oper;
@@ -43,7 +43,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置二元操作符。
         /// </summary>
-        public ValueBinaryOperator Operator { get; set; }
+        public ValueOperator Operator { get; set; }
 
         public override string ToString()
         {

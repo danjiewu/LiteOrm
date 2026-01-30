@@ -10,7 +10,7 @@ namespace LiteOrm.Common
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class LambdaExpr : LogicExpr
     {
-        private Expr _expr;
+        private LogicExpr _expr;
 
         /// <summary>
         /// 无参构造函数。
@@ -39,7 +39,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取转换后的表达式对象。
         /// </summary>
-        public Expr InnerExpr
+        public LogicExpr InnerExpr
         {
             get
             {

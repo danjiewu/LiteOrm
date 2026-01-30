@@ -125,7 +125,7 @@ namespace LiteOrm.Tests
 
             Assert.True(v1.Equals(v2));
             Assert.False(v1.Equals(v3));
-            Assert.IsType<ValueUnaryExpr>(v1);
+            Assert.IsType<UnaryExpr>(v1);
 
             // Serialization
             TestSerialization(u1);
@@ -145,9 +145,9 @@ namespace LiteOrm.Tests
             Assert.False(s1.Equals(s3), "And set should not be equal to Or set");
 
             // List type ExprSet (IN clause style)
-            var inSet1 = new ValueExprSet(ValueJoinType.List, new ValueExpr(1), new ValueExpr(2), new ValueExpr(3));
-            var inSet2 = new ValueExprSet(ValueJoinType.List, new ValueExpr(1), new ValueExpr(2), new ValueExpr(3));
-            var inSet3 = new ValueExprSet(ValueJoinType.List, new ValueExpr(3), new ValueExpr(2), new ValueExpr(1));
+            var inSet1 = new ValueSet(ValueJoinType.List, new ValueExpr(1), new ValueExpr(2), new ValueExpr(3));
+            var inSet2 = new ValueSet(ValueJoinType.List, new ValueExpr(1), new ValueExpr(2), new ValueExpr(3));
+            var inSet3 = new ValueSet(ValueJoinType.List, new ValueExpr(3), new ValueExpr(2), new ValueExpr(1));
 
             Assert.True(inSet1.Equals(inSet2));
             Assert.False(inSet1.Equals(inSet3), "Order should matter for list JoinType");

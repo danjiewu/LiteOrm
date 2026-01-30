@@ -6,7 +6,7 @@ namespace LiteOrm.Common
     /// 支持的逻辑二元操作符。
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
-    public enum LogicBinaryOperator
+    public enum LogicOperator
     {
         /// <summary>
         /// 等于
