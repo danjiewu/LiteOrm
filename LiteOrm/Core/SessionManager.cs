@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using LiteOrm.Common;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using LiteOrm.Common;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -433,7 +433,7 @@ namespace LiteOrm
                 }
                 //归还所有连接
                 ReturnAllContexts();
-            }            
+            }
         }
 
         /// <summary>

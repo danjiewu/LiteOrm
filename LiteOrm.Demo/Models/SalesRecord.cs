@@ -1,6 +1,4 @@
 ﻿using LiteOrm.Common;
-using System;
-using System.Data;
 
 namespace LiteOrm.Demo.Models
 {

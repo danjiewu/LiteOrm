@@ -167,7 +167,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="propertyName">属性名</param>
         /// <returns></returns>
-        public static Sorting Desc(string propertyName) => new Sorting(propertyName, ListSortDirection.Descending);        
+        public static Sorting Desc(string propertyName) => new Sorting(propertyName, ListSortDirection.Descending);
 
         /// <summary>
         /// 返回表示当前对象的字符串

@@ -2,8 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
-using System.Text;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -64,7 +62,7 @@ namespace LiteOrm.Common
         /// <returns>第一个符合条件的实体对象；如果没有找到则返回 null。</returns>
         public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null)
         {
-            return entityViewService.SearchOne(Expr.Exp(expression),tableArgs);
+            return entityViewService.SearchOne(Expr.Exp(expression), tableArgs);
         }
 
         /// <summary>
@@ -134,7 +132,7 @@ namespace LiteOrm.Common
         {
             return entityService.DeleteAsync(Expr.Exp(expression), tableArgs, cancellationToken);
         }
-        
+
         /// <summary>
         /// 使用 Lambda 表达式异步搜索实体。
         /// </summary>

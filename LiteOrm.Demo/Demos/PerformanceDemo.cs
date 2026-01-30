@@ -1,15 +1,12 @@
 using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using LiteOrm.Demo.Services;
-using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace LiteOrm.Demo.Demos
 {
     /// <summary>
-    /// 演示 LiteOrm 的性能优势：批量操作 vs 循环操作
+    /// 演示 LiteOrm 的性能优势，包括批量插入 vs 循环插入
     /// </summary>
     public static class PerformanceDemo
     {
@@ -55,7 +52,7 @@ namespace LiteOrm.Demo.Demos
             await salesService.BatchInsertAsync(testData);
 
             var records = await salesService.SearchAsync(Expr.Property(nameof(SalesRecord.ProductName)) == "TestUpdatePerf", [currentMonth]);
-            
+
             var sw = Stopwatch.StartNew();
             foreach (var item in records)
             {

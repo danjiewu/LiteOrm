@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Text;
 
 
 namespace LiteOrm
@@ -108,7 +107,7 @@ namespace LiteOrm
                 {
                     if (i > 0) sb.Append(", ");
                     sb.Append(ToSqlParam("p" + (b * paramsPerRecord + i)));
-                    if (b == 0) 
+                    if (b == 0)
                     {
                         sb.Append(" AS ");
                         sb.Append(ToSqlName("v" + i));

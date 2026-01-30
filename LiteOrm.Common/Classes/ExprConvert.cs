@@ -1,11 +1,8 @@
-﻿using LiteOrm.Common;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
-using System.Linq;
-using System.Text;
 
 namespace LiteOrm.Common
 {
@@ -20,7 +17,7 @@ namespace LiteOrm.Common
         /// <param name="property">属性描述符。</param>
         /// <param name="text">表示查询语句的字符串，可以使用 "="、"&lt;"、"&gt;"、"!"、"%"、"*"、"&lt;="、"&gt;=" 为起始字符表示条件符号。</param>
         /// <returns>二元表达式查询条件。</returns>
-        public static BinaryExpr Parse(PropertyDescriptor property, string text)
+        public static LogicBinaryExpr Parse(PropertyDescriptor property, string text)
         {
             if (String.IsNullOrEmpty(text)) return Expr.Property(property.Name, null);
             if (text.Length > 1)
@@ -28,15 +25,15 @@ namespace LiteOrm.Common
                 switch (text.Substring(0, 2))
                 {
                     case "<=":
-                        return Expr.Property(property.Name, BinaryOperator.LessThanOrEqual, ParseValue(property, text.Substring(2)));
+                        return Expr.Property(property.Name, LogicBinaryOperator.LessThanOrEqual, ParseValue(property, text.Substring(2)));
                     case ">=":
-                        return Expr.Property(property.Name, BinaryOperator.GreaterThanOrEqual, ParseValue(property, text.Substring(2)));
+                        return Expr.Property(property.Name, LogicBinaryOperator.GreaterThanOrEqual, ParseValue(property, text.Substring(2)));
                 }
             }
-            BinaryOperator mask = BinaryOperator.Equal;
+            LogicBinaryOperator mask = LogicBinaryOperator.Equal;
             if (text.Length > 0 && text[0] == '!')
             {
-                mask = BinaryOperator.Not;
+                mask = LogicBinaryOperator.Not;
                 text = text.Substring(1);
             }
 
@@ -45,22 +42,22 @@ namespace LiteOrm.Common
                 switch (text[0])
                 {
                     case '=':
-                        return Expr.Property(property.Name, BinaryOperator.Equal | mask, ParseValue(property, text.Substring(1)));
+                        return Expr.Property(property.Name, LogicBinaryOperator.Equal | mask, ParseValue(property, text.Substring(1)));
                     case '>':
-                        return Expr.Property(property.Name, BinaryOperator.GreaterThan | mask, ParseValue(property, text.Substring(1)));
+                        return Expr.Property(property.Name, LogicBinaryOperator.GreaterThan | mask, ParseValue(property, text.Substring(1)));
                     case '<':
-                        return Expr.Property(property.Name, BinaryOperator.LessThan | mask, ParseValue(property, text.Substring(1)));
+                        return Expr.Property(property.Name, LogicBinaryOperator.LessThan | mask, ParseValue(property, text.Substring(1)));
                     case '%':
-                        return Expr.Property(property.Name, BinaryOperator.Contains | mask, text.Substring(1).Trim());
+                        return Expr.Property(property.Name, LogicBinaryOperator.Contains | mask, text.Substring(1).Trim());
                     case '*':
-                        return Expr.Property(property.Name, BinaryOperator.Like | mask, text.Substring(1).Trim());
+                        return Expr.Property(property.Name, LogicBinaryOperator.Like | mask, text.Substring(1).Trim());
                     case '$':
-                        return Expr.Property(property.Name, BinaryOperator.RegexpLike | mask, text.Substring(1).Trim());
+                        return Expr.Property(property.Name, LogicBinaryOperator.RegexpLike | mask, text.Substring(1).Trim());
                 }
             }
             else
             {
-                return Expr.Property(property.Name, BinaryOperator.Equal | mask, null);
+                return Expr.Property(property.Name, LogicBinaryOperator.Equal | mask, null);
             }
             if (text.IndexOf(',') >= 0)
             {
@@ -69,9 +66,9 @@ namespace LiteOrm.Common
                 {
                     values.Add(ParseValue(property, value));
                 }
-                return Expr.Property(property.Name, BinaryOperator.In | mask, values.ToArray());
+                return Expr.Property(property.Name, LogicBinaryOperator.In | mask, values.ToArray());
             }
-            return Expr.Property(property.Name, BinaryOperator.Equal | mask, ParseValue(property, text));
+            return Expr.Property(property.Name, LogicBinaryOperator.Equal | mask, ParseValue(property, text));
         }
 
         /// <summary>
@@ -116,46 +113,46 @@ namespace LiteOrm.Common
         /// <param name="op">条件操作符。</param>
         /// <param name="value">用于比较的值。</param>
         /// <returns>生成的字符串表示形式。</returns>
-        public static string ToText(BinaryOperator op, object value)
+        public static string ToText(LogicBinaryOperator op, object value)
         {
             switch (op)
             {
-                case BinaryOperator.Equal:
+                case LogicBinaryOperator.Equal:
                     string str = ToText(value);
                     if (String.IsNullOrEmpty(str) || "!<>=*%$".IndexOf(str[0]) >= 0 || str.IndexOf(',') >= 0)
                         return '=' + str;
                     else
                         return str;
-                case BinaryOperator.NotEqual:
+                case LogicBinaryOperator.NotEqual:
                     str = ToText(value);
                     if (!String.IsNullOrEmpty(str) && ("<>=*%$".IndexOf(str[0]) >= 0 || str.IndexOf(',') >= 0))
                         return "!=" + str;
                     else
                         return "!" + str;
-                case BinaryOperator.In:
+                case LogicBinaryOperator.In:
                     List<string> values = new List<string>();
                     foreach (object o in value as IEnumerable)
                     {
                         values.Add(ToText(o));
                     }
                     return ToText(String.Join(",", values), "!<>=*%$".ToCharArray());
-                case BinaryOperator.NotIn:
+                case LogicBinaryOperator.NotIn:
                     values = new List<string>();
                     foreach (object o in value as IEnumerable)
                     {
                         values.Add(ToText(o));
                     }
                     return "!" + ToText(String.Join(",", values), "<>=*%$".ToCharArray());
-                case BinaryOperator.GreaterThan: return ">" + ToText(value, '=');
-                case BinaryOperator.GreaterThanOrEqual: return ">=" + ToText(value);
-                case BinaryOperator.LessThan: return "<" + ToText(value, '=');
-                case BinaryOperator.LessThanOrEqual: return "<=" + ToText(value);
-                case BinaryOperator.Like: return "*" + ToText(value);
-                case BinaryOperator.NotLike: return "!*" + ToText(value);
-                case BinaryOperator.Contains: return "%" + ToText(value);
-                case BinaryOperator.NotContains: return "!%" + ToText(value);
-                case BinaryOperator.RegexpLike: return "$" + ToText(value);
-                case BinaryOperator.NotRegexpLike: return "!$" + ToText(value);
+                case LogicBinaryOperator.GreaterThan: return ">" + ToText(value, '=');
+                case LogicBinaryOperator.GreaterThanOrEqual: return ">=" + ToText(value);
+                case LogicBinaryOperator.LessThan: return "<" + ToText(value, '=');
+                case LogicBinaryOperator.LessThanOrEqual: return "<=" + ToText(value);
+                case LogicBinaryOperator.Like: return "*" + ToText(value);
+                case LogicBinaryOperator.NotLike: return "!*" + ToText(value);
+                case LogicBinaryOperator.Contains: return "%" + ToText(value);
+                case LogicBinaryOperator.NotContains: return "!%" + ToText(value);
+                case LogicBinaryOperator.RegexpLike: return "$" + ToText(value);
+                case LogicBinaryOperator.NotRegexpLike: return "!$" + ToText(value);
                 default: return ToText(value, "!<>=*%$".ToCharArray());
             }
         }

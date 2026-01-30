@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Text.RegularExpressions;
-
-namespace LiteOrm.Common
+﻿namespace LiteOrm.Common
 {
     /// <summary>
     /// 常量定义类。

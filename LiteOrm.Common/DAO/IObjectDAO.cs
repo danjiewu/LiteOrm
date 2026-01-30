@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Data;
-using System.Linq.Expressions;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace LiteOrm.Common
 {
@@ -71,7 +68,7 @@ namespace LiteOrm.Common
     /// 实体类的增删改等基本操作的非泛型接口
     /// </summary>
     [AutoRegister(false)]
-    public interface IObjectDAO: IObjectDAOAsync
+    public interface IObjectDAO : IObjectDAOAsync
     {
         /// <summary>
         /// 添加对象

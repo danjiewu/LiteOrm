@@ -1,9 +1,7 @@
 #nullable disable
-using System;
+using LiteOrm.Common;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using SqlSugar;
-using LiteOrm.Common;
 
 namespace LiteOrm.Benchmark
 {

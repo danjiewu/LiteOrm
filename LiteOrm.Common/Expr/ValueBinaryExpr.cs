@@ -1,0 +1,67 @@
+using System;
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+
+namespace LiteOrm.Common
+{
+    /// <summary>
+    /// 值类型二元表达式，用于数值计算或字符串拼接（如 a + b, str1 || str2）。
+    /// </summary>
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
+    public sealed class ValueBinaryExpr : ValueTypeExpr
+    {
+        private static readonly Dictionary<ValueBinaryOperator, string> operatorTexts = new()
+        {
+            { ValueBinaryOperator.Add,"+"  },
+            { ValueBinaryOperator.Subtract,"-" },
+            { ValueBinaryOperator.Multiply,"*" },
+            { ValueBinaryOperator.Divide,"/" },
+            { ValueBinaryOperator.Concat,"||" }
+        };
+
+        public ValueBinaryExpr() { }
+
+        public ValueBinaryExpr(ValueTypeExpr left, ValueBinaryOperator oper, ValueTypeExpr right)
+        {
+            Left = left;
+            Operator = oper;
+            Right = right;
+        }
+
+        public override bool IsValue => true;
+
+        /// <summary>
+        /// 获取或设置左侧子表达式。
+        /// </summary>
+        public ValueTypeExpr Left { get; set; }
+
+        /// <summary>
+        /// 获取或设置右侧子表达式。
+        /// </summary>
+        public ValueTypeExpr Right { get; set; }
+
+        /// <summary>
+        /// 获取或设置二元操作符。
+        /// </summary>
+        public ValueBinaryOperator Operator { get; set; }
+
+        public override string ToString()
+        {
+            if (!operatorTexts.TryGetValue(Operator, out string op)) op = Operator.ToString();
+            return $"{Left} {op} {Right}";
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ValueBinaryExpr b &&
+                   b.Operator == Operator &&
+                   Equals(b.Left, Left) &&
+                   Equals(b.Right, Right);
+        }
+
+        public override int GetHashCode()
+        {
+            return OrderedHashCodes(GetType().GetHashCode(), (int)Operator, (Left?.GetHashCode() ?? 0), (Right?.GetHashCode() ?? 0));
+        }
+    }
+}

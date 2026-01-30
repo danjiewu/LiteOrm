@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace LiteOrm.Common
 {
@@ -12,7 +8,7 @@ namespace LiteOrm.Common
     /// 表示一个包含 Lambda 表达式的 SQL 生成表达式容器。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class LambdaExpr : Expr
+    public sealed class LambdaExpr : LogicExpr
     {
         private Expr _expr;
 

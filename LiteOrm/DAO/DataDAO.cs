@@ -1,10 +1,9 @@
 ﻿using LiteOrm.Common;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace LiteOrm
 {
@@ -66,7 +65,7 @@ namespace LiteOrm
         {
             ThrowExceptionIfNoKeys();
             ThrowExceptionIfWrongKeys(keys);
-            ExprSet expr = new ExprSet(ExprJoinType.And);
+            LogicExprSet expr = new LogicExprSet(LogicJoinType.And);
             int i = 0;
             foreach (ColumnDefinition column in Table.Keys)
             {
@@ -110,7 +109,7 @@ namespace LiteOrm
         {
             ThrowExceptionIfNoKeys();
             ThrowExceptionIfWrongKeys(keys);
-            ExprSet expr = new ExprSet(ExprJoinType.And);
+            LogicExprSet expr = new LogicExprSet(LogicJoinType.And);
             int i = 0;
             foreach (ColumnDefinition column in TableDefinition.Keys)
             {

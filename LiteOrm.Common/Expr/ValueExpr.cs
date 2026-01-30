@@ -8,8 +8,20 @@ namespace LiteOrm.Common
     /// 表示一个常量值或一组集合值（用于 IN 查询）的表达式。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class ValueExpr : Expr
+    public sealed class ValueExpr : ValueTypeExpr
     {
+        /// <summary>
+        /// 将字符串隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">字符串值。</param>
+        /// <returns>值表达式实例。</returns>
+        public static implicit operator ValueExpr(string value) => new ValueExpr(value);
+        public static implicit operator ValueExpr(int value) => new ValueExpr(value);
+        public static implicit operator ValueExpr(long value) => new ValueExpr(value);
+        public static implicit operator ValueExpr(bool value) => new ValueExpr(value);
+        public static implicit operator ValueExpr(DateTime value) => new ValueExpr(value);
+        public static implicit operator ValueExpr(double value) => new ValueExpr(value);
+        public static implicit operator ValueExpr(decimal value) => new ValueExpr(value);
         /// <summary>
         /// 创建空的 ValueExpr。
         /// </summary>
@@ -87,7 +99,6 @@ namespace LiteOrm.Common
         {
             return OrderedHashCodes(GetType().GetHashCode(), ValueEquality.GetValueHashCode(Value));
         }
-
     }
 }
 

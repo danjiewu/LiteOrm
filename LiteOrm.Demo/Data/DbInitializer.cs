@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using LiteOrm.Demo.Services;
-using LiteOrm.Common;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using System.Data.Common;
-using System.Linq;
 
 namespace LiteOrm.Demo.Data
 {
@@ -17,7 +12,7 @@ namespace LiteOrm.Demo.Data
         public static async Task InitializeAsync(IServiceProvider services)
         {
             var configuration = services.GetRequiredService<IConfiguration>();
-            
+
             var contextPoolFactory = services.GetRequiredService<DAOContextPoolFactory>();
             var context = contextPoolFactory.PeekContext(); // 确保初始化连接池
 
@@ -94,7 +89,7 @@ namespace LiteOrm.Demo.Data
         {
             // 此处演示从服务中获取依赖，虽然可以直接构造
             // 但实际项目中建议通过构造函数注入
-            
+
             Console.WriteLine("--- 使用 Service 接口进行数据初始化 ---");
 
             // 1. 准备部门数据
@@ -103,7 +98,7 @@ namespace LiteOrm.Demo.Data
                 new() { Id = 1, Name = "集团总部" },
                 new() { Id = 2, Name = "研发中心", ParentId = 1 },
                 new() { Id = 3, Name = "市场部", ParentId = 1 },
-                new() { Id = 4, Name = "销售部", ParentId = 1 },       
+                new() { Id = 4, Name = "销售部", ParentId = 1 },
                 new() { Id = 5, Name = "人工智能实验室", ParentId = 2 },
                 new() { Id = 6, Name = "财务部", ParentId = 1 },
                 new() { Id = 7, Name = "人力资源部", ParentId = 1 },
@@ -136,10 +131,11 @@ namespace LiteOrm.Demo.Data
             // 3. 设置部门负责人 (演示 UpdateAsync)
             // 重新获取部门进行更新
             var updateDepts = new List<Department>();
-            
-            async Task MarkManager(int deptId, int managerId) {
+
+            async Task MarkManager(int deptId, int managerId)
+            {
                 var d = await deptService.GetObjectAsync(deptId);
-                if(d != null) { d.ManagerId = managerId; updateDepts.Add(d); }
+                if (d != null) { d.ManagerId = managerId; updateDepts.Add(d); }
             }
 
             await MarkManager(1, 1);  // 总部负责人: Admin

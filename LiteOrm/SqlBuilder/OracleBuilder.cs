@@ -1,8 +1,6 @@
-﻿using System;
+﻿using LiteOrm.Common;
+using System;
 using System.Collections.Generic;
-using System.Text;
-using LiteOrm.Common;
-using System.Collections;
 using System.Data;
 using System.Linq;
 using System.Text.RegularExpressions;

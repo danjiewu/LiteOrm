@@ -1,6 +1,4 @@
 using LiteOrm.Demo.DAO;
-using System;
-using System.Threading.Tasks;
 
 namespace LiteOrm.Demo.Demos
 {

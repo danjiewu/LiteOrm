@@ -3,8 +3,8 @@ using LiteOrm.Service;
 using LiteOrm.Tests.Infrastructure;
 using LiteOrm.Tests.Models;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 using System.ComponentModel;
+using Xunit;
 
 namespace LiteOrm.Tests
 {
@@ -167,7 +167,7 @@ namespace LiteOrm.Tests
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
 
             // Act & Assert
-            
+
             // 1. Expr.In
             var inList = await viewService.SearchAsync(Expr.Property("Name").In("Alice", "Bob"));
             Assert.Equal(2, inList.Count);
@@ -252,7 +252,7 @@ namespace LiteOrm.Tests
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
-            
+
             var users = new List<TestUser>();
             for (int i = 1; i <= 5; i++)
             {
@@ -371,7 +371,7 @@ namespace LiteOrm.Tests
 
             // Act - Order
             var ordered = await viewService.SearchWithOrderAsync(
-                Expr.Exp<TestUser>(u => u.Name!.StartsWith("Order")), 
+                Expr.Exp<TestUser>(u => u.Name!.StartsWith("Order")),
                 new[] { new Sorting("Age", ListSortDirection.Descending) }
             );
 
@@ -393,10 +393,10 @@ namespace LiteOrm.Tests
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestDepartmentView>>();
-            
+
             var root = new TestDepartment { Name = "Root" };
             await service.InsertAsync(root);
-            
+
             var child = new TestDepartment { Name = "Child", ParentId = root.Id };
             await service.InsertAsync(child);
 
@@ -414,7 +414,7 @@ namespace LiteOrm.Tests
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
-            
+
             var user = new TestUser { Name = "Upsert Me", Age = 30, CreateTime = DateTime.Now };
 
             // Act - UpdateOrInsert (Insert)
@@ -446,7 +446,7 @@ namespace LiteOrm.Tests
 
             // Act - ForEachAsync
             int forEachCount = 0;
-            await viewService.ForEachAsync(Expr.Exp<TestUser>(u => u.Name == "Mixed 1"), async u => 
+            await viewService.ForEachAsync(Expr.Exp<TestUser>(u => u.Name == "Mixed 1"), async u =>
             {
                 forEachCount++;
                 await Task.CompletedTask;
@@ -556,7 +556,7 @@ namespace LiteOrm.Tests
             Assert.Equal("Root Dept", viewUser.ParentDeptName);
 
             // 根据关联表字段查询 (Act & Assert)
-            
+
             // 1. 根据一级关联表字段查询
             var usersByDept = await viewService.SearchAsync(u => u.DeptName == "Sub Dept");
             Assert.Contains(usersByDept, u => u.Id == user.Id);

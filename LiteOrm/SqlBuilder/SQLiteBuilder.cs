@@ -1,8 +1,6 @@
-﻿using System;
+﻿using LiteOrm.Common;
+using System;
 using System.Collections.Generic;
-using System.Text;
-using LiteOrm.Common;
-using System.Collections;
 using System.Data;
 using System.Linq;
 
@@ -40,16 +38,16 @@ namespace LiteOrm
         /// <returns>转换后的数据库值。</returns>
         public override object ConvertToDbValue(object value, DbType dbType = DbType.Object)
         {
-            if(value is DateTime dt)
+            if (value is DateTime dt)
             {
                 // SQLite中存储为字符串格式 "yyyy-MM-dd HH:mm:ss.fff"
                 return dt.ToString("yyyy-MM-dd HH:mm:ss.fff");
             }
-            else if(value is DateTimeOffset dto)
+            else if (value is DateTimeOffset dto)
             {
                 return dto.ToString("yyyy-MM-dd HH:mm:ss.fff zzz");
             }
-            else if(value is TimeSpan ts)
+            else if (value is TimeSpan ts)
             {
                 // SQLite中存储为字符串格式 "hh:mm:ss.fff"
                 return ts.ToString("c");

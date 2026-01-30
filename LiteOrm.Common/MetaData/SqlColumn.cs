@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Data;
 using System.Reflection;
-using System.Linq.Expressions;
 
 namespace LiteOrm.Common
-{ 
+{
 
     /// <summary>
     /// 基本列信息
@@ -85,7 +81,7 @@ namespace LiteOrm.Common
                 throw new InvalidOperationException($"Value {value} can not be assigned to {Property.DeclaringType.Name}.{Property.Name}", e);
             }
         }
-        
+
 
         /// <summary>
         /// 取值

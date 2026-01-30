@@ -1,10 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using LiteOrm.Common;
+﻿using LiteOrm.Common;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -411,7 +410,7 @@ namespace LiteOrm.Service
         /// <param name="entities">要更新的实体集合。</param>
         public virtual void BatchUpdate(IEnumerable<T> entities)
         {
-                if (typeof(IArged).IsAssignableFrom(typeof(T)))
+            if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
                 var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)

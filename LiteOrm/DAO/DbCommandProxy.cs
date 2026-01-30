@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using LiteOrm.Common;
+using System;
 using System.Data;
 using System.Data.Common;
-using LiteOrm.Common;
 using System.Threading;
 using System.Threading.Tasks;
 

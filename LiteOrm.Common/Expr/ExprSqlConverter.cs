@@ -10,31 +10,35 @@ namespace LiteOrm.Common
     /// </summary>
     public static class ExprSqlConverter
     {
-        private static readonly Dictionary<BinaryOperator, string> _operatorSymbols = new Dictionary<BinaryOperator, string>()
+        private static readonly Dictionary<LogicBinaryOperator, string> _logicOperatorSymbols = new()
         {
-            { BinaryOperator.Equal,"=" },
-            { BinaryOperator.GreaterThan,">" },
-            { BinaryOperator.LessThan,"<" },
-            { BinaryOperator.Like,"LIKE" },
-            { BinaryOperator.StartsWith,"LIKE" },
-            { BinaryOperator.EndsWith,"LIKE" },
-            { BinaryOperator.Contains,"LIKE" },
-            { BinaryOperator.RegexpLike,"REGEXP_LIKE" },
-            { BinaryOperator.In,"IN" },
-            { BinaryOperator.NotEqual,"<>" },
-            { BinaryOperator.GreaterThanOrEqual,">=" },
-            { BinaryOperator.LessThanOrEqual,"<=" },
-            { BinaryOperator.NotIn,"NOT IN" },
-            { BinaryOperator.NotContains,"NOT LIKE" },
-            { BinaryOperator.NotLike,"NOT LIKE" },
-            { BinaryOperator.NotStartsWith,"NOT LIKE" },
-            { BinaryOperator.NotEndsWith,"NOT LIKE" },
-            { BinaryOperator.NotRegexpLike,"NOT REGEXP_LIKE" },
-            { BinaryOperator.Add,"+"  },
-            { BinaryOperator.Subtract,"-" },
-            { BinaryOperator.Multiply,"*" },
-            { BinaryOperator.Divide,"/" },
-            { BinaryOperator.Concat,"||" }
+            { LogicBinaryOperator.Equal,"=" },
+            { LogicBinaryOperator.GreaterThan,">" },
+            { LogicBinaryOperator.LessThan,"<" },
+            { LogicBinaryOperator.Like,"LIKE" },
+            { LogicBinaryOperator.StartsWith,"LIKE" },
+            { LogicBinaryOperator.EndsWith,"LIKE" },
+            { LogicBinaryOperator.Contains,"LIKE" },
+            { LogicBinaryOperator.RegexpLike,"REGEXP_LIKE" },
+            { LogicBinaryOperator.In,"IN" },
+            { LogicBinaryOperator.NotEqual,"<>" },
+            { LogicBinaryOperator.GreaterThanOrEqual,">=" },
+            { LogicBinaryOperator.LessThanOrEqual,"<=" },
+            { LogicBinaryOperator.NotIn,"NOT IN" },
+            { LogicBinaryOperator.NotContains,"NOT LIKE" },
+            { LogicBinaryOperator.NotLike,"NOT LIKE" },
+            { LogicBinaryOperator.NotStartsWith,"NOT LIKE" },
+            { LogicBinaryOperator.NotEndsWith,"NOT LIKE" },
+            { LogicBinaryOperator.NotRegexpLike,"NOT REGEXP_LIKE" }
+        };
+
+        private static readonly Dictionary<ValueBinaryOperator, string> _valueOperatorSymbols = new()
+        {
+            { ValueBinaryOperator.Add,"+"  },
+            { ValueBinaryOperator.Subtract,"-" },
+            { ValueBinaryOperator.Multiply,"*" },
+            { ValueBinaryOperator.Divide,"/" },
+            { ValueBinaryOperator.Concat,"||" }
         };
 
         /// <summary>
@@ -60,27 +64,30 @@ namespace LiteOrm.Common
             if (expr is null) return;
 
             // 根据 Expr 的具体类型，分发到对应的 SQL 转换逻辑
-            if (expr is BinaryExpr binary) ToSql(ref sb, binary, context, sqlBuilder, outputParams);
-            else if (expr is UnaryExpr unary) ToSql(ref sb, unary, context, sqlBuilder, outputParams);
+            if (expr is LogicBinaryExpr lb) ToSql(ref sb, lb, context, sqlBuilder, outputParams);
+            else if (expr is ValueBinaryExpr vb) ToSql(ref sb, vb, context, sqlBuilder, outputParams);
+            else if (expr is NotExpr lu) ToSql(ref sb, lu, context, sqlBuilder, outputParams);
+            else if (expr is ValueUnaryExpr vu) ToSql(ref sb, vu, context, sqlBuilder, outputParams);
             else if (expr is ValueExpr value) ToSql(ref sb, value, context, sqlBuilder, outputParams);
             else if (expr is PropertyExpr prop) ToSql(ref sb, prop, context, sqlBuilder, outputParams);
             else if (expr is FunctionExpr func) ToSql(ref sb, func, context, sqlBuilder, outputParams);
             else if (expr is LambdaExpr lambda) ToSql(ref sb, lambda, context, sqlBuilder, outputParams);
             else if (expr is GenericSqlExpr generic) ToSql(ref sb, generic, context, sqlBuilder, outputParams);
             else if (expr is ForeignExpr foreign) ToSql(ref sb, foreign, context, sqlBuilder, outputParams);
-            else if (expr is ExprSet set) ToSql(ref sb, set, context, sqlBuilder, outputParams);
+            else if (expr is LogicExprSet ls) ToSql(ref sb, ls, context, sqlBuilder, outputParams);
+            else if (expr is ValueExprSet vs) ToSql(ref sb, vs, context, sqlBuilder, outputParams);
             else
                 throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
         }
 
 
-        private static void ToSql(ref ValueStringBuilder sb, BinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, LogicBinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             string op = String.Empty;
-            _operatorSymbols.TryGetValue(expr.Operator, out op);
+            _logicOperatorSymbols.TryGetValue(expr.Operator, out op);
             switch (expr.OriginOperator)
             {
-                case BinaryOperator.In:
+                case LogicBinaryOperator.In:
                     var inrightSb = ValueStringBuilder.Create(64);
                     ToSql(ref inrightSb, expr.Right, context, sqlBuilder, outputParams);
                     ReadOnlySpan<char> inright = inrightSb.AsSpan();
@@ -99,7 +106,7 @@ namespace LiteOrm.Common
                     }
                     inrightSb.Dispose();
                     break;
-                case BinaryOperator.RegexpLike:
+                case LogicBinaryOperator.RegexpLike:
                     // 正则表达式匹配通常使用特定的函数调用语法
                     sb.Append(op);
                     sb.Append("(");
@@ -108,17 +115,17 @@ namespace LiteOrm.Common
                     ToSql(ref sb, expr.Right, context, sqlBuilder, outputParams);
                     sb.Append(")");
                     break;
-                case BinaryOperator.Equal:
+                case LogicBinaryOperator.Equal:
                     // 特殊处理 NULL 值的比较：在 SQL 中 a = NULL 始终为假，必须使用 IS NULL
                     if (expr.Right is null || expr.Right is ValueExpr vs && vs.Value is null)
                     {
                         ToSql(ref sb, expr.Left, context, sqlBuilder, outputParams);
-                        sb.Append(expr.Operator == BinaryOperator.Equal ? " IS NULL" : " IS NOT NULL");
+                        sb.Append(expr.Operator == LogicBinaryOperator.Equal ? " IS NULL" : " IS NOT NULL");
                     }
                     else if (expr.Left is null || expr.Left is ValueExpr vsl && vsl.Value is null)
                     {
                         ToSql(ref sb, expr.Right, context, sqlBuilder, outputParams);
-                        sb.Append(expr.Operator == BinaryOperator.Equal ? " IS NULL" : " IS NOT NULL");
+                        sb.Append(expr.Operator == LogicBinaryOperator.Equal ? " IS NULL" : " IS NOT NULL");
                     }
                     else
                     {
@@ -129,13 +136,9 @@ namespace LiteOrm.Common
                         ToSql(ref sb, expr.Right, context, sqlBuilder, outputParams);
                     }
                     break;
-                case BinaryOperator.Concat:
-                    // 字符串拼接逻辑委托给具体的 sqlBuilder，因为不同数据库的语法差异很大（如 || vs CONCAT）
-                    sb.Append(sqlBuilder.BuildConcatSql(expr.Left.ToSql(context, sqlBuilder, outputParams), expr.Right.ToSql(context, sqlBuilder, outputParams)));
-                    break;
-                case BinaryOperator.Contains:
-                case BinaryOperator.EndsWith:
-                case BinaryOperator.StartsWith:
+                case LogicBinaryOperator.Contains:
+                case LogicBinaryOperator.EndsWith:
+                case LogicBinaryOperator.StartsWith:
                     // 处理 LIKE 相关的模糊查询
                     if (expr.Right is ValueExpr vs2)
                     {
@@ -144,11 +147,11 @@ namespace LiteOrm.Common
                         string val = sqlBuilder.ToSqlLikeValue(vs2.Value?.ToString());
                         switch (expr.OriginOperator)
                         {
-                            case BinaryOperator.StartsWith:
+                            case LogicBinaryOperator.StartsWith:
                                 val = $"{val}%"; break;
-                            case BinaryOperator.EndsWith:
+                            case LogicBinaryOperator.EndsWith:
                                 val = $"%{val}"; break;
-                            case BinaryOperator.Contains:
+                            case LogicBinaryOperator.Contains:
                                 val = $"%{val}%"; break;
                         }
                         outputParams.Add(new KeyValuePair<string, object>(sqlBuilder.ToParamName(paramName), val));
@@ -169,11 +172,11 @@ namespace LiteOrm.Common
                         string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({nestedRight},'{Const.LikeEscapeChar}', '{Const.LikeEscapeChar}{Const.LikeEscapeChar}'),'_', '{Const.LikeEscapeChar}_'),'%', '{Const.LikeEscapeChar}%'),'/', '{Const.LikeEscapeChar}/'),'[', '{Const.LikeEscapeChar}['),']', '{Const.LikeEscapeChar}]')";
                         switch (expr.OriginOperator)
                         {
-                            case BinaryOperator.StartsWith:
+                            case LogicBinaryOperator.StartsWith:
                                 right = sqlBuilder.BuildConcatSql(right, "%"); break;
-                            case BinaryOperator.EndsWith:
+                            case LogicBinaryOperator.EndsWith:
                                 right = sqlBuilder.BuildConcatSql("%", right); break;
-                            case BinaryOperator.Contains:
+                            case LogicBinaryOperator.Contains:
                                 right = sqlBuilder.BuildConcatSql("%", right, "%"); break;
                         }
                         ToSql(ref sb, expr.Left, context, sqlBuilder, outputParams);
@@ -196,18 +199,39 @@ namespace LiteOrm.Common
             }
         }
 
-        private static void ToSql(ref ValueStringBuilder sb, UnaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, ValueBinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            // 处理一元操作符
+            string op = String.Empty;
+            _valueOperatorSymbols.TryGetValue(expr.Operator, out op);
+            if (expr.Operator == ValueBinaryOperator.Concat)
+            {
+                // 字符串拼接逻辑委托给具体的 sqlBuilder，因为不同数据库的语法差异很大（如 || vs CONCAT）
+                sb.Append(sqlBuilder.BuildConcatSql(expr.Left.ToSql(context, sqlBuilder, outputParams), expr.Right.ToSql(context, sqlBuilder, outputParams)));
+            }
+            else
+            {
+                ToSql(ref sb, expr.Left, context, sqlBuilder, outputParams);
+                sb.Append(" ");
+                sb.Append(op);
+                sb.Append(" ");
+                ToSql(ref sb, expr.Right, context, sqlBuilder, outputParams);
+            }
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, NotExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            sb.Append("NOT ");
+            ToSql(ref sb, expr.Operand, context, sqlBuilder, outputParams);
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, ValueUnaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
             switch (expr.Operator)
             {
-                case UnaryOperator.Not:
-                    sb.Append("NOT ");
-                    break;
-                case UnaryOperator.Nagive:
+                case ValueUnaryOperator.Nagive:
                     sb.Append("-");
                     break;
-                case UnaryOperator.BitwiseNot:
+                case ValueUnaryOperator.BitwiseNot:
                     sb.Append("~");
                     break;
             }
@@ -350,28 +374,19 @@ namespace LiteOrm.Common
             sb.Append(expr.GenerateSql(context, sqlBuilder, outputParams));
         }
 
-        private static void ToSql(ref ValueStringBuilder sb, ExprSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, LogicExprSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             int count = expr.Count;
             if (count == 0) return;
 
-            if (expr.JoinType == ExprJoinType.Concat)
-            {
-                string[] subExprs = new string[count];
-                for (int i = 0; i < count; i++) subExprs[i] = expr[i].ToSql(context, sqlBuilder, outputParams);
-                sb.Append(sqlBuilder.BuildConcatSql(subExprs));
-                return;
-            }
-
-            bool isLogical = expr.JoinType == ExprJoinType.And || expr.JoinType == ExprJoinType.Or;
             string joinStr = expr.JoinType switch
             {
-                ExprJoinType.And => " AND ",
-                ExprJoinType.Or => " OR ",
+                LogicJoinType.And => " AND ",
+                LogicJoinType.Or => " OR ",
                 _ => ","
             };
 
-            if (count > 1 || !isLogical) sb.Append("(");
+            if (count > 1) sb.Append("(");
 
             bool first = true;
             for (int i = 0; i < count; i++)
@@ -391,7 +406,31 @@ namespace LiteOrm.Common
                     first = false;
                 }
             }
-            if (count > 1 || !isLogical) sb.Append(")");
+            if (count > 1) sb.Append(")");
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, ValueExprSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            int count = expr.Count;
+            if (count == 0) return;
+
+            if (expr.JoinType == ValueJoinType.Concat)
+            {
+                string[] subExprs = new string[count];
+                for (int i = 0; i < count; i++) subExprs[i] = expr[i].ToSql(context, sqlBuilder, outputParams);
+                sb.Append(sqlBuilder.BuildConcatSql(subExprs));
+                return;
+            }
+
+            sb.Append("(");
+            bool first = true;
+            for (int i = 0; i < count; i++)
+            {
+                if (!first) sb.Append(",");
+                ToSql(ref sb, expr[i], context, sqlBuilder, outputParams);
+                first = false;
+            }
+            sb.Append(")");
         }
     }
 }

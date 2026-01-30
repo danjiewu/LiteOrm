@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 
 namespace LiteOrm.Common
@@ -14,7 +10,7 @@ namespace LiteOrm.Common
     /// 通过委托生成的 SQL 片段表达式类。
     /// </summary>
     [System.Text.Json.Serialization.JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class GenericSqlExpr : Expr
+    public sealed class GenericSqlExpr : LogicExpr
     {
         /// <summary>
         /// 默认构造函数。

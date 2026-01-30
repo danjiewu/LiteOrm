@@ -1,13 +1,4 @@
-﻿using Autofac.Extras.DynamicProxy;
-using LiteOrm.Common;
-using LiteOrm.Demo.DAO;
-using LiteOrm.Service;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using LiteOrm.Demo.DAO;
 
 namespace LiteOrm.Demo.Services
 {

@@ -47,84 +47,84 @@ namespace LiteOrm
 
             LambdaExprConverter.RegisterMethodHandler(typeof(string), "StartsWith", (node, converter) =>
             {
-                var left = converter.Convert(node.Object);
-                var right = converter.Convert(node.Arguments[0]);
-                return new BinaryExpr(left, BinaryOperator.StartsWith, right);
+                var left = converter.Convert(node.Object) as ValueTypeExpr;
+                var right = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
+                return new LogicBinaryExpr(left, LogicBinaryOperator.StartsWith, right);
             });
 
             LambdaExprConverter.RegisterMethodHandler(typeof(string), "EndsWith", (node, converter) =>
             {
-                var left = converter.Convert(node.Object);
-                var right = converter.Convert(node.Arguments[0]);
-                return new BinaryExpr(left, BinaryOperator.EndsWith, right);
+                var left = converter.Convert(node.Object) as ValueTypeExpr;
+                var right = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
+                return new LogicBinaryExpr(left, LogicBinaryOperator.EndsWith, right);
             });
 
             LambdaExprConverter.RegisterMethodHandler(typeof(string), "Contains", (node, converter) =>
             {
-                var left = converter.Convert(node.Object);
-                var right = converter.Convert(node.Arguments[0]);
-                return new BinaryExpr(left, BinaryOperator.Contains, right);
+                var left = converter.Convert(node.Object) as ValueTypeExpr;
+                var right = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
+                return new LogicBinaryExpr(left, LogicBinaryOperator.Contains, right);
             });
 
             LambdaExprConverter.RegisterMethodHandler("Contains", (node, converter) =>
             {
                 if (node.Method.DeclaringType == typeof(Enumerable) || typeof(IEnumerable).IsAssignableFrom(node.Method.DeclaringType))
                 {
-                    Expr collection = null;
-                    Expr value = null;
+                    ValueTypeExpr collection = null;
+                    ValueTypeExpr value = null;
                     if (node.Method.IsStatic)
                     {
-                        collection = converter.Convert(node.Arguments[0]);
-                        value = converter.Convert(node.Arguments[1]);
+                        collection = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
+                        value = converter.Convert(node.Arguments[1]) as ValueTypeExpr;
                     }
                     else
                     {
-                        collection = converter.Convert(node.Object);
-                        value = converter.Convert(node.Arguments[0]);
+                        collection = converter.Convert(node.Object) as ValueTypeExpr;
+                        value = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
                     }
-                    return new BinaryExpr(value, BinaryOperator.In, collection);
+                    return new LogicBinaryExpr(value, LogicBinaryOperator.In, collection);
                 }
                 return null;
             });
 
             LambdaExprConverter.RegisterMethodHandler(typeof(string), "Concat", (node, converter) =>
             {
-                List<Expr> args = new List<Expr>();
-                if (node.Object != null) args.Add(converter.Convert(node.Object));
+                List<ValueTypeExpr> args = new List<ValueTypeExpr>();
+                if (node.Object != null) args.Add(converter.Convert(node.Object) as ValueTypeExpr);
 
                 if (node.Arguments.Count == 1)
                 {
                     var arg = converter.Convert(node.Arguments[0]);
-                    if (arg is IEnumerable<Expr> enumerable)
+                    if (arg is IEnumerable<ValueTypeExpr> enumerable)
                         args.AddRange(enumerable);
                     else
-                        args.Add(arg);
+                        args.Add(arg as ValueTypeExpr);
                 }
                 else
                 {
                     foreach (var arg in node.Arguments)
                     {
-                        args.Add(converter.Convert(arg));
+                        args.Add(converter.Convert(arg) as ValueTypeExpr);
                     }
                 }
-                return new ExprSet(ExprJoinType.Concat, args);
+                return new ValueExprSet(ValueJoinType.Concat, args);
             });
 
             LambdaExprConverter.RegisterMethodHandler("Equals", (node, converter) =>
             {
-                Expr left = null;
-                Expr right = null;
+                ValueTypeExpr left = null;
+                ValueTypeExpr right = null;
                 if (node.Object != null)
                 {
-                    left = converter.Convert(node.Object);
-                    right = converter.Convert(node.Arguments[0]);
+                    left = converter.Convert(node.Object) as ValueTypeExpr;
+                    right = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
                 }
                 else
                 {
-                    left = converter.Convert(node.Arguments[0]);
-                    right = converter.Convert(node.Arguments[1]);
+                    left = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
+                    right = converter.Convert(node.Arguments[1]) as ValueTypeExpr;
                 }
-                return new BinaryExpr(left, BinaryOperator.Equal, right);
+                return new LogicBinaryExpr(left, LogicBinaryOperator.Equal, right);
             });
 
             LambdaExprConverter.RegisterMethodHandler("ToString", (node, converter) =>
@@ -134,16 +134,16 @@ namespace LiteOrm
 
             LambdaExprConverter.RegisterMethodHandler("Compare", (node, converter) =>
             {
-                var left = converter.Convert(node.Arguments[0]);
-                var right = converter.Convert(node.Arguments[1]);
-                return new BinaryExpr(left, BinaryOperator.Equal, right);
+                var left = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
+                var right = converter.Convert(node.Arguments[1]) as ValueTypeExpr;
+                return new LogicBinaryExpr(left, LogicBinaryOperator.Equal, right);
             });
 
             LambdaExprConverter.RegisterMethodHandler("CompareTo", (node, converter) =>
             {
-                var left = node.Object != null ? converter.Convert(node.Object) : converter.Convert(node.Arguments[0]);
-                var right = node.Object != null ? converter.Convert(node.Arguments[0]) : converter.Convert(node.Arguments[1]);
-                return new BinaryExpr(left, BinaryOperator.Equal, right);
+                var left = node.Object != null ? converter.Convert(node.Object) as ValueTypeExpr : converter.Convert(node.Arguments[0]) as ValueTypeExpr;
+                var right = node.Object != null ? converter.Convert(node.Arguments[0]) as ValueTypeExpr : converter.Convert(node.Arguments[1]) as ValueTypeExpr;
+                return new LogicBinaryExpr(left, LogicBinaryOperator.Equal, right);
             });
         }
     }

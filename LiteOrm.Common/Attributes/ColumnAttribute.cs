@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Data;
 
 namespace LiteOrm.Common
@@ -105,5 +103,5 @@ namespace LiteOrm.Common
         /// 获取或设置列映射模式。
         /// </summary>
         public ColumnMode ColumnMode { get; set; }
-    }    
+    }
 }

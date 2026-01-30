@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Data;
 
 namespace LiteOrm.Common
@@ -63,7 +62,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static DbType GetDbType(Type type)
         {
-            Type underlyingType = type.GetUnderlyingType() ;
+            Type underlyingType = type.GetUnderlyingType();
 
             if (!_typeToDbType.ContainsKey(underlyingType) && underlyingType.IsEnum)
                 underlyingType = typeof(Enum);

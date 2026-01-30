@@ -1,9 +1,5 @@
 ﻿using LiteOrm.Common;
 using LiteOrm.Demo.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Data;
 
 namespace LiteOrm.Demo
 {

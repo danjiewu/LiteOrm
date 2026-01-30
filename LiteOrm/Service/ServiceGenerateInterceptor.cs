@@ -1,17 +1,7 @@
 ﻿using Castle.DynamicProxy;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using LiteOrm.Common;
+using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace LiteOrm.Service
 {

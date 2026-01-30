@@ -1,8 +1,6 @@
 using Autofac;
 using LiteOrm.Common;
-using LiteOrm;
 using Microsoft.Extensions.DependencyInjection;
-using System.Collections.Generic;
 
 namespace LiteOrm
 {

@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using LiteOrm.Common;
-using System.Text.RegularExpressions;
-using System.Collections;
-using System.Data;
+﻿using LiteOrm.Common;
+using System;
 using System.Collections.Concurrent;
-using System.Collections.Specialized;
+using System.Collections.Generic;
+using System.Data;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace LiteOrm
 {

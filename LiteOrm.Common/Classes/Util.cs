@@ -7,7 +7,6 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 
 namespace LiteOrm
 {
@@ -38,13 +37,13 @@ namespace LiteOrm
                 return serviceType.Name;
             }
         }
-        
+
         /// <summary>
         /// 最大允许展开并记录日志的集合长度。
         /// 超过此长度的集合将只记录类型和计数，以避免日志文件过大。
         /// </summary>
         public static int MaxExpandedLogLength { get; set; } = 10;
-        
+
         /// <summary>
         /// 通过枚举的显示名称（DisplayAttribute 等）反向解析为枚举值。
         /// </summary>
@@ -164,7 +163,7 @@ namespace LiteOrm
             else if (value is bool) return (bool)value ? "是" : "否";
             return Convert.ToString(value);
         }
-        
+
         /// <summary>
         /// 生成用于日志记录的对象列表字符串。
         /// 自动处理集合的深度展开（在限制长度内）。

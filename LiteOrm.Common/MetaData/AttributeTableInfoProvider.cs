@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Reflection;
-using System.Data;
-using System.Collections.ObjectModel;
+﻿using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
-using LiteOrm.Common;
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Data;
+using System.Reflection;
 
 namespace LiteOrm
 {
@@ -108,7 +105,7 @@ namespace LiteOrm
             ForeignTypeAttribute foreignTypeAttr = property.GetAttribute<ForeignTypeAttribute>();
 
             if (property.GetAttribute<ForeignColumnAttribute>() is not null) return null;
-            
+
             ColumnAttribute columnAttribute = property.GetAttribute<ColumnAttribute>();
             if (columnAttribute is not null)
             {

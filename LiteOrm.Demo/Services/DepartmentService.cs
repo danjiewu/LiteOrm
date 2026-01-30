@@ -1,6 +1,6 @@
-﻿using LiteOrm.Demo.Models;
+﻿using LiteOrm.Common;
+using LiteOrm.Demo.Models;
 using LiteOrm.Service;
-using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LiteOrm.Demo.Services

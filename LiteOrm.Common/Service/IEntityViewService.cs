@@ -3,9 +3,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace LiteOrm.Service
 {
@@ -63,7 +60,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的分页对象列表</returns>
         new List<T> SearchSection(Expr expr, PageSection section, params string[] tableArgs);
-    }    
+    }
 
     /// <summary>
     /// 提供对实体视图（只读或关联视图）进行查询操作的非泛型接口。

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
+﻿using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
@@ -12,7 +7,7 @@ namespace LiteOrm.Common
     /// 在生成的 SQL 中，它通常被解析为带有表限定符和定界符的列名。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class PropertyExpr : Expr
+    public sealed class PropertyExpr : ValueTypeExpr
     {
         /// <summary>
         /// 无参构造，主要用于 JSON 反序列化。

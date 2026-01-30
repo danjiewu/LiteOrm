@@ -1,7 +1,5 @@
 using LiteOrm.Common;
 using LiteOrm.Tests.Models;
-using System;
-using System.Collections.Generic;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Xunit;
@@ -23,7 +21,7 @@ namespace LiteOrm.Tests
 
             // Use Equals override
             Assert.True(expr.Equals(deserialized), $"Deserialized expr should be equal to original. JSON: {json}");
-            
+
             // HashCode test is now robust after framework fix
             Assert.Equal(expr.GetHashCode(), deserialized.GetHashCode());
         }
@@ -32,18 +30,18 @@ namespace LiteOrm.Tests
         public void ValueExpr_Tests()
         {
             // Equals
-            Expr e1 = (Expr)123;
-            Expr e2 = (Expr)123;
-            Expr e3 = (Expr)456;
-            Expr e4 = (Expr)123L;
+            ValueExpr e1 = 123;
+            ValueExpr e2 = 123;
+            ValueExpr e3 = 456;
+            ValueExpr e4 = 123L;
 
             Assert.True(e1.Equals(e2));
             Assert.False(e1.Equals(e3));
             // Assert.True(e1.Equals(e4)); // Simplification: don't consider type changes (int vs long)
 
-            Expr s1 = (Expr)"test";
-            Expr s2 = (Expr)"test";
-            Expr s3 = (Expr)"other";
+            ValueExpr s1 = "test";
+            ValueExpr s2 = "test";
+            ValueExpr s3 = "other";
             Assert.True(s1.Equals(s2));
             Assert.False(s1.Equals(s3));
 
@@ -64,7 +62,7 @@ namespace LiteOrm.Tests
 
 
 
-            
+
             // Non-const value serialization
             Expr nonConst = new ValueExpr("dynamic") { IsConst = false };
             TestSerialization(nonConst);
@@ -91,10 +89,10 @@ namespace LiteOrm.Tests
         public void BinaryExpr_Tests()
         {
             // Equals
-            Expr b1 = Expr.Property("Age") > 18;
-            Expr b2 = Expr.Property("Age") > 18;
-            Expr b3 = Expr.Property("Age") >= 18;
-            Expr b4 = Expr.Property("Name") == "John";
+            Expr b1 = (Expr.Property("Age") > 18);
+            Expr b2 = (Expr.Property("Age") > 18);
+            Expr b3 = (Expr.Property("Age") >= 18);
+            Expr b4 = (Expr.Property("Name") == "John");
 
             Assert.True(b1.Equals(b2));
             Assert.False(b1.Equals(b3));
@@ -103,7 +101,7 @@ namespace LiteOrm.Tests
             // Serialization
             TestSerialization(b1);
             TestSerialization(b4);
-            
+
             // Complex Binary
             Expr complex = (Expr.Property("Price") * 1.1) > 100;
             TestSerialization(complex);
@@ -113,15 +111,26 @@ namespace LiteOrm.Tests
         public void UnaryExpr_Tests()
         {
             // Equals
-            Expr u1 = !Expr.Property("IsDeleted");
-            Expr u2 = !Expr.Property("IsDeleted");
-            Expr u3 = !Expr.Property("IsActive");
+            Expr u1 = !(Expr.Property("IsDeleted") != 0);
+            Expr u2 = !(Expr.Property("IsDeleted") != 0);
+            Expr u3 = !(Expr.Property("IsActive") != 0);
 
             Assert.True(u1.Equals(u2));
             Assert.False(u1.Equals(u3));
+            Assert.IsType<NotExpr>(u1);
+
+            Expr v1 = -Expr.Property("Score");
+            Expr v2 = -Expr.Property("Score");
+            Expr v3 = ~Expr.Property("Flag");
+
+            Assert.True(v1.Equals(v2));
+            Assert.False(v1.Equals(v3));
+            Assert.IsType<ValueUnaryExpr>(v1);
 
             // Serialization
             TestSerialization(u1);
+            TestSerialization(v1);
+            TestSerialization(v3);
         }
 
         [Fact]
@@ -136,9 +145,9 @@ namespace LiteOrm.Tests
             Assert.False(s1.Equals(s3), "And set should not be equal to Or set");
 
             // List type ExprSet (IN clause style)
-            var inSet1 = new ExprSet(ExprJoinType.List, (Expr)1, (Expr)2, (Expr)3);
-            var inSet2 = new ExprSet(ExprJoinType.List, (Expr)1, (Expr)2, (Expr)3);
-            var inSet3 = new ExprSet(ExprJoinType.List, (Expr)3, (Expr)2, (Expr)1);
+            var inSet1 = new ValueExprSet(ValueJoinType.List, new ValueExpr(1), new ValueExpr(2), new ValueExpr(3));
+            var inSet2 = new ValueExprSet(ValueJoinType.List, new ValueExpr(1), new ValueExpr(2), new ValueExpr(3));
+            var inSet3 = new ValueExprSet(ValueJoinType.List, new ValueExpr(3), new ValueExpr(2), new ValueExpr(1));
 
             Assert.True(inSet1.Equals(inSet2));
             Assert.False(inSet1.Equals(inSet3), "Order should matter for list JoinType");
@@ -165,9 +174,9 @@ namespace LiteOrm.Tests
             // Note: LambdaExpr serializes as its InnerExpr
             string json = JsonSerializer.Serialize<Expr>(l1, _jsonOptions);
             Expr deserialized = JsonSerializer.Deserialize<Expr>(json, _jsonOptions)!;
-            
+
             // deserialized will NOT be LambdaExpr, but the converted BinaryExpr
-            Assert.IsType<BinaryExpr>(deserialized);
+            Assert.IsType<LogicBinaryExpr>(deserialized);
             Assert.True(l1.Equals(deserialized));
         }
 
@@ -216,8 +225,8 @@ namespace LiteOrm.Tests
             Expr f1 = new FunctionExpr("Now");
             Expr f2 = new FunctionExpr("Now");
             Expr f3 = new FunctionExpr("Today");
-            Expr f4 = new FunctionExpr("ABS", (Expr)(-10));
-            Expr f5 = new FunctionExpr("ABS", (Expr)(-10));
+            Expr f4 = new FunctionExpr("ABS", (-10));
+            Expr f5 = new FunctionExpr("ABS", (-10));
 
             Assert.True(f1.Equals(f2));
             Assert.False(f1.Equals(f3));

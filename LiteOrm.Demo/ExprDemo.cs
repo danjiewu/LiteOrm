@@ -1,6 +1,5 @@
-﻿using LiteOrm.Demo.Services;
-using LiteOrm.Demo.Demos;
-using System.Threading.Tasks;
+﻿using LiteOrm.Demo.Demos;
+using LiteOrm.Demo.Services;
 
 namespace LiteOrm.Demo
 {

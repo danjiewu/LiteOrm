@@ -1,8 +1,5 @@
 ﻿using LiteOrm.Common;
 using LiteOrm.Demo.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace LiteOrm.Demo.DAO
 {

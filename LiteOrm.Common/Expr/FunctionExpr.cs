@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace LiteOrm.Common
 {
@@ -12,14 +10,14 @@ namespace LiteOrm.Common
     /// 此类通用性高，可代表任何数据库端的内置函数或用户自定义函数。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class FunctionExpr : Expr
+    public sealed class FunctionExpr : ValueTypeExpr
     {
         /// <summary>
         /// 默认构造，初始化空的参数列表。
         /// </summary>
         public FunctionExpr()
         {
-            Parameters = new List<Expr>();
+            Parameters = new List<ValueTypeExpr>();
         }
 
         /// <summary>
@@ -27,7 +25,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="functionName">SQL 函数名。</param>
         /// <param name="parameters">传入函数的参数表达式集合。</param>
-        public FunctionExpr(string functionName, params Expr[] parameters)
+        public FunctionExpr(string functionName, params ValueTypeExpr[] parameters)
         {
             FunctionName = functionName;
             Parameters = parameters.ToList();
@@ -46,7 +44,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取当前函数的参数列表。
         /// </summary>
-        public List<Expr> Parameters { get; }
+        public List<ValueTypeExpr> Parameters { get; }
 
         /// <summary>
         /// 返回针对该函数的字符串预览（如 "SUM(Column)"）。

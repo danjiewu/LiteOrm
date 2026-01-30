@@ -1,11 +1,8 @@
-﻿using System;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using LiteOrm.Common;
-using LiteOrm.Service;
+using System;
+using System.Threading.Tasks;
 
 namespace LiteOrm.AspNetCore
 {
@@ -64,7 +61,7 @@ namespace LiteOrm.AspNetCore
         /// <param name="context">HTTP 上下文。</param>
         /// <param name="sessionManager">会话管理器。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public async Task InvokeAsync(HttpContext context,SessionManager sessionManager)
+        public async Task InvokeAsync(HttpContext context, SessionManager sessionManager)
         {
             var requestId = context.TraceIdentifier;
             var method = context.Request.Method;

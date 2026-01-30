@@ -6,8 +6,8 @@ namespace LiteOrm.Demo.Services
     /// <summary>
     /// 用户业务逻辑接口
     /// </summary>
-    public interface IUserService : 
-        IEntityService<User>, IEntityServiceAsync<User>, 
+    public interface IUserService :
+        IEntityService<User>, IEntityServiceAsync<User>,
         IEntityViewService<UserView>, IEntityViewServiceAsync<UserView>
     {
         /// <summary>

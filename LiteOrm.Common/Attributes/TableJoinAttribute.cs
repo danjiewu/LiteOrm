@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LiteOrm.Common
 {
@@ -102,5 +100,5 @@ namespace LiteOrm.Common
         public string FilterExpression { get; set; }
     }
 
-    
+
 }

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LiteOrm
 {
@@ -30,7 +28,7 @@ namespace LiteOrm
         /// 是否允许匿名访问
         /// </summary>
         public bool AllowAnonymous { get; set; }
-        
+
         /// <summary>
         /// 允许的角色，多个角色用逗号分隔
         /// </summary>

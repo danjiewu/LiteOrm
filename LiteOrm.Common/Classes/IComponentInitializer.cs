@@ -1,5 +1,4 @@
 ﻿using Autofac;
-using Microsoft.Extensions.DependencyInjection;
 
 
 namespace LiteOrm.Common

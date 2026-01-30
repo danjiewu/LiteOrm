@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Data;
 
 namespace LiteOrm.Common
 {
@@ -30,5 +27,5 @@ namespace LiteOrm.Common
         /// 获取或设置数据源名称。该名称通常对应于配置文件中 ConnectionStrings 节点的名称。
         /// </summary>
         public string DataSource { get; set; }
-    }   
+    }
 }

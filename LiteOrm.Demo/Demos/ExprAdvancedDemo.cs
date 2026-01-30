@@ -1,14 +1,12 @@
-using LiteOrm.Common;
+ï»¿using LiteOrm.Common;
 using LiteOrm.Demo.Models;
-using System;
-using System.Collections.Generic;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace LiteOrm.Demo.Demos
 {
     /// <summary>
-    /// ÑİÊ¾¸ß¼¶±í´ïÊ½¹¦ÄÜ£ºÍâ¼ü²éÑ¯¡¢Lambda ×ª»»¡¢ĞòÁĞ»¯¡¢SQL Éú³É
+    /// æ¼”ç¤ºé«˜çº§è¡¨è¾¾å¼åŠŸèƒ½ï¼šå¤–é”®æŸ¥è¯¢ã€Lambda è½¬æ¢ã€åºåˆ—åŒ–ã€SQL ç”Ÿæˆ
     /// </summary>
     public static class ExprAdvancedDemo
     {
@@ -20,59 +18,59 @@ namespace LiteOrm.Demo.Demos
 
         public static void ShowForeignExpr()
         {
-            Console.WriteLine("\n[ForeignExpr] Íâ¼ü±í´ïÊ½ (EXISTS ¹ØÁª²éÑ¯):");
+            Console.WriteLine("\n[ForeignExpr] å¤–é”®è¡¨è¾¾å¼ (EXISTS å…³è”æŸ¥è¯¢):");
 
-            // Ê¾Àı 1: ²éÑ¯ËùÊô²¿ÃÅÃû³Æ°üº¬ "ÏúÊÛ" µÄÓÃ»§
-            Expr f1 = Expr.Foreign(nameof(User.DeptId), Expr.Property(nameof(Department.Name)).Contains("ÏúÊÛ"));
-            Console.WriteLine($"  ÓÃ»§ËùÊô²¿ÃÅÃû³Æ°üº¬ 'ÏúÊÛ': {f1}");
+            // ç¤ºä¾‹ 1: æŸ¥è¯¢æ‰€å±éƒ¨é—¨åç§°åŒ…å« "é”€å”®" çš„ç”¨æˆ·
+            Expr f1 = Expr.Foreign(nameof(User.DeptId), Expr.Property(nameof(Department.Name)).Contains("é”€å”®"));
+            Console.WriteLine($"  ç”¨æˆ·æ‰€å±éƒ¨é—¨åç§°åŒ…å« 'é”€å”®': {f1}");
 
-            // Ê¾Àı 2: ²éÑ¯ÏúÊÛ¼ÇÂ¼£¬ÆäÖĞ¹ØÁªµÄÓÃ»§ÄêÁä´óÓÚ 30
+            // ç¤ºä¾‹ 2: æŸ¥è¯¢é”€å”®è®°å½•ï¼Œå…¶ä¸­å…³è”çš„ç”¨æˆ·å¹´é¾„å¤§äº 30
             Expr f2 = Expr.Foreign(nameof(SalesRecord.SalesUserId), Expr.Property(nameof(User.Age)) > 30);
-            Console.WriteLine($"  ÏúÊÛ¼ÇÂ¼Æä¹ØÁªÓÃ»§ÄêÁä > 30: {f2}");
+            Console.WriteLine($"  é”€å”®è®°å½•å…¶å…³è”ç”¨æˆ·å¹´é¾„ > 30: {f2}");
         }
 
         public static void ShowLambdaExpr()
         {
-            Console.WriteLine("\n[LambdaExpr] Lambda ±í´ïÊ½×ª»»ÑİÊ¾:");
+            Console.WriteLine("\n[LambdaExpr] Lambda è¡¨è¾¾å¼è½¬æ¢æ¼”ç¤º:");
 
-            var lambdaExpr = Expr.Exp<SalesRecordView>(s => (s.ShipTime ?? DateTime.Now.AddDays(-1)) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains("»ú"));
+            var lambdaExpr = Expr.Exp<SalesRecordView>(s => (s.ShipTime ?? DateTime.Now.AddDays(-1)) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains("æœº"));
 
-            Console.WriteLine("  C# Lambda: s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains(\"»ú\")");
-            Console.WriteLine($"  ×ª»»½á¹û Expr: {lambdaExpr}");
+            Console.WriteLine("  C# Lambda: s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains(\"æœº\")");
+            Console.WriteLine($"  è½¬æ¢ç»“æœ Expr: {lambdaExpr}");
 
             string json = JsonSerializer.Serialize((Expr)lambdaExpr, jsonOptions);
-            Console.WriteLine($"  ĞòÁĞ»¯½á¹û: {json}");
+            Console.WriteLine($"  åºåˆ—åŒ–ç»“æœ: {json}");
 
             var deserializedExpr = JsonSerializer.Deserialize<Expr>(json, jsonOptions);
-            Console.WriteLine($"  ·´ĞòÁĞ»¯ºó Expr ÀàĞÍ: {deserializedExpr?.GetType().Name}");
-            Console.WriteLine($"  ·´ĞòÁĞ»¯ºó Expr ÄÚÈİ: {deserializedExpr}");            
+            Console.WriteLine($"  ååºåˆ—åŒ–å Expr ç±»å‹: {deserializedExpr?.GetType().Name}");
+            Console.WriteLine($"  ååºåˆ—åŒ–å Expr å†…å®¹: {deserializedExpr}");
         }
 
         public static void ShowExprConvert()
         {
-            Console.WriteLine("\n[ExprConvert] ×Ö·û´®ºÍ±í´ïÊ½×ª»»ÑİÊ¾");
+            Console.WriteLine("\n[ExprConvert] ç»“æ„åŒ–æŸ¥è¯¢è½¬æ¢æ¼”ç¤ºï¼š");
 
             var ageProps = Util.GetFilterProperties(typeof(User));
             var ageProp = ageProps.Find(nameof(User.Age), true);
 
             string queryValue = ">20";
             var parsedExpr = ExprConvert.Parse(ageProp, queryValue);
-            Console.WriteLine($"  ½âÎö×Ö·û´® '{queryValue}' Îª Expr: {parsedExpr}");
+            Console.WriteLine($"  è§£æå­—ç¬¦ä¸² '{queryValue}' ä¸º Expr: {parsedExpr}");
 
             string inValue = "25,30,35";
             var inExpr = ExprConvert.Parse(ageProp, inValue);
-            Console.WriteLine($"  ½âÎö×Ö·û´® '{inValue}' Îª Expr: {inExpr}");
+            Console.WriteLine($"  è§£æå­—ç¬¦ä¸² '{inValue}' ä¸º Expr: {inExpr}");
 
-            if (parsedExpr is BinaryExpr be)
+            if (parsedExpr is LogicBinaryExpr be)
             {
                 string backToText = ExprConvert.ToText(be.Operator, (be.Right as ValueExpr)?.Value);
-                Console.WriteLine($"  ·´Ïò×ª»» Expr '{be}' Îª×Ö·û´®: {backToText}");
+                Console.WriteLine($"  å°† Expr '{be}' è½¬æ¢ä¸ºå­—ç¬¦ä¸²: {backToText}");
             }
 
-            if (inExpr is BinaryExpr beIn)
+            if (inExpr is LogicBinaryExpr beIn)
             {
                 string inToText = ExprConvert.ToText(beIn.Operator, (beIn.Right as ValueExpr)?.Value);
-                Console.WriteLine($"  ·´Ïò×ª»» IN ±í´ïÊ½ '{beIn}' Îª×Ö·û´®: {inToText}");
+                Console.WriteLine($"  å°† IN è¡¨è¾¾å¼ '{beIn}' è½¬æ¢ä¸ºå­—ç¬¦ä¸²: {inToText}");
             }
 
             var queryString = new Dictionary<string, string>
@@ -81,7 +79,7 @@ namespace LiteOrm.Demo.Demos
                 { "Age", ">20" }
             };
             var conditions = Util.ParseQueryCondition(queryString, typeof(User));
-            Console.WriteLine($"\n  ½âÎö QueryString (UserName=%Admin, Age=>20) Îª Expr ÁĞ±í:");
+            Console.WriteLine($"\n  è§£æ QueryString (UserName=%Admin, Age=>20) ä¸º Expr åˆ—è¡¨:");
             foreach (var cond in conditions)
             {
                 Console.WriteLine($"    - {cond}");
@@ -90,13 +88,13 @@ namespace LiteOrm.Demo.Demos
 
         public static void ShowSqlGeneration()
         {
-            Console.WriteLine("\n[SqlGen] ±í´ïÊ½Éú³É SQL Õ¹Ê¾:");
+            Console.WriteLine("\n[SqlGen] è¡¨è¾¾å¼ç”Ÿæˆ SQL å±•ç¤º:");
             var expr = (Expr.Property(nameof(User.Age)) > 18) & (Expr.Property(nameof(User.UserName)).Contains("admin_"));
             var sqlGen = new SqlGen(typeof(User));
             var result = sqlGen.ToSql(expr);
 
             Console.WriteLine($"  Expr: {expr}");
-            Console.WriteLine($"  Éú³É SQL: {result}");
+            Console.WriteLine($"  ç”Ÿæˆ SQL: {result}");
         }
     }
 }

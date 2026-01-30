@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
@@ -10,12 +7,12 @@ namespace LiteOrm.Common
     /// 该表达式通常用于构建基于 EXISTS 子查询的关联表过滤条件。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class ForeignExpr : Expr
+    public sealed class ForeignExpr : LogicExpr
     {
         /// <summary>
         /// 获取或设置针对关联表的内部过滤表达式。
         /// </summary>
-        public Expr InnerExpr { get; set; }
+        public LogicExpr InnerExpr { get; set; }
 
         /// <summary>
         /// 获取或设置当前实体中关联的外部实体别名。
@@ -32,7 +29,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="foreign">外部实体别名。</param>
         /// <param name="expr">内部过滤表达式。</param>
-        public ForeignExpr(string foreign, Expr expr)
+        public ForeignExpr(string foreign, LogicExpr expr)
         {
             Foreign = foreign;
             InnerExpr = expr;

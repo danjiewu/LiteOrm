@@ -1,16 +1,14 @@
-﻿using System;
+﻿using LiteOrm.Common;
+using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Text;
 using System.Data;
 using System.Data.Common;
-using System.Collections;
-using LiteOrm.Common;
-using System.ComponentModel;
-using System.Collections.ObjectModel;
 using System.Linq.Expressions;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace LiteOrm
 {
@@ -36,7 +34,7 @@ namespace LiteOrm
     /// </remarks>
     [AutoRegister(ServiceLifetime.Scoped)]
     public class ObjectViewDAO<T> : DAOBase, IObjectViewDAO<T> where T : new()
-    {        
+    {
         #region 属性
         /// <summary>
         /// 实体对象类型

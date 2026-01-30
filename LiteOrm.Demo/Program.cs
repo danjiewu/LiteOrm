@@ -1,10 +1,9 @@
-﻿using System;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using LiteOrm;
+﻿using LiteOrm;
 using LiteOrm.Demo;
-using LiteOrm.Demo.Services;
 using LiteOrm.Demo.Data;
+using LiteOrm.Demo.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 
 // 使用 RegisterLiteOrm 从 appsettings.json 自动配置

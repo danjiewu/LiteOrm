@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using System;
 
 namespace LiteOrm
 {
@@ -20,7 +18,7 @@ namespace LiteOrm
         /// 日志级别
         /// </summary>
         public LogLevel LogLevel { get; set; }
-        
+
         /// <summary>
         /// 日志格式
         /// </summary>
@@ -37,17 +35,17 @@ namespace LiteOrm
         /// 不记录任何内容
         /// </summary>
         None = 0,
-        
+
         /// <summary>
         /// 记录方法参数
         /// </summary>
         Args = 1,
-        
+
         /// <summary>
         /// 记录返回值
         /// </summary>
         ReturnValue = 2,
-        
+
         /// <summary>
         /// 记录完整的调用信息（参数和返回值）
         /// </summary>

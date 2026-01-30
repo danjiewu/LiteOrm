@@ -2,8 +2,6 @@ using LiteOrm.Common;
 using LiteOrm.Service;
 using LiteOrm.Tests.Models;
 using Microsoft.Extensions.DependencyInjection;
-using System.Threading.Tasks;
-using System.Linq;
 
 namespace LiteOrm.Tests.Infrastructure
 {

@@ -1,11 +1,5 @@
-using LiteOrm.Common;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
-using System.Reflection;
-using System.Collections.Generic;
-using System.IO;
-using System;
+using Microsoft.Extensions.Hosting;
 
 namespace LiteOrm.Tests.Infrastructure
 {
@@ -41,7 +35,7 @@ namespace LiteOrm.Tests.Infrastructure
         {
             Host.StopAsync().Wait();
             Host.Dispose();
-            
+
             // Best effort cleanup
             try
             {

@@ -1,6 +1,7 @@
 ﻿using System;
 
-namespace LiteOrm.Common{
+namespace LiteOrm.Common
+{
     /// <summary>
     /// 关联的外部实体属性定义
     /// </summary>

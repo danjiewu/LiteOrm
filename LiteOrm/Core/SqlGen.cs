@@ -1,5 +1,4 @@
 ﻿using LiteOrm.Common;
-using LiteOrm;
 using System;
 using System.Collections.Generic;
 
@@ -53,7 +52,7 @@ namespace LiteOrm
             SqlTable table = TableInfoProvider.Default.GetTableView(ObjectType);
 
             // 构造解析上下文
-            var context = new SqlBuildContext(table, AliasName,TableArgs);
+            var context = new SqlBuildContext(table, AliasName, TableArgs);
 
             // 获取对应的数据库构建器（如 SQLiteBuilder, SqlServerBuilder）
             var sqlBuilder = SqlBuilderFactory.Instance.GetSqlBuilder(table.Definition.DataProviderType);

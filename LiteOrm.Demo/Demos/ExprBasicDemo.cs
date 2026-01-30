@@ -1,6 +1,5 @@
 using LiteOrm.Common;
 using LiteOrm.Demo.Models;
-using System;
 
 namespace LiteOrm.Demo.Demos
 {
@@ -25,7 +24,7 @@ namespace LiteOrm.Demo.Demos
         public static void ShowValueExpr()
         {
             Console.WriteLine("\n[ValueExpr] 值表达式:");
-            Expr v1 = (Expr)100; // 显式转换
+            Expr v1 = (ValueExpr)100; // 显式转换
             Expr v2 = Expr.Null;
 
             Console.WriteLine($"  Value 100: {v1}");

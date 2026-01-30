@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace LiteOrm.Common
 {
@@ -15,7 +11,7 @@ namespace LiteOrm.Common
         /// StringArrayEqualityComparer的单例实例
         /// </summary>
         public static readonly StringArrayEqualityComparer Instance = new StringArrayEqualityComparer();
-        
+
         /// <summary>
         /// 比较两个字符串数组是否相等（顺序敏感）
         /// </summary>

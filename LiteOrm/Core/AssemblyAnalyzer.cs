@@ -58,10 +58,10 @@ namespace LiteOrm
         private static bool IsSystemAssembly(Assembly a)
         {
             var name = a.FullName;
-            return name.StartsWith("System.") || 
-                   name.StartsWith("Microsoft.") || 
-                   name.StartsWith("mscorlib") || 
-                   name.StartsWith("netstandard") || 
+            return name.StartsWith("System.") ||
+                   name.StartsWith("Microsoft.") ||
+                   name.StartsWith("mscorlib") ||
+                   name.StartsWith("netstandard") ||
                    name.StartsWith("xunit.");
         }
     }

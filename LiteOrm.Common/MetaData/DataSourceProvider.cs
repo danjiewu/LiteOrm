@@ -1,10 +1,5 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LiteOrm.Common
 {
@@ -17,22 +12,22 @@ namespace LiteOrm.Common
         /// 数据源名称
         /// </summary>
         public string Name { get; set; }
-        
+
         /// <summary>
         /// 数据库连接字符串
         /// </summary>
         public string ConnectionString { get; set; }
-        
+
         /// <summary>
         /// 数据库提供程序类型全名
         /// </summary>
         public string Provider { get; set; }
-        
+
         /// <summary>
         /// 连接保活时长
         /// </summary>
         public TimeSpan KeepAliveDuration { get; set; }
-        
+
         /// <summary>
         /// 连接池大小（允许在池中缓存的最大连接数），默认为16
         /// </summary>
@@ -75,13 +70,13 @@ namespace LiteOrm.Common
     /// <summary>
     /// 数据源提供程序接口，用于管理数据库连接配置
     /// </summary>
-    public interface IDataSourceProvider: IEnumerable<DataSourceConfig>
+    public interface IDataSourceProvider : IEnumerable<DataSourceConfig>
     {
         /// <summary>
         /// 获取默认数据源名称
         /// </summary>
         string DefaultDataSourceName { get; }
-        
+
         /// <summary>
         /// 根据名称获取数据源配置
         /// </summary>

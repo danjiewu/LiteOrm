@@ -14,21 +14,21 @@ namespace LiteOrm.Common
     public class LambdaExprConverter
     {
         // 维护 C# 表达式节点类型到内部操作符的快速映射
-        private static readonly Dictionary<ExpressionType, BinaryOperator> _operatorMappings = new Dictionary<ExpressionType, BinaryOperator>
+        private static readonly Dictionary<ExpressionType, object> _operatorMappings = new()
         {
-            { ExpressionType.Equal, BinaryOperator.Equal },
-            { ExpressionType.NotEqual, BinaryOperator.NotEqual },
-            { ExpressionType.GreaterThan, BinaryOperator.GreaterThan },
-            { ExpressionType.GreaterThanOrEqual, BinaryOperator.GreaterThanOrEqual },
-            { ExpressionType.LessThan, BinaryOperator.LessThan },
-            { ExpressionType.LessThanOrEqual, BinaryOperator.LessThanOrEqual },
-            { ExpressionType.Add, BinaryOperator.Add },
-            { ExpressionType.AddChecked, BinaryOperator.Add },
-            { ExpressionType.Subtract, BinaryOperator.Subtract },
-            { ExpressionType.SubtractChecked, BinaryOperator.Subtract },
-            { ExpressionType.Multiply, BinaryOperator.Multiply },
-            { ExpressionType.MultiplyChecked, BinaryOperator.Multiply },
-            { ExpressionType.Divide, BinaryOperator.Divide }
+            { ExpressionType.Equal, LogicBinaryOperator.Equal },
+            { ExpressionType.NotEqual, LogicBinaryOperator.NotEqual },
+            { ExpressionType.GreaterThan, LogicBinaryOperator.GreaterThan },
+            { ExpressionType.GreaterThanOrEqual, LogicBinaryOperator.GreaterThanOrEqual },
+            { ExpressionType.LessThan, LogicBinaryOperator.LessThan },
+            { ExpressionType.LessThanOrEqual, LogicBinaryOperator.LessThanOrEqual },
+            { ExpressionType.Add, ValueBinaryOperator.Add },
+            { ExpressionType.AddChecked, ValueBinaryOperator.Add },
+            { ExpressionType.Subtract, ValueBinaryOperator.Subtract },
+            { ExpressionType.SubtractChecked, ValueBinaryOperator.Subtract },
+            { ExpressionType.Multiply, ValueBinaryOperator.Multiply },
+            { ExpressionType.MultiplyChecked, ValueBinaryOperator.Multiply },
+            { ExpressionType.Divide, ValueBinaryOperator.Divide }
         };
 
         private readonly ParameterExpression _rootParameter; // 跟踪 Lambda 的主参数（通常是实体变量）
@@ -56,7 +56,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static Func<MemberExpression, LambdaExprConverter, Expr> DefaultMemberHandler => (node, converter) =>
         {
-            return node.Expression is null ? new FunctionExpr(node.Member.Name) : new FunctionExpr(node.Member.Name, converter.Convert(node.Expression));
+            return node.Expression is null ? new FunctionExpr(node.Member.Name) : new FunctionExpr(node.Member.Name, converter.Convert(node.Expression) as ValueTypeExpr);
         };
 
         /// <summary>
@@ -132,9 +132,9 @@ namespace LiteOrm.Common
         /// <summary>
         /// 执行整体转换并将根节点转为 Expr。
         /// </summary>
-        public Expr ToExpr()
+        public LogicExpr ToExpr()
         {
-            var stmt = ConvertInternal(_expression.Body);
+            var stmt = ConvertInternal(_expression.Body) as LogicExpr;
             if (stmt is null) throw new ArgumentException($"Unable to convert expression: {_expression.Body}");
             return stmt;
         }
@@ -142,7 +142,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 静态便捷入口，将 Lambda 表达式转换为 Expr 模型。
         /// </summary>
-        public static Expr ToExpr(LambdaExpression expression)
+        public static LogicExpr ToExpr(LambdaExpression expression)
         {
             var converter = new LambdaExprConverter(expression);
             return converter.ToExpr();
@@ -181,12 +181,24 @@ namespace LiteOrm.Common
             }
         }
 
+        private LogicExpr AsLogic(Expr expr)
+        {
+            if (expr is LogicExpr logicExpr) return logicExpr;
+            else throw new NotSupportedException("");
+        }
+
+        private ValueTypeExpr AsValue(Expr expr)
+        {
+            if (expr is ValueTypeExpr valueExpr) return valueExpr;
+            else throw new NotSupportedException("");
+        }
+
         private Expr ConvertBinary(BinaryExpression node)
         {
             // 处理 ?? 运算符，依赖参数时转为 COALESCE 函数，否则本地计算
             if (node.NodeType == ExpressionType.Coalesce)
             {
-                return _parameterDetector.ContainsParameter(node.Left) || _parameterDetector.ContainsParameter(node.Right) ? new FunctionExpr("COALESCE", ConvertInternal(node.Left), ConvertInternal(node.Right)) : EvaluateToExpr(node);
+                return _parameterDetector.ContainsParameter(node.Left) || _parameterDetector.ContainsParameter(node.Right) ? new FunctionExpr("COALESCE", ConvertInternal(node.Left) as ValueTypeExpr, ConvertInternal(node.Right) as ValueTypeExpr) : EvaluateToExpr(node);
             }
 
             var left = ConvertInternal(node.Left);
@@ -197,16 +209,16 @@ namespace LiteOrm.Common
             {
                 case ExpressionType.AndAlso:
                 case ExpressionType.And:
-                    return left.And(right);
+                    return AsLogic(left).And(AsLogic(right));
                 case ExpressionType.Or:
                 case ExpressionType.OrElse:
-                    return left.Or(right);
+                    return AsLogic(left).Or(AsLogic(right));
                 case ExpressionType.Add:
                     // 字符串拼接映射
                     if (node.Left.Type == typeof(string) || node.Right.Type == typeof(string))
-                        return new BinaryExpr(left, BinaryOperator.Concat, right);
+                        return new ValueBinaryExpr(AsValue(left), ValueBinaryOperator.Concat, AsValue(right));
                     else
-                        return new BinaryExpr(left, BinaryOperator.Add, right);
+                        return new ValueBinaryExpr(AsValue(left), ValueBinaryOperator.Add, AsValue(right));
                 default:
                     if (_operatorMappings.TryGetValue(node.NodeType, out var op))
                     {
@@ -214,10 +226,15 @@ namespace LiteOrm.Common
                         if (node.Left is MethodCallExpression leftCallExpression && leftCallExpression.Method.Name == "CompareTo")
                         {
                             if (!(right is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo method can only be compared with 0: {node}");
-                            if (left is BinaryExpr be)
+                            if (left is LogicBinaryExpr lbe)
                             {
-                                left = be.Left;
-                                right = be.Right;
+                                left = lbe.Left;
+                                right = lbe.Right;
+                            }
+                            else if (left is ValueBinaryExpr vbe)
+                            {
+                                left = vbe.Left;
+                                right = vbe.Right;
                             }
                             else if (left is FunctionExpr fe && fe.Parameters.Count == 2)
                             {
@@ -228,10 +245,15 @@ namespace LiteOrm.Common
                         else if (node.Right is MethodCallExpression rightCallExpression && rightCallExpression.Method.Name == "CompareTo")
                         {
                             if (!(left is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo method can only be compared with 0: {node}");
-                            if (right is BinaryExpr be)
+                            if (right is LogicBinaryExpr lbe)
                             {
-                                left = be.Right;
-                                right = be.Left;
+                                left = lbe.Right;
+                                right = lbe.Left;
+                            }
+                            else if (right is ValueBinaryExpr vbe)
+                            {
+                                left = vbe.Right;
+                                right = vbe.Left;
                             }
                             else if (right is FunctionExpr fe && fe.Parameters.Count == 2)
                             {
@@ -239,7 +261,11 @@ namespace LiteOrm.Common
                                 right = fe.Parameters[0];
                             }
                         }
-                        return new BinaryExpr(left, op, right);
+
+                        if (op is ValueBinaryOperator vop)
+                            return new ValueBinaryExpr(left as ValueTypeExpr, vop, AsValue(right));
+                        else
+                            return new LogicBinaryExpr(left as ValueTypeExpr, (LogicBinaryOperator)op, AsValue(right));
                     }
                     else
                         throw new NotSupportedException($"Unsupported binary operator: {node.NodeType}");
@@ -258,11 +284,11 @@ namespace LiteOrm.Common
             switch (node.NodeType)
             {
                 case ExpressionType.OnesComplement:
-                    return new UnaryExpr(UnaryOperator.BitwiseNot, operand);
+                    return new ValueUnaryExpr(ValueUnaryOperator.BitwiseNot, operand as ValueTypeExpr);
                 case ExpressionType.Not:
-                    return new UnaryExpr(UnaryOperator.Not, operand);
+                    return new NotExpr(operand as LogicExpr);
                 case ExpressionType.Negate:
-                    return new UnaryExpr(UnaryOperator.Nagive, operand);
+                    return new ValueUnaryExpr(ValueUnaryOperator.Nagive, operand as ValueTypeExpr);
                 case ExpressionType.Convert:
                     // 类型转换通常不需要额外处理
                     return operand;
@@ -347,29 +373,33 @@ namespace LiteOrm.Common
         }
 
         private Expr ConvertNewArray(NewArrayExpression node)
-
         {
-            var items = new List<Expr>();
+            var items = new List<ValueTypeExpr>();
             foreach (var expression in node.Expressions)
             {
-                var item = ConvertInternal(expression);
+                var item = ConvertInternal(expression) as ValueTypeExpr;
                 if (item is not null)
                 {
                     items.Add(item);
                 }
             }
 
-            return new ExprSet(items);
+            return new ValueExprSet(items);
+        }
+
+        private Expr ExprSet(List<ValueTypeExpr> items)
+        {
+            return new ValueExprSet(items);
         }
 
         private Expr ConvertListInit(ListInitExpression node)
         {
-            var items = new List<Expr>();
+            var items = new List<ValueTypeExpr>();
             foreach (var init in node.Initializers)
             {
                 foreach (var arg in init.Arguments)
                 {
-                    var item = ConvertInternal(arg);
+                    var item = ConvertInternal(arg) as ValueTypeExpr;
                     if (item is not null)
                     {
                         items.Add(item);
@@ -377,7 +407,7 @@ namespace LiteOrm.Common
                 }
             }
 
-            return new ExprSet(items);
+            return new ValueExprSet(items);
         }
 
         #endregion
@@ -412,14 +442,14 @@ namespace LiteOrm.Common
 
         #region 内部处理逻辑
 
-        private Expr CreateFunctionExpr(MethodCallExpression node)
+        private FunctionExpr CreateFunctionExpr(MethodCallExpression node)
         {
-            var parameters = new List<Expr>();
+            var parameters = new List<ValueTypeExpr>();
 
             // 添加对象实例（如果是非静态方法）
             if (node.Object is not null)
             {
-                var obj = ConvertInternal(node.Object);
+                var obj = ConvertInternal(node.Object) as ValueTypeExpr;
                 if (obj is not null)
                 {
                     parameters.Add(obj);
@@ -429,7 +459,7 @@ namespace LiteOrm.Common
             // 添加方法参数
             foreach (var arg in node.Arguments)
             {
-                var param = ConvertInternal(arg);
+                var param = ConvertInternal(arg) as ValueTypeExpr;
                 if (param is not null)
                 {
                     parameters.Add(param);

@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 
 
 namespace LiteOrm
@@ -18,7 +16,7 @@ namespace LiteOrm
         /// 获取 <see cref="MySqlBuilder"/> 的单例实例。
         /// </summary>
         public static readonly new MySqlBuilder Instance = new MySqlBuilder();
-        
+
         /// <summary>
         /// 连接各字符串的SQL语句
         /// </summary>
@@ -150,7 +148,7 @@ namespace LiteOrm
                 {
                     if (i > 0) sb.Append(", ");
                     sb.Append(ToSqlParam("p" + (b * paramsPerRecord + i)));
-                    if (b == 0) 
+                    if (b == 0)
                     {
                         sb.Append(" AS ");
                         sb.Append(ToSqlName("v" + i));

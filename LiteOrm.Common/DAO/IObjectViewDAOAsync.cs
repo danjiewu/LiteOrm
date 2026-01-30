@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,7 +10,7 @@ namespace LiteOrm.Common
     /// 异步版：实体视图查询操作的泛型接口
     /// </summary>
     /// <typeparam name="T">实体类类型</typeparam>
-    public interface IObjectViewDAOAsync<T>: IObjectViewDAOAsync
+    public interface IObjectViewDAOAsync<T> : IObjectViewDAOAsync
     {
         /// <summary>
         /// 异步根据主键获取对象
@@ -94,7 +93,7 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回对象列表</returns>
         Task<IList> SearchAsync(Expr expr, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// 异步根据条件和排序查询对象列表
         /// </summary>
@@ -120,7 +119,7 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回对象是否存在</returns>
         Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// 异步检查指定对象是否存在（根据主键判断）
         /// </summary>
@@ -128,7 +127,7 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回对象是否存在</returns>
         Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// 异步检查符合条件的对象是否存在
         /// </summary>

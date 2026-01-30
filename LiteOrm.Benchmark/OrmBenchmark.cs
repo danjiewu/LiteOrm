@@ -1,14 +1,14 @@
 ﻿using BenchmarkDotNet.Attributes;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Configuration;
-using SqlSugar;
-using LiteOrm.Common;
-using LiteOrm.Service;
 using Dapper;
 using FreeSql;
+using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using MySqlConnector;
+using SqlSugar;
 
 
 namespace LiteOrm.Benchmark

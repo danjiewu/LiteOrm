@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LiteOrm.Common
 {
@@ -27,11 +23,21 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 将一元表达式转换为显示文本
+        /// 将逻辑一元表达式转换为显示文本
         /// </summary>
-        /// <param name="condition">一元表达式</param>
+        /// <param name="condition">逻辑一元表达式</param>
         /// <returns>显示文本</returns>
-        public string ToDisplayText(UnaryExpr condition)
+        public string ToDisplayText(NotExpr condition)
+        {
+            return $"不 {ToDisplayText(condition.Operand)}";
+        }
+
+        /// <summary>
+        /// 将值一元表达式转换为显示文本
+        /// </summary>
+        /// <param name="condition">值一元表达式</param>
+        /// <returns>显示文本</returns>
+        public string ToDisplayText(ValueUnaryExpr condition)
         {
             return $"{ToDisplayText(condition.Operator)} {ToDisplayText(condition.Operand)}";
         }
@@ -70,13 +76,20 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 将表达式集合转换为显示文本
+        /// 将逻辑表达式集合转换为显示文本
         /// </summary>
-        /// <param name="set">表达式集合</param>
-        /// <returns>显示文本</returns>
-        public string ToDisplayText(ExprSet set)
+        public string ToDisplayText(LogicExprSet set)
         {
-            string joiner = set.JoinType switch { ExprJoinType.And => " 且 ", ExprJoinType.Or => " 或 ", ExprJoinType.List => ",", ExprJoinType.Concat => "", _ => "," };
+            string joiner = set.JoinType switch { LogicJoinType.And => " 且 ", LogicJoinType.Or => " 或 ", _ => "," };
+            return $"({String.Join(joiner, set.Select(s => ToDisplayText(s)))})";
+        }
+
+        /// <summary>
+        /// 将值表达式集合转换为显示文本
+        /// </summary>
+        public string ToDisplayText(ValueExprSet set)
+        {
+            string joiner = set.JoinType switch { ValueJoinType.List => ",", ValueJoinType.Concat => "", _ => "," };
             return $"({String.Join(joiner, set.Select(s => ToDisplayText(s)))})";
         }
 
@@ -91,12 +104,18 @@ namespace LiteOrm.Common
                 return ToDisplayText(property);
             if (condition is ValueExpr value)
                 return ToDisplayText(value);
-            if (condition is BinaryExpr binary)
-                return ToDisplayText(binary);
-            if (condition is UnaryExpr unary)
-                return ToDisplayText(unary);
-            if (condition is ExprSet set)
-                return ToDisplayText(set);
+            if (condition is LogicBinaryExpr logicBinary)
+                return ToDisplayText(logicBinary);
+            if (condition is ValueBinaryExpr valueBinary)
+                return ToDisplayText(valueBinary);
+            if (condition is NotExpr lu)
+                return ToDisplayText(lu);
+            if (condition is ValueUnaryExpr vu)
+                return ToDisplayText(vu);
+            if (condition is LogicExprSet logicSet)
+                return ToDisplayText(logicSet);
+            if (condition is ValueExprSet valueSet)
+                return ToDisplayText(valueSet);
             if (condition is FunctionExpr function)
                 return ToDisplayText(function);
             if (condition is LambdaExpr lambdaExpr)
@@ -105,17 +124,16 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 将一元操作符转换为显示文本
+        /// 将值一元操作符转换为显示文本
         /// </summary>
-        /// <param name="op">一元操作符</param>
+        /// <param name="op">值一元操作符</param>
         /// <returns>显示文本</returns>
-        public string ToDisplayText(UnaryOperator op)
+        public string ToDisplayText(ValueUnaryOperator op)
         {
             switch (op)
             {
-                case UnaryOperator.Not: return "不";
-                case UnaryOperator.BitwiseNot: return "反";
-                case UnaryOperator.Nagive: return "负";
+                case ValueUnaryOperator.BitwiseNot: return "反";
+                case ValueUnaryOperator.Nagive: return "负";
                 default: return op.ToString();
             }
         }
@@ -125,30 +143,30 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="op">二元操作符</param>
         /// <returns>显示格式字符串，使用{0}作为占位符</returns>
-        public string ToDisplayFormat(BinaryOperator op)
+        public string ToDisplayFormat(LogicBinaryOperator op)
         {
             Span<char> initialBuffer = stackalloc char[128];
             var sb = new ValueStringBuilder(initialBuffer);
             if (op.IsNot()) sb.Append("不");
             switch (op.Positive())
             {
-                case BinaryOperator.In:
+                case LogicBinaryOperator.In:
                     sb.Append("在{0}中"); break;
-                case BinaryOperator.GreaterThan:
+                case LogicBinaryOperator.GreaterThan:
                     sb.Append("大于{0}"); break;
-                case BinaryOperator.LessThan:
+                case LogicBinaryOperator.LessThan:
                     sb.Append("小于{0}"); break;
-                case BinaryOperator.Contains:
+                case LogicBinaryOperator.Contains:
                     sb.Append("包含{0}"); break;
-                case BinaryOperator.Like:
+                case LogicBinaryOperator.Like:
                     sb.Append("匹配{0}"); break;
-                case BinaryOperator.RegexpLike:
+                case LogicBinaryOperator.RegexpLike:
                     sb.Append("正则匹配{0}"); break;
-                case BinaryOperator.Equal:
+                case LogicBinaryOperator.Equal:
                     sb.Append("等于{0}"); break;
-                case BinaryOperator.EndsWith:
+                case LogicBinaryOperator.EndsWith:
                     sb.Append("以{0}结尾"); break;
-                case BinaryOperator.StartsWith:
+                case LogicBinaryOperator.StartsWith:
                     sb.Append("以{0}开头"); break;
                 default:
                     sb.Append(op.Positive().ToString());
@@ -160,13 +178,37 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 将二元操作符转换为显示文本
+        /// 将值二元操作符转换为显示格式字符串
         /// </summary>
-        /// <param name="condition">二元表达式</param>
-        /// <returns>显示文本</returns>
-        public string ToDisplayText(BinaryExpr condition)
+        public string ToDisplayFormat(ValueBinaryOperator op)
         {
-            return $"{ToDisplayText(condition.Left)} {String.Format(ToDisplayFormat(condition.Operator), condition.Right)}";
+            return op switch
+            {
+                ValueBinaryOperator.Add => "{0} + {1}",
+                ValueBinaryOperator.Subtract => "{0} - {1}",
+                ValueBinaryOperator.Multiply => "{0} * {1}",
+                ValueBinaryOperator.Divide => "{0} / {1}",
+                ValueBinaryOperator.Concat => "{0}{1}",
+                _ => op.ToString()
+            };
+        }
+
+        /// <summary>
+        /// 将逻辑二元表达式转换为显示文本
+        /// </summary>
+        public string ToDisplayText(LogicBinaryExpr condition)
+        {
+            return $"{ToDisplayText(condition.Left)} {String.Format(ToDisplayFormat(condition.Operator), ToDisplayText(condition.Right))}";
+        }
+
+        /// <summary>
+        /// 将值二元表达式转换为显示文本
+        /// </summary>
+        public string ToDisplayText(ValueBinaryExpr condition)
+        {
+            if (condition.Operator == ValueBinaryOperator.Concat)
+                return ToDisplayText(condition.Left) + ToDisplayText(condition.Right);
+            return $"({String.Format(ToDisplayFormat(condition.Operator), ToDisplayText(condition.Left), ToDisplayText(condition.Right))})";
         }
     }
 }

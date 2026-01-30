@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections;
-using LiteOrm.Common;
+﻿using LiteOrm.Common;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
+using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace LiteOrm.Service
 {

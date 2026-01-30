@@ -1,8 +1,8 @@
-﻿using LiteOrm.Demo.Models;
+﻿using Autofac.Extras.DynamicProxy;
 using LiteOrm.Common;
+using LiteOrm.Demo.Models;
 using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
-using Autofac.Extras.DynamicProxy;
 
 namespace LiteOrm.Demo.Services
 {
@@ -41,7 +41,7 @@ namespace LiteOrm.Demo.Services
             firstSale.SaleTime = DateTime.Now;
 
             // 3. 插入销售记录，同样会自动使用同一个事务上下文环境
-            await _salesService.InsertAsync(firstSale);  
+            await _salesService.InsertAsync(firstSale);
 
             throw new Exception("模拟异常，触发事务回滚");
 
