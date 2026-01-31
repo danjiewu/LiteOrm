@@ -45,6 +45,8 @@ dotnet add package LiteOrm
 ### 1. 映射定义
 
 ```csharp
+using namespace LiteOrm.Common;
+
 [Table("USERS")]
 public class User
 {
@@ -108,12 +110,31 @@ var host = Host.CreateDefaultBuilder(args)
 | **ParamCountLimit** | 2000 | 单条 SQL 支持的最大参数个数，批量操作时参数超过此限制会自动分批执行，避免触发 DB 限制。 |
 | **SyncTable** | false | 是否在启动时自动检测实体类并尝试同步数据库表结构。 |
 
-### 3. 执行查询与操作
+### 3. 自定义服务接口与实现（可选）
 
 ```csharp
-public class MyService(IEntityService<User> userService)
+using namespace LiteOrm.Service;
+
+public interface IUserService : IEntityService<User>
 {
-    public async Task Demo()
+    User GetByUserName(string userName);
+}
+
+public class UserService : EntityService<User>, IUserService
+{
+    
+}
+```
+### 4. 执行查询与操作
+```csharp
+public class UserDemoController{
+    public readonly IUserService userService;
+    public UserDemoController(IUserService userService)
+    {
+        this.userService = userService;
+    }
+
+    public async Task<ActionResult> Demo()
     {
         // 1. Lambda 异步查询
         var admin = await userService.SearchOneAsync(u => u.UserName == "admin" && u.Id > 0);
@@ -124,8 +145,10 @@ public class MyService(IEntityService<User> userService)
                                                         
         // 3. 批量更新
         await userService.BatchUpdateAsync(page);
+        return new ViewResult(page);
     }
 }
+   
 ```
 
 ## 查询系统 (Expr)

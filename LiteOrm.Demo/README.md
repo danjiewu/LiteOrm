@@ -206,6 +206,8 @@ foreach (var sale in sales2)
 
 **实体类定义示例：**
 ```csharp
+using namespace LiteOrm.Common;
+
 [Table("Departments")]
 public class Department 
 {
@@ -276,6 +278,18 @@ public class SalesRecord : IArged
 **代码示例：**
 1. 在接口中定义事务特性：
 ```csharp
+using namespace LiteOrm.Service;
+
+public interface IUserService:IEntityService<User>,IEntityViewService<UserView>,IEntityServiceAsync<User>,IEntityViewServiceAsync<UserView>
+{
+    // 其他方法省略
+}
+
+public interface ISalesService:IEntityService<SalesRecord>, IEntityViewService<SalesRecordView>, IEntityServiceAsync<SalesRecord>, IEntityViewServiceAsync<SalesRecordView>
+{
+    // 其他方法省略
+}
+
 public interface IBusinessService
 {
     /// <summary>
@@ -288,7 +302,19 @@ public interface IBusinessService
 
 2. 实现服务并启用拦截器：
 ```csharp
-[AutoRegister(Lifetime = ServiceLifetime.Scoped), Intercept(typeof(ServiceInvokeInterceptor))] // 启用自动注册并注册拦截器，如果继承 `EntityService`、`EntityViewService` 基类可省略此特性
+using namespace LiteOrm.Service;
+
+public class UserService : EntityService<User,UserView>, IUserService //继承 `EntityService` 基类可省略自动注册并注册拦截器特性
+{
+    // 其他方法省略
+}
+public class SalesService : EntityService<SalesRecord,SalesRecordView>, ISalesService
+{
+    // 其他方法省略
+}
+
+[AutoRegister(Lifetime = ServiceLifetime.Scoped)]
+[Intercept(typeof(ServiceInvokeInterceptor))] // 启用自动注册并注册拦截器
 public class BusinessService : IBusinessService
 {
     private readonly IUserService _userService;
@@ -369,7 +395,7 @@ public class MySqlBulkCopyProvider : IBulkProvider
         MySqlBulkCopy bulkCopy = new MySqlBulkCopy(dbConnection as MySqlConnection, transaction as MySqlTransaction);
         bulkCopy.DestinationTableName = dt.TableName;
         bulkCopy.ConflictOption = MySqlBulkLoaderConflictOption.Replace;
-        for (int i = 0; i &lt; dt.Columns.Count; i++)
+        for (int i = 0; i < dt.Columns.Count; i++)
         {
             bulkCopy.ColumnMappings.Add(new MySqlBulkCopyColumnMapping(i, dt.Columns[i].ColumnName));
         }
@@ -455,17 +481,18 @@ LambdaExprConverter.RegisterMethodHandler(typeof(string), "Contains", (node, con
     return new BinaryExpr(left, BinaryOperator.Contains, right);
 });
 ```
+
 **自定义 SQL 函数映射：**
 
 ```csharp
 // Now 函数映射为 CURRENT_TIMESTAMP（对应 DateTime.Now 解析结果）
-BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (functionName, args) => "CURRENT_TIMESTAMP");
+
 
 // 特殊处理 IndexOf 和 Substring，支持 C# 到 SQL 的索引转换 (0-based -> 1-based)
 BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (functionName, args) => args.Count > 2 ?
     $"INSTR({args[0].Key}, {args[1].Key}, {args[2].Key}+1)-1" : $"INSTR({args[0].Key}, {args[1].Key})-1");
 BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (name, args) => args.Count > 2 ?
-    $"SUBSTR({args[0].Key}, {args[1].Key}+1, {args[2].Key})" : $"SUBSTR({args[0].Key}, {args[1].Key}+1)");
+
 
 // 为特定数据库（如 MySQL、SQLite）注册特定的日期加法逻辑
 MySqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],

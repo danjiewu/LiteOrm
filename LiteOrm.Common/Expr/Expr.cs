@@ -24,11 +24,6 @@ namespace LiteOrm.Common
         public virtual bool IsValue => false;
 
         /// <summary>
-        /// 用于哈希计算的种子值。
-        /// </summary>
-        protected const int HashSeed = 31;
-
-        /// <summary>
         /// 将多个哈希值组合成一个组合哈希值。
         /// </summary>
         /// <param name="hashcodes">要组合的哈希值序列。</param>
@@ -37,10 +32,10 @@ namespace LiteOrm.Common
         {
             unchecked
             {
-                int hashcode = 0;
+                int hashcode = 17;
                 foreach (int hc in hashcodes)
                 {
-                    hashcode = (hashcode * HashSeed) + hc;
+                    hashcode = (hashcode * 31) + hc;
                 }
                 return hashcode;
             }
