@@ -206,7 +206,7 @@ foreach (var sale in sales2)
 
 **实体类定义示例：**
 ```csharp
-using namespace LiteOrm.Common;
+namespace LiteOrm.Common;
 
 [Table("Departments")]
 public class Department 
@@ -255,6 +255,8 @@ foreach (var d in depts)
 **代码示例：**
 实体类定义示例：
 ```csharp
+namespace LiteOrm.Common;
+
 [Table("SALES_{0}")] // 物理表名占位符
 public class SalesRecord : IArged
 {
@@ -278,7 +280,7 @@ public class SalesRecord : IArged
 **代码示例：**
 1. 在接口中定义事务特性：
 ```csharp
-using namespace LiteOrm.Service;
+namespace LiteOrm.Service;
 
 public interface IUserService:IEntityService<User>,IEntityViewService<UserView>,IEntityServiceAsync<User>,IEntityViewServiceAsync<UserView>
 {
@@ -302,7 +304,7 @@ public interface IBusinessService
 
 2. 实现服务并启用拦截器：
 ```csharp
-using namespace LiteOrm.Service;
+namespace LiteOrm.Service;
 
 public class UserService : EntityService<User,UserView>, IUserService //继承 `EntityService` 基类可省略自动注册并注册拦截器特性
 {
