@@ -36,7 +36,7 @@ namespace LiteOrm.Common
         /// <param name="tableNameArgs">用于动态生成表名的参数集合。</param>
         public SqlBuildContext(SqlTable table, string tableAliasName, string[] tableNameArgs)
         {
-            if (table == null) throw new ArgumentNullException("table");
+            if (table == null) throw new ArgumentNullException(nameof(table));
             if (tableNameArgs == null) tableNameArgs = Array.Empty<string>();
             foreach (var arg in tableNameArgs)
             {
@@ -70,6 +70,31 @@ namespace LiteOrm.Common
         /// 表名参数，用于动态生成表名
         /// </summary>
         public string[] TableNameArgs { get; }
+
+        /// <summary>
+        /// 链式结构中的上级上下文节点
+        /// </summary>
+        public SqlBuildContext Parent { get; set; }
+
+        private SqlBuildContext _root;
+        /// <summary>
+        /// 链式结构的根上下文节点
+        /// </summary>
+        public SqlBuildContext Root
+        {
+            get
+            {
+                if (_root == null)
+                {
+                    _root = Parent?.Root ?? this;
+                }
+                else if (_root != _root.Root)
+                {
+                    _root = _root.Root;
+                }
+                return _root;
+            }
+        }
 
 
         private const string tableNamePattern = @"^[a-zA-Z0-9_]*$";

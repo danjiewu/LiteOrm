@@ -12,6 +12,8 @@ namespace LiteOrm.Common
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public abstract class Expr
     {
+        internal const int HashSeed = 31;
+
         /// <summary>
         /// 表示 SQL NULL 的表达式。
         /// </summary>

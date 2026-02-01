@@ -76,6 +76,11 @@ namespace LiteOrm.Common
             else if (expr is ForeignExpr foreign) ToSql(ref sb, foreign, context, sqlBuilder, outputParams);
             else if (expr is LogicSet ls) ToSql(ref sb, ls, context, sqlBuilder, outputParams);
             else if (expr is ValueSet vs) ToSql(ref sb, vs, context, sqlBuilder, outputParams);
+            else if (expr is QueryExpr query) ToSql(ref sb, query, context, sqlBuilder, outputParams);
+            else if (expr is FromExpr from) ToSql(ref sb, from, context, sqlBuilder, outputParams);
+            else if (expr is AggregateFunctionExpr agg) ToSql(ref sb, agg, context, sqlBuilder, outputParams);
+            else if (expr is OrderByExpr order) ToSql(ref sb, order, context, sqlBuilder, outputParams);
+            else if (expr is SectionExpr section) ToSql(ref sb, section, context, sqlBuilder, outputParams);
             else
                 throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
         }
@@ -220,8 +225,23 @@ namespace LiteOrm.Common
 
         private static void ToSql(ref ValueStringBuilder sb, NotExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            sb.Append("NOT ");
-            ToSql(ref sb, expr.Operand, context, sqlBuilder, outputParams);
+            if (expr.Operand is LogicBinaryExpr be)
+            {
+                // 优化：将 NOT (a = b) 转换为 a <> b，避免冗余的 NOT 关键字
+                var opposite = be.Operator.Opposite();
+                ToSql(ref sb, new LogicBinaryExpr(be.Left, opposite, be.Right), context, sqlBuilder, outputParams);
+            }
+            else if (expr.Operand is NotExpr inner)
+            {
+                // 优化：双重否定 NOT (NOT a) 转换为 a
+                ToSql(ref sb, inner.Operand, context, sqlBuilder, outputParams);
+            }
+            else
+            {
+                sb.Append("NOT (");
+                ToSql(ref sb, expr.Operand, context, sqlBuilder, outputParams);
+                sb.Append(")");
+            }
         }
 
         private static void ToSql(ref ValueStringBuilder sb, UnaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
@@ -321,7 +341,8 @@ namespace LiteOrm.Common
             if (joinedTable == null) throw new ArgumentException($"Foregin table {foreginExpr.Foreign} not exists in {context.Table.DefinitionType}");
             SqlBuildContext foreignContext = new SqlBuildContext(joinedTable.TableDefinition, $"T{context.Sequence}", context.TableNameArgs)
             {
-                Sequence = context.Sequence + 1
+                Sequence = context.Sequence + 1,
+                Parent = context
             };
 
             string foreginTableName = sqlBuilder.ToSqlName(foreignContext.FactTableName);
@@ -431,6 +452,157 @@ namespace LiteOrm.Common
                 first = false;
             }
             sb.Append(")");
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, QueryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            if (expr.Section != null && (expr.GroupBys == null || expr.GroupBys.Count == 0) && expr.Having == null)
+            {
+                var selectSb = ValueStringBuilder.Create(64);
+                if (expr.Selects == null || expr.Selects.Count == 0) selectSb.Append("*");
+                else
+                {
+                    for (int i = 0; i < expr.Selects.Count; i++)
+                    {
+                        if (i > 0) selectSb.Append(", ");
+                        ToSql(ref selectSb, expr.Selects[i], context, sqlBuilder, outputParams);
+                    }
+                }
+
+                var fromSb = ValueStringBuilder.Create(64);
+                if (expr.From != null) ToSql(ref fromSb, expr.From, context, sqlBuilder, outputParams);
+
+                var whereSb = ValueStringBuilder.Create(64);
+                if (expr.Where != null)
+                {
+                    whereSb.Append("WHERE ");
+                    ToSql(ref whereSb, expr.Where, context, sqlBuilder, outputParams);
+                }
+
+                var orderSb = ValueStringBuilder.Create(64);
+                if (expr.OrderBys != null && expr.OrderBys.Count > 0)
+                {
+                    for (int i = 0; i < expr.OrderBys.Count; i++)
+                    {
+                        if (i > 0) orderSb.Append(", ");
+                        ToSql(ref orderSb, expr.OrderBys[i], context, sqlBuilder, outputParams);
+                    }
+                }
+                else orderSb.Append("1");
+
+                sb.Append("(");
+                sb.Append(sqlBuilder.GetSelectSectionSql(selectSb.ToString(), fromSb.ToString(), whereSb.ToString(), orderSb.ToString(), expr.Section.Skip, expr.Section.Take));
+                sb.Append(")");
+
+                selectSb.Dispose();
+                fromSb.Dispose();
+                whereSb.Dispose();
+                orderSb.Dispose();
+                return;
+            }
+
+            sb.Append("(SELECT ");
+            if (expr.Selects == null || expr.Selects.Count == 0)
+            {
+                sb.Append("*");
+            }
+            else
+            {
+                for (int i = 0; i < expr.Selects.Count; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    ToSql(ref sb, expr.Selects[i], context, sqlBuilder, outputParams);
+                }
+            }
+
+            if (expr.From != null)
+            {
+                sb.Append(" FROM ");
+                ToSql(ref sb, expr.From, context, sqlBuilder, outputParams);
+            }
+
+            if (expr.Where != null)
+            {
+                sb.Append(" WHERE ");
+                ToSql(ref sb, expr.Where, context, sqlBuilder, outputParams);
+            }
+
+            if (expr.GroupBys != null && expr.GroupBys.Count > 0)
+            {
+                sb.Append(" GROUP BY ");
+                for (int i = 0; i < expr.GroupBys.Count; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    ToSql(ref sb, expr.GroupBys[i], context, sqlBuilder, outputParams);
+                }
+            }
+
+            if (expr.Having != null)
+            {
+                sb.Append(" HAVING ");
+                ToSql(ref sb, expr.Having, context, sqlBuilder, outputParams);
+            }
+
+            if (expr.OrderBys != null && expr.OrderBys.Count > 0)
+            {
+                sb.Append(" ORDER BY ");
+                for (int i = 0; i < expr.OrderBys.Count; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    ToSql(ref sb, expr.OrderBys[i], context, sqlBuilder, outputParams);
+                }
+            }
+
+            if (expr.Section != null)
+            {
+                sb.Append(" ");
+                ToSql(ref sb, expr.Section, context, sqlBuilder, outputParams);
+            }
+
+            sb.Append(")");
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, FromExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            if (expr is TableFromExpr tableFrom)
+            {
+                sb.Append(sqlBuilder.BuildExpression(tableFrom.Table, context.TableNameArgs));
+            }
+            else if (expr is SubQueryFromExpr subQueryFrom)
+            {
+                ToSql(ref sb, subQueryFrom.SubQuery, context, sqlBuilder, outputParams);
+                if (!string.IsNullOrEmpty(subQueryFrom.Alias))
+                {
+                    sb.Append(" AS ");
+                    sb.Append(sqlBuilder.ToSqlName(subQueryFrom.Alias));
+                }
+            }
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, AggregateFunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            sb.Append(expr.FunctionName);
+            sb.Append("(");
+            if (expr.IsDistinct) sb.Append("DISTINCT ");
+            ToSql(ref sb, expr.Expression, context, sqlBuilder, outputParams);
+            sb.Append(")");
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, OrderByExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            ToSql(ref sb, expr.Expression, context, sqlBuilder, outputParams);
+            if (!expr.IsAscending) sb.Append(" DESC");
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, SectionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            sb.Append("LIMIT ");
+            sb.Append(expr.Take.ToString());
+            if (expr.Skip > 0)
+            {
+                sb.Append(" OFFSET ");
+                sb.Append(expr.Skip.ToString());
+            }
         }
     }
 }

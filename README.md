@@ -45,7 +45,7 @@ dotnet add package LiteOrm
 ### 1. 映射定义
 
 ```csharp
-using namespace LiteOrm.Common;
+using LiteOrm.Common;
 
 [Table("USERS")]
 public class User
@@ -113,7 +113,7 @@ var host = Host.CreateDefaultBuilder(args)
 ### 3. 自定义服务接口与实现（可选）
 
 ```csharp
-using namespace LiteOrm.Service;
+using LiteOrm.Service;
 
 public interface IUserService : IEntityService<User>
 {
@@ -127,14 +127,19 @@ public class UserService : EntityService<User>, IUserService
 ```
 ### 4. 执行查询与操作
 ```csharp
-public class UserDemoController{
-    public readonly IUserService userService;
+using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.AspNetCore.Mvc;
+
+public class UserDemoController : ControllerBase
+{
+    private readonly IUserService userService;
     public UserDemoController(IUserService userService)
     {
         this.userService = userService;
     }
 
-    public async Task<ActionResult> Demo()
+    public async Task<IActionResult> Demo()
     {
         // 1. Lambda 异步查询
         var admin = await userService.SearchOneAsync(u => u.UserName == "admin" && u.Id > 0);
@@ -145,10 +150,9 @@ public class UserDemoController{
                                                         
         // 3. 批量更新
         await userService.BatchUpdateAsync(page);
-        return new ViewResult(page);
+        return Ok(page);
     }
 }
-   
 ```
 
 ## 查询系统 (Expr)

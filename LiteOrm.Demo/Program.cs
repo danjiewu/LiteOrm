@@ -5,7 +5,11 @@ using LiteOrm.Demo.Data;
 using LiteOrm.Demo.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Text;
 
+
+// 设置控制台输出编码为UTF-8，确保中文正确显示
+Console.OutputEncoding = Encoding.UTF8;
 
 // 使用 RegisterLiteOrm 从 appsettings.json 自动配置
 var host = Host.CreateDefaultBuilder(args)
@@ -35,29 +39,7 @@ using (var scope = host.Services.CreateScope())
     await ExprDemo.RunAllExamplesAsync(serviceFactory);
 
     Console.WriteLine("\n[2] 三层架构与事务处理演示展示...");
-    await ExprDemo.RunThreeTierDemo(serviceFactory);
-    List<Expr> exprs = new List<Expr>
-    {
-        new ValueExpr(123),
-        new PropertyExpr("Name"),
-        new UnaryExpr
-        {
-            Operator = UnaryOperator.BitwiseNot,
-            Operand = 1
-        },
-        new LogicBinaryExpr
-        {
-            Left = new PropertyExpr("Age"),
-            Operator = LogicOperator.GreaterThan,
-            Right = new ValueExpr(18)
-        },
-        new LogicSet(
-            LogicJoinType.And,
-            new PropertyExpr("Status") > 1,
-            new ValueExpr("Active") == 0
-        )
-    };
-    exprs.Skip(0).Take(5);
+    await ExprDemo.RunThreeTierDemo(serviceFactory);    
 }
 
 await host.RunAsync();

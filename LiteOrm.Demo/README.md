@@ -187,6 +187,7 @@ foreach (var user in users1)
 **示例 2: 组合条件 + 分页 + 排序**
 ```csharp
 var threeDaysAgo = DateTime.Now.AddDays(-3);
+string currentMonth = DateTime.Now.ToString("yyyyMM");
 // 筛选 3 天内且未发货的订单，按金额降序取前 10 条
 var section = new PageSection(0, 10).OrderByDesc(nameof(SalesRecord.Amount));
 var sales2 = await salesService.SearchSectionAsync(s => s.SaleTime < threeDaysAgo && s.ShipTime == null, section, [currentMonth]);
@@ -488,13 +489,13 @@ LambdaExprConverter.RegisterMethodHandler(typeof(string), "Contains", (node, con
 
 ```csharp
 // Now 函数映射为 CURRENT_TIMESTAMP（对应 DateTime.Now 解析结果）
-
+SqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (functionName, args) => "CURRENT_TIMESTAMP");
 
 // 特殊处理 IndexOf 和 Substring，支持 C# 到 SQL 的索引转换 (0-based -> 1-based)
-BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (functionName, args) => args.Count > 2 ?
+SqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (functionName, args) => args.Count > 2 ?
     $"INSTR({args[0].Key}, {args[1].Key}, {args[2].Key}+1)-1" : $"INSTR({args[0].Key}, {args[1].Key})-1");
-BaseSqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (name, args) => args.Count > 2 ?
-
+SqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (name, args) => args.Count > 2 ?
+    $"SUBSTR({args[0].Key}, {args[1].Key}+1, {args[2].Key})" : $"SUBSTR({args[0].Key}, {args[1].Key}+1)");
 
 // 为特定数据库（如 MySQL、SQLite）注册特定的日期加法逻辑
 MySqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],

@@ -134,9 +134,8 @@ namespace LiteOrm.Common
         /// </summary>
         public LogicExpr ToExpr()
         {
-            var stmt = ConvertInternal(_expression.Body) as LogicExpr;
-            if (stmt is null) throw new ArgumentException($"Unable to convert expression: {_expression.Body}");
-            return stmt;
+            var body = ConvertInternal(_expression.Body);
+            return AsLogic(body);
         }
 
         /// <summary>
@@ -184,13 +183,14 @@ namespace LiteOrm.Common
         private LogicExpr AsLogic(Expr expr)
         {
             if (expr is LogicExpr logicExpr) return logicExpr;
-            else throw new NotSupportedException("");
+            if (expr is ValueTypeExpr vte) return new LogicBinaryExpr(vte, LogicOperator.Equal, new ValueExpr(true));
+            throw new NotSupportedException($"Expression {expr} of type {expr?.GetType().Name} cannot be converted to LogicExpr.");
         }
 
         private ValueTypeExpr AsValue(Expr expr)
         {
             if (expr is ValueTypeExpr valueExpr) return valueExpr;
-            else throw new NotSupportedException("");
+            else throw new NotSupportedException($"Expression {expr} of type {expr?.GetType().Name} cannot be converted to ValueTypeExpr.");
         }
 
         private Expr ConvertBinary(BinaryExpression node)
@@ -286,7 +286,7 @@ namespace LiteOrm.Common
                 case ExpressionType.OnesComplement:
                     return new UnaryExpr(UnaryOperator.BitwiseNot, operand as ValueTypeExpr);
                 case ExpressionType.Not:
-                    return new NotExpr(operand as LogicExpr);
+                    return new NotExpr(AsLogic(operand));
                 case ExpressionType.Negate:
                     return new UnaryExpr(UnaryOperator.Nagive, operand as ValueTypeExpr);
                 case ExpressionType.Convert:
