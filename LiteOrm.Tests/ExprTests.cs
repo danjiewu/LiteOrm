@@ -236,5 +236,89 @@ namespace LiteOrm.Tests
             TestSerialization(f1);
             TestSerialization(f4);
         }
+
+        [Fact]
+        public void ExprFactory_Tests()
+        {
+            // Value
+            Assert.Equal(new ValueExpr(123), Expr.Const(123));
+
+            // And / Or
+            var e1 = Expr.Property("A") == 1;
+            var e2 = Expr.Property("B") == 2;
+            Assert.Equal(new LogicSet(LogicJoinType.And, e1, e2), Expr.And(e1, e2));
+            Assert.Equal(new LogicSet(LogicJoinType.Or, e1, e2), Expr.Or(e1, e2));
+
+            // Not
+            Assert.Equal(new NotExpr(e1), Expr.Not(e1));
+
+            // Func
+            Assert.Equal(new FunctionExpr("ABS", (ValueTypeExpr)10), Expr.Func("ABS", 10));
+
+            // Concat / List
+            var v1 = (ValueTypeExpr)new ValueExpr("a");
+            var v2 = (ValueTypeExpr)new ValueExpr("b");
+            Assert.Equal(new ValueSet(ValueJoinType.Concat, v1, v2), Expr.Concat(v1, v2));
+            Assert.Equal(new ValueSet(ValueJoinType.List, v1, v2), Expr.List(v1, v2));
+
+            // Sql / StaticSql
+            GenericSqlExpr.Register("TestKey2", (ctx, builder, pms, arg) => "TEST");
+            Assert.Equal(GenericSqlExpr.Get("TestKey2", 1), Expr.Sql("TestKey2", 1));
+            Assert.Equal(GenericSqlExpr.GetStaticSqlExpr("TestKey2"), Expr.StaticSql("TestKey2"));
+
+            // Between
+            Assert.Equal((Expr.Property("Age") >= (ValueTypeExpr)10) & (Expr.Property("Age") <= (ValueTypeExpr)20), Expr.Between("Age", 10, 20));
+        }
+
+        [Fact]
+        public void ExprExtensions_Tests()
+        {
+            var p = Expr.Property("Age");
+
+            // IsNull / IsNotNull
+            Assert.Equal(p == Expr.Null, p.IsNull());
+            Assert.Equal(p != Expr.Null, p.IsNotNull());
+
+            // Aggregates
+            Assert.Equal(new AggregateFunctionExpr("COUNT", p, true), p.Count(true));
+            Assert.Equal(new AggregateFunctionExpr("SUM", p), p.Sum());
+
+            // OrderBy
+            var asc = p.Asc();
+            Assert.Equal(p, asc.Item1);
+            Assert.True(asc.Item2);
+
+            var desc = p.Desc();
+            Assert.Equal(p, desc.Item1);
+            Assert.False(desc.Item2);
+        }
+
+        [Fact]
+        public void StructuredQuery_Tests()
+        {
+            var table = new TableExpr();
+
+            var query = table
+                .Where(Expr.Property("Age") > 18)
+                .OrderBy(Expr.Property("CreateTime").Desc())
+                .Section(10, 5)
+                .Select(Expr.Property("Id"), Expr.Property("Name"));
+
+            Assert.IsType<SelectExpr>(query);
+            Assert.IsType<SectionExpr>(query.From);
+
+            var section = (SectionExpr)query.From;
+            Assert.Equal(10, section.Skip);
+            Assert.Equal(5, section.Take);
+
+            var orderBy = (OrderByExpr)section.From;
+            Assert.Single(orderBy.OrderBys);
+            Assert.False(orderBy.OrderBys[0].Item2); // Desc
+
+            var where = (WhereExpr)orderBy.From;
+            Assert.Equal(Expr.Property("Age") > 18, where.Where);
+
+            Assert.Equal(table, where.From);
+        }
     }
 }

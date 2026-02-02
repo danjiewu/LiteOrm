@@ -225,7 +225,8 @@ namespace LiteOrm.Common
                         // 特殊处理 CompareTo 调用 (a.CompareTo(b) op 0) -> 扁平化为直接的 BinaryExpr (a op b)
                         if (node.Left is MethodCallExpression leftCallExpression && leftCallExpression.Method.Name == "CompareTo")
                         {
-                            if (!(right is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo method can only be compared with 0: {node}");
+                            var vRight = AsValue(right);
+                            if (!(vRight is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo method can only be compared with 0: {node}");
                             if (left is LogicBinaryExpr lbe)
                             {
                                 left = lbe.Left;
@@ -244,7 +245,8 @@ namespace LiteOrm.Common
                         }
                         else if (node.Right is MethodCallExpression rightCallExpression && rightCallExpression.Method.Name == "CompareTo")
                         {
-                            if (!(left is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo method can only be compared with 0: {node}");
+                            var vLeft = AsValue(left);
+                            if (!(vLeft is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo method can only be compared with 0: {node}");
                             if (right is LogicBinaryExpr lbe)
                             {
                                 left = lbe.Right;

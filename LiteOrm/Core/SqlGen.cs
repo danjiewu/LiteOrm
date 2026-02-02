@@ -1,6 +1,7 @@
 ﻿using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace LiteOrm
 {
@@ -38,6 +39,11 @@ namespace LiteOrm
         public string[] TableArgs { get; set; }
 
         /// <summary>
+        /// 获取实体的元数据定义。
+        /// </summary>
+        public SqlTable Table => TableInfoProvider.Default.GetTableView(ObjectType);
+
+        /// <summary>
         /// 将逻辑表达式转换为具体的 SQL 生成结果。
         /// </summary>
         /// <param name="expr">要转换的表达式（如条件、计算等）。</param>
@@ -49,7 +55,7 @@ namespace LiteOrm
 
             List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
             // 获取实体的元数据定义
-            SqlTable table = TableInfoProvider.Default.GetTableView(ObjectType);
+            SqlTable table = Table;
 
             // 构造解析上下文
             var context = new SqlBuildContext(table, AliasName, TableArgs);
@@ -59,6 +65,178 @@ namespace LiteOrm
             // 执行递归解析
             string sql = expr.ToSql(context, sqlBuilder, paramList);
 
+            return new SqlGenResult(sql, paramList);
+        }
+
+        /// <summary>
+        /// 生成 SELECT 语句结果。
+        /// </summary>
+        /// <param name="expr">查询表达式，可以是条件 LogicExpr 或结构化 SelectExpr 等。</param>
+        /// <returns>SQL 生成结果。</returns>
+        public SqlGenResult ToSelectSql(Expr expr = null)
+        {
+            SelectableExpr selectable;
+            if (expr is null)
+                selectable = new TableExpr(Table);
+            else if (expr is LogicExpr logic)
+                selectable = new WhereExpr { From = new TableExpr(Table), Where = logic };
+            else if (expr is SelectableExpr s)
+                selectable = s;
+            else
+                throw new NotSupportedException($"Expression type {expr.GetType().Name} is not supported for SELECT.");
+
+            SelectExpr selectExpr = selectable as SelectExpr ?? new SelectExpr { From = selectable };
+            return ToSql(selectExpr);
+        }
+
+        /// <summary>
+        /// 生成 COUNT 统计语句结果。
+        /// </summary>
+        /// <param name="expr">查询表达式。</param>
+        /// <returns>SQL 生成结果。</returns>
+        public SqlGenResult ToCountSql(Expr expr = null)
+        {
+            SelectableExpr selectable;
+            if (expr is null)
+                selectable = new TableExpr(Table);
+            else if (expr is LogicExpr logic)
+                selectable = new WhereExpr { From = new TableExpr(Table), Where = logic };
+            else if (expr is SelectableExpr s)
+                selectable = s;
+            else
+                throw new NotSupportedException($"Expression type {expr.GetType().Name} is not supported for COUNT.");
+
+            SelectExpr selectExpr = new SelectExpr
+            {
+                From = selectable,
+                Selects = new List<ValueTypeExpr> { new AggregateFunctionExpr("COUNT", new ValueExpr(1) { IsConst = true }) }
+            };
+            return ToSql(selectExpr);
+        }
+
+        /// <summary>
+        /// 生成 UPDATE 语句结果。
+        /// </summary>
+        /// <param name="values">要更新的属性及数值。</param>
+        /// <param name="expr">更新条件。</param>
+        /// <returns>SQL 生成结果。</returns>
+        public SqlGenResult ToUpdateSql(IEnumerable<KeyValuePair<string, object>> values, Expr expr = null)
+        {
+            if (values == null) throw new ArgumentNullException(nameof(values));
+
+            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
+            SqlTable table = Table;
+            var context = new SqlBuildContext(table, AliasName, TableArgs) { SingleTable = true };
+            var sqlBuilder = SqlBuilderFactory.Instance.GetSqlBuilder(table.Definition.DataProviderType);
+
+            ValueStringBuilder sb = ValueStringBuilder.Create(256);
+            sb.Append("UPDATE ");
+            sb.Append(sqlBuilder.BuildExpression(table, TableArgs));
+            sb.Append(" SET ");
+
+            bool first = true;
+            foreach (var kvp in values)
+            {
+                if (!first) sb.Append(",");
+                SqlColumn column = table.GetColumn(kvp.Key);
+                if (column == null) throw new Exception($"Property \"{kvp.Key}\" does not exist in type \"{ObjectType.FullName}\".");
+
+                sb.Append(sqlBuilder.ToSqlName(column.Name));
+                sb.Append("=");
+
+                string paramName = paramList.Count.ToString();
+                paramList.Add(new KeyValuePair<string, object>(sqlBuilder.ToParamName(paramName), kvp.Value));
+                sb.Append(sqlBuilder.ToSqlParam(paramName));
+
+                first = false;
+            }
+
+            if (expr != null)
+            {
+                sb.Append(" WHERE ");
+                if (expr is LogicExpr)
+                    sb.Append(expr.ToSql(context, sqlBuilder, paramList));
+                else if (expr is WhereExpr where)
+                    sb.Append(where.Where.ToSql(context, sqlBuilder, paramList));
+                else
+                    sb.Append(expr.ToSql(context, sqlBuilder, paramList));
+            }
+
+            string sql = sb.ToString();
+            sb.Dispose();
+            return new SqlGenResult(sql, paramList);
+        }
+
+        /// <summary>
+        /// 生成 DELETE 语句结果。
+        /// </summary>
+        /// <param name="expr">删除条件。</param>
+        /// <returns>SQL 生成结果。</returns>
+        public SqlGenResult ToDeleteSql(Expr expr = null)
+        {
+            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
+            SqlTable table = Table;
+            var context = new SqlBuildContext(table, AliasName, TableArgs) { SingleTable = true };
+            var sqlBuilder = SqlBuilderFactory.Instance.GetSqlBuilder(table.Definition.DataProviderType);
+
+            ValueStringBuilder sb = ValueStringBuilder.Create(128);
+            sb.Append("DELETE FROM ");
+            sb.Append(sqlBuilder.BuildExpression(table, TableArgs));
+
+            if (expr != null)
+            {
+                sb.Append(" WHERE ");
+                if (expr is LogicExpr)
+                    sb.Append(expr.ToSql(context, sqlBuilder, paramList));
+                else if (expr is WhereExpr where)
+                    sb.Append(where.Where.ToSql(context, sqlBuilder, paramList));
+                else
+                    sb.Append(expr.ToSql(context, sqlBuilder, paramList));
+            }
+
+            string sql = sb.ToString();
+            sb.Dispose();
+            return new SqlGenResult(sql, paramList);
+        }
+
+        /// <summary>
+        /// 生成 INSERT 语句结果。
+        /// </summary>
+        /// <param name="values">要插入的属性及数值。</param>
+        /// <returns>SQL 生成结果。</returns>
+        public SqlGenResult ToInsertSql(IEnumerable<KeyValuePair<string, object>> values)
+        {
+            if (values == null) throw new ArgumentNullException(nameof(values));
+            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
+            SqlTable table = Table;
+            var sqlBuilder = SqlBuilderFactory.Instance.GetSqlBuilder(table.Definition.DataProviderType);
+
+            ValueStringBuilder sbColumns = ValueStringBuilder.Create(128);
+            ValueStringBuilder sbValues = ValueStringBuilder.Create(128);
+
+            bool first = true;
+            foreach (var kvp in values)
+            {
+                SqlColumn column = table.GetColumn(kvp.Key);
+                if (column == null) continue;
+
+                if (!first)
+                {
+                    sbColumns.Append(",");
+                    sbValues.Append(",");
+                }
+
+                sbColumns.Append(sqlBuilder.ToSqlName(column.Name));
+
+                string paramName = paramList.Count.ToString();
+                paramList.Add(new KeyValuePair<string, object>(sqlBuilder.ToParamName(paramName), kvp.Value));
+                sbValues.Append(sqlBuilder.ToSqlParam(paramName));
+                first = false;
+            }
+
+            string sql = $"INSERT INTO {sqlBuilder.BuildExpression(table, TableArgs)} ({sbColumns.ToString()}) VALUES ({sbValues.ToString()})";
+            sbColumns.Dispose();
+            sbValues.Dispose();
             return new SqlGenResult(sql, paramList);
         }
 

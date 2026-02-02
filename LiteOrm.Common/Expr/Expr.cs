@@ -108,5 +108,74 @@ namespace LiteOrm.Common
         {
             return new LambdaExprConverter(expression).ToExpr();
         }
+
+        /// <summary>
+        /// 创建常量值表达式。
+        /// <param name="value"> 参数表示常量值。</param>
+        /// <returns>常量值表达式。</returns>
+        /// </summary>
+        public static ValueExpr Const(object value) => new ValueExpr(value) { IsConst = true };
+
+        /// <summary>
+        /// 创建变量值表达式
+        /// </summary>
+        /// <param name="value"> 参数表示变量值。 </param>
+        /// <returns></returns>
+        public static ValueExpr Value(object value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 创建逻辑与(AND)集合。
+        /// </summary>
+        public static LogicSet And(params LogicExpr[] exprs) => new LogicSet(LogicJoinType.And, exprs);
+
+        /// <summary>
+        /// 创建逻辑或(OR)集合。
+        /// </summary>
+        public static LogicSet Or(params LogicExpr[] exprs) => new LogicSet(LogicJoinType.Or, exprs);
+
+        /// <summary>
+        /// 创建逻辑取反(NOT)表达式。
+        /// </summary>
+        public static NotExpr Not(LogicExpr expr) => new NotExpr(expr);
+
+        /// <summary>
+        /// 创建函数调用表达式。
+        /// </summary>
+        public static FunctionExpr Func(string name, params ValueTypeExpr[] args) => new FunctionExpr(name, args);
+
+        /// <summary>
+        /// 创建聚合函数表达式。
+        /// </summary>
+        public static AggregateFunctionExpr Aggregate(string name, ValueTypeExpr expression, bool isDistinct = false) => new AggregateFunctionExpr(name, expression, isDistinct);
+
+        /// <summary>
+        /// 创建字符串拼接表达式集合 (CONCAT)。
+        /// </summary>
+        public static ValueSet Concat(params ValueTypeExpr[] exprs) => new ValueSet(ValueJoinType.Concat, exprs);
+
+        /// <summary>
+        /// 创建值列表表达式集合 (List)。
+        /// </summary>
+        public static ValueSet List(params ValueTypeExpr[] exprs) => new ValueSet(ValueJoinType.List, exprs);
+
+        /// <summary>
+        /// 创建动态 SQL 表达式。
+        /// </summary>
+        public static GenericSqlExpr Sql(string key, object arg = null) => GenericSqlExpr.Get(key, arg);
+
+        /// <summary>
+        /// 获取静态 SQL 表达式。
+        /// </summary>
+        public static GenericSqlExpr StaticSql(string key) => GenericSqlExpr.GetStaticSqlExpr(key);
+
+        /// <summary>
+        /// 创建表表达式。
+        /// </summary>
+        public static TableExpr Table(SqlTable table) => new TableExpr(table);
+
+        /// <summary>
+        /// 创建范围查询表达式 (BETWEEN)。
+        /// </summary>
+        public static LogicExpr Between(string propertyName, object low, object high) => Property(propertyName).Between(low, high);
     }
 }

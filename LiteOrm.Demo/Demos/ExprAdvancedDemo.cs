@@ -91,10 +91,102 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine("\n[SqlGen] 表达式生成 SQL 展示:");
             var expr = (Expr.Property(nameof(User.Age)) > 18) & (Expr.Property(nameof(User.UserName)).Contains("admin_"));
             var sqlGen = new SqlGen(typeof(User));
-            var result = sqlGen.ToSql(expr);
 
-            Console.WriteLine($"  Expr: {expr}");
-            Console.WriteLine($"  生成 SQL: {result}");
+            // 1. 基础生成
+            var result = sqlGen.ToSql(expr);
+            Console.WriteLine("\n  (1) 基础 ToSql (仅生成条件片段):");
+            Console.WriteLine($"      Expr: {expr}");
+            Console.WriteLine($"      结果: {result}");
+
+            // 2. 生成完整 SELECT 语句
+            var selectResult = sqlGen.ToSelectSql(expr);
+            Console.WriteLine("\n  (2) ToSelectSql (生成完整查询):");
+            Console.WriteLine($"      结果: {selectResult}");
+
+            // 3. 生成 COUNT 语句
+            var countResult = sqlGen.ToCountSql(expr);
+            Console.WriteLine("\n  (3) ToCountSql (生成统计查询):");
+            Console.WriteLine($"      结果: {countResult}");
+
+            // 4. 生成 UPDATE 语句
+            var updateValues = new Dictionary<string, object>
+            {
+                { nameof(User.UserName), "NewName" },
+                { nameof(User.Age), 30 }
+            };
+            var updateResult = sqlGen.ToUpdateSql(updateValues, Expr.Property(nameof(User.Id)) == 1);
+            Console.WriteLine("\n  (4) ToUpdateSql (生成更新语句):");
+            Console.WriteLine($"      结果: {updateResult}");
+
+            // 5. 生成 DELETE 语句
+            var deleteResult = sqlGen.ToDeleteSql(Expr.Property(nameof(User.Age)) < 18);
+            Console.WriteLine("\n  (5) ToDeleteSql (生成删除语句):");
+            Console.WriteLine($"      结果: {deleteResult}");
+
+            // 6. 生成 INSERT 语句
+            var insertValues = new Dictionary<string, object>
+            {
+                { nameof(User.UserName), "TestUser" },
+                { nameof(User.Age), 25 },
+                { nameof(User.CreateTime), DateTime.Now }
+            };
+            var insertResult = sqlGen.ToInsertSql(insertValues);
+            Console.WriteLine("\n  (6) ToInsertSql (生成插入语句):");
+            Console.WriteLine($"      结果: {insertResult}");
+
+            // 7. OrderBy 演示
+            var orderByExpr = new OrderByExpr
+            {
+                From = new TableExpr(sqlGen.Table),
+                OrderBys = new List<(ValueTypeExpr, bool)> { (Expr.Property(nameof(User.Age)), false) } // Age DESC
+            };
+            var orderByResult = sqlGen.ToSelectSql(orderByExpr);
+            Console.WriteLine("\n  (7) OrderByExpr (生成带排序查询):");
+            Console.WriteLine($"      结果: {orderByResult}");
+
+            // 8. GroupBy 演示
+            var groupByExpr = new GroupByExpr
+            {
+                From = new TableExpr(sqlGen.Table),
+                GroupBys = new List<ValueTypeExpr> { Expr.Property(nameof(User.DeptId)) }
+            };
+            var groupByQuery = new SelectExpr
+            {
+                From = groupByExpr,
+                Selects = new List<ValueTypeExpr> {
+                    Expr.Property(nameof(User.DeptId)),
+                    new AggregateFunctionExpr("COUNT", Expr.Const(1))
+                }
+            };
+            var groupByResult = sqlGen.ToSelectSql(groupByQuery);
+            Console.WriteLine("\n  (8) GroupByExpr (生成带分组聚合查询):");
+            Console.WriteLine($"      结果: {groupByResult}");
+
+            // 9. Section (分页) 演示
+            var sectionExpr = new SectionExpr(10, 20) // Skip 10, Take 20
+            {
+                From = new TableExpr(sqlGen.Table)
+            };
+            var sectionResult = sqlGen.ToSelectSql(sectionExpr);
+            Console.WriteLine("\n  (9) SectionExpr (生成分页查询):");
+            Console.WriteLine($"      结果: {sectionResult}");
+
+            // 10. 综合查询 (Where + OrderBy + Section)
+            var complexQuery = new SectionExpr(0, 10)
+            {
+                From = new OrderByExpr
+                {
+                    From = new WhereExpr
+                    {
+                        From = new TableExpr(sqlGen.Table),
+                        Where = Expr.Property(nameof(User.Age)) > 20
+                    },
+                    OrderBys = new List<(ValueTypeExpr, bool)> { (Expr.Property(nameof(User.CreateTime)), true) }
+                }
+            };
+            var complexResult = sqlGen.ToSelectSql(complexQuery);
+            Console.WriteLine("\n  (10) 综合查询 (Where + OrderBy + Section):");
+            Console.WriteLine($"       结果: {complexResult}");
         }
     }
 }

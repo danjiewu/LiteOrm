@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 
 namespace LiteOrm.Common
 {
@@ -73,7 +74,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static LogicExpr Between(this ValueTypeExpr left, object low, object high)
         {
-            return (left >= new ValueExpr(low)) & (left <= new ValueExpr(high));
+            return (left >= (ValueTypeExpr)new ValueExpr(low)) & (left <= (ValueTypeExpr)new ValueExpr(high));
         }
 
         /// <summary>
@@ -95,5 +96,75 @@ namespace LiteOrm.Common
         /// 创建以指定字符串结尾的表达式 (EndsWith)。
         /// </summary>
         public static LogicBinaryExpr EndsWith(this ValueTypeExpr left, string text) => new LogicBinaryExpr(left, LogicOperator.EndsWith, new ValueExpr(text));
+
+        /// <summary>
+        /// 创建 IS NULL 表达式。
+        /// </summary>
+        public static LogicBinaryExpr IsNull(this ValueTypeExpr left) => new LogicBinaryExpr(left, LogicOperator.Equal, Expr.Null);
+
+        /// <summary>
+        /// 创建 IS NOT NULL 表达式。
+        /// </summary>
+        public static LogicBinaryExpr IsNotNull(this ValueTypeExpr left) => new LogicBinaryExpr(left, LogicOperator.NotEqual, Expr.Null);
+
+        /// <summary>
+        /// 创建 COUNT 聚合。
+        /// </summary>
+        public static AggregateFunctionExpr Count(this ValueTypeExpr expr, bool isDistinct = false) => new AggregateFunctionExpr("COUNT", expr, isDistinct);
+
+        /// <summary>
+        /// 创建 SUM 聚合。
+        /// </summary>
+        public static AggregateFunctionExpr Sum(this ValueTypeExpr expr, bool isDistinct = false) => new AggregateFunctionExpr("SUM", expr, isDistinct);
+
+        /// <summary>
+        /// 创建 AVG 聚合。
+        /// </summary>
+        public static AggregateFunctionExpr Avg(this ValueTypeExpr expr, bool isDistinct = false) => new AggregateFunctionExpr("AVG", expr, isDistinct);
+
+        /// <summary>
+        /// 创建 MAX 聚合。
+        /// </summary>
+        public static AggregateFunctionExpr Max(this ValueTypeExpr expr) => new AggregateFunctionExpr("MAX", expr);
+
+        /// <summary>
+        /// 创建 MIN 聚合。
+        /// </summary>
+        public static AggregateFunctionExpr Min(this ValueTypeExpr expr) => new AggregateFunctionExpr("MIN", expr);
+
+        /// <summary>
+        /// 创建升序排序项。
+        /// </summary>
+        public static (ValueTypeExpr, bool) Asc(this ValueTypeExpr expr) => (expr, true);
+
+        /// <summary>
+        /// 创建降序排序项。
+        /// </summary>
+        public static (ValueTypeExpr, bool) Desc(this ValueTypeExpr expr) => (expr, false);
+
+        /// <summary>
+        /// 添加 WHERE 子句。
+        /// </summary>
+        public static WhereExpr Where(this WhereableExpr from, LogicExpr where) => new WhereExpr { From = from, Where = where };
+
+        /// <summary>
+        /// 添加 ORDER BY 子句。
+        /// </summary>
+        public static OrderByExpr OrderBy(this OrderableExpr from, params (ValueTypeExpr, bool)[] orders) => new OrderByExpr { From = from, OrderBys = new List<(ValueTypeExpr, bool)>(orders) };
+
+        /// <summary>
+        /// 添加 GROUP BY 子句。
+        /// </summary>
+        public static GroupByExpr GroupBy(this GroupableExpr from, params ValueTypeExpr[] groups) => new GroupByExpr { From = from, GroupBys = new List<ValueTypeExpr>(groups) };
+
+        /// <summary>
+        /// 添加分页(SKIP/TAKE)子句。
+        /// </summary>
+        public static SectionExpr Section(this SectionableExpr from, int skip, int take) => new SectionExpr(skip, take) { From = from };
+
+        /// <summary>
+        /// 添加 SELECT 子句。
+        /// </summary>
+        public static SelectExpr Select(this SelectableExpr from, params ValueTypeExpr[] selects) => new SelectExpr { From = from, Selects = new List<ValueTypeExpr>(selects) };
     }
 }
