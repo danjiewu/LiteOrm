@@ -168,7 +168,7 @@ namespace LiteOrm.Service
         /// <returns>符合条件的视图对象列表</returns>
         public virtual List<TView> SearchWithOrder(Expr expr, Sorting[] orderby, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).Search(expr, orderby);
+            return ObjectViewDAO.WithArgs(tableArgs).Search(expr);
         }
 
         /// <summary>
@@ -180,7 +180,7 @@ namespace LiteOrm.Service
         /// <returns>分页后的视图对象列表</returns>
         public virtual List<TView> SearchSection(Expr expr, PageSection section, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).SearchSection(expr, section);
+            return ObjectViewDAO.WithArgs(tableArgs).Search(expr);
         }
 
         #endregion

@@ -107,64 +107,30 @@ namespace LiteOrm.Common
         /// </summary>
         public static LogicBinaryExpr IsNotNull(this ValueTypeExpr left) => new LogicBinaryExpr(left, LogicOperator.NotEqual, Expr.Null);
 
-        /// <summary>
-        /// 创建 COUNT 聚合。
-        /// </summary>
-        public static AggregateFunctionExpr Count(this ValueTypeExpr expr, bool isDistinct = false) => new AggregateFunctionExpr("COUNT", expr, isDistinct);
+        public static WhereExpr Where(this SourceExpr source, LogicExpr where) => new WhereExpr(source, where);
 
-        /// <summary>
-        /// 创建 SUM 聚合。
-        /// </summary>
-        public static AggregateFunctionExpr Sum(this ValueTypeExpr expr, bool isDistinct = false) => new AggregateFunctionExpr("SUM", expr, isDistinct);
+        public static GroupByExpr GroupBy(this GroupBySourceExpr source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source, groupBys);
 
-        /// <summary>
-        /// 创建 AVG 聚合。
-        /// </summary>
-        public static AggregateFunctionExpr Avg(this ValueTypeExpr expr, bool isDistinct = false) => new AggregateFunctionExpr("AVG", expr, isDistinct);
+        public static HavingExpr Having(this HavingSourceExpr source, LogicExpr having) => new HavingExpr(source, having);
 
-        /// <summary>
-        /// 创建 MAX 聚合。
-        /// </summary>
-        public static AggregateFunctionExpr Max(this ValueTypeExpr expr) => new AggregateFunctionExpr("MAX", expr);
+        public static SelectExpr Select(this SelectSourceExpr source, params ValueTypeExpr[] selects) => new SelectExpr(source, selects);
 
-        /// <summary>
-        /// 创建 MIN 聚合。
-        /// </summary>
-        public static AggregateFunctionExpr Min(this ValueTypeExpr expr) => new AggregateFunctionExpr("MIN", expr);
+        public static OrderByExpr OrderBy(this OrderBySourceExpr source, params (ValueTypeExpr, bool)[] orderBys) => new OrderByExpr(source, orderBys);
 
-        /// <summary>
-        /// 创建升序排序项。
-        /// </summary>
+        public static SectionExpr Section(this SectionSourceExpr source, int skip, int take) => new SectionExpr(source, skip, take);
+
         public static (ValueTypeExpr, bool) Asc(this ValueTypeExpr expr) => (expr, true);
 
-        /// <summary>
-        /// 创建降序排序项。
-        /// </summary>
         public static (ValueTypeExpr, bool) Desc(this ValueTypeExpr expr) => (expr, false);
 
-        /// <summary>
-        /// 添加 WHERE 子句。
-        /// </summary>
-        public static WhereExpr Where(this SourceExpr from, LogicExpr where) => new WhereExpr { Source = from, Where = where };
+        public static AggregateFunctionExpr Count(this ValueTypeExpr expr, bool isDistinct = false) => new AggregateFunctionExpr("COUNT", expr, isDistinct);
 
-        /// <summary>
-        /// 添加 ORDER BY 子句。
-        /// </summary>
-        public static OrderByExpr OrderBy(this OrderBySourceExpr from, params (ValueTypeExpr, bool)[] orders) => new OrderByExpr { Source = from, OrderBys = new List<(ValueTypeExpr, bool)>(orders) };
+        public static AggregateFunctionExpr Sum(this ValueTypeExpr expr) => new AggregateFunctionExpr("SUM", expr);
 
-        /// <summary>
-        /// 添加 GROUP BY 子句。
-        /// </summary>
-        public static GroupByExpr GroupBy(this GroupBySourceExpr from, params ValueTypeExpr[] groups) => new GroupByExpr { Source = from, GroupBys = new List<ValueTypeExpr>(groups) };
+        public static AggregateFunctionExpr Avg(this ValueTypeExpr expr) => new AggregateFunctionExpr("AVG", expr);
 
-        /// <summary>
-        /// 添加分页(SKIP/TAKE)子句。
-        /// </summary>
-        public static SectionExpr Section(this SectionSourceExpr from, int skip, int take) => new SectionExpr(skip, take) { Source = from };
+        public static AggregateFunctionExpr Max(this ValueTypeExpr expr) => new AggregateFunctionExpr("MAX", expr);
 
-        /// <summary>
-        /// 添加 SELECT 子句。
-        /// </summary>
-        public static SelectExpr Select(this SelectSourceExpr from, params ValueTypeExpr[] selects) => new SelectExpr { Source = from, Selects = new List<ValueTypeExpr>(selects) };
+        public static AggregateFunctionExpr Min(this ValueTypeExpr expr) => new AggregateFunctionExpr("MIN", expr);
     }
 }

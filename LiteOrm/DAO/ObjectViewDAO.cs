@@ -359,27 +359,34 @@ namespace LiteOrm
         /// <returns>符合条件的对象列表</returns>
         public virtual List<T> Search(Expr expr)
         {
-            if (expr is LogicExpr logicExpr)
+            SelectSourceExpr selectSource;
+            if (expr is null)
             {
-                using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
-                return GetAll(command);
+                selectSource = new TableExpr(Table);
             }
-            else if(expr is SelectSourceExpr selectSource)
+            else if (expr is LogicExpr logicExpr)
             {
-                List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
-                var context = SqlBuildContext;
-                string strCondition = null;
-                new SelectExpr()
-                {
-                    Source = selectSource,
-                    Selects = new List<ValueTypeExpr>() { AllFieldsSql }
-                };
-                strCondition = expr.ToSql(context, SqlBuilder, paramList);
+                selectSource = new WhereExpr() { Source = new TableExpr(Table), Where = logicExpr };
+            }
+            else if (expr is SelectSourceExpr sourceExpr)
+            {
+                selectSource = sourceExpr;
+            }
+            else
+            {
+                throw new ArgumentException("expr 参数类型不支持");
+            }
 
-                return MakeNamedParamCommand(ReplaceParam(sqlWithParam.Replace(ParamWhere, ToWhereSql(strCondition))), paramList);
-                using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
-                return GetAll(command);
-            }
+            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
+            var context = SqlBuildContext;
+            var selectExpr = new SelectExpr()
+            {
+                Source = selectSource,
+                Selects = SelectColumns.Select((col, i) => (ValueTypeExpr)Expr.Property(col.Name)).ToList()
+            };
+            using var command = NewCommand();
+            command.CommandText = expr.ToSql(context, SqlBuilder, paramList);
+            return GetAll(command);
         }
 
         /// <summary>

@@ -173,6 +173,10 @@ namespace LiteOrm.Common
         /// </summary>
         public static TableExpr Table(SqlTable table) => new TableExpr(table);
 
+        public static TableExpr Table<T>() => new TableExpr(TableInfoProvider.Default.GetTableView(typeof(T)));
+
+        public static WhereExpr Where<T>(Expression<Func<T, bool>> expression) => new WhereExpr() { Source = Table<T>(), Where = Exp(expression) };
+
         /// <summary>
         /// 创建范围查询表达式 (BETWEEN)。
         /// </summary>

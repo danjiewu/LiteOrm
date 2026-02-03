@@ -320,5 +320,44 @@ namespace LiteOrm.Tests
 
             Assert.Equal(table, where.Source);
         }
+
+        [Fact]
+        public void QueryExpr_Constructor_Tests()
+        {
+            var table = new TableExpr(TableInfoProvider.Default.GetTableView(typeof(TestUser)));
+            var section = table
+                .Where(Expr.Property("Age") > 18)
+                .GroupBy(Expr.Property("DeptId"))
+                .Having(AggregateFunctionExpr.Count > 1)
+                .Select(Expr.Property("DeptId"), AggregateFunctionExpr.Count)
+                .OrderBy((Expr.Property("DeptId"), true))
+                .Section(10, 20);
+
+            Assert.NotNull(section.Source);
+            Assert.Equal(10, section.Skip);
+            Assert.Equal(20, section.Take);
+
+            // Serialization and Equals test
+            TestSerialization(section);
+        }
+
+        [Fact]
+        public void GroupByExpr_Constructor_params_Test()
+        {
+            var table = new TableExpr(TableInfoProvider.Default.GetTableView(typeof(TestUser)));
+            var groupBy = new GroupByExpr(table, Expr.Property("DeptId"), Expr.Property("Sex"));
+            Assert.Equal(2, groupBy.GroupBys.Count);
+            Assert.Equal("DeptId", (groupBy.GroupBys[0] as PropertyExpr).PropertyName);
+        }
+
+        [Fact]
+        public void OrderByExpr_Constructor_params_Test()
+        {
+            var table = new TableExpr(TableInfoProvider.Default.GetTableView(typeof(TestUser)));
+            var orderBy = new OrderByExpr(table, (Expr.Property("Age"), true), (Expr.Property("Name"), false));
+            Assert.Equal(2, orderBy.OrderBys.Count);
+            Assert.True(orderBy.OrderBys[0].Item2);
+            Assert.False(orderBy.OrderBys[1].Item2);
+        }
     }
 }

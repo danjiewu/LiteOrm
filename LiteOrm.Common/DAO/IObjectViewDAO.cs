@@ -38,21 +38,6 @@ namespace LiteOrm.Common
         /// <returns>符合条件的对象列表</returns>
         new List<T> Search(Expr expr = null);
 
-        /// <summary>
-        /// 根据条件查询
-        /// </summary>
-        /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <returns>符合条件的对象列表</returns>
-        new List<T> Search(Expr expr, params Sorting[] orderBy);
-
-        /// <summary>
-        /// 分页查询
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="section">分页设定</param>
-        /// <returns></returns>
-        new List<T> SearchSection(Expr expr, PageSection section);
     }
     #endregion
 
@@ -111,22 +96,6 @@ namespace LiteOrm.Common
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象列表</returns>
         IList Search(Expr expr);
-
-        /// <summary>
-        /// 根据条件查询
-        /// </summary>
-        /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <returns>符合条件的对象列表</returns>
-        IList Search(Expr expr, params Sorting[] orderBy);
-
-        /// <summary>
-        /// 分页查询
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="section">分页设定</param>
-        /// <returns></returns>
-        IList SearchSection(Expr expr, PageSection section);
     }
     #endregion
 }

@@ -50,5 +50,9 @@ namespace LiteOrm.Common
         {
             return OrderedHashCodes(GetType().GetHashCode(), Foreign?.GetHashCode() ?? 0, InnerExpr?.GetHashCode() ?? 0);
         }
+        public override string ToString()
+        {
+            return $"Foreign {Foreign}{{ {InnerExpr} }}";
+        }
     }
 }

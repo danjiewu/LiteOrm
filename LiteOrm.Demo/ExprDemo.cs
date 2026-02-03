@@ -27,6 +27,7 @@ namespace LiteOrm.Demo
             ExprAdvancedDemo.ShowLambdaExpr();
             ExprAdvancedDemo.ShowExprConvert();
             ExprAdvancedDemo.ShowSqlGeneration();
+            ExprAdvancedDemo.ShowQueryExpr();
 
             // 3. 查询场景演示
             await QueryUsageDemo.ShowJoinQueryAsync(factory.DepartmentService);

@@ -135,58 +135,67 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine($"      结果: {insertResult}");
 
             // 7. OrderBy 演示
-            var orderByExpr = new OrderByExpr
-            {
-                Source = new TableExpr(sqlGen.Table),
-                OrderBys = new List<(ValueTypeExpr, bool)> { (Expr.Property(nameof(User.Age)), false) } // Age DESC
-            };
+            var orderByExpr = new TableExpr(sqlGen.Table)
+                .OrderBy((Expr.Property(nameof(User.Age)), false)); // Age DESC
             var orderByResult = sqlGen.ToSelectSql(orderByExpr);
             Console.WriteLine("\n  (7) OrderByExpr (生成带排序查询):");
             Console.WriteLine($"      结果: {orderByResult}");
 
             // 8. GroupBy 演示
-            var groupByExpr = new GroupByExpr
-            {
-                Source = new TableExpr(sqlGen.Table),
-                GroupBys = new List<ValueTypeExpr> { Expr.Property(nameof(User.DeptId)) }
-            };
-            var groupByQuery = new SelectExpr
-            {
-                Source = groupByExpr,
-                Selects = new List<ValueTypeExpr> {
-                    Expr.Property(nameof(User.DeptId)),
-                    new AggregateFunctionExpr("COUNT", Expr.Const(1))
-                }
-            };
+            var groupByQuery = new TableExpr(sqlGen.Table)
+                .GroupBy(Expr.Property(nameof(User.DeptId)))
+                .Select(Expr.Property(nameof(User.DeptId)), AggregateFunctionExpr.Count);
+            
             var groupByResult = sqlGen.ToSelectSql(groupByQuery);
             Console.WriteLine("\n  (8) GroupByExpr (生成带分组聚合查询):");
             Console.WriteLine($"      结果: {groupByResult}");
 
             // 9. Section (分页) 演示
-            var sectionExpr = new SectionExpr(10, 20) // Skip 10, Take 20
-            {
-                Source = new TableExpr(sqlGen.Table)
-            };
+            var sectionExpr = new TableExpr(sqlGen.Table)
+                .Section(10, 20); // Skip 10, Take 20
+            
             var sectionResult = sqlGen.ToSelectSql(sectionExpr);
             Console.WriteLine("\n  (9) SectionExpr (生成分页查询):");
             Console.WriteLine($"      结果: {sectionResult}");
 
             // 10. 综合查询 (Where + OrderBy + Section)
-            var complexQuery = new SectionExpr(0, 10)
-            {
-                Source = new OrderByExpr
-                {
-                    Source = new WhereExpr
-                    {
-                        Source = new TableExpr(sqlGen.Table),
-                        Where = Expr.Property(nameof(User.Age)) > 20
-                    },
-                    OrderBys = new List<(ValueTypeExpr, bool)> { (Expr.Property(nameof(User.CreateTime)), true) }
-                }
-            };
+            var complexQuery = new TableExpr(sqlGen.Table)
+                .Where(Expr.Property(nameof(User.Age)) > 20)
+                .OrderBy((Expr.Property(nameof(User.CreateTime)), true))
+                .Section(0, 10);
+
             var complexResult = sqlGen.ToSelectSql(complexQuery);
             Console.WriteLine("\n  (10) 综合查询 (Where + OrderBy + Section):");
             Console.WriteLine($"       结果: {complexResult}");
+        }
+
+        public static void ShowQueryExpr()
+        {
+            Console.WriteLine("\n[QueryExpr] 结构化查询表达式演示:");
+
+            // 使用 Expr 扩展方法链式构造查询
+            var table = new TableExpr(TableInfoProvider.Default.GetTableView(typeof(User)));
+            var query = table
+                .Where(Expr.Property("Age") > 18)
+                .GroupBy(Expr.Property("DeptId"))
+                .Having(AggregateFunctionExpr.Count > 1)
+                .Select(Expr.Property("DeptId"), AggregateFunctionExpr.Count)
+                .OrderBy((Expr.Property("DeptId"), true))
+                .Section(10, 20);
+
+            Console.WriteLine($"  Table: {table}");
+            Console.WriteLine($"  Result: {query}");
+
+            // 更简洁的一行构建
+            var fluentQuery = new TableExpr(TableInfoProvider.Default.GetTableView(typeof(SalesRecord)))
+                .Where(Expr.Property("Status") == 1)
+                .GroupBy(Expr.Property("CustomerId"))
+                .Having(AggregateFunctionExpr.Count > 5)
+                .Select(Expr.Property("CustomerId"), AggregateFunctionExpr.Count)
+                .OrderBy((Expr.Property("CustomerId"), true))
+                .Section(0, 10);
+
+            Console.WriteLine($"\n  链式构建结果: {fluentQuery}");
         }
     }
 }
