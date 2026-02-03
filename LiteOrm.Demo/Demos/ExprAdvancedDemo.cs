@@ -137,7 +137,7 @@ namespace LiteOrm.Demo.Demos
             // 7. OrderBy 演示
             var orderByExpr = new OrderByExpr
             {
-                From = new TableExpr(sqlGen.Table),
+                Source = new TableExpr(sqlGen.Table),
                 OrderBys = new List<(ValueTypeExpr, bool)> { (Expr.Property(nameof(User.Age)), false) } // Age DESC
             };
             var orderByResult = sqlGen.ToSelectSql(orderByExpr);
@@ -147,12 +147,12 @@ namespace LiteOrm.Demo.Demos
             // 8. GroupBy 演示
             var groupByExpr = new GroupByExpr
             {
-                From = new TableExpr(sqlGen.Table),
+                Source = new TableExpr(sqlGen.Table),
                 GroupBys = new List<ValueTypeExpr> { Expr.Property(nameof(User.DeptId)) }
             };
             var groupByQuery = new SelectExpr
             {
-                From = groupByExpr,
+                Source = groupByExpr,
                 Selects = new List<ValueTypeExpr> {
                     Expr.Property(nameof(User.DeptId)),
                     new AggregateFunctionExpr("COUNT", Expr.Const(1))
@@ -165,7 +165,7 @@ namespace LiteOrm.Demo.Demos
             // 9. Section (分页) 演示
             var sectionExpr = new SectionExpr(10, 20) // Skip 10, Take 20
             {
-                From = new TableExpr(sqlGen.Table)
+                Source = new TableExpr(sqlGen.Table)
             };
             var sectionResult = sqlGen.ToSelectSql(sectionExpr);
             Console.WriteLine("\n  (9) SectionExpr (生成分页查询):");
@@ -174,11 +174,11 @@ namespace LiteOrm.Demo.Demos
             // 10. 综合查询 (Where + OrderBy + Section)
             var complexQuery = new SectionExpr(0, 10)
             {
-                From = new OrderByExpr
+                Source = new OrderByExpr
                 {
-                    From = new WhereExpr
+                    Source = new WhereExpr
                     {
-                        From = new TableExpr(sqlGen.Table),
+                        Source = new TableExpr(sqlGen.Table),
                         Where = Expr.Property(nameof(User.Age)) > 20
                     },
                     OrderBys = new List<(ValueTypeExpr, bool)> { (Expr.Property(nameof(User.CreateTime)), true) }

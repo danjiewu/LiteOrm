@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
@@ -260,6 +261,7 @@ namespace LiteOrm
             }
         }
         #endregion
+
         #region 方法
 
         /// <summary>
@@ -357,22 +359,25 @@ namespace LiteOrm
         /// <returns>符合条件的对象列表</returns>
         public virtual List<T> Search(Expr expr)
         {
-            using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
-            return GetAll(command);
-        }
-
-        /// <summary>
-        /// 根据条件查询，多个条件以逻辑与连接
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <returns>符合条件的对象列表</returns>
-        public virtual List<T> Search(Expr expr, params Sorting[] orderBy)
-        {
-            if (orderBy is null || orderBy.Length == 0) return Search(expr);
-            else
+            if (expr is LogicExpr logicExpr)
             {
-                using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere} ORDER BY " + GetOrderBySql(orderBy), expr);
+                using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
+                return GetAll(command);
+            }
+            else if(expr is SelectSourceExpr selectSource)
+            {
+                List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
+                var context = SqlBuildContext;
+                string strCondition = null;
+                new SelectExpr()
+                {
+                    Source = selectSource,
+                    Selects = new List<ValueTypeExpr>() { AllFieldsSql }
+                };
+                strCondition = expr.ToSql(context, SqlBuilder, paramList);
+
+                return MakeNamedParamCommand(ReplaceParam(sqlWithParam.Replace(ParamWhere, ToWhereSql(strCondition))), paramList);
+                using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
                 return GetAll(command);
             }
         }
@@ -386,20 +391,6 @@ namespace LiteOrm
         {
             using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
             return GetOne(command);
-        }
-
-
-        /// <summary>
-        /// 分页查询
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="section">分页设定</param>
-        /// <returns></returns>
-        public virtual List<T> SearchSection(Expr expr, PageSection section)
-        {
-            string sql = SqlBuilder.GetSelectSectionSql(AllFieldsSql, From, ParamWhere, GetOrderBySql(section.Orders), section.StartIndex, section.SectionSize);
-            using var command = MakeConditionCommand(sql, expr);
-            return GetAll(command);
         }
 
         #endregion
@@ -597,27 +588,7 @@ namespace LiteOrm
             return Search(expr);
         }
 
-        /// <summary>
-        /// 根据条件查询，多个条件以逻辑与连接（接口实现）
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <returns>符合条件的对象列表</returns>
-        IList IObjectViewDAO.Search(Expr expr, params Sorting[] orderBy)
-        {
-            return Search(expr, orderBy);
-        }
 
-        /// <summary>
-        /// 分页查询（接口实现）
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="section">分页设定</param>
-        /// <returns>分页查询结果</returns>
-        IList IObjectViewDAO.SearchSection(Expr expr, PageSection section)
-        {
-            return SearchSection(expr, section);
-        }
 
         #endregion
 

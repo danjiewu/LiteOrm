@@ -472,16 +472,16 @@ namespace LiteOrm.Common
                     ToSql(ref sb, expr.Selects[i], context, sqlBuilder, outputParams);
                 }
             }
-            if (expr.From != null)
+            if (expr.Source != null)
             {
                 sb.Append(" FROM ");
-                ToSql(ref sb, expr.From, context, sqlBuilder, outputParams);
+                ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
             }
         }
 
         private static void ToSql(ref ValueStringBuilder sb, WhereExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            ToSql(ref sb, expr.From, context, sqlBuilder, outputParams);
+            ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
             if (expr.Where != null)
             {
                 sb.Append(" WHERE ");
@@ -491,7 +491,7 @@ namespace LiteOrm.Common
 
         private static void ToSql(ref ValueStringBuilder sb, GroupByExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            ToSql(ref sb, expr.From, context, sqlBuilder, outputParams);
+            ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
             if (expr.GroupBys != null && expr.GroupBys.Count > 0)
             {
                 sb.Append(" GROUP BY ");
@@ -505,7 +505,7 @@ namespace LiteOrm.Common
 
         private static void ToSql(ref ValueStringBuilder sb, HavingExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            ToSql(ref sb, expr.GroupBy, context, sqlBuilder, outputParams);
+            ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
             if (expr.Having != null)
             {
                 sb.Append(" HAVING ");
@@ -529,7 +529,7 @@ namespace LiteOrm.Common
 
         private static void ToSql(ref ValueStringBuilder sb, OrderByExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            ToSql(ref sb, expr.From, context, sqlBuilder, outputParams);
+            ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
             if (expr.OrderBys != null && expr.OrderBys.Count > 0)
             {
                 sb.Append(" ORDER BY ");
@@ -544,7 +544,7 @@ namespace LiteOrm.Common
 
         private static void ToSql(ref ValueStringBuilder sb, SectionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            ToSql(ref sb, expr.From, context, sqlBuilder, outputParams);
+            ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
             sb.Append(" LIMIT ");
             sb.Append(expr.Take.ToString());
             if (expr.Skip > 0)

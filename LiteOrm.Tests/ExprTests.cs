@@ -305,20 +305,20 @@ namespace LiteOrm.Tests
                 .Select(Expr.Property("Id"), Expr.Property("Name"));
 
             Assert.IsType<SelectExpr>(query);
-            Assert.IsType<SectionExpr>(query.From);
+            Assert.IsType<SectionExpr>(query.Source);
 
-            var section = (SectionExpr)query.From;
+            var section = (SectionExpr)query.Source;
             Assert.Equal(10, section.Skip);
             Assert.Equal(5, section.Take);
 
-            var orderBy = (OrderByExpr)section.From;
+            var orderBy = (OrderByExpr)section.Source;
             Assert.Single(orderBy.OrderBys);
             Assert.False(orderBy.OrderBys[0].Item2); // Desc
 
-            var where = (WhereExpr)orderBy.From;
+            var where = (WhereExpr)orderBy.Source;
             Assert.Equal(Expr.Property("Age") > 18, where.Where);
 
-            Assert.Equal(table, where.From);
+            Assert.Equal(table, where.Source);
         }
     }
 }

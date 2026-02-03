@@ -75,17 +75,17 @@ namespace LiteOrm
         /// <returns>SQL 生成结果。</returns>
         public SqlGenResult ToSelectSql(Expr expr = null)
         {
-            SelectableExpr selectable;
+            SelectSourceExpr selectable;
             if (expr is null)
                 selectable = new TableExpr(Table);
             else if (expr is LogicExpr logic)
-                selectable = new WhereExpr { From = new TableExpr(Table), Where = logic };
-            else if (expr is SelectableExpr s)
+                selectable = new WhereExpr { Source = new TableExpr(Table), Where = logic };
+            else if (expr is SelectSourceExpr s)
                 selectable = s;
             else
                 throw new NotSupportedException($"Expression type {expr.GetType().Name} is not supported for SELECT.");
 
-            SelectExpr selectExpr = selectable as SelectExpr ?? new SelectExpr { From = selectable };
+            SelectExpr selectExpr = selectable as SelectExpr ?? new SelectExpr { Source = selectable };
             return ToSql(selectExpr);
         }
 
@@ -96,19 +96,19 @@ namespace LiteOrm
         /// <returns>SQL 生成结果。</returns>
         public SqlGenResult ToCountSql(Expr expr = null)
         {
-            SelectableExpr selectable;
+            SelectSourceExpr selectable;
             if (expr is null)
                 selectable = new TableExpr(Table);
             else if (expr is LogicExpr logic)
-                selectable = new WhereExpr { From = new TableExpr(Table), Where = logic };
-            else if (expr is SelectableExpr s)
+                selectable = new WhereExpr { Source = new TableExpr(Table), Where = logic };
+            else if (expr is SelectSourceExpr s)
                 selectable = s;
             else
                 throw new NotSupportedException($"Expression type {expr.GetType().Name} is not supported for COUNT.");
 
             SelectExpr selectExpr = new SelectExpr
             {
-                From = selectable,
+                Source = selectable,
                 Selects = new List<ValueTypeExpr> { new AggregateFunctionExpr("COUNT", new ValueExpr(1) { IsConst = true }) }
             };
             return ToSql(selectExpr);
@@ -131,7 +131,7 @@ namespace LiteOrm
 
             ValueStringBuilder sb = ValueStringBuilder.Create(256);
             sb.Append("UPDATE ");
-            sb.Append(sqlBuilder.BuildExpression(table, TableArgs));
+            sb.Append(sqlBuilder.BuildExpression(table.Definition, TableArgs));
             sb.Append(" SET ");
 
             bool first = true;

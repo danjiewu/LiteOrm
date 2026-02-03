@@ -228,7 +228,7 @@ namespace LiteOrm
             }
             if (sqlObject is TableView tableView)
             {
-                sb.Append(string.Format(tableView.Definition.Name, tableNameArgs));
+                sb.Append(string.Format(ToSqlName(tableView.Definition.Name), tableNameArgs));
                 sb.Append(" ");
                 sb.Append(ToSqlName(tableView.Name));
                 foreach (var joined in tableView.JoinedTables)

@@ -145,26 +145,26 @@ namespace LiteOrm.Common
         /// <summary>
         /// 添加 WHERE 子句。
         /// </summary>
-        public static WhereExpr Where(this WhereableExpr from, LogicExpr where) => new WhereExpr { From = from, Where = where };
+        public static WhereExpr Where(this SourceExpr from, LogicExpr where) => new WhereExpr { Source = from, Where = where };
 
         /// <summary>
         /// 添加 ORDER BY 子句。
         /// </summary>
-        public static OrderByExpr OrderBy(this OrderableExpr from, params (ValueTypeExpr, bool)[] orders) => new OrderByExpr { From = from, OrderBys = new List<(ValueTypeExpr, bool)>(orders) };
+        public static OrderByExpr OrderBy(this OrderBySourceExpr from, params (ValueTypeExpr, bool)[] orders) => new OrderByExpr { Source = from, OrderBys = new List<(ValueTypeExpr, bool)>(orders) };
 
         /// <summary>
         /// 添加 GROUP BY 子句。
         /// </summary>
-        public static GroupByExpr GroupBy(this GroupableExpr from, params ValueTypeExpr[] groups) => new GroupByExpr { From = from, GroupBys = new List<ValueTypeExpr>(groups) };
+        public static GroupByExpr GroupBy(this GroupBySourceExpr from, params ValueTypeExpr[] groups) => new GroupByExpr { Source = from, GroupBys = new List<ValueTypeExpr>(groups) };
 
         /// <summary>
         /// 添加分页(SKIP/TAKE)子句。
         /// </summary>
-        public static SectionExpr Section(this SectionableExpr from, int skip, int take) => new SectionExpr(skip, take) { From = from };
+        public static SectionExpr Section(this SectionSourceExpr from, int skip, int take) => new SectionExpr(skip, take) { Source = from };
 
         /// <summary>
         /// 添加 SELECT 子句。
         /// </summary>
-        public static SelectExpr Select(this SelectableExpr from, params ValueTypeExpr[] selects) => new SelectExpr { From = from, Selects = new List<ValueTypeExpr>(selects) };
+        public static SelectExpr Select(this SelectSourceExpr from, params ValueTypeExpr[] selects) => new SelectExpr { Source = from, Selects = new List<ValueTypeExpr>(selects) };
     }
 }
