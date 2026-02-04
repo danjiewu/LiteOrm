@@ -109,6 +109,27 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 确定指定的对象是否等于当前对象。
+        /// </summary>
+        /// <param name="obj">要与当前对象进行比较的对象。</param>
+        /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj == null || obj.GetType() != GetType()) return false;
+            return DefinitionType == ((SqlTable)obj).DefinitionType;
+        }
+
+        /// <summary>
+        /// 获取对象的哈希代码。
+        /// </summary>
+        /// <returns>当前对象的哈希代码。</returns>
+        public override int GetHashCode()
+        {
+            return DefinitionType?.GetHashCode() ?? 0;
+        }
+
+        /// <summary>
         /// 重写ToString方法
         /// </summary>
         /// <returns></returns>

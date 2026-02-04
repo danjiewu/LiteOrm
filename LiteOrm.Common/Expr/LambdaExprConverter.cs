@@ -130,12 +130,30 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 执行整体转换并将根节点转为 Expr。
+        /// 执行整体转换并将根节点转为 LogicExpr。
         /// </summary>
         public LogicExpr ToExpr()
         {
             var body = ConvertInternal(_expression.Body);
             return AsLogic(body);
+        }
+
+        /// <summary>
+        /// 执行整体转换并将根节点转为 ValueTypeExpr。
+        /// </summary>
+        public ValueTypeExpr ToValueExpr()
+        {
+            var body = ConvertInternal(_expression.Body);
+            return AsValue(body);
+        }
+
+        /// <summary>
+        /// 静态便捷入口，将 Lambda 表达式转换为 ValueTypeExpr 模型。
+        /// </summary>
+        public static ValueTypeExpr ToValueExpr(LambdaExpression expression)
+        {
+            var converter = new LambdaExprConverter(expression);
+            return converter.ToValueExpr();
         }
 
         /// <summary>
@@ -173,11 +191,25 @@ namespace LiteOrm.Common
                 case MethodCallExpression methodCall:
                     return ConvertMethodCall(methodCall);
                 case NewExpression newExpression:
-                    // 只要不涉及 Lambda 参数，便尝试在本地执行并取结果
-                    return EvaluateToExpr(newExpression);
+                    return ConvertNew(newExpression);
                 default:
                     throw new NotSupportedException($"Unsupported expression type: {node.NodeType} ({node.GetType().Name})");
             }
+        }
+
+        private Expr ConvertNew(NewExpression node)
+        {
+            if (_parameterDetector.ContainsParameter(node))
+            {
+                var items = new List<ValueTypeExpr>();
+                foreach (var arg in node.Arguments)
+                {
+                    var item = ConvertInternal(arg) as ValueTypeExpr;
+                    if (item is not null) items.Add(item);
+                }
+                return new ValueSet(ValueJoinType.List, items.ToArray());
+            }
+            return EvaluateToExpr(node);
         }
 
         private LogicExpr AsLogic(Expr expr)

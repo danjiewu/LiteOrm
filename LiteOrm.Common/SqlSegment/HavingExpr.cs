@@ -1,17 +1,20 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
-    public class HavingExpr : SelectSourceExpr
+    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
+    public class HavingExpr : SqlSegment, IHavingAnchor
     {
         public HavingExpr() { }
-        public HavingExpr(HavingSourceExpr source, LogicExpr having)
+        public HavingExpr(SqlSegment source, LogicExpr having)
         {
             Source = source;
             Having = having;
         }
 
-        public HavingSourceExpr Source { get; set; }
+        public override SqlSegmentType SegmentType => SqlSegmentType.Having;
+
         public LogicExpr Having { get; set; }
         public override bool Equals(object obj) => obj is HavingExpr other && Equals(Source, other.Source) && Equals(Having, other.Having);
         public override int GetHashCode() => OrderedHashCodes(typeof(HavingExpr).GetHashCode(), Source?.GetHashCode() ?? 0, Having?.GetHashCode() ?? 0);

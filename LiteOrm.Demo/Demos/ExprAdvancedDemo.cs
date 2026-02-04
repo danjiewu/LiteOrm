@@ -99,45 +99,48 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine($"      结果: {result}");
 
             // 2. 生成完整 SELECT 语句
-            var selectResult = sqlGen.ToSelectSql(expr);
+            var selectResult = sqlGen.ToSql(new SelectExpr { Source = new WhereExpr(new TableExpr(sqlGen.Table), (LogicExpr)expr) });
             Console.WriteLine("\n  (2) ToSelectSql (生成完整查询):");
             Console.WriteLine($"      结果: {selectResult}");
 
             // 3. 生成 COUNT 语句
-            var countResult = sqlGen.ToCountSql(expr);
+            var countResult = sqlGen.ToSql(new SelectExpr
+            {
+                Source = new WhereExpr(new TableExpr(sqlGen.Table), (LogicExpr)expr),
+                Selects = new List<ValueTypeExpr> { new AggregateFunctionExpr("COUNT", new ValueExpr(1) { IsConst = true }) }
+            });
             Console.WriteLine("\n  (3) ToCountSql (生成统计查询):");
             Console.WriteLine($"      结果: {countResult}");
 
             // 4. 生成 UPDATE 语句
-            var updateValues = new Dictionary<string, object>
+            var updateExpr = new UpdateExpr
             {
-                { nameof(User.UserName), "NewName" },
-                { nameof(User.Age), 30 }
+                Source = new TableExpr(sqlGen.Table),
+                Sets = new List<(string, ValueTypeExpr)>
+                {
+                    (nameof(User.UserName), Expr.Value("NewName")),
+                    (nameof(User.Age), Expr.Value(30))
+                },
+                Where = Expr.Property(nameof(User.Id)) == 1
             };
-            var updateResult = sqlGen.ToUpdateSql(updateValues, Expr.Property(nameof(User.Id)) == 1);
+            var updateResult = sqlGen.ToSql(updateExpr);
             Console.WriteLine("\n  (4) ToUpdateSql (生成更新语句):");
             Console.WriteLine($"      结果: {updateResult}");
 
             // 5. 生成 DELETE 语句
-            var deleteResult = sqlGen.ToDeleteSql(Expr.Property(nameof(User.Age)) < 18);
+            var deleteExpr = new DeleteExpr
+            {
+                Source = new TableExpr(sqlGen.Table),
+                Where = Expr.Property(nameof(User.Age)) < 18
+            };
+            var deleteResult = sqlGen.ToSql(deleteExpr);
             Console.WriteLine("\n  (5) ToDeleteSql (生成删除语句):");
             Console.WriteLine($"      结果: {deleteResult}");
-
-            // 6. 生成 INSERT 语句
-            var insertValues = new Dictionary<string, object>
-            {
-                { nameof(User.UserName), "TestUser" },
-                { nameof(User.Age), 25 },
-                { nameof(User.CreateTime), DateTime.Now }
-            };
-            var insertResult = sqlGen.ToInsertSql(insertValues);
-            Console.WriteLine("\n  (6) ToInsertSql (生成插入语句):");
-            Console.WriteLine($"      结果: {insertResult}");
 
             // 7. OrderBy 演示
             var orderByExpr = new TableExpr(sqlGen.Table)
                 .OrderBy((Expr.Property(nameof(User.Age)), false)); // Age DESC
-            var orderByResult = sqlGen.ToSelectSql(orderByExpr);
+            var orderByResult = sqlGen.ToSql(new SelectExpr { Source = orderByExpr });
             Console.WriteLine("\n  (7) OrderByExpr (生成带排序查询):");
             Console.WriteLine($"      结果: {orderByResult}");
 
@@ -146,7 +149,7 @@ namespace LiteOrm.Demo.Demos
                 .GroupBy(Expr.Property(nameof(User.DeptId)))
                 .Select(Expr.Property(nameof(User.DeptId)), AggregateFunctionExpr.Count);
             
-            var groupByResult = sqlGen.ToSelectSql(groupByQuery);
+            var groupByResult = sqlGen.ToSql(new SelectExpr { Source = groupByQuery });
             Console.WriteLine("\n  (8) GroupByExpr (生成带分组聚合查询):");
             Console.WriteLine($"      结果: {groupByResult}");
 
@@ -154,7 +157,7 @@ namespace LiteOrm.Demo.Demos
             var sectionExpr = new TableExpr(sqlGen.Table)
                 .Section(10, 20); // Skip 10, Take 20
             
-            var sectionResult = sqlGen.ToSelectSql(sectionExpr);
+            var sectionResult = sqlGen.ToSql(new SelectExpr { Source = sectionExpr });
             Console.WriteLine("\n  (9) SectionExpr (生成分页查询):");
             Console.WriteLine($"      结果: {sectionResult}");
 
@@ -164,7 +167,7 @@ namespace LiteOrm.Demo.Demos
                 .OrderBy((Expr.Property(nameof(User.CreateTime)), true))
                 .Section(0, 10);
 
-            var complexResult = sqlGen.ToSelectSql(complexQuery);
+            var complexResult = sqlGen.ToSql(new SelectExpr { Source = complexQuery });
             Console.WriteLine("\n  (10) 综合查询 (Where + OrderBy + Section):");
             Console.WriteLine($"       结果: {complexResult}");
         }
@@ -180,19 +183,19 @@ namespace LiteOrm.Demo.Demos
                 .GroupBy(Expr.Property("DeptId"))
                 .Having(AggregateFunctionExpr.Count > 1)
                 .Select(Expr.Property("DeptId"), AggregateFunctionExpr.Count)
-                .OrderBy((Expr.Property("DeptId"), true))
+                .OrderBy((Expr.Property("DeptId").Asc()))
                 .Section(10, 20);
 
             Console.WriteLine($"  Table: {table}");
             Console.WriteLine($"  Result: {query}");
 
             // 更简洁的一行构建
-            var fluentQuery = new TableExpr(TableInfoProvider.Default.GetTableView(typeof(SalesRecord)))
+            var fluentQuery = Expr.Table<SalesRecord>()
                 .Where(Expr.Property("Status") == 1)
                 .GroupBy(Expr.Property("CustomerId"))
                 .Having(AggregateFunctionExpr.Count > 5)
                 .Select(Expr.Property("CustomerId"), AggregateFunctionExpr.Count)
-                .OrderBy((Expr.Property("CustomerId"), true))
+                .OrderBy((Expr.Property("CustomerId").Asc()))
                 .Section(0, 10);
 
             Console.WriteLine($"\n  链式构建结果: {fluentQuery}");

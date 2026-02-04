@@ -84,6 +84,8 @@ namespace LiteOrm.Common
             else if (expr is AggregateFunctionExpr agg) ToSql(ref sb, agg, context, sqlBuilder, outputParams);
             else if (expr is OrderByExpr order) ToSql(ref sb, order, context, sqlBuilder, outputParams);
             else if (expr is SectionExpr section) ToSql(ref sb, section, context, sqlBuilder, outputParams);
+            else if (expr is DeleteExpr delete) ToSql(ref sb, delete, context, sqlBuilder, outputParams);
+            else if (expr is UpdateExpr update) ToSql(ref sb, update, context, sqlBuilder, outputParams);
             else
                 throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
         }
@@ -551,6 +553,41 @@ namespace LiteOrm.Common
             {
                 sb.Append(" OFFSET ");
                 sb.Append(expr.Skip.ToString());
+            }
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, DeleteExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            sb.Append("DELETE FROM ");
+            ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
+            if (expr.Where != null)
+            {
+                sb.Append(" WHERE ");
+                ToSql(ref sb, expr.Where, context, sqlBuilder, outputParams);
+            }
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, UpdateExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            sb.Append("UPDATE ");
+            ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
+            sb.Append(" SET ");
+            for (int i = 0; i < expr.Sets.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                var set = expr.Sets[i];
+
+                SqlColumn column = context.Table.GetColumn(set.Item1);
+                if (column == null) throw new Exception($"Property \"{set.Item1}\" does not exist in type \"{context.Table.DefinitionType.FullName}\".");
+                sb.Append(sqlBuilder.ToSqlName(column.Name));
+
+                sb.Append("=");
+                ToSql(ref sb, set.Item2, context, sqlBuilder, outputParams);
+            }
+            if (expr.Where != null)
+            {
+                sb.Append(" WHERE ");
+                ToSql(ref sb, expr.Where, context, sqlBuilder, outputParams);
             }
         }
     }

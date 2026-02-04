@@ -93,5 +93,27 @@ namespace LiteOrm.Common
             if (target == null) throw new ArgumentNullException("target");
             return Property.GetValueFast(target);
         }
+
+        /// <summary>
+        /// 确定指定的对象是否等于当前对象。
+        /// </summary>
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj == null || obj.GetType() != GetType()) return false;
+            SqlColumn other = (SqlColumn)obj;
+            return Equals(Table, other.Table) && PropertyName == other.PropertyName;
+        }
+
+        /// <summary>
+        /// 获取哈希码。
+        /// </summary>
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return ((Table?.GetHashCode() ?? 0) * 31) ^ (PropertyName?.GetHashCode() ?? 0);
+            }
+        }
     }
 }

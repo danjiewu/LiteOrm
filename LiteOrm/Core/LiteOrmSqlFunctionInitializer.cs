@@ -5,22 +5,21 @@ using Microsoft.Extensions.DependencyInjection;
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm SQL 函数初始化器，负责注册不同数据库方言的 SQL 函数处理逻辑。
+    /// LiteOrm SQL ??????? SQL ?
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
-    public class LiteOrmSqlFunctionInitializer : IComponentInitializer
+    public class LiteOrmSqlFunctionInitializer : IStartable
     {
         /// <summary>
-        /// 使用指定的组件上下文初始化 SQL 函数映射。
+        /// 启动时初始化 SQL 函数映射。
         /// </summary>
-        /// <param name="componentContext">用于解析服务的组件上下文。</param>
-        public void Initialize(IComponentContext componentContext)
+        public void Start()
         {
             RegisterSqlFunctions();
         }
 
         /// <summary>
-        /// 注册不同数据库方言的 SQL 函数处理逻辑。
+        /// ?????? SQL ?
         /// </summary>
         private void RegisterSqlFunctions()
         {

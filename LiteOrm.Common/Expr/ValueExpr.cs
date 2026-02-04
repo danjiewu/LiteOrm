@@ -47,7 +47,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置该表达式持有的原始对象值。
         /// </summary>
-        public object Value { get; set; }
+        public new object Value { get; set; }
 
         /// <summary>
         /// 

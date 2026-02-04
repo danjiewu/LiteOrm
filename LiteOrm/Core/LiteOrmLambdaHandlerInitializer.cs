@@ -12,13 +12,12 @@ namespace LiteOrm
     /// LiteOrm Lambda 处理器初始化器，负责注册 Lambda 表达式到 Expr 对象的转换句柄。
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
-    public class LiteOrmLambdaHandlerInitializer : IComponentInitializer
+    public class LiteOrmLambdaHandlerInitializer : IStartable
     {
         /// <summary>
-        /// 使用指定的组件上下文初始化 Lambda 处理器。
+        /// 启动时初始化 Lambda 处理器。
         /// </summary>
-        /// <param name="componentContext">用于解析服务的组件上下文。</param>
-        public void Initialize(IComponentContext componentContext)
+        public void Start()
         {
             // 注册 Lambda 表达式转换到 Expr 对象的成员句柄 (如 DateTime.Now)
             RegisterLambdaMemberHandlers();

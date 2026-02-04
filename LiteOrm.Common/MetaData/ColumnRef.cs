@@ -45,5 +45,27 @@ namespace LiteOrm.Common
         {
             get { return _column; }
         }
+
+        /// <summary>
+        /// 确定指定的对象是否等于当前对象。
+        /// </summary>
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj == null || obj.GetType() != GetType()) return false;
+            ColumnRef other = (ColumnRef)obj;
+            return Equals(Table, other.Table) && Equals(Column, other.Column);
+        }
+
+        /// <summary>
+        /// 获取哈希码。
+        /// </summary>
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return ((Table?.GetHashCode() ?? 0) * 31) ^ (Column?.GetHashCode() ?? 0);
+            }
+        }
     }
 }

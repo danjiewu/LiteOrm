@@ -12,7 +12,7 @@ namespace LiteOrm.Tests
         public void ToSelectSql_Basic_Test()
         {
             var sqlGen = new SqlGen(typeof(TestUser));
-            var result = sqlGen.ToSelectSql();
+            var result = sqlGen.ToSql(new SelectExpr { Source = new TableExpr(sqlGen.Table) });
 
             Assert.Contains("SELECT", result.Sql);
             Assert.Contains("FROM", result.Sql);
@@ -24,7 +24,8 @@ namespace LiteOrm.Tests
         {
             var sqlGen = new SqlGen(typeof(TestUser));
             var condition = Expr.Property("Age") > 18;
-            var result = sqlGen.ToSelectSql(condition);
+            var select = new SelectExpr { Source = new WhereExpr { Source = new TableExpr(sqlGen.Table), Where = condition } };
+            var result = sqlGen.ToSql(select);
 
             Assert.Contains("SELECT", result.Sql);
             Assert.Contains("WHERE", result.Sql);
@@ -36,7 +37,12 @@ namespace LiteOrm.Tests
         public void ToCountSql_Test()
         {
             var sqlGen = new SqlGen(typeof(TestUser));
-            var result = sqlGen.ToCountSql();
+            var select = new SelectExpr
+            {
+                Source = new TableExpr(sqlGen.Table),
+                Selects = new List<ValueTypeExpr> { new AggregateFunctionExpr("COUNT", new ValueExpr(1) { IsConst = true }) }
+            };
+            var result = sqlGen.ToSql(select);
 
             Assert.Contains("COUNT(", result.Sql);
             Assert.Contains("FROM", result.Sql);
@@ -46,13 +52,17 @@ namespace LiteOrm.Tests
         public void ToUpdateSql_Test()
         {
             var sqlGen = new SqlGen(typeof(TestUser));
-            var values = new Dictionary<string, object>
+            var update = new UpdateExpr
             {
-                { "Name", "NewName" },
-                { "Age", 30 }
+                Source = new TableExpr(sqlGen.Table),
+                Sets = new List<(string, ValueTypeExpr)>
+                {
+                    ("Name", Expr.Value("NewName")),
+                    ("Age", Expr.Value(30))
+                },
+                Where = Expr.Property("Id") == 1
             };
-            var condition = Expr.Property("Id") == 1;
-            var result = sqlGen.ToUpdateSql(values, condition);
+            var result = sqlGen.ToSql(update);
 
             Assert.StartsWith("UPDATE", result.Sql);
             Assert.Contains("SET", result.Sql);
@@ -64,8 +74,12 @@ namespace LiteOrm.Tests
         public void ToDeleteSql_Test()
         {
             var sqlGen = new SqlGen(typeof(TestUser));
-            var condition = Expr.Property("Id") == 1;
-            var result = sqlGen.ToDeleteSql(condition);
+            var delete = new DeleteExpr
+            {
+                Source = new TableExpr(sqlGen.Table),
+                Where = Expr.Property("Id") == 1
+            };
+            var result = sqlGen.ToSql(delete);
 
             Assert.StartsWith("DELETE FROM", result.Sql);
             Assert.Contains("WHERE", result.Sql);
@@ -73,27 +87,12 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public void ToInsertSql_Test()
-        {
-            var sqlGen = new SqlGen(typeof(TestUser));
-            var values = new Dictionary<string, object>
-            {
-                { "Name", "John" },
-                { "Age", 25 }
-            };
-            var result = sqlGen.ToInsertSql(values);
-
-            Assert.StartsWith("INSERT INTO", result.Sql);
-            Assert.Contains("VALUES", result.Sql);
-            Assert.Equal(2, result.Params.Count);
-        }
-
-        [Fact]
         public void ToSelectSql_OrderBy_Test()
         {
             var sqlGen = new SqlGen(typeof(TestUser));
-            var orderBy = Expr.Table(sqlGen.Table).OrderBy(Expr.Property("Age").Desc());
-            var result = sqlGen.ToSelectSql(orderBy);
+            var orderBy = new OrderByExpr(new TableExpr(sqlGen.Table), (Expr.Property("Age"), false));
+            var select = new SelectExpr { Source = orderBy };
+            var result = sqlGen.ToSql(select);
 
             Assert.Contains("ORDER BY", result.Sql);
             Assert.Contains("DESC", result.Sql);
@@ -103,11 +102,15 @@ namespace LiteOrm.Tests
         public void ToSelectSql_GroupBy_Test()
         {
             var sqlGen = new SqlGen(typeof(TestUser));
-            var groupBy = Expr.Table(sqlGen.Table)
-                .GroupBy(Expr.Property("DeptId"))
-                .Select(Expr.Property("DeptId"), Expr.Const(1).Count());
+            var table = new TableExpr(sqlGen.Table);
+            var groupBy = new GroupByExpr(table, Expr.Property("DeptId"));
+            var select = new SelectExpr
+            {
+                Source = groupBy,
+                Selects = new List<ValueTypeExpr> { Expr.Property("DeptId"), new AggregateFunctionExpr("COUNT", Expr.Const(1), false) }
+            };
             
-            var result = sqlGen.ToSelectSql(groupBy);
+            var result = sqlGen.ToSql(select);
 
             Assert.Contains("GROUP BY", result.Sql);
             Assert.Contains("COUNT(", result.Sql);
@@ -117,11 +120,10 @@ namespace LiteOrm.Tests
         public void ToSelectSql_Section_Test()
         {
             var sqlGen = new SqlGen(typeof(TestUser));
-            var section = Expr.Table(sqlGen.Table).Section(10, 5);
-            var result = sqlGen.ToSelectSql(section);
+            var section = new SectionExpr(new TableExpr(sqlGen.Table), 10, 5);
+            var select = new SelectExpr { Source = section };
+            var result = sqlGen.ToSql(select);
 
-            // SQLite style or generic style depending on builder, but should contain keywords or specific syntax
-            // Actually our ToString in SectionExpr uses SKIP/TAKE, but SqlBuilder will convert it.
             Assert.NotEmpty(result.Sql);
         }
     }

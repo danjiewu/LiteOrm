@@ -3,8 +3,8 @@ using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
-    [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class SectionExpr : GroupBySourceExpr
+    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
+    public class SectionExpr : SqlSegment, ISectionAnchor
     {
         public SectionExpr() { }
         public SectionExpr(int skip, int take)
@@ -13,12 +13,12 @@ namespace LiteOrm.Common
             Take = take;
         }
 
-        public SectionExpr(SectionSourceExpr source, int skip, int take) : this(skip, take)
+        public SectionExpr(SqlSegment source, int skip, int take) : this(skip, take)
         {
             Source = source;
         }
 
-        public SectionSourceExpr Source { get; set; }
+        public override SqlSegmentType SegmentType => SqlSegmentType.Section;
 
         public int Skip { get; set; }
         public int Take { get; set; }

@@ -359,7 +359,7 @@ namespace LiteOrm
         /// <returns>符合条件的对象列表</returns>
         public virtual List<T> Search(Expr expr)
         {
-            SelectSourceExpr selectSource;
+            SqlSegment selectSource;
             if (expr is null)
             {
                 selectSource = new TableExpr(Table);
@@ -368,7 +368,7 @@ namespace LiteOrm
             {
                 selectSource = new WhereExpr() { Source = new TableExpr(Table), Where = logicExpr };
             }
-            else if (expr is SelectSourceExpr sourceExpr)
+            else if (expr is SqlSegment sourceExpr)
             {
                 selectSource = sourceExpr;
             }
@@ -385,7 +385,7 @@ namespace LiteOrm
                 Selects = SelectColumns.Select((col, i) => (ValueTypeExpr)Expr.Property(col.Name)).ToList()
             };
             using var command = NewCommand();
-            command.CommandText = expr.ToSql(context, SqlBuilder, paramList);
+            command.CommandText = selectExpr.ToSql(context, SqlBuilder, paramList);
             return GetAll(command);
         }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Text.Json.Serialization;
 
@@ -38,6 +39,26 @@ namespace LiteOrm.Common
                 foreach (int hc in hashcodes)
                 {
                     hashcode = (hashcode * 31) + hc;
+                }
+                return hashcode;
+            }
+        }
+
+        /// <summary>
+        /// 计算序列的组合哈希值。
+        /// </summary>
+        /// <typeparam name="T">元素类型。</typeparam>
+        /// <param name="items">序列项。</param>
+        /// <returns>序列哈希值。</returns>
+        protected static int SequenceHash<T>(IEnumerable<T> items)
+        {
+            if (items == null) return 0;
+            unchecked
+            {
+                int hashcode = 19;
+                foreach (var item in items)
+                {
+                    hashcode = (hashcode * 31) + (item?.GetHashCode() ?? 0);
                 }
                 return hashcode;
             }

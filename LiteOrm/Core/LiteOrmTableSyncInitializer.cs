@@ -14,45 +14,50 @@ namespace LiteOrm
     /// LiteOrm 表同步初始化器，负责自动同步数据库表结构（创建表、添加列、创建索引）。
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
-    public class LiteOrmTableSyncInitializer : IComponentInitializer
+    public class LiteOrmTableSyncInitializer : IStartable
     {
         private readonly ILogger<LiteOrmTableSyncInitializer> _logger;
+        private readonly IDataSourceProvider _dataSourceProvider;
+        private readonly SqlBuilderFactory _sqlBuilderFactory;
+        private readonly TableInfoProvider _tableInfoProvider;
+        private readonly DAOContextPoolFactory _daoContextPoolFactory;
 
         /// <summary>
-        /// 初始化 <see cref="LiteOrmTableSyncInitializer"/> 类的新实例。
+        /// 初始化 <see cref="LiteOrmTableSyncInitializer"/> 类的新实例
         /// </summary>
-        /// <param name="logger">日志记录器。</param>
-        public LiteOrmTableSyncInitializer(ILogger<LiteOrmTableSyncInitializer> logger = null)
+        public LiteOrmTableSyncInitializer(
+            IDataSourceProvider dataSourceProvider,
+            SqlBuilderFactory sqlBuilderFactory,
+            TableInfoProvider tableInfoProvider,
+            DAOContextPoolFactory daoContextPoolFactory,
+            ILogger<LiteOrmTableSyncInitializer> logger = null)
         {
+            _dataSourceProvider = dataSourceProvider;
+            _sqlBuilderFactory = sqlBuilderFactory;
+            _tableInfoProvider = tableInfoProvider;
+            _daoContextPoolFactory = daoContextPoolFactory;
             _logger = logger;
         }
 
         /// <summary>
-        /// 使用指定的组件上下文初始化同步逻辑。
+        /// 启动时执行表同步逻辑。
         /// </summary>
-        /// <param name="componentContext">用于解析服务的组件上下文。</param>
-        public void Initialize(IComponentContext componentContext)
+        public void Start()
         {
-            SyncTables(componentContext);
+            SyncTables();
         }
 
         /// <summary>
-        /// 自动同步数据库表结构。
+        /// 自动同步数据库结构。
         /// </summary>
-        /// <param name="componentContext">组件上下文。</param>
-        private void SyncTables(IComponentContext componentContext)
+        private void SyncTables()
         {
-            var dataSourceProvider = componentContext.Resolve<IDataSourceProvider>();
-            var sqlBuilderFactory = componentContext.Resolve<SqlBuilderFactory>();
-            var tableInfoProvider = componentContext.Resolve<TableInfoProvider>();
-            var daoContextPoolFactory = componentContext.Resolve<DAOContextPoolFactory>();
-
-            var syncDataSources = dataSourceProvider.Where(ds => ds.SyncTable).ToList();
+            var syncDataSources = _dataSourceProvider.Where(ds => ds.SyncTable).ToList();
             if (!syncDataSources.Any()) return;
 
-            _logger?.LogInformation("开始自动同步数据库表结构...");
+            _logger?.LogInformation("开始自动同步数据库结构...");
 
-            // 获取所有已加载程序集中定义的表实体类型
+            // 获取全部已加载程序集中的表实体映射定义
             var assemblies = AssemblyAnalyzer.GetAllReferencedAssemblies();
             var tableTypes = assemblies.SelectMany(a => a.GetTypes())
                                        .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null)
@@ -62,14 +67,14 @@ namespace LiteOrm
             var tableGroups = tableTypes.GroupBy(t =>
             {
                 var attr = t.GetCustomAttribute<TableAttribute>();
-                return (DataSource: attr.DataSource ?? dataSourceProvider.DefaultDataSourceName, TableName: attr.TableName ?? t.Name);
+                return (DataSource: attr.DataSource ?? _dataSourceProvider.DefaultDataSourceName, TableName: attr.TableName ?? t.Name);
             }).ToList();
 
-            // 并行执行各数据源的同步任务
+            // 循环执行各个数据源的同步任务
             var syncTasks = syncDataSources.Select(async ds =>
             {
-                var sqlBuilder = sqlBuilderFactory.GetSqlBuilder(ds.ProviderType);
-                var pool = daoContextPoolFactory.GetPool(ds.Name);
+                var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(ds.ProviderType);
+                var pool = _daoContextPoolFactory.GetPool(ds.Name);
                 if (pool == null) return;
 
                 var currentDsGroups = tableGroups.Where(g => string.Equals(g.Key.DataSource, ds.Name, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -78,7 +83,7 @@ namespace LiteOrm
                 {
                     if (currentDsGroups.Any())
                     {
-                        _logger?.LogInformation("正在同步数据源 '{DataSource}'，共 {Count} 个表定义", ds.Name, currentDsGroups.Count);
+                        _logger?.LogInformation("正在同步数据源 '{DataSource}'，包含 {Count} 个表和映射实体", ds.Name, currentDsGroups.Count);
 
                         var context = pool.PeekContextInternal();
                         try
@@ -89,13 +94,13 @@ namespace LiteOrm
                                 foreach (var group in currentDsGroups)
                                 {
                                     string tableName = group.Key.TableName;
-                                    // 合并该表名的所有实体定义（支持多个类映射到同一个物理表）
+                                    // 合并在此表名上映射的实体定义（支持多实体映射到同一个表）
                                     var allColumns = new Dictionary<string, ColumnDefinition>(StringComparer.OrdinalIgnoreCase);
                                     TableDefinition firstTableDef = null;
 
                                     foreach (var type in group)
                                     {
-                                        var tableDef = tableInfoProvider.GetTableDefinition(type);
+                                        var tableDef = _tableInfoProvider.GetTableDefinition(type);
                                         if (tableDef == null) continue;
                                         if (firstTableDef == null) firstTableDef = tableDef;
 

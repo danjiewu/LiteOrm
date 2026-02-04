@@ -1,17 +1,20 @@
 using System;
+using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
-    public class WhereExpr : OrderBySourceExpr
+    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
+    public class WhereExpr : SqlSegment, ISourceAnchor
     {
         public WhereExpr() { }
-        public WhereExpr(SourceExpr source, LogicExpr where)
+        public WhereExpr(SqlSegment source, LogicExpr where)
         {
             Source = source;
             Where = where;
         }
 
-        public SourceExpr Source { get; set; }
+        public override SqlSegmentType SegmentType => SqlSegmentType.Where;
+
         public LogicExpr Where { get; set; }
 
         public override bool Equals(object obj) => obj is WhereExpr other && Equals(Source, other.Source) && Equals(Where, other.Where);

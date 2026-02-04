@@ -69,5 +69,27 @@ namespace LiteOrm.Common
             NamedColumnCache.TryGetValue(propertyName, out column);
             return column;
         }
+
+        /// <summary>
+        /// 确定指定的对象是否等于当前对象。
+        /// </summary>
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj == null || obj.GetType() != GetType()) return false;
+            TableRef other = (TableRef)obj;
+            return Equals(TableDefinition, other.TableDefinition) && Name == other.Name;
+        }
+
+        /// <summary>
+        /// 获取哈希码。
+        /// </summary>
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return ((TableDefinition?.GetHashCode() ?? 0) * 31) ^ (Name?.GetHashCode() ?? 0);
+            }
+        }
     }
 }

@@ -48,13 +48,7 @@ namespace LiteOrm
             return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
                 .ConfigureContainer<ContainerBuilder>((builder, containerBuilder) =>
                 {
-                    containerBuilder.RegisterAutoService(callingAssembly)
-                    .RegisterBuildCallback(c =>
-                    {
-                        // 注册后置回调
-                        foreach (var initializer in c.Resolve<IEnumerable<IComponentInitializer>>())
-                            initializer.Initialize(c);
-                    });
+                    containerBuilder.RegisterAutoService(callingAssembly);
                 });
         }
 

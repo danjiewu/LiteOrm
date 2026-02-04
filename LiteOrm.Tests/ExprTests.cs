@@ -1,4 +1,5 @@
 using LiteOrm.Common;
+using LiteOrm.Tests.Infrastructure;
 using LiteOrm.Tests.Models;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -6,7 +7,7 @@ using Xunit;
 
 namespace LiteOrm.Tests
 {
-    public class ExprTests
+    public class ExprTests :TestBase
     {
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
@@ -300,22 +301,21 @@ namespace LiteOrm.Tests
 
             var query = table
                 .Where(Expr.Property("Age") > 18)
+                .Select(Expr.Property("Id"), Expr.Property("Name"))
                 .OrderBy(Expr.Property("CreateTime").Desc())
-                .Section(10, 5)
-                .Select(Expr.Property("Id"), Expr.Property("Name"));
+                .Section(10, 5);
 
-            Assert.IsType<SelectExpr>(query);
-            Assert.IsType<SectionExpr>(query.Source);
+            Assert.IsType<SectionExpr>(query);
+            Assert.IsType<OrderByExpr>(query.Source);
 
-            var section = (SectionExpr)query.Source;
-            Assert.Equal(10, section.Skip);
-            Assert.Equal(5, section.Take);
-
-            var orderBy = (OrderByExpr)section.Source;
+            var orderBy = (OrderByExpr)query.Source;
             Assert.Single(orderBy.OrderBys);
             Assert.False(orderBy.OrderBys[0].Item2); // Desc
 
-            var where = (WhereExpr)orderBy.Source;
+            var select = (SelectExpr)orderBy.Source;
+            Assert.Equal(2, select.Selects.Count);
+
+            var where = (WhereExpr)select.Source;
             Assert.Equal(Expr.Property("Age") > 18, where.Where);
 
             Assert.Equal(table, where.Source);
@@ -358,6 +358,26 @@ namespace LiteOrm.Tests
             Assert.Equal(2, orderBy.OrderBys.Count);
             Assert.True(orderBy.OrderBys[0].Item2);
             Assert.False(orderBy.OrderBys[1].Item2);
+        }
+
+        [Fact]
+        public void DeleteExpr_Tests()
+        {
+            var table = new TableExpr(TableInfoProvider.Default.GetTableView(typeof(TestUser)));
+            var delete = new DeleteExpr(table, Expr.Property("Age") > 100);
+
+            TestSerialization(delete);
+        }
+
+        [Fact]
+        public void UpdateExpr_Tests()
+        {
+            var table = new TableExpr(TableInfoProvider.Default.GetTableView(typeof(TestUser)));
+            var update = new UpdateExpr(table, Expr.Property("Id") == 1);
+            update.Sets.Add(("Name", "NewName"));
+            update.Sets.Add(("Age", 30));
+
+            TestSerialization(update);
         }
     }
 }

@@ -107,17 +107,17 @@ namespace LiteOrm.Common
         /// </summary>
         public static LogicBinaryExpr IsNotNull(this ValueTypeExpr left) => new LogicBinaryExpr(left, LogicOperator.NotEqual, Expr.Null);
 
-        public static WhereExpr Where(this SourceExpr source, LogicExpr where) => new WhereExpr(source, where);
+        public static WhereExpr Where(this ISourceAnchor source, LogicExpr where) => new WhereExpr(source as SqlSegment, where);
 
-        public static GroupByExpr GroupBy(this GroupBySourceExpr source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source, groupBys);
+        public static GroupByExpr GroupBy(this IGroupByAnchor source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source as SqlSegment, groupBys);
 
-        public static HavingExpr Having(this HavingSourceExpr source, LogicExpr having) => new HavingExpr(source, having);
+        public static HavingExpr Having(this IHavingAnchor source, LogicExpr having) => new HavingExpr(source as SqlSegment, having);
 
-        public static SelectExpr Select(this SelectSourceExpr source, params ValueTypeExpr[] selects) => new SelectExpr(source, selects);
+        public static SelectExpr Select(this ISelectAnchor source, params ValueTypeExpr[] selects) => new SelectExpr(source as SqlSegment, selects);
 
-        public static OrderByExpr OrderBy(this OrderBySourceExpr source, params (ValueTypeExpr, bool)[] orderBys) => new OrderByExpr(source, orderBys);
+        public static OrderByExpr OrderBy(this IOrderByAnchor source, params (ValueTypeExpr, bool)[] orderBys) => new OrderByExpr(source as SqlSegment, orderBys);
 
-        public static SectionExpr Section(this SectionSourceExpr source, int skip, int take) => new SectionExpr(source, skip, take);
+        public static SectionExpr Section(this ISectionAnchor source, int skip, int take) => new SectionExpr(source as SqlSegment, skip, take);
 
         public static (ValueTypeExpr, bool) Asc(this ValueTypeExpr expr) => (expr, true);
 
