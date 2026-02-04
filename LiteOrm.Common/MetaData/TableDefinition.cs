@@ -5,10 +5,16 @@ using System.Collections.ObjectModel;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// Êı¾İ¿â±íµÄ¶¨Òå
+    /// æ•°æ®åº“è¡¨å®šä¹‰ä¿¡æ¯ã€‚
+    /// åŒ…å«è¡¨çš„ç»“æ„ä¿¡æ¯ï¼Œå¦‚å¯¹åº”çš„å®ä½“ç±»å‹ã€åˆ—å®šä¹‰ã€æ•°æ®æºç­‰ã€‚
     /// </summary>
     public class TableDefinition : SqlTable
     {
+        /// <summary>
+        /// åˆå§‹åŒ– <see cref="TableDefinition"/> ç±»çš„æ–°å®ä¾‹ã€‚
+        /// </summary>
+        /// <param name="objectType">å¯¹åº”çš„å®ä½“ç±»å‹ã€‚</param>
+        /// <param name="columns">åˆ—å®šä¹‰é›†åˆã€‚</param>
         internal TableDefinition(Type objectType, ICollection<ColumnDefinition> columns) :
             base(new List<ColumnDefinition>(columns).ConvertAll<SqlColumn>(column => column))
         {
@@ -17,7 +23,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ¶ÔÓ¦Êı¾İ¿â±íµÄ¶¨Òå
+        /// è·å–å½“å‰è¡¨çš„å®šä¹‰ä¿¡æ¯ã€‚
         /// </summary>
         public override TableDefinition Definition
         {
@@ -25,31 +31,33 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ¶ÔÏóÀàĞÍ
+        /// è·å–å¯¹åº”çš„å®ä½“ç±»å‹ã€‚
         /// </summary>
         public Type ObjectType { get; }
 
         /// <summary>
-        /// Êı¾İÔ´Ãû³Æ£¬¶ÔÓ¦ÅäÖÃÎÄ¼şÖĞConnectionStringsÖĞÃû³Æ£¬Îª¿ÕÔòÈ¡Ä¬ÈÏÊı¾İÔ´
+        /// è·å–æˆ–è®¾ç½®æ•°æ®æºåç§°ã€‚
+        /// è¯¥åç§°é€šå¸¸å¯¹åº”äºé…ç½®æ–‡ä»¶ä¸­ ConnectionStrings èŠ‚ç‚¹çš„åç§°ã€‚
+        /// è‹¥ä¸ºç©ºï¼Œåˆ™ä½¿ç”¨é»˜è®¤æ•°æ®æºã€‚
         /// </summary>
         public string DataSource { get; protected internal set; }
 
         /// <summary>
-        /// Êı¾İÌá¹©³ÌĞòÀàĞÍ£¬ÈçMicrosoft.Data.SqlClient.SqlConnection
+        /// è·å–æˆ–è®¾ç½®æ•°æ®æä¾›ç¨‹åºç±»å‹ã€‚
+        /// ä¾‹å¦‚ï¼šMicrosoft.Data.SqlClient.SqlConnection
         /// </summary>
         public Type DataProviderType { get; protected internal set; }
 
         /// <summary>
-        /// Êı¾İ¿â±íµÄÁĞ¶¨Òå
+        /// è·å–æ•°æ®åº“è¡¨çš„åˆ—å®šä¹‰é›†åˆã€‚
         /// </summary>
         public new ReadOnlyCollection<ColumnDefinition> Columns { get; }
 
-
         /// <summary>
-        /// ¸ù¾İÊôĞÔÃû»ñµÃÁĞ¶¨Òå£¬ºöÂÔ´óĞ¡Ğ´
+        /// æ ¹æ®å±æ€§åè·å–å¯¹åº”çš„åˆ—å®šä¹‰ï¼Œå¿½ç•¥å¤§å°å†™ã€‚
         /// </summary>
-        /// <param name="propertyName">ÊôĞÔÃû</param>
-        /// <returns>ÁĞ¶¨Òå£¬ÁĞÃû²»´æÔÚÔò·µ»Ønull</returns>
+        /// <param name="propertyName">å±æ€§åç§°ã€‚</param>
+        /// <returns>åˆ—å®šä¹‰ï¼Œè‹¥ä¸å­˜åœ¨åˆ™è¿”å›nullã€‚</returns>
         public new ColumnDefinition GetColumn(string propertyName)
         {
             return base.GetColumn(propertyName) as ColumnDefinition;

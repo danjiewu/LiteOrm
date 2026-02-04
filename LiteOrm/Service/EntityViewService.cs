@@ -1,4 +1,4 @@
-﻿using Autofac.Extras.DynamicProxy;
+using Autofac.Extras.DynamicProxy;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -22,12 +22,11 @@ namespace LiteOrm.Service
     /// 1. 单对象查询 - GetObject() 方法根据主键获取单个视图实体
     /// 2. 存在性检查 - Exists() 和 ExistsID() 方法检查实体是否存在
     /// 3. 列表查询 - Search() 方法获取符合条件的实体列表
-    /// 4. 分页查询 - SearchSection() 方法支持分页查询
-    /// 5. 统计操作 - Count() 方法用于计数
-    /// 6. 异步支持 - 提供基于 Task 的异步方法
-    /// 7. 灵活的条件 - 支持使用 Expr 对象或 Lambda 表达式进行条件查询
-    /// 8. 表参数支持 - 支持通过 tableArgs 参数动态指定表名
-    /// 9. 拦截机制 - 自动应用 ServiceInvokeInterceptor 进行拦截
+    /// 4. 统计操作 - Count() 方法用于计数
+    /// 5. 异步支持 - 提供基于 Task 的异步方法
+    /// 6. 灵活的条件 - 支持使用 Expr 对象或 Lambda 表达式进行条件查询
+    /// 7. 表参数支持 - 支持通过 tableArgs 参数动态指定表名
+    /// 8. 拦截机制 - 自动应用 ServiceInvokeInterceptor 进行拦截
     /// 
     /// 该类通过依赖注入框架以单例方式注册，使用 Autofac 的拦截功能进行方法拦截。
     /// 
@@ -43,9 +42,6 @@ namespace LiteOrm.Service
     /// 
     /// // 获取列表
     /// var users = service.Search(Expr.Property("Age") > 18);
-    /// 
-    /// // 分页查询
-    /// var pageData = service.SearchSection(Expr.Exp&lt;UserView&gt;(u=&gt;u.IsActive == true), new SectionSet(1, 20).OrderBy("CreatedDate DESC"));
     /// 
     /// // 异步查询
     /// var userAsync = await service.GetObjectAsync(userId);
@@ -159,30 +155,6 @@ namespace LiteOrm.Service
             return ObjectViewDAO.WithArgs(tableArgs).Search(expr);
         }
 
-        /// <summary>
-        /// 根据条件查询视图对象列表，并指定排序项
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="orderby">排序项</param>
-        /// <param name="tableArgs">表参数</param>
-        /// <returns>符合条件的视图对象列表</returns>
-        public virtual List<TView> SearchWithOrder(Expr expr, Sorting[] orderby, params string[] tableArgs)
-        {
-            return ObjectViewDAO.WithArgs(tableArgs).Search(expr);
-        }
-
-        /// <summary>
-        /// 分页查询视图对象
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="section">分页设置</param>
-        /// <param name="tableArgs">表参数</param>
-        /// <returns>分页后的视图对象列表</returns>
-        public virtual List<TView> SearchSection(Expr expr, PageSection section, params string[] tableArgs)
-        {
-            return ObjectViewDAO.WithArgs(tableArgs).Search(expr);
-        }
-
         #endregion
 
         #region IEntityViewService 成员
@@ -202,16 +174,6 @@ namespace LiteOrm.Service
             return Search(expr, tableArgs);
         }
 
-        IList IEntityViewService.SearchWithOrder(Expr expr, Sorting[] orderby, params string[] tableArgs)
-        {
-            return SearchWithOrder(expr, orderby, tableArgs);
-        }
-
-        IList IEntityViewService.SearchSection(Expr expr, PageSection section, params string[] tableArgs)
-        {
-            return SearchSection(expr, section, tableArgs);
-        }
-
         #endregion
 
         #region IEntityViewServiceAsync 成员
@@ -229,16 +191,6 @@ namespace LiteOrm.Service
         async Task<IList> IEntityViewServiceAsync.SearchAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
             return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, cancellationToken);
-        }
-
-        async Task<IList> IEntityViewServiceAsync.SearchWithOrderAsync(Expr expr, Sorting[] orderby, string[] tableArgs, CancellationToken cancellationToken)
-        {
-            return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, orderby, cancellationToken);
-        }
-
-        async Task<IList> IEntityViewServiceAsync.SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs, CancellationToken cancellationToken)
-        {
-            return await ObjectViewDAO.WithArgs(tableArgs).SearchSectionAsync(expr, section, cancellationToken);
         }
 
         #endregion
@@ -342,31 +294,6 @@ namespace LiteOrm.Service
             return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, cancellationToken);
         }
 
-        /// <summary>
-        /// 异步查询符合条件的实体列表，并指定排序项。
-        /// </summary>
-        /// <param name="expr">查询条件。</param>
-        /// <param name="orderby">排序设置。</param>
-        /// <param name="tableArgs">表名参数。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>实体列表结果。</returns>
-        public async virtual Task<List<TView>> SearchWithOrderAsync(Expr expr, Sorting[] orderby, string[] tableArgs = null, CancellationToken cancellationToken = default)
-        {
-            return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, orderby, cancellationToken);
-        }
-
-        /// <summary>
-        /// 异步分页查询符合条件的实体列表。
-        /// </summary>
-        /// <param name="expr">查询条件。</param>
-        /// <param name="section">分页配置。</param>
-        /// <param name="tableArgs">表名参数。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>分页结果列表。</returns>
-        public async virtual Task<List<TView>> SearchSectionAsync(Expr expr, PageSection section, string[] tableArgs = null, CancellationToken cancellationToken = default)
-        {
-            return await ObjectViewDAO.WithArgs(tableArgs).SearchSectionAsync(expr, section, cancellationToken);
-        }
         #endregion
     }
 }

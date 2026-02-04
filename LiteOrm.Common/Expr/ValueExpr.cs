@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Text.Json.Serialization;
 
@@ -50,7 +50,8 @@ namespace LiteOrm.Common
         public new object Value { get; set; }
 
         /// <summary>
-        /// 
+        /// 指示该值是否为常量。
+        /// 常量值在 SQL 生成时会直接嵌入 SQL 语句中，而非作为参数。
         /// </summary>
         public bool IsConst { get; set; }
 

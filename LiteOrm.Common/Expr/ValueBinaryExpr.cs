@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ÖµÀàĞÍ¶şÔª±í´ïÊ½£¬ÓÃÓÚÊıÖµ¼ÆËã»ò×Ö·û´®Æ´½Ó£¨Èç a + b, str1 || str2£©¡£
+    /// å€¼ç±»å‹äºŒå…ƒè¡¨è¾¾å¼ï¼Œç”¨äºæ•°å€¼è®¡ç®—å’Œå­—ç¬¦ä¸²æ‹¼æ¥ç­‰ï¼Œå¦‚ a + b, str1 || str2 ç­‰
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class ValueBinaryExpr : ValueTypeExpr
@@ -31,17 +31,17 @@ namespace LiteOrm.Common
         public override bool IsValue => true;
 
         /// <summary>
-        /// »ñÈ¡»òÉèÖÃ×ó²à×Ó±í´ïÊ½¡£
+        /// è·å–æˆ–è®¾ç½®å·¦æ“ä½œæ•°è¡¨è¾¾å¼
         /// </summary>
         public ValueTypeExpr Left { get; set; }
 
         /// <summary>
-        /// »ñÈ¡»òÉèÖÃÓÒ²à×Ó±í´ïÊ½¡£
+        /// è·å–æˆ–è®¾ç½®å³æ“ä½œæ•°è¡¨è¾¾å¼
         /// </summary>
         public ValueTypeExpr Right { get; set; }
 
         /// <summary>
-        /// »ñÈ¡»òÉèÖÃ¶şÔª²Ù×÷·û¡£
+        /// è·å–æˆ–è®¾ç½®äºŒå…ƒè¿ç®—ç¬¦
         /// </summary>
         public ValueOperator Operator { get; set; }
 

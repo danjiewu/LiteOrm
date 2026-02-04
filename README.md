@@ -15,6 +15,8 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架�
 *   **动态分表路由**：原生支持 `IArged` 接口，解决海量数据下的动态水平拆分（分表）路由需求。
 *   **高性能批量处理**：预留 `IBulkProvider` 接口，可针对特定数据库采用方式（如 `MySqlBulkCopy` ）极大提高插入效率。
 *   **模块化与可扩展性**：支持自定义 SQL 函数 Handler、自定义类型转换器，可适配各种业务特殊的 SQL 方言。
+*   **完整的异步支持**：所有操作都提供同步和基于 Task 的异步方法，支持现代异步编程模式。
+*   **类型安全**：强类型的泛型接口和方法，提供编译时类型检查，减少运行时错误。
 
 ## 环境要求
 
@@ -122,10 +124,16 @@ public interface IUserService : IEntityService<User>
 
 public class UserService : EntityService<User>, IUserService
 {
-    
+    // 实现自定义方法
+    public User GetByUserName(string userName)
+    {
+        return SearchOne(u => u.UserName == userName);
+    }
 }
 ```
+
 ### 4. 执行查询与操作
+
 ```csharp
 using LiteOrm.Common;
 using LiteOrm.Service;
@@ -134,6 +142,7 @@ using Microsoft.AspNetCore.Mvc;
 public class UserDemoController : ControllerBase
 {
     private readonly IUserService userService;
+    
     public UserDemoController(IUserService userService)
     {
         this.userService = userService;
@@ -145,11 +154,34 @@ public class UserDemoController : ControllerBase
         var admin = await userService.SearchOneAsync(u => u.UserName == "admin" && u.Id > 0);
         
         // 2. 分页查询
-        var page = await userService.SearchSectionAsync(u => u.CreateTime > DateTime.Today.AddDays(-7), 
-                                                        new PageSection(0, 10, Sorting.Desc(nameof(User.Id))));
-                                                        
-        // 3. 批量更新
+        var page = await userService.SearchSectionAsync(
+            u => u.CreateTime > DateTime.Today.AddDays(-7), 
+            new PageSection(0, 10, Sorting.Desc(nameof(User.Id)))
+        );
+        
+        // 3. 插入新用户
+        var newUser = new User
+        {
+            UserName = "newuser",
+            Email = "newuser@example.com",
+            CreateTime = DateTime.Now
+        };
+        await userService.InsertAsync(newUser);
+        
+        // 4. 更新用户信息
+        newUser.Email = "updated@example.com";
+        await userService.UpdateAsync(newUser);
+        
+        // 5. 批量更新
+        foreach (var user in page)
+        {
+            user.Email = user.Email.Replace("@example.com", "@updated.com");
+        }
         await userService.BatchUpdateAsync(page);
+        
+        // 6. 删除用户
+        await userService.DeleteAsync(newUser);
+        
         return Ok(page);
     }
 }
@@ -160,20 +192,130 @@ public class UserDemoController : ControllerBase
 LiteOrm 的核心是其强大的 `Expr` 表达式系统。
 
 ### Lambda 自动转换
+
 ```csharp
 // 自动转换为：WHERE (AGE > 18 AND USERNAME LIKE '%admin%')
 Expr expr = Expr.Exp<User>(u => u.Age > 18 && u.UserName.Contains("admin"));
 ```
 
+### 手动构建表达式
+
+```csharp
+// 构建复杂表达式：(Age > 18 AND (UserName LIKE '%admin%' OR Email LIKE '%admin%'))
+Expr expr = Expr.And(
+    Expr.Property("Age") > 18,
+    Expr.Or(
+        Expr.Property("UserName").Contains("admin"),
+        Expr.Property("Email").Contains("admin")
+    )
+);
+```
+
 ### JSON 序列化
+
 `Expr` 节点支持直接序列化为 JSON，方便前端动态传递复杂配置化的过滤规则。
 
 ### SQL 生成器 (SqlGen)
+
 可以独立于 DAO 使用 `SqlGen` 生成参数化 SQL，方便开发调试：
+
 ```csharp
 var expr = (Expr.Property(nameof(User.Age)) > 18) & (Expr.Property(nameof(User.UserName)).Contains("admin_"));
 var res = new SqlGen(typeof(User)).ToSql(expr);
 // res.Sql -> (`User`.`Age` > @0 AND `User`.`UserName` LIKE @1 ESCAPE '/')
+// res.Params -> [ { "0", 18 }, { "1", "%admin_%" } ]
+```
+
+## 高级特性
+
+### 1. 自动化关联查询
+
+```csharp
+// 定义关联
+[Table("Orders")]
+[TableJoin(typeof(User), "UserId")] // 自动关联 User 表
+public class Order
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+    
+    [Column("UserId")]
+    public int UserId { get; set; }
+    
+    [Column("Amount")]
+    public decimal Amount { get; set; }
+    
+    // 关联的用户对象
+    [ForeignType(typeof(User))]
+    public User User { get; set; }
+}
+
+// 定义视图模型，包含关联数据
+public class OrderView : Order
+{
+    // 直接从关联表获取字段
+    [ForeignColumn(typeof(User), Property = "UserName")]
+    public string UserName { get; set; }
+}
+
+// 查询时自动 JOIN
+var orders = await orderService.SearchAsync<OrderView>(o => o.Amount > 100);
+// 结果中包含 UserName 字段
+```
+
+### 2. 动态分表
+
+```csharp
+// 实现 IArged 接口
+public class Log : IArged
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+    
+    [Column("Content")]
+    public string Content { get; set; }
+    
+    // 分表参数
+    public string[] TableArgs { get; set; }
+}
+
+// 使用分表
+var log = new Log
+{
+    Content = "Test log",
+    TableArgs = new[] { "2024", "01" } // 路由到 Log_2024_01 表
+};
+await logService.InsertAsync(log);
+```
+
+### 3. 声明式事务
+
+```csharp
+[Service]
+public class BusinessService
+{
+    private readonly IUserService userService;
+    private readonly IOrderService orderService;
+    
+    public BusinessService(IUserService userService, IOrderService orderService)
+    {
+        this.userService = userService;
+        this.orderService = orderService;
+    }
+    
+    [Transaction] // 自动事务管理
+    public async Task CreateUserWithOrder(User user, Order order)
+    {
+        // 插入用户
+        await userService.InsertAsync(user);
+        
+        // 关联订单
+        order.UserId = user.Id;
+        await orderService.InsertAsync(order);
+        
+        // 自动提交事务
+    }
+}
 ```
 
 ## Demo 示例项目
@@ -187,12 +329,12 @@ var res = new SqlGen(typeof(User)).ToSql(expr);
 - **性能优化**：BatchInsert 与单条插入耗时对比。
 
 运行 Demo 项目：
+
 ```bash
 dotnet run --project LiteOrm.Demo/LiteOrm.Demo.csproj
 ```
 
 ## 性能测试
-
 
 LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基于 `LiteOrm.Benchmark` 项目（1000 条记录插入/更新/查询，MySQL 8.0 环境）的最新测试结果对比：
 
@@ -206,7 +348,6 @@ LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基
 
 > *注：测试数据取自 `LiteOrm.Benchmark` 生成的最新报告（BatchCount=1000）。完整测试报告请参考：[LiteOrm 性能评测报告](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md).*
 
-
 ## 模块说明
 
 *   **LiteOrm.Common**: 核心元数据定义、`Expr` 表达式系统、基础工具类。
@@ -214,6 +355,7 @@ LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基
 *   **LiteOrm.ASPNetCore**: 针对 ASP.NET Core 的扩展支持（待开发）。
 *   **LiteOrm.Demo**: 示例项目，涵盖了几乎所有核心特性的代码演示。
 *   **LiteOrm.Benchmark**: 性能测试工程，包含与常见 ORM 的对比。
+*   **LiteOrm.Tests**: 单元测试项目。
 
 ## 贡献与反馈
 
