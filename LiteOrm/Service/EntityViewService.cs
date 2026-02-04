@@ -192,7 +192,6 @@ namespace LiteOrm.Service
         {
             return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, cancellationToken);
         }
-
         #endregion
 
         #region IEntityViewServiceAsync<TView> 成员

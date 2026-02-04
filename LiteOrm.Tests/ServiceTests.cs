@@ -370,15 +370,13 @@ namespace LiteOrm.Tests
             });
 
             // Act - Order
-            var ordered = await viewService.SearchWithOrderAsync(
-                Expr.Exp<TestUser>(u => u.Name!.StartsWith("Order")),
-                new[] { new Sorting("Age", ListSortDirection.Descending) }
+            var ordered = await viewService.SearchAsync(
+                Expr.Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", true))
             );
 
             // Act - Section
-            var section = await viewService.SearchSectionAsync(
-                Expr.Exp<TestUser>(u => u.Name!.StartsWith("Order")),
-                new PageSection(0, 2, new Sorting("Age", ListSortDirection.Ascending))
+            var section = await viewService.SearchAsync(
+                Expr.Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", true)).Section(0, 2)
             );
 
             // Assert
@@ -469,8 +467,8 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User Outside", DeptId = -1, CreateTime = DateTime.Now });
 
             // Act
-            // Ê¹ÓÃ ForeignExpr ½øÐÐ¹ØÁª²éÑ¯ (»ùÓÚ EXISTS ×Ó²éÑ¯)
-            // ²éÕÒËùÊô²¿ÃÅÃû³ÆÎª "Foreign Dept" µÄÓÃ»§
+            // Ê¹ï¿½ï¿½ ForeignExpr ï¿½ï¿½ï¿½Ð¹ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¯ (ï¿½ï¿½ï¿½ï¿½ EXISTS ï¿½Ó²ï¿½Ñ¯)
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îª "Foreign Dept" ï¿½ï¿½ï¿½Ã»ï¿½
             var users = await viewService.SearchAsync(Expr.Foreign("Dept", Expr.Property("Name") == "Foreign Dept"));
 
             // Assert
@@ -496,7 +494,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User C", Age = 30, DeptId = dept2.Id, CreateTime = DateTime.Now });
 
             // Act
-            // ²éÕÒÄêÁäÎª 30 ÇÒËùÊô²¿ÃÅÃûÎª "Dept 1" µÄÓÃ»§
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îª 30 ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îª "Dept 1" ï¿½ï¿½ï¿½Ã»ï¿½
             var users = await viewService.SearchAsync(
                 (Expr.Property("Age") == 30) & Expr.Foreign("Dept", Expr.Property("Name") == "Dept 1")
             );
@@ -555,22 +553,22 @@ namespace LiteOrm.Tests
             Assert.Equal("Sub Dept", viewUser.DeptName);
             Assert.Equal("Root Dept", viewUser.ParentDeptName);
 
-            // ¸ù¾Ý¹ØÁª±í×Ö¶Î²éÑ¯ (Act & Assert)
+            // ï¿½ï¿½ï¿½Ý¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¶Î²ï¿½Ñ¯ (Act & Assert)
 
-            // 1. ¸ù¾ÝÒ»¼¶¹ØÁª±í×Ö¶Î²éÑ¯
+            // 1. ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¶Î²ï¿½Ñ¯
             var usersByDept = await viewService.SearchAsync(u => u.DeptName == "Sub Dept");
             Assert.Contains(usersByDept, u => u.Id == user.Id);
 
-            // 2. ¸ù¾Ý¶þ¼¶¹ØÁª±í×Ö¶Î²éÑ¯ (¶à²ã¹ØÁª)
+            // 2. ï¿½ï¿½ï¿½Ý¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¶Î²ï¿½Ñ¯ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
             var usersByParentDept = await viewService.SearchAsync(u => u.ParentDeptName == "Root Dept");
             Assert.Contains(usersByParentDept, u => u.Id == user.Id);
 
-            // 3. ×éºÏ²éÑ¯
+            // 3. ï¿½ï¿½Ï²ï¿½Ñ¯
             var combinedUsers = await viewService.SearchAsync(u => u.DeptName == "Sub Dept" && u.ParentDeptName == "Root Dept");
             Assert.Single(combinedUsers);
             Assert.Equal(user.Id, combinedUsers[0].Id);
 
-            // 4. Count ÑéÖ¤
+            // 4. Count ï¿½ï¿½Ö¤
             int count = await viewService.CountAsync(u => u.ParentDeptName == "Root Dept");
             Assert.Equal(1, count);
         }

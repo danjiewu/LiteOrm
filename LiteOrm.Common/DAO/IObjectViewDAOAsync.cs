@@ -44,24 +44,6 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回对象列表</returns>
         new Task<List<T>> SearchAsync(Expr expr = null, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// 异步根据条件和排序查询对象列表
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="orderBy">排序规则数组</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，返回对象列表</returns>
-        new Task<List<T>> SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// 异步根据条件、分页和排序查询对象列表
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="section">分页设置</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，返回对象列表</returns>
-        new Task<List<T>> SearchSectionAsync(Expr expr, PageSection section, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -93,24 +75,6 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回对象列表</returns>
         Task<IList> SearchAsync(Expr expr, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// 异步根据条件和排序查询对象列表
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="orderBy">排序规则数组</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，返回对象列表</returns>
-        Task<IList> SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// 异步根据条件、分页和排序查询对象列表
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="section">分页设置</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，返回对象列表</returns>
-        Task<IList> SearchSectionAsync(Expr expr, PageSection section, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步检查指定主键的对象是否存在

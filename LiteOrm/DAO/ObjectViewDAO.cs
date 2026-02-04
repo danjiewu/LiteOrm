@@ -359,6 +359,12 @@ namespace LiteOrm
         /// <returns>符合条件的对象列表</returns>
         public virtual List<T> Search(Expr expr)
         {
+            using DbCommandProxy command = MakeExprCommand(expr);
+            return GetAll(command);
+        }
+
+        private DbCommandProxy MakeExprCommand(Expr expr)
+        {
             SqlSegment selectSource;
             if (expr is null)
             {
@@ -384,9 +390,8 @@ namespace LiteOrm
                 Source = selectSource,
                 Selects = SelectColumns.Select((col, i) => (ValueTypeExpr)Expr.Property(col.Name)).ToList()
             };
-            using var command = NewCommand();
-            command.CommandText = selectExpr.ToSql(context, SqlBuilder, paramList);
-            return GetAll(command);
+            var command = MakeNamedParamCommand(selectExpr.ToSql(context, SqlBuilder, paramList), paramList);
+            return command;
         }
 
         /// <summary>
@@ -528,38 +533,8 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
         public async virtual Task<List<T>> SearchAsync(Expr expr = null, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
+            using var command = MakeExprCommand(expr);
             return await GetAllAsync(command, cancellationToken).ConfigureAwait(false);
-        }
-
-
-        /// <summary>
-        /// 异步根据条件查询，多个条件以逻辑与连接
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
-        public async virtual Task<List<T>> SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken = default)
-        {
-            if (orderBy is null || orderBy.Length == 0) return await SearchAsync(expr, cancellationToken);
-
-            using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere} ORDER BY " + GetOrderBySql(orderBy), expr);
-            return await GetAllAsync(command, cancellationToken);
-        }
-
-        /// <summary>
-        /// 异步分页查询
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="section">分页设定</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含分页查询结果</returns>
-        public async virtual Task<List<T>> SearchSectionAsync(Expr expr, PageSection section, CancellationToken cancellationToken = default)
-        {
-            string sql = SqlBuilder.GetSelectSectionSql(AllFieldsSql, From, ParamWhere, GetOrderBySql(section.Orders), section.StartIndex, section.SectionSize);
-            using var command = MakeConditionCommand(sql, expr);
-            return await GetAllAsync(command, cancellationToken);
         }
 
         #endregion
@@ -633,31 +608,6 @@ namespace LiteOrm
         {
             return await SearchAsync(expr, cancellationToken);
         }
-
-        /// <summary>
-        /// 异步根据条件查询，多个条件以逻辑与连接（接口实现）
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="orderBy">排列顺序，若为null则表示不指定顺序</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
-        async Task<IList> IObjectViewDAOAsync.SearchAsync(Expr expr, Sorting[] orderBy, CancellationToken cancellationToken)
-        {
-            return await SearchAsync(expr, orderBy, cancellationToken);
-        }
-
-        /// <summary>
-        /// 异步分页查询（接口实现）
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="section">分页设定</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含分页查询结果</returns>
-        async Task<IList> IObjectViewDAOAsync.SearchSectionAsync(Expr expr, PageSection section, CancellationToken cancellationToken)
-        {
-            return await SearchSectionAsync(expr, section, cancellationToken);
-        }
-
         #endregion
     }
 }

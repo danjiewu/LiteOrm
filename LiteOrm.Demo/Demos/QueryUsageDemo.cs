@@ -7,7 +7,7 @@ using System.Text.Json;
 namespace LiteOrm.Demo.Demos
 {
     /// <summary>
-    /// ÑÝÊ¾¸÷ÖÖ²éÑ¯ÓÃ·¨£º°üÀ¨¹ØÁª²éÑ¯¡¢·Ö±í²éÑ¯ÒÔ¼°¸´ÔÓ±í´ïÊ½²éÑ¯
+    /// ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½Ö²ï¿½Ñ¯ï¿½Ã·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¯ï¿½ï¿½ï¿½Ö±ï¿½ï¿½ï¿½Ñ¯ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½Ó±ï¿½ï¿½ï¿½Ê½ï¿½ï¿½Ñ¯
     /// </summary>
     public static class QueryUsageDemo
     {
@@ -19,53 +19,53 @@ namespace LiteOrm.Demo.Demos
 
         public static async Task ShowJoinQueryAsync(IDepartmentService deptService)
         {
-            Console.WriteLine("\n--- ¹ØÁª²éÑ¯Õ¹Ê¾ (×Ô¶¯²éÑ¯¹ØÁªÊÓÍ¼×Ö¶Î) ---");
+            Console.WriteLine("\n--- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¯Õ¹Ê¾ (ï¿½Ô¶ï¿½ï¿½ï¿½Ñ¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½Ö¶ï¿½) ---");
             var depts = await deptService.SearchAsync(null);
             foreach (var d in depts)
             {
-                Console.WriteLine($" ID: {d.Id}, ²¿ÃÅ: {d.Name}, ¹ÜÀíÔ±: {d.ManagerName ?? "Î´Ö¸¶¨"}, ÉÏ¼¶: {d.ParentName ?? "ÎÞ"}");
+                Console.WriteLine($" ID: {d.Id}, ï¿½ï¿½ï¿½ï¿½: {d.Name}, ï¿½ï¿½ï¿½ï¿½Ô±: {d.ManagerName ?? "Î´Ö¸ï¿½ï¿½"}, ï¿½Ï¼ï¿½: {d.ParentName ?? "ï¿½ï¿½"}");
             }
         }
 
         public static async Task ShowArgedQueryAsync(ISalesService salesService)
         {
-            Console.WriteLine("\n--- ·Ö±í²éÑ¯Õ¹Ê¾ ---");
+            Console.WriteLine("\n--- ï¿½Ö±ï¿½ï¿½ï¿½Ñ¯Õ¹Ê¾ ---");
             string currentMonth = DateTime.Now.ToString("yyyyMM");
             var sales = await salesService.SearchAsync(null, [currentMonth]);
-            Console.WriteLine($"{currentMonth} ÔÂ·ÝÏúÊÛ×Ü¼ÇÂ¼Êý: {sales.Count}");
+            Console.WriteLine($"{currentMonth} ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü¼ï¿½Â¼ï¿½ï¿½: {sales.Count}");
             foreach (var sale in sales)
             {
-                Console.WriteLine($"    - ID:{sale.Id}, ÉÌÆ·:{sale.ProductName}, ½ð¶î:{sale.Amount}, ÒµÎñÔ±:{sale.UserName}, ÏúÊÛÊ±¼ä:{sale.SaleTime:yyyy-MM-dd HH:mm} ·¢»õÊ±¼ä:{sale.ShipTime:yyyy-MM-dd HH:mm}");
+                Console.WriteLine($"    - ID:{sale.Id}, ï¿½ï¿½Æ·:{sale.ProductName}, ï¿½ï¿½ï¿½:{sale.Amount}, Òµï¿½ï¿½Ô±:{sale.UserName}, ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½:{sale.SaleTime:yyyy-MM-dd HH:mm} ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½:{sale.ShipTime:yyyy-MM-dd HH:mm}");
             }
         }
 
         public static async Task ShowQueryResultsAsync(IUserService userService, ISalesService salesService)
         {
-            Console.WriteLine("\n[QueryResults] Ê¹ÓÃ Expr ¹¹½¨Êµ¼Ê²éÑ¯Õ¹Ê¾:");
+            Console.WriteLine("\n[QueryResults] Ê¹ï¿½ï¿½ Expr ï¿½ï¿½ï¿½ï¿½Êµï¿½Ê²ï¿½Ñ¯Õ¹Ê¾:");
             string currentMonth = DateTime.Now.ToString("yyyyMM");
 
-            // Ê¾Àý 1
-            var expr1 = Expr.Exp<UserView>(u => u.Age > 25 && u.CreateTime.AddDays(10) > DateTime.Now && u.UserName.Substring(2, 2) == "²âÊÔ");
+            // Ê¾ï¿½ï¿½ 1
+            var expr1 = Expr.Exp<UserView>(u => u.Age > 25 && u.CreateTime.AddDays(10) > DateTime.Now && u.UserName.Substring(2, 2) == "ï¿½ï¿½ï¿½ï¿½");
             var users1 = await userService.SearchAsync(expr1);
-            Console.WriteLine($"\n[Ê¾Àý 1] ÄêÁä > 25 ÇÒÓÃ»§Ãû°üº¬ '²âÊÔ' µÄÓÃ»§:");
-            Console.WriteLine($"  Expr ÐòÁÐ»¯½á¹û: {JsonSerializer.Serialize(expr1, jsonOptions)}");
+            Console.WriteLine($"\n[Ê¾ï¿½ï¿½ 1] ï¿½ï¿½ï¿½ï¿½ > 25 ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 'ï¿½ï¿½ï¿½ï¿½' ï¿½ï¿½ï¿½Ã»ï¿½:");
+            Console.WriteLine($"  Expr ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½: {JsonSerializer.Serialize(expr1, jsonOptions)}");
             foreach (var user in users1)
             {
-                Console.WriteLine($"    - ID:{user.Id}, ÕËºÅ:{user.UserName}, ÄêÁä:{user.Age}, ²¿ÃÅ:{user.DeptName}");
+                Console.WriteLine($"    - ID:{user.Id}, ï¿½Ëºï¿½:{user.UserName}, ï¿½ï¿½ï¿½ï¿½:{user.Age}, ï¿½ï¿½ï¿½ï¿½:{user.DeptName}");
             }
 
-            // Ê¾Àý 2
+            // Ê¾ï¿½ï¿½ 2
             var threeDaysAgo = DateTime.Now.AddDays(-3);
             var expr2 = Expr.Exp<SalesRecordView>(s => s.SaleTime < threeDaysAgo && s.ShipTime == null);
-            var sales2 = await salesService.SearchSectionAsync(expr2, new PageSection(0, 10).OrderByDesc(nameof(SalesRecord.Amount)), [currentMonth]);
-            Console.WriteLine($"\n[Ê¾Àý 2] 3ÌìÇ°µÄ¶©µ¥ÇÒÉÐÎ´·¢»õ£¬°´½ð¶î½µÐòÈ¡Ç°10Ìõ:");
-            Console.WriteLine($"  Expr ÐòÁÐ»¯½á¹û: {JsonSerializer.Serialize(expr2, jsonOptions)}");
+            var sales2 = await salesService.SearchAsync(expr2, [currentMonth], new PageSection(0, 10).OrderByDesc(nameof(SalesRecord.Amount)));
+            Console.WriteLine($"\n[Ê¾ï¿½ï¿½ 2] 3ï¿½ï¿½Ç°ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½î½µï¿½ï¿½È¡Ç°10ï¿½ï¿½:");
+            Console.WriteLine($"  Expr ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½: {JsonSerializer.Serialize(expr2, jsonOptions)}");
             foreach (var sale in sales2)
             {
-                Console.WriteLine($"    - ID:{sale.Id}, ÉÌÆ·:{sale.ProductName}, ½ð¶î:{sale.Amount}, ÒµÎñÔ±:{sale.UserName}");
+                Console.WriteLine($"    - ID:{sale.Id}, ï¿½ï¿½Æ·:{sale.ProductName}, ï¿½ï¿½ï¿½:{sale.Amount}, Òµï¿½ï¿½Ô±:{sale.UserName}");
             }
 
-            // Ê¾Àý 3: GenericSqlExpr
+            // Ê¾ï¿½ï¿½ 3: GenericSqlExpr
             GenericSqlExpr.Register("DirectorDeptOrders", (ctx, builder, pms, arg) =>
             {
                 string paramName = pms.Count.ToString();
@@ -85,15 +85,15 @@ namespace LiteOrm.Demo.Demos
             var directorId = 6;
             var complexExpr = GenericSqlExpr.Get("DirectorDeptOrders", directorId) & Expr.Property(nameof(SalesRecord.SaleTime)) > threeDaysAgo;
             var directorOrders = await salesService.SearchAsync(complexExpr, [currentMonth]);
-            Console.WriteLine($"\n[Ê¾Àý 3] ÏúÊÛ²¿Ö÷¹Ü (ID:{directorId}) ÷âÏÂ×î½ü 3 ÌìÄÚµÄ¶©µ¥ ({currentMonth}):");
-            Console.WriteLine($"  Expr ÐòÁÐ»¯½á¹û: {JsonSerializer.Serialize(complexExpr, jsonOptions)}");
-            Console.WriteLine($"  ²éÑ¯µ½¼ÇÂ¼Êý: {directorOrders.Count}");
+            Console.WriteLine($"\n[Ê¾ï¿½ï¿½ 3] ï¿½ï¿½ï¿½Û²ï¿½ï¿½ï¿½ï¿½ï¿½ (ID:{directorId}) ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 3 ï¿½ï¿½ï¿½ÚµÄ¶ï¿½ï¿½ï¿½ ({currentMonth}):");
+            Console.WriteLine($"  Expr ï¿½ï¿½ï¿½Ð»ï¿½ï¿½ï¿½ï¿½: {JsonSerializer.Serialize(complexExpr, jsonOptions)}");
+            Console.WriteLine($"  ï¿½ï¿½Ñ¯ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½: {directorOrders.Count}");
 
-            // Ê¾Àý 4: ForeignExpr
-            var expr4 = Expr.Foreign("Dept", Expr.Property(nameof(Department.Name)) == "ÏúÊÛ²¿");
+            // Ê¾ï¿½ï¿½ 4: ForeignExpr
+            var expr4 = Expr.Foreign("Dept", Expr.Property(nameof(Department.Name)) == "ï¿½ï¿½ï¿½Û²ï¿½");
             var users4 = await userService.SearchAsync(expr4);
-            Console.WriteLine($"\n[Ê¾Àý 4] ÊôÓÚ 'ÏúÊÛ²¿' µÄÓÃ»§ (Ê¹ÓÃ ForeignExpr):");
-            Console.WriteLine($"  ²éÑ¯µ½¼ÇÂ¼Êý: {users4.Count}");
+            Console.WriteLine($"\n[Ê¾ï¿½ï¿½ 4] ï¿½ï¿½ï¿½ï¿½ 'ï¿½ï¿½ï¿½Û²ï¿½' ï¿½ï¿½ï¿½Ã»ï¿½ (Ê¹ï¿½ï¿½ ForeignExpr):");
+            Console.WriteLine($"  ï¿½ï¿½Ñ¯ï¿½ï¿½ï¿½ï¿½Â¼ï¿½ï¿½: {users4.Count}");
         }
     }
 }

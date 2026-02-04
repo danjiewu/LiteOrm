@@ -44,22 +44,6 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
         new List<T> Search(Expr expr = null, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件查询实体列表，并指定排序项
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="orderby">排序项</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的实体列表</returns>
-        new List<T> SearchWithOrder(Expr expr, Sorting[] orderby, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件分页查询
-        /// </summary>
-        /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <param name="section">分页设置</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的分页对象列表</returns>
-        new List<T> SearchSection(Expr expr, PageSection section, params string[] tableArgs);
     }
 
     /// <summary>
@@ -115,21 +99,5 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
         IList Search(Expr expr = null, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件查询实体列表，并指定排序项
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="orderby">排序项</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的实体列表</returns>
-        IList SearchWithOrder(Expr expr, Sorting[] orderby, params string[] tableArgs);
-        /// <summary>
-        /// 根据条件分页查询
-        /// </summary>
-        /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <param name="section">分页设置</param>
-        /// <param name="tableArgs">表名参数</param>
-        /// <returns>符合条件的分页对象列表</returns>
-        IList SearchSection(Expr expr, PageSection section, params string[] tableArgs);
     }
 }

@@ -6,36 +6,36 @@ using Microsoft.Extensions.DependencyInjection;
 namespace LiteOrm.Tests.Infrastructure
 {
     /// <summary>
-    /// ×Ô¶¨ÒåÓÃ»§·þÎñ½Ó¿Ú£¬¼Ì³Ð×Ô·ºÐÍ·þÎñ½Ó¿Ú¡£
+    /// ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½Ó¿Ú£ï¿½ï¿½Ì³ï¿½ï¿½Ô·ï¿½ï¿½Í·ï¿½ï¿½ï¿½Ó¿Ú¡ï¿½
     /// </summary>
     public interface ITestUserService : IEntityServiceAsync<TestUser>, IEntityViewServiceAsync<TestUser>
     {
-        // ¿ÉÒÔÔÚ´Ë´¦Ìí¼Ó×Ô¶¨ÒåÒµÎñ·½·¨
+        // ï¿½ï¿½ï¿½ï¿½ï¿½Ú´Ë´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½Òµï¿½ñ·½·ï¿½
         Task<TestUser?> GetLatestUserAsync();
     }
 
     /// <summary>
-    /// ×Ô¶¨Òå²¿ÃÅ·þÎñ½Ó¿Ú¡£
+    /// ï¿½Ô¶ï¿½ï¿½å²¿ï¿½Å·ï¿½ï¿½ï¿½Ó¿Ú¡ï¿½
     /// </summary>
     public interface ITestDepartmentService : IEntityServiceAsync<TestDepartment>, IEntityViewServiceAsync<TestDepartment>
     {
     }
 
     /// <summary>
-    /// ²âÊÔÓÃ»§·þÎñÊµÏÖ¡£
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½Êµï¿½Ö¡ï¿½
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
     public class TestUserService : EntityService<TestUser>, ITestUserService
     {
         public async Task<TestUser?> GetLatestUserAsync()
         {
-            var results = await SearchSectionAsync(null, new PageSection(0, 1, new Sorting("Id", System.ComponentModel.ListSortDirection.Descending)));
-            return results.FirstOrDefault();
+            var results = await SearchAsync(null);
+            return results.OrderByDescending(u => u.Id).FirstOrDefault();
         }
     }
 
     /// <summary>
-    /// ²âÊÔ²¿ÃÅ·þÎñÊµÏÖ¡£
+    /// ï¿½ï¿½ï¿½Ô²ï¿½ï¿½Å·ï¿½ï¿½ï¿½Êµï¿½Ö¡ï¿½
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
     public class TestDepartmentService : EntityService<TestDepartment>, ITestDepartmentService

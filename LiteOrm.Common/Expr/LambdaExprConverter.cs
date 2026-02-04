@@ -148,6 +148,14 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 执行整体转换并将根节点转为 SqlSegment。
+        /// </summary>
+        public SqlSegment ToSqlSegment()
+        {
+            return ConvertInternal(_expression.Body) as SqlSegment;
+        }
+
+        /// <summary>
         /// 静态便捷入口，将 Lambda 表达式转换为 ValueTypeExpr 模型。
         /// </summary>
         public static ValueTypeExpr ToValueExpr(LambdaExpression expression)
@@ -157,7 +165,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 静态便捷入口，将 Lambda 表达式转换为 Expr 模型。
+        /// 静态便捷入口，将 Lambda 表达式转换为 LogicExpr 模型。
         /// </summary>
         public static LogicExpr ToExpr(LambdaExpression expression)
         {
@@ -165,9 +173,49 @@ namespace LiteOrm.Common
             return converter.ToExpr();
         }
 
+        /// <summary>
+        /// 静态便捷入口，将 Lambda 表达式转换为 SqlSegment 模型。
+        /// </summary>
+        public static SqlSegment ToSqlSegment(LambdaExpression expression)
+        {
+            var converter = new LambdaExprConverter(expression);
+            return converter.ToSqlSegment();
+        }
+
         #region 表达式转换核心逻辑
 
         private Expr ConvertInternal(Expression node)
+        {
+            if (node is null) return null;
+
+            switch (node.NodeType)
+            {
+                case ExpressionType.Call:
+                    return ConvertMethodCall((MethodCallExpression)node);
+                case ExpressionType.Constant:
+                    return ConvertConstant((ConstantExpression)node);
+                case ExpressionType.Parameter:
+                    return ConvertParameter((ParameterExpression)node);
+                case ExpressionType.Lambda:
+                    // 检查 Lambda 的返回类型。如果是 bool，可能是谓词；否则可能是值选择器。
+                    var lambda = (LambdaExpression)node;
+                    if (lambda.ReturnType == typeof(bool))
+                        return ToExpr(lambda);
+                    else
+                        return ToValueExpr(lambda);
+                case ExpressionType.Quote:
+                    // 处理 Expression.Quote，通常包裹在 LINQ 方法的 Lambda 参数上
+                    return ConvertInternal(((UnaryExpression)node).Operand);
+                case ExpressionType.MemberAccess:
+                    // 如果是成员访问，可能是实体属性或外部变量
+                    return ConvertMember((MemberExpression)node);
+                default:
+                    // 调用原始的转换逻辑
+                    return ConvertOriginal(node);
+            }
+        }
+
+        private Expr ConvertOriginal(Expression node)
         {
             // 基于节点类型的递归下降转换
             switch (node)
@@ -188,8 +236,6 @@ namespace LiteOrm.Common
                     return ConvertNewArray(newArray);
                 case ListInitExpression listInit:
                     return ConvertListInit(listInit);
-                case MethodCallExpression methodCall:
-                    return ConvertMethodCall(methodCall);
                 case NewExpression newExpression:
                     return ConvertNew(newExpression);
                 default:
@@ -452,6 +498,32 @@ namespace LiteOrm.Common
         {
             Type type = node.Method.DeclaringType;
 
+            // 处理 LINQ 方法调用
+            if (type == typeof(System.Linq.Queryable) || type == typeof(System.Linq.Enumerable) || node.Method.Name == "Having")
+            {
+                switch (node.Method.Name)
+                {
+                    case "Where":
+                        return HandleWhere(node);
+                    case "OrderBy":
+                    case "OrderByDescending":
+                        return HandleOrderBy(node, node.Method.Name == "OrderBy");
+                    case "ThenBy":
+                    case "ThenByDescending":
+                        return HandleThenBy(node, node.Method.Name == "ThenBy");
+                    case "Skip":
+                        return HandleSkip(node);
+                    case "Take":
+                        return HandleTake(node);
+                    case "GroupBy":
+                        return HandleGroupBy(node);
+                    case "Having":
+                        return HandleHaving(node);
+                    case "Select":
+                        return HandleSelect(node);
+                }
+            }
+
             if (type != null && _typeMethodHandlers.TryGetValue((type, node.Method.Name), out var typeMethodHandler))
             {
                 var result = typeMethodHandler(node, this);
@@ -470,6 +542,135 @@ namespace LiteOrm.Common
                 return ConvertInternal(node.Object);
             else
                 return EvaluateToExpr(node);
+        }
+
+        private Expr ConvertConstant(ConstantExpression node)
+        {
+            if (node.Value is Expr expr) return expr;
+            if (node.Value == null) return Expr.Null;
+            
+            // 如果常量是 IQueryable 或类似的，我们可能需要根据其类型解析 TableExpr
+            var type = node.Value.GetType();
+            if (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(System.Linq.IQueryable<>) || type.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IEnumerable<>)))
+            {
+                var itemType = type.GetGenericArguments()[0];
+                return new TableExpr(TableInfoProvider.Default.GetTableView(itemType));
+            }
+
+            return new ValueExpr(node.Value);
+        }
+
+        private Expr ConvertParameter(ParameterExpression node)
+        {
+            if (node == _rootParameter)
+            {
+                var type = node.Type;
+                if (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(System.Linq.IQueryable<>) || type.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IEnumerable<>)))
+                {
+                    type = type.GetGenericArguments()[0];
+                }
+
+                var tableView = TableInfoProvider.Default?.GetTableView(type);
+                if (tableView == null)
+                {
+                    // 如果 TableInfoProvider 未初始化或类型未被识别为实体，则可能需要在此添加更多防御性代码
+                    throw new InvalidOperationException($"无法通过 TableInfoProvider 获取类型 {type.FullName} 的表定义。请确保 LiteOrm 已正确初始化。");
+                }
+                return new TableExpr(tableView);
+            }
+            throw new NotSupportedException($"不支持的参数引用: {node.Name}");
+        }
+
+        private Expr HandleWhere(MethodCallExpression node)
+        {
+            var source = ConvertInternal(node.Arguments[0]) as ISourceAnchor;
+            var predicate = ConvertInternal(node.Arguments[1]) as LogicExpr;
+            return source.Where(predicate);
+        }
+
+        private Expr HandleOrderBy(MethodCallExpression node, bool ascending)
+        {
+            var source = ConvertInternal(node.Arguments[0]) as IOrderByAnchor;
+            var keySelector = ConvertInternal(node.Arguments[1]) as ValueTypeExpr;
+            return source.OrderBy((keySelector, ascending));
+        }
+
+        private Expr HandleThenBy(MethodCallExpression node, bool ascending)
+        {
+            var source = ConvertInternal(node.Arguments[0]);
+            var keySelector = ConvertInternal(node.Arguments[1]) as ValueTypeExpr;
+
+            if (source is OrderByExpr orderBy)
+            {
+                orderBy.OrderBys.Add((keySelector, ascending));
+                return orderBy;
+            }
+            throw new InvalidOperationException("ThenBy must follow OrderBy.");
+        }
+
+        private Expr HandleSkip(MethodCallExpression node)
+        {
+            var source = ConvertInternal(node.Arguments[0]) as ISectionAnchor;
+            var count = (int)((ConstantExpression)node.Arguments[1]).Value;
+            
+            if (source is SectionExpr section)
+            {
+                section.Skip = count;
+                return section;
+            }
+            return source.Section(count, 0);
+        }
+
+        private Expr HandleTake(MethodCallExpression node)
+        {
+            var source = ConvertInternal(node.Arguments[0]) as ISectionAnchor;
+            var count = (int)((ConstantExpression)node.Arguments[1]).Value;
+
+            if (source is SectionExpr section)
+            {
+                section.Take = count;
+                return section;
+            }
+            return source.Section(0, count);
+        }
+
+        private Expr HandleGroupBy(MethodCallExpression node)
+        {
+            var source = ConvertInternal(node.Arguments[0]) as IGroupByAnchor;
+            var keySelector = ConvertInternal(node.Arguments[1]);
+            
+            List<ValueTypeExpr> groupBys = new List<ValueTypeExpr>();
+            if (keySelector is ValueSet vs)
+                groupBys.AddRange(vs.Cast<ValueTypeExpr>());
+            else if (keySelector is ValueTypeExpr vte)
+                groupBys.Add(vte);
+            else
+                throw new NotSupportedException("Unsupported GroupBy key selector.");
+
+            return source.GroupBy(groupBys.ToArray());
+        }
+
+        private Expr HandleHaving(MethodCallExpression node)
+        {
+            var source = ConvertInternal(node.Arguments[0]) as IHavingAnchor;
+            var predicate = ConvertInternal(node.Arguments[1]) as LogicExpr;
+            return source.Having(predicate);
+        }
+
+        private Expr HandleSelect(MethodCallExpression node)
+        {
+            var source = ConvertInternal(node.Arguments[0]) as ISelectAnchor;
+            var selector = ConvertInternal(node.Arguments[1]);
+
+            List<ValueTypeExpr> selects = new List<ValueTypeExpr>();
+            if (selector is ValueSet vs)
+                selects.AddRange(vs.Cast<ValueTypeExpr>());
+            else if (selector is ValueTypeExpr vte)
+                selects.Add(vte);
+            else
+                throw new NotSupportedException("Unsupported Select selector.");
+
+            return source.Select(selects.ToArray());
         }
 
         #endregion
