@@ -78,7 +78,7 @@ namespace LiteOrm.Demo.Demos
                 { "UserName", "%Admin" },
                 { "Age", ">20" }
             };
-            var conditions = Util.ParseQueryCondition(queryString, typeof(User));
+            var conditions = Util.ParseQueryString(queryString, typeof(User));
             Console.WriteLine($"\n  解析 QueryString (UserName=%Admin, Age=>20) 为 Expr 列表:");
             foreach (var cond in conditions)
             {

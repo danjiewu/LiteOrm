@@ -253,7 +253,7 @@ namespace LiteOrm
         /// <param name="queryString">外部传入的查询键值。键应与实体的属性名匹配。</param>
         /// <param name="type">实体类型，用于元数据验证。</param>
         /// <returns>转换后的 Expr 表达式列表。</returns>
-        public static List<Expr> ParseQueryCondition(IEnumerable<KeyValuePair<string, string>> queryString, Type type)
+        public static List<Expr> ParseQueryString(IEnumerable<KeyValuePair<string, string>> queryString, Type type)
         {
             List<Expr> conditions = new List<Expr>();
             foreach (KeyValuePair<string, string> param in queryString)

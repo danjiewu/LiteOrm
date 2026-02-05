@@ -76,7 +76,7 @@ namespace LiteOrm.Common
             else if (expr is ForeignExpr foreign) ToSql(ref sb, foreign, context, sqlBuilder, outputParams);
             else if (expr is LogicSet ls) ToSql(ref sb, ls, context, sqlBuilder, outputParams);
             else if (expr is ValueSet vs) ToSql(ref sb, vs, context, sqlBuilder, outputParams);
-            else if (expr is SelectExpr select) ToSql(ref sb, select, context, sqlBuilder, outputParams);
+            else if (expr is SelectExpr select) ToSql(ref sb, select, context, sqlBuilder, outputParams, sb.Length == 0);
             else if (expr is WhereExpr where) ToSql(ref sb, where, context, sqlBuilder, outputParams);
             else if (expr is TableExpr table) ToSql(ref sb, table, context, sqlBuilder, outputParams);
             else if (expr is GroupByExpr groupBy) ToSql(ref sb, groupBy, context, sqlBuilder, outputParams);
@@ -327,9 +327,11 @@ namespace LiteOrm.Common
                     sb.Append(sqlBuilder.BuildExpression(column));
                 }
             }
-            else if(column is ForeignColumn foreignColumn){
+            else if (column is ForeignColumn foreignColumn)
+            {
                 sb.Append(sqlBuilder.BuildExpression(foreignColumn));
-            }else
+            }
+            else
             {
                 sb.Append(sqlBuilder.ToSqlName(tableAlias));
                 sb.Append(".");
@@ -458,8 +460,12 @@ namespace LiteOrm.Common
             sb.Append(")");
         }
 
-        private static void ToSql(ref ValueStringBuilder sb, SelectExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, SelectExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, bool isMain = true)
         {
+            if (!isMain)
+            {
+                sb.Append("(");
+            }
             sb.Append("SELECT ");
             if (expr.Selects == null || expr.Selects.Count == 0)
             {
@@ -478,11 +484,15 @@ namespace LiteOrm.Common
                 sb.Append(" FROM ");
                 ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
             }
+            if (!isMain)
+            {
+                sb.Append(")");
+            }
         }
 
         private static void ToSql(ref ValueStringBuilder sb, WhereExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if(expr.Source is null) ToSql(ref sb, new TableExpr(context.Table), context, sqlBuilder, outputParams);
+            if (expr.Source is null) ToSql(ref sb, new TableExpr(context.Table), context, sqlBuilder, outputParams);
             else ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
             if (expr.Where != null)
             {

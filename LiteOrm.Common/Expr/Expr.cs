@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Text.Json.Serialization;
 
@@ -197,6 +198,7 @@ namespace LiteOrm.Common
         public static TableExpr Table<T>() => new TableExpr(TableInfoProvider.Default.GetTableView(typeof(T)));
 
         public static WhereExpr Where<T>(Expression<Func<T, bool>> expression) => new WhereExpr() { Source = Table<T>(), Where = Exp(expression) };
+        public static SqlSegment Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
 
         /// <summary>
         /// 创建范围查询表达式 (BETWEEN)。

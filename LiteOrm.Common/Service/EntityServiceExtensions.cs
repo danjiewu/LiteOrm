@@ -1,6 +1,7 @@
 using LiteOrm.Service;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,6 +39,11 @@ namespace LiteOrm.Common
             return entityViewService.Search(Expr.Exp(expression), tableArgs);
         }
 
+        public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[] tableArgs = null)
+        {
+            return entityViewService.Search(Expr.Query(expression), tableArgs);
+        }
+
         /// <summary>
         /// 使用 Lambda 表达式搜索单个实体。
         /// </summary>
@@ -49,6 +55,11 @@ namespace LiteOrm.Common
         public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null)
         {
             return entityViewService.SearchOne(Expr.Exp(expression), tableArgs);
+        }
+
+        public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[] tableArgs = null)
+        {
+            return entityViewService.SearchOne(Expr.Query(expression), tableArgs);
         }
 
         /// <summary>
@@ -119,6 +130,11 @@ namespace LiteOrm.Common
             return entityViewService.SearchAsync(Expr.Exp(expression), tableArgs, cancellationToken);
         }
 
+        public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        {
+            return entityViewService.SearchAsync(Expr.Query(expression),tableArgs, cancellationToken);
+        }
+
         /// <summary>
         /// 使用 Lambda 表达式异步搜索单个实体。
         /// </summary>
@@ -131,6 +147,11 @@ namespace LiteOrm.Common
         public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityViewService.SearchOneAsync(Expr.Exp(expression), tableArgs, cancellationToken);
+        }
+
+        public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        {
+            return entityViewService.SearchOneAsync(Expr.Query(expression), tableArgs, cancellationToken);
         }
     }
 }
