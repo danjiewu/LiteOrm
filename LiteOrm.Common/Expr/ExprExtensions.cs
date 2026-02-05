@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace LiteOrm.Common
 {
@@ -323,7 +325,29 @@ namespace LiteOrm.Common
         /// var query = table.OrderBy(Expr.Property("CreatedDate").Desc());
         /// </code>
         /// </example>
-        public static OrderByExpr OrderBy(this IOrderByAnchor source, params (ValueTypeExpr, bool)[] orderBys) => new OrderByExpr(source as SqlSegment, orderBys);
+        public static OrderByExpr OrderBy(this IOrderByAnchor source, params (ValueTypeExpr, bool)[] orderBys)
+        {
+            if (source is OrderByExpr existingOrderByExpr)
+            {
+                existingOrderByExpr.OrderBys.AddRange(orderBys);
+                return existingOrderByExpr;
+            }
+            return new OrderByExpr(source as SqlSegment, orderBys);
+        }
+
+        /// <summary>
+        /// 为 SQL 语句添加 ORDER BY 子句（属性名与排序方向元组数组）。
+        /// </summary>
+        /// <param name="source">SQL 语句构建起点。</param>
+        /// <param name="orderBys">排序表达式和方向的元组数组（属性名, 升序/降序）。</param>
+        /// <returns>包含 ORDER BY 子句的 SQL 表达式。</returns>
+        /// <example>
+        /// <code>
+        /// var query = table.OrderBy(("CreatedDate", false));
+        /// </code>
+        /// </example>
+        public static OrderByExpr OrderBy(this IOrderByAnchor source, params (string, bool)[] orderBys) =>
+            OrderBy(source, Array.ConvertAll(orderBys, tuple => ((ValueTypeExpr)Expr.Property(tuple.Item1), tuple.Item2)));
 
         /// <summary>
         /// 为 SQL 语句添加分页子句。

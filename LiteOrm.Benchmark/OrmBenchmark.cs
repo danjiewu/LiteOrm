@@ -257,7 +257,7 @@ namespace LiteOrm.Benchmark
             {
                 var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
                 var updateService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
-                var users = await viewService.SearchSectionAsync(null, new PageSection(0, BatchCount));
+                var users = await viewService.SearchAsync(new SectionExpr(0, BatchCount));
                 foreach (var u in users)
                 {
                     u.Name = "LiteOrm" + Guid.NewGuid().ToString("N").Substring(0, 8);
@@ -359,7 +359,7 @@ namespace LiteOrm.Benchmark
             {
                 var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
                 var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
-                var existingUsers = await viewService.SearchSectionAsync(null, new PageSection(0, BatchCount / 2));
+                var existingUsers = await viewService.SearchAsync(new SectionExpr(0, BatchCount / 2));
                 foreach (var u in existingUsers) { u.Name = "Lite_Upsert_U"; u.Age = _random.Next(20, 60); }
                 var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Lite_Upsert_I", Age = _random.Next(20, 60), Email = $"lite_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();

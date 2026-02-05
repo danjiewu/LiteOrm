@@ -101,6 +101,14 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 生成分页查询的 SQL 语句，使用 SQLite 兼容的 LIMIT 和 OFFSET 语法。
+        /// </summary>
+        public override string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
+        {
+            return $"SELECT {select} \nFROM {from} {where} ORDER BY {orderBy} LIMIT {sectionSize} OFFSET {startIndex}";
+        }
+
+        /// <summary>
         /// 生成 SQLite 专用的批量更新 SQL 语句。鉴于 SQLite 版本的广泛度，继续采用 CASE WHEN 方式以保证兼容性。
         /// </summary>
         public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)

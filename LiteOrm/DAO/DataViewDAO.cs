@@ -9,37 +9,37 @@ using System.Threading.Tasks;
 namespace LiteOrm
 {
     /// <summary>
-    /// Ìá¹©²éÑ¯·½·¨£¬½á¹ûÒÔ DataTable ĞÎÊ½·µ»Ø
+    /// æä¾›è§†å›¾æŸ¥è¯¢åŠŸèƒ½ï¼Œè¿”å› DataTable æ ¼å¼ç»“æœ
     /// </summary>
-    /// <typeparam name="T">ÊµÌåÀàĞÍ</typeparam>
+    /// <typeparam name="T">å®ä½“ç±»å‹</typeparam>
     [AutoRegister(ServiceLifetime.Scoped)]
     public class DataViewDAO<T> : DAOBase
     {
         /// <summary>
-        /// »ñÈ¡ÊµÌå¶ÔÏóÀàĞÍ¡£
+        /// è·å–å®ä½“ç±»å‹ä¿¡æ¯ã€‚
         /// </summary>
         public override Type ObjectType => typeof(T);
 
         /// <summary>
-        /// »ñÈ¡ÊµÌå¶ÔÓ¦µÄÊı¾İ¿â±í»òÊÓÍ¼ÔªÊı¾İ¡£
+        /// è·å–å®ä½“å¯¹åº”çš„æ•°æ®åº“è¡¨æˆ–è§†å›¾å…ƒæ•°æ®ã€‚
         /// </summary>
         public override SqlTable Table => TableInfoProvider.GetTableView(ObjectType);
 
         /// <summary>
-        /// Ìæ»» SQL Óï¾äÖĞµÄÕ¼Î»·û²ÎÊı¡£
+        /// æ›¿æ¢ SQL è¯­å¥ä¸­çš„å ä½ç¬¦ä¸ºå®é™…å€¼ã€‚
         /// </summary>
-        /// <param name="sqlWithParam">°üº¬Õ¼Î»·ûµÄ SQL ×Ö·û´®¡£</param>
-        /// <returns>Ìæ»»²ÎÊıºóµÄ SQL ×Ö·û´®¡£</returns>
+        /// <param name="sqlWithParam">åŒ…å«å ä½ç¬¦çš„ SQL è¯­å¥ã€‚</param>
+        /// <returns>æ›¿æ¢åçš„å®Œæ•´ SQL è¯­å¥ã€‚</returns>
         protected override string ReplaceParam(string sqlWithParam)
         {
             return base.ReplaceParam(sqlWithParam).Replace(ParamAllFields, AllFieldsSql);
         }
 
         /// <summary>
-        /// ¸ù¾İÌõ¼ş²éÑ¯Êı¾İ
+        /// æ ¹æ®æ¡ä»¶æŸ¥è¯¢æ•°æ®
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼ş</param>
-        /// <returns>·ûºÏÌõ¼şµÄÊı¾İ±í</returns>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶</param>
+        /// <returns>æŸ¥è¯¢ç»“æœæ•°æ®è¡¨</returns>
         public virtual DataTable Search(Expr expr)
         {
             using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
@@ -47,11 +47,11 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// ¸ù¾İÌõ¼ş²éÑ¯Êı¾İ (Òì²½)
+        /// æ ¹æ®æ¡ä»¶æŸ¥è¯¢æ•°æ® (å¼‚æ­¥)
         /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼ş</param>
-        /// <param name="cancellationToken">È¡ÏûÁîÅÆ</param>
-        /// <returns>·ûºÏÌõ¼şµÄÊı¾İ±í</returns>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶</param>
+        /// <param name="cancellationToken">å–æ¶ˆä»¤ç‰Œ</param>
+        /// <returns>æŸ¥è¯¢ç»“æœæ•°æ®è¡¨</returns>
         public virtual async Task<DataTable> SearchAsync(Expr expr, CancellationToken cancellationToken = default)
         {
             using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
@@ -59,11 +59,11 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// ¸ù¾İÊôĞÔ²éÑ¯ÁĞ±íÊı¾İ
+        /// æŒ‡å®šå­—æ®µæŸ¥è¯¢æ•°æ®
         /// </summary>
-        /// <param name="propertyNames">Òª²éÑ¯µÄÊôĞÔÃûÊı×é</param>
-        /// <param name="expr">²éÑ¯Ìõ¼ş</param>
-        /// <returns>²éÑ¯½á¹ûÊı¾İ±í</returns>
+        /// <param name="propertyNames">è¦æŸ¥è¯¢çš„å­—æ®µåç§°åˆ—è¡¨</param>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶</param>
+        /// <returns>æŸ¥è¯¢ç»“æœæ•°æ®è¡¨</returns>
         public virtual DataTable Search(string[] propertyNames, Expr expr)
         {
             string fieldsSql = ParamAllFields;
@@ -77,12 +77,12 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// ¸ù¾İÊôĞÔ²éÑ¯ÁĞ±íÊı¾İ (Òì²½)
+        /// æŒ‡å®šå­—æ®µæŸ¥è¯¢æ•°æ® (å¼‚æ­¥)
         /// </summary>
-        /// <param name="propertyNames">Òª²éÑ¯µÄÊôĞÔÃûÊı×é</param>
-        /// <param name="expr">²éÑ¯Ìõ¼ş</param>
-        /// <param name="cancellationToken">È¡ÏûÁîÅÆ</param>
-        /// <returns>²éÑ¯½á¹ûÊı¾İ±í</returns>
+        /// <param name="propertyNames">è¦æŸ¥è¯¢çš„å­—æ®µåç§°åˆ—è¡¨</param>
+        /// <param name="expr">æŸ¥è¯¢æ¡ä»¶</param>
+        /// <param name="cancellationToken">å–æ¶ˆä»¤ç‰Œ</param>
+        /// <returns>æŸ¥è¯¢ç»“æœæ•°æ®è¡¨</returns>
         public virtual async Task<DataTable> SearchAsync(string[] propertyNames, Expr expr, CancellationToken cancellationToken = default)
         {
             string fieldsSql = ParamAllFields;
@@ -96,99 +96,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// ¸ù¾İÌõ¼ş²éÑ¯ÁĞ±íÊı¾İ²¢½øĞĞÅÅĞò
-        /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼ş</param>
-        /// <param name="orderBy">ÅÅĞòÏî¼¯ºÏ</param>
-        /// <returns>²éÑ¯½á¹ûÊı¾İ±í</returns>
-        public virtual DataTable Search(Expr expr, params Sorting[] orderBy)
-        {
-            if (orderBy == null || orderBy.Length == 0) return Search(expr);
-            using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere} ORDER BY " + GetOrderBySql(orderBy), expr);
-            return GetDataTable(command);
-        }
-
-        /// <summary>
-        /// ¸ù¾İÌõ¼ş²éÑ¯ÁĞ±íÊı¾İ²¢½øĞĞÅÅĞò (Òì²½)
-        /// </summary>
-        /// <param name="expr">²éÑ¯Ìõ¼ş</param>
-        /// <param name="cancellationToken">È¡ÏûÁîÅÆ</param>
-        /// <param name="orderBy">ÅÅĞòÏî¼¯ºÏ</param>
-        /// <returns>²éÑ¯½á¹ûÊı¾İ±í</returns>
-        public virtual async Task<DataTable> SearchAsync(Expr expr, CancellationToken cancellationToken = default, params Sorting[] orderBy)
-        {
-            if (orderBy == null || orderBy.Length == 0) return await SearchAsync(expr, cancellationToken);
-            using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere} ORDER BY " + GetOrderBySql(orderBy), expr);
-            return await GetDataTableAsync(command, cancellationToken);
-        }
-
-        /// <summary>
-        /// ¸ù¾İÌõ¼ş²éÑ¯Ö¸¶¨ÁĞµÄÊı¾İ²¢½øĞĞÅÅĞò
-        /// </summary>
-        /// <param name="propertyNames">Òª²éÑ¯µÄÊôĞÔÃûÊı×é</param>
-        /// <param name="expr">²éÑ¯Ìõ¼ş</param>
-        /// <param name="orderBy">ÅÅĞòÏî¼¯ºÏ</param>
-        /// <returns>²éÑ¯½á¹ûÊı¾İ±í</returns>
-        public virtual DataTable Search(string[] propertyNames, Expr expr, params Sorting[] orderBy)
-        {
-            var columns = propertyNames.Select(p => Table.GetColumn(p)).Where(c => c != null);
-            string fieldsSql = GetSelectFieldsSql(columns);
-            string orderBySql = (orderBy == null || orderBy.Length == 0) ? string.Empty : " ORDER BY " + GetOrderBySql(orderBy);
-            using var command = MakeConditionCommand($"SELECT {fieldsSql} \nFROM {ParamFromTable} {ParamWhere}{orderBySql}", expr);
-            return GetDataTable(command);
-        }
-
-        /// <summary>
-        /// ¸ù¾İÌõ¼ş²éÑ¯Ö¸¶¨ÁĞµÄÊı¾İ²¢½øĞĞÅÅĞò (Òì²½)
-        /// </summary>
-        /// <param name="propertyNames">Òª²éÑ¯µÄÊôĞÔÃûÊı×é</param>
-        /// <param name="expr">²éÑ¯Ìõ¼ş</param>
-        /// <param name="cancellationToken">È¡ÏûÁîÅÆ</param>
-        /// <param name="orderBy">ÅÅĞòÏî¼¯ºÏ</param>
-        /// <returns>²éÑ¯½á¹ûÊı¾İ±í</returns>
-        public virtual async Task<DataTable> SearchAsync(string[] propertyNames, Expr expr, CancellationToken cancellationToken = default, params Sorting[] orderBy)
-        {
-            var columns = propertyNames.Select(p => Table.GetColumn(p)).Where(c => c != null);
-            string fieldsSql = GetSelectFieldsSql(columns);
-            string orderBySql = (orderBy == null || orderBy.Length == 0) ? string.Empty : " ORDER BY " + GetOrderBySql(orderBy);
-            using var command = MakeConditionCommand($"SELECT {fieldsSql} \nFROM {ParamFromTable} {ParamWhere}{orderBySql}", expr);
-            return await GetDataTableAsync(command, cancellationToken);
-        }
-
-        /// <summary>
-        /// ·ÖÒ³²éÑ¯Êı¾İ£¬²¢Ö¸¶¨Êä³öÁĞ
-        /// </summary>
-        /// <param name="propertyNames">ĞèÒªÊä³öµÄÊôĞÔÃû¼¯ºÏ</param>
-        /// <param name="expr">²éÑ¯Ìõ¼ş</param>
-        /// <param name="section">·ÖÒ³Éè¶¨</param>
-        /// <returns>·ÖÒ³ºóµÄÊı¾İ±í</returns>
-        public virtual DataTable SearchSection(string[] propertyNames, Expr expr, PageSection section)
-        {
-            string fieldsSql = (propertyNames == null || propertyNames.Length == 0) ? AllFieldsSql : GetSelectFieldsSql(propertyNames.Select(p => Table.GetColumn(p)).Where(c => c != null));
-            string sql = SqlBuilder.GetSelectSectionSql(fieldsSql, From, ParamWhere, GetOrderBySql(section.Orders), section.StartIndex, section.SectionSize);
-            using var command = MakeConditionCommand(sql, expr);
-            return GetDataTable(command);
-        }
-
-        /// <summary>
-        /// ·ÖÒ³²éÑ¯Êı¾İ£¬²¢Ö¸¶¨Êä³öÁĞ (Òì²½)
-        /// </summary>
-        /// <param name="propertyNames">ĞèÒªÊä³öµÄÊôĞÔÃû¼¯ºÏ</param>
-        /// <param name="expr">²éÑ¯Ìõ¼ş</param>
-        /// <param name="section">·ÖÒ³Éè¶¨</param>
-        /// <param name="cancellationToken">È¡ÏûÁîÅÆ</param>
-        /// <returns>·ÖÒ³ºóµÄÊı¾İ±í</returns>
-        public virtual async Task<DataTable> SearchSectionAsync(string[] propertyNames, Expr expr, PageSection section, CancellationToken cancellationToken = default)
-        {
-            string fieldsSql = (propertyNames == null || propertyNames.Length == 0) ? AllFieldsSql : GetSelectFieldsSql(propertyNames.Select(p => Table.GetColumn(p)).Where(c => c != null));
-            string sql = SqlBuilder.GetSelectSectionSql(fieldsSql, From, ParamWhere, GetOrderBySql(section.Orders), section.StartIndex, section.SectionSize);
-            using var command = MakeConditionCommand(sql, expr);
-            return await GetDataTableAsync(command, cancellationToken);
-        }
-
-
-        /// <summary>
-        /// Ö´ĞĞÃüÁî²¢½«½á¹ûÌî³äµ½ DataTable£¬Ê¹ÓÃ SqlBuilder ½øĞĞÊı¾İ×ª»»
+        /// æ‰§è¡Œå‘½ä»¤å¹¶å°†ç»“æœå¡«å……åˆ° DataTableï¼Œä½¿ç”¨ SqlBuilder è¿›è¡Œå‚æ•°è½¬æ¢
         /// </summary>
         protected DataTable GetDataTable(DbCommandProxy command)
         {
@@ -223,11 +131,11 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// Ö´ĞĞÃüÁî²¢½«½á¹ûÌî³äµ½ DataTable (Òì²½)
+        /// æ‰§è¡Œå‘½ä»¤å¹¶å°†ç»“æœå¡«å……åˆ° DataTable (å¼‚æ­¥)
         /// </summary>
-        /// <param name="command">Êı¾İ¿âÃüÁî´úÀí</param>
-        /// <param name="cancellationToken">È¡ÏûÁîÅÆ</param>
-        /// <returns>²éÑ¯½á¹ûÊı¾İ±í</returns>
+        /// <param name="command">æ•°æ®åº“æŸ¥è¯¢å‘½ä»¤</param>
+        /// <param name="cancellationToken">å–æ¶ˆä»¤ç‰Œ</param>
+        /// <returns>æŸ¥è¯¢ç»“æœæ•°æ®è¡¨</returns>
         protected async Task<DataTable> GetDataTableAsync(DbCommandProxy command, CancellationToken cancellationToken = default)
         {
             using (var reader = await command.ExecuteReaderAsync(cancellationToken))

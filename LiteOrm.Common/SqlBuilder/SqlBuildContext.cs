@@ -88,6 +88,9 @@ namespace LiteOrm.Common
                 {
                     _root = Parent?.Root ?? this;
                 }
+                else if(_root==this){
+                    return _root;
+                }
                 else if (_root != _root.Root)
                 {
                     _root = _root.Root;

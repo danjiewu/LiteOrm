@@ -316,7 +316,6 @@ namespace LiteOrm.Common
             SqlColumn column = context.Table.GetColumn(expr.PropertyName);
             if (column is null) throw new Exception($"Property \"{expr.PropertyName}\" does not exist in type \"{context.Table.DefinitionType.FullName}\". ");
             string tableAlias = context.TableAliasName;
-
             if (tableAlias is null)
             {
                 if (context.SingleTable)
@@ -328,13 +327,13 @@ namespace LiteOrm.Common
                     sb.Append(sqlBuilder.BuildExpression(column));
                 }
             }
-            else
+            else if(column is ForeignColumn foreignColumn){
+                sb.Append(sqlBuilder.BuildExpression(foreignColumn));
+            }else
             {
-                sb.Append('[');
-                sb.Append(tableAlias);
-                sb.Append("].[");
-                sb.Append(column.Name);
-                sb.Append(']');
+                sb.Append(sqlBuilder.ToSqlName(tableAlias));
+                sb.Append(".");
+                sb.Append(sqlBuilder.ToSqlName(column.Name));
             }
         }
 
@@ -483,7 +482,8 @@ namespace LiteOrm.Common
 
         private static void ToSql(ref ValueStringBuilder sb, WhereExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
+            if(expr.Source is null) ToSql(ref sb, new TableExpr(context.Table), context, sqlBuilder, outputParams);
+            else ToSql(ref sb, expr.Source, context, sqlBuilder, outputParams);
             if (expr.Where != null)
             {
                 sb.Append(" WHERE ");

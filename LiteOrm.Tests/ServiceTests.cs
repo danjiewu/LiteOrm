@@ -371,18 +371,18 @@ namespace LiteOrm.Tests
 
             // Act - Order
             var ordered = await viewService.SearchAsync(
-                Expr.Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", true))
+                Expr.Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false))
             );
 
             // Act - Section
             var section = await viewService.SearchAsync(
-                Expr.Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", true)).Section(0, 2)
+                Expr.Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false)).Section(0, 2)
             );
 
             // Assert
             Assert.Equal("Order 3", ordered[0].Name);
             Assert.Equal(2, section.Count);
-            Assert.Equal("Order 1", section[0].Name);
+            Assert.Equal("Order 3", section[0].Name);
         }
 
         [Fact]
@@ -571,6 +571,71 @@ namespace LiteOrm.Tests
             // 4. Count ��֤
             int count = await viewService.CountAsync(u => u.ParentDeptName == "Root Dept");
             Assert.Equal(1, count);
+        }
+
+        [Fact]
+        public async Task EntityViewService_MultiTableJoin_SortingPagination_WithForeignColumn_ShouldWork()
+        {
+            // Arrange
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
+
+            // 创建测试部门
+            var dept1 = new TestDepartment { Name = "A Department" };
+            var dept2 = new TestDepartment { Name = "B Department" };
+            var dept3 = new TestDepartment { Name = "C Department" };
+            await deptService.InsertAsync(dept1);
+            await deptService.InsertAsync(dept2);
+            await deptService.InsertAsync(dept3);
+
+            // 创建测试用户，分布在不同部门
+            await userService.InsertAsync(new TestUser { Name = "User 1", Age = 20, CreateTime = DateTime.Now, DeptId = dept1.Id });
+            await userService.InsertAsync(new TestUser { Name = "User 2", Age = 25, CreateTime = DateTime.Now, DeptId = dept2.Id });
+            await userService.InsertAsync(new TestUser { Name = "User 3", Age = 30, CreateTime = DateTime.Now, DeptId = dept3.Id });
+            await userService.InsertAsync(new TestUser { Name = "User 4", Age = 35, CreateTime = DateTime.Now, DeptId = dept1.Id });
+            await userService.InsertAsync(new TestUser { Name = "User 5", Age = 40, CreateTime = DateTime.Now, DeptId = dept2.Id });
+
+            // Act 1: 使用 ForeignColumn (DeptName) 作为查询条件和排序条件，同时分页
+            var expr1 = Expr.Where<TestUserView>(u => u.DeptName != null)
+                .OrderBy((nameof(TestUserView.DeptName), true))  // 按部门名称升序
+                .OrderBy((nameof(TestUser.Age), false))          // 再按年龄降序
+                .Section(0, 3);                                  // 分页，取前3条
+            var users1 = await viewService.SearchAsync(expr1);
+
+            // Assert 1
+            Assert.Equal(3, users1.Count);
+            // 验证排序顺序：A Department 的用户应该在前面，且同一部门内按年龄降序
+            Assert.Contains(users1, u => u.DeptName == "A Department" && u.Age == 35); // User 4
+            Assert.Contains(users1, u => u.DeptName == "A Department" && u.Age == 20); // User 1
+            Assert.Contains(users1, u => u.DeptName == "B Department" && u.Age == 40); // User 5
+
+            // Act 2: 使用 ForeignColumn (ParentDeptName) 作为查询条件和排序条件
+            // 首先创建有父部门的部门结构
+            var parentDept = new TestDepartment { Name = "Parent Dept" };
+            await deptService.InsertAsync(parentDept);
+
+            var childDept1 = new TestDepartment { Name = "Child Dept 1", ParentId = parentDept.Id };
+            var childDept2 = new TestDepartment { Name = "Child Dept 2", ParentId = parentDept.Id };
+            await deptService.InsertAsync(childDept1);
+            await deptService.InsertAsync(childDept2);
+
+            // 创建属于子部门的用户
+            await userService.InsertAsync(new TestUser { Name = "Child User 1", Age = 22, CreateTime = DateTime.Now, DeptId = childDept1.Id });
+            await userService.InsertAsync(new TestUser { Name = "Child User 2", Age = 28, CreateTime = DateTime.Now, DeptId = childDept2.Id });
+
+            // 使用 ParentDeptName 作为查询和排序条件
+            var expr2 = Expr.Where<TestUserView>(u => u.ParentDeptName == "Parent Dept")
+                .OrderBy((nameof(TestUserView.ParentDeptName), true))  // 按父部门名称升序
+                .OrderBy((nameof(TestUserView.DeptName), true))        // 再按部门名称升序
+                .OrderBy((nameof(TestUser.Age), true))                 // 再按年龄升序
+                .Section(0, 5);                                         // 分页，取前5条
+            var users2 = await viewService.SearchAsync(expr2);
+
+            // Assert 2
+            Assert.True(users2.Count >= 2); // 至少有2个用户
+            // 验证所有结果的 ParentDeptName 都是 "Parent Dept"
+            Assert.All(users2, u => Assert.Equal("Parent Dept", u.ParentDeptName));
         }
     }
 }

@@ -171,8 +171,8 @@ foreach (var p in result.Params)
     - 1 = %admin/_%
 ```
 
-### 4. 常用查询示例 (SearchAsync / SearchSectionAsync)
-演示了通过 `Expr` 构建复杂条件、结合分页排序 (`PageSection`)、异步执行。
+### 4. 常用查询示例 (SearchAsync)
+演示了通过 `Expr` 构建复杂条件、结合分页排序、异步执行。
 
 **示例 1: 使用 Lambda 异步查询（推荐）**
 ```csharp
@@ -189,8 +189,8 @@ foreach (var user in users1)
 var threeDaysAgo = DateTime.Now.AddDays(-3);
 string currentMonth = DateTime.Now.ToString("yyyyMM");
 // 筛选 3 天内且未发货的订单，按金额降序取前 10 条
-var section = new PageSection(0, 10).OrderByDesc(nameof(SalesRecord.Amount));
-var sales2 = await salesService.SearchSectionAsync(s => s.SaleTime < threeDaysAgo && s.ShipTime == null, section, [currentMonth]);
+var expr = Expr.Lambda<SalesRecord>(s => s.SaleTime < threeDaysAgo && s.ShipTime == null).OrderByDesc(nameof(SalesRecord.Amount)).Section(0, 10);
+var sales2 = await salesService.SearchAsync(expr, [currentMonth]);
 Console.WriteLine($"\n[示例 2] 3天前销售且未发货的订单({currentMonth}月份)，并按金额降序取前10条:");
 foreach (var sale in sales2)
 {

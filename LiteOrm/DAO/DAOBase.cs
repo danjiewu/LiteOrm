@@ -266,40 +266,26 @@ namespace LiteOrm
         /// <summary>
         /// 生成 orderby 部分的 SQL
         /// </summary>
-        /// <param name="orders">排序项的集合，按优先级顺序排列</param>
         /// <returns></returns>
-        protected string GetOrderBySql(IList<Sorting> orders)
+        /// <remarks>现在排序通过Expr的OrderBy方法实现，此方法仅用于兼容旧代码</remarks>
+        protected string GetOrderBySql()
         {
             var orderBy = ValueStringBuilder.Create(128);
-            if (orders is null || orders.Count == 0)
+            if (TableDefinition.Keys.Length != 0)
             {
-                if (TableDefinition.Keys.Length != 0)
+                foreach (ColumnDefinition key in TableDefinition.Keys)
                 {
-                    foreach (ColumnDefinition key in TableDefinition.Keys)
-                    {
-                        if (orderBy.Length != 0) orderBy.Append(",");
-                        orderBy.Append(SqlBuilder.ToSqlName(FactTableName));
-                        orderBy.Append(".");
-                        orderBy.Append(SqlBuilder.ToSqlName(key.Name));
-                    }
-                }
-                else
-                {
+                    if (orderBy.Length != 0) orderBy.Append(",");
                     orderBy.Append(SqlBuilder.ToSqlName(FactTableName));
                     orderBy.Append(".");
-                    orderBy.Append(SqlBuilder.ToSqlName(TableDefinition.Columns[0].Name));
+                    orderBy.Append(SqlBuilder.ToSqlName(key.Name));
                 }
             }
             else
             {
-                foreach (Sorting sorting in orders)
-                {
-                    SqlColumn column = Table.GetColumn(sorting.PropertyName);
-                    if (column is null) throw new ArgumentException($"Type \"{ObjectType.Name}\" does not have property \"{sorting.PropertyName}\"", "section");
-                    if (orderBy.Length > 0) orderBy.Append(",");
-                    orderBy.Append(SqlBuilder.BuildExpression(column));
-                    orderBy.Append(sorting.Direction == ListSortDirection.Ascending ? " ASC" : " DESC");
-                }
+                orderBy.Append(SqlBuilder.ToSqlName(FactTableName));
+                orderBy.Append(".");
+                orderBy.Append(SqlBuilder.ToSqlName(TableDefinition.Columns[0].Name));
             }
             string result = orderBy.ToString();
             orderBy.Dispose();

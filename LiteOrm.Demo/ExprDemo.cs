@@ -32,7 +32,7 @@ namespace LiteOrm.Demo
             // 3. 查询场景演示
             await QueryUsageDemo.ShowJoinQueryAsync(factory.DepartmentService);
             await QueryUsageDemo.ShowArgedQueryAsync(factory.SalesService);
-            await QueryUsageDemo.ShowQueryResultsAsync(factory.UserService, factory.SalesService);
+            await QueryUsageDemo.ShowQueryResultsAsync(factory.UserService, factory.SalesService, factory.DepartmentService);
 
             // 4. 性能演示
             await PerformanceDemo.ShowPerformanceComparisonAsync(factory.SalesService);

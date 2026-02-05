@@ -388,7 +388,7 @@ namespace LiteOrm
             var selectExpr = new SelectExpr()
             {
                 Source = selectSource,
-                Selects = SelectColumns.Select((col, i) => (ValueTypeExpr)Expr.Property(col.Name)).ToList()
+                Selects = SelectColumns.Select((col, i) => (ValueTypeExpr)Expr.Property(col.PropertyName)).ToList()
             };
             var command = MakeNamedParamCommand(selectExpr.ToSql(context, SqlBuilder, paramList), paramList);
             return command;

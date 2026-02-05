@@ -153,10 +153,11 @@ public class UserDemoController : ControllerBase
         // 1. Lambda 异步查询
         var admin = await userService.SearchOneAsync(u => u.UserName == "admin" && u.Id > 0);
         
-        // 2. 分页查询
-        var page = await userService.SearchSectionAsync(
-            u => u.CreateTime > DateTime.Today.AddDays(-7), 
-            new PageSection(0, 10, Sorting.Desc(nameof(User.Id)))
+        // 2. 分页查询（使用Expr方式）
+        var page = await userService.SearchAsync(
+            Expr.Where<User>(u => u.CreateTime > DateTime.Today.AddDays(-7))
+                .OrderBy((nameof(User.Id), false))
+                .Section(0, 10)
         );
         
         // 3. 插入新用户
