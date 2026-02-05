@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-`LiteOrm.Demo` 展示了 LiteOrm 在 .NET 8 / 10 环境下的核心特性，包括依赖注入集成、强大的表达式系统、自动化配置、分表查询、关联查询以及性能优化技巧。
+`LiteOrm.Demo` 展示了 LiteOrm 在 .NET 8 环境下的核心特性，包括依赖注入集成、强大的表达式系统、Lambda 表达式查询（支持排序分页）、自动化关联查询、动态分表以及性能优化技巧。
 
 ## 如何运行
 
@@ -20,6 +20,7 @@
 `LiteOrm.Demo` 演示了如何通过简单的配置快速启动框架：
 
 ### 1. 宿主集成 (Program.cs)
+
 在 `Program.cs` 中增加 `RegisterLiteOrm()` 调用即可自动完成服务扫描与多数据源注册：
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
@@ -28,6 +29,7 @@ var host = Host.CreateDefaultBuilder(args)
 ```
 
 ### 2. 配置说明 (appsettings.json)
+
 连接池与数据源配置：
 ```json
 {
@@ -64,323 +66,195 @@ var host = Host.CreateDefaultBuilder(args)
 | **SyncTable** | false | 是否在启动时自动检测实体类并尝试同步数据库表结构。 |
 
 
-## 核心功能演示与输出结果
+## 核心功能演示
 
 ---
 
-## 基础用法 (Basic Usage)
+## 1. Lambda 表达式查询
 
-### 1. 基础表达式构建 (Expr)
-LiteOrm使用强类型属性名构建常见的 SQL 比较条件。
+LiteOrm 支持使用 `IQueryable` 形式的 Lambda 表达式进行查询，自动转换为 SQL，支持排序、分页、多条件合并等操作。
 
-**代码示例：**
+### 1.1 基础查询 (Where)
+
 ```csharp
-Console.WriteLine("\n[BinaryExpr] 二元表达式:");
-// 等于, 不等于, 大于, 小于, 大于等于, 小于等于
+var users = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 18)
+);
+```
+
+### 1.2 排序 (OrderBy/OrderByDescending/ThenBy)
+
+```csharp
+// 按年龄升序
+var sortedByAge = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 18).OrderBy(u => u.Age)
+);
+
+// 按年龄降序，再按用户名升序
+var sortedComplex = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 18).OrderByDescending(u => u.Age).ThenBy(u => u.UserName)
+);
+```
+
+### 1.3 分页 (Skip/Take)
+
+```csharp
+// 查询第 2 页（每页 10 条）
+var pagedUsers = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 18)
+          .OrderBy(u => u.CreateTime)
+          .Skip(10)
+          .Take(10)
+);
+```
+
+### 1.4 多条件合并 (多个 Where)
+
+多个 `Where()` 调用会自动合并为单个 WHERE 子句，条件之间用 AND 连接：
+
+```csharp
+var multiCondition = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 18)
+          .Where(u => !string.IsNullOrEmpty(u.UserName))
+          .Where(u => u.UserName.Contains("admin"))
+);
+// 等效于: WHERE (Age > 18 AND UserName IS NOT NULL AND UserName Contains admin)
+```
+
+**注意**: `SearchAsync` 的 Lambda 表达式目前支持 `Where`、`OrderBy`、`OrderByDescending`、`ThenBy`、`Skip`、`Take`，不支持 `GroupBy` 和 `Select`。
+
+**示例输出：**
+```text
+=== Lambda 表达式查询演示 ===
+
+[1] 基础 Lambda 查询 (Where):
+  Lambda: q => q.Where(u => u.Age > 18)
+  转换结果: UserView WHERE [Age] > 18
+
+[2] Lambda 查询 + 排序 + 分页 (OrderBy + Skip + Take):
+  说明: Skip(10) 跳过前10条，Take(20) 取20条（第2页，每页20条）
+  Lambda: q => q.Where(u => u.Age > 18).OrderBy(u => u.Age).Skip(10).Take(20)
+  转换结果: UserView WHERE [Age] > 18 ORDER BY [Age] ASC SKIP 10 TAKE 20
+
+[5] Lambda 多条件查询 (多个 Where 自动合并为 AND):
+  说明: 多个 Where() 调用会自动合并为一个 WHERE 子句
+  转换结果: UserView WHERE ([Age] > 18 AND [UserName] != NULL AND [UserName] Contains Admin)
+```
+
+---
+
+## 2. 基础表达式构建 (Expr)
+
+LiteOrm 使用强类型属性名构建常见的 SQL 比较条件。
+
+```csharp
+// 二元表达式
 Expr e1 = Expr.Property(nameof(User.Age)) == 18;
 Expr e2 = Expr.Property(nameof(User.Age)) >= 18;
 Expr e3 = Expr.Property(nameof(User.UserName)) != "Admin";
-Console.WriteLine($"  Age == 18: {e1}");
-Console.WriteLine($"  Age >= 18: {e2}");
-Console.WriteLine($"  UserName != 'Admin': {e3}");
 
-Console.WriteLine("\n[ValueExpr] 值表达式:");
-Expr v1 = (Expr)100; // 隐式转换
-Expr v2 = Expr.Null;
-Console.WriteLine($"  Value 100: {v1}");
-Console.WriteLine($"  Value Null: {v2}");
-
-Console.WriteLine("\n[PropertyExpr] 属性表达式:");
-Expr p1 = Expr.Property("CreateTime");
-Console.WriteLine($"  Property: {p1}");
-
-Console.WriteLine("\n[UnaryExpr] 一元表达式:");
-Expr u1 = !Expr.Property(nameof(User.UserName)).Contains("Guest");
-Console.WriteLine($"  Not Contains Guest: {u1}");
-
-Console.WriteLine("\n[ExprSet] 表达式集合 (And/Or):");
+// 表达式集合 (And/Or)
 Expr set = (Expr.Property("Age") > 10 & Expr.Property("Age") < 20) | Expr.Property("DeptId") == 1;
-Console.WriteLine($"  (Age > 10 AND Age < 20) OR DeptId == 1: {set}");
 
-```
-
-**示例输出：**
-```text
-[BinaryExpr] 二元表达式:
-  Age == 18: [Age] = 18
-  Age >= 18: [Age] >= 18
-  UserName != 'Admin': [UserName] != Admin
-
-[ValueExpr] 值表达式:
-  Value 100: 100
-  Value Null: NULL
-
-[PropertyExpr] 属性表达式:
-  Property: [CreateTime]
-
-[UnaryExpr] 一元表达式:
-  Not Contains Guest: [UserName] NotContains Guest
-
-[ExprSet] 表达式集合 (And/Or):
-  (Age > 10 AND Age < 20) OR DeptId == 1: (([Age] > 10 AND [Age] < 20) OR [DeptId] = 1)
-
-```
-
-### 2. Lambda 表达式转换
-LiteOrm 支持通过 `EntityServiceExtensions` 将 C# Lambda 表达式自动转换为 `Expr` 对象，这种方式最接近原生的 LINQ 写法。
-
-**代码示例：**
-```csharp
-Console.WriteLine("\n[LambdaExpr] Lambda 表达式转换演示:");
-// 直接在 SearchAsync 中使用 Lambda，由扩展方法自动完成转换
-var sales = await salesService.SearchAsync(s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains("电"));
-Console.WriteLine($"  查询结果数量: {sales.Count}");
-```
-
-**示例输出：**
-```text
-[LambdaExpr] Lambda 表达式转换演示:
-  C# Lambda: s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains("电")
-  转换后的 Expr: (COALESCE([ShipTime],Now()) > [SaleTime] + 3.00:00:00 AND [ProductName] Contains 电)  
-```
-
-### 3. SQL 自动生成 (SqlGen)
-演示如何使用 `SqlGen` 工具类将逻辑表达式手动转换为 SQL，可用于调试和验证表达式生成 SQL 的正确性。
-
-**代码示例：**
-```csharp
-var expr = (Expr.Property(nameof(User.Age)) > 18) & (Expr.Property(nameof(User.UserName)).Contains("admin_"));
-var sqlGen = new SqlGen(typeof(User));
-var result = sqlGen.ToSql(expr);
-Console.WriteLine($"  Expr: {expr}");
-Console.WriteLine($"  生成 SQL: {result.Sql}");
-Console.WriteLine("  参数列表:");
-foreach (var p in result.Params)
-{
-    Console.WriteLine($"    - {p.Key} = {p.Value}");
-}
-```
-
-**示例输出：**
-```text
-[SqlGen] 表达式生成 SQL 演示:
-  Expr: ([Age] > 18 AND [UserName] Contains admin_)
-  生成 SQL: ([User].[Age] > @0 AND [User].[UserName] LIKE @1 escape '/')
-  参数列表:
-    - 0 = 18
-    - 1 = %admin/_%
-```
-
-### 4. 常用查询示例 (SearchAsync)
-演示了通过 `Expr` 构建复杂条件、结合分页排序、异步执行。
-
-**示例 1: 使用 Lambda 异步查询（推荐）**
-```csharp
-var users1 = await userService.SearchAsync(u => u.Age > 25 && u.UserName.Length == 2);
-Console.WriteLine($"\n[示例 1] 年龄 > 25 且名字长度为 2:");
-foreach (var user in users1)
-{
-    Console.WriteLine($"    - ID:{user.Id}, 账号:{user.UserName}, 年龄:{user.Age}, 部门:{user.DeptName}");
-}
-```
-
-**示例 2: 组合条件 + 分页 + 排序**
-```csharp
-var threeDaysAgo = DateTime.Now.AddDays(-3);
-string currentMonth = DateTime.Now.ToString("yyyyMM");
-// 筛选 3 天内且未发货的订单，按金额降序取前 10 条
-var expr = Expr.Lambda<SalesRecord>(s => s.SaleTime < threeDaysAgo && s.ShipTime == null).OrderByDesc(nameof(SalesRecord.Amount)).Section(0, 10);
-var sales2 = await salesService.SearchAsync(expr, [currentMonth]);
-Console.WriteLine($"\n[示例 2] 3天前销售且未发货的订单({currentMonth}月份)，并按金额降序取前10条:");
-foreach (var sale in sales2)
-{
-    Console.WriteLine($"    - ID:{sale.Id}, 产品:{sale.ProductName}, 金额:{sale.Amount}, 销售员:{sale.UserName}, 销售时间:{sale.SaleTime:yyyy-MM-dd HH:mm} 发货时间:{sale.ShipTime:yyyy-MM-dd HH:mm}");
-}
+// Lambda 转换
+var lambdaExpr = Expr.Exp<User>(u => u.Age > 18 && u.UserName.Contains("admin"));
 ```
 
 ---
 
-## 进阶与扩展功能 (Advanced & Extended)
+## 3. 自动化关联查询 (Join)
 
-### 1. 自动化关联查询 (Join)
-利用实体特性 `[ForeignColumn]` 实现自动化的表连接，无需手写 JOIN 语句。只要模型定义了关联字段，查询主表时会自动带出。
+利用实体特性实现自动化的表连接，通过 `[ForeignType]` 标记外键关系，通过 `[ForeignColumn]` 在视图中获取关联表字段。
 
-**实体类定义示例：**
+**实体定义示例：**
 ```csharp
-namespace LiteOrm.Common;
-
-[Table("Departments")]
-public class Department 
+// 主实体
+public class SalesRecord : ObjectBase
 {
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-    public int Id { get; set; }
-
-    [Column("Name")]
-    public string Name { get; set; } = string.Empty;
-
-    // 使用 ForeignType 标记关联类型，Alias 用于多重关联或同一表多次关联时的别名冲突
-    [Column("ParentId")]
-    [ForeignType(typeof(Department), Alias = "Parent")]
-    public int? ParentId { get; set; }
-
-    [Column("ManagerId")]
-    [ForeignType(typeof(User))]
-    public int? ManagerId { get; set; }
+    [Column("SalesUserId")]
+    [ForeignType(typeof(User))]  // ForeignType 放在外键属性上
+    public int SalesUserId { get; set; }
 }
 
-public class DepartmentView : Department
+// 视图：包含关联的用户名
+public class SalesRecordView : SalesRecord
 {
-    // 使用 ForeignColumn 根据别名或类型自动拉取关联表的字段
-    [ForeignColumn("Parent", Property = "Name")]
-    public string? ParentName { get; set; }
-
     [ForeignColumn(typeof(User), Property = "UserName")]
-    public string? ManagerName { get; set; }
+    public string? UserName { get; set; }
 }
 ```
 
 **代码示例：**
 ```csharp
-Console.WriteLine("\n--- 关联查询演示 (自动带出负责人和上级部门) ---");
-// SearchAsync(null) 查询全表，LiteOrm 自动识别 [ForeignColumn] 并生成 JOIN
-var depts = await deptService.SearchAsync(null);
-foreach (var d in depts)
-{
-    Console.WriteLine($" ID: {d.Id}, 部门: {d.Name}, 负责人: {d.ManagerName ?? "未指定"}, 上级: {d.ParentName ?? "顶级"}");
-}
+var sales = await salesService.SearchAsync(s => s.Amount > 100);
+// 自动 JOIN User 表，结果中包含 UserName 字段
 ```
 
-### 2. 动态分表查询 (IArged)
-通过实现 `IArged` 接口，支持按参数路由物理表。在进行数据库操作时通过 `tableArgs` 传递分表后缀（如按月分表）。
+---
 
-**代码示例：**
-实体类定义示例：
+## 4. 动态分表查询 (IArged)
+
+通过实现 `IArged` 接口，支持按参数路由物理表（如按月分表）。
+
+**实体定义示例：**
 ```csharp
-namespace LiteOrm.Common;
-
-[Table("SALES_{0}")] // 物理表名占位符
-public class SalesRecord : IArged
+[Table("Sales_{0}")]  // 物理表名占位符
+public class SalesRecord : ObjectBase, IArged
 {
+    [Column("SaleTime")]
     public DateTime SaleTime { get; set; }
-    // 自动返回分表参数，如 "202401"
+
+    // 通过显式接口实现分表参数
     string[] IArged.TableArgs => [SaleTime.ToString("yyyyMM")];
 }
 ```
-**查询代码示例：**
-```csharp
- Console.WriteLine("\n--- IArged 分表查询演示 ---");
- string currentMonth = DateTime.Now.ToString("yyyyMM");
- // 传入 [currentMonth] 参数，LiteOrm 将其路由至 Sales_202601 物理表
- var sales = await salesService.SearchAsync(null, [currentMonth]);
- Console.WriteLine($"{currentMonth} 账期销售记录条数: {sales.Count}");
-```
-
-### 3. 声明式事务控制 (Transaction Attribute)
-演示如何使用 `[Transaction]` 特性配合 AOP 拦截器实现无侵入的事务控制。传统的事务代码（Begin/Commit/Rollback）被解耦到拦截器中。
 
 **代码示例：**
-1. 在接口中定义事务特性：
 ```csharp
-namespace LiteOrm.Service;
-
-public interface IUserService:IEntityService<User>,IEntityViewService<UserView>,IEntityServiceAsync<User>,IEntityViewServiceAsync<UserView>
+var record = new SalesRecord
 {
-    // 其他方法省略
-}
-
-public interface ISalesService:IEntityService<SalesRecord>, IEntityViewService<SalesRecordView>, IEntityServiceAsync<SalesRecord>, IEntityViewServiceAsync<SalesRecordView>
-{
-    // 其他方法省略
-}
-
-public interface IBusinessService
-{
-    /// <summary>
-    /// 注册用户并初始化一条销售记录
-    /// </summary>
-    [Transaction] // 标记该方法需要事务支持
-    Task<bool> RegisterUserWithInitialSaleAsync(User user, SalesRecord firstSale);
-}
+    SaleTime = new DateTime(2024, 1, 15)  // 自动路由到 Sales_202401 表
+};
+await salesService.InsertAsync(record);
 ```
 
-2. 实现服务并启用拦截器：
+---
+
+## 5. 声明式事务 (Transaction)
+
+使用 `[Transaction]` 特性配合 AOP 拦截器实现无侵入的事务控制。
+
 ```csharp
-namespace LiteOrm.Service;
-
-public class UserService : EntityService<User,UserView>, IUserService //继承 `EntityService` 基类可省略自动注册并注册拦截器特性
-{
-    // 其他方法省略
-}
-public class SalesService : EntityService<SalesRecord,SalesRecordView>, ISalesService
-{
-    // 其他方法省略
-}
-
-[AutoRegister(Lifetime = ServiceLifetime.Scoped)]
-[Intercept(typeof(ServiceInvokeInterceptor))] // 启用自动注册并注册拦截器
-public class BusinessService : IBusinessService
+public class BusinessService
 {
     private readonly IUserService _userService;
     private readonly ISalesService _salesService;
 
-    public BusinessService(IUserService userService, ISalesService salesService)
-    {
-        _userService = userService;
-        _salesService = salesService;
-    }
-
+    [Transaction]  // 自动事务管理
     public async Task<bool> RegisterUserWithInitialSaleAsync(User user, SalesRecord firstSale)
     {
-        // 1. 添加用户
-        user.CreateTime = DateTime.Now;
         await _userService.InsertAsync(user);
-
-        // 2. 设置销售记录的用户ID (Insert 后自增ID已填充到实体中)
         firstSale.SalesUserId = user.Id;
-        firstSale.SaleTime = DateTime.Now;
-
-        // 3. 添加销售记录
         await _salesService.InsertAsync(firstSale);
-
-        // 如果需要测试回滚，可以取消下一行的注释
-        // throw new Exception("模拟异常，测试事务回滚");
-
-        // 如果其中任何一步失败，或者抛出异常，事务将自动由 ServiceInvokeInterceptor 回滚
-        return true;
+        return true;  // 自动提交
     }
 }
 ```
 
-**正常示例输出：**
-```text
-[2] 运行三层架构与事务控制演示...
-正在尝试通过事务注册用户 ThreeTierUser 并创建初始订单...
-事务执行成功！用户和订单已同时创建。
-验证成功：用户 ID=31, 姓名=ThreeTierUser
-```
+---
 
-**异常回滚示例输出：**
+## 6. 批量操作性能优化
 
-```text
-[2] 运行三层架构与事务控制演示...
-正在尝试通过事务注册用户 ThreeTierUser 并创建初始订单...
-fail: LiteOrm.Service.ServiceInvokeInterceptor[0]
-      <Exception>BusinessService.RegisterUserWithInitialSaleAsync({Id:19, UserName:ThreeTierUser, Age:25, CreateTime:2026-01-16 13:59:03},{Id:1866, ProductId:0, ProductName:Starter Pack, Amount:1, SaleTime:2026-01-16 13:59:03, SalesUserId:19}) System.Exception: 模拟异常，测试事务回滚
-...
-事务执行失败并已回滚: 模拟异常，测试事务回滚
-回滚成功：用户未创建
-```
-
-### 4. 批量操作性能优化
-对比底层驱动支持的原生 `BatchInsertAsync` 相比单条循环插入的显著性能提升，并可用 MySqlBulkCopy、SqlBulkCopy 等实现自定义的高性能批量插入提供器。
-
-**代码示例：**
 ```csharp
 // 循环插入
 foreach (var item in testData) await salesService.InsertAsync(item);
 // 原生批量插入
 await salesService.BatchInsertAsync(testData);
+
+// 批量更新
+await salesService.BatchUpdateAsync(testData);
 ```
+
 **示例输出：**
 ```text
 --- 批量插入 (BatchInsert) vs 循环插入 (Insert) 耗时对比 ---
@@ -407,7 +281,7 @@ public class MySqlBulkCopyProvider : IBulkProvider
 }
 ```
 
-### 5. JSON 序列化
+## 7. JSON 序列化
 LiteOrm 支持 `Expr` 的 JSON 序列化与反序列化，适用于跨进程传输查询逻辑。
 
 **代码示例：**
@@ -445,7 +319,7 @@ var deserializedExpr = JsonSerializer.Deserialize<Expr>(json, jsonOptions);
   反序列化后的 Expr 内容: ([Age] > 18 AND [UserName] Contains admin)
 ```
 
-### 6. 自定义 SQL 模板与 Lambda 扩展 (GenericSqlExpr & Lambda Handler & Function Sql Handler)
+## 8. 自定义 SQL 模板与 Lambda 扩展 (GenericSqlExpr & Lambda Handler & Function Sql Handler)
 
 **自定义 SQL 模板 (GenericSqlExpr)：**
 演示如何通过 `GenericSqlExpr` 注册命名 SQL 片段（如包含 CTE 递归的复杂逻辑）并像普通条件一样组合使用。
@@ -485,7 +359,7 @@ LambdaExprConverter.RegisterMethodHandler(typeof(string), "Contains", (node, con
 });
 ```
 
-**自定义 SQL 函数映射：**
+### 自定义 SQL 函数映射
 
 ```csharp
 // Now 函数映射为 CURRENT_TIMESTAMP（对应 DateTime.Now 解析结果）
@@ -503,13 +377,23 @@ MySqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "A
 SQLiteBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
     (functionName, args) => $"DATE({args[0].Key}, CAST({args[1].Key} AS TEXT)||' {functionName.Substring(3).ToLower()}')");
 ```
+
 ---
 
 ## 代码结构
 
-- `Program.cs`: 演示程序入口，包含 DI 配置和初始化逻辑。
-- `ExprDemo.cs`: 包含 `Expr` 表达式系统的详尽示例代码。
-- `Demos/`: 按功能模块拆分的演示实现（基础、进阶、性能、事务等）。
-- `Models/`: 包含实体定义及特性映射配置（`User`, `SalesRecord`, `Department`）。
-- `Data/`: 数据库初始化及测试数据种子脚本。
-- `Services`: 基于 `EntityService<T>` 的业务服务封装。
+```
+LiteOrm.Demo/
+├── Program.cs              # 演示程序入口，包含 DI 配置和初始化逻辑
+├── ExprDemo.cs             # 表达式系统详尽示例
+├── Demos/
+│   ├── LambdaQueryDemo.cs  # Lambda 表达式查询演示（排序、分页、多条件）
+│   └── BusinessDemo.cs     # 业务服务与事务控制演示
+├── Models/
+│   ├── User.cs             # 用户实体及视图（含关联配置）
+│   ├── SalesRecord.cs      # 销售记录实体（含 IArged 分表配置）
+│   └── Department.cs       # 部门实体及视图
+└── Services/
+    ├── UserService.cs      # 用户服务
+    └── SalesService.cs     # 销售记录服务
+```

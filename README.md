@@ -199,6 +199,38 @@ LiteOrm 的核心是其强大的 `Expr` 表达式系统。
 Expr expr = Expr.Exp<User>(u => u.Age > 18 && u.UserName.Contains("admin"));
 ```
 
+### Lambda 表达式分页与排序
+
+LiteOrm 支持使用 `IQueryable` 形式的 Lambda 表达式进行查询，并自动转换为 SQL 分页和排序。
+
+```csharp
+// 基础查询
+var users = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 18)
+);
+
+// 排序
+var sortedUsers = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 18).OrderBy(u => u.Age).ThenByDescending(u => u.Id)
+);
+
+// 分页 (Skip/Take)
+var pagedUsers = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 18)
+          .OrderBy(u => u.CreateTime)
+          .Skip(10)
+          .Take(20)
+);
+
+// 多条件合并 (多个 Where 自动合并为 AND)
+var multiCondition = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 18)
+          .Where(u => !string.IsNullOrEmpty(u.UserName))
+          .Where(u => u.UserName.Contains("admin"))
+);
+// 等效于: WHERE (Age > 18 AND UserName IS NOT NULL AND UserName Contains admin)
+```
+
 ### 手动构建表达式
 
 ```csharp
@@ -234,27 +266,23 @@ var res = new SqlGen(typeof(User)).ToSql(expr);
 ```csharp
 // 定义关联
 [Table("Orders")]
-[TableJoin(typeof(User), "UserId")] // 自动关联 User 表
 public class Order
 {
     [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
     public int Id { get; set; }
     
     [Column("UserId")]
+    [ForeignType(typeof(User))]  // ForeignType 放在外键属性上
     public int UserId { get; set; }
     
     [Column("Amount")]
     public decimal Amount { get; set; }
-    
-    // 关联的用户对象
-    [ForeignType(typeof(User))]
-    public User User { get; set; }
 }
 
 // 定义视图模型，包含关联数据
 public class OrderView : Order
 {
-    // 直接从关联表获取字段
+    // 使用 ForeignColumn 直接从关联表获取字段
     [ForeignColumn(typeof(User), Property = "UserName")]
     public string UserName { get; set; }
 }
@@ -276,15 +304,19 @@ public class Log : IArged
     [Column("Content")]
     public string Content { get; set; }
     
-    // 分表参数
-    public string[] TableArgs { get; set; }
+    [Column("CreateTime")]
+    public DateTime CreateTime { get; set; }
+    
+    // 注意：TableArgs 通过显式接口实现，不作为数据库字段
+    // 格式为 Log_{yyyyMM}，根据 CreateTime 自动路由到对应月份表
+    string[] IArged.TableArgs => [CreateTime.ToString("yyyyMM")];
 }
 
-// 使用分表
+// 使用分表（无需手动指定表名，自动根据 CreateTime 路由）
 var log = new Log
 {
     Content = "Test log",
-    TableArgs = new[] { "2024", "01" } // 路由到 Log_2024_01 表
+    CreateTime = new DateTime(2024, 1, 15)  // 自动路由到 Log_202401 表
 };
 await logService.InsertAsync(log);
 ```
@@ -324,6 +356,11 @@ public class BusinessService
 我们提供了一个完整的示例项目 [LiteOrm.Demo](./LiteOrm.Demo)，涵盖了以下核心特性的演示：
 
 - **表达式系统 (Expr)**：二元/一元、Lambda 转换、JSON 序列化。
+- **Lambda 表达式查询**：
+  - 基础查询 (Where) 
+  - 排序 (OrderBy/OrderByDescending/ThenBy)
+  - 分页 (Skip/Take)
+  - 多条件合并 (多个 Where 自动合并为 AND)
 - **自动化关联 (Join)**：利用特性实现多级表关联带出。
 - **动态分表 (IArged)**：按参数自动路由物理表。
 - **声明式事务**：基于 AOP 的无侵入事务控制。
