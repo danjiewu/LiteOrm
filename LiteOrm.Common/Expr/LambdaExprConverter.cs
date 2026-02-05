@@ -13,8 +13,8 @@ namespace LiteOrm.Common
     /// </summary>
     public class LambdaExprConverter
     {
-        // 将 private 改为 protected，以便 LambdaSqlSegmentConverter 访问
-        protected static readonly Dictionary<ExpressionType, object> _operatorMappings = new()
+        #region 静态成员
+        private static readonly Dictionary<ExpressionType, object> _operatorMappings = new()
         {
             { ExpressionType.Equal, LogicOperator.Equal },
             { ExpressionType.NotEqual, LogicOperator.NotEqual },
@@ -30,17 +30,11 @@ namespace LiteOrm.Common
             { ExpressionType.MultiplyChecked, ValueOperator.Multiply },
             { ExpressionType.Divide, ValueOperator.Divide }
         };
-
-        protected readonly ParameterExpression _rootParameter; // 跟踪 Lambda 的主参数（通常是实体变量）
-        protected readonly LambdaExpression _expression; // 原始 Lambda 对象
-        protected readonly ParameterExpressionDetector _parameterDetector = new ParameterExpressionDetector(); // 检测表达式是否包含 Lambda 参数
-
-        // 处理器字典改为 protected
-        protected static readonly ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodNameHandlers = new ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
-        protected static readonly ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>> _typeMethodHandlers = new ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>>();
-
-        protected static readonly ConcurrentDictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>> _memberNameHandlers = new ConcurrentDictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
-        protected static readonly ConcurrentDictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>> _typeMemberHandlers = new ConcurrentDictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>>();
+        
+        private static readonly ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodNameHandlers = new ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>> _typeMethodHandlers = new ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>>();
+        private static readonly ConcurrentDictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>> _memberNameHandlers = new ConcurrentDictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>> _typeMemberHandlers = new ConcurrentDictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>>();
 
 
         /// <summary>
@@ -107,6 +101,30 @@ namespace LiteOrm.Common
             if (String.IsNullOrEmpty(memberName)) throw new ArgumentNullException(nameof(memberName));
             _typeMemberHandlers[(type, memberName)] = handler ?? DefaultMemberHandler;
         }
+        #endregion 静态成员
+
+        /// <summary>
+        /// 初始化 LambdaExprConverter 类的新实例。
+        /// </summary>
+        /// <param name="expression">要转换的 Lambda 表达式。</param>
+        public LambdaExprConverter(LambdaExpression expression)
+        {
+            if (expression is null) throw new ArgumentNullException(nameof(expression));
+            _expression = expression;
+            _rootParameter = expression.Parameters.FirstOrDefault();
+        }
+        /// <summary>
+        /// 跟踪 Lambda 的主参数（通常是实体变量）
+        /// </summary>
+        protected readonly ParameterExpression _rootParameter; 
+        /// <summary>
+        /// 原始 Lambda 对象
+        /// </summary>
+        protected readonly LambdaExpression _expression; 
+        /// <summary>
+        /// 检测表达式是否包含 Lambda 参数
+        /// </summary>
+        protected readonly ParameterExpressionDetector _parameterDetector = new ParameterExpressionDetector(); 
 
         /// <summary>
         /// 转换表达式节点为 Expr 对象。
@@ -114,17 +132,6 @@ namespace LiteOrm.Common
         public virtual Expr Convert(Expression node)
         {
             return ConvertInternal(node);
-        }
-
-        /// <summary>
-        /// 构造转换器。
-        /// </summary>
-        /// <param name="expression">目标 Lambda 表达式。</param>
-        public LambdaExprConverter(LambdaExpression expression)
-        {
-            if (expression is null) throw new ArgumentNullException(nameof(expression));
-            _expression = expression;
-            _rootParameter = expression.Parameters.FirstOrDefault();
         }
 
         /// <summary>
@@ -165,32 +172,33 @@ namespace LiteOrm.Common
 
         #region 表达式转换核心逻辑
 
+        /// <summary>
+        /// 执行内部表达式转换，将表达式节点转换为 Expr 对象
+        /// </summary>
+        /// <param name="node">要转换的表达式节点</param>
+        /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertInternal(Expression node)
         {
             if (node is null) return null;
 
-            switch (node.NodeType)
+            return node.NodeType switch
             {
-                case ExpressionType.Call:
-                    return ConvertMethodCall((MethodCallExpression)node);
-                case ExpressionType.Constant:
-                    return ConvertConstant((ConstantExpression)node);
-                case ExpressionType.Lambda:
-                    // 检查 Lambda 的返回类型。如果是 bool，可能是谓词；否则可能是值选择器。
-                    var lambda = (LambdaExpression)node;
-                    if (lambda.ReturnType == typeof(bool))
-                        return ToExpr(lambda);
-                    else
-                        return ToValueExpr(lambda);
-                case ExpressionType.MemberAccess:
-                    // 如果是成员访问，可能是实体属性或外部变量
-                    return ConvertMember((MemberExpression)node);
-                default:
-                    // 调用原始的转换逻辑
-                    return ConvertOriginal(node);
-            }
+                ExpressionType.Call => ConvertMethodCall((MethodCallExpression)node),
+                ExpressionType.Constant => ConvertConstant((ConstantExpression)node),
+                ExpressionType.Lambda =>  (((LambdaExpression)node).ReturnType == typeof(bool))
+                        ? ToExpr((LambdaExpression)node)
+                        : ToValueExpr((LambdaExpression)node),// 检查 Lambda 的返回类型。如果是 bool，可能是谓词；否则可能是值选择器。
+                ExpressionType.MemberAccess => ConvertMember((MemberExpression)node),  // 如果是成员访问，可能是实体属性或外部变量
+                ExpressionType.Quote => ConvertInternal(((UnaryExpression)node).Operand),
+                _ => ConvertOriginal(node)
+            };
         }
 
+        /// <summary>
+        /// 将原始表达式节点（不支持直接转换的类型）转换为 Expr 对象
+        /// </summary>
+        /// <param name="node">要转换的表达式节点</param>
+        /// <returns>转换后的 Expr 对象</returns>
         protected Expr ConvertOriginal(Expression node)
         {
             // 基于节点类型的递归下降转换
@@ -234,6 +242,12 @@ namespace LiteOrm.Common
             return EvaluateToExpr(node);
         }
 
+        /// <summary>
+        /// 将 Expr 表达式转换为 LogicExpr 逻辑表达式
+        /// </summary>
+        /// <param name="expr">要转换的表达式</param>
+        /// <returns>转换后的 LogicExpr 对象</returns>
+        /// <exception cref="NotSupportedException">当表达式无法转换为 LogicExpr 时抛出</exception>
         protected LogicExpr AsLogic(Expr expr)
         {
             if (expr is LogicExpr logicExpr) return logicExpr;
@@ -241,12 +255,23 @@ namespace LiteOrm.Common
             throw new NotSupportedException($"Expression {expr} of type {expr?.GetType().Name} cannot be converted to LogicExpr.");
         }
 
+        /// <summary>
+        /// 将 Expr 表达式转换为 ValueTypeExpr 值类型表达式
+        /// </summary>
+        /// <param name="expr">要转换的表达式</param>
+        /// <returns>转换后的 ValueTypeExpr 对象</returns>
+        /// <exception cref="NotSupportedException">当表达式无法转换为 ValueTypeExpr 时抛出</exception>
         protected ValueTypeExpr AsValue(Expr expr)
         {
             if (expr is ValueTypeExpr valueExpr) return valueExpr;
             else throw new NotSupportedException($"Expression {expr} of type {expr?.GetType().Name} cannot be converted to ValueTypeExpr.");
         }
 
+        /// <summary>
+        /// 将二元表达式（如 a + b、a == b）转换为对应的 Expr 对象
+        /// </summary>
+        /// <param name="node">要转换的二元表达式节点</param>
+        /// <returns>转换后的 Expr 对象（可能是 LogicBinaryExpr 或 ValueBinaryExpr）</returns>
         protected Expr ConvertBinary(BinaryExpression node)
         {
             // 处理 ?? 运算符，依赖参数时转为 COALESCE 函数，否则本地计算
@@ -373,6 +398,11 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 将成员访问表达式（如 x.Name）转换为对应的 Expr 对象
+        /// </summary>
+        /// <param name="node">要转换的成员访问表达式节点</param>
+        /// <returns>转换后的 Expr 对象</returns>
         protected Expr ConvertMember(MemberExpression node)
         {
             // Nullable<T>.Value 自动降级处理
@@ -470,6 +500,11 @@ namespace LiteOrm.Common
 
         #region 方法调用处理
 
+        /// <summary>
+        /// 将方法调用表达式转换为对应的 Expr 对象
+        /// </summary>
+        /// <param name="node">要转换的方法调用表达式节点</param>
+        /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertMethodCall(MethodCallExpression node)
         {
             Type type = node.Method.DeclaringType;
@@ -498,6 +533,11 @@ namespace LiteOrm.Common
                 return EvaluateToExpr(node);
         }
 
+        /// <summary>
+        /// 将常量表达式转换为对应的 Expr 对象
+        /// </summary>
+        /// <param name="node">要转换的常量表达式节点</param>
+        /// <returns>转换后的 Expr 对象</returns>
         protected Expr ConvertConstant(ConstantExpression node)
         {
             if (node.Value is Expr expr) return expr;

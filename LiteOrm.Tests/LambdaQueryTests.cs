@@ -85,9 +85,15 @@ namespace LiteOrm.Tests
 
             var expr = LambdaSqlSegmentConverter.ToSqlSegment(queryExpr);
 
+            // 多个 Where 应该合并为一个 WhereExpr
             Assert.IsType<WhereExpr>(expr);
-            var where2 = (WhereExpr)expr;
-            Assert.IsType<WhereExpr>(where2.Source);
+            var where = (WhereExpr)expr;
+            
+            // 条件应该合并为 LogicSet（AND 连接）
+            Assert.IsType<LogicSet>(where.Where);
+            var logicSet = (LogicSet)where.Where;
+            Assert.Equal(LogicJoinType.And, logicSet.JoinType);
+            Assert.Equal(2, logicSet.Count);
         }
     }
 }

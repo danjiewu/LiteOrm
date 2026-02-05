@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -17,11 +17,47 @@ namespace LiteOrm.Common
         /// <param name="value">字符串值。</param>
         /// <returns>值表达式实例。</returns>
         public static implicit operator ValueTypeExpr(string value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将整数隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">整数值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueTypeExpr(int value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将长整数隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">长整数值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueTypeExpr(long value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将布尔值隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">布尔值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueTypeExpr(bool value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将日期时间隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">日期时间值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueTypeExpr(DateTime value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将双精度浮点数隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">双精度浮点数值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueTypeExpr(double value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将十进制数隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">十进制数值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueTypeExpr(decimal value) => new ValueExpr(value);
 
         /// <summary>
@@ -89,16 +125,5 @@ namespace LiteOrm.Common
         /// 按位取反运算符 ~ 的重载。
         /// </summary>
         public static ValueTypeExpr operator ~(ValueTypeExpr expr) => new UnaryExpr(UnaryOperator.BitwiseNot, expr);
-
-
-        public override bool Equals(object obj)
-        {
-            return base.Equals(obj);
-        }
-
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
     }
 }

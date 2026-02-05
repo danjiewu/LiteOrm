@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm ºËĞÄ×é¼ş³õÊ¼»¯Æ÷£¬¸ºÔğ³õÊ¼»¯ SessionManager ºÍ TableInfoProvider¡£
+    /// LiteOrm æ ¸å¿ƒåˆå§‹åŒ–å™¨ï¼Œç”¨äºåˆå§‹åŒ– SessionManager å’Œ TableInfoProvider
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public class LiteOrmCoreInitializer : IStartable
@@ -13,6 +13,11 @@ namespace LiteOrm
         private readonly SessionManager _sessionManager;
         private readonly TableInfoProvider _tableInfoProvider;
 
+        /// <summary>
+        /// ä½¿ç”¨æŒ‡å®šçš„ä¼šè¯ç®¡ç†å™¨å’Œè¡¨ä¿¡æ¯æä¾›è€…åˆå§‹åŒ– LiteOrmCoreInitializer ç±»çš„æ–°å®ä¾‹
+        /// </summary>
+        /// <param name="sessionManager">ä¼šè¯ç®¡ç†å™¨å®ä¾‹</param>
+        /// <param name="tableInfoProvider">è¡¨ä¿¡æ¯æä¾›è€…å®ä¾‹</param>
         public LiteOrmCoreInitializer(SessionManager sessionManager, TableInfoProvider tableInfoProvider)
         {
             _sessionManager = sessionManager;
@@ -20,11 +25,11 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// Æô¶¯Ê±³õÊ¼»¯ºËĞÄµ¥Àı×é¼ş¡£
+        /// å¯åŠ¨æ—¶çš„åˆå§‹åŒ–æ–¹æ³•
         /// </summary>
         public void Start()
         {
-            // ÉèÖÃÈ«¾Öµ¥ÀıÒıÓÃµÄºËĞÄ×é¼ş
+            // è®¾ç½®å…¨å±€çš„ä¼šè¯ç®¡ç†å™¨å’Œè¡¨ä¿¡æ¯æä¾›è€…
             SessionManager.Current = _sessionManager;
             TableInfoProvider.Default = _tableInfoProvider;
         }

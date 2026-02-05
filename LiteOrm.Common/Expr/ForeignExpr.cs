@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
@@ -46,10 +46,15 @@ namespace LiteOrm.Common
         /// <summary>
         /// 生成哈希值。
         /// </summary>
+        /// <returns>哈希码值</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), Foreign?.GetHashCode() ?? 0, InnerExpr?.GetHashCode() ?? 0);
         }
+        /// <summary>
+        /// 返回表达式的字符串表示
+        /// </summary>
+        /// <returns>字符串表示</returns>
         public override string ToString()
         {
             return $"Foreign {Foreign}{{ {InnerExpr} }}";

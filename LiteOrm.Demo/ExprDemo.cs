@@ -1,4 +1,4 @@
-﻿using LiteOrm.Demo.Demos;
+using LiteOrm.Demo.Demos;
 using LiteOrm.Demo.Services;
 
 namespace LiteOrm.Demo
@@ -28,6 +28,13 @@ namespace LiteOrm.Demo
             ExprAdvancedDemo.ShowExprConvert();
             ExprAdvancedDemo.ShowSqlGeneration();
             ExprAdvancedDemo.ShowQueryExpr();
+
+            // Lambda 表达式查询演示
+            LambdaQueryDemo.ShowLambdaQueryDemo();
+            LambdaQueryDemo.ShowLambdaOrderingDemo();
+
+            // Lambda 表达式查询执行演示
+            await LambdaQueryDemo.ShowLambdaQueryWithResultsAsync(factory.UserService);
 
             // 3. 查询场景演示
             await QueryUsageDemo.ShowJoinQueryAsync(factory.DepartmentService);

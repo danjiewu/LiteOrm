@@ -122,7 +122,7 @@ namespace LiteOrm.Common
         /// <returns>IN 集合包含逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var ids = new List<int> { 1, 2, 3 };
+        /// var ids = new List&lt;int&gt; { 1, 2, 3 };
         /// var condition = Expr.Property("Id").In(ids);
         /// </code>
         /// </example>
@@ -149,7 +149,7 @@ namespace LiteOrm.Common
         /// <returns>NOT IN 集合不包含逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var excludedStatuses = new List<string> { "Deleted", "Inactive" };
+        /// var excludedStatuses = new List&lt;string&gt; { "Deleted", "Inactive" };
         /// var condition = Expr.Property("Status").NotIn(excludedStatuses);
         /// </code>
         /// </example>

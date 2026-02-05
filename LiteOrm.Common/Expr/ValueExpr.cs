@@ -16,11 +16,47 @@ namespace LiteOrm.Common
         /// <param name="value">字符串值。</param>
         /// <returns>值表达式实例。</returns>
         public static implicit operator ValueExpr(string value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将整数隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">整数值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueExpr(int value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将长整数隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">长整数值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueExpr(long value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将布尔值隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">布尔值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueExpr(bool value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将日期时间隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">日期时间值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueExpr(DateTime value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将双精度浮点数隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">双精度浮点数值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueExpr(double value) => new ValueExpr(value);
+
+        /// <summary>
+        /// 将十进制数隐式转换为值表达式。
+        /// </summary>
+        /// <param name="value">十进制数值。</param>
+        /// <returns>值表达式实例。</returns>
         public static implicit operator ValueExpr(decimal value) => new ValueExpr(value);
         /// <summary>
         /// 创建空的 ValueExpr。

@@ -5,12 +5,14 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// Âß¼­¶şÔª±í´ïÊ½£¬ÓÃÓÚ²¼¶ûÅĞ¶ÏÌõ¼ş£¨Èç id = 1, name LIKE '%abc%'£©¡£
+    /// é€»è¾‘äºŒå…ƒè¡¨è¾¾å¼ç±»ï¼Œç”¨äºè¡¨ç¤ºäºŒå…ƒæ¯”è¾ƒæ“ä½œï¼Œä¾‹å¦‚ id = 1, name LIKE '%abc%' ç­‰
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class LogicBinaryExpr : LogicExpr
     {
-        // Ó³Éä²Ù×÷·ûµ½»ù´¡ SQL ·ûºÅ
+        /// <summary>
+        /// æ˜ å°„é€»è¾‘è¿ç®—ç¬¦åˆ°å¯¹åº”çš„ SQL è¿ç®—ç¬¦æ–‡æœ¬
+        /// </summary>
         private static readonly Dictionary<LogicOperator, string> operatorTexts = new()
         {
             { LogicOperator.Equal,"=" },
@@ -28,13 +30,16 @@ namespace LiteOrm.Common
         };
 
         /// <summary>
-        /// ´´½¨¿ÕµÄÂß¼­¶şÔª±í´ïÊ½¡£
+        /// åˆå§‹åŒ–é»˜è®¤çš„é€»è¾‘äºŒå…ƒè¡¨è¾¾å¼
         /// </summary>
         public LogicBinaryExpr() { }
 
         /// <summary>
-        /// Ê¹ÓÃÖ¸¶¨µÄ×óÓÒ²Ù×÷ÊıºÍ²Ù×÷·û³õÊ¼»¯Âß¼­¶şÔª±í´ïÊ½¡£
+        /// ä½¿ç”¨æŒ‡å®šçš„å·¦æ“ä½œæ•°ã€è¿ç®—ç¬¦å’Œå³æ“ä½œæ•°åˆå§‹åŒ–é€»è¾‘äºŒå…ƒè¡¨è¾¾å¼
         /// </summary>
+        /// <param name="left">å·¦æ“ä½œæ•°è¡¨è¾¾å¼</param>
+        /// <param name="oper">é€»è¾‘è¿ç®—ç¬¦</param>
+        /// <param name="right">å³æ“ä½œæ•°è¡¨è¾¾å¼</param>
         public LogicBinaryExpr(ValueTypeExpr left, LogicOperator oper, ValueTypeExpr right)
         {
             Left = left;
@@ -43,28 +48,31 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// »ñÈ¡»òÉèÖÃ×ó²à×Ó±í´ïÊ½¡£
+        /// è·å–å·¦æ“ä½œæ•°è¡¨è¾¾å¼
         /// </summary>
         public ValueTypeExpr Left { get; set; }
 
         /// <summary>
-        /// »ñÈ¡»òÉèÖÃÓÒ²à×Ó±í´ïÊ½¡£
+        /// è·å–å³æ“ä½œæ•°è¡¨è¾¾å¼
         /// </summary>
         public ValueTypeExpr Right { get; set; }
 
         /// <summary>
-        /// »ñÈ¡»òÉèÖÃ¶şÔª²Ù×÷·û¡£
+        /// è·å–é€»è¾‘è¿ç®—ç¬¦
         /// </summary>
         public LogicOperator Operator { get; set; }
 
         /// <summary>
-        /// »ñÈ¡È¥µô NOT ±êÖ¾ºóµÄÔ­Ê¼²Ù×÷·û£¨ÀıÈç Not|In => In£©¡£
+        /// è·å–å»é™¤ NOT æ ‡è®°åçš„åŸå§‹è¿ç®—ç¬¦ï¼ˆNot|In => Inï¼‰
         /// </summary>
         public LogicOperator OriginOperator => Operator.Positive();
 
         /// <summary>
-        /// ·´×ªµ±Ç°±í´ïÊ½µÄ×óÓÒ±í´ïÊ½Î»ÖÃ£¬²¢¾¡¿ÉÄÜ±£³ÖÔ­±¾µÄÂß¼­½á¹û£¨ÀıÈç "a &gt; b" ±äÎª "b &lt; a"£©¡£
+        /// åè½¬å½“å‰è¡¨è¾¾å¼ï¼Œå°†å·¦å³æ“ä½œæ•°ä½ç½®äº’æ¢
+        /// ä¾‹å¦‚ "a &gt; b" å˜ä¸º "b &lt; a"
         /// </summary>
+        /// <param name="keepEquivalent">æ˜¯å¦ä¿æŒç­‰ä»·ï¼ˆä¸åè½¬è¿ç®—ç¬¦æ–¹å‘ï¼‰</param>
+        /// <returns>åè½¬åçš„æ–°è¡¨è¾¾å¼</returns>
         public LogicBinaryExpr Reverse(bool keepEquivalent = false)
         {
             LogicBinaryExpr newExpr = new LogicBinaryExpr(Right, Operator, Left);
@@ -84,12 +92,21 @@ namespace LiteOrm.Common
             return newExpr;
         }
 
+        /// <summary>
+        /// è¿”å›è¡¨è¾¾å¼çš„å­—ç¬¦ä¸²è¡¨ç¤º
+        /// </summary>
+        /// <returns>å­—ç¬¦ä¸²è¡¨ç¤º</returns>
         public override string ToString()
         {
             if (!operatorTexts.TryGetValue(Operator, out string op)) op = Operator.ToString();
             return $"{Left} {op} {Right}";
         }
 
+        /// <summary>
+        /// åˆ¤æ–­å½“å‰å¯¹è±¡æ˜¯å¦ä¸æŒ‡å®šå¯¹è±¡ç›¸ç­‰
+        /// </summary>
+        /// <param name="obj">è¦æ¯”è¾ƒçš„å¯¹è±¡</param>
+        /// <returns>å¦‚æœç›¸ç­‰è¿”å› trueï¼Œå¦åˆ™è¿”å› false</returns>
         public override bool Equals(object obj)
         {
             return obj is LogicBinaryExpr b &&
@@ -98,6 +115,10 @@ namespace LiteOrm.Common
                    Equals(b.Right, Right);
         }
 
+        /// <summary>
+        /// è·å–å½“å‰å¯¹è±¡çš„å“ˆå¸Œç 
+        /// </summary>
+        /// <returns>å“ˆå¸Œç å€¼</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), (int)Operator, (Left?.GetHashCode() ?? 0), (Right?.GetHashCode() ?? 0));

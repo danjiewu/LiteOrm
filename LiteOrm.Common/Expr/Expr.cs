@@ -19,7 +19,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 表示 SQL NULL 的表达式。
         /// </summary>
-        public static readonly ValueExpr Null = new ValueExpr();
+        public static readonly ValueExpr Null = new ();
 
         /// <summary>
         /// 指示当前表达式是否代表一个具体的值（而非谓词/条件）。
@@ -195,9 +195,27 @@ namespace LiteOrm.Common
         /// </summary>
         public static TableExpr Table(SqlTable table) => new TableExpr(table);
 
+        /// <summary>
+        /// 创建指定实体类型的表表达式
+        /// </summary>
+        /// <typeparam name="T">实体类型</typeparam>
+        /// <returns>表表达式实例</returns>
         public static TableExpr Table<T>() => new TableExpr(TableInfoProvider.Default.GetTableView(typeof(T)));
 
+        /// <summary>
+        /// 使用指定的 Lambda 表达式创建 WHERE 条件表达式
+        /// </summary>
+        /// <typeparam name="T">实体类型</typeparam>
+        /// <param name="expression">定义筛选条件的 Lambda 表达式</param>
+        /// <returns>WHERE 条件表达式实例</returns>
         public static WhereExpr Where<T>(Expression<Func<T, bool>> expression) => new WhereExpr() { Source = Table<T>(), Where = Exp(expression) };
+
+        /// <summary>
+        /// 使用 IQueryable 形式的 Lambda 表达式创建 SQL 片段
+        /// </summary>
+        /// <typeparam name="T">实体类型</typeparam>
+        /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
+        /// <returns>SQL 片段实例</returns>
         public static SqlSegment Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Encodings.Web;
@@ -7,19 +7,27 @@ using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
-
     /// <summary>
-    /// 表达式 JSON 转换器工厂
+    /// SQL 片段 JSON 转换器工厂
     /// </summary>
     internal class SqlSegmentJsonConverterFactory : JsonConverterFactory
     {
-        // 检查类型是否为 Expr 或其子类
+        /// <summary>
+        /// 检查类型是否为 Expr 或其子类
+        /// </summary>
+        /// <param name="typeToConvert">要检查的类型</param>
+        /// <returns>如果可以转换返回 true，否则返回 false</returns>
         public override bool CanConvert(Type typeToConvert)
         {
             return typeof(Expr).IsAssignableFrom(typeToConvert);
         }
 
-        // 创建针对特定 Expr 子类的泛型转换器
+        /// <summary>
+        /// 创建针对特定 Expr 子类的泛型转换器
+        /// </summary>
+        /// <param name="typeToConvert">要转换的类型</param>
+        /// <param name="options">JSON 序列化选项</param>
+        /// <returns>泛型转换器实例</returns>
         public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
         {
             return (JsonConverter)Activator.CreateInstance(
@@ -27,18 +35,23 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 针对 Expr 及其子类的自定义 JSON 序列化器。
-        /// 采用紧凑型设计，支持字面量直接序列化（ValueExpr）和带类型标识符（$）的复杂转换。
+        /// 针对 Expr 及其子类的自定义 JSON 序列化器
+        /// 采用紧凑型设计，支持字面量直接序列化（ValueExpr）和带类型标识符（$）的复杂转换
         /// </summary>
         private class SqlSegmentJsonConverter<T> : JsonConverter<T> where T : SqlSegment
         {
-            // 使用非转义编码器，避免 HTML 字符被转义，提高 SQL 表达式的可读性
+            /// <summary>
+            /// 使用非转义编码器，避免 HTML 字符被转义，提高 SQL 表达式的可读性
+            /// </summary>
             private static readonly JsonSerializerOptions _compactOptions = new JsonSerializerOptions
             {
                 WriteIndented = false,
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
 
+            /// <summary>
+            /// 类型标识符到类型的映射字典
+            /// </summary>
             private static readonly Dictionary<string, Type> _markToType = new(StringComparer.OrdinalIgnoreCase)
             {
                 { "table", typeof(TableExpr) },
@@ -52,8 +65,18 @@ namespace LiteOrm.Common
                 { "update", typeof(UpdateExpr) }
             };
 
+            /// <summary>
+            /// 类型到类型标识符的映射字典
+            /// </summary>
             private static readonly Dictionary<Type, string> _typeToMark = _markToType.ToDictionary(kv => kv.Value, kv => kv.Key);
 
+            /// <summary>
+            /// 从 JSON 读取并反序列化为 T 类型
+            /// </summary>
+            /// <param name="reader">JSON 读取器</param>
+            /// <param name="typeToConvert">目标类型</param>
+            /// <param name="options">JSON 序列化选项</param>
+            /// <returns>反序列化的对象</returns>
             public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
             {
                 if (reader.TokenType == JsonTokenType.Null) return null;
@@ -119,6 +142,13 @@ namespace LiteOrm.Common
                 return (T)result;
             }
 
+            /// <summary>
+            /// 读取属性值并设置到结果对象中
+            /// </summary>
+            /// <param name="reader">JSON 读取器</param>
+            /// <param name="result">要设置属性的结果对象</param>
+            /// <param name="propName">属性名称</param>
+            /// <param name="options">JSON 序列化选项</param>
             private void ReadProperty(ref Utf8JsonReader reader, SqlSegment result, string propName, JsonSerializerOptions options)
             {
                 reader.Read();
@@ -185,6 +215,12 @@ namespace LiteOrm.Common
                 }
             }
 
+            /// <summary>
+            /// 将 T 类型对象序列化为 JSON
+            /// </summary>
+            /// <param name="writer">JSON 写入器</param>
+            /// <param name="value">要序列化的值</param>
+            /// <param name="options">JSON 序列化选项</param>
             public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
             {
                 if (value == null) { writer.WriteNullValue(); return; }

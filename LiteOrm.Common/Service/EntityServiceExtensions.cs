@@ -39,6 +39,14 @@ namespace LiteOrm.Common
             return entityViewService.Search(Expr.Exp(expression), tableArgs);
         }
 
+        /// <summary>
+        /// 使用 IQueryable 形式的 Lambda 表达式搜索实体。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">实体视图服务实例。</param>
+        /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <returns>符合条件的实体对象列表。</returns>
         public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[] tableArgs = null)
         {
             return entityViewService.Search(Expr.Query(expression), tableArgs);
@@ -57,6 +65,14 @@ namespace LiteOrm.Common
             return entityViewService.SearchOne(Expr.Exp(expression), tableArgs);
         }
 
+        /// <summary>
+        /// 使用 IQueryable 形式的 Lambda 表达式搜索单个实体。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">实体视图服务实例。</param>
+        /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <returns>第一个符合条件的实体对象；如果没有找到则返回 null。</returns>
         public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[] tableArgs = null)
         {
             return entityViewService.SearchOne(Expr.Query(expression), tableArgs);
@@ -130,6 +146,15 @@ namespace LiteOrm.Common
             return entityViewService.SearchAsync(Expr.Exp(expression), tableArgs, cancellationToken);
         }
 
+        /// <summary>
+        /// 使用 IQueryable 形式的 Lambda 表达式异步搜索实体。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">支持异步操作的实体视图服务实例。</param>
+        /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <param name="cancellationToken">取消操作的令牌。</param>
+        /// <returns>表示异步搜索操作的任务，结果包含符合条件的实体对象列表。</returns>
         public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityViewService.SearchAsync(Expr.Query(expression),tableArgs, cancellationToken);
@@ -149,6 +174,15 @@ namespace LiteOrm.Common
             return entityViewService.SearchOneAsync(Expr.Exp(expression), tableArgs, cancellationToken);
         }
 
+        /// <summary>
+        /// 使用 IQueryable 形式的 Lambda 表达式异步搜索单个实体。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityViewService">支持异步操作的实体视图服务实例。</param>
+        /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <param name="cancellationToken">取消操作的令牌。</param>
+        /// <returns>表示异步搜索操作的任务，结果包含符合条件的单个实体对象，未找到则返回 null。</returns>
         public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityViewService.SearchOneAsync(Expr.Query(expression), tableArgs, cancellationToken);

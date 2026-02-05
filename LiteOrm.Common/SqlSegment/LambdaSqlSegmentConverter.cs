@@ -6,22 +6,34 @@ using System.Linq.Expressions;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ���� LINQ ��� SQL Ƭ�Σ�Select, Where, OrderBy �ȣ���ת������
+    /// 将 LINQ 表达式转换为 SQL 片段（Select、Where、OrderBy 等）
     /// </summary>
     public class LambdaSqlSegmentConverter : LambdaExprConverter
     {
+        /// <summary>
+        /// 使用指定的 Lambda 表达式初始化 LambdaSqlSegmentConverter 类的新实例
+        /// </summary>
+        /// <param name="expression">要转换的 Lambda 表达式</param>
         public LambdaSqlSegmentConverter(LambdaExpression expression) : base(expression) { }
 
         /// <summary>
-        /// ִ������ת���������ڵ�תΪ SqlSegment��
+        /// 执行表达式转换并将结果转换为 SqlSegment
         /// </summary>
-        public SqlSegment ToSqlSegment() => ConvertInternal(_expression.Body) as SqlSegment;
+        public SqlSegment ToSqlSegment() {
+            var sqlSegment = ConvertInternal(_expression.Body) as SqlSegment;
+            return sqlSegment;
+        }
 
         /// <summary>
-        /// ��̬�����ڣ��� Lambda ����ʽת��Ϊ SqlSegment ģ�͡�
+        /// 静态方法：将 Lambda 表达式转换为 SqlSegment 模型
         /// </summary>
         public static SqlSegment ToSqlSegment(LambdaExpression expression) => new LambdaSqlSegmentConverter(expression).ToSqlSegment();
 
+        /// <summary>
+        /// 执行内部表达式转换，将表达式节点转换为 SqlSegment 对象
+        /// </summary>
+        /// <param name="node">要转换的表达式节点</param>
+        /// <returns>转换后的 Expr 对象</returns>
         protected override Expr ConvertInternal(Expression node)
         {
             if (node is null) return null;
@@ -30,12 +42,16 @@ namespace LiteOrm.Common
             {
                 ExpressionType.Call => ConvertMethodCall((MethodCallExpression)node),
                 ExpressionType.Parameter => ConvertParameter((ParameterExpression)node),
-                ExpressionType.Lambda => HandleSubLambda((LambdaExpression)node),
-                ExpressionType.Quote => ConvertInternal(((UnaryExpression)node).Operand),
+                ExpressionType.Lambda => HandleSubLambda((LambdaExpression)node),                
                 _ => base.ConvertInternal(node)
             };
         }
 
+        /// <summary>
+        /// 将方法调用表达式转换为对应的 SqlSegment 对象
+        /// </summary>
+        /// <param name="node">要转换的方法调用表达式节点</param>
+        /// <returns>转换后的 Expr 对象</returns>
         protected override Expr ConvertMethodCall(MethodCallExpression node)
         {
             var type = node.Method.DeclaringType;
@@ -69,8 +85,23 @@ namespace LiteOrm.Common
 
         private Expr HandleSubLambda(LambdaExpression lambda) => lambda.ReturnType == typeof(bool) ? ToExpr(lambda) : ToValueExpr(lambda);
 
-        // LINQ ���Ӵ����߼�
-        private Expr HandleWhere(MethodCallExpression node) => (ConvertInternal(node.Arguments[0]) as ISourceAnchor).Where(AsLogic(ConvertInternal(node.Arguments[1])));
+        // LINQ 扩展方法处理器
+        private Expr HandleWhere(MethodCallExpression node)
+        {
+            var source = ConvertInternal(node.Arguments[0]) as ISourceAnchor;
+            var newCondition = AsLogic(ConvertInternal(node.Arguments[1]));
+            
+            // 如果源已经是 WhereExpr，将新条件与现有条件用 AND 合并
+            if (source is WhereExpr existingWhere)
+            {
+                var combinedCondition = new LogicSet(LogicJoinType.And, existingWhere.Where, newCondition);
+                existingWhere.Where = combinedCondition;
+                return existingWhere;
+            }
+            
+            // 否则创建新的 WhereExpr
+            return source.Where(newCondition);
+        }
         private Expr HandleOrderBy(MethodCallExpression node, bool asc) => (ConvertInternal(node.Arguments[0]) as IOrderByAnchor).OrderBy((AsValue(ConvertInternal(node.Arguments[1])), asc));
         private Expr HandleThenBy(MethodCallExpression node, bool asc)
         {

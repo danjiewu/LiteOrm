@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using LiteOrm.Demo.Services;
 using Microsoft.Extensions.Configuration;
@@ -13,8 +13,14 @@ namespace LiteOrm.Demo.Data
         {
             var configuration = services.GetRequiredService<IConfiguration>();
 
+            // 获取已注册的数据源名称
+            var dataSourceProvider = services.GetRequiredService<DataSourceProvider>();
+            var dataSourceName = dataSourceProvider.DefaultDataSourceName ?? "SQLite";
+
+            Console.WriteLine($"使用数据源: {dataSourceName}");
+
             var contextPoolFactory = services.GetRequiredService<DAOContextPoolFactory>();
-            var context = contextPoolFactory.PeekContext(); // 确保初始化连接池
+            var context = contextPoolFactory.PeekContext(dataSourceName); // 确保初始化连接池
 
             Console.WriteLine("--- 数据库结构检查 ---");
 
