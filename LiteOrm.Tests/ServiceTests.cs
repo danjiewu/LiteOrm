@@ -279,7 +279,7 @@ namespace LiteOrm.Tests
         {
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
 
             // 1. Initial insert
             var users = new List<TestUser>

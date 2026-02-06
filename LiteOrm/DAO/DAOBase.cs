@@ -365,6 +365,63 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 根据表达式创建查询命令
+        /// </summary>
+        /// <param name="expr">查询条件表达式</param>
+        /// <returns>生成的查询命令</returns>
+        /// <exception cref="ArgumentException"></exception>
+        protected DbCommandProxy MakeSelectExprCommand(Expr expr)
+        {
+            SelectExpr selectExpr;
+            if(expr is SelectExpr selectExpr1)
+            {
+                selectExpr = selectExpr1;
+            }
+            else
+            {                
+                selectExpr = new SelectExpr()
+                {
+                    Source = GetSource(expr),
+                    Selects = SelectColumns.Select((col, i) => (ValueTypeExpr)Expr.Property(col.PropertyName)).ToList()
+                };
+            }                
+            return MakeExprCommand(selectExpr);
+        }
+
+        protected SqlSegment GetSource(Expr expr)
+        {
+            if (expr is null)
+            {
+                return new TableExpr(Table);
+            }
+            else if (expr is LogicExpr logicExpr)
+            {
+                return new WhereExpr() { Source = new TableExpr(Table), Where = logicExpr };
+            }
+            else if (expr is SqlSegment sourceExpr)
+            {
+                return sourceExpr;
+            }
+            else
+            {
+                throw new ArgumentException("expr 参数类型不支持");
+            }
+        }
+
+        /// <summary>
+        /// 根据表达式创建命令
+        /// </summary>
+        /// <param name="expr">表达式</param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        protected DbCommandProxy MakeExprCommand(Expr expr)
+        {
+            if(expr is null)throw new ArgumentNullException(nameof(expr));
+            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
+            return MakeNamedParamCommand(expr.ToSql(SqlBuildContext, SqlBuilder, paramList), paramList);
+        }
+
+        /// <summary>
         /// 根据SQL语句和条件建立DbCommandProxy
         /// </summary>
         /// <param name="sqlWithParam">带参数的SQL语句

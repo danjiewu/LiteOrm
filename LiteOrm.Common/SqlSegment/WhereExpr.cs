@@ -4,9 +4,9 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 筛选片段，表示 WHERE 条件子句
+    /// 筛选片段，表示 WHERE 语句
     /// </summary>
-    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
     public class WhereExpr : SqlSegment, ISourceAnchor
     {
         /// <summary>

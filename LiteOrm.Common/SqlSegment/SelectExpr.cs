@@ -6,9 +6,9 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 选择片段，表示 SELECT 查询子句
+    /// 选择片段，表示 SELECT 语句
     /// </summary>
-    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
     public class SelectExpr : SqlSegment, ISelectAnchor
     {
         /// <summary>

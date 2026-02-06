@@ -253,12 +253,14 @@ namespace LiteOrm.Common
                     case UpdateExpr ue when propName == "Sets":
                         while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                         {
-                            string prop = null; ValueTypeExpr val = null;
+                            string prop = null;
+                            ValueTypeExpr val = null;
                             while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                             {
                                 if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                                if (reader.ValueTextEquals("Prop")) { reader.Read(); prop = reader.GetString(); }
-                                else if (reader.ValueTextEquals("Value")) { reader.Read(); val = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr; }
+                                prop = reader.GetString();
+                                reader.Read();
+                                val = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
                             }
                             if (prop != null) ue.Sets.Add((prop, val));
                         }
@@ -291,10 +293,10 @@ namespace LiteOrm.Common
                     return;
                 }
 
-                // 结构化查询片段交由专门的转换器处理
+                // 结构化查询片段直接处理
                 if (value is SqlSegment segment)
                 {
-                    JsonSerializer.Serialize(writer, segment, options);
+                    WriteSqlSegment(writer, segment, options);
                     return;
                 }
 
@@ -424,6 +426,96 @@ namespace LiteOrm.Common
                     case ForeignExpr fe:
                         writer.WritePropertyName(fe.Foreign);
                         WriteExpr(writer, fe.InnerExpr, options);
+                        break;
+                }
+                writer.WriteEndObject();
+            }
+
+            /// <summary>
+            /// 写入 SQL 片段
+            /// </summary>
+            private void WriteSqlSegment(Utf8JsonWriter writer, SqlSegment value, JsonSerializerOptions options)
+            {
+                if (value == null) { writer.WriteNullValue(); return; }
+                writer.WriteStartObject();
+
+                // 类型到类型标识符的映射
+                var typeToMark = new Dictionary<Type, string>
+                {
+                    { typeof(TableExpr), "table" },
+                    { typeof(WhereExpr), "where" },
+                    { typeof(OrderByExpr), "order" },
+                    { typeof(GroupByExpr), "group" },
+                    { typeof(HavingExpr), "having" },
+                    { typeof(SectionExpr), "section" },
+                    { typeof(SelectExpr), "select" },
+                    { typeof(DeleteExpr), "delete" },
+                    { typeof(UpdateExpr), "update" }
+                };
+
+                string mark = typeToMark.TryGetValue(value.GetType(), out string m) ? m : value.GetType().Name.Replace("Expr", "").ToLower();
+                writer.WritePropertyName("$" + mark);
+                if (value is TableExpr te)
+                {
+                    writer.WriteStringValue(te.Table?.DefinitionType.FullName);
+                }
+                else
+                {
+                    JsonSerializer.Serialize(writer, value.Source, options);
+                }
+
+                switch (value)
+                {
+                    case SelectExpr sele:
+                        if (sele.Selects?.Count > 0) { writer.WritePropertyName("Selects"); JsonSerializer.Serialize(writer, sele.Selects, options); }
+                        break;
+                    case WhereExpr we:
+                        if (we.Where != null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, we.Where, options); }
+                        break;
+                    case OrderByExpr obe:
+                        if (obe.OrderBys?.Count > 0)
+                        {
+                            writer.WritePropertyName("OrderBys");
+                            writer.WriteStartArray();
+                            foreach (var ob in obe.OrderBys)
+                            {
+                                writer.WriteStartObject();
+                                writer.WritePropertyName("Expr");
+                                JsonSerializer.Serialize(writer, ob.Item1, options);
+                                writer.WriteBoolean("Asc", ob.Item2);
+                                writer.WriteEndObject();
+                            }
+                            writer.WriteEndArray();
+                        }
+                        break;
+                    case GroupByExpr gbe:
+                        if (gbe.GroupBys?.Count > 0) { writer.WritePropertyName("GroupBys"); JsonSerializer.Serialize(writer, gbe.GroupBys, options); }
+                        break;
+                    case HavingExpr he:
+                        if (he.Having != null) { writer.WritePropertyName("Having"); JsonSerializer.Serialize(writer, he.Having, options); }
+                        break;
+                    case SectionExpr se:
+                        writer.WriteNumber("Skip", se.Skip);
+                        writer.WriteNumber("Take", se.Take);
+                        break;
+                    case UpdateExpr ue:
+                        if (ue.Sets?.Count > 0)
+                        {
+                            writer.WritePropertyName("Sets");
+                            writer.WriteStartArray();
+                            foreach (var set in ue.Sets)
+                            {
+                                writer.WriteStartObject();
+                                writer.WritePropertyName(set.Item1);
+                                JsonSerializer.Serialize(writer, set.Item2, options);
+                                writer.WriteEndObject();
+                            }
+                            writer.WriteEndArray();
+                        }
+                        if (ue.Where != null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, ue.Where, options); }
+                        break;
+                    case DeleteExpr de:
+                        if (de.Where != null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, de.Where, options); }
                         break;
                 }
                 writer.WriteEndObject();

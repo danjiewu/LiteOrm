@@ -61,42 +61,45 @@ namespace LiteOrm.Common
         /// 将指定字符串的副本追加到此实例。
         /// </summary>
         /// <param name="value">要追加的字符串。</param>
-        public void Append(string? value)
+        public ValueStringBuilder Append(string? value)
         {
-            if (string.IsNullOrEmpty(value)) return;
+            if (string.IsNullOrEmpty(value)) return this;
 
             if (value!.Length == 1)
             {
                 Append(value[0]);
-                return;
+                return this;
             }
 
             Append(value.AsSpan());
+            return this;
         }
 
         /// <summary>
         /// 将指定 Unicode 字符的副本追加到此实例。
         /// </summary>
         /// <param name="c">要追加的字符。</param>
-        public void Append(char c)
+        public ValueStringBuilder Append(char c)
         {
             if (_length >= _chars.Length) Grow(1);
             _chars[_length++] = c;
+            return this;
         }
 
         /// <summary>
         /// 将指定字符序列的副本追加到此实例。
         /// </summary>
         /// <param name="value">要追加的字符序列。</param>
-        public void Append(ReadOnlySpan<char> value)
+        public ValueStringBuilder Append(ReadOnlySpan<char> value)
         {
-            if (value.IsEmpty) return;
+            if (value.IsEmpty) return this;
 
             int valueLength = value.Length;
             if (_length + valueLength > _chars.Length) Grow(valueLength);
 
             value.CopyTo(_chars.Slice(_length));
             _length += valueLength;
+            return this;
         }
 
         /// <summary>

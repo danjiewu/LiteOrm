@@ -8,7 +8,7 @@ namespace LiteOrm.Common
     /// <summary>
     /// 排序片段，表示 ORDER BY 子句
     /// </summary>
-    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
     public class OrderByExpr : SqlSegment, IOrderByAnchor
     {
         /// <summary>

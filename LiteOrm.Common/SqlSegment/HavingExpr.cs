@@ -4,10 +4,10 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// Having 片段，表示 HAVING 条件子句
+    /// 聚合筛选片段，表示 HAVING 语句
     /// </summary>
-    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
-    public class HavingExpr : SqlSegment, IHavingAnchor
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
+    public class HavingExpr : SqlSegment, ISelectAnchor
     {
         /// <summary>
         /// 初始化 HavingExpr 类的新实例

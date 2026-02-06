@@ -132,10 +132,11 @@ namespace LiteOrm
         /// </summary>
         public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
         {
-            var sb = ValueStringBuilder.Create(2048);
+            
             string sqlTableName = ToSqlName(tableName);
             int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
-
+            var sb = ValueStringBuilder.Create(128+paramsPerRecord*batchSize*8);
+            
             sb.Append("UPDATE ");
             sb.Append(sqlTableName);
             sb.Append(" T");

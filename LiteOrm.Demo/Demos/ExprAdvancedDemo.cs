@@ -35,13 +35,23 @@ namespace LiteOrm.Demo.Demos
 
             var lambdaExpr = Expr.Exp<SalesRecordView>(s => (s.ShipTime ?? DateTime.Now.AddDays(-1)) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains("机"));
 
-            Console.WriteLine("  C# Lambda: s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains(\"机\")");
+            Console.WriteLine("[简单 Lambda 表达式] : s => (s.ShipTime ?? DateTime.Now) > s.SaleTime + TimeSpan.FromDays(3) && s.ProductName.Contains(\"机\")");
             Console.WriteLine($"  转换结果 Expr: {lambdaExpr}");
 
             string json = JsonSerializer.Serialize((Expr)lambdaExpr, jsonOptions);
             Console.WriteLine($"  序列化结果: {json}");
 
             var deserializedExpr = JsonSerializer.Deserialize<Expr>(json, jsonOptions);
+            Console.WriteLine($"  反序列化后 Expr 类型: {deserializedExpr?.GetType().Name}");
+            Console.WriteLine($"  反序列化后 Expr 内容: {deserializedExpr}");
+
+            var lambdaExpr2 = Expr.Query<SalesRecordView>(q => q.Where(s => s.Amount >= 100).OrderBy(s => s.SaleTime).Skip(20).Take(10));
+            Console.WriteLine("\n[Linq Lambda 查询表达式]: q => q.Where(s => s.Amount >= 100).OrderBy(s => s.SaleTime).Skip(20).Take(10)");
+            Console.WriteLine($"  转换结果 Expr: {lambdaExpr2}");
+            json = JsonSerializer.Serialize(lambdaExpr2, jsonOptions);
+            Console.WriteLine($"  序列化结果: {json}");
+
+            deserializedExpr = JsonSerializer.Deserialize<Expr>(json, jsonOptions);
             Console.WriteLine($"  反序列化后 Expr 类型: {deserializedExpr?.GetType().Name}");
             Console.WriteLine($"  反序列化后 Expr 内容: {deserializedExpr}");
         }
@@ -100,7 +110,8 @@ namespace LiteOrm.Demo.Demos
 
             // 2. 生成完整 SELECT 语句
             var selectResult = sqlGen.ToSql(new SelectExpr { Source = new WhereExpr(new TableExpr(sqlGen.Table), (LogicExpr)expr) });
-            Console.WriteLine("\n  (2) ToSelectSql (生成完整查询):");
+            Console.WriteLine("\n  (2) Select Sql (生成完整查询):");
+            Console.WriteLine($"      查询: {selectResult}");
             Console.WriteLine($"      结果: {selectResult}");
 
             // 3. 生成 COUNT 语句
@@ -109,7 +120,8 @@ namespace LiteOrm.Demo.Demos
                 Source = new WhereExpr(new TableExpr(sqlGen.Table), (LogicExpr)expr),
                 Selects = new List<ValueTypeExpr> { new AggregateFunctionExpr("COUNT", new ValueExpr(1) { IsConst = true }) }
             });
-            Console.WriteLine("\n  (3) ToCountSql (生成统计查询):");
+            Console.WriteLine("\n  (3) Count Sql (生成统计查询):");
+            Console.WriteLine($"      查询: {countResult}");            
             Console.WriteLine($"      结果: {countResult}");
 
             // 4. 生成 UPDATE 语句
@@ -124,7 +136,8 @@ namespace LiteOrm.Demo.Demos
                 Where = Expr.Property(nameof(User.Id)) == 1
             };
             var updateResult = sqlGen.ToSql(updateExpr);
-            Console.WriteLine("\n  (4) ToUpdateSql (生成更新语句):");
+            Console.WriteLine("\n  (4) Update Sql (生成更新语句):");
+            Console.WriteLine($"      查询: {updateExpr}");
             Console.WriteLine($"      结果: {updateResult}");
 
             // 5. 生成 DELETE 语句
@@ -134,7 +147,8 @@ namespace LiteOrm.Demo.Demos
                 Where = Expr.Property(nameof(User.Age)) < 18
             };
             var deleteResult = sqlGen.ToSql(deleteExpr);
-            Console.WriteLine("\n  (5) ToDeleteSql (生成删除语句):");
+            Console.WriteLine("\n  (5) Delete Sql (生成删除语句):");
+            Console.WriteLine($"      查询: {deleteExpr}");
             Console.WriteLine($"      结果: {deleteResult}");
 
             // 7. OrderBy 演示
@@ -142,6 +156,7 @@ namespace LiteOrm.Demo.Demos
                 .OrderBy((Expr.Property(nameof(User.Age)), false)); // Age DESC
             var orderByResult = sqlGen.ToSql(new SelectExpr { Source = orderByExpr });
             Console.WriteLine("\n  (7) OrderByExpr (生成带排序查询):");
+            Console.WriteLine($"      查询: {orderByExpr}");
             Console.WriteLine($"      结果: {orderByResult}");
 
             // 8. GroupBy 演示
@@ -151,6 +166,7 @@ namespace LiteOrm.Demo.Demos
             
             var groupByResult = sqlGen.ToSql(new SelectExpr { Source = groupByQuery });
             Console.WriteLine("\n  (8) GroupByExpr (生成带分组聚合查询):");
+            Console.WriteLine($"      查询: {groupByQuery}");
             Console.WriteLine($"      结果: {groupByResult}");
 
             // 9. Section (分页) 演示
@@ -159,17 +175,20 @@ namespace LiteOrm.Demo.Demos
             
             var sectionResult = sqlGen.ToSql(new SelectExpr { Source = sectionExpr });
             Console.WriteLine("\n  (9) SectionExpr (生成分页查询):");
+            Console.WriteLine($"      查询: {sectionExpr}");
             Console.WriteLine($"      结果: {sectionResult}");
 
             // 10. 综合查询 (Where + OrderBy + Section)
-            var complexQuery = new TableExpr(sqlGen.Table)
-                .Where(Expr.Property(nameof(User.Age)) > 20)
-                .OrderBy((Expr.Property(nameof(User.CreateTime)), true))
-                .Section(0, 10);
+            var complexQuery = Expr.Where<User>(u=> u.Age > 20)
+            .GroupBy(Expr.Property(nameof(User.Id)), Expr.Property(nameof(User.UserName)))
+            .Select(Expr.Property(nameof(User.Id)), Expr.Property(nameof(User.UserName)), AggregateFunctionExpr.Count)
+            .OrderBy((Expr.Property(nameof(User.UserName)), true))            
+            .Section(0, 10);
 
             var complexResult = sqlGen.ToSql(new SelectExpr { Source = complexQuery });
-            Console.WriteLine("\n  (10) 综合查询 (Where + OrderBy + Section):");
-            Console.WriteLine($"       结果: {complexResult}");
+            Console.WriteLine("\n  (10) 综合查询 (Where + GroupBy + Select + OrderBy + Section):");
+             Console.WriteLine($"       查询: {complexQuery}");
+            Console.WriteLine($"       结果: {complexResult}");                            
         }
 
         public static void ShowQueryExpr()
@@ -177,19 +196,6 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine("\n[QueryExpr] 结构化查询表达式演示:");
 
             // 使用 Expr 扩展方法链式构造查询
-            var table = new TableExpr(TableInfoProvider.Default.GetTableView(typeof(User)));
-            var query = table
-                .Where(Expr.Property("Age") > 18)
-                .GroupBy(Expr.Property("DeptId"))
-                .Having(AggregateFunctionExpr.Count > 1)
-                .Select(Expr.Property("DeptId"), AggregateFunctionExpr.Count)
-                .OrderBy((Expr.Property("DeptId").Asc()))
-                .Section(10, 20);
-
-            Console.WriteLine($"  Table: {table}");
-            Console.WriteLine($"  Result: {query}");
-
-            // 更简洁的一行构建
             var fluentQuery = Expr.Table<SalesRecord>()
                 .Where(Expr.Property("Status") == 1)
                 .GroupBy(Expr.Property("CustomerId"))
@@ -199,6 +205,18 @@ namespace LiteOrm.Demo.Demos
                 .Section(0, 10);
 
             Console.WriteLine($"\n  链式构建结果: {fluentQuery}");
+
+            // 使用 Lambda 表达式构建查询
+            var selectExpr = Expr.Query<User, dynamic>(
+                p=>p.Where(u => u.Age>18) 
+                .GroupBy(u=>u.DeptId) 
+                .Select(g=>new { DeptId=g.Key, UserCount=g.Count() })
+                .OrderBy(u=>u.DeptId)
+                .Skip(10)
+                .Take(20)
+            );
+
+            Console.WriteLine($"  Lambda 构建结果: {selectExpr}");
         }
     }
 }

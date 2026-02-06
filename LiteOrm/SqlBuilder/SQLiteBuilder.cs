@@ -97,7 +97,7 @@ namespace LiteOrm
         {
             var sqlName = ToSqlName(tableName);
             var colSqls = columns.Select(c => $"ALTER TABLE {sqlName} ADD COLUMN {ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
-            return string.Join(";", colSqls);
+            return string.Join("; ", colSqls);
         }
 
         /// <summary>
@@ -109,74 +109,106 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 生成 SQLite 专用的批量更新 SQL 语句。鉴于 SQLite 版本的广泛度，继续采用 CASE WHEN 方式以保证兼容性。
+        /// 生成 SQLite 专用的批量更新 SQL 语句，使用 CTE + Values 方式批量更新。
         /// </summary>
         public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
         {
-            var sb = ValueStringBuilder.Create(2048);
-            sb.Append("UPDATE ");
-            sb.Append(ToSqlName(tableName));
-            sb.Append(" SET ");
+            if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than 0");
+            if (keyColumns.Length == 0) throw new ArgumentException("At least one key column is required", nameof(keyColumns));
+            if (updatableColumns.Length == 0) throw new ArgumentException("At least one updatable column is required", nameof(updatableColumns));
 
             int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
+            var sb = ValueStringBuilder.Create(256 + batchSize * paramsPerRecord * 10);
+            string sqlTableName = ToSqlName(tableName);
 
+            // 1. 构建CTE部分 (WITH clause)
+            sb.Append("WITH batch_data(");
+
+            // 先更新列，后键列
             for (int i = 0; i < updatableColumns.Length; i++)
             {
                 if (i > 0) sb.Append(", ");
-                var col = updatableColumns[i];
-                sb.Append(ToSqlName(col.Name));
-                sb.Append(" = CASE ");
-                for (int b = 0; b < batchSize; b++)
-                {
-                    sb.Append(" WHEN ");
-                    for (int k = 0; k < keyColumns.Length; k++)
-                    {
-                        if (k > 0) sb.Append(" AND ");
-                        var key = keyColumns[k];
-                        string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
-                        sb.Append(ToSqlName(key.Name));
-                        sb.Append(" = ");
-                        sb.Append(ToSqlParam(keyParam));
-                    }
-                    string valParam = "p" + (b * paramsPerRecord + i);
-                    sb.Append(" THEN ");
-                    sb.Append(ToSqlParam(valParam));
-                }
-                sb.Append(" END");
+                sb.Append(ToSqlName(updatableColumns[i].Name));
             }
 
-            sb.Append(" WHERE ");
-            if (keyColumns.Length == 1)
+            for (int k = 0; k < keyColumns.Length; k++)
             {
-                var key = keyColumns[0];
-                sb.Append(ToSqlName(key.Name));
-                sb.Append(" IN (");
-                for (int b = 0; b < batchSize; b++)
+                sb.Append(", ");
+                sb.Append(ToSqlName(keyColumns[k].Name));
+            }
+
+            sb.Append(") AS (\n    VALUES ");
+
+            // 2. 构建VALUES部分，使用数字参数名
+            for (int b = 0; b < batchSize; b++)
+            {
+                if (b > 0) sb.Append(",\n           ");
+                sb.Append("(");
+
+                int paramBase = b * paramsPerRecord;
+
+                // 更新列参数
+                for (int i = 0; i < updatableColumns.Length; i++)
                 {
-                    if (b > 0) sb.Append(", ");
-                    string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length);
-                    sb.Append(ToSqlParam(keyParam));
+                    if (i > 0) sb.Append(", ");
+                    sb.Append(ToSqlParam($"p{paramBase + i}"));
                 }
+
+                // 键列参数 
+                for (int k = 0; k < keyColumns.Length; k++)
+                {
+                    sb.Append(", ");
+                    sb.Append(ToSqlParam($"p{paramBase + updatableColumns.Length + k}"));
+                }
+
                 sb.Append(")");
             }
-            else
+
+            sb.Append("\n)\n");
+
+            // 3. 构建UPDATE语句
+            sb.Append("UPDATE ");
+            sb.Append(sqlTableName);
+            sb.Append("\nSET\n");
+
+            // 构建SET子句：每个可更新列对应一个子查询
+            for (int i = 0; i < updatableColumns.Length; i++)
             {
-                for (int b = 0; b < batchSize; b++)
+                if (i > 0) sb.Append(",\n");
+                sb.Append("    ");
+                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(" = (\n        SELECT ");
+                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append("\n        FROM batch_data\n        WHERE ");
+
+                // 构建WHERE条件连接主键
+                for (int k = 0; k < keyColumns.Length; k++)
                 {
-                    if (b > 0) sb.Append(" OR ");
-                    sb.Append("(");
-                    for (int k = 0; k < keyColumns.Length; k++)
-                    {
-                        if (k > 0) sb.Append(" AND ");
-                        var key = keyColumns[k];
-                        string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
-                        sb.Append(ToSqlName(key.Name));
-                        sb.Append(" = ");
-                        sb.Append(ToSqlParam(keyParam));
-                    }
-                    sb.Append(")");
+                    if (k > 0) sb.Append("\n          AND ");
+                    sb.Append(sqlTableName);
+                    sb.Append(".");
+                    sb.Append(ToSqlName(keyColumns[k].Name));
+                    sb.Append(" = batch_data.");
+                    sb.Append(ToSqlName(keyColumns[k].Name));
                 }
+
+                sb.Append("\n    )");
             }
+
+            // 4. 构建WHERE子句
+            sb.Append("\nWHERE EXISTS (\n    SELECT 1\n    FROM batch_data\n    WHERE ");
+
+            for (int k = 0; k < keyColumns.Length; k++)
+            {
+                if (k > 0) sb.Append("\n      AND ");
+                sb.Append(sqlTableName);
+                sb.Append(".");
+                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(" = batch_data.");
+                sb.Append(ToSqlName(keyColumns[k].Name));
+            }
+
+            sb.Append("\n);");
 
             string result = sb.ToString();
             sb.Dispose();

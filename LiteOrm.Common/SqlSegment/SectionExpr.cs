@@ -4,10 +4,10 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 分页片段，表示 LIMIT/OFFSET 或 SKIP/TAKE 子句
+    /// 分页片段，表示 LIMIT/OFFSET 语句
     /// </summary>
-    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
-    public class SectionExpr : SqlSegment, ISectionAnchor
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
+    public class SectionExpr : SqlSegment, ISelectAnchor
     {
         /// <summary>
         /// 初始化 SectionExpr 类的新实例

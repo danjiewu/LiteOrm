@@ -42,4 +42,3 @@ using (var scope = host.Services.CreateScope())
     await ExprDemo.RunThreeTierDemo(serviceFactory);    
 }
 
-await host.RunAsync();

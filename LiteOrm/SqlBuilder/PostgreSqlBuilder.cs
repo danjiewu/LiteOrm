@@ -79,49 +79,77 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 生成 PostgreSql 专用的批量更新 SQL 语句（采用 JOIN 方式）。
+        /// 生成 PostgreSql 专用的批量更新 SQL 语句（采用 UPDATE ... FROM (VALUES ...) 方式）。
         /// </summary>
         public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
         {
-            var sb = ValueStringBuilder.Create(2048);
-            string sqlTableName = ToSqlName(tableName);
-            int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
+            if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than 0");
+            if (keyColumns.Length == 0) throw new ArgumentException("At least one key column is required", nameof(keyColumns));
+            if (updatableColumns.Length == 0) throw new ArgumentException("At least one updatable column is required", nameof(updatableColumns));
 
+            // 使用batchSize和paramsPerRecord估算更精确的初始长度
+            int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
+            var sb = ValueStringBuilder.Create(128 + paramsPerRecord * batchSize * 8);
+            string sqlTableName = ToSqlName(tableName);
+
+            // 构建 UPDATE 语句
             sb.Append("UPDATE ");
             sb.Append(sqlTableName);
-            sb.Append(" T SET ");
+            sb.Append(" u SET ");
             for (int i = 0; i < updatableColumns.Length; i++)
             {
                 if (i > 0) sb.Append(", ");
                 sb.Append(ToSqlName(updatableColumns[i].Name));
-                sb.Append(" = S.");
-                sb.Append(ToSqlName("v" + i));
+                sb.Append(" = v.v");
+                sb.Append(i.ToString());
             }
 
+            // 构建 FROM (VALUES ...) 子句
             sb.Append("\nFROM (");
             for (int b = 0; b < batchSize; b++)
             {
-                if (b > 0) sb.Append("\n  UNION ALL ");
-                sb.Append("SELECT ");
+                if (b == 0)
+                {
+                    sb.Append("VALUES ");
+                }
+                else
+                {
+                    sb.Append(", ");
+                }
+                sb.Append("(");
                 for (int i = 0; i < paramsPerRecord; i++)
                 {
                     if (i > 0) sb.Append(", ");
                     sb.Append(ToSqlParam("p" + (b * paramsPerRecord + i)));
-                    if (b == 0)
-                    {
-                        sb.Append(" AS ");
-                        sb.Append(ToSqlName("v" + i));
-                    }
                 }
+                sb.Append(")");
             }
-            sb.Append(") S WHERE ");
+            sb.Append(") AS v (");
+
+            // 定义 VALUES 子句的列名
+            for (int i = 0; i < updatableColumns.Length; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append("v");
+                sb.Append(i.ToString());
+            }
+            for (int k = 0; k < keyColumns.Length; k++)
+            {
+                if (updatableColumns.Length > 0 || k > 0) sb.Append(", ");
+                sb.Append("k");
+                sb.Append(k.ToString());
+            }
+            sb.Append(")");
+
+            // 构建 WHERE 子句
+            sb.Append("\nWHERE ");
             for (int k = 0; k < keyColumns.Length; k++)
             {
                 if (k > 0) sb.Append(" AND ");
-                sb.Append("T.");
+                sb.Append("u.");
                 sb.Append(ToSqlName(keyColumns[k].Name));
-                sb.Append(" = S.");
-                sb.Append(ToSqlName("v" + (updatableColumns.Length + k)));
+                sb.Append(" = v.k");
+                sb.Append(k.ToString());
             }
 
             string result = sb.ToString();

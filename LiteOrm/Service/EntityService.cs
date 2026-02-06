@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections;
@@ -374,7 +374,7 @@ namespace LiteOrm.Service
         /// <param name="expr">删除条件表达式，用于筛选要删除的记录。</param>
         /// <param name="tableArgs">表名参数，用于支持分表场景。</param>
         /// <returns>删除的记录数。</returns>
-        public virtual int Delete(Expr expr, params string[] tableArgs)
+        public virtual int Delete(LogicExpr expr, params string[] tableArgs)
         {
             return ObjectDAO.WithArgs(tableArgs).Delete(expr);
         }
@@ -581,7 +581,7 @@ namespace LiteOrm.Service
         /// <param name="expr">删除条件表达式。</param>
         /// <param name="tableArgs">表名参数。</param>
         /// <returns>删除的记录数。</returns>
-        int IEntityService.Delete(Expr expr, params string[] tableArgs)
+        int IEntityService.Delete(LogicExpr expr, params string[] tableArgs)
         {
             return Delete(expr, tableArgs);
         }
@@ -705,7 +705,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，任务结果为删除的记录数。</returns>
-        async Task<int> IEntityServiceAsync.DeleteAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
+        async Task<int> IEntityServiceAsync.DeleteAsync(LogicExpr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
             return await DeleteAsync(expr, tableArgs, cancellationToken);
         }
@@ -816,7 +816,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>受影响的行数。</returns>
-        public async Task<int> DeleteAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async Task<int> DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await ObjectDAO.WithArgs(tableArgs).DeleteAsync(expr, cancellationToken);
         }

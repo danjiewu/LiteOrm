@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
@@ -137,7 +137,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>受影响的行数</returns>
-        Task<int> DeleteAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<int> DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步批量新增实体

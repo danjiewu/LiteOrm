@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -169,6 +169,6 @@ namespace LiteOrm.Common
         /// <param name="expr">条件</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回删除对象数量</returns>
-        Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default);
+        Task<int> DeleteAsync(LogicExpr expr, CancellationToken cancellationToken = default);
     }
 }

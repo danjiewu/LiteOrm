@@ -6,7 +6,7 @@ namespace LiteOrm.Common
     /// <summary>
     /// 删除片段，表示 DELETE 语句
     /// </summary>
-    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
     public class DeleteExpr : SqlSegment
     {
         /// <summary>

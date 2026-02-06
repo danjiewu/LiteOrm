@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -203,8 +203,8 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 生成 Oracle 专用的批量更新 SQL 语句（使用匿名 PL/SQL 块）。
-        /// 针对 Oracle 优化：不直接使用全局默认的 CASE WHEN 方式，而是采用更稳定的 BEGIN...END 块驱动多条 UPDATE 语句。
+        /// 生成 Oracle 专用的批量更新 SQL 语句（使用 MERGE 语句）。
+        /// 针对 Oracle 优化：使用 MERGE 语句批量处理更新操作，提高性能。
         /// </summary>
         /// <param name="tableName">目标表名。</param>
         /// <param name="updatableColumns">可更新列集合。</param>
@@ -213,40 +213,76 @@ namespace LiteOrm
         /// <returns>返回 Oracle 可执行的批量更新 SQL 字符串。</returns>
         public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
         {
-            var sb = ValueStringBuilder.Create(2048);
-            sb.Append("BEGIN\n");
+            if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than 0");
+            if (keyColumns.Length == 0) throw new ArgumentException("At least one key column is required", nameof(keyColumns));
+            if (updatableColumns.Length == 0) throw new ArgumentException("At least one updatable column is required", nameof(updatableColumns));
 
+            
             int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
-
+            var sb = ValueStringBuilder.Create(128 + paramsPerRecord * batchSize * 16);
+            
+            // 构建 MERGE INTO 语句
+            sb.Append("MERGE INTO ");
+            sb.Append(ToSqlName(tableName));
+            sb.Append(" t\n");
+            
+            // 构建 USING 子句
+            sb.Append("USING (\n");
+            
             for (int b = 0; b < batchSize; b++)
             {
-                sb.Append("  UPDATE ");
-                sb.Append(ToSqlName(tableName));
-                sb.Append(" SET ");
+                if (b > 0) sb.Append("    UNION ALL\n");
+                sb.Append("    SELECT ");
+                
+                // 添加可更新列的参数
                 for (int i = 0; i < updatableColumns.Length; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    var col = updatableColumns[i];
-                    string valParam = "p" + (b * paramsPerRecord + i);
-                    sb.Append(ToSqlName(col.Name));
-                    sb.Append(" = ");
-                    sb.Append(ToSqlParam(valParam));
+                    string valParam = ":p" + (b * paramsPerRecord + i);
+                    sb.Append(valParam);
+                    sb.Append(" AS ");
+                    sb.Append(ToSqlName(updatableColumns[i].Name));
                 }
-
-                sb.Append(" WHERE ");
+                
+                // 添加主键列的参数
                 for (int k = 0; k < keyColumns.Length; k++)
                 {
-                    if (k > 0) sb.Append(" AND ");
-                    var key = keyColumns[k];
-                    string keyParam = "p" + (b * paramsPerRecord + updatableColumns.Length + k);
-                    sb.Append(ToSqlName(key.Name));
-                    sb.Append(" = ");
-                    sb.Append(ToSqlParam(keyParam));
+                    if (updatableColumns.Length > 0 || k > 0) sb.Append(", ");
+                    string keyParam = ":p" + (b * paramsPerRecord + updatableColumns.Length + k);
+                    sb.Append(keyParam);
+                    sb.Append(" AS ");
+                    sb.Append(ToSqlName(keyColumns[k].Name));
                 }
-                sb.Append(";\n");
+                
+                sb.Append(" FROM DUAL\n");
             }
-
-            sb.Append("END;");
+            
+            sb.Append(") s\n");
+            
+            // 构建 ON 子句
+            sb.Append("ON (");
+            for (int k = 0; k < keyColumns.Length; k++)
+            {
+                if (k > 0) sb.Append(" AND ");
+                sb.Append("t.");
+                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(" = s.");
+                sb.Append(ToSqlName(keyColumns[k].Name));
+            }
+            sb.Append(")\n");
+            
+            // 构建 WHEN MATCHED THEN UPDATE SET 子句
+            sb.Append("WHEN MATCHED THEN\n");
+            sb.Append("    UPDATE SET ");
+            for (int i = 0; i < updatableColumns.Length; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append("t.");
+                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(" = s.");
+                sb.Append(ToSqlName(updatableColumns[i].Name));
+            }
+            
             string result = sb.ToString();
             sb.Dispose();
             return result;

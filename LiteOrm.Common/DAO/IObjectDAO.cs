@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -140,7 +140,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="expr">条件</param>
         /// <returns>删除对象数量</returns>
-        int Delete(Expr expr);
+        int Delete(LogicExpr expr);
     }
     #endregion
 

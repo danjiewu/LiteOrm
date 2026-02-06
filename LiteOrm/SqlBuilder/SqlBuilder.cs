@@ -740,7 +740,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 生成批量更新的 SQL 语句。采用 JOIN 方式实现以提高性能。
+        /// 生成批量更新的 SQL 语句。采用单条 UPDATE 语句拼接的方式以保证兼容性。
         /// </summary>
         /// <param name="tableName">目标表名。</param>
         /// <param name="updatableColumns">可更新列集合。</param>
@@ -749,47 +749,38 @@ namespace LiteOrm
         /// <returns>返回目标数据库可执行的批量更新 SQL 字符串。</returns>
         public virtual string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
         {
-            var sb = ValueStringBuilder.Create(2048);
-            string sqlTableName = ToSqlName(tableName);
             int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
+            var sb = ValueStringBuilder.Create(128 + paramsPerRecord * batchSize * 8);
+            string sqlTableName = ToSqlName(tableName);
 
-            sb.Append("UPDATE T SET ");
-            for (int i = 0; i < updatableColumns.Length; i++)
-            {
-                if (i > 0) sb.Append(", ");
-                sb.Append(ToSqlName(updatableColumns[i].Name));
-                sb.Append(" = S.");
-                sb.Append(ToSqlName("v" + i));
-            }
-
-            sb.Append(" FROM ");
-            sb.Append(sqlTableName);
-            sb.Append(" T");
-            sb.Append("\nINNER JOIN (");
-
+            // 为每条记录生成一个 UPDATE 语句
             for (int b = 0; b < batchSize; b++)
             {
-                if (b > 0) sb.Append("\n  UNION ALL ");
-                sb.Append("SELECT ");
-                for (int i = 0; i < paramsPerRecord; i++)
+                if (b > 0) sb.Append("\n");
+                
+                // 构建 UPDATE 语句
+                sb.Append("UPDATE ");
+                sb.Append(sqlTableName);
+                sb.Append("\nSET ");
+
+                // 构建 SET 子句
+                for (int i = 0; i < updatableColumns.Length; i++)
                 {
                     if (i > 0) sb.Append(", ");
+                    sb.Append(ToSqlName(updatableColumns[i].Name));
+                    sb.Append(" = ");
                     sb.Append(ToSqlParam("p" + (b * paramsPerRecord + i)));
-                    if (b == 0)
-                    {
-                        sb.Append(" AS ");
-                        sb.Append(ToSqlName("v" + i));
-                    }
                 }
-            }
-            sb.Append(") S ON ");
-            for (int k = 0; k < keyColumns.Length; k++)
-            {
-                if (k > 0) sb.Append(" AND ");
-                sb.Append("T.");
-                sb.Append(ToSqlName(keyColumns[k].Name));
-                sb.Append(" = S.");
-                sb.Append(ToSqlName("v" + (updatableColumns.Length + k)));
+
+                // 构建 WHERE 子句
+                sb.Append("\nWHERE ");
+                for (int k = 0; k < keyColumns.Length; k++)
+                {
+                    if (k > 0) sb.Append(" AND ");
+                    sb.Append(ToSqlName(keyColumns[k].Name));
+                    sb.Append(" = ");
+                    sb.Append(ToSqlParam("p" + (b * paramsPerRecord + updatableColumns.Length + k)));
+                }
             }
 
             string result = sb.ToString();

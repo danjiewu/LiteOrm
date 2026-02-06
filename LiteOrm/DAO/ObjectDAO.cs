@@ -784,9 +784,10 @@ namespace LiteOrm
         /// </summary>
         /// <param name="expr">条件</param>
         /// <returns>删除对象数量</returns>
-        public virtual int Delete(Expr expr)
+        public virtual int Delete(LogicExpr expr)
         {
-            using var command = MakeConditionCommand($"DELETE FROM {ParamTable} {ParamWhere}", expr);
+            var deleteExpr = new DeleteExpr(new TableExpr(TableDefinition), expr);
+            using var command = MakeExprCommand(deleteExpr);    
             return command.ExecuteNonQuery();
         }
 
@@ -1239,9 +1240,10 @@ namespace LiteOrm
         /// <param name="expr">条件。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，返回删除对象数量。</returns>
-        public async virtual Task<int> DeleteAsync(Expr expr, CancellationToken cancellationToken = default)
+        public async virtual Task<int> DeleteAsync(LogicExpr expr, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand($"DELETE FROM {ParamTable} {ParamWhere}", expr);
+            var deleteExpr = new DeleteExpr(new TableExpr(TableDefinition), expr);
+            using var command = MakeExprCommand(deleteExpr);    
             return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -1478,7 +1480,7 @@ namespace LiteOrm
             return await DeleteByKeysAsync(keys, cancellationToken).ConfigureAwait(false);
         }
 
-        async Task<int> IObjectDAOAsync.DeleteAsync(Expr expr, CancellationToken cancellationToken)
+        async Task<int> IObjectDAOAsync.DeleteAsync(LogicExpr expr, CancellationToken cancellationToken)
         {
             return await DeleteAsync(expr, cancellationToken).ConfigureAwait(false);
         }

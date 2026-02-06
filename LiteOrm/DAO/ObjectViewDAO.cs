@@ -292,8 +292,9 @@ namespace LiteOrm
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <returns>符合条件的对象个数</returns>
         public virtual int Count(Expr expr)
-        {
-            using var command = MakeConditionCommand($"SELECT COUNT(*) \nFROM {ParamFromTable} {ParamWhere}", expr);
+        {            
+            var selectExpr = new SelectExpr(GetSource(expr),Expr.Aggregate("COUNT",Expr.Const(1)));
+            using var command = MakeExprCommand(selectExpr);
             return Convert.ToInt32(command.ExecuteScalar());
         }
 
@@ -333,8 +334,9 @@ namespace LiteOrm
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <returns>是否存在</returns>
         public virtual bool Exists(Expr expr)
-        {
-            using var command = MakeConditionCommand($"SELECT 1 \nFROM {ParamFromTable} {ParamWhere}", expr);
+        {            
+            var selectExpr = new SelectExpr(GetSource(expr),Expr.Const(1));
+            using var command = MakeExprCommand(selectExpr);
             return command.ExecuteScalar() is not null;
         }
 
@@ -345,7 +347,7 @@ namespace LiteOrm
         /// <param name="func">要对每个对象执行的操作</param>
         public void ForEach(Expr expr, Action<T> func)
         {
-            using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
+            using var command = MakeSelectExprCommand(expr);
             using (IDataReader reader = command.ExecuteReader())
             {
                 func(ReadOne(reader));
@@ -359,39 +361,8 @@ namespace LiteOrm
         /// <returns>符合条件的对象列表</returns>
         public virtual List<T> Search(Expr expr)
         {
-            using DbCommandProxy command = MakeExprCommand(expr);
+            using DbCommandProxy command = MakeSelectExprCommand(expr);
             return GetAll(command);
-        }
-
-        private DbCommandProxy MakeExprCommand(Expr expr)
-        {
-            SqlSegment selectSource;
-            if (expr is null)
-            {
-                selectSource = new TableExpr(Table);
-            }
-            else if (expr is LogicExpr logicExpr)
-            {
-                selectSource = new WhereExpr() { Source = new TableExpr(Table), Where = logicExpr };
-            }
-            else if (expr is SqlSegment sourceExpr)
-            {
-                selectSource = sourceExpr;
-            }
-            else
-            {
-                throw new ArgumentException("expr 参数类型不支持");
-            }
-
-            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
-            var context = SqlBuildContext;
-            var selectExpr = new SelectExpr()
-            {
-                Source = selectSource,
-                Selects = SelectColumns.Select((col, i) => (ValueTypeExpr)Expr.Property(col.PropertyName)).ToList()
-            };
-            var command = MakeNamedParamCommand(selectExpr.ToSql(context, SqlBuilder, paramList), paramList);
-            return command;
         }
 
         /// <summary>
@@ -401,7 +372,7 @@ namespace LiteOrm
         /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
         public virtual T SearchOne(Expr expr)
         {
-            using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
+            using var command = MakeSelectExprCommand(expr);
             return GetOne(command);
         }
 
@@ -437,7 +408,8 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象个数</returns>
         public async virtual Task<int> CountAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand($"SELECT COUNT(*) \nFROM {ParamFromTable} {ParamWhere}", expr);
+            var selectExpr = new SelectExpr(GetSource(expr),Expr.Aggregate("COUNT",Expr.Const(1)));
+            using var command = MakeExprCommand(selectExpr);
             return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
         }
 
@@ -481,7 +453,8 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
         public async virtual Task<bool> ExistsAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand($"SELECT 1 \nFROM {ParamFromTable} {ParamWhere}", expr);
+            var selectExpr = new SelectExpr(GetSource(expr),Expr.Const(1));
+            using var command = MakeExprCommand(selectExpr);    
             return await command.ExecuteScalarAsync(cancellationToken) is not null;
         }
 
@@ -504,7 +477,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含第一个符合条件的对象，若不存在则返回null</returns>
         public async virtual Task<T> SearchOneAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            using var command = MakeConditionCommand($"SELECT {ParamAllFields} \nFROM {ParamFromTable} {ParamWhere}", expr);
+            using var command = MakeSelectExprCommand(expr);
             return await GetOneAsync(command, cancellationToken);
         }
 
@@ -533,7 +506,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
         public async virtual Task<List<T>> SearchAsync(Expr expr = null, CancellationToken cancellationToken = default)
         {
-            using var command = MakeExprCommand(expr);
+            using var command = MakeSelectExprCommand(expr);
             return await GetAllAsync(command, cancellationToken).ConfigureAwait(false);
         }
 

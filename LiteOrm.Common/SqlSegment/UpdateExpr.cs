@@ -8,7 +8,7 @@ namespace LiteOrm.Common
     /// <summary>
     /// 更新片段，表示 UPDATE 语句
     /// </summary>
-    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
     public class UpdateExpr : SqlSegment
     {
         /// <summary>

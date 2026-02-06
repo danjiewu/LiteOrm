@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
@@ -162,7 +162,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>删除的记录数</returns>
         [Service]
-        int Delete(Expr expr, params string[] tableArgs);
+        int Delete(LogicExpr expr, params string[] tableArgs);
         /// <summary>
         /// 批量新增实体
         /// </summary>

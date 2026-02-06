@@ -218,6 +218,8 @@ namespace LiteOrm.Common
         /// <returns>SQL 片段实例</returns>
         public static SqlSegment Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
 
+        public static SqlSegment Query<T,TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
+
         /// <summary>
         /// 创建范围查询表达式 (BETWEEN)。
         /// </summary>

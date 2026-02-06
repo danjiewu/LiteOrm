@@ -6,7 +6,7 @@ namespace LiteOrm.Common
     /// <summary>
     /// SQL 片段基类，表示查询语句的一个组成部分（如表、选择、筛选、排序等）
     /// </summary>
-    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
     public abstract class SqlSegment : Expr
     {
         /// <summary>

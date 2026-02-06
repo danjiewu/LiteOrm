@@ -6,7 +6,7 @@ namespace LiteOrm.Common
     /// <summary>
     /// 表片段，表示查询的数据源表
     /// </summary>
-    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class TableExpr : SqlSegment, ISourceAnchor
     {
         /// <summary>

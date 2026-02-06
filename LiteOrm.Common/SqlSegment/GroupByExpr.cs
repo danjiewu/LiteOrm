@@ -6,10 +6,10 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 分组片段，表示 GROUP BY 子句
+    /// 分组片段，表示 GROUP BY 语句
     /// </summary>
-    [JsonConverter(typeof(SqlSegmentJsonConverterFactory))]
-    public class GroupByExpr : SqlSegment, IGroupByAnchor
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
+    public class GroupByExpr : SqlSegment, IHavingAnchor
     {
         /// <summary>
         /// 初始化 GroupByExpr 类的新实例
