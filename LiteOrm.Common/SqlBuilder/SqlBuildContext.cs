@@ -33,21 +33,21 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="table">表元数据。</param>
         /// <param name="tableAliasName">表别名。</param>
-        /// <param name="tableNameArgs">用于动态生成表名的参数集合。</param>
-        public SqlBuildContext(SqlTable table, string tableAliasName, string[] tableNameArgs)
+        /// <param name="tableArgs">用于动态生成表名的参数集合。</param>
+        public SqlBuildContext(SqlTable table, string tableAliasName, string[] tableArgs)
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
-            if (tableNameArgs == null) tableNameArgs = Array.Empty<string>();
-            foreach (var arg in tableNameArgs)
+            if (tableArgs == null) tableArgs = Array.Empty<string>();
+            foreach (var arg in tableArgs)
             {
                 if (!tableNameRegex.IsMatch(arg))
                 {
-                    throw new ArgumentException("Table name parameter contains illegal characters.", nameof(tableNameArgs));
+                    throw new ArgumentException("Table name parameter contains illegal characters.", nameof(tableArgs));
                 }
             }
             Table = table;
             TableAliasName = tableAliasName;
-            TableNameArgs = tableNameArgs;
+            TableArgs = tableArgs;
         }
         /// <summary>
         /// 表别名
@@ -69,7 +69,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 表名参数，用于动态生成表名
         /// </summary>
-        public string[] TableNameArgs { get; }
+        public string[] TableArgs { get; }
 
         /// <summary>
         /// 链式结构中的上级上下文节点
@@ -111,9 +111,9 @@ namespace LiteOrm.Common
         {
             get
             {
-                if (TableNameArgs != null && TableNameArgs.Length > 0)
+                if (TableArgs != null && TableArgs.Length > 0)
                 {
-                    return String.Format(Table.Name, TableNameArgs);
+                    return String.Format(Table.Name, TableArgs);
                 }
                 return Table.Name;
             }

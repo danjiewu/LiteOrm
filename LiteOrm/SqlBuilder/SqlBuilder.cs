@@ -195,30 +195,30 @@ namespace LiteOrm
         /// <summary>
         /// 根据 SQL 对象类型生成对应的 SQL 表达式片段。
         /// </summary>
-        public virtual string BuildExpression(SqlObject sqlObject, params string[] tableNameArgs)
+        public virtual string BuildExpression(SqlObject sqlObject, params string[] tableArgs)
         {
             if (sqlObject == null) return null;
             var sb = ValueStringBuilder.Create(128);
-            BuildExpression(ref sb, sqlObject, tableNameArgs);
+            BuildExpression(ref sb, sqlObject, tableArgs);
             string result = sb.ToString();
             sb.Dispose();
             return result;
         }
 
-        private void BuildExpression(ref ValueStringBuilder sb, SqlObject sqlObject, params string[] tableNameArgs)
+        private void BuildExpression(ref ValueStringBuilder sb, SqlObject sqlObject, params string[] tableArgs)
         {
-            if (tableNameArgs == null) tableNameArgs = Array.Empty<string>();
+            if (tableArgs == null) tableArgs = Array.Empty<string>();
             if (sqlObject == null) return;
 
             if (sqlObject is ColumnRef columnRef)
             {
-                if (columnRef.Table == null) BuildExpression(ref sb, columnRef.Column, tableNameArgs);
+                if (columnRef.Table == null) BuildExpression(ref sb, columnRef.Column, tableArgs);
                 else sb.Append(ToSqlQualifiedName(columnRef.Table.Name, columnRef.Column.Name));
                 return;
             }
             if (sqlObject is ForeignColumn foreignColumn)
             {
-                BuildExpression(ref sb, foreignColumn.TargetColumn, tableNameArgs);
+                BuildExpression(ref sb, foreignColumn.TargetColumn, tableArgs);
                 return;
             }
             if (sqlObject is SqlColumn sqlColumn)
@@ -228,12 +228,12 @@ namespace LiteOrm
             }
             if (sqlObject is TableView tableView)
             {
-                sb.Append(string.Format(ToSqlName(tableView.Definition.Name), tableNameArgs));
+                sb.Append(string.Format(ToSqlName(tableView.Definition.Name), tableArgs));
                 sb.Append(" ");
                 sb.Append(ToSqlName(tableView.Name));
                 foreach (var joined in tableView.JoinedTables)
                 {
-                    if (joined.Used) BuildExpression(ref sb, joined, tableNameArgs);
+                    if (joined.Used) BuildExpression(ref sb, joined, tableArgs);
                 }
                 return;
             }
@@ -243,7 +243,7 @@ namespace LiteOrm
                 sb.Append("\n");
                 sb.Append(joinedTable.JoinType.ToString().ToUpper());
                 sb.Append(" JOIN ");
-                sb.Append(ToSqlName(string.Format(joinedTable.TableDefinition.Name, tableNameArgs)));
+                sb.Append(ToSqlName(string.Format(joinedTable.TableDefinition.Name, tableArgs)));
                 sb.Append(" ");
                 sb.Append(ToSqlName(joinedTable.Name));
                 sb.Append(" ON ");
@@ -253,9 +253,9 @@ namespace LiteOrm
                 for (int i = 0; i < count; i++)
                 {
                     if (!isFirst) sb.Append(" AND ");
-                    BuildExpression(ref sb, joinedTable.ForeignKeys[i], tableNameArgs);
+                    BuildExpression(ref sb, joinedTable.ForeignKeys[i], tableArgs);
                     sb.Append(" = ");
-                    BuildExpression(ref sb, joinedTable.ForeignPrimeKeys[i], tableNameArgs);
+                    BuildExpression(ref sb, joinedTable.ForeignPrimeKeys[i], tableArgs);
                     isFirst = false;
                 }
                 if (!string.IsNullOrEmpty(joinedTable.FilterExpression))
@@ -267,7 +267,7 @@ namespace LiteOrm
             }
             if (sqlObject is SqlTable sqlTable)
             {
-                sb.Append(ToSqlName(string.Format(sqlTable.Name, tableNameArgs)));
+                sb.Append(ToSqlName(string.Format(sqlTable.Name, tableArgs)));
                 return;
             }
 

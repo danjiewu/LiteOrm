@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace LiteOrm.Common
 {
-    using SqlGenerateHandler = Func<SqlBuildContext, ISqlBuilder, ICollection<KeyValuePair<string, object>>, object, string>;
+    public delegate string SqlGenerateHandler(ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, object arg);
     /// <summary>
     /// 通过委托生成的 SQL 片段表达式类。
     /// </summary>
@@ -43,9 +43,9 @@ namespace LiteOrm.Common
         public override bool IsValue => String.IsNullOrEmpty(Key) ? false : _registry[Key].IsValue;
 
 
-        internal string GenerateSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        internal string GenerateSql(ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            return SqlHandler?.Invoke(context, sqlBuilder, outputParams, Arg);
+            return SqlHandler?.Invoke(ref context, sqlBuilder, outputParams, Arg);
         }
 
         /// <summary>

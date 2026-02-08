@@ -49,8 +49,6 @@ namespace LiteOrm.Tests
         [Fact]
         public void GroupByHavingSelect_Test()
         {
-            // Note: We need a custom 'Having' extension method for IQueryable if we want to support it in Lambda
-            // Or just test GroupBy and Select for now.
             Expression<Func<IQueryable<TestUser>, IQueryable<int>>> queryExpr = q => q
                 .GroupBy(u => u.DeptId)
                 .Select(g => g.Key);
@@ -72,8 +70,34 @@ namespace LiteOrm.Tests
             Assert.IsType<SelectExpr>(expr);
             var select = (SelectExpr)expr;
             Assert.Equal(2, select.Selects.Count);
-            Assert.Equal("Name", (select.Selects[0] as PropertyExpr).PropertyName);
-            Assert.Equal("Age", (select.Selects[1] as PropertyExpr).PropertyName);
+            Assert.Equal("Name", (select.Selects[0].Value as PropertyExpr).PropertyName);
+            Assert.Equal("Age", (select.Selects[1].Value as PropertyExpr).PropertyName);
+        }
+
+        [Fact]
+        public void NestedSelect_Test()
+        {
+            // q.Select(...).Where(...) effectively creates a subquery structure: 
+            // SELECT * FROM (SELECT Name, Age FROM TestUsers) WHERE Age > 18
+            Expression<Func<IQueryable<TestUser>, IQueryable<object>>> queryExpr = q => q
+                .Select(u => new { u.Name, u.Age })
+                .Where(x => x.Age > 18);
+
+            var expr = LambdaSqlSegmentConverter.ToSqlSegment(queryExpr);
+
+            Assert.IsType<WhereExpr>(expr);
+            var where = (WhereExpr)expr;
+
+            // The source of the Where should be the Select expression
+            var select = Assert.IsType<SelectExpr>(where.Source);
+            Assert.Equal(2, select.Selects.Count);
+            Assert.Equal("Name", select.Selects[0].Name);
+            Assert.Equal("Age", select.Selects[1].Name);
+
+            // The condition should be Age > 18
+            var condition = Assert.IsType<LogicBinaryExpr>(where.Where);
+            Assert.Equal("Age", (condition.Left as PropertyExpr)?.PropertyName);
+            Assert.Equal(18, (condition.Right as ValueExpr)?.Value);
         }
 
         [Fact]
@@ -94,6 +118,47 @@ namespace LiteOrm.Tests
             var logicSet = (LogicSet)where.Where;
             Assert.Equal(LogicJoinType.And, logicSet.JoinType);
             Assert.Equal(2, logicSet.Count);
+        }
+
+        [Fact]
+        public void FullComplexQuery_Test()
+        {
+            Expression<Func<IQueryable<TestUser>, IQueryable<object>>> queryExpr = q => q
+                .Where(u => u.Age > 20)
+                .GroupBy(u => u.DeptId)
+                .Where(g => g.Count() > 5)
+                .Select(g => new { DeptId = g.Key, Total = g.Count() })
+                .OrderBy(res => res.Total)
+                .Skip(10)
+                .Take(20);
+
+            var expr = LambdaSqlSegmentConverter.ToSqlSegment(queryExpr);
+
+            Assert.IsType<SectionExpr>(expr);
+            var section = (SectionExpr)expr;
+            Assert.Equal(10, section.Skip);
+            Assert.Equal(20, section.Take);
+
+            var orderBy = Assert.IsType<OrderByExpr>(section.Source);
+            Assert.Single(orderBy.OrderBys);
+            // Verify alias name is used in OrderBy
+            var orderByValue = orderBy.OrderBys[0].Item1;
+            Assert.IsType<PropertyExpr>(orderByValue);
+            Assert.Equal("Total", (orderByValue as PropertyExpr).PropertyName);
+
+            var select = Assert.IsType<SelectExpr>(orderBy.Source);
+            Assert.Equal(2, select.Selects.Count);
+            Assert.Equal("DeptId", select.Selects[0].Name);
+            Assert.Equal("Total", select.Selects[1].Name);
+
+            var having = Assert.IsType<HavingExpr>(select.Source);
+            Assert.IsType<LogicBinaryExpr>(having.Having);
+
+            var groupBy = Assert.IsType<GroupByExpr>(having.Source);
+            Assert.Single(groupBy.GroupBys);
+
+            var where = Assert.IsType<WhereExpr>(groupBy.Source);
+            Assert.IsType<TableExpr>(where.Source);
         }
     }
 }

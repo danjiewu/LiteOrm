@@ -49,7 +49,8 @@ namespace LiteOrm
                 strSets.Add($"{SqlBuilder.ToSqlName(column.Name)} ={ToSqlParam(paramValues.Count.ToString())}");
                 paramValues.Add(paramValues.Count.ToString(), value.Value);
             }
-            string where = expr.ToSql(SqlBuildContext, SqlBuilder, paramValues);
+            var context = SqlBuildContext;
+            string where = expr.ToSql(context, SqlBuilder, paramValues);
             string updateSql = $"UPDATE {ParamTable} SET {String.Join(",", strSets.ToArray())} {ToWhereSql(where)}";
             using var command = MakeNamedParamCommand(updateSql, paramValues);
             return command.ExecuteNonQuery();
@@ -92,7 +93,8 @@ namespace LiteOrm
                 strSets.Add(SqlBuilder.ToSqlName(column.Name) + "=" + ToSqlParam(paramValues.Count.ToString()));
                 paramValues.Add(paramValues.Count.ToString(), value.Value);
             }
-            string updateSql = $"UPDATE {ParamTable} SET {String.Join(",", strSets.ToArray())} {ToWhereSql(expr.ToSql(SqlBuildContext, SqlBuilder, paramValues))}";
+            var context = SqlBuildContext;
+            string updateSql = $"UPDATE {ParamTable} SET {String.Join(",", strSets.ToArray())} {ToWhereSql(expr.ToSql(context, SqlBuilder, paramValues))}";
 
             using var command = MakeNamedParamCommand(updateSql, paramValues);
             return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);

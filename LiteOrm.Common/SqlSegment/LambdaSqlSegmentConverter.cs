@@ -55,7 +55,7 @@ namespace LiteOrm.Common
         protected override Expr ConvertMethodCall(MethodCallExpression node)
         {
             var type = node.Method.DeclaringType;
-            if (type == typeof(Queryable) || type == typeof(Enumerable) || node.Method.Name == "Having")
+            if (type == typeof(Queryable) || type == typeof(Enumerable))
             {
                 return node.Method.Name switch
                 {
@@ -65,7 +65,6 @@ namespace LiteOrm.Common
                     "Skip" => HandleSkip(node),
                     "Take" => HandleTake(node),
                     "GroupBy" => HandleGroupBy(node),
-                    "Having" => HandleHaving(node),
                     "Select" => HandleSelect(node),
                     _ => base.ConvertMethodCall(node)
                 };
@@ -88,7 +87,26 @@ namespace LiteOrm.Common
         // LINQ 扩展方法处理器
         private Expr HandleWhere(MethodCallExpression node)
         {
-            var source = ConvertInternal(node.Arguments[0]) as ISourceAnchor;
+            var src = ConvertInternal(node.Arguments[0]);
+            var lambda = (LambdaExpression)((UnaryExpression)node.Arguments[1]).Operand;
+
+            // 如果源是 GroupByExpr 或 HavingExpr，则这是一个 Having 筛选，否则是普通的 Where 筛选
+            if (src is GroupByExpr or HavingExpr)
+            {
+                var havingAnchor = (IHavingAnchor)src;
+                var groupBySource = src as GroupByExpr ?? (src as HavingExpr)?.Source as GroupByExpr;
+                var havingLogic = ConvertHavingLambda(lambda, groupBySource?.GroupBys.ToArray());
+
+                if (src is HavingExpr existingHaving)
+                {
+                    existingHaving.Having = new LogicSet(LogicJoinType.And, existingHaving.Having, havingLogic);
+                    return existingHaving;
+                }
+
+                return havingAnchor.Having(havingLogic);
+            }
+
+            var source = src as ISourceAnchor;
             var newCondition = AsLogic(ConvertInternal(node.Arguments[1]));
             
             // 如果源已经是 WhereExpr，将新条件与现有条件用 AND 合并
@@ -128,12 +146,179 @@ namespace LiteOrm.Common
             var k = ConvertInternal(node.Arguments[1]);
             return s.GroupBy(k is ValueSet vs ? vs.Cast<ValueTypeExpr>().ToArray() : new[] { AsValue(k) });
         }
-        private Expr HandleHaving(MethodCallExpression node) => (ConvertInternal(node.Arguments[0]) as IHavingAnchor).Having(AsLogic(ConvertInternal(node.Arguments[1])));
+
+
+        private LogicExpr ConvertHavingLambda(LambdaExpression lambda, ValueTypeExpr[] groupKeys)
+        {
+            var expr = ConvertGroupedExpr(lambda.Body, lambda.Parameters[0], groupKeys);
+            return AsLogic(expr);
+        }
+
         private Expr HandleSelect(MethodCallExpression node)
         {
-            var s = ConvertInternal(node.Arguments[0]) as ISelectAnchor;
-            var k = ConvertInternal(node.Arguments[1]);
-            return s.Select(k is ValueSet vs ? vs.Cast<ValueTypeExpr>().ToArray() : new[] { AsValue(k) });
+            var source = ConvertInternal(node.Arguments[0]) as ISelectAnchor;
+            var lambda = (LambdaExpression)((UnaryExpression)node.Arguments[1]).Operand;
+            
+            // 检查是否是 GroupBy 后的 Select
+            var groupBySource = source as GroupByExpr;
+            
+            // 转换 Select 的选择表达式
+            var selectItems = ConvertSelectLambda(lambda, groupBySource?.GroupBys.ToArray());
+            
+            return source.Select(selectItems);
+        }
+
+        /// <summary>
+        /// 转换 Select Lambda 表达式（支持 GroupBy 后的 Select）
+        /// </summary>
+        private SelectItemExpr[] ConvertSelectLambda(LambdaExpression lambda, ValueTypeExpr[] groupKeys)
+        {
+            var body = lambda.Body;
+            var lambdaParam = lambda.Parameters[0];
+
+            // 处理 NewExpression (匿名对象)
+            if (body is NewExpression newExpr)
+            {
+                var items = new List<SelectItemExpr>();
+                for (int i = 0; i < newExpr.Arguments.Count; i++)
+                {
+                    var arg = newExpr.Arguments[i];
+                    var item = ConvertGroupedExpr(arg, lambdaParam, groupKeys);
+                    if (item is not null)
+                    {
+                        var selectItem = new SelectItemExpr(AsValue(item));
+                        if (newExpr.Members != null && i < newExpr.Members.Count)
+                        {
+                            selectItem.Name = newExpr.Members[i].Name;
+                        }
+                        items.Add(selectItem);
+                    }
+                }
+                return items.ToArray();
+            }
+
+            // 处理单个选择
+            var singleItem = ConvertGroupedExpr(body, lambdaParam, groupKeys);
+            return singleItem is not null ? new[] { new SelectItemExpr(AsValue(singleItem)) } : Array.Empty<SelectItemExpr>();
+        }
+
+        /// <summary>
+        /// 转换分组后的表达式（支持 g.Key 和 g.Count() 等分组特有的访问，也支持二元运算如 g.Count() > 1）
+        /// </summary>
+        private Expr ConvertGroupedExpr(Expression arg, ParameterExpression lambdaParam, ValueTypeExpr[] groupKeys)
+        {
+            // 如果是 MemberAccess (如 g.Key) 
+            if (arg is MemberExpression memberExpr)
+            {
+                // 检查是否是 lambda 参数的成员访问
+                if (IsParameterAccess(memberExpr.Expression, lambdaParam))
+                {
+                    var memberName = memberExpr.Member.Name;
+                    
+                    // 检查是否是 Key 访问
+                    if (memberName == "Key" && groupKeys?.Length > 0)
+                    {
+                        return groupKeys[0];
+                    }
+                    
+                    // 其他成员访问
+                    return Expr.Property(memberName);
+                }
+            }
+            
+            // 如果是 MethodCallExpression (如 g.Count() 或 Enumerable.Count(g))
+            if (arg is MethodCallExpression methodCall)
+            {
+                // 聚合函数名映射
+                var aggregateName = GetAggregateName(methodCall.Method.Name);
+                if (aggregateName != null)
+                {
+                    Expression aggregateTarget = null;
+                    Expression fieldExpr = null;
+
+                    if (methodCall.Object != null && IsParameterAccess(methodCall.Object, lambdaParam))
+                    {
+                        aggregateTarget = methodCall.Object;
+                        if (methodCall.Arguments.Count > 0) fieldExpr = methodCall.Arguments[0];
+                    }
+                    else if (methodCall.Arguments.Count > 0 && IsParameterAccess(methodCall.Arguments[0], lambdaParam))
+                    {
+                        aggregateTarget = methodCall.Arguments[0];
+                        if (methodCall.Arguments.Count > 1) fieldExpr = methodCall.Arguments[1];
+                        else fieldExpr = methodCall.Arguments[0];
+                    }
+
+                    if (aggregateTarget != null)
+                    {
+                        // 获取聚合字段
+                        ValueTypeExpr aggregateArg = Expr.Const(1);
+                        
+                        // 如果有第二个参数 (字段选择器)
+                        if (fieldExpr != null && fieldExpr != aggregateTarget)
+                        {
+                            if (fieldExpr is LambdaExpression fieldLambda)
+                            {
+                                if (fieldLambda.Body is MemberExpression me) aggregateArg = Expr.Property(me.Member.Name);
+                            }
+                            else if (fieldExpr is MemberExpression me2)
+                            {
+                                aggregateArg = Expr.Property(me2.Member.Name);
+                            }
+                        }
+                        
+                        return new AggregateFunctionExpr(aggregateName, aggregateArg);
+                    }
+                }
+            }
+
+            // 处理二元运算 (如 g.Count() > 1)
+            if (arg is BinaryExpression binary)
+            {
+                var left = ConvertGroupedExpr(binary.Left, lambdaParam, groupKeys);
+                var right = ConvertGroupedExpr(binary.Right, lambdaParam, groupKeys);
+                
+                // Logic operation
+                if (binary.NodeType == ExpressionType.AndAlso || binary.NodeType == ExpressionType.And)
+                    return AsLogic(left).And(AsLogic(right));
+                if (binary.NodeType == ExpressionType.OrElse || binary.NodeType == ExpressionType.Or)
+                    return AsLogic(left).Or(AsLogic(right));
+                
+                // Other binary operators
+                var op = binary.NodeType switch {
+                    ExpressionType.Equal => LogicOperator.Equal,
+                    ExpressionType.NotEqual => LogicOperator.NotEqual,
+                    ExpressionType.GreaterThan => LogicOperator.GreaterThan,
+                    ExpressionType.GreaterThanOrEqual => LogicOperator.GreaterThanOrEqual,
+                    ExpressionType.LessThan => LogicOperator.LessThan,
+                    ExpressionType.LessThanOrEqual => LogicOperator.LessThanOrEqual,
+                    _ => (object)null
+                };
+
+                if (op is LogicOperator lo) return new LogicBinaryExpr(AsValue(left), lo, AsValue(right));
+            }
+
+            // 避免对 naked parameter 调用 ConvertInternal，这会触发 NotSupportedException
+            if (arg is ParameterExpression pe && ReferenceEquals(pe, lambdaParam)) return null;
+            
+            // 回退到普通转换
+            return ConvertInternal(arg);
+        }
+
+        private static string GetAggregateName(string name) => name switch
+        {
+            "Count" or "LongCount" => "Count",
+            "Sum" => "Sum",
+            "Average" => "Avg",
+            "Max" => "Max",
+            "Min" => "Min",
+            _ => null
+        };
+
+        private bool IsParameterAccess(Expression node, ParameterExpression lambdaParam)
+        {
+            if (node is null) return false;
+            if (node is ParameterExpression pe) return ReferenceEquals(pe, lambdaParam);
+            return false;
         }
     }
 }

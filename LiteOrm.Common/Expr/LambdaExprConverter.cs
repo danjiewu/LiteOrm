@@ -507,14 +507,22 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertMethodCall(MethodCallExpression node)
         {
-            Type type = node.Method.DeclaringType;
+            var type = node.Method.DeclaringType;
 
+            // 处理 LINQ 扩展方法（Queryable、Enumerable）
+            if (type == typeof(Queryable) || type == typeof(Enumerable))
+            {
+                return ConvertQueryableMethodCall(node);
+            }
+
+            // 处理类型成员处理器
             if (type != null && _typeMethodHandlers.TryGetValue((type, node.Method.Name), out var typeMethodHandler))
             {
                 var result = typeMethodHandler(node, this);
                 if (result is not null) return result;
             }
 
+            // 处理方法名处理器
             if (_methodNameHandlers.TryGetValue(node.Method.Name, out var nameHandler))
             {
                 var result = nameHandler(node, this);
@@ -531,6 +539,14 @@ namespace LiteOrm.Common
             }
             else
                 return EvaluateToExpr(node);
+        }
+
+        /// <summary>
+        /// 转换Queryable/Enumerable扩展方法调用（基类默认抛异常，子类可重写）
+        /// </summary>
+        protected virtual Expr ConvertQueryableMethodCall(MethodCallExpression node)
+        {
+            return ConvertOriginal(node);
         }
 
         /// <summary>

@@ -11,6 +11,9 @@ namespace LiteOrm.Demo.Demos
     {
         public static async Task RunThreeTierDemoAsync(ServiceFactory factory)
         {
+            Console.WriteLine("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            Console.WriteLine("  6. 事务与三层架构：");
+            Console.WriteLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             var newUser = new User { UserName = "ThreeTierUser", Age = 25 };
             var initialSale = new SalesRecord { ProductName = "Starter Pack", Amount = 1 };
 

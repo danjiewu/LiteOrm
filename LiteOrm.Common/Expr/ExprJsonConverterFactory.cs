@@ -200,7 +200,7 @@ namespace LiteOrm.Common
                             }
                         }
                     }
-                    else if (result != null)
+                    else if (result is not null)
                     {
                         ReadResultProperty(ref reader, result, propName, options);
                     }
@@ -248,7 +248,34 @@ namespace LiteOrm.Common
                         se.Take = reader.GetInt32();
                         break;
                     case SelectExpr sele when propName == "Selects":
-                        sele.Selects.AddRange(JsonSerializer.Deserialize<List<Expr>>(ref reader, options).Cast<ValueTypeExpr>());
+                        if (reader.TokenType == JsonTokenType.StartArray)
+                        {
+                            while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+                            {
+                                if (reader.TokenType == JsonTokenType.StartObject)
+                                {
+                                    using var doc = JsonDocument.ParseValue(ref reader);
+                                    var root = doc.RootElement;
+                                    var firstProp = root.EnumerateObject().FirstOrDefault();
+                                    string n = firstProp.Name;
+                                    if (n is not null && !n.StartsWith("$") && n != "@" && n != "#" && n != "!")
+                                    {
+                                        var v = JsonSerializer.Deserialize<Expr>(firstProp.Value.GetRawText(), options) as ValueTypeExpr;
+                                        sele.Selects.Add(new SelectItemExpr(v) { Name = n });
+                                    }
+                                    else
+                                    {
+                                        var v = JsonSerializer.Deserialize<Expr>(root.GetRawText(), options) as ValueTypeExpr;
+                                        sele.Selects.Add(new SelectItemExpr(v as ValueTypeExpr));
+                                    }
+                                }
+                                else
+                                {
+                                    var v = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                                    if (v is not null) sele.Selects.Add(new SelectItemExpr(v));
+                                }
+                            }
+                        }
                         break;
                     case UpdateExpr ue when propName == "Sets":
                         while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
@@ -330,6 +357,23 @@ namespace LiteOrm.Common
                     writer.WritePropertyName("!");
                     WriteExpr(writer, ne.Operand, options);
                     writer.WriteEndObject();
+                    return;
+                }
+
+                // 优化序列化格式：SelectItemExpr 使用 { Name: Value } 格式
+                if (value is SelectItemExpr sie)
+                {
+                    if (string.IsNullOrEmpty(sie.Name))
+                    {
+                        WriteExpr(writer, sie.Value, options);
+                    }
+                    else
+                    {
+                        writer.WriteStartObject();
+                        writer.WritePropertyName(sie.Name);
+                        WriteExpr(writer, sie.Value, options);
+                        writer.WriteEndObject();
+                    }
                     return;
                 }
 
@@ -424,8 +468,19 @@ namespace LiteOrm.Common
                         JsonSerializer.Serialize(writer, vve.Value, options);
                         break;
                     case ForeignExpr fe:
-                        writer.WritePropertyName(fe.Foreign);
-                        WriteExpr(writer, fe.InnerExpr, options);
+                        if (fe.TableArgs != null && fe.TableArgs.Length > 0)
+                        {
+                            writer.WriteString("Foreign", fe.Foreign);
+                            writer.WritePropertyName("InnerExpr");
+                            WriteExpr(writer, fe.InnerExpr, options);
+                            writer.WritePropertyName("TableArgs");
+                            JsonSerializer.Serialize(writer, fe.TableArgs, options);
+                        }
+                        else
+                        {
+                            writer.WritePropertyName(fe.Foreign);
+                            WriteExpr(writer, fe.InnerExpr, options);
+                        }
                         break;
                 }
                 writer.WriteEndObject();
@@ -467,10 +522,16 @@ namespace LiteOrm.Common
                 switch (value)
                 {
                     case SelectExpr sele:
-                        if (sele.Selects?.Count > 0) { writer.WritePropertyName("Selects"); JsonSerializer.Serialize(writer, sele.Selects, options); }
+                        if (sele.Selects?.Count > 0)
+                        {
+                            writer.WritePropertyName("Selects");
+                            writer.WriteStartArray();
+                            foreach (var item in sele.Selects) WriteExpr(writer, item, options);
+                            writer.WriteEndArray();
+                        }
                         break;
                     case WhereExpr we:
-                        if (we.Where != null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, we.Where, options); }
+                        if (we.Where is not null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, we.Where, options); }
                         break;
                     case OrderByExpr obe:
                         if (obe.OrderBys?.Count > 0)
@@ -492,7 +553,7 @@ namespace LiteOrm.Common
                         if (gbe.GroupBys?.Count > 0) { writer.WritePropertyName("GroupBys"); JsonSerializer.Serialize(writer, gbe.GroupBys, options); }
                         break;
                     case HavingExpr he:
-                        if (he.Having != null) { writer.WritePropertyName("Having"); JsonSerializer.Serialize(writer, he.Having, options); }
+                        if (he.Having is not null) { writer.WritePropertyName("Having"); JsonSerializer.Serialize(writer, he.Having, options); }
                         break;
                     case SectionExpr se:
                         writer.WriteNumber("Skip", se.Skip);
@@ -512,10 +573,10 @@ namespace LiteOrm.Common
                             }
                             writer.WriteEndArray();
                         }
-                        if (ue.Where != null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, ue.Where, options); }
+                        if (ue.Where is not null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, ue.Where, options); }
                         break;
                     case DeleteExpr de:
-                        if (de.Where != null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, de.Where, options); }
+                        if (de.Where is not null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, de.Where, options); }
                         break;
                 }
                 writer.WriteEndObject();
@@ -854,6 +915,11 @@ namespace LiteOrm.Common
                     {
                         reader.Read();
                         foreignExpr.InnerExpr = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
+                    }
+                    else if (prop == "TableArgs")
+                    {
+                        reader.Read();
+                        foreignExpr.TableArgs = JsonSerializer.Deserialize<string[]>(ref reader, options);
                     }
                     else
                     {

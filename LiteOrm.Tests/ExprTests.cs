@@ -38,7 +38,7 @@ namespace LiteOrm.Tests
 
             Assert.True(e1.Equals(e2));
             Assert.False(e1.Equals(e3));
-            // Assert.True(e1.Equals(e4)); // Simplification: don't consider type changes (int vs long)
+            Assert.True(e1.Equals(e4)); 
 
             ValueExpr s1 = "test";
             ValueExpr s2 = "test";
@@ -202,7 +202,7 @@ namespace LiteOrm.Tests
         public void GenericSqlExpr_Tests()
         {
             // Register a dummy handler
-            GenericSqlExpr.Register("TestKey", (ctx, builder, pms, arg) => "TEST SQL");
+            GenericSqlExpr.Register("TestKey", (ref SqlBuildContext ctx, ISqlBuilder builder, ICollection<KeyValuePair<string, object>> pms, object arg) => "TEST SQL");
 
             // Equals
             Expr g1 = GenericSqlExpr.Get("TestKey", 123);
@@ -263,12 +263,29 @@ namespace LiteOrm.Tests
             Assert.Equal(new ValueSet(ValueJoinType.List, v1, v2), Expr.List(v1, v2));
 
             // Sql / StaticSql
-            GenericSqlExpr.Register("TestKey2", (ctx, builder, pms, arg) => "TEST");
+            GenericSqlExpr.Register("TestKey2", (ref SqlBuildContext ctx, ISqlBuilder builder, ICollection<KeyValuePair<string, object>> pms, object arg) => "TEST");
             Assert.Equal(GenericSqlExpr.Get("TestKey2", 1), Expr.Sql("TestKey2", 1));
             Assert.Equal(GenericSqlExpr.GetStaticSqlExpr("TestKey2"), Expr.StaticSql("TestKey2"));
 
             // Between
             Assert.Equal((Expr.Property("Age") >= (ValueTypeExpr)10) & (Expr.Property("Age") <= (ValueTypeExpr)20), Expr.Between("Age", 10, 20));
+        }
+
+        [Fact]
+        public void SelectItemExpr_Serialization_Tests()
+        {
+            // Select item in a list (standard usage in SelectExpr)
+            var sie = new SelectItemExpr(Expr.Property("DeptId")) { Name = "Department" };
+            var selectExpr = new SelectExpr(new TableExpr(), sie, new SelectItemExpr(Expr.Const(1)) { Name = "Count" });
+            
+            string json = JsonSerializer.Serialize<Expr>(selectExpr, _jsonOptions);
+            // Verify the format: { "Selects": [ { "Department": { "#": "DeptId" } }, { "Count": 1 } ] }
+            Assert.Contains("\"Department\"", json);
+            Assert.Contains("\"Count\"", json);
+
+            var deserialized = JsonSerializer.Deserialize<Expr>(json, _jsonOptions) as SelectExpr;
+            Assert.NotNull(deserialized);
+            Assert.True(selectExpr.Equals(deserialized));
         }
 
         [Fact]
@@ -324,7 +341,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void QueryExpr_Constructor_Tests()
         {
-            var table = new TableExpr(TableInfoProvider.Default.GetTableView(typeof(TestUser)));
+            var table = Expr.Table<TestUser>();
             var section = table
                 .Where(Expr.Property("Age") > 18)
                 .GroupBy(Expr.Property("DeptId"))

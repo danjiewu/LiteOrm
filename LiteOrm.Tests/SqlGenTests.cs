@@ -40,7 +40,7 @@ namespace LiteOrm.Tests
             var select = new SelectExpr
             {
                 Source = new TableExpr(sqlGen.Table),
-                Selects = new List<ValueTypeExpr> { new AggregateFunctionExpr("COUNT", new ValueExpr(1) { IsConst = true }) }
+                Selects = new List<SelectItemExpr> { new SelectItemExpr(new AggregateFunctionExpr("COUNT", new ValueExpr(1) { IsConst = true })) }
             };
             var result = sqlGen.ToSql(select);
 
@@ -107,7 +107,7 @@ namespace LiteOrm.Tests
             var select = new SelectExpr
             {
                 Source = groupBy,
-                Selects = new List<ValueTypeExpr> { Expr.Property("DeptId"), new AggregateFunctionExpr("COUNT", Expr.Const(1), false) }
+                Selects = new List<SelectItemExpr> { new SelectItemExpr(Expr.Property("DeptId")), new SelectItemExpr(new AggregateFunctionExpr("COUNT", Expr.Const(1), false)) }
             };
             
             var result = sqlGen.ToSql(select);

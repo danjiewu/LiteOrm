@@ -109,21 +109,17 @@ namespace LiteOrm
                 throw new ArgumentException("expr 参数类型不支持");
             }
 
-            List<ValueTypeExpr> selects;
+            SelectItemExpr[] selects;
             if (propertyNames != null && propertyNames.Length > 0)
             {
-                selects = propertyNames.Select(p => (ValueTypeExpr)Expr.Property(p)).ToList();
+                selects = Array.ConvertAll(propertyNames, p => new SelectItemExpr(Expr.Property(p)));
             }
             else
             {
-                selects = SelectColumns.Select((col, i) => (ValueTypeExpr)Expr.Property(col.PropertyName)).ToList();
+                selects = Array.ConvertAll(SelectColumns, p => new SelectItemExpr(Expr.Property(p.Name)));
             }
 
-            return new SelectExpr()
-            {
-                Source = selectSource,
-                Selects = selects
-            };
+            return new SelectExpr(selectSource, selects);
         }
 
         /// <summary>
@@ -133,7 +129,7 @@ namespace LiteOrm
         {
             if (selectExpr != null && index < selectExpr.Selects.Count)
             {
-                if (selectExpr.Selects[index] is PropertyExpr propertyExpr)
+                if (selectExpr.Selects[index].Value is PropertyExpr propertyExpr)
                 {
                     return Table.GetColumn(propertyExpr.PropertyName);
                 }
@@ -187,13 +183,13 @@ namespace LiteOrm
                 int fieldCount = reader.FieldCount;
                 SqlColumn[] columns = new SqlColumn[fieldCount];
                 bool[] needConvert = new bool[fieldCount];
-                
+
                 for (int i = 0; i < fieldCount; i++)
                 {
                     string name = reader.GetName(i);
                     SqlColumn column = GetColumnFromSelectExpr(selectExpr, i);
                     columns[i] = column;
-                    
+
                     if (selectExpr != null && i < selectExpr.Selects.Count)
                     {
                         needConvert[i] = selectExpr.Selects[i] is PropertyExpr;
@@ -202,7 +198,7 @@ namespace LiteOrm
                     {
                         needConvert[i] = column != null;
                     }
-                    
+
                     Type propertyType = column?.PropertyType ?? reader.GetFieldType(i);
                     dt.Columns.Add(name, propertyType.GetUnderlyingType());
                 }
@@ -283,13 +279,13 @@ namespace LiteOrm
                 int fieldCount = reader.FieldCount;
                 SqlColumn[] columns = new SqlColumn[fieldCount];
                 bool[] needConvert = new bool[fieldCount];
-                
+
                 for (int i = 0; i < fieldCount; i++)
                 {
                     string name = reader.GetName(i);
                     SqlColumn column = GetColumnFromSelectExpr(selectExpr, i);
                     columns[i] = column;
-                    
+
                     if (selectExpr != null && i < selectExpr.Selects.Count)
                     {
                         needConvert[i] = selectExpr.Selects[i] is PropertyExpr;
@@ -298,7 +294,7 @@ namespace LiteOrm
                     {
                         needConvert[i] = column != null;
                     }
-                    
+
                     Type propertyType = column?.PropertyType ?? reader.GetFieldType(i);
                     dt.Columns.Add(name, propertyType.GetUnderlyingType());
                 }

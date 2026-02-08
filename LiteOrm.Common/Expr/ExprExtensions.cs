@@ -115,6 +115,38 @@ namespace LiteOrm.Common
         public static LogicBinaryExpr NotEqual(this ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.NotEqual, right);
 
         /// <summary>
+        /// 创建大于比较表达式。
+        /// </summary>
+        /// <param name="left">左侧值表达式。</param>
+        /// <param name="right">右侧值表达式。</param>
+        /// <returns>大于比较逻辑表达式。</returns>
+        public static LogicBinaryExpr GreaterThan(this ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.GreaterThan, right);
+
+        /// <summary>
+        /// 创建小于比较表达式。
+        /// </summary>
+        /// <param name="left">左侧值表达式。</param>
+        /// <param name="right">右侧值表达式。</param>
+        /// <returns>小于比较逻辑表达式。</returns>
+        public static LogicBinaryExpr LessThan(this ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.LessThan, right);
+
+        /// <summary>
+        /// 创建大于等于比较表达式。
+        /// </summary>
+        /// <param name="left">左侧值表达式。</param>
+        /// <param name="right">右侧值表达式。</param>
+        /// <returns>大于等于比较逻辑表达式。</returns>
+        public static LogicBinaryExpr GreaterThanOrEqual(this ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.GreaterThanOrEqual, right);
+
+        /// <summary>
+        /// 创建小于等于比较表达式。
+        /// </summary>
+        /// <param name="left">左侧值表达式。</param>
+        /// <param name="right">右侧值表达式。</param>
+        /// <returns>小于等于比较逻辑表达式。</returns>
+        public static LogicBinaryExpr LessThanOrEqual(this ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.LessThanOrEqual, right);
+
+        /// <summary>
         /// 创建 IN 集合包含表达式。
         /// </summary>
         /// <param name="left">左侧值表达式。</param>
@@ -238,6 +270,14 @@ namespace LiteOrm.Common
         public static LogicBinaryExpr EndsWith(this ValueTypeExpr left, string text) => new LogicBinaryExpr(left, LogicOperator.EndsWith, new ValueExpr(text));
 
         /// <summary>
+        /// 为表达式设置别名。
+        /// </summary>
+        /// <param name="expr">要设置别名的值类型表达式。</param>
+        /// <param name="name">别名名称。</param>
+        /// <returns>带有别名的选择项表达式。</returns>
+        public static SelectItemExpr As(this ValueTypeExpr expr, string name) => new SelectItemExpr(expr, name);
+
+        /// <summary>
         /// 创建 IS NULL 表达式。
         /// </summary>
         /// <param name="left">左侧值表达式。</param>
@@ -260,6 +300,31 @@ namespace LiteOrm.Common
         /// </code>
         /// </example>
         public static LogicBinaryExpr IsNotNull(this ValueTypeExpr left) => new LogicBinaryExpr(left, LogicOperator.NotEqual, Expr.Null);
+
+        /// <summary>
+        /// 基于逻辑条件开启排序子句构建。
+        /// </summary>
+        /// <param name="logic">逻辑条件表达式。</param>
+        /// <param name="orderBys">排序定义序列。</param>
+        /// <returns>排序表达式对象。</returns>
+        public static OrderByExpr OrderBy(this LogicExpr logic, params (ValueTypeExpr, bool)[] orderBys) => new OrderByExpr(new WhereExpr(null, logic), orderBys);
+
+        /// <summary>
+        /// 基于逻辑条件开启分页子句构建。
+        /// </summary>
+        /// <param name="logic">逻辑条件表达式。</param>
+        /// <param name="skip">跳过记录数。</param>
+        /// <param name="take">获取记录数。</param>
+        /// <returns>分页表达式对象。</returns>
+        public static SectionExpr Section(this LogicExpr logic, int skip, int take) => new SectionExpr(new WhereExpr(null, logic), skip, take);
+
+        /// <summary>
+        /// 基于逻辑条件开启选择子句构建。
+        /// </summary>
+        /// <param name="logic">逻辑条件表达式。</param>
+        /// <param name="selects">选择项表达式序列。</param>
+        /// <returns>选择表达式对象。</returns>
+        public static SelectExpr Select(this LogicExpr logic, params ValueTypeExpr[] selects) => new SelectExpr(new WhereExpr(null, logic), selects);
 
         /// <summary>
         /// 为 SQL 语句添加 WHERE 子句。
@@ -288,6 +353,15 @@ namespace LiteOrm.Common
         public static GroupByExpr GroupBy(this IGroupByAnchor source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source as SqlSegment, groupBys);
 
         /// <summary>
+        /// 为 SQL 语句添加 GROUP BY 子句（属性名数组）。
+        /// </summary>
+        /// <param name="source">SQL 语句构建起点。</param>
+        /// <param name="groupByProperties">要分组的属性名称序列。</param>
+        /// <returns>包含 GROUP BY 子句的 SQL 表达式。</returns>
+        public static GroupByExpr GroupBy(this IGroupByAnchor source, params string[] groupByProperties) =>
+            GroupBy(source, Array.ConvertAll(groupByProperties, prop => (ValueTypeExpr)Expr.Property(prop)));
+
+        /// <summary>
         /// 为 SQL 语句添加 HAVING 子句。
         /// </summary>
         /// <param name="source">SQL 语句构建起点。</param>
@@ -313,6 +387,14 @@ namespace LiteOrm.Common
         /// </code>
         /// </example>
         public static SelectExpr Select(this ISelectAnchor source, params ValueTypeExpr[] selects) => new SelectExpr(source as SqlSegment, selects);
+
+        /// <summary>
+        /// 为 SQL 语句添加 SELECT 子句（属性名数组）。
+        /// </summary>
+        /// <param name="source">SQL 语句构建起点。</param>
+        /// <param name="selects">要选择的属性名称序列。</param>
+        /// <returns>包含 SELECT 子句的 SQL 表达式。</returns>
+        public static SelectExpr Select(this ISelectAnchor source, params string[] selectProperties) => Select(source, Array.ConvertAll(selectProperties, prop => (ValueTypeExpr)Expr.Property(prop)));
 
         /// <summary>
         /// 为 SQL 语句添加 ORDER BY 子句。
@@ -348,6 +430,24 @@ namespace LiteOrm.Common
         /// </example>
         public static OrderByExpr OrderBy(this IOrderByAnchor source, params (string, bool)[] orderBys) =>
             OrderBy(source, Array.ConvertAll(orderBys, tuple => ((ValueTypeExpr)Expr.Property(tuple.Item1), tuple.Item2)));
+
+        /// <summary>
+        /// 为 SQL 语句添加 ORDER BY 升序子句（属性名）。
+        /// </summary>
+        /// <param name="source">SQL 语句构建起点。</param>
+        /// <param name="orderBy">要排序的属性名称。</param>
+        /// <returns>包含 ORDER BY 子句的 SQL 表达式。</returns>
+        public static OrderByExpr OrderBy(this IOrderByAnchor source, string orderBy) =>
+            OrderBy(source, (Expr.Property(orderBy), true));
+
+        /// <summary>
+        /// 为 SQL 语句添加 ORDER BY 降序子句（属性名）。
+        /// </summary>
+        /// <param name="source">SQL 语句构建起点。</param>
+        /// <param name="orderBy">要排序的属性名称。</param>
+        /// <returns>包含 ORDER BY 子句的 SQL 表达式。</returns>
+        public static OrderByExpr OrderByDesc(this IOrderByAnchor source, string orderBy) =>
+            OrderBy(source, (Expr.Property(orderBy), false));
 
         /// <summary>
         /// 为 SQL 语句添加分页子句。

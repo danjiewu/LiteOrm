@@ -1,7 +1,7 @@
 ﻿using LiteOrm;
 using LiteOrm.Common;
-using LiteOrm.Demo;
 using LiteOrm.Demo.Data;
+using LiteOrm.Demo.Demos;
 using LiteOrm.Demo.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -21,7 +21,7 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .Build();
 
-Console.WriteLine("--- LiteOrm 示例程序 (DI & Configuration) ---");
+Console.WriteLine("--- LiteOrm 表达式演示程序 ---");
 
 // 执行数据库初始化
 using (var initScope = host.Services.CreateScope())
@@ -31,14 +31,18 @@ using (var initScope = host.Services.CreateScope())
 
 using (var scope = host.Services.CreateScope())
 {
-    // 从容器中获取服务
     var serviceFactory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 
-    Console.WriteLine("\n[1] 表达式全功能演示展示...");
-    // 运行表达式全示例演示
-    await ExprDemo.RunAllExamplesAsync(serviceFactory);
+    // [1] 表达式全方案演示 (构造、序列化、Lambda转换)
+    ExprTypeDemo.RunAll();
+    
+    // [2] 综合查询实践与 SQL 输出 (业务查询、数据库交互)
+    await PracticalQueryDemo.RunAsync(serviceFactory);
 
-    Console.WriteLine("\n[2] 三层架构与事务处理演示展示...");
-    await ExprDemo.RunThreeTierDemo(serviceFactory);    
+    // [3] 业务流程示例 (事务处理)
+    await TransactionDemo.RunThreeTierDemoAsync(serviceFactory);
+
+    // [4] DataViewDAO 演示 (直接返回 DataTable)
+    await DataViewDemo.RunAsync(scope.ServiceProvider);
 }
 

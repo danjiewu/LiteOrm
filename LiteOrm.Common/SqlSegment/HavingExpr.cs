@@ -7,7 +7,7 @@ namespace LiteOrm.Common
     /// 聚合筛选片段，表示 HAVING 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class HavingExpr : SqlSegment, ISelectAnchor
+    public class HavingExpr : SqlSegment, IHavingAnchor
     {
         /// <summary>
         /// 初始化 HavingExpr 类的新实例

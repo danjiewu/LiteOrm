@@ -21,10 +21,21 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="selects">要选择的字段表达式列表</param>
+        public SelectExpr(SqlSegment source, params SelectItemExpr[] selects)
+        {
+            Source = source;
+            Selects = selects?.ToList() ?? new List<SelectItemExpr>();
+        }
+
+        /// <summary>
+        /// 使用指定的源片段和选择字段列表初始化 SelectExpr 类的新实例
+        /// </summary>
+        /// <param name="source">源片段</param>
+        /// <param name="selects">要选择的字段表达式列表</param>
         public SelectExpr(SqlSegment source, params ValueTypeExpr[] selects)
         {
             Source = source;
-            Selects = selects?.ToList() ?? new List<ValueTypeExpr>();
+            Selects = selects?.Select(s => s is SelectItemExpr si ? si : new SelectItemExpr(s)).ToList() ?? new List<SelectItemExpr>();
         }
 
         /// <summary>
@@ -40,7 +51,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置要选择的字段表达式列表
         /// </summary>
-        public List<ValueTypeExpr> Selects { get; set; } = new List<ValueTypeExpr>();
+        public List<SelectItemExpr> Selects { get; set; } = new List<SelectItemExpr>();
 
         /// <summary>
         /// 判断两个 SelectExpr 是否相等
@@ -60,5 +71,27 @@ namespace LiteOrm.Common
         /// </summary>
         /// <returns>字符串表示</returns>
         public override string ToString() => $"SELECT {string.Join(", ", Selects)} FROM {Source}";
+    }
+
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
+    public class SelectItemExpr : ValueTypeExpr
+    {
+        public SelectItemExpr(ValueTypeExpr value)
+        {
+            if (value is null) throw new ArgumentNullException(nameof(value));
+            Value = value;
+        }
+
+        public SelectItemExpr(ValueTypeExpr value, string aliasName)
+        {
+            if (value is null) throw new ArgumentNullException(nameof(value));
+            Value = value;
+            Name = aliasName;
+        }
+        public ValueTypeExpr Value { get; set; }
+        public string Name { get; set; }
+        public override bool Equals(object obj) => obj is SelectItemExpr other && Name == other.Name && Equals(Value, other.Value);
+        public override int GetHashCode() => OrderedHashCodes(typeof(SelectItemExpr).GetHashCode(), Name?.GetHashCode() ?? 0, Value?.GetHashCode() ?? 0);
+        public override string ToString() => string.IsNullOrEmpty(Name) ? Value?.ToString() : $"{Value} AS {Name}";
     }
 }

@@ -113,7 +113,7 @@ namespace LiteOrm
         /// <summary>
         /// 表名参数
         /// </summary>
-        public string[] TableNameArgs { get; internal set; }
+        public string[] TableArgs { get; internal set; }
 
         private SqlBuildContext _sqlBuildContext;
         /// <summary>
@@ -124,7 +124,7 @@ namespace LiteOrm
         {
             get
             {
-                if (_sqlBuildContext is null) _sqlBuildContext = new SqlBuildContext(Table, null, TableNameArgs);
+                if (_sqlBuildContext is null) _sqlBuildContext = new SqlBuildContext(Table, null, TableArgs);
                 return _sqlBuildContext;
 
             }
@@ -173,7 +173,7 @@ namespace LiteOrm
             {
                 if (_fromTable is null)
                 {
-                    _fromTable = SqlBuilder.BuildExpression(Table, TableNameArgs);
+                    _fromTable = SqlBuilder.BuildExpression(Table, TableArgs);
                 }
                 return _fromTable;
             }
@@ -300,7 +300,7 @@ namespace LiteOrm
         /// <returns></returns>
         protected DbCommandProxy GetPreparedCommand(string methodName, Func<DbCommandProxy> newCommandHandler)
         {
-            if (TableNameArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableNameArgs);
+            if (TableArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableArgs);
             return DAOContext.PreparedCommands.GetOrAdd((ObjectType, methodName), _ => newCommandHandler());
         }
         /// <summary>
@@ -382,12 +382,17 @@ namespace LiteOrm
                 selectExpr = new SelectExpr()
                 {
                     Source = GetSource(expr),
-                    Selects = SelectColumns.Select((col, i) => (ValueTypeExpr)Expr.Property(col.PropertyName)).ToList()
+                    Selects = SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Property(col.PropertyName))).ToList()
                 };
             }                
             return MakeExprCommand(selectExpr);
         }
 
+        /// <summary>
+        /// 获取表达式对应的 SQL 数据源片段。
+        /// </summary>
+        /// <param name="expr">条件或片段表达式。</param>
+        /// <returns>对应的 SqlSegment 对象。</returns>
         protected SqlSegment GetSource(Expr expr)
         {
             if (expr is null)
@@ -418,7 +423,8 @@ namespace LiteOrm
         {
             if(expr is null)throw new ArgumentNullException(nameof(expr));
             List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
-            return MakeNamedParamCommand(expr.ToSql(SqlBuildContext, SqlBuilder, paramList), paramList);
+            var context = SqlBuildContext;
+            return MakeNamedParamCommand(expr.ToSql(context, SqlBuilder, paramList), paramList);
         }
 
         /// <summary>

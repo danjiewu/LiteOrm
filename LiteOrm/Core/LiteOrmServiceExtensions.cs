@@ -209,9 +209,9 @@ namespace LiteOrm
         /// 注册服务生成器，将接口获取服务通过动态代理转换为从 ServiceProvider 获取服务
         /// </summary>
         /// <typeparam name="TService">获取服务的接口，提供返回服务的属性或方法</typeparam>
-        /// <param name="services">服务集合</param>
-        /// <param name="lifetime">服务生命周期</param>
-        /// <returns></returns>
+        /// <param name="services">服务集合。</param>
+        /// <param name="lifetime">服务生命周期。</param>
+        /// <returns>返回修改后的服务集合以支持链式调用。</returns>
         public static IServiceCollection AddServiceGenerator<TService>(
             this IServiceCollection services,
             ServiceLifetime lifetime = ServiceLifetime.Scoped)

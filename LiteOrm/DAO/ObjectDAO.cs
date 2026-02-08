@@ -54,7 +54,7 @@ namespace LiteOrm
         public ObjectDAO<T> WithArgs(params string[] args)
         {
             ObjectDAO<T> newDAO = MemberwiseClone() as ObjectDAO<T>;
-            newDAO.TableNameArgs = args;
+            newDAO.TableArgs = args;
             newDAO.SqlBuildContext = null;
             return newDAO;
         }

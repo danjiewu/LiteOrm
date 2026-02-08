@@ -43,9 +43,9 @@ namespace LiteOrm.Common
         /// 根据 SQL 对象类型生成对应的 SQL 表达式片段。
         /// </summary>
         /// <param name="sqlObject">SQL 对象（如表、列、引用等）。</param>
-        /// <param name="tableNameArgs">用于格式化表名的参数。</param>
+        /// <param name="tableArgs">用于格式化表名的参数。</param>
         /// <returns>生成的 SQL 字符串。</returns>
-        string BuildExpression(SqlObject sqlObject, params string[] tableNameArgs);
+        string BuildExpression(SqlObject sqlObject, params string[] tableArgs);
 
         /// <summary>
         /// 将本地参数名或变量名格式化为 SQL 中使用的参数占位符。

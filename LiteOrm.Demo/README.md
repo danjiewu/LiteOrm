@@ -123,6 +123,16 @@ var multiCondition = await userService.SearchAsync(
 
 **注意**: `SearchAsync` 的 Lambda 表达式目前支持 `Where`、`OrderBy`、`OrderByDescending`、`ThenBy`、`Skip`、`Take`，不支持 `GroupBy` 和 `Select`。
 
+### 1.5 完整链式查询 (综合演示)
+
+```csharp
+var results = await userService.SearchAsync(
+    q => q.Where(u => u.Age >= 18 && u.UserName.Contains("张"))
+          .OrderByDescending(u => u.Id)
+          .Skip(0).Take(10)
+);
+```
+
 **示例输出：**
 ```text
 === Lambda 表达式查询演示 ===
@@ -158,6 +168,10 @@ Expr set = (Expr.Property("Age") > 10 & Expr.Property("Age") < 20) | Expr.Proper
 
 // Lambda 转换
 var lambdaExpr = Expr.Exp<User>(u => u.Age > 18 && u.UserName.Contains("admin"));
+
+// 逻辑表达式扩展功能 (直接从条件构建查询模型)
+var queryModel = lambdaExpr.OrderBy(Expr.Property("Id").Desc()).Section(0, 10);
+```,oldString:
 ```
 
 ---

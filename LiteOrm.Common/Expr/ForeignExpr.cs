@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
@@ -20,6 +21,11 @@ namespace LiteOrm.Common
         public new string Foreign { get; set; }
 
         /// <summary>
+        /// 获取或设置用于动态表名的参数集合。
+        /// </summary>
+        public string[] TableArgs { get; set; }
+
+        /// <summary>
         /// 初始化 <see cref="ForeignExpr"/> 类的新实例。
         /// </summary>
         public ForeignExpr() { }
@@ -36,11 +42,25 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 使用指定的外部实体别名、内部表达式和表名参数初始化 <see cref="ForeignExpr"/> 类的新实例。
+        /// </summary>
+        /// <param name="foreign">外部实体别名。</param>
+        /// <param name="expr">内部过滤表达式。</param>
+        /// <param name="tableArgs">动态表名参数。</param>
+        public ForeignExpr(string foreign, LogicExpr expr, params string[] tableArgs)
+        {
+            Foreign = foreign;
+            InnerExpr = expr;
+            TableArgs = tableArgs;
+        }
+
+        /// <summary>
         /// 比较两个 ForeignExpr 是否相等。
         /// </summary>
         public override bool Equals(object obj)
         {
-            return obj is ForeignExpr f && f.Foreign == Foreign && Equals(f.InnerExpr, InnerExpr);
+            return obj is ForeignExpr f && f.Foreign == Foreign && Equals(f.InnerExpr, InnerExpr) &&
+                   ((f.TableArgs == null && TableArgs == null) || (f.TableArgs != null && TableArgs != null && f.TableArgs.SequenceEqual(TableArgs)));
         }
 
         /// <summary>
@@ -49,7 +69,13 @@ namespace LiteOrm.Common
         /// <returns>哈希码值</returns>
         public override int GetHashCode()
         {
-            return OrderedHashCodes(GetType().GetHashCode(), Foreign?.GetHashCode() ?? 0, InnerExpr?.GetHashCode() ?? 0);
+            int hash = OrderedHashCodes(GetType().GetHashCode(), Foreign?.GetHashCode() ?? 0, InnerExpr?.GetHashCode() ?? 0);
+            if (TableArgs != null)
+            {
+                foreach (var arg in TableArgs)
+                    hash = OrderedHashCodes(hash, arg?.GetHashCode() ?? 0);
+            }
+            return hash;
         }
         /// <summary>
         /// 返回表达式的字符串表示
