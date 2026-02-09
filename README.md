@@ -117,15 +117,15 @@ var host = Host.CreateDefaultBuilder(args)
 ```csharp
 using LiteOrm.Service;
 
-public interface IUserService : IEntityService<User>
+public interface IUserService : IEntityService<User>, IEntityViewService<UserView>, IEntityServiceAsync<User>, IEntityViewServiceAsync<UserView>
 {
-    User GetByUserName(string userName);
+    UserView GetByUserName(string userName);
 }
 
-public class UserService : EntityService<User>, IUserService
+public class UserService : EntityService<User,UserView>, IUserService
 {
     // 实现自定义方法
-    public User GetByUserName(string userName)
+    public UserView GetByUserName(string userName)
     {
         return SearchOne(u => u.UserName == userName);
     }
@@ -256,7 +256,7 @@ Expr expr = Expr.And(
 var expr = (Expr.Property(nameof(User.Age)) > 18) & (Expr.Property(nameof(User.UserName)).Contains("admin_"));
 var res = new SqlGen(typeof(User)).ToSql(expr);
 // res.Sql -> (`User`.`Age` > @0 AND `User`.`UserName` LIKE @1 ESCAPE '/')
-// res.Params -> [ { "0", 18 }, { "1", "%admin_%" } ]
+// res.Params -> [ { "0", 18 }, { "1", "%admin/_%" } ]
 ```
 
 ## 高级特性
@@ -316,7 +316,7 @@ public class Log : IArged
 var log = new Log
 {
     Content = "Test log",
-    CreateTime = new DateTime(2024, 1, 15)  // 自动路由到 Log_202401 表
+    CreateTime = new DateTime(2026, 1, 15)  // 自动路由到 Log_202601 表
 };
 await logService.InsertAsync(log);
 ```
@@ -360,11 +360,10 @@ public class BusinessService
   - 基础查询 (Where) 
   - 排序 (OrderBy/OrderByDescending/ThenBy)
   - 分页 (Skip/Take)
-  - 多条件合并 (多个 Where 自动合并为 AND)
 - **自动化关联 (Join)**：利用特性实现多级表关联带出。
 - **动态分表 (IArged)**：按参数自动路由物理表。
 - **声明式事务**：基于 AOP 的无侵入事务控制。
-- **性能优化**：BatchInsert 与单条插入耗时对比。
+
 
 运行 Demo 项目：
 
@@ -374,17 +373,28 @@ dotnet run --project LiteOrm.Demo/LiteOrm.Demo.csproj
 
 ## 性能测试
 
-LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基于 `LiteOrm.Benchmark` 项目（1000 条记录插入/更新/查询，MySQL 8.0 环境）的最新测试结果对比：
+LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基于 `LiteOrm.Benchmark` 项目（Linux Ubuntu 24.04 LTS, Intel Xeon Silver 4314 CPU, .NET 10.0.0）的最新测试结果对比：
 
-| 框架 | 插入性能 (ms) | 更新性能 (ms) | 关联查询 (ms) | 内存分配 (Insert) |
-| :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **~10.0 ms** | **~15.4 ms** | **~10.4 ms** | **~1.7 MB** |
-| Dapper | ~99.5 ms | ~114.4 ms | ~10.4 ms | ~2.4 MB |
-| FreeSql | ~16.1 ms | ~27.4 ms | ~11.4 ms | ~4.5 MB |
-| SqlSugar | ~15.2 ms | ~33.4 ms | ~21.1 ms | ~4.5 MB |
-| EF Core | ~136.7 ms | ~118.4 ms | ~18.0 ms | ~17.7 MB |
+### 性能对比概览（BatchCount=1000）
 
-> *注：测试数据取自 `LiteOrm.Benchmark` 生成的最新报告（BatchCount=1000）。完整测试报告请参考：[LiteOrm 性能评测报告](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md).*
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | 更新或插入 (ms) | 关联查询 (ms) | 内存分配 (Insert) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **LiteOrm** | **14.421** | **24.342** | 21.138 | 16.933 | **868.15 KB** |
+| FreeSql | 22.123 | 42.261 | **22.006** | 17.261 | 4629.54 KB |
+| SqlSugar | 18.993 | 46.280 | 106.873 | 40.103 | 4569.7 KB |
+| Dapper | 220.316 | 236.501 | 246.259 | **16.584** | 2475.62 KB |
+| EF Core | 155.787 | 136.900 | 141.613 | 29.384 | 16265.64 KB |
+
+### 各数据量级别最优性能
+
+| 测试项目 | 100 条 | 1000 条 | 5000 条 |
+|----------|--------|---------|---------|
+| **Insert** | **LiteOrm** (4.121 ms) | **LiteOrm** (14.421 ms) | **LiteOrm** (58.925 ms) |
+| **Update** | **LiteOrm** (5.271 ms) | **LiteOrm** (24.342 ms) | **LiteOrm** (104.380 ms) |
+| **UpdateOrInsert** | **FreeSql** (5.071 ms) | **FreeSql** (22.006 ms) | **LiteOrm** (89.760 ms) |
+| **JoinQuery** | **FreeSql** (2.107 ms) | **Dapper** (16.584 ms) | **LiteOrm** (77.800 ms) |
+
+> *注：完整测试报告请参考：[LiteOrm 性能评测报告](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md).*
 
 ## 模块说明
 
@@ -394,6 +404,7 @@ LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基
 *   **LiteOrm.Demo**: 示例项目，涵盖了几乎所有核心特性的代码演示。
 *   **LiteOrm.Benchmark**: 性能测试工程，包含与常见 ORM 的对比。
 *   **LiteOrm.Tests**: 单元测试项目。
+*   **API 参考文档**: [LITEORM_API_REFERENCE.md](./docs/LITEORM_API_REFERENCE.md)
 
 ## 贡献与反馈
 

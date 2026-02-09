@@ -191,7 +191,8 @@ namespace LiteOrm.Service
         /// 批量根据ID删除实体
         /// </summary>
         /// <param name="ids">待删除id</param>
+        /// <param name="tableArgs">分表参数</param>
         [Transaction]
-        void BatchDeleteID(IEnumerable ids);
+        void BatchDeleteID(IEnumerable ids, params string[] tableArgs);
     }
 }
