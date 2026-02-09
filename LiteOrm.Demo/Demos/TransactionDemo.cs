@@ -5,41 +5,41 @@ using LiteOrm.Demo.Services;
 namespace LiteOrm.Demo.Demos
 {
     /// <summary>
-    /// ╤▌╩╛╔∙├ў╩╜╩┬╬ё┤ж└э╙ы╢р▓у╨н╡ў
+    /// ├С├Э├К┬╛├Й├╣├Г├╖├К┬╜├К├В├О├▒┬┤┬ж├А├н├У├л┬╢├а┬▓├г├Р┬н┬╡├╖
     /// </summary>
     public static class TransactionDemo
     {
         public static async Task RunThreeTierDemoAsync(ServiceFactory factory)
         {
-            Console.WriteLine("\nйейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейе");
-            Console.WriteLine("  6. ╩┬╬ё╙ы╚¤▓у╝▄╣╣г║");
-            Console.WriteLine("йейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейе");
+            Console.WriteLine("\n┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е");
+            Console.WriteLine("  6. ├К├В├О├▒├У├л├И├╜┬▓├г┬╝├Ь┬╣┬╣┬г┬║");
+            Console.WriteLine("┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е");
             var newUser = new User { UserName = "ThreeTierUser", Age = 25 };
             var initialSale = new SalesRecord { ProductName = "Starter Pack", Amount = 1 };
 
             await factory.UserService.DeleteAsync(u => u.UserName == newUser.UserName);
-            Console.WriteLine($"╧╓╘┌═и╣¤╩┬╬ё╫в▓с╨┬╙├╗з {newUser.UserName} ▓в╓┤╨╨│ї╩╝╗п╧·╩█...");
+            Console.WriteLine($"├П├Ц├Ф├Ъ├Н┬и┬╣├╜├К├В├О├▒├Ч┬в┬▓├б├Р├В├У├Г┬╗┬з {newUser.UserName} ┬▓┬в├Ц┬┤├Р├Р┬│├╡├К┬╝┬╗┬п├П├║├К├Ы...");
 
             try
             {
                 bool success = await factory.BusinessService.RegisterUserWithInitialSaleAsync(newUser, initialSale);
                 if (success)
                 {
-                    Console.WriteLine("╩┬╬ё╓┤╨╨│╔╣жгм╙├╗з║═╢й╡е═м╩▒│╓╛├╗п");
+                    Console.WriteLine("├К├В├О├▒├Ц┬┤├Р├Р┬│├Й┬╣┬ж┬г┬м├У├Г┬╗┬з┬║├Н┬╢┬й┬╡┬е├Н┬м├К┬▒┬│├Ц┬╛├Г┬╗┬п");
                     var savedUser = await factory.UserService.GetByUserNameAsync(newUser.UserName);
                     if (savedUser != null)
                     {
-                        Console.WriteLine($"╤щ╓д│╔╣жг║╙├╗з ID={savedUser.Id}, ╙├╗з├√={savedUser.UserName}");
+                        Console.WriteLine($"├С├й├Ц┬д┬│├Й┬╣┬ж┬г┬║├У├Г┬╗┬з ID={savedUser.Id}, ├У├Г┬╗┬з├Г├╗={savedUser.UserName}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"╩┬╬ё╓┤╨╨╩з░▄гм╥╤╗╪╣Ў: {ex.Message}");
+                Console.WriteLine($"├К├В├О├▒├Ц┬┤├Р├Р├К┬з┬░├Ь┬г┬м├Т├С┬╗├Ш┬╣├╢: {ex.Message}");
                 var savedUser = await factory.UserService.GetByUserNameAsync(newUser.UserName);
                 if (savedUser == null)
                 {
-                    Console.WriteLine("╗╪╣Ў│╔╣жг║╙├╗з╬┤┤┤╜и");
+                    Console.WriteLine("┬╗├Ш┬╣├╢┬│├Й┬╣┬ж┬г┬║├У├Г┬╗┬з├О┬┤┬┤┬┤┬╜┬и");
                 }
             }
         }

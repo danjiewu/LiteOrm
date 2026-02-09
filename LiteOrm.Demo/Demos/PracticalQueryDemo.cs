@@ -11,18 +11,18 @@ namespace LiteOrm.Demo.Demos
     {
         public static async Task RunAsync(ServiceFactory factory)
         {
-            Console.WriteLine("\nйейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейе");
-            Console.WriteLine("  5. ╫█║╧▓щ╤п╩╡╝∙г║┤╙ Lambda ╡╜ SQL");
-            Console.WriteLine("йейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейе");
+            Console.WriteLine("\n┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е");
+            Console.WriteLine("  5. ├Ч├Ы┬║├П┬▓├й├С┬п├К┬╡┬╝├╣┬г┬║┬┤├У Lambda ┬╡┬╜ SQL");
+            Console.WriteLine("┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е");
 
-            // 1. ╫╝▒╕╢п╠м╠ї╝■
+            // 1. ├Ч┬╝┬▒┬╕┬╢┬п├М┬м├М├╡┬╝├╛
             int minAge = 18;
-            string searchName = "╒┼";
+            string searchName = "├Х├Е";
             var userSvc = factory.UserService;
 
-            // ╖╜╩╜ 1: ═ъ╒√╡─ Lambda ▒э┤я╩╜╤▌╩╛ (Where + OrderBy + Skip/Take)
-            // ╒т╓╓╖╜╩╜╫ю╜╙╜№ EF/LINQ ╧░╣▀гм┐Є╝▄╗с╫╘╢п╫к╗╗╬к Expr ─г╨═
-            Console.WriteLine("[1] ═ъ╒√ Lambda ┴┤╩╜▓щ╤п (═╞╝Ў)");
+            // ┬╖┬╜├К┬╜ 1: ├Н├к├Х├╗┬╡├Д Lambda ┬▒├н┬┤├п├К┬╜├С├Э├К┬╛ (Where + OrderBy + Skip/Take)
+            // ├Х├в├Ц├Ц┬╖┬╜├К┬╜├Ч├о┬╜├У┬╜├╝ EF/LINQ ├П┬░┬╣├Я┬г┬м┬┐├▓┬╝├Ь┬╗├б├Ч├Ф┬╢┬п├Ч┬к┬╗┬╗├О┬к Expr ├Д┬г├Р├Н
+            Console.WriteLine("[1] ├Н├к├Х├╗ Lambda ├Б┬┤├К┬╜┬▓├й├С┬п (├Н├Ж┬╝├╢)");
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("    var results = await userSvc.SearchAsync(\n" +
                               "        q => q.Where(u => u.Age >= minAge && u.UserName.Contains(searchName))\n" +
@@ -36,20 +36,20 @@ namespace LiteOrm.Demo.Demos
                       .OrderByDescending(u => u.Id)
                       .Skip(0).Take(10)
             );
-            Console.WriteLine($"    б· ▓щ╤п═ъ│╔гм╖╡╗╪ {resultsA.Count} ╠ї╝╟┬╝бг");
+            Console.WriteLine($"    ┬б├║ ┬▓├й├С┬п├Н├к┬│├Й┬г┬м┬╖┬╡┬╗├Ш {resultsA.Count} ├М├╡┬╝├З├В┬╝┬б┬г");
 
 
-            // ╖╜╩╜ 2: ╫ю╝Є╡е╡─ Expression └й╒╣▓щ╤п
-            // ╚ч╣√╓╗╙╨╝Є╡е╡─╣¤┬╦гм┐╔╥╘╓▒╜╙┤л╚ы Expression<Func<T, bool>>
-            Console.WriteLine("\n[2] ╗∙┤б Expression └й╒╣▓щ╤п");
+            // ┬╖┬╜├К┬╜ 2: ├Ч├о┬╝├▓┬╡┬е┬╡├Д Expression ├А┬й├Х┬╣┬▓├й├С┬п
+            // ├И├з┬╣├╗├Ц┬╗├У├Р┬╝├▓┬╡┬е┬╡├Д┬╣├╜├В├Л┬г┬м┬┐├Й├Т├Ф├Ц┬▒┬╜├У┬┤┬л├И├л Expression<Func<T, bool>>
+            Console.WriteLine("\n[2] ┬╗├╣┬┤┬б Expression ├А┬й├Х┬╣┬▓├й├С┬п");
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("    var results = await userSvc.SearchAsync(u => u.Age >= minAge);");
             Console.ResetColor();
 
             var resultsC = await userSvc.SearchAsync(u => u.Age >= minAge);
-            Console.WriteLine($"    б· ▓щ╤п═ъ│╔гм╖╡╗╪ {resultsC.Count} ╠ї╝╟┬╝бг");
+            Console.WriteLine($"    ┬б├║ ┬▓├й├С┬п├Н├к┬│├Й┬г┬м┬╖┬╡┬╗├Ш {resultsC.Count} ├М├╡┬╝├З├В┬╝┬б┬г");
 
-            // 3. ╣╣╜и▓в╩ф│Ў╫ю╓╒ SQL ─г╨═╘д└└
+            // 3. ┬╣┬╣┬╜┬и┬▓┬в├К├д┬│├╢├Ч├о├Ц├Х SQL ├Д┬г├Р├Н├Ф┬д├А├А
             var queryModel = LambdaSqlSegmentConverter.ToSqlSegment(
                 (System.Linq.Expressions.Expression<Func<IQueryable<User>, IQueryable<User>>>)(
                     q => q.Where(u => u.Age >= minAge && u.UserName.Contains(searchName))
@@ -58,8 +58,8 @@ namespace LiteOrm.Demo.Demos
                 )
             );
 
-            Console.WriteLine("\n[3] ┐Є╝▄╔·│╔╡─┬▀╝н─г╨═ (JSON ╨Є┴╨╗п║є┐╔┐ч╢╦┤л╡▌):");
-            Console.WriteLine($"> ┬▀╝н─г╨═╘д└└: {queryModel}");
+            Console.WriteLine("\n[3] ┬┐├▓┬╝├Ь├Й├║┬│├Й┬╡├Д├В├Я┬╝┬н├Д┬г├Р├Н (JSON ├Р├▓├Б├Р┬╗┬п┬║├│┬┐├Й┬┐├з┬╢├Л┬┤┬л┬╡├Э):");
+            Console.WriteLine($"> ├В├Я┬╝┬н├Д┬г├Р├Н├Ф┬д├А├А: {queryModel}");
         }
     }
 }

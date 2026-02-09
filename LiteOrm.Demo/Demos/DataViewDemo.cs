@@ -8,39 +8,39 @@ using System.Threading.Tasks;
 namespace LiteOrm.Demo.Demos
 {
     /// <summary>
-    /// ╤▌╩╛ DataViewDAO ╡─╩╣╙├гм╓▒╜╙╗ё╚б DataTable ╜с╣√
+    /// ├С├Э├К┬╛ DataViewDAO ┬╡├Д├К┬╣├У├Г┬г┬м├Ц┬▒┬╜├У┬╗├▒├И┬б DataTable ┬╜├б┬╣├╗
     /// </summary>
     public static class DataViewDemo
     {
         public static async Task RunAsync(IServiceProvider serviceProvider)
         {
-            Console.WriteLine("\nйейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейе");
-            Console.WriteLine("  7. DataViewDAO ╤▌╩╛ (╓▒╜╙╖╡╗╪ DataTable)");
-            Console.WriteLine("йейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейейе");
+            Console.WriteLine("\n┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е");
+            Console.WriteLine("  7. DataViewDAO ├С├Э├К┬╛ (├Ц┬▒┬╜├У┬╖┬╡┬╗├Ш DataTable)");
+            Console.WriteLine("┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е┬й┬е");
 
-            // 1. ╗ё╚б DataViewDAO<User>
-            // DataViewDAO<T> ─м╚╧╥╤╙╔┐Є╝▄╫в▓с╬к Scoped
+            // 1. ┬╗├▒├И┬б DataViewDAO<User>
+            // DataViewDAO<T> ├Д┬м├И├П├Т├С├У├Й┬┐├▓┬╝├Ь├Ч┬в┬▓├б├О┬к Scoped
             var userDataView = serviceProvider.GetRequiredService<DataViewDAO<User>>();
 
-            // 2. ╗∙┤б▓щ╤пг║╗ё╚б╦∙╙╨╙├╗з
-            Console.WriteLine("[1] ╓┤╨╨╚л▒э▓щ╤п...");
+            // 2. ┬╗├╣┬┤┬б┬▓├й├С┬п┬г┬║┬╗├▒├И┬б├Л├╣├У├Р├У├Г┬╗┬з
+            Console.WriteLine("[1] ├Ц┬┤├Р├Р├И┬л┬▒├н┬▓├й├С┬п...");
             DataTable dtAll = await userDataView.SearchAsync(null);
             PrintDataTable(dtAll);
 
-            // 3. ┤°╠ї╝■╡─▓щ╤п (╩╣╙├ Expr)
-            Console.WriteLine("\n[2] ╓┤╨╨╠ї╝■▓щ╤п (─ъ┴ф >= 20)...");
+            // 3. ┬┤├╕├М├╡┬╝├╛┬╡├Д┬▓├й├С┬п (├К┬╣├У├Г Expr)
+            Console.WriteLine("\n[2] ├Ц┬┤├Р├Р├М├╡┬╝├╛┬▓├й├С┬п (├Д├к├Б├д >= 20)...");
             Expr condition = Expr.Property("Age") >= 20;
             DataTable dtFiltered = await userDataView.SearchAsync(condition);
             PrintDataTable(dtFiltered);
 
-            // 4. ╓╕╢и╫╓╢╬▓щ╤п (SelectItem)
-            Console.WriteLine("\n[3] ╓╕╢и╫╓╢╬▓щ╤п (╓╗▓щ Id, UserName)...");
+            // 4. ├Ц┬╕┬╢┬и├Ч├Ц┬╢├О┬▓├й├С┬п (SelectItem)
+            Console.WriteLine("\n[3] ├Ц┬╕┬╢┬и├Ч├Ц┬╢├О┬▓├й├С┬п (├Ц┬╗┬▓├й Id, UserName)...");
             string[] fields = { "Id", "UserName" };
             DataTable dtFields = await userDataView.SearchAsync(fields, condition);
             PrintDataTable(dtFields);
 
-            // 5. ╕┤╘╙┴┤╩╜╣╣╜и▓щ╤п (Select + Where + OrderBy)
-            Console.WriteLine("\n[4] ╕┤╘╙┴┤╩╜╣╣╜и▓щ╤п (DataTable ╜с╣√)...");
+            // 5. ┬╕┬┤├Ф├У├Б┬┤├К┬╜┬╣┬╣┬╜┬и┬▓├й├С┬п (Select + Where + OrderBy)
+            Console.WriteLine("\n[4] ┬╕┬┤├Ф├У├Б┬┤├К┬╜┬╣┬╣┬╜┬и┬▓├й├С┬п (DataTable ┬╜├б┬╣├╗)...");
             var complexQuery = Expr.Table<User>()
                 .Select(Expr.Property("Id"), Expr.Property("UserName").As("Full_Name"), Expr.Property("Age"))
                 .Where(Expr.Property("Age") > 15)
@@ -54,9 +54,9 @@ namespace LiteOrm.Demo.Demos
 
         private static void PrintDataTable(DataTable dt)
         {
-            Console.WriteLine($"б· ▓щ╤п╜с╣√: {dt.Rows.Count} ╨╨, {dt.Columns.Count} ┴╨");
+            Console.WriteLine($"┬б├║ ┬▓├й├С┬п┬╜├б┬╣├╗: {dt.Rows.Count} ├Р├Р, {dt.Columns.Count} ├Б├Р");
 
-            // ┤Є╙б▒э═╖
+            // ┬┤├▓├У┬б┬▒├н├Н┬╖
             foreach (DataColumn col in dt.Columns)
             {
                 Console.Write($"{col.ColumnName,-15}\t");
@@ -64,11 +64,11 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine();
             Console.WriteLine(new string('-', dt.Columns.Count * 16));
 
-            // ┤Є╙б╟░3╨╨╝╟┬╝
+            // ┬┤├▓├У┬б├З┬░3├Р├Р┬╝├З├В┬╝
             int count = 0;
             foreach (DataRow row in dt.Rows)
             {
-                if (count++ >= 3) { Console.WriteLine("... (╜Ў╧╘╩╛╟░3╠ї)"); break; }
+                if (count++ >= 3) { Console.WriteLine("... (┬╜├╢├П├Ф├К┬╛├З┬░3├М├╡)"); break; }
                 foreach (var item in row.ItemArray)
                 {
                     Console.Write($"{item?.ToString() ?? "NULL",-15}\t");

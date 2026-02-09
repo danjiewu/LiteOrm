@@ -11,7 +11,7 @@ namespace LiteOrm
     public class LiteOrmSqlFunctionInitializer : IStartable
     {
         /// <summary>
-        /// Æô¶¯Ê±³õÊ¼»¯ SQL º¯ÊýÓ³Éä¡£
+        /// Ã†Ã´Â¶Â¯ÃŠÂ±Â³ÃµÃŠÂ¼Â»Â¯ SQL ÂºÂ¯ÃŠÃ½Ã“Â³Ã‰Ã¤Â¡Â£
         /// </summary>
         public void Start()
         {
@@ -23,37 +23,37 @@ namespace LiteOrm
         /// </summary>
         private void RegisterSqlFunctions()
         {
-            // ×¢²áÒ»Ð©Í¨ÓÃµÄ SQL Ó³Éä
+            // Ã—Â¢Â²Ã¡Ã’Â»ÃÂ©ÃÂ¨Ã“ÃƒÂµÃ„ SQL Ã“Â³Ã‰Ã¤
             SqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (functionName, args) => "CURRENT_TIMESTAMP");
             SqlBuilder.Instance.RegisterFunctionSqlHandler("Today", (functionName, args) => "CURRENT_DATE");
-            // ¶îÍâ´¦Àí IndexOf ºÍ Substring£¬Ö§³Ö C# µ½ SQL µÄË÷Òý×ª»» (0-based -> 1-based)
+            // Â¶Ã®ÃÃ¢Â´Â¦Ã€Ã­ IndexOf ÂºÃ SubstringÂ£Â¬Ã–Â§Â³Ã– C# ÂµÂ½ SQL ÂµÃ„Ã‹Ã·Ã’Ã½Ã—ÂªÂ»Â» (0-based -> 1-based)
             SqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (functionName, args) => args.Count > 2 ?
                         $"INSTR({args[0].Key}, {args[1].Key}, {args[2].Key}+1)-1" : $"INSTR({args[0].Key}, {args[1].Key})-1");
             SqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (name, args) => args.Count > 2 ?
                         $"SUBSTR({args[0].Key}, {args[1].Key}+1, {args[2].Key})" : $"SUBSTR({args[0].Key}, {args[1].Key}+1)");
 
-            // SQLite º¯Êý×¢²á
+            // SQLite ÂºÂ¯ÃŠÃ½Ã—Â¢Â²Ã¡
             SQLiteBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
                 (functionName, args) => $"DATE({args[0].Key}, CAST({args[1].Key} AS TEXT)||' {functionName.Substring(3).ToLower()}')");
 
-            // MySQL º¯Êý×¢²á
+            // MySQL ÂºÂ¯ÃŠÃ½Ã—Â¢Â²Ã¡
             MySqlBuilder.Instance.RegisterFunctionSqlHandler("LENGTH", (functionName, args) => $"CHAR_LENGTH({args[0].Key})");
             MySqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
                 (functionName, args) => $"DATE_ADD({args[0].Key}, INTERVAL {args[1].Key} {functionName.Substring(3).ToUpper().TrimEnd('S')})");
 
-            // Oracle º¯Êý×¢²á
+            // Oracle ÂºÂ¯ÃŠÃ½Ã—Â¢Â²Ã¡
             OracleBuilder.Instance.RegisterFunctionSqlHandler("IfNull", (name, args) => $"NVL({args[0].Key}, {args[1].Key})");
             OracleBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays"], (functionName, args) => $"({args[0].Key} + NUMTODSINTERVAL({args[1].Key}, '{functionName.Substring(3).ToUpper().TrimEnd('S')}'))");
             OracleBuilder.Instance.RegisterFunctionSqlHandler(["AddMonths", "AddYears"], (functionName, args) => $"({args[0].Key} + NUMTOYMINTERVAL({args[1].Key}, '{functionName.Substring(3).ToUpper().TrimEnd('S')}'))");
 
-            // PostgreSQL º¯Êý×¢²á
+            // PostgreSQL ÂºÂ¯ÃŠÃ½Ã—Â¢Â²Ã¡
             PostgreSqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (functionName, args) => $"POSITION({args[1].Key} IN {args[0].Key})-1");
             PostgreSqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (name, args) => args.Count > 2 ?
                         $"SUBSTRING({args[0].Key} FROM {args[1].Key}+1 FOR {args[2].Key})" : $"SUBSTRING({args[0].Key} FROM {args[1].Key}+1)");
             PostgreSqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
                 (functionName, args) => $"({args[0].Key} + ({args[1].Key} || ' {functionName.Substring(3).ToLower()}')::interval)");
 
-            // SQL Server º¯Êý×¢²á
+            // SQL Server ÂºÂ¯ÃŠÃ½Ã—Â¢Â²Ã¡
             SqlServerBuilder.Instance.RegisterFunctionSqlHandler("IfNull", (name, args) => $"ISNULL({args[0].Key}, {args[1].Key})");
             SqlServerBuilder.Instance.RegisterFunctionSqlHandler("Length", (functionName, args) => $"LEN({args[0].Key})");
             SqlServerBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (functionName, args) => args.Count > 2 ?

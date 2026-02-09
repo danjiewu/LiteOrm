@@ -3,37 +3,37 @@ using System;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 列操作模式
+    /// 脕脨虏脵脳梅脛拢脢陆
     /// </summary>
     [Flags]
     public enum ColumnMode
     {
         /// <summary>
-        /// 所有操作
+        /// 脣霉脫脨虏脵脳梅
         /// </summary>
         Full = Read | Update | Insert,
         /// <summary>
-        /// 无
+        /// 脦脼
         /// </summary>
         None = 0,
         /// <summary>
-        /// 从数据库中读
+        /// 麓脫脢媒戮脻驴芒脰脨露脕
         /// </summary>
         Read = 1,
         /// <summary>
-        /// 向数据库更新
+        /// 脧貌脢媒戮脻驴芒赂眉脨脗
         /// </summary>
         Update = 2,
         /// <summary>
-        /// 向数据库添加
+        /// 脧貌脢媒戮脻驴芒脤铆录脫
         /// </summary>
         Insert = 4,
         /// <summary>
-        /// 只写
+        /// 脰禄脨麓
         /// </summary>
         Write = Insert | Update,
         /// <summary>
-        /// 不可更改
+        /// 虏禄驴脡赂眉赂脛
         /// </summary>
         Final = Insert | Read
     }

@@ -15,36 +15,36 @@ namespace LiteOrm.Demo.Demos
 
         public static void RunAll()
         {
-            Console.WriteLine("===== LiteOrm ±í´ïÊ½È«·½°¸ÑİÊ¾ =====");
+            Console.WriteLine("===== LiteOrm Â±Ã­Â´Ã¯ÃŠÂ½ÃˆÂ«Â·Â½Â°Â¸Ã‘ÃÃŠÂ¾ =====");
 
-            ShowSection("1. »ù´¡ÖµÓëÊôĞÔ±í´ïÊ½", () => {
-                // [·½Ê½1] ¹¹Ôìº¯Êı
+            ShowSection("1. Â»Ã¹Â´Â¡Ã–ÂµÃ“Ã«ÃŠÃ´ÃÃ”Â±Ã­Â´Ã¯ÃŠÂ½", () => {
+                // [Â·Â½ÃŠÂ½1] Â¹Â¹Ã”Ã¬ÂºÂ¯ÃŠÃ½
                 var p1 = new PropertyExpr("Age");
-                Print(p1, "ÊôĞÔ (¹¹Ôìº¯Êı·½Ê½)", "new PropertyExpr(\"Age\")");
+                Print(p1, "ÃŠÃ´ÃÃ” (Â¹Â¹Ã”Ã¬ÂºÂ¯ÃŠÃ½Â·Â½ÃŠÂ½)", "new PropertyExpr(\"Age\")");
 
-                // [·½Ê½2] ¾²Ì¬¹¤³§ (×îÍÆ¼ö)
-                var v2 = Expr.Const("ÕÅÈı");
-                Print(v2, "³£Á¿Öµ (¹¤³§·½Ê½)", "Expr.Const(\"ÕÅÈı\")");
+                // [Â·Â½ÃŠÂ½2] Â¾Â²ÃŒÂ¬Â¹Â¤Â³Â§ (Ã—Ã®ÃÃ†Â¼Ã¶)
+                var v2 = Expr.Const("Ã•Ã…ÃˆÃ½");
+                Print(v2, "Â³Â£ÃÂ¿Ã–Âµ (Â¹Â¤Â³Â§Â·Â½ÃŠÂ½)", "Expr.Const(\"Ã•Ã…ÃˆÃ½\")");
             });
 
-            ShowSection("2. Âß¼­±È½ÏÓë×éºÏ", () => {
+            ShowSection("2. Ã‚ÃŸÂ¼Â­Â±ÃˆÂ½ÃÃ“Ã«Ã—Ã©ÂºÃ", () => {
                 var age = Expr.Property("Age");
                 var dept = Expr.Property("DeptId");
 
-                // [·½Ê½1] ÔËËã·ûÖØÔØ
+                // [Â·Â½ÃŠÂ½1] Ã”Ã‹Ã‹Ã£Â·Ã»Ã–Ã˜Ã”Ã˜
                 var cond1 = age > 18;
-                Print(cond1, "¶şÔª±È½Ï (ÔËËã·û·½Ê½)", "Expr.Property(\"Age\") > 18");
+                Print(cond1, "Â¶Ã¾Ã”ÂªÂ±ÃˆÂ½Ã (Ã”Ã‹Ã‹Ã£Â·Ã»Â·Â½ÃŠÂ½)", "Expr.Property(\"Age\") > 18");
 
                 var composite1 = cond1 & (dept == 101);
-                Print(composite1, "Âß¼­×éºÏ (ÔËËã·û·½Ê½)", "(age > 18) & (dept == 101)");
+                Print(composite1, "Ã‚ÃŸÂ¼Â­Ã—Ã©ÂºÃ (Ã”Ã‹Ã‹Ã£Â·Ã»Â·Â½ÃŠÂ½)", "(age > 18) & (dept == 101)");
 
-                // [·½Ê½2] Á´Ê½À©Õ¹·½·¨
+                // [Â·Â½ÃŠÂ½2] ÃÂ´ÃŠÂ½Ã€Â©Ã•Â¹Â·Â½Â·Â¨
                 var composite2 = age.GreaterThan(20).And(dept.In(101, 102));
-                Print(composite2, "Âß¼­×éºÏ (Fluent·½Ê½)", "age.GreaterThan(20).And(dept.In(101, 102))");
+                Print(composite2, "Ã‚ÃŸÂ¼Â­Ã—Ã©ÂºÃ (FluentÂ·Â½ÃŠÂ½)", "age.GreaterThan(20).And(dept.In(101, 102))");
             });
 
-            ShowSection("3. ½á¹¹»¯²éÑ¯Ä£ĞÍ (Select/Update/Delete)", () => {
-                // Select Á´Ê½¹¹½¨
+            ShowSection("3. Â½Ã¡Â¹Â¹Â»Â¯Â²Ã©Ã‘Â¯Ã„Â£ÃÃ (Select/Update/Delete)", () => {
+                // Select ÃÂ´ÃŠÂ½Â¹Â¹Â½Â¨
                 var query = Expr.Table<User>()
                     .Where(Expr.Property("Age") > 20)
                     .Select(Expr.Property("Id"), Expr.Property("UserName").As("Name"))
@@ -54,54 +54,54 @@ namespace LiteOrm.Demo.Demos
                               "    .Where(Expr.Property(\"Age\") > 20)\n" +
                               "    .Select(Expr.Property(\"Id\"), Expr.Property(\"UserName\").As(\"Name\"))\n" +
                               "    .OrderBy(Expr.Property(\"Id\").Desc())";
-                Print(query, "SELECT ÍêÕûÄ£ĞÍ", code);
+                Print(query, "SELECT ÃÃªÃ•Ã»Ã„Â£ÃÃ", code);
 
-                // Update Ä£ĞÍ
+                // Update Ã„Â£ÃÃ
                 var update = new UpdateExpr(Expr.Table<User>(), Expr.Property("Id") == 1);
                 update.Sets.Add(("UserName", "NewName"));
-                Print(update, "UPDATE Ä£ĞÍ", "new UpdateExpr(Expr.Table<User>(), Expr.Property(\"Id\") == 1) { Sets = { (\"UserName\", \"NewName\") } }");
+                Print(update, "UPDATE Ã„Â£ÃÃ", "new UpdateExpr(Expr.Table<User>(), Expr.Property(\"Id\") == 1) { Sets = { (\"UserName\", \"NewName\") } }");
             });
 
-            ShowSection("4. Lambda ×Ô¶¯×ª»»", () => {
+            ShowSection("4. Lambda Ã—Ã”Â¶Â¯Ã—ÂªÂ»Â»", () => {
                 var composite = Expr.Exp<User>(u => u.Age > 25 && u.UserName.Contains("A"));
-                Print(composite, "Lambda ×ª Expr", "Expr.Exp<User>(u => u.Age > 25 && u.UserName.Contains(\"A\"))");
+                Print(composite, "Lambda Ã—Âª Expr", "Expr.Exp<User>(u => u.Age > 25 && u.UserName.Contains(\"A\"))");
             });
 
-            ShowSection("5. É¾³ıÓëÆäËüÆ¬¶Î (Delete)", () => {
-                // É¾³ıÄ£ĞÍ
+            ShowSection("5. Ã‰Â¾Â³Ã½Ã“Ã«Ã†Ã¤Ã‹Ã¼Ã†Â¬Â¶Ã (Delete)", () => {
+                // Ã‰Â¾Â³Ã½Ã„Â£ÃÃ
                 var delete = new DeleteExpr(Expr.Table<User>(), Expr.Property("Age") < 18);
-                Print(delete, "DELETE Ä£ĞÍ", "new DeleteExpr(Expr.Table<User>(), Expr.Property(\"Age\") < 18)");
+                Print(delete, "DELETE Ã„Â£ÃÃ", "new DeleteExpr(Expr.Table<User>(), Expr.Property(\"Age\") < 18)");
             });
         }
 
         private static void ShowSection(string title, Action action)
         {
-            Console.WriteLine($"\n©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥");
+            Console.WriteLine($"\nÂ©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥");
             Console.WriteLine($"  {title}");
-            Console.WriteLine($"©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥");
+            Console.WriteLine($"Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥Â©Â¥");
             action();
         }
 
         private static void Print(Expr expr, string label, string csharpCode)
         {
-            Console.WriteLine($"\n[Ê¾Àı: {label}]");
+            Console.WriteLine($"\n[ÃŠÂ¾Ã€Ã½: {label}]");
             Console.WriteLine($"------------------------------------------------------------");
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"¡ú ¹Ø¼ü¹¹½¨´úÂë:");
+            Console.WriteLine($"Â¡Ãº Â¹Ã˜Â¼Ã¼Â¹Â¹Â½Â¨Â´ÃºÃ‚Ã«:");
             Console.WriteLine(csharpCode);
             Console.ResetColor();
 
-            Console.WriteLine($"¡ú ÄÚÈİÊä³ö (ToString): {expr}");
+            Console.WriteLine($"Â¡Ãº Ã„ÃšÃˆÃÃŠÃ¤Â³Ã¶ (ToString): {expr}");
 
-            // ĞòÁĞ»¯
+            // ÃÃ²ÃÃÂ»Â¯
             string json = JsonSerializer.Serialize(expr, _jsonOptions);
-            Console.WriteLine($"¡ú ĞòÁĞ»¯ (JSON):");
+            Console.WriteLine($"Â¡Ãº ÃÃ²ÃÃÂ»Â¯ (JSON):");
             Console.WriteLine(json);
 
-            // ·´ĞòÁĞ»¯²¢Ğ£Ñé
+            // Â·Â´ÃÃ²ÃÃÂ»Â¯Â²Â¢ÃÂ£Ã‘Ã©
             var deserialized = JsonSerializer.Deserialize<Expr>(json, _jsonOptions);
             bool isEqual = expr.Equals(deserialized);
-            Console.WriteLine($"¡ú ·´ĞòÁĞ»¯Ğ£Ñé: {(isEqual ? "Ò»ÖÂ ¡Ì" : "²»Ò»ÖÂ X")}");
+            Console.WriteLine($"Â¡Ãº Â·Â´ÃÃ²ÃÃÂ»Â¯ÃÂ£Ã‘Ã©: {(isEqual ? "Ã’Â»Ã–Ã‚ Â¡ÃŒ" : "Â²Â»Ã’Â»Ã–Ã‚ X")}");
         }
     }
 }

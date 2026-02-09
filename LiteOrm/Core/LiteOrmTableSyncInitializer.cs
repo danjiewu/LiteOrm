@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm 表同步初始化器，负责自动同步数据库表结构（创建表、添加列、创建索引）。
+    /// LiteOrm 卤铆脥卢虏陆鲁玫脢录禄炉脝梅拢卢赂潞脭冒脳脭露炉脥卢虏陆脢媒戮脻驴芒卤铆陆谩鹿鹿拢篓麓麓陆篓卤铆隆垄脤铆录脫脕脨隆垄麓麓陆篓脣梅脪媒拢漏隆拢
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public class LiteOrmTableSyncInitializer : IStartable
@@ -23,7 +23,7 @@ namespace LiteOrm
         private readonly DAOContextPoolFactory _daoContextPoolFactory;
 
         /// <summary>
-        /// 初始化 <see cref="LiteOrmTableSyncInitializer"/> 类的新实例
+        /// 鲁玫脢录禄炉 <see cref="LiteOrmTableSyncInitializer"/> 脌脿碌脛脨脗脢碌脌媒
         /// </summary>
         public LiteOrmTableSyncInitializer(
             IDataSourceProvider dataSourceProvider,
@@ -40,7 +40,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 启动时执行表同步逻辑。
+        /// 脝么露炉脢卤脰麓脨脨卤铆脥卢虏陆脗脽录颅隆拢
         /// </summary>
         public void Start()
         {
@@ -48,29 +48,29 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 自动同步数据库结构。
+        /// 脳脭露炉脥卢虏陆脢媒戮脻驴芒陆谩鹿鹿隆拢
         /// </summary>
         private void SyncTables()
         {
             var syncDataSources = _dataSourceProvider.Where(ds => ds.SyncTable).ToList();
             if (!syncDataSources.Any()) return;
 
-            _logger?.LogInformation("开始自动同步数据库结构...");
+            _logger?.LogInformation("驴陋脢录脳脭露炉脥卢虏陆脢媒戮脻驴芒陆谩鹿鹿...");
 
-            // 获取全部已加载程序集中的表实体映射定义
+            // 禄帽脠隆脠芦虏驴脪脩录脫脭脴鲁脤脨貌录炉脰脨碌脛卤铆脢碌脤氓脫鲁脡盲露篓脪氓
             var assemblies = AssemblyAnalyzer.GetAllReferencedAssemblies();
             var tableTypes = assemblies.SelectMany(a => a.GetTypes())
                                        .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null)
                                        .ToList();
 
-            // 按数据源名称和表名对实体类型进行分组
+            // 掳麓脢媒戮脻脭麓脙没鲁脝潞脥卤铆脙没露脭脢碌脤氓脌脿脨脥陆酶脨脨路脰脳茅
             var tableGroups = tableTypes.GroupBy(t =>
             {
                 var attr = t.GetCustomAttribute<TableAttribute>();
                 return (DataSource: attr.DataSource ?? _dataSourceProvider.DefaultDataSourceName, TableName: attr.TableName ?? t.Name);
             }).ToList();
 
-            // 循环执行各个数据源的同步任务
+            // 脩颅禄路脰麓脨脨赂梅赂枚脢媒戮脻脭麓碌脛脥卢虏陆脠脦脦帽
             var syncTasks = syncDataSources.Select(async ds =>
             {
                 var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(ds.ProviderType);
@@ -83,7 +83,7 @@ namespace LiteOrm
                 {
                     if (currentDsGroups.Any())
                     {
-                        _logger?.LogInformation("正在同步数据源 '{DataSource}'，包含 {Count} 个表和映射实体", ds.Name, currentDsGroups.Count);
+                        _logger?.LogInformation("脮媒脭脷脥卢虏陆脢媒戮脻脭麓 '{DataSource}'拢卢掳眉潞卢 {Count} 赂枚卤铆潞脥脫鲁脡盲脢碌脤氓", ds.Name, currentDsGroups.Count);
 
                         var context = pool.PeekContextInternal();
                         try
@@ -94,7 +94,7 @@ namespace LiteOrm
                                 foreach (var group in currentDsGroups)
                                 {
                                     string tableName = group.Key.TableName;
-                                    // 合并在此表名上映射的实体定义（支持多实体映射到同一个表）
+                                    // 潞脧虏垄脭脷麓脣卤铆脙没脡脧脫鲁脡盲碌脛脢碌脤氓露篓脪氓拢篓脰搂鲁脰露脿脢碌脤氓脫鲁脡盲碌陆脥卢脪禄赂枚卤铆拢漏
                                     var allColumns = new Dictionary<string, ColumnDefinition>(StringComparer.OrdinalIgnoreCase);
                                     TableDefinition firstTableDef = null;
 
@@ -113,14 +113,14 @@ namespace LiteOrm
 
                                     if (firstTableDef == null || allColumns.Count == 0) continue;
 
-                                    // 检查表是否存在
+                                    // 录矛虏茅卤铆脢脟路帽麓忙脭脷
                                     if (!await TableExistsAsync(context, sqlBuilder, tableName))
                                     {
-                                        _logger?.LogInformation("正在数据源 '{DataSource}' 中创建表 '{TableName}'", ds.Name, tableName);
+                                        _logger?.LogInformation("脮媒脭脷脢媒戮脻脭麓 '{DataSource}' 脰脨麓麓陆篓卤铆 '{TableName}'", ds.Name, tableName);
                                         string createSql = sqlBuilder.BuildCreateTableSql(tableName, allColumns.Values);
                                         await ExecuteSqlAsync(context, createSql);
 
-                                        // 创建索引 (包含索引列和唯一列)
+                                        // 麓麓陆篓脣梅脪媒 (掳眉潞卢脣梅脪媒脕脨潞脥脦篓脪禄脕脨)
                                         foreach (var col in allColumns.Values.Where(c => c.IsIndex || c.IsUnique))
                                         {
                                             try
@@ -130,22 +130,22 @@ namespace LiteOrm
                                             }
                                             catch (Exception ex)
                                             {
-                                                _logger?.LogWarning("为表 '{TableName}' 的列 '{ColumnName}' 创建索引失败: {Message}", tableName, col.Name, ex.Message);
+                                                _logger?.LogWarning("脦陋卤铆 '{TableName}' 碌脛脕脨 '{ColumnName}' 麓麓陆篓脣梅脪媒脢搂掳脺: {Message}", tableName, col.Name, ex.Message);
                                             }
                                         }
                                     }
                                     else
                                     {
-                                        // 表已存在，检查并补全缺失列
+                                        // 卤铆脪脩麓忙脭脷拢卢录矛虏茅虏垄虏鹿脠芦脠卤脢搂脕脨
                                         var existingColumns = await GetTableColumnsAsync(context, sqlBuilder.ToSqlName(tableName));
                                         var missingColumns = allColumns.Values.Where(col => !existingColumns.Contains(col.Name)).ToList();
                                         if (missingColumns.Any())
                                         {
-                                            _logger?.LogInformation("正在向数据源 '{DataSource}' 的表 '{TableName}' 添加 {Count} 个新列", ds.Name, tableName, missingColumns.Count);
+                                            _logger?.LogInformation("脮媒脭脷脧貌脢媒戮脻脭麓 '{DataSource}' 碌脛卤铆 '{TableName}' 脤铆录脫 {Count} 赂枚脨脗脕脨", ds.Name, tableName, missingColumns.Count);
                                             string addColsSql = sqlBuilder.BuildAddColumnsSql(tableName, missingColumns);
                                             await ExecuteSqlAsync(context, addColsSql);
 
-                                            // 为新添加的列创建索引 (已有列不用新建索引)
+                                            // 脦陋脨脗脤铆录脫碌脛脕脨麓麓陆篓脣梅脪媒 (脪脩脫脨脕脨虏禄脫脙脨脗陆篓脣梅脪媒)
                                             foreach (var col in missingColumns.Where(c => c.IsIndex || c.IsUnique))
                                             {
                                                 try
@@ -155,7 +155,7 @@ namespace LiteOrm
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    _logger?.LogWarning("为表 '{TableName}' 的新列 '{ColumnName}' 创建索引失败: {Message}", tableName, col.Name, ex.Message);
+                                                    _logger?.LogWarning("脦陋卤铆 '{TableName}' 碌脛脨脗脕脨 '{ColumnName}' 麓麓陆篓脣梅脪媒脢搂掳脺: {Message}", tableName, col.Name, ex.Message);
                                                 }
                                             }
                                         }
@@ -171,12 +171,12 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "同步数据源 '{DataSource}' 时发生异常", ds.Name);
+                    _logger?.LogError(ex, "脥卢虏陆脢媒戮脻脭麓 '{DataSource}' 脢卤路垄脡煤脪矛鲁拢", ds.Name);
                     throw;
                 }
                 finally
                 {
-                    // 标记该数据源初始化完成
+                    // 卤锚录脟赂脙脢媒戮脻脭麓鲁玫脢录禄炉脥锚鲁脡
                     pool.MarkInitialized();
                 }
             }).ToArray();
@@ -190,19 +190,19 @@ namespace LiteOrm
                 throw;
             }
 
-            _logger?.LogInformation("数据库表结构同步完成");
+            _logger?.LogInformation("脢媒戮脻驴芒卤铆陆谩鹿鹿脥卢虏陆脥锚鲁脡");
         }
 
         /// <summary>
-        /// 异步执行同步 SQL 语句。
+        /// 脪矛虏陆脰麓脨脨脥卢虏陆 SQL 脫茂戮盲隆拢
         /// </summary>
-        /// <param name="context">数据库上下文。</param>
-        /// <param name="sql">要执行的 SQL 语句。</param>
+        /// <param name="context">脢媒戮脻驴芒脡脧脧脗脦脛隆拢</param>
+        /// <param name="sql">脪陋脰麓脨脨碌脛 SQL 脫茂戮盲隆拢</param>
         private async Task ExecuteSqlAsync(DAOContext context, string sql)
         {
             try
             {
-                _logger?.LogInformation("正在执行 SQL: {Sql}", sql);
+                _logger?.LogInformation("脮媒脭脷脰麓脨脨 SQL: {Sql}", sql);
                 using (var cmd = context.DbConnection.CreateCommand())
                 {
                     cmd.CommandText = sql;
@@ -214,17 +214,17 @@ namespace LiteOrm
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning("执行同步 SQL 失败: {Sql}. {Message}", sql, ex.Message);
+                _logger?.LogWarning("脰麓脨脨脥卢虏陆 SQL 脢搂掳脺: {Sql}. {Message}", sql, ex.Message);
                 throw;
             }
         }
 
         /// <summary>
-        /// 异步获取数据库中已存在的列名集合。
+        /// 脪矛虏陆禄帽脠隆脢媒戮脻驴芒脰脨脪脩麓忙脭脷碌脛脕脨脙没录炉潞脧隆拢
         /// </summary>
-        /// <param name="context">数据库上下文。</param>
-        /// <param name="tableName">已转义的表名。</param>
-        /// <returns>列名集合。</returns>
+        /// <param name="context">脢媒戮脻驴芒脡脧脧脗脦脛隆拢</param>
+        /// <param name="tableName">脪脩脳陋脪氓碌脛卤铆脙没隆拢</param>
+        /// <returns>脕脨脙没录炉潞脧隆拢</returns>
         private async Task<HashSet<string>> GetTableColumnsAsync(DAOContext context, string tableName)
         {
             var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -267,12 +267,12 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 异步检查表是否存在。
+        /// 脪矛虏陆录矛虏茅卤铆脢脟路帽麓忙脭脷隆拢
         /// </summary>
-        /// <param name="context">数据库上下文。</param>
-        /// <param name="sqlBuilder">SQL 构建器。</param>
-        /// <param name="tableName">原始表名。</param>
-        /// <returns>如果表存在则返回 true，否则返回 false。</returns>
+        /// <param name="context">脢媒戮脻驴芒脡脧脧脗脦脛隆拢</param>
+        /// <param name="sqlBuilder">SQL 鹿鹿陆篓脝梅隆拢</param>
+        /// <param name="tableName">脭颅脢录卤铆脙没隆拢</param>
+        /// <returns>脠莽鹿没卤铆麓忙脭脷脭貌路碌禄脴 true拢卢路帽脭貌路碌禄脴 false隆拢</returns>
         private async Task<bool> TableExistsAsync(DAOContext context, SqlBuilder sqlBuilder, string tableName)
         {
             try

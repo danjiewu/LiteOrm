@@ -9,24 +9,24 @@ using System.Linq;
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm Lambda 处理器初始化器，负责注册 Lambda 表达式到 Expr 对象的转换句柄。
+    /// LiteOrm Lambda 麓娄脌铆脝梅鲁玫脢录禄炉脝梅拢卢赂潞脭冒脳垄虏谩 Lambda 卤铆麓茂脢陆碌陆 Expr 露脭脧贸碌脛脳陋禄禄戮盲卤煤隆拢
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public class LiteOrmLambdaHandlerInitializer : IStartable
     {
         /// <summary>
-        /// 启动时初始化 Lambda 处理器。
+        /// 脝么露炉脢卤鲁玫脢录禄炉 Lambda 麓娄脌铆脝梅隆拢
         /// </summary>
         public void Start()
         {
-            // 注册 Lambda 表达式转换到 Expr 对象的成员句柄 (如 DateTime.Now)
+            // 脳垄虏谩 Lambda 卤铆麓茂脢陆脳陋禄禄碌陆 Expr 露脭脧贸碌脛鲁脡脭卤戮盲卤煤 (脠莽 DateTime.Now)
             RegisterLambdaMemberHandlers();
-            // 注册 Lambda 表达式转换到 Expr 对象的方法句柄 (如 StartsWith, Contains)
+            // 脳垄虏谩 Lambda 卤铆麓茂脢陆脳陋禄禄碌陆 Expr 露脭脧贸碌脛路陆路篓戮盲卤煤 (脠莽 StartsWith, Contains)
             RegisterLambdaMethodHandlers();
         }
 
         /// <summary>
-        /// 注册 Lambda 表达式中的成员访问处理器（属性或字段）。
+        /// 脳垄虏谩 Lambda 卤铆麓茂脢陆脰脨碌脛鲁脡脭卤路脙脦脢麓娄脌铆脝梅拢篓脢么脨脭禄貌脳脰露脦拢漏隆拢
         /// </summary>
         private void RegisterLambdaMemberHandlers()
         {
@@ -36,7 +36,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 注册 Lambda 表达式中的方法调用处理器。
+        /// 脳垄虏谩 Lambda 卤铆麓茂脢陆脰脨碌脛路陆路篓碌梅脫脙麓娄脌铆脝梅隆拢
         /// </summary>
         private void RegisterLambdaMethodHandlers()
         {

@@ -3,17 +3,17 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 值类型表达式集合的连接方式。
+    /// 脰碌脌脿脨脥卤铆麓茂脢陆录炉潞脧碌脛脕卢陆脫路陆脢陆隆拢
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ValueJoinType
     {
         /// <summary>
-        /// 逗号分隔列表（如 IN (@p1, @p2)）
+        /// 露潞潞脜路脰赂么脕脨卤铆拢篓脠莽 IN (@p1, @p2)拢漏
         /// </summary>
         List = 0,
         /// <summary>
-        /// 字符串连接方式（如 CONCAT(s1, s2)）
+        /// 脳脰路没麓庐脕卢陆脫路陆脢陆拢篓脠莽 CONCAT(s1, s2)拢漏
         /// </summary>
         Concat = 3
     }

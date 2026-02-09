@@ -3,17 +3,17 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 逻辑表达式集合的连接方式。
+    /// 脗脽录颅卤铆麓茂脢陆录炉潞脧碌脛脕卢陆脫路陆脢陆隆拢
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum LogicJoinType
     {
         /// <summary>
-        /// 逻辑 AND 连接
+        /// 脗脽录颅 AND 脕卢陆脫
         /// </summary>
         And = 1,
         /// <summary>
-        /// 逻辑 OR 连接
+        /// 脗脽录颅 OR 脕卢陆脫
         /// </summary>
         Or = 2
     }

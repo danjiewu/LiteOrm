@@ -3,29 +3,29 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 支持的值二元操作符。
+    /// 脰搂鲁脰碌脛脰碌露镁脭陋虏脵脳梅路没隆拢
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ValueOperator
     {
         /// <summary>
-        /// 加法
+        /// 录脫路篓
         /// </summary>
         Add = 0,
         /// <summary>
-        /// 减法
+        /// 录玫路篓
         /// </summary>
         Subtract = 1,
         /// <summary>
-        /// 乘法
+        /// 鲁脣路篓
         /// </summary>
         Multiply = 2,
         /// <summary>
-        /// 除法
+        /// 鲁媒路篓
         /// </summary>
         Divide = 3,
         /// <summary>
-        /// 字符串连接
+        /// 脳脰路没麓庐脕卢陆脫
         /// </summary>
         Concat = 4
     }

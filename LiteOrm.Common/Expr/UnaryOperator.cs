@@ -3,17 +3,17 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 支持的一元操作符枚举。
+    /// 脰搂鲁脰碌脛脪禄脭陋虏脵脳梅路没脙露戮脵隆拢
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum UnaryOperator
     {
         /// <summary>
-        /// 算术负号 (-)
+        /// 脣茫脢玫赂潞潞脜 (-)
         /// </summary>
         Nagive = 0,
         /// <summary>
-        /// 按位取反 (~)
+        /// 掳麓脦禄脠隆路麓 (~)
         /// </summary>
         BitwiseNot = 1,
     }

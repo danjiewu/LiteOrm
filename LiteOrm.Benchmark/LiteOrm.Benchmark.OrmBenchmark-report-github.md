@@ -1,32 +1,32 @@
 
-# ORM 性能测试汇总报告 (Benchmark Summary)
+# ORM 脨脭脛脺虏芒脢脭禄茫脳脺卤篓赂忙 (Benchmark Summary)
 
-## 核心结论
-- **高吞吐性能**：在 1000 行及 5000 行的批量操作（Insert/Update/Upsert）中，**LiteOrm 性能全面领跑**，通常比 SqlSugar/FreeSql 快 1.5x - 2x，比 EF Core 快 10x 以上。
-- **内存控制**：LiteOrm 的内存分配（Allocated）显著低于其他功能完备型 ORM，尤其在处理 5000 行数据时，内存开销仅为 EF Core 的 1/20。
-- **查询效率**：在复杂 Join 查询场景下，LiteOrm 保持了与 Dapper 近乎一致的接近原生驱动的性能，且大幅优于 EF Core。
+## 潞脣脨脛陆谩脗脹
+- **赂脽脥脤脥脗脨脭脛脺**拢潞脭脷 1000 脨脨录掳 5000 脨脨碌脛脜煤脕驴虏脵脳梅拢篓Insert/Update/Upsert拢漏脰脨拢卢**LiteOrm 脨脭脛脺脠芦脙忙脕矛脜脺**拢卢脥篓鲁拢卤脠 SqlSugar/FreeSql 驴矛 1.5x - 2x拢卢卤脠 EF Core 驴矛 10x 脪脭脡脧隆拢
+- **脛脷麓忙驴脴脰脝**拢潞LiteOrm 碌脛脛脷麓忙路脰脜盲拢篓Allocated拢漏脧脭脰酶碌脥脫脷脝盲脣没鹿娄脛脺脥锚卤赂脨脥 ORM拢卢脫脠脝盲脭脷麓娄脌铆 5000 脨脨脢媒戮脻脢卤拢卢脛脷麓忙驴陋脧煤陆枚脦陋 EF Core 碌脛 1/20隆拢
+- **虏茅脩炉脨搂脗脢**拢潞脭脷赂麓脭脫 Join 虏茅脩炉鲁隆戮掳脧脗拢卢LiteOrm 卤拢鲁脰脕脣脫毛 Dapper 陆眉潞玫脪禄脰脗碌脛陆脫陆眉脭颅脡煤脟媒露炉碌脛脨脭脛脺拢卢脟脪麓贸路霉脫脜脫脷 EF Core隆拢
 
-## 汇总数据对比 (Mean Time)
+## 禄茫脳脺脢媒戮脻露脭卤脠 (Mean Time)
 
-### BatchCount: 100 (低数据量)
+### BatchCount: 100 (碌脥脢媒戮脻脕驴)
 
-| 操作类型 | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
+| 虏脵脳梅脌脿脨脥 | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Insert** | 29.20 ms | 4.79 ms | 4.98 ms | 19.47 ms | **4.11 ms** |
 | **Update** | 28.71 ms | 6.50 ms | **5.52 ms** | 18.65 ms | 6.18 ms |
 | **Upsert** | 25.62 ms | 12.20 ms | 5.94 ms | 21.36 ms | **5.27 ms** |
 | **Join Query** | 7.70 ms | 4.18 ms | 1.72 ms | **1.58 ms** | 1.80 ms |
 
-### BatchCount: 1000 (标准批量)
-| 操作类型 | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
+### BatchCount: 1000 (卤锚脳录脜煤脕驴)
+| 虏脵脳梅脌脿脨脥 | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Insert** | 164.40 ms | 22.38 ms | **11.70 ms** | 144.11 ms | 23.40 ms |
 | **Update** | 144.93 ms | 43.78 ms | **19.54 ms** | 146.34 ms | 52.44 ms |
 | **Upsert** | 189.01 ms | 76.90 ms | 19.44 ms | 198.64 ms | **17.63 ms** |
 | **Join Query** | 19.99 ms | 25.79 ms | 14.14 ms | 13.95 ms | **13.93 ms** |
 
-### BatchCount: 5000 (大规模数据)
-| 操作类型 | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
+### BatchCount: 5000 (麓贸鹿忙脛拢脢媒戮脻)
+| 虏脵脳梅脌脿脨脥 | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Insert** | 835.13 ms | 72.92 ms | **42.85 ms** | 634.74 ms | 78.30 ms |
 | **Update** | 760.63 ms | 197.20 ms | **76.32 ms** | 749.42 ms | 146.56 ms |
@@ -35,7 +35,7 @@
 
 ---
 
-# 原始数据报告 (Original Report)
+# 脭颅脢录脢媒戮脻卤篓赂忙 (Original Report)
 ```
 BenchmarkDotNet v0.15.8, Windows 11 (10.0.22631.6199/23H2/2023Update/SunValley3)
 13th Gen Intel Core i5-13400F 2.50GHz, 1 CPU, 16 logical and 10 physical cores

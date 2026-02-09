@@ -6,14 +6,14 @@ using System.Linq;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 数据库表的引用
+    /// 脢媒戮脻驴芒卤铆碌脛脪媒脫脙
     /// </summary>
     public abstract class TableRef : SqlObject
     {
         /// <summary>
-        /// 创建数据库表的引用
+        /// 麓麓陆篓脢媒戮脻驴芒卤铆碌脛脪媒脫脙
         /// </summary>
-        /// <param name="table">引用的数据库表定义</param>
+        /// <param name="table">脪媒脫脙碌脛脢媒戮脻驴芒卤铆露篓脪氓</param>
         public TableRef(TableDefinition table)
         {
             _tableDefinition = table;
@@ -26,7 +26,7 @@ namespace LiteOrm.Common
         private ConcurrentDictionary<string, ColumnRef> _namedColumnCache = new ConcurrentDictionary<string, ColumnRef>();
 
         /// <summary>
-        /// 对应数据库表的定义
+        /// 露脭脫娄脢媒戮脻驴芒卤铆碌脛露篓脪氓
         /// </summary>
         public TableDefinition TableDefinition
         {
@@ -34,7 +34,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 数据库表的列信息
+        /// 脢媒戮脻驴芒卤铆碌脛脕脨脨脜脧垄
         /// </summary>
         public ReadOnlyCollection<ColumnRef> Columns
         {
@@ -42,7 +42,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 属性名对应列的缓存
+        /// 脢么脨脭脙没露脭脫娄脕脨碌脛禄潞麓忙
         /// </summary>
         protected ConcurrentDictionary<string, ColumnRef> NamedColumnCache
         {
@@ -58,10 +58,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 根据属性名获得列定义，忽略大小写
+        /// 赂霉戮脻脢么脨脭脙没禄帽碌脙脕脨露篓脪氓拢卢潞枚脗脭麓贸脨隆脨麓
         /// </summary>
-        /// <param name="propertyName">属性名</param>
-        /// <returns>列定义，列名不存在则返回null</returns>
+        /// <param name="propertyName">脢么脨脭脙没</param>
+        /// <returns>脕脨露篓脪氓拢卢脕脨脙没虏禄麓忙脭脷脭貌路碌禄脴null</returns>
         public virtual ColumnRef GetColumn(string propertyName)
         {
             if (String.IsNullOrEmpty(propertyName)) return null;
@@ -71,7 +71,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 确定指定的对象是否等于当前对象。
+        /// 脠路露篓脰赂露篓碌脛露脭脧贸脢脟路帽碌脠脫脷碌卤脟掳露脭脧贸隆拢
         /// </summary>
         public override bool Equals(object obj)
         {
@@ -82,7 +82,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 获取哈希码。
+        /// 禄帽脠隆鹿镁脧拢脗毛隆拢
         /// </summary>
         public override int GetHashCode()
         {

@@ -1,35 +1,35 @@
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 列操作模式的扩展方法
+    /// 脕脨虏脵脳梅脛拢脢陆碌脛脌漏脮鹿路陆路篓
     /// </summary>
     public static class ColumnModeExt
     {
         /// <summary>
-        /// 检查列模式是否允许插入操作
+        /// 录矛虏茅脕脨脛拢脢陆脢脟路帽脭脢脨铆虏氓脠毛虏脵脳梅
         /// </summary>
-        /// <param name="mode">列操作模式</param>
-        /// <returns>如果允许插入则返回true，否则返回false</returns>
+        /// <param name="mode">脕脨虏脵脳梅脛拢脢陆</param>
+        /// <returns>脠莽鹿没脭脢脨铆虏氓脠毛脭貌路碌禄脴true拢卢路帽脭貌路碌禄脴false</returns>
         public static bool CanInsert(this ColumnMode mode)
         {
             return (mode & ColumnMode.Insert) != ColumnMode.None;
         }
 
         /// <summary>
-        /// 检查列模式是否允许更新操作
+        /// 录矛虏茅脕脨脛拢脢陆脢脟路帽脭脢脨铆赂眉脨脗虏脵脳梅
         /// </summary>
-        /// <param name="mode">列操作模式</param>
-        /// <returns>如果允许更新则返回true，否则返回false</returns>
+        /// <param name="mode">脕脨虏脵脳梅脛拢脢陆</param>
+        /// <returns>脠莽鹿没脭脢脨铆赂眉脨脗脭貌路碌禄脴true拢卢路帽脭貌路碌禄脴false</returns>
         public static bool CanUpdate(this ColumnMode mode)
         {
             return (mode & ColumnMode.Update) != ColumnMode.None;
         }
 
         /// <summary>
-        /// 检查列模式是否允许读取操作
+        /// 录矛虏茅脕脨脛拢脢陆脢脟路帽脭脢脨铆露脕脠隆虏脵脳梅
         /// </summary>
-        /// <param name="mode">列操作模式</param>
-        /// <returns>如果允许读取则返回true，否则返回false</returns>
+        /// <param name="mode">脕脨虏脵脳梅脛拢脢陆</param>
+        /// <returns>脠莽鹿没脭脢脨铆露脕脠隆脭貌路碌禄脴true拢卢路帽脭貌路碌禄脴false</returns>
         public static bool CanRead(this ColumnMode mode)
         {
             return (mode & ColumnMode.Read) != ColumnMode.None;

@@ -1,12 +1,12 @@
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 为逻辑二元操作符提供的便捷扩展工具。
+    /// 脦陋脗脽录颅露镁脭陋虏脵脳梅路没脤谩鹿漏碌脛卤茫陆脻脌漏脮鹿鹿陇戮脽隆拢
     /// </summary>
     public static class LogicBinaryOperatorExt
     {
         /// <summary>
-        /// 检查指定的操作符是否含有 NOT 标志。
+        /// 录矛虏茅脰赂露篓碌脛虏脵脳梅路没脢脟路帽潞卢脫脨 NOT 卤锚脰戮隆拢
         /// </summary>
         public static bool IsNot(this LogicOperator oper)
         {
@@ -14,7 +14,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 获取去掉 NOT 标志后的正向操作符。
+        /// 禄帽脠隆脠楼碌么 NOT 卤锚脰戮潞贸碌脛脮媒脧貌虏脵脳梅路没隆拢
         /// </summary>
         public static LogicOperator Positive(this LogicOperator oper)
         {
@@ -22,7 +22,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 获取当前操作符的反向版本（取反）。
+        /// 禄帽脠隆碌卤脟掳虏脵脳梅路没碌脛路麓脧貌掳忙卤戮拢篓脠隆路麓拢漏隆拢
         /// </summary>
         public static LogicOperator Opposite(this LogicOperator oper)
         {

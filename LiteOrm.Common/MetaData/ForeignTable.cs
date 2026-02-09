@@ -3,17 +3,17 @@ using System;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 外部表信息，用于描述关联的外部表
+    /// 脥芒虏驴卤铆脨脜脧垄拢卢脫脙脫脷脙猫脢枚鹿脴脕陋碌脛脥芒虏驴卤铆
     /// </summary>
     public class ForeignTable
     {
         /// <summary>
-        /// 外部表对应的实体类型
+        /// 脥芒虏驴卤铆露脭脫娄碌脛脢碌脤氓脌脿脨脥
         /// </summary>
         public Type ForeignType { get; set; }
 
         /// <summary>
-        /// 过滤表达式，用于定义关联条件
+        /// 鹿媒脗脣卤铆麓茂脢陆拢卢脫脙脫脷露篓脪氓鹿脴脕陋脤玫录镁
         /// </summary>
         public string FilterExpression { get; set; }
     }

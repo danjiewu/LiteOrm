@@ -1,14 +1,14 @@
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 列的引用
+    /// 脕脨碌脛脪媒脫脙
     /// </summary>
     public class ColumnRef : SqlObject
     {
         /// <summary>
-        /// 创建列的引用
+        /// 麓麓陆篓脕脨碌脛脪媒脫脙
         /// </summary>
-        /// <param name="column">列信息</param>
+        /// <param name="column">脕脨脨脜脧垄</param>
         public ColumnRef(SqlColumn column)
         {
             Name = column.Name;
@@ -16,10 +16,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 创建指定表的列引用
+        /// 麓麓陆篓脰赂露篓卤铆碌脛脕脨脪媒脫脙
         /// </summary>
-        /// <param name="table">表</param>
-        /// <param name="column">列引用</param>
+        /// <param name="table">卤铆</param>
+        /// <param name="column">脕脨脪媒脫脙</param>
         public ColumnRef(TableRef table, SqlColumn column)
         {
             Name = column.Name;
@@ -29,7 +29,7 @@ namespace LiteOrm.Common
 
         private TableRef _table;
         /// <summary>
-        /// 列所在的表
+        /// 脕脨脣霉脭脷碌脛卤铆
         /// </summary>
         public TableRef Table
         {
@@ -39,7 +39,7 @@ namespace LiteOrm.Common
 
         private SqlColumn _column;
         /// <summary>
-        /// 列信息
+        /// 脕脨脨脜脧垄
         /// </summary>
         public SqlColumn Column
         {
@@ -47,7 +47,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 确定指定的对象是否等于当前对象。
+        /// 脠路露篓脰赂露篓碌脛露脭脧贸脢脟路帽碌脠脫脷碌卤脟掳露脭脧贸隆拢
         /// </summary>
         public override bool Equals(object obj)
         {
@@ -58,7 +58,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 获取哈希码。
+        /// 禄帽脠隆鹿镁脧拢脗毛隆拢
         /// </summary>
         public override int GetHashCode()
         {

@@ -5,20 +5,20 @@ using System.Reflection;
 namespace LiteOrm
 {
     /// <summary>
-    /// 程序集分析器
+    /// 鲁脤脨貌录炉路脰脦枚脝梅
     /// </summary>
     public static class AssemblyAnalyzer
     {
         /// <summary>
-        /// 获取所有直接引用的程序集名称及当前加载的程序集
+        /// 禄帽脠隆脣霉脫脨脰卤陆脫脪媒脫脙碌脛鲁脤脨貌录炉脙没鲁脝录掳碌卤脟掳录脫脭脴碌脛鲁脤脨貌录炉
         /// </summary>
-        /// <param name="entryAssembly">入口程序集</param>
-        /// <returns>所有相关的程序集集合</returns>
+        /// <param name="entryAssembly">脠毛驴脷鲁脤脨貌录炉</param>
+        /// <returns>脣霉脫脨脧脿鹿脴碌脛鲁脤脨貌录炉录炉潞脧</returns>
         public static IEnumerable<Assembly> GetAllReferencedAssemblies(Assembly entryAssembly = null)
         {
             var result = new HashSet<Assembly>();
 
-            // 1. 获取所有已经加载的非系统程序集
+            // 1. 禄帽脠隆脣霉脫脨脪脩戮颅录脫脭脴碌脛路脟脧碌脥鲁鲁脤脨貌录炉
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 if (!assembly.IsDynamic && !IsSystemAssembly(assembly))
@@ -27,7 +27,7 @@ namespace LiteOrm
                 }
             }
 
-            // 2. 从入口程序集开始递归查找
+            // 2. 麓脫脠毛驴脷鲁脤脨貌录炉驴陋脢录碌脻鹿茅虏茅脮脪
             entryAssembly ??= Assembly.GetEntryAssembly();
             if (entryAssembly != null)
             {

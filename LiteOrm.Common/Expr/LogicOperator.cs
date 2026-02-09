@@ -3,85 +3,85 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 支持的逻辑二元操作符。
+    /// 脰搂鲁脰碌脛脗脽录颅露镁脭陋虏脵脳梅路没隆拢
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum LogicOperator
     {
         /// <summary>
-        /// 等于
+        /// 碌脠脫脷
         /// </summary>
         Equal = 0,
         /// <summary>
-        /// 大于
+        /// 麓贸脫脷
         /// </summary>
         GreaterThan = 1,
         /// <summary>
-        /// 小于
+        /// 脨隆脫脷
         /// </summary>
         LessThan = 2,
         /// <summary>
-        /// 以指定字符串为开头
+        /// 脪脭脰赂露篓脳脰路没麓庐脦陋驴陋脥路
         /// </summary>
         StartsWith = 3,
         /// <summary>
-        /// 以指定字符串为结尾
+        /// 脪脭脰赂露篓脳脰路没麓庐脦陋陆谩脦虏
         /// </summary>
         EndsWith = 4,
         /// <summary>
-        /// 包含指定字符串
+        /// 掳眉潞卢脰赂露篓脳脰路没麓庐
         /// </summary>
         Contains = 5,
         /// <summary>
-        /// 匹配字符串通配符
+        /// 脝楼脜盲脳脰路没麓庐脥篓脜盲路没
         /// </summary>
         Like = 6,
         /// <summary>
-        /// 是否在集合内
+        /// 脢脟路帽脭脷录炉潞脧脛脷
         /// </summary>
         In = 7,
         /// <summary>
-        /// 正则表达式匹配
+        /// 脮媒脭貌卤铆麓茂脢陆脝楼脜盲
         /// </summary>
         RegexpLike = 8,
         /// <summary>
-        /// 逻辑非标识。
+        /// 脗脽录颅路脟卤锚脢露隆拢
         /// </summary>
         Not = 64,
         /// <summary>
-        /// 不等于
+        /// 虏禄碌脠脫脷
         /// </summary>
         NotEqual = Equal | Not,
         /// <summary>
-        /// 大于等于
+        /// 麓贸脫脷碌脠脫脷
         /// </summary>
         GreaterThanOrEqual = LessThan | Not,
         /// <summary>
-        /// 小于等于
+        /// 脨隆脫脷碌脠脫脷
         /// </summary>
         LessThanOrEqual = GreaterThan | Not,
         /// <summary>
-        /// 不以指定字符串为开头
+        /// 虏禄脪脭脰赂露篓脳脰路没麓庐脦陋驴陋脥路
         /// </summary>
         NotStartsWith = StartsWith | Not,
         /// <summary>
-        /// 不以指定字符串为结尾
+        /// 虏禄脪脭脰赂露篓脳脰路没麓庐脦陋陆谩脦虏
         /// </summary>
         NotEndsWith = EndsWith | Not,
         /// <summary>
-        /// 不包含指定字符串
+        /// 虏禄掳眉潞卢脰赂露篓脳脰路没麓庐
         /// </summary>
         NotContains = Contains | Not,
         /// <summary>
-        /// 不匹配字符串通配符
+        /// 虏禄脝楼脜盲脳脰路没麓庐脥篓脜盲路没
         /// </summary>
         NotLike = Like | Not,
         /// <summary>
-        /// 不在集合内
+        /// 虏禄脭脷录炉潞脧脛脷
         /// </summary>
         NotIn = In | Not,
         /// <summary>
-        /// 不匹配正则表达式
+        /// 虏禄脝楼脜盲脮媒脭貌卤铆麓茂脢陆
         /// </summary>
         NotRegexpLike = RegexpLike | Not
     }
