@@ -3,37 +3,37 @@ using System;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ÁĞ²Ù×÷Ä£Ê½
+    /// åˆ—æ“ä½œæ¨¡å¼
     /// </summary>
     [Flags]
     public enum ColumnMode
     {
         /// <summary>
-        /// ËùÓĞ²Ù×÷
+        /// æ‰€æœ‰æ“ä½œ
         /// </summary>
         Full = Read | Update | Insert,
         /// <summary>
-        /// ÎŞ
+        /// æ— 
         /// </summary>
         None = 0,
         /// <summary>
-        /// ´ÓÊı¾İ¿âÖĞ¶Á
+        /// ä»æ•°æ®åº“ä¸­è¯»
         /// </summary>
         Read = 1,
         /// <summary>
-        /// ÏòÊı¾İ¿â¸üĞÂ
+        /// å‘æ•°æ®åº“æ›´æ–°
         /// </summary>
         Update = 2,
         /// <summary>
-        /// ÏòÊı¾İ¿âÌí¼Ó
+        /// å‘æ•°æ®åº“æ·»åŠ 
         /// </summary>
         Insert = 4,
         /// <summary>
-        /// Ö»Ğ´
+        /// åªå†™
         /// </summary>
         Write = Insert | Update,
         /// <summary>
-        /// ²»¿É¸ü¸Ä
+        /// ä¸å¯æ›´æ”¹
         /// </summary>
         Final = Insert | Read
     }

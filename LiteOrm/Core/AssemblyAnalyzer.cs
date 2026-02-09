@@ -5,20 +5,20 @@ using System.Reflection;
 namespace LiteOrm
 {
     /// <summary>
-    /// ³ÌĞò¼¯·ÖÎöÆ÷
+    /// ç¨‹åºé›†åˆ†æå™¨
     /// </summary>
     public static class AssemblyAnalyzer
     {
         /// <summary>
-        /// »ñÈ¡ËùÓĞÖ±½ÓÒıÓÃµÄ³ÌĞò¼¯Ãû³Æ¼°µ±Ç°¼ÓÔØµÄ³ÌĞò¼¯
+        /// è·å–æ‰€æœ‰ç›´æ¥å¼•ç”¨çš„ç¨‹åºé›†åç§°åŠå½“å‰åŠ è½½çš„ç¨‹åºé›†
         /// </summary>
-        /// <param name="entryAssembly">Èë¿Ú³ÌĞò¼¯</param>
-        /// <returns>ËùÓĞÏà¹ØµÄ³ÌĞò¼¯¼¯ºÏ</returns>
+        /// <param name="entryAssembly">å…¥å£ç¨‹åºé›†</param>
+        /// <returns>æ‰€æœ‰ç›¸å…³çš„ç¨‹åºé›†é›†åˆ</returns>
         public static IEnumerable<Assembly> GetAllReferencedAssemblies(Assembly entryAssembly = null)
         {
             var result = new HashSet<Assembly>();
 
-            // 1. »ñÈ¡ËùÓĞÒÑ¾­¼ÓÔØµÄ·ÇÏµÍ³³ÌĞò¼¯
+            // 1. è·å–æ‰€æœ‰å·²ç»åŠ è½½çš„éç³»ç»Ÿç¨‹åºé›†
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 if (!assembly.IsDynamic && !IsSystemAssembly(assembly))
@@ -27,7 +27,7 @@ namespace LiteOrm
                 }
             }
 
-            // 2. ´ÓÈë¿Ú³ÌĞò¼¯¿ªÊ¼µİ¹é²éÕÒ
+            // 2. ä»å…¥å£ç¨‹åºé›†å¼€å§‹é€’å½’æŸ¥æ‰¾
             entryAssembly ??= Assembly.GetEntryAssembly();
             if (entryAssembly != null)
             {

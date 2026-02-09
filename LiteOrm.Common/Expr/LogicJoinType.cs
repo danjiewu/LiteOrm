@@ -3,17 +3,17 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// Âß¼­±í´ïÊ½¼¯ºÏµÄÁ¬½Ó·½Ê½¡£
+    /// é€»è¾‘è¡¨è¾¾å¼é›†åˆçš„è¿æ¥æ–¹å¼ã€‚
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum LogicJoinType
     {
         /// <summary>
-        /// Âß¼­ AND Á¬½Ó
+        /// é€»è¾‘ AND è¿æ¥
         /// </summary>
         And = 1,
         /// <summary>
-        /// Âß¼­ OR Á¬½Ó
+        /// é€»è¾‘ OR è¿æ¥
         /// </summary>
         Or = 2
     }

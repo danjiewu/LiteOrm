@@ -6,14 +6,14 @@ using System.Linq;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// Êı¾İ¿â±íµÄÒıÓÃ
+    /// æ•°æ®åº“è¡¨çš„å¼•ç”¨
     /// </summary>
     public abstract class TableRef : SqlObject
     {
         /// <summary>
-        /// ´´½¨Êı¾İ¿â±íµÄÒıÓÃ
+        /// åˆ›å»ºæ•°æ®åº“è¡¨çš„å¼•ç”¨
         /// </summary>
-        /// <param name="table">ÒıÓÃµÄÊı¾İ¿â±í¶¨Òå</param>
+        /// <param name="table">å¼•ç”¨çš„æ•°æ®åº“è¡¨å®šä¹‰</param>
         public TableRef(TableDefinition table)
         {
             _tableDefinition = table;
@@ -26,7 +26,7 @@ namespace LiteOrm.Common
         private ConcurrentDictionary<string, ColumnRef> _namedColumnCache = new ConcurrentDictionary<string, ColumnRef>();
 
         /// <summary>
-        /// ¶ÔÓ¦Êı¾İ¿â±íµÄ¶¨Òå
+        /// å¯¹åº”æ•°æ®åº“è¡¨çš„å®šä¹‰
         /// </summary>
         public TableDefinition TableDefinition
         {
@@ -34,7 +34,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// Êı¾İ¿â±íµÄÁĞĞÅÏ¢
+        /// æ•°æ®åº“è¡¨çš„åˆ—ä¿¡æ¯
         /// </summary>
         public ReadOnlyCollection<ColumnRef> Columns
         {
@@ -42,7 +42,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ÊôĞÔÃû¶ÔÓ¦ÁĞµÄ»º´æ
+        /// å±æ€§åå¯¹åº”åˆ—çš„ç¼“å­˜
         /// </summary>
         protected ConcurrentDictionary<string, ColumnRef> NamedColumnCache
         {
@@ -58,10 +58,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ¸ù¾İÊôĞÔÃû»ñµÃÁĞ¶¨Òå£¬ºöÂÔ´óĞ¡Ğ´
+        /// æ ¹æ®å±æ€§åè·å¾—åˆ—å®šä¹‰ï¼Œå¿½ç•¥å¤§å°å†™
         /// </summary>
-        /// <param name="propertyName">ÊôĞÔÃû</param>
-        /// <returns>ÁĞ¶¨Òå£¬ÁĞÃû²»´æÔÚÔò·µ»Ønull</returns>
+        /// <param name="propertyName">å±æ€§å</param>
+        /// <returns>åˆ—å®šä¹‰ï¼Œåˆ—åä¸å­˜åœ¨åˆ™è¿”å›null</returns>
         public virtual ColumnRef GetColumn(string propertyName)
         {
             if (String.IsNullOrEmpty(propertyName)) return null;
@@ -71,7 +71,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// ç¡®å®šæŒ‡å®šçš„å¯¹è±¡æ˜¯å¦ç­‰äºå½“å‰å¯¹è±¡ã€‚
         /// </summary>
         public override bool Equals(object obj)
         {
@@ -82,7 +82,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// »ñÈ¡¹şÏ£Âë¡£
+        /// è·å–å“ˆå¸Œç ã€‚
         /// </summary>
         public override int GetHashCode()
         {

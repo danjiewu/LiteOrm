@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm ±íÍ¬²½³õÊ¼»¯Æ÷£¬¸ºÔğ×Ô¶¯Í¬²½Êı¾İ¿â±í½á¹¹£¨´´½¨±í¡¢Ìí¼ÓÁĞ¡¢´´½¨Ë÷Òı£©¡£
+    /// LiteOrm è¡¨åŒæ­¥åˆå§‹åŒ–å™¨ï¼Œè´Ÿè´£è‡ªåŠ¨åŒæ­¥æ•°æ®åº“è¡¨ç»“æ„ï¼ˆåˆ›å»ºè¡¨ã€æ·»åŠ åˆ—ã€åˆ›å»ºç´¢å¼•ï¼‰ã€‚
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public class LiteOrmTableSyncInitializer : IStartable
@@ -23,7 +23,7 @@ namespace LiteOrm
         private readonly DAOContextPoolFactory _daoContextPoolFactory;
 
         /// <summary>
-        /// ³õÊ¼»¯ <see cref="LiteOrmTableSyncInitializer"/> ÀàµÄĞÂÊµÀı
+        /// åˆå§‹åŒ– <see cref="LiteOrmTableSyncInitializer"/> ç±»çš„æ–°å®ä¾‹
         /// </summary>
         public LiteOrmTableSyncInitializer(
             IDataSourceProvider dataSourceProvider,
@@ -40,7 +40,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// Æô¶¯Ê±Ö´ĞĞ±íÍ¬²½Âß¼­¡£
+        /// å¯åŠ¨æ—¶æ‰§è¡Œè¡¨åŒæ­¥é€»è¾‘ã€‚
         /// </summary>
         public void Start()
         {
@@ -48,29 +48,29 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// ×Ô¶¯Í¬²½Êı¾İ¿â½á¹¹¡£
+        /// è‡ªåŠ¨åŒæ­¥æ•°æ®åº“ç»“æ„ã€‚
         /// </summary>
         private void SyncTables()
         {
             var syncDataSources = _dataSourceProvider.Where(ds => ds.SyncTable).ToList();
             if (!syncDataSources.Any()) return;
 
-            _logger?.LogInformation("¿ªÊ¼×Ô¶¯Í¬²½Êı¾İ¿â½á¹¹...");
+            _logger?.LogInformation("å¼€å§‹è‡ªåŠ¨åŒæ­¥æ•°æ®åº“ç»“æ„...");
 
-            // »ñÈ¡È«²¿ÒÑ¼ÓÔØ³ÌĞò¼¯ÖĞµÄ±íÊµÌåÓ³Éä¶¨Òå
+            // è·å–å…¨éƒ¨å·²åŠ è½½ç¨‹åºé›†ä¸­çš„è¡¨å®ä½“æ˜ å°„å®šä¹‰
             var assemblies = AssemblyAnalyzer.GetAllReferencedAssemblies();
             var tableTypes = assemblies.SelectMany(a => a.GetTypes())
                                        .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null)
                                        .ToList();
 
-            // °´Êı¾İÔ´Ãû³ÆºÍ±íÃû¶ÔÊµÌåÀàĞÍ½øĞĞ·Ö×é
+            // æŒ‰æ•°æ®æºåç§°å’Œè¡¨åå¯¹å®ä½“ç±»å‹è¿›è¡Œåˆ†ç»„
             var tableGroups = tableTypes.GroupBy(t =>
             {
                 var attr = t.GetCustomAttribute<TableAttribute>();
                 return (DataSource: attr.DataSource ?? _dataSourceProvider.DefaultDataSourceName, TableName: attr.TableName ?? t.Name);
             }).ToList();
 
-            // Ñ­»·Ö´ĞĞ¸÷¸öÊı¾İÔ´µÄÍ¬²½ÈÎÎñ
+            // å¾ªç¯æ‰§è¡Œå„ä¸ªæ•°æ®æºçš„åŒæ­¥ä»»åŠ¡
             var syncTasks = syncDataSources.Select(async ds =>
             {
                 var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(ds.ProviderType);
@@ -83,7 +83,7 @@ namespace LiteOrm
                 {
                     if (currentDsGroups.Any())
                     {
-                        _logger?.LogInformation("ÕıÔÚÍ¬²½Êı¾İÔ´ '{DataSource}'£¬°üº¬ {Count} ¸ö±íºÍÓ³ÉäÊµÌå", ds.Name, currentDsGroups.Count);
+                        _logger?.LogInformation("æ­£åœ¨åŒæ­¥æ•°æ®æº '{DataSource}'ï¼ŒåŒ…å« {Count} ä¸ªè¡¨å’Œæ˜ å°„å®ä½“", ds.Name, currentDsGroups.Count);
 
                         var context = pool.PeekContextInternal();
                         try
@@ -94,7 +94,7 @@ namespace LiteOrm
                                 foreach (var group in currentDsGroups)
                                 {
                                     string tableName = group.Key.TableName;
-                                    // ºÏ²¢ÔÚ´Ë±íÃûÉÏÓ³ÉäµÄÊµÌå¶¨Òå£¨Ö§³Ö¶àÊµÌåÓ³Éäµ½Í¬Ò»¸ö±í£©
+                                    // åˆå¹¶åœ¨æ­¤è¡¨åä¸Šæ˜ å°„çš„å®ä½“å®šä¹‰ï¼ˆæ”¯æŒå¤šå®ä½“æ˜ å°„åˆ°åŒä¸€ä¸ªè¡¨ï¼‰
                                     var allColumns = new Dictionary<string, ColumnDefinition>(StringComparer.OrdinalIgnoreCase);
                                     TableDefinition firstTableDef = null;
 
@@ -113,14 +113,14 @@ namespace LiteOrm
 
                                     if (firstTableDef == null || allColumns.Count == 0) continue;
 
-                                    // ¼ì²é±íÊÇ·ñ´æÔÚ
+                                    // æ£€æŸ¥è¡¨æ˜¯å¦å­˜åœ¨
                                     if (!await TableExistsAsync(context, sqlBuilder, tableName))
                                     {
-                                        _logger?.LogInformation("ÕıÔÚÊı¾İÔ´ '{DataSource}' ÖĞ´´½¨±í '{TableName}'", ds.Name, tableName);
+                                        _logger?.LogInformation("æ­£åœ¨æ•°æ®æº '{DataSource}' ä¸­åˆ›å»ºè¡¨ '{TableName}'", ds.Name, tableName);
                                         string createSql = sqlBuilder.BuildCreateTableSql(tableName, allColumns.Values);
                                         await ExecuteSqlAsync(context, createSql);
 
-                                        // ´´½¨Ë÷Òı (°üº¬Ë÷ÒıÁĞºÍÎ¨Ò»ÁĞ)
+                                        // åˆ›å»ºç´¢å¼• (åŒ…å«ç´¢å¼•åˆ—å’Œå”¯ä¸€åˆ—)
                                         foreach (var col in allColumns.Values.Where(c => c.IsIndex || c.IsUnique))
                                         {
                                             try
@@ -130,22 +130,22 @@ namespace LiteOrm
                                             }
                                             catch (Exception ex)
                                             {
-                                                _logger?.LogWarning("Îª±í '{TableName}' µÄÁĞ '{ColumnName}' ´´½¨Ë÷ÒıÊ§°Ü: {Message}", tableName, col.Name, ex.Message);
+                                                _logger?.LogWarning("ä¸ºè¡¨ '{TableName}' çš„åˆ— '{ColumnName}' åˆ›å»ºç´¢å¼•å¤±è´¥: {Message}", tableName, col.Name, ex.Message);
                                             }
                                         }
                                     }
                                     else
                                     {
-                                        // ±íÒÑ´æÔÚ£¬¼ì²é²¢²¹È«È±Ê§ÁĞ
+                                        // è¡¨å·²å­˜åœ¨ï¼Œæ£€æŸ¥å¹¶è¡¥å…¨ç¼ºå¤±åˆ—
                                         var existingColumns = await GetTableColumnsAsync(context, sqlBuilder.ToSqlName(tableName));
                                         var missingColumns = allColumns.Values.Where(col => !existingColumns.Contains(col.Name)).ToList();
                                         if (missingColumns.Any())
                                         {
-                                            _logger?.LogInformation("ÕıÔÚÏòÊı¾İÔ´ '{DataSource}' µÄ±í '{TableName}' Ìí¼Ó {Count} ¸öĞÂÁĞ", ds.Name, tableName, missingColumns.Count);
+                                            _logger?.LogInformation("æ­£åœ¨å‘æ•°æ®æº '{DataSource}' çš„è¡¨ '{TableName}' æ·»åŠ  {Count} ä¸ªæ–°åˆ—", ds.Name, tableName, missingColumns.Count);
                                             string addColsSql = sqlBuilder.BuildAddColumnsSql(tableName, missingColumns);
                                             await ExecuteSqlAsync(context, addColsSql);
 
-                                            // ÎªĞÂÌí¼ÓµÄÁĞ´´½¨Ë÷Òı (ÒÑÓĞÁĞ²»ÓÃĞÂ½¨Ë÷Òı)
+                                            // ä¸ºæ–°æ·»åŠ çš„åˆ—åˆ›å»ºç´¢å¼• (å·²æœ‰åˆ—ä¸ç”¨æ–°å»ºç´¢å¼•)
                                             foreach (var col in missingColumns.Where(c => c.IsIndex || c.IsUnique))
                                             {
                                                 try
@@ -155,7 +155,7 @@ namespace LiteOrm
                                                 }
                                                 catch (Exception ex)
                                                 {
-                                                    _logger?.LogWarning("Îª±í '{TableName}' µÄĞÂÁĞ '{ColumnName}' ´´½¨Ë÷ÒıÊ§°Ü: {Message}", tableName, col.Name, ex.Message);
+                                                    _logger?.LogWarning("ä¸ºè¡¨ '{TableName}' çš„æ–°åˆ— '{ColumnName}' åˆ›å»ºç´¢å¼•å¤±è´¥: {Message}", tableName, col.Name, ex.Message);
                                                 }
                                             }
                                         }
@@ -171,12 +171,12 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Í¬²½Êı¾İÔ´ '{DataSource}' Ê±·¢ÉúÒì³£", ds.Name);
+                    _logger?.LogError(ex, "åŒæ­¥æ•°æ®æº '{DataSource}' æ—¶å‘ç”Ÿå¼‚å¸¸", ds.Name);
                     throw;
                 }
                 finally
                 {
-                    // ±ê¼Ç¸ÃÊı¾İÔ´³õÊ¼»¯Íê³É
+                    // æ ‡è®°è¯¥æ•°æ®æºåˆå§‹åŒ–å®Œæˆ
                     pool.MarkInitialized();
                 }
             }).ToArray();
@@ -190,19 +190,19 @@ namespace LiteOrm
                 throw;
             }
 
-            _logger?.LogInformation("Êı¾İ¿â±í½á¹¹Í¬²½Íê³É");
+            _logger?.LogInformation("æ•°æ®åº“è¡¨ç»“æ„åŒæ­¥å®Œæˆ");
         }
 
         /// <summary>
-        /// Òì²½Ö´ĞĞÍ¬²½ SQL Óï¾ä¡£
+        /// å¼‚æ­¥æ‰§è¡ŒåŒæ­¥ SQL è¯­å¥ã€‚
         /// </summary>
-        /// <param name="context">Êı¾İ¿âÉÏÏÂÎÄ¡£</param>
-        /// <param name="sql">ÒªÖ´ĞĞµÄ SQL Óï¾ä¡£</param>
+        /// <param name="context">æ•°æ®åº“ä¸Šä¸‹æ–‡ã€‚</param>
+        /// <param name="sql">è¦æ‰§è¡Œçš„ SQL è¯­å¥ã€‚</param>
         private async Task ExecuteSqlAsync(DAOContext context, string sql)
         {
             try
             {
-                _logger?.LogInformation("ÕıÔÚÖ´ĞĞ SQL: {Sql}", sql);
+                _logger?.LogInformation("æ­£åœ¨æ‰§è¡Œ SQL: {Sql}", sql);
                 using (var cmd = context.DbConnection.CreateCommand())
                 {
                     cmd.CommandText = sql;
@@ -214,17 +214,17 @@ namespace LiteOrm
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning("Ö´ĞĞÍ¬²½ SQL Ê§°Ü: {Sql}. {Message}", sql, ex.Message);
+                _logger?.LogWarning("æ‰§è¡ŒåŒæ­¥ SQL å¤±è´¥: {Sql}. {Message}", sql, ex.Message);
                 throw;
             }
         }
 
         /// <summary>
-        /// Òì²½»ñÈ¡Êı¾İ¿âÖĞÒÑ´æÔÚµÄÁĞÃû¼¯ºÏ¡£
+        /// å¼‚æ­¥è·å–æ•°æ®åº“ä¸­å·²å­˜åœ¨çš„åˆ—åé›†åˆã€‚
         /// </summary>
-        /// <param name="context">Êı¾İ¿âÉÏÏÂÎÄ¡£</param>
-        /// <param name="tableName">ÒÑ×ªÒåµÄ±íÃû¡£</param>
-        /// <returns>ÁĞÃû¼¯ºÏ¡£</returns>
+        /// <param name="context">æ•°æ®åº“ä¸Šä¸‹æ–‡ã€‚</param>
+        /// <param name="tableName">å·²è½¬ä¹‰çš„è¡¨åã€‚</param>
+        /// <returns>åˆ—åé›†åˆã€‚</returns>
         private async Task<HashSet<string>> GetTableColumnsAsync(DAOContext context, string tableName)
         {
             var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -267,12 +267,12 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// Òì²½¼ì²é±íÊÇ·ñ´æÔÚ¡£
+        /// å¼‚æ­¥æ£€æŸ¥è¡¨æ˜¯å¦å­˜åœ¨ã€‚
         /// </summary>
-        /// <param name="context">Êı¾İ¿âÉÏÏÂÎÄ¡£</param>
-        /// <param name="sqlBuilder">SQL ¹¹½¨Æ÷¡£</param>
-        /// <param name="tableName">Ô­Ê¼±íÃû¡£</param>
-        /// <returns>Èç¹û±í´æÔÚÔò·µ»Ø true£¬·ñÔò·µ»Ø false¡£</returns>
+        /// <param name="context">æ•°æ®åº“ä¸Šä¸‹æ–‡ã€‚</param>
+        /// <param name="sqlBuilder">SQL æ„å»ºå™¨ã€‚</param>
+        /// <param name="tableName">åŸå§‹è¡¨åã€‚</param>
+        /// <returns>å¦‚æœè¡¨å­˜åœ¨åˆ™è¿”å› trueï¼Œå¦åˆ™è¿”å› falseã€‚</returns>
         private async Task<bool> TableExistsAsync(DAOContext context, SqlBuilder sqlBuilder, string tableName)
         {
             try

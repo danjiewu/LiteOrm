@@ -3,17 +3,17 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// Ö§³ÖµÄÒ»Ôª²Ù×÷·ûÃ¶¾Ù¡£
+    /// æ”¯æŒçš„ä¸€å…ƒæ“ä½œç¬¦æšä¸¾ã€‚
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum UnaryOperator
     {
         /// <summary>
-        /// ËãÊõ¸ººÅ (-)
+        /// ç®—æœ¯è´Ÿå· (-)
         /// </summary>
         Nagive = 0,
         /// <summary>
-        /// °´Î»È¡·´ (~)
+        /// æŒ‰ä½å–å (~)
         /// </summary>
         BitwiseNot = 1,
     }

@@ -5,12 +5,12 @@ using System.Collections.Generic;
 namespace LiteOrm
 {
     /// <summary>
-    /// SqlBuilder À©Õ¹·½·¨
+    /// SqlBuilder æ‰©å±•æ–¹æ³•
     /// </summary>
     public static class SqlHandlerMapExtensions
     {
         /// <summary>
-        /// ×¢²áº¯ÊıµÄ SQL Óï¾ä´¦ÀíÆ÷
+        /// æ³¨å†Œå‡½æ•°çš„ SQL è¯­å¥å¤„ç†å™¨
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="sqlBuilder"></param>
@@ -23,7 +23,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// ×¢²á¶à¸öº¯ÊıµÄ SQL Óï¾ä´¦ÀíÆ÷
+        /// æ³¨å†Œå¤šä¸ªå‡½æ•°çš„ SQL è¯­å¥å¤„ç†å™¨
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="sqlBuilder"></param>
@@ -38,7 +38,7 @@ namespace LiteOrm
             }
         }
         /// <summary>
-        /// »ñÈ¡º¯ÊıµÄ SQL Óï¾ä´¦ÀíÆ÷
+        /// è·å–å‡½æ•°çš„ SQL è¯­å¥å¤„ç†å™¨
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="sqlBuilder"></param>

@@ -1,12 +1,12 @@
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ÎªÂß¼­¶şÔª²Ù×÷·ûÌá¹©µÄ±ã½İÀ©Õ¹¹¤¾ß¡£
+    /// ä¸ºé€»è¾‘äºŒå…ƒæ“ä½œç¬¦æä¾›çš„ä¾¿æ·æ‰©å±•å·¥å…·ã€‚
     /// </summary>
     public static class LogicBinaryOperatorExt
     {
         /// <summary>
-        /// ¼ì²éÖ¸¶¨µÄ²Ù×÷·ûÊÇ·ñº¬ÓĞ NOT ±êÖ¾¡£
+        /// æ£€æŸ¥æŒ‡å®šçš„æ“ä½œç¬¦æ˜¯å¦å«æœ‰ NOT æ ‡å¿—ã€‚
         /// </summary>
         public static bool IsNot(this LogicOperator oper)
         {
@@ -14,7 +14,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// »ñÈ¡È¥µô NOT ±êÖ¾ºóµÄÕıÏò²Ù×÷·û¡£
+        /// è·å–å»æ‰ NOT æ ‡å¿—åçš„æ­£å‘æ“ä½œç¬¦ã€‚
         /// </summary>
         public static LogicOperator Positive(this LogicOperator oper)
         {
@@ -22,7 +22,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// »ñÈ¡µ±Ç°²Ù×÷·ûµÄ·´Ïò°æ±¾£¨È¡·´£©¡£
+        /// è·å–å½“å‰æ“ä½œç¬¦çš„åå‘ç‰ˆæœ¬ï¼ˆå–åï¼‰ã€‚
         /// </summary>
         public static LogicOperator Opposite(this LogicOperator oper)
         {

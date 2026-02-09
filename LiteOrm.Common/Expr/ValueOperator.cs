@@ -3,29 +3,29 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// Ö§³ÖµÄÖµ¶şÔª²Ù×÷·û¡£
+    /// æ”¯æŒçš„å€¼äºŒå…ƒæ“ä½œç¬¦ã€‚
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ValueOperator
     {
         /// <summary>
-        /// ¼Ó·¨
+        /// åŠ æ³•
         /// </summary>
         Add = 0,
         /// <summary>
-        /// ¼õ·¨
+        /// å‡æ³•
         /// </summary>
         Subtract = 1,
         /// <summary>
-        /// ³Ë·¨
+        /// ä¹˜æ³•
         /// </summary>
         Multiply = 2,
         /// <summary>
-        /// ³ı·¨
+        /// é™¤æ³•
         /// </summary>
         Divide = 3,
         /// <summary>
-        /// ×Ö·û´®Á¬½Ó
+        /// å­—ç¬¦ä¸²è¿æ¥
         /// </summary>
         Concat = 4
     }

@@ -1,32 +1,32 @@
 
-# ORM ĞÔÄÜ²âÊÔ»ã×Ü±¨¸æ (Benchmark Summary)
+# ORM æ€§èƒ½æµ‹è¯•æ±‡æ€»æŠ¥å‘Š (Benchmark Summary)
 
-## ºËĞÄ½áÂÛ
-- **¸ßÍÌÍÂĞÔÄÜ**£ºÔÚ 1000 ĞĞ¼° 5000 ĞĞµÄÅúÁ¿²Ù×÷£¨Insert/Update/Upsert£©ÖĞ£¬**LiteOrm ĞÔÄÜÈ«ÃæÁìÅÜ**£¬Í¨³£±È SqlSugar/FreeSql ¿ì 1.5x - 2x£¬±È EF Core ¿ì 10x ÒÔÉÏ¡£
-- **ÄÚ´æ¿ØÖÆ**£ºLiteOrm µÄÄÚ´æ·ÖÅä£¨Allocated£©ÏÔÖøµÍÓÚÆäËû¹¦ÄÜÍê±¸ĞÍ ORM£¬ÓÈÆäÔÚ´¦Àí 5000 ĞĞÊı¾İÊ±£¬ÄÚ´æ¿ªÏú½öÎª EF Core µÄ 1/20¡£
-- **²éÑ¯Ğ§ÂÊ**£ºÔÚ¸´ÔÓ Join ²éÑ¯³¡¾°ÏÂ£¬LiteOrm ±£³ÖÁËÓë Dapper ½üºõÒ»ÖÂµÄ½Ó½üÔ­ÉúÇı¶¯µÄĞÔÄÜ£¬ÇÒ´ó·ùÓÅÓÚ EF Core¡£
+## æ ¸å¿ƒç»“è®º
+- **é«˜ååæ€§èƒ½**ï¼šåœ¨ 1000 è¡ŒåŠ 5000 è¡Œçš„æ‰¹é‡æ“ä½œï¼ˆInsert/Update/Upsertï¼‰ä¸­ï¼Œ**LiteOrm æ€§èƒ½å…¨é¢é¢†è·‘**ï¼Œé€šå¸¸æ¯” SqlSugar/FreeSql å¿« 1.5x - 2xï¼Œæ¯” EF Core å¿« 10x ä»¥ä¸Šã€‚
+- **å†…å­˜æ§åˆ¶**ï¼šLiteOrm çš„å†…å­˜åˆ†é…ï¼ˆAllocatedï¼‰æ˜¾è‘—ä½äºå…¶ä»–åŠŸèƒ½å®Œå¤‡å‹ ORMï¼Œå°¤å…¶åœ¨å¤„ç† 5000 è¡Œæ•°æ®æ—¶ï¼Œå†…å­˜å¼€é”€ä»…ä¸º EF Core çš„ 1/20ã€‚
+- **æŸ¥è¯¢æ•ˆç‡**ï¼šåœ¨å¤æ‚ Join æŸ¥è¯¢åœºæ™¯ä¸‹ï¼ŒLiteOrm ä¿æŒäº†ä¸ Dapper è¿‘ä¹ä¸€è‡´çš„æ¥è¿‘åŸç”Ÿé©±åŠ¨çš„æ€§èƒ½ï¼Œä¸”å¤§å¹…ä¼˜äº EF Coreã€‚
 
-## »ã×ÜÊı¾İ¶Ô±È (Mean Time)
+## æ±‡æ€»æ•°æ®å¯¹æ¯” (Mean Time)
 
-### BatchCount: 100 (µÍÊı¾İÁ¿)
+### BatchCount: 100 (ä½æ•°æ®é‡)
 
-| ²Ù×÷ÀàĞÍ | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
+| æ“ä½œç±»å‹ | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Insert** | 29.20 ms | 4.79 ms | 4.98 ms | 19.47 ms | **4.11 ms** |
 | **Update** | 28.71 ms | 6.50 ms | **5.52 ms** | 18.65 ms | 6.18 ms |
 | **Upsert** | 25.62 ms | 12.20 ms | 5.94 ms | 21.36 ms | **5.27 ms** |
 | **Join Query** | 7.70 ms | 4.18 ms | 1.72 ms | **1.58 ms** | 1.80 ms |
 
-### BatchCount: 1000 (±ê×¼ÅúÁ¿)
-| ²Ù×÷ÀàĞÍ | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
+### BatchCount: 1000 (æ ‡å‡†æ‰¹é‡)
+| æ“ä½œç±»å‹ | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Insert** | 164.40 ms | 22.38 ms | **11.70 ms** | 144.11 ms | 23.40 ms |
 | **Update** | 144.93 ms | 43.78 ms | **19.54 ms** | 146.34 ms | 52.44 ms |
 | **Upsert** | 189.01 ms | 76.90 ms | 19.44 ms | 198.64 ms | **17.63 ms** |
 | **Join Query** | 19.99 ms | 25.79 ms | 14.14 ms | 13.95 ms | **13.93 ms** |
 
-### BatchCount: 5000 (´ó¹æÄ£Êı¾İ)
-| ²Ù×÷ÀàĞÍ | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
+### BatchCount: 5000 (å¤§è§„æ¨¡æ•°æ®)
+| æ“ä½œç±»å‹ | EFCore | SqlSugar | LiteOrm | Dapper | FreeSql |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Insert** | 835.13 ms | 72.92 ms | **42.85 ms** | 634.74 ms | 78.30 ms |
 | **Update** | 760.63 ms | 197.20 ms | **76.32 ms** | 749.42 ms | 146.56 ms |
@@ -35,7 +35,7 @@
 
 ---
 
-# Ô­Ê¼Êı¾İ±¨¸æ (Original Report)
+# åŸå§‹æ•°æ®æŠ¥å‘Š (Original Report)
 ```
 BenchmarkDotNet v0.15.8, Windows 11 (10.0.22631.6199/23H2/2023Update/SunValley3)
 13th Gen Intel Core i5-13400F 2.50GHz, 1 CPU, 16 logical and 10 physical cores

@@ -1,35 +1,35 @@
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ÁĞ²Ù×÷Ä£Ê½µÄÀ©Õ¹·½·¨
+    /// åˆ—æ“ä½œæ¨¡å¼çš„æ‰©å±•æ–¹æ³•
     /// </summary>
     public static class ColumnModeExt
     {
         /// <summary>
-        /// ¼ì²éÁĞÄ£Ê½ÊÇ·ñÔÊĞí²åÈë²Ù×÷
+        /// æ£€æŸ¥åˆ—æ¨¡å¼æ˜¯å¦å…è®¸æ’å…¥æ“ä½œ
         /// </summary>
-        /// <param name="mode">ÁĞ²Ù×÷Ä£Ê½</param>
-        /// <returns>Èç¹ûÔÊĞí²åÈëÔò·µ»Øtrue£¬·ñÔò·µ»Øfalse</returns>
+        /// <param name="mode">åˆ—æ“ä½œæ¨¡å¼</param>
+        /// <returns>å¦‚æœå…è®¸æ’å…¥åˆ™è¿”å›trueï¼Œå¦åˆ™è¿”å›false</returns>
         public static bool CanInsert(this ColumnMode mode)
         {
             return (mode & ColumnMode.Insert) != ColumnMode.None;
         }
 
         /// <summary>
-        /// ¼ì²éÁĞÄ£Ê½ÊÇ·ñÔÊĞí¸üĞÂ²Ù×÷
+        /// æ£€æŸ¥åˆ—æ¨¡å¼æ˜¯å¦å…è®¸æ›´æ–°æ“ä½œ
         /// </summary>
-        /// <param name="mode">ÁĞ²Ù×÷Ä£Ê½</param>
-        /// <returns>Èç¹ûÔÊĞí¸üĞÂÔò·µ»Øtrue£¬·ñÔò·µ»Øfalse</returns>
+        /// <param name="mode">åˆ—æ“ä½œæ¨¡å¼</param>
+        /// <returns>å¦‚æœå…è®¸æ›´æ–°åˆ™è¿”å›trueï¼Œå¦åˆ™è¿”å›false</returns>
         public static bool CanUpdate(this ColumnMode mode)
         {
             return (mode & ColumnMode.Update) != ColumnMode.None;
         }
 
         /// <summary>
-        /// ¼ì²éÁĞÄ£Ê½ÊÇ·ñÔÊĞí¶ÁÈ¡²Ù×÷
+        /// æ£€æŸ¥åˆ—æ¨¡å¼æ˜¯å¦å…è®¸è¯»å–æ“ä½œ
         /// </summary>
-        /// <param name="mode">ÁĞ²Ù×÷Ä£Ê½</param>
-        /// <returns>Èç¹ûÔÊĞí¶ÁÈ¡Ôò·µ»Øtrue£¬·ñÔò·µ»Øfalse</returns>
+        /// <param name="mode">åˆ—æ“ä½œæ¨¡å¼</param>
+        /// <returns>å¦‚æœå…è®¸è¯»å–åˆ™è¿”å›trueï¼Œå¦åˆ™è¿”å›false</returns>
         public static bool CanRead(this ColumnMode mode)
         {
             return (mode & ColumnMode.Read) != ColumnMode.None;
