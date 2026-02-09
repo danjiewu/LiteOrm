@@ -11,18 +11,18 @@ namespace LiteOrm.Demo.Demos
     {
         public static async Task RunAsync(ServiceFactory factory)
         {
-            Console.WriteLine("\n©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥");
-            Console.WriteLine("  5. ×ÛºÏ²éÑ¯Êµ¼ù£º´Ó Lambda µ½ SQL");
-            Console.WriteLine("©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥©¥");
+            Console.WriteLine("\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”");
+            Console.WriteLine("  5. ç»¼åˆæŸ¥è¯¢å®è·µï¼šä» Lambda åˆ° SQL");
+            Console.WriteLine("â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”");
 
-            // 1. ×¼±¸¶¯Ì¬Ìõ¼ş
+            // 1. å‡†å¤‡åŠ¨æ€æ¡ä»¶
             int minAge = 18;
-            string searchName = "ÕÅ";
+            string searchName = "å¼ ";
             var userSvc = factory.UserService;
 
-            // ·½Ê½ 1: ÍêÕûµÄ Lambda ±í´ïÊ½ÑİÊ¾ (Where + OrderBy + Skip/Take)
-            // ÕâÖÖ·½Ê½×î½Ó½ü EF/LINQ Ï°¹ß£¬¿ò¼Ü»á×Ô¶¯×ª»»Îª Expr Ä£ĞÍ
-            Console.WriteLine("[1] ÍêÕû Lambda Á´Ê½²éÑ¯ (ÍÆ¼ö)");
+            // æ–¹å¼ 1: å®Œæ•´çš„ Lambda è¡¨è¾¾å¼æ¼”ç¤º (Where + OrderBy + Skip/Take)
+            // è¿™ç§æ–¹å¼æœ€æ¥è¿‘ EF/LINQ ä¹ æƒ¯ï¼Œæ¡†æ¶ä¼šè‡ªåŠ¨è½¬æ¢ä¸º Expr æ¨¡å‹
+            Console.WriteLine("[1] å®Œæ•´ Lambda é“¾å¼æŸ¥è¯¢ (æ¨è)");
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("    var results = await userSvc.SearchAsync(\n" +
                               "        q => q.Where(u => u.Age >= minAge && u.UserName.Contains(searchName))\n" +
@@ -36,20 +36,20 @@ namespace LiteOrm.Demo.Demos
                       .OrderByDescending(u => u.Id)
                       .Skip(0).Take(10)
             );
-            Console.WriteLine($"    ¡ú ²éÑ¯Íê³É£¬·µ»Ø {resultsA.Count} Ìõ¼ÇÂ¼¡£");
+            Console.WriteLine($"    â†’ æŸ¥è¯¢å®Œæˆï¼Œè¿”å› {resultsA.Count} æ¡è®°å½•ã€‚");
 
 
-            // ·½Ê½ 2: ×î¼òµ¥µÄ Expression À©Õ¹²éÑ¯
-            // Èç¹ûÖ»ÓĞ¼òµ¥µÄ¹ıÂË£¬¿ÉÒÔÖ±½Ó´«Èë Expression<Func<T, bool>>
-            Console.WriteLine("\n[2] »ù´¡ Expression À©Õ¹²éÑ¯");
+            // æ–¹å¼ 2: æœ€ç®€å•çš„ Expression æ‰©å±•æŸ¥è¯¢
+            // å¦‚æœåªæœ‰ç®€å•çš„è¿‡æ»¤ï¼Œå¯ä»¥ç›´æ¥ä¼ å…¥ Expression<Func<T, bool>>
+            Console.WriteLine("\n[2] åŸºç¡€ Expression æ‰©å±•æŸ¥è¯¢");
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("    var results = await userSvc.SearchAsync(u => u.Age >= minAge);");
             Console.ResetColor();
 
             var resultsC = await userSvc.SearchAsync(u => u.Age >= minAge);
-            Console.WriteLine($"    ¡ú ²éÑ¯Íê³É£¬·µ»Ø {resultsC.Count} Ìõ¼ÇÂ¼¡£");
+            Console.WriteLine($"    â†’ æŸ¥è¯¢å®Œæˆï¼Œè¿”å› {resultsC.Count} æ¡è®°å½•ã€‚");
 
-            // 3. ¹¹½¨²¢Êä³ö×îÖÕ SQL Ä£ĞÍÔ¤ÀÀ
+            // 3. æ„å»ºå¹¶è¾“å‡ºæœ€ç»ˆ SQL æ¨¡å‹é¢„è§ˆ
             var queryModel = LambdaSqlSegmentConverter.ToSqlSegment(
                 (System.Linq.Expressions.Expression<Func<IQueryable<User>, IQueryable<User>>>)(
                     q => q.Where(u => u.Age >= minAge && u.UserName.Contains(searchName))
@@ -58,8 +58,8 @@ namespace LiteOrm.Demo.Demos
                 )
             );
 
-            Console.WriteLine("\n[3] ¿ò¼ÜÉú³ÉµÄÂß¼­Ä£ĞÍ (JSON ĞòÁĞ»¯ºó¿É¿ç¶Ë´«µİ):");
-            Console.WriteLine($"> Âß¼­Ä£ĞÍÔ¤ÀÀ: {queryModel}");
+            Console.WriteLine("\n[3] æ¡†æ¶ç”Ÿæˆçš„é€»è¾‘æ¨¡å‹ (JSON åºåˆ—åŒ–åå¯è·¨ç«¯ä¼ é€’):");
+            Console.WriteLine($"> é€»è¾‘æ¨¡å‹é¢„è§ˆ: {queryModel}");
         }
     }
 }

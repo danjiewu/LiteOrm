@@ -3,85 +3,85 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ֧�ֵ��߼���Ԫ��������
+    /// 支持的逻辑二元操作符。
     /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum LogicOperator
     {
         /// <summary>
-        /// ����
+        /// 等于
         /// </summary>
         Equal = 0,
         /// <summary>
-        /// ����
+        /// 大于
         /// </summary>
         GreaterThan = 1,
         /// <summary>
-        /// С��
+        /// 小于
         /// </summary>
         LessThan = 2,
         /// <summary>
-        /// ��ָ���ַ���Ϊ��ͷ
+        /// 以指定字符串为开头
         /// </summary>
         StartsWith = 3,
         /// <summary>
-        /// ��ָ���ַ���Ϊ��β
+        /// 以指定字符串为结尾
         /// </summary>
         EndsWith = 4,
         /// <summary>
-        /// ����ָ���ַ���
+        /// 包含指定字符串
         /// </summary>
         Contains = 5,
         /// <summary>
-        /// ƥ���ַ���ͨ���
+        /// 匹配字符串通配符
         /// </summary>
         Like = 6,
         /// <summary>
-        /// �Ƿ��ڼ�����
+        /// 是否在集合内
         /// </summary>
         In = 7,
         /// <summary>
-        /// �������ʽƥ��
+        /// 正则表达式匹配
         /// </summary>
         RegexpLike = 8,
         /// <summary>
-        /// �߼��Ǳ�ʶ��
+        /// 逻辑非标识。
         /// </summary>
         Not = 64,
         /// <summary>
-        /// ������
+        /// 不等于
         /// </summary>
         NotEqual = Equal | Not,
         /// <summary>
-        /// ���ڵ���
+        /// 大于等于
         /// </summary>
         GreaterThanOrEqual = LessThan | Not,
         /// <summary>
-        /// С�ڵ���
+        /// 小于等于
         /// </summary>
         LessThanOrEqual = GreaterThan | Not,
         /// <summary>
-        /// ����ָ���ַ���Ϊ��ͷ
+        /// 不以指定字符串为开头
         /// </summary>
         NotStartsWith = StartsWith | Not,
         /// <summary>
-        /// ����ָ���ַ���Ϊ��β
+        /// 不以指定字符串为结尾
         /// </summary>
         NotEndsWith = EndsWith | Not,
         /// <summary>
-        /// ������ָ���ַ���
+        /// 不包含指定字符串
         /// </summary>
         NotContains = Contains | Not,
         /// <summary>
-        /// ��ƥ���ַ���ͨ���
+        /// 不匹配字符串通配符
         /// </summary>
         NotLike = Like | Not,
         /// <summary>
-        /// ���ڼ�����
+        /// 不在集合内
         /// </summary>
         NotIn = In | Not,
         /// <summary>
-        /// ��ƥ���������ʽ
+        /// 不匹配正则表达式
         /// </summary>
         NotRegexpLike = RegexpLike | Not
     }

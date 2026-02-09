@@ -65,7 +65,7 @@ namespace LiteOrm.Tests
                 .Select(Expr.Property("Name").As("AliasName"), Expr.Property("Age"))
                 .Where(Expr.Property("Age") > 10)
                 .OrderBy(Expr.Property("Age").Asc())
-                .Select("AliasName","Age");// µÈ¼ÛÓÚ Select(Expr.Property("AliasName"),Expr.Property("Age"))
+                .Select("AliasName","Age");// ç­‰ä»·äºŽ Select(Expr.Property("AliasName"),Expr.Property("Age"))
 
 
             DataTable dt = await dao.SearchAsync(query);

@@ -9,24 +9,24 @@ using System.Linq;
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm Lambda ´¦ÀíÆ÷³õÊ¼»¯Æ÷£¬¸ºÔğ×¢²á Lambda ±í´ïÊ½µ½ Expr ¶ÔÏóµÄ×ª»»¾ä±ú¡£
+    /// LiteOrm Lambda å¤„ç†å™¨åˆå§‹åŒ–å™¨ï¼Œè´Ÿè´£æ³¨å†Œ Lambda è¡¨è¾¾å¼åˆ° Expr å¯¹è±¡çš„è½¬æ¢å¥æŸ„ã€‚
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public class LiteOrmLambdaHandlerInitializer : IStartable
     {
         /// <summary>
-        /// Æô¶¯Ê±³õÊ¼»¯ Lambda ´¦ÀíÆ÷¡£
+        /// å¯åŠ¨æ—¶åˆå§‹åŒ– Lambda å¤„ç†å™¨ã€‚
         /// </summary>
         public void Start()
         {
-            // ×¢²á Lambda ±í´ïÊ½×ª»»µ½ Expr ¶ÔÏóµÄ³ÉÔ±¾ä±ú (Èç DateTime.Now)
+            // æ³¨å†Œ Lambda è¡¨è¾¾å¼è½¬æ¢åˆ° Expr å¯¹è±¡çš„æˆå‘˜å¥æŸ„ (å¦‚ DateTime.Now)
             RegisterLambdaMemberHandlers();
-            // ×¢²á Lambda ±í´ïÊ½×ª»»µ½ Expr ¶ÔÏóµÄ·½·¨¾ä±ú (Èç StartsWith, Contains)
+            // æ³¨å†Œ Lambda è¡¨è¾¾å¼è½¬æ¢åˆ° Expr å¯¹è±¡çš„æ–¹æ³•å¥æŸ„ (å¦‚ StartsWith, Contains)
             RegisterLambdaMethodHandlers();
         }
 
         /// <summary>
-        /// ×¢²á Lambda ±í´ïÊ½ÖĞµÄ³ÉÔ±·ÃÎÊ´¦ÀíÆ÷£¨ÊôĞÔ»ò×Ö¶Î£©¡£
+        /// æ³¨å†Œ Lambda è¡¨è¾¾å¼ä¸­çš„æˆå‘˜è®¿é—®å¤„ç†å™¨ï¼ˆå±æ€§æˆ–å­—æ®µï¼‰ã€‚
         /// </summary>
         private void RegisterLambdaMemberHandlers()
         {
@@ -36,7 +36,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// ×¢²á Lambda ±í´ïÊ½ÖĞµÄ·½·¨µ÷ÓÃ´¦ÀíÆ÷¡£
+        /// æ³¨å†Œ Lambda è¡¨è¾¾å¼ä¸­çš„æ–¹æ³•è°ƒç”¨å¤„ç†å™¨ã€‚
         /// </summary>
         private void RegisterLambdaMethodHandlers()
         {

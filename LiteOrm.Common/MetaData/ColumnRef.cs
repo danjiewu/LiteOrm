@@ -1,14 +1,14 @@
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// ÁĞµÄÒıÓÃ
+    /// åˆ—çš„å¼•ç”¨
     /// </summary>
     public class ColumnRef : SqlObject
     {
         /// <summary>
-        /// ´´½¨ÁĞµÄÒıÓÃ
+        /// åˆ›å»ºåˆ—çš„å¼•ç”¨
         /// </summary>
-        /// <param name="column">ÁĞĞÅÏ¢</param>
+        /// <param name="column">åˆ—ä¿¡æ¯</param>
         public ColumnRef(SqlColumn column)
         {
             Name = column.Name;
@@ -16,10 +16,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// ´´½¨Ö¸¶¨±íµÄÁĞÒıÓÃ
+        /// åˆ›å»ºæŒ‡å®šè¡¨çš„åˆ—å¼•ç”¨
         /// </summary>
-        /// <param name="table">±í</param>
-        /// <param name="column">ÁĞÒıÓÃ</param>
+        /// <param name="table">è¡¨</param>
+        /// <param name="column">åˆ—å¼•ç”¨</param>
         public ColumnRef(TableRef table, SqlColumn column)
         {
             Name = column.Name;
@@ -29,7 +29,7 @@ namespace LiteOrm.Common
 
         private TableRef _table;
         /// <summary>
-        /// ÁĞËùÔÚµÄ±í
+        /// åˆ—æ‰€åœ¨çš„è¡¨
         /// </summary>
         public TableRef Table
         {
@@ -39,7 +39,7 @@ namespace LiteOrm.Common
 
         private SqlColumn _column;
         /// <summary>
-        /// ÁĞĞÅÏ¢
+        /// åˆ—ä¿¡æ¯
         /// </summary>
         public SqlColumn Column
         {
@@ -47,7 +47,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// È·¶¨Ö¸¶¨µÄ¶ÔÏóÊÇ·ñµÈÓÚµ±Ç°¶ÔÏó¡£
+        /// ç¡®å®šæŒ‡å®šçš„å¯¹è±¡æ˜¯å¦ç­‰äºå½“å‰å¯¹è±¡ã€‚
         /// </summary>
         public override bool Equals(object obj)
         {
@@ -58,7 +58,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// »ñÈ¡¹şÏ£Âë¡£
+        /// è·å–å“ˆå¸Œç ã€‚
         /// </summary>
         public override int GetHashCode()
         {

@@ -3,21 +3,21 @@ using System.Reflection;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 关联外表的列信息
+    /// 鍏宠仈澶栬〃鐨勫垪淇℃伅
     /// </summary>
     public class ForeignColumn : SqlColumn
     {
         internal ForeignColumn(PropertyInfo property) : base(property) { }
 
         /// <summary>
-        /// 指向的列
+        /// 鎸囧悜鐨勫垪
         /// </summary>
         public ColumnRef TargetColumn { get; internal set; }
 
 
 
         /// <summary>
-        /// 名称
+        /// 鍚嶇О
         /// </summary>
         public override string Name
         {
@@ -31,7 +31,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 目标列的定义
+        /// 鐩爣鍒楃殑瀹氫箟
         /// </summary>
         public override ColumnDefinition Definition => TargetColumn.Column.Definition;
     }
