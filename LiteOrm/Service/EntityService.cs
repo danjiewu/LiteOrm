@@ -253,14 +253,11 @@ namespace LiteOrm.Service
         /// </remarks>
         /// <param name="ids">要删除的实体 ID 集合。</param>
         /// <param name="cancellationToken">取消令牌，用于支持异步操作的取消。</param>
+        /// <param name="tableArgs">分表参数。</param>
         /// <returns>表示异步操作的任务。</returns>
-        public async virtual Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default)
+        public async virtual Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default, params string[] tableArgs)
         {
-            foreach (object id in ids)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await DeleteIDCoreAsync(id, null, cancellationToken);
-            }
+            await ObjectDAO.WithArgs(tableArgs).BatchDeleteByKeysAsync(ids, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -469,16 +466,14 @@ namespace LiteOrm.Service
         /// 批量根据 ID 删除实体。
         /// </summary>
         /// <remarks>
-        /// 此方法根据提供的 ID 集合逐个删除相应的记录。
+        /// 此方法根据提供的 ID 集合批量删除相应的记录。
         /// 这是一个高效的按主键删除多条记录的方法。
         /// </remarks>
         /// <param name="ids">要删除的实体 ID 集合。</param>
-        public virtual void BatchDeleteID(IEnumerable ids)
+        /// <param name="tableArgs">分表参数。</param>
+        public virtual void BatchDeleteID(IEnumerable ids, params string[] tableArgs)
         {
-            foreach (object id in ids)
-            {
-                DeleteIDCore(id);
-            }
+            ObjectDAO.WithArgs(tableArgs).BatchDeleteByKeys(ids);
         }
 
         #endregion

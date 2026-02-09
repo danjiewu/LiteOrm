@@ -180,8 +180,9 @@ namespace LiteOrm.Service
         /// </summary>
         /// <param name="ids">待删除id</param>
         /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="tableArgs">分表参数</param>
         /// <returns>异步任务</returns>
         [Transaction]
-        Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default);
+        Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default, params string[] tableArgs);
     }
 }
