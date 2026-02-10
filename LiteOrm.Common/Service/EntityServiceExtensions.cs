@@ -157,7 +157,7 @@ namespace LiteOrm.Common
         /// <returns>表示异步搜索操作的任务，结果包含符合条件的实体对象列表。</returns>
         public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return entityViewService.SearchAsync(Expr.Query(expression),tableArgs, cancellationToken);
+            return entityViewService.SearchAsync(Expr.Query(expression), tableArgs, cancellationToken);
         }
 
         /// <summary>

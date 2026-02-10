@@ -357,6 +357,7 @@ namespace LiteOrm
                 if (connection == null)
                     throw new InvalidOperationException("Failed to create a database connection instance.");
 
+                connection.ConnectionString = ConnectionString;
                 var context = new DAOContext(connection, this);
                 return context;
             }

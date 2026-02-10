@@ -9,7 +9,7 @@ namespace LiteOrm.Common
     /// 更新片段，表示 UPDATE 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class UpdateExpr : SqlSegment
+    public class UpdateExpr : Expr,ISqlSegment
     {
         /// <summary>
         /// 初始化 UpdateExpr 类的新实例
@@ -21,16 +21,18 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="where">筛选条件表达式</param>
-        public UpdateExpr(SqlSegment source, LogicExpr where = null)
+        public UpdateExpr(ISqlSegment source, LogicExpr where = null)
         {
             Source = source;
             Where = where;
         }
 
+        public ISqlSegment Source { get; set; }
+
         /// <summary>
         /// 获取片段类型，返回 Update 类型标识
         /// </summary>
-        public override SqlSegmentType SegmentType => SqlSegmentType.Update;
+        public SqlSegmentType SegmentType => SqlSegmentType.Update;
 
         /// <summary>
         /// 获取或设置要更新的字段和值列表

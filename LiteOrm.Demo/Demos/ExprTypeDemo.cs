@@ -91,7 +91,7 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine(csharpCode);
             Console.ResetColor();
 
-            Console.WriteLine($"→ 内容输出 (ToString): {expr}");
+            Console.WriteLine($"→ Expr内容 (ToString): {expr}");
 
             // 序列化
             string json = JsonSerializer.Serialize(expr, _jsonOptions);
@@ -101,7 +101,7 @@ namespace LiteOrm.Demo.Demos
             // 反序列化并校验
             var deserialized = JsonSerializer.Deserialize<Expr>(json, _jsonOptions);
             bool isEqual = expr.Equals(deserialized);
-            Console.WriteLine($"→ 反序列化校验: {(isEqual ? "一致 √" : "不一致 X")}");
+            Console.WriteLine($"→ 反序列化校验: {(isEqual ? "通过" : "未通过")}");
         }
     }
 }

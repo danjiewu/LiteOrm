@@ -173,7 +173,7 @@ namespace LiteOrm.Common
                             }
                             
                             // 处理快捷片段的数据 (如 "$table": "Name" or "$update": {Source})
-                            if (propName != "$" && result is SqlSegment ss)
+                            if (propName != "$" && result is ISqlSegment ss)
                             {
                                 reader.Read(); // 移动到属性值
                                 if (ss is TableExpr te)
@@ -195,7 +195,7 @@ namespace LiteOrm.Common
                                 }
                                 else
                                 {
-                                    ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as SqlSegment;
+                                    ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as ISqlSegment;
                                 }
                             }
                         }
@@ -298,8 +298,8 @@ namespace LiteOrm.Common
                     case DeleteExpr de when propName == "Where":
                         de.Where = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
                         break;
-                    case SqlSegment ss when propName == "Source":
-                        ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as SqlSegment;
+                    case ISqlSegment ss when propName == "Source":
+                        ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as ISqlSegment;
                         break;
                     default:
                         reader.Skip();
@@ -321,7 +321,7 @@ namespace LiteOrm.Common
                 }
 
                 // 结构化查询片段直接处理
-                if (value is SqlSegment segment)
+                if (value is ISqlSegment segment)
                 {
                     WriteSqlSegment(writer, segment, options);
                     return;
@@ -489,7 +489,7 @@ namespace LiteOrm.Common
             /// <summary>
             /// 写入 SQL 片段
             /// </summary>
-            private void WriteSqlSegment(Utf8JsonWriter writer, SqlSegment value, JsonSerializerOptions options)
+            private void WriteSqlSegment(Utf8JsonWriter writer, ISqlSegment value, JsonSerializerOptions options)
             {
                 if (value == null) { writer.WriteNullValue(); return; }
                 writer.WriteStartObject();
@@ -516,7 +516,7 @@ namespace LiteOrm.Common
                 }
                 else
                 {
-                    JsonSerializer.Serialize(writer, value.Source, options);
+                    JsonSerializer.Serialize(writer, value.Source as Expr, options);
                 }
 
                 switch (value)

@@ -87,6 +87,12 @@ namespace LiteOrm
             get { return Table.Definition; }
         }
 
+
+        /// <summary>
+        /// 是否为视图，默认为 false。对于视图，某些操作（如插入、更新、删除）可能不适用，因此在生成 SQL 语句时需要特殊处理。
+        /// </summary>
+        protected virtual bool IsView => false;
+
         /// <summary>
         /// 批量插入提供程序工厂
         /// </summary>
@@ -108,7 +114,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取当前数据访问对象上下文
         /// </summary>
-        public virtual DAOContext DAOContext { get => CurrentSession.GetDaoContext(TableDefinition.DataSource); }
+        public virtual DAOContext DAOContext => CurrentSession.GetDaoContext(TableDefinition.DataSource, IsView);
 
         /// <summary>
         /// 表名参数
@@ -124,7 +130,7 @@ namespace LiteOrm
         {
             get
             {
-                if (_sqlBuildContext is null) _sqlBuildContext = new SqlBuildContext(Table, null, TableArgs);
+                if (_sqlBuildContext is null) _sqlBuildContext = new SqlBuildContext(Table, null, TableArgs) { SingleTable = !IsView };
                 return _sqlBuildContext;
 
             }
@@ -264,35 +270,6 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 生成 orderby 部分的 SQL
-        /// </summary>
-        /// <returns></returns>
-        /// <remarks>现在排序通过Expr的OrderBy方法实现，此方法仅用于兼容旧代码</remarks>
-        protected string GetOrderBySql()
-        {
-            var orderBy = ValueStringBuilder.Create(128);
-            if (TableDefinition.Keys.Length != 0)
-            {
-                foreach (ColumnDefinition key in TableDefinition.Keys)
-                {
-                    if (orderBy.Length != 0) orderBy.Append(",");
-                    orderBy.Append(SqlBuilder.ToSqlName(FactTableName));
-                    orderBy.Append(".");
-                    orderBy.Append(SqlBuilder.ToSqlName(key.Name));
-                }
-            }
-            else
-            {
-                orderBy.Append(SqlBuilder.ToSqlName(FactTableName));
-                orderBy.Append(".");
-                orderBy.Append(SqlBuilder.ToSqlName(TableDefinition.Columns[0].Name));
-            }
-            string result = orderBy.ToString();
-            orderBy.Dispose();
-            return result;
-        }
-
-        /// <summary>
         /// 获取预定义的 DbCommand
         /// </summary>
         /// <param name="methodName">方法名称</param>
@@ -373,18 +350,18 @@ namespace LiteOrm
         protected DbCommandProxy MakeSelectExprCommand(Expr expr)
         {
             SelectExpr selectExpr;
-            if(expr is SelectExpr selectExpr1)
+            if (expr is SelectExpr selectExpr1)
             {
                 selectExpr = selectExpr1;
             }
             else
-            {                
+            {
                 selectExpr = new SelectExpr()
                 {
                     Source = GetSource(expr),
                     Selects = SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Property(col.PropertyName))).ToList()
                 };
-            }                
+            }
             return MakeExprCommand(selectExpr);
         }
 
@@ -393,7 +370,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="expr">条件或片段表达式。</param>
         /// <returns>对应的 SqlSegment 对象。</returns>
-        protected SqlSegment GetSource(Expr expr)
+        protected ISourceAnchor GetSource(Expr expr)
         {
             if (expr is null)
             {
@@ -403,7 +380,7 @@ namespace LiteOrm
             {
                 return new WhereExpr() { Source = new TableExpr(Table), Where = logicExpr };
             }
-            else if (expr is SqlSegment sourceExpr)
+            else if (expr is ISourceAnchor sourceExpr)
             {
                 return sourceExpr;
             }
@@ -421,7 +398,7 @@ namespace LiteOrm
         /// <exception cref="ArgumentNullException"></exception>
         protected DbCommandProxy MakeExprCommand(Expr expr)
         {
-            if(expr is null)throw new ArgumentNullException(nameof(expr));
+            if (expr is null) throw new ArgumentNullException(nameof(expr));
             List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
             var context = SqlBuildContext;
             return MakeNamedParamCommand(expr.ToSql(context, SqlBuilder, paramList), paramList);

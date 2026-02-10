@@ -87,8 +87,7 @@ namespace LiteOrm
             foreach (var assembly in assemblyList)
             {
                 assembly.GetTypes()
-                     .Where(t => !t.IsAbstract && !t.IsInterface &&
-                                (t.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? false))
+                     .Where(t => !t.IsAbstract && !t.IsInterface && (t.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? false))
                      .ToList()
                      .ForEach(t => RegisterTypeWithInterception(builder, t));
             }

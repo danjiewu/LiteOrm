@@ -337,7 +337,7 @@ namespace LiteOrm.Common
         /// var query = table.Where(Expr.Property("Age") > 18);
         /// </code>
         /// </example>
-        public static WhereExpr Where(this ISourceAnchor source, LogicExpr where) => new WhereExpr(source as SqlSegment, where);
+        public static WhereExpr Where(this ISourceAnchor source, LogicExpr where) => new WhereExpr(source as ISqlSegment, where);
 
         /// <summary>
         /// 为 SQL 语句添加 GROUP BY 子句。
@@ -350,7 +350,7 @@ namespace LiteOrm.Common
         /// var query = table.GroupBy(Expr.Property("DepartmentId"));
         /// </code>
         /// </example>
-        public static GroupByExpr GroupBy(this IGroupByAnchor source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source as SqlSegment, groupBys);
+        public static GroupByExpr GroupBy(this IGroupByAnchor source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source as ISqlSegment, groupBys);
 
         /// <summary>
         /// 为 SQL 语句添加 GROUP BY 子句（属性名数组）。
@@ -373,7 +373,7 @@ namespace LiteOrm.Common
         ///     .Having(Expr.Property("Count").Count().GreaterThan(10));
         /// </code>
         /// </example>
-        public static HavingExpr Having(this IHavingAnchor source, LogicExpr having) => new HavingExpr(source as SqlSegment, having);
+        public static HavingExpr Having(this IHavingAnchor source, LogicExpr having) => new HavingExpr(source as ISqlSegment, having);
 
         /// <summary>
         /// 为 SQL 语句添加 SELECT 子句。
@@ -386,7 +386,7 @@ namespace LiteOrm.Common
         /// var query = table.Select(Expr.Property("Id"), Expr.Property("Name"));
         /// </code>
         /// </example>
-        public static SelectExpr Select(this ISelectAnchor source, params ValueTypeExpr[] selects) => new SelectExpr(source as SqlSegment, selects);
+        public static SelectExpr Select(this ISelectAnchor source, params ValueTypeExpr[] selects) => new SelectExpr(source as ISqlSegment, selects);
 
         /// <summary>
         /// 为 SQL 语句添加 SELECT 子句（属性名数组）。
@@ -414,7 +414,7 @@ namespace LiteOrm.Common
                 existingOrderByExpr.OrderBys.AddRange(orderBys);
                 return existingOrderByExpr;
             }
-            return new OrderByExpr(source as SqlSegment, orderBys);
+            return new OrderByExpr(source as ISqlSegment, orderBys);
         }
 
         /// <summary>
@@ -461,7 +461,7 @@ namespace LiteOrm.Common
         /// var query = table.Section(0, 20); // 获取前 20 条记录
         /// </code>
         /// </example>
-        public static SectionExpr Section(this ISectionAnchor source, int skip, int take) => new SectionExpr(source as SqlSegment, skip, take);
+        public static SectionExpr Section(this ISectionAnchor source, int skip, int take) => new SectionExpr(source as ISqlSegment, skip, take);
 
         /// <summary>
         /// 将值表达式标记为升序排序。

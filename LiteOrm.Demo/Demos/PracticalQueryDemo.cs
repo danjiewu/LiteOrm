@@ -53,16 +53,37 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine($"    → 查询完成，返回 {resultsC.Count} 条记录。");
 
             // 3. 构建并输出最终 SQL 模型预览
-            var queryModel = LambdaSqlSegmentConverter.ToSqlSegment(
-                (System.Linq.Expressions.Expression<Func<IQueryable<User>, IQueryable<User>>>)(
+            var queryModel = Expr.Query<User>(
                     q => q.Where(u => u.Age >= minAge && u.UserName.Contains(searchName))
                           .OrderByDescending(u => u.Id)
                           .Skip(0).Take(10)
-                )
             );
 
             Console.WriteLine("\n[3] 框架生成的逻辑模型 (JSON 序列化后可跨端传递):");
             Console.WriteLine($"> 逻辑模型预览: {queryModel}");
+
+            // 4. 直接构建 SQL 模型（不推荐，除非你非常熟悉框架内部结构）
+            Console.ResetColor();
+            Console.WriteLine("\n[4] 直接构建 SQL 模型 (不推荐，除非你熟悉内部结构)");
+            var sqlModel = new SelectExpr(
+                new WhereExpr(
+                    Expr.Table<UserView>(),
+                    Expr.Property("Age") > minAge & Expr.Property("UserName", LogicOperator.Like, $"%{searchName}%") &
+                    Expr.Foreign("Dept",
+                        Expr.Property(nameof(Department.Name), LogicOperator.Like, $"%技术部%") &
+                        Expr.Property(nameof(Department.ParentId), LogicOperator.In, 
+                        Expr.Table<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count > 3).Select(nameof(User.DeptId)))
+                    )
+                )
+             );
+            var resultD = await userSvc.SearchAsync(sqlModel);
+            Console.WriteLine("var sqlModel = new SelectExpr(" +
+                "\r\n                new WhereExpr(" +
+                "\r\n                    Expr.Table<UserView>()," +
+                "\r\n                    Expr.Property(\"Age\") > minAge & Expr.Property(\"UserName\", LogicOperator.Like, $\"%{searchName}%\")" +
+                "\r\n                " +
+                ")\r\n             );");
+            Console.WriteLine($"    → 查询完成，返回 {resultD.Count} 条记录。");
         }
     }
 }

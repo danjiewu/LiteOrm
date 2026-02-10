@@ -27,6 +27,11 @@ namespace LiteOrm
         public override SqlTable Table => TableInfoProvider.GetTableView(ObjectType);
 
         /// <summary>
+        /// 指示当前 DAO 是视图查询 DAO。
+        /// </summary>
+        protected override bool IsView => true;
+
+        /// <summary>
         /// 替换 SQL 语句中的占位符为实际值。
         /// </summary>
         /// <param name="sqlWithParam">包含占位符的 SQL 语句。</param>
@@ -91,7 +96,7 @@ namespace LiteOrm
         /// </summary>
         private SelectExpr BuildSelectExpr(string[] propertyNames, Expr expr)
         {
-            SqlSegment selectSource;
+            ISqlSegment selectSource;
             if (expr is null)
             {
                 selectSource = new TableExpr(Table);
@@ -100,7 +105,7 @@ namespace LiteOrm
             {
                 selectSource = new WhereExpr() { Source = new TableExpr(Table), Where = logicExpr };
             }
-            else if (expr is SqlSegment sourceExpr)
+            else if (expr is ISqlSegment sourceExpr)
             {
                 selectSource = sourceExpr;
             }
@@ -127,7 +132,7 @@ namespace LiteOrm
         /// </summary>
         private SqlColumn GetColumnFromSelectExpr(SelectExpr selectExpr, int index)
         {
-            if (selectExpr != null && index < selectExpr.Selects.Count)
+            if (selectExpr is not null && index < selectExpr.Selects.Count)
             {
                 if (selectExpr.Selects[index].Value is PropertyExpr propertyExpr)
                 {
@@ -190,7 +195,7 @@ namespace LiteOrm
                     SqlColumn column = GetColumnFromSelectExpr(selectExpr, i);
                     columns[i] = column;
 
-                    if (selectExpr != null && i < selectExpr.Selects.Count)
+                    if (selectExpr is not null && i < selectExpr.Selects.Count)
                     {
                         needConvert[i] = selectExpr.Selects[i] is PropertyExpr;
                     }
@@ -286,7 +291,7 @@ namespace LiteOrm
                     SqlColumn column = GetColumnFromSelectExpr(selectExpr, i);
                     columns[i] = column;
 
-                    if (selectExpr != null && i < selectExpr.Selects.Count)
+                    if (selectExpr is not null && i < selectExpr.Selects.Count)
                     {
                         needConvert[i] = selectExpr.Selects[i] is PropertyExpr;
                     }

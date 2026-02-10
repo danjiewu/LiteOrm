@@ -19,15 +19,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 执行表达式转换并将结果转换为 SqlSegment
         /// </summary>
-        public SqlSegment ToSqlSegment() {
-            var sqlSegment = ConvertInternal(_expression.Body) as SqlSegment;
-            return sqlSegment;
+        public Expr ToSqlSegment() {
+            return ConvertInternal(_expression.Body);
         }
 
         /// <summary>
         /// 静态方法：将 Lambda 表达式转换为 SqlSegment 模型
         /// </summary>
-        public static SqlSegment ToSqlSegment(LambdaExpression expression) => new LambdaSqlSegmentConverter(expression).ToSqlSegment();
+        public static Expr ToSqlSegment(LambdaExpression expression) => new LambdaSqlSegmentConverter(expression).ToSqlSegment();
 
         /// <summary>
         /// 执行内部表达式转换，将表达式节点转换为 SqlSegment 对象

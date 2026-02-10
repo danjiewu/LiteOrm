@@ -7,7 +7,7 @@ namespace LiteOrm.Common
     /// 表片段，表示查询的数据源表
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class TableExpr : SqlSegment, ISourceAnchor
+    public sealed class TableExpr : Expr, ISourceAnchor
     {
         /// <summary>
         /// 初始化 TableExpr 类的新实例
@@ -19,7 +19,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="table">表元数据信息</param>
         public TableExpr(SqlTable table) => Table = table;
-
+        ISqlSegment ISqlSegment.Source { get { return null; } set { } }
         /// <summary>
         /// 获取或设置此片段关联的表信息
         /// </summary>
@@ -28,7 +28,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取片段类型，返回 Table 类型标识
         /// </summary>
-        public override SqlSegmentType SegmentType => SqlSegmentType.Table;
+        public SqlSegmentType SegmentType => SqlSegmentType.Table;
 
         /// <summary>
         /// 判断两个 TableExpr 是否相等

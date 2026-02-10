@@ -54,9 +54,9 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 获取当前数据访问对象上下文，默认为只读。
+        /// <see cref="ObjectViewDAO{T}"/> 为视图DAO，视图DAO不支持增删改操作
         /// </summary>
-        public override DAOContext DAOContext => CurrentSession.GetDaoContext(TableDefinition.DataSource, true);
+        protected override bool IsView => true;
 
         /// <summary>
         /// 使用指定的参数创建新的DAO实例
@@ -297,8 +297,8 @@ namespace LiteOrm
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <returns>符合条件的对象个数</returns>
         public virtual int Count(Expr expr)
-        {            
-            var selectExpr = GetSource(expr).Select(Expr.Aggregate("COUNT",Expr.Const(1)));
+        {
+            var selectExpr = GetSource(expr).Select(Expr.Aggregate("COUNT", Expr.Const(1)));
             using var command = MakeExprCommand(selectExpr);
             return Convert.ToInt32(command.ExecuteScalar());
         }
@@ -339,7 +339,7 @@ namespace LiteOrm
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <returns>是否存在</returns>
         public virtual bool Exists(Expr expr)
-        {            
+        {
             var selectExpr = GetSource(expr).Select(Expr.Const(1));
             using var command = MakeExprCommand(selectExpr);
             return command.ExecuteScalar() is not null;
@@ -413,7 +413,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，任务结果包含符合条件的对象个数</returns>
         public async virtual Task<int> CountAsync(Expr expr, CancellationToken cancellationToken = default)
         {
-            var selectExpr = GetSource(expr).Select(Expr.Aggregate("COUNT",Expr.Const(1)));
+            var selectExpr = GetSource(expr).Select(Expr.Aggregate("COUNT", Expr.Const(1)));
             using var command = MakeExprCommand(selectExpr);
             return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
         }
@@ -459,7 +459,7 @@ namespace LiteOrm
         public async virtual Task<bool> ExistsAsync(Expr expr, CancellationToken cancellationToken = default)
         {
             var selectExpr = GetSource(expr).Select(Expr.Const(1));
-            using var command = MakeExprCommand(selectExpr);    
+            using var command = MakeExprCommand(selectExpr);
             return await command.ExecuteScalarAsync(cancellationToken) is not null;
         }
 

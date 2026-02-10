@@ -7,7 +7,7 @@ namespace LiteOrm.Common
     /// 删除片段，表示 DELETE 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class DeleteExpr : SqlSegment
+    public class DeleteExpr : Expr, ISqlSegment
     {
         /// <summary>
         /// 初始化 DeleteExpr 类的新实例
@@ -25,10 +25,12 @@ namespace LiteOrm.Common
             Where = where;
         }
 
+        public ISqlSegment Source { get; set; }
+
         /// <summary>
         /// 获取片段类型，返回 Delete 类型标识
         /// </summary>
-        public override SqlSegmentType SegmentType => SqlSegmentType.Delete;
+        public SqlSegmentType SegmentType => SqlSegmentType.Delete;
 
         /// <summary>
         /// 获取或设置筛选条件表达式

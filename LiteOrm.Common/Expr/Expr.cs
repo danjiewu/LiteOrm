@@ -216,9 +216,9 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
         /// <returns>SQL 片段实例</returns>
-        public static SqlSegment Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
+        public static Expr Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaSqlSegmentConverter.ToExpr(expression);
 
-        public static SqlSegment Query<T,TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
+        public static Expr Query<T,TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaSqlSegmentConverter.ToExpr(expression);
 
         /// <summary>
         /// 创建范围查询表达式 (BETWEEN)。
