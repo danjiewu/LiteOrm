@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 
 namespace LiteOrm
 {
@@ -96,6 +97,14 @@ namespace LiteOrm
                 ParamCountLimit = config.ParamCountLimit
             };
 
+            if (config.ReadOnlyConfigs != null)
+            {
+                foreach (var roConfig in config.ReadOnlyConfigs)
+                {
+                    pool.AddReadOnlyPool(roConfig);
+                }
+            }
+
             if (!config.SyncTable)
             {
                 pool.MarkInitialized();
@@ -126,10 +135,19 @@ namespace LiteOrm
         /// <summary>
         /// 获取数据库上下文
         /// </summary>
-        public DAOContext PeekContext(string poolName = null)
+        public DAOContext PeekContext(string poolName = null, bool readOnly = false)
         {
             var pool = GetPool(poolName);
-            return pool.PeekContext();
+            return pool.PeekContext(readOnly);
+        }
+
+        /// <summary>
+        /// 异步获取数据库上下文
+        /// </summary>
+        public async Task<DAOContext> PeekContextAsync(string poolName = null, bool readOnly = false)
+        {
+            var pool = GetPool(poolName);
+            return await pool.PeekContextAsync(readOnly).ConfigureAwait(false);
         }
 
         /// <summary>

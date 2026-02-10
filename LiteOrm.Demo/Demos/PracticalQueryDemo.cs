@@ -38,6 +38,9 @@ namespace LiteOrm.Demo.Demos
             );
             Console.WriteLine($"    → 查询完成，返回 {resultsA.Count} 条记录。");
 
+            resultsA = await userSvc.SearchAsync(
+                new SectionExpr(0, 3)
+            );
 
             // 方式 2: 最简单的 Expression 扩展查询
             // 如果只有简单的过滤，可以直接传入 Expression<Func<T, bool>>

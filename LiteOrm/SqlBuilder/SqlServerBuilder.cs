@@ -20,7 +20,7 @@ namespace LiteOrm
         /// 将结构化的 SQL 片段组装成最终的 SELECT 语句 (SQL Server 实现)。
         /// 当 Skip 为 0 时使用 TOP 优化性能。
         /// </summary>
-        public override void BuildSelectSql(ref SqlValueResult subSelect, ref ValueStringBuilder result)
+        public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
         {
             if (subSelect.Skip == 0 && subSelect.Take > 0)
             {

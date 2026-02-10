@@ -6,56 +6,6 @@ using System.Linq;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 表示生成的 SQL 片段结果结构，用于分阶段构建复杂的 SQL 语句。
-    /// </summary>
-    public ref struct SqlValueResult
-    {
-        /// <summary>SELECT 子句片段。</summary>
-        public ValueStringBuilder Select;
-        /// <summary>FROM 子句片段。</summary>
-        public ValueStringBuilder From;
-        /// <summary>WHERE 子句片段。</summary>
-        public ValueStringBuilder Where;
-        /// <summary>GROUP BY 子句片段。</summary>
-        public ValueStringBuilder GroupBy;
-        /// <summary>HAVING 子句片段。</summary>
-        public ValueStringBuilder Having;
-        /// <summary>ORDER BY 子句片段。</summary>
-        public ValueStringBuilder OrderBy;
-        /// <summary>分页跳过的记录数。</summary>
-        public int Skip;
-        /// <summary>分页获取的记录数。</summary>
-        public int Take;
-
-        /// <summary>
-        /// 构造函数，使用默认容量的堆分配
-        /// </summary>
-        public SqlValueResult()
-        {
-            this.Select = ValueStringBuilder.Create(256);
-            this.From = ValueStringBuilder.Create(256);
-            this.Where = ValueStringBuilder.Create(256);
-            this.GroupBy = ValueStringBuilder.Create(256);
-            this.Having = ValueStringBuilder.Create(256);
-            this.OrderBy = ValueStringBuilder.Create(256);
-            this.Skip = 0;
-            this.Take = 0;
-        }
-
-        /// <summary>
-        /// 释放所有部分
-        /// </summary>
-        public void Dispose()
-        {
-            this.Select.Dispose();
-            this.From.Dispose();
-            this.Where.Dispose();
-            this.GroupBy.Dispose();
-            this.Having.Dispose();
-            this.OrderBy.Dispose();
-        }
-    }
-    /// <summary>
     /// 表达式 SQL 转换器。
     /// </summary>
     public static class ExprSqlConverter
@@ -147,7 +97,7 @@ namespace LiteOrm.Common
         /// <param name="context">SQL 构建上下文。</param>
         /// <param name="sqlBuilder">具体数据库的构建器。</param>
         /// <param name="outputParams">参数集合。</param>
-        private static void AddSql(ref SqlValueResult sql, SqlSegment sqlSegment, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void AddSql(ref SqlValueStringBuilder sql, SqlSegment sqlSegment, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (sqlSegment is null) sqlSegment = Expr.Table(context.Table);
             switch (sqlSegment)
@@ -183,7 +133,7 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            SqlValueResult sql = new SqlValueResult();
+            SqlValueStringBuilder sql = new SqlValueStringBuilder();
             AddSql(ref sql, select.Source, ref context, sqlBuilder, outputParams);
 
             if (select.Selects == null || select.Selects.Count == 0)
@@ -627,9 +577,9 @@ namespace LiteOrm.Common
         /// <summary>
         /// 向 SQL 结果结构中添加 Select 相关的子查询片段。
         /// </summary>
-        private static void AddSql(ref SqlValueResult sql, SelectExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void AddSql(ref SqlValueStringBuilder sql, SelectExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            SqlValueResult innerSql = new SqlValueResult();
+            SqlValueStringBuilder innerSql = new SqlValueStringBuilder();
             AddSql(ref innerSql, expr.Source, ref context, sqlBuilder, outputParams);
 
             if (expr.Selects == null || expr.Selects.Count == 0)
@@ -658,7 +608,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 向 SQL 结果结构中添加 Where 过滤片段。
         /// </summary>
-        private static void AddSql(ref SqlValueResult sql, WhereExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void AddSql(ref SqlValueStringBuilder sql, WhereExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             AddSql(ref sql, expr.Source, ref context, sqlBuilder, outputParams);
             if (expr.Where != null)
@@ -671,7 +621,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 向 SQL 结果结构中添加 Group By 分组片段。
         /// </summary>
-        private static void AddSql(ref SqlValueResult sql, GroupByExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void AddSql(ref SqlValueStringBuilder sql, GroupByExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             AddSql(ref sql, expr.Source, ref context, sqlBuilder, outputParams);
             if (expr.GroupBys != null && expr.GroupBys.Count > 0)
@@ -687,7 +637,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 向 SQL 结果结构中添加 Order By 排序片段。
         /// </summary>
-        private static void AddSql(ref SqlValueResult sql, OrderByExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void AddSql(ref SqlValueStringBuilder sql, OrderByExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             AddSql(ref sql, expr.Source, ref context, sqlBuilder, outputParams);
             if (expr.OrderBys != null && expr.OrderBys.Count > 0)
@@ -704,7 +654,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 向 SQL 结果结构中添加分页相关参数。
         /// </summary>
-        private static void AddSql(ref SqlValueResult sql, SectionExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void AddSql(ref SqlValueStringBuilder sql, SectionExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             AddSql(ref sql, expr.Source, ref context, sqlBuilder, outputParams);
             sql.Skip = expr.Skip;
@@ -714,7 +664,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 向 SQL 结果结构中添加 Having 过滤片段。
         /// </summary>
-        private static void AddSql(ref SqlValueResult sql, HavingExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void AddSql(ref SqlValueStringBuilder sql, HavingExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             AddSql(ref sql, expr.Source, ref context, sqlBuilder, outputParams);
             if (expr.Having != null)

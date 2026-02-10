@@ -49,6 +49,11 @@ namespace LiteOrm.Common
         public bool SyncTable { get; set; }
 
         /// <summary>
+        /// 只读数据库配置列表
+        /// </summary>
+        public List<ReadOnlyDataSourceConfig> ReadOnlyConfigs { get; set; } = new List<ReadOnlyDataSourceConfig>();
+
+        /// <summary>
         /// 获取提供程序类型
         /// </summary>
         public Type ProviderType
@@ -65,6 +70,37 @@ namespace LiteOrm.Common
                 return type;
             }
         }
+    }
+
+    /// <summary>
+    /// 只读数据库连接配置
+    /// </summary>
+    public class ReadOnlyDataSourceConfig
+    {
+        /// <summary>
+        /// 数据库连接字符串
+        /// </summary>
+        public string ConnectionString { get; set; }
+
+        /// <summary>
+        /// 连接保活时长（可选，不设置则使用主库配置）
+        /// </summary>
+        public TimeSpan? KeepAliveDuration { get; set; }
+
+        /// <summary>
+        /// 连接池大小（可选，不设置则使用主库配置）
+        /// </summary>
+        public int? PoolSize { get; set; }
+
+        /// <summary>
+        /// 最大连接数限制（可选，不设置则使用主库配置）
+        /// </summary>
+        public int? MaxPoolSize { get; set; }
+
+        /// <summary>
+        /// 数据库参数最大数量限制（可选，不设置则使用主库配置）
+        /// </summary>
+        public int? ParamCountLimit { get; set; }
     }
 
     /// <summary>

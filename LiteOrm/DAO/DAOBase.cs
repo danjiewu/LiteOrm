@@ -108,7 +108,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取当前数据访问对象上下文
         /// </summary>
-        public DAOContext DAOContext { get => CurrentSession.GetDaoContext(TableDefinition.DataSource); }
+        public virtual DAOContext DAOContext { get => CurrentSession.GetDaoContext(TableDefinition.DataSource); }
 
         /// <summary>
         /// 表名参数

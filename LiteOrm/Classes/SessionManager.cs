@@ -197,12 +197,12 @@ namespace LiteOrm
 
                 _logger?.LogDebug($"会话 {SessionID} 开始事务。Transaction ID: {_currentTransactionId}, 隔离级别: {isolationLevel}");
 
-                // 为所有已存在的上下文开启事务
+                // 为所有已存在的上下文开启事务，只读连接跳过事务
                 foreach (var context in _daoContexts.Values)
                 {
                     try
                     {
-                        if (!context.InTransaction)
+                        if (!context.IsReadOnly && !context.InTransaction)
                         {
                             context.BeginTransaction(isolationLevel);
                         }
@@ -269,7 +269,7 @@ namespace LiteOrm
             {
                 try
                 {
-                    if (context.InTransaction)
+                    if (!context.IsReadOnly && context.InTransaction)
                     {
                         context.Commit();
                     }
@@ -305,7 +305,7 @@ namespace LiteOrm
             {
                 try
                 {
-                    if (context.InTransaction)
+                    if (!context.IsReadOnly && context.InTransaction)
                     {
                         context.Rollback();
                     }
@@ -335,37 +335,52 @@ namespace LiteOrm
         /// 获取指定名称的DAO上下文
         /// </summary>
         /// <param name="name">上下文名称，如果为null则使用默认名称"_"</param>
+        /// <param name="readOnly">是否优先使用只读连接池，默认为 false。</param>
         /// <returns>DAO上下文实例</returns>
-        public DAOContext GetDaoContext(string name = null)
+        public DAOContext GetDaoContext(string name = null, bool readOnly = false)
         {
             EnsureNotDisposed();
             if (name is null) name = "_";
+
+            // 如果在事务中，忽略 readOnly 参数，必须返回主写连接以保证事务一致性
+            if (InTransaction) readOnly = false;
+
+            string cacheKey = readOnly ? $"{name}:RO" : $"{name}:RW";
+
             lock (_syncLock)
             {
-                if (!_daoContexts.TryGetValue(name, out DAOContext context))
+                if (_daoContexts.TryGetValue(cacheKey, out DAOContext context))
                 {
-                    // 从工厂获取上下文
-                    context = _daoContextPoolFactory.GetPool(name).PeekContext();
-
-                    // 如果当前在事务中，开启事务
-                    if (InTransaction && !context.InTransaction)
-                    {
-                        try
-                        {
-                            context.BeginTransaction(_currentIsolationLevel);
-                        }
-                        catch (Exception ex)
-                        {
-                            // 如果开启事务失败，归还连接并抛出异常
-                            _daoContextPoolFactory.ReturnContext(context);
-                            _logger?.LogError(ex, $"会话 {SessionID} 开启事务失败。连接池: {name}");
-                            throw;
-                        }
-                    }
-
-                    _daoContexts[name] = context;
+                    return context;
                 }
 
+                // 从工厂获取上下文
+                context = _daoContextPoolFactory.GetPool(name).PeekContext(readOnly);
+
+                // 如果当前在事务中，开启事务
+                if (InTransaction && !context.InTransaction)
+                {
+                    try
+                    {
+                        context.BeginTransaction(_currentIsolationLevel);
+                    }
+                    catch (Exception ex)
+                    {
+                        // 如果开启事务失败，归还连接并抛出异常
+                        if (context.Pool != null)
+                        {
+                            context.Pool.ReturnContext(context);
+                        }
+                        else
+                        {
+                            context.Dispose();
+                        }
+                        _logger?.LogError(ex, $"会话 {SessionID} 开启事务失败。连接池: {name}");
+                        throw;
+                    }
+                }
+
+                _daoContexts[cacheKey] = context;
                 return context;
             }
         }

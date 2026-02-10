@@ -54,6 +54,11 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 获取当前数据访问对象上下文，默认为只读。
+        /// </summary>
+        public override DAOContext DAOContext => CurrentSession.GetDaoContext(TableDefinition.DataSource, true);
+
+        /// <summary>
         /// 使用指定的参数创建新的DAO实例
         /// </summary>
         /// <param name="args">表名参数</param>

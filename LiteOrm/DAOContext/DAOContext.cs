@@ -86,6 +86,11 @@ namespace LiteOrm
         public DAOContextPool Pool { get; }
 
         /// <summary>
+        /// 获取或设置指示该上下文是否为只读连接的值。
+        /// </summary>
+        public bool IsReadOnly { get; internal set; }
+
+        /// <summary>
         /// 获取或设置该上下文最后一次执行操作的时间，用于连接池的老化检测。
         /// </summary>
         public DateTime LastActiveTime { get; set; }

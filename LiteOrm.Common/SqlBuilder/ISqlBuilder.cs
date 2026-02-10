@@ -105,6 +105,6 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="subSelect">包含 SELECT 各个子句片段的结构体。</param>
         /// <param name="result">输出 SQL 语句的缓冲区。</param>
-        void BuildSelectSql(ref SqlValueResult subSelect, ref ValueStringBuilder result);
+        void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result);
     }
 }

@@ -102,7 +102,7 @@ namespace LiteOrm
         /// 将结构化的 SQL 片段组装成最终的 SELECT 语句 (MySQL 实现)。
         /// 使用 LIMIT [offset,] row_count 语法进行分页。
         /// </summary>
-        public override void BuildSelectSql(ref SqlValueResult subSelect, ref ValueStringBuilder result)
+        public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
         {
             if (subSelect.Select.Length == 0) result.Append("SELECT *");
             else

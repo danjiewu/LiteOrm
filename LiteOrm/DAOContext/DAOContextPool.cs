@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LiteOrm.Common;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -52,6 +53,8 @@ namespace LiteOrm
         private readonly TaskCompletionSource<bool> _initializeTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private SemaphoreSlim _semaphore = new SemaphoreSlim(100, 100);
         private int _maxPoolSize = 100;
+        private readonly List<DAOContextPool> _readOnlyPools = new List<DAOContextPool>();
+        private int _readOnlyIndex = 0;
 
         /// <summary>
         /// 获取或设置连接池的缓冲大小（闲置连接数量）。
@@ -102,6 +105,11 @@ namespace LiteOrm
         public int ParamCountLimit { get; set; } = 2000;
 
         /// <summary>
+        /// 获取或设置该连接池是否为只读连接池。
+        /// </summary>
+        public bool IsReadOnlyPool { get; set; }
+
+        /// <summary>
         /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
         /// </summary>
         /// <param name="providerType">数据库提供程序类型。</param>
@@ -123,17 +131,45 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 添加只读数据库连接池。
+        /// </summary>
+        /// <param name="config">只读数据库配置。</param>
+        public void AddReadOnlyPool(LiteOrm.Common.ReadOnlyDataSourceConfig config)
+        {
+            if (config == null || string.IsNullOrWhiteSpace(config.ConnectionString)) return;
+
+            var pool = new DAOContextPool(ProviderType, config.ConnectionString)
+            {
+                Name = $"{Name}_ReadOnly_{_readOnlyPools.Count}",
+                PoolSize = config.PoolSize ?? PoolSize,
+                MaxPoolSize = config.MaxPoolSize ?? MaxPoolSize,
+                KeepAliveDuration = config.KeepAliveDuration ?? KeepAliveDuration,
+                ParamCountLimit = config.ParamCountLimit ?? ParamCountLimit,
+                IsReadOnlyPool = true
+            };
+            pool.MarkInitialized();
+            _readOnlyPools.Add(pool);
+        }
+
+        /// <summary>
         /// 从连接池中获取一个可用的DAO上下文。
         /// </summary>
+        /// <param name="readOnly">是否优先使用只读连接池，默认为 false。</param>
         /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
         /// <exception cref="ObjectDisposedException">当连接池已被释放时抛出。</exception>
-        public DAOContext PeekContext()
+        public DAOContext PeekContext(bool readOnly=false)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(DAOContextPool));
 
             // 等待初始化完成（如自动建表同步）
             _initializeTcs.Task.Wait();
+
+            if (readOnly && _readOnlyPools.Count > 0)
+            {
+                int index = Interlocked.Increment(ref _readOnlyIndex);
+                return _readOnlyPools[Math.Abs(index) % _readOnlyPools.Count].PeekContext();
+            }
 
             return PeekContextInternal();
         }
@@ -143,13 +179,19 @@ namespace LiteOrm
         /// </summary>
         /// <returns>表示异步操作的任务，结果为一个可用的 <see cref="DAOContext"/> 实例。</returns>
         /// <exception cref="ObjectDisposedException">当连接池已被释放时抛出。</exception>
-        public async Task<DAOContext> PeekContextAsync()
+        public async Task<DAOContext> PeekContextAsync(bool readOnly = false)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(DAOContextPool));
 
             // 等待初始化完成（如自动建表同步）
             await _initializeTcs.Task.ConfigureAwait(false);
+
+            if (readOnly && _readOnlyPools.Count > 0)
+            {
+                int index = Interlocked.Increment(ref _readOnlyIndex);
+                return await _readOnlyPools[(index & 0x7FFFFFFF) % _readOnlyPools.Count].PeekContextAsync().ConfigureAwait(false);
+            }
 
             return await PeekContextInternalAsync().ConfigureAwait(false);
         }
@@ -312,10 +354,8 @@ namespace LiteOrm
             try
             {
                 var connection = Activator.CreateInstance(ProviderType) as DbConnection;
-                if (connection is null)
-                    throw new InvalidOperationException($"Unable to create database connection of type {ProviderType}");
-
-                connection.ConnectionString = ConnectionString;
+                if (connection == null)
+                    throw new InvalidOperationException("Failed to create a database connection instance.");
 
                 var context = new DAOContext(connection, this);
                 return context;
@@ -327,9 +367,8 @@ namespace LiteOrm
             }
         }
 
-
         /// <summary>
-        /// 释放连接池使用的所有资源。
+        /// 释放连接池及其所有成员占用的资源。
         /// </summary>
         public void Dispose()
         {
@@ -338,26 +377,36 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 释放连接池使用的非托管资源，并可选择释放托管资源。
+        /// 释放连接池及其所有成员占用的资源。
         /// </summary>
-        /// <param name="disposing">true 表示释放托管资源和非托管资源；false 表示仅释放非托管资源。</param>
+        /// <param name="disposing">指示是否是主动调用Dispose方法。</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed)
-                return;
-
-            if (disposing)
+            if (!_disposed)
             {
-                lock (_poolLock)
+                if (disposing)
                 {
-                    while (_pool.Count > 0)
+                    // 释放托管资源
+                    lock (_poolLock)
                     {
-                        _pool.Dequeue()?.Dispose();
+                        while (_pool.Count > 0)
+                        {
+                            var context = _pool.Dequeue();
+                            context.Dispose();
+                        }
                     }
 
-                    _disposed = true;
+                    foreach (var pool in _readOnlyPools)
+                    {
+                        pool.Dispose();
+                    }
+
+                    _semaphore?.Dispose();
                 }
-                _semaphore?.Dispose();
+
+                // 释放非托管资源
+
+                _disposed = true;
             }
         }
     }
