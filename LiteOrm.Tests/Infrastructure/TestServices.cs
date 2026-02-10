@@ -29,8 +29,9 @@ namespace LiteOrm.Tests.Infrastructure
     {
         public async Task<TestUser?> GetLatestUserAsync()
         {
-            var results = await SearchAsync(null);
-            return results.OrderByDescending(u => u.Id).FirstOrDefault();
+            return await SearchOneAsync(
+                Expr.Exp<TestUser>(u => u.Id > 0).OrderBy(("Id", false)).Section(0, 1)
+            );
         }
     }
 

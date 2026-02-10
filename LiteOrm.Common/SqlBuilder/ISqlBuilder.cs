@@ -101,15 +101,10 @@ namespace LiteOrm.Common
         DbType GetDbType(Type type);
 
         /// <summary>
-        /// 生成分页查询的 SQL 语句。
+        /// 将结构化的 SQL 片段组装成最终的 SELECT 语句。
         /// </summary>
-        /// <param name="select">SELECT 字段内容。</param>
-        /// <param name="from">FROM 子句内容。</param>
-        /// <param name="where">WHERE 过滤条件。</param>
-        /// <param name="orderBy">ORDER BY 排序子句。</param>
-        /// <param name="startIndex">起始行的索引（从 0 开始）。</param>
-        /// <param name="sectionSize">请求的数据行数。</param>
-        /// <returns>分页 SQL 语句。</returns>
-        string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize);
+        /// <param name="subSelect">包含 SELECT 各个子句片段的结构体。</param>
+        /// <param name="result">输出 SQL 语句的缓冲区。</param>
+        void BuildSelectSql(ref SqlValueResult subSelect, ref ValueStringBuilder result);
     }
 }

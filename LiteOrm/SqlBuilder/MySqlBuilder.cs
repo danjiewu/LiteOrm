@@ -99,18 +99,58 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 生成分页查询的SQL语句
+        /// 将结构化的 SQL 片段组装成最终的 SELECT 语句 (MySQL 实现)。
+        /// 使用 LIMIT [offset,] row_count 语法进行分页。
         /// </summary>
-        /// <param name="select">select内容</param>
-        /// <param name="from">from块</param>
-        /// <param name="where">where条件</param>
-        /// <param name="orderBy">排序</param>
-        /// <param name="startIndex">起始位置，从0开始</param>
-        /// <param name="sectionSize">查询条数</param>
-        /// <returns></returns>
-        public override string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
+        public override void BuildSelectSql(ref SqlValueResult subSelect, ref ValueStringBuilder result)
         {
-            return $"SELECT {select} \nFROM {from} {where} ORDER BY {orderBy} LIMIT {startIndex},{sectionSize}";
+            if (subSelect.Select.Length == 0) result.Append("SELECT *");
+            else
+            {
+                result.Append("SELECT ");
+                result.Append(subSelect.Select.AsSpan());
+            }
+
+            if (subSelect.From.Length > 0)
+            {
+                result.Append(" FROM ");
+                result.Append(subSelect.From.AsSpan());
+            }
+
+            if (subSelect.Where.Length > 0)
+            {
+                result.Append(" WHERE ");
+                result.Append(subSelect.Where.AsSpan());
+            }
+
+            if (subSelect.GroupBy.Length > 0)
+            {
+                result.Append(" GROUP BY ");
+                result.Append(subSelect.GroupBy.AsSpan());
+            }
+
+            if (subSelect.Having.Length > 0)
+            {
+                result.Append(" HAVING ");
+                result.Append(subSelect.Having.AsSpan());
+            }
+
+            if (subSelect.OrderBy.Length > 0)
+            {
+                result.Append(" ORDER BY ");
+                result.Append(subSelect.OrderBy.AsSpan());
+            }
+
+            if (subSelect.Take > 0)
+            {
+                result.Append(" LIMIT ");
+                if (subSelect.Skip > 0)
+                {
+                    result.Append(subSelect.Skip.ToString());
+                    result.Append(",");
+                }
+                result.Append(subSelect.Take.ToString());
+            }
         }
 
         /// <summary>

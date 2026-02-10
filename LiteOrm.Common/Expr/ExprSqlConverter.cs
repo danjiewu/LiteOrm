@@ -6,6 +6,56 @@ using System.Linq;
 namespace LiteOrm.Common
 {
     /// <summary>
+    /// 表示生成的 SQL 片段结果结构，用于分阶段构建复杂的 SQL 语句。
+    /// </summary>
+    public ref struct SqlValueResult
+    {
+        /// <summary>SELECT 子句片段。</summary>
+        public ValueStringBuilder Select;
+        /// <summary>FROM 子句片段。</summary>
+        public ValueStringBuilder From;
+        /// <summary>WHERE 子句片段。</summary>
+        public ValueStringBuilder Where;
+        /// <summary>GROUP BY 子句片段。</summary>
+        public ValueStringBuilder GroupBy;
+        /// <summary>HAVING 子句片段。</summary>
+        public ValueStringBuilder Having;
+        /// <summary>ORDER BY 子句片段。</summary>
+        public ValueStringBuilder OrderBy;
+        /// <summary>分页跳过的记录数。</summary>
+        public int Skip;
+        /// <summary>分页获取的记录数。</summary>
+        public int Take;
+
+        /// <summary>
+        /// 构造函数，使用默认容量的堆分配
+        /// </summary>
+        public SqlValueResult()
+        {
+            this.Select = ValueStringBuilder.Create(256);
+            this.From = ValueStringBuilder.Create(256);
+            this.Where = ValueStringBuilder.Create(256);
+            this.GroupBy = ValueStringBuilder.Create(256);
+            this.Having = ValueStringBuilder.Create(256);
+            this.OrderBy = ValueStringBuilder.Create(256);
+            this.Skip = 0;
+            this.Take = 0;
+        }
+
+        /// <summary>
+        /// 释放所有部分
+        /// </summary>
+        public void Dispose()
+        {
+            this.Select.Dispose();
+            this.From.Dispose();
+            this.Where.Dispose();
+            this.GroupBy.Dispose();
+            this.Having.Dispose();
+            this.OrderBy.Dispose();
+        }
+    }
+    /// <summary>
     /// 表达式 SQL 转换器。
     /// </summary>
     public static class ExprSqlConverter
@@ -52,11 +102,15 @@ namespace LiteOrm.Common
         public static string ToSql(this Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (expr is null) return string.Empty;
-            var sb = ValueStringBuilder.Create(128);
-            ToSql(ref sb, expr, ref context, sqlBuilder, outputParams);
-            string res = sb.ToString();
-            sb.Dispose();
-            return res;
+
+            else
+            {
+                var sb = ValueStringBuilder.Create(128);
+                ToSql(ref sb, expr, ref context, sqlBuilder, outputParams);
+                string res = sb.ToString();
+                sb.Dispose();
+                return res;
+            }
         }
 
         private static void ToSql(ref ValueStringBuilder sb, Expr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
@@ -76,21 +130,80 @@ namespace LiteOrm.Common
             else if (expr is ForeignExpr foreign) ToSql(ref sb, foreign, ref context, sqlBuilder, outputParams);
             else if (expr is LogicSet ls) ToSql(ref sb, ls, ref context, sqlBuilder, outputParams);
             else if (expr is ValueSet vs) ToSql(ref sb, vs, ref context, sqlBuilder, outputParams);
-            else if (expr is SelectExpr select) ToSql(ref sb, select, ref context, sqlBuilder, outputParams);
-            else if (expr is WhereExpr where) ToSql(ref sb, where, ref context, sqlBuilder, outputParams);
-            else if (expr is TableExpr table) ToSql(ref sb, table, ref context, sqlBuilder, outputParams);
-            else if (expr is GroupByExpr groupBy) ToSql(ref sb, groupBy, ref context, sqlBuilder, outputParams);
-            else if (expr is HavingExpr having) ToSql(ref sb, having, ref context, sqlBuilder, outputParams);
             else if (expr is AggregateFunctionExpr agg) ToSql(ref sb, agg, ref context, sqlBuilder, outputParams);
-            else if (expr is OrderByExpr order) ToSql(ref sb, order, ref context, sqlBuilder, outputParams);
-            else if (expr is SectionExpr section) ToSql(ref sb, section, ref context, sqlBuilder, outputParams);
+            else if (expr is TableExpr table) ToSql(ref sb, table, ref context, sqlBuilder, outputParams);
+            else if (expr is SelectExpr select) ToSql(ref sb, select, ref context, sqlBuilder, outputParams);
             else if (expr is DeleteExpr delete) ToSql(ref sb, delete, ref context, sqlBuilder, outputParams);
             else if (expr is UpdateExpr update) ToSql(ref sb, update, ref context, sqlBuilder, outputParams);
             else
                 throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
         }
 
+        /// <summary>
+        /// 将 SQL 片段通过递归方式拆解并填充到 SqlValueResult 结构中。
+        /// </summary>
+        /// <param name="sql">目标 SQL 结果结构。</param>
+        /// <param name="sqlSegment">要处理的 SQL 片段。</param>
+        /// <param name="context">SQL 构建上下文。</param>
+        /// <param name="sqlBuilder">具体数据库的构建器。</param>
+        /// <param name="outputParams">参数集合。</param>
+        private static void AddSql(ref SqlValueResult sql, SqlSegment sqlSegment, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            if (sqlSegment is null) sqlSegment = Expr.Table(context.Table);
+            switch (sqlSegment)
+            {
+                case SelectExpr select:
+                    AddSql(ref sql, select, ref context, sqlBuilder, outputParams);
+                    break;
+                case WhereExpr where:
+                    AddSql(ref sql, where, ref context, sqlBuilder, outputParams);
+                    break;
+                case GroupByExpr groupBy:
+                    AddSql(ref sql, groupBy, ref context, sqlBuilder, outputParams);
+                    break;
+                case HavingExpr having:
+                    AddSql(ref sql, having, ref context, sqlBuilder, outputParams);
+                    break;
+                case OrderByExpr orderBy:
+                    AddSql(ref sql, orderBy, ref context, sqlBuilder, outputParams);
+                    break;
+                case SectionExpr section:
+                    AddSql(ref sql, section, ref context, sqlBuilder, outputParams);
+                    break;
+                case TableExpr table:
+                    ToSql(ref sql.From, table, ref context, sqlBuilder, outputParams);
+                    break;
+                default:
+                    throw new NotSupportedException($"SQL segment type {sqlSegment.GetType().FullName} is not supported.");
+            }
+        }
 
+        /// <summary>
+        /// 将 SelectExpr 转换为 SQL 字符串片段。
+        /// </summary>
+        private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            SqlValueResult sql = new SqlValueResult();
+            AddSql(ref sql, select.Source, ref context, sqlBuilder, outputParams);
+
+            if (select.Selects == null || select.Selects.Count == 0)
+            {
+                sql.Select.Append("*");
+            }
+            else
+            {
+                for (int i = 0; i < select.Selects.Count; i++)
+                {
+                    if (i > 0) sql.Select.Append(", ");
+                    ToSql(ref sql.Select, select.Selects[i], ref context, sqlBuilder, outputParams);
+                }
+            }
+            sqlBuilder.BuildSelectSql(ref sql, ref sb);
+            sql.Dispose();
+        }
+        /// <summary>
+        /// 将逻辑二元表达式转换为 SQL。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, LogicBinaryExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             string op = String.Empty;
@@ -177,7 +290,7 @@ namespace LiteOrm.Common
                         sb.Append("'");
                     }
                     else
-                    {                        
+                    {
                         ToSql(ref sb, expr.Left, ref context, sqlBuilder, outputParams);
                         sb.Append(" ");
                         sb.Append(op);
@@ -213,6 +326,9 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 将值二元表达式（如加减乘除）转换为 SQL。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, ValueBinaryExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             string op = String.Empty;
@@ -242,6 +358,9 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 处理 NOT 表达式。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, NotExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (expr.Operand is LogicBinaryExpr be)
@@ -263,6 +382,9 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 处理一元表达式（如取负、位取反）。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, UnaryExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             switch (expr.Operator)
@@ -277,6 +399,9 @@ namespace LiteOrm.Common
             ToSql(ref sb, expr.Operand, ref context, sqlBuilder, outputParams);
         }
 
+        /// <summary>
+        /// 将值表达式转换为 SQL，并支持参数化。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, ValueExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (expr.Value == null)
@@ -324,13 +449,16 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 处理属性名称表达式，映射为数据库列名。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, PropertyExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-        {   
+        {
             string tableAlias = context.TableAliasName;
             if (tableAlias is null)
-            {   
+            {
                 // 将属性名映射为带限定符的列名，如 [User].[Name] 或 [Name]
-                SqlColumn column = context.Table.GetColumn(expr.PropertyName); 
+                SqlColumn column = context.Table.GetColumn(expr.PropertyName);
                 if (column is null) throw new Exception($"Property \"{expr.PropertyName}\" does not exist in type \"{context.Table.DefinitionType.FullName}\". ");
                 if (context.SingleTable)
                 {
@@ -348,8 +476,9 @@ namespace LiteOrm.Common
                 sb.Append(sqlBuilder.ToSqlName(expr.PropertyName));
             }
         }
-
-
+        /// <summary>
+        /// 处理关联表过滤表达式（EXISTS 查询）。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, ForeignExpr foreginExpr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             TableView tableView = TableInfoProvider.Default.GetTableView(context.Table.DefinitionType);
@@ -386,6 +515,9 @@ namespace LiteOrm.Common
             context.Sequence = foreignContext.Sequence;
         }
 
+        /// <summary>
+        /// 处理数据库函数表达式。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, FunctionExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             // 分发给具体的 sqlBuilder 生成数据库对应的函数 SQL
@@ -405,16 +537,25 @@ namespace LiteOrm.Common
         }
 
 
+        /// <summary>
+        /// 处理 Lambda 封装表达式。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, LambdaExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             ToSql(ref sb, expr.InnerExpr, ref context, sqlBuilder, outputParams);
         }
 
+        /// <summary>
+        /// 处理动态生成的 SQL 片段。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, GenericSqlExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             sb.Append(expr.GenerateSql(ref context, sqlBuilder, outputParams));
         }
 
+        /// <summary>
+        /// 处理逻辑集合（AND/OR）。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, LogicSet expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             int count = expr.Count;
@@ -450,6 +591,9 @@ namespace LiteOrm.Common
             if (count > 1) sb.Append(")");
         }
 
+        /// <summary>
+        /// 处理值集合。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, ValueSet expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             int count = expr.Count;
@@ -480,47 +624,116 @@ namespace LiteOrm.Common
             sb.Append(")");
         }
 
-        private static void ToSql(ref ValueStringBuilder sb, SelectExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        /// <summary>
+        /// 向 SQL 结果结构中添加 Select 相关的子查询片段。
+        /// </summary>
+        private static void AddSql(ref SqlValueResult sql, SelectExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            bool isMain = sb.Length == 0;
-            if (!isMain) sb.Append("(");
+            SqlValueResult innerSql = new SqlValueResult();
+            AddSql(ref innerSql, expr.Source, ref context, sqlBuilder, outputParams);
 
-            //首先解析 FROM 子句中的源表或子查询，生成对应的 SQL 片段并存储在 sourceSb 中，因为 SELECT 子句的生成可能需要引用 FROM 中定义的表别名等信息，所以必须先处理 FROM 子句以正确设置上下文环境
-            ValueStringBuilder sourceSb = ValueStringBuilder.Create(64);
-            if (expr.Source != null)
-            {
-                sourceSb.Append(" FROM ");
-                ToSql(ref sourceSb, expr.Source, ref context, sqlBuilder, outputParams);
-            }
-
-            sb.Append("SELECT ");
             if (expr.Selects == null || expr.Selects.Count == 0)
             {
-                sb.Append("*");
+                innerSql.Select.Append("*");
             }
             else
             {
                 for (int i = 0; i < expr.Selects.Count; i++)
                 {
-                    if (i > 0) sb.Append(", ");
-                    ToSql(ref sb, expr.Selects[i], ref context, sqlBuilder, outputParams);
+                    if (i > 0) innerSql.Select.Append(", ");
+                    ToSql(ref innerSql.Select, expr.Selects[i], ref context, sqlBuilder, outputParams);
                 }
             }
-            if (sourceSb.Length>0)
+            sql.From.Append("(");
+            sqlBuilder.BuildSelectSql(ref innerSql, ref sql.From);
+            sql.From.Append($") T{context.Sequence}");
+            context = new SqlBuildContext(context.Table, $"T{context.Sequence}", context.TableArgs)
             {
-                sb.Append(sourceSb.ToString());
-            }
-            if (!isMain)
+                Sequence = ++context.Sequence,
+                Parent = context
+            };
+            innerSql.Dispose();
+        }
+
+        /// <summary>
+        /// 向 SQL 结果结构中添加 Where 过滤片段。
+        /// </summary>
+        private static void AddSql(ref SqlValueResult sql, WhereExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            AddSql(ref sql, expr.Source, ref context, sqlBuilder, outputParams);
+            if (expr.Where != null)
             {
-                sb.Append($") as T{context.Sequence}");
-                context = new SqlBuildContext(context.Table, $"T{context.Sequence}", context.TableArgs)
-                {
-                    Sequence = ++context.Sequence,
-                    Parent = context
-                };
+                if (sql.Where.Length > 0) sql.Where.Append(" AND ");
+                ToSql(ref sql.Where, expr.Where, ref context, sqlBuilder, outputParams);
             }
         }
 
+        /// <summary>
+        /// 向 SQL 结果结构中添加 Group By 分组片段。
+        /// </summary>
+        private static void AddSql(ref SqlValueResult sql, GroupByExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            AddSql(ref sql, expr.Source, ref context, sqlBuilder, outputParams);
+            if (expr.GroupBys != null && expr.GroupBys.Count > 0)
+            {
+                for (int i = 0; i < expr.GroupBys.Count; i++)
+                {
+                    if (sql.GroupBy.Length > 0) sql.GroupBy.Append(", ");
+                    ToSql(ref sql.GroupBy, expr.GroupBys[i], ref context, sqlBuilder, outputParams);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 向 SQL 结果结构中添加 Order By 排序片段。
+        /// </summary>
+        private static void AddSql(ref SqlValueResult sql, OrderByExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            AddSql(ref sql, expr.Source, ref context, sqlBuilder, outputParams);
+            if (expr.OrderBys != null && expr.OrderBys.Count > 0)
+            {
+                for (int i = 0; i < expr.OrderBys.Count; i++)
+                {
+                    if (sql.OrderBy.Length > 0) sql.OrderBy.Append(", ");
+                    ToSql(ref sql.OrderBy, expr.OrderBys[i].Item1, ref context, sqlBuilder, outputParams);
+                    if (!expr.OrderBys[i].Item2) sql.OrderBy.Append(" DESC");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 向 SQL 结果结构中添加分页相关参数。
+        /// </summary>
+        private static void AddSql(ref SqlValueResult sql, SectionExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            AddSql(ref sql, expr.Source, ref context, sqlBuilder, outputParams);
+            sql.Skip = expr.Skip;
+            sql.Take = expr.Take;
+        }
+
+        /// <summary>
+        /// 向 SQL 结果结构中添加 Having 过滤片段。
+        /// </summary>
+        private static void AddSql(ref SqlValueResult sql, HavingExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            AddSql(ref sql, expr.Source, ref context, sqlBuilder, outputParams);
+            if (expr.Having != null)
+            {
+                ToSql(ref sql.Having, expr.Having, ref context, sqlBuilder, outputParams);
+            }
+        }
+
+        /// <summary>
+        /// 处理基本表引用。
+        /// </summary>
+        private static void ToSql(ref ValueStringBuilder sb, TableExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            sb.Append(sqlBuilder.BuildExpression(expr.Table, context.TableArgs));
+        }
+
+        /// <summary>
+        /// 处理查询列项（带有 Alias）。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, SelectItemExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             ToSql(ref sb, expr.Value, ref context, sqlBuilder, outputParams);
@@ -531,6 +744,9 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 将 WhereExpr 转换为内置 WHERE 的 SQL 片段。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, WhereExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             ToSql(ref sb, expr.Source ?? Expr.Table(context.Table), ref context, sqlBuilder, outputParams);
@@ -541,6 +757,9 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 将 GroupByExpr 转换为内置 GROUP BY 的 SQL 片段。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, GroupByExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             ToSql(ref sb, expr.Source ?? Expr.Table(context.Table), ref context, sqlBuilder, outputParams);
@@ -555,21 +774,9 @@ namespace LiteOrm.Common
             }
         }
 
-        private static void ToSql(ref ValueStringBuilder sb, HavingExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            ToSql(ref sb, expr.Source ?? Expr.Table(context.Table), ref context, sqlBuilder, outputParams);
-            if (expr.Having != null)
-            {
-                sb.Append(" HAVING ");
-                ToSql(ref sb, expr.Having, ref context, sqlBuilder, outputParams);
-            }
-        }
-
-        private static void ToSql(ref ValueStringBuilder sb, TableExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            sb.Append(sqlBuilder.BuildExpression(expr.Table, context.TableArgs));
-        }
-
+        /// <summary>
+        /// 处理聚合函数 SQL。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, AggregateFunctionExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             sb.Append(expr.FunctionName);
@@ -579,6 +786,9 @@ namespace LiteOrm.Common
             sb.Append(")");
         }
 
+        /// <summary>
+        /// 将 OrderByExpr 转换为内置 ORDER BY 的 SQL 片段。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, OrderByExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             ToSql(ref sb, expr.Source ?? Expr.Table(context.Table), ref context, sqlBuilder, outputParams);
@@ -594,6 +804,9 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 将 SectionExpr 转换为分页相关的 SQL 片段（默认实现）。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, SectionExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             ToSql(ref sb, expr.Source ?? Expr.Table(context.Table), ref context, sqlBuilder, outputParams);
@@ -606,6 +819,9 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 生成 DELETE 语句对应的 SQL。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, DeleteExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             sb.Append("DELETE FROM ");
@@ -617,6 +833,9 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 生成 UPDATE 语句对应的 SQL。
+        /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, UpdateExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             sb.Append("UPDATE ");

@@ -6,8 +6,11 @@ using Xunit;
 
 namespace LiteOrm.Tests
 {
+    [Collection("Database")]
     public class SqlGenTests : TestBase
     {
+        public SqlGenTests(DatabaseFixture fixture) : base(fixture) { }
+
         [Fact]
         public void ToSelectSql_Basic_Test()
         {

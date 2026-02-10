@@ -1,4 +1,4 @@
-﻿﻿﻿using LiteOrm.Common;
+﻿using LiteOrm.Common;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -156,21 +156,6 @@ namespace LiteOrm
         public virtual string BuildConcatSql(params string[] strs)
         {
             return $"CONCAT({String.Join(",", strs)})";
-        }
-
-        /// <summary>
-        /// 生成分页查询的 SQL 语句。
-        /// </summary>
-        /// <param name="select">SELECT 字段内容。</param>
-        /// <param name="from">FROM 子句内容。</param>
-        /// <param name="where">WHERE 过滤条件。</param>
-        /// <param name="orderBy">ORDER BY 排序子句。</param>
-        /// <param name="startIndex">起始行的索引（从 0 开始）。</param>
-        /// <param name="sectionSize">请求的数据行数。</param>
-        /// <returns>分页 SQL 语句。</returns>
-        public virtual string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
-        {
-            return $"SELECT * FROM (\nSELECT {select}, ROW_NUMBER() OVER (ORDER BY {orderBy}) AS Row_Number \nFROM {from} {where}) TempTable \nWHERE Row_Number > {startIndex} AND Row_Number <= {startIndex + sectionSize}";
         }
 
         /// <summary>
@@ -585,14 +570,13 @@ namespace LiteOrm
                 sb.Append("\n  ");
                 sb.Append(ToSqlName(column.Name));
                 sb.Append(" ");
-                sb.Append(GetSqlType(column));
-
-                if (column.IsPrimaryKey) sb.Append(" PRIMARY KEY");
+                sb.Append(GetSqlType(column));                
                 if (column.IsIdentity)
                 {
                     sb.Append(" ");
                     sb.Append(GetAutoIncrementSql());
                 }
+                if (column.IsPrimaryKey) sb.Append(" PRIMARY KEY");
                 if (!column.AllowNull) sb.Append(" NOT NULL");
                 first = false;
             }
@@ -818,8 +802,6 @@ namespace LiteOrm
             }
         }
 
-
-
         private static readonly ConcurrentDictionary<Type, SqlHandlerMap> _sqlHandlerMaps = new ConcurrentDictionary<Type, SqlHandlerMap>();
         internal static SqlHandlerMap GetSqlHandlerMap<T>() where T : SqlBuilder
         {
@@ -829,6 +811,63 @@ namespace LiteOrm
         internal static SqlHandlerMap GetSqlHandlerMap(Type type)
         {
             return _sqlHandlerMaps.GetOrAdd(type, t => new SqlHandlerMap());
+        }
+
+        /// <summary>
+        /// 将结构化的 SQL 片段组装成最终的 SELECT 语句。
+        /// 基类实现使用标准的 SQL OFFSET/FETCH 语法进行分页。
+        /// </summary>
+        /// <param name="subSelect">包含 SELECT 各个子句片段的结构体。</param>
+        /// <param name="result">输出 SQL 语句的缓冲区。</param>
+        public virtual void BuildSelectSql(ref SqlValueResult subSelect, ref ValueStringBuilder result)
+        {
+            if (subSelect.Select.Length == 0) result.Append("SELECT *");
+            else
+            {
+                result.Append("SELECT ");
+                result.Append(subSelect.Select.AsSpan());
+            }
+
+            if (subSelect.From.Length > 0)
+            {
+                result.Append(" FROM ");
+                result.Append(subSelect.From.AsSpan());
+            }
+
+            if (subSelect.Where.Length > 0)
+            {
+                result.Append(" WHERE ");
+                result.Append(subSelect.Where.AsSpan());
+            }
+
+            if (subSelect.GroupBy.Length > 0)
+            {
+                result.Append(" GROUP BY ");
+                result.Append(subSelect.GroupBy.AsSpan());
+            }
+
+            if (subSelect.Having.Length > 0)
+            {
+                result.Append(" HAVING ");
+                result.Append(subSelect.Having.AsSpan());
+            }
+
+            if (subSelect.OrderBy.Length > 0)
+            {
+                result.Append(" ORDER BY ");
+                result.Append(subSelect.OrderBy.AsSpan());
+            }
+
+            if (subSelect.Take > 0)
+            {
+                if (subSelect.OrderBy.Length == 0)
+                {
+                    // standard SQL requires ORDER BY for OFFSET/FETCH
+                    // result.Append(" ORDER BY (SELECT NULL)"); 
+                }
+                result.Append($" OFFSET {subSelect.Skip} ROWS");
+                result.Append($" FETCH NEXT {subSelect.Take} ROWS ONLY");
+            }
         }
     }
 }

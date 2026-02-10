@@ -101,11 +101,58 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 生成分页查询的 SQL 语句，使用 SQLite 兼容的 LIMIT 和 OFFSET 语法。
+        /// 将结构化的 SQL 片段组装成最终的 SELECT 语句 (SQLite 实现)。
+        /// 使用 LIMIT n OFFSET m 语法进行分页。
         /// </summary>
-        public override string GetSelectSectionSql(string select, string from, string where, string orderBy, int startIndex, int sectionSize)
+        public override void BuildSelectSql(ref SqlValueResult subSelect, ref ValueStringBuilder result)
         {
-            return $"SELECT {select} \nFROM {from} {where} ORDER BY {orderBy} LIMIT {sectionSize} OFFSET {startIndex}";
+            if (subSelect.Select.Length == 0) result.Append("SELECT *");
+            else
+            {
+                result.Append("SELECT ");
+                result.Append(subSelect.Select.AsSpan());
+            }
+
+            if (subSelect.From.Length > 0)
+            {
+                result.Append(" FROM ");
+                result.Append(subSelect.From.AsSpan());
+            }
+
+            if (subSelect.Where.Length > 0)
+            {
+                result.Append(" WHERE ");
+                result.Append(subSelect.Where.AsSpan());
+            }
+
+            if (subSelect.GroupBy.Length > 0)
+            {
+                result.Append(" GROUP BY ");
+                result.Append(subSelect.GroupBy.AsSpan());
+            }
+
+            if (subSelect.Having.Length > 0)
+            {
+                result.Append(" HAVING ");
+                result.Append(subSelect.Having.AsSpan());
+            }
+
+            if (subSelect.OrderBy.Length > 0)
+            {
+                result.Append(" ORDER BY ");
+                result.Append(subSelect.OrderBy.AsSpan());
+            }
+
+            if (subSelect.Take > 0)
+            {
+                result.Append(" LIMIT ");
+                result.Append(subSelect.Take.ToString());
+                if (subSelect.Skip > 0)
+                {
+                    result.Append(" OFFSET ");
+                    result.Append(subSelect.Skip.ToString());
+                }
+            }
         }
 
         /// <summary>
@@ -210,6 +257,38 @@ namespace LiteOrm
 
             sb.Append("\n);");
 
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
+        }
+
+        /// <summary>
+        /// 生成创建表的 SQL 语句。SQLite 要求 AUTOINCREMENT 必须在 PRIMARY KEY 之后。
+        /// </summary>
+        public override string BuildCreateTableSql(string tableName, IEnumerable<ColumnDefinition> columns)
+        {
+            var sb = ValueStringBuilder.Create(512);
+            sb.Append("CREATE TABLE ");
+            sb.Append(ToSqlName(tableName));
+            sb.Append(" (");
+            bool first = true;
+            foreach (var column in columns)
+            {
+                if (!first) sb.Append(",");
+                sb.Append("\n  ");
+                sb.Append(ToSqlName(column.Name));
+                sb.Append(" ");
+                sb.Append(GetSqlType(column));
+                if (column.IsPrimaryKey) sb.Append(" PRIMARY KEY");
+                if (column.IsIdentity)
+                {
+                    sb.Append(" ");
+                    sb.Append(GetAutoIncrementSql());
+                }
+                if (!column.AllowNull && !column.IsPrimaryKey) sb.Append(" NOT NULL");
+                first = false;
+            }
+            sb.Append("\n)");
             string result = sb.ToString();
             sb.Dispose();
             return result;

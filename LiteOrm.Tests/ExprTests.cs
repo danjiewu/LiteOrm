@@ -7,13 +7,16 @@ using Xunit;
 
 namespace LiteOrm.Tests
 {
-    public class ExprTests :TestBase
+    [Collection("Database")]
+    public class ExprTests : TestBase
     {
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
+
+        public ExprTests(DatabaseFixture fixture) : base(fixture) { }
 
         private void TestSerialization<T>(T expr) where T : Expr
         {

@@ -8,8 +8,11 @@ using Xunit;
 
 namespace LiteOrm.Tests
 {
+    [Collection("Database")]
     public class LambdaQueryTests : TestBase
     {
+        public LambdaQueryTests(DatabaseFixture fixture) : base(fixture) { }
+
         [Fact]
         public void BasicQuery_Test()
         {

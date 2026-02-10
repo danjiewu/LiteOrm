@@ -73,8 +73,9 @@ namespace LiteOrm
             return $"INSERT INTO {ToSqlName(tableName)} \n({strColumns})\nVALUES ({strValues}) \nRETURNING {ToSqlName(identityColumn.Name)} INTO {ToSqlParam(identityColumn.PropertyName)}";
         }
 
+        // ...existing code...
         /// <summary>
-        /// 生成 Oracle 专用的批量插入 SQL 语句 (INSERT ALL)。
+        /// 生成 Oracle 专用的批量插入 SQL 语句 (使用 SELECT UNION ALL)。
         /// </summary>
         /// <param name="tableName">目标表名。</param>
         /// <param name="columns">插入的列名集合（逗号分隔的 SQL 名称）。</param>
@@ -82,20 +83,30 @@ namespace LiteOrm
         /// <returns>返回 Oracle 可执行的批量插入 SQL 字符串。</returns>
         public override string BuildBatchInsertSql(string tableName, string columns, List<string> valuesList)
         {
+            if (valuesList == null || valuesList.Count == 0) return string.Empty;
+
             var sb = ValueStringBuilder.Create(1024);
-            sb.Append("INSERT ALL\n");
-            string sqlTableName = ToSqlName(tableName);
-            foreach (var values in valuesList)
+            sb.Append("INSERT INTO ");
+            sb.Append(ToSqlName(tableName));
+            sb.Append(" (");
+            sb.Append(columns);
+            sb.Append(")\n");
+
+            for (int i = 0; i < valuesList.Count; i++)
             {
-                sb.Append("  INTO ");
-                sb.Append(sqlTableName);
-                sb.Append(" (");
-                sb.Append(columns);
-                sb.Append(") VALUES ");
-                sb.Append(values);
-                sb.Append("\n");
+                if (i > 0) sb.Append(" UNION ALL\n");
+                sb.Append(" SELECT ");
+                string values = valuesList[i];
+                if (values.StartsWith("(") && values.EndsWith(")"))
+                {
+                    sb.Append(values.AsSpan(1, values.Length - 2));
+                }
+                else
+                {
+                    sb.Append(values);
+                }
+                sb.Append(" FROM DUAL");
             }
-            sb.Append("SELECT * FROM DUAL");
             string result = sb.ToString();
             sb.Dispose();
             return result;

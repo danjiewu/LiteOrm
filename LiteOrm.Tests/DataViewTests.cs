@@ -11,8 +11,11 @@ using Xunit;
 
 namespace LiteOrm.Tests
 {
+    [Collection("Database")]
     public class DataViewTests : TestBase
     {
+        public DataViewTests(DatabaseFixture fixture) : base(fixture) { }
+
         [Fact]
         public async Task DataViewDAO_Search_ShouldReturnDataTable()
         {
@@ -30,8 +33,8 @@ namespace LiteOrm.Tests
             // Assert
             Assert.NotNull(dt);
             Assert.True(dt.Rows.Count >= 2);
-            Assert.Contains("Name", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName));
-            Assert.Contains("Age", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName));
+            Assert.Contains("Name", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName), StringComparer.OrdinalIgnoreCase);
+            Assert.Contains("Age", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName), StringComparer.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -49,7 +52,7 @@ namespace LiteOrm.Tests
             // Assert
             Assert.NotNull(dt);
             Assert.Single(dt.Columns);
-            Assert.Equal("Name", dt.Columns[0].ColumnName);
+            Assert.Equal("Name", dt.Columns[0].ColumnName, StringComparer.OrdinalIgnoreCase);
             Assert.True(dt.Rows.Count > 0);
             Assert.Equal("FieldTest", dt.Rows[0]["Name"]);
         }
@@ -66,19 +69,21 @@ namespace LiteOrm.Tests
                 .Where(Expr.Property("Age") > 10)
                 .OrderBy(Expr.Property("Age").Asc())
                 .Select("AliasName","Age");// 等价于 Select(Expr.Property("AliasName"),Expr.Property("Age"))
-
-
+           
             DataTable dt = await dao.SearchAsync(query);
 
             // Assert
             Assert.NotNull(dt);
-            Assert.Contains("AliasName", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName));
-            Assert.Contains("Age", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName));
+            Assert.Contains("AliasName", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName), StringComparer.OrdinalIgnoreCase);
+            Assert.Contains("Age", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName), StringComparer.OrdinalIgnoreCase);
         }
     }
 
+    [Collection("Database")]
     public class DataDAOTests : TestBase
     {
+        public DataDAOTests(DatabaseFixture fixture) : base(fixture) { }
+
         [Fact]
         public async Task DataDAO_UpdateAllValues_ShouldWork()
         {

@@ -167,17 +167,8 @@ namespace LiteOrm.Service
             // 检查是否已经在处理中
             if (InProcess)
             {
-                try
-                {
-                    invocation.Proceed();
-                    await (Task)invocation.ReturnValue;
-                }
-                catch (Exception e)
-                {
-                    e = e.UnwrapTargetInvocationException();
-                    LogException(invocation, e);
-                    throw;
-                }
+                invocation.Proceed();
+                await (Task)invocation.ReturnValue;
             }
             else
             {
@@ -218,18 +209,8 @@ namespace LiteOrm.Service
 
             if (InProcess)
             {
-                try
-                {
-                    invocation.Proceed();
-                    TResult result = await (Task<TResult>)invocation.ReturnValue;
-                    return result;
-                }
-                catch (Exception e)
-                {
-                    e = e.UnwrapTargetInvocationException();
-                    LogException(invocation, e);
-                    throw;
-                }
+                invocation.Proceed();
+                return await (Task<TResult>)invocation.ReturnValue;
             }
             else
             {
