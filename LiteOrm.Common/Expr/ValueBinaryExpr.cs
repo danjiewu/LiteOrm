@@ -41,11 +41,6 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 获取一个值，指示此表达式是否为值类型
-        /// </summary>
-        public override bool IsValue => true;
-
-        /// <summary>
         /// 获取或设置左操作数表达式
         /// </summary>
         public ValueTypeExpr Left { get; set; }

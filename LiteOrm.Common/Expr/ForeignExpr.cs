@@ -15,15 +15,47 @@ namespace LiteOrm.Common
         /// </summary>
         public LogicExpr InnerExpr { get; set; }
 
+        
+
+        private string _foreign;
         /// <summary>
         /// 获取或设置当前实体中关联的外部实体别名。
         /// </summary>
-        public new string Foreign { get; set; }
+        public new string Foreign 
+        {
+            get { return _foreign; }
+            set 
+            {
+                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                {
+                    throw new System.ArgumentException("Foreign table alias contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Foreign));
+                }
+                _foreign = value;
+            }
+        }
 
+        private string[] _tableArgs;
         /// <summary>
         /// 获取或设置用于动态表名的参数集合。
         /// </summary>
-        public string[] TableArgs { get; set; }
+        public string[] TableArgs 
+        {
+            get { return _tableArgs; }
+            set 
+            {
+                if (value != null)
+                {
+                    foreach (var arg in value)
+                    {
+                        if (arg != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(arg))
+                        {
+                            throw new System.ArgumentException("Table name parameter contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(TableArgs));
+                        }
+                    }
+                }
+                _tableArgs = value;
+            }
+        }
 
         /// <summary>
         /// 初始化 <see cref="ForeignExpr"/> 类的新实例。

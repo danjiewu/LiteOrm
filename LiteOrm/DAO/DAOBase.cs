@@ -405,29 +405,6 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 根据SQL语句和条件建立DbCommandProxy
-        /// </summary>
-        /// <param name="sqlWithParam">带参数的SQL语句
-        /// <example>$"select {ParamAllFields} from {ParamFromTable} {ParamWhere}"表示从表中查询所有符合条件的记录</example>
-        /// <example>$"select count(*) from {ParamFromTable} "表示从表中所有记录的数量，expr参数需为空</example>
-        /// <example>$"delete from {ParamTable} {ParamWhere}"表示从表中删除所有符合条件的记录</example>
-        /// </param>
-        /// <param name="expr">条件，为null时表示无条件</param>
-        /// <returns>DbCommandProxy</returns>
-        public DbCommandProxy MakeConditionCommand(string sqlWithParam, Expr expr)
-        {
-            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
-            var context = SqlBuildContext;
-            string strCondition = null;
-            if (expr is not null)
-            {
-                strCondition = expr.ToSql(context, SqlBuilder, paramList);
-            }
-
-            return MakeNamedParamCommand(ReplaceParam(sqlWithParam.Replace(ParamWhere, ToWhereSql(strCondition))), paramList);
-        }
-
-        /// <summary>
         /// 替换 SQL 中的标记为实际 SQL
         /// </summary>
         /// <param name="sqlWithParam">包含标记的 SQL 语句</param>

@@ -35,11 +35,6 @@ namespace LiteOrm.Common
         public ValueTypeExpr Operand { get; set; }
 
         /// <summary>
-        /// 获取一个值，指示此表达式是否为值类型
-        /// </summary>
-        public override bool IsValue => true;
-
-        /// <summary>
         /// 返回表达式的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>

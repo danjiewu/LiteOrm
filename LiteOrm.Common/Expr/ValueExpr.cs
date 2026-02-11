@@ -75,12 +75,6 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 指示该表达式代表一个值。
-        /// </summary>
-        [JsonIgnore]
-        public override bool IsValue => true;
-
-        /// <summary>
         /// 获取或设置该表达式持有的原始对象值。
         /// </summary>
         public new object Value { get; set; }

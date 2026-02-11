@@ -48,11 +48,6 @@ namespace LiteOrm.Common
         public bool IsDistinct { get; set; }
 
         /// <summary>
-        /// 获取一个值，指示此表达式是否为值类型
-        /// </summary>
-        public override bool IsValue => true;
-
-        /// <summary>
         /// 判断当前对象是否与指定对象相等
         /// </summary>
         /// <param name="obj">要比较的对象</param>

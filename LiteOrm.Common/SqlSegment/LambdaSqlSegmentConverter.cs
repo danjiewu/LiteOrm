@@ -26,6 +26,8 @@ namespace LiteOrm.Common
         /// <summary>
         /// 静态方法：将 Lambda 表达式转换为 SqlSegment 模型
         /// </summary>
+        /// <param name="expression">要转换的 Lambda 表达式</param>
+        /// <returns>转换后的表达式对象</returns>
         public static Expr ToSqlSegment(LambdaExpression expression) => new LambdaSqlSegmentConverter(expression).ToSqlSegment();
 
         /// <summary>
@@ -71,6 +73,12 @@ namespace LiteOrm.Common
             return base.ConvertMethodCall(node);
         }
 
+        /// <summary>
+        /// 将参数表达式转换为表表达式（TableExpr）。
+        /// 当参数对应一个 IQueryable 或 IEnumerable 类型时，会取其泛型参数类型作为表实体类型。
+        /// </summary>
+        /// <param name="node">参数表达式</param>
+        /// <returns>对应的 TableExpr</returns>
         private Expr ConvertParameter(ParameterExpression node)
         {
             if (node != _rootParameter) throw new NotSupportedException($"Unsupported parameter: {node.Name}");
@@ -81,9 +89,19 @@ namespace LiteOrm.Common
             return new TableExpr(TableInfoProvider.Default?.GetTableView(type) ?? throw new InvalidOperationException($"Table info not found for {type}"));
         }
 
+        /// <summary>
+        /// 处理子 Lambda 表达式，返回 LogicExpr 或 ValueTypeExpr 取决于 Lambda 的返回类型。
+        /// </summary>
+        /// <param name="lambda">要处理的 Lambda 表达式</param>
+        /// <returns>对应的 Expr（LogicExpr 或 ValueTypeExpr）</returns>
         private Expr HandleSubLambda(LambdaExpression lambda) => lambda.ReturnType == typeof(bool) ? ToExpr(lambda) : ToValueExpr(lambda);
 
         // LINQ 扩展方法处理器
+        /// <summary>
+        /// 处理 Where 调用，将条件转换并合并到已有的 WhereExpr 或创建新的 WhereExpr。
+        /// </summary>
+        /// <param name="node">方法调用表达式节点</param>
+        /// <returns>处理后的 Expr</returns>
         private Expr HandleWhere(MethodCallExpression node)
         {
             var src = ConvertInternal(node.Arguments[0]);
@@ -119,12 +137,29 @@ namespace LiteOrm.Common
             // 否则创建新的 WhereExpr
             return source.Where(newCondition);
         }
+
+        /// <summary>
+        /// 处理 OrderBy/OrderByDescending 并返回 OrderByExpr 或更新现有表达式。
+        /// </summary>
         private Expr HandleOrderBy(MethodCallExpression node, bool asc) => (ConvertInternal(node.Arguments[0]) as IOrderByAnchor).OrderBy((AsValue(ConvertInternal(node.Arguments[1])), asc));
+
+        /// <summary>
+        /// 处理 ThenBy/ThenByDescending 并更新现有的 OrderByExpr。
+        /// </summary>
+        /// <param name="node">方法调用表达式节点</param>
+        /// <param name="asc">是否升序</param>
+        /// <returns>更新后的 OrderByExpr</returns>
         private Expr HandleThenBy(MethodCallExpression node, bool asc)
         {
             if (ConvertInternal(node.Arguments[0]) is OrderByExpr ob) { ob.OrderBys.Add((AsValue(ConvertInternal(node.Arguments[1])), asc)); return ob; }
             throw new InvalidOperationException("ThenBy must follow OrderBy.");
         }
+
+        /// <summary>
+        /// 处理 Skip 调用，转换为 SectionExpr 的 Skip 部分或 Section 方法。
+        /// </summary>
+        /// <param name="node">方法调用表达式节点</param>
+        /// <returns>SectionExpr 或 ISectionAnchor</returns>
         private Expr HandleSkip(MethodCallExpression node)
         {
             var s = ConvertInternal(node.Arguments[0]) as ISectionAnchor;
@@ -132,6 +167,12 @@ namespace LiteOrm.Common
             if (s is SectionExpr se) { se.Skip = v; return se; }
             return s.Section(v, 0);
         }
+
+        /// <summary>
+        /// 处理 Take 调用，转换为 SectionExpr 的 Take 部分或 Section 方法。
+        /// </summary>
+        /// <param name="node">方法调用表达式节点</param>
+        /// <returns>SectionExpr 或 ISectionAnchor</returns>
         private Expr HandleTake(MethodCallExpression node)
         {
             var s = ConvertInternal(node.Arguments[0]) as ISectionAnchor;
@@ -139,6 +180,12 @@ namespace LiteOrm.Common
             if (s is SectionExpr se) { se.Take = v; return se; }
             return s.Section(0, v);
         }
+
+        /// <summary>
+        /// 处理 GroupBy 调用，将 key 表达式转换为 ValueSet 或单独的 ValueTypeExpr。
+        /// </summary>
+        /// <param name="node">方法调用表达式节点</param>
+        /// <returns>GroupByExpr</returns>
         private Expr HandleGroupBy(MethodCallExpression node)
         {
             var s = ConvertInternal(node.Arguments[0]) as IGroupByAnchor;
@@ -146,12 +193,23 @@ namespace LiteOrm.Common
             return s.GroupBy(k is ValueSet vs ? vs.Cast<ValueTypeExpr>().ToArray() : new[] { AsValue(k) });
         }
 
+        /// <summary>
+        /// 将针对 GroupBy 的 Lambda 表达式转换为 Having 子句逻辑表达式。
+        /// </summary>
+        /// <param name="lambda">要转换的 Lambda 表达式</param>
+        /// <param name="groupKeys">分组键集合</param>
+        /// <returns>转换后的 LogicExpr</returns>
         private LogicExpr ConvertHavingLambda(LambdaExpression lambda, ValueTypeExpr[] groupKeys)
         {
             var expr = ConvertGroupedExpr(lambda.Body, lambda.Parameters[0], groupKeys);
             return AsLogic(expr);
         }
 
+        /// <summary>
+        /// 处理 Select 调用，支持 GroupBy 后的 Select 情形。
+        /// </summary>
+        /// <param name="node">方法调用表达式节点</param>
+        /// <returns>SelectExpr</returns>
         private Expr HandleSelect(MethodCallExpression node)
         {
             var source = ConvertInternal(node.Arguments[0]) as ISelectAnchor;
@@ -169,6 +227,9 @@ namespace LiteOrm.Common
         /// <summary>
         /// 转换 Select Lambda 表达式（支持 GroupBy 后的 Select）
         /// </summary>
+        /// <param name="lambda">要转换的 Lambda 表达式</param>
+        /// <param name="groupKeys">用于分组时的键集合</param>
+        /// <returns>SelectItemExpr 数组</returns>
         private SelectItemExpr[] ConvertSelectLambda(LambdaExpression lambda, ValueTypeExpr[] groupKeys)
         {
             var body = lambda.Body;
@@ -203,6 +264,10 @@ namespace LiteOrm.Common
         /// <summary>
         /// 转换分组后的表达式（支持 g.Key 和 g.Count() 等分组特有的访问，也支持二元运算如 g.Count() > 1）
         /// </summary>
+        /// <param name="arg">要转换的表达式节点</param>
+        /// <param name="lambdaParam">Lambda 表达式的参数</param>
+        /// <param name="groupKeys">分组键集合</param>
+        /// <returns>转换后的 Expr</returns>
         private Expr ConvertGroupedExpr(Expression arg, ParameterExpression lambdaParam, ValueTypeExpr[] groupKeys)
         {
             // 如果是 MemberAccess (如 g.Key) 
@@ -302,6 +367,11 @@ namespace LiteOrm.Common
             return ConvertInternal(arg);
         }
 
+        /// <summary>
+        /// 根据方法名获取对应的聚合函数名称（用于将 LINQ 聚合函数映射到 SQL 聚合函数）。
+        /// </summary>
+        /// <param name="name">方法名</param>
+        /// <returns>聚合函数名称或 null</returns>
         private static string GetAggregateName(string name) => name switch
         {
             "Count" or "LongCount" => "Count",
@@ -312,6 +382,12 @@ namespace LiteOrm.Common
             _ => null
         };
 
+        /// <summary>
+        /// 判断给定表达式节点是否引用了指定的 Lambda 参数（即是否为参数访问）。
+        /// </summary>
+        /// <param name="node">要检查的表达式节点</param>
+        /// <param name="lambdaParam">Lambda 的参数表达式</param>
+        /// <returns>如果是对参数的访问则返回 true，否则返回 false</returns>
         private bool IsParameterAccess(Expression node, ParameterExpression lambdaParam)
         {
             if (node is null) return false;

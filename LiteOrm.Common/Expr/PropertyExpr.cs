@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+using System;
 using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
@@ -18,6 +17,8 @@ namespace LiteOrm.Common
         {
         }
 
+
+
         /// <summary>
         /// 使用属性名称初始化 PropertyExpr。
         /// </summary>
@@ -26,25 +27,43 @@ namespace LiteOrm.Common
         {
             if (propertyName == null) throw new ArgumentNullException(nameof(propertyName));
             var names = propertyName.Split('.');
-            PropertyName = names.Last();
-            TableAlias = names.Length > 1 ? names.First() : null;
+            PropertyName = names[names.Length-1];
+            TableAlias = names.Length > 1 ? names[0] : null;
         }
 
-        /// <summary>
-        /// 实体属性表达式是值类型表达式。
-        /// </summary>
-        [JsonIgnore]
-        public override bool IsValue => true;
-
+        private string _tableAlias;
         /// <summary>
         /// 获取或设置表别名（如果有）。在生成 SQL 时，如果提供了表别名，列名将以 "TableAlias.ColumnName" 的形式出现。
         /// </summary>
-        public string TableAlias { get; set; }
+        public string TableAlias 
+        {
+            get { return _tableAlias; }
+            set 
+            {
+                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                {
+                    throw new ArgumentException("Table alias contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(TableAlias));
+                }
+                _tableAlias = value;
+            }
+        }
 
+        private string _propertyName;
         /// <summary>
         /// 获取或设置目标属性（列）的名称。
         /// </summary>
-        public string PropertyName { get; set; }
+        public string PropertyName 
+        {
+            get { return _propertyName; }
+            set 
+            {
+                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                {
+                    throw new ArgumentException("Property name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(PropertyName));
+                }
+                _propertyName = value;
+            }
+        }
 
         /// <summary>
         /// 返回针对该属性的预览字符串（如 "[PropName]"）。

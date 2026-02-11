@@ -111,10 +111,6 @@ namespace LiteOrm
         /// 用于在 LIKE 条件中转义特殊字符的正则表达式。
         /// </summary>
         protected Regex _sqlLikeEscapeReg = new Regex(@"([_/%\[\]])");
-        /// <summary>
-        /// 用于识别 SQL 对象名称（如 [TableName]）的正则表达式。
-        /// </summary>
-        protected static Regex _sqlNameRegex = new Regex(@"\[([^\]]+)\]");
 
         #endregion
 
@@ -185,6 +181,11 @@ namespace LiteOrm
             return result;
         }
 
+        /// <summary>
+        /// 将简单名称转换为数据库合法名称。
+        /// </summary>
+        /// <param name="sb">用于构建数据库合法名称的字符串构建器。</param>
+        /// <param name="simpleName">简单名称（未包含方括号）。</param>
         protected virtual void ToSqlName(ref ValueStringBuilder sb, ReadOnlySpan<char> simpleName)
         {
             simpleName = simpleName.Trim();

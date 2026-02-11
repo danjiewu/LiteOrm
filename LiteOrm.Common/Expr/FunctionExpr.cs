@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -20,6 +20,8 @@ namespace LiteOrm.Common
             Parameters = new List<ValueTypeExpr>();
         }
 
+
+
         /// <summary>
         /// 使用函数名及对应的参数表达式初始化 FunctionExpr。
         /// </summary>
@@ -31,15 +33,22 @@ namespace LiteOrm.Common
             Parameters = parameters.ToList();
         }
 
-        /// <summary>
-        /// 函数表达式通常被视为带返回值的表达式。
-        /// </summary>
-        public override bool IsValue => true;
-
+        private string _functionName;
         /// <summary>
         /// 获取或设置目标 SQL 函数名称。
         /// </summary>
-        public string FunctionName { get; set; }
+        public string FunctionName 
+        {
+            get { return _functionName; }
+            set 
+            {
+                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                {
+                    throw new System.ArgumentException("Function name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(FunctionName));
+                }
+                _functionName = value;
+            }
+        }
 
         /// <summary>
         /// 获取当前函数的参数列表。

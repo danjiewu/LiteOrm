@@ -37,12 +37,6 @@ namespace LiteOrm.Common
         /// </summary> 
         public string Key { get; set; }
 
-        /// <summary>
-        /// 表示该表达式是否为值类型表达式。
-        /// </summary>
-        public override bool IsValue => String.IsNullOrEmpty(Key) ? false : _registry[Key].IsValue;
-
-
         internal string GenerateSql(ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             return SqlHandler?.Invoke(ref context, sqlBuilder, outputParams, Arg);

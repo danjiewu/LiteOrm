@@ -70,11 +70,6 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 获取一个值，指示此表达式是否为值类型
-        /// </summary>
-        public override bool IsValue => true;
-
-        /// <summary>
         /// 获取或设置值之间的连接类型
         /// </summary>
         public ValueJoinType JoinType { get; set; } = ValueJoinType.List;

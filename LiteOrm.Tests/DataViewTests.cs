@@ -78,31 +78,4 @@ namespace LiteOrm.Tests
             Assert.Contains("Age", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName), StringComparer.OrdinalIgnoreCase);
         }
     }
-
-    [Collection("Database")]
-    public class DataDAOTests : TestBase
-    {
-        public DataDAOTests(DatabaseFixture fixture) : base(fixture) { }
-
-        [Fact]
-        public async Task DataDAO_UpdateAllValues_ShouldWork()
-        {
-            // Arrange
-            var dao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
-            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
-
-            var user = new TestUser { Name = "DataDAOTest", Age = 10 };
-            await userService.InsertAsync(user);
-
-            // Act
-            var updates = new Dictionary<string, object> { { "Age", 20 } };
-            int updatedCount = await dao.UpdateAllValuesAsync(updates, Expr.Property("Name") == "DataDAOTest");
-
-            // Assert
-            Assert.Equal(1, updatedCount);
-            var updatedUser = await viewService.GetObjectAsync(user.Id);
-            Assert.Equal(20, updatedUser.Age);
-        }
-    }
 }

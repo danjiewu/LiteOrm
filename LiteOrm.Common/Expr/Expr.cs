@@ -22,12 +22,6 @@ namespace LiteOrm.Common
         public static readonly ValueExpr Null = new();
 
         /// <summary>
-        /// 指示当前表达式是否代表一个具体的值（而非谓词/条件）。
-        /// </summary>
-        [JsonIgnore]
-        public virtual bool IsValue => false;
-
-        /// <summary>
         /// 将多个哈希值组合成一个组合哈希值。
         /// </summary>
         /// <param name="hashcodes">要组合的哈希值序列。</param>
