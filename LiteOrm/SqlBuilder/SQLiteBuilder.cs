@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -115,37 +115,37 @@ namespace LiteOrm
 
             if (subSelect.From.Length > 0)
             {
-                result.Append(" FROM ");
+                result.Append(" \nFROM ");
                 result.Append(subSelect.From.AsSpan());
             }
 
             if (subSelect.Where.Length > 0)
             {
-                result.Append(" WHERE ");
+                result.Append(" \nWHERE ");
                 result.Append(subSelect.Where.AsSpan());
             }
 
             if (subSelect.GroupBy.Length > 0)
             {
-                result.Append(" GROUP BY ");
+                result.Append(" \nGROUP BY ");
                 result.Append(subSelect.GroupBy.AsSpan());
             }
 
             if (subSelect.Having.Length > 0)
             {
-                result.Append(" HAVING ");
+                result.Append(" \nHAVING ");
                 result.Append(subSelect.Having.AsSpan());
             }
 
             if (subSelect.OrderBy.Length > 0)
             {
-                result.Append(" ORDER BY ");
+                result.Append(" \nORDER BY ");
                 result.Append(subSelect.OrderBy.AsSpan());
             }
 
             if (subSelect.Take > 0)
             {
-                result.Append(" LIMIT ");
+                result.Append(" \nLIMIT ");
                 result.Append(subSelect.Take.ToString());
                 if (subSelect.Skip > 0)
                 {

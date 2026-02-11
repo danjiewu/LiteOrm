@@ -128,14 +128,14 @@ namespace LiteOrm.Common
         private Expr HandleSkip(MethodCallExpression node)
         {
             var s = ConvertInternal(node.Arguments[0]) as ISectionAnchor;
-            var v = (int)((ConstantExpression)node.Arguments[1]).Value;
+            var v = System.Convert.ToInt32(Evaluate(node.Arguments[1]));
             if (s is SectionExpr se) { se.Skip = v; return se; }
             return s.Section(v, 0);
         }
         private Expr HandleTake(MethodCallExpression node)
         {
             var s = ConvertInternal(node.Arguments[0]) as ISectionAnchor;
-            var v = (int)((ConstantExpression)node.Arguments[1]).Value;
+            var v = System.Convert.ToInt32(Evaluate(node.Arguments[1]));
             if (s is SectionExpr se) { se.Take = v; return se; }
             return s.Section(0, v);
         }
@@ -145,7 +145,6 @@ namespace LiteOrm.Common
             var k = ConvertInternal(node.Arguments[1]);
             return s.GroupBy(k is ValueSet vs ? vs.Cast<ValueTypeExpr>().ToArray() : new[] { AsValue(k) });
         }
-
 
         private LogicExpr ConvertHavingLambda(LambdaExpression lambda, ValueTypeExpr[] groupKeys)
         {
@@ -318,6 +317,6 @@ namespace LiteOrm.Common
             if (node is null) return false;
             if (node is ParameterExpression pe) return ReferenceEquals(pe, lambdaParam);
             return false;
-        }
+        }     
     }
 }

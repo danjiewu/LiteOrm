@@ -370,7 +370,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="expr">条件或片段表达式。</param>
         /// <returns>对应的 SqlSegment 对象。</returns>
-        protected ISourceAnchor GetSource(Expr expr)
+        protected ISelectAnchor GetSource(Expr expr)
         {
             if (expr is null)
             {
@@ -380,7 +380,7 @@ namespace LiteOrm
             {
                 return new WhereExpr() { Source = new TableExpr(Table), Where = logicExpr };
             }
-            else if (expr is ISourceAnchor sourceExpr)
+            else if (expr is ISelectAnchor sourceExpr)
             {
                 return sourceExpr;
             }

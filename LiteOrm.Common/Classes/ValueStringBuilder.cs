@@ -61,18 +61,17 @@ namespace LiteOrm.Common
         /// 将指定字符串的副本追加到此实例。
         /// </summary>
         /// <param name="value">要追加的字符串。</param>
-        public ValueStringBuilder Append(string? value)
+        public void Append(string? value)
         {
-            if (string.IsNullOrEmpty(value)) return this;
+            if (string.IsNullOrEmpty(value)) return;
 
             if (value!.Length == 1)
             {
                 Append(value[0]);
-                return this;
+                return;
             }
 
             Append(value.AsSpan());
-            return this;
         }
 
         /// <summary>

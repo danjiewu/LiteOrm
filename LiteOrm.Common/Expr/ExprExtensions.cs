@@ -27,7 +27,7 @@ namespace LiteOrm.Common
     ///     .Or(Expr.Property("Email").EndsWith("@example.com"));
     /// 
     /// // 构建排序和分页
-    /// var query = table.Select(Expr.Property("Id"), Expr.Property("Name"))
+    /// var query = table.Select("Id", "Name")
     ///     .Where(condition)
     ///     .OrderBy(Expr.Property("CreatedDate").Desc())
     ///     .Section(0, 20);
@@ -392,9 +392,30 @@ namespace LiteOrm.Common
         /// 为 SQL 语句添加 SELECT 子句（属性名数组）。
         /// </summary>
         /// <param name="source">SQL 语句构建起点。</param>
-        /// <param name="selects">要选择的属性名称序列。</param>
+        /// <param name="selectProperties">要选择的属性名称序列。</param>
         /// <returns>包含 SELECT 子句的 SQL 表达式。</returns>
         public static SelectExpr Select(this ISelectAnchor source, params string[] selectProperties) => Select(source, Array.ConvertAll(selectProperties, prop => (ValueTypeExpr)Expr.Property(prop)));
+
+        /// <summary>
+        /// 为 SQL 语句添加按属性排序的 ORDER BY 子句。
+        /// </summary>
+        /// <param name="source">SQL 语句构建起点。</param>
+        /// <param name="orderBy">排序属性名。</param>
+        /// <returns>包含 ORDER BY 子句的 SQL 表达式。</returns>
+        /// <example>
+        /// <code>
+        /// var query = table.OrderBy("CreatedDate");
+        /// </code>
+        /// </example>
+        public static OrderByExpr OrderBy(this IOrderByAnchor source, string orderBy)
+        {
+            if (source is OrderByExpr existingOrderByExpr)
+            {
+                existingOrderByExpr.OrderBys.Add((Expr.Property(orderBy), true));
+                return existingOrderByExpr;
+            }
+            return new OrderByExpr(source as ISqlSegment, (Expr.Property(orderBy), true));
+        }
 
         /// <summary>
         /// 为 SQL 语句添加 ORDER BY 子句。

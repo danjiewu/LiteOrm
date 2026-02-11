@@ -9,7 +9,7 @@ namespace LiteOrm.Common
     /// 更新片段，表示 UPDATE 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class UpdateExpr : Expr,ISqlSegment
+    public class UpdateExpr : Expr, ISqlSegment
     {
         /// <summary>
         /// 初始化 UpdateExpr 类的新实例
@@ -49,17 +49,17 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is UpdateExpr other 
-            && Equals(Source, other.Source) 
+        public override bool Equals(object obj) => obj is UpdateExpr other
+            && Equals(Source, other.Source)
             && Sets.SequenceEqual(other.Sets)
             && Equals(Where, other.Where);
-            
+
         /// <summary>
         /// 获取当前对象的哈希码
         /// </summary>
         /// <returns>哈希码值</returns>
         public override int GetHashCode() => OrderedHashCodes(typeof(UpdateExpr).GetHashCode(), Source?.GetHashCode() ?? 0, SequenceHash(Sets), Where?.GetHashCode() ?? 0);
-        
+
         /// <summary>
         /// 返回更新片段的字符串表示
         /// </summary>

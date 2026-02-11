@@ -70,22 +70,36 @@ namespace LiteOrm.Common
         public override string ToString() => $"SELECT {string.Join(", ", Selects)} FROM {Source}";
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public class SelectItemExpr : ValueTypeExpr
     {
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="value"></param>
+        /// <exception cref="ArgumentNullException"></exception>
         public SelectItemExpr(ValueTypeExpr value)
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
             Value = value;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="aliasName"></param>
+        /// <exception cref="ArgumentNullException"></exception>
         public SelectItemExpr(ValueTypeExpr value, string aliasName)
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
             Value = value;
             Name = aliasName;
         }
-        public ValueTypeExpr Value { get; set; }
+        public new ValueTypeExpr Value { get; set; }
         public string Name { get; set; }
         public override bool Equals(object obj) => obj is SelectItemExpr other && Name == other.Name && Equals(Value, other.Value);
         public override int GetHashCode() => OrderedHashCodes(typeof(SelectItemExpr).GetHashCode(), Name?.GetHashCode() ?? 0, Value?.GetHashCode() ?? 0);

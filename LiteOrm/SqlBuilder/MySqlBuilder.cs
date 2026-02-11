@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -32,16 +32,13 @@ namespace LiteOrm
         /// </summary>
         public override bool SupportBatchInsertWithIdentity => true;
 
-        /// <summary>
-        /// 转化为数据库合法名称
-        /// </summary>
-
-        /// <param name="name">字符串名称</param>
-        /// <returns>数据库合法名称</returns>
-        public override string ToSqlName(string name)
+        protected override void ToSqlName(ref ValueStringBuilder sb, ReadOnlySpan<char> simpleName)
         {
-            if (name is null) throw new ArgumentNullException("name");
-            return String.Join(".", Array.ConvertAll(name.Split('.'), n => $"`{n}`"));
+            simpleName = simpleName.Trim();
+            if (simpleName.IsEmpty) return;
+            if (simpleName[0] != '`') sb.Append('`');
+            sb.Append(simpleName);
+            if (simpleName[simpleName.Length - 1] != '`') sb.Append('`');
         }
 
         /// <summary>
@@ -113,37 +110,37 @@ namespace LiteOrm
 
             if (subSelect.From.Length > 0)
             {
-                result.Append(" FROM ");
+                result.Append(" \nFROM ");
                 result.Append(subSelect.From.AsSpan());
             }
 
             if (subSelect.Where.Length > 0)
             {
-                result.Append(" WHERE ");
+                result.Append(" \nWHERE ");
                 result.Append(subSelect.Where.AsSpan());
             }
 
             if (subSelect.GroupBy.Length > 0)
             {
-                result.Append(" GROUP BY ");
+                result.Append(" \nGROUP BY ");
                 result.Append(subSelect.GroupBy.AsSpan());
             }
 
             if (subSelect.Having.Length > 0)
             {
-                result.Append(" HAVING ");
+                result.Append(" \nHAVING ");
                 result.Append(subSelect.Having.AsSpan());
             }
 
             if (subSelect.OrderBy.Length > 0)
             {
-                result.Append(" ORDER BY ");
+                result.Append(" \nORDER BY ");
                 result.Append(subSelect.OrderBy.AsSpan());
             }
 
             if (subSelect.Take > 0)
             {
-                result.Append(" LIMIT ");
+                result.Append(" \nLIMIT ");
                 if (subSelect.Skip > 0)
                 {
                     result.Append(subSelect.Skip.ToString());

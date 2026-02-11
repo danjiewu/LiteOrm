@@ -30,7 +30,7 @@ namespace LiteOrm.Common
             { ExpressionType.MultiplyChecked, ValueOperator.Multiply },
             { ExpressionType.Divide, ValueOperator.Divide }
         };
-        
+
         private static readonly ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodNameHandlers = new ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
         private static readonly ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>> _typeMethodHandlers = new ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>>();
         private static readonly ConcurrentDictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>> _memberNameHandlers = new ConcurrentDictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
@@ -116,15 +116,15 @@ namespace LiteOrm.Common
         /// <summary>
         /// 跟踪 Lambda 的主参数（通常是实体变量）
         /// </summary>
-        protected readonly ParameterExpression _rootParameter; 
+        protected readonly ParameterExpression _rootParameter;
         /// <summary>
         /// 原始 Lambda 对象
         /// </summary>
-        protected readonly LambdaExpression _expression; 
+        protected readonly LambdaExpression _expression;
         /// <summary>
         /// 检测表达式是否包含 Lambda 参数
         /// </summary>
-        protected readonly ParameterExpressionDetector _parameterDetector = new ParameterExpressionDetector(); 
+        protected readonly ParameterExpressionDetector _parameterDetector = new ParameterExpressionDetector();
 
         /// <summary>
         /// 转换表达式节点为 Expr 对象。
@@ -185,7 +185,7 @@ namespace LiteOrm.Common
             {
                 ExpressionType.Call => ConvertMethodCall((MethodCallExpression)node),
                 ExpressionType.Constant => ConvertConstant((ConstantExpression)node),
-                ExpressionType.Lambda =>  (((LambdaExpression)node).ReturnType == typeof(bool))
+                ExpressionType.Lambda => (((LambdaExpression)node).ReturnType == typeof(bool))
                         ? ToExpr((LambdaExpression)node)
                         : ToValueExpr((LambdaExpression)node),// 检查 Lambda 的返回类型。如果是 bool，可能是谓词；否则可能是值选择器。
                 ExpressionType.MemberAccess => ConvertMember((MemberExpression)node),  // 如果是成员访问，可能是实体属性或外部变量
@@ -383,18 +383,44 @@ namespace LiteOrm.Common
         /// </summary>
         private Expr EvaluateToExpr(Expression node)
         {
+            var value = Evaluate(node);
+            if (value is Expr expr) return expr;
+            return new ValueExpr(value);
+        }
+
+        /// <summary>
+        /// 尝试从任意表达式中解析值：
+        /// - 直接读取 ConstantExpression
+        /// - 处理 UnaryExpression(转换) 包含的常量
+        /// - 最后尝试编译并执行表达式以求值（用于闭包变量等）
+        /// 若无法求值则抛出异常。
+        /// </summary>
+        protected object Evaluate(Expression expr)
+        {
+            if (expr is null) throw new ArgumentNullException(nameof(expr));
+
+            // 常量直接读取
+            if (expr is ConstantExpression ce)
+            {
+                return ce.Value;
+            }
+
+            // 处理常见的转换包装 (例如 Convert(constant))
+            if (expr is UnaryExpression ue && ue.Operand is ConstantExpression ce2)
+            {
+                return ce2.Value;
+            }
+
+            // 尝试编译并执行表达式（支持闭包、字段、属性等）
             try
             {
-                // 编译并执行不含参数的子表达式
-                var lambda = Expression.Lambda(node);
+                var lambda = Expression.Lambda(expr);
                 var compiled = lambda.Compile();
-                var value = compiled.DynamicInvoke();
-                if (value is Expr expr) return expr;
-                return new ValueExpr(value);
+                return compiled.DynamicInvoke();
             }
-            catch
+            catch (Exception ex)
             {
-                throw new ArgumentException($"Unable to evaluate the value of Expression: {node}");
+                throw new ArgumentException($"Unable to evaluate the value from expression: {expr}", ex);
             }
         }
 
@@ -558,8 +584,8 @@ namespace LiteOrm.Common
         {
             if (node.Value is Expr expr) return expr;
             if (node.Value == null) return Expr.Null;
-
-            return new ValueExpr(node.Value);
+            bool isConst = node.Type.IsPrimitive;
+            return new ValueExpr(node.Value) { IsConst = isConst };
         }
 
         #endregion

@@ -19,7 +19,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 表示 SQL NULL 的表达式。
         /// </summary>
-        public static readonly ValueExpr Null = new ();
+        public static readonly ValueExpr Null = new();
 
         /// <summary>
         /// 指示当前表达式是否代表一个具体的值（而非谓词/条件）。
@@ -97,6 +97,18 @@ namespace LiteOrm.Common
             return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.Equal, new ValueExpr(value));
         }
 
+
+        /// <summary>
+        /// 创建一个属性等于值的二元表达式。
+        /// </summary>
+        /// <param name="propertyName">属性名称。</param>
+        /// <param name="value">比较值。</param>
+        /// <returns>二元表达式。</returns>
+        public static LogicBinaryExpr Property(string propertyName, ValueTypeExpr value)
+        {
+            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.Equal, value);
+        }
+
         /// <summary>
         /// 创建一个指定操作符的二元表达式。
         /// </summary>
@@ -110,6 +122,18 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 创建一个指定操作符的二元表达式。
+        /// </summary>
+        /// <param name="propertyName">属性名称。</param>
+        /// <param name="oper">二元操作符。</param>
+        /// <param name="value">表示比较值的表达式。</param>
+        /// <returns>二元表达式。</returns>
+        public static LogicBinaryExpr Property(string propertyName, LogicOperator oper, ValueTypeExpr value)
+        {
+            return new LogicBinaryExpr(new PropertyExpr(propertyName), oper, value);
+        }
+
+        /// <summary>
         /// 创建一个 IN 表达式。
         /// </summary>
         /// <param name="propertyName">属性名称。</param>
@@ -118,6 +142,17 @@ namespace LiteOrm.Common
         public static LogicBinaryExpr In(string propertyName, IEnumerable values)
         {
             return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.In, new ValueExpr(values));
+        }
+
+        /// <summary>
+        /// 创建一个 IN 表达式。
+        /// </summary>
+        /// <param name="propertyName">属性名称。</param>
+        /// <param name="values">包含值的集合表达式。</param>
+        /// <returns>IN 表达式。</returns>
+        public static LogicBinaryExpr In(string propertyName, ValueTypeExpr values)
+        {
+            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.In, values);
         }
 
         /// <summary>
@@ -200,7 +235,13 @@ namespace LiteOrm.Common
         /// </summary>
         /// <typeparam name="T">实体类型</typeparam>
         /// <returns>表表达式实例</returns>
-        public static TableExpr Table<T>() => new TableExpr(TableInfoProvider.Default.GetTableView(typeof(T)));
+        public static TableExpr Table<T>() => new TableExpr(TableInfoProvider.Default.GetTableDefinition(typeof(T)));
+
+        public static TableExpr Table(Type objectType) => new TableExpr(TableInfoProvider.Default.GetTableDefinition(objectType));
+
+        public static TableExpr TableView<T>() => new TableExpr(TableInfoProvider.Default.GetTableView(typeof(T)));
+
+        public static TableExpr TableView(Type objectType) => new TableExpr(TableInfoProvider.Default.GetTableView(objectType));
 
         /// <summary>
         /// 使用指定的 Lambda 表达式创建 WHERE 条件表达式
@@ -208,7 +249,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="expression">定义筛选条件的 Lambda 表达式</param>
         /// <returns>WHERE 条件表达式实例</returns>
-        public static WhereExpr Where<T>(Expression<Func<T, bool>> expression) => new WhereExpr() { Source = Table<T>(), Where = Exp(expression) };
+        public static WhereExpr Where<T>(Expression<Func<T, bool>> expression) => new WhereExpr() { Where = Exp(expression) };
 
         /// <summary>
         /// 使用 IQueryable 形式的 Lambda 表达式创建 SQL 片段
@@ -216,9 +257,9 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
         /// <returns>SQL 片段实例</returns>
-        public static Expr Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaSqlSegmentConverter.ToExpr(expression);
+        public static Expr Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
 
-        public static Expr Query<T,TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaSqlSegmentConverter.ToExpr(expression);
+        public static Expr Query<T, TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
 
         /// <summary>
         /// 创建范围查询表达式 (BETWEEN)。

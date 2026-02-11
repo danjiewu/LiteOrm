@@ -73,7 +73,6 @@ namespace LiteOrm
             return $"INSERT INTO {ToSqlName(tableName)} \n({strColumns})\nVALUES ({strValues}) \nRETURNING {ToSqlName(identityColumn.Name)} INTO {ToSqlParam(identityColumn.PropertyName)}";
         }
 
-        // ...existing code...
         /// <summary>
         /// 生成 Oracle 专用的批量插入 SQL 语句 (使用 SELECT UNION ALL)。
         /// </summary>
@@ -132,15 +131,22 @@ namespace LiteOrm
             return ReplaceSqlName(sql, '"', '"', Char.ToUpper);
         }
 
-        /// <summary>
-        /// 将名称转换为 Oracle 兼容的 SQL 名称（加双引号并转大写）。
-        /// </summary>
-        /// <param name="name">原始名称。</param>
-        /// <returns>Oracle 兼容的 SQL 名称。</returns>
-        public override string ToSqlName(string name)
+        protected override void ToSqlName(ref ValueStringBuilder sb, ReadOnlySpan<char> simpleName)
         {
-            if (name is null) throw new ArgumentNullException("name");
-            return String.Join(".", Array.ConvertAll(name.Split('.'), n => $"\"{n.ToUpper()}\""));
+            simpleName = simpleName.Trim();
+            if (simpleName.IsEmpty) return;
+            bool hasQuote = simpleName[0] == '"';
+            if (!hasQuote) sb.Append('"');
+
+            for (int i = 0; i < simpleName.Length; i++)
+            {
+                sb.Append(char.ToUpperInvariant(simpleName[i]));
+            }
+
+            if (!hasQuote || simpleName[simpleName.Length - 1] != '"')
+            {
+                if (sb.AsSpan()[sb.Length - 1] != '"') sb.Append('"');
+            }
         }
 
         /// <summary>

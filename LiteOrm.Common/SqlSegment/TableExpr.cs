@@ -19,11 +19,22 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="table">表元数据信息</param>
         public TableExpr(SqlTable table) => Table = table;
+
+        public TableExpr(SqlTable table, params string[] tableArgs)
+        {
+            Table = table;
+            TableArgs = tableArgs;
+        }
         ISqlSegment ISqlSegment.Source { get { return null; } set { } }
         /// <summary>
         /// 获取或设置此片段关联的表信息
         /// </summary>
         public new SqlTable Table { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public string[] TableArgs { get; set; }
 
         /// <summary>
         /// 获取片段类型，返回 Table 类型标识

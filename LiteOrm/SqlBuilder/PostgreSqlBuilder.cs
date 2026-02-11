@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+﻿﻿using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -41,15 +41,22 @@ namespace LiteOrm
             return $"@{nativeName}";
         }
 
-        /// <summary>
-        /// 名称转化为PostgreSql数据库合法名称"mytable"."col"
-        /// </summary>
-        /// <param name="name">字符串名称</param>
-        /// <returns>数据库合法名称</returns>
-        public override string ToSqlName(string name)
+        protected override void ToSqlName(ref ValueStringBuilder sb, ReadOnlySpan<char> simpleName)
         {
-            if (name is null) throw new ArgumentNullException("name");
-            return String.Join(".", Array.ConvertAll(name.Split('.'), n => $"\"{n.ToLower()}\""));
+            simpleName = simpleName.Trim();
+            if (simpleName.IsEmpty) return;
+            bool hasQuote = simpleName[0] == '"';
+            if (!hasQuote) sb.Append('"');
+
+            for (int i = 0; i < simpleName.Length; i++)
+            {
+                sb.Append(char.ToLowerInvariant(simpleName[i]));
+            }
+
+            if (!hasQuote || simpleName[simpleName.Length - 1] != '"')
+            {
+                if (sb.AsSpan()[sb.Length - 1] != '"') sb.Append('"');
+            }
         }
 
         /// <summary>

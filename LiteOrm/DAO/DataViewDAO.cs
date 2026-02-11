@@ -197,7 +197,7 @@ namespace LiteOrm
 
                     if (selectExpr is not null && i < selectExpr.Selects.Count)
                     {
-                        needConvert[i] = selectExpr.Selects[i] is PropertyExpr;
+                        needConvert[i] = selectExpr.Selects[i].Value is PropertyExpr;
                     }
                     else
                     {

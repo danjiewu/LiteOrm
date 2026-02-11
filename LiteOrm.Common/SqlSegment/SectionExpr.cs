@@ -7,7 +7,7 @@ namespace LiteOrm.Common
     /// 分页片段，表示 LIMIT/OFFSET 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class SectionExpr : Expr, ISelectAnchor
+    public class SectionExpr : Expr, ISectionAnchor
     {
         /// <summary>
         /// 初始化 SectionExpr 类的新实例

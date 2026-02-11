@@ -121,7 +121,7 @@ namespace LiteOrm.Common
                     AddSql(ref sql, section, ref context, sqlBuilder, outputParams);
                     break;
                 case TableExpr table:
-                    ToSql(ref sql.From, table, ref context, sqlBuilder, outputParams);
+                    AddSql(ref sql, table, ref context, sqlBuilder, outputParams);
                     break;
                 default:
                     throw new NotSupportedException($"SQL segment type {sqlSegment.GetType().FullName} is not supported.");
@@ -161,23 +161,19 @@ namespace LiteOrm.Common
             switch (expr.OriginOperator)
             {
                 case LogicOperator.In:
-                    var inrightSb = ValueStringBuilder.Create(64);
-                    ToSql(ref inrightSb, expr.Right, ref context, sqlBuilder, outputParams);
-                    ReadOnlySpan<char> inright = inrightSb.AsSpan();
-                    if (inright.Length == 0)
+                    int begin = sb.Length;
+                    ToSql(ref sb, expr.Left, ref context, sqlBuilder, outputParams);
+                    sb.Append(" ");
+                    sb.Append(op);
+                    sb.Append(" ");
+                    int valuesBegin = sb.Length;
+                    ToSql(ref sb, expr.Right, ref context, sqlBuilder, outputParams);
+                    if (valuesBegin == sb.Length)
                     {
                         // IN 后面没有内容，视为空集合
+                        sb.Length = begin;
                         if (!expr.Operator.IsNot()) sb.Append("0=1");
                     }
-                    else
-                    {
-                        ToSql(ref sb, expr.Left, ref context, sqlBuilder, outputParams);
-                        sb.Append(" ");
-                        sb.Append(op);
-                        sb.Append(" ");
-                        sb.Append(inright);
-                    }
-                    inrightSb.Dispose();
                     break;
                 case LogicOperator.RegexpLike:
                     // 正则表达式匹配通常使用特定的函数调用语法
@@ -404,6 +400,14 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, PropertyExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
+            if (expr.TableAlias != null)
+            {
+                // 如果 PropertyExpr 中指定了 TableAlias，则使用该别名来限定列名
+                sb.Append(sqlBuilder.ToSqlName(expr.TableAlias));
+                sb.Append(".");
+                sb.Append(sqlBuilder.ToSqlName(expr.PropertyName));
+                return;
+            }
             string tableAlias = context.TableAliasName;
             if (tableAlias is null)
             {
@@ -453,11 +457,11 @@ namespace LiteOrm.Common
                 if (i > 0) sb.Append(" AND ");
                 sb.Append(sqlBuilder.ToSqlName(foreignContext.TableAliasName));
                 sb.Append('.');
-                sb.Append(joinedTable.ForeignPrimeKeys[i].Name);
+                sb.Append(sqlBuilder.ToSqlName(joinedTable.ForeignPrimeKeys[i].Name));
                 sb.Append(" = ");
                 sb.Append(baseTableName);
                 sb.Append('.');
-                sb.Append(joinedTable.ForeignKeys[i].Name);
+                sb.Append(sqlBuilder.ToSqlName(joinedTable.ForeignKeys[i].Name));
             }
             sb.Append(" AND ");
             ToSql(ref sb, foreginExpr.InnerExpr, ref foreignContext, sqlBuilder, outputParams);
@@ -615,6 +619,35 @@ namespace LiteOrm.Common
             {
                 if (sql.Where.Length > 0) sql.Where.Append(" AND ");
                 ToSql(ref sql.Where, expr.Where, ref context, sqlBuilder, outputParams);
+            }
+        }
+
+        private static void AddSql(ref SqlValueStringBuilder sql, TableExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            if (expr.Table == null)
+            {
+                // 如果 TableExpr 中没有指定表，则使用上下文中的表信息
+                expr = new TableExpr(context.Table, context.TableArgs);
+            }
+            if (expr.Table is TableDefinition tableDef)
+            {
+                ToSql(ref sql.From, expr, ref context, sqlBuilder, outputParams);
+                sql.From.Append(" ");
+                sql.From.Append(sqlBuilder.ToSqlName($"T{context.Sequence}"));
+                context = new SqlBuildContext(tableDef, $"T{context.Sequence}", expr.TableArgs)
+                {
+                    Sequence = ++context.Sequence,
+                    Parent = context
+                };
+            }
+            else
+            {
+                ToSql(ref sql.From, expr, ref context, sqlBuilder, outputParams);
+                context = new SqlBuildContext(context.Table, null, expr.TableArgs)
+                {
+                    Sequence = ++context.Sequence,
+                    Parent = context
+                };
             }
         }
 

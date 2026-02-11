@@ -412,7 +412,12 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
-                var list = await db.BenchmarkLogs.Include(l => l.User).Where(l => l.User.Age < 30).ToListAsync();
+                var list = await db.BenchmarkLogs
+                    .Include(l => l.User)
+                    .Where(l => l.User.Age < 30)
+                    .OrderByDescending(l => l.Id)
+                    .Skip(0).Take(BatchCount)
+                    .ToListAsync();
             }
         }
 
@@ -424,7 +429,9 @@ namespace LiteOrm.Benchmark
                 var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
                 var list = await sugar.Queryable<BenchmarkLog, BenchmarkUser>((l, u) => l.UserId == u.Id)
                     .Where((l, u) => u.Age < 30)
+                    .OrderBy((l, u) => l.Id, OrderByType.Desc)
                     .Select((l, u) => new { l.Id, l.Message, UserName = u.Name })
+                    .Skip(0).Take(BatchCount)
                     .ToListAsync();
             }
         }
@@ -435,7 +442,11 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var service = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkLogView>>();
-                var list = await service.SearchAsync(Expr.Exp<BenchmarkLogView>(l => l.Age < 30));
+                var list = await service.SearchAsync(
+                    q => q.Where(l => l.Age < 30)
+                          .OrderByDescending(l => l.Id)
+                          .Skip(0).Take(BatchCount)
+                );
             }
         }
 
@@ -445,7 +456,11 @@ namespace LiteOrm.Benchmark
         {
             using (var conn = new MySqlConnection(_connectionString!))
             {
-                var sql = @"SELECT l.*, u.* FROM BenchmarkLog l INNER JOIN BenchmarkUser u ON l.UserId = u.Id WHERE u.Age < 30";
+                var sql = $@"SELECT l.*, u.* FROM BenchmarkLog l 
+                             INNER JOIN BenchmarkUser u ON l.UserId = u.Id 
+                             WHERE u.Age < 30 
+                             ORDER BY l.Id DESC 
+                             LIMIT {BatchCount} OFFSET 0";
                 var list = await conn.QueryAsync<BenchmarkLog, BenchmarkUser, BenchmarkLog>(sql, (log, user) => { log.User = user; return log; });
             }
         }
@@ -456,7 +471,12 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
-                var list = await fsql.Select<BenchmarkLog>().InnerJoin(a => a.UserId == a.User.Id).Where(a => a.User.Age < 30).ToListAsync();
+                var list = await fsql.Select<BenchmarkLog>()
+                    .InnerJoin(a => a.UserId == a.User.Id)
+                    .Where(a => a.User.Age < 30)
+                    .OrderByDescending(a => a.Id)
+                    .Skip(0).Limit(BatchCount)
+                    .ToListAsync();
             }
         }
         #endregion

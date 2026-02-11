@@ -3,6 +3,7 @@ using LiteOrm.Demo.Models;
 using LiteOrm.Demo.Services;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace LiteOrm.Demo.Demos
@@ -62,28 +63,36 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine("\n[3] 框架生成的逻辑模型 (JSON 序列化后可跨端传递):");
             Console.WriteLine($"> 逻辑模型预览: {queryModel}");
 
-            // 4. 直接构建 SQL 模型（不推荐，除非你非常熟悉框架内部结构）
+            // 4. 直接构建 SQL 表达式（不推荐，除非你非常熟悉框架内部结构）
             Console.ResetColor();
-            Console.WriteLine("\n[4] 直接构建 SQL 模型 (不推荐，除非你熟悉内部结构)");
+            Console.WriteLine("\n[4] 直接构建 SQL 表达式 (不推荐，除非你熟悉内部结构)");
             var sqlModel = new SelectExpr(
                 new WhereExpr(
-                    Expr.Table<UserView>(),
-                    Expr.Property("Age") > minAge & Expr.Property("UserName", LogicOperator.Like, $"%{searchName}%") &
-                    Expr.Foreign("Dept",
-                        Expr.Property(nameof(Department.Name), LogicOperator.Like, $"%技术部%") &
-                        Expr.Property(nameof(Department.ParentId), LogicOperator.In, 
-                        Expr.Table<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count > 3).Select(nameof(User.DeptId)))
+                    Expr.TableView<UserView>(),
+                    Expr.Property("Age") > minAge & Expr.Property("UserName", LogicOperator.Like, $"%{searchName}%")
+                    & Expr.Foreign("Dept",
+                        Expr.Property(nameof(Department.Name), LogicOperator.Like, $"%技术部%")
+                        & Expr.Property(nameof(Department.ParentId))
+                        .In(Expr.Table<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count > Expr.Const(3)).Select(nameof(User.DeptId)))
                     )
                 )
              );
+            Console.WriteLine("直接构建 SQL 表达式 : new SelectExpr(\r\n" +
+    "                new WhereExpr(\r\n" +
+    "                    Expr.TableView<UserView>(),\r\n" +
+    "                    Expr.Property(\"Age\") > minAge & Expr.Property(\"UserName\", LogicOperator.Like, $\"%{searchName}%\")\r\n" +
+    "                    & Expr.Foreign(\"Dept\",\r\n" +
+    "                        Expr.Property(nameof(Department.Name), LogicOperator.Like, $\"%技术部%\")\r\n" +
+    "                        & Expr.Property(nameof(Department.ParentId))\r\n" +
+    "                        .In(Expr.Table<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count > Expr.Const(3)).Select(nameof(User.DeptId)))\r\n" +
+    "                    )\r\n" +
+    "                )\r\n" +
+    "             )");
+            Console.WriteLine($"Expr 内容：{sqlModel}\n");
+            Console.WriteLine($"序列化后 JSON：{JsonSerializer.Serialize(sqlModel, new JsonSerializerOptions { WriteIndented = true })}\n");
+
             var resultD = await userSvc.SearchAsync(sqlModel);
-            Console.WriteLine("var sqlModel = new SelectExpr(" +
-                "\r\n                new WhereExpr(" +
-                "\r\n                    Expr.Table<UserView>()," +
-                "\r\n                    Expr.Property(\"Age\") > minAge & Expr.Property(\"UserName\", LogicOperator.Like, $\"%{searchName}%\")" +
-                "\r\n                " +
-                ")\r\n             );");
-            Console.WriteLine($"    → 查询完成，返回 {resultD.Count} 条记录。");
+            Console.WriteLine($"查询完成，Sql：{SessionManager.Current?.SqlStack?.Last()}\n 返回 {resultD.Count} 条记录。");
         }
     }
 }

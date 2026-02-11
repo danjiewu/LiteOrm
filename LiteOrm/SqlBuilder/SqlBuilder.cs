@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+﻿﻿﻿using LiteOrm.Common;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -165,16 +165,33 @@ namespace LiteOrm
         /// <returns>数据库合法名称</returns>
         public virtual string ToSqlName(string name)
         {
-            if (name is null) throw new ArgumentNullException("name");
-            return String.Join(".", Array.ConvertAll(name.Split('.'), n => $"[{n}]"));
+            if (name is null) throw new ArgumentNullException(nameof(name));
+            var sb = ValueStringBuilder.Create(name.Length + 4);
+            ReadOnlySpan<char> span = name.AsSpan();
+            int start = 0;
+            bool first = true;
+            for (int i = 0; i <= span.Length; i++)
+            {
+                if (i == span.Length || span[i] == '.')
+                {
+                    if (!first) sb.Append('.');
+                    ToSqlName(ref sb, span.Slice(start, i - start));
+                    start = i + 1;
+                    first = false;
+                }
+            }
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
-        /// <summary>
-        /// 将表名和列名拼接并转换为数据库合法名称 (如 [Table].[Column])。
-        /// </summary>
-        public virtual string ToSqlQualifiedName(string tableName, string columnName)
+        protected virtual void ToSqlName(ref ValueStringBuilder sb, ReadOnlySpan<char> simpleName)
         {
-            return $"{ToSqlName(tableName)}.{ToSqlName(columnName)}";
+            simpleName = simpleName.Trim();
+            if (simpleName.IsEmpty) return;
+            if (simpleName[0] != '[') sb.Append('[');
+            sb.Append(simpleName);
+            if (simpleName[simpleName.Length - 1] != ']') sb.Append(']');
         }
 
         /// <summary>
@@ -198,7 +215,12 @@ namespace LiteOrm
             if (sqlObject is ColumnRef columnRef)
             {
                 if (columnRef.Table == null) BuildExpression(ref sb, columnRef.Column, tableArgs);
-                else sb.Append(ToSqlQualifiedName(columnRef.Table.Name, columnRef.Column.Name));
+                else
+                {
+                    ToSqlName(ref sb, columnRef.Table.Name.AsSpan());
+                    sb.Append('.');
+                    ToSqlName(ref sb, columnRef.Column.Name.AsSpan());
+                }
                 return;
             }
             if (sqlObject is ForeignColumn foreignColumn)
@@ -208,7 +230,9 @@ namespace LiteOrm
             }
             if (sqlObject is SqlColumn sqlColumn)
             {
-                sb.Append(ToSqlQualifiedName(sqlColumn.Table.Name, sqlColumn.Name));
+                ToSqlName(ref sb, sqlColumn.Table.Name.AsSpan());
+                sb.Append('.');
+                ToSqlName(ref sb, sqlColumn.Name.AsSpan());
                 return;
             }
             if (sqlObject is TableView tableView)
@@ -570,7 +594,7 @@ namespace LiteOrm
                 sb.Append("\n  ");
                 sb.Append(ToSqlName(column.Name));
                 sb.Append(" ");
-                sb.Append(GetSqlType(column));                
+                sb.Append(GetSqlType(column));
                 if (column.IsIdentity)
                 {
                     sb.Append(" ");
@@ -741,7 +765,7 @@ namespace LiteOrm
             for (int b = 0; b < batchSize; b++)
             {
                 if (b > 0) sb.Append("\n");
-                
+
                 // 构建 UPDATE 语句
                 sb.Append("UPDATE ");
                 sb.Append(sqlTableName);
@@ -830,31 +854,31 @@ namespace LiteOrm
 
             if (subSelect.From.Length > 0)
             {
-                result.Append(" FROM ");
+                result.Append(" \nFROM ");
                 result.Append(subSelect.From.AsSpan());
             }
 
             if (subSelect.Where.Length > 0)
             {
-                result.Append(" WHERE ");
+                result.Append(" \nWHERE ");
                 result.Append(subSelect.Where.AsSpan());
             }
 
             if (subSelect.GroupBy.Length > 0)
             {
-                result.Append(" GROUP BY ");
+                result.Append(" \nGROUP BY ");
                 result.Append(subSelect.GroupBy.AsSpan());
             }
 
             if (subSelect.Having.Length > 0)
             {
-                result.Append(" HAVING ");
+                result.Append(" \nHAVING ");
                 result.Append(subSelect.Having.AsSpan());
             }
 
             if (subSelect.OrderBy.Length > 0)
             {
-                result.Append(" ORDER BY ");
+                result.Append(" \nORDER BY ");
                 result.Append(subSelect.OrderBy.AsSpan());
             }
 
@@ -862,11 +886,10 @@ namespace LiteOrm
             {
                 if (subSelect.OrderBy.Length == 0)
                 {
-                    // standard SQL requires ORDER BY for OFFSET/FETCH
-                    // result.Append(" ORDER BY (SELECT NULL)"); 
+                    result.Append(" \nORDER BY 1"); 
                 }
-                result.Append($" OFFSET {subSelect.Skip} ROWS");
-                result.Append($" FETCH NEXT {subSelect.Take} ROWS ONLY");
+                result.Append($" \nOFFSET {subSelect.Skip} ROWS");
+                result.Append($" \nFETCH NEXT {subSelect.Take} ROWS ONLY");
             }
         }
     }

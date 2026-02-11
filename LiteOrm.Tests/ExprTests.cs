@@ -4,6 +4,7 @@ using LiteOrm.Tests.Models;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Xunit;
+using static System.Collections.Specialized.BitVector32;
 
 namespace LiteOrm.Tests
 {
@@ -350,7 +351,7 @@ namespace LiteOrm.Tests
                 .GroupBy(Expr.Property("DeptId"))
                 .Having(AggregateFunctionExpr.Count > 1)
                 .Select(Expr.Property("DeptId"), AggregateFunctionExpr.Count)
-                .OrderBy((Expr.Property("DeptId"), true))
+                .OrderBy(Expr.Property("DeptId").Asc())
                 .Section(10, 20);
 
             Assert.NotNull(section.Source);
@@ -368,6 +369,8 @@ namespace LiteOrm.Tests
             var groupBy = new GroupByExpr(table, Expr.Property("DeptId"), Expr.Property("Sex"));
             Assert.Equal(2, groupBy.GroupBys.Count);
             Assert.Equal("DeptId", (groupBy.GroupBys[0] as PropertyExpr).PropertyName);
+            // Serialization and Equals test
+            TestSerialization(groupBy);
         }
 
         [Fact]

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -171,7 +172,7 @@ namespace LiteOrm.Common
                             {
                                 break;
                             }
-                            
+
                             // 处理快捷片段的数据 (如 "$table": "Name" or "$update": {Source})
                             if (propName != "$" && result is ISqlSegment ss)
                             {
@@ -179,6 +180,13 @@ namespace LiteOrm.Common
                                 if (ss is TableExpr te)
                                 {
                                     string typeName = reader.GetString();
+                                    bool isView = false;
+                                    reader.Read();
+                                    if(reader.TokenType == JsonTokenType.PropertyName && reader.ValueTextEquals("IsView"))
+                                    {
+                                        reader.Read();
+                                        isView = reader.GetBoolean();
+                                    }
                                     if (!string.IsNullOrEmpty(typeName))
                                     {
                                         Type type = Type.GetType(typeName);
@@ -190,7 +198,7 @@ namespace LiteOrm.Common
                                                 if (type != null) break;
                                             }
                                         }
-                                        if (type != null) te.Table = TableInfoProvider.Default.GetTableView(type);
+                                        if (type != null) te.Table = isView ? TableInfoProvider.Default.GetTableView(type) : TableInfoProvider.Default.GetTableDefinition(type);
                                     }
                                 }
                                 else
@@ -346,7 +354,7 @@ namespace LiteOrm.Common
                 // 优化序列化格式：PropertyExpr 使用简写的 # 标识
                 if (value is PropertyExpr pe)
                 {
-                    writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, string> { { "#", pe.PropertyName } }, _compactOptions));
+                    writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, string> { { "#", String.IsNullOrEmpty(pe.TableAlias) ? pe.PropertyName : pe.TableAlias + "." + pe.PropertyName } }, _compactOptions));
                     return;
                 }
 
@@ -445,34 +453,49 @@ namespace LiteOrm.Common
                         writer.WriteEndArray();
                         break;
                     case AggregateFunctionExpr afe:
-                        writer.WriteString("Name", afe.FunctionName);
-                        writer.WritePropertyName("Expr");
-                        WriteExpr(writer, afe.Expression, options);
-                        writer.WriteBoolean("Distinct", afe.IsDistinct);
+                        if (afe.FunctionName is not null) writer.WriteString("Name", afe.FunctionName);
+                        if (afe.Expression is not null)
+                        {
+                            writer.WritePropertyName("Expr");
+                            WriteExpr(writer, afe.Expression, options);
+                        }
+                        if (afe.IsDistinct) writer.WriteBoolean("Distinct", afe.IsDistinct);
                         break;
                     case NotExpr ne2:
-                        writer.WritePropertyName("Operand");
-                        WriteExpr(writer, ne2.Operand, options);
+                        if (ne2.Operand is not null)
+                        {
+                            writer.WritePropertyName("Operand");
+                            WriteExpr(writer, ne2.Operand, options);
+                        }
                         break;
                     case UnaryExpr ue:
                         writer.WritePropertyName(ue.Operator.ToString());
                         WriteExpr(writer, ue.Operand, options);
                         break;
                     case GenericSqlExpr ge:
-                        writer.WriteString("Key", ge.Key);
-                        writer.WritePropertyName("Arg");
-                        JsonSerializer.Serialize(writer, ge.Arg, options);
+                        if (ge.Key is not null) writer.WriteString("Key", ge.Key);
+                        if (ge.Arg is not null)
+                        {
+                            writer.WritePropertyName("Arg");
+                            JsonSerializer.Serialize(writer, ge.Arg, options);
+                        }
                         break;
                     case ValueExpr vve:
-                        writer.WritePropertyName("Value");
-                        JsonSerializer.Serialize(writer, vve.Value, options);
+                        if (vve.Value is not null)
+                        {
+                            writer.WritePropertyName("Value");
+                            JsonSerializer.Serialize(writer, vve.Value, options);
+                        }
                         break;
                     case ForeignExpr fe:
                         if (fe.TableArgs != null && fe.TableArgs.Length > 0)
                         {
-                            writer.WriteString("Foreign", fe.Foreign);
-                            writer.WritePropertyName("InnerExpr");
-                            WriteExpr(writer, fe.InnerExpr, options);
+                            if (fe.Foreign is not null) writer.WriteString("Foreign", fe.Foreign);
+                            if (fe.InnerExpr is not null)
+                            {
+                                writer.WritePropertyName("InnerExpr");
+                                WriteExpr(writer, fe.InnerExpr, options);
+                            }
                             writer.WritePropertyName("TableArgs");
                             JsonSerializer.Serialize(writer, fe.TableArgs, options);
                         }
@@ -486,6 +509,19 @@ namespace LiteOrm.Common
                 writer.WriteEndObject();
             }
 
+            private static readonly Dictionary<Type, string> _typeToMark = new Dictionary<Type, string>
+            {
+                { typeof(TableExpr), "table" },
+                { typeof(WhereExpr), "where" },
+                { typeof(OrderByExpr), "order" },
+                { typeof(GroupByExpr), "group" },
+                { typeof(HavingExpr), "having" },
+                { typeof(SectionExpr), "section" },
+                { typeof(SelectExpr), "select" },
+                { typeof(DeleteExpr), "delete" },
+                { typeof(UpdateExpr), "update" }
+            };
+
             /// <summary>
             /// 写入 SQL 片段
             /// </summary>
@@ -494,25 +530,15 @@ namespace LiteOrm.Common
                 if (value == null) { writer.WriteNullValue(); return; }
                 writer.WriteStartObject();
 
-                // 类型到类型标识符的映射
-                var typeToMark = new Dictionary<Type, string>
-                {
-                    { typeof(TableExpr), "table" },
-                    { typeof(WhereExpr), "where" },
-                    { typeof(OrderByExpr), "order" },
-                    { typeof(GroupByExpr), "group" },
-                    { typeof(HavingExpr), "having" },
-                    { typeof(SectionExpr), "section" },
-                    { typeof(SelectExpr), "select" },
-                    { typeof(DeleteExpr), "delete" },
-                    { typeof(UpdateExpr), "update" }
-                };
-
-                string mark = typeToMark.TryGetValue(value.GetType(), out string m) ? m : value.GetType().Name.Replace("Expr", "").ToLower();
+                string mark = _typeToMark.TryGetValue(value.GetType(), out string m) ? m : value.GetType().Name.Replace("Expr", "").ToLower();
                 writer.WritePropertyName("$" + mark);
                 if (value is TableExpr te)
                 {
                     writer.WriteStringValue(te.Table?.DefinitionType.FullName);
+                    if(te.Table is TableView tv)
+                    {
+                        writer.WriteBoolean("IsView", true);
+                    }
                 }
                 else
                 {
@@ -553,11 +579,11 @@ namespace LiteOrm.Common
                         if (gbe.GroupBys?.Count > 0) { writer.WritePropertyName("GroupBys"); JsonSerializer.Serialize(writer, gbe.GroupBys, options); }
                         break;
                     case HavingExpr he:
-                        if (he.Having is not null) { writer.WritePropertyName("Having"); JsonSerializer.Serialize(writer, he.Having, options); }
+                        if (he.Having is not null) { writer.WritePropertyName("Having"); WriteExpr(writer, he.Having, options); }
                         break;
                     case SectionExpr se:
-                        writer.WriteNumber("Skip", se.Skip);
-                        writer.WriteNumber("Take", se.Take);
+                        if (se.Skip != 0) writer.WriteNumber("Skip", se.Skip);
+                        if (se.Take != 0) writer.WriteNumber("Take", se.Take);
                         break;
                     case UpdateExpr ue:
                         if (ue.Sets?.Count > 0)

@@ -33,21 +33,31 @@ var host = Host.CreateDefaultBuilder(args)
 连接池与数据源配置：
 ```json
 {
-  "LiteOrm": {
-    "Default": "DefaultConnection",
-    "DataSources": [
-      {
-        "Name": "DefaultConnection",
-        "ConnectionString": "Data Source=demo.db",
-        "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
-        "KeepAliveDuration": "00:10:00",
-        "PoolSize": 16,
-        "MaxPoolSize": 100,
-        "ParamCountLimit": 2000,
-        "SyncTable": true
-      }
-    ]
-  }
+    "LiteOrm": {
+        "Default": "DefaultConnection",
+        "DataSources": [
+            {
+                "Name": "DefaultConnection",
+                "ConnectionString": "Data Source=demo.db",
+                "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+                "KeepAliveDuration": "00:10:00",
+                "PoolSize": 20,
+                "MaxPoolSize": 100,
+                "ParamCountLimit": 2000,
+                "SyncTable": true,
+                "ReadOnlyConfigs": [
+                    {
+                        "ConnectionString": "Server=readonly01;User ID=readonly;Password=xxxx;Database=OrmBench;"
+                    },
+                    {
+                        "ConnectionString": "Server=readonly02;User ID=readonly;Password=xxxx;Database=OrmBench;",
+                        "PoolSize": 10,
+                        "KeepAliveDuration": "00:30:00"
+                    }
+                ]
+            }
+        ]
+    }
 }
 ```
 
@@ -64,7 +74,19 @@ var host = Host.CreateDefaultBuilder(args)
 | **KeepAliveDuration** | 10min | 连接空闲存活时间，超过此时间后空闲连接将被物理关闭。 |
 | **ParamCountLimit** | 2000 | 单条 SQL 支持的最大参数个数，批量操作时参数超过此限制会自动分批执行，避免触发 DB 限制。 |
 | **SyncTable** | false | 是否在启动时自动检测实体类并尝试同步数据库表结构。 |
+| **ReadOnlyConfigs** | - | 只读库配置 |
 
+### ReadOnlyConfigs（只读从库配置）
+
+LiteOrm 支持为每个主数据源配置若干只读从库，用于读写分离、负载均衡或故障切换。只读配置放在对应数据源对象的 `ReadOnlyConfigs` 数组中。
+
+说明：
+
+- `ReadOnlyConfigs`：可选数组，每项为只读数据源配置对象（可为空）。
+- 每个只读项至少包含 `ConnectionString`，当只读库与主库使用不同驱动时也可指定 `Provider`。
+- LiteOrm 在执行只读操作（例如 SELECT 查询）时会优先选择只读配置，从而减轻主库写入压力并实现读扩展。
+- 如果所有只读配置不可用或未配置，LiteOrm 会回退到主数据源的连接。
+- 可结合连接池与自定义路由策略实现更复杂的读写分离、负载均衡或高可用策略。
 
 ## 核心功能演示
 

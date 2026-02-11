@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿using System;
+using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
@@ -22,7 +24,10 @@ namespace LiteOrm.Common
         /// <param name="propertyName">实体对应的属性名称（通常与数据库列名映射）。</param>
         public PropertyExpr(string propertyName)
         {
-            PropertyName = propertyName;
+            if (propertyName == null) throw new ArgumentNullException(nameof(propertyName));
+            var names = propertyName.Split('.');
+            PropertyName = names.Last();
+            TableAlias = names.Length > 1 ? names.First() : null;
         }
 
         /// <summary>
@@ -30,6 +35,11 @@ namespace LiteOrm.Common
         /// </summary>
         [JsonIgnore]
         public override bool IsValue => true;
+
+        /// <summary>
+        /// 获取或设置表别名（如果有）。在生成 SQL 时，如果提供了表别名，列名将以 "TableAlias.ColumnName" 的形式出现。
+        /// </summary>
+        public string TableAlias { get; set; }
 
         /// <summary>
         /// 获取或设置目标属性（列）的名称。
@@ -41,7 +51,10 @@ namespace LiteOrm.Common
         /// </summary>
         public override string ToString()
         {
-            return $"[{PropertyName}]";
+            if (TableAlias != null)
+                return $"[{TableAlias}].[{PropertyName}]";
+            else
+                return $"[{PropertyName}]";
         }
 
         /// <summary>
@@ -49,7 +62,7 @@ namespace LiteOrm.Common
         /// </summary>
         public override bool Equals(object obj)
         {
-            return obj is PropertyExpr p && p.PropertyName == PropertyName;
+            return obj is PropertyExpr p && p.TableAlias == TableAlias && p.PropertyName == PropertyName;
         }
 
         /// <summary>
@@ -58,7 +71,7 @@ namespace LiteOrm.Common
         /// <returns>当前对象的哈希代码。</returns>
         public override int GetHashCode()
         {
-            return OrderedHashCodes(GetType().GetHashCode(), PropertyName?.GetHashCode() ?? 0);
+            return OrderedHashCodes(GetType().GetHashCode(), TableAlias?.GetHashCode() ?? 0, PropertyName?.GetHashCode() ?? 0);
         }
     }
 }
