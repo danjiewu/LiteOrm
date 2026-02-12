@@ -648,5 +648,64 @@ namespace LiteOrm.Tests
             // 验证所有结果的 ParentDeptName 都是 "Parent Dept"
             Assert.All(users2, u => Assert.Equal("Parent Dept", u.ParentDeptName));
         }
+
+        [Fact]
+        public async Task EntityService_Update_UpdateExpr_ShouldWork()
+        {
+            // Arrange
+            var service = ServiceProvider.GetRequiredService<IEntityService<TestUser>>();
+            var asyncService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+            var user = new TestUser { Name = "UpdateExprTest", Age = 10, CreateTime = DateTime.Now };
+            await asyncService.InsertAsync(user);
+
+            // Act - 使用FunctionExpr和PropertyExpr增加复杂度
+            var updateExpr = new UpdateExpr
+            {
+                Source = Expr.Table<TestUser>(),
+                Sets = new List<(string, ValueTypeExpr)> 
+                {
+                    ("Age", Expr.Property("Age") + Expr.Const(5)), // 使用运算符重载和Expr.Const，Age = Age + 5
+                    ("Name", new FunctionExpr("UPPER", new PropertyExpr("Name"))) // 使用UPPER函数，参数为Name属性
+                },
+                Where = Expr.Exp<TestUser>(u => u.Name == "UpdateExprTest")
+            };
+            int affected = service.Update(updateExpr);
+            var retrieved = await viewService.GetObjectAsync(user.Id);
+
+            // Assert
+            Assert.Equal(1, affected);
+            Assert.Equal(15, retrieved?.Age); // Age + 5 = 15
+            Assert.Equal("UPDATEEXPRTEST", retrieved?.Name); // UPPER("UpdateExprTest") = "UPDATEEXPRTEST"
+        }
+
+        [Fact]
+        public async Task EntityService_UpdateAsync_UpdateExpr_ShouldWork()
+        {
+            // Arrange
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+            var user = new TestUser { Name = "UpdateExprAsyncTest", Age = 10, CreateTime = DateTime.Now };
+            await service.InsertAsync(user);
+
+            // Act - 使用FunctionExpr和PropertyExpr增加复杂度
+            var updateExpr = new UpdateExpr
+            {
+                Source = Expr.Table<TestUser>(),
+                Sets = new List<(string, ValueTypeExpr)> 
+                {
+                    ("Age", Expr.Property("Age") + Expr.Const(10)), // 使用运算符重载和Expr.Const，Age = Age + 10
+                    ("Name", new FunctionExpr("CONCAT", new PropertyExpr("Name"), "_Updated")) // 使用CONCAT函数，参数为Name属性和字符串
+                },
+                Where = Expr.Exp<TestUser>(u => u.Name == "UpdateExprAsyncTest")
+            };
+            int affected = await service.UpdateAsync(updateExpr);
+            var retrieved = await viewService.GetObjectAsync(user.Id);
+
+            // Assert
+            Assert.Equal(1, affected);
+            Assert.Equal(20, retrieved?.Age); // Age + 10 = 20
+            Assert.Equal("UpdateExprAsyncTest_Updated", retrieved?.Name); // CONCAT("UpdateExprAsyncTest", "_Updated")
+        }
     }
 }

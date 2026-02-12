@@ -17,12 +17,8 @@ namespace LiteOrm.Demo.Data
             var dataSourceProvider = services.GetRequiredService<DataSourceProvider>();
             var dataSourceName = dataSourceProvider.DefaultDataSourceName ?? "SQLite";
 
-            Console.WriteLine($"使用数据源: {dataSourceName}");
-
             var contextPoolFactory = services.GetRequiredService<DAOContextPoolFactory>();
             var context = contextPoolFactory.PeekContext(dataSourceName); // 确保初始化连接池
-
-            Console.WriteLine("--- 数据库结构检查 ---");
 
             await EnsureTablesCreatedAsync(services, context.DbConnection);
 
@@ -31,7 +27,10 @@ namespace LiteOrm.Demo.Data
             var deptService = services.GetRequiredService<IDepartmentService>();
             var salesService = services.GetRequiredService<ISalesService>();
 
-            if (await userService.CountAsync() == 0)
+            int userCount = await userService.CountAsync();
+            int deptCount = await deptService.CountAsync();
+
+            if (userCount == 0 || deptCount == 0)
             {
                 await SeedDataWithServicesAsync(userService, deptService, salesService);
             }
@@ -93,11 +92,6 @@ namespace LiteOrm.Demo.Data
 
         private static async Task SeedDataWithServicesAsync(IUserService userService, IDepartmentService deptService, ISalesService salesService)
         {
-            // 此处演示从服务中获取依赖，虽然可以直接构造
-            // 但实际项目中建议通过构造函数注入
-
-            Console.WriteLine("--- 使用 Service 接口进行数据初始化 ---");
-
             // 1. 准备部门数据
             var depts = new List<Department>
             {
@@ -129,13 +123,20 @@ namespace LiteOrm.Demo.Data
                 new() { Id = 9, UserName = "财务助理", Age = 24, CreateTime = DateTime.Now, DeptId = 6 },
                 new() { Id = 10, UserName = "HRBP-Lucy", Age = 29, CreateTime = DateTime.Now, DeptId = 7 },
                 new() { Id = 11, UserName = "老王", Age = 40, CreateTime = DateTime.Now, DeptId = 8 },
-                new() { Id = 12, UserName = "小李", Age = 22, CreateTime = DateTime.Now, DeptId = 9 }
+                new() { Id = 12, UserName = "小李", Age = 22, CreateTime = DateTime.Now, DeptId = 9 },
+                new() { Id = 13, UserName = "赵六", Age = 27, CreateTime = DateTime.Now, DeptId = 2 },
+                new() { Id = 14, UserName = "孙八", Age = 31, CreateTime = DateTime.Now, DeptId = 3 },
+                new() { Id = 15, UserName = "周九", Age = 23, CreateTime = DateTime.Now, DeptId = 4 },
+                new() { Id = 16, UserName = "吴十", Age = 34, CreateTime = DateTime.Now, DeptId = 5 },
+                new() { Id = 17, UserName = "郑一", Age = 28, CreateTime = DateTime.Now, DeptId = 5 },
+                new() { Id = 18, UserName = "王二", Age = 36, CreateTime = DateTime.Now, DeptId = 8 },
+                new() { Id = 19, UserName = "陈三", Age = 25, CreateTime = DateTime.Now, DeptId = 9 },
+                new() { Id = 20, UserName = "林四", Age = 30, CreateTime = DateTime.Now, DeptId = 9 }
             };
 
             await userService.BatchInsertAsync(users);
 
-            // 3. 设置部门负责人 (演示 UpdateAsync)
-            // 重新获取部门进行更新
+            // 3. 设置部门负责人
             var updateDepts = new List<Department>();
 
             async Task MarkManager(int deptId, int managerId)
@@ -152,14 +153,11 @@ namespace LiteOrm.Demo.Data
             await MarkManager(8, 11); // 上海负责人
             await MarkManager(9, 12); // 广州负责人
 
-            // 演示 BatchUpdate (批量更新对象已存在的实例)
+            // 批量更新部门负责人
             await deptService.BatchUpdateAsync(updateDepts);
 
-            // 4. 准备销售记录 (原 SeedSalesDataAsync 内容，此处改为服务调用)
-            string currentMonth = DateTime.Now.ToString("yyyyMM");
+            // 4. 准备销售记录
             int count = 50;
-            Console.WriteLine($"--- 演示 IArged 分表数据插入 (Sales_{currentMonth})，生成 {count} 条随机销售记录 ---");
-
             var productPool = new[]
             {
                 (Id: 101, Name: "笔记本电脑", Price: 5999),
@@ -174,7 +172,7 @@ namespace LiteOrm.Demo.Data
                 (Id: 501, Name: "电竞笔记本", Price: 8999),
             };
 
-            var userIds = new[] { 3, 4, 6, 7, 11, 12 };
+            var userIds = new[] { 3, 4, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 };
             var records = new List<SalesRecord>();
             var random = new Random();
             var saleDateBase = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
@@ -198,8 +196,6 @@ namespace LiteOrm.Demo.Data
             }
 
             await salesService.BatchInsertAsync(records);
-
-            Console.WriteLine("全量初始化数据填充完成。");
         }
     }
 }

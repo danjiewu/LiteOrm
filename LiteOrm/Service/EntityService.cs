@@ -377,6 +377,21 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
+        /// 根据UpdateExpr更新实体。
+        /// </summary>
+        /// <remarks>
+        /// 根据 UpdateExpr 表达式更新满足条件的记录。
+        /// 支持复杂的更新操作，包括使用数据库函数、子查询等。
+        /// </remarks>
+        /// <param name="expr">更新表达式，包含更新的字段和条件。</param>
+        /// <param name="tableArgs">表名参数，用于支持分表场景。</param>
+        /// <returns>更新的记录数。</returns>
+        public virtual int Update(UpdateExpr expr, params string[] tableArgs)
+        {
+            return ObjectDAO.WithArgs(tableArgs).Update(expr);
+        }
+
+        /// <summary>
         /// 批量插入实体。
         /// </summary>
         /// <remarks>
@@ -814,6 +829,18 @@ namespace LiteOrm.Service
         public async Task<int> DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await ObjectDAO.WithArgs(tableArgs).DeleteAsync(expr, cancellationToken);
+        }
+
+        /// <summary>
+        /// 异步根据UpdateExpr更新实体。
+        /// </summary>
+        /// <param name="expr">更新表达式。</param>
+        /// <param name="tableArgs">表名参数。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，任务结果包含更新的记录数。</returns>
+        public async Task<int> UpdateAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        {
+            return await ObjectDAO.WithArgs(tableArgs).UpdateAsync(expr, cancellationToken);
         }
 
         /// <summary>

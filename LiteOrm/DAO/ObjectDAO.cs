@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using LiteOrm.Common;
+﻿﻿﻿using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections;
@@ -792,6 +792,17 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 根据UpdateExpr更新数据
+        /// </summary>
+        /// <param name="expr">更新表达式</param>
+        /// <returns>更新的记录数</returns>
+        public virtual int Update(UpdateExpr expr)
+        {
+            var command = MakeExprCommand(expr);
+            return command.ExecuteNonQuery();
+        }
+
+        /// <summary>
         /// 将指定主键的对象从数据库删除
         /// </summary>
         /// <param name="keys">待删除的对象的主键</param>
@@ -1244,6 +1255,18 @@ namespace LiteOrm
         {
             var deleteExpr = new DeleteExpr(new TableExpr(TableDefinition), expr);
             using var command = MakeExprCommand(deleteExpr);    
+            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// 异步根据UpdateExpr更新数据
+        /// </summary>
+        /// <param name="expr">更新表达式</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含更新的记录数</returns>
+        public async virtual Task<int> UpdateAsync(UpdateExpr expr, CancellationToken cancellationToken = default)
+        {
+            var command = MakeExprCommand(expr);
             return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 

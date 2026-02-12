@@ -163,6 +163,15 @@ namespace LiteOrm.Service
         /// <returns>删除的记录数</returns>
         [Service]
         int Delete(LogicExpr expr, params string[] tableArgs);
+        
+        /// <summary>
+        /// 根据UpdateExpr更新实体
+        /// </summary>
+        /// <param name="expr">更新表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>更新的记录数</returns>
+        [Service]
+        int Update(UpdateExpr expr, params string[] tableArgs);
         /// <summary>
         /// 批量新增实体
         /// </summary>

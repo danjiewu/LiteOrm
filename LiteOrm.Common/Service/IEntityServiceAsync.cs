@@ -138,6 +138,15 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>受影响的行数</returns>
         Task<int> DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// 异步根据UpdateExpr更新实体
+        /// </summary>
+        /// <param name="expr">更新表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>表示异步操作的任务，任务结果包含更新的记录数</returns>
+        Task<int> UpdateAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步批量新增实体

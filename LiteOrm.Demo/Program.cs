@@ -1,4 +1,4 @@
-﻿using LiteOrm;
+using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Demo.Data;
 using LiteOrm.Demo.Demos;
@@ -44,5 +44,8 @@ using (var scope = host.Services.CreateScope())
 
     // [4] DataViewDAO 演示 (直接返回 DataTable)
     await DataViewDemo.RunAsync(scope.ServiceProvider);
+
+    // [5] UpdateExpr 演示 (复杂更新操作)
+    await UpdateExprDemo.RunAsync(serviceFactory);
 }
 

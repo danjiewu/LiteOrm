@@ -71,9 +71,8 @@ namespace LiteOrm.Demo.Demos
                     Expr.TableView<UserView>(),
                     Expr.Property("Age") > minAge & Expr.Property("UserName", LogicOperator.Like, $"%{searchName}%")
                     & Expr.Foreign("Dept",
-                        Expr.Property(nameof(Department.Name), LogicOperator.Like, $"%技术部%")
-                        & Expr.Property(nameof(Department.ParentId))
-                        .In(Expr.Table<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count > Expr.Const(3)).Select(nameof(User.DeptId)))
+                        Expr.Property(nameof(Department.Name), LogicOperator.Like, $"%部%")
+                        & Expr.Property(nameof(Department.ParentId)).In(Expr.Table<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count >= Expr.Const(3)).Select(nameof(User.DeptId)))
                     )
                 )
              );

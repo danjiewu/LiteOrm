@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -53,17 +53,6 @@ namespace LiteOrm
             string where = expr.ToSql(context, SqlBuilder, paramValues);
             string updateSql = $"UPDATE {ParamTable} SET {String.Join(",", strSets.ToArray())} {ToWhereSql(where)}";
             using var command = MakeNamedParamCommand(updateSql, paramValues);
-            return command.ExecuteNonQuery();
-        }
-
-        /// <summary>
-        /// 根据条件更新数据
-        /// </summary>
-        /// <param name="expr">更新的条件</param>
-        /// <returns>更新的记录数</returns>
-        public virtual int Update(UpdateExpr expr)
-        {
-            var command = MakeExprCommand(expr);
             return command.ExecuteNonQuery();
         }
 
@@ -129,18 +118,6 @@ namespace LiteOrm
                 expr.Add(Expr.Property(column.PropertyName, keys[i++]));
             }
             return await UpdateAllValuesAsync(values, expr, cancellationToken).ConfigureAwait(false) > 0;
-        }
-
-        /// <summary>
-        /// 异步根据条件更新数据
-        /// </summary>
-        /// <param name="expr">更新的条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含更新的记录数</returns>
-        public async Task<int> UpdateAsync(UpdateExpr expr, CancellationToken cancellationToken = default)
-        {
-            var command = MakeExprCommand(expr);
-            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 }

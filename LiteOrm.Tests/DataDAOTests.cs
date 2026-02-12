@@ -51,31 +51,6 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public async Task DataDAO_UpdateAll_ShouldWork()
-        {
-            // Arrange
-            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
-            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
-            var user = new TestUser { Name = "UpdateAll", Age = 10, CreateTime = System.DateTime.Now };
-            await service.InsertAsync(user);
-
-            // Act
-            var updateExpr = new UpdateExpr
-            {
-                Source = Expr.Table<TestUser>(),
-                Sets = new List<(string, ValueTypeExpr)> { ("Age", new ValueExpr(99)) },
-                Where = Expr.Exp<TestUser>(u => u.Name == "UpdateAll")
-            };
-            int affected = dataDao.Update(updateExpr);
-            var retrieved = await viewService.GetObjectAsync(user.Id);
-
-            // Assert
-            Assert.Equal(1, affected);
-            Assert.Equal(99, retrieved?.Age);
-        }
-
-        [Fact]
         public async Task DataDAO_UpdateValues_ShouldWork()
         {
             // Arrange
@@ -161,31 +136,6 @@ namespace LiteOrm.Tests
 
             // Assert
             Assert.False(updated);
-        }
-
-        [Fact]
-        public async Task DataDAO_UpdateAsync_ShouldWork()
-        {
-            // Arrange
-            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
-            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
-            var user = new TestUser { Name = "UpdateAsync", Age = 10, CreateTime = System.DateTime.Now };
-            await service.InsertAsync(user);
-
-            // Act
-            var updateExpr = new UpdateExpr
-            {
-                Source = Expr.Table<TestUser>(),
-                Sets = new List<(string, ValueTypeExpr)> { ("Age", new ValueExpr(99)) },
-                Where = Expr.Exp<TestUser>(u => u.Name == "UpdateAsync")
-            };
-            int affected = await dataDao.UpdateAsync(updateExpr);
-            var retrieved = await viewService.GetObjectAsync(user.Id);
-
-            // Assert
-            Assert.Equal(1, affected);
-            Assert.Equal(99, retrieved?.Age);
         }
 
         [Fact]

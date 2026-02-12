@@ -40,7 +40,19 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置聚合函数名称
         /// </summary>
-        public string FunctionName { get; set; }
+        public string FunctionName
+        {
+            get => _functionName;
+            set
+            {
+                if (!string.IsNullOrEmpty(value) && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                {
+                    throw new ArgumentException($"Aggregate function name '{value}' contains invalid characters, only letters, numbers, and underscores are allowed");
+                }
+                _functionName = value;
+            }
+        }
+        private string _functionName;
 
         /// <summary>
         /// 获取或设置是否对字段值去重
