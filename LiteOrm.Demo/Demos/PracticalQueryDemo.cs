@@ -18,7 +18,7 @@ namespace LiteOrm.Demo.Demos
 
             // 1. 准备动态条件
             int minAge = 18;
-            string searchName = "张";
+            string searchName = "王";
             var userSvc = factory.UserService;
 
             // 方式 1: 完整的 Lambda 表达式演示 (Where + OrderBy + Skip/Take)
