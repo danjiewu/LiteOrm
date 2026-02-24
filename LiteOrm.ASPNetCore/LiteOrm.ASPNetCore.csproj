@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	  <AssemblyVersion>8.0.5.0</AssemblyVersion>
+	  <FileVersion>8.0.5.0</FileVersion>
+	  <TargetFrameworks>net8.0;net10.0;</TargetFrameworks>
+	  <GenerateDocumentationFile>True</GenerateDocumentationFile>
+	  <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	  <VersionPrefix>8.0.5</VersionPrefix>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LiteOrm.Common\LiteOrm.Common.csproj" />
+    <ProjectReference Include="..\LiteOrm\LiteOrm.csproj" />
+  </ItemGroup>
+
+</Project>

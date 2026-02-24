@@ -1,0 +1,165 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+
+namespace LiteOrm.Common
+{
+    #region IObjectDAO<T>
+    /// <summary>
+    /// 实体类的增删改等基本操作的泛型接口
+    /// </summary>
+    /// <typeparam name="T">实体类类型</typeparam>
+    public interface IObjectDAO<T> : IObjectDAOAsync<T>, IObjectDAO
+    {
+        /// <summary>
+        /// 添加对象
+        /// </summary>
+        /// <param name="o">待添加的对象</param>
+        /// <returns>是否成功添加</returns>
+        bool Insert(T o);
+        /// <summary>
+        /// 批量添加对象
+        /// </summary>
+        /// <param name="values">待添加的对象集合</param>
+        void BatchInsert(IEnumerable<T> values);
+        /// <summary>
+        /// 批量更新对象
+        /// </summary>
+        /// <param name="values">待更新的对象集合</param>
+        void BatchUpdate(IEnumerable<T> values);
+        /// <summary>
+        /// 更新对象
+        /// </summary>
+        /// <param name="o">待更新的对象</param>
+        /// <param name="timestamp">时间戳</param>
+        /// <returns>是否成功更新</returns>
+        bool Update(T o, object timestamp = null);
+
+        /// <summary>
+        /// 更新或插入对象
+        /// </summary>
+        /// <param name="o">待处理的对象</param>
+        /// <returns>操作结果</returns>
+        UpdateOrInsertResult UpdateOrInsert(T o);
+
+        /// <summary>
+        /// 批量更新或插入对象
+        /// </summary>
+        /// <param name="values">待处理的对象集合</param>
+        void BatchUpdateOrInsert(IEnumerable<T> values);
+
+        /// <summary>
+        /// 删除对象
+        /// </summary>
+        /// <param name="o">待删除的对象</param>
+        /// <returns>是否成功删除</returns>
+        bool Delete(T o);
+
+        /// <summary>
+        /// 批量删除对象
+        /// </summary>
+        /// <param name="values">待删除的对象集合</param>
+        void BatchDelete(IEnumerable<T> values);
+    }
+    #endregion
+
+    #region IObjectDAO
+    /// <summary>
+    /// 实体类的增删改等基本操作的非泛型接口
+    /// </summary>
+    [AutoRegister(false)]
+    public interface IObjectDAO : IObjectDAOAsync
+    {
+        /// <summary>
+        /// 添加对象
+        /// </summary>
+        /// <param name="o">待添加的对象</param>
+        /// <returns>是否成功添加</returns>
+        bool Insert(Object o);
+
+        /// <summary>
+        /// 批量添加对象
+        /// </summary>
+        /// <param name="values">待添加的对象集合</param>
+        void BatchInsert(IEnumerable values);
+
+        /// <summary>
+        /// 批量更新对象
+        /// </summary>
+        /// <param name="values">待更新的对象集合</param>
+        void BatchUpdate(IEnumerable values);
+
+        /// <summary>
+        /// 更新对象
+        /// </summary>
+        /// <param name="o">待更新的对象</param>
+        /// <returns>是否成功更新</returns>
+        bool Update(Object o);
+
+        /// <summary>
+        /// 更新或插入对象
+        /// </summary>
+        /// <param name="o">待处理的对象</param>
+        /// <returns>操作结果类型</returns>
+        UpdateOrInsertResult UpdateOrInsert(object o);
+
+        /// <summary>
+        /// 批量更新或插入对象
+        /// </summary>
+        /// <param name="values">待处理的对象集合</param>
+        void BatchUpdateOrInsert(IEnumerable values);
+
+        /// <summary>
+        /// 删除对象
+        /// </summary>
+        /// <param name="o">待删除的对象</param>
+        /// <returns>是否成功删除</returns>
+        bool Delete(Object o);
+
+        /// <summary>
+        /// 批量删除对象
+        /// </summary>
+        /// <param name="values">待删除的对象集合</param>
+        void BatchDelete(IEnumerable values);
+
+        /// <summary>
+        /// 批量根据主键删除对象
+        /// </summary>
+        /// <param name="keys">主键集合</param>
+        void BatchDeleteByKeys(IEnumerable keys);
+
+        /// <summary>
+        /// 根据主键删除对象
+        /// </summary>
+        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
+        /// <returns>是否成功删除</returns>
+        bool DeleteByKeys(params object[] keys);
+
+        /// <summary>
+        /// 根据条件删除对象
+        /// </summary>
+        /// <param name="expr">条件</param>
+        /// <returns>删除对象数量</returns>
+        int Delete(LogicExpr expr);
+    }
+    #endregion
+
+    /// <summary>
+    /// 插入或更新操作的返回结果
+    /// </summary>
+    public enum UpdateOrInsertResult
+    {
+        /// <summary>
+        /// 插入成功
+        /// </summary>
+        Inserted,
+        /// <summary>
+        /// 更新成功
+        /// </summary>
+        Updated,
+        /// <summary>
+        /// 失败
+        /// </summary>
+        Failed
+    }
+}

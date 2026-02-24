@@ -1,0 +1,414 @@
+﻿using LiteOrm.Common;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace LiteOrm
+{
+    /// <summary>
+    /// DAO上下文连接池，用于管理和复用数据库连接
+    /// </summary>
+    /// <remarks>
+    /// DAOContextPool 是一个连接池管理类，用于高效地管理数据库连接，
+    /// 避免频繁创建和销毁数据库连接的性能开销。
+    /// 
+    /// 主要功能包括：
+    /// 1. 连接池管理 - 维护一个可复用的连接队列
+    /// 2. 连接创建 - 按需创建新的数据库连接
+    /// 3. 连接验证 - 验证池中的连接是否仍然有效
+    /// 4. 连接复用 - 从池中获取可用的连接进行复用
+    /// 5. 连接回收 - 将使用完的连接返回到池中
+    /// 6. 生命周期管理 - 监控连接在池中的存活时间
+    /// 7. 线程安全 - 使用锁机制确保多线程安全
+    /// 8. 资源释放 - 实现 IDisposable 接口以正确释放所有资源
+    /// 
+    /// 该类通常由 DAOContextPoolFactory 进行创建和管理。
+    /// 
+    /// 使用示例：
+    /// <code>
+    /// var pool = new DAOContextPool(typeof(SqlConnection), connectionString);
+    /// pool.PoolSize = 20;
+    /// 
+    /// // 获取连接
+    /// var context = pool.PeekContext();
+    /// 
+    /// // 使用连接进行数据库操作
+    /// // ...
+    /// 
+    /// // 将连接返回到池中
+    /// pool.ReturnContext(context);
+    /// 
+    /// // 释放资源
+    /// pool.Dispose();
+    /// </code>
+    /// </remarks>
+    public class DAOContextPool : IDisposable
+    {
+        private readonly Queue<DAOContext> _pool = new Queue<DAOContext>();
+        private readonly object _poolLock = new object();
+        private bool _disposed = false;
+        private readonly TaskCompletionSource<bool> _initializeTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private SemaphoreSlim _semaphore = new SemaphoreSlim(100, 100);
+        private int _maxPoolSize = 100;
+        private readonly List<DAOContextPool> _readOnlyPools = new List<DAOContextPool>();
+        private int _readOnlyIndex = 0;
+
+        /// <summary>
+        /// 获取或设置连接池的缓冲大小（闲置连接数量）。
+        /// </summary>
+        public int PoolSize { get; set; } = 20;
+
+        /// <summary>
+        /// 获取或设置连接池的最大连接数限制。
+        /// </summary>
+        public int MaxPoolSize
+        {
+            get => _maxPoolSize;
+            set
+            {
+                if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value), "Max connection count must be greater than 0");
+                if (_maxPoolSize != value)
+                {
+                    _maxPoolSize = value;
+                    _semaphore?.Dispose();
+                    _semaphore = new SemaphoreSlim(value, value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 获取数据库提供程序类型。
+        /// </summary>
+        public Type ProviderType { get; }
+
+        /// <summary>
+        /// 获取数据库连接字符串。
+        /// </summary>
+        public string ConnectionString { get; }
+
+        /// <summary>
+        /// 获取或设置连接在池中的最长存活时间。
+        /// </summary>
+        public TimeSpan KeepAliveDuration { get; set; } = TimeSpan.FromMinutes(30);
+
+        /// <summary>
+        /// 获取或设置连接池的名称。
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// 最大参数数量限制，0表示无限制，默认为2000。
+        /// </summary>
+        public int ParamCountLimit { get; set; } = 2000;
+
+        /// <summary>
+        /// 获取或设置该连接池是否为只读连接池。
+        /// </summary>
+        public bool IsReadOnlyPool { get; set; }
+
+        /// <summary>
+        /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
+        /// </summary>
+        /// <param name="providerType">数据库提供程序类型。</param>
+        /// <param name="connectionString">数据库连接字符串。</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="providerType"/> 或 <paramref name="connectionString"/> 为 null 时抛出。</exception>
+        public DAOContextPool(Type providerType, string connectionString)
+        {
+            ProviderType = providerType ?? throw new ArgumentNullException(nameof(providerType));
+            ConnectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+            Name = providerType.Name;
+        }
+
+        /// <summary>
+        /// 标记连接池已完成初始化并可以提供服务。
+        /// </summary>
+        public void MarkInitialized()
+        {
+            _initializeTcs.TrySetResult(true);
+        }
+
+        /// <summary>
+        /// 添加只读数据库连接池。
+        /// </summary>
+        /// <param name="config">只读数据库配置。</param>
+        public void AddReadOnlyPool(LiteOrm.Common.ReadOnlyDataSourceConfig config)
+        {
+            if (config == null || string.IsNullOrWhiteSpace(config.ConnectionString)) return;
+
+            var pool = new DAOContextPool(ProviderType, config.ConnectionString)
+            {
+                Name = $"{Name}_ReadOnly_{_readOnlyPools.Count}",
+                PoolSize = config.PoolSize ?? PoolSize,
+                MaxPoolSize = config.MaxPoolSize ?? MaxPoolSize,
+                KeepAliveDuration = config.KeepAliveDuration ?? KeepAliveDuration,
+                ParamCountLimit = config.ParamCountLimit ?? ParamCountLimit,
+                IsReadOnlyPool = true
+            };
+            pool.MarkInitialized();
+            _readOnlyPools.Add(pool);
+        }
+
+        /// <summary>
+        /// 从连接池中获取一个可用的DAO上下文。
+        /// </summary>
+        /// <param name="readOnly">是否优先使用只读连接池，默认为 false。</param>
+        /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
+        /// <exception cref="ObjectDisposedException">当连接池已被释放时抛出。</exception>
+        public DAOContext PeekContext(bool readOnly=false)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(DAOContextPool));
+
+            // 等待初始化完成（如自动建表同步）
+            _initializeTcs.Task.Wait();
+
+            if (readOnly && _readOnlyPools.Count > 0)
+            {
+                int index = Interlocked.Increment(ref _readOnlyIndex);
+                return _readOnlyPools[Math.Abs(index) % _readOnlyPools.Count].PeekContext();
+            }
+
+            return PeekContextInternal();
+        }
+
+        /// <summary>
+        /// 异步从连接池中获取一个可用的DAO上下文。
+        /// </summary>
+        /// <returns>表示异步操作的任务，结果为一个可用的 <see cref="DAOContext"/> 实例。</returns>
+        /// <exception cref="ObjectDisposedException">当连接池已被释放时抛出。</exception>
+        public async Task<DAOContext> PeekContextAsync(bool readOnly = false)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(DAOContextPool));
+
+            // 等待初始化完成（如自动建表同步）
+            await _initializeTcs.Task.ConfigureAwait(false);
+
+            if (readOnly && _readOnlyPools.Count > 0)
+            {
+                int index = Interlocked.Increment(ref _readOnlyIndex);
+                return await _readOnlyPools[(index & 0x7FFFFFFF) % _readOnlyPools.Count].PeekContextAsync().ConfigureAwait(false);
+            }
+
+            return await PeekContextInternalAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// 内部获取DAO上下文，不进行初始化检查。
+        /// </summary>
+        /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
+        internal DAOContext PeekContextInternal()
+        {
+            lock (_poolLock)
+            {
+                // 尝试从池中获取可用的上下文
+                while (_pool.Count > 0)
+                {
+                    var context = _pool.Dequeue();
+
+                    // 检查连接是否仍然有效
+                    if (IsContextValid(context))
+                    {
+                        context.EnsureConnectionOpen();
+                        return context;
+                    }
+
+                    // 无效则销毁，这会通对应的信号量释放计数
+                    context.Dispose();
+                }
+            }
+
+            // 池为空，创建新连接
+            var newContext = CreateNewContext();
+            newContext.EnsureConnectionOpen();
+            return newContext;
+        }
+
+        /// <summary>
+        /// 内部异步获取DAO上下文，不进行初始化检查。
+        /// </summary>
+        /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
+        internal async Task<DAOContext> PeekContextInternalAsync()
+        {
+            DAOContext contextToUse = null;
+            lock (_poolLock)
+            {
+                // 尝试从池中获取可用的上下文
+                while (_pool.Count > 0)
+                {
+                    var context = _pool.Dequeue();
+
+                    // 检查连接是否仍然有效
+                    if (IsContextValid(context))
+                    {
+                        contextToUse = context;
+                        break;
+                    }
+
+                    // 无效则销毁
+                    context.Dispose();
+                }
+            }
+
+            if (contextToUse != null)
+            {
+                await contextToUse.EnsureConnectionOpenAsync().ConfigureAwait(false);
+                return contextToUse;
+            }
+
+
+            // 池为空，创建新连接
+            var newContext = CreateNewContext();
+            await newContext.EnsureConnectionOpenAsync().ConfigureAwait(false);
+            return newContext;
+        }
+
+
+        /// <summary>
+        /// 将DAO上下文返回到连接池中。
+        /// </summary>
+        /// <param name="context">要返回的DAO上下文。</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="context"/> 为 null 时抛出。</exception>
+        public void ReturnContext(DAOContext context)
+        {
+            if (context is null)
+                throw new ArgumentNullException(nameof(context));
+
+            if (_disposed)
+            {
+                context.Dispose();
+                return;
+            }
+
+            lock (_poolLock)
+            {
+                // 重置上下文状态
+                context.Reset();
+
+                // 如果连接无效，销毁
+                if (!IsContextValid(context))
+                {
+                    context.Dispose();
+                    return;
+                }
+
+                // 如果池已满，销毁最旧的连接并添加新连接
+                if (_pool.Count >= PoolSize)
+                {
+                    _pool.Dequeue().Dispose();
+                }
+
+                _pool.Enqueue(context);
+            }
+        }
+
+        /// <summary>
+        /// 当连接被释放时调用，用于释放信号量计数。
+        /// </summary>
+        internal void OnContextDisposed()
+        {
+            if (!_disposed)
+            {
+                try { _semaphore.Release(); } catch { }
+            }
+        }
+
+        private bool IsContextValid(DAOContext context)
+        {
+            if (context is null)
+                return false;
+
+            // 检查连接是否存活
+            if (KeepAliveDuration != TimeSpan.Zero &&
+                context.LastActiveTime + KeepAliveDuration < DateTime.Now)
+            {
+                return false;
+            }
+
+            // 检查连接状态
+            try
+            {
+                var connection = context.DbConnection;
+                if (connection.State == ConnectionState.Broken)
+                    return false;
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 创建一个新的数据库连接上下文。
+        /// </summary>
+        /// <returns>新创建的 <see cref="DAOContext"/> 实例。</returns>
+        private DAOContext CreateNewContext()
+        {
+            if (!_semaphore.Wait(10000))
+                throw new InvalidOperationException("Maximum connection limit reached, cannot create a new connection.");
+            try
+            {
+                var connection = Activator.CreateInstance(ProviderType) as DbConnection;
+                if (connection == null)
+                    throw new InvalidOperationException("Failed to create a database connection instance.");
+
+                connection.ConnectionString = ConnectionString;
+                var context = new DAOContext(connection, this);
+                return context;
+            }
+            catch
+            {
+                _semaphore.Release();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 释放连接池及其所有成员占用的资源。
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// 释放连接池及其所有成员占用的资源。
+        /// </summary>
+        /// <param name="disposing">指示是否是主动调用Dispose方法。</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // 释放托管资源
+                    lock (_poolLock)
+                    {
+                        while (_pool.Count > 0)
+                        {
+                            var context = _pool.Dequeue();
+                            context.Dispose();
+                        }
+                    }
+
+                    foreach (var pool in _readOnlyPools)
+                    {
+                        pool.Dispose();
+                    }
+
+                    _semaphore?.Dispose();
+                }
+
+                // 释放非托管资源
+
+                _disposed = true;
+            }
+        }
+    }
+}
