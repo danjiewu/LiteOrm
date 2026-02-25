@@ -472,11 +472,11 @@ var dataViewDAO = serviceProvider.GetRequiredService<DataViewDAO<User>>();
 // 创建带 GroupBy 的查询
 var selectExpr = new SelectExpr(
     new GroupByExpr(
-        new WhereExpr(Expr.Table<User>(), Expr.Property("Age") > 18),
-        Expr.Property("DeptId")
+        new WhereExpr(Expr.From<User>(), Expr.Prop("Age") > 18),
+        Expr.Prop("DeptId")
     ),
-    Expr.Property("DeptId"),
-    Expr.Count("Id").As("UserCount")
+    Expr.Prop("DeptId"),
+    Expr.Prop("Id").Count().As("UserCount")
 );
 
 // 查询返回 DataTable
@@ -583,34 +583,34 @@ var result = await userService.SearchAsync(
 
 ```csharp
 // 属性引用
-Expr prop = Expr.Property("Age");
-Expr prop2 = Expr.Property(nameof(User.UserName));
+Expr prop = Expr.Prop("Age");
+Expr prop2 = Expr.Prop(nameof(User.UserName));
 
 // 比较运算
-Expr cmp1 = Expr.Property("Age") > 18;
-Expr cmp2 = Expr.Property("UserName") == "admin";
-Expr cmp3 = Expr.Property("Age") >= 18 && Expr.Property("Age") <= 60;
+Expr cmp1 = Expr.Prop("Age") > 18;
+Expr cmp2 = Expr.Prop("UserName") == "admin";
+Expr cmp3 = Expr.Prop("Age") >= 18 && Expr.Prop("Age") <= 60;
 
 // LIKE/IN/NULL
-Expr like = Expr.Property("UserName").Contains("admin");
-Expr startWith = Expr.Property("UserName").StartsWith("admin");
-Expr endWith = Expr.Property("UserName").EndsWith("admin");
-Expr inExpr = Expr.Property("Id").In(1, 2, 3);
-Expr notIn = Expr.Property("Id").NotIn(new[] { 4, 5, 6 });
-Expr isNull = Expr.Property("Email").IsNull();
-Expr isNotNull = Expr.Property("Email").IsNotNull();
+Expr like = Expr.Prop("UserName").Contains("admin");
+Expr startWith = Expr.Prop("UserName").StartsWith("admin");
+Expr endWith = Expr.Prop("UserName").EndsWith("admin");
+Expr inExpr = Expr.Prop("Id").In(1, 2, 3);
+Expr notIn = Expr.Prop("Id").NotIn(new[] { 4, 5, 6 });
+Expr isNull = Expr.Prop("Email").IsNull();
+Expr isNotNull = Expr.Prop("Email").IsNotNull();
 
 // 逻辑组合
 Expr andExpr = Expr.And(cmp1, like);
 Expr orExpr = Expr.Or(cmp1, cmp2);
 
 // 聚合函数
-Expr countExpr = Expr.Count();
-Expr countProp = Expr.Count("Id");
-Expr sumExpr = Expr.Sum("Amount");
-Expr avgExpr = Expr.Avg("Price");
-Expr maxExpr = Expr.Max("Score");
-Expr minExpr = Expr.Min("Score");
+Expr countExpr = Expr.Prop("Id").Count();
+Expr countProp = Expr.Prop("Id").Count();
+Expr sumExpr = Expr.Prop("Amount").Sum();
+Expr avgExpr = Expr.Prop("Price").Avg();
+Expr maxExpr = Expr.Prop("Score").Max();
+Expr minExpr = Expr.Prop("Score").Min();
 ```
 
 ### 5.4 查询片段表达式 (SqlSegment)
@@ -620,17 +620,17 @@ Expr minExpr = Expr.Min("Score");
 ```csharp
 // 使用构造函数组合创建完整查询
 var table = TableInfoProvider.Default.GetTableView(typeof(User));
-var whereExpr = new WhereExpr(new TableExpr(table), Expr.Property("Age") > 18);
+var whereExpr = new WhereExpr(new FromExpr(table), Expr.Prop("Age") > 18);
 var fullQuery = new SelectExpr(whereExpr,
-    Expr.Property("Id"),
-    Expr.Property("UserName")
+    Expr.Prop("Id"),
+    Expr.Prop("UserName")
 );
 
 // 聚合查询需要使用 GroupBy，并通过 DataViewDAO 执行
-var groupByExpr = new GroupByExpr(whereExpr, Expr.Property("DeptId"));
+var groupByExpr = new GroupByExpr(whereExpr, Expr.Prop("DeptId"));
 var aggregateQuery = new SelectExpr(groupByExpr,
-    Expr.Property("DeptId"),
-    Expr.Count("Id").As("UserCount")
+    Expr.Prop("DeptId"),
+    Expr.Prop("Id").Count().As("UserCount")
 );
 ```
 

@@ -10,7 +10,7 @@ using Xunit;
 namespace LiteOrm.Tests.Infrastructure
 {
     /// <summary>
-    /// ¶¨ÒåÊı¾İ¿â²âÊÔ¼¯ºÏ£¬È·±£ËùÓĞÊı¾İ¿â²âÊÔÀà´®ĞĞÖ´ĞĞ£¬±ÜÃâ²¢·¢Çå¿ÕÊı¾İµ¼ÖÂ²âÊÔ¼ä¸ÉÈÅ¡£
+    /// å®šä¹‰æ•°æ®åº“æµ‹è¯•é›†åˆï¼Œç¡®ä¿æ‰€æœ‰æ•°æ®åº“æµ‹è¯•ç±»ä¸²è¡Œæ‰§è¡Œï¼Œé¿å…å¹¶å‘æ¸…ç©ºæ•°æ®å¯¼è‡´æµ‹è¯•é—´å¹²æ‰°ã€‚
     /// </summary>
     [CollectionDefinition("Database")]
     public class DatabaseCollection : ICollectionFixture<DatabaseFixture>
@@ -18,8 +18,8 @@ namespace LiteOrm.Tests.Infrastructure
     }
 
     /// <summary>
-    /// Êı¾İ¿â²âÊÔ¼¯ºÏµÄ¹²Ïí¹Ì¼ş£¬¸ºÔğ³õÊ¼»¯ Host ºÍÊ×´ÎÇå¿Õ²âÊÔ±í¡£
-    /// Í¬Ò»¼¯ºÏÄÚËùÓĞ²âÊÔÀà¹²Ïí´ËÊµÀı¡£
+    /// æ•°æ®åº“æµ‹è¯•é›†åˆçš„å…±äº«å›ºä»¶ï¼Œè´Ÿè´£åˆå§‹åŒ– Host å’Œé¦–æ¬¡æ¸…ç©ºæµ‹è¯•è¡¨ã€‚
+    /// åŒä¸€é›†åˆå†…æ‰€æœ‰æµ‹è¯•ç±»å…±äº«æ­¤å®ä¾‹ã€‚
     /// </summary>
     public class DatabaseFixture : IDisposable
     {
@@ -40,7 +40,7 @@ namespace LiteOrm.Tests.Infrastructure
         }
 
         /// <summary>
-        /// Çå¿ÕËùÓĞ²âÊÔ±íÊı¾İ£¬ÓÉÃ¿¸ö²âÊÔÀàÔÚ¹¹ÔìÊ±µ÷ÓÃ¡£
+        /// æ¸…ç©ºæ‰€æœ‰æµ‹è¯•è¡¨æ•°æ®ï¼Œç”±æ¯ä¸ªæµ‹è¯•ç±»åœ¨æ„é€ æ—¶è°ƒç”¨ã€‚
         /// </summary>
         public void CleanupTestTables()
         {
@@ -54,7 +54,7 @@ namespace LiteOrm.Tests.Infrastructure
                 using (context.AcquireScope())
                 {
                     context.EnsureConnectionOpen();
-                    // ÏÈÉ¾³ıÓĞÍâ¼üÒıÓÃµÄ×Ó±íÊı¾İ£¬ÔÙÉ¾³ı±»ÒıÓÃµÄ¸¸±íÊı¾İ
+                    // å…ˆåˆ é™¤æœ‰å¤–é”®å¼•ç”¨çš„å­è¡¨æ•°æ®ï¼Œå†åˆ é™¤è¢«å¼•ç”¨çš„çˆ¶è¡¨æ•°æ®
                     string[] tables = ["TestUsers", "TestDepartments"];
                     foreach (var table in tables)
                     {
@@ -78,8 +78,8 @@ namespace LiteOrm.Tests.Infrastructure
     }
 
     /// <summary>
-    /// Êı¾İ¿â²âÊÔ»ùÀà¡£Ê¹ÓÃ [Collection("Database")] ±ê¼ÇµÄ²âÊÔÀà¹²ÏíÍ¬Ò»¸ö DatabaseFixture£¬
-    /// ±£Ö¤´®ĞĞÖ´ĞĞ£¬²¢ÔÚÃ¿¸ö²âÊÔÀà¿ªÊ¼Ç°Çå¿ÕÊı¾İ¡£
+    /// æ•°æ®åº“æµ‹è¯•åŸºç±»ã€‚ä½¿ç”¨ [Collection("Database")] æ ‡è®°çš„æµ‹è¯•ç±»å…±äº«åŒä¸€ä¸ª DatabaseFixtureï¼Œ
+    /// ä¿è¯ä¸²è¡Œæ‰§è¡Œï¼Œå¹¶åœ¨æ¯ä¸ªæµ‹è¯•ç±»å¼€å§‹å‰æ¸…ç©ºæ•°æ®ã€‚
     /// </summary>
     public abstract class TestBase : IDisposable
     {

@@ -100,7 +100,20 @@ namespace LiteOrm.Common
             Name = aliasName;
         }
         public new ValueTypeExpr Value { get; set; }
-        public string Name { get; set; }
+
+        private string _name;
+        public string Name 
+        { 
+            get => _name;
+            set
+            {
+                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                {
+                    throw new ArgumentException("Alias name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Name));
+                }
+                _name = value;
+            }
+        }
         public override bool Equals(object obj) => obj is SelectItemExpr other && Name == other.Name && Equals(Value, other.Value);
         public override int GetHashCode() => OrderedHashCodes(typeof(SelectItemExpr).GetHashCode(), Name?.GetHashCode() ?? 0, Value?.GetHashCode() ?? 0);
         public override string ToString() => string.IsNullOrEmpty(Name) ? Value?.ToString() : $"{Value} AS {Name}";

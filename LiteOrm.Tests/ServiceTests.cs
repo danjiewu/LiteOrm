@@ -495,10 +495,8 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User B", Age = 30, DeptId = dept1.Id, CreateTime = DateTime.Now });
             await userService.InsertAsync(new TestUser { Name = "User C", Age = 30, DeptId = dept2.Id, CreateTime = DateTime.Now });
 
-            // Act
-            // ��������Ϊ 30 ������������Ϊ "Dept 1" ���û�
             var users = await viewService.SearchAsync(
-                (Expr.Prop("Age") == 30) & Expr.Foreign("Dept", Expr.Prop("Name") == "Dept 1")
+                (Expr.Prop("Age") == 30) & Expr.Foreign("Dept", Expr.Prop("Name") == "Dept 1" & Expr.Prop("TestUserView.Name") != Expr.Prop("Name"))
             );
 
             // Assert

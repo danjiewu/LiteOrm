@@ -27,7 +27,19 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置别名
         /// </summary>
-        public string Alias { get; set; }
+        private string _alias;
+        public string Alias 
+        { 
+            get => _alias;
+            set
+            {
+                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                {
+                    throw new ArgumentException("Alias contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Alias));
+                }
+                _alias = value;
+            }
+        }
 
         /// <summary>
         /// 获取或设置实体类型（用于获取表或视图定义）
@@ -37,7 +49,25 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取表名参数数组
         /// </summary>
-        public string[] TableArgs { get; set; }
+        private string[] _tableArgs;
+        public string[] TableArgs 
+        { 
+            get => _tableArgs;
+            set
+            {
+                if (value != null)
+                {
+                    foreach (var arg in value)
+                    {
+                        if (arg != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(arg))
+                        {
+                            throw new ArgumentException("Table argument contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(TableArgs));
+                        }
+                    }
+                }
+                _tableArgs = value;
+            }
+        }
 
         /// <summary>
         /// 获取片段类型，返回 From 类型标识

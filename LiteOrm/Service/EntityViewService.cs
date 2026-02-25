@@ -38,10 +38,10 @@ namespace LiteOrm.Service
     /// var user = service.GetObject(userId);
     /// 
     /// // 检查实体是否存在
-    /// bool exists = service.Exists(Expr.Property("Username") == "john.doe");
-    /// 
+    /// bool exists = service.Exists(Expr.Prop("Username") == "john.doe");
+    ///
     /// // 获取列表
-    /// var users = service.Search(Expr.Property("Age") > 18);
+    /// var users = service.Search(Expr.Prop("Age") > 18);
     /// 
     /// // 异步查询
     /// var userAsync = await service.GetObjectAsync(userId);

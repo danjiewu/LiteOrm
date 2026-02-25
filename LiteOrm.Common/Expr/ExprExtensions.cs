@@ -18,18 +18,18 @@ namespace LiteOrm.Common
     /// 6. SQL 语句构建（Where/GroupBy/Having/Select/OrderBy/Section）
     /// 7. 排序操作（Asc/Desc）
     /// 8. 聚合函数（Count/Sum/Avg/Max/Min）
-    /// 
+    ///
     /// 使用示例：
     /// <code>
     /// // 构建复杂查询条件
-    /// var condition = Expr.Property("Age") > 18
-    ///     .And(Expr.Property("Name").Contains("John"))
-    ///     .Or(Expr.Property("Email").EndsWith("@example.com"));
-    /// 
+    /// var condition = Expr.Prop("Age") > 18
+    ///     .And(Expr.Prop("Name").Contains("John"))
+    ///     .Or(Expr.Prop("Email").EndsWith("@example.com"));
+    ///
     /// // 构建排序和分页
     /// var query = table.Select("Id", "Name")
     ///     .Where(condition)
-    ///     .OrderBy(Expr.Property("CreatedDate").Desc())
+    ///     .OrderBy(Expr.Prop("CreatedDate").Desc())
     ///     .Section(0, 20);
     /// </code>
     /// </remarks>
@@ -43,8 +43,8 @@ namespace LiteOrm.Common
         /// <returns>合并后的逻辑表达式集合（AND连接）。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Age") > 18
-        ///     .And(Expr.Property("Name").Contains("John"));
+        /// var condition = Expr.Prop("Age") > 18
+        ///     .And(Expr.Prop("Name").Contains("John"));
         /// </code>
         /// </example>
         public static LogicSet And(this LogicExpr left, LogicExpr right) => new LogicSet(LogicJoinType.And, left, right);
@@ -57,8 +57,8 @@ namespace LiteOrm.Common
         /// <returns>合并后的逻辑表达式集合（OR连接）。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Age") > 18
-        ///     .Or(Expr.Property("IsVIP").Equal(true));
+        /// var condition = Expr.Prop("Age") > 18
+        ///     .Or(Expr.Prop("IsVIP").Equal(true));
         /// </code>
         /// </example>
         public static LogicSet Or(this LogicExpr left, LogicExpr right) => new LogicSet(LogicJoinType.Or, left, right);
@@ -71,7 +71,7 @@ namespace LiteOrm.Common
         /// <returns>合并后的值表达式集合（CONCAT连接）。</returns>
         /// <example>
         /// <code>
-        /// var fullName = Expr.Property("FirstName").Concat(Expr.Property("LastName"));
+        /// var fullName = Expr.Prop("FirstName").Concat(Expr.Prop("LastName"));
         /// </code>
         /// </example>
         public static ValueSet Concat(this ValueTypeExpr left, ValueTypeExpr right) => new ValueSet(ValueJoinType.Concat, left, right);
@@ -83,7 +83,7 @@ namespace LiteOrm.Common
         /// <returns>取反后的 LogicUnaryExpr。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("IsDeleted").Equal(true).Not();
+        /// var condition = Expr.Prop("IsDeleted").Equal(true).Not();
         /// </code>
         /// </example>
         public static NotExpr Not(this LogicExpr expr) => new NotExpr(expr);
@@ -96,7 +96,7 @@ namespace LiteOrm.Common
         /// <returns>等于比较逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Id").Equal(123);
+        /// var condition = Expr.Prop("Id").Equal(123);
         /// </code>
         /// </example>
         public static LogicBinaryExpr Equal(this ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.Equal, right);
@@ -109,7 +109,7 @@ namespace LiteOrm.Common
         /// <returns>不等于比较逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Status").NotEqual("Inactive");
+        /// var condition = Expr.Prop("Status").NotEqual("Inactive");
         /// </code>
         /// </example>
         public static LogicBinaryExpr NotEqual(this ValueTypeExpr left, ValueTypeExpr right) => new LogicBinaryExpr(left, LogicOperator.NotEqual, right);
@@ -155,7 +155,7 @@ namespace LiteOrm.Common
         /// <example>
         /// <code>
         /// var ids = new List&lt;int&gt; { 1, 2, 3 };
-        /// var condition = Expr.Property("Id").In(ids);
+        /// var condition = Expr.Prop("Id").In(ids);
         /// </code>
         /// </example>
         public static LogicBinaryExpr In(this ValueTypeExpr left, IEnumerable items) => new LogicBinaryExpr(left, LogicOperator.In, new ValueExpr(items));
@@ -168,7 +168,7 @@ namespace LiteOrm.Common
         /// <returns>IN 集合包含逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Id").In(1, 2, 3, 4, 5);
+        /// var condition = Expr.Prop("Id").In(1, 2, 3, 4, 5);
         /// </code>
         /// </example>
         public static LogicBinaryExpr In(this ValueTypeExpr left, params object[] items) => new LogicBinaryExpr(left, LogicOperator.In, new ValueExpr(items));
@@ -182,7 +182,7 @@ namespace LiteOrm.Common
         /// <example>
         /// <code>
         /// var excludedStatuses = new List&lt;string&gt; { "Deleted", "Inactive" };
-        /// var condition = Expr.Property("Status").NotIn(excludedStatuses);
+        /// var condition = Expr.Prop("Status").NotIn(excludedStatuses);
         /// </code>
         /// </example>
         public static LogicBinaryExpr NotIn(this ValueTypeExpr left, IEnumerable items) => new LogicBinaryExpr(left, LogicOperator.NotIn, new ValueExpr(items));
@@ -195,7 +195,7 @@ namespace LiteOrm.Common
         /// <returns>NOT IN 集合不包含逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Status").NotIn("Deleted", "Inactive");
+        /// var condition = Expr.Prop("Status").NotIn("Deleted", "Inactive");
         /// </code>
         /// </example>
         public static LogicBinaryExpr NotIn(this ValueTypeExpr left, params object[] items) => new LogicBinaryExpr(left, LogicOperator.NotIn, new ValueExpr(items));
@@ -209,7 +209,7 @@ namespace LiteOrm.Common
         /// <returns>范围查询逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Age").Between(18, 65);
+        /// var condition = Expr.Prop("Age").Between(18, 65);
         /// </code>
         /// </example>
         public static LogicExpr Between(this ValueTypeExpr left, object low, object high)
@@ -225,7 +225,7 @@ namespace LiteOrm.Common
         /// <returns>模式匹配逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Name").Like("J%");
+        /// var condition = Expr.Prop("Name").Like("J%");
         /// </code>
         /// </example>
         public static LogicBinaryExpr Like(this ValueTypeExpr left, string pattern) => new LogicBinaryExpr(left, LogicOperator.Like, new ValueExpr(pattern));
@@ -238,7 +238,7 @@ namespace LiteOrm.Common
         /// <returns>包含字符串逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Description").Contains("important");
+        /// var condition = Expr.Prop("Description").Contains("important");
         /// </code>
         /// </example>
         public static LogicBinaryExpr Contains(this ValueTypeExpr left, string text) => new LogicBinaryExpr(left, LogicOperator.Contains, new ValueExpr(text));
@@ -251,7 +251,7 @@ namespace LiteOrm.Common
         /// <returns>以指定字符串开头的逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Email").StartsWith("admin");
+        /// var condition = Expr.Prop("Email").StartsWith("admin");
         /// </code>
         /// </example>
         public static LogicBinaryExpr StartsWith(this ValueTypeExpr left, string text) => new LogicBinaryExpr(left, LogicOperator.StartsWith, new ValueExpr(text));
@@ -264,7 +264,7 @@ namespace LiteOrm.Common
         /// <returns>以指定字符串结尾的逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Email").EndsWith("@example.com");
+        /// var condition = Expr.Prop("Email").EndsWith("@example.com");
         /// </code>
         /// </example>
         public static LogicBinaryExpr EndsWith(this ValueTypeExpr left, string text) => new LogicBinaryExpr(left, LogicOperator.EndsWith, new ValueExpr(text));
@@ -284,7 +284,7 @@ namespace LiteOrm.Common
         /// <returns>IS NULL 逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("DeletedAt").IsNull();
+        /// var condition = Expr.Prop("DeletedAt").IsNull();
         /// </code>
         /// </example>
         public static LogicBinaryExpr IsNull(this ValueTypeExpr left) => new LogicBinaryExpr(left, LogicOperator.Equal, Expr.Null);
@@ -296,7 +296,7 @@ namespace LiteOrm.Common
         /// <returns>IS NOT NULL 逻辑表达式。</returns>
         /// <example>
         /// <code>
-        /// var condition = Expr.Property("Email").IsNotNull();
+        /// var condition = Expr.Prop("Email").IsNotNull();
         /// </code>
         /// </example>
         public static LogicBinaryExpr IsNotNull(this ValueTypeExpr left) => new LogicBinaryExpr(left, LogicOperator.NotEqual, Expr.Null);
@@ -309,7 +309,7 @@ namespace LiteOrm.Common
         /// <returns>对应的 ISqlSegment 对象。</returns>
         /// <exception cref="ArgumentException">当 expr 参数类型不是 null、LogicExpr 或 ISqlSegment 时抛出。</exception>
         public static ISqlSegment ToSource<T>(this Expr expr) {
-            return expr.ToSource(typeof(T));            
+            return expr.ToSource(typeof(T));
         }
 
         /// <summary>
@@ -327,7 +327,7 @@ namespace LiteOrm.Common
             else if (expr is LogicExpr logicExpr)
             {
                 return new WhereExpr() { Source = new FromExpr(objectType), Where = logicExpr };
-            } 
+            }
             else if (expr is ISqlSegment sourceExpr)
             {
                 ISqlSegment firstSource = sourceExpr;
@@ -382,7 +382,7 @@ namespace LiteOrm.Common
         /// <returns>包含 WHERE 子句的 SQL 表达式。</returns>
         /// <example>
         /// <code>
-        /// var query = table.Where(Expr.Property("Age") > 18);
+        /// var query = table.Where(Expr.Prop("Age") > 18);
         /// </code>
         /// </example>
         public static WhereExpr Where(this ISourceAnchor source, LogicExpr where) => new WhereExpr(source as ISqlSegment, where);
@@ -395,7 +395,7 @@ namespace LiteOrm.Common
         /// <returns>包含 GROUP BY 子句的 SQL 表达式。</returns>
         /// <example>
         /// <code>
-        /// var query = table.GroupBy(Expr.Property("DepartmentId"));
+        /// var query = table.GroupBy(Expr.Prop("DepartmentId"));
         /// </code>
         /// </example>
         public static GroupByExpr GroupBy(this IGroupByAnchor source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source as ISqlSegment, groupBys);
@@ -417,8 +417,8 @@ namespace LiteOrm.Common
         /// <returns>包含 HAVING 子句的 SQL 表达式。</returns>
         /// <example>
         /// <code>
-        /// var query = table.GroupBy(Expr.Property("DepartmentId"))
-        ///     .Having(Expr.Property("Count").Count().GreaterThan(10));
+        /// var query = table.GroupBy(Expr.Prop("DepartmentId"))
+        ///     .Having(Expr.Prop("Count").Count().GreaterThan(10));
         /// </code>
         /// </example>
         public static HavingExpr Having(this IHavingAnchor source, LogicExpr having) => new HavingExpr(source as ISqlSegment, having);
@@ -431,7 +431,7 @@ namespace LiteOrm.Common
         /// <returns>包含 SELECT 子句的 SQL 表达式。</returns>
         /// <example>
         /// <code>
-        /// var query = table.Select(Expr.Property("Id"), Expr.Property("Name"));
+        /// var query = table.Select(Expr.Prop("Id"), Expr.Prop("Name"));
         /// </code>
         /// </example>
         public static SelectExpr Select(this ISelectAnchor source, params ValueTypeExpr[] selects) => new SelectExpr(source as ISqlSegment, selects);
@@ -452,7 +452,7 @@ namespace LiteOrm.Common
         /// <returns>包含 ORDER BY 子句的 SQL 表达式。</returns>
         /// <example>
         /// <code>
-        /// var query = table.OrderBy(Expr.Property("CreatedDate").Desc());
+        /// var query = table.OrderBy(Expr.Prop("CreatedDate").Desc());
         /// </code>
         /// </example>
         public static OrderByExpr OrderBy(this IOrderByAnchor source, params (ValueTypeExpr, bool)[] orderBys)
@@ -518,7 +518,7 @@ namespace LiteOrm.Common
         /// <returns>包含表达式和排序方向的元组。</returns>
         /// <example>
         /// <code>
-        /// var query = table.OrderBy(Expr.Property("Name").Asc());
+        /// var query = table.OrderBy(Expr.Prop("Name").Asc());
         /// </code>
         /// </example>
         public static (ValueTypeExpr, bool) Asc(this ValueTypeExpr expr) => (expr, true);
@@ -530,7 +530,7 @@ namespace LiteOrm.Common
         /// <returns>包含表达式和排序方向的元组。</returns>
         /// <example>
         /// <code>
-        /// var query = table.OrderBy(Expr.Property("CreatedDate").Desc());
+        /// var query = table.OrderBy(Expr.Prop("CreatedDate").Desc());
         /// </code>
         /// </example>
         public static (ValueTypeExpr, bool) Desc(this ValueTypeExpr expr) => (expr, false);
@@ -543,8 +543,8 @@ namespace LiteOrm.Common
         /// <returns>COUNT 聚合函数表达式。</returns>
         /// <example>
         /// <code>
-        /// var countExpr = Expr.Property("Id").Count();
-        /// var distinctCountExpr = Expr.Property("Name").Count(true);
+        /// var countExpr = Expr.Prop("Id").Count();
+        /// var distinctCountExpr = Expr.Prop("Name").Count(true);
         /// </code>
         /// </example>
         public static AggregateFunctionExpr Count(this ValueTypeExpr expr, bool isDistinct = false) => new AggregateFunctionExpr("COUNT", expr, isDistinct);
@@ -556,7 +556,7 @@ namespace LiteOrm.Common
         /// <returns>SUM 聚合函数表达式。</returns>
         /// <example>
         /// <code>
-        /// var sumExpr = Expr.Property("Salary").Sum();
+        /// var sumExpr = Expr.Prop("Salary").Sum();
         /// </code>
         /// </example>
         public static AggregateFunctionExpr Sum(this ValueTypeExpr expr) => new AggregateFunctionExpr("SUM", expr);
@@ -568,7 +568,7 @@ namespace LiteOrm.Common
         /// <returns>AVG 聚合函数表达式。</returns>
         /// <example>
         /// <code>
-        /// var avgExpr = Expr.Property("Salary").Avg();
+        /// var avgExpr = Expr.Prop("Salary").Avg();
         /// </code>
         /// </example>
         public static AggregateFunctionExpr Avg(this ValueTypeExpr expr) => new AggregateFunctionExpr("AVG", expr);
@@ -580,7 +580,7 @@ namespace LiteOrm.Common
         /// <returns>MAX 聚合函数表达式。</returns>
         /// <example>
         /// <code>
-        /// var maxExpr = Expr.Property("Salary").Max();
+        /// var maxExpr = Expr.Prop("Salary").Max();
         /// </code>
         /// </example>
         public static AggregateFunctionExpr Max(this ValueTypeExpr expr) => new AggregateFunctionExpr("MAX", expr);
@@ -592,7 +592,7 @@ namespace LiteOrm.Common
         /// <returns>MIN 聚合函数表达式。</returns>
         /// <example>
         /// <code>
-        /// var minExpr = Expr.Property("Salary").Min();
+        /// var minExpr = Expr.Prop("Salary").Min();
         /// </code>
         /// </example>
         public static AggregateFunctionExpr Min(this ValueTypeExpr expr) => new AggregateFunctionExpr("MIN", expr);

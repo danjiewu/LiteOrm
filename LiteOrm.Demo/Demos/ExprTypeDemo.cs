@@ -33,7 +33,7 @@ namespace LiteOrm.Demo.Demos
 
                 // [方式1] 运算符重载
                 var cond1 = age > 18;
-                Print(cond1, "二元比较 (运算符方式)", "Expr.Property(\"Age\") > 18");
+                Print(cond1, "二元比较 (运算符方式)", "Expr.Prop(\"Age\") > 18");
 
                 var composite1 = cond1 & (dept == 101);
                 Print(composite1, "逻辑组合 (运算符方式)", "(age > 18) & (dept == 101)");
@@ -51,15 +51,15 @@ namespace LiteOrm.Demo.Demos
                     .OrderBy(Expr.Prop("Id").Desc());
                 
                 string code = "Expr.From<User>()\n" +
-                              "    .Where(Expr.Property(\"Age\") > 20)\n" +
-                              "    .Select(Expr.Property(\"Id\"), Expr.Property(\"UserName\").As(\"Name\"))\n" +
-                              "    .OrderBy(Expr.Property(\"Id\").Desc())";
+                              "    .Where(Expr.Prop(\"Age\") > 20)\n" +
+                              "    .Select(Expr.Prop(\"Id\"), Expr.Prop(\"UserName\").As(\"Name\"))\n" +
+                              "    .OrderBy(Expr.Prop(\"Id\").Desc())";
                 Print(query, "SELECT 完整模型", code);
 
                 // Update 模型
                 var update = new UpdateExpr(Expr.From<User>(), Expr.Prop("Id") == 1);
                 update.Sets.Add(("UserName", "NewName"));
-                Print(update, "UPDATE 模型", "new UpdateExpr(Expr.From<User>(), Expr.Property(\"Id\") == 1) { Sets = { (\"UserName\", \"NewName\") } }");
+                Print(update, "UPDATE 模型", "new UpdateExpr(Expr.From<User>(), Expr.Prop(\"Id\") == 1) { Sets = { (\"UserName\", \"NewName\") } }");
             });
 
             ShowSection("4. Lambda 自动转换", () => {
@@ -70,7 +70,7 @@ namespace LiteOrm.Demo.Demos
             ShowSection("5. 删除与其它片段 (Delete)", () => {
                 // 删除模型
                 var delete = new DeleteExpr(Expr.From<User>(), Expr.Prop("Age") < 18);
-                Print(delete, "DELETE 模型", "new DeleteExpr(Expr.From<User>(), Expr.Property(\"Age\") < 18)");
+                Print(delete, "DELETE 模型", "new DeleteExpr(Expr.From<User>(), Expr.Prop(\"Age\") < 18)");
             });
         }
 

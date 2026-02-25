@@ -181,18 +181,18 @@ LiteOrm 使用强类型属性名构建常见的 SQL 比较条件。
 
 ```csharp
 // 二元表达式
-Expr e1 = Expr.Property(nameof(User.Age)) == 18;
-Expr e2 = Expr.Property(nameof(User.Age)) >= 18;
-Expr e3 = Expr.Property(nameof(User.UserName)) != "Admin";
+Expr e1 = Expr.Prop(nameof(User.Age)) == 18;
+Expr e2 = Expr.Prop(nameof(User.Age)) >= 18;
+Expr e3 = Expr.Prop(nameof(User.UserName)) != "Admin";
 
 // 表达式集合 (And/Or)
-Expr set = (Expr.Property("Age") > 10 & Expr.Property("Age") < 20) | Expr.Property("DeptId") == 1;
+Expr set = (Expr.Prop("Age") > 10 & Expr.Prop("Age") < 20) | Expr.Prop("DeptId") == 1;
 
 // Lambda 转换
 var lambdaExpr = Expr.Exp<User>(u => u.Age > 18 && u.UserName.Contains("admin"));
 
 // 逻辑表达式扩展功能 (直接从条件构建查询模型)
-var queryModel = lambdaExpr.OrderBy(Expr.Property("Id").Desc()).Section(0, 10);
+var queryModel = lambdaExpr.OrderBy(Expr.Prop("Id").Desc()).Section(0, 10);
 ```,oldString:
 ```
 

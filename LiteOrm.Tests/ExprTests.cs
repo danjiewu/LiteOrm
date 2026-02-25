@@ -77,7 +77,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void PropertyExpr_Tests()
         {
-            // Equals
+            // Basic PropertyExpr
             Expr p1 = Expr.Prop("Name");
             Expr p2 = Expr.Prop("Name");
             Expr p3 = Expr.Prop("Age");
@@ -85,9 +85,31 @@ namespace LiteOrm.Tests
             Assert.True(p1.Equals(p2));
             Assert.False(p1.Equals(p3));
 
+            // PropertyExpr with table alias
+            Expr pa1 = Expr.Prop("u.Name");
+            Expr pa2 = Expr.Prop("u.Name");
+            Expr pa3 = Expr.Prop("Name");
+            Expr pa4 = Expr.Prop("u.Age");
+
+            Assert.True(pa1.Equals(pa2));
+            Assert.False(pa1.Equals(pa3)); // Different property name
+            Assert.False(pa1.Equals(pa4)); // Different property
+            Assert.Equal("Name", (pa1 as PropertyExpr).PropertyName);
+            Assert.Equal("u", (pa1 as PropertyExpr).TableAlias);
+
+            // TableAlias validation - should throw for invalid characters
+            var propWithAlias = new PropertyExpr("Name");
+            Assert.Throws<ArgumentException>(() => propWithAlias.TableAlias = "u@123");
+            Assert.Throws<ArgumentException>(() => propWithAlias.TableAlias = "u-name");
+
+            // PropertyName validation - should throw for invalid characters
+            Assert.Throws<ArgumentException>(() => new PropertyExpr("Name@123"));
+            Assert.Throws<ArgumentException>(() => new PropertyExpr("Name-Column"));
+
             // Serialization
             TestSerialization(p1);
             TestSerialization(p3);
+            TestSerialization(pa1);
         }
 
         [Fact]
@@ -278,17 +300,27 @@ namespace LiteOrm.Tests
         [Fact]
         public void SelectItemExpr_Serialization_Tests()
         {
-            // Select item in a list (standard usage in SelectExpr)
-            var sie = new SelectItemExpr(Expr.Prop("DeptId")) { Name = "Department" };
-            var selectExpr = new SelectExpr(new FromExpr(), sie, new SelectItemExpr(Expr.Const(1)) { Name = "Count" });
-            
+            // Select item with Name alias (property-based serialization)
+            var sie1 = new SelectItemExpr(Expr.Prop("DeptId")) { Name = "Department" };
+            var sie2 = new SelectItemExpr(Expr.Const(1)) { Name = "Count" };
+            var selectExpr = new SelectExpr(new FromExpr(), sie1, sie2);
+
             string json = JsonSerializer.Serialize<Expr>(selectExpr, _jsonOptions);
-            // Verify the format: { "Selects": [ { "Department": { "#": "DeptId" } }, { "Count": 1 } ] }
+            // Verify the format includes Name properties
+            Assert.Contains("\"Name\"", json);
             Assert.Contains("\"Department\"", json);
             Assert.Contains("\"Count\"", json);
 
             var deserialized = JsonSerializer.Deserialize<Expr>(json, _jsonOptions) as SelectExpr;
             Assert.NotNull(deserialized);
+            Assert.Equal(2, deserialized.Selects.Count);
+            Assert.Equal("Department", deserialized.Selects[0].Name);
+
+            // Name validation - should throw for invalid characters
+            Assert.Throws<ArgumentException>(() => sie1.Name = "Dept@Id");
+            Assert.Throws<ArgumentException>(() => sie2.Name = "Count-1");
+
+            Assert.Equal("Count", deserialized.Selects[1].Name);
             Assert.True(selectExpr.Equals(deserialized));
         }
 

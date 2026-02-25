@@ -8,9 +8,6 @@ using Microsoft.Extensions.Hosting;
 using System.Text;
 
 
-// 设置控制台输出编码为UTF-8，确保中文正确显示
-Console.OutputEncoding = Encoding.UTF8;
-
 // 使用 RegisterLiteOrm 从 appsettings.json 自动配置
 var host = Host.CreateDefaultBuilder(args)
     .RegisterLiteOrm()

@@ -79,10 +79,10 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine("直接构建 SQL 表达式 : new SelectExpr(\r\n" +
     "                new WhereExpr(\r\n" +
     "                    Expr.From<UserView>(),\r\n" +
-    "                    Expr.Property(\"Age\") > minAge & Expr.Property(\"UserName\", LogicOperator.Like, $\"%{searchName}%\")\r\n" +
+    "                    Expr.Prop(\"Age\") > minAge & Expr.Prop(\"UserName\", LogicOperator.Like, $\"%{searchName}%\")\r\n" +
     "                    & Expr.Foreign(\"Dept\",\r\n" +
-    "                        Expr.Property(nameof(Department.Name), LogicOperator.Like, $\"%技术部%\")\r\n" +
-    "                        & Expr.Property(nameof(Department.ParentId))\r\n" +
+    "                        Expr.Prop(nameof(Department.Name), LogicOperator.Like, $\"%技术部%\")\r\n" +
+    "                        & Expr.Prop(nameof(Department.ParentId))\r\n" +
     "                        .In(Expr.From<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count > Expr.Const(3)).Select(nameof(User.DeptId)))\r\n" +
     "                    )\r\n" +
     "                )\r\n" +

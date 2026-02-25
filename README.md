@@ -261,10 +261,10 @@ var multiCondition = await userService.SearchAsync(
 ```csharp
 // 构建复杂表达式：(Age > 18 AND (UserName LIKE '%admin%' OR Email LIKE '%admin%'))
 Expr expr = Expr.And(
-    Expr.Property("Age") > 18,
+    Expr.Prop("Age") > 18,
     Expr.Or(
-        Expr.Property("UserName").Contains("admin"),
-        Expr.Property("Email").Contains("admin")
+        Expr.Prop("UserName").Contains("admin"),
+        Expr.Prop("Email").Contains("admin")
     )
 );
 ```
@@ -278,7 +278,7 @@ Expr expr = Expr.And(
 可以独立于 DAO 使用 `SqlGen` 生成参数化 SQL，方便开发调试：
 
 ```csharp
-var expr = (Expr.Property(nameof(User.Age)) > 18) & (Expr.Property(nameof(User.UserName)).Contains("admin_"));
+var expr = (Expr.Prop(nameof(User.Age)) > 18) & (Expr.Prop(nameof(User.UserName)).Contains("admin_"));
 var res = new SqlGen(typeof(User)).ToSql(expr);
 // res.Sql -> (`User`.`Age` > @0 AND `User`.`UserName` LIKE @1 ESCAPE '/')
 // res.Params -> [ { "0", 18 }, { "1", "%admin/_%" } ]
