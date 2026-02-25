@@ -103,7 +103,9 @@ namespace LiteOrm.Demo.Data
                 new() { Id = 6, Name = "财务部", ParentId = 1 },
                 new() { Id = 7, Name = "人力资源部", ParentId = 1 },
                 new() { Id = 8, Name = "上海研发部", ParentId = 2 },
-                new() { Id = 9, Name = "广州分公司", ParentId = 4 }
+                new() { Id = 9, Name = "广州分公司", ParentId = 4 },
+                new() { Id = 10, Name = "研发一部", ParentId = 2 },
+                new() { Id = 11, Name = "研发二部", ParentId = 2 }
             };
 
             // 使用 BatchInsert 提高效率

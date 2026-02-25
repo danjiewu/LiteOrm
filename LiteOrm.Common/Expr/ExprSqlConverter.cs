@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -133,26 +133,27 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            bool isMain = sb.Length == 0;
-            if (!isMain) context.PushScope();
-            SqlValueStringBuilder sql = new SqlValueStringBuilder();
-            AddSql(ref sql, select.Source, ref context, sqlBuilder, outputParams);
+            IDisposable scope = sb.Length == 0 ? null : context.BeginScope();
+            using (scope)
+            {
+                SqlValueStringBuilder sql = new SqlValueStringBuilder();
+                AddSql(ref sql, select.Source, ref context, sqlBuilder, outputParams);
 
-            if (select.Selects == null || select.Selects.Count == 0)
-            {
-                sql.Select.Append("*");
-            }
-            else
-            {
-                for (int i = 0; i < select.Selects.Count; i++)
+                if (select.Selects == null || select.Selects.Count == 0)
                 {
-                    if (i > 0) sql.Select.Append(", ");
-                    ToSql(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
+                    sql.Select.Append("*");
                 }
+                else
+                {
+                    for (int i = 0; i < select.Selects.Count; i++)
+                    {
+                        if (i > 0) sql.Select.Append(", ");
+                        ToSql(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
+                    }
+                }
+                sqlBuilder.BuildSelectSql(ref sql, ref sb);
+                sql.Dispose();
             }
-            sqlBuilder.BuildSelectSql(ref sql, ref sb);
-            sql.Dispose();
-            if (!isMain) context.PopScope();
         }
         /// <summary>
         /// 将逻辑二元表达式转换为 SQL。
@@ -424,45 +425,35 @@ namespace LiteOrm.Common
         }
         /// <summary>
         /// 处理关联表过滤表达式（EXISTS 查询）。
+        /// 完全通过 InnerExpr 控制关联条件。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, ForeignExpr foreginExpr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, ForeignExpr foreignExpr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            TableView tableView = TableInfoProvider.Default.GetTableView(context.GetTable()?.DefinitionType);
-            if (tableView == null) throw new ArgumentException($"Current context is not a TableView, cannot use ForeignExpr");
-            var joinedTable = tableView.JoinedTables.FirstOrDefault(joined => joined.Name == foreginExpr.Foreign);
-            if (joinedTable == null) throw new ArgumentException($"Foregin table {foreginExpr.Foreign} not exists in {context.GetTable().DefinitionType}");
-            string defaultBaseTable = context.DefaultTableAliasName;
-            context.PushScope();
-            string foreignAlias = $"T{context.Sequence++}";
-            context.AddTableAlias(foreignAlias, joinedTable.TableDefinition);
-            context.TableArgs = foreginExpr.TableArgs;
+            if (foreignExpr.Foreign == null) throw new ArgumentException("ForeignExpr.Foreign is required");
+            
+            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(foreignExpr.Foreign);
+            if (tableDefinition == null) throw new ArgumentException($"Table definition not found for type {foreignExpr.Foreign}");
 
-            sb.Append("EXISTS(SELECT 1 FROM ");
-            sb.Append(sqlBuilder.ToSqlName(String.Format(joinedTable.TableDefinition.Name, context.TableArgs)));
-            sb.Append(" ");
-            sb.Append(sqlBuilder.ToSqlName(foreignAlias));
-            sb.Append(" \nWHERE ");
-            for (int i = 0; i < joinedTable.ForeignKeys.Count; i++)
+            using (context.BeginScope())
             {
-                if (i > 0) sb.Append(" AND ");
-                sb.Append(sqlBuilder.ToSqlName(joinedTable.ForeignKeys[i].Table?.Name ?? defaultBaseTable));
-                sb.Append('.');
-                sb.Append(sqlBuilder.ToSqlName(joinedTable.ForeignKeys[i].Name));
-                sb.Append(" = ");
+                string foreignAlias = string.IsNullOrEmpty(foreignExpr.Alias) ? $"T{context.Sequence++}" : foreignExpr.Alias;
+                context.AddTableAlias(foreignAlias, tableDefinition);
+                context.TableArgs = foreignExpr.TableArgs;
+
+                sb.Append("EXISTS(SELECT 1 FROM ");
+                sb.Append(sqlBuilder.ToSqlName(String.Format(tableDefinition.Name, context.TableArgs ?? Array.Empty<string>())));
+                sb.Append(" ");
                 sb.Append(sqlBuilder.ToSqlName(foreignAlias));
-                sb.Append('.');
-                sb.Append(sqlBuilder.ToSqlName(joinedTable.ForeignPrimeKeys[i].Name));
+
+                if (foreignExpr.InnerExpr != null)
+                {
+                    sb.Append(" \nWHERE ");
+                    int lenBefore = sb.Length;
+                    ToSql(ref sb, foreignExpr.InnerExpr, context, sqlBuilder, outputParams);
+                    if (sb.Length == lenBefore) sb.Length = lenBefore - 7;
+                }
+                sb.Append(")");
             }
-            if (joinedTable.FilterExpression != null)
-            {
-                sb.Append("\n AND "); sb.Append(joinedTable.FilterExpression);
-            }
-            sb.Append(" AND ");
-            int lenBefore = sb.Length;
-            ToSql(ref sb, foreginExpr.InnerExpr, context, sqlBuilder, outputParams);
-            if (sb.Length == lenBefore) sb.Length = lenBefore - 5; // 内部表达式没有生成任何 SQL 片段，视为永真条件，去掉多余的 AND            
-            sb.Append(")");
-            context.PopScope();
         }
 
         /// <summary>
@@ -579,30 +570,31 @@ namespace LiteOrm.Common
         /// </summary>
         private static void AddSql(ref SqlValueStringBuilder sql, SelectExpr expr, ref SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            context.PushScope();
-            SqlValueStringBuilder innerSql = new SqlValueStringBuilder();
-            AddSql(ref innerSql, expr.Source, ref context, sqlBuilder, outputParams);
+            using (context.BeginScope())
+            {
+                SqlValueStringBuilder innerSql = new SqlValueStringBuilder();
+                AddSql(ref innerSql, expr.Source, ref context, sqlBuilder, outputParams);
 
-            if (expr.Selects == null || expr.Selects.Count == 0)
-            {
-                innerSql.Select.Append("*");
-            }
-            else
-            {
-                for (int i = 0; i < expr.Selects.Count; i++)
+                if (expr.Selects == null || expr.Selects.Count == 0)
                 {
-                    if (i > 0) innerSql.Select.Append(", ");
-                    ToSql(ref innerSql.Select, expr.Selects[i], context, sqlBuilder, outputParams);
+                    innerSql.Select.Append("*");
                 }
+                else
+                {
+                    for (int i = 0; i < expr.Selects.Count; i++)
+                    {
+                        if (i > 0) innerSql.Select.Append(", ");
+                        ToSql(ref innerSql.Select, expr.Selects[i], context, sqlBuilder, outputParams);
+                    }
+                }
+                sql.From.Append("(");
+                sqlBuilder.BuildSelectSql(ref innerSql, ref sql.From);
+                sql.From.Append(") ");
+                innerSql.Dispose();
             }
-            sql.From.Append("(");
-            sqlBuilder.BuildSelectSql(ref innerSql, ref sql.From);
-            sql.From.Append(") ");
-            context.PopScope();
             context.DefaultTableAliasName = $"T{context.Sequence++}";
             sql.From.Append(context.DefaultTableAliasName);
             context.AddTableAlias(context.DefaultTableAliasName, null);
-            innerSql.Dispose();
         }
 
         /// <summary>

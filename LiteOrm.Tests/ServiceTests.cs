@@ -469,9 +469,12 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User Outside", DeptId = -1, CreateTime = DateTime.Now });
 
             // Act
-            // ʹ �� ForeignExpr ���й�����ѯ (���� EXISTS �Ӳ�ѯ)
-            // ����������������Ϊ "Foreign Dept" ���û�
-            var users = await viewService.SearchAsync(Expr.Foreign("Dept", Expr.Prop("Name") == "Foreign Dept"));
+            // 使用 ForeignExpr 进行关联查询 (使用 EXISTS 子查询)
+            // 需要在 InnerExpr 中添加外键关联条件：TestUser.DeptId = TestDepartment.Id
+            var users = await viewService.SearchAsync(Expr.Foreign<TestDepartment>(
+                (Expr.Prop("Name") == "Foreign Dept") & 
+                (Expr.Prop("TestUserView.DeptId") == Expr.Prop("Id"))
+            ));
 
             // Assert
             Assert.Single(users);
@@ -496,7 +499,10 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User C", Age = 30, DeptId = dept2.Id, CreateTime = DateTime.Now });
 
             var users = await viewService.SearchAsync(
-                (Expr.Prop("Age") == 30) & Expr.Foreign("Dept", Expr.Prop("Name") == "Dept 1" & Expr.Prop("TestUserView.Name") != Expr.Prop("Name"))
+                (Expr.Prop("Age") == 30) & Expr.Foreign<TestDepartment>("Dept", 
+                    (Expr.Prop("Name") == "Dept 1") & 
+                    (Expr.Prop("TestUserView.DeptId") == Expr.Prop("Id")) &
+                    (Expr.Prop("TestUserView.Name") != Expr.Prop("Name")))
             );
 
             // Assert

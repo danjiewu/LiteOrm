@@ -27,6 +27,9 @@ namespace LiteOrm.Common
             Where = where;
         }
 
+        /// <summary>
+        /// 获取或设置更新操作的源片段（From表达式）
+        /// </summary>
         public ISqlSegment Source { get; set; }
 
         /// <summary>

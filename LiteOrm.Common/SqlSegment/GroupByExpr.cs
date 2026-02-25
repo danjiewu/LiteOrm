@@ -27,6 +27,9 @@ namespace LiteOrm.Common
             GroupBys = groupBys?.ToList() ?? new List<ValueTypeExpr>();
         }
 
+        /// <summary>
+        /// 获取或设置分组片段的源片段（From表达式）
+        /// </summary>
         public ISqlSegment Source { get; set; }
         /// <summary>
         /// 获取片段类型，返回 GroupBy 类型标识

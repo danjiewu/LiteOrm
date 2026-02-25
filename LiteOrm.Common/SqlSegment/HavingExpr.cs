@@ -25,6 +25,9 @@ namespace LiteOrm.Common
             Having = having;
         }
 
+        /// <summary>
+        /// 获取或设置 HAVING 条件的源片段（From表达式）
+        /// </summary>
         public ISqlSegment Source { get; set; }
 
         /// <summary>

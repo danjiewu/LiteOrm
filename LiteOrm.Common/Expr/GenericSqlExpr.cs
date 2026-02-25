@@ -5,7 +5,16 @@ using System.Collections.Generic;
 
 namespace LiteOrm.Common
 {
+    /// <summary>
+    /// SQL生成委托，用于动态生成SQL片段
+    /// </summary>
+    /// <param name="context">SQL构建上下文</param>
+    /// <param name="sqlBuilder">SQL构建器</param>
+    /// <param name="outputParams">输出参数集合</param>
+    /// <param name="arg">额外参数</param>
+    /// <returns>生成的SQL字符串</returns>
     public delegate string SqlGenerateHandler(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, object arg);
+    
     /// <summary>
     /// 通过委托生成的 SQL 片段表达式类。
     /// </summary>

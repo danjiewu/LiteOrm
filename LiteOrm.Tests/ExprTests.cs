@@ -211,10 +211,10 @@ namespace LiteOrm.Tests
         public void ForeignExpr_Tests()
         {
             // Equals
-            Expr f1 = Expr.Foreign("DeptId", Expr.Prop("Name") == "IT");
-            Expr f2 = Expr.Foreign("DeptId", Expr.Prop("Name") == "IT");
-            Expr f3 = Expr.Foreign("DeptId", Expr.Prop("Name") == "HR");
-            Expr f4 = Expr.Foreign("ManagerId", Expr.Prop("Name") == "IT");
+            Expr f1 = Expr.Foreign<object>(Expr.Prop("Name") == "IT");
+            Expr f2 = Expr.Foreign<object>(Expr.Prop("Name") == "IT");
+            Expr f3 = Expr.Foreign<object>(Expr.Prop("Name") == "HR");
+            Expr f4 = Expr.Foreign<string>(Expr.Prop("Name") == "IT");
 
             Assert.True(f1.Equals(f2));
             Assert.False(f1.Equals(f3));

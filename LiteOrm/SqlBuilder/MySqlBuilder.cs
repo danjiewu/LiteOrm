@@ -32,6 +32,11 @@ namespace LiteOrm
         /// </summary>
         public override bool SupportBatchInsertWithIdentity => true;
 
+        /// <summary>
+        /// 将表名或字段名转换为 SQL 标识符格式（使用反引号包裹）。
+        /// </summary>
+        /// <param name="sb">字符串构建器</param>
+        /// <param name="simpleName">要转换的名称</param>
         public override void ToSqlName(ref ValueStringBuilder sb, ReadOnlySpan<char> simpleName)
         {
             simpleName = simpleName.Trim();

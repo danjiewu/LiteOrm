@@ -36,6 +36,9 @@ namespace LiteOrm.Common
             Source = source;
         }
 
+        /// <summary>
+        /// 获取或设置分页片段的源片段（From表达式）
+        /// </summary>
         public ISqlSegment Source { get; set; }
 
         /// <summary>

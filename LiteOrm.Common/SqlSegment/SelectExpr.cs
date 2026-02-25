@@ -27,6 +27,9 @@ namespace LiteOrm.Common
             Selects = selects?.ToList() ?? new List<SelectItemExpr>();
         }
 
+        /// <summary>
+        /// 获取或设置查询的源片段（From表达式）
+        /// </summary>
         public ISqlSegment Source { get; set; }
 
         /// <summary>
@@ -71,16 +74,16 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// 
+    /// 选择项表达式，表示 SELECT 字段及其可选别名
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public class SelectItemExpr : ValueTypeExpr
     {
         /// <summary>
-        /// 
+        /// 初始化 SelectItemExpr 类的新实例
         /// </summary>
-        /// <param name="value"></param>
-        /// <exception cref="ArgumentNullException"></exception>
+        /// <param name="value">值表达式</param>
+        /// <exception cref="ArgumentNullException">当 value 为 null 时抛出</exception>
         public SelectItemExpr(ValueTypeExpr value)
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
@@ -88,20 +91,28 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 
+        /// 初始化 SelectItemExpr 类的新实例（带别名）
         /// </summary>
-        /// <param name="value"></param>
-        /// <param name="aliasName"></param>
-        /// <exception cref="ArgumentNullException"></exception>
+        /// <param name="value">值表达式</param>
+        /// <param name="aliasName">别名名称</param>
+        /// <exception cref="ArgumentNullException">当 value 为 null 时抛出</exception>
         public SelectItemExpr(ValueTypeExpr value, string aliasName)
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
             Value = value;
             Name = aliasName;
         }
+
+        /// <summary>
+        /// 获取或设置选择项的值表达式
+        /// </summary>
         public new ValueTypeExpr Value { get; set; }
 
         private string _name;
+        
+        /// <summary>
+        /// 获取或设置选择项的别名
+        /// </summary>
         public string Name 
         { 
             get => _name;
@@ -114,8 +125,24 @@ namespace LiteOrm.Common
                 _name = value;
             }
         }
+
+        /// <summary>
+        /// 判断两个 SelectItemExpr 是否相等
+        /// </summary>
+        /// <param name="obj">要比较的对象</param>
+        /// <returns>如果相等返回 true，否则返回 false</returns>
         public override bool Equals(object obj) => obj is SelectItemExpr other && Name == other.Name && Equals(Value, other.Value);
+
+        /// <summary>
+        /// 获取当前对象的哈希码
+        /// </summary>
+        /// <returns>哈希码值</returns>
         public override int GetHashCode() => OrderedHashCodes(typeof(SelectItemExpr).GetHashCode(), Name?.GetHashCode() ?? 0, Value?.GetHashCode() ?? 0);
+
+        /// <summary>
+        /// 返回选择项的字符串表示
+        /// </summary>
+        /// <returns>字符串表示</returns>
         public override string ToString() => string.IsNullOrEmpty(Name) ? Value?.ToString() : $"{Value} AS {Name}";
     }
 }

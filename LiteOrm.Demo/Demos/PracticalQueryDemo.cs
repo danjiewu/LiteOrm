@@ -70,9 +70,10 @@ namespace LiteOrm.Demo.Demos
                 new WhereExpr(
                     Expr.From<UserView>(),
                     Expr.Prop("Age") > minAge & Expr.Prop("UserName", LogicOperator.Like, $"%{searchName}%")
-                    & Expr.Foreign("Dept",
-                        Expr.Prop(nameof(Department.Name), LogicOperator.Like, $"%部%")
-                        & Expr.Prop(nameof(Department.ParentId)).In(Expr.From<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count >= Expr.Const(3)).Select(nameof(User.DeptId)))
+                    & Expr.Foreign<Department>("Dept",
+                        Expr.Prop("UserView.DeptId") == Expr.Prop("Id")
+                        & Expr.Prop(nameof(Department.Name), LogicOperator.Like, $"%部%")
+                        & Expr.Prop(nameof(Department.ParentId)).In(Expr.From<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count >= Expr.Const(2)).Select(nameof(User.DeptId)))
                     )
                 )
              );
@@ -80,13 +81,14 @@ namespace LiteOrm.Demo.Demos
     "                new WhereExpr(\r\n" +
     "                    Expr.From<UserView>(),\r\n" +
     "                    Expr.Prop(\"Age\") > minAge & Expr.Prop(\"UserName\", LogicOperator.Like, $\"%{searchName}%\")\r\n" +
-    "                    & Expr.Foreign(\"Dept\",\r\n" +
-    "                        Expr.Prop(nameof(Department.Name), LogicOperator.Like, $\"%技术部%\")\r\n" +
-    "                        & Expr.Prop(nameof(Department.ParentId))\r\n" +
-    "                        .In(Expr.From<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count > Expr.Const(3)).Select(nameof(User.DeptId)))\r\n" +
+    "                    & Expr.Foreign<Department>(\"Dept\",\r\n" +
+    "                        Expr.Prop(\"UserView.DeptId\") == Expr.Prop(\"Id\")\r\n" +
+    "                        & Expr.Prop(nameof(Department.Name), LogicOperator.Like, $\"%部%\")\r\n" +
+    "                        & Expr.Prop(nameof(Department.ParentId)).In(Expr.From<User>().GroupBy(nameof(User.DeptId)).Having(AggregateFunctionExpr.Count > Expr.Const(2)).Select(nameof(User.DeptId)))\r\n" +
     "                    )\r\n" +
     "                )\r\n" +
     "             )");
+            Console.WriteLine("查询逻辑：年龄大于等于 18 岁，用户名包含 '王'，部门名称包含 '部'，且上级部门有 2 个以上用户。");
             Console.WriteLine($"Expr 内容：{sqlModel}\n");
             Console.WriteLine($"序列化后 JSON：{JsonSerializer.Serialize(sqlModel, new JsonSerializerOptions { WriteIndented = true })}\n");
 

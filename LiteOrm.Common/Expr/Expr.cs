@@ -72,12 +72,35 @@ namespace LiteOrm.Common
         /// <summary>
         /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件。
         /// </summary>
-        /// <param name="foreign">关联外部实体的别名</param>
+        /// <param name="type">关联外部实体的类型</param>
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <returns>外键表达式。</returns>
-        public static ForeignExpr Foreign(string foreign, LogicExpr innerExpr)
+        public static ForeignExpr Foreign(Type type, LogicExpr innerExpr)
         {
-            return new ForeignExpr(foreign, innerExpr);
+            return new ForeignExpr(type, innerExpr);
+        }
+
+        /// <summary>
+        /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件。
+        /// </summary>
+        /// <typeparam name="T">关联外部实体的类型</typeparam>
+        /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
+        /// <returns>外键表达式。</returns>
+        public static ForeignExpr Foreign<T>(LogicExpr innerExpr)
+        {
+            return new ForeignExpr(typeof(T), innerExpr);
+        }
+
+        /// <summary>
+        /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件。
+        /// </summary>
+        /// <typeparam name="T">关联外部实体的类型</typeparam>
+        /// <param name="alias">外部表别名。</param>
+        /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
+        /// <returns>外键表达式。</returns>
+        public static ForeignExpr Foreign<T>(string alias, LogicExpr innerExpr)
+        {
+            return new ForeignExpr(typeof(T), alias, innerExpr);
         }
 
         /// <summary>
@@ -224,6 +247,12 @@ namespace LiteOrm.Common
         /// </summary>
         public static FromExpr From<T>(params string[] tableArgs) => new FromExpr(typeof(T)) { TableArgs = tableArgs };
 
+        /// <summary>
+        /// 使用指定的类型创建 From 表达式。
+        /// </summary>
+        /// <param name="objectType">实体类型</param>
+        /// <param name="tableArgs">动态表名参数</param>
+        /// <returns>From 表达式实例</returns>
         public static FromExpr From(Type objectType, params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs };
 
         /// <summary>
@@ -242,6 +271,13 @@ namespace LiteOrm.Common
         /// <returns>SQL 片段实例</returns>
         public static Expr Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
 
+        /// <summary>
+        /// 使用 IQueryable 形式的 Lambda 表达式创建 SQL 片段（带返回值）
+        /// </summary>
+        /// <typeparam name="T">实体类型</typeparam>
+        /// <typeparam name="TResult">返回结果类型</typeparam>
+        /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
+        /// <returns>SQL 片段实例</returns>
         public static Expr Query<T, TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
 
         /// <summary>

@@ -24,10 +24,11 @@ namespace LiteOrm.Common
             ObjectType = objectType;
         }
 
-        /// <summary>
-        /// 获取或设置别名
-        /// </summary>
         private string _alias;
+        
+        /// <summary>
+        /// 获取或设置表别名
+        /// </summary>
         public string Alias 
         { 
             get => _alias;
@@ -50,6 +51,10 @@ namespace LiteOrm.Common
         /// 获取表名参数数组
         /// </summary>
         private string[] _tableArgs;
+        
+        /// <summary>
+        /// 获取或设置表名参数数组
+        /// </summary>
         public string[] TableArgs 
         { 
             get => _tableArgs;

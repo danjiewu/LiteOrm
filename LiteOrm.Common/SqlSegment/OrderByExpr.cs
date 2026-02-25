@@ -27,6 +27,9 @@ namespace LiteOrm.Common
             OrderBys = orderBys?.ToList() ?? new List<(ValueTypeExpr, bool)>();
         }
 
+        /// <summary>
+        /// 获取或设置排序片段的源片段（From表达式）
+        /// </summary>
         public ISqlSegment Source { get; set; }
         /// <summary>
         /// 获取片段类型，返回 OrderBy 类型标识

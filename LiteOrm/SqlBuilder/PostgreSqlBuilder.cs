@@ -1,4 +1,4 @@
-﻿﻿using LiteOrm.Common;
+﻿﻿﻿﻿﻿using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -41,6 +41,11 @@ namespace LiteOrm
             return $"@{nativeName}";
         }
 
+        /// <summary>
+        /// 将表名或字段名转换为 SQL 标识符格式（使用双引号包裹并转为小写）。
+        /// </summary>
+        /// <param name="sb">字符串构建器</param>
+        /// <param name="simpleName">要转换的名称</param>
         public override void ToSqlName(ref ValueStringBuilder sb, ReadOnlySpan<char> simpleName)
         {
             simpleName = simpleName.Trim();

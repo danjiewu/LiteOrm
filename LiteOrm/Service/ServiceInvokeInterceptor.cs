@@ -126,7 +126,7 @@ namespace LiteOrm.Service
                 {
                     e = e.UnwrapTargetInvocationException();
                     LogException(invocation, e);
-                    throw new Exception(e.Message + "\nSQL:" + SessionManager.Current?.SqlStack?.LastOrDefault(), e);
+                    throw e;
                 }
                 finally
                 {
@@ -190,7 +190,7 @@ namespace LiteOrm.Service
                 {
                     e = e.UnwrapTargetInvocationException();
                     LogException(invocation, e);
-                    throw new Exception(e.Message + "\nSQL:" + SessionManager.Current?.SqlStack?.LastOrDefault(), e);
+                    throw e;
                 }
                 finally
                 {
@@ -231,7 +231,7 @@ namespace LiteOrm.Service
                 {
                     e = e.UnwrapTargetInvocationException();
                     LogException(invocation, e);
-                    throw new Exception(e.Message + "\nSQL:" + SessionManager.Current?.SqlStack?.LastOrDefault(), e);
+                    throw e;
                 }
                 finally
                 {
