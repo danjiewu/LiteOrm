@@ -42,7 +42,14 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架�
 dotnet add package LiteOrm
 ```
 
-## 快速入门 
+## 快速链接
+
+- 📖 **[API 参考文档](./docs/LITEORM_API_REFERENCE.md)** - 完整的 API 使用指南
+- 🎓 **[演示项目](./LiteOrm.Demo/README.md)** - 6 个核心特性演示程序
+- ⚡ **[性能报告](./LiteOrm.Benchmark/)** - 性能基准测试报告
+- ✅ **[单元测试](./LiteOrm.Tests/)** - 完整的测试覆盖
+
+## 快速入门
 
 ### 1. 映射定义
 
@@ -85,8 +92,8 @@ var host = Host.CreateDefaultBuilder(args)
         "DataSources": [
             {
                 "Name": "DefaultConnection",
-                "ConnectionString": "Data Source=demo.db",
-                "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+                "ConnectionString": "Server=mysql;User ID=ormbench;Password=orm!123;Database=OrmBench;AllowLoadLocalInfile=true;",
+                "Provider": "MySqlConnector.MySqlConnection, MySqlConnector",
                 "KeepAliveDuration": "00:10:00",
                 "PoolSize": 20,
                 "MaxPoolSize": 100,
@@ -94,10 +101,10 @@ var host = Host.CreateDefaultBuilder(args)
                 "SyncTable": true,
                 "ReadOnlyConfigs": [
                     {
-                        "ConnectionString": "Server=readonly01;User ID=readonly;Password=xxxx;Database=OrmBench;"
+                        "ConnectionString": "Server=mysql01;User ID=ormbench;Password=orm!123;Database=OrmBench;AllowLoadLocalInfile=true;"
                     },
                     {
-                        "ConnectionString": "Server=readonly02;User ID=readonly;Password=xxxx;Database=OrmBench;",
+                        "ConnectionString": "Server=mysql02;User ID=ormbench;Password=orm!123;Database=OrmBench;AllowLoadLocalInfile=true;",
                         "PoolSize": 10,
                         "KeepAliveDuration": "00:30:00"
                     }
@@ -134,8 +141,6 @@ LiteOrm 支持为每个主数据源配置若干只读从库，用于读写分离
 - LiteOrm 在执行只读操作（例如 SELECT 查询）时会优先选择只读配置，从而减轻主库写入压力并实现读扩展。
 - 如果所有只读配置不可用或未配置，LiteOrm 会回退到主数据源的连接。
 - 可结合连接池与自定义路由策略实现更复杂的读写分离、负载均衡或高可用策略。
-
-示例工程 `LiteOrm.Demo/appsettings.json` 已包含 `ReadOnlyConfigs` 用法示例。
 
 ### 3. 自定义服务接口与实现（可选）
 
@@ -254,6 +259,24 @@ var multiCondition = await userService.SearchAsync(
           .Where(u => u.UserName.Contains("admin"))
 );
 // 等效于: WHERE (Age > 18 AND UserName IS NOT NULL AND UserName Contains admin)
+
+// EXISTS 子查询
+// 查询拥有部门的用户
+var usersWithDept = await userService.SearchAsync(
+    q => q.Where(u => Expr.Exists<Department>(d => d.Id == u.DeptId))
+);
+
+// EXISTS + 其他条件组合
+var filteredUsers = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 25 && Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "IT"))
+          .OrderByDescending(u => u.CreateTime)
+          .Skip(0).Take(10)
+);
+
+// NOT EXISTS
+var usersWithoutDept = await userService.SearchAsync(
+    q => q.Where(u => !Expr.Exists<Department>(d => d.Id == u.DeptId))
+);
 ```
 
 ### 手动构建表达式
@@ -286,7 +309,36 @@ var res = new SqlGen(typeof(User)).ToSql(expr);
 
 ## 高级特性
 
-### 1. 自动化关联查询
+### 1. Exists 存在性查询
+
+LiteOrm 支持通过 `Expr.Exists<T>` 进行高效的 SQL EXISTS 子查询。这是一种性能优化的方式，特别适合在只需检查关联数据是否存在，而不需要返回关联数据的场景。
+
+```csharp
+// 基础 EXISTS 查询
+var result = await userService.SearchAsync(
+    q => q.Where(u => Expr.Exists<Department>(d => d.Id == u.DeptId))
+);
+
+// EXISTS 与复杂条件组合
+var result = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 25 && 
+                      Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "IT") &&
+                      Expr.Exists<Department>(d => d.ParentId != null))
+);
+
+// NOT EXISTS
+var result = await userService.SearchAsync(
+    q => q.Where(u => !Expr.Exists<Department>(d => d.Id == u.DeptId))
+);
+```
+
+**何时使用 EXISTS 而不是 JOIN**：
+- ✅ 只检查关联数据是否存在
+- ✅ 不需要返回或访问关联表字段
+- ✅ 右表（关联表）数据量大，JOIN 可能产生大量临时行
+- ❌ 需要返回关联表字段时使用 JOIN 或视图映射
+
+### 2. 自动化关联查询
 
 ```csharp
 // 定义关联
@@ -390,34 +442,48 @@ public class BusinessService
 - **声明式事务**：基于 AOP 的无侵入事务控制。
 
 
-运行 Demo 项目：
-
-```bash
-dotnet run --project LiteOrm.Demo/LiteOrm.Demo.csproj
-```
-
 ## 性能测试
 
-LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基于 `LiteOrm.Benchmark` 项目（Linux Ubuntu 24.04 LTS, Intel Xeon Silver 4314 CPU, .NET 10.0.0）的最新测试结果对比：
+LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基于 `LiteOrm.Benchmark` 项目（Windows 11, Intel Core i5-13400F 2.50GHz, .NET 10.0.103）的最新测试结果对比：
+
+### 性能对比概览（BatchCount=100）
+
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) | 内存分配 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **LiteOrm** | **3,743.9** | **4,684.3** | 5,535.7 | 974.9 | **295.97 KB** |
+| FreeSql | 4,358.7 | 4,859.8 | **4,843.1** | 942.3 | 460.62 KB |
+| SqlSugar | 4,126.6 | 5,377.7 | 9,355.1 | 1,664.3 | 476.13 KB |
+| Dapper | 13,236.3 | 16,492.4 | 18,593.3 | **893.4** | 254.58 KB |
+| EF Core | 21,973.8 | 21,571.2 | 22,967.5 | 6,680.8 | 1,965.32 KB |
 
 ### 性能对比概览（BatchCount=1000）
 
-| 框架 | 插入性能 (ms) | 更新性能 (ms) | 更新或插入 (ms) | 关联查询 (ms) | 内存分配 (Insert) |
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) | 内存分配 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **14.421** | **24.342** | 21.138 | 16.933 | **868.15 KB** |
-| FreeSql | 22.123 | 42.261 | **22.006** | 17.261 | 4629.54 KB |
-| SqlSugar | 18.993 | 46.280 | 106.873 | 40.103 | 4569.7 KB |
-| Dapper | 220.316 | 236.501 | 246.259 | **16.584** | 2475.62 KB |
-| EF Core | 155.787 | 136.900 | 141.613 | 29.384 | 16265.64 KB |
+| **LiteOrm** | **10,711.9** | **16,472.2** | 16,733.4 | **6,061.1** | **870.27 KB** |
+| FreeSql | 17,707.5 | 30,842.5 | **14,769.0** | 6,520.9 | 4,629.99 KB |
+| SqlSugar | 15,775.0 | 35,522.5 | 66,357.1 | 12,304.3 | 4,571.36 KB |
+| Dapper | 120,213.5 | 132,356.8 | 136,051.1 | 6,556.1 | 2,476.22 KB |
+| EF Core | 169,846.8 | 149,932.5 | 157,037.7 | 12,422.7 | 18,118.07 KB |
+
+### 性能对比概览（BatchCount=5000）
+
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) | 内存分配 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **LiteOrm** | **40,268.4** | **68,069.3** | 60,711.4 | **39,060.2** | **4,082.59 KB** |
+| FreeSql | 72,488.8 | 133,942.8 | **58,183.2** | 41,220.4 | 23,333.54 KB |
+| SqlSugar | 76,643.9 | 194,130.4 | 885,872.8 | 63,744.0 | 23,196.37 KB |
+| Dapper | 690,745.5 | 659,912.8 | 677,140.4 | 39,942.4 | 12,349.48 KB |
+| EF Core | 824,700.5 | 749,069.8 | 794,845.9 | 49,403.4 | 80,230.09 KB |
 
 ### 各数据量级别最优性能
 
 | 测试项目 | 100 条 | 1000 条 | 5000 条 |
 |----------|--------|---------|---------|
-| **Insert** | **LiteOrm** (4.121 ms) | **LiteOrm** (14.421 ms) | **LiteOrm** (58.925 ms) |
-| **Update** | **LiteOrm** (5.271 ms) | **LiteOrm** (24.342 ms) | **LiteOrm** (104.380 ms) |
-| **UpdateOrInsert** | **FreeSql** (5.071 ms) | **FreeSql** (22.006 ms) | **LiteOrm** (89.760 ms) |
-| **JoinQuery** | **FreeSql** (2.107 ms) | **Dapper** (16.584 ms) | **LiteOrm** (77.800 ms) |
+| **Insert** | **LiteOrm** (3,743.9 ms) | **LiteOrm** (10,711.9 ms) | **LiteOrm** (40,268.4 ms) |
+| **Update** | **LiteOrm** (4,684.3 ms) | **LiteOrm** (16,472.2 ms) | **LiteOrm** (68,069.3 ms) |
+| **Upsert** | **FreeSql** (4,843.1 ms) | **FreeSql** (14,769.0 ms) | **FreeSql** (58,183.2 ms) |
+| **JoinQuery** | **Dapper** (893.4 ms) | **LiteOrm** (6,061.1 ms) | **LiteOrm** (39,060.2 ms) |
 
 > *注：完整测试报告请参考：[LiteOrm 性能评测报告](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md).*
 
@@ -434,6 +500,31 @@ LiteOrm 在高并发与大规模数据读写场景下表现优异。以下是基
 ## 贡献与反馈
 
 如果您在使用过程中发现任何问题或有任何改进建议，欢迎提交 [Issue](https://github.com/danjiewu/LiteOrm/issues) 或发起 [Pull Request](https://github.com/danjiewu/LiteOrm/pulls)。
+
+
+## 项目资源
+
+### 📚 文档中心
+
+| 文档 | 说明 |
+|-----|------|
+| [API 参考](./docs/LITEORM_API_REFERENCE.md) | 完整的 API 和特性说明 |
+| [Demo 使用指南](./LiteOrm.Demo/README.md) | 演示程序使用说明和代码示例 |
+
+### 🎯 核心演示程序
+
+LiteOrm.Demo 包含 6 个核心演示程序，展示框架的主要特性：
+
+| 演示 | 功能 | 位置 |
+|-----|------|------|
+| ExprTypeDemo | 表达式构造和序列化 | Demos/ExprTypeDemo.cs |
+| PracticalQueryDemo | 综合查询实践 | Demos/PracticalQueryDemo.cs |
+| ExistsSubqueryDemo | EXISTS 子查询演示 | Demos/ExistsSubqueryDemo.cs |
+| TransactionDemo | 事务和业务流程 | Demos/TransactionDemo.cs |
+| DataViewDemo | 聚合查询和 GroupBy | Demos/DataViewDemo.cs |
+| UpdateExprDemo | 复杂更新操作 | Demos/UpdateExprDemo.cs |
+
+---
 
 ## 开源协议
 

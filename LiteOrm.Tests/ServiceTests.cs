@@ -303,7 +303,7 @@ namespace LiteOrm.Tests
             await service.BatchUpdateOrInsertAsync(batch);
 
             // Assert
-            var allUsers = await viewService.SearchAsync(Expr.Exp<TestUser>(u => u.Name!.StartsWith("Upsert")));
+            var allUsers = await viewService.SearchAsync(u => u.Name!.StartsWith("Upsert"));
             Assert.Equal(3, allUsers.Count);
 
             var retrievedA = allUsers.FirstOrDefault(u => u.Name == "Upsert A");
@@ -472,7 +472,7 @@ namespace LiteOrm.Tests
             // 使用 ForeignExpr 进行关联查询 (使用 EXISTS 子查询)
             // 需要在 InnerExpr 中添加外键关联条件：TestUser.DeptId = TestDepartment.Id
             var users = await viewService.SearchAsync(Expr.Foreign<TestDepartment>(
-                (Expr.Prop("Name") == "Foreign Dept") & 
+                (Expr.Prop("Name") == "Foreign Dept") &
                 (Expr.Prop("TestUserView.DeptId") == Expr.Prop("Id"))
             ));
 
@@ -499,8 +499,8 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User C", Age = 30, DeptId = dept2.Id, CreateTime = DateTime.Now });
 
             var users = await viewService.SearchAsync(
-                (Expr.Prop("Age") == 30) & Expr.Foreign<TestDepartment>("Dept", 
-                    (Expr.Prop("Name") == "Dept 1") & 
+                (Expr.Prop("Age") == 30) & Expr.Foreign<TestDepartment>("Dept",
+                    (Expr.Prop("Name") == "Dept 1") &
                     (Expr.Prop("TestUserView.DeptId") == Expr.Prop("Id")) &
                     (Expr.Prop("TestUserView.Name") != Expr.Prop("Name")))
             );
@@ -667,7 +667,7 @@ namespace LiteOrm.Tests
             var updateExpr = new UpdateExpr
             {
                 Source = Expr.From<TestUser>(),
-                Sets = new List<(string, ValueTypeExpr)> 
+                Sets = new List<(string, ValueTypeExpr)>
                 {
                     ("Age", Expr.Prop("Age") + Expr.Const(5)), // 使用运算符重载和Expr.Const，Age = Age + 5
                     ("Name", new FunctionExpr("UPPER", new PropertyExpr("Name"))) // 使用UPPER函数，参数为Name属性
@@ -696,7 +696,7 @@ namespace LiteOrm.Tests
             var updateExpr = new UpdateExpr
             {
                 Source = Expr.From<TestUser>(),
-                Sets = new List<(string, ValueTypeExpr)> 
+                Sets = new List<(string, ValueTypeExpr)>
                 {
                     ("Age", Expr.Prop("Age") + Expr.Const(10)), // 使用运算符重载和Expr.Const，Age = Age + 10
                     ("Name", new FunctionExpr("CONCAT", new PropertyExpr("Name"), "_Updated")) // 使用CONCAT函数，参数为Name属性和字符串

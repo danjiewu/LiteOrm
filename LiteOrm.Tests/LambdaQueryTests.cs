@@ -44,7 +44,7 @@ namespace LiteOrm.Tests
             Assert.IsType<OrderByExpr>(section.Source);
             var orderBy = (OrderByExpr)section.Source;
             Assert.Single(orderBy.OrderBys);
-            Assert.True(orderBy.OrderBys[0].Item2); // Ascending
+            Assert.True(orderBy.OrderBys[0].Item2); 
 
             Assert.IsType<WhereExpr>(orderBy.Source);
         }
@@ -80,8 +80,6 @@ namespace LiteOrm.Tests
         [Fact]
         public void NestedSelect_Test()
         {
-            // q.Select(...).Where(...) effectively creates a subquery structure: 
-            // SELECT * FROM (SELECT Name, Age FROM TestUsers) WHERE Age > 18
             Expression<Func<IQueryable<TestUser>, IQueryable<object>>> queryExpr = q => q
                 .Select(u => new { u.Name, u.Age })
                 .Where(x => x.Age > 18);
@@ -162,6 +160,132 @@ namespace LiteOrm.Tests
 
             var where = Assert.IsType<WhereExpr>(groupBy.Source);
             Assert.IsType<FromExpr>(where.Source);
+        }
+
+        [Fact]
+        public void ExistsSubquery_BasicTest()
+        {
+            // Test: Query users whose department exists
+            // SELECT * FROM TestUsers u WHERE EXISTS (SELECT 1 FROM TestDepartments d WHERE d.Id = u.DeptId)
+            Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
+                .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId));
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+
+            Assert.IsType<WhereExpr>(expr);
+            var where = (WhereExpr)expr;
+
+            // The condition should be ForeignExpr (which is a LogicExpr)
+            var condition = where.Where;
+            Assert.IsType<ForeignExpr>(condition);
+
+            var foreign = (ForeignExpr)condition;
+            Assert.Equal(typeof(TestDepartment), foreign.Foreign);
+            Assert.NotNull(foreign.InnerExpr);
+        }
+
+        [Fact]
+        public void ExistsSubquery_WithOtherConditions()
+        {
+            // Test: Query users with age > 18 who have departments
+            // SELECT * FROM TestUsers u WHERE u.Age > 18 AND EXISTS (SELECT 1 FROM TestDepartments d WHERE d.Id = u.DeptId)
+            Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
+                .Where(u => u.Age > 18 && Expr.Exists<TestDepartment>(d => d.Id == u.DeptId));
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+
+            Assert.IsType<WhereExpr>(expr);
+            var where = (WhereExpr)expr;
+
+            // The condition should be LogicSet with AND
+            Assert.IsType<LogicSet>(where.Where);
+            var logicSet = (LogicSet)where.Where;
+            Assert.Equal(LogicJoinType.And, logicSet.JoinType);
+            Assert.Equal(2, logicSet.Count);
+        }
+
+        [Fact]
+        public void ExistsSubquery_ComplexInnerCondition()
+        {
+            // Test: Query users whose department name is "IT"
+            // SELECT * FROM TestUsers u WHERE EXISTS (SELECT 1 FROM TestDepartments d WHERE d.Id = u.DeptId AND d.Name = 'IT')
+            Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
+                .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "IT"));
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+
+            Assert.IsType<WhereExpr>(expr);
+            var where = (WhereExpr)expr;
+
+            var condition = where.Where;
+            Assert.IsType<ForeignExpr>(condition);
+
+            var foreign = (ForeignExpr)condition;
+            Assert.Equal(typeof(TestDepartment), foreign.Foreign);
+
+            // Inner expression should be a LogicSet (AND)
+            Assert.IsType<LogicSet>(foreign.InnerExpr);
+        }
+
+        [Fact]
+        public void ExistsSubquery_WithOrderAndSection()
+        {
+            // Test: Query users in departments, with ordering and paging
+            Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
+                .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name.Contains("Dept")))
+                .OrderBy(u => u.Name)
+                .Skip(0)
+                .Take(10);
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+
+            Assert.IsType<SectionExpr>(expr);
+            var section = (SectionExpr)expr;
+            Assert.Equal(0, section.Skip);
+            Assert.Equal(10, section.Take);
+
+            var orderBy = Assert.IsType<OrderByExpr>(section.Source);
+            Assert.Single(orderBy.OrderBys);
+
+            var where = Assert.IsType<WhereExpr>(orderBy.Source);
+            Assert.IsType<ForeignExpr>(where.Where);
+        }
+
+        [Fact]
+        public void ExistsSubquery_MultipleExists()
+        {
+            // Test: Query users who have both IT and HR departments
+            Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
+                .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "IT") &&
+                            Expr.Exists<TestDepartment>(d => d.ParentId == 0));
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+
+            Assert.IsType<WhereExpr>(expr);
+            var where = (WhereExpr)expr;
+
+            Assert.IsType<LogicSet>(where.Where);
+            var logicSet = (LogicSet)where.Where;
+            Assert.Equal(LogicJoinType.And, logicSet.JoinType);
+            Assert.Equal(2, logicSet.Count);
+
+            // Both conditions should contain ForeignExpr
+            foreach (var item in logicSet.Items)
+            {
+                Assert.IsType<ForeignExpr>(item);
+            }
+        }
+
+        [Fact]
+        public void ExistsSubquery_Serialization()
+        {
+            // Test: Verify that Exists expressions can be serialized
+            var foreignExpr = Expr.Foreign<TestDepartment>(Expr.Prop("Id") == Expr.Prop("u.DeptId"));
+            Assert.NotNull(foreignExpr);
+
+            // Combine with other logic expressions using Expr.And
+            var condition = Expr.And(Expr.Prop("Age") > 18, foreignExpr);
+            Assert.IsType<LogicSet>(condition);
         }
     }
 }

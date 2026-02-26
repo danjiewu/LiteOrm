@@ -26,10 +26,8 @@ namespace LiteOrm.Tests
             string json = JsonSerializer.Serialize<Expr>(expr, _jsonOptions);
             Expr deserialized = JsonSerializer.Deserialize<Expr>(json, _jsonOptions)!;
 
-            // Use Equals override
             Assert.True(expr.Equals(deserialized), $"Deserialized expr should be equal to original. JSON: {json}");
 
-            // HashCode test is now robust after framework fix
             Assert.Equal(expr.GetHashCode(), deserialized.GetHashCode());
         }
 
@@ -61,13 +59,11 @@ namespace LiteOrm.Tests
             Assert.True(list1.Equals(list2));
 
             // Serialization
-            // TestSerialization(e1); // Simplification: don't consider type changes
-            // TestSerialization(e4); 
+            TestSerialization(e1); // Simplification: don't consider type changes
+            TestSerialization(e4); 
             TestSerialization(s1);
             TestSerialization(n1);
-            // TestSerialization(list1); // Simplification: don't consider type changes after serialization
-
-
+            TestSerialization(list1); // Simplification: don't consider type changes after serialization
 
 
             // Non-const value serialization
@@ -229,11 +225,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void LambdaExprConverter_ForeignExists_Tests()
         {
-
-            var handler = LambdaExprConverter.GetMethodHandler(typeof(Expr), "ForeignExists");
-            Assert.NotNull(handler);
-
-            var result = Expr.Exp<TestDepartment>(d => d.Id > 0 && Expr.ForeignExists<TestUser>(u => u.DeptId == d.Id));
+            var result = Expr.Exp<TestDepartment>(d => d.Id > 0 && Expr.Exists<TestUser>(u => u.DeptId == d.Id));
             Assert.NotNull(result);
         }
 

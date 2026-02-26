@@ -9,10 +9,10 @@
 ## 如何运行
 
 1. 确保已安装 .NET 8 或更高版本的 SDK。
-2. 导航至项目根目录或 `LiteOrm.Demo` 目录。
+2. 导航至 `LiteOrm.Demo` 目录。
 3. 执行以下命令：
    ```bash
-   dotnet run --project LiteOrm.Demo/LiteOrm.Demo.csproj
+   dotnet run --project LiteOrm.Demo.csproj
    ```
 
 ## 快速集成与初始化
@@ -31,6 +31,7 @@ var host = Host.CreateDefaultBuilder(args)
 ### 2. 配置说明 (appsettings.json)
 
 连接池与数据源配置：
+
 ```json
 {
     "LiteOrm": {
@@ -38,8 +39,8 @@ var host = Host.CreateDefaultBuilder(args)
         "DataSources": [
             {
                 "Name": "DefaultConnection",
-                "ConnectionString": "Data Source=demo.db",
-                "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+                "ConnectionString": "Server=mysql;User ID=ormbench;Password=orm!123;Database=OrmBench;AllowLoadLocalInfile=true;",
+                "Provider": "MySqlConnector.MySqlConnection, MySqlConnector",
                 "KeepAliveDuration": "00:10:00",
                 "PoolSize": 20,
                 "MaxPoolSize": 100,
@@ -47,10 +48,10 @@ var host = Host.CreateDefaultBuilder(args)
                 "SyncTable": true,
                 "ReadOnlyConfigs": [
                     {
-                        "ConnectionString": "Server=readonly01;User ID=readonly;Password=xxxx;Database=OrmBench;"
+                        "ConnectionString": "Server=mysql01;User ID=ormbench;Password=orm!123;Database=OrmBench;AllowLoadLocalInfile=true;"
                     },
                     {
-                        "ConnectionString": "Server=readonly02;User ID=readonly;Password=xxxx;Database=OrmBench;",
+                        "ConnectionString": "Server=mysql02;User ID=ormbench;Password=orm!123;Database=OrmBench;AllowLoadLocalInfile=true;",
                         "PoolSize": 10,
                         "KeepAliveDuration": "00:30:00"
                     }
@@ -87,6 +88,68 @@ LiteOrm 支持为每个主数据源配置若干只读从库，用于读写分离
 - LiteOrm 在执行只读操作（例如 SELECT 查询）时会优先选择只读配置，从而减轻主库写入压力并实现读扩展。
 - 如果所有只读配置不可用或未配置，LiteOrm 会回退到主数据源的连接。
 - 可结合连接池与自定义路由策略实现更复杂的读写分离、负载均衡或高可用策略。
+
+## 演示程序列表
+
+LiteOrm.Demo 包含 6 个演示程序，展示了框架的核心特性：
+
+### 1. ExprTypeDemo - 表达式全方案演示
+- **文件**: `Demos/ExprTypeDemo.cs`
+- **功能**: 演示如何构造、序列化和使用各种类型的 Expr 表达式
+- **包含内容**:
+  - 基础表达式类型 (ValueExpr, PropertyExpr, LogicExpr 等)
+  - 表达式的 JSON 序列化/反序列化
+  - Lambda 表达式自动转换
+  - 复杂的嵌套表达式组合
+
+### 2. PracticalQueryDemo - 综合查询实践
+- **文件**: `Demos/PracticalQueryDemo.cs`
+- **功能**: 展示实际业务中常见的查询操作和 SQL 输出
+- **包含内容**:
+  - 完整的 Lambda 链式查询
+  - Expression 扩展查询
+  - IQueryable 形式的查询
+  - SQL 语句生成展示
+
+### 3. **ExistsSubqueryDemo - Expr.Exists 子查询演示** ⭐ NEW
+- **文件**: `Demos/ExistsSubqueryDemo.cs`
+- **功能**: 演示高效的 EXISTS 子查询实现和最佳实践
+- **包含内容**:
+  - 基础 EXISTS 查询
+  - EXISTS 与其他条件组合
+  - 复杂的子查询条件
+  - EXISTS + 排序和分页
+  - 多个 EXISTS 条件组合
+  - NOT EXISTS 查询
+  - 性能对比说明
+  - 反向关联查询
+  - 完整的复杂查询示例
+
+### 4. TransactionDemo - 业务流程和事务示例
+- **文件**: `Demos/TransactionDemo.cs`
+- **功能**: 演示声明式事务和业务流程实现
+- **包含内容**:
+  - 使用 [Transaction] 特性的事务管理
+  - 跨多个服务的事务一致性
+  - 业务流程的分层设计
+
+### 5. DataViewDemo - DataViewDAO 聚合查询
+- **文件**: `Demos/DataViewDemo.cs`
+- **功能**: 演示聚合查询和 GroupBy 操作
+- **包含内容**:
+  - GroupBy 分组查询
+  - 聚合函数 (COUNT, SUM, AVG, MAX, MIN)
+  - DataTable 结果集处理
+
+### 6. UpdateExprDemo - 复杂更新操作
+- **文件**: `Demos/UpdateExprDemo.cs`
+- **功能**: 演示条件更新和批量更新操作
+- **包含内容**:
+  - 条件更新 (UPDATE ... WHERE ...)
+  - 批量更新操作
+  - 更新表达式构建
+
+---
 
 ## 核心功能演示
 
@@ -143,9 +206,52 @@ var multiCondition = await userService.SearchAsync(
 // 等效于: WHERE (Age > 18 AND UserName IS NOT NULL AND UserName Contains admin)
 ```
 
+### 1.5 EXISTS 子查询 (存在性检查)
+
+LiteOrm 支持使用 `Expr.Exists<T>` 进行高效的存在性检查，适合只需检查关联数据是否存在而无需返回关联数据的场景：
+
+```csharp
+// 基础 EXISTS 查询：查询拥有部门的用户
+var usersWithDept = await userService.SearchAsync(
+    q => q.Where(u => Expr.Exists<Department>(d => d.Id == u.DeptId))
+);
+
+// EXISTS + 复杂条件：年龄 > 25 且在 IT 部门
+var itUsers = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 25 && Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "IT"))
+);
+
+// EXISTS + 排序和分页
+var pagedResult = await userService.SearchAsync(
+    q => q.Where(u => Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "IT"))
+          .OrderByDescending(u => u.CreateTime)
+          .Skip(0)
+          .Take(10)
+);
+
+// NOT EXISTS：查询没有部门的用户
+var orphanUsers = await userService.SearchAsync(
+    q => q.Where(u => !Expr.Exists<Department>(d => d.Id == u.DeptId))
+);
+
+// 多个 EXISTS：满足多个存在性条件
+var multiExists = await userService.SearchAsync(
+    q => q.Where(u => 
+        Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "IT") &&
+        Expr.Exists<Department>(d => d.ParentId != null))
+);
+```
+
+**何时使用 EXISTS**：
+- ✅ 只检查关联数据是否存在，不需要返回关联表字段
+- ✅ 右表（关联表）数据量大，JOIN 可能产生大量临时行
+- ✅ 性能优于对应的 LEFT JOIN 场景
+
+详见完整演示：[ExistsSubqueryDemo.cs](./Demos/ExistsSubqueryDemo.cs)
+
 **注意**: `SearchAsync` 的 Lambda 表达式目前支持 `Where`、`OrderBy`、`OrderByDescending`、`ThenBy`、`Skip`、`Take`，不支持 `GroupBy` 和 `Select`。
 
-### 1.5 完整链式查询 (综合演示)
+### 1.6 完整链式查询 (综合演示)
 
 ```csharp
 var results = await userService.SearchAsync(
@@ -193,7 +299,6 @@ var lambdaExpr = Expr.Exp<User>(u => u.Age > 18 && u.UserName.Contains("admin"))
 
 // 逻辑表达式扩展功能 (直接从条件构建查询模型)
 var queryModel = lambdaExpr.OrderBy(Expr.Prop("Id").Desc()).Section(0, 10);
-```,oldString:
 ```
 
 ---
@@ -421,15 +526,32 @@ SQLiteBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "
 ```
 LiteOrm.Demo/
 ├── Program.cs              # 演示程序入口，包含 DI 配置和初始化逻辑
-├── ExprDemo.cs             # 表达式系统详尽示例
-├── Demos/
-│   ├── LambdaQueryDemo.cs  # Lambda 表达式查询演示（排序、分页、多条件）
-│   └── BusinessDemo.cs     # 业务服务与事务控制演示
-├── Models/
-│   ├── User.cs             # 用户实体及视图（含关联配置）
-│   ├── SalesRecord.cs      # 销售记录实体（含 IArged 分表配置）
-│   └── Department.cs       # 部门实体及视图
-└── Services/
-    ├── UserService.cs      # 用户服务
-    └── SalesService.cs     # 销售记录服务
+├── appsettings.json       # 配置文件
+├── README.md              # 本文档
+├── DAO/                   # 自定义 DAO
+│   ├── IUserCustomDAO.cs
+│   └── UserCustomDAO.cs
+├── Data/                  # 数据初始化
+│   └── DbInitializer.cs
+├── Demos/                 # 演示程序
+│   ├── DataViewDemo.cs           # 聚合查询演示
+│   ├── ExistsSubqueryDemo.cs     # EXISTS 子查询演示
+│   ├── ExprTypeDemo.cs           # 表达式类型演示
+│   ├── PracticalQueryDemo.cs     # 综合查询演示
+│   ├── TransactionDemo.cs        # 事务演示
+│   └── UpdateExprDemo.cs         # 更新表达式演示
+├── Models/                 # 实体模型
+│   ├── Department.cs      # 部门实体及视图
+│   ├── SalesRecord.cs     # 销售记录实体（含 IArged 分表配置）
+│   └── User.cs            # 用户实体及视图（含关联配置）
+└── Services/               # 服务层
+    ├── IUserService.cs     # 用户服务接口
+    ├── UserService.cs     # 用户服务实现
+    ├── ISalesService.cs   # 销售服务接口
+    ├── SalesService.cs    # 销售服务实现
+    ├── IDepartmentService.cs
+    ├── DepartmentService.cs
+    ├── IBusinessService.cs
+    ├── BusinessService.cs
+    └── ServiceFactory.cs  # 服务工厂
 ```

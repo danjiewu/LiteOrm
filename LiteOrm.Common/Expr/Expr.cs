@@ -109,7 +109,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">关联外部实体的类型</typeparam>
         /// <param name="lambda">针对关联表的过滤条件表达式。</param>
         /// <returns>外键 EXISTS 表达式。</returns>
-        public static bool ForeignExists<T>(Expression<Func<T, bool>> lambda)
+        public static bool Exists<T>(Expression<Func<T, bool>> lambda)
         {
             return lambda.Compile()(default);
         }

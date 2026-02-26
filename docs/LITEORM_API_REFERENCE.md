@@ -507,7 +507,45 @@ public class OrderView : Order
 var orders = orderViewService.Search<OrderView>(o => o.Amount > 100);
 ```
 
-### 4.6 事务操作
+### 4.6 EXISTS 子查询
+
+LiteOrm 支持通过 `Expr.Exists<T>` 进行高效的 EXISTS 子查询：
+
+```csharp
+// 基础 EXISTS 查询：查询拥有部门的所有用户
+var users = userService.Search(u => Expr.Exists<Department>(d => d.Id == u.DeptId));
+
+// EXISTS 与其他条件组合
+var users = userService.Search(u => u.Age > 25 && Expr.Exists<Department>(d => d.Id == u.DeptId));
+
+// 复杂的子查询条件
+var users = userService.Search(u => Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "IT"));
+
+// 排序和分页
+var users = await userService.SearchAsync(
+    q => q.Where(u => Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "IT"))
+          .OrderByDescending(u => u.CreateTime)
+          .Skip(0)
+          .Take(10)
+);
+
+// NOT EXISTS：查询没有部门的用户
+var orphans = userService.Search(u => !Expr.Exists<Department>(d => d.Id == u.DeptId));
+
+// 多个 EXISTS 条件（AND）
+var users = userService.Search(u => 
+    Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "IT") &&
+    Expr.Exists<Department>(d => d.ParentId != null));
+```
+
+**性能优势**：
+- EXISTS 仅检查是否存在，不返回关联表数据，性能优于 LEFT JOIN
+- 关联表数据量大时，EXISTS 的短路优化效果明显
+- 适合"存在性检查"场景，不适合需要返回关联数据的情况
+
+详细信息见：[Expr.Exists 子查询演示](../LiteOrm.Demo/Demos/ExistsSubqueryDemo.cs) 和 [快速参考指南](./../.trae/documents/ExistsSubquery_Quick_Reference.md)
+
+### 4.7 事务操作
 
 ```csharp
 [Service]
@@ -515,7 +553,7 @@ public class BusinessService
 {
     private readonly IUserService userService;
     private readonly IOrderService orderService;
-    
+
     [Transaction]  // 声明式事务
     public async Task CreateUserWithOrder(User user, Order order)
     {
@@ -540,7 +578,8 @@ Expr (基类)
 ├── LogicExpr (逻辑表达式，用于WHERE条件)
 │   ├── LogicBinaryExpr (二元逻辑: And/Or)
 │   ├── LogicSet (IN/NOT IN集合)
-│   └── NotExpr (NOT否定)
+│   ├── NotExpr (NOT否定)
+│   └── ForeignExpr (EXISTS子查询)
 ├── ValueExpr (值表达式)
 │   ├── ValueBinaryExpr (二元比较: >/</==/!=)
 │   ├── ValueSet (值集合)
@@ -548,9 +587,14 @@ Expr (基类)
 ├── PropertyExpr (属性引用)
 ├── AggregateFunctionExpr (聚合函数: COUNT/SUM/AVG/MAX/MIN)
 ├── FunctionExpr (函数调用)
-├── ForeignExpr (关联表字段)
 └── LambdaExpr (Lambda转换结果)
 ```
+
+**ForeignExpr（EXISTS 子查询）特性说明：**
+- `ForeignExpr` 是 `LogicExpr` 的子类，用于表示 EXISTS 子查询
+- 支持关联表的条件过滤和复杂条件组合
+- 可与其他逻辑条件使用 AND/OR 进行组合
+- 支持 NOT 否定操作（实现 NOT EXISTS）
 
 ### 5.2 Lambda 自动转换
 
@@ -603,6 +647,10 @@ Expr isNotNull = Expr.Prop("Email").IsNotNull();
 // 逻辑组合
 Expr andExpr = Expr.And(cmp1, like);
 Expr orExpr = Expr.Or(cmp1, cmp2);
+
+// EXISTS 子查询
+Expr existsExpr = Expr.Exists<Department>(d => d.Id == 1);
+Expr foreignExpr = Expr.Foreign<Department>(Expr.Prop("Id") == 1);
 
 // 聚合函数
 Expr countExpr = Expr.Prop("Id").Count();
@@ -741,54 +789,61 @@ Task<TView> SearchOneAsync<TView>(Expr expr, CancellationToken cancellationToken
 
 ```
 LiteOrm.Common/
-├── Attributes/           # 特性定义（Table, Column, ForeignType等）
-├── Classes/               # 工具类（ExprConvert, Util等）
-├── DAO/                   # 数据访问接口
-│   ├── IObjectDAO.cs     # 实体DAO接口
-│   ├── IObjectDAOAsync.cs # 实体DAO异步接口
-│   ├── IObjectViewDAO.cs # 视图DAO接口
+├── Attributes/              # 特性定义（Table, Column, ForeignType等）
+├── Classes/                 # 工具类（ExprConvert, Util等）
+├── DAO/                     # 数据访问接口
+│   ├── IObjectDAO.cs       # 实体DAO接口
+│   ├── IObjectDAOAsync.cs  # 实体DAO异步接口
+│   ├── IObjectViewDAO.cs   # 视图DAO接口
 │   └── IObjectViewDAOAsync.cs
-├── Expr/                  # 表达式系统（核心）
-│   ├── Expr.cs           # Expr基类
-│   ├── ExprExtensions.cs # Expr扩展方法
-│   ├── LogicExpr.cs      # 逻辑表达式
-│   ├── PropertyExpr.cs    # 属性表达式
-│   └── LambdaExpr.cs      # Lambda转换
-├── MetaData/             # 元数据
-│   ├── TableDefinition.cs # 表定义
-│   ├── SqlColumn.cs       # 列定义
+├── Expr/                   # 表达式系统（核心）
+│   ├── Expr.cs             # Expr基类
+│   ├── ExprExtensions.cs   # Expr扩展方法
+│   ├── LogicExpr.cs        # 逻辑表达式
+│   ├── PropertyExpr.cs     # 属性表达式
+│   ├── LambdaExpr.cs       # Lambda转换
+│   └── ...
+├── MetaData/               # 元数据
+│   ├── TableDefinition.cs  # 表定义
+│   ├── SqlColumn.cs        # 列定义
 │   └── TableInfoProvider.cs
-├── Model/                 # 基础模型
+├── Model/                   # 基础模型
 │   └── ObjectBase.cs
-├── Service/               # 服务接口
+├── Service/                 # 服务接口
 │   ├── IEntityService.cs
 │   ├── IEntityServiceAsync.cs
 │   ├── IEntityViewService.cs
 │   ├── IEntityViewServiceAsync.cs
 │   └── EntityServiceExtensions.cs
-├── SqlBuilder/            # SQL构建器接口
-└── SqlSegment/            # SQL片段（Select/Where/OrderBy等）
+├── SqlBuilder/              # SQL构建器接口
+└── SqlSegment/              # SQL片段（Select/Where/OrderBy等）
 
 LiteOrm/
-├── Core/                   # 核心实现
-│   ├── SqlGen.cs         # SQL生成器
+├── Classes/                 # 核心类
+│   ├── SqlGen.cs            # SQL生成器
 │   ├── LiteOrmTableSyncInitializer.cs
-│   └── LiteOrmServiceExtensions.cs  # RegisterLiteOrm 扩展方法
-├── DAO/                   # DAO实现
-│   ├── DAOBase.cs        # DAO基类
-│   ├── ObjectDAO.cs      # 实体DAO实现
-│   ├── ObjectViewDAO.cs   # 视图DAO实现
-│   └── DataViewDAO.cs    # DataTable DAO实现
-├── Service/               # 服务实现
+│   ├── LiteOrmServiceExtensions.cs  # RegisterLiteOrm 扩展方法
+│   └── ...
+├── DAO/                     # DAO实现
+│   ├── DAOBase.cs           # DAO基类
+│   ├── ObjectDAO.cs         # 实体DAO实现
+│   ├── ObjectViewDAO.cs     # 视图DAO实现
+│   ├── DataViewDAO.cs       # DataTable DAO实现
+│   └── ...
+├── Service/                 # 服务实现
 │   ├── EntityService.cs
 │   └── EntityViewService.cs
-└── SqlBuilder/            # SQL构建器实现
-    ├── SqlBuilder.cs     # 默认SQL构建器
-    ├── MySqlBuilder.cs   # MySQL
-    ├── SqlServerBuilder.cs # SQL Server
+├── DAOContext/              # DAO上下文
+│   ├── DAOContext.cs
+│   ├── DAOContextPool.cs
+│   └── DAOContextPoolFactory.cs
+└── SqlBuilder/               # SQL构建器实现
+    ├── SqlBuilder.cs        # 默认SQL构建器
+    ├── MySqlBuilder.cs      # MySQL
+    ├── SqlServerBuilder.cs   # SQL Server
     ├── PostgreSqlBuilder.cs # PostgreSQL
-    ├── OracleBuilder.cs   # Oracle
-    └── SQLiteBuilder.cs   # SQLite
+    ├── OracleBuilder.cs      # Oracle
+    └── SQLiteBuilder.cs     # SQLite
 ```
 
 ---
@@ -835,22 +890,42 @@ LiteOrm/
 
 ## 九、性能测试结果
 
-基于 `LiteOrm.Benchmark` 项目（Linux Ubuntu 24.04 LTS, Intel Xeon Silver 4314 CPU, .NET 10.0.0）的测试结果：
+基于 `LiteOrm.Benchmark` 项目（Windows 11, Intel Core i5-13400F 2.50GHz, .NET 10.0.103）的测试结果：
+
+### 性能对比概览（BatchCount=100）
+
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) | 内存分配 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **LiteOrm** | **3,743.9** | **4,684.3** | 5,535.7 | 974.9 | **295.97 KB** |
+| FreeSql | 4,358.7 | 4,859.8 | **4,843.1** | 942.3 | 460.62 KB |
+| SqlSugar | 4,126.6 | 5,377.7 | 9,355.1 | 1,664.3 | 476.13 KB |
+| Dapper | 13,236.3 | 16,492.4 | 18,593.3 | **893.4** | 254.58 KB |
+| EF Core | 21,973.8 | 21,571.2 | 22,967.5 | 6,680.8 | 1,965.32 KB |
 
 ### 性能对比概览（BatchCount=1000）
 
-| 框架 | 插入性能 (ms) | 更新性能 (ms) | 更新或插入 (ms) | 关联查询 (ms) | 内存分配 (Insert) |
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) | 内存分配 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **14.421** | **24.342** | 21.138 | 16.933 | **868.15 KB** |
-| FreeSql | 22.123 | 42.261 | **22.006** | 17.261 | 4629.54 KB |
-| SqlSugar | 18.993 | 46.280 | 106.873 | 40.103 | 4569.7 KB |
-| Dapper | 220.316 | 236.501 | 246.259 | **16.584** | 2475.62 KB |
-| EF Core | 155.787 | 136.900 | 141.613 | 29.384 | 16265.64 KB |
+| **LiteOrm** | **10,711.9** | **16,472.2** | 16,733.4 | **6,061.1** | **870.27 KB** |
+| FreeSql | 17,707.5 | 30,842.5 | **14,769.0** | 6,520.9 | 4,629.99 KB |
+| SqlSugar | 15,775.0 | 35,522.5 | 66,357.1 | 12,304.3 | 4,571.36 KB |
+| Dapper | 120,213.5 | 132,356.8 | 136,051.1 | 6,556.1 | 2,476.22 KB |
+| EF Core | 169,846.8 | 149,932.5 | 157,037.7 | 12,422.7 | 18,118.07 KB |
+
+### 性能对比概览（BatchCount=5000）
+
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) | 内存分配 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **LiteOrm** | **40,268.4** | **68,069.3** | 60,711.4 | **39,060.2** | **4,082.59 KB** |
+| FreeSql | 72,488.8 | 133,942.8 | **58,183.2** | 41,220.4 | 23,333.54 KB |
+| SqlSugar | 76,643.9 | 194,130.4 | 885,872.8 | 63,744.0 | 23,196.37 KB |
+| Dapper | 690,745.5 | 659,912.8 | 677,140.4 | 39,942.4 | 12,349.48 KB |
+| EF Core | 824,700.5 | 749,069.8 | 794,845.9 | 49,403.4 | 80,230.09 KB |
 
 完整测试报告请参考：[LiteOrm 性能评测报告](../LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)
 
 ---
 
-**文档版本：** 1.0  
+**文档版本：** 1.1  
 **最后更新：** 2026年  
-**适用版本：** LiteOrm >=8.0.6
+**适用版本：** LiteOrm >=8.0.7

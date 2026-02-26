@@ -103,51 +103,6 @@ namespace LiteOrm.Common
             _typeMemberHandlers[(type, memberName)] = handler ?? DefaultMemberHandler;
         }
 
-        /// <summary>
-        /// ForeignExists 方法处理器：将 Expr.ForeignExists{T}(lambda) 转换为 ForeignExpr。
-        /// </summary>
-        private static Expr HandleForeignExists(MethodCallExpression node, LambdaExprConverter converter)
-        {
-            if (node.Method.Name == "ForeignExists" && node.Arguments.Count == 1)
-            {
-                Expression lambdaArg = node.Arguments[0];
-                if (lambdaArg is UnaryExpression unaryExpr && unaryExpr.NodeType == ExpressionType.Quote)
-                {
-                    lambdaArg = unaryExpr.Operand;
-                }
-                var lambda = lambdaArg as LambdaExpression;
-                if (lambda != null)
-                {
-                    return converter.ConvertInternal(lambda);
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// 获取指定类型和名称的方法处理器。
-        /// </summary>
-        /// <param name="type">类型。</param>
-        /// <param name="methodName">方法名称。</param>
-        /// <returns>方法处理器。</returns>
-        public static Func<MethodCallExpression, LambdaExprConverter, Expr> GetMethodHandler(Type type, string methodName)
-        {
-            if (type != null && _typeMethodHandlers.TryGetValue((type, methodName), out var handler))
-            {
-                return handler;
-            }
-            if (_methodNameHandlers.TryGetValue(methodName, out var nameHandler))
-            {
-                return nameHandler;
-            }
-            return null;
-        }
-
-        static LambdaExprConverter()
-        {
-            RegisterMethodHandler(typeof(Expr), "ForeignExists", HandleForeignExists);
-        }
-
         #endregion 静态成员
 
         /// <summary>
@@ -162,6 +117,8 @@ namespace LiteOrm.Common
             Type objectType = _rootParameter.Type;
             if (objectType.IsGenericType && (objectType.GetGenericTypeDefinition() == typeof(IQueryable<>) || objectType.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
                 objectType = objectType.GetGenericArguments()[0];
+            if (objectType.Name.StartsWith("<>f__AnonymousType") && objectType.IsDefined(typeof(CompilerGeneratedAttribute), false) && objectType.IsGenericType && objectType.IsSealed)//匿名类不作为参数别名
+                return;
             if (_rootParameter != null)
             {
                 _parameterAliases[_rootParameter] = objectType.Name;
@@ -259,12 +216,7 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertLambda(LambdaExpression lambda)
         {
-            ParameterExpression parameter = lambda.Parameters.FirstOrDefault();
-            if (parameter != null && !_parameterAliases.ContainsKey(parameter))
-            {
-                _parameterAliases[parameter] = "t" + _parameterAliases.Count;
-            }
-            return new ForeignExpr(parameter.Type, AsLogic(ConvertInternal(lambda.Body)));
+            return lambda.ReturnType == typeof(bool) ? AsLogic(ConvertInternal(lambda.Body)) : AsValue(ConvertInternal(lambda.Body));
         }
 
         private Expr ConvertNew(NewExpression node)
@@ -553,8 +505,9 @@ namespace LiteOrm.Common
             var type = node.Method.DeclaringType;
 
             // 处理 LINQ 扩展方法（Queryable、Enumerable）
-            if (type == typeof(Queryable) || type == typeof(Enumerable))
+            if (type == typeof(Queryable) || type == typeof(Enumerable) || type != null && type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IQueryable<>) || type.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
             {
+                // 处理 IQueryable/Enumerable 上的扩展方法
                 switch (node.Method.Name)
                 {
                     case "Where": return HandleWhere(node);
@@ -565,7 +518,10 @@ namespace LiteOrm.Common
                     case "GroupBy": return HandleGroupBy(node);
                     case "Select": return HandleSelect(node);
                 }
-                ;
+            }
+            if (type == typeof(Expr) && node.Method.Name == "Exists")
+            {
+                return HandleExists(node);
             }
 
             // 处理类型成员处理器
@@ -682,13 +638,12 @@ namespace LiteOrm.Common
             if (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IQueryable<>) || type.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
                 type = type.GetGenericArguments()[0];
 
-            if (_parameterAliases.TryGetValue(node, out var alias))
+            if (!_parameterAliases.TryGetValue(node, out var alias))
             {
-                return new FromExpr(type) { Alias = alias };
+                alias = "T" + _parameterAliases.Count;
+                _parameterAliases[node] = alias;
             }
 
-            alias = "t" + _parameterAliases.Count;
-            _parameterAliases[node] = alias;
             return new FromExpr(type) { Alias = alias };
         }
 
@@ -731,7 +686,9 @@ namespace LiteOrm.Common
             {
                 source = tve;
             }
-            var newCondition = ToLogicExpr(node.Arguments[1] as LambdaExpression);
+
+            // 将 Lambda 条件转换为 LogicExpr
+            var newCondition = ToLogicExpr(lambda);
 
             // 如果源已经是 WhereExpr，将新条件与现有条件用 AND 合并
             if (source is WhereExpr existingWhere)
@@ -973,6 +930,32 @@ namespace LiteOrm.Common
 
             // 回退到普通转换
             return ConvertInternal(arg);
+        }
+
+        /// <summary>
+        /// Exists 方法处理器：将 Expr.Exists{T}(lambda) 转换为 ForeignExpr。
+        /// </summary>
+        private Expr HandleExists(MethodCallExpression node)
+        {
+            if (node.Method.Name == "Exists" && node.Arguments.Count == 1)
+            {
+                Expression lambdaArg = node.Arguments[0];
+                if (lambdaArg is UnaryExpression unaryExpr && unaryExpr.NodeType == ExpressionType.Quote)
+                {
+                    lambdaArg = unaryExpr.Operand;
+                }
+                var lambda = lambdaArg as LambdaExpression;
+                if (lambda != null)
+                {
+                    ParameterExpression parameter = lambda.Parameters.FirstOrDefault();
+                    if (parameter != null && !_parameterAliases.ContainsKey(parameter))
+                    {
+                        _parameterAliases[parameter] = "T" + _parameterAliases.Count;
+                    }
+                    return new ForeignExpr(parameter.Type, _parameterAliases[parameter], AsLogic(ConvertInternal(lambda.Body)));
+                }
+            }
+            return null;
         }
 
         /// <summary>

@@ -32,17 +32,20 @@ using (var scope = host.Services.CreateScope())
 
     // [1] 表达式全方案演示 (构造、序列化、Lambda转换)
     ExprTypeDemo.RunAll();
-    
+
     // [2] 综合查询实践与 SQL 输出 (业务查询、数据库交互)
     await PracticalQueryDemo.RunAsync(serviceFactory);
 
-    // [3] 业务流程示例 (事务处理)
+    // [3] Expr.Exists 子查询演示 (存在性查询)
+    await ExistsSubqueryDemo.RunAsync(serviceFactory);
+
+    // [4] 业务流程示例 (事务处理)
     await TransactionDemo.RunThreeTierDemoAsync(serviceFactory);
 
-    // [4] DataViewDAO 演示 (直接返回 DataTable)
+    // [5] DataViewDAO 演示 (直接返回 DataTable)
     await DataViewDemo.RunAsync(scope.ServiceProvider);
 
-    // [5] UpdateExpr 演示 (复杂更新操作)
+    // [6] UpdateExpr 演示 (复杂更新操作)
     await UpdateExprDemo.RunAsync(serviceFactory);
 }
 
