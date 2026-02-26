@@ -1,6 +1,8 @@
 using LiteOrm.Common;
 using LiteOrm.Tests.Infrastructure;
 using LiteOrm.Tests.Models;
+using System.Configuration;
+using System.Linq.Expressions;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Xunit;
@@ -42,7 +44,7 @@ namespace LiteOrm.Tests
 
             Assert.True(e1.Equals(e2));
             Assert.False(e1.Equals(e3));
-            Assert.True(e1.Equals(e4)); 
+            Assert.True(e1.Equals(e4));
 
             ValueExpr s1 = "test";
             ValueExpr s2 = "test";
@@ -222,6 +224,17 @@ namespace LiteOrm.Tests
 
             // Serialization
             TestSerialization(f1);
+        }
+
+        [Fact]
+        public void LambdaExprConverter_ForeignExists_Tests()
+        {
+
+            var handler = LambdaExprConverter.GetMethodHandler(typeof(Expr), "ForeignExists");
+            Assert.NotNull(handler);
+
+            var result = Expr.Exp<TestDepartment>(d => d.Id > 0 && Expr.ForeignExists<TestUser>(u => u.DeptId == d.Id));
+            Assert.NotNull(result);
         }
 
         [Fact]

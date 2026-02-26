@@ -43,7 +43,7 @@ namespace LiteOrm.Common
         {
             get
             {
-                return _expr ?? (_expr = new LambdaExprConverter(Expression).ToExpr());
+                return _expr ?? (_expr = new LambdaExprConverter(Expression).ToLogicExpr());
             }
         }
 

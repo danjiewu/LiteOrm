@@ -17,7 +17,7 @@ namespace LiteOrm.Tests
         public void BasicQuery_Test()
         {
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q.Where(u => u.Age > 18);
-            var expr = LambdaSqlSegmentConverter.ToSqlSegment(queryExpr);
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
 
             Assert.IsType<WhereExpr>(expr);
             var where = (WhereExpr)expr;
@@ -34,7 +34,7 @@ namespace LiteOrm.Tests
                 .Skip(10)
                 .Take(20);
 
-            var expr = LambdaSqlSegmentConverter.ToSqlSegment(queryExpr);
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
 
             Assert.IsType<SectionExpr>(expr);
             var section = (SectionExpr)expr;
@@ -56,7 +56,7 @@ namespace LiteOrm.Tests
                 .GroupBy(u => u.DeptId)
                 .Select(g => g.Key);
 
-            var expr = LambdaSqlSegmentConverter.ToSqlSegment(queryExpr);
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
             Assert.IsType<SelectExpr>(expr);
             var select = (SelectExpr)expr;
             Assert.IsType<GroupByExpr>(select.Source);
@@ -68,7 +68,7 @@ namespace LiteOrm.Tests
             Expression<Func<IQueryable<TestUser>, IQueryable<object>>> queryExpr = q => q
                 .Select(u => new { u.Name, u.Age });
 
-            var expr = LambdaSqlSegmentConverter.ToSqlSegment(queryExpr);
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
 
             Assert.IsType<SelectExpr>(expr);
             var select = (SelectExpr)expr;
@@ -86,7 +86,7 @@ namespace LiteOrm.Tests
                 .Select(u => new { u.Name, u.Age })
                 .Where(x => x.Age > 18);
 
-            var expr = LambdaSqlSegmentConverter.ToSqlSegment(queryExpr);
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
 
             Assert.IsType<WhereExpr>(expr);
             var where = (WhereExpr)expr;
@@ -110,7 +110,7 @@ namespace LiteOrm.Tests
                 .Where(u => u.Age > 18)
                 .Where(u => u.Name.Contains("A"));
 
-            var expr = LambdaSqlSegmentConverter.ToSqlSegment(queryExpr);
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
 
             // 多个 Where 应该合并为一个 WhereExpr
             Assert.IsType<WhereExpr>(expr);
@@ -135,7 +135,7 @@ namespace LiteOrm.Tests
                 .Skip(10)
                 .Take(20);
 
-            var expr = LambdaSqlSegmentConverter.ToSqlSegment(queryExpr);
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
 
             Assert.IsType<SectionExpr>(expr);
             var section = (SectionExpr)expr;

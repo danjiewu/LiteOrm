@@ -104,6 +104,17 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 创建外键 EXISTS 表达式，用于检查关联表是否存在满足条件的记录。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// </summary>
+        /// <typeparam name="T">关联外部实体的类型</typeparam>
+        /// <param name="lambda">针对关联表的过滤条件表达式。</param>
+        /// <returns>外键 EXISTS 表达式。</returns>
+        public static bool ForeignExists<T>(Expression<Func<T, bool>> lambda)
+        {
+            return lambda.Compile()(default);
+        }
+
+        /// <summary>
         /// 创建一个属性等于值的二元表达式。
         /// </summary>
         /// <param name="propertyName">属性名称。</param>
@@ -180,7 +191,7 @@ namespace LiteOrm.Common
         /// <returns>表达式对象。</returns>
         public static LogicExpr Exp<T>(Expression<Func<T, bool>> expression)
         {
-            return new LambdaExprConverter(expression).ToExpr();
+            return new LambdaExprConverter(expression).ToLogicExpr();
         }
 
         /// <summary>
@@ -269,7 +280,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
         /// <returns>SQL 片段实例</returns>
-        public static Expr Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
+        public static Expr Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaExprConverter.ToSqlSegment(expression);
 
         /// <summary>
         /// 使用 IQueryable 形式的 Lambda 表达式创建 SQL 片段（带返回值）
@@ -278,7 +289,7 @@ namespace LiteOrm.Common
         /// <typeparam name="TResult">返回结果类型</typeparam>
         /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
         /// <returns>SQL 片段实例</returns>
-        public static Expr Query<T, TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaSqlSegmentConverter.ToSqlSegment(expression);
+        public static Expr Query<T, TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaExprConverter.ToSqlSegment(expression);
 
         /// <summary>
         /// 创建范围查询表达式 (BETWEEN)。

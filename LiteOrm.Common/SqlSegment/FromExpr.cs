@@ -36,7 +36,7 @@ namespace LiteOrm.Common
             {
                 if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
                 {
-                    throw new ArgumentException("Alias contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Alias));
+                    throw new ArgumentException("Alias contains illegal characters. Only letters, numbers, and underscores are allowed:" + value, nameof(Alias));
                 }
                 _alias = value;
             }
