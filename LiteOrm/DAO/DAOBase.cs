@@ -282,35 +282,6 @@ namespace LiteOrm
             if (TableArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableArgs);
             return DAOContext.PreparedCommands.GetOrAdd((ObjectType, methodName), _ => newCommandHandler());
         }
-        /// <summary>
-        /// 根据 SQL 语句和参数建立 IDbCommand
-        /// </summary>
-        /// <param name="sql">SQL 语句，SQL 中可以包含参数信息，参数名为以 0 开始的递增整数，对应 paramValues 中值的下标</param>
-        /// <param name="paramValues">参数值，需要与 SQL 中的参数一一对应，为空时表示没有参数</param>
-        /// <returns>IDbCommand</returns>
-        public DbCommandProxy MakeParamCommand(string sql, IEnumerable paramValues)
-        {
-            int paramIndex = 0;
-            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
-            if (paramValues is not null)
-                foreach (object paramValue in paramValues)
-                {
-                    paramList.Add(Convert.ToString(paramIndex++), paramValue);
-
-                }
-            return MakeNamedParamCommand(sql, paramList);
-        }
-
-        /// <summary>
-        /// 根据 SQL 语句和参数建立 IDbCommand
-        /// </summary>
-        /// <param name="sql">SQL 语句，SQL 中可以包含参数信息，参数名为以 0 开始的递增整数，对应 paramValues 中值的下标</param>
-        /// <param name="paramValues">参数值，需要与 SQL 中的参数一一对应，为空时表示没有参数</param>
-        /// <returns>IDbCommand</returns>
-        public DbCommandProxy MakeParamCommand(string sql, params object[] paramValues)
-        {
-            return MakeParamCommand(sql, (IEnumerable)paramValues);
-        }
 
         /// <summary>
         /// 根据 SQL 语句和命名的参数建立 <see cref="IDbCommand"/>。
@@ -322,17 +293,6 @@ namespace LiteOrm
         {
             DbCommandProxy command = NewCommand();
             command.CommandText = ReplaceParam(sql);
-            AddParamsToCommand(command, paramValues);
-            return command;
-        }
-
-        /// <summary>
-        /// 将参数添加到IDbCommand中
-        /// </summary>
-        /// <param name="command">需要添加参数的IDbCommand</param>
-        /// <param name="paramValues">参数列表，包括参数名称和值，为空时表示没有参数</param>
-        public void AddParamsToCommand(DbCommand command, IEnumerable<KeyValuePair<string, object>> paramValues)
-        {
             if (paramValues is not null)
                 foreach (KeyValuePair<string, object> para in paramValues)
                 {
@@ -341,6 +301,7 @@ namespace LiteOrm
                     param.Value = SqlBuilder.ConvertToDbValue(para.Value);
                     command.Parameters.Add(param);
                 }
+            return command;
         }
 
         /// <summary>
@@ -380,6 +341,18 @@ namespace LiteOrm
             var context = CreateSqlBuildContext();
             return MakeNamedParamCommand(expr.ToSql(context, SqlBuilder, paramList), paramList);
         }
+
+#if !NETSTANDARD2_0
+        /// <summary>
+        /// 根据插值字符串处理器创建命令
+        /// </summary>
+        /// <param name="handler">插值字符串处理器</param>
+        /// <returns>生成的查询命令</returns>
+        protected DbCommandProxy MakeCommand(ExprInterpolatedStringHandler handler)
+        {
+            return MakeNamedParamCommand(handler.GetSqlResult(), handler.GetParams());
+        }
+#endif
 
         /// <summary>
         /// 替换 SQL 中的标记为实际 SQL
