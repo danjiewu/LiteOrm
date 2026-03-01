@@ -103,7 +103,7 @@ namespace LiteOrm
         /// <summary>
         /// 构建SQL语句的SQLBuilder
         /// </summary>
-        protected internal virtual SqlBuilder SqlBuilder
+        public virtual SqlBuilder SqlBuilder
         {
             get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType); }
         }
@@ -127,7 +127,7 @@ namespace LiteOrm
         /// 创建SQL执行上下文
         /// </summary>
         /// <returns></returns>
-        protected virtual SqlBuildContext CreateSqlBuildContext(bool initTable = false)
+        public virtual SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
             if (initTable) return new SqlBuildContext(Table, Table.Name, TableArgs) { SingleTable = !IsView };
             else return new SqlBuildContext() { TableArgs = TableArgs, SingleTable = !IsView };
@@ -341,18 +341,6 @@ namespace LiteOrm
             var context = CreateSqlBuildContext();
             return MakeNamedParamCommand(expr.ToSql(context, SqlBuilder, paramList), paramList);
         }
-
-#if NET8_0_OR_GREATER || NET10_0_OR_GREATER
-        /// <summary>
-        /// 根据插值字符串处理器创建命令
-        /// </summary>
-        /// <param name="handler">插值字符串处理器</param>
-        /// <returns>生成的查询命令</returns>
-        protected DbCommandProxy MakeCommand(ExprInterpolatedStringHandler handler)
-        {
-            return MakeNamedParamCommand(handler.GetSqlResult(), handler.GetParams());
-        }
-#endif
 
         /// <summary>
         /// 替换 SQL 中的标记为实际 SQL
