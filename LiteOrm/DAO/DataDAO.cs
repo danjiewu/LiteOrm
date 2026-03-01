@@ -39,8 +39,8 @@ namespace LiteOrm
         /// </summary>
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
         /// <param name="expr">更新的条件</param>
-        /// <returns>更新的记录数</returns>
-        public virtual int UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, LogicExpr expr)
+        /// <returns>空结果对象，可通过Execute()和ExecuteAsync()执行操作。</returns>
+        public virtual NonQueryResult UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, LogicExpr expr)
         {
             List<string> strSets = new List<string>();
             List<KeyValuePair<string, object>> paramValues = new List<KeyValuePair<string, object>>();
@@ -54,8 +54,8 @@ namespace LiteOrm
             var context = CreateSqlBuildContext(true);
             string where = expr.ToSql(context, SqlBuilder, paramValues);
             string updateSql = $"UPDATE {ParamTable} SET {String.Join(",", strSets.ToArray())} {ToWhereSql(where)}";
-            using var command = MakeNamedParamCommand(updateSql, paramValues);
-            return command.ExecuteNonQuery();
+            var command = MakeNamedParamCommand(updateSql, paramValues);
+            return new NonQueryResult(command);
         }
 
         /// <summary>
@@ -63,8 +63,8 @@ namespace LiteOrm
         /// </summary>
         /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
         /// <param name="keys">主键</param>
-        /// <returns>更新是否成功</returns>
-        public virtual bool UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys)
+        /// <returns>空结果对象，可通过Execute()和ExecuteAsync()执行操作。</returns>
+        public virtual NonQueryResult UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys)
         {
             ThrowExceptionIfNoKeys();
             ThrowExceptionIfWrongKeys(keys);
@@ -74,52 +74,9 @@ namespace LiteOrm
             {
                 expr.Add(Expr.Prop(column.PropertyName, keys[i++]));
             }
-            return UpdateAllValues(values, expr) > 0;
+            return UpdateAllValues(values, expr);
         }
 
-        /// <summary>
-        /// 异步根据条件更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="expr">更新的条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含更新的记录数</returns>
-        public async Task<int> UpdateAllValuesAsync(IEnumerable<KeyValuePair<string, object>> values, LogicExpr expr, CancellationToken cancellationToken = default)
-        {
-            List<string> strSets = new List<string>();
-            List<KeyValuePair<string, object>> paramValues = new List<KeyValuePair<string, object>>();
-            foreach (KeyValuePair<string, object> value in values)
-            {
-                SqlColumn column = Table.GetColumn(value.Key);
-                if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
-                strSets.Add(SqlBuilder.ToSqlName(column.Name) + "=" + ToSqlParam(paramValues.Count.ToString()));
-                paramValues.Add(paramValues.Count.ToString(), value.Value);
-            }
-            var context = CreateSqlBuildContext(true);
-            string updateSql = $"UPDATE {ParamTable} SET {String.Join(",", strSets.ToArray())} {ToWhereSql(expr.ToSql(context, SqlBuilder, paramValues))}";
 
-            using var command = MakeNamedParamCommand(updateSql, paramValues);
-            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// 异步根据主键更新数据
-        /// </summary>
-        /// <param name="values">需要更新的属性及数值，key为属性名，value为数值</param>
-        /// <param name="keys">主键</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含更新是否成功</returns>
-        public async Task<bool> UpdateValuesAsync(IEnumerable<KeyValuePair<string, object>> values, object[] keys, CancellationToken cancellationToken = default)
-        {
-            ThrowExceptionIfNoKeys();
-            ThrowExceptionIfWrongKeys(keys);
-            LogicSet expr = new LogicSet(LogicJoinType.And);
-            int i = 0;
-            foreach (ColumnDefinition column in TableDefinition.Keys)
-            {
-                expr.Add(Expr.Prop(column.PropertyName, keys[i++]));
-            }
-            return await UpdateAllValuesAsync(values, expr, cancellationToken).ConfigureAwait(false) > 0;
-        }
     }
 }

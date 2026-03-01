@@ -1,42 +1,62 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LiteOrm.Common
 {
+
+
     #region IObjectViewDAO<T>
     /// <summary>
     /// 实体类的查询数据访问对象的泛型接口
     /// </summary>
     /// <typeparam name="T">实体类类型</typeparam>
-    public interface IObjectViewDAO<T> : IObjectViewDAOAsync<T>, IObjectViewDAO
+    public interface IObjectViewDAO<T> : IObjectViewDAO
     {
         /// <summary>
         /// 根据主键获取对象
         /// </summary>
         /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
-        /// <returns></returns>
-        new T GetObject(params object[] keys);
+        /// <returns>可枚举结果对象，可通过FirstOrDefault()和FirstOrDefaultAsync()获取结果</returns>
+        new EnumerableResult<T> GetObject(params object[] keys);
 
         /// <summary>
         /// 获取单个符合条件的对象
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
-        new T SearchOne(Expr expr);
-        /// <summary>
-        /// 遍历每个符合条件的对象
-        /// </summary>
-        /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <param name="func">要调用的函数委托</param>
-        void ForEach(Expr expr, Action<T> func);
+        /// <returns>可枚举结果对象，可通过FirstOrDefault()和FirstOrDefaultAsync()获取结果</returns>
+        new EnumerableResult<T> SearchOne(Expr expr);
+
 
         /// <summary>
         /// 根据条件查询
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
+        /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
+        new EnumerableResult<T> Search(Expr expr = null);
+
+        /// <summary>
+        /// 得到符合条件的对象个数
+        /// </summary>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
+        /// <returns>值结果对象</returns>
+        new ValueResult<int> Count(Expr expr);
+
+        /// <summary>
+        /// 判断符合条件的对象是否存在
+        /// </summary>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
+        /// <returns>值结果对象</returns>
+        new ValueResult<bool> Exists(Expr expr);
+
+        /// <summary>
+        /// 根据条件查询并返回列表
+        /// </summary>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象列表</returns>
-        new List<T> Search(Expr expr = null);
+        List<T> ToList(Expr expr = null);
 
     }
     #endregion
@@ -46,42 +66,42 @@ namespace LiteOrm.Common
     /// 实体类的查询数据访问对象的非泛型接口
     /// </summary>
     [AutoRegister(false)]
-    public interface IObjectViewDAO : IObjectViewDAOAsync
+    public interface IObjectViewDAO
     {
         /// <summary>
         /// 根据主键获取对象
         /// </summary>
         /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
-        /// <returns></returns>
-        Object GetObject(params object[] keys);
+        /// <returns>可枚举结果对象，可通过FirstOrDefault()和FirstOrDefaultAsync()获取结果</returns>
+        object GetObject(params object[] keys);
 
         /// <summary>
         /// 判断主键对应的对象是否存在
         /// </summary>
         /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
-        /// <returns>是否存在</returns>
-        bool ExistsKey(params object[] keys);
+        /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
+        ValueResult<bool> ExistsKey(params object[] keys);
 
         /// <summary>
         /// 判断对象是否存在
         /// </summary>
         /// <param name="o">对象</param>
-        /// <returns>是否存在</returns>
-        bool Exists(object o);
+        /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
+        ValueResult<bool> Exists(object o);
 
         /// <summary>
         /// 判断符合条件的对象是否存在
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <returns>是否存在</returns>
-        bool Exists(Expr expr);
+        /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
+        object Exists(Expr expr);
 
         /// <summary>
         /// 得到符合条件的对象个数
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <returns>符合条件的对象数量</returns>
-        int Count(Expr expr);
+        /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
+        object Count(Expr expr);
 
         /// <summary>
         /// 获取单个符合条件的对象

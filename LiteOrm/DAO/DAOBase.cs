@@ -527,6 +527,7 @@ namespace LiteOrm
         /// <param name="keys"></param>
         protected void ThrowExceptionIfWrongKeys(params object[] keys)
         {
+            if (keys is null) throw new ArgumentNullException("keys");
             if (keys.Length != TableDefinition.Keys.Length)
             {
                 if (_exceptionWrongKeys is null)

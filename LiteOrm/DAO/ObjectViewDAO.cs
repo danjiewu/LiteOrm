@@ -37,6 +37,8 @@ namespace LiteOrm
     [AutoRegister(ServiceLifetime.Scoped)]
     public class ObjectViewDAO<T> : DAOBase, IObjectViewDAO<T> where T : new()
     {
+
+
         #region 属性
         /// <summary>
         /// 实体对象类型
@@ -255,16 +257,7 @@ namespace LiteOrm
             }
         }
 
-        /// <summary>
-        /// 异步执行 IDbCommand，读取一条记录并转化为单个对象
-        /// </summary>
-        protected async Task<T> GetOneAsync(DbCommandProxy command, CancellationToken cancellationToken)
-        {
-            using (DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken))
-            {
-                return await ReadOneAsync(reader, cancellationToken);
-            }
-        }
+
         #endregion
 
         #region 方法
@@ -273,8 +266,8 @@ namespace LiteOrm
         /// 根据主键获取对象
         /// </summary>
         /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
-        /// <returns>对象，若不存在则返回null</returns>
-        public virtual T GetObject(params object[] keys)
+        /// <returns>可枚举结果对象，可通过FirstOrDefault()和FirstOrDefaultAsync()获取结果</returns>
+        public virtual EnumerableResult<T> GetObject(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
             var getObjectCommand = GetPreparedCommand("GetObject", MakeGetObjectCommand);
@@ -284,10 +277,7 @@ namespace LiteOrm
                 param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
                 i++;
             }
-            using (IDataReader reader = getObjectCommand.ExecuteReader())
-            {
-                return ReadOne(reader);
-            }
+            return new EnumerableResult<T>(getObjectCommand, ConvertToObject, false);
         }
 
 
@@ -295,22 +285,22 @@ namespace LiteOrm
         /// 获取符合条件的对象个数
         /// </summary>
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <returns>符合条件的对象个数</returns>
-        public virtual int Count(Expr expr)
+        /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
+        public virtual ValueResult<int> Count(Expr expr)
         {
-            var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Aggregate("COUNT", Expr.Const(1)));
-            using var command = MakeExprCommand(selectExpr);
-            return Convert.ToInt32(command.ExecuteScalar());
+            var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Aggregate("Count",Expr.Const(1)));
+            var command = MakeExprCommand(selectExpr);
+            return new ValueResult<int>(command);
         }
 
         /// <summary>
         /// 判断对象是否存在
         /// </summary>
         /// <param name="o">对象</param>
-        /// <returns>是否存在</returns>
-        public virtual bool Exists(object o)
+        /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
+        public virtual ValueResult<bool> Exists(object o)
         {
-            if (o is null) return false;
+            if (o is null) throw new ArgumentNullException("o");
             return ExistsKey(GetKeyValues(o));
         }
 
@@ -318,8 +308,8 @@ namespace LiteOrm
         /// 判断主键对应的对象是否存在
         /// </summary>
         /// <param name="keys">主键，多个主键按照名称顺序排列</param>
-        /// <returns>是否存在</returns>
-        public virtual bool ExistsKey(params object[] keys)
+        /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
+        public virtual ValueResult<bool> ExistsKey(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
             var objectExistsCommand = GetPreparedCommand("ExistsKey", MakeObjectExistsCommand);
@@ -329,7 +319,7 @@ namespace LiteOrm
                 param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
                 i++;
             }
-            return Convert.ToInt32(objectExistsCommand.ExecuteScalar()) > 0;
+            return new ValueResult<bool>(objectExistsCommand, (obj) => obj != null && Convert.ToInt32(obj) > 0, false);
         }
 
 
@@ -337,48 +327,45 @@ namespace LiteOrm
         /// 判断符合条件的对象是否存在
         /// </summary>
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <returns>是否存在</returns>
-        public virtual bool Exists(Expr expr)
+        /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
+        public virtual ValueResult<bool> Exists(Expr expr)
         {
             var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Const(1));
-            using var command = MakeExprCommand(selectExpr);
-            return command.ExecuteScalar() is not null;
+            var command = MakeExprCommand(selectExpr);
+            return new ValueResult<bool>(command, (obj) => obj != null);
         }
 
-        /// <summary>
-        /// 对符合条件的每个对象执行指定操作
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="func">要对每个对象执行的操作</param>
-        public void ForEach(Expr expr, Action<T> func)
-        {
-            using var command = MakeSelectExprCommand(expr);
-            using (IDataReader reader = command.ExecuteReader())
-            {
-                func(ReadOne(reader));
-            }
-        }
+
 
         /// <summary>
         /// 根据条件查询，多个条件以逻辑与连接
         /// </summary>
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <returns>符合条件的对象列表</returns>
-        public virtual List<T> Search(Expr expr)
+        /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
+        public virtual EnumerableResult<T> Search(Expr expr = null)
         {
-            using DbCommandProxy command = MakeSelectExprCommand(expr);
-            return GetAll(command);
+            var command = MakeSelectExprCommand(expr);
+            return new EnumerableResult<T>(command, (reader) => ConvertToObject(reader));
+        }
+
+        /// <summary>
+        /// 根据条件查询，多个条件以逻辑与连接，并返回列表
+        /// </summary>
+        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
+        /// <returns>符合条件的对象列表</returns>
+        public virtual List<T> ToList(Expr expr = null)
+        {
+            return Search(expr).ToList();
         }
 
         /// <summary>
         /// 获取单个符合条件的对象
         /// </summary>
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
-        public virtual T SearchOne(Expr expr)
+        /// <returns>可枚举结果对象，可通过FirstOrDefault()和FirstOrDefaultAsync()获取结果</returns>
+        public virtual EnumerableResult<T> SearchOne(Expr expr)
         {
-            using var command = MakeSelectExprCommand(expr);
-            return GetOne(command);
+            return Search(expr);
         }
 
 #if NET8_0_OR_GREATER
@@ -407,139 +394,7 @@ namespace LiteOrm
 
         #endregion
 
-        #region IObjectViewDAOAsync implementations
 
-        /// <summary>
-        /// 根据主键异步获取对象
-        /// </summary>
-        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含对象，若不存在则返回null</returns>
-        public async virtual Task<T> GetObjectAsync(object[] keys, CancellationToken cancellationToken = default)
-        {
-            ThrowExceptionIfWrongKeys(keys);
-            var getObjectCommand = GetPreparedCommand("GetObject", MakeGetObjectCommand);
-            int i = 0;
-            foreach (DbParameter param in getObjectCommand.Parameters)
-            {
-                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
-                i++;
-            }
-            return await GetOneAsync(getObjectCommand, cancellationToken).ConfigureAwait(false);
-        }
-
-
-        /// <summary>
-        /// 异步获取符合条件的对象个数
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含符合条件的对象个数</returns>
-        public async virtual Task<int> CountAsync(Expr expr, CancellationToken cancellationToken = default)
-        {
-            var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Aggregate("COUNT", Expr.Const(1)));
-            using var command = MakeExprCommand(selectExpr);
-            return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken));
-        }
-
-        /// <summary>
-        /// 异步判断对象是否存在
-        /// </summary>
-        /// <param name="o">对象</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
-        public async virtual Task<bool> ExistsAsync(object o, CancellationToken cancellationToken = default)
-        {
-            if (o is null) return false;
-            return await ExistsKeyAsync(GetKeyValues(o), cancellationToken);
-        }
-
-        /// <summary>
-        /// 异步判断主键对应的对象是否存在
-        /// </summary>
-        /// <param name="keys">主键，多个主键按照名称顺序排列</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
-        public async virtual Task<bool> ExistsKeyAsync(object[] keys, CancellationToken cancellationToken = default)
-        {
-            ThrowExceptionIfWrongKeys(keys);
-            var objectExistsCommand = GetPreparedCommand("ExistsKey", MakeObjectExistsCommand);
-            int i = 0;
-            foreach (DbParameter param in objectExistsCommand.Parameters)
-            {
-                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
-                i++;
-            }
-            return Convert.ToInt32(await objectExistsCommand.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false)) > 0;
-        }
-
-
-        /// <summary>
-        /// 异步判断符合条件的对象是否存在
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
-        public async virtual Task<bool> ExistsAsync(Expr expr, CancellationToken cancellationToken = default)
-        {
-            var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Const(1));
-            using var command = MakeExprCommand(selectExpr);
-            return await command.ExecuteScalarAsync(cancellationToken) is not null;
-        }
-
-        /// <summary>
-        /// 异步判断符合条件的对象是否存在（使用表达式）
-        /// </summary>
-        /// <param name="expression">Lambda表达式条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果表示对象是否存在</returns>
-        public async virtual Task<bool> ExistsAsync(Expression<Func<T, bool>> expression, CancellationToken cancellationToken = default)
-        {
-            return await ExistsAsync(Expr.Exp(expression), cancellationToken);
-        }
-
-        /// <summary>
-        /// 异步获取单个符合条件的对象
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含第一个符合条件的对象，若不存在则返回null</returns>
-        public async virtual Task<T> SearchOneAsync(Expr expr, CancellationToken cancellationToken = default)
-        {
-            using var command = MakeSelectExprCommand(expr);
-            return await GetOneAsync(command, cancellationToken);
-        }
-
-        /// <summary>
-        /// 异步对符合条件的每个对象执行指定操作
-        /// </summary>
-        /// <param name="expr">查询条件</param>
-        /// <param name="func">要对每个对象执行的异步操作</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务</returns>
-        public async virtual Task ForEachAsync(Expr expr, Func<T, Task> func, CancellationToken cancellationToken = default)
-        {
-            var list = await SearchAsync(expr, cancellationToken);
-            foreach (var item in list)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await func(item).ConfigureAwait(false);
-            }
-        }
-
-        /// <summary>
-        /// 异步根据条件查询，多个条件以逻辑与连接
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
-        public async virtual Task<List<T>> SearchAsync(Expr expr = null, CancellationToken cancellationToken = default)
-        {
-            using var command = MakeSelectExprCommand(expr);
-            return await GetAllAsync(command, cancellationToken).ConfigureAwait(false);
-        }
-
-        #endregion
         #region IObjectViewDAO Members
 
         /// <summary>
@@ -569,51 +424,30 @@ namespace LiteOrm
         /// <returns>符合条件的对象列表</returns>
         IList IObjectViewDAO.Search(Expr expr)
         {
-            return Search(expr);
+            return Search(expr).ToList();
         }
 
+        /// <summary>
+        /// 得到符合条件的对象个数（接口实现）
+        /// </summary>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
+        /// <returns>值结果对象</returns>
+        object IObjectViewDAO.Count(Expr expr)
+        {
+            return Count(expr);
+        }
 
+        /// <summary>
+        /// 判断符合条件的对象是否存在（接口实现）
+        /// </summary>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
+        /// <returns>值结果对象</returns>
+        object IObjectViewDAO.Exists(Expr expr)
+        {
+            return Exists(expr);
+        }
 
         #endregion
 
-        #region IObjectViewDAOAsync implementations
-
-        /// <summary>
-        /// 根据主键异步获取对象（接口实现）
-        /// </summary>
-        /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含对象，若不存在则返回null</returns>
-        async Task<object> IObjectViewDAOAsync.GetObjectAsync(object[] keys, CancellationToken cancellationToken)
-        {
-            return await GetObjectAsync(keys, cancellationToken);
-        }
-
-        /// <summary>
-        /// 异步获取单个符合条件的对象（接口实现）
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含第一个符合条件的对象，若不存在则返回null</returns>
-        async Task<object> IObjectViewDAOAsync.SearchOneAsync(Expr expr, CancellationToken cancellationToken)
-        {
-            return await SearchOneAsync(expr, cancellationToken);
-        }
-
-        /// <summary>
-        /// 异步根据条件查询，多个条件以逻辑与连接（接口实现）
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>表示异步操作的任务，任务结果包含符合条件的对象列表</returns>
-        async Task<IList> IObjectViewDAOAsync.SearchAsync(Expr expr, CancellationToken cancellationToken)
-        {
-            return await SearchAsync(expr, cancellationToken);
-        }
-
-#if NET8_0_OR_GREATER
-
-#endif
-        #endregion
     }
 }

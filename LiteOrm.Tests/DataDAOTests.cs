@@ -181,7 +181,7 @@ namespace LiteOrm.Tests
                 { "Age", 99 },
                 { "Name", "UpdatedName" }
             };
-            int affected = dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Id == user.Id));
+            int affected = dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Id == user.Id)).Execute();
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
             // Assert

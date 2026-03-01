@@ -75,7 +75,7 @@ namespace LiteOrm.Service
         /// <returns>视图对象，若不存在则返回null</returns>
         public virtual TView GetObject(object id, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).GetObject(id);
+            return ObjectViewDAO.WithArgs(tableArgs).GetObject(id).FirstOrDefault();
         }
 
         /// <summary>
@@ -86,7 +86,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public virtual bool ExistsID(object id, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).Exists(new object[] { id });
+            return ObjectViewDAO.WithArgs(tableArgs).Exists(new object[] { id }).GetValue();
         }
 
         /// <summary>
@@ -97,7 +97,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public virtual bool Exists(Expr expr, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).Exists(expr);
+            return ObjectViewDAO.WithArgs(tableArgs).Exists(expr).GetValue();
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public virtual bool Exists(Expression<Func<TView, bool>> expression, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).Exists(expression);
+            return ObjectViewDAO.WithArgs(tableArgs).Exists(expression).GetValue();
         }
 
         /// <summary>
@@ -119,7 +119,7 @@ namespace LiteOrm.Service
         /// <returns>符合条件的对象个数</returns>
         public virtual int Count(Expr expr = null, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).Count(expr);
+            return ObjectViewDAO.WithArgs(tableArgs).Count(expr).GetValue();
         }
 
         /// <summary>
@@ -130,7 +130,10 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表参数</param>
         public virtual void ForEach(Expr expr, Action<TView> func, params string[] tableArgs)
         {
-            ObjectViewDAO.WithArgs(tableArgs).ForEach(expr, func);
+            foreach (var item in ObjectViewDAO.WithArgs(tableArgs).Search(expr))
+            {
+                func(item);
+            }
         }
 
         /// <summary>
@@ -141,7 +144,7 @@ namespace LiteOrm.Service
         /// <returns>第一个符合条件的视图对象，若不存在则返回null</returns>
         public virtual TView SearchOne(Expr expr, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).SearchOne(expr);
+            return ObjectViewDAO.WithArgs(tableArgs).Search(expr).FirstOrDefault();
         }
 
         /// <summary>
@@ -152,7 +155,7 @@ namespace LiteOrm.Service
         /// <returns>符合条件的视图对象列表</returns>
         public virtual List<TView> Search(Expr expr = null, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).Search(expr);
+            return ObjectViewDAO.WithArgs(tableArgs).Search(expr).ToList();
         }
 
         #endregion
@@ -180,17 +183,17 @@ namespace LiteOrm.Service
 
         async Task<object> IEntityViewServiceAsync.GetObjectAsync(object id, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).GetObjectAsync(new object[] { id }, cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).GetObject(new object[] { id }).FirstOrDefaultAsync(cancellationToken);
         }
 
         async Task<object> IEntityViewServiceAsync.SearchOneAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).SearchOneAsync(expr, cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).Search(expr).FirstOrDefaultAsync(cancellationToken);
         }
 
         async Task<IList> IEntityViewServiceAsync.SearchAsync(Expr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).Search(expr).ToListAsync(cancellationToken);
         }
         #endregion
 
@@ -205,7 +208,7 @@ namespace LiteOrm.Service
         /// <returns>视图对象，若不存在则返回null</returns>
         public async virtual Task<TView> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).GetObjectAsync(new object[] { id }, cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).GetObject(new object[] { id }).FirstOrDefaultAsync(cancellationToken);
         }
 
         /// <summary>
@@ -217,7 +220,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public async virtual Task<bool> ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).ExistsKeyAsync(new object[] { id }, cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).Exists(new object[] { id }).GetValueAsync(cancellationToken);
         }
 
         /// <summary>
@@ -229,7 +232,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public async virtual Task<bool> ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).ExistsAsync(expr, cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).Exists(expr).GetValueAsync(cancellationToken);
         }
 
         /// <summary>
@@ -241,7 +244,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public async virtual Task<bool> ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).ExistsAsync(expression, cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).Exists(expression).GetValueAsync(cancellationToken);
         }
 
         /// <summary>
@@ -253,7 +256,7 @@ namespace LiteOrm.Service
         /// <returns>符合条件的对象个数</returns>
         public async virtual Task<int> CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).CountAsync(expr, cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).Count(expr).GetValueAsync(cancellationToken);
         }
 
         /// <summary>
@@ -266,7 +269,10 @@ namespace LiteOrm.Service
         /// <returns>返回异步操作任务。</returns>
         public async virtual Task ForEachAsync(Expr expr, Func<TView, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            await ObjectViewDAO.WithArgs(tableArgs).ForEachAsync(expr, func, cancellationToken);
+            await foreach (var item in ObjectViewDAO.WithArgs(tableArgs).Search(expr))
+            {
+                await func(item);
+            }
         }
 
         /// <summary>
@@ -278,7 +284,7 @@ namespace LiteOrm.Service
         /// <returns>第一个符合条件的视图对象，若不存在则返回null</returns>
         public async virtual Task<TView> SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).SearchOneAsync(expr, cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).Search(expr).FirstOrDefaultAsync(cancellationToken);
         }
 
         /// <summary>
@@ -290,7 +296,7 @@ namespace LiteOrm.Service
         /// <returns>实体列表结果。</returns>
         public async virtual Task<List<TView>> SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).SearchAsync(expr, cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).Search(expr).ToListAsync(cancellationToken);
         }
 
         #endregion
