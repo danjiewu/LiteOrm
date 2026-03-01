@@ -183,7 +183,7 @@ namespace LiteOrm.Common
             public SqlTable GetTable(string aliasName = null)
             {
                 if (string.IsNullOrEmpty(aliasName)) aliasName = DefaultTableAliasName;
-                if (string.IsNullOrEmpty(aliasName)) throw new ArgumentException("No default table alias defined.");
+                if (string.IsNullOrEmpty(aliasName)) return null;
                 if (!_aliasTableMap.ContainsKey(aliasName)) return Parent?.GetTable(aliasName);
                 return _aliasTableMap[aliasName];
             }

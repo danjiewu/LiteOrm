@@ -1,24 +1,24 @@
-#if NET8_0_OR_GREATER || NET10_0_OR_GREATER
+#if NET8_0_OR_GREATER
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using LiteOrm.Common;
 
-namespace LiteOrm
+namespace LiteOrm.Common
 {
     [InterpolatedStringHandler]
-    public ref struct ExprInterpolatedStringHandler
+    public ref struct ExprString
     {
         private ValueStringBuilder _builder;
         private readonly List<KeyValuePair<string, object>> _params =  new List<KeyValuePair<string, object>>();
         private readonly SqlBuildContext _context;
         private readonly ISqlBuilder _sqlBuilder;
 
-        public ExprInterpolatedStringHandler(int literalLength, int formattedCount, DAOBase dao)
+        public ExprString(int literalLength, int formattedCount, IExprStringBuildContext context)
         {
             _builder = ValueStringBuilder.Create(literalLength + formattedCount * 16);
-            _context = dao.CreateSqlBuildContext();
-            _sqlBuilder = dao.SqlBuilder;
+            _context = context.CreateSqlBuildContext();
+            _sqlBuilder = context.SqlBuilder;
         }
 
         public void AppendLiteral(string literal)
@@ -26,24 +26,16 @@ namespace LiteOrm
             _builder.Append(literal);
         }
 
-        public void AppendFormatted(Expr expr)
-        {
-            if (expr != null)
-            {
-                expr.ToSql(ref _builder, _context, _sqlBuilder, _params);
-            }
-        }
-
         public void AppendFormatted<T>(T value)
         {
             if (value is Expr expr)
             {
-                AppendFormatted(expr);
+                expr.ToSql(ref _builder, _context, _sqlBuilder, _params);
             }
             else if (value != null)
             {
-                var paramName = $"p{_params.Count}";
-                _builder.Append(_sqlBuilder.ToParamName(paramName));
+                string paramName = $"@p{_params.Count}";
+                _builder.Append(paramName);
                 _params.Add(new KeyValuePair<string, object>(paramName, value));
             }
         }

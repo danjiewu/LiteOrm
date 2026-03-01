@@ -7,6 +7,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -380,6 +381,30 @@ namespace LiteOrm
             return GetOne(command);
         }
 
+#if NET8_0_OR_GREATER
+        /// <summary>
+        /// 根据条件查询，多个条件以逻辑与连接
+        /// </summary>
+        /// <param name="where">查询条件</param>
+        /// <returns>符合条件的对象列表</returns>
+        public virtual List<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString where)
+        {
+            using DbCommandProxy command = MakeSelectExprCommand(where);
+            return GetAll(command);
+        }
+
+        /// <summary>
+        /// 获取单个符合条件的对象
+        /// </summary>
+        /// <param name="where">查询条件</param>
+        /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
+        public virtual T SearchOne([InterpolatedStringHandlerArgument("")] ref ExprString where)
+        {
+            using DbCommandProxy command = MakeSelectExprCommand(where);
+            return GetOne(command);
+        }
+#endif
+
         #endregion
 
         #region IObjectViewDAOAsync implementations
@@ -585,6 +610,10 @@ namespace LiteOrm
         {
             return await SearchAsync(expr, cancellationToken);
         }
+
+#if NET8_0_OR_GREATER
+
+#endif
         #endregion
     }
 }

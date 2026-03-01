@@ -47,5 +47,11 @@ using (var scope = host.Services.CreateScope())
 
     // [6] UpdateExpr 演示 (复杂更新操作)
     await UpdateExprDemo.RunAsync(serviceFactory);
+    
+    // [7] ObjectViewDAO ExprString 语法演示
+    var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+    var objectViewDAO = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<LiteOrm.Demo.Models.User>>();
+    var exprStringDemo = new ObjectViewDAOExprStringDemo(userService, objectViewDAO);
+    await exprStringDemo.RunDemo();
 }
 

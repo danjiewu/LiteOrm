@@ -2,16 +2,10 @@ using System;
 
 namespace LiteOrm.Common
 {
-    public interface IDAOContext
+    public interface IExprStringBuildContext
     {
-        Type ObjectType { get; }
-
-        SqlTable Table { get; }
-
         ISqlBuilder SqlBuilder { get; }
 
         SqlBuildContext CreateSqlBuildContext(bool initTable = false);
-
-        TableInfoProvider TableInfoProvider { get; }
     }
 }

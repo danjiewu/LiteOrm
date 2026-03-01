@@ -1,8 +1,12 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
+#if NET8_0_OR_GREATER
+using LiteOrm.Common;
+#endif
 
 namespace LiteOrm.Common
 {
@@ -44,6 +48,10 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回对象列表</returns>
         new Task<List<T>> SearchAsync(Expr expr = null, CancellationToken cancellationToken = default);
+
+#if NET8_0_OR_GREATER
+
+#endif
     }
 
     /// <summary>
@@ -75,6 +83,10 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回对象列表</returns>
         Task<IList> SearchAsync(Expr expr, CancellationToken cancellationToken = default);
+
+#if NET8_0_OR_GREATER
+
+#endif
 
         /// <summary>
         /// 异步检查指定主键的对象是否存在

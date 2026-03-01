@@ -1,4 +1,4 @@
-﻿using Autofac;
+using Autofac;
 using Autofac.Builder;
 using Autofac.Extensions.DependencyInjection;
 using Autofac.Extras.DynamicProxy;
@@ -145,8 +145,9 @@ namespace LiteOrm
                             serviceTypes.Add(serviceType.GetGenericTypeDefinition());
                         }
                     }
-                    else
+                    else if (!implementationType.IsGenericTypeDefinition)
                     {
+                        // 只有当实现类型不是泛型类型定义时，才添加非泛型接口
                         serviceTypes.Add(serviceType);
                     }
                 }

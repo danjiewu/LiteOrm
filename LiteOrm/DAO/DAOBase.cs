@@ -8,6 +8,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace LiteOrm
 {
@@ -28,7 +29,7 @@ namespace LiteOrm
     /// 该类通过依赖注入框架自动注册为单例。
     /// </remarks>
     [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
-    public abstract class DAOBase : IDAOContext
+    public abstract class DAOBase : IExprStringBuildContext
     {
         #region 预定义变量
         /// <summary>
@@ -108,7 +109,7 @@ namespace LiteOrm
             get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType); }
         }
 
-        ISqlBuilder IDAOContext.SqlBuilder => SqlBuilder;
+        ISqlBuilder IExprStringBuildContext.SqlBuilder => SqlBuilder;
 
         /// <summary>
         /// 获取当前会话管理器
@@ -291,7 +292,7 @@ namespace LiteOrm
         /// <param name="sql">SQL 语句，SQL 中可以包含已命名的参数。</param>
         /// <param name="paramValues">参数列表，为空时表示没有参数。Key 需要与 SQL 中的参数名称对应。</param>
         /// <returns>IDbCommand 实例。</returns>
-        public DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues)
+        protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues)
         {
             DbCommandProxy command = NewCommand();
             command.CommandText = ReplaceParam(sql);
@@ -330,6 +331,78 @@ namespace LiteOrm
             return MakeExprCommand(selectExpr);
         }
 
+#if NET8_0_OR_GREATER
+        /// <summary>
+        /// 根据表达式创建查询命令
+        /// </summary>
+        /// <param name="where">查询条件</param>
+        /// <returns>生成的查询命令</returns>
+        protected DbCommandProxy MakeSelectExprCommand(ExprString where)
+        {
+            string whereSql = where.GetSqlResult().Trim();
+            string selectSql;
+            
+            // 解析SQL，提取ORDER BY和LIMIT子句
+            string wherePart = whereSql;
+            string orderByPart = string.Empty;
+            string limitPart = string.Empty;
+            
+            // 提取ORDER BY子句
+            int orderByIndex = whereSql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+            if (orderByIndex >= 0)
+            {
+                wherePart = whereSql.Substring(0, orderByIndex).Trim();
+                string rest = whereSql.Substring(orderByIndex).Trim();
+                
+                // 提取LIMIT子句
+                int limitIndex = rest.IndexOf("LIMIT", StringComparison.OrdinalIgnoreCase);
+                if (limitIndex >= 0)
+                {
+                    orderByPart = rest.Substring(0, limitIndex).Trim();
+                    limitPart = rest.Substring(limitIndex).Trim();
+                }
+                else
+                {
+                    orderByPart = rest;
+                }
+            }
+            else
+            {
+                // 提取LIMIT子句（如果没有ORDER BY）
+                int limitIndex = whereSql.IndexOf("LIMIT", StringComparison.OrdinalIgnoreCase);
+                if (limitIndex >= 0)
+                {
+                    wherePart = whereSql.Substring(0, limitIndex).Trim();
+                    limitPart = whereSql.Substring(limitIndex).Trim();
+                }
+            }
+            
+            // 构建最终SQL
+            if (!string.IsNullOrWhiteSpace(wherePart))
+            {
+                selectSql = $"SELECT {AllFieldsSql} FROM {From} WHERE {wherePart}";
+            }
+            else
+            {
+                selectSql = $"SELECT {AllFieldsSql} FROM {From}";
+            }
+            
+            // 添加ORDER BY子句
+            if (!string.IsNullOrWhiteSpace(orderByPart))
+            {
+                selectSql += " " + orderByPart;
+            }
+            
+            // 添加LIMIT子句
+            if (!string.IsNullOrWhiteSpace(limitPart))
+            {
+                selectSql += " " + limitPart;
+            }
+            
+            return MakeNamedParamCommand(selectSql, where.GetParams());
+        }
+#endif
+
         /// <summary>
         /// 根据表达式创建命令
         /// </summary>
@@ -343,6 +416,13 @@ namespace LiteOrm
             var context = CreateSqlBuildContext();
             return MakeNamedParamCommand(expr.ToSql(context, SqlBuilder, paramList), paramList);
         }
+
+#if NET8_0_OR_GREATER
+        protected DbCommandProxy MakeExprCommand([InterpolatedStringHandlerArgument("")] ref ExprString where)
+        {
+            return MakeNamedParamCommand(where.GetSqlResult(), where.GetParams());
+        }
+#endif
 
         /// <summary>
         /// 替换 SQL 中的标记为实际 SQL
