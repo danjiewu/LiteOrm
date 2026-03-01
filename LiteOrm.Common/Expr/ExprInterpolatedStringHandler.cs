@@ -1,4 +1,4 @@
-#if !NETSTANDARD2_0
+#if NET8_0_OR_GREATER || NET10_0_OR_GREATER
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -13,11 +13,12 @@ namespace LiteOrm.Common
         private readonly SqlBuildContext _context;
         private readonly ISqlBuilder _sqlBuilder;
 
-        public ExprInterpolatedStringHandler(int literalLength, int formattedCount, DAOBase dao)
+        public ExprInterpolatedStringHandler(int literalLength, int formattedCount, SqlBuildContext context, ISqlBuilder sqlBuilder, List<KeyValuePair<string, object>> outputParams)
         {
             _builder = ValueStringBuilder.Create(literalLength + formattedCount * 16);
-            _context = dao.Context;
-            _sqlBuilder = dao.SqlBuilder;
+            _params = outputParams ?? new List<KeyValuePair<string, object>>();
+            _context = context;
+            _sqlBuilder = sqlBuilder;
         }
 
         public void AppendLiteral(string literal)
@@ -42,7 +43,7 @@ namespace LiteOrm.Common
             else if (value != null)
             {
                 var paramName = $"p{_params.Count}";
-                _builder.Append(_sqlBuilder.ToSqlParamName(paramName));
+                _builder.Append(_sqlBuilder.ToParamName(paramName));
                 _params.Add(new KeyValuePair<string, object>(paramName, value));
             }
         }

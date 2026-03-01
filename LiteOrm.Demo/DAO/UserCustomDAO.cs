@@ -19,14 +19,9 @@ namespace LiteOrm.Demo
             var expr = Expr.Prop("DeptName") == deptName & Expr.Prop("Age") > 18;
 
             // 也可以直接写原生 SQL 演示
-            string sql = $"SELECT {AllFieldsSql} FROM {ParamFromTable} WHERE [Dept].[Name] = @0 AND Age > 18";
-
-            return await Task.Run(() =>
-            {
-                using var command = MakeParamCommand(sql, deptName);
-                //using var command = MakeConditionCommand($"SELECT {ParamAllFields} FROM {ParamFromTable} {ParamWhere}", expr);
-                return GetAll(command);
-            }, cancellationToken);
+            string sql = $"SELECT {AllFieldsSql} FROM {ParamFromTable} WHERE [Dept].[Name] = @DeptName AND Age > 18";
+            using var command = MakeNamedParamCommand(sql, new[] { new KeyValuePair<string, object>("DeptName", deptName) });
+            return await GetAllAsync(command, cancellationToken);
         }
     }
 }

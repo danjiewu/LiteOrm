@@ -342,7 +342,7 @@ namespace LiteOrm
             return MakeNamedParamCommand(expr.ToSql(context, SqlBuilder, paramList), paramList);
         }
 
-#if !NETSTANDARD2_0
+#if NET8_0_OR_GREATER || NET10_0_OR_GREATER
         /// <summary>
         /// 根据插值字符串处理器创建命令
         /// </summary>
