@@ -93,7 +93,7 @@ namespace LiteOrm
         /// 获取或设置用于生成 SQL 的上下文。
         /// </summary>
 
-        public override SqlBuildContext CreateSqlBuildContext(bool initTable = false)
+        internal override SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
             var context = base.CreateSqlBuildContext(true);
             context.SingleTable = true;

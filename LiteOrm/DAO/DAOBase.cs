@@ -103,7 +103,7 @@ namespace LiteOrm
         /// <summary>
         /// 构建SQL语句的SQLBuilder
         /// </summary>
-        public virtual SqlBuilder SqlBuilder
+        internal virtual SqlBuilder SqlBuilder
         {
             get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType); }
         }
@@ -127,7 +127,7 @@ namespace LiteOrm
         /// 创建SQL执行上下文
         /// </summary>
         /// <returns></returns>
-        public virtual SqlBuildContext CreateSqlBuildContext(bool initTable = false)
+        internal virtual SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
             if (initTable) return new SqlBuildContext(Table, Table.Name, TableArgs) { SingleTable = !IsView };
             else return new SqlBuildContext() { TableArgs = TableArgs, SingleTable = !IsView };
