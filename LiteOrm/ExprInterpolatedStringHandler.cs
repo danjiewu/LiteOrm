@@ -2,8 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using LiteOrm.Common;
 
-namespace LiteOrm.Common
+namespace LiteOrm
 {
     [InterpolatedStringHandler]
     public ref struct ExprInterpolatedStringHandler
@@ -13,12 +14,11 @@ namespace LiteOrm.Common
         private readonly SqlBuildContext _context;
         private readonly ISqlBuilder _sqlBuilder;
 
-        public ExprInterpolatedStringHandler(int literalLength, int formattedCount, SqlBuildContext context, ISqlBuilder sqlBuilder, List<KeyValuePair<string, object>> outputParams)
+        public ExprInterpolatedStringHandler(int literalLength, int formattedCount, DAOBase dao)
         {
             _builder = ValueStringBuilder.Create(literalLength + formattedCount * 16);
-            _params = outputParams ?? new List<KeyValuePair<string, object>>();
-            _context = context;
-            _sqlBuilder = sqlBuilder;
+            _context = dao.CreateSqlBuildContext();
+            _sqlBuilder = dao.SqlBuilder;
         }
 
         public void AppendLiteral(string literal)

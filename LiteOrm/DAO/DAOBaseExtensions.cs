@@ -9,9 +9,6 @@ namespace LiteOrm
     {
         public static DbCommandProxy MakeExprCommand(this DAOBase dao, [InterpolatedStringHandlerArgument("dao")] ref ExprInterpolatedStringHandler handler)
         {
-            var paramList = new List<KeyValuePair<string, object>>();
-            var context = dao.CreateSqlBuildContext();
-            handler = new ExprInterpolatedStringHandler(0, 0, context, dao.SqlBuilder, paramList);
             return dao.MakeNamedParamCommand(handler.GetSqlResult(), handler.GetParams());
         }
     }
