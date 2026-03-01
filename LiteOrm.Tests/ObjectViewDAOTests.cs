@@ -145,35 +145,7 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public async Task ObjectViewDAO_Search_WithExprString_OrderBy_ShouldWork()
-        {
-            // Arrange
-            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
-            
-            // Insert test data
-            var users = new List<TestUser>
-            {
-                new TestUser { Name = "User1", Age = 30, CreateTime = DateTime.Now.AddDays(-3) },
-                new TestUser { Name = "User2", Age = 20, CreateTime = DateTime.Now.AddDays(-1) },
-                new TestUser { Name = "User3", Age = 25, CreateTime = DateTime.Now.AddDays(-2) }
-            };
-            await service.BatchInsertAsync(users);
-
-            // Act
-            // Test with OrderBy in ExprString
-            var orderByExpr = Expr.Where<TestUser>(u => true).OrderBy("Age");
-            var results = objectViewDAO.Search($"{orderByExpr}");
-
-            // Assert
-            Assert.NotNull(results);
-            Assert.Equal(3, results.Count);
-            // 验证按年龄升序排序
-            Assert.True(results[0].Age <= results[1].Age && results[1].Age <= results[2].Age);
-        }
-
-        [Fact]
-        public async Task ObjectViewDAO_Search_WithExprString_Section_ShouldWork()
+        public async Task ObjectViewDAO_Search_WithExprString_MixedSqlAndExpr_ShouldWork()
         {
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
@@ -183,21 +155,24 @@ namespace LiteOrm.Tests
             var users = new List<TestUser>
             {
                 new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now },
-                new TestUser { Name = "User2", Age = 21, CreateTime = DateTime.Now },
-                new TestUser { Name = "User3", Age = 22, CreateTime = DateTime.Now },
-                new TestUser { Name = "User4", Age = 23, CreateTime = DateTime.Now },
-                new TestUser { Name = "User5", Age = 24, CreateTime = DateTime.Now }
+                new TestUser { Name = "User2", Age = 30, CreateTime = DateTime.Now },
+                new TestUser { Name = "User3", Age = 25, CreateTime = DateTime.Now }
             };
             await service.BatchInsertAsync(users);
 
             // Act
-            // Test with Section in ExprString
-            var sectionExpr = Expr.Where<TestUser>(u => true).Section(1, 2); // 跳过1条，取2条
-            var results = objectViewDAO.Search($"{sectionExpr}");
+            // Test with mixed SQL and Expr in ExprString
+            var ageThreshold = 20;
+            var ageExpr = Expr.Prop("Age") > ageThreshold;
+            var results = objectViewDAO.Search($"{ageExpr} AND Name LIKE 'User%'");
 
             // Assert
             Assert.NotNull(results);
-            Assert.Equal(2, results.Count);
+            Assert.True(results.Count > 0);
+            Assert.All(results, user => {
+                Assert.True(user.Age > ageThreshold);
+                Assert.StartsWith("User", user.Name);
+            });
         }
 
 

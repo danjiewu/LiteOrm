@@ -44,13 +44,36 @@ namespace LiteOrm.Demo.Demos
             // 演示 5: 复杂表达式查询
             await ComplexExprDemo();
             
-            // 演示 6: 排序演示
-            await OrderByDemo();
-            
-            // 演示 7: 分页演示
-            await SectionDemo();
+            // 演示 6: SQL 和 Expr 混用
+            await MixedSqlAndExprDemo();
             
             Console.WriteLine("\n=== 演示完成 ===");
+        }
+
+        private async Task MixedSqlAndExprDemo()
+        {
+            Console.WriteLine("\n7. SQL 和 Expr 混用演示:");
+            
+            // 混合使用 SQL 片段和 Expr 表达式
+            int ageThreshold = 25;
+            var ageExpr = Expr.Prop("Age") > ageThreshold;
+            var users = _objectViewDAO.Search($"{ageExpr} AND UserName LIKE '张%'");
+            
+            Console.WriteLine($"年龄大于 {ageThreshold} 且姓名以 '张' 开头的用户 ({users.Count} 个):");
+            foreach (var user in users)
+            {
+                Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");
+            }
+            
+            // 更复杂的混用示例
+            var deptExpr = Expr.Prop("DeptId") == 2;
+            users = _objectViewDAO.Search($"{deptExpr} AND Age BETWEEN 20 AND 30");
+            
+            Console.WriteLine($"部门 2 且年龄在 20-30 之间的用户 ({users.Count} 个):");
+            foreach (var user in users)
+            {
+                Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}, 部门: {user.DeptId}");
+            }
         }
 
         private async Task PrepareTestData()
@@ -118,7 +141,7 @@ namespace LiteOrm.Demo.Demos
 
         private async Task ComplexExprDemo()
         {
-            Console.WriteLine("\n5. 复杂表达式演示:");
+            Console.WriteLine("\n6. 复杂表达式演示:");
             
             // 使用复杂的 Expr 表达式
             var complexExpr = (Expr.Prop("Age") > 20) & (Expr.Prop("Age") < 35);
@@ -126,56 +149,6 @@ namespace LiteOrm.Demo.Demos
             
             Console.WriteLine("年龄在 20-35 之间的用户 ({users.Count} 个):");
             foreach (var user in users)
-            {
-                Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");
-            }
-        }
-
-        private async Task OrderByDemo()
-        {
-            Console.WriteLine("\n6. 排序演示:");
-            
-            // 使用 OrderBy 表达式
-            var orderByExpr = Expr.Where<User>(u => true).OrderBy("Age");
-            var users = _objectViewDAO.Search($"{orderByExpr}");
-            
-            Console.WriteLine("按年龄升序排序的用户:");
-            foreach (var user in users)
-            {
-                Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");
-            }
-            
-            // 使用 OrderByDesc 降序排序
-            var orderByDescExpr = Expr.Where<User>(u => true).OrderByDesc("Age");
-            var usersDesc = _objectViewDAO.Search($"{orderByDescExpr}");
-            
-            Console.WriteLine("\n按年龄降序排序的用户:");
-            foreach (var user in usersDesc)
-            {
-                Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");
-            }
-        }
-
-        private async Task SectionDemo()
-        {
-            Console.WriteLine("\n7. 分页演示:");
-            
-            // 使用 Section 表达式进行分页
-            var sectionExpr = Expr.Where<User>(u => true).Section(0, 2); // 取前2条
-            var users = _objectViewDAO.Search($"{sectionExpr}");
-            
-            Console.WriteLine("前 2 个用户:");
-            foreach (var user in users)
-            {
-                Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");
-            }
-            
-            // 跳过2条，取2条
-            var sectionExpr2 = Expr.Where<User>(u => true).Section(2, 2);
-            var users2 = _objectViewDAO.Search($"{sectionExpr2}");
-            
-            Console.WriteLine("\n第 3-4 个用户:");
-            foreach (var user in users2)
             {
                 Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");
             }

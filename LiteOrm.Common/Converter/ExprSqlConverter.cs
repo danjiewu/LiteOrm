@@ -90,12 +90,7 @@ namespace LiteOrm.Common
             else if (expr is FromExpr from) ToSql(ref sb, from, context, sqlBuilder, outputParams);
             else if (expr is SelectExpr select) ToSql(ref sb, select, context, sqlBuilder, outputParams);
             else if (expr is DeleteExpr delete) ToSql(ref sb, delete, context, sqlBuilder, outputParams);
-            else if (expr is UpdateExpr update) ToSql(ref sb, update, context, sqlBuilder, outputParams);
-            else if (expr is OrderByExpr orderBy) ToSql(ref sb, orderBy, context, sqlBuilder, outputParams);
-            else if (expr is SectionExpr section) ToSql(ref sb, section, context, sqlBuilder, outputParams);
-            else if (expr is GroupByExpr groupBy) ToSql(ref sb, groupBy, context, sqlBuilder, outputParams);
-            else if (expr is HavingExpr having) ToSql(ref sb, having, context, sqlBuilder, outputParams);
-            else if (expr is WhereExpr where) ToSql(ref sb, where, context, sqlBuilder, outputParams);
+            else if (expr is UpdateExpr update) ToSql(ref sb, update, context, sqlBuilder, outputParams);            
             else throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
         }
 
@@ -417,14 +412,7 @@ namespace LiteOrm.Common
         {
             var table = context.GetTable(expr.TableAlias);
             var column = table?.GetColumn(expr.PropertyName);
-            
-            // 如果没有表信息，直接使用属性名
-            if (table == null)
-            {
-                sb.Append(sqlBuilder.ToSqlName(expr.PropertyName));
-                return;
-            }
-            
+                      
             if (context.SingleTable)
             {
                 // 单表模式下只需要输出列名
@@ -436,9 +424,12 @@ namespace LiteOrm.Common
             }
             else
             {
-                // 如果 PropertyExpr 中指定了 TableAlias，则使用该别名来限定列名
-                sb.Append(sqlBuilder.ToSqlName(expr.TableAlias ?? context.DefaultTableAliasName));
-                sb.Append(".");
+                string alias = expr.TableAlias ?? context.DefaultTableAliasName;
+                if(!String.IsNullOrEmpty(alias)){
+                    // 如果 PropertyExpr 中指定了 TableAlias，则使用该别名来限定列名
+                    sb.Append(sqlBuilder.ToSqlName(alias));
+                    sb.Append(".");
+                }
                 sb.Append(sqlBuilder.ToSqlName(column?.Name ?? expr.PropertyName));
             }
         }
@@ -797,59 +788,6 @@ namespace LiteOrm.Common
                 sb.Append(" WHERE ");
                 ToSql(ref sb, expr.Where, context, sqlBuilder, outputParams);
             }
-        }
-
-        /// <summary>
-        /// 生成 ORDER BY 子句对应的 SQL。
-        /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, OrderByExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            sb.Append("ORDER BY ");
-            for (int i = 0; i < expr.OrderBys.Count; i++)
-            {
-                if (i > 0) sb.Append(", ");
-                ToSql(ref sb, expr.OrderBys[i].Item1, context, sqlBuilder, outputParams);
-                if (!expr.OrderBys[i].Item2) sb.Append(" DESC");
-            }
-        }
-
-        /// <summary>
-        /// 生成 LIMIT 和 OFFSET 子句对应的 SQL。
-        /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, SectionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            sb.Append($"LIMIT {expr.Take} OFFSET {expr.Skip}");
-        }
-
-        /// <summary>
-        /// 生成 GROUP BY 子句对应的 SQL。
-        /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, GroupByExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            sb.Append("GROUP BY ");
-            for (int i = 0; i < expr.GroupBys.Count; i++)
-            {
-                if (i > 0) sb.Append(", ");
-                ToSql(ref sb, expr.GroupBys[i], context, sqlBuilder, outputParams);
-            }
-        }
-
-        /// <summary>
-        /// 生成 HAVING 子句对应的 SQL。
-        /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, HavingExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            sb.Append("HAVING ");
-            ToSql(ref sb, expr.Having, context, sqlBuilder, outputParams);
-        }
-
-        /// <summary>
-        /// 生成 WHERE 子句对应的 SQL。
-        /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, WhereExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            sb.Append("WHERE ");
-            ToSql(ref sb, expr.Where, context, sqlBuilder, outputParams);
         }
     }
 }

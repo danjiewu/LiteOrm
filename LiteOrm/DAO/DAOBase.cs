@@ -341,64 +341,14 @@ namespace LiteOrm
         {
             string whereSql = where.GetSqlResult().Trim();
             string selectSql;
-            
-            // 解析SQL，提取ORDER BY和LIMIT子句
-            string wherePart = whereSql;
-            string orderByPart = string.Empty;
-            string limitPart = string.Empty;
-            
-            // 提取ORDER BY子句
-            int orderByIndex = whereSql.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
-            if (orderByIndex >= 0)
+            if (!string.IsNullOrWhiteSpace(whereSql))
             {
-                wherePart = whereSql.Substring(0, orderByIndex).Trim();
-                string rest = whereSql.Substring(orderByIndex).Trim();
-                
-                // 提取LIMIT子句
-                int limitIndex = rest.IndexOf("LIMIT", StringComparison.OrdinalIgnoreCase);
-                if (limitIndex >= 0)
-                {
-                    orderByPart = rest.Substring(0, limitIndex).Trim();
-                    limitPart = rest.Substring(limitIndex).Trim();
-                }
-                else
-                {
-                    orderByPart = rest;
-                }
-            }
-            else
-            {
-                // 提取LIMIT子句（如果没有ORDER BY）
-                int limitIndex = whereSql.IndexOf("LIMIT", StringComparison.OrdinalIgnoreCase);
-                if (limitIndex >= 0)
-                {
-                    wherePart = whereSql.Substring(0, limitIndex).Trim();
-                    limitPart = whereSql.Substring(limitIndex).Trim();
-                }
-            }
-            
-            // 构建最终SQL
-            if (!string.IsNullOrWhiteSpace(wherePart))
-            {
-                selectSql = $"SELECT {AllFieldsSql} FROM {From} WHERE {wherePart}";
+                selectSql = $"SELECT {AllFieldsSql} FROM {From} WHERE {whereSql}";
             }
             else
             {
                 selectSql = $"SELECT {AllFieldsSql} FROM {From}";
             }
-            
-            // 添加ORDER BY子句
-            if (!string.IsNullOrWhiteSpace(orderByPart))
-            {
-                selectSql += " " + orderByPart;
-            }
-            
-            // 添加LIMIT子句
-            if (!string.IsNullOrWhiteSpace(limitPart))
-            {
-                selectSql += " " + limitPart;
-            }
-            
             return MakeNamedParamCommand(selectSql, where.GetParams());
         }
 #endif
