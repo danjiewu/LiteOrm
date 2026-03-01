@@ -28,7 +28,7 @@ namespace LiteOrm
     /// 该类通过依赖注入框架自动注册为单例。
     /// </remarks>
     [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
-    public abstract class DAOBase
+    public abstract class DAOBase : IDAOContext
     {
         #region 预定义变量
         /// <summary>
@@ -103,10 +103,12 @@ namespace LiteOrm
         /// <summary>
         /// 构建SQL语句的SQLBuilder
         /// </summary>
-        internal virtual SqlBuilder SqlBuilder
+        public virtual SqlBuilder SqlBuilder
         {
             get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType); }
         }
+
+        ISqlBuilder IDAOContext.SqlBuilder => SqlBuilder;
 
         /// <summary>
         /// 获取当前会话管理器
@@ -127,7 +129,7 @@ namespace LiteOrm
         /// 创建SQL执行上下文
         /// </summary>
         /// <returns></returns>
-        internal virtual SqlBuildContext CreateSqlBuildContext(bool initTable = false)
+        public virtual SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
             if (initTable) return new SqlBuildContext(Table, Table.Name, TableArgs) { SingleTable = !IsView };
             else return new SqlBuildContext() { TableArgs = TableArgs, SingleTable = !IsView };
