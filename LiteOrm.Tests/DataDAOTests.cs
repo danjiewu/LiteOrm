@@ -26,7 +26,7 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateAllValues"));
+            int affected = dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateAllValues")).Execute();
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
             // Assert
@@ -62,7 +62,8 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            bool updated = dataDao.UpdateValues(updateValues, user.Id);
+            int affected = dataDao.UpdateValues(updateValues, user.Id).Execute();
+            bool updated = affected > 0;
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
             // Assert
@@ -78,7 +79,8 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            bool updated = dataDao.UpdateValues(updateValues, -1);
+            int affected = dataDao.UpdateValues(updateValues, -1).Execute();
+            bool updated = affected > 0;
 
             // Assert
             Assert.False(updated);
@@ -96,7 +98,7 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValuesAsync(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateAllValuesAsync"));
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateAllValuesAsync")).ExecuteAsync();
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
             // Assert
@@ -116,7 +118,8 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            bool updated = await dataDao.UpdateValuesAsync(updateValues, new object[] { user.Id });
+            int affected = await dataDao.UpdateValues(updateValues, user.Id).ExecuteAsync();
+            bool updated = affected > 0;
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
             // Assert
@@ -132,7 +135,8 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            bool updated = await dataDao.UpdateValuesAsync(updateValues, new object[] { -1 });
+            int affected = await dataDao.UpdateValues(updateValues, -1).ExecuteAsync();
+            bool updated = affected > 0;
 
             // Assert
             Assert.False(updated);
@@ -157,7 +161,7 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name.StartsWith("BatchUpdate")));
+            int affected = dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name.StartsWith("BatchUpdate"))).Execute();
             var retrievedUsers = await viewService.SearchAsync(Expr.Exp<TestUser>(u => u.Name.StartsWith("BatchUpdate")));
 
             // Assert

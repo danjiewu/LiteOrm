@@ -331,7 +331,7 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValuesAsync(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateValue"));
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateValue")).ExecuteAsync();
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
             // Assert

@@ -461,6 +461,8 @@ var users = userService.Search(
 );
 ```
 
+
+
 ### 4.4 聚合查询
 
 聚合查询需要使用 DataViewDAO，因为 EntityViewService 的 Search 方法不支持 GroupBy：
@@ -794,8 +796,7 @@ LiteOrm.Common/
 ├── DAO/                     # 数据访问接口
 │   ├── IObjectDAO.cs       # 实体DAO接口
 │   ├── IObjectDAOAsync.cs  # 实体DAO异步接口
-│   ├── IObjectViewDAO.cs   # 视图DAO接口
-│   └── IObjectViewDAOAsync.cs
+│   └── IObjectViewDAO.cs   # 视图DAO接口
 ├── Expr/                   # 表达式系统（核心）
 │   ├── Expr.cs             # Expr基类
 │   ├── ExprExtensions.cs   # Expr扩展方法

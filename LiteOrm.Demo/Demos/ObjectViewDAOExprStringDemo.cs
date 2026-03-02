@@ -58,8 +58,9 @@ namespace LiteOrm.Demo.Demos
             int ageThreshold = 25;
             var ageExpr = Expr.Prop("Age") > ageThreshold;
             var users = _objectViewDAO.Search($"{ageExpr} AND UserName LIKE '张%'");
+            var userList = users.ToList();
             
-            Console.WriteLine($"年龄大于 {ageThreshold} 且姓名以 '张' 开头的用户 ({users.Count} 个):");
+            Console.WriteLine($"年龄大于 {ageThreshold} 且姓名以 '张' 开头的用户 ({userList.Count} 个):");
             foreach (var user in users)
             {
                 Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");
@@ -68,8 +69,9 @@ namespace LiteOrm.Demo.Demos
             // 更复杂的混用示例
             var deptExpr = Expr.Prop("DeptId") == 2;
             users = _objectViewDAO.Search($"{deptExpr} AND Age BETWEEN 20 AND 30");
+            var userList2 = users.ToList();
             
-            Console.WriteLine($"部门 2 且年龄在 20-30 之间的用户 ({users.Count} 个):");
+            Console.WriteLine($"部门 2 且年龄在 20-30 之间的用户 ({userList2.Count} 个):");
             foreach (var user in users)
             {
                 Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}, 部门: {user.DeptId}");
@@ -113,8 +115,9 @@ namespace LiteOrm.Demo.Demos
             int ageThreshold = 25;
             var ageExpr = Expr.Prop("Age") > ageThreshold;
             var users = _objectViewDAO.Search($"{ageExpr}");
+            var userList3 = users.ToList();
             
-            Console.WriteLine($"年龄大于 {ageThreshold} 的用户 ({users.Count} 个):");
+            Console.WriteLine($"年龄大于 {ageThreshold} 的用户 ({userList3.Count} 个):");
             foreach (var user in users)
             {
                 Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");
@@ -131,8 +134,9 @@ namespace LiteOrm.Demo.Demos
             var deptExpr = Expr.Prop("DeptId") == deptId;
             var ageExpr = Expr.Prop("Age") < ageLimit;
             var users = _objectViewDAO.Search($"{deptExpr} AND {ageExpr}");
+            var userList4 = users.ToList();
             
-            Console.WriteLine($"部门 {deptId} 且年龄小于 {ageLimit} 的用户 ({users.Count} 个):");
+            Console.WriteLine($"部门 {deptId} 且年龄小于 {ageLimit} 的用户 ({userList4.Count} 个):");
             foreach (var user in users)
             {
                 Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}, 部门: {user.DeptId}");
@@ -146,8 +150,9 @@ namespace LiteOrm.Demo.Demos
             // 使用复杂的 Expr 表达式
             var complexExpr = (Expr.Prop("Age") > 20) & (Expr.Prop("Age") < 35);
             var users = _objectViewDAO.Search($"{complexExpr}");
+            var userList5 = users.ToList();
             
-            Console.WriteLine("年龄在 20-35 之间的用户 ({users.Count} 个):");
+            Console.WriteLine("年龄在 20-35 之间的用户 ({userList5.Count} 个):");
             foreach (var user in users)
             {
                 Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");
@@ -160,8 +165,9 @@ namespace LiteOrm.Demo.Demos
             
             // 使用空的 ExprString 查询所有用户
             var users = _objectViewDAO.Search($"");
+            var userList6 = users.ToList();
             
-            Console.WriteLine($"所有用户 ({users.Count} 个):");
+            Console.WriteLine($"所有用户 ({userList6.Count} 个):");
             foreach (var user in users)
             {
                 Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");

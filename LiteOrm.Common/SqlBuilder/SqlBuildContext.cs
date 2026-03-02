@@ -122,7 +122,7 @@ namespace LiteOrm.Common
         {
             internal SqlScopeContext() { }
 
-            private Dictionary<string, SqlTable> _aliasTableMap = new Dictionary<string, SqlTable>(StringComparer.OrdinalIgnoreCase);
+            private readonly Dictionary<string, SqlTable> _aliasTableMap = new Dictionary<string, SqlTable>(StringComparer.OrdinalIgnoreCase);
             
             /// <summary>
             /// 表别名
@@ -184,8 +184,8 @@ namespace LiteOrm.Common
             {
                 if (string.IsNullOrEmpty(aliasName)) aliasName = DefaultTableAliasName;
                 if (string.IsNullOrEmpty(aliasName)) return null;
-                if (!_aliasTableMap.ContainsKey(aliasName)) return Parent?.GetTable(aliasName);
-                return _aliasTableMap[aliasName];
+                if (!_aliasTableMap.TryGetValue(aliasName, out SqlTable value)) return Parent?.GetTable(aliasName);
+                return value;
             }
 
             /// <summary>

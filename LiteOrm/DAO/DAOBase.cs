@@ -9,6 +9,7 @@ using System.Data.Common;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace LiteOrm
 {
@@ -35,19 +36,19 @@ namespace LiteOrm
         /// <summary>
         /// 表示SQL查询中条件语句的标记
         /// </summary>
-        public const string ParamWhere = "@Where@";
+        public const string ParamWhere = "{Where}";
         /// <summary>
         /// 表示SQL查询中表名的标记
         /// </summary>
-        public const string ParamTable = "@Table@";
+        public const string ParamTable = "{Table}";
         /// <summary>
         /// 表示SQL查询中多表连接的标记
         /// </summary>
-        public const string ParamFromTable = "@FromTable@";
+        public const string ParamFrom = "{From}";
         /// <summary>
         /// 表示SQL查询中所有字段的标记
         /// </summary>
-        public const string ParamAllFields = "@AllFields@";
+        public const string ParamAllFields = "{AllFields}";
 
         /// <summary>
         /// 时间戳参数的内部名称。
@@ -57,7 +58,7 @@ namespace LiteOrm
 
         #region 私人变量
         private SqlColumn[] _selectColumnsArray;
-        private string _allFieldsSql = null;
+        private string _allFields = null;
         private string _factTableName = null;
         private string _fromTable = null;
         private ArgumentOutOfRangeException _exceptionWrongKeys;
@@ -114,7 +115,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取当前会话管理器
         /// </summary>
-        public SessionManager CurrentSession => SessionManager.Current;
+        public virtual SessionManager CurrentSession => SessionManager.Current;
 
         /// <summary>
         /// 获取当前数据访问对象上下文
@@ -216,15 +217,15 @@ namespace LiteOrm
         /// <summary>
         /// 查询时需要获取的所有字段的 SQL
         /// </summary>
-        protected string AllFieldsSql
+        protected string AllFields
         {
             get
             {
-                if (_allFieldsSql is null)
+                if (_allFields is null)
                 {
-                    _allFieldsSql = GetSelectFieldsSql(SelectColumns);
+                    _allFields = GetSelectFieldsSql(SelectColumns);
                 }
-                return _allFieldsSql;
+                return _allFields;
             }
         }
 
@@ -233,7 +234,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="where">条件字符串。</param>
         /// <returns>生成的 WHERE 子句。</returns>
-        protected string ToWhereSql(string where) => string.IsNullOrEmpty(where) ? string.Empty : $"\nWHERE {where}";
+        protected static string ToWhereSql(string where) => string.IsNullOrEmpty(where) ? string.Empty : $"\nWHERE {where}";
         #endregion
 
         #region 方法
@@ -331,28 +332,6 @@ namespace LiteOrm
             return MakeExprCommand(selectExpr);
         }
 
-#if NET8_0_OR_GREATER
-        /// <summary>
-        /// 根据表达式创建查询命令
-        /// </summary>
-        /// <param name="where">查询条件</param>
-        /// <returns>生成的查询命令</returns>
-        protected DbCommandProxy MakeSelectExprCommand(ExprString where)
-        {
-            string whereSql = where.GetSqlResult().Trim();
-            string selectSql;
-            if (!string.IsNullOrWhiteSpace(whereSql))
-            {
-                selectSql = $"SELECT {AllFieldsSql} FROM {From} WHERE {whereSql}";
-            }
-            else
-            {
-                selectSql = $"SELECT {AllFieldsSql} FROM {From}";
-            }
-            return MakeNamedParamCommand(selectSql, where.GetParams());
-        }
-#endif
-
         /// <summary>
         /// 根据表达式创建命令
         /// </summary>
@@ -375,13 +354,38 @@ namespace LiteOrm
 #endif
 
         /// <summary>
+        /// 需要替换的关键字和内容的字典
+        /// </summary>
+        private Dictionary<string, string> _replacements;
+        protected Dictionary<string, string> Replacements{
+            get{
+                if (_replacements == null) _replacements = GetReplacements();
+                return _replacements;
+            }
+        }
+
+        protected virtual Dictionary<string, string> GetReplacements(){
+            return new Dictionary<string, string>
+            {
+                { ParamTable, FactTableName },
+                { ParamFrom, From },
+                { ParamAllFields, AllFields }
+            };
+        }
+
+        /// <summary>
         /// 替换 SQL 中的标记为实际 SQL
         /// </summary>
         /// <param name="sqlWithParam">包含标记的 SQL 语句</param>
         /// <returns></returns>
         protected virtual string ReplaceParam(string sqlWithParam)
         {
-            return sqlWithParam.Replace(ParamTable, FactTableName).Replace(ParamFromTable, From);
+            StringBuilder sb = new StringBuilder(sqlWithParam);
+            foreach (var replacement in Replacements)
+            {
+                sb.Replace(replacement.Key, replacement.Value);
+            }
+            return sb.ToString();
         }
 
         /// <summary>

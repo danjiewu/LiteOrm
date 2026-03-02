@@ -28,7 +28,8 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "DataViewTest2", Age = 30 });
 
             // Act
-            DataTable dt = await dao.SearchAsync(Expr.Prop("Name").StartsWith("DataViewTest"));
+            var result = dao.Search(Expr.Prop("Name").StartsWith("DataViewTest"));
+            DataTable dt = await result.GetResultAsync();
 
             // Assert
             Assert.NotNull(dt);
@@ -47,7 +48,8 @@ namespace LiteOrm.Tests
 
             // Act
             string[] fields = { "Name" };
-            DataTable dt = await dao.SearchAsync(fields, Expr.Prop("Name") == "FieldTest");
+            var result = dao.Search(fields, Expr.Prop("Name") == "FieldTest");
+            DataTable dt = await result.GetResultAsync();
 
             // Assert
             Assert.NotNull(dt);
@@ -70,12 +72,39 @@ namespace LiteOrm.Tests
                 .OrderBy(Expr.Prop("Age").Asc())
                 .Select("AliasName","Age");// 等价于 Select(Expr.Prop("AliasName"),Expr.Prop("Age"))
            
-            DataTable dt = await dao.SearchAsync(query);
+            var result = dao.Search(query);
+            DataTable dt = await result.GetResultAsync();
 
             // Assert
             Assert.NotNull(dt);
             Assert.Contains("AliasName", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName), StringComparer.OrdinalIgnoreCase);
             Assert.Contains("Age", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName), StringComparer.OrdinalIgnoreCase);
         }
+
+#if NET8_0_OR_GREATER
+        [Fact]
+        public async Task DataViewDAO_Search_WithExprString_ShouldWork()
+        {
+            // Arrange
+            var dao = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+
+            // Add some test data
+            await userService.InsertAsync(new TestUser { Name = "DataViewExprStringTest1", Age = 25 });
+            await userService.InsertAsync(new TestUser { Name = "DataViewExprStringTest2", Age = 30 });
+
+            // Act
+            // Test with ExprString syntax
+            var ageThreshold = 20;
+            var result = dao.Search($"SELECT {{AllFields}} FROM {{From}} WHERE {Expr.Prop("Age")} > {ageThreshold} AND {Expr.Prop("Name")} LIKE 'DataViewExprStringTest%'");
+            DataTable dt = await result.GetResultAsync();
+
+            // Assert
+            Assert.NotNull(dt);
+            Assert.True(dt.Rows.Count >= 2);
+            Assert.Contains("Name", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName), StringComparer.OrdinalIgnoreCase);
+            Assert.Contains("Age", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName), StringComparer.OrdinalIgnoreCase);
+        }
+#endif
     }
 }

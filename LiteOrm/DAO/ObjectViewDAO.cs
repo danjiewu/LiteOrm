@@ -82,7 +82,7 @@ namespace LiteOrm
         {
             DbCommandProxy command = NewCommand();
             string where = MakeKeyCondition(command);
-            command.CommandText = $"SELECT {AllFieldsSql} \nFROM {From} {ToWhereSql(where)}";
+            command.CommandText = $"SELECT {AllFields} \nFROM {From} {ToWhereSql(where)}";
             return command;
         }
 
@@ -108,62 +108,19 @@ namespace LiteOrm
             command.CommandText = $"SELECT 1 \nFROM {FactTableName} {ToWhereSql(strConditions.ToString())}";
             return command;
         }
-
         #endregion
 
         #region 常用方法
 
         /// <summary>
-        /// 替换 SQL 中的标记为实际 SQL。
+        /// 获取SQL语句中的替换参数
         /// </summary>
-        /// <param name="sqlWithParam">包含标记的 SQL 语句，标记可以为 ParamAllFields，ParamFromTable。</param>
-        /// <returns>替换后的 SQL 语句。</returns>
-        protected override string ReplaceParam(string sqlWithParam)
+        /// <returns>替换参数字典</returns>
+        protected override Dictionary<string, string> GetReplacements()
         {
-            return base.ReplaceParam(sqlWithParam).Replace(ParamAllFields, AllFieldsSql);
-        }
-
-        /// <summary>
-        /// 读取所有记录并转化为对象集合，查询 AllFieldsSql 时可用
-        /// </summary>
-        /// <param name="reader">只读结果集</param>
-        /// <returns>对象列表</returns>
-        private List<T> ReadAll(IDataReader reader)
-        {
-            List<T> results = new List<T>();
-            while (reader.Read())
-            {
-                results.Add(ConvertToObject(reader));
-            }
-            return results;
-        }
-
-        /// <summary>
-        /// 读取所有记录并转化为对象集合，查询 AllFieldsSql 时可用
-        /// </summary>
-        /// <param name="reader">只读结果集</param>
-        /// <param name="count">查询结果条数</param>
-        /// <returns>对象列表</returns>
-        private List<T> Read(IDataReader reader, int count)
-        {
-            List<T> results = new List<T>();
-            int i = 0;
-            while (reader.Read() && i < count)
-            {
-                results.Add(ConvertToObject(reader));
-                i++;
-            }
-            return results;
-        }
-
-        /// <summary>
-        /// 从IDataReader中读取一条记录转化为对象，若无记录则返回null
-        /// </summary>
-        /// <param name="dataReader">IDataReader</param>
-        /// <returns>对象，若无记录则返回null</returns>
-        private T ReadOne(IDataReader dataReader)
-        {
-            return dataReader.Read() ? ConvertToObject(dataReader) : default(T);
+            var dict = base.GetReplacements();
+            dict[ParamAllFields] = AllFields;
+            return dict;
         }
 
         /// <summary>
@@ -182,81 +139,6 @@ namespace LiteOrm
             }
             return t;
         }
-
-
-        /// <summary>
-        /// 执行 IDbCommand，读取所有记录并转化为对象的集合，查询 AllFieldsSql 时可用
-        /// </summary>
-        /// <param name="command">待执行的 IDbCommand</param>
-        /// <returns></returns>
-        protected List<T> GetAll(DbCommandProxy command)
-        {
-            using (IDataReader reader = command.ExecuteReader())
-            {
-                return ReadAll(reader);
-            }
-        }
-
-        /// <summary>
-        /// 执行 IDbCommand，读取所有记录并转化为对象的集合，查询 AllFieldsSql 时可用
-        /// </summary>
-        /// <param name="command">待执行的 IDbCommand</param>
-        /// <param name="count">查询结果条数</param>
-        /// <returns></returns>
-        protected List<T> GetAll(DbCommandProxy command, int count)
-        {
-            using (IDataReader reader = command.ExecuteReader())
-            {
-                return Read(reader, count);
-            }
-        }
-
-        /// <summary>
-        /// 执行 IDbCommand，读取一条记录并转化为单个对象，查询 AllFieldsSql 时可用
-        /// </summary>
-        /// <param name="command">待执行的 IDbCommand</param>
-        /// <returns></returns>
-        protected T GetOne(DbCommandProxy command)
-        {
-            using (IDataReader reader = command.ExecuteReader())
-            {
-                return ReadOne(reader);
-            }
-        }
-
-        /// <summary>
-        /// 异步读取所有记录并转化为对象集合
-        /// </summary>
-        private async Task<List<T>> ReadAllAsync(DbDataReader reader, CancellationToken cancellationToken)
-        {
-            List<T> results = new List<T>();
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-            {
-                results.Add(ConvertToObject(reader));
-            }
-            return results;
-        }
-
-        /// <summary>
-        /// 从IDataReader中异步读取一条记录转化为对象
-        /// </summary>
-        private async Task<T> ReadOneAsync(DbDataReader reader, CancellationToken cancellationToken)
-        {
-            return await reader.ReadAsync(cancellationToken).ConfigureAwait(false) ? ConvertToObject(reader) : default(T);
-        }
-
-
-        /// <summary>
-        /// 异步执行 IDbCommand，读取所有记录并转化为对象的集合
-        /// </summary>
-        protected async Task<List<T>> GetAllAsync(DbCommandProxy command, CancellationToken cancellationToken)
-        {
-            using (DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken))
-            {
-                return await ReadAllAsync(reader, cancellationToken);
-            }
-        }
-
 
         #endregion
 
@@ -305,6 +187,17 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 判断对象是否存在
+        /// </summary>
+        /// <param name="o">对象</param>
+        /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
+        public virtual ValueResult<bool> Exists(T o)
+        {
+            if (o is null) throw new ArgumentNullException("o");
+            return ExistsKey(GetKeyValues(o));
+        }
+
+        /// <summary>
         /// 判断主键对应的对象是否存在
         /// </summary>
         /// <param name="keys">主键，多个主键按照名称顺序排列</param>
@@ -321,7 +214,6 @@ namespace LiteOrm
             }
             return new ValueResult<bool>(objectExistsCommand, (obj) => obj != null && Convert.ToInt32(obj) > 0, false);
         }
-
 
         /// <summary>
         /// 判断符合条件的对象是否存在
@@ -345,50 +237,22 @@ namespace LiteOrm
         public virtual EnumerableResult<T> Search(Expr expr = null)
         {
             var command = MakeSelectExprCommand(expr);
-            return new EnumerableResult<T>(command, (reader) => ConvertToObject(reader));
-        }
-
-        /// <summary>
-        /// 根据条件查询，多个条件以逻辑与连接，并返回列表
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <returns>符合条件的对象列表</returns>
-        public virtual List<T> ToList(Expr expr = null)
-        {
-            return Search(expr).ToList();
-        }
-
-        /// <summary>
-        /// 获取单个符合条件的对象
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <returns>可枚举结果对象，可通过FirstOrDefault()和FirstOrDefaultAsync()获取结果</returns>
-        public virtual EnumerableResult<T> SearchOne(Expr expr)
-        {
-            return Search(expr);
+            return new EnumerableResult<T>(command, ConvertToObject);
         }
 
 #if NET8_0_OR_GREATER
         /// <summary>
         /// 根据条件查询，多个条件以逻辑与连接
         /// </summary>
-        /// <param name="where">查询条件</param>
-        /// <returns>符合条件的对象列表</returns>
-        public virtual List<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString where)
+        /// <param name="sqlBody">查询条件，不需要 Select ... From ... 部分，使用插值字符串格式</param>
+        /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
+        /// <example>
+        /// var users = objectViewDAO.Search($"WHERE {Expr.Prop("Age") > 20 }");
+        /// </example>
+        public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
-            using DbCommandProxy command = MakeSelectExprCommand(where);
-            return GetAll(command);
-        }
-
-        /// <summary>
-        /// 获取单个符合条件的对象
-        /// </summary>
-        /// <param name="where">查询条件</param>
-        /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
-        public virtual T SearchOne([InterpolatedStringHandlerArgument("")] ref ExprString where)
-        {
-            using DbCommandProxy command = MakeSelectExprCommand(where);
-            return GetOne(command);
+            var command = MakeNamedParamCommand($"SELECT {AllFields} FROM {From} {sqlBody.GetSqlResult().Trim()}", sqlBody.GetParams());
+            return new EnumerableResult<T>(command, ConvertToObject);
         }
 #endif
 
@@ -408,23 +272,13 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 获取单个符合条件的对象（接口实现）
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <returns>第一个符合条件的对象，若不存在则返回null</returns>
-        object IObjectViewDAO.SearchOne(Expr expr)
-        {
-            return SearchOne(expr);
-        }
-
-        /// <summary>
         /// 根据条件查询，多个条件以逻辑与连接（接口实现）
         /// </summary>
         /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
         /// <returns>符合条件的对象列表</returns>
-        IList IObjectViewDAO.Search(Expr expr)
+        IEnumerableResult IObjectViewDAO.Search(Expr expr)
         {
-            return Search(expr).ToList();
+            return Search(expr);
         }
 
         /// <summary>
@@ -432,7 +286,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>值结果对象</returns>
-        object IObjectViewDAO.Count(Expr expr)
+        ValueResult<int> IObjectViewDAO.Count(Expr expr)
         {
             return Count(expr);
         }
@@ -442,7 +296,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>值结果对象</returns>
-        object IObjectViewDAO.Exists(Expr expr)
+        ValueResult<bool> IObjectViewDAO.Exists(Expr expr)
         {
             return Exists(expr);
         }

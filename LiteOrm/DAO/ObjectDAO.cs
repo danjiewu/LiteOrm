@@ -141,7 +141,6 @@ namespace LiteOrm
             return command;
         }
 
-
         /// <summary>
         /// 构建实体更新命令。
         /// </summary>
@@ -172,7 +171,6 @@ namespace LiteOrm
             strColumns.Dispose();
             return command;
         }
-
 
         /// <summary>
         /// 构建实体删除命令。

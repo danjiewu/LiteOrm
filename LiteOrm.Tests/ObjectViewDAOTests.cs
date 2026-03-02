@@ -35,12 +35,13 @@ namespace LiteOrm.Tests
             // Test with ExprString syntax using Expr as formatted fragment
             var ageThreshold = 20;
             var ageExpr = Expr.Prop("Age") > ageThreshold;
-            var results = objectViewDAO.Search($"{ageExpr}");
+            var results = objectViewDAO.Search($"WHERE {ageExpr}");
 
             // Assert
             Assert.NotNull(results);
-            Assert.Equal(2, results.Count); // Should return User2 (30) and User3 (25)
-            Assert.All(results, user => Assert.True(user.Age > ageThreshold));
+            var resultList = results.ToList();
+            Assert.Equal(2, resultList.Count); // Should return User2 (30) and User3 (25)
+            Assert.All(resultList, user => Assert.True(user.Age > ageThreshold));
         }
 
         [Fact]
@@ -64,7 +65,7 @@ namespace LiteOrm.Tests
             var minAge = 20;
             var startDate = DateTime.Now.AddDays(-7);
             var complexExpr = (Expr.Prop("Age") > minAge) & (Expr.Prop("CreateTime") > startDate);
-            var results = objectViewDAO.Search($"{complexExpr}");
+            var results = objectViewDAO.Search($"WHERE {complexExpr}");
 
             // Assert
             Assert.NotNull(results);
@@ -96,53 +97,13 @@ namespace LiteOrm.Tests
 
             // Assert
             Assert.NotNull(results);
-            Assert.True(results.Count >= 2); // Should return all users
+            var resultList = results.ToList();
+            Assert.True(resultList.Count >= 2); // Should return all users
         }
 
-        [Fact]
-        public async Task ObjectViewDAO_SearchOne_WithExprString_ShouldWork()
-        {
-            // Arrange
-            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
-            
-            // Insert test data
-            var user = new TestUser { Name = "TestUser", Age = 25, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
 
-            // Act
-            // Test with ExprString syntax using Expr as formatted fragment
-            var userName = "TestUser";
-            var nameExpr = Expr.Prop("Name") == userName;
-            var result = objectViewDAO.SearchOne($"{nameExpr}");
 
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal(userName, result.Name);
-            Assert.Equal(25, result.Age);
-        }
 
-        [Fact]
-        public async Task ObjectViewDAO_SearchOne_WithExprString_ComplexExpr_ShouldWork()
-        {
-            // Arrange
-            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
-            
-            // Insert test data
-            var user = new TestUser { Name = "ComplexUser", Age = 30, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
-
-            // Act
-            // Test with complex Expr in ExprString
-            var complexExpr = (Expr.Prop("Name") == "ComplexUser") & (Expr.Prop("Age") == 30);
-            var result = objectViewDAO.SearchOne($"{complexExpr}");
-
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal("ComplexUser", result.Name);
-            Assert.Equal(30, result.Age);
-        }
 
         [Fact]
         public async Task ObjectViewDAO_Search_WithExprString_MixedSqlAndExpr_ShouldWork()
@@ -164,12 +125,13 @@ namespace LiteOrm.Tests
             // Test with mixed SQL and Expr in ExprString
             var ageThreshold = 20;
             var ageExpr = Expr.Prop("Age") > ageThreshold;
-            var results = objectViewDAO.Search($"{ageExpr} AND Name LIKE 'User%'");
+            var results = objectViewDAO.Search($"WHERE {ageExpr} AND Name LIKE 'User%'");
 
             // Assert
             Assert.NotNull(results);
-            Assert.True(results.Count > 0);
-            Assert.All(results, user => {
+            var resultList = results.ToList();
+            Assert.True(resultList.Count > 0);
+            Assert.All(resultList, user => {
                 Assert.True(user.Age > ageThreshold);
                 Assert.StartsWith("User", user.Name);
             });
