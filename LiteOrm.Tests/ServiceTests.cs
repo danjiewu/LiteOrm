@@ -331,7 +331,7 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateValue")).ExecuteAsync();
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateValue")).GetResultAsync();
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
             // Assert
@@ -710,6 +710,42 @@ namespace LiteOrm.Tests
             Assert.Equal(1, affected);
             Assert.Equal(20, retrieved?.Age); // Age + 10 = 20
             Assert.Equal("UpdateExprAsyncTest_Updated", retrieved?.Name); // CONCAT("UpdateExprAsyncTest", "_Updated")
+        }
+
+        [Fact]
+        public async Task EntityViewService_ExistsLambda_ShouldWork()
+        {
+            // Arrange
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+
+            // 创建测试部门
+            var dept = new TestDepartment { Name = "ExistsTestDept" };
+            await deptService.InsertAsync(dept);
+
+            // 创建测试用户
+            var userWithDept = new TestUser { Name = "UserWithDept", Age = 25, CreateTime = DateTime.Now, DeptId = dept.Id };
+            await userService.InsertAsync(userWithDept);
+
+            var userWithoutDept = new TestUser { Name = "UserWithoutDept", Age = 30, CreateTime = DateTime.Now, DeptId = -1 };
+            await userService.InsertAsync(userWithoutDept);
+
+            // Act - 使用 Expr.Exists lambda 方式查询
+            var usersWithDept = await viewService.SearchAsync(
+                Expr.Exp<TestUser>(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId))
+            );
+
+            var usersWithSpecificDept = await viewService.SearchAsync(
+                Expr.Exp<TestUser>(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "ExistsTestDept"))
+            );
+
+            // Assert
+            Assert.Single(usersWithDept);
+            Assert.Equal("UserWithDept", usersWithDept[0].Name);
+
+            Assert.Single(usersWithSpecificDept);
+            Assert.Equal("UserWithDept", usersWithSpecificDept[0].Name);
         }
     }
 }

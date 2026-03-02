@@ -122,6 +122,7 @@ namespace LiteOrm.Common
             if (_rootParameter != null)
             {
                 _parameterAliases[_rootParameter] = objectType.Name;
+                _aliasCounter = 1; // 初始化为1，因为已经使用了一个别名
             }
         }
 
@@ -137,6 +138,14 @@ namespace LiteOrm.Common
         /// 参数表达式到别名的映射
         /// </summary>
         protected readonly Dictionary<ParameterExpression, string> _parameterAliases = new Dictionary<ParameterExpression, string>();
+        /// <summary>
+        /// 匿名类别名缓存，键为匿名类类型，值为别名
+        /// </summary>
+        protected readonly Dictionary<Type, string> _anonymousTypeAliases = new Dictionary<Type, string>();
+        /// <summary>
+        /// 别名编号，用于生成新的别名
+        /// </summary>
+        protected int _aliasCounter = 0;
         /// <summary>
         /// 检测表达式是否包含 Lambda 参数
         /// </summary>
@@ -640,8 +649,26 @@ namespace LiteOrm.Common
 
             if (!_parameterAliases.TryGetValue(node, out var alias))
             {
-                alias = "T" + _parameterAliases.Count;
-                _parameterAliases[node] = alias;
+                // 首先检查是否是匿名类，如果是则查找匿名类的别名
+                if (type.Name.StartsWith("<>f__AnonymousType") && type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false))
+                {
+                    if (_anonymousTypeAliases.TryGetValue(type, out alias))
+                    {
+                        _parameterAliases[node] = alias;
+                    }
+                    else
+                    {
+                        // 如果没有找到匿名类的别名，则生成新的别名
+                        alias = "T" + _aliasCounter++;
+                        _parameterAliases[node] = alias;
+                    }
+                }
+                else
+                {
+                    // 生成新的别名
+                    alias = "T" + _aliasCounter++;
+                    _parameterAliases[node] = alias;
+                }
             }
 
             return new FromExpr(type) { Alias = alias };
@@ -785,7 +812,19 @@ namespace LiteOrm.Common
             // 转换 Select 的选择表达式
             var selectItems = ConvertSelectLambda(lambda, groupBySource?.GroupBys.ToArray());
 
-            return source.Select(selectItems);
+            var selectExpr = (SelectExpr)source.Select(selectItems);
+
+            // 为 SelectExpr 生成别名
+            string alias = "T" + _aliasCounter++;
+            selectExpr.Alias = alias;
+
+            // 保存匿名类别名到缓存
+            if (lambda.Body is NewExpression newExpr && newExpr.Type.Name.StartsWith("<>f__AnonymousType") && newExpr.Type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false))
+            {
+                _anonymousTypeAliases[newExpr.Type] = alias;
+            }
+
+            return selectExpr;
         }
 
         /// <summary>
@@ -811,9 +850,13 @@ namespace LiteOrm.Common
                     {
                         var selectItem = new SelectItemExpr(AsValue(item));
                         if (newExpr.Members != null && i < newExpr.Members.Count)
-                        {
-                            selectItem.Name = newExpr.Members[i].Name;
-                        }
+                {
+                    if(item is PropertyExpr propertyExpr&& propertyExpr.PropertyName == newExpr.Members[i].Name) 
+                        // 如果属性名与成员名相同，则不设置别名，保持简洁
+                        selectItem.Alias = null;     
+                    else
+                        selectItem.Alias = newExpr.Members[i].Name;
+                }
                         items.Add(selectItem);
                     }
                 }
@@ -950,7 +993,7 @@ namespace LiteOrm.Common
                     ParameterExpression parameter = lambda.Parameters.FirstOrDefault();
                     if (parameter != null && !_parameterAliases.ContainsKey(parameter))
                     {
-                        _parameterAliases[parameter] = "T" + _parameterAliases.Count;
+                        _parameterAliases[parameter] = "T" + _aliasCounter++;
                     }
                     return new ForeignExpr(parameter.Type, _parameterAliases[parameter], AsLogic(ConvertInternal(lambda.Body)));
                 }

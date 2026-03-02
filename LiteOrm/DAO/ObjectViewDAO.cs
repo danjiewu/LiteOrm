@@ -113,17 +113,6 @@ namespace LiteOrm
         #region 常用方法
 
         /// <summary>
-        /// 获取SQL语句中的替换参数
-        /// </summary>
-        /// <returns>替换参数字典</returns>
-        protected override Dictionary<string, string> GetReplacements()
-        {
-            var dict = base.GetReplacements();
-            dict[ParamAllFields] = AllFields;
-            return dict;
-        }
-
-        /// <summary>
         /// 将一行记录转化为对象
         /// </summary>
         /// <param name="record">一行记录</param>
@@ -240,18 +229,42 @@ namespace LiteOrm
             return new EnumerableResult<T>(command, ConvertToObject);
         }
 
+        /// <summary>
+        /// 获取单个符合条件的对象
+        /// </summary>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
+        /// <returns>可枚举结果对象，可通过FirstOrDefault()和FirstOrDefaultAsync()获取结果</returns>
+        public virtual EnumerableResult<T> SearchOne(Expr expr)
+        {
+            var selectExpr = new SelectExpr(expr.ToSource<T>(), SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Prop(col.PropertyName))).ToArray());
+            var command = MakeExprCommand(selectExpr);
+            return new EnumerableResult<T>(command, ConvertToObject);
+        }
+
+        /// <summary>
+        /// 根据条件查询并返回列表
+        /// </summary>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
+        /// <returns>符合条件的对象列表</returns>
+        public virtual List<T> ToList(Expr expr = null)
+        {
+            return Search(expr).ToList();
+        }
+
 #if NET8_0_OR_GREATER
         /// <summary>
-        /// 根据条件查询，多个条件以逻辑与连接
+        /// 使用带参数的SQL查询
         /// </summary>
-        /// <param name="sqlBody">查询条件，不需要 Select ... From ... 部分，使用插值字符串格式</param>
+        /// <param name="sqlBody">查询SQL，使用插值字符串格式</param>
+        /// <param name="isFull">传入的是否是完整SQL，默认为 false</param>
         /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
         /// <example>
         /// var users = objectViewDAO.Search($"WHERE {Expr.Prop("Age") > 20 }");
         /// </example>
-        public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
+        public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)
         {
-            var command = MakeNamedParamCommand($"SELECT {AllFields} FROM {From} {sqlBody.GetSqlResult().Trim()}", sqlBody.GetParams());
+            string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} FROM {From} {sqlBody.GetSqlResult()}";
+            var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
             return new EnumerableResult<T>(command, ConvertToObject);
         }
 #endif
@@ -266,7 +279,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
         /// <returns>对象，若存在则返回null</returns>
-        object IObjectViewDAO.GetObject(params object[] keys)
+        IEnumerableResult IObjectViewDAO.GetObject(params object[] keys)
         {
             return GetObject(keys);
         }
@@ -279,26 +292,6 @@ namespace LiteOrm
         IEnumerableResult IObjectViewDAO.Search(Expr expr)
         {
             return Search(expr);
-        }
-
-        /// <summary>
-        /// 得到符合条件的对象个数（接口实现）
-        /// </summary>
-        /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <returns>值结果对象</returns>
-        ValueResult<int> IObjectViewDAO.Count(Expr expr)
-        {
-            return Count(expr);
-        }
-
-        /// <summary>
-        /// 判断符合条件的对象是否存在（接口实现）
-        /// </summary>
-        /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <returns>值结果对象</returns>
-        ValueResult<bool> IObjectViewDAO.Exists(Expr expr)
-        {
-            return Exists(expr);
         }
 
         #endregion

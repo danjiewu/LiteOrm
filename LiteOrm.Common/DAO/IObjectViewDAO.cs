@@ -23,22 +23,18 @@ namespace LiteOrm.Common
         new EnumerableResult<T> GetObject(params object[] keys);
 
         /// <summary>
-        /// 判断对象是否存在
-        /// </summary>
-        /// <param name="o">对象</param>
-        /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
-        ValueResult<bool> Exists(T o);
-
-        /// <summary>
         /// 根据条件查询
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
-        new EnumerableResult<T> Search(Expr expr = null);
+        EnumerableResult<T> Search(Expr expr = null);
 
-
-
-
+        /// <summary>
+        /// 根据条件查询并返回列表
+        /// </summary>
+        /// <param name="expr">查询条件，若为null则表示没有条件</param>
+        /// <returns>符合条件的对象列表</returns>
+        List<T> ToList(Expr expr = null);
     }
     #endregion
 
@@ -54,7 +50,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="keys">主键，多个主键按照主键名顺序排列</param>
         /// <returns>可枚举结果对象，可通过FirstOrDefault()和FirstOrDefaultAsync()获取结果</returns>
-        object GetObject(params object[] keys);
+        IEnumerableResult GetObject(params object[] keys);
 
         /// <summary>
         /// 判断主键对应的对象是否存在
@@ -88,7 +84,7 @@ namespace LiteOrm.Common
         /// 根据条件查询
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
+        /// <returns>符合条件的对象列表</returns>
         IEnumerableResult Search(Expr expr);
     }
     #endregion

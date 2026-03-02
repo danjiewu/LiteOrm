@@ -16,7 +16,7 @@ namespace LiteOrm
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
     [AutoRegister(ServiceLifetime.Scoped)]
-    public class DataViewDAO<T> : DAOBase
+    public class DataViewDAO<T> : DAOBase, IDataViewDAO<T>
     {
         /// <summary>
         /// 获取实体类型信息。
@@ -32,20 +32,6 @@ namespace LiteOrm
         /// 指示当前 DAO 是视图查询 DAO。
         /// </summary>
         protected override bool IsView => true;
-
-        /// <summary>
-        /// 获取需要替换的关键字和内容的字典
-        /// </summary>
-        /// <returns></returns>
-        protected override Dictionary<string, string> GetReplacements()
-        {
-            return new Dictionary<string, string>
-            {
-                { ParamTable, FactTableName },
-                { ParamFrom, From },
-                { ParamAllFields, AllFields }
-            };
-        }
 
         /// <summary>
         /// 从Reader读取数据并创建DataRow
@@ -78,7 +64,7 @@ namespace LiteOrm
         public virtual DataTableResult Search(Expr expr)
         {
             var command = MakeSelectExprCommand(expr);
-            return new DataTableResult(command, () => new DataTable(), ReadDataRow, false);
+            return new DataTableResult(command, ReadDataRow, false);
         }
 
         /// <summary>
@@ -91,20 +77,21 @@ namespace LiteOrm
         {
             SelectExpr selectExpr = BuildSelectExpr(propertyNames, expr);
             var command = MakeExprCommand(selectExpr);
-            return new DataTableResult(command, () => new DataTable(), ReadDataRow, false);
+            return new DataTableResult(command, ReadDataRow, false);
         }
 
 #if NET8_0_OR_GREATER
         /// <summary>
         /// 使用插值字符串查询数据
         /// </summary>
-        /// <param name="fullSql">完整的SQL语句，包括Select ... From ... 部分，使用插值字符串格式</param>
+        /// <param name="sqlBody">查询sql，使用插值字符串格式</param>
+        /// <param name="isFull">传入的是否是完整sql，默认为 false</param>
         /// <returns>查询结果数据表</returns>
-        public virtual DataTableResult Search([InterpolatedStringHandlerArgument("")] ref ExprString fullSql    )
+        public virtual DataTableResult Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)
         {
-            var sql = ReplaceParam(fullSql.GetSqlResult());
-            var command = MakeNamedParamCommand(sql, fullSql.GetParams());
-            return new DataTableResult(command, () => new DataTable(), ReadDataRow, false);
+            string sql = isFull ? ReplaceParam(sqlBody.GetSqlResult()) : ReplaceParam($"SELECT {AllFields} FROM {From} {sqlBody.GetSqlResult()}");
+            var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
+            return new DataTableResult(command, ReadDataRow, false);
         }
 #endif
 

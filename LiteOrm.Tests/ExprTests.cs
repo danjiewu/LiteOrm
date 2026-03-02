@@ -305,27 +305,27 @@ namespace LiteOrm.Tests
         [Fact]
         public void SelectItemExpr_Serialization_Tests()
         {
-            // Select item with Name alias (property-based serialization)
-            var sie1 = new SelectItemExpr(Expr.Prop("DeptId")) { Name = "Department" };
-            var sie2 = new SelectItemExpr(Expr.Const(1)) { Name = "Count" };
+            // Select item with Alias (property-based serialization)
+            var sie1 = new SelectItemExpr(Expr.Prop("DeptId")) { Alias = "Department" };
+            var sie2 = new SelectItemExpr(Expr.Const(1)) { Alias = "Count" };
             var selectExpr = new SelectExpr(new FromExpr(), sie1, sie2);
 
             string json = JsonSerializer.Serialize<Expr>(selectExpr, _jsonOptions);
-            // Verify the format includes Name properties
-            Assert.Contains("\"Name\"", json);
+            // Verify the format includes Alias properties
+            Assert.Contains("\"Alias\"", json);
             Assert.Contains("\"Department\"", json);
             Assert.Contains("\"Count\"", json);
 
             var deserialized = JsonSerializer.Deserialize<Expr>(json, _jsonOptions) as SelectExpr;
             Assert.NotNull(deserialized);
             Assert.Equal(2, deserialized.Selects.Count);
-            Assert.Equal("Department", deserialized.Selects[0].Name);
+            Assert.Equal("Department", deserialized.Selects[0].Alias);
 
-            // Name validation - should throw for invalid characters
-            Assert.Throws<ArgumentException>(() => sie1.Name = "Dept@Id");
-            Assert.Throws<ArgumentException>(() => sie2.Name = "Count-1");
+            // Alias validation - should throw for invalid characters
+            Assert.Throws<ArgumentException>(() => sie1.Alias = "Dept@Id");
+            Assert.Throws<ArgumentException>(() => sie2.Alias = "Count-1");
 
-            Assert.Equal("Count", deserialized.Selects[1].Name);
+            Assert.Equal("Count", deserialized.Selects[1].Alias);
             Assert.True(selectExpr.Equals(deserialized));
         }
 

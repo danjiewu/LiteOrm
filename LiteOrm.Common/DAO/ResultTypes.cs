@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,14 +32,14 @@ namespace LiteOrm.Common
         /// 将结果转换为列表
         /// </summary>
         /// <returns>结果列表</returns>
-        List<object> ToList();
+        IList GetResult();
 
         /// <summary>
         /// 异步将结果转换为列表
         /// </summary>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>结果列表</returns>
-        Task<List<object>> ToListAsync(CancellationToken cancellationToken = default);
+        Task<IList> GetResultAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 对每个元素执行指定的操作
@@ -70,6 +71,9 @@ namespace LiteOrm.Common
             _autoDisposeCommand = autoDisposeCommand;
         }
 
+        public abstract T GetResult();
+        public abstract Task<T> GetResultAsync(CancellationToken cancellationToken = default);
+
         public void Dispose()
         {
             Dispose(true);
@@ -89,7 +93,7 @@ namespace LiteOrm.Common
     /// 可枚举结果类，对应ExecuteReader方式
     /// </summary>
     /// <typeparam name="TResult">元素类型</typeparam>
-    public class EnumerableResult<TResult> : CommandResult<TResult>, IEnumerable<TResult>, IAsyncEnumerable<TResult>, IEnumerableResult
+    public class EnumerableResult<TResult> : CommandResult<List<TResult>>, IEnumerable<TResult>, IAsyncEnumerable<TResult>, IEnumerableResult
     {
         private readonly Func<IDataReader, TResult> _readerFunc;
 
@@ -122,18 +126,14 @@ namespace LiteOrm.Common
 
         public TResult FirstOrDefault()
         {
-            using (IDataReader reader = _command.ExecuteReader())
-            {
-                return reader.Read() ? _readerFunc(reader) : default(TResult);
-            }
+            using DbDataReader reader = _command.ExecuteReader();
+            return reader.Read() ? _readerFunc(reader) : default;
         }
 
         public async ValueTask<TResult> FirstOrDefaultAsync(CancellationToken cancellationToken = default)
         {
-            using (DbDataReader reader = await _command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false))
-            {
-                return await reader.ReadAsync(cancellationToken).ConfigureAwait(false) ? _readerFunc(reader) : default(TResult);
-            }
+            using DbDataReader reader = await _command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
+            return await reader.ReadAsync(cancellationToken).ConfigureAwait(false) ? _readerFunc(reader) : default;
         }
 
         public List<TResult> ToList()
@@ -149,6 +149,16 @@ namespace LiteOrm.Common
                 list.Add(item);
             }
             return list;
+        }
+
+        public override List<TResult> GetResult()
+        {
+            return this.ToList();
+        }
+
+        public override async Task<List<TResult>> GetResultAsync(CancellationToken cancellationToken = default)
+        {
+            return await this.ToListAsync(cancellationToken);
         }
 
         /// <summary>
@@ -239,15 +249,14 @@ namespace LiteOrm.Common
             return await FirstOrDefaultAsync(cancellationToken);
         }
 
-        List<object> IEnumerableResult.ToList()
+        IList IEnumerableResult.GetResult()
         {
-            return ToList().ConvertAll(item => (object)item);
+            return GetResult();
         }
 
-        async Task<List<object>> IEnumerableResult.ToListAsync(CancellationToken cancellationToken)
+        async Task<IList> IEnumerableResult.GetResultAsync(CancellationToken cancellationToken)
         {
-            var list = await ToListAsync(cancellationToken);
-            return list.ConvertAll(item => (object)item);
+            return await GetResultAsync(cancellationToken);
         }
 
         void IEnumerableResult.ForEach(Action<object> action)
@@ -281,13 +290,13 @@ namespace LiteOrm.Common
             });
         }
 
-        public TResult GetValue()
+        public override TResult GetResult()
         {
             var scalarValue = _command.ExecuteScalar();
             return _resultConverter(scalarValue);
         }
 
-        public async Task<TResult> GetValueAsync(CancellationToken cancellationToken = default)
+        public override async Task<TResult> GetResultAsync(CancellationToken cancellationToken = default)
         {
             var scalarValue = await _command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
             return _resultConverter(scalarValue);
@@ -303,12 +312,12 @@ namespace LiteOrm.Common
             : base(command, autoDisposeCommand)
         {}
 
-        public int Execute()
+        public override int GetResult()
         {
             return _command.ExecuteNonQuery();
         }
 
-        public async Task<int> ExecuteAsync(CancellationToken cancellationToken = default)
+        public override async Task<int> GetResultAsync(CancellationToken cancellationToken = default)
         {
             return await _command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -319,15 +328,13 @@ namespace LiteOrm.Common
     /// </summary>
     public class DataTableResult : CommandResult<DataTable>
     {
-        private readonly Func<DataTable> _createDataTable;
         private readonly Func<IDataReader, DataTable, DataRow> _readRow;
         private DataTable _dataTable;
         private bool _hasLoaded;
 
-        public DataTableResult(DbCommand command, Func<DataTable> createDataTable, Func<IDataReader, DataTable, DataRow> readRow, bool autoDisposeCommand = true)
+        public DataTableResult(DbCommand command, Func<IDataReader, DataTable, DataRow> readRow, bool autoDisposeCommand = true)
             : base(command, autoDisposeCommand)
         {
-            _createDataTable = createDataTable ?? (() => new DataTable());
             _readRow = readRow;
             _dataTable = null;
             _hasLoaded = false;
@@ -337,7 +344,7 @@ namespace LiteOrm.Common
         /// 获取DataTable结果
         /// </summary>
         /// <returns>DataTable结果</returns>
-        public DataTable GetResult()
+        public override DataTable GetResult()
         {
             if (!_hasLoaded)
             {
@@ -351,7 +358,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>DataTable结果</returns>
-        public async Task<DataTable> GetResultAsync(CancellationToken cancellationToken = default)
+        public override async Task<DataTable> GetResultAsync(CancellationToken cancellationToken = default)
         {
             if (!_hasLoaded)
             {
@@ -365,7 +372,7 @@ namespace LiteOrm.Common
         /// </summary>
         private void LoadData()
         {
-            _dataTable = _createDataTable();
+            _dataTable = new DataTable();
             using (var reader = _command.ExecuteReader())
             {
                 if (_dataTable.Columns.Count == 0)
@@ -405,7 +412,7 @@ namespace LiteOrm.Common
         /// <param name="cancellationToken">取消令牌</param>
         private async Task LoadDataAsync(CancellationToken cancellationToken = default)
         {
-            _dataTable = _createDataTable();
+            _dataTable = new DataTable();
             using (var reader = await _command.ExecuteReaderAsync(cancellationToken))
             {
                 if (_dataTable.Columns.Count == 0)

@@ -54,23 +54,36 @@ namespace LiteOrm.Common
         public List<SelectItemExpr> Selects { get; set; } = new List<SelectItemExpr>();
 
         /// <summary>
+        /// 获取或设置 SelectExpr 的别名
+        /// </summary>
+        public string Alias { get; set; }
+
+        /// <summary>
         /// 判断两个 SelectExpr 是否相等
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is SelectExpr other && Equals(Source, other.Source) && Selects.SequenceEqual(other.Selects);
+        public override bool Equals(object obj) => obj is SelectExpr other && Equals(Source, other.Source) && Selects.SequenceEqual(other.Selects) && Alias == other.Alias;
 
         /// <summary>
         /// 获取当前对象的哈希码
         /// </summary>
         /// <returns>哈希码值</returns>
-        public override int GetHashCode() => OrderedHashCodes(typeof(SelectExpr).GetHashCode(), Source?.GetHashCode() ?? 0, SequenceHash(Selects));
+        public override int GetHashCode() => OrderedHashCodes(typeof(SelectExpr).GetHashCode(), Source?.GetHashCode() ?? 0, SequenceHash(Selects), Alias?.GetHashCode() ?? 0);
 
         /// <summary>
         /// 返回选择片段的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>
-        public override string ToString() => $"SELECT {string.Join(", ", Selects)} FROM {Source}";
+        public override string ToString() 
+        {
+            string selectPart = $"SELECT {string.Join(", ", Selects)} FROM {Source}";
+            if (!string.IsNullOrEmpty(Alias))
+            {
+                selectPart += $" AS {Alias}";
+            }
+            return selectPart;
+        }
     }
 
     /// <summary>
@@ -100,7 +113,7 @@ namespace LiteOrm.Common
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
             Value = value;
-            Name = aliasName;
+            Alias = aliasName;
         }
 
         /// <summary>
@@ -108,21 +121,21 @@ namespace LiteOrm.Common
         /// </summary>
         public new ValueTypeExpr Value { get; set; }
 
-        private string _name;
+        private string _alias;
         
         /// <summary>
         /// 获取或设置选择项的别名
         /// </summary>
-        public string Name 
-        { 
-            get => _name;
+        public string Alias 
+        {
+            get => _alias;
             set
             {
                 if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
                 {
-                    throw new ArgumentException("Alias name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Name));
+                    throw new ArgumentException("Alias name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Alias));
                 }
-                _name = value;
+                _alias = value;
             }
         }
 
@@ -131,18 +144,18 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is SelectItemExpr other && Name == other.Name && Equals(Value, other.Value);
+        public override bool Equals(object obj) => obj is SelectItemExpr other && Alias == other.Alias && Equals(Value, other.Value);
 
         /// <summary>
         /// 获取当前对象的哈希码
         /// </summary>
         /// <returns>哈希码值</returns>
-        public override int GetHashCode() => OrderedHashCodes(typeof(SelectItemExpr).GetHashCode(), Name?.GetHashCode() ?? 0, Value?.GetHashCode() ?? 0);
+        public override int GetHashCode() => OrderedHashCodes(typeof(SelectItemExpr).GetHashCode(), Alias?.GetHashCode() ?? 0, Value?.GetHashCode() ?? 0);
 
         /// <summary>
         /// 返回选择项的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>
-        public override string ToString() => string.IsNullOrEmpty(Name) ? Value?.ToString() : $"{Value} AS {Name}";
+        public override string ToString() => string.IsNullOrEmpty(Alias) ? Value?.ToString() : $"{Value} AS {Alias}";
     }
 }

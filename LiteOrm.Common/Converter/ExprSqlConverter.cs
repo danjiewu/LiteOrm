@@ -726,10 +726,10 @@ namespace LiteOrm.Common
         private static void ToSql(ref ValueStringBuilder sb, SelectItemExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             ToSql(ref sb, expr.Value, context, sqlBuilder, outputParams);
-            if (!string.IsNullOrEmpty(expr.Name))
+            if (!string.IsNullOrEmpty(expr.Alias))
             {
                 sb.Append(" AS ");
-                sb.Append(sqlBuilder.ToSqlName(expr.Name));
+                sb.Append(sqlBuilder.ToSqlName(expr.Alias));
             }
         }
 

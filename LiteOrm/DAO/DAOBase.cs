@@ -347,9 +347,18 @@ namespace LiteOrm
         }
 
 #if NET8_0_OR_GREATER
-        protected DbCommandProxy MakeExprCommand([InterpolatedStringHandlerArgument("")] ref ExprString where)
+        public virtual ValueResult<T> GetValue<T>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
-            return MakeNamedParamCommand(where.GetSqlResult(), where.GetParams());
+            string sql = ReplaceParam(sqlBody.GetSqlResult());
+            var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
+            return new ValueResult<T>(command);
+        }
+
+        public virtual NonQueryResult Execute([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
+        {
+            string sql = ReplaceParam(sqlBody.GetSqlResult());
+            var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
+            return new NonQueryResult(command);
         }
 #endif
 
@@ -374,18 +383,119 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 字典树节点
+        /// </summary>
+        private class TrieNode
+        {
+            public Dictionary<char, TrieNode> Children { get; set; } = new Dictionary<char, TrieNode>();
+            public string Replacement { get; set; }
+            public bool IsEndOfWord { get; set; }
+        }
+
+        /// <summary>
+        /// 字典树
+        /// </summary>
+        private class Trie
+        {
+            private readonly TrieNode root = new TrieNode();
+
+            public void Insert(string key, string replacement)
+            {
+                TrieNode node = root;
+                foreach (char c in key)
+                {
+                    if (!node.Children.TryGetValue(c, out TrieNode value))
+                    {
+                        value = new TrieNode();
+                        node.Children[c] = value;
+                    }
+                    node = value;
+                }
+                node.IsEndOfWord = true;
+                node.Replacement = replacement;
+            }
+
+            public (int length, string replacement) FindLongestMatch(string text, int startIndex)
+            {
+                TrieNode node = root;
+                int maxLength = 0;
+                string foundReplacement = null;
+                int currentLength = 0;
+
+                for (int i = startIndex; i < text.Length; i++)
+                {
+                    char c = text[i];
+                    if (!node.Children.ContainsKey(c))
+                    {
+                        break;
+                    }
+                    node = node.Children[c];
+                    currentLength++;
+                    if (node.IsEndOfWord)
+                    {
+                        maxLength = currentLength;
+                        foundReplacement = node.Replacement;
+                    }
+                }
+
+                return (maxLength, foundReplacement);
+            }
+        }
+
+        /// <summary>
+        /// 字典树实例
+        /// </summary>
+        private Trie _trie;
+        private Trie TrieInstance
+        {
+            get
+            {
+                if (_trie == null)
+                {
+                    _trie = new Trie();
+                    foreach (var replacement in Replacements)
+                    {
+                        _trie.Insert(replacement.Key, replacement.Value);
+                    }
+                }
+                return _trie;
+            }
+        }
+
+        /// <summary>
         /// 替换 SQL 中的标记为实际 SQL
         /// </summary>
         /// <param name="sqlWithParam">包含标记的 SQL 语句</param>
         /// <returns></returns>
         protected virtual string ReplaceParam(string sqlWithParam)
         {
-            StringBuilder sb = new StringBuilder(sqlWithParam);
-            foreach (var replacement in Replacements)
+            if (string.IsNullOrEmpty(sqlWithParam))
             {
-                sb.Replace(replacement.Key, replacement.Value);
+                return sqlWithParam;
             }
-            return sb.ToString();
+
+            Span<char> initialBuffer = stackalloc char[sqlWithParam.Length];
+            var result = new ValueStringBuilder(initialBuffer);
+            int i = 0;
+
+            while (i < sqlWithParam.Length)
+            {
+                var (length, replacement) = TrieInstance.FindLongestMatch(sqlWithParam, i);
+                if (length > 0 && replacement != null)
+                {
+                    result.Append(replacement);
+                    i += length;
+                }
+                else
+                {
+                    result.Append(sqlWithParam[i]);
+                    i++;
+                }
+            }
+
+            string finalResult = result.ToString();
+            result.Dispose();
+            return finalResult;
         }
 
         /// <summary>
@@ -441,7 +551,7 @@ namespace LiteOrm
                     param.ParameterName = ToParamName(TimestampParamName);
                     param.Value = ConvertToDbValue(timestamp, columnDef.DbType);
                     command.Parameters.Add(param);
-                    return $"{ToColumnSql(column)} = {ToSqlParam(TimestampParamName)}"; ;
+                    return $"{ToColumnSql(column)} = {ToSqlParam(TimestampParamName)}";
                 }
             }
             return null;
@@ -538,7 +648,7 @@ namespace LiteOrm
                 {
                     List<string> strKeys = new List<string>();
                     foreach (ColumnDefinition key in TableDefinition.Keys) strKeys.Add(key.Name);
-                    _exceptionWrongKeys = new ArgumentOutOfRangeException("keys", $"Wrong keys' number. Type \"{Table.DefinitionType.FullName}\" has {strKeys.Count} key(s):'{String.Join("','", strKeys.ToArray())}'.");
+                    _exceptionWrongKeys = new ArgumentOutOfRangeException(nameof(keys), $"Wrong keys' number. Type \"{Table.DefinitionType.FullName}\" has {strKeys.Count} key(s):'{String.Join("','", strKeys.ToArray())}'.");
                 }
                 throw _exceptionWrongKeys;
             }

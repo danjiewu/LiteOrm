@@ -285,7 +285,7 @@ namespace LiteOrm.Common
                                 if (reader.TokenType != JsonTokenType.PropertyName) continue;
                                 string prop = reader.GetString() ?? string.Empty;
                                 reader.Read();
-                                if (prop == "Name")
+                                if (prop == "Alias")
                                 {
                                     name = reader.GetString();
                                 }
@@ -298,7 +298,7 @@ namespace LiteOrm.Common
                                     reader.Skip();
                                 }
                             }
-                            if (value is not null) sele.Selects.Add(new SelectItemExpr(value) { Name = name });
+                            if (value is not null) sele.Selects.Add(new SelectItemExpr(value) { Alias = name });
                         }
                         else
                         {
@@ -458,14 +458,14 @@ namespace LiteOrm.Common
                     return;
                 }
 
-                // 优化序列化格式：SelectItemExpr 使用属性方式序列化 Name 和 Value
+                // 优化序列化格式：SelectItemExpr 使用属性方式序列化 Alias 和 Value
                 if (value is SelectItemExpr sie)
                 {
                     writer.WriteStartObject();
-                    if (!string.IsNullOrEmpty(sie.Name))
+                    if (!string.IsNullOrEmpty(sie.Alias))
                     {
-                        writer.WritePropertyName("Name");
-                        writer.WriteStringValue(sie.Name);
+                        writer.WritePropertyName("Alias");
+                        writer.WriteStringValue(sie.Alias);
                     }
                     writer.WritePropertyName("Value");
                     WriteExpr(writer, sie.Value, options);

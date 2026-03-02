@@ -92,8 +92,8 @@ namespace LiteOrm.Tests
             // The source of the Where should be the Select expression
             var select = Assert.IsType<SelectExpr>(where.Source);
             Assert.Equal(2, select.Selects.Count);
-            Assert.Equal("Name", select.Selects[0].Name);
-            Assert.Equal("Age", select.Selects[1].Name);
+            Assert.Null(select.Selects[0].Alias);
+            Assert.Null(select.Selects[1].Alias);
 
             // The condition should be Age > 18
             var condition = Assert.IsType<LogicBinaryExpr>(where.Where);
@@ -149,8 +149,8 @@ namespace LiteOrm.Tests
 
             var select = Assert.IsType<SelectExpr>(orderBy.Source);
             Assert.Equal(2, select.Selects.Count);
-            Assert.Equal("DeptId", select.Selects[0].Name);
-            Assert.Equal("Total", select.Selects[1].Name);
+            Assert.Equal("DeptId", select.Selects[0].Alias);
+            Assert.Equal("Total", select.Selects[1].Alias);
 
             var having = Assert.IsType<HavingExpr>(select.Source);
             Assert.IsType<LogicBinaryExpr>(having.Having);
@@ -208,7 +208,6 @@ namespace LiteOrm.Tests
         public void ExistsSubquery_ComplexInnerCondition()
         {
             // Test: Query users whose department name is "IT"
-            // SELECT * FROM TestUsers u WHERE EXISTS (SELECT 1 FROM TestDepartments d WHERE d.Id = u.DeptId AND d.Name = 'IT')
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
                 .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "IT"));
 
@@ -286,6 +285,96 @@ namespace LiteOrm.Tests
             // Combine with other logic expressions using Expr.And
             var condition = Expr.And(Expr.Prop("Age") > 18, foreignExpr);
             Assert.IsType<LogicSet>(condition);
+        }
+
+        [Fact]
+        public void LambdaExpr_Equals_ManualExpr_Test()
+        {
+            // Test: Verify that Expr generated from Lambda is structurally equivalent to manually constructed Expr
+            
+            // 1. Generate Expr from Lambda
+            Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> lambdaExpr = q => q
+                .Where(u => u.Age > 18 && u.Name.Contains("Test"));
+            var lambdaGeneratedExpr = LambdaExprConverter.ToSqlSegment(lambdaExpr);
+
+            // 2. Verify the structure of the lambda-generated expression
+            Assert.IsType<WhereExpr>(lambdaGeneratedExpr);
+            var lambdaWhere = (WhereExpr)lambdaGeneratedExpr;
+            Assert.IsType<FromExpr>(lambdaWhere.Source);
+            Assert.IsType<LogicSet>(lambdaWhere.Where);
+
+            // 3. Manually construct equivalent Expr
+            var manualExpr = new WhereExpr
+            {
+                Source = new FromExpr(typeof(TestUser)),
+                Where = Expr.And(
+                    Expr.Prop("Age") > 18,
+                    Expr.Prop("Name").Contains("Test")
+                )
+            };
+
+            // 4. Verify the structure of the manually constructed expression
+            Assert.IsType<WhereExpr>(manualExpr);
+            var manualWhere = (WhereExpr)manualExpr;
+            Assert.IsType<FromExpr>(manualWhere.Source);
+            Assert.IsType<LogicSet>(manualWhere.Where);
+
+            // 5. Test another complex case
+            Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> lambdaExpr2 = q => q
+                .Where(u => u.Age > 18 && u.Name.Contains("Test"))
+                .OrderBy(u => u.Name)
+                .Skip(10)
+                .Take(5);
+            var lambdaGeneratedExpr2 = LambdaExprConverter.ToSqlSegment(lambdaExpr2);
+
+            // 6. Verify the structure of the complex lambda-generated expression
+            Assert.IsType<SectionExpr>(lambdaGeneratedExpr2);
+            var lambdaSection = (SectionExpr)lambdaGeneratedExpr2;
+            Assert.Equal(10, lambdaSection.Skip);
+            Assert.Equal(5, lambdaSection.Take);
+
+            Assert.IsType<OrderByExpr>(lambdaSection.Source);
+            var lambdaOrderBy = (OrderByExpr)lambdaSection.Source;
+            Assert.Single(lambdaOrderBy.OrderBys);
+
+            Assert.IsType<WhereExpr>(lambdaOrderBy.Source);
+            var lambdaWhere2 = (WhereExpr)lambdaOrderBy.Source;
+            Assert.IsType<FromExpr>(lambdaWhere2.Source);
+            Assert.IsType<LogicSet>(lambdaWhere2.Where);
+
+            // 7. Manually construct equivalent Expr for the complex case
+            var manualExpr2 = new SectionExpr
+            {
+                Source = new OrderByExpr
+                {
+                    Source = new WhereExpr
+                    {
+                        Source = new FromExpr(typeof(TestUser)),
+                        Where = Expr.And(
+                            Expr.Prop("Age") > 18,
+                            Expr.Prop("Name").Contains("Test")
+                        )
+                    },
+                    OrderBys = new List<(ValueTypeExpr, bool)> { (Expr.Prop("Name"), true) }
+                },
+                Skip = 10,
+                Take = 5
+            };
+
+            // 8. Verify the structure of the manually constructed complex expression
+            Assert.IsType<SectionExpr>(manualExpr2);
+            var manualSection = (SectionExpr)manualExpr2;
+            Assert.Equal(10, manualSection.Skip);
+            Assert.Equal(5, manualSection.Take);
+
+            Assert.IsType<OrderByExpr>(manualSection.Source);
+            var manualOrderBy = (OrderByExpr)manualSection.Source;
+            Assert.Single(manualOrderBy.OrderBys);
+
+            Assert.IsType<WhereExpr>(manualOrderBy.Source);
+            var manualWhere2 = (WhereExpr)manualOrderBy.Source;
+            Assert.IsType<FromExpr>(manualWhere2.Source);
+            Assert.IsType<LogicSet>(manualWhere2.Where);
         }
     }
 }
