@@ -49,6 +49,7 @@ namespace LiteOrm.Demo.Demos
                 .Where(Expr.Prop("Age") > 15)
                 .OrderBy(Expr.Prop("Age").Desc())
                 .Section(0, 5)
+                
                 .Select("Id", "Full_Name", "Age");
 
             var resultComplex = userDataView.Search(complexQuery);
@@ -59,7 +60,7 @@ namespace LiteOrm.Demo.Demos
             // 6. 使用 ExprString 方式查询
             Console.WriteLine("\n[6] 使用 ExprString 方式查询 (年龄 > 20 且用户名包含 'User')...");
             var ageThreshold = 20;
-            var resultExprString = userDataView.Search($"SELECT {{AllFields}} FROM {{From}} WHERE {Expr.Prop("Age")} > {ageThreshold} AND {Expr.Prop("UserName")} LIKE '%User%'");
+            var resultExprString = userDataView.Search($"SELECT {{AllFields}} FROM {{From}} WHERE {Expr.Prop("Age")} > {ageThreshold} AND {Expr.Prop("UserName")} LIKE '%User%'", true);
             DataTable dtExprString = await resultExprString.GetResultAsync();
             PrintDataTable(dtExprString);
 #endif

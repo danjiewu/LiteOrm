@@ -57,7 +57,7 @@ namespace LiteOrm.Demo.Demos
             // 混合使用 SQL 片段和 Expr 表达式
             int ageThreshold = 25;
             var ageExpr = Expr.Prop("Age") > ageThreshold;
-            var users = _objectViewDAO.Search($"{ageExpr} AND UserName LIKE '张%'");
+            var users = _objectViewDAO.Search($"WHERE {ageExpr} AND UserName LIKE '张%'");
             var userList = users.ToList();
             
             Console.WriteLine($"年龄大于 {ageThreshold} 且姓名以 '张' 开头的用户 ({userList.Count} 个):");
@@ -68,7 +68,7 @@ namespace LiteOrm.Demo.Demos
             
             // 更复杂的混用示例
             var deptExpr = Expr.Prop("DeptId") == 2;
-            users = _objectViewDAO.Search($"{deptExpr} AND Age BETWEEN 20 AND 30");
+            users = _objectViewDAO.Search($"WHERE {deptExpr} AND Age BETWEEN 20 AND 30");
             var userList2 = users.ToList();
             
             Console.WriteLine($"部门 2 且年龄在 20-30 之间的用户 ({userList2.Count} 个):");
@@ -114,7 +114,7 @@ namespace LiteOrm.Demo.Demos
             // 使用 ExprString 语法，使用 Expr 作为格式化片段
             int ageThreshold = 25;
             var ageExpr = Expr.Prop("Age") > ageThreshold;
-            var users = _objectViewDAO.Search($"{ageExpr}");
+            var users = _objectViewDAO.Search($"WHERE {ageExpr}");
             var userList3 = users.ToList();
             
             Console.WriteLine($"年龄大于 {ageThreshold} 的用户 ({userList3.Count} 个):");
@@ -133,7 +133,7 @@ namespace LiteOrm.Demo.Demos
             int ageLimit = 30;
             var deptExpr = Expr.Prop("DeptId") == deptId;
             var ageExpr = Expr.Prop("Age") < ageLimit;
-            var users = _objectViewDAO.Search($"{deptExpr} AND {ageExpr}");
+            var users = _objectViewDAO.Search($"WHERE {deptExpr} AND {ageExpr}");
             var userList4 = users.ToList();
             
             Console.WriteLine($"部门 {deptId} 且年龄小于 {ageLimit} 的用户 ({userList4.Count} 个):");
@@ -149,7 +149,7 @@ namespace LiteOrm.Demo.Demos
             
             // 使用复杂的 Expr 表达式
             var complexExpr = (Expr.Prop("Age") > 20) & (Expr.Prop("Age") < 35);
-            var users = _objectViewDAO.Search($"{complexExpr}");
+            var users = _objectViewDAO.Search($"WHERE {complexExpr}");
             var userList5 = users.ToList();
             
             Console.WriteLine("年龄在 20-35 之间的用户 ({userList5.Count} 个):");
