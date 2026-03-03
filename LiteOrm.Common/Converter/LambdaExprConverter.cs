@@ -117,8 +117,14 @@ namespace LiteOrm.Common
             Type objectType = _rootParameter.Type;
             if (objectType.IsGenericType && (objectType.GetGenericTypeDefinition() == typeof(IQueryable<>) || objectType.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
                 objectType = objectType.GetGenericArguments()[0];
-            if (objectType.Name.StartsWith("<>f__AnonymousType") && objectType.IsDefined(typeof(CompilerGeneratedAttribute), false) && objectType.IsGenericType && objectType.IsSealed)//匿名类不作为参数别名
+            if (objectType.Name.StartsWith("<>f__AnonymousType") && objectType.IsDefined(typeof(CompilerGeneratedAttribute), false) && objectType.IsGenericType && objectType.IsSealed)
+            {
+                //根节点匿名类别名T0
+                string alias = "T" + _aliasCounter++;
+                _anonymousTypeAliases[objectType] = alias;
+                _parameterAliases[_rootParameter] = alias;
                 return;
+            }
             if (_rootParameter != null)
             {
                 _parameterAliases[_rootParameter] = objectType.Name;
@@ -142,6 +148,7 @@ namespace LiteOrm.Common
         /// 匿名类别名缓存，键为匿名类类型，值为别名
         /// </summary>
         protected readonly Dictionary<Type, string> _anonymousTypeAliases = new Dictionary<Type, string>();
+
         /// <summary>
         /// 别名编号，用于生成新的别名
         /// </summary>
@@ -181,7 +188,9 @@ namespace LiteOrm.Common
         /// </summary>
         public Expr ToSqlSegment()
         {
-            return ConvertInternal(_expression.Body);
+            Expr expr = ConvertInternal(_expression.Body);
+            if (expr is not ISqlSegment) throw new InvalidOperationException("Lambda expression cannot convert to SqlSegment.");
+            return expr;
         }
 
         /// <summary>
@@ -225,7 +234,9 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertLambda(LambdaExpression lambda)
         {
-            return lambda.ReturnType == typeof(bool) ? AsLogic(ConvertInternal(lambda.Body)) : AsValue(ConvertInternal(lambda.Body));
+            var result = ConvertInternal(lambda.Body);
+            if (result is null) return null;
+            return lambda.ReturnType == typeof(bool) ? AsLogic(result) : AsValue(result);
         }
 
         private Expr ConvertNew(NewExpression node)
@@ -251,6 +262,7 @@ namespace LiteOrm.Common
         /// <exception cref="NotSupportedException">当表达式无法转换为 LogicExpr 时抛出</exception>
         protected LogicExpr AsLogic(Expr expr)
         {
+            if (expr is null) return null;
             if (expr is LogicExpr logicExpr) return logicExpr;
             if (expr is ValueTypeExpr vte) return new LogicBinaryExpr(vte, LogicOperator.Equal, new ValueExpr(true));
             throw new NotSupportedException($"Expression {expr} of type {expr?.GetType().Name} cannot be converted to LogicExpr.");
@@ -289,10 +301,22 @@ namespace LiteOrm.Common
             {
                 case ExpressionType.AndAlso:
                 case ExpressionType.And:
-                    return AsLogic(left).And(AsLogic(right));
+                {
+                    var andLeft = AsLogic(left);
+                    var andRight = AsLogic(right);
+                    if (andLeft is null) return andRight;
+                    if (andRight is null) return andLeft;
+                    return andLeft.And(andRight);
+                }
                 case ExpressionType.Or:
                 case ExpressionType.OrElse:
-                    return AsLogic(left).Or(AsLogic(right));
+                {
+                    var orLeft = AsLogic(left);
+                    var orRight = AsLogic(right);
+                    if (orLeft is null) return orRight;
+                    if (orRight is null) return orLeft;
+                    return orLeft.Or(orRight);
+                }
                 case ExpressionType.Add:
                     // 字符串拼接映射
                     if (node.Left.Type == typeof(string) || node.Right.Type == typeof(string))
@@ -703,6 +727,10 @@ namespace LiteOrm.Common
 
             // 将 Lambda 条件转换为 LogicExpr
             var newCondition = AsLogic(ConvertInternal(lambda));
+
+            // 条件为 null 时（如纯 TableArgs 赋值），直接返回源不添加 WHERE
+            if (newCondition is null)
+                return src;
 
             // 如果源已经是 WhereExpr，将新条件与现有条件用 AND 合并
             if (source is WhereExpr existingWhere)

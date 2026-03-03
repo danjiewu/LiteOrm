@@ -8,7 +8,7 @@ namespace LiteOrm.Common
     /// From 片段，表示查询的数据源（支持单表或多表视图）
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class FromExpr : Expr, ISourceAnchor, ISqlSegment
+    public sealed class FromExpr : Expr, ISourceAnchor, ISqlSegment, IArged
     {
         /// <summary>
         /// 初始化 FromExpr 类的新实例
@@ -25,12 +25,12 @@ namespace LiteOrm.Common
         }
 
         private string _alias;
-        
+
         /// <summary>
         /// 获取或设置表别名
         /// </summary>
-        public string Alias 
-        { 
+        public string Alias
+        {
             get => _alias;
             set
             {
@@ -51,12 +51,12 @@ namespace LiteOrm.Common
         /// 获取表名参数数组
         /// </summary>
         private string[] _tableArgs;
-        
+
         /// <summary>
         /// 获取或设置表名参数数组
         /// </summary>
-        public string[] TableArgs 
-        { 
+        public string[] TableArgs
+        {
             get => _tableArgs;
             set
             {

@@ -82,6 +82,14 @@ namespace LiteOrm.Service
         /// <returns></returns>
         bool UpdateOrInsert(T entity);
         /// <summary>
+        /// 删除实体
+        /// </summary>
+        /// <param name="entity">实体</param>
+        /// <returns>
+        /// true:成功
+        /// false:失败</returns>
+        bool Delete(T entity);
+        /// <summary>
         /// 批量新增实体
         /// </summary>
         /// <param name="entities">实体列表</param>

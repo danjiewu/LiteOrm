@@ -99,6 +99,7 @@ namespace LiteOrm.Tests.Infrastructure
 
         public void Dispose()
         {
+            SessionManager.Current = null;
             _scope.Dispose();
         }
     }

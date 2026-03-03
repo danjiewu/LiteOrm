@@ -9,7 +9,7 @@ namespace LiteOrm.Common
     /// 该表达式用于构建 EXISTS 子查询，支持完全通过 InnerExpr 控制关联条件。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class ForeignExpr : LogicExpr
+    public sealed class ForeignExpr : LogicExpr, IArged
     {
         /// <summary>
         /// 获取或设置针对关联表的内部过滤表达式。
@@ -37,7 +37,7 @@ namespace LiteOrm.Common
             {
                 if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
                 {
-                    throw new System.ArgumentException("Foreign table alias contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Alias));
+                    throw new ArgumentException("Foreign table alias contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Alias));
                 }
                 _alias = value;
             }

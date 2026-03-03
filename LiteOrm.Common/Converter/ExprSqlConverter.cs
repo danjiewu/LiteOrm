@@ -373,6 +373,10 @@ namespace LiteOrm.Common
                 // 数值类型常量直接以字面量形式输出，较为高效
                 sb.Append(expr.Value.ToString());
             }
+            else if(expr.Value is Expr innerExpr)
+            {
+                innerExpr.ToSql(ref sb, context, sqlBuilder, outputParams);
+            }
             else if (expr.Value is IEnumerable enumerable && !(expr.Value is string))
             {
                 // 处理 IN (...) 集合
