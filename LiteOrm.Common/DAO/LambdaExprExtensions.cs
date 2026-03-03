@@ -24,7 +24,7 @@ namespace LiteOrm.Common
         /// <returns>受影响的行数。</returns>
         public static int Delete<T>(this IEntityService<T> entityService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
-            return entityService.Delete(Expr.Exp(expression), tableArgs);
+            return entityService.Delete(Expr.Lambda(expression), tableArgs);
         }
 
         /// <summary>
@@ -37,7 +37,7 @@ namespace LiteOrm.Common
         /// <returns>符合条件的实体对象列表。</returns>
         public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null)
         {
-            return entityViewService.Search(Expr.Exp(expression), tableArgs);
+            return entityViewService.Search(Expr.Lambda(expression), tableArgs);
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace LiteOrm.Common
         /// <returns>第一个符合条件的实体对象；如果没有找到则返回 null。</returns>
         public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null)
         {
-            return entityViewService.SearchOne(Expr.Exp(expression), tableArgs);
+            return entityViewService.SearchOne(Expr.Lambda(expression), tableArgs);
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static bool Exists<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
-            return entityViewService.Exists(Expr.Exp(expression), tableArgs);
+            return entityViewService.Exists(Expr.Lambda(expression), tableArgs);
         }
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static int Count<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
-            return entityViewService.Count(Expr.Exp(expression), tableArgs);
+            return entityViewService.Count(Expr.Lambda(expression), tableArgs);
         }
 
         /// <summary>
@@ -100,7 +100,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static Task<bool> ExistsAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return entityViewService.ExistsAsync(Expr.Exp(expression), tableArgs, cancellationToken);
+            return entityViewService.ExistsAsync(Expr.Lambda(expression), tableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static Task<int> CountAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return entityViewService.CountAsync(Expr.Exp(expression), tableArgs, cancellationToken);
+            return entityViewService.CountAsync(Expr.Lambda(expression), tableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -130,7 +130,7 @@ namespace LiteOrm.Common
         /// <returns>表示异步删除操作的任务，结果包含受影响的行数。</returns>
         public static Task<int> DeleteAsync<T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return entityService.DeleteAsync(Expr.Exp(expression), tableArgs, cancellationToken);
+            return entityService.DeleteAsync(Expr.Lambda(expression), tableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace LiteOrm.Common
         /// <returns>表示异步搜索操作的任务，结果包含符合条件的实体对象列表。</returns>
         public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return entityViewService.SearchAsync(Expr.Exp(expression), tableArgs, cancellationToken);
+            return entityViewService.SearchAsync(Expr.Lambda(expression), tableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -172,7 +172,7 @@ namespace LiteOrm.Common
         /// <returns>表示异步搜索操作的任务，结果包含符合条件的单个实体对象，未找到则返回 null。</returns>
         public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return entityViewService.SearchOneAsync(Expr.Exp(expression), tableArgs, cancellationToken);
+            return entityViewService.SearchOneAsync(Expr.Lambda(expression), tableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -200,7 +200,7 @@ namespace LiteOrm.Common
         /// <returns>查询结果数据表。</returns>
         public static DataTableResult Search<T>(this IDataViewDAO<T> dataViewDao, Expression<Func<T, bool>> expression)
         {
-            return dataViewDao.Search(Expr.Exp(expression));
+            return dataViewDao.Search(Expr.Lambda(expression));
         }
 
         /// <summary>
@@ -225,7 +225,7 @@ namespace LiteOrm.Common
         /// <returns>查询结果数据表。</returns>
         public static DataTableResult Search<T>(this IDataViewDAO<T> dataViewDao, string[] propertyNames, Expression<Func<T, bool>> expression)
         {
-            return dataViewDao.Search(propertyNames, Expr.Exp(expression));
+            return dataViewDao.Search(propertyNames, Expr.Lambda(expression));
         }
 
         /// <summary>
@@ -254,7 +254,7 @@ namespace LiteOrm.Common
         /// <returns>符合条件的对象枚举。</returns>
         public static EnumerableResult<T> Search<T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
         {
-            return objectViewDao.Search(Expr.Exp(expression));
+            return objectViewDao.Search(Expr.Lambda(expression));
         }
 
         /// <summary>
@@ -278,7 +278,7 @@ namespace LiteOrm.Common
         /// <returns>符合条件的对象个数。</returns>
         public static ValueResult<int> Count<T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
         {
-            return objectViewDao.Count(Expr.Exp(expression));
+            return objectViewDao.Count(Expr.Lambda(expression));
         }
 
         /// <summary>
@@ -290,7 +290,7 @@ namespace LiteOrm.Common
         /// <returns>符合条件的对象是否存在。</returns>
         public static ValueResult<bool> Exists<T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
         {
-            return objectViewDao.Exists(Expr.Exp(expression));
+            return objectViewDao.Exists(Expr.Lambda(expression));
         }      
 
         #endregion

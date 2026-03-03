@@ -190,7 +190,7 @@ namespace LiteOrm.Tests
             Assert.Equal(2, combinedList.Count);
 
             // 5. Lambda complex
-            var lambdaList = await viewService.SearchAsync(Expr.Exp<TestUser>(u => u.Age > 30 && u.Name!.Contains("i")));
+            var lambdaList = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Age > 30 && u.Name!.Contains("i")));
             // Charlie(35), David(40) -> both contain 'i'
             Assert.Equal(2, lambdaList.Count);
         }
@@ -211,7 +211,7 @@ namespace LiteOrm.Tests
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestDepartment>>();
 
             // Act
-            var subDepts = await viewService.SearchAsync(Expr.Exp<TestDepartment>(d => d.ParentId == root.Id));
+            var subDepts = await viewService.SearchAsync(Expr.Lambda<TestDepartment>(d => d.ParentId == root.Id));
 
             // Assert
             Assert.Equal(2, subDepts.Count);
@@ -233,18 +233,18 @@ namespace LiteOrm.Tests
 
             // Act - Batch Insert
             await service.BatchInsertAsync(users);
-            var inserted = await viewService.SearchAsync(Expr.Exp<TestUser>(u => u.Name!.StartsWith("Batch")));
+            var inserted = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
             Assert.Equal(2, inserted.Count);
 
             // Act - Batch Update
             foreach (var u in inserted) u.Age += 5;
             await service.BatchUpdateAsync(inserted);
-            var updated = await viewService.SearchAsync(Expr.Exp<TestUser>(u => u.Name!.StartsWith("Batch")));
+            var updated = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
             Assert.All(updated, u => Assert.True(u.Age == 15 || u.Age == 25));
 
             // Act - Batch Delete
             await service.BatchDeleteAsync(updated);
-            var deletedCount = await viewService.CountAsync(Expr.Exp<TestUser>(u => u.Name!.StartsWith("Batch")));
+            var deletedCount = await viewService.CountAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
             Assert.Equal(0, deletedCount);
         }
 
@@ -331,7 +331,7 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateValue")).GetResultAsync();
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateValue")).GetResultAsync();
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
             // Assert
@@ -348,9 +348,9 @@ namespace LiteOrm.Tests
             await service.InsertAsync(new TestUser { Name = "Unique", Age = 50, CreateTime = DateTime.Now });
 
             // Act
-            var one = await viewService.SearchOneAsync(Expr.Exp<TestUser>(u => u.Name == "Unique"));
-            bool exists = await viewService.ExistsAsync(Expr.Exp<TestUser>(u => u.Name == "Unique"));
-            int count = await viewService.CountAsync(Expr.Exp<TestUser>(u => u.Age >= 50));
+            var one = await viewService.SearchOneAsync(Expr.Lambda<TestUser>(u => u.Name == "Unique"));
+            bool exists = await viewService.ExistsAsync(Expr.Lambda<TestUser>(u => u.Name == "Unique"));
+            int count = await viewService.CountAsync(Expr.Lambda<TestUser>(u => u.Age >= 50));
 
             // Assert
             Assert.NotNull(one);
@@ -401,7 +401,7 @@ namespace LiteOrm.Tests
             await service.InsertAsync(child);
 
             // Act
-            var view = await viewService.SearchOneAsync(Expr.Exp<TestDepartmentView>(d => d.Id == child.Id));
+            var view = await viewService.SearchOneAsync(Expr.Lambda<TestDepartmentView>(d => d.Id == child.Id));
 
             // Assert
             Assert.NotNull(view);
@@ -438,7 +438,7 @@ namespace LiteOrm.Tests
             };
             await service.BatchAsync(ops);
 
-            var mixedRetrieved = await viewService.SearchOneAsync(Expr.Exp<TestUser>(u => u.Name == "Mixed 1"));
+            var mixedRetrieved = await viewService.SearchOneAsync(Expr.Lambda<TestUser>(u => u.Name == "Mixed 1"));
             var deletedRetrieved = await viewService.GetObjectAsync(user.Id);
 
             Assert.NotNull(mixedRetrieved);
@@ -446,7 +446,7 @@ namespace LiteOrm.Tests
 
             // Act - ForEachAsync
             int forEachCount = 0;
-            await viewService.ForEachAsync(Expr.Exp<TestUser>(u => u.Name == "Mixed 1"), async u =>
+            await viewService.ForEachAsync(Expr.Lambda<TestUser>(u => u.Name == "Mixed 1"), async u =>
             {
                 forEachCount++;
                 await Task.CompletedTask;
@@ -672,7 +672,7 @@ namespace LiteOrm.Tests
                     ("Age", Expr.Prop("Age") + Expr.Const(5)), // 使用运算符重载和Expr.Const，Age = Age + 5
                     ("Name", new FunctionExpr("UPPER", new PropertyExpr("Name"))) // 使用UPPER函数，参数为Name属性
                 },
-                Where = Expr.Exp<TestUser>(u => u.Name == "UpdateExprTest")
+                Where = Expr.Lambda<TestUser>(u => u.Name == "UpdateExprTest")
             };
             int affected = service.Update(updateExpr);
             var retrieved = await viewService.GetObjectAsync(user.Id);
@@ -701,7 +701,7 @@ namespace LiteOrm.Tests
                     ("Age", Expr.Prop("Age") + Expr.Const(10)), // 使用运算符重载和Expr.Const，Age = Age + 10
                     ("Name", new FunctionExpr("CONCAT", new PropertyExpr("Name"), "_Updated")) // 使用CONCAT函数，参数为Name属性和字符串
                 },
-                Where = Expr.Exp<TestUser>(u => u.Name == "UpdateExprAsyncTest")
+                Where = Expr.Lambda<TestUser>(u => u.Name == "UpdateExprAsyncTest")
             };
             int affected = await service.UpdateAsync(updateExpr);
             var retrieved = await viewService.GetObjectAsync(user.Id);
@@ -733,11 +733,11 @@ namespace LiteOrm.Tests
 
             // Act - 使用 Expr.Exists lambda 方式查询
             var usersWithDept = await viewService.SearchAsync(
-                Expr.Exp<TestUser>(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId))
+                Expr.Lambda<TestUser>(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId))
             );
 
             var usersWithSpecificDept = await viewService.SearchAsync(
-                Expr.Exp<TestUser>(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "ExistsTestDept"))
+                Expr.Lambda<TestUser>(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "ExistsTestDept"))
             );
 
             // Assert

@@ -30,7 +30,7 @@ namespace LiteOrm.Tests.Infrastructure
         public async Task<TestUser?> GetLatestUserAsync()
         {
             return await SearchOneAsync(
-                Expr.Exp<TestUser>(u => u.Id > 0).OrderBy(("Id", false)).Section(0, 1)
+                Expr.Lambda<TestUser>(u => u.Id > 0).OrderBy(("Id", false)).Section(0, 1)
             );
         }
     }

@@ -89,13 +89,13 @@ namespace LiteOrm.Tests
             Assert.IsType<WhereExpr>(expr);
             var where = (WhereExpr)expr;
 
-            // The source of the Where should be the Select expression
+            // Where 的源应该是 Select 表达式
             var select = Assert.IsType<SelectExpr>(where.Source);
             Assert.Equal(2, select.Selects.Count);
             Assert.Null(select.Selects[0].Alias);
             Assert.Null(select.Selects[1].Alias);
 
-            // The condition should be Age > 18
+            // 条件应该是 Age > 18
             var condition = Assert.IsType<LogicBinaryExpr>(where.Where);
             Assert.Equal("Age", (condition.Left as PropertyExpr)?.PropertyName);
             Assert.Equal(18, (condition.Right as ValueExpr)?.Value);
@@ -142,7 +142,7 @@ namespace LiteOrm.Tests
 
             var orderBy = Assert.IsType<OrderByExpr>(section.Source);
             Assert.Single(orderBy.OrderBys);
-            // Verify alias name is used in OrderBy
+            // 验证 OrderBy 中使用了别名
             var orderByValue = orderBy.OrderBys[0].Item1;
             Assert.IsType<PropertyExpr>(orderByValue);
             Assert.Equal("Total", (orderByValue as PropertyExpr).PropertyName);
@@ -165,7 +165,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ExistsSubquery_BasicTest()
         {
-            // Test: Query users whose department exists
+            // 测试：查询存在部门的用户
             // SELECT * FROM TestUsers u WHERE EXISTS (SELECT 1 FROM TestDepartments d WHERE d.Id = u.DeptId)
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
                 .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId));
@@ -175,7 +175,7 @@ namespace LiteOrm.Tests
             Assert.IsType<WhereExpr>(expr);
             var where = (WhereExpr)expr;
 
-            // The condition should be ForeignExpr (which is a LogicExpr)
+            // 条件应该是 ForeignExpr（它是一个 LogicExpr）
             var condition = where.Where;
             Assert.IsType<ForeignExpr>(condition);
 
@@ -187,7 +187,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ExistsSubquery_WithOtherConditions()
         {
-            // Test: Query users with age > 18 who have departments
+            // 测试：查询年龄大于 18 且有部门的用户
             // SELECT * FROM TestUsers u WHERE u.Age > 18 AND EXISTS (SELECT 1 FROM TestDepartments d WHERE d.Id = u.DeptId)
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
                 .Where(u => u.Age > 18 && Expr.Exists<TestDepartment>(d => d.Id == u.DeptId));
@@ -197,7 +197,7 @@ namespace LiteOrm.Tests
             Assert.IsType<WhereExpr>(expr);
             var where = (WhereExpr)expr;
 
-            // The condition should be LogicSet with AND
+            // 条件应该是带 AND 的 LogicSet
             Assert.IsType<LogicSet>(where.Where);
             var logicSet = (LogicSet)where.Where;
             Assert.Equal(LogicJoinType.And, logicSet.JoinType);
@@ -207,7 +207,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ExistsSubquery_ComplexInnerCondition()
         {
-            // Test: Query users whose department name is "IT"
+            // 测试：查询部门名称为 "IT" 的用户
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
                 .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "IT"));
 
@@ -222,14 +222,14 @@ namespace LiteOrm.Tests
             var foreign = (ForeignExpr)condition;
             Assert.Equal(typeof(TestDepartment), foreign.Foreign);
 
-            // Inner expression should be a LogicSet (AND)
+            // 内部表达式应该是 LogicSet（AND）
             Assert.IsType<LogicSet>(foreign.InnerExpr);
         }
 
         [Fact]
         public void ExistsSubquery_WithOrderAndSection()
         {
-            // Test: Query users in departments, with ordering and paging
+            // 测试：查询部门中的用户，带排序和分页
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
                 .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name.Contains("Dept")))
                 .OrderBy(u => u.Name)
@@ -253,7 +253,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ExistsSubquery_MultipleExists()
         {
-            // Test: Query users who have both IT and HR departments
+            // 测试：查询同时拥有 IT 和 HR 部门的用户
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
                 .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "IT") &&
                             Expr.Exists<TestDepartment>(d => d.ParentId == 0));
@@ -268,7 +268,7 @@ namespace LiteOrm.Tests
             Assert.Equal(LogicJoinType.And, logicSet.JoinType);
             Assert.Equal(2, logicSet.Count);
 
-            // Both conditions should contain ForeignExpr
+            // 两个条件都应该包含 ForeignExpr
             foreach (var item in logicSet.Items)
             {
                 Assert.IsType<ForeignExpr>(item);
@@ -278,11 +278,11 @@ namespace LiteOrm.Tests
         [Fact]
         public void ExistsSubquery_Serialization()
         {
-            // Test: Verify that Exists expressions can be serialized
+            // 测试：验证 Exists 表达式可以被序列化
             var foreignExpr = Expr.Foreign<TestDepartment>(Expr.Prop("Id") == Expr.Prop("u.DeptId"));
             Assert.NotNull(foreignExpr);
 
-            // Combine with other logic expressions using Expr.And
+            // 使用 Expr.And 与其他逻辑表达式组合
             var condition = Expr.And(Expr.Prop("Age") > 18, foreignExpr);
             Assert.IsType<LogicSet>(condition);
         }
@@ -290,36 +290,39 @@ namespace LiteOrm.Tests
         [Fact]
         public void LambdaExpr_Equals_ManualExpr_Test()
         {
-            // Test: Verify that Expr generated from Lambda is structurally equivalent to manually constructed Expr
+            // 测试：验证从 Lambda 生成的 Expr 在结构上等同于手动构造的 Expr
             
-            // 1. Generate Expr from Lambda
+            // 1. 从 Lambda 生成 Expr
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> lambdaExpr = q => q
                 .Where(u => u.Age > 18 && u.Name.Contains("Test"));
             var lambdaGeneratedExpr = LambdaExprConverter.ToSqlSegment(lambdaExpr);
 
-            // 2. Verify the structure of the lambda-generated expression
+            // 2. 验证从 Lambda 生成的表达式的结构
             Assert.IsType<WhereExpr>(lambdaGeneratedExpr);
             var lambdaWhere = (WhereExpr)lambdaGeneratedExpr;
             Assert.IsType<FromExpr>(lambdaWhere.Source);
             Assert.IsType<LogicSet>(lambdaWhere.Where);
 
-            // 3. Manually construct equivalent Expr
+            // 3. 手动构造等效的 Expr，使用类名作为别名（如 Lambda 所做的那样）
             var manualExpr = new WhereExpr
             {
-                Source = new FromExpr(typeof(TestUser)),
+                Source = new FromExpr(typeof(TestUser)) { Alias = "TestUser" },
                 Where = Expr.And(
                     Expr.Prop("Age") > 18,
                     Expr.Prop("Name").Contains("Test")
                 )
             };
 
-            // 4. Verify the structure of the manually constructed expression
+            // 4. 验证手动构造的表达式的结构
             Assert.IsType<WhereExpr>(manualExpr);
             var manualWhere = (WhereExpr)manualExpr;
             Assert.IsType<FromExpr>(manualWhere.Source);
             Assert.IsType<LogicSet>(manualWhere.Where);
 
-            // 5. Test another complex case
+            // 5. Compare the two expressions using Equals
+            Assert.True(lambdaGeneratedExpr.Equals(manualExpr), "Lambda-generated Expr should equal manually constructed Expr");
+
+            // 6. 测试另一个复杂的情况
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> lambdaExpr2 = q => q
                 .Where(u => u.Age > 18 && u.Name.Contains("Test"))
                 .OrderBy(u => u.Name)
@@ -327,7 +330,7 @@ namespace LiteOrm.Tests
                 .Take(5);
             var lambdaGeneratedExpr2 = LambdaExprConverter.ToSqlSegment(lambdaExpr2);
 
-            // 6. Verify the structure of the complex lambda-generated expression
+            // 7. 验证复杂的 Lambda 生成表达式的结构
             Assert.IsType<SectionExpr>(lambdaGeneratedExpr2);
             var lambdaSection = (SectionExpr)lambdaGeneratedExpr2;
             Assert.Equal(10, lambdaSection.Skip);
@@ -342,14 +345,14 @@ namespace LiteOrm.Tests
             Assert.IsType<FromExpr>(lambdaWhere2.Source);
             Assert.IsType<LogicSet>(lambdaWhere2.Where);
 
-            // 7. Manually construct equivalent Expr for the complex case
+            // 8. 为复杂情况手动构造等效的 Expr，使用类名作为别名
             var manualExpr2 = new SectionExpr
             {
                 Source = new OrderByExpr
                 {
                     Source = new WhereExpr
                     {
-                        Source = new FromExpr(typeof(TestUser)),
+                        Source = new FromExpr(typeof(TestUser)) { Alias = "TestUser" },
                         Where = Expr.And(
                             Expr.Prop("Age") > 18,
                             Expr.Prop("Name").Contains("Test")
@@ -361,11 +364,14 @@ namespace LiteOrm.Tests
                 Take = 5
             };
 
-            // 8. Verify the structure of the manually constructed complex expression
+            // 9. 验证手动构造的复杂表达式的结构
             Assert.IsType<SectionExpr>(manualExpr2);
             var manualSection = (SectionExpr)manualExpr2;
             Assert.Equal(10, manualSection.Skip);
             Assert.Equal(5, manualSection.Take);
+
+            // 10. Compare the two complex expressions using Equals
+            Assert.True(lambdaGeneratedExpr2.Equals(manualExpr2), "Complex lambda-generated Expr should equal manually constructed Expr");
 
             Assert.IsType<OrderByExpr>(manualSection.Source);
             var manualOrderBy = (OrderByExpr)manualSection.Source;

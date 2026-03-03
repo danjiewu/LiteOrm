@@ -34,7 +34,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ValueExpr_Tests()
         {
-            // Equals
+            // 测试相等性
             ValueExpr e1 = 123;
             ValueExpr e2 = 123;
             ValueExpr e3 = 456;
@@ -58,15 +58,15 @@ namespace LiteOrm.Tests
             Expr list2 = new ValueExpr(new int[] { 1, 2, 3 });
             Assert.True(list1.Equals(list2));
 
-            // Serialization
-            TestSerialization(e1); // Simplification: don't consider type changes
+            // 测试序列化
+            TestSerialization(e1); // 简化：不考虑类型变化
             TestSerialization(e4); 
             TestSerialization(s1);
             TestSerialization(n1);
-            TestSerialization(list1); // Simplification: don't consider type changes after serialization
+            TestSerialization(list1); // 简化：不考虑序列化后的类型变化
 
 
-            // Non-const value serialization
+            // 非常量值序列化
             Expr nonConst = new ValueExpr("dynamic") { IsConst = false };
             TestSerialization(nonConst);
         }
@@ -75,7 +75,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void PropertyExpr_Tests()
         {
-            // Basic PropertyExpr
+            // 基本 PropertyExpr
             Expr p1 = Expr.Prop("Name");
             Expr p2 = Expr.Prop("Name");
             Expr p3 = Expr.Prop("Age");
@@ -83,28 +83,28 @@ namespace LiteOrm.Tests
             Assert.True(p1.Equals(p2));
             Assert.False(p1.Equals(p3));
 
-            // PropertyExpr with table alias
+            // 带表别名的 PropertyExpr
             Expr pa1 = Expr.Prop("u.Name");
             Expr pa2 = Expr.Prop("u.Name");
             Expr pa3 = Expr.Prop("Name");
             Expr pa4 = Expr.Prop("u.Age");
 
             Assert.True(pa1.Equals(pa2));
-            Assert.False(pa1.Equals(pa3)); // Different property name
-            Assert.False(pa1.Equals(pa4)); // Different property
+            Assert.False(pa1.Equals(pa3)); // 不同的属性名
+            Assert.False(pa1.Equals(pa4)); // 不同的属性
             Assert.Equal("Name", (pa1 as PropertyExpr).PropertyName);
             Assert.Equal("u", (pa1 as PropertyExpr).TableAlias);
 
-            // TableAlias validation - should throw for invalid characters
+            // 表别名验证 - 应该对无效字符抛出异常
             var propWithAlias = new PropertyExpr("Name");
             Assert.Throws<ArgumentException>(() => propWithAlias.TableAlias = "u@123");
             Assert.Throws<ArgumentException>(() => propWithAlias.TableAlias = "u-name");
 
-            // PropertyName validation - should throw for invalid characters
+            // 属性名验证 - 应该对无效字符抛出异常
             Assert.Throws<ArgumentException>(() => new PropertyExpr("Name@123"));
             Assert.Throws<ArgumentException>(() => new PropertyExpr("Name-Column"));
 
-            // Serialization
+            // 序列化
             TestSerialization(p1);
             TestSerialization(p3);
             TestSerialization(pa1);
@@ -113,7 +113,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void BinaryExpr_Tests()
         {
-            // Equals
+            // 相等性测试
             Expr b1 = (Expr.Prop("Age") > 18);
             Expr b2 = (Expr.Prop("Age") > 18);
             Expr b3 = (Expr.Prop("Age") >= 18);
@@ -123,11 +123,11 @@ namespace LiteOrm.Tests
             Assert.False(b1.Equals(b3));
             Assert.False(b1.Equals(b4));
 
-            // Serialization
+            // 序列化
             TestSerialization(b1);
             TestSerialization(b4);
 
-            // Complex Binary
+            // 复杂二元表达式
             Expr complex = (Expr.Prop("Price") * 1.1) > 100;
             TestSerialization(complex);
         }
@@ -135,7 +135,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void UnaryExpr_Tests()
         {
-            // Equals
+            // 相等性测试
             Expr u1 = !(Expr.Prop("IsDeleted") != 0);
             Expr u2 = !(Expr.Prop("IsDeleted") != 0);
             Expr u3 = !(Expr.Prop("IsActive") != 0);
@@ -152,7 +152,7 @@ namespace LiteOrm.Tests
             Assert.False(v1.Equals(v3));
             Assert.IsType<UnaryExpr>(v1);
 
-            // Serialization
+            // 序列化
             TestSerialization(u1);
             TestSerialization(v1);
             TestSerialization(v3);
@@ -161,23 +161,23 @@ namespace LiteOrm.Tests
         [Fact]
         public void ExprSet_Tests()
         {
-            // Equals
+            // 相等性测试
             Expr s1 = Expr.Prop("Age") > 18 & Expr.Prop("Name") == "John";
             Expr s2 = Expr.Prop("Name") == "John" & Expr.Prop("Age") > 18;
             Expr s3 = Expr.Prop("Age") > 18 | Expr.Prop("Name") == "John";
 
-            Assert.True(s1.Equals(s2), "And set should be equal regardless of order");
-            Assert.False(s1.Equals(s3), "And set should not be equal to Or set");
+            Assert.True(s1.Equals(s2), "And 集合应该与顺序无关");
+            Assert.False(s1.Equals(s3), "And 集合不应该等于 Or 集合");
 
-            // List type ExprSet (IN clause style)
+            // 列表类型的 ExprSet (IN 子句风格)
             var inSet1 = new ValueSet(ValueJoinType.List, new ValueExpr(1), new ValueExpr(2), new ValueExpr(3));
             var inSet2 = new ValueSet(ValueJoinType.List, new ValueExpr(1), new ValueExpr(2), new ValueExpr(3));
             var inSet3 = new ValueSet(ValueJoinType.List, new ValueExpr(3), new ValueExpr(2), new ValueExpr(1));
 
             Assert.True(inSet1.Equals(inSet2));
-            Assert.False(inSet1.Equals(inSet3), "Order should matter for list JoinType");
+            Assert.False(inSet1.Equals(inSet3), "对于列表 JoinType，顺序应该重要");
 
-            // Serialization
+            // 序列化
             TestSerialization(s1);
             TestSerialization(s3);
             TestSerialization(inSet1);
@@ -186,21 +186,21 @@ namespace LiteOrm.Tests
         [Fact]
         public void LambdaExpr_Tests()
         {
-            // Equals
-            // LambdaExpr uses LambdaExprConverter.ToExpr() for equality check
-            Expr l1 = Expr.Exp<TestUser>(u => u.Age > 18);
-            Expr l2 = Expr.Exp<TestUser>(u => u.Age > 18);
-            Expr l3 = Expr.Exp<TestUser>(u => u.Age > 20);
+            // 相等性测试
+            // LambdaExpr 使用 LambdaExprConverter.ToExpr() 进行相等性检查
+            Expr l1 = Expr.Lambda<TestUser>(u => u.Age > 18);
+            Expr l2 = Expr.Lambda<TestUser>(u => u.Age > 18);
+            Expr l3 = Expr.Lambda<TestUser>(u => u.Age > 20);
 
             Assert.True(l1.Equals(l2));
             Assert.False(l1.Equals(l3));
 
-            // Serialization
-            // Note: LambdaExpr serializes as its InnerExpr
+            // 序列化
+            // 注意：LambdaExpr 序列化为其 InnerExpr
             string json = JsonSerializer.Serialize<Expr>(l1, _jsonOptions);
             Expr deserialized = JsonSerializer.Deserialize<Expr>(json, _jsonOptions)!;
 
-            // deserialized will NOT be LambdaExpr, but the converted BinaryExpr
+            // deserialized 不会是 LambdaExpr，而是转换后的 BinaryExpr
             Assert.IsType<LogicBinaryExpr>(deserialized);
             Assert.True(l1.Equals(deserialized));
         }
@@ -208,7 +208,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ForeignExpr_Tests()
         {
-            // Equals
+            // 相等性测试
             Expr f1 = Expr.Foreign<object>(Expr.Prop("Name") == "IT");
             Expr f2 = Expr.Foreign<object>(Expr.Prop("Name") == "IT");
             Expr f3 = Expr.Foreign<object>(Expr.Prop("Name") == "HR");
@@ -218,34 +218,34 @@ namespace LiteOrm.Tests
             Assert.False(f1.Equals(f3));
             Assert.False(f1.Equals(f4));
 
-            // Serialization
+            // 序列化
             TestSerialization(f1);
         }
 
         [Fact]
         public void LambdaExprConverter_ForeignExists_Tests()
         {
-            var result = Expr.Exp<TestDepartment>(d => d.Id > 0 && Expr.Exists<TestUser>(u => u.DeptId == d.Id));
+            var result = Expr.Lambda<TestDepartment>(d => d.Id > 0 && Expr.Exists<TestUser>(u => u.DeptId == d.Id));
             Assert.NotNull(result);
         }
 
         [Fact]
         public void GenericSqlExpr_Tests()
         {
-            // Register a dummy handler
+            // 注册一个虚拟处理器
             GenericSqlExpr.Register("TestKey", (SqlBuildContext ctx, ISqlBuilder builder, ICollection<KeyValuePair<string, object>> pms, object arg) => "TEST SQL");
 
-            // Equals
+            // 相等性测试
             Expr g1 = GenericSqlExpr.Get("TestKey", 123);
             Expr g2 = GenericSqlExpr.Get("TestKey", 123);
             Expr g3 = GenericSqlExpr.Get("TestKey", 456);
-            Expr g4 = GenericSqlExpr.GetStaticSqlExpr("TestKey");
+            Expr g4 = GenericSqlExpr.Get("TestKey");
 
             Assert.True(g1.Equals(g2));
             Assert.False(g1.Equals(g3));
             Assert.False(g1.Equals(g4));
 
-            // Serialization
+            // 序列化
             TestSerialization(g1);
             TestSerialization(g4);
         }
@@ -253,7 +253,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void FunctionExpr_Tests()
         {
-            // Equals
+            // 相等性测试
             Expr f1 = new FunctionExpr("Now");
             Expr f2 = new FunctionExpr("Now");
             Expr f3 = new FunctionExpr("Today");
@@ -264,7 +264,7 @@ namespace LiteOrm.Tests
             Assert.False(f1.Equals(f3));
             Assert.True(f4.Equals(f5));
 
-            // Serialization
+            // 序列化
             TestSerialization(f1);
             TestSerialization(f4);
         }
@@ -272,7 +272,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ExprFactory_Tests()
         {
-            // Value
+            // 值表达式
             Assert.Equal(new ValueExpr(123), Expr.Const(123));
 
             // And / Or
@@ -284,10 +284,10 @@ namespace LiteOrm.Tests
             // Not
             Assert.Equal(new NotExpr(e1), Expr.Not(e1));
 
-            // Func
+            // 函数
             Assert.Equal(new FunctionExpr("ABS", (ValueTypeExpr)10), Expr.Func("ABS", 10));
 
-            // Concat / List
+            // 连接 / 列表
             var v1 = (ValueTypeExpr)new ValueExpr("a");
             var v2 = (ValueTypeExpr)new ValueExpr("b");
             Assert.Equal(new ValueSet(ValueJoinType.Concat, v1, v2), Expr.Concat(v1, v2));
@@ -296,7 +296,7 @@ namespace LiteOrm.Tests
             // Sql / StaticSql
             GenericSqlExpr.Register("TestKey2", (SqlBuildContext ctx, ISqlBuilder builder, ICollection<KeyValuePair<string, object>> pms, object arg) => "TEST");
             Assert.Equal(GenericSqlExpr.Get("TestKey2", 1), Expr.Sql("TestKey2", 1));
-            Assert.Equal(GenericSqlExpr.GetStaticSqlExpr("TestKey2"), Expr.StaticSql("TestKey2"));
+            Assert.Equal(GenericSqlExpr.Get("TestKey2"), Expr.StaticSql("TestKey2"));
 
             // Between
             Assert.Equal((Expr.Prop("Age") >= (ValueTypeExpr)10) & (Expr.Prop("Age") <= (ValueTypeExpr)20), Expr.Between("Age", 10, 20));
@@ -305,13 +305,13 @@ namespace LiteOrm.Tests
         [Fact]
         public void SelectItemExpr_Serialization_Tests()
         {
-            // Select item with Alias (property-based serialization)
+            // 带别名的选择项（基于属性的序列化）
             var sie1 = new SelectItemExpr(Expr.Prop("DeptId")) { Alias = "Department" };
             var sie2 = new SelectItemExpr(Expr.Const(1)) { Alias = "Count" };
             var selectExpr = new SelectExpr(new FromExpr(), sie1, sie2);
 
             string json = JsonSerializer.Serialize<Expr>(selectExpr, _jsonOptions);
-            // Verify the format includes Alias properties
+            // 验证格式包含 Alias 属性
             Assert.Contains("\"Alias\"", json);
             Assert.Contains("\"Department\"", json);
             Assert.Contains("\"Count\"", json);
@@ -321,7 +321,7 @@ namespace LiteOrm.Tests
             Assert.Equal(2, deserialized.Selects.Count);
             Assert.Equal("Department", deserialized.Selects[0].Alias);
 
-            // Alias validation - should throw for invalid characters
+            // 别名验证 - 应该对无效字符抛出异常
             Assert.Throws<ArgumentException>(() => sie1.Alias = "Dept@Id");
             Assert.Throws<ArgumentException>(() => sie2.Alias = "Count-1");
 
@@ -338,11 +338,11 @@ namespace LiteOrm.Tests
             Assert.Equal(p == Expr.Null, p.IsNull());
             Assert.Equal(p != Expr.Null, p.IsNotNull());
 
-            // Aggregates
+            // 聚合函数
             Assert.Equal(new AggregateFunctionExpr("COUNT", p, true), p.Count(true));
             Assert.Equal(new AggregateFunctionExpr("SUM", p), p.Sum());
 
-            // OrderBy
+            // 排序
             var asc = p.Asc();
             Assert.Equal(p, asc.Item1);
             Assert.True(asc.Item2);
@@ -395,7 +395,7 @@ namespace LiteOrm.Tests
             Assert.Equal(10, section.Skip);
             Assert.Equal(20, section.Take);
 
-            // Serialization and Equals test
+            // 序列化和相等性测试
             TestSerialization(section);
         }
 
@@ -406,7 +406,7 @@ namespace LiteOrm.Tests
             var groupBy = new GroupByExpr(table, Expr.Prop("DeptId"), Expr.Prop("Sex"));
             Assert.Equal(2, groupBy.GroupBys.Count);
             Assert.Equal("DeptId", (groupBy.GroupBys[0] as PropertyExpr).PropertyName);
-            // Serialization and Equals test
+            // 序列化和相等性测试
             TestSerialization(groupBy);
         }
 

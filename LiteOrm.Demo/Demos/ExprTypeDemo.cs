@@ -63,7 +63,7 @@ namespace LiteOrm.Demo.Demos
             });
 
             ShowSection("4. Lambda 自动转换", () => {
-                var composite = Expr.Exp<User>(u => u.Age > 25 && u.UserName.Contains("A"));
+                var composite = Expr.Lambda<User>(u => u.Age > 25 && u.UserName.Contains("A"));
                 Print(composite, "Lambda 转 Expr", "Expr.Exp<User>(u => u.Age > 25 && u.UserName.Contains(\"A\"))");
             });
 

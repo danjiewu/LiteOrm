@@ -40,7 +40,7 @@ namespace LiteOrm.Demo.Demos
                     ("UserName", Expr.Const("UpdatedUser")),
                     ("Age", Expr.Const(25))
                 },
-                Where = Expr.Exp<Models.User>(u => u.Id == testUser.Id)
+                Where = Expr.Lambda<Models.User>(u => u.Id == testUser.Id)
             };
             int affectedRows = userService.Update(simpleUpdateExpr);
             Console.WriteLine($"   简单更新影响行数: {affectedRows}");
@@ -55,7 +55,7 @@ namespace LiteOrm.Demo.Demos
                     ("Age", Expr.Prop("Age") + Expr.Const(5)), // Age = Age + 5
                     ("UserName", Expr.Const("AgeUpdatedUser"))
                 },
-                Where = Expr.Exp<Models.User>(u => u.Id == testUser.Id)
+                Where = Expr.Lambda<Models.User>(u => u.Id == testUser.Id)
             };
             affectedRows = userService.Update(addUpdateExpr);
             Console.WriteLine($"   加法运算更新影响行数: {affectedRows}");
@@ -70,7 +70,7 @@ namespace LiteOrm.Demo.Demos
                     ("Age", Expr.Prop("Age") + Expr.Const(10)), // Age = Age + 10
                     ("UserName", Expr.Const("AsyncUpdatedUser"))
                 },
-                Where = Expr.Exp<Models.User>(u => u.Id == testUser.Id)
+                Where = Expr.Lambda<Models.User>(u => u.Id == testUser.Id)
             };
             affectedRows = await userService.UpdateAsync(asyncUpdateExpr);
             Console.WriteLine($"   异步更新影响行数: {affectedRows}");
@@ -99,7 +99,7 @@ namespace LiteOrm.Demo.Demos
                 {
                     ("UserName", Expr.Const("BatchUpdatedUser"))
                 },
-                Where = Expr.Exp<Models.User>(u => u.Age > 20)
+                Where = Expr.Lambda<Models.User>(u => u.Age > 20)
             };
             int batchAffectedRows = userService.Update(batchUpdateExpr);
             Console.WriteLine($"   批量更新影响行数: {batchAffectedRows}");

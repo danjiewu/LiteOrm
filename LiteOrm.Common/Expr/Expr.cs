@@ -189,7 +189,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型。</typeparam>
         /// <param name="expression">Lambda 表达式。</param>
         /// <returns>表达式对象。</returns>
-        public static LogicExpr Exp<T>(Expression<Func<T, bool>> expression)
+        public static LogicExpr Lambda<T>(Expression<Func<T, bool>> expression)
         {
             return new LambdaExprConverter(expression).ToLogicExpr();
         }
@@ -251,7 +251,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取静态 SQL 表达式。
         /// </summary>
-        public static GenericSqlExpr StaticSql(string key) => GenericSqlExpr.GetStaticSqlExpr(key);
+        public static GenericSqlExpr StaticSql(string key) => GenericSqlExpr.Get(key);
 
         /// <summary>
         /// 创建 From 表达式。
@@ -272,7 +272,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="expression">定义筛选条件的 Lambda 表达式</param>
         /// <returns>WHERE 条件表达式实例</returns>
-        public static WhereExpr Where<T>(Expression<Func<T, bool>> expression) => new WhereExpr() { Where = Exp(expression) };
+        public static WhereExpr Where<T>(Expression<Func<T, bool>> expression) => new WhereExpr() { Where = Lambda(expression) };
 
         /// <summary>
         /// 使用 IQueryable 形式的 Lambda 表达式创建 SQL 片段

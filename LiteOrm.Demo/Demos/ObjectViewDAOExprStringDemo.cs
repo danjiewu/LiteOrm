@@ -177,9 +177,21 @@ namespace LiteOrm.Demo.Demos
         private async Task AsyncQueryDemo()
         {
             Console.WriteLine("\n5. 异步查询演示:");
-            
-            // 注意：ExprString 语法暂时不支持异步方法
-            Console.WriteLine("ExprString 语法目前仅支持同步方法");
+
+            // ExprString 返回 EnumerableResult<T>，支持异步消费
+            int minAge = 22;
+            var result = _objectViewDAO.Search($"WHERE {Expr.Prop("Age")} >= {minAge} ORDER BY Age");
+
+            // ToListAsync
+            var userList = await result.ToListAsync();
+            Console.WriteLine($"年龄 >= {minAge} 的用户 ({userList.Count} 个):");
+
+            // await foreach 流式处理
+            var result2 = _objectViewDAO.Search($"WHERE {Expr.Prop("DeptId")} IS NOT NULL");
+            await foreach (var user in result2)
+            {
+                Console.WriteLine($"  - {user.UserName}, 年龄: {user.Age}");
+            }
         }
     }
 }

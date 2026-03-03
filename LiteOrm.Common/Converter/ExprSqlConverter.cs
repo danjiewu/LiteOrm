@@ -602,9 +602,10 @@ namespace LiteOrm.Common
                 sql.From.Append(") ");
                 innerSql.Dispose();
             }
-            context.DefaultTableAliasName = $"T{context.Sequence++}";
-            sql.From.Append(context.DefaultTableAliasName);
-            context.AddTableAlias(context.DefaultTableAliasName, null);
+            string alias = expr.Alias ?? $"T{context.Sequence++}";
+            context.DefaultTableAliasName = alias;
+            sql.From.Append(alias);
+            context.AddTableAlias(alias, null);
         }
 
         /// <summary>

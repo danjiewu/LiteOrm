@@ -18,11 +18,9 @@ namespace LiteOrm.Tests
         [Fact]
         public async Task ObjectViewDAO_Search_WithExprString_ShouldWork()
         {
-            // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
             
-            // Insert test data
             var users = new List<TestUser>
             {
                 new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now },
@@ -31,27 +29,22 @@ namespace LiteOrm.Tests
             };
             await service.BatchInsertAsync(users);
 
-            // Act
-            // Test with ExprString syntax using Expr as formatted fragment
             var ageThreshold = 20;
             var ageExpr = Expr.Prop("Age") > ageThreshold;
             var results = objectViewDAO.Search($"WHERE {ageExpr}");
 
-            // Assert
             Assert.NotNull(results);
             var resultList = results.ToList();
-            Assert.Equal(2, resultList.Count); // Should return User2 (30) and User3 (25)
+            Assert.Equal(2, resultList.Count);
             Assert.All(resultList, user => Assert.True(user.Age > ageThreshold));
         }
 
         [Fact]
         public async Task ObjectViewDAO_Search_WithExprString_ComplexExpr_ShouldWork()
         {
-            // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
             
-            // Insert test data
             var users = new List<TestUser>
             {
                 new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now.AddDays(-10) },
@@ -60,16 +53,12 @@ namespace LiteOrm.Tests
             };
             await service.BatchInsertAsync(users);
 
-            // Act
-            // Test with complex Expr in ExprString
             var minAge = 20;
             var startDate = DateTime.Now.AddDays(-7);
             var complexExpr = (Expr.Prop("Age") > minAge) & (Expr.Prop("CreateTime") > startDate);
             var results = objectViewDAO.Search($"WHERE {complexExpr}");
 
-            // Assert
             Assert.NotNull(results);
-            // Should return User2 and User3 (both > 20 and created within last 7 days)
             Assert.All(results, user => {
                 Assert.True(user.Age > minAge);
                 Assert.True(user.CreateTime > startDate);
@@ -79,11 +68,9 @@ namespace LiteOrm.Tests
         [Fact]
         public async Task ObjectViewDAO_Search_WithExprString_EmptyWhere_ShouldReturnAll()
         {
-            // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
             
-            // Insert test data
             var users = new List<TestUser>
             {
                 new TestUser { Name = "UserA", Age = 20, CreateTime = DateTime.Now },
@@ -91,28 +78,19 @@ namespace LiteOrm.Tests
             };
             await service.BatchInsertAsync(users);
 
-            // Act
-            // Test with empty ExprString
             var results = objectViewDAO.Search($"");
 
-            // Assert
             Assert.NotNull(results);
             var resultList = results.ToList();
-            Assert.True(resultList.Count >= 2); // Should return all users
+            Assert.True(resultList.Count >= 2);
         }
-
-
-
-
 
         [Fact]
         public async Task ObjectViewDAO_Search_WithExprString_MixedSqlAndExpr_ShouldWork()
         {
-            // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
             
-            // Insert test data
             var users = new List<TestUser>
             {
                 new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now },
@@ -121,13 +99,10 @@ namespace LiteOrm.Tests
             };
             await service.BatchInsertAsync(users);
 
-            // Act
-            // Test with mixed SQL and Expr in ExprString
             var ageThreshold = 20;
             var ageExpr = Expr.Prop("Age") > ageThreshold;
             var results = objectViewDAO.Search($"WHERE {ageExpr} AND Name LIKE 'User%'");
 
-            // Assert
             Assert.NotNull(results);
             var resultList = results.ToList();
             Assert.True(resultList.Count > 0);

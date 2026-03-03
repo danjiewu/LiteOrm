@@ -112,7 +112,7 @@ namespace LiteOrm.Common
         /// 获取已注册的静态 SQL 表达式。
         /// <para name="key">表达式唯一键。</para>
         /// </summary>
-        public static GenericSqlExpr GetStaticSqlExpr(string key)
+        public static GenericSqlExpr Get(string key)
         {
             if (key is null) throw new ArgumentNullException(nameof(key));
             if (_registry.TryGetValue(key, out var expr))
@@ -130,7 +130,7 @@ namespace LiteOrm.Common
         /// <returns>GenericSqlExpr 实例。</returns>
         public static GenericSqlExpr Get(string key, object arg)
         {
-            var expr = GetStaticSqlExpr(key);
+            var expr = Get(key);
             expr.Arg = arg;
             return expr;
         }

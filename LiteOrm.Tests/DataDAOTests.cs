@@ -17,19 +17,19 @@ namespace LiteOrm.Tests
         [Fact]
         public async Task DataDAO_UpdateAllValues_ShouldWork()
         {
-            // Arrange
+            // 准备
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateAllValues", Age = 10, CreateTime = System.DateTime.Now };
             await service.InsertAsync(user);
 
-            // Act
+            // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateAllValues")).GetResult();
+            int affected = dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValues")).GetResult();
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
-            // Assert
+            // 断言
             Assert.Equal(1, affected);
             Assert.Equal(99, retrieved?.Age);
         }
@@ -37,36 +37,33 @@ namespace LiteOrm.Tests
         [Fact]
         public async Task DataDAO_UpdateAllValues_WithNonExistentProperty_ShouldThrowException()
         {
-            // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var user = new TestUser { Name = "UpdateAllValues", Age = 10, CreateTime = System.DateTime.Now };
             await service.InsertAsync(user);
-
-            // Act & Assert
+            
             var updateValues = new Dictionary<string, object> { { "NonExistentProperty", 99 } };
             await Assert.ThrowsAsync<System.Exception>(() => Task.Run(() =>
-                dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateAllValues"))
+                dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValues"))
             ));
         }
 
         [Fact]
         public async Task DataDAO_UpdateValues_ShouldWork()
         {
-            // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateValues", Age = 10, CreateTime = System.DateTime.Now };
             await service.InsertAsync(user);
 
-            // Act
+            // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
             int affected = dataDao.UpdateValues(updateValues, user.Id).GetResult();
             bool updated = affected > 0;
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
-            // Assert
+            // 断言
             Assert.True(updated);
             Assert.Equal(99, retrieved?.Age);
         }
@@ -74,34 +71,34 @@ namespace LiteOrm.Tests
         [Fact]
         public async Task DataDAO_UpdateValues_WithNonExistentId_ShouldReturnFalse()
         {
-            // Arrange
+            // 准备
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
 
-            // Act
+            // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
             int affected = await dataDao.UpdateValues(updateValues, -1).GetResultAsync();
             bool updated = affected > 0;
 
-            // Assert
+            // 断言
             Assert.False(updated);
         }
 
         [Fact]
         public async Task DataDAO_UpdateAllValuesAsync_ShouldWork()
         {
-            // Arrange
+            // 准备
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateAllValuesAsync", Age = 10, CreateTime = System.DateTime.Now };
             await service.InsertAsync(user);
 
-            // Act
+            // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name == "UpdateAllValuesAsync")).GetResultAsync();
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValuesAsync")).GetResultAsync();
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
-            // Assert
+            // 断言
             Assert.Equal(1, affected);
             Assert.Equal(99, retrieved?.Age);
         }
@@ -109,20 +106,20 @@ namespace LiteOrm.Tests
         [Fact]
         public async Task DataDAO_UpdateValuesAsync_ShouldWork()
         {
-            // Arrange
+            // 准备
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateValuesAsync", Age = 10, CreateTime = System.DateTime.Now };
             await service.InsertAsync(user);
 
-            // Act
+            // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
             int affected = await dataDao.UpdateValues(updateValues, user.Id).GetResultAsync();
             bool updated = affected > 0;
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
-            // Assert
+            // 断言
             Assert.True(updated);
             Assert.Equal(99, retrieved?.Age);
         }
@@ -130,27 +127,27 @@ namespace LiteOrm.Tests
         [Fact]
         public async Task DataDAO_UpdateValuesAsync_WithNonExistentId_ShouldReturnFalse()
         {
-            // Arrange
+            // 准备
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
 
-            // Act
+            // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
             int affected = await dataDao.UpdateValues(updateValues, -1).GetResultAsync();
             bool updated = affected > 0;
 
-            // Assert
+            // 断言
             Assert.False(updated);
         }
 
         [Fact]
         public async Task DataDAO_BatchUpdateValues_ShouldWork()
         {
-            // Arrange
+            // 准备
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             
-            // Insert multiple users
+            // 插入多个用户
             var users = new List<TestUser>
             {
                 new TestUser { Name = "BatchUpdate1", Age = 10, CreateTime = System.DateTime.Now },
@@ -159,12 +156,12 @@ namespace LiteOrm.Tests
             };
             await service.BatchInsertAsync(users);
 
-            // Act
+            // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Name.StartsWith("BatchUpdate"))).GetResultAsync();
-            var retrievedUsers = await viewService.SearchAsync(Expr.Exp<TestUser>(u => u.Name.StartsWith("BatchUpdate")));
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name.StartsWith("BatchUpdate"))).GetResultAsync();
+            var retrievedUsers = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name.StartsWith("BatchUpdate")));
 
-            // Assert
+            // 断言
             Assert.Equal(3, affected);
             Assert.All(retrievedUsers, u => Assert.Equal(99, u.Age));
         }
@@ -172,23 +169,23 @@ namespace LiteOrm.Tests
         [Fact]
         public async Task DataDAO_UpdateMultipleProperties_ShouldWork()
         {
-            // Arrange
+            // 准备
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateMultiple", Age = 10, CreateTime = System.DateTime.Now };
             await service.InsertAsync(user);
 
-            // Act
+            // 执行
             var updateValues = new Dictionary<string, object>
             {
                 { "Age", 99 },
                 { "Name", "UpdatedName" }
             };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Exp<TestUser>(u => u.Id == user.Id)).GetResultAsync();
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Id == user.Id)).GetResultAsync();
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
-            // Assert   
+            // 断言   
             Assert.Equal(1, affected);
             Assert.Equal(99, retrieved?.Age);
             Assert.Equal("UpdatedName", retrieved?.Name);

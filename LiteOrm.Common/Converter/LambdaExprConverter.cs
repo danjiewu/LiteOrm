@@ -427,27 +427,14 @@ namespace LiteOrm.Common
             // 3. 处理直接的实体参数访问 (映射为数据库列)
             if (node.Expression is ParameterExpression paramExpr)
             {
-                if (_parameterAliases.TryGetValue(paramExpr, out var paramAlias))
+                _parameterAliases.TryGetValue(paramExpr, out var paramAlias);
+                if (node.Member is PropertyInfo propertyInfo)
                 {
-                    if (node.Member is PropertyInfo propertyInfo)
-                    {
-                        return new PropertyExpr(propertyInfo.Name) { TableAlias = paramAlias };
-                    }
-                    else if (node.Member is FieldInfo fieldInfo)
-                    {
-                        return new PropertyExpr(fieldInfo.Name) { TableAlias = paramAlias };
-                    }
+                    return new PropertyExpr(propertyInfo.Name) { TableAlias = paramAlias };
                 }
-                else
+                else if (node.Member is FieldInfo fieldInfo)
                 {
-                    if (node.Member is PropertyInfo propertyInfo)
-                    {
-                        return Expr.Prop(propertyInfo.Name);
-                    }
-                    else if (node.Member is FieldInfo fieldInfo)
-                    {
-                        return Expr.Prop(fieldInfo.Name);
-                    }
+                    return new PropertyExpr(fieldInfo.Name) { TableAlias = paramAlias };
                 }
             }
 
@@ -715,7 +702,7 @@ namespace LiteOrm.Common
             }
 
             // 将 Lambda 条件转换为 LogicExpr
-            var newCondition = ToLogicExpr(lambda);
+            var newCondition = AsLogic(ConvertInternal(lambda));
 
             // 如果源已经是 WhereExpr，将新条件与现有条件用 AND 合并
             if (source is WhereExpr existingWhere)
@@ -850,13 +837,13 @@ namespace LiteOrm.Common
                     {
                         var selectItem = new SelectItemExpr(AsValue(item));
                         if (newExpr.Members != null && i < newExpr.Members.Count)
-                {
-                    if(item is PropertyExpr propertyExpr&& propertyExpr.PropertyName == newExpr.Members[i].Name) 
-                        // 如果属性名与成员名相同，则不设置别名，保持简洁
-                        selectItem.Alias = null;     
-                    else
-                        selectItem.Alias = newExpr.Members[i].Name;
-                }
+                        {
+                            if (item is PropertyExpr propertyExpr && propertyExpr.PropertyName == newExpr.Members[i].Name)
+                                // 如果属性名与成员名相同，则不设置别名，保持简洁
+                                selectItem.Alias = null;
+                            else
+                                selectItem.Alias = newExpr.Members[i].Name;
+                        }
                         items.Add(selectItem);
                     }
                 }
