@@ -53,5 +53,8 @@ using (var scope = host.Services.CreateScope())
     var objectViewDAO = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<LiteOrm.Demo.Models.User>>();
     var exprStringDemo = new ObjectViewDAOExprStringDemo(userService, objectViewDAO);
     await exprStringDemo.RunDemo();
+
+    // [8] Lambda 分表功能演示 (类型安全的分表查询)
+    await LambdaShardingDemo.RunAsync(scope.ServiceProvider);
 }
 

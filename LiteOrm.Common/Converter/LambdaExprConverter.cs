@@ -146,6 +146,10 @@ namespace LiteOrm.Common
         /// </summary>
         protected readonly Dictionary<ParameterExpression, string> _parameterAliases = new Dictionary<ParameterExpression, string>();
         /// <summary>
+        /// 参数表达式到 FromExpr 或 ForeignExpr 对象的映射，用于处理分表参数
+        /// </summary>
+        protected readonly Dictionary<ParameterExpression, Expr> _parameterArgs = new Dictionary<ParameterExpression, Expr>();
+        /// <summary>
         /// 匿名类别名缓存，键为匿名类类型，值为别名
         /// </summary>
         protected readonly Dictionary<Type, string> _anonymousTypeAliases = new Dictionary<Type, string>();
@@ -288,6 +292,64 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象（可能是 LogicBinaryExpr 或 ValueBinaryExpr）</returns>
         protected Expr ConvertBinary(BinaryExpression node)
         {
+            // 特殊处理 TableArgs 赋值：u => ((IArged)u).TableArgs == ["202401"]
+            if (node.NodeType == ExpressionType.Equal)
+            {
+                // 检查左边或右边是否是 TableArgs 属性访问
+                MemberExpression tableArgsMember = null;
+                Expression valueExpr = null;
+
+                if (node.Left is MemberExpression leftMember && leftMember.Member.Name == "TableArgs")
+                {
+                    tableArgsMember = leftMember;
+                    valueExpr = node.Right;
+                }
+                else if (node.Right is MemberExpression rightMember && rightMember.Member.Name == "TableArgs")
+                {
+                    tableArgsMember = rightMember;
+                    valueExpr = node.Left;
+                }
+
+                if (tableArgsMember != null && valueExpr != null)
+                {
+                    // 提取参数表达式（可能有类型转换）
+                    var targetExpr = tableArgsMember.Expression;
+                    while (targetExpr is UnaryExpression unary && (unary.NodeType == ExpressionType.Convert || unary.NodeType == ExpressionType.TypeAs))
+                    {
+                        targetExpr = unary.Operand;
+                    }
+
+                    // 如果是参数表达式
+                    if (targetExpr is ParameterExpression paramExpr && _parameterAliases.ContainsKey(paramExpr))
+                    {
+                        // 解析赋值的值（数组或集合）
+                        var tableArgs = EvaluateTableArgs(valueExpr);
+                        
+                        // 确保参数对应的 Expr 已经创建
+                        if (!_parameterArgs.ContainsKey(paramExpr))
+                        {
+                            ConvertParameter(paramExpr);
+                        }
+
+                        // 设置 FromExpr 或 ForeignExpr 的 TableArgs
+                        if (_parameterArgs.TryGetValue(paramExpr, out var paramArg))
+                        {
+                            if (paramArg is FromExpr fromExpr)
+                            {
+                                fromExpr.TableArgs = tableArgs;
+                            }
+                            else if (paramArg is ForeignExpr foreignExpr)
+                            {
+                                foreignExpr.TableArgs = tableArgs;
+                            }
+                        }
+
+                        // 返回 null 表示这个赋值条件不产生额外的 SQL 条件
+                        return null;
+                    }
+                }
+            }
+
             // 处理 ?? 运算符，依赖参数时转为 COALESCE 函数，否则本地计算
             if (node.NodeType == ExpressionType.Coalesce)
             {
@@ -594,6 +656,72 @@ namespace LiteOrm.Common
 
         #region 内部处理逻辑
 
+        /// <summary>
+        /// 解析 TableArgs 赋值表达式的值，支持数组初始化、集合初始化和变量引用
+        /// </summary>
+        /// <param name="expr">赋值表达式的右侧</param>
+        /// <returns>TableArgs 数组</returns>
+        private string[] EvaluateTableArgs(Expression expr)
+        {
+            // 处理数组初始化：new[] { "202401", "202402" }
+            if (expr is NewArrayExpression newArrayExpr)
+            {
+                var args = new List<string>();
+                foreach (var element in newArrayExpr.Expressions)
+                {
+                    var value = Evaluate(element);
+                    if (value != null)
+                    {
+                        args.Add(value.ToString());
+                    }
+                }
+                return args.ToArray();
+            }
+
+            // 处理集合初始化：new List<string> { "202401" } 或隐式数组 ["202401"]
+            if (expr is ListInitExpression listInitExpr)
+            {
+                var args = new List<string>();
+                foreach (var initializer in listInitExpr.Initializers)
+                {
+                    foreach (var arg in initializer.Arguments)
+                    {
+                        var value = Evaluate(arg);
+                        if (value != null)
+                        {
+                            args.Add(value.ToString());
+                        }
+                    }
+                }
+                return args.ToArray();
+            }
+
+            // 处理变量引用或常量
+            var evaluatedValue = Evaluate(expr);
+            if (evaluatedValue is string[] stringArray)
+            {
+                return stringArray;
+            }
+            else if (evaluatedValue is System.Collections.IEnumerable enumerable)
+            {
+                var args = new List<string>();
+                foreach (var item in enumerable)
+                {
+                    if (item != null)
+                    {
+                        args.Add(item.ToString());
+                    }
+                }
+                return args.ToArray();
+            }
+            else if (evaluatedValue != null)
+            {
+                return new[] { evaluatedValue.ToString() };
+            }
+
+            return Array.Empty<string>();
+        }
+
         private FunctionExpr CreateFunctionExpr(MethodCallExpression node)
         {
             var parameters = new List<ValueTypeExpr>();
@@ -689,7 +817,16 @@ namespace LiteOrm.Common
                 }
             }
 
-            return new FromExpr(type) { Alias = alias };
+            // 检查缓存中是否已存在
+            if (_parameterArgs.TryGetValue(node, out var cachedExpr))
+            {
+                return cachedExpr;
+            }
+
+            // 创建新的 FromExpr 并缓存
+            var fromExpr = new FromExpr(type) { Alias = alias };
+            _parameterArgs[node] = fromExpr;
+            return fromExpr;
         }
 
         /// <summary>
@@ -1017,7 +1154,11 @@ namespace LiteOrm.Common
                     {
                         _parameterAliases[parameter] = "T" + _aliasCounter++;
                     }
-                    return new ForeignExpr(parameter.Type, _parameterAliases[parameter], AsLogic(ConvertInternal(lambda.Body)));
+                    
+                    // 创建 ForeignExpr 并缓存到 _parameterArgs
+                    var foreignExpr = new ForeignExpr(parameter.Type, _parameterAliases[parameter], AsLogic(ConvertInternal(lambda.Body)));
+                    _parameterArgs[parameter] = foreignExpr;
+                    return foreignExpr;
                 }
             }
             return null;
