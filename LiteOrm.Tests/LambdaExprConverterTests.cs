@@ -225,7 +225,7 @@ namespace LiteOrm.Tests
             var bin = Assert.IsType<LogicBinaryExpr>(result);
             var prop = Assert.IsType<PropertyExpr>(bin.Left);
             Assert.Equal("Age", prop.PropertyName);
-            Assert.Equal("TestUser", prop.TableAlias);
+            Assert.Null(prop.TableAlias);
         }
 
         [Fact]
@@ -307,11 +307,13 @@ namespace LiteOrm.Tests
         [Fact]
         public void MethodCall_WithParamDependency_InstanceMethod_ReturnsObjectConversion()
         {
-            // 未注册处理器 + 依赖参数 + 实例方法 → ConvertInternal(node.Object) → PropertyExpr
+            // 未注册处理器 + 依赖参数 + 实例方法 → ConvertInternal(node.Object) → FunctionExpr
             Expression<Func<TestUser, string>> expr = u => u.Name.ToUpper();
             var result = LambdaExprConverter.ToValueExpr(expr);
-            // node.Object = u.Name，转换结果为 PropertyExpr("Name")
-            var prop = Assert.IsType<PropertyExpr>(result);
+            // node.Object = u.Name.ToUpper()，转换结果为 FunctionExpr("ToUpper","PropertyExpr("Name"))
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("ToUpper", func.FunctionName);
+            var prop = Assert.IsType<PropertyExpr>(func.Parameters[0]);
             Assert.Equal("Name", prop.PropertyName);
         }
 

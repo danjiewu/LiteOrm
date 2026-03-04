@@ -91,7 +91,7 @@ LiteOrm 支持为每个主数据源配置若干只读从库，用于读写分离
 
 ## 演示程序列表
 
-LiteOrm.Demo 包含 6 个演示程序，展示了框架的核心特性：
+LiteOrm.Demo 包含 7 个演示程序，展示了框架的核心特性：
 
 ### 1. ExprTypeDemo - 表达式全方案演示
 - **文件**: `Demos/ExprTypeDemo.cs`
@@ -148,6 +148,23 @@ LiteOrm.Demo 包含 6 个演示程序，展示了框架的核心特性：
   - 条件更新 (UPDATE ... WHERE ...)
   - 批量更新操作
   - 更新表达式构建
+
+### 7. **ShardingQueryDemo - 分表查询演示** ⭐ NEW
+- **文件**: `Demos/ShardingQueryDemo.cs`
+- **功能**: 演示基于 `IArged` 接口的分表查询和表参数路由
+- **包含内容**:
+  - 基础分表查询 - 自动提取表参数（`Sales_{0}` 表）
+  - 显式指定表参数 - 查询指定月份的分表
+  - 动态表参数 - 使用变量灵活指定分表参数
+  - 分表查询结合排序和分页 - 复杂查询场景
+  - 分表查询结合外键关联 - 获取关联数据
+
+**关键概念**：
+- `TableArgs` 数组元素数量对应表名占位符数量（如 `Sales_{0}` 需 1 个参数）
+- 写操作自动从实体 `IArged.TableArgs` 获取参数，无需手动指定
+- 查询操作需显式传入 `tableArgs` 参数以路由到正确的分表
+
+详见完整演示：[ShardingQueryDemo.cs](./Demos/ShardingQueryDemo.cs)
 
 ---
 
@@ -253,7 +270,71 @@ var multiExists = await userService.SearchAsync(
 
 **注意**: `SearchAsync` 的 Lambda 表达式目前支持 `Where`、`OrderBy`、`OrderByDescending`、`ThenBy`、`Skip`、`Take`，不支持 `GroupBy` 和 `Select`。
 
-### 1.6 完整链式查询 (综合演示)
+### 1.6 分表查询 (Sharding Query)
+
+LiteOrm 支持通过实现 `IArged` 接口的实体进行动态分表查询。分表表名使用模板格式（如 `Sales_{0}`），实体的 `TableArgs` 属性提供表名参数。
+
+**重要概念**：
+- `TableArgs` 数组的元素数量对应表名模板中的占位符数量
+- 例如：`Sales_{0}` 表示 1 个参数，`Log_{0}_{1}` 表示 2 个参数
+- **不是**用来查询多个分表，而是用来填充表名的参数
+
+**写操作**（自动从实体获取参数）：
+```csharp
+var sale = new SalesRecord 
+{ 
+    ProductId = 1, 
+    Amount = 100,
+    SaleTime = new DateTime(2024, 12, 15),  // TableArgs 自动从 SaleTime 计算为 "202412"
+    SalesUserId = userId
+};
+await salesService.InsertAsync(sale);  // 自动写入 Sales_202412 表
+
+// 批量写入会按 TableArgs 分组分批执行
+var sales = new List<SalesRecord>
+{
+    new SalesRecord { SaleTime = new DateTime(2024, 11, 10), ... },  // 路由到 Sales_202411
+    new SalesRecord { SaleTime = new DateTime(2024, 12, 15), ... }   // 路由到 Sales_202412
+};
+await salesService.BatchInsertAsync(sales);
+```
+
+**查询操作**（需要显式传入 tableArgs）：
+```csharp
+// 查询 2024 年 12 月的销售数据
+var sales = await salesService.SearchAsync(
+    Expr.Prop("Amount") > 500,
+    tableArgs: ["202412"]  // 指定查询 Sales_202412 表
+);
+
+// 按 ID 获取对象
+var sale = await salesService.GetObjectAsync(id, tableArgs: ["202412"]);
+
+// 检查数据是否存在
+bool exists = await salesService.ExistsIDAsync(id, tableArgs: ["202412"]);
+
+// 统计数量
+int count = await salesService.CountAsync(null, tableArgs: ["202412"]);
+
+// 使用 Lambda 表达式查询
+var results = await salesService.SearchAsync(
+    Expr.Lambda<SalesRecord>(s => s.Amount > 100),
+    tableArgs: ["202412"]
+);
+```
+
+**多参数分表示例**（表名为 `Log_{0}_{1}`）：
+```csharp
+// 表名参数对应占位符顺序
+var logs = await logService.SearchAsync(
+    Expr.Prop("Level") == "Error",
+    tableArgs: ["2024", "12"]  // 查询 Log_2024_12 表
+);
+```
+
+详见完整演示：[ShardingQueryDemo.cs](./Demos/ShardingQueryDemo.cs)
+
+### 1.7 完整链式查询 (综合演示)
 
 ```csharp
 var results = await userService.SearchAsync(
@@ -540,7 +621,9 @@ LiteOrm.Demo/
 │   ├── ExistsSubqueryDemo.cs     # EXISTS 子查询演示
 │   ├── ExprTypeDemo.cs           # 表达式类型演示
 │   ├── PracticalQueryDemo.cs     # 综合查询演示
+│   ├── ShardingQueryDemo.cs      # 分表查询演示（按月份分表示例）
 │   ├── TransactionDemo.cs        # 事务演示
+│   ├── ObjectViewDAOExprStringDemo.cs  # ExprString 语法演示
 │   └── UpdateExprDemo.cs         # 更新表达式演示
 ├── Models/                 # 实体模型
 │   ├── Department.cs      # 部门实体及视图

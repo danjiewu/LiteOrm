@@ -73,6 +73,15 @@ namespace LiteOrm.Common
         public ForeignExpr() { }
 
         /// <summary>
+        /// 使用指定的外部实体类型初始化 <see cref="ForeignExpr"/> 类的新实例。
+        /// </summary>
+        /// <param name="foreign">外部实体类型。</param>
+        public ForeignExpr(Type foreign)
+        {
+            Foreign = foreign;
+        }
+
+        /// <summary>
         /// 使用指定的外部实体类型和内部表达式初始化 <see cref="ForeignExpr"/> 类的新实例。
         /// </summary>
         /// <param name="foreign">外部实体类型。</param>

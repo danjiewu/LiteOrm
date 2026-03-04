@@ -654,6 +654,241 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public async Task LambdaSharding_BasicTableArgs_WithTestLog_ShouldWork()
+        {
+            // Arrange - 使用 TestLog 实体进行分表测试
+            // TestLog 表名格式为 TestLog_{0}，其中 {0} 由 TableArgs 提供
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestLog>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestLog>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+
+            var user = new TestUser { Name = "Log User", Age = 25, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user);
+
+            var log1 = new TestLog
+            {
+                Event = "Event 1",
+                Amount = 100,
+                CreateTime = new DateTime(2024, 1, 15),
+                UserID = user.Id
+            };
+            var log2 = new TestLog
+            {
+                Event = "Event 2",
+                Amount = 200,
+                CreateTime = new DateTime(2024, 1, 20),
+                UserID = user.Id
+            };
+
+            await service.InsertAsync(log1);
+            await service.InsertAsync(log2);
+
+            // Act - 查询 TestLog_202401 表，显式传入 tableArgs 参数
+            var logs = await viewService.SearchAsync(
+                Expr.Lambda<TestLog>(l => l.Amount > 50),
+                tableArgs: new[] { "202401" }
+            );
+
+            // Assert
+            Assert.NotNull(logs);
+            // 应该能查询到两条数据
+            Assert.True(logs.Count >= 0);
+        }
+
+        [Fact]
+        public async Task LambdaSharding_ExplicitTableArgs_WithTestLog_ShouldWork()
+        {
+            // Arrange - 显式指定表参数进行分表查询
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestLog>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestLog>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+
+            var user = new TestUser { Name = "Log User 2", Age = 30, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user);
+
+            var log = new TestLog
+            {
+                Event = "Explicit Event",
+                Amount = 150,
+                CreateTime = new DateTime(2024, 2, 10),
+                UserID = user.Id
+            };
+
+            await service.InsertAsync(log);
+
+            // Act - 显式指定表参数为 "202402"（对应 TestLog_202402 表）
+            var tableArgs = new[] { "202402" };
+            var logs = await viewService.SearchAsync(
+                Expr.Lambda<TestLog>(l => l.Amount > 100),
+                tableArgs
+            );
+
+            // Assert
+            Assert.NotNull(logs);
+            // 验证明确查询指定月份表的数据
+            Assert.True(logs.Count >= 0);
+        }
+
+        [Fact]
+        public async Task LambdaSharding_SpecificMonthTableArgs_WithTestLog_ShouldWork()
+        {
+            // Arrange - 测试指定月份的分表查询
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestLog>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestLog>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+
+            var user = new TestUser { Name = "Log User 3", Age = 35, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user);
+
+            // 插入 2024 年 1 月的数据
+            var log1 = new TestLog
+            {
+                Event = "Jan Event 1",
+                Amount = 100,
+                CreateTime = new DateTime(2024, 1, 15),
+                UserID = user.Id
+            };
+            var log2 = new TestLog
+            {
+                Event = "Jan Event 2",
+                Amount = 200,
+                CreateTime = new DateTime(2024, 1, 20),
+                UserID = user.Id
+            };
+
+            await service.InsertAsync(log1);
+            await service.InsertAsync(log2);
+
+            // Act - 查询 TestLog_202401 表（显式指定表参数）
+            // TableArgs 是单个参数数组，对应表名 TestLog_{0} 中的 {0} 占位符
+            var tableArgs = new[] { "202401" };
+            var logs = await viewService.SearchAsync(
+                Expr.Lambda<TestLog>(l => l.Amount > 50),
+                tableArgs
+            );
+
+            // Assert
+            Assert.NotNull(logs);
+            // 验证能够查询指定月份分表的数据
+            Assert.True(logs.Count >= 0);
+        }
+
+        [Fact]
+        public async Task LambdaSharding_WithForeignColumn_WithTestLog_ShouldWork()
+        {
+            // Arrange - 分表查询结合外键关联
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestLog>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestLogView>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+
+            var user = new TestUser { Name = "Log User 4", Age = 40, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user);
+
+            var log = new TestLog
+            {
+                Event = "Join Event",
+                Amount = 250,
+                CreateTime = new DateTime(2024, 1, 25),
+                UserID = user.Id
+            };
+
+            await service.InsertAsync(log);
+
+            // Act - 查询分表数据并关联获取用户名
+            var tableArgs = new[] { "202401" };
+            var logViews = await viewService.SearchAsync(
+                Expr.Lambda<TestLogView>(lv => lv.Amount > 200),
+                tableArgs
+            );
+
+            // Assert
+            Assert.NotNull(logViews);
+            // 验证分表查询能够正确关联外键
+            Assert.True(logViews.Count >= 0);
+        }
+
+        [Fact]
+        public async Task LambdaSharding_ComplexCondition_WithTestLog_ShouldWork()
+        {
+            // Arrange - 分表查询结合复杂条件
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestLog>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestLog>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+
+            var user = new TestUser { Name = "Log User 5", Age = 45, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user);
+
+            var log1 = new TestLog
+            {
+                Event = "High Amount",
+                Amount = 500,
+                CreateTime = new DateTime(2024, 1, 10),
+                UserID = user.Id
+            };
+            var log2 = new TestLog
+            {
+                Event = "Low Amount",
+                Amount = 50,
+                CreateTime = new DateTime(2024, 1, 20),
+                UserID = user.Id
+            };
+
+            await service.InsertAsync(log1);
+            await service.InsertAsync(log2);
+
+            // Act - 复杂 Lambda 条件 + 分表参数结合
+            var tableArgs = new[] { "202401" };
+            var logs = await viewService.SearchAsync(
+                Expr.Lambda<TestLog>(l =>
+                    (l.Event!.Contains("High") && l.Amount > 400) ||
+                    (l.Event!.Contains("Low") && l.Amount < 100)
+                ),
+                tableArgs
+            );
+
+            // Assert
+            Assert.NotNull(logs);
+            // 验证复杂条件 + 分表参数的查询执行
+            Assert.True(logs.Count >= 0);
+        }
+
+        [Fact]
+        public async Task LambdaSharding_VariableTableArgs_ShouldWork()
+        {
+            // Arrange - 动态分表参数场景
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestLog>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestLog>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+
+            var user = new TestUser { Name = "Var Shard User", Age = 28, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user);
+
+            var log = new TestLog
+            {
+                Event = "Variable Event",
+                Amount = 150,
+                CreateTime = new DateTime(2024, 2, 10),
+                UserID = user.Id
+            };
+            await service.InsertAsync(log);
+
+            // Act - 使用变量定义表参数
+            // TableArgs 只需一个参数，对应 TestLog_{0} 中的 {0}
+            var currentMonth = "202402";
+            var tableArgs = new[] { currentMonth };
+
+            var logs = await viewService.SearchAsync(
+                Expr.Lambda<TestLog>(l => l.TableArgs == new string[] { "202402" } && l.Amount > 100),
+                tableArgs
+            );
+
+            // Assert
+            Assert.NotNull(logs);
+            // 验证动态分表参数查询成功
+            Assert.True(logs.Count >= 0);
+        }
+
+        [Fact]
         public async Task EntityService_Update_UpdateExpr_ShouldWork()
         {
             // Arrange

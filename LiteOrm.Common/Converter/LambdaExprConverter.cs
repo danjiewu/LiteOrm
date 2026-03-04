@@ -114,29 +114,19 @@ namespace LiteOrm.Common
         {
             if (expression is null) throw new ArgumentNullException(nameof(expression));
             _expression = expression;
-            _rootParameter = expression.Parameters.FirstOrDefault();
+            var _rootParameter = expression.Parameters[0];
             Type objectType = _rootParameter.Type;
             if (objectType.IsGenericType && (objectType.GetGenericTypeDefinition() == typeof(IQueryable<>) || objectType.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
                 objectType = objectType.GetGenericArguments()[0];
-            if (objectType.Name.StartsWith("<>f__AnonymousType") && objectType.IsDefined(typeof(CompilerGeneratedAttribute), false) && objectType.IsGenericType && objectType.IsSealed)
-            {
-                //根节点匿名类别名T0
-                string alias = "T" + _aliasCounter++;
-                _anonymousTypeAliases[objectType] = alias;
-                _parameterAliases[_rootParameter] = alias;
-                return;
-            }
-            if (_rootParameter != null)
-            {
-                _parameterAliases[_rootParameter] = objectType.Name;
-                _aliasCounter = 1; // 初始化为1，因为已经使用了一个别名
-            }
+            _currentAlias = _parameterAliases[_rootParameter.Name] = objectType.Name;
+            _parameterExprs[_rootParameter.Name] = new FromExpr(objectType) { Alias = _currentAlias };
+            _aliasCounter = 1;
         }
 
         /// <summary>
-        /// 跟踪 Lambda 的主参数（通常是实体变量）
+        /// 当前别名，用于生成 SQL 时的表别名。对于嵌套 Lambda 表达式会动态更新以支持多层别名映射。
         /// </summary>
-        protected readonly ParameterExpression _rootParameter;
+        protected string _currentAlias;
         /// <summary>
         /// 原始 Lambda 对象
         /// </summary>
@@ -144,16 +134,11 @@ namespace LiteOrm.Common
         /// <summary>
         /// 参数表达式到别名的映射
         /// </summary>
-        protected readonly Dictionary<ParameterExpression, string> _parameterAliases = new Dictionary<ParameterExpression, string>();
+        protected readonly Dictionary<string, string> _parameterAliases = new Dictionary<string, string>();
         /// <summary>
         /// 参数表达式到 FromExpr 或 ForeignExpr 对象的映射，用于处理分表参数
         /// </summary>
-        protected readonly Dictionary<ParameterExpression, Expr> _parameterArgs = new Dictionary<ParameterExpression, Expr>();
-        /// <summary>
-        /// 匿名类别名缓存，键为匿名类类型，值为别名
-        /// </summary>
-        protected readonly Dictionary<Type, string> _anonymousTypeAliases = new Dictionary<Type, string>();
-
+        protected readonly Dictionary<string, Expr> _parameterExprs = new Dictionary<string, Expr>();
         /// <summary>
         /// 别名编号，用于生成新的别名
         /// </summary>
@@ -222,12 +207,12 @@ namespace LiteOrm.Common
                 UnaryExpression unary => ConvertUnary(unary),
                 MemberExpression member => ConvertMember(member),
                 ConstantExpression constant => ConvertConstant(constant),
-                ParameterExpression param => ConvertParameter(param),
                 NewArrayExpression newArray => ConvertNewArray(newArray),
                 ListInitExpression listInit => ConvertListInit(listInit),
                 NewExpression newExpression => ConvertNew(newExpression),
                 MethodCallExpression methodCall => ConvertMethodCall(methodCall),
                 LambdaExpression lambda => ConvertLambda(lambda),
+                ParameterExpression parameter => ConvertParameter(parameter),
                 _ => throw new NotSupportedException($"Unsupported expression type: {node.NodeType} ({node.GetType().Name})"),
             };
         }
@@ -239,9 +224,24 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertLambda(LambdaExpression lambda)
         {
+            ParameterExpression parameter = lambda.Parameters.FirstOrDefault();
+            if (parameter != null)
+            {
+                _parameterAliases[parameter.Name] = _currentAlias;
+            }
             var result = ConvertInternal(lambda.Body);
-            if (result is null) return null;
-            return lambda.ReturnType == typeof(bool) ? AsLogic(result) : AsValue(result);
+            result = lambda.ReturnType == typeof(bool) ? AsLogic(result) : AsValue(result);
+            if (parameter != null)
+            {
+                _parameterAliases.Remove(parameter.Name);
+            }
+            return result;
+        }
+
+        protected virtual Expr ConvertParameter(ParameterExpression parameter)
+        {
+            _parameterExprs.TryGetValue(parameter.Name, out var expr);
+            return expr;
         }
 
         private Expr ConvertNew(NewExpression node)
@@ -320,19 +320,13 @@ namespace LiteOrm.Common
                     }
 
                     // 如果是参数表达式
-                    if (targetExpr is ParameterExpression paramExpr && _parameterAliases.ContainsKey(paramExpr))
+                    if (targetExpr is ParameterExpression paramExpr && _parameterAliases.ContainsKey(paramExpr.Name))
                     {
                         // 解析赋值的值（数组或集合）
                         var tableArgs = EvaluateTableArgs(valueExpr);
-                        
-                        // 确保参数对应的 Expr 已经创建
-                        if (!_parameterArgs.ContainsKey(paramExpr))
-                        {
-                            ConvertParameter(paramExpr);
-                        }
 
                         // 设置 FromExpr 或 ForeignExpr 的 TableArgs
-                        if (_parameterArgs.TryGetValue(paramExpr, out var paramArg))
+                        if (_parameterExprs.TryGetValue(paramExpr.Name, out var paramArg))
                         {
                             if (paramArg is FromExpr fromExpr)
                             {
@@ -513,7 +507,8 @@ namespace LiteOrm.Common
             // 1. 处理直接的实体参数访问 (映射为数据库列)
             if (node.Expression is ParameterExpression paramExpr)
             {
-                _parameterAliases.TryGetValue(paramExpr, out var paramAlias);
+                _parameterAliases.TryGetValue(paramExpr.Name, out var paramAlias);
+                if (paramAlias == _currentAlias) paramAlias = null;
                 if (node.Member is PropertyInfo propertyInfo)
                 {
                     return new PropertyExpr(propertyInfo.Name) { TableAlias = paramAlias };
@@ -554,11 +549,6 @@ namespace LiteOrm.Common
                 }
             }
 
-            return new ValueSet(items);
-        }
-
-        private Expr ExprSet(List<ValueTypeExpr> items)
-        {
             return new ValueSet(items);
         }
 
@@ -781,61 +771,6 @@ namespace LiteOrm.Common
             }
         }
 
-        /// <summary>
-        /// 将参数表达式转换为 From 表达式。
-        /// 当参数对应一个 IQueryable 或 IEnumerable 类型时，会取其泛型参数类型作为表实体类型。
-        /// </summary>
-        /// <param name="node">参数表达式</param>
-        /// <returns>对应的 FromExpr</returns>
-        private Expr ConvertParameter(ParameterExpression node)
-        {
-            var type = node.Type;
-            if (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IQueryable<>) || type.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
-                type = type.GetGenericArguments()[0];
-
-            if (!_parameterAliases.TryGetValue(node, out var alias))
-            {
-                // 首先检查是否是匿名类，如果是则查找匿名类的别名
-                if (type.Name.StartsWith("<>f__AnonymousType") && type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false))
-                {
-                    if (_anonymousTypeAliases.TryGetValue(type, out alias))
-                    {
-                        _parameterAliases[node] = alias;
-                    }
-                    else
-                    {
-                        // 如果没有找到匿名类的别名，则生成新的别名
-                        alias = "T" + _aliasCounter++;
-                        _parameterAliases[node] = alias;
-                    }
-                }
-                else
-                {
-                    // 生成新的别名
-                    alias = "T" + _aliasCounter++;
-                    _parameterAliases[node] = alias;
-                }
-            }
-
-            // 检查缓存中是否已存在
-            if (_parameterArgs.TryGetValue(node, out var cachedExpr))
-            {
-                return cachedExpr;
-            }
-
-            // 创建新的 FromExpr 并缓存
-            var fromExpr = new FromExpr(type) { Alias = alias };
-            _parameterArgs[node] = fromExpr;
-            return fromExpr;
-        }
-
-        /// <summary>
-        /// 处理子 Lambda 表达式，返回 LogicExpr 或 ValueTypeExpr 取决于 Lambda 的返回类型。
-        /// </summary>
-        /// <param name="lambda">要处理的 Lambda 表达式</param>
-        /// <returns>对应的 Expr（LogicExpr 或 ValueTypeExpr）</returns>
-        private Expr HandleSubLambda(LambdaExpression lambda) => lambda.ReturnType == typeof(bool) ? ToLogicExpr(lambda) : ToValueExpr(lambda);
-
         // LINQ 扩展方法处理器
         /// <summary>
         /// 处理 Where 调用，将条件转换并合并到已有的 WhereExpr 或创建新的 WhereExpr。
@@ -869,8 +804,13 @@ namespace LiteOrm.Common
                 source = tve;
             }
 
+            ParameterExpression parameter = lambda.Parameters[0];
+            _parameterAliases[parameter.Name] = _currentAlias;
+
             // 将 Lambda 条件转换为 LogicExpr
-            var newCondition = AsLogic(ConvertInternal(lambda));
+            var newCondition = AsLogic(ConvertInternal(lambda.Body));
+
+            _parameterAliases.Remove(parameter.Name);
 
             // 条件为 null 时（如纯 TableArgs 赋值），直接返回源不添加 WHERE
             if (newCondition is null)
@@ -974,14 +914,7 @@ namespace LiteOrm.Common
             var selectExpr = (SelectExpr)source.Select(selectItems);
 
             // 为 SelectExpr 生成别名
-            string alias = "T" + _aliasCounter++;
-            selectExpr.Alias = alias;
-
-            // 保存匿名类别名到缓存
-            if (lambda.Body is NewExpression newExpr && newExpr.Type.Name.StartsWith("<>f__AnonymousType") && newExpr.Type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false))
-            {
-                _anonymousTypeAliases[newExpr.Type] = alias;
-            }
+            _currentAlias = selectExpr.Alias = "T" + _aliasCounter++;
 
             return selectExpr;
         }
@@ -1128,7 +1061,7 @@ namespace LiteOrm.Common
             }
 
             // 避免对 naked parameter 调用 ConvertInternal，这会触发 NotSupportedException
-            if (arg is ParameterExpression pe && ReferenceEquals(pe, lambdaParam)) return null;
+            if (IsParameterAccess(arg, lambdaParam)) return null;
 
             // 回退到普通转换
             return ConvertInternal(arg);
@@ -1149,15 +1082,22 @@ namespace LiteOrm.Common
                 var lambda = lambdaArg as LambdaExpression;
                 if (lambda != null)
                 {
-                    ParameterExpression parameter = lambda.Parameters.FirstOrDefault();
-                    if (parameter != null && !_parameterAliases.ContainsKey(parameter))
-                    {
-                        _parameterAliases[parameter] = "T" + _aliasCounter++;
-                    }
-                    
+                    ParameterExpression parameter = lambda.Parameters[0];
+                    var lastAlias = _currentAlias;
+                    // 为 Lambda 参数生成一个新的别名并缓存
+                    _currentAlias = _parameterAliases[parameter.Name] = "T" + _aliasCounter++;
                     // 创建 ForeignExpr 并缓存到 _parameterArgs
-                    var foreignExpr = new ForeignExpr(parameter.Type, _parameterAliases[parameter], AsLogic(ConvertInternal(lambda.Body)));
-                    _parameterArgs[parameter] = foreignExpr;
+                    var foreignExpr = new ForeignExpr(parameter.Type);
+                    // 将参数名与 ForeignExpr 关联，以便在转换 Lambda.Body 时正确解析参数访问
+                    _parameterExprs[parameter.Name] = foreignExpr;
+
+                    // 转换 Lambda.Body，得到内部的 LogicExpr
+                    foreignExpr.InnerExpr = AsLogic(ConvertInternal(lambda.Body));
+
+                    // 转换完成后清理缓存，恢复之前的别名
+                    _parameterExprs.Remove(parameter.Name);
+                    _parameterAliases.Remove(parameter.Name);
+                    _currentAlias = lastAlias;
                     return foreignExpr;
                 }
             }

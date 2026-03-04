@@ -1097,6 +1097,7 @@ EXISTS 仅检查是否存在，不返回关联表数据，性能优于 LEFT JOIN
 
 分表实体需实现 `IArged` 接口，分表参数通过 `TableArgs` 属性提供，框架会自动将其传递给 DAO 以路由到正确的分表。`TableArgs` 属性应使用不可变值进行计算，通常基于实体属性（如日期、组织）计算分表参数。
 
+**注意：** TableArgs 数组中的元素数量对应表名中的占位符数量，而不是查询多个分表
 ```csharp
 // 定义分表实体（表名模板 Log_{yyyyMM}）
     [Table("Log_{0}")]
@@ -1140,7 +1141,7 @@ var logs = new List<Log>
 await logService.BatchInsertAsync(logs);
 
 ```
-#### 6.4.3 分表实体写入
+#### 6.4.3 分表实体查询
 
 查询、按条件删除等操作则需显式传入 `tableArgs`。
 ```csharp
@@ -1189,6 +1190,17 @@ var existsWithAlias = Expr.Foreign<Log>("lg",
     "202601");
 
 var users2 = userService.Search(existsWithAlias);
+```
+#### 6.4.5 Lambda 分表方式
+
+Lambda 表达式也支持分表参数，扩展方法会自动将其转换为 `Expr` 时传递给 DAO 以路由到正确的分表。
+
+**注意：** Lambda 表达式如果是简单形式（即直接传入实体参数而非 IQueryable），则必须直接传入 `Search` 扩展方法才可支持分表，转成 `LogicExpr` 后再传入将不能正确分表。一般推荐 `6.4.3` 直接在 `Search` 方法传入 `tableArgs` 的方式，仅在需要对关联表使用不同参数分表时才使用此方式。
+```csharp
+// Lambda 表达式中直接传入 tableArgs 参数
+var users = userService.Search(
+    u => ((IArged)u).TableArgs == new string[] { "202601" } && u.Age > 18 // 指向分表 Log_202601
+);
 ```
 
 ### 6.5 事务操作
@@ -1338,19 +1350,6 @@ GenericSqlExpr.Register("AgeAndMonthFilter", (context, builder, @params, arg) =>
     return $"Age > {builder.ToSqlParam(p1)} AND DATE_FORMAT(CreateTime, '%Y-%m') = {builder.ToSqlParam(p2)}";
 });
 
-// 注册时传入空处理器表示使用默认处理器（即不转换，直接调用成员名/方法名的函数，实例对象作为第一个参数）
-GenericSqlExpr.Register(typeof(DateTime), "AddDays");
-
-
-// 传入返回 null 的处理器来取消已有的处理器
-GenericSqlExpr.Register(typeof(string), "PadLeft", (node, converter) => null);
-```
-
-**示例：**
-
-```csharp
-// === 查询时获取实例 ===
-
 // Expr.Sql(key, arg) 是 GenericSqlExpr.Get(key, arg) 的简化包装
 var yearExpr = Expr.Sql("YearFilter", 2024);
 var users = userService.Search(yearExpr);
@@ -1455,3 +1454,5 @@ public class MySqlBulkCopyProvider : IBulkProvider
 | SqlSugar | 4,571.36 | 7,677.75 | 35,952.45 | 9,226.19 |
 | Dapper | 2,476.22 | 3,094.99 | 2,798.43 | 415.97 |
 | EF Core | 18,118.07 | 15,149.28 | 14,803.48 | 2,198.79 |
+
+文档最后更新时间：2026-03-05

@@ -131,19 +131,6 @@ namespace LiteOrm
                 return converter.Convert(node.Object);
             });
 
-            LambdaExprConverter.RegisterMethodHandler("Compare", (node, converter) =>
-            {
-                var left = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
-                var right = converter.Convert(node.Arguments[1]) as ValueTypeExpr;
-                return new LogicBinaryExpr(left, LogicOperator.Equal, right);
-            });
-
-            LambdaExprConverter.RegisterMethodHandler("CompareTo", (node, converter) =>
-            {
-                var left = node.Object != null ? converter.Convert(node.Object) as ValueTypeExpr : converter.Convert(node.Arguments[0]) as ValueTypeExpr;
-                var right = node.Object != null ? converter.Convert(node.Arguments[0]) as ValueTypeExpr : converter.Convert(node.Arguments[1]) as ValueTypeExpr;
-                return new LogicBinaryExpr(left, LogicOperator.Equal, right);
-            });
         }
     }
 }
