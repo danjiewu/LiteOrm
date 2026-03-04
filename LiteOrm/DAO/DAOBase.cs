@@ -63,6 +63,7 @@ namespace LiteOrm
         private string _fromTable = null;
         private ArgumentOutOfRangeException _exceptionWrongKeys;
         private Dictionary<SqlColumn, string> _columnSqlCache = new Dictionary<SqlColumn, string>();
+        private string _ensuredTableName;
         #endregion
 
 
@@ -245,6 +246,7 @@ namespace LiteOrm
         /// <returns></returns>
         public virtual DbCommandProxy NewCommand()
         {
+            EnsureTableExists();
             return new DbCommandProxy(DAOContext, SqlBuilder);
         }
 
@@ -692,6 +694,20 @@ namespace LiteOrm
         protected string ToNativeName(string paramName)
         {
             return SqlBuilder.ToNativeName(paramName);
+        }
+
+        /// <summary>
+        /// 确保当前表已在数据库中创建，若不存在则自动创建（仅当数据源开启了自动建表时生效）。
+        /// </summary>
+        protected void EnsureTableExists()
+        {
+            if (IsView) return;
+            var pool = DAOContext?.Pool;
+            if (pool == null || !pool.SyncTable) return;
+            string tableName = FactTableName;
+            if (tableName == _ensuredTableName) return;
+            pool.EnsureTable(tableName, TableDefinition.Columns);
+            _ensuredTableName = tableName;
         }
 
         #endregion

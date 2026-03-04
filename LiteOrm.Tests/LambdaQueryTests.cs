@@ -235,9 +235,7 @@ namespace LiteOrm.Tests
                 .OrderBy(u => u.Name)
                 .Skip(0)
                 .Take(10);
-
             var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
-
             Assert.IsType<SectionExpr>(expr);
             var section = (SectionExpr)expr;
             Assert.Equal(0, section.Skip);

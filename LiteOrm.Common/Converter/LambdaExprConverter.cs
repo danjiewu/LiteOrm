@@ -41,7 +41,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 默认的方法处理器：将方法名作为 SQL 函数名生成 FunctionExpr。
         /// </summary>
-        public static Func<MethodCallExpression, LambdaExprConverter, Expr> DefaultFunctionHandler => (node, converter) =>
+        protected static Func<MethodCallExpression, LambdaExprConverter, Expr> DefaultFunctionHandler => (node, converter) =>
         {
             return converter.CreateFunctionExpr(node);
         };
@@ -49,7 +49,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 默认的成员处理器：将成员（属性/字段）名映射为 FunctionExpr 或 PropertyExpr。
         /// </summary>
-        public static Func<MemberExpression, LambdaExprConverter, Expr> DefaultMemberHandler => (node, converter) =>
+        protected static Func<MemberExpression, LambdaExprConverter, Expr> DefaultMemberHandler => (node, converter) =>
         {
             return node.Expression is null ? new FunctionExpr(node.Member.Name) : new FunctionExpr(node.Member.Name, converter.AsValue(converter.Convert(node.Expression)));
         };
@@ -69,7 +69,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="type">目标类型。</param>
         /// <param name="methodName">方法名称。若不指定，则扫描并注册所有公开方法。</param>
-        /// <param name="handler">处理逻辑。</param>
+        /// <param name="handler">处理逻辑，若为 null 则使用默认处理器。</param>
         public static void RegisterMethodHandler(Type type, string methodName = null, Func<MethodCallExpression, LambdaExprConverter, Expr> handler = null)
         {
             handler ??= DefaultFunctionHandler;
@@ -91,6 +91,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static void RegisterMemberHandler(string memberName, Func<MemberExpression, LambdaExprConverter, Expr> handler = null)
         {
+            if (String.IsNullOrEmpty(memberName)) throw new ArgumentNullException(nameof(memberName));
             _memberNameHandlers[memberName] = handler ?? DefaultMemberHandler;
         }
 
@@ -301,22 +302,22 @@ namespace LiteOrm.Common
             {
                 case ExpressionType.AndAlso:
                 case ExpressionType.And:
-                {
-                    var andLeft = AsLogic(left);
-                    var andRight = AsLogic(right);
-                    if (andLeft is null) return andRight;
-                    if (andRight is null) return andLeft;
-                    return andLeft.And(andRight);
-                }
+                    {
+                        var andLeft = AsLogic(left);
+                        var andRight = AsLogic(right);
+                        if (andLeft is null) return andRight;
+                        if (andRight is null) return andLeft;
+                        return andLeft.And(andRight);
+                    }
                 case ExpressionType.Or:
                 case ExpressionType.OrElse:
-                {
-                    var orLeft = AsLogic(left);
-                    var orRight = AsLogic(right);
-                    if (orLeft is null) return orRight;
-                    if (orRight is null) return orLeft;
-                    return orLeft.Or(orRight);
-                }
+                    {
+                        var orLeft = AsLogic(left);
+                        var orRight = AsLogic(right);
+                        if (orLeft is null) return orRight;
+                        if (orRight is null) return orLeft;
+                        return orLeft.Or(orRight);
+                    }
                 case ExpressionType.Add:
                     // 字符串拼接映射
                     if (node.Left.Type == typeof(string) || node.Right.Type == typeof(string))
@@ -367,10 +368,23 @@ namespace LiteOrm.Common
 
             return node.NodeType switch
             {
-                ExpressionType.OnesComplement => new UnaryExpr(UnaryOperator.BitwiseNot, operand as ValueTypeExpr),
-                ExpressionType.Not => new NotExpr(AsLogic(operand)),
-                ExpressionType.Negate => new UnaryExpr(UnaryOperator.Nagive, operand as ValueTypeExpr),
-                ExpressionType.Convert or ExpressionType.Quote => operand,// 不需要额外处理
+                ExpressionType.OnesComplement =>
+                    operand is ValueTypeExpr vte
+                        ? new UnaryExpr(UnaryOperator.BitwiseNot, vte)
+                        : throw new NotSupportedException($"Bitwise NOT operator requires a value expression, but got {operand?.GetType().Name}"),
+                ExpressionType.Not =>
+                    // ExpressionType.Not 可能表示逻辑非 (!) 或按位非 (~)
+                    // 逻辑非应用于 bool，按位非应用于整数
+                    node.Operand.Type == typeof(bool)
+                        ? new NotExpr(AsLogic(operand))
+                        : operand is ValueTypeExpr vte2
+                            ? new UnaryExpr(UnaryOperator.BitwiseNot, vte2)
+                            : throw new NotSupportedException($"Bitwise NOT operator requires a value expression, but got {operand?.GetType().Name}"),
+                ExpressionType.Negate =>
+                    operand is ValueTypeExpr vte3
+                        ? new UnaryExpr(UnaryOperator.Nagive, vte3)
+                        : throw new NotSupportedException($"Negate operator requires a value expression, but got {operand?.GetType().Name}"),
+                ExpressionType.Convert or ExpressionType.Quote => operand,
                 _ => throw new NotSupportedException($"Unsupported unary operator: {node.NodeType}"),
             };
         }
@@ -434,21 +448,7 @@ namespace LiteOrm.Common
                 return ConvertInternal(node.Expression);
             }
 
-            // 1. 优先匹配已注册的类型成员处理器 (如 DateTime.Now)
-            if (node.Member.DeclaringType != null && _typeMemberHandlers.TryGetValue((node.Member.DeclaringType, node.Member.Name), out var typeMemberHandler))
-            {
-                var result = typeMemberHandler(node, this);
-                if (result is not null) return result;
-            }
-
-            // 2. 匹配已注册的通用名称处理器 (如 Length)
-            if (_memberNameHandlers.TryGetValue(node.Member.Name, out var nameMemberHandler))
-            {
-                var result = nameMemberHandler(node, this);
-                if (result is not null) return result;
-            }
-
-            // 3. 处理直接的实体参数访问 (映射为数据库列)
+            // 1. 处理直接的实体参数访问 (映射为数据库列)
             if (node.Expression is ParameterExpression paramExpr)
             {
                 _parameterAliases.TryGetValue(paramExpr, out var paramAlias);
@@ -462,14 +462,21 @@ namespace LiteOrm.Common
                 }
             }
 
-            // 4. 处理外部变量引用（参数不在字典中的其他情况）
-            var (externalAlias, propertyName) = GetExternalPropertyInfo(node);
-            if (externalAlias != null)
+            // 2. 优先匹配已注册的类型成员处理器 (如 DateTime.Now)
+            if (node.Member.DeclaringType != null && _typeMemberHandlers.TryGetValue((node.Member.DeclaringType, node.Member.Name), out var typeMemberHandler))
             {
-                return new PropertyExpr(propertyName) { TableAlias = externalAlias };
+                var result = typeMemberHandler(node, this);
+                if (result is not null) return result;
             }
 
-            // 5. 不依赖参数的成员访问（闭包/静态量）在本地计算结果
+            // 3. 匹配已注册的通用名称处理器 (如 Length)
+            if (_memberNameHandlers.TryGetValue(node.Member.Name, out var nameMemberHandler))
+            {
+                var result = nameMemberHandler(node, this);
+                if (result is not null) return result;
+            }
+
+            // 4. 不依赖参数的成员访问（闭包/静态量）在本地计算结果
             return EvaluateToExpr(node);
         }
 
@@ -1044,23 +1051,5 @@ namespace LiteOrm.Common
             return false;
         }
 
-        /// <summary>
-        /// 获取外部变量引用的属性信息。
-        /// 例如：t.DeptId 返回 (t, "DeptId")
-        /// </summary>
-        /// <param name="node">成员访问表达式节点</param>
-        /// <returns>元组 (别名, 属性名) 或 (null, null)</returns>
-        private (string alias, string propertyName) GetExternalPropertyInfo(MemberExpression node)
-        {
-            if (node.Expression is ParameterExpression paramExpr)
-            {
-                if (_parameterAliases.TryGetValue(paramExpr, out var alias))
-                {
-                    return (alias, node.Member.Name);
-                }
-                return (paramExpr.Name, node.Member.Name);
-            }
-            return (null, null);
-        }
     }
 }

@@ -5,7 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm SQL ??????? SQL ?
+    /// LiteOrm SQL 函数初始化器，用于注册各个数据库的 SQL 函数处理器。
+    /// 在应用启动时注册函数映射，支持 SqlBuilder 的动态 SQL 生成。
     /// </summary>
     [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public class LiteOrmSqlFunctionInitializer : IStartable
@@ -19,11 +20,12 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// ?????? SQL ?
+        /// 注册各数据库的 SQL 函数处理器映射。
+        /// 动态注册 Function 和 Handler 一般需要结合 SqlBuilder.RegisterFunctionSqlHandler 使用。
         /// </summary>
         private void RegisterSqlFunctions()
         {
-            // 注册一些通用的 SQL 映射
+            // 注册通用的 SQL 映射
             SqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (functionName, args) => "CURRENT_TIMESTAMP");
             SqlBuilder.Instance.RegisterFunctionSqlHandler("Today", (functionName, args) => "CURRENT_DATE");
             // 额外处理 IndexOf 和 Substring，支持 C# 到 SQL 的索引转换 (0-based -> 1-based)

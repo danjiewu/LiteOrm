@@ -105,10 +105,7 @@ namespace LiteOrm
                 }
             }
 
-            if (!config.SyncTable)
-            {
-                pool.MarkInitialized();
-            }
+            pool.SyncTable = config.SyncTable;
 
             _pools.TryAdd(config.Name, pool);
         }

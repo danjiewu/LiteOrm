@@ -50,7 +50,7 @@ namespace LiteOrm.Tests
             Expression<Func<TestUser, bool>> expr = u => !(u.Age > 18);
             var result = LambdaExprConverter.ToLogicExpr(expr);
             var not = Assert.IsType<NotExpr>(result);
-            Assert.NotNull(not.Inner);
+            Assert.NotNull(not.Operand);
         }
 
         [Fact]
@@ -204,11 +204,9 @@ namespace LiteOrm.Tests
         {
             // 若常量本身是 Expr，应直接返回
             Expr existingExpr = Expr.Prop("Age") > 18;
-            Expression<Func<TestUser, bool>> expr = u => (bool)(object)existingExpr;
-            // 常量中包含 Expr 实例，转换后应返回该实例
             var constant = Expression.Constant(existingExpr, typeof(Expr));
-            var lambda = Expression.Lambda<Func<TestUser, bool>>(
-                Expression.Convert(constant, typeof(bool)),
+            var lambda = Expression.Lambda<Func<TestUser, Expr>>(
+                constant,
                 Expression.Parameter(typeof(TestUser), "u"));
             var converter = new LambdaExprConverter(lambda);
             var result = converter.Convert(constant);
@@ -246,24 +244,26 @@ namespace LiteOrm.Tests
         [Fact]
         public void MemberAccess_RegisteredTypeMemberHandler_InvokesHandler()
         {
+            // 演示自定义注册非实体属性（如 DateTime 的 Year）为特定 SQL 方法
             bool handlerCalled = false;
-            LambdaExprConverter.RegisterMemberHandler(typeof(TestDepartment), "Name", (node, converter) =>
+            LambdaExprConverter.RegisterMemberHandler(typeof(DateTime), "Year", (node, converter) =>
             {
                 handlerCalled = true;
-                return new FunctionExpr("DEPT_NAME");
+                var innerExpr = converter.Convert(node.Expression) as ValueTypeExpr;
+                return new FunctionExpr("YEAR", innerExpr);
             });
             try
             {
-                Expression<Func<TestDepartment, string>> expr = d => d.Name;
+                Expression<Func<TestUser, int>> expr = u => u.CreateTime.Year;
                 var result = LambdaExprConverter.ToValueExpr(expr);
                 Assert.True(handlerCalled);
                 var func = Assert.IsType<FunctionExpr>(result);
-                Assert.Equal("DEPT_NAME", func.FunctionName);
+                Assert.Equal("YEAR", func.FunctionName);
             }
             finally
             {
-                // 恢复默认处理器以避免污染后续测试
-                LambdaExprConverter.RegisterMemberHandler(typeof(TestDepartment), "Name", LambdaExprConverter.DefaultMemberHandler);
+                // 恢复：注册为 null 使用默认处理器
+                LambdaExprConverter.RegisterMemberHandler(typeof(DateTime), "Year", (node, converter) => null);
             }
         }
 
@@ -300,7 +300,7 @@ namespace LiteOrm.Tests
             }
             finally
             {
-                LambdaExprConverter.RegisterMethodHandler(typeof(string), "IsNullOrEmpty", LambdaExprConverter.DefaultFunctionHandler);
+                LambdaExprConverter.RegisterMethodHandler(typeof(string), "IsNullOrEmpty", (node, converter) => null);
             }
         }
 

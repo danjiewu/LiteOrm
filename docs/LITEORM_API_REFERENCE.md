@@ -379,7 +379,7 @@ public class Log : IArged
 
 ### 4.4 EntityService
 
-#### 4.4.1 IEntityService - 实体服务接口
+#### 4.4.1 IEntityService 接口 - 基础 CRUD 和批量操作
 
 **文件位置：** `LiteOrm.Common/Service/IEntityService.cs`
 
@@ -449,7 +449,7 @@ int Count(Expression<Func<T, bool>> expression, params string[] tableArgs)
   - `Task ForEachAsync(Expr expr, Func<T, Task> func, ...)` — 异步遍历（流式）
   - Lambda 扩展方法：`SearchAsync`、`SearchOneAsync`、`ExistsAsync`、`CountAsync`（位于 `LambdaExprExtensions`）
 
-#### 4.4.4 EntityService - 服务基类
+#### 4.4.4 EntityService - 服务基类实现
 
 `EntityService<T, TView>` 基类自动实现 `IEntityService<T>` 和 `IEntityViewService<TView>` 及异步接口。
 
@@ -493,7 +493,7 @@ var entityServiceAsync = serviceProvider.GetRequiredService<IEntityServiceAsync<
 var viewServiceAsync   = serviceProvider.GetRequiredService<IEntityViewServiceAsync<UserView>>();
 ```
 
-### 4.5 各 DAO 的作用说明
+### 4.5  DAO 使用
 
 部分 DAO 查询方法返回封装结果对象，支持延迟执行和统一的同步/异步消费：
 
@@ -693,20 +693,25 @@ LogicExpr     cond = expr > 100;
 ```
 
 > **注意：** 
->- `LogicExpr` 的 `&` / `|` 运算符用于表示逻辑 `与` / `或` 的 `Expr`，若一个操作数为 null，`&` 返回另一个（即忽略 null 条件），`|` 返回 null（即忽略另一个条件）。
->- `==` 和 `!=` 已重载返回比较相等的 `LogicExpr` 类型而不是 C# 语言中的 `bool` ,因此判定 `Expr` 类型变量是否为空时要用 `is null` 和 `is not null`。
->- 实现 `&&` 和 `||` 运算符需要实现 `LogicExpr` 到 `bool` 的隐式转换，但会造成 `if (expr == null)` 结果错误且但编译并不报错，因此并未实现。
+>- `LogicExpr` 的 `&` / `|` 运算符用于逻辑与/或操作，若一个操作数为 null，`&` 返回另一个（即忽略 null 条件），`|` 返回 null（即忽略另一个条件）
+>- `==` 和 `!=` 已重载返回 `LogicExpr` 类型而非 C# 语言中的 `bool`，因此判定 `Expr` 类型变量是否为空时要用 `is null` 和 `is not null`
+>- 实现 `&&` 和 `||` 运算符需要实现 `LogicExpr` 到 `bool` 的隐式转换，但会造成 `if (expr == null)` 结果错误且编译并不报错，因此并未实现
 
-### 5.2 Expr构造方式
+### 5.2 Expr 构建
 
-#### 5.2.1 Lambda 自动转换
+#### 5.2.1 Lambda 表达式构建
 
-**文件位置：** `LiteOrm.Common/Expr/ExprExtensions.cs`
-
+通过扩展方法将 Lambda 表达式转换为 Expr，支持两种常用方式：
 ```csharp
 // Lambda 转 Expr（最常用的方式）
 LogicExpr expr = Expr.Lambda<User>(u => u.Age > 18 && u.UserName.Contains("admin"));
 // 生成 SQL: WHERE (age > 18 AND username LIKE '%admin%')
+
+// 使用简单Lambda 表达式形式（无需排序和分页时使用）
+var users = userService.Search(
+    u => u.Age > 18 && u.UserName.Contains("admin")
+);
+
 
 // 使用 IQueryable 形式（推荐，支持排序和分页）
 var users = userService.Search(
@@ -734,7 +739,6 @@ var users = await userService.SearchAsync(
 
 #### 5.2.2 手动构建表达式
 
-**文件位置：** `LiteOrm.Common/Expr/Expr.cs`
 
 ```csharp
 // 属性引用
@@ -780,8 +784,6 @@ AggregateFunctionExpr minExpr = Expr.Prop("score").Min();
 
 #### 5.2.3 查询片段表达式 (SqlSegment)
 
-**文件位置：** `LiteOrm.Common/SqlSegment/`
-
 ```csharp
 // 链式 API（推荐）
 var fullQuery = Expr.From<User>()
@@ -801,7 +803,7 @@ var aggregateQuery = Expr.From<User>()
     .Select(Expr.Prop("DeptId"), Expr.Prop("Id").Count().As("user_count"));
 ```
 
-### 5.3 序列化与反序列化
+### 5.3 JSON 序列化与反序列化
 
 `Expr` 对象支持 JSON 序列化与反序列化，适用于日志、配置或跨进程/网络传输场景。框架为 `Expr` 层级类型实现了自定义的 JsonConverter，因此通常可以直接使用 `System.Text.Json`：
 
@@ -931,8 +933,8 @@ var users = await userService.SearchAsync(Expr.Prop("Age") > 18);
 `.NET 8.0+` 支持 `ExprString` 插值字符串语法，可将 `Expr` 表达式和普通变量值混入 SQL 片段，由框架统一转换为参数化 SQL。`ObjectViewDAO` 和 `DataViewDAO` 均已支持，适合在 `EntityViewService` 内部使用，一般不提供外部调用。
 
 参数处理规则：
-- `Expr` 表达式 → 转换为等效 SQL 片段（可以仅插入字段表达式，也可以插入复杂表达式，例如 `WHERE {Expr.Prop("Age") > 18}` 会转化为 `WHERE Age > @p0`，而 `WHERE {Expr.Prop("Age")}} > 18` 都会转化为 `WHERE Age > 18`）
-- 普通值（`int`、`string` 等）→ 自动转为命名参数如 `@p0`，防止 SQL 注入（例如`WHERE Age > {18}` 转化为 `WHERE Age > @p0`）
+- `Expr` 表达式 → 转换为等效 SQL 片段（可以仅插入字段表达式，也可以插入复杂表达式，例如 `WHERE {Expr.Prop("Age") > 18}` 会转化为 `WHERE Age > @p0`，而 `WHERE {Expr.Prop("Age")} > 18` 会转化为 `WHERE Age > 18`）
+- 普通值（`int`、`string` 等）→ 自动转为命名参数如 `@p0`，防止 SQL 注入（例如 `WHERE Age > {18}` 转化为 `WHERE Age > @p0`）
 
 > **注意：** 不要在运行时直接把外部字符串拼接成 SQL，如需提供外部调用建议使用 `GenericSqlExpr`（参见第 7.2 节）的方式。`EnumerableResult<T>` 底层 `DbDataReader` 只能消费一次，若需重复遍历请先调用 `.ToList()`。
 
@@ -981,7 +983,7 @@ DataTable dt = await dataViewDAO.Search(
 
 > **注意：** `ExprString` 语法需要 .NET 8.0 或更高版本。
 
-#### 6.2.4 混合使用
+#### 6.2.4 混合使用查询方式
 
 Lambda、`Expr` 和 `ExprString` 可任意组合使用。Lambda 运行时会被解析为 `Expr`，因此三者可直接用 `&` / `|` 运算符拼接。
 
@@ -1004,9 +1006,16 @@ var users = await userService.SearchAsync(
          .OrderByDescending(u => u.Id)
          .Skip(0).Take(20)
 );
+
+// 直接在 ExprString 中使用 Lambda 表达式和普通变量
+var dt = await dataViewDAO.Search(
+    $"SELECT Id, UserName FROM Users WHERE {Expr.Lambda<User>(u => u.Status == "active")} AND {baseExpr} ORDER BY Id LIMIT {pageSize} OFFSET {startIndex}",
+    isFull: true).ToListAsync();
 ```
 
-#### 6.3.1 聚合查询
+### 6.3 聚合与关联查询
+
+#### 6.3.1 聚合查询（需 DataViewDAO）
 
 聚合查询需通过 `DataViewDAO` 执行，`EntityViewService` 不支持 `GroupBy`。
 
@@ -1082,28 +1091,35 @@ var users = await userService.SearchAsync(u => Expr.Exists<Department>(d => d.Id
 
 EXISTS 仅检查是否存在，不返回关联表数据，性能优于 LEFT JOIN；适合"存在性检查"场景，不适合需要返回关联数据的情况。
 
-### 6.4 分表使用
+### 6.4 分表
 
-分表实体需实现 `IArged` 接口，定义完成后，单实体的写操作无需额外处理，`TableArgs` 会自动从实体中取得。批量操作也会自动按分表参数分组分批执行。查询、按条件删除等操作则需显式传入 `tableArgs`。
+#### 6.4.1 分表实体定义
+
+分表实体需实现 `IArged` 接口，分表参数通过 `TableArgs` 属性提供，框架会自动将其传递给 DAO 以路由到正确的分表。`TableArgs` 属性应使用不可变值进行计算，通常基于实体属性（如日期、组织）计算分表参数。
 
 ```csharp
 // 定义分表实体（表名模板 Log_{yyyyMM}）
-[Table("Log_{0}")]
-public class Log : IArged
-{
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-    public int Id { get; set; }
+    [Table("Log_{0}")]
+    public class Log : IArged
+    {
+        [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+        public int Id { get; set; }
 
-    [Column("Content")]
-    public string Content { get; set; }
+        [Column("Content")]
+        public string Content { get; set; }
 
-    [Column("CreateTime")]
-    public DateTime CreateTime { get; set; }
+        [Column("CreateTime", ColumnMode = ColumnMode.Final)]
+        public DateTime CreateTime { get; set; }
 
-    // TableArgs 从实体属性计算，不作为数据库字段
-    string[] IArged.TableArgs => [CreateTime.ToString("yyyyMM")];
-}
+        // TableArgs 从实体属性计算，不作为数据库字段。如为public需标记 [Column(false)]。
+        string[] IArged.TableArgs => [CreateTime.ToString("yyyyMM")];
+    }
+```
+#### 6.4.2 分表实体写入
 
+分表实体的写操作无需额外处理，`TableArgs` 会自动从实体中取得，批量操作也会自动按分表参数分组分批执行。
+
+```csharp
 // --- 写操作：无需手动指定表名 ---
 
 // 单条插入：自动路由到 Log_202601
@@ -1123,6 +1139,11 @@ var logs = new List<Log>
 };
 await logService.BatchInsertAsync(logs);
 
+```
+#### 6.4.3 分表实体写入
+
+查询、按条件删除等操作则需显式传入 `tableArgs`。
+```csharp
 // --- 查询操作：需显式传入 tableArgs ---
 
 // 查询指定月份的日志
@@ -1141,8 +1162,9 @@ logService.Delete(Expr.Prop("CreateTime") < new DateTime(2026, 1, 31), "202601")
 // 按 ID 删除
 logService.DeleteID(42, "202601");
 ```
+#### 6.4.4 `Expr` 分表方式
 
-`FromExpr` 和 `ForeignExpr` 也支持 `TableArgs`，可在 `Expr` 级别直接指定分表参数，适用于 `DataViewDAO` 聚合查询或手动构建复杂 EXISTS 子查询的场景。
+`FromExpr` 和 `ForeignExpr` 也支持 `TableArgs`，可在 `Expr` 级别直接指定分表参数，适用于查询条件中同时包含多个不同参数的分表。
 
 ```csharp
 // FromExpr + TableArgs：Expr.From<T>() 直接接受 tableArgs 参数
@@ -1222,9 +1244,13 @@ foreach (var sql in SessionManager.Current.SqlStack)
 
 ## 7. 扩展与高级功能
 
-### 7.1 动态注册 Function 和 Handler
+### 7.1 动态注册
 
-对于难以用 Expr 直接表达的 SQL 函数或属性，可通过动态注册 Method/Member Handler 来扩展 Lambda 表达式的解析能力。
+#### 7.1.1 Lambda 表达式层注册自定义方法和成员处理器
+
+为 Lambda 表达式中的方法调用和属性访问注册自定义转换器，将其转换为对应的 `Expr` 对象。
+
+**注册方法处理器：**
 
 ```csharp
 // 注册指定方法名的处理器（所有类型的同名方法都生效）
@@ -1245,21 +1271,48 @@ LambdaExprConverter.RegisterMethodHandler(typeof(string), "PadLeft", (node, conv
         converter.Convert(node.Arguments[1]) as ValueTypeExpr);
 });
 
-// 注册属性/字段处理器
-LambdaExprConverter.RegisterMemberHandler("DayOfYear", (node, converter) =>
-    new FunctionExpr("DAYOFYEAR", converter.Convert(node.Expression) as ValueTypeExpr));
+// 注册时传入空处理器表示使用默认处理器（即不转换，直接调用成员名/方法名的函数，实例对象作为第一个参数）
+LambdaExprConverter.RegisterMethodHandler(typeof(DateTime), "AddDays");
 
+
+// 传入返回 null 的处理器来取消已有的处理器
+LambdaExprConverter.RegisterMethodHandler(typeof(string), "PadLeft", (node, converter) => null);
+```
+
+**注册成员处理器：**
+
+```csharp
 // 注册特定类型的成员处理器
 LambdaExprConverter.RegisterMemberHandler(typeof(DateTime), "Year", (node, converter) =>
     new FunctionExpr("YEAR", converter.Convert(node.Expression) as ValueTypeExpr));
 
 // 注册后可直接在 Lambda 中使用
-var users = userService.Search(u => u.UserName.PadLeft(10, '0') == "0000000admin");
+var users = userService.Search(u => u.CreateTime.Year == 2024);
 ```
 
-### 7.2 GenericSqlExpr
+#### 7.1.2 SQL 生成层（SqlBuilder）注册函数到 SQL 的映射
 
-`GenericSqlExpr` 适用于需要直接使用 SQL 片段的场合，可与其他 `Expr` 一起组合使用，采用预注册机制所以可以安全的提供给外部使用。使用分两步：启动时用 `GenericSqlExpr.Register` 注册生成委托，查询时用 `Expr.Sql(key, arg)` 或 `GenericSqlExpr.Get(key, arg)` 获取实例。
+在 SQL 拼接阶段注册函数名到 SQL 片段的映射，用于处理各数据库特有的函数语法。
+
+```csharp
+// 单个函数处理
+SqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (functionName, args) => "CURRENT_TIMESTAMP");
+// 处理可变参数列表函数
+SqlBuilder.Instance.RegisterFunctionSqlHandler("Concat", (functionName, args) => $"CONCAT({string.Join(", ", args.Select(a => a.Key))})");
+
+// 多个函数批量注册
+SqlBuilder.Instance.RegisterFunctionSqlHandler(
+    ["AddSeconds", "AddMinutes", "AddHours"],
+    (functionName, args) => $"DATE_ADD({args[0].Key}, INTERVAL {args[1].Key} SECOND)");
+
+// 数据库特定注册，处理时优先根据当前 SqlBuilder 的类型按继承链自动选择对应的处理器
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("LENGTH", (functionName, args) => $"CHAR_LENGTH({args[0].Key})");
+SqlServerBuilder.Instance.RegisterFunctionSqlHandler("Length", (functionName, args) => $"LEN({args[0].Key})");
+```
+
+#### 7.1.3 GenericSqlExpr 动态拼接 SQL
+
+`GenericSqlExpr` 适用于 Lambda 表达式无法表达或需要直接使用数据库特定语法的场合，可與其他 `Expr` 一起组合使用，采用预注册机制所以可以安全的提供给外部使用。使用分两步：启动时用 `GenericSqlExpr.Register` 注册生成委托，查询时用 `Expr.Sql(key, arg)` 或 `GenericSqlExpr.Get(key, arg)` 获取实例。
 
 **示例：**
 
@@ -1285,6 +1338,17 @@ GenericSqlExpr.Register("AgeAndMonthFilter", (context, builder, @params, arg) =>
     return $"Age > {builder.ToSqlParam(p1)} AND DATE_FORMAT(CreateTime, '%Y-%m') = {builder.ToSqlParam(p2)}";
 });
 
+// 注册时传入空处理器表示使用默认处理器（即不转换，直接调用成员名/方法名的函数，实例对象作为第一个参数）
+GenericSqlExpr.Register(typeof(DateTime), "AddDays");
+
+
+// 传入返回 null 的处理器来取消已有的处理器
+GenericSqlExpr.Register(typeof(string), "PadLeft", (node, converter) => null);
+```
+
+**示例：**
+
+```csharp
 // === 查询时获取实例 ===
 
 // Expr.Sql(key, arg) 是 GenericSqlExpr.Get(key, arg) 的简化包装
@@ -1299,9 +1363,9 @@ var combined = (Expr.Prop("DeptId") == 1) & Expr.Sql("YearFilter", 2024);
 var users = userService.Search(combined);
 ```
 
-### 7.3 自定义 SqlBuilder
+### 7.2 自定义 SqlBuilder 扩展数据库支持
 
-通过继承 `SqlBuilder` 并重写相关方法，可为特定数据库定制标识符转义与参数占位符格式，之后注册到 `SqlBuilderFactory` 即可生效。
+通过继承 `SqlBuilder` 并重写相关方法，可扩展数据库支持，按 `DbConnection` 的 类型注册到 `SqlBuilderFactory` 即可生效。
 
 **示例：**
 
@@ -1321,7 +1385,7 @@ public class CustomSqlBuilder : SqlBuilder
 SqlBuilderFactory.Instance.Register(typeof(CustomDbConnection), new CustomSqlBuilder());
 ```
 
-### 7.4 自定义 IBulkProvider
+### 7.3 自定义 IBulkProvider 优化批量写入
 
 对于大批量写入，可通过实现 `IBulkProvider` 接口并以 `[AutoRegister(Key = typeof(DbConnectionType))]` 注册来替换默认的逐行插入逻辑（例如使用 `SqlBulkCopy`）。
 
@@ -1347,41 +1411,47 @@ public class MySqlBulkCopyProvider : IBulkProvider
 
 ## 8. 性能
 
-8.1 基于 `LiteOrm.Benchmark` 项目（Windows 11, Intel Core i5-13400F 2.50GHz, .NET 10.0.103）的测试结果：
+基于 `LiteOrm.Benchmark` 项目（Windows 11, Intel Core i5-13400F 2.50GHz, .NET 10.0.103）的测试结果：
 
-### 8.2 性能对比概览（BatchCount=100）
+### 8.1 性能对比概览（BatchCount=100）
 
-| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) | 内存分配 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **3,743.9** | **4,684.3** | 5,535.7 | 974.9 | **295.97 KB** |
-| FreeSql | 4,358.7 | 4,859.8 | **4,843.1** | 942.3 | 460.62 KB |
-| SqlSugar | 4,126.6 | 5,377.7 | 9,355.1 | 1,664.3 | 476.13 KB |
-| Dapper | 13,236.3 | 16,492.4 | 18,593.3 | **893.4** | 254.58 KB |
-| EF Core | 21,973.8 | 21,571.2 | 22,967.5 | 6,680.8 | 1,965.32 KB |
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) |
+| :--- | :--- | :--- | :--- | :--- |
+| **LiteOrm** | **3.74** | **4.68** | 5.54 | 0.97 |
+| FreeSql | 4.36 | 4.86 | **4.84** | 0.94 |
+| SqlSugar | 4.13 | 5.38 | 9.36 | 1.66 |
+| Dapper | 13.24 | 16.49 | 18.59 | **0.89** |
+| EF Core | 21.97 | 21.57 | 22.97 | 6.68 |
 
-### 8.3 性能对比概览（BatchCount=1000）
 
-| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) | 内存分配 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **10,711.9** | **16,472.2** | 16,733.4 | **6,061.1** | **870.27 KB** |
-| FreeSql | 17,707.5 | 30,842.5 | **14,769.0** | 6,520.9 | 4,629.99 KB |
-| SqlSugar | 15,775.0 | 35,522.5 | 66,357.1 | 12,304.3 | 4,571.36 KB |
-| Dapper | 120,213.5 | 132,356.8 | 136,051.1 | 6,556.1 | 2,476.22 KB |
-| EF Core | 169,846.8 | 149,932.5 | 157,037.7 | 12,422.7 | 18,118.07 KB |
+### 8.2 性能对比概览（BatchCount=1000）
 
-### 8.4 性能对比概览（BatchCount=5000）
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) |
+| :--- | :--- | :--- | :--- | :--- |
+| **LiteOrm** | **10,711.9** | **16,472.2** | 16,733.4 | **6,061.1** |
+| FreeSql | 17,707.5 | 30,842.5 | **14,769.0** | 6,520.9 |
+| SqlSugar | 15,775.0 | 35,522.5 | 66,357.1 | 12,304.3 |
+| Dapper | 120,213.5 | 132,356.8 | 136,051.1 | 6,556.1 |
+| EF Core | 169,846.8 | 149,932.5 | 157,037.7 | 12,422.7 |
 
-| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) | 内存分配 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **40,268.4** | **68,069.3** | 60,711.4 | **39,060.2** | **4,082.59 KB** |
-| FreeSql | 72,488.8 | 133,942.8 | **58,183.2** | 41,220.4 | 23,333.54 KB |
-| SqlSugar | 76,643.9 | 194,130.4 | 885,872.8 | 63,744.0 | 23,196.37 KB |
-| Dapper | 690,745.5 | 659,912.8 | 677,140.4 | 39,942.4 | 12,349.48 KB |
-| EF Core | 824,700.5 | 749,069.8 | 794,845.9 | 49,403.4 | 80,230.09 KB |
 
-> *注：完整测试报告请参考：[LiteOrm 性能评测报告](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md).*
----
+### 8.3 性能对比概览（BatchCount=5000）
 
-**文档版本：** 1.1  
-**最后更新：** 2026年  
-**适用版本：** LiteOrm >=8.0.7
+| 框架 | 插入性能 (ms) | 更新性能 (ms) | Upsert (ms) | 关联查询 (ms) |
+| :--- | :--- | :--- | :--- | :--- |
+| **LiteOrm** | **40.27** | **68.07** | **60.71** | **39.06** |
+| FreeSql | 72.49 | 133.94 | **58.18** | 41.22 |
+| SqlSugar | 76.64 | 194.13 | 885.87 | 63.74 |
+| Dapper | 690.75 | 659.91 | 677.14 | 39.94 |
+| EF Core | 824.70 | 749.07 | 794.85 | 49.40 |
+
+
+### 8.4 内存分配对比（BatchCount=1000）
+
+| 框架 | 插入 (KB) | 更新 (KB) | Upsert (KB) | 关联查询 (KB) |
+| :--- | :--- | :--- | :--- | :--- |
+| **LiteOrm** | **870.27** | **1,514.47** | **2,138.49** | **628.98** |
+| FreeSql | 4,629.99 | 6,877.24 | 2,239.19 | 854.07 |
+| SqlSugar | 4,571.36 | 7,677.75 | 35,952.45 | 9,226.19 |
+| Dapper | 2,476.22 | 3,094.99 | 2,798.43 | 415.97 |
+| EF Core | 18,118.07 | 15,149.28 | 14,803.48 | 2,198.79 |
