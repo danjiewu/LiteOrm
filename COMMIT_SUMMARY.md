@@ -2,8 +2,8 @@
 
 ## 📋 提交信息
 
-**Commit Hash**: `d2dd307`  
-**提交消息**: `refactor: optimize table creation mechanism with composite key dictionary and initialize merge`
+**Commit Hash**: `b567251`  
+**提交消息**: `refactor: 优化表创建机制 - 引入联合主键字典、简化参数设计和合并初始化器`
 
 **提交时间**: 2024-03-05
 

@@ -2,10 +2,10 @@
 
 ## 📋 提交信息
 
-**Commit Hash**: `d2dd307`  
+**Commit Hash**: `b567251`  
 **提交时间**: 2024-03-05  
 **分支**: `master`  
-**提交消息**: `refactor: optimize table creation mechanism with composite key dictionary and initialize merge`
+**提交消息**: `refactor: 优化表创建机制 - 引入联合主键字典、简化参数设计和合并初始化器`
 
 ---
 
@@ -277,7 +277,7 @@ public void Start()
 
 ## 🔗 相关链接
 
-- **GitHub Commit**: https://github.com/danjiewu/LiteOrm/commit/d2dd307
+- **GitHub Commit**: https://github.com/danjiewu/LiteOrm/commit/b567251
 - **项目仓库**: https://github.com/danjiewu/LiteOrm
 - **问题追踪**: GitHub Issues
 
