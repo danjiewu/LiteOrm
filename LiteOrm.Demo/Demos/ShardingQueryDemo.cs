@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using LiteOrm.Common;
 using LiteOrm.Demo.Models;
-using LiteOrm.Service;
+using LiteOrm.Demo.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LiteOrm.Demo.Demos
@@ -19,22 +19,22 @@ namespace LiteOrm.Demo.Demos
         /// <summary>
         /// 运行所有分表演示
         /// </summary>
-        public static async Task RunAsync(IServiceProvider serviceProvider)
+        public static async Task RunAsync(ServiceFactory factory)
         {
             Console.WriteLine("\n╔════════════════════════════════════════════════════════════╗");
             Console.WriteLine("║         分表查询演示 (Sharding Query Demo)                    ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════╝");
 
-            await Demo1_BasicShardingAsync(serviceProvider);
-            await Demo2_ExplicitTableArgsAsync(serviceProvider);
-            await Demo3_DynamicTableArgsAsync(serviceProvider);
-            await Demo4_ShardingWithOrderAsync(serviceProvider);
+            await Demo1_BasicShardingAsync(factory);
+            await Demo2_ExplicitTableArgsAsync(factory);
+            await Demo3_DynamicTableArgsAsync(factory);
+            await Demo4_ShardingWithOrderAsync(factory);
         }
 
         /// <summary>
         /// 演示1：基础分表查询 - Lambda 内部指定分表参数
         /// </summary>
-        private static async Task Demo1_BasicShardingAsync(IServiceProvider serviceProvider)
+        private static async Task Demo1_BasicShardingAsync(ServiceFactory factory)
         {
             Console.WriteLine("\n┌────────────────────────────────────────────────────────────┐");
             Console.WriteLine("│ 演示1：基础分表查询 - Lambda 内部指定分表参数              │");
@@ -42,9 +42,8 @@ namespace LiteOrm.Demo.Demos
 
             try
             {
-                var salesService = serviceProvider.GetRequiredService<IEntityServiceAsync<SalesRecord>>();
-                var salesViewService = serviceProvider.GetRequiredService<IEntityViewServiceAsync<SalesRecordView>>();
-                var userService = serviceProvider.GetRequiredService<IEntityServiceAsync<User>>();
+                var salesService = factory.SalesService;
+                var userService = factory.UserService;
 
                 // 创建用户
                 var user = new User { UserName = "Alice Smith", Age = 30, CreateTime = DateTime.Now };
@@ -79,12 +78,12 @@ namespace LiteOrm.Demo.Demos
                     $"  • {sale2.ProductName}: ¥{sale2.Amount} (2024-12-20)");
 
                 PrintSection("📝 代码实现",
-                    "var sales = await salesViewService.SearchAsync(s =>\n" +
+                    "var sales = await salesService.SearchAsync(s =>\n" +
                     "    s.TableArgs == new[] { \"202412\" } && s.Amount > 40\n" +
                     ");");
 
                 // 执行查询并获取 SQL
-                var sales = await salesViewService.SearchAsync(s =>
+                var sales = await salesService.SearchAsync(s =>
                     s.TableArgs == new[] { "202412" } && s.Amount > 40
                 );
 
@@ -110,7 +109,7 @@ namespace LiteOrm.Demo.Demos
         /// <summary>
         /// 演示2：Lambda 内部显式指定不同月份的分表
         /// </summary>
-        private static async Task Demo2_ExplicitTableArgsAsync(IServiceProvider serviceProvider)
+        private static async Task Demo2_ExplicitTableArgsAsync(ServiceFactory factory)
         {
             Console.WriteLine("┌────────────────────────────────────────────────────────────┐");
             Console.WriteLine("│ 演示2：Lambda 内部显式指定不同月份的分表                   │");
@@ -118,9 +117,8 @@ namespace LiteOrm.Demo.Demos
 
             try
             {
-                var salesService = serviceProvider.GetRequiredService<IEntityServiceAsync<SalesRecord>>();
-                var salesViewService = serviceProvider.GetRequiredService<IEntityViewServiceAsync<SalesRecordView>>();
-                var userService = serviceProvider.GetRequiredService<IEntityServiceAsync<User>>();
+                var salesService = factory.SalesService;
+                var userService = factory.UserService;
 
                 // 创建用户
                 var user = new User { UserName = "Bob Johnson", Age = 35, CreateTime = DateTime.Now };
@@ -145,11 +143,11 @@ namespace LiteOrm.Demo.Demos
                     $"  • {sale.ProductName}: ¥{sale.Amount} (2024-11-10)");
 
                 PrintSection("📝 代码实现",
-                    "var sales = await salesViewService.SearchAsync(s =>\n" +
+                    "var sales = await salesService.SearchAsync(s =>\n" +
                     "    s.TableArgs == new[] { \"202411\" } && s.Amount > 100\n" +
                     ");");
 
-                var sales = await salesViewService.SearchAsync(s =>
+                var sales = await salesService.SearchAsync(s =>
                     s.TableArgs == new[] { "202411" } && s.Amount > 100
                 );
 
@@ -175,7 +173,7 @@ namespace LiteOrm.Demo.Demos
         /// <summary>
         /// 演示3：Lambda 内部动态指定分表参数
         /// </summary>
-        private static async Task Demo3_DynamicTableArgsAsync(IServiceProvider serviceProvider)
+        private static async Task Demo3_DynamicTableArgsAsync(ServiceFactory factory)
         {
             Console.WriteLine("┌────────────────────────────────────────────────────────────┐");
             Console.WriteLine("│ 演示3：Lambda 内部动态指定分表参数                         │");
@@ -183,9 +181,8 @@ namespace LiteOrm.Demo.Demos
 
             try
             {
-                var salesService = serviceProvider.GetRequiredService<IEntityServiceAsync<SalesRecord>>();
-                var salesViewService = serviceProvider.GetRequiredService<IEntityViewServiceAsync<SalesRecordView>>();
-                var userService = serviceProvider.GetRequiredService<IEntityServiceAsync<User>>();
+                var salesService = factory.SalesService;
+                var userService = factory.UserService;
 
                 // 创建用户
                 var user = new User { UserName = "Carol Davis", Age = 40, CreateTime = DateTime.Now };
@@ -211,12 +208,12 @@ namespace LiteOrm.Demo.Demos
 
                 PrintSection("📝 代码实现",
                     "var targetMonth = \"202411\";\n\n" +
-                    "var sales = await salesViewService.SearchAsync(s =>\n" +
+                    "var sales = await salesService.SearchAsync(s =>\n" +
                     "    s.TableArgs == new[] { targetMonth } && s.Amount > 400\n" +
                     ");");
 
                 var targetMonth = "202411";
-                var sales = await salesViewService.SearchAsync(s =>
+                var sales = await salesService.SearchAsync(s =>
                     s.TableArgs == new[] { targetMonth } && s.Amount > 400
                 );
 
@@ -242,7 +239,7 @@ namespace LiteOrm.Demo.Demos
         /// <summary>
         /// 演示4：分表查询结合排序和分页（Lambda 内部分表）
         /// </summary>
-        private static async Task Demo4_ShardingWithOrderAsync(IServiceProvider serviceProvider)
+        private static async Task Demo4_ShardingWithOrderAsync(ServiceFactory factory)
         {
             Console.WriteLine("┌────────────────────────────────────────────────────────────┐");
             Console.WriteLine("│ 演示4：分表查询结合排序和分页                             │");
@@ -250,9 +247,8 @@ namespace LiteOrm.Demo.Demos
 
             try
             {
-                var salesService = serviceProvider.GetRequiredService<IEntityServiceAsync<SalesRecord>>();
-                var salesViewService = serviceProvider.GetRequiredService<IEntityViewServiceAsync<SalesRecordView>>();
-                var userService = serviceProvider.GetRequiredService<IEntityServiceAsync<User>>();
+                var salesService = factory.SalesService;
+                var userService = factory.UserService;
 
                 // 创建用户
                 var user = new User { UserName = "David Wilson", Age = 45, CreateTime = DateTime.Now };
@@ -279,14 +275,14 @@ namespace LiteOrm.Demo.Demos
                     $"已插入 {amounts.Length} 条销售记录到 Sales_202412 表");
 
                 PrintSection("📝 代码实现",
-                    "var topSales = await salesViewService.SearchAsync(\n" +
+                    "var topSales = await salesService.SearchAsync(\n" +
                     "    Expr.From<SalesRecordView>([\"202412\"])\n" +
                     "        .Where(Expr.Prop(\"Amount\") > 0)\n" +
                     "        .OrderBy((\"Amount\", false))\n" +
                     "        .Section(0, 3)\n" +
                     ");");
 
-                var topSales = await salesViewService.SearchAsync(
+                var topSales = await salesService.SearchAsync(
                     Expr.From<SalesRecordView>(["202412"])
                         .Where(Expr.Prop("Amount") > 0)
                         .OrderBy(("Amount", false))
