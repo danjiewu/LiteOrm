@@ -33,7 +33,7 @@ namespace LiteOrm.Demo.Models
         /// <summary>
         /// 实现 IArged 接口，返回表名后缀参数 (例如: "202512")
         /// </summary>
-        string[] IArged.TableArgs => [SaleTime.ToString("yyyyMM")];
+        public string[] TableArgs => [SaleTime.ToString("yyyyMM")];
     }
 
     /// <summary>
