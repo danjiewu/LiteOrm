@@ -1,17 +1,19 @@
 using LiteOrm.Common;
-using LiteOrm.Tests.Infrastructure;
 using LiteOrm.Tests.Models;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using Xunit;
 
 namespace LiteOrm.Tests
 {
-    [Collection("Database")]
-    public class LambdaQueryTests : TestBase
+    /// <summary>
+    /// Lambda 查询转换单元测试 - 纯内存测试，无需数据库连接
+    /// 测试 LambdaExprConverter 将 LINQ 表达式转换为 SQL 表达式片段的功能
+    /// </summary>
+    public class LambdaQueryTests
     {
-        public LambdaQueryTests(DatabaseFixture fixture) : base(fixture) { }
 
         [Fact]
         public void BasicQuery_Test()
@@ -289,7 +291,8 @@ namespace LiteOrm.Tests
         public void LambdaExpr_Equals_ManualExpr_Test()
         {
             // 测试：验证从 Lambda 生成的 Expr 在结构上等同于手动构造的 Expr
-            
+            // 这验证了两种不同的 Expr 构造方式能够产生功能相同的结果
+
             // 1. 从 Lambda 生成 Expr
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> lambdaExpr = q => q
                 .Where(u => u.Age > 18 && u.Name.Contains("Test"));
@@ -301,7 +304,7 @@ namespace LiteOrm.Tests
             Assert.IsType<FromExpr>(lambdaWhere.Source);
             Assert.IsType<LogicSet>(lambdaWhere.Where);
 
-            // 3. 手动构造等效的 Expr，使用类名作为别名（如 Lambda 所做的那样）
+            // 3. 手动构造等效的 Expr
             var manualExpr = new WhereExpr
             {
                 Source = new FromExpr(typeof(TestUser)) { Alias = "TestUser" },
@@ -317,10 +320,11 @@ namespace LiteOrm.Tests
             Assert.IsType<FromExpr>(manualWhere.Source);
             Assert.IsType<LogicSet>(manualWhere.Where);
 
-            // 5. Compare the two expressions using Equals
-            Assert.True(lambdaGeneratedExpr.Equals(manualExpr), "Lambda-generated Expr should equal manually constructed Expr");
+            // 5. 比较两个表达式是否相等
+            Assert.True(lambdaGeneratedExpr.Equals(manualExpr), 
+                "Lambda-generated Expr should equal manually constructed Expr");
 
-            // 6. 测试另一个复杂的情况
+            // 6. 测试复杂的情况
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> lambdaExpr2 = q => q
                 .Where(u => u.Age > 18 && u.Name.Contains("Test"))
                 .OrderBy(u => u.Name)
@@ -343,7 +347,7 @@ namespace LiteOrm.Tests
             Assert.IsType<FromExpr>(lambdaWhere2.Source);
             Assert.IsType<LogicSet>(lambdaWhere2.Where);
 
-            // 8. 为复杂情况手动构造等效的 Expr，使用类名作为别名
+            // 8. 为复杂情况手动构造等效的 Expr
             var manualExpr2 = new SectionExpr
             {
                 Source = new OrderByExpr
@@ -368,8 +372,9 @@ namespace LiteOrm.Tests
             Assert.Equal(10, manualSection.Skip);
             Assert.Equal(5, manualSection.Take);
 
-            // 10. Compare the two complex expressions using Equals
-            Assert.True(lambdaGeneratedExpr2.Equals(manualExpr2), "Complex lambda-generated Expr should equal manually constructed Expr");
+            // 10. 比较两个复杂表达式是否相等
+            Assert.True(lambdaGeneratedExpr2.Equals(manualExpr2), 
+                "Complex lambda-generated Expr should equal manually constructed Expr");
 
             Assert.IsType<OrderByExpr>(manualSection.Source);
             var manualOrderBy = (OrderByExpr)manualSection.Source;
@@ -382,3 +387,4 @@ namespace LiteOrm.Tests
         }
     }
 }
+

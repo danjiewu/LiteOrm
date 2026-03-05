@@ -140,6 +140,47 @@ var paged = await userService.SearchAsync(
 );
 ```
 
+### Expr 表达式查询
+
+```csharp
+// 手动构建表达式（支持更复杂的动态条件）
+var expr = Expr.Prop("Age") > 18 & Expr.Prop("Status") == 1;
+var users = await userService.SearchAsync(expr);
+
+// IN 查询
+var users = await userService.SearchAsync(
+    Expr.Prop("Id").In(1, 2, 3, 4, 5)
+);
+
+// LIKE 查询
+var users = await userService.SearchAsync(
+    Expr.Prop("UserName").Contains("admin")
+);
+
+// 链式构建复杂查询
+var query = Expr.From<User>()
+    .Where(Expr.Prop("Age") > 18)
+    .OrderBy(Expr.Prop("CreateTime"))
+    .Section(0, 10);  // LIMIT/OFFSET
+var result = await userService.SearchAsync(query);
+```
+
+### ExprString 查询 (.NET 8.0+)
+
+```csharp
+// 使用参数化插值字符串，防止 SQL 注入
+int minAge = 18;
+var expr = Expr.Prop("Age") > 25;
+
+// ObjectViewDAO 示例
+var users = await objectViewDAO.Search($"WHERE {expr} AND Age > {minAge}").ToListAsync();
+
+// DataViewDAO 示例
+var dataTable = await dataViewDAO.Search(
+    $"SELECT Id, UserName FROM Users WHERE {Expr.Prop("Age")} > {minAge}"
+).GetResultAsync();
+```
+
 ### EXISTS 子查询
 
 ```csharp
@@ -214,15 +255,59 @@ public class Log : IArged
 
 ## ⚡ 性能基准
 
-基于 LiteOrm.Benchmark 项目的对比测试（1000 条记录）：
+基于 LiteOrm.Benchmark 项目的最新对比测试结果（.NET 10.0.3, MySQL）：
 
-| 框架 | 插入 (ms) | 更新 (ms) | Upsert (ms) | 关联查询 (ms) | 内存分配 |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| **LiteOrm** | **10,711.9** | **16,472.2** | 16,733.4 | **6,061.1** | **870.27 KB** |
-| FreeSql | 17,707.5 | 30,842.5 | **14,769.0** | 6,520.9 | 4,629.99 KB |
-| SqlSugar | 15,775.0 | 35,522.5 | 66,357.1 | 12,304.3 | 4,571.36 KB |
-| Dapper | 120,213.5 | 132,356.8 | 136,051.1 | 6,556.1 | 2,476.22 KB |
-| EF Core | 169,846.8 | 149,932.5 | 157,037.7 | 12,422.7 | 18,118.07 KB |
+### 插入性能对比（ms）
+
+| 框架 | 100 条 | 1000 条 | 5000 条 |
+|:---|---:|---:|---:|
+| **LiteOrm** | **3.74** | **10.71** | **40.27** |
+| FreeSql | 4.36 | 17.71 | 72.49 |
+| SqlSugar | 4.13 | 15.78 | 76.64 |
+| Dapper | 13.24 | 120.21 | 690.75 |
+| EF Core | 21.97 | 169.85 | 824.70 |
+
+### 更新性能对比（ms）
+
+| 框架 | 100 条 | 1000 条 | 5000 条 |
+|:---|---:|---:|---:|
+| **LiteOrm** | **4.68** | **16.47** | **68.07** |
+| FreeSql | 4.86 | 30.84 | 133.94 |
+| SqlSugar | 5.38 | 35.52 | 194.13 |
+| Dapper | 16.49 | 132.36 | 659.91 |
+| EF Core | 21.57 | 149.93 | 749.07 |
+
+### Upsert 性能对比（ms）
+
+| 框架 | 100 条 | 1000 条 | 5000 条 |
+|:---|---:|---:|---:|
+| LiteOrm | 5.54 | 16.73 | 60.71 |
+| **FreeSql** | **4.84** | **14.77** | **58.18** |
+| SqlSugar | 9.36 | 66.36 | 885.87 |
+| Dapper | 18.59 | 136.05 | 677.14 |
+| EF Core | 22.97 | 157.04 | 794.85 |
+
+### 关联查询性能对比（ms）
+
+| 框架 | 100 条 | 1000 条 | 5000 条 |
+|:---|---:|---:|---:|
+| LiteOrm | 0.97 | **6.06** | **39.06** |
+| **FreeSql** | **0.94** | 6.52 | 41.22 |
+| SqlSugar | 1.66 | 12.30 | 63.74 |
+| **Dapper** | **0.89** | 6.56 | 39.94 |
+| EF Core | 6.68 | 12.42 | 49.40 |
+
+### 内存分配对比（1000 条数据，KB）
+
+| 框架 | 插入 | 更新 | Upsert | 关联查询 |
+|:---|---:|---:|---:|---:|
+| **LiteOrm** | **870.27** | **1,514.47** | **2,138.49** | 628.98 |
+| FreeSql | 4,629.99 | 6,877.24 | **2,239.19** | 854.07 |
+| SqlSugar | 4,571.36 | 7,677.75 | 35,952.45 | 9,226.19 |
+| Dapper | 2,476.22 | 3,094.99 | 2,798.43 | **415.97** |
+| EF Core | 18,118.07 | 15,149.28 | 14,803.48 | 2,198.79 |
+
+> 📊 详细的性能基准报告请参考 [LiteOrm.Benchmark](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)
 
 ## 📚 文档与示例
 

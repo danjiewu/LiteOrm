@@ -90,7 +90,7 @@ namespace LiteOrm.Common
             else if (expr is FromExpr from) ToSql(ref sb, from, context, sqlBuilder, outputParams);
             else if (expr is SelectExpr select) ToSql(ref sb, select, context, sqlBuilder, outputParams);
             else if (expr is DeleteExpr delete) ToSql(ref sb, delete, context, sqlBuilder, outputParams);
-            else if (expr is UpdateExpr update) ToSql(ref sb, update, context, sqlBuilder, outputParams);            
+            else if (expr is UpdateExpr update) ToSql(ref sb, update, context, sqlBuilder, outputParams);
             else throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
         }
 
@@ -139,7 +139,9 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            IDisposable scope = sb.Length == 0 ? null : context.BeginScope();
+            bool isMain = sb.Length == 0;
+            IDisposable scope = isMain ? null : context.BeginScope();
+            if (!isMain) sb.Append('(');
             using (scope)
             {
                 SqlValueStringBuilder sql = new SqlValueStringBuilder();
@@ -160,6 +162,7 @@ namespace LiteOrm.Common
                 sqlBuilder.BuildSelectSql(ref sql, ref sb);
                 sql.Dispose();
             }
+            if (!isMain) sb.Append(')');
         }
         /// <summary>
         /// 将逻辑二元表达式转换为 SQL。
@@ -373,7 +376,7 @@ namespace LiteOrm.Common
                 // 数值类型常量直接以字面量形式输出，较为高效
                 sb.Append(expr.Value.ToString());
             }
-            else if(expr.Value is Expr innerExpr)
+            else if (expr.Value is Expr innerExpr)
             {
                 innerExpr.ToSql(ref sb, context, sqlBuilder, outputParams);
             }
@@ -416,7 +419,7 @@ namespace LiteOrm.Common
         {
             var table = context.GetTable(expr.TableAlias);
             var column = table?.GetColumn(expr.PropertyName);
-                      
+
             if (context.SingleTable)
             {
                 // 单表模式下只需要输出列名
@@ -429,7 +432,8 @@ namespace LiteOrm.Common
             else
             {
                 string alias = expr.TableAlias ?? context.DefaultTableAliasName;
-                if(!String.IsNullOrEmpty(alias)){
+                if (!String.IsNullOrEmpty(alias))
+                {
                     // 如果 PropertyExpr 中指定了 TableAlias，则使用该别名来限定列名
                     sb.Append(sqlBuilder.ToSqlName(alias));
                     sb.Append(".");
@@ -444,7 +448,7 @@ namespace LiteOrm.Common
         private static void ToSql(ref ValueStringBuilder sb, ForeignExpr foreignExpr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (foreignExpr.Foreign == null) throw new ArgumentException("ForeignExpr.Foreign is required");
-            
+
             var tableDefinition = TableInfoProvider.Default.GetTableDefinition(foreignExpr.Foreign);
             if (tableDefinition == null) throw new ArgumentException($"Table definition not found for type {foreignExpr.Foreign}");
 

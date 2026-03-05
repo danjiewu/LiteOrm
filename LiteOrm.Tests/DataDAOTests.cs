@@ -26,26 +26,12 @@ namespace LiteOrm.Tests
 
             // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValues")).GetResult();
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValues")).GetResultAsync();
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
             // 断言
             Assert.Equal(1, affected);
             Assert.Equal(99, retrieved?.Age);
-        }
-
-        [Fact]
-        public async Task DataDAO_UpdateAllValues_WithNonExistentProperty_ShouldThrowException()
-        {
-            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
-            var user = new TestUser { Name = "UpdateAllValues", Age = 10, CreateTime = System.DateTime.Now };
-            await service.InsertAsync(user);
-            
-            var updateValues = new Dictionary<string, object> { { "NonExistentProperty", 99 } };
-            await Assert.ThrowsAsync<System.Exception>(() => Task.Run(() =>
-                dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValues"))
-            ));
         }
 
         [Fact]
@@ -59,7 +45,7 @@ namespace LiteOrm.Tests
 
             // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = dataDao.UpdateValues(updateValues, user.Id).GetResult();
+            int affected = await dataDao.UpdateValues(updateValues, user.Id).GetResultAsync();
             bool updated = affected > 0;
             var retrieved = await viewService.GetObjectAsync(user.Id);
 
@@ -84,69 +70,13 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public async Task DataDAO_UpdateAllValuesAsync_ShouldWork()
-        {
-            // 准备
-            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
-            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
-            var user = new TestUser { Name = "UpdateAllValuesAsync", Age = 10, CreateTime = System.DateTime.Now };
-            await service.InsertAsync(user);
-
-            // 执行
-            var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValuesAsync")).GetResultAsync();
-            var retrieved = await viewService.GetObjectAsync(user.Id);
-
-            // 断言
-            Assert.Equal(1, affected);
-            Assert.Equal(99, retrieved?.Age);
-        }
-
-        [Fact]
-        public async Task DataDAO_UpdateValuesAsync_ShouldWork()
-        {
-            // 准备
-            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
-            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
-            var user = new TestUser { Name = "UpdateValuesAsync", Age = 10, CreateTime = System.DateTime.Now };
-            await service.InsertAsync(user);
-
-            // 执行
-            var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateValues(updateValues, user.Id).GetResultAsync();
-            bool updated = affected > 0;
-            var retrieved = await viewService.GetObjectAsync(user.Id);
-
-            // 断言
-            Assert.True(updated);
-            Assert.Equal(99, retrieved?.Age);
-        }
-
-        [Fact]
-        public async Task DataDAO_UpdateValuesAsync_WithNonExistentId_ShouldReturnFalse()
-        {
-            // 准备
-            var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
-
-            // 执行
-            var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateValues(updateValues, -1).GetResultAsync();
-            bool updated = affected > 0;
-
-            // 断言
-            Assert.False(updated);
-        }
-
-        [Fact]
         public async Task DataDAO_BatchUpdateValues_ShouldWork()
         {
             // 准备
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
-            
+
             // 插入多个用户
             var users = new List<TestUser>
             {

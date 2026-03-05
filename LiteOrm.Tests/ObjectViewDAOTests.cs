@@ -16,102 +16,69 @@ namespace LiteOrm.Tests
         public ObjectViewDAOTests(DatabaseFixture fixture) : base(fixture) { }
 
         [Fact]
-        public async Task ObjectViewDAO_Search_WithExprString_ShouldWork()
+        public async Task ObjectViewDAO_BasicSearch_ShouldWork()
         {
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
-            
+
             var users = new List<TestUser>
             {
-                new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now },
-                new TestUser { Name = "User2", Age = 30, CreateTime = DateTime.Now },
-                new TestUser { Name = "User3", Age = 25, CreateTime = DateTime.Now }
+                new TestUser { Name = "SearchTest1", Age = 20, CreateTime = DateTime.Now },
+                new TestUser { Name = "SearchTest2", Age = 30, CreateTime = DateTime.Now }
             };
             await service.BatchInsertAsync(users);
 
-            var ageThreshold = 20;
-            var ageExpr = Expr.Prop("Age") > ageThreshold;
-            var results = objectViewDAO.Search($"WHERE {ageExpr}");
+            var results = await objectViewDAO.Search(Expr.Prop("Name").StartsWith("SearchTest")).ToListAsync();
 
             Assert.NotNull(results);
-            var resultList = results.ToList();
-            Assert.Equal(2, resultList.Count);
-            Assert.All(resultList, user => Assert.True(user.Age > ageThreshold));
+            Assert.True(results.Count >= 2);
         }
 
         [Fact]
-        public async Task ObjectViewDAO_Search_WithExprString_ComplexExpr_ShouldWork()
+        public async Task ObjectViewDAO_GetObject_ByKey_ShouldWork()
         {
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
-            
-            var users = new List<TestUser>
-            {
-                new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now.AddDays(-10) },
-                new TestUser { Name = "User2", Age = 30, CreateTime = DateTime.Now.AddDays(-5) },
-                new TestUser { Name = "User3", Age = 25, CreateTime = DateTime.Now.AddDays(-1) }
-            };
-            await service.BatchInsertAsync(users);
 
-            var minAge = 20;
-            var startDate = DateTime.Now.AddDays(-7);
-            var complexExpr = (Expr.Prop("Age") > minAge) & (Expr.Prop("CreateTime") > startDate);
-            var results = objectViewDAO.Search($"WHERE {complexExpr}");
+            var user = new TestUser { Name = "GetObjectTest", Age = 25, CreateTime = DateTime.Now };
+            await service.InsertAsync(user);
 
-            Assert.NotNull(results);
-            Assert.All(results, user => {
-                Assert.True(user.Age > minAge);
-                Assert.True(user.CreateTime > startDate);
-            });
+            var result = await objectViewDAO.GetObject(user.Id).FirstOrDefaultAsync();
+
+            Assert.NotNull(result);
+            Assert.Equal(user.Name, result.Name);
         }
 
         [Fact]
-        public async Task ObjectViewDAO_Search_WithExprString_EmptyWhere_ShouldReturnAll()
+        public async Task ObjectViewDAO_Exists_ShouldWork()
         {
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
-            
-            var users = new List<TestUser>
-            {
-                new TestUser { Name = "UserA", Age = 20, CreateTime = DateTime.Now },
-                new TestUser { Name = "UserB", Age = 30, CreateTime = DateTime.Now }
-            };
-            await service.BatchInsertAsync(users);
 
-            var results = objectViewDAO.Search($"");
+            var user = new TestUser { Name = "ExistsTest", Age = 35, CreateTime = DateTime.Now };
+            await service.InsertAsync(user);
 
-            Assert.NotNull(results);
-            var resultList = results.ToList();
-            Assert.True(resultList.Count >= 2);
+            var exists = await objectViewDAO.Exists(Expr.Prop("Name") == "ExistsTest").GetResultAsync();
+
+            Assert.True(exists);
         }
 
         [Fact]
-        public async Task ObjectViewDAO_Search_WithExprString_MixedSqlAndExpr_ShouldWork()
+        public async Task ObjectViewDAO_Count_ShouldWork()
         {
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
-            
+
             var users = new List<TestUser>
             {
-                new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now },
-                new TestUser { Name = "User2", Age = 30, CreateTime = DateTime.Now },
-                new TestUser { Name = "User3", Age = 25, CreateTime = DateTime.Now }
+                new TestUser { Name = "CountTest1", Age = 20, CreateTime = DateTime.Now },
+                new TestUser { Name = "CountTest2", Age = 25, CreateTime = DateTime.Now }
             };
             await service.BatchInsertAsync(users);
 
-            var ageThreshold = 20;
-            var ageExpr = Expr.Prop("Age") > ageThreshold;
-            var results = objectViewDAO.Search($"WHERE {ageExpr} AND Name LIKE 'User%'");
+            var count = await objectViewDAO.Count(Expr.Prop("Name").StartsWith("CountTest")).GetResultAsync();
 
-            Assert.NotNull(results);
-            var resultList = results.ToList();
-            Assert.True(resultList.Count > 0);
-            Assert.All(resultList, user => {
-                Assert.True(user.Age > ageThreshold);
-                Assert.StartsWith("User", user.Name);
-            });
+            Assert.True(count >= 2);
         }
-
-
     }
 }

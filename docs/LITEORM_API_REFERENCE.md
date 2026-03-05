@@ -443,11 +443,9 @@ int Count(Expression<Func<T, bool>> expression, params string[] tableArgs)
 
 #### 4.4.3 异步接口
 
-- `IEntityServiceAsync<T>` 是 `IEntityService<T>` 的异步版本，额外提供以下方法：
-  - `Task BatchAsync(IEnumerable<EntityOperation<T>> entities, ...)` — 异步混合批量操作
-- `IEntityViewServiceAsync<T>` 是 `IEntityViewService<T>` 的异步版本，额外提供以下方法：
-  - `Task ForEachAsync(Expr expr, Func<T, Task> func, ...)` — 异步遍历（流式）
-  - Lambda 扩展方法：`SearchAsync`、`SearchOneAsync`、`ExistsAsync`、`CountAsync`（位于 `LambdaExprExtensions`）
+- `IEntityServiceAsync<T>` 是 `IEntityService<T>` 的异步版本
+- `IEntityViewServiceAsync<T>` 是 `IEntityViewService<T>` 的异步版本
+- Lambda 扩展方法：`SearchAsync`、`SearchOneAsync`、`ExistsAsync`、`CountAsync`（位于 `LambdaExprExtensions`）
 
 #### 4.4.4 EntityService - 服务基类实现
 
@@ -557,57 +555,7 @@ void BatchDelete(IEnumerable<T> entities)
 Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
 ```
 
-#### 4.5.2 DataDAO - 按条件更新（不返回实体）
-
-**文件位置：** `LiteOrm/DAO/DataDAO.cs`
-
-**作用**：提供针对单表的批量字段更新操作，无需加载实体对象。
-
-```csharp
-// 按条件批量更新指定字段（返回 NonQueryResult，调用 Execute() 或 ExecuteAsync() 执行）
-NonQueryResult UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, LogicExpr expr)
-
-// 按主键更新指定字段
-NonQueryResult UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys)
-```
-
-**示例：**
-
-```csharp
-var dataDAO = serviceProvider.GetRequiredService<DataDAO<User>>();
-
-// 将所有 Age > 60 的用户状态置为 inactive
-dataDAO.UpdateAllValues(
-    new[] { new KeyValuePair<string, object>("Status", "inactive") },
-    Expr.Prop("Age") > 60
-).Execute();
-
-// 按主键更新单条记录的指定字段
-dataDAO.UpdateValues(
-    new[] { new KeyValuePair<string, object>("Age", 99) },
-    userId
-).Execute();
-```
-
-#### 4.5.3 DataViewDAO - 视图查询（返回DataTableResult）
-
-**文件位置：** `LiteOrm/DAO/DataViewDAO.cs`
-
-**作用**：返回 DataTable 格式的结果，支持聚合查询和 GroupBy。
-
-```csharp
-// 查询返回 DataTableResult
-DataTableResult Search(Expr expr)
-Task<DataTableResult> SearchAsync(Expr expr, CancellationToken cancellationToken = default)
-
-// 指定字段查询
-DataTableResult Search(string[] propertyNames, Expr expr)
-Task<DataTableResult> SearchAsync(string[] propertyNames, Expr expr, CancellationToken cancellationToken = default)
-```
-
-**注意：** 聚合查询（使用 GroupBy 和聚合函数如 COUNT/SUM/AVG/MAX/MIN）必须使用 DataViewDAO，因为 EntityViewService 不支持 GroupBy。
-
-#### 4.5.4 ObjectViewDAO - 实体视图查询
+#### 4.5.2 ObjectViewDAO - 实体视图查询
 
 **文件位置：** `LiteOrm/DAO/ObjectViewDAO.cs`
 
@@ -631,13 +579,69 @@ ValueResult<int> Count(Expr expr)
 Task<ValueResult<int>> CountAsync(Expr expr, CancellationToken cancellationToken = default)
 ```
 
+#### 4.5.3 DataDAO - 按条件更新
+
+**文件位置：** `LiteOrm/DAO/DataDAO.cs`
+
+**作用**：提供针对单表的批量字段更新操作，无需加载实体对象。
+
+```csharp
+// 按条件批量更新指定字段（返回 NonQueryResult，调用 GetResult() 或 GetResultAsync() 执行）
+NonQueryResult UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, LogicExpr expr)
+
+// 按主键更新指定字段
+NonQueryResult UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys)
+```
+
+**示例：**
+
+```csharp
+var dataDAO = serviceProvider.GetRequiredService<DataDAO<User>>();
+
+// 将所有 Age > 60 的用户状态置为 inactive
+dataDAO.UpdateAllValues(
+    new[] { new KeyValuePair<string, object>("Status", "inactive") },
+    Expr.Prop("Age") > 60
+).GetResult();
+
+// 按主键更新单条记录的指定字段
+dataDAO.UpdateValues(
+    new[] { new KeyValuePair<string, object>("Age", 99) },
+    userId
+).GetResult();
+```
+
+#### 4.5.4 DataViewDAO - 视图查询（返回DataTableResult）
+
+**文件位置：** `LiteOrm/DAO/DataViewDAO.cs`
+
+**作用**：返回 DataTable 格式的结果，支持聚合查询和 GroupBy。
+
+```csharp
+// 查询返回 DataTableResult
+DataTableResult Search(Expr expr)
+
+// 指定字段查询
+DataTableResult Search(string[] propertyNames, Expr expr)
+```
+
+**注意：** 聚合查询（使用 GroupBy 和聚合函数如 COUNT/SUM/AVG/MAX/MIN）必须使用 DataViewDAO，因为 EntityViewService 不支持 GroupBy。
+
+
 ## 5. Expr详细说明
 
 LiteOrm 的核心是 Expr 表达式系统，Lambda 表达式方式也是先解析为 Expr，再拼接为 SQL。
 
 ### 5.1 Expr结构
 
-**文件位置：** `LiteOrm.Common/Expr/`
+**文件位置：** `LiteOrm.Common/Expr/` 和 `LiteOrm.Common/SqlSegment/`
+
+Expr 表达式系统分为两类：
+- **逻辑表达式 (LogicExpr 及衍生)** - 用于 WHERE、HAVING 等条件片段
+- **值类型表达式 (ValueTypeExpr 及衍生)** - 用于 SELECT、值计算等
+- **SQL 片段表达式 (SqlSegment)** - 用于 FROM、WHERE、ORDER BY、GROUP BY 等 SQL 构建
+
+**Expr 类型层级：**
 
 ```
 Expr (基类)
@@ -647,14 +651,57 @@ Expr (基类)
 │   ├── NotExpr (NOT 取反)
 │   ├── ForeignExpr (EXISTS 子查询)
 │   └── LambdaExpr (Lambda 延迟求值表达式)
-└── ValueTypeExpr (值类型表达式基类)
-    ├── ValueExpr (常量或变量值)
-    ├── PropertyExpr (属性/列引用)
-    ├── FunctionExpr (函数调用)
-    ├── AggregateFunctionExpr (聚合函数: COUNT/SUM/AVG/MAX/MIN)
-    ├── ValueBinaryExpr (数学运算: +, -, *, /)
-    └── ValueSet (值集合，如 CONCAT / LIST)
+│
+├── ValueTypeExpr (值类型表达式基类)
+│   ├── ValueExpr (常量或变量值)
+│   ├── PropertyExpr (属性/列引用)
+│   ├── FunctionExpr (函数调用)
+│   ├── AggregateFunctionExpr (聚合函数: COUNT/SUM/AVG/MAX/MIN)
+│   ├── ValueBinaryExpr (数学运算: +, -, *, /)
+│   ├── ValueSet (值集合，如 CONCAT / LIST)
+│   └── SelectExpr (SELECT 语句，实现 ISqlSegment)
+│
+└── SqlSegment 接口及实现（SQL 查询片段构建）
+    ├── FromExpr (FROM 片段，指定数据源表或视图)
+    ├── WhereExpr (WHERE 片段，条件筛选)
+    ├── SelectExpr (SELECT 片段，字段选择)
+    ├── OrderByExpr (ORDER BY 片段，排序)
+    ├── GroupByExpr (GROUP BY 片段，分组)
+    ├── HavingExpr (HAVING 片段，分组条件)
+    ├── SectionExpr (LIMIT/OFFSET 片段，分页)
+    ├── UpdateExpr (UPDATE 片段，批量更新字段)
+    └── DeleteExpr (DELETE 片段，批量删除)
 ```
+
+**SQL 片段表达式 (SqlSegment) 说明：**
+
+`SqlSegment` 类型用于构建各 SQL 查询片段，支持链式 API。常见用法：
+
+```csharp
+// 链式 API - 从 FromExpr 开始，逐步添加 WHERE、ORDER BY、LIMIT 等
+var fullQuery = Expr.From<User>()          // FromExpr
+    .Where(condition)                       // WhereExpr
+    .OrderBy(Expr.Prop("Id"))              // OrderByExpr
+    .Section(0, 10);                       // SectionExpr
+
+// GroupBy 聚合查询
+var aggregateQuery = Expr.From<User>()
+    .Where(Expr.Prop("Age") > 18)
+    .GroupBy(Expr.Prop("DeptId"))
+    .Having(Expr.Prop("Id").Count() > 5)   // HavingExpr
+    .Select(Expr.Prop("DeptId"), Expr.Prop("Id").Count().As("cnt"));
+
+// 批量更新
+var updateExpr = new UpdateExpr()
+    .Set("Status", "inactive")
+    .Where(Expr.Prop("Age") > 60);
+
+// 批量删除
+var deleteExpr = new DeleteExpr()
+    .Where(Expr.Prop("CreateTime") < DateTime.Now.AddYears(-1));
+```
+
+SqlSegment 接口定义了 `SegmentType` 属性，用于标识当前片段的类型（From、Where、Select 等），框架在 SQL 生成时根据类型进行不同处理。
 
 **运算符重载说明：**
 
@@ -873,7 +920,7 @@ LiteOrm 提供三种查询条件构造方式，可以单独使用也可以混用
 | :--- | :--- | :--- | :--- | :--- |
 | **Lambda** | ✅ 编译期检查 | 常规查询、排序分页 | 有限（条件结构固定时最简洁） | Linq 风格，易读 |
 | **Expr** | ❌ 运行时 | 动态条件组合、序列化传输 | 强（可任意拼接）| 灵活强大，适合复杂查询 |
-| **ExprString** | ❌ 运行时 | 特殊 SQL 函数、数据库方言 | 弱（插值语法） | 简单直接 |
+| **ExprString** | ❌ 运行时 | 特殊 SQL 优化、数据库方言 | 弱（插值语法） | 简单直接 |
 
 > Lambda 表达式并不确保生成的 SQL 合法性，在执行时自动转换为 `Expr` 对象，二者最终走相同的 SQL 生成路径，性能无差异。
 
@@ -936,7 +983,7 @@ var users = await userService.SearchAsync(Expr.Prop("Age") > 18);
 - `Expr` 表达式 → 转换为等效 SQL 片段（可以仅插入字段表达式，也可以插入复杂表达式，例如 `WHERE {Expr.Prop("Age") > 18}` 会转化为 `WHERE Age > @p0`，而 `WHERE {Expr.Prop("Age")} > 18` 会转化为 `WHERE Age > 18`）
 - 普通值（`int`、`string` 等）→ 自动转为命名参数如 `@p0`，防止 SQL 注入（例如 `WHERE Age > {18}` 转化为 `WHERE Age > @p0`）
 
-> **注意：** 不要在运行时直接把外部字符串拼接成 SQL，如需提供外部调用建议使用 `GenericSqlExpr`（参见第 7.2 节）的方式。`EnumerableResult<T>` 底层 `DbDataReader` 只能消费一次，若需重复遍历请先调用 `.ToList()`。
+> **注意：** 不要在运行时直接把外部输入的字符串拼接成 SQL，如需提供外部调用建议使用 `GenericSqlExpr`（参见第 7.2 节）的方式。`EnumerableResult<T>` 底层 `DbDataReader` 只能消费一次，若需重复遍历请先调用 `.ToList()`。
 
 **示例 — `ObjectViewDAO`（默认追加 WHERE 片段）：**
 
