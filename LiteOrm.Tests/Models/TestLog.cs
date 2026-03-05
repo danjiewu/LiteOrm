@@ -20,6 +20,7 @@ namespace LiteOrm.Tests.Models
         [Column("UserID")]
         [ForeignType(typeof(TestUser), Alias = "User")]
         public int UserID { get; set; }
+        [Column(false)]
 
         public string[] TableArgs => [CreateTime.ToString("yyyyMM")];
     }

@@ -455,7 +455,7 @@ namespace LiteOrm.Common
                 context.TableArgs = foreignExpr.TableArgs;
 
                 sb.Append("EXISTS(SELECT 1 FROM ");
-                sb.Append(sqlBuilder.ToSqlName(String.Format(tableDefinition.Name, context.TableArgs ?? Array.Empty<string>())));
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableDefinition.Name)));
                 sb.Append(" ");
                 sb.Append(sqlBuilder.ToSqlName(foreignAlias));
 
@@ -696,8 +696,8 @@ namespace LiteOrm.Common
             if (context.SingleTable)
             {
                 var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.ObjectType);
-                string tableName = string.Format(tableDef.Name, tableArgs);
-                sb.Append(sqlBuilder.ToSqlName(tableName));
+                context.TableArgs = tableArgs;
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name)));
                 sb.Append(" ");
                 if (expr.Alias != null)
                 {
@@ -708,8 +708,8 @@ namespace LiteOrm.Common
             else
             {
                 var tableView = TableInfoProvider.Default.GetTableView(expr.ObjectType);
-                string tableName = string.Format(tableView.Definition.Name, tableArgs);
-                sb.Append(sqlBuilder.ToSqlName(tableName));
+                context.TableArgs = tableArgs;
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name)));
                 sb.Append(" ");
                 string aliasName = expr.Alias ?? tableView.Name;
                 sb.Append(sqlBuilder.ToSqlName(aliasName));

@@ -11,7 +11,8 @@ namespace LiteOrm.Demo.Demos
     /// 分表查询演示
     /// 
     /// 本演示展示如何使用 LiteOrm 进行分表查询。分表场景中，表名包含参数（如 Sales_{0}），
-    /// 通过向 SearchAsync 等方法传入 tableArgs 参数来指定要查询的具体分表。
+    /// 通过在 Lambda 表达式中显式指定 TableArgs 来指定要查询的具体分表。
+    /// 推荐方式：s => ((IArged)s).TableArgs == new[] { "202412" } && s.Amount > 40
     /// </summary>
     public static class ShardingQueryDemo
     {
@@ -26,19 +27,19 @@ namespace LiteOrm.Demo.Demos
 
             await Demo1_BasicShardingAsync(serviceProvider);
             await Demo2_ExplicitTableArgsAsync(serviceProvider);
-            await Demo3_MultipleMonthsAsync(serviceProvider);
+            await Demo3_DynamicTableArgsAsync(serviceProvider);
             await Demo4_ShardingWithOrderAsync(serviceProvider);
         }
 
         /// <summary>
-        /// 演示1：基础分表查询 - 自动提取表参数
+        /// 演示1：基础分表查询 - Lambda 内部指定分表参数
         /// </summary>
         private static async System.Threading.Tasks.Task Demo1_BasicShardingAsync(IServiceProvider serviceProvider)
         {
             Console.WriteLine("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine("演示1：基础分表查询 - 自动提取表参数");
+            Console.WriteLine("演示1：基础分表查询 - Lambda 内部指定分表参数");
             Console.WriteLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine("场景：表名为 Sales_{0}，{0} 由 SaleTime 的 yyyyMM 自动提取");
+            Console.WriteLine("场景：在 Lambda 表达式中明确指定查询的分表");
             Console.WriteLine();
 
             try
@@ -77,16 +78,15 @@ namespace LiteOrm.Demo.Demos
                 Console.WriteLine($"  - {sale2.ProductName}: ¥{sale2.Amount} (2024-12-20)");
                 Console.WriteLine();
 
-                // 查询 2024 年 12 月的销售记录
-                Console.WriteLine("执行查询：");
-                Console.WriteLine("  var sales = await salesViewService.SearchAsync(");
-                Console.WriteLine("      Expr.Lambda<SalesRecordView>(s => s.Amount > 40)");
+                // 查询方式：Lambda 内部指定分表参数
+                Console.WriteLine("执行查询（Lambda 内部指定 TableArgs）：");
+                Console.WriteLine("  var sales = await salesViewService.SearchAsync(s =>");
+                Console.WriteLine("      ((IArged)s).TableArgs == new[] { \"202412\" } && s.Amount > 40");
                 Console.WriteLine("  );");
                 Console.WriteLine();
 
-                var sales = await salesViewService.SearchAsync(
-                    Expr.Lambda<SalesRecordView>(s => s.Amount > 40),
-                    new string[] { "202412" }
+                var sales = await salesViewService.SearchAsync(s =>
+                    ((IArged)s).TableArgs == new[] { "202412" } && s.Amount > 40
                 );
 
                 Console.WriteLine($"✓ 查询完成，共返回 {sales.Count} 条记录：");
@@ -107,14 +107,14 @@ namespace LiteOrm.Demo.Demos
         }
 
         /// <summary>
-        /// 演示2：显式指定表参数进行分表查询
+        /// 演示2：Lambda 内部显式指定不同月份的分表
         /// </summary>
         private static async System.Threading.Tasks.Task Demo2_ExplicitTableArgsAsync(IServiceProvider serviceProvider)
         {
             Console.WriteLine("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine("演示2：显式指定表参数");
+            Console.WriteLine("演示2：Lambda 内部显式指定不同月份的分表");
             Console.WriteLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine("场景：通过 tableArgs 显式指定 Sales_202411 表");
+            Console.WriteLine("场景：在 Lambda 中显式指定查询 Sales_202411 表的数据");
             Console.WriteLine();
 
             try
@@ -143,18 +143,15 @@ namespace LiteOrm.Demo.Demos
                 Console.WriteLine($"  - {sale.ProductName}: ¥{sale.Amount} (2024-11-10)");
                 Console.WriteLine();
 
-                // 显式指定查询 Sales_202411 表
-                var tableArgs = new[] { "202411" };
-                Console.WriteLine("执行查询（显式指定 tableArgs = [\"202411\"]）：");
-                Console.WriteLine("  var sales = await salesViewService.SearchAsync(");
-                Console.WriteLine("      Expr.Lambda<SalesRecordView>(s => s.Amount > 100),");
-                Console.WriteLine("      new[] { \"202411\" }");
+                // 在 Lambda 中指定查询 Sales_202411 表
+                Console.WriteLine("执行查询（Lambda 内部指定分表）：");
+                Console.WriteLine("  var sales = await salesViewService.SearchAsync(s =>");
+                Console.WriteLine("      ((IArged)s).TableArgs == new[] { \"202411\" } && s.Amount > 100");
                 Console.WriteLine("  );");
                 Console.WriteLine();
 
-                var sales = await salesViewService.SearchAsync(
-                    Expr.Lambda<SalesRecordView>(s => s.Amount > 100),
-                    tableArgs
+                var sales = await salesViewService.SearchAsync(s =>
+                    ((IArged)s).TableArgs == new[] { "202411" } && s.Amount > 100
                 );
 
                 Console.WriteLine($"✓ 查询完成，共返回 {sales.Count} 条记录（来自 Sales_202411 表）");
@@ -175,14 +172,14 @@ namespace LiteOrm.Demo.Demos
         }
 
         /// <summary>
-        /// 演示3：动态表参数
+        /// 演示3：Lambda 内部动态指定分表参数
         /// </summary>
-        private static async System.Threading.Tasks.Task Demo3_MultipleMonthsAsync(IServiceProvider serviceProvider)
+        private static async System.Threading.Tasks.Task Demo3_DynamicTableArgsAsync(IServiceProvider serviceProvider)
         {
             Console.WriteLine("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine("演示3：动态表参数");
+            Console.WriteLine("演示3：Lambda 内部动态指定分表参数");
             Console.WriteLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine("场景：使用变量动态指定 Sales_202411 或 Sales_202412");
+            Console.WriteLine("场景：使用变量在 Lambda 中动态指定分表");
             Console.WriteLine();
 
             try
@@ -211,21 +208,17 @@ namespace LiteOrm.Demo.Demos
                 Console.WriteLine($"  - {sale1.ProductName}: ¥{sale1.Amount} (2024-11)");
                 Console.WriteLine();
 
-                // 使用变量动态指定表参数
-                // 注意：tableArgs 是单个参数数组，对应 Sales_{0} 中的 {0} 占位符
-                Console.WriteLine("执行查询（动态指定 tableArgs）：");
+                // 使用变量动态指定分表（Lambda 内部方式）
+                Console.WriteLine("执行查询（动态指定分表）：");
                 Console.WriteLine("  var targetMonth = \"202411\";\n");
-                Console.WriteLine("  var sales = await salesViewService.SearchAsync(");
-                Console.WriteLine("      Expr.Lambda<SalesRecordView>(s => s.Amount > 400),");
-                Console.WriteLine("      new[] { targetMonth }");
+                Console.WriteLine("  var sales = await salesViewService.SearchAsync(s =>");
+                Console.WriteLine("      ((IArged)s).TableArgs == new[] { targetMonth } && s.Amount > 400");
                 Console.WriteLine("  );");
                 Console.WriteLine();
 
                 var targetMonth = "202411";
-                var tableArgs = new[] { targetMonth };
-                var sales = await salesViewService.SearchAsync(
-                    Expr.Lambda<SalesRecordView>(s => s.Amount > 400),
-                    tableArgs
+                var sales = await salesViewService.SearchAsync(s =>
+                    ((IArged)s).TableArgs == new[] { targetMonth } && s.Amount > 400
                 );
 
                 Console.WriteLine($"✓ 查询完成，共返回 {sales.Count} 条记录（来自 Sales_202411 表）");
@@ -246,14 +239,14 @@ namespace LiteOrm.Demo.Demos
         }
 
         /// <summary>
-        /// 演示4：分表查询结合排序和分页
+        /// 演示4：分表查询结合排序和分页（Lambda 内部分表）
         /// </summary>
         private static async System.Threading.Tasks.Task Demo4_ShardingWithOrderAsync(IServiceProvider serviceProvider)
         {
             Console.WriteLine("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine("演示4：分表查询结合排序和分页");
+            Console.WriteLine("演示4：分表查询结合排序和分页（Lambda 内部分表）");
             Console.WriteLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine("场景：按金额降序排列，分页查询前 3 条");
+            Console.WriteLine("场景：在 Lambda 中指定分表，并结合排序和分页");
             Console.WriteLine();
 
             try
@@ -284,22 +277,21 @@ namespace LiteOrm.Demo.Demos
                 Console.WriteLine($"✓ 已插入 {amounts.Length} 条数据");
                 Console.WriteLine();
 
-                // 按金额降序排列，取前 3 条
-                var tableArgs = new[] { "202412" };
-                Console.WriteLine("执行查询（按金额降序，取前 3 条）：");
+                // 在 Lambda 中指定分表，结合排序和分页
+                Console.WriteLine("执行查询（Lambda 内指定分表，按金额降序，取前 3 条）：");
                 Console.WriteLine("  var topSales = await salesViewService.SearchAsync(");
-                Console.WriteLine("      Expr.Where<SalesRecordView>(s => s.Amount > 0)");
+                Console.WriteLine("      Expr.From<SalesRecordView>([\"202412\"])");
+                Console.WriteLine("          .Where(Expr.Prop(\"Amount\") > 0)");
                 Console.WriteLine("          .OrderBy((\"Amount\", false))");
-                Console.WriteLine("          .Section(0, 3),");
-                Console.WriteLine("      new[] { \"202412\" }");
+                Console.WriteLine("          .Section(0, 3)");
                 Console.WriteLine("  );");
                 Console.WriteLine();
 
                 var topSales = await salesViewService.SearchAsync(
-                    Expr.Where<SalesRecordView>(s => s.Amount > 0)
+                    Expr.From<SalesRecordView>(["202412"])
+                        .Where(Expr.Prop("Amount") > 0)
                         .OrderBy(("Amount", false))
-                        .Section(0, 3),
-                    tableArgs
+                        .Section(0, 3)
                 );
 
                 Console.WriteLine($"✓ 查询完成，返回前 3 条（按金额降序）：");

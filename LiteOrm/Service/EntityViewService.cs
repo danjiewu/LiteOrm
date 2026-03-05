@@ -130,10 +130,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表参数</param>
         public virtual void ForEach(Expr expr, Action<TView> func, params string[] tableArgs)
         {
-            foreach (var item in ObjectViewDAO.WithArgs(tableArgs).Search(expr))
-            {
-                func(item);
-            }
+            ObjectViewDAO.WithArgs(tableArgs).Search(expr).ForEach(item => func(item));
         }
 
         /// <summary>
@@ -269,10 +266,7 @@ namespace LiteOrm.Service
         /// <returns>返回异步操作任务。</returns>
         public async virtual Task ForEachAsync(Expr expr, Func<TView, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            await foreach (var item in ObjectViewDAO.WithArgs(tableArgs).Search(expr))
-            {
-                await func(item);
-            }
+            await ObjectViewDAO.WithArgs(tableArgs).Search(expr).ForEachAsync(async item => await func(item), cancellationToken);
         }
 
         /// <summary>

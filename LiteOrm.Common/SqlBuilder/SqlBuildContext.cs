@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Text.RegularExpressions;
 
 namespace LiteOrm.Common
@@ -50,7 +51,7 @@ namespace LiteOrm.Common
         /// 动态表名参数数组
         /// </summary>
         public string[] TableArgs { get => CurrentScope.TableArgs; set => CurrentScope.TableArgs = value; }
-        
+
         /// <summary>
         /// 获取当前表定义
         /// </summary>
@@ -69,6 +70,19 @@ namespace LiteOrm.Common
         public SqlTable GetTable(string aliasName = null)
         {
             return CurrentScope.GetTable(aliasName);
+        }
+
+        /// <summary>
+        /// 格式化表名，如果设置了 TableArgs 则使用 string.Format 进行格式化，否则直接返回原始表名
+        /// </summary>
+        /// <param name="name">原始表名</param>
+        /// <returns></returns>
+        public string FormatTableName(string name)
+        {
+            if (TableArgs?.Length > 0)
+                return string.Format(name, TableArgs);
+            else
+                return name;
         }
 
         /// <summary>
@@ -123,12 +137,12 @@ namespace LiteOrm.Common
             internal SqlScopeContext() { }
 
             private readonly Dictionary<string, SqlTable> _aliasTableMap = new Dictionary<string, SqlTable>(StringComparer.OrdinalIgnoreCase);
-            
+
             /// <summary>
             /// 表别名
             /// </summary>
             public string DefaultTableAliasName { get; set; }
-            
+
             /// <summary>
             /// 表信息
             /// </summary>
@@ -140,7 +154,7 @@ namespace LiteOrm.Common
             public bool SingleTable { get; set; } = false;
 
             private string[] _tableArgs = Array.Empty<string>();
-            
+
             /// <summary>
             /// 表名参数，用于动态生成表名
             /// </summary>

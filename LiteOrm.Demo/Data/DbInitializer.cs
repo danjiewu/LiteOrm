@@ -18,9 +18,6 @@ namespace LiteOrm.Demo.Data
             var dataSourceName = dataSourceProvider.DefaultDataSourceName ?? "SQLite";
 
             var contextPoolFactory = services.GetRequiredService<DAOContextPoolFactory>();
-            var context = contextPoolFactory.PeekContext(dataSourceName); // 确保初始化连接池
-
-            await EnsureTablesCreatedAsync(services, context.DbConnection);
 
             // 检查是否有数据，若没有则同步初始演示数据
             var userService = services.GetRequiredService<IUserService>();
@@ -34,61 +31,7 @@ namespace LiteOrm.Demo.Data
             {
                 await SeedDataWithServicesAsync(userService, deptService, salesService);
             }
-            contextPoolFactory.ReturnContext(context);
         }
-
-        private static async Task EnsureTablesCreatedAsync(IServiceProvider services, DbConnection connection)
-        {
-            // Departments 和 Users 表由 LiteOrm 的 SyncTable 功能在 LiteOrmComponentInitializer 中自动同步。
-            // 此处仅对动态分表初始化（SyncTable 目前仅同步固定表名定义）。
-
-            var tableInfoProvider = services.GetRequiredService<TableInfoProvider>();
-            var sqlBuilderFactory = services.GetRequiredService<SqlBuilderFactory>();
-            var sqlBuilder = sqlBuilderFactory.GetSqlBuilder(connection.GetType());
-
-            string currentMonth = DateTime.Now.ToString("yyyyMM");
-            var tableDef = tableInfoProvider.GetTableDefinition(typeof(SalesRecord));
-            string tableName = string.Format(tableDef.Name, currentMonth);
-
-            // 检查表是否存在
-            bool exists = false;
-            try
-            {
-                using var checkCmd = connection.CreateCommand();
-                checkCmd.CommandText = sqlBuilder.BuildTableExistsSql(tableName);
-                await checkCmd.ExecuteScalarAsync();
-                exists = true;
-            }
-            catch
-            {
-                exists = false;
-            }
-
-            if (!exists)
-            {
-                Console.WriteLine($"正在创建分表: {tableName}");
-                string createSql = sqlBuilder.BuildCreateTableSql(tableName, tableDef.Columns);
-                using (var cmd = connection.CreateCommand())
-                {
-                    cmd.CommandText = createSql;
-                    await cmd.ExecuteNonQueryAsync();
-                }
-
-                // 创建辅助索引
-                foreach (var col in tableDef.Columns.Where(c => c.IsIndex || c.IsUnique))
-                {
-                    try
-                    {
-                        string indexSql = sqlBuilder.BuildCreateIndexSql(tableName, col);
-                        using var idxCmd = connection.CreateCommand();
-                        idxCmd.CommandText = indexSql;
-                        await idxCmd.ExecuteNonQueryAsync();
-                    }
-                    catch { }
-                }
-            }
-        }
-
 
         private static async Task SeedDataWithServicesAsync(IUserService userService, IDepartmentService deptService, ISalesService salesService)
         {

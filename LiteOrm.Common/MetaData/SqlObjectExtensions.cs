@@ -56,8 +56,7 @@ namespace LiteOrm.Common
             }
             if (sqlObject is SqlTable sqlTable)
             {
-                var tableArgs = context.TableArgs ?? Array.Empty<string>();
-                sb.Append(sqlBuilder.ToSqlName(string.Format(sqlTable.Name, tableArgs)));
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(sqlTable.Name)));
                 return;
             }
 
@@ -71,15 +70,12 @@ namespace LiteOrm.Common
         {
             if (column.Table != null)
             {
-                var tableArgs = context?.TableArgs;
-                if (tableArgs == null) tableArgs = Array.Empty<string>();
-                sb.Append(sqlBuilder.ToSqlName(string.Format(column.Table.Name, tableArgs)));
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(column.Table.Name)));
                 sb.Append('.');
             }
             else if (context?.Table != null)
             {
-                var tableArgs = context.TableArgs ?? Array.Empty<string>();
-                sb.Append(sqlBuilder.ToSqlName(string.Format(context.Table.Name, tableArgs)));
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(context.Table.Name)));
                 sb.Append('.');
             }
             sb.Append(sqlBuilder.ToSqlName(column.Name));
@@ -117,9 +113,7 @@ namespace LiteOrm.Common
         {
             if (tableView == null) return;
 
-            var tableArgs = context.TableArgs ?? Array.Empty<string>();
-
-            sb.Append(string.Format(sqlBuilder.ToSqlName(tableView.Definition.Name), tableArgs));
+            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name)));
             sb.Append(" ");
             sb.Append(sqlBuilder.ToSqlName(tableView.Name));
             foreach (var joined in tableView.JoinedTables)
@@ -138,11 +132,10 @@ namespace LiteOrm.Common
         {
             if (joined == null) return;
 
-            var tableArgs = context.TableArgs ?? Array.Empty<string>();
             sb.Append("\n");
             sb.Append(joined.JoinType.ToString().ToUpper());
             sb.Append(" JOIN ");
-            sb.Append(sqlBuilder.ToSqlName(string.Format(joined.TableDefinition.Name, tableArgs)));
+            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joined.TableDefinition.Name)));
             sb.Append(" ");
             sb.Append(sqlBuilder.ToSqlName(joined.Name));
             sb.Append(" ON ");

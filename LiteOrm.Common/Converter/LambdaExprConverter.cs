@@ -119,10 +119,15 @@ namespace LiteOrm.Common
             if (objectType.IsGenericType && (objectType.GetGenericTypeDefinition() == typeof(IQueryable<>) || objectType.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
                 objectType = objectType.GetGenericArguments()[0];
             _currentAlias = _parameterAliases[_rootParameter.Name] = objectType.Name;
-            _parameterExprs[_rootParameter.Name] = new FromExpr(objectType) { Alias = _currentAlias };
+            _parameterExprs[_rootParameter.Name] = _fromExpr = new FromExpr(objectType) { Alias = _currentAlias };
             _aliasCounter = 1;
         }
 
+        private FromExpr _fromExpr;
+        /// <summary>
+        /// 获取解析后的 FromExpr 对象，代表 Lambda 表达式中根参数对应的表信息。
+        /// </summary>
+        public FromExpr From => _fromExpr;
         /// <summary>
         /// 当前别名，用于生成 SQL 时的表别名。对于嵌套 Lambda 表达式会动态更新以支持多层别名映射。
         /// </summary>
@@ -620,11 +625,8 @@ namespace LiteOrm.Common
             if (type.IsPrimitive)
                 return DefaultFunctionHandler(node, this);
             else if (_parameterDetector.ContainsParameter(node))
-            {
                 // 如果是实例方法且包含参数依赖
-                if (node.Object != null) return ConvertInternal(node.Object);
                 return DefaultFunctionHandler(node, this);
-            }
             else
                 return EvaluateToExpr(node);
         }

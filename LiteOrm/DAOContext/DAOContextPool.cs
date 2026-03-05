@@ -47,7 +47,7 @@ namespace LiteOrm
     /// pool.Dispose();
     /// </code>
     /// </remarks>
-    public class DAOContextPool : IDisposable
+     public class DAOContextPool : IDisposable
     {
         private readonly Queue<DAOContext> _pool = new Queue<DAOContext>();
         private readonly object _poolLock = new object();
@@ -58,6 +58,20 @@ namespace LiteOrm
         private int _readOnlyIndex = 0;
         private readonly ConcurrentDictionary<string, HashSet<string>> _tableColumns = new(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _tableCreationLocks = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, byte> _createdTables = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
+        /// </summary>
+        /// <param name="providerType">数据库提供程序类型。</param>
+        /// <param name="connectionString">数据库连接字符串。</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="providerType"/> 或 <paramref name="connectionString"/> 为 null 时抛出。</exception>
+        public DAOContextPool(Type providerType, string connectionString)
+        {
+            ProviderType = providerType ?? throw new ArgumentNullException(nameof(providerType));
+            ConnectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+            Name = providerType.Name;
+        }
 
         /// <summary>
         /// 获取或设置连接池的缓冲大小（闲置连接数量）。
@@ -116,20 +130,6 @@ namespace LiteOrm
         /// 获取只读池对应的主库连接池，仅只读池有效。
         /// </summary>
         internal DAOContextPool MasterPool { get; private set; }
-
-        /// <summary>
-        /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
-        /// </summary>
-        /// <param name="providerType">数据库提供程序类型。</param>
-        /// <param name="connectionString">数据库连接字符串。</param>
-        /// <exception cref="ArgumentNullException">当 <paramref name="providerType"/> 或 <paramref name="connectionString"/> 为 null 时抛出。</exception>
-        public DAOContextPool(Type providerType, string connectionString)
-        {
-            ProviderType = providerType ?? throw new ArgumentNullException(nameof(providerType));
-            ConnectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
-            Name = providerType.Name;
-        }
-
         /// <summary>
         /// 获取或设置该连接池是否开启自动建表同步。
         /// </summary>
@@ -158,6 +158,12 @@ namespace LiteOrm
             => _tableCreationLocks.GetOrAdd(tableName, _ => new SemaphoreSlim(1, 1));
 
         /// <summary>
+        /// 生成表名和对象类型的联合主键。
+        /// </summary>
+        private static string GetTableTypeKey(string tableName, Type objectType)
+            => $"{tableName}|{objectType.FullName}";
+
+        /// <summary>
         /// 获取该连接池对应数据库的 SQL 构建器。
         /// </summary>
         public SqlBuilder SqlBuilder => SqlBuilderFactory.Instance.GetSqlBuilder(ProviderType);
@@ -166,23 +172,33 @@ namespace LiteOrm
         /// 确保指定表已在数据库中存在且包含所有必要的列。
         /// 同步版本，供 DAO 在命令构建前调用。
         /// </summary>
-        public void EnsureTable(string tableName, IEnumerable<ColumnDefinition> columns)
+        public void EnsureTable(Type objectType, string[] tableArgs = null)
         {
-            var cols = columns as ColumnDefinition[] ?? columns.ToArray();
+            if (!SyncTable || typeof(IArged).IsAssignableFrom(objectType) && (tableArgs == null || tableArgs.Length == 0)) return;
             // 只读池直接转发给主库执行
-            if (MasterPool != null) { 
-                MasterPool.EnsureTable(tableName, cols);
+            if (MasterPool != null)
+            {
+                MasterPool.EnsureTable(objectType, tableArgs);
                 return;
             }
-            
-            if (_tableColumns.TryGetValue(tableName, out var knownCols) && cols.All(c => knownCols.Contains(c.Name)))
+
+            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
+            string tableName = tableArgs != null && tableArgs.Length > 0
+                ? string.Format(tableDefinition.Name, tableArgs)
+                : tableDefinition.Name;
+
+            string tableTypeKey = GetTableTypeKey(tableName, objectType);
+
+            // 检查该表和类型的组合是否已处理
+            if (_createdTables.ContainsKey(tableTypeKey))
                 return;
 
             var sem = GetTableCreationLock(tableName);
             sem.Wait(10000);
             try
             {
-                if (_tableColumns.TryGetValue(tableName, out knownCols) && cols.All(c => knownCols.Contains(c.Name)))
+                // 双重检查
+                if (_createdTables.ContainsKey(tableTypeKey))
                     return;
 
                 var ctx = PeekContextInternal();
@@ -190,11 +206,14 @@ namespace LiteOrm
                 {
                     var connection = ctx.DbConnection;
                     var sqlBuilder = SqlBuilder;
+                    var cols = tableDefinition.Columns;
 
                     if (!_tableColumns.ContainsKey(tableName))
                     {
+                        // 表不在缓存中，需要检查数据库
                         if (!TableExistsSync(connection, sqlBuilder, tableName))
                         {
+                            // 表不存在，创建新表
                             ExecuteSqlSync(connection, sqlBuilder.BuildCreateTableSql(tableName, cols));
                             foreach (var col in cols.Where(c => c.IsIndex || c.IsUnique))
                                 try { ExecuteSqlSync(connection, sqlBuilder.BuildCreateIndexSql(tableName, col)); } catch { }
@@ -202,6 +221,7 @@ namespace LiteOrm
                         }
                         else
                         {
+                            // 表存在，获取现有列
                             var existingCols = GetExistingColumnsSync(connection, sqlBuilder.ToSqlName(tableName));
                             var missing = cols.Where(c => !existingCols.Contains(c.Name)).ToList();
                             if (missing.Count > 0)
@@ -217,7 +237,8 @@ namespace LiteOrm
                     }
                     else
                     {
-                        knownCols = _tableColumns[tableName];
+                        // 表在缓存中，检查是否需要添加列
+                        var knownCols = _tableColumns[tableName];
                         var missing = cols.Where(c => !knownCols.Contains(c.Name)).ToList();
                         if (missing.Count > 0)
                         {
@@ -234,6 +255,9 @@ namespace LiteOrm
                             _tableColumns[tableName] = newCols;
                         }
                     }
+
+                    // 标记这个表和类型组合已处理
+                    _createdTables.TryAdd(tableTypeKey, 0);
                 }
                 finally
                 {
@@ -250,23 +274,32 @@ namespace LiteOrm
         /// 确保指定表已在数据库中存在且包含所有必要的列。
         /// 异步版本，供初始化器调用。
         /// </summary>
-        public async Task EnsureTableAsync(string tableName, IEnumerable<ColumnDefinition> columns)
+        public async Task EnsureTableAsync(Type objectType, string[] tableArgs = null)
         {
-            var cols = columns as ColumnDefinition[] ?? columns.ToArray();
-
+            if (!SyncTable || typeof(IArged).IsAssignableFrom(objectType) && (tableArgs == null || tableArgs.Length == 0)) return;
             // 只读池直接转发给主库执行
             if (MasterPool != null) {
-                await MasterPool.EnsureTableAsync(tableName, cols).ConfigureAwait(false); 
-            return; }
+                await MasterPool.EnsureTableAsync(objectType, tableArgs).ConfigureAwait(false); 
+                return;
+            }           
 
-            if (_tableColumns.TryGetValue(tableName, out var knownCols) && cols.All(c => knownCols.Contains(c.Name)))
+            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
+            string tableName = tableArgs != null && tableArgs.Length > 0
+                ? string.Format(tableDefinition.Name, tableArgs)
+                : tableDefinition.Name;
+
+            string tableTypeKey = GetTableTypeKey(tableName, objectType);
+
+            // 检查该表和类型的组合是否已处理
+            if (_createdTables.ContainsKey(tableTypeKey))
                 return;
 
             var sem = GetTableCreationLock(tableName);
             await sem.WaitAsync(10000).ConfigureAwait(false);
             try
             {
-                if (_tableColumns.TryGetValue(tableName, out knownCols) && cols.All(c => knownCols.Contains(c.Name)))
+                // 双重检查
+                if (_createdTables.ContainsKey(tableTypeKey))
                     return;
 
                 var ctx = await PeekContextInternalAsync().ConfigureAwait(false);
@@ -274,11 +307,14 @@ namespace LiteOrm
                 {
                     var connection = ctx.DbConnection;
                     var sqlBuilder = SqlBuilder;
+                    var cols = tableDefinition.Columns;
 
                     if (!_tableColumns.ContainsKey(tableName))
                     {
+                        // 表不在缓存中，需要检查数据库
                         if (!await TableExistsAsync(connection, sqlBuilder, tableName).ConfigureAwait(false))
                         {
+                            // 表不存在，创建新表
                             await ExecuteSqlAsync(connection, sqlBuilder.BuildCreateTableSql(tableName, cols)).ConfigureAwait(false);
                             foreach (var col in cols.Where(c => c.IsIndex || c.IsUnique))
                                 try { await ExecuteSqlAsync(connection, sqlBuilder.BuildCreateIndexSql(tableName, col)).ConfigureAwait(false); } catch { }
@@ -286,6 +322,7 @@ namespace LiteOrm
                         }
                         else
                         {
+                            // 表存在，获取现有列
                             var existingCols = await GetExistingColumnsAsync(connection, sqlBuilder.ToSqlName(tableName)).ConfigureAwait(false);
                             var missing = cols.Where(c => !existingCols.Contains(c.Name)).ToList();
                             if (missing.Count > 0)
@@ -301,7 +338,8 @@ namespace LiteOrm
                     }
                     else
                     {
-                        knownCols = _tableColumns[tableName];
+                        // 表在缓存中，检查是否需要添加列
+                        var knownCols = _tableColumns[tableName];
                         var missing = cols.Where(c => !knownCols.Contains(c.Name)).ToList();
                         if (missing.Count > 0)
                         {
@@ -318,6 +356,9 @@ namespace LiteOrm
                             _tableColumns[tableName] = newCols;
                         }
                     }
+
+                    // 标记这个表和类型组合已处理
+                    _createdTables.TryAdd(tableTypeKey, 0);
                 }
                 finally
                 {
@@ -678,6 +719,9 @@ namespace LiteOrm
                     {
                         sem.Dispose();
                     }
+
+                    _tableColumns.Clear();
+                    _createdTables.Clear();
 
                     _semaphore?.Dispose();
                 }

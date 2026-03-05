@@ -63,7 +63,6 @@ namespace LiteOrm
         private string _fromTable = null;
         private ArgumentOutOfRangeException _exceptionWrongKeys;
         private Dictionary<SqlColumn, string> _columnSqlCache = new Dictionary<SqlColumn, string>();
-        private string _ensuredTableName;
         #endregion
 
 
@@ -246,7 +245,7 @@ namespace LiteOrm
         /// <returns></returns>
         public virtual DbCommandProxy NewCommand()
         {
-            EnsureTableExists();
+            DAOContext?.Pool?.EnsureTable(ObjectType, TableArgs);
             return new DbCommandProxy(DAOContext, SqlBuilder);
         }
 
@@ -294,11 +293,12 @@ namespace LiteOrm
         /// </summary>
         /// <param name="sql">SQL 语句，SQL 中可以包含已命名的参数。</param>
         /// <param name="paramValues">参数列表，为空时表示没有参数。Key 需要与 SQL 中的参数名称对应。</param>
+        /// <param name="replaceHandler">自定义替换方法，返回替换值或null表示使用默认替换。为空时使用默认替换。</param>
         /// <returns>IDbCommand 实例。</returns>
-        protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues)
+        protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues, Func<string, string> replaceHandler = null)
         {
             DbCommandProxy command = NewCommand();
-            command.CommandText = ReplaceParam(sql);
+            command.CommandText = MutiReplacerInstance.Replace(sql, replaceHandler);
             if (paramValues is not null)
                 foreach (KeyValuePair<string, object> para in paramValues)
                 {
@@ -351,31 +351,19 @@ namespace LiteOrm
 #if NET8_0_OR_GREATER
         public virtual ValueResult<T> GetValue<T>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
-            string sql = ReplaceParam(sqlBody.GetSqlResult());
-            var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
+            var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());
             return new ValueResult<T>(command);
         }
 
         public virtual NonQueryResult Execute([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
-            string sql = ReplaceParam(sqlBody.GetSqlResult());
-            var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
+            var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());
             return new NonQueryResult(command);
         }
 #endif
 
-        /// <summary>
-        /// 需要替换的关键字和内容的字典
-        /// </summary>
-        private Dictionary<string, string> _replacements;
-        protected Dictionary<string, string> Replacements{
-            get{
-                if (_replacements == null) _replacements = GetReplacements();
-                return _replacements;
-            }
-        }
-
-        protected virtual Dictionary<string, string> GetReplacements(){
+        protected virtual Dictionary<string, string> GetReplacements()
+        {
             return new Dictionary<string, string>
             {
                 { ParamTable, FactTableName },
@@ -385,119 +373,23 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 字典树节点
+        /// MutiReplacer实例
         /// </summary>
-        private class TrieNode
-        {
-            public Dictionary<char, TrieNode> Children { get; set; } = new Dictionary<char, TrieNode>();
-            public string Replacement { get; set; }
-            public bool IsEndOfWord { get; set; }
-        }
-
-        /// <summary>
-        /// 字典树
-        /// </summary>
-        private class Trie
-        {
-            private readonly TrieNode root = new TrieNode();
-
-            public void Insert(string key, string replacement)
-            {
-                TrieNode node = root;
-                foreach (char c in key)
-                {
-                    if (!node.Children.TryGetValue(c, out TrieNode value))
-                    {
-                        value = new TrieNode();
-                        node.Children[c] = value;
-                    }
-                    node = value;
-                }
-                node.IsEndOfWord = true;
-                node.Replacement = replacement;
-            }
-
-            public (int length, string replacement) FindLongestMatch(string text, int startIndex)
-            {
-                TrieNode node = root;
-                int maxLength = 0;
-                string foundReplacement = null;
-                int currentLength = 0;
-
-                for (int i = startIndex; i < text.Length; i++)
-                {
-                    char c = text[i];
-                    if (!node.Children.ContainsKey(c))
-                    {
-                        break;
-                    }
-                    node = node.Children[c];
-                    currentLength++;
-                    if (node.IsEndOfWord)
-                    {
-                        maxLength = currentLength;
-                        foundReplacement = node.Replacement;
-                    }
-                }
-
-                return (maxLength, foundReplacement);
-            }
-        }
-
-        /// <summary>
-        /// 字典树实例
-        /// </summary>
-        private Trie _trie;
-        private Trie TrieInstance
+        private MutiReplacer _mutiReplacer;
+        private MutiReplacer MutiReplacerInstance
         {
             get
             {
-                if (_trie == null)
+                if (_mutiReplacer == null)
                 {
-                    _trie = new Trie();
-                    foreach (var replacement in Replacements)
+                    _mutiReplacer = new MutiReplacer();
+                    foreach (var replacement in GetReplacements())
                     {
-                        _trie.Insert(replacement.Key, replacement.Value);
+                        _mutiReplacer.Insert(replacement.Key, replacement.Value);
                     }
                 }
-                return _trie;
+                return _mutiReplacer;
             }
-        }
-
-        /// <summary>
-        /// 替换 SQL 中的标记为实际 SQL
-        /// </summary>
-        /// <param name="sqlWithParam">包含标记的 SQL 语句</param>
-        /// <returns></returns>
-        protected virtual string ReplaceParam(string sqlWithParam)
-        {
-            if (string.IsNullOrEmpty(sqlWithParam))
-            {
-                return sqlWithParam;
-            }
-
-            Span<char> initialBuffer = stackalloc char[sqlWithParam.Length];
-            var result = new ValueStringBuilder(initialBuffer);
-            int i = 0;
-
-            while (i < sqlWithParam.Length)
-            {
-                var (length, replacement) = TrieInstance.FindLongestMatch(sqlWithParam, i);
-                if (length > 0 && replacement != null)
-                {
-                    result.Append(replacement);
-                    i += length;
-                }
-                else
-                {
-                    result.Append(sqlWithParam[i]);
-                    i++;
-                }
-            }
-
-            string finalResult = result.ToString();
-            result.Dispose();
-            return finalResult;
         }
 
         /// <summary>
@@ -694,20 +586,6 @@ namespace LiteOrm
         protected string ToNativeName(string paramName)
         {
             return SqlBuilder.ToNativeName(paramName);
-        }
-
-        /// <summary>
-        /// 确保当前表已在数据库中创建，若不存在则自动创建（仅当数据源开启了自动建表时生效）。
-        /// </summary>
-        protected void EnsureTableExists()
-        {
-            if (IsView) return;
-            var pool = DAOContext?.Pool;
-            if (pool == null || !pool.SyncTable) return;
-            string tableName = FactTableName;
-            if (tableName == _ensuredTableName) return;
-            pool.EnsureTable(tableName, TableDefinition.Columns);
-            _ensuredTableName = tableName;
         }
 
         #endregion
