@@ -291,6 +291,18 @@ namespace LiteOrm.Common
         public static SelectItemExpr As(this ValueTypeExpr expr, string name) => new SelectItemExpr(expr, name);
 
         /// <summary>
+        /// 为From表达式设置别名。
+        /// </summary>
+        /// <param name="fromExpr">From表达式</param>
+        /// <param name="alias">别名</param>
+        /// <returns>带有别名的From表达式</returns>
+        public static FromExpr As(this FromExpr fromExpr, string alias)
+        {
+            fromExpr.Alias = alias;
+            return fromExpr;
+        }
+
+        /// <summary>
         /// 创建 IS NULL 表达式。
         /// </summary>
         /// <param name="left">左侧值表达式。</param>
@@ -321,7 +333,8 @@ namespace LiteOrm.Common
         /// <typeparam name="T">目标对象类型。</typeparam>
         /// <returns>对应的 ISqlSegment 对象。</returns>
         /// <exception cref="ArgumentException">当 expr 参数类型不是 null、LogicExpr 或 ISqlSegment 时抛出。</exception>
-        public static ISqlSegment ToSource<T>(this Expr expr) {
+        public static ISqlSegment ToSource<T>(this Expr expr)
+        {
             return expr.ToSource(typeof(T));
         }
 
@@ -332,7 +345,8 @@ namespace LiteOrm.Common
         /// <param name="objectType">目标对象类型。</param>
         /// <returns>对应的 ISqlSegment 对象。</returns>
         /// <exception cref="ArgumentException">当 expr 参数类型不是 null、LogicExpr 或 ISqlSegment 时抛出。</exception>
-        public static ISqlSegment ToSource(this Expr expr, Type objectType) {
+        public static ISqlSegment ToSource(this Expr expr, Type objectType)
+        {
             if (expr is null)
             {
                 return new FromExpr(objectType);
@@ -352,7 +366,8 @@ namespace LiteOrm.Common
                 {
                     fromExpr.ObjectType = objectType;
                 }
-                else{
+                else
+                {
                     firstSource.Source = new FromExpr(objectType);
                 }
                 return sourceExpr;

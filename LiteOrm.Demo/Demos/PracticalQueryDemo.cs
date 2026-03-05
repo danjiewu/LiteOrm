@@ -41,7 +41,7 @@ namespace LiteOrm.Demo.Demos
                 var minAge = 18;
                 var searchName = "王";
 
-                PrintSection("📋 场景说明", 
+                PrintSection("📋 场景说明",
                     "使用 Lambda 表达式进行链式查询，包括 WHERE、ORDER BY 和分页");
 
                 PrintSection("📝 代码实现",
@@ -162,11 +162,11 @@ namespace LiteOrm.Demo.Demos
                     "bool isEquivalent = lambdaExprConverted.Equals(exprModel);");
 
                 // 方式1：Lambda 表达式
-                System.Linq.Expressions.Expression<System.Func<System.Linq.IQueryable<User>, 
+                System.Linq.Expressions.Expression<System.Func<System.Linq.IQueryable<User>,
                     System.Linq.IQueryable<User>>> lambdaExpr = q => q.Where(u => u.Age > 25);
 
                 // 方式2：Expr 模型
-                var exprModel = Expr.From<User>()
+                var exprModel = Expr.From<User>().As("User")
                     .Where(Expr.Prop("Age") > 25);
 
                 // 验证等价性
@@ -228,7 +228,7 @@ namespace LiteOrm.Demo.Demos
 
                 PrintSection("✅ 查询结果",
                     $"共返回 {results.Count} 条记录\n" +
-                    (results.Count > 0 ? string.Join("\n", results.ConvertAll(r => 
+                    (results.Count > 0 ? string.Join("\n", results.ConvertAll(r =>
                         $"  • {r.UserName} (年龄: {r.Age})")) : "  • 无匹配记录"));
 
                 Console.WriteLine("✓ 演示4 完成\n");
