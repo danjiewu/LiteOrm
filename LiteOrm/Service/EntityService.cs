@@ -850,7 +850,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>是否删除成功。</returns>
-        public async Task<bool> DeleteIDAsync(object id, string[] tableArgs, CancellationToken cancellationToken = default)
+        public async Task<bool> DeleteIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await DeleteIDCoreAsync(id, tableArgs, cancellationToken);
         }
