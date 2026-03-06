@@ -217,7 +217,8 @@ namespace LiteOrm.Common
         /// <summary>
         /// 使用 IQueryable 形式的 Lambda 表达式查询数据。
         /// </summary>
-        /// <typeparam name="T">实体类型。</typeparam>
+        /// <typeparam name="TInput">实体类型。</typeparam>
+        /// <typeparam name="TResult">查询结果类型。</typeparam>
         /// <param name="dataViewDao">IDataViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <returns>查询结果数据表。</returns>
@@ -243,7 +244,8 @@ namespace LiteOrm.Common
         /// <summary>
         /// 指定字段并使用 IQueryable 形式的 Lambda 表达式查询数据。
         /// </summary>
-        /// <typeparam name="T">实体类型。</typeparam>
+        /// <typeparam name="TInput">实体类型。</typeparam>
+        /// <typeparam name="TResult">查询结果类型。</typeparam>
         /// <param name="dataViewDao">IDataViewDAO 实例。</param>
         /// <param name="propertyNames">要查询的字段名称列表。</param>
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>

@@ -136,7 +136,7 @@ namespace LiteOrm.Common
         /// <returns>外键 EXISTS 表达式。</returns>
         public static bool Exists<T>(Expression<Func<T, bool>> lambda)
         {
-            return lambda.Compile()(default);
+            throw new InvalidOperationException("The Expr.Exists method is only used for parsing lambda expressions and cannot be called directly.");
         }
 
         /// <summary>

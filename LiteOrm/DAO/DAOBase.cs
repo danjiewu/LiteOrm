@@ -17,17 +17,17 @@ namespace LiteOrm
     /// 提供常用的数据访问操作基类
     /// </summary>
     /// <remarks>
-    /// ObjectDAOBase 是一个抽象基类，为各种数据访问对象(DAO)提供通用的操作方法。
+    /// DAOBase 是一个抽象基类，为各种数据访问对象(DAO)提供通用的操作方法。
     /// 它封装了与数据库交互的常见操作，如生成SQL语句、创建数据库命令、处理参数等。
+    /// 通过 AutoRegister 特性自动注册为 Scoped 实例，方便在应用程序中使用依赖注入框架进行管理。
     /// 
     /// 主要功能包括：
     /// 1. SQL语句和命令构建 - 根据对象类型和表定义生成SQL语句
-    /// 2. 参数处理 - 处理带参数的SQL语句和命名参数
-    /// 3. 条件构建 - 基于条件对象生成WHERE子句
-    /// 4. 数据转换 - 在数据库值和对象属性值之间进行转换
-    /// 5. 排序和字段选择 - 处理ORDER BY子句和SELECT字段列表
+    /// 2. 参数处理 - 将对象属性值转换为数据库参数，并将数据库值转换回对象属性值
+    /// 3. 错误处理 - 提供方法检查主键定义和类型匹配，并抛出相应的异常
+    /// 4. 预定义变量 - 定义了一些常用的SQL标记，如{Where}、{Table}、{From}和{AllFields}，方便在SQL模板中使用
+    /// 5. 扩展性 - 通过虚方法和抽象属性，允许子类根据具体需求重写和扩展功能，如处理视图、添加更多的SQL替换标记等。
     /// 
-    /// 该类通过依赖注入框架自动注册为单例。
     /// </remarks>
     [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
     public abstract class DAOBase : IExprStringBuildContext
@@ -64,7 +64,6 @@ namespace LiteOrm
         private ArgumentOutOfRangeException _exceptionWrongKeys;
         private Dictionary<SqlColumn, string> _columnSqlCache = new Dictionary<SqlColumn, string>();
         #endregion
-
 
         #region 属性
         /// <summary>
@@ -349,11 +348,23 @@ namespace LiteOrm
         }
 
 #if NET8_0_OR_GREATER
+        /// <summary>
+        /// 执行带有命名参数的 SQL 语句，并返回结果值。SQL 语句可以包含 Expr 或变量值。
+        /// </summary>
+        /// <typeparam name="T">结果类型</typeparam>
+        /// <param name="sqlBody"></param>
+        /// <returns></returns>
         public virtual ValueResult<T> GetValue<T>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
             var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());
             return new ValueResult<T>(command);
         }
+
+        /// <summary>
+        /// 执行带有命名参数的 SQL 语句，并返回受影响的行数。SQL 语句可以包含 Expr 或变量值。
+        /// </summary>
+        /// <param name="sqlBody"></param>
+        /// <returns></returns>
 
         public virtual NonQueryResult Execute([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
@@ -362,6 +373,10 @@ namespace LiteOrm
         }
 #endif
 
+        /// <summary>
+        /// 生成替换标记的默认字符串的字典，标记为以下之一： {Table}、{From} 和 {AllFields}，子类可以重写此方法添加更多的替换标记或修改现有标记的值。
+        /// </summary>
+        /// <returns></returns>
         protected virtual Dictionary<string, string> GetReplacements()
         {
             return new Dictionary<string, string>

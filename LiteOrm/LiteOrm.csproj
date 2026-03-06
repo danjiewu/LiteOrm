@@ -15,7 +15,7 @@
 		<PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
-		<PackageReleaseNotes></PackageReleaseNotes>
+		<PackageReleaseNotes>SessionManager生命周期自动管理及bug修复。</PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

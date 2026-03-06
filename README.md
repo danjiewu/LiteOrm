@@ -18,7 +18,7 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架。结合了微 ORM 的
 
 ## 📋 环境要求
 
-- **.NET 8.0+** 或 **.NET 10.0+**
+- **.NET 8.0+**
 - **.NET Standard 2.0**（兼容 .NET Framework 4.6.1+）
 - **依赖库**：Autofac、Castle.Core
 
@@ -75,20 +75,33 @@ public class User
 
 在 `Program.cs` 中注册：
 
+**Console：**
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
     .RegisterLiteOrm()  // 自动初始化
     .Build();
 ```
 
+**ASP.NET Core：**
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+builder.Host.RegisterLiteOrm();  // 通过 IHostBuilder 扩展方法集成
+```
+
 ### 3. 定义服务
 
 ```csharp
-public interface IUserService : IEntityService<User>, IEntityServiceAsync<User>
+// 定义视图模型（用于查询，可包含关联字段）
+public class UserView : User { }
+
+public interface IUserService :
+    IEntityService<User>, IEntityServiceAsync<User>,
+    IEntityViewService<UserView>, IEntityViewServiceAsync<UserView>
 {
 }
 
-public class UserService : EntityService<User>, IUserService
+
+public class UserService : EntityService<User, UserView>, IUserService
 {
 }
 ```

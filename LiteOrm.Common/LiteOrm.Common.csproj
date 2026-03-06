@@ -16,6 +16,7 @@
     <Description>LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架。</Description>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReleaseNotes>SessionManager生命周期自动管理及bug修复。</PackageReleaseNotes>
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <LangVersion>12.0</LangVersion>
@@ -28,10 +29,6 @@
     <OutputPath />
   </PropertyGroup>
   <ItemGroup>
-    <None Include="..\LICENSE">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
     <None Include="..\README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>

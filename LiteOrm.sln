@@ -15,11 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.Benchmark", "LiteOr
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{887B819B-42AD-47EF-97D1-E3A38FC2DD6B}"
 	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
 		LITEORM_API_REFERENCE.md = LITEORM_API_REFERENCE.md
 		README.md = README.md
 	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.WebApi", "LiteOrm.WebApi\LiteOrm.WebApi.csproj", "{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -91,25 +90,13 @@ Global
 		{EB620150-BFE7-48FD-8007-160E96B628CA}.Release|x64.Build.0 = Release|Any CPU
 		{EB620150-BFE7-48FD-8007-160E96B628CA}.Release|x86.ActiveCfg = Release|Any CPU
 		{EB620150-BFE7-48FD-8007-160E96B628CA}.Release|x86.Build.0 = Release|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Debug|x64.Build.0 = Debug|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Debug|x86.Build.0 = Debug|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Release|x64.ActiveCfg = Release|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Release|x64.Build.0 = Release|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Release|x86.ActiveCfg = Release|Any CPU
-		{9ABDDF85-C324-4210-B5AD-2A3D62BC5F45}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
 		VisualSVNWorkingCopyRoot = .
+		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
 	EndGlobalSection
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True

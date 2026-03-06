@@ -25,7 +25,7 @@ namespace LiteOrm
     /// 4. 批量操作 - 支持批量插入、更新、删除等操作
     /// 5. 事务支持 - 支持事务处理以确保数据一致性
     /// 
-    /// 该类继承自 ObjectDAOBase，使用泛型参数 T 来指定具体的实体类型，
+    /// 该类继承自 DAOBase，使用泛型参数 T 来指定具体的实体类型，
     /// 提供强类型的数据访问接口。
     /// </remarks>
     [AutoRegister(ServiceLifetime.Scoped)]

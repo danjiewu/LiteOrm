@@ -27,7 +27,6 @@ namespace LiteOrm
     /// 6. 异步支持 - 提供异步执行方法以支持异步编程
     /// 7. 资源管理 - 实现 IDisposable 接口确保资源正确释放
     /// 8. 会话生命周期 - 支持进入和退出会话的操作
-    /// 9. 批量操作支持 - 提供批量操作的上下文管理
     /// 
     /// 该类通过依赖注入框架以 Scoped 方式注册，每个请求/任务有一个实例。
     /// 使用 AsyncLocal 确保在异步调用中正确维护会话上下文。
@@ -35,37 +34,11 @@ namespace LiteOrm
     /// 使用示例：
     /// <code>
     /// var sessionManager = SessionManager.Current;
-    /// 
-    /// // 进入会话
-    /// using (sessionManager.Enter())
-    /// {
-    ///     try
-    ///     {
-    ///         // 开始事务
-    ///         sessionManager.BeginTransaction();
-    ///         
-    ///         // 执行数据库操作
-    ///         var user = userService.GetObject(userId);
-    ///         user.Name = \"New Name\";
-    ///         userService.Update(user);
-    ///         
-    ///         // 提交事务
-    ///         sessionManager.CommitTransaction();
-    ///     }
-    ///     catch
-    ///     {
-    ///         // 回滚事务
-    ///         sessionManager.RollbackTransaction();
-    ///         throw;
-    ///     }
-    /// }
-    /// 
-    /// // 异步操作
-    /// await SessionManager.Current.ExecuteInSessionAsync(async () =&gt;
+    /// await sessionManager.ExecuteInTransactionAsync(sm =&gt;
     /// {
     ///     var data = await service.GetAsync(id);
-    ///     return data;
-    /// });
+    ///     return data;    
+    /// }
     /// </code>
     /// </remarks>
     [AutoRegister(ServiceLifetime.Scoped)]
@@ -76,12 +49,11 @@ namespace LiteOrm
         private readonly object _syncLock = new object();
         private bool _disposed = false;
 
-        private ConcurrentDictionary<string, DAOContext> _daoContexts = new ConcurrentDictionary<string, DAOContext>(StringComparer.OrdinalIgnoreCase);
-        private LinkedList<string> _sqlStack = new LinkedList<string>();
+        private readonly ConcurrentDictionary<string, DAOContext> _daoContexts = new ConcurrentDictionary<string, DAOContext>(StringComparer.OrdinalIgnoreCase);
+        private readonly LinkedList<string> _sqlStack = new LinkedList<string>();
         private string _currentTransactionId;
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
         private static readonly AsyncLocal<SessionManager> _currentAsyncLocal = new AsyncLocal<SessionManager>();
-        private SessionManager _preSession;
 
         /// <summary>
         /// 唯一会话ID

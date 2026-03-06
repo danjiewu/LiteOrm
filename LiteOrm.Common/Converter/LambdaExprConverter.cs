@@ -243,6 +243,11 @@ namespace LiteOrm.Common
             return result;
         }
 
+        /// <summary>
+        /// 将参数表达式转换为 Expr 对象。通常情况下，参数表达式会映射为 FromExpr 或 ForeignExpr 对象，代表查询中的表或关联表。
+        /// </summary>
+        /// <param name="parameter">参数表达式</param>
+        /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertParameter(ParameterExpression parameter)
         {
             _parameterExprs.TryGetValue(parameter.Name, out var expr);

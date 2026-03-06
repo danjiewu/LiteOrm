@@ -79,7 +79,9 @@ namespace LiteOrm.Service
         /// 实体存在则更新，否则新增
         /// </summary>
         /// <param name="entity">实体</param>
-        /// <returns></returns>
+        /// <returns>
+        /// true:成功
+        /// false:失败</returns>
         bool UpdateOrInsert(T entity);
         /// <summary>
         /// 删除实体
@@ -122,7 +124,7 @@ namespace LiteOrm.Service
     }
 
     /// <summary>
-    /// 实体类更改接口
+    /// 非泛型实体更改基接口，定义对任意实体类型的增删改操作
     /// </summary>
     [ServicePermission(false)]
     [AutoRegister(false)]
