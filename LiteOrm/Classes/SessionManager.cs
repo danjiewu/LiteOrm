@@ -1,6 +1,8 @@
-﻿using LiteOrm.Common;
+﻿using Autofac;
+using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -79,6 +81,7 @@ namespace LiteOrm
         private string _currentTransactionId;
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
         private static readonly AsyncLocal<SessionManager> _currentAsyncLocal = new AsyncLocal<SessionManager>();
+        private SessionManager _preSession;
 
         /// <summary>
         /// 唯一会话ID
@@ -101,34 +104,12 @@ namespace LiteOrm
         {
             _daoContextPoolFactory = daoContextPoolFactory ?? throw new ArgumentNullException(nameof(daoContextPoolFactory));
             _logger = logger;
-        }
-
-        /// <summary>
-        /// 进入当前上下文，置 SessionManager.Current 为为当前实例的副本
-        /// </summary>
-        /// <returns>上下文作用域对象，在 Dispose 时恢复之前的 Current</returns>
-        public IDisposable CreateScope()
-        {
-            EnsureNotDisposed();
-            // 返回一个作用域对象，在作用域结束时恢复之前的 Current
-            return new SessionScope(this);
+            _logger?.LogDebug($"会话 {SessionID} 已创建。");
         }
 
         private void EnsureNotDisposed()
         {
             if (_disposed) throw new ObjectDisposedException(nameof(SessionManager));
-        }
-
-        /// <summary>
-        /// 创建当前 SessionManager 的一个副本
-        /// </summary>
-        /// <returns>新的 SessionManager 实例</returns>
-        private SessionManager CreateCopy()
-        {
-            return new SessionManager(
-                _daoContextPoolFactory,
-                _logger
-            );
         }
 
         /// <summary>
@@ -413,6 +394,14 @@ namespace LiteOrm
             _daoContexts.Clear();
         }
 
+        /// <summary>
+        /// 返回会话的字符串表示，包含会话ID
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            return $"Session[{SessionID}]";
+        }
         #region IDisposable 实现
 
         ///<inheritdoc/> 
@@ -427,8 +416,9 @@ namespace LiteOrm
         /// </summary>
         /// <param name="disposing">是否为显式调用</param>
         protected virtual void Dispose(bool disposing)
-        {
+        {            
             if (_disposed) return;
+            _logger?.LogDebug($"会话 {SessionID} {(disposing ? "程序" : "析构")}注销。");
             _disposed = true;
             if (disposing)
             {
@@ -457,40 +447,7 @@ namespace LiteOrm
         ~SessionManager()
         {
             Dispose(false);
-        }
-
-        /// <summary>
-        /// 会话作用域
-        /// </summary>
-        private class SessionScope : IDisposable
-        {
-            private readonly SessionManager _sessionManager;
-            private readonly SessionManager _previousSessionManager;
-            private bool _disposed = false;
-
-            public SessionScope(SessionManager sessionManager)
-            {
-                _previousSessionManager = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
-                _sessionManager = sessionManager.CreateCopy();
-                Current = _sessionManager;
-
-            }
-
-            public void Dispose()
-            {
-                if (_disposed) return;
-                // 即使Dispose抛出异常，也要尝试恢复之前的SessionManager
-                try
-                {
-                    _sessionManager.Dispose();
-                }
-                finally
-                {
-                    Current = _previousSessionManager;
-                    _disposed = true;
-                }
-            }
-        }
+        }       
         #endregion
     }
 

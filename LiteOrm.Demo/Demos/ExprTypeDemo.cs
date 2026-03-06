@@ -15,9 +15,9 @@ namespace LiteOrm.Demo.Demos
 
         public static void RunAll()
         {
-            Console.WriteLine("===== LiteOrm 表达式全方案演示 =====");
+            Console.WriteLine("===== 1. 表达式全方案演示 =====");
 
-            ShowSection("1. 基础值与属性表达式", () => {
+            ShowSection("1.1 基础值与属性表达式", () => {
                 // [方式1] 构造函数
                 var p1 = new PropertyExpr("Age");
                 Print(p1, "属性 (构造函数方式)", "new PropertyExpr(\"Age\")");
@@ -27,7 +27,7 @@ namespace LiteOrm.Demo.Demos
                 Print(v2, "常量值 (工厂方式)", "Expr.Const(\"张三\")");
             });
 
-            ShowSection("2. 逻辑比较与组合", () => {
+            ShowSection("1.2 逻辑比较与组合", () => {
                 var age = Expr.Prop("Age");
                 var dept = Expr.Prop("DeptId");
 
@@ -43,7 +43,7 @@ namespace LiteOrm.Demo.Demos
                 Print(composite2, "逻辑组合 (Fluent方式)", "age.GreaterThan(20).And(dept.In(101, 102))");
             });
 
-            ShowSection("3. 结构化查询模型 (Select/Update/Delete)", () => {
+            ShowSection("1.3 结构化查询模型 (Select/Update/Delete)", () => {
                 // Select 链式构建
                 var query = Expr.From<User>()
                     .Where(Expr.Prop("Age") > 20)
@@ -62,12 +62,12 @@ namespace LiteOrm.Demo.Demos
                 Print(update, "UPDATE 模型", "new UpdateExpr(Expr.From<User>(), Expr.Prop(\"Id\") == 1) { Sets = { (\"UserName\", \"NewName\") } }");
             });
 
-            ShowSection("4. Lambda 自动转换", () => {
+            ShowSection("1.4 Lambda 自动转换", () => {
                 var composite = Expr.Lambda<User>(u => u.Age > 25 && u.UserName.Contains("A"));
                 Print(composite, "Lambda 转 Expr", "Expr.Exp<User>(u => u.Age > 25 && u.UserName.Contains(\"A\"))");
             });
 
-            ShowSection("5. 删除与其它片段 (Delete)", () => {
+            ShowSection("1.5 删除与其它片段 (Delete)", () => {
                 // 删除模型
                 var delete = new DeleteExpr(Expr.From<User>(), Expr.Prop("Age") < 18);
                 Print(delete, "DELETE 模型", "new DeleteExpr(Expr.From<User>(), Expr.Prop(\"Age\") < 18)");
@@ -76,9 +76,7 @@ namespace LiteOrm.Demo.Demos
 
         private static void ShowSection(string title, Action action)
         {
-            Console.WriteLine($"\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine($"  {title}");
-            Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            DemoHelper.PrintSection(title,"");
             action();
         }
 

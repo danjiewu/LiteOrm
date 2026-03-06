@@ -28,18 +28,20 @@ using (var initScope = host.Services.CreateScope())
 
 using (var scope = host.Services.CreateScope())
 {
+
     var serviceFactory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 
-    // [1] 表达式全方案演示 (构造、序列化、Lambda转换)
+    // 1. 表达式全方案演示 (1.1-1.5: 基础、比较、结构化、Lambda转换、删除)
     ExprTypeDemo.RunAll();
 
-    // [2] 综合查询实践与 SQL 输出 (业务查询、数据库交互)
+    // 2. 综合查询实践与 SQL 输出 (2.1-2.4: Lambda链式、序列化、等价性、复杂过滤)
     await PracticalQueryDemo.RunAsync(serviceFactory);
 
-    // [3] 业务流程示例 (事务处理)
+    // 3. 业务流程示例 (事务处理)
     await TransactionDemo.RunThreeTierDemoAsync(serviceFactory);
 
-    // [4] 分表查询演示 (使用 Sales_{0} 表进行月份分表查询)
+    // 4. 分表查询演示 (4.1-4.4: 基础、显式参数、Expr参数、排序)
     await ShardingQueryDemo.RunAsync(serviceFactory);
 }
+
 

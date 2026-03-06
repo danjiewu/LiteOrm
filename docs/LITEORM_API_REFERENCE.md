@@ -70,8 +70,7 @@ LiteOrm 支持为每个主数据源配置若干只读从库，用于读写分离
 - `ReadOnlyConfigs`：可选数组，每项为只读数据源配置对象（可为空）。
 - 每个只读项至少包含 `ConnectionString`，当只读库与主库使用不同驱动时也可指定 `Provider`。
 - LiteOrm 在执行只读操作（例如 SELECT 查询）时会优先选择只读配置，从而减轻主库写入压力并实现读扩展。
-- 如果所有只读配置不可用或未配置，LiteOrm 会回退到主数据源的连接。
-- 可结合连接池与自定义路由策略实现更复杂的读写分离、负载均衡或高可用策略。
+- 事务内部会优先使用主库连接，以保证数据一致性。
 
 ### 2.3 注册 LiteOrm
 
@@ -163,91 +162,108 @@ await userService.InsertAsync(user);
 var users = await userService.SearchAsync(u => u.Age > 18);
 ```
 
-### 2.7 SessionManager 生命周期管理
+### 2.7 SessionManager 自动会话管理
 
-`SessionManager` 是 LiteOrm 的会话核心，负责管理当前请求/任务的数据库连接与事务上下文。通过静态属性 `SessionManager.Current` 可在任意异步上下文中访问当前会话。
+`SessionManager` 是 LiteOrm 的会话核心，负责管理当前请求/任务的数据库连接与事务上下文。框架通过 Autofac 的生命周期事件自动管理 `SessionManager.Current`，**完全无需手动维护**。
 
-`SessionManager` 以 **Scoped** 方式注册，必须在合适的时机赋值给 `SessionManager.Current` 并在结束时调用 `Dispose()`，以确保数据库连接被正确归还到连接池。
+#### 自动管理机制
+
+LiteOrm 框架在 `RegisterLiteOrm()` 时自动注册了生命周期管理器，确保：
+
+1. **自动创建** - DI 容器创建子 Scope 时，自动从该 Scope 中解析 `SessionManager` 并赋值给 `SessionManager.Current`
+2. **自动销毁** - Scope 结束时，自动销毁 `SessionManager` 实例（触发 `Dispose()` 归还所有连接）
+3. **异步隔离** - 使用 `AsyncLocal<T>` 确保在异步调用中正确隔离各 Scope 的会话上下文
+
+开发者无需编写任何生命周期管理代码，框架完全自动处理。
 
 #### ASP.NET Core 应用
 
-需要自定义一个中间件，在每个 HTTP 请求开始时设置 `SessionManager.Current`，并在请求结束时释放会话：
+只需在 `Program.cs` 中调用 `RegisterLiteOrm()`，就已启用所有自动管理：
 
 ```csharp
-public class LiteOrmScopeMiddleware
-{
-    private readonly RequestDelegate _next;
+var builder = WebApplication.CreateBuilder(args);
 
-    public LiteOrmScopeMiddleware(RequestDelegate next)
-    {
-        _next = next;
-    }
+// 注册 LiteOrm - 自动管理 SessionManager.Current 生命周期
+builder.Host.RegisterLiteOrm();
 
-    public async Task InvokeAsync(HttpContext context, SessionManager sessionManager)
-    {
-        SessionManager.Current = sessionManager;
-        try
-        {
-            await _next(context);
-        }
-        finally
-        {
-            SessionManager.Current = null;
-            sessionManager.Dispose();  // 归还所有数据库连接至连接池
-        }
-    }
-}
-```
-
-在 `Program.cs` 中注册该中间件（应在管道较早位置）：
-
-```csharp
 var app = builder.Build();
-
-app.UseMiddleware<LiteOrmScopeMiddleware>();
-
 app.UseRouting();
 app.MapControllers();
 app.Run();
 ```
 
+每个 HTTP 请求都自动获得独立的 `SessionManager` 实例，请求结束时自动释放，**无需任何额外配置**。
+
 #### Generic Host / Console 应用
 
-在 Generic Host 或控制台应用中，每次独立的工作单元（如后台任务、定时任务、CLI 命令等）都需要手动创建 DI 作用域并管理 `SessionManager` 的生命周期：
+创建 DI 作用域时，框架自动管理 `SessionManager.Current`：
 
 ```csharp
-// 从 Host 服务提供者创建 DI 作用域，获取该作用域内的 SessionManager
+// 创建作用域时自动创建新的 SessionManager
 using var scope = host.Services.CreateScope();
-var sessionManager = scope.ServiceProvider.GetRequiredService<SessionManager>();
-SessionManager.Current = sessionManager;
-try
-{
-    // 在此作用域内执行数据库操作
-    var users = userService.Search(u => u.Age > 18);
-    // ...
-}
-finally
-{
-    SessionManager.Current = null;
-    sessionManager.Dispose();  // 归还所有数据库连接至连接池
-}
+
+// SessionManager.Current 自动设置为当前 Scope 的实例
+var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+var users = userService.Search(u => u.Age > 18);
+
+// 作用域结束时，SessionManager 自动销毁
+// 所有数据库连接自动归还到连接池
 ```
 
-#### 并行/嵌套子作用域
+后台任务、定时任务等场景同理，创建 Scope 即自动获得管理的会话。
 
-在同一异步流中若需为子任务隔离独立的数据库连接上下文，可调用 `sessionManager.CreateScope()` 创建子作用域。子作用域会将 `SessionManager.Current` 替换为当前实例的副本，退出 `using` 块时自动释放副本并恢复之前的 `Current`：
+#### 访问当前会话
+
+任何代码中都可通过 `SessionManager.Current` 静态属性访问当前 Scope 的会话（无需赋值）：
 
 ```csharp
-// sessionManager 已是 Current
-using (sessionManager.CreateScope())
+public class UserService : EntityService<User, UserView>, IUserService
 {
-    // 此作用域内 Current 为独立副本，拥有自己的数据库连接
-    var subResult = await someService.QueryAsync();
-    // 退出 using 后，副本自动 Dispose 并恢复原来的 Current
+    [Transaction]  // 声明式事务
+    public bool InsertBatch(List<User> users)
+    {
+        // SessionManager.Current 自动为当前 Scope 的实例
+        foreach (var user in users)
+        {
+            Insert(user);
+        }
+        // 异常时自动回滚，成功时自动提交
+        return true;
+    }
+
+    // 手动事务控制示例
+    public void ManualTransaction()
+    {
+        var sessionManager = SessionManager.Current;  // 直接获取当前 Scope 的实例
+        sessionManager.BeginTransaction();
+        try
+        {
+            Insert(new User { UserName = "test" });
+            sessionManager.Commit();
+        }
+        catch
+        {
+            sessionManager.Rollback();
+            throw;
+        }
+    }
+
+    // 访问 SQL 日志
+    public void DebugSql()
+    {
+        foreach (var sql in SessionManager.Current.SqlStack)
+        {
+            Console.WriteLine(sql);
+        }
+    }
 }
 ```
 
-> **注意：** ASP.NET Core 应用若未注册 `SessionManager` 生命周期中间件，`SessionManager.Current` 将不会被自动管理，数据库操作将无法获取有效的会话上下文。
+> **注意：** 
+> - `SessionManager.Current` 随 DI Scope 的生命周期自动管理，无需手动赋值或调用 `Dispose()`
+> - 不同 Scope 的 `SessionManager` 实例完全隔离，异步调用中也能保证正确隔离
+> - 为确保正确的生命周期管理，务必使用 `RegisterLiteOrm()` 注册框架（而非 `AddLiteOrm()`）
+> - 在 DI Scope 范围内，`SessionManager.Current` 始终可用且指向当前 Scope 的实例
 
 ## 3. 文件结构
 

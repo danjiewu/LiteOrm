@@ -1,5 +1,6 @@
 using Autofac;
 using Autofac.Builder;
+using Autofac.Core.Lifetime;
 using Autofac.Extensions.DependencyInjection;
 using Autofac.Extras.DynamicProxy;
 using Castle.DynamicProxy;
@@ -49,7 +50,24 @@ namespace LiteOrm
                 .ConfigureContainer<ContainerBuilder>((builder, containerBuilder) =>
                 {
                     containerBuilder.RegisterAutoService(callingAssembly);
+                    containerBuilder.RegisterBuildCallback(container =>
+                    {
+                        RegisterScope(container);
+                    });
                 });
+        }
+
+        private static void RegisterScope(ILifetimeScope scope)
+        {
+            scope.ChildLifetimeScopeBeginning += (sender, e) =>
+            {
+                SessionManager.Current = e.LifetimeScope.Resolve<SessionManager>();
+                e.LifetimeScope.CurrentScopeEnding += (s, args) =>
+                {
+                    SessionManager.Current = scope.Resolve<SessionManager>();
+                };
+                RegisterScope(e.LifetimeScope);
+            };
         }
 
         /// <summary>
@@ -103,9 +121,13 @@ namespace LiteOrm
         public static ContainerBuilder RegisterTypeWithInterception(this ContainerBuilder builder, Type implementationType)
         {
             if (implementationType.IsGenericTypeDefinition)
+            {
                 builder.RegisterGeneric(implementationType).AddInterception(implementationType);
+            }
             else
+            {
                 builder.RegisterType(implementationType).AddInterception(implementationType);
+            }
             return builder;
         }
 
@@ -135,7 +157,7 @@ namespace LiteOrm
             else
             {
                 foreach (var serviceType in implementationType.GetInterfaces()
-                    .Where(i => !i.Namespace.StartsWith("System.")
+                    .Where(i => !i.Namespace.StartsWith("System.") && i.Namespace != "System"
                              && (i.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? true)))
                 {
                     if (implementationType.IsGenericTypeDefinition && serviceType.IsGenericType)
@@ -180,6 +202,8 @@ namespace LiteOrm
 
             registration.PropertiesAutowired()
             .SetLifetime(lifetime);
+            if (attribute.AutoActivate)
+                registration.AutoActivate();
             return registration;
         }
 

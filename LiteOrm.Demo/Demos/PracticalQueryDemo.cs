@@ -16,7 +16,7 @@ namespace LiteOrm.Demo.Demos
         public static async Task RunAsync(ServiceFactory factory)
         {
             Console.WriteLine("\n╔════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║       综合查询实践：从 Lambda 到 SQL                        ║");
+            Console.WriteLine("║    2. 综合查询实践：从 Lambda 到 SQL                       ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════╝");
 
             var userSvc = factory.UserService;
@@ -28,12 +28,12 @@ namespace LiteOrm.Demo.Demos
         }
 
         /// <summary>
-        /// 演示1：Lambda 链式查询（推荐方式）
+        /// 演示2.1：Lambda 链式查询（推荐方式）
         /// </summary>
         private static async Task Demo1_LambdaChainQueryAsync(IUserService userSvc)
         {
             Console.WriteLine("\n┌────────────────────────────────────────────────────────────┐");
-            Console.WriteLine("│ 演示1：Lambda 链式查询（推荐方式）                         │");
+            Console.WriteLine("│ 演示2.1：Lambda 链式查询（推荐方式）                       │");
             Console.WriteLine("└────────────────────────────────────────────────────────────┘");
 
             try
@@ -41,10 +41,10 @@ namespace LiteOrm.Demo.Demos
                 var minAge = 18;
                 var searchName = "王";
 
-                PrintSection("📋 场景说明",
+                DemoHelper.PrintSection("📋 场景说明",
                     "使用 Lambda 表达式进行链式查询，包括 WHERE、ORDER BY 和分页");
 
-                PrintSection("📝 代码实现",
+                DemoHelper.PrintSection("📝 代码实现",
                     "var results = await userSvc.SearchAsync(\n" +
                     "    q => q.Where(u => u.Age >= minAge && u.UserName.Contains(searchName))\n" +
                     "          .OrderByDescending(u => u.Id)\n" +
@@ -58,40 +58,40 @@ namespace LiteOrm.Demo.Demos
                 );
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                PrintSection("🔍 执行的 SQL", executedSql);
+                DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
-                PrintSection("✅ 查询结果",
+                DemoHelper.PrintSection("✅ 查询结果",
                     $"共返回 {results.Count} 条记录\n" +
                     (results.Count > 0 ? string.Join("\n", results.ConvertAll(r => $"  • {r.UserName} (年龄: {r.Age})")) : "  • 无匹配记录"));
 
-                Console.WriteLine("✓ 演示1 完成\n");
+                Console.WriteLine("✓ 演示2.1 完成\n");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"✗ 演示1 失败: {ex.Message}\n");
+                Console.WriteLine($"✗ 演示2.1 失败: {ex.Message}\n");
                 Console.ResetColor();
             }
         }
 
         /// <summary>
-        /// 演示2：Expr 模型序列化和反序列化
+        /// 演示2.2：Expr 模型序列化和反序列化
         /// </summary>
         private static async Task Demo2_ExprSerializationAsync(IUserService userSvc)
         {
             Console.WriteLine("┌────────────────────────────────────────────────────────────┐");
-            Console.WriteLine("│ 演示2：Expr 模型序列化和反序列化                           │");
+            Console.WriteLine("│ 演示2.2：Expr 模型序列化和反序列化                         │");
             Console.WriteLine("└────────────────────────────────────────────────────────────┘");
 
             try
             {
-                PrintSection("📋 场景说明",
+                DemoHelper.PrintSection("📋 场景说明",
                     "将查询表达式序列化为 JSON，可用于跨服务传递或存储");
 
                 var minAge = 20;
                 var searchName = "李";
 
-                PrintSection("📝 代码实现",
+                DemoHelper.PrintSection("📝 代码实现",
                     "// 构建 Expr 模型\n" +
                     "var expr = Expr.From<User>()\n" +
                     "    .Where(Expr.Prop(\"Age\") >= minAge)\n" +
@@ -110,48 +110,48 @@ namespace LiteOrm.Demo.Demos
                     .OrderBy(("Id", false))
                     .Section(0, 5);
 
-                PrintSection("💾 序列化前的 Expr",
+                DemoHelper.PrintSection("💾 序列化前的 Expr",
                     expr.ToString());
 
                 // 序列化为 JSON
                 var json = JsonSerializer.Serialize(expr, new JsonSerializerOptions { WriteIndented = false });
-                PrintSection("📄 序列化后的 JSON（示意）",
+                DemoHelper.PrintSection("📄 序列化后的 JSON（示意）",
                     json.Length > 200 ? json.Substring(0, 200) + "..." : json);
 
                 // 执行查询
                 var results = await userSvc.SearchAsync(expr);
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                PrintSection("🔍 执行的 SQL", executedSql);
+                DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
-                PrintSection("✅ 查询结果",
+                DemoHelper.PrintSection("✅ 查询结果",
                     $"共返回 {results.Count} 条记录");
 
-                Console.WriteLine("✓ 演示2 完成\n");
+                Console.WriteLine("✓ 演示2.2 完成\n");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"✗ 演示2 失败: {ex.Message}\n");
+                Console.WriteLine($"✗ 演示2.2 失败: {ex.Message}\n");
                 Console.ResetColor();
             }
         }
 
         /// <summary>
-        /// 演示3：Lambda 和 Expr 的等价性验证
+        /// 演示2.3：Lambda 和 Expr 的等价性验证
         /// </summary>
         private static async Task Demo3_ExprEquivalenceAsync(IUserService userSvc)
         {
             Console.WriteLine("┌────────────────────────────────────────────────────────────┐");
-            Console.WriteLine("│ 演示3：Lambda 和 Expr 的等价性验证                         │");
+            Console.WriteLine("│ 演示2.3：Lambda 和 Expr 的等价性验证                       │");
             Console.WriteLine("└────────────────────────────────────────────────────────────┘");
 
             try
             {
-                PrintSection("📋 场景说明",
+                DemoHelper.PrintSection("📋 场景说明",
                     "验证两种方式构建的查询是否生成相同的 SQL");
 
-                PrintSection("📝 代码实现",
+                DemoHelper.PrintSection("📝 代码实现",
                     "// 方式1：Lambda 表达式\n" +
                     "var lambdaExpr = q => q.Where(u => u.Age > 25);\n\n" +
                     "// 方式2：Expr 模型\n" +
@@ -173,28 +173,28 @@ namespace LiteOrm.Demo.Demos
                 var lambdaExprConverted = LambdaExprConverter.ToSqlSegment(lambdaExpr);
                 bool isEquivalent = lambdaExprConverted.Equals(exprModel);
 
-                PrintSection("🔍 等价性验证结果",
+                DemoHelper.PrintSection("🔍 等价性验证结果",
                     $"Lambda 转换后的 Expr：{lambdaExprConverted}\n\n" +
                     $"手动构建的 Expr：{exprModel}\n\n" +
                     $"是否等价：{(isEquivalent ? "✓ 是（两者生成相同的 SQL）" : "✗ 否（结构不完全相同）")}");
 
-                Console.WriteLine("✓ 演示3 完成\n");
+                Console.WriteLine("✓ 演示2.3 完成\n");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"✗ 演示3 失败: {ex.Message}\n");
+                Console.WriteLine($"✗ 演示2.3 失败: {ex.Message}\n");
                 Console.ResetColor();
             }
         }
 
         /// <summary>
-        /// 演示4：复杂过滤条件组合
+        /// 演示2.4：复杂过滤条件组合
         /// </summary>
         private static async Task Demo4_ComplexFilterAsync(IUserService userSvc)
         {
             Console.WriteLine("┌────────────────────────────────────────────────────────────┐");
-            Console.WriteLine("│ 演示4：复杂过滤条件组合                                    │");
+            Console.WriteLine("│ 演示2.4：复杂过滤条件组合                                  │");
             Console.WriteLine("└────────────────────────────────────────────────────────────┘");
 
             try
@@ -203,10 +203,10 @@ namespace LiteOrm.Demo.Demos
                 var maxAge = 50;
                 var searchName = "张";
 
-                PrintSection("📋 场景说明",
+                DemoHelper.PrintSection("📋 场景说明",
                     "组合多个过滤条件：年龄范围、名字包含、排序和分页");
 
-                PrintSection("📝 代码实现",
+                DemoHelper.PrintSection("📝 代码实现",
                     "var results = await userSvc.SearchAsync(\n" +
                     "    q => q.Where(u => u.Age >= minAge && u.Age <= maxAge)\n" +
                     "          .Where(u => u.UserName.Contains(searchName))\n" +
@@ -224,33 +224,21 @@ namespace LiteOrm.Demo.Demos
                 );
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                PrintSection("🔍 执行的 SQL", executedSql);
+                DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
-                PrintSection("✅ 查询结果",
+                DemoHelper.PrintSection("✅ 查询结果",
                     $"共返回 {results.Count} 条记录\n" +
                     (results.Count > 0 ? string.Join("\n", results.ConvertAll(r =>
                         $"  • {r.UserName} (年龄: {r.Age})")) : "  • 无匹配记录"));
 
-                Console.WriteLine("✓ 演示4 完成\n");
+                Console.WriteLine("✓ 演示2.4 完成\n");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"✗ 演示4 失败: {ex.Message}\n");
+                Console.WriteLine($"✗ 演示2.4 失败: {ex.Message}\n");
                 Console.ResetColor();
             }
-        }
-
-        /// <summary>
-        /// 输出格式化的演示部分
-        /// </summary>
-        private static void PrintSection(string title, string content)
-        {
-            Console.WriteLine();
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"【{title}】");
-            Console.ResetColor();
-            Console.WriteLine(content);
         }
     }
 }

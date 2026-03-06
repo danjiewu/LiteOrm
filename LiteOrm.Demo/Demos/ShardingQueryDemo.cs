@@ -22,7 +22,7 @@ namespace LiteOrm.Demo.Demos
         public static async Task RunAsync(ServiceFactory factory)
         {
             Console.WriteLine("\n╔════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║         分表查询演示 (Sharding Query Demo)                    ║");
+            Console.WriteLine("║    4. 分表查询演示 (Sharding Query Demo)                   ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════╝");
 
             await Demo1_BasicShardingAsync(factory);
@@ -32,12 +32,12 @@ namespace LiteOrm.Demo.Demos
         }
 
         /// <summary>
-        /// 演示1：基础分表查询 - Lambda 内部指定分表参数
+        /// 演示4.1：基础分表查询 - Lambda 内部指定分表参数
         /// </summary>
         private static async Task Demo1_BasicShardingAsync(ServiceFactory factory)
         {
             Console.WriteLine("\n┌────────────────────────────────────────────────────────────┐");
-            Console.WriteLine("│ 演示1：基础分表查询 - Lambda 内部指定分表参数              │");
+            Console.WriteLine("│ 演示4.1：基础分表查询 - Lambda 内部指定分表参数            │");
             Console.WriteLine("└────────────────────────────────────────────────────────────┘");
 
             try
@@ -96,23 +96,23 @@ namespace LiteOrm.Demo.Demos
                     $"共返回 {sales.Count} 条记录：\n" +
                     string.Join("\n", sales.Select(s => $"  • {s.ProductName}: ¥{s.Amount} (销售员: {s.UserName})")));
 
-                Console.WriteLine("✓ 演示1 完成\n");
+                Console.WriteLine("✓ 演示4.1 完成\n");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"✗ 演示1 失败: {ex.Message}\n");
+                Console.WriteLine($"✗ 演示4.1 失败: {ex.Message}\n");
                 Console.ResetColor();
             }
         }
 
         /// <summary>
-        /// 演示2：显式指定参数分表
+        /// 演示4.2：显式指定参数分表
         /// </summary>
         private static async Task Demo2_ExplicitTableArgsAsync(ServiceFactory factory)
         {
             Console.WriteLine("┌────────────────────────────────────────────────────────────┐");
-            Console.WriteLine("│ 演示2：显式指定参数分表                 │");
+            Console.WriteLine("│ 演示4.2：显式指定参数分表                                  │");
             Console.WriteLine("└────────────────────────────────────────────────────────────┘");
 
             try
@@ -160,23 +160,23 @@ namespace LiteOrm.Demo.Demos
                     $"共返回 {sales.Count} 条记录（来自 Sales_202411 表）：\n" +
                     string.Join("\n", sales.Select(s => $"  • {s.ProductName}: ¥{s.Amount} (销售员: {s.UserName})")));
 
-                Console.WriteLine("✓ 演示2 完成\n");
+                Console.WriteLine("✓ 演示4.2 完成\n");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"✗ 演示2 失败: {ex.Message}\n");
+                Console.WriteLine($"✗ 演示4.2 失败: {ex.Message}\n");
                 Console.ResetColor();
             }
         }
 
         /// <summary>
-        /// 演示3：Expr 方式分表
+        /// 演示4.3：Expr 方式分表
         /// </summary>
         private static async Task Demo3_ExprArgsAsync(ServiceFactory factory)
         {
             Console.WriteLine("\n┌────────────────────────────────────────────────────────────┐");
-            Console.WriteLine("│ 演示3：Expr 方式指定分表参数                               │");
+            Console.WriteLine("│ 演示4.3：Expr 方式指定分表参数                             │");
             Console.WriteLine("└────────────────────────────────────────────────────────────┘");
 
             try
@@ -236,23 +236,23 @@ namespace LiteOrm.Demo.Demos
                     $"共返回 {sales.Count} 条记录（来自 Sales_202411 表）：\n" +
                     string.Join("\n", sales.Select(s => $"  • {s.ProductName}: ¥{s.Amount} (销售员: {s.UserName})")));
 
-                Console.WriteLine("✓ 演示3 完成\n");
+                Console.WriteLine("✓ 演示4.3 完成\n");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"✗ 演示3 失败: {ex.Message}\n");
+                Console.WriteLine($"✗ 演示4.3 失败: {ex.Message}\n");
                 Console.ResetColor();
             }
         }
 
         /// <summary>
-        /// 演示4：分表查询结合排序和分页
+        /// 演示4.4：分表查询结合排序和分页
         /// </summary>
         private static async Task Demo4_ShardingWithOrderAsync(ServiceFactory factory)
         {
             Console.WriteLine("┌────────────────────────────────────────────────────────────┐");
-            Console.WriteLine("│ 演示4：分表查询结合排序和分页                             │");
+            Console.WriteLine("│ 演示4.4：分表查询结合排序和分页                            │");
             Console.WriteLine("└────────────────────────────────────────────────────────────┘");
 
             try
@@ -308,12 +308,12 @@ namespace LiteOrm.Demo.Demos
                     $"共返回 {topSales.Count} 条记录（按金额降序，来自 Sales_202412 表）：\n" +
                     string.Join("\n", topSales.Select(s => $"  • {s.ProductName}: ¥{s.Amount}")));
 
-                Console.WriteLine("✓ 演示4 完成\n");
+                Console.WriteLine("✓ 演示4.4 完成\n");
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"✗ 演示4 失败: {ex.Message}\n");
+                Console.WriteLine($"✗ 演示4.4 失败: {ex.Message}\n");
                 Console.ResetColor();
             }
         }
@@ -321,13 +321,6 @@ namespace LiteOrm.Demo.Demos
         /// <summary>
         /// 输出格式化的演示部分
         /// </summary>
-        private static void PrintSection(string title, string content)
-        {
-            Console.WriteLine();
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"【{title}】");
-            Console.ResetColor();
-            Console.WriteLine(content);
-        }
+        private static void PrintSection(string title, string content) => DemoHelper.PrintSection(title, content);
     }
 }

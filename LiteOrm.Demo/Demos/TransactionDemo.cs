@@ -12,7 +12,7 @@ namespace LiteOrm.Demo.Demos
         public static async Task RunThreeTierDemoAsync(ServiceFactory factory)
         {
             Console.WriteLine("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine("  6. 事务与三层架构：");
+            Console.WriteLine("  3. 事务与三层架构：");
             Console.WriteLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             var newUser = new User { UserName = "ThreeTierUser", Age = 25 };
             var initialSale = new SalesRecord { ProductName = "Starter Pack", Amount = 1 };
@@ -25,22 +25,29 @@ namespace LiteOrm.Demo.Demos
                 bool success = await factory.BusinessService.RegisterUserWithInitialSaleAsync(newUser, initialSale);
                 if (success)
                 {
+                    var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                    DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
+
                     Console.WriteLine("事务执行成功，用户和订单同时持久化");
                     var savedUser = await factory.UserService.GetByUserNameAsync(newUser.UserName);
                     if (savedUser != null)
                     {
                         Console.WriteLine($"验证成功：用户 ID={savedUser.Id}, 用户名={savedUser.UserName}");
                     }
+                    
                 }
             }
             catch (Exception ex)
             {
+                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
+
                 Console.WriteLine($"事务执行失败，已回滚: {ex.Message}");
                 var savedUser = await factory.UserService.GetByUserNameAsync(newUser.UserName);
                 if (savedUser == null)
                 {
                     Console.WriteLine("回滚成功：用户未创建");
-                }
+                }               
             }
         }
     }

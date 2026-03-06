@@ -30,6 +30,11 @@ namespace LiteOrm.Common
         public object Key { get; set; }
 
         /// <summary>
+        /// 是否自动激活服务（即在容器构建完成后立即解析实例），默认为 false
+        /// </summary>
+        public bool AutoActivate { get; set; }
+
+        /// <summary>
         /// 默认构造函数
         /// </summary>
         public AutoRegisterAttribute() { }
