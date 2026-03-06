@@ -126,7 +126,7 @@ namespace LiteOrm.Service
                 {
                     e = e.UnwrapTargetInvocationException();
                     LogException(invocation, e);
-                    throw e;
+                    throw;
                 }
                 finally
                 {
@@ -190,7 +190,7 @@ namespace LiteOrm.Service
                 {
                     e = e.UnwrapTargetInvocationException();
                     LogException(invocation, e);
-                    throw e;
+                    throw;
                 }
                 finally
                 {
@@ -231,7 +231,7 @@ namespace LiteOrm.Service
                 {
                     e = e.UnwrapTargetInvocationException();
                     LogException(invocation, e);
-                    throw e;
+                    throw;
                 }
                 finally
                 {
