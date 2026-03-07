@@ -1,6 +1,6 @@
 # LiteOrm
 
-> 一个轻量级、高性能的 .NET ORM 框架
+> A lightweight, high-performance .NET ORM framework
 
 [![NuGet](https://img.shields.io/nuget/v/LiteOrm.svg)](https://www.nuget.org/packages/LiteOrm/)
 [![License](https://img.shields.io/github/license/danjiewu/LiteOrm.svg)](LICENSE)
@@ -10,40 +10,40 @@
 
 ## 📖 Language / 语言
 
-**中文** | **[English](./README.en.md)** 
+**[中文](./README.md)** | **English** 
 
 ---
 
-LiteOrm 是一个轻量级、高性能的 .NET ORM 框架。结合了微 ORM 的性能和完整 ORM 的易用性，特别适合对性能要求高且需要灵活处理复杂 SQL 的场景。
+LiteOrm is a lightweight, high-performance .NET ORM framework that combines the speed of micro-ORMs with the ease of use of full-featured ORMs, perfect for scenarios requiring high performance and flexible complex SQL handling.
 
-## 🎯 核心特性
+## 🎯 Core Features
 
-- **极速性能**：性能接近原生 Dapper，远超 EF Core
-- **多数据库支持**：原生支持 SQL Server、MySQL、Oracle、PostgreSQL、SQLite
-- **灵活查询**：支持基于 Lambda、`Expr` 或 `ExprString` 的多种查询方式
-- **自动关联**：通过特性实现无损的 JOIN 查询，无需手写 SQL
-- **声明式事务**：`[Transaction]` 特性实现 AOP 事务管理
-- **动态分表**：`IArged` 接口支持分表路由
-- **异步支持**：完整的 async/await 支持
-- **类型安全**：强类型泛型接口，编译时类型检查
+- **Ultra-Fast Performance**: Performance close to native Dapper, far exceeding EF Core
+- **Multi-Database Support**: Native support for SQL Server, MySQL, Oracle, PostgreSQL, SQLite
+- **Flexible Querying**: Multiple query methods via Lambda, `Expr`, or `ExprString`
+- **Automatic Associations**: Implement JOIN queries via attributes without manual SQL writing
+- **Declarative Transactions**: AOP transaction management via `[Transaction]` attribute
+- **Dynamic Sharding**: Table routing via `IArged` interface
+- **Async Support**: Complete async/await support
+- **Type Safety**: Strong-typed generic interfaces with compile-time type checking
 
-## 📋 环境要求
+## 📋 Requirements
 
 - **.NET 8.0+**
-- **.NET Standard 2.0**（兼容 .NET Framework 4.6.1+）
-- **依赖库**：Autofac、Castle.Core
+- **.NET Standard 2.0** (.NET Framework 4.6.1+ compatible)
+- **Dependencies**: Autofac, Castle.Core
 
-## 📦 安装
+## 📦 Installation
 
 ```bash
 dotnet add package LiteOrm
 ```
 
-## 🚀 快速入门
+## 🚀 Quick Start
 
-### 1. 配置连接
+### 1. Configure Connection
 
-在 `appsettings.json` 中：
+In `appsettings.json`:
 
 ```json
 {
@@ -61,24 +61,25 @@ dotnet add package LiteOrm
     }
 }
 ```
-### 2. 注册 LiteOrm
 
-在 `Program.cs` 中注册：
+### 2. Register LiteOrm
 
-**Console：**
+In `Program.cs`:
+
+**Console:**
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrm()  // 自动初始化
+    .RegisterLiteOrm()  // Auto initialization
     .Build();
 ```
 
-**ASP.NET Core：**
+**ASP.NET Core:**
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
-builder.Host.RegisterLiteOrm();  // 通过 IHostBuilder 扩展方法集成
+builder.Host.RegisterLiteOrm();  // Integration via IHostBuilder extension method
 ```
 
-### 3. 定义实体
+### 3. Define Entity
 
 ```csharp
 using LiteOrm.Common;
@@ -100,10 +101,10 @@ public class User
 }
 ```
 
-### 4. 定义服务 (可选）
+### 4. Define Service (Optional)
 
 ```csharp
-// 定义视图模型（用于查询，可包含关联字段）
+// Define view model (for queries, can include related fields)
 public class UserView : User { }
 
 public interface IUserService :
@@ -117,27 +118,27 @@ public class UserService : EntityService<User, UserView>, IUserService
 }
 ```
 
-### 5. 使用服务
+### 5. Use Service
 
-可使用自定义的服务，也可直接使用泛型服务 ：
+You can use either custom services or directly use generic services:
 
 ```csharp
-// 插入
+// Insert
 var user = new User { UserName = "admin", Email = "admin@test.com" };
 await userService.InsertAsync(user);
 
-// 查询
+// Query
 var users = await userService.SearchAsync(u => u.Email.Contains("test"));
 var admin = await userService.SearchOneAsync(u => u.UserName == "admin");
 
-// 更新
+// Update
 user.Email = "newemail@test.com";
 await userService.UpdateAsync(user);
 
-// 删除
+// Delete
 await userService.DeleteAsync(user);
 
-// 分页
+// Pagination
 var page = await userService.SearchAsync(
     q => q.Where(u => u.CreateTime > DateTime.Today)
           .OrderByDescending(u => u.CreateTime)
@@ -145,20 +146,20 @@ var page = await userService.SearchAsync(
 );
 ```
 
-## 💡 常见特性
+## 💡 Key Features
 
-### Lambda 查询
+### Lambda Queries
 
 ```csharp
-// 基础查询
+// Basic query
 var users = await userService.SearchAsync(u => u.Age > 18);
 
-// 排序
+// Sorting
 var sorted = await userService.SearchAsync(
     q => q.Where(u => u.Age > 18).OrderBy(u => u.Age)
 );
 
-// 分页
+// Pagination
 var paged = await userService.SearchAsync(
     q => q.Where(u => u.Status == 1)
           .OrderBy(u => u.Id)
@@ -166,24 +167,24 @@ var paged = await userService.SearchAsync(
 );
 ```
 
-### Expr 表达式查询
+### Expr Expression Queries
 
 ```csharp
-// 手动构建表达式（支持更复杂的动态条件）
+// Manually build expressions (supports more complex dynamic conditions)
 var expr = Expr.Prop("Age") > 18 & Expr.Prop("Status") == 1;
 var users = await userService.SearchAsync(expr);
 
-// IN 查询
+// IN query
 var users = await userService.SearchAsync(
     Expr.Prop("Id").In(1, 2, 3, 4, 5)
 );
 
-// LIKE 查询
+// LIKE query
 var users = await userService.SearchAsync(
     Expr.Prop("UserName").Contains("admin")
 );
 
-// 链式构建复杂查询
+// Chain complex queries
 var query = Expr.From<User>()
     .Where(Expr.Prop("Age") > 18)
     .OrderBy(Expr.Prop("CreateTime"))
@@ -191,35 +192,35 @@ var query = Expr.From<User>()
 var result = await userService.SearchAsync(query);
 ```
 
-### ExprString 查询 (.NET 8.0+)
+### ExprString Queries (.NET 8.0+)
 
 ```csharp
-// 使用参数化插值字符串，防止 SQL 注入
+// Use parameterized interpolated strings to prevent SQL injection
 int minAge = 18;
 var expr = Expr.Prop("Age") > 25;
 
-// ObjectViewDAO 示例
+// ObjectViewDAO example
 var users = await objectViewDAO.Search($"WHERE {expr} AND Age > {minAge}").ToListAsync();
 
-// DataViewDAO 示例
+// DataViewDAO example
 var dataTable = await dataViewDAO.Search(
     $"SELECT Id, UserName FROM Users WHERE {Expr.Prop("Age")} > {minAge}"
 ).GetResultAsync();
 ```
 
-### EXISTS 子查询
+### EXISTS Subqueries
 
 ```csharp
-// 检查关联数据存在性
+// Check for existence of related data
 var result = await userService.SearchAsync(
     q => q.Where(u => Expr.Exists<Order>(o => o.UserId == u.Id))
 );
 ```
 
-### 自动关联查询
+### Automatic Associations
 
 ```csharp
-// 定义关联
+// Define association
 [Table("Orders")]
 public class Order
 {
@@ -231,18 +232,18 @@ public class Order
     public int UserId { get; set; }
 }
 
-// 视图模型包含关联字段
+// View model with related fields
 public class OrderView : Order
 {
     [ForeignColumn(typeof(User), Property = "UserName")]
     public string UserName { get; set; }
 }
 
-// 查询时自动 JOIN
+// Automatic JOIN on query
 var orders = await orderService.SearchAsync<OrderView>();
 ```
 
-### 声明式事务
+### Declarative Transactions
 
 ```csharp
 public class BusinessService
@@ -260,7 +261,7 @@ public class BusinessService
 }
 ```
 
-### 动态分表
+### Dynamic Sharding
 
 ```csharp
 public class Log : IArged
@@ -274,18 +275,18 @@ public class Log : IArged
     [Column("CreateTime")]
     public DateTime CreateTime { get; set; }
 
-    // 自动按月份路由到 Log_202401、Log_202402 等表
+    // Automatically route to Log_202401, Log_202402, etc. by month
     string[] IArged.TableArgs => [CreateTime.ToString("yyyyMM")];
 }
 ```
 
-## ⚡ 性能基准
+## ⚡ Performance Benchmarks
 
-基于 LiteOrm.Benchmark 项目的最新对比测试结果（.NET 10.0.3, MySQL）：
+Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0.3, MySQL):
 
-### 插入性能对比（ms）
+### Insert Performance Comparison (ms)
 
-| 框架 | 100 条 | 1000 条 | 5000 条 |
+| Framework | 100 rows | 1000 rows | 5000 rows |
 |:---|---:|---:|---:|
 | **LiteOrm** | **3.74** | **10.71** | **40.27** |
 | FreeSql | 4.36 | 17.71 | 72.49 |
@@ -293,9 +294,9 @@ public class Log : IArged
 | Dapper | 13.24 | 120.21 | 690.75 |
 | EF Core | 21.97 | 169.85 | 824.70 |
 
-### 更新性能对比（ms）
+### Update Performance Comparison (ms)
 
-| 框架 | 100 条 | 1000 条 | 5000 条 |
+| Framework | 100 rows | 1000 rows | 5000 rows |
 |:---|---:|---:|---:|
 | **LiteOrm** | **4.68** | **16.47** | **68.07** |
 | FreeSql | 4.86 | 30.84 | 133.94 |
@@ -303,9 +304,9 @@ public class Log : IArged
 | Dapper | 16.49 | 132.36 | 659.91 |
 | EF Core | 21.57 | 149.93 | 749.07 |
 
-### Upsert 性能对比（ms）
+### Upsert Performance Comparison (ms)
 
-| 框架 | 100 条 | 1000 条 | 5000 条 |
+| Framework | 100 rows | 1000 rows | 5000 rows |
 |:---|---:|---:|---:|
 | LiteOrm | 5.54 | 16.73 | 60.71 |
 | **FreeSql** | **4.84** | **14.77** | **58.18** |
@@ -313,9 +314,9 @@ public class Log : IArged
 | Dapper | 18.59 | 136.05 | 677.14 |
 | EF Core | 22.97 | 157.04 | 794.85 |
 
-### 关联查询性能对比（ms）
+### Join Query Performance Comparison (ms)
 
-| 框架 | 100 条 | 1000 条 | 5000 条 |
+| Framework | 100 rows | 1000 rows | 5000 rows |
 |:---|---:|---:|---:|
 | LiteOrm | 0.97 | **6.06** | **39.06** |
 | **FreeSql** | 0.94 | 6.52 | 41.22 |
@@ -323,9 +324,9 @@ public class Log : IArged
 | **Dapper** | **0.89** | 6.56 | 39.94 |
 | EF Core | 6.68 | 12.42 | 49.40 |
 
-### 内存分配对比（1000 条数据，KB）
+### Memory Allocation Comparison (1000 rows, KB)
 
-| 框架 | 插入 | 更新 | Upsert | 关联查询 |
+| Framework | Insert | Update | Upsert | Join Query |
 |:---|---:|---:|---:|---:|
 | **LiteOrm** | **870.27** | **1,514.47** | **2,138.49** | 628.98 |
 | FreeSql | 4,629.99 | 6,877.24 | 2,239.19 | 854.07 |
@@ -333,22 +334,21 @@ public class Log : IArged
 | Dapper | 2,476.22 | 3,094.99 | 2,798.43 | **415.97** |
 | EF Core | 18,118.07 | 15,149.28 | 14,803.48 | 2,198.79 |
 
-> 📊 详细的性能基准报告请参考 [LiteOrm.Benchmark](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)
+> 📊 For detailed performance benchmark reports, see [LiteOrm.Benchmark](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)
 
-## 📚 文档与示例
+## 📚 Documentation & Resources
 
-| 资源 | 说明 |
+| Resource | Description |
 |:---|:---|
-| [API 参考](./LITEORM_API_REFERENCE.md) | 完整的 API 文档和配置说明 |
-| [Demo 项目](./LiteOrm.Demo/) | 主要特性演示程序 |
-| [性能报告](./LiteOrm.Benchmark/) | 详细的性能基准测试报告 |
-| [单元测试](./LiteOrm.Tests/) | 完整的测试覆盖 |
+| [API Reference](./LITEORM_API_REFERENCE.en.md) | Complete API documentation and configuration instructions |
+| [Demo Project](./LiteOrm.Demo/) | Main feature demonstration program |
+| [Performance Report](./LiteOrm.Benchmark/) | Detailed performance benchmark reports |
+| [Unit Tests](./LiteOrm.Tests/) | Complete test coverage |
 
-## 🤝 贡献与反馈
+## 🤝 Contributing
 
-如发现问题或有改进建议，欢迎提交 [Issue](https://github.com/danjiewu/LiteOrm/issues) 或 [Pull Request](https://github.com/danjiewu/LiteOrm/pulls)。
+Found a bug or have an improvement suggestion? Please submit an [Issue](https://github.com/danjiewu/LiteOrm/issues) or [Pull Request](https://github.com/danjiewu/LiteOrm/pulls).
 
-## 📄 开源协议
+## 📄 License
 
-基于 [MIT](LICENSE) 协议发布。
-
+Released under the [MIT](LICENSE) license.
