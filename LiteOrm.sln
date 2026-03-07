@@ -16,7 +16,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{887B819B-42AD-47EF-97D1-E3A38FC2DD6B}"
 	ProjectSection(SolutionItems) = preProject
 		LICENSE = LICENSE
+		LITEORM_API_REFERENCE.en.md = LITEORM_API_REFERENCE.en.md
 		LITEORM_API_REFERENCE.md = LITEORM_API_REFERENCE.md
+		README.en.md = README.en.md
 		README.md = README.md
 		README.nuget.md = README.nuget.md
 	EndProjectSection

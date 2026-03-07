@@ -6,27 +6,21 @@
 
 ---
 
-<a id="english-version"></a>
+## 📖 English Version
 
-## 📖 Language / 语言
-
-**English** | **[中文](#中文版本)**
-
-A lightweight, high-performance .NET ORM framework that combines the speed of micro-ORMs with the ease of use of full-featured ORMs. Perfect for scenarios requiring high performance and flexible complex SQL handling.
+ A lightweight, high-performance .NET ORM framework that combines the speed of micro-ORMs with the ease of use of full-featured ORMs. Perfect for scenarios requiring high performance and flexible complex SQL handling.
 
 ### Table of Contents
-- [Core Features](#core-features)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Key Features](#key-features)
-- [Documentation & Resources](#documentation--resources)
-- [Contributing](#contributing)
-- [License](#license)
+- [Core Features](#-core-features)
+- [Requirements](#-requirements)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Key Features](#-key-features)
+- [Documentation & Resources](#-documentation--resources)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ## 🎯 Core Features
-
-<a id="core-features"></a>
 
 - **Ultra-Fast Performance**: Performance close to native Dapper, far exceeding EF Core
 - **Multi-Database Support**: Native support for SQL Server, MySQL, Oracle, PostgreSQL, SQLite
@@ -39,14 +33,10 @@ A lightweight, high-performance .NET ORM framework that combines the speed of mi
 
 ## 📋 Requirements
 
-<a id="requirements"></a>
-
 - **.NET 8.0+** or **.NET Standard 2.0** (.NET Framework 4.6.1+)
 - **Dependencies**: Autofac, Castle.Core
 
 ## 📦 Installation
-
-<a id="installation"></a>
 
 ```bash
 dotnet add package LiteOrm
@@ -55,8 +45,6 @@ dotnet add package LiteOrm
 ---
 
 ## 🚀 Quick Start
-
-<a id="quick-start"></a>
 
 ### 1. Configure Connection
 
@@ -156,8 +144,6 @@ var page = await userService.SearchAsync(
 
 ## 💡 Key Features
 
-<a id="key-features"></a>
-
 ### Lambda Queries
 
 ```csharp
@@ -233,8 +219,6 @@ public class Log : IArged
 
 ## 📚 Documentation & Resources
 
-<a id="documentation--resources"></a>
-
 - **[API Reference](https://github.com/danjiewu/LiteOrm/blob/master/LITEORM_API_REFERENCE.en.md)** - Complete API documentation
 - **[GitHub Repository](https://github.com/danjiewu/LiteOrm)** - Source code and issues
 - **[Demo Project](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)** - Feature demonstrations
@@ -242,38 +226,31 @@ public class Log : IArged
 
 ## 🤝 Contributing
 
-<a id="contributing"></a>
-
 Found a bug? Have a suggestion? Please open an [Issue](https://github.com/danjiewu/LiteOrm/issues) or [Pull Request](https://github.com/danjiewu/LiteOrm/pulls).
 
 ## 📄 License
 
-<a id="license"></a>
-
 [MIT License](https://github.com/danjiewu/LiteOrm/blob/master/LICENSE)
 
+[Back to top](#liteorm)
+
 ---
-<a id="中文版本"></a>
 
-## 📖 Language / 语言
-
-**中文** | **[English](#english-version)**
+## 📖 中文版本
 
 LiteOrm 是一个轻量级、高性能的 .NET ORM 框架。结合了微 ORM 的性能和完整 ORM 的易用性，特别适合对性能要求高且需要灵活处理复杂 SQL 的场景。
 
 ### 目录
-- [核心特性](#核心特性)
-- [环境要求](#环境要求)
-- [安装](#安装)
-- [快速入门](#快速入门)
-- [常见特性](#常见特性)
-- [相关资源](#相关资源)
-- [贡献与反馈](#贡献与反馈)
-- [开源协议](#开源协议)
+- [核心特性](#-核心特性)
+- [环境要求](#-环境要求)
+- [安装](#-安装)
+- [快速入门](#-快速入门)
+- [常见特性](#-常见特性)
+- [相关资源](#-相关资源)
+- [贡献与反馈](#-贡献与反馈)
+- [开源协议](#-开源协议)
 
 ### 🎯 核心特性
-
-<a id="核心特性"></a>
 
 - **极速性能**：性能接近原生 Dapper，远超 EF Core
 - **多数据库支持**：原生支持 SQL Server、MySQL、Oracle、PostgreSQL、SQLite
@@ -286,14 +263,10 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架。结合了微 ORM 的
 
 ### 📋 环境要求
 
-<a id="环境要求"></a>
-
 - **.NET 8.0+** 或 **.NET Standard 2.0**（兼容 .NET Framework 4.6.1+）
 - **依赖库**：Autofac、Castle.Core
 
 ### 📦 安装
-
-<a id="安装"></a>
 
 ```bash
 dotnet add package LiteOrm
@@ -302,8 +275,6 @@ dotnet add package LiteOrm
 ---
 
 ### 🚀 快速入门
-
-<a id="快速入门"></a>
 
 #### 1. 配置连接
 
@@ -402,8 +373,6 @@ var page = await userService.SearchAsync(
 
 ### 💡 常见特性
 
-<a id="常见特性"></a>
-
 - **Lambda 查询**：直观的 Lambda 表达式查询
 - **Expr 表达式**：灵活的动态条件构建
 - **ExprString 查询**：参数化字符串查询
@@ -413,8 +382,6 @@ var page = await userService.SearchAsync(
 
 ### 📚 相关资源
 
-<a id="相关资源"></a>
-
 - **[API 参考](https://github.com/danjiewu/LiteOrm/blob/master/LITEORM_API_REFERENCE.md)** - 完整的 API 文档
 - **[GitHub 仓库](https://github.com/danjiewu/LiteOrm)** - 源代码和问题跟踪
 - **[Demo 项目](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)** - 功能演示
@@ -422,13 +389,9 @@ var page = await userService.SearchAsync(
 
 ### 🤝 贡献与反馈
 
-<a id="贡献与反馈"></a>
-
 欢迎提交 [Issue](https://github.com/danjiewu/LiteOrm/issues) 或 [Pull Request](https://github.com/danjiewu/LiteOrm/pulls)。
 
 ### 📄 开源协议
-
-<a id="开源协议"></a>
 
 [MIT 协议](https://github.com/danjiewu/LiteOrm/blob/master/LICENSE)
 
