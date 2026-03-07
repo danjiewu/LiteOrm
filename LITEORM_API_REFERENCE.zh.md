@@ -4,7 +4,7 @@
 
 ## 📖 语言 / Language
 
-**中文** | **[English](./LITEORM_API_REFERENCE.en.md)**
+**[English](./LITEORM_API_REFERENCE.en.md)** | **中文**
 
 ---
 
