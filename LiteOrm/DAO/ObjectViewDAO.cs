@@ -30,7 +30,7 @@ namespace LiteOrm
     /// 6. 异步查询 - 提供基于 Task 的异步查询方法
     /// 7. 动态条件查询 - 支持使用 Lambda 表达式或 Expr 对象构建动态查询条件
     /// 
-    /// 该类继承自 ObjectDAOBase 并实现了相应的查询接口，
+    /// 该类继承自 DAOBase 并实现了相应的查询接口，
     /// 处理复杂的SQL生成、参数处理和数据映射工作。
     /// 它支持与 TableJoinAttribute 定义的多表关联进行查询。
     /// </remarks>

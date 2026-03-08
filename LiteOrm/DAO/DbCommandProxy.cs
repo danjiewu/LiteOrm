@@ -23,27 +23,8 @@ namespace LiteOrm
     /// 6. 锁管理 - 管理上下文的锁以确保线程安全
     /// 7. 异步支持 - 支持异步命令执行
     /// 
-    /// 该类继承自 DbCommand 接口，可以作为标准 DbCommand 的替代品使用。
-    /// 通常由 ObjectDAOBase 的 NewCommand() 方法创建。
-    /// 
-    /// 使用示例：
-    /// <code>
-    /// var command = dao.NewCommand();
-    /// command.CommandText = "select * from users where id = @id";
-    /// var param = command.CreateParameter();
-    /// param.ParameterName = "@id";
-    /// param.Value = 123;
-    /// command.Parameters.Add(param);
-    /// 
-    /// // 执行命令
-    /// using (var reader = command.ExecuteReader())
-    /// {
-    ///     while (reader.Read())
-    ///     {
-    ///         // 处理结果
-    ///     }
-    /// }
-    /// </code>
+    /// 该类继承自 DbCommand 类，可以作为标准 DbCommand 的替代品使用。
+    /// 通常由 DAOBase 的 NewCommand() 方法创建。
     /// </remarks>
     public class DbCommandProxy : DbCommand, IDbCommand
     {
