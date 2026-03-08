@@ -123,7 +123,7 @@ namespace LiteOrm.Common
     /// <typeparam name="TResult">元素类型</typeparam>
     public class EnumerableResult<TResult> : CommandResult<List<TResult>>, IEnumerable<TResult>, IAsyncEnumerable<TResult>, IEnumerableResult
     {
-        private readonly Func<IDataReader, TResult> _readerFunc;
+        private readonly Func<DbDataReader, TResult> _readerFunc;
 
         /// <summary>
         /// 初始化 <see cref="EnumerableResult{TResult}"/> 类的新实例。
@@ -131,7 +131,7 @@ namespace LiteOrm.Common
         /// <param name="command">要执行的数据库命令。</param>
         /// <param name="readerFunc">将 <see cref="IDataReader"/> 的一行数据转换为 <typeparamref name="TResult"/> 实例的委托。</param>
         /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        public EnumerableResult(DbCommand command, Func<IDataReader, TResult> readerFunc, bool autoDisposeCommand = true)
+        public EnumerableResult(DbCommand command, Func<DbDataReader, TResult> readerFunc = null, bool autoDisposeCommand = true)
             : base(command, autoDisposeCommand)
         {
             _readerFunc = readerFunc;
@@ -143,11 +143,12 @@ namespace LiteOrm.Common
         /// <returns>用于遍历结果集的 <see cref="IEnumerator{T}"/>。</returns>
         public IEnumerator<TResult> GetEnumerator()
         {
-            using (IDataReader reader = _command.ExecuteReader())
+            using (DbDataReader reader = _command.ExecuteReader())
             {
+                var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
                 while (reader.Read())
                 {
-                    yield return _readerFunc(reader);
+                    yield return func(reader);
                 }
             }
         }
@@ -178,7 +179,9 @@ namespace LiteOrm.Common
         public TResult FirstOrDefault()
         {
             using DbDataReader reader = _command.ExecuteReader();
-            return reader.Read() ? _readerFunc(reader) : default;
+            if (!reader.Read()) return default;
+            var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
+            return func(reader);
         }
 
         /// <summary>
@@ -189,7 +192,9 @@ namespace LiteOrm.Common
         public async ValueTask<TResult> FirstOrDefaultAsync(CancellationToken cancellationToken = default)
         {
             using DbDataReader reader = await _command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
-            return await reader.ReadAsync(cancellationToken).ConfigureAwait(false) ? _readerFunc(reader) : default;
+            if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) return default;
+            var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
+            return func(reader);
         }
 
         /// <summary>
@@ -269,10 +274,11 @@ namespace LiteOrm.Common
         private class AsyncEnumerator : IAsyncEnumerator<TResult>
         {
             private readonly DbCommand _command;
-            private readonly Func<IDataReader, TResult> _readerFunc;
+            private readonly Func<DbDataReader, TResult> _readerFunc;
             private readonly CancellationToken _cancellationToken;
             private DbDataReader _reader;
             private TResult _current;
+            private Func<DbDataReader, TResult> _func;
 
             /// <summary>
             /// 初始化 <see cref="AsyncEnumerator"/> 类的新实例。
@@ -280,7 +286,7 @@ namespace LiteOrm.Common
             /// <param name="command">要执行的数据库命令。</param>
             /// <param name="readerFunc">将数据行转换为元素的委托。</param>
             /// <param name="cancellationToken">取消令牌。</param>
-            public AsyncEnumerator(DbCommand command, Func<IDataReader, TResult> readerFunc, CancellationToken cancellationToken)
+            public AsyncEnumerator(DbCommand command, Func<DbDataReader, TResult> readerFunc, CancellationToken cancellationToken)
             {
                 _command = command;
                 _readerFunc = readerFunc;
@@ -308,11 +314,12 @@ namespace LiteOrm.Common
                 if (_reader == null)
                 {
                     _reader = await _command.ExecuteReaderAsync(CommandBehavior.Default, _cancellationToken).ConfigureAwait(false);
+                    _func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(_reader);
                 }
 
                 if (await _reader.ReadAsync(_cancellationToken).ConfigureAwait(false))
                 {
-                    _current = _readerFunc(_reader);
+                    _current = _func(_reader);
                     return true;
                 }
 

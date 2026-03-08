@@ -56,8 +56,8 @@ namespace LiteOrm
         protected const string TimestampParamName = "0";
         #endregion
 
+
         #region 私人变量
-        private SqlColumn[] _selectColumnsArray;
         private string _allFields = null;
         private string _factTableName = null;
         private string _fromTable = null;
@@ -193,24 +193,7 @@ namespace LiteOrm
         /// <summary>
         /// 查询时需要获取的所有列
         /// </summary>
-        protected virtual SqlColumn[] SelectColumns
-        {
-            get
-            {
-                if (_selectColumnsArray is null)
-                {
-                    _selectColumnsArray = Table.Columns.Where(column =>
-                    {
-                        while (column is ForeignColumn foreignColumn) column = foreignColumn.TargetColumn.Column;
-                        if (column is ColumnDefinition columnDefinition)
-                            return columnDefinition.Mode.CanRead();
-                        else
-                            return true;
-                    }).ToArray();
-                }
-                return _selectColumnsArray;
-            }
-        }
+        protected virtual SqlColumn[] SelectColumns => Table.SelectColumns;
 
 
         /// <summary>
@@ -370,6 +353,13 @@ namespace LiteOrm
         {
             var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());
             return new NonQueryResult(command);
+        }
+
+
+        public virtual EnumerableResult<TResult> Query<TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, Func<IDataReader, TResult> readerFunc = null)
+        {
+            var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());
+            return new EnumerableResult<TResult>(command, readerFunc);
         }
 #endif
 
