@@ -17,8 +17,8 @@ namespace LiteOrm
         public static IEnumerable<Assembly> GetAllReferencedAssemblies(Assembly entryAssembly = null)
         {
             var result = new HashSet<Assembly>();
+            var visited = new HashSet<Assembly>();
 
-            // 1. 获取所有已经加载的非系统程序集
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 if (!assembly.IsDynamic && !IsSystemAssembly(assembly))
@@ -27,19 +27,18 @@ namespace LiteOrm
                 }
             }
 
-            // 2. 从入口程序集开始递归查找
             entryAssembly ??= Assembly.GetEntryAssembly();
             if (entryAssembly != null)
             {
-                ScanAssemblies(entryAssembly, result);
+                ScanAssemblies(entryAssembly, result, visited);
             }
 
             return result;
         }
 
-        private static void ScanAssemblies(Assembly assembly, HashSet<Assembly> result)
+        private static void ScanAssemblies(Assembly assembly, HashSet<Assembly> result, HashSet<Assembly> visited)
         {
-            if (result.Contains(assembly)) return;
+            if (!visited.Add(assembly)) return;
             if (IsSystemAssembly(assembly)) return;
 
             result.Add(assembly);
@@ -49,7 +48,7 @@ namespace LiteOrm
                 try
                 {
                     var referencedAssembly = Assembly.Load(referencedName);
-                    ScanAssemblies(referencedAssembly, result);
+                    ScanAssemblies(referencedAssembly, result, visited);
                 }
                 catch { }
             }

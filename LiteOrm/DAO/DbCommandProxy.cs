@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 namespace LiteOrm
 {
     /// <summary>
-    /// 数据库命令代理类 - 为IDbCommand提供包装和扩展功能
+    /// 数据库命令代理类 - 为DbCommand提供包装和扩展功能
     /// </summary>
     /// <remarks>
     /// DbCommandProxy 是一个代理类，它包装了 DbCommand 对象并提供额外的功能，
     /// 如自动连接管理、事务处理、SQL日志记录等。
     /// 
     /// 主要功能包括：
-    /// 1. 命令执行代理 - 代理 IDbCommand 的所有操作
+    /// 1. 命令执行代理 - 代理 DbCommand 的所有操作
     /// 2. 连接管理 - 自动打开和维护数据库连接
     /// 3. 事务支持 - 自动关联当前事务
     /// 4. 执行前后处理 - 在命令执行前后进行必要的设置和清理
@@ -58,7 +58,7 @@ namespace LiteOrm
         /// </summary>
         public ISqlBuilder SqlBuilder { get; }
 
-        #region DbCommand Overrides
+        #region DbCommand 重写
 
         /// <summary>
         /// 获取或设置该 <see cref="DbCommand"/> 使用的 <see cref="DbConnection"/>。
@@ -243,7 +243,7 @@ namespace LiteOrm
             Context.LastActiveTime = DateTime.Now;
         }
 
-        #region IDbCommand Members (Explicit implementations for compatibility)
+        #region IDbCommand 成员 
 
         IDbConnection IDbCommand.Connection
         {
@@ -263,7 +263,7 @@ namespace LiteOrm
 
         #endregion
 
-        #region Execute Methods
+        #region Execute 方法
 
         /// <summary>
         /// 对 <see cref="DbConnection"/> 执行 <see cref="CommandText"/>，并使用 <see cref="CommandBehavior"/> 值之一返回 <see cref="IDataReader"/>。
@@ -288,6 +288,8 @@ namespace LiteOrm
         }
 
         IDataReader IDbCommand.ExecuteReader(CommandBehavior behavior) => ExecuteReader(behavior);
+        
+        IDataReader IDbCommand.ExecuteReader() => ExecuteReader();
 
         /// <summary>
         /// 对 <see cref="DbConnection"/> 执行 <see cref="CommandText"/>，并返回 <see cref="IDataReader"/>。
@@ -297,8 +299,6 @@ namespace LiteOrm
         {
             return ExecuteReader(CommandBehavior.Default);
         }
-
-        IDataReader IDbCommand.ExecuteReader() => ExecuteReader();
 
         /// <summary>
         /// 异步执行 SQL 语句并返回 <see cref="IDataReader"/>。
@@ -337,7 +337,7 @@ namespace LiteOrm
 
         #endregion
 
-        #region IDisposable Members
+        #region IDisposable 成员
 
         /// <summary>
         /// 释放由该 <see cref="DbCommandProxy"/> 使用的资源。

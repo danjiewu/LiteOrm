@@ -128,7 +128,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>操作结果，true表示成功，false表示失败</returns>
-        Task<bool> DeleteIDAsync(object id, string[] tableArgs, CancellationToken cancellationToken = default);
+        Task<bool> DeleteIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件删除实体
@@ -138,7 +138,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>受影响的行数</returns>
         Task<int> DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
-        
+
         /// <summary>
         /// 异步根据UpdateExpr更新实体
         /// </summary>

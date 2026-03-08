@@ -62,24 +62,52 @@ namespace LiteOrm.Common
     /// <typeparam name="T">结果类型</typeparam>
     public abstract class CommandResult<T> : IDisposable
     {
+        /// <summary>
+        /// 要执行的数据库命令对象，子类通过该对象执行相应的数据库操作以获取结果。
+        /// </summary>
         protected readonly DbCommand _command;
+        /// <summary>
+        /// 标记是否在释放时自动销毁命令对象，默认为 true。若为 true，则在调用 Dispose 方法时会自动调用 _command.Dispose() 来释放数据库命令对象占用的资源；如果为 false，则需要由外部代码负责管理命令对象的生命周期，确保在适当的时候手动调用 _command.Dispose() 来释放资源。
+        /// </summary>
         protected readonly bool _autoDisposeCommand;
 
+        /// <summary>
+        /// 初始化 <see cref="CommandResult{T}"/> 类的新实例。
+        /// </summary>
+        /// <param name="command">要执行的数据库命令。</param>
+        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
         protected CommandResult(DbCommand command, bool autoDisposeCommand = true)
         {
             _command = command;
             _autoDisposeCommand = autoDisposeCommand;
         }
 
+        /// <summary>
+        /// 同步执行命令并返回结果。
+        /// </summary>
+        /// <returns>命令执行结果。</returns>
         public abstract T GetResult();
+
+        /// <summary>
+        /// 异步执行命令并返回结果。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，包含命令执行结果。</returns>
         public abstract Task<T> GetResultAsync(CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// 释放当前对象占用的资源。
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// 释放非托管资源，并可选择性地释放托管资源。
+        /// </summary>
+        /// <param name="disposing">如果为 true，则同时释放托管资源；如果为 false，则只释放非托管资源。</param>
         protected virtual void Dispose(bool disposing)
         {
             if (disposing && _autoDisposeCommand && _command != null)
@@ -95,52 +123,94 @@ namespace LiteOrm.Common
     /// <typeparam name="TResult">元素类型</typeparam>
     public class EnumerableResult<TResult> : CommandResult<List<TResult>>, IEnumerable<TResult>, IAsyncEnumerable<TResult>, IEnumerableResult
     {
-        private readonly Func<IDataReader, TResult> _readerFunc;
+        private readonly Func<DbDataReader, TResult> _readerFunc;
 
-        public EnumerableResult(DbCommand command, Func<IDataReader, TResult> readerFunc, bool autoDisposeCommand = true)
+        /// <summary>
+        /// 初始化 <see cref="EnumerableResult{TResult}"/> 类的新实例。
+        /// </summary>
+        /// <param name="command">要执行的数据库命令。</param>
+        /// <param name="readerFunc">将 <see cref="IDataReader"/> 的一行数据转换为 <typeparamref name="TResult"/> 实例的委托。</param>
+        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
+        public EnumerableResult(DbCommand command, Func<DbDataReader, TResult> readerFunc = null, bool autoDisposeCommand = true)
             : base(command, autoDisposeCommand)
         {
             _readerFunc = readerFunc;
         }
 
+        /// <summary>
+        /// 返回遍历结果集的枚举器。
+        /// </summary>
+        /// <returns>用于遍历结果集的 <see cref="IEnumerator{T}"/>。</returns>
         public IEnumerator<TResult> GetEnumerator()
         {
-            using (IDataReader reader = _command.ExecuteReader())
+            using (DbDataReader reader = _command.ExecuteReader())
             {
+                var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
                 while (reader.Read())
                 {
-                    yield return _readerFunc(reader);
+                    yield return func(reader);
                 }
             }
         }
 
+        /// <summary>
+        /// 返回遍历结果集的非泛型枚举器。
+        /// </summary>
+        /// <returns>用于遍历结果集的 <see cref="IEnumerator"/>。</returns>
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
         }
 
+        /// <summary>
+        /// 返回异步遍历结果集的枚举器。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>用于异步遍历结果集的 <see cref="IAsyncEnumerator{T}"/>。</returns>
         public IAsyncEnumerator<TResult> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
             return new AsyncEnumerator(_command, _readerFunc, cancellationToken);
         }
 
+        /// <summary>
+        /// 获取结果集中的第一个元素，若结果集为空则返回默认值。
+        /// </summary>
+        /// <returns>第一个元素，或类型的默认值。</returns>
         public TResult FirstOrDefault()
         {
             using DbDataReader reader = _command.ExecuteReader();
-            return reader.Read() ? _readerFunc(reader) : default;
+            if (!reader.Read()) return default;
+            var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
+            return func(reader);
         }
 
+        /// <summary>
+        /// 异步获取结果集中的第一个元素，若结果集为空则返回默认值。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，包含第一个元素或类型的默认值。</returns>
         public async ValueTask<TResult> FirstOrDefaultAsync(CancellationToken cancellationToken = default)
         {
             using DbDataReader reader = await _command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
-            return await reader.ReadAsync(cancellationToken).ConfigureAwait(false) ? _readerFunc(reader) : default;
+            if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) return default;
+            var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
+            return func(reader);
         }
 
+        /// <summary>
+        /// 将结果集转换为列表。
+        /// </summary>
+        /// <returns>包含所有元素的 <see cref="List{T}"/>。</returns>
         public List<TResult> ToList()
         {
             return new List<TResult>(this);
         }
 
+        /// <summary>
+        /// 异步将结果集转换为列表。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，包含所有元素的列表。</returns>
         public async Task<List<TResult>> ToListAsync(CancellationToken cancellationToken = default)
         {
             var list = new List<TResult>();
@@ -151,11 +221,20 @@ namespace LiteOrm.Common
             return list;
         }
 
+        /// <summary>
+        /// 执行命令并以列表形式返回所有结果。
+        /// </summary>
+        /// <returns>包含所有元素的 <see cref="List{T}"/>。</returns>
         public override List<TResult> GetResult()
         {
             return this.ToList();
         }
 
+        /// <summary>
+        /// 异步执行命令并以列表形式返回所有结果。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，包含所有元素的列表。</returns>
         public override async Task<List<TResult>> GetResultAsync(CancellationToken cancellationToken = default)
         {
             return await this.ToListAsync(cancellationToken);
@@ -195,18 +274,28 @@ namespace LiteOrm.Common
         private class AsyncEnumerator : IAsyncEnumerator<TResult>
         {
             private readonly DbCommand _command;
-            private readonly Func<IDataReader, TResult> _readerFunc;
+            private readonly Func<DbDataReader, TResult> _readerFunc;
             private readonly CancellationToken _cancellationToken;
             private DbDataReader _reader;
             private TResult _current;
+            private Func<DbDataReader, TResult> _func;
 
-            public AsyncEnumerator(DbCommand command, Func<IDataReader, TResult> readerFunc, CancellationToken cancellationToken)
+            /// <summary>
+            /// 初始化 <see cref="AsyncEnumerator"/> 类的新实例。
+            /// </summary>
+            /// <param name="command">要执行的数据库命令。</param>
+            /// <param name="readerFunc">将数据行转换为元素的委托。</param>
+            /// <param name="cancellationToken">取消令牌。</param>
+            public AsyncEnumerator(DbCommand command, Func<DbDataReader, TResult> readerFunc, CancellationToken cancellationToken)
             {
                 _command = command;
                 _readerFunc = readerFunc;
                 _cancellationToken = cancellationToken;
             }
 
+            /// <summary>
+            /// 获取枚举器当前位置的元素。
+            /// </summary>
             public TResult Current => _current;
 
             public async ValueTask DisposeAsync()
@@ -225,11 +314,12 @@ namespace LiteOrm.Common
                 if (_reader == null)
                 {
                     _reader = await _command.ExecuteReaderAsync(CommandBehavior.Default, _cancellationToken).ConfigureAwait(false);
+                    _func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(_reader);
                 }
 
                 if (await _reader.ReadAsync(_cancellationToken).ConfigureAwait(false))
                 {
-                    _current = _readerFunc(_reader);
+                    _current = _func(_reader);
                     return true;
                 }
 
@@ -278,6 +368,12 @@ namespace LiteOrm.Common
     {
         private readonly Func<object, TResult> _resultConverter;
 
+        /// <summary>
+        /// 初始化 <see cref="ValueResult{TResult}"/> 类的新实例。
+        /// </summary>
+        /// <param name="command">要执行的数据库命令。</param>
+        /// <param name="resultConverter">将标量结果转换为 <typeparamref name="TResult"/> 的委托，为 null 时使用默认转换。</param>
+        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
         public ValueResult(DbCommand command, Func<object, TResult> resultConverter = null, bool autoDisposeCommand = true)
             : base(command, autoDisposeCommand)
         {
@@ -290,12 +386,21 @@ namespace LiteOrm.Common
             });
         }
 
+        /// <summary>
+        /// 执行命令并返回标量结果。
+        /// </summary>
+        /// <returns>命令执行的标量结果。</returns>
         public override TResult GetResult()
         {
             var scalarValue = _command.ExecuteScalar();
             return _resultConverter(scalarValue);
         }
 
+        /// <summary>
+        /// 异步执行命令并返回标量结果。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，包含命令执行的标量结果。</returns>
         public override async Task<TResult> GetResultAsync(CancellationToken cancellationToken = default)
         {
             var scalarValue = await _command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
@@ -308,15 +413,29 @@ namespace LiteOrm.Common
     /// </summary>
     public class NonQueryResult : CommandResult<int>
     {
+        /// <summary>
+        /// 初始化 <see cref="NonQueryResult"/> 类的新实例。
+        /// </summary>
+        /// <param name="command">要执行的数据库命令。</param>
+        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
         public NonQueryResult(DbCommand command, bool autoDisposeCommand = true)
             : base(command, autoDisposeCommand)
         {}
 
+        /// <summary>
+        /// 执行命令并返回受影响的行数。
+        /// </summary>
+        /// <returns>受影响的行数。</returns>
         public override int GetResult()
         {
             return _command.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// 异步执行命令并返回受影响的行数。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，包含受影响的行数。</returns>
         public override async Task<int> GetResultAsync(CancellationToken cancellationToken = default)
         {
             return await _command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -332,6 +451,12 @@ namespace LiteOrm.Common
         private DataTable _dataTable;
         private bool _hasLoaded;
 
+        /// <summary>
+        /// 初始化 <see cref="DataTableResult"/> 类的新实例。
+        /// </summary>
+        /// <param name="command">要执行的数据库命令。</param>
+        /// <param name="readRow">将 <see cref="IDataReader"/> 的一行数据转换为 <see cref="DataRow"/> 的委托。</param>
+        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
         public DataTableResult(DbCommand command, Func<IDataReader, DataTable, DataRow> readRow, bool autoDisposeCommand = true)
             : base(command, autoDisposeCommand)
         {

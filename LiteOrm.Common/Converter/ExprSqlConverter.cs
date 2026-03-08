@@ -63,6 +63,14 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 将当前表达式转换为 SQL 字符串片段，结果直接追加到提供的 <see cref="ValueStringBuilder"/> 中。
+        /// </summary>
+        /// <param name="expr">表达式。</param>
+        /// <param name="sb">用于接收 SQL 片段的字符串构建器。</param>
+        /// <param name="context">生成 SQL 的上下文环境，包含表信息、别名等。</param>
+        /// <param name="sqlBuilder">提供数据库特定的 SQL 构建功能的工作类。</param>
+        /// <param name="outputParams">输出参数集合，对应于此构建过程中产生的参数化查询参数。</param>
         public static void ToSql(this Expr expr, ref ValueStringBuilder sb, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (expr is null) return;

@@ -19,6 +19,7 @@ namespace LiteOrm.Common
         #region 私有变量
         private SqlColumn[] _columns;
         private ColumnDefinition[] _keys = null;
+        private SqlColumn[] _selectColumns = null;
         private ConcurrentDictionary<string, SqlColumn> _namedColumnCache = new ConcurrentDictionary<string, SqlColumn>(StringComparer.OrdinalIgnoreCase);
         #endregion
 
@@ -68,6 +69,29 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 查询时需要读取的列，即 <see cref="ColumnMode"/> 允许读取的列。
+        /// 结果按列在 <see cref="Columns"/> 中的顺序排列，与执行 SELECT 时的列顺序一致。
+        /// </summary>
+        public SqlColumn[] SelectColumns
+        {
+            get
+            {
+                if (_selectColumns == null)
+                {
+                    _selectColumns = Array.FindAll(Columns, col =>
+                    {
+                        SqlColumn column = col;
+                        while (column is ForeignColumn foreignColumn) column = foreignColumn.TargetColumn.Column;
+                        if (column is ColumnDefinition columnDefinition)
+                            return columnDefinition.Mode.CanRead();
+                        return true;
+                    });
+                }
+                return _selectColumns;
+            }
+        }
+
+        /// <summary>
         /// 属性名对应列的缓存
         /// </summary>
         protected ConcurrentDictionary<string, SqlColumn> NamedColumnCache
@@ -106,6 +130,7 @@ namespace LiteOrm.Common
         public void ClearCache()
         {
             _namedColumnCache.Clear();
+            _selectColumns = null;
         }
 
         /// <summary>

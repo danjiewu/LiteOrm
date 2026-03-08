@@ -38,7 +38,6 @@ namespace LiteOrm
     public class ObjectViewDAO<T> : DAOBase, IObjectViewDAO<T> where T : new()
     {
 
-
         #region 属性
         /// <summary>
         /// 实体对象类型
@@ -117,17 +116,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="record">一行记录</param>
         /// <returns>对象</returns>
-        protected virtual T ConvertToObject(IDataRecord record)
-        {
-            T t = new T();
-            int count = SelectColumns.Length;
-            for (int i = 0; i < count; i++)
-            {
-                SqlColumn column = SelectColumns[i];
-                column.SetValue(t, record.IsDBNull(i) ? null : ConvertFromDbValue(record[i], column.PropertyType));
-            }
-            return t;
-        }
+        protected Func<DbDataReader, T> ConvertToObject = DataReaderConverter.GetConverter<T>();
 
         #endregion
 
@@ -159,7 +148,7 @@ namespace LiteOrm
         /// <returns>值结果对象，可通过GetValue()和GetValueAsync()获取结果</returns>
         public virtual ValueResult<int> Count(Expr expr)
         {
-            var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Aggregate("Count",Expr.Const(1)));
+            var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Aggregate("Count", Expr.Const(1)));
             var command = MakeExprCommand(selectExpr);
             return new ValueResult<int>(command);
         }

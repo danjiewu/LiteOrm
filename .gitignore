@@ -36,3 +36,4 @@ msbuild.wrn
 /.vs
 
 /BenchmarkDotNet.Artifacts
+/LiteOrm/nuget.config
