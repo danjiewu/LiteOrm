@@ -109,17 +109,6 @@ namespace LiteOrm
         }
         #endregion
 
-        #region 常用方法
-
-        /// <summary>
-        /// 将一行记录转化为对象
-        /// </summary>
-        /// <param name="record">一行记录</param>
-        /// <returns>对象</returns>
-        protected Func<DbDataReader, T> ConvertToObjectHandler = DataReaderConverter.GetConverter<T>();
-
-        #endregion
-
         #region 方法
 
         /// <summary>
@@ -234,6 +223,13 @@ namespace LiteOrm
             return new EnumerableResult<T>(command, ConvertToObjectHandler);
         }
 #endif
+
+        /// <summary>
+        /// 将一行记录转化为对象
+        /// </summary>
+        /// <param name="record">一行记录</param>
+        /// <returns>对象</returns>
+        public static Func<DbDataReader, T> ConvertToObjectHandler = DataReaderConverter.GetConverter<T>();
 
         #endregion
 

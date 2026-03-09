@@ -6,7 +6,7 @@ namespace LiteOrm.Common
     /// <summary>
     /// 基于Trie树的字符串替换工具类
     /// </summary>
-    public class MutiReplacer
+    public class MultiReplacer
     {
         /// <summary>
         /// 字典树节点

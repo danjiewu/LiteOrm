@@ -57,7 +57,6 @@ namespace LiteOrm
         protected const string TimestampParamName = "0";
         #endregion
 
-
         #region 私人变量
         private string _allFields = null;
         private string _factTableName = null;
@@ -401,14 +400,14 @@ namespace LiteOrm
         /// <summary>
         /// MutiReplacer实例
         /// </summary>
-        private MutiReplacer _mutiReplacer;
-        private MutiReplacer MutiReplacerInstance
+        private MultiReplacer _mutiReplacer;
+        private MultiReplacer MutiReplacerInstance
         {
             get
             {
                 if (_mutiReplacer == null)
                 {
-                    _mutiReplacer = new MutiReplacer();
+                    _mutiReplacer = new MultiReplacer();
                     foreach (var replacement in GetReplacements())
                     {
                         _mutiReplacer.Insert(replacement.Key, replacement.Value);
