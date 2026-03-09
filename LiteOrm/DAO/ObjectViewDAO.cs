@@ -205,8 +205,6 @@ namespace LiteOrm
             return new ValueResult<bool>(command, (obj) => obj != null);
         }
 
-
-
         /// <summary>
         /// 根据条件查询，多个条件以逻辑与连接
         /// </summary>
@@ -218,27 +216,6 @@ namespace LiteOrm
             return new EnumerableResult<T>(command, ConvertToObject);
         }
 
-        /// <summary>
-        /// 获取单个符合条件的对象
-        /// </summary>
-        /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <returns>可枚举结果对象，可通过FirstOrDefault()和FirstOrDefaultAsync()获取结果</returns>
-        public virtual EnumerableResult<T> SearchOne(Expr expr)
-        {
-            var selectExpr = new SelectExpr(expr.ToSource<T>(), SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Prop(col.PropertyName))).ToArray());
-            var command = MakeExprCommand(selectExpr);
-            return new EnumerableResult<T>(command, ConvertToObject);
-        }
-
-        /// <summary>
-        /// 根据条件查询并返回列表
-        /// </summary>
-        /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <returns>符合条件的对象列表</returns>
-        public virtual List<T> ToList(Expr expr = null)
-        {
-            return Search(expr).ToList();
-        }
 
 #if NET8_0_OR_GREATER
         /// <summary>

@@ -28,13 +28,6 @@ namespace LiteOrm.Common
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
         new EnumerableResult<T> Search(Expr expr = null);
-
-        /// <summary>
-        /// 根据条件查询并返回列表
-        /// </summary>
-        /// <param name="expr">查询条件，若为null则表示没有条件</param>
-        /// <returns>符合条件的对象列表</returns>
-        List<T> ToList(Expr expr = null);
     }
     #endregion
 
