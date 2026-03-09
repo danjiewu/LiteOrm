@@ -47,16 +47,21 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
-        /// 基于读取器的列架构缓存，首次调用时编译，后续调用直接复用。
+        /// 对于匿名类型，基于读取器的列架构缓存编译委托，通过构造函数参数名与列名匹配；
+        /// 对于普通类型，委托给 <see cref="GetConverter{TResult}()"/> 使用 <see cref="TableInfoProvider.Default"/> 进行位置映射。
         /// </summary>
         /// <typeparam name="TResult">目标类型。</typeparam>
-        /// <param name="reader">已打开的数据读取器，用于读取列架构信息。</param>
+        /// <param name="reader">已打开的数据读取器，用于读取列架构信息（匿名类型时使用）。</param>
         /// <returns>编译后的映射委托。</returns>
         public static Func<DbDataReader, TResult> GetConverter<TResult>(DbDataReader reader)
         {
-            string columnKey = BuildColumnKey(reader);
-            var cacheKey = (typeof(TResult), columnKey);
-            return (Func<DbDataReader, TResult>)_cache.GetOrAdd(cacheKey, _ => CompileConverter<TResult>(reader));
+            Type type = typeof(TResult);
+            if (IsAnonymousType(type))
+            {
+                string columnKey = BuildColumnKey(reader);
+                return (Func<DbDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileAnonymousConverter<TResult>(reader));
+            }
+            return GetConverter<TResult>();
         }
 
         /// <summary>
@@ -69,11 +74,7 @@ namespace LiteOrm.Common
         /// <returns>编译后的映射委托。</returns>
         public static Func<DbDataReader, TResult> GetConverter<TResult>()
         {
-            return (Func<DbDataReader, TResult>)_cacheByType.GetOrAdd(typeof(TResult), type =>
-                CompileConverterByColumns<TResult>(
-                    (TableInfoProvider.Default?.GetTableView(type)
-                        ?? throw new InvalidOperationException($"TableInfoProvider.Default is not configured, cannot resolve columns for type '{type.FullName}'."))
-                    .SelectColumns));
+            return (Func<DbDataReader, TResult>)_cacheByType.GetOrAdd(typeof(TResult), _ => CompileConverter<TResult>());
         }
 
         private static string BuildColumnKey(DbDataReader reader)
@@ -88,7 +89,7 @@ namespace LiteOrm.Common
             return sb.ToString();
         }
 
-        private static Func<DbDataReader, TResult> CompileConverter<TResult>(DbDataReader reader)
+        private static Func<DbDataReader, TResult> CompileConverter<TResult>()
         {
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(DbDataReader), "reader");
@@ -96,7 +97,10 @@ namespace LiteOrm.Common
             if (IsScalarType(resultType))
                 return CompileScalarConverter<TResult>(readerParam);
 
-            return CompileObjectConverter<TResult>(reader, readerParam);
+            var selectColumns = (TableInfoProvider.Default?.GetTableView(resultType)
+                ?? throw new InvalidOperationException($"TableInfoProvider.Default is not configured, cannot resolve columns for type '{resultType.FullName}'."))
+                .SelectColumns;
+            return CompileConverterByColumns<TResult>(selectColumns);
         }
 
         private static Func<DbDataReader, TResult> CompileScalarConverter<TResult>(ParameterExpression readerParam)
@@ -105,26 +109,27 @@ namespace LiteOrm.Common
             return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
         }
 
-        private static Func<DbDataReader, TResult> CompileObjectConverter<TResult>(DbDataReader reader, ParameterExpression readerParam)
+        private static Func<DbDataReader, TResult> CompileAnonymousConverter<TResult>(DbDataReader reader)
         {
             Type resultType = typeof(TResult);
-            var ctor = resultType.GetConstructor(Type.EmptyTypes)
-                ?? throw new InvalidOperationException($"Type '{resultType.FullName}' does not have a public parameterless constructor.");
+            var readerParam = Expression.Parameter(typeof(DbDataReader), "reader");
+            var ctor = resultType.GetConstructors()[0];
+            var ctorParams = ctor.GetParameters();
 
-            var properties = resultType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            var bindings = new List<MemberBinding>();
+            var columnMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < reader.FieldCount; i++)
+                columnMap[reader.GetName(i)] = i;
 
-            int fieldCount = reader.FieldCount;
-            for (int i = 0; i < fieldCount; i++)
+            var args = new Expression[ctorParams.Length];
+            for (int i = 0; i < ctorParams.Length; i++)
             {
-                string colName = reader.GetName(i);
-                var prop = FindProperty(properties, colName);
-                if (prop == null || !prop.CanWrite) continue;
-
-                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType)));
+                ParameterInfo param = ctorParams[i];
+                args[i] = columnMap.TryGetValue(param.Name, out int ordinal)
+                    ? BuildTypedReadExpression(readerParam, ordinal, param.ParameterType)
+                    : Expression.Default(param.ParameterType);
             }
 
-            var body = Expression.MemberInit(Expression.New(ctor), bindings);
+            var body = Expression.New(ctor, args);
             return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
         }
 
@@ -179,16 +184,6 @@ namespace LiteOrm.Common
             return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
         }
 
-        private static PropertyInfo FindProperty(PropertyInfo[] properties, string columnName)
-        {
-            foreach (var prop in properties)
-            {
-                if (string.Equals(prop.Name, columnName, StringComparison.OrdinalIgnoreCase))
-                    return prop;
-            }
-            return null;
-        }
-
         private static bool IsScalarType(Type type)
         {
             type = Nullable.GetUnderlyingType(type) ?? type;
@@ -201,6 +196,12 @@ namespace LiteOrm.Common
                 || type == typeof(DateTimeOffset)
                 || type == typeof(TimeSpan);
         }
+
+        private static bool IsAnonymousType(Type type) =>
+            !type.IsPublic
+            && type.IsGenericType
+            && type.Name.StartsWith("<>")
+            && Attribute.IsDefined(type, typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute));
 
         private static T ConvertValue<T>(object value)
         {

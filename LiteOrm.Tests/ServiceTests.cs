@@ -847,8 +847,7 @@ namespace LiteOrm.Tests
 
             // Assert
             Assert.NotNull(logs);
-            // 应该找到 log2（Amount=250 > 200）
-            Assert.True(logs.Any(log => log.Amount == 250 && log.UserID == user.Id));
+            Assert.Contains(logs, log => log.Amount == 250 && log.UserID == user.Id);
         }
 
         /// <summary>

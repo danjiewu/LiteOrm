@@ -286,7 +286,8 @@ namespace LiteOrm.Tests
             Assert.NotNull(dt);
             Assert.True(dt.Rows.Count >= 1);
             var columnNames = dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
-            Assert.True(columnNames.Any(c => c.Contains("UserCount", StringComparison.OrdinalIgnoreCase)));
+            Assert.Contains("UserCount", columnNames, StringComparer.OrdinalIgnoreCase);
+            Assert.Contains("AvgAge", columnNames, StringComparer.OrdinalIgnoreCase);
         }
 
         [Fact]

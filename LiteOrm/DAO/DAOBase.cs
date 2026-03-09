@@ -8,6 +8,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -330,12 +331,26 @@ namespace LiteOrm
             return MakeNamedParamCommand(expr.ToSql(context, SqlBuilder, paramList), paramList);
         }
 
+        /// <summary>
+        /// 执行 Lambda 表达式，并返回结果集。
+        /// </summary>
+        /// <typeparam name="T">实体类型</typeparam>
+        /// <typeparam name="TResult">结果类型</typeparam>
+        /// <param name="expr">Lambda 表达式，用于生成 SQL 查询</param>
+        /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
+        /// <returns></returns>
+        public virtual EnumerableResult<TResult> Query<T, TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)
+        {
+            var command = MakeExprCommand(LambdaExprConverter.ToSqlSegment(expr));
+            return new EnumerableResult<TResult>(command, readerFunc);
+        }
+
 #if NET8_0_OR_GREATER
         /// <summary>
         /// 执行带有命名参数的 SQL 语句，并返回结果值。SQL 语句可以包含 Expr 或变量值。
         /// </summary>
         /// <typeparam name="T">结果类型</typeparam>
-        /// <param name="sqlBody"></param>
+        /// <param name="sqlBody">SQL语句，可以包含 Expr 或变量值</param>
         /// <returns></returns>
         public virtual ValueResult<T> GetValue<T>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
@@ -346,7 +361,7 @@ namespace LiteOrm
         /// <summary>
         /// 执行带有命名参数的 SQL 语句，并返回受影响的行数。SQL 语句可以包含 Expr 或变量值。
         /// </summary>
-        /// <param name="sqlBody"></param>
+        /// <param name="sqlBody">SQL语句，可以包含 Expr 或变量值</param>
         /// <returns></returns>
 
         public virtual NonQueryResult Execute([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
@@ -355,7 +370,13 @@ namespace LiteOrm
             return new NonQueryResult(command);
         }
 
-
+        /// <summary>
+        /// 执行带有命名参数的 SQL 语句，并返回结果集。SQL 语句可以包含 Expr 或变量值。
+        /// </summary>
+        /// <typeparam name="TResult">结果类型</typeparam>
+        /// <param name="sqlBody">SQL语句，可以包含 Expr 或变量值</param>
+        /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
+        /// <returns></returns>
         public virtual EnumerableResult<TResult> Query<TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, Func<IDataReader, TResult> readerFunc = null)
         {
             var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());

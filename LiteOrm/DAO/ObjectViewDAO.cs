@@ -116,7 +116,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="record">一行记录</param>
         /// <returns>对象</returns>
-        protected Func<DbDataReader, T> ConvertToObject = DataReaderConverter.GetConverter<T>();
+        protected Func<DbDataReader, T> ConvertToObjectHandler = DataReaderConverter.GetConverter<T>();
 
         #endregion
 
@@ -137,7 +137,7 @@ namespace LiteOrm
                 param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
                 i++;
             }
-            return new EnumerableResult<T>(getObjectCommand, ConvertToObject, false);
+            return new EnumerableResult<T>(getObjectCommand, ConvertToObjectHandler, false);
         }
 
 
@@ -213,7 +213,7 @@ namespace LiteOrm
         public virtual EnumerableResult<T> Search(Expr expr = null)
         {
             var command = MakeSelectExprCommand(expr);
-            return new EnumerableResult<T>(command, ConvertToObject);
+            return new EnumerableResult<T>(command, ConvertToObjectHandler);
         }
 
 
@@ -231,12 +231,11 @@ namespace LiteOrm
         {
             string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} FROM {From} {sqlBody.GetSqlResult()}";
             var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
-            return new EnumerableResult<T>(command, ConvertToObject);
+            return new EnumerableResult<T>(command, ConvertToObjectHandler);
         }
 #endif
 
         #endregion
-
 
         #region IObjectViewDAO Members
 
