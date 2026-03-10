@@ -45,11 +45,10 @@ namespace LiteOrm
         /// <returns>配置后的主机构建器</returns>
         public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder)
         {
-            var callingAssembly = Assembly.GetCallingAssembly();
             return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
                 .ConfigureContainer<ContainerBuilder>((builder, containerBuilder) =>
                 {
-                    containerBuilder.RegisterAutoService(callingAssembly);
+                    containerBuilder.RegisterAutoService();
                     containerBuilder.RegisterBuildCallback(container =>
                     {
                         RegisterScope(container);

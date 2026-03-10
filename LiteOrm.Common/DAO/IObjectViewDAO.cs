@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Common;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -28,6 +31,16 @@ namespace LiteOrm.Common
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
         new EnumerableResult<T> Search(Expr expr = null);
+
+        /// <summary>
+        /// 执行 Lambda 表达式，并返回自定义类型集合。
+        /// </summary>
+        /// <typeparam name="TResult">结果类型</typeparam>
+        /// <param name="expr">Lambda 表达式，用于生成 SQL 查询</param>
+        /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
+        /// <returns></returns>
+
+        EnumerableResult<TResult> Search<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null);
     }
     #endregion
 

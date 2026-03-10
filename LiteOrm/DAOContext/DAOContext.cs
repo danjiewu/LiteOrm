@@ -39,7 +39,6 @@ namespace LiteOrm
         {
             DbConnection = connection ?? throw new ArgumentNullException(nameof(connection));
             ProviderType = connection.GetType();
-            SqlBuilder = SqlBuilderFactory.Instance.GetSqlBuilder(ProviderType);
             LastActiveTime = DateTime.Now;
         }
 
@@ -52,12 +51,6 @@ namespace LiteOrm
         {
             Pool = pool;
         }
-
-        /// <summary>
-        /// 获取针对当前数据库连接类型的 SQL 构建器。
-        /// </summary>
-        public SqlBuilder SqlBuilder { get; }
-
 
         /// <summary>
         /// 已准备好的 SQL 命令代理缓存。

@@ -63,7 +63,7 @@ namespace LiteOrm
             };
 
             // 获取对应的数据库构建器（如 SQLiteBuilder, SqlServerBuilder）
-            var sqlBuilder = SqlBuilderFactory.Instance.GetSqlBuilder(table.Definition.DataProviderType);
+            var sqlBuilder = SqlBuilderFactory.Instance.GetSqlBuilder(table.Definition.DataProviderType, table.Definition.DataSource);
             // 执行递归解析
             string sql = expr.ToSql(context, sqlBuilder, paramList);
 

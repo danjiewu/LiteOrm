@@ -106,7 +106,22 @@ namespace LiteOrm
             }
 
             pool.SyncTable = config.SyncTable;
-
+            if (config.SqlBuilderType != null)
+            {
+                try
+                {
+                    var sqlBuilder = (SqlBuilder)Activator.CreateInstance(config.SqlBuilderType);
+                    SqlBuilderFactory.Instance.RegisterSqlBuilder(config.Name, sqlBuilder);
+                    if (_dataSourceProvider.DefaultDataSourceName == config.Name)
+                    {
+                        SqlBuilderFactory.Instance.RegisterSqlBuilder(string.Empty, sqlBuilder);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"Failed to create SqlBuilder of type {config.SqlBuilderType.FullName} for pool {config.Name}", ex);
+                }
+            }
             _pools.TryAdd(config.Name, pool);
         }
 

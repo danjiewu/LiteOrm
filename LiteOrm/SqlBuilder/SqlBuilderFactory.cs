@@ -53,10 +53,11 @@ namespace LiteOrm
         /// <summary>
         /// 已注册的 SQL 构建器集合。
         /// </summary>
-        public ConcurrentDictionary<Type, SqlBuilder> RegisteredSqlBuilders { get; } = new();
+        protected ConcurrentDictionary<Type, SqlBuilder> RegisteredSqlBuilders { get; } = new();
+        protected ConcurrentDictionary<string, SqlBuilder> RegisteredSqlBuildersByDataSource { get; } = new();
 
         /// <summary>
-        /// 注册 SQL 构建器。
+        /// 注册 SQL 构建器（重载方法，使用提供程序类型作为键）。
         /// </summary>
         /// <param name="providerType">提供程序类型。</param>
         /// <param name="sqlBuilder">SQL 构建器实例。</param>
@@ -66,13 +67,27 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 注册 SQL 构建器（重载方法，使用数据源名称作为键）。
+        /// </summary>
+        /// <param name="dataSourceName"></param>
+        /// <param name="sqlBuilder"></param>
+        public void RegisterSqlBuilder(string dataSourceName, SqlBuilder sqlBuilder)
+        {
+            RegisteredSqlBuildersByDataSource[dataSourceName] = sqlBuilder;
+        }
+
+        /// <summary>
         /// 获取指定提供程序类型的 SQL 构建器。
         /// </summary>
         /// <param name="providerType">提供程序类型。</param>
+        /// <param name="dataSourceName">数据源名称。</param>
         /// <returns>SQL 构建器实例。</returns>
-        public virtual SqlBuilder GetSqlBuilder(Type providerType)
+        public virtual SqlBuilder GetSqlBuilder(Type providerType, string dataSourceName = null)
         {
-            if (providerType is null) throw new ArgumentNullException("providerType");
+            if (dataSourceName == null) dataSourceName = string.Empty;
+            if (RegisteredSqlBuildersByDataSource.ContainsKey(dataSourceName)) return RegisteredSqlBuildersByDataSource[dataSourceName];
+
+            if (providerType is null) throw new ArgumentNullException("providerType", "providerType cannot be null while dataSource is not specified");
             if (RegisteredSqlBuilders.ContainsKey(providerType)) return RegisteredSqlBuilders[providerType];
             var connectionTypeName = providerType.Name;
             connectionTypeName = connectionTypeName.ToUpper();
@@ -94,9 +109,9 @@ namespace LiteOrm
         /// </summary>
         /// <param name="providerType">提供程序类型。</param>
         /// <returns>SQL 构建器接口实例。</returns>
-        ISqlBuilder ISqlBuilderFactory.GetSqlBuilder(Type providerType)
+        ISqlBuilder ISqlBuilderFactory.GetSqlBuilder(Type providerType, string dataSourceName)
         {
-            return GetSqlBuilder(providerType);
+            return GetSqlBuilder(providerType, dataSourceName);
         }
     }
 }

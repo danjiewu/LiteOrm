@@ -206,14 +206,13 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 执行 Lambda 表达式，并返回结果集。
+        /// 执行 Lambda 表达式，并返回自定义类型集合。
         /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
         /// <typeparam name="TResult">结果类型</typeparam>
         /// <param name="expr">Lambda 表达式，用于生成 SQL 查询</param>
         /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
         /// <returns></returns>
-        public virtual EnumerableResult<TResult> Query<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)
+        public virtual EnumerableResult<TResult> Search<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)
         {
             var command = MakeSelectExprCommand(LambdaExprConverter.ToSqlSegment(expr));
             return new EnumerableResult<TResult>(command, readerFunc);

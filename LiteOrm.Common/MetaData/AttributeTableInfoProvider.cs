@@ -85,7 +85,7 @@ namespace LiteOrm
                 throw new InvalidOperationException($"Data source '{tableAttribute.DataSource ?? "default"}' not found for type '{objectType.FullName}'. Check your configuration.");
             }
 
-            var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType);
+            var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType, tableAttribute.DataSource);
 
             List<ColumnDefinition> columns = new List<ColumnDefinition>();
             foreach (PropertyInfo property in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
@@ -182,7 +182,7 @@ namespace LiteOrm
             var tableDef = GetTableDefinition(objectType);
             if (tableDef == null) return null;
 
-            var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(tableDef.DataProviderType);
+            var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(tableDef.DataProviderType, tableDef.DataSource);
 
             TableJoinAttribute[] atts = (TableJoinAttribute[])objectType.GetCustomAttributes(typeof(TableJoinAttribute), true);
             ConcurrentDictionary<string, JoinedTable> joinedTables = new ConcurrentDictionary<string, JoinedTable>(StringComparer.OrdinalIgnoreCase);

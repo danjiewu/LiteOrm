@@ -106,7 +106,7 @@ namespace LiteOrm
         /// </summary>
         public virtual SqlBuilder SqlBuilder
         {
-            get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType); }
+            get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType, TableDefinition.DataSource); }
         }
 
         ISqlBuilder IExprStringBuildContext.SqlBuilder => SqlBuilder;

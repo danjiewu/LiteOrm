@@ -77,7 +77,7 @@ namespace LiteOrm
         /// 获取或设置连接池的缓冲大小（闲置连接数量）。
         /// </summary>
         public int PoolSize { get; set; } = 20;
-
+        
         /// <summary>
         /// 获取或设置连接池的最大连接数限制。
         /// </summary>
@@ -166,7 +166,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取该连接池对应数据库的 SQL 构建器。
         /// </summary>
-        public SqlBuilder SqlBuilder => SqlBuilderFactory.Instance.GetSqlBuilder(ProviderType);
+        public SqlBuilder SqlBuilder => SqlBuilderFactory.Instance.GetSqlBuilder(ProviderType, Name);
 
         /// <summary>
         /// 确保指定表已在数据库中存在且包含所有必要的列。

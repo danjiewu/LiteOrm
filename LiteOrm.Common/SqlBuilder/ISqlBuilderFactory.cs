@@ -12,7 +12,8 @@ namespace LiteOrm
         /// 根据数据库提供程序类型获取对应的 SQL 构建器。
         /// </summary>
         /// <param name="providerType">数据库提供程序（如 SqlConnection）的类型。</param>
+        /// <param name="dataSourceName">数据源名称，可选。如果未指定，则使用默认数据源。</param>
         /// <returns>返回适配该数据库的 SQL 构建器实例。</returns>
-        ISqlBuilder GetSqlBuilder(Type providerType);
+        ISqlBuilder GetSqlBuilder(Type providerType, string dataSourceName = null);
     }
 }

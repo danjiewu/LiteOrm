@@ -22,6 +22,10 @@ namespace LiteOrm.Common
         /// 数据库提供程序类型全名
         /// </summary>
         public string Provider { get; set; }
+        /// <summary>
+        /// SQL 构建器类型全名（可选，如果不指定则根据 Provider 自动匹配）
+        /// </summary>
+        public string SqlBuilder { get; set; }
 
         /// <summary>
         /// 连接保活时长
@@ -68,6 +72,24 @@ namespace LiteOrm.Common
                     throw new TypeLoadException($"Unable to load database provider type: {Provider}");
 
                 return type;
+            }
+        }
+
+        /// <summary>
+        /// 获取 SQL 构建器类型，如果未指定则返回 null，由工厂根据 Provider 自动匹配
+        /// </summary>
+        public Type SqlBuilderType
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(SqlBuilder))
+                {
+                    var type = Type.GetType(SqlBuilder);
+                    if (type == null)
+                        throw new TypeLoadException($"Unable to load SQL builder type: {SqlBuilder}");
+                    return type;
+                }
+                return null;
             }
         }
     }

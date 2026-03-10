@@ -15,7 +15,8 @@
 		<PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
-		<PackageReleaseNotes>优化数据读取，采用动态编译方法读取；增加ObjectViewDAO返回匿名类的查询方式。</PackageReleaseNotes>
+		<PackageReleaseNotes>优化数据读取，采用动态编译方法读取；
+    增加ObjectViewDAO返回匿名类的查询方式。</PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
