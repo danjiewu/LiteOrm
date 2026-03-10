@@ -2,7 +2,6 @@
 using Dapper;
 using FreeSql;
 using LiteOrm.Common;
-using LiteOrm.Service;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -123,14 +122,14 @@ namespace LiteOrm.Benchmark
 
                     // LiteOrm 种子
                     Console.WriteLine("Seeding LiteOrm...");
-                    var userService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
+                    var userDao = scope.ServiceProvider.GetRequiredService<ObjectDAO<BenchmarkUser>>();
                     var liteUsers = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = $"User{i}", Age = 20 + (i % 50), Email = $"user{i}@example.com", CreateTime = DateTime.Now }).ToList();
-                    userService.BatchInsertAsync(liteUsers).GetAwaiter().GetResult();
+                    userDao.BatchInsertAsync(liteUsers).GetAwaiter().GetResult();
 
-                    var userViewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
-                    var logService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkLog>>();
-                    var liteLogs = userViewService.SearchAsync(null).GetAwaiter().GetResult().Select(u => new BenchmarkLog { UserId = u.Id, Message = $"Log for {u.Name}", LogTime = DateTime.Now }).ToList();
-                    logService.BatchInsertAsync(liteLogs).GetAwaiter().GetResult();
+                    var userViewDao = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<BenchmarkUser>>();
+                    var logDao = scope.ServiceProvider.GetRequiredService<ObjectDAO<BenchmarkLog>>();
+                    var liteLogs = userViewDao.Search().ToListAsync().GetAwaiter().GetResult().Select(u => new BenchmarkLog { UserId = u.Id, Message = $"Log for {u.Name}", LogTime = DateTime.Now }).ToList();
+                    logDao.BatchInsertAsync(liteLogs).GetAwaiter().GetResult();
 
                     Console.WriteLine("Step 2: Seeding data completed.");
                 }
@@ -180,9 +179,9 @@ namespace LiteOrm.Benchmark
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
+                var dao = scope.ServiceProvider.GetRequiredService<ObjectDAO<BenchmarkUser>>();
                 var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Lite", Age = 25, Email = "lite@test.com", CreateTime = DateTime.Now }).ToList();
-                await service.BatchInsertAsync(users);
+                await dao.BatchInsertAsync(users);
             }
         }
 
@@ -255,16 +254,16 @@ namespace LiteOrm.Benchmark
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
-                var updateService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
-                var users = await viewService.SearchAsync(new SectionExpr(0, BatchCount));
+                var viewDao = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<BenchmarkUser>>();
+                var dao = scope.ServiceProvider.GetRequiredService<ObjectDAO<BenchmarkUser>>();
+                var users = await viewDao.Search(new SectionExpr(0, BatchCount)).ToListAsync();
                 foreach (var u in users)
                 {
                     u.Name = "LiteOrm" + Guid.NewGuid().ToString("N").Substring(0, 8);
                     u.Age = _random.Next(20, 60);
                     u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                 }
-                await updateService.BatchUpdateAsync(users);
+                await dao.BatchUpdateAsync(users);
             }
         }
 
@@ -309,9 +308,9 @@ namespace LiteOrm.Benchmark
         }
         #endregion
 
-        #region Async UpdateOrInsert
+        #region Async Upsert
         [Benchmark]
-        public async Task EFCore_UpdateOrInsert_Async()
+        public async Task EFCore_Upsert_Async()
         {
             using (var scope = _serviceProvider.CreateScope())
             {
@@ -339,7 +338,7 @@ namespace LiteOrm.Benchmark
         }
 
         [Benchmark]
-        public async Task SqlSugar_UpdateOrInsert_Async()
+        public async Task SqlSugar_Upsert_Async()
         {
             using (var scope = _serviceProvider.CreateScope())
             {
@@ -353,22 +352,22 @@ namespace LiteOrm.Benchmark
         }
 
         [Benchmark]
-        public async Task LiteOrm_UpdateOrInsert_Async()
+        public async Task LiteOrm_Upsert_Async()
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
-                var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
-                var existingUsers = await viewService.SearchAsync(new SectionExpr(0, BatchCount / 2));
+                var viewDao = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<BenchmarkUser>>();
+                var dao = scope.ServiceProvider.GetRequiredService<ObjectDAO<BenchmarkUser>>();
+                var existingUsers = await viewDao.Search(new SectionExpr(0, BatchCount / 2)).ToListAsync();
                 foreach (var u in existingUsers) { u.Name = "Lite_Upsert_U"; u.Age = _random.Next(20, 60); }
                 var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Lite_Upsert_I", Age = _random.Next(20, 60), Email = $"lite_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();
-                await service.BatchUpdateOrInsertAsync(all);
+                await dao.BatchUpdateOrInsertAsync(all);
             }
         }
 
         [Benchmark]
-        public async Task Dapper_UpdateOrInsert_Async()
+        public async Task Dapper_Upsert_Async()
         {
             using (var conn = new MySqlConnection(_connectionString!))
             {
@@ -391,7 +390,7 @@ namespace LiteOrm.Benchmark
         }
 
         [Benchmark]
-        public async Task FreeSql_UpdateOrInsert_Async()
+        public async Task FreeSql_Upsert_Async()
         {
             using (var scope = _serviceProvider.CreateScope())
             {
@@ -441,12 +440,12 @@ namespace LiteOrm.Benchmark
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var service = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkLogView>>();
-                var list = await service.SearchAsync(
+                var dao = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<BenchmarkLogView>>();
+                var list = await dao.Search(
                     q => q.Where(l => l.Age < 30)
                           .OrderByDescending(l => l.Id)
                           .Skip(0).Take(BatchCount)
-                );
+                ).ToListAsync();
             }
         }
 
