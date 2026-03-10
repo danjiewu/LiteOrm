@@ -349,11 +349,11 @@ namespace LiteOrm.Common
         {
             if (expr is null)
             {
-                return new FromExpr(objectType);
+                return new FromExpr(objectType) { Alias = Constants.DefaultTableAlias };
             }
             else if (expr is LogicExpr logicExpr)
             {
-                return new WhereExpr() { Source = new FromExpr(objectType), Where = logicExpr };
+                return new WhereExpr() { Source = new FromExpr(objectType) { Alias = Constants.DefaultTableAlias }, Where = logicExpr };
             }
             else if (expr is ISqlSegment sourceExpr)
             {
@@ -368,7 +368,7 @@ namespace LiteOrm.Common
                 }
                 else
                 {
-                    firstSource.Source = new FromExpr(objectType);
+                    firstSource.Source = new FromExpr(objectType) { Alias = Constants.DefaultTableAlias };
                 }
                 return sourceExpr;
             }

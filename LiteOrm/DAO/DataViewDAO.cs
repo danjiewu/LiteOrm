@@ -100,35 +100,31 @@ namespace LiteOrm
         /// </summary>
         private SelectExpr BuildSelectExpr(string[] propertyNames, Expr expr)
         {
-            ISqlSegment selectSource;
-            if (expr is null)
-            {
-                selectSource = new FromExpr(ObjectType);
-            }
-            else if (expr is LogicExpr logicExpr)
-            {
-                selectSource = new WhereExpr() { Source = new FromExpr(ObjectType), Where = logicExpr };
-            }
-            else if (expr is ISqlSegment sourceExpr)
-            {
-                selectSource = sourceExpr;
-            }
-            else
-            {
-                throw new ArgumentException("expr 参数类型不支持");
-            }
-
-            SelectItemExpr[] selects;
+            List<SelectItemExpr> selects;
             if (propertyNames != null && propertyNames.Length > 0)
             {
-                selects = Array.ConvertAll(propertyNames, p => new SelectItemExpr(Expr.Prop(p), p));
+                selects = Array.ConvertAll(propertyNames, p => new SelectItemExpr(Expr.Prop(p), p)).ToList();
             }
             else
             {
-                selects = Array.ConvertAll(SelectColumns, p => new SelectItemExpr(Expr.Prop(p.Name), p.Name));
+                selects = Array.ConvertAll(SelectColumns, p => new SelectItemExpr(Expr.Prop(p.Name), p.Name)).ToList();
             }
 
-            return new SelectExpr(selectSource, selects);
+            SelectExpr selectExpr;
+            if (expr is SelectExpr selectExpr1)
+            {
+                selectExpr = selectExpr1;
+                selectExpr.Selects = selects;
+            }
+            else
+            {
+                selectExpr = new SelectExpr
+                {
+                    Source = expr.ToSource(ObjectType),
+                    Selects = selects
+                };
+            }
+            return selectExpr;
         }
     }
 }

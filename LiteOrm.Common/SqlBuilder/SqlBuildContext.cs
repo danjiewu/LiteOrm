@@ -38,7 +38,7 @@ namespace LiteOrm.Common
             };
             if (table != null)
             {
-                CurrentScope.AddTableAlias(aliasName ?? "T0", table);
+                CurrentScope.AddTableAlias(aliasName ?? Constants.DefaultTableAlias, table);
             }
         }
 
@@ -167,7 +167,7 @@ namespace LiteOrm.Common
                     {
                         foreach (var item in value)
                         {
-                            if (!Const.ValidNameRegex.IsMatch(item)) throw new ArgumentException($"Invalid table argument name: {item}");
+                            if (!Constants.ValidNameRegex.IsMatch(item)) throw new ArgumentException($"Invalid table argument name: {item}");
                         }
                     }
                     _tableArgs = value ?? Array.Empty<string>();

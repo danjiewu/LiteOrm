@@ -230,9 +230,8 @@ namespace LiteOrm
 
             foreach (SqlColumn column in columns)
             {
-                if (column is ForeignColumn)
+                if (column is ForeignColumn foreignColumn)
                 {
-                    ForeignColumn foreignColumn = column as ForeignColumn;
                     foreignColumn.TargetColumn = GetTargetColumn(joinedTables, foreignColumn);
                 }
             }

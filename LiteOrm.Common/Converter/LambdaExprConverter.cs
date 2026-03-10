@@ -118,7 +118,7 @@ namespace LiteOrm.Common
             Type objectType = _rootParameter.Type;
             if (objectType.IsGenericType && (objectType.GetGenericTypeDefinition() == typeof(IQueryable<>) || objectType.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
                 objectType = objectType.GetGenericArguments()[0];
-            _currentAlias = _parameterAliases[_rootParameter.Name] = objectType.Name;
+            _currentAlias = _parameterAliases[_rootParameter.Name] = Constants.DefaultTableAlias;
             _parameterExprs[_rootParameter.Name] = _fromExpr = new FromExpr(objectType) { Alias = _currentAlias };
             _aliasCounter = 1;
         }
@@ -1090,7 +1090,7 @@ namespace LiteOrm.Common
                     // 为 Lambda 参数生成一个新的别名并缓存
                     _currentAlias = _parameterAliases[parameter.Name] = "T" + _aliasCounter++;
                     // 创建 ForeignExpr 并缓存到 _parameterArgs
-                    var foreignExpr = new ForeignExpr(parameter.Type);
+                    var foreignExpr = new ForeignExpr(parameter.Type) { Alias = _currentAlias };
                     // 将参数名与 ForeignExpr 关联，以便在转换 Lambda.Body 时正确解析参数访问
                     _parameterExprs[parameter.Name] = foreignExpr;
 

@@ -40,7 +40,7 @@ namespace LiteOrm.Common
             get { return _tableAlias; }
             set 
             {
-                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
                 {
                     throw new ArgumentException("Table alias contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(TableAlias));
                 }
@@ -57,7 +57,7 @@ namespace LiteOrm.Common
             get { return _propertyName; }
             set 
             {
-                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
                 {
                     throw new ArgumentException("Property name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(PropertyName));
                 }

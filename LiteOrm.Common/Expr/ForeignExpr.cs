@@ -35,7 +35,7 @@ namespace LiteOrm.Common
             get { return _alias; }
             set
             {
-                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
                 {
                     throw new ArgumentException("Foreign table alias contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Alias));
                 }
@@ -57,7 +57,7 @@ namespace LiteOrm.Common
                 {
                     foreach (var arg in value)
                     {
-                        if (arg != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(arg))
+                        if (arg != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(arg))
                         {
                             throw new System.ArgumentException("Table name parameter contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(TableArgs));
                         }

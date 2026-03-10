@@ -9,6 +9,7 @@ namespace LiteOrm.Tests
     /// LambdaExprConverter 单元测试，覆盖各类表达式节点的转换逻辑。
     /// 纯内存测试，无需数据库连接。
     /// </summary>
+    [Collection("Database")]
     public class LambdaExprConverterTests
     {
         #region ConvertLambda — 返回类型分支
