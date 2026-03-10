@@ -950,11 +950,7 @@ namespace LiteOrm.Common
                         var selectItem = new SelectItemExpr(AsValue(item));
                         if (newExpr.Members != null && i < newExpr.Members.Count)
                         {
-                            if (item is PropertyExpr propertyExpr && propertyExpr.PropertyName == newExpr.Members[i].Name)
-                                // 如果属性名与成员名相同，则不设置别名，保持简洁
-                                selectItem.Alias = null;
-                            else
-                                selectItem.Alias = newExpr.Members[i].Name;
+                            selectItem.Alias = newExpr.Members[i].Name;
                         }
                         items.Add(selectItem);
                     }

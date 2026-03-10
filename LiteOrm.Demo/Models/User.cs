@@ -36,7 +36,7 @@ namespace LiteOrm.Demo.Models
         /// 所属部门 ID
         /// </summary>
         [Column("DeptId")]
-        [ForeignType(typeof(Department), Alias = "Dept")]
+        [ForeignType(typeof(DepartmentView), Alias = "Dept")]
         public int? DeptId { get; set; }
     }
 
@@ -50,5 +50,8 @@ namespace LiteOrm.Demo.Models
         /// </summary>
         [ForeignColumn("Dept", Property = "Name")]
         public string? DeptName { get; set; }
+
+        [ForeignColumn("Dept", Property = "ParentName")]
+        public string? ParentDeptName { get; set; }
     }
 }

@@ -89,7 +89,7 @@ namespace LiteOrm
         /// <returns>查询结果数据表</returns>
         public virtual DataTableResult Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)
         {
-            string sql = isFull ? sqlBody.GetSqlResult(): $"SELECT {AllFields} FROM {From} {sqlBody.GetSqlResult()}";
+            string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} FROM {From} {sqlBody.GetSqlResult()}";
             var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
             return new DataTableResult(command, ReadDataRow, false);
         }
@@ -108,7 +108,7 @@ namespace LiteOrm
             else if (expr is LogicExpr logicExpr)
             {
                 selectSource = new WhereExpr() { Source = new FromExpr(ObjectType), Where = logicExpr };
-            }                
+            }
             else if (expr is ISqlSegment sourceExpr)
             {
                 selectSource = sourceExpr;
@@ -121,11 +121,11 @@ namespace LiteOrm
             SelectItemExpr[] selects;
             if (propertyNames != null && propertyNames.Length > 0)
             {
-                selects = Array.ConvertAll(propertyNames, p => new SelectItemExpr(Expr.Prop(p)));
+                selects = Array.ConvertAll(propertyNames, p => new SelectItemExpr(Expr.Prop(p), p));
             }
             else
             {
-                selects = Array.ConvertAll(SelectColumns, p => new SelectItemExpr(Expr.Prop(p.Name)));
+                selects = Array.ConvertAll(SelectColumns, p => new SelectItemExpr(Expr.Prop(p.Name), p.Name));
             }
 
             return new SelectExpr(selectSource, selects);

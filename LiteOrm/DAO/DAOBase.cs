@@ -310,7 +310,7 @@ namespace LiteOrm
                 selectExpr = new SelectExpr()
                 {
                     Source = expr.ToSource(ObjectType),
-                    Selects = SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Prop(col.PropertyName))).ToList()
+                    Selects = SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Prop(col.PropertyName), col.PropertyName)).ToList()
                 };
             }
             return MakeExprCommand(selectExpr);
@@ -328,20 +328,6 @@ namespace LiteOrm
             List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
             var context = CreateSqlBuildContext();
             return MakeNamedParamCommand(expr.ToSql(context, SqlBuilder, paramList), paramList);
-        }
-
-        /// <summary>
-        /// 执行 Lambda 表达式，并返回结果集。
-        /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <typeparam name="TResult">结果类型</typeparam>
-        /// <param name="expr">Lambda 表达式，用于生成 SQL 查询</param>
-        /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
-        /// <returns></returns>
-        public virtual EnumerableResult<TResult> Query<T, TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)
-        {
-            var command = MakeExprCommand(LambdaExprConverter.ToSqlSegment(expr));
-            return new EnumerableResult<TResult>(command, readerFunc);
         }
 
 #if NET8_0_OR_GREATER

@@ -94,8 +94,8 @@ namespace LiteOrm.Tests
             // Where 的源应该是 Select 表达式
             var select = Assert.IsType<SelectExpr>(where.Source);
             Assert.Equal(2, select.Selects.Count);
-            Assert.Null(select.Selects[0].Alias);
-            Assert.Null(select.Selects[1].Alias);
+            Assert.Equal("Name", select.Selects[0].Alias);
+            Assert.Equal("Age", select.Selects[1].Alias);
 
             // 条件应该是 Age > 18
             var condition = Assert.IsType<LogicBinaryExpr>(where.Where);
