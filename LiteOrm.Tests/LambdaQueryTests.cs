@@ -12,6 +12,7 @@ namespace LiteOrm.Tests
     /// Lambda 查询转换单元测试 - 纯内存测试，无需数据库连接
     /// 测试 LambdaExprConverter 将 LINQ 表达式转换为 SQL 表达式片段的功能
     /// </summary>
+    [Collection("Database")]
     public class LambdaQueryTests
     {
 
@@ -307,7 +308,7 @@ namespace LiteOrm.Tests
             // 3. 手动构造等效的 Expr
             var manualExpr = new WhereExpr
             {
-                Source = new FromExpr(typeof(TestUser)) { Alias = "TestUser" },
+                Source = new FromExpr(typeof(TestUser)) { Alias = Constants.DefaultTableAlias },
                 Where = Expr.And(
                     Expr.Prop("Age") > 18,
                     Expr.Prop("Name").Contains("Test")
@@ -354,7 +355,7 @@ namespace LiteOrm.Tests
                 {
                     Source = new WhereExpr
                     {
-                        Source = new FromExpr(typeof(TestUser)) { Alias = "TestUser" },
+                        Source = new FromExpr(typeof(TestUser)) { Alias = Constants.DefaultTableAlias },
                         Where = Expr.And(
                             Expr.Prop("Age") > 18,
                             Expr.Prop("Name").Contains("Test")

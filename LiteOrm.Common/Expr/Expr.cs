@@ -281,7 +281,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 创建 From 表达式。
         /// </summary>
-        public static FromExpr From<T>(params string[] tableArgs) => new FromExpr(typeof(T)) { TableArgs = tableArgs };
+        public static FromExpr From<T>(params string[] tableArgs) => new FromExpr(typeof(T)) { TableArgs = tableArgs, Alias = Constants.DefaultTableAlias };
 
         /// <summary>
         /// 使用指定的类型创建 From 表达式。
@@ -289,7 +289,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体类型</param>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static FromExpr From(Type objectType, params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs };
+        public static FromExpr From(Type objectType, params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs, Alias = Constants.DefaultTableAlias };
 
         /// <summary>
         /// 使用指定的 Lambda 表达式创建 WHERE 条件表达式

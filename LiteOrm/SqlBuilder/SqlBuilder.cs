@@ -126,7 +126,7 @@ namespace LiteOrm
         /// <returns>转义后的字符串。</returns>
         public virtual string ToSqlLikeValue(string value)
         {
-            return _sqlLikeEscapeReg.Replace(value, $"{Const.LikeEscapeChar}$1");
+            return _sqlLikeEscapeReg.Replace(value, $"{Constants.LikeEscapeChar}$1");
         }
 
         /// <summary>

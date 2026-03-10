@@ -97,7 +97,7 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, ColumnRef columnRef, SqlBuildContext context, ISqlBuilder sqlBuilder)
         {
-            var tableName = columnRef.Table?.Name ?? context.Table.Name;
+            var tableName = columnRef.Table?.Name ?? context.DefaultTableAliasName;
             sb.Append(sqlBuilder.ToSqlName(tableName));
             sb.Append('.');
             if (columnRef.Column != null)

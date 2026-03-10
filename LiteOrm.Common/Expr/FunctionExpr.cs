@@ -42,7 +42,7 @@ namespace LiteOrm.Common
             get { return _functionName; }
             set 
             {
-                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
                 {
                     throw new System.ArgumentException("Function name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(FunctionName));
                 }

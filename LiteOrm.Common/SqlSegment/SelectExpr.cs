@@ -131,7 +131,7 @@ namespace LiteOrm.Common
             get => _alias;
             set
             {
-                if (value != null && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
                 {
                     throw new ArgumentException("Alias name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Alias));
                 }

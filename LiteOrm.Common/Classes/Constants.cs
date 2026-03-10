@@ -5,8 +5,12 @@ namespace LiteOrm.Common
     /// <summary>
     /// 常量定义类。
     /// </summary>
-    public static class Const
+    public static class Constants
     {
+        /// <summary>
+        /// 默认的表别名，在生成 SQL 语句时使用，避免与用户定义的别名冲突。
+        /// </summary>
+        public const string DefaultTableAlias = "T0";
         /// <summary>
         /// SQL语句中like条件中的转义符
         /// </summary>

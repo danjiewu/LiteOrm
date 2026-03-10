@@ -253,7 +253,7 @@ namespace LiteOrm.Common
                         outputParams.Add(new KeyValuePair<string, object>(sqlBuilder.ToParamName(paramName), val));
                         sb.Append(sqlBuilder.ToSqlParam(paramName));
                         sb.Append(" ESCAPE '");
-                        sb.Append(Const.LikeEscapeChar);
+                        sb.Append(Constants.LikeEscapeChar);
                         sb.Append("'");
                     }
                     else
@@ -267,7 +267,7 @@ namespace LiteOrm.Common
                         ToSql(ref nestedRightSb, expr.Right, context, sqlBuilder, outputParams);
                         string nestedRight = nestedRightSb.ToString();
                         nestedRightSb.Dispose();
-                        string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({nestedRight},'{Const.LikeEscapeChar}', '{Const.LikeEscapeChar}{Const.LikeEscapeChar}'),'_', '{Const.LikeEscapeChar}_'),'%', '{Const.LikeEscapeChar}%'),'/', '{Const.LikeEscapeChar}/'),'[', '{Const.LikeEscapeChar}['),']', '{Const.LikeEscapeChar}]')";
+                        string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({nestedRight},'{Constants.LikeEscapeChar}', '{Constants.LikeEscapeChar}{Constants.LikeEscapeChar}'),'_', '{Constants.LikeEscapeChar}_'),'%', '{Constants.LikeEscapeChar}%'),'/', '{Constants.LikeEscapeChar}/'),'[', '{Constants.LikeEscapeChar}['),']', '{Constants.LikeEscapeChar}]')";
                         switch (expr.OriginOperator)
                         {
                             case LogicOperator.StartsWith:
@@ -279,7 +279,7 @@ namespace LiteOrm.Common
                         }
                         sb.Append(right);
                         sb.Append(" ESCAPE '");
-                        sb.Append(Const.LikeEscapeChar);
+                        sb.Append(Constants.LikeEscapeChar);
                         sb.Append("'");
                     }
                     break;

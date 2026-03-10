@@ -45,7 +45,7 @@ namespace LiteOrm.Common
             get => _functionName;
             set
             {
-                if (!string.IsNullOrEmpty(value) && !LiteOrm.Common.Const.ValidNameRegex.IsMatch(value))
+                if (!string.IsNullOrEmpty(value) && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
                 {
                     throw new ArgumentException($"Aggregate function name '{value}' contains invalid characters, only letters, numbers, and underscores are allowed");
                 }
