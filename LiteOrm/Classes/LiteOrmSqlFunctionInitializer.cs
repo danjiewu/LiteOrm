@@ -1,6 +1,7 @@
 using Autofac;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
+using System.Linq;
 
 namespace LiteOrm
 {
@@ -37,6 +38,8 @@ namespace LiteOrm
             // SQLite 函数注册
             SQLiteBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
                 (functionName, args) => $"DATE({args[0].Key}, CAST({args[1].Key} AS TEXT)||' {functionName.Substring(3).ToLower()}')");
+            SQLiteBuilder.Instance.RegisterFunctionSqlHandler("Concat",
+                (functionName, args) => string.Join("||", args.Select(arg => arg.Key)));
 
             // MySQL 函数注册
             MySqlBuilder.Instance.RegisterFunctionSqlHandler("LENGTH", (functionName, args) => $"CHAR_LENGTH({args[0].Key})");

@@ -702,12 +702,7 @@ namespace LiteOrm.Common
                 var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.ObjectType);
                 context.TableArgs = tableArgs;
                 sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name)));
-                sb.Append(" ");
-                if (expr.Alias != null)
-                {
-                    sb.Append(sqlBuilder.ToSqlName(expr.Alias));
-                }
-                context.AddTableAlias(expr.Alias ?? tableDef.Name, tableDef);
+                context.AddTableAlias(tableDef.Name, tableDef);
             }
             else
             {
