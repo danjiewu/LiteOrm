@@ -15,11 +15,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.Benchmark", "LiteOr
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{887B819B-42AD-47EF-97D1-E3A38FC2DD6B}"
 	ProjectSection(SolutionItems) = preProject
+		CUSTOM_PAGING_EXAMPLE.md = CUSTOM_PAGING_EXAMPLE.md
 		LICENSE = LICENSE
 		LITEORM_API_REFERENCE.en.md = LITEORM_API_REFERENCE.en.md
-		README.nuget.md = README.nuget.md
 		LITEORM_API_REFERENCE.zh.md = LITEORM_API_REFERENCE.zh.md
 		README.md = README.md
+		README.nuget.md = README.nuget.md
 		README.zh.md = README.zh.md
 	EndProjectSection
 EndProject
@@ -98,8 +99,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		VisualSVNWorkingCopyRoot = .
 		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
+		VisualSVNWorkingCopyRoot = .
 	EndGlobalSection
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True
