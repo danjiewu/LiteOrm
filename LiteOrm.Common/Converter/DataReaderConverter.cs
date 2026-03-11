@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.IO;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
@@ -40,6 +41,7 @@ namespace LiteOrm.Common
             [typeof(string)]   = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
             [typeof(DateTime)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
             [typeof(Guid)]     = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetGuid),     new[] { typeof(int) }),
+            [typeof(Stream)]   = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetStream),   new[] { typeof(int) }),
         };
 
         private static readonly ConcurrentDictionary<Type, Delegate> _cacheByType =
@@ -193,6 +195,7 @@ namespace LiteOrm.Common
                 || type == typeof(DateTime)
                 || type == typeof(Guid)
                 || type == typeof(byte[])
+                || type == typeof(Stream)
                 || type == typeof(DateTimeOffset)
                 || type == typeof(TimeSpan);
         }

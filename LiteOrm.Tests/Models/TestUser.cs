@@ -20,6 +20,9 @@ namespace LiteOrm.Tests.Models
         [Column("DeptId")]
         [ForeignType(typeof(TestDepartment), Alias = "Dept")]
         public int DeptId { get; set; }
+
+        [Column("Avatar")]
+        public byte[]? Avatar { get; set; }
     }
 
     [TableJoin(typeof(TestDepartment), "DeptId", AliasName = "Dept", JoinType = TableJoinType.Left)]

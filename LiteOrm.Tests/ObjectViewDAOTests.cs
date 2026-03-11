@@ -294,5 +294,93 @@ namespace LiteOrm.Tests
             Assert.Equal("JoinViewTest", results[0].Name);
             Assert.Equal("Engineering", results[0].DeptName);
         }
+
+        // ── byte[] column tests ───────────────────────────────────────────────
+
+        /// <summary>
+        /// Inserts a user with a non-null <see cref="byte[]"/> Avatar and reads it back via
+        /// GetObject, exercising the GetFieldValue&lt;byte[]&gt; branch in
+        /// <see cref="DataReaderConverter"/>.
+        /// </summary>
+        [Fact]
+        public async Task Query_ByteArray_RoundTrip()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            byte[] avatar = [1, 2, 3, 4, 5, 255, 128, 0];
+            var user = new TestUser { Name = "ByteArrayRoundTripTest", Age = 20, CreateTime = DateTime.Now, Avatar = avatar };
+            await service.InsertAsync(user);
+
+            var result = await dao.GetObject(user.Id).FirstOrDefaultAsync();
+
+            Assert.NotNull(result);
+            Assert.Equal(avatar, result.Avatar);
+        }
+
+        /// <summary>
+        /// Inserts a user with a null Avatar and reads it back, verifying that the
+        /// IsDBNull guard in <see cref="DataReaderConverter"/> returns null correctly.
+        /// </summary>
+        [Fact]
+        public async Task Query_ByteArray_NullValue()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var user = new TestUser { Name = "ByteArrayNullTest", Age = 21, CreateTime = DateTime.Now, Avatar = null };
+            await service.InsertAsync(user);
+
+            var result = await dao.GetObject(user.Id).FirstOrDefaultAsync();
+
+            Assert.NotNull(result);
+            Assert.Null(result.Avatar);
+        }
+
+        /// <summary>
+        /// Projects a single binary column via Select(u =&gt; u.Avatar), which routes through
+        /// <see cref="DataReaderConverter.CompileScalarConverter{TResult}"/> with TResult = byte[].
+        /// </summary>
+        [Fact]
+        public async Task Query_ScalarProjection_ByteArray()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            byte[] avatar = [10, 20, 30];
+            var user = new TestUser { Name = "ByteArrayScalarTest", Age = 22, CreateTime = DateTime.Now, Avatar = avatar };
+            await service.InsertAsync(user);
+
+            var result = await dao.Search(
+                q => q.Where(u => u.Name == "ByteArrayScalarTest")
+                      .Select(u => u.Avatar))
+                .FirstOrDefaultAsync();
+
+            Assert.Equal(avatar, result);
+        }
+
+        /// <summary>
+        /// Projects Name + Avatar into an anonymous type, exercising the byte[] path inside
+        /// <see cref="DataReaderConverter.CompileAnonymousConverter{TResult}"/>.
+        /// </summary>
+        [Fact]
+        public async Task Query_AnonymousProjection_ByteArray()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            byte[] avatar = [0xDE, 0xAD, 0xBE, 0xEF];
+            var user = new TestUser { Name = "ByteArrayAnonTest", Age = 23, CreateTime = DateTime.Now, Avatar = avatar };
+            await service.InsertAsync(user);
+
+            var result = await dao.Search(
+                q => q.Where(u => u.Name == "ByteArrayAnonTest")
+                      .Select(u => new { u.Name, u.Avatar }))
+                .FirstOrDefaultAsync();
+
+            Assert.NotNull(result);
+            Assert.Equal("ByteArrayAnonTest", result.Name);
+            Assert.Equal(avatar, result.Avatar);
+        }
     }
 }

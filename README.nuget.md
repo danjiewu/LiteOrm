@@ -58,9 +58,7 @@ In `appsettings.json`:
             {
                 "Name": "DefaultConnection",
                 "ConnectionString": "Server=localhost;Database=TestDb;...",
-                "Provider": "MySqlConnector.MySqlConnection, MySqlConnector",
-                "PoolSize": 20,
-                "MaxPoolSize": 100
+                "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
             }
         ]
     }
@@ -287,9 +285,7 @@ dotnet add package LiteOrm
             {
                 "Name": "DefaultConnection",
                 "ConnectionString": "Server=localhost;Database=TestDb;...",
-                "Provider": "MySqlConnector.MySqlConnection, MySqlConnector",
-                "PoolSize": 20,
-                "MaxPoolSize": 100
+                "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
             }
         ]
     }
