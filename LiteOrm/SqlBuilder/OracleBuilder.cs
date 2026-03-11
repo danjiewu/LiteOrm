@@ -179,7 +179,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取自增标识 SQL 片段。
         /// </summary>
-        protected override string GetAutoIncrementSql() => "GENERATED AS IDENTITY";
+        protected override string GetAutoIncrementSql() => IdentitySource == OracleIdentitySourceType.Identity ? "GENERATED AS IDENTITY" : "";
 
         /// <summary>
         /// 获取 Oracle 列 type。
@@ -239,23 +239,23 @@ namespace LiteOrm
             if (keyColumns.Length == 0) throw new ArgumentException("At least one key column is required", nameof(keyColumns));
             if (updatableColumns.Length == 0) throw new ArgumentException("At least one updatable column is required", nameof(updatableColumns));
 
-            
+
             int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
             var sb = ValueStringBuilder.Create(128 + paramsPerRecord * batchSize * 16);
-            
+
             // 构建 MERGE INTO 语句
             sb.Append("MERGE INTO ");
             sb.Append(ToSqlName(tableName));
             sb.Append(" t\n");
-            
+
             // 构建 USING 子句
             sb.Append("USING (\n");
-            
+
             for (int b = 0; b < batchSize; b++)
             {
                 if (b > 0) sb.Append("    UNION ALL\n");
                 sb.Append("    SELECT ");
-                
+
                 // 添加可更新列的参数
                 for (int i = 0; i < updatableColumns.Length; i++)
                 {
@@ -265,7 +265,7 @@ namespace LiteOrm
                     sb.Append(" AS ");
                     sb.Append(ToSqlName(updatableColumns[i].Name));
                 }
-                
+
                 // 添加主键列的参数
                 for (int k = 0; k < keyColumns.Length; k++)
                 {
@@ -275,12 +275,12 @@ namespace LiteOrm
                     sb.Append(" AS ");
                     sb.Append(ToSqlName(keyColumns[k].Name));
                 }
-                
+
                 sb.Append(" FROM DUAL\n");
             }
-            
+
             sb.Append(") s\n");
-            
+
             // 构建 ON 子句
             sb.Append("ON (");
             for (int k = 0; k < keyColumns.Length; k++)
@@ -292,7 +292,7 @@ namespace LiteOrm
                 sb.Append(ToSqlName(keyColumns[k].Name));
             }
             sb.Append(")\n");
-            
+
             // 构建 WHEN MATCHED THEN UPDATE SET 子句
             sb.Append("WHEN MATCHED THEN\n");
             sb.Append("    UPDATE SET ");
@@ -304,7 +304,7 @@ namespace LiteOrm
                 sb.Append(" = s.");
                 sb.Append(ToSqlName(updatableColumns[i].Name));
             }
-            
+
             string result = sb.ToString();
             sb.Dispose();
             return result;
