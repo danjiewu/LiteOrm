@@ -68,8 +68,6 @@ namespace LiteOrm
             return $"{BuildBatchInsertSql(tableName, columns, valuesList)};\nSELECT LAST_INSERT_ID() AS `ID`;";
         }
 
-
-
         /// <summary>
         /// 参数名称转化为原始名称
         /// </summary>

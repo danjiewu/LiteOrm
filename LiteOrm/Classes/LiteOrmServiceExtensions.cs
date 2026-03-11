@@ -45,15 +45,100 @@ namespace LiteOrm
         /// <returns>配置后的主机构建器</returns>
         public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder)
         {
+            return RegisterLiteOrm(hostBuilder, null);
+        }
+
+        /// <summary>
+        /// 注册LiteOrm框架到主机构建器，并允许配置选项
+        /// </summary>
+        /// <param name="hostBuilder">主机构建器</param>
+        /// <param name="configureOptions">配置选项的回调函数</param>
+        /// <returns>配置后的主机构建器</returns>
+        public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder, Action<LiteOrmOptions> configureOptions)
+        {
+            var options = new LiteOrmOptions();
+            configureOptions?.Invoke(options);
+
             return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
                 .ConfigureContainer<ContainerBuilder>((builder, containerBuilder) =>
                 {
-                    containerBuilder.RegisterAutoService();
+                    // 使用指定的程序集或默认程序集
+                    if (options.Assemblies != null && options.Assemblies.Length > 0)
+                    {
+                        containerBuilder.RegisterAutoService(options.Assemblies);
+                    }
+                    else
+                    {
+                        containerBuilder.RegisterAutoService();
+                    }
+                    
                     containerBuilder.RegisterBuildCallback(container =>
                     {
-                        RegisterScope(container);
+                        // 注册自定义SqlBuilder（按数据源名称）
+                        foreach (var kvp in options.SqlBuilders)
+                        {
+                            SqlBuilderFactory.Instance.RegisterSqlBuilder(kvp.Key, kvp.Value);
+                        }
+                        
+                        // 注册自定义SqlBuilder（按连接类型）
+                        foreach (var kvp in options.SqlBuildersByType)
+                        {
+                            SqlBuilderFactory.Instance.RegisterSqlBuilder(kvp.Key, kvp.Value);
+                        }
+                        
+                        // 根据配置决定是否注册Scope
+                        if (options.RegisterScope)
+                        {
+                            RegisterScope(container);
+                        }
                     });
                 });
+        }
+
+        /// <summary>
+        /// LiteOrm配置选项
+        /// </summary>
+        public class LiteOrmOptions
+        {
+            /// <summary>
+            /// 注册的SqlBuilder映射（按数据源名称）
+            /// </summary>
+            internal Dictionary<string, SqlBuilder> SqlBuilders { get; } = new Dictionary<string, SqlBuilder>();
+            
+            /// <summary>
+            /// 注册的SqlBuilder映射（按连接类型）
+            /// </summary>
+            internal Dictionary<Type, SqlBuilder> SqlBuildersByType { get; } = new Dictionary<Type, SqlBuilder>();
+            
+            /// <summary>
+            /// 是否注册Scope（默认为true）
+            /// </summary>
+            public bool RegisterScope { get; set; } = true;
+            
+            /// <summary>
+            /// 要扫描的程序集列表
+            /// </summary>
+            public System.Reflection.Assembly[] Assemblies { get; set; }
+
+            /// <summary>
+            /// 注册自定义SqlBuilder（按数据源名称）
+            /// </summary>
+            /// <param name="dataSourceName">数据源名称</param>
+            /// <param name="sqlBuilder">SqlBuilder实例</param>
+            public void RegisterSqlBuilder(string dataSourceName, SqlBuilder sqlBuilder)
+            {
+                SqlBuilders[dataSourceName] = sqlBuilder;
+            }
+            
+            /// <summary>
+            /// 注册自定义SqlBuilder（按连接类型）
+            /// </summary>
+            /// <param name="providerType">数据库连接类型</param>
+            /// <param name="sqlBuilder">SqlBuilder实例</param>
+            public void RegisterSqlBuilder(Type providerType, SqlBuilder sqlBuilder)
+            {
+                SqlBuildersByType[providerType] = sqlBuilder;
+            }
         }
 
         private static void RegisterScope(ILifetimeScope scope)

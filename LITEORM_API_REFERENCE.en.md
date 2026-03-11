@@ -62,6 +62,7 @@ dotnet add package LiteOrm
                 "Name": "DefaultConnection",
                 "ConnectionString": "Server=localhost;Port=3306;Database=liteorm;Uid=root;Pwd=123456;",
                 "Provider": "MySql.Data.MySqlClient.MySqlConnection, MySql.Data",
+                "SqlBuilder": "MyNamespace.CustomSqlBuilder, MyAssembly",
                 "KeepAliveDuration": "00:10:00",
                 "PoolSize": 20,
                 "MaxPoolSize": 100,
@@ -91,6 +92,7 @@ dotnet add package LiteOrm
 | **Name** | - | Required, data source name. |
 | **ConnectionString** | - | Required, physical connection string. |
 | **Provider** | - | Required, fully qualified type name of DbConnection implementation (Assembly Qualified Name). |
+| **SqlBuilder** | - | Optional, fully qualified type name of custom SqlBuilder implementation (Assembly Qualified Name). |
 | **PoolSize** | 16 | Basic connection pool capacity, idle connections exceeding this number will be released. |
 | **MaxPoolSize** | 100 | Maximum concurrent connection limit to prevent exhausting database resources. |
 | **KeepAliveDuration** | 10min | Connection idle survival time, idle connections will be physically closed after this time. |
@@ -343,7 +345,7 @@ LiteOrm/
 │   ├── DbCommandProxy.cs             # Database command proxy
 │   ├── IBulkProvider.cs              # Bulk operation interface
 │   ├── ObjectDAO.cs                  # Entity DAO implementation
-│   └── ObjectViewDAO                 # View DAO implementation
+│   └── ObjectViewDAO.cs              # View DAO implementation
 ├── DAOContext/              # DAO context
 │   ├── DAOContext.cs                 # DAO context
 │   ├── DAOContextPool.cs             # DAO context pool
@@ -367,11 +369,11 @@ LiteOrm/
 LiteOrm.Common/
 ├── Attributes/              # Attribute definitions (Table, Column, ForeignType, etc.)
 ├── Classes/                 # Utility classes
-│   ├── Const.cs                      # Constant definitions
+│   ├── Constants.cs                  # Constant definitions
 │   ├── ExprConvert.cs                # Expression converter
 │   ├── ExprDisplayTextBuilder.cs     # Expression display text builder
 │   ├── ListEqualityComparer.cs       # List equality comparer
-│   ├── MutiReplacer.cs               # Multi-replacer
+│   ├── MultiReplacer.cs              # Multi-replacer
 │   ├── PropertyAccessorExtention.cs  # Property accessor extension
 │   ├── SqlValueStringBuilder.cs      # SQL value string builder
 │   ├── StringArrayEqualityComparer.cs # String array equality comparer
@@ -379,6 +381,7 @@ LiteOrm.Common/
 │   ├── ValueEquality.cs              # Value equality comparison
 │   └── ValueStringBuilder.cs         # Value string builder
 ├── Converter/               # Converters
+│   ├── DataReaderConverter.cs        # Data reader converter
 │   ├── ExprJsonConverterFactory.cs   # Expression JSON converter factory
 │   ├── ExprSqlConverter.cs           # Expression SQL converter
 │   ├── ExprString.cs                 # Expression string
@@ -1519,6 +1522,8 @@ public class CustomSqlBuilder : SqlBuilder
 // Register in application startup
 SqlBuilderFactory.Register(typeof(MyCustomConnection), () => new CustomSqlBuilder());
 ```
+
+For more detailed examples and pagination implementations, please refer to the [Custom Pagination Example](./CUSTOM_PAGING_EXAMPLE.md).
 
 ---
 

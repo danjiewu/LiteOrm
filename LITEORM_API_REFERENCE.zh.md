@@ -67,6 +67,7 @@ dotnet add package LiteOrm
                 "Name": "DefaultConnection",
                 "ConnectionString": "Server=localhost;Port=3306;Database=liteorm;Uid=root;Pwd=123456;",
                 "Provider": "MySql.Data.MySqlClient.MySqlConnection, MySql.Data",
+                "SqlBuilder": "MyNamespace.CustomSqlBuilder, MyAssembly",
                 "KeepAliveDuration": "00:10:00",
                 "PoolSize": 20,
                 "MaxPoolSize": 100,
@@ -96,6 +97,7 @@ dotnet add package LiteOrm
 | **Name** | - | 必填，数据源名称。 |
 | **ConnectionString** | - | 必填，物理连接字符串。 |
 | **Provider** | - | 必填，DbConnection 实现类的类型全名（Assembly Qualified Name）。 |
+| **SqlBuilder** | - | 可选，自定义 SqlBuilder 实现类的类型全名（Assembly Qualified Name）。 |
 | **PoolSize** | 16 | 基础连接池容量，超过此数量的数据库空闲连接会被释放。 |
 | **MaxPoolSize** | 100 | 最大并发连接限制，防止耗尽数据库资源。 |
 | **KeepAliveDuration** | 10min | 连接空闲存活时间，超过此时间后空闲连接将被物理关闭。 |
@@ -332,7 +334,7 @@ LiteOrm/
 │   ├── DbCommandProxy.cs             # 数据库命令代理
 │   ├── IBulkProvider.cs              # 批量操作接口
 │   ├── ObjectDAO.cs                  # 实体DAO实现
-│   └── ObjectViewDAO                 # 视图DAO实现
+│   └── ObjectViewDAO.cs              # 视图DAO实现
 ├── DAOContext/              # DAO上下文
 │   ├── DAOContext.cs                 # DAO上下文
 │   ├── DAOContextPool.cs             # DAO上下文池
@@ -356,11 +358,11 @@ LiteOrm/
 LiteOrm.Common/
 ├── Attributes/              # 特性定义（Table, Column, ForeignType等）
 ├── Classes/                 # 工具类
-│   ├── Const.cs                      # 常量定义
+│   ├── Constants.cs                  # 常量定义
 │   ├── ExprConvert.cs                # 表达式转换器
 │   ├── ExprDisplayTextBuilder.cs     # 表达式显示文本构建器
 │   ├── ListEqualityComparer.cs       # 列表相等比较器
-│   ├── MutiReplacer.cs               # 多重字符串替换器
+│   ├── MultiReplacer.cs              # 多重字符串替换器
 │   ├── PropertyAccessorExtention.cs  # 属性访问器扩展
 │   ├── SqlValueStringBuilder.cs      # SQL值字符串构建器
 │   ├── StringArrayEqualityComparer.cs # 字符串数组相等比较器
@@ -368,6 +370,7 @@ LiteOrm.Common/
 │   ├── ValueEquality.cs              # 值相等比较器
 │   └── ValueStringBuilder.cs         # 值字符串构建器
 ├── Converter/               # 转换器
+│   ├── DataReaderConverter.cs        # 数据读取器转换器
 │   ├── ExprJsonConverterFactory.cs   # 表达式JSON转换器工厂
 │   ├── ExprSqlConverter.cs           # 表达式SQL转换器
 │   ├── ExprString.cs                 # 表达式字符串
@@ -977,7 +980,6 @@ bool equal = expr.Equals(deserialized);
 注意事项：
 - `GenericSqlExpr` 序列化时仅保存 `Key` 与 `Arg`；它不会序列化运行时注册的生成委托。反序列化后依赖于运行时已完成相应的 `GenericSqlExpr.Register` 注册，否则生成 SQL 时会抛出找不到键的异常；
 - `LambdaExpr` 序列化时会转为普通 Expr，丢失原始 Lambda 表达式的类型信息和结构；反序列化后无法恢复为 Lambda 表达式，仅作为普通 Expr 使用；
-- `FunctionExpr` 等类型已标注自定义 Converter，能保留必要的类型信息与字段；
 
 ## 6. 基本功能
 
@@ -1537,6 +1539,8 @@ public class CustomSqlBuilder : SqlBuilder
 // 注册并关联到指定的 DbConnection 类型
 SqlBuilderFactory.Instance.Register(typeof(CustomDbConnection), new CustomSqlBuilder());
 ```
+
+有关更详细的示例和分页实现，请参考 [自定义分页示例](./CUSTOM_PAGING_EXAMPLE.md)。
 
 ### 7.3 自定义 IBulkProvider 优化批量写入
 
