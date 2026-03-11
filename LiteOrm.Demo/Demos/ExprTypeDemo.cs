@@ -58,8 +58,8 @@ namespace LiteOrm.Demo.Demos
 
                 // Update 模型
                 var update = new UpdateExpr(Expr.From<User>(), Expr.Prop("Id") == 1);
-                update.Sets.Add(("UserName", "NewName"));
-                Print(update, "UPDATE 模型", "new UpdateExpr(Expr.From<User>(), Expr.Prop(\"Id\") == 1) { Sets = { (\"UserName\", \"NewName\") } }");
+                update.Set(("UserName", Expr.Value("NewName")));
+                Print(update, "UPDATE 模型", "new UpdateExpr(Expr.From<User>(), Expr.Prop(\"Id\") == 1).Set((\"UserName\", Expr.Value(\"NewName\")))");
             });
 
             ShowSection("1.4 Lambda 自动转换", () => {

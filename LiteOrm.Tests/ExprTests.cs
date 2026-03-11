@@ -434,8 +434,8 @@ namespace LiteOrm.Tests
         {
             var table = new FromExpr(typeof(TestUser));
             var update = new UpdateExpr(table, Expr.Prop("Id") == 1);
-            update.Sets.Add(("Name", "NewName"));
-            update.Sets.Add(("Age", 30));
+            update.Set(("Name", "NewName"));
+            update.Set(("Age", 30));
 
             TestSerialization(update);
         }

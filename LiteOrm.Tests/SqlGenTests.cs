@@ -58,10 +58,10 @@ namespace LiteOrm.Tests
             var update = new UpdateExpr
             {
                 Source = new FromExpr(typeof(TestUser)),
-                Sets = new List<(string, ValueTypeExpr)>
+                Sets = new List<(PropertyExpr, ValueTypeExpr)>
                 {
-                    ("Name", Expr.Value("NewName")),
-                    ("Age", Expr.Value(30))
+                    (Expr.Prop("Name"), Expr.Value("NewName")),
+                    (Expr.Prop("Age"), Expr.Value(30))
                 },
                 Where = Expr.Prop("Id") == 1
             };

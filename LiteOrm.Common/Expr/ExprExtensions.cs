@@ -472,6 +472,15 @@ namespace LiteOrm.Common
         /// <returns>包含 SELECT 子句的 SQL 表达式。</returns>
         public static SelectExpr Select(this ISelectAnchor source, params string[] selectProperties) => Select(source, Array.ConvertAll(selectProperties, prop => (ValueTypeExpr)Expr.Prop(prop)));
 
+
+        public static UpdateExpr Set(this UpdateExpr source, params (string, ValueTypeExpr)[] assignments)
+        {
+            foreach (var (propName, valueExpr) in assignments)
+            {
+                source.Sets.Add((Expr.Prop(propName), valueExpr));
+            }
+            return source;
+        }
         /// <summary>
         /// 为 SQL 语句添加 ORDER BY 子句。
         /// </summary>

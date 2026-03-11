@@ -329,7 +329,7 @@ namespace LiteOrm.Common
                             reader.Read();
                             val = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
                         }
-                        if (prop is not null && val is not null) ue.Sets.Add((prop, val));
+                        if (prop is not null && val is not null) ue.Sets.Add((Expr.Prop(prop), val));
                     }
                 }
             }
@@ -701,7 +701,7 @@ namespace LiteOrm.Common
                             foreach (var set in ue.Sets)
                             {
                                 writer.WriteStartObject();
-                                writer.WritePropertyName(set.Item1);
+                                writer.WritePropertyName(set.Item1.PropertyName);
                                 JsonSerializer.Serialize(writer, set.Item2, options);
                                 writer.WriteEndObject();
                             }

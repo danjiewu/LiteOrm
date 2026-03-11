@@ -40,7 +40,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置要更新的字段和值列表
         /// </summary>
-        public List<(string, ValueTypeExpr)> Sets { get; set; } = new List<(string, ValueTypeExpr)>();
+        public List<(PropertyExpr, ValueTypeExpr)> Sets { get; set; } = new List<(PropertyExpr, ValueTypeExpr)>();
 
         /// <summary>
         /// 获取或设置筛选条件表达式

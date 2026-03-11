@@ -793,7 +793,7 @@ namespace LiteOrm.Common
                 if (i > 0) sb.Append(", ");
                 var set = expr.Sets[i];
 
-                SqlColumn column = source.GetColumn(set.Item1);
+                SqlColumn column = source.GetColumn(set.Item1.PropertyName);
                 if (column == null) throw new Exception($"Property \"{set.Item1}\" does not exist in type \"{context.Table.DefinitionType.FullName}\".");
                 sb.Append(sqlBuilder.ToSqlName(column.Name));
 
