@@ -524,24 +524,6 @@ namespace LiteOrm
 
 
         /// <summary>
-        /// 生成检查表是否存在的 SQL 语句。
-        /// </summary>
-        public virtual string BuildTableExistsSql(string tableName)
-        {
-            return $"SELECT 1 FROM {ToSqlName(tableName)} WHERE 1=0";
-        }
-
-        /// <summary>
-        /// 生成添加列的 SQL 语句。
-        /// </summary>
-        public virtual string BuildAddColumnSql(string tableName, ColumnDefinition column)
-        {
-            string sqlType = GetSqlType(column);
-            string nullSql = column.AllowNull ? " NULL" : (column.IsIdentity ? "" : " NOT NULL");
-            return $"ALTER TABLE {ToSqlName(tableName)} ADD {ToSqlName(column.Name)} {sqlType}{nullSql}";
-        }
-
-        /// <summary>
         /// 生成添加多个列的 SQL 语句。
         /// </summary>
         /// <param name="tableName">表名。</param>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.IO;
 using System.Linq.Expressions;
@@ -27,6 +28,12 @@ namespace LiteOrm.Common
         private static readonly MethodInfo _isDBNullMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.IsDBNull), new[] { typeof(int) });
 
+        private static readonly MethodInfo _getFieldValueMethod =
+            typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFieldValue), new[] { typeof(int) });
+
+        private static readonly MethodInfo _changeTypeMethod =
+            typeof(Convert).GetMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) });
+
         private static readonly Dictionary<Type, MethodInfo> _typedReaderMethods = new Dictionary<Type, MethodInfo>
         {
             [typeof(bool)]     = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean),  new[] { typeof(int) }),
@@ -42,6 +49,33 @@ namespace LiteOrm.Common
             [typeof(DateTime)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
             [typeof(Guid)]     = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetGuid),     new[] { typeof(int) }),
             [typeof(Stream)]   = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetStream),   new[] { typeof(int) }),
+        };
+
+        /// <summary>
+        /// 按 <see cref="DbType"/> 选择最自然的类型化读取方法。
+        /// <see cref="DbType.Binary"/> 单独处理（<see cref="DbDataReader.GetFieldValue{T}"/> 或 <see cref="DbDataReader.GetStream"/>）。
+        /// </summary>
+        private static readonly Dictionary<DbType, MethodInfo> _dbTypeReaderMethods = new Dictionary<DbType, MethodInfo>
+        {
+            [DbType.Boolean]               = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean),  new[] { typeof(int) }),
+            [DbType.Byte]                  = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetByte),     new[] { typeof(int) }),
+            [DbType.Int16]                 = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt16),    new[] { typeof(int) }),
+            [DbType.Int32]                 = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt32),    new[] { typeof(int) }),
+            [DbType.Int64]                 = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt64),    new[] { typeof(int) }),
+            [DbType.Single]                = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFloat),    new[] { typeof(int) }),
+            [DbType.Double]                = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDouble),   new[] { typeof(int) }),
+            [DbType.Decimal]               = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDecimal),  new[] { typeof(int) }),
+            [DbType.Currency]              = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDecimal),  new[] { typeof(int) }),
+            [DbType.String]                = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
+            [DbType.AnsiString]            = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
+            [DbType.AnsiStringFixedLength] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
+            [DbType.StringFixedLength]     = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
+            [DbType.Xml]                   = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
+            [DbType.DateTime]              = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
+            [DbType.Date]                  = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
+            [DbType.DateTime2]             = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
+            [DbType.Guid]                  = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetGuid),     new[] { typeof(int) }),
+            // DbType.Binary → GetFieldValue<byte[]> / GetStream (handled in BuildRawReadExpression)
         };
 
         private static readonly ConcurrentDictionary<Type, Delegate> _cacheByType =
@@ -136,26 +170,80 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 构建读取指定列的表达式。对 <see cref="_typedReaderMethods"/> 中有映射的类型使用类型化方法
-        /// （如 GetString、GetInt32），并在调用前检查 IsDBNull；其余类型回退到 GetValue + ConvertValue。
+        /// 构建读取指定列的完整表达式（含 IsDBNull 守卫与 Nullable 封装）。
+        /// 优先按 <paramref name="dbType"/> 选择与数据库列类型精确对应的读取方法；
+        /// 若读取方法的返回类型与属性 CLR 类型不符（如枚举、数值扩宽），则自动插入 Convert 表达式。
+        /// 未提供 <paramref name="dbType"/> 时退回到按属性 CLR 类型查找，仍无匹配则使用 GetValue + ConvertValue 兜底。
         /// </summary>
-        private static Expression BuildTypedReadExpression(ParameterExpression readerParam, int ordinal, Type targetType)
+        private static Expression BuildTypedReadExpression(
+            ParameterExpression readerParam, int ordinal, Type targetType, DbType? dbType = null)
         {
             Type coreType = Nullable.GetUnderlyingType(targetType) ?? targetType;
             var ordinalExpr = Expression.Constant(ordinal);
 
-            if (_typedReaderMethods.TryGetValue(coreType, out MethodInfo typedMethod))
+            Expression readExpr = BuildRawReadExpression(readerParam, ordinalExpr, coreType, dbType);
+
+            // Convert reader return type → core property type (enum cast, numeric widening, etc.)
+            // If no direct conversion operator exists, fall back to Convert.ChangeType.
+            if (readExpr.Type != coreType)
             {
-                Expression read = Expression.Call(readerParam, typedMethod, ordinalExpr);
-                if (targetType != coreType)
-                    read = Expression.Convert(read, targetType); // Nullable<T> wrapping
-                var isNull = Expression.Call(readerParam, _isDBNullMethod, ordinalExpr);
-                return Expression.Condition(isNull, Expression.Default(targetType), read);
+                try
+                {
+                    readExpr = Expression.Convert(readExpr, coreType);
+                }
+                catch (InvalidOperationException)
+                {
+                    readExpr = Expression.Convert(
+                        Expression.Call(_changeTypeMethod,
+                            Expression.Convert(readExpr, typeof(object)),
+                            Expression.Constant(coreType)),
+                        coreType);
+                }
             }
 
-            // Enum, byte[], or other unsupported types: fall back to GetValue + ConvertValue
+            // Wrap as Nullable<T>
+            if (targetType != coreType)
+                readExpr = Expression.Convert(readExpr, targetType);
+
+            var isNull = Expression.Call(readerParam, _isDBNullMethod, ordinalExpr);
+            return Expression.Condition(isNull, Expression.Default(targetType), readExpr);
+        }
+
+        /// <summary>
+        /// 返回读取列值的原始表达式（不含 IsDBNull 检查与 Nullable 封装）。
+        /// 选取顺序：DbType 映射 → CLR 类型映射 → byte[] 特殊路径 → GetValue + ConvertValue 兜底。
+        /// </summary>
+        private static Expression BuildRawReadExpression(
+            ParameterExpression readerParam, Expression ordinalExpr, Type coreType, DbType? dbType)
+        {
+            // 1. DbType-driven: pick the reader method that matches the database column type
+            if (dbType.HasValue)
+            {
+                // Binary column: GetFieldValue<byte[]>, or GetStream if the target is a Stream
+                if (dbType.Value == DbType.Binary)
+                {
+                    if (typeof(Stream).IsAssignableFrom(coreType))
+                        return Expression.Call(readerParam, _typedReaderMethods[typeof(Stream)], ordinalExpr);
+                    return Expression.Call(readerParam,
+                        _getFieldValueMethod.MakeGenericMethod(typeof(byte[])), ordinalExpr);
+                }
+
+                if (_dbTypeReaderMethods.TryGetValue(dbType.Value, out MethodInfo dbMethod))
+                    return Expression.Call(readerParam, dbMethod, ordinalExpr);
+            }
+
+            // 2. CLR type-driven: anonymous projections, scalar columns, and unmapped DbType values
+            if (_typedReaderMethods.TryGetValue(coreType, out MethodInfo typedMethod))
+                return Expression.Call(readerParam, typedMethod, ordinalExpr);
+
+            // 3. byte[] without DbType context
+            if (coreType == typeof(byte[]))
+                return Expression.Call(readerParam,
+                    _getFieldValueMethod.MakeGenericMethod(typeof(byte[])), ordinalExpr);
+
+            // 4. Fallback: GetValue + ConvertValue<T> (enums, TimeSpan, DateTimeOffset, etc.)
             return Expression.Call(
-                _convertValueMethod.MakeGenericMethod(targetType),
+                _convertValueMethod.MakeGenericMethod(coreType),
                 Expression.Call(readerParam, _getValueMethod, ordinalExpr));
         }
 
@@ -179,7 +267,7 @@ namespace LiteOrm.Common
                     BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                 if (prop == null || !prop.CanWrite) continue;
 
-                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType)));
+                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType, column.Definition?.DbType)));
             }
 
             var body = Expression.MemberInit(Expression.New(ctor), bindings);
