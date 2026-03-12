@@ -249,6 +249,86 @@ LambdaExprConverter.RegisterMethodHandler("InRange", (node, converter) => {
 
 5. **测试**：在使用自定义表达式前，应充分测试其在不同场景下的行为。
 
+### 3.4 示例 4：实现窗口函数
+
+#### 步骤 1：定义扩展方法
+
+```csharp
+public static class WindowFunctionExtensions
+{
+    public static decimal SumOver(this decimal amount, string partitionBy, string orderBy)
+    {
+        // 本地实现（仅用于客户端计算）
+        return amount;
+    }
+}
+```
+
+#### 步骤 2：注册方法处理器
+
+```csharp
+// 注册 SumOver 方法处理器
+LambdaExprConverter.RegisterMethodHandler("SumOver", (node, converter) => {
+    // 获取参数表达式
+    var amountExpr = converter.ConvertInternal(node.Arguments[0]) as ValueTypeExpr;
+    var partitionByExpr = converter.ConvertInternal(node.Arguments[1]) as ValueTypeExpr;
+    var orderByExpr = converter.ConvertInternal(node.Arguments[2]) as ValueTypeExpr;
+    
+    // 创建窗口函数表达式
+    return new FunctionExpr("SUM_OVER", amountExpr, partitionByExpr, orderByExpr);
+});
+```
+
+#### 步骤 3：注册 SQL 处理器
+
+```csharp
+// 为 MySQL 注册 SUM_OVER 函数处理器
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (functionName, args) => {
+    if (args.Count != 3) {
+        throw new ArgumentException("SUM_OVER requires exactly 3 arguments");
+    }
+    
+    var amount = args[0].Key;
+    var partitionBy = args[1].Key;
+    var orderBy = args[2].Key;
+    
+    return $"SUM({amount}) OVER (PARTITION BY {partitionBy} ORDER BY {orderBy})";
+});
+
+// 为 SQL Server 注册 SUM_OVER 函数处理器
+SqlServerBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (functionName, args) => {
+    if (args.Count != 3) {
+        throw new ArgumentException("SUM_OVER requires exactly 3 arguments");
+    }
+    
+    var amount = args[0].Key;
+    var partitionBy = args[1].Key;
+    var orderBy = args[2].Key;
+    
+    return $"SUM({amount}) OVER (PARTITION BY {partitionBy} ORDER BY {orderBy})";
+});
+```
+
+#### 步骤 4：使用窗口函数
+
+```csharp
+// 使用窗口函数计算季度销售总额
+var sales = await saleService.SearchAsync<SaleView>(
+    q => q.Select(
+        s => new SaleView {
+            Id = s.Id,
+            Amount = s.Amount,
+            SaleDate = s.SaleDate,
+            // 计算季度累计销售额
+            QuarterlyTotal = s.Amount.SumOver(
+                "YEAR(sale_date), QUARTER(sale_date)",
+                "sale_date"
+            )
+        }
+    )
+);
+```
+
 ## 6. 总结
 
 通过结合使用 `LambdaExprConverter.RegisterMethodHandler`、`RegisterMemberHandler` 和 `SqlBuilder.RegisterFunctionSqlHandler`，可以：
