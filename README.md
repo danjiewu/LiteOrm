@@ -339,7 +339,6 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 | Resource | Description |
 |:---|:---|
 | [API Reference](./LITEORM_API_REFERENCE.en.md) | Complete API documentation and configuration instructions |
-| [Custom Paging Example](./CUSTOM_PAGING_EXAMPLE.md) | Custom paging implementation example, using Oracle 11g as an example |
 | [Demo Project](./LiteOrm.Demo/) | Main feature demonstration program |
 | [Performance Report](./LiteOrm.Benchmark/) | Detailed performance benchmark reports |
 | [Unit Tests](./LiteOrm.Tests/) | Complete test coverage |

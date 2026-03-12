@@ -1620,4 +1620,4 @@ All methods have async equivalents with `Async` suffix:
 
 Last updated: 2026-03-12
 
-**[Back to top](#liteorm-api-reference)** | **[中文版本](./LITEORM_API_REFERENCE.md)**
+**[Back to top](#liteorm-api-reference)** | **[中文版本](./LITEORM_API_REFERENCE.zh.md)**

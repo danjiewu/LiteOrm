@@ -338,7 +338,6 @@ public class Log : IArged
 | 资源 | 说明 |
 |:---|:---|
 | [API 参考](./LITEORM_API_REFERENCE.zh.md) | 完整的 API 文档和配置说明 |
-| [自定义分页示例](./CUSTOM_PAGING_EXAMPLE.md) | 自定义分页实现示例，以 Oracle 11g 为例 |
 | [Demo 项目](./LiteOrm.Demo/) | 主要特性演示程序 |
 | [性能报告](./LiteOrm.Benchmark/) | 详细的性能基准测试报告 |
 | [单元测试](./LiteOrm.Tests/) | 完整的测试覆盖 |

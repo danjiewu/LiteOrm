@@ -210,7 +210,7 @@ var result = await userService.SearchAsync(query);
 ```sql
 SELECT "T0"."ID", "T0"."USERNAME", "T0"."EMAIL", "T0"."CREATETIME" 
 FROM "USERS" "T0" 
-WHERE "T0"."STATUS" = :p0 
+WHERE "T0"."STATUS" = :0 
 ORDER BY "T0"."ID"
 ```
 
