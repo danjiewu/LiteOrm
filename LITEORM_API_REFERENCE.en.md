@@ -1609,6 +1609,14 @@ All methods have async equivalents with `Async` suffix:
 
 ---
 
+## 📚 Additional Resources
+
+| Resource | Description |
+|:---|:---|
+| [Expression Extension Guide](./EXPRESSION_EXTENSION.md) | Guide for extending LiteOrm expression handling capabilities |
+
+---
+
 Last updated: 2026-03-12
 
 **[Back to top](#liteorm-api-reference)** | **[中文版本](./LITEORM_API_REFERENCE.md)**

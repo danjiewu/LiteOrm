@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace LiteOrm
@@ -110,7 +111,15 @@ namespace LiteOrm
             {
                 try
                 {
-                    var sqlBuilder = (SqlBuilder)Activator.CreateInstance(config.SqlBuilderType);
+                    Type sqlBuilderType = config.SqlBuilderType;
+                    if (!sqlBuilderType.IsSubclassOf(typeof(SqlBuilder)))  throw new InvalidOperationException($"SqlBuilderType {sqlBuilderType.FullName} must be a subclass of SqlBuilder");
+
+                    SqlBuilder sqlBuilder;
+                    PropertyInfo instanceProp = sqlBuilderType.GetProperty(nameof(SqlBuilder.Instance), BindingFlags.Static | BindingFlags.Public);
+                    if (instanceProp != null&& instanceProp.GetValue(null) is SqlBuilder instance)
+                        sqlBuilder = instance;
+                    else
+                        sqlBuilder = (SqlBuilder)Activator.CreateInstance(config.SqlBuilderType);
                     SqlBuilderFactory.Instance.RegisterSqlBuilder(config.Name, sqlBuilder);
                     if (_dataSourceProvider.DefaultDataSourceName == config.Name)
                     {

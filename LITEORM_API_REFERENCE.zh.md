@@ -1615,6 +1615,12 @@ public class MySqlBulkCopyProvider : IBulkProvider
 | EF Core | 17,480.02 | 13,480.38 | 13,090.70 | 2,202.85 |
 | Dapper | 2,475.72 | 3,093.55 | 2,797.83 | 418.42 |
 
+## 📚 额外资源
+
+| 资源 | 说明 |
+|:---|:---|
+| [表达式扩展指南](./EXPRESSION_EXTENSION.md) | 扩展 LiteOrm 表达式处理能力的指南 |
+
 文档最后更新时间：2026-03-12
 
 ---
