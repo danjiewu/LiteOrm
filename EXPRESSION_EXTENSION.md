@@ -40,12 +40,11 @@ public static void RegisterMemberHandler(Type type, string memberName, Func<Memb
 
 #### 1.2.1 RegisterFunctionSqlHandler
 
-通过 `SqlHandlerMap` 注册函数 SQL 处理器：
+通过 SqlBuilder 实例注册函数 SQL 处理器：
 
 ```csharp
 // 为特定 SqlBuilder 类型注册函数 SQL 处理器
-SqlHandlerMap map = SqlBuilder.GetSqlHandlerMap<MySqlBuilder>();
-map.RegisterFunctionSqlHandler("MyCustomFunction", (functionName, args) => {
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("MyCustomFunction", (functionName, args) => {
     // 构建自定义 SQL 片段
     return $"CUSTOM_FUNCTION({string.Join(", ", args.Select(arg => arg.Key))})";
 });
@@ -101,8 +100,7 @@ LambdaExprConverter.RegisterMethodHandler("Format", (node, converter) => {
 
 ```csharp
 // 为 MySQL 注册 DATE_FORMAT 函数处理器
-var mySqlMap = SqlBuilder.GetSqlHandlerMap<MySqlBuilder>();
-mySqlMap.RegisterFunctionSqlHandler("DATE_FORMAT", (functionName, args) => {
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (functionName, args) => {
     if (args.Count != 2) {
         throw new ArgumentException("DATE_FORMAT requires exactly 2 arguments");
     }
@@ -173,8 +171,7 @@ LambdaExprConverter.RegisterMethodHandler("CustomStringProcess", (node, converte
 
 ```csharp
 // 注册 CUSTOM_STRING_PROCESS 函数处理器
-var sqlServerMap = SqlBuilder.GetSqlHandlerMap<SqlServerBuilder>();
-sqlServerMap.RegisterFunctionSqlHandler("CUSTOM_STRING_PROCESS", (functionName, args) => {
+SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_STRING_PROCESS", (functionName, args) => {
     if (args.Count != 1) {
         throw new ArgumentException("CUSTOM_STRING_PROCESS requires exactly 1 argument");
     }
@@ -213,14 +210,12 @@ var users = await userService.SearchAsync(
 
 ```csharp
 // 为 MySQL 注册
-var mySqlMap = SqlBuilder.GetSqlHandlerMap<MySqlBuilder>();
-mySqlMap.RegisterFunctionSqlHandler("CustomFunction", (name, args) => {
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("CustomFunction", (name, args) => {
     return $"MYSQL_CUSTOM({string.Join(", ", args.Select(arg => arg.Key))})";
 });
 
 // 为 SQL Server 注册
-var sqlServerMap = SqlBuilder.GetSqlHandlerMap<SqlServerBuilder>();
-sqlServerMap.RegisterFunctionSqlHandler("CustomFunction", (name, args) => {
+SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CustomFunction", (name, args) => {
     return $"SQLSERVER_CUSTOM({string.Join(", ", args.Select(arg => arg.Key))})";
 });
 ```
