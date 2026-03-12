@@ -79,11 +79,12 @@ Job=MediumRun  IterationCount=15  LaunchCount=2  WarmupCount=10
 ## 📊 Full BenchmarkDotNet Report
 
 ```
+
 BenchmarkDotNet v0.15.8, Linux Ubuntu 24.04 LTS (Noble Numbat)
 Intel Xeon Silver 4314 CPU 2.40GHz (Max: 2.39GHz), 1 CPU, 4 logical and 4 physical cores
-.NET SDK 10.0.103
-  [Host]    : .NET 10.0.3 (10.0.3, 10.0.326.7603), X64 RyuJIT x86-64-v4
-  MediumRun : .NET 10.0.3 (10.0.3, 10.0.326.7603), X64 RyuJIT x86-64-v4
+.NET SDK 10.0.104
+  [Host]    : .NET 10.0.4 (10.0.4, 10.0.426.12010), X64 RyuJIT x86-64-v4
+  MediumRun : .NET 10.0.4 (10.0.4, 10.0.426.12010), X64 RyuJIT x86-64-v4
 
 Job=MediumRun  IterationCount=15  LaunchCount=2  
 WarmupCount=10  
@@ -91,63 +92,63 @@ WarmupCount=10
 ```
 | Method                   | BatchCount | Mean         | Error      | StdDev     | Median       | Gen0       | Gen1      | Gen2     | Allocated    |
 |------------------------- |----------- |-------------:|-----------:|-----------:|-------------:|-----------:|----------:|---------:|-------------:|
-| **EFCore_Insert_Async**      | **100**        |    **19.785 ms** |  **1.5072 ms** |  **2.0630 ms** |    **19.642 ms** |   **142.8571** |   **71.4286** |        **-** |   **1921.48 KB** |
-| SqlSugar_Insert_Async    | 100        |     4.243 ms |  0.0455 ms |  0.0667 ms |     4.253 ms |    39.0625 |    7.8125 |        - |    478.94 KB |
-| LiteOrm_Insert_Async     | 100        |     3.895 ms |  0.1915 ms |  0.2557 ms |     3.826 ms |    23.4375 |         - |        - |     289.6 KB |
-| Dapper_Insert_Async      | 100        |    25.751 ms |  2.3546 ms |  3.5242 ms |    25.211 ms |          - |         - |        - |    254.23 KB |
-| FreeSql_Insert_Async     | 100        |     4.796 ms |  0.5838 ms |  0.8737 ms |     4.187 ms |    31.2500 |         - |        - |    463.58 KB |
-| EFCore_Update_Async      | 100        |    18.005 ms |  0.5612 ms |  0.7867 ms |    18.090 ms |    62.5000 |         - |        - |   1528.45 KB |
-| SqlSugar_Update_Async    | 100        |     6.254 ms |  0.0642 ms |  0.0940 ms |     6.280 ms |    62.5000 |   15.6250 |        - |    803.01 KB |
-| LiteOrm_Update_Async     | 100        |     4.936 ms |  0.1141 ms |  0.1561 ms |     4.901 ms |    23.4375 |         - |        - |    320.85 KB |
-| Dapper_Update_Async      | 100        |    28.782 ms |  2.3441 ms |  3.5086 ms |    28.152 ms |          - |         - |        - |    321.15 KB |
-| FreeSql_Update_Async     | 100        |     6.028 ms |  0.6649 ms |  0.9321 ms |     5.593 ms |    46.8750 |         - |        - |    695.92 KB |
-| EFCore_Upsert_Async      | 100        |    18.999 ms |  1.2947 ms |  1.7722 ms |    18.562 ms |    66.6667 |         - |        - |   1500.96 KB |
-| SqlSugar_Upsert_Async    | 100        |    10.362 ms |  0.0621 ms |  0.0910 ms |    10.366 ms |   109.3750 |   31.2500 |        - |   1461.07 KB |
-| LiteOrm_Upsert_Async     | 100        |     7.557 ms |  0.0648 ms |  0.0909 ms |     7.568 ms |    31.2500 |         - |        - |    444.08 KB |
-| Dapper_Upsert_Async      | 100        |    29.917 ms |  2.8066 ms |  4.2008 ms |    29.713 ms |          - |         - |        - |    292.07 KB |
-| FreeSql_Upsert_Async     | 100        |     6.252 ms |  1.0284 ms |  1.5392 ms |     5.221 ms |    15.6250 |         - |        - |     269.2 KB |
-| EFCore_JoinQuery_Async   | 100        |     4.966 ms |  0.0619 ms |  0.0927 ms |     4.948 ms |    31.2500 |         - |        - |    388.93 KB |
-| SqlSugar_JoinQuery_Async | 100        |     2.262 ms |  0.0105 ms |  0.0147 ms |     2.259 ms |    78.1250 |    7.8125 |        - |    997.68 KB |
-| LiteOrm_JoinQuery_Async  | 100        |     1.607 ms |  0.1174 ms |  0.1757 ms |     1.620 ms |     3.9063 |         - |        - |     54.11 KB |
-| Dapper_JoinQuery_Async   | 100        |     1.514 ms |  0.0219 ms |  0.0314 ms |     1.512 ms |     3.9063 |         - |        - |      50.5 KB |
-| FreeSql_JoinQuery_Async  | 100        |     1.408 ms |  0.0056 ms |  0.0083 ms |     1.407 ms |     7.8125 |         - |        - |    115.56 KB |
-| **EFCore_Insert_Async**      | **1000**       |   **152.755 ms** | **11.6878 ms** | **17.4937 ms** |   **153.562 ms** |  **1000.0000** |  **500.0000** |        **-** |  **17909.04 KB** |
-| SqlSugar_Insert_Async    | 1000       |    18.675 ms |  0.7108 ms |  1.0419 ms |    18.638 ms |   375.0000 |  218.7500 |  31.2500 |   4573.21 KB |
-| LiteOrm_Insert_Async     | 1000       |    17.035 ms |  0.7057 ms |  1.0563 ms |    16.946 ms |    62.5000 |         - |        - |    862.79 KB |
-| Dapper_Insert_Async      | 1000       |   223.069 ms | 17.2081 ms | 25.7563 ms |   223.047 ms |          - |         - |        - |   2475.93 KB |
-| FreeSql_Insert_Async     | 1000       |    22.147 ms |  3.0803 ms |  4.6105 ms |    22.315 ms |   343.7500 |  125.0000 |        - |   4633.32 KB |
-| EFCore_Update_Async      | 1000       |   129.628 ms | 10.1418 ms | 14.8658 ms |   128.717 ms |  1000.0000 |  666.6667 |        - |  13463.64 KB |
-| SqlSugar_Update_Async    | 1000       |    44.556 ms |  2.7469 ms |  4.1114 ms |    44.050 ms |   500.0000 |  250.0000 |        - |   7679.06 KB |
-| LiteOrm_Update_Async     | 1000       |    28.454 ms |  1.1905 ms |  1.7819 ms |    28.342 ms |    66.6667 |         - |        - |   1191.74 KB |
-| Dapper_Update_Async      | 1000       |   243.242 ms | 20.5655 ms | 30.7815 ms |   231.531 ms |          - |         - |        - |    3093.5 KB |
-| FreeSql_Update_Async     | 1000       |    45.028 ms |  6.7595 ms | 10.1173 ms |    44.016 ms |   625.0000 |  500.0000 | 125.0000 |   6881.13 KB |
-| EFCore_Upsert_Async      | 1000       |   140.630 ms | 14.1752 ms | 21.2168 ms |   136.360 ms |  1000.0000 |  666.6667 |        - |  14371.72 KB |
-| SqlSugar_Upsert_Async    | 1000       |   111.554 ms |  6.7443 ms |  9.6725 ms |   109.374 ms |  2500.0000 |  500.0000 |        - |  35952.93 KB |
-| LiteOrm_Upsert_Async     | 1000       |    24.455 ms |  1.8002 ms |  2.6944 ms |    24.858 ms |   142.8571 |   71.4286 |        - |   1976.28 KB |
-| Dapper_Upsert_Async      | 1000       |   246.362 ms | 20.5249 ms | 30.7208 ms |   240.327 ms |          - |         - |        - |   2799.34 KB |
-| FreeSql_Upsert_Async     | 1000       |    20.287 ms |  1.9494 ms |  2.7958 ms |    19.213 ms |   156.2500 |   31.2500 |        - |   2250.28 KB |
-| EFCore_JoinQuery_Async   | 1000       |    14.715 ms |  1.4427 ms |  2.1594 ms |    14.645 ms |   153.8462 |   76.9231 |        - |   2202.94 KB |
-| SqlSugar_JoinQuery_Async | 1000       |    24.697 ms |  1.9347 ms |  2.8957 ms |    25.312 ms |   727.2727 |  181.8182 |        - |   9227.87 KB |
-| LiteOrm_JoinQuery_Async  | 1000       |     9.467 ms |  1.1383 ms |  1.6325 ms |     8.559 ms |    15.6250 |         - |        - |    233.24 KB |
-| Dapper_JoinQuery_Async   | 1000       |     9.089 ms |  0.2799 ms |  0.4014 ms |     9.081 ms |    31.2500 |         - |        - |    418.43 KB |
-| FreeSql_JoinQuery_Async  | 1000       |     9.282 ms |  0.3267 ms |  0.4789 ms |     9.021 ms |    62.5000 |   15.6250 |        - |    856.67 KB |
-| **EFCore_Insert_Async**      | **5000**       |   **650.498 ms** | **40.1846 ms** | **60.1464 ms** |   **636.538 ms** |  **6000.0000** | **2000.0000** |        **-** |  **81468.98 KB** |
-| SqlSugar_Insert_Async    | 5000       |    97.618 ms |  3.6523 ms |  5.3535 ms |    97.610 ms |  2000.0000 | 1200.0000 | 400.0000 |   23197.4 KB |
-| LiteOrm_Insert_Async     | 5000       |    85.586 ms |  5.0063 ms |  7.4932 ms |    88.961 ms |   285.7143 |         - |        - |   4071.06 KB |
-| Dapper_Insert_Async      | 5000       | 1,119.627 ms | 53.0895 ms | 79.4619 ms | 1,121.288 ms |  1000.0000 |         - |        - |   12350.5 KB |
-| FreeSql_Insert_Async     | 5000       |    93.149 ms |  3.8715 ms |  5.7946 ms |    94.765 ms |  1833.3333 | 1000.0000 |        - |  23337.15 KB |
-| EFCore_Update_Async      | 5000       |   559.450 ms | 27.6936 ms | 41.4506 ms |   540.853 ms |  5000.0000 | 1000.0000 |        - |  67862.54 KB |
-| SqlSugar_Update_Async    | 5000       |   241.847 ms |  4.2724 ms |  6.3947 ms |   242.760 ms |  3000.0000 | 1500.0000 | 500.0000 |  38814.78 KB |
-| LiteOrm_Update_Async     | 5000       |   118.087 ms |  4.0463 ms |  5.9311 ms |   118.722 ms |   250.0000 |         - |        - |    5887.7 KB |
-| Dapper_Update_Async      | 5000       | 1,209.526 ms | 50.9021 ms | 76.1879 ms | 1,219.818 ms |  1000.0000 |         - |        - |  15466.74 KB |
-| FreeSql_Update_Async     | 5000       |   183.016 ms | 11.4233 ms | 16.7442 ms |   184.895 ms |  2333.3333 |  333.3333 |        - |  34451.57 KB |
-| EFCore_Upsert_Async      | 5000       |   562.722 ms | 27.4118 ms | 39.3132 ms |   550.635 ms |  5000.0000 | 1000.0000 |        - |  64645.75 KB |
-| SqlSugar_Upsert_Async    | 5000       | 1,756.847 ms | 15.6916 ms | 23.4864 ms | 1,754.695 ms | 68000.0000 | 1000.0000 |        - | 844266.17 KB |
-| LiteOrm_Upsert_Async     | 5000       |   114.921 ms |  3.6123 ms |  5.4068 ms |   116.837 ms |   400.0000 |  200.0000 |        - |   7222.66 KB |
-| Dapper_Upsert_Async      | 5000       | 1,213.774 ms | 58.8733 ms | 88.1188 ms | 1,216.936 ms |  1000.0000 |         - |        - |  13984.48 KB |
-| FreeSql_Upsert_Async     | 5000       |    88.063 ms |  4.1082 ms |  6.0217 ms |    89.437 ms |   600.0000 |  400.0000 |        - |  11128.46 KB |
-| EFCore_JoinQuery_Async   | 5000       |    53.845 ms |  1.5238 ms |  2.2808 ms |    54.206 ms |   600.0000 |  200.0000 |        - |  10619.44 KB |
-| SqlSugar_JoinQuery_Async | 5000       |    94.427 ms |  3.5534 ms |  5.3186 ms |    94.182 ms |  3500.0000 |  250.0000 |        - |  45756.84 KB |
-| LiteOrm_JoinQuery_Async  | 5000       |    41.758 ms |  1.1681 ms |  1.7484 ms |    41.646 ms |    83.3333 |         - |        - |   1079.28 KB |
-| Dapper_JoinQuery_Async   | 5000       |    42.623 ms |  0.3636 ms |  0.5443 ms |    42.639 ms |   166.6667 |   83.3333 |        - |   2103.82 KB |
-| FreeSql_JoinQuery_Async  | 5000       |    43.902 ms |  1.3715 ms |  2.0103 ms |    42.546 ms |   272.7273 |  181.8182 |        - |   4201.26 KB |
+| **EFCore_Insert_Async**      | **100**        |    **20.355 ms** |  **2.4642 ms** |  **3.5340 ms** |    **18.947 ms** |   **142.8571** |   **71.4286** |        **-** |   **1901.63 KB** |
+| SqlSugar_Insert_Async    | 100        |     4.332 ms |  0.0861 ms |  0.1179 ms |     4.294 ms |    39.0625 |    7.8125 |        - |    478.84 KB |
+| LiteOrm_Insert_Async     | 100        |     3.838 ms |  0.1317 ms |  0.1889 ms |     3.783 ms |    23.4375 |         - |        - |    290.14 KB |
+| Dapper_Insert_Async      | 100        |    26.717 ms |  1.7880 ms |  2.6762 ms |    26.842 ms |          - |         - |        - |    254.05 KB |
+| FreeSql_Insert_Async     | 100        |     4.691 ms |  0.5241 ms |  0.7347 ms |     4.148 ms |    31.2500 |         - |        - |    463.58 KB |
+| EFCore_Update_Async      | 100        |    17.959 ms |  0.7625 ms |  1.1413 ms |    17.664 ms |   125.0000 |         - |        - |   1552.35 KB |
+| SqlSugar_Update_Async    | 100        |     6.266 ms |  0.0625 ms |  0.0935 ms |     6.289 ms |    62.5000 |   15.6250 |        - |    803.48 KB |
+| LiteOrm_Update_Async     | 100        |     4.905 ms |  0.0806 ms |  0.1182 ms |     4.924 ms |    15.6250 |         - |        - |    319.86 KB |
+| Dapper_Update_Async      | 100        |    28.594 ms |  3.4079 ms |  5.1008 ms |    27.045 ms |          - |         - |        - |     320.9 KB |
+| FreeSql_Update_Async     | 100        |     5.751 ms |  0.3457 ms |  0.5067 ms |     5.532 ms |    46.8750 |         - |        - |    695.93 KB |
+| EFCore_Upsert_Async      | 100        |    18.974 ms |  1.0163 ms |  1.4247 ms |    18.756 ms |   125.0000 |         - |        - |    1623.8 KB |
+| SqlSugar_Upsert_Async    | 100        |    10.415 ms |  0.0678 ms |  0.0973 ms |    10.432 ms |   109.3750 |   31.2500 |        - |   1458.95 KB |
+| LiteOrm_Upsert_Async     | 100        |     7.631 ms |  0.1480 ms |  0.2026 ms |     7.610 ms |    31.2500 |         - |        - |    443.06 KB |
+| Dapper_Upsert_Async      | 100        |    28.449 ms |  2.2773 ms |  3.3380 ms |    28.039 ms |          - |         - |        - |    291.38 KB |
+| FreeSql_Upsert_Async     | 100        |     5.281 ms |  0.2780 ms |  0.3986 ms |     5.160 ms |    15.6250 |         - |        - |    269.19 KB |
+| EFCore_JoinQuery_Async   | 100        |     4.976 ms |  0.0587 ms |  0.0878 ms |     4.966 ms |    31.2500 |         - |        - |    388.91 KB |
+| SqlSugar_JoinQuery_Async | 100        |     2.274 ms |  0.0095 ms |  0.0139 ms |     2.277 ms |    78.1250 |    7.8125 |        - |    997.72 KB |
+| LiteOrm_JoinQuery_Async  | 100        |     1.541 ms |  0.1011 ms |  0.1482 ms |     1.508 ms |     3.9063 |         - |        - |     52.62 KB |
+| Dapper_JoinQuery_Async   | 100        |     1.518 ms |  0.0080 ms |  0.0115 ms |     1.517 ms |     3.9063 |         - |        - |     50.51 KB |
+| FreeSql_JoinQuery_Async  | 100        |     1.392 ms |  0.0123 ms |  0.0177 ms |     1.390 ms |     7.8125 |         - |        - |    115.56 KB |
+| **EFCore_Insert_Async**      | **1000**       |   **155.922 ms** | **12.7210 ms** | **19.0402 ms** |   **157.251 ms** |  **1000.0000** |  **500.0000** |        **-** |  **17480.02 KB** |
+| SqlSugar_Insert_Async    | 1000       |    18.586 ms |  0.6299 ms |  0.9034 ms |    18.619 ms |   375.0000 |  250.0000 |  31.2500 |   4573.35 KB |
+| LiteOrm_Insert_Async     | 1000       |    16.365 ms |  0.9915 ms |  1.4841 ms |    16.231 ms |    62.5000 |         - |        - |    862.79 KB |
+| Dapper_Insert_Async      | 1000       |   221.845 ms | 15.3884 ms | 23.0326 ms |   228.479 ms |          - |         - |        - |   2475.72 KB |
+| FreeSql_Insert_Async     | 1000       |    22.892 ms |  3.1593 ms |  4.7287 ms |    22.123 ms |   343.7500 |  125.0000 |        - |   4633.35 KB |
+| EFCore_Update_Async      | 1000       |   135.034 ms | 12.0360 ms | 18.0149 ms |   139.554 ms |  1000.0000 |  666.6667 |        - |  13480.38 KB |
+| SqlSugar_Update_Async    | 1000       |    46.776 ms |  2.4895 ms |  3.6491 ms |    49.254 ms |   571.4286 |  285.7143 |        - |   7679.01 KB |
+| LiteOrm_Update_Async     | 1000       |    27.767 ms |  1.3641 ms |  2.0417 ms |    27.566 ms |    93.7500 |   31.2500 |        - |   1190.46 KB |
+| Dapper_Update_Async      | 1000       |   250.966 ms | 23.5164 ms | 35.1983 ms |   243.388 ms |          - |         - |        - |   3093.55 KB |
+| FreeSql_Update_Async     | 1000       |    42.132 ms |  3.2329 ms |  4.8388 ms |    43.359 ms |   625.0000 |  500.0000 | 125.0000 |   6880.53 KB |
+| EFCore_Upsert_Async      | 1000       |   136.624 ms | 10.3397 ms | 15.1558 ms |   138.764 ms |  1000.0000 |  666.6667 |        - |   13090.7 KB |
+| SqlSugar_Upsert_Async    | 1000       |   108.496 ms |  4.0156 ms |  5.7590 ms |   107.216 ms |  2666.6667 |  666.6667 |        - |  35949.35 KB |
+| LiteOrm_Upsert_Async     | 1000       |    23.660 ms |  1.7826 ms |  2.6681 ms |    23.574 ms |    90.9091 |         - |        - |   1975.14 KB |
+| Dapper_Upsert_Async      | 1000       |   244.508 ms | 20.1471 ms | 30.1552 ms |   240.528 ms |          - |         - |        - |   2797.83 KB |
+| FreeSql_Upsert_Async     | 1000       |    21.545 ms |  1.8815 ms |  2.7578 ms |    22.700 ms |   156.2500 |   62.5000 |        - |   2250.27 KB |
+| EFCore_JoinQuery_Async   | 1000       |    13.937 ms |  1.3309 ms |  1.9920 ms |    12.653 ms |   142.8571 |   71.4286 |        - |   2202.85 KB |
+| SqlSugar_JoinQuery_Async | 1000       |    25.817 ms |  1.6161 ms |  2.4189 ms |    25.357 ms |   727.2727 |  181.8182 |        - |    9227.8 KB |
+| LiteOrm_JoinQuery_Async  | 1000       |     9.412 ms |  0.4480 ms |  0.6706 ms |     9.302 ms |    15.6250 |         - |        - |    232.07 KB |
+| Dapper_JoinQuery_Async   | 1000       |     8.923 ms |  0.0611 ms |  0.0896 ms |     8.884 ms |    31.2500 |         - |        - |    418.42 KB |
+| FreeSql_JoinQuery_Async  | 1000       |     9.161 ms |  0.1613 ms |  0.2314 ms |     9.028 ms |    62.5000 |   15.6250 |        - |     856.7 KB |
+| **EFCore_Insert_Async**      | **5000**       |   **662.380 ms** | **35.9051 ms** | **53.7410 ms** |   **674.913 ms** |  **6000.0000** | **2000.0000** |        **-** |  **83651.84 KB** |
+| SqlSugar_Insert_Async    | 5000       |    98.826 ms |  3.7228 ms |  5.5721 ms |    99.357 ms |  2000.0000 | 1200.0000 | 400.0000 |  23197.37 KB |
+| LiteOrm_Insert_Async     | 5000       |    81.071 ms |  6.0767 ms |  8.7150 ms |    81.100 ms |   250.0000 |         - |        - |   4068.76 KB |
+| Dapper_Insert_Async      | 5000       | 1,120.032 ms | 48.9258 ms | 73.2299 ms | 1,131.958 ms |  1000.0000 |         - |        - |   12350.5 KB |
+| FreeSql_Insert_Async     | 5000       |    88.503 ms |  4.5467 ms |  6.8053 ms |    88.559 ms |  1833.3333 | 1000.0000 |        - |     23337 KB |
+| EFCore_Update_Async      | 5000       |   598.255 ms | 39.6842 ms | 59.3974 ms |   610.915 ms |  5000.0000 | 1000.0000 |        - |  66190.59 KB |
+| SqlSugar_Update_Async    | 5000       |   243.376 ms |  3.4880 ms |  5.0024 ms |   243.873 ms |  3000.0000 | 1500.0000 | 500.0000 |  38814.96 KB |
+| LiteOrm_Update_Async     | 5000       |   121.571 ms |  4.4724 ms |  6.6941 ms |   123.441 ms |   400.0000 |  200.0000 |        - |   5911.89 KB |
+| Dapper_Update_Async      | 5000       | 1,214.468 ms | 60.8932 ms | 89.2564 ms | 1,225.272 ms |  1000.0000 |         - |        - |  15470.66 KB |
+| FreeSql_Update_Async     | 5000       |   210.552 ms | 10.6049 ms | 14.8665 ms |   215.282 ms |  2333.3333 |  333.3333 |        - |  34449.19 KB |
+| EFCore_Upsert_Async      | 5000       |   576.366 ms | 33.8061 ms | 50.5994 ms |   575.590 ms |  5000.0000 | 1000.0000 |        - |  68193.49 KB |
+| SqlSugar_Upsert_Async    | 5000       | 1,743.241 ms | 10.7241 ms | 15.3802 ms | 1,743.387 ms | 68000.0000 | 1000.0000 |        - | 844267.11 KB |
+| LiteOrm_Upsert_Async     | 5000       |   104.261 ms |  5.6859 ms |  7.9708 ms |   100.750 ms |   400.0000 |  200.0000 |        - |   7224.49 KB |
+| Dapper_Upsert_Async      | 5000       | 1,190.843 ms | 60.5552 ms | 90.6361 ms | 1,188.027 ms |  1000.0000 |         - |        - |   13986.3 KB |
+| FreeSql_Upsert_Async     | 5000       |    89.560 ms |  2.4944 ms |  3.7335 ms |    90.659 ms |   666.6667 |  500.0000 |        - |  11127.98 KB |
+| EFCore_JoinQuery_Async   | 5000       |    54.141 ms |  2.1875 ms |  3.2741 ms |    55.632 ms |   875.0000 |  625.0000 | 125.0000 |  10613.52 KB |
+| SqlSugar_JoinQuery_Async | 5000       |    89.343 ms |  1.9970 ms |  2.8640 ms |    89.483 ms |  3500.0000 |  250.0000 |        - |  45756.75 KB |
+| LiteOrm_JoinQuery_Async  | 5000       |    41.672 ms |  1.1265 ms |  1.6512 ms |    42.186 ms |    83.3333 |         - |        - |   1078.22 KB |
+| Dapper_JoinQuery_Async   | 5000       |    45.035 ms |  1.0079 ms |  1.4456 ms |    44.358 ms |   166.6667 |   83.3333 |        - |   2103.71 KB |
+| FreeSql_JoinQuery_Async  | 5000       |    42.994 ms |  0.6188 ms |  0.9071 ms |    43.062 ms |   307.6923 |  230.7692 |        - |   4201.37 KB |

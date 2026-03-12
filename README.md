@@ -280,57 +280,57 @@ public class Log : IArged
 
 ## ⚡ Performance Benchmarks
 
-Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0.3, Linux Ubuntu 24.04 LTS, Intel Xeon Silver 4314 CPU 2.40GHz, MySQL):
+Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0.4, Linux Ubuntu 24.04 LTS, Intel Xeon Silver 4314 CPU 2.40GHz, MySQL):
 
 ### Insert Performance Comparison (ms)
 
 | Framework | 100 rows | 1000 rows | 5000 rows |
 |:---|---:|---:|---:|
-| **LiteOrm** | **3.90** | **17.04** | **85.59** |
-| SqlSugar | 4.24 | 18.68 | 97.62 |
-| FreeSql | 4.80 | 22.15 | 93.15 |
-| EF Core | 19.79 | 152.76 | 650.50 |
-| Dapper | 25.75 | 223.07 | 1,119.63 |
+| **LiteOrm** | **3.84** | **16.37** | **81.07** |
+| SqlSugar | 4.33 | 18.59 | 98.83 |
+| FreeSql | 4.69 | 22.89 | 88.50 |
+| EF Core | 20.36 | 155.92 | 662.38 |
+| Dapper | 26.72 | 221.85 | 1,120.03 |
 
 ### Update Performance Comparison (ms)
 
 | Framework | 100 rows | 1000 rows | 5000 rows |
 |:---|---:|---:|---:|
-| **LiteOrm** | **4.94** | **28.45** | **118.09** |
-| SqlSugar | 6.25 | 44.56 | 241.85 |
-| FreeSql | 6.03 | 45.03 | 183.02 |
-| EF Core | 18.01 | 129.63 | 559.45 |
-| Dapper | 28.78 | 243.24 | 1,209.53 |
+| **LiteOrm** | **4.91** | **27.77** | **121.57** |
+| SqlSugar | 6.27 | 46.78 | 243.38 |
+| FreeSql | 5.75 | 42.13 | 210.55 |
+| EF Core | 17.96 | 135.03 | 598.26 |
+| Dapper | 28.59 | 250.97 | 1,214.47 |
 
 ### Upsert Performance Comparison (ms)
 
 | Framework | 100 rows | 1000 rows | 5000 rows |
 |:---|---:|---:|---:|
-| LiteOrm | 7.56 | 24.46 | 114.92 |
-| SqlSugar | 10.36 | 111.55 | 1,756.85 |
-| **FreeSql** | **6.25** | **20.29** | **88.06** |
-| EF Core | 19.00 | 140.63 | 562.72 |
-| Dapper | 29.92 | 246.36 | 1,213.77 |
+| LiteOrm | 7.63 | 23.66 | 104.26 |
+| SqlSugar | 10.42 | 108.50 | 1,743.24 |
+| **FreeSql** | **5.28** | **21.55** | **89.56** |
+| EF Core | 18.97 | 136.62 | 576.37 |
+| Dapper | 28.45 | 244.51 | 1,190.84 |
 
 ### Join Query Performance Comparison (ms)
 
 | Framework | 100 rows | 1000 rows | 5000 rows |
 |:---|---:|---:|---:|
-| LiteOrm | 1.61 | 9.47 | **41.76** |
-| SqlSugar | 2.26 | 24.70 | 94.43 |
-| **FreeSql** | **1.41** | 9.28 | 43.90 |
-| EF Core | 4.97 | 14.72 | 53.85 |
-| Dapper | 1.51 | **9.09** | 42.62 |
+| LiteOrm | 1.54 | 9.41 | **41.67** |
+| SqlSugar | 2.27 | 25.82 | 89.34 |
+| **FreeSql** | **1.39** | 9.16 | 43.00 |
+| EF Core | 4.98 | 13.94 | 54.14 |
+| Dapper | 1.52 | **8.92** | 45.04 |
 
 ### Memory Allocation Comparison (1000 rows, KB)
 
 | Framework | Insert | Update | Upsert | Join Query |
 |:---|---:|---:|---:|---:|
-| **LiteOrm** | **862.79** | **1,191.74** | **1,976.28** | **233.24** |
-| SqlSugar | 4,573.21 | 7,679.06 | 35,952.93 | 9,227.87 |
-| FreeSql | 4,633.32 | 6,881.13 | 2,250.28 | 856.67 |
-| EF Core | 17,909.04 | 13,463.64 | 14,371.72 | 2,202.94 |
-| Dapper | 2,475.93 | 3,093.50 | 2,799.34 | 418.43 |
+| **LiteOrm** | **862.79** | **1,190.46** | **1,975.14** | **232.07** |
+| SqlSugar | 4,573.35 | 7,679.01 | 35,949.35 | 9,227.80 |
+| FreeSql | 4,633.35 | 6,880.53 | 2,250.27 | 856.70 |
+| EF Core | 17,480.02 | 13,480.38 | 13,090.70 | 2,202.85 |
+| Dapper | 2,475.72 | 3,093.55 | 2,797.83 | 418.42 |
 
 > 📊 For detailed performance benchmark reports, see [LiteOrm.Benchmark](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)
 

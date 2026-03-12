@@ -1569,46 +1569,46 @@ All methods have async equivalents with `Async` suffix:
 
 | Framework | Insert (ms) | Update (ms) | Upsert (ms) | Join Query (ms) |
 | :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **3.90** | **4.94** | 7.56 | 1.61 |
-| SqlSugar | 4.24 | 6.25 | 10.36 | 2.26 |
-| FreeSql | 4.80 | 6.03 | **6.25** | **1.41** |
-| EF Core | 19.79 | 18.01 | 19.00 | 4.97 |
-| Dapper | 25.75 | 28.78 | 29.92 | 1.51 |
+| **LiteOrm** | **3.84** | **4.91** | 7.63 | 1.54 |
+| SqlSugar | 4.33 | 6.27 | 10.42 | 2.27 |
+| FreeSql | 4.69 | 5.75 | **5.28** | **1.39** |
+| EF Core | 20.36 | 17.96 | 18.97 | 4.98 |
+| Dapper | 26.72 | 28.59 | 28.45 | 1.52 |
 
 ### 8.2 Performance Comparison (BatchCount=1000)
 
 | Framework | Insert (ms) | Update (ms) | Upsert (ms) | Join Query (ms) |
 | :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **17.04** | **28.45** | 24.46 | 9.47 |
-| SqlSugar | 18.68 | 44.56 | 111.55 | 24.70 |
-| FreeSql | 22.15 | 45.03 | **20.29** | 9.28 |
-| EF Core | 152.76 | 129.63 | 140.63 | 14.72 |
-| Dapper | 223.07 | 243.24 | 246.36 | **9.09** |
+| **LiteOrm** | **16.37** | **27.77** | 23.66 | 9.41 |
+| SqlSugar | 18.59 | 46.78 | 108.50 | 25.82 |
+| FreeSql | 22.89 | 42.13 | **21.55** | 9.16 |
+| EF Core | 155.92 | 135.03 | 136.62 | 13.94 |
+| Dapper | 221.85 | 250.97 | 244.51 | **8.92** |
 
 ### 8.3 Performance Comparison (BatchCount=5000)
 
 | Framework | Insert (ms) | Update (ms) | Upsert (ms) | Join Query (ms) |
 | :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **85.59** | **118.09** | 114.92 | **41.76** |
-| SqlSugar | 97.62 | 241.85 | 1,756.85 | 94.43 |
-| FreeSql | 93.15 | 183.02 | **88.06** | 43.90 |
-| EF Core | 650.50 | 559.45 | 562.72 | 53.85 |
-| Dapper | 1,119.63 | 1,209.53 | 1,213.77 | 42.62 |
+| **LiteOrm** | **81.07** | **121.57** | 104.26 | **41.67** |
+| SqlSugar | 98.83 | 243.38 | 1,743.24 | 89.34 |
+| FreeSql | 88.50 | 210.55 | **89.56** | 43.00 |
+| EF Core | 662.38 | 598.26 | 576.37 | 54.14 |
+| Dapper | 1,120.03 | 1,214.47 | 1,190.84 | 45.04 |
 
 ### 8.4 Memory Allocation Comparison (BatchCount=1000)
 
 | Framework | Insert (KB) | Update (KB) | Upsert (KB) | Join Query (KB) |
 | :--- | :--- | :--- | :--- | :--- |
-| **LiteOrm** | **862.79** | **1,191.74** | **1,976.28** | **233.24** |
-| SqlSugar | 4,573.21 | 7,679.06 | 35,952.93 | 9,227.87 |
-| FreeSql | 4,633.32 | 6,881.13 | 2,250.28 | 856.67 |
-| EF Core | 17,909.04 | 13,463.64 | 14,371.72 | 2,202.94 |
-| Dapper | 2,475.93 | 3,093.50 | 2,799.34 | 418.43 |
+| **LiteOrm** | **862.79** | **1,190.46** | **1,975.14** | **232.07** |
+| SqlSugar | 4,573.35 | 7,679.01 | 35,949.35 | 9,227.80 |
+| FreeSql | 4,633.35 | 6,880.53 | 2,250.27 | 856.70 |
+| EF Core | 17,480.02 | 13,480.38 | 13,090.70 | 2,202.85 |
+| Dapper | 2,475.72 | 3,093.55 | 2,797.83 | 418.42 |
 
 > 📊 For detailed performance benchmark reports, see [LiteOrm.Benchmark](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)
 
 ---
 
-Last updated: 2026-03-05
+Last updated: 2026-03-12
 
 **[Back to top](#liteorm-api-reference)** | **[中文版本](./LITEORM_API_REFERENCE.md)**
