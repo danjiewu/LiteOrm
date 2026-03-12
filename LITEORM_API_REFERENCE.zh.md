@@ -1540,7 +1540,7 @@ public class CustomSqlBuilder : SqlBuilder
 SqlBuilderFactory.Instance.Register(typeof(CustomDbConnection), new CustomSqlBuilder());
 ```
 
-有关更详细的示例和分页实现，请参考 [自定义分页示例](./CUSTOM_PAGING_EXAMPLE.md)。
+
 
 ### 7.3 自定义 IBulkProvider 优化批量写入
 
@@ -1620,6 +1620,7 @@ public class MySqlBulkCopyProvider : IBulkProvider
 | 资源 | 说明 |
 |:---|:---|
 | [表达式扩展指南](./EXPRESSION_EXTENSION.md) | 扩展 LiteOrm 表达式处理能力的指南 |
+| [自定义分页示例](./CUSTOM_PAGING_EXAMPLE.md) | 自定义分页实现示例，以 Oracle 11g 为例 |
 
 文档最后更新时间：2026-03-12
 

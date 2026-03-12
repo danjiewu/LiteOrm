@@ -1523,7 +1523,7 @@ public class CustomSqlBuilder : SqlBuilder
 SqlBuilderFactory.Register(typeof(MyCustomConnection), () => new CustomSqlBuilder());
 ```
 
-For more detailed examples and pagination implementations, please refer to the [Custom Pagination Example](./CUSTOM_PAGING_EXAMPLE.md).
+
 
 ---
 
@@ -1614,6 +1614,7 @@ All methods have async equivalents with `Async` suffix:
 | Resource | Description |
 |:---|:---|
 | [Expression Extension Guide](./EXPRESSION_EXTENSION.md) | Guide for extending LiteOrm expression handling capabilities |
+| [Custom Pagination Example](./CUSTOM_PAGING_EXAMPLE.md) | Custom paging implementation example, using Oracle 11g as an example |
 
 ---
 
