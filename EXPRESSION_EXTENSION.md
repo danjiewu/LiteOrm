@@ -256,7 +256,13 @@ LambdaExprConverter.RegisterMethodHandler("InRange", (node, converter) => {
 ```csharp
 public static class WindowFunctionExtensions
 {
-    public static decimal SumOver(this decimal amount, string partitionBy, string orderBy)
+    public static decimal SumOver<T>(this decimal amount, params Expression<Func<T, object>>[] partitionBy)
+    {
+        // 本地实现（仅用于客户端计算）
+        return amount;
+    }
+    
+    public static decimal SumOver<T>(this decimal amount, IEnumerable<Expression<Func<T, object>>> partitionBy, IEnumerable<(Expression<Func<T, object>>, bool)> orderBy)
     {
         // 本地实现（仅用于客户端计算）
         return amount;
@@ -269,13 +275,61 @@ public static class WindowFunctionExtensions
 ```csharp
 // 注册 SumOver 方法处理器
 LambdaExprConverter.RegisterMethodHandler("SumOver", (node, converter) => {
-    // 获取参数表达式
+    // 获取金额表达式
     var amountExpr = converter.ConvertInternal(node.Arguments[0]) as ValueTypeExpr;
-    var partitionByExpr = converter.ConvertInternal(node.Arguments[1]) as ValueTypeExpr;
-    var orderByExpr = converter.ConvertInternal(node.Arguments[2]) as ValueTypeExpr;
+    
+    // 处理分区字段
+    List<ValueTypeExpr> partitionByExprs = new List<ValueTypeExpr>();
+    List<(ValueTypeExpr, bool)> orderByExprs = new List<(ValueTypeExpr, bool)>();
+    
+    if (node.Arguments.Count == 2) {
+        // 只有分区字段的情况
+        var partitionByArg = node.Arguments[1];
+        if (partitionByArg is NewArrayExpression arrayExpr) {
+            foreach (var expr in arrayExpr.Expressions) {
+                if (expr is LambdaExpression lambda) {
+                    var lambdaConverter = new LambdaExprConverter(lambda);
+                    partitionByExprs.Add(lambdaConverter.ToValueExpr());
+                }
+            }
+        }
+    } else if (node.Arguments.Count == 3) {
+        // 分区字段和排序字段的情况
+        var partitionByArg = node.Arguments[1];
+        var orderByArg = node.Arguments[2];
+        
+        // 处理分区字段
+        if (partitionByArg is NewArrayExpression arrayExpr) {
+            foreach (var expr in arrayExpr.Expressions) {
+                if (expr is LambdaExpression lambda) {
+                    var lambdaConverter = new LambdaExprConverter(lambda);
+                    partitionByExprs.Add(lambdaConverter.ToValueExpr());
+                }
+            }
+        }
+        
+        // 处理排序字段
+        if (orderByArg is NewArrayExpression orderArrayExpr) {
+            foreach (var expr in orderArrayExpr.Expressions) {
+                if (expr is NewExpression newExpr && newExpr.Arguments.Count == 2) {
+                    var fieldExpr = newExpr.Arguments[0];
+                    var ascExpr = newExpr.Arguments[1];
+                    
+                    if (fieldExpr is LambdaExpression fieldLambda && ascExpr is ConstantExpression ascConst) {
+                        var lambdaConverter = new LambdaExprConverter(fieldLambda);
+                        bool isAscending = ascConst.Value is bool b && b;
+                        orderByExprs.Add((lambdaConverter.ToValueExpr(), isAscending));
+                    }
+                }
+            }
+        }
+    }
     
     // 创建窗口函数表达式
-    return new FunctionExpr("SUM_OVER", amountExpr, partitionByExpr, orderByExpr);
+    return new FunctionExpr("SUM_OVER", amountExpr, 
+        new ValueSet(ValueJoinType.List, partitionByExprs.ToArray()),
+        new ValueSet(ValueJoinType.List, orderByExprs.Select(o => new ValueSet(ValueJoinType.List, o.Item1, new ValueExpr(o.Item2))).ToArray())
+    );
 });
 ```
 
@@ -284,34 +338,104 @@ LambdaExprConverter.RegisterMethodHandler("SumOver", (node, converter) => {
 ```csharp
 // 为 MySQL 注册 SUM_OVER 函数处理器
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (functionName, args) => {
-    if (args.Count != 3) {
-        throw new ArgumentException("SUM_OVER requires exactly 3 arguments");
+    if (args.Count < 1) {
+        throw new ArgumentException("SUM_OVER requires at least 1 argument");
     }
     
     var amount = args[0].Key;
-    var partitionBy = args[1].Key;
-    var orderBy = args[2].Key;
     
-    return $"SUM({amount}) OVER (PARTITION BY {partitionBy} ORDER BY {orderBy})";
+    // 构建 PARTITION BY 子句
+    string partitionBy = string.Empty;
+    if (args.Count > 1) {
+        var partitionBySet = args[1].Key;
+        // 移除 ValueSet 包装，提取实际的分区字段
+        partitionBy = partitionBySet.Replace("LIST(", "").Replace(")", "");
+    }
+    
+    // 构建 ORDER BY 子句
+    string orderBy = string.Empty;
+    if (args.Count > 2) {
+        var orderBySet = args[2].Key;
+        // 移除 ValueSet 包装，提取实际的排序字段
+        var orderByItems = orderBySet.Replace("LIST(", "").Replace(")", "").Split(", ");
+        List<string> orderByClauses = new List<string>();
+        
+        for (int i = 0; i < orderByItems.Length; i += 2) {
+            if (i + 1 < orderByItems.Length) {
+                var field = orderByItems[i];
+                var isAsc = orderByItems[i + 1] == "True";
+                orderByClauses.Add($"{field} {(isAsc ? "ASC" : "DESC")}");
+            }
+        }
+        orderBy = string.Join(", ", orderByClauses);
+    }
+    
+    string partitionByClause = string.IsNullOrEmpty(partitionBy) ? "" : $"PARTITION BY {partitionBy}";
+    string orderByClause = string.IsNullOrEmpty(orderBy) ? "" : $"ORDER BY {orderBy}";
+    
+    // 组合所有子句
+    List<string> clauses = new List<string>();
+    if (!string.IsNullOrEmpty(partitionByClause)) clauses.Add(partitionByClause);
+    if (!string.IsNullOrEmpty(orderByClause)) clauses.Add(orderByClause);
+    
+    string overClause = string.Join(" ", clauses);
+    
+    return $"SUM({amount}) OVER ({overClause})";
 });
 
 // 为 SQL Server 注册 SUM_OVER 函数处理器
 SqlServerBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (functionName, args) => {
-    if (args.Count != 3) {
-        throw new ArgumentException("SUM_OVER requires exactly 3 arguments");
+    // 与 MySQL 处理器相同的实现
+    if (args.Count < 1) {
+        throw new ArgumentException("SUM_OVER requires at least 1 argument");
     }
     
     var amount = args[0].Key;
-    var partitionBy = args[1].Key;
-    var orderBy = args[2].Key;
     
-    return $"SUM({amount}) OVER (PARTITION BY {partitionBy} ORDER BY {orderBy})";
+    // 构建 PARTITION BY 子句
+    string partitionBy = string.Empty;
+    if (args.Count > 1) {
+        var partitionBySet = args[1].Key;
+        partitionBy = partitionBySet.Replace("LIST(", "").Replace(")", "");
+    }
+    
+    // 构建 ORDER BY 子句
+    string orderBy = string.Empty;
+    if (args.Count > 2) {
+        var orderBySet = args[2].Key;
+        var orderByItems = orderBySet.Replace("LIST(", "").Replace(")", "").Split(", ");
+        List<string> orderByClauses = new List<string>();
+        
+        for (int i = 0; i < orderByItems.Length; i += 2) {
+            if (i + 1 < orderByItems.Length) {
+                var field = orderByItems[i];
+                var isAsc = orderByItems[i + 1] == "True";
+                orderByClauses.Add($"{field} {(isAsc ? "ASC" : "DESC")}");
+            }
+        }
+        orderBy = string.Join(", ", orderByClauses);
+    }
+    
+    string partitionByClause = string.IsNullOrEmpty(partitionBy) ? "" : $"PARTITION BY {partitionBy}";
+    string orderByClause = string.IsNullOrEmpty(orderBy) ? "" : $"ORDER BY {orderBy}";
+    
+    List<string> clauses = new List<string>();
+    if (!string.IsNullOrEmpty(partitionByClause)) clauses.Add(partitionByClause);
+    if (!string.IsNullOrEmpty(orderByClause)) clauses.Add(orderByClause);
+    
+    string overClause = string.Join(" ", clauses);
+    
+    return $"SUM({amount}) OVER ({overClause})";
 });
 ```
 
 #### 步骤 4：使用窗口函数
 
 ```csharp
+// 定义排序方向的辅助方法
+public static (Expression<Func<T, object>>, bool) Asc<T>(Expression<Func<T, object>> expr) => (expr, true);
+public static (Expression<Func<T, object>>, bool) Desc<T>(Expression<Func<T, object>> expr) => (expr, false);
+
 // 使用窗口函数计算季度销售总额
 var sales = await saleService.SearchAsync<SaleView>(
     q => q.Select(
@@ -320,9 +444,14 @@ var sales = await saleService.SearchAsync<SaleView>(
             Amount = s.Amount,
             SaleDate = s.SaleDate,
             // 计算季度累计销售额
-            QuarterlyTotal = s.Amount.SumOver(
-                "YEAR(sale_date), QUARTER(sale_date)",
-                "sale_date"
+            QuarterlyTotal = s.Amount.SumOver<Sale>(
+                // 分区字段：按年份和季度
+                s => Expr.Func("YEAR", s.SaleDate),
+                s => Expr.Func("QUARTER", s.SaleDate),
+                // 排序字段：按销售日期升序
+                orderBy: new[] {
+                    Asc<Sale>(s => s.SaleDate)
+                }
             )
         }
     )
