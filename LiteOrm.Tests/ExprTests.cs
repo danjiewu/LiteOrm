@@ -60,7 +60,7 @@ namespace LiteOrm.Tests
 
             // 测试序列化
             TestSerialization(e1); // 简化：不考虑类型变化
-            TestSerialization(e4); 
+            TestSerialization(e4);
             TestSerialization(s1);
             TestSerialization(n1);
             TestSerialization(list1); // 简化：不考虑序列化后的类型变化
@@ -84,10 +84,10 @@ namespace LiteOrm.Tests
             Assert.False(p1.Equals(p3));
 
             // 带表别名的 PropertyExpr
-            Expr pa1 = Expr.Prop("u.Name");
-            Expr pa2 = Expr.Prop("u.Name");
+            Expr pa1 = Expr.Prop("u", "Name");
+            Expr pa2 = Expr.Prop("u", "Name");
             Expr pa3 = Expr.Prop("Name");
-            Expr pa4 = Expr.Prop("u.Age");
+            Expr pa4 = Expr.Prop("u", "Age");
 
             Assert.True(pa1.Equals(pa2));
             Assert.False(pa1.Equals(pa3)); // 不同的属性名

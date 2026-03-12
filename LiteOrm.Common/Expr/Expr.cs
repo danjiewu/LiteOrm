@@ -70,6 +70,19 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 创建属性表达式。
+        /// </summary>
+        /// <param name="tableAlias">表别名。</param>
+        /// <param name="propertyName">属性名称。</param>
+        /// <returns>属性表达式。</returns>
+        public static PropertyExpr Prop(string tableAlias, string propertyName)
+        {
+            var prop = new PropertyExpr(propertyName);
+            prop.TableAlias = tableAlias;
+            return prop;
+        }
+
+        /// <summary>
         /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件。
         /// </summary>
         /// <param name="type">关联外部实体的类型</param>
@@ -145,7 +158,7 @@ namespace LiteOrm.Common
         /// <param name="propertyName">属性名称。</param>
         /// <param name="value">比较值。</param>
         /// <returns>二元表达式。</returns>
-        public static LogicBinaryExpr Prop(string propertyName, object value)
+        public static LogicBinaryExpr PropEqual(string propertyName, object value)
         {
             return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.Equal, new ValueExpr(value));
         }
@@ -157,7 +170,7 @@ namespace LiteOrm.Common
         /// <param name="propertyName">属性名称。</param>
         /// <param name="value">比较值。</param>
         /// <returns>二元表达式。</returns>
-        public static LogicBinaryExpr Prop(string propertyName, ValueTypeExpr value)
+        public static LogicBinaryExpr PropEqual(string propertyName, ValueTypeExpr value)
         {
             return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.Equal, value);
         }

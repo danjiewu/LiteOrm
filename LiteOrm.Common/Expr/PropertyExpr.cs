@@ -17,8 +17,6 @@ namespace LiteOrm.Common
         {
         }
 
-
-
         /// <summary>
         /// 使用属性名称初始化 PropertyExpr。
         /// </summary>
@@ -26,9 +24,7 @@ namespace LiteOrm.Common
         public PropertyExpr(string propertyName)
         {
             if (propertyName == null) throw new ArgumentNullException(nameof(propertyName));
-            var names = propertyName.Split('.');
-            PropertyName = names[names.Length-1];
-            TableAlias = names.Length > 1 ? names[0] : null;
+            PropertyName = propertyName;
         }
 
         private string _tableAlias;

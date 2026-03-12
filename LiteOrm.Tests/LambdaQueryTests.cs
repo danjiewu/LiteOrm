@@ -47,7 +47,7 @@ namespace LiteOrm.Tests
             Assert.IsType<OrderByExpr>(section.Source);
             var orderBy = (OrderByExpr)section.Source;
             Assert.Single(orderBy.OrderBys);
-            Assert.True(orderBy.OrderBys[0].Item2); 
+            Assert.True(orderBy.OrderBys[0].Item2);
 
             Assert.IsType<WhereExpr>(orderBy.Source);
         }
@@ -116,7 +116,7 @@ namespace LiteOrm.Tests
             // 多个 Where 应该合并为一个 WhereExpr
             Assert.IsType<WhereExpr>(expr);
             var where = (WhereExpr)expr;
-            
+
             // 条件应该合并为 LogicSet（AND 连接）
             Assert.IsType<LogicSet>(where.Where);
             var logicSet = (LogicSet)where.Where;
@@ -280,7 +280,7 @@ namespace LiteOrm.Tests
         public void ExistsSubquery_Serialization()
         {
             // 测试：验证 Exists 表达式可以被序列化
-            var foreignExpr = Expr.Foreign<TestDepartment>(Expr.Prop("Id") == Expr.Prop("u.DeptId"));
+            var foreignExpr = Expr.Foreign<TestDepartment>(Expr.Prop("Id") == Expr.Prop("u", "DeptId"));
             Assert.NotNull(foreignExpr);
 
             // 使用 Expr.And 与其他逻辑表达式组合
@@ -322,7 +322,7 @@ namespace LiteOrm.Tests
             Assert.IsType<LogicSet>(manualWhere.Where);
 
             // 5. 比较两个表达式是否相等
-            Assert.True(lambdaGeneratedExpr.Equals(manualExpr), 
+            Assert.True(lambdaGeneratedExpr.Equals(manualExpr),
                 "Lambda-generated Expr should equal manually constructed Expr");
 
             // 6. 测试复杂的情况
@@ -374,7 +374,7 @@ namespace LiteOrm.Tests
             Assert.Equal(5, manualSection.Take);
 
             // 10. 比较两个复杂表达式是否相等
-            Assert.True(lambdaGeneratedExpr2.Equals(manualExpr2), 
+            Assert.True(lambdaGeneratedExpr2.Equals(manualExpr2),
                 "Complex lambda-generated Expr should equal manually constructed Expr");
 
             Assert.IsType<OrderByExpr>(manualSection.Source);

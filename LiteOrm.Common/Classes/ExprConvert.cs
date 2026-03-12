@@ -19,7 +19,7 @@ namespace LiteOrm.Common
         /// <returns>二元表达式查询条件。</returns>
         public static LogicBinaryExpr Parse(PropertyDescriptor property, string text)
         {
-            if (String.IsNullOrEmpty(text)) return Expr.Prop(property.Name, null);
+            if (String.IsNullOrEmpty(text)) return Expr.PropEqual(property.Name, null);
             if (text.Length > 1)
             {
                 switch (text.Substring(0, 2))

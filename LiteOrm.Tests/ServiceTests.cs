@@ -473,7 +473,7 @@ namespace LiteOrm.Tests
             // 需要在 InnerExpr 中添加外键关联条件：TestUser.DeptId = TestDepartment.Id
             var users = await viewService.SearchAsync(Expr.Foreign<TestDepartment>(
                 (Expr.Prop("Name") == "Foreign Dept") &
-                (Expr.Prop("T0.DeptId") == Expr.Prop("Id"))
+                (Expr.Prop("T0", "DeptId") == Expr.Prop("Id"))
             ));
 
             // Assert
@@ -501,8 +501,8 @@ namespace LiteOrm.Tests
             var users = await viewService.SearchAsync(
                 (Expr.Prop("Age") == 30) & Expr.Foreign<TestDepartment>("Dept",
                     (Expr.Prop("Name") == "Dept 1") &
-                    (Expr.Prop("T0.DeptId") == Expr.Prop("Id")) &
-                    (Expr.Prop("T0.Name") != Expr.Prop("Name")))
+                    (Expr.Prop("T0", "DeptId") == Expr.Prop("Id")) &
+                    (Expr.Prop("T0", "Name") != Expr.Prop("Name")))
             );
 
             // Assert

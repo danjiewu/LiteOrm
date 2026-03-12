@@ -473,6 +473,12 @@ namespace LiteOrm.Common
         public static SelectExpr Select(this ISelectAnchor source, params string[] selectProperties) => Select(source, Array.ConvertAll(selectProperties, prop => (ValueTypeExpr)Expr.Prop(prop)));
 
 
+        /// <summary>
+        /// 更新表达式添加 SET 子句。
+        /// </summary>
+        /// <param name="source">更新表达式。</param>
+        /// <param name="assignments">属性名称与值表达式的元组数组。</param>
+        /// <returns>包含 SET 子句的更新表达式。</returns>
         public static UpdateExpr Set(this UpdateExpr source, params (string, ValueTypeExpr)[] assignments)
         {
             foreach (var (propName, valueExpr) in assignments)

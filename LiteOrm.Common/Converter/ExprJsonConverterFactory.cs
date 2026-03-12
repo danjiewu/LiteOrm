@@ -113,7 +113,12 @@ namespace LiteOrm.Common
                     else if (propName == "#")
                     {
                         reader.Read();
-                        result = new PropertyExpr(reader.GetString());
+                        string stringValue = reader.GetString() ?? string.Empty;
+                        string[] parts = stringValue.Split(['.'], 2, StringSplitOptions.RemoveEmptyEntries);
+                        if (parts.Length == 2)
+                            result = Expr.Prop(parts[0], parts[1]);
+                        else
+                            result = Expr.Prop(stringValue);
                     }
                     else if (propName == "!")
                     {
