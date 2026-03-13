@@ -119,7 +119,7 @@ namespace LiteOrm.Common
             {
                 return new GenericSqlExpr(key);
             }
-            throw new KeyNotFoundException($"键 '{key}' 在注册表中未找到。");
+            throw new KeyNotFoundException($"Key '{key}' was not found in the registry.");
         }
 
         /// <summary>

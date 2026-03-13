@@ -76,7 +76,7 @@ namespace LiteOrm
         {
             _daoContextPoolFactory = daoContextPoolFactory ?? throw new ArgumentNullException(nameof(daoContextPoolFactory));
             _logger = logger;
-            _logger?.LogDebug($"会话 {SessionID} 已创建。");
+            _logger?.LogDebug($"Session {SessionID} created.");
         }
 
         private void EnsureNotDisposed()
@@ -141,14 +141,14 @@ namespace LiteOrm
             {
                 if (InTransaction)
                 {
-                    _logger?.LogWarning("已经在事务中，无法开始新事务");
+                    _logger?.LogWarning("Already in a transaction, cannot begin a new one");
                     return false;
                 }
 
                 _currentTransactionId = Guid.NewGuid().ToString();
                 _currentIsolationLevel = isolationLevel;
 
-                _logger?.LogDebug($"会话 {SessionID} 开始事务。Transaction ID: {_currentTransactionId}, 隔离级别: {isolationLevel}");
+                _logger?.LogDebug($"Session {SessionID} began transaction. ID: {_currentTransactionId}, Isolation: {isolationLevel}");
 
                 // 为所有已存在的上下文开启事务，只读连接跳过事务
                 foreach (var context in _daoContexts.Values)
@@ -162,7 +162,7 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, $"会话 {SessionID} 为连接池 {context.Pool?.Name} 开启事务失败");
+                        _logger?.LogError(ex, $"Session {SessionID} failed to begin transaction for pool '{context.Pool?.Name}'");
                         // 如果某个连接开启事务失败，回滚并抛出异常
                         RollbackInternal();
                         throw new InvalidOperationException($"Failed to start transaction: {ex.Message}", ex);
@@ -184,7 +184,7 @@ namespace LiteOrm
             {
                 if (!InTransaction)
                 {
-                    _logger?.LogWarning($"会话 {SessionID} 不在事务中，无法提交");
+                    _logger?.LogWarning($"Session {SessionID} is not in a transaction, cannot commit");
                     return false;
                 }
 
@@ -203,7 +203,7 @@ namespace LiteOrm
             {
                 if (!InTransaction)
                 {
-                    _logger?.LogWarning($"会话 {SessionID} 不在事务中，无法回滚");
+                    _logger?.LogWarning($"Session {SessionID} is not in a transaction, cannot roll back");
                     return false;
                 }
 
@@ -229,7 +229,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"会话 {SessionID} 提交事务失败。连接池: {context.Pool?.Name}");
+                    _logger?.LogError(ex, $"Session {SessionID} failed to commit transaction. Pool: '{context.Pool?.Name}'");
                     success = false;
                 }
             }
@@ -237,7 +237,7 @@ namespace LiteOrm
             // 清理事务状态
             _currentTransactionId = null;
 
-            _logger?.LogDebug($"会话 {SessionID} 事务提交完成。Transaction ID: {_currentTransactionId}, 成功: {success}");
+            _logger?.LogDebug($"Session {SessionID} transaction committed. ID: {_currentTransactionId}, Success: {success}");
 
             if (!success)
             {
@@ -265,7 +265,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"会话 {SessionID} 回滚事务失败。连接池: {context.Pool?.Name}");
+                    _logger?.LogError(ex, $"Session {SessionID} failed to roll back transaction. Pool: '{context.Pool?.Name}'");
                     success = false;
                 }
             }
@@ -273,7 +273,7 @@ namespace LiteOrm
             // 清理事务状态
             _currentTransactionId = null;
 
-            _logger?.LogDebug($"会话 {SessionID} 事务回滚完成。Transaction ID: {_currentTransactionId}, 返回: {success}");
+            _logger?.LogDebug($"Session {SessionID} transaction rolled back. ID: {_currentTransactionId}, Success: {success}");
 
             if (!success)
             {
@@ -328,7 +328,7 @@ namespace LiteOrm
                         {
                             context.Dispose();
                         }
-                        _logger?.LogError(ex, $"会话 {SessionID} 开启事务失败。连接池: {name}");
+                        _logger?.LogError(ex, $"Session {SessionID} failed to begin transaction. Pool: '{name}'");
                         throw;
                     }
                 }
@@ -360,7 +360,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"会话 {SessionID} 归还连接失败。连接池: {context.Pool?.Name}");
+                    _logger?.LogError(ex, $"Session {SessionID} failed to return connection. Pool: '{context.Pool?.Name}'");
                 }
             }
             _daoContexts.Clear();
@@ -390,7 +390,7 @@ namespace LiteOrm
         protected virtual void Dispose(bool disposing)
         {            
             if (_disposed) return;
-            _logger?.LogDebug($"会话 {SessionID} {(disposing ? "程序" : "析构")}注销。");
+            _logger?.LogDebug($"Session {SessionID} disposed ({(disposing ? "explicit" : "finalizer")}).");
             _disposed = true;
             if (disposing)
             {
@@ -401,11 +401,11 @@ namespace LiteOrm
                     {
                         // 尝试回滚事务
                         RollbackInternal();
-                        _logger?.LogDebug("Dispose时回滚事务成功");
+                        _logger?.LogDebug("Transaction rolled back successfully on dispose");
                     }
                     catch (Exception commitEx)
                     {
-                        _logger?.LogError(commitEx, "Dispose时回滚事务失败");
+                        _logger?.LogError(commitEx, "Failed to roll back transaction on dispose");
                     }
                 }
                 //归还所有连接

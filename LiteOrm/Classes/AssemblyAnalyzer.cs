@@ -21,7 +21,7 @@ namespace LiteOrm
             var visited = new HashSet<Assembly>();
 
             // 自动加上 LiteOrm 和 LiteOrm.Common 的 Assembly
-            result.Add(typeof(LiteOrmServiceProviderExtensions).Assembly);
+            result.Add(typeof(LiteOrmServiceExtensions).Assembly);
             result.Add(typeof(AutoRegisterAttribute).Assembly);
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())

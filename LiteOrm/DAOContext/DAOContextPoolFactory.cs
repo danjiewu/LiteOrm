@@ -1,5 +1,6 @@
 ﻿using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Reflection;
@@ -48,15 +49,18 @@ namespace LiteOrm
         private bool _disposed = false;
         private readonly object _initLock = new object();
         private readonly IDataSourceProvider _dataSourceProvider;
+        private readonly ILogger<DAOContextPoolFactory> _logger;
 
         /// <summary>
         /// 初始化 <see cref="DAOContextPoolFactory"/> 类的新实例。
         /// </summary>
         /// <param name="dataSourceProvider">数据源提供程序。</param>
+        /// <param name="logger">日志记录器。</param>
         /// <exception cref="ArgumentNullException">当 <paramref name="dataSourceProvider"/> 为 null 时抛出。</exception>
-        public DAOContextPoolFactory(IDataSourceProvider dataSourceProvider)
+        public DAOContextPoolFactory(IDataSourceProvider dataSourceProvider, ILogger<DAOContextPoolFactory> logger = null)
         {
             _dataSourceProvider = dataSourceProvider ?? throw new ArgumentNullException(nameof(dataSourceProvider));
+            _logger = logger;
             InitializePools();
         }
 
@@ -79,7 +83,15 @@ namespace LiteOrm
                         throw new InvalidOperationException($"Duplicate connection pool name: {config.Name}");
                     }
 
-                    CreatePool(config);
+                    try
+                    {
+                        CreatePool(config);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to initialize connection pool for data source '{DataSource}'", config.Name);
+                        throw new InvalidOperationException($"Failed to initialize connection pool for data source '{config.Name}'", ex);
+                    }
                 }
             }
         }
@@ -89,20 +101,35 @@ namespace LiteOrm
         /// </summary>
         private void CreatePool(DataSourceConfig config)
         {
-            var pool = new DAOContextPool(config.ProviderType, config.ConnectionString)
+            DAOContextPool pool;
+            try
             {
-                Name = config.Name,
-                PoolSize = config.PoolSize,
-                MaxPoolSize = config.MaxPoolSize,
-                KeepAliveDuration = config.KeepAliveDuration,
-                ParamCountLimit = config.ParamCountLimit
-            };
+                pool = new DAOContextPool(config.ProviderType, config.ConnectionString)
+                {
+                    Name = config.Name,
+                    PoolSize = config.PoolSize,
+                    MaxPoolSize = config.MaxPoolSize,
+                    KeepAliveDuration = config.KeepAliveDuration,
+                    ParamCountLimit = config.ParamCountLimit
+                };
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to create connection pool instance for data source '{config.Name}'", ex);
+            }
 
             if (config.ReadOnlyConfigs != null)
             {
                 foreach (var roConfig in config.ReadOnlyConfigs)
                 {
-                    pool.AddReadOnlyPool(roConfig);
+                    try
+                    {
+                        pool.AddReadOnlyPool(roConfig);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException($"Failed to add read-only connection pool for data source '{config.Name}'", ex);
+                    }
                 }
             }
 
@@ -150,7 +177,8 @@ namespace LiteOrm
             {
                 throw new ArgumentException("Connection pool name cannot be empty", nameof(name));
             }
-            return _pools[name];
+            _pools.TryGetValue(name, out var pool);
+            return pool;
         }
 
         /// <summary>
@@ -201,9 +229,9 @@ namespace LiteOrm
                     {
                         pool.Dispose();
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // 记录日志
+                        _logger?.LogWarning(ex, "An error occurred while disposing connection pool '{Pool}'", pool.Name);
                     }
                 }
 

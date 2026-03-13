@@ -54,11 +54,19 @@ namespace LiteOrm
         /// </summary>
         public void Start()
         {
-            // 步骤 1：初始化全局实例
-            InitializeGlobalInstances();
+            try
+            {
+                // 步骤 1：初始化全局实例
+                InitializeGlobalInstances();
 
-            // 步骤 2：同步数据库表结构
-            SyncTables();
+                // 步骤 2：同步数据库表结构
+                SyncTables();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogCritical(ex, "LiteOrm startup initialization failed");
+                throw;
+            }
         }
 
         /// <summary>
@@ -66,9 +74,17 @@ namespace LiteOrm
         /// </summary>
         private void InitializeGlobalInstances()
         {
-            SessionManager.Current = _sessionManager;
-            TableInfoProvider.Default = _tableInfoProvider;
-            _logger?.LogInformation("LiteOrm 全局实例初始化完成");
+            try
+            {
+                SessionManager.Current = _sessionManager;
+                TableInfoProvider.Default = _tableInfoProvider;
+                _logger?.LogInformation("LiteOrm global instances initialized");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogCritical(ex, "LiteOrm global instance initialization failed");
+                throw new InvalidOperationException("LiteOrm global instance initialization failed", ex);
+            }
         }
 
         /// <summary>
@@ -79,13 +95,24 @@ namespace LiteOrm
             var syncDataSources = _dataSourceProvider.Where(ds => ds.SyncTable).ToList();
             if (!syncDataSources.Any()) return;
 
-            _logger?.LogInformation("开始自动同步数据库结构...");
+            _logger?.LogInformation("Starting automatic database schema synchronization...");
 
             // 获取全部已加载程序集中的表实体映射定义
             var assemblies = AssemblyAnalyzer.GetAllReferencedAssemblies();
-            var tableTypes = assemblies.SelectMany(a => a.GetTypes())
-                                       .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null && !typeof(IArged).IsAssignableFrom(t))
-                                       .ToList();
+            var tableTypes = assemblies.SelectMany(a =>
+            {
+                try
+                {
+                    return (IEnumerable<Type>)a.GetTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to load types from assembly '{Assembly}', some types will be skipped", a.FullName);
+                    return ex.Types.Where(t => t != null);
+                }
+            })
+            .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null && !typeof(IArged).IsAssignableFrom(t))
+            .ToList();
 
             // 按数据源名称对实体类型进行分组
             var tableGroupsByDataSource = tableTypes.GroupBy(t =>
@@ -98,7 +125,11 @@ namespace LiteOrm
             var syncTasks = syncDataSources.Select(async ds =>
             {
                 var pool = _daoContextPoolFactory.GetPool(ds.Name);
-                if (pool == null) return;
+                if (pool == null)
+                {
+                    _logger?.LogWarning("No connection pool found for data source '{DataSource}', skipping sync", ds.Name);
+                    return;
+                }
 
                 var currentDsTypes = tableGroupsByDataSource
                     .FirstOrDefault(g => string.Equals(g.Key, ds.Name, StringComparison.OrdinalIgnoreCase))?
@@ -108,7 +139,7 @@ namespace LiteOrm
 
                 try
                 {
-                    _logger?.LogInformation("正在同步数据源 '{DataSource}'，包含 {Count} 个表映射实体", ds.Name, currentDsTypes.Count);
+                    _logger?.LogInformation("Syncing data source '{DataSource}' with {Count} entity type(s)", ds.Name, currentDsTypes.Count);
 
                     var context = pool.PeekContextInternal();
                     try
@@ -120,7 +151,15 @@ namespace LiteOrm
                             // 直接为每个实体类型的表创建结构
                             foreach (var type in currentDsTypes)
                             {
-                                await pool.EnsureTableAsync(type).ConfigureAwait(false);
+                                try
+                                {
+                                    await pool.EnsureTableAsync(type).ConfigureAwait(false);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger?.LogError(ex, "An error occurred while syncing table '{Type}' (data source: '{DataSource}')", type.FullName, ds.Name);
+                                    throw;
+                                }
                             }
                         }
                     }
@@ -131,21 +170,30 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "同步数据源 '{DataSource}' 时发生异常", ds.Name);
+                    _logger?.LogError(ex, "An error occurred while syncing data source '{DataSource}'", ds.Name);
                     throw;
                 }
             }).ToArray();
 
+            var whenAllTask = Task.WhenAll(syncTasks);
             try
             {
-                Task.WhenAll(syncTasks).GetAwaiter().GetResult();
+                whenAllTask.GetAwaiter().GetResult();
+                _logger?.LogInformation("Database schema synchronization complete");
             }
             catch
             {
+                var innerExceptions = whenAllTask.Exception?.Flatten().InnerExceptions;
+                if (innerExceptions != null && innerExceptions.Count > 0)
+                {
+                    _logger?.LogCritical("Database schema synchronization failed with {Count} exception(s)", innerExceptions.Count);
+                }
+                else
+                {
+                    _logger?.LogCritical("Database schema synchronization failed");
+                }
                 throw;
             }
-
-            _logger?.LogInformation("数据库表结构同步完成");
         }
 
     }

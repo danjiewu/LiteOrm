@@ -136,11 +136,6 @@ namespace LiteOrm
         public bool SyncTable { get; set; }
 
         /// <summary>
-        /// 判断指定表名是否已在连接池中被标记为已创建。
-        /// </summary>
-        public bool IsTableKnown(string tableName) => _tableColumns.ContainsKey(tableName);
-
-        /// <summary>
         /// 将指定表名标记为已创建，同时缓存已知列名集合。
         /// </summary>
         public void MarkTableCreated(string tableName, IEnumerable<string> columnNames = null)

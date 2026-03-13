@@ -374,7 +374,7 @@ namespace LiteOrm.Common
             }
             else
             {
-                throw new ArgumentException("expr 参数类型不支持");
+                throw new ArgumentException("Unsupported expr type");
             }
         }
         /// <summary>

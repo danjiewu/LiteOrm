@@ -8,6 +8,7 @@ using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,7 +37,7 @@ namespace LiteOrm
     ///     );
     /// </code>
     /// </remarks>
-    public static class LiteOrmServiceProviderExtensions
+    public static class LiteOrmServiceExtensions
     {
         /// <summary>
         /// 注册LiteOrm框架到主机构建器
@@ -57,39 +58,75 @@ namespace LiteOrm
         public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder, Action<LiteOrmOptions> configureOptions)
         {
             var options = new LiteOrmOptions();
-            configureOptions?.Invoke(options);
+            try
+            {
+                configureOptions?.Invoke(options);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to initialize LiteOrm options", ex);
+            }
 
             return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
                 .ConfigureContainer<ContainerBuilder>((builder, containerBuilder) =>
                 {
-                    // 使用指定的程序集或默认程序集
-                    if (options.Assemblies != null && options.Assemblies.Length > 0)
+                    try
                     {
-                        containerBuilder.RegisterAutoService(options.Assemblies);
+                        var logger = options.LoggerFactory?.CreateLogger(nameof(LiteOrmServiceExtensions));
+                        // 使用指定的程序集或默认程序集
+                        if (options.Assemblies != null && options.Assemblies.Length > 0)
+                        {
+                            containerBuilder.RegisterAutoService(logger, options.Assemblies);
+                        }
+                        else
+                        {
+                            containerBuilder.RegisterAutoService(logger);
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        containerBuilder.RegisterAutoService();
+                        throw new InvalidOperationException("Failed to register LiteOrm services automatically", ex);
                     }
-                    
+
                     containerBuilder.RegisterBuildCallback(container =>
                     {
                         // 注册自定义SqlBuilder（按数据源名称）
                         foreach (var kvp in options.SqlBuilders)
                         {
-                            SqlBuilderFactory.Instance.RegisterSqlBuilder(kvp.Key, kvp.Value);
+                            try
+                            {
+                                SqlBuilderFactory.Instance.RegisterSqlBuilder(kvp.Key, kvp.Value);
+                            }
+                            catch (Exception ex)
+                            {
+                                throw new InvalidOperationException($"Failed to register SqlBuilder for data source '{kvp.Key}'", ex);
+                            }
                         }
-                        
+
                         // 注册自定义SqlBuilder（按连接类型）
                         foreach (var kvp in options.SqlBuildersByType)
                         {
-                            SqlBuilderFactory.Instance.RegisterSqlBuilder(kvp.Key, kvp.Value);
+                            try
+                            {
+                                SqlBuilderFactory.Instance.RegisterSqlBuilder(kvp.Key, kvp.Value);
+                            }
+                            catch (Exception ex)
+                            {
+                                throw new InvalidOperationException($"Failed to register SqlBuilder for connection type '{kvp.Key.FullName}'", ex);
+                            }
                         }
-                        
+
                         // 根据配置决定是否注册Scope
                         if (options.RegisterScope)
                         {
-                            RegisterScope(container);
+                            try
+                            {
+                                RegisterScope(container);
+                            }
+                            catch (Exception ex)
+                            {
+                                throw new InvalidOperationException("Failed to register LiteOrm Scope", ex);
+                            }
                         }
                     });
                 });
@@ -121,6 +158,13 @@ namespace LiteOrm
             public System.Reflection.Assembly[] Assemblies { get; set; }
 
             /// <summary>
+            /// 日志工厂，用于记录服务注册过程中的程序集扫描日志（可选）。
+            /// 默认为控制台输出，最低级别为 <see cref="LogLevel.Information"/>。
+            /// </summary>
+            public ILoggerFactory LoggerFactory { get; set; } = Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+                b.AddConsole().SetMinimumLevel(LogLevel.Information));
+
+            /// <summary>
             /// 注册自定义SqlBuilder（按数据源名称）
             /// </summary>
             /// <param name="dataSourceName">数据源名称</param>
@@ -145,10 +189,24 @@ namespace LiteOrm
         {
             scope.ChildLifetimeScopeBeginning += (sender, e) =>
             {
-                SessionManager.Current = e.LifetimeScope.Resolve<SessionManager>();
+                try
+                {
+                    SessionManager.Current = e.LifetimeScope.Resolve<SessionManager>();
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Failed to resolve SessionManager when LiteOrm Scope begins", ex);
+                }
                 e.LifetimeScope.CurrentScopeEnding += (s, args) =>
                 {
-                    SessionManager.Current = scope.Resolve<SessionManager>();
+                    try
+                    {
+                        SessionManager.Current = scope.Resolve<SessionManager>();
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException("Failed to restore SessionManager when LiteOrm Scope ends", ex);
+                    }
                 };
                 RegisterScope(e.LifetimeScope);
             };
@@ -164,10 +222,25 @@ namespace LiteOrm
             this ContainerBuilder builder,
             params Assembly[] assemblies)
         {
+            return RegisterAutoService(builder, null, assemblies);
+        }
+
+        /// <summary>
+        /// 扫描指定程序集，自动注册标记[AutoRegister]的类型，并通过 <paramref name="logger"/> 输出扫描日志
+        /// </summary>
+        /// <param name="builder">服务集合</param>
+        /// <param name="logger">日志记录器（为 null 时跳过日志输出）</param>
+        /// <param name="assemblies">目标程序集（为空则扫描当前域所有程序集）</param>
+        /// <returns>服务集合</returns>
+        public static ContainerBuilder RegisterAutoService(
+            this ContainerBuilder builder,
+            ILogger logger,
+            params Assembly[] assemblies)
+        {
             var assemblyList = new HashSet<Assembly>();
 
             // 自动加上 LiteOrm 和 LiteOrm.Common 的 Assembly
-            assemblyList.Add(typeof(LiteOrmServiceProviderExtensions).Assembly);
+            assemblyList.Add(typeof(LiteOrmServiceExtensions).Assembly);
             assemblyList.Add(typeof(AutoRegisterAttribute).Assembly);
 
             // 若指定了程序集，则加入指定列表；否则扫描引用程序集
@@ -186,13 +259,46 @@ namespace LiteOrm
                 }
             }
 
+            logger?.LogDebug("Scanning {Count} assemblies to register LiteOrm services", assemblyList.Count);
+
+            var totalRegistered = 0;
             foreach (var assembly in assemblyList)
             {
-                assembly.GetTypes()
-                     .Where(t => !t.IsAbstract && !t.IsInterface && (t.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? false))
-                     .ToList()
-                     .ForEach(t => RegisterTypeWithInterception(builder, t));
+                IEnumerable<Type> types;
+                try
+                {
+                    types = assembly.GetTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    logger?.LogWarning(ex, "Failed to load types from assembly '{Assembly}', some types will be skipped", assembly.FullName);
+                    types = ex.Types.Where(t => t != null);
+                }
+
+                var registrableTypes = types
+                    .Where(t => !t.IsAbstract && !t.IsInterface && (t.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? false))
+                    .ToList();
+
+                logger?.LogDebug("Scanned assembly '{Assembly}': found {Count} registrable type(s)",
+                    assembly.GetName().Name, registrableTypes.Count);
+
+                foreach (var t in registrableTypes)
+                {
+                    var attr = t.GetCustomAttribute<AutoRegisterAttribute>(true);
+                    logger?.LogDebug(
+                        "Registering {Kind} service '{Type}' [Lifetime={Lifetime}, AutoActivate={AutoActivate}]",
+                        t.IsGenericTypeDefinition ? "generic" : "regular",
+                        t.FullName,
+                        attr?.Lifetime ?? ServiceLifetime.Scoped,
+                        attr?.AutoActivate ?? false);
+                    RegisterTypeWithInterception(builder, t);
+                }
+                totalRegistered += registrableTypes.Count;
             }
+
+            logger?.LogInformation(
+                "LiteOrm service registration complete: scanned {AssemblyCount} assemblies, registered {Total} type(s)",
+                assemblyList.Count, totalRegistered);
             return builder;
         }
 
