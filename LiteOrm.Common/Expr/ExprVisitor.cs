@@ -130,8 +130,8 @@ namespace LiteOrm.Common
                     return true;
 
                 case OrderByExpr o:
-                    foreach ((ValueTypeExpr expr, bool _) in o.OrderBys)
-                        if (!VisitNode(expr, visitor)) return false;
+                    foreach (OrderByItemExpr ob in o.OrderBys)
+                        if (!VisitNode(ob.Field, visitor)) return false;
                     return true;
 
                 case UpdateExpr upd:

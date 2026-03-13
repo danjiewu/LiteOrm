@@ -1,4 +1,6 @@
-﻿using LiteOrm.Demo.DAO;
+﻿using LiteOrm;
+using LiteOrm.Demo.DAO;
+using LiteOrm.Demo.Models;
 
 namespace LiteOrm.Demo.Services
 {
@@ -10,5 +12,6 @@ namespace LiteOrm.Demo.Services
         IDepartmentService DepartmentService { get; }
 
         IUserCustomDAO UserCustomDAO { get; }
+        ObjectViewDAO<SalesRecord> SalesDAO { get; }
     }
 }

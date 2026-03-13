@@ -34,10 +34,7 @@ namespace LiteOrm.Common
             get => _alias;
             set
             {
-                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
-                {
-                    throw new ArgumentException("Alias contains illegal characters. Only letters, numbers, and underscores are allowed:" + value, nameof(Alias));
-                }
+                ThrowIfInvalidSqlName(nameof(Alias), value);
                 _alias = value;
             }
         }
@@ -64,10 +61,7 @@ namespace LiteOrm.Common
                 {
                     foreach (var arg in value)
                     {
-                        if (arg != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(arg))
-                        {
-                            throw new ArgumentException("Table argument contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(TableArgs));
-                        }
+                        ThrowIfInvalidSqlName(nameof(TableArgs), arg);
                     }
                 }
                 _tableArgs = value;

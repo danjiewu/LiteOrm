@@ -47,7 +47,7 @@ namespace LiteOrm.Tests
             Assert.IsType<OrderByExpr>(section.Source);
             var orderBy = (OrderByExpr)section.Source;
             Assert.Single(orderBy.OrderBys);
-            Assert.True(orderBy.OrderBys[0].Item2);
+            Assert.True(orderBy.OrderBys[0].Ascending);
 
             Assert.IsType<WhereExpr>(orderBy.Source);
         }
@@ -146,7 +146,7 @@ namespace LiteOrm.Tests
             var orderBy = Assert.IsType<OrderByExpr>(section.Source);
             Assert.Single(orderBy.OrderBys);
             // 验证 OrderBy 中使用了别名
-            var orderByValue = orderBy.OrderBys[0].Item1;
+            var orderByValue = orderBy.OrderBys[0].Field;
             Assert.IsType<PropertyExpr>(orderByValue);
             Assert.Equal("Total", (orderByValue as PropertyExpr).PropertyName);
 
@@ -361,7 +361,7 @@ namespace LiteOrm.Tests
                             Expr.Prop("Name").Contains("Test")
                         )
                     },
-                    OrderBys = new List<(ValueTypeExpr, bool)> { (Expr.Prop("Name"), true) }
+                    OrderBys = new List<OrderByItemExpr> { new OrderByItemExpr(Expr.Prop("Name"), true) }
                 },
                 Skip = 10,
                 Take = 5

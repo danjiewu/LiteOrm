@@ -21,10 +21,10 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="orderBys">排序字段元组列表，每个元组包含字段表达式和升序/降序标识</param>
-        public OrderByExpr(ISqlSegment source, params (ValueTypeExpr, bool)[] orderBys)
+        public OrderByExpr(ISqlSegment source, params OrderByItemExpr[] orderBys)
         {
             Source = source;
-            OrderBys = orderBys?.ToList() ?? new List<(ValueTypeExpr, bool)>();
+            OrderBys = orderBys?.ToList() ?? new List<OrderByItemExpr>();
         }
 
         /// <summary>
@@ -37,9 +37,9 @@ namespace LiteOrm.Common
         public SqlSegmentType SegmentType => SqlSegmentType.OrderBy;
 
         /// <summary>
-        /// 获取或设置排序字段元组列表
+        /// 获取或设置排序项列表
         /// </summary>
-        public List<(ValueTypeExpr, bool)> OrderBys { get; set; } = new List<(ValueTypeExpr, bool)>();
+        public List<OrderByItemExpr> OrderBys { get; set; } = new List<OrderByItemExpr>();
 
         /// <summary>
         /// 判断两个 OrderByExpr 是否相等
@@ -58,6 +58,6 @@ namespace LiteOrm.Common
         /// 返回排序片段的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>
-        public override string ToString() => $"{Source} ORDER BY {string.Join(", ", OrderBys.Select(ob => $"{ob.Item1} {(ob.Item2 ? "ASC" : "DESC")}"))}";
+        public override string ToString() => $"{Source} ORDER BY {string.Join(", ", OrderBys)}";
     }
 }

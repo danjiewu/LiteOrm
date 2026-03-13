@@ -45,10 +45,8 @@ namespace LiteOrm.Common
             get => _functionName;
             set
             {
-                if (!string.IsNullOrEmpty(value) && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
-                {
-                    throw new ArgumentException($"Aggregate function name '{value}' contains invalid characters, only letters, numbers, and underscores are allowed");
-                }
+                ThrowIfInvalidSqlName(nameof(FunctionName), value);
+                if (Constants.ExcludedSqlNames.Contains(value)) throw new ArgumentException($"{value} is not a valid aggregate function name.");
                 _functionName = value;
             }
         }

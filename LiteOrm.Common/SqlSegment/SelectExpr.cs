@@ -75,7 +75,7 @@ namespace LiteOrm.Common
         /// 返回选择片段的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>
-        public override string ToString() 
+        public override string ToString()
         {
             string selectPart = $"SELECT {string.Join(", ", Selects)} FROM {Source}";
             if (!string.IsNullOrEmpty(Alias))
@@ -122,19 +122,16 @@ namespace LiteOrm.Common
         public new ValueTypeExpr Value { get; set; }
 
         private string _alias;
-        
+
         /// <summary>
         /// 获取或设置选择项的别名
         /// </summary>
-        public string Alias 
+        public string Alias
         {
             get => _alias;
             set
             {
-                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
-                {
-                    throw new ArgumentException("Alias name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Alias));
-                }
+                ThrowIfInvalidSqlName(nameof(Alias), value);
                 _alias = value;
             }
         }

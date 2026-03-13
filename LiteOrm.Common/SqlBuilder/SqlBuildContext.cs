@@ -167,7 +167,7 @@ namespace LiteOrm.Common
                     {
                         foreach (var item in value)
                         {
-                            if (!Constants.ValidNameRegex.IsMatch(item)) throw new ArgumentException($"Invalid table argument name: {item}");
+                            Expr.ThrowIfInvalidSqlName(nameof(TableArgs), item);
                         }
                     }
                     _tableArgs = value ?? Array.Empty<string>();

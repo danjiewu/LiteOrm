@@ -95,12 +95,10 @@ namespace LiteOrm.Common
         public static Func<DbDataReader, TResult> GetConverter<TResult>(DbDataReader reader)
         {
             Type type = typeof(TResult);
-            if (IsAnonymousType(type))
-            {
-                string columnKey = BuildColumnKey(reader);
-                return (Func<DbDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileAnonymousConverter<TResult>(reader));
-            }
-            return GetConverter<TResult>();
+            if(TableInfoProvider.Default.GetTableView(type) != null)
+                return GetConverter<TResult>();            
+            string columnKey = BuildColumnKey(reader);
+                return (Func<DbDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileDataReaderConverter<TResult>(reader));
         }
 
         /// <summary>
@@ -160,27 +158,48 @@ namespace LiteOrm.Common
             return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
         }
 
-        private static Func<DbDataReader, TResult> CompileAnonymousConverter<TResult>(DbDataReader reader)
+        private static Func<DbDataReader, TResult> CompileDataReaderConverter<TResult>(DbDataReader reader)
         {
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(DbDataReader), "reader");
-            var ctor = resultType.GetConstructors()[0];
-            var ctorParams = ctor.GetParameters();
+
+            if (IsScalarType(resultType))
+                return CompileScalarConverter<TResult>(readerParam);
 
             var columnMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < reader.FieldCount; i++)
                 columnMap[reader.GetName(i)] = i;
 
-            var args = new Expression[ctorParams.Length];
-            for (int i = 0; i < ctorParams.Length; i++)
+            var ctor = resultType.GetConstructors()[0];
+            var ctorParams = ctor.GetParameters();
+
+            Expression body;
+            if (ctorParams.Length > 0)
             {
-                ParameterInfo param = ctorParams[i];
-                args[i] = columnMap.TryGetValue(param.Name, out int ordinal)
-                    ? BuildTypedReadExpression(readerParam, ordinal, param.ParameterType)
-                    : Expression.Default(param.ParameterType);
+                // 匿名类型：按构造函数参数名匹配列名
+                var args = new Expression[ctorParams.Length];
+                for (int i = 0; i < ctorParams.Length; i++)
+                {
+                    ParameterInfo param = ctorParams[i];
+                    args[i] = columnMap.TryGetValue(param.Name, out int ordinal)
+                        ? BuildTypedReadExpression(readerParam, ordinal, param.ParameterType)
+                        : Expression.Default(param.ParameterType);
+                }
+                body = Expression.New(ctor, args);
+            }
+            else
+            {
+                // 具名类型（有无参构造函数）：按属性名匹配列名，使用 MemberInit 赋值
+                var bindings = new List<MemberBinding>();
+                foreach (var prop in resultType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    if (!prop.CanWrite) continue;
+                    if (!columnMap.TryGetValue(prop.Name, out int ordinal)) continue;
+                    bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, ordinal, prop.PropertyType)));
+                }
+                body = Expression.MemberInit(Expression.New(ctor), bindings);
             }
 
-            var body = Expression.New(ctor, args);
             return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
         }
 
@@ -302,12 +321,6 @@ namespace LiteOrm.Common
                 || type == typeof(DateTimeOffset)
                 || type == typeof(TimeSpan);
         }
-
-        private static bool IsAnonymousType(Type type) =>
-            !type.IsPublic
-            && type.IsGenericType
-            && type.Name.StartsWith("<>")
-            && Attribute.IsDefined(type, typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute));
 
         private static T ConvertValue<T>(object value)
         {

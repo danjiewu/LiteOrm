@@ -20,6 +20,9 @@ var host = Host.CreateDefaultBuilder(args)
 
 Console.WriteLine("--- LiteOrm 表达式演示程序 ---");
 
+// 注册窗口函数扩展处理器（必须在任何查询执行前完成）
+WindowFunctionDemo.RegisterHandlers();
+
 // 执行数据库初始化
 using (var initScope = host.Services.CreateScope())
 {
@@ -28,7 +31,6 @@ using (var initScope = host.Services.CreateScope())
 
 using (var scope = host.Services.CreateScope())
 {
-
     var serviceFactory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 
     // 1. 表达式全方案演示 (1.1-1.5: 基础、比较、结构化、Lambda转换、删除)
@@ -42,6 +44,9 @@ using (var scope = host.Services.CreateScope())
 
     // 4. 分表查询演示 (4.1-4.4: 基础、显式参数、Expr参数、排序)
     await ShardingQueryDemo.RunAsync(serviceFactory);
+
+    // 5. 窗口函数演示 (5.1-5.2: 仅分区、分区+排序)
+    await WindowFunctionDemo.RunAsync(serviceFactory);
 }
 
 

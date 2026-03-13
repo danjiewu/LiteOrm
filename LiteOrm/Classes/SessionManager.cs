@@ -113,7 +113,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 将SQL语句推入堆栈（用于调试和日志记录）
+        /// 将SQL语句压入栈尾（用于调试和日志记录）
         /// </summary>
         /// <param name="sql">SQL语句</param>
         public void PushSql(string sql)
@@ -121,10 +121,10 @@ namespace LiteOrm
             EnsureNotDisposed();
             lock (_syncLock)
             {
-                _sqlStack.AddFirst(sql);
+                _sqlStack.AddLast(sql);
                 while (_sqlStack.Count > 20)
                 {
-                    _sqlStack.RemoveLast();
+                    _sqlStack.RemoveFirst();
                 }
             }
         }

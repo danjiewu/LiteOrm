@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
 namespace LiteOrm.Common
@@ -7,6 +9,10 @@ namespace LiteOrm.Common
     /// </summary>
     public static class Constants
     {
+        /// <summary>
+        /// 需排除的 SQL 关键字列表，在生成 SQL 语句时使用，避免潜在风险。
+        /// </summary>
+        public static HashSet<string> ExcludedSqlNames = new(["DROP", "TRUNCATE", "DELETE", "INSERT", "UPDATE", "UNION", "SET"], StringComparer.OrdinalIgnoreCase);
         /// <summary>
         /// 默认的表别名，在生成 SQL 语句时使用，避免与用户定义的别名冲突。
         /// </summary>

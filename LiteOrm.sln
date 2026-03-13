@@ -16,6 +16,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{887B819B-42AD-47EF-97D1-E3A38FC2DD6B}"
 	ProjectSection(SolutionItems) = preProject
 		CUSTOM_PAGING_EXAMPLE.md = CUSTOM_PAGING_EXAMPLE.md
+		EXPRESSION_EXTENSION.md = EXPRESSION_EXTENSION.md
 		LICENSE = LICENSE
 		LITEORM_API_REFERENCE.en.md = LITEORM_API_REFERENCE.en.md
 		LITEORM_API_REFERENCE.zh.md = LITEORM_API_REFERENCE.zh.md
@@ -99,8 +100,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
 		VisualSVNWorkingCopyRoot = .
+		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
 	EndGlobalSection
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True

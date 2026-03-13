@@ -1,6 +1,7 @@
 using Autofac;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Linq;
 
 namespace LiteOrm
@@ -26,6 +27,8 @@ namespace LiteOrm
         /// </summary>
         private void RegisterSqlFunctions()
         {
+            // 注册 SQL 危险关键字为不可用，预防潜在风险，直接抛出异常提示用户。如确定需要使用，请自行重新注册自定义函数映射。
+            SqlBuilder.Instance.RegisterFunctionSqlHandler(Constants.ExcludedSqlNames, (functionName, args) => throw new NotSupportedException($"Function '{functionName}' is not supported. You must register it manually if it is absolutely necessary."));
             // 注册通用的 SQL 映射
             SqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (functionName, args) => "CURRENT_TIMESTAMP");
             SqlBuilder.Instance.RegisterFunctionSqlHandler("Today", (functionName, args) => "CURRENT_DATE");

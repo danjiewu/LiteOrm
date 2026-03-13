@@ -344,12 +344,12 @@ namespace LiteOrm.Tests
 
             // 排序
             var asc = p.Asc();
-            Assert.Equal(p, asc.Item1);
-            Assert.True(asc.Item2);
+            Assert.Equal(p, asc.Field);
+            Assert.True(asc.Ascending);
 
             var desc = p.Desc();
-            Assert.Equal(p, desc.Item1);
-            Assert.False(desc.Item2);
+            Assert.Equal(p, desc.Field);
+            Assert.False(desc.Ascending);
         }
 
         [Fact]
@@ -368,7 +368,7 @@ namespace LiteOrm.Tests
 
             var orderBy = (OrderByExpr)query.Source;
             Assert.Single(orderBy.OrderBys);
-            Assert.False(orderBy.OrderBys[0].Item2); // Desc
+            Assert.False(orderBy.OrderBys[0].Ascending); // Desc
 
             var select = (SelectExpr)orderBy.Source;
             Assert.Equal(2, select.Selects.Count);
@@ -416,8 +416,8 @@ namespace LiteOrm.Tests
             var table = new FromExpr(typeof(TestUser));
             var orderBy = new OrderByExpr(table, (Expr.Prop("Age"), true), (Expr.Prop("Name"), false));
             Assert.Equal(2, orderBy.OrderBys.Count);
-            Assert.True(orderBy.OrderBys[0].Item2);
-            Assert.False(orderBy.OrderBys[1].Item2);
+            Assert.True(orderBy.OrderBys[0].Ascending);
+            Assert.False(orderBy.OrderBys[1].Ascending);
         }
 
         [Fact]

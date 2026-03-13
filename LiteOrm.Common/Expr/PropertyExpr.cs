@@ -31,15 +31,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置表别名（如果有）。在生成 SQL 时，如果提供了表别名，列名将以 "TableAlias.ColumnName" 的形式出现。
         /// </summary>
-        public string TableAlias 
+        public string TableAlias
         {
             get { return _tableAlias; }
-            set 
+            set
             {
-                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
-                {
-                    throw new ArgumentException("Table alias contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(TableAlias));
-                }
+                ThrowIfInvalidSqlName(nameof(TableAlias), value);
                 _tableAlias = value;
             }
         }
@@ -48,15 +45,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置目标属性（列）的名称。
         /// </summary>
-        public string PropertyName 
+        public string PropertyName
         {
             get { return _propertyName; }
-            set 
+            set
             {
-                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
-                {
-                    throw new ArgumentException("Property name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(PropertyName));
-                }
+                ThrowIfInvalidSqlName(nameof(PropertyName), value);
                 _propertyName = value;
             }
         }

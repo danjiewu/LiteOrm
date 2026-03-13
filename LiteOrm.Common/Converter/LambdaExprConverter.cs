@@ -958,6 +958,22 @@ namespace LiteOrm.Common
                 return items.ToArray();
             }
 
+            // 处理 MemberInitExpression（命名类型初始化，如 new MyView { Prop = expr, ... }）
+            if (body is MemberInitExpression memberInit)
+            {
+                var items = new List<SelectItemExpr>();
+                foreach (var binding in memberInit.Bindings)
+                {
+                    if (binding is MemberAssignment assignment)
+                    {
+                        var item = ConvertGroupedExpr(assignment.Expression, lambdaParam, groupKeys);
+                        if (item is not null)
+                            items.Add(new SelectItemExpr(AsValue(item), assignment.Member.Name));
+                    }
+                }
+                return items.ToArray();
+            }
+
             // 处理单个选择
             var singleItem = ConvertGroupedExpr(body, lambdaParam, groupKeys);
             return singleItem is not null ? new[] { new SelectItemExpr(AsValue(singleItem)) } : Array.Empty<SelectItemExpr>();

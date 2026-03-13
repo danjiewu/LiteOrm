@@ -94,6 +94,7 @@ namespace LiteOrm.Common
             else if (expr is ForeignExpr foreign) ToSql(ref sb, foreign, context, sqlBuilder, outputParams);
             else if (expr is LogicSet ls) ToSql(ref sb, ls, context, sqlBuilder, outputParams);
             else if (expr is ValueSet vs) ToSql(ref sb, vs, context, sqlBuilder, outputParams);
+            else if (expr is OrderByItemExpr obi) ToSql(ref sb, obi, context, sqlBuilder, outputParams);
             else if (expr is AggregateFunctionExpr agg) ToSql(ref sb, agg, context, sqlBuilder, outputParams);
             else if (expr is FromExpr from) ToSql(ref sb, from, context, sqlBuilder, outputParams);
             else if (expr is SelectExpr select) ToSql(ref sb, select, context, sqlBuilder, outputParams);
@@ -596,6 +597,15 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 处理排序项，渲染为 "field" 或 "field DESC"。
+        /// </summary>
+        private static void ToSql(ref ValueStringBuilder sb, OrderByItemExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            ToSqlInternal(ref sb, expr.Field, context, sqlBuilder, outputParams);
+            if (!expr.Ascending) sb.Append(" DESC");
+        }
+
+        /// <summary>
         /// 向 SQL 结果结构中添加 Select 相关的子查询片段。
         /// </summary>
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, SelectExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
@@ -662,8 +672,8 @@ namespace LiteOrm.Common
                 for (int i = 0; i < expr.OrderBys.Count; i++)
                 {
                     if (sql.OrderBy.Length > 0) sql.OrderBy.Append(", ");
-                    ToSqlInternal(ref sql.OrderBy, expr.OrderBys[i].Item1, context, sqlBuilder, outputParams);
-                    if (!expr.OrderBys[i].Item2) sql.OrderBy.Append(" DESC");
+                    ToSqlInternal(ref sql.OrderBy, expr.OrderBys[i].Field, context, sqlBuilder, outputParams);
+                    if (!expr.OrderBys[i].Ascending) sql.OrderBy.Append(" DESC");
                 }
             }
         }

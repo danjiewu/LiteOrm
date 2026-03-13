@@ -17,8 +17,8 @@ public static void RegisterMethodHandler(Type type, string methodName = null, Fu
 ```
 
 - **参数说明**：
-  - `methodName`：要处理的方法名称
   - `type`：目标类型
+  - `methodName`：要处理的方法名称，若为 null 则处理所有方法（`ToString`、`Equals` 等常用方法除外）
   - `handler`：处理逻辑，若为 null 则使用默认处理器
 
 #### 1.1.2 RegisterMemberHandler
@@ -32,8 +32,8 @@ public static void RegisterMemberHandler(Type type, string memberName, Func<Memb
 ```
 
 - **参数说明**：
-  - `memberName`：要处理的成员名称（属性/字段）
   - `type`：目标类型
+  - `memberName`：要处理的成员名称（属性/字段），若为 null 则处理所有成员
   - `handler`：处理逻辑，若为 null 则使用默认处理器
 
 ### 1.2 SqlBuilder 方法
@@ -202,6 +202,264 @@ var users = await userService.SearchAsync(
 );
 ```
 
+### 3.4 示例 4：实现窗口函数
+
+#### 步骤 1：定义扩展方法
+
+提供两个重载：仅分区字段的 `params` 重载，以及同时支持分区和排序的显式数组重载。
+`SumOverOrderBy<T>` 用于替代元组，避免表达式树不支持元组字面量（CS8143/CS8144）的限制。
+两个重载均只需返回原值，实际转换由处理器完成。
+
+```csharp
+/// <summary>窗口函数排序项，指定排序字段和方向。用于替代元组，避免表达式树不支持元组字面量的限制。</summary>
+public class SumOverOrderBy<T>
+{
+    public SumOverOrderBy(Expression<Func<T, object>> field, bool ascending = true)
+    {
+        Field = field;
+        Ascending = ascending;
+    }
+
+    public Expression<Func<T, object>> Field { get; }
+    public bool Ascending { get; }
+}
+
+public static class WindowFunctionExtensions
+{
+    // 仅分区字段的重载（params 可逐一传入）
+    public static int SumOver<T>(this int amount,
+        params Expression<Func<T, object>>[] partitionBy) => amount;
+
+    // 分区字段 + 排序字段的重载
+    public static int SumOver<T>(this int amount,
+        Expression<Func<T, object>>[] partitionBy,
+        SumOverOrderBy<T>[] orderBy) => amount;
+}
+```
+
+#### 步骤 2：注册方法处理器
+
+在表达式树中，内部 lambda（如 `p => p.Year`）被编译为 `Quote(LambdaExpression)` 节点，
+order-by 每个元素被编译为 `SumOverOrderBy<T>` 的 `NewExpression`。
+必须使用现有 `converter.Convert()` 处理这些节点，才能携带正确的表别名；
+排序项直接构造为 `OrderByItemExpr`，其字段 SQL 由 `ExprSqlConverter` 正确渲染，方向由 `Ascending` 属性控制。
+
+```csharp
+LambdaExprConverter.RegisterMethodHandler("SumOver", (node, converter) => {
+    // node.Arguments[0] = this（扩展方法的 amount 参数）
+    var amountExpr = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
+
+    var partitionExprs = new List<ValueTypeExpr>();
+    var orderExprs     = new List<ValueTypeExpr>();
+
+    // node.Arguments[1] = partitionBy（NewArrayExpression，元素为 Quote(Lambda)）
+    if (node.Arguments.Count > 1 && node.Arguments[1] is NewArrayExpression partArray) {
+        foreach (var elem in partArray.Expressions) {
+            // converter.Convert 自动处理 Quote 节点，将内部 Lambda 转为 PropertyExpr
+            if (converter.Convert(elem) is ValueTypeExpr vte)
+                partitionExprs.Add(vte);
+        }
+    }
+
+    // node.Arguments[2] = orderBy（NewArrayExpression，元素为 SumOverOrderBy<T> 构造表达式）
+    if (node.Arguments.Count > 2 && node.Arguments[2] is NewArrayExpression orderArray) {
+        foreach (var elem in orderArray.Expressions) {
+            // 每个元素是 SumOverOrderBy<T> 的构造表达式
+            // Arguments[0] = Field（Quote(Lambda)），Arguments[1] = Ascending（ConstantExpression(bool)）
+            if (elem is NewExpression ctorNew && ctorNew.Arguments.Count == 2) {
+                var field = converter.Convert(ctorNew.Arguments[0]) as ValueTypeExpr;
+                bool isAsc = ctorNew.Arguments[1] is ConstantExpression { Value: bool b } && b;
+                if (field is not null)
+                    orderExprs.Add(new OrderByItemExpr(field, isAsc));
+            }
+        }
+    }
+
+    return new FunctionExpr("SUM_OVER",
+        amountExpr,
+        new ValueSet(partitionExprs),
+        new ValueSet(orderExprs));
+});
+```
+
+#### 步骤 3：注册 SQL 处理器
+
+`ValueSet` 渲染为 `(col1,col2)` 格式（含首尾括号）；其中的 `OrderByItemExpr` 元素由
+`ExprSqlConverter` 渲染为 `"field"` 或 `"field DESC"`，排序方向已内置，无需额外处理器。
+为 `SUM_OVER` 注册统一处理器，通过 `Substring` 去除 `ValueSet` 外层括号提取分区和排序子句。
+`SUM_OVER` 语法在主流数据库中一致，只需注册一次。
+
+```csharp
+// 注册 SUM_OVER 全局处理器（所有数据库通用）
+// args[0].Key = 金额列 SQL（如 "t.Amount"）
+// args[1].Key = 分区 ValueSet SQL，格式为 "(t.Year,t.Quarter)"，去除首尾括号即可
+// args[2].Key = 排序 ValueSet SQL，格式为 "(t.SaleDate,t.Name DESC)"，去除首尾括号即可
+SqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (_, args) => {
+    string amount = args[0].Key;
+
+    // ValueSet 为空时渲染为 ""，非空时渲染为 "(col1,col2)"，用 Substring 去除首尾各一个括号
+    string partitionSql = args.Count > 1 && args[1].Key.Length > 2
+        ? args[1].Key.Substring(1, args[1].Key.Length - 2)
+        : string.Empty;
+
+    string orderSql = args.Count > 2 && args[2].Key.Length > 2
+        ? args[2].Key.Substring(1, args[2].Key.Length - 2)
+        : string.Empty;
+
+    var clauses = new List<string>();
+    if (!string.IsNullOrEmpty(partitionSql)) clauses.Add($"PARTITION BY {partitionSql}");
+    if (!string.IsNullOrEmpty(orderSql))     clauses.Add($"ORDER BY {orderSql}");
+
+    return $"SUM({amount}) OVER ({string.Join(" ", clauses)})";
+});
+```
+
+#### 步骤 4：使用窗口函数
+
+```csharp
+var sales = await saleService.SearchAsync<SaleView>(
+    s => s.Select(
+        x => new SaleView {
+            Id             = x.Id,
+            Amount         = x.Amount,
+            SaleDate       = x.SaleDate,
+            // params 重载：按年、季度分区，无排序
+            QuarterlyTotal = x.Amount.SumOver<Sale>(p => p.Year, p => p.Quarter),
+            // 显式数组重载：按年分区，按销售日期升序排列
+            YearlyRunning  = x.Amount.SumOver<Sale>(
+                partitionBy: new Expression<Func<Sale, object>>[] { p => p.Year },
+                orderBy: new SumOverOrderBy<Sale>[] { new SumOverOrderBy<Sale>(p => p.SaleDate, true) }
+            )
+        }
+    )
+);
+```
+
+### 3.5 示例 5：纯 Expr 方式实现窗口函数
+
+相比示例 4 的 Lambda 扩展方法，纯 Expr 方式**无需定义扩展方法，也无需注册 `RegisterMethodHandler`**，
+直接通过 `FunctionExpr`、`ValueSet`、`OrderByItemExpr` 等 Expr 对象构造窗口函数表达式，
+再借助**闭包变量**嵌入 Lambda 表达式树中。
+
+**工作原理**：`LambdaExprConverter` 的 `EvaluateToExpr` 方法会对表达式树中不含 Lambda 参数的节点
+进行求值；若求值结果本身是一个 `Expr` 实例，则直接将该 `Expr` 作为列值送入 SQL 转换管线，
+完全绕过方法注册机制。Lambda 中的 `(int)exprVar` 类型转换同样透明——
+`ConvertUnary(Convert)` 直接穿透到 `EvaluateToExpr`，不影响 `Expr` 的传递。
+
+#### 步骤 1：注册 SQL 处理器
+
+与 Lambda 方式完全相同，只注册一次即可（若两种方式共用，无需重复注册）：
+
+```csharp
+SqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (_, args) =>
+{
+    string amount = args[0].Key;
+
+    string partitionSql = args.Count > 1 && args[1].Key.Length > 2
+        ? args[1].Key.Substring(1, args[1].Key.Length - 2)
+        : string.Empty;
+
+    string orderSql = args.Count > 2 && args[2].Key.Length > 2
+        ? args[2].Key.Substring(1, args[2].Key.Length - 2)
+        : string.Empty;
+
+    var clauses = new List<string>();
+    if (!string.IsNullOrEmpty(partitionSql)) clauses.Add($"PARTITION BY {partitionSql}");
+    if (!string.IsNullOrEmpty(orderSql))     clauses.Add($"ORDER BY {orderSql}");
+
+    return $"SUM({amount}) OVER ({string.Join(" ", clauses)})";
+});
+```
+
+#### 步骤 2：直接构造 Expr 对象
+
+使用 `Expr.Prop()`、`ValueSet`、`OrderByItemExpr` 组装窗口函数表达式，无需任何扩展方法：
+
+```csharp
+// 仅分区：SUM(Amount) OVER (PARTITION BY ProductId)
+var productTotalExpr = new FunctionExpr("SUM_OVER",
+    Expr.Prop("Amount"),
+    new ValueSet(Expr.Prop("ProductId")),   // PARTITION BY ProductId
+    new ValueSet());                         // 无排序
+
+// 分区 + 排序：SUM(Amount) OVER (PARTITION BY ProductId ORDER BY SaleTime)
+var runningTotalExpr = new FunctionExpr("SUM_OVER",
+    Expr.Prop("Amount"),
+    new ValueSet(Expr.Prop("ProductId")),
+    new ValueSet(new OrderByItemExpr(Expr.Prop("SaleTime"), ascending: true)));
+```
+
+#### 步骤 3：嵌入查询
+
+构造好的 `FunctionExpr` 有两种方式嵌入查询中：
+
+**方式一：Lambda 闭包变量**
+
+将 `FunctionExpr` 作为闭包变量，在 Lambda 中通过强制类型转换引用（`EvaluateToExpr` 识别
+`Expr` 实例，透明穿透 `(int)` 转换后直接送入 SQL 管线）：
+
+```csharp
+var results = await saleDAO
+    .WithArgs([tableMonth])
+    .Search<SaleView>(q => q
+        .OrderBy(s => s.ProductId)
+        .Select(s => new SaleView
+        {
+            Id           = s.Id,
+            ProductId    = s.ProductId,
+            Amount       = s.Amount,
+            SaleDate     = s.SaleDate,
+            ProductTotal = (int)productTotalExpr,   // 闭包变量透明传递到 FunctionExpr
+            RunningTotal = (int)runningTotalExpr
+        })
+    ).ToListAsync();
+```
+
+> 也可直接在 Lambda 内内联构造——因其不含 Lambda 参数，`EvaluateToExpr` 同样会编译执行
+> `new FunctionExpr(...)` 并将结果送入管线：
+> ```csharp
+> ProductTotal = (int)(new FunctionExpr("SUM_OVER",
+>     Expr.Prop("Amount"),
+>     new ValueSet(Expr.Prop("ProductId")),
+>     new ValueSet()))
+> ```
+
+**方式二：直接构造 `SelectExpr`（纯 Expr，无需任何 Lambda）**
+
+使用 `FromExpr` 作为数据源，链式调用 `OrderBy` / `Select` 构造完整查询表达式，
+传入 `SearchAs<TResult>(SelectExpr)` 直接执行——整个流程不涉及任何 Lambda 表达式树：
+
+```csharp
+// 构造完整的 Expr 查询链，无需 Lambda
+var source = new FromExpr(typeof(SalesRecord));   // 数据源类型对应 DAO 的 ObjectType
+var selectExpr = source
+    .OrderBy(new OrderByItemExpr(Expr.Prop("ProductId"), ascending: true))
+    .Select(
+        new SelectItemExpr(Expr.Prop("Id"),          "Id"),
+        new SelectItemExpr(Expr.Prop("ProductId"),   "ProductId"),
+        new SelectItemExpr(Expr.Prop("Amount"),      "Amount"),
+        new SelectItemExpr(Expr.Prop("SaleDate"),    "SaleDate"),
+        new SelectItemExpr(productTotalExpr,         "ProductTotal"),   // 直接放入 SelectItemExpr
+        new SelectItemExpr(runningTotalExpr,         "RunningTotal"));
+
+// SearchAs<TResult>(SelectExpr) 直接执行 SelectExpr，WithArgs 的表名参数由上下文自动传入
+var results = await saleDAO
+    .WithArgs([tableMonth])
+    .SearchAs<SaleView>(selectExpr)
+    .ToListAsync();
+```
+
+#### 两种方式对比
+
+| 对比项 | Lambda 扩展方法（示例 4） | 纯 Expr（示例 5） |
+|--------|--------------------------|-------------------|
+| 需要扩展方法定义 | ✅ 是 | ❌ 否 |
+| 需要 RegisterMethodHandler | ✅ 是 | ❌ 否 |
+| 需要 RegisterFunctionSqlHandler | ✅ 是 | ✅ 是 |
+| 代码提示友好性 | ✅ 高（方法调用形式） | ⚠️ 中（Expr 对象构造） |
+| 支持多表查询列别名 | ✅ 自动（converter.Convert 携带别名） | ⚠️ 需手动设置 PropertyExpr.TableAlias |
+| 适用场景 | 通用、高复用 | 一次性、快速原型 |
+
 ## 4. 高级技巧
 
 ### 4.1 处理不同数据库的差异
@@ -248,203 +506,6 @@ LambdaExprConverter.RegisterMethodHandler("InRange", (node, converter) => {
 4. **错误处理**：在处理器中添加适当的错误处理，确保在表达式转换失败时能给出明确的错误信息。
 
 5. **测试**：在使用自定义表达式前，应充分测试其在不同场景下的行为。
-
-### 3.4 示例 4：实现窗口函数
-
-#### 步骤 1：定义扩展方法
-
-```csharp
-public static class WindowFunctionExtensions
-{
-    public static decimal SumOver<T>(this decimal amount, params Expression<Func<T, object>>[] partitionBy)
-    {
-        // 本地实现（仅用于客户端计算）
-        return amount;
-    }
-    
-    public static decimal SumOver<T>(this decimal amount, IEnumerable<Expression<Func<T, object>>> partitionBy, IEnumerable<(Expression<Func<T, object>>, bool)> orderBy)
-    {
-        // 本地实现（仅用于客户端计算）
-        return amount;
-    }
-}
-```
-
-#### 步骤 2：注册方法处理器
-
-```csharp
-// 注册 SumOver 方法处理器
-LambdaExprConverter.RegisterMethodHandler("SumOver", (node, converter) => {
-    // 获取金额表达式
-    var amountExpr = converter.ConvertInternal(node.Arguments[0]) as ValueTypeExpr;
-    
-    // 处理分区字段
-    List<ValueTypeExpr> partitionByExprs = new List<ValueTypeExpr>();
-    List<(ValueTypeExpr, bool)> orderByExprs = new List<(ValueTypeExpr, bool)>();
-    
-    if (node.Arguments.Count == 2) {
-        // 只有分区字段的情况
-        var partitionByArg = node.Arguments[1];
-        if (partitionByArg is NewArrayExpression arrayExpr) {
-            foreach (var expr in arrayExpr.Expressions) {
-                if (expr is LambdaExpression lambda) {
-                    var lambdaConverter = new LambdaExprConverter(lambda);
-                    partitionByExprs.Add(lambdaConverter.ToValueExpr());
-                }
-            }
-        }
-    } else if (node.Arguments.Count == 3) {
-        // 分区字段和排序字段的情况
-        var partitionByArg = node.Arguments[1];
-        var orderByArg = node.Arguments[2];
-        
-        // 处理分区字段
-        if (partitionByArg is NewArrayExpression arrayExpr) {
-            foreach (var expr in arrayExpr.Expressions) {
-                if (expr is LambdaExpression lambda) {
-                    var lambdaConverter = new LambdaExprConverter(lambda);
-                    partitionByExprs.Add(lambdaConverter.ToValueExpr());
-                }
-            }
-        }
-        
-        // 处理排序字段
-        if (orderByArg is NewArrayExpression orderArrayExpr) {
-            foreach (var expr in orderArrayExpr.Expressions) {
-                if (expr is NewExpression newExpr && newExpr.Arguments.Count == 2) {
-                    var fieldExpr = newExpr.Arguments[0];
-                    var ascExpr = newExpr.Arguments[1];
-                    
-                    if (fieldExpr is LambdaExpression fieldLambda && ascExpr is ConstantExpression ascConst) {
-                        var lambdaConverter = new LambdaExprConverter(fieldLambda);
-                        bool isAscending = ascConst.Value is bool b && b;
-                        orderByExprs.Add((lambdaConverter.ToValueExpr(), isAscending));
-                    }
-                }
-            }
-        }
-    }
-    
-    // 创建窗口函数表达式
-    return new FunctionExpr("SUM_OVER", amountExpr, 
-        new ValueSet(ValueJoinType.List, partitionByExprs.ToArray()),
-        new ValueSet(ValueJoinType.List, orderByExprs.Select(o => new ValueSet(ValueJoinType.List, o.Item1, new ValueExpr(o.Item2))).ToArray())
-    );
-});
-```
-
-#### 步骤 3：注册 SQL 处理器
-
-```csharp
-// 为 MySQL 注册 SUM_OVER 函数处理器
-MySqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (functionName, args) => {
-    if (args.Count < 1) {
-        throw new ArgumentException("SUM_OVER requires at least 1 argument");
-    }
-    
-    var amount = args[0].Key;
-    
-    // 构建 PARTITION BY 子句
-    string partitionBy = string.Empty;
-    if (args.Count > 1) {
-        var partitionBySet = args[1].Key;
-        // 移除 ValueSet 包装，提取实际的分区字段
-        partitionBy = partitionBySet.Replace("LIST(", "").Replace(")", "");
-    }
-    
-    // 构建 ORDER BY 子句
-    string orderBy = string.Empty;
-    if (args.Count > 2) {
-        var orderBySet = args[2].Key;
-        // 移除 ValueSet 包装，提取实际的排序字段
-        var orderByItems = orderBySet.Replace("LIST(", "").Replace(")", "").Split(", ");
-        List<string> orderByClauses = new List<string>();
-        
-        for (int i = 0; i < orderByItems.Length; i += 2) {
-            if (i + 1 < orderByItems.Length) {
-                var field = orderByItems[i];
-                var isAsc = orderByItems[i + 1] == "True";
-                orderByClauses.Add($"{field} {(isAsc ? "ASC" : "DESC")}");
-            }
-        }
-        orderBy = string.Join(", ", orderByClauses);
-    }
-    
-    string partitionByClause = string.IsNullOrEmpty(partitionBy) ? "" : $"PARTITION BY {partitionBy}";
-    string orderByClause = string.IsNullOrEmpty(orderBy) ? "" : $"ORDER BY {orderBy}";
-    
-    // 组合所有子句
-    List<string> clauses = new List<string>();
-    if (!string.IsNullOrEmpty(partitionByClause)) clauses.Add(partitionByClause);
-    if (!string.IsNullOrEmpty(orderByClause)) clauses.Add(orderByClause);
-    
-    string overClause = string.Join(" ", clauses);
-    
-    return $"SUM({amount}) OVER ({overClause})";
-});
-
-// 为 SQL Server 注册 SUM_OVER 函数处理器
-SqlServerBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (functionName, args) => {
-    // 与 MySQL 处理器相同的实现
-    if (args.Count < 1) {
-        throw new ArgumentException("SUM_OVER requires at least 1 argument");
-    }
-    
-    var amount = args[0].Key;
-    
-    // 构建 PARTITION BY 子句
-    string partitionBy = string.Empty;
-    if (args.Count > 1) {
-        partitionBy = args[1].Key;
-    }
-    
-    // 构建 ORDER BY 子句
-    string orderBy = string.Empty;
-    if (args.Count > 2) {
-        var orderBy = args[2].Key;
-    }
-    
-    string partitionByClause = string.IsNullOrEmpty(partitionBy) ? "" : $"PARTITION BY {partitionBy}";
-    string orderByClause = string.IsNullOrEmpty(orderBy) ? "" : $"ORDER BY {orderBy}";
-    
-    List<string> clauses = new List<string>();
-    if (!string.IsNullOrEmpty(partitionByClause)) clauses.Add(partitionByClause);
-    if (!string.IsNullOrEmpty(orderByClause)) clauses.Add(orderByClause);
-    
-    string overClause = string.Join(" ", clauses);
-    
-    return $"SUM({amount}) OVER ({overClause})";
-});
-```
-
-#### 步骤 4：使用窗口函数
-
-```csharp
-// 定义排序方向的辅助方法
-public static (Expression<Func<T, object>>, bool) Asc<T>(Expression<Func<T, object>> expr) => (expr, true);
-public static (Expression<Func<T, object>>, bool) Desc<T>(Expression<Func<T, object>> expr) => (expr, false);
-
-// 使用窗口函数计算季度销售总额
-var sales = await saleService.SearchAsync<SaleView>(
-    q => q.Select(
-        s => new SaleView {
-            Id = s.Id,
-            Amount = s.Amount,
-            SaleDate = s.SaleDate,
-            // 计算季度累计销售额
-            QuarterlyTotal = s.Amount.SumOver<Sale>(
-                // 分区字段：按年份和季度
-                s => Expr.Func("YEAR", s.SaleDate),
-                s => Expr.Func("QUARTER", s.SaleDate),
-                // 排序字段：按销售日期升序
-                orderBy: new[] {
-                    Asc<Sale>(s => s.SaleDate)
-                }
-            )
-        }
-    )
-);
-```
 
 ## 6. 总结
 

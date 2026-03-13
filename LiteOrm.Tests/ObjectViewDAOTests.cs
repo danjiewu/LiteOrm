@@ -101,7 +101,7 @@ namespace LiteOrm.Tests
             };
             await service.BatchInsertAsync(users);
 
-            var results = await dao.Search(
+            var results = await dao.SearchAs(
                 q => q.Where(u => u.Age > 20)
                       .Where(u => u.Name.StartsWith("QueryFilterTest")))
                 .ToListAsync();
@@ -124,7 +124,7 @@ namespace LiteOrm.Tests
             var user = new TestUser { Name = "AnonProjTest", Age = 42, CreateTime = DateTime.Now };
             await service.InsertAsync(user);
 
-            var results = await dao.Search(
+            var results = await dao.SearchAs(
                 q => q.Where(u => u.Name == "AnonProjTest")
                       .Select(u => new { u.Name, u.Age }))
                 .ToListAsync();
@@ -147,7 +147,7 @@ namespace LiteOrm.Tests
             var user = new TestUser { Name = "AsyncAnonTest", Age = 28, CreateTime = DateTime.Now };
             await service.InsertAsync(user);
 
-            var result = await dao.Search(
+            var result = await dao.SearchAs(
                 q => q.Where(u => u.Name == "AsyncAnonTest")
                       .Select(u => new { u.Name, u.Age }))
                 .FirstOrDefaultAsync();
@@ -174,7 +174,7 @@ namespace LiteOrm.Tests
             };
             await service.BatchInsertAsync(users);
 
-            var results = await dao.Search<TestUser>(
+            var results = await dao.SearchAs<TestUser>(
                 q => q.Where(u => u.Name.StartsWith("QueryTopTest"))
                       .OrderBy(u => u.Age)
                       .Take(2))
@@ -203,7 +203,7 @@ namespace LiteOrm.Tests
             };
             await service.BatchInsertAsync(users);
 
-            var names = await dao.Search(
+            var names = await dao.SearchAs(
                 q => q.Where(u => u.Name.StartsWith("ScalarProjTest"))
                       .OrderBy(u => u.Name)
                       .Select(u => u.Name))
@@ -231,7 +231,7 @@ namespace LiteOrm.Tests
             var user = new TestUser { Name = "MixedTypeTest", Age = 33, CreateTime = createTime };
             await service.InsertAsync(user);
 
-            var results = await dao.Search(
+            var results = await dao.SearchAs(
                 q => q.Where(u => u.Name == "MixedTypeTest")
                       .Select(u => new { u.Id, u.Name, u.Age, u.CreateTime }))
                 .ToListAsync();
@@ -257,7 +257,7 @@ namespace LiteOrm.Tests
             var user = new TestUser { Name = "OrderIndepTest", Age = 77, CreateTime = DateTime.Now };
             await service.InsertAsync(user);
 
-            var results = await dao.Search(
+            var results = await dao.SearchAs(
                 q => q.Where(u => u.Name == "OrderIndepTest")
                       .Select(u => new { u.Age, u.Name }))   // Age first, then Name
                 .ToListAsync();
@@ -285,7 +285,7 @@ namespace LiteOrm.Tests
             var user = new TestUser { Name = "JoinViewTest", Age = 30, CreateTime = DateTime.Now, DeptId = dept.Id };
             await userService.InsertAsync(user);
 
-            var results = await dao.Search(
+            var results = await dao.SearchAs(
                 q => q.Where(u => u.Name == "JoinViewTest")
                       .Select(u => new { u.Name, u.DeptName }))
                 .ToListAsync();
@@ -351,7 +351,7 @@ namespace LiteOrm.Tests
             var user = new TestUser { Name = "ByteArrayScalarTest", Age = 22, CreateTime = DateTime.Now, Avatar = avatar };
             await service.InsertAsync(user);
 
-            var result = await dao.Search(
+            var result = await dao.SearchAs(
                 q => q.Where(u => u.Name == "ByteArrayScalarTest")
                       .Select(u => u.Avatar))
                 .FirstOrDefaultAsync();
@@ -373,7 +373,7 @@ namespace LiteOrm.Tests
             var user = new TestUser { Name = "ByteArrayAnonTest", Age = 23, CreateTime = DateTime.Now, Avatar = avatar };
             await service.InsertAsync(user);
 
-            var result = await dao.Search(
+            var result = await dao.SearchAs(
                 q => q.Where(u => u.Name == "ByteArrayAnonTest")
                       .Select(u => new { u.Name, u.Avatar }))
                 .FirstOrDefaultAsync();

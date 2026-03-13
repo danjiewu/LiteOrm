@@ -37,15 +37,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置目标 SQL 函数名称。
         /// </summary>
-        public string FunctionName 
+        public string FunctionName
         {
             get { return _functionName; }
-            set 
+            set
             {
-                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
-                {
-                    throw new System.ArgumentException("Function name contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(FunctionName));
-                }
+                ThrowIfInvalidSqlName(nameof(FunctionName), value);
                 _functionName = value;
             }
         }

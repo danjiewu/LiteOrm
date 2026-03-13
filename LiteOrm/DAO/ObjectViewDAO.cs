@@ -194,15 +194,23 @@ namespace LiteOrm
             return new ValueResult<bool>(command, (obj) => obj != null);
         }
 
-        /// <summary>
-        /// 根据条件查询，多个条件以逻辑与连接
-        /// </summary>
-        /// <param name="expr">属性名与值的列表，若为null则表示没有条件</param>
-        /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
+
         public virtual EnumerableResult<T> Search(Expr expr = null)
         {
             var command = MakeSelectExprCommand(expr);
             return new EnumerableResult<T>(command, ConvertToObjectHandler);
+        }
+
+        public virtual EnumerableResult<T> Search(Expression<Func<IQueryable<T>, IQueryable<T>>> expr)
+        {
+            var command = MakeSelectExprCommand(LambdaExprConverter.ToSqlSegment(expr));
+            return new EnumerableResult<T>(command, ConvertToObjectHandler);
+        }
+
+        public virtual EnumerableResult<TResult> SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult> readerFunc = null)
+        {
+            var command = MakeExprCommand(selectExpr);
+            return new EnumerableResult<TResult>(command, readerFunc);
         }
 
         /// <summary>
@@ -212,7 +220,7 @@ namespace LiteOrm
         /// <param name="expr">Lambda 表达式，用于生成 SQL 查询</param>
         /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
         /// <returns></returns>
-        public virtual EnumerableResult<TResult> Search<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)
+        public virtual EnumerableResult<TResult> SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)
         {
             var command = MakeSelectExprCommand(LambdaExprConverter.ToSqlSegment(expr));
             return new EnumerableResult<TResult>(command, readerFunc);
@@ -226,13 +234,32 @@ namespace LiteOrm
         /// <param name="isFull">传入的是否是完整SQL，默认为 false</param>
         /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
         /// <example>
+        /// <code>
         /// var users = objectViewDAO.Search($"WHERE {Expr.Prop("Age") > 20 }");
+        /// </code>
         /// </example>
         public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)
         {
             string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} FROM {From} {sqlBody.GetSqlResult()}";
             var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
             return new EnumerableResult<T>(command, ConvertToObjectHandler);
+        }
+
+        /// <summary>
+        /// 使用带参数的SQL查询
+        /// </summary>
+        /// <param name="sqlBody">查询SQL，必须是完整SQL，使用插值字符串格式</param>
+        /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
+        /// <example>
+        /// <code>
+        /// var users = objectViewDAO.SearchAs&lt;User&gt;($"WHERE {Expr.Prop("Age") > 20 }");
+        /// </code>
+        /// </example>
+        public virtual EnumerableResult<TResult> SearchAs<TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
+        {
+            string sql = sqlBody.GetSqlResult();
+            var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
+            return new EnumerableResult<TResult>(command);
         }
 #endif
 

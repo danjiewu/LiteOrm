@@ -383,7 +383,7 @@ namespace LiteOrm.Common
         /// <param name="logic">逻辑条件表达式。</param>
         /// <param name="orderBys">排序定义序列。</param>
         /// <returns>排序表达式对象。</returns>
-        public static OrderByExpr OrderBy(this LogicExpr logic, params (ValueTypeExpr, bool)[] orderBys) => new OrderByExpr(new WhereExpr(null, logic), orderBys);
+        public static OrderByExpr OrderBy(this LogicExpr logic, params OrderByItemExpr[] orderBys) => new OrderByExpr(new WhereExpr(null, logic), orderBys);
 
         /// <summary>
         /// 基于逻辑条件开启分页子句构建。
@@ -498,7 +498,7 @@ namespace LiteOrm.Common
         /// var query = table.OrderBy(Expr.Prop("CreatedDate").Desc());
         /// </code>
         /// </example>
-        public static OrderByExpr OrderBy(this IOrderByAnchor source, params (ValueTypeExpr, bool)[] orderBys)
+        public static OrderByExpr OrderBy(this IOrderByAnchor source, params OrderByItemExpr[] orderBys)
         {
             if (source is OrderByExpr existingOrderByExpr)
             {
@@ -520,7 +520,7 @@ namespace LiteOrm.Common
         /// </code>
         /// </example>
         public static OrderByExpr OrderBy(this IOrderByAnchor source, params (string, bool)[] orderBys) =>
-            OrderBy(source, Array.ConvertAll(orderBys, tuple => ((ValueTypeExpr)Expr.Prop(tuple.Item1), tuple.Item2)));
+            OrderBy(source, Array.ConvertAll(orderBys, tuple => new OrderByItemExpr(Expr.Prop(tuple.Item1), tuple.Item2)));
 
         /// <summary>
         /// 为 SQL 语句添加 ORDER BY 升序子句（属性名）。
@@ -564,7 +564,7 @@ namespace LiteOrm.Common
         /// var query = table.OrderBy(Expr.Prop("Name").Asc());
         /// </code>
         /// </example>
-        public static (ValueTypeExpr, bool) Asc(this ValueTypeExpr expr) => (expr, true);
+        public static OrderByItemExpr Asc(this ValueTypeExpr expr) => new OrderByItemExpr(expr, true);
 
         /// <summary>
         /// 将值表达式标记为降序排序。
@@ -576,7 +576,7 @@ namespace LiteOrm.Common
         /// var query = table.OrderBy(Expr.Prop("CreatedDate").Desc());
         /// </code>
         /// </example>
-        public static (ValueTypeExpr, bool) Desc(this ValueTypeExpr expr) => (expr, false);
+        public static OrderByItemExpr Desc(this ValueTypeExpr expr) => new OrderByItemExpr(expr, false);
 
         /// <summary>
         /// 创建 COUNT 聚合函数表达式。

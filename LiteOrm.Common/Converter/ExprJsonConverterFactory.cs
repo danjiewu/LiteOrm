@@ -232,7 +232,7 @@ namespace LiteOrm.Common
                                     else if (reader.ValueTextEquals("Asc")) { reader.Read(); asc = reader.GetBoolean(); }
                                     else { reader.Read(); reader.Skip(); }
                                 }
-                                if (expr is not null) obe.OrderBys.Add((expr, asc));
+                                if (expr is not null) obe.OrderBys.Add(new OrderByItemExpr(expr, asc));
                             }
                         }
                         break;
@@ -681,8 +681,8 @@ namespace LiteOrm.Common
                             {
                                 writer.WriteStartObject();
                                 writer.WritePropertyName("Expr");
-                                JsonSerializer.Serialize(writer, ob.Item1, options);
-                                writer.WriteBoolean("Asc", ob.Item2);
+                                JsonSerializer.Serialize(writer, ob.Field, options);
+                                writer.WriteBoolean("Asc", ob.Ascending);
                                 writer.WriteEndObject();
                             }
                             writer.WriteEndArray();

@@ -35,10 +35,7 @@ namespace LiteOrm.Common
             get { return _alias; }
             set
             {
-                if (value != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(value))
-                {
-                    throw new ArgumentException("Foreign table alias contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(Alias));
-                }
+                ThrowIfInvalidSqlName(nameof(Alias), value);
                 _alias = value;
             }
         }
@@ -47,8 +44,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置用于动态表名的参数集合。
         /// </summary>
-        public string[]
-        TableArgs
+        public string[] TableArgs
         {
             get { return _tableArgs; }
             set
@@ -57,10 +53,7 @@ namespace LiteOrm.Common
                 {
                     foreach (var arg in value)
                     {
-                        if (arg != null && !LiteOrm.Common.Constants.ValidNameRegex.IsMatch(arg))
-                        {
-                            throw new System.ArgumentException("Table name parameter contains illegal characters. Only letters, numbers, and underscores are allowed.", nameof(TableArgs));
-                        }
+                        ThrowIfInvalidSqlName(nameof(TableArgs), arg);
                     }
                 }
                 _tableArgs = value;

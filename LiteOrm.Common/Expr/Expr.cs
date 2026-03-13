@@ -15,7 +15,19 @@ namespace LiteOrm.Common
     public abstract class Expr
     {
         internal const int HashSeed = 31;
-
+        /// <summary>
+        /// 验证 SQL 名称是否合法，允许 null 或空字符串，但如果非空则必须仅包含字母、数字或下划线，否则抛出 ArgumentException。
+        /// </summary>
+        /// <param name="paramName">参数名称，用于异常消息中指示哪个参数无效。</param>
+        /// <param name="sqlName">待验证的 SQL 名称。</param>
+        /// <exception cref="ArgumentException"></exception>
+        public static void ThrowIfInvalidSqlName(string paramName, string sqlName)
+        {
+            if (!string.IsNullOrEmpty(sqlName) && !Constants.ValidNameRegex.IsMatch(sqlName))
+            {
+                throw new ArgumentException($"Name '{sqlName}' contains invalid characters, only letters, numbers, and underscores are allowed", paramName);
+            }
+        }
         /// <summary>
         /// 表示 SQL NULL 的表达式。
         /// </summary>
