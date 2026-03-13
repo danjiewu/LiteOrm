@@ -786,7 +786,7 @@ namespace LiteOrm
         public virtual int Delete(LogicExpr expr)
         {
             var deleteExpr = new DeleteExpr(new FromExpr(ObjectType), expr);
-            using var command = MakeExprCommand(deleteExpr);    
+            using var command = MakeExprCommand(deleteExpr);
             return command.ExecuteNonQuery();
         }
 
@@ -931,7 +931,7 @@ namespace LiteOrm
             {
                 using (var scope = await DAOContext.AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    await Task.Run(() => provider.BulkInsert(ToDataTable(values, insertableColumns), Connection, DAOContext.CurrentTransaction), cancellationToken).ConfigureAwait(false);
+                    await provider.BulkInsertAsync(ToDataTable(values, insertableColumns), Connection, DAOContext.CurrentTransaction, cancellationToken).ConfigureAwait(false);
                 }
             }
             else
@@ -1253,7 +1253,7 @@ namespace LiteOrm
         public async virtual Task<int> DeleteAsync(LogicExpr expr, CancellationToken cancellationToken = default)
         {
             var deleteExpr = new DeleteExpr(new FromExpr(ObjectType), expr);
-            using var command = MakeExprCommand(deleteExpr);    
+            using var command = MakeExprCommand(deleteExpr);
             return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 

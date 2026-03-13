@@ -395,25 +395,13 @@ SqlServerBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (functionName, 
     // 构建 PARTITION BY 子句
     string partitionBy = string.Empty;
     if (args.Count > 1) {
-        var partitionBySet = args[1].Key;
-        partitionBy = partitionBySet.Replace("LIST(", "").Replace(")", "");
+        partitionBy = args[1].Key;
     }
     
     // 构建 ORDER BY 子句
     string orderBy = string.Empty;
     if (args.Count > 2) {
-        var orderBySet = args[2].Key;
-        var orderByItems = orderBySet.Replace("LIST(", "").Replace(")", "").Split(", ");
-        List<string> orderByClauses = new List<string>();
-        
-        for (int i = 0; i < orderByItems.Length; i += 2) {
-            if (i + 1 < orderByItems.Length) {
-                var field = orderByItems[i];
-                var isAsc = orderByItems[i + 1] == "True";
-                orderByClauses.Add($"{field} {(isAsc ? "ASC" : "DESC")}");
-            }
-        }
-        orderBy = string.Join(", ", orderByClauses);
+        var orderBy = args[2].Key;
     }
     
     string partitionByClause = string.IsNullOrEmpty(partitionBy) ? "" : $"PARTITION BY {partitionBy}";

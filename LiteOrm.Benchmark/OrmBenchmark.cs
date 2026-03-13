@@ -1,4 +1,4 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 using Dapper;
 using FreeSql;
 using LiteOrm.Common;
@@ -35,6 +35,13 @@ namespace LiteOrm.Benchmark
                         config.SetBasePath(AppContext.BaseDirectory);
                         config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
                         config.AddEnvironmentVariables();
+                    })
+                    .ConfigureLogging(logging =>
+                    {
+                        foreach (var provider in logging.Services.Where(x => x.ServiceType.Name.Contains("LoggerProvider")).ToList())
+                        {
+                            logging.Services.Remove(provider);
+                        }
                     })
                     .RegisterLiteOrm()
                     .ConfigureServices((Action<HostBuilderContext, IServiceCollection>)((context, services) =>
@@ -170,7 +177,7 @@ namespace LiteOrm.Benchmark
             {
                 var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
                 var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Sugar", Age = 25, Email = "sugar@test.com", CreateTime = DateTime.Now }).ToList();
-                await sugar.Insertable(users).ExecuteCommandAsync();
+                await sugar.Fastest<BenchmarkUser>().BulkCopyAsync(users);
             }
         }
 
@@ -245,7 +252,7 @@ namespace LiteOrm.Benchmark
                     u.Age = _random.Next(20, 60);
                     u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                 }
-                await sugar.Updateable(users).ExecuteCommandAsync();
+                await sugar.Fastest<BenchmarkUser>().BulkUpdateAsync(users);
             }
         }
 
@@ -347,7 +354,7 @@ namespace LiteOrm.Benchmark
                 foreach (var u in existingUsers) { u.Name = "Sugar_Upsert_U"; u.Age = _random.Next(20, 60); }
                 var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Sugar_Upsert_I", Age = _random.Next(20, 60), Email = $"sugar_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();
-                await sugar.Storageable(all).ExecuteCommandAsync();
+                await sugar.Fastest<BenchmarkUser>().BulkMergeAsync(all);
             }
         }
 
