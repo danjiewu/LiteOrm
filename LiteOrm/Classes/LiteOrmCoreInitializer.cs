@@ -111,10 +111,17 @@ namespace LiteOrm
                     return ex.Types.Where(t => t != null);
                 }
             })
-            .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null && !typeof(IArged).IsAssignableFrom(t))
+            .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null)
             .ToList();
 
-            // 按数据源名称对实体类型进行分组
+            Task.Run(() =>
+            {
+                foreach (var tableType in tableTypes) { DataReaderConverter.GetConverter(tableType); }
+            });
+
+            tableTypes = tableTypes.Where(t => !typeof(IArged).IsAssignableFrom(t)).ToList();
+
+            // 按数据源名称对实体类型进行分组  
             var tableGroupsByDataSource = tableTypes.GroupBy(t =>
             {
                 var attr = t.GetCustomAttribute<TableAttribute>();

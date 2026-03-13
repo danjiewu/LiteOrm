@@ -81,6 +81,9 @@ namespace LiteOrm.Common
         private static readonly ConcurrentDictionary<Type, Delegate> _cacheByType =
             new ConcurrentDictionary<Type, Delegate>();
 
+        private static readonly MethodInfo _getConverterByTypeMethod =
+            typeof(DataReaderConverter).GetMethod(nameof(GetConverter), BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
+
         /// <summary>
         /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
         /// 对于匿名类型，基于读取器的列架构缓存编译委托，通过构造函数参数名与列名匹配；
@@ -111,6 +114,18 @@ namespace LiteOrm.Common
         public static Func<DbDataReader, TResult> GetConverter<TResult>()
         {
             return (Func<DbDataReader, TResult>)_cacheByType.GetOrAdd(typeof(TResult), _ => CompileConverter<TResult>());
+        }
+
+        /// <summary>
+        /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <paramref name="resultType"/> 实例的编译委托。
+        /// 与 <see cref="GetConverter{TResult}()"/> 共用同一缓存，首次调用时通过反射调用泛型版本完成编译。
+        /// </summary>
+        /// <param name="resultType">目标类型。</param>
+        /// <returns>编译后的映射委托，实际类型为 <see cref="Func{DbDataReader, TResult}"/>。</returns>
+        public static Delegate GetConverter(Type resultType)
+        {
+            return _cacheByType.GetOrAdd(resultType,
+                t => (Delegate)_getConverterByTypeMethod.MakeGenericMethod(t).Invoke(null, null));
         }
 
         private static string BuildColumnKey(DbDataReader reader)
