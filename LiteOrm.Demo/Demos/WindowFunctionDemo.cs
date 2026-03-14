@@ -89,7 +89,7 @@ namespace LiteOrm.Demo.Demos
         public static async Task RunAsync(ServiceFactory factory)
         {
             Console.WriteLine("\n╔════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║    5. 自定义注册函数及SQL构造器实现窗口函数演示 (Window Function Demo)                  ║");
+            Console.WriteLine("║    5. 自定义解析窗口函数演示 (Window Function Demo)        ║");
             Console.WriteLine("╚════════════════════════════════════════════════════════════╝");
 
             await Demo1_PartitionOnlyAsync(factory);
@@ -134,8 +134,19 @@ namespace LiteOrm.Demo.Demos
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
                 PrintSection("🔍 执行的 SQL", executedSql);
 
-                PrintSection("✅ 查询结果（前 5 条）",
-                    FormatPartitionResults(results.Take(5).ToList()));
+                var grouped = results
+                    .GroupBy(r => r.ProductName)
+                    .OrderBy(g => g.Key)
+                    .Take(3);
+
+                var sb = new System.Text.StringBuilder();
+                foreach (var g in grouped)
+                {
+                    sb.AppendLine($"  【{g.Key}】");
+                    foreach (var r in g.Take(3))
+                        sb.AppendLine($"    {r.SaleTime:MM-dd HH:mm}  金额: ¥{r.Amount,6}  总计: ¥{r.ProductTotal,8}");
+                }
+                PrintSection("✅ 查询结果（按产品分组，每组前 3 条）", sb.ToString().TrimEnd());
 
                 Console.WriteLine("✓ 演示5.1 完成\n");
             }
@@ -148,7 +159,8 @@ namespace LiteOrm.Demo.Demos
         }
 
         /// <summary>
-        /// 演示5.2：分区 + 排序的窗口函数 — PARTITION BY ProductId ORDER BY SaleTime
+        /// 演示5.2：分区 + 排序的窗口函数（纯 Expr 方式）— PARTITION BY ProductId ORDER BY SaleTime
+        /// 直接构造 FunctionExpr + SelectExpr，无需扩展方法和 RegisterMethodHandler。
         /// </summary>
         private static async Task Demo2_PartitionAndOrderAsync(ServiceFactory factory)
         {
@@ -158,36 +170,47 @@ namespace LiteOrm.Demo.Demos
 
             try
             {
+                LogicExpr auditFilter = Expr.Lambda<User>(u => u.Status == "active") & Expr.Sql("YearFilter", 2024);
+
+                var users = await factory.UserService.SearchAsync(
+                    q => q.Where(u => (bool)(object)auditFilter)
+                         .Where(u => u.Age > 18)    // 多个 Where 自动合并为 AND
+                         .OrderByDescending(u => u.Id)
+                         .Skip(0).Take(20)
+                );
+
                 string tableMonth = DateTime.Now.ToString("yyyyMM");
 
                 PrintSection("📋 场景说明",
                     $"查询 Sales_{tableMonth} 分表，按产品分区、按销售时间升序排列，\n" +
                     "计算每条记录在同产品内的累计销售额（Running Total）。\n" +
-                    "使用显式数组重载：SumOver<SalesRecord>(partitionBy, orderBy)。");
+                    "纯 Expr 方式：直接构造 FunctionExpr + SelectExpr，无需扩展方法和 RegisterMethodHandler。");
 
                 PrintSection("📝 代码实现",
-                    "RunningTotal = s.Amount.SumOver<SalesRecord>(\n" +
-                    "    new Expression<Func<SalesRecord, object>>[] { p => p.ProductId },\n" +
-                    "    new SumOverOrderBy<SalesRecord>[] { new SumOverOrderBy<SalesRecord>(p => p.SaleTime, true) }\n" +
-                    ")");
+                    "var runningTotalExpr = new FunctionExpr(\"SUM_OVER\",\n" +
+                    "    Expr.Prop(nameof(SalesRecord.Amount)),\n" +
+                    "    new ValueSet(Expr.Prop(nameof(SalesRecord.ProductId))),\n" +
+                    "    new ValueSet(Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()));");
+
+                var runningTotalExpr = new FunctionExpr("SUM_OVER",
+                    Expr.Prop(nameof(SalesRecord.Amount)),
+                    new ValueSet(Expr.Prop(nameof(SalesRecord.ProductId))),
+                    new ValueSet(Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()));
+
+                var selectExpr = new FromExpr(typeof(SalesRecord))
+                    .OrderBy(Expr.Prop(nameof(SalesRecord.ProductId)).Asc())
+                    .Select(
+                        new SelectItemExpr(Expr.Prop(nameof(SalesRecord.Id))),
+                        new SelectItemExpr(Expr.Prop(nameof(SalesRecord.ProductId))),
+                        new SelectItemExpr(Expr.Prop(nameof(SalesRecord.ProductName))),
+                        new SelectItemExpr(Expr.Prop(nameof(SalesRecord.Amount))),
+                        new SelectItemExpr(Expr.Prop(nameof(SalesRecord.SaleTime))),
+                        new SelectItemExpr(runningTotalExpr, nameof(SalesWindowView.RunningTotal)));
 
                 var results = await factory.SalesDAO
                     .WithArgs([tableMonth])
-                    .SearchAs(q => q
-                        .OrderBy(s => s.ProductId)
-                        .Select(s => new SalesWindowView
-                        {
-                            Id = s.Id,
-                            ProductId = s.ProductId,
-                            ProductName = s.ProductName,
-                            Amount = s.Amount,
-                            SaleTime = s.SaleTime,
-                            RunningTotal = s.Amount.SumOver<SalesRecord>(
-                                new Expression<Func<SalesRecord, object>>[] { p => p.ProductId },
-                                new SumOverOrderBy<SalesRecord>[] { new SumOverOrderBy<SalesRecord>(p => p.SaleTime, true) }
-                            )
-                        })
-                    ).ToListAsync();
+                    .SearchAs<SalesWindowView>(selectExpr)
+                    .ToListAsync();
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
                 PrintSection("🔍 执行的 SQL", executedSql);

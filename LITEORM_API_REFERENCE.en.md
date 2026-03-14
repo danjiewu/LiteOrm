@@ -1160,7 +1160,7 @@ DataTable dt = await dataViewDAO.Search(
 
 #### 6.2.4 Mixed Query Methods
 
-Lambda, `Expr`, and `ExprString` can be used in any combination. Lambda is parsed into `Expr` at runtime, so the three can be directly concatenated using `&` / `|` operators.
+Lambda, `Expr`, and `ExprString` can be used in any combination.
 
 ```csharp
 // Lambda condition + dynamically concatenated Expr condition
@@ -1175,9 +1175,16 @@ var users = await userService.SearchAsync(baseExpr);
 // Embed pre-built Expr condition in IQueryable form
 LogicExpr auditFilter = Expr.Lambda<User>(u => u.Status == "active") & Expr.Sql("YearFilter", 2024);
 
+// Approach 1: use pre-built Expr condition directly inside Lambda
 var users = await userService.SearchAsync(
-    q => q.Where(auditFilter)
-         .Where(u => u.Age > 18)    // Multiple Where automatically merged as AND
+    q => q.Where(u => (bool)(object)auditFilter) // type erasure required to use Expr inside Lambda
+         .Where(u => u.Age > 18)    // multiple Where automatically merged as AND
+         .OrderByDescending(u => u.Id)
+         .Skip(0).Take(20)
+);
+// Approach 2: build Expr-type conditions directly in Where; the framework handles the type conversion automatically
+var users = await userService.SearchAsync(
+    q => q.Where(u => u.Status == "active" && (bool)(object)Expr.Sql("YearFilter", 2024) && u.Age > 18) // type erasure required to use Expr inside Lambda
          .OrderByDescending(u => u.Id)
          .Skip(0).Take(20)
 );

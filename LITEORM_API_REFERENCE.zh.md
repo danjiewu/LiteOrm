@@ -1139,7 +1139,7 @@ DataTable dt = await dataViewDAO.Search(
 
 #### 6.2.4 混合使用查询方式
 
-Lambda、`Expr` 和 `ExprString` 可任意组合使用。Lambda 运行时会被解析为 `Expr`，因此三者可直接用 `&` / `|` 运算符拼接。
+Lambda、`Expr` 和 `ExprString` 可任意组合使用。
 
 ```csharp
 // Lambda 条件 + 动态拼接的 Expr 条件
@@ -1154,9 +1154,16 @@ var users = await userService.SearchAsync(baseExpr);
 // IQueryable 形式中嵌入预构建的 Expr 条件
 LogicExpr auditFilter = Expr.Lambda<User>(u => u.Status == "active") & Expr.Sql("YearFilter", 2024);
 
+// 写法1：直接在 Lambda 中使用预构建的 Expr 条件
 var users = await userService.SearchAsync(
-    q => q.Where(auditFilter)
+    q => q.Where(u => (bool)(object)auditFilter) //需要擦除类型并转换为 bool 以使用在 Lambda 中
          .Where(u => u.Age > 18)    // 多个 Where 自动合并为 AND
+         .OrderByDescending(u => u.Id)
+         .Skip(0).Take(20)
+);
+// 写法2：直接在 Where 中混合 Lambda 和 Expr 类型条件，框架会自动处理类型转换
+var users = await userService.SearchAsync(
+    q => q.Where(u => u.Status == "active" && (bool)(object)Expr.Sql("YearFilter", 2024) && u.Age > 18) //需要擦除类型并转换为 bool 以使用在 Lambda 中
          .OrderByDescending(u => u.Id)
          .Skip(0).Take(20)
 );
