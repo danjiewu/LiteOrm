@@ -38,3 +38,4 @@ msbuild.wrn
 /BenchmarkDotNet.Artifacts
 /LiteOrm/nuget.config
 /LiteOrm.Benchmark/BenchmarkDotNet.Artifacts
+/LITEORM_INTRODUCTION.md
