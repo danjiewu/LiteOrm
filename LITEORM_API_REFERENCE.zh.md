@@ -1626,6 +1626,7 @@ public class MySqlBulkCopyProvider : IBulkProvider
 
 | 资源 | 说明 |
 |:---|:---|
+| [AI 使用指南](./LITEORM_API_GUIDE_FOR_AI.md) | 面向 AI 的快速参考指南 |
 | [表达式扩展指南](./EXPRESSION_EXTENSION.md) | 扩展 LiteOrm 表达式处理能力的指南 |
 | [自定义分页示例](./CUSTOM_PAGING_EXAMPLE.md) | 自定义分页实现示例，以 Oracle 11g 为例 |
 

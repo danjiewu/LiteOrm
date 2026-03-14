@@ -339,6 +339,7 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 | Resource | Description |
 |:---|:---|
 | [API Reference](./LITEORM_API_REFERENCE.en.md) | Complete API documentation and configuration instructions |
+| [AI Guide](./LITEORM_API_GUIDE_FOR_AI.md) | AI-oriented quick reference guide |
 | [Demo Project](./LiteOrm.Demo/) | Main feature demonstration program |
 | [Performance Report](./LiteOrm.Benchmark/) | Detailed performance benchmark reports |
 | [Unit Tests](./LiteOrm.Tests/) | Complete test coverage |

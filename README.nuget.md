@@ -218,6 +218,7 @@ public class Log : IArged
 ## 📚 Documentation & Resources
 
 - **[API Reference](https://github.com/danjiewu/LiteOrm/blob/master/LITEORM_API_REFERENCE.en.md)** - Complete API documentation
+- **[AI Guide](https://github.com/danjiewu/LiteOrm/blob/master/LITEORM_API_GUIDE_FOR_AI.md)** - AI-oriented quick reference guide
 - **[GitHub Repository](https://github.com/danjiewu/LiteOrm)** - Source code and issues
 - **[Demo Project](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)** - Feature demonstrations
 - **[Performance Report](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark)** - Detailed benchmarks
@@ -378,7 +379,8 @@ var page = await userService.SearchAsync(
 
 ### 📚 相关资源
 
-- **[API 参考](https://github.com/danjiewu/LiteOrm/blob/master/LITEORM_API_REFERENCE.md)** - 完整的 API 文档
+- **[API 参考](https://github.com/danjiewu/LiteOrm/blob/master/LITEORM_API_REFERENCE.zh.md)** - 完整的 API 文档
+- **[AI 使用指南](https://github.com/danjiewu/LiteOrm/blob/master/LITEORM_API_GUIDE_FOR_AI.md)** - 面向 AI 的快速参考指南
 - **[GitHub 仓库](https://github.com/danjiewu/LiteOrm)** - 源代码和问题跟踪
 - **[Demo 项目](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)** - 功能演示
 - **[性能报告](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark)** - 详细的性能基准
