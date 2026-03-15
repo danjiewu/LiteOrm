@@ -30,7 +30,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 连接保活时长
         /// </summary>
-        public TimeSpan KeepAliveDuration { get; set; }
+        public TimeSpan KeepAliveDuration { get; set; } = TimeSpan.FromMinutes(10);
 
         /// <summary>
         /// 连接池大小（允许在池中缓存的最大连接数），默认为16

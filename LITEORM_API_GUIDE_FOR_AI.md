@@ -41,7 +41,7 @@
 | `DataSources[].ConnectionString` | `string` | — | 数据库连接字符串 |
 | `DataSources[].Provider` | `string` | — | 连接类型全名，格式：`TypeName, AssemblyName` |
 | `DataSources[].SqlBuilder` | `string` | `null` | SQL 构建器类型全名（可选，不填则按 Provider 自动匹配） |
-| `DataSources[].KeepAliveDuration` | `TimeSpan` | `00:00:00` | 连接保活时长 |
+| `DataSources[].KeepAliveDuration` | `TimeSpan` | `00:10:00` | 连接保活时长（`00:00:00` = 无限制） |
 | `DataSources[].PoolSize` | `int` | `16` | 连接池缓存的最大连接数 |
 | `DataSources[].MaxPoolSize` | `int` | `100` | 最大并发连接数限制 |
 | `DataSources[].ParamCountLimit` | `int` | `2000` | SQL 参数数量上限（`0` = 无限制） |
