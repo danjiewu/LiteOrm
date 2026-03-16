@@ -141,17 +141,17 @@ namespace LiteOrm
             /// 注册的SqlBuilder映射（按数据源名称）
             /// </summary>
             internal Dictionary<string, SqlBuilder> SqlBuilders { get; } = new Dictionary<string, SqlBuilder>();
-            
+
             /// <summary>
             /// 注册的SqlBuilder映射（按连接类型）
             /// </summary>
             internal Dictionary<Type, SqlBuilder> SqlBuildersByType { get; } = new Dictionary<Type, SqlBuilder>();
-            
+
             /// <summary>
             /// 是否注册Scope（默认为true）
             /// </summary>
             public bool RegisterScope { get; set; } = true;
-            
+
             /// <summary>
             /// 要扫描的程序集列表
             /// </summary>
@@ -173,7 +173,7 @@ namespace LiteOrm
             {
                 SqlBuilders[dataSourceName] = sqlBuilder;
             }
-            
+
             /// <summary>
             /// 注册自定义SqlBuilder（按连接类型）
             /// </summary>

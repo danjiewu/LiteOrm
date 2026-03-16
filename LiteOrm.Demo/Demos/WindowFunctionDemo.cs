@@ -170,15 +170,6 @@ namespace LiteOrm.Demo.Demos
 
             try
             {
-                LogicExpr auditFilter = Expr.Lambda<User>(u => u.Status == "active") & Expr.Sql("YearFilter", 2024);
-
-                var users = await factory.UserService.SearchAsync(
-                    q => q.Where(u => (bool)(object)auditFilter)
-                         .Where(u => u.Age > 18)    // 多个 Where 自动合并为 AND
-                         .OrderByDescending(u => u.Id)
-                         .Skip(0).Take(20)
-                );
-
                 string tableMonth = DateTime.Now.ToString("yyyyMM");
 
                 PrintSection("📋 场景说明",
@@ -238,15 +229,6 @@ namespace LiteOrm.Demo.Demos
                 Console.WriteLine($"✗ 演示5.2 失败: {ex.Message}\n");
                 Console.ResetColor();
             }
-        }
-
-        private static string FormatPartitionResults(List<SalesWindowView> rows)
-        {
-            if (rows.Count == 0) return "（无数据）";
-            var sb = new System.Text.StringBuilder();
-            foreach (var r in rows)
-                sb.AppendLine($"  Id={r.Id,-4} {r.ProductName,-12} ¥{r.Amount,6}  产品合计: ¥{r.ProductTotal,8}");
-            return sb.ToString().TrimEnd();
         }
 
         private static void PrintSection(string title, string content) => DemoHelper.PrintSection(title, content);
