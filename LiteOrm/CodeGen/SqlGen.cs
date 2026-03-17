@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace LiteOrm
+namespace LiteOrm.CodeGen
 {
     /// <summary>
     /// SQL 生成器类，负责将抽象表达式树 (Expr) 转换为针对特定数据库方言的 SQL 语句。

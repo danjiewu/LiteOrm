@@ -39,3 +39,4 @@ msbuild.wrn
 /LiteOrm/nuget.config
 /LiteOrm.Benchmark/BenchmarkDotNet.Artifacts
 /LITEORM_INTRODUCTION.md
+/.trae/documents

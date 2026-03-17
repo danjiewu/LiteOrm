@@ -25,6 +25,7 @@ namespace LiteOrm.Demo.Demos
             await Demo2_ExprSerializationAsync(userSvc);
             await Demo3_ExprEquivalenceAsync(userSvc);
             await Demo4_ComplexFilterAsync(userSvc);
+            await Demo5_ExprStringQueryAsync(factory);
         }
 
         /// <summary>
@@ -237,6 +238,72 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示2.4 失败: {ex.Message}\n");
+                Console.ResetColor();
+            }
+        }
+
+        /// <summary>
+        /// 演示2.5：ExprString 插值字符串查询
+        /// 展示将 Expr 对象和普通值内嵌到 SQL 插值字符串的两种模式
+        /// </summary>
+        private static async Task Demo5_ExprStringQueryAsync(ServiceFactory factory)
+        {
+            Console.WriteLine("┌────────────────────────────────────────────────────────────┐");
+            Console.WriteLine("│ 演示2.5：ExprString 插值字符串查询                         │");
+            Console.WriteLine("└────────────────────────────────────────────────────────────┘");
+
+            try
+            {
+                var userDao = factory.UserCustomDAO;
+
+                DemoHelper.PrintSection("📋 场景说明",
+                    "ExprString 是 C# 插值字符串处理器，支持两种内嵌模式：\n" +
+                    "  • Expr 对象  → 自动展开为等价 SQL 片段（条件内联）\n" +
+                    "  • 普通值     → 自动转为命名参数 @0/@1...（防 SQL 注入）");
+
+                // ── 场景1：Expr 条件对象嵌入 ExprString ──────────────────────────
+                var minAge = 20;
+                var maxAge = 45;
+
+                DemoHelper.PrintSection("📝 场景1：Expr 对象嵌入（条件内联展开）",
+                    "var minExpr = Expr.Prop(\"Age\") >= minAge;\n" +
+                    "var maxExpr = Expr.Prop(\"Age\") <= maxAge;\n" +
+                    "// Expr 嵌入后直接展开为 SQL 条件片段\n" +
+                    "Search($\"WHERE {minExpr} AND {maxExpr} ORDER BY Age\")");
+
+                var results1 = await userDao.SearchByAgeRangeAsync(minAge, maxAge);
+                var sql1 = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 生成的 SQL（Expr 已内联展开）", sql1);
+                DemoHelper.PrintSection("✅ 结果", $"共返回 {results1.Count} 条记录");
+
+                // ── 场景2：普通值嵌入 ExprString（自动参数化）────────────────────
+                var keyword = "张";
+                var ageThreshold = 25;
+
+                DemoHelper.PrintSection("📝 场景2：普通值内嵌（自动转为命名参数）",
+                    "var nameExpr = Expr.Prop(\"UserName\").Contains(keyword);\n" +
+                    "// int/string 类型值自动转为 @0, @1... 参数，杜绝 SQL 注入\n" +
+                    "Search($\"WHERE {nameExpr} AND {Expr.Prop(\"Age\")} >= {ageThreshold} ORDER BY Id DESC\")");
+
+                var results2 = await userDao.SearchByNamePatternAsync(keyword, ageThreshold);
+                var sql2 = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 生成的 SQL（含命名参数）", sql2);
+
+                var top3 = results2.GetRange(0, Math.Min(3, results2.Count))
+                    .ConvertAll(r => $"  • {r.UserName} (年龄: {r.Age})");
+                var preview = results2.Count > 0
+                    ? string.Join("\n", top3) + (results2.Count > 3 ? $"\n  ...（共 {results2.Count} 条）" : "")
+                    : "  • 无匹配记录";
+                DemoHelper.PrintSection("✅ 结果", preview);
+
+                Console.WriteLine("✓ 演示2.5 完成\n");
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"✗ 演示2.5 失败: {ex.Message}\n");
+                var sql1 = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 生成的 SQL（Expr 已内联展开）", sql1);
                 Console.ResetColor();
             }
         }

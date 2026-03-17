@@ -80,7 +80,6 @@ namespace LiteOrm
             return new DataTableResult(command, ReadDataRow, false);
         }
 
-#if NET8_0_OR_GREATER
         /// <summary>
         /// 使用插值字符串查询数据
         /// </summary>
@@ -89,11 +88,10 @@ namespace LiteOrm
         /// <returns>查询结果数据表</returns>
         public virtual DataTableResult Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)
         {
-            string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} FROM {From} {sqlBody.GetSqlResult()}";
+            string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSqlResult()}";
             var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
             return new DataTableResult(command, ReadDataRow, false);
         }
-#endif
 
         /// <summary>
         /// 根据属性名列表和条件构建SelectExpr

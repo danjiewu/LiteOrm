@@ -226,7 +226,6 @@ namespace LiteOrm
             return new EnumerableResult<TResult>(command, readerFunc);
         }
 
-#if NET8_0_OR_GREATER
         /// <summary>
         /// 使用带参数的SQL查询
         /// </summary>
@@ -240,7 +239,7 @@ namespace LiteOrm
         /// </example>
         public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)
         {
-            string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} FROM {From} {sqlBody.GetSqlResult()}";
+            string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSqlResult()}";
             var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
             return new EnumerableResult<T>(command, ConvertToObjectHandler);
         }
@@ -261,7 +260,6 @@ namespace LiteOrm
             var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
             return new EnumerableResult<TResult>(command);
         }
-#endif
 
         /// <summary>
         /// 将一行记录转化为对象

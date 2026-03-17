@@ -127,13 +127,30 @@ namespace LiteOrm
         public string[] TableArgs { get; internal set; }
 
         /// <summary>
-        /// 创建SQL执行上下文
+        /// 创建 SQL 执行上下文。
         /// </summary>
-        /// <returns></returns>
+        /// <param name="initTable">是否在上下文中初始化表信息，默认为 false。对于某些操作（如生成 SQL 语句），可能需要在上下文中包含表信息以正确解析列和别名等细节。</param>
+        /// <returns>SQL 构建上下文实例。</returns>
         public virtual SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
-            if (initTable) return new SqlBuildContext(Table, Table.Name, TableArgs) { SingleTable = !IsView };
+            if (initTable) return new SqlBuildContext(Table, Constants.DefaultTableAlias, TableArgs) { SingleTable = !IsView };
             else return new SqlBuildContext() { TableArgs = TableArgs, SingleTable = !IsView };
+        }
+
+        private SqlBuildContext _initSqlBuildContext;
+        /// <summary>
+        /// 用于初始化表信息的 SQL 构建上下文，只有在需要初始化表信息时才创建，并且在整个 DAO 生命周期内保持不变，以提高性能。对于某些操作（如生成 SQL 语句），可能需要在上下文中包含表信息以正确解析列和别名等细节，因此提供了这个属性来避免重复创建上下文。子类可以根据需要重写 CreateSqlBuildContext 方法来修改上下文的内容，但 InitSqlBuildContext 将始终返回一个包含表信息的上下文实例。
+        /// </summary>
+        protected SqlBuildContext InitSqlBuildContext
+        {
+            get
+            {
+                if (_initSqlBuildContext == null)
+                {
+                    _initSqlBuildContext = CreateSqlBuildContext(true);
+                }
+                return _initSqlBuildContext;
+            }
         }
 
         /// <summary>
@@ -184,7 +201,7 @@ namespace LiteOrm
             {
                 if (_fromTable is null)
                 {
-                    _fromTable = Table.ToSql(CreateSqlBuildContext(true), SqlBuilder);
+                    _fromTable = Table.ToSql(InitSqlBuildContext, SqlBuilder);
                 }
                 return _fromTable;
             }
@@ -222,9 +239,9 @@ namespace LiteOrm
         #region 方法
 
         /// <summary>
-        /// 创建IDbCommand
+        /// 创建 IDbCommand
         /// </summary>
-        /// <returns></returns>
+        /// <returns>初始化好的数据库命令代理实例。</returns>
         public virtual DbCommandProxy NewCommand()
         {
             DAOContext?.Pool?.EnsureTable(ObjectType, TableArgs);
@@ -246,7 +263,7 @@ namespace LiteOrm
             {
                 SqlColumn column = columns[i];
                 if (i > 0) strAllFields.Append(",");
-                strAllFields.Append(column.ToSql(CreateSqlBuildContext(), SqlBuilder));
+                strAllFields.Append(column.ToSql(InitSqlBuildContext, SqlBuilder));
                 if (!String.Equals(column.Name, column.PropertyName, StringComparison.OrdinalIgnoreCase))
                 {
                     strAllFields.Append(" AS ");
@@ -263,7 +280,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="methodName">方法名称</param>
         /// <param name="newCommandHandler">新的命令处理器</param>
-        /// <returns></returns>
+        /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
         protected DbCommandProxy GetPreparedCommand(string methodName, Func<DbCommandProxy> newCommandHandler)
         {
             if (TableArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableArgs);
@@ -320,7 +337,7 @@ namespace LiteOrm
         /// 根据表达式创建命令
         /// </summary>
         /// <param name="expr">表达式</param>
-        /// <returns></returns>
+        /// <returns>根据表达式生成的数据库命令代理实例。</returns>
         /// <exception cref="ArgumentNullException"></exception>
         protected DbCommandProxy MakeExprCommand(Expr expr)
         {
@@ -330,13 +347,12 @@ namespace LiteOrm
             return MakeNamedParamCommand(expr.ToSql(context, SqlBuilder, paramList), paramList);
         }
 
-#if NET8_0_OR_GREATER
         /// <summary>
         /// 执行带有命名参数的 SQL 语句，并返回结果值。SQL 语句可以包含 Expr 或变量值。
         /// </summary>
         /// <typeparam name="T">结果类型</typeparam>
         /// <param name="sqlBody">SQL语句，可以包含 Expr 或变量值</param>
-        /// <returns></returns>
+        /// <returns>包含查询结果的值结果对象。</returns>
         public virtual ValueResult<T> GetValue<T>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
             var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());
@@ -347,7 +363,7 @@ namespace LiteOrm
         /// 执行带有命名参数的 SQL 语句，并返回受影响的行数。SQL 语句可以包含 Expr 或变量值。
         /// </summary>
         /// <param name="sqlBody">SQL语句，可以包含 Expr 或变量值</param>
-        /// <returns></returns>
+        /// <returns>包含受影响行数的非查询结果对象。</returns>
 
         public virtual NonQueryResult Execute([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
@@ -361,18 +377,17 @@ namespace LiteOrm
         /// <typeparam name="TResult">结果类型</typeparam>
         /// <param name="sqlBody">SQL语句，可以包含 Expr 或变量值</param>
         /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
-        /// <returns></returns>
+        /// <returns>包含查询结果集的可枚举结果对象。</returns>
         public virtual EnumerableResult<TResult> Query<TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, Func<IDataReader, TResult> readerFunc = null)
         {
             var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());
             return new EnumerableResult<TResult>(command, readerFunc);
         }
-#endif
 
         /// <summary>
         /// 生成替换标记的默认字符串的字典，标记为以下之一： {Table}、{From} 和 {AllFields}，子类可以重写此方法添加更多的替换标记或修改现有标记的值。
         /// </summary>
-        /// <returns></returns>
+        /// <returns>包含标记与对应替换值的字典。</returns>
         protected virtual Dictionary<string, string> GetReplacements()
         {
             return new Dictionary<string, string>
@@ -473,7 +488,7 @@ namespace LiteOrm
             {
                 return cachedSql;
             }
-            string sql = column.ToSql(CreateSqlBuildContext(), SqlBuilder);
+            string sql = column.ToSql(InitSqlBuildContext, SqlBuilder);
             _columnSqlCache[column] = sql;
             return sql;
         }

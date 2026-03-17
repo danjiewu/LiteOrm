@@ -32,13 +32,12 @@ namespace LiteOrm.Common
         public string PropertyName { get; private set; }
 
         /// <summary>
-        /// 
+        /// 获取列的详细定义信息。
         /// </summary>
         public abstract ColumnDefinition Definition { get; }
         /// <summary>
         /// 列所对应的属性类型
         /// </summary>
-        /// 
         public Type PropertyType
         {
             get { return _property.PropertyType; }

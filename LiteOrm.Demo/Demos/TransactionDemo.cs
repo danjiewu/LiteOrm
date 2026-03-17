@@ -15,8 +15,11 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine("  3. 事务与三层架构：");
             Console.WriteLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             var newUser = new User { UserName = "ThreeTierUser", Age = 25 };
-            var initialSale = new SalesRecord { ProductName = "Starter Pack", Amount = 1 };
-
+            var initialSale = new SalesRecord
+            {
+                ProductName = new string('A', 300),// 故意制造一个异常（ProductName 超过数据库字段长度限制），演示事务回滚
+                Amount = 1
+            };
             await factory.UserService.DeleteAsync(u => u.UserName == newUser.UserName);
             Console.WriteLine($"现在通过事务注册新用户 {newUser.UserName} 并执行初始化销售...");
 
@@ -34,7 +37,7 @@ namespace LiteOrm.Demo.Demos
                     {
                         Console.WriteLine($"验证成功：用户 ID={savedUser.Id}, 用户名={savedUser.UserName}");
                     }
-                    
+
                 }
             }
             catch (Exception ex)
@@ -47,7 +50,7 @@ namespace LiteOrm.Demo.Demos
                 if (savedUser == null)
                 {
                     Console.WriteLine("回滚成功：用户未创建");
-                }               
+                }
             }
         }
     }

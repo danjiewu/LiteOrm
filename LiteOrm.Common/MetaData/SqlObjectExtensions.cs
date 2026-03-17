@@ -68,15 +68,21 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, SqlColumn column, SqlBuildContext context, ISqlBuilder sqlBuilder)
         {
-            if (column.Table != null)
+            if (!context.SingleTable)
             {
-                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(column.Table.Name)));
-                sb.Append('.');
-            }
-            else if (context?.Table != null)
-            {
-                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(context.Table.Name)));
-                sb.Append('.');
+                if (column.Table == null || column.Table == context.Table)
+                {
+                    if (context.DefaultTableAliasName != null)
+                    {
+                        sb.Append(sqlBuilder.ToSqlName(context.DefaultTableAliasName));
+                        sb.Append('.');
+                    }
+                }
+                else if (column.Table != null)
+                {
+                    sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(column.Table.Name)));
+                    sb.Append('.');
+                }
             }
             sb.Append(sqlBuilder.ToSqlName(column.Name));
         }
@@ -115,7 +121,10 @@ namespace LiteOrm.Common
 
             sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name)));
             sb.Append(" ");
-            sb.Append(sqlBuilder.ToSqlName(tableView.Name));
+            if (tableView == context.Table)
+                sb.Append(sqlBuilder.ToSqlName(context.DefaultTableAliasName));
+            else
+                sb.Append(sqlBuilder.ToSqlName(tableView.Name));
             foreach (var joined in tableView.JoinedTables)
             {
                 if (joined.Used)

@@ -76,7 +76,7 @@ namespace LiteOrm.Common
         /// 格式化表名，如果设置了 TableArgs 则使用 string.Format 进行格式化，否则直接返回原始表名
         /// </summary>
         /// <param name="name">原始表名</param>
-        /// <returns></returns>
+        /// <returns>格式化后的表名。</returns>
         public string FormatTableName(string name)
         {
             if (TableArgs?.Length > 0)

@@ -38,8 +38,7 @@ namespace LiteOrm.Demo.Services
 
             // 2. 补全销售记录的用户 ID (Insert 后生成的 ID 会自动回填到实体的 Id 属性)
             firstSale.SalesUserId = user.Id;
-            firstSale.SaleTime = DateTime.Now;
-            firstSale.ProductName = new string('A', 300);// 故意制造一个异常（ProductName 超过数据库字段长度限制），演示事务回滚
+            firstSale.SaleTime = DateTime.Now;  
 
             // 3. 插入销售记录，同样会自动使用同一个事务上下文环境
             await _salesService.InsertAsync(firstSale);

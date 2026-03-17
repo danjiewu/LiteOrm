@@ -245,62 +245,84 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 创建常量值表达式。
-        /// <param name="value"> 参数表示常量值。</param>
-        /// <returns>常量值表达式。</returns>
+        /// 创建常量值表达式（不生成参数，直接内嵌局到 SQL 中）。
         /// </summary>
+        /// <param name="value">常量值。</param>
+        /// <returns>常量值表达式。</returns>
         public static ValueExpr Const(object value) => new ValueExpr(value) { IsConst = true };
 
         /// <summary>
-        /// 创建变量值表达式
+        /// 创建变量值表达式（生成参数化查询占位符）。
         /// </summary>
-        /// <param name="value"> 参数表示变量值。 </param>
-        /// <returns></returns>
+        /// <param name="value">变量值。</param>
+        /// <returns>变量值表达式。</returns>
         public static ValueExpr Value(object value) => new ValueExpr(value);
 
         /// <summary>
         /// 创建逻辑与(AND)集合。
         /// </summary>
+        /// <param name="exprs">要用 AND 连接的逻辑表达式数组。</param>
+        /// <returns>使用 AND 连接的逻辑集合。</returns>
         public static LogicSet And(params LogicExpr[] exprs) => new LogicSet(LogicJoinType.And, exprs);
 
         /// <summary>
         /// 创建逻辑或(OR)集合。
         /// </summary>
+        /// <param name="exprs">要用 OR 连接的逻辑表达式数组。</param>
+        /// <returns>使用 OR 连接的逻辑集合。</returns>
         public static LogicSet Or(params LogicExpr[] exprs) => new LogicSet(LogicJoinType.Or, exprs);
 
         /// <summary>
         /// 创建逻辑取反(NOT)表达式。
         /// </summary>
+        /// <param name="expr">要取反的逻辑表达式。</param>
+        /// <returns>逻辑取反表达式。</returns>
         public static NotExpr Not(LogicExpr expr) => new NotExpr(expr);
 
         /// <summary>
         /// 创建函数调用表达式。
         /// </summary>
+        /// <param name="name">函数名称。</param>
+        /// <param name="args">函数参数列表。</param>
+        /// <returns>函数调用表达式。</returns>
         public static FunctionExpr Func(string name, params ValueTypeExpr[] args) => new FunctionExpr(name, args);
 
         /// <summary>
-        /// 创建聚合函数表达式。
+        /// 创建聚合函数表达式（如 COUNT、SUM、AVG 等）。
         /// </summary>
+        /// <param name="name">聚合函数名称。</param>
+        /// <param name="expression">聚合操作的目标表达式。</param>
+        /// <param name="isDistinct">是否对目标表达式去重，默认为 false。</param>
+        /// <returns>聚合函数表达式。</returns>
         public static AggregateFunctionExpr Aggregate(string name, ValueTypeExpr expression, bool isDistinct = false) => new AggregateFunctionExpr(name, expression, isDistinct);
 
         /// <summary>
-        /// 创建字符串拼接表达式集合 (CONCAT)。
+        /// 创建字符串拼接表达式集合（CONCAT）。
         /// </summary>
+        /// <param name="exprs">要拼接的值表达式数组。</param>
+        /// <returns>字符串拼接值集合表达式。</returns>
         public static ValueSet Concat(params ValueTypeExpr[] exprs) => new ValueSet(ValueJoinType.Concat, exprs);
 
         /// <summary>
-        /// 创建值列表表达式集合 (List)。
+        /// 创建值列表表达式集合，通常用于 IN 查询。
         /// </summary>
+        /// <param name="exprs">列表中的值表达式数组。</param>
+        /// <returns>值列表集合表达式。</returns>
         public static ValueSet List(params ValueTypeExpr[] exprs) => new ValueSet(ValueJoinType.List, exprs);
 
         /// <summary>
-        /// 创建动态 SQL 表达式。
+        /// 创建动态 SQL 表达式（支持运行时替换或参数化局内值）。
         /// </summary>
+        /// <param name="key">SQL 片段键名或模板文本。</param>
+        /// <param name="arg">动态替换参数，为 null 时不替换。</param>
+        /// <returns>动态 SQL 表达式。</returns>
         public static GenericSqlExpr Sql(string key, object arg = null) => GenericSqlExpr.Get(key, arg);
 
         /// <summary>
-        /// 获取静态 SQL 表达式。
+        /// 获取静态 SQL 表达式（SQL 片段在构建时不会被替换）。
         /// </summary>
+        /// <param name="key">SQL 片段键名或文本。</param>
+        /// <returns>静态 SQL 表达式。</returns>
         public static GenericSqlExpr StaticSql(string key) => GenericSqlExpr.Get(key);
 
         /// <summary>

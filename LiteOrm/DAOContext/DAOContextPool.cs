@@ -173,7 +173,7 @@ namespace LiteOrm
             // 只读池直接转发给主库执行
             if (MasterPool != null) { MasterPool.EnsureTable(objectType, tableArgs); return; }
 
-            var statements = ResolveEnsureTableDDL(objectType, tableArgs);
+            var statements = ResolveEnsureTableDdl(objectType, tableArgs);
             if (statements.Count == 0) return;
 
             var ctx = PeekContextInternal();
@@ -210,10 +210,10 @@ namespace LiteOrm
         /// <param name="objectType">实体类型。</param>
         /// <param name="tableArgs">动态表名参数，适用于实现了 <see cref="IArged"/> 的类型。</param>
         /// <returns>需要执行的 DDL 语句列表（CREATE TABLE、ADD COLUMN、CREATE INDEX）。</returns>
-        public List<string> ResolveEnsureTableDDL(Type objectType, string[] tableArgs = null)
+        public List<string> ResolveEnsureTableDdl(Type objectType, string[] tableArgs = null)
         {
             if (MasterPool != null)
-                return MasterPool.ResolveEnsureTableDDL(objectType, tableArgs);
+                return MasterPool.ResolveEnsureTableDdl(objectType, tableArgs);
 
             var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
             if (tableDefinition == null) return new List<string>();

@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using LiteOrm.Tests.Infrastructure;
 using LiteOrm.Tests.Models;
+using LiteOrm.CodeGen;
 using System.Collections.Generic;
 using Xunit;
 

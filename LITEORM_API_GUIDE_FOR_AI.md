@@ -303,7 +303,7 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 |------|----------|
 | Lambda 表达式 `u => u.Age > 18` | 简单条件，编译时类型安全 |
 | Expr 对象（运算符 / Fluent 方法） | 复杂条件、动态条件累加、链式查询 |
-| ExprString 插值字符串（.NET 8+） | 自定义 DAO 中需要直接写 SQL 片段 |
+| ExprString 插值字符串 | 自定义 DAO 中需要直接写 SQL 片段 |
 
 ### Expr 静态工厂方法
 
@@ -397,13 +397,13 @@ update.Set(("UserName", Expr.Value("NewName")), ("Age", Expr.Value(30)));
 var delete = new DeleteExpr(Expr.From<User>(), Expr.Prop("Age") < 18);
 ```
 
-### ExprString（仅 .NET 8+）
+### ExprString
 
-插值字符串处理器，在 `Search(string exprString)` 或自定义 DAO 中直接嵌入 Expr 对象：
+插值字符串处理器，在DAO的 `Search(ExprString exprString)` 方法的字符串参数中中直接嵌入 Expr 对象：
 
 ```csharp
 // 嵌入 Expr 对象自动转为带参数 SQL 片段
-var result = Search($"WHERE {Expr.Prop("DeptName") == deptName} AND {Expr.Prop("Age") > 18}");
+var result = dao.Search($"WHERE {Expr.Prop("DeptName") == deptName} AND {Expr.Prop("Age") > 18}");
 ```
 
 ### 常用模式

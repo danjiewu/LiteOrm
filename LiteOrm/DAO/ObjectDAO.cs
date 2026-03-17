@@ -95,7 +95,7 @@ namespace LiteOrm
 
         public override SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
-            var context = base.CreateSqlBuildContext(true);
+            var context = base.CreateSqlBuildContext(initTable);
             context.SingleTable = true;
             return context;
         }

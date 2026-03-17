@@ -1105,7 +1105,7 @@ var users = await userService.SearchAsync(Expr.Prop("Age") > 18);
 
 #### 6.2.3 ExprString (Raw SQL)
 
-`.NET 8.0+` supports `ExprString` interpolated string syntax, which can mix `Expr` expressions and ordinary variable values into SQL fragments, and the framework will uniformly convert them to parameterized SQL. Both `ObjectViewDAO` and `DataViewDAO` support this, which is suitable for use inside `EntityViewService` and generally not provided for external calls.
+`C# 10` grammar supports `ExprString` interpolated string syntax, which can mix `Expr` expressions and ordinary variable values into SQL fragments, and the framework will uniformly convert them to parameterized SQL. Both `ObjectViewDAO` and `DataViewDAO` support this, which is suitable for use inside `EntityViewService` and generally not provided for external calls.
 
 Parameter processing rules:
 - `Expr` expressions → converted to equivalent SQL fragments (you can insert only field expressions or complex expressions, for example `WHERE {Expr.Prop("Age") > 18}` will be converted to `WHERE Age > @p0`, while `WHERE {Expr.Prop("Age")} > 18` will be converted to `WHERE Age > 18`)
@@ -1155,8 +1155,6 @@ DataTable dt = await dataViewDAO.Search(
     $"SELECT {{AllFields}} FROM {{From}} WHERE {Expr.Prop("Age")} > {minAge} ORDER BY Age DESC",
     isFull: true).GetResultAsync();
 ```
-
-> **Note:** `ExprString` syntax requires .NET 8.0 or higher.
 
 #### 6.2.4 Mixed Query Methods
 

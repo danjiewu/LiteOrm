@@ -1,8 +1,41 @@
-#if NET8_0_OR_GREATER
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using LiteOrm.Common;
+
+#if NETSTANDARD2_0
+
+namespace System.Runtime.CompilerServices
+{
+    // 这个 Attribute 告诉编译器：这是一个字符串插值处理器
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
+    public sealed class InterpolatedStringHandlerAttribute : Attribute
+    {
+    }
+
+    /// <summary>指示应将涉及内插字符串处理程序的方法的哪些参数传递给该处理程序。</summary>
+    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
+    public sealed class InterpolatedStringHandlerArgumentAttribute : Attribute
+    {
+        /// <summary>初始化新实例，该实例指定应传递给处理程序的单个参数。</summary>
+        /// <param name="argument">应传递给处理程序的参数的名称。 对于实例方法，可以使用空字符串 ("") 来引用接收方。</param>
+        public InterpolatedStringHandlerArgumentAttribute(string argument)
+        {
+            Arguments = new string[] { argument };
+        }
+
+        /// <summary>初始化新实例，该实例指定应传递给处理程序的多个参数。</summary>
+        /// <param name="arguments">应传递给处理程序的参数的名称。 对于实例方法，可以使用空字符串 ("") 来引用接收方。</param>
+        public InterpolatedStringHandlerArgumentAttribute(params string[] arguments)
+        {
+            Arguments = arguments;
+        }
+
+        /// <summary>获取应传递给处理程序的参数的名称。</summary>
+        public string[] Arguments { get; }
+    }
+}
+#endif
 
 namespace LiteOrm.Common
 {
@@ -52,7 +85,7 @@ namespace LiteOrm.Common
             }
             else if (value != null)
             {
-                string paramName = $"@p{_params.Count}";
+                string paramName = $"{_params.Count}";
                 _builder.Append(paramName);
                 _params.Add(new KeyValuePair<string, object>(paramName, value));
             }
@@ -82,4 +115,3 @@ namespace LiteOrm.Common
         }
     }
 }
-#endif
