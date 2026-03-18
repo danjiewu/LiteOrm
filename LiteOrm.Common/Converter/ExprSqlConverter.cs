@@ -147,10 +147,10 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            bool isMain = sb.Length == 0;
-            IDisposable scope = isMain ? null : context.BeginScope();
+            // 优化：如果当前是最外层的 SelectExpr（即 sb 还没有内容且当前作用域没有父级），则不需要额外的括号包裹
+            bool isMain = sb.Length == 0 && context.CurrentScope.Parent is null;
             if (!isMain) sb.Append('(');
-            using (scope)
+            using (context.BeginScope())
             {
                 SqlValueStringBuilder sql = new SqlValueStringBuilder();
                 AddSqlSegment(ref sql, select.Source, context, sqlBuilder, outputParams);
@@ -607,13 +607,7 @@ namespace LiteOrm.Common
         {
             using (context.BeginScope())
             {
-                SqlValueStringBuilder innerSql = new SqlValueStringBuilder();
-                AddSqlSegment(ref innerSql, expr.Source, context, sqlBuilder, outputParams);
-                ToSql(ref innerSql.Select, expr, context, sqlBuilder, outputParams);                
-                sql.From.Append("(");
-                sqlBuilder.BuildSelectSql(ref innerSql, ref sql.From);
-                sql.From.Append(") ");
-                innerSql.Dispose();
+                ToSql(ref sql.From, expr, context, sqlBuilder, outputParams);
             }
             string alias = expr.Alias ?? $"T{context.Sequence++}";
             context.DefaultTableAliasName = alias;

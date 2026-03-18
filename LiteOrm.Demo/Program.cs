@@ -47,6 +47,9 @@ using (var scope = host.Services.CreateScope())
 
     // 5. 窗口函数演示 (5.1-5.2: 仅分区、分区+排序)
     await WindowFunctionDemo.RunAsync(serviceFactory);
+
+    // 6. UpdateExpr 更新表达式演示 (6.1-6.5: 列表初始化、链式Set、算术运算、FunctionExpr、Lambda条件)
+    await UpdateExprDemo.RunAsync(serviceFactory);
 }
 
 
