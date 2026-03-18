@@ -356,8 +356,9 @@ namespace LiteOrm.Common
         /// <param name="expression">聚合操作的目标表达式。</param>
         /// <param name="isDistinct">是否对目标表达式去重，默认为 false。</param>
         /// <returns>聚合函数表达式。</returns>
-        public static AggregateFunctionExpr Aggregate(string name, ValueTypeExpr expression, bool isDistinct = false) => new AggregateFunctionExpr(name, expression, isDistinct);
+        public static FunctionExpr Aggregate(string name, ValueTypeExpr expression, bool isDistinct = false) => new FunctionExpr(name, expression) { IsAggregate = true };
 
+        public static FunctionExpr Count() => new FunctionExpr("Count", Expr.Const(1)) { IsAggregate = true };
         /// <summary>
         /// 创建字符串拼接表达式集合（CONCAT）。
         /// </summary>

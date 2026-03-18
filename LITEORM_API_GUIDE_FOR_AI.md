@@ -321,7 +321,7 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 | `Expr.Between("Age", 18, 65)` | `LogicExpr` | BETWEEN 表达式 |
 | `Expr.PropEqual("Name", value)` | `LogicBinaryExpr` | 属性等于值 |
 | `Expr.Func("ABS", expr)` | `FunctionExpr` | 函数调用 |
-| `Expr.Aggregate("SUM", expr, isDistinct)` | `AggregateFunctionExpr` | 聚合函数 |
+| `Expr.Aggregate("SUM", expr, isDistinct)` | `FunctionExpr` | 聚合函数（IsAggregate=true） |
 | `Expr.Concat(e1, e2)` | `ValueSet` | CONCAT 字符串拼接 |
 | `Expr.Lambda<T>(u => u.Age > 18)` | `LogicExpr` | Lambda 转 Expr |
 | `Expr.Foreign<T>(innerExpr)` | `ForeignExpr` | 关联表 EXISTS 查询 |

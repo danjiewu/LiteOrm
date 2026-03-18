@@ -1022,7 +1022,7 @@ namespace LiteOrm.Common
                             }
                         }
 
-                        return new AggregateFunctionExpr(aggregateName, aggregateArg);
+                        return new FunctionExpr(aggregateName, aggregateArg) { IsAggregate = true };
                     }
                 }
             }

@@ -637,6 +637,12 @@ namespace LiteOrm.Common
         public static OrderByItemExpr Desc(this ValueTypeExpr expr) => new OrderByItemExpr(expr, false);
 
         /// <summary>
+        /// 创建 DISTINCT 表达式，用于表示查询结果的唯一性约束，通常用于 SELECT 子句中以去除重复记录。
+        /// </summary>
+        /// <param name="expr"></param>
+        /// <returns></returns>
+        public static UnaryExpr Distinct(this ValueTypeExpr expr) => new UnaryExpr(UnaryOperator.Distinct, expr);
+        /// <summary>
         /// 创建 COUNT 聚合函数表达式。
         /// </summary>
         /// <param name="expr">要计数的值表达式。</param>
@@ -648,7 +654,15 @@ namespace LiteOrm.Common
         /// var distinctCountExpr = Expr.Prop("Name").Count(true);
         /// </code>
         /// </example>
-        public static AggregateFunctionExpr Count(this ValueTypeExpr expr, bool isDistinct = false) => new AggregateFunctionExpr("COUNT", expr, isDistinct);
+        public static FunctionExpr Count(this ValueTypeExpr expr) => new FunctionExpr("COUNT", expr) { IsAggregate = true };
+
+        /// <summary>
+        /// 创建 COUNT 聚合函数表达式（支持去重）。
+        /// </summary>
+        /// <param name="expr">要计数的值表达式。</param>
+        /// <param name="isDistinct">是否去重计数。</param>
+        /// <returns>COUNT 聚合函数表达式。</returns>
+        public static FunctionExpr Count(this ValueTypeExpr expr, bool isDistinct) => new FunctionExpr("COUNT", isDistinct ? expr.Distinct() : expr) { IsAggregate = true };
 
         /// <summary>
         /// 创建 SUM 聚合函数表达式。
@@ -660,7 +674,7 @@ namespace LiteOrm.Common
         /// var sumExpr = Expr.Prop("Salary").Sum();
         /// </code>
         /// </example>
-        public static AggregateFunctionExpr Sum(this ValueTypeExpr expr) => new AggregateFunctionExpr("SUM", expr);
+        public static FunctionExpr Sum(this ValueTypeExpr expr) => new FunctionExpr("SUM", expr) { IsAggregate = true };
 
         /// <summary>
         /// 创建 AVG 聚合函数表达式。
@@ -672,7 +686,7 @@ namespace LiteOrm.Common
         /// var avgExpr = Expr.Prop("Salary").Avg();
         /// </code>
         /// </example>
-        public static AggregateFunctionExpr Avg(this ValueTypeExpr expr) => new AggregateFunctionExpr("AVG", expr);
+        public static FunctionExpr Avg(this ValueTypeExpr expr) => new FunctionExpr("AVG", expr) { IsAggregate = true };
 
         /// <summary>
         /// 创建 MAX 聚合函数表达式。
@@ -684,7 +698,7 @@ namespace LiteOrm.Common
         /// var maxExpr = Expr.Prop("Salary").Max();
         /// </code>
         /// </example>
-        public static AggregateFunctionExpr Max(this ValueTypeExpr expr) => new AggregateFunctionExpr("MAX", expr);
+        public static FunctionExpr Max(this ValueTypeExpr expr) => new FunctionExpr("MAX", expr) { IsAggregate = true };
 
         /// <summary>
         /// 创建 MIN 聚合函数表达式。
@@ -696,6 +710,6 @@ namespace LiteOrm.Common
         /// var minExpr = Expr.Prop("Salary").Min();
         /// </code>
         /// </example>
-        public static AggregateFunctionExpr Min(this ValueTypeExpr expr) => new AggregateFunctionExpr("MIN", expr);
+        public static FunctionExpr Min(this ValueTypeExpr expr) => new FunctionExpr("MIN", expr) { IsAggregate = true };
     }
 }

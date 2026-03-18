@@ -83,9 +83,6 @@ namespace LiteOrm.Common
                         if (!VisitNode(p, visitor)) return false;
                     return true;
 
-                case AggregateFunctionExpr agg:
-                    return VisitChild(agg.Expression, visitor);
-
                 case UnaryExpr u:
                     return VisitChild(u.Operand, visitor);
 

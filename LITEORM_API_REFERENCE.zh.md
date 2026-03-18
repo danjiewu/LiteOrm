@@ -766,8 +766,7 @@ Expr (基类)
 ├── ValueTypeExpr (值类型表达式基类)
 │   ├── ValueExpr (常量或变量值)
 │   ├── PropertyExpr (属性/列引用)
-│   ├── FunctionExpr (函数调用)
-│   ├── AggregateFunctionExpr (聚合函数: COUNT/SUM/AVG/MAX/MIN)
+│   ├── FunctionExpr (函数调用，IsAggregate=true 时表示 COUNT/SUM/AVG/MAX/MIN 等聚合函数)
 │   ├── ValueBinaryExpr (数学运算: +, -, *, /)
 │   ├── ValueSet (值集合，如 CONCAT / LIST)
 │   └── SelectExpr (SELECT 语句，实现 ISqlSegment)
@@ -934,11 +933,11 @@ ForeignExpr existsWithAlias = Expr.Foreign<Department>("Dept", Expr.Prop("Id").I
 // 在 Lambda 表达式中使用 Expr.Exists<T>(参见第 6.5 节)
 
 // 聚合函数
-AggregateFunctionExpr countExpr = Expr.Prop("id").Count();
-AggregateFunctionExpr sumExpr = Expr.Prop("amount").Sum();
-AggregateFunctionExpr avgExpr = Expr.Prop("price").Avg();
-AggregateFunctionExpr maxExpr = Expr.Prop("score").Max();
-AggregateFunctionExpr minExpr = Expr.Prop("score").Min();
+FunctionExpr countExpr = Expr.Prop("id").Count();
+FunctionExpr sumExpr = Expr.Prop("amount").Sum();
+FunctionExpr avgExpr = Expr.Prop("price").Avg();
+FunctionExpr maxExpr = Expr.Prop("score").Max();
+FunctionExpr minExpr = Expr.Prop("score").Min();
 ```
 
 #### 5.2.3 查询片段表达式 (SqlSegment)

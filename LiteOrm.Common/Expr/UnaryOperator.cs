@@ -16,5 +16,9 @@ namespace LiteOrm.Common
         /// 按位取反 (~)
         /// </summary>
         BitwiseNot = 1,
+        /// <summary>
+        /// 去除重复，通常用于聚合函数中表示 DISTINCT 选项
+        /// </summary>
+        Distinct = 2
     }
 }

@@ -776,8 +776,7 @@ Expr (Base class)
 ├── ValueTypeExpr (Value type expression base class)
 │   ├── ValueExpr (Constant or variable value)
 │   ├── PropertyExpr (Property/column reference)
-│   ├── FunctionExpr (Function call)
-│   ├── AggregateFunctionExpr (Aggregate functions: COUNT/SUM/AVG/MAX/MIN)
+│   ├── FunctionExpr (Function call, IsAggregate=true for COUNT/SUM/AVG/MAX/MIN)
 │   ├── ValueBinaryExpr (Math operations: +, -, *, /)
 │   ├── ValueSet (Value set, e.g., CONCAT / LIST)
 │   └── SelectExpr (SELECT statement, implements ISqlSegment)
@@ -943,11 +942,11 @@ ForeignExpr existsWithAlias = Expr.Foreign<Department>("Dept", Expr.Prop("Id").I
 // Use Expr.Exists<T> in Lambda expressions (see section 6.5)
 
 // Aggregate functions
-AggregateFunctionExpr countExpr = Expr.Prop("id").Count();
-AggregateFunctionExpr sumExpr = Expr.Prop("amount").Sum();
-AggregateFunctionExpr avgExpr = Expr.Prop("price").Avg();
-AggregateFunctionExpr maxExpr = Expr.Prop("score").Max();
-AggregateFunctionExpr minExpr = Expr.Prop("score").Min();
+FunctionExpr countExpr = Expr.Prop("id").Count();
+FunctionExpr sumExpr = Expr.Prop("amount").Sum();
+FunctionExpr avgExpr = Expr.Prop("price").Avg();
+FunctionExpr maxExpr = Expr.Prop("score").Max();
+FunctionExpr minExpr = Expr.Prop("score").Min();
 ```
 
 #### 5.2.3 Query Segment Expression (SqlSegment)

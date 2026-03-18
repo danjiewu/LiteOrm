@@ -339,8 +339,8 @@ namespace LiteOrm.Tests
             Assert.Equal(p != Expr.Null, p.IsNotNull());
 
             // 聚合函数
-            Assert.Equal(new AggregateFunctionExpr("COUNT", p, true), p.Count(true));
-            Assert.Equal(new AggregateFunctionExpr("SUM", p), p.Sum());
+            Assert.Equal(new FunctionExpr("COUNT", p.Distinct()) { IsAggregate = true }, p.Count(true));
+            Assert.Equal(new FunctionExpr("SUM", p) { IsAggregate = true }, p.Sum());
 
             // 排序
             var asc = p.Asc();
@@ -386,8 +386,8 @@ namespace LiteOrm.Tests
             var section = table
                 .Where(Expr.Prop("Age") > 18)
                 .GroupBy(Expr.Prop("DeptId"))
-                .Having(AggregateFunctionExpr.Count > 1)
-                .Select(Expr.Prop("DeptId"), AggregateFunctionExpr.Count)
+                .Having(Expr.Count() > 1)
+                .Select(Expr.Prop("DeptId"), Expr.Count())
                 .OrderBy(Expr.Prop("DeptId").Asc())
                 .Section(10, 20);
 

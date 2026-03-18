@@ -26,7 +26,7 @@ namespace LiteOrm.Demo.Demos
                 var amountExpr = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
 
                 var partitionExprs = new List<ValueTypeExpr>();
-                var orderExprs = new List<ValueTypeExpr>();
+                var orderExprs = new List<OrderByItemExpr>();
 
                 // node.Arguments[1] = partitionBy（NewArrayExpression，元素为 Quote(Lambda)）
                 if (node.Arguments.Count > 1 && node.Arguments[1] is NewArrayExpression partArray)
@@ -52,36 +52,10 @@ namespace LiteOrm.Demo.Demos
                         }
                     }
                 }
-
-                return new FunctionExpr("SUM_OVER",
-                    amountExpr,
-                    new ValueSet(partitionExprs),
-                    new ValueSet(orderExprs));
-            });
-
-            // 步骤2：注册 SUM_OVER SQL 处理器（所有数据库通用）
-            // expr.Args[0] = 金额列表达式
-            // expr.Args[1] = 分区 ValueSet 表达式，ToSql 后格式为 "(ProductId)"，去除首尾括号即可
-            // expr.Args[2] = 排序 ValueSet 表达式，ToSql 后格式为 "(SaleTime)"，去除首尾括号即可
-            SqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
-            {
-                string amount = expr.Args[0].ToSql(context, sqlBuilder, outputParams);
-
-                string partitionRaw = expr.Args.Count > 1 ? expr.Args[1].ToSql(context, sqlBuilder, outputParams) : string.Empty;
-                string partitionSql = partitionRaw.Length > 2
-                    ? partitionRaw.Substring(1, partitionRaw.Length - 2)
-                    : string.Empty;
-
-                string orderRaw = expr.Args.Count > 2 ? expr.Args[2].ToSql(context, sqlBuilder, outputParams) : string.Empty;
-                string orderSql = orderRaw.Length > 2
-                    ? orderRaw.Substring(1, orderRaw.Length - 2)
-                    : string.Empty;
-
-                var clauses = new List<string>();
-                if (!string.IsNullOrEmpty(partitionSql)) clauses.Add($"PARTITION BY {partitionSql}");
-                if (!string.IsNullOrEmpty(orderSql)) clauses.Add($"ORDER BY {orderSql}");
-
-                outSql.Append($"SUM({amount}) OVER ({string.Join(" ", clauses)})");
+                return Expr.Over(
+                    Expr.Func("SUM", Expr.Prop(nameof(SalesRecord.Amount))),
+                    partitionExprs.ToArray(),
+                    orderExprs.ToArray());
             });
         }
 
@@ -113,7 +87,7 @@ namespace LiteOrm.Demo.Demos
 
                 PrintSection("📋 场景说明",
                     $"查询 Sales_{tableMonth} 分表，按产品分区计算每个产品的总销售额。\n" +
-                    "使用 SumOver<SalesRecord>(p => p.ProductId) params 重载。");
+                    "使用 SumOver 构造窗口函数。");
 
                 PrintSection("📝 代码实现",
                     "ProductTotal = s.Amount.SumOver<SalesRecord>(p => p.ProductId)");
@@ -156,6 +130,8 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示5.1 失败: {ex.Message}\n");
+                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                PrintSection("🔍 执行的 SQL", executedSql);
                 Console.ResetColor();
             }
         }
@@ -180,15 +156,15 @@ namespace LiteOrm.Demo.Demos
                     "纯 Expr 方式：直接构造 FunctionExpr + SelectExpr，无需扩展方法和 RegisterMethodHandler。");
 
                 PrintSection("📝 代码实现",
-                    "var runningTotalExpr = new FunctionExpr(\"SUM_OVER\",\n" +
-                    "    Expr.Prop(nameof(SalesRecord.Amount)),\n" +
-                    "    new ValueSet(Expr.Prop(nameof(SalesRecord.ProductId))),\n" +
-                    "    new ValueSet(Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()));");
+                    "var runningTotalExpr = Expr.Over(\n" +
+                    "Expr.Func(\"SUM\", Expr.Prop(nameof(SalesRecord.Amount))),\n" +
+                    "[Expr.Prop(nameof(SalesRecord.ProductId))],\n" +
+                    "[Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()]);");
 
-                var runningTotalExpr = new FunctionExpr("SUM_OVER",
-                    Expr.Prop(nameof(SalesRecord.Amount)),
-                    new ValueSet(Expr.Prop(nameof(SalesRecord.ProductId))),
-                    new ValueSet(Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()));
+                var runningTotalExpr = Expr.Over(
+                    Expr.Func("SUM", Expr.Prop(nameof(SalesRecord.Amount))),
+                    [Expr.Prop(nameof(SalesRecord.ProductId))],
+                    [Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()]);
 
                 var selectExpr = Expr.From<SalesRecord>(tableMonth)
                     .OrderBy(Expr.Prop(nameof(SalesRecord.ProductId)).Asc())
@@ -216,7 +192,7 @@ namespace LiteOrm.Demo.Demos
                 foreach (var g in grouped)
                 {
                     sb.AppendLine($"  【{g.Key}】");
-                    foreach (var r in g.Take(3))
+                    foreach (var r in g.Take(5))
                         sb.AppendLine($"    {r.SaleTime:MM-dd HH:mm}  金额: ¥{r.Amount,6}  累计: ¥{r.RunningTotal,8}");
                 }
 
@@ -228,6 +204,8 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示5.2 失败: {ex.Message}\n");
+                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                PrintSection("🔍 执行的 SQL", executedSql);
                 Console.ResetColor();
             }
         }

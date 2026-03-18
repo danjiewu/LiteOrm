@@ -87,6 +87,7 @@ namespace LiteOrm
                             outSql.Append(expr.Args[3].ToSql(context, sqlBuilder, outputParams));
                         }
                     }
+                    outSql.Append(')');
                 }
             });
 

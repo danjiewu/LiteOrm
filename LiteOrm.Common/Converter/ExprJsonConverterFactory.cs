@@ -163,7 +163,6 @@ namespace LiteOrm.Common
                             if (mark == "set") { result = ReadLogicSet(ref reader, options); break; }
                             if (mark == "vset") { result = ReadValueSet(ref reader, options); break; }
                             if (mark == "func") { result = ReadFunction(ref reader, options); break; }
-                            if (mark == "agg") { result = ReadAggregate(ref reader, options); break; }
                             if (mark == "prop") { result = ReadProperty(ref reader, options); break; }
                             if (mark == "not") { result = ReadNot(ref reader, options); break; }
                             if (mark == "unary") { result = ReadValueUnary(ref reader, options); break; }
@@ -492,7 +491,6 @@ namespace LiteOrm.Common
                     ValueBinaryExpr be => _valueOperatorToJson.TryGetValue(be.Operator, out var symbol) ? symbol : "bin",
                     LogicSet => "set",
                     ValueSet => "vset",
-                    AggregateFunctionExpr => "agg",
                     FunctionExpr => "func",
                     NotExpr => "not",
                     UnaryExpr => "unary",
@@ -544,15 +542,7 @@ namespace LiteOrm.Common
                         writer.WriteStartArray();
                         foreach (var param in fe.Args) WriteExpr(writer, param, options);
                         writer.WriteEndArray();
-                        break;
-                    case AggregateFunctionExpr afe:
-                        if (afe.FunctionName is not null) writer.WriteString("Name", afe.FunctionName);
-                        if (afe.Expression is not null)
-                        {
-                            writer.WritePropertyName("Expr");
-                            WriteExpr(writer, afe.Expression, options);
-                        }
-                        if (afe.IsDistinct) writer.WriteBoolean("Distinct", afe.IsDistinct);
+                        if (fe.IsAggregate) writer.WriteBoolean("IsAggregate", true);
                         break;
                     case NotExpr ne2:
                         if (ne2.Operand is not null)
@@ -969,6 +959,11 @@ namespace LiteOrm.Common
                         var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
                         if (parameters != null) fe.Args.AddRange(parameters.Cast<ValueTypeExpr>());
                     }
+                    else if (prop == "IsAggregate")
+                    {
+                        reader.Read();
+                        fe.IsAggregate = reader.GetBoolean();
+                    }
                     else
                     {
                         if (fe.FunctionName == null)
@@ -988,34 +983,54 @@ namespace LiteOrm.Common
                 return fe;
             }
 
-            private AggregateFunctionExpr ReadAggregate(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            private FunctionExpr ReadAggregate(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
-                var afe = new AggregateFunctionExpr();
+                var fe = new FunctionExpr { IsAggregate = true };
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                    if (reader.ValueTextEquals("Name"))
+                    string prop = reader.GetString() ?? string.Empty;
+                    if (prop == "Name")
                     {
+                        // backward compat: old format used "Name" for function name
                         reader.Read();
-                        afe.FunctionName = reader.GetString();
+                        fe.FunctionName = reader.GetString();
                     }
-                    else if (reader.ValueTextEquals("Expr"))
+                    else if (prop == "Expr")
                     {
+                        // backward compat: old format used "Expr" for the single argument
                         reader.Read();
-                        afe.Expression = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                        var expr = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                        if (expr is not null) fe.Args.Add(expr);
                     }
-                    else if (reader.ValueTextEquals("Distinct"))
+                    else if (prop == "IsAggregate")
                     {
                         reader.Read();
-                        afe.IsDistinct = reader.GetBoolean();
+                        fe.IsAggregate = reader.GetBoolean();
+                    }
+                    else if (prop == "Args")
+                    {
+                        reader.Read();
+                        var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
+                        if (parameters != null) fe.Args.AddRange(parameters.Cast<ValueTypeExpr>());
                     }
                     else
                     {
-                        reader.Read();
-                        reader.Skip();
+                        if (fe.FunctionName == null)
+                        {
+                            fe.FunctionName = prop;
+                            reader.Read();
+                            var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
+                            if (parameters != null) fe.Args.AddRange(parameters.Cast<ValueTypeExpr>());
+                        }
+                        else
+                        {
+                            reader.Read();
+                            reader.Skip();
+                        }
                     }
                 }
-                return afe;
+                return fe;
             }
 
             private PropertyExpr ReadProperty(ref Utf8JsonReader reader, JsonSerializerOptions options)

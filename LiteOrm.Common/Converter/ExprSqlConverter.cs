@@ -95,7 +95,6 @@ namespace LiteOrm.Common
             else if (expr is LogicSet ls) ToSql(ref sb, ls, context, sqlBuilder, outputParams);
             else if (expr is ValueSet vs) ToSql(ref sb, vs, context, sqlBuilder, outputParams);
             else if (expr is OrderByItemExpr obi) ToSql(ref sb, obi, context, sqlBuilder, outputParams);
-            else if (expr is AggregateFunctionExpr agg) ToSql(ref sb, agg, context, sqlBuilder, outputParams);
             else if (expr is FromExpr from) ToSql(ref sb, from, context, sqlBuilder, outputParams);
             else if (expr is SelectExpr select) ToSql(ref sb, select, context, sqlBuilder, outputParams);
             else if (expr is DeleteExpr delete) ToSql(ref sb, delete, context, sqlBuilder, outputParams);
@@ -362,6 +361,9 @@ namespace LiteOrm.Common
                     break;
                 case UnaryOperator.BitwiseNot:
                     sb.Append("~");
+                    break;
+                case UnaryOperator.Distinct:
+                    sb.Append("DISTINCT ");
                     break;
             }
             ToSqlInternal(ref sb, expr.Operand, context, sqlBuilder, outputParams);
@@ -747,19 +749,6 @@ namespace LiteOrm.Common
                 }
             }
         }
-
-        /// <summary>
-        /// 处理聚合函数 SQL。
-        /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, AggregateFunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            sb.Append(expr.FunctionName);
-            sb.Append("(");
-            if (expr.IsDistinct) sb.Append("DISTINCT ");
-            ToSqlInternal(ref sb, expr.Expression, context, sqlBuilder, outputParams);
-            sb.Append(")");
-        }
-
 
         /// <summary>
         /// 生成 DELETE 语句对应的 SQL。

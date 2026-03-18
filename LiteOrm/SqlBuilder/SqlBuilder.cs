@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using LiteOrm.Common;
+﻿using LiteOrm.Common;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -66,7 +66,6 @@ namespace LiteOrm
             ["Min"] = "LEAST"
         };
 
-
         /// <summary>
         /// 构建函数调用的 SQL 片段，直接写入 <paramref name="outSql"/>。
         /// </summary>
@@ -88,7 +87,7 @@ namespace LiteOrm
                 }
                 type = type.BaseType;
             }
-            if (_functionMappings.TryGetValue(functionName, out string mappedName))
+            if (!expr.IsAggregate && _functionMappings.TryGetValue(functionName, out string mappedName))
             {
                 functionName = mappedName;
             }
@@ -779,7 +778,7 @@ namespace LiteOrm
             {
                 if (subSelect.OrderBy.Length == 0)
                 {
-                    result.Append(" \nORDER BY 1"); 
+                    result.Append(" \nORDER BY 1");
                 }
                 result.Append($" \nOFFSET {subSelect.Skip} ROWS");
                 result.Append($" \nFETCH NEXT {subSelect.Take} ROWS ONLY");

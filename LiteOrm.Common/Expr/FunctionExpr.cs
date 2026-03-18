@@ -20,8 +20,6 @@ namespace LiteOrm.Common
             Args = new List<ValueTypeExpr>();
         }
 
-
-
         /// <summary>
         /// 使用函数名及对应的参数表达式初始化 FunctionExpr。
         /// </summary>
@@ -53,6 +51,11 @@ namespace LiteOrm.Common
         public List<ValueTypeExpr> Args { get; }
 
         /// <summary>
+        /// 是否为聚合函数（如 COUNT、SUM、AVG、MAX、MIN 等）。
+        /// </summary>
+        public bool IsAggregate { get; set; }
+
+        /// <summary>
         /// 返回针对该函数的字符串预览（如 "SUM(Column)"）。
         /// </summary>
         public override string ToString()
@@ -67,7 +70,7 @@ namespace LiteOrm.Common
         /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
         public override bool Equals(object obj)
         {
-            return obj is FunctionExpr f && f.FunctionName == FunctionName && f.Args.SequenceEqual(Args);
+            return obj is FunctionExpr f && f.FunctionName == FunctionName && f.IsAggregate == IsAggregate && f.Args.SequenceEqual(Args);
         }
 
         /// <summary>
@@ -80,6 +83,7 @@ namespace LiteOrm.Common
             {
                 int hashCode = GetType().GetHashCode();
                 hashCode = hashCode * HashSeed + FunctionName?.GetHashCode() ?? 0;
+                hashCode = hashCode * HashSeed + IsAggregate.GetHashCode();
                 foreach (var param in Args)
                 {
                     hashCode = hashCode * HashSeed + param?.GetHashCode() ?? 0;
