@@ -217,7 +217,7 @@ namespace LiteOrm.Demo.Demos
                     ");");
 
                 var results = await userSvc.SearchAsync(
-                    q => q.Where(u => u.Age >= minAge && u.Age <= maxAge)
+                    q => q.Where(u => u.Age >= minAge && (Expr.Prop(nameof(User.Age)) <= maxAge).To<bool>())
                           .Where(u => u.UserName.Contains(searchName))
                           .OrderBy(u => u.Age)
                           .ThenBy(u => u.UserName)

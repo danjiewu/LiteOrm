@@ -492,20 +492,7 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            // 分发给具体的 sqlBuilder 生成数据库对应的函数 SQL
-            var parameters = expr.Parameters;
-            int count = parameters.Count;
-            var args = new List<KeyValuePair<string, Expr>>(count);
-            for (int i = 0; i < count; i++)
-            {
-                Expr p = parameters[i];
-                var pSb = ValueStringBuilder.Create(64);
-                ToSqlInternal(ref pSb, p, context, sqlBuilder, outputParams);
-                string pSql = pSb.ToString();
-                pSb.Dispose();
-                args.Add(new KeyValuePair<string, Expr>(pSql, p));
-            }
-            sb.Append(sqlBuilder.BuildFunctionSql(expr.FunctionName, args));
+            sqlBuilder.BuildFunctionSql(ref sb, expr, context, outputParams);
         }
 
 
@@ -586,10 +573,16 @@ namespace LiteOrm.Common
             }
 
             sb.Append("(");
+            string joinStr = expr.JoinType switch
+            {
+                ValueJoinType.List => ",",
+                ValueJoinType.Blank => " ",
+                _ => ","
+            };
             bool first = true;
             for (int i = 0; i < count; i++)
             {
-                if (!first) sb.Append(",");
+                if (!first) sb.Append(joinStr);
                 ToSqlInternal(ref sb, expr[i], context, sqlBuilder, outputParams);
                 first = false;
             }

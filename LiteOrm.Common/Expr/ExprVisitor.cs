@@ -79,7 +79,7 @@ namespace LiteOrm.Common
                     return true;
 
                 case FunctionExpr func:
-                    foreach (ValueTypeExpr p in func.Parameters)
+                    foreach (ValueTypeExpr p in func.Args)
                         if (!VisitNode(p, visitor)) return false;
                     return true;
 

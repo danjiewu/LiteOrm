@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Security.AccessControl;
 
 namespace LiteOrm.Common
 {
@@ -303,6 +304,41 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 将任意表达式转换为值类型表达式，如果已经是值类型表达式则直接返回，否则包装成 ValueExpr。
+        /// </summary>
+        /// <param name="expr">要转换的表达式。</param>
+        /// <returns>值类型表达式。</returns>
+        public static ValueTypeExpr AsValue(this Expr expr) => expr is ValueTypeExpr valueTypeExpr ? valueTypeExpr : new ValueExpr(expr);
+
+        /// <summary>
+        /// 将任意表达式转换为逻辑表达式，如果已经是逻辑表达式则直接返回，如果是值类型表达式则转换为非零即真，否则抛出异常。
+        /// </summary>
+        /// <param name="expr">要转换的表达式。</param>
+        /// <returns>逻辑表达式。</returns>
+        /// <exception cref="NotSupportedException">当 expr 参数类型不是逻辑表达式或值类型表达式时抛出。</exception>
+        public static LogicExpr AsLogic(this Expr expr)
+        {
+            if (expr is null) return null;
+            if (expr is LogicExpr logicExpr) return logicExpr;
+            if (expr is ValueExpr ve && ve.Value is LogicExpr logicExpr1) return logicExpr1;
+            if (expr is ValueTypeExpr vte) return vte != 0;
+            throw new NotSupportedException($"Expression {expr} of type {expr?.GetType().Name} cannot be converted to LogicExpr.");
+        }
+
+        /// <summary>
+        /// 仅用于Lambda表达式解析场景，表示将表达式转换为指定类型的占位符方法，实际调用时会被表达式解析器识别并处理，不会执行该方法体。
+        /// </summary>
+        /// <typeparam name="T">目标类型。</typeparam>
+        /// <param name="expr">要转换的表达式。</param>
+        /// <returns>指定类型的占位符值。</returns>
+        /// <exception cref="NotSupportedException">当在非Lambda表达式解析场景中调用时抛出。</exception>
+        public static T To<T>(this Expr expr)
+        {
+            throw new NotSupportedException("Only supported in Lambda expression parsing scenarios.");
+        }
+
+
+        /// <summary>
         /// 创建 IS NULL 表达式。
         /// </summary>
         /// <param name="left">左侧值表达式。</param>
@@ -451,6 +487,17 @@ namespace LiteOrm.Common
         /// </example>
         public static HavingExpr Having(this IHavingAnchor source, LogicExpr having) => new HavingExpr(source as ISqlSegment, having);
 
+
+        /// <summary>
+        /// 创建 SELECT 表达式，指定要选择的项。
+        /// </summary>
+        /// <param name="source">SQL 语句构建起点。</param>
+        /// <param name="selects">选择项表达式数组。</param>
+        /// <returns>包含 SELECT 子句的 SQL 表达式。</returns>
+        public static SelectExpr Select(this ISelectAnchor source, params SelectItemExpr[] selects)
+        {
+            return new SelectExpr(source as ISqlSegment, selects);
+        }
         /// <summary>
         /// 为 SQL 语句添加 SELECT 子句。
         /// </summary>
@@ -472,6 +519,17 @@ namespace LiteOrm.Common
         /// <returns>包含 SELECT 子句的 SQL 表达式。</returns>
         public static SelectExpr Select(this ISelectAnchor source, params string[] selectProperties) => Select(source, Array.ConvertAll(selectProperties, prop => (ValueTypeExpr)Expr.Prop(prop)));
 
+        /// <summary>
+        /// 为 SQL 语句添加 SELECT 子句（选择项数组）。
+        /// </summary>
+        /// <param name="source">SQL 语句构建起点。</param>
+        /// <param name="selects">选择项表达式数组。</param>
+        /// <returns>包含 SELECT 子句的 SQL 表达式。</returns>
+        public static SelectExpr SelectMore(this SelectExpr source, params SelectItemExpr[] selects)
+        {
+            source.Selects.AddRange(selects);
+            return source;
+        }
 
         /// <summary>
         /// 更新表达式添加 SET 子句。

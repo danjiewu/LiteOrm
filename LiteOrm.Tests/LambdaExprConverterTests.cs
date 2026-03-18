@@ -95,9 +95,9 @@ namespace LiteOrm.Tests
             var result = LambdaExprConverter.ToValueExpr(expr);
             var func = Assert.IsType<FunctionExpr>(result);
             Assert.Equal("COALESCE", func.FunctionName, ignoreCase: true);
-            Assert.Equal(2, func.Parameters.Count);
-            Assert.IsType<PropertyExpr>(func.Parameters[0]);
-            Assert.IsType<ValueExpr>(func.Parameters[1]);
+            Assert.Equal(2, func.Args.Count);
+            Assert.IsType<PropertyExpr>(func.Args[0]);
+            Assert.IsType<ValueExpr>(func.Args[1]);
         }
 
         [Fact]
@@ -314,7 +314,7 @@ namespace LiteOrm.Tests
             // node.Object = u.Name.ToUpper()，转换结果为 FunctionExpr("ToUpper","PropertyExpr("Name"))
             var func = Assert.IsType<FunctionExpr>(result);
             Assert.Equal("ToUpper", func.FunctionName);
-            var prop = Assert.IsType<PropertyExpr>(func.Parameters[0]);
+            var prop = Assert.IsType<PropertyExpr>(func.Args[0]);
             Assert.Equal("Name", prop.PropertyName);
         }
 
@@ -339,7 +339,7 @@ namespace LiteOrm.Tests
             // node.Object == null → DefaultFunctionHandler → FunctionExpr
             var func = Assert.IsType<FunctionExpr>(result);
             Assert.Equal("Abs", func.FunctionName);
-            Assert.Single(func.Parameters);
+            Assert.Single(func.Args);
         }
 
         #endregion

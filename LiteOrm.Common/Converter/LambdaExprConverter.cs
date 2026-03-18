@@ -51,7 +51,7 @@ namespace LiteOrm.Common
         /// </summary>
         protected static Func<MemberExpression, LambdaExprConverter, Expr> DefaultMemberHandler => (node, converter) =>
         {
-            return node.Expression is null ? new FunctionExpr(node.Member.Name) : new FunctionExpr(node.Member.Name, converter.AsValue(converter.Convert(node.Expression)));
+            return node.Expression is null ? new FunctionExpr(node.Member.Name) : new FunctionExpr(node.Member.Name, converter.Convert(node.Expression).AsValue());
         };
 
         /// <summary>
@@ -161,12 +161,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 执行整体转换并将根节点转为 LogicExpr。
         /// </summary>
-        public LogicExpr ToLogicExpr() => AsLogic(ConvertInternal(_expression.Body));
+        public LogicExpr ToLogicExpr() => ConvertInternal(_expression.Body).AsLogic();
 
         /// <summary>
         /// 执行整体转换并将根节点转为 ValueTypeExpr。
         /// </summary>
-        public ValueTypeExpr ToValueExpr() => AsValue(ConvertInternal(_expression.Body));
+        public ValueTypeExpr ToValueExpr() => ConvertInternal(_expression.Body).AsValue();
 
         /// <summary>
         /// 静态便捷入口，将 Lambda 表达式转换为 ValueTypeExpr 模型。
@@ -235,7 +235,7 @@ namespace LiteOrm.Common
                 _parameterAliases[parameter.Name] = _currentAlias;
             }
             var result = ConvertInternal(lambda.Body);
-            result = lambda.ReturnType == typeof(bool) ? AsLogic(result) : AsValue(result);
+            result = lambda.ReturnType == typeof(bool) ? result.AsLogic() : result.AsValue();
             if (parameter != null)
             {
                 _parameterAliases.Remove(parameter.Name);
@@ -269,31 +269,6 @@ namespace LiteOrm.Common
             return EvaluateToExpr(node);
         }
 
-        /// <summary>
-        /// 将 Expr 表达式转换为 LogicExpr 逻辑表达式
-        /// </summary>
-        /// <param name="expr">要转换的表达式</param>
-        /// <returns>转换后的 LogicExpr 对象</returns>
-        /// <exception cref="NotSupportedException">当表达式无法转换为 LogicExpr 时抛出</exception>
-        protected LogicExpr AsLogic(Expr expr)
-        {
-            if (expr is null) return null;
-            if (expr is LogicExpr logicExpr) return logicExpr;
-            if (expr is ValueTypeExpr vte) return new LogicBinaryExpr(vte, LogicOperator.Equal, new ValueExpr(true));
-            throw new NotSupportedException($"Expression {expr} of type {expr?.GetType().Name} cannot be converted to LogicExpr.");
-        }
-
-        /// <summary>
-        /// 将 Expr 表达式转换为 ValueTypeExpr 值类型表达式
-        /// </summary>
-        /// <param name="expr">要转换的表达式</param>
-        /// <returns>转换后的 ValueTypeExpr 对象</returns>
-        /// <exception cref="NotSupportedException">当表达式无法转换为 ValueTypeExpr 时抛出</exception>
-        protected ValueTypeExpr AsValue(Expr expr)
-        {
-            if (expr is ValueTypeExpr valueExpr) return valueExpr;
-            else throw new NotSupportedException($"Expression {expr} of type {expr?.GetType().Name} cannot be converted to ValueTypeExpr.");
-        }
 
         /// <summary>
         /// 将二元表达式（如 a + b、a == b）转换为对应的 Expr 对象
@@ -369,8 +344,8 @@ namespace LiteOrm.Common
                 case ExpressionType.AndAlso:
                 case ExpressionType.And:
                     {
-                        var andLeft = AsLogic(left);
-                        var andRight = AsLogic(right);
+                        var andLeft = left.AsLogic();
+                        var andRight = right.AsLogic();
                         if (andLeft is null) return andRight;
                         if (andRight is null) return andLeft;
                         return andLeft.And(andRight);
@@ -378,8 +353,8 @@ namespace LiteOrm.Common
                 case ExpressionType.Or:
                 case ExpressionType.OrElse:
                     {
-                        var orLeft = AsLogic(left);
-                        var orRight = AsLogic(right);
+                        var orLeft = left.AsLogic();
+                        var orRight = right.AsLogic();
                         if (orLeft is null) return orRight;
                         if (orRight is null) return orLeft;
                         return orLeft.Or(orRight);
@@ -387,38 +362,38 @@ namespace LiteOrm.Common
                 case ExpressionType.Add:
                     // 字符串拼接映射
                     if (node.Left.Type == typeof(string) || node.Right.Type == typeof(string))
-                        return new ValueBinaryExpr(AsValue(left), ValueOperator.Concat, AsValue(right));
+                        return new ValueBinaryExpr(left.AsValue(), ValueOperator.Concat, right.AsValue());
                     else
-                        return new ValueBinaryExpr(AsValue(left), ValueOperator.Add, AsValue(right));
+                        return new ValueBinaryExpr(left.AsValue(), ValueOperator.Add, right.AsValue());
                 default:
                     if (_operatorMappings.TryGetValue(node.NodeType, out var op))
                     {
                         // 特殊处理 CompareTo 调用 (a.CompareTo(b) op 0) -> 扁平化为直接的 BinaryExpr (a op b)
                         if (node.Left is MethodCallExpression leftCallExpression && leftCallExpression.Method.Name == "CompareTo")
                         {
-                            var vRight = AsValue(right);
+                            var vRight = right.AsValue();
                             if (!(vRight is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo method can only be compared with 0: {node}");
-                            if (left is FunctionExpr fe && fe.Parameters.Count == 2)
+                            if (left is FunctionExpr fe && fe.Args.Count == 2)
                             {
-                                left = fe.Parameters[0];
-                                right = fe.Parameters[1];
+                                left = fe.Args[0];
+                                right = fe.Args[1];
                             }
                         }
                         else if (node.Right is MethodCallExpression rightCallExpression && rightCallExpression.Method.Name == "CompareTo")
                         {
-                            var vLeft = AsValue(left);
+                            var vLeft = left.AsValue();
                             if (!(vLeft is ValueExpr ve && Equals(ve.Value, 0))) throw new ArgumentException($"CompareTo method can only be compared with 0: {node}");
-                            if (right is FunctionExpr fe && fe.Parameters.Count == 2)
+                            if (right is FunctionExpr fe && fe.Args.Count == 2)
                             {
-                                left = fe.Parameters[1];// 交换参数位置
-                                right = fe.Parameters[0];
+                                left = fe.Args[1];// 交换参数位置
+                                right = fe.Args[0];
                             }
                         }
 
                         if (op is ValueOperator vop)
-                            return new ValueBinaryExpr(left as ValueTypeExpr, vop, AsValue(right));
+                            return new ValueBinaryExpr(left as ValueTypeExpr, vop, right.AsValue());
                         else
-                            return new LogicBinaryExpr(left as ValueTypeExpr, (LogicOperator)op, AsValue(right));
+                            return new LogicBinaryExpr(left as ValueTypeExpr, (LogicOperator)op, right.AsValue());
                     }
                     else
                         throw new NotSupportedException($"Unsupported binary operator: {node.NodeType}");
@@ -442,7 +417,7 @@ namespace LiteOrm.Common
                     // ExpressionType.Not 可能表示逻辑非 (!) 或按位非 (~)
                     // 逻辑非应用于 bool，按位非应用于整数
                     node.Operand.Type == typeof(bool)
-                        ? new NotExpr(AsLogic(operand))
+                        ? new NotExpr(operand.AsLogic())
                         : operand is ValueTypeExpr vte2
                             ? new UnaryExpr(UnaryOperator.BitwiseNot, vte2)
                             : throw new NotSupportedException($"Bitwise NOT operator requires a value expression, but got {operand?.GetType().Name}"),
@@ -815,7 +790,7 @@ namespace LiteOrm.Common
             _parameterAliases[parameter.Name] = _currentAlias;
 
             // 将 Lambda 条件转换为 LogicExpr
-            var newCondition = AsLogic(ConvertInternal(lambda.Body));
+            var newCondition = ConvertInternal(lambda.Body).AsLogic();
 
             _parameterAliases.Remove(parameter.Name);
 
@@ -838,7 +813,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 处理 OrderBy/OrderByDescending 并返回 OrderByExpr 或更新现有表达式。
         /// </summary>
-        private Expr HandleOrderBy(MethodCallExpression node, bool asc) => (ConvertInternal(node.Arguments[0]) as IOrderByAnchor).OrderBy((AsValue(ConvertInternal(node.Arguments[1])), asc));
+        private Expr HandleOrderBy(MethodCallExpression node, bool asc) => (ConvertInternal(node.Arguments[0]) as IOrderByAnchor).OrderBy((ConvertInternal(node.Arguments[1]).AsValue(), asc));
 
         /// <summary>
         /// 处理 ThenBy/ThenByDescending 并更新现有的 OrderByExpr。
@@ -848,7 +823,7 @@ namespace LiteOrm.Common
         /// <returns>更新后的 OrderByExpr</returns>
         private Expr HandleThenBy(MethodCallExpression node, bool asc)
         {
-            if (ConvertInternal(node.Arguments[0]) is OrderByExpr ob) { ob.OrderBys.Add((AsValue(ConvertInternal(node.Arguments[1])), asc)); return ob; }
+            if (ConvertInternal(node.Arguments[0]) is OrderByExpr ob) { ob.OrderBys.Add((ConvertInternal(node.Arguments[1]).AsValue(), asc)); return ob; }
             throw new InvalidOperationException("ThenBy must follow OrderBy.");
         }
 
@@ -887,7 +862,7 @@ namespace LiteOrm.Common
         {
             var s = ConvertInternal(node.Arguments[0]) as IGroupByAnchor;
             var k = ConvertInternal(node.Arguments[1]);
-            return s.GroupBy(k is ValueSet vs ? vs.Cast<ValueTypeExpr>().ToArray() : new[] { AsValue(k) });
+            return s.GroupBy(k is ValueSet vs ? vs.Cast<ValueTypeExpr>().ToArray() : new[] { k.AsValue() });
         }
 
         /// <summary>
@@ -899,7 +874,7 @@ namespace LiteOrm.Common
         private LogicExpr ConvertHavingLambda(LambdaExpression lambda, ValueTypeExpr[] groupKeys)
         {
             var expr = ConvertGroupedExpr(lambda.Body, lambda.Parameters[0], groupKeys);
-            return AsLogic(expr);
+            return expr.AsLogic();
         }
 
         /// <summary>
@@ -947,7 +922,7 @@ namespace LiteOrm.Common
                     var item = ConvertGroupedExpr(arg, lambdaParam, groupKeys);
                     if (item is not null)
                     {
-                        var selectItem = new SelectItemExpr(AsValue(item));
+                        var selectItem = new SelectItemExpr(item.AsValue());
                         if (newExpr.Members != null && i < newExpr.Members.Count)
                         {
                             selectItem.Alias = newExpr.Members[i].Name;
@@ -968,7 +943,7 @@ namespace LiteOrm.Common
                     {
                         var item = ConvertGroupedExpr(assignment.Expression, lambdaParam, groupKeys);
                         if (item is not null)
-                            items.Add(new SelectItemExpr(AsValue(item), assignment.Member.Name));
+                            items.Add(new SelectItemExpr(item.AsValue(), assignment.Member.Name));
                     }
                 }
                 return items.ToArray();
@@ -976,7 +951,7 @@ namespace LiteOrm.Common
 
             // 处理单个选择
             var singleItem = ConvertGroupedExpr(body, lambdaParam, groupKeys);
-            return singleItem is not null ? new[] { new SelectItemExpr(AsValue(singleItem)) } : Array.Empty<SelectItemExpr>();
+            return singleItem is not null ? new[] { new SelectItemExpr(singleItem.AsValue()) } : Array.Empty<SelectItemExpr>();
         }
 
         /// <summary>
@@ -1060,9 +1035,9 @@ namespace LiteOrm.Common
 
                 // Logic operation
                 if (binary.NodeType == ExpressionType.AndAlso || binary.NodeType == ExpressionType.And)
-                    return AsLogic(left).And(AsLogic(right));
+                    return left.AsLogic().And(right.AsLogic());
                 if (binary.NodeType == ExpressionType.OrElse || binary.NodeType == ExpressionType.Or)
-                    return AsLogic(left).Or(AsLogic(right));
+                    return left.AsLogic().Or(right.AsLogic());
 
                 // Other binary operators
                 var op = binary.NodeType switch
@@ -1076,7 +1051,7 @@ namespace LiteOrm.Common
                     _ => (object)null
                 };
 
-                if (op is LogicOperator lo) return new LogicBinaryExpr(AsValue(left), lo, AsValue(right));
+                if (op is LogicOperator lo) return new LogicBinaryExpr(left.AsValue(), lo, right.AsValue());
             }
 
             // 避免对 naked parameter 调用 ConvertInternal，这会触发 NotSupportedException
@@ -1111,7 +1086,7 @@ namespace LiteOrm.Common
                     _parameterExprs[parameter.Name] = foreignExpr;
 
                     // 转换 Lambda.Body，得到内部的 LogicExpr
-                    foreignExpr.InnerExpr = AsLogic(ConvertInternal(lambda.Body));
+                    foreignExpr.InnerExpr = ConvertInternal(lambda.Body).AsLogic();
 
                     // 转换完成后清理缓存，恢复之前的别名
                     _parameterExprs.Remove(parameter.Name);

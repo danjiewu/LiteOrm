@@ -68,20 +68,24 @@ namespace LiteOrm
 
 
         /// <summary>
-        /// 构建函数调用的 SQL 片段。
+        /// 构建函数调用的 SQL 片段，直接写入 <paramref name="outSql"/>。
         /// </summary>
-        /// <param name="functionName">函数名。</param>
-        /// <param name="args">参数列表。</param>
-        /// <returns>构建后的 SQL 片段。</returns>
-        public string BuildFunctionSql(string functionName, IList<KeyValuePair<string, Expr>> args)
+        /// <param name="outSql">接收输出 SQL 片段的字符串构建器。</param>
+        /// <param name="expr">函数表达式，包含函数名及参数列表。</param>
+        /// <param name="context">SQL 构建上下文。</param>
+        /// <param name="outputParams">输出参数集合。</param>
+        public virtual void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (string.IsNullOrWhiteSpace(functionName))
-                throw new ArgumentNullException(nameof(functionName));
+            if (expr is null) throw new ArgumentNullException(nameof(expr));
+            string functionName = expr.FunctionName;
             Type type = this.GetType();
             while (typeof(SqlBuilder).IsAssignableFrom(type))
             {
                 if (GetSqlHandlerMap(type).TryGetFunctionSqlHandler(functionName, out var handler))
-                    return handler(functionName, args);
+                {
+                    handler(ref outSql, expr, context, this, outputParams);
+                    return;
+                }
                 type = type.BaseType;
             }
             if (_functionMappings.TryGetValue(functionName, out string mappedName))
@@ -89,20 +93,15 @@ namespace LiteOrm
                 functionName = mappedName;
             }
 
-            Span<char> initialBuffer = stackalloc char[128];
-            var sb = new ValueStringBuilder(initialBuffer);
-            sb.Append(functionName);
-            sb.Append("(");
-            int count = args.Count;
+            outSql.Append(functionName);
+            outSql.Append("(");
+            int count = expr.Args.Count;
             for (int i = 0; i < count; i++)
             {
-                if (i > 0) sb.Append(", ");
-                sb.Append(args[i].Key);
+                if (i > 0) outSql.Append(", ");
+                expr.Args[i].ToSql(ref outSql, context, this, outputParams);
             }
-            sb.Append(")");
-            string result = sb.ToString();
-            sb.Dispose();
-            return result;
+            outSql.Append(")");
         }
 
 

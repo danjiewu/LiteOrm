@@ -86,7 +86,7 @@ namespace LiteOrm.Common
             else if (value != null)
             {
                 string paramName = $"{_params.Count}";
-                _builder.Append(paramName);
+                _builder.Append(_sqlBuilder.ToSqlParam(paramName));
                 _params.Add(new KeyValuePair<string, object>(paramName, value));
             }
         }

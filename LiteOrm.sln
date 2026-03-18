@@ -21,6 +21,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 		LITEORM_API_GUIDE_FOR_AI.md = LITEORM_API_GUIDE_FOR_AI.md
 		LITEORM_API_REFERENCE.en.md = LITEORM_API_REFERENCE.en.md
 		LITEORM_API_REFERENCE.zh.md = LITEORM_API_REFERENCE.zh.md
+		.trae\documents\liteorm_zhihu_intro.md = .trae\documents\liteorm_zhihu_intro.md
 		README.md = README.md
 		README.nuget.md = README.nuget.md
 		README.zh.md = README.zh.md
@@ -101,8 +102,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
 		VisualSVNWorkingCopyRoot = .
+		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
 	EndGlobalSection
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True

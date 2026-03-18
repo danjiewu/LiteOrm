@@ -287,6 +287,68 @@ namespace LiteOrm.Common
         /// <returns>函数调用表达式。</returns>
         public static FunctionExpr Func(string name, params ValueTypeExpr[] args) => new FunctionExpr(name, args);
 
+
+        /// <summary>
+        /// CASE 表达式构造器，接受一个条件-结果对的集合和一个可选的 ELSE 结果表达式，生成一个表示 CASE 语句的函数表达式。SqlBuilder 会将其转换为正确的 SQL CASE 语法。
+        /// </summary>
+        /// <param name="cases">条件-结果对的集合。</param>
+        /// <param name="elseExpr">可选的 ELSE 结果表达式。</param>
+        /// <returns>表示 CASE 语句的函数表达式。</returns>
+        public static FunctionExpr Case(IEnumerable<KeyValuePair<LogicExpr, ValueTypeExpr>> cases, ValueTypeExpr elseExpr = null)
+        {
+            FunctionExpr caseExpr = new FunctionExpr("CASE");
+            foreach (var kv in cases)
+            {
+                caseExpr.Args.Add(kv.Key.AsValue());
+                caseExpr.Args.Add(kv.Value);
+            }
+            if (elseExpr is not null)
+            {
+                caseExpr.Args.Add(elseExpr);
+            }
+            return caseExpr;
+        }
+
+        /// <summary>
+        /// 分区窗口函数
+        /// </summary>
+        /// <param name="func">窗口函数表达式，必须是Sum、Rank、Lead、Lag等窗口函数</param>
+        /// <param name="partitionBy">分区字段表达式数组</param>
+        /// <returns>窗口函数表达式</returns>
+
+        public static FunctionExpr Over(FunctionExpr func, ValueTypeExpr[] partitionBy)
+        {
+            return new FunctionExpr("Over", func, new ValueSet(partitionBy));
+        }
+
+        /// <summary>
+        /// 窗口函数，支持分区和排序
+        /// </summary>
+        /// <param name="func">窗口函数表达式，必须是Sum、Rank、Lead、Lag等窗口函数</param>
+        /// <param name="partitionBy">分区字段表达式数组</param>
+        /// <param name="orderBy">排序字段表达式数组</param>
+        /// <returns>窗口函数表达式</returns>
+        public static FunctionExpr Over(FunctionExpr func, ValueTypeExpr[] partitionBy, OrderByItemExpr[] orderBy)
+        {
+            return new FunctionExpr("Over", func, new ValueSet(partitionBy), new ValueSet(orderBy));
+        }
+
+        /// <summary>
+        /// 窗口函数,支持分区、排序和范围/行数限定
+        /// </summary>
+        /// <param name="func">窗口函数表达式，必须是Sum、Rank、Lead、Lag等窗口函数</param>
+        /// <param name="partitionBy">分区字段表达式数组</param>
+        /// <param name="orderBy">排序字段表达式数组</param>
+        /// <param name="range">是否使用范围限定，true 表示使用 RANGE，false 表示使用 ROWS</param>
+        /// <param name="begin">范围或行数的起始值，0 表示当前行，负数表示之前的行数/范围，正数表示之后的行数/范围，null 表示所有行</param>
+        /// <param name="end">范围或行数的结束值，0 表示当前行，负数表示之前的行数/范围，正数表示之后的行数/范围，null 表示所有行</param>
+        /// <returns>窗口函数表达式</returns>
+        public static FunctionExpr Over(FunctionExpr func, ValueTypeExpr[] partitionBy, OrderByItemExpr[] orderBy, bool range, int? begin, int? end)
+        {
+            FunctionExpr betweenExpr = new FunctionExpr(range ? "RangeBetween" : "RowsBetween", begin, end);
+            return new FunctionExpr("Over", func, new ValueSet(partitionBy), new ValueSet(orderBy), betweenExpr);
+        }
+
         /// <summary>
         /// 创建聚合函数表达式（如 COUNT、SUM、AVG 等）。
         /// </summary>
@@ -326,17 +388,30 @@ namespace LiteOrm.Common
         public static GenericSqlExpr StaticSql(string key) => GenericSqlExpr.Get(key);
 
         /// <summary>
+        /// 创建 From 表达式，默认将其作为主表并使用默认别名，支持动态表名参数。
+        /// </summary>
+        /// <typeparam name="T">实体类型</typeparam>
+        /// <param name="tableArgs">动态表名参数</param>
+        /// <returns>From 表达式实例</returns>
+        public static FromExpr From<T>(params string[] tableArgs) => From<T>(true, tableArgs);
+
+        /// <summary>
         /// 创建 From 表达式。
         /// </summary>
-        public static FromExpr From<T>(params string[] tableArgs) => new FromExpr(typeof(T)) { TableArgs = tableArgs, Alias = Constants.DefaultTableAlias };
+        /// <typeparam name="T">实体类型</typeparam>
+        /// <param name="isMain">是否为主表，主表会使用默认别名</param>
+        /// <param name="tableArgs">动态表名参数</param>
+        /// <returns>From 表达式实例</returns>
+        public static FromExpr From<T>(bool isMain = true, params string[] tableArgs) => new FromExpr(typeof(T)) { TableArgs = tableArgs, Alias = isMain ? Constants.DefaultTableAlias : null };
 
         /// <summary>
         /// 使用指定的类型创建 From 表达式。
         /// </summary>
         /// <param name="objectType">实体类型</param>
+        /// <param name="isMain">是否为主表，主表会使用默认别名</param>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static FromExpr From(Type objectType, params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs, Alias = Constants.DefaultTableAlias };
+        public static FromExpr From(Type objectType, bool isMain = true, params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs, Alias = isMain ? Constants.DefaultTableAlias : null };
 
         /// <summary>
         /// 使用指定的 Lambda 表达式创建 WHERE 条件表达式

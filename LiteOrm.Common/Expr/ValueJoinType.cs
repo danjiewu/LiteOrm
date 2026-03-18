@@ -15,6 +15,10 @@ namespace LiteOrm.Common
         /// <summary>
         /// 字符串连接方式（如 CONCAT(s1, s2)）
         /// </summary>
-        Concat = 3
+        Concat = 3,
+        /// <summary>
+        /// 空白连接方式（如 "s1 s2"）
+        /// </summary>
+        Blank = 4
     }
 }

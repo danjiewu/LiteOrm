@@ -17,7 +17,7 @@ namespace LiteOrm.Common
         /// </summary>
         public FunctionExpr()
         {
-            Parameters = new List<ValueTypeExpr>();
+            Args = new List<ValueTypeExpr>();
         }
 
 
@@ -30,7 +30,7 @@ namespace LiteOrm.Common
         public FunctionExpr(string functionName, params ValueTypeExpr[] parameters)
         {
             FunctionName = functionName;
-            Parameters = parameters.ToList();
+            Args = parameters.ToList();
         }
 
         private string _functionName;
@@ -50,14 +50,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取当前函数的参数列表。
         /// </summary>
-        public List<ValueTypeExpr> Parameters { get; }
+        public List<ValueTypeExpr> Args { get; }
 
         /// <summary>
         /// 返回针对该函数的字符串预览（如 "SUM(Column)"）。
         /// </summary>
         public override string ToString()
         {
-            return $"{FunctionName}({String.Join(",", Parameters)})";
+            return $"{FunctionName}({String.Join(",", Args)})";
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace LiteOrm.Common
         /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
         public override bool Equals(object obj)
         {
-            return obj is FunctionExpr f && f.FunctionName == FunctionName && f.Parameters.SequenceEqual(Parameters);
+            return obj is FunctionExpr f && f.FunctionName == FunctionName && f.Args.SequenceEqual(Args);
         }
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace LiteOrm.Common
             {
                 int hashCode = GetType().GetHashCode();
                 hashCode = hashCode * HashSeed + FunctionName?.GetHashCode() ?? 0;
-                foreach (var param in Parameters)
+                foreach (var param in Args)
                 {
                     hashCode = hashCode * HashSeed + param?.GetHashCode() ?? 0;
                 }

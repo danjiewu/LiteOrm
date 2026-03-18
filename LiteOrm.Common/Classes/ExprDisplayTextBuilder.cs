@@ -72,7 +72,7 @@ namespace LiteOrm.Common
         /// <returns>显示文本</returns>
         public string ToDisplayText(FunctionExpr functionExpr)
         {
-            return $"{functionExpr.FunctionName}({String.Join(", ", functionExpr.Parameters.Select(arg => ToDisplayText(arg)))})";
+            return $"{functionExpr.FunctionName}({String.Join(", ", functionExpr.Args.Select(arg => ToDisplayText(arg)))})";
         }
 
         /// <summary>
@@ -89,7 +89,7 @@ namespace LiteOrm.Common
         /// </summary>
         public string ToDisplayText(ValueSet set)
         {
-            string joiner = set.JoinType switch { ValueJoinType.List => ",", ValueJoinType.Concat => "", _ => "," };
+            string joiner = set.JoinType switch { ValueJoinType.List => ",", ValueJoinType.Concat => "", ValueJoinType.Blank => " ", _ => "," };
             return $"({String.Join(joiner, set.Select(s => ToDisplayText(s)))})";
         }
 

@@ -56,13 +56,14 @@ namespace LiteOrm.Common
         string ToSqlLikeValue(string value);
 
         /// <summary>
-        /// 构建一个函数调用的 SQL 片段，例如 <c>FUNCTION(arg1, arg2)</c>。
+        /// 构建一个函数调用的 SQL 片段，直接写入 <paramref name="outSql"/>。
         /// 实现应负责函数名和参数在目标数据库中的兼容性处理。
         /// </summary>
-        /// <param name="functionName">函数名。</param>
-        /// <param name="args">函数参数列表。</param>
-        /// <returns>返回构建好的函数调用 SQL 片段。</returns>
-        string BuildFunctionSql(string functionName, IList<KeyValuePair<string, Expr>> args);
+        /// <param name="outSql">接收输出 SQL 片段的字符串构建器。</param>
+        /// <param name="expr">函数表达式，包含函数名及参数列表。</param>
+        /// <param name="context">SQL 构建上下文。</param>
+        /// <param name="outputParams">输出参数集合。</param>
+        void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ICollection<KeyValuePair<string, object>> outputParams);
 
         /// <summary>
         /// 构建多个字符串连接的 SQL 表达式，兼容目标数据库的连接语法。

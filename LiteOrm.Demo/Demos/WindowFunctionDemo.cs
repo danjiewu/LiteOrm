@@ -60,26 +60,28 @@ namespace LiteOrm.Demo.Demos
             });
 
             // 步骤2：注册 SUM_OVER SQL 处理器（所有数据库通用）
-            // args[0].Key = 金额列 SQL（如 "Amount"）
-            // args[1].Key = 分区 ValueSet SQL，格式为 "(ProductId)"，去除首尾括号即可
-            // args[2].Key = 排序 ValueSet SQL，格式为 "(SaleTime)"，去除首尾括号即可
-            SqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (_, args) =>
+            // expr.Args[0] = 金额列表达式
+            // expr.Args[1] = 分区 ValueSet 表达式，ToSql 后格式为 "(ProductId)"，去除首尾括号即可
+            // expr.Args[2] = 排序 ValueSet 表达式，ToSql 后格式为 "(SaleTime)"，去除首尾括号即可
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
             {
-                string amount = args[0].Key;
+                string amount = expr.Args[0].ToSql(context, sqlBuilder, outputParams);
 
-                string partitionSql = args.Count > 1 && args[1].Key.Length > 2
-                    ? args[1].Key.Substring(1, args[1].Key.Length - 2)
+                string partitionRaw = expr.Args.Count > 1 ? expr.Args[1].ToSql(context, sqlBuilder, outputParams) : string.Empty;
+                string partitionSql = partitionRaw.Length > 2
+                    ? partitionRaw.Substring(1, partitionRaw.Length - 2)
                     : string.Empty;
 
-                string orderSql = args.Count > 2 && args[2].Key.Length > 2
-                    ? args[2].Key.Substring(1, args[2].Key.Length - 2)
+                string orderRaw = expr.Args.Count > 2 ? expr.Args[2].ToSql(context, sqlBuilder, outputParams) : string.Empty;
+                string orderSql = orderRaw.Length > 2
+                    ? orderRaw.Substring(1, orderRaw.Length - 2)
                     : string.Empty;
 
                 var clauses = new List<string>();
                 if (!string.IsNullOrEmpty(partitionSql)) clauses.Add($"PARTITION BY {partitionSql}");
                 if (!string.IsNullOrEmpty(orderSql)) clauses.Add($"ORDER BY {orderSql}");
 
-                return $"SUM({amount}) OVER ({string.Join(" ", clauses)})";
+                outSql.Append($"SUM({amount}) OVER ({string.Join(" ", clauses)})");
             });
         }
 
@@ -188,15 +190,14 @@ namespace LiteOrm.Demo.Demos
                     new ValueSet(Expr.Prop(nameof(SalesRecord.ProductId))),
                     new ValueSet(Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()));
 
-                var selectExpr = new FromExpr(typeof(SalesRecord))
+                var selectExpr = Expr.From<SalesRecord>(tableMonth)
                     .OrderBy(Expr.Prop(nameof(SalesRecord.ProductId)).Asc())
-                    .Select(
-                        new SelectItemExpr(Expr.Prop(nameof(SalesRecord.Id))),
-                        new SelectItemExpr(Expr.Prop(nameof(SalesRecord.ProductId))),
-                        new SelectItemExpr(Expr.Prop(nameof(SalesRecord.ProductName))),
-                        new SelectItemExpr(Expr.Prop(nameof(SalesRecord.Amount))),
-                        new SelectItemExpr(Expr.Prop(nameof(SalesRecord.SaleTime))),
-                        new SelectItemExpr(runningTotalExpr, nameof(SalesWindowView.RunningTotal)));
+                    .Select(nameof(SalesRecord.Id),
+                        nameof(SalesRecord.ProductId),
+                        nameof(SalesRecord.ProductName),
+                        nameof(SalesRecord.Amount),
+                        nameof(SalesRecord.SaleTime))
+                    .SelectMore(new SelectItemExpr(runningTotalExpr, nameof(SalesWindowView.RunningTotal)));
 
                 var results = await factory.SalesDAO
                     .WithArgs([tableMonth])

@@ -542,7 +542,7 @@ namespace LiteOrm.Common
                     case FunctionExpr fe:
                         writer.WritePropertyName(fe.FunctionName);
                         writer.WriteStartArray();
-                        foreach (var param in fe.Parameters) WriteExpr(writer, param, options);
+                        foreach (var param in fe.Args) WriteExpr(writer, param, options);
                         writer.WriteEndArray();
                         break;
                     case AggregateFunctionExpr afe:
@@ -963,11 +963,11 @@ namespace LiteOrm.Common
                         fe.FunctionName = reader.GetString();
                         continue;
                     }
-                    else if (prop == "Parameters")
+                    else if (prop == "Args")
                     {
                         reader.Read();
                         var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
-                        if (parameters != null) fe.Parameters.AddRange(parameters.Cast<ValueTypeExpr>());
+                        if (parameters != null) fe.Args.AddRange(parameters.Cast<ValueTypeExpr>());
                     }
                     else
                     {
@@ -976,7 +976,7 @@ namespace LiteOrm.Common
                             fe.FunctionName = prop;
                             reader.Read();
                             var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
-                            if (parameters != null) fe.Parameters.AddRange(parameters.Cast<ValueTypeExpr>());
+                            if (parameters != null) fe.Args.AddRange(parameters.Cast<ValueTypeExpr>());
                         }
                         else
                         {

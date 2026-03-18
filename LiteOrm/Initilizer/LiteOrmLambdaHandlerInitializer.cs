@@ -44,6 +44,10 @@ namespace LiteOrm
             LambdaExprConverter.RegisterMethodHandler(typeof(Math));
             LambdaExprConverter.RegisterMethodHandler(typeof(string));
 
+            LambdaExprConverter.RegisterMethodHandler(typeof(ExprExtensions), nameof(ExprExtensions.To), (node, converter) =>
+                converter.Convert(node.Arguments[0])
+            );
+
             LambdaExprConverter.RegisterMethodHandler(typeof(string), "StartsWith", (node, converter) =>
             {
                 var left = converter.Convert(node.Object) as ValueTypeExpr;
