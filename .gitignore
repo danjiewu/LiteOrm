@@ -48,3 +48,5 @@ msbuild.wrn
 /LiteOrm.Benchmark/MemoryAllocation_5000.png
 /LiteOrm.Benchmark/UpdatePerformance.png
 /LiteOrm.Benchmark/UpsertPerformance.png
+/count_code.ps1
+/count_code.ps1
