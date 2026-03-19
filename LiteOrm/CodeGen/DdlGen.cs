@@ -24,7 +24,7 @@ namespace LiteOrm.CodeGen
     ///
     /// 使用示例：
     /// <code>
-    /// var generator = _serviceProvider.GetService<DdlGenerator>();
+    /// var generator = _serviceProvider.GetService&lt;DdlGen&gt;();
     ///
     /// // 生成单个实体的 ddl
     /// foreach (var sql in generator.GenerateDdl(typeof(User)))

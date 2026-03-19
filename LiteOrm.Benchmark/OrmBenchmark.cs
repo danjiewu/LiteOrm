@@ -177,6 +177,17 @@ namespace LiteOrm.Benchmark
             {
                 var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
                 var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Sugar", Age = 25, Email = "sugar@test.com", CreateTime = DateTime.Now }).ToList();
+                await sugar.Insertable(users).ExecuteCommandAsync();
+            }
+        }
+
+        [Benchmark]
+        public async Task SqlSugar_Fastest_Insert_Async()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
+                var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Sugar", Age = 25, Email = "sugar@test.com", CreateTime = DateTime.Now }).ToList();
                 await sugar.Fastest<BenchmarkUser>().BulkCopyAsync(users);
             }
         }
@@ -240,7 +251,42 @@ namespace LiteOrm.Benchmark
         }
 
         [Benchmark]
+        public async Task EFCore_NoTracking_Update_Async()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
+                var users = await db.BenchmarkUsers.AsNoTracking().Take(BatchCount).ToListAsync();
+                foreach (var u in users)
+                {
+                    u.Name = "EFCore_NT" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                    u.Age = _random.Next(20, 60);
+                    u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
+                }
+                db.BenchmarkUsers.UpdateRange(users);
+                await db.SaveChangesAsync();
+            }
+        }
+
+        [Benchmark]
         public async Task SqlSugar_Update_Async()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
+                var users = await sugar.Queryable<BenchmarkUser>().Take(BatchCount).ToListAsync();
+                foreach (var u in users)
+                {
+                    u.Name = "SqlSugar" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                    u.Age = _random.Next(20, 60);
+                    u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
+                }
+                await sugar.Updateable(users).ExecuteCommandAsync();
+            }
+        }
+
+        [Benchmark]
+        public async Task SqlSugar_Fastest_Update_Async()
         {
             using (var scope = _serviceProvider.CreateScope())
             {
@@ -354,6 +400,20 @@ namespace LiteOrm.Benchmark
                 foreach (var u in existingUsers) { u.Name = "Sugar_Upsert_U"; u.Age = _random.Next(20, 60); }
                 var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Sugar_Upsert_I", Age = _random.Next(20, 60), Email = $"sugar_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();
+                await sugar.Storageable(all).ExecuteCommandAsync();
+            }
+        }
+
+        [Benchmark]
+        public async Task SqlSugar_Fastest_Upsert_Async()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
+                var existingUsers = await sugar.Queryable<BenchmarkUser>().Take(BatchCount / 2).ToListAsync();
+                foreach (var u in existingUsers) { u.Name = "Sugar_Upsert_U"; u.Age = _random.Next(20, 60); }
+                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Sugar_Upsert_I", Age = _random.Next(20, 60), Email = $"sugar_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
+                var all = existingUsers.Concat(newUsers).ToList();
                 await sugar.Fastest<BenchmarkUser>().BulkMergeAsync(all);
             }
         }
@@ -419,6 +479,22 @@ namespace LiteOrm.Benchmark
             {
                 var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
                 var list = await db.BenchmarkLogs
+                    .Include(l => l.User)
+                    .Where(l => l.User.Age < 30)
+                    .OrderByDescending(l => l.Id)
+                    .Skip(0).Take(BatchCount)
+                    .ToListAsync();
+            }
+        }
+
+        [Benchmark]
+        public async Task EFCore_NoTracking_JoinQuery_Async()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
+                var list = await db.BenchmarkLogs
+                    .AsNoTracking()
                     .Include(l => l.User)
                     .Where(l => l.User.Age < 30)
                     .OrderByDescending(l => l.Id)

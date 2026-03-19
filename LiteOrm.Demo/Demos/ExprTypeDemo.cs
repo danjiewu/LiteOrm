@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using static LiteOrm.Common.Expr;
 
 namespace LiteOrm.Demo.Demos
 {
@@ -23,17 +24,17 @@ namespace LiteOrm.Demo.Demos
                 Print(p1, "属性 (构造函数方式)", "new PropertyExpr(\"Age\")");
 
                 // [方式2] 静态工厂 (最推荐)
-                var v2 = Expr.Const("张三");
-                Print(v2, "常量值 (工厂方式)", "Expr.Const(\"张三\")");
+                var v2 = Const("张三");
+                Print(v2, "常量值 (工厂方式)", "Const(\"张三\")");
             });
 
             ShowSection("1.2 逻辑比较与组合", () => {
-                var age = Expr.Prop("Age");
-                var dept = Expr.Prop("DeptId");
+                var age = Prop("Age");
+                var dept = Prop("DeptId");
 
                 // [方式1] 运算符重载
                 var cond1 = age > 18;
-                Print(cond1, "二元比较 (运算符方式)", "Expr.Prop(\"Age\") > 18");
+                Print(cond1, "二元比较 (运算符方式)", "Prop(\"Age\") > 18");
 
                 var composite1 = cond1 & (dept == 101);
                 Print(composite1, "逻辑组合 (运算符方式)", "(age > 18) & (dept == 101)");
@@ -45,32 +46,32 @@ namespace LiteOrm.Demo.Demos
 
             ShowSection("1.3 结构化查询模型 (Select/Update/Delete)", () => {
                 // Select 链式构建
-                var query = Expr.From<User>()
-                    .Where(Expr.Prop("Age") > 20)
-                    .Select(Expr.Prop("Id"), Expr.Prop("UserName").As("Name"))
-                    .OrderBy(Expr.Prop("Id").Desc());
+                var query = From<User>()
+                    .Where(Prop("Age") > 20)
+                    .Select(Prop("Id"), Prop("UserName").As("Name"))
+                    .OrderBy(Prop("Id").Desc());
                 
-                string code = "Expr.From<User>()\n" +
-                              "    .Where(Expr.Prop(\"Age\") > 20)\n" +
-                              "    .Select(Expr.Prop(\"Id\"), Expr.Prop(\"UserName\").As(\"Name\"))\n" +
-                              "    .OrderBy(Expr.Prop(\"Id\").Desc())";
+                string code = "From<User>()\n" +
+                              "    .Where(Prop(\"Age\") > 20)\n" +
+                              "    .Select(Prop(\"Id\"), Prop(\"UserName\").As(\"Name\"))\n" +
+                              "    .OrderBy(Prop(\"Id\").Desc())";
                 Print(query, "SELECT 完整模型", code);
 
                 // Update 模型
-                var update = new UpdateExpr(Expr.From<User>(), Expr.Prop("Id") == 1);
-                update.Set(("UserName", Expr.Value("NewName")));
-                Print(update, "UPDATE 模型", "new UpdateExpr(Expr.From<User>(), Expr.Prop(\"Id\") == 1).Set((\"UserName\", Expr.Value(\"NewName\")))");
+                var update = new UpdateExpr(From<User>(), Prop("Id") == 1);
+                update.Set(("UserName", Value("NewName")));
+                Print(update, "UPDATE 模型", "new UpdateExpr(From<User>(), Prop(\"Id\") == 1).Set((\"UserName\", Value(\"NewName\")))");
             });
 
             ShowSection("1.4 Lambda 自动转换", () => {
-                var composite = Expr.Lambda<User>(u => u.Age > 25 && u.UserName.Contains("A"));
-                Print(composite, "Lambda 转 Expr", "Expr.Exp<User>(u => u.Age > 25 && u.UserName.Contains(\"A\"))");
+                var composite = Lambda<User>(u => u.Age > 25 && u.UserName.Contains("A"));
+                Print(composite, "Lambda 转 Expr", "Exp<User>(u => u.Age > 25 && u.UserName.Contains(\"A\"))");
             });
 
             ShowSection("1.5 删除与其它片段 (Delete)", () => {
                 // 删除模型
-                var delete = new DeleteExpr(Expr.From<User>(), Expr.Prop("Age") < 18);
-                Print(delete, "DELETE 模型", "new DeleteExpr(Expr.From<User>(), Expr.Prop(\"Age\") < 18)");
+                var delete = new DeleteExpr(From<User>(), Prop("Age") < 18);
+                Print(delete, "DELETE 模型", "new DeleteExpr(From<User>(), Prop(\"Age\") < 18)");
             });
         }
 

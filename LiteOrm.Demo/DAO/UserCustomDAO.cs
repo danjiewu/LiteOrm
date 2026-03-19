@@ -1,5 +1,6 @@
 ﻿using LiteOrm.Common;
 using LiteOrm.Demo.Models;
+using static LiteOrm.Common.Expr;
 
 namespace LiteOrm.Demo
 {
@@ -15,23 +16,23 @@ namespace LiteOrm.Demo
         public async Task<List<UserView>> GetActiveUsersByDeptAsync(string deptName, CancellationToken cancellationToken = default)
         {
             // 使用 ExprString 方式构建查询
-            var result = Search($"WHERE {Expr.Prop("DeptName") == deptName} AND {Expr.Prop("Age") > 18}");
+            var result = Search($"WHERE {Prop("DeptName") == deptName} AND {Prop("Age") > 18}");
             return await result.ToListAsync(cancellationToken);
         }
 
         public async Task<List<UserView>> SearchByAgeRangeAsync(int minAge, int maxAge, CancellationToken cancellationToken = default)
         {
             // Expr 对象嵌入 ExprString：自动展开为 SQL 片段（非参数化）
-            var minExpr = Expr.Prop("Age") >= minAge;
-            var maxExpr = Expr.Prop("Age") <= maxAge;
+            var minExpr = Prop("Age") >= minAge;
+            var maxExpr = Prop("Age") <= maxAge;
             return await Search($"WHERE {minExpr} AND {maxExpr} ORDER BY Age").ToListAsync(cancellationToken);
         }
 
         public async Task<List<UserView>> SearchByNamePatternAsync(string namePattern, int minAge, CancellationToken cancellationToken = default)
         {
             // 普通值嵌入 ExprString：int/string 自动转为命名参数（@p0, @p1...），防止 SQL 注入
-            var nameExpr = Expr.Prop("UserName").Contains(namePattern);
-            return await Search($"WHERE {nameExpr} AND {Expr.Prop("Age")} >= {minAge} ORDER BY Id DESC").ToListAsync(cancellationToken);
+            var nameExpr = Prop("UserName").Contains(namePattern);
+            return await Search($"WHERE {nameExpr} AND {Prop("Age")} >= {minAge} ORDER BY Id DESC").ToListAsync(cancellationToken);
         }
     }
 }

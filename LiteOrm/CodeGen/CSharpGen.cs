@@ -87,7 +87,8 @@ namespace LiteOrm.CodeGen
                         AllowNull = GetNullableFlag(row, true, "IS_NULLABLE", "is_nullable", "NULLABLE", "nullable"),
                         IsPrimaryKey = GetPrimaryKeyFlag(row),
                         IsIdentity = GetIdentityFlag(row),
-                        IsTimestamp = dbType == DbType.DateTime || dbType == DbType.DateTime2 || dbType == DbType.DateTimeOffset
+                        IsTimestamp = dbType == DbType.DateTime || dbType == DbType.DateTime2 || dbType == DbType.DateTimeOffset,
+                        DefaultValue = GetString(row, "COLUMN_DEFAULT", "column_default", "DEFAULT")
                     });
                 }
 
@@ -162,6 +163,8 @@ namespace LiteOrm.CodeGen
         /// </summary>
         /// <param name="table">数据库表元信息。</param>
         /// <param name="namespaceName">生成代码的命名空间，若为 null 或空则不生成 namespace 声明。</param>
+        /// <param name="classNameSelector">类名选择器，将表名转换为类名，为 null 时使用默认转换。</param>
+        /// <param name="propertyNameSelector">属性名选择器，将列信息转换为属性名，为 null 时使用默认转换。</param>
         /// <returns>C# 源代码字符串。</returns>
         public static string GenerateEntityCode(
             DatabaseTableInfo table,
@@ -222,6 +225,7 @@ namespace LiteOrm.CodeGen
                 if (col.IsIndex) attrProps.Add("IsIndex = true");
                 if (col.IsUnique) attrProps.Add("IsUnique = true");
                 if (!string.IsNullOrWhiteSpace(col.IdentityExpression)) attrProps.Add($"IdentityExpression = \"{col.IdentityExpression}\"");
+                if (!string.IsNullOrWhiteSpace(col.DefaultValue)) attrProps.Add($"DefaultValue = \"{col.DefaultValue}\"");
 
                 if (attrParts.Count > 0 || attrProps.Count > 0)
                 {
@@ -520,6 +524,12 @@ namespace LiteOrm.CodeGen
             return name;
         }
 
+        /// <summary>
+        /// 将原始字符串转换为 PascalCase 标识符。
+        /// </summary>
+        /// <param name="raw">原始字符串。</param>
+        /// <param name="fallback">原始字符串为空时的回退值。</param>
+        /// <returns>PascalCase 标识符。</returns>
         public static string ToPascalCaseIdentifier(string raw, string fallback)
         {
             if (string.IsNullOrWhiteSpace(raw)) return fallback;
@@ -548,9 +558,13 @@ namespace LiteOrm.CodeGen
     /// </summary>
     public class DatabaseTableInfo
     {
+        /// <summary>表名。</summary>
         public string TableName { get; set; }
+        /// <summary>类名。</summary>
         public string ClassName { get; set; }
+        /// <summary>数据源名称。</summary>
         public string DataSource { get; set; }
+        /// <summary>列信息集合。</summary>
         public IList<DatabaseColumnInfo> Columns { get; set; } = new List<DatabaseColumnInfo>();
     }
 
@@ -559,17 +573,31 @@ namespace LiteOrm.CodeGen
     /// </summary>
     public class DatabaseColumnInfo
     {
+        /// <summary>列名。</summary>
         public string ColumnName { get; set; }
+        /// <summary>属性名。</summary>
         public string PropertyName { get; set; }
+        /// <summary>CLR 类型。</summary>
         public Type ClrType { get; set; }
+        /// <summary>数据库类型。</summary>
         public DbType? DbType { get; set; }
+        /// <summary>是否为主键。</summary>
         public bool IsPrimaryKey { get; set; }
+        /// <summary>是否为自增列。</summary>
         public bool IsIdentity { get; set; }
+        /// <summary>是否为时间戳列。</summary>
         public bool IsTimestamp { get; set; }
+        /// <summary>是否建有索引。</summary>
         public bool IsIndex { get; set; }
+        /// <summary>是否为唯一索引。</summary>
         public bool IsUnique { get; set; }
+        /// <summary>列长度。</summary>
         public int Length { get; set; }
+        /// <summary>是否允许为空。</summary>
         public bool AllowNull { get; set; } = true;
+        /// <summary>自增表达式。</summary>
         public string IdentityExpression { get; set; }
+        /// <summary>列的默认值。</summary>
+        public string DefaultValue { get; set; }
     }
 }

@@ -92,11 +92,10 @@ namespace LiteOrm
         /// <summary>
         /// 生成添加多个列的 SQL 语句。
         /// </summary>
-
         public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
             var sqlName = ToSqlName(tableName);
-            var colSqls = columns.Select(c => $"ALTER TABLE {sqlName} ADD COLUMN {ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
+            var colSqls = columns.Select(c => $"ALTER TABLE {sqlName} ADD COLUMN {ToSqlName(c.Name)} {GetSqlType(c)}{GetNotNullConstraintSql(c)}");
             return string.Join("; ", colSqls);
         }
 

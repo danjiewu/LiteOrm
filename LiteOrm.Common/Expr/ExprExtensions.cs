@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Security.AccessControl;
 
 namespace LiteOrm.Common
 {
@@ -20,6 +19,7 @@ namespace LiteOrm.Common
     /// 6. SQL 语句构建（Where/GroupBy/Having/Select/OrderBy/Section）
     /// 7. 排序操作（Asc/Desc）
     /// 8. 聚合函数（Count/Sum/Avg/Max/Min）
+    /// 9. 字符串函数（Upper/Lower/Length）
     ///
     /// 使用示例：
     /// <code>
@@ -317,6 +317,18 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 为Select表达式设置别名。
+        /// </summary>
+        /// <param name="selectExpr">Select表达式</param>
+        /// <param name="alias">别名</param>
+        /// <returns>带有别名的Select表达式</returns>
+        public static SelectExpr As(this SelectExpr selectExpr, string alias)
+        {
+            selectExpr.Alias = alias;
+            return selectExpr;
+        }
+
+        /// <summary>
         /// 将任意表达式转换为值类型表达式，如果已经是值类型表达式则直接返回，否则包装成 ValueExpr。
         /// </summary>
         /// <param name="expr">要转换的表达式。</param>
@@ -398,11 +410,11 @@ namespace LiteOrm.Common
         {
             if (expr is null)
             {
-                return new FromExpr(objectType) { Alias = Constants.DefaultTableAlias };
+                return new FromExpr(objectType);
             }
             else if (expr is LogicExpr logicExpr)
             {
-                return new WhereExpr() { Source = new FromExpr(objectType) { Alias = Constants.DefaultTableAlias }, Where = logicExpr };
+                return new WhereExpr() { Source = new FromExpr(objectType), Where = logicExpr };
             }
             else if (expr is ISqlSegment sourceExpr)
             {
@@ -417,7 +429,7 @@ namespace LiteOrm.Common
                 }
                 else
                 {
-                    firstSource.Source = new FromExpr(objectType) { Alias = Constants.DefaultTableAlias };
+                    firstSource.Source = new FromExpr(objectType);
                 }
                 return sourceExpr;
             }
@@ -462,7 +474,39 @@ namespace LiteOrm.Common
         /// var query = table.Where(Expr.Prop("Age") > 18);
         /// </code>
         /// </example>
-        public static WhereExpr Where(this ISourceAnchor source, LogicExpr where) => new WhereExpr(source as ISqlSegment, where);
+        public static WhereExpr Where(this ISourceAnchor source, LogicExpr where)
+        {
+            if (source is WhereExpr whereExpr)
+            {
+                whereExpr.Where = whereExpr.Where is null ? where : whereExpr.Where.And(where);
+                return whereExpr;
+            }
+            else return new WhereExpr(source as ISqlSegment, where);
+        }
+
+        /// <summary>
+        /// 为 UPDATE 表达式添加 WHERE 条件。
+        /// </summary>
+        /// <param name="source">UPDATE 表达式。</param>
+        /// <param name="where">条件表达式。</param>
+        /// <returns>包含 WHERE 子句的 UPDATE 表达式。</returns>
+        public static UpdateExpr Where(this UpdateExpr source, LogicExpr where)
+        {
+            source.Where = source.Where is null ? where : source.Where.And(where);
+            return source;
+        }
+
+        /// <summary>
+        /// 为 DELETE 表达式添加 WHERE 条件。
+        /// </summary>
+        /// <param name="source">DELETE 表达式。</param>
+        /// <param name="where">条件表达式。</param>
+        /// <returns>包含 WHERE 子句的 DELETE 表达式。</returns>
+        public static DeleteExpr Where(this DeleteExpr source, LogicExpr where)
+        {
+            source.Where = source.Where is null ? where : source.Where.And(where);
+            return source;
+        }
 
         /// <summary>
         /// 为 SQL 语句添加 GROUP BY 子句。
@@ -702,7 +746,6 @@ namespace LiteOrm.Common
         /// 创建 COUNT 聚合函数表达式。
         /// </summary>
         /// <param name="expr">要计数的值表达式。</param>
-        /// <param name="isDistinct">是否去重计数。</param>
         /// <returns>COUNT 聚合函数表达式。</returns>
         /// <example>
         /// <code>

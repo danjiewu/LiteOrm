@@ -163,7 +163,7 @@ namespace LiteOrm
         /// </summary>
         public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
-            var colSqls = columns.Select(c => $"ADD {ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
+            var colSqls = columns.Select(c => $"ADD {ToSqlName(c.Name)} {GetSqlType(c)}{GetNotNullConstraintSql(c)}");
             return $"ALTER TABLE {ToSqlName(tableName)} {string.Join(", ", colSqls)}";
         }
 

@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using LiteOrm.Demo.Services;
 using System.Linq.Expressions;
+using static LiteOrm.Common.Expr;
 
 namespace LiteOrm.Demo.Demos
 {
@@ -52,8 +53,8 @@ namespace LiteOrm.Demo.Demos
                         }
                     }
                 }
-                return Expr.Over(
-                    Expr.Func("SUM", Expr.Prop(nameof(SalesRecord.Amount))),
+                return Over(
+                    Func("SUM", Prop(nameof(SalesRecord.Amount))),
                     partitionExprs.ToArray(),
                     orderExprs.ToArray());
             });
@@ -85,11 +86,11 @@ namespace LiteOrm.Demo.Demos
             {
                 string tableMonth = DateTime.Now.ToString("yyyyMM");
 
-                PrintSection("📋 场景说明",
+                DemoHelper.PrintSection("📋 场景说明",
                     $"查询 Sales_{tableMonth} 分表，按产品分区计算每个产品的总销售额。\n" +
                     "使用 SumOver 构造窗口函数。");
 
-                PrintSection("📝 代码实现",
+                DemoHelper.PrintSection("📝 代码实现",
                     "ProductTotal = s.Amount.SumOver<SalesRecord>(p => p.ProductId)");
 
                 var results = await factory.SalesDAO
@@ -108,7 +109,7 @@ namespace LiteOrm.Demo.Demos
                     ).ToListAsync();
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                PrintSection("🔍 执行的 SQL", executedSql);
+                DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
                 var grouped = results
                     .GroupBy(r => r.ProductName)
@@ -122,7 +123,7 @@ namespace LiteOrm.Demo.Demos
                     foreach (var r in g.Take(3))
                         sb.AppendLine($"    {r.SaleTime:MM-dd HH:mm}  金额: ¥{r.Amount,6}  总计: ¥{r.ProductTotal,8}");
                 }
-                PrintSection("✅ 查询结果（按产品分组，每组前 3 条）", sb.ToString().TrimEnd());
+                DemoHelper.PrintSection("✅ 查询结果（按产品分组，每组前 3 条）", sb.ToString().TrimEnd());
 
                 Console.WriteLine("✓ 演示5.1 完成\n");
             }
@@ -131,7 +132,7 @@ namespace LiteOrm.Demo.Demos
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示5.1 失败: {ex.Message}\n");
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                PrintSection("🔍 执行的 SQL", executedSql);
+                DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
                 Console.ResetColor();
             }
         }
@@ -150,24 +151,25 @@ namespace LiteOrm.Demo.Demos
             {
                 string tableMonth = DateTime.Now.ToString("yyyyMM");
 
-                PrintSection("📋 场景说明",
+                DemoHelper.PrintSection("📋 场景说明",
                     $"查询 Sales_{tableMonth} 分表，按产品分区、按销售时间升序排列，\n" +
                     "计算每条记录在同产品内的累计销售额（Running Total）。\n" +
                     "纯 Expr 方式：直接构造 FunctionExpr + SelectExpr，无需扩展方法和 RegisterMethodHandler。");
 
-                PrintSection("📝 代码实现",
-                    "var runningTotalExpr = Expr.Over(\n" +
-                    "Expr.Func(\"SUM\", Expr.Prop(nameof(SalesRecord.Amount))),\n" +
-                    "[Expr.Prop(nameof(SalesRecord.ProductId))],\n" +
-                    "[Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()]);");
+                DemoHelper.PrintSection("📝 代码实现",
+                    "var runningTotalExpr = Over(\n" +
+                    "Func(\"SUM\", Prop(nameof(SalesRecord.Amount))),\n" +
+                    "[Prop(nameof(SalesRecord.ProductId))],\n" +
+                    "[Prop(nameof(SalesRecord.SaleTime)).Asc()]);");
 
-                var runningTotalExpr = Expr.Over(
-                    Expr.Func("SUM", Expr.Prop(nameof(SalesRecord.Amount))),
-                    [Expr.Prop(nameof(SalesRecord.ProductId))],
-                    [Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()]);
 
-                var selectExpr = Expr.From<SalesRecord>(tableMonth)
-                    .OrderBy(Expr.Prop(nameof(SalesRecord.ProductId)).Asc())
+                var runningTotalExpr = Over(
+                    Func("SUM", Prop(nameof(SalesRecord.Amount))),
+                    [Prop(nameof(SalesRecord.ProductId))],
+                    [Prop(nameof(SalesRecord.SaleTime)).Asc()]);
+
+                var selectExpr = From<SalesRecord>(tableMonth)
+                    .OrderBy(Prop(nameof(SalesRecord.ProductId)).Asc())
                     .Select(nameof(SalesRecord.Id),
                         nameof(SalesRecord.ProductId),
                         nameof(SalesRecord.ProductName),
@@ -181,7 +183,7 @@ namespace LiteOrm.Demo.Demos
                     .ToListAsync();
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                PrintSection("🔍 执行的 SQL", executedSql);
+                DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
                 var grouped = results
                     .GroupBy(r => r.ProductName)
@@ -196,7 +198,7 @@ namespace LiteOrm.Demo.Demos
                         sb.AppendLine($"    {r.SaleTime:MM-dd HH:mm}  金额: ¥{r.Amount,6}  累计: ¥{r.RunningTotal,8}");
                 }
 
-                PrintSection("✅ 查询结果（按产品分组，每组前 3 条）", sb.ToString().TrimEnd());
+                DemoHelper.PrintSection("✅ 查询结果（按产品分组，每组前 3 条）", sb.ToString().TrimEnd());
 
                 Console.WriteLine("✓ 演示5.2 完成\n");
             }
@@ -204,12 +206,10 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示5.2 失败: {ex.Message}\n");
-                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                PrintSection("🔍 执行的 SQL", executedSql);
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
-
-        private static void PrintSection(string title, string content) => DemoHelper.PrintSection(title, content);
     }
 }

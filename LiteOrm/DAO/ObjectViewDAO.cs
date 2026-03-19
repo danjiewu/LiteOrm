@@ -195,18 +195,35 @@ namespace LiteOrm
         }
 
 
+        /// <summary>
+        /// 根据条件查询对象集合。
+        /// </summary>
+        /// <param name="expr">查询表达式，为 null 时表示没有条件。</param>
+        /// <returns>符合条件的对象集合。</returns>
         public virtual EnumerableResult<T> Search(Expr expr = null)
         {
             var command = MakeSelectExprCommand(expr);
             return new EnumerableResult<T>(command, ConvertToObjectHandler);
         }
 
+        /// <summary>
+        /// 根据 Lambda 表达式查询对象集合。
+        /// </summary>
+        /// <param name="expr">Lambda 表达式，用于生成 SQL 查询。</param>
+        /// <returns>符合条件的对象集合。</returns>
         public virtual EnumerableResult<T> Search(Expression<Func<IQueryable<T>, IQueryable<T>>> expr)
         {
             var command = MakeSelectExprCommand(LambdaExprConverter.ToSqlSegment(expr));
             return new EnumerableResult<T>(command, ConvertToObjectHandler);
         }
 
+        /// <summary>
+        /// 根据自定义 SELECT 表达式查询并转换为指定类型集合。
+        /// </summary>
+        /// <typeparam name="TResult">结果类型。</typeparam>
+        /// <param name="selectExpr">SELECT 表达式。</param>
+        /// <param name="readerFunc">读取器转换函数，为 null 时使用默认转换。</param>
+        /// <returns>自定义类型的集合。</returns>
         public virtual EnumerableResult<TResult> SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult> readerFunc = null)
         {
             var command = MakeExprCommand(selectExpr);
@@ -262,10 +279,8 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 将一行记录转化为对象
+        /// 将一行记录转化为对象的转换处理器。
         /// </summary>
-        /// <param name="record">一行记录</param>
-        /// <returns>对象</returns>
         public static Func<DbDataReader, T> ConvertToObjectHandler = DataReaderConverter.GetConverter<T>();
 
         #endregion

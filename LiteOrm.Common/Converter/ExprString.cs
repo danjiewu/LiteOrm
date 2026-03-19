@@ -8,6 +8,7 @@ using LiteOrm.Common;
 namespace System.Runtime.CompilerServices
 {
     // 这个 Attribute 告诉编译器：这是一个字符串插值处理器
+    /// <summary>指示某个类或结构是字符串插值处理器。</summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = false)]
     public sealed class InterpolatedStringHandlerAttribute : Attribute
     {

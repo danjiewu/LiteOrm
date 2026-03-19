@@ -512,6 +512,7 @@ namespace LiteOrm
                 }
                 if (column.IsPrimaryKey) sb.Append(" PRIMARY KEY");
                 if (!column.AllowNull) sb.Append(" NOT NULL");
+                if (!String.IsNullOrEmpty(column.DefaultValue)) sb.Append($" DEFAULT {column.DefaultValue}");
                 first = false;
             }
             sb.Append("\n)");
@@ -522,14 +523,72 @@ namespace LiteOrm
 
 
         /// <summary>
-        /// 生成添加多个列的 SQL 语句。
+        /// 生成添加多个列的 SQL 语句。非空列自动附加类型相关的 DEFAULT 值，以兼容表中已有数据的场景。
         /// </summary>
         /// <param name="tableName">表名。</param>
         /// <param name="columns">列定义集合。</param>
         public virtual string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
-            var colSqls = columns.Select(c => $"{ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
+            var colSqls = columns.Select(c => $"{ToSqlName(c.Name)} {GetSqlType(c)}{GetNotNullConstraintSql(c)}");
             return $"ALTER TABLE {ToSqlName(tableName)} ADD {string.Join(", ", colSqls)}";
+        }
+
+        /// <summary>
+        /// 返回列的可空约束 SQL 片段。
+        /// 可空列返回 <c> NULL</c>；自增列返回空字符串；
+        /// 其余非空列返回 <c> DEFAULT &lt;value&gt; NOT NULL</c>。
+        /// </summary>
+        /// <param name="column">列定义。</param>
+        /// <returns>约束 SQL 片段。</returns>
+        protected virtual string GetNotNullConstraintSql(ColumnDefinition column)
+        {
+            if (column.AllowNull) return " NULL";
+            if (column.IsIdentity) return "";
+            return $" DEFAULT {GetDefaultValueSql(column)} NOT NULL";
+        }
+
+        /// <summary>
+        /// 返回指定列类型的 DEFAULT 值 SQL 字面量，用于 ADD COLUMN … NOT NULL 时为已有行填充默认值。
+        /// </summary>
+        /// <param name="column">列定义。</param>
+        /// <returns>默认值 SQL 字面量，例如 <c>0</c>、<c>''</c>、<c>'1900-01-01'</c>。</returns>
+        protected virtual string GetDefaultValueSql(ColumnDefinition column)
+        {
+            if (!string.IsNullOrEmpty(column.DefaultValue))
+            {
+                return column.DefaultValue;
+            }
+
+            switch (column.DbType)
+            {
+                case DbType.Boolean:
+                case DbType.Byte:
+                case DbType.SByte:
+                case DbType.Int16:
+                case DbType.Int32:
+                case DbType.Int64:
+                case DbType.UInt16:
+                case DbType.UInt32:
+                case DbType.UInt64:
+                case DbType.Decimal:
+                case DbType.Double:
+                case DbType.Single:
+                    return "0";
+                case DbType.DateTime:
+                case DbType.DateTime2:
+                case DbType.Date:
+                    return "'1900-01-01'";
+                case DbType.Time:
+                    return "'00:00:00'";
+                case DbType.Guid:
+                    return "'00000000-0000-0000-0000-000000000000'";
+                case DbType.String:
+                case DbType.AnsiString:
+                case DbType.StringFixedLength:
+                case DbType.AnsiStringFixedLength:
+                default:
+                    return "''";
+            }
         }
 
         /// <summary>
