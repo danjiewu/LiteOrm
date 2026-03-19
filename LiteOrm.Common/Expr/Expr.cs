@@ -251,6 +251,27 @@ namespace LiteOrm.Common
         /// <returns>常量值表达式。</returns>
         public static ValueExpr Const(object value) => new ValueExpr(value) { IsConst = true };
 
+
+        public static UpdateExpr Update<T>()
+        {
+            return new UpdateExpr(From<T>());
+        }
+
+        public static UpdateExpr Update(Type objectType)
+        {
+            return new UpdateExpr(From(objectType));
+        }
+
+        public static DeleteExpr Delete<T>()
+        {
+            return new DeleteExpr(From<T>());
+        }
+
+        public static DeleteExpr Delete(Type objectType)
+        {
+            return new DeleteExpr(From(objectType));
+        }
+
         /// <summary>
         /// 创建变量值表达式（生成参数化查询占位符）。
         /// </summary>
@@ -389,21 +410,12 @@ namespace LiteOrm.Common
         public static GenericSqlExpr StaticSql(string key) => GenericSqlExpr.Get(key);
 
         /// <summary>
-        /// 创建 From 表达式，默认将其作为主表并使用默认别名，支持动态表名参数。
+        /// 创建 From 表达式，支持动态表名参数。
         /// </summary>
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static FromExpr From<T>(params string[] tableArgs) => From<T>(true, tableArgs);
-
-        /// <summary>
-        /// 创建 From 表达式。
-        /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="isMain">是否为主表，主表会使用默认别名</param>
-        /// <param name="tableArgs">动态表名参数</param>
-        /// <returns>From 表达式实例</returns>
-        public static FromExpr From<T>(bool isMain = true, params string[] tableArgs) => new FromExpr(typeof(T)) { TableArgs = tableArgs, Alias = isMain ? Constants.DefaultTableAlias : null };
+        public static FromExpr From<T>(params string[] tableArgs) => new FromExpr(typeof(T)) { TableArgs = tableArgs };
 
         /// <summary>
         /// 使用指定的类型创建 From 表达式。
@@ -412,7 +424,7 @@ namespace LiteOrm.Common
         /// <param name="isMain">是否为主表，主表会使用默认别名</param>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static FromExpr From(Type objectType, bool isMain = true, params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs, Alias = isMain ? Constants.DefaultTableAlias : null };
+        public static FromExpr From(Type objectType,params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs };
 
         /// <summary>
         /// 使用指定的 Lambda 表达式创建 WHERE 条件表达式

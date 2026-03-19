@@ -42,10 +42,9 @@ namespace LiteOrm.Demo.Demos
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"事务执行失败，已回滚: {ex.Message}");
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
-
-                Console.WriteLine($"事务执行失败，已回滚: {ex.Message}");
                 var savedUser = await factory.UserService.GetByUserNameAsync(newUser.UserName);
                 if (savedUser == null)
                 {

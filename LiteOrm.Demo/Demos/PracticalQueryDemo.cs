@@ -71,6 +71,8 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示2.1 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
@@ -134,6 +136,8 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示2.2 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
@@ -238,6 +242,8 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示2.4 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
@@ -302,8 +308,8 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示2.5 失败: {ex.Message}\n");
-                var sql1 = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                DemoHelper.PrintSection("🔍 生成的 SQL（Expr 已内联展开）", sql1);
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 生成的 SQL（Expr 已内联展开）", sql);
                 Console.ResetColor();
             }
         }

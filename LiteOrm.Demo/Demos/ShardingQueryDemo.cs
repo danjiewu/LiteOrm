@@ -70,14 +70,14 @@ namespace LiteOrm.Demo.Demos
                 await salesService.InsertAsync(sale1);
                 await salesService.InsertAsync(sale2);
 
-                PrintSection("📋 场景说明", "查询金额大于 40 的销售记录，指定查询 Sales_202412 分表");
+                DemoHelper.PrintSection("📋 场景说明", "查询金额大于 40 的销售记录，指定查询 Sales_202412 分表");
 
-                PrintSection("💾 示例数据",
+                DemoHelper.PrintSection("💾 示例数据",
                     $"已插入 2 条销售记录到 Sales_202412 表：\n" +
                     $"  • {sale1.ProductName}: ¥{sale1.Amount} (2024-12-15)\n" +
                     $"  • {sale2.ProductName}: ¥{sale2.Amount} (2024-12-20)");
 
-                PrintSection("📝 代码实现",
+                DemoHelper.PrintSection("📝 代码实现",
                     "var sales = await salesService.SearchAsync(s =>\n" +
                     "    s.TableArgs == new[] { \"202412\" } && s.Amount > 40\n" +
                     ");");
@@ -89,10 +89,10 @@ namespace LiteOrm.Demo.Demos
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
 
-                PrintSection("🔍 执行的 SQL",
+                DemoHelper.PrintSection("🔍 执行的 SQL",
                     executedSql);
 
-                PrintSection("✅ 查询结果",
+                DemoHelper.PrintSection("✅ 查询结果",
                     $"共返回 {sales.Count} 条记录：\n" +
                     string.Join("\n", sales.Select(s => $"  • {s.ProductName}: ¥{s.Amount} (销售员: {s.UserName})")));
 
@@ -102,6 +102,8 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示4.1 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
@@ -136,13 +138,13 @@ namespace LiteOrm.Demo.Demos
 
                 await salesService.InsertAsync(sale);
 
-                PrintSection("📋 场景说明", "查询金额大于 100 的销售记录，指定查询 Sales_202411 分表");
+                DemoHelper.PrintSection("📋 场景说明", "查询金额大于 100 的销售记录，指定查询 Sales_202411 分表");
 
-                PrintSection("💾 示例数据",
+                DemoHelper.PrintSection("💾 示例数据",
                     $"已插入 1 条销售记录到 Sales_202411 表：\n" +
                     $"  • {sale.ProductName}: ¥{sale.Amount} (2024-11-10)");
 
-                PrintSection("📝 代码实现",
+                DemoHelper.PrintSection("📝 代码实现",
                     "var sales = await salesService.SearchAsync(s => s.Amount > 100,\n" +
                     "    [\"202411\"]\n" +
                     ");");
@@ -153,10 +155,10 @@ namespace LiteOrm.Demo.Demos
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
 
-                PrintSection("🔍 执行的 SQL",
+                DemoHelper.PrintSection("🔍 执行的 SQL",
                     executedSql);
 
-                PrintSection("✅ 查询结果",
+                DemoHelper.PrintSection("✅ 查询结果",
                     $"共返回 {sales.Count} 条记录（来自 Sales_202411 表）：\n" +
                     string.Join("\n", sales.Select(s => $"  • {s.ProductName}: ¥{s.Amount} (销售员: {s.UserName})")));
 
@@ -166,6 +168,8 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示4.2 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
@@ -209,14 +213,14 @@ namespace LiteOrm.Demo.Demos
                 await salesService.InsertAsync(sale1);
                 await salesService.InsertAsync(sale2);
 
-                PrintSection("📋 场景说明", "使用 Expr API 方式指定分表，查询金额大于 100 的销售记录");
+                DemoHelper.PrintSection("📋 场景说明", "使用 Expr API 方式指定分表，查询金额大于 100 的销售记录");
 
-                PrintSection("💾 示例数据",
+                DemoHelper.PrintSection("💾 示例数据",
                     $"已插入 2 条销售记录到 Sales_202411 表：\n" +
                     $"  • {sale1.ProductName}: ¥{sale1.Amount} (2024-11-25)\n" +
                     $"  • {sale2.ProductName}: ¥{sale2.Amount} (2024-11-28)");
 
-                PrintSection("📝 代码实现",
+                DemoHelper.PrintSection("📝 代码实现",
                     "var sales = await salesService.SearchAsync(\n" +
                     "    Expr.From<SalesRecordView>(\"202411\")\n" +
                     "        .Where(Expr.Prop(\"Amount\") > 100)\n" +
@@ -229,10 +233,10 @@ namespace LiteOrm.Demo.Demos
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
 
-                PrintSection("🔍 执行的 SQL",
+                DemoHelper.PrintSection("🔍 执行的 SQL",
                     executedSql);
 
-                PrintSection("✅ 查询结果",
+                DemoHelper.PrintSection("✅ 查询结果",
                     $"共返回 {sales.Count} 条记录（来自 Sales_202411 表）：\n" +
                     string.Join("\n", sales.Select(s => $"  • {s.ProductName}: ¥{s.Amount} (销售员: {s.UserName})")));
 
@@ -242,6 +246,8 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示4.3 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
@@ -279,12 +285,12 @@ namespace LiteOrm.Demo.Demos
                     await salesService.InsertAsync(sale);
                 }
 
-                PrintSection("📋 场景说明", "使用 Expr API 指定 Sales_202412 分表，按金额降序排列，取前 3 条记录");
+                DemoHelper.PrintSection("📋 场景说明", "使用 Expr API 指定 Sales_202412 分表，按金额降序排列，取前 3 条记录");
 
-                PrintSection("💾 示例数据",
+                DemoHelper.PrintSection("💾 示例数据",
                     $"已插入 {amounts.Length} 条销售记录到 Sales_202412 表");
 
-                PrintSection("📝 代码实现",
+                DemoHelper.PrintSection("📝 代码实现",
                     "var topSales = await salesService.SearchAsync(\n" +
                     "    Expr.From<SalesRecordView>(\"202412\")\n" +
                     "        .Where(Expr.Prop(\"Amount\") > 0)\n" +
@@ -301,10 +307,10 @@ namespace LiteOrm.Demo.Demos
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
 
-                PrintSection("🔍 执行的 SQL",
+                DemoHelper.PrintSection("🔍 执行的 SQL",
                     executedSql);
 
-                PrintSection("✅ 查询结果",
+                DemoHelper.PrintSection("✅ 查询结果",
                     $"共返回 {topSales.Count} 条记录（按金额降序，来自 Sales_202412 表）：\n" +
                     string.Join("\n", topSales.Select(s => $"  • {s.ProductName}: ¥{s.Amount}")));
 
@@ -314,13 +320,10 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示4.4 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
-
-        /// <summary>
-        /// 输出格式化的演示部分
-        /// </summary>
-        private static void PrintSection(string title, string content) => DemoHelper.PrintSection(title, content);
     }
 }

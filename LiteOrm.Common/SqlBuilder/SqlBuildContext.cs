@@ -13,7 +13,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 序列，用来生成表别名
         /// </summary>
-        public int Sequence { get; set; }
+        public int Sequence { get; set; } = 1;
 
         /// <summary>
         /// 初始化 <see cref="SqlBuildContext"/> 类的新实例

@@ -147,10 +147,10 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            // 优化：如果当前是最外层的 SelectExpr（即 sb 还没有内容且当前作用域没有父级），则不需要额外的括号包裹
+            // 优化：如果当前是最外层的 SelectExpr（即 sb 还没有内容且当前作用域没有父级），则不需要额外的括号包裹和作用域嵌套
             bool isMain = sb.Length == 0 && context.CurrentScope.Parent is null;
             if (!isMain) sb.Append('(');
-            using (context.BeginScope())
+            using (isMain ? null : context.BeginScope())
             {
                 SqlValueStringBuilder sql = new SqlValueStringBuilder();
                 AddSqlSegment(ref sql, select.Source, context, sqlBuilder, outputParams);
@@ -611,7 +611,7 @@ namespace LiteOrm.Common
             }
             string alias = expr.Alias ?? $"T{context.Sequence++}";
             context.DefaultTableAliasName = alias;
-            sql.From.Append(alias);
+            sql.From.Append($" {alias}");
             context.AddTableAlias(alias, null);
         }
 
@@ -705,11 +705,12 @@ namespace LiteOrm.Common
             }
             else
             {
+                bool isMain = context.CurrentScope.Parent is null;
                 var tableView = TableInfoProvider.Default.GetTableView(expr.ObjectType);
                 context.TableArgs = tableArgs;
                 sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name)));
                 sb.Append(" ");
-                string aliasName = expr.Alias ?? tableView.Name;
+                string aliasName = expr.Alias ?? (isMain ? Constants.DefaultTableAlias : $"T{context.Sequence++}");
                 sb.Append(sqlBuilder.ToSqlName(aliasName));
                 context.AddTableAlias(aliasName, tableView);
                 foreach (var joined in tableView.JoinedTables)

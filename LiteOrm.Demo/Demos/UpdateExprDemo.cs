@@ -82,11 +82,11 @@ namespace LiteOrm.Demo.Demos
                 Console.WriteLine("✓ 演示6.1 完成\n");
             }
             catch (Exception ex)
-            {
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
+            {                
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.1 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
@@ -122,10 +122,10 @@ namespace LiteOrm.Demo.Demos
             }
             catch (Exception ex)
             {
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.2 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
@@ -161,10 +161,10 @@ namespace LiteOrm.Demo.Demos
             }
             catch (Exception ex)
             {
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.3 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
@@ -199,11 +199,11 @@ namespace LiteOrm.Demo.Demos
                 Console.WriteLine("✓ 演示6.4 完成\n");
             }
             catch (Exception ex)
-            {
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
+            {                
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.4 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }
@@ -225,29 +225,22 @@ namespace LiteOrm.Demo.Demos
 
                 DemoHelper.PrintSection("📝 场景1 代码",
                     "// MySQL 禁止子查询的 FROM 与被更新目标表相同，用派生表包裹规避\n" +
-                    "// 生成：SET Age = (SELECT d.avg_age FROM (SELECT AVG(Age) AS avg_age FROM Users WHERE ...) d)\n" +
-                    "var innerAvg = Expr.From<User>()\n" +
-                    "    .Where(Expr.Prop(\"UserName\").Like(\"UpdateDemo_%\"))\n" +
-                    "    .Select(new SelectItemExpr(Expr.Aggregate(\"AVG\", Expr.Prop(\"Age\")), \"avg_age\"));\n" +
-                    "innerAvg.Alias = \"d\";\n" +
-                    "\n" +
-                    "var subAvg = new SelectExpr(innerAvg, Expr.Prop(\"avg_age\"));\n" +
-                    "\n" +
-                    "var update = new UpdateExpr(Expr.From<User>(), Expr.Prop(\"UserName\") == \"UpdateDemo_Alice\")\n" +
-                    "    .Set((\"Age\", subAvg));");
+                    "// 生成：SET Age = (SELECT T1.avg_age FROM (SELECT AVG(T0.Age) AS avg_age FROM Users T0 WHERE ...) T1)\n" +
+                    "var update1 = Expr.Update<User>()\r\n" +
+                    "   .Set((\"Age\", Expr.From<User>()\r\n" +
+                    "       .Where(Expr.Prop(\"UserName\").Like(\"UpdateDemo_%\"))\r\n" +
+                    "       .Select(new SelectItemExpr(Expr.Aggregate(\"AVG\", Expr.Prop(\"Age\")), \"avg_age\"))\r\n" +
+                    "       .Select(\"avg_age\")\r\n" +
+                    "   ))\r\n" +
+                    "   .Where(Expr.Prop(\"UserName\") == \"UpdateDemo_Alice\");");
 
-                // MySQL 禁止子查询的 FROM 与被更新目标表相同。
-                // 解决方案：将聚合查询包裹在派生表中，令 MySQL 将其视为独立数据源：
-                // SET Age = (SELECT d.avg_age FROM (SELECT AVG(Age) AS avg_age FROM Users WHERE ...) d)
-                var innerAvg = Expr.From<User>()
-                    .Where(Expr.Prop("UserName").Like("UpdateDemo_%"))
-                    .Select(new SelectItemExpr(Expr.Aggregate("AVG", Expr.Prop("Age")), "avg_age"));
-                innerAvg.Alias = "d";
-
-                var subAvg = new SelectExpr(innerAvg, Expr.Prop("avg_age"));
-
-                var update1 = new UpdateExpr(Expr.From<User>(), Expr.Prop("UserName") == "UpdateDemo_Alice")
-                    .Set(("Age", subAvg));
+                var update1 = Expr.Update<User>()
+                    .Set(("Age", Expr.From<User>()
+                        .Where(Expr.Prop("UserName").Like("UpdateDemo_%"))
+                        .Select(new SelectItemExpr(Expr.Aggregate("AVG", Expr.Prop("Age")), "avg_age"))
+                        .Select("avg_age")//必须加一层嵌套，令 MySQL 将其视为独立数据源，MySQL 禁止子查询的 FROM 与被更新目标表相同
+                    ))
+                    .Where(Expr.Prop("UserName") == "UpdateDemo_Alice");
 
                 int affected1 = await userSvc.UpdateAsync(update1);
 
@@ -284,10 +277,10 @@ namespace LiteOrm.Demo.Demos
             }
             catch (Exception ex)
             {
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
-                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.6 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }

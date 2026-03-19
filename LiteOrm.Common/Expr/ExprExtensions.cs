@@ -304,6 +304,18 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 为Select表达式设置别名。
+        /// </summary>
+        /// <param name="selectExpr">Select表达式</param>
+        /// <param name="alias">别名</param>
+        /// <returns>带有别名的Select表达式</returns>
+        public static SelectExpr As(this SelectExpr selectExpr, string alias)
+        {
+            selectExpr.Alias = alias;
+            return selectExpr;
+        }
+
+        /// <summary>
         /// 将任意表达式转换为值类型表达式，如果已经是值类型表达式则直接返回，否则包装成 ValueExpr。
         /// </summary>
         /// <param name="expr">要转换的表达式。</param>
@@ -385,11 +397,11 @@ namespace LiteOrm.Common
         {
             if (expr is null)
             {
-                return new FromExpr(objectType) { Alias = Constants.DefaultTableAlias };
+                return new FromExpr(objectType);
             }
             else if (expr is LogicExpr logicExpr)
             {
-                return new WhereExpr() { Source = new FromExpr(objectType) { Alias = Constants.DefaultTableAlias }, Where = logicExpr };
+                return new WhereExpr() { Source = new FromExpr(objectType), Where = logicExpr };
             }
             else if (expr is ISqlSegment sourceExpr)
             {
@@ -404,7 +416,7 @@ namespace LiteOrm.Common
                 }
                 else
                 {
-                    firstSource.Source = new FromExpr(objectType) { Alias = Constants.DefaultTableAlias };
+                    firstSource.Source = new FromExpr(objectType);
                 }
                 return sourceExpr;
             }
@@ -449,7 +461,27 @@ namespace LiteOrm.Common
         /// var query = table.Where(Expr.Prop("Age") > 18);
         /// </code>
         /// </example>
-        public static WhereExpr Where(this ISourceAnchor source, LogicExpr where) => new WhereExpr(source as ISqlSegment, where);
+        public static WhereExpr Where(this ISourceAnchor source, LogicExpr where)
+        {
+            if (source is WhereExpr whereExpr)
+            {
+                whereExpr.Where = whereExpr.Where is null ? where : whereExpr.Where.And(where);
+                return whereExpr;
+            }
+            else return new WhereExpr(source as ISqlSegment, where);
+        }
+
+        public static UpdateExpr Where(this UpdateExpr source, LogicExpr where)
+        {
+            source.Where = source.Where is null ? where : source.Where.And(where);
+            return source;
+        }
+
+        public static DeleteExpr Where(this DeleteExpr source, LogicExpr where)
+        {
+            source.Where = source.Where is null ? where : source.Where.And(where);
+            return source;
+        }
 
         /// <summary>
         /// 为 SQL 语句添加 GROUP BY 子句。
