@@ -117,6 +117,10 @@ namespace LiteOrm.Common
         public static ValueTypeExpr operator /(ValueTypeExpr left, ValueTypeExpr right) => new ValueBinaryExpr(left, ValueOperator.Divide, right);
 
         /// <summary>
+        /// 求余二元运算符 %。
+        /// </summary>
+        public static ValueTypeExpr operator %(ValueTypeExpr left, ValueTypeExpr right) => new ValueBinaryExpr(left, ValueOperator.Modulo, right);
+        /// <summary>
         /// 一元负号运算符 - 的重载。
         /// </summary>
         public static ValueTypeExpr operator -(ValueTypeExpr expr) => new UnaryExpr(UnaryOperator.Nagive, expr);

@@ -29,7 +29,8 @@ namespace LiteOrm.Common
             { ExpressionType.SubtractChecked, ValueOperator.Subtract },
             { ExpressionType.Multiply, ValueOperator.Multiply },
             { ExpressionType.MultiplyChecked, ValueOperator.Multiply },
-            { ExpressionType.Divide, ValueOperator.Divide }
+            { ExpressionType.Divide, ValueOperator.Divide },
+            { ExpressionType.Modulo, ValueOperator.Modulo }
         };
 
         private static readonly ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodNameHandlers = new ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);

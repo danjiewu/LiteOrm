@@ -88,7 +88,7 @@ namespace LiteOrm.Common
         /// var condition = Expr.Prop("IsDeleted").Equal(true).Not();
         /// </code>
         /// </example>
-        public static NotExpr Not(this LogicExpr expr) => new NotExpr(expr);
+        public static LogicExpr Not(this LogicExpr expr) => expr is NotExpr notExpr ? notExpr.Operand : new NotExpr(expr);
 
         /// <summary>
         /// 创建等于比较表达式。
@@ -282,6 +282,19 @@ namespace LiteOrm.Common
         /// </code>
         /// </example>
         public static LogicBinaryExpr EndsWith(this ValueTypeExpr left, string text) => new LogicBinaryExpr(left, LogicOperator.EndsWith, new ValueExpr(text));
+
+        /// <summary>
+        /// 创建正则表达式匹配表达式 (REGEXP_LIKE)。
+        /// </summary>
+        /// <param name="left">左侧值表达式。</param>
+        /// <param name="pattern">正则表达式模式字符串。</param>
+        /// <returns>正则表达式匹配逻辑表达式。</returns>
+        /// <example>
+        /// <code>
+        /// var condition = Expr.Prop("Email").RegexpLike(@"^[\w.-]+@[\w.-]+\.\w+$");
+        /// </code>
+        /// </example>
+        public static LogicBinaryExpr RegexpLike(this ValueTypeExpr left, string pattern) => new LogicBinaryExpr(left, LogicOperator.RegexpLike, new ValueExpr(pattern));
 
         /// <summary>
         /// 为表达式设置别名。
@@ -532,6 +545,30 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 向已有 SELECT 表达式追加更多值表达式。
+        /// </summary>
+        /// <param name="source">已有的选择表达式。</param>
+        /// <param name="selects">追加的值表达式数组。</param>
+        /// <returns>追加后的选择表达式。</returns>
+        public static SelectExpr SelectMore(this SelectExpr source, params ValueTypeExpr[] selects)
+        {
+            source.Selects.AddRange(selects.Select(s => s is SelectItemExpr si ? si : new SelectItemExpr(s)));
+            return source;
+        }
+
+        /// <summary>
+        /// 向已有 SELECT 表达式追加更多属性名。
+        /// </summary>
+        /// <param name="source">已有的选择表达式。</param>
+        /// <param name="selectProperties">追加的属性名称数组。</param>
+        /// <returns>追加后的选择表达式。</returns>
+        public static SelectExpr SelectMore(this SelectExpr source, params string[] selectProperties)
+        {
+            source.Selects.AddRange(Array.ConvertAll(selectProperties, prop => new SelectItemExpr(Expr.Prop(prop))));
+            return source;
+        }
+
+        /// <summary>
         /// 更新表达式添加 SET 子句。
         /// </summary>
         /// <param name="source">更新表达式。</param>
@@ -543,6 +580,25 @@ namespace LiteOrm.Common
             {
                 source.Sets.Add((Expr.Prop(propName), valueExpr));
             }
+            return source;
+        }
+
+        /// <summary>
+        /// 当条件为真时，向更新表达式追加一个 SET 子句。
+        /// </summary>
+        /// <param name="source">更新表达式。</param>
+        /// <param name="condition">为 true 时才追加该赋值。</param>
+        /// <param name="propName">属性名称。</param>
+        /// <param name="valueExpr">要设置的值表达式。</param>
+        /// <returns>更新表达式（链式调用）。</returns>
+        /// <example>
+        /// <code>
+        /// update.SetIf(newEmail != null, "Email", newEmail);
+        /// </code>
+        /// </example>
+        public static UpdateExpr SetIf(this UpdateExpr source, bool condition, string propName, ValueTypeExpr valueExpr)
+        {
+            if (condition) source.Sets.Add((Expr.Prop(propName), valueExpr));
             return source;
         }
         /// <summary>
@@ -711,5 +767,85 @@ namespace LiteOrm.Common
         /// </code>
         /// </example>
         public static FunctionExpr Min(this ValueTypeExpr expr) => new FunctionExpr("MIN", expr) { IsAggregate = true };
+
+        /// <summary>
+        /// 当条件为真时，使用 AND 逻辑将另一个表达式追加到当前逻辑表达式。
+        /// </summary>
+        /// <param name="left">当前逻辑表达式。</param>
+        /// <param name="condition">为 true 时才追加 <paramref name="right"/>。</param>
+        /// <param name="right">条件成立时追加的逻辑表达式。</param>
+        /// <returns>合并后的逻辑表达式，若条件为 false 则返回原表达式。</returns>
+        /// <example>
+        /// <code>
+        /// var condition = Expr.Prop("Age") > 18
+        ///     .AndIf(nameFilter != null, Expr.Prop("Name").Contains(nameFilter));
+        /// </code>
+        /// </example>
+        public static LogicExpr AndIf(this LogicExpr left, bool condition, LogicExpr right) => condition ? left.And(right) : left;
+
+        /// <summary>
+        /// 当条件为真时，使用 OR 逻辑将另一个表达式追加到当前逻辑表达式。
+        /// </summary>
+        /// <param name="left">当前逻辑表达式。</param>
+        /// <param name="condition">为 true 时才追加 <paramref name="right"/>。</param>
+        /// <param name="right">条件成立时追加的逻辑表达式。</param>
+        /// <returns>合并后的逻辑表达式，若条件为 false 则返回原表达式。</returns>
+        public static LogicExpr OrIf(this LogicExpr left, bool condition, LogicExpr right) => condition ? left.Or(right) : left;
+
+        /// <summary>
+        /// 当条件为真时，为 SQL 语句添加 WHERE 子句；否则直接返回原数据源。
+        /// </summary>
+        /// <param name="source">SQL 语句构建起点。</param>
+        /// <param name="condition">为 true 时才添加 WHERE 子句。</param>
+        /// <param name="where">WHERE 子句的逻辑表达式。</param>
+        /// <returns>添加了 WHERE 条件的表达式，或原数据源（条件为 false 时）。</returns>
+        /// <example>
+        /// <code>
+        /// var query = table.WhereIf(minAge.HasValue, Expr.Prop("Age") >= minAge ?? 0);
+        /// </code>
+        /// </example>
+        public static ISourceAnchor WhereIf(this ISourceAnchor source, bool condition, LogicExpr where)
+            => condition ? (ISourceAnchor)new WhereExpr(source as ISqlSegment, where) : source;
+
+        /// <summary>
+        /// 将聚合或窗口函数应用到分区窗口（OVER PARTITION BY）。
+        /// </summary>
+        /// <param name="func">窗口函数表达式（如 SUM、RANK 等）。</param>
+        /// <param name="partitionBy">分区字段表达式数组。</param>
+        /// <returns>窗口函数表达式。</returns>
+        /// <example>
+        /// <code>
+        /// var windowExpr = Expr.Prop("Salary").Sum().Over(Expr.Prop("DepartmentId"));
+        /// </code>
+        /// </example>
+        public static FunctionExpr Over(this FunctionExpr func, params ValueTypeExpr[] partitionBy) => Expr.Over(func, partitionBy);
+
+        /// <summary>
+        /// 将聚合或窗口函数应用到分区和排序窗口（OVER PARTITION BY ... ORDER BY ...）。
+        /// </summary>
+        /// <param name="func">窗口函数表达式（如 SUM、RANK 等）。</param>
+        /// <param name="partitionBy">分区字段表达式数组。</param>
+        /// <param name="orderBy">窗口内排序字段数组。</param>
+        /// <returns>窗口函数表达式。</returns>
+        /// <example>
+        /// <code>
+        /// var windowExpr = Expr.Prop("Salary").Sum().Over(
+        ///     new[] { Expr.Prop("DepartmentId") },
+        ///     new[] { Expr.Prop("HireDate").Asc() });
+        /// </code>
+        /// </example>
+        public static FunctionExpr Over(this FunctionExpr func, ValueTypeExpr[] partitionBy, params OrderByItemExpr[] orderBy) => Expr.Over(func, partitionBy, orderBy);
+
+        /// <summary>
+        /// 将聚合或窗口函数应用到带范围/行数限定的窗口（OVER PARTITION BY ... ORDER BY ... ROWS/RANGE BETWEEN ...）。
+        /// </summary>
+        /// <param name="func">窗口函数表达式（如 SUM、RANK 等）。</param>
+        /// <param name="partitionBy">分区字段表达式数组。</param>
+        /// <param name="orderBy">窗口内排序字段数组。</param>
+        /// <param name="range">true 表示使用 RANGE，false 表示使用 ROWS。</param>
+        /// <param name="begin">窗口起始边界：0 当前行，负数向前，正数向后，null 无边界。</param>
+        /// <param name="end">窗口结束边界：0 当前行，负数向前，正数向后，null 无边界。</param>
+        /// <returns>窗口函数表达式。</returns>
+        public static FunctionExpr Over(this FunctionExpr func, ValueTypeExpr[] partitionBy, OrderByItemExpr[] orderBy, bool range, int? begin, int? end) => Expr.Over(func, partitionBy, orderBy, range, begin, end);
     }
 }

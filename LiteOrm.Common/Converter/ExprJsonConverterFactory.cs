@@ -68,6 +68,7 @@ namespace LiteOrm.Common
                 { ValueOperator.Subtract, "-" },
                 { ValueOperator.Multiply, "*" },
                 { ValueOperator.Divide, "/" },
+                { ValueOperator.Modulo, "%" },
                 { ValueOperator.Concat, "||" }
             };
 

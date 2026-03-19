@@ -25,8 +25,12 @@ namespace LiteOrm.Common
         /// </summary>
         Divide = 3,
         /// <summary>
+        /// 求余
+        /// </summary>
+        Modulo = 4,
+        /// <summary>
         /// 字符串连接
         /// </summary>
-        Concat = 4
+        Concat = 5
     }
 }

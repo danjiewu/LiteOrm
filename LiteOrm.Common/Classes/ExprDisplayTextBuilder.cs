@@ -188,6 +188,7 @@ namespace LiteOrm.Common
                 ValueOperator.Subtract => "{0} - {1}",
                 ValueOperator.Multiply => "{0} * {1}",
                 ValueOperator.Divide => "{0} / {1}",
+                ValueOperator.Modulo => "{0} % {1}",
                 ValueOperator.Concat => "{0}{1}",
                 _ => op.ToString()
             };
