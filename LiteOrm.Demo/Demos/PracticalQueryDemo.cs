@@ -4,6 +4,7 @@ using LiteOrm.Demo.Services;
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
+using static LiteOrm.Common.Expr;
 
 namespace LiteOrm.Demo.Demos
 {
@@ -96,9 +97,9 @@ namespace LiteOrm.Demo.Demos
 
                 DemoHelper.PrintSection("📝 代码实现",
                     "// 构建 Expr 模型\n" +
-                    "var expr = Expr.From<User>()\n" +
-                    "    .Where(Expr.Prop(\"Age\") >= minAge)\n" +
-                    "    .Where(Expr.Prop(\"UserName\").Like($\"%{searchName}%\"))\n" +
+                    "var expr = From<User>()\n" +
+                    "    .Where(Prop(\"Age\") >= minAge)\n" +
+                    "    .Where(Prop(\"UserName\").Like($\"%{searchName}%\"))\n" +
                     "    .OrderBy((\"Id\", false))\n" +
                     "    .Section(0, 5);\n\n" +
                     "// 序列化为 JSON\n" +
@@ -107,9 +108,9 @@ namespace LiteOrm.Demo.Demos
                     "var deserializedExpr = JsonSerializer.Deserialize<SqlSegmentExpr>(json);");
 
                 // 构建 Expr 模型
-                var expr = Expr.From<User>()
-                    .Where(Expr.Prop("Age") >= minAge)
-                    .Where(Expr.Prop("UserName").Like($"%{searchName}%"))
+                var expr = From<User>()
+                    .Where(Prop("Age") >= minAge)
+                    .Where(Prop("UserName").Like($"%{searchName}%"))
                     .OrderBy(("Id", false))
                     .Section(0, 5);
 
@@ -160,8 +161,8 @@ namespace LiteOrm.Demo.Demos
                     "// 方式1：Lambda 表达式\n" +
                     "var lambdaExpr = q => q.Where(u => u.Age > 25);\n\n" +
                     "// 方式2：Expr 模型\n" +
-                    "var exprModel = Expr.From<User>()\n" +
-                    "    .Where(Expr.Prop(\"Age\") > 25);\n\n" +
+                    "var exprModel = From<User>()\n" +
+                    "    .Where(Prop(\"Age\") > 25);\n\n" +
                     "// 验证等价性\n" +
                     "var lambdaExprConverted = LambdaExprConverter.ToSqlSegment(lambdaExpr);\n" +
                     "bool isEquivalent = lambdaExprConverted.Equals(exprModel);");
@@ -171,8 +172,8 @@ namespace LiteOrm.Demo.Demos
                     System.Linq.IQueryable<User>>> lambdaExpr = q => q.Where(u => u.Age > 25);
 
                 // 方式2：Expr 模型
-                var exprModel = Expr.From<User>().As("User")
-                    .Where(Expr.Prop("Age") > 25);
+                var exprModel = From<User>().As("User")
+                    .Where(Prop("Age") > 25);
 
                 // 验证等价性
                 var lambdaExprConverted = LambdaExprConverter.ToSqlSegment(lambdaExpr);
@@ -221,7 +222,7 @@ namespace LiteOrm.Demo.Demos
                     ");");
 
                 var results = await userSvc.SearchAsync(
-                    q => q.Where(u => u.Age >= minAge && (Expr.Prop(nameof(User.Age)) <= maxAge).To<bool>())
+                    q => q.Where(u => u.Age >= minAge && (Prop(nameof(User.Age)) <= maxAge).To<bool>())
                           .Where(u => u.UserName.Contains(searchName))
                           .OrderBy(u => u.Age)
                           .ThenBy(u => u.UserName)
@@ -272,8 +273,8 @@ namespace LiteOrm.Demo.Demos
                 var maxAge = 45;
 
                 DemoHelper.PrintSection("📝 场景1：Expr 对象嵌入（条件内联展开）",
-                    "var minExpr = Expr.Prop(\"Age\") >= minAge;\n" +
-                    "var maxExpr = Expr.Prop(\"Age\") <= maxAge;\n" +
+                    "var minExpr = Prop(\"Age\") >= minAge;\n" +
+                    "var maxExpr = Prop(\"Age\") <= maxAge;\n" +
                     "// Expr 嵌入后直接展开为 SQL 条件片段\n" +
                     "Search($\"WHERE {minExpr} AND {maxExpr} ORDER BY Age\")");
 
@@ -287,9 +288,9 @@ namespace LiteOrm.Demo.Demos
                 var ageThreshold = 25;
 
                 DemoHelper.PrintSection("📝 场景2：普通值内嵌（自动转为命名参数）",
-                    "var nameExpr = Expr.Prop(\"UserName\").Contains(keyword);\n" +
+                    "var nameExpr = Prop(\"UserName\").Contains(keyword);\n" +
                     "// int/string 类型值自动转为 @0, @1... 参数，杜绝 SQL 注入\n" +
-                    "Search($\"WHERE {nameExpr} AND {Expr.Prop(\"Age\")} >= {ageThreshold} ORDER BY Id DESC\")");
+                    "Search($\"WHERE {nameExpr} AND {Prop(\"Age\")} >= {ageThreshold} ORDER BY Id DESC\")");
 
                 var results2 = await userDao.SearchByNamePatternAsync(keyword, ageThreshold);
                 var sql2 = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";

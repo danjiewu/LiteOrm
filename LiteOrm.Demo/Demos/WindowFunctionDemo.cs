@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using LiteOrm.Demo.Services;
 using System.Linq.Expressions;
+using static LiteOrm.Common.Expr;
 
 namespace LiteOrm.Demo.Demos
 {
@@ -52,8 +53,8 @@ namespace LiteOrm.Demo.Demos
                         }
                     }
                 }
-                return Expr.Over(
-                    Expr.Func("SUM", Expr.Prop(nameof(SalesRecord.Amount))),
+                return Over(
+                    Func("SUM", Prop(nameof(SalesRecord.Amount))),
                     partitionExprs.ToArray(),
                     orderExprs.ToArray());
             });
@@ -156,18 +157,19 @@ namespace LiteOrm.Demo.Demos
                     "纯 Expr 方式：直接构造 FunctionExpr + SelectExpr，无需扩展方法和 RegisterMethodHandler。");
 
                 DemoHelper.PrintSection("📝 代码实现",
-                    "var runningTotalExpr = Expr.Over(\n" +
-                    "Expr.Func(\"SUM\", Expr.Prop(nameof(SalesRecord.Amount))),\n" +
-                    "[Expr.Prop(nameof(SalesRecord.ProductId))],\n" +
-                    "[Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()]);");
+                    "var runningTotalExpr = Over(\n" +
+                    "Func(\"SUM\", Prop(nameof(SalesRecord.Amount))),\n" +
+                    "[Prop(nameof(SalesRecord.ProductId))],\n" +
+                    "[Prop(nameof(SalesRecord.SaleTime)).Asc()]);");
 
-                var runningTotalExpr = Expr.Over(
-                    Expr.Func("SUM", Expr.Prop(nameof(SalesRecord.Amount))),
-                    [Expr.Prop(nameof(SalesRecord.ProductId))],
-                    [Expr.Prop(nameof(SalesRecord.SaleTime)).Asc()]);
 
-                var selectExpr = Expr.From<SalesRecord>(tableMonth)
-                    .OrderBy(Expr.Prop(nameof(SalesRecord.ProductId)).Asc())
+                var runningTotalExpr = Over(
+                    Func("SUM", Prop(nameof(SalesRecord.Amount))),
+                    [Prop(nameof(SalesRecord.ProductId))],
+                    [Prop(nameof(SalesRecord.SaleTime)).Asc()]);
+
+                var selectExpr = From<SalesRecord>(tableMonth)
+                    .OrderBy(Prop(nameof(SalesRecord.ProductId)).Asc())
                     .Select(nameof(SalesRecord.Id),
                         nameof(SalesRecord.ProductId),
                         nameof(SalesRecord.ProductName),

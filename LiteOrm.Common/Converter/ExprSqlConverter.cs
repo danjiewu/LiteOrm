@@ -178,6 +178,7 @@ namespace LiteOrm.Common
         private static void ToSql(ref ValueStringBuilder sb, LogicBinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             string op = String.Empty;
+            bool isOppsite = expr.Operator.IsNot();
             _logicOperatorSymbols.TryGetValue(expr.Operator, out op);
             switch (expr.OriginOperator)
             {
@@ -193,7 +194,7 @@ namespace LiteOrm.Common
                     {
                         // IN 后面没有内容，视为空集合
                         sb.Length = begin;
-                        if (!expr.Operator.IsNot()) sb.Append("0=1");
+                        if (!isOppsite) sb.Append("0=1");
                     }
                     break;
                 case LogicOperator.RegexpLike:
@@ -210,12 +211,12 @@ namespace LiteOrm.Common
                     if (expr.Right is null || expr.Right is ValueExpr vs && vs.Value is null)
                     {
                         ToSqlInternal(ref sb, expr.Left, context, sqlBuilder, outputParams);
-                        sb.Append(expr.Operator == LogicOperator.Equal ? " IS NULL" : " IS NOT NULL");
+                        sb.Append(isOppsite ? " IS NOT NULL" : " IS NULL");
                     }
                     else if (expr.Left is null || expr.Left is ValueExpr vsl && vsl.Value is null)
                     {
                         ToSqlInternal(ref sb, expr.Right, context, sqlBuilder, outputParams);
-                        sb.Append(expr.Operator == LogicOperator.Equal ? " IS NULL" : " IS NOT NULL");
+                        sb.Append(isOppsite ? " IS NOT NULL" : " IS NULL");
                     }
                     else
                     {
@@ -227,12 +228,11 @@ namespace LiteOrm.Common
                     }
                     break;
                 case LogicOperator.Contains:
-                case LogicOperator.EndsWith:
                 case LogicOperator.StartsWith:
+                case LogicOperator.EndsWith:
                     // 处理 LIKE 相关 的模糊查询
-                    if (expr.Right is ValueExpr vs2)
+                    if (expr.Right is ValueExpr vs2 && vs2.Value is not Expr)
                     {
-
                         // 使用 escape 子句转义用户输入中的特殊字符
                         ToSqlInternal(ref sb, expr.Left, context, sqlBuilder, outputParams);
                         sb.Append(" ");
@@ -258,29 +258,35 @@ namespace LiteOrm.Common
                     }
                     else
                     {
-                        ToSqlInternal(ref sb, expr.Left, context, sqlBuilder, outputParams);
-                        sb.Append(" ");
-                        sb.Append(op);
-                        sb.Append(" ");
-                        // 若右侧不是常量而是表达式，则需要生成复杂的嵌套 REPLACE 来转义特殊字符
-                        var nestedRightSb = ValueStringBuilder.Create(64);
-                        ToSqlInternal(ref nestedRightSb, expr.Right, context, sqlBuilder, outputParams);
-                        string nestedRight = nestedRightSb.ToString();
-                        nestedRightSb.Dispose();
-                        string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({nestedRight},'{Constants.LikeEscapeChar}', '{Constants.LikeEscapeChar}{Constants.LikeEscapeChar}'),'_', '{Constants.LikeEscapeChar}_'),'%', '{Constants.LikeEscapeChar}%'),'/', '{Constants.LikeEscapeChar}/'),'[', '{Constants.LikeEscapeChar}['),']', '{Constants.LikeEscapeChar}]')";
-                        switch (expr.OriginOperator)
+                        if (expr.OriginOperator == LogicOperator.Contains)
                         {
-                            case LogicOperator.StartsWith:
-                                right = sqlBuilder.BuildConcatSql(right, "%"); break;
-                            case LogicOperator.EndsWith:
-                                right = sqlBuilder.BuildConcatSql("%", right); break;
-                            case LogicOperator.Contains:
-                                right = sqlBuilder.BuildConcatSql("%", right, "%"); break;
+                            var compExpr = Expr.Func("SubString", expr.Left, expr.Right) >= 0;
+                            if (isOppsite) compExpr = compExpr.Not();
+                            ToSqlInternal(ref sb, compExpr, context, sqlBuilder, outputParams);
                         }
-                        sb.Append(right);
-                        sb.Append(" ESCAPE '");
-                        sb.Append(Constants.LikeEscapeChar);
-                        sb.Append("'");
+                        else if (expr.OriginOperator == LogicOperator.StartsWith)
+                        {
+                            var compExpr = Expr.Func("SubString", expr.Left, expr.Right) == 0;
+                            if (isOppsite) compExpr = compExpr.Not();
+                            ToSqlInternal(ref sb, compExpr, context, sqlBuilder, outputParams);
+                        }
+                        else//EndsWith 无法通过单次调用表达式转换实现，需要生成复杂的嵌套 REPLACE 来转义特殊字符再用 LIKE 匹配结尾
+                        {
+                            ToSqlInternal(ref sb, expr.Left, context, sqlBuilder, outputParams);
+                            sb.Append(" ");
+                            sb.Append(op);
+                            sb.Append(" ");
+                            var nestedRightSb = ValueStringBuilder.Create(64);
+                            ToSqlInternal(ref nestedRightSb, expr.Right, context, sqlBuilder, outputParams);
+                            string nestedRight = nestedRightSb.ToString();
+                            nestedRightSb.Dispose();
+                            string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({nestedRight},'{Constants.LikeEscapeChar}', '{Constants.LikeEscapeChar}{Constants.LikeEscapeChar}'),'_', '{Constants.LikeEscapeChar}_'),'%', '{Constants.LikeEscapeChar}%'),'[', '{Constants.LikeEscapeChar}['),']', '{Constants.LikeEscapeChar}]')";
+                            right = sqlBuilder.BuildConcatSql("'%'", right); 
+                            sb.Append(right);
+                            sb.Append(" ESCAPE '");
+                            sb.Append(Constants.LikeEscapeChar);
+                            sb.Append("'");
+                        }
                     }
                     break;
                 default:

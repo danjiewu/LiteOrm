@@ -471,12 +471,24 @@ namespace LiteOrm.Common
             else return new WhereExpr(source as ISqlSegment, where);
         }
 
+        /// <summary>
+        /// 为 UPDATE 表达式添加 WHERE 条件。
+        /// </summary>
+        /// <param name="source">UPDATE 表达式。</param>
+        /// <param name="where">条件表达式。</param>
+        /// <returns>包含 WHERE 子句的 UPDATE 表达式。</returns>
         public static UpdateExpr Where(this UpdateExpr source, LogicExpr where)
         {
             source.Where = source.Where is null ? where : source.Where.And(where);
             return source;
         }
 
+        /// <summary>
+        /// 为 DELETE 表达式添加 WHERE 条件。
+        /// </summary>
+        /// <param name="source">DELETE 表达式。</param>
+        /// <param name="where">条件表达式。</param>
+        /// <returns>包含 WHERE 子句的 DELETE 表达式。</returns>
         public static DeleteExpr Where(this DeleteExpr source, LogicExpr where)
         {
             source.Where = source.Where is null ? where : source.Where.And(where);
@@ -678,7 +690,6 @@ namespace LiteOrm.Common
         /// 创建 COUNT 聚合函数表达式。
         /// </summary>
         /// <param name="expr">要计数的值表达式。</param>
-        /// <param name="isDistinct">是否去重计数。</param>
         /// <returns>COUNT 聚合函数表达式。</returns>
         /// <example>
         /// <code>

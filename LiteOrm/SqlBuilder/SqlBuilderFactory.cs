@@ -54,6 +54,9 @@ namespace LiteOrm
         /// 已注册的 SQL 构建器集合。
         /// </summary>
         protected ConcurrentDictionary<Type, SqlBuilder> RegisteredSqlBuilders { get; } = new();
+        /// <summary>
+        /// 按数据源名称索引的已注册 SQL 构建器集合。
+        /// </summary>
         protected ConcurrentDictionary<string, SqlBuilder> RegisteredSqlBuildersByDataSource { get; } = new();
 
         /// <summary>
@@ -108,6 +111,7 @@ namespace LiteOrm
         /// 接口显式实现：获取指定提供程序类型的 SQL 构建器。
         /// </summary>
         /// <param name="providerType">提供程序类型。</param>
+        /// <param name="dataSourceName">数据源名称。</param>
         /// <returns>SQL 构建器接口实例。</returns>
         ISqlBuilder ISqlBuilderFactory.GetSqlBuilder(Type providerType, string dataSourceName)
         {

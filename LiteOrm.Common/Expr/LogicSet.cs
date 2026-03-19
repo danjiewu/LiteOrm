@@ -83,7 +83,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取集合中的元素数量
         /// </summary>
-        public int Count => items.Count;
+        public new int Count => items.Count;
 
         /// <summary>
         /// 获取一个值，指示集合是否为只读

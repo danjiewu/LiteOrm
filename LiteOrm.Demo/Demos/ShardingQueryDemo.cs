@@ -4,6 +4,7 @@ using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using LiteOrm.Demo.Services;
 using Microsoft.Extensions.DependencyInjection;
+using static LiteOrm.Common.Expr;
 
 namespace LiteOrm.Demo.Demos
 {
@@ -222,13 +223,13 @@ namespace LiteOrm.Demo.Demos
 
                 DemoHelper.PrintSection("📝 代码实现",
                     "var sales = await salesService.SearchAsync(\n" +
-                    "    Expr.From<SalesRecordView>(\"202411\")\n" +
-                    "        .Where(Expr.Prop(\"Amount\") > 100)\n" +
+                    "    From<SalesRecordView>(\"202411\")\n" +
+                    "        .Where(Prop(\"Amount\") > 100)\n" +
                     ");");
 
                 var sales = await salesService.SearchAsync(
-                    Expr.From<SalesRecordView>("202411")
-                        .Where(Expr.Prop("Amount") > 100)
+                    From<SalesRecordView>("202411")
+                        .Where(Prop("Amount") > 100)
                 );
 
                 var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
@@ -292,15 +293,15 @@ namespace LiteOrm.Demo.Demos
 
                 DemoHelper.PrintSection("📝 代码实现",
                     "var topSales = await salesService.SearchAsync(\n" +
-                    "    Expr.From<SalesRecordView>(\"202412\")\n" +
-                    "        .Where(Expr.Prop(\"Amount\") > 0)\n" +
+                    "    From<SalesRecordView>(\"202412\")\n" +
+                    "        .Where(Prop(\"Amount\") > 0)\n" +
                     "        .OrderBy((\"Amount\", false))\n" +
                     "        .Section(0, 3)\n" +
                     ");");
 
                 var topSales = await salesService.SearchAsync(
-                    Expr.From<SalesRecordView>("202412")
-                        .Where(Expr.Prop("Amount") > 0)
+                    From<SalesRecordView>("202412")
+                        .Where(Prop("Amount") > 0)
                         .OrderBy(("Amount", false))
                         .Section(0, 3)
                 );

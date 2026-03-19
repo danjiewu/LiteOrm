@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using LiteOrm.Demo.Services;
+using static LiteOrm.Common.Expr;
 
 namespace LiteOrm.Demo.Demos
 {
@@ -55,21 +56,21 @@ namespace LiteOrm.Demo.Demos
                 DemoHelper.PrintSection("📝 代码实现",
                     "var update = new UpdateExpr\n" +
                     "{\n" +
-                    "    Source = Expr.From<User>(),\n" +
-                    "    Where  = Expr.Prop(\"UserName\") == \"UpdateDemo_Alice\",\n" +
+                    "    Source = From<User>(),\n" +
+                    "    Where  = Prop(\"UserName\") == \"UpdateDemo_Alice\",\n" +
                     "    Sets   = new List<(PropertyExpr, ValueTypeExpr)>\n" +
                     "    {\n" +
-                    "        (Expr.Prop(\"Age\"), Expr.Const(28))\n" +
+                    "        (Prop(\"Age\"), Const(28))\n" +
                     "    }\n" +
                     "};");
 
                 var update = new UpdateExpr
                 {
-                    Source = Expr.From<User>(),
-                    Where  = Expr.Prop("UserName") == "UpdateDemo_Alice",
+                    Source = From<User>(),
+                    Where  = Prop("UserName") == "UpdateDemo_Alice",
                     Sets   = new List<(PropertyExpr, ValueTypeExpr)>
                     {
-                        (Expr.Prop("Age"), Expr.Const(28))
+                        (Prop("Age"), Const(28))
                     }
                 };
 
@@ -106,11 +107,11 @@ namespace LiteOrm.Demo.Demos
                     "通过构造函数传入 Source 和 Where，再用 .Set() 扩展方法附加 SET 子句，语法简洁流畅");
 
                 DemoHelper.PrintSection("📝 代码实现",
-                    "var update = new UpdateExpr(Expr.From<User>(), Expr.Prop(\"UserName\") == \"UpdateDemo_Bob\")\n" +
-                    "    .Set((\"Age\", Expr.Const(35)));");
+                    "var update = new UpdateExpr(From<User>(), Prop(\"UserName\") == \"UpdateDemo_Bob\")\n" +
+                    "    .Set((\"Age\", Const(35)));");
 
-                var update = new UpdateExpr(Expr.From<User>(), Expr.Prop("UserName") == "UpdateDemo_Bob")
-                    .Set(("Age", Expr.Const(35)));
+                var update = new UpdateExpr(From<User>(), Prop("UserName") == "UpdateDemo_Bob")
+                    .Set(("Age", Const(35)));
 
                 int affected = await userSvc.UpdateAsync(update);
 
@@ -142,14 +143,14 @@ namespace LiteOrm.Demo.Demos
             try
             {
                 DemoHelper.PrintSection("📋 场景说明",
-                    "利用运算符重载将 PropertyExpr 与 Expr.Const 组合，生成 SET Age = Age + 5 的 SQL，无需手写 SQL");
+                    "利用运算符重载将 PropertyExpr 与 Const 组合，生成 SET Age = Age + 5 的 SQL，无需手写 SQL");
 
                 DemoHelper.PrintSection("📝 代码实现",
-                    "var update = new UpdateExpr(Expr.From<User>(), Expr.Prop(\"UserName\") == \"UpdateDemo_Carol\")\n" +
-                    "    .Set((\"Age\", Expr.Prop(\"Age\") + Expr.Const(5)));");
+                    "var update = new UpdateExpr(From<User>(), Prop(\"UserName\") == \"UpdateDemo_Carol\")\n" +
+                    "    .Set((\"Age\", Prop(\"Age\") + Const(5)));");
 
-                var update = new UpdateExpr(Expr.From<User>(), Expr.Prop("UserName") == "UpdateDemo_Carol")
-                    .Set(("Age", Expr.Prop("Age") + Expr.Const(5)));
+                var update = new UpdateExpr(From<User>(), Prop("UserName") == "UpdateDemo_Carol")
+                    .Set(("Age", Prop("Age") + Const(5)));
 
                 int affected = await userSvc.UpdateAsync(update);
 
@@ -184,11 +185,11 @@ namespace LiteOrm.Demo.Demos
                     "在 SET 子句中使用 FunctionExpr 调用数据库内置函数，展示 UpdateExpr 与函数表达式的集成能力");
 
                 DemoHelper.PrintSection("📝 代码实现",
-                    "var update = new UpdateExpr(Expr.From<User>(), Expr.Prop(\"UserName\") == \"UpdateDemo_Bob\")\n" +
-                    "    .Set((\"UserName\", new FunctionExpr(\"CONCAT\", Expr.Prop(\"UserName\"), Expr.Const(\"_v2\"))));");
+                    "var update = new UpdateExpr(From<User>(), Prop(\"UserName\") == \"UpdateDemo_Bob\")\n" +
+                    "    .Set((\"UserName\", Func(\"CONCAT\", Prop(\"UserName\"), Const(\"_v2\"))));");
 
-                var update = new UpdateExpr(Expr.From<User>(), Expr.Prop("UserName") == "UpdateDemo_Bob")
-                    .Set(("UserName", new FunctionExpr("CONCAT", Expr.Prop("UserName"), Expr.Const("_v2"))));
+                var update = new UpdateExpr(From<User>(), Prop("UserName") == "UpdateDemo_Bob")
+                    .Set(("UserName", Func("CONCAT", Prop("UserName"), Const("_v2"))));
 
                 int affected = await userSvc.UpdateAsync(update);
 
@@ -226,22 +227,22 @@ namespace LiteOrm.Demo.Demos
                 DemoHelper.PrintSection("📝 场景1 代码",
                     "// MySQL 禁止子查询的 FROM 与被更新目标表相同，用派生表包裹规避\n" +
                     "// 生成：SET Age = (SELECT T2.avg_age FROM (SELECT AVG(T1.Age) AS avg_age FROM Users T1 WHERE ...) T2)\n" +
-                    "var update1 = Expr.Update<User>()\r\n" +
-                    "   .Set((\"Age\", Expr.From<User>()\r\n" +
-                    "       .Where(Expr.Prop(\"UserName\").StartsWith(\"UpdateDemo_\"))\r\n" +
-                    "       .Select(Expr.Aggregate(\"AVG\", Expr.Prop(\"Age\")).As(\"avg_age\"))\r\n" +
+                    "var update1 = Update<User>()\r\n" +
+                    "   .Set((\"Age\", From<User>()\r\n" +
+                    "       .Where(Prop(\"UserName\").StartsWith(\"UpdateDemo_\"))\r\n" +
+                    "       .Select(Aggregate(\"AVG\", Prop(\"Age\")).As(\"avg_age\"))\r\n" +
                     "       .Select(\"avg_age\")\r\n" +
                     "   ))\r\n" +
-                    "   .Where(Expr.Prop(\"UserName\") == \"UpdateDemo_Alice\");");
+                    "   .Where(Prop(\"UserName\") == \"UpdateDemo_Alice\");");
 
                 var update1 = 
-                    Expr.Update<User>()
-                    .Set(("Age", Expr.From<User>()
-                        .Where(Expr.Prop("UserName").StartsWith("UpdateDemo_"))
-                        .Select(Expr.Aggregate("AVG", Expr.Prop("Age")).As("avg_age"))
+                    Update<User>()
+                    .Set(("Age", From<User>()
+                        .Where(Prop("UserName").StartsWith("UpdateDemo_"))
+                        .Select(Aggregate("AVG", Prop("Age")).As("avg_age"))
                         .Select("avg_age")//必须加一层嵌套，令 MySQL 将其视为独立数据源，MySQL 禁止子查询的 FROM 与被更新目标表相同
                     ))
-                    .Where(Expr.Prop("UserName") == "UpdateDemo_Alice");
+                    .Where(Prop("UserName") == "UpdateDemo_Alice");
 
                 int affected1 = await userSvc.UpdateAsync(update1);
 
@@ -254,18 +255,18 @@ namespace LiteOrm.Demo.Demos
                     "跨表子查询作为 SET 值：将 Carol 的 DeptId 更新为从 Departments 表查询到的部门 Id");
 
                 DemoHelper.PrintSection("📝 场景2 代码",
-                    "var subDept = Expr.From<Department>()\n" +
-                    "    .Where(Expr.Prop(\"Name\") == \"研发中心\")\n" +
-                    "    .Select(Expr.Prop(\"Id\"));\n" +
+                    "var subDept = From<Department>()\n" +
+                    "    .Where(Prop(\"Name\") == \"研发中心\")\n" +
+                    "    .Select(Prop(\"Id\"));\n" +
                     "\n" +
-                    "var update = new UpdateExpr(Expr.From<User>(), Expr.Prop(\"UserName\") == \"UpdateDemo_Carol\")\n" +
+                    "var update = new UpdateExpr(From<User>(), Prop(\"UserName\") == \"UpdateDemo_Carol\")\n" +
                     "    .Set((\"DeptId\", subDept));");
 
-                var subDept = Expr.From<Department>()
-                    .Where(Expr.Prop("Name") == "研发中心")
-                    .Select(Expr.Prop("Id"));
+                var subDept = From<Department>()
+                    .Where(Prop("Name") == "研发中心")
+                    .Select(Prop("Id"));
 
-                var update2 = new UpdateExpr(Expr.From<User>(), Expr.Prop("UserName") == "UpdateDemo_Carol")
+                var update2 = new UpdateExpr(From<User>(), Prop("UserName") == "UpdateDemo_Carol")
                     .Set(("DeptId", subDept));
 
                 int affected2 = await userSvc.UpdateAsync(update2);
@@ -298,23 +299,23 @@ namespace LiteOrm.Demo.Demos
             try
             {
                 DemoHelper.PrintSection("📋 场景说明",
-                    "使用 Expr.Lambda<T>() 将 Lambda 表达式转换为 WHERE 条件，同时通过 .Set() 一次性更新多个字段");
+                    "使用 Lambda<T>() 将 Lambda 表达式转换为 WHERE 条件，同时通过 .Set() 一次性更新多个字段");
 
                 DemoHelper.PrintSection("📝 代码实现",
                     "var update = new UpdateExpr(\n" +
-                    "    Expr.From<User>(),\n" +
-                    "    Expr.Lambda<User>(u => u.Age >= 28))\n" +
+                    "    From<User>(),\n" +
+                    "    Lambda<User>(u => u.Age >= 28))\n" +
                     "    .Set(\n" +
-                    "        (\"Age\",        Expr.Prop(\"Age\") + Expr.Const(1)),\n" +
-                    "        (\"CreateTime\", Expr.Const(DateTime.Now))\n" +
+                    "        (\"Age\",        Prop(\"Age\") + Const(1)),\n" +
+                    "        (\"CreateTime\", Const(DateTime.Now))\n" +
                     "    );");
 
                 var update = new UpdateExpr(
-                        Expr.From<User>(),
-                        Expr.Lambda<User>(u => u.Age >= 28))
+                        From<User>(),
+                        Lambda<User>(u => u.Age >= 28))
                     .Set(
-                        ("Age",        Expr.Prop("Age") + Expr.Const(1)),
-                        ("CreateTime", Expr.Const(DateTime.Now))
+                        ("Age",        Prop("Age") + Const(1)),
+                        ("CreateTime", Const(DateTime.Now))
                     );
 
                 int affected = await userSvc.UpdateAsync(update);

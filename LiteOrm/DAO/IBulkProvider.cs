@@ -38,7 +38,7 @@ namespace LiteOrm
     ///         return bulkCopy.WriteToServer(dt).RowsInserted;
     ///     }
     ///     
-    ///     public async Task<int> BulkInsertAsync(DataTable dt, IDbConnection dbConnection, IDbTransaction transaction, CancellationToken cancellationToken = default)
+    ///     public async Task&lt;int&gt; BulkInsertAsync(DataTable dt, IDbConnection dbConnection, IDbTransaction transaction, CancellationToken cancellationToken = default)
     ///     {
     ///         MySqlBulkCopy bulkCopy = new MySqlBulkCopy(dbConnection as MySqlConnection, transaction as MySqlTransaction);
     ///         bulkCopy.DestinationTableName = dt.TableName;
@@ -52,6 +52,7 @@ namespace LiteOrm
     ///     }
     /// }
     /// </code>
+    /// </example>
     public interface IBulkProvider
     {
         /// <summary>

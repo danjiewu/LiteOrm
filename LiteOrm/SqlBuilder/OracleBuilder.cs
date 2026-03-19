@@ -220,8 +220,25 @@ namespace LiteOrm
         /// </summary>
         public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
-            var colSqls = columns.Select(c => $"{ToSqlName(c.Name)} {GetSqlType(c)}{(c.AllowNull ? " NULL" : (c.IsIdentity ? "" : " NOT NULL"))}");
+            var colSqls = columns.Select(c => $"{ToSqlName(c.Name)} {GetSqlType(c)}{GetNotNullConstraintSql(c)}");
             return $"ALTER TABLE {ToSqlName(tableName)} ADD ({string.Join(", ", colSqls)})";
+        }
+
+        /// <summary>
+        /// 返回 Oracle 专用的 DEFAULT 值 SQL 字面量。
+        /// 日期类型使用 Oracle 的 <c>TIMESTAMP '...'</c> 语法。
+        /// </summary>
+        protected override string GetDefaultValueSql(ColumnDefinition column)
+        {
+            switch (column.DbType)
+            {
+                case DbType.DateTime:
+                case DbType.DateTime2:
+                case DbType.Date:
+                    return "TIMESTAMP '1900-01-01 00:00:00'";
+                default:
+                    return base.GetDefaultValueSql(column);
+            }
         }
 
         /// <summary>

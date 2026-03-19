@@ -252,21 +252,41 @@ namespace LiteOrm.Common
         public static ValueExpr Const(object value) => new ValueExpr(value) { IsConst = true };
 
 
+        /// <summary>
+        /// 创建指定实体类型的 UPDATE 表达式。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <returns>UPDATE 表达式。</returns>
         public static UpdateExpr Update<T>()
         {
             return new UpdateExpr(From<T>());
         }
 
+        /// <summary>
+        /// 创建指定类型的 UPDATE 表达式。
+        /// </summary>
+        /// <param name="objectType">实体类型。</param>
+        /// <returns>UPDATE 表达式。</returns>
         public static UpdateExpr Update(Type objectType)
         {
             return new UpdateExpr(From(objectType));
         }
 
+        /// <summary>
+        /// 创建指定实体类型的 DELETE 表达式。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <returns>DELETE 表达式。</returns>
         public static DeleteExpr Delete<T>()
         {
             return new DeleteExpr(From<T>());
         }
 
+        /// <summary>
+        /// 创建指定类型的 DELETE 表达式。
+        /// </summary>
+        /// <param name="objectType">实体类型。</param>
+        /// <returns>DELETE 表达式。</returns>
         public static DeleteExpr Delete(Type objectType)
         {
             return new DeleteExpr(From(objectType));
@@ -379,6 +399,10 @@ namespace LiteOrm.Common
         /// <returns>聚合函数表达式。</returns>
         public static FunctionExpr Aggregate(string name, ValueTypeExpr expression, bool isDistinct = false) => new FunctionExpr(name, expression) { IsAggregate = true };
 
+        /// <summary>
+        /// 创建 COUNT(1) 聚合函数表达式。
+        /// </summary>
+        /// <returns>COUNT(1) 聚合函数表达式。</returns>
         public static FunctionExpr Count() => new FunctionExpr("Count", Expr.Const(1)) { IsAggregate = true };
         /// <summary>
         /// 创建字符串拼接表达式集合（CONCAT）。
@@ -421,7 +445,6 @@ namespace LiteOrm.Common
         /// 使用指定的类型创建 From 表达式。
         /// </summary>
         /// <param name="objectType">实体类型</param>
-        /// <param name="isMain">是否为主表，主表会使用默认别名</param>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
         public static FromExpr From(Type objectType,params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs };
