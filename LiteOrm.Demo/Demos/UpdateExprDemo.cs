@@ -225,19 +225,20 @@ namespace LiteOrm.Demo.Demos
 
                 DemoHelper.PrintSection("📝 场景1 代码",
                     "// MySQL 禁止子查询的 FROM 与被更新目标表相同，用派生表包裹规避\n" +
-                    "// 生成：SET Age = (SELECT T1.avg_age FROM (SELECT AVG(T0.Age) AS avg_age FROM Users T0 WHERE ...) T1)\n" +
+                    "// 生成：SET Age = (SELECT T2.avg_age FROM (SELECT AVG(T1.Age) AS avg_age FROM Users T1 WHERE ...) T2)\n" +
                     "var update1 = Expr.Update<User>()\r\n" +
                     "   .Set((\"Age\", Expr.From<User>()\r\n" +
-                    "       .Where(Expr.Prop(\"UserName\").Like(\"UpdateDemo_%\"))\r\n" +
-                    "       .Select(new SelectItemExpr(Expr.Aggregate(\"AVG\", Expr.Prop(\"Age\")), \"avg_age\"))\r\n" +
+                    "       .Where(Expr.Prop(\"UserName\").StartsWith(\"UpdateDemo_\"))\r\n" +
+                    "       .Select(Expr.Aggregate(\"AVG\", Expr.Prop(\"Age\")).As(\"avg_age\"))\r\n" +
                     "       .Select(\"avg_age\")\r\n" +
                     "   ))\r\n" +
                     "   .Where(Expr.Prop(\"UserName\") == \"UpdateDemo_Alice\");");
 
-                var update1 = Expr.Update<User>()
+                var update1 = 
+                    Expr.Update<User>()
                     .Set(("Age", Expr.From<User>()
-                        .Where(Expr.Prop("UserName").Like("UpdateDemo_%"))
-                        .Select(new SelectItemExpr(Expr.Aggregate("AVG", Expr.Prop("Age")), "avg_age"))
+                        .Where(Expr.Prop("UserName").StartsWith("UpdateDemo_"))
+                        .Select(Expr.Aggregate("AVG", Expr.Prop("Age")).As("avg_age"))
                         .Select("avg_age")//必须加一层嵌套，令 MySQL 将其视为独立数据源，MySQL 禁止子查询的 FROM 与被更新目标表相同
                     ))
                     .Where(Expr.Prop("UserName") == "UpdateDemo_Alice");
