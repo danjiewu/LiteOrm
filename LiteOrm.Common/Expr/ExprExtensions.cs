@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Security.AccessControl;
 
 namespace LiteOrm.Common
 {
@@ -20,6 +19,7 @@ namespace LiteOrm.Common
     /// 6. SQL 语句构建（Where/GroupBy/Having/Select/OrderBy/Section）
     /// 7. 排序操作（Asc/Desc）
     /// 8. 聚合函数（Count/Sum/Avg/Max/Min）
+    /// 9. 字符串函数（Upper/Lower/Length）
     ///
     /// 使用示例：
     /// <code>

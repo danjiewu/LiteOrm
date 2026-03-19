@@ -234,6 +234,28 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 创建一个 NOT IN 表达式。
+        /// </summary>
+        /// <param name="propertyName">属性名称。</param>
+        /// <param name="values">排除值的集合。</param>
+        /// <returns>NOT IN 表达式。</returns>
+        public static LogicBinaryExpr NotIn(string propertyName, IEnumerable values)
+        {
+            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.NotIn, new ValueExpr(values));
+        }
+
+        /// <summary>
+        /// 创建一个 NOT IN 表达式。
+        /// </summary>
+        /// <param name="propertyName">属性名称。</param>
+        /// <param name="values">排除值的集合表达式。</param>
+        /// <returns>NOT IN 表达式。</returns>
+        public static LogicBinaryExpr NotIn(string propertyName, ValueTypeExpr values)
+        {
+            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.NotIn, values);
+        }
+
+        /// <summary>
         /// 从表达式树创建 Lambda 表达式封装。
         /// </summary>
         /// <typeparam name="T">实体类型。</typeparam>
@@ -307,11 +329,25 @@ namespace LiteOrm.Common
         public static LogicSet And(params LogicExpr[] exprs) => new LogicSet(LogicJoinType.And, exprs);
 
         /// <summary>
+        /// 创建逻辑与(AND)集合。
+        /// </summary>
+        /// <param name="exprs">要用 AND 连接的逻辑表达式集合。</param>
+        /// <returns>使用 AND 连接的逻辑集合。</returns>
+        public static LogicSet And(IEnumerable<LogicExpr> exprs) => new LogicSet(LogicJoinType.And, exprs);
+
+        /// <summary>
         /// 创建逻辑或(OR)集合。
         /// </summary>
         /// <param name="exprs">要用 OR 连接的逻辑表达式数组。</param>
         /// <returns>使用 OR 连接的逻辑集合。</returns>
         public static LogicSet Or(params LogicExpr[] exprs) => new LogicSet(LogicJoinType.Or, exprs);
+
+        /// <summary>
+        /// 创建逻辑或(OR)集合。
+        /// </summary>
+        /// <param name="exprs">要用 OR 连接的逻辑表达式集合。</param>
+        /// <returns>使用 OR 连接的逻辑集合。</returns>
+        public static LogicSet Or(IEnumerable<LogicExpr> exprs) => new LogicSet(LogicJoinType.Or, exprs);
 
         /// <summary>
         /// 创建逻辑取反(NOT)表达式。
@@ -328,6 +364,56 @@ namespace LiteOrm.Common
         /// <returns>函数调用表达式。</returns>
         public static FunctionExpr Func(string name, params ValueTypeExpr[] args) => new FunctionExpr(name, args);
 
+        /// <summary>
+        /// 创建 COALESCE 函数表达式，返回参数列表中第一个非 NULL 的值。
+        /// </summary>
+        /// <param name="args">候选值表达式列表。</param>
+        /// <returns>COALESCE 函数表达式。</returns>
+        public static FunctionExpr Coalesce(params ValueTypeExpr[] args) => new FunctionExpr("COALESCE", args);
+
+        /// <summary>
+        /// 创建 IfNull 函数表达式，当 <paramref name="expr"/> 为 NULL 时返回 <paramref name="defaultValue"/>。
+        /// </summary>
+        /// <param name="expr">待检测的值表达式。</param>
+        /// <param name="defaultValue">为 NULL 时的替代值表达式。</param>
+        /// <returns>IfNull 函数表达式。</returns>
+        public static FunctionExpr IfNull(ValueTypeExpr expr, ValueTypeExpr defaultValue) => new FunctionExpr("IfNull", expr, defaultValue);
+
+        /// <summary>
+        /// 创建简单条件表达式，等价于 CASE WHEN <paramref name="condition"/> THEN <paramref name="thenExpr"/> ELSE <paramref name="elseExpr"/> END。
+        /// </summary>
+        /// <param name="condition">条件表达式。</param>
+        /// <param name="thenExpr">条件为真时的结果表达式。</param>
+        /// <param name="elseExpr">条件为假时的结果表达式，可选。</param>
+        /// <returns>CASE WHEN 函数表达式。</returns>
+        public static FunctionExpr If(LogicExpr condition, ValueTypeExpr thenExpr, ValueTypeExpr elseExpr = null)
+            => Case(new[] { new KeyValuePair<LogicExpr, ValueTypeExpr>(condition, thenExpr) }, elseExpr);
+
+        /// <summary>
+        /// 创建获取当前时间戳的函数表达式（CURRENT_TIMESTAMP）。
+        /// </summary>
+        /// <returns>Now 函数表达式。</returns>
+        public static FunctionExpr Now() => new FunctionExpr("Now");
+
+        /// <summary>
+        /// 创建获取当前日期的函数表达式（CURRENT_DATE）。
+        /// </summary>
+        /// <returns>Today 函数表达式。</returns>
+        public static FunctionExpr Today() => new FunctionExpr("Today");
+
+        /// <summary>
+        /// 创建字符串转小写函数表达式（LOWER）。
+        /// </summary>
+        /// <param name="expr">目标值表达式。</param>
+        /// <returns>ToLower 函数表达式。</returns>
+        public static FunctionExpr Lower(ValueTypeExpr expr) => new FunctionExpr("ToLower", expr);
+
+        /// <summary>
+        /// 创建获取字符串长度函数表达式（LENGTH）。
+        /// </summary>
+        /// <param name="expr">目标值表达式。</param>
+        /// <returns>LENGTH 函数表达式。</returns>
+        public static FunctionExpr Length(ValueTypeExpr expr) => new FunctionExpr("LENGTH", expr);
 
         /// <summary>
         /// CASE 表达式构造器，接受一个条件-结果对的集合和一个可选的 ELSE 结果表达式，生成一个表示 CASE 语句的函数表达式。SqlBuilder 会将其转换为正确的 SQL CASE 语法。
@@ -397,13 +483,42 @@ namespace LiteOrm.Common
         /// <param name="expression">聚合操作的目标表达式。</param>
         /// <param name="isDistinct">是否对目标表达式去重，默认为 false。</param>
         /// <returns>聚合函数表达式。</returns>
-        public static FunctionExpr Aggregate(string name, ValueTypeExpr expression, bool isDistinct = false) => new FunctionExpr(name, expression) { IsAggregate = true };
+        public static FunctionExpr Aggregate(string name, ValueTypeExpr expression, bool isDistinct = false) => new FunctionExpr(name, isDistinct ? expression.Distinct() : expression) { IsAggregate = true };
 
         /// <summary>
         /// 创建 COUNT(1) 聚合函数表达式。
         /// </summary>
         /// <returns>COUNT(1) 聚合函数表达式。</returns>
-        public static FunctionExpr Count() => new FunctionExpr("Count", Expr.Const(1)) { IsAggregate = true };
+        public static FunctionExpr Count(ValueTypeExpr expression = null, bool isDistinct = false) => Aggregate("Count", expression ?? Expr.Const(1), isDistinct);
+
+        /// <summary>
+        /// 创建 SUM 聚合函数表达式。
+        /// </summary>
+        /// <param name="expression">目标值表达式。</param>
+        /// <returns>SUM 聚合函数表达式。</returns>
+        public static FunctionExpr Sum(ValueTypeExpr expression) => Aggregate("SUM", expression);
+
+        /// <summary>
+        /// 创建 AVG 聚合函数表达式。
+        /// </summary>
+        /// <param name="expression">目标值表达式。</param>
+        /// <returns>AVG 聚合函数表达式。</returns>
+        public static FunctionExpr Avg(ValueTypeExpr expression) => Aggregate("AVG", expression);
+
+        /// <summary>
+        /// 创建 MAX 聚合函数表达式。
+        /// </summary>
+        /// <param name="expression">目标值表达式。</param>
+        /// <returns>MAX 聚合函数表达式。</returns>
+        public static FunctionExpr Max(ValueTypeExpr expression) => Aggregate("MAX", expression);
+
+        /// <summary>
+        /// 创建 MIN 聚合函数表达式。
+        /// </summary>
+        /// <param name="expression">目标值表达式。</param>
+        /// <returns>MIN 聚合函数表达式。</returns>
+        public static FunctionExpr Min(ValueTypeExpr expression) => Aggregate("MIN", expression);
+
         /// <summary>
         /// 创建字符串拼接表达式集合（CONCAT）。
         /// </summary>
@@ -447,7 +562,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体类型</param>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static FromExpr From(Type objectType,params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs };
+        public static FromExpr From(Type objectType, params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs };
 
         /// <summary>
         /// 使用指定的 Lambda 表达式创建 WHERE 条件表达式
@@ -473,10 +588,5 @@ namespace LiteOrm.Common
         /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
         /// <returns>SQL 片段实例</returns>
         public static Expr Query<T, TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaExprConverter.ToSqlSegment(expression);
-
-        /// <summary>
-        /// 创建范围查询表达式 (BETWEEN)。
-        /// </summary>
-        public static LogicExpr Between(string propertyName, object low, object high) => Prop(propertyName).Between(low, high);
     }
 }
