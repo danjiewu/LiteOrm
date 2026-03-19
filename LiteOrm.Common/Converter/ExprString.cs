@@ -41,13 +41,21 @@ namespace System.Runtime.CompilerServices
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 插值字符串处理器，用于在编译时构建SQL语句
+    /// 插值字符串处理器，编译时生成，可插入普通变量或 Expr 类型对象构建SQL语句。
+    /// 1.Expr 转换为等效 SQL 片段，可以仅插入字段表达式，也可以插入复杂表达式，例如 $"WHERE {Expr.Prop("Age") &gt; 18}" 会转化为 "WHERE Age &gt; @0"并且参数列表包含 @0=18，而 $"WHERE {Expr.Prop("Age")} &gt; 18" 会转化为 "WHERE Age &gt; 18"；
+    /// 2.普通值（int、string 等）自动转为命名参数如 @0，防止 SQL 注入，例如 $"WHERE Age &gt; {18}" 转化为 "WHERE Age &gt; @0"，并且参数列表包含 @0=18。
     /// </summary>
+    /// <remarks>
+    /// 插值字符串处理器按顺序处理插值字符串中的文本和格式化项。对于每个格式化项，如果是 Expr 类型，则调用其 ToSql 方法将其转换为 SQL 片段；如果是普通值，则生成一个参数占位符并将值添加到参数列表中。最终生成的 SQL 字符串和参数列表可以通过 GetSqlResult 和 GetParams 方法获取。
+    /// <strong>注意：</strong>Expr 对象依赖构建上下文来处理表达式中的表别名、参数命名等细节，而插值字符串是按顺序访问格式化项，没有作用域概念，因此可能造成表别名不能按作用域自动匹配。
+    /// 例如 SelectExpr 在 FromExpr 之前插入，造成解析 SelectExpr 时无法预测对应 FromExpr 自动分配到的表别名。因此对于涉及多个表的复杂查询，建议预先设置好 FromExpr、PropertyExpr 等 Expr 对象的表别名，避免由上下文自动分配。
+    /// ExprString创建时已经在上下文中注册主表及别名"T0"，直接在格式化项中再插入主表可能造成主表分配到的表别名错误，可给要插入的主表FromExpr对象预先设定别名"T0"，也可以改用{{From}}占位符。
+    /// </remarks>
     [InterpolatedStringHandler]
     public ref struct ExprString
     {
         private ValueStringBuilder _builder;
-        private readonly List<KeyValuePair<string, object>> _params =  new List<KeyValuePair<string, object>>();
+        private readonly List<KeyValuePair<string, object>> _params = new List<KeyValuePair<string, object>>();
         private readonly SqlBuildContext _context;
         private readonly ISqlBuilder _sqlBuilder;
 
@@ -60,7 +68,7 @@ namespace LiteOrm.Common
         public ExprString(int literalLength, int formattedCount, IExprStringBuildContext context)
         {
             _builder = ValueStringBuilder.Create(literalLength + formattedCount * 16);
-            _context = context.CreateSqlBuildContext();
+            _context = context.CreateSqlBuildContext(true);
             _sqlBuilder = context.SqlBuilder;
         }
 

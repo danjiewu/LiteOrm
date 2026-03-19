@@ -1,4 +1,4 @@
-# LiteOrm API 使用指南（面向 AI）
+﻿# LiteOrm API 使用指南（面向 AI）
 
 ## 一、配置与注册
 
@@ -318,13 +318,14 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 | `Expr.Or(e1, e2, ...)` | `LogicSet` | OR 逻辑集合 |
 | `Expr.Not(expr)` | `NotExpr` | NOT 取反 |
 | `Expr.In("Name", values)` | `LogicBinaryExpr` | IN 表达式 |
-| `Expr.Between("Age", 18, 65)` | `LogicExpr` | BETWEEN 表达式 |
 | `Expr.PropEqual("Name", value)` | `LogicBinaryExpr` | 属性等于值 |
 | `Expr.Func("ABS", expr)` | `FunctionExpr` | 函数调用 |
 | `Expr.Aggregate("SUM", expr, isDistinct)` | `FunctionExpr` | 聚合函数（IsAggregate=true） |
 | `Expr.Concat(e1, e2)` | `ValueSet` | CONCAT 字符串拼接 |
 | `Expr.Lambda<T>(u => u.Age > 18)` | `LogicExpr` | Lambda 转 Expr |
-| `Expr.Foreign<T>(innerExpr)` | `ForeignExpr` | 关联表 EXISTS 查询 |
+| `Expr.Exists<T>(innerExpr)` | `ForeignExpr` | 关联表 EXISTS 查询 |
+| `Expr.Exists<T>(alias, innerExpr)` | `ForeignExpr` | 带表别名的 EXISTS 查询 |
+| `Expr.Exists<T>(innerExpr, tableArgs)` | `ForeignExpr` | 支持分表的 EXISTS 查询 |
 | `Expr.From<T>(tableArgs)` | `FromExpr` | 链式查询起点 |
 | `Expr.Sql("key", arg)` | `GenericSqlExpr` | 动态 SQL 片段 |
 
@@ -335,7 +336,7 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 | 运算符 | 说明 | 返回类型 |
 |--------|------|----------|
 | `==` `!=` `>` `<` `>=` `<=` | 比较 | `LogicExpr` |
-| `+` `-` `*` `/` | 算术 | `ValueTypeExpr` |
+| `+` `-` `*` `/` `%`| 算术 | `ValueTypeExpr` |
 | `-expr` `~expr` | 一元负号 / 按位取反 | `ValueTypeExpr` |
 
 `LogicExpr` 上的运算符：
@@ -351,7 +352,7 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 | 分类 | 方法 |
 |------|------|
 | 比较 | `.Equal(v)` `.NotEqual(v)` `.GreaterThan(v)` `.LessThan(v)` `.GreaterThanOrEqual(v)` `.LessThanOrEqual(v)` |
-| 集合 | `.In(IEnumerable)` `.In(params items)` `.In(ValueTypeExpr)` `.NotIn(IEnumerable)` `.NotIn(params items)` |
+| 集合 | `.In(IEnumerable)` `.In(params items)` `.In(ValueTypeExpr)` |
 | 范围 | `.Between(low, high)` |
 | 字符串 | `.Like(pattern)` `.Contains(text)` `.StartsWith(text)` `.EndsWith(text)` |
 | Null | `.IsNull()` `.IsNotNull()` |
@@ -417,7 +418,7 @@ if (!string.IsNullOrEmpty(name)) condition &= Expr.Prop("UserName").Contains(nam
 var users = await dao.Search(condition).ToListAsync();
 
 // 关联表 EXISTS 查询
-var expr = Expr.Foreign<Department>(Expr.Prop("Name") == "IT");
+var expr = Expr.Exists<Department>(Expr.Prop("Name") == "IT");
 // 等价 Lambda 写法（在 Lambda 查询中）：
 var expr = Expr.Lambda<User>(u => Expr.Exists<Department>(d => d.Name == "IT"));
 

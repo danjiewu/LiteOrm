@@ -20,7 +20,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置外部实体类型。
         /// </summary>
-        public new Type Foreign
+        public Type Foreign
         {
             get { return _foreign; }
             set { _foreign = value; }

@@ -82,7 +82,7 @@ namespace LiteOrm.Tests
 
             // Query with NOT IN empty list (should return all)
             var emptyList = new int[] { };
-            var expr = Expr.Prop("Id").NotIn(emptyList);
+            var expr = Expr.Prop("Id").In(emptyList).Not();
             var results = await objectViewDAO.Search(expr).ToListAsync();
 
             Assert.NotNull(results);
@@ -103,7 +103,7 @@ namespace LiteOrm.Tests
 
             // Query using Expr.NotIn() to exclude specific IDs
             var excludeIds = new int[] { user1.Id };
-            var expr = Expr.Prop("Id").NotIn(excludeIds);
+            var expr = Expr.Prop("Id").In(excludeIds).Not();
             var results = await objectViewDAO.Search(expr).ToListAsync();
 
             Assert.NotNull(results);
@@ -333,7 +333,7 @@ namespace LiteOrm.Tests
 
             // Mix IN clause with other conditions
             var idList = new int[] { };  // Empty IN
-            var expr = (Expr.Prop("Age") > 20) & Expr.Prop("Id").NotIn(idList);
+            var expr = (Expr.Prop("Age") > 20) & Expr.Prop("Id").In(idList).Not();
             var results = await objectViewDAO.Search(expr).ToListAsync();
 
             Assert.NotNull(results);
@@ -362,7 +362,7 @@ namespace LiteOrm.Tests
                 .Select(Expr.Prop("Name"), Expr.Prop("Age"));
 
             var result = dataViewDAO.Search(selectExpr);
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.True(dt.Rows.Count <= 2);

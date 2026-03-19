@@ -913,24 +913,22 @@ LogicExpr like = Expr.Prop("username").Contains("admin");
 LogicExpr startWith = Expr.Prop("username").StartsWith("admin");
 LogicExpr endWith = Expr.Prop("username").EndsWith("admin");
 LogicExpr inExpr = Expr.Prop("id").In(1, 2, 3);
-LogicExpr notIn = Expr.Prop("id").NotIn(new[] { 4, 5, 6 });
+LogicExpr notIn = !Expr.Prop("id").In(4, 5, 6);
 LogicExpr isNull = Expr.Prop("email").IsNull();
 LogicExpr isNotNull = Expr.Prop("email").IsNotNull();
 
 // BETWEEN
-LogicExpr between = Expr.Between("age", 18, 60);
-// 等价写法
-LogicExpr between2 = Expr.Prop("age").Between(18, 60);
+LogicExpr between = Expr.Prop("age").Between(18, 60);
 
 // 逻辑组合
 LogicExpr andExpr = Expr.And(cmp1, like);
 LogicExpr orExpr = Expr.Or(cmp1, cmp2);
 
 // EXISTS 子查询（手动构建，传入 LogicExpr）
-ForeignExpr existsExpr = Expr.Foreign<Department>(Expr.Prop("Id") == 1);
-// 带别名的外键 EXISTS
-ForeignExpr existsWithAlias = Expr.Foreign<Department>("Dept", Expr.Prop("Id").IsNotNull());
-// 在 Lambda 表达式中使用 Expr.Exists<T>(参见第 6.5 节)
+ForeignExpr existsExpr = Expr.Exists<Department>(Expr.Prop("Id") == 1);
+// 带别名的 EXISTS
+ForeignExpr existsWithAlias = Expr.Exists<Department>("Dept", Expr.Prop("Id").IsNotNull());
+// 在 Lambda 表达式中使用 Expr.Exists<T>(参见第 6.3.3 节)
 
 // 聚合函数
 FunctionExpr countExpr = Expr.Prop("id").Count();
@@ -1348,14 +1346,14 @@ var selectExpr = Expr.From<Log>("202601")       // 指向 Log_202601
 DataTable dt = dataViewDAO.Search(selectExpr).GetResult();
 
 // ForeignExpr + TableArgs：EXISTS 子查询也可指向分表
-var existsExpr = Expr.Foreign<Log>(
+var existsExpr = Expr.Exists<Log>(
     Expr.Prop("UserId") == Expr.Prop("User.Id"),   // 关联条件
     "202601");                                      // 指向 Log_202601
 
 var users = userService.Search(existsExpr);
 
 // 带别名的写法
-var existsWithAlias = Expr.Foreign<Log>("lg",
+var existsWithAlias = Expr.Exists<Log>("lg",
     Expr.Prop("UserId") == Expr.Prop("User.Id"),
     "202601");
 

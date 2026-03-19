@@ -373,12 +373,12 @@ namespace LiteOrm.Tests
 
             // Act - Order
             var ordered = await viewService.SearchAsync(
-                Expr.Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false))
+                Expr.From<TestUser>().Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false))
             );
 
             // Act - Section
             var section = await viewService.SearchAsync(
-                Expr.Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false)).Section(0, 2)
+                Expr.From<TestUser>().Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false)).Section(0, 2)
             );
 
             // Assert
@@ -471,7 +471,7 @@ namespace LiteOrm.Tests
             // Act
             // 使用 ForeignExpr 进行关联查询 (使用 EXISTS 子查询)
             // 需要在 InnerExpr 中添加外键关联条件：TestUser.DeptId = TestDepartment.Id
-            var users = await viewService.SearchAsync(Expr.Foreign<TestDepartment>(
+            var users = await viewService.SearchAsync(Expr.Exists<TestDepartment>(
                 (Expr.Prop("Name") == "Foreign Dept") &
                 (Expr.Prop("T0", "DeptId") == Expr.Prop("Id"))
             ));
@@ -499,7 +499,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User C", Age = 30, DeptId = dept2.Id, CreateTime = DateTime.Now });
 
             var users = await viewService.SearchAsync(
-                (Expr.Prop("Age") == 30) & Expr.Foreign<TestDepartment>("Dept",
+                (Expr.Prop("Age") == 30) & Expr.Exists<TestDepartment>("Dept",
                     (Expr.Prop("Name") == "Dept 1") &
                     (Expr.Prop("T0", "DeptId") == Expr.Prop("Id")) &
                     (Expr.Prop("T0", "Name") != Expr.Prop("Name")))
@@ -612,7 +612,8 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User 5", Age = 40, CreateTime = DateTime.Now, DeptId = dept2.Id });
 
             // Act 1: 使用 ForeignColumn (DeptName) 作为查询条件和排序条件，同时分页
-            var expr1 = Expr.Where<TestUserView>(u => u.DeptName != null)
+            var expr1 = Expr.From<TestUserView>()
+                .Where<TestUserView>(u => u.DeptName != null)
                 .OrderBy((nameof(TestUserView.DeptName), true))  // 按部门名称升序
                 .OrderBy((nameof(TestUser.Age), false))          // 再按年龄降序
                 .Section(0, 3);                                  // 分页，取前3条
@@ -640,7 +641,8 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "Child User 2", Age = 28, CreateTime = DateTime.Now, DeptId = childDept2.Id });
 
             // 使用 ParentDeptName 作为查询和排序条件
-            var expr2 = Expr.Where<TestUserView>(u => u.ParentDeptName == "Parent Dept")
+            var expr2 = Expr.From<TestUserView>()
+                .Where<TestUserView>(u => u.ParentDeptName == "Parent Dept")
                 .OrderBy(nameof(TestUserView.ParentDeptName))  // 按父部门名称升序
                 .OrderBy(nameof(TestUserView.DeptName))        // 再按部门名称升序
                 .OrderBy(nameof(TestUser.Age))                 // 再按年龄升序

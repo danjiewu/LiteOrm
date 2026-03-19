@@ -209,10 +209,10 @@ namespace LiteOrm.Tests
         public void ForeignExpr_Tests()
         {
             // 相等性测试
-            Expr f1 = Expr.Foreign<object>(Expr.Prop("Name") == "IT");
-            Expr f2 = Expr.Foreign<object>(Expr.Prop("Name") == "IT");
-            Expr f3 = Expr.Foreign<object>(Expr.Prop("Name") == "HR");
-            Expr f4 = Expr.Foreign<string>(Expr.Prop("Name") == "IT");
+            Expr f1 = Expr.Exists<object>(Expr.Prop("Name") == "IT");
+            Expr f2 = Expr.Exists<object>(Expr.Prop("Name") == "IT");
+            Expr f3 = Expr.Exists<object>(Expr.Prop("Name") == "HR");
+            Expr f4 = Expr.Exists<string>(Expr.Prop("Name") == "IT");
 
             Assert.True(f1.Equals(f2));
             Assert.False(f1.Equals(f3));
@@ -299,7 +299,7 @@ namespace LiteOrm.Tests
             Assert.Equal(GenericSqlExpr.Get("TestKey2"), Expr.StaticSql("TestKey2"));
 
             // Between
-            Assert.Equal((Expr.Prop("Age") >= (ValueTypeExpr)10) & (Expr.Prop("Age") <= (ValueTypeExpr)20), Expr.Between("Age", 10, 20));
+            Assert.Equal((Expr.Prop("Age") >= (ValueTypeExpr)10) & (Expr.Prop("Age") <= (ValueTypeExpr)20), Expr.Prop("Age").Between(10, 20));
         }
 
         [Fact]

@@ -280,7 +280,7 @@ namespace LiteOrm.Tests
         public void ExistsSubquery_Serialization()
         {
             // 测试：验证 Exists 表达式可以被序列化
-            var foreignExpr = Expr.Foreign<TestDepartment>(Expr.Prop("Id") == Expr.Prop("u", "DeptId"));
+            var foreignExpr = Expr.Exists<TestDepartment>(Expr.Prop("Id") == Expr.Prop("u", "DeptId"));
             Assert.NotNull(foreignExpr);
 
             // 使用 Expr.And 与其他逻辑表达式组合
@@ -308,7 +308,7 @@ namespace LiteOrm.Tests
             // 3. 手动构造等效的 Expr
             var manualExpr = new WhereExpr
             {
-                Source = new FromExpr(typeof(TestUser)) { Alias = Constants.DefaultTableAlias },
+                Source = new FromExpr(typeof(TestUser)).As(Constants.DefaultTableAlias),
                 Where = Expr.And(
                     Expr.Prop("Age") > 18,
                     Expr.Prop("Name").Contains("Test")
@@ -355,7 +355,7 @@ namespace LiteOrm.Tests
                 {
                     Source = new WhereExpr
                     {
-                        Source = new FromExpr(typeof(TestUser)) { Alias = Constants.DefaultTableAlias },
+                        Source = new FromExpr(typeof(TestUser)).As(Constants.DefaultTableAlias),
                         Where = Expr.And(
                             Expr.Prop("Age") > 18,
                             Expr.Prop("Name").Contains("Test")

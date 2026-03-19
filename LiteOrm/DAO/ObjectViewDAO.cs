@@ -246,7 +246,7 @@ namespace LiteOrm
         /// <summary>
         /// 使用带参数的SQL查询
         /// </summary>
-        /// <param name="sqlBody">查询SQL，使用插值字符串格式</param>
+        /// <param name="sqlBody">查询SQL，使用插值字符串格式，可插入普通变量或 Expr。<see cref="LiteOrm.Common.ExprString"/></param>
         /// <param name="isFull">传入的是否是完整SQL，默认为 false</param>
         /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
         /// <example>
@@ -254,7 +254,7 @@ namespace LiteOrm
         /// var users = objectViewDAO.Search($"WHERE {Expr.Prop("Age") > 20 }");
         /// </code>
         /// </example>
-        public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)
+        public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody,bool isFull = false)
         {
             string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSqlResult()}";
             var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
@@ -264,7 +264,7 @@ namespace LiteOrm
         /// <summary>
         /// 使用带参数的SQL查询
         /// </summary>
-        /// <param name="sqlBody">查询SQL，必须是完整SQL，使用插值字符串格式</param>
+        /// <param name="sqlBody">查询SQL，使用插值字符串格式，可插入普通变量或 Expr。<see cref="LiteOrm.Common.ExprString"/></param>
         /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
         /// <example>
         /// <code>

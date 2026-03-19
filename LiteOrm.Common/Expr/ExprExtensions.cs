@@ -188,33 +188,6 @@ namespace LiteOrm.Common
         public static LogicBinaryExpr In(this ValueTypeExpr left, params object[] items) => new LogicBinaryExpr(left, LogicOperator.In, new ValueExpr(items));
 
         /// <summary>
-        /// 创建 NOT IN 集合不包含表达式。
-        /// </summary>
-        /// <param name="left">左侧值表达式。</param>
-        /// <param name="items">不包含值的集合。</param>
-        /// <returns>NOT IN 集合不包含逻辑表达式。</returns>
-        /// <example>
-        /// <code>
-        /// var excludedStatuses = new List&lt;string&gt; { "Deleted", "Inactive" };
-        /// var condition = Expr.Prop("Status").NotIn(excludedStatuses);
-        /// </code>
-        /// </example>
-        public static LogicBinaryExpr NotIn(this ValueTypeExpr left, IEnumerable items) => new LogicBinaryExpr(left, LogicOperator.NotIn, new ValueExpr(items));
-
-        /// <summary>
-        /// 创建 NOT IN 集合不包含表达式（参数数组版本）。
-        /// </summary>
-        /// <param name="left">左侧值表达式。</param>
-        /// <param name="items">不包含值的参数数组。</param>
-        /// <returns>NOT IN 集合不包含逻辑表达式。</returns>
-        /// <example>
-        /// <code>
-        /// var condition = Expr.Prop("Status").NotIn("Deleted", "Inactive");
-        /// </code>
-        /// </example>
-        public static LogicBinaryExpr NotIn(this ValueTypeExpr left, params object[] items) => new LogicBinaryExpr(left, LogicOperator.NotIn, new ValueExpr(items));
-
-        /// <summary>
         /// 创建范围查询表达式 (BETWEEN)。
         /// </summary>
         /// <param name="left">左侧值表达式。</param>
@@ -226,9 +199,9 @@ namespace LiteOrm.Common
         /// var condition = Expr.Prop("Age").Between(18, 65);
         /// </code>
         /// </example>
-        public static LogicExpr Between(this ValueTypeExpr left, object low, object high)
+        public static LogicExpr Between(this ValueTypeExpr left, ValueTypeExpr low, ValueTypeExpr high)
         {
-            return (left >= (ValueTypeExpr)new ValueExpr(low)) & (left <= (ValueTypeExpr)new ValueExpr(high));
+            return (left >= low) & (left <= high);
         }
 
         /// <summary>
@@ -483,6 +456,15 @@ namespace LiteOrm.Common
             }
             else return new WhereExpr(source as ISqlSegment, where);
         }
+
+        /// <summary>
+        /// 使用指定的 Lambda 表达式创建 WHERE 条件表达式
+        /// </summary>
+        /// <typeparam name="T">实体类型</typeparam>
+        /// <param name="source">SQL 语句构建起点</param>
+        /// <param name="expression">定义筛选条件的 Lambda 表达式</param>
+        /// <returns>WHERE 条件表达式实例</returns>
+        public static WhereExpr Where<T>(this ISourceAnchor source, Expression<Func<T, bool>> expression) => new WhereExpr(source, Expr.Lambda(expression));
 
         /// <summary>
         /// 为 UPDATE 表达式添加 WHERE 条件。

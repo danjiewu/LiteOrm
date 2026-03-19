@@ -83,7 +83,7 @@ namespace LiteOrm
         /// <summary>
         /// 使用插值字符串查询数据
         /// </summary>
-        /// <param name="sqlBody">查询sql，使用插值字符串格式</param>
+        /// <param name="sqlBody">查询SQL，使用插值字符串格式，可插入普通变量或 Expr。<see cref="LiteOrm.Common.ExprString"/></param>
         /// <param name="isFull">传入的是否是完整sql，默认为 false</param>
         /// <returns>查询结果数据表</returns>
         public virtual DataTableResult Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)

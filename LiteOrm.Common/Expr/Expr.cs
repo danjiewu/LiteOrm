@@ -100,7 +100,7 @@ namespace LiteOrm.Common
         /// <param name="type">关联外部实体的类型</param>
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <returns>外键表达式。</returns>
-        public static ForeignExpr Foreign(Type type, LogicExpr innerExpr)
+        public static ForeignExpr Exists(Type type, LogicExpr innerExpr)
         {
             return new ForeignExpr(type, innerExpr);
         }
@@ -111,7 +111,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">关联外部实体的类型</typeparam>
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <returns>外键表达式。</returns>
-        public static ForeignExpr Foreign<T>(LogicExpr innerExpr)
+        public static ForeignExpr Exists<T>(LogicExpr innerExpr)
         {
             return new ForeignExpr(typeof(T), innerExpr);
         }
@@ -123,7 +123,7 @@ namespace LiteOrm.Common
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
         /// <returns>外键表达式。</returns>
-        public static ForeignExpr Foreign<T>(LogicExpr innerExpr, params string[] tableArgs)
+        public static ForeignExpr Exists<T>(LogicExpr innerExpr, params string[] tableArgs)
         {
             return new ForeignExpr(typeof(T), innerExpr, tableArgs);
         }
@@ -135,7 +135,7 @@ namespace LiteOrm.Common
         /// <param name="alias">外部表别名。</param>
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <returns>外键表达式。</returns>
-        public static ForeignExpr Foreign<T>(string alias, LogicExpr innerExpr)
+        public static ForeignExpr Exists<T>(string alias, LogicExpr innerExpr)
         {
             return new ForeignExpr(typeof(T), alias, innerExpr);
         }
@@ -148,7 +148,7 @@ namespace LiteOrm.Common
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
         /// <returns>外键表达式。</returns>
-        public static ForeignExpr Foreign<T>(string alias, LogicExpr innerExpr, params string[] tableArgs)
+        public static ForeignExpr Exists<T>(string alias, LogicExpr innerExpr, params string[] tableArgs)
         {
             return new ForeignExpr(typeof(T), alias, innerExpr, tableArgs);
         }
@@ -223,28 +223,6 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 创建一个 IN 表达式。
-        /// </summary>
-        /// <param name="propertyName">属性名称。</param>
-        /// <param name="values">包含值的集合表达式。</param>
-        /// <returns>IN 表达式。</returns>
-        public static LogicBinaryExpr In(string propertyName, ValueTypeExpr values)
-        {
-            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.In, values);
-        }
-
-        /// <summary>
-        /// 创建一个 NOT IN 表达式。
-        /// </summary>
-        /// <param name="propertyName">属性名称。</param>
-        /// <param name="values">排除值的集合。</param>
-        /// <returns>NOT IN 表达式。</returns>
-        public static LogicBinaryExpr NotIn(string propertyName, IEnumerable values)
-        {
-            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.NotIn, new ValueExpr(values));
-        }
-
-        /// <summary>
         /// 创建一个 NOT IN 表达式。
         /// </summary>
         /// <param name="propertyName">属性名称。</param>
@@ -278,40 +256,44 @@ namespace LiteOrm.Common
         /// 创建指定实体类型的 UPDATE 表达式。
         /// </summary>
         /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="tableArgs">动态表名参数</param>
         /// <returns>UPDATE 表达式。</returns>
-        public static UpdateExpr Update<T>()
+        public static UpdateExpr Update<T>(params string[] tableArgs)
         {
-            return new UpdateExpr(From<T>());
+            return new UpdateExpr(From<T>(tableArgs));
         }
 
         /// <summary>
         /// 创建指定类型的 UPDATE 表达式。
         /// </summary>
         /// <param name="objectType">实体类型。</param>
+        /// <param name="tableArgs">动态表名参数</param>
         /// <returns>UPDATE 表达式。</returns>
-        public static UpdateExpr Update(Type objectType)
+        public static UpdateExpr Update(Type objectType, params string[] tableArgs)
         {
-            return new UpdateExpr(From(objectType));
+            return new UpdateExpr(From(objectType, tableArgs));
         }
 
         /// <summary>
         /// 创建指定实体类型的 DELETE 表达式。
         /// </summary>
         /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="tableArgs">动态表名参数</param>
         /// <returns>DELETE 表达式。</returns>
-        public static DeleteExpr Delete<T>()
+        public static DeleteExpr Delete<T>(params string[] tableArgs)
         {
-            return new DeleteExpr(From<T>());
+            return new DeleteExpr(From<T>(tableArgs));
         }
 
         /// <summary>
         /// 创建指定类型的 DELETE 表达式。
         /// </summary>
         /// <param name="objectType">实体类型。</param>
+        /// <param name="tableArgs">动态表名参数</param>
         /// <returns>DELETE 表达式。</returns>
-        public static DeleteExpr Delete(Type objectType)
+        public static DeleteExpr Delete(Type objectType, params string[] tableArgs)
         {
-            return new DeleteExpr(From(objectType));
+            return new DeleteExpr(From(objectType, tableArgs));
         }
 
         /// <summary>
@@ -563,14 +545,6 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
         public static FromExpr From(Type objectType, params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs };
-
-        /// <summary>
-        /// 使用指定的 Lambda 表达式创建 WHERE 条件表达式
-        /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="expression">定义筛选条件的 Lambda 表达式</param>
-        /// <returns>WHERE 条件表达式实例</returns>
-        public static WhereExpr Where<T>(Expression<Func<T, bool>> expression) => new WhereExpr() { Where = Lambda(expression) };
 
         /// <summary>
         /// 使用 IQueryable 形式的 Lambda 表达式创建 SQL 片段

@@ -922,24 +922,22 @@ LogicExpr like = Expr.Prop("username").Contains("admin");
 LogicExpr startWith = Expr.Prop("username").StartsWith("admin");
 LogicExpr endWith = Expr.Prop("username").EndsWith("admin");
 LogicExpr inExpr = Expr.Prop("id").In(1, 2, 3);
-LogicExpr notIn = Expr.Prop("id").NotIn(new[] { 4, 5, 6 });
+LogicExpr notIn = !Expr.Prop("id").In(4, 5, 6);
 LogicExpr isNull = Expr.Prop("email").IsNull();
 LogicExpr isNotNull = Expr.Prop("email").IsNotNull();
 
 // BETWEEN
-LogicExpr between = Expr.Between("age", 18, 60);
-// Equivalent writing
-LogicExpr between2 = Expr.Prop("age").Between(18, 60);
+LogicExpr between = Expr.Prop("age").Between(18, 60);
 
 // Logical combination
 LogicExpr andExpr = Expr.And(cmp1, like);
 LogicExpr orExpr = Expr.Or(cmp1, cmp2);
 
 // EXISTS subquery (manually constructed, pass LogicExpr)
-ForeignExpr existsExpr = Expr.Foreign<Department>(Expr.Prop("Id") == 1);
-// Foreign key EXISTS with alias
-ForeignExpr existsWithAlias = Expr.Foreign<Department>("Dept", Expr.Prop("Id").IsNotNull());
-// Use Expr.Exists<T> in Lambda expressions (see section 6.5)
+ForeignExpr existsExpr = Expr.Exists<Department>(Expr.Prop("Id") == 1);
+// EXISTS with alias
+ForeignExpr existsWithAlias = Expr.Exists<Department>("Dept", Expr.Prop("Id").IsNotNull());
+// Use Expr.Exists<T>(lambda) in Lambda expressions (see section 6.3.3)
 
 // Aggregate functions
 FunctionExpr countExpr = Expr.Prop("id").Count();
@@ -1361,14 +1359,14 @@ var selectExpr = Expr.From<Log>("202601")       // Points to Log_202601
 DataTable dt = dataViewDAO.Search(selectExpr).GetResult();
 
 // ForeignExpr + TableArgs: EXISTS subquery can also point to shards
-var existsExpr = Expr.Foreign<Log>(
+var existsExpr = Expr.Exists<Log>(
     Expr.Prop("UserId") == Expr.Prop("User.Id"),   // Association condition
     "202601");                                      // Points to Log_202601
 
 var users = userService.Search(existsExpr);
 
 // With alias
-var existsWithAlias = Expr.Foreign<Log>("lg",
+var existsWithAlias = Expr.Exists<Log>("lg",
     Expr.Prop("UserId") == Expr.Prop("User.Id"),
     "202601");
 

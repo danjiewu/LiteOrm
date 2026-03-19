@@ -168,11 +168,11 @@ namespace LiteOrm.Demo.Demos
                     "bool isEquivalent = lambdaExprConverted.Equals(exprModel);");
 
                 // 方式1：Lambda 表达式
-                System.Linq.Expressions.Expression<System.Func<System.Linq.IQueryable<User>,
-                    System.Linq.IQueryable<User>>> lambdaExpr = q => q.Where(u => u.Age > 25);
+                System.Linq.Expressions.Expression<Func<IQueryable<User>,
+                    IQueryable<User>>> lambdaExpr = q => q.Where(u => u.Age > 25);
 
                 // 方式2：Expr 模型
-                var exprModel = From<User>().As("User")
+                var exprModel = From<User>().As(Constants.DefaultTableAlias)
                     .Where(Prop("Age") > 25);
 
                 // 验证等价性
