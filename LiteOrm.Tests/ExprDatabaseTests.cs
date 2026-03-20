@@ -277,15 +277,17 @@ namespace LiteOrm.Tests
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
             var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
 
-            // 插入测试数据
+            // 插入测试数据（包含重复的Age值）
             var user1 = new TestUser { Name = "ExtensionTest1", Age = 20, CreateTime = DateTime.Now };
             var user2 = new TestUser { Name = "ExtensionTest2", Age = 30, CreateTime = DateTime.Now };
             var user3 = new TestUser { Name = "ExtensionTest3", Age = 25, CreateTime = DateTime.Now };
-            var user4 = new TestUser { Name = "ExtensionTest4", Age = 35, CreateTime = DateTime.Now };
+            var user4 = new TestUser { Name = "ExtensionTest4", Age = 30, CreateTime = DateTime.Now }; // 重复的Age值
+            var user5 = new TestUser { Name = "ExtensionTest5", Age = 20, CreateTime = DateTime.Now }; // 重复的Age值
             await service.InsertAsync(user1, TestContext.Current.CancellationToken);
             await service.InsertAsync(user2, TestContext.Current.CancellationToken);
             await service.InsertAsync(user3, TestContext.Current.CancellationToken);
             await service.InsertAsync(user4, TestContext.Current.CancellationToken);
+            await service.InsertAsync(user5, TestContext.Current.CancellationToken);
 
             // 测试And扩展方法
             var andExpr = (Expr.Prop("Name") == "ExtensionTest1").And(Expr.Prop("Age") == 20);
@@ -301,9 +303,9 @@ namespace LiteOrm.Tests
             var orResults = await objectViewDAO.Search(orExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(orResults);
             Assert.NotEmpty(orResults);
-            Assert.Equal(2, orResults.Count);
+            Assert.Equal(3, orResults.Count); // 应该有3个用户（ExtensionTest1, ExtensionTest2, ExtensionTest4）
             // 验证每个结果的Name为"ExtensionTest1"或Age为30
-            Assert.All(orResults, u => 
+            Assert.All(orResults, u =>
                 Assert.True(u.Name == "ExtensionTest1" || u.Age == 30)
             );
 
@@ -312,8 +314,9 @@ namespace LiteOrm.Tests
             var notResults = await objectViewDAO.Search(notExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(notResults);
             Assert.NotEmpty(notResults);
+            Assert.Equal(5, notResults.Count); // 应该有5个用户
             // 验证每个结果的Name不为"NonExistentUser"
-            Assert.All(notResults, u => 
+            Assert.All(notResults, u =>
                 Assert.True(u.Name != "NonExistentUser")
             );
 
@@ -324,7 +327,7 @@ namespace LiteOrm.Tests
             Assert.NotEmpty(equalResults);
             Assert.Single(equalResults);
             // 验证每个结果的Name为"ExtensionTest1"
-            Assert.All(equalResults, u => 
+            Assert.All(equalResults, u =>
                 Assert.True(u.Name == "ExtensionTest1")
             );
 
@@ -333,9 +336,9 @@ namespace LiteOrm.Tests
             var notEqualResults = await objectViewDAO.Search(notEqualExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(notEqualResults);
             Assert.NotEmpty(notEqualResults);
-            Assert.Equal(3, notEqualResults.Count);
+            Assert.Equal(4, notEqualResults.Count); // 应该有4个用户（ExtensionTest2, ExtensionTest3, ExtensionTest4, ExtensionTest5）
             // 验证每个结果的Name不为"ExtensionTest1"
-            Assert.All(notEqualResults, u => 
+            Assert.All(notEqualResults, u =>
                 Assert.True(u.Name != "ExtensionTest1")
             );
 
@@ -346,7 +349,7 @@ namespace LiteOrm.Tests
             Assert.NotEmpty(greaterThanResults);
             Assert.Equal(2, greaterThanResults.Count);
             // 验证每个结果的Age大于25
-            Assert.All(greaterThanResults, u => 
+            Assert.All(greaterThanResults, u =>
                 Assert.True(u.Age > 25)
             );
 
@@ -355,9 +358,9 @@ namespace LiteOrm.Tests
             var lessThanResults = await objectViewDAO.Search(lessThanExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(lessThanResults);
             Assert.NotEmpty(lessThanResults);
-            Assert.Single(lessThanResults);
+            Assert.Equal(2, lessThanResults.Count); // 应该有2个用户（ExtensionTest1, ExtensionTest5）
             // 验证每个结果的Age小于25
-            Assert.All(lessThanResults, u => 
+            Assert.All(lessThanResults, u =>
                 Assert.True(u.Age < 25)
             );
 
@@ -366,9 +369,9 @@ namespace LiteOrm.Tests
             var greaterThanOrEqualResults = await objectViewDAO.Search(greaterThanOrEqualExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(greaterThanOrEqualResults);
             Assert.NotEmpty(greaterThanOrEqualResults);
-            Assert.Equal(4, greaterThanOrEqualResults.Count);
+            Assert.Equal(5, greaterThanOrEqualResults.Count); // 应该有5个用户
             // 验证每个结果的Age大于等于20
-            Assert.All(greaterThanOrEqualResults, u => 
+            Assert.All(greaterThanOrEqualResults, u =>
                 Assert.True(u.Age >= 20)
             );
 
@@ -377,9 +380,9 @@ namespace LiteOrm.Tests
             var lessThanOrEqualResults = await objectViewDAO.Search(lessThanOrEqualExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(lessThanOrEqualResults);
             Assert.NotEmpty(lessThanOrEqualResults);
-            Assert.Equal(3, lessThanOrEqualResults.Count);
+            Assert.Equal(5, lessThanOrEqualResults.Count); // 应该有5个用户
             // 验证每个结果的Age小于等于30
-            Assert.All(lessThanOrEqualResults, u => 
+            Assert.All(lessThanOrEqualResults, u =>
                 Assert.True(u.Age <= 30)
             );
 
@@ -391,7 +394,7 @@ namespace LiteOrm.Tests
             Assert.Equal(2, inResults.Count);
             var ids = new[] { user1.Id, user2.Id };
             // 验证每个结果的Id在指定的数组中
-            Assert.All(inResults, u => 
+            Assert.All(inResults, u =>
                 Assert.Contains(u.Id, ids)
             );
 
@@ -400,15 +403,15 @@ namespace LiteOrm.Tests
             var betweenResults = await objectViewDAO.Search(betweenExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(betweenResults);
             Assert.NotEmpty(betweenResults);
-            Assert.Equal(4, betweenResults.Count);
+            Assert.Equal(5, betweenResults.Count); // 应该有5个用户
             Assert.All(betweenResults, u => Assert.True(u.Age >= 15 && u.Age <= 35));
-            
+
             // 测试Between扩展方法（边界值）
             var betweenExpr2 = Expr.Prop("Age").Between(Expr.Const(20), Expr.Const(30));
             var betweenResults2 = await objectViewDAO.Search(betweenExpr2).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(betweenResults2);
             Assert.NotEmpty(betweenResults2);
-            Assert.Equal(3, betweenResults2.Count);
+            Assert.Equal(5, betweenResults2.Count); // 应该有5个用户
             Assert.All(betweenResults2, u => Assert.True(u.Age >= 20 && u.Age <= 30));
 
             // 测试Like扩展方法
@@ -416,9 +419,9 @@ namespace LiteOrm.Tests
             var likeResults = await objectViewDAO.Search(likeExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(likeResults);
             Assert.NotEmpty(likeResults);
-            Assert.Equal(4, likeResults.Count);
+            Assert.Equal(5, likeResults.Count);
             // 验证每个结果的Name以"ExtensionTest"开头
-            Assert.All(likeResults, u => 
+            Assert.All(likeResults, u =>
                 Assert.True(u.Name.StartsWith("ExtensionTest"))
             );
 
@@ -427,9 +430,9 @@ namespace LiteOrm.Tests
             var containsResults = await objectViewDAO.Search(containsExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(containsResults);
             Assert.NotEmpty(containsResults);
-            Assert.Equal(4, containsResults.Count);
+            Assert.Equal(5, containsResults.Count);
             // 验证每个结果的Name包含"Extension"
-            Assert.All(containsResults, u => 
+            Assert.All(containsResults, u =>
                 Assert.True(u.Name.Contains("Extension"))
             );
 
@@ -438,9 +441,9 @@ namespace LiteOrm.Tests
             var startsWithResults = await objectViewDAO.Search(startsWithExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(startsWithResults);
             Assert.NotEmpty(startsWithResults);
-            Assert.Equal(4, startsWithResults.Count);
+            Assert.Equal(5, startsWithResults.Count);
             // 验证每个结果的Name以"Extension"开头
-            Assert.All(startsWithResults, u => 
+            Assert.All(startsWithResults, u =>
                 Assert.True(u.Name.StartsWith("Extension"))
             );
 
@@ -451,7 +454,7 @@ namespace LiteOrm.Tests
             Assert.NotEmpty(endsWithResults);
             Assert.Single(endsWithResults);
             // 验证每个结果的Name以"Test1"结尾
-            Assert.All(endsWithResults, u => 
+            Assert.All(endsWithResults, u =>
                 Assert.True(u.Name.EndsWith("Test1"))
             );
 
@@ -462,7 +465,7 @@ namespace LiteOrm.Tests
             Assert.NotEmpty(regexpLikeResults);
             Assert.Equal(2, regexpLikeResults.Count);
             // 验证每个结果的Name匹配正则表达式"ExtensionTest[1-2]"
-            Assert.All(regexpLikeResults, u => 
+            Assert.All(regexpLikeResults, u =>
                 Assert.True(u.Name == "ExtensionTest1" || u.Name == "ExtensionTest2")
             );
 
@@ -471,7 +474,7 @@ namespace LiteOrm.Tests
             var isNullResults = await objectViewDAO.Search(isNullExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(isNullResults);
             // 验证每个结果的DeptId为null
-            Assert.All(isNullResults, u => 
+            Assert.All(isNullResults, u =>
                 Assert.True(u.DeptId == null)
             );
 
@@ -480,9 +483,9 @@ namespace LiteOrm.Tests
             var isNotNullResults = await objectViewDAO.Search(isNotNullExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(isNotNullResults);
             Assert.NotEmpty(isNotNullResults);
-            Assert.Equal(4, isNotNullResults.Count);
+            Assert.Equal(5, isNotNullResults.Count);
             // 验证每个结果的Name不为null
-            Assert.All(isNotNullResults, u => 
+            Assert.All(isNotNullResults, u =>
                 Assert.True(u.Name != null)
             );
 
@@ -492,8 +495,8 @@ namespace LiteOrm.Tests
             DataTable whereDt = await whereResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(whereDt);
             Assert.True(whereDt.Rows.Count >= 1);
-            Assert.Equal(3, whereDt.Rows.Count); // 应该有3个用户（25、30、35）
-            
+            Assert.Equal(3, whereDt.Rows.Count); // 应该有3个用户（25、30、30）
+
             // 验证每个结果的Age都大于20
             foreach (DataRow row in whereDt.Rows)
             {
@@ -528,7 +531,7 @@ namespace LiteOrm.Tests
             DataTable orderByDt = await orderByResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(orderByDt);
             Assert.True(orderByDt.Rows.Count >= 1);
-            
+
             // 验证排序顺序
             if (orderByDt.Rows.Count > 1)
             {
@@ -570,8 +573,8 @@ namespace LiteOrm.Tests
             var distinctResult = dataViewDAO.Search(distinctQuery);
             DataTable distinctDt = await distinctResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(distinctDt);
-            Assert.True(distinctDt.Rows.Count >= 1);
-            
+            Assert.True(distinctDt.Rows.Count == 3);
+
             // 验证实际的Age值
             var distinctAges = new List<int>();
             foreach (DataRow row in distinctDt.Rows)
@@ -585,7 +588,6 @@ namespace LiteOrm.Tests
             Assert.Contains(20, distinctAges);
             Assert.Contains(25, distinctAges);
             Assert.Contains(30, distinctAges);
-            Assert.Contains(35, distinctAges);
             // 验证是否有重复值
             Assert.Equal(distinctAges.Distinct().Count(), distinctAges.Count);
 
@@ -596,12 +598,12 @@ namespace LiteOrm.Tests
             DataTable countDt = await countResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(countDt);
             Assert.True(countDt.Rows.Count >= 1);
-            
+
             // 验证实际的Count值
             if (countDt.Rows.Count > 0 && countDt.Rows[0]["UserCount"] != DBNull.Value)
             {
                 int userCount = Convert.ToInt32(countDt.Rows[0]["UserCount"]);
-                Assert.Equal(4, userCount); // 应该有4个用户
+                Assert.Equal(5, userCount); // 应该有5个用户
             }
 
             // 测试Sum扩展方法
@@ -611,12 +613,12 @@ namespace LiteOrm.Tests
             DataTable sumDt = await sumResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(sumDt);
             Assert.True(sumDt.Rows.Count >= 1);
-            
+
             // 验证实际的Sum值
             if (sumDt.Rows.Count > 0 && sumDt.Rows[0]["TotalAge"] != DBNull.Value)
             {
                 int totalAge = Convert.ToInt32(sumDt.Rows[0]["TotalAge"]);
-                Assert.Equal(110, totalAge); // 20 + 25 + 30 + 35 = 110
+                Assert.Equal(125, totalAge); // 20 + 30 + 25 + 30 + 20 = 125
             }
 
             // 测试Avg扩展方法
@@ -626,7 +628,7 @@ namespace LiteOrm.Tests
             DataTable avgDt = await avgResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(avgDt);
             Assert.True(avgDt.Rows.Count >= 1);
-            
+
             // 验证实际的Avg值
             if (avgDt.Rows.Count > 0 && avgDt.Rows[0]["AverageAge"] != DBNull.Value)
             {
@@ -642,12 +644,12 @@ namespace LiteOrm.Tests
             DataTable maxDt = await maxResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(maxDt);
             Assert.True(maxDt.Rows.Count >= 1);
-            
+
             // 验证实际的Max值
             if (maxDt.Rows.Count > 0 && maxDt.Rows[0]["MaxAge"] != DBNull.Value)
             {
                 int maxAge = Convert.ToInt32(maxDt.Rows[0]["MaxAge"]);
-                Assert.Equal(35, maxAge);
+                Assert.Equal(30, maxAge); // 最大年龄是30
             }
 
             // 测试Min扩展方法
@@ -657,7 +659,7 @@ namespace LiteOrm.Tests
             DataTable minDt = await minResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(minDt);
             Assert.True(minDt.Rows.Count >= 1);
-            
+
             // 验证实际的Min值
             if (minDt.Rows.Count > 0 && minDt.Rows[0]["MinAge"] != DBNull.Value)
             {
@@ -710,7 +712,7 @@ namespace LiteOrm.Tests
             DataTable coalesceDt = await coalesceResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(coalesceDt);
             Assert.True(coalesceDt.Rows.Count >= 1);
-            
+
             // 验证实际的COALESCE值
             if (coalesceDt.Rows.Count > 0 && coalesceDt.Rows[0]["CoalescedDeptId"] != DBNull.Value)
             {
@@ -724,7 +726,7 @@ namespace LiteOrm.Tests
             DataTable ifNullDt = await ifNullResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(ifNullDt);
             Assert.True(ifNullDt.Rows.Count >= 1);
-            
+
             // 验证实际的IfNull值
             if (ifNullDt.Rows.Count > 0 && ifNullDt.Rows[0]["IfNullDeptId"] != DBNull.Value)
             {
@@ -738,7 +740,7 @@ namespace LiteOrm.Tests
             DataTable nowDt = await nowResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(nowDt);
             Assert.True(nowDt.Rows.Count >= 1);
-            
+
             // 验证实际的NOW值
             if (nowDt.Rows.Count > 0 && nowDt.Rows[0]["CurrentTime"] != DBNull.Value)
             {
@@ -752,7 +754,7 @@ namespace LiteOrm.Tests
             DataTable todayDt = await todayResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(todayDt);
             Assert.True(todayDt.Rows.Count >= 1);
-            
+
             // 验证实际的TODAY值
             if (todayDt.Rows.Count > 0 && todayDt.Rows[0]["CurrentDate"] != DBNull.Value)
             {
@@ -766,7 +768,7 @@ namespace LiteOrm.Tests
             DataTable lowerDt = await lowerResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(lowerDt);
             Assert.True(lowerDt.Rows.Count >= 1);
-            
+
             // 验证实际的LOWER值
             if (lowerDt.Rows.Count > 0 && lowerDt.Rows[0]["LowerName"] != DBNull.Value)
             {
@@ -780,7 +782,7 @@ namespace LiteOrm.Tests
             DataTable lengthDt = await lengthResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(lengthDt);
             Assert.True(lengthDt.Rows.Count >= 1);
-            
+
             // 验证实际的LENGTH值
             if (lengthDt.Rows.Count > 0 && lengthDt.Rows[0]["NameLength"] != DBNull.Value)
             {
@@ -794,7 +796,7 @@ namespace LiteOrm.Tests
             DataTable countDt = await countResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(countDt);
             Assert.True(countDt.Rows.Count >= 1);
-            
+
             // 验证实际的COUNT值
             if (countDt.Rows.Count > 0 && countDt.Rows[0]["UserCount"] != DBNull.Value)
             {
@@ -808,7 +810,7 @@ namespace LiteOrm.Tests
             DataTable sumDt = await sumResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(sumDt);
             Assert.True(sumDt.Rows.Count >= 1);
-            
+
             // 验证实际的SUM值
             if (sumDt.Rows.Count > 0 && sumDt.Rows[0]["TotalAge"] != DBNull.Value)
             {
@@ -822,7 +824,7 @@ namespace LiteOrm.Tests
             DataTable avgDt = await avgResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(avgDt);
             Assert.True(avgDt.Rows.Count >= 1);
-            
+
             // 验证实际的AVG值
             if (avgDt.Rows.Count > 0 && avgDt.Rows[0]["AverageAge"] != DBNull.Value)
             {
@@ -836,7 +838,7 @@ namespace LiteOrm.Tests
             DataTable maxDt = await maxResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(maxDt);
             Assert.True(maxDt.Rows.Count >= 1);
-            
+
             // 验证实际的MAX值
             if (maxDt.Rows.Count > 0 && maxDt.Rows[0]["MaxAge"] != DBNull.Value)
             {
@@ -850,7 +852,7 @@ namespace LiteOrm.Tests
             DataTable minDt = await minResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(minDt);
             Assert.True(minDt.Rows.Count >= 1);
-            
+
             // 验证实际的MIN值
             if (minDt.Rows.Count > 0 && minDt.Rows[0]["MinAge"] != DBNull.Value)
             {
@@ -864,7 +866,7 @@ namespace LiteOrm.Tests
             DataTable concatDt = await concatResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(concatDt);
             Assert.True(concatDt.Rows.Count >= 1);
-            
+
             // 验证实际的CONCAT值
             if (concatDt.Rows.Count > 0 && concatDt.Rows[0]["NameWithSuffix"] != DBNull.Value)
             {

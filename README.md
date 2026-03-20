@@ -29,9 +29,11 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 
 ## 📋 Requirements
 
-- **.NET 8.0+**
-- **.NET Standard 2.0** (.NET Framework 4.6.1+ compatible)
+- **.NET 8.0+** / **.NET Standard 2.0** (.NET Framework 4.6.1+ compatible)
 - **Dependencies**: Autofac, Castle.Core
+- **Database Support**:
+  - **Native Paging Support**: SQL Server 2012+, Oracle 12c+, PostgreSQL, MySQL, SQLite
+  - **Custom Paging**: For older database versions, see [Custom Paging Example](./CUSTOM_PAGING_EXAMPLE.md)
 
 ## 📦 Installation
 
@@ -190,7 +192,7 @@ var query = Expr.From<User>()
 var result = await userService.SearchAsync(query);
 ```
 
-### ExprString Queries (.NET 8.0+)
+### ExprString Queries
 
 ```csharp
 // Use parameterized interpolated strings to prevent SQL injection

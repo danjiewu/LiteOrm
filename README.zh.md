@@ -2,17 +2,17 @@
 
 > 一个轻量级、高性能的 .NET ORM 框架
 
-[![NuGet](https://img.shields.io/nuget/v/LiteOrm.svg)](https://www.nuget.org/packages/LiteOrm/)
-[![License](https://img.shields.io/github/license/danjiewu/LiteOrm.svg)](LICENSE)
-[![GitHub](https://img.shields.io/badge/GitHub-LiteOrm-brightgreen)](https://github.com/danjiewu/LiteOrm)
+[!\[NuGet\](https://img.shields.io/nuget/v/LiteOrm.svg null)](https://www.nuget.org/packages/LiteOrm/)
+[!\[License\](https://img.shields.io/github/license/danjiewu/LiteOrm.svg null)](LICENSE)
+[!\[GitHub\](https://img.shields.io/badge/GitHub-LiteOrm-brightgreen null)](https://github.com/danjiewu/LiteOrm)
 
----
+***
 
 ## 📖 Language / 语言
 
-**[English](./README.md)** | **中文** 
+**[English](./README.md)** | **中文**
 
----
+***
 
 LiteOrm 是一个轻量级、高性能的 .NET ORM 框架。结合了微 ORM 的性能和完整 ORM 的易用性，特别适合对性能要求高且需要灵活处理复杂 SQL 的场景。
 
@@ -29,9 +29,11 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架。结合了微 ORM 的
 
 ## 📋 环境要求
 
-- **.NET 8.0+**
-- **.NET Standard 2.0**（兼容 .NET Framework 4.6.1+）
+- **.NET 8.0+** / **.NET Standard 2.0**（兼容 .NET Framework 4.6.1+）
 - **依赖库**：Autofac、Castle.Core
+- **数据库支持**：
+  - **原生分页支持**：SQL Server 2012+、Oracle 12c+、PostgreSQL、MySQL、SQLite
+  - **自定义分页**：对于旧版本数据库，参考 [自定义分页实现示例](./CUSTOM_PAGING_EXAMPLE.md)
 
 ## 📦 安装
 
@@ -59,11 +61,13 @@ dotnet add package LiteOrm
     }
 }
 ```
+
 ### 2. 注册 LiteOrm
 
 在 `Program.cs` 中注册：
 
 **Console：**
+
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
     .RegisterLiteOrm()  // 自动初始化
@@ -71,6 +75,7 @@ var host = Host.CreateDefaultBuilder(args)
 ```
 
 **ASP.NET Core：**
+
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.RegisterLiteOrm();  // 通过 IHostBuilder 扩展方法集成
@@ -189,7 +194,7 @@ var query = Expr.From<User>()
 var result = await userService.SearchAsync(query);
 ```
 
-### ExprString 查询 (.NET 8.0+)
+### ExprString 查询
 
 ```csharp
 // 使用参数化插值字符串，防止 SQL 注入
@@ -283,65 +288,65 @@ public class Log : IArged
 
 ### 插入性能对比（ms）
 
-| 框架 | 100 条 | 1000 条 | 5000 条 |
-|:---|---:|---:|---:|
+| 框架          |    100 条 |    1000 条 |    5000 条 |
+| :---------- | -------: | --------: | --------: |
 | **LiteOrm** | **3.98** | **16.39** | **75.62** |
-| SqlSugar | 4.33 | 19.12 | 98.15 |
-| FreeSql | 4.36 | 18.48 | 85.00 |
-| EF Core | 18.50 | 150.35 | 670.19 |
-| Dapper | 26.19 | 215.12 | 1,129.57 |
+| SqlSugar    |     4.33 |     19.12 |     98.15 |
+| FreeSql     |     4.36 |     18.48 |     85.00 |
+| EF Core     |    18.50 |    150.35 |    670.19 |
+| Dapper      |    26.19 |    215.12 |  1,129.57 |
 
 ### 更新性能对比（ms）
 
-| 框架 | 100 条 | 1000 条 | 5000 条 |
-|:---|---:|---:|---:|
+| 框架          |    100 条 |    1000 条 |     5000 条 |
+| :---------- | -------: | --------: | ---------: |
 | **LiteOrm** | **4.84** | **25.36** | **118.70** |
-| SqlSugar | 6.39 | 42.62 | 232.66 |
-| FreeSql | 5.88 | 40.31 | 175.58 |
-| EF Core | 17.26 | 126.44 | 575.32 |
-| Dapper | 28.63 | 248.71 | 1,213.51 |
+| SqlSugar    |     6.39 |     42.62 |     232.66 |
+| FreeSql     |     5.88 |     40.31 |     175.58 |
+| EF Core     |    17.26 |    126.44 |     575.32 |
+| Dapper      |    28.63 |    248.71 |   1,213.51 |
 
 ### Upsert 性能对比（ms）
 
-| 框架 | 100 条 | 1000 条 | 5000 条 |
-|:---|---:|---:|---:|
-| LiteOrm | 7.54 | 23.72 | 103.52 |
-| SqlSugar | 10.36 | 106.11 | 1,741.49 |
+| 框架          |    100 条 |    1000 条 |     5000 条 |
+| :---------- | -------: | --------: | ---------: |
+| LiteOrm     |     7.54 |     23.72 |     103.52 |
+| SqlSugar    |    10.36 |    106.11 |   1,741.49 |
 | **FreeSql** | **5.53** | **19.11** | **103.06** |
-| EF Core | 19.05 | 135.88 | 589.07 |
-| Dapper | 29.09 | 247.51 | 1,248.91 |
+| EF Core     |    19.05 |    135.88 |     589.07 |
+| Dapper      |    29.09 |    247.51 |   1,248.91 |
 
 ### 关联查询性能对比（ms）
 
-| 框架 | 100 条 | 1000 条 | 5000 条 |
-|:---|---:|---:|---:|
-| **LiteOrm** | **1.36** | 9.35 | 43.94 |
-| SqlSugar | 2.29 | 22.10 | 89.97 |
-| FreeSql | 1.75 | 9.10 | **43.89** |
-| EF Core | 4.93 | 15.62 | 55.16 |
-| Dapper | 1.48 | **9.07** | 45.64 |
+| 框架          |    100 条 |   1000 条 |    5000 条 |
+| :---------- | -------: | -------: | --------: |
+| **LiteOrm** | **1.36** |     9.35 |     43.94 |
+| SqlSugar    |     2.29 |    22.10 |     89.97 |
+| FreeSql     |     1.75 |     9.10 | **43.89** |
+| EF Core     |     4.93 |    15.62 |     55.16 |
+| Dapper      |     1.48 | **9.07** |     45.64 |
 
 ### 内存分配对比（1000 条数据，KB）
 
-| 框架 | 插入 | 更新 | Upsert | 关联查询 |
-|:---|---:|---:|---:|---:|
+| 框架          |         插入 |           更新 |       Upsert |       关联查询 |
+| :---------- | ---------: | -----------: | -----------: | ---------: |
 | **LiteOrm** | **862.82** | **1,189.03** | **1,973.38** | **230.38** |
-| SqlSugar | 4,573.59 | 7,679.63 | 35,952.88 | 9,228.26 |
-| FreeSql | 4,667.20 | 6,917.50 | 2,256.36 | 866.52 |
-| EF Core | 12,503.04 | 9,044.24 | 9,005.39 | 2,198.05 |
-| Dapper | 2,476.36 | 3,093.19 | 2,798.36 | 418.43 |
+| SqlSugar    |   4,573.59 |     7,679.63 |    35,952.88 |   9,228.26 |
+| FreeSql     |   4,667.20 |     6,917.50 |     2,256.36 |     866.52 |
+| EF Core     |  12,503.04 |     9,044.24 |     9,005.39 |   2,198.05 |
+| Dapper      |   2,476.36 |     3,093.19 |     2,798.36 |     418.43 |
 
 > 📊 详细的性能基准报告请参考 [LiteOrm.Benchmark](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)
 
 ## 📚 文档与示例
 
-| 资源 | 说明 |
-|:---|:---|
-| [API 参考](./LITEORM_API_REFERENCE.zh.md) | 完整的 API 文档和配置说明 |
-| [AI 使用指南](./LITEORM_API_GUIDE_FOR_AI.md) | 面向 AI 的快速参考指南 |
-| [Demo 项目](./LiteOrm.Demo/) | 主要特性演示程序 |
-| [性能报告](./LiteOrm.Benchmark/) | 详细的性能基准测试报告 |
-| [单元测试](./LiteOrm.Tests/) | 完整的测试覆盖 |
+| 资源                                       | 说明              |
+| :--------------------------------------- | :-------------- |
+| [API 参考](./LITEORM_API_REFERENCE.zh.md)  | 完整的 API 文档和配置说明 |
+| [AI 使用指南](./LITEORM_API_GUIDE_FOR_AI.md) | 面向 AI 的快速参考指南   |
+| [Demo 项目](./LiteOrm.Demo/)               | 主要特性演示程序        |
+| [性能报告](./LiteOrm.Benchmark/)             | 详细的性能基准测试报告     |
+| [单元测试](./LiteOrm.Tests/)                 | 完整的测试覆盖         |
 
 ## 🤝 贡献与反馈
 
@@ -350,4 +355,3 @@ public class Log : IArged
 ## 📄 开源协议
 
 基于 [MIT](LICENSE) 协议发布。
-
