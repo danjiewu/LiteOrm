@@ -734,15 +734,16 @@ namespace LiteOrm.Tests
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
 
             var user = new TestUser { Name = "Exists User", Age = 35, CreateTime = DateTime.Now };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var log = new TestLog { Event = "Exists Event", Amount = 250, CreateTime = new DateTime(2024, 1, 12), UserID = user.Id };
-            await service.InsertAsync(log);
+            await service.InsertAsync(log, TestContext.Current.CancellationToken);
 
             // Act - 检查是否存在 Amount = 250 的日志
             bool exists = await viewService.ExistsAsync(
                 l => l.Amount == 250,
-                tableArgs: new[] { "202401" }
+                tableArgs: new[] { "202401" },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
@@ -761,24 +762,26 @@ namespace LiteOrm.Tests
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
 
             var user = new TestUser { Name = "Delete User " + Guid.NewGuid().ToString("N").Substring(0, 8), Age = 40, CreateTime = DateTime.Now };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var log1 = new TestLog { Event = "KeepEvent", Amount = 100, CreateTime = new DateTime(2024, 1, 10), UserID = user.Id };
             var log2 = new TestLog { Event = "DeleteEvent", Amount = 500, CreateTime = new DateTime(2024, 1, 20), UserID = user.Id };
-            await service.InsertAsync(log1);
-            await service.InsertAsync(log2);
+            await service.InsertAsync(log1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(log2, TestContext.Current.CancellationToken);
 
             // Act - 删除 Amount > 400 且 Event 为 "DeleteEvent" 的日志记录
             int deleted = await service.DeleteAsync(
                 l => l.Amount > 400 && l.Event == "DeleteEvent",
-                tableArgs: new[] { "202401" }
+                tableArgs: new[] { "202401" },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
             Assert.Equal(1, deleted);
             var remaining = await viewService.SearchAsync(
                 l => l.Event == "KeepEvent" && l.UserID == user.Id,
-                tableArgs: new[] { "202401" }
+                tableArgs: new[] { "202401" },
+                cancellationToken: TestContext.Current.CancellationToken
             );
             Assert.Single(remaining);
         }
@@ -795,7 +798,7 @@ namespace LiteOrm.Tests
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
 
             var user = new TestUser { Name = "Query User " + Guid.NewGuid().ToString("N").Substring(0, 8), Age = 28, CreateTime = DateTime.Now };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             for (int i = 1; i <= 5; i++)
             {
@@ -806,14 +809,15 @@ namespace LiteOrm.Tests
                     CreateTime = new DateTime(2024, 1, 10 + i),
                     UserID = user.Id
                 };
-                await service.InsertAsync(log);
+                await service.InsertAsync(log, TestContext.Current.CancellationToken);
             }
 
             // Act - 方式二：IQueryable 链式查询（支持排序、分页等）
             var logs = await viewService.SearchAsync(
                 q => q.Where(l => l.Amount >= 200 && l.UserID == user.Id)
                       .OrderBy(l => l.Amount),
-                tableArgs: new[] { "202401" }
+                tableArgs: new[] { "202401" },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
@@ -837,16 +841,17 @@ namespace LiteOrm.Tests
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
 
             var user = new TestUser { Name = "TableArgs User " + Guid.NewGuid().ToString("N").Substring(0, 8), Age = 32, CreateTime = DateTime.Now };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var log1 = new TestLog { Event = "Feb Event", Amount = 150, CreateTime = new DateTime(2024, 2, 10), UserID = user.Id };
             var log2 = new TestLog { Event = "Feb Event 2", Amount = 250, CreateTime = new DateTime(2024, 2, 15), UserID = user.Id };
-            await service.InsertAsync(log1);
-            await service.InsertAsync(log2);
+            await service.InsertAsync(log1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(log2, TestContext.Current.CancellationToken);
 
             // Act - 方式三：在 Lambda 中显式赋值 TableArgs（不需要显式传递 tableArgs 参数）
             var logs = await viewService.SearchAsync(
-                l => l.TableArgs == new[] { "202402" } && l.Amount > 200
+                l => l.TableArgs == new[] { "202402" } && l.Amount > 200,
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
@@ -866,25 +871,27 @@ namespace LiteOrm.Tests
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
 
             var user = new TestUser { Name = "Complex Delete User " + Guid.NewGuid().ToString("N").Substring(0, 8), Age = 45, CreateTime = DateTime.Now };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var log1 = new TestLog { Event = "Important", Amount = 500, CreateTime = new DateTime(2024, 3, 10), UserID = user.Id };
             var log2 = new TestLog { Event = "Temp", Amount = 50, CreateTime = new DateTime(2024, 3, 15), UserID = user.Id };
             var log3 = new TestLog { Event = "Temp", Amount = 30, CreateTime = new DateTime(2024, 3, 20), UserID = user.Id };
-            await service.InsertAsync(log1);
-            await service.InsertAsync(log2);
-            await service.InsertAsync(log3);
+            await service.InsertAsync(log1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(log2, TestContext.Current.CancellationToken);
+            await service.InsertAsync(log3, TestContext.Current.CancellationToken);
 
             // Act - 删除所有临时记录（Amount < 100 且 Event 为 "Temp"）
             // 使用 Lambda 中的 TableArgs 赋值方式来指定分表
             int deleted = await service.DeleteAsync(
-                l => l.TableArgs == new[] { "202403" } && l.Event == "Temp" && l.Amount < 100 && l.UserID == user.Id
+                l => l.TableArgs == new[] { "202403" } && l.Event == "Temp" && l.Amount < 100 && l.UserID == user.Id,
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
             Assert.Equal(2, deleted); // 删除 log2 和 log3
             var remaining = await viewService.SearchAsync(
-                l => l.TableArgs == new[] { "202403" } && l.Event == "Important" && l.UserID == user.Id
+                l => l.TableArgs == new[] { "202403" } && l.Event == "Important" && l.UserID == user.Id,
+                cancellationToken: TestContext.Current.CancellationToken
             );
             Assert.Single(remaining);
             Assert.Equal(500, remaining[0].Amount);
@@ -902,43 +909,47 @@ namespace LiteOrm.Tests
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
 
             var user = new TestUser { Name = "Multi Table User " + Guid.NewGuid().ToString("N").Substring(0, 8), Age = 50, CreateTime = DateTime.Now };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // 向多个月份的表插入数据
             // 2024-01 数据
             var jan1 = new TestLog { Event = "JAN_MultiDelete", Amount = 100, CreateTime = new DateTime(2024, 1, 10), UserID = user.Id };
             var jan2 = new TestLog { Event = "JAN_MultiDelete", Amount = 200, CreateTime = new DateTime(2024, 1, 20), UserID = user.Id };
-            await service.InsertAsync(jan1);
-            await service.InsertAsync(jan2);
+            await service.InsertAsync(jan1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(jan2, TestContext.Current.CancellationToken);
 
             // 2024-04 数据
             var apr1 = new TestLog { Event = "APR_Multi", Amount = 300, CreateTime = new DateTime(2024, 4, 10), UserID = user.Id };
             var apr2 = new TestLog { Event = "APR_Multi", Amount = 400, CreateTime = new DateTime(2024, 4, 20), UserID = user.Id };
-            await service.InsertAsync(apr1);
-            await service.InsertAsync(apr2);
+            await service.InsertAsync(apr1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(apr2, TestContext.Current.CancellationToken);
 
             // Act 1 - 查询 2024-01 的高额日志（Amount > 150）
             var janLogs = await viewService.SearchAsync(
                 l => l.Amount > 150 && l.UserID == user.Id,
-                tableArgs: new[] { "202401" }
+                tableArgs: new[] { "202401" },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Act 2 - 查询 2024-04 的所有日志
             var aprLogs = await viewService.SearchAsync(
                 l => l.Event == "APR_Multi" && l.UserID == user.Id,
-                tableArgs: new[] { "202404" }
+                tableArgs: new[] { "202404" },
+                TestContext.Current.CancellationToken
             );
 
             // Act 3 - 删除 2024-04 中的低额日志（Amount < 350）
             int deletedApr = await service.DeleteAsync(
                 l => l.Amount < 350 && l.UserID == user.Id,
-                tableArgs: new[] { "202404" }
+                tableArgs: new[] { "202404" },
+                TestContext.Current.CancellationToken
             );
 
             // Act 4 - 验证删除后的数据
             var aprRemaining = await viewService.SearchAsync(
                 l => l.Event == "APR_Multi" && l.UserID == user.Id,
-                tableArgs: new[] { "202404" }
+                tableArgs: new[] { "202404" },
+                TestContext.Current.CancellationToken
             );
 
             // Assert
@@ -962,29 +973,31 @@ namespace LiteOrm.Tests
 
             var user1 = new TestUser { Name = "LogUser1", Age = 20, CreateTime = DateTime.Now };
             var user2 = new TestUser { Name = "LogUser2", Age = 30, CreateTime = DateTime.Now };
-            await userService.InsertAsync(user1);
-            await userService.InsertAsync(user2);
+            await userService.InsertAsync(user1, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(user2, TestContext.Current.CancellationToken);
 
             // 为 user1 插入日志
             var log1 = new TestLog { Event = "U1_Event", Amount = 100, CreateTime = new DateTime(2024, 5, 10), UserID = user1.Id };
             var log2 = new TestLog { Event = "U1_Event", Amount = 200, CreateTime = new DateTime(2024, 5, 15), UserID = user1.Id };
-            await service.InsertAsync(log1);
-            await service.InsertAsync(log2);
+            await service.InsertAsync(log1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(log2, TestContext.Current.CancellationToken);
 
             // 为 user2 插入日志
             var log3 = new TestLog { Event = "U2_Event", Amount = 300, CreateTime = new DateTime(2024, 5, 20), UserID = user2.Id };
-            await service.InsertAsync(log3);
+            await service.InsertAsync(log3, TestContext.Current.CancellationToken);
 
             // Act - 查询某个用户的所有日志（通过外键关联）
             // 使用 TestLogView 可以获取关联的用户名
             var user1Logs = await viewService.SearchAsync(
                 l => l.UserName == "LogUser1",
-                tableArgs: new[] { "202405" }
+                tableArgs: new[] { "202405" },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             var user2Logs = await viewService.SearchAsync(
                 l => l.UserName == "LogUser2",
-                tableArgs: new[] { "202405" }
+                tableArgs: new[] { "202405" },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
@@ -1004,7 +1017,7 @@ namespace LiteOrm.Tests
             var asyncService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateExprTest", Age = 10, CreateTime = DateTime.Now };
-            await asyncService.InsertAsync(user);
+            await asyncService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // Act - 使用FunctionExpr和PropertyExpr增加复杂度
             var updateExpr = new UpdateExpr
@@ -1018,7 +1031,7 @@ namespace LiteOrm.Tests
                 Where = Expr.Lambda<TestUser>(u => u.Name == "UpdateExprTest")
             };
             int affected = service.Update(updateExpr);
-            var retrieved = await viewService.GetObjectAsync(user.Id);
+            var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Equal(1, affected);
@@ -1033,7 +1046,7 @@ namespace LiteOrm.Tests
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateExprAsyncTest", Age = 10, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // Act - 使用FunctionExpr和PropertyExpr增加复杂度
             var updateExpr = new UpdateExpr
@@ -1046,8 +1059,8 @@ namespace LiteOrm.Tests
                 },
                 Where = Expr.Lambda<TestUser>(u => u.Name == "UpdateExprAsyncTest")
             };
-            int affected = await service.UpdateAsync(updateExpr);
-            var retrieved = await viewService.GetObjectAsync(user.Id);
+            int affected = await service.UpdateAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
+            var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Equal(1, affected);
@@ -1065,22 +1078,24 @@ namespace LiteOrm.Tests
 
             // 创建测试部门
             var dept = new TestDepartment { Name = "ExistsTestDept" };
-            await deptService.InsertAsync(dept);
+            await deptService.InsertAsync(dept, TestContext.Current.CancellationToken);
 
             // 创建测试用户
             var userWithDept = new TestUser { Name = "UserWithDept", Age = 25, CreateTime = DateTime.Now, DeptId = dept.Id };
-            await userService.InsertAsync(userWithDept);
+            await userService.InsertAsync(userWithDept, TestContext.Current.CancellationToken);
 
             var userWithoutDept = new TestUser { Name = "UserWithoutDept", Age = 30, CreateTime = DateTime.Now, DeptId = -1 };
-            await userService.InsertAsync(userWithoutDept);
+            await userService.InsertAsync(userWithoutDept, TestContext.Current.CancellationToken);
 
             // Act - 使用 Expr.Exists lambda 方式查询
             var usersWithDept = await viewService.SearchAsync(
-                Expr.Lambda<TestUser>(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId))
+                Expr.Lambda<TestUser>(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId)),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             var usersWithSpecificDept = await viewService.SearchAsync(
-                Expr.Lambda<TestUser>(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "ExistsTestDept"))
+                Expr.Lambda<TestUser>(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "ExistsTestDept")),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert

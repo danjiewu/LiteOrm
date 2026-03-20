@@ -34,12 +34,12 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now },
                 new TestUser { Name = "User2", Age = 25, CreateTime = DateTime.Now }
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // Query with empty IN list using Expr form
             var emptyList = new int[] { };
             var expr = Expr.Prop("Id").In(emptyList);
-            var results = await objectViewDAO.Search(expr).ToListAsync();
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
             Assert.Empty(results);
@@ -54,13 +54,13 @@ namespace LiteOrm.Tests
             // Insert test data
             var user1 = new TestUser { Name = "InTest1", Age = 30, CreateTime = DateTime.Now };
             var user2 = new TestUser { Name = "InTest2", Age = 35, CreateTime = DateTime.Now };
-            await service.InsertAsync(user1);
-            await service.InsertAsync(user2);
+            await service.InsertAsync(user1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(user2, TestContext.Current.CancellationToken);
 
             // Query using Expr.In() with specific IDs
             var idList = new int[] { user1.Id, user2.Id };
             var expr = Expr.Prop("Id").In(idList);
-            var results = await objectViewDAO.Search(expr).ToListAsync();
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
             Assert.NotEmpty(results);
@@ -78,12 +78,12 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now },
                 new TestUser { Name = "User2", Age = 25, CreateTime = DateTime.Now }
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // Query with NOT IN empty list (should return all)
             var emptyList = new int[] { };
             var expr = Expr.Prop("Id").In(emptyList).Not();
-            var results = await objectViewDAO.Search(expr).ToListAsync();
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
             Assert.True(results.Count >= 2);
@@ -98,13 +98,13 @@ namespace LiteOrm.Tests
             // Insert test data
             var user1 = new TestUser { Name = "NotInTest1", Age = 30, CreateTime = DateTime.Now };
             var user2 = new TestUser { Name = "NotInTest2", Age = 35, CreateTime = DateTime.Now };
-            await service.InsertAsync(user1);
-            await service.InsertAsync(user2);
+            await service.InsertAsync(user1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(user2, TestContext.Current.CancellationToken);
 
             // Query using Expr.NotIn() to exclude specific IDs
             var excludeIds = new int[] { user1.Id };
             var expr = Expr.Prop("Id").In(excludeIds).Not();
-            var results = await objectViewDAO.Search(expr).ToListAsync();
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
             Assert.DoesNotContain(results, u => u.Id == user1.Id);
@@ -121,14 +121,14 @@ namespace LiteOrm.Tests
             var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
 
             // Insert test data
-            await service.InsertAsync(new TestUser { Name = "SelectTest", Age = 35, CreateTime = DateTime.Now });
+            await service.InsertAsync(new TestUser { Name = "SelectTest", Age = 35, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             // Build SelectExpr with specific fields
             var selectExpr = Expr.From<TestUser>()
                 .Select(Expr.Prop("Name"), Expr.Prop("Age"));
 
             var result = dataViewDAO.Search(selectExpr);
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.Equal(2, dt.Columns.Count);
@@ -149,7 +149,7 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "SelectWhere1", Age = 20, CreateTime = DateTime.Now },
                 new TestUser { Name = "SelectWhere2", Age = 30, CreateTime = DateTime.Now }
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // SelectExpr with WHERE clause
             var selectExpr = Expr.From<TestUser>()
@@ -157,7 +157,7 @@ namespace LiteOrm.Tests
                 .Select(Expr.Prop("Name"));
 
             var result = dataViewDAO.Search(selectExpr);
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.Single(dt.Columns);
@@ -177,7 +177,7 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "OrderTest2", Age = 20, CreateTime = DateTime.Now },
                 new TestUser { Name = "OrderTest3", Age = 30, CreateTime = DateTime.Now }
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // SelectExpr with ORDER BY
             var selectExpr = Expr.From<TestUser>()
@@ -186,7 +186,7 @@ namespace LiteOrm.Tests
                 .Select(Expr.Prop("Name"), Expr.Prop("Age"));
 
             var result = dataViewDAO.Search(selectExpr);
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.True(dt.Rows.Count >= 3);
@@ -203,7 +203,7 @@ namespace LiteOrm.Tests
             var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
 
             // Insert test data
-            await service.InsertAsync(new TestUser { Name = "AliasTest", Age = 40, CreateTime = DateTime.Now });
+            await service.InsertAsync(new TestUser { Name = "AliasTest", Age = 40, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             // SelectExpr with column aliases
             var selectExpr = Expr.From<TestUser>()
@@ -213,7 +213,7 @@ namespace LiteOrm.Tests
                 );
 
             var result = dataViewDAO.Search(selectExpr);
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.Equal(2, dt.Columns.Count);
@@ -235,7 +235,7 @@ namespace LiteOrm.Tests
             var users = Enumerable.Range(1, 10)
                 .Select(i => new TestUser { Name = $"PaginationTest{i}", Age = 20 + i, CreateTime = DateTime.Now })
                 .ToList();
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // SelectExpr with pagination
             var selectExpr = Expr.From<TestUser>()
@@ -245,7 +245,7 @@ namespace LiteOrm.Tests
                 .Select(Expr.Prop("Name"), Expr.Prop("Age"));  // Skip 2, Take 3
 
             var result = dataViewDAO.Search(selectExpr);
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.True(dt.Rows.Count <= 3);
@@ -260,7 +260,7 @@ namespace LiteOrm.Tests
 
             // Insert test data
             var dept = new TestDepartment { Name = "GroupByTest" };
-            await service.InsertAsync(dept);
+            await service.InsertAsync(dept, TestContext.Current.CancellationToken);
 
             var users = new List<TestUser>
             {
@@ -268,7 +268,7 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "User2", Age = 25, DeptId = dept.Id, CreateTime = DateTime.Now },
                 new TestUser { Name = "User3", Age = 30, DeptId = dept.Id, CreateTime = DateTime.Now }
             };
-            await userService.BatchInsertAsync(users);
+            await userService.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // SelectExpr with GROUP BY
             var selectExpr = Expr.From<TestUser>()
@@ -281,7 +281,7 @@ namespace LiteOrm.Tests
                 );
 
             var result = dataViewDAO.Search(selectExpr);
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.True(dt.Rows.Count >= 1);
@@ -297,14 +297,14 @@ namespace LiteOrm.Tests
             var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
 
             // Insert test data
-            await service.InsertAsync(new TestUser { Name = "EmptySelectTest", Age = 45, CreateTime = DateTime.Now });
+            await service.InsertAsync(new TestUser { Name = "EmptySelectTest", Age = 45, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             // SelectExpr without explicit column selection
             var selectExpr = Expr.From<TestUser>()
                 .Where(Expr.Prop("Name") == "EmptySelectTest");
 
             var result = dataViewDAO.Search(selectExpr);
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.True(dt.Rows.Count >= 1);
@@ -329,12 +329,12 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "Complex2", Age = 30, CreateTime = DateTime.Now },
                 new TestUser { Name = "Complex3", Age = 25, CreateTime = DateTime.Now }
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // Mix IN clause with other conditions
             var idList = new int[] { };  // Empty IN
             var expr = (Expr.Prop("Age") > 20) & Expr.Prop("Id").In(idList).Not();
-            var results = await objectViewDAO.Search(expr).ToListAsync();
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
             Assert.True(results.Count >= 2);
@@ -351,7 +351,7 @@ namespace LiteOrm.Tests
             var users = Enumerable.Range(1, 5)
                 .Select(i => new TestUser { Name = $"Chain{i}", Age = 20 + i, CreateTime = DateTime.Now })
                 .ToList();
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // Complex chained operations
             var selectExpr = Expr.From<TestUser>()
@@ -378,8 +378,8 @@ namespace LiteOrm.Tests
             // Insert test data - departments
             var dept1 = new TestDepartment { Name = "InSelectDept1" };
             var dept2 = new TestDepartment { Name = "InSelectDept2" };
-            await deptService.InsertAsync(dept1);
-            await deptService.InsertAsync(dept2);
+            await deptService.InsertAsync(dept1, TestContext.Current.CancellationToken);
+            await deptService.InsertAsync(dept2, TestContext.Current.CancellationToken);
 
             // Insert test data - users
             var users = new List<TestUser>
@@ -389,7 +389,7 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "InSelectUser3", Age = 35, DeptId = dept2.Id, CreateTime = DateTime.Now },
                 new TestUser { Name = "InSelectUser4", Age = 28, DeptId = -1, CreateTime = DateTime.Now }
             };
-            await userService.BatchInsertAsync(users);
+            await userService.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // Build subquery: SELECT DeptId FROM TestDepartment WHERE Name LIKE 'InSelectDept%'
             var subquery = Expr.From<TestDepartment>()
@@ -398,7 +398,7 @@ namespace LiteOrm.Tests
 
             // Use subquery in IN clause: SELECT * FROM TestUser WHERE DeptId IN (subquery)
             var expr = Expr.Prop("DeptId").In(subquery);
-            var results = await objectViewDAO.Search(expr).ToListAsync();
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             // Verify results - should get users from both departments
             Assert.NotNull(results);
@@ -417,8 +417,8 @@ namespace LiteOrm.Tests
             // Insert test data - departments
             var dept1 = new TestDepartment { Name = "HighLevel", ParentId = 0 };
             var dept2 = new TestDepartment { Name = "SubLevel", ParentId = 1 };
-            await deptService.InsertAsync(dept1);
-            await deptService.InsertAsync(dept2);
+            await deptService.InsertAsync(dept1, TestContext.Current.CancellationToken);
+            await deptService.InsertAsync(dept2, TestContext.Current.CancellationToken);
 
             // Insert test data - users
             var users = new List<TestUser>
@@ -427,7 +427,7 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "ConditionUser2", Age = 35, DeptId = dept2.Id, CreateTime = DateTime.Now },
                 new TestUser { Name = "ConditionUser3", Age = 28, DeptId = -1, CreateTime = DateTime.Now }
             };
-            await userService.BatchInsertAsync(users);
+            await userService.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // Subquery with conditions: SELECT Id FROM TestDepartment WHERE Name LIKE 'HighLevel' OR ParentId = 0
             var subquery = Expr.From<TestDepartment>()
@@ -436,7 +436,7 @@ namespace LiteOrm.Tests
 
             // Combine with Age filter: SELECT * FROM TestUser WHERE DeptId IN (subquery) AND Age > 20
             var expr = (Expr.Prop("DeptId").In(subquery)) & (Expr.Prop("Age") > 20);
-            var results = await objectViewDAO.Search(expr).ToListAsync();
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             // Verify results
             Assert.NotNull(results);

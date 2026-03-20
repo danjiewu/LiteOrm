@@ -243,16 +243,14 @@ namespace LiteOrm.Common
                         // 参数化处理：将包含通配符的字符串作为参数传入，避免 SQL 注入
                         string paramName = outputParams.Count.ToString();
                         string val = sqlBuilder.ToSqlLikeValue(vs2.Value?.ToString());
-                        switch (expr.OriginOperator)
+                        val = expr.OriginOperator switch
                         {
-                            case LogicOperator.StartsWith:
-                                val = $"{val}%"; break;
-                            case LogicOperator.EndsWith:
-                                val = $"%{val}"; break;
-                            case LogicOperator.Contains:
-                                val = $"%{val}%"; break;
-                        }
-                        outputParams.Add(new KeyValuePair<string, object>(sqlBuilder.ToParamName(paramName), val));
+                            LogicOperator.StartsWith=> $"{val}%",
+                            LogicOperator.EndsWith => $"%{val}",
+                            LogicOperator.Contains => $"%{val}%",
+                            _ => val
+                        };
+                        outputParams.Add(new(sqlBuilder.ToParamName(paramName), val));
                         sb.Append(sqlBuilder.ToSqlParam(paramName));
                         sb.Append($" ESCAPE '{escapeChar}'");
                     }
