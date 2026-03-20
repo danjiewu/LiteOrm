@@ -26,9 +26,9 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "SearchTest1", Age = 20, CreateTime = DateTime.Now },
                 new TestUser { Name = "SearchTest2", Age = 30, CreateTime = DateTime.Now }
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
-            var results = await objectViewDAO.Search(Expr.Prop("Name").StartsWith("SearchTest")).ToListAsync();
+            var results = await objectViewDAO.Search(Expr.Prop("Name").StartsWith("SearchTest")).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
             Assert.True(results.Count >= 2);
@@ -41,9 +41,9 @@ namespace LiteOrm.Tests
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
 
             var user = new TestUser { Name = "GetObjectTest", Age = 25, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
-            var result = await objectViewDAO.GetObject(user.Id).FirstOrDefaultAsync();
+            var result = await objectViewDAO.GetObject(user.Id).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
             Assert.Equal(user.Name, result.Name);
@@ -56,9 +56,9 @@ namespace LiteOrm.Tests
             var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
 
             var user = new TestUser { Name = "ExistsTest", Age = 35, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
-            var exists = await objectViewDAO.Exists(Expr.Prop("Name") == "ExistsTest").GetResultAsync();
+            var exists = await objectViewDAO.Exists(Expr.Prop("Name") == "ExistsTest").GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.True(exists);
         }
@@ -74,9 +74,9 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "CountTest1", Age = 20, CreateTime = DateTime.Now },
                 new TestUser { Name = "CountTest2", Age = 25, CreateTime = DateTime.Now }
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
-            var count = await objectViewDAO.Count(Expr.Prop("Name").StartsWith("CountTest")).GetResultAsync();
+            var count = await objectViewDAO.Count(Expr.Prop("Name").StartsWith("CountTest")).GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.True(count >= 2);
         }
@@ -99,12 +99,12 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "QueryFilterTest2", Age = 35, CreateTime = DateTime.Now },
                 new TestUser { Name = "QueryFilterTest3", Age = 15, CreateTime = DateTime.Now },
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs(
                 q => q.Where(u => u.Age > 20)
                       .Where(u => u.Name.StartsWith("QueryFilterTest")))
-                .ToListAsync();
+                .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Equal(2, results.Count);
             Assert.All(results, r => Assert.True(r.Age > 20));
@@ -122,12 +122,12 @@ namespace LiteOrm.Tests
             var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
 
             var user = new TestUser { Name = "AnonProjTest", Age = 42, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs(
                 q => q.Where(u => u.Name == "AnonProjTest")
                       .Select(u => new { u.Name, u.Age }))
-                .ToListAsync();
+                .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Single(results);
             Assert.Equal("AnonProjTest", results[0].Name);
@@ -145,12 +145,12 @@ namespace LiteOrm.Tests
             var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
 
             var user = new TestUser { Name = "AsyncAnonTest", Age = 28, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var result = await dao.SearchAs(
                 q => q.Where(u => u.Name == "AsyncAnonTest")
                       .Select(u => new { u.Name, u.Age }))
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
             Assert.Equal("AsyncAnonTest", result.Name);
@@ -172,13 +172,13 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "QueryTopTest2", Age = 30, CreateTime = DateTime.Now },
                 new TestUser { Name = "QueryTopTest3", Age = 20, CreateTime = DateTime.Now },
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs<TestUser>(
                 q => q.Where(u => u.Name.StartsWith("QueryTopTest"))
                       .OrderBy(u => u.Age)
                       .Take(2))
-                .ToListAsync();
+                .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Equal(2, results.Count);
             Assert.Equal(10, results[0].Age);
@@ -201,13 +201,13 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "ScalarProjTest1", Age = 10, CreateTime = DateTime.Now },
                 new TestUser { Name = "ScalarProjTest2", Age = 20, CreateTime = DateTime.Now },
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             var names = await dao.SearchAs(
                 q => q.Where(u => u.Name.StartsWith("ScalarProjTest"))
                       .OrderBy(u => u.Name)
                       .Select(u => u.Name))
-                .ToListAsync();
+                .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Equal(2, names.Count);
             Assert.Equal("ScalarProjTest1", names[0]);
@@ -229,12 +229,12 @@ namespace LiteOrm.Tests
 
             var createTime = new DateTime(2024, 6, 1, 12, 0, 0);
             var user = new TestUser { Name = "MixedTypeTest", Age = 33, CreateTime = createTime };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs(
                 q => q.Where(u => u.Name == "MixedTypeTest")
                       .Select(u => new { u.Id, u.Name, u.Age, u.CreateTime }))
-                .ToListAsync();
+                .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Single(results);
             Assert.True(results[0].Id > 0);
@@ -255,12 +255,12 @@ namespace LiteOrm.Tests
             var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
 
             var user = new TestUser { Name = "OrderIndepTest", Age = 77, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs(
                 q => q.Where(u => u.Name == "OrderIndepTest")
                       .Select(u => new { u.Age, u.Name }))   // Age first, then Name
-                .ToListAsync();
+                .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Single(results);
             Assert.Equal(77, results[0].Age);
@@ -280,15 +280,15 @@ namespace LiteOrm.Tests
             var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUserView>>();
 
             var dept = new TestDepartment { Name = "Engineering" };
-            await deptService.InsertAsync(dept);
+            await deptService.InsertAsync(dept, TestContext.Current.CancellationToken);
 
             var user = new TestUser { Name = "JoinViewTest", Age = 30, CreateTime = DateTime.Now, DeptId = dept.Id };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs(
                 q => q.Where(u => u.Name == "JoinViewTest")
                       .Select(u => new { u.Name, u.DeptName }))
-                .ToListAsync();
+                .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Single(results);
             Assert.Equal("JoinViewTest", results[0].Name);
@@ -310,9 +310,9 @@ namespace LiteOrm.Tests
 
             byte[] avatar = [1, 2, 3, 4, 5, 255, 128, 0];
             var user = new TestUser { Name = "ByteArrayRoundTripTest", Age = 20, CreateTime = DateTime.Now, Avatar = avatar };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
-            var result = await dao.GetObject(user.Id).FirstOrDefaultAsync();
+            var result = await dao.GetObject(user.Id).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
             Assert.Equal(avatar, result.Avatar);
@@ -329,9 +329,9 @@ namespace LiteOrm.Tests
             var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
 
             var user = new TestUser { Name = "ByteArrayNullTest", Age = 21, CreateTime = DateTime.Now, Avatar = null };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
-            var result = await dao.GetObject(user.Id).FirstOrDefaultAsync();
+            var result = await dao.GetObject(user.Id).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
             Assert.Null(result.Avatar);
@@ -349,12 +349,12 @@ namespace LiteOrm.Tests
 
             byte[] avatar = [10, 20, 30];
             var user = new TestUser { Name = "ByteArrayScalarTest", Age = 22, CreateTime = DateTime.Now, Avatar = avatar };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var result = await dao.SearchAs(
                 q => q.Where(u => u.Name == "ByteArrayScalarTest")
                       .Select(u => u.Avatar))
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
             Assert.Equal(avatar, result);
         }
@@ -371,12 +371,12 @@ namespace LiteOrm.Tests
 
             byte[] avatar = [0xDE, 0xAD, 0xBE, 0xEF];
             var user = new TestUser { Name = "ByteArrayAnonTest", Age = 23, CreateTime = DateTime.Now, Avatar = avatar };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var result = await dao.SearchAs(
                 q => q.Where(u => u.Name == "ByteArrayAnonTest")
                       .Select(u => new { u.Name, u.Avatar }))
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
             Assert.Equal("ByteArrayAnonTest", result.Name);

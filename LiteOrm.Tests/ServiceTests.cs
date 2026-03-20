@@ -37,8 +37,8 @@ namespace LiteOrm.Tests
             };
 
             // Act
-            bool inserted = await service.InsertAsync(user);
-            var retrievedUser = await viewService.GetObjectAsync(user.Id);
+            bool inserted = await service.InsertAsync(user, TestContext.Current.CancellationToken);
+            var retrievedUser = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.True(inserted);
@@ -52,13 +52,13 @@ namespace LiteOrm.Tests
         {
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            await service.InsertAsync(new TestUser { Name = "User 1", Age = 20, CreateTime = DateTime.Now });
-            await service.InsertAsync(new TestUser { Name = "User 2", Age = 30, CreateTime = DateTime.Now });
+            await service.InsertAsync(new TestUser { Name = "User 1", Age = 20, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+            await service.InsertAsync(new TestUser { Name = "User 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
 
             // Act
-            var users = await viewService.SearchAsync(u => u.Age > 25);
+            var users = await viewService.SearchAsync(u => u.Age > 25, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Single(users);
@@ -72,12 +72,12 @@ namespace LiteOrm.Tests
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
             var user = new TestUser { Name = "Original", Age = 20, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // Act
             user.Name = "Updated";
-            bool updated = await service.UpdateAsync(user);
-            var retrieved = await viewService.GetObjectAsync(user.Id);
+            bool updated = await service.UpdateAsync(user, TestContext.Current.CancellationToken);
+            var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.True(updated);
@@ -91,11 +91,11 @@ namespace LiteOrm.Tests
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "To Delete", Age = 20, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // Act
-            bool deleted = await service.DeleteAsync(user);
-            var retrieved = await viewService.GetObjectAsync(user.Id);
+            bool deleted = await service.DeleteAsync(user, TestContext.Current.CancellationToken);
+            var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.True(deleted);
@@ -116,8 +116,8 @@ namespace LiteOrm.Tests
             }).ToList();
 
             // Act
-            await service.BatchInsertAsync(users);
-            var retrievedUsers = await viewService.SearchAsync(u => u.Name.StartsWith("Batch User"));
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
+            var retrievedUsers = await viewService.SearchAsync(u => u.Name.StartsWith("Batch User"), cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Equal(10, retrievedUsers.Count);
@@ -136,7 +136,7 @@ namespace LiteOrm.Tests
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
 
             var dept = new TestDepartment { Name = "IT Department" };
-            await deptService.InsertAsync(dept);
+            await deptService.InsertAsync(dept, TestContext.Current.CancellationToken);
 
             var user = new TestUser
             {
@@ -145,10 +145,10 @@ namespace LiteOrm.Tests
                 CreateTime = DateTime.Now,
                 DeptId = dept.Id
             };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // Act
-            var viewUser = await viewService.GetObjectAsync(user.Id);
+            var viewUser = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(viewUser);
@@ -161,36 +161,36 @@ namespace LiteOrm.Tests
         {
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            await service.InsertAsync(new TestUser { Name = "Alice", Age = 25, CreateTime = DateTime.Now });
-            await service.InsertAsync(new TestUser { Name = "Bob", Age = 30, CreateTime = DateTime.Now });
-            await service.InsertAsync(new TestUser { Name = "Charlie", Age = 35, CreateTime = DateTime.Now });
-            await service.InsertAsync(new TestUser { Name = "David", Age = 40, CreateTime = DateTime.Now });
+            await service.InsertAsync(new TestUser { Name = "Alice", Age = 25, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+            await service.InsertAsync(new TestUser { Name = "Bob", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+            await service.InsertAsync(new TestUser { Name = "Charlie", Age = 35, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+            await service.InsertAsync(new TestUser { Name = "David", Age = 40, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
 
             // Act & Assert
 
             // 1. Expr.In
-            var inList = await viewService.SearchAsync(Expr.Prop("Name").In("Alice", "Bob"));
+            var inList = await viewService.SearchAsync(Expr.Prop("Name").In("Alice", "Bob"), cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(2, inList.Count);
 
             // 2. Expr.Between
-            var betweenList = await viewService.SearchAsync(Expr.Prop("Age").Between(30, 35));
+            var betweenList = await viewService.SearchAsync(Expr.Prop("Age").Between(30, 35), cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(2, betweenList.Count);
 
             // 3. Expr.Like
-            var likeList = await viewService.SearchAsync(Expr.Prop("Name").Like("Cha%"));
+            var likeList = await viewService.SearchAsync(Expr.Prop("Name").Like("Cha%"), cancellationToken: TestContext.Current.CancellationToken);
             Assert.Single(likeList);
             Assert.Equal("Charlie", likeList[0].Name);
 
             // 4. Combined And/Or
             var combinedList = await viewService.SearchAsync(
-                (Expr.Prop("Age") < 30) | (Expr.Prop("Age") >= 40)
+                (Expr.Prop("Age") < 30) | (Expr.Prop("Age") >= 40), cancellationToken: TestContext.Current.CancellationToken
             );
             Assert.Equal(2, combinedList.Count);
 
             // 5. Lambda complex
-            var lambdaList = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Age > 30 && u.Name!.Contains("i")));
+            var lambdaList = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Age > 30 && u.Name!.Contains("i")), cancellationToken: TestContext.Current.CancellationToken);
             // Charlie(35), David(40) -> both contain 'i'
             Assert.Equal(2, lambdaList.Count);
         }
@@ -201,17 +201,17 @@ namespace LiteOrm.Tests
             // Arrange
             var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
             var root = new TestDepartment { Name = "Headquarters" };
-            await deptService.InsertAsync(root);
+            await deptService.InsertAsync(root, TestContext.Current.CancellationToken);
 
             var sub1 = new TestDepartment { Name = "HR", ParentId = root.Id };
             var sub2 = new TestDepartment { Name = "IT", ParentId = root.Id };
-            await deptService.InsertAsync(sub1);
-            await deptService.InsertAsync(sub2);
+            await deptService.InsertAsync(sub1, TestContext.Current.CancellationToken);
+            await deptService.InsertAsync(sub2, TestContext.Current.CancellationToken);
 
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestDepartment>>();
 
             // Act
-            var subDepts = await viewService.SearchAsync(Expr.Lambda<TestDepartment>(d => d.ParentId == root.Id));
+            var subDepts = await viewService.SearchAsync(Expr.Lambda<TestDepartment>(d => d.ParentId == root.Id), cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Equal(2, subDepts.Count);
@@ -232,19 +232,19 @@ namespace LiteOrm.Tests
             };
 
             // Act - Batch Insert
-            await service.BatchInsertAsync(users);
-            var inserted = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
+            var inserted = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")), cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(2, inserted.Count);
 
             // Act - Batch Update
             foreach (var u in inserted) u.Age += 5;
-            await service.BatchUpdateAsync(inserted);
-            var updated = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
+            await service.BatchUpdateAsync(inserted, TestContext.Current.CancellationToken);
+            var updated = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")), cancellationToken: TestContext.Current.CancellationToken);
             Assert.All(updated, u => Assert.True(u.Age == 15 || u.Age == 25));
 
             // Act - Batch Delete
-            await service.BatchDeleteAsync(updated);
-            var deletedCount = await viewService.CountAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
+            await service.BatchDeleteAsync(updated, TestContext.Current.CancellationToken);
+            var deletedCount = await viewService.CountAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")), cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(0, deletedCount);
         }
 
@@ -262,7 +262,7 @@ namespace LiteOrm.Tests
             }
 
             // Act
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.All(users, u => Assert.True(u.Id > 0));
@@ -273,7 +273,7 @@ namespace LiteOrm.Tests
             }
 
             // Cleanup
-            await service.BatchDeleteAsync(users);
+            await service.BatchDeleteAsync(users, TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -289,7 +289,7 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "Upsert A", Age = 10, CreateTime = DateTime.Now },
                 new TestUser { Name = "Upsert B", Age = 20, CreateTime = DateTime.Now }
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // 2. Prepare mixed batch: one update, one new
             var existingUser = users[0];
@@ -300,10 +300,10 @@ namespace LiteOrm.Tests
             var batch = new List<TestUser> { existingUser, newUser };
 
             // Act
-            await service.BatchUpdateOrInsertAsync(batch);
+            await service.BatchUpdateOrInsertAsync(batch, TestContext.Current.CancellationToken);
 
             // Assert
-            var allUsers = await viewService.SearchAsync(u => u.Name!.StartsWith("Upsert"));
+            var allUsers = await viewService.SearchAsync(u => u.Name!.StartsWith("Upsert"), cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(3, allUsers.Count);
 
             var retrievedA = allUsers.FirstOrDefault(u => u.Name == "Upsert A");
@@ -315,7 +315,7 @@ namespace LiteOrm.Tests
             Assert.True(retrievedC.Id > 0);
 
             // Cleanup
-            await service.BatchDeleteAsync(allUsers);
+            await service.BatchDeleteAsync(allUsers, TestContext.Current.CancellationToken);
         }
 
         [Fact]
@@ -327,12 +327,12 @@ namespace LiteOrm.Tests
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateValue", Age = 10, CreateTime = DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateValue")).GetResultAsync();
-            var retrieved = await viewService.GetObjectAsync(user.Id);
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateValue")).GetResultAsync(TestContext.Current.CancellationToken);
+            var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Equal(1, affected);
@@ -345,12 +345,12 @@ namespace LiteOrm.Tests
             // Arrange
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
-            await service.InsertAsync(new TestUser { Name = "Unique", Age = 50, CreateTime = DateTime.Now });
+            await service.InsertAsync(new TestUser { Name = "Unique", Age = 50, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             // Act
-            var one = await viewService.SearchOneAsync(Expr.Lambda<TestUser>(u => u.Name == "Unique"));
-            bool exists = await viewService.ExistsAsync(Expr.Lambda<TestUser>(u => u.Name == "Unique"));
-            int count = await viewService.CountAsync(Expr.Lambda<TestUser>(u => u.Age >= 50));
+            var one = await viewService.SearchOneAsync(Expr.Lambda<TestUser>(u => u.Name == "Unique"), cancellationToken: TestContext.Current.CancellationToken);
+            bool exists = await viewService.ExistsAsync(Expr.Lambda<TestUser>(u => u.Name == "Unique"), cancellationToken: TestContext.Current.CancellationToken);
+            int count = await viewService.CountAsync(Expr.Lambda<TestUser>(u => u.Age >= 50), cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(one);
@@ -369,16 +369,16 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "Order 1", Age = 10, CreateTime = DateTime.Now },
                 new TestUser { Name = "Order 2", Age = 20, CreateTime = DateTime.Now },
                 new TestUser { Name = "Order 3", Age = 30, CreateTime = DateTime.Now }
-            });
+            }, TestContext.Current.CancellationToken);
 
             // Act - Order
             var ordered = await viewService.SearchAsync(
-                Expr.From<TestUser>().Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false))
+                Expr.From<TestUser>().Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false)), cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Act - Section
             var section = await viewService.SearchAsync(
-                Expr.From<TestUser>().Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false)).Section(0, 2)
+                Expr.From<TestUser>().Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false)).Section(0, 2), cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
@@ -395,13 +395,13 @@ namespace LiteOrm.Tests
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestDepartmentView>>();
 
             var root = new TestDepartment { Name = "Root" };
-            await service.InsertAsync(root);
+            await service.InsertAsync(root, TestContext.Current.CancellationToken);
 
             var child = new TestDepartment { Name = "Child", ParentId = root.Id };
-            await service.InsertAsync(child);
+            await service.InsertAsync(child, TestContext.Current.CancellationToken);
 
             // Act
-            var view = await viewService.SearchOneAsync(Expr.Lambda<TestDepartmentView>(d => d.Id == child.Id));
+            var view = await viewService.SearchOneAsync(Expr.Lambda<TestDepartmentView>(d => d.Id == child.Id), cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(view);
@@ -418,15 +418,15 @@ namespace LiteOrm.Tests
             var user = new TestUser { Name = "Upsert Me", Age = 30, CreateTime = DateTime.Now };
 
             // Act - UpdateOrInsert (Insert)
-            bool inserted = await service.UpdateOrInsertAsync(user);
+            bool inserted = await service.UpdateOrInsertAsync(user, TestContext.Current.CancellationToken);
             Assert.True(inserted);
             Assert.True(user.Id > 0);
 
             // Act - UpdateOrInsert (Update)
             user.Age = 35;
-            bool updated = await service.UpdateOrInsertAsync(user);
+            bool updated = await service.UpdateOrInsertAsync(user, TestContext.Current.CancellationToken);
             Assert.True(updated);
-            var retrieved = await viewService.GetObjectAsync(user.Id);
+            var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(35, retrieved?.Age);
 
             // Act - Batch (Mixed)
@@ -436,10 +436,10 @@ namespace LiteOrm.Tests
                 new EntityOperation<TestUser> { Entity = newUser, Operation = OpDef.Insert },
                 new EntityOperation<TestUser> { Entity = user, Operation = OpDef.Delete }
             };
-            await service.BatchAsync(ops);
+            await service.BatchAsync(ops, TestContext.Current.CancellationToken);
 
-            var mixedRetrieved = await viewService.SearchOneAsync(Expr.Lambda<TestUser>(u => u.Name == "Mixed 1"));
-            var deletedRetrieved = await viewService.GetObjectAsync(user.Id);
+            var mixedRetrieved = await viewService.SearchOneAsync(Expr.Lambda<TestUser>(u => u.Name == "Mixed 1"), cancellationToken: TestContext.Current.CancellationToken);
+            var deletedRetrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.NotNull(mixedRetrieved);
             Assert.Null(deletedRetrieved);
@@ -450,7 +450,7 @@ namespace LiteOrm.Tests
             {
                 forEachCount++;
                 await Task.CompletedTask;
-            });
+            }, cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(1, forEachCount);
         }
 
@@ -463,10 +463,10 @@ namespace LiteOrm.Tests
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
 
             var dept = new TestDepartment { Name = "Foreign Dept" };
-            await deptService.InsertAsync(dept);
+            await deptService.InsertAsync(dept, TestContext.Current.CancellationToken);
 
-            await userService.InsertAsync(new TestUser { Name = "User In Dept", DeptId = dept.Id, CreateTime = DateTime.Now });
-            await userService.InsertAsync(new TestUser { Name = "User Outside", DeptId = -1, CreateTime = DateTime.Now });
+            await userService.InsertAsync(new TestUser { Name = "User In Dept", DeptId = dept.Id, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "User Outside", DeptId = -1, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             // Act
             // 使用 ForeignExpr 进行关联查询 (使用 EXISTS 子查询)
@@ -474,7 +474,7 @@ namespace LiteOrm.Tests
             var users = await viewService.SearchAsync(Expr.Exists<TestDepartment>(
                 (Expr.Prop("Name") == "Foreign Dept") &
                 (Expr.Prop("T0", "DeptId") == Expr.Prop("Id"))
-            ));
+            ), cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Single(users);
@@ -490,19 +490,19 @@ namespace LiteOrm.Tests
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
 
             var dept1 = new TestDepartment { Name = "Dept 1" };
-            await deptService.InsertAsync(dept1);
+            await deptService.InsertAsync(dept1, TestContext.Current.CancellationToken);
             var dept2 = new TestDepartment { Name = "Dept 2" };
-            await deptService.InsertAsync(dept2);
+            await deptService.InsertAsync(dept2, TestContext.Current.CancellationToken);
 
-            await userService.InsertAsync(new TestUser { Name = "User A", Age = 20, DeptId = dept1.Id, CreateTime = DateTime.Now });
-            await userService.InsertAsync(new TestUser { Name = "User B", Age = 30, DeptId = dept1.Id, CreateTime = DateTime.Now });
-            await userService.InsertAsync(new TestUser { Name = "User C", Age = 30, DeptId = dept2.Id, CreateTime = DateTime.Now });
+            await userService.InsertAsync(new TestUser { Name = "User A", Age = 20, DeptId = dept1.Id, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "User B", Age = 30, DeptId = dept1.Id, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "User C", Age = 30, DeptId = dept2.Id, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             var users = await viewService.SearchAsync(
                 (Expr.Prop("Age") == 30) & Expr.Exists<TestDepartment>("Dept",
                     (Expr.Prop("Name") == "Dept 1") &
                     (Expr.Prop("T0", "DeptId") == Expr.Prop("Id")) &
-                    (Expr.Prop("T0", "Name") != Expr.Prop("Name")))
+                    (Expr.Prop("T0", "Name") != Expr.Prop("Name"))), cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
@@ -519,14 +519,14 @@ namespace LiteOrm.Tests
             var testUser = new TestUser { Name = uniqueName, Age = 100, CreateTime = DateTime.Now };
 
             // Act
-            await customService.InsertAsync(testUser);
+            await customService.InsertAsync(testUser, TestContext.Current.CancellationToken);
             var latest = await customService.GetLatestUserAsync();
 
             // Assert
             Assert.NotNull(latest);
             // If GetLatestUserAsync returns our user, great. 
             // If it returns another one (only if serial mode fails), we specifically check if OUR user was inserted correctly.
-            var retrieved = await customService.SearchOneAsync(u => u.Name == uniqueName);
+            var retrieved = await customService.SearchOneAsync(u => u.Name == uniqueName, cancellationToken: TestContext.Current.CancellationToken);
             Assert.NotNull(retrieved);
             Assert.Equal(100, retrieved.Age);
 
@@ -545,10 +545,10 @@ namespace LiteOrm.Tests
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUserView>>();
 
             var rootDept = new TestDepartment { Name = "Root Dept" };
-            await deptService.InsertAsync(rootDept);
+            await deptService.InsertAsync(rootDept, TestContext.Current.CancellationToken);
 
             var subDept = new TestDepartment { Name = "Sub Dept", ParentId = rootDept.Id };
-            await deptService.InsertAsync(subDept);
+            await deptService.InsertAsync(subDept, TestContext.Current.CancellationToken);
 
             var user = new TestUser
             {
@@ -557,10 +557,10 @@ namespace LiteOrm.Tests
                 CreateTime = DateTime.Now,
                 DeptId = subDept.Id
             };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // Act
-            var viewUser = await viewService.GetObjectAsync(user.Id);
+            var viewUser = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.NotNull(viewUser);
@@ -571,20 +571,20 @@ namespace LiteOrm.Tests
             // ���ݹ������ֶβ�ѯ (Act & Assert)
 
             // 1. ����һ���������ֶβ�ѯ
-            var usersByDept = await viewService.SearchAsync(u => u.DeptName == "Sub Dept");
+            var usersByDept = await viewService.SearchAsync(u => u.DeptName == "Sub Dept", cancellationToken: TestContext.Current.CancellationToken);
             Assert.Contains(usersByDept, u => u.Id == user.Id);
 
             // 2. ���ݶ����������ֶβ�ѯ (������)
-            var usersByParentDept = await viewService.SearchAsync(u => u.ParentDeptName == "Root Dept");
+            var usersByParentDept = await viewService.SearchAsync(u => u.ParentDeptName == "Root Dept", cancellationToken: TestContext.Current.CancellationToken);
             Assert.Contains(usersByParentDept, u => u.Id == user.Id);
 
             // 3. ��ϲ�ѯ
-            var combinedUsers = await viewService.SearchAsync(u => u.DeptName == "Sub Dept" && u.ParentDeptName == "Root Dept");
+            var combinedUsers = await viewService.SearchAsync(u => u.DeptName == "Sub Dept" && u.ParentDeptName == "Root Dept", cancellationToken: TestContext.Current.CancellationToken);
             Assert.Single(combinedUsers);
             Assert.Equal(user.Id, combinedUsers[0].Id);
 
             // 4. Count ��֤
-            int count = await viewService.CountAsync(u => u.ParentDeptName == "Root Dept");
+            int count = await viewService.CountAsync(u => u.ParentDeptName == "Root Dept", cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(1, count);
         }
 
@@ -600,16 +600,16 @@ namespace LiteOrm.Tests
             var dept1 = new TestDepartment { Name = "A Department" };
             var dept2 = new TestDepartment { Name = "B Department" };
             var dept3 = new TestDepartment { Name = "C Department" };
-            await deptService.InsertAsync(dept1);
-            await deptService.InsertAsync(dept2);
-            await deptService.InsertAsync(dept3);
+            await deptService.InsertAsync(dept1, TestContext.Current.CancellationToken);
+            await deptService.InsertAsync(dept2, TestContext.Current.CancellationToken);
+            await deptService.InsertAsync(dept3, TestContext.Current.CancellationToken);
 
             // 创建测试用户，分布在不同部门
-            await userService.InsertAsync(new TestUser { Name = "User 1", Age = 20, CreateTime = DateTime.Now, DeptId = dept1.Id });
-            await userService.InsertAsync(new TestUser { Name = "User 2", Age = 25, CreateTime = DateTime.Now, DeptId = dept2.Id });
-            await userService.InsertAsync(new TestUser { Name = "User 3", Age = 30, CreateTime = DateTime.Now, DeptId = dept3.Id });
-            await userService.InsertAsync(new TestUser { Name = "User 4", Age = 35, CreateTime = DateTime.Now, DeptId = dept1.Id });
-            await userService.InsertAsync(new TestUser { Name = "User 5", Age = 40, CreateTime = DateTime.Now, DeptId = dept2.Id });
+            await userService.InsertAsync(new TestUser { Name = "User 1", Age = 20, CreateTime = DateTime.Now, DeptId = dept1.Id }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "User 2", Age = 25, CreateTime = DateTime.Now, DeptId = dept2.Id }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "User 3", Age = 30, CreateTime = DateTime.Now, DeptId = dept3.Id }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "User 4", Age = 35, CreateTime = DateTime.Now, DeptId = dept1.Id }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "User 5", Age = 40, CreateTime = DateTime.Now, DeptId = dept2.Id }, TestContext.Current.CancellationToken);
 
             // Act 1: 使用 ForeignColumn (DeptName) 作为查询条件和排序条件，同时分页
             var expr1 = Expr.From<TestUserView>()
@@ -617,7 +617,7 @@ namespace LiteOrm.Tests
                 .OrderBy((nameof(TestUserView.DeptName), true))  // 按部门名称升序
                 .OrderBy((nameof(TestUser.Age), false))          // 再按年龄降序
                 .Section(0, 3);                                  // 分页，取前3条
-            var users1 = await viewService.SearchAsync(expr1);
+            var users1 = await viewService.SearchAsync(expr1, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert 1
             Assert.Equal(3, users1.Count);
@@ -629,16 +629,16 @@ namespace LiteOrm.Tests
             // Act 2: 使用 ForeignColumn (ParentDeptName) 作为查询条件和排序条件
             // 首先创建有父部门的部门结构
             var parentDept = new TestDepartment { Name = "Parent Dept" };
-            await deptService.InsertAsync(parentDept);
+            await deptService.InsertAsync(parentDept, TestContext.Current.CancellationToken);
 
             var childDept1 = new TestDepartment { Name = "Child Dept 1", ParentId = parentDept.Id };
             var childDept2 = new TestDepartment { Name = "Child Dept 2", ParentId = parentDept.Id };
-            await deptService.InsertAsync(childDept1);
-            await deptService.InsertAsync(childDept2);
+            await deptService.InsertAsync(childDept1, TestContext.Current.CancellationToken);
+            await deptService.InsertAsync(childDept2, TestContext.Current.CancellationToken);
 
             // 创建属于子部门的用户
-            await userService.InsertAsync(new TestUser { Name = "Child User 1", Age = 22, CreateTime = DateTime.Now, DeptId = childDept1.Id });
-            await userService.InsertAsync(new TestUser { Name = "Child User 2", Age = 28, CreateTime = DateTime.Now, DeptId = childDept2.Id });
+            await userService.InsertAsync(new TestUser { Name = "Child User 1", Age = 22, CreateTime = DateTime.Now, DeptId = childDept1.Id }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "Child User 2", Age = 28, CreateTime = DateTime.Now, DeptId = childDept2.Id }, TestContext.Current.CancellationToken);
 
             // 使用 ParentDeptName 作为查询和排序条件
             var expr2 = Expr.From<TestUserView>()
@@ -647,7 +647,7 @@ namespace LiteOrm.Tests
                 .OrderBy(nameof(TestUserView.DeptName))        // 再按部门名称升序
                 .OrderBy(nameof(TestUser.Age))                 // 再按年龄升序
                 .Section(0, 5);                                         // 分页，取前5条
-            var users2 = await viewService.SearchAsync(expr2);
+            var users2 = await viewService.SearchAsync(expr2, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert 2
             Assert.True(users2.Count >= 2); // 至少有2个用户
@@ -669,18 +669,19 @@ namespace LiteOrm.Tests
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
 
             var user = new TestUser { Name = "Shard User 1", Age = 25, CreateTime = DateTime.Now };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // 插入测试数据到 TestLog_202401 表
             var log1 = new TestLog { Event = "Login", Amount = 100, CreateTime = new DateTime(2024, 1, 15), UserID = user.Id };
             var log2 = new TestLog { Event = "Purchase", Amount = 200, CreateTime = new DateTime(2024, 1, 20), UserID = user.Id };
-            await service.InsertAsync(log1);
-            await service.InsertAsync(log2);
+            await service.InsertAsync(log1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(log2, TestContext.Current.CancellationToken);
 
             // Act - 方式一：简单 Lambda + 显式 TableArgs
             var logs = await viewService.SearchAsync(
                 l => l.Amount > 150,
-                tableArgs: new[] { "202401" }
+                tableArgs: new[] { "202401" },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
@@ -701,19 +702,20 @@ namespace LiteOrm.Tests
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
 
             var user = new TestUser { Name = "Count User " + Guid.NewGuid().ToString("N").Substring(0, 8), Age = 30, CreateTime = DateTime.Now };
-            await userService.InsertAsync(user);
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var log1 = new TestLog { Event = "CountEvent1", Amount = 100, CreateTime = new DateTime(2024, 1, 10), UserID = user.Id };
             var log2 = new TestLog { Event = "CountEvent2", Amount = 200, CreateTime = new DateTime(2024, 1, 15), UserID = user.Id };
             var log3 = new TestLog { Event = "CountEvent3", Amount = 300, CreateTime = new DateTime(2024, 1, 20), UserID = user.Id };
-            await service.InsertAsync(log1);
-            await service.InsertAsync(log2);
-            await service.InsertAsync(log3);
+            await service.InsertAsync(log1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(log2, TestContext.Current.CancellationToken);
+            await service.InsertAsync(log3, TestContext.Current.CancellationToken);
 
             // Act - 计算 Amount > 150 且特定用户的日志数量（加入 UserID 过滤以隔离数据）
             int count = await viewService.CountAsync(
                 l => l.Amount > 150 && l.UserID == user.Id,
-                tableArgs: new[] { "202401" }
+                tableArgs: new[] { "202401" },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert

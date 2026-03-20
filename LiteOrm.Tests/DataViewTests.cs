@@ -23,11 +23,11 @@ namespace LiteOrm.Tests
             var dao = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
 
-            await userService.InsertAsync(new TestUser { Name = "DataViewTest1", Age = 25 });
-            await userService.InsertAsync(new TestUser { Name = "DataViewTest2", Age = 30 });
+            await userService.InsertAsync(new TestUser { Name = "DataViewTest1", Age = 25 }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "DataViewTest2", Age = 30 }, TestContext.Current.CancellationToken);
 
             var result = dao.Search(Expr.Prop("Name").StartsWith("DataViewTest"));
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.True(dt.Rows.Count >= 2);
@@ -40,11 +40,11 @@ namespace LiteOrm.Tests
         {
             var dao = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
-            await userService.InsertAsync(new TestUser { Name = "FieldTest", Age = 40 });
+            await userService.InsertAsync(new TestUser { Name = "FieldTest", Age = 40 }, TestContext.Current.CancellationToken);
 
             string[] fields = { "Name" };
             var result = dao.Search(fields, Expr.Prop("Name") == "FieldTest");
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.Single(dt.Columns);
@@ -60,13 +60,13 @@ namespace LiteOrm.Tests
             var dao = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
 
-            await userService.InsertAsync(new TestUser { Name = "DataViewExprStringTest1", Age = 25 });
-            await userService.InsertAsync(new TestUser { Name = "DataViewExprStringTest2", Age = 30 });
+            await userService.InsertAsync(new TestUser { Name = "DataViewExprStringTest1", Age = 25 }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "DataViewExprStringTest2", Age = 30 }, TestContext.Current.CancellationToken);
 
             // 测试 ExprString 语法
             var ageThreshold = 20;
             var result = dao.Search($"SELECT {{AllFields}} FROM {{From}} WHERE {Expr.Prop("Age") > ageThreshold & Expr.Prop("Name").Like("DataViewExprStringTest%")}", true);
-            DataTable dt = await result.GetResultAsync();
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(dt);
             Assert.True(dt.Rows.Count >= 2);
@@ -84,12 +84,12 @@ namespace LiteOrm.Tests
 
             var dept1 = new TestDepartment { Name = "GroupDept1" };
             var dept2 = new TestDepartment { Name = "GroupDept2" };
-            await deptService.InsertAsync(dept1);
-            await deptService.InsertAsync(dept2);
+            await deptService.InsertAsync(dept1, TestContext.Current.CancellationToken);
+            await deptService.InsertAsync(dept2, TestContext.Current.CancellationToken);
 
-            await userService.InsertAsync(new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now, DeptId = dept1.Id });
-            await userService.InsertAsync(new TestUser { Name = "User2", Age = 25, CreateTime = DateTime.Now, DeptId = dept1.Id });
-            await userService.InsertAsync(new TestUser { Name = "User3", Age = 30, CreateTime = DateTime.Now, DeptId = dept2.Id });
+            await userService.InsertAsync(new TestUser { Name = "User1", Age = 20, CreateTime = DateTime.Now, DeptId = dept1.Id }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "User2", Age = 25, CreateTime = DateTime.Now, DeptId = dept1.Id }, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(new TestUser { Name = "User3", Age = 30, CreateTime = DateTime.Now, DeptId = dept2.Id }, TestContext.Current.CancellationToken);
 
             // 简单的 GROUP BY 聚合
             var deptUserCounts = dataViewDao.Search(
@@ -98,7 +98,7 @@ namespace LiteOrm.Tests
                     .GroupBy(Expr.Prop("DeptId"))
                     .Select(Expr.Prop("DeptId"), Expr.Prop("Id").Count().As("UserCount"), Expr.Prop("Age").Avg().As("AvgAge"))
             );
-            var result = await deptUserCounts.GetResultAsync();
+            var result = await deptUserCounts.GetResultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
             Assert.True(result.Rows.Count >= 2);

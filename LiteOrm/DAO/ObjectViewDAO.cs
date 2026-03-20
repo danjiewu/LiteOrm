@@ -307,6 +307,19 @@ namespace LiteOrm
             return Search(expr);
         }
 
+        /// <summary>
+        /// 使用带参数的SQL查询
+        /// </summary>
+        /// <param name="sqlBody">查询SQL，使用插值字符串格式，可插入普通变量或 Expr。<see cref="LiteOrm.Common.ExprString"/></param>
+        /// <param name="isFull">传入的是否是完整SQL，默认为 false</param>
+        /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
+        /// <seealso cref="Search(ref ExprString, bool)"/>
+        IEnumerableResult IObjectViewDAO.Search(ref ExprString sqlBody, bool isFull)
+        {
+            return Search(ref sqlBody, isFull);
+        }
+
+
         #endregion
 
     }

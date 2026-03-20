@@ -180,6 +180,7 @@ namespace LiteOrm.Common
         {
             string op = String.Empty;
             bool isOppsite = expr.Operator.IsNot();
+            char escapeChar = Constants.LikeEscapeChar;
             _logicOperatorSymbols.TryGetValue(expr.Operator, out op);
             switch (expr.OriginOperator)
             {
@@ -253,9 +254,7 @@ namespace LiteOrm.Common
                         }
                         outputParams.Add(new KeyValuePair<string, object>(sqlBuilder.ToParamName(paramName), val));
                         sb.Append(sqlBuilder.ToSqlParam(paramName));
-                        sb.Append(" ESCAPE '");
-                        sb.Append(Constants.LikeEscapeChar);
-                        sb.Append("'");
+                        sb.Append($" ESCAPE '{escapeChar}'");
                     }
                     else
                     {
@@ -281,12 +280,11 @@ namespace LiteOrm.Common
                             ToSqlInternal(ref nestedRightSb, expr.Right, context, sqlBuilder, outputParams);
                             string nestedRight = nestedRightSb.ToString();
                             nestedRightSb.Dispose();
-                            string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({nestedRight},'{Constants.LikeEscapeChar}', '{Constants.LikeEscapeChar}{Constants.LikeEscapeChar}'),'_', '{Constants.LikeEscapeChar}_'),'%', '{Constants.LikeEscapeChar}%'),'[', '{Constants.LikeEscapeChar}['),']', '{Constants.LikeEscapeChar}]')";
-                            right = sqlBuilder.BuildConcatSql("'%'", right); 
+
+                            string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({nestedRight},'{escapeChar}', '{escapeChar}{escapeChar}'),'_', '{escapeChar}_'),'%', '{escapeChar}%'),'[', '{escapeChar}['),']', '{escapeChar}]')";
+                            right = sqlBuilder.BuildConcatSql("'%'", right);
                             sb.Append(right);
-                            sb.Append(" ESCAPE '");
-                            sb.Append(Constants.LikeEscapeChar);
-                            sb.Append("'");
+                            sb.Append($" ESCAPE '{escapeChar}'");
                         }
                     }
                     break;

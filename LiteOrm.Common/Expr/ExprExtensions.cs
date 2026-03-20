@@ -188,7 +188,7 @@ namespace LiteOrm.Common
         public static LogicBinaryExpr In(this ValueTypeExpr left, params object[] items) => new LogicBinaryExpr(left, LogicOperator.In, new ValueExpr(items));
 
         /// <summary>
-        /// 创建范围查询表达式 (BETWEEN)。
+        /// 通过组合&gt;= low和&lt;= high创建范围查询表达式 (BETWEEN)。
         /// </summary>
         /// <param name="left">左侧值表达式。</param>
         /// <param name="low">范围的下限值。</param>

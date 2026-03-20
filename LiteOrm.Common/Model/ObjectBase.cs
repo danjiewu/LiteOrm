@@ -12,7 +12,6 @@ namespace LiteOrm.Common
     /// </summary>
     /// <remarks>
     /// ObjectBase 是一个抽象基类，为 LiteOrm 框架中的所有实体对象提供通用的功能。
-    /// 所有需要与数据库交互的实体类都应该继承自此类。
     /// 
     /// 主要功能包括：
     /// 1. 对象复制 - CopyFrom() 方法用于从另一个对象复制属性值

@@ -22,12 +22,12 @@ namespace LiteOrm.Tests
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateAllValues", Age = 10, CreateTime = System.DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValues")).GetResultAsync();
-            var retrieved = await viewService.GetObjectAsync(user.Id);
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValues")).GetResultAsync(TestContext.Current.CancellationToken);
+            var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // 断言
             Assert.Equal(1, affected);
@@ -41,13 +41,13 @@ namespace LiteOrm.Tests
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateValues", Age = 10, CreateTime = System.DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateValues(updateValues, user.Id).GetResultAsync();
+            int affected = await dataDao.UpdateValues(updateValues, user.Id).GetResultAsync(TestContext.Current.CancellationToken);
             bool updated = affected > 0;
-            var retrieved = await viewService.GetObjectAsync(user.Id);
+            var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // 断言
             Assert.True(updated);
@@ -62,7 +62,7 @@ namespace LiteOrm.Tests
 
             // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateValues(updateValues, -1).GetResultAsync();
+            int affected = await dataDao.UpdateValues(updateValues, -1).GetResultAsync(TestContext.Current.CancellationToken);
             bool updated = affected > 0;
 
             // 断言
@@ -84,12 +84,12 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "BatchUpdate2", Age = 20, CreateTime = System.DateTime.Now },
                 new TestUser { Name = "BatchUpdate3", Age = 30, CreateTime = System.DateTime.Now }
             };
-            await service.BatchInsertAsync(users);
+            await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name.StartsWith("BatchUpdate"))).GetResultAsync();
-            var retrievedUsers = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name.StartsWith("BatchUpdate")));
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name.StartsWith("BatchUpdate"))).GetResultAsync(TestContext.Current.CancellationToken);
+            var retrievedUsers = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name.StartsWith("BatchUpdate")), cancellationToken: TestContext.Current.CancellationToken);
 
             // 断言
             Assert.Equal(3, affected);
@@ -104,7 +104,7 @@ namespace LiteOrm.Tests
             var dataDao = ServiceProvider.GetRequiredService<DataDAO<TestUser>>();
             var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
             var user = new TestUser { Name = "UpdateMultiple", Age = 10, CreateTime = System.DateTime.Now };
-            await service.InsertAsync(user);
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             // 执行
             var updateValues = new Dictionary<string, object>
@@ -112,8 +112,8 @@ namespace LiteOrm.Tests
                 { "Age", 99 },
                 { "Name", "UpdatedName" }
             };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Id == user.Id)).GetResultAsync();
-            var retrieved = await viewService.GetObjectAsync(user.Id);
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Id == user.Id)).GetResultAsync(TestContext.Current.CancellationToken);
+            var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // 断言   
             Assert.Equal(1, affected);

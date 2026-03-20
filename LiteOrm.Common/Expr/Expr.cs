@@ -223,14 +223,16 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 创建一个 NOT IN 表达式。
+        /// 创建一个 BETWEEN 表达式， 通过组合&gt;= low和&lt;= high表示属性值在指定的下限和上限之间（包含边界）。
         /// </summary>
         /// <param name="propertyName">属性名称。</param>
-        /// <param name="values">排除值的集合表达式。</param>
-        /// <returns>NOT IN 表达式。</returns>
-        public static LogicBinaryExpr NotIn(string propertyName, ValueTypeExpr values)
+        /// <param name="low">下限值表达式。</param>
+        /// <param name="high">上限值表达式。</param>
+        /// <returns>BETWEEN 表达式。</returns>
+        public static LogicExpr Between(string propertyName, ValueTypeExpr low, ValueTypeExpr high)
         {
-            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.NotIn, values);
+            var propExpr = new PropertyExpr(propertyName);
+            return propExpr >= low & propExpr <= high;
         }
 
         /// <summary>
