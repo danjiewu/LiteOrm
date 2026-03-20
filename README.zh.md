@@ -32,8 +32,8 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架。结合了微 ORM 的
 - **.NET 8.0+** / **.NET Standard 2.0**（兼容 .NET Framework 4.6.1+）
 - **依赖库**：Autofac、Castle.Core
 - **数据库支持**：
-  - **原生分页支持**：SQL Server 2012+、Oracle 12c+、PostgreSQL、MySQL、SQLite
-  - **自定义分页**：对于旧版本数据库，参考 [自定义分页实现示例](./CUSTOM_PAGING_EXAMPLE.md)
+ SQL Server 2012+、Oracle 12c+、PostgreSQL、MySQL、SQLite 
+ >对于旧版本数据库，需要自己实现分页，参考 [自定义分页实现示例](./CUSTOM_PAGING_EXAMPLE.md)
 
 ## 📦 安装
 

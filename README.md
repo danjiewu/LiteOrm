@@ -32,8 +32,8 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 - **.NET 8.0+** / **.NET Standard 2.0** (.NET Framework 4.6.1+ compatible)
 - **Dependencies**: Autofac, Castle.Core
 - **Database Support**:
-  - **Native Paging Support**: SQL Server 2012+, Oracle 12c+, PostgreSQL, MySQL, SQLite
-  - **Custom Paging**: For older database versions, see [Custom Paging Example](./CUSTOM_PAGING_EXAMPLE.md)
+  SQL Server 2012+, Oracle 12c+, PostgreSQL, MySQL, SQLite
+  > For older database versions, you need to implement custom paging. See [Custom Paging Example](./CUSTOM_PAGING_EXAMPLE.md)
 
 ## 📦 Installation
 
