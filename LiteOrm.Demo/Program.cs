@@ -50,6 +50,9 @@ using (var scope = host.Services.CreateScope())
 
     // 6. UpdateExpr 更新表达式演示 (6.1-6.5: 列表初始化、链式Set、算术运算、FunctionExpr、Lambda条件)
     await UpdateExprDemo.RunAsync(serviceFactory);
+
+    // 7. ExistsRelated 关联过滤演示 (7.1-7.4: 正向用户、正向部门、NOT EXISTS、多条件组合)
+    await ExistsRelatedDemo.RunAsync(serviceFactory);
 }
 
 

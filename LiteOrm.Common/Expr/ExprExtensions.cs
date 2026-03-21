@@ -49,7 +49,7 @@ namespace LiteOrm.Common
         ///     .And(Expr.Prop("Name").Contains("John"));
         /// </code>
         /// </example>
-        public static LogicSet And(this LogicExpr left, LogicExpr right) => new LogicSet(LogicJoinType.And, left, right);
+        public static LogicExpr And(this LogicExpr left, LogicExpr right) => left is null ? right : new LogicSet(LogicJoinType.And, left, right);
 
         /// <summary>
         /// 使用 OR 逻辑操作符将当前逻辑表达式与另一个逻辑表达式连接。
@@ -63,7 +63,7 @@ namespace LiteOrm.Common
         ///     .Or(Expr.Prop("IsVIP").Equal(true));
         /// </code>
         /// </example>
-        public static LogicSet Or(this LogicExpr left, LogicExpr right) => new LogicSet(LogicJoinType.Or, left, right);
+        public static LogicExpr Or(this LogicExpr left, LogicExpr right) => left is null? right: new LogicSet(LogicJoinType.Or, left, right);
 
         /// <summary>
         /// 使用 CONCAT（字符串拼接）操作符连接两个值表达式。
@@ -299,6 +299,18 @@ namespace LiteOrm.Common
         {
             selectExpr.Alias = alias;
             return selectExpr;
+        }
+
+        /// <summary>
+        /// 为Foreign表达式设置别名。
+        /// </summary>
+        /// <param name="foreignExpr">Foregin表达式</param>
+        /// <param name="alias">别名</param>
+        /// <returns></returns>
+        public static ForeignExpr As(this ForeignExpr foreignExpr, string alias)
+        {
+            foreignExpr.Alias = alias;
+            return foreignExpr;
         }
 
         /// <summary>

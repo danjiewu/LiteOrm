@@ -245,7 +245,7 @@ namespace LiteOrm.Common
                         string val = sqlBuilder.ToSqlLikeValue(vs2.Value?.ToString());
                         val = expr.OriginOperator switch
                         {
-                            LogicOperator.StartsWith=> $"{val}%",
+                            LogicOperator.StartsWith => $"{val}%",
                             LogicOperator.EndsWith => $"%{val}",
                             LogicOperator.Contains => $"%{val}%",
                             _ => val
@@ -467,27 +467,55 @@ namespace LiteOrm.Common
         {
             if (foreignExpr.Foreign == null) throw new ArgumentException("ForeignExpr.Foreign is required");
 
-            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(foreignExpr.Foreign);
-            if (tableDefinition == null) throw new ArgumentException($"Table definition not found for type {foreignExpr.Foreign}");
+            var foreignTable = TableInfoProvider.Default.GetTableView(foreignExpr.Foreign);
+            if (foreignTable == null) throw new ArgumentException($"Table info not found for type {foreignExpr.Foreign}");
+
+            string foreignAlias = string.IsNullOrEmpty(foreignExpr.Alias) ? $"T{context.Sequence++}" : foreignExpr.Alias;
+            LogicExpr joinedExpr = null;
+            if (foreignExpr.AutoRelated && context.Table is not null)
+            {
+                foreach (JoinedTable joinedTable in TableInfoProvider.Default.GetTableView(context.Table.DefinitionType).JoinedTables)
+                {
+                    if (foreignExpr.Foreign.IsAssignableFrom(joinedTable.TableDefinition.DefinitionType))
+                    {
+                        // 找到当前表与目标表之间的关联关系，自动生成关联条件
+                        joinedExpr |= Expr.And(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
+                            Expr.Prop(foreignAlias, pk.Name) == Expr.Prop(context.DefaultTableAliasName, fk.Name)
+                        ));
+                    }
+                }
+                // 正向没有找到关联关系，尝试反向查找
+                if (joinedExpr is null)
+                {
+                    foreach (JoinedTable joinedTable in foreignTable.JoinedTables)
+                    {
+                        if (context.Table.DefinitionType.IsAssignableFrom(joinedTable.TableDefinition.DefinitionType))
+                        {
+                            // 找到当前表与目标表之间的关联关系，自动生成关联条件
+                            joinedExpr |= Expr.And(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
+                                Expr.Prop(foreignAlias, fk.Name) == Expr.Prop(context.DefaultTableAliasName, pk.Name)
+                            ));
+                        }
+                    }
+                }
+            }
 
             using (context.BeginScope())
             {
-                string foreignAlias = string.IsNullOrEmpty(foreignExpr.Alias) ? $"T{context.Sequence++}" : foreignExpr.Alias;
-                context.AddTableAlias(foreignAlias, tableDefinition);
+                context.AddTableAlias(foreignAlias, foreignTable);
                 context.TableArgs = foreignExpr.TableArgs;
 
                 sb.Append("EXISTS(SELECT 1 FROM ");
-                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableDefinition.Name)));
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(foreignTable.Definition.Name)));
                 sb.Append(" ");
                 sb.Append(sqlBuilder.ToSqlName(foreignAlias));
 
-                if (foreignExpr.InnerExpr != null)
-                {
-                    sb.Append(" \nWHERE ");
-                    int lenBefore = sb.Length;
-                    ToSqlInternal(ref sb, foreignExpr.InnerExpr, context, sqlBuilder, outputParams);
-                    if (sb.Length == lenBefore) sb.Length = lenBefore - 7;
-                }
+                LogicExpr whereExpr = joinedExpr.And(foreignExpr.InnerExpr);
+                sb.Append(" \nWHERE ");
+                int lenBefore = sb.Length;
+                ToSqlInternal(ref sb, whereExpr, context, sqlBuilder, outputParams);
+                if (sb.Length == lenBefore) sb.Length = lenBefore - 7;
+
                 sb.Append(")");
             }
         }

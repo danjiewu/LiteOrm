@@ -60,12 +60,6 @@ namespace LiteOrm.Common
         {
             get { return _foreignPrimeKeys; }
         }
-
-        /// <summary>
-        /// 关联查询时的筛选表达式（由 Filter 属性定义）。
-        /// </summary>
-        public string FilterExpression { get; set; }
-
     }
 
 }

@@ -99,21 +99,11 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="type">关联外部实体的类型</param>
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
-        /// <returns>外键表达式。</returns>
-        public static ForeignExpr Exists(Type type, LogicExpr innerExpr)
+        /// <param name="tableArgs">动态表名参数。</param>
+        /// <returns>外键关联查询表达式。</returns>
+        public static ForeignExpr Exists(Type type, LogicExpr innerExpr, params string[] tableArgs)
         {
             return new ForeignExpr(type, innerExpr);
-        }
-
-        /// <summary>
-        /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件。
-        /// </summary>
-        /// <typeparam name="T">关联外部实体的类型</typeparam>
-        /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
-        /// <returns>外键表达式。</returns>
-        public static ForeignExpr Exists<T>(LogicExpr innerExpr)
-        {
-            return new ForeignExpr(typeof(T), innerExpr);
         }
 
         /// <summary>
@@ -122,35 +112,34 @@ namespace LiteOrm.Common
         /// <typeparam name="T">关联外部实体的类型</typeparam>
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
-        /// <returns>外键表达式。</returns>
+        /// <returns>外键关联查询表达式。</returns>
         public static ForeignExpr Exists<T>(LogicExpr innerExpr, params string[] tableArgs)
         {
             return new ForeignExpr(typeof(T), innerExpr, tableArgs);
         }
 
         /// <summary>
-        /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件。
+        /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件，支持分表，并自动根据当前查询上下文推断关联关系。
         /// </summary>
-        /// <typeparam name="T">关联外部实体的类型</typeparam>
-        /// <param name="alias">外部表别名。</param>
+        /// <typeparam name="T">关联外部实体的类型。</typeparam>
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
-        /// <returns>外键表达式。</returns>
-        public static ForeignExpr Exists<T>(string alias, LogicExpr innerExpr)
+        /// <param name="tableArgs">动态表名参数。</param>
+        /// <returns>外键关联查询表达式。</returns>
+        public static ForeignExpr ExistsRelated<T>(LogicExpr innerExpr, params string[] tableArgs)
         {
-            return new ForeignExpr(typeof(T), alias, innerExpr);
+            return new ForeignExpr(typeof(T), innerExpr, tableArgs) { AutoRelated = true };
         }
 
         /// <summary>
-        /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件，支持分表。
+        /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件，支持分表，并自动根据当前查询上下文推断关联关系。
         /// </summary>
-        /// <typeparam name="T">关联外部实体的类型</typeparam>
-        /// <param name="alias">外部表别名。</param>
+        /// <param name="type">关联外部实体的类型。</param>
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
-        /// <returns>外键表达式。</returns>
-        public static ForeignExpr Exists<T>(string alias, LogicExpr innerExpr, params string[] tableArgs)
+        /// <returns>外键关联查询表达式。</returns>
+        public static ForeignExpr ExistsRelated(Type type, LogicExpr innerExpr, params string[] tableArgs)
         {
-            return new ForeignExpr(typeof(T), alias, innerExpr, tableArgs);
+            return new ForeignExpr(type, innerExpr, tableArgs) { AutoRelated = true };
         }
 
         /// <summary>

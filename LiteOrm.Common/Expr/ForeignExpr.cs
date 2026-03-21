@@ -16,37 +16,29 @@ namespace LiteOrm.Common
         /// </summary>
         public LogicExpr InnerExpr { get; set; }
 
-        private Type _foreign;
         /// <summary>
         /// 获取或设置外部实体类型。
         /// </summary>
-        public Type Foreign
-        {
-            get { return _foreign; }
-            set { _foreign = value; }
-        }
-
-        private string _alias;
+        public Type Foreign { get; set; }
         /// <summary>
         /// 获取或设置外部表的别名。
         /// </summary>
         public string Alias
         {
-            get { return _alias; }
+            get { return field; }
             set
             {
                 ThrowIfInvalidSqlName(nameof(Alias), value);
-                _alias = value;
+                field = value;
             }
         }
 
-        private string[] _tableArgs;
         /// <summary>
         /// 获取或设置用于动态表名的参数集合。
         /// </summary>
         public string[] TableArgs
         {
-            get { return _tableArgs; }
+            get { return field; }
             set
             {
                 if (value != null)
@@ -56,9 +48,14 @@ namespace LiteOrm.Common
                         ThrowIfInvalidSqlName(nameof(TableArgs), arg);
                     }
                 }
-                _tableArgs = value;
+                field = value;
             }
-        }
+        } = new string[0];
+
+        /// <summary>
+        /// 获取或设置一个值，指示是否自动根据外部实体类型推断关联条件。
+        /// </summary>
+        public bool AutoRelated { get; set; }
 
         /// <summary>
         /// 初始化 <see cref="ForeignExpr"/> 类的新实例。
@@ -131,7 +128,7 @@ namespace LiteOrm.Common
         /// </summary>
         public override bool Equals(object obj)
         {
-            return obj is ForeignExpr f && f.Foreign == Foreign && f.Alias == Alias && Equals(f.InnerExpr, InnerExpr) &&
+            return obj is ForeignExpr f && f.Foreign == Foreign && f.Alias == Alias && f.AutoRelated == AutoRelated && Equals(f.InnerExpr, InnerExpr) &&
                    ((f.TableArgs == null && TableArgs == null) || (f.TableArgs != null && TableArgs != null && f.TableArgs.SequenceEqual(TableArgs)));
         }
 
@@ -141,7 +138,7 @@ namespace LiteOrm.Common
         /// <returns>哈希码值</returns>
         public override int GetHashCode()
         {
-            int hash = OrderedHashCodes(GetType().GetHashCode(), Foreign?.GetHashCode() ?? 0, Alias?.GetHashCode() ?? 0, InnerExpr?.GetHashCode() ?? 0);
+            int hash = OrderedHashCodes(GetType().GetHashCode(), Foreign?.GetHashCode() ?? 0, Alias?.GetHashCode() ?? 0, AutoRelated ? 1 : 0, InnerExpr?.GetHashCode() ?? 0);
             if (TableArgs != null)
             {
                 foreach (var arg in TableArgs)
@@ -155,7 +152,7 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            return $"Foreign {Foreign?.Name ?? Alias}{{{InnerExpr}}}";
+            return $"{{{Foreign?.Name ?? Alias}:{InnerExpr}}}";
         }
     }
 }

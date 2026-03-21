@@ -10,7 +10,6 @@ namespace LiteOrm.Tests.Infrastructure
     /// </summary>
     public interface ITestUserService : IEntityServiceAsync<TestUser>, IEntityViewServiceAsync<TestUser>
     {
-        // �����ڴ˴������Զ���ҵ�񷽷�
         Task<TestUser?> GetLatestUserAsync();
     }
 

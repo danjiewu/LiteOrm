@@ -198,7 +198,6 @@ namespace LiteOrm
                     tableJoin.AliasName = joinedTable.Name = tableJoin.TargetType.Name;
                 else
                     joinedTable.Name = tableJoin.AliasName;
-                joinedTable.FilterExpression = tableJoin.FilterExpression;
                 if (joinedTables.ContainsKey(joinedTable.Name)) throw new ArgumentException($"Duplicate table alias name \"{joinedTable.Name}\"");
                 joinedTables[joinedTable.Name] = joinedTable;
             }
@@ -351,7 +350,6 @@ namespace LiteOrm
                         joinedTable.Name = column.ForeignAlias;
                     List<ColumnRef> foreignKeys = new List<ColumnRef>();
                     foreignKeys.Add(columnRef);
-                    joinedTable.FilterExpression = column.ForeignTable.FilterExpression;
                     joinedTable.ForeignKeys = foreignKeys.AsReadOnly();
                     joinedTables[joinedTable.Name] = joinedTable;
 

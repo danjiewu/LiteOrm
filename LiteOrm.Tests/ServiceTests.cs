@@ -499,7 +499,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User C", Age = 30, DeptId = dept2.Id, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             var users = await viewService.SearchAsync(
-                (Expr.Prop("Age") == 30) & Expr.Exists<TestDepartment>("Dept",
+                (Expr.Prop("Age") == 30) & Expr.Exists<TestDepartment>(
                     (Expr.Prop("Name") == "Dept 1") &
                     (Expr.Prop("T0", "DeptId") == Expr.Prop("Id")) &
                     (Expr.Prop("T0", "Name") != Expr.Prop("Name"))), cancellationToken: TestContext.Current.CancellationToken

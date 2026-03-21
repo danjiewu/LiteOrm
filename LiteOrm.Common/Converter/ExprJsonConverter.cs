@@ -582,6 +582,10 @@ namespace LiteOrm.Common
                             writer.WritePropertyName("Alias");
                             writer.WriteStringValue(fe.Alias);
                         }
+                        if (fe.AutoRelated)
+                        {
+                            writer.WriteBoolean("AutoRelated", true);
+                        }
                         if (fe.InnerExpr is not null)
                         {
                             writer.WritePropertyName("InnerExpr");
@@ -1083,6 +1087,11 @@ namespace LiteOrm.Common
                     {
                         reader.Read();
                         foreignExpr.Alias = reader.GetString();
+                    }
+                    else if (prop == "AutoRelated")
+                    {
+                        reader.Read();
+                        foreignExpr.AutoRelated = reader.GetBoolean();
                     }
                     else if (prop == "InnerExpr")
                     {

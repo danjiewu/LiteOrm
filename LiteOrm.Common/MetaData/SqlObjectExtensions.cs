@@ -160,11 +160,6 @@ namespace LiteOrm.Common
                 joined.ForeignPrimeKeys[i].ToSql(ref sb, context, sqlBuilder);
                 isFirst = false;
             }
-            if (!string.IsNullOrEmpty(joined.FilterExpression))
-            {
-                if (!isFirst) sb.Append(" AND ");
-                sb.Append(joined.FilterExpression);
-            }
         }
     }
 }

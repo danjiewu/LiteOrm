@@ -34,8 +34,8 @@ namespace LiteOrm.Common
         /// <returns>组合后的 OR 表达式。</returns>
         public static LogicExpr operator |(LogicExpr left, LogicExpr right)
         {
-            if (left is null) return null;
-            else if (right is null) return null;
+            if (left is null) return right;
+            else if (right is null) return left;
             else return left.Or(right);
         }
 

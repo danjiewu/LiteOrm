@@ -441,6 +441,59 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public void ExistsRelated_Tests()
+        {
+            // AutoRelated 标志应为 true
+            var f1 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "IT");
+            Assert.IsType<ForeignExpr>(f1);
+            Assert.True(f1.AutoRelated);
+            Assert.Equal(typeof(TestDepartment), f1.Foreign);
+            Assert.Equal(Expr.Prop("Name") == "IT", f1.InnerExpr);
+
+            // Type 重载版本同样设置 AutoRelated = true
+            var f2 = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "IT");
+            Assert.True(f2.AutoRelated);
+            Assert.Equal(typeof(TestDepartment), f2.Foreign);
+
+            // 泛型与 Type 重载产生相等的表达式
+            Assert.True(f1.Equals(f2));
+
+            // 相同参数的两个 ExistsRelated 应相等
+            var f3 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "IT");
+            Assert.True(f1.Equals(f3));
+            Assert.Equal(f1.GetHashCode(), f3.GetHashCode());
+
+            // ExistsRelated 与 Exists 不相等（AutoRelated 不同）
+            var f4 = Expr.Exists<TestDepartment>(Expr.Prop("Name") == "IT");
+            Assert.False(f4.AutoRelated);
+            Assert.False(f1.Equals(f4));
+
+            // 不同 InnerExpr 应不相等
+            var f5 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "HR");
+            Assert.False(f1.Equals(f5));
+
+            // 不同外部类型应不相等
+            var f6 = Expr.ExistsRelated<TestUser>(Expr.Prop("Name") == "IT");
+            Assert.False(f1.Equals(f6));
+
+            // 带 TableArgs 的版本
+            var f7 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "IT", "2024");
+            var f8 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "IT", "2024");
+            var f9 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "IT", "2025");
+            Assert.True(f7.Equals(f8));
+            Assert.Equal(f7.GetHashCode(), f8.GetHashCode());
+            Assert.False(f7.Equals(f9));
+            Assert.False(f1.Equals(f7)); // 无 TableArgs 与有 TableArgs 不相等
+
+            // TableArgs 应传入表达式
+            Assert.Equal(new[] { "2024" }, f7.TableArgs);
+
+            // 序列化
+            TestSerialization(f1);
+            TestSerialization(f7);
+        }
+
+        [Fact]
         public void FromExpr_TableArgs_Alias_Tests()
         {
             var from1 = new FromExpr(typeof(TestUser)) { Alias = "u" };

@@ -448,5 +448,148 @@ namespace LiteOrm.Tests
         }
 
         #endregion
+
+        #region ExistsRelated 查询测试
+
+        [Fact]
+        public async Task ExistsRelated_Forward_ShouldFilterUsersByLinkedDepartment()
+        {
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var itDept = new TestDepartment { Name = "ER_IT" };
+            var hrDept = new TestDepartment { Name = "ER_HR" };
+            await deptService.InsertAsync(itDept, TestContext.Current.CancellationToken);
+            await deptService.InsertAsync(hrDept, TestContext.Current.CancellationToken);
+
+            var user1 = new TestUser { Name = "ERUser1", Age = 25, DeptId = itDept.Id, CreateTime = DateTime.Now };
+            var user2 = new TestUser { Name = "ERUser2", Age = 30, DeptId = hrDept.Id, CreateTime = DateTime.Now };
+            var user3 = new TestUser { Name = "ERUser3", Age = 35, DeptId = itDept.Id, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user1, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(user2, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(user3, TestContext.Current.CancellationToken);
+
+            // 正向路径：TestUser 通过 [ForeignType] 关联 TestDepartment，自动推断 TestDepartment.Id = TestUser.DeptId
+            var expr = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ER_IT");
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
+
+            Assert.NotNull(results);
+            Assert.Equal(2, results.Count);
+            Assert.All(results, u => Assert.Equal(itDept.Id, u.DeptId));
+            Assert.DoesNotContain(results, u => u.DeptId == hrDept.Id);
+        }
+
+        [Fact]
+        public async Task ExistsRelated_NotExists_ShouldExcludeUsersWithMatchingDepartment()
+        {
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var itDept = new TestDepartment { Name = "ERNot_IT" };
+            await deptService.InsertAsync(itDept, TestContext.Current.CancellationToken);
+
+            var userInIT = new TestUser { Name = "ERNotUser1", Age = 25, DeptId = itDept.Id, CreateTime = DateTime.Now };
+            var userNoDept = new TestUser { Name = "ERNotUser2", Age = 30, DeptId = 0, CreateTime = DateTime.Now };
+            await userService.InsertAsync(userInIT, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(userNoDept, TestContext.Current.CancellationToken);
+
+            // NOT ExistsRelated：返回没有关联 IT 部门的用户
+            var expr = Expr.Not(Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ERNot_IT"));
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
+
+            Assert.NotNull(results);
+            Assert.Contains(results, u => u.Id == userNoDept.Id);
+            Assert.DoesNotContain(results, u => u.Id == userInIT.Id);
+        }
+
+        [Fact]
+        public async Task ExistsRelated_Reverse_ShouldFilterDepartmentsByLinkedUser()
+        {
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestDepartment>>();
+
+            var dept1 = new TestDepartment { Name = "ERRev_Dept1" };
+            var dept2 = new TestDepartment { Name = "ERRev_Dept2" };
+            await deptService.InsertAsync(dept1, TestContext.Current.CancellationToken);
+            await deptService.InsertAsync(dept2, TestContext.Current.CancellationToken);
+
+            // 只有 dept1 有用户
+            var user = new TestUser { Name = "ERRev_User1", Age = 28, DeptId = dept1.Id, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
+
+            // 反向路径：TestDepartment 无 [ForeignType]/[TableJoin] 指向 TestUser，
+            // 通过 TestUser 的 JoinedTables 反向推断 TestUser.DeptId = TestDepartment.Id
+            var expr = Expr.ExistsRelated<TestUser>(Expr.Prop("Name") == "ERRev_User1");
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
+
+            Assert.NotNull(results);
+            Assert.Contains(results, d => d.Id == dept1.Id);
+            Assert.DoesNotContain(results, d => d.Id == dept2.Id);
+        }
+
+        [Fact]
+        public async Task ExistsRelated_TypeOverload_ShouldProduceSameResultAsGeneric()
+        {
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var dept = new TestDepartment { Name = "ERType_IT" };
+            await deptService.InsertAsync(dept, TestContext.Current.CancellationToken);
+
+            var user1 = new TestUser { Name = "ERTypeUser1", Age = 22, DeptId = dept.Id, CreateTime = DateTime.Now };
+            var user2 = new TestUser { Name = "ERTypeUser2", Age = 28, DeptId = 0, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user1, TestContext.Current.CancellationToken);
+            await userService.InsertAsync(user2, TestContext.Current.CancellationToken);
+
+            var innerExpr = Expr.Prop("Name") == "ERType_IT";
+
+            // 泛型重载
+            var genericResults = await objectViewDAO.Search(Expr.ExistsRelated<TestDepartment>(innerExpr))
+                .ToListAsync(TestContext.Current.CancellationToken);
+
+            // Type 重载
+            var typeResults = await objectViewDAO.Search(Expr.ExistsRelated(typeof(TestDepartment), innerExpr))
+                .ToListAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(genericResults.Select(u => u.Id).OrderBy(x => x), typeResults.Select(u => u.Id).OrderBy(x => x));
+            Assert.Single(genericResults);
+            Assert.Equal(user1.Id, genericResults[0].Id);
+        }
+
+        [Fact]
+        public async Task ExistsRelated_CombinedWithOtherConditions_ShouldWork()
+        {
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var itDept = new TestDepartment { Name = "ERCombo_IT" };
+            var hrDept = new TestDepartment { Name = "ERCombo_HR" };
+            await deptService.InsertAsync(itDept, TestContext.Current.CancellationToken);
+            await deptService.InsertAsync(hrDept, TestContext.Current.CancellationToken);
+
+            var users = new List<TestUser>
+            {
+                new TestUser { Name = "ERCombo1", Age = 20, DeptId = itDept.Id, CreateTime = DateTime.Now },
+                new TestUser { Name = "ERCombo2", Age = 35, DeptId = itDept.Id, CreateTime = DateTime.Now },
+                new TestUser { Name = "ERCombo3", Age = 40, DeptId = hrDept.Id, CreateTime = DateTime.Now },
+            };
+            await userService.BatchInsertAsync(users, TestContext.Current.CancellationToken);
+
+            // ExistsRelated AND 年龄条件组合
+            var expr = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ERCombo_IT") & (Expr.Prop("Age") >= 30);
+            var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
+
+            Assert.NotNull(results);
+            Assert.Single(results);
+            Assert.Equal(itDept.Id, results[0].DeptId);
+            Assert.True(results[0].Age >= 30);
+        }
+
+        #endregion
     }
 }
