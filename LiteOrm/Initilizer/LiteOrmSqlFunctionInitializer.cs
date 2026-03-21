@@ -29,11 +29,11 @@ namespace LiteOrm
         private void RegisterSqlFunctions()
         {
             // 注册 SQL 危险关键字为不可用，预防潜在风险，直接抛出异常提示用户。如确定需要使用，请自行重新注册自定义函数映射。
-            SqlBuilder.Instance.RegisterFunctionSqlHandler(Constants.ExcludedSqlNames, (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => throw new NotSupportedException($"Function '{expr.FunctionName}' is not supported. You must register it manually if it is absolutely necessary."));
+            SqlBuilder.Instance.RegisterFunctionSqlHandler(Constants.ExcludedSqlNames, (ref outSql, expr, context, sqlBuilder, outputParams) => throw new NotSupportedException($"Function '{expr.FunctionName}' is not supported. You must register it manually if it is absolutely necessary."));
             // 注册通用的 SQL 映射
-            SqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => outSql.Append("CURRENT_TIMESTAMP"));
-            SqlBuilder.Instance.RegisterFunctionSqlHandler("Today", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => outSql.Append("CURRENT_DATE"));
-            SqlBuilder.Instance.RegisterFunctionSqlHandler("CASE", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (ref outSql, expr, context, sqlBuilder, outputParams) => outSql.Append("CURRENT_TIMESTAMP"));
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) => outSql.Append("CURRENT_DATE"));
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("CASE", (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 outSql.Append("CASE");
                 for (int i = 0; i < expr.Args.Count - 1; i += 2)
@@ -50,7 +50,7 @@ namespace LiteOrm
                 }
                 outSql.Append(" END");
             });
-            SqlBuilder.Instance.RegisterFunctionSqlHandler("Over", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("Over", (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 // 处理 OVER 函数，支持窗口函数的 SQL 生成
                 // 窗口函数格式：FunctionName(args) OVER (partition by ... order by ...)
@@ -68,10 +68,12 @@ namespace LiteOrm
                         outSql.Length = begin;
                     }
                     if (expr.Args.Count > 2)
-                    {
+                    {                        
                         if (outSql.Length > begin)
+                        {
+                            begin = outSql.Length;
                             outSql.Append(" ");
-                        begin = outSql.Length;
+                        }
                         outSql.Append("ORDER BY ");
                         cur = outSql.Length;
                         expr.Args[2].ToSql(ref outSql, context, sqlBuilder, outputParams);
@@ -82,16 +84,15 @@ namespace LiteOrm
                         }
                         if (expr.Args.Count > 3)
                         {
-                            if (outSql.Length > begin)
-                                outSql.Append(" ");
+                            if (outSql.Length == begin)throw new InvalidOperationException("Cannot have frame_clause arguments for OVER function when there is no ORDER BY clause.");
+                            outSql.Append(" ");
                             outSql.Append(expr.Args[3].ToSql(context, sqlBuilder, outputParams));
                         }
                     }
                     outSql.Append(')');
                 }
             });
-
-            SqlBuilder.Instance.RegisterFunctionSqlHandler(["RowsBetween", "RangeBetween"], (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SqlBuilder.Instance.RegisterFunctionSqlHandler(["RowsBetween", "RangeBetween"], (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 if (expr.Args.Count == 0) throw new ArgumentException("At least one argument is required for RowsBetween/RangeBetween function.");
                 if ("RowsBetween".Equals(expr.FunctionName, StringComparison.OrdinalIgnoreCase))
@@ -146,16 +147,15 @@ namespace LiteOrm
                         outSql.Append("CURRENT ROW");
                 }
             });
-
             // 额外处理 IndexOf 和 Substring，支持 C# 到 SQL 的索引转换 (0-based -> 1-based)
-            SqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 if (expr.Args.Count > 2)
                     outSql.Append($"INSTR({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[2].ToSql(context, sqlBuilder, outputParams)}+1)-1");
                 else
                     outSql.Append($"INSTR({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})-1");
             });
-            SqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 if (expr.Args.Count > 2)
                     outSql.Append($"SUBSTR({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}+1, {expr.Args[2].ToSql(context, sqlBuilder, outputParams)})");
@@ -165,9 +165,9 @@ namespace LiteOrm
 
             // SQLite 函数注册
             SQLiteBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
-                (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+                (ref outSql, expr, context, sqlBuilder, outputParams) =>
                     outSql.Append($"DATE({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, CAST({expr.Args[1].ToSql(context, sqlBuilder, outputParams)} AS TEXT)||' {expr.FunctionName.Substring(3).ToLower()}')"));
-            SQLiteBuilder.Instance.RegisterFunctionSqlHandler("Concat", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SQLiteBuilder.Instance.RegisterFunctionSqlHandler("Concat", (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 for (int i = 0; i < expr.Args.Count; i++)
                 {
@@ -177,26 +177,26 @@ namespace LiteOrm
             });
 
             // MySQL 函数注册
-            MySqlBuilder.Instance.RegisterFunctionSqlHandler("LENGTH", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            MySqlBuilder.Instance.RegisterFunctionSqlHandler("LENGTH", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"CHAR_LENGTH({expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
             MySqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
-                (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+                (ref outSql, expr, context, sqlBuilder, outputParams) =>
                     outSql.Append($"DATE_ADD({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, INTERVAL {expr.Args[1].ToSql(context, sqlBuilder, outputParams)} {expr.FunctionName.Substring(3).ToUpper().TrimEnd('S')})"));
 
             // Oracle 函数注册
-            OracleBuilder.Instance.RegisterFunctionSqlHandler("IfNull", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            OracleBuilder.Instance.RegisterFunctionSqlHandler("IfNull", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"NVL({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})"));
             OracleBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays"],
-                (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+                (ref outSql, expr, context, sqlBuilder, outputParams) =>
                     outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + NUMTODSINTERVAL({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, '{expr.FunctionName.Substring(3).ToUpper().TrimEnd('S')}'))"));
             OracleBuilder.Instance.RegisterFunctionSqlHandler(["AddMonths", "AddYears"],
-                (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+                (ref outSql, expr, context, sqlBuilder, outputParams) =>
                     outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + NUMTOYMINTERVAL({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, '{expr.FunctionName.Substring(3).ToUpper().TrimEnd('S')}'))"));
 
             // PostgreSQL 函数注册
-            PostgreSqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            PostgreSqlBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"POSITION({expr.Args[1].ToSql(context, sqlBuilder, outputParams)} IN {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})-1"));
-            PostgreSqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            PostgreSqlBuilder.Instance.RegisterFunctionSqlHandler("Substring", (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 if (expr.Args.Count > 2)
                     outSql.Append($"SUBSTRING({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} FROM {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}+1 FOR {expr.Args[2].ToSql(context, sqlBuilder, outputParams)})");
@@ -204,22 +204,22 @@ namespace LiteOrm
                     outSql.Append($"SUBSTRING({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} FROM {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}+1)");
             });
             PostgreSqlBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
-                (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+                (ref outSql, expr, context, sqlBuilder, outputParams) =>
                     outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + ({expr.Args[1].ToSql(context, sqlBuilder, outputParams)} || ' {expr.FunctionName.Substring(3).ToLower()}')::interval)"));
 
             // SQL Server 函数注册
-            SqlServerBuilder.Instance.RegisterFunctionSqlHandler("IfNull", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SqlServerBuilder.Instance.RegisterFunctionSqlHandler("IfNull", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"ISNULL({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})"));
-            SqlServerBuilder.Instance.RegisterFunctionSqlHandler("Length", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SqlServerBuilder.Instance.RegisterFunctionSqlHandler("Length", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"LEN({expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
-            SqlServerBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SqlServerBuilder.Instance.RegisterFunctionSqlHandler("IndexOf", (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 if (expr.Args.Count > 2)
                     outSql.Append($"CHARINDEX({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[2].ToSql(context, sqlBuilder, outputParams)}+1)-1");
                 else
                     outSql.Append($"CHARINDEX({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})-1");
             });
-            SqlServerBuilder.Instance.RegisterFunctionSqlHandler("Substring", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SqlServerBuilder.Instance.RegisterFunctionSqlHandler("Substring", (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 if (expr.Args.Count > 2)
                     outSql.Append($"SUBSTRING({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}+1, {expr.Args[2].ToSql(context, sqlBuilder, outputParams)})");
@@ -227,7 +227,7 @@ namespace LiteOrm
                     outSql.Append($"SUBSTRING({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}+1, LEN({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}))");
             });
             SqlServerBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
-                (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+                (ref outSql, expr, context, sqlBuilder, outputParams) =>
                     outSql.Append($"DATEADD({expr.FunctionName.Substring(3).ToLower().TrimEnd('s')}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
         }
     }

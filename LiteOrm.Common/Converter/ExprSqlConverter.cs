@@ -757,7 +757,7 @@ namespace LiteOrm.Common
             ToSql(ref sb, expr.Source as FromExpr ?? new FromExpr(context.Table.Definition.ObjectType), context, sqlBuilder, outputParams);
             if (expr.Where != null)
             {
-                sb.Append(" WHERE ");
+                sb.Append(" \nWHERE ");
                 ToSqlInternal(ref sb, expr.Where, context, sqlBuilder, outputParams);
             }
         }
@@ -772,7 +772,7 @@ namespace LiteOrm.Common
             var source = expr.Source is FromExpr from ? TableInfoProvider.Default.GetTableDefinition(from.ObjectType) : context.Table.Definition;
             sb.Append("UPDATE ");
             ToSql(ref sb, fromExpr, context, sqlBuilder, outputParams);
-            sb.Append(" SET ");
+            sb.Append(" \nSET ");
             for (int i = 0; i < expr.Sets.Count; i++)
             {
                 if (i > 0) sb.Append(", ");
@@ -787,7 +787,7 @@ namespace LiteOrm.Common
             }
             if (expr.Where != null)
             {
-                sb.Append(" WHERE ");
+                sb.Append(" \nWHERE ");
                 ToSqlInternal(ref sb, expr.Where, context, sqlBuilder, outputParams);
             }
         }

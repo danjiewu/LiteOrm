@@ -68,6 +68,7 @@ namespace LiteOrm
 
         /// <summary>
         /// 构建函数调用的 SQL 片段，直接写入 <paramref name="outSql"/>。
+        /// 会首先根据构造器类型及继承关系的顺序查找注册的函数处理器<seealso cref="SqlHandlerMapExtensions"/>，如果找到则使用处理器生成 SQL；否则按照默认规则生成函数调用 SQL。
         /// </summary>
         /// <param name="outSql">接收输出 SQL 片段的字符串构建器。</param>
         /// <param name="expr">函数表达式，包含函数名及参数列表。</param>
