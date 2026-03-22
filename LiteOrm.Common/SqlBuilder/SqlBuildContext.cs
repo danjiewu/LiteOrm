@@ -51,6 +51,27 @@ namespace LiteOrm.Common
         /// 动态表名参数数组
         /// </summary>
         public string[] TableArgs { get => CurrentScope.TableArgs; set => CurrentScope.TableArgs = value; }
+        /// <summary>
+        /// 当前作用域深度，根作用域为0，每进入一个新的作用域深度加1
+        /// </summary>
+        public int Depth => CurrentScope.Depth;
+
+        /// <summary>
+        /// 获取作用域对应的缩进字符串，根作用域无缩进，每增加一级作用域增加两个空格，最多八个空格
+        /// </summary>
+        public string Indent => AutoIndent ? Depth switch
+        {
+            0 => "",
+            1 => "  ",
+            2 => "    ",
+            3 => "      ",
+            _ => "        "
+        } : "";
+
+        /// <summary>
+        /// 获取或设置是否自动添加缩进，默认为 true，设置为 false 后生成的 SQL 将不包含任何缩进
+        /// </summary>
+        public bool AutoIndent { get; set; } = true;
 
         /// <summary>
         /// 获取当前表定义
@@ -102,7 +123,7 @@ namespace LiteOrm.Common
         /// <returns>作用域释放器</returns>
         public IDisposable BeginScope()
         {
-            CurrentScope = new SqlScopeContext() { Parent = CurrentScope, TableArgs = TableArgs };
+            CurrentScope = new SqlScopeContext() { Parent = CurrentScope, TableArgs = TableArgs, Depth = CurrentScope.Depth + 1 };
             return new SqlScope(this);
         }
 
@@ -173,6 +194,11 @@ namespace LiteOrm.Common
                     _tableArgs = value ?? Array.Empty<string>();
                 }
             }
+
+            /// <summary>
+            /// 当前运算符优先级，用于表达式生成过程中处理括号等情况
+            /// </summary>
+            public int Depth { get; set; }
 
             /// <summary>
             /// 添加表别名映射

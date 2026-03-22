@@ -806,31 +806,31 @@ namespace LiteOrm
 
             if (subSelect.From.Length > 0)
             {
-                result.Append(" \nFROM ");
+                result.Append($" \n{subSelect.Indent}FROM ");
                 result.Append(subSelect.From.AsSpan());
             }
 
             if (subSelect.Where.Length > 0)
             {
-                result.Append(" \nWHERE ");
+                result.Append($" \n{subSelect.Indent}WHERE ");
                 result.Append(subSelect.Where.AsSpan());
             }
 
             if (subSelect.GroupBy.Length > 0)
             {
-                result.Append(" \nGROUP BY ");
+                result.Append($" \n{subSelect.Indent}GROUP BY ");
                 result.Append(subSelect.GroupBy.AsSpan());
             }
 
             if (subSelect.Having.Length > 0)
             {
-                result.Append(" \nHAVING ");
+                result.Append($" \n{subSelect.Indent}HAVING ");
                 result.Append(subSelect.Having.AsSpan());
             }
 
             if (subSelect.OrderBy.Length > 0)
             {
-                result.Append(" \nORDER BY ");
+                result.Append($" \n{subSelect.Indent}ORDER BY ");
                 result.Append(subSelect.OrderBy.AsSpan());
             }
 
@@ -838,10 +838,10 @@ namespace LiteOrm
             {
                 if (subSelect.OrderBy.Length == 0)
                 {
-                    result.Append(" \nORDER BY 1");
+                    result.Append($" \n{subSelect.Indent}ORDER BY 1");
                 }
-                result.Append($" \nOFFSET {subSelect.Skip} ROWS");
-                result.Append($" \nFETCH NEXT {subSelect.Take} ROWS ONLY");
+                result.Append($" \n{subSelect.Indent}OFFSET {subSelect.Skip} ROWS");
+                result.Append($" \n{subSelect.Indent}FETCH NEXT {subSelect.Take} ROWS ONLY");
             }
         }
     }
