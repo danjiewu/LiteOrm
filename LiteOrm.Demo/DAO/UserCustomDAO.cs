@@ -32,7 +32,7 @@ namespace LiteOrm.Demo
         {
             // 普通值嵌入 ExprString：int/string 自动转为命名参数（@p0, @p1...），防止 SQL 注入
             var nameExpr = Prop("UserName").Contains(namePattern);
-            return await Search($"WHERE {nameExpr} AND {Prop("Age")} >= {minAge} ORDER BY Id DESC").ToListAsync(cancellationToken);
+            return await Search($"WHERE {nameExpr} AND {Prop("Age")} >= {minAge} ORDER BY [UserName] DESC").ToListAsync(cancellationToken);
         }
     }
 }

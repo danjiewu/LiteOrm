@@ -290,7 +290,7 @@ namespace LiteOrm.Demo.Demos
                 DemoHelper.PrintSection("📝 场景2：普通值内嵌（自动转为命名参数）",
                     "var nameExpr = Prop(\"UserName\").Contains(keyword);\n" +
                     "// int/string 类型值自动转为 @0, @1... 参数，杜绝 SQL 注入\n" +
-                    "Search($\"WHERE {nameExpr} AND {Prop(\"Age\")} >= {ageThreshold} ORDER BY Id DESC\")");
+                    "Search($\"WHERE {nameExpr} AND {Prop(\"Age\")} >= {ageThreshold} ORDER BY [UserName] DESC\")");
 
                 var results2 = await userDao.SearchByNamePatternAsync(keyword, ageThreshold);
                 var sql2 = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
