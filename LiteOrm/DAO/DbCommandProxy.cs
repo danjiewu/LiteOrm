@@ -35,7 +35,7 @@ namespace LiteOrm
         public DbCommandProxy(DAOContext context)
         {
             Context = context ?? throw new ArgumentNullException(nameof(context));
-            SqlBuilder = context.Pool?.SqlBuilder ?? throw new ArgumentNullException(nameof(context.Pool.SqlBuilder));
+            SqlBuilder = context.Pool?.SqlBuilder;
             Target = context.DbConnection.CreateCommand();
         }
 
@@ -101,7 +101,7 @@ namespace LiteOrm
             set
             {
                 commandText = value;
-                Target.CommandText = SqlBuilder.ReplaceSqlName(value);
+                Target.CommandText = SqlBuilder?.ReplaceSqlName(value) ?? value;
             }
         }
 
@@ -230,7 +230,7 @@ namespace LiteOrm
         protected virtual void PreExcuteCommand(ExcuteType excuteType)
         {
             Transaction = Context.CurrentTransaction;
-            SessionManager.Current.PushSql(Target.CommandText);
+            SessionManager.Current?.PushSql(Target.CommandText);
         }
 
         /// <summary>

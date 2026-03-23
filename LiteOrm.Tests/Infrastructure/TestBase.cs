@@ -51,17 +51,13 @@ namespace LiteOrm.Tests.Infrastructure
             var context = pool.PeekContext();
             try
             {
-                using (context.AcquireScope())
-                {
-                    context.EnsureConnectionOpen();
-                    // 先删除有外键引用的子表数据，再删除被引用的父表数据
-                    string[] tables = ["TestUsers", "TestDepartments"];
-                    foreach (var table in tables)
-                    {
-                        using var cmd = context.DbConnection.CreateCommand();
-                        cmd.CommandText = $"DELETE FROM {sqlBuilder.ToSqlName(table)}";
-                        cmd.ExecuteNonQuery();
-                    }
+                // 先删除有外键引用的子表数据，再删除被引用的父表数据
+                string[] tables = ["TestUsers", "TestDepartments"];
+                using var cmd = context.CreateCommand();
+                foreach (var table in tables)
+                {                   
+                    cmd.CommandText = $"DELETE FROM {sqlBuilder.ToSqlName(table)}";
+                    cmd.ExecuteNonQuery();
                 }
             }
             finally
@@ -89,17 +85,15 @@ namespace LiteOrm.Tests.Infrastructure
         private readonly IServiceScope _scope;
 
         protected TestBase(DatabaseFixture fixture)
-        {
-            Fixture = fixture;
-            Fixture.CleanupTestTables();
+        {            
             _scope = fixture.ServiceProvider.CreateScope();
             ServiceProvider = _scope.ServiceProvider;
-            SessionManager.Current = ServiceProvider.GetRequiredService<SessionManager>();
+            Fixture = fixture;
+            Fixture.CleanupTestTables();
         }
 
         public void Dispose()
         {
-            SessionManager.Current = null;
             _scope.Dispose();
         }
     }
