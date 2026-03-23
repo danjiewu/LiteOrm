@@ -148,25 +148,20 @@ namespace LiteOrm
                 {
                     _logger?.LogInformation("Syncing data source '{DataSource}' with {Count} entity type(s)", ds.Name, currentDsTypes.Count);
 
-                    var context = pool.PeekContextInternal();
+                    var context = pool.PeekContext();
                     try
                     {
-                        using (await context.AcquireScopeAsync())
+                        // 直接为每个实体类型的表创建结构
+                        foreach (var type in currentDsTypes)
                         {
-                            await context.EnsureConnectionOpenAsync();
-
-                            // 直接为每个实体类型的表创建结构
-                            foreach (var type in currentDsTypes)
+                            try
                             {
-                                try
-                                {
-                                    await pool.EnsureTableAsync(type).ConfigureAwait(false);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger?.LogError(ex, "An error occurred while syncing table '{Type}' (data source: '{DataSource}')", type.FullName, ds.Name);
-                                    throw;
-                                }
+                                await context.EnsureTableAsync(type).ConfigureAwait(false);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger?.LogError(ex, "An error occurred while syncing table '{Type}' (data source: '{DataSource}')", type.FullName, ds.Name);
+                                throw;
                             }
                         }
                     }

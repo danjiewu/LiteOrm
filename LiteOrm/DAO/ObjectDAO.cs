@@ -494,7 +494,7 @@ namespace LiteOrm
             {
                 using (var scope = DAOContext.AcquireScope())
                 {
-                    DAOContext?.Pool?.EnsureTable(ObjectType, TableArgs);
+                    DAOContext?.EnsureTable(ObjectType, TableArgs);
                     provider.BulkInsert(ToDataTable(values, insertableColumns), Connection, DAOContext.CurrentTransaction);
                 }
             }
@@ -932,7 +932,7 @@ namespace LiteOrm
             {
                 using (var scope = await DAOContext.AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    await DAOContext?.Pool?.EnsureTableAsync(ObjectType, TableArgs);
+                    await DAOContext?.EnsureTableAsync(ObjectType, TableArgs);
                     await provider.BulkInsertAsync(ToDataTable(values, insertableColumns), Connection, DAOContext.CurrentTransaction, cancellationToken).ConfigureAwait(false);
                 }
             }

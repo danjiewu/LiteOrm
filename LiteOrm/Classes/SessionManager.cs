@@ -298,17 +298,27 @@ namespace LiteOrm
             // 如果在事务中，忽略 readOnly 参数，必须返回主写连接以保证事务一致性
             if (InTransaction) readOnly = false;
 
-            string cacheKey = readOnly ? $"{name}:RO" : $"{name}:RW";
-
             lock (_syncLock)
             {
+                string rwKey = $"{name}:RW";
+
+                // 当未配置只读池时，读请求回落到主连接，避免创建第二个连接
+                var pool = _daoContextPoolFactory.GetPool(name);
+                if (pool == null)
+                    throw new InvalidOperationException($"Connection pool '{name}' not found");
+
+                if (!pool.HasReadOnlyPools)
+                {
+                    readOnly = false;
+                }
+
+                string cacheKey = readOnly ? $"{name}:RO" : rwKey;
                 if (_daoContexts.TryGetValue(cacheKey, out DAOContext context))
                 {
                     return context;
                 }
-
                 // 从工厂获取上下文
-                context = _daoContextPoolFactory.GetPool(name).PeekContext(readOnly);
+                context = pool.PeekContext(readOnly);
 
                 // 如果当前在事务中，开启事务
                 if (InTransaction && !context.InTransaction)
@@ -388,7 +398,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="disposing">是否为显式调用</param>
         protected virtual void Dispose(bool disposing)
-        {            
+        {
             if (_disposed) return;
             _logger?.LogDebug($"Session {SessionID} disposed ({(disposing ? "explicit" : "finalizer")}).");
             _disposed = true;
@@ -419,7 +429,7 @@ namespace LiteOrm
         ~SessionManager()
         {
             Dispose(false);
-        }       
+        }
         #endregion
     }
 

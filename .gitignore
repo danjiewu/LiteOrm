@@ -38,15 +38,6 @@ msbuild.wrn
 /BenchmarkDotNet.Artifacts
 /LiteOrm/nuget.config
 /LiteOrm.Benchmark/BenchmarkDotNet.Artifacts
-/LITEORM_INTRODUCTION.md
 /.trae/documents
-/LiteOrm.ChartGenerator
-/LiteOrm.Benchmark/InsertPerformance.png
-/LiteOrm.Benchmark/JoinQueryPerformance.png
-/LiteOrm.Benchmark/MemoryAllocation_100.png
-/LiteOrm.Benchmark/MemoryAllocation_1000.png
-/LiteOrm.Benchmark/MemoryAllocation_5000.png
-/LiteOrm.Benchmark/UpdatePerformance.png
-/LiteOrm.Benchmark/UpsertPerformance.png
 /count_code.ps1
-/count_code.ps1
+/LiteOrm.Demo/demo.db

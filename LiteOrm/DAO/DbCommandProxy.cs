@@ -32,11 +32,10 @@ namespace LiteOrm
         /// 初始化 <see cref="DbCommandProxy"/> 类的新实例。
         /// </summary>
         /// <param name="context">DAO 上下文，提供数据库连接和事务管理。</param>
-        /// <param name="sqlBuilder">SQL 构建器，用于处理特定数据库的 SQL 语法。</param>
-        public DbCommandProxy(DAOContext context, ISqlBuilder sqlBuilder)
+        public DbCommandProxy(DAOContext context)
         {
             Context = context ?? throw new ArgumentNullException(nameof(context));
-            SqlBuilder = sqlBuilder ?? throw new ArgumentNullException(nameof(sqlBuilder));
+            SqlBuilder = context.Pool?.SqlBuilder ?? throw new ArgumentNullException(nameof(context.Pool.SqlBuilder));
             Target = context.DbConnection.CreateCommand();
         }
 
@@ -218,7 +217,7 @@ namespace LiteOrm
         public override void Prepare()
         {
             using var scope = Context.AcquireScope();
-            if (Context is not null) Transaction = Context.CurrentTransaction as DbTransaction;
+            if (Context is not null) Transaction = Context.CurrentTransaction;
             Target.Prepare();
         }
 
@@ -230,7 +229,7 @@ namespace LiteOrm
         /// <param name="excuteType">执行类型。</param>
         protected virtual void PreExcuteCommand(ExcuteType excuteType)
         {
-            Transaction = Context.CurrentTransaction as DbTransaction;
+            Transaction = Context.CurrentTransaction;
             SessionManager.Current.PushSql(Target.CommandText);
         }
 

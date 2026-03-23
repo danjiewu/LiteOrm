@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.Net.Mime;
 using System.Reflection;
 
 namespace LiteOrm.CodeGen
@@ -68,8 +69,17 @@ namespace LiteOrm.CodeGen
             if (tableDef == null) return new List<string>();
 
             var pool = _factory.GetPool(tableDef.DataSource);
-            if(pool == null) throw new InvalidOperationException($"No DAOContextPool found for data source '{tableDef.DataSource}'.");
-            return pool.ResolveEnsureTableDdl(objectType, tableArgs);
+            if (pool == null) throw new InvalidOperationException($"No DAOContextPool found for data source '{tableDef.DataSource}'.");
+
+            var context = pool.PeekContext();
+            try
+            {
+                return pool.DatabaseSync.ResolveEnsureTableDdl(context, objectType, tableArgs);
+            }
+            finally
+            {
+                pool.ReturnContext(context);
+            }
         }
 
         /// <summary>
@@ -138,21 +148,28 @@ namespace LiteOrm.CodeGen
                 try { pool = _factory.GetPool(kvp.Key); }
                 catch { continue; }
 
-                var sqlList = new List<string>();
-                foreach (var type in kvp.Value)
+                var context = pool.PeekContext();
+                try
                 {
-                    List<string> statements;
-                    try { statements = pool.ResolveEnsureTableDdl(type); }
-                    catch { continue; }
+                    var sqlList = new List<string>();
+                    foreach (var type in kvp.Value)
+                    {
+                        List<string> statements;
+                        try { statements = pool.DatabaseSync.ResolveEnsureTableDdl(context, type); }
+                        catch { continue; }
 
-                    if (statements != null && statements.Count > 0)
-                        sqlList.AddRange(statements);
+                        if (statements != null && statements.Count > 0)
+                            sqlList.AddRange(statements);
+                    }
+
+                    if (sqlList.Count > 0)
+                        result[kvp.Key] = sqlList;
                 }
-
-                if (sqlList.Count > 0)
-                    result[kvp.Key] = sqlList;
+                finally
+                {
+                    pool.ReturnContext(context);
+                }
             }
-
             return result;
         }
     }

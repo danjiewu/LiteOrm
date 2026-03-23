@@ -91,12 +91,21 @@ namespace LiteOrm
         /// <summary>
         /// 获取当前活动的事务对象。如果没有正在进行的事务，则为 null。
         /// </summary>
-        public IDbTransaction CurrentTransaction { get; private set; }
+        public DbTransaction CurrentTransaction { get; private set; }
 
         /// <summary>
         /// 获取一个值，指示当前上下文是否处于活动事务中。
         /// </summary>
         public bool InTransaction => CurrentTransaction is not null;
+
+        /// <summary>
+        /// 创建一个新的 <see cref="DbCommandProxy"/> 实例，该实例包装了一个新的 <see cref="DbCommand"/> 对象，并与当前上下文关联。
+        /// </summary>
+        /// <returns></returns>
+        public DbCommandProxy CreateCommand()
+        {
+            return new DbCommandProxy(this);
+        }
 
         /// <summary>
         /// 获取一个同步锁定作用域，确保在该作用域内独占访问此上下文及其物理连接。

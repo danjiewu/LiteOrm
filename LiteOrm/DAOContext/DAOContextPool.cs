@@ -49,16 +49,14 @@ namespace LiteOrm
     /// </remarks>
     public class DAOContextPool : IDisposable
     {
+        private SemaphoreSlim _semaphore = new SemaphoreSlim(100, 100);
         private readonly Queue<DAOContext> _pool = new Queue<DAOContext>();
         private readonly object _poolLock = new object();
         private bool _disposed = false;
-        private SemaphoreSlim _semaphore = new SemaphoreSlim(100, 100);
         private int _maxPoolSize = 100;
         private readonly List<DAOContextPool> _readOnlyPools = new List<DAOContextPool>();
         private int _readOnlyIndex = 0;
-        private readonly ConcurrentDictionary<string, HashSet<string>> _tableColumns = new(StringComparer.OrdinalIgnoreCase);
-        private readonly ConcurrentDictionary<string, SemaphoreSlim> _tableCreationLocks = new(StringComparer.OrdinalIgnoreCase);
-        private readonly ConcurrentDictionary<string, byte> _createdTables = new(StringComparer.OrdinalIgnoreCase);
+        private DatabaseSync _databaseSync;
 
         /// <summary>
         /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
@@ -71,6 +69,7 @@ namespace LiteOrm
             ProviderType = providerType ?? throw new ArgumentNullException(nameof(providerType));
             ConnectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
             Name = providerType.Name;
+            MasterPool = this;
         }
 
         /// <summary>
@@ -136,27 +135,19 @@ namespace LiteOrm
         public bool SyncTable { get; set; }
 
         /// <summary>
-        /// 将指定表名标记为已创建，同时缓存已知列名集合。
+        /// 
         /// </summary>
-        public void MarkTableCreated(string tableName, IEnumerable<string> columnNames = null)
+        public DatabaseSync DatabaseSync
         {
-            var cols = columnNames != null
-                ? new HashSet<string>(columnNames, StringComparer.OrdinalIgnoreCase)
-                : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            _tableColumns.TryAdd(tableName, cols);
+            get
+            {
+                if (_databaseSync == null)
+                {
+                    _databaseSync = new DatabaseSync(this);
+                }
+                return _databaseSync;
+            }
         }
-
-        /// <summary>
-        /// 获取指定表名的创建锁，用于确保同一表名只被创建一次。
-        /// </summary>
-        internal SemaphoreSlim GetTableCreationLock(string tableName)
-            => _tableCreationLocks.GetOrAdd(tableName, _ => new SemaphoreSlim(1, 1));
-
-        /// <summary>
-        /// 生成表名和对象类型的联合主键。
-        /// </summary>
-        private static string GetTableTypeKey(string tableName, Type objectType)
-            => $"{tableName}|{objectType.FullName}";
 
         /// <summary>
         /// 获取该连接池对应数据库的 SQL 构建器。
@@ -164,349 +155,9 @@ namespace LiteOrm
         public SqlBuilder SqlBuilder => SqlBuilderFactory.Instance.GetSqlBuilder(ProviderType, Name);
 
         /// <summary>
-        /// 确保指定表已在数据库中存在且包含所有必要的列。
-        /// 同步版本，供 DAO 在命令构建前调用。
+        /// 是否存在只读连接池。
         /// </summary>
-        public void EnsureTable(Type objectType, string[] tableArgs = null)
-        {
-            if (!SyncTable || typeof(IArged).IsAssignableFrom(objectType) && (tableArgs == null || tableArgs.Length == 0)) return;
-            // 只读池直接转发给主库执行
-            if (MasterPool != null) { MasterPool.EnsureTable(objectType, tableArgs); return; }
-
-            var statements = ResolveEnsureTableDdl(objectType, tableArgs);
-            if (statements.Count == 0) return;
-
-            var ctx = PeekContextInternal();
-            try { ApplyDdl(ctx.DbConnection, statements); }
-            finally { ReturnContext(ctx); }
-        }
-
-        /// <summary>
-        /// 确保指定表已在数据库中存在且包含所有必要的列。
-        /// 异步版本，供初始化器调用。
-        /// </summary>
-        public async Task EnsureTableAsync(Type objectType, string[] tableArgs = null)
-        {
-            if (!SyncTable || typeof(IArged).IsAssignableFrom(objectType) && (tableArgs == null || tableArgs.Length == 0)) return;
-            // 只读池直接转发给主库执行
-            if (MasterPool != null) { await MasterPool.EnsureTableAsync(objectType, tableArgs).ConfigureAwait(false); return; }
-
-            var statements = await ResolveEnsureTableDdlAsync(objectType, tableArgs).ConfigureAwait(false);
-            if (statements.Count == 0) return;
-
-            var ctx = await PeekContextInternalAsync().ConfigureAwait(false);
-            try
-            {
-                await ApplyDdlAsync(ctx.DbConnection, statements).ConfigureAwait(false);
-            }
-            finally { ReturnContext(ctx); }
-        }
-
-        /// <summary>
-        /// 根据实体类型和数据库当前状态，计算出需要执行的 DDL 语句列表（同步版本）。
-        /// 内部自动获取连接、加锁、检查数据库、更新列缓存，并在完成后将表标记为已处理。
-        /// 若表已处理则直接返回空列表，可安全用于 DDL 预览与导出。
-        /// </summary>
-        /// <param name="objectType">实体类型。</param>
-        /// <param name="tableArgs">动态表名参数，适用于实现了 <see cref="IArged"/> 的类型。</param>
-        /// <returns>需要执行的 DDL 语句列表（CREATE TABLE、ADD COLUMN、CREATE INDEX）。</returns>
-        public List<string> ResolveEnsureTableDdl(Type objectType, string[] tableArgs = null)
-        {
-            if (MasterPool != null)
-                return MasterPool.ResolveEnsureTableDdl(objectType, tableArgs);
-
-            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
-            if (tableDefinition == null) return new List<string>();
-
-            string tableName = tableArgs != null && tableArgs.Length > 0
-                ? string.Format(tableDefinition.Name, tableArgs)
-                : tableDefinition.Name;
-            string tableTypeKey = GetTableTypeKey(tableName, objectType);
-
-            if (_createdTables.ContainsKey(tableTypeKey))
-                return new List<string>();
-
-            var sem = GetTableCreationLock(tableName);
-            sem.Wait(10000);
-            try
-            {
-                if (_createdTables.ContainsKey(tableTypeKey))
-                    return new List<string>();
-
-                var ctx = PeekContextInternal();
-                try
-                {
-                    var statements = ResolveEnsureTableDdlCore(ctx.DbConnection, SqlBuilder, tableName, tableDefinition.Columns);
-                    _createdTables.TryAdd(tableTypeKey, 0);
-                    return statements;
-                }
-                finally { ReturnContext(ctx); }
-            }
-            finally { sem.Release(); }
-        }
-
-        /// <summary>
-        /// 根据实体类型和数据库当前状态，计算出需要执行的 DDL 语句列表（异步版本）。
-        /// </summary>
-        public async Task<List<string>> ResolveEnsureTableDdlAsync(Type objectType, string[] tableArgs = null)
-        {
-            if (MasterPool != null)
-                return await MasterPool.ResolveEnsureTableDdlAsync(objectType, tableArgs).ConfigureAwait(false);
-
-            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
-            if (tableDefinition == null) return new List<string>();
-
-            string tableName = tableArgs != null && tableArgs.Length > 0
-                ? string.Format(tableDefinition.Name, tableArgs)
-                : tableDefinition.Name;
-            string tableTypeKey = GetTableTypeKey(tableName, objectType);
-
-            if (_createdTables.ContainsKey(tableTypeKey))
-                return new List<string>();
-
-            var sem = GetTableCreationLock(tableName);
-            await sem.WaitAsync(10000).ConfigureAwait(false);
-            try
-            {
-                if (_createdTables.ContainsKey(tableTypeKey))
-                    return new List<string>();
-
-                var ctx = await PeekContextInternalAsync().ConfigureAwait(false);
-                try
-                {
-                    var statements = await ResolveEnsureTableDdlCoreAsync(ctx.DbConnection, SqlBuilder, tableName, tableDefinition.Columns).ConfigureAwait(false);
-                    _createdTables.TryAdd(tableTypeKey, 0);
-                    return statements;
-                }
-                finally { ReturnContext(ctx); }
-            }
-            finally { sem.Release(); }
-        }
-
-        /// <summary>
-        /// 清空表结构缓存及已处理标记，以便下次调用时重新检查数据库状态。
-        /// </summary>
-        public void ClearTableCache()
-        {
-            _tableColumns.Clear();
-            _createdTables.Clear();
-        }
-
-        private List<string> ResolveEnsureTableDdlCore(
-            DbConnection connection, SqlBuilder sqlBuilder,
-            string tableName, IReadOnlyList<ColumnDefinition> cols)
-        {
-            var statements = new List<string>();
-
-            if (!_tableColumns.ContainsKey(tableName))
-            {
-                // 表不在缓存中，需要检查数据库
-                if (!TableExistsSync(connection, sqlBuilder, tableName))
-                {
-                    // 表不存在，生成建表语句
-                    statements.Add(sqlBuilder.BuildCreateTableSql(tableName, cols));
-                    foreach (var col in cols.Where(c => c.IsIndex || c.IsUnique))
-                        statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
-                    _tableColumns[tableName] = new HashSet<string>(cols.Select(c => c.Name), StringComparer.OrdinalIgnoreCase);
-                }
-                else
-                {
-                    // 表存在，生成补列语句
-                    var existingCols = GetExistingColumnsSync(connection, sqlBuilder.ToSqlName(tableName));
-                    var missing = cols.Where(c => !existingCols.Contains(c.Name)).ToList();
-                    if (missing.Count > 0)
-                    {
-                        statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, missing));
-                        foreach (var col in missing.Where(c => c.IsIndex || c.IsUnique))
-                            statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
-                        foreach (var c in missing) existingCols.Add(c.Name);
-                    }
-                    foreach (var c in cols) existingCols.Add(c.Name);
-                    _tableColumns[tableName] = existingCols;
-                }
-            }
-            else
-            {
-                // 表在缓存中，检查是否需要添加列
-                var knownCols = _tableColumns[tableName];
-                var missing = cols.Where(c => !knownCols.Contains(c.Name)).ToList();
-                if (missing.Count > 0)
-                {
-                    var existingCols = GetExistingColumnsSync(connection, sqlBuilder.ToSqlName(tableName));
-                    var actualMissing = missing.Where(c => !existingCols.Contains(c.Name)).ToList();
-                    if (actualMissing.Count > 0)
-                    {
-                        statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, actualMissing));
-                        foreach (var col in actualMissing.Where(c => c.IsIndex || c.IsUnique))
-                            statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
-                    }
-                    var newCols = new HashSet<string>(knownCols, StringComparer.OrdinalIgnoreCase);
-                    foreach (var c in missing) newCols.Add(c.Name);
-                    _tableColumns[tableName] = newCols;
-                }
-            }
-
-            return statements;
-        }
-
-        private async Task<List<string>> ResolveEnsureTableDdlCoreAsync(
-            DbConnection connection, SqlBuilder sqlBuilder,
-            string tableName, IReadOnlyList<ColumnDefinition> cols)
-        {
-            var statements = new List<string>();
-
-            if (!_tableColumns.ContainsKey(tableName))
-            {
-                // 表不在缓存中，需要检查数据库
-                if (!await TableExistsAsync(connection, sqlBuilder, tableName).ConfigureAwait(false))
-                {
-                    // 表不存在，生成建表语句
-                    statements.Add(sqlBuilder.BuildCreateTableSql(tableName, cols));
-                    foreach (var col in cols.Where(c => c.IsIndex || c.IsUnique))
-                        statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
-                    _tableColumns[tableName] = new HashSet<string>(cols.Select(c => c.Name), StringComparer.OrdinalIgnoreCase);
-                }
-                else
-                {
-                    // 表存在，生成补列语句
-                    var existingCols = await GetExistingColumnsAsync(connection, sqlBuilder.ToSqlName(tableName)).ConfigureAwait(false);
-                    var missing = cols.Where(c => !existingCols.Contains(c.Name)).ToList();
-                    if (missing.Count > 0)
-                    {
-                        statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, missing));
-                        foreach (var col in missing.Where(c => c.IsIndex || c.IsUnique))
-                            statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
-                        foreach (var c in missing) existingCols.Add(c.Name);
-                    }
-                    foreach (var c in cols) existingCols.Add(c.Name);
-                    _tableColumns[tableName] = existingCols;
-                }
-            }
-            else
-            {
-                // 表在缓存中，检查是否需要添加列
-                var knownCols = _tableColumns[tableName];
-                var missing = cols.Where(c => !knownCols.Contains(c.Name)).ToList();
-                if (missing.Count > 0)
-                {
-                    var existingCols = await GetExistingColumnsAsync(connection, sqlBuilder.ToSqlName(tableName)).ConfigureAwait(false);
-                    var actualMissing = missing.Where(c => !existingCols.Contains(c.Name)).ToList();
-                    if (actualMissing.Count > 0)
-                    {
-                        statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, actualMissing));
-                        foreach (var col in actualMissing.Where(c => c.IsIndex || c.IsUnique))
-                            statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
-                    }
-                    var newCols = new HashSet<string>(knownCols, StringComparer.OrdinalIgnoreCase);
-                    foreach (var c in missing) newCols.Add(c.Name);
-                    _tableColumns[tableName] = newCols;
-                }
-            }
-
-            return statements;
-        }
-
-        private void ApplyDdl(DbConnection connection, List<string> statements)
-        {
-            foreach (var sql in statements)
-            {
-                if (sql.TrimStart().StartsWith("CREATE", StringComparison.OrdinalIgnoreCase)
-                    && sql.IndexOf("INDEX", StringComparison.OrdinalIgnoreCase) >= 0)
-                    try { ExecuteSqlSync(connection, sql); } catch { }
-                else
-                    ExecuteSqlSync(connection, sql);
-            }
-        }
-
-        private async Task ApplyDdlAsync(DbConnection connection, List<string> statements)
-        {
-            foreach (var sql in statements)
-            {
-                if (sql.TrimStart().StartsWith("CREATE", StringComparison.OrdinalIgnoreCase)
-                    && sql.IndexOf("INDEX", StringComparison.OrdinalIgnoreCase) >= 0)
-                    try { await ExecuteSqlAsync(connection, sql).ConfigureAwait(false); } catch { }
-                else
-                    await ExecuteSqlAsync(connection, sql).ConfigureAwait(false);
-            }
-        }
-
-        private bool TableExistsSync(DbConnection connection, SqlBuilder sqlBuilder, string tableName)
-        {
-            try
-            {
-                using var cmd = connection.CreateCommand();
-                cmd.CommandText = $"SELECT 1 FROM {sqlBuilder.ToSqlName(tableName)} WHERE 1=0";
-                cmd.ExecuteScalar();
-                return true;
-            }
-            catch { return false; }
-        }
-
-        private async Task<bool> TableExistsAsync(DbConnection connection, SqlBuilder sqlBuilder, string tableName)
-        {
-            try
-            {
-                using var cmd = (DbCommand)connection.CreateCommand();
-                cmd.CommandText = $"SELECT 1 FROM {sqlBuilder.ToSqlName(tableName)} WHERE 1=0";
-                await cmd.ExecuteScalarAsync().ConfigureAwait(false);
-                return true;
-            }
-            catch { return false; }
-        }
-
-        private HashSet<string> GetExistingColumnsSync(DbConnection connection, string quotedTableName)
-        {
-            var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            try
-            {
-                using var cmd = connection.CreateCommand();
-                cmd.CommandText = $"SELECT * FROM {quotedTableName} WHERE 1=0";
-                using var reader = cmd.ExecuteReader();
-                for (int i = 0; i < reader.FieldCount; i++)
-                    columns.Add(reader.GetName(i));
-            }
-            catch
-            {
-                var schema = connection.GetSchema("Columns", new[] { null, null, quotedTableName });
-                foreach (DataRow row in schema.Rows)
-                    columns.Add(row["COLUMN_NAME"].ToString());
-            }
-            return columns;
-        }
-
-        private async Task<HashSet<string>> GetExistingColumnsAsync(DbConnection connection, string quotedTableName)
-        {
-            var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            try
-            {
-                using var cmd = (DbCommand)connection.CreateCommand();
-                cmd.CommandText = $"SELECT * FROM {quotedTableName} WHERE 1=0";
-                using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
-                for (int i = 0; i < reader.FieldCount; i++)
-                    columns.Add(reader.GetName(i));
-            }
-            catch
-            {
-                var schema = connection.GetSchema("Columns", new[] { null, null, quotedTableName });
-                foreach (DataRow row in schema.Rows)
-                    columns.Add(row["COLUMN_NAME"].ToString());
-            }
-            return columns;
-        }
-
-        private void ExecuteSqlSync(DbConnection connection, string sql)
-        {
-            using var cmd = connection.CreateCommand();
-            cmd.CommandText = sql;
-            cmd.ExecuteNonQuery();
-        }
-
-        private async Task ExecuteSqlAsync(DbConnection connection, string sql)
-        {
-            using var cmd = (DbCommand)connection.CreateCommand();
-            cmd.CommandText = sql;
-            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-        }
+        public bool HasReadOnlyPools => _readOnlyPools.Count > 0;
 
         /// <summary>
         /// 添加只读数据库连接池。
@@ -540,7 +191,7 @@ namespace LiteOrm
             if (_disposed)
                 throw new ObjectDisposedException(nameof(DAOContextPool));
 
-            if (readOnly && _readOnlyPools.Count > 0)
+            if (readOnly && HasReadOnlyPools)
             {
                 int index = Interlocked.Increment(ref _readOnlyIndex);
                 return _readOnlyPools[Math.Abs(index) % _readOnlyPools.Count].PeekContext();
@@ -569,10 +220,10 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 内部获取DAO上下文，不进行初始化检查。
+        /// 获取DAO上下文内部实现。
         /// </summary>
         /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
-        internal DAOContext PeekContextInternal()
+        private DAOContext PeekContextInternal()
         {
             lock (_poolLock)
             {
@@ -730,7 +381,10 @@ namespace LiteOrm
                     throw new InvalidOperationException("Failed to create a database connection instance.");
 
                 connection.ConnectionString = ConnectionString;
-                var context = new DAOContext(connection, this);
+                var context = new DAOContext(connection, this)
+                {
+                    IsReadOnly = IsReadOnlyPool
+                };
                 return context;
             }
             catch
@@ -774,15 +428,8 @@ namespace LiteOrm
                         pool.Dispose();
                     }
 
-                    foreach (var sem in _tableCreationLocks.Values)
-                    {
-                        sem.Dispose();
-                    }
-
-                    _tableColumns.Clear();
-                    _createdTables.Clear();
-
                     _semaphore?.Dispose();
+                    _databaseSync?.Dispose();
                 }
 
                 // 释放非托管资源

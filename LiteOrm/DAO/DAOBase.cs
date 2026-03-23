@@ -244,8 +244,8 @@ namespace LiteOrm
         /// <returns>初始化好的数据库命令代理实例。</returns>
         public virtual DbCommandProxy NewCommand()
         {
-            DAOContext?.Pool?.EnsureTable(ObjectType, TableArgs);
-            return new DbCommandProxy(DAOContext, SqlBuilder);
+            DAOContext.EnsureTable(ObjectType, TableArgs);
+            return DAOContext.CreateCommand();
         }
 
         /// <summary>
