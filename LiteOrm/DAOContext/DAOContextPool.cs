@@ -57,6 +57,16 @@ namespace LiteOrm
         private readonly List<DAOContextPool> _readOnlyPools = new List<DAOContextPool>();
         private int _readOnlyIndex = 0;
         private DatabaseSync _databaseSync;
+        /// <summary>
+        /// 当创建新的DAO上下文时触发的事件委托，允许外部订阅以进行自定义初始化或日志记录等操作。
+        /// </summary>
+        /// <param name="context">新创建的DAO上下文</param>
+        public delegate void ContextCreatedHandler(DAOContext context);
+
+        /// <summary>
+        /// 创建新上下文时触发的事件，允许外部订阅以进行自定义初始化或日志记录等操作。
+        /// </summary>
+        public event ContextCreatedHandler OnContextCreated;
 
         /// <summary>
         /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
@@ -385,6 +395,7 @@ namespace LiteOrm
                 {
                     IsReadOnly = IsReadOnlyPool
                 };
+                if (OnContextCreated != null) OnContextCreated(context);
                 return context;
             }
             catch

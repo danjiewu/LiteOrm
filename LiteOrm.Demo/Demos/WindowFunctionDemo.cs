@@ -53,10 +53,10 @@ namespace LiteOrm.Demo.Demos
                         }
                     }
                 }
-                return Over(
-                    Func("SUM", Prop(nameof(SalesRecord.Amount))),
-                    partitionExprs.ToArray(),
-                    orderExprs.ToArray());
+                return 
+                    Func("SUM", Prop(nameof(SalesRecord.Amount)))
+                    .Over(partitionExprs.ToArray(),
+                        orderExprs.ToArray());
             });
         }
 
@@ -163,10 +163,11 @@ namespace LiteOrm.Demo.Demos
                     "[Prop(nameof(SalesRecord.SaleTime)).Asc()]);");
 
 
-                var runningTotalExpr = Over(
-                    Func("SUM", Prop(nameof(SalesRecord.Amount))),
-                    [Prop(nameof(SalesRecord.ProductId))],
-                    [Prop(nameof(SalesRecord.SaleTime)).Asc()]);
+                var runningTotalExpr = 
+                    Func("SUM", Prop(nameof(SalesRecord.Amount)))
+                    .Over(
+                        [Prop(nameof(SalesRecord.ProductId))],
+                        [Prop(nameof(SalesRecord.SaleTime)).Asc()]);
 
                 var selectExpr = From<SalesRecord>(tableMonth)
                     .OrderBy(Prop(nameof(SalesRecord.ProductId)).Asc())

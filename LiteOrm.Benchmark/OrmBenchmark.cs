@@ -524,8 +524,7 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var dao = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<BenchmarkLogView>>();
-                var list = await LambdaExprExtensions.Search(
-dao, q => q.Where(l => l.Age < 30)
+                var list = await dao.Search(q => q.Where(l => l.Age < 30)
                           .OrderByDescending(l => l.Id)
                           .Skip(0).Take(BatchCount)
                 ).ToListAsync();

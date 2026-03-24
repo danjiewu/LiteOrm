@@ -1,5 +1,6 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -35,7 +36,20 @@ namespace LiteOrm.Tests.Infrastructure
                 })
                 .RegisterLiteOrm()
                 .Build();
-
+            var sqliteContext = ServiceProvider.GetRequiredService<DAOContextPoolFactory>().GetPool("SQLite").PeekContext();
+            ((SqliteConnection)sqliteContext.DbConnection).CreateFunction("REGEXP_LIKE", (string pattern, string input) =>
+            {
+                if (pattern == null || input == null)
+                    return false;
+                try
+                {
+                    return System.Text.RegularExpressions.Regex.IsMatch(input, pattern);
+                }
+                catch
+                {
+                    return false;
+                }
+            });
             Host.Start();
         }
 

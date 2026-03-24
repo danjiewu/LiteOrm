@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data;
 
 namespace LiteOrm.Service
 {
@@ -29,6 +30,11 @@ namespace LiteOrm.Service
         /// 获取或设置是否启用事务
         /// </summary>
         public bool IsTransaction { get; set; }
+
+        /// <summary>
+        /// 获取或设置事务的隔离级别，默认为 ReadCommitted
+        /// </summary>
+        public IsolationLevel IsolationLevel { get; set; } = IsolationLevel.ReadCommitted;
     }
 
 }

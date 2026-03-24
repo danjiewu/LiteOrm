@@ -287,7 +287,7 @@ namespace LiteOrm.Service
                     invocation.Proceed();
                     result = await (Task<TResult>)invocation.ReturnValue;
                     return result;
-                });
+                }, serviceDesc.IsolationLevel);
                 return result;
             }
             else
@@ -311,7 +311,7 @@ namespace LiteOrm.Service
             {
                 if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
                 {
-                    sessionManager.ExecuteInTransaction(sm => invocation.Proceed());
+                    sessionManager.ExecuteInTransaction(sm => invocation.Proceed(), serviceDesc.IsolationLevel);
                 }
                 else
                 {
@@ -448,7 +448,10 @@ namespace LiteOrm.Service
             // 事务特性
             var transAtt = GetServiceAttribute<TransactionAttribute>(invocation);
             if (transAtt is not null)
+            {
+                desc.IsolationLevel = transAtt.IsolationLevel;
                 desc.IsTransaction = transAtt.IsTransaction;
+            }
 
             // 服务特性
             var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);

@@ -65,7 +65,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 要执行的数据库命令对象，子类通过该对象执行相应的数据库操作以获取结果。
         /// </summary>
-        protected readonly DbCommand _command;
+        protected readonly DbCommandProxy _command;
         /// <summary>
         /// 标记是否在释放时自动销毁命令对象，默认为 true。若为 true，则在调用 Dispose 方法时会自动调用 _command.Dispose() 来释放数据库命令对象占用的资源；如果为 false，则需要由外部代码负责管理命令对象的生命周期，确保在适当的时候手动调用 _command.Dispose() 来释放资源。
         /// </summary>
@@ -76,7 +76,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="command">要执行的数据库命令。</param>
         /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        protected CommandResult(DbCommand command, bool autoDisposeCommand = true)
+        protected CommandResult(DbCommandProxy command, bool autoDisposeCommand = true)
         {
             _command = command;
             _autoDisposeCommand = autoDisposeCommand;
@@ -131,7 +131,7 @@ namespace LiteOrm.Common
         /// <param name="command">要执行的数据库命令。</param>
         /// <param name="readerFunc">将 <see cref="IDataReader"/> 的一行数据转换为 <typeparamref name="TResult"/> 实例的委托。</param>
         /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        public EnumerableResult(DbCommand command, Func<DbDataReader, TResult> readerFunc = null, bool autoDisposeCommand = true)
+        public EnumerableResult(DbCommandProxy command, Func<DbDataReader, TResult> readerFunc = null, bool autoDisposeCommand = true)
             : base(command, autoDisposeCommand)
         {
             _readerFunc = readerFunc;
@@ -273,7 +273,7 @@ namespace LiteOrm.Common
 
         private class AsyncEnumerator : IAsyncEnumerator<TResult>
         {
-            private readonly DbCommand _command;
+            private readonly DbCommandProxy _command;
             private readonly Func<DbDataReader, TResult> _readerFunc;
             private readonly CancellationToken _cancellationToken;
             private DbDataReader _reader;
@@ -286,7 +286,7 @@ namespace LiteOrm.Common
             /// <param name="command">要执行的数据库命令。</param>
             /// <param name="readerFunc">将数据行转换为元素的委托。</param>
             /// <param name="cancellationToken">取消令牌。</param>
-            public AsyncEnumerator(DbCommand command, Func<DbDataReader, TResult> readerFunc, CancellationToken cancellationToken)
+            public AsyncEnumerator(DbCommandProxy command, Func<DbDataReader, TResult> readerFunc, CancellationToken cancellationToken)
             {
                 _command = command;
                 _readerFunc = readerFunc;
@@ -374,15 +374,12 @@ namespace LiteOrm.Common
         /// <param name="command">要执行的数据库命令。</param>
         /// <param name="resultConverter">将标量结果转换为 <typeparamref name="TResult"/> 的委托，为 null 时使用默认转换。</param>
         /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        public ValueResult(DbCommand command, Func<object, TResult> resultConverter = null, bool autoDisposeCommand = true)
+        public ValueResult(DbCommandProxy command, Func<object, TResult> resultConverter = null, bool autoDisposeCommand = true)
             : base(command, autoDisposeCommand)
         {
-            _resultConverter = resultConverter ?? ((obj) => {
-                if (obj != null && obj.GetType() != typeof(TResult))
-                {
-                    return (TResult)Convert.ChangeType(obj, typeof(TResult));
-                }
-                return (TResult)obj;
+            _resultConverter = resultConverter ?? ((obj) =>
+            {
+                return (TResult)command.SqlBuilder.ConvertFromDbValue(obj, typeof(TResult));
             });
         }
 
@@ -418,9 +415,9 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="command">要执行的数据库命令。</param>
         /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        public NonQueryResult(DbCommand command, bool autoDisposeCommand = true)
+        public NonQueryResult(DbCommandProxy command, bool autoDisposeCommand = true)
             : base(command, autoDisposeCommand)
-        {}
+        { }
 
         /// <summary>
         /// 执行命令并返回受影响的行数。
@@ -457,7 +454,7 @@ namespace LiteOrm.Common
         /// <param name="command">要执行的数据库命令。</param>
         /// <param name="readRow">将 <see cref="IDataReader"/> 的一行数据转换为 <see cref="DataRow"/> 的委托。</param>
         /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        public DataTableResult(DbCommand command, Func<IDataReader, DataTable, DataRow> readRow, bool autoDisposeCommand = true)
+        public DataTableResult(DbCommandProxy command, Func<IDataReader, DataTable, DataRow> readRow, bool autoDisposeCommand = true)
             : base(command, autoDisposeCommand)
         {
             _readRow = readRow;

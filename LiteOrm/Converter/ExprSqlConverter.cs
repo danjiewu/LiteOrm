@@ -525,7 +525,7 @@ namespace LiteOrm.Common
                     if (foreignExpr.Foreign.IsAssignableFrom(joinedTable.TableDefinition.DefinitionType))
                     {
                         // 找到当前表与目标表之间的关联关系，自动生成关联条件
-                        joinedExpr |= Expr.And(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
+                        joinedExpr |= new LogicSet(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
                             Expr.Prop(foreignAlias, pk.Name) == Expr.Prop(context.DefaultTableAliasName, fk.Name)
                         ));
                     }
@@ -538,7 +538,7 @@ namespace LiteOrm.Common
                         if (context.Table.DefinitionType.IsAssignableFrom(joinedTable.TableDefinition.DefinitionType))
                         {
                             // 找到当前表与目标表之间的关联关系，自动生成关联条件
-                            joinedExpr |= Expr.And(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
+                            joinedExpr |= new LogicSet(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
                                 Expr.Prop(foreignAlias, fk.Name) == Expr.Prop(context.DefaultTableAliasName, pk.Name)
                             ));
                         }

@@ -1,3 +1,4 @@
+using LiteOrm.Common;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -8,7 +9,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
-namespace LiteOrm.Common
+namespace LiteOrm
 {
     /// <summary>
     /// 通过动态编译创建将 <see cref="DbDataReader"/> 行映射到对象的委托。
@@ -31,24 +32,25 @@ namespace LiteOrm.Common
         private static readonly MethodInfo _getFieldValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFieldValue), new[] { typeof(int) });
 
+        // Use SqlBuilder.ConvertFromDbValue as the fallback conversion method (instance method on SqlBuilder.Instance)
         private static readonly MethodInfo _changeTypeMethod =
-            typeof(Convert).GetMethod(nameof(Convert.ChangeType), new[] { typeof(object), typeof(Type) });
+            typeof(AutoLockDataReader).GetMethod(nameof(AutoLockDataReader.ChangeType), new[] { typeof(object), typeof(Type) });
 
         private static readonly Dictionary<Type, MethodInfo> _typedReaderMethods = new Dictionary<Type, MethodInfo>
         {
-            [typeof(bool)]     = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean),  new[] { typeof(int) }),
-            [typeof(byte)]     = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetByte),     new[] { typeof(int) }),
-            [typeof(char)]     = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetChar),     new[] { typeof(int) }),
-            [typeof(short)]    = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt16),    new[] { typeof(int) }),
-            [typeof(int)]      = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt32),    new[] { typeof(int) }),
-            [typeof(long)]     = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt64),    new[] { typeof(int) }),
-            [typeof(float)]    = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFloat),    new[] { typeof(int) }),
-            [typeof(double)]   = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDouble),   new[] { typeof(int) }),
-            [typeof(decimal)]  = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDecimal),  new[] { typeof(int) }),
-            [typeof(string)]   = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
+            [typeof(bool)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean), new[] { typeof(int) }),
+            [typeof(byte)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetByte), new[] { typeof(int) }),
+            [typeof(char)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetChar), new[] { typeof(int) }),
+            [typeof(short)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt16), new[] { typeof(int) }),
+            [typeof(int)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt32), new[] { typeof(int) }),
+            [typeof(long)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt64), new[] { typeof(int) }),
+            [typeof(float)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFloat), new[] { typeof(int) }),
+            [typeof(double)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDouble), new[] { typeof(int) }),
+            [typeof(decimal)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDecimal), new[] { typeof(int) }),
+            [typeof(string)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString), new[] { typeof(int) }),
             [typeof(DateTime)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
-            [typeof(Guid)]     = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetGuid),     new[] { typeof(int) }),
-            [typeof(Stream)]   = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetStream),   new[] { typeof(int) }),
+            [typeof(Guid)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetGuid), new[] { typeof(int) }),
+            [typeof(Stream)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetStream), new[] { typeof(int) }),
         };
 
         /// <summary>
@@ -57,24 +59,24 @@ namespace LiteOrm.Common
         /// </summary>
         private static readonly Dictionary<DbType, MethodInfo> _dbTypeReaderMethods = new Dictionary<DbType, MethodInfo>
         {
-            [DbType.Boolean]               = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean),  new[] { typeof(int) }),
-            [DbType.Byte]                  = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetByte),     new[] { typeof(int) }),
-            [DbType.Int16]                 = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt16),    new[] { typeof(int) }),
-            [DbType.Int32]                 = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt32),    new[] { typeof(int) }),
-            [DbType.Int64]                 = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt64),    new[] { typeof(int) }),
-            [DbType.Single]                = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFloat),    new[] { typeof(int) }),
-            [DbType.Double]                = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDouble),   new[] { typeof(int) }),
-            [DbType.Decimal]               = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDecimal),  new[] { typeof(int) }),
-            [DbType.Currency]              = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDecimal),  new[] { typeof(int) }),
-            [DbType.String]                = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
-            [DbType.AnsiString]            = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
-            [DbType.AnsiStringFixedLength] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
-            [DbType.StringFixedLength]     = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
-            [DbType.Xml]                   = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString),   new[] { typeof(int) }),
-            [DbType.DateTime]              = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
-            [DbType.Date]                  = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
-            [DbType.DateTime2]             = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
-            [DbType.Guid]                  = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetGuid),     new[] { typeof(int) }),
+            [DbType.Boolean] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean), new[] { typeof(int) }),
+            [DbType.Byte] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetByte), new[] { typeof(int) }),
+            [DbType.Int16] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt16), new[] { typeof(int) }),
+            [DbType.Int32] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt32), new[] { typeof(int) }),
+            [DbType.Int64] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt64), new[] { typeof(int) }),
+            [DbType.Single] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFloat), new[] { typeof(int) }),
+            [DbType.Double] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDouble), new[] { typeof(int) }),
+            [DbType.Decimal] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDecimal), new[] { typeof(int) }),
+            [DbType.Currency] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDecimal), new[] { typeof(int) }),
+            [DbType.String] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString), new[] { typeof(int) }),
+            [DbType.AnsiString] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString), new[] { typeof(int) }),
+            [DbType.AnsiStringFixedLength] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString), new[] { typeof(int) }),
+            [DbType.StringFixedLength] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString), new[] { typeof(int) }),
+            [DbType.Xml] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString), new[] { typeof(int) }),
+            [DbType.DateTime] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
+            [DbType.Date] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
+            [DbType.DateTime2] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
+            [DbType.Guid] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetGuid), new[] { typeof(int) }),
             // DbType.Binary → GetFieldValue<byte[]> / GetStream (handled in BuildRawReadExpression)
         };
 
@@ -95,10 +97,10 @@ namespace LiteOrm.Common
         public static Func<DbDataReader, TResult> GetConverter<TResult>(DbDataReader reader)
         {
             Type type = typeof(TResult);
-            if(TableInfoProvider.Default.GetTableView(type) != null)
-                return GetConverter<TResult>();            
+            if (TableInfoProvider.Default.GetTableView(type) != null)
+                return GetConverter<TResult>();
             string columnKey = BuildColumnKey(reader);
-                return (Func<DbDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileDataReaderConverter<TResult>(reader));
+            return (Func<DbDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileDataReaderConverter<TResult>(reader));
         }
 
         /// <summary>
@@ -217,8 +219,6 @@ namespace LiteOrm.Common
 
             Expression readExpr = BuildRawReadExpression(readerParam, ordinalExpr, coreType, dbType);
 
-            // Convert reader return type → core property type (enum cast, numeric widening, etc.)
-            // If no direct conversion operator exists, fall back to Convert.ChangeType.
             if (readExpr.Type != coreType)
             {
                 try
@@ -228,7 +228,9 @@ namespace LiteOrm.Common
                 catch (InvalidOperationException)
                 {
                     readExpr = Expression.Convert(
-                        Expression.Call(_changeTypeMethod,
+                        Expression.Call(
+                            Expression.Convert(readerParam, typeof(AutoLockDataReader)),
+                            _changeTypeMethod,
                             Expression.Convert(readExpr, typeof(object)),
                             Expression.Constant(coreType)),
                         coreType);

@@ -275,7 +275,7 @@ namespace LiteOrm
             try
             {
                 PreExcuteCommand(ExcuteType.ExecuteReader);
-                DbDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), scope);
+                DbDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), scope, SqlBuilder.ConvertFromDbValue);
                 PostExcuteCommand(ExcuteType.ExecuteReader);
                 return ret;
             }
@@ -287,7 +287,7 @@ namespace LiteOrm
         }
 
         IDataReader IDbCommand.ExecuteReader(CommandBehavior behavior) => ExecuteReader(behavior);
-        
+
         IDataReader IDbCommand.ExecuteReader() => ExecuteReader();
 
         /// <summary>
@@ -322,7 +322,7 @@ namespace LiteOrm
             {
                 PreExcuteCommand(ExcuteType.ExecuteReader);
                 DbDataReader reader = await Target.ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
-                DbDataReader ret = new AutoLockDataReader(reader, scope);
+                DbDataReader ret = new AutoLockDataReader(reader, scope, SqlBuilder.ConvertFromDbValue);
                 PostExcuteCommand(ExcuteType.ExecuteReader);
                 return ret;
             }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -63,7 +64,7 @@ namespace LiteOrm.Common
         ///     .Or(Expr.Prop("IsVIP").Equal(true));
         /// </code>
         /// </example>
-        public static LogicExpr Or(this LogicExpr left, LogicExpr right) => left is null? right: new LogicSet(LogicJoinType.Or, left, right);
+        public static LogicExpr Or(this LogicExpr left, LogicExpr right) => left is null ? right : new LogicSet(LogicJoinType.Or, left, right);
 
         /// <summary>
         /// 使用 CONCAT（字符串拼接）操作符连接两个值表达式。
@@ -347,6 +348,9 @@ namespace LiteOrm.Common
             throw new NotSupportedException("Only supported in Lambda expression parsing scenarios.");
         }
 
+        public static FunctionExpr Lower(this ValueBinaryExpr expr) => new FunctionExpr("LOWER", expr);
+
+        public static FunctionExpr Upper(this ValueBinaryExpr expr) => new FunctionExpr("UPPER", expr);
 
         /// <summary>
         /// 创建 IS NULL 表达式。
@@ -855,7 +859,7 @@ namespace LiteOrm.Common
         /// var windowExpr = Expr.Prop("Salary").Sum().Over(Expr.Prop("DepartmentId"));
         /// </code>
         /// </example>
-        public static FunctionExpr Over(this FunctionExpr func, params ValueTypeExpr[] partitionBy) => Expr.Over(func, partitionBy);
+        public static FunctionExpr Over(this FunctionExpr func, params ValueTypeExpr[] partitionBy) => new FunctionExpr("Over", func, new ValueSet(partitionBy));
 
         /// <summary>
         /// 将聚合或窗口函数应用到分区和排序窗口（OVER PARTITION BY ... ORDER BY ...）。
@@ -871,7 +875,7 @@ namespace LiteOrm.Common
         ///     new[] { Expr.Prop("HireDate").Asc() });
         /// </code>
         /// </example>
-        public static FunctionExpr Over(this FunctionExpr func, ValueTypeExpr[] partitionBy, params OrderByItemExpr[] orderBy) => Expr.Over(func, partitionBy, orderBy);
+        public static FunctionExpr Over(this FunctionExpr func, ValueTypeExpr[] partitionBy, params OrderByItemExpr[] orderBy) => new FunctionExpr("Over", func, new ValueSet(partitionBy), new ValueSet(orderBy));
 
         /// <summary>
         /// 将聚合或窗口函数应用到带范围/行数限定的窗口（OVER PARTITION BY ... ORDER BY ... ROWS/RANGE BETWEEN ...）。
@@ -883,6 +887,7 @@ namespace LiteOrm.Common
         /// <param name="begin">窗口起始边界：0 当前行，负数向前，正数向后，null 无边界。</param>
         /// <param name="end">窗口结束边界：0 当前行，负数向前，正数向后，null 无边界。</param>
         /// <returns>窗口函数表达式。</returns>
-        public static FunctionExpr Over(this FunctionExpr func, ValueTypeExpr[] partitionBy, OrderByItemExpr[] orderBy, bool range, int? begin, int? end) => Expr.Over(func, partitionBy, orderBy, range, begin, end);
+        public static FunctionExpr Over(this FunctionExpr func, ValueTypeExpr[] partitionBy, OrderByItemExpr[] orderBy, bool range, int? begin, int? end) =>
+            new FunctionExpr("Over", func, new ValueSet(partitionBy), new ValueSet(orderBy), new FunctionExpr(range ? "RangeBetween" : "RowsBetween", begin, end));
     }
 }
