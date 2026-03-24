@@ -54,12 +54,12 @@ namespace LiteOrm.Demo.Demos
                     ");");
 
                 var results = await userSvc.SearchAsync(
-                    q => q.Where(u => u.Age >= minAge && u.UserName.Contains(searchName))
+                    q => q.Where(u => u.Age >= minAge + 1 && u.UserName.Contains(searchName))
                           .OrderByDescending(u => u.Id)
                           .Skip(0).Take(10)
                 );
 
-                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var executedSql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
                 DemoHelper.PrintSection("✅ 查询结果",
@@ -72,7 +72,7 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示2.1 失败: {ex.Message}\n");
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
@@ -125,7 +125,7 @@ namespace LiteOrm.Demo.Demos
                 // 执行查询
                 var results = await userSvc.SearchAsync(expr);
 
-                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var executedSql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
                 DemoHelper.PrintSection("✅ 查询结果",
@@ -137,7 +137,7 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示2.2 失败: {ex.Message}\n");
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
@@ -229,7 +229,7 @@ namespace LiteOrm.Demo.Demos
                           .Skip(0).Take(5)
                 );
 
-                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var executedSql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
                 DemoHelper.PrintSection("✅ 查询结果",
@@ -243,7 +243,7 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示2.4 失败: {ex.Message}\n");
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
@@ -279,7 +279,7 @@ namespace LiteOrm.Demo.Demos
                     "Search($\"WHERE {minExpr} AND {maxExpr} ORDER BY Age\")");
 
                 var results1 = await userDao.SearchByAgeRangeAsync(minAge, maxAge);
-                var sql1 = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql1 = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 生成的 SQL（Expr 已内联展开）", sql1);
                 DemoHelper.PrintSection("✅ 结果", $"共返回 {results1.Count} 条记录");
 
@@ -293,7 +293,7 @@ namespace LiteOrm.Demo.Demos
                     "Search($\"WHERE {nameExpr} AND {Prop(\"Age\")} >= {ageThreshold} ORDER BY [UserName] DESC\")");
 
                 var results2 = await userDao.SearchByNamePatternAsync(keyword, ageThreshold);
-                var sql2 = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql2 = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 生成的 SQL（含命名参数）", sql2);
 
                 var top3 = results2.GetRange(0, Math.Min(3, results2.Count))
@@ -309,7 +309,7 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示2.5 失败: {ex.Message}\n");
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 生成的 SQL（Expr 已内联展开）", sql);
                 Console.ResetColor();
             }

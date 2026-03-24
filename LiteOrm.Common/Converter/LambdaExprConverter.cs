@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -152,7 +153,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 检测表达式是否包含 Lambda 参数
         /// </summary>
-        protected readonly ParameterExpressionDetector _parameterDetector = new ParameterExpressionDetector();
+        protected readonly ExpressionDetector _expressionDetector = new ExpressionDetector();
 
         /// <summary>
         /// 转换表达式节点为 Expr 对象。
@@ -207,13 +208,14 @@ namespace LiteOrm.Common
         protected virtual Expr ConvertInternal(Expression node)
         {
             if (node is null) return null;
+            if (node is not ConstantExpression && _expressionDetector.CanEvaluate(node)) return EvaluateToExpr(node);
             return node switch
             {
                 BinaryExpression binary => ConvertBinary(binary),
                 UnaryExpression unary => ConvertUnary(unary),
                 MemberExpression member => ConvertMember(member),
-                ConstantExpression constant => ConvertConstant(constant),
                 NewArrayExpression newArray => ConvertNewArray(newArray),
+                ConstantExpression constant => ConvertConstant(constant),
                 ListInitExpression listInit => ConvertListInit(listInit),
                 NewExpression newExpression => ConvertNew(newExpression),
                 MethodCallExpression methodCall => ConvertMethodCall(methodCall),
@@ -257,17 +259,13 @@ namespace LiteOrm.Common
 
         private Expr ConvertNew(NewExpression node)
         {
-            if (_parameterDetector.ContainsParameter(node))
+            var items = new List<ValueTypeExpr>();
+            foreach (var arg in node.Arguments)
             {
-                var items = new List<ValueTypeExpr>();
-                foreach (var arg in node.Arguments)
-                {
-                    var item = ConvertInternal(arg) as ValueTypeExpr;
-                    if (item is not null) items.Add(item);
-                }
-                return new ValueSet(ValueJoinType.List, items.ToArray());
+                var item = ConvertInternal(arg) as ValueTypeExpr;
+                if (item is not null) items.Add(item);
             }
-            return EvaluateToExpr(node);
+            return new ValueSet(ValueJoinType.List, items.ToArray());
         }
 
 
@@ -333,7 +331,7 @@ namespace LiteOrm.Common
             // 处理 ?? 运算符，依赖参数时转为 COALESCE 函数，否则本地计算
             if (node.NodeType == ExpressionType.Coalesce)
             {
-                return _parameterDetector.ContainsParameter(node.Left) || _parameterDetector.ContainsParameter(node.Right) ? new FunctionExpr("COALESCE", ConvertInternal(node.Left) as ValueTypeExpr, ConvertInternal(node.Right) as ValueTypeExpr) : EvaluateToExpr(node);
+                return _expressionDetector.CanEvaluate(node) ? EvaluateToExpr(node) : new FunctionExpr("COALESCE", ConvertInternal(node.Left) as ValueTypeExpr, ConvertInternal(node.Right) as ValueTypeExpr);
             }
 
             var left = ConvertInternal(node.Left);
@@ -392,7 +390,9 @@ namespace LiteOrm.Common
                         }
 
                         if (op is ValueOperator vop)
+                        {
                             return new ValueBinaryExpr(left as ValueTypeExpr, vop, right.AsValue());
+                        }
                         else
                             return new LogicBinaryExpr(left as ValueTypeExpr, (LogicOperator)op, right.AsValue());
                     }
@@ -605,7 +605,7 @@ namespace LiteOrm.Common
 
             if (type.IsPrimitive)
                 return DefaultFunctionHandler(node, this);
-            else if (_parameterDetector.ContainsParameter(node))
+            else if (!_expressionDetector.CanEvaluate(node))
                 // 如果是实例方法且包含参数依赖
                 return DefaultFunctionHandler(node, this);
             else
@@ -724,35 +724,7 @@ namespace LiteOrm.Common
 
         #endregion
 
-        /// <summary>
-        /// 表达式参数检测器
-        /// </summary>
-        public class ParameterExpressionDetector : ExpressionVisitor
-        {
-            private bool _hasParameter = false;
-            /// <summary>
-            /// 检查表达式中是否包含参数引用
-            /// </summary>
-            /// <param name="expression">要在检查的表达式。</param>
-            /// <returns>如果包含参数引用则返回 true，否则返回 false。</returns>
-            public bool ContainsParameter(Expression expression)
-            {
-                _hasParameter = false;
-                Visit(expression);
-                return _hasParameter;
-            }
-
-            /// <summary>
-            /// 访问参数表达式。
-            /// </summary>
-            /// <param name="node">参数表达式节点。</param>
-            /// <returns>返回处理后的表达式节点。</returns>
-            protected override Expression VisitParameter(ParameterExpression node)
-            {
-                _hasParameter = true;
-                return base.VisitParameter(node);
-            }
-        }
+        #region LINQ 方法处理器
 
         // LINQ 扩展方法处理器
         /// <summary>
@@ -1126,6 +1098,85 @@ namespace LiteOrm.Common
             if (node is ParameterExpression pe) return ReferenceEquals(pe, lambdaParam);
             return false;
         }
+        #endregion
 
+        /// <summary>
+        /// 表达式参数检测器
+        /// </summary>
+        public class ExpressionDetector : ExpressionVisitor
+        {
+            private bool _result = true;
+            private Dictionary<Expression, bool> _expressionFindResults = new Dictionary<Expression, bool>();
+            /// <summary>
+            /// 遍历表达式树以检测是否可以直接计算（不包含参数表达式或已注册的函数调用），结果会被缓存以优化后续相同表达式的检测。
+            /// </summary>
+            /// <param name="expression">要在检查的表达式。</param>
+            /// <returns>遍历结果</returns>
+            public bool CanEvaluate(Expression expression)
+            {
+                if (_expressionFindResults.TryGetValue(expression, out var cachedResult))
+                {
+                    return cachedResult;
+                }
+                _result = true;
+                Visit(expression);
+                return _result;
+            }
+
+            /// <summary>
+            /// 访问表达式节点，如果当前结果已经是 false 则直接返回原节点以避免不必要的遍历；否则继续访问并缓存结果。
+            /// </summary>
+            /// <param name="node"></param>
+            /// <returns></returns>
+            public override Expression Visit(Expression node)
+            {
+                if (node == null) return null;
+                if (!_result) return node;
+                Expression exp = base.Visit(node);
+                _expressionFindResults[node] = _result;
+                return exp;
+            }
+
+            /// <summary>
+            /// 访问参数表达式。
+            /// </summary>
+            /// <param name="node">参数表达式节点。</param>
+            /// <returns>返回处理后的表达式节点。</returns>
+            protected override Expression VisitParameter(ParameterExpression node)
+            {
+                _result = false;
+                return node; // 直接返回原节点，避免继续访问子表达式影响结果
+            }
+
+            /// <summary>
+            /// 访问函数调用表达式，如果方法属于已注册的类型成员处理器或方法名处理器，则标记结果为 false。
+            /// </summary>
+            /// <param name="node"></param>
+            /// <returns></returns>
+            protected override Expression VisitMethodCall(MethodCallExpression node)
+            {
+                if (_typeMethodHandlers.TryGetValue((node.Method.DeclaringType, node.Method.Name), out _) || _methodNameHandlers.TryGetValue(node.Method.Name, out _))
+                {
+                    _result = false;
+                    return node; // 直接返回原节点，避免继续访问子表达式影响结果
+                }
+                return base.VisitMethodCall(node);
+            }
+
+            /// <summary>
+            /// 访问成员访问表达式，如果成员属于已注册的类型成员处理器或方法名处理器，则标记结果为 false。
+            /// </summary>
+            /// <param name="node"></param>
+            /// <returns></returns>
+            protected override Expression VisitMember(MemberExpression node)
+            {
+                if (_typeMemberHandlers.TryGetValue((node.Member.DeclaringType, node.Member.Name), out _) || _memberNameHandlers.TryGetValue(node.Member.Name, out _))
+                {
+                    _result = false;
+                    return node; // 直接返回原节点，避免继续访问子表达式影响结果
+                }
+                return base.VisitMember(node);
+            }
+        }
     }
 }

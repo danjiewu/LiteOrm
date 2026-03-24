@@ -108,7 +108,7 @@ namespace LiteOrm.Demo.Demos
                         })
                     ).ToListAsync();
 
-                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var executedSql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
                 var grouped = results
@@ -131,7 +131,7 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示5.1 失败: {ex.Message}\n");
-                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var executedSql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
                 Console.ResetColor();
             }
@@ -182,7 +182,7 @@ namespace LiteOrm.Demo.Demos
                     .SearchAs<SalesWindowView>(selectExpr)
                     .ToListAsync();
 
-                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var executedSql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
                 var grouped = results
@@ -206,7 +206,7 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示5.2 失败: {ex.Message}\n");
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }

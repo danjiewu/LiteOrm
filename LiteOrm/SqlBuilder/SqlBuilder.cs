@@ -407,15 +407,15 @@ namespace LiteOrm
                 case DbType.Date:
                 case DbType.DateTime:
                 case DbType.DateTime2:
-                case DbType.Time:
                     if (value is DateTimeOffset dto) return dto.DateTime;
                     if (value is DateTime date) return date;
                     break;
-
+                case DbType.Time:
+                    if (value is TimeSpan timeSpan) return timeSpan;
+                    break;
                 case DbType.DateTimeOffset:
                     if (value is DateTime dt) return new DateTimeOffset(dt);
                     break;
-
                 case DbType.String:
                 case DbType.AnsiString:
                 case DbType.StringFixedLength:
@@ -763,17 +763,26 @@ namespace LiteOrm
                 case DbType.String:
                 case DbType.AnsiString:
                     return column.Length > 0 && column.Length <= 4000 ? $"VARCHAR({column.Length})" : "TEXT";
+                case DbType.Int16: return "SMALLINT";
                 case DbType.Int32: return "INT";
                 case DbType.Int64: return "BIGINT";
                 case DbType.Boolean: return "BIT";
+                case DbType.UInt16: return "SMALLINT UNSIGNED";
+                case DbType.UInt32: return "INT UNSIGNED";
+                case DbType.UInt64: return "BIGINT UNSIGNED";
                 case DbType.DateTime: return "DATETIME";
                 case DbType.Decimal: return "DECIMAL(18,2)";
                 case DbType.Double: return "DOUBLE";
                 case DbType.Single: return "FLOAT";
+                case DbType.SByte:
                 case DbType.Byte: return "TINYINT";
-                case DbType.Int16: return "SMALLINT";
                 case DbType.Guid: return "GUID";
                 case DbType.Binary: return "BLOB";
+                case DbType.Date: return "DATE";
+                case DbType.Time: return "TIME";
+                case DbType.DateTime2: return "TIMESTAMP";
+                case DbType.DateTimeOffset: return "DATETIMEOFFSET";
+
                 default: return "VARCHAR(255)";
             }
         }

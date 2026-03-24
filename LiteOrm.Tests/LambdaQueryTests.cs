@@ -386,6 +386,93 @@ namespace LiteOrm.Tests
             Assert.IsType<FromExpr>(manualWhere2.Source);
             Assert.IsType<LogicSet>(manualWhere2.Where);
         }
+
+        #region TimeSpan
+
+        [Fact]
+        public void TimeSpan_TotalDays_InWhere_YieldsDateDiffDaysInCondition()
+        {
+            var baseDate = new DateTime(2024, 1, 1);
+            Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
+                .Where(u => (u.CreateTime - baseDate).TotalDays > 30);
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+            var where = Assert.IsType<WhereExpr>(expr);
+            var condition = Assert.IsType<LogicBinaryExpr>(where.Where);
+            Assert.Equal(LogicOperator.GreaterThan, condition.Operator);
+            var func = Assert.IsType<FunctionExpr>(condition.Left);
+            Assert.Equal("DateDiffDays", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("CreateTime", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+        }
+
+        [Fact]
+        public void TimeSpan_TotalHours_InWhere_YieldsDateDiffHoursInCondition()
+        {
+            var baseDate = new DateTime(2024, 1, 1);
+            Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
+                .Where(u => (u.CreateTime - baseDate).TotalHours > 720);
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+            var where = Assert.IsType<WhereExpr>(expr);
+            var condition = Assert.IsType<LogicBinaryExpr>(where.Where);
+            var func = Assert.IsType<FunctionExpr>(condition.Left);
+            Assert.Equal("DateDiffHours", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+        }
+
+        [Fact]
+        public void TimeSpan_TotalMinutes_InSelect_YieldsDateDiffMinutesFunctionExpr()
+        {
+            var baseDate = new DateTime(2024, 1, 1);
+            Expression<Func<IQueryable<TestUser>, IQueryable<object>>> queryExpr = q => q
+                .Select(u => new { Minutes = (u.CreateTime - baseDate).TotalMinutes });
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+            var select = Assert.IsType<SelectExpr>(expr);
+            Assert.Single(select.Selects);
+            Assert.Equal("Minutes", select.Selects[0].Alias);
+            var func = Assert.IsType<FunctionExpr>(select.Selects[0].Value);
+            Assert.Equal("DateDiffMinutes", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("CreateTime", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+        }
+
+        [Fact]
+        public void TimeSpan_TotalMilliseconds_InOrderBy_YieldsDateDiffMilliseconds()
+        {
+            var baseDate = new DateTime(2024, 1, 1);
+            Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
+                .OrderBy(u => (u.CreateTime - baseDate).TotalMilliseconds);
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+            var orderBy = Assert.IsType<OrderByExpr>(expr);
+            Assert.Single(orderBy.OrderBys);
+            var func = Assert.IsType<FunctionExpr>(orderBy.OrderBys[0].Field);
+            Assert.Equal("DateDiffMilliseconds", func.FunctionName);
+        }
+
+        [Fact]
+        public void TimeSpan_TotalDays_WhereAndSelect_BothYieldDateDiffDays()
+        {
+            var baseDate = new DateTime(2024, 1, 1);
+            Expression<Func<IQueryable<TestUser>, IQueryable<object>>> queryExpr = q => q
+                .Where(u => (u.CreateTime - baseDate).TotalDays > 0)
+                .Select(u => new { u.Name, DaysSince = (u.CreateTime - baseDate).TotalDays });
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+            var select = Assert.IsType<SelectExpr>(expr);
+            Assert.Equal(2, select.Selects.Count);
+            var dayFunc = Assert.IsType<FunctionExpr>(select.Selects[1].Value);
+            Assert.Equal("DateDiffDays", dayFunc.FunctionName);
+
+            var where = Assert.IsType<WhereExpr>(select.Source);
+            var condition = Assert.IsType<LogicBinaryExpr>(where.Where);
+            var whereFunc = Assert.IsType<FunctionExpr>(condition.Left);
+            Assert.Equal("DateDiffDays", whereFunc.FunctionName);
+        }
+
+        #endregion
     }
 }
 

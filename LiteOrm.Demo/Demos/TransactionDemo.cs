@@ -28,7 +28,7 @@ namespace LiteOrm.Demo.Demos
                 bool success = await factory.BusinessService.RegisterUserWithInitialSaleAsync(newUser, initialSale);
                 if (success)
                 {
-                    var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                    var executedSql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                     DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
 
                     Console.WriteLine("事务执行成功，用户和订单同时持久化");
@@ -43,7 +43,7 @@ namespace LiteOrm.Demo.Demos
             catch (Exception ex)
             {
                 Console.WriteLine($"事务执行失败，已回滚: {ex.Message}");
-                var executedSql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var executedSql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", executedSql);
                 var savedUser = await factory.UserService.GetByUserNameAsync(newUser.UserName);
                 if (savedUser == null)

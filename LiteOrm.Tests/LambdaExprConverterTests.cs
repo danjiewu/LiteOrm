@@ -474,10 +474,119 @@ namespace LiteOrm.Tests
         {
             // 块表达式等不支持的节点应抛出 NotSupportedException
             var param = Expression.Parameter(typeof(TestUser), "u");
-            var blockExpr = Expression.Block(Expression.Constant(1));
+            var ageAccess = Expression.Property(param, nameof(TestUser.Age));
+            var blockExpr = Expression.Block(ageAccess); 
             var lambda = Expression.Lambda<Func<TestUser, int>>(blockExpr, param);
             var converter = new LambdaExprConverter(lambda);
             Assert.Throws<NotSupportedException>(() => converter.Convert(blockExpr));
+        }
+
+        #endregion
+
+        #region ToString(format)
+
+        [Fact]
+        public void ToString_WithDateFormat_YieldsFunctionExprFormat()
+        {
+            Expression<Func<TestUser, string>> expr = u => u.CreateTime.ToString("yyyy-MM-dd");
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("Format", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("CreateTime", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.Equal("yyyy-MM-dd", Assert.IsType<ValueExpr>(func.Args[1]).Value);
+        }
+
+        [Fact]
+        public void ToString_WithTimeFormat_YieldsFunctionExprFormat()
+        {
+            Expression<Func<TestUser, string>> expr = u => u.CreateTime.ToString("HH:mm:ss");
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("Format", func.FunctionName);
+            Assert.Equal("HH:mm:ss", Assert.IsType<ValueExpr>(func.Args[1]).Value);
+        }
+
+        [Fact]
+        public void ToString_WithoutFormat_IsTransparentToProperty()
+        {
+            Expression<Func<TestUser, string>> expr = u => u.Name.ToString();
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(result).PropertyName);
+        }
+
+        #endregion
+
+        #region TimeSpan (TotalXxx)
+
+        [Fact]
+        public void TimeSpan_TotalDays_DateSubtract_YieldsDateDiffDaysExpr()
+        {
+            // (u.CreateTime - baseDate).TotalDays → DateDiffDays(CreateTime, baseDate)
+            var baseDate = new DateTime(2024, 1, 1);
+            Expression<Func<TestUser, double>> expr = u => (u.CreateTime - baseDate).TotalDays;
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("DateDiffDays", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("CreateTime", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.IsType<ValueExpr>(func.Args[1]);
+        }
+
+        [Fact]
+        public void TimeSpan_TotalHours_DateSubtract_YieldsDateDiffHoursExpr()
+        {
+            // (u.CreateTime - baseDate).TotalHours → DateDiffHours(CreateTime, baseDate)
+            var baseDate = new DateTime(2024, 1, 1);
+            Expression<Func<TestUser, double>> expr = u => (u.CreateTime - baseDate).TotalHours;
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("DateDiffHours", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("CreateTime", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.IsType<ValueExpr>(func.Args[1]);
+        }
+
+        [Fact]
+        public void TimeSpan_TotalMinutes_DateSubtract_YieldsDateDiffMinutesExpr()
+        {
+            // (u.CreateTime - baseDate).TotalMinutes → DateDiffMinutes(CreateTime, baseDate)
+            var baseDate = new DateTime(2024, 1, 1);
+            Expression<Func<TestUser, double>> expr = u => (u.CreateTime - baseDate).TotalMinutes;
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("DateDiffMinutes", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("CreateTime", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.IsType<ValueExpr>(func.Args[1]);
+        }
+
+        [Fact]
+        public void TimeSpan_TotalMilliseconds_DateSubtract_YieldsDateDiffMillisecondsExpr()
+        {
+            // (u.CreateTime - baseDate).TotalMilliseconds → DateDiffMilliseconds(CreateTime, baseDate)
+            var baseDate = new DateTime(2024, 1, 1);
+            Expression<Func<TestUser, double>> expr = u => (u.CreateTime - baseDate).TotalMilliseconds;
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("DateDiffMilliseconds", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("CreateTime", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.IsType<ValueExpr>(func.Args[1]);
+        }
+
+        [Fact]
+        public void TimeSpan_TotalDays_NonSubtract_YieldsTotalDaysFunctionExpr()
+        {
+            // 直接创建 TimeSpan 参数变量，非减法来源的 TimeSpan → TotalDays(expr)
+            var tsParam = Expression.Parameter(typeof(TestLog), "tl");
+            var totalDaysMember = Expression.Property(Expression.Property(tsParam, nameof(TestLog.Duration)), nameof(TimeSpan.TotalDays));
+            var lambda = Expression.Lambda<Func<TestLog, double>>(totalDaysMember, tsParam);
+            var converter = new LambdaExprConverter(lambda);
+            var result = converter.Convert(totalDaysMember);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("TotalDays", func.FunctionName);
+            Assert.Single(func.Args);
         }
 
         #endregion

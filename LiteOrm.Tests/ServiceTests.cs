@@ -1105,5 +1105,72 @@ namespace LiteOrm.Tests
             Assert.Single(usersWithSpecificDept);
             Assert.Equal("UserWithDept", usersWithSpecificDept[0].Name);
         }
+
+        #region Duration 字段测试
+
+        /// <summary>
+        /// Duration 字段插入和读取测试
+        /// </summary>
+        [Fact]
+        public async Task Duration_InsertAndRetrieve_ShouldWork()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestLog>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestLog>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+
+            var user = new TestUser { Name = "Duration_" + Guid.NewGuid().ToString("N")[..6], Age = 25, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
+
+            var duration = TimeSpan.FromHours(2).Add(TimeSpan.FromMinutes(30));
+            var log = new TestLog
+            {
+                Event = "DurationTest",
+                Amount = 100,
+                CreateTime = new DateTime(2024, 6, 1),
+                Duration = duration,
+                UserID = user.Id
+            };
+            bool inserted = await service.InsertAsync(log, TestContext.Current.CancellationToken);
+            Assert.True(inserted);
+
+            var results = await viewService.SearchAsync(
+                l => l.Id == log.Id && l.UserID == user.Id,
+                tableArgs: new[] { "202406" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+            Assert.Single(results);
+            Assert.Equal(duration, results[0].Duration);
+        }
+
+        /// <summary>
+        /// Duration 字段过滤测试
+        /// </summary>
+        [Fact]
+        public async Task Duration_Filter_GreaterThan_ShouldWork()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestLog>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestLog>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+
+            var user = new TestUser { Name = "DurFilter_" + Guid.NewGuid().ToString("N")[..6], Age = 30, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
+
+            var log1 = new TestLog { Event = "Short", Amount = 100, CreateTime = new DateTime(2024, 6, 10), Duration = TimeSpan.FromHours(1), UserID = user.Id };
+            var log2 = new TestLog { Event = "Long",  Amount = 200, CreateTime = new DateTime(2024, 6, 15), Duration = TimeSpan.FromHours(5), UserID = user.Id };
+            await service.InsertAsync(log1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(log2, TestContext.Current.CancellationToken);
+
+            var threshold = TimeSpan.FromHours(2);
+            var results = await viewService.SearchAsync(
+                l => l.Duration > threshold && l.UserID == user.Id,
+                tableArgs: new[] { "202406" },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+            Assert.Single(results);
+            Assert.Equal(log2.Id, results[0].Id);
+            Assert.Equal(TimeSpan.FromHours(5), results[0].Duration);
+        }
+
+        #endregion
     }
 }

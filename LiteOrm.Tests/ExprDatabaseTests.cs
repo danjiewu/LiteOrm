@@ -876,5 +876,95 @@ namespace LiteOrm.Tests
         }
 
         #endregion
+
+        #region DateDiff 函数测试
+
+        [Fact]
+        public async Task DateDiffFunctions_Tests()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            var baseTime = new DateTime(2024, 1, 11, 0, 0, 0);
+            var originTime = new DateTime(2024, 1, 1, 0, 0, 0);
+            var user = new TestUser { Name = "DateDiffTest", Age = 25, CreateTime = baseTime };
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
+
+            // 使用 FunctionExpr 测试 DateDiff SQL 生成与执行
+            var query = Expr.From<TestUser>()
+                .Where(Expr.Prop("Name") == "DateDiffTest")
+                .Select(
+                    Expr.Func("DateDiffDays", Expr.Prop("CreateTime"), Expr.Const(originTime)).As("Days"),
+                    Expr.Func("DateDiffHours", Expr.Prop("CreateTime"), Expr.Const(originTime)).As("Hours"),
+                    Expr.Func("DateDiffMinutes", Expr.Prop("CreateTime"), Expr.Const(originTime)).As("Minutes"),
+                    Expr.Func("DateDiffMilliseconds", Expr.Prop("CreateTime"), Expr.Const(originTime)).As("Milliseconds")
+                );
+            var dt = await dataViewDAO.Search(query).GetResultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(dt);
+            Assert.Single(dt.Rows);
+
+            var row = dt.Rows[0];
+            Assert.InRange(Convert.ToDouble(row["Days"]), 9.5, 10.5);
+            Assert.InRange(Convert.ToDouble(row["Hours"]), 239.5, 240.5);
+            Assert.InRange(Convert.ToDouble(row["Minutes"]), 14399.5, 14400.5);
+            Assert.InRange(Convert.ToDouble(row["Milliseconds"]), 863999999.5, 864000000.5);
+
+            // 通过 Lambda 表达式转换后执行，验证端到端流程
+            var lambdaDt = await dataViewDAO.Search(
+                Expr.Query<TestUser, IQueryable<object>>(q => q
+                    .Where(u => u.Name == "DateDiffTest")
+                    .Select(u => new { Days = (u.CreateTime - originTime).TotalDays }))
+            ).GetResultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(lambdaDt);
+            Assert.Single(lambdaDt.Rows);
+            Assert.InRange(Convert.ToDouble(lambdaDt.Rows[0]["Days"]), 9.5, 10.5);
+        }
+
+        #endregion
+
+        #region Duration (TimeSpan) 字段测试
+
+        [Fact]
+        public async Task Duration_TotalXxx_Functions_Tests()
+        {
+            var logService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestLog>>();
+            var logDataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestLog>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+
+            var user = new TestUser { Name = "DurationFuncTest", Age = 25, CreateTime = DateTime.Now };
+            await userService.InsertAsync(user, TestContext.Current.CancellationToken);
+
+            // Duration = 3h = 180min = 10800s = 10800000ms
+            var log = new TestLog
+            {
+                Event = "DurationFuncTest",
+                Amount = 100,
+                CreateTime = new DateTime(2024, 6, 1),
+                Duration = TimeSpan.FromHours(3),
+                UserID = user.Id
+            };
+            await logService.InsertAsync(log, TestContext.Current.CancellationToken);
+
+            int userId = user.Id;
+            var query = Expr.From<TestLog>("202406")
+                .Where(Expr.And(Expr.Prop("Event") == "DurationFuncTest", Expr.Prop("UserID") == userId))
+                .Select(
+                    Expr.Func("TotalHours",        Expr.Prop("Duration")).As("Hours"),
+                    Expr.Func("TotalMinutes",      Expr.Prop("Duration")).As("Minutes"),
+                    Expr.Func("TotalSeconds",      Expr.Prop("Duration")).As("Seconds"),
+                    Expr.Func("TotalMilliseconds", Expr.Prop("Duration")).As("Milliseconds")
+                );
+            var dt = await logDataViewDAO.Search(query).GetResultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(dt);
+            Assert.Single(dt.Rows);
+
+            var row = dt.Rows[0];
+            Assert.InRange(Convert.ToDouble(row["Hours"]),        2.9,          3.1);
+            Assert.InRange(Convert.ToDouble(row["Minutes"]),      179.5,        180.5);
+            Assert.InRange(Convert.ToDouble(row["Seconds"]),      10799.5,      10800.5);
+            Assert.InRange(Convert.ToDouble(row["Milliseconds"]), 10799999.5,   10800000.5);
+        }
+
+        #endregion
     }
 }

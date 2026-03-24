@@ -53,6 +53,9 @@ using (var scope = host.Services.CreateScope())
 
     // 7. ExistsRelated 关联过滤演示 (7.1-7.4: 正向用户、正向部门、NOT EXISTS、多条件组合)
     await ExistsRelatedDemo.RunAsync(serviceFactory);
+
+    // 8. ToString(format) 日期格式化演示 (8.1: FunctionExpr直接构造、8.2: Lambda自动转换)
+    await DateFormatDemo.RunAsync(serviceFactory);
 }
 
 

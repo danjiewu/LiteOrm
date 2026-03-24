@@ -76,7 +76,7 @@ namespace LiteOrm.Demo.Demos
 
                 int affected = await userSvc.UpdateAsync(update);
 
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 DemoHelper.PrintSection("✅ 结果", $"受影响行数: {affected}（Alice.Age 20 → 28）");
 
@@ -86,7 +86,7 @@ namespace LiteOrm.Demo.Demos
             {                
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.1 失败: {ex.Message}\n");
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
@@ -115,7 +115,7 @@ namespace LiteOrm.Demo.Demos
 
                 int affected = await userSvc.UpdateAsync(update);
 
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 DemoHelper.PrintSection("✅ 结果", $"受影响行数: {affected}（Bob.Age 30 → 35）");
 
@@ -125,7 +125,7 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.2 失败: {ex.Message}\n");
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
@@ -154,7 +154,7 @@ namespace LiteOrm.Demo.Demos
 
                 int affected = await userSvc.UpdateAsync(update);
 
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 DemoHelper.PrintSection("✅ 结果", $"受影响行数: {affected}（Carol.Age 25 → 30）");
 
@@ -164,7 +164,7 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.3 失败: {ex.Message}\n");
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
@@ -193,7 +193,7 @@ namespace LiteOrm.Demo.Demos
 
                 int affected = await userSvc.UpdateAsync(update);
 
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 DemoHelper.PrintSection("✅ 结果", $"受影响行数: {affected}（Bob.UserName → UpdateDemo_Bob_v2）");
 
@@ -203,7 +203,7 @@ namespace LiteOrm.Demo.Demos
             {                
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.4 失败: {ex.Message}\n");
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
@@ -246,7 +246,7 @@ namespace LiteOrm.Demo.Demos
 
                 int affected1 = await userSvc.UpdateAsync(update1);
 
-                var sql1 = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql1 = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 场景1 执行的 SQL", sql1);
                 DemoHelper.PrintSection("✅ 场景1 结果", $"受影响行数: {affected1}（Alice.Age → UpdateDemo 用户的平均年龄）");
 
@@ -271,7 +271,7 @@ namespace LiteOrm.Demo.Demos
 
                 int affected2 = await userSvc.UpdateAsync(update2);
 
-                var sql2 = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql2 = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 场景2 执行的 SQL", sql2);
                 DemoHelper.PrintSection("✅ 场景2 结果", $"受影响行数: {affected2}（Carol.DeptId → 研发中心的 Id）");
 
@@ -281,7 +281,7 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.6 失败: {ex.Message}\n");
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
@@ -320,7 +320,7 @@ namespace LiteOrm.Demo.Demos
 
                 int affected = await userSvc.UpdateAsync(update);
 
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 DemoHelper.PrintSection("✅ 结果", $"受影响行数: {affected}（Age >= 28 的记录：Age+1 且 CreateTime 刷新）");
 
@@ -328,7 +328,7 @@ namespace LiteOrm.Demo.Demos
             }
             catch (Exception ex)
             {
-                var sql = SessionManager.Current?.SqlStack?.Last() ?? "SQL 不可用";
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.5 失败: {ex.Message}\n");

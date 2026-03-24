@@ -14,6 +14,9 @@ namespace LiteOrm.Tests.Models
         [Column("Amount")]
         public int Amount { get; set; }
 
+        [Column("Duration")]
+        public TimeSpan Duration { get; set; }
+
         [Column("CreateTime", ColumnMode = ColumnMode.Final)]
         public DateTime CreateTime { get; set; }
 
