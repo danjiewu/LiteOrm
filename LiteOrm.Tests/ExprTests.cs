@@ -278,11 +278,11 @@ namespace LiteOrm.Tests
             // And / Or
             var e1 = Expr.Prop("A") == 1;
             var e2 = Expr.Prop("B") == 2;
-            Assert.Equal(new LogicSet(LogicJoinType.And, e1, e2), Expr.And(e1, e2));
-            Assert.Equal(new LogicSet(LogicJoinType.Or, e1, e2), Expr.Or(e1, e2));
+            Assert.Equal(new LogicSet(LogicJoinType.And, e1, e2), e1.And(e2));
+            Assert.Equal(new LogicSet(LogicJoinType.Or, e1, e2), e1.Or(e2));
 
             // Not
-            Assert.Equal(new NotExpr(e1), Expr.Not(e1));
+            Assert.Equal(new NotExpr(e1), e1.Not());
 
             // 函数
             Assert.Equal(new FunctionExpr("ABS", (ValueTypeExpr)10), Expr.Func("ABS", 10));
@@ -296,7 +296,7 @@ namespace LiteOrm.Tests
             // Sql / StaticSql
             GenericSqlExpr.Register("TestKey2", (SqlBuildContext ctx, ISqlBuilder builder, ICollection<KeyValuePair<string, object>> pms, object arg) => "TEST");
             Assert.Equal(GenericSqlExpr.Get("TestKey2", 1), Expr.Sql("TestKey2", 1));
-            Assert.Equal(GenericSqlExpr.Get("TestKey2"), Expr.StaticSql("TestKey2"));
+            Assert.Equal(GenericSqlExpr.Get("TestKey2"), Expr.Sql("TestKey2"));
 
             // Between
             Assert.Equal((Expr.Prop("Age") >= (ValueTypeExpr)10) & (Expr.Prop("Age") <= (ValueTypeExpr)20), Expr.Prop("Age").Between(10, 20));
@@ -386,8 +386,8 @@ namespace LiteOrm.Tests
             var section = table
                 .Where(Expr.Prop("Age") > 18)
                 .GroupBy(Expr.Prop("DeptId"))
-                .Having(Expr.Count() > 1)
-                .Select(Expr.Prop("DeptId"), Expr.Count())
+                .Having(Expr.Prop("Id").Count() > 1)
+                .Select(Expr.Prop("DeptId"), Expr.Prop("Id").Count())
                 .OrderBy(Expr.Prop("DeptId").Asc())
                 .Section(10, 20);
 

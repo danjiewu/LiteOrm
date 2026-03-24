@@ -128,19 +128,19 @@ namespace LiteOrm.Tests
             Assert.NotNull(valueResults);
 
             // 测试And方法
-            var andExpr = Expr.And(Expr.Prop("Name") == "StaticMethodTestUser3", Expr.Prop("Age") == 25);
+            var andExpr = (Expr.Prop("Name") == "StaticMethodTestUser3").And(Expr.Prop("Age") == 25);
             var andResults = await objectViewDAO.Search(andExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(andResults);
             Assert.NotEmpty(andResults);
 
             // 测试Or方法
-            var orExpr = Expr.Or(Expr.Prop("Name") == "StaticMethodTestUser2", Expr.Prop("Age") == 30);
+            var orExpr = (Expr.Prop("Name") == "StaticMethodTestUser2").Or(Expr.Prop("Age") == 30);
             var orResults = await objectViewDAO.Search(orExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(orResults);
             Assert.NotEmpty(orResults);
 
             // 测试Not方法
-            var notExpr = Expr.Not(Expr.Prop("Name") == "NonExistentUser");
+            var notExpr = (Expr.Prop("Name") == "NonExistentUser").Not();
             var notResults = await objectViewDAO.Search(notExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(notResults);
 
@@ -183,13 +183,13 @@ namespace LiteOrm.Tests
             // Assert.NotEmpty(todayResults);
 
             // 测试Lower方法
-            var lowerExpr = Expr.Lower(Expr.Prop("Name")) == "staticmethodtestuser1";
+            var lowerExpr = Expr.Func("LOWER", Expr.Prop("Name")) == "staticmethodtestuser1";
             var lowerResults = await objectViewDAO.Search(lowerExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(lowerResults);
             Assert.NotEmpty(lowerResults);
 
             // 测试Length方法
-            var lengthExpr = Expr.Length(Expr.Prop("Name")) > 5;
+            var lengthExpr = Expr.Func("LENGTH", Expr.Prop("Name")) > 5;
             var lengthResults = await objectViewDAO.Search(lengthExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(lengthResults);
             Assert.NotEmpty(lengthResults);
@@ -204,7 +204,7 @@ namespace LiteOrm.Tests
             Assert.NotEmpty(caseResults);
 
             // 测试Count方法
-            var countExpr = Expr.Count(Expr.Prop("Id"));
+            var countExpr = Expr.Prop("Id").Count();
             var countQuery = Expr.From<TestUser>().Select(countExpr.As("UserCount"));
             var countResult = dataViewDAO.Search(countQuery);
             DataTable countDt = await countResult.GetResultAsync(TestContext.Current.CancellationToken);
@@ -212,7 +212,7 @@ namespace LiteOrm.Tests
             Assert.True(countDt.Rows.Count >= 1);
 
             // 测试Sum方法
-            var sumExpr = Expr.Sum(Expr.Prop("Age"));
+            var sumExpr = Expr.Prop("Age").Sum();
             var sumQuery = Expr.From<TestUser>().Select(sumExpr.As("TotalAge"));
             var sumResult = dataViewDAO.Search(sumQuery);
             DataTable sumDt = await sumResult.GetResultAsync(TestContext.Current.CancellationToken);
@@ -220,7 +220,7 @@ namespace LiteOrm.Tests
             Assert.True(sumDt.Rows.Count >= 1);
 
             // 测试Avg方法
-            var avgExpr = Expr.Avg(Expr.Prop("Age"));
+            var avgExpr = Expr.Prop("Age").Avg();
             var avgQuery = Expr.From<TestUser>().Select(avgExpr.As("AverageAge"));
             var avgResult = dataViewDAO.Search(avgQuery);
             DataTable avgDt = await avgResult.GetResultAsync(TestContext.Current.CancellationToken);
@@ -228,7 +228,7 @@ namespace LiteOrm.Tests
             Assert.True(avgDt.Rows.Count >= 1);
 
             // 测试Max方法
-            var maxExpr = Expr.Max(Expr.Prop("Age"));
+            var maxExpr = Expr.Prop("Age").Max();
             var maxQuery = Expr.From<TestUser>().Select(maxExpr.As("MaxAge"));
             var maxResult = dataViewDAO.Search(maxQuery);
             DataTable maxDt = await maxResult.GetResultAsync(TestContext.Current.CancellationToken);
@@ -236,7 +236,7 @@ namespace LiteOrm.Tests
             Assert.True(maxDt.Rows.Count >= 1);
 
             // 测试Min方法
-            var minExpr = Expr.Min(Expr.Prop("Age"));
+            var minExpr = Expr.Prop("Age").Min();
             var minQuery = Expr.From<TestUser>().Select(minExpr.As("MinAge"));
             var minResult = dataViewDAO.Search(minQuery);
             DataTable minDt = await minResult.GetResultAsync(TestContext.Current.CancellationToken);
@@ -505,14 +505,14 @@ namespace LiteOrm.Tests
             }
 
             // 测试GroupBy扩展方法
-            var groupByQuery = Expr.From<TestUser>().GroupBy(Expr.Prop("Age")).Select(Expr.Prop("Age"), Expr.Count(Expr.Prop("Id")));
+            var groupByQuery = Expr.From<TestUser>().GroupBy(Expr.Prop("Age")).Select(Expr.Prop("Age"), Expr.Prop("Id").Count());
             var groupByResult = dataViewDAO.Search(groupByQuery);
             DataTable groupByDt = await groupByResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(groupByDt);
             Assert.True(groupByDt.Rows.Count >= 1);
 
             // 测试Having扩展方法
-            var havingQuery = Expr.From<TestUser>().GroupBy(Expr.Prop("Age")).Having(Expr.Count(Expr.Prop("Id")) > 0).Select(Expr.Prop("Age"), Expr.Count(Expr.Prop("Id")));
+            var havingQuery = Expr.From<TestUser>().GroupBy(Expr.Prop("Age")).Having(Expr.Prop("Id").Count() > 0).Select(Expr.Prop("Age"), Expr.Prop("Id").Count());
             var havingResult = dataViewDAO.Search(havingQuery);
             DataTable havingDt = await havingResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(havingDt);
@@ -763,7 +763,7 @@ namespace LiteOrm.Tests
             }
 
             // 测试LOWER函数
-            var lowerQuery = Expr.From<TestUser>().Select(Expr.Lower(Expr.Prop("Name")).As("LowerName"));
+            var lowerQuery = Expr.From<TestUser>().Select(Expr.Func("LOWER", Expr.Prop("Name")).As("LowerName"));
             var lowerResult = dataViewDAO.Search(lowerQuery);
             DataTable lowerDt = await lowerResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(lowerDt);
@@ -777,7 +777,7 @@ namespace LiteOrm.Tests
             }
 
             // 测试LENGTH函数
-            var lengthQuery = Expr.From<TestUser>().Select(Expr.Length(Expr.Prop("Name")).As("NameLength"));
+            var lengthQuery = Expr.From<TestUser>().Select(Expr.Func("LENGTH", Expr.Prop("Name")).As("NameLength"));
             var lengthResult = dataViewDAO.Search(lengthQuery);
             DataTable lengthDt = await lengthResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(lengthDt);
@@ -791,7 +791,7 @@ namespace LiteOrm.Tests
             }
 
             // 测试COUNT函数
-            var countQuery = Expr.From<TestUser>().Select(Expr.Count().As("UserCount"));
+            var countQuery = Expr.From<TestUser>().Select(Expr.Prop("Id").Count().As("UserCount"));
             var countResult = dataViewDAO.Search(countQuery);
             DataTable countDt = await countResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(countDt);
@@ -805,7 +805,7 @@ namespace LiteOrm.Tests
             }
 
             // 测试SUM函数
-            var sumQuery = Expr.From<TestUser>().Select(Expr.Sum(Expr.Prop("Age")).As("TotalAge"));
+            var sumQuery = Expr.From<TestUser>().Select(Expr.Prop("Age").Sum().As("TotalAge"));
             var sumResult = dataViewDAO.Search(sumQuery);
             DataTable sumDt = await sumResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(sumDt);
@@ -819,7 +819,7 @@ namespace LiteOrm.Tests
             }
 
             // 测试AVG函数
-            var avgQuery = Expr.From<TestUser>().Select(Expr.Avg(Expr.Prop("Age")).As("AverageAge"));
+            var avgQuery = Expr.From<TestUser>().Select(Expr.Prop("Age").Avg().As("AverageAge"));
             var avgResult = dataViewDAO.Search(avgQuery);
             DataTable avgDt = await avgResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(avgDt);
@@ -833,7 +833,7 @@ namespace LiteOrm.Tests
             }
 
             // 测试MAX函数
-            var maxQuery = Expr.From<TestUser>().Select(Expr.Max(Expr.Prop("Age")).As("MaxAge"));
+            var maxQuery = Expr.From<TestUser>().Select(Expr.Prop("Age").Max().As("MaxAge"));
             var maxResult = dataViewDAO.Search(maxQuery);
             DataTable maxDt = await maxResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(maxDt);
@@ -847,7 +847,7 @@ namespace LiteOrm.Tests
             }
 
             // 测试MIN函数
-            var minQuery = Expr.From<TestUser>().Select(Expr.Min(Expr.Prop("Age")).As("MinAge"));
+            var minQuery = Expr.From<TestUser>().Select(Expr.Prop("Age").Min().As("MinAge"));
             var minResult = dataViewDAO.Search(minQuery);
             DataTable minDt = await minResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(minDt);
@@ -947,7 +947,7 @@ namespace LiteOrm.Tests
 
             int userId = user.Id;
             var query = Expr.From<TestLog>("202406")
-                .Where(Expr.And(Expr.Prop("Event") == "DurationFuncTest", Expr.Prop("UserID") == userId))
+                .Where((Expr.Prop("Event") == "DurationFuncTest").And(Expr.Prop("UserID") == userId))
                 .Select(
                     Expr.Func("TotalHours",        Expr.Prop("Duration")).As("Hours"),
                     Expr.Func("TotalMinutes",      Expr.Prop("Duration")).As("Minutes"),

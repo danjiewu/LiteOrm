@@ -284,7 +284,7 @@ namespace LiteOrm.Tests
             Assert.NotNull(foreignExpr);
 
             // 使用 Expr.And 与其他逻辑表达式组合
-            var condition = Expr.And(Expr.Prop("Age") > 18, foreignExpr);
+            var condition = (Expr.Prop("Age") > 18).And(foreignExpr);
             Assert.IsType<LogicSet>(condition);
         }
 
@@ -309,8 +309,7 @@ namespace LiteOrm.Tests
             var manualExpr = new WhereExpr
             {
                 Source = new FromExpr(typeof(TestUser)).As(Constants.DefaultTableAlias),
-                Where = Expr.And(
-                    Expr.Prop("Age") > 18,
+                Where = (Expr.Prop("Age") > 18).And(
                     Expr.Prop("Name").Contains("Test")
                 )
             };
@@ -356,8 +355,7 @@ namespace LiteOrm.Tests
                     Source = new WhereExpr
                     {
                         Source = new FromExpr(typeof(TestUser)).As(Constants.DefaultTableAlias),
-                        Where = Expr.And(
-                            Expr.Prop("Age") > 18,
+                        Where = (Expr.Prop("Age") > 18).And(
                             Expr.Prop("Name").Contains("Test")
                         )
                     },
