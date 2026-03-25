@@ -230,6 +230,49 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 清空连接池，销毁所有连接并释放资源。
+        /// </summary>
+        public void ClearPool()
+        {
+            lock (_poolLock)
+            {
+                while (_pool.Count > 0)
+                {
+                    var context = _pool.Dequeue();
+                    context.Dispose();
+                }
+            }
+            foreach (var pool in _readOnlyPools)
+            {
+                pool.ClearPool();
+            }
+        }
+
+        /// <summary>
+        ///  异步清空连接池，销毁所有连接并释放资源。
+        /// </summary>
+        public async Task ClearPoolAsync()
+        {
+            List<DAOContext> disposeTasks = new List<DAOContext>();
+            lock (_poolLock)
+            {
+                while (_pool.Count > 0)
+                {
+                    var context = _pool.Dequeue();
+                    disposeTasks.Add(context);
+                }
+            }
+            foreach (var context in disposeTasks)
+            {
+                await context.DisposeAsync().ConfigureAwait(false);
+            }
+            foreach (var pool in _readOnlyPools)
+            {
+                await pool.ClearPoolAsync().ConfigureAwait(false);
+            } 
+        }
+
+        /// <summary>
         /// 获取DAO上下文内部实现。
         /// </summary>
         /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>

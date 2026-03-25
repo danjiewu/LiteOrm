@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SQLitePCL;
 using Xunit;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
@@ -36,10 +37,18 @@ namespace LiteOrm.Tests.Infrastructure
                 })
                 .RegisterLiteOrm()
                 .Build();
-            var sqliteContext = ServiceProvider.GetRequiredService<DAOContextPoolFactory>().GetPool("SQLite").PeekContext();
-            ((SqliteConnection)sqliteContext.DbConnection).CreateFunction("REGEXP_LIKE", (string pattern, string input) =>
+            var pool = ServiceProvider.GetRequiredService<DAOContextPoolFactory>().GetPool("SQLite");
+            pool.OnContextCreated += DatabaseFixture_OnContextCreated;
+            pool.ClearPool(); // 确保使用新的连接，触发 OnContextCreated 事件注册函数
+
+            Host.Start();
+        }
+
+        private void DatabaseFixture_OnContextCreated(DAOContext context)
+        {
+            ((SqliteConnection)context.DbConnection).CreateFunction("REGEXP_LIKE", (string input, string pattern) =>
             {
-                if (pattern == null || input == null)
+                if (input == null || pattern == null)
                     return false;
                 try
                 {
@@ -50,9 +59,7 @@ namespace LiteOrm.Tests.Infrastructure
                     return false;
                 }
             });
-            Host.Start();
         }
-
         /// <summary>
         /// 清空所有测试表数据，由每个测试类在构造时调用。
         /// </summary>

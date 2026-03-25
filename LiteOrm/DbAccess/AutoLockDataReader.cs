@@ -378,7 +378,7 @@ namespace LiteOrm
             return _innerReader.GetSchemaTable();
         }
 
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
+#if NET8_0_OR_GREATER || NET10_0_OR_GREATER
         /// <summary>
         /// 异步返回一个 <see cref="DataTable"/>，它描述 <see cref="IDataReader"/> 的列元数据。
         /// </summary>

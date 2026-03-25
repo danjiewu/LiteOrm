@@ -19,7 +19,7 @@ namespace LiteOrm
     /// 3. 并发安全：通过内置信号量支持独占式访问（Scope 模式），防止多线程竞争同一连接。
     /// 4. 资源自愈：在 Dispose 或从连接池回收（Reset）时，自动处理未提交的事务。
     /// </remarks>
-    public class DAOContext : IDisposable
+    public class DAOContext : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// 设置或获取作用域锁定的超时时间（毫秒）。
@@ -182,14 +182,10 @@ namespace LiteOrm
             {
                 if (InTransaction)
                     return false;
-
+#if NETSTANDARD2_0
                 try
                 {
-#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
-                    CurrentTransaction = await DbConnection.BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
-#else
-                    CurrentTransaction = DbConnection.BeginTransaction(isolationLevel);
-#endif
+                    CurrentTransaction = DbConnection.BeginTransaction(isolationLevel); 
                     return true;
                 }
                 catch
@@ -198,6 +194,19 @@ namespace LiteOrm
                     CurrentTransaction = null;
                     throw;
                 }
+#else
+                try
+                {
+                    CurrentTransaction = await DbConnection.BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
+                    return true;
+                }
+                catch
+                {
+                    CurrentTransaction?.DisposeAsync();
+                    CurrentTransaction = null;
+                    throw;
+                }
+#endif
             }
         }
 
@@ -364,6 +373,33 @@ namespace LiteOrm
             }
         }
 
+        internal async Task ResetAsync(CancellationToken cancellationToken = default)
+        {
+            using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
+            {
+                if (InTransaction)
+                {
+                    try
+                    {
+                        if (CurrentTransaction is DbTransaction dbTrans)
+#if NETSTANDARD2_0
+                            dbTrans.Rollback(); 
+#else
+                            await dbTrans.RollbackAsync(cancellationToken).ConfigureAwait(false);
+#endif
+                        else
+                            CurrentTransaction.Rollback();
+                    }
+                    finally
+                    {
+                        CurrentTransaction?.Dispose();
+                        CurrentTransaction = null;
+                        LastActiveTime = DateTime.Now;
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// 释放由 <see cref="DAOContext"/> 占用的所有资源。
         /// </summary>
@@ -395,6 +431,31 @@ namespace LiteOrm
                 }
                 catch { }
             }
+        }
+
+        /// <summary>
+        /// 异步执行与释放或重置资源相关的应用程序定义的任务。
+        /// </summary>
+        /// <returns></returns>
+        public async ValueTask DisposeAsync()
+        {
+            await ResetAsync().ConfigureAwait(false);
+            DbConnection?.Dispose();
+            _semaphore.Dispose();
+            Pool?.OnContextDisposed();
+            try
+            {
+                foreach (var cmd in PreparedCommands.Values)
+                {
+#if NETSTANDARD2_0
+                    cmd.Dispose();
+#else
+                    await cmd.DisposeAsync().ConfigureAwait(false);
+#endif
+                }
+                PreparedCommands.Clear();
+            }
+            catch { }
         }
 
         /// <summary>
