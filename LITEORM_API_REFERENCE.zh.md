@@ -322,28 +322,45 @@ public class UserService : EntityService<User, UserView>, IUserService
 ```
 LiteOrm/
 ├── Classes/                 # 核心类
-│   ├── AssemblyAnalyzer.cs           # 程序集分析器，用于扫描实体和服务
 │   ├── DataSourceProvider.cs         # 数据源提供者
-│   ├── LiteOrmCoreInitializer.cs     # LiteOrm核心初始化器
-│   ├── LiteOrmLambdaHandlerInitializer.cs  # Lambda处理器初始化
 │   ├── LiteOrmServiceExtensions.cs   # RegisterLiteOrm扩展方法
-│   ├── LiteOrmSqlFunctionInitializer.cs   # SQL函数初始化
-│   ├── SessionManager.cs             # 会话管理器，处理连接和事务
+│   └── SessionManager.cs             # 会话管理器，处理连接和事务
+├── CodeGen/                 # 代码和SQL生成
+│   ├── CSharpGen.cs                  # C#代码生成器
+│   ├── DdlGen.cs                     # DDL生成器
 │   └── SqlGen.cs                     # SQL生成器
+├── Converter/               # 转换器
+│   ├── DataReaderConverter.cs        # 数据读取器转换器
+│   ├── ExprSqlConverter.cs           # 表达式SQL转换器
+│   └── ExprString.cs                 # 表达式字符串
 ├── DAO/                     # DAO实现
-│   ├── AutoLockDataReader.cs         # 自动锁定数据读取器
-│   ├── BulkProviderFactory.cs        # 批量操作提供者工厂
 │   ├── DAOBase.cs                    # DAO基类
+│   ├── DAOExtensions.cs              # DAO扩展
 │   ├── DataDAO.cs                    # 数据DAO（批量更新）
 │   ├── DataViewDAO.cs                # DataTable DAO实现
-│   ├── DbCommandProxy.cs             # 数据库命令代理
-│   ├── IBulkProvider.cs              # 批量操作接口
+│   ├── IDataViewDAO.cs               # 数据视图DAO接口
+│   ├── IObjectDAO.cs                 # 实体DAO接口
+│   ├── IObjectDAOAsync.cs            # 实体DAO异步接口
+│   ├── IObjectViewDAO.cs             # 视图DAO接口
 │   ├── ObjectDAO.cs                  # 实体DAO实现
-│   └── ObjectViewDAO.cs              # 视图DAO实现
+│   ├── ObjectViewDAO.cs              # 视图DAO实现
+│   └── ResultTypes.cs                # 结果类型
 ├── DAOContext/              # DAO上下文
 │   ├── DAOContext.cs                 # DAO上下文
+│   ├── DAOContextExtensions.cs       # DAO上下文扩展
 │   ├── DAOContextPool.cs             # DAO上下文池
-│   └── DAOContextPoolFactory.cs      # DAO上下文池工厂
+│   ├── DAOContextPoolFactory.cs      # DAO上下文池工厂
+│   └── DatabaseSync.cs               # 数据库同步
+├── DbAccess/                # 数据库访问
+│   ├── AutoLockDataReader.cs         # 自动锁定数据读取器
+│   ├── BulkProviderFactory.cs        # 批量操作提供者工厂
+│   ├── DbCommandProxy.cs             # 数据库命令代理
+│   └── IBulkProvider.cs              # 批量操作接口
+├── Initilizer/              # 初始化器
+│   ├── AssemblyAnalyzer.cs           # 程序集分析器，用于扫描实体和服务
+│   ├── LiteOrmCoreInitializer.cs     # LiteOrm核心初始化器
+│   ├── LiteOrmLambdaHandlerInitializer.cs  # Lambda处理器初始化
+│   └── LiteOrmSqlFunctionInitializer.cs   # SQL函数初始化
 ├── Service/                 # 服务实现
 │   ├── EntityService.cs              # 实体服务实现
 │   ├── EntityViewService.cs          # 实体视图服务实现
@@ -357,7 +374,6 @@ LiteOrm/
     ├── SqlBuilder.cs                 # 默认SQL构建器
     ├── SqlBuilderFactory.cs          # SQL构建器工厂
     ├── SqlHandlerMap.cs              # SQL处理器映射
-    ├── SqlHandlerMapExtensions.cs    # SQL处理器映射扩展
     └── SqlServerBuilder.cs           # SQL Server SQL构建器
 
 LiteOrm.Common/
@@ -375,18 +391,9 @@ LiteOrm.Common/
 │   ├── ValueEquality.cs              # 值相等比较器
 │   └── ValueStringBuilder.cs         # 值字符串构建器
 ├── Converter/               # 转换器
-│   ├── DataReaderConverter.cs        # 数据读取器转换器
-│   ├── ExprJsonConverterFactory.cs   # 表达式JSON转换器工厂
-│   ├── ExprSqlConverter.cs           # 表达式SQL转换器
-│   ├── ExprString.cs                 # 表达式字符串
+│   ├── ExprJsonConverter.cs          # 表达式JSON转换器
 │   ├── IExprStringBuildContext.cs    # 表达式字符串构建上下文接口
 │   └── LambdaExprConverter.cs        # Lambda表达式转换器
-├── DAO/                     # 数据访问接口
-│   ├── IDataViewDAO.cs               # 数据视图DAO接口
-│   ├── IObjectDAO.cs                 # 实体DAO接口
-│   ├── IObjectDAOAsync.cs            # 实体DAO异步接口
-│   ├── IObjectViewDAO.cs             # 视图DAO接口
-│   └── ResultTypes.cs                # 结果类型
 ├── Expr/                    # 表达式系统
 ├── MetaData/                # 元数据
 ├── Model/                   # 模型
@@ -405,6 +412,8 @@ LiteOrm.Common/
 │   ├── ISqlBuilderFactory.cs         # SQL构建器工厂接口
 │   └── SqlBuildContext.cs            # SQL构建上下文
 └── SqlSegment/              # SQL片段（Select/Where/OrderBy等）
+
+
 ```
 
 ## 4. 基础定义

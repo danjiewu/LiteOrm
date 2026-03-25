@@ -121,20 +121,21 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `UpdateAsync(T entity, CancellationToken ct = default)`                                                               | `Task<bool>`          |
 | `Delete(T entity)`                                                                                                    | `bool`                |
 | `DeleteAsync(T entity, CancellationToken ct = default)`                                                               | `Task<bool>`          |
-| `Search(Expression<Func<T, bool>> predicate)`                                                                         | `IQueryable<T>`       |
-| `SearchAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default)`                                    | `IAsyncEnumerable<T>` |
-| `Search(Expr<T> expr)`                                                                                                | `IQueryable<T>`       |
-| `SearchAsync(Expr<T> expr, CancellationToken ct = default)`                                                           | `IAsyncEnumerable<T>` |
-| `Search(string exprString)`                                                                                           | `IQueryable<T>`       |
-| `SearchAsync(string exprString, CancellationToken ct = default)`                                                      | `IAsyncEnumerable<T>` |
-| `SearchOne(Expression<Func<T, bool>> predicate)`                                                                      | `T`                   |
-| `SearchOneAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default)`                                 | `Task<T>`             |
-| `GetObject(object id)`                                                                                                | `T`                   |
-| `GetObjectAsync(object id, CancellationToken ct = default)`                                                           | `Task<T>`             |
-| `Count(Expression<Func<T, bool>> predicate)`                                                                          | `int`                 |
-| `CountAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default)`                                     | `Task<int>`           |
-| `Exists(Expression<Func<T, bool>> predicate)`                                                                         | `bool`                |
-| `ExistsAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default)`                                    | `Task<bool>`          |
+| `Delete(object id, params string[] tableArgs)`                                                                         | `bool`                |
+| `DeleteAsync(object id, string[] tableArgs = null, CancellationToken ct = default)`                                   | `Task<bool>`          |
+| `Delete(LogicExpr expr, params string[] tableArgs)`                                                                   | `int`                 |
+| `DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken ct = default)`                               | `Task<int>`           |
+| `BatchInsert(IEnumerable<T> entities)`                                                                                | `void`                |
+| `BatchInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`                                           | `Task`                |
+| `BatchUpdate(IEnumerable<T> entities)`                                                                                | `void`                |
+| `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)`                                           | `Task`                |
+| `BatchDelete(IEnumerable<T> entities)`                                                                                | `void`                |
+| `BatchDeleteAsync(IEnumerable<T> entities, CancellationToken ct = default)`                                           | `Task`                |
+| `BatchDeleteID(IEnumerable ids, CancellationToken ct = default, params string[] tableArgs)`                           | `Task`                |
+| `UpdateOrInsert(T entity)`                                                                                            | `UpdateOrInsertResult` |
+| `UpdateOrInsertAsync(T entity, CancellationToken ct = default)`                                                       | `Task<UpdateOrInsertResult>` |
+| `BatchUpdateOrInsert(IEnumerable<T> entities)`                                                                        | `void`                |
+| `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`                                   | `Task`                |
 | `Delete(Expression<Func<T, bool>> expression, params string[] tableArgs)` *(扩展)*                                      | `int`                 |
 | `DeleteAsync(Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)* | `Task<int>`           |
 
@@ -209,11 +210,12 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 
 | 方法                                                                                                                            | 返回类型                        |
 | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| `Search(Expression<Func<T, bool>> predicate)`                                                                                 | `EnumerableResult<T>`       |
-| `Search(Expr<T> expr)`                                                                                                        | `EnumerableResult<T>`       |
-| `Search(string exprString)`                                                                                                   | `EnumerableResult<T>`       |
+| `Search(Expr expr = null)`                                                                                                    | `EnumerableResult<T>`       |
+| `Search(Expression<Func<IQueryable<T>, IQueryable<T>>> expr)`                                                                  | `EnumerableResult<T>`       |
+| `Search(ref ExprString sqlBody, bool isFull = false)`                                                                          | `EnumerableResult<T>`       |
 | `SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult> readerFunc = null)`                                     | `EnumerableResult<TResult>` |
 | `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)` | `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(ref ExprString sqlBody)`                                                                                    | `EnumerableResult<TResult>` |
 | `GetObject(params object[] keys)`                                                                                             | `EnumerableResult<T>`       |
 | `Count(Expr expr)`                                                                                                            | `ValueResult<int>`          |
 | `Exists(object o)` / `Exists(T o)`                                                                                            | `ValueResult<bool>`         |
@@ -226,9 +228,9 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 
 | 方法                                                             | 返回类型              |
 | -------------------------------------------------------------- | ----------------- |
-| `Search(Expr<T> expr)`                                         | `DataTableResult` |
-| `Search(string[] fields, Expression<Func<T, bool>> predicate)` | `DataTableResult` |
-| `Search(string[] fields, Expr<T> whereExpr)`                   | `DataTableResult` |
+| `Search(Expr expr)`                                            | `DataTableResult` |
+| `Search(string[] propertyNames, Expr expr)`                    | `DataTableResult` |
+| `Search(ref ExprString sqlBody, bool isFull = false)`          | `DataTableResult` |
 
 ## 五、事务
 
@@ -251,7 +253,7 @@ catch { transaction.Rollback(); throw; }
 [Table("Orders_{0}")]
 public class Order : ObjectBase, IArged
 {
-    public object[] GetArgs() => new object[] { UserId % 10 };
+    public string[] GetArgs() => new string[] { (UserId % 10).ToString() };
 }
 ```
 

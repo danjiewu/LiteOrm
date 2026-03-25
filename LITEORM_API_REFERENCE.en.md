@@ -328,28 +328,45 @@ var app = builder.Build();
 ```
 LiteOrm/
 ├── Classes/                 # Core classes
-│   ├── AssemblyAnalyzer.cs           # Assembly analyzer for scanning entities and services
 │   ├── DataSourceProvider.cs         # Data source provider
-│   ├── LiteOrmCoreInitializer.cs     # LiteOrm core initializer
-│   ├── LiteOrmLambdaHandlerInitializer.cs  # Lambda handler initializer
 │   ├── LiteOrmServiceExtensions.cs   # RegisterLiteOrm extension method
-│   ├── LiteOrmSqlFunctionInitializer.cs   # SQL function initializer
-│   ├── SessionManager.cs             # Session manager, handles connections and transactions
+│   └── SessionManager.cs             # Session manager, handles connections and transactions
+├── CodeGen/                 # Code and SQL generation
+│   ├── CSharpGen.cs                  # C# code generator
+│   ├── DdlGen.cs                     # DDL generator
 │   └── SqlGen.cs                     # SQL generator
+├── Converter/               # Converters
+│   ├── DataReaderConverter.cs        # Data reader converter
+│   ├── ExprSqlConverter.cs           # Expression SQL converter
+│   └── ExprString.cs                 # Expression string
 ├── DAO/                     # DAO implementations
-│   ├── AutoLockDataReader.cs         # Auto-lock data reader
-│   ├── BulkProviderFactory.cs        # Bulk operation provider factory
 │   ├── DAOBase.cs                    # DAO base class
+│   ├── DAOExtensions.cs              # DAO extensions
 │   ├── DataDAO.cs                    # Data DAO (batch updates)
 │   ├── DataViewDAO.cs                # DataTable DAO implementation
-│   ├── DbCommandProxy.cs             # Database command proxy
-│   ├── IBulkProvider.cs              # Bulk operation interface
+│   ├── IDataViewDAO.cs               # Data view DAO interface
+│   ├── IObjectDAO.cs                 # Entity DAO interface
+│   ├── IObjectDAOAsync.cs            # Entity DAO async interface
+│   ├── IObjectViewDAO.cs             # View DAO interface
 │   ├── ObjectDAO.cs                  # Entity DAO implementation
-│   └── ObjectViewDAO.cs              # View DAO implementation
+│   ├── ObjectViewDAO.cs              # View DAO implementation
+│   └── ResultTypes.cs                # Result types
 ├── DAOContext/              # DAO context
 │   ├── DAOContext.cs                 # DAO context
+│   ├── DAOContextExtensions.cs       # DAO context extensions
 │   ├── DAOContextPool.cs             # DAO context pool
-│   └── DAOContextPoolFactory.cs      # DAO context pool factory
+│   ├── DAOContextPoolFactory.cs      # DAO context pool factory
+│   └── DatabaseSync.cs               # Database synchronization
+├── DbAccess/                # Database access
+│   ├── AutoLockDataReader.cs         # Auto-lock data reader
+│   ├── BulkProviderFactory.cs        # Bulk operation provider factory
+│   ├── DbCommandProxy.cs             # Database command proxy
+│   └── IBulkProvider.cs              # Bulk operation interface
+├── Initilizer/              # Initializers
+│   ├── AssemblyAnalyzer.cs           # Assembly analyzer for scanning entities and services
+│   ├── LiteOrmCoreInitializer.cs     # LiteOrm core initializer
+│   ├── LiteOrmLambdaHandlerInitializer.cs  # Lambda handler initializer
+│   └── LiteOrmSqlFunctionInitializer.cs   # SQL function initializer
 ├── Service/                 # Service implementations
 │   ├── EntityService.cs              # Entity service implementation
 │   ├── EntityViewService.cs          # Entity view service implementation
@@ -363,7 +380,6 @@ LiteOrm/
     ├── SqlBuilder.cs                 # Default SQL builder
     ├── SqlBuilderFactory.cs          # SQL builder factory
     ├── SqlHandlerMap.cs              # SQL handler map
-    ├── SqlHandlerMapExtensions.cs    # SQL handler map extensions
     └── SqlServerBuilder.cs           # SQL Server SQL builder
 
 LiteOrm.Common/
@@ -381,20 +397,29 @@ LiteOrm.Common/
 │   ├── ValueEquality.cs              # Value equality comparison
 │   └── ValueStringBuilder.cs         # Value string builder
 ├── Converter/               # Converters
-│   ├── DataReaderConverter.cs        # Data reader converter
-│   ├── ExprJsonConverterFactory.cs   # Expression JSON converter factory
-│   ├── ExprSqlConverter.cs           # Expression SQL converter
-│   ├── ExprString.cs                 # Expression string
+│   ├── ExprJsonConverter.cs          # Expression JSON converter
 │   ├── IExprStringBuildContext.cs    # Expression string build context interface
 │   └── LambdaExprConverter.cs        # Lambda expression converter
-├── DAO/                     # Data access interfaces
-│   ├── IDataViewDAO.cs               # Data view DAO interface
-│   ├── IObjectDAO.cs                 # Entity DAO interface
-│   ├── IObjectDAOAsync.cs            # Entity DAO async interface
-│   ├── IObjectViewDAO.cs             # View DAO interface
-│   └── ResultTypes.cs                # Result types
 ├── Expr/                    # Expression system
 ├── MetaData/                # Meta data
+│   ├── AttributeTableInfoProvider.cs # Attribute table info provider
+│   ├── ColumnDefinition.cs           # Column definition
+│   ├── ColumnMode.cs                 # Column mode
+│   ├── ColumnModeExt.cs              # Column mode extensions
+│   ├── ColumnRef.cs                  # Column reference
+│   ├── DataSourceProvider.cs         # Data source provider
+│   ├── DbTypeMap.cs                  # Database type map
+│   ├── ForeignColumn.cs              # Foreign column
+│   ├── ForeignTable.cs               # Foreign table
+│   ├── JoinedTable.cs                # Joined table
+│   ├── SqlColumn.cs                  # SQL column
+│   ├── SqlObject.cs                  # SQL object
+│   ├── SqlObjectExtensions.cs        # SQL object extensions
+│   ├── SqlTable.cs                   # SQL table
+│   ├── TableDefinition.cs            # Table definition
+│   ├── TableInfoProvider.cs          # Table info provider
+│   ├── TableRef.cs                   # Table reference
+│   └── TableView.cs                  # Table view
 ├── Model/                   # Model
 │   ├── Interface.cs                  # Interface definitions
 │   └── ObjectBase.cs                 # Object base class
@@ -411,6 +436,8 @@ LiteOrm.Common/
 │   ├── ISqlBuilderFactory.cs         # SQL builder factory interface
 │   └── SqlBuildContext.cs            # SQL build context
 └── SqlSegment/              # SQL segments (Select/Where/OrderBy, etc.)
+
+
 ```
 
 ---
