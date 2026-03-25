@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -1039,7 +1039,7 @@ namespace LiteOrm.Common
         /// </summary>
         private Expr HandleExists(MethodCallExpression node)
         {
-            if (node.Arguments.Count == 1)
+            if (node.Method.DeclaringType == typeof(Expr) && (node.Method.Name == nameof(Expr.Exists) || node.Method.Name == nameof(Expr.ExistsRelated)) && node.Arguments.Count == 1)
             {
                 Expression lambdaArg = node.Arguments[0];
                 if (lambdaArg is UnaryExpression unaryExpr && unaryExpr.NodeType == ExpressionType.Quote)

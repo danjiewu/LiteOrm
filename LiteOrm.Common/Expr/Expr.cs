@@ -161,7 +161,7 @@ namespace LiteOrm.Common
         /// <returns>外键 EXISTS 表达式。</returns>
         public static bool ExistsRelated<T>(Expression<Func<T, bool>> lambda)
         {
-            throw new InvalidOperationException("The Expr.Exists method is only used for parsing lambda expressions and cannot be called directly.");
+            throw new InvalidOperationException("The Expr.ExistsRelated method is only used for parsing lambda expressions and cannot be called directly.");
         }
 
         /// <summary>

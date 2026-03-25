@@ -109,7 +109,7 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 
 ## 四、API 参考
 
-### EntityService\<T>
+### EntityService<T>
 
 > 以下标注 *(扩展)* 的方法来自 `LambdaExprExtensions`，无需修改服务类即可使用。
 
@@ -138,7 +138,7 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `Delete(Expression<Func<T, bool>> expression, params string[] tableArgs)` *(扩展)*                                      | `int`                 |
 | `DeleteAsync(Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)* | `Task<int>`           |
 
-### IEntityViewService\<TView>（查询，Expr 风格）
+### IEntityViewService<TView>（查询，Expr 风格）
 
 > *(扩展)* 方法来自 `LambdaExprExtensions`。
 
@@ -158,7 +158,7 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `Exists(Expression<Func<TView, bool>> expression, params string[] tableArgs)` *(扩展)*                             | `bool`        |
 | `Count(Expression<Func<TView, bool>> expression, params string[] tableArgs)` *(扩展)*                              | `int`         |
 
-### IEntityViewServiceAsync\<TView>
+### IEntityViewServiceAsync<TView>
 
 | 方法                                                                                                                                                    | 返回类型                |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
@@ -176,7 +176,7 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)*                             | `Task<bool>`        |
 | `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)*                              | `Task<int>`         |
 
-### ObjectDAO\<T>（仅增删改）
+### ObjectDAO<T>（仅增删改）
 
 | 方法                                                                                  | 返回类型                         |
 | ----------------------------------------------------------------------------------- | ---------------------------- |
@@ -203,7 +203,7 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `Delete(LogicExpr expr)`                                                            | `int`                        |
 | `DeleteAsync(LogicExpr expr, CancellationToken ct = default)`                       | `Task<int>`                  |
 
-### ObjectViewDAO\<T>（仅查询）
+### ObjectViewDAO<T>（仅查询）
 
 `EnumerableResult<T>` 支持：`.ToList()` / `.ToListAsync()` / `.FirstOrDefault()` / `.FirstOrDefaultAsync()` / `.GetResult()` / `.GetResultAsync()` / `await foreach`
 
@@ -220,7 +220,7 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `ExistsKey(params object[] keys)`                                                                                             | `ValueResult<bool>`         |
 | `Exists(Expr expr)`                                                                                                           | `ValueResult<bool>`         |
 
-### DataViewDAO\<T>（查询，返回 DataTable）
+### DataViewDAO<T>（查询，返回 DataTable）
 
 `DataTableResult` 支持：`.GetResult()` / `.GetResultAsync()`
 
@@ -315,14 +315,22 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 | `Expr.Const(obj)`                         | `ValueExpr`       | 常量值（内联到 SQL，不参数化）              |
 | `Expr.PropEqual("Name", value)`           | `LogicBinaryExpr` | 属性等于值                          |
 | `Expr.Func("ABS", expr)`                  | `FunctionExpr`    | 函数调用                           |
-| `Expr.Aggregate("SUM", expr, isDistinct)` | `FunctionExpr`    | 聚合函数（IsAggregate=true）         |
+| `Expr.Aggregate("SUM", expr, isDistinct)` | `FunctionExpr` | 聚合函数（IsAggregate=true） |
+| `Expr.Concat(e1, e2)` | `ValueSet` | CONCAT 字符串拼接（扩展方法） |
+| `Expr.Lambda<T>(u => u.Age > 18)` | `LogicExpr` | Lambda 转 Expr |
 | `Expr.From<T>(tableArgs)`                 | `FromExpr`        | 链式查询起点                         |
 | `Expr.Sql("key", arg)`                    | `GenericSqlExpr`  | 动态 SQL 片段                      |
 | `Expr.Delete<T>(tableArgs)`               | `DeleteExpr`      | 创建 DELETE 表达式                  |
 | `Expr.If(condition, thenExpr, elseExpr)`  | `FunctionExpr`    | IF 表达式                         |
 | `Expr.Case(cases, elseExpr)`              | `FunctionExpr`    | CASE 表达式                       |
 | `Expr.Query<T>(expression)`               | `Expr`            | IQueryable Lambda 转 Expr       |
-| `Expr.Query<T, TResult>(expression)`      | `Expr`            | 带返回值的 IQueryable Lambda 转 Expr |
+| `Expr.Query<T, TResult>(expression)` | `Expr` | 带返回值的 IQueryable Lambda 转 Expr |
+| `Expr.Exists<T>(innerExpr, tableArgs)` | `ForeignExpr` | 关联表 EXISTS 查询 |
+| `Expr.Exists(type, innerExpr, tableArgs)` | `ForeignExpr` | 关联表 EXISTS 查询（指定类型） |
+| `Expr.ExistsRelated<T>(innerExpr, tableArgs)` | `ForeignExpr` | 自动关联的 EXISTS 查询 |
+| `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr` | 自动关联的 EXISTS 查询（指定类型） |
+| `Expr.Exists<T>(lambda)` | `bool` | 仅用于 Lambda 表达式中构造 EXISTS 查询（直接调用会抛出异常） |
+| `Expr.ExistsRelated<T>(lambda)` | `bool` | 仅用于 Lambda 表达式中构造自动关联的 EXISTS 查询（直接调用会抛出异常） |
 
 ### 运算符重载
 
@@ -339,7 +347,7 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 | 运算符  | 说明                           |
 | ---- | ---------------------------- |
 | `&`  | AND（左或右为 null 时返回另一侧，适合动态累加） |
-| `\|` | OR                           |
+| `|` | OR                           |
 | `!`  | NOT                          |
 
 ### PropertyExpr 扩展方法
@@ -424,4 +432,3 @@ var result = dao.SearchAs(
         .Select("Id", "UserName")
 ).ToList();
 ```
-
