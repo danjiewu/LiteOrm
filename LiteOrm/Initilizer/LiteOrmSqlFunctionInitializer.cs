@@ -175,8 +175,8 @@ namespace LiteOrm
         }
         private void RegisterSQLiteFunctions()
         {
-            SqlBuilder.Instance.RegisterFunctionSqlHandler("Now", (ref outSql, expr, context, sqlBuilder, outputParams) => outSql.Append("datetime('now', 'localtime')"));
-            SqlBuilder.Instance.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) => outSql.Append("date('now', 'localtime')"));
+            SQLiteBuilder.Instance.RegisterFunctionSqlHandler("Now", (ref outSql, expr, context, sqlBuilder, outputParams) => outSql.Append("datetime('now', 'localtime')"));
+            SQLiteBuilder.Instance.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) => outSql.Append("date('now', 'localtime')"));
 
             SQLiteBuilder.Instance.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>

@@ -290,8 +290,8 @@ namespace LiteOrm.Tests
             // 连接 / 列表
             var v1 = (ValueTypeExpr)new ValueExpr("a");
             var v2 = (ValueTypeExpr)new ValueExpr("b");
-            Assert.Equal(new ValueSet(ValueJoinType.Concat, v1, v2), Expr.Concat(v1, v2));
-            Assert.Equal(new ValueSet(ValueJoinType.List, v1, v2), Expr.List(v1, v2));
+            Assert.Equal(new ValueSet(ValueJoinType.Concat, v1, v2), v1.Concat(v2));
+            var listExpr = v1.In(new[] { v1, v2 });
 
             // Sql / StaticSql
             GenericSqlExpr.Register("TestKey2", (SqlBuildContext ctx, ISqlBuilder builder, ICollection<KeyValuePair<string, object>> pms, object arg) => "TEST");

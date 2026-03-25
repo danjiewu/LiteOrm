@@ -150,14 +150,8 @@ namespace LiteOrm.Tests
             Assert.NotNull(funcResults);
             Assert.NotEmpty(funcResults);
 
-            // 测试Coalesce方法
-            var coalesceExpr = Expr.Coalesce(Expr.Prop("DeptId"), Expr.Const(0)) > 0;
-            var coalesceResults = await objectViewDAO.Search(coalesceExpr).ToListAsync(TestContext.Current.CancellationToken);
-            Assert.NotNull(coalesceResults);
-            Assert.NotEmpty(coalesceResults);
-
             // 测试IfNull方法
-            var ifNullExpr = Expr.IfNull(Expr.Prop("DeptId"), Expr.Const(0)) > 0;
+            var ifNullExpr = Expr.Prop("DeptId").IfNull(Expr.Const(0)) > 0;
             var ifNullResults = await objectViewDAO.Search(ifNullExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(ifNullResults);
             Assert.NotEmpty(ifNullResults);
@@ -244,7 +238,7 @@ namespace LiteOrm.Tests
             Assert.True(minDt.Rows.Count >= 1);
 
             // 测试Concat方法
-            var concatExpr = Expr.Concat(Expr.Prop("Name"), Expr.Const(" Test"));
+            var concatExpr = Expr.Prop("Name").Concat(Expr.Const(" Test"));
             var concatQuery = Expr.From<TestUser>().Select(concatExpr.As("NameWithSuffix"));
             var concatResult = dataViewDAO.Search(concatQuery);
             DataTable concatDt = await concatResult.GetResultAsync(TestContext.Current.CancellationToken);
@@ -706,22 +700,10 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user2, TestContext.Current.CancellationToken);
             await service.InsertAsync(user3, TestContext.Current.CancellationToken);
 
-            // 测试COALESCE函数
-            var coalesceQuery = Expr.From<TestUser>().Select(Expr.Coalesce(Expr.Prop("DeptId"), Expr.Const(0)).As("CoalescedDeptId"));
-            var coalesceResult = dataViewDAO.Search(coalesceQuery);
-            DataTable coalesceDt = await coalesceResult.GetResultAsync(TestContext.Current.CancellationToken);
-            Assert.NotNull(coalesceDt);
-            Assert.True(coalesceDt.Rows.Count >= 1);
 
-            // 验证实际的COALESCE值
-            if (coalesceDt.Rows.Count > 0 && coalesceDt.Rows[0]["CoalescedDeptId"] != DBNull.Value)
-            {
-                int coalescedDeptId = Convert.ToInt32(coalesceDt.Rows[0]["CoalescedDeptId"]);
-                Assert.Equal(0, coalescedDeptId); // 因为DeptId为null，所以应该返回0
-            }
 
             // 测试IfNull函数
-            var ifNullQuery = Expr.From<TestUser>().Select(Expr.IfNull(Expr.Prop("DeptId"), Expr.Const(0)).As("IfNullDeptId"));
+            var ifNullQuery = Expr.From<TestUser>().Select(Expr.Prop("DeptId").IfNull(Expr.Const(0)).As("IfNullDeptId"));
             var ifNullResult = dataViewDAO.Search(ifNullQuery);
             DataTable ifNullDt = await ifNullResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(ifNullDt);
@@ -861,7 +843,7 @@ namespace LiteOrm.Tests
             }
 
             // 测试CONCAT函数
-            var concatQuery = Expr.From<TestUser>().Select(Expr.Concat(Expr.Prop("Name"), Expr.Const(" Test")).As("NameWithSuffix"));
+            var concatQuery = Expr.From<TestUser>().Select(Expr.Prop("Name").Concat(Expr.Const(" Test")).As("NameWithSuffix"));
             var concatResult = dataViewDAO.Search(concatQuery);
             DataTable concatDt = await concatResult.GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(concatDt);

@@ -496,7 +496,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(userNoDept, TestContext.Current.CancellationToken);
 
             // NOT ExistsRelated：返回没有关联 IT 部门的用户
-            var expr = Expr.Not(Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ERNot_IT"));
+            var expr = !Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ERNot_IT");
             var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
