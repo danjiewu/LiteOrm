@@ -53,7 +53,7 @@ namespace LiteOrm
         private readonly LinkedList<string> _sqlStack = new LinkedList<string>();
         private string _currentTransactionId;
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
-        private static readonly AsyncLocal<SessionManager> _currentAsyncLocal = new AsyncLocal<SessionManager>();
+        private static readonly AsyncLocal<Lazy<SessionManager>> _currentAsyncLocal = new AsyncLocal<Lazy<SessionManager>>();
 
         /// <summary>
         /// 唯一会话ID
@@ -61,12 +61,21 @@ namespace LiteOrm
         public string SessionID { get; } = Guid.NewGuid().ToString("N").Substring(0, 8);
 
         /// <summary>
-        /// 当前异步上下文的会话管理器
+        /// 当前异步上下文的会话管理器（缓加载，首次访问时才从容器解析）
         /// </summary>
         public static SessionManager Current
         {
-            get => _currentAsyncLocal.Value;
-            set => _currentAsyncLocal.Value = value;
+            get => _currentAsyncLocal.Value?.Value;
+            set => _currentAsyncLocal.Value = value is null ? null : new Lazy<SessionManager>(() => value);
+        }
+
+        /// <summary>
+        /// 为当前异步上下文设置缓加载的会话管理器工厂，首次访问 <see cref="Current"/> 时才调用 <paramref name="factory"/> 解析实例
+        /// </summary>
+        /// <param name="factory">返回 <see cref="SessionManager"/> 实例的工厂委托；传入 null 时清空当前上下文</param>
+        public static void SetCurrentFactory(Func<SessionManager> factory)
+        {
+            _currentAsyncLocal.Value = factory is null ? null : new Lazy<SessionManager>(factory);
         }
 
         /// <summary>

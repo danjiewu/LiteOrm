@@ -189,24 +189,31 @@ namespace LiteOrm
         {
             scope.ChildLifetimeScopeBeginning += (sender, e) =>
             {
-                try
-                {
-                    SessionManager.Current = e.LifetimeScope.Resolve<SessionManager>();
-                }
-                catch (Exception ex)
-                {
-                    throw new InvalidOperationException("Failed to resolve SessionManager when LiteOrm Scope begins", ex);
-                }
-                e.LifetimeScope.CurrentScopeEnding += (s, args) =>
+                var childScope = e.LifetimeScope;
+                SessionManager.SetCurrentFactory(() =>
                 {
                     try
                     {
-                        SessionManager.Current = scope.Resolve<SessionManager>();
+                        return childScope.Resolve<SessionManager>();
                     }
                     catch (Exception ex)
                     {
-                        throw new InvalidOperationException("Failed to restore SessionManager when LiteOrm Scope ends", ex);
+                        throw new InvalidOperationException("Failed to resolve SessionManager when LiteOrm Scope begins", ex);
                     }
+                });
+                e.LifetimeScope.CurrentScopeEnding += (s, args) =>
+                {
+                    SessionManager.SetCurrentFactory(() =>
+                    {
+                        try
+                        {
+                            return scope.Resolve<SessionManager>();
+                        }
+                        catch (Exception ex)
+                        {
+                            throw new InvalidOperationException("Failed to restore SessionManager when LiteOrm Scope ends", ex);
+                        }
+                    });
                 };
                 RegisterScope(e.LifetimeScope);
             };
