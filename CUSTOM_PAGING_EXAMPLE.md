@@ -187,7 +187,7 @@ var pageResult = await userService.SearchAsync(
 var users = await objectViewDAO.Search(
     Expr.From<User>()
         .Where(u => u.Status == 1)
-        .OrderBy(u => u.Id)
+        .OrderBy(nameof(User.Id))
         .Section(10, 20) // 跳过10条，取20条
 ).ToListAsync();
 ```
@@ -197,7 +197,7 @@ var users = await objectViewDAO.Search(
 ```csharp
 var query = Expr.From<User>()
     .Where(Expr.Prop("Age") > 18 & Expr.Prop("Status").In(1, 2, 3))
-    .OrderByDescending(Expr.Prop("CreateTime"))
+    .OrderByDescending("CreateTime")
     .Section(0, 10); // 第一页，10条记录
 
 var result = await userService.SearchAsync(query);

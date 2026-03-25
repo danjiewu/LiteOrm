@@ -1,4 +1,4 @@
-# LiteOrm API 使用指南（面向 AI）
+# LiteOrm API 使用指南（AI适用）
 
 ## 一、配置与注册
 

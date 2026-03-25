@@ -136,10 +136,10 @@ namespace LiteOrm.Demo.Demos
                     "对 ExistsRelated 取反，生成 NOT EXISTS 子查询。");
 
                 DemoHelper.PrintSection("📝 代码实现",
-                    "var expr = Not(ExistsRelated<DepartmentView>(Prop(\"Name\").StartsWith(\"研\")));\n" +
+                    "var expr = ExistsRelated<DepartmentView>(Prop(\"Name\").StartsWith(\"研\")).Not();\n" +
                     "var results = await userSvc.SearchAsync(expr);");
 
-                var expr = Not(ExistsRelated<DepartmentView>(Prop("Name").StartsWith("研")));
+                var expr = ExistsRelated<DepartmentView>(Prop("Name").StartsWith("研")).Not();
                 var results = await userSvc.SearchAsync(expr);
 
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
