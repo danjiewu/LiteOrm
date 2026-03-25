@@ -86,7 +86,7 @@ namespace LiteOrm
         /// </summary>
         public override string BuildBatchIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
         {
-            return $"{BuildBatchInsertSql(tableName, columns, valuesList)}; SELECT LAST_INSERT_ROWID() - ({valuesList.Count - 1}) AS [ID];";
+            return $"{BuildBatchInsertSql(tableName, columns, valuesList)}; SELECT LAST_INSERT_ROWID() - ({valuesList.Count - 1}) * {identityColumn.IdentityIncreasement} AS [ID];";
         }
 
         /// <summary>

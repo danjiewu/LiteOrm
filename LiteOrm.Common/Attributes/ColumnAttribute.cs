@@ -65,6 +65,11 @@ namespace LiteOrm.Common
         public bool IsIdentity { get; set; }
 
         /// <summary>
+        /// 获取或设置标识列（自增）的增量值。
+        /// </summary>
+        public int IdentityIncreasement { get; set; } = 1;
+
+        /// <summary>
         /// 获取或设置一个值，该值指示该列是否为时间戳列。
         /// </summary>
         public bool IsTimestamp { get; set; }
@@ -98,7 +103,7 @@ namespace LiteOrm.Common
         /// 获取或设置一个值，该值指示该列是否允许为空。
         /// </summary>
         public bool AllowNull { get; set; }
-        
+
         /// <summary>
         /// 获取或设置列的默认值，可以是一个常量值或一个数据库函数表达式。
         /// </summary>

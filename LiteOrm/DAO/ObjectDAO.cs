@@ -346,7 +346,8 @@ namespace LiteOrm
             int count = batch.Count;
             for (int i = 0; i < count; i++)
             {
-                IdentityColumn.SetValue(batch[i], ConvertFromDbValue(firstId++, IdentityColumn.PropertyType));
+                IdentityColumn.SetValue(batch[i], ConvertFromDbValue(firstId, IdentityColumn.PropertyType));
+                firstId += IdentityColumn.IdentityIncreasement;
             }
         }
 
@@ -508,12 +509,13 @@ namespace LiteOrm
                 long nextManualId = 0;
                 bool idExists = false;
                 var batch = new List<T>(batchSize);
+                int increasement = IdentityColumn != null ? IdentityColumn.IdentityIncreasement : 0;
                 foreach (var item in values)
                 {
                     if (!idExists && IdentityColumn is not null && !SqlBuilder.SupportBatchInsertWithIdentity)
                     {
                         Insert(item);
-                        nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)) + 1;
+                        nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)) + increasement;
                         idExists = true;
                         continue;
                     }
