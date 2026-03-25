@@ -154,6 +154,17 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 创建外键 EXISTS 表达式，并自动根据当前查询上下文推断关联关系。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// </summary>
+        /// <typeparam name="T">关联外部实体的类型</typeparam>
+        /// <param name="lambda">针对关联表的过滤条件表达式。</param>
+        /// <returns>外键 EXISTS 表达式。</returns>
+        public static bool ExistsRelated<T>(Expression<Func<T, bool>> lambda)
+        {
+            throw new InvalidOperationException("The Expr.Exists method is only used for parsing lambda expressions and cannot be called directly.");
+        }
+
+        /// <summary>
         /// 创建一个属性等于值的二元表达式。
         /// </summary>
         /// <param name="propertyName">属性名称。</param>
@@ -271,34 +282,12 @@ namespace LiteOrm.Common
         public static ValueExpr Value(object value) => new ValueExpr(value);
 
         /// <summary>
-        /// 创建逻辑取反(NOT)表达式。
-        /// </summary>
-        /// <param name="expr">要取反的逻辑表达式。</param>
-        /// <returns>逻辑取反表达式。</returns>
-        public static NotExpr Not(LogicExpr expr) => new NotExpr(expr);
-
-        /// <summary>
         /// 创建函数调用表达式。
         /// </summary>
         /// <param name="name">函数名称。</param>
         /// <param name="args">函数参数列表。</param>
         /// <returns>函数调用表达式。</returns>
         public static FunctionExpr Func(string name, params ValueTypeExpr[] args) => new FunctionExpr(name, args);
-
-        /// <summary>
-        /// 创建 COALESCE 函数表达式，返回参数列表中第一个非 NULL 的值。
-        /// </summary>
-        /// <param name="args">候选值表达式列表。</param>
-        /// <returns>COALESCE 函数表达式。</returns>
-        public static FunctionExpr Coalesce(params ValueTypeExpr[] args) => new FunctionExpr("COALESCE", args);
-
-        /// <summary>
-        /// 创建 IfNull 函数表达式，当 <paramref name="expr"/> 为 NULL 时返回 <paramref name="defaultValue"/>。
-        /// </summary>
-        /// <param name="expr">待检测的值表达式。</param>
-        /// <param name="defaultValue">为 NULL 时的替代值表达式。</param>
-        /// <returns>IfNull 函数表达式。</returns>
-        public static FunctionExpr IfNull(ValueTypeExpr expr, ValueTypeExpr defaultValue) => new FunctionExpr("IfNull", expr, defaultValue);
 
         /// <summary>
         /// 创建简单条件表达式，等价于 CASE WHEN <paramref name="condition"/> THEN <paramref name="thenExpr"/> ELSE <paramref name="elseExpr"/> END。
@@ -343,7 +332,6 @@ namespace LiteOrm.Common
             return caseExpr;
         }
 
-
         /// <summary>
         /// 创建聚合函数表达式（如 COUNT、SUM、AVG 等）。
         /// </summary>
@@ -352,20 +340,6 @@ namespace LiteOrm.Common
         /// <param name="isDistinct">是否对目标表达式去重，默认为 false。</param>
         /// <returns>聚合函数表达式。</returns>
         public static FunctionExpr Aggregate(string name, ValueTypeExpr expression, bool isDistinct = false) => new FunctionExpr(name, isDistinct ? expression.Distinct() : expression) { IsAggregate = true };
-
-        /// <summary>
-        /// 创建字符串拼接表达式集合（CONCAT）。
-        /// </summary>
-        /// <param name="exprs">要拼接的值表达式数组。</param>
-        /// <returns>字符串拼接值集合表达式。</returns>
-        public static ValueSet Concat(params ValueTypeExpr[] exprs) => new ValueSet(ValueJoinType.Concat, exprs);
-
-        /// <summary>
-        /// 创建值列表表达式集合，通常用于 IN 查询。
-        /// </summary>
-        /// <param name="exprs">列表中的值表达式数组。</param>
-        /// <returns>值列表集合表达式。</returns>
-        public static ValueSet List(params ValueTypeExpr[] exprs) => new ValueSet(ValueJoinType.List, exprs);
 
         /// <summary>
         /// 创建动态 SQL 表达式（支持运行时替换或参数化局内值）。

@@ -584,7 +584,7 @@ namespace LiteOrm.Common
                     case "Select": return HandleSelect(node);
                 }
             }
-            if (type == typeof(Expr) && node.Method.Name == "Exists")
+            if (type == typeof(Expr) && (node.Method.Name == "Exists" || node.Method.Name == "ExistsRelated"))
             {
                 return HandleExists(node);
             }
@@ -1039,7 +1039,7 @@ namespace LiteOrm.Common
         /// </summary>
         private Expr HandleExists(MethodCallExpression node)
         {
-            if (node.Method.Name == "Exists" && node.Arguments.Count == 1)
+            if (node.Arguments.Count == 1)
             {
                 Expression lambdaArg = node.Arguments[0];
                 if (lambdaArg is UnaryExpression unaryExpr && unaryExpr.NodeType == ExpressionType.Quote)
@@ -1065,6 +1065,7 @@ namespace LiteOrm.Common
                     _parameterExprs.Remove(parameter.Name);
                     _parameterAliases.Remove(parameter.Name);
                     _currentAlias = lastAlias;
+                    if(node.Method.Name == nameof(Expr.ExistsRelated)) foreignExpr.AutoRelated = true;
                     return foreignExpr;
                 }
             }

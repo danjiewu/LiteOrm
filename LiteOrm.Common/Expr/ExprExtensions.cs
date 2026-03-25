@@ -365,6 +365,14 @@ namespace LiteOrm.Common
         public static LogicBinaryExpr IsNull(this ValueTypeExpr left) => new LogicBinaryExpr(left, LogicOperator.Equal, Expr.Null);
 
         /// <summary>
+        /// 创建 IfNull 函数表达式，当 <paramref name="expr"/> 为 NULL 时返回 <paramref name="defaultValue"/>。
+        /// </summary>
+        /// <param name="expr">待检测的值表达式。</param>
+        /// <param name="defaultValue">为 NULL 时的替代值表达式。</param>
+        /// <returns>IfNull 函数表达式。</returns>
+        public static FunctionExpr IfNull(this ValueTypeExpr expr, ValueTypeExpr defaultValue) => new FunctionExpr("IfNull", expr, defaultValue);
+
+        /// <summary>
         /// 创建 IS NOT NULL 表达式。
         /// </summary>
         /// <param name="left">左侧值表达式。</param>
