@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Data;
+using LiteOrm.Common;
 
 namespace LiteOrm.Service
 {
@@ -21,9 +21,9 @@ namespace LiteOrm.Service
         public string MethodName { get; set; }
 
         /// <summary>
-        /// 日志级别，默认为Debug
+        /// 日志级别，默认为Information
         /// </summary>
-        public LogLevel LogLevel { get; set; } = LogLevel.Debug;
+        public ServiceLogLevel LogLevel { get; set; } = ServiceLogLevel.Information;
 
         /// <summary>
         /// 日志格式，默认为Full

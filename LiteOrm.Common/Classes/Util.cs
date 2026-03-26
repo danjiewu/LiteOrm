@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
 
@@ -112,16 +111,11 @@ namespace LiteOrm
             ConcurrentDictionary<string, Enum> nameValues = new ConcurrentDictionary<string, Enum>();
             foreach (FieldInfo field in enumType.GetFields(BindingFlags.Public | BindingFlags.Static))
             {
-                object[] displayAttrs = field.GetCustomAttributes(typeof(DisplayAttribute), true);
+                object[] displayAttrs = field.GetCustomAttributes(typeof(Enum), true);
                 object[] displayNameAttrs = field.GetCustomAttributes(typeof(DisplayNameAttribute), true);
                 object[] descriptionAtts = field.GetCustomAttributes(typeof(DescriptionAttribute), true);
                 string displayName = null;
-                if (displayAttrs.Length > 0)
-                {
-                    DisplayAttribute att = (DisplayAttribute)displayAttrs[0];
-                    displayName = att.Name ?? field.Name;
-                }
-                else if (displayNameAttrs.Length > 0)
+                if (displayNameAttrs.Length > 0)
                 {
                     DisplayNameAttribute att = (DisplayNameAttribute)displayNameAttrs[0];
                     displayName = att.DisplayName ?? field.Name;

@@ -159,10 +159,9 @@ namespace LiteOrm
 
             /// <summary>
             /// 日志工厂，用于记录服务注册过程中的程序集扫描日志（可选）。
-            /// 默认为控制台输出，最低级别为 <see cref="LogLevel.Information"/>。
+            /// 默认为控制台输出，最低级别为 <see cref="ServiceLogLevel.Information"/>。
             /// </summary>
-            public ILoggerFactory LoggerFactory { get; set; } = Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
-                b.AddConsole().SetMinimumLevel(LogLevel.Information));
+            public ILoggerFactory LoggerFactory { get; set; }
 
             /// <summary>
             /// 注册自定义SqlBuilder（按数据源名称）
@@ -296,7 +295,7 @@ namespace LiteOrm
                         "Registering {Kind} service '{Type}' [Lifetime={Lifetime}, AutoActivate={AutoActivate}]",
                         t.IsGenericTypeDefinition ? "generic" : "regular",
                         t.FullName,
-                        attr?.Lifetime ?? ServiceLifetime.Scoped,
+                        attr?.Lifetime ?? Lifetime.Scoped,
                         attr?.AutoActivate ?? false);
                     RegisterTypeWithInterception(builder, t);
                 }
@@ -342,7 +341,7 @@ namespace LiteOrm
            Type implementationType) where TActivatorData : ReflectionActivatorData
         {
             var attribute = implementationType.GetCustomAttribute<AutoRegisterAttribute>(true);
-            ServiceLifetime lifetime = attribute?.Lifetime ?? ServiceLifetime.Scoped;
+            Lifetime lifetime = attribute?.Lifetime ?? Lifetime.Scoped;
             List<Type> serviceTypes = new List<Type>();
 
             // 若特性指定了ServiceTypes，直接使用
@@ -415,13 +414,13 @@ namespace LiteOrm
         /// <returns>配置后的注册构建器</returns>
         public static IRegistrationBuilder<TLimit, TActivatorData, TRegistrationStyle> SetLifetime<TLimit, TActivatorData, TRegistrationStyle>(
            this IRegistrationBuilder<TLimit, TActivatorData, TRegistrationStyle> registration,
-           ServiceLifetime lifetime)
+           Lifetime lifetime)
         {
             return lifetime switch
             {
-                ServiceLifetime.Singleton => registration.SingleInstance(),
-                ServiceLifetime.Scoped => registration.InstancePerLifetimeScope(),
-                ServiceLifetime.Transient => registration.InstancePerDependency(),
+                Lifetime.Singleton => registration.SingleInstance(),
+                Lifetime.Scoped => registration.InstancePerLifetimeScope(),
+                Lifetime.Transient => registration.InstancePerDependency(),
                 _ => throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null)
             };
         }
@@ -435,12 +434,18 @@ namespace LiteOrm
         /// <returns>返回修改后的服务集合以支持链式调用。</returns>
         public static IServiceCollection AddServiceGenerator<TService>(
             this IServiceCollection services,
-            ServiceLifetime lifetime = ServiceLifetime.Scoped)
+            Lifetime lifetime = Lifetime.Scoped)
             where TService : class
         {
+            var lifetimeDescriptor = lifetime switch
+            {
+                Lifetime.Singleton => ServiceLifetime.Singleton,
+                Lifetime.Scoped => ServiceLifetime.Scoped,
+                Lifetime.Transient => ServiceLifetime.Transient
+            };
             var serviceDescriptor = new ServiceDescriptor(typeof(TService),
                 sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget<TService>(sp.GetRequiredService<ServiceGenerateInterceptor>()),
-                lifetime);
+                lifetimeDescriptor);
             services.Add(serviceDescriptor);
             return services;
         }

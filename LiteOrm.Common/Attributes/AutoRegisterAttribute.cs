@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System;
+﻿using System;
 
 namespace LiteOrm.Common
 {
@@ -12,7 +11,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 服务生命周期，默认为Transient
         /// </summary>
-        public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Singleton;
+        public Lifetime Lifetime { get; set; } = Lifetime.Singleton;
 
         /// <summary>
         /// 支持多个服务类型
@@ -49,7 +48,7 @@ namespace LiteOrm.Common
         /// 构造函数，指定服务生命周期
         /// </summary>
         /// <param name="lifetime">服务生命周期</param>
-        public AutoRegisterAttribute(ServiceLifetime lifetime) => Lifetime = lifetime;
+        public AutoRegisterAttribute(Lifetime lifetime) => Lifetime = lifetime;
 
         /// <summary>
         /// 构造函数，指定服务类型
@@ -62,10 +61,17 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="lifetime">服务生命周期</param>
         /// <param name="serviceTypes">服务类型数组</param>
-        public AutoRegisterAttribute(ServiceLifetime lifetime, params Type[] serviceTypes)
+        public AutoRegisterAttribute(Lifetime lifetime, params Type[] serviceTypes)
         {
             Lifetime = lifetime;
             ServiceTypes = serviceTypes;
         }
+    }
+
+    public enum Lifetime
+    {
+        Singleton,
+        Scoped,
+        Transient
     }
 }

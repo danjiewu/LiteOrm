@@ -105,6 +105,14 @@ namespace LiteOrm.Common
         public string ConnectionString { get; set; }
 
         /// <summary>
+        /// 数据库提供程序类型全名
+        /// </summary>
+        public string Provider { get; set; }
+        /// <summary>
+        /// SQL 构建器类型全名（可选，如果不指定则根据 Provider 自动匹配）
+        /// </summary>
+        public string SqlBuilder { get; set; }
+        /// <summary>
         /// 连接保活时长（可选，不设置则使用主库配置）
         /// </summary>
         public TimeSpan? KeepAliveDuration { get; set; }

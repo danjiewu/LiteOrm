@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 
 namespace LiteOrm
 {
@@ -12,12 +11,12 @@ namespace LiteOrm
         /// <summary>
         /// 默认构造函数，设置日志级别为Information，日志格式为Full
         /// </summary>
-        public ServiceLogAttribute() { LogLevel = LogLevel.Information; LogFormat = LogFormat.Full; }
+        public ServiceLogAttribute() { LogLevel = ServiceLogLevel.Information; LogFormat = LogFormat.Full; }
 
         /// <summary>
         /// 日志级别
         /// </summary>
-        public LogLevel LogLevel { get; set; }
+        public ServiceLogLevel LogLevel { get; set; }
 
         /// <summary>
         /// 日志格式
@@ -50,5 +49,15 @@ namespace LiteOrm
         /// 记录完整的调用信息（参数和返回值）
         /// </summary>
         Full = Args | ReturnValue
+    }
+    public enum ServiceLogLevel
+    {
+        Trace,
+        Debug,
+        Information,
+        Warning,
+        Error,
+        Critical,
+        None
     }
 }

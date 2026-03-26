@@ -59,7 +59,7 @@ namespace LiteOrm.Service
     /// }
     /// </code>
     /// </remarks>
-    [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
+    [AutoRegister(Lifetime = Lifetime.Singleton)]
     public class ServiceInvokeInterceptor : IInterceptor, IAsyncInterceptor
     {
         private readonly ConcurrentDictionary<MethodInfo, ServiceDescription> _methodDescriptions = new();
@@ -329,12 +329,12 @@ namespace LiteOrm.Service
         protected virtual void LogBeforeInvoke(IInvocation invocation)
         {
             var serviceDesc = GetDescription(invocation);
-            if (_logger.IsEnabled(serviceDesc.LogLevel))
+            if (_logger.IsEnabled((LogLevel)serviceDesc.LogLevel))
             {
                 var argsLog = (serviceDesc.LogFormat & LogFormat.Args) == LogFormat.Args
                     ? Util.GetLogString(GetLogArgs(invocation)) : null;
 
-                _logger.Log(serviceDesc.LogLevel,
+                _logger.Log((LogLevel)serviceDesc.LogLevel,
                     "[{SessionID}]<Invoke>{Service}.{Method}({Args})", SessionManager.Current?.SessionID,
                     serviceDesc.ServiceName, serviceDesc.MethodName, argsLog);
             }
@@ -349,11 +349,11 @@ namespace LiteOrm.Service
         protected virtual void LogAfterInvoke(IInvocation invocation, object result, TimeSpan elapsedTime)
         {
             var serviceDesc = GetDescription(invocation);
-            if (_logger.IsEnabled(serviceDesc.LogLevel))
+            if (_logger.IsEnabled((LogLevel)serviceDesc.LogLevel))
             {
                 var returnLog = (serviceDesc.LogFormat & LogFormat.ReturnValue) == LogFormat.ReturnValue
                 ? Util.GetLogString(result, 0) : null;
-                _logger.Log(serviceDesc.LogLevel,
+                _logger.Log((LogLevel)serviceDesc.LogLevel,
                     "[{SessionID}]<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
                      SessionManager.Current?.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
                     elapsedTime.TotalSeconds, returnLog);
@@ -505,7 +505,7 @@ namespace LiteOrm.Service
     /// <summary>
     ///  动态服务生成
     /// </summary>
-    [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
+    [AutoRegister(Lifetime = Lifetime.Singleton)]
     public class ServiceFactoryInterceptor : IInterceptor
     {
         /// <summary>

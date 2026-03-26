@@ -1,5 +1,4 @@
 using LiteOrm.Common;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -56,7 +55,7 @@ namespace LiteOrm.Service
     /// <typeparam name="T">实体类型</typeparam>
     [Service]
     [ServicePermission(false)]
-    [ServiceLog(LogLevel = LogLevel.Information)]
+    [ServiceLog(LogLevel = ServiceLogLevel.Information)]
     public interface IEntityService<T> : IEntityService
     {
         /// <summary>
@@ -126,6 +125,7 @@ namespace LiteOrm.Service
     /// <summary>
     /// 非泛型实体更改基接口，定义对任意实体类型的增删改操作
     /// </summary>
+    [Service]
     [ServicePermission(false)]
     [AutoRegister(false)]
     public interface IEntityService

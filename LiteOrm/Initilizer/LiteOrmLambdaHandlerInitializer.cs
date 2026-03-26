@@ -11,7 +11,7 @@ namespace LiteOrm
     /// <summary>
     /// LiteOrm Lambda 处理器初始化器，负责注册 Lambda 表达式到 Expr 对象的转换句柄。
     /// </summary>
-    [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
+    [AutoRegister(Lifetime = Lifetime.Singleton)]
     public class LiteOrmLambdaHandlerInitializer : IStartable
     {
         /// <summary>

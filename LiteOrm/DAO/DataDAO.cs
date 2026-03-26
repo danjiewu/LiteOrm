@@ -11,7 +11,7 @@ namespace LiteOrm
     /// 提供针对数据的基本更新操作实现
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    [AutoRegister(ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime.Scoped)]
     public class DataDAO<T> : DAOBase
     {
         /// <summary>

@@ -10,7 +10,7 @@ namespace LiteOrm
     /// <summary>
     /// 批量插入提供程序工厂
     /// </summary>
-    [AutoRegister(ServiceLifetime.Singleton)]
+    [AutoRegister(Lifetime.Singleton)]
     public class BulkProviderFactory
     {
         private readonly IIndex<Type, IBulkProvider> _keyedProviders;
@@ -40,7 +40,7 @@ namespace LiteOrm
             if (!typeof(IDbConnection).IsAssignableFrom(dbConnectionType))
                 throw new ArgumentException($"Type must implement IDbConnection: {dbConnectionType.Name}");
 
-            // 1. 尝试直接查找
+            // 尝试直接查找
             if (_keyedProviders.TryGetValue(dbConnectionType, out var provider))
             {
                 return provider;

@@ -54,7 +54,7 @@ namespace LiteOrm
     /// var mysqlConfig = provider.GetDataSource(\"MySqlConnection\");
     /// </code>
     /// </remarks>
-    [AutoRegister(ServiceLifetime.Singleton)]
+    [AutoRegister(Lifetime.Singleton)]
     public class DataSourceProvider : IDataSourceProvider
     {
         /// <summary>
@@ -115,7 +115,42 @@ namespace LiteOrm
             DefaultDataSourceName = configuration["Default"];
 
             // 从配置节点中读取 "DataSources" 节并映射为 DataSourceConfig 列表
-            var connections = configuration.GetSection("DataSources").Get<List<DataSourceConfig>>();
+            var dataSourcesSection = configuration.GetSection("DataSources");
+            var connections = new List<DataSourceConfig>();
+
+            foreach (var section in dataSourcesSection.GetChildren())
+            {
+                var config = new DataSourceConfig
+                {
+                    Name = section["Name"],
+                    ConnectionString = section["ConnectionString"],
+                    Provider = section["Provider"],
+                    SqlBuilder = section["SqlBuilder"]
+                };
+
+                if (int.TryParse(section["PoolSize"], out var poolSize)) config.PoolSize = poolSize;
+                if (int.TryParse(section["MaxPoolSize"], out var maxPoolSize)) config.MaxPoolSize = maxPoolSize;
+                if (int.TryParse(section["ParamCountLimit"], out var paramLimit)) config.ParamCountLimit = paramLimit;
+                if (bool.TryParse(section["SyncTable"], out var syncTable)) config.SyncTable = syncTable;
+                if (TimeSpan.TryParse(section["KeepAliveDuration"], out var keepAlive)) config.KeepAliveDuration = keepAlive;
+
+                foreach (var readOnlySection in section.GetSection("ReadOnlyConfigs").GetChildren())
+                {
+                    var readOnlyConfig = new ReadOnlyDataSourceConfig
+                    {
+                        ConnectionString = readOnlySection["ConnectionString"],
+                        Provider = readOnlySection["Provider"],
+                        SqlBuilder = readOnlySection["SqlBuilder"],
+                        PoolSize = int.TryParse(readOnlySection["PoolSize"], out var roPoolSize) ? roPoolSize : config.PoolSize,
+                        MaxPoolSize = int.TryParse(readOnlySection["MaxPoolSize"], out var roMaxPoolSize) ? roMaxPoolSize : config.MaxPoolSize,
+                        ParamCountLimit = int.TryParse(readOnlySection["ParamCountLimit"], out var roParamLimit) ? roParamLimit : config.ParamCountLimit,
+                        KeepAliveDuration = TimeSpan.TryParse(readOnlySection["KeepAliveDuration"], out var roKeepAlive) ? roKeepAlive : config.KeepAliveDuration
+                    };
+                    config.ReadOnlyConfigs ??= new List<ReadOnlyDataSourceConfig>();
+                    config.ReadOnlyConfigs.Add(readOnlyConfig);
+                }
+                connections.Add(config);
+            }
 
             // 如果配置中定义了有效的数据源集合，则更新内部缓存
             if (connections != null && connections.Any())

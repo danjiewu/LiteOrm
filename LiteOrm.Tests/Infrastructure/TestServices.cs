@@ -23,7 +23,7 @@ namespace LiteOrm.Tests.Infrastructure
     /// <summary>
     /// 测试用户服务的具体实现类，提供了获取最新用户的业务逻辑实现。
     /// </summary>
-    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class TestUserService : EntityService<TestUser>, ITestUserService
     {
         public async Task<TestUser?> GetLatestUserAsync()
@@ -37,7 +37,7 @@ namespace LiteOrm.Tests.Infrastructure
     /// <summary>
     /// 提供测试部门服务的具体实现类，目前没有额外的业务逻辑，仅继承自 EntityService 来提供基本的数据访问功能。
     /// </summary>
-    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class TestDepartmentService : EntityService<TestDepartment>, ITestDepartmentService
     {
     }

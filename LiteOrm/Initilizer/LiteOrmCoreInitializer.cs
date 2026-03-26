@@ -18,7 +18,7 @@ namespace LiteOrm
     /// 2. 初始化全局的表信息提供者 (TableInfoProvider)
     /// 3. 自动同步数据库表结构（创建表、添加列、创建索引）
     /// </summary>
-    [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
+    [AutoRegister(Lifetime = Lifetime.Singleton)]
     public class LiteOrmCoreInitializer : IStartable
     {
         private readonly SessionManager _sessionManager;

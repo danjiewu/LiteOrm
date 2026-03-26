@@ -15,8 +15,15 @@
 		<PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
-		<PackageReleaseNotes>新增ExistsRelated方法;
-    优化SQL生成增加缩进</PackageReleaseNotes>
+		<PackageReleaseNotes>
+      新增ExistsRelated方法；
+      优化SQL生成增加缩进；
+      增加日期format，加TimeSpan类型支持；
+      优化Lambda解析机制，尽量将表达式计算值；
+      优化DAOContext生成机制，修复Sqlite读写冲突bug；
+      SessionManager改为缓加载；
+      修复一些bug。
+    </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -49,12 +56,8 @@
 		<PackageReference Include="Autofac.Extras.DynamicProxy" Version="7.1.0" />
 		<PackageReference Include="Castle.Core" Version="5.2.1" />
 		<PackageReference Include="Castle.Core.AsyncInterceptor" Version="2.1.0" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.5" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.5" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.5" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.5" />
 	</ItemGroup>
 
 	<ItemGroup>

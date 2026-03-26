@@ -1,5 +1,4 @@
 ﻿using LiteOrm.Common;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,7 +10,7 @@ namespace LiteOrm
     /// <summary>
     /// 根据Attribute的表信息提供者
     /// </summary>
-    [AutoRegister(ServiceLifetime.Singleton, serviceTypes: typeof(TableInfoProvider))]
+    [AutoRegister(Lifetime.Singleton, serviceTypes: typeof(TableInfoProvider))]
     public class AttributeTableInfoProvider : TableInfoProvider
     {
         private readonly ConcurrentDictionary<Type, TableDefinition> _tableInfoCache = new ConcurrentDictionary<Type, TableDefinition>();

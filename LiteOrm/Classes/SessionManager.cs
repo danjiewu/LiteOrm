@@ -41,7 +41,7 @@ namespace LiteOrm
     /// }
     /// </code>
     /// </remarks>
-    [AutoRegister(ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime.Scoped)]
     public class SessionManager : IDisposable
     {
         private readonly DAOContextPoolFactory _daoContextPoolFactory;

@@ -11,7 +11,7 @@ namespace LiteOrm
     /// LiteOrm SQL 函数初始化器，用于注册各个数据库的 SQL 函数处理器。
     /// 在应用启动时注册函数映射，支持 SqlBuilder 的动态 SQL 生成。
     /// </summary>
-    [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
+    [AutoRegister(Lifetime = Lifetime.Singleton)]
     public class LiteOrmSqlFunctionInitializer : IStartable
     {
         /// <summary>

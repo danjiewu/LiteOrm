@@ -47,7 +47,7 @@ namespace LiteOrm.Service
     /// var userAsync = await service.GetObjectAsync(userId);
     /// </code>
     /// </remarks>
-    [AutoRegister(ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime.Scoped)]
     [Intercept(typeof(ServiceInvokeInterceptor))]
     public class EntityViewService<TView> : IEntityViewService<TView>, IEntityViewServiceAsync<TView>, IEntityViewService, IEntityViewServiceAsync
          where TView : new()

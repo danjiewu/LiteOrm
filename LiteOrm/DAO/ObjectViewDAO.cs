@@ -34,7 +34,7 @@ namespace LiteOrm
     /// 处理复杂的SQL生成、参数处理和数据映射工作。
     /// 它支持与 TableJoinAttribute 定义的多表关联进行查询。
     /// </remarks>
-    [AutoRegister(ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime.Scoped)]
     public class ObjectViewDAO<T> : DAOBase, IObjectViewDAO<T> where T : new()
     {
 

@@ -52,7 +52,7 @@ namespace LiteOrm.Service
     /// await service.BatchInsertAsync(users);
     /// </code>
     /// </remarks>
-    [AutoRegister(ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime.Scoped)]
     public class EntityService<T, TView> : EntityViewService<TView>, IEntityService<T>, IEntityServiceAsync<T>, IEntityService, IEntityServiceAsync
     where TView : T, new()
     where T : new()
@@ -963,7 +963,7 @@ namespace LiteOrm.Service
     /// 它简化了在这种常见场景中的类型参数传递。
     /// </remarks>
     /// <typeparam name="T">实体类型，同时也是实体视图类型。</typeparam>
-    [AutoRegister(ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime.Scoped)]
     public class EntityService<T> : EntityService<T, T>
         where T : new()
     {

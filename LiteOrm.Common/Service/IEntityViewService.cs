@@ -1,5 +1,4 @@
-﻿﻿﻿﻿using LiteOrm.Common;
-using Microsoft.Extensions.Logging;
+﻿using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -13,7 +12,7 @@ namespace LiteOrm.Service
     /// <typeparam name="T">实体类型</typeparam>
     [Service]
     [ServicePermission(true)]
-    [ServiceLog(LogLevel = LogLevel.Debug)]
+    [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     public interface IEntityViewService<T> : IEntityViewService
     {
         /// <summary>
@@ -50,7 +49,7 @@ namespace LiteOrm.Service
     /// 提供对实体视图（只读或关联视图）进行查询操作的非泛型接口。
     /// </summary>
     [ServicePermission(true)]
-    [ServiceLog(LogLevel = LogLevel.Debug)]
+    [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     [AutoRegister(false)]
     public interface IEntityViewService
     {

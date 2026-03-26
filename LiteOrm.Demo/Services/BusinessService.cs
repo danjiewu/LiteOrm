@@ -9,7 +9,7 @@ namespace LiteOrm.Demo.Services
     /// <summary>
     /// 综合业务服务实现，演示跨服务事务
     /// </summary>
-    [AutoRegister(Lifetime = ServiceLifetime.Scoped), Intercept(typeof(ServiceInvokeInterceptor))]
+    [AutoRegister(Lifetime = Lifetime.Scoped), Intercept(typeof(ServiceInvokeInterceptor))]
     public class BusinessService : IBusinessService
     {
         private readonly IUserService _userService;

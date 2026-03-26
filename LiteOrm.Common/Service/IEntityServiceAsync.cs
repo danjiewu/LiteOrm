@@ -10,6 +10,9 @@ namespace LiteOrm.Service
     /// 异步版本 - 泛型实体更改接口
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
+    [Service]
+    [ServicePermission(false)]
+    [ServiceLog(LogLevel = ServiceLogLevel.Information)]
     public interface IEntityServiceAsync<T> : IEntityServiceAsync
     {
         /// <summary>
@@ -95,6 +98,8 @@ namespace LiteOrm.Service
     /// 异步版本 - 非泛型实体更改接口
     /// </summary>
     [AutoRegister(false)]
+    [Service]
+    [ServicePermission(false)]
     public interface IEntityServiceAsync
     {
         /// <summary>

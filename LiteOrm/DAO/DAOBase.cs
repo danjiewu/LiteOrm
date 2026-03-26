@@ -30,7 +30,7 @@ namespace LiteOrm
     /// 5. 扩展性 - 通过虚方法和抽象属性，允许子类根据具体需求重写和扩展功能，如处理视图、添加更多的SQL替换标记等。
     /// 
     /// </remarks>
-    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime = Lifetime.Scoped)]
     public abstract class DAOBase : IExprStringBuildContext
     {
         #region 预定义变量

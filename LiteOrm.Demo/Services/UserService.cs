@@ -8,7 +8,6 @@ namespace LiteOrm.Demo.Services
     /// <summary>
     /// 用户服务实现
     /// </summary>
-    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
     public class UserService : EntityService<User, UserView>, IUserService
     {
         /// <summary>
