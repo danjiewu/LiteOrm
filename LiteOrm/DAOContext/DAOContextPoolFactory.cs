@@ -110,7 +110,8 @@ namespace LiteOrm
                     PoolSize = config.PoolSize,
                     MaxPoolSize = config.MaxPoolSize,
                     KeepAliveDuration = config.KeepAliveDuration,
-                    ParamCountLimit = config.ParamCountLimit
+                    ParamCountLimit = config.ParamCountLimit,
+                    Logger = _logger
                 };
             }
             catch (Exception ex)

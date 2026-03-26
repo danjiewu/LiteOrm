@@ -1,4 +1,5 @@
 ﻿using LiteOrm.Common;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -57,6 +58,7 @@ namespace LiteOrm
         private readonly List<DAOContextPool> _readOnlyPools = new List<DAOContextPool>();
         private int _readOnlyIndex = 0;
         private DatabaseSync _databaseSync;
+        private ILogger _logger;
         /// <summary>
         /// 当创建新的DAO上下文时触发的事件委托，允许外部订阅以进行自定义初始化或日志记录等操作。
         /// </summary>
@@ -67,6 +69,11 @@ namespace LiteOrm
         /// 创建新上下文时触发的事件，允许外部订阅以进行自定义初始化或日志记录等操作。
         /// </summary>
         public event ContextCreatedHandler OnContextCreated;
+
+        /// <summary>
+        /// 获取或设置日志记录器。
+        /// </summary>
+        public ILogger Logger { get => _logger; set => _logger = value; }
 
         /// <summary>
         /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
@@ -234,6 +241,7 @@ namespace LiteOrm
         /// </summary>
         public void ClearPool()
         {
+            _logger?.LogDebug("Pool '{PoolName}': clearing all idle connections.", Name);
             lock (_poolLock)
             {
                 while (_pool.Count > 0)
@@ -253,6 +261,7 @@ namespace LiteOrm
         /// </summary>
         public async Task ClearPoolAsync()
         {
+            _logger?.LogDebug("Pool '{PoolName}': clearing all idle connections (async).", Name);
             List<DAOContext> disposeTasks = new List<DAOContext>();
             lock (_poolLock)
             {
@@ -293,6 +302,7 @@ namespace LiteOrm
                     }
 
                     // 无效则销毁，这会通对应的信号量释放计数
+                    _logger?.LogDebug("Pool '{PoolName}': pooled connection is invalid or expired, disposing.", Name);
                     context.Dispose();
                 }
             }
@@ -325,6 +335,7 @@ namespace LiteOrm
                     }
 
                     // 无效则销毁
+                    _logger?.LogDebug("Pool '{PoolName}': pooled connection is invalid or expired, disposing.", Name);
                     context.Dispose();
                 }
             }
@@ -341,6 +352,7 @@ namespace LiteOrm
             await newContext.EnsureConnectionOpenAsync().ConfigureAwait(false);
             return newContext;
         }
+
 
 
         /// <summary>
@@ -367,6 +379,7 @@ namespace LiteOrm
                 // 如果连接无效，销毁
                 if (!IsContextValid(context))
                 {
+                    _logger?.LogDebug("Pool '{PoolName}': returned connection is invalid or expired, disposing.", Name);
                     context.Dispose();
                     return;
                 }
@@ -374,6 +387,7 @@ namespace LiteOrm
                 // 如果池已满，销毁最旧的连接并添加新连接
                 if (_pool.Count >= PoolSize)
                 {
+                    _logger?.LogDebug("Pool '{PoolName}' is full (size: {PoolSize}), removing oldest idle connection.", Name, PoolSize);
                     _pool.Dequeue().Dispose();
                 }
 
@@ -426,7 +440,10 @@ namespace LiteOrm
         private DAOContext CreateNewContext()
         {
             if (!_semaphore.Wait(10000))
+            {
+                _logger?.LogError("Pool '{PoolName}' reached max connection limit ({MaxPoolSize}), unable to create a new connection.", Name, _maxPoolSize);
                 throw new InvalidOperationException("Maximum connection limit reached, cannot create a new connection.");
+            }
             try
             {
                 var connection = Activator.CreateInstance(ProviderType) as DbConnection;
@@ -438,11 +455,13 @@ namespace LiteOrm
                 {
                     IsReadOnly = IsReadOnlyPool
                 };
+                _logger?.LogDebug("Pool '{PoolName}': new connection created.", Name);
                 if (OnContextCreated != null) OnContextCreated(context);
                 return context;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger?.LogError(ex, "Pool '{PoolName}': failed to create a new connection.", Name);
                 _semaphore.Release();
                 throw;
             }
@@ -467,6 +486,7 @@ namespace LiteOrm
             {
                 if (disposing)
                 {
+                    _logger?.LogDebug("Pool '{PoolName}': disposing.", Name);
                     // 释放托管资源
                     lock (_poolLock)
                     {
