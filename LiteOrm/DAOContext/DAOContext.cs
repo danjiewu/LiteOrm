@@ -21,6 +21,7 @@ namespace LiteOrm
     /// </remarks>
     public class DAOContext : IDisposable, IAsyncDisposable
     {
+        private volatile bool _disposed;
         /// <summary>
         /// 设置或获取作用域锁定的超时时间（毫秒）。
         /// </summary>
@@ -104,6 +105,7 @@ namespace LiteOrm
         /// <returns></returns>
         public DbCommandProxy CreateCommand()
         {
+            ThrowIfDisposed();
             return new DbCommandProxy(this);
         }
 
@@ -122,6 +124,7 @@ namespace LiteOrm
         /// </example>
         public IDisposable AcquireScope()
         {
+            ThrowIfDisposed();
             if (_semaphore.Wait(ScopeTimeoutMilliseconds))
             {
                 return new DAOScope(_semaphore);
@@ -137,6 +140,7 @@ namespace LiteOrm
         /// <returns>一个异步完成任务，其结果为用于控制锁定生命周期的 <see cref="IDisposable"/> 对象。</returns>
         public async Task<IDisposable> AcquireScopeAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfDisposed();
             if (await _semaphore.WaitAsync(ScopeTimeoutMilliseconds, cancellationToken).ConfigureAwait(false))
             {
                 return new DAOScope(_semaphore);
@@ -151,6 +155,7 @@ namespace LiteOrm
         /// <returns>如果事务成功开始返回 true；如果当前已在事务中则返回 false。</returns>
         public bool BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
         {
+            ThrowIfDisposed();
             using (AcquireScope())
             {
                 if (InTransaction)
@@ -178,6 +183,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果事务成功开始返回 true；如果当前已在事务中则返回 false。</returns>
         public async Task<bool> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted, CancellationToken cancellationToken = default)
         {
+            ThrowIfDisposed();
             using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
             {
                 if (InTransaction)
@@ -216,6 +222,7 @@ namespace LiteOrm
         /// <returns>如果成功提交返回 true；如果没有活动事务则返回 false。</returns>
         public bool Commit()
         {
+            ThrowIfDisposed();
             using (AcquireScope())
             {
                 if (!InTransaction)
@@ -242,6 +249,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果成功提交返回 true；如果没有活动事务则返回 false。</returns>
         public async Task<bool> CommitAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfDisposed();
             using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
             {
                 if (!InTransaction)
@@ -274,6 +282,7 @@ namespace LiteOrm
         /// <returns>如果成功回滚返回 true；如果没有活动事务则返回 false。</returns>
         public bool Rollback()
         {
+            ThrowIfDisposed();
             using (AcquireScope())
             {
                 if (!InTransaction)
@@ -300,6 +309,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果成功回滚返回 true；如果没有活动事务则返回 false。</returns>
         public async Task<bool> RollbackAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfDisposed();
             using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
             {
                 if (!InTransaction)
@@ -331,6 +341,7 @@ namespace LiteOrm
         /// </summary>
         public void EnsureConnectionOpen()
         {
+            ThrowIfDisposed();
             if (DbConnection.State == ConnectionState.Closed)
             {
                 DbConnection.Open();
@@ -344,6 +355,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务。</returns>
         public async Task EnsureConnectionOpenAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfDisposed();
             if (DbConnection.State == ConnectionState.Closed)
             {
                 await DbConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -358,6 +370,7 @@ namespace LiteOrm
         /// </remarks>
         internal void Reset()
         {
+            ThrowIfDisposed();
             using (AcquireScope())
             {
                 if (InTransaction)
@@ -375,6 +388,7 @@ namespace LiteOrm
 
         internal async Task ResetAsync(CancellationToken cancellationToken = default)
         {
+            ThrowIfDisposed();
             using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
             {
                 if (InTransaction)
@@ -405,6 +419,7 @@ namespace LiteOrm
         /// </summary>
         public void Dispose()
         {
+            if (_disposed) return;
             Dispose(true);
             GC.SuppressFinalize(this);
         }
@@ -415,12 +430,25 @@ namespace LiteOrm
         /// <param name="disposing">如果为 true，则释放托管资源和非托管资源；如果为 false，则仅释放非托管资源。</param>
         protected virtual void Dispose(bool disposing)
         {
+            if (_disposed) return;
+            _disposed = true;
             if (disposing)
             {
                 Reset();
-                DbConnection?.Dispose();
                 _semaphore.Dispose();
                 Pool?.OnContextDisposed();
+                try
+                {
+                    if (DbConnection != null)
+                    {
+#if NETSTANDARD2_0
+                        _ = Task.Run(() => DbConnection.Dispose());
+#else
+                        Task.Run(async() => DbConnection.DisposeAsync());
+#endif
+                    }   
+                }
+                catch { }
                 try
                 {
                     foreach (var cmd in PreparedCommands.Values)
@@ -439,23 +467,55 @@ namespace LiteOrm
         /// <returns></returns>
         public async ValueTask DisposeAsync()
         {
+            if (_disposed) return;
+            _disposed = true;
             await ResetAsync().ConfigureAwait(false);
-            DbConnection?.Dispose();
             _semaphore.Dispose();
             Pool?.OnContextDisposed();
+#if NETSTANDARD2_0
+            try{   
+                if (DbConnection != null)
+                {
+                    _ = Task.Run(() => DbConnection.Dispose());
+                }
+            }
+            catch{}
             try
             {
                 foreach (var cmd in PreparedCommands.Values)
                 {
-#if NETSTANDARD2_0
                     cmd.Dispose();
-#else
-                    await cmd.DisposeAsync().ConfigureAwait(false);
-#endif
                 }
                 PreparedCommands.Clear();
             }
             catch { }
+#else
+            try
+            {
+                if (DbConnection != null)
+                {
+                    await DbConnection.DisposeAsync().ConfigureAwait(false);
+                }
+            }
+            catch { }
+            try
+            {
+                foreach (var cmd in PreparedCommands.Values)
+                {
+                    await cmd.DisposeAsync().ConfigureAwait(false);
+                }
+                PreparedCommands.Clear();
+            }
+            catch { }
+
+#endif
+            return;
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(DAOContext));
         }
 
         /// <summary>

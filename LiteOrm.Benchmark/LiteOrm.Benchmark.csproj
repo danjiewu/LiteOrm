@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -12,12 +12,16 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
-    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.5" />
+    <PackageReference Include="MySql.EntityFrameworkCore" Version="10.0.1" />
     <PackageReference Include="MySqlConnector" Version="2.5.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+    <PackageReference Include="Oracle.EntityFrameworkCore" Version="10.23.26100" />
     <PackageReference Include="SqlSugarCore" Version="5.1.4.214" />
     <PackageReference Include="Dapper" Version="2.1.72" />
     <PackageReference Include="FreeSql.Provider.MySqlConnector" Version="3.5.307" />
+      <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.5" />
+      <PackageReference Include="FreeSql.Provider.Sqlite" Version="3.5.307" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LiteOrm\LiteOrm.csproj" />

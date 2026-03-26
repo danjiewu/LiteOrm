@@ -6,7 +6,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using MySqlConnector;
+using System.Data.Common;
+using Microsoft.Data.Sqlite;
+using Oracle.ManagedDataAccess.Client;
+using Oracle.EntityFrameworkCore;
 using SqlSugar;
 
 
@@ -21,7 +24,31 @@ namespace LiteOrm.Benchmark
         private readonly Random _random = new Random();
 
         private string? _connectionString;
+        private string? _provider; // e.g. MySql, SQLite, Oracle
+        private string? _providerTypeName; // connection type assembly qualified name from config
+        private record DataSourceConfig
+        {
+            public string Name { get; init; }
+            public string ConnectionString { get; init; }
+            public string Provider { get; init; }
+            public bool SyncTable { get; init; }
+        }
 
+        private DbConnection CreateDbConnection()
+        {
+            var p = (_provider ?? "").ToLower();
+            if (p.Contains("sqlite"))
+            {
+                return new SqliteConnection(_connectionString);
+            }
+            if (p.Contains("oracle"))
+            {
+                return new OracleConnection(_connectionString);
+            }
+
+            // default to MySql
+            return new MySqlConnector.MySqlConnection(_connectionString);
+        }
         [Params(100, 1000, 5000)]
         public int BatchCount { get; set; }
         [GlobalSetup]
@@ -46,25 +73,59 @@ namespace LiteOrm.Benchmark
                     .RegisterLiteOrm()
                     .ConfigureServices((Action<HostBuilderContext, IServiceCollection>)((context, services) =>
                     {
-                        _connectionString = context.Configuration.GetConnectionString("DefaultConnection");
+                        // Support switching provider via LiteOrm section in configuration
+                        var liteOrmSection = context.Configuration.GetSection("LiteOrm");
+                        _provider = liteOrmSection.GetValue<string>("Default") ?? "MySql";
+                        var dataSources = liteOrmSection.GetSection("DataSources").Get<List<DataSourceConfig>>() ?? new List<DataSourceConfig>();
+                        var selected = dataSources.FirstOrDefault(d => string.Equals(d.Name, _provider, StringComparison.OrdinalIgnoreCase)) ?? dataSources.FirstOrDefault();
 
-                        if (string.IsNullOrEmpty(_connectionString))
+                        if (selected == null)
                         {
-                            throw new InvalidOperationException("Connection string 'DefaultConnection' not found in configuration.");
+                            throw new InvalidOperationException("No data source configured under LiteOrm:DataSources.");
                         }
 
-                        // 1. EF Core 配置
+                        _connectionString = selected.ConnectionString;
+                        _providerTypeName = selected.Provider;
+
+                        // 1. EF Core 配置（根据 provider 选择）
                         services.AddDbContext<BenchmarkDbContext>(options =>
-                            options.UseMySql(_connectionString, ServerVersion.AutoDetect(_connectionString))
-                                   .LogTo(_ => { }, Microsoft.Extensions.Logging.LogLevel.None));
+                        {
+                            var p = (_provider ?? "").ToLower();
+                            if (p.Contains("sqlite"))
+                            {
+                                options.UseSqlite(_connectionString);
+                            }
+                            else if (p.Contains("oracle"))
+                            {
+                                options.UseOracle(_connectionString);
+                            }
+                            else
+                            {
+                                options.UseMySQL(_connectionString);
+                            }
+                            options.LogTo(_ => { }, Microsoft.Extensions.Logging.LogLevel.None);
+                        });
 
                         // 2. SqlSugar 配置
                         services.AddScoped<ISqlSugarClient>(s =>
                         {
+                            var dbType = SqlSugar.DbType.MySql;
+                            switch ((_provider ?? "").ToLower())
+                            {
+                                case var p when p.Contains("sqlite"):
+                                    dbType = SqlSugar.DbType.Sqlite;
+                                    break;
+                                case var p when p.Contains("oracle"):
+                                    dbType = SqlSugar.DbType.Oracle;
+                                    break;
+                                default:
+                                    dbType = SqlSugar.DbType.MySql;
+                                    break;
+                            }
                             return new SqlSugarClient(new ConnectionConfig()
                             {
                                 ConnectionString = _connectionString,
-                                DbType = SqlSugar.DbType.MySql,
+                                DbType = dbType,
                                 IsAutoCloseConnection = true,
                             });
                         });
@@ -72,8 +133,21 @@ namespace LiteOrm.Benchmark
                         // 3. FreeSql 配置
                         services.AddSingleton(s =>
                         {
+                            var dataType = FreeSql.DataType.MySql;
+                            switch ((_provider ?? "").ToLower())
+                            {
+                                case var p when p.Contains("sqlite"):
+                                    dataType = FreeSql.DataType.Sqlite;
+                                    break;
+                                case var p when p.Contains("oracle"):
+                                    dataType = FreeSql.DataType.Oracle;
+                                    break;
+                                default:
+                                    dataType = FreeSql.DataType.MySql;
+                                    break;
+                            }
                             return new FreeSqlBuilder()
-                                .UseConnectionString(FreeSql.DataType.MySql, _connectionString)
+                                .UseConnectionString(dataType, _connectionString)
                                 .UseAutoSyncStructure(true)
                                 .Build();
                         });
@@ -181,16 +255,6 @@ namespace LiteOrm.Benchmark
             }
         }
 
-        [Benchmark]
-        public async Task SqlSugar_Fastest_Insert_Async()
-        {
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
-                var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Sugar", Age = 25, Email = "sugar@test.com", CreateTime = DateTime.Now }).ToList();
-                await sugar.Fastest<BenchmarkUser>().BulkCopyAsync(users);
-            }
-        }
 
         [Benchmark]
         public async Task LiteOrm_Insert_Async()
@@ -206,14 +270,14 @@ namespace LiteOrm.Benchmark
         [Benchmark]
         public async Task Dapper_Insert_Async()
         {
-            using (var conn = new MySqlConnection(_connectionString!))
+            using (var conn = CreateDbConnection())
             {
                 await conn.OpenAsync();
-                using (var trans = await conn.BeginTransactionAsync())
+                using (var trans = conn.BeginTransaction())
                 {
                     var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Dapper", Age = 25, Email = "dapper@test.com", CreateTime = DateTime.Now }).ToList();
                     await conn.ExecuteAsync("INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime) VALUES (@Name, @Age, @Email, @CreateTime)", users, trans);
-                    await trans.CommitAsync();
+                    trans.Commit();
                 }
             }
         }
@@ -250,23 +314,7 @@ namespace LiteOrm.Benchmark
             }
         }
 
-        [Benchmark]
-        public async Task EFCore_NoTracking_Update_Async()
-        {
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
-                var users = await db.BenchmarkUsers.AsNoTracking().Take(BatchCount).ToListAsync();
-                foreach (var u in users)
-                {
-                    u.Name = "EFCore_NT" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                    u.Age = _random.Next(20, 60);
-                    u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
-                }
-                db.BenchmarkUsers.UpdateRange(users);
-                await db.SaveChangesAsync();
-            }
-        }
+        
 
         [Benchmark]
         public async Task SqlSugar_Update_Async()
@@ -285,22 +333,7 @@ namespace LiteOrm.Benchmark
             }
         }
 
-        [Benchmark]
-        public async Task SqlSugar_Fastest_Update_Async()
-        {
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
-                var users = await sugar.Queryable<BenchmarkUser>().Take(BatchCount).ToListAsync();
-                foreach (var u in users)
-                {
-                    u.Name = "SqlSugar" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                    u.Age = _random.Next(20, 60);
-                    u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
-                }
-                await sugar.Fastest<BenchmarkUser>().BulkUpdateAsync(users);
-            }
-        }
+        
 
         [Benchmark]
         public async Task LiteOrm_Update_Async()
@@ -325,11 +358,12 @@ namespace LiteOrm.Benchmark
         [Benchmark]
         public async Task Dapper_Update_Async()
         {
-            using (var conn = new MySqlConnection(_connectionString!))
+            using (var conn = CreateDbConnection())
             {
                 await conn.OpenAsync();
-                var users = (await conn.QueryAsync<BenchmarkUser>($"SELECT * FROM BenchmarkUser LIMIT {BatchCount}")).ToList();
-                using (var trans = await conn.BeginTransactionAsync())
+                var selectSql = (_provider ?? "").ToLower().Contains("oracle") ? $"SELECT * FROM BenchmarkUser WHERE ROWNUM <= {BatchCount}" : $"SELECT * FROM BenchmarkUser LIMIT {BatchCount}";
+                var users = (await conn.QueryAsync<BenchmarkUser>(selectSql)).ToList();
+                using (var trans = conn.BeginTransaction())
                 {
                     foreach (var u in users)
                     {
@@ -338,7 +372,7 @@ namespace LiteOrm.Benchmark
                         u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                     }
                     await conn.ExecuteAsync("UPDATE BenchmarkUser SET Name = @Name, Age = @Age, Email = @Email WHERE Id = @Id", users, trans);
-                    await trans.CommitAsync();
+                    trans.Commit();
                 }
             }
         }
@@ -404,19 +438,7 @@ namespace LiteOrm.Benchmark
             }
         }
 
-        [Benchmark]
-        public async Task SqlSugar_Fastest_Upsert_Async()
-        {
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
-                var existingUsers = await sugar.Queryable<BenchmarkUser>().Take(BatchCount / 2).ToListAsync();
-                foreach (var u in existingUsers) { u.Name = "Sugar_Upsert_U"; u.Age = _random.Next(20, 60); }
-                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Sugar_Upsert_I", Age = _random.Next(20, 60), Email = $"sugar_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
-                var all = existingUsers.Concat(newUsers).ToList();
-                await sugar.Fastest<BenchmarkUser>().BulkMergeAsync(all);
-            }
-        }
+        
 
         [Benchmark]
         public async Task LiteOrm_Upsert_Async()
@@ -436,22 +458,26 @@ namespace LiteOrm.Benchmark
         [Benchmark]
         public async Task Dapper_Upsert_Async()
         {
-            using (var conn = new MySqlConnection(_connectionString!))
+            using (var conn = CreateDbConnection())
             {
                 await conn.OpenAsync();
-                var sql = "SELECT * FROM BenchmarkUser LIMIT " + (BatchCount / 2);
-                var existingUsers = (await conn.QueryAsync<BenchmarkUser>(sql)).ToList();
-                using (var trans = await conn.BeginTransactionAsync())
+                var selectSql = (_provider ?? "").ToLower().Contains("oracle") ? $"SELECT * FROM BenchmarkUser WHERE ROWNUM <= {BatchCount / 2}" : $"SELECT * FROM BenchmarkUser LIMIT {BatchCount / 2}";
+                var existingUsers = (await conn.QueryAsync<BenchmarkUser>(selectSql)).ToList();
+                using (var trans = conn.BeginTransaction())
                 {
                     foreach (var u in existingUsers) { u.Name = "Dapper_Upsert_U"; u.Age = _random.Next(20, 60); }
-                    var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Id = 0, Name = "Dapper_Upsert_I", Age = _random.Next(20, 60), Email = $"dapper_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
-                    var all = existingUsers.Concat(newUsers).ToList();
-                    var upsertSql = @"
-                    INSERT INTO BenchmarkUser (Id, Name, Age, Email, CreateTime) 
-                    VALUES (NULLIF(@Id, 0), @Name, @Age, @Email, @CreateTime) 
-                    ON DUPLICATE KEY UPDATE Name = VALUES(Name), Age = VALUES(Age), Email = VALUES(Email)";
-                    await conn.ExecuteAsync(upsertSql, all, trans);
-                    await trans.CommitAsync();
+                    if (existingUsers.Any())
+                    {
+                        await conn.ExecuteAsync("UPDATE BenchmarkUser SET Name = @Name, Age = @Age WHERE Id = @Id", existingUsers, trans);
+                    }
+
+                    var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Dapper_Upsert_I", Age = _random.Next(20, 60), Email = $"dapper_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
+                    if (newUsers.Any())
+                    {
+                        await conn.ExecuteAsync("INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime) VALUES (@Name, @Age, @Email, @CreateTime)", newUsers, trans);
+                    }
+
+                    trans.Commit();
                 }
             }
         }
@@ -479,22 +505,6 @@ namespace LiteOrm.Benchmark
             {
                 var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
                 var list = await db.BenchmarkLogs
-                    .Include(l => l.User)
-                    .Where(l => l.User.Age < 30)
-                    .OrderByDescending(l => l.Id)
-                    .Skip(0).Take(BatchCount)
-                    .ToListAsync();
-            }
-        }
-
-        [Benchmark]
-        public async Task EFCore_NoTracking_JoinQuery_Async()
-        {
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
-                var list = await db.BenchmarkLogs
-                    .AsNoTracking()
                     .Include(l => l.User)
                     .Where(l => l.User.Age < 30)
                     .OrderByDescending(l => l.Id)
@@ -535,13 +545,26 @@ namespace LiteOrm.Benchmark
         [Benchmark]
         public async Task Dapper_JoinQuery_Async()
         {
-            using (var conn = new MySqlConnection(_connectionString!))
+            using (var conn = CreateDbConnection())
             {
-                var sql = $@"SELECT l.*, u.* FROM BenchmarkLog l 
+                await conn.OpenAsync();
+                string sql;
+                if ((_provider ?? "").ToLower().Contains("oracle"))
+                {
+                    sql = $@"SELECT l.*, u.* FROM BenchmarkLog l 
+                             INNER JOIN BenchmarkUser u ON l.UserId = u.Id 
+                             WHERE u.Age < 30 
+                             ORDER BY l.Id DESC 
+                             FETCH FIRST {BatchCount} ROWS ONLY";
+                }
+                else
+                {
+                    sql = $@"SELECT l.*, u.* FROM BenchmarkLog l 
                              INNER JOIN BenchmarkUser u ON l.UserId = u.Id 
                              WHERE u.Age < 30 
                              ORDER BY l.Id DESC 
                              LIMIT {BatchCount} OFFSET 0";
+                }
                 var list = await conn.QueryAsync<BenchmarkLog, BenchmarkUser, BenchmarkLog>(sql, (log, user) => { log.User = user; return log; });
             }
         }
