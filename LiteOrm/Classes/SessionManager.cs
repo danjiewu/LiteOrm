@@ -85,7 +85,7 @@ namespace LiteOrm
         {
             _daoContextPoolFactory = daoContextPoolFactory ?? throw new ArgumentNullException(nameof(daoContextPoolFactory));
             _logger = logger;
-            _logger?.LogDebug($"Session {SessionID} created.");
+            _logger?.LogDebug($"[{SessionID}]Session created.");
         }
 
         private void EnsureNotDisposed()

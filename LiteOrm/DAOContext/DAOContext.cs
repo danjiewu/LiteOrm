@@ -431,35 +431,47 @@ namespace LiteOrm
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed) return;
-            _disposed = true;
             if (disposing)
             {
-                Reset();
-                _semaphore.Dispose();
-                Pool?.OnContextDisposed();
+                // Reset state (rollback transactions if any) before marking disposed
                 try
-                {                    
+                {
+                    Reset();
+                }
+                catch { }
+
+                // Dispose synchronization primitives and notify pool
+                try { _semaphore.Dispose(); } catch { }
+                try { Pool?.OnContextDisposed(); } catch { }
+
+                // Dispose/close the underlying connection asynchronously on the threadpool to avoid blocking callers
+                try
+                {
                     if (DbConnection != null)
                     {
-                        //避免链接释放时间超过长导致线程阻塞，改为异步释放连接
 #if NETSTANDARD2_0
                         _ = Task.Run(() => DbConnection.Dispose());
 #else
-                        Task.Run(async() => DbConnection.DisposeAsync());
+                        _ = Task.Run(() => DbConnection.DisposeAsync().AsTask());
 #endif
-                    }   
+                    }
                 }
                 catch { }
+
+                // Dispose prepared commands
                 try
                 {
                     foreach (var cmd in PreparedCommands.Values)
                     {
-                        cmd.Dispose();
+                        try { cmd.Dispose(); } catch { }
                     }
                     PreparedCommands.Clear();
                 }
                 catch { }
             }
+
+            // mark disposed after cleanup so Reset/ResetAsync can run while not yet disposed
+            _disposed = true;
         }
 
         /// <summary>
@@ -469,23 +481,28 @@ namespace LiteOrm
         public async ValueTask DisposeAsync()
         {
             if (_disposed) return;
-            _disposed = true;
-            await ResetAsync().ConfigureAwait(false);
-            _semaphore.Dispose();
-            Pool?.OnContextDisposed();
+
+            // Attempt to reset (rollback any transaction) before disposing
+            try { await ResetAsync().ConfigureAwait(false); } catch { }
+
+            // Dispose semaphore and notify pool
+            try { _semaphore.Dispose(); } catch { }
+            try { Pool?.OnContextDisposed(); } catch { }
+
 #if NETSTANDARD2_0
-            try{   
+            try
+            {
                 if (DbConnection != null)
                 {
                     _ = Task.Run(() => DbConnection.Dispose());
                 }
             }
-            catch{}
+            catch { }
             try
             {
                 foreach (var cmd in PreparedCommands.Values)
                 {
-                    cmd.Dispose();
+                    try { cmd.Dispose(); } catch { }
                 }
                 PreparedCommands.Clear();
             }
@@ -503,13 +520,14 @@ namespace LiteOrm
             {
                 foreach (var cmd in PreparedCommands.Values)
                 {
-                    await cmd.DisposeAsync().ConfigureAwait(false);
+                    try { await cmd.DisposeAsync().ConfigureAwait(false); } catch { }
                 }
                 PreparedCommands.Clear();
             }
             catch { }
-
 #endif
+
+            _disposed = true;
             return;
         }
 
