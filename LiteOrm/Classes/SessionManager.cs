@@ -682,7 +682,7 @@ namespace LiteOrm
         /// <returns></returns>
         public override string ToString()
         {
-            return $"Session[{SessionID}]";
+            return $"[{SessionID}]";
         }
         #region IDisposable 实现
 
@@ -704,7 +704,7 @@ namespace LiteOrm
             try
             {
                 if (_disposed) return;
-                _logger?.LogDebug($"Session {SessionID} disposed (async).");
+                _logger?.LogDebug($"[{SessionID}]Session  disposed (async).");
                 _disposed = true;
 
                 if (InTransaction)
@@ -737,7 +737,7 @@ namespace LiteOrm
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed) return;
-            _logger?.LogDebug($"Session {SessionID} disposed ({(disposing ? "explicit" : "finalizer")}).");
+            _logger?.LogDebug($"[{SessionID}]Session disposed ({(disposing ? "explicit" : "finalizer")}).");
             _disposed = true;
             if (disposing)
             {
