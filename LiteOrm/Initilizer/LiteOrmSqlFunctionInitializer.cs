@@ -487,10 +487,12 @@ namespace LiteOrm
         /// <summary>
         /// 将 C# 日期格式字符串转换为目标数据库格式，直接写入目标构建器。
         /// </summary>
+        /// <param name="csFormat">C# 日期格式字符串。</param>
+        /// <param name="outSql">目标构建器，用于输出转换后的格式字符串。</param>
         /// <param name="tokenMap">格式化字符映射委托，接收字符和连续出现次数，返回目标格式字符串；返回 null 时保留原字符。</param>
         /// <param name="literalWrapper">单引号括起的字面量在输出中使用的包裹字符，默认 '\0' 表示不包裹。</param>
         private static void ConvertFormat(string csFormat, ref ValueStringBuilder outSql,
-            Func<char, int, string?> tokenMap, char literalWrapper = '\0')
+            Func<char, int, string> tokenMap, char literalWrapper = '\0')
         {
             int i = 0;
             while (i < csFormat.Length)

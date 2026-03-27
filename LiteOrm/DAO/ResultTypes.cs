@@ -12,7 +12,9 @@ using System.Windows.Input;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 可枚举结果的非泛型接口
+    /// 非泛型可枚举结果接口。
+    /// 提供同步与异步方式获取查询结果、将结果转换为列表以及对结果逐项执行操作的抽象支持。
+    /// 该接口用于在不关心元素类型的情况下操作查询结果。
     /// </summary>
     public interface IEnumerableResult : IEnumerable
     {
@@ -58,9 +60,12 @@ namespace LiteOrm.Common
 
 
     /// <summary>
-    /// 表达式结果的基类
+    /// 表达式查询结果的基类。
+    /// 封装了构造数据库命令、执行并返回不同结果类型的通用逻辑。
+    /// 支持由预构造的 <see cref="DbCommandProxy"/>（用于复用）或按需创建命令两种模式。
+    /// 实现应负责在合适的时机释放执行命令（如果命令为按需创建）。
     /// </summary>
-    /// <typeparam name="T">结果类型</typeparam>
+    /// <typeparam name="T">表示由该结果返回的具体结果类型。</typeparam>
     public abstract class CommandResult<T> : IDisposable, IAsyncDisposable
     {
         /// <summary>
@@ -104,19 +109,22 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 创建数据库命令。
+        /// 获取用于执行当前结果的 <see cref="DbCommandProxy"/>。
+        /// 如果构造时传入了预定义的命令（用于重用），则返回该命令；否则按需创建并缓存一次性命令。
+        /// 调用方不应在每次读取后立即释放预定义命令；对于按需创建命令，释放责任由 <see cref="CommandResult{T}"/> 管理。
         /// </summary>
-        /// <returns>数据库命令代理实例。</returns>
+        /// <returns>用于执行查询的 <see cref="DbCommandProxy"/> 实例。</returns>
         internal protected DbCommandProxy GetCommand()
         {
             return _executedCommand ??= _preparedCommand ?? _dao.MakeNamedParamCommand(_sql);
         }
 
         /// <summary>
-        /// 异步创建数据库命令。
+        /// 异步获取用于执行当前结果的 <see cref="DbCommandProxy"/>。
+        /// 对于按需创建的命令，会在内部异步创建并缓存用于随后调用；对于预定义命令直接返回。
         /// </summary>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>表示异步操作的任务，包含数据库命令代理实例。</returns>
+        /// <param name="cancellationToken">取消操作的 <see cref="CancellationToken"/>。</param>
+        /// <returns>表示异步操作的任务，结果为命令代理实例。</returns>
         internal protected async Task<DbCommandProxy> GetCommandAsync(CancellationToken cancellationToken = default)
         {
             return _executedCommand ??= _preparedCommand ?? await _dao.MakeNamedParamCommandAsync(_sql, cancellationToken);
@@ -184,9 +192,11 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// 可枚举结果类，对应ExecuteReader方式
+    /// 可枚举结果类型，基于 <see cref="DbCommandProxy.ExecuteReader()"/> 的执行方式。
+    /// 提供同步和异步的逐行枚举、一次性读取为列表以及 FirstOrDefault 等便捷方法。
+    /// 支持使用 DAO/PreparedSql 按需创建命令，或通过预构造的 <see cref="DbCommandProxy"/> 重用命令。
     /// </summary>
-    /// <typeparam name="TResult">元素类型</typeparam>
+    /// <typeparam name="TResult">查询行转换后返回的元素类型。</typeparam>
     public class EnumerableResult<TResult> : CommandResult<List<TResult>>, IEnumerable<TResult>, IAsyncEnumerable<TResult>, IEnumerableResult
     {
         private readonly Func<DbDataReader, TResult> _readerFunc;
@@ -203,6 +213,11 @@ namespace LiteOrm.Common
             _readerFunc = readerFunc;
         }
 
+        /// <summary>
+        /// 初始化 <see cref="EnumerableResult{TResult}"/> 类的新实例，并使用预定义的数据库命令代理实例。
+        /// </summary>
+        /// <param name="preparedCommand">预定义的数据库命令代理实例。</param>
+        /// <param name="readerFunc">将 <see cref="IDataReader"/> 的一行数据转换为 <typeparamref name="TResult"/> 实例的委托。</param>
         public EnumerableResult(DbCommandProxy preparedCommand, Func<DbDataReader, TResult> readerFunc = null)
             : base(preparedCommand)
         {
@@ -210,9 +225,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 返回遍历结果集的枚举器。
+        /// 获取同步枚举器，用于逐行读取并转换结果集。
+        /// 使用完毕后枚举器会关闭底层的 <see cref="DbDataReader"/> 并释放相关命令（若为按需创建）。
         /// </summary>
-        /// <returns>用于遍历结果集的 <see cref="IEnumerator{T}"/>。</returns>
+        /// <returns>用于同步遍历结果集的 <see cref="IEnumerator{T}"/>。</returns>
         public IEnumerator<TResult> GetEnumerator()
         {
             var command = GetCommand();
@@ -246,7 +262,8 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 获取结果集中的第一个元素，若结果集为空则返回默认值。
+        /// 同步获取结果集中的第一个元素，若结果集为空则返回默认值。
+        /// 该方法会在读取完成后关闭底层 reader 并释放命令资源（若为按需创建）。
         /// </summary>
         /// <returns>第一个元素，或类型的默认值。</returns>
         public TResult FirstOrDefault()
@@ -260,9 +277,10 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 异步获取结果集中的第一个元素，若结果集为空则返回默认值。
+        /// 在方法返回后会立即关闭 reader 并释放命令资源（若为按需创建）。
         /// </summary>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>表示异步操作的任务，包含第一个元素或类型的默认值。</returns>
+        /// <param name="cancellationToken">取消操作的 <see cref="CancellationToken"/>。</param>
+        /// <returns>包含第一个元素或默认值的任务。</returns>
         public async ValueTask<TResult> FirstOrDefaultAsync(CancellationToken cancellationToken = default)
         {
             var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
@@ -358,7 +376,7 @@ namespace LiteOrm.Common
             /// <summary>
             /// 初始化 <see cref="AsyncEnumerator"/> 类的新实例。
             /// </summary>
-            /// <param name="command">要执行的数据库命令。</param>
+            /// <param name="commandFunc">用于获取要执行的数据库命令的委托。</param>
             /// <param name="readerFunc">将数据行转换为元素的委托。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             public AsyncEnumerator(Func<CancellationToken, Task<DbCommandProxy>> commandFunc, Func<DbDataReader, TResult> readerFunc, CancellationToken cancellationToken)
@@ -437,19 +455,20 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// 值结果类，对应ExecuteScalar方式
+    /// 标量值结果类型，对应 <see cref="DbCommandProxy.ExecuteScalar()"/> 执行方式。
+    /// 用于返回单个值（第一行第一列）的查询结果，并提供同步/异步访问。
     /// </summary>
-    /// <typeparam name="TResult">值类型</typeparam>
+    /// <typeparam name="TResult">表示转换后返回的值类型。</typeparam>
     public class ValueResult<TResult> : CommandResult<TResult>
     {
         private readonly Func<object, TResult> _resultConverter;
 
         /// <summary>
-        /// 初始化 <see cref="ValueResult{TResult}"/> 类的新实例。
+        /// 使用 DAO 与 PreparedSql 初始化一个标量结果对象，按需创建命令执行查询。
         /// </summary>
-        /// <param name="dao">要执行的数据库命令。</param>
-        /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
-        /// <param name="resultConverter">将标量结果转换为 <typeparamref name="TResult"/> 的委托，为 null 时使用默认转换。</param>
+        /// <param name="dao">用于创建命令并执行查询的 <see cref="DAOBase"/>。</param>
+        /// <param name="sql">预处理的 SQL 与参数集合。</param>
+        /// <param name="resultConverter">可选的转换器，将数据库原始值转换为 TResult。</param>
         public ValueResult(DAOBase dao, PreparedSql sql, Func<object, TResult> resultConverter = null)
             : base(dao, sql)
         {
@@ -469,9 +488,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 执行命令并返回标量结果。
+        /// 同步执行标量查询并返回转换后的结果。
+        /// 如果命令为按需创建，则在方法结束时释放命令资源。
         /// </summary>
-        /// <returns>命令执行的标量结果。</returns>
+        /// <returns>转换后的标量结果。</returns>
         public override TResult GetResult()
         {
             var command = GetCommand();
@@ -480,10 +500,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 异步执行命令并返回标量结果。
+        /// 异步执行标量查询并返回转换后的结果。
+        /// 若命令按需创建，则在方法结束时释放相关命令资源。
         /// </summary>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>表示异步操作的任务，包含命令执行的标量结果。</returns>
+        /// <param name="cancellationToken">取消操作的 <see cref="CancellationToken"/>。</param>
+        /// <returns>包含转换后标量值的任务。</returns>
         public override async Task<TResult> GetResultAsync(CancellationToken cancellationToken = default)
         {
             var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
@@ -493,25 +514,32 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// 空结果类，对应ExecuteNonQuery方式
+    /// 非查询结果类型，对应 <see cref="DbCommandProxy.ExecuteNonQuery()"/> 的执行方式。
+    /// 用于执行不返回行的命令（如 UPDATE/DELETE/INSERT）并返回受影响的行数。
+    /// 支持使用按需创建的命令或传入的预构建命令。
     /// </summary>
     public class NonQueryResult : CommandResult<int>
     {
         /// <summary>
-        /// 初始化 <see cref="NonQueryResult"/> 类的新实例。
+        /// 使用 DAO 与 PreparedSql 初始化一个 NonQueryResult，用于按需创建命令并执行非查询操作。
         /// </summary>
-        /// <param name="dao">要执行的数据库DAO对象。</param>
-        /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
+        /// <param name="dao">用于创建命令并执行的 <see cref="DAOBase"/>。</param>
+        /// <param name="sql">预处理的 SQL 与参数集合。</param>
         public NonQueryResult(DAOBase dao, PreparedSql sql)
             : base(dao, sql)
         { }
 
+        /// <summary>
+        /// 使用已准备好的 <see cref="DbCommandProxy"/> 初始化 NonQueryResult，以支持命令重用。
+        /// </summary>
+        /// <param name="preparedCommand">预构建并可能缓存的数据库命令代理。</param>
         public NonQueryResult(DbCommandProxy preparedCommand)
             : base(preparedCommand)
         { }
 
         /// <summary>
-        /// 执行命令并返回受影响的行数。
+        /// 同步执行非查询命令并返回受影响的行数。
+        /// 对于按需创建的命令，执行后会由本对象负责释放命令资源。
         /// </summary>
         /// <returns>受影响的行数。</returns>
         public override int GetResult()
@@ -521,10 +549,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 异步执行命令并返回受影响的行数。
+        /// 异步执行非查询命令并返回受影响的行数。
+        /// 对于按需创建的命令，执行后会由本对象负责释放命令资源。
         /// </summary>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>表示异步操作的任务，包含受影响的行数。</returns>
+        /// <param name="cancellationToken">取消操作的 <see cref="CancellationToken"/>。</param>
+        /// <returns>包含受影响行数的任务。</returns>
         public override async Task<int> GetResultAsync(CancellationToken cancellationToken = default)
         {
             var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
@@ -539,7 +568,6 @@ namespace LiteOrm.Common
     {
         private readonly Func<IDataReader, DataTable, DataRow> _readRow;
         private DataTable _dataTable;
-        private bool _hasLoaded;
 
         /// <summary>
         /// 初始化 <see cref="DataTableResult"/> 类的新实例。
@@ -549,6 +577,18 @@ namespace LiteOrm.Common
         /// <param name="readRow">将 <see cref="IDataReader"/> 的一行数据转换为 <see cref="DataRow"/> 的委托。</param>
         public DataTableResult(DAOBase dao, PreparedSql sql, Func<IDataReader, DataTable, DataRow> readRow)
             : base(dao, sql)
+        {
+            _readRow = readRow;
+            _dataTable = null;
+        }
+
+        /// <summary>
+        /// 使用已准备好的 <see cref="DbCommandProxy"/> 初始化 DataTableResult，适用于需要重用同一命令的场景。
+        /// </summary>
+        /// <param name="preparedCommand">预构建并可能缓存的数据库命令代理。</param>
+        /// <param name="readRow">可选的行映射委托。</param>
+        public DataTableResult(DbCommandProxy preparedCommand, Func<IDataReader, DataTable, DataRow> readRow)
+            : base(preparedCommand)
         {
             _readRow = readRow;
             _dataTable = null;
@@ -582,7 +622,8 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 加载数据到DataTable
+        /// 同步将查询结果加载到 <see cref="DataTable"/>。
+        /// 方法内部会创建命令并执行 <see cref="DbCommandProxy.ExecuteReader()"/>，读取完成后会关闭 reader 并释放命令（若为按需创建）。
         /// </summary>
         private void LoadData()
         {
@@ -597,7 +638,7 @@ namespace LiteOrm.Common
                     {
                         _dataTable.Columns.Add(reader.GetName(i), reader.GetFieldType(i));
                     }
-                }
+        }
 
                 _dataTable.BeginLoadData();
                 while (reader.Read())
@@ -622,9 +663,10 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 异步加载数据到DataTable
+        /// 异步将查询结果加载到 <see cref="DataTable"/>。
+        /// 异步方法会异步创建命令和 reader，并在完成后释放相关资源。
         /// </summary>
-        /// <param name="cancellationToken">取消令牌</param>
+        /// <param name="cancellationToken">取消操作的 <see cref="CancellationToken"/>。</param>
         private async Task LoadDataAsync(CancellationToken cancellationToken = default)
         {
             _dataTable = new DataTable();

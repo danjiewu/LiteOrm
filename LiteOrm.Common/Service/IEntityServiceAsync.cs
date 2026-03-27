@@ -12,7 +12,7 @@ namespace LiteOrm.Service
     /// <typeparam name="T">实体类型</typeparam>
     [Service]
     [ServicePermission(false)]
-    [ServiceLog(LogLevel = ServiceLogLevel.Information)]
+    [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     public interface IEntityServiceAsync<T> : IEntityServiceAsync
     {
         /// <summary>
@@ -100,6 +100,7 @@ namespace LiteOrm.Service
     [AutoRegister(false)]
     [Service]
     [ServicePermission(false)]
+    [ServiceLog(LogLevel = ServiceLogLevel.Debug)]  
     public interface IEntityServiceAsync
     {
         /// <summary>

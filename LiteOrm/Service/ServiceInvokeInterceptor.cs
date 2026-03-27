@@ -62,6 +62,10 @@ namespace LiteOrm.Service
     [AutoRegister(Lifetime = Lifetime.Singleton)]
     public class ServiceInvokeInterceptor : IInterceptor, IAsyncInterceptor
     {
+        /// <summary>
+        /// 设置慢查询阈值，超过该时间的方法调用将被记录为慢查询日志。默认值为10秒。
+        /// </summary>
+        public static TimeSpan SlowQueryThreshold = TimeSpan.FromSeconds(10);
         private readonly ConcurrentDictionary<MethodInfo, ServiceDescription> _methodDescriptions = new();
         private static readonly AsyncLocal<bool> _inProcess = new AsyncLocal<bool>();
         private readonly ILogger _logger;
@@ -357,6 +361,14 @@ namespace LiteOrm.Service
                     "[{SessionID}]<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
                      SessionManager.Current?.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
                     elapsedTime.TotalSeconds, returnLog);
+            }
+            if (elapsedTime > SlowQueryThreshold)//记录慢查询日志
+            {
+                _logger.LogWarning("[{SessionID}]<Slow>{Service}.{Method} took {Duration} seconds", SessionManager.Current?.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName, elapsedTime.TotalSeconds);
+                foreach (var sql in SessionManager.Current?.SqlStack ?? Array.Empty<string>())
+                {
+                    _logger.LogWarning("[{SessionID}]<SlowSQL>{SQL}", SessionManager.Current?.SessionID, sql);
+                }
             }
         }
 

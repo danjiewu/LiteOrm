@@ -441,7 +441,8 @@ namespace LiteOrm
             {
                 Lifetime.Singleton => ServiceLifetime.Singleton,
                 Lifetime.Scoped => ServiceLifetime.Scoped,
-                Lifetime.Transient => ServiceLifetime.Transient
+                Lifetime.Transient => ServiceLifetime.Transient,
+                _ => ServiceLifetime.Transient,
             };
             var serviceDescriptor = new ServiceDescriptor(typeof(TService),
                 sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget<TService>(sp.GetRequiredService<ServiceGenerateInterceptor>()),

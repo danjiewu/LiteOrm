@@ -12,7 +12,7 @@ namespace LiteOrm.CodeGen
     /// <remarks>
     /// DdlGenerator 根据实体类型的 <see cref="TableDefinition.DataSource"/> 自动从
     /// <see cref="DAOContextPoolFactory"/> 获取对应连接池，委托
-    /// <see cref="DAOContextPool.ResolveEnsureTableDdl"/> 实现 ddl 解析。
+    /// <see cref="DatabaseSync.ResolveEnsureTableDdl"/> 实现 ddl 解析。
     /// 支持多数据源场景：不同实体类型可分属不同数据源，各自连接正确的数据库进行对比。
     ///
     /// 主要用途：
@@ -20,8 +20,8 @@ namespace LiteOrm.CodeGen
     /// 2. 为指定实体类型生成单张表的 ddl。
     /// 3. 扫描程序集自动生成全部实体类型的 ddl。
     ///
-    /// 注意：调用后表会被标记为已处理，后续 <see cref="DAOContextPool.EnsureTable"/> 将跳过已标记的表。
-    /// 若需重新生成，请先调用 <see cref="DAOContextPool.ClearTableCache"/>。
+    /// 注意：调用后表会被标记为已处理，后续 <see cref="DatabaseSync.EnsureTable"/> 将跳过已标记的表。
+    /// 若需重新生成，请先调用 <see cref="DatabaseSync.ClearTableCache"/>。
     ///
     /// 使用示例：
     /// <code>

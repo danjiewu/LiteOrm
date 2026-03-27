@@ -402,10 +402,7 @@ namespace LiteOrm
         /// <exception cref="ArgumentNullException"></exception>
         internal protected DbCommandProxy MakeExprCommand(Expr expr, bool isQuery = false)
         {
-            if (isQuery)
-            {
-                expr = ToSelectExpr(expr);
-            }
+            if (isQuery) expr = ToSelectExpr(expr);
             if (expr is null) throw new ArgumentNullException(nameof(expr));
             return MakeNamedParamCommand(expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder));
         }
@@ -418,15 +415,17 @@ namespace LiteOrm
         /// <returns>根据表达式生成的数据库命令代理实例。</returns>
         /// <exception cref="ArgumentNullException"></exception>
         internal protected async Task<DbCommandProxy> MakeExprCommandAsync(Expr expr, bool isQuery = false, CancellationToken cancellationToken = default)
-        {        
-            if (isQuery)
-            {
-                expr = ToSelectExpr(expr);
-            }
+        {
+            if (isQuery) expr = ToSelectExpr(expr);
             if (expr is null) throw new ArgumentNullException(nameof(expr));
             return await MakeNamedParamCommandAsync(expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder), cancellationToken).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="expr"></param>
+        /// <returns></returns>
         protected SelectExpr ToSelectExpr(Expr expr)
         {
             if (expr is SelectExpr selectExpr) return selectExpr;

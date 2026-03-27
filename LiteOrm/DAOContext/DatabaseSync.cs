@@ -12,6 +12,9 @@ using System.Xml.Linq;
 
 namespace LiteOrm
 {
+    /// <summary>
+    /// 数据库同步器，负责在 DAO 执行命令前确保相关表结构存在且包含必要列。
+    /// </summary>
     public class DatabaseSync : IDisposable
     {
         private readonly ConcurrentDictionary<string, HashSet<string>> _tableColumns = new(StringComparer.OrdinalIgnoreCase);
@@ -80,6 +83,7 @@ namespace LiteOrm
         /// 内部自动获取连接、加锁、检查数据库、更新列缓存，并在完成后将表标记为已处理。
         /// 若表已处理则直接返回空列表，可安全用于 DDL 预览与导出。
         /// </summary>
+        /// <param name="daoContext">DAO 上下文实例。</param>
         /// <param name="objectType">实体类型。</param>
         /// <param name="tableArgs">动态表名参数，适用于实现了 <see cref="IArged"/> 的类型。</param>
         /// <returns>需要执行的 DDL 语句列表（CREATE TABLE、ADD COLUMN、CREATE INDEX）。</returns>
