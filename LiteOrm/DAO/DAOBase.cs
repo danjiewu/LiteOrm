@@ -428,6 +428,7 @@ namespace LiteOrm
         /// <returns></returns>
         protected SelectExpr ToSelectExpr(Expr expr)
         {
+            if (expr is null) expr = Expr.From(ObjectType, TableArgs);
             if (expr is SelectExpr selectExpr) return selectExpr;
             return new SelectExpr()
             {
@@ -444,8 +445,8 @@ namespace LiteOrm
         /// <returns>包含查询结果的值结果对象。</returns>
         public virtual ValueResult<T> GetValue<T>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
-            var command = MakeNamedParamCommand(sqlBody.GetSql(), sqlBody.GetParams());
-            return new ValueResult<T>(command);
+            var prepared = sqlBody.GetResult();
+            return new ValueResult<T>(this, prepared);
         }
 
         /// <summary>
@@ -455,8 +456,8 @@ namespace LiteOrm
         /// <returns>包含受影响行数的非查询结果对象。</returns>
         public virtual NonQueryResult Execute([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
-            var command = MakeNamedParamCommand(sqlBody.GetSql(), sqlBody.GetParams());
-            return new NonQueryResult(command);
+            var prepared = sqlBody.GetResult();
+            return new NonQueryResult(this, prepared);
         }
 
         /// <summary>

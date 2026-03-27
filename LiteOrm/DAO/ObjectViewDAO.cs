@@ -134,8 +134,8 @@ namespace LiteOrm
         public virtual ValueResult<int> Count(Expr expr)
         {
             var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Aggregate("Count", Expr.Const(1)));
-            var command = MakeExprCommand(selectExpr);
-            return new ValueResult<int>(command);
+            var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            return new ValueResult<int>(this, prepared);
         }
 
         /// <summary>
@@ -186,8 +186,8 @@ namespace LiteOrm
         public virtual ValueResult<bool> Exists(Expr expr)
         {
             var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Const(1));
-            var command = MakeExprCommand(selectExpr);
-            return new ValueResult<bool>(command, (obj) => obj != null);
+            var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            return new ValueResult<bool>(this, prepared, (obj) => obj != null);
         }
 
 
@@ -198,8 +198,9 @@ namespace LiteOrm
         /// <returns>符合条件的对象集合。</returns>
         public virtual EnumerableResult<T> Search(Expr expr = null)
         {
-            var command = MakeExprCommand(expr, true);
-            return new EnumerableResult<T>(command, ConvertToObjectHandler);
+            expr = ToSelectExpr(expr);
+            var prepared = expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            return new EnumerableResult<T>(this, prepared, ConvertToObjectHandler);
         }
 
         /// <summary>
@@ -209,8 +210,10 @@ namespace LiteOrm
         /// <returns>符合条件的对象集合。</returns>
         public virtual EnumerableResult<T> Search(Expression<Func<IQueryable<T>, IQueryable<T>>> expr)
         {
-            var command = MakeExprCommand(LambdaExprConverter.ToSqlSegment(expr), true);
-            return new EnumerableResult<T>(command, ConvertToObjectHandler);
+            var seg = LambdaExprConverter.ToSqlSegment(expr);
+            seg = ToSelectExpr(seg);
+            var prepared = seg.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            return new EnumerableResult<T>(this, prepared, ConvertToObjectHandler);
         }
 
         /// <summary>
@@ -222,8 +225,8 @@ namespace LiteOrm
         /// <returns>自定义类型的集合。</returns>
         public virtual EnumerableResult<TResult> SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult> readerFunc = null)
         {
-            var command = MakeExprCommand(selectExpr);
-            return new EnumerableResult<TResult>(command, readerFunc);
+            var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            return new EnumerableResult<TResult>(this, prepared, readerFunc);
         }
 
         /// <summary>
@@ -235,8 +238,10 @@ namespace LiteOrm
         /// <returns></returns>
         public virtual EnumerableResult<TResult> SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)
         {
-            var command = MakeExprCommand(LambdaExprConverter.ToSqlSegment(expr), true);
-            return new EnumerableResult<TResult>(command, readerFunc);
+            var seg = LambdaExprConverter.ToSqlSegment(expr);
+            seg = ToSelectExpr(seg);
+            var prepared = seg.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            return new EnumerableResult<TResult>(this, prepared, readerFunc);
         }
 
         /// <summary>
@@ -253,8 +258,8 @@ namespace LiteOrm
         public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody,bool isFull = false)
         {
             string sql = isFull ? sqlBody.GetSql() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSql()}";
-            var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
-            return new EnumerableResult<T>(command, ConvertToObjectHandler);
+            var prepared = new PreparedSql(sql, sqlBody.GetParams());
+            return new EnumerableResult<T>(this, prepared, ConvertToObjectHandler);
         }
 
         /// <summary>
@@ -269,9 +274,7 @@ namespace LiteOrm
         /// </example>
         public virtual EnumerableResult<TResult> SearchAs<TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
-            string sql = sqlBody.GetSql();
-            var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
-            return new EnumerableResult<TResult>(command);
+            return new EnumerableResult<TResult>(this, sqlBody.GetResult());
         }
 
         /// <summary>
