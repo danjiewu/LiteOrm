@@ -66,6 +66,8 @@ namespace LiteOrm.Common
         /// 要执行的数据库命令对象，子类通过该对象执行相应的数据库操作以获取结果。
         /// </summary>
         protected readonly DbCommandProxy _command;
+
+        protected PreparedSql _sql;
         /// <summary>
         /// 标记是否在释放时自动销毁命令对象，默认为 true。若为 true，则在调用 Dispose 方法时会自动调用 _command.Dispose() 来释放数据库命令对象占用的资源；如果为 false，则需要由外部代码负责管理命令对象的生命周期，确保在适当的时候手动调用 _command.Dispose() 来释放资源。
         /// </summary>
@@ -79,6 +81,20 @@ namespace LiteOrm.Common
         protected CommandResult(DbCommandProxy command, bool autoDisposeCommand = true)
         {
             _command = command;
+            _sql = null;
+            _autoDisposeCommand = autoDisposeCommand;
+        }
+
+        /// <summary>
+        /// 初始化 <see cref="CommandResult{T}"/> 类的新实例。
+        /// </summary>
+        /// <param name="command">要执行的数据库命令。</param>
+        /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
+        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
+        protected CommandResult(DbCommandProxy command, PreparedSql sql = null, bool autoDisposeCommand = true)
+        {
+            _command = command;
+            _sql = sql;
             _autoDisposeCommand = autoDisposeCommand;
         }
 

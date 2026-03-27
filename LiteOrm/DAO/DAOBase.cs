@@ -11,6 +11,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LiteOrm
 {
@@ -119,7 +121,19 @@ namespace LiteOrm
         /// <summary>
         /// 获取当前数据访问对象上下文
         /// </summary>
-        public virtual DAOContext DAOContext => CurrentSession.GetDaoContext(TableDefinition.DataSource, IsView);
+        public virtual DAOContext GetDaoContext()
+        {
+            return CurrentSession.GetDaoContext(TableDefinition.DataSource, IsView);
+        }
+
+        /// <summary>
+        /// 异步获取当前数据访问对象上下文
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌</param>
+        public virtual Task<DAOContext> GetDaoContextAsync(CancellationToken cancellationToken = default)
+        {
+            return CurrentSession.GetDaoContextAsync(TableDefinition.DataSource, IsView, cancellationToken);
+        }
 
         /// <summary>
         /// 表名参数
@@ -160,15 +174,6 @@ namespace LiteOrm
         {
             get; set;
         }
-
-        /// <summary>
-        /// 数据库连接
-        /// </summary>
-        public DbConnection Connection
-        {
-            get { return DAOContext.DbConnection; }
-        }
-
 
         /// <summary>
         /// 实际表名
@@ -244,8 +249,21 @@ namespace LiteOrm
         /// <returns>初始化好的数据库命令代理实例。</returns>
         public virtual DbCommandProxy NewCommand()
         {
-            DAOContext.EnsureTable(ObjectType, TableArgs);
-            return DAOContext.CreateCommand();
+            var daoContext = GetDaoContext();
+            daoContext.EnsureTable(ObjectType, TableArgs);
+            return daoContext.CreateCommand();
+        }
+
+        /// <summary>
+        /// 异步创建 IDbCommand
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>初始化好的数据库命令代理实例。</returns>
+        public virtual async Task<DbCommandProxy> NewCommandAsync(CancellationToken cancellationToken = default)
+        {
+            var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
+            await daoContext.EnsureTableAsync(ObjectType, TableArgs).ConfigureAwait(false);
+            return daoContext.CreateCommand();
         }
 
         /// <summary>
@@ -279,25 +297,91 @@ namespace LiteOrm
         /// 获取预定义的 DbCommand
         /// </summary>
         /// <param name="methodName">方法名称</param>
-        /// <param name="newCommandHandler">新的命令处理器</param>
+        /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
         /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
-        protected DbCommandProxy GetPreparedCommand(string methodName, Func<DbCommandProxy> newCommandHandler)
+        protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc)
         {
             if (TableArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableArgs);
-            return DAOContext.PreparedCommands.GetOrAdd((ObjectType, methodName), _ => newCommandHandler());
+            return GetDaoContext().PreparedCommands.GetOrAdd((ObjectType, methodName), _ => MakeNamedParamCommand(sqlFunc()));
         }
 
         /// <summary>
-        /// 根据 SQL 语句和命名的参数建立 <see cref="IDbCommand"/>。
+        /// 异步获取预定义的 DbCommand。
         /// </summary>
-        /// <param name="sql">SQL 语句，SQL 中可以包含已命名的参数。</param>
-        /// <param name="paramValues">参数列表，为空时表示没有参数。Key 需要与 SQL 中的参数名称对应。</param>
-        /// <param name="replaceHandler">自定义替换方法，返回替换值或null表示使用默认替换。为空时使用默认替换。</param>
-        /// <returns>IDbCommand 实例。</returns>
-        protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues, Func<string, string> replaceHandler = null)
+        /// <param name="methodName">方法名称</param>
+        /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
+        protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, CancellationToken cancellationToken = default)
         {
-            DbCommandProxy command = NewCommand();
-            command.CommandText = MutiReplacerInstance.Replace(sql, replaceHandler);
+            if (TableArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableArgs);
+            var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
+            if (daoContext.PreparedCommands.TryGetValue((ObjectType, methodName), out var command))
+            {
+                return command;
+            }
+
+            command = await MakeNamedParamCommandAsync(sqlFunc(), cancellationToken).ConfigureAwait(false);
+            return daoContext.PreparedCommands.GetOrAdd((ObjectType, methodName), _ => command);
+        }
+
+
+        /// <summary>
+        /// 根据 预处理的 SQL 语句和参数列表建立 <see cref="DbCommandProxy"/>。
+        /// 预处理的 SQL 包含 SQL 语句和与之对应的命名参数列表，SQL 语句中的参数名称需要与参数列表中的键对应。
+        /// SQL 语句中可以包含预定义的标记，如 {Table}、{From} 和 {AllFields}，这些标记会被替换为相应的值。
+        /// 参数列表中的值会被转换为数据库参数，并添加到命令中。
+        /// </summary>
+        /// <param name="preparedSql"></param>
+        /// <returns></returns>
+        protected DbCommandProxy MakeNamedParamCommand(PreparedSql preparedSql)
+        {
+            return MakeNamedParamCommand(preparedSql.Sql, preparedSql.Params);
+        }
+        /// <summary>
+        /// 根据 预处理的 SQL 语句和参数列表建立 <see cref="DbCommandProxy"/>。
+        /// 预处理的 SQL 包含 SQL 语句和与之对应的命名参数列表，SQL 语句中的参数名称需要与参数列表中的键对应。
+        /// SQL 语句中可以包含预定义的标记，如 {Table}、{From} 和 {AllFields}，这些标记会被替换为相应的值。
+        /// 参数列表中的值会被转换为数据库参数，并添加到命令中。
+        /// </summary>
+        /// <param name="sql">SQL 语句，SQL 中可以包含已命名的参数以及占位符。</param>
+        /// <param name="paramValues">参数列表，为空时表示没有参数。Key 需要与 SQL 中的参数名称对应。</param>
+        /// <returns>IDbCommand 实例。</returns>
+        protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues)
+        {
+            var command = NewCommand();
+            command.CommandText = MutiReplacerInstance.Replace(sql);
+            if (paramValues is not null)
+                foreach (KeyValuePair<string, object> para in paramValues)
+                {
+                    DbParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName(ToNativeName(para.Key));
+                    param.Value = SqlBuilder.ConvertToDbValue(para.Value);
+                    command.Parameters.Add(param);
+                }
+            return command;
+        }
+        /// <summary>
+        /// 异步根据 预处理的 SQL 语句和参数列表建立 <see cref="DbCommandProxy"/>。
+        /// </summary>
+        /// <param name="preparedSql"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(PreparedSql preparedSql, CancellationToken cancellationToken = default)
+        {
+            return await MakeNamedParamCommandAsync(preparedSql.Sql, preparedSql.Params, cancellationToken).ConfigureAwait(false);
+        }
+        /// <summary>
+        /// 异步根据 预处理的 SQL 语句和参数列表建立 <see cref="DbCommandProxy"/>。
+        /// </summary>
+        /// <param name="sql"></param>
+        /// <param name="paramValues"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(string sql, IEnumerable<KeyValuePair<string, object>> paramValues, CancellationToken cancellationToken = default)
+        {
+            var command = await NewCommandAsync(cancellationToken).ConfigureAwait(false);
+            command.CommandText = MutiReplacerInstance.Replace(sql);
             if (paramValues is not null)
                 foreach (KeyValuePair<string, object> para in paramValues)
                 {
@@ -310,41 +394,51 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 根据表达式创建查询命令
+        /// 根据表达式创建命令
         /// </summary>
-        /// <param name="expr">查询条件表达式</param>
-        /// <returns>生成的查询命令</returns>
-        /// <exception cref="ArgumentException"></exception>
-        protected DbCommandProxy MakeSelectExprCommand(Expr expr)
+        /// <param name="expr">表达式</param>
+        /// <param name="isQuery">是否生成 select 查询</param>
+        /// <returns>根据表达式生成的数据库命令代理实例。</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        protected DbCommandProxy MakeExprCommand(Expr expr, bool isQuery = false)
         {
-            SelectExpr selectExpr;
-            if (expr is SelectExpr selectExpr1)
+            if (expr is null) throw new ArgumentNullException(nameof(expr));
+            
+            Expr processedExpr = expr;
+            if (isQuery && !(expr is SelectExpr))
             {
-                selectExpr = selectExpr1;
-            }
-            else
-            {
-                selectExpr = new SelectExpr()
+                processedExpr = new SelectExpr()
                 {
                     Source = expr.ToSource(ObjectType),
                     Selects = SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Prop(col.PropertyName), col.PropertyName)).ToList()
                 };
             }
-            return MakeExprCommand(selectExpr);
+            
+            return MakeNamedParamCommand(processedExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder));
         }
-
         /// <summary>
-        /// 根据表达式创建命令
+        /// 异步根据表达式创建命令
         /// </summary>
         /// <param name="expr">表达式</param>
+        /// <param name="isQuery">是否生成 select 查询</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>根据表达式生成的数据库命令代理实例。</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        protected DbCommandProxy MakeExprCommand(Expr expr)
+        protected async Task<DbCommandProxy> MakeExprCommandAsync(Expr expr, bool isQuery = false, CancellationToken cancellationToken = default)
         {
             if (expr is null) throw new ArgumentNullException(nameof(expr));
-            List<KeyValuePair<string, object>> paramList = new List<KeyValuePair<string, object>>();
-            var context = CreateSqlBuildContext();
-            return MakeNamedParamCommand(expr.ToSql(context, SqlBuilder, paramList), paramList);
+            
+            Expr processedExpr = expr;
+            if (isQuery && !(expr is SelectExpr))
+            {
+                processedExpr = new SelectExpr()
+                {
+                    Source = expr.ToSource(ObjectType),
+                    Selects = SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Prop(col.PropertyName), col.PropertyName)).ToList()
+                };
+            }
+            
+            return await MakeNamedParamCommandAsync(processedExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder), cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -418,11 +512,11 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 为command创建根据主键查询的条件，在command中添加参数并返回where条件的语句
+        /// 为command创建根据主键查询的条件，在参数集合中添加参数并返回where条件的语句
         /// </summary>
-        /// <param name="command">要创建条件的数据库命令</param>
+        /// <param name="paramValues">参数集合</param>
         /// <returns>where条件的语句</returns>
-        protected string MakeKeyCondition(DbCommand command)
+        protected string MakeKeyCondition(ICollection<KeyValuePair<string, object>> paramValues)
         {
             ThrowExceptionIfNoKeys();
             var strConditions = ValueStringBuilder.Create(128);
@@ -436,14 +530,7 @@ namespace LiteOrm
                 strConditions.Append(" = ");
                 strConditions.Append(ToSqlParam(key.PropertyName));
 
-                if (!command.Parameters.Contains(key.PropertyName))
-                {
-                    DbParameter param = command.CreateParameter();
-                    param.Size = key.Length;
-                    param.DbType = key.DbType;
-                    param.ParameterName = ToParamName(key.PropertyName);
-                    command.Parameters.Add(param);
-                }
+                paramValues.Add(new KeyValuePair<string, object>(key.PropertyName, null));
             }
             string result = strConditions.ToString();
             strConditions.Dispose();
@@ -452,24 +539,19 @@ namespace LiteOrm
 
 
         /// <summary>
-        /// 为command创建根据时间戳的条件，在command中添加参数并返回where条件的语句
+        /// 为command创建根据时间戳的条件，在参数集合中添加参数并返回where条件的语句
         /// </summary>
-        /// <param name="command">要创建条件的数据库命令</param>
+        /// <param name="paramValues">参数集合</param>
         /// <param name="timestamp">时间戳</param>
         /// <returns>where条件的语句</returns>
-        protected string MakeTimestampCondition(DbCommand command, object timestamp)
+        protected string MakeTimestampCondition(ICollection<KeyValuePair<string, object>> paramValues, object timestamp)
         {
             foreach (var column in Table.Columns)
             {
                 var columnDef = column.Definition;
                 if (columnDef.IsTimestamp)
                 {
-                    DbParameter param = command.CreateParameter();
-                    param.Size = columnDef.Length;
-                    param.DbType = columnDef.DbType;
-                    param.ParameterName = ToParamName(TimestampParamName);
-                    param.Value = ConvertToDbValue(timestamp, columnDef.DbType);
-                    command.Parameters.Add(param);
+                    paramValues.Add(new KeyValuePair<string, object>(TimestampParamName, timestamp));
                     return $"{ToColumnSql(column)} = {ToSqlParam(TimestampParamName)}";
                 }
             }

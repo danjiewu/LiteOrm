@@ -77,35 +77,31 @@ namespace LiteOrm
         /// <summary>
         /// 实现获取对象操作的IDbCommand
         /// </summary>
-        protected virtual DbCommandProxy MakeGetObjectCommand()
+        protected virtual PreparedSql MakeGetObjectSql()
         {
-            DbCommandProxy command = NewCommand();
-            string where = MakeKeyCondition(command);
-            command.CommandText = $"SELECT {AllFields} \nFROM {From} {ToWhereSql(where)}";
-            return command;
+            var paramValues = new Dictionary<string, object>();
+            
+            // 构建 WHERE 子句
+            string where = MakeKeyCondition(paramValues);
+            
+            string sql = $"SELECT {AllFields} \nFROM {From} {ToWhereSql(where)}";
+            return new PreparedSql(sql, paramValues);
         }
 
 
         /// <summary>
         /// 实现检查对象是否存在操作的IDbCommand
         /// </summary>
-        protected virtual DbCommandProxy MakeObjectExistsCommand()
+        protected virtual PreparedSql MakeObjectExistsSql()
         {
             ThrowExceptionIfNoKeys();
-            DbCommandProxy command = NewCommand();
-            StringBuilder strConditions = new StringBuilder();
-            foreach (ColumnDefinition key in TableDefinition.Keys)
-            {
-                if (strConditions.Length != 0) strConditions.Append(" AND ");
-                strConditions.AppendFormat("{0} = {1}", ToColumnSql(key), ToSqlParam(key.PropertyName));
-                DbParameter param = command.CreateParameter();
-                param.Size = key.Length;
-                param.DbType = key.DbType;
-                param.ParameterName = ToParamName(key.PropertyName);
-                command.Parameters.Add(param);
-            }
-            command.CommandText = $"SELECT 1 \nFROM {FactTableName} {ToWhereSql(strConditions.ToString())}";
-            return command;
+            var paramValues = new Dictionary<string, object>();
+            
+            // 构建 WHERE 子句
+            string where = MakeKeyCondition(paramValues);
+            
+            string sql = $"SELECT 1 \nFROM {FactTableName} {ToWhereSql(where)}";
+            return new PreparedSql(sql, paramValues);
         }
         #endregion
 
@@ -119,7 +115,7 @@ namespace LiteOrm
         public virtual EnumerableResult<T> GetObject(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var getObjectCommand = GetPreparedCommand("GetObject", MakeGetObjectCommand);
+            var getObjectCommand = GetPreparedCommand("GetObject", MakeGetObjectSql);
             int i = 0;
             foreach (DbParameter param in getObjectCommand.Parameters)
             {
@@ -172,7 +168,7 @@ namespace LiteOrm
         public virtual ValueResult<bool> ExistsKey(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var objectExistsCommand = GetPreparedCommand("ExistsKey", MakeObjectExistsCommand);
+            var objectExistsCommand = GetPreparedCommand("ExistsKey", MakeObjectExistsSql);
             int i = 0;
             foreach (DbParameter param in objectExistsCommand.Parameters)
             {
@@ -202,7 +198,7 @@ namespace LiteOrm
         /// <returns>符合条件的对象集合。</returns>
         public virtual EnumerableResult<T> Search(Expr expr = null)
         {
-            var command = MakeSelectExprCommand(expr);
+            var command = MakeExprCommand(expr, true);
             return new EnumerableResult<T>(command, ConvertToObjectHandler);
         }
 
@@ -213,7 +209,7 @@ namespace LiteOrm
         /// <returns>符合条件的对象集合。</returns>
         public virtual EnumerableResult<T> Search(Expression<Func<IQueryable<T>, IQueryable<T>>> expr)
         {
-            var command = MakeSelectExprCommand(LambdaExprConverter.ToSqlSegment(expr));
+            var command = MakeExprCommand(LambdaExprConverter.ToSqlSegment(expr), true);
             return new EnumerableResult<T>(command, ConvertToObjectHandler);
         }
 
@@ -239,7 +235,7 @@ namespace LiteOrm
         /// <returns></returns>
         public virtual EnumerableResult<TResult> SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)
         {
-            var command = MakeSelectExprCommand(LambdaExprConverter.ToSqlSegment(expr));
+            var command = MakeExprCommand(LambdaExprConverter.ToSqlSegment(expr), true);
             return new EnumerableResult<TResult>(command, readerFunc);
         }
 

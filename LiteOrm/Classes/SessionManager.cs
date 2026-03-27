@@ -42,11 +42,11 @@ namespace LiteOrm
     /// </code>
     /// </remarks>
     [AutoRegister(Lifetime.Scoped)]
-    public class SessionManager : IDisposable
+    public class SessionManager : IDisposable, IAsyncDisposable
     {
         private readonly DAOContextPoolFactory _daoContextPoolFactory;
         private readonly ILogger<SessionManager> _logger;
-        private readonly object _syncLock = new object();
+        private readonly SemaphoreSlim _syncLock = new SemaphoreSlim(1, 1);
         private bool _disposed = false;
 
         private readonly ConcurrentDictionary<string, DAOContext> _daoContexts = new ConcurrentDictionary<string, DAOContext>(StringComparer.OrdinalIgnoreCase);
@@ -114,10 +114,15 @@ namespace LiteOrm
         public bool Reset()
         {
             EnsureNotDisposed();
-            lock (_syncLock)
+            _syncLock.Wait();
+            try
             {
                 _sqlStack.Clear();
                 return true;
+            }
+            finally
+            {
+                _syncLock.Release();
             }
         }
 
@@ -128,13 +133,18 @@ namespace LiteOrm
         public void PushSql(string sql)
         {
             EnsureNotDisposed();
-            lock (_syncLock)
+            _syncLock.Wait();
+            try
             {
                 _sqlStack.AddLast(sql);
-                while (_sqlStack.Count > 20)
+                while (_sqlStack.Count > 10)
                 {
                     _sqlStack.RemoveFirst();
                 }
+            }
+            finally
+            {
+                _syncLock.Release();
             }
         }
 
@@ -146,7 +156,8 @@ namespace LiteOrm
         public bool BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
         {
             EnsureNotDisposed();
-            lock (_syncLock)
+            _syncLock.Wait();
+            try
             {
                 if (InTransaction)
                 {
@@ -180,6 +191,58 @@ namespace LiteOrm
 
                 return true;
             }
+            finally
+            {
+                _syncLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// 异步开始事务
+        /// </summary>
+        /// <param name="isolationLevel">隔离级别</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>是否成功开始</returns>
+        public async Task<bool> BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted, CancellationToken cancellationToken = default)
+        {
+            EnsureNotDisposed();
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (InTransaction)
+                {
+                    _logger?.LogWarning("Already in a transaction, cannot begin a new one");
+                    return false;
+                }
+
+                _currentTransactionId = Guid.NewGuid().ToString();
+                _currentIsolationLevel = isolationLevel;
+
+                _logger?.LogDebug($"Session {SessionID} began transaction. ID: {_currentTransactionId}, Isolation: {isolationLevel}");
+
+                foreach (var context in _daoContexts.Values)
+                {
+                    try
+                    {
+                        if (!context.IsReadOnly && !context.InTransaction)
+                        {
+                            await context.BeginTransactionAsync(isolationLevel, cancellationToken).ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, $"Session {SessionID} failed to begin transaction for pool '{context.Pool?.Name}'");
+                        await RollbackInternalAsync(cancellationToken).ConfigureAwait(false);
+                        throw new InvalidOperationException($"Failed to start transaction: {ex.Message}", ex);
+                    }
+                }
+
+                return true;
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
         }
 
         /// <summary>
@@ -189,7 +252,8 @@ namespace LiteOrm
         public bool Commit()
         {
             EnsureNotDisposed();
-            lock (_syncLock)
+            _syncLock.Wait();
+            try
             {
                 if (!InTransaction)
                 {
@@ -198,6 +262,35 @@ namespace LiteOrm
                 }
 
                 return CommitInternal();
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// 异步提交事务
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>是否成功提交</returns>
+        public async Task<bool> CommitAsync(CancellationToken cancellationToken = default)
+        {
+            EnsureNotDisposed();
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (!InTransaction)
+                {
+                    _logger?.LogWarning($"Session {SessionID} is not in a transaction, cannot commit");
+                    return false;
+                }
+
+                return await CommitInternalAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _syncLock.Release();
             }
         }
 
@@ -208,7 +301,8 @@ namespace LiteOrm
         public bool Rollback()
         {
             EnsureNotDisposed();
-            lock (_syncLock)
+            _syncLock.Wait();
+            try
             {
                 if (!InTransaction)
                 {
@@ -217,6 +311,35 @@ namespace LiteOrm
                 }
 
                 return RollbackInternal();
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// 异步回滚事务
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>是否成功回滚</returns>
+        public async Task<bool> RollbackAsync(CancellationToken cancellationToken = default)
+        {
+            EnsureNotDisposed();
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (!InTransaction)
+                {
+                    _logger?.LogWarning($"Session {SessionID} is not in a transaction, cannot roll back");
+                    return false;
+                }
+
+                return await RollbackInternalAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _syncLock.Release();
             }
         }
 
@@ -244,6 +367,41 @@ namespace LiteOrm
             }
 
             // 清理事务状态
+            _currentTransactionId = null;
+
+            _logger?.LogDebug($"Session {SessionID} transaction committed. ID: {_currentTransactionId}, Success: {success}");
+
+            if (!success)
+            {
+                throw new InvalidOperationException("An error occurred while committing the transaction");
+            }
+
+            return success;
+        }
+
+        /// <summary>
+        /// 内部异步提交方法
+        /// </summary>
+        private async Task<bool> CommitInternalAsync(CancellationToken cancellationToken = default)
+        {
+            bool success = true;
+
+            foreach (var context in _daoContexts.Values)
+            {
+                try
+                {
+                    if (!context.IsReadOnly && context.InTransaction)
+                    {
+                        await context.CommitAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, $"Session {SessionID} failed to commit transaction. Pool: '{context.Pool?.Name}'");
+                    success = false;
+                }
+            }
+
             _currentTransactionId = null;
 
             _logger?.LogDebug($"Session {SessionID} transaction committed. ID: {_currentTransactionId}, Success: {success}");
@@ -292,6 +450,41 @@ namespace LiteOrm
             return success;
         }
 
+        /// <summary>
+        /// 内部异步回滚方法
+        /// </summary>
+        private async Task<bool> RollbackInternalAsync(CancellationToken cancellationToken = default)
+        {
+            bool success = true;
+
+            foreach (var context in _daoContexts.Values)
+            {
+                try
+                {
+                    if (!context.IsReadOnly && context.InTransaction)
+                    {
+                        await context.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, $"Session {SessionID} failed to roll back transaction. Pool: '{context.Pool?.Name}'");
+                    success = false;
+                }
+            }
+
+            _currentTransactionId = null;
+
+            _logger?.LogDebug($"Session {SessionID} transaction rolled back. ID: {_currentTransactionId}, Success: {success}");
+
+            if (!success)
+            {
+                throw new InvalidOperationException("An error occurred while rolling back the transaction");
+            }
+
+            return success;
+        }
+
 
         /// <summary>
         /// 获取指定名称的DAO上下文
@@ -307,7 +500,8 @@ namespace LiteOrm
             // 如果在事务中，忽略 readOnly 参数，必须返回主写连接以保证事务一致性
             if (InTransaction) readOnly = false;
 
-            lock (_syncLock)
+            _syncLock.Wait();
+            try
             {
                 string rwKey = $"{name}:RW";
 
@@ -355,6 +549,76 @@ namespace LiteOrm
                 _daoContexts[cacheKey] = context;
                 return context;
             }
+            finally
+            {
+                _syncLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// 异步获取指定名称的DAO上下文
+        /// </summary>
+        /// <param name="name">上下文名称，如果为null则使用默认名称"_"</param>
+        /// <param name="readOnly">是否优先使用只读连接池，默认为 false。</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>DAO上下文实例</returns>
+        public async Task<DAOContext> GetDaoContextAsync(string name = null, bool readOnly = false, CancellationToken cancellationToken = default)
+        {
+            EnsureNotDisposed();
+            if (name is null) name = "_";
+
+            if (InTransaction) readOnly = false;
+
+            await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                string rwKey = $"{name}:RW";
+
+                var pool = _daoContextPoolFactory.GetPool(name);
+                if (pool == null)
+                    throw new InvalidOperationException($"Connection pool '{name}' not found");
+
+                if (!pool.HasReadOnlyPools)
+                {
+                    readOnly = false;
+                }
+
+                string cacheKey = readOnly ? $"{name}:RO" : rwKey;
+                if (_daoContexts.TryGetValue(cacheKey, out DAOContext context))
+                {
+                    return context;
+                }
+
+                context = await pool.PeekContextAsync(readOnly).ConfigureAwait(false);
+
+                if (InTransaction && !context.InTransaction)
+                {
+                    try
+                    {
+                        await context.BeginTransactionAsync(_currentIsolationLevel, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (context.Pool != null)
+                        {
+                            context.Pool.ReturnContext(context);
+                        }
+                        else
+                        {
+                            await context.DisposeAsync().ConfigureAwait(false);
+                        }
+                        _logger?.LogError(ex, $"Session {SessionID} failed to begin transaction. Pool: '{name}'");
+                        throw;
+                    }
+                }
+
+                _daoContexts[cacheKey] = context;
+                return context;
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
         }
 
 
@@ -386,6 +650,33 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 异步归还所有数据库上下文
+        /// </summary>
+        private async Task ReturnAllContextsAsync()
+        {
+            foreach (var kvp in _daoContexts)
+            {
+                var context = kvp.Value;
+                try
+                {
+                    if (context.Pool is not null)
+                    {
+                        context.Pool.ReturnContext(context);
+                    }
+                    else
+                    {
+                        await context.DisposeAsync().ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, $"Session {SessionID} failed to return connection. Pool: '{context.Pool?.Name}'");
+                }
+            }
+            _daoContexts.Clear();
+        }
+
+        /// <summary>
         /// 返回会话的字符串表示，包含会话ID
         /// </summary>
         /// <returns></returns>
@@ -399,6 +690,43 @@ namespace LiteOrm
         public void Dispose()
         {
             Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// 异步释放资源
+        /// </summary>
+        public async ValueTask DisposeAsync()
+        {
+            if (_disposed) return;
+
+            await _syncLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                if (_disposed) return;
+                _logger?.LogDebug($"Session {SessionID} disposed (async).");
+                _disposed = true;
+
+                if (InTransaction)
+                {
+                    try
+                    {
+                        await RollbackInternalAsync().ConfigureAwait(false);
+                        _logger?.LogDebug("Transaction rolled back successfully on async dispose");
+                    }
+                    catch (Exception commitEx)
+                    {
+                        _logger?.LogError(commitEx, "Failed to roll back transaction on async dispose");
+                    }
+                }
+
+                await ReturnAllContextsAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                _syncLock.Release();
+            }
+
             GC.SuppressFinalize(this);
         }
 
@@ -498,16 +826,16 @@ namespace LiteOrm
             if (action is null)
                 throw new ArgumentNullException(nameof(action));
 
-            sessionManager.BeginTransaction(isolationLevel);
+            await sessionManager.BeginTransactionAsync(isolationLevel).ConfigureAwait(false);
             try
             {
-                var result = await action(sessionManager);
-                sessionManager.Commit();
+                var result = await action(sessionManager).ConfigureAwait(false);
+                await sessionManager.CommitAsync().ConfigureAwait(false);
                 return result;
             }
             catch
             {
-                sessionManager.Rollback();
+                await sessionManager.RollbackAsync().ConfigureAwait(false);
                 throw;
             }
         }
@@ -520,9 +848,9 @@ namespace LiteOrm
         {
             await ExecuteInTransactionAsync(sessionManager, async sm =>
             {
-                await action(sm);
+                await action(sm).ConfigureAwait(false);
                 return true;
-            }, isolationLevel);
+            }, isolationLevel).ConfigureAwait(false);
         }
     }
 }

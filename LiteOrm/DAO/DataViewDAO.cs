@@ -63,7 +63,7 @@ namespace LiteOrm
         /// <returns>查询结果数据表</returns>
         public virtual DataTableResult Search(Expr expr)
         {
-            var command = MakeSelectExprCommand(expr);
+            var command = MakeExprCommand(expr, true);
             return new DataTableResult(command, ReadDataRow, false);
         }
 

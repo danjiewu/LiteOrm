@@ -113,6 +113,12 @@ namespace LiteOrm.Common
         /// </summary>
         /// <returns>参数列表</returns>
         public List<KeyValuePair<string, object>> GetParams() => _params;
+        /// <summary>
+        /// 获取预处理的 SQL 语句和参数列表
+        /// </summary>
+        /// <returns>预处理的 SQL 对象</returns>
+
+        public PreparedSql GetResult() => new PreparedSql(_builder.ToString(), _params);
 
         /// <summary>
         /// 释放资源

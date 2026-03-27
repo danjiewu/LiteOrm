@@ -65,6 +65,20 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 将当前表达式转换为预编译的 SQL 语句。
+        /// </summary>
+        /// <param name="expr">表达式。</param>
+        /// <param name="context">生成 SQL 的上下文环境，包含表信息、别名等。</param>
+        /// <param name="sqlBuilder">提供数据库特定的 SQL 构建功能的工作类。</param>
+        /// <returns>包含 SQL 语句和参数列表的 <see cref="PreparedSql"/> 实例。</returns>
+        public static PreparedSql ToPreparedSql(this Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder)
+        {
+            List<KeyValuePair<string, object>> outputParams = new List<KeyValuePair<string, object>>();
+            string sql = ToSql(expr, context, sqlBuilder, outputParams);
+            return new PreparedSql(sql, outputParams);
+        }
+
+        /// <summary>
         /// 将当前表达式转换为 SQL 字符串片段，结果直接追加到提供的 <see cref="ValueStringBuilder"/> 中。
         /// </summary>
         /// <param name="expr">表达式。</param>

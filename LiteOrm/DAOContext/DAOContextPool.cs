@@ -196,6 +196,11 @@ namespace LiteOrm
             pool.MasterPool = this;
             _readOnlyPools.Add(pool);
         }
+        private void EnsureNotDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(DAOContextPool));
+        }
 
         /// <summary>
         /// 从连接池中获取一个可用的DAO上下文。
@@ -205,9 +210,7 @@ namespace LiteOrm
         /// <exception cref="ObjectDisposedException">当连接池已被释放时抛出。</exception>
         public DAOContext PeekContext(bool readOnly = false)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(DAOContextPool));
-
+            EnsureNotDisposed();
             if (readOnly && HasReadOnlyPools)
             {
                 int index = Interlocked.Increment(ref _readOnlyIndex);
@@ -217,6 +220,7 @@ namespace LiteOrm
             return PeekContextInternal();
         }
 
+
         /// <summary>
         /// 异步从连接池中获取一个可用的DAO上下文。
         /// </summary>
@@ -224,9 +228,7 @@ namespace LiteOrm
         /// <exception cref="ObjectDisposedException">当连接池已被释放时抛出。</exception>
         public async Task<DAOContext> PeekContextAsync(bool readOnly = false)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(DAOContextPool));
-
+            EnsureNotDisposed();
             if (readOnly && _readOnlyPools.Count > 0)
             {
                 int index = Interlocked.Increment(ref _readOnlyIndex);
