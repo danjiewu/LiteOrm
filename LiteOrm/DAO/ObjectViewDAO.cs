@@ -122,7 +122,7 @@ namespace LiteOrm
                 param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
                 i++;
             }
-            return new EnumerableResult<T>(getObjectCommand, ConvertToObjectHandler, false);
+            return new EnumerableResult<T>(getObjectCommand, ConvertToObjectHandler);
         }
 
 
@@ -175,7 +175,7 @@ namespace LiteOrm
                 param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
                 i++;
             }
-            return new ValueResult<bool>(objectExistsCommand, (obj) => obj != null && Convert.ToInt32(obj) > 0, false);
+            return new ValueResult<bool>(objectExistsCommand, (obj) => obj != null && Convert.ToInt32(obj) > 0);
         }
 
         /// <summary>
@@ -252,7 +252,7 @@ namespace LiteOrm
         /// </example>
         public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody,bool isFull = false)
         {
-            string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSqlResult()}";
+            string sql = isFull ? sqlBody.GetSql() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSql()}";
             var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
             return new EnumerableResult<T>(command, ConvertToObjectHandler);
         }
@@ -269,7 +269,7 @@ namespace LiteOrm
         /// </example>
         public virtual EnumerableResult<TResult> SearchAs<TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
-            string sql = sqlBody.GetSqlResult();
+            string sql = sqlBody.GetSql();
             var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
             return new EnumerableResult<TResult>(command);
         }

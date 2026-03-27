@@ -334,7 +334,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="preparedSql"></param>
         /// <returns></returns>
-        protected DbCommandProxy MakeNamedParamCommand(PreparedSql preparedSql)
+        internal protected DbCommandProxy MakeNamedParamCommand(PreparedSql preparedSql)
         {
             return MakeNamedParamCommand(preparedSql.Sql, preparedSql.Params);
         }
@@ -347,7 +347,7 @@ namespace LiteOrm
         /// <param name="sql">SQL 语句，SQL 中可以包含已命名的参数以及占位符。</param>
         /// <param name="paramValues">参数列表，为空时表示没有参数。Key 需要与 SQL 中的参数名称对应。</param>
         /// <returns>IDbCommand 实例。</returns>
-        protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues)
+        internal protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues)
         {
             var command = NewCommand();
             command.CommandText = MutiReplacerInstance.Replace(sql);
@@ -367,7 +367,7 @@ namespace LiteOrm
         /// <param name="preparedSql"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(PreparedSql preparedSql, CancellationToken cancellationToken = default)
+        internal protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(PreparedSql preparedSql, CancellationToken cancellationToken = default)
         {
             return await MakeNamedParamCommandAsync(preparedSql.Sql, preparedSql.Params, cancellationToken).ConfigureAwait(false);
         }
@@ -378,7 +378,7 @@ namespace LiteOrm
         /// <param name="paramValues"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(string sql, IEnumerable<KeyValuePair<string, object>> paramValues, CancellationToken cancellationToken = default)
+        internal protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(string sql, IEnumerable<KeyValuePair<string, object>> paramValues, CancellationToken cancellationToken = default)
         {
             var command = await NewCommandAsync(cancellationToken).ConfigureAwait(false);
             command.CommandText = MutiReplacerInstance.Replace(sql);
@@ -400,21 +400,14 @@ namespace LiteOrm
         /// <param name="isQuery">是否生成 select 查询</param>
         /// <returns>根据表达式生成的数据库命令代理实例。</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        protected DbCommandProxy MakeExprCommand(Expr expr, bool isQuery = false)
+        internal protected DbCommandProxy MakeExprCommand(Expr expr, bool isQuery = false)
         {
-            if (expr is null) throw new ArgumentNullException(nameof(expr));
-            
-            Expr processedExpr = expr;
-            if (isQuery && !(expr is SelectExpr))
+            if (isQuery)
             {
-                processedExpr = new SelectExpr()
-                {
-                    Source = expr.ToSource(ObjectType),
-                    Selects = SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Prop(col.PropertyName), col.PropertyName)).ToList()
-                };
+                expr = ToSelectExpr(expr);
             }
-            
-            return MakeNamedParamCommand(processedExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder));
+            if (expr is null) throw new ArgumentNullException(nameof(expr));
+            return MakeNamedParamCommand(expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder));
         }
         /// <summary>
         /// 异步根据表达式创建命令
@@ -424,21 +417,24 @@ namespace LiteOrm
         /// <param name="cancellationToken"></param>
         /// <returns>根据表达式生成的数据库命令代理实例。</returns>
         /// <exception cref="ArgumentNullException"></exception>
-        protected async Task<DbCommandProxy> MakeExprCommandAsync(Expr expr, bool isQuery = false, CancellationToken cancellationToken = default)
-        {
-            if (expr is null) throw new ArgumentNullException(nameof(expr));
-            
-            Expr processedExpr = expr;
-            if (isQuery && !(expr is SelectExpr))
+        internal protected async Task<DbCommandProxy> MakeExprCommandAsync(Expr expr, bool isQuery = false, CancellationToken cancellationToken = default)
+        {        
+            if (isQuery)
             {
-                processedExpr = new SelectExpr()
-                {
-                    Source = expr.ToSource(ObjectType),
-                    Selects = SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Prop(col.PropertyName), col.PropertyName)).ToList()
-                };
+                expr = ToSelectExpr(expr);
             }
-            
-            return await MakeNamedParamCommandAsync(processedExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder), cancellationToken).ConfigureAwait(false);
+            if (expr is null) throw new ArgumentNullException(nameof(expr));
+            return await MakeNamedParamCommandAsync(expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder), cancellationToken).ConfigureAwait(false);
+        }
+
+        protected SelectExpr ToSelectExpr(Expr expr)
+        {
+            if (expr is SelectExpr selectExpr) return selectExpr;
+            return new SelectExpr()
+            {
+                Source = expr.ToSource(ObjectType),
+                Selects = SelectColumns.Select((col, i) => new SelectItemExpr(Expr.Prop(col.PropertyName), col.PropertyName)).ToList()
+            };
         }
 
         /// <summary>
@@ -449,7 +445,7 @@ namespace LiteOrm
         /// <returns>包含查询结果的值结果对象。</returns>
         public virtual ValueResult<T> GetValue<T>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
-            var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());
+            var command = MakeNamedParamCommand(sqlBody.GetSql(), sqlBody.GetParams());
             return new ValueResult<T>(command);
         }
 
@@ -460,7 +456,7 @@ namespace LiteOrm
         /// <returns>包含受影响行数的非查询结果对象。</returns>
         public virtual NonQueryResult Execute([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
-            var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());
+            var command = MakeNamedParamCommand(sqlBody.GetSql(), sqlBody.GetParams());
             return new NonQueryResult(command);
         }
 
@@ -473,8 +469,7 @@ namespace LiteOrm
         /// <returns>包含查询结果集的可枚举结果对象。</returns>
         public virtual EnumerableResult<TResult> Query<TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, Func<DbDataReader, TResult> readerFunc = null)
         {
-            var command = MakeNamedParamCommand(sqlBody.GetSqlResult(), sqlBody.GetParams());
-            return new EnumerableResult<TResult>(command, readerFunc);
+            return new EnumerableResult<TResult>(this, sqlBody.GetResult(), readerFunc);
         }
 
         /// <summary>

@@ -63,8 +63,8 @@ namespace LiteOrm
         /// <returns>查询结果数据表</returns>
         public virtual DataTableResult Search(Expr expr)
         {
-            var command = MakeExprCommand(expr, true);
-            return new DataTableResult(command, ReadDataRow, false);
+            expr = ToSelectExpr(expr);
+            return new DataTableResult(this, expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder), ReadDataRow);
         }
 
         /// <summary>
@@ -76,8 +76,7 @@ namespace LiteOrm
         public virtual DataTableResult Search(string[] propertyNames, Expr expr)
         {
             SelectExpr selectExpr = BuildSelectExpr(propertyNames, expr);
-            var command = MakeExprCommand(selectExpr);
-            return new DataTableResult(command, ReadDataRow, false);
+            return new DataTableResult(this, selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder), ReadDataRow);
         }
 
         /// <summary>
@@ -88,9 +87,8 @@ namespace LiteOrm
         /// <returns>查询结果数据表</returns>
         public virtual DataTableResult Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)
         {
-            string sql = isFull ? sqlBody.GetSqlResult() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSqlResult()}";
-            var command = MakeNamedParamCommand(sql, sqlBody.GetParams());
-            return new DataTableResult(command, ReadDataRow, false);
+            PreparedSql sql = isFull ? sqlBody.GetResult() : new PreparedSql($"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSql()}", sqlBody.GetParams());
+            return new DataTableResult(this, sql, ReadDataRow);
         }
 
         /// <summary>

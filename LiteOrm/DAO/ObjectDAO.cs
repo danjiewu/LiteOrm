@@ -907,7 +907,7 @@ namespace LiteOrm
             else
             {
                 string propertyName = ToParamName(IdentityColumn.PropertyName);
-                DbParameter param = insertCommand.Parameters.Contains(propertyName) ? (DbParameter)insertCommand.Parameters[propertyName] : null;
+                DbParameter param = insertCommand.Parameters.Contains(propertyName) ? insertCommand.Parameters[propertyName] : null;
                 if (param is not null && param.Direction == ParameterDirection.Output)
                 {
                     await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -992,25 +992,21 @@ namespace LiteOrm
                 if (batch.Count > 0)
                 {
                     // 非固定批量大小不使用 GetPreparedCommand 缓存，直接创建命令
-                    using (DbCommandProxy command = MakeNamedParamCommand(MakeBatchInsertSql(batch.Count)))
+                    using DbCommandProxy command = await MakeNamedParamCommandAsync(MakeBatchInsertSql(batch.Count), cancellationToken).ConfigureAwait(false);
+                    SetParameterValues(insertableColumns, batch, command);
+                    if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                     {
-                        SetParameterValues(insertableColumns, batch, command);
-
-                        if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                        object res = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                        if (res != null && res != DBNull.Value)
                         {
-                            object res = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-                            if (res != null && res != DBNull.Value)
-                            {
-                                nextManualId = Convert.ToInt64(res);
-                                idExists = true;
-                            }
-                        }
-                        else
-                        {
-                            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                            nextManualId = Convert.ToInt64(res);
+                            idExists = true;
                         }
                     }
-
+                    else
+                    {
+                        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    }
                     if (idExists) UpdateBatchIds(batch, ref nextManualId);
                     batch.Clear();
                 }
@@ -1090,11 +1086,9 @@ namespace LiteOrm
             if (batch.Count > 0)
             {
                 // 非固定批量大小不使用 GetPreparedCommandAsync 缓存，直接创建命令
-                using (DbCommandProxy command = MakeNamedParamCommand(MakeBatchUpdateSql(batch.Count)))
-                {
-                    SetBatchUpdateParameterValues(updatableColumns, keyColumns, batch, command);
-                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                }
+                using DbCommandProxy command = await MakeNamedParamCommandAsync(MakeBatchUpdateSql(batch.Count), cancellationToken).ConfigureAwait(false);
+                SetBatchUpdateParameterValues(updatableColumns, keyColumns, batch, command);
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -1165,23 +1159,21 @@ namespace LiteOrm
             if (batch.Count > 0)
             {
                 // 非固定批量大小不使用 GetPreparedCommandAsync 缓存，直接创建命令
-                using (DbCommandProxy cmd = MakeNamedParamCommand(MakeBatchIDExistsSql(batch.Count)))
+                using DbCommandProxy cmd = await MakeNamedParamCommandAsync(MakeBatchIDExistsSql(batch.Count), cancellationToken).ConfigureAwait(false);
+                for (int i = 0; i < batch.Count; i++)
                 {
-                    for (int i = 0; i < batch.Count; i++)
+                    for (int j = 0; j < keyColumns.Length; j++)
                     {
-                        for (int j = 0; j < keyColumns.Length; j++)
-                        {
-                            ((DbParameter)cmd.Parameters[i * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
-                        }
+                        cmd.Parameters[i * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
                     }
-                    using (var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+                }
+                using (var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-                        {
-                            List<object> keyValues = new List<object>();
-                            for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
-                            existingIds.Add(keyValues);
-                        }
+                        List<object> keyValues = new List<object>();
+                        for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                        existingIds.Add(keyValues);
                     }
                 }
             }
@@ -1337,12 +1329,9 @@ namespace LiteOrm
             if (batch.Count > 0)
             {
                 // 非固定批量大小不使用 GetPreparedCommandAsync 缓存，直接创建命令
-                DbCommandProxy command = MakeNamedParamCommand(MakeBatchDeleteSql(batch.Count));
-                using (command)
-                {
-                    SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
-                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                }
+                using DbCommandProxy command = await MakeNamedParamCommandAsync(MakeBatchDeleteSql(batch.Count), cancellationToken).ConfigureAwait(false);
+                SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 

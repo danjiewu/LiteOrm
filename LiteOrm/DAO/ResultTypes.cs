@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 
 namespace LiteOrm.Common
 {
@@ -60,42 +61,65 @@ namespace LiteOrm.Common
     /// 表达式结果的基类
     /// </summary>
     /// <typeparam name="T">结果类型</typeparam>
-    public abstract class CommandResult<T> : IDisposable
+    public abstract class CommandResult<T> : IDisposable, IAsyncDisposable
     {
         /// <summary>
-        /// 要执行的数据库命令对象，子类通过该对象执行相应的数据库操作以获取结果。
+        /// 要执行的DAO对象，子类通过该对象执行相应的数据库操作以获取结果。
         /// </summary>
-        protected readonly DbCommandProxy _command;
-
-        protected PreparedSql _sql;
+        protected readonly DAOBase _dao;
         /// <summary>
-        /// 标记是否在释放时自动销毁命令对象，默认为 true。若为 true，则在调用 Dispose 方法时会自动调用 _command.Dispose() 来释放数据库命令对象占用的资源；如果为 false，则需要由外部代码负责管理命令对象的生命周期，确保在适当的时候手动调用 _command.Dispose() 来释放资源。
+        /// 预处理的 SQL 语句和参数列表。
         /// </summary>
-        protected readonly bool _autoDisposeCommand;
+        protected readonly PreparedSql _sql;
+        /// <summary>
+        /// 预定义的数据库命令代理实例，子类可以直接使用该实例执行数据库操作以获取结果，适用于需要重复执行同一命令的场景。
+        /// </summary>
+        protected readonly DbCommandProxy _preparedCommand;
+
+        private DbCommandProxy _executedCommand;
 
         /// <summary>
         /// 初始化 <see cref="CommandResult{T}"/> 类的新实例。
         /// </summary>
-        /// <param name="command">要执行的数据库命令。</param>
-        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        protected CommandResult(DbCommandProxy command, bool autoDisposeCommand = true)
+        /// <param name="dao">要执行的DAO对象。</param>
+        /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
+        /// <exception cref="ArgumentNullException">dao 或 sql 为 null 时抛出。</exception>
+        internal protected CommandResult(DAOBase dao, PreparedSql sql)
         {
-            _command = command;
-            _sql = null;
-            _autoDisposeCommand = autoDisposeCommand;
+            if (dao == null) throw new ArgumentNullException(nameof(dao));
+            if (sql == null) throw new ArgumentNullException(nameof(sql));
+            _dao = dao;
+            _sql = sql;
         }
 
         /// <summary>
-        /// 初始化 <see cref="CommandResult{T}"/> 类的新实例。
+        /// 初始化 <see cref="CommandResult{T}"/> 类的新实例，并使用预定义的数据库命令代理实例。
         /// </summary>
-        /// <param name="command">要执行的数据库命令。</param>
-        /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
-        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        protected CommandResult(DbCommandProxy command, PreparedSql sql = null, bool autoDisposeCommand = true)
+        /// <param name="preparedCommand">预定义的数据库命令代理实例。</param>
+        /// <exception cref="ArgumentNullException">preparedCommand 为 null 时抛出。</exception>
+        internal protected CommandResult(DbCommandProxy preparedCommand)
         {
-            _command = command;
-            _sql = sql;
-            _autoDisposeCommand = autoDisposeCommand;
+            if (preparedCommand == null) throw new ArgumentNullException(nameof(preparedCommand));
+            _preparedCommand = preparedCommand;
+        }
+
+        /// <summary>
+        /// 创建数据库命令。
+        /// </summary>
+        /// <returns>数据库命令代理实例。</returns>
+        internal protected DbCommandProxy GetCommand()
+        {
+            return _executedCommand ??= _preparedCommand ?? _dao.MakeNamedParamCommand(_sql);
+        }
+
+        /// <summary>
+        /// 异步创建数据库命令。
+        /// </summary>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>表示异步操作的任务，包含数据库命令代理实例。</returns>
+        internal protected async Task<DbCommandProxy> GetCommandAsync(CancellationToken cancellationToken = default)
+        {
+            return _executedCommand ??= _preparedCommand ?? await _dao.MakeNamedParamCommandAsync(_sql, cancellationToken);
         }
 
         /// <summary>
@@ -126,10 +150,36 @@ namespace LiteOrm.Common
         /// <param name="disposing">如果为 true，则同时释放托管资源；如果为 false，则只释放非托管资源。</param>
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing && _autoDisposeCommand && _command != null)
+            if (disposing)
             {
-                _command.Dispose();
+                if (_preparedCommand != null) return;
+                _executedCommand?.Dispose();
             }
+        }
+
+        /// <summary>
+        /// 异步释放非托管资源，并可选择性地释放托管资源。
+        /// </summary>
+        /// <returns>表示异步操作的任务。</returns>
+        public async ValueTask DisposeAsync()
+        {
+            await DisposeAsyncCore();
+            Dispose(false);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// 异步释放非托管资源，并可选择性地释放托管资源。
+        /// </summary>
+        /// <returns>表示异步操作的任务。</returns>
+        protected virtual async ValueTask DisposeAsyncCore()
+        {
+            if (_preparedCommand != null) return;
+#if NETSTANDARD2_0
+            if(_executedCommand != null) _executedCommand.Dispose();
+#else
+            if (_executedCommand != null) await _executedCommand.DisposeAsync();
+#endif
         }
     }
 
@@ -144,11 +194,17 @@ namespace LiteOrm.Common
         /// <summary>
         /// 初始化 <see cref="EnumerableResult{TResult}"/> 类的新实例。
         /// </summary>
-        /// <param name="command">要执行的数据库命令。</param>
+        /// <param name="dao">要执行的DAO对象。</param>
+        /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
         /// <param name="readerFunc">将 <see cref="IDataReader"/> 的一行数据转换为 <typeparamref name="TResult"/> 实例的委托。</param>
-        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        public EnumerableResult(DbCommandProxy command, Func<DbDataReader, TResult> readerFunc = null, bool autoDisposeCommand = true)
-            : base(command, autoDisposeCommand)
+        public EnumerableResult(DAOBase dao, PreparedSql sql, Func<DbDataReader, TResult> readerFunc = null)
+            : base(dao, sql)
+        {
+            _readerFunc = readerFunc;
+        }
+
+        public EnumerableResult(DbCommandProxy preparedCommand, Func<DbDataReader, TResult> readerFunc = null)
+            : base(preparedCommand)
         {
             _readerFunc = readerFunc;
         }
@@ -159,7 +215,8 @@ namespace LiteOrm.Common
         /// <returns>用于遍历结果集的 <see cref="IEnumerator{T}"/>。</returns>
         public IEnumerator<TResult> GetEnumerator()
         {
-            using (DbDataReader reader = _command.ExecuteReader())
+            var command = GetCommand();
+            using (DbDataReader reader = command.ExecuteReader())
             {
                 var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
                 while (reader.Read())
@@ -185,7 +242,7 @@ namespace LiteOrm.Common
         /// <returns>用于异步遍历结果集的 <see cref="IAsyncEnumerator{T}"/>。</returns>
         public IAsyncEnumerator<TResult> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            return new AsyncEnumerator(_command, _readerFunc, cancellationToken);
+            return new AsyncEnumerator(GetCommandAsync, _readerFunc, cancellationToken);
         }
 
         /// <summary>
@@ -194,7 +251,8 @@ namespace LiteOrm.Common
         /// <returns>第一个元素，或类型的默认值。</returns>
         public TResult FirstOrDefault()
         {
-            using DbDataReader reader = _command.ExecuteReader();
+            var command = GetCommand();
+            using DbDataReader reader = command.ExecuteReader();
             if (!reader.Read()) return default;
             var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
             return func(reader);
@@ -207,7 +265,8 @@ namespace LiteOrm.Common
         /// <returns>表示异步操作的任务，包含第一个元素或类型的默认值。</returns>
         public async ValueTask<TResult> FirstOrDefaultAsync(CancellationToken cancellationToken = default)
         {
-            using DbDataReader reader = await _command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
+            var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
+            using DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
             if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) return default;
             var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
             return func(reader);
@@ -289,9 +348,9 @@ namespace LiteOrm.Common
 
         private class AsyncEnumerator : IAsyncEnumerator<TResult>
         {
-            private readonly DbCommandProxy _command;
             private readonly Func<DbDataReader, TResult> _readerFunc;
             private readonly CancellationToken _cancellationToken;
+            private Func<CancellationToken, Task<DbCommandProxy>> _commandFunc;
             private DbDataReader _reader;
             private TResult _current;
             private Func<DbDataReader, TResult> _func;
@@ -302,9 +361,9 @@ namespace LiteOrm.Common
             /// <param name="command">要执行的数据库命令。</param>
             /// <param name="readerFunc">将数据行转换为元素的委托。</param>
             /// <param name="cancellationToken">取消令牌。</param>
-            public AsyncEnumerator(DbCommandProxy command, Func<DbDataReader, TResult> readerFunc, CancellationToken cancellationToken)
+            public AsyncEnumerator(Func<CancellationToken, Task<DbCommandProxy>> commandFunc, Func<DbDataReader, TResult> readerFunc, CancellationToken cancellationToken)
             {
-                _command = command;
+                _commandFunc = commandFunc;
                 _readerFunc = readerFunc;
                 _cancellationToken = cancellationToken;
             }
@@ -329,7 +388,8 @@ namespace LiteOrm.Common
 
                 if (_reader == null)
                 {
-                    _reader = await _command.ExecuteReaderAsync(CommandBehavior.Default, _cancellationToken).ConfigureAwait(false);
+                    var command = await _commandFunc(_cancellationToken).ConfigureAwait(false);
+                    _reader = await command.ExecuteReaderAsync(CommandBehavior.Default, _cancellationToken).ConfigureAwait(false);
                     _func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(_reader);
                 }
 
@@ -387,15 +447,24 @@ namespace LiteOrm.Common
         /// <summary>
         /// 初始化 <see cref="ValueResult{TResult}"/> 类的新实例。
         /// </summary>
-        /// <param name="command">要执行的数据库命令。</param>
+        /// <param name="dao">要执行的数据库命令。</param>
+        /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
         /// <param name="resultConverter">将标量结果转换为 <typeparamref name="TResult"/> 的委托，为 null 时使用默认转换。</param>
-        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        public ValueResult(DbCommandProxy command, Func<object, TResult> resultConverter = null, bool autoDisposeCommand = true)
-            : base(command, autoDisposeCommand)
+        public ValueResult(DAOBase dao, PreparedSql sql, Func<object, TResult> resultConverter = null)
+            : base(dao, sql)
         {
             _resultConverter = resultConverter ?? ((obj) =>
             {
-                return (TResult)command.SqlBuilder.ConvertFromDbValue(obj, typeof(TResult));
+                return (TResult)dao.SqlBuilder.ConvertFromDbValue(obj, typeof(TResult));
+            });
+        }
+
+        public ValueResult(DbCommandProxy preparedCommand, Func<object, TResult> resultConverter = null)
+            : base(preparedCommand)
+        {
+            _resultConverter = resultConverter ?? ((obj) =>
+            {
+                return (TResult)preparedCommand.SqlBuilder.ConvertFromDbValue(obj, typeof(TResult));
             });
         }
 
@@ -405,7 +474,8 @@ namespace LiteOrm.Common
         /// <returns>命令执行的标量结果。</returns>
         public override TResult GetResult()
         {
-            var scalarValue = _command.ExecuteScalar();
+            var command = GetCommand();
+            var scalarValue = command.ExecuteScalar();
             return _resultConverter(scalarValue);
         }
 
@@ -416,7 +486,8 @@ namespace LiteOrm.Common
         /// <returns>表示异步操作的任务，包含命令执行的标量结果。</returns>
         public override async Task<TResult> GetResultAsync(CancellationToken cancellationToken = default)
         {
-            var scalarValue = await _command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
+            var scalarValue = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
             return _resultConverter(scalarValue);
         }
     }
@@ -429,10 +500,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 初始化 <see cref="NonQueryResult"/> 类的新实例。
         /// </summary>
-        /// <param name="command">要执行的数据库命令。</param>
-        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        public NonQueryResult(DbCommandProxy command, bool autoDisposeCommand = true)
-            : base(command, autoDisposeCommand)
+        /// <param name="dao">要执行的数据库DAO对象。</param>
+        /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
+        public NonQueryResult(DAOBase dao, PreparedSql sql)
+            : base(dao, sql)
+        { }
+
+        public NonQueryResult(DbCommandProxy preparedCommand)
+            : base(preparedCommand)
         { }
 
         /// <summary>
@@ -441,7 +516,8 @@ namespace LiteOrm.Common
         /// <returns>受影响的行数。</returns>
         public override int GetResult()
         {
-            return _command.ExecuteNonQuery();
+            var command = GetCommand();
+            return command.ExecuteNonQuery();
         }
 
         /// <summary>
@@ -451,7 +527,8 @@ namespace LiteOrm.Common
         /// <returns>表示异步操作的任务，包含受影响的行数。</returns>
         public override async Task<int> GetResultAsync(CancellationToken cancellationToken = default)
         {
-            return await _command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
+            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -467,15 +544,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 初始化 <see cref="DataTableResult"/> 类的新实例。
         /// </summary>
-        /// <param name="command">要执行的数据库命令。</param>
+        /// <param name="dao">要执行的数据库DAO对象。</param>
+        /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
         /// <param name="readRow">将 <see cref="IDataReader"/> 的一行数据转换为 <see cref="DataRow"/> 的委托。</param>
-        /// <param name="autoDisposeCommand">是否在释放时自动销毁命令对象，默认为 true。</param>
-        public DataTableResult(DbCommandProxy command, Func<IDataReader, DataTable, DataRow> readRow, bool autoDisposeCommand = true)
-            : base(command, autoDisposeCommand)
+        public DataTableResult(DAOBase dao, PreparedSql sql, Func<IDataReader, DataTable, DataRow> readRow)
+            : base(dao, sql)
         {
             _readRow = readRow;
             _dataTable = null;
-            _hasLoaded = false;
         }
 
         /// <summary>
@@ -484,7 +560,7 @@ namespace LiteOrm.Common
         /// <returns>DataTable结果</returns>
         public override DataTable GetResult()
         {
-            if (!_hasLoaded)
+            if (_dataTable == null)
             {
                 LoadData();
             }
@@ -498,7 +574,7 @@ namespace LiteOrm.Common
         /// <returns>DataTable结果</returns>
         public override async Task<DataTable> GetResultAsync(CancellationToken cancellationToken = default)
         {
-            if (!_hasLoaded)
+            if (_dataTable == null)
             {
                 await LoadDataAsync(cancellationToken);
             }
@@ -511,7 +587,9 @@ namespace LiteOrm.Common
         private void LoadData()
         {
             _dataTable = new DataTable();
-            using (var reader = _command.ExecuteReader())
+            var command = GetCommand();
+
+            using (var reader = command.ExecuteReader())
             {
                 if (_dataTable.Columns.Count == 0)
                 {
@@ -540,7 +618,6 @@ namespace LiteOrm.Common
                     _dataTable.Rows.Add(row);
                 }
                 _dataTable.EndLoadData();
-                _hasLoaded = true;
             }
         }
 
@@ -551,7 +628,8 @@ namespace LiteOrm.Common
         private async Task LoadDataAsync(CancellationToken cancellationToken = default)
         {
             _dataTable = new DataTable();
-            using (var reader = await _command.ExecuteReaderAsync(cancellationToken))
+            var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
+            using (var reader = await command.ExecuteReaderAsync(cancellationToken))
             {
                 if (_dataTable.Columns.Count == 0)
                 {
@@ -580,7 +658,6 @@ namespace LiteOrm.Common
                     _dataTable.Rows.Add(row);
                 }
                 _dataTable.EndLoadData();
-                _hasLoaded = true;
             }
         }
     }

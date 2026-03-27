@@ -87,7 +87,7 @@ namespace LiteOrm.CodeGen
         /// <returns>包含 SQL 语句文本和对应参数集合的 <see cref="PreparedSql"/>。</returns>
         public PreparedSql ToSql([InterpolatedStringHandlerArgument("")] ExprString sqlBody)
         {
-            return new PreparedSql(sqlBody.GetSqlResult(), sqlBody.GetParams());
+            return new PreparedSql(sqlBody.GetSql(), sqlBody.GetParams());
         }        
     }
 }

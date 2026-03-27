@@ -103,7 +103,7 @@ namespace LiteOrm.Common
         /// 获取SQL结果字符串
         /// </summary>
         /// <returns>SQL语句字符串</returns>
-        public string GetSqlResult()
+        public string GetSql()
         {
             return _builder.ToString();
         }
