@@ -12,9 +12,20 @@ namespace LiteOrm.Common
     /// 查询表达式基类。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public abstract class Expr
+    public abstract class Expr:ICloneable
     {
         internal const int HashSeed = 31;
+
+
+        /// <summary>
+        /// 获取表达式类型，用于标识当前表达式的种类
+        /// </summary>
+        public abstract ExprType ExprType { get; }
+        /// <summary>
+        /// 创建当前表达式的深度克隆副本。
+        /// 子类应重写以返回自身的深拷贝实例。
+        /// </summary>
+        public abstract Expr Clone();
         /// <summary>
         /// 验证 SQL 名称是否合法，允许 null 或空字符串，但如果非空则必须仅包含字母、数字或下划线，否则抛出 ArgumentException。
         /// </summary>
@@ -381,5 +392,14 @@ namespace LiteOrm.Common
         /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
         /// <returns>SQL 片段实例</returns>
         public static Expr Query<T, TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaExprConverter.ToSqlSegment(expression);
+
+        /// <summary>
+        /// 创建当前表达式的浅表克隆副本。子类应重写 Clone 方法以返回自身的深拷贝实例。
+        /// </summary>
+        /// <returns></returns>
+        object ICloneable.Clone()
+        {
+            return Clone();
+        }
     }
 }

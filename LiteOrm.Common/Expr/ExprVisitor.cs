@@ -64,7 +64,6 @@ namespace LiteOrm.Common
 
         private static bool VisitNode(Expr node, Func<Expr, bool> visitor)
         {
-            // Pre-order: invoke the visitor for this node before descending into children.
             if (!visitor(node)) return false;
 
             switch (node)

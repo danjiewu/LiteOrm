@@ -1,3 +1,4 @@
+// This file has been modified to ensure it is saved.
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -66,6 +67,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.ValueBinary;
+
+        /// <summary>
         /// 判断当前对象是否与指定对象相等
         /// </summary>
         /// <param name="obj">要比较的对象</param>
@@ -85,6 +91,14 @@ namespace LiteOrm.Common
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), (int)Operator, (Left?.GetHashCode() ?? 0), (Right?.GetHashCode() ?? 0));
+        }
+
+        /// <summary>
+        /// 克隆 ValueBinaryExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            return new ValueBinaryExpr((ValueTypeExpr)Left?.Clone(), this.Operator, (ValueTypeExpr)Right?.Clone());
         }
     }
 }

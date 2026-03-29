@@ -34,7 +34,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取片段类型，返回 OrderBy 类型标识
         /// </summary>
-        public SqlSegmentType SegmentType => SqlSegmentType.OrderBy;
+        public override ExprType ExprType => ExprType.OrderBy;
 
         /// <summary>
         /// 获取或设置排序项列表
@@ -59,5 +59,16 @@ namespace LiteOrm.Common
         /// </summary>
         /// <returns>字符串表示</returns>
         public override string ToString() => $"{Source} ORDER BY {string.Join(", ", OrderBys)}";
+
+        /// <summary>
+        /// 克隆 OrderByExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var o = new OrderByExpr();
+            o.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            o.OrderBys = OrderBys?.Select(ob => (OrderByItemExpr)ob.Clone()).ToList() ?? new List<OrderByItemExpr>();
+            return o;
+        }
     }
 }

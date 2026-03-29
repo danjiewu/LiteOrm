@@ -258,10 +258,7 @@ namespace LiteOrm
                 try
                 {
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
-                    if (CurrentTransaction is DbTransaction dbTrans)
-                        await dbTrans.CommitAsync(cancellationToken).ConfigureAwait(false);
-                    else
-                        CurrentTransaction.Commit();
+                    await CurrentTransaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 #else
                     CurrentTransaction.Commit();
 #endif
@@ -318,10 +315,7 @@ namespace LiteOrm
                 try
                 {
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_0_OR_GREATER || NET8_0_OR_GREATER || NET10_0_OR_GREATER
-                    if (CurrentTransaction is DbTransaction dbTrans)
-                        await dbTrans.RollbackAsync(cancellationToken).ConfigureAwait(false);
-                    else
-                        CurrentTransaction.Rollback();
+                    await CurrentTransaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
 #else
                     CurrentTransaction.Rollback();
 #endif
@@ -433,18 +427,13 @@ namespace LiteOrm
             if (_disposed) return;
             if (disposing)
             {
-                // Reset state (rollback transactions if any) before marking disposed
                 try
                 {
                     Reset();
                 }
                 catch { }
-
-                // Dispose synchronization primitives and notify pool
                 try { _semaphore.Dispose(); } catch { }
                 try { Pool?.OnContextDisposed(); } catch { }
-
-                // Dispose/close the underlying connection asynchronously on the threadpool to avoid blocking callers
                 try
                 {
                     if (DbConnection != null)
@@ -458,7 +447,6 @@ namespace LiteOrm
                 }
                 catch { }
 
-                // Dispose prepared commands
                 try
                 {
                     foreach (var cmd in PreparedCommands.Values)
@@ -470,7 +458,6 @@ namespace LiteOrm
                 catch { }
             }
 
-            // mark disposed after cleanup so Reset/ResetAsync can run while not yet disposed
             _disposed = true;
         }
 
@@ -481,14 +468,9 @@ namespace LiteOrm
         public async ValueTask DisposeAsync()
         {
             if (_disposed) return;
-
-            // Attempt to reset (rollback any transaction) before disposing
             try { await ResetAsync().ConfigureAwait(false); } catch { }
-
-            // Dispose semaphore and notify pool
             try { _semaphore.Dispose(); } catch { }
             try { Pool?.OnContextDisposed(); } catch { }
-
 #if NETSTANDARD2_0
             try
             {

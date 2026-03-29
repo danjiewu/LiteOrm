@@ -67,6 +67,23 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.Property;
+
+        /// <summary>
+        /// 克隆 PropertyExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            return new PropertyExpr()
+            {
+                TableAlias = this.TableAlias,
+                PropertyName = this.PropertyName
+            };
+        }
+
+        /// <summary>
         /// 比较两个 PropertyExpr 是否引用同一个属性。
         /// </summary>
         public override bool Equals(object obj)

@@ -75,6 +75,21 @@ namespace LiteOrm.Common
         public LogicJoinType JoinType { get; set; } = LogicJoinType.And;
 
         /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.LogicSet;
+
+        /// <summary>
+        /// 克隆 LogicSet
+        /// </summary>
+        public override Expr Clone()
+        {
+            var arr = new LogicExpr[items.Count];
+            for (int i = 0; i < items.Count; i++) arr[i] = (LogicExpr)items[i].Clone();
+            return new LogicSet(JoinType, arr);
+        }
+
+        /// <summary>
         /// 获取集合中的逻辑表达式只读集合
         /// </summary>
         public ReadOnlyCollection<LogicExpr> Items => items.AsReadOnly();

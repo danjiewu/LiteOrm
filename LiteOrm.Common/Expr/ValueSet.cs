@@ -75,6 +75,11 @@ namespace LiteOrm.Common
         public ValueJoinType JoinType { get; set; } = ValueJoinType.List;
 
         /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.ValueSet;
+
+        /// <summary>
         /// 获取集合中的值类型表达式只读集合
         /// </summary>
         public ReadOnlyCollection<ValueTypeExpr> Items => items.AsReadOnly();
@@ -174,6 +179,16 @@ namespace LiteOrm.Common
                 _ => ","
             };
             return $"({String.Join(joinStr, items)})";
+        }
+
+        /// <summary>
+        /// 克隆 ValueSet
+        /// </summary>
+        public override Expr Clone()
+        {
+            var arr = new ValueTypeExpr[items.Count];
+            for (int i = 0; i < items.Count; i++) arr[i] = (ValueTypeExpr)items[i].Clone();
+            return new ValueSet(JoinType, arr);
         }
 
         /// <summary>

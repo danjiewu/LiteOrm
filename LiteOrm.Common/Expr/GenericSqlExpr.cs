@@ -69,6 +69,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.GenericSql;
+
+        /// <summary>
         /// 确定指定的对象是否等于当前对象。
         /// </summary>
         /// <param name="obj">要与当前对象进行比较的对象。</param>
@@ -85,6 +90,15 @@ namespace LiteOrm.Common
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), Key?.GetHashCode() ?? 0, Arg?.GetHashCode() ?? 0);
+        }
+
+        /// <summary>
+        /// 克隆 GenericSqlExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var g = new GenericSqlExpr(this.Key) { Arg = this.Arg };
+            return g;
         }
 
 

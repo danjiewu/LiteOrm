@@ -33,7 +33,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取片段类型，返回 Having 类型标识
         /// </summary>
-        public SqlSegmentType SegmentType => SqlSegmentType.Having;
+        public override ExprType ExprType => ExprType.Having;
 
         /// <summary>
         /// 获取或设置 Having 条件表达式
@@ -58,5 +58,16 @@ namespace LiteOrm.Common
         /// </summary>
         /// <returns>字符串表示</returns>
         public override string ToString() => $"{Source} HAVING {Having}";
+
+        /// <summary>
+        /// 克隆 HavingExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var h = new HavingExpr();
+            h.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            h.Having = (LogicExpr)Having?.Clone();
+            return h;
+        }
     }
 }

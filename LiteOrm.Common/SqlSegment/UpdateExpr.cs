@@ -35,7 +35,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取片段类型，返回 Update 类型标识
         /// </summary>
-        public SqlSegmentType SegmentType => SqlSegmentType.Update;
+        public override ExprType ExprType => ExprType.Update;
 
         /// <summary>
         /// 获取或设置要更新的字段和值列表
@@ -71,6 +71,18 @@ namespace LiteOrm.Common
         {
             string setStr = string.Join(", ", Sets.Select(s => $"[{s.Item1}] = {s.Item2}"));
             return $"UPDATE {Source} SET {setStr}{(Where != null ? $" WHERE {Where}" : "")}";
+        }
+
+        /// <summary>
+        /// 克隆 UpdateExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var u = new UpdateExpr();
+            u.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            u.Where = (LogicExpr)Where?.Clone();
+            u.Sets = Sets?.Select(s => ((PropertyExpr)s.Item1?.Clone(), (ValueTypeExpr)s.Item2?.Clone())).ToList() ?? new List<(PropertyExpr, ValueTypeExpr)>();
+            return u;
         }
     }
 }

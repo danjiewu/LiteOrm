@@ -34,7 +34,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取片段类型，返回 GroupBy 类型标识
         /// </summary>
-        public SqlSegmentType SegmentType => SqlSegmentType.GroupBy;
+        public override ExprType ExprType => ExprType.GroupBy;
 
         /// <summary>
         /// 获取或设置分组字段表达式列表
@@ -59,5 +59,16 @@ namespace LiteOrm.Common
         /// </summary>
         /// <returns>字符串表示</returns>
         public override string ToString() => $"{Source} GROUP BY {string.Join(", ", GroupBys)}";
+
+        /// <summary>
+        /// 克隆 GroupByExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var g = new GroupByExpr();
+            g.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            g.GroupBys = GroupBys?.Select(v => (ValueTypeExpr)v.Clone()).ToList() ?? new List<ValueTypeExpr>();
+            return g;
+        }
     }
 }

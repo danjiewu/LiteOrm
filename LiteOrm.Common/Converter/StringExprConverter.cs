@@ -3,13 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.Reflection;
 
 namespace LiteOrm.Common
 {
     /// <summary>
     /// 从字符串生成条件，条件转换为字符串，以及判定对象是否符合条件等操作的静态类。
     /// </summary>
-    public static class ExprConvert
+    public static class StringExprConverter
     {
         /// <summary>
         /// 将属性和字符串转换为简单查询条件。
@@ -17,7 +18,7 @@ namespace LiteOrm.Common
         /// <param name="property">属性描述符。</param>
         /// <param name="text">表示查询语句的字符串，可以使用 "="、"&lt;"、"&gt;"、"!"、"%"、"*"、"&lt;="、"&gt;=" 为起始字符表示条件符号。</param>
         /// <returns>二元表达式查询条件。</returns>
-        public static LogicBinaryExpr Parse(PropertyDescriptor property, string text)
+        public static LogicBinaryExpr Parse(PropertyInfo property, string text)
         {
             if (String.IsNullOrEmpty(text)) return Expr.PropEqual(property.Name, null);
             if (text.Length > 1)
@@ -77,7 +78,7 @@ namespace LiteOrm.Common
         /// <param name="property">属性描述符。</param>
         /// <param name="value">输入字符串。</param>
         /// <returns>可被属性接受的值。</returns>
-        private static object ParseValue(PropertyDescriptor property, string value)
+        private static object ParseValue(PropertyInfo property, string value)
         {
             if (String.IsNullOrEmpty(value)) return null;
             if (property.PropertyType == typeof(string)) return value;
@@ -89,14 +90,14 @@ namespace LiteOrm.Common
                 if (Int32.TryParse(value, out int i)) return Enum.ToObject(type, i);
                 else
                 {
-                    return Util.Parse(type, value) ?? Enum.Parse(type, value);
+                    return EnumUtil.Parse(type, value) ?? Enum.Parse(type, value);
                 }
             }
             else if (type == typeof(bool))
             {
                 char ch = char.ToUpper(value[0]);
                 if ("YT1是对".IndexOf(ch) >= 0) return true;
-                else if ("NF0否非错".IndexOf(ch) >= 0) return false;
+                else if ("NF0否错".IndexOf(ch) >= 0) return false;
             }
             else if (type == typeof(DateTime))
             {
@@ -166,24 +167,5 @@ namespace LiteOrm.Common
             if (Array.IndexOf(escapeChars, text[0]) >= 0) return ' ' + text;
             else return text;
         }
-    }
-
-    /// <summary>
-    /// 条件判定结果
-    /// </summary>
-    public enum EnsureResult
-    {
-        /// <summary>
-        /// 不满足条件
-        /// </summary>
-        False,
-        /// <summary>
-        /// 满足条件
-        /// </summary>
-        True,
-        /// <summary>
-        /// 无法确定
-        /// </summary>
-        Undetermined
     }
 }

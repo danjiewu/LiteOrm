@@ -33,12 +33,23 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取片段类型，返回 Where 类型标识
         /// </summary>
-        public SqlSegmentType SegmentType => SqlSegmentType.Where;
+        public override ExprType ExprType => ExprType.Where;
 
         /// <summary>
         /// 获取或设置筛选条件表达式
         /// </summary>
         public LogicExpr Where { get; set; }
+
+        /// <summary>
+        /// 克隆 WhereExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var w = new WhereExpr();
+            w.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            w.Where = (LogicExpr)Where?.Clone();
+            return w;
+        }
 
         /// <summary>
         /// 判断两个 WhereExpr 是否相等

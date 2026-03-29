@@ -66,6 +66,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.Value;
+
+        /// <summary>
         /// 使用指定的值初始化 ValueExpr。
         /// </summary>
         /// <param name="value">具体的值（如数字、字符串、日期）或可枚举集合（用于 IN 子句）。</param>
@@ -129,6 +134,22 @@ namespace LiteOrm.Common
         public override int GetHashCode()
         {
             return OrderedHashCodes(GetType().GetHashCode(), ValueEquality.GetValueHashCode(Value));
+        }
+
+        /// <summary>
+        /// 深度克隆 ValueExpr。
+        /// 如果内部 Value 是 Expr，则克隆该 Expr，否则对非 Expr 值执行浅拷贝引用。
+        /// </summary>
+        public override Expr Clone()
+        {
+            if (Value is Expr e)
+            {
+                return new ValueExpr(e.Clone()) { IsConst = IsConst };
+            }
+            else
+            {
+                return new ValueExpr(Value) { IsConst = IsConst };
+            }
         }
     }
 }

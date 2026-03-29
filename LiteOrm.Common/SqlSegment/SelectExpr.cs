@@ -46,7 +46,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取片段类型，返回 Select 类型标识
         /// </summary>
-        public SqlSegmentType SegmentType => SqlSegmentType.Select;
+        public override ExprType ExprType => ExprType.Select;
 
         /// <summary>
         /// 获取或设置要选择的字段表达式列表
@@ -83,6 +83,18 @@ namespace LiteOrm.Common
                 selectPart += $" AS {Alias}";
             }
             return selectPart;
+        }
+
+        /// <summary>
+        /// 克隆 SelectExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var s = new SelectExpr();
+            s.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            s.Alias = Alias;
+            s.Selects = Selects?.Select(si => (SelectItemExpr)si.Clone()).ToList() ?? new List<SelectItemExpr>();
+            return s;
         }
     }
 
@@ -154,5 +166,18 @@ namespace LiteOrm.Common
         /// </summary>
         /// <returns>字符串表示</returns>
         public override string ToString() => string.IsNullOrEmpty(Alias) ? Value?.ToString() : $"{Value} AS {Alias}";
+
+        /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.SelectItem;
+
+        /// <summary>
+        /// 克隆 SelectItemExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            return new SelectItemExpr((ValueTypeExpr)Value.Clone(), Alias);
+        }
     }
 }

@@ -64,6 +64,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.Function;
+
+        /// <summary>
         /// 深度比较两个函数调用是否一致。
         /// </summary>
         /// <param name="obj">要与当前对象进行比较的对象。</param>
@@ -90,6 +95,18 @@ namespace LiteOrm.Common
                 }
                 return hashCode;
             }
+        }
+
+        /// <summary>
+        /// 克隆 FunctionExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var cloned = new FunctionExpr();
+            cloned.FunctionName = this.FunctionName;
+            cloned.IsAggregate = this.IsAggregate;
+            foreach (var a in this.Args) cloned.Args.Add((ValueTypeExpr)a.Clone());
+            return cloned;
         }
     }
 }

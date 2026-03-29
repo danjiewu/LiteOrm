@@ -33,7 +33,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取片段类型，返回 Delete 类型标识
         /// </summary>
-        public SqlSegmentType SegmentType => SqlSegmentType.Delete;
+        public override ExprType ExprType => ExprType.Delete;
 
         /// <summary>
         /// 获取或设置筛选条件表达式
@@ -58,5 +58,16 @@ namespace LiteOrm.Common
         /// </summary>
         /// <returns>字符串表示</returns>
         public override string ToString() => $"DELETE FROM {Source}{(Where != null ? $" WHERE {Where}" : "")}";
+
+        /// <summary>
+        /// 克隆 DeleteExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var d = new DeleteExpr();
+            d.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            d.Where = (LogicExpr)Where?.Clone();
+            return d;
+        }
     }
 }

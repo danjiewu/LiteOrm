@@ -71,7 +71,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取片段类型，返回 From 类型标识
         /// </summary>
-        public SqlSegmentType SegmentType => SqlSegmentType.From;
+        public override ExprType ExprType => ExprType.From;
 
         /// <summary>
         /// 获取或设置源片段
@@ -124,6 +124,19 @@ namespace LiteOrm.Common
         public override string ToString()
         {
             return ObjectType?.Name ?? string.Empty;
+        }
+
+        /// <summary>
+        /// 克隆 FromExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var f = new FromExpr();
+            f.ObjectType = this.ObjectType;
+            f.Alias = this.Alias;
+            f.TableArgs = this.TableArgs == null ? null : (string[])this.TableArgs.Clone();
+            f.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            return f;
         }
     }
 }

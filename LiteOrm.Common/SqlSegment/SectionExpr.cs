@@ -44,7 +44,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取片段类型，返回 Section 类型标识
         /// </summary>
-        public SqlSegmentType SegmentType => SqlSegmentType.Section;
+        public override ExprType ExprType => ExprType.Section;
 
         /// <summary>
         /// 获取或设置要跳过的记录数
@@ -74,5 +74,17 @@ namespace LiteOrm.Common
         /// </summary>
         /// <returns>字符串表示</returns>
         public override string ToString() => $"{Source} SKIP {Skip} TAKE {Take}";
+
+        /// <summary>
+        /// 克隆 SectionExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var s = new SectionExpr();
+            s.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            s.Skip = Skip;
+            s.Take = Take;
+            return s;
+        }
     }
 }

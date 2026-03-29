@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace LiteOrm
 {
     /// <summary>
-    /// 
+    /// DAOContext 扩展方法 - 提供批量确保表结构存在的功能
     /// </summary>
     public static class DAOContextExtensions
     {

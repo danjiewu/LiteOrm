@@ -63,6 +63,11 @@ namespace LiteOrm.Common
         public ForeignExpr() { }
 
         /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.Foreign;
+
+        /// <summary>
         /// 使用指定的外部实体类型初始化 <see cref="ForeignExpr"/> 类的新实例。
         /// </summary>
         /// <param name="foreign">外部实体类型。</param>
@@ -153,6 +158,20 @@ namespace LiteOrm.Common
         public override string ToString()
         {
             return $"{{{Foreign?.Name ?? Alias}:{InnerExpr}}}";
+        }
+
+        /// <summary>
+        /// 克隆 ForeignExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            var fe = new ForeignExpr();
+            fe.Foreign = this.Foreign;
+            fe.Alias = this.Alias;
+            fe.TableArgs = this.TableArgs == null ? null : (string[])this.TableArgs.Clone();
+            fe.AutoRelated = this.AutoRelated;
+            fe.InnerExpr = (LogicExpr)this.InnerExpr?.Clone();
+            return fe;
         }
     }
 }

@@ -49,7 +49,7 @@ namespace LiteOrm
                 SqlColumn column = Table.GetColumn(value.Key);
                 if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
                 strSets.Add($"{SqlBuilder.ToSqlName(column.Name)} ={ToSqlParam(paramValues.Count.ToString())}");
-                paramValues.Add(paramValues.Count.ToString(), value.Value);
+                paramValues.Add(new(paramValues.Count.ToString(), value.Value));
             }
             var context = CreateSqlBuildContext(true);
             string where = expr.ToSql(context, SqlBuilder, paramValues);

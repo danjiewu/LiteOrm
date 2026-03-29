@@ -704,7 +704,7 @@ namespace LiteOrm
             try
             {
                 if (_disposed) return;
-                _logger?.LogDebug($"[{SessionID}]Session  disposed (async).");
+                _logger?.LogDebug($"[{SessionID}]Session disposed (async).");
                 _disposed = true;
 
                 if (InTransaction)

@@ -41,6 +41,19 @@ namespace LiteOrm.Common
         public override string ToString() => Operator == UnaryOperator.Nagive ? $"-{Operand}" : $"~{Operand}";
 
         /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.Unary;
+
+        /// <summary>
+        /// 克隆 UnaryExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            return new UnaryExpr(this.Operator, (ValueTypeExpr)(this.Operand?.Clone()));
+        }
+
+        /// <summary>
         /// 判断当前对象是否与指定对象相等
         /// </summary>
         /// <param name="obj">要比较的对象</param>

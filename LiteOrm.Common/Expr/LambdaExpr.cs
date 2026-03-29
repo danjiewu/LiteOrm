@@ -53,6 +53,22 @@ namespace LiteOrm.Common
             return Expression.ToString();
         }
 
+        /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.Lambda;
+
+        /// <summary>
+        /// 克隆 LambdaExpr。
+        /// 若原始包含 LambdaExpression 则保留该 Expression；否则返回 InnerExpr 的克隆（可能不是 LambdaExpr）。
+        /// </summary>
+        public override Expr Clone()
+        {
+            if (Expression != null) return new LambdaExpr(Expression);
+            if (InnerExpr != null) return InnerExpr.Clone();
+            return new LambdaExpr();
+        }
+
         /// <inheritdoc/>
         public override bool Equals(object obj)
         {

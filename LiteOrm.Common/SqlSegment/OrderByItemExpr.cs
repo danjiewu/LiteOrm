@@ -56,5 +56,18 @@ namespace LiteOrm.Common
 
         /// <inheritdoc/>
         public override string ToString() => $"{Field}{(Ascending ? "" : " DESC")}";
+
+        /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.OrderByItem;
+
+        /// <summary>
+        /// 克隆 OrderByItemExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            return new OrderByItemExpr((ValueTypeExpr)Field?.Clone(), Ascending);
+        }
     }
 }

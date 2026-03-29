@@ -34,6 +34,19 @@ namespace LiteOrm.Common
         public override string ToString() => $"NOT {Operand}";
 
         /// <summary>
+        /// 表达式类型标识
+        /// </summary>
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.Not;
+
+        /// <summary>
+        /// 克隆 NotExpr
+        /// </summary>
+        public override Expr Clone()
+        {
+            return new NotExpr((LogicExpr)Operand?.Clone());
+        }
+
+        /// <summary>
         /// 判断当前对象是否与指定对象相等
         /// </summary>
         /// <param name="obj">要比较的对象</param>
