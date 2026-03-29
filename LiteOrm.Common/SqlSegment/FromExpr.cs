@@ -1,140 +1,104 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// From 片段，表示查询的数据源（支持单表或多表视图）
+    /// From 片段，表示查询的数据源（由主表和连接表构成）
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class FromExpr : Expr, ISourceAnchor, ISqlSegment, IArged
     {
-        /// <summary>
-        /// 初始化 FromExpr 类的新实例
-        /// </summary>
         public FromExpr() { }
 
-        /// <summary>
-        /// 使用指定的实体类型初始化 FromExpr 类的新实例
-        /// </summary>
-        /// <param name="objectType">实体类型</param>
         public FromExpr(Type objectType)
         {
-            ObjectType = objectType;
+            Table = new TableExpr(objectType);
         }
 
-        private string _alias;
+        /// <summary>
+        /// 主表表达式
+        /// </summary>
+        public TableExpr Table { get; set; }
 
         /// <summary>
-        /// 获取或设置表别名
+        /// 连接表集合
         /// </summary>
+        public List<TableJoinExpr> Joins { get; set; } = new List<TableJoinExpr>();
+
+        // 保持向后兼容的便利属性，委托到主表
         public string Alias
         {
-            get => _alias;
+            get => Table?.Alias;
             set
             {
-                ThrowIfInvalidSqlName(nameof(Alias), value);
-                _alias = value;
+                if (Table == null) Table = new TableExpr();
+                Table.Alias = value;
             }
         }
 
-        /// <summary>
-        /// 获取或设置实体类型（用于获取表或视图定义）
-        /// </summary>
-        public Type ObjectType { get; set; }
+        public Type ObjectType
+        {
+            get => Table?.ObjectType;
+            set
+            {
+                if (Table == null) Table = new TableExpr();
+                Table.ObjectType = value;
+            }
+        }
 
-        /// <summary>
-        /// 获取表名参数数组
-        /// </summary>
-        private string[] _tableArgs;
-
-        /// <summary>
-        /// 获取或设置表名参数数组
-        /// </summary>
         public string[] TableArgs
         {
-            get => _tableArgs;
+            get => Table?.TableArgs;
             set
             {
-                if (value != null)
-                {
-                    foreach (var arg in value)
-                    {
-                        ThrowIfInvalidSqlName(nameof(TableArgs), arg);
-                    }
-                }
-                _tableArgs = value;
+                if (Table == null) Table = new TableExpr();
+                Table.TableArgs = value;
             }
         }
 
-        /// <summary>
-        /// 获取片段类型，返回 From 类型标识
-        /// </summary>
         public override ExprType ExprType => ExprType.From;
 
         /// <summary>
-        /// 获取或设置源片段
+        /// 以前的 Source 属性保留以兼容旧代码
         /// </summary>
         public ISqlSegment Source { get; set; }
 
-        /// <summary>
-        /// 判断两个 FromExpr 是否相等
-        /// </summary>
-        /// <param name="obj">要比较的对象</param>
-        /// <returns>如果相等返回 true，否则返回 false</returns>
         public override bool Equals(object obj)
         {
             if (obj is FromExpr other)
             {
-                if (!Equals(ObjectType, other.ObjectType)) return false;
-                if (Alias != other.Alias) return false;
-                if (!ArrayEquals(TableArgs, other.TableArgs)) return false;
+                if (!Equals(Table, other.Table)) return false;
+                if (!Joins.SequenceEqual(other.Joins)) return false;
                 if (!Equals(Source, other.Source)) return false;
                 return true;
             }
             return false;
         }
 
-        private static bool ArrayEquals(string[] a, string[] b)
-        {
-            if (a == null || a.Length == 0) return b == null || b.Length == 0;
-            if (b == null || b.Length == 0) return false;
-            return a.SequenceEqual(b);
-        }
-
-        /// <summary>
-        /// 获取当前对象的哈希码
-        /// </summary>
-        /// <returns>哈希码值</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(
                 typeof(FromExpr).GetHashCode(),
-                ObjectType?.GetHashCode() ?? 0,
-                Alias?.GetHashCode() ?? 0,
-                Source?.GetHashCode() ?? 0,
-                (TableArgs == null || TableArgs.Length == 0) ? 0 : SequenceHash(TableArgs));
+                Table?.GetHashCode() ?? 0,
+                SequenceHash(Joins),
+                Source?.GetHashCode() ?? 0);
         }
 
-        /// <summary>
-        /// 返回表或视图的名称字符串
-        /// </summary>
-        /// <returns>名称</returns>
         public override string ToString()
         {
-            return ObjectType?.Name ?? string.Empty;
+            if (Table == null) return string.Empty;
+            if (Joins == null || Joins.Count == 0) return Table.ToString();
+            return Table + " " + string.Join(" ", Joins);
         }
 
-        /// <summary>
-        /// 克隆 FromExpr
-        /// </summary>
         public override Expr Clone()
         {
             var f = new FromExpr();
-            f.ObjectType = this.ObjectType;
-            f.Alias = this.Alias;
-            f.TableArgs = this.TableArgs == null ? null : (string[])this.TableArgs.Clone();
+            f.Table = (TableExpr)(Table as Expr)?.Clone() ?? Table;
+            f.Joins = Joins?.Select(j => (TableJoinExpr)j.Clone()).ToList() ?? new List<TableJoinExpr>();
             f.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
             return f;
         }

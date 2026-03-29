@@ -65,6 +65,36 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 将 TableJoinExpr 转换为 SQL 片段（JOIN ... ON ...）。
+        /// </summary>
+        private static void ToSql(ref ValueStringBuilder sb, TableJoinExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            if (expr == null) return;
+            if (expr.Table == null) return;
+
+            var joinTable = TableInfoProvider.Default.GetTableDefinition(expr.Table.ObjectType);
+            string joinAlias = expr.Table.Alias ?? $"T{context.Sequence++}";
+
+            // register alias before rendering ON so property resolution works
+            context.AddTableAlias(joinAlias, joinTable);
+
+            sb.Append($" \n{context.Indent}");
+            sb.Append((expr.JoinType).ToString().ToUpper());
+            sb.Append(" JOIN ");
+            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joinTable.Name)));
+            sb.Append(" ");
+            sb.Append(sqlBuilder.ToSqlName(joinAlias));
+
+            if (expr.On != null)
+            {
+                sb.Append(" ON ");
+                int lenBefore = sb.Length;
+                ToSqlInternal(ref sb, expr.On, context, sqlBuilder, outputParams);
+                if (sb.Length == lenBefore) sb.Length = lenBefore; // keep pattern
+            }
+        }
+
+        /// <summary>
         /// 将当前表达式转换为预编译的 SQL 语句。
         /// </summary>
         /// <param name="expr">表达式。</param>
@@ -810,19 +840,34 @@ namespace LiteOrm.Common
             else
             {
                 bool isMain = context.CurrentScope.Parent is null;
-                var tableView = TableInfoProvider.Default.GetTableView(expr.ObjectType);
+                // prefer explicit TableExpr and Joins when provided
+                var mainTable = expr.Table;
+                var tableType = mainTable?.ObjectType ?? expr.ObjectType;
+                var tableView = TableInfoProvider.Default.GetTableView(tableType);
                 context.TableArgs = tableArgs;
+                string aliasName = (mainTable?.Alias) ?? expr.Alias ?? (isMain ? Constants.DefaultTableAlias : $"T{context.Sequence++}");
+
                 sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name)));
                 sb.Append(" ");
-                string aliasName = expr.Alias ?? (isMain ? Constants.DefaultTableAlias : $"T{context.Sequence++}");
                 sb.Append(sqlBuilder.ToSqlName(aliasName));
                 context.AddTableAlias(aliasName, tableView);
-                foreach (var joined in tableView.JoinedTables)
+
+                if (expr.Joins != null && expr.Joins.Count > 0)
                 {
-                    if (joined.Used)
+                    foreach (var j in expr.Joins)
                     {
-                        joined.ToSql(ref sb, context, sqlBuilder);
-                        context.AddTableAlias(joined.Name, joined.TableDefinition);
+                        ToSql(ref sb, j, context, sqlBuilder, outputParams);
+                    }
+                }
+                else
+                {
+                    foreach (var joined in tableView.JoinedTables)
+                    {
+                        if (joined.Used)
+                        {
+                            joined.ToSql(ref sb, context, sqlBuilder);
+                            context.AddTableAlias(joined.Name, joined.TableDefinition);
+                        }
                     }
                 }
             }

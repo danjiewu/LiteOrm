@@ -9,6 +9,10 @@ namespace LiteOrm.Common
     /// </summary>
     public enum ExprType
     {
+        /// <summary>表片段，表示单表或子查询引用</summary>
+        Table,
+        /// <summary>表连接片段，表示 JOIN 子句</summary>
+        TableJoin,
         /// <summary>From 片段，表示数据源（表或视图）</summary>
         From,
         /// <summary>选择片段，表示 SELECT 查询</summary>

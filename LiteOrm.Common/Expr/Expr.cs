@@ -12,7 +12,7 @@ namespace LiteOrm.Common
     /// 查询表达式基类。
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public abstract class Expr:ICloneable
+    public abstract class Expr : ICloneable
     {
         internal const int HashSeed = 31;
 
@@ -366,7 +366,10 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static FromExpr From<T>(params string[] tableArgs) => new FromExpr(typeof(T)) { TableArgs = tableArgs };
+        public static FromExpr From<T>(params string[] tableArgs)
+        {
+            return From(typeof(T), tableArgs);
+        }
 
         /// <summary>
         /// 使用指定的类型创建 From 表达式。
@@ -374,7 +377,39 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体类型</param>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static FromExpr From(Type objectType, params string[] tableArgs) => new FromExpr(objectType) { TableArgs = tableArgs };
+        public static FromExpr From(Type objectType, params string[] tableArgs)
+        {
+            var f = new FromExpr(objectType) { TableArgs = tableArgs };
+            var view = TableInfoProvider.Default.GetTableView(objectType);
+            if (view != null)
+            {
+                foreach (var jt in view.JoinedTables)
+                {
+                    if (jt.Used)
+                    {
+                        var join = new TableJoinExpr();
+                        join.Table = new TableExpr(jt.TableDefinition.ObjectType) { Alias = jt.Name };
+                        join.JoinType = jt.JoinType;
+
+                        // build ON condition: joined.ForeignKeys[i] = joined.ForeignPrimeKeys[i]
+                        LogicExpr on = null;
+                        int count = Math.Min(jt.ForeignKeys.Count, jt.ForeignPrimeKeys.Count);
+                        for (int i = 0; i < count; i++)
+                        {
+                            var fk = jt.ForeignKeys[i];
+                            var pk = jt.ForeignPrimeKeys[i];
+                            var left = Expr.Prop(fk.Table?.Name, fk.Column?.Name ?? fk.Name);
+                            var right = Expr.Prop(pk.Table?.Name, pk.Column?.Name ?? pk.Name);
+                            var eq = left == right;
+                            on = on is null ? eq : on & eq;
+                        }
+                        join.On = on;
+                        f.Joins.Add(join);
+                    }
+                }
+            }
+            return f;
+        }
 
         /// <summary>
         /// 使用 IQueryable 形式的 Lambda 表达式创建 SQL 片段

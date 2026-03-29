@@ -95,7 +95,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 全外连接
         /// </summary>
-        Outer,
+        Full,
         /// <summary>
         /// 交叉连接
         /// </summary>
