@@ -583,6 +583,71 @@ namespace LiteOrm.Common
         public static SelectExpr Select(this ISelectAnchor source, params string[] selectProperties) => Select(source, Array.ConvertAll(selectProperties, prop => (ValueTypeExpr)Expr.Prop(prop)));
 
         /// <summary>
+        /// 将当前 SelectExpr 与另一个 SelectExpr 以 UNION 连接。
+        /// 若 <paramref name="source"/> 为 null 则返回 <paramref name="next"/>；若 <paramref name="next"/> 为 null 则返回 <paramref name="source"/>。
+        /// 否则将连接类型写入 <paramref name="next"/>.SetType 并追加到 <paramref name="source"/> 的 NextSelects 列表。
+        /// <remarks>
+        /// 本方法对 null 参数采用容错处理：不会抛出异常，若两者皆为 null 则返回 null。
+        /// </remarks>
+        /// </summary>
+        public static SelectExpr Union(this SelectExpr source, SelectExpr next)
+        {
+            if (source is null) return next;
+            if (next is null) return source;
+            next.SetType = SelectSetType.Union;
+            source.NextSelects.Add(next);
+            return source;
+        }
+
+        /// <summary>
+        /// 将当前 SelectExpr 与另一个 SelectExpr 以 UNION ALL 连接。
+        /// 若 <paramref name="source"/> 为 null 则返回 <paramref name="next"/>；若 <paramref name="next"/> 为 null 则返回 <paramref name="source"/>。
+        /// 否则将连接类型写入 <paramref name="next"/>.SetType 并追加到 <paramref name="source"/> 的 NextSelects 列表。
+        /// <remarks>
+        /// 本方法对 null 参数采用容错处理：不会抛出异常，若两者皆为 null 则返回 null。
+        /// </remarks>
+        /// </summary>
+        public static SelectExpr UnionAll(this SelectExpr source, SelectExpr next)
+        {
+            if (source is null) return next;
+            if (next is null) return source;
+            next.SetType = SelectSetType.UnionAll;
+            source.NextSelects.Add(next);
+            return source;
+        }
+
+        /// <summary>
+        /// 将当前 SelectExpr 与另一个 SelectExpr 以 INTERSECT 连接。
+        /// 行为：若 <paramref name="source"/> 为 null 或 <paramref name="next"/> 为 null，将抛出 <see cref="ArgumentNullException"/>；
+        /// 否则将连接类型写入 <paramref name="next"/>.SetType 并追加到 <paramref name="source"/> 的 NextSelects 列表。
+        /// <exception cref="ArgumentNullException">当 <paramref name="source"/> 或 <paramref name="next"/> 为 null 时抛出。</exception>
+        /// </summary>
+        public static SelectExpr Intersect(this SelectExpr source, SelectExpr next)
+        {
+            if (source is null) throw new ArgumentNullException(nameof(source));
+            if (next is null) throw new ArgumentNullException(nameof(next));
+            next.SetType = SelectSetType.Intersect;
+            source.NextSelects.Add(next);
+            return source;
+        }
+
+        /// <summary>
+        /// 将当前 SelectExpr 与另一个 SelectExpr 以 EXCEPT 连接。
+        /// 行为：若 <paramref name="source"/> 为 null 将抛出 <see cref="ArgumentNullException"/>；
+        /// 若 <paramref name="next"/> 为 null 则直接返回 <paramref name="source"/>；
+        /// 否则将连接类型写入 <paramref name="next"/>.SetType 并追加到 <paramref name="source"/> 的 NextSelects 列表。
+        /// <exception cref="ArgumentNullException">当 <paramref name="source"/> 为 null 时抛出。</exception>
+        /// </summary>
+        public static SelectExpr Except(this SelectExpr source, SelectExpr next)
+        {
+            if (source is null) throw new ArgumentNullException(nameof(source));
+            if (next is null) return source;
+            next.SetType = SelectSetType.Except;
+            source.NextSelects.Add(next);
+            return source;
+        }
+
+        /// <summary>
         /// 为 SQL 语句添加 SELECT 子句（选择项数组）。
         /// </summary>
         /// <param name="source">SQL 语句构建起点。</param>

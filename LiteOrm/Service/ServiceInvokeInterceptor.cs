@@ -685,9 +685,12 @@ namespace LiteOrm.Service
             ServiceProvider = serviceProvider;
         }
         /// <summary>
-        /// 拦截方法调用
+        /// 拦截方法调用，从服务提供者获取请求的服务实例。
         /// </summary>
         /// <param name="invocation">方法调用信息</param>
+        /// <remarks>
+        /// 该方法会拦截对服务工厂接口的调用，根据方法的返回类型从服务提供者中获取对应的服务实例。
+        /// </remarks>
         public void Intercept(IInvocation invocation)
         {
             invocation.ReturnValue = ServiceProvider.GetService(invocation.Method.ReturnType);

@@ -46,6 +46,185 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public async Task Object_SelectExpr_Union_ShouldCombineResults()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            // Insert two distinct users
+            var u1 = new TestUser { Name = "ObjUnionA", Age = 30, CreateTime = DateTime.Now };
+            var u2 = new TestUser { Name = "ObjUnionB", Age = 35, CreateTime = DateTime.Now };
+            await service.InsertAsync(u1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(u2, TestContext.Current.CancellationToken);
+
+            var s1 = Expr.From<TestUser>().Where(Expr.Prop("Name") == "ObjUnionA").Select(Expr.Prop("Name"));
+            var s2 = Expr.From<TestUser>().Where(Expr.Prop("Name") == "ObjUnionB").Select(Expr.Prop("Name"));
+            var union = s1.Union(s2);
+
+            var names = await objectViewDAO.SearchAs<string>(union).ToListAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(names);
+            Assert.Contains("ObjUnionA", names);
+            Assert.Contains("ObjUnionB", names);
+        }
+
+        [Fact]
+        public async Task Object_SelectExpr_UnionAll_ShouldKeepDuplicates()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            // Insert one user
+            var u = new TestUser { Name = "ObjUnionAllUser", Age = 28, CreateTime = DateTime.Now };
+            await service.InsertAsync(u, TestContext.Current.CancellationToken);
+
+            var s1 = Expr.From<TestUser>().Where(Expr.Prop("Name") == "ObjUnionAllUser").Select(Expr.Prop("Name"));
+            var s2 = Expr.From<TestUser>().Where(Expr.Prop("Name") == "ObjUnionAllUser").Select(Expr.Prop("Name"));
+            var unionAll = s1.UnionAll(s2);
+
+            var names = await objectViewDAO.SearchAs<string>(unionAll).ToListAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(names);
+            Assert.True(names.Count >= 2);
+        }
+
+        [Fact]
+        public async Task Object_SelectExpr_Intersect_ShouldReturnCommonRows()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var a = new TestUser { Name = "ObjIntersectA", Age = 10, CreateTime = DateTime.Now };
+            var b = new TestUser { Name = "ObjIntersectB", Age = 20, CreateTime = DateTime.Now };
+            await service.InsertAsync(a, TestContext.Current.CancellationToken);
+            await service.InsertAsync(b, TestContext.Current.CancellationToken);
+
+            var s1 = Expr.From<TestUser>().Where(Expr.Prop("Age") >= 10).Select(Expr.Prop("Name"));
+            var s2 = Expr.From<TestUser>().Where(Expr.Prop("Age") <= 15).Select(Expr.Prop("Name"));
+            var intersect = s1.Intersect(s2);
+
+            var names = await objectViewDAO.SearchAs<string>(intersect).ToListAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(names);
+            Assert.Contains("ObjIntersectA", names);
+            Assert.DoesNotContain("ObjIntersectB", names);
+        }
+
+        [Fact]
+        public async Task Object_SelectExpr_Except_ShouldReturnDifference()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var a = new TestUser { Name = "ObjExceptA", Age = 15, CreateTime = DateTime.Now };
+            var b = new TestUser { Name = "ObjExceptB", Age = 25, CreateTime = DateTime.Now };
+            await service.InsertAsync(a, TestContext.Current.CancellationToken);
+            await service.InsertAsync(b, TestContext.Current.CancellationToken);
+
+            var s1 = Expr.From<TestUser>().Where(Expr.Prop("Age") >= 10).Select(Expr.Prop("Name"));
+            var s2 = Expr.From<TestUser>().Where(Expr.Prop("Age") > 20).Select(Expr.Prop("Name"));
+            var except = s1.Except(s2);
+
+            var names = await objectViewDAO.SearchAs<string>(except).ToListAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(names);
+            Assert.Contains("ObjExceptA", names);
+            Assert.DoesNotContain("ObjExceptB", names);
+        }
+
+        [Fact]
+        public async Task SelectExpr_Union_ShouldCombineResults()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            // Insert two distinct users
+            var u1 = new TestUser { Name = "UnionUserA", Age = 30, CreateTime = DateTime.Now };
+            var u2 = new TestUser { Name = "UnionUserB", Age = 35, CreateTime = DateTime.Now };
+            await service.InsertAsync(u1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(u2, TestContext.Current.CancellationToken);
+
+            var s1 = Expr.From<TestUser>().Where(Expr.Prop("Name") == "UnionUserA").Select(Expr.Prop("Name"));
+            var s2 = Expr.From<TestUser>().Where(Expr.Prop("Name") == "UnionUserB").Select(Expr.Prop("Name"));
+            var union = s1.Union(s2);
+
+            var result = dataViewDAO.Search(union);
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
+
+            Assert.NotNull(dt);
+            // should contain both rows
+            var names = dt.Rows.Cast<DataRow>().Select(r => r[0].ToString()).ToList();
+            Assert.Contains("UnionUserA", names);
+            Assert.Contains("UnionUserB", names);
+        }
+
+        [Fact]
+        public async Task SelectExpr_UnionAll_ShouldKeepDuplicates()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            // Insert one user
+            var u = new TestUser { Name = "UnionAllUser", Age = 28, CreateTime = DateTime.Now };
+            await service.InsertAsync(u, TestContext.Current.CancellationToken);
+
+            var s1 = Expr.From<TestUser>().Where(Expr.Prop("Name") == "UnionAllUser").Select(Expr.Prop("Name"));
+            var s2 = Expr.From<TestUser>().Where(Expr.Prop("Name") == "UnionAllUser").Select(Expr.Prop("Name"));
+            var unionAll = s1.UnionAll(s2);
+
+            var result = dataViewDAO.Search(unionAll);
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
+
+            Assert.NotNull(dt);
+            // UNION ALL should produce two rows for the same underlying row
+            Assert.True(dt.Rows.Count >= 2);
+        }
+
+        [Fact]
+        public async Task SelectExpr_Intersect_ShouldReturnCommonRows()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            var a = new TestUser { Name = "IntersectA", Age = 10, CreateTime = DateTime.Now };
+            var b = new TestUser { Name = "IntersectB", Age = 20, CreateTime = DateTime.Now };
+            await service.InsertAsync(a, TestContext.Current.CancellationToken);
+            await service.InsertAsync(b, TestContext.Current.CancellationToken);
+
+            var s1 = Expr.From<TestUser>().Where(Expr.Prop("Age") >= 10).Select(Expr.Prop("Name"));
+            var s2 = Expr.From<TestUser>().Where(Expr.Prop("Age") <= 15).Select(Expr.Prop("Name"));
+            var intersect = s1.Intersect(s2);
+
+            var result = dataViewDAO.Search(intersect);
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
+
+            Assert.NotNull(dt);
+            var names = dt.Rows.Cast<DataRow>().Select(r => r[0].ToString()).ToList();
+            Assert.Contains("IntersectA", names);
+            Assert.DoesNotContain("IntersectB", names);
+        }
+
+        [Fact]
+        public async Task SelectExpr_Except_ShouldReturnDifference()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            var a = new TestUser { Name = "ExceptA", Age = 15, CreateTime = DateTime.Now };
+            var b = new TestUser { Name = "ExceptB", Age = 25, CreateTime = DateTime.Now };
+            await service.InsertAsync(a, TestContext.Current.CancellationToken);
+            await service.InsertAsync(b, TestContext.Current.CancellationToken);
+
+            var s1 = Expr.From<TestUser>().Where(Expr.Prop("Age") >= 10).Select(Expr.Prop("Name"));
+            var s2 = Expr.From<TestUser>().Where(Expr.Prop("Age") > 20).Select(Expr.Prop("Name"));
+            var except = s1.Except(s2);
+
+            var result = dataViewDAO.Search(except);
+            DataTable dt = await result.GetResultAsync(TestContext.Current.CancellationToken);
+
+            Assert.NotNull(dt);
+            var names = dt.Rows.Cast<DataRow>().Select(r => r[0].ToString()).ToList();
+            Assert.Contains("ExceptA", names);
+            Assert.DoesNotContain("ExceptB", names);
+        }
+
+        [Fact]
         public async Task InExpr_WithNonEmptyCollection_ShouldReturnMatches()
         {
             var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();

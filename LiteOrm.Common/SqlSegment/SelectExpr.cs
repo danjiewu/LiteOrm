@@ -5,6 +5,13 @@ using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
+    public enum SelectSetType
+    {
+        UnionAll,
+        Union,
+        Intersect,
+        Except
+    }
     /// <summary>
     /// 选择片段，表示 SELECT 语句
     /// </summary>
@@ -58,6 +65,20 @@ namespace LiteOrm.Common
         /// </summary>
         public string Alias { get; set; }
 
+        private List<SelectExpr> _nextSelects;
+        /// <summary>
+        /// 后续的 Select 表达式列表（用于表示多项集合操作链），每个元素自身包含 SetType，表示与前一查询之间的集合运算符
+        /// 懒加载：若为 null 则在 getter 中创建新列表。
+        /// </summary>
+        public List<SelectExpr> NextSelects
+        {
+            get => _nextSelects ??= new List<SelectExpr>();
+            set => _nextSelects = value;
+        }
+        /// <summary>
+        /// 当与后续 select 连用时，表示连接类型（UNION / INTERSECT / EXCEPT），通常由 NextSelects 中的节点决定
+        /// </summary>
+        public SelectSetType SetType { get; set; }
         /// <summary>
         /// 判断两个 SelectExpr 是否相等
         /// </summary>
@@ -82,6 +103,21 @@ namespace LiteOrm.Common
             {
                 selectPart += $" AS {Alias}";
             }
+            if (_nextSelects != null && _nextSelects.Count > 0)
+            {
+                foreach (var nxt in _nextSelects)
+                {
+                    string op = nxt.SetType switch
+                    {
+                        SelectSetType.Union => "UNION",
+                        SelectSetType.UnionAll => "UNION ALL",
+                        SelectSetType.Intersect => "INTERSECT",
+                        SelectSetType.Except => "EXCEPT",
+                        _ => "UNION"
+                    };
+                    selectPart += $" {op} {nxt}";
+                }
+            }
             return selectPart;
         }
 
@@ -94,9 +130,16 @@ namespace LiteOrm.Common
             s.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
             s.Alias = Alias;
             s.Selects = Selects?.Select(si => (SelectItemExpr)si.Clone()).ToList() ?? new List<SelectItemExpr>();
+            s.SetType = SetType;
+            if (_nextSelects != null)
+            {
+                s._nextSelects = _nextSelects.Select(ns => (SelectExpr)ns.Clone()).ToList();
+            }
             return s;
         }
+        
     }
+    
 
     /// <summary>
     /// 选择项表达式，表示 SELECT 字段及其可选别名

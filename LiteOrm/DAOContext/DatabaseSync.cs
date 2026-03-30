@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -367,6 +367,12 @@ namespace LiteOrm
             cmd.CommandText = sql;
             await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
+        /// <summary>
+        /// 释放当前对象占用的所有资源。
+        /// </summary>
+        /// <remarks>
+        /// 该方法会释放所有表创建锁的信号量，并清空表列缓存和已创建表的标记。
+        /// </remarks>
         public void Dispose()
         {
             foreach (var sem in _tableCreationLocks.Values)

@@ -1111,8 +1111,8 @@ namespace LiteOrm.Common
             /// <summary>
             /// 遍历表达式树以检测是否可以直接计算（不包含参数表达式或已注册的函数调用），结果会被缓存以优化后续相同表达式的检测。
             /// </summary>
-            /// <param name="expression">要在检查的表达式。</param>
-            /// <returns>遍历结果</returns>
+            /// <param name="expression">要检查的表达式。</param>
+            /// <returns>如果表达式可以直接计算（不依赖于Lambda参数）则返回true，否则返回false。</returns>
             public bool CanEvaluate(Expression expression)
             {
                 if (_expressionFindResults.TryGetValue(expression, out var cachedResult))

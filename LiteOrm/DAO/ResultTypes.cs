@@ -478,6 +478,11 @@ namespace LiteOrm.Common
             });
         }
 
+        /// <summary>
+        /// 使用已准备好的 <see cref="DbCommandProxy"/> 初始化一个标量结果对象，以支持命令重用。
+        /// </summary>
+        /// <param name="preparedCommand">预构建并可能缓存的数据库命令代理。</param>
+        /// <param name="resultConverter">可选的转换器，将数据库原始值转换为 TResult。</param>
         public ValueResult(DbCommandProxy preparedCommand, Func<object, TResult> resultConverter = null)
             : base(preparedCommand)
         {

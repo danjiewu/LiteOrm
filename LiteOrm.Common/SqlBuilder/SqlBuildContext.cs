@@ -62,9 +62,10 @@ namespace LiteOrm.Common
         public string Indent => AutoIndent ? Depth switch
         {
             0 => "",
-            1 => "  ",
-            2 => "    ",
-            3 => "      ",
+            1 => "",
+            2 => "  ",
+            3 => "    ",
+            4 => "      ",
             _ => "        "
         } : "";
 
@@ -139,9 +140,12 @@ namespace LiteOrm.Common
                 _context = context;
             }
 
+            /// <summary>
+            /// 释放作用域，恢复到父级作用域。
+            /// </summary>
             public void Dispose()
             {
-                _context.CurrentScope = _context.CurrentScope.Parent;
+                _context.CurrentScope = _context.CurrentScope?.Parent;
             }
         }
 

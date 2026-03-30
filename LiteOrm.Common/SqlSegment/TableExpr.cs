@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class TableExpr : Expr, IArged
+    public sealed class TableExpr : Expr, ISqlSegment
     {
         public TableExpr() { }
 
@@ -24,6 +24,8 @@ namespace LiteOrm.Common
                 _alias = value;
             }
         }
+
+        ISqlSegment ISqlSegment.Source { get => null; set => _ = value; }
 
         public Type ObjectType { get; set; }
 

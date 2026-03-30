@@ -1,4 +1,4 @@
-﻿using Autofac;
+using Autofac;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -111,14 +111,13 @@ namespace LiteOrm
         /// <summary>
         /// 清除所有状态（SqlStack）
         /// </summary>
-        public bool Reset()
+        public void Reset()
         {
             EnsureNotDisposed();
             _syncLock.Wait();
             try
             {
                 _sqlStack.Clear();
-                return true;
             }
             finally
             {
@@ -679,7 +678,7 @@ namespace LiteOrm
         /// <summary>
         /// 返回会话的字符串表示，包含会话ID
         /// </summary>
-        /// <returns></returns>
+        /// <returns>包含会话ID的字符串表示。</returns>
         public override string ToString()
         {
             return $"[{SessionID}]";

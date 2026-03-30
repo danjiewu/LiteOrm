@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Common;
@@ -102,7 +102,7 @@ namespace LiteOrm
         /// <summary>
         /// 创建一个新的 <see cref="DbCommandProxy"/> 实例，该实例包装了一个新的 <see cref="DbCommand"/> 对象，并与当前上下文关联。
         /// </summary>
-        /// <returns></returns>
+        /// <returns>新创建的 <see cref="DbCommandProxy"/> 实例。</returns>
         public DbCommandProxy CreateCommand()
         {
             EnsureNotDisposed();

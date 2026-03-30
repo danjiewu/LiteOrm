@@ -988,56 +988,6 @@ namespace LiteOrm.Common
                 return fe;
             }
 
-            private FunctionExpr ReadAggregate(ref Utf8JsonReader reader, JsonSerializerOptions options)
-            {
-                var fe = new FunctionExpr { IsAggregate = true };
-                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-                {
-                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                    string prop = reader.GetString() ?? string.Empty;
-                    if (prop == "Name")
-                    {
-                        // backward compat: old format used "Name" for function name
-                        reader.Read();
-                        fe.FunctionName = reader.GetString();
-                    }
-                    else if (prop == "Expr")
-                    {
-                        // backward compat: old format used "Expr" for the single argument
-                        reader.Read();
-                        var expr = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
-                        if (expr is not null) fe.Args.Add(expr);
-                    }
-                    else if (prop == "IsAggregate")
-                    {
-                        reader.Read();
-                        fe.IsAggregate = reader.GetBoolean();
-                    }
-                    else if (prop == "Args")
-                    {
-                        reader.Read();
-                        var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
-                        if (parameters != null) fe.Args.AddRange(parameters.Cast<ValueTypeExpr>());
-                    }
-                    else
-                    {
-                        if (fe.FunctionName == null)
-                        {
-                            fe.FunctionName = prop;
-                            reader.Read();
-                            var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
-                            if (parameters != null) fe.Args.AddRange(parameters.Cast<ValueTypeExpr>());
-                        }
-                        else
-                        {
-                            reader.Read();
-                            reader.Skip();
-                        }
-                    }
-                }
-                return fe;
-            }
-
             private PropertyExpr ReadProperty(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 string name = null;

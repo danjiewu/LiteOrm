@@ -180,6 +180,25 @@ namespace LiteOrm
             return result;
         }
 
+        
+
+        /// <summary>
+        /// 将集合操作类型（UNION/UNION ALL/INTERSECT/EXCEPT）写入到 SQL 输出缓冲。
+        /// 子类可覆盖以提供数据库特定的关键字或语法差异。
+        /// </summary>
+        /// <param name="sb">接收输出的字符串构建器。</param>
+        /// <param name="selectSetType">集合操作类型。</param>
+        public virtual void ToSqlSelectSetType(ref ValueStringBuilder sb, SelectSetType selectSetType)
+        {
+            switch (selectSetType)
+            {
+                case SelectSetType.Union: sb.Append("UNION"); break;
+                case SelectSetType.UnionAll: sb.Append("UNION ALL"); break;
+                case SelectSetType.Intersect: sb.Append("INTERSECT"); break;
+                case SelectSetType.Except: sb.Append("EXCEPT"); break;
+            }
+        }
+
         /// <summary>
         /// 将简单名称转换为数据库合法名称。
         /// </summary>

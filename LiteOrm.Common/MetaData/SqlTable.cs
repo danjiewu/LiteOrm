@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -155,9 +155,9 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 重写ToString方法
+        /// 重写ToString方法，返回表名。
         /// </summary>
-        /// <returns></returns>
+        /// <returns>表名。</returns>
         public override string ToString()
         {
             return Name;

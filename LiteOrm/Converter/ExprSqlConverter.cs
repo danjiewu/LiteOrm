@@ -141,12 +141,19 @@ namespace LiteOrm.Common
             else if (expr is ValueSet vs) ToSql(ref sb, vs, context, sqlBuilder, outputParams);
             else if (expr is OrderByItemExpr obi) ToSql(ref sb, obi, context, sqlBuilder, outputParams);
             else if (expr is FromExpr from) ToSql(ref sb, from, context, sqlBuilder, outputParams);
-            else if (expr is SelectExpr select) ToSql(ref sb, select, context, sqlBuilder, outputParams);
+            else if (expr is SelectExpr select) ToSql(ref sb, select, context, sqlBuilder, outputParams, priority);
             else if (expr is DeleteExpr delete) ToSql(ref sb, delete, context, sqlBuilder, outputParams);
             else if (expr is UpdateExpr update) ToSql(ref sb, update, context, sqlBuilder, outputParams);
             else throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
         }
 
+        /// <summary>
+        /// 计算表达式的优先级（用于决定是否需要在生成 SQL 时添加括号）。
+        /// 返回值越大表示优先级越高（更紧密结合），在需要时会根据与外层优先级比较决定是否加括号。
+        /// 特别约定：<see cref="SelectExpr"/> 的优先级为 1，以便在合适的上下文中生成括号包裹子查询。
+        /// </summary>
+        /// <param name="expr">要计算优先级的表达式。</param>
+        /// <returns>表示表达式优先级的整数值。</returns>
         private static int GetPriority(Expr expr)
         {
             return expr switch
@@ -161,6 +168,7 @@ namespace LiteOrm.Common
                 },
                 NotExpr _ => 6,
                 UnaryExpr _ => 8,
+                SelectExpr _ => 1,
                 _ => 0
             };
         }
@@ -207,13 +215,14 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 将 SelectExpr 转换为 SQL 字符串片段。
+        /// 使用 priority 控制是否需要外层括号（当 GetPriority(select) &lt; priority 时会添加括号）。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority = 0)
         {
-            // 优化：如果当前是最外层的 SelectExpr（即 sb 还没有内容且当前作用域没有父级），则不需要额外的括号包裹和作用域嵌套
-            bool isMain = sb.Length == 0 && context.CurrentScope.Parent is null;
-            if (!isMain) sb.Append('(');
-            using (isMain ? null : context.BeginScope())
+            if (select is null) return;
+            int curPriority = GetPriority(select);
+            if (curPriority <= priority) sb.Append('(');
+            using (context.BeginScope())
             {
                 SqlValueStringBuilder sql = new SqlValueStringBuilder() { Indent = context.Indent };
                 AddSqlSegment(ref sql, select.Source, context, sqlBuilder, outputParams);
@@ -230,10 +239,20 @@ namespace LiteOrm.Common
                         ToSql(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
                     }
                 }
+
                 sqlBuilder.BuildSelectSql(ref sql, ref sb);
                 sql.Dispose();
             }
-            if (!isMain) sb.Append(')');
+
+            foreach (var next in select.NextSelects)
+            {
+                sb.Append($" \n{context.Indent}");
+                sqlBuilder.ToSqlSelectSetType(ref sb, next.SetType);
+                sb.Append($" \n{context.Indent}");
+                ToSql(ref sb, next, context, sqlBuilder, outputParams, priority);
+            }
+            
+            if (curPriority <= priority) sb.Append(')');
         }
         /// <summary>
         /// 将逻辑二元表达式转换为 SQL。
@@ -743,10 +762,10 @@ namespace LiteOrm.Common
             {
                 ToSql(ref sql.From, expr, context, sqlBuilder, outputParams);
             }
-            string alias = expr.Alias ?? $"T{context.Sequence++}";
-            context.DefaultTableAliasName = alias;
-            sql.From.Append($" {alias}\n{context.Indent}");
-            context.AddTableAlias(alias, null);
+            string aliasMain = expr.Alias ?? $"T{context.Sequence++}";
+            context.DefaultTableAliasName = aliasMain;
+            sql.From.Append($" {aliasMain}\n{context.Indent}");
+            context.AddTableAlias(aliasMain, null);
         }
 
         /// <summary>
@@ -766,7 +785,6 @@ namespace LiteOrm.Common
         {
             ToSql(ref sql.From, expr, context, sqlBuilder, outputParams);
         }
-
 
         /// <summary>
         /// 向 SQL 结果结构中添加 Group By 分组片段。
@@ -839,9 +857,9 @@ namespace LiteOrm.Common
             }
             else
             {
-                bool isMain = context.CurrentScope.Parent is null;
+                bool isMain = context.Depth <= 1;
                 // prefer explicit TableExpr and Joins when provided
-                var mainTable = expr.Table;
+                var mainTable = expr.Source;
                 var tableType = mainTable?.ObjectType ?? expr.ObjectType;
                 var tableView = TableInfoProvider.Default.GetTableView(tableType);
                 context.TableArgs = tableArgs;
