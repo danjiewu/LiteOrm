@@ -423,7 +423,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void DeleteExpr_Tests()
         {
-            var table = new FromExpr(typeof(TestUser));
+            var table = new TableExpr(typeof(TestUser));
             var delete = new DeleteExpr(table, Expr.Prop("Age") > 100);
 
             TestSerialization(delete);

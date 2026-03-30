@@ -17,18 +17,23 @@ namespace LiteOrm.Common
         /// <summary>
         /// 使用指定的源片段和筛选条件初始化 DeleteExpr 类的新实例
         /// </summary>
-        /// <param name="source">源片段</param>
+        /// <param name="source">源表</param>
         /// <param name="where">筛选条件表达式</param>
-        public DeleteExpr(FromExpr source, LogicExpr where = null)
+        public DeleteExpr(TableExpr source, LogicExpr where = null)
         {
             Source = source;
             Where = where;
         }
 
         /// <summary>
-        /// 获取或设置删除操作的源片段（From表达式）
+        /// 获取或设置删除操作的源表
         /// </summary>
-        public ISqlSegment Source { get; set; }
+        public TableExpr Source { get; set; }
+
+        /// <summary>
+        /// 适配 ISqlSegment 接口的 Source 属性，实际类型为 TableExpr
+        /// </summary>
+        ISqlSegment ISqlSegment.Source { get => Source; set => Source = (TableExpr)value; }
 
         /// <summary>
         /// 获取片段类型，返回 Delete 类型标识
@@ -65,7 +70,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var d = new DeleteExpr();
-            d.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            d.Source = (TableExpr)Source?.Clone();
             d.Where = (LogicExpr)Where?.Clone();
             return d;
         }

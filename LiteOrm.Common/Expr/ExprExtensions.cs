@@ -348,8 +348,18 @@ namespace LiteOrm.Common
             throw new NotSupportedException("Only supported in Lambda expression parsing scenarios.");
         }
 
+        /// <summary>
+        /// 将表达式值转换为小写
+        /// </summary>
+        /// <param name="expr">值表达式</param>
+        /// <returns>小写函数表达式</returns>
         public static FunctionExpr Lower(this ValueBinaryExpr expr) => new FunctionExpr("LOWER", expr);
 
+        /// <summary>
+        /// 将表达式值转换为大写
+        /// </summary>
+        /// <param name="expr">值表达式</param>
+        /// <returns>大写函数表达式</returns>
         public static FunctionExpr Upper(this ValueBinaryExpr expr) => new FunctionExpr("UPPER", expr);
 
         /// <summary>

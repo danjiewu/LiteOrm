@@ -80,7 +80,7 @@ namespace LiteOrm.Tests
             var sqlGen = new SqlGen(typeof(TestUser));
             var delete = new DeleteExpr
             {
-                Source = new FromExpr(typeof(TestUser)),
+                Source = new TableExpr(typeof(TestUser)),
                 Where = Expr.Prop("Id") == 1
             };
             var result = sqlGen.ToSql(delete);

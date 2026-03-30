@@ -271,7 +271,7 @@ namespace LiteOrm.Common
         /// <returns>DELETE 表达式。</returns>
         public static DeleteExpr Delete<T>(params string[] tableArgs)
         {
-            return new DeleteExpr(From<T>(tableArgs));
+            return Delete(typeof(T), tableArgs);
         }
 
         /// <summary>
@@ -282,7 +282,10 @@ namespace LiteOrm.Common
         /// <returns>DELETE 表达式。</returns>
         public static DeleteExpr Delete(Type objectType, params string[] tableArgs)
         {
-            return new DeleteExpr(From(objectType, tableArgs));
+            return new DeleteExpr()
+            {
+                Source = new TableExpr(objectType) { TableArgs = tableArgs }
+            };
         }
 
         /// <summary>

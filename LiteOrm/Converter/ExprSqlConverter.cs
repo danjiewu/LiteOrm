@@ -75,7 +75,6 @@ namespace LiteOrm.Common
             var joinTable = TableInfoProvider.Default.GetTableDefinition(expr.Table.ObjectType);
             string joinAlias = expr.Table.Alias ?? $"T{context.Sequence++}";
 
-            // register alias before rendering ON so property resolution works
             context.AddTableAlias(joinAlias, joinTable);
 
             sb.Append($" \n{context.Indent}");
@@ -90,8 +89,25 @@ namespace LiteOrm.Common
                 sb.Append(" ON ");
                 int lenBefore = sb.Length;
                 ToSqlInternal(ref sb, expr.On, context, sqlBuilder, outputParams);
-                if (sb.Length == lenBefore) sb.Length = lenBefore; // keep pattern
+                if (sb.Length == lenBefore) sb.Length = lenBefore;
             }
+        }
+
+        /// <summary>
+        /// 将 TableExpr 转换为 SQL 片段（表名 别名）。
+        /// </summary>
+        private static void ToSql(ref ValueStringBuilder sb, TableExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            if (expr == null) return;
+
+            var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.ObjectType);
+            string aliasName = expr.Alias ?? $"T{context.Sequence++}";
+
+            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name)));
+            sb.Append(" ");
+            sb.Append(sqlBuilder.ToSqlName(aliasName));
+
+            context.AddTableAlias(aliasName, tableDef);
         }
 
         /// <summary>
@@ -141,6 +157,7 @@ namespace LiteOrm.Common
             else if (expr is ValueSet vs) ToSql(ref sb, vs, context, sqlBuilder, outputParams);
             else if (expr is OrderByItemExpr obi) ToSql(ref sb, obi, context, sqlBuilder, outputParams);
             else if (expr is FromExpr from) ToSql(ref sb, from, context, sqlBuilder, outputParams);
+            else if (expr is TableExpr table) ToSql(ref sb, table, context, sqlBuilder, outputParams);
             else if (expr is SelectExpr select) ToSql(ref sb, select, context, sqlBuilder, outputParams, priority);
             else if (expr is DeleteExpr delete) ToSql(ref sb, delete, context, sqlBuilder, outputParams);
             else if (expr is UpdateExpr update) ToSql(ref sb, update, context, sqlBuilder, outputParams);
@@ -918,7 +935,7 @@ namespace LiteOrm.Common
         private static void ToSql(ref ValueStringBuilder sb, DeleteExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             sb.Append("DELETE FROM ");
-            ToSql(ref sb, expr.Source as FromExpr ?? new FromExpr(context.Table.Definition.ObjectType), context, sqlBuilder, outputParams);
+            ToSql(ref sb, expr.Source ?? new TableExpr(context.Table.DefinitionType), context, sqlBuilder, outputParams);
             if (expr.Where != null)
             {
                 sb.Append($" \n{context.Indent}WHERE ");

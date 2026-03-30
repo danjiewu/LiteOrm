@@ -790,7 +790,7 @@ namespace LiteOrm
         /// <returns>删除对象数量</returns>
         public virtual int Delete(LogicExpr expr)
         {
-            var deleteExpr = new DeleteExpr(new FromExpr(ObjectType), expr);
+            var deleteExpr = new DeleteExpr(new TableExpr(ObjectType), expr);
             using var command = MakeExprCommand(deleteExpr);
             return command.ExecuteNonQuery();
         }
@@ -1264,7 +1264,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，返回删除对象数量。</returns>
         public async virtual Task<int> DeleteAsync(LogicExpr expr, CancellationToken cancellationToken = default)
         {
-            var deleteExpr = new DeleteExpr(new FromExpr(ObjectType), expr);
+            var deleteExpr = new DeleteExpr(new TableExpr(ObjectType), expr);
             using var command = await MakeExprCommandAsync(deleteExpr, false, cancellationToken);
             return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }

@@ -5,11 +5,26 @@ using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
+    /// <summary>
+    /// 集合操作类型枚举
+    /// </summary>
     public enum SelectSetType
     {
+        /// <summary>
+        /// 并集所有（包含重复行）
+        /// </summary>
         UnionAll,
+        /// <summary>
+        /// 并集（去除重复行）
+        /// </summary>
         Union,
+        /// <summary>
+        /// 交集
+        /// </summary>
         Intersect,
+        /// <summary>
+        /// 差集
+        /// </summary>
         Except
     }
     /// <summary>

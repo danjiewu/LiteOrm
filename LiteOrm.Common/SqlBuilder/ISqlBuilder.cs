@@ -101,6 +101,11 @@ namespace LiteOrm.Common
         /// <param name="result">输出 SQL 语句的缓冲区。</param>
         void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result);
 
+        /// <summary>
+        /// 将集合操作类型转换为 SQL 语句
+        /// </summary>
+        /// <param name="sb">字符串构建器</param>
+        /// <param name="selectSetType">集合操作类型</param>
         void ToSqlSelectSetType(ref ValueStringBuilder sb, SelectSetType selectSetType);
     }
 }

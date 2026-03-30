@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace LiteOrm
 {
@@ -50,14 +50,38 @@ namespace LiteOrm
         /// </summary>
         Full = Args | ReturnValue
     }
+    /// <summary>
+    /// 服务日志级别枚举
+    /// </summary>
     public enum ServiceLogLevel
     {
+        /// <summary>
+        /// 跟踪级别
+        /// </summary>
         Trace,
+        /// <summary>
+        /// 调试级别
+        /// </summary>
         Debug,
+        /// <summary>
+        /// 信息级别
+        /// </summary>
         Information,
+        /// <summary>
+        /// 警告级别
+        /// </summary>
         Warning,
+        /// <summary>
+        /// 错误级别
+        /// </summary>
         Error,
+        /// <summary>
+        /// 严重级别
+        /// </summary>
         Critical,
+        /// <summary>
+        /// 不记录日志
+        /// </summary>
         None
     }
 }

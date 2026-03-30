@@ -11,8 +11,15 @@ namespace LiteOrm.Common
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class FromExpr : Expr, ISourceAnchor, ISqlSegment, IArged
     {
+        /// <summary>
+        /// 默认构造函数
+        /// </summary>
         public FromExpr() { Source = new TableExpr(); }
 
+        /// <summary>
+        /// 根据对象类型初始化
+        /// </summary>
+        /// <param name="objectType">对象类型</param>
         public FromExpr(Type objectType)
         {
             Source = new TableExpr(objectType);
@@ -36,13 +43,18 @@ namespace LiteOrm.Common
         /// </summary>
         public List<TableJoinExpr> Joins { get; set; } = new List<TableJoinExpr>();
 
-        // 保持向后兼容的便利属性，委托到主表
+        /// <summary>
+        /// 别名
+        /// </summary>
         public string Alias
         {
             get => Source?.Alias;
             set { Source.Alias = value; }
         }
 
+        /// <summary>
+        /// 对象类型
+        /// </summary>
         public Type ObjectType
         {
             get => Source?.ObjectType;
@@ -50,6 +62,9 @@ namespace LiteOrm.Common
             { Source.ObjectType = value; }
         }
 
+        /// <summary>
+        /// 表参数
+        /// </summary>
         public string[] TableArgs
         {
             get => Source?.TableArgs;
@@ -57,13 +72,21 @@ namespace LiteOrm.Common
             { Source.TableArgs = value; }
         }
 
+        /// <summary>
+        /// 表达式类型
+        /// </summary>
         public override ExprType ExprType => ExprType.From;
 
         /// <summary>
-        /// 以前的 Source 属性保留以兼容旧代码
+        /// 获取或设置源片段（主表表达式）
         /// </summary>
         ISqlSegment ISqlSegment.Source { get => Source; set => Source = (TableExpr)value; }
 
+        /// <summary>
+        /// 判断两个 FromExpr 是否相等
+        /// </summary>
+        /// <param name="obj">要比较的对象</param>
+        /// <returns>如果相等返回 true，否则返回 false</returns>
         public override bool Equals(object obj)
         {
             if (obj is FromExpr other)
@@ -76,6 +99,10 @@ namespace LiteOrm.Common
             return false;
         }
 
+        /// <summary>
+        /// 获取当前对象的哈希码
+        /// </summary>
+        /// <returns>哈希码值</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(
@@ -85,6 +112,10 @@ namespace LiteOrm.Common
                 Source?.GetHashCode() ?? 0);
         }
 
+        /// <summary>
+        /// 返回 FromExpr 的字符串表示
+        /// </summary>
+        /// <returns>字符串表示</returns>
         public override string ToString()
         {
             if (Source == null) return string.Empty;
@@ -92,6 +123,9 @@ namespace LiteOrm.Common
             return Source + " " + string.Join(" ", Joins);
         }
 
+        /// <summary>
+        /// 克隆 FromExpr
+        /// </summary>
         public override Expr Clone()
         {
             var f = new FromExpr();

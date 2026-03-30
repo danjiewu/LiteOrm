@@ -4,17 +4,33 @@ using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
 {
+    /// <summary>
+    /// 表表达式
+    /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class TableExpr : Expr, ISqlSegment
+    public sealed class TableExpr : Expr, ISqlSegment, IArged
     {
+        /// <summary>
+        /// 默认构造函数
+        /// </summary>
         public TableExpr() { }
 
+        /// <summary>
+        /// 根据对象类型初始化
+        /// </summary>
+        /// <param name="objectType">对象类型</param>
         public TableExpr(Type objectType)
         {
             ObjectType = objectType;
         }
 
+        /// <summary>
+        /// 别名
+        /// </summary>
         private string _alias;
+        /// <summary>
+        /// 别名
+        /// </summary>
         public string Alias
         {
             get => _alias;
@@ -27,9 +43,18 @@ namespace LiteOrm.Common
 
         ISqlSegment ISqlSegment.Source { get => null; set => _ = value; }
 
+        /// <summary>
+        /// 对象类型
+        /// </summary>
         public Type ObjectType { get; set; }
 
+        /// <summary>
+        /// 表参数
+        /// </summary>
         private string[] _tableArgs;
+        /// <summary>
+        /// 表参数
+        /// </summary>
         public string[] TableArgs
         {
             get => _tableArgs;
@@ -46,8 +71,16 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 表达式类型
+        /// </summary>
         public override ExprType ExprType => ExprType.Table;
 
+        /// <summary>
+        /// 判断两个 TableExpr 是否相等
+        /// </summary>
+        /// <param name="obj">要比较的对象</param>
+        /// <returns>如果相等返回 true，否则返回 false</returns>
         public override bool Equals(object obj)
         {
             if (obj is TableExpr other)
@@ -67,6 +100,10 @@ namespace LiteOrm.Common
             return a.SequenceEqual(b);
         }
 
+        /// <summary>
+        /// 获取当前对象的哈希码
+        /// </summary>
+        /// <returns>哈希码值</returns>
         public override int GetHashCode()
         {
             return OrderedHashCodes(
@@ -76,11 +113,18 @@ namespace LiteOrm.Common
                 (TableArgs == null || TableArgs.Length == 0) ? 0 : SequenceHash(TableArgs));
         }
 
+        /// <summary>
+        /// 返回 TableExpr 的字符串表示
+        /// </summary>
+        /// <returns>字符串表示</returns>
         public override string ToString()
         {
             return ObjectType?.Name ?? string.Empty;
         }
 
+        /// <summary>
+        /// 克隆 TableExpr
+        /// </summary>
         public override Expr Clone()
         {
             var t = new TableExpr();
@@ -91,4 +135,3 @@ namespace LiteOrm.Common
         }
     }
 }
-
