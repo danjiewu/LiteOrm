@@ -106,5 +106,18 @@ namespace LiteOrm
                 RegisterFunctionSqlHandler(sqlBuilder, functionName, handler);
             }
         }
+
+        /// <summary>
+        /// 获取函数的 SQL 语句处理器
+        /// </summary>
+        /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
+        /// <param name="sqlBuilder">要获取处理器的 SQL 构建器实例。</param>
+        /// <param name="functionName">要获取的函数名称。</param>
+        /// <param name="handler">输出参数，返回对应的函数 SQL 语句处理器。</param>
+        /// <returns></returns>
+        public static bool TryGetFunctionSqlHandler<T>(this T sqlBuilder, string functionName, out FunctionSqlHandler handler) where T : SqlBuilder
+        {
+            return SqlBuilder.GetSqlHandlerMap<T>().TryGetFunctionSqlHandler(functionName, out handler);
+        }
     }
 }

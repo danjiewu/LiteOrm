@@ -4,9 +4,9 @@ using System.Collections.Generic;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 实现此接口以参与 <see cref="ExprVisitor.Visit(Expr, IExprVisitor)"/> 驱动的树遍历。
+    /// 实现此接口以参与 <see cref="ExprVisitor.Visit(Expr, IExprNodeVisitor)"/> 驱动的树遍历。
     /// </summary>
-    public interface IExprVisitor
+    public interface IExprNodeVisitor
     {
         /// <summary>
         /// 对树中的每个节点调用。
@@ -47,16 +47,16 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 以前序方式遍历以 <paramref name="root"/> 为根的 <see cref="Expr"/> 树，
-        /// 对每个节点调用 <see cref="IExprVisitor.Visit"/>。
+        /// 对每个节点调用 <see cref="IExprNodeVisitor.Visit"/>。
         /// </summary>
         /// <param name="root">遍历的根节点，为 <see langword="null"/> 时直接返回 <see langword="true"/>。</param>
-        /// <param name="visitor"><see cref="IExprVisitor"/> 实现，不能为 <see langword="null"/>。</param>
+        /// <param name="visitor"><see cref="IExprNodeVisitor"/> 实现，不能为 <see langword="null"/>。</param>
         /// <returns>
         /// 完整遍历完毕返回 <see langword="true"/>；
-        /// 因 <see cref="IExprVisitor.Visit"/> 返回 <see langword="false"/> 而提前终止返回 <see langword="false"/>。
+        /// 因 <see cref="IExprNodeVisitor.Visit"/> 返回 <see langword="false"/> 而提前终止返回 <see langword="false"/>。
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="visitor"/> 为 <see langword="null"/>。</exception>
-        public static bool Visit(Expr root, IExprVisitor visitor)
+        public static bool Visit(Expr root, IExprNodeVisitor visitor)
         {
             if (visitor == null) throw new ArgumentNullException(nameof(visitor));
             return Visit(root, visitor.Visit);
@@ -65,12 +65,10 @@ namespace LiteOrm.Common
         private static bool VisitNode(Expr node, Func<Expr, bool> visitor)
         {
             if (!visitor(node)) return false;
-
             switch (node)
             {
                 case ValueBinaryExpr vb:
-                    return VisitChild(vb.Left, visitor)
-                        && VisitChild(vb.Right, visitor);
+                    return VisitChild(vb.Left, visitor) && VisitChild(vb.Right, visitor);
 
                 case ValueSet vs:
                     foreach (ValueTypeExpr item in vs.Items)
@@ -86,8 +84,7 @@ namespace LiteOrm.Common
                     return VisitChild(u.Operand, visitor);
 
                 case LogicBinaryExpr b:
-                    return VisitChild(b.Left, visitor)
-                        && VisitChild(b.Right, visitor);
+                    return VisitChild(b.Left, visitor) && VisitChild(b.Right, visitor);
 
                 case LogicSet s:
                     foreach (LogicExpr item in s.Items)
@@ -107,30 +104,61 @@ namespace LiteOrm.Common
                     return VisitChild(si.Value, visitor);
 
                 case SelectExpr sel:
+                    if (!VisitChild(sel.Source as Expr, visitor)) return false;
                     foreach (SelectItemExpr item in sel.Selects)
                         if (!VisitNode(item, visitor)) return false;
+                    if (sel.NextSelects != null)
+                    {
+                        foreach (SelectExpr nxt in sel.NextSelects)
+                            if (!VisitNode(nxt, visitor)) return false;
+                    }
+                    return true;
+
+                case FromExpr fe:
+                    if (!VisitChild(fe.Source as Expr, visitor)) return false;
+                    if (fe.Joins != null)
+                    {
+                        foreach (TableJoinExpr j in fe.Joins)
+                            if (!VisitNode(j, visitor)) return false;
+                    }
+                    return true;
+
+                case TableJoinExpr tje:
+                    if (!VisitChild(tje.Table as Expr, visitor)) return false;
+                    return VisitChild(tje.On, visitor);
+
+                case TableExpr _:
                     return true;
 
                 case WhereExpr w:
+                    if (!VisitChild(w.Source as Expr, visitor)) return false;
                     return VisitChild(w.Where, visitor);
 
-                case DeleteExpr d:
-                    return VisitChild(d.Where, visitor);
-
-                case HavingExpr h:
-                    return VisitChild(h.Having, visitor);
-
-                case GroupByExpr g:
-                    foreach (ValueTypeExpr item in g.GroupBys)
-                        if (!VisitNode(item, visitor)) return false;
-                    return true;
-
                 case OrderByExpr o:
+                    if (!VisitChild(o.Source as Expr, visitor)) return false;
                     foreach (OrderByItemExpr ob in o.OrderBys)
                         if (!VisitNode(ob.Field, visitor)) return false;
                     return true;
 
+                case GroupByExpr g:
+                    if (!VisitChild(g.Source as Expr, visitor)) return false;
+                    foreach (ValueTypeExpr item in g.GroupBys)
+                        if (!VisitNode(item, visitor)) return false;
+                    return true;
+
+                case HavingExpr h:
+                    if (!VisitChild(h.Source as Expr, visitor)) return false;
+                    return VisitChild(h.Having, visitor);
+
+                case SectionExpr se:
+                    return VisitChild(se.Source as Expr, visitor);
+
+                case DeleteExpr d:
+                    if (!VisitChild(d.Source as Expr, visitor)) return false;
+                    return VisitChild(d.Where, visitor);
+
                 case UpdateExpr upd:
+                    if (!VisitChild(upd.Source as Expr, visitor)) return false;
                     foreach ((PropertyExpr prop, ValueTypeExpr val) in upd.Sets)
                     {
                         if (!VisitNode(prop, visitor)) return false;
@@ -138,7 +166,7 @@ namespace LiteOrm.Common
                     }
                     return VisitChild(upd.Where, visitor);
 
-                // ValueExpr, PropertyExpr, GenericSqlExpr, FromExpr, SectionExpr, …
+                // ValueExpr, PropertyExpr, GenericSqlExpr, …
                 default:
                     return true;
             }
