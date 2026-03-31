@@ -31,11 +31,6 @@ namespace LiteOrm.Common
         public TableExpr Source { get; set; }
 
         /// <summary>
-        /// 适配 ISqlSegment 接口的 Source 属性，实际类型为 TableExpr
-        /// </summary>
-        ISqlSegment ISqlSegment.Source { get => Source; set => Source = (TableExpr)value; }
-
-        /// <summary>
         /// 获取片段类型，返回 Delete 类型标识
         /// </summary>
         public override ExprType ExprType => ExprType.Delete;
@@ -44,6 +39,11 @@ namespace LiteOrm.Common
         /// 获取或设置筛选条件表达式
         /// </summary>
         public LogicExpr Where { get; set; }
+
+        /// <summary>
+        /// 适配 ISqlSegment 接口的 Source 属性，实际类型为 TableExpr
+        /// </summary>
+        ISqlSegment ISqlSegment.Source { get => Source; set => Source = (TableExpr)value; }
 
         /// <summary>
         /// 判断两个 DeleteExpr 是否相等

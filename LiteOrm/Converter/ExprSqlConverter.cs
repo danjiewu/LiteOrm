@@ -72,7 +72,7 @@ namespace LiteOrm.Common
             if (expr == null) return;
             if (expr.Table == null) return;
 
-            var joinTable = TableInfoProvider.Default.GetTableDefinition(expr.Table.ObjectType);
+            var joinTable = TableInfoProvider.Default.GetTableDefinition(expr.Table.Type);
             string joinAlias = expr.Table.Alias ?? $"T{context.Sequence++}";
 
             context.AddTableAlias(joinAlias, joinTable);
@@ -99,15 +99,21 @@ namespace LiteOrm.Common
         private static void ToSql(ref ValueStringBuilder sb, TableExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (expr == null) return;
-
-            var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.ObjectType);
-            string aliasName = expr.Alias ?? $"T{context.Sequence++}";
-
-            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name)));
-            sb.Append(" ");
-            sb.Append(sqlBuilder.ToSqlName(aliasName));
-
-            context.AddTableAlias(aliasName, tableDef);
+            var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.Type);
+            var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name));
+            if (context.SingleTable)
+            {
+                sb.Append(tableName);
+                context.AddTableAlias(tableName, tableDef);
+            }
+            else
+            {
+                string aliasName = expr.Alias ?? $"T{context.Sequence++}";
+                sb.Append(tableName);
+                sb.Append(" ");
+                sb.Append(sqlBuilder.ToSqlName(aliasName));
+                context.AddTableAlias(aliasName, tableDef);
+            }
         }
 
         /// <summary>
@@ -186,6 +192,8 @@ namespace LiteOrm.Common
                 NotExpr _ => 6,
                 UnaryExpr _ => 8,
                 SelectExpr _ => 1,
+                UpdateExpr _ => 2,
+                DeleteExpr _ => 2,
                 _ => 0
             };
         }
@@ -268,7 +276,7 @@ namespace LiteOrm.Common
                 sb.Append($" \n{context.Indent}");
                 ToSql(ref sb, next, context, sqlBuilder, outputParams, priority);
             }
-            
+
             if (curPriority <= priority) sb.Append(')');
         }
         /// <summary>
@@ -777,7 +785,7 @@ namespace LiteOrm.Common
         {
             using (context.BeginScope())
             {
-                ToSql(ref sql.From, expr, context, sqlBuilder, outputParams);
+                ToSql(ref sql.From, expr, context, sqlBuilder, outputParams, 1);
             }
             string aliasMain = expr.Alias ?? $"T{context.Sequence++}";
             context.DefaultTableAliasName = aliasMain;
@@ -867,7 +875,7 @@ namespace LiteOrm.Common
             var tableArgs = expr.TableArgs ?? context.TableArgs ?? Array.Empty<string>();
             if (context.SingleTable)
             {
-                var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.ObjectType);
+                var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.Type);
                 context.TableArgs = tableArgs;
                 sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name)));
                 context.AddTableAlias(tableDef.Name, tableDef);
@@ -877,7 +885,7 @@ namespace LiteOrm.Common
                 bool isMain = context.Depth <= 1;
                 // prefer explicit TableExpr and Joins when provided
                 var mainTable = expr.Source;
-                var tableType = mainTable?.ObjectType ?? expr.ObjectType;
+                var tableType = mainTable?.Type ?? expr.Type;
                 var tableView = TableInfoProvider.Default.GetTableView(tableType);
                 context.TableArgs = tableArgs;
                 string aliasName = (mainTable?.Alias) ?? expr.Alias ?? (isMain ? Constants.DefaultTableAlias : $"T{context.Sequence++}");
@@ -934,12 +942,16 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, DeleteExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
+
             sb.Append("DELETE FROM ");
             ToSql(ref sb, expr.Source ?? new TableExpr(context.Table.DefinitionType), context, sqlBuilder, outputParams);
             if (expr.Where != null)
             {
-                sb.Append($" \n{context.Indent}WHERE ");
-                ToSqlInternal(ref sb, expr.Where, context, sqlBuilder, outputParams);
+                using (context.BeginScope())
+                {
+                    sb.Append($" \n{context.Indent}WHERE ");
+                    ToSqlInternal(ref sb, expr.Where, context, sqlBuilder, outputParams);
+                }
             }
         }
 
@@ -948,28 +960,32 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, UpdateExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (expr.Source is not FromExpr && context.Table is null) throw new ArgumentException("UpdateExpr Source is null and context Table is null, cannot determine update target.");
-            FromExpr fromExpr = expr.Source as FromExpr ?? Expr.From(context.Table.Definition.ObjectType);
-            var source = expr.Source is FromExpr from ? TableInfoProvider.Default.GetTableDefinition(from.ObjectType) : context.Table.Definition;
+            TableExpr tableExpr = expr.Source ?? new TableExpr(context.Table.DefinitionType);
+            if (tableExpr == null)
+                throw new ArgumentException("UpdateExpr Source is null and context Table is null, cannot determine update target.");
+            var table = TableInfoProvider.Default.GetTableDefinition(tableExpr.Type) ;
             sb.Append("UPDATE ");
-            ToSql(ref sb, fromExpr, context, sqlBuilder, outputParams);
+            ToSql(ref sb, tableExpr, context, sqlBuilder, outputParams);
             sb.Append($" \n{context.Indent}SET ");
             for (int i = 0; i < expr.Sets.Count; i++)
             {
                 if (i > 0) sb.Append(", ");
                 var set = expr.Sets[i];
-
-                SqlColumn column = source.GetColumn(set.Item1.PropertyName);
+                int priority = GetPriority(expr);
+                SqlColumn column = table?.GetColumn(set.Item1.PropertyName);
                 if (column == null) throw new Exception($"Property \"{set.Item1}\" does not exist in type \"{context.Table.DefinitionType.FullName}\".");
                 sb.Append(sqlBuilder.ToSqlName(column.Name));
 
                 sb.Append("=");
-                ToSqlInternal(ref sb, set.Item2, context, sqlBuilder, outputParams);
+                ToSqlInternal(ref sb, set.Item2, context, sqlBuilder, outputParams, priority);
             }
             if (expr.Where != null)
             {
-                sb.Append($" \n{context.Indent}WHERE ");
-                ToSqlInternal(ref sb, expr.Where, context, sqlBuilder, outputParams);
+                using (context.BeginScope())
+                {
+                    sb.Append($" \n{context.Indent}WHERE ");
+                    ToSqlInternal(ref sb, expr.Where, context, sqlBuilder, outputParams);
+                }
             }
         }
     }

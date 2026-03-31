@@ -89,6 +89,7 @@ namespace LiteOrm.Common
             var j = new TableJoinExpr();
             j.Table = (TableExpr)(Table as Expr)?.Clone() ?? Table;
             j.On = (LogicExpr)(On as Expr)?.Clone() ?? On;
+            j.JoinType = JoinType;
             return j;
         }
     }

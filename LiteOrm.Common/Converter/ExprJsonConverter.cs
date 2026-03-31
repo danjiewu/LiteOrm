@@ -378,24 +378,15 @@ namespace LiteOrm.Common
             private void ReadSqlSegmentProperty(ref Utf8JsonReader reader, ISqlSegment ss, string propName, JsonSerializerOptions options)
             {
                 // reader 已经在属性值的位置，直接处理
-                if (ss is FromExpr fe && propName.StartsWith("$from"))
+                if (ss is TableExpr te && propName == "$table")
                 {
-                    // 处理 "$from" 属性值：可能是字符串或对象
                     if (reader.TokenType == JsonTokenType.String)
                     {
                         string typeName = reader.GetString();
                         if (!string.IsNullOrEmpty(typeName))
                         {
-                            Type type = Type.GetType(typeName);
-                            if (type == null)
-                            {
-                                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                                {
-                                    type = assembly.GetType(typeName);
-                                    if (type != null) break;
-                                }
-                            }
-                            if (type != null) fe.ObjectType = type;
+                            Type type = GetObjectType(typeName);
+                            if (type != null) te.Type = type;
                         }
                     }
                     else if (reader.TokenType == JsonTokenType.StartObject)
@@ -410,74 +401,8 @@ namespace LiteOrm.Common
                                 string typeName = reader.GetString();
                                 if (!string.IsNullOrEmpty(typeName))
                                 {
-                                    Type type = Type.GetType(typeName);
-                                    if (type == null)
-                                    {
-                                        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                                        {
-                                            type = assembly.GetType(typeName);
-                                            if (type != null) break;
-                                        }
-                                    }
-                                    if (type != null) fe.ObjectType = type;
-                                }
-                            }
-                            else if (prop == "TableArgs")
-                            {
-                                fe.TableArgs = JsonSerializer.Deserialize<string[]>(ref reader, options);
-                            }
-                            else if (prop == "Alias")
-                            {
-                                fe.Alias = reader.GetString();
-                            }
-                            else
-                            {
-                                reader.Skip();
-                            }
-                        }
-                    }
-                }
-                else if (ss is TableExpr te && (propName == "$table" || propName.StartsWith("$table")))
-                {
-                    if (reader.TokenType == JsonTokenType.String)
-                    {
-                        string typeName = reader.GetString();
-                        if (!string.IsNullOrEmpty(typeName))
-                        {
-                            Type type = Type.GetType(typeName);
-                            if (type == null)
-                            {
-                                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                                {
-                                    type = assembly.GetType(typeName);
-                                    if (type != null) break;
-                                }
-                            }
-                            if (type != null) te.ObjectType = type;
-                        }
-                    }
-                    else if (reader.TokenType == JsonTokenType.StartObject)
-                    {
-                        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-                        {
-                            if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                            string prop = reader.GetString() ?? string.Empty;
-                            reader.Read();
-                            if (prop == "$")
-                            {
-                                string typeName = reader.GetString();
-                                if (!string.IsNullOrEmpty(typeName))
-                                {
-                                    Type type = Type.GetType(typeName);
-                                    if (type == null)
-                                    {
-                                        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                                        {
-                                            type = assembly.GetType(typeName);
-                                            if (type != null) break;
-                                        }
-                                    }
-                                    if (type != null) te.ObjectType = type;
+                                    Type type = GetObjectType(typeName);
+                                    if (type != null) te.Type = type;
                                 }
                             }
                             else if (prop == "TableArgs")
@@ -499,6 +424,21 @@ namespace LiteOrm.Common
                 {
                     ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as ISqlSegment;
                 }
+            }
+
+            private static Type GetObjectType(string typeName)
+            {
+                Type type = Type.GetType(typeName);
+                if (type == null)
+                {
+                    foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        type = assembly.GetType(typeName);
+                        if (type != null) break;
+                    }
+                }
+
+                return type;
             }
 
             public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
@@ -736,30 +676,13 @@ namespace LiteOrm.Common
 
                 string mark = _typeToMark.TryGetValue(value.GetType(), out string m) ? m : value.GetType().Name.Replace("Expr", "").ToLower();
                 writer.WritePropertyName("$" + mark);
-                if (value is FromExpr fe)
-                {
-                    writer.WriteStartObject();
-                    if (fe.Source != null)
-                    {
-                        writer.WritePropertyName("Source");
-                        WriteExpr(writer, fe.Source, options);
-                    }
-                    if (fe.Joins?.Count > 0)
-                    {
-                        writer.WritePropertyName("Joins");
-                        writer.WriteStartArray();
-                        foreach (var join in fe.Joins) WriteExpr(writer, join, options);
-                        writer.WriteEndArray();
-                    }
-                    writer.WriteEndObject();
-                }
-                else if (value is TableExpr te)
+                if (value is TableExpr te)
                 {
                     if ((te.TableArgs != null && te.TableArgs.Length > 0) || !string.IsNullOrEmpty(te.Alias))
                     {
                         writer.WriteStartObject();
                         writer.WritePropertyName("$");
-                        writer.WriteStringValue(te.ObjectType?.FullName);
+                        writer.WriteStringValue(te.Type?.FullName);
                         if (te.TableArgs != null && te.TableArgs.Length > 0)
                         {
                             writer.WritePropertyName("TableArgs");
@@ -774,7 +697,7 @@ namespace LiteOrm.Common
                     }
                     else
                     {
-                        writer.WriteStringValue(te.ObjectType?.FullName);
+                        writer.WriteStringValue(te.Type?.FullName);
                     }
                 }
                 else
@@ -840,6 +763,15 @@ namespace LiteOrm.Common
                         break;
                     case DeleteExpr de:
                         if (de.Where is not null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, de.Where, options); }
+                        break;
+                    case FromExpr fe:
+                        if (fe.Joins?.Count > 0)
+                        {
+                            writer.WritePropertyName("Joins");
+                            writer.WriteStartArray();
+                            foreach (var join in fe.Joins) JsonSerializer.Serialize(writer, join, options);
+                            writer.WriteEndArray();
+                        }
                         break;
                 }
                 writer.WriteEndObject();

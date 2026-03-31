@@ -21,7 +21,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">对象类型</param>
         public TableExpr(Type objectType)
         {
-            ObjectType = objectType;
+            Type = objectType;
         }
 
         /// <summary>
@@ -41,12 +41,10 @@ namespace LiteOrm.Common
             }
         }
 
-        ISqlSegment ISqlSegment.Source { get => null; set => _ = value; }
-
         /// <summary>
         /// 对象类型
         /// </summary>
-        public Type ObjectType { get; set; }
+        public Type Type { get; set; }
 
         /// <summary>
         /// 表参数
@@ -77,6 +75,11 @@ namespace LiteOrm.Common
         public override ExprType ExprType => ExprType.Table;
 
         /// <summary>
+        /// 获取或设置源片段（用于 ISqlSegment 接口）
+        /// </summary>
+        ISqlSegment ISqlSegment.Source { get => null; set { } }
+
+        /// <summary>
         /// 判断两个 TableExpr 是否相等
         /// </summary>
         /// <param name="obj">要比较的对象</param>
@@ -85,7 +88,7 @@ namespace LiteOrm.Common
         {
             if (obj is TableExpr other)
             {
-                if (!Equals(ObjectType, other.ObjectType)) return false;
+                if (!Equals(Type, other.Type)) return false;
                 if (Alias != other.Alias) return false;
                 if (!ArrayEquals(TableArgs, other.TableArgs)) return false;
                 return true;
@@ -108,7 +111,7 @@ namespace LiteOrm.Common
         {
             return OrderedHashCodes(
                 typeof(TableExpr).GetHashCode(),
-                ObjectType?.GetHashCode() ?? 0,
+                Type?.GetHashCode() ?? 0,
                 Alias?.GetHashCode() ?? 0,
                 (TableArgs == null || TableArgs.Length == 0) ? 0 : SequenceHash(TableArgs));
         }
@@ -119,7 +122,7 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            return ObjectType?.Name ?? string.Empty;
+            return Type?.Name ?? string.Empty;
         }
 
         /// <summary>
@@ -128,7 +131,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var t = new TableExpr();
-            t.ObjectType = this.ObjectType;
+            t.Type = this.Type;
             t.Alias = this.Alias;
             t.TableArgs = this.TableArgs == null ? null : (string[])this.TableArgs.Clone();
             return t;

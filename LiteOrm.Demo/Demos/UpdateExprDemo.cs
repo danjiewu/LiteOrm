@@ -56,7 +56,7 @@ namespace LiteOrm.Demo.Demos
                 DemoHelper.PrintSection("📝 代码实现",
                     "var update = new UpdateExpr\n" +
                     "{\n" +
-                    "    Source = From<User>(),\n" +
+                    "    Source = new TableExpr(typeof(User)),\n" +
                     "    Where  = Prop(\"UserName\") == \"UpdateDemo_Alice\",\n" +
                     "    Sets   = new List<(PropertyExpr, ValueTypeExpr)>\n" +
                     "    {\n" +
@@ -66,7 +66,7 @@ namespace LiteOrm.Demo.Demos
 
                 var update = new UpdateExpr
                 {
-                    Source = From<User>(),
+                    Source = new TableExpr(typeof(User)),
                     Where  = Prop("UserName") == "UpdateDemo_Alice",
                     Sets   = new List<(PropertyExpr, ValueTypeExpr)>
                     {

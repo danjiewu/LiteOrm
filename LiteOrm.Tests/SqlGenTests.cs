@@ -58,7 +58,7 @@ namespace LiteOrm.Tests
             var sqlGen = new SqlGen(typeof(TestUser));
             var update = new UpdateExpr
             {
-                Source = new FromExpr(typeof(TestUser)),
+                Source = new TableExpr(typeof(TestUser)),
                 Sets = new List<(PropertyExpr, ValueTypeExpr)>
                 {
                     (Expr.Prop("Name"), Expr.Value("NewName")),

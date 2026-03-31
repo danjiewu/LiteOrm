@@ -97,7 +97,7 @@ namespace LiteOrm.Demo.Demos
 
                 DemoHelper.PrintSection("📝 代码实现",
                     "// 构建 Expr 模型\n" +
-                    "var expr = From<User>()\n" +
+                    "var expr = From<UserView>()\n" +
                     "    .Where(Prop(\"Age\") >= minAge)\n" +
                     "    .Where(Prop(\"UserName\").Like($\"%{searchName}%\"))\n" +
                     "    .OrderBy((\"Id\", false))\n" +
@@ -108,7 +108,7 @@ namespace LiteOrm.Demo.Demos
                     "var deserializedExpr = JsonSerializer.Deserialize<SqlSegmentExpr>(json);");
 
                 // 构建 Expr 模型
-                var expr = From<User>()
+                var expr = From<UserView>()
                     .Where(Prop("Age") >= minAge)
                     .Where(Prop("UserName").Like($"%{searchName}%"))
                     .OrderBy(("Id", false))

@@ -432,7 +432,7 @@ namespace LiteOrm.Common
                 }
                 if (firstSource is FromExpr fromExpr)
                 {
-                    fromExpr.ObjectType = objectType;
+                    fromExpr.Type = objectType;
                 }
                 else
                 {

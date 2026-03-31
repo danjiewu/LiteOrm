@@ -70,8 +70,8 @@ namespace LiteOrm.Demo.Demos
 
             ShowSection("1.5 删除与其它片段 (Delete)", () => {
                 // 删除模型
-                var delete = new DeleteExpr(From<User>(), Prop("Age") < 18);
-                Print(delete, "DELETE 模型", "new DeleteExpr(From<User>(), Prop(\"Age\") < 18)");
+                var delete = new DeleteExpr(new TableExpr(typeof(User)), Prop("Age") < 18);
+                Print(delete, "DELETE 模型", "new DeleteExpr(new TableExpr(typeof(User)), Prop(\"Age\") < 18)");
             });
         }
 

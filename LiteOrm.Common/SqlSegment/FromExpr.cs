@@ -26,6 +26,15 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 根据主表表达式初始化
+        /// </summary>
+        /// <param name="source">主表表达式</param>
+        public FromExpr(TableExpr source)
+        {
+            Source = source;
+        }
+
+        /// <summary>
         /// 主表表达式
         /// </summary>
         public TableExpr Source
@@ -55,11 +64,10 @@ namespace LiteOrm.Common
         /// <summary>
         /// 对象类型
         /// </summary>
-        public Type ObjectType
+        public Type Type
         {
-            get => Source?.ObjectType;
-            set
-            { Source.ObjectType = value; }
+            get => Source?.Type;
+            set { Source.Type = value; }
         }
 
         /// <summary>
@@ -68,8 +76,7 @@ namespace LiteOrm.Common
         public string[] TableArgs
         {
             get => Source?.TableArgs;
-            set
-            { Source.TableArgs = value; }
+            set { Source.TableArgs = value; }
         }
 
         /// <summary>

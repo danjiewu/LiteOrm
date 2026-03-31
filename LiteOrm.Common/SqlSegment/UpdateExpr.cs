@@ -23,14 +23,14 @@ namespace LiteOrm.Common
         /// <param name="where">筛选条件表达式</param>
         public UpdateExpr(FromExpr source, LogicExpr where = null)
         {
-            Source = source;
+            Source = source.Source;
             Where = where;
         }
 
         /// <summary>
-        /// 获取或设置更新操作的源片段（From表达式）
+        /// 获取或设置更新操作的源片段（TableExpr）
         /// </summary>
-        public ISqlSegment Source { get; set; }
+        public TableExpr Source { get; set; }
 
         /// <summary>
         /// 获取片段类型，返回 Update 类型标识
@@ -46,6 +46,11 @@ namespace LiteOrm.Common
         /// 获取或设置筛选条件表达式
         /// </summary>
         public LogicExpr Where { get; set; }
+
+        /// <summary>
+        /// 适配 ISqlSegment 接口的 Source 属性，实际类型为 TableExpr
+        /// </summary>
+        ISqlSegment ISqlSegment.Source { get => Source; set => Source = (TableExpr)value; }
 
         /// <summary>
         /// 判断两个 UpdateExpr 是否相等
@@ -69,7 +74,7 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            string setStr = string.Join(", ", Sets.Select(s => $"[{s.Item1}] = {s.Item2}"));
+            string setStr = string.Join(", ", Sets.Select(s => $"{s.Item1} = {s.Item2}"));
             return $"UPDATE {Source} SET {setStr}{(Where != null ? $" WHERE {Where}" : "")}";
         }
 
@@ -79,7 +84,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var u = new UpdateExpr();
-            u.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            u.Source = (TableExpr)Source?.Clone();
             u.Where = (LogicExpr)Where?.Clone();
             u.Sets = Sets?.Select(s => ((PropertyExpr)s.Item1?.Clone(), (ValueTypeExpr)s.Item2?.Clone())).ToList() ?? new List<(PropertyExpr, ValueTypeExpr)>();
             return u;
