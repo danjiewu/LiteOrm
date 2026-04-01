@@ -68,7 +68,7 @@ namespace LiteOrm
         {
             ThrowExceptionIfNoKeys();
             ThrowExceptionIfWrongKeys(keys);
-            LogicSet expr = new LogicSet(LogicJoinType.And);
+            AndExpr expr = new AndExpr();
             int i = 0;
             foreach (ColumnDefinition column in Table.Keys)
             {

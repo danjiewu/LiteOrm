@@ -746,7 +746,7 @@ namespace LiteOrm.Common
 
                 if (src is HavingExpr existingHaving)
                 {
-                    existingHaving.Having = new LogicSet(LogicJoinType.And, existingHaving.Having, havingLogic);
+                    existingHaving.Having = new AndExpr(existingHaving.Having, havingLogic);
                     return existingHaving;
                 }
 
@@ -774,7 +774,7 @@ namespace LiteOrm.Common
             // 如果源已经是 WhereExpr，将新条件与现有条件用 AND 合并
             if (source is WhereExpr existingWhere)
             {
-                var combinedCondition = new LogicSet(LogicJoinType.And, existingWhere.Where, newCondition);
+                var combinedCondition = new AndExpr(existingWhere.Where, newCondition);
                 existingWhere.Where = combinedCondition;
                 return existingWhere;
             }

@@ -7,21 +7,21 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 逻辑表达式集合，支持通过 AND 或 OR 连接多个逻辑表达式
+    /// 逻辑 OR 表达式组合
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class LogicSet : LogicExpr, ICollection<LogicExpr>
+    public sealed class OrExpr : LogicExpr, ICollection<LogicExpr>
     {
         /// <summary>
-        /// 初始化默认的逻辑表达式集合
+        /// 初始化默认的 OR 表达式组合
         /// </summary>
-        public LogicSet() { }
+        public OrExpr() { }
 
         /// <summary>
-        /// 使用指定的逻辑表达式数组初始化逻辑表达式集合
+        /// 使用指定的逻辑表达式数组初始化 OR 表达式组合
         /// </summary>
         /// <param name="items">要添加的逻辑表达式数组</param>
-        public LogicSet(params LogicExpr[] items)
+        public OrExpr(params LogicExpr[] items)
         {
             if (items != null)
             {
@@ -30,63 +30,30 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 使用指定的逻辑表达式集合初始化逻辑表达式集合
+        /// 使用指定的逻辑表达式集合初始化 OR 表达式组合
         /// </summary>
         /// <param name="items">要添加的逻辑表达式集合</param>
-        public LogicSet(IEnumerable<LogicExpr> items)
+        public OrExpr(IEnumerable<LogicExpr> items)
         {
             if (items != null)
             {
                 foreach (var item in items) Add(item);
             }
         }
-
-        /// <summary>
-        /// 使用指定的连接类型和逻辑表达式数组初始化逻辑表达式集合
-        /// </summary>
-        /// <param name="joinType">表达式之间的连接类型（AND 或 OR）</param>
-        /// <param name="items">要添加的逻辑表达式数组</param>
-        public LogicSet(LogicJoinType joinType, params LogicExpr[] items)
-        {
-            JoinType = joinType;
-            if (items != null)
-            {
-                foreach (var item in items) Add(item);
-            }
-        }
-
-        /// <summary>
-        /// 使用指定的连接类型和逻辑表达式集合初始化逻辑表达式集合
-        /// </summary>
-        /// <param name="joinType">表达式之间的连接类型（AND 或 OR）</param>
-        /// <param name="items">要添加的逻辑表达式集合</param>
-        public LogicSet(LogicJoinType joinType, IEnumerable<LogicExpr> items)
-        {
-            JoinType = joinType;
-            if (items != null)
-            {
-                foreach (var item in items) Add(item);
-            }
-        }
-
-        /// <summary>
-        /// 获取或设置表达式之间的连接类型
-        /// </summary>
-        public LogicJoinType JoinType { get; set; } = LogicJoinType.And;
 
         /// <summary>
         /// 表达式类型标识
         /// </summary>
-        public override ExprType ExprType => global::LiteOrm.Common.ExprType.LogicSet;
+        public override ExprType ExprType => global::LiteOrm.Common.ExprType.Or;
 
         /// <summary>
-        /// 克隆 LogicSet
+        /// 克隆 OrExpr
         /// </summary>
         public override Expr Clone()
         {
             var arr = new LogicExpr[items.Count];
             for (int i = 0; i < items.Count; i++) arr[i] = (LogicExpr)items[i].Clone();
-            return new LogicSet(JoinType, arr);
+            return new OrExpr(arr);
         }
 
         /// <summary>
@@ -119,9 +86,9 @@ namespace LiteOrm.Common
         public void Add(LogicExpr item)
         {
             if (item is null) return;
-            if (item is LogicSet set && set.JoinType == JoinType)
+            if (item is OrExpr orExpr)
             {
-                items.AddRange(set.items);
+                items.AddRange(orExpr.items);
             }
             else
             {
@@ -183,13 +150,7 @@ namespace LiteOrm.Common
         public override string ToString()
         {
             if (items.Count == 0) return string.Empty;
-            string joinStr = JoinType switch
-            {
-                LogicJoinType.And => " AND ",
-                LogicJoinType.Or => " OR ",
-                _ => ","
-            };
-            return $"({String.Join(joinStr, items)})";
+            return $"({String.Join(" OR ", items)})";
         }
 
         /// <summary>
@@ -199,14 +160,13 @@ namespace LiteOrm.Common
         /// <returns>如果相等返回 true，否则返回 false</returns>
         public override bool Equals(object obj)
         {
-            if (obj is LogicSet set)
+            if (obj is OrExpr or)
             {
-                if (set.JoinType != JoinType || items.Count != set.items.Count) return false;
+                if (items.Count != or.items.Count) return false;
                 if (items.Count == 0) return true;
-                
-                // 执行逻辑项的比较
+
                 var thisSet = new HashSet<LogicExpr>(items);
-                var otherSet = new HashSet<LogicExpr>(set.items);
+                var otherSet = new HashSet<LogicExpr>(or.items);
                 return thisSet.SetEquals(otherSet);
             }
             return false;
@@ -219,7 +179,7 @@ namespace LiteOrm.Common
         public override int GetHashCode()
         {
             int hashcode = GetType().GetHashCode();
-            hashcode = (hashcode * HashSeed) + (int)JoinType;
+            hashcode = (hashcode * HashSeed);
             int itemsHashSum = 0;
             foreach (var item in items)
             {

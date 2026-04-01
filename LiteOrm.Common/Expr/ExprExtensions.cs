@@ -50,7 +50,7 @@ namespace LiteOrm.Common
         ///     .And(Expr.Prop("Name").Contains("John"));
         /// </code>
         /// </example>
-        public static LogicExpr And(this LogicExpr left, LogicExpr right) => left is null ? right : new LogicSet(LogicJoinType.And, left, right);
+        public static LogicExpr And(this LogicExpr left, LogicExpr right) => left is null ? right : new AndExpr(left, right);
 
         /// <summary>
         /// 使用 OR 逻辑操作符将当前逻辑表达式与另一个逻辑表达式连接。
@@ -64,7 +64,7 @@ namespace LiteOrm.Common
         ///     .Or(Expr.Prop("IsVIP").Equal(true));
         /// </code>
         /// </example>
-        public static LogicExpr Or(this LogicExpr left, LogicExpr right) => left is null ? right : new LogicSet(LogicJoinType.Or, left, right);
+        public static LogicExpr Or(this LogicExpr left, LogicExpr right) => left is null ? right : new OrExpr(left, right);
 
         /// <summary>
         /// 使用 CONCAT（字符串拼接）操作符连接两个值表达式。

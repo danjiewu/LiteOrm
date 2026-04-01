@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -29,8 +29,10 @@ namespace LiteOrm.Common
         Lambda,
         /// <summary>逻辑二元表达式（比较运算）</summary>
         LogicBinary,
-        /// <summary>逻辑表达式集合（AND/OR）</summary>
-        LogicSet,
+        /// <summary>逻辑 AND 表达式组合</summary>
+        And,
+        /// <summary>逻辑 OR 表达式组合</summary>
+        Or,
         /// <summary>逻辑 NOT 表达式</summary>
         Not,
         /// <summary>值二元表达式（算术或串联）</summary>

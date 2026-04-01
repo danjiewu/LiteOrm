@@ -86,8 +86,13 @@ namespace LiteOrm.Common
                 case LogicBinaryExpr b:
                     return VisitChild(b.Left, visitor) && VisitChild(b.Right, visitor);
 
-                case LogicSet s:
-                    foreach (LogicExpr item in s.Items)
+                case AndExpr a:
+                    foreach (LogicExpr item in a.Items)
+                        if (!VisitNode(item, visitor)) return false;
+                    return true;
+
+                case OrExpr o:
+                    foreach (LogicExpr item in o.Items)
                         if (!VisitNode(item, visitor)) return false;
                     return true;
 

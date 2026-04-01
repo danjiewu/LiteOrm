@@ -117,11 +117,10 @@ namespace LiteOrm.Tests
             Assert.IsType<WhereExpr>(expr);
             var where = (WhereExpr)expr;
 
-            // 条件应该合并为 LogicSet（AND 连接）
-            Assert.IsType<LogicSet>(where.Where);
-            var logicSet = (LogicSet)where.Where;
-            Assert.Equal(LogicJoinType.And, logicSet.JoinType);
-            Assert.Equal(2, logicSet.Count);
+            // 条件应该合并为 AndExpr（AND 连接）
+            Assert.IsType<AndExpr>(where.Where);
+            var andExpr = (AndExpr)where.Where;
+            Assert.Equal(2, andExpr.Count);
         }
 
         [Fact]
@@ -200,11 +199,10 @@ namespace LiteOrm.Tests
             Assert.IsType<WhereExpr>(expr);
             var where = (WhereExpr)expr;
 
-            // 条件应该是带 AND 的 LogicSet
-            Assert.IsType<LogicSet>(where.Where);
-            var logicSet = (LogicSet)where.Where;
-            Assert.Equal(LogicJoinType.And, logicSet.JoinType);
-            Assert.Equal(2, logicSet.Count);
+            // 条件应该是带 AND 的 AndExpr
+            Assert.IsType<AndExpr>(where.Where);
+            var andExpr = (AndExpr)where.Where;
+            Assert.Equal(2, andExpr.Count);
         }
 
         [Fact]
@@ -225,8 +223,8 @@ namespace LiteOrm.Tests
             var foreign = (ForeignExpr)condition;
             Assert.Equal(typeof(TestDepartment), foreign.Foreign);
 
-            // 内部表达式应该是 LogicSet（AND）
-            Assert.IsType<LogicSet>(foreign.InnerExpr);
+            // 内部表达式应该是 AndExpr（AND）
+            Assert.IsType<AndExpr>(foreign.InnerExpr);
         }
 
         [Fact]
@@ -264,13 +262,12 @@ namespace LiteOrm.Tests
             Assert.IsType<WhereExpr>(expr);
             var where = (WhereExpr)expr;
 
-            Assert.IsType<LogicSet>(where.Where);
-            var logicSet = (LogicSet)where.Where;
-            Assert.Equal(LogicJoinType.And, logicSet.JoinType);
-            Assert.Equal(2, logicSet.Count);
+            Assert.IsType<AndExpr>(where.Where);
+            var andExpr = (AndExpr)where.Where;
+            Assert.Equal(2, andExpr.Count);
 
             // 两个条件都应该包含 ForeignExpr
-            foreach (var item in logicSet.Items)
+            foreach (var item in andExpr.Items)
             {
                 Assert.IsType<ForeignExpr>(item);
             }
@@ -285,7 +282,7 @@ namespace LiteOrm.Tests
 
             // 使用 Expr.And 与其他逻辑表达式组合
             var condition = (Expr.Prop("Age") > 18).And(foreignExpr);
-            Assert.IsType<LogicSet>(condition);
+            Assert.IsType<AndExpr>(condition);
         }
 
         [Fact]
@@ -303,7 +300,7 @@ namespace LiteOrm.Tests
             Assert.IsType<WhereExpr>(lambdaGeneratedExpr);
             var lambdaWhere = (WhereExpr)lambdaGeneratedExpr;
             Assert.IsType<FromExpr>(lambdaWhere.Source);
-            Assert.IsType<LogicSet>(lambdaWhere.Where);
+            Assert.IsType<AndExpr>(lambdaWhere.Where);
 
             // 3. 手动构造等效的 Expr
             var manualExpr = new WhereExpr
@@ -318,7 +315,7 @@ namespace LiteOrm.Tests
             Assert.IsType<WhereExpr>(manualExpr);
             var manualWhere = (WhereExpr)manualExpr;
             Assert.IsType<FromExpr>(manualWhere.Source);
-            Assert.IsType<LogicSet>(manualWhere.Where);
+            Assert.IsType<AndExpr>(manualWhere.Where);
 
             // 5. 比较两个表达式是否相等
             Assert.True(lambdaGeneratedExpr.Equals(manualExpr),
@@ -345,7 +342,7 @@ namespace LiteOrm.Tests
             Assert.IsType<WhereExpr>(lambdaOrderBy.Source);
             var lambdaWhere2 = (WhereExpr)lambdaOrderBy.Source;
             Assert.IsType<FromExpr>(lambdaWhere2.Source);
-            Assert.IsType<LogicSet>(lambdaWhere2.Where);
+            Assert.IsType<AndExpr>(lambdaWhere2.Where);
 
             // 8. 为复杂情况手动构造等效的 Expr
             var manualExpr2 = new SectionExpr
@@ -382,7 +379,7 @@ namespace LiteOrm.Tests
             Assert.IsType<WhereExpr>(manualOrderBy.Source);
             var manualWhere2 = (WhereExpr)manualOrderBy.Source;
             Assert.IsType<FromExpr>(manualWhere2.Source);
-            Assert.IsType<LogicSet>(manualWhere2.Where);
+            Assert.IsType<AndExpr>(manualWhere2.Where);
         }
 
         #region TimeSpan

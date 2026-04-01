@@ -161,7 +161,8 @@ namespace LiteOrm.Common
                             // 特殊标识映射
                             if (mark == "bin") { result = ReadValueBinary(ref reader, options); break; }
                             if (mark == "logic") { result = ReadLogicBinary(ref reader, options); break; }
-                            if (mark == "set") { result = ReadLogicSet(ref reader, options); break; }
+                            if (mark == "and") { result = ReadAndExpr(ref reader, options); break; }
+                            if (mark == "or") { result = ReadOrExpr(ref reader, options); break; }
                             if (mark == "vset") { result = ReadValueSet(ref reader, options); break; }
                             if (mark == "func") { result = ReadFunction(ref reader, options); break; }
                             if (mark == "prop") { result = ReadProperty(ref reader, options); break; }
@@ -521,7 +522,8 @@ namespace LiteOrm.Common
                 {
                     LogicBinaryExpr be => _logicOperatorToJson.TryGetValue(be.Operator, out var symbol) ? symbol : "logic",
                     ValueBinaryExpr be => _valueOperatorToJson.TryGetValue(be.Operator, out var symbol) ? symbol : "bin",
-                    LogicSet => "set",
+                    AndExpr => "and",
+                    OrExpr => "or",
                     ValueSet => "vset",
                     FunctionExpr => "func",
                     NotExpr => "not",
@@ -559,10 +561,16 @@ namespace LiteOrm.Common
                         writer.WritePropertyName("Right");
                         WriteExpr(writer, be.Right, options);
                         break;
-                    case LogicSet set:
-                        writer.WritePropertyName(set.JoinType.ToString());
+                    case AndExpr and:
+                        writer.WritePropertyName("Items");
                         writer.WriteStartArray();
-                        foreach (var item in set.Items) WriteExpr(writer, item, options);
+                        foreach (var item in and.Items) WriteExpr(writer, item, options);
+                        writer.WriteEndArray();
+                        break;
+                    case OrExpr or:
+                        writer.WritePropertyName("Items");
+                        writer.WriteStartArray();
+                        foreach (var item in or.Items) WriteExpr(writer, item, options);
                         writer.WriteEndArray();
                         break;
                     case ValueSet set:
@@ -907,53 +915,64 @@ namespace LiteOrm.Common
                 return new ValueBinaryExpr(left, finalOp, right);
             }
 
-            private LogicSet ReadLogicSet(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            private AndExpr ReadAndExpr(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
-                LogicJoinType joinType = LogicJoinType.And;
                 List<LogicExpr> items = null;
 
-                bool success = false;
-                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                if (reader.TokenType == JsonTokenType.StartArray)
                 {
-                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                    items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<LogicExpr>().ToList();
+                }
+                else
+                {
+                    while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                    {
+                        if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
-                    string prop = reader.GetString() ?? string.Empty;
-                    if (prop == "JoinType")
-                    {
-                        reader.Read();
-                        if (reader.TokenType == JsonTokenType.String)
+                        string prop = reader.GetString() ?? string.Empty;
+                        if (prop == "Items")
                         {
-                            string jtStr = reader.GetString();
-                            if (Enum.TryParse<LogicJoinType>(jtStr, true, out var ljt)) joinType = ljt;
-                        }
-                        else
-                        {
-                            joinType = (LogicJoinType)reader.GetInt32();
-                        }
-                        success = true;
-                    }
-                    else if (prop == "Items")
-                    {
-                        reader.Read();
-                        items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<LogicExpr>().ToList();
-                    }
-                    else
-                    {
-                        if (!success && Enum.TryParse<LogicJoinType>(prop, out joinType))
-                        {
-                            success = true;
                             reader.Read();
                             items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<LogicExpr>().ToList();
                         }
                         else
                         {
-                            reader.Read();
                             reader.Skip();
                         }
                     }
                 }
 
-                return new LogicSet(joinType, items);
+                return new AndExpr(items);
+            }
+
+            private OrExpr ReadOrExpr(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                List<LogicExpr> items = null;
+
+                if (reader.TokenType == JsonTokenType.StartArray)
+                {
+                    items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<LogicExpr>().ToList();
+                }
+                else
+                {
+                    while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                    {
+                        if (reader.TokenType != JsonTokenType.PropertyName) continue;
+
+                        string prop = reader.GetString() ?? string.Empty;
+                        if (prop == "Items")
+                        {
+                            reader.Read();
+                            items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<LogicExpr>().ToList();
+                        }
+                        else
+                        {
+                            reader.Skip();
+                        }
+                    }
+                }
+
+                return new OrExpr(items);
             }
 
             private ValueSet ReadValueSet(ref Utf8JsonReader reader, JsonSerializerOptions options)

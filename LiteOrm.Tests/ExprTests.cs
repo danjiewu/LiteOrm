@@ -278,8 +278,8 @@ namespace LiteOrm.Tests
             // And / Or
             var e1 = Expr.Prop("A") == 1;
             var e2 = Expr.Prop("B") == 2;
-            Assert.Equal(new LogicSet(LogicJoinType.And, e1, e2), e1.And(e2));
-            Assert.Equal(new LogicSet(LogicJoinType.Or, e1, e2), e1.Or(e2));
+            Assert.Equal(new AndExpr(e1, e2), e1.And(e2));
+            Assert.Equal(new OrExpr(e1, e2), e1.Or(e2));
 
             // Not
             Assert.Equal(new NotExpr(e1), e1.Not());

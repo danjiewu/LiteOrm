@@ -400,9 +400,8 @@ namespace LiteOrm.Tests
         {
             Expression<Func<TestUser, bool>> expr = u => u.Age > 18 && u.Age < 65;
             var result = LambdaExprConverter.ToLogicExpr(expr);
-            var ls = Assert.IsType<LogicSet>(result);
-            Assert.Equal(LogicJoinType.And, ls.JoinType);
-            Assert.Equal(2, ls.Count);
+            var andExpr = Assert.IsType<AndExpr>(result);
+            Assert.Equal(2, andExpr.Count);
         }
 
         [Fact]
@@ -410,9 +409,8 @@ namespace LiteOrm.Tests
         {
             Expression<Func<TestUser, bool>> expr = u => u.Age < 0 || u.Age > 100;
             var result = LambdaExprConverter.ToLogicExpr(expr);
-            var ls = Assert.IsType<LogicSet>(result);
-            Assert.Equal(LogicJoinType.Or, ls.JoinType);
-            Assert.Equal(2, ls.Count);
+            var orExpr = Assert.IsType<OrExpr>(result);
+            Assert.Equal(2, orExpr.Count);
         }
 
         [Fact]

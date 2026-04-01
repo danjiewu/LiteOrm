@@ -159,7 +159,8 @@ namespace LiteOrm.Common
             else if (expr is LambdaExpr lambda) ToSql(ref sb, lambda, context, sqlBuilder, outputParams);
             else if (expr is GenericSqlExpr generic) ToSql(ref sb, generic, context, sqlBuilder, outputParams);
             else if (expr is ForeignExpr foreign) ToSql(ref sb, foreign, context, sqlBuilder, outputParams);
-            else if (expr is LogicSet ls) ToSql(ref sb, ls, context, sqlBuilder, outputParams, priority);
+            else if (expr is AndExpr ae) ToSql(ref sb, ae, context, sqlBuilder, outputParams, priority);
+            else if (expr is OrExpr oe) ToSql(ref sb, oe, context, sqlBuilder, outputParams, priority);
             else if (expr is ValueSet vs) ToSql(ref sb, vs, context, sqlBuilder, outputParams);
             else if (expr is OrderByItemExpr obi) ToSql(ref sb, obi, context, sqlBuilder, outputParams);
             else if (expr is FromExpr from) ToSql(ref sb, from, context, sqlBuilder, outputParams);
@@ -181,7 +182,8 @@ namespace LiteOrm.Common
         {
             return expr switch
             {
-                LogicSet ls => ls.JoinType == LogicJoinType.And ? 2 : 1,
+                AndExpr _ => 2,
+                OrExpr _ => 1,
                 LogicBinaryExpr _ => 3,
                 ValueBinaryExpr vb => vb.Operator switch
                 {
@@ -613,7 +615,7 @@ namespace LiteOrm.Common
                     if (foreignExpr.Foreign.IsAssignableFrom(joinedTable.TableDefinition.DefinitionType))
                     {
                         // 找到当前表与目标表之间的关联关系，自动生成关联条件
-                        joinedExpr |= new LogicSet(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
+                        joinedExpr |= new AndExpr(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
                             Expr.Prop(foreignAlias, pk.Name) == Expr.Prop(context.DefaultTableAliasName, fk.Name)
                         ));
                     }
@@ -626,7 +628,7 @@ namespace LiteOrm.Common
                         if (context.Table.DefinitionType.IsAssignableFrom(joinedTable.TableDefinition.DefinitionType))
                         {
                             // 找到当前表与目标表之间的关联关系，自动生成关联条件
-                            joinedExpr |= new LogicSet(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
+                            joinedExpr |= new AndExpr(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
                                 Expr.Prop(foreignAlias, fk.Name) == Expr.Prop(context.DefaultTableAliasName, pk.Name)
                             ));
                         }
@@ -681,24 +683,17 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 处理逻辑集合（AND/OR）。
+        /// 处理 AND 表达式组合。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, LogicSet expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority)
+        private static void ToSql(ref ValueStringBuilder sb, AndExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority)
         {
             int count = expr.Count;
             if (count == 0) return;
             if (count == 1)
             {
-                ToSqlInternal(ref sb, expr[0], context, sqlBuilder, outputParams);
+                ToSqlInternal(ref sb, expr[0], context, sqlBuilder, outputParams, priority);
                 return;
             }
-
-            string joinStr = expr.JoinType switch
-            {
-                LogicJoinType.And => " AND ",
-                LogicJoinType.Or => " OR ",
-                _ => ","
-            };
 
             int curPriority = GetPriority(expr);
             if (curPriority < priority)
@@ -710,7 +705,50 @@ namespace LiteOrm.Common
             for (int i = 0; i < count; i++)
             {
                 int lenBefore = sb.Length;
-                if (!first) sb.Append(joinStr);
+                if (!first) sb.Append(" AND ");
+                int lenWithJoin = sb.Length;
+
+                ToSqlInternal(ref sb, expr[i], context, sqlBuilder, outputParams, curPriority);
+
+                if (sb.Length == lenWithJoin)
+                {
+                    sb.Length = lenBefore;
+                }
+                else
+                {
+                    first = false;
+                }
+            }
+            if (curPriority < priority)
+            {
+                sb.Append(")");
+            }
+        }
+
+        /// <summary>
+        /// 处理 OR 表达式组合。
+        /// </summary>
+        private static void ToSql(ref ValueStringBuilder sb, OrExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority)
+        {
+            int count = expr.Count;
+            if (count == 0) return;
+            if (count == 1)
+            {
+                ToSqlInternal(ref sb, expr[0], context, sqlBuilder, outputParams, priority);
+                return;
+            }
+
+            int curPriority = GetPriority(expr);
+            if (curPriority < priority)
+            {
+                sb.Append("(");
+            }
+
+            bool first = true;
+            for (int i = 0; i < count; i++)
+            {
+                int lenBefore = sb.Length;
+                if (!first) sb.Append(" OR ");
                 int lenWithJoin = sb.Length;
 
                 ToSqlInternal(ref sb, expr[i], context, sqlBuilder, outputParams, curPriority);
