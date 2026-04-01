@@ -31,7 +31,7 @@ namespace LiteOrm.Common
     /// 选择片段，表示 SELECT 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class SelectExpr : ValueTypeExpr, ISourceAnchor
+    public class SelectExpr : SqlSegment, ISourceAnchor, ISelectAnchor
     {
         /// <summary>
         /// 初始化 SelectExpr 类的新实例
@@ -43,23 +43,18 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="selects">要选择的字段表达式列表</param>
-        public SelectExpr(ISqlSegment source, params SelectItemExpr[] selects)
+        public SelectExpr(SqlSegment source, params SelectItemExpr[] selects)
         {
             Source = source;
             Selects = selects?.ToList() ?? new List<SelectItemExpr>();
         }
 
         /// <summary>
-        /// 获取或设置查询的源片段（From表达式）
-        /// </summary>
-        public ISqlSegment Source { get; set; }
-
-        /// <summary>
         /// 使用指定的源片段和选择字段列表初始化 SelectExpr 类的新实例
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="selects">要选择的字段表达式列表</param>
-        public SelectExpr(ISqlSegment source, params ValueTypeExpr[] selects)
+        public SelectExpr(SqlSegment source, params ValueTypeExpr[] selects)
         {
             Source = source;
             Selects = selects?.Select(s => s is SelectItemExpr si ? si : new SelectItemExpr(s)).ToList() ?? new List<SelectItemExpr>();
@@ -142,7 +137,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var s = new SelectExpr();
-            s.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            s.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
             s.Alias = Alias;
             s.Selects = Selects?.Select(si => (SelectItemExpr)si.Clone()).ToList() ?? new List<SelectItemExpr>();
             s.SetType = SetType;

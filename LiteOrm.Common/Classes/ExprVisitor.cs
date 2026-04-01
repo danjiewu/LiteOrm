@@ -120,7 +120,7 @@ namespace LiteOrm.Common
                     return true;
 
                 case FromExpr fe:
-                    if (!VisitChild(fe.Source as Expr, visitor)) return false;
+                    if (!VisitChild(fe.Table as Expr, visitor)) return false;
                     if (fe.Joins != null)
                     {
                         foreach (TableJoinExpr j in fe.Joins)
@@ -159,11 +159,11 @@ namespace LiteOrm.Common
                     return VisitChild(se.Source as Expr, visitor);
 
                 case DeleteExpr d:
-                    if (!VisitChild(d.Source as Expr, visitor)) return false;
+                    if (!VisitChild(d.Table as Expr, visitor)) return false;
                     return VisitChild(d.Where, visitor);
 
                 case UpdateExpr upd:
-                    if (!VisitChild(upd.Source as Expr, visitor)) return false;
+                    if (!VisitChild(upd.Table as Expr, visitor)) return false;
                     foreach ((PropertyExpr prop, ValueTypeExpr val) in upd.Sets)
                     {
                         if (!VisitNode(prop, visitor)) return false;

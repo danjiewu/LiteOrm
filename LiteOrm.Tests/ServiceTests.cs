@@ -1022,7 +1022,7 @@ namespace LiteOrm.Tests
             // Act - 使用FunctionExpr和PropertyExpr增加复杂度
             var updateExpr = new UpdateExpr
             {
-                Source = new TableExpr(typeof(TestUser)),
+                Table = new TableExpr(typeof(TestUser)),
                 Sets = new List<(PropertyExpr, ValueTypeExpr)>
                 {
                     (Expr.Prop("Age"), Expr.Prop("Age") + Expr.Const(5)), // 使用运算符重载和Expr.Const，Age = Age + 5
@@ -1051,7 +1051,7 @@ namespace LiteOrm.Tests
             // Act - 使用FunctionExpr和PropertyExpr增加复杂度
             var updateExpr = new UpdateExpr
             {
-                Source = new TableExpr(typeof(TestUser)),
+                Table = new TableExpr(typeof(TestUser)),
                 Sets = new List<(PropertyExpr, ValueTypeExpr)>
                 {
                     (Expr.Prop("Age"), Expr.Prop("Age") + Expr.Const(10)), // 使用运算符重载和Expr.Const，Age = Age + 10

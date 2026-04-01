@@ -58,7 +58,7 @@ namespace LiteOrm.Tests
             var sqlGen = new SqlGen(typeof(TestUser));
             var update = new UpdateExpr
             {
-                Source = new TableExpr(typeof(TestUser)),
+                Table = new TableExpr(typeof(TestUser)),
                 Sets = new List<(PropertyExpr, ValueTypeExpr)>
                 {
                     (Expr.Prop("Name"), Expr.Value("NewName")),
@@ -80,7 +80,7 @@ namespace LiteOrm.Tests
             var sqlGen = new SqlGen(typeof(TestUser));
             var delete = new DeleteExpr
             {
-                Source = new TableExpr(typeof(TestUser)),
+                Table = new TableExpr(typeof(TestUser)),
                 Where = Expr.Prop("Id") == 1
             };
             var result = sqlGen.ToSql(delete);

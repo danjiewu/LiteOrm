@@ -7,7 +7,7 @@ namespace LiteOrm.Common
     /// 聚合筛选片段，表示 HAVING 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class HavingExpr : Expr, IOrderByAnchor
+    public class HavingExpr : SqlSegment, IOrderByAnchor
     {
         /// <summary>
         /// 初始化 HavingExpr 类的新实例
@@ -19,16 +19,11 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="having">Having 条件表达式</param>
-        public HavingExpr(ISqlSegment source, LogicExpr having)
+        public HavingExpr(SqlSegment source, LogicExpr having)
         {
             Source = source;
             Having = having;
         }
-
-        /// <summary>
-        /// 获取或设置 HAVING 条件的源片段（From表达式）
-        /// </summary>
-        public ISqlSegment Source { get; set; }
 
         /// <summary>
         /// 获取片段类型，返回 Having 类型标识
@@ -65,7 +60,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var h = new HavingExpr();
-            h.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            h.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
             h.Having = (LogicExpr)Having?.Clone();
             return h;
         }

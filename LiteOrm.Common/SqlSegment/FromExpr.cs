@@ -9,12 +9,12 @@ namespace LiteOrm.Common
     /// From 片段，表示查询的数据源（由主表和连接表构成）
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class FromExpr : Expr, ISourceAnchor, ISqlSegment, IArged
+    public sealed class FromExpr : SqlSegment, ISourceAnchor, IArged
     {
         /// <summary>
         /// 默认构造函数
         /// </summary>
-        public FromExpr() { Source = new TableExpr(); }
+        public FromExpr() { Table = new TableExpr(); }
 
         /// <summary>
         /// 根据对象类型初始化
@@ -22,7 +22,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">对象类型</param>
         public FromExpr(Type objectType)
         {
-            Source = new TableExpr(objectType);
+            Table = new TableExpr(objectType);
         }
 
         /// <summary>
@@ -31,13 +31,14 @@ namespace LiteOrm.Common
         /// <param name="source">主表表达式</param>
         public FromExpr(TableExpr source)
         {
-            Source = source;
+            Table = source;
         }
 
         /// <summary>
         /// 主表表达式
         /// </summary>
-        public TableExpr Source
+        [JsonIgnore]
+        public TableExpr Table
         {
             get
             {
@@ -46,6 +47,11 @@ namespace LiteOrm.Common
             }
             set;
         }
+
+        /// <summary>
+        /// 使用主表表达式重写源片段属性
+        /// </summary>
+        public override SqlSegment Source { get => Table; set => Table = (TableExpr)value; }
 
         /// <summary>
         /// 连接表集合
@@ -57,8 +63,8 @@ namespace LiteOrm.Common
         /// </summary>
         public string Alias
         {
-            get => Source?.Alias;
-            set { Source.Alias = value; }
+            get => Table?.Alias;
+            set { Table.Alias = value; }
         }
 
         /// <summary>
@@ -66,8 +72,8 @@ namespace LiteOrm.Common
         /// </summary>
         public Type Type
         {
-            get => Source?.Type;
-            set { Source.Type = value; }
+            get => Table?.Type;
+            set { Table.Type = value; }
         }
 
         /// <summary>
@@ -75,19 +81,14 @@ namespace LiteOrm.Common
         /// </summary>
         public string[] TableArgs
         {
-            get => Source?.TableArgs;
-            set { Source.TableArgs = value; }
+            get => Table?.TableArgs;
+            set { Table.TableArgs = value; }
         }
 
         /// <summary>
         /// 表达式类型
         /// </summary>
         public override ExprType ExprType => ExprType.From;
-
-        /// <summary>
-        /// 获取或设置源片段（主表表达式）
-        /// </summary>
-        ISqlSegment ISqlSegment.Source { get => Source; set => Source = (TableExpr)value; }
 
         /// <summary>
         /// 判断两个 FromExpr 是否相等
@@ -98,9 +99,9 @@ namespace LiteOrm.Common
         {
             if (obj is FromExpr other)
             {
-                if (!Equals(Source, other.Source)) return false;
+                if (!Equals(Table, other.Table)) return false;
                 if (!Joins.SequenceEqual(other.Joins)) return false;
-                if (!Equals(Source, other.Source)) return false;
+                if (!Equals(Table, other.Table)) return false;
                 return true;
             }
             return false;
@@ -114,9 +115,9 @@ namespace LiteOrm.Common
         {
             return OrderedHashCodes(
                 typeof(FromExpr).GetHashCode(),
-                Source?.GetHashCode() ?? 0,
+                Table?.GetHashCode() ?? 0,
                 SequenceHash(Joins),
-                Source?.GetHashCode() ?? 0);
+                Table?.GetHashCode() ?? 0);
         }
 
         /// <summary>
@@ -125,9 +126,9 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            if (Source == null) return string.Empty;
-            if (Joins == null || Joins.Count == 0) return Source.ToString();
-            return Source + " " + string.Join(" ", Joins);
+            if (Table == null) return string.Empty;
+            if (Joins == null || Joins.Count == 0) return Table.ToString();
+            return Table + " " + string.Join(" ", Joins);
         }
 
         /// <summary>
@@ -136,7 +137,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var f = new FromExpr();
-            f.Source = (TableExpr)Source?.Clone();
+            f.Table = (TableExpr)Table?.Clone();
             f.Joins = Joins?.Select(j => (TableJoinExpr)j.Clone()).ToList() ?? new List<TableJoinExpr>();
             return f;
         }

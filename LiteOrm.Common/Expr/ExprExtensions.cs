@@ -401,7 +401,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">目标对象类型。</typeparam>
         /// <returns>对应的 ISqlSegment 对象。</returns>
         /// <exception cref="ArgumentException">当 expr 参数类型不是 null、LogicExpr 或 ISqlSegment 时抛出。</exception>
-        public static ISqlSegment ToSource<T>(this Expr expr)
+        public static SqlSegment ToSource<T>(this Expr expr)
         {
             return expr.ToSource(typeof(T));
         }
@@ -413,30 +413,30 @@ namespace LiteOrm.Common
         /// <param name="objectType">目标对象类型。</param>
         /// <returns>对应的 ISqlSegment 对象。</returns>
         /// <exception cref="ArgumentException">当 expr 参数类型不是 null、LogicExpr 或 ISqlSegment 时抛出。</exception>
-        public static ISqlSegment ToSource(this Expr expr, Type objectType)
+        public static SqlSegment ToSource(this Expr expr, Type objectType)
         {
             if (expr is null)
             {
-                return new FromExpr(objectType);
+                return Expr.From(objectType);
             }
             else if (expr is LogicExpr logicExpr)
             {
                 return new WhereExpr() { Source = new FromExpr(objectType), Where = logicExpr };
             }
-            else if (expr is ISqlSegment sourceExpr)
+            else if (expr is SqlSegment sourceExpr)
             {
-                ISqlSegment firstSource = sourceExpr;
-                while (firstSource.Source is not null)
+                SqlSegment firstSource = sourceExpr;
+                while (firstSource is SqlSegment chainedSegment && chainedSegment.Source is not null)
                 {
-                    firstSource = firstSource.Source;
+                    firstSource = chainedSegment.Source;
                 }
                 if (firstSource is FromExpr fromExpr)
                 {
                     fromExpr.Type = objectType;
                 }
-                else
+                else if (firstSource is SqlSegment chainedSegment)
                 {
-                    firstSource.Source = new FromExpr(objectType);
+                    chainedSegment.Source = Expr.From(objectType);
                 }
                 return sourceExpr;
             }
@@ -488,7 +488,7 @@ namespace LiteOrm.Common
                 whereExpr.Where = whereExpr.Where is null ? where : whereExpr.Where.And(where);
                 return whereExpr;
             }
-            else return new WhereExpr(source as ISqlSegment, where);
+            else return new WhereExpr(source as SqlSegment, where);
         }
 
         /// <summary>
@@ -498,7 +498,7 @@ namespace LiteOrm.Common
         /// <param name="source">SQL 语句构建起点</param>
         /// <param name="expression">定义筛选条件的 Lambda 表达式</param>
         /// <returns>WHERE 条件表达式实例</returns>
-        public static WhereExpr Where<T>(this ISourceAnchor source, Expression<Func<T, bool>> expression) => new WhereExpr(source, Expr.Lambda(expression));
+        public static WhereExpr Where<T>(this ISourceAnchor source, Expression<Func<T, bool>> expression) => new WhereExpr(source as SqlSegment, Expr.Lambda(expression));
 
         /// <summary>
         /// 为 UPDATE 表达式添加 WHERE 条件。
@@ -535,7 +535,7 @@ namespace LiteOrm.Common
         /// var query = table.GroupBy(Expr.Prop("DepartmentId"));
         /// </code>
         /// </example>
-        public static GroupByExpr GroupBy(this IGroupByAnchor source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source as ISqlSegment, groupBys);
+        public static GroupByExpr GroupBy(this IGroupByAnchor source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source as SqlSegment, groupBys);
 
         /// <summary>
         /// 为 SQL 语句添加 GROUP BY 子句（属性名数组）。
@@ -558,7 +558,7 @@ namespace LiteOrm.Common
         ///     .Having(Expr.Prop("Count").Count().GreaterThan(10));
         /// </code>
         /// </example>
-        public static HavingExpr Having(this IHavingAnchor source, LogicExpr having) => new HavingExpr(source as ISqlSegment, having);
+        public static HavingExpr Having(this IHavingAnchor source, LogicExpr having) => new HavingExpr(source as SqlSegment, having);
 
 
         /// <summary>
@@ -569,7 +569,7 @@ namespace LiteOrm.Common
         /// <returns>包含 SELECT 子句的 SQL 表达式。</returns>
         public static SelectExpr Select(this ISelectAnchor source, params SelectItemExpr[] selects)
         {
-            return new SelectExpr(source as ISqlSegment, selects);
+            return new SelectExpr(source as SqlSegment, selects);
         }
         /// <summary>
         /// 为 SQL 语句添加 SELECT 子句。
@@ -582,7 +582,7 @@ namespace LiteOrm.Common
         /// var query = table.Select(Expr.Prop("Id"), Expr.Prop("Name"));
         /// </code>
         /// </example>
-        public static SelectExpr Select(this ISelectAnchor source, params ValueTypeExpr[] selects) => new SelectExpr(source as ISqlSegment, selects);
+        public static SelectExpr Select(this ISelectAnchor source, params ValueTypeExpr[] selects) => new SelectExpr(source as SqlSegment, selects);
 
         /// <summary>
         /// 为 SQL 语句添加 SELECT 子句（属性名数组）。
@@ -744,7 +744,7 @@ namespace LiteOrm.Common
                 existingOrderByExpr.OrderBys.AddRange(orderBys);
                 return existingOrderByExpr;
             }
-            return new OrderByExpr(source as ISqlSegment, orderBys);
+            return new OrderByExpr(source as SqlSegment, orderBys);
         }
 
         /// <summary>
@@ -791,7 +791,7 @@ namespace LiteOrm.Common
         /// var query = table.Section(0, 20); // 获取前 20 条记录
         /// </code>
         /// </example>
-        public static SectionExpr Section(this ISectionAnchor source, int skip, int take) => new SectionExpr(source as ISqlSegment, skip, take);
+        public static SectionExpr Section(this ISectionAnchor source, int skip, int take) => new SectionExpr(source as SqlSegment, skip, take);
 
         /// <summary>
         /// 将值表达式标记为升序排序。
@@ -929,7 +929,7 @@ namespace LiteOrm.Common
         /// </code>
         /// </example>
         public static ISourceAnchor WhereIf(this ISourceAnchor source, bool condition, LogicExpr where)
-            => condition ? (ISourceAnchor)new WhereExpr(source as ISqlSegment, where) : source;
+            => condition ? (ISourceAnchor)new WhereExpr(source as SqlSegment, where) : source;
 
         /// <summary>
         /// 将聚合或窗口函数应用到分区窗口（OVER PARTITION BY）。

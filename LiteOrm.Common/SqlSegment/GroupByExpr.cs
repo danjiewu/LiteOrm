@@ -9,7 +9,7 @@ namespace LiteOrm.Common
     /// 分组片段，表示 GROUP BY 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class GroupByExpr : Expr, IHavingAnchor
+    public class GroupByExpr : SqlSegment, IHavingAnchor
     {
         /// <summary>
         /// 初始化 GroupByExpr 类的新实例
@@ -21,16 +21,12 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="groupBys">分组字段表达式列表</param>
-        public GroupByExpr(ISqlSegment source, params ValueTypeExpr[] groupBys)
+        public GroupByExpr(SqlSegment source, params ValueTypeExpr[] groupBys)
         {
             Source = source;
             GroupBys = groupBys?.ToList() ?? new List<ValueTypeExpr>();
         }
 
-        /// <summary>
-        /// 获取或设置分组片段的源片段（From表达式）
-        /// </summary>
-        public ISqlSegment Source { get; set; }
         /// <summary>
         /// 获取片段类型，返回 GroupBy 类型标识
         /// </summary>
@@ -66,7 +62,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var g = new GroupByExpr();
-            g.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            g.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
             g.GroupBys = GroupBys?.Select(v => (ValueTypeExpr)v.Clone()).ToList() ?? new List<ValueTypeExpr>();
             return g;
         }

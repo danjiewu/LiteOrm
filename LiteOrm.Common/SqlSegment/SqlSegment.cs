@@ -4,15 +4,20 @@ using System.Text.Json.Serialization;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 锚点接口系列，用于精确控制流式 API 的构建过程
-    /// 每个接口代表查询构建过程中的一个阶段
+    /// Sql 片段基类，表示 SQL 查询中的一个部分，支持链式调用和表达式树构建
     /// </summary>
-    public interface ISqlSegment {
+    [JsonConverter(typeof(ExprJsonConverterFactory))]
+    public abstract class SqlSegment : Expr
+    {
         /// <summary>
-        /// 获取或设置此片段的源片段
+        /// 获取当前片段的源片段，表示当前片段依赖的上一个片段
         /// </summary>
-        ISqlSegment Source { get; internal set;}
+        public virtual SqlSegment Source { get; set; }
     }
+    /// <summary>
+    /// 选择锚点接口，支持 Select 操作
+    /// </summary>
+    public interface ISelectAnchor { }
 
     /// <summary>
     /// 分页锚点接口，支持 Skip/Take 操作
@@ -23,11 +28,6 @@ namespace LiteOrm.Common
     /// 排序锚点接口，支持 OrderBy/ThenBy 操作
     /// </summary>
     public interface IOrderByAnchor : ISectionAnchor { }
-
-    /// <summary>
-    /// 选择锚点接口，支持 Select 操作
-    /// </summary>
-    public interface ISelectAnchor : ISqlSegment { }
 
     /// <summary>
     /// Having 锚点接口，支持 Having 操作

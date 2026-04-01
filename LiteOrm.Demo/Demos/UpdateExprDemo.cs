@@ -66,7 +66,7 @@ namespace LiteOrm.Demo.Demos
 
                 var update = new UpdateExpr
                 {
-                    Source = new TableExpr(typeof(User)),
+                    Table = new TableExpr(typeof(User)),
                     Where  = Prop("UserName") == "UpdateDemo_Alice",
                     Sets   = new List<(PropertyExpr, ValueTypeExpr)>
                     {
@@ -110,7 +110,7 @@ namespace LiteOrm.Demo.Demos
                     "var update = new UpdateExpr(From<User>(), Prop(\"UserName\") == \"UpdateDemo_Bob\")\n" +
                     "    .Set((\"Age\", Const(35)));");
 
-                var update = new UpdateExpr(From<User>(), Prop("UserName") == "UpdateDemo_Bob")
+                var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
                     .Set(("Age", Const(35)));
 
                 int affected = await userSvc.UpdateAsync(update);
@@ -149,7 +149,7 @@ namespace LiteOrm.Demo.Demos
                     "var update = new UpdateExpr(From<User>(), Prop(\"UserName\") == \"UpdateDemo_Carol\")\n" +
                     "    .Set((\"Age\", Prop(\"Age\") + Const(5)));");
 
-                var update = new UpdateExpr(From<User>(), Prop("UserName") == "UpdateDemo_Carol")
+                var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Carol")
                     .Set(("Age", Prop("Age") + Const(5)));
 
                 int affected = await userSvc.UpdateAsync(update);
@@ -188,7 +188,7 @@ namespace LiteOrm.Demo.Demos
                     "var update = new UpdateExpr(From<User>(), Prop(\"UserName\") == \"UpdateDemo_Bob\")\n" +
                     "    .Set((\"UserName\", Func(\"CONCAT\", Prop(\"UserName\"), Const(\"_v2\"))));");
 
-                var update = new UpdateExpr(From<User>(), Prop("UserName") == "UpdateDemo_Bob")
+                var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
                     .Set(("UserName", Func("CONCAT", Prop("UserName"), Const("_v2"))));
 
                 int affected = await userSvc.UpdateAsync(update);
@@ -240,7 +240,7 @@ namespace LiteOrm.Demo.Demos
                     .Set(("Age", From<User>()
                         .Where(Prop("UserName").StartsWith("UpdateDemo_"))
                         .Select(Aggregate("AVG", Prop("Age")).As("avg_age"))
-                        .Select("avg_age")//必须加一层嵌套，令 MySQL 将其视为独立数据源，MySQL 禁止子查询的 FROM 与被更新目标表相同
+                        .Select("avg_age").AsValue()//必须加一层嵌套，令 MySQL 将其视为独立数据源，MySQL 禁止子查询的 FROM 与被更新目标表相同
                     ))
                     .Where(Prop("UserName") == "UpdateDemo_Alice");
 
@@ -266,8 +266,8 @@ namespace LiteOrm.Demo.Demos
                     .Where(Prop("Name") == "研发中心")
                     .Select(Prop("Id"));
 
-                var update2 = new UpdateExpr(From<User>(), Prop("UserName") == "UpdateDemo_Carol")
-                    .Set(("DeptId", subDept));
+                var update2 = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Carol")
+                    .Set(("DeptId", subDept.AsValue()));
 
                 int affected2 = await userSvc.UpdateAsync(update2);
 
@@ -311,7 +311,7 @@ namespace LiteOrm.Demo.Demos
                     "    );");
 
                 var update = new UpdateExpr(
-                        From<User>(),
+                        new TableExpr(typeof(User)),
                         Lambda<User>(u => u.Age >= 28))
                     .Set(
                         ("Age",        Prop("Age") + Const(1)),

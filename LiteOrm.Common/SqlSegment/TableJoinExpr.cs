@@ -9,7 +9,7 @@ namespace LiteOrm.Common
     /// 表连接表达式
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class TableJoinExpr : Expr
+    public sealed class TableJoinExpr : SqlSegment
     {
         /// <summary>
         /// 默认构造函数
@@ -30,7 +30,13 @@ namespace LiteOrm.Common
         /// <summary>
         /// 表表达式
         /// </summary>
+        [JsonIgnore]
         public TableExpr Table { get; set; }
+
+        /// <summary>
+        /// 使用主表表达式重写源片段属性
+        /// </summary>
+        public override SqlSegment Source { get => Table; set => Table = (TableExpr)value; }
 
         /// <summary>
         /// 连接条件

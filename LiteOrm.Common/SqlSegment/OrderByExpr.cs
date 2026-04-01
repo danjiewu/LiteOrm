@@ -9,7 +9,7 @@ namespace LiteOrm.Common
     /// 排序片段，表示 ORDER BY 子句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class OrderByExpr : Expr, IOrderByAnchor
+    public class OrderByExpr : SqlSegment, IOrderByAnchor
     {
         /// <summary>
         /// 初始化 OrderByExpr 类的新实例
@@ -21,16 +21,12 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="orderBys">排序字段元组列表，每个元组包含字段表达式和升序/降序标识</param>
-        public OrderByExpr(ISqlSegment source, params OrderByItemExpr[] orderBys)
+        public OrderByExpr(SqlSegment source, params OrderByItemExpr[] orderBys)
         {
             Source = source;
             OrderBys = orderBys?.ToList() ?? new List<OrderByItemExpr>();
         }
 
-        /// <summary>
-        /// 获取或设置排序片段的源片段（From表达式）
-        /// </summary>
-        public ISqlSegment Source { get; set; }
         /// <summary>
         /// 获取片段类型，返回 OrderBy 类型标识
         /// </summary>
@@ -66,7 +62,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var o = new OrderByExpr();
-            o.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            o.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
             o.OrderBys = OrderBys?.Select(ob => (OrderByItemExpr)ob.Clone()).ToList() ?? new List<OrderByItemExpr>();
             return o;
         }

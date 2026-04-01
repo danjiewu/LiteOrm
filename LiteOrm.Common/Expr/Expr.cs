@@ -249,7 +249,7 @@ namespace LiteOrm.Common
         /// <returns>UPDATE 表达式。</returns>
         public static UpdateExpr Update<T>(params string[] tableArgs)
         {
-            return new UpdateExpr(From<T>(tableArgs));
+            return new UpdateExpr(new TableExpr(typeof(T)) { TableArgs = tableArgs });
         }
 
         /// <summary>
@@ -260,7 +260,7 @@ namespace LiteOrm.Common
         /// <returns>UPDATE 表达式。</returns>
         public static UpdateExpr Update(Type objectType, params string[] tableArgs)
         {
-            return new UpdateExpr(From(objectType, tableArgs));
+            return new UpdateExpr(new TableExpr(objectType) { TableArgs = tableArgs });
         }
 
         /// <summary>
@@ -284,7 +284,7 @@ namespace LiteOrm.Common
         {
             return new DeleteExpr()
             {
-                Source = new TableExpr(objectType) { TableArgs = tableArgs }
+                Table = new TableExpr(objectType) { TableArgs = tableArgs }
             };
         }
 

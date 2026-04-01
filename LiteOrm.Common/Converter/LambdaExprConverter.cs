@@ -186,7 +186,7 @@ namespace LiteOrm.Common
         public Expr ToSqlSegment()
         {
             Expr expr = ConvertInternal(_expression.Body);
-            if (expr is not ISqlSegment) throw new InvalidOperationException("Lambda expression cannot convert to SqlSegment.");
+            if (expr is not SqlSegment) throw new InvalidOperationException("Lambda expression cannot convert to SqlSegment.");
             return expr;
         }
 
@@ -753,11 +753,7 @@ namespace LiteOrm.Common
                 return havingAnchor.Having(havingLogic);
             }
 
-            ISqlSegment source = src as ISourceAnchor;
-            if (source == null && src is FromExpr tve)
-            {
-                source = tve;
-            }
+            SqlSegment source = src as SqlSegment;
 
             ParameterExpression parameter = lambda.Parameters[0];
             _parameterAliases[parameter.Name] = _currentAlias;

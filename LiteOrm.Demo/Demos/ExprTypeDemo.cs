@@ -18,7 +18,8 @@ namespace LiteOrm.Demo.Demos
         {
             Console.WriteLine("===== 1. 表达式全方案演示 =====");
 
-            ShowSection("1.1 基础值与属性表达式", () => {
+            ShowSection("1.1 基础值与属性表达式", () =>
+            {
                 // [方式1] 构造函数
                 var p1 = new PropertyExpr("Age");
                 Print(p1, "属性 (构造函数方式)", "new PropertyExpr(\"Age\")");
@@ -28,7 +29,8 @@ namespace LiteOrm.Demo.Demos
                 Print(v2, "常量值 (工厂方式)", "Const(\"张三\")");
             });
 
-            ShowSection("1.2 逻辑比较与组合", () => {
+            ShowSection("1.2 逻辑比较与组合", () =>
+            {
                 var age = Prop("Age");
                 var dept = Prop("DeptId");
 
@@ -44,13 +46,14 @@ namespace LiteOrm.Demo.Demos
                 Print(composite2, "逻辑组合 (Fluent方式)", "age.GreaterThan(20).And(dept.In(101, 102))");
             });
 
-            ShowSection("1.3 结构化查询模型 (Select/Update/Delete)", () => {
+            ShowSection("1.3 结构化查询模型 (Select/Update/Delete)", () =>
+            {
                 // Select 链式构建
                 var query = From<User>()
                     .Where(Prop("Age") > 20)
                     .Select(Prop("Id"), Prop("UserName").As("Name"))
                     .OrderBy(Prop("Id").Desc());
-                
+
                 string code = "From<User>()\n" +
                               "    .Where(Prop(\"Age\") > 20)\n" +
                               "    .Select(Prop(\"Id\"), Prop(\"UserName\").As(\"Name\"))\n" +
@@ -58,17 +61,20 @@ namespace LiteOrm.Demo.Demos
                 Print(query, "SELECT 完整模型", code);
 
                 // Update 模型
-                var update = new UpdateExpr(From<User>(), Prop("Id") == 1);
-                update.Set(("UserName", Value("NewName")));
+                var update = Expr.Update<User>()
+                .Where(Prop("Id") == 1)
+                .Set(("UserName", Value("NewName")));
                 Print(update, "UPDATE 模型", "new UpdateExpr(From<User>(), Prop(\"Id\") == 1).Set((\"UserName\", Value(\"NewName\")))");
             });
 
-            ShowSection("1.4 Lambda 自动转换", () => {
+            ShowSection("1.4 Lambda 自动转换", () =>
+            {
                 var composite = Lambda<User>(u => u.Age > 25 && u.UserName.Contains("A"));
                 Print(composite, "Lambda 转 Expr", "Exp<User>(u => u.Age > 25 && u.UserName.Contains(\"A\"))");
             });
 
-            ShowSection("1.5 删除与其它片段 (Delete)", () => {
+            ShowSection("1.5 删除与其它片段 (Delete)", () =>
+            {
                 // 删除模型
                 var delete = new DeleteExpr(new TableExpr(typeof(User)), Prop("Age") < 18);
                 Print(delete, "DELETE 模型", "new DeleteExpr(new TableExpr(typeof(User)), Prop(\"Age\") < 18)");
@@ -77,7 +83,7 @@ namespace LiteOrm.Demo.Demos
 
         private static void ShowSection(string title, Action action)
         {
-            DemoHelper.PrintSection(title,"");
+            DemoHelper.PrintSection(title, "");
             action();
         }
 

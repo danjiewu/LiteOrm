@@ -147,28 +147,73 @@ namespace LiteOrm.Common
         private static void ToSqlInternal(ref ValueStringBuilder sb, Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority = 0)
         {
             if (expr is null) return;
+            expr = Reduce(expr);
 
-            // 根据 Expr 的具体类型，分发到对应的 SQL 转换逻辑
-            if (expr is LogicBinaryExpr lb) ToSql(ref sb, lb, context, sqlBuilder, outputParams, priority);
-            else if (expr is ValueBinaryExpr vb) ToSql(ref sb, vb, context, sqlBuilder, outputParams, priority);
-            else if (expr is NotExpr lu) ToSql(ref sb, lu, context, sqlBuilder, outputParams, priority);
-            else if (expr is UnaryExpr vu) ToSql(ref sb, vu, context, sqlBuilder, outputParams);
-            else if (expr is ValueExpr value) ToSql(ref sb, value, context, sqlBuilder, outputParams);
-            else if (expr is PropertyExpr prop) ToSql(ref sb, prop, context, sqlBuilder, outputParams);
-            else if (expr is FunctionExpr func) ToSql(ref sb, func, context, sqlBuilder, outputParams);
-            else if (expr is LambdaExpr lambda) ToSql(ref sb, lambda, context, sqlBuilder, outputParams);
-            else if (expr is GenericSqlExpr generic) ToSql(ref sb, generic, context, sqlBuilder, outputParams);
-            else if (expr is ForeignExpr foreign) ToSql(ref sb, foreign, context, sqlBuilder, outputParams);
-            else if (expr is AndExpr ae) ToSql(ref sb, ae, context, sqlBuilder, outputParams, priority);
-            else if (expr is OrExpr oe) ToSql(ref sb, oe, context, sqlBuilder, outputParams, priority);
-            else if (expr is ValueSet vs) ToSql(ref sb, vs, context, sqlBuilder, outputParams);
-            else if (expr is OrderByItemExpr obi) ToSql(ref sb, obi, context, sqlBuilder, outputParams);
-            else if (expr is FromExpr from) ToSql(ref sb, from, context, sqlBuilder, outputParams);
-            else if (expr is TableExpr table) ToSql(ref sb, table, context, sqlBuilder, outputParams);
-            else if (expr is SelectExpr select) ToSql(ref sb, select, context, sqlBuilder, outputParams, priority);
-            else if (expr is DeleteExpr delete) ToSql(ref sb, delete, context, sqlBuilder, outputParams);
-            else if (expr is UpdateExpr update) ToSql(ref sb, update, context, sqlBuilder, outputParams);
-            else throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
+            int curPriority = GetPriority(expr);
+            bool needParen = expr is SelectExpr ? (curPriority <= priority) : (curPriority < priority);
+            if (needParen) sb.Append('(');
+
+            switch (expr)
+            {
+                // 根据 Expr 的具体类型，分发到对应的 SQL 转换逻辑
+                case LogicBinaryExpr lb: ToSql(ref sb, lb, context, sqlBuilder, outputParams); break;
+                case ValueBinaryExpr vb: ToSql(ref sb, vb, context, sqlBuilder, outputParams); break;
+                case NotExpr lu: ToSql(ref sb, lu, context, sqlBuilder, outputParams); break;
+                case UnaryExpr vu: ToSql(ref sb, vu, context, sqlBuilder, outputParams); break;
+                case ValueExpr value: ToSql(ref sb, value, context, sqlBuilder, outputParams); break;
+                case PropertyExpr prop: ToSql(ref sb, prop, context, sqlBuilder, outputParams); break;
+                case FunctionExpr func: ToSql(ref sb, func, context, sqlBuilder, outputParams); break;
+                case LambdaExpr lambda: ToSql(ref sb, lambda, context, sqlBuilder, outputParams); break;
+                case GenericSqlExpr generic: ToSql(ref sb, generic, context, sqlBuilder, outputParams); break;
+                case ForeignExpr foreign: ToSql(ref sb, foreign, context, sqlBuilder, outputParams); break;
+                case AndExpr ae: ToSql(ref sb, ae, context, sqlBuilder, outputParams); break;
+                case OrExpr oe: ToSql(ref sb, oe, context, sqlBuilder, outputParams); break;
+                case ValueSet vs: ToSql(ref sb, vs, context, sqlBuilder, outputParams); break;
+                case OrderByItemExpr obi: ToSql(ref sb, obi, context, sqlBuilder, outputParams); break;
+                case FromExpr from: ToSql(ref sb, from, context, sqlBuilder, outputParams); break;
+                case TableExpr table: ToSql(ref sb, table, context, sqlBuilder, outputParams); break;
+                case SelectExpr select: ToSql(ref sb, select, context, sqlBuilder, outputParams); break;
+                case DeleteExpr delete: ToSql(ref sb, delete, context, sqlBuilder, outputParams); break;
+                case UpdateExpr update: ToSql(ref sb, update, context, sqlBuilder, outputParams); break;
+                default: throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
+            }
+
+            if (needParen) sb.Append(')');
+        }
+
+        private static Expr Reduce(Expr expr)
+        {
+            if (expr is NotExpr not)
+            {
+                if (not.Operand is LogicBinaryExpr be)
+                {
+                    // 将 NOT (a = b) 转换为 a <> b，减少冗余的 NOT 关键字
+                    var opposite = be.Operator.Opposite();
+                    return new LogicBinaryExpr(be.Left, opposite, be.Right);
+                }
+                else if (not.Operand is NotExpr inner)
+                {
+                    // 将双重否定 NOT (NOT a) 转换为 a
+                    return Reduce(inner.Operand);
+                }
+            }
+            else if (expr is AndExpr and && and.Count == 1)
+            {
+                return and[0];
+            }
+            else if (expr is OrExpr or && or.Count == 1)
+            {
+                return or[0];
+            }
+            else if (expr is ValueExpr)
+            {
+                while (expr is ValueExpr ve && ve.Value is Expr innerExpr)
+                {
+                    expr = innerExpr;
+                }
+                return expr;
+            }
+            return expr;
         }
 
         /// <summary>
@@ -182,21 +227,20 @@ namespace LiteOrm.Common
         {
             return expr switch
             {
-                AndExpr _ => 2,
-                OrExpr _ => 1,
-                LogicBinaryExpr _ => 3,
+                SelectExpr select => select.NextSelects?.Count > 0 ? 0 : 1,
+                ValueSet vs when vs.JoinType == ValueJoinType.List => 2,
+                OrExpr _ => 11,
+                AndExpr _ => 12,                
+                LogicBinaryExpr _ => 13,                
                 ValueBinaryExpr vb => vb.Operator switch
                 {
-                    ValueOperator.Add or ValueOperator.Subtract => 4,
-                    ValueOperator.Concat => 6,
-                    _ => 5
+                    ValueOperator.Add or ValueOperator.Subtract => 14,
+                    ValueOperator.Concat => 16,
+                    _ => 15
                 },
-                NotExpr _ => 6,
-                UnaryExpr _ => 8,
-                SelectExpr _ => 1,
-                UpdateExpr _ => 2,
-                DeleteExpr _ => 2,
-                _ => 0
+                NotExpr _ => 17,
+                UnaryExpr _ => 18, 
+                _ => 100
             };
         }
 
@@ -208,7 +252,7 @@ namespace LiteOrm.Common
         /// <param name="context">SQL 构建上下文。</param>
         /// <param name="sqlBuilder">具体数据库的构建器。</param>
         /// <param name="outputParams">参数集合。</param>
-        private static void AddSqlSegment(ref SqlValueStringBuilder sql, ISqlSegment sqlSegment, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void AddSqlSegment(ref SqlValueStringBuilder sql, SqlSegment sqlSegment, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (sqlSegment is null) throw new ArgumentNullException(nameof(sqlSegment));
 
@@ -240,61 +284,19 @@ namespace LiteOrm.Common
             }
         }
 
-        /// <summary>
-        /// 将 SelectExpr 转换为 SQL 字符串片段。
-        /// 使用 priority 控制是否需要外层括号（当 GetPriority(select) &lt; priority 时会添加括号）。
-        /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority = 0)
-        {
-            if (select is null) return;
-            int curPriority = GetPriority(select);
-            if (curPriority <= priority) sb.Append('(');
-            using (context.BeginScope())
-            {
-                SqlValueStringBuilder sql = new SqlValueStringBuilder() { Indent = context.Indent };
-                AddSqlSegment(ref sql, select.Source, context, sqlBuilder, outputParams);
-
-                if (select.Selects == null || select.Selects.Count == 0)
-                {
-                    sql.Select.Append("*");
-                }
-                else
-                {
-                    for (int i = 0; i < select.Selects.Count; i++)
-                    {
-                        if (i > 0) sql.Select.Append(",");
-                        ToSql(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
-                    }
-                }
-
-                sqlBuilder.BuildSelectSql(ref sql, ref sb);
-                sql.Dispose();
-            }
-
-            foreach (var next in select.NextSelects)
-            {
-                sb.Append($" \n{context.Indent}");
-                sqlBuilder.ToSqlSelectSetType(ref sb, next.SetType);
-                sb.Append($" \n{context.Indent}");
-                ToSql(ref sb, next, context, sqlBuilder, outputParams, priority);
-            }
-
-            if (curPriority <= priority) sb.Append(')');
-        }
+        // SelectExpr handling is performed centrally in ToSqlInternal to ensure NextSelects
+        // are rendered with the same outer priority. The specific ToSql overload for
+        // SelectExpr has been removed.
         /// <summary>
         /// 将逻辑二元表达式转换为 SQL。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, LogicBinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority)
+        private static void ToSql(ref ValueStringBuilder sb, LogicBinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             string op = String.Empty;
             bool isOppsite = expr.Operator.IsNot();
             char escapeChar = Constants.LikeEscapeChar;
             _logicOperatorSymbols.TryGetValue(expr.Operator, out op);
             int curPriority = GetPriority(expr);
-            if (curPriority < priority)
-            {
-                sb.Append("(");
-            }
             switch (expr.OriginOperator)
             {
                 case LogicOperator.In:
@@ -407,24 +409,16 @@ namespace LiteOrm.Common
                     ToSqlInternal(ref sb, expr.Right, context, sqlBuilder, outputParams, curPriority);
                     break;
             }
-            if (curPriority < priority)
-            {
-                sb.Append(")");
-            }
         }
 
         /// <summary>
         /// 将值二元表达式（如加减乘除）转换为 SQL。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, ValueBinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority)
+        private static void ToSql(ref ValueStringBuilder sb, ValueBinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             string op = String.Empty;
             _valueOperatorSymbols.TryGetValue(expr.Operator, out op);
             int curPriority = GetPriority(expr);
-            if (curPriority < priority)
-            {
-                sb.Append("(");
-            }
             if (expr.Operator == ValueOperator.Concat)
             {
                 // 字符串拼接逻辑委托给具体的 sqlBuilder，因为不同数据库的语法差异很大（如 || vs CONCAT）
@@ -450,42 +444,18 @@ namespace LiteOrm.Common
                 sb.Append(" ");
                 ToSqlInternal(ref sb, expr.Right, context, sqlBuilder, outputParams, isCommutative ? curPriority : curPriority + 1);
             }
-            if (curPriority < priority)
-            {
-                sb.Append(")");
-            }
+            // Parenthesis are managed by ToSqlInternal.
         }
 
         /// <summary>
         /// 处理 NOT 表达式。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, NotExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority)
+        private static void ToSql(ref ValueStringBuilder sb, NotExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (expr.Operand is LogicBinaryExpr be)
-            {
-                // 优化：将 NOT (a = b) 转换为 a <> b，避免冗余的 NOT 关键字
-                var opposite = be.Operator.Opposite();
-                ToSqlInternal(ref sb, new LogicBinaryExpr(be.Left, opposite, be.Right), context, sqlBuilder, outputParams, priority);
-            }
-            else if (expr.Operand is NotExpr inner)
-            {
-                // 优化：双重否定 NOT (NOT a) 转换为 a
-                ToSqlInternal(ref sb, inner.Operand, context, sqlBuilder, outputParams, priority);
-            }
-            else
-            {
-                int curPriority = GetPriority(expr);
-                if (curPriority < priority)
-                {
-                    sb.Append("(");
-                }
-                sb.Append("NOT ");
-                ToSqlInternal(ref sb, expr.Operand, context, sqlBuilder, outputParams, curPriority);
-                if (curPriority < priority)
-                {
-                    sb.Append(")");
-                }
-            }
+            // Reduce has already simplified NOT (a = b) and double negation cases.
+            int curPriority = GetPriority(expr);
+            sb.Append("NOT ");
+            ToSqlInternal(ref sb, expr.Operand, context, sqlBuilder, outputParams, curPriority);
         }
 
         /// <summary>
@@ -528,7 +498,7 @@ namespace LiteOrm.Common
             }
             else if (expr.Value is Expr innerExpr)
             {
-                innerExpr.ToSql(ref sb, context, sqlBuilder, outputParams);
+                ToSqlInternal(ref sb, innerExpr, context, sqlBuilder, outputParams);
             }
             else if (expr.Value is IEnumerable enumerable && !(expr.Value is string))
             {
@@ -685,21 +655,11 @@ namespace LiteOrm.Common
         /// <summary>
         /// 处理 AND 表达式组合。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, AndExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority)
+        private static void ToSql(ref ValueStringBuilder sb, AndExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             int count = expr.Count;
             if (count == 0) return;
-            if (count == 1)
-            {
-                ToSqlInternal(ref sb, expr[0], context, sqlBuilder, outputParams, priority);
-                return;
-            }
-
             int curPriority = GetPriority(expr);
-            if (curPriority < priority)
-            {
-                sb.Append("(");
-            }
 
             bool first = true;
             for (int i = 0; i < count; i++)
@@ -719,31 +679,16 @@ namespace LiteOrm.Common
                     first = false;
                 }
             }
-            if (curPriority < priority)
-            {
-                sb.Append(")");
-            }
         }
 
         /// <summary>
         /// 处理 OR 表达式组合。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, OrExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority)
+        private static void ToSql(ref ValueStringBuilder sb, OrExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             int count = expr.Count;
             if (count == 0) return;
-            if (count == 1)
-            {
-                ToSqlInternal(ref sb, expr[0], context, sqlBuilder, outputParams, priority);
-                return;
-            }
-
             int curPriority = GetPriority(expr);
-            if (curPriority < priority)
-            {
-                sb.Append("(");
-            }
-
             bool first = true;
             for (int i = 0; i < count; i++)
             {
@@ -761,10 +706,6 @@ namespace LiteOrm.Common
                 {
                     first = false;
                 }
-            }
-            if (curPriority < priority)
-            {
-                sb.Append(")");
             }
         }
 
@@ -790,7 +731,6 @@ namespace LiteOrm.Common
                 return;
             }
 
-            sb.Append("(");
             string joinStr = expr.JoinType switch
             {
                 ValueJoinType.List => ",",
@@ -804,7 +744,6 @@ namespace LiteOrm.Common
                 ToSqlInternal(ref sb, expr[i], context, sqlBuilder, outputParams);
                 first = false;
             }
-            sb.Append(")");
         }
 
         /// <summary>
@@ -823,7 +762,7 @@ namespace LiteOrm.Common
         {
             using (context.BeginScope())
             {
-                ToSql(ref sql.From, expr, context, sqlBuilder, outputParams, 1);
+                ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams, 1);
             }
             string aliasMain = expr.Alias ?? $"T{context.Sequence++}";
             context.DefaultTableAliasName = aliasMain;
@@ -921,8 +860,7 @@ namespace LiteOrm.Common
             else
             {
                 bool isMain = context.Depth <= 1;
-                // prefer explicit TableExpr and Joins when provided
-                var mainTable = expr.Source;
+                var mainTable = expr.Table;
                 var tableType = mainTable?.Type ?? expr.Type;
                 var tableView = TableInfoProvider.Default.GetTableView(tableType);
                 context.TableArgs = tableArgs;
@@ -954,6 +892,38 @@ namespace LiteOrm.Common
             }
         }
 
+        private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            using (context.BeginScope())
+            {
+                SqlValueStringBuilder sql = new SqlValueStringBuilder() { Indent = context.Indent };
+                AddSqlSegment(ref sql, select.Source, context, sqlBuilder, outputParams);
+
+                if (select.Selects == null || select.Selects.Count == 0)
+                {
+                    sql.Select.Append("*");
+                }
+                else
+                {
+                    for (int i = 0; i < select.Selects.Count; i++)
+                    {
+                        if (i > 0) sql.Select.Append(",");
+                        ToSql(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
+                    }
+                }
+
+                sqlBuilder.BuildSelectSql(ref sql, ref sb);
+                sql.Dispose();
+            }
+            foreach (var next in select.NextSelects)
+            {
+                sb.Append($" \n{context.Indent}");
+                sqlBuilder.ToSqlSelectSetType(ref sb, next.SetType);
+                sb.Append($" \n{context.Indent}");
+                ToSqlInternal(ref sb, next, context, sqlBuilder, outputParams, 1);
+            }
+        }
+
         /// <summary>
         /// 处理查询列项（带有 Alias）。
         /// </summary>
@@ -982,7 +952,7 @@ namespace LiteOrm.Common
         {
 
             sb.Append("DELETE FROM ");
-            ToSql(ref sb, expr.Source ?? new TableExpr(context.Table.DefinitionType), context, sqlBuilder, outputParams);
+            ToSql(ref sb, expr.Table ?? new TableExpr(context.Table.DefinitionType), context, sqlBuilder, outputParams);
             if (expr.Where != null)
             {
                 using (context.BeginScope())
@@ -998,10 +968,10 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, UpdateExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            TableExpr tableExpr = expr.Source ?? new TableExpr(context.Table.DefinitionType);
+            TableExpr tableExpr = expr.Table ?? new TableExpr(context.Table.DefinitionType);
             if (tableExpr == null)
                 throw new ArgumentException("UpdateExpr Source is null and context Table is null, cannot determine update target.");
-            var table = TableInfoProvider.Default.GetTableDefinition(tableExpr.Type) ;
+            var table = TableInfoProvider.Default.GetTableDefinition(tableExpr.Type);
             sb.Append("UPDATE ");
             ToSql(ref sb, tableExpr, context, sqlBuilder, outputParams);
             sb.Append($" \n{context.Indent}SET ");

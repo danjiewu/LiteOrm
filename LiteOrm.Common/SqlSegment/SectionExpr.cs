@@ -7,7 +7,7 @@ namespace LiteOrm.Common
     /// 分页片段，表示 LIMIT/OFFSET 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class SectionExpr : Expr, ISectionAnchor
+    public class SectionExpr : SqlSegment, ISectionAnchor
     {
         /// <summary>
         /// 初始化 SectionExpr 类的新实例
@@ -31,15 +31,10 @@ namespace LiteOrm.Common
         /// <param name="source">源片段</param>
         /// <param name="skip">要跳过的记录数</param>
         /// <param name="take">要获取的记录数</param>
-        public SectionExpr(ISqlSegment source, int skip, int take) : this(skip, take)
+        public SectionExpr(SqlSegment source, int skip, int take) : this(skip, take)
         {
             Source = source;
         }
-
-        /// <summary>
-        /// 获取或设置分页片段的源片段（From表达式）
-        /// </summary>
-        public ISqlSegment Source { get; set; }
 
         /// <summary>
         /// 获取片段类型，返回 Section 类型标识
@@ -81,7 +76,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var s = new SectionExpr();
-            s.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            s.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
             s.Skip = Skip;
             s.Take = Take;
             return s;

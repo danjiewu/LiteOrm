@@ -7,7 +7,7 @@ namespace LiteOrm.Common
     /// 筛选片段，表示 WHERE 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class WhereExpr : Expr, ISourceAnchor
+    public class WhereExpr : SqlSegment, ISourceAnchor
     {
         /// <summary>
         /// 初始化 WhereExpr 类的新实例
@@ -19,16 +19,11 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段（如 TableExpr）</param>
         /// <param name="where">筛选条件表达式</param>
-        public WhereExpr(ISqlSegment source, LogicExpr where)
+        public WhereExpr(SqlSegment source, LogicExpr where)
         {
             Source = source;
             Where = where;
         }
-
-        /// <summary>
-        /// 获取或设置 WHERE 条件的源片段（From表达式）
-        /// </summary>
-        public ISqlSegment Source { get; set; }
 
         /// <summary>
         /// 获取片段类型，返回 Where 类型标识
@@ -46,7 +41,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var w = new WhereExpr();
-            w.Source = (ISqlSegment)(Source as Expr)?.Clone() ?? Source;
+            w.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
             w.Where = (LogicExpr)Where?.Clone();
             return w;
         }

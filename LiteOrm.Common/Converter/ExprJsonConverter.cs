@@ -183,17 +183,12 @@ namespace LiteOrm.Common
                             if (mark == "select") { result = new SelectExpr(); }
                             if (mark == "delete") { result = new DeleteExpr(); }
                             if (mark == "update") { result = new UpdateExpr(); }
-                            if (result == null)
-                            {
-                                result = new ValueExpr(mark) { IsConst = true };
-                            }
-
                             // 对于 SQL 片段类型且是通过简写形式传值（例如 "$from": "Full.Type.Name" 或 "$from": {...}）
-                            if (result is ISqlSegment && propName != "$")
+                            if (result is SqlSegment && propName != "$")
                             {
                                 // 需要先读取属性值的位置
                                 reader.Read();
-                                ReadSqlSegmentProperty(ref reader, (ISqlSegment)result, propName, options);
+                                ReadSqlSegmentProperty(ref reader, (SqlSegment)result, propName, options);
                             }
                         }
                     }
@@ -265,11 +260,11 @@ namespace LiteOrm.Common
                     case DeleteExpr de when propName == "Where":
                         de.Where = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
                         break;
-                    case ISqlSegment ss when propName == "Source":
-                        ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as ISqlSegment;
+                    case SqlSegment ss when propName == "Source":
+                        ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as SqlSegment;
                         break;
                     case FromExpr fe when propName == "Source":
-                        fe.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as TableExpr;
+                        fe.Table = JsonSerializer.Deserialize<Expr>(ref reader, options) as TableExpr;
                         break;
                     case FromExpr fe when propName == "Joins":
                         if (reader.TokenType == JsonTokenType.StartArray)
@@ -376,7 +371,7 @@ namespace LiteOrm.Common
             /// <summary>
             /// 读取 SQL 片段属性（如 FromExpr 的类型和别名）
             /// </summary>
-            private void ReadSqlSegmentProperty(ref Utf8JsonReader reader, ISqlSegment ss, string propName, JsonSerializerOptions options)
+            private void ReadSqlSegmentProperty(ref Utf8JsonReader reader, SqlSegment ss, string propName, JsonSerializerOptions options)
             {
                 // reader 已经在属性值的位置，直接处理
                 if (ss is TableExpr te && propName == "$table")
@@ -423,7 +418,8 @@ namespace LiteOrm.Common
                 }
                 else
                 {
-                    ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as ISqlSegment;
+                    if (ss is SqlSegment chainedSegment)
+                        chainedSegment.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as SqlSegment;
                 }
             }
 
@@ -456,7 +452,7 @@ namespace LiteOrm.Common
                 }
 
                 // 结构化查询片段直接处理
-                if (value is ISqlSegment segment)
+                if (value is SqlSegment segment)
                 {
                     WriteSqlSegment(writer, segment, options);
                     return;
@@ -677,7 +673,7 @@ namespace LiteOrm.Common
             /// <summary>
             /// 写入 SQL 片段
             /// </summary>
-            private void WriteSqlSegment(Utf8JsonWriter writer, ISqlSegment value, JsonSerializerOptions options)
+            private void WriteSqlSegment(Utf8JsonWriter writer, SqlSegment value, JsonSerializerOptions options)
             {
                 if (value == null) { writer.WriteNullValue(); return; }
                 writer.WriteStartObject();
@@ -710,7 +706,7 @@ namespace LiteOrm.Common
                 }
                 else
                 {
-                    JsonSerializer.Serialize(writer, value.Source as Expr, options);
+                    JsonSerializer.Serialize(writer, value.Source, options);
                 }
 
                 switch (value)

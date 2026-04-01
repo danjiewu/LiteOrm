@@ -8,7 +8,7 @@ namespace LiteOrm.Common
     /// 表表达式
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class TableExpr : Expr, ISqlSegment, IArged
+    public sealed class TableExpr : SqlSegment, IArged
     {
         /// <summary>
         /// 默认构造函数
@@ -73,11 +73,6 @@ namespace LiteOrm.Common
         /// 表达式类型
         /// </summary>
         public override ExprType ExprType => ExprType.Table;
-
-        /// <summary>
-        /// 获取或设置源片段（用于 ISqlSegment 接口）
-        /// </summary>
-        ISqlSegment ISqlSegment.Source { get => null; set { } }
 
         /// <summary>
         /// 判断两个 TableExpr 是否相等
