@@ -76,7 +76,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var s = new SectionExpr();
-            s.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
+            s.Source = (SqlSegment)Source?.Clone();
             s.Skip = Skip;
             s.Take = Take;
             return s;

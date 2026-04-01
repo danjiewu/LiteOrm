@@ -93,8 +93,8 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var j = new TableJoinExpr();
-            j.Table = (TableExpr)(Table as Expr)?.Clone() ?? Table;
-            j.On = (LogicExpr)(On as Expr)?.Clone() ?? On;
+            j.Table = (TableExpr)Table?.Clone();
+            j.On = (LogicExpr)On?.Clone();
             j.JoinType = JoinType;
             return j;
         }

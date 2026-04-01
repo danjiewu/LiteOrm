@@ -62,7 +62,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var o = new OrderByExpr();
-            o.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
+            o.Source = (SqlSegment)Source?.Clone();
             o.OrderBys = OrderBys?.Select(ob => (OrderByItemExpr)ob.Clone()).ToList() ?? new List<OrderByItemExpr>();
             return o;
         }

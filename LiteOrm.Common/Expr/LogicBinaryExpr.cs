@@ -70,7 +70,7 @@ namespace LiteOrm.Common
         public LogicBinaryExpr Reverse(bool keepEquivalent = false)
         {
             LogicBinaryExpr newExpr = new LogicBinaryExpr(Right, Operator, Left);
-            if (!keepEquivalent)
+            if (keepEquivalent)
             {
                 newExpr.Operator = Operator switch
                 {

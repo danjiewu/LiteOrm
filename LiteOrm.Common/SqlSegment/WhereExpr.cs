@@ -41,7 +41,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var w = new WhereExpr();
-            w.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
+            w.Source = (SqlSegment)Source?.Clone();
             w.Where = (LogicExpr)Where?.Clone();
             return w;
         }

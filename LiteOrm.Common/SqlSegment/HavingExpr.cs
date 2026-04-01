@@ -60,7 +60,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var h = new HavingExpr();
-            h.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
+            h.Source = (SqlSegment)Source?.Clone();
             h.Having = (LogicExpr)Having?.Clone();
             return h;
         }

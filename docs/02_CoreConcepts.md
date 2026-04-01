@@ -40,10 +40,15 @@ LiteOrm 由以下几个核心组件构成：
 | 组件 | 职责 |
 |------|------|
 | `EntityService<T>` | 业务服务封装，组合多个 DAO，提供统一接口 |
-| `ObjectDAO<T>` | 单表增删改，不支持关联查询 |
+| `ObjectDAO<T>` | 单表增删改，支持 Lambda/Expr 查询 |
 | `ObjectViewDAO<T>` | 关联查询，返回 `List<T>` |
 | `DataViewDAO<T>` | 关联查询，返回 `DataTable` |
-| `SqlBuilder` | SQL 方言构建器，支持 MySQL/SQL Server/Oracle 等 |
+| `SessionManager` | 会话上下文管理，通过 AsyncLocal 实现异步上下文隔离 |
+| `DAOContext` | 数据库连接上下文，管理连接和事务 |
+| `SqlBuilder` | SQL 方言构建器，将 Expr 转换为具体数据库 SQL |
+| `LambdaExprConverter` | Lambda 表达式到 Expr 的转换器 |
+| `LiteOrmLambdaHandlerInitializer` | 启动时注册默认的 Lambda 方法/成员处理器 |
+| `LiteOrmSqlFunctionInitializer` | 启动时注册默认的 SQL 函数处理器 |
 | `Expr` | 表达式对象模型，抽象 SQL 结构 |
 
 ## 2. 实体定义

@@ -121,71 +121,17 @@ LiteOrm 的事务传播行为：
 | 有现有事务 | 加入现有事务（嵌套） |
 | 事务失败 | 全部回滚 |
 
-## 4. 分布式事务
 
-对于跨数据库的分布式事务，建议使用以下方案：
+## 4. 事务与 SessionManager
 
-1. **Saga 模式**：将分布式事务拆分为多个本地事务，搭配事件驱动
-2. **最终一致性**：接受短暂不一致，通过补偿机制最终一致
+LiteOrm 使用 `SessionManager` 管理数据库连接及事务：
+- 支持跨数据库的事务
+- 事务开始时，当前 Scope 的 SessionManager 已有的数据库连接都将进入事务
+- 在事务过程中获取的数据库连接也会自动加上事务
+- 当前 Scope 下 LiteOrm 的所有数据库操作都会自动受当前事务管理
+- 如需隔离事务，需要创建新的 Scope
 
-```csharp
-// Saga 模式示例
-public class OrderSagaService
-{
-    private readonly IUserService _userService;
-    private readonly IOrderService _orderService;
-    private readonly IInventoryService _inventoryService;
-
-    [Transaction]
-    public async Task CreateOrderSaga(Order order)
-    {
-        // Step 1: 扣减库存
-        await _inventoryService.ReserveAsync(order.ProductId, order.Quantity);
-
-        // Step 2: 创建订单
-        await _orderService.InsertAsync(order);
-
-        // Step 3: 余额扣减（如果失败，前面的步骤不会回滚，需要补偿）
-        try
-        {
-            await _userService.DeductBalanceAsync(order.UserId, order.Amount);
-        }
-        catch
-        {
-            // 补偿：释放库存
-            await _inventoryService.ReleaseAsync(order.ProductId, order.Quantity);
-            throw;
-        }
-    }
-}
-```
-
-## 5. 事务与连接池
-
-LiteOrm 使用连接池管理数据库连接：
-
-- 事务开始时从池中获取连接
-- 事务提交/回滚后释放连接回池
-- 长时间事务会占用连接资源，应避免长时间开启事务
-
-## 6. 常见问题
-
-### Q: 声明式事务不生效？
-
-检查以下几点：
-1. 方法是否是 `public`
-2. 是否通过注入的接口调用（而非直接调用实现类）
-3. Castle.Core 动态代理是否正常工作
-
-### Q: 事务中查询不到刚插入的数据？
-
-默认隔离级别下，事务内的查询可能读到旧数据。可使用 `INSERTED` 提示或调整隔离级别。
-
-### Q: 嵌套事务如何工作？
-
-LiteOrm 使用数据库的嵌套事务（savepoint）机制，嵌套不创建新事务，仅设置保存点。
-
-## 7. 下一步
+## 5. 下一步
 
 - 分表分库：[EXP_Sharding](./EXP_Sharding.md)
 - 性能优化：[EXP_Performance](./EXP_Performance.md)

@@ -172,6 +172,29 @@ namespace LiteOrm
                 else
                     outSql.Append($"SUBSTR({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}+1)");
             });
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("Trim", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                if (expr.Args.Count == 1)
+                    outSql.Append($"TRIM({expr.Args[0].ToSql(context, sqlBuilder, outputParams)})");
+                else
+                    outSql.Append($"TRIM(BOTH {expr.Args[1].ToSql(context, sqlBuilder, outputParams)} FROM {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})");
+            });
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("TrimStart", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                if (expr.Args.Count == 1)
+                    outSql.Append($"LTRIM({expr.Args[0].ToSql(context, sqlBuilder, outputParams)})");
+                else
+                    outSql.Append($"LTRIM({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})");
+            });
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("TrimEnd", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                if (expr.Args.Count == 1)
+                    outSql.Append($"RTRIM({expr.Args[0].ToSql(context, sqlBuilder, outputParams)})");
+                else
+                    outSql.Append($"RTRIM({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})");
+            });
+            SqlBuilder.Instance.RegisterFunctionSqlHandler("Remove", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+                outSql.Append($"LEFT({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})"));
         }
         private void RegisterSQLiteFunctions()
         {

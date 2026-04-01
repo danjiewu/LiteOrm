@@ -62,7 +62,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var g = new GroupByExpr();
-            g.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
+            g.Source = (SqlSegment)Source?.Clone();
             g.GroupBys = GroupBys?.Select(v => (ValueTypeExpr)v.Clone()).ToList() ?? new List<ValueTypeExpr>();
             return g;
         }

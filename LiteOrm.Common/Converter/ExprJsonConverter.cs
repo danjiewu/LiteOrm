@@ -163,7 +163,7 @@ namespace LiteOrm.Common
                             if (mark == "logic") { result = ReadLogicBinary(ref reader, options); break; }
                             if (mark == "and") { result = ReadAndExpr(ref reader, options); break; }
                             if (mark == "or") { result = ReadOrExpr(ref reader, options); break; }
-                            if (mark == "vset") { result = ReadValueSet(ref reader, options); break; }
+                            if (mark == "set") { result = ReadValueSet(ref reader, options); break; }
                             if (mark == "func") { result = ReadFunction(ref reader, options); break; }
                             if (mark == "prop") { result = ReadProperty(ref reader, options); break; }
                             if (mark == "not") { result = ReadNot(ref reader, options); break; }
@@ -177,6 +177,8 @@ namespace LiteOrm.Common
                             if (mark == "join") { result = new TableJoinExpr(); }
                             if (mark == "where") { result = new WhereExpr(); }
                             if (mark == "order") { result = new OrderByExpr(); }
+                            if (mark == "orderbyitem") { 
+                                result = new OrderByItemExpr(); }
                             if (mark == "group") { result = new GroupByExpr(); }
                             if (mark == "having") { result = new HavingExpr(); }
                             if (mark == "section") { result = new SectionExpr(); }
@@ -226,13 +228,19 @@ namespace LiteOrm.Common
                                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                                 {
                                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                                    if (reader.ValueTextEquals("Expr")) { reader.Read(); expr = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr; }
+                                    if (reader.ValueTextEquals("Field")) { reader.Read(); expr = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr; }
                                     else if (reader.ValueTextEquals("Asc")) { reader.Read(); asc = reader.GetBoolean(); }
                                     else { reader.Read(); reader.Skip(); }
                                 }
                                 if (expr is not null) obe.OrderBys.Add(new OrderByItemExpr(expr, asc));
                             }
                         }
+                        break;
+                    case OrderByItemExpr obi when propName == "Field":
+                        obi.Field = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                        break;
+                    case OrderByItemExpr obi when propName == "Asc":
+                        obi.Ascending = reader.GetBoolean();
                         break;
                     case GroupByExpr gbe when propName == "GroupBys":
                         gbe.GroupBys.Clear();
@@ -520,7 +528,7 @@ namespace LiteOrm.Common
                     ValueBinaryExpr be => _valueOperatorToJson.TryGetValue(be.Operator, out var symbol) ? symbol : "bin",
                     AndExpr => "and",
                     OrExpr => "or",
-                    ValueSet => "vset",
+                    ValueSet => "set",
                     FunctionExpr => "func",
                     NotExpr => "not",
                     UnaryExpr => "unary",
@@ -634,6 +642,11 @@ namespace LiteOrm.Common
                             JsonSerializer.Serialize(writer, fe.TableArgs, options);
                         }
                         break;
+                    case OrderByItemExpr orderByItemExpr:
+                        writer.WritePropertyName("Field");
+                        JsonSerializer.Serialize(writer, orderByItemExpr.Field, options);
+                        writer.WriteBoolean("Asc", orderByItemExpr.Ascending);
+                        break;
                     case TableJoinExpr tje:
                         if (tje.Table != null)
                         {
@@ -731,7 +744,7 @@ namespace LiteOrm.Common
                             foreach (var ob in obe.OrderBys)
                             {
                                 writer.WriteStartObject();
-                                writer.WritePropertyName("Expr");
+                                writer.WritePropertyName("Field");
                                 JsonSerializer.Serialize(writer, ob.Field, options);
                                 writer.WriteBoolean("Asc", ob.Ascending);
                                 writer.WriteEndObject();
