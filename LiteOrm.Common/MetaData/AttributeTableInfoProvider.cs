@@ -69,7 +69,6 @@ namespace LiteOrm
         }
 
         #region
-
         private TableDefinition GenerateTableDefinition(Type objectType)
         {
             TableAttribute tableAttribute = objectType.GetAttribute<TableAttribute>();
@@ -294,13 +293,28 @@ namespace LiteOrm
             Type primeType = foreignColumnAttribute.Foreign as Type;
             string foreignTable = primeType is null ? (string)foreignColumnAttribute.Foreign : primeType.Name;
             ColumnRef targetColumn = null;
-            if (!joinedTables.ContainsKey(foreignTable))
-                throw new ArgumentException($"Foreign table name {foreignColumnAttribute.Foreign} of property {column.PropertyName} does not exist in joined tables.");
-
-            targetColumn = joinedTables[foreignTable].GetColumn(primeProperty);
-            if (targetColumn is null)
+            // 首先尝试直接通过外键表名找到目标列，如果找不到再通过外键表类型在已连接的表中查找目标列
+            if (joinedTables.TryGetValue(foreignTable, out var joinedTable))
             {
-                var property = joinedTables[foreignTable].TableDefinition.ObjectType.GetProperty(primeProperty);
+                targetColumn = joinedTable.GetColumn(primeProperty);
+            }
+            else
+            {
+                foreach (JoinedTable jt in joinedTables.Values)
+                {
+                    if (jt.TableDefinition.ObjectType == primeType)
+                    {
+                        if (targetColumn is not null) throw new ArgumentException($"Undeterminate table. More than one table of type {primeType} joined.");
+                        joinedTable = jt;
+                        targetColumn = jt.GetColumn(primeProperty);
+                    }
+                }
+            }
+
+            // 如果通过外键表名和外键表类型都找不到目标列，则尝试通过外键表类型在已连接的表中查找属性，再生成目标列
+            if (joinedTable != null && targetColumn is null)
+            {
+                var property = joinedTable.TableDefinition.ObjectType.GetProperty(primeProperty);
                 if (property is not null)
                 {
                     ForeignColumn foreignColumn = GenerateForeignColumn(property);
@@ -308,7 +322,12 @@ namespace LiteOrm
                 }
             }
 
-            JoinedTable usedTable = joinedTables[foreignTable];
+            // 如果找不到目标列，则抛出异常
+            if (targetColumn == null)
+                throw new ArgumentException($"Foreign table name {foreignTable} of property {column.PropertyName} does not exist in joined tables.");
+
+            // 标记外键表以及其所有上级表为已使用
+            JoinedTable usedTable = joinedTable;
             while (usedTable is not null)
             {
                 usedTable.Used = true;
@@ -316,10 +335,7 @@ namespace LiteOrm
                     usedTable = usedTable.ForeignKeys[0].Table as JoinedTable;
                 else
                     usedTable = null;
-            }
-
-            if (targetColumn is null)
-                throw new ArgumentException($"Foreign property {primeProperty} does not exist in type {joinedTables[foreignTable].TableDefinition.ObjectType}.");
+            }           
 
             return targetColumn;
         }
