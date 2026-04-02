@@ -489,7 +489,7 @@ namespace LiteOrm.Common
                     else if (ve.IsConst)
                     {
                         // 常量值直接序列化                        
-                        JsonSerializer.Serialize(writer,ve.Value, _compactOptions);
+                        JsonSerializer.Serialize(writer, ve.Value, _compactOptions);
                     }
                     else
                     {

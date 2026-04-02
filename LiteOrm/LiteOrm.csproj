@@ -17,13 +17,15 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
       新增ExistsRelated方法；
-      优化SQL生成增加缩进；
+      LogicSet拆分为AndExpr和OrExpr；
+      新增ExprValidator；
       增加日期format，加TimeSpan类型支持；
       优化Lambda解析机制，尽量将表达式计算值；
       优化DAOContext生成机制，修复Sqlite读写冲突bug；
       SessionManager改为缓加载；
       优化异步方法为异步获取上下文，避免上下文释放影响效率；
       优化数据库上下文释放机制，不再等待连接关闭；
+      优化生成SQL的格式，增加缩进；
       修复一些bug。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
