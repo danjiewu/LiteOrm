@@ -160,6 +160,10 @@ namespace LiteOrm.Common
         /// <summary>
         /// 初始化 SelectItemExpr 类的新实例
         /// </summary>
+        public SelectItemExpr() { }
+        /// <summary>
+        /// 初始化 SelectItemExpr 类的新实例
+        /// </summary>
         /// <param name="value">值表达式</param>
         /// <exception cref="ArgumentNullException">当 value 为 null 时抛出</exception>
         public SelectItemExpr(ValueTypeExpr value)

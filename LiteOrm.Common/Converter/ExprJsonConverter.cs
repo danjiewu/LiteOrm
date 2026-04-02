@@ -177,12 +177,12 @@ namespace LiteOrm.Common
                             if (mark == "join") { result = new TableJoinExpr(); }
                             if (mark == "where") { result = new WhereExpr(); }
                             if (mark == "order") { result = new OrderByExpr(); }
-                            if (mark == "orderbyitem") { 
-                                result = new OrderByItemExpr(); }
+                            if (mark == "orderbyitem") { result = new OrderByItemExpr(); }
                             if (mark == "group") { result = new GroupByExpr(); }
                             if (mark == "having") { result = new HavingExpr(); }
                             if (mark == "section") { result = new SectionExpr(); }
                             if (mark == "select") { result = new SelectExpr(); }
+                            if (mark == "selectitem") { result = new SelectItemExpr(); }
                             if (mark == "delete") { result = new DeleteExpr(); }
                             if (mark == "update") { result = new UpdateExpr(); }
                             // 对于 SQL 片段类型且是通过简写形式传值（例如 "$from": "Full.Type.Name" 或 "$from": {...}）
@@ -228,7 +228,7 @@ namespace LiteOrm.Common
                                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                                 {
                                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                                    if (reader.ValueTextEquals("Field")) { reader.Read(); expr = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr; }
+                                    if (reader.ValueTextEquals("Field")) { reader.Read(); expr = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue(); }
                                     else if (reader.ValueTextEquals("Asc")) { reader.Read(); asc = reader.GetBoolean(); }
                                     else { reader.Read(); reader.Skip(); }
                                 }
@@ -237,7 +237,7 @@ namespace LiteOrm.Common
                         }
                         break;
                     case OrderByItemExpr obi when propName == "Field":
-                        obi.Field = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                        obi.Field = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                         break;
                     case OrderByItemExpr obi when propName == "Asc":
                         obi.Ascending = reader.GetBoolean();
@@ -258,6 +258,15 @@ namespace LiteOrm.Common
                         break;
                     case SelectExpr sele when propName == "Selects":
                         ReadSelectItems(ref reader, sele, options);
+                        break;
+                    case SelectItemExpr sie when propName == "Value":
+                        sie.Value = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                        break;
+                    case SelectItemExpr sie when propName == "Alias":
+                        sie.Alias = reader.GetString();
+                        break;
+                    case OrderByItemExpr obi when propName == "Asc":
+                        obi.Ascending = reader.GetBoolean();
                         break;
                     case UpdateExpr ue when propName == "Sets":
                         ReadUpdateSets(ref reader, ue, options);
@@ -333,7 +342,7 @@ namespace LiteOrm.Common
                                 }
                                 else if (prop == "Value")
                                 {
-                                    value = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                                    value = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                                 }
                                 else
                                 {
@@ -344,7 +353,7 @@ namespace LiteOrm.Common
                         }
                         else
                         {
-                            var v = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                            var v = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                             if (v is not null) sele.Selects.Add(new SelectItemExpr(v));
                         }
                     }
@@ -369,7 +378,7 @@ namespace LiteOrm.Common
                             if (reader.TokenType != JsonTokenType.PropertyName) continue;
                             prop = reader.GetString();
                             reader.Read();
-                            val = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                            val = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                         }
                         if (prop is not null && val is not null) ue.Sets.Add((Expr.Prop(prop), val));
                     }
@@ -469,15 +478,26 @@ namespace LiteOrm.Common
                 // 优化序列化格式：基本值类型直接写入
                 if (value is ValueExpr ve)
                 {
-                    if (ve.IsConst)
+                    if (ve.Value is Expr innerExpr)
                     {
-                        // 常量值直接序列化
-                        writer.WriteRawValue(JsonSerializer.Serialize(ve.Value, _compactOptions));
+                        while (innerExpr is ValueExpr veInner && veInner.Value is Expr nestedExpr)
+                        {
+                            innerExpr = nestedExpr;
+                        }
+                        JsonSerializer.Serialize(writer, innerExpr, options);
+                    }
+                    else if (ve.IsConst)
+                    {
+                        // 常量值直接序列化                        
+                        JsonSerializer.Serialize(writer,ve.Value, _compactOptions);
                     }
                     else
                     {
-                        // 变量值使用快捷方式 {"@": value}
-                        writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, object> { { "@", ve.Value } }, _compactOptions));
+                        // 变量值使用快捷方式 {"@": value}                        
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("@");
+                        JsonSerializer.Serialize(writer, ve.Value, _compactOptions);
+                        writer.WriteEndObject();
                     }
                     return;
                 }
@@ -485,7 +505,9 @@ namespace LiteOrm.Common
                 // 优化序列化格式：PropertyExpr 使用简写的 # 标识
                 if (value is PropertyExpr pe)
                 {
-                    writer.WriteRawValue(JsonSerializer.Serialize(new Dictionary<string, string> { { "#", String.IsNullOrEmpty(pe.TableAlias) ? pe.PropertyName : pe.TableAlias + "." + pe.PropertyName } }, _compactOptions));
+                    writer.WriteStartObject();
+                    writer.WriteString("#", String.IsNullOrEmpty(pe.TableAlias) ? pe.PropertyName : pe.TableAlias + "." + pe.PropertyName);
+                    writer.WriteEndObject();
                     return;
                 }
 
@@ -495,21 +517,6 @@ namespace LiteOrm.Common
                     writer.WriteStartObject();
                     writer.WritePropertyName("!");
                     WriteExpr(writer, ne.Operand, options);
-                    writer.WriteEndObject();
-                    return;
-                }
-
-                // 优化序列化格式：SelectItemExpr 使用属性方式序列化 Alias 和 Value
-                if (value is SelectItemExpr sie)
-                {
-                    writer.WriteStartObject();
-                    if (!string.IsNullOrEmpty(sie.Alias))
-                    {
-                        writer.WritePropertyName("Alias");
-                        writer.WriteStringValue(sie.Alias);
-                    }
-                    writer.WritePropertyName("Value");
-                    WriteExpr(writer, sie.Value, options);
                     writer.WriteEndObject();
                     return;
                 }
@@ -540,16 +547,18 @@ namespace LiteOrm.Common
                     FromExpr => "from",
                     WhereExpr => "where",
                     OrderByExpr => "order",
+                    OrderByItemExpr => "orderbyitem",
                     GroupByExpr => "group",
                     HavingExpr => "having",
                     SectionExpr => "section",
                     SelectExpr => "select",
+                    SelectItemExpr => "selectitem",
                     DeleteExpr => "delete",
                     UpdateExpr => "update",
                     _ => value.GetType().Name.Replace("Expr", "").ToLower()
                 };
                 writer.WritePropertyName("$");
-                WriteStringUnescaped(writer, mark);
+                writer.WriteStringValue(mark);
 
                 switch (value)
                 {
@@ -642,10 +651,19 @@ namespace LiteOrm.Common
                             JsonSerializer.Serialize(writer, fe.TableArgs, options);
                         }
                         break;
-                    case OrderByItemExpr orderByItemExpr:
+                    case OrderByItemExpr oie:
                         writer.WritePropertyName("Field");
-                        JsonSerializer.Serialize(writer, orderByItemExpr.Field, options);
-                        writer.WriteBoolean("Asc", orderByItemExpr.Ascending);
+                        JsonSerializer.Serialize(writer, oie.Field, options);
+                        writer.WriteBoolean("Asc", oie.Ascending);
+                        break;
+                    case SelectItemExpr sie:
+                        if (!string.IsNullOrEmpty(sie.Alias))
+                        {
+                            writer.WritePropertyName("Alias");
+                            writer.WriteStringValue(sie.Alias);
+                        }
+                        writer.WritePropertyName("Value");
+                        WriteExpr(writer, sie.Value, options);
                         break;
                     case TableJoinExpr tje:
                         if (tje.Table != null)
@@ -729,8 +747,32 @@ namespace LiteOrm.Common
                         {
                             writer.WritePropertyName("Selects");
                             writer.WriteStartArray();
-                            foreach (var item in sele.Selects) WriteExpr(writer, item, options);
+                            foreach (var item in sele.Selects)
+                            {
+                                // 优化序列化格式：SelectItemExpr 使用属性方式序列化 Alias 和 Value
+                                writer.WriteStartObject();
+                                if (!string.IsNullOrEmpty(item.Alias))
+                                {
+                                    writer.WritePropertyName("Alias");
+                                    writer.WriteStringValue(item.Alias);
+                                }
+                                writer.WritePropertyName("Value");
+                                WriteExpr(writer, item.Value, options);
+                                writer.WriteEndObject();
+                            }
                             writer.WriteEndArray();
+                        }
+                        break;
+                    case TableJoinExpr tje:
+                        if (tje.On != null)
+                        {
+                            writer.WritePropertyName("On");
+                            WriteExpr(writer, tje.On, options);
+                        }
+                        if (tje.JoinType != TableJoinType.Left)
+                        {
+                            writer.WritePropertyName("JoinType");
+                            writer.WriteStringValue(tje.JoinType.ToString());
                         }
                         break;
                     case WhereExpr we:
@@ -794,15 +836,6 @@ namespace LiteOrm.Common
                 writer.WriteEndObject();
             }
 
-            /// <summary>
-            /// 手不转义 HTML 敏感字符的 JSON 字符串值
-            /// </summary>
-            private void WriteStringUnescaped(Utf8JsonWriter writer, string value)
-            {
-                string encoded = JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(value);
-                writer.WriteRawValue($"\"{encoded}\"");
-            }
-
             private object ReadNative(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 switch (reader.TokenType)
@@ -851,7 +884,7 @@ namespace LiteOrm.Common
                     if (reader.ValueTextEquals("Left"))
                     {
                         reader.Read();
-                        left = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                        left = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                     }
                     else if (reader.ValueTextEquals("Operator"))
                     {
@@ -869,7 +902,7 @@ namespace LiteOrm.Common
                     else if (reader.ValueTextEquals("Right"))
                     {
                         reader.Read();
-                        right = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                        right = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                     }
                     else
                     {
@@ -894,7 +927,7 @@ namespace LiteOrm.Common
                     if (reader.ValueTextEquals("Left"))
                     {
                         reader.Read();
-                        left = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                        left = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                     }
                     else if (reader.ValueTextEquals("Operator"))
                     {
@@ -912,7 +945,7 @@ namespace LiteOrm.Common
                     else if (reader.ValueTextEquals("Right"))
                     {
                         reader.Read();
-                        right = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                        right = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                     }
                     else
                     {
@@ -1198,7 +1231,7 @@ namespace LiteOrm.Common
                     else if (prop == "Operand")
                     {
                         reader.Read();
-                        operand = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                        operand = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                     }
                     else
                     {
@@ -1207,7 +1240,7 @@ namespace LiteOrm.Common
                             success = true;
                             op = parsedOp;
                             reader.Read();
-                            operand = JsonSerializer.Deserialize<Expr>(ref reader, options) as ValueTypeExpr;
+                            operand = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                         }
                         else
                         {

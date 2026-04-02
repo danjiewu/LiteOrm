@@ -171,7 +171,6 @@ namespace LiteOrm.Benchmark
                     fsql.CodeFirst.SyncStructure(typeof(BenchmarkUser), typeof(BenchmarkLog));
 
                     var efCtx = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
-                    efCtx.Database.EnsureDeleted();
                     efCtx.Database.EnsureCreated();
                     Console.WriteLine("Tables cleaning and rebuilding completed.");
 

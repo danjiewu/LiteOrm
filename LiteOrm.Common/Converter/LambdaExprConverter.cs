@@ -262,7 +262,7 @@ namespace LiteOrm.Common
             var items = new List<ValueTypeExpr>();
             foreach (var arg in node.Arguments)
             {
-                var item = ConvertInternal(arg) as ValueTypeExpr;
+                var item = ConvertInternal(arg).AsValue();
                 if (item is not null) items.Add(item);
             }
             return new ValueSet(ValueJoinType.List, items.ToArray());
@@ -331,7 +331,7 @@ namespace LiteOrm.Common
             // 处理 ?? 运算符，依赖参数时转为 COALESCE 函数，否则本地计算
             if (node.NodeType == ExpressionType.Coalesce)
             {
-                return _expressionDetector.CanEvaluate(node) ? EvaluateToExpr(node) : new FunctionExpr("COALESCE", ConvertInternal(node.Left) as ValueTypeExpr, ConvertInternal(node.Right) as ValueTypeExpr);
+                return _expressionDetector.CanEvaluate(node) ? EvaluateToExpr(node) : new FunctionExpr("COALESCE", ConvertInternal(node.Left).AsValue(), ConvertInternal(node.Right).AsValue());
             }
 
             var left = ConvertInternal(node.Left);
@@ -391,10 +391,10 @@ namespace LiteOrm.Common
 
                         if (op is ValueOperator vop)
                         {
-                            return new ValueBinaryExpr(left as ValueTypeExpr, vop, right.AsValue());
+                            return new ValueBinaryExpr(left.AsValue(), vop, right.AsValue());
                         }
                         else
-                            return new LogicBinaryExpr(left as ValueTypeExpr, (LogicOperator)op, right.AsValue());
+                            return new LogicBinaryExpr(left.AsValue(), (LogicOperator)op, right.AsValue());
                     }
                     else
                         throw new NotSupportedException($"Unsupported binary operator: {node.NodeType}");
@@ -528,7 +528,7 @@ namespace LiteOrm.Common
             var items = new List<ValueTypeExpr>();
             foreach (var expression in node.Expressions)
             {
-                var item = ConvertInternal(expression) as ValueTypeExpr;
+                var item = ConvertInternal(expression).AsValue();
                 if (item is not null)
                 {
                     items.Add(item);
@@ -545,7 +545,7 @@ namespace LiteOrm.Common
             {
                 foreach (var arg in init.Arguments)
                 {
-                    var item = ConvertInternal(arg) as ValueTypeExpr;
+                    var item = ConvertInternal(arg).AsValue();
                     if (item is not null)
                     {
                         items.Add(item);
@@ -702,7 +702,7 @@ namespace LiteOrm.Common
             // 添加对象实例（如果是非静态方法）
             if (node.Object is not null)
             {
-                var obj = ConvertInternal(node.Object) as ValueTypeExpr;
+                var obj = ConvertInternal(node.Object).AsValue();
                 if (obj is not null)
                 {
                     parameters.Add(obj);
@@ -712,7 +712,7 @@ namespace LiteOrm.Common
             // 添加方法参数
             foreach (var arg in node.Arguments)
             {
-                var param = ConvertInternal(arg) as ValueTypeExpr;
+                var param = ConvertInternal(arg).AsValue();
                 if (param is not null)
                 {
                     parameters.Add(param);

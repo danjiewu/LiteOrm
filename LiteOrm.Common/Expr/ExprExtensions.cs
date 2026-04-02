@@ -167,14 +167,14 @@ namespace LiteOrm.Common
         /// 创建 IN 集合包含表达式（表达式版本）。
         /// </summary>
         /// <param name="left">左侧值表达式。</param>
-        /// <param name="valueExpr">表示集合的表达式，如ValueSet、SelectExpr。</param>
+        /// <param name="expr">表示集合的表达式，如ValueSet、SelectExpr。</param>
         /// <returns>IN 集合包含逻辑表达式。</returns>
         /// <example>
         /// <code>
         /// var condition = Expr.Prop("UserId").In(Expr.From&lt;User&gt;().Where(Expr.Prop("Age") &gt;= 18).Select(nameof(User.Id));
         /// </code>
         /// </example>
-        public static LogicBinaryExpr In(this ValueTypeExpr left, ValueTypeExpr valueExpr) => new LogicBinaryExpr(left, LogicOperator.In, valueExpr);
+        public static LogicBinaryExpr In(this ValueTypeExpr left, Expr expr) => new LogicBinaryExpr(left, LogicOperator.In, expr.AsValue());
         /// <summary>
         /// 创建 IN 集合包含表达式（参数数组版本）。
         /// </summary>

@@ -63,6 +63,7 @@ namespace LiteOrm.Common
             if (obj is TableJoinExpr other)
             {
                 if (!Equals(Table, other.Table)) return false;
+                if (!Equals(JoinType, other.JoinType)) return false;
                 if (!Equals(On, other.On)) return false;
                 return true;
             }
@@ -75,7 +76,7 @@ namespace LiteOrm.Common
         /// <returns>哈希码值</returns>
         public override int GetHashCode()
         {
-            return OrderedHashCodes(typeof(TableJoinExpr).GetHashCode(), Table?.GetHashCode() ?? 0, On?.GetHashCode() ?? 0);
+            return OrderedHashCodes(typeof(TableJoinExpr).GetHashCode(), JoinType.GetHashCode(), Table?.GetHashCode() ?? 0, On?.GetHashCode() ?? 0);
         }
 
         /// <summary>
@@ -84,7 +85,7 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            return Table == null ? string.Empty : $"JOIN {Table} ON {On}";
+            return Table == null ? string.Empty : $"{JoinType} JOIN {Table} ON {On}";
         }
 
         /// <summary>
