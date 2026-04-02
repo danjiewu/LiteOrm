@@ -11,10 +11,5 @@ namespace LiteOrm.Common
         /// 外部表对应的实体类型
         /// </summary>
         public Type ForeignType { get; set; }
-
-        /// <summary>
-        /// 过滤表达式，用于定义关联条件
-        /// </summary>
-        public string FilterExpression { get; set; }
     }
 }

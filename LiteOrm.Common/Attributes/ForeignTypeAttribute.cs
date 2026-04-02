@@ -30,9 +30,5 @@ namespace LiteOrm.Common
         /// 别名
         /// </summary>
         public string Alias { get; set; }
-        /// <summary>
-        /// 附加筛选条件
-        /// </summary>
-        public string FilterExpression { get; set; }
     }
 }

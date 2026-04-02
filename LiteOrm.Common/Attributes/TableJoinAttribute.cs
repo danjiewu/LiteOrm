@@ -19,7 +19,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="sourceTable">关联的源表</param>
         /// <param name="targetType">关联的对象类型</param>
-        /// <param name="foreignKeys">外键</param>
+        /// <param name="foreignKeys">外键，联合主键的外键以","分隔，按照主键顺序排列</param>
         public TableJoinAttribute(string sourceTable, Type targetType, string foreignKeys)
         {
             this._sourceTable = sourceTable;
@@ -33,7 +33,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="sourceTable">关联的源表</param>
         /// <param name="targetType">关联的对象类型</param>
-        /// <param name="foreignKeys">外键</param>
+        /// <param name="foreignKeys">外键，联合主键的外键以","分隔，按照主键顺序排列</param>
         public TableJoinAttribute(Type sourceTable, Type targetType, string foreignKeys)
         {
             this._sourceTable = sourceTable;
@@ -53,7 +53,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 源表，可以是字符串，也可以是对应的对象类型
+        /// 源表，可以是字符串，也可以是对应的对象类型，默认为主表
         /// </summary>
         public object Source
         {
@@ -87,18 +87,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 外键，多个外键以","分隔，按照主键顺序排列
+        /// 外键，联合主键的外键以","分隔，按照主键顺序排列
         /// </summary>
         public string ForeignKeys
         {
             get { return _foreignKeys; }
         }
-
-        /// <summary>
-        /// 筛选条件
-        /// </summary>
-        public string FilterExpression { get; set; }
     }
-
-
 }

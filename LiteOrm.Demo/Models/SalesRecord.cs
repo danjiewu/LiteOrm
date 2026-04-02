@@ -41,7 +41,7 @@ namespace LiteOrm.Demo.Models
     /// </summary>
     public class SalesRecordView : SalesRecord
     {
-        [ForeignColumn(typeof(User), Property = "UserName")]
+        [ForeignColumn(typeof(User))]
         public string? UserName { get; set; }
     }
 }

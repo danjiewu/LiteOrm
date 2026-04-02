@@ -6,6 +6,7 @@ namespace LiteOrm.Demo.Models
     /// 用户实体类
     /// </summary>
     [Table("Users")]
+    [TableJoin("Dept", typeof(Department), nameof(Department.ParentId), AliasName = "Parent")]
     public class User : ObjectBase
     {
         /// <summary>
@@ -36,7 +37,7 @@ namespace LiteOrm.Demo.Models
         /// 所属部门 ID
         /// </summary>
         [Column("DeptId")]
-        [ForeignType(typeof(DepartmentView), Alias = "Dept")]
+        [ForeignType(typeof(Department), Alias = "Dept")]
         public int? DeptId { get; set; }
     }
 
@@ -51,7 +52,7 @@ namespace LiteOrm.Demo.Models
         [ForeignColumn("Dept", Property = "Name")]
         public string? DeptName { get; set; }
 
-        [ForeignColumn("Dept", Property = "ParentName")]
+        [ForeignColumn("Parent", Property = "Name")]
         public string? ParentDeptName { get; set; }
     }
 }
