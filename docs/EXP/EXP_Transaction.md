@@ -121,10 +121,10 @@ LiteOrm 的事务传播行为：
 | 有现有事务 | 加入现有事务（嵌套） |
 | 事务失败 | 全部回滚 |
 
-
 ## 4. 事务与 SessionManager
 
 LiteOrm 使用 `SessionManager` 管理数据库连接及事务：
+
 - 支持跨数据库的事务
 - 事务开始时，当前 Scope 的 SessionManager 已有的数据库连接都将进入事务
 - 在事务过程中获取的数据库连接也会自动加上事务
@@ -133,5 +133,6 @@ LiteOrm 使用 `SessionManager` 管理数据库连接及事务：
 
 ## 5. 下一步
 
-- 分表分库：[EXP_Sharding](./EXP_Sharding.md)
-- 性能优化：[EXP_Performance](./EXP_Performance.md)
+- 关联查询：[关联查询](../05_Associations.md)
+- 分表分库：[分表分库](./EXP_Sharding.md)
+- 性能优化：[性能优化](./EXP_Performance.md)

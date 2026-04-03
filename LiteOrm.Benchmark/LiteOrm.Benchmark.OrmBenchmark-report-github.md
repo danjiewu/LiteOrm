@@ -77,7 +77,7 @@ Job=MediumRun  IterationCount=15  LaunchCount=2  WarmupCount=10
 ---
 
 ## 📊 Full BenchmarkDotNet Report
-```
+```plain
 
 BenchmarkDotNet v0.15.8, Linux Ubuntu 24.04 LTS (Noble Numbat)
 Intel Xeon Silver 4314 CPU 2.40GHz (Max: 2.39GHz), 1 CPU, 4 logical and 4 physical cores

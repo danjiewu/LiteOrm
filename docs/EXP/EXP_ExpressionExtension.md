@@ -13,7 +13,7 @@ LiteOrm 提供强大的表达式扩展机制，允许注册自定义方法处理
 
 ### 1.1 处理流程
 
-```
+```plain
 C# Lambda 表达式
     │
     ▼
@@ -305,7 +305,7 @@ LiteOrm 在启动时通过 `LiteOrmSqlFunctionInitializer` 自动注册了以下
 | `Now` | 当前时间戳 | MySQL: `NOW()`, SQLite: `datetime('now')` |
 | `Today` | 当前日期 | MySQL: `CURDATE()`, SQLite: `date('now')` |
 | `CASE` | 条件表达式 | 标准 SQL CASE WHEN |
-| `Over` | 窗口函数OVER子句 | 标准 SQL OVER |
+| `Over` | 窗口函数 OVER 子句 | 标准 SQL OVER |
 | `RowsBetween` / `RangeBetween` | 窗口函数帧定义 | 标准 ROWS/RANGE BETWEEN |
 | `IndexOf` | 字符串位置（0-based） | MySQL: `INSTR()-1`, SQL Server: `CHARINDEX()-1` |
 | `Substring` | 字符串截取（0-based） | MySQL: `SUBSTR(..., pos+1, len)` |
@@ -331,6 +331,6 @@ LiteOrm 在启动时通过 `LiteOrmSqlFunctionInitializer` 自动注册了以下
 
 ## 11. 下一步
 
-- 窗口函数：[EXP_WindowFunctions](./EXP_WindowFunctions.md)
-- 函数验证器：[EXP_FunctionExprValidator](./EXP_FunctionExprValidator.md)
-
+- 关联查询：[关联查询](../05_Associations.md)
+- 窗口函数：[窗口函数](./EXP_WindowFunctions.md)
+- 函数验证器：[函数验证器](./EXP_FunctionExprValidator.md)

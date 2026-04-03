@@ -335,7 +335,6 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 | `.Section(skip, take)` | 分页子句 | `fromExpr.Section(0, 20)` |
 | `.Set(assignments)` | UPDATE SET 子句 | `updateExpr.Set(("Status", Expr.Value(1)))` |
 
-
 ## 4. ExprString 插值字符串
 
 ExprString 允许在字符串中直接嵌入 Expr 对象，适合自定义 DAO 场景。
@@ -434,40 +433,9 @@ var dataTableAsync = await result.GetResultAsync();
 
 ### 7.1 多表关联查询
 
-LiteOrm 不支持在查询时动态指定 JOIN，而是通过**预定义 View 类型**的方式支持多表连接。
+有关多表关联查询的详细说明、示例与最佳实践，请参阅： [关联查询](./05_Associations.md)。
 
-**Step 1：定义包含外键列的 View**：
-
-```csharp
-public class UserView : User
-{
-    [ForeignColumn(typeof(Department), Property = "DeptName")]
-    public string? DeptName { get; set; }
-}
-```
-
-**Step 2：查询时自动生成 JOIN**：
-
-```csharp
-var users = await userService.SearchAsync<UserView>();
-// 自动生成：SELECT u.*, d.DeptName FROM Users u LEFT JOIN Department d ON u.DeptId = d.Id
-```
-
-**多级关联**：如果 Order 通过 User 再关联到 Department：
-
-```csharp
-public class OrderView : Order
-{
-    [ForeignColumn(typeof(User), Property = "UserName")]
-    public string? UserName { get; set; }
-
-    [ForeignColumn(typeof(User), Property = "DeptId")]
-    public int? DeptId { get; set; }
-
-    [ForeignColumn(typeof(Department), Property = "DeptName")]
-    public string? DeptName { get; set; }
-}
-```
+简要：通过 ForeignType/TableJoin + ForeignColumn 在类型层面定义关联，LiteOrm 会自动生成 JOIN。生成复杂视图前建议审查最终 SQL 与执行计划以确保性能。
 
 ### 7.2 SelectAs 选择部分字段
 
@@ -482,6 +450,7 @@ var result = await userService.SearchAs<UserView>(
 
 ## 8. 下一步
 
+- 关联查询：[关联查询](./05_Associations.md)
 - 学习完整操作：[增删改查](./04_CrudGuide.md)
-- 事务处理：[EXP_Transaction](./EXP/EXP_Transaction.md)
-- 表达式扩展：[EXP_ExpressionExtension](./EXP/EXP_ExpressionExtension.md)
+- 事务处理：[事务处理](./EXP/EXP_Transaction.md)
+- 表达式扩展：[表达式扩展](./EXP/EXP_ExpressionExtension.md)

@@ -173,6 +173,7 @@ await userService.DeleteAsync(u => u.Age < 18);
 
 ## 7. 下一步
 
+- 关联查询：[关联查询](./05_Associations.md)
 - 深入学习：[基础概念](./02_CoreConcepts.md)
 - 查询详解：[查询指南](./03_QueryGuide.md)
 - 完整操作：[增删改查](./04_CrudGuide.md)

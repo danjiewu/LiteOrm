@@ -174,5 +174,6 @@ validator.Validate(expr2);  // false
 
 ## 8. 下一步
 
-- 表达式扩展：[EXP_ExpressionExtension](./EXP_ExpressionExtension.md)
-- 窗口函数：[EXP_WindowFunctions](./EXP_WindowFunctions.md)
+- 关联查询：[关联查询](../05_Associations.md)
+- 表达式扩展：[表达式扩展](./EXP_ExpressionExtension.md)
+- 窗口函数：[窗口函数](./EXP_WindowFunctions.md)

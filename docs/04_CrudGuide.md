@@ -275,7 +275,7 @@ public class UserService : EntityService<User>
 
 ## 7. 下一步
 
-- 进阶操作：[事务处理](./EXP/EXP_Transaction.md)
-- 分表分库：[EXP\_Sharding](./EXP/EXP_Sharding.md)
-- 性能优化：[EXP\_Performance](./EXP/EXP_Performance.md)
-
+- 关联查询：[关联查询](./05_Associations.md)
+- 事务处理：[事务处理](./EXP/EXP_Transaction.md)
+- 分表分库：[分表分库](./EXP/EXP_Sharding.md)
+- 性能优化：[性能优化](./EXP/EXP_Performance.md)

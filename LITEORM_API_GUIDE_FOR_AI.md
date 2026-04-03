@@ -1,4 +1,4 @@
-# LiteOrm API 使用指南（AI适用）
+# LiteOrm API 使用指南（AI 适用）
 
 ## 一、配置与注册
 
@@ -463,7 +463,7 @@ var delete = new DeleteExpr(Expr.From<User>(), Expr.Prop("Age") < 18);
 
 ### ExprString
 
-插值字符串处理器，在DAO的 `Search(ExprString exprString)` 方法的字符串参数中中直接嵌入 Expr 对象：
+插值字符串处理器，在 DAO 的 `Search(ExprString exprString)` 方法的字符串参数中中直接嵌入 Expr 对象：
 
 ```csharp
 // 嵌入 Expr 对象自动转为带参数 SQL 片段

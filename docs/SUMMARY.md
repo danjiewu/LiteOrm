@@ -8,26 +8,27 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，结合了微 ORM 的
 
 | 文档                                      | 说明               |
 | --------------------------------------- | ---------------- |
-| [01\_QuickStart.md](./01_QuickStart.md) | 快速入门：安装、配置、第一个示例 |
+| [快速入门](./01_QuickStart.md) | 快速入门：安装、配置、第一个示例 |
 
 ### 基础指南
 
 | 文档                                          | 说明                                 |
 | ------------------------------------------- | ---------------------------------- |
-| [02\_CoreConcepts.md](./02_CoreConcepts.md) | 基础概念：架构、实体、视图、数据源                  |
-| [03\_QueryGuide.md](./03_QueryGuide.md)     | 查询指南：Lambda/Expr/ExprString 三种查询方式 |
-| [04\_CrudGuide.md](./04_CrudGuide.md)       | 增删改查：完整操作指南                        |
+| [基础概念](./02_CoreConcepts.md) | 基础概念：架构、实体、视图、数据源 |
+| [查询指南](./03_QueryGuide.md) | 查询指南：Lambda/Expr/ExprString 三种查询方式 |
+| [关联查询](./05_Associations.md) | 关联查询：TableJoin / ForeignType / AutoExpand |
+| [增删改查](./04_CrudGuide.md) | 增删改查：完整操作指南 |
 
 ### 专题详解
 
 | 文档                                                                  | 说明                 |
 | ------------------------------------------------------------------- | ------------------ |
-| [EXP\_Transaction.md](./EXP/EXP_Transaction.md)                     | 事务处理：声明式与手动事务      |
-| [EXP\_Sharding.md](./EXP/EXP_Sharding.md)                           | 分表分库：IArged 接口动态路由 |
-| [EXP\_Performance.md](./EXP/EXP_Performance.md)                     | 性能优化：连接池、参数化查询     |
-| [EXP\_ExpressionExtension.md](./EXP/EXP_ExpressionExtension.md)     | 表达式扩展：自定义方法与函数     |
-| [EXP\_WindowFunctions.md](./EXP/EXP_WindowFunctions.md)             | 窗口函数：聚合与排序分析       |
-| [EXP\_FunctionExprValidator.md](./EXP/EXP_FunctionExprValidator.md) | 函数验证器：安全策略控制       |
+| [事务处理](./EXP/EXP_Transaction.md) | 事务处理：声明式与手动事务 |
+| [分表分库](./EXP/EXP_Sharding.md) | 分表分库：IArged 接口动态路由 |
+| [性能优化](./EXP/EXP_Performance.md) | 性能优化：连接池、参数化查询 |
+| [表达式扩展](./EXP/EXP_ExpressionExtension.md) | 表达式扩展：自定义方法与函数 |
+| [窗口函数](./EXP/EXP_WindowFunctions.md) | 窗口函数：聚合与排序分析 |
+| [函数验证器](./EXP/EXP_FunctionExprValidator.md) | 函数验证器：安全策略控制 |
 
 ## 核心特性
 
@@ -47,4 +48,3 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，结合了微 ORM 的
 - [NuGet 包](https://www.nuget.org/packages/LiteOrm/)
 - [API 参考](./LITEORM_API_REFERENCE.zh.md)
 - [AI 使用指南](./LITEORM_API_GUIDE_FOR_AI.md)
-

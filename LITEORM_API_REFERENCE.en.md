@@ -325,7 +325,7 @@ var app = builder.Build();
 
 ### Project File Structure
 
-```
+```plain
 LiteOrm/
 ├── Classes/                 # Core classes
 │   ├── DataSourceProvider.cs         # Data source provider
@@ -791,7 +791,7 @@ The Expr expression system is divided into two categories:
 
 **Expr type hierarchy:**
 
-```
+```plain
 Expr (Base class)
 ├── LogicExpr (Logical expressions for WHERE conditions)
 │   ├── LogicBinaryExpr (Binary comparison: ==, >, <, LIKE, IN, IS NULL, etc.)

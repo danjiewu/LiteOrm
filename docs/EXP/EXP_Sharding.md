@@ -151,7 +151,7 @@ for (int month = 1; month <= 12; month++)
 | `IArged.TableArgs`          | 自动  | 实体实现接口，插入/更新时自动使用 |
 | `tableArgs` 参数 / `WithArgs` | 显式  | 查询时显式指定，覆盖 IArged |
 
-> **注意**：LiteOrm并不能自动知道哪些分表存在，跨分表查询需要在应用层遍历可能的分表并合并结果。
+> **注意**：LiteOrm 并不能自动知道哪些分表存在，跨分表查询需要在应用层遍历可能的分表并合并结果。
 
 ## 7. 分库场景
 
@@ -200,6 +200,6 @@ public class Log : IArged
 
 ## 9. 下一步
 
-- 性能优化：[EXP\_Performance](./EXP_Performance.md)
-- 表达式扩展：[EXP\_ExpressionExtension](./EXP_ExpressionExtension.md)
-
+- 关联查询：[关联查询](../05_Associations.md)
+- 性能优化：[性能优化](./EXP_Performance.md)
+- 表达式扩展：[表达式扩展](./EXP_ExpressionExtension.md)

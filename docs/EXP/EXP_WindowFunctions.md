@@ -300,5 +300,6 @@ SqlBuilder.Instance.RegisterFunctionSqlHandler("LAG_OVER", (_, args) =>
 
 ## 8. 下一步
 
-- 表达式扩展：[EXP_ExpressionExtension](./EXP_ExpressionExtension.md)
-- 函数验证器：[EXP_FunctionExprValidator](./EXP_FunctionExprValidator.md)
+- 关联查询：[关联查询](../05_Associations.md)
+- 表达式扩展：[表达式扩展](./EXP_ExpressionExtension.md)
+- 函数验证器：[函数验证器](./EXP_FunctionExprValidator.md)

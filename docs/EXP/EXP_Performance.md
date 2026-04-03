@@ -125,6 +125,49 @@ foreach (var user in users)
 await userService.BatchUpdateAsync(users);  // 推荐
 ```
 
+### 4.3 BulkProvider（高性能批量提供器）
+
+BulkProvider 是 LiteOrm 提供的高性能批量操作扩展（可选依赖），用于大规模插入/更新/删除时显著减少网络往返与数据库负载。
+
+- 场景：导入大量数据、ETL、数据同步、冷数据回填。
+- 特点：
+  - 使用数据库原生批量接口或高效的多值插入语句。
+  - 支持可配置的批次大小（BatchSize）、并发度（ParallelDegree）与事务边界（UseTransaction）。
+  - 可与事务配合，支持失败回滚或部分成功策略。
+
+示例：批量插入（伪代码）
+
+```csharp
+var factory = services.GetRequiredService<BulkProviderFactory>();
+var provider = factory.GetProvider(dbConnection.GetType());
+await provider.BulkInsertAsync(ToDataTable(users), dbConnection, transaction);
+```
+
+在 LiteOrm 中的实现位置（参考）：
+
+- 接口与工厂： LiteOrm.DbAccess.IBulkProvider、LiteOrm.DbAccess.BulkProviderFactory
+- 默认/示例实现： LiteOrm.Demo.Demos.MySqlBulkCopyProvider（演示如何使用 MySqlBulkCopy）
+- 使用点： LiteOrm.DAO.ObjectDAO 在执行批量插入时会调用 BulkProviderFactory 获取 provider 并调用 BulkInsert/BulkInsertAsync
+
+示例：批量更新（按主键）
+
+```csharp
+// 将需要更新的数据转换为 DataTable，然后调用 provider.BulkInsert/BulkInsertAsync 或 provider 支持的 BulkUpdate
+await provider.BulkInsertAsync(ToDataTable(usersToUpdate), dbConnection, transaction);
+```
+
+可配置选项（常见）：
+
+- BatchSize: 单次提交的记录条数，建议根据数据库与网络吞吐量调整（例如 500-5000）。
+- UseTransaction: 是否在单个事务中执行整个批量操作（注意大事务可能占用大量资源）。
+- ParallelDegree: 并行分片数，适合分库或多连接环境。
+- Upsert: 是否启用插入或更新逻辑，内部实现可根据数据库特性选择 MERGE/ON DUPLICATE KEY 等。
+
+注意事项：
+
+- 在使用 BulkProvider 时，务必在测试环境评估索引负载、日志增长与锁等待；对于写密集型场景，考虑在导入期间禁用辅助索引或延迟索引重建。
+- BulkProvider 实现会因数据库不同而不同：例如 SQL Server 常使用 SqlBulkCopy，MySQL 可使用 LOAD DATA INFILE 或 MySqlBulkCopy。请参考 LiteOrm.Demo 中的示例实现。
+
 ## 5. 异步编程
 
 ### 5.1 使用异步方法
@@ -253,5 +296,6 @@ LiteOrm 相比其他 ORM 的性能优势：
 
 ## 11. 下一步
 
-- 事务处理：[EXP_Transaction](./EXP_Transaction.md)
-- 表达式扩展：[EXP_ExpressionExtension](./EXP_ExpressionExtension.md)
+- 关联查询：[关联查询](../05_Associations.md)
+- 事务处理：[事务处理](./EXP_Transaction.md)
+- 表达式扩展：[表达式扩展](./EXP_ExpressionExtension.md)

@@ -6,7 +6,7 @@
 
 LiteOrm 由以下几个核心组件构成：
 
-```
+```plain
 ┌─────────────────────────────────────────────────────────┐
 │                      Service 层                         │
 │  EntityService<T> / EntityService<T, TView>            │
@@ -112,26 +112,9 @@ public class User
 
 ### 2.4 外键关联
 
-```csharp
-[Table("Orders")]
-public class Order
-{
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-    public int Id { get; set; }
+有关关联查询的详细说明、示例与最佳实践，请参阅： [关联查询](./05_Associations.md)。
 
-    [Column("UserId")]
-    [ForeignType(typeof(User), Alias = "U")]  // 外键关联 User 表
-    public int UserId { get; set; }
-
-    [Column("Amount")]
-    public decimal Amount { get; set; }
-}
-```
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `Type` | Type | 关联的实体类型 |
-| `Alias` | string | 关联表别名，用于避免列名冲突 |
+简要：ForeignType 用于属性级的外键声明；TableJoin 用于类级的复杂/复合连接；视图中使用 ForeignColumn 从外表选择列；AutoExpand 可在必要时自动级联引入关联表（慎用）。
 
 ## 3. 视图模型
 
@@ -330,11 +313,13 @@ await foreach (var user in userViewDAO.Search(Expr.Prop("Status") == 1))
 ```
 
 **核心区别**：
+
 - **Service**：异步方法直接返回 `Task<T>`，使用方便
 - **DAO**：`Search()` 返回 `EnumerableResult<T>`，需要调用 `ToListAsync()`、`FirstOrDefaultAsync()` 等扩展方法获取结果，支持流式处理
 
 ## 8. 下一步
 
+- 关联查询：[关联查询](./05_Associations.md)
 - 掌握查询方式：[查询指南](./03_QueryGuide.md)
 - 学习完整操作：[增删改查](./04_CrudGuide.md)
-- 事务处理：[EXP_Transaction](./EXP/EXP_Transaction.md)
+- 事务处理：[事务处理](./EXP/EXP_Transaction.md)
