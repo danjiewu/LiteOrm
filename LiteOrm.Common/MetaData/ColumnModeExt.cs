@@ -12,7 +12,7 @@ namespace LiteOrm.Common
         /// <returns>如果允许插入则返回true，否则返回false</returns>
         public static bool CanInsert(this ColumnMode mode)
         {
-            return (mode & ColumnMode.Insert) != ColumnMode.None;
+            return (mode & ColumnMode.Insert) == ColumnMode.Insert;
         }
 
         /// <summary>
@@ -22,7 +22,7 @@ namespace LiteOrm.Common
         /// <returns>如果允许更新则返回true，否则返回false</returns>
         public static bool CanUpdate(this ColumnMode mode)
         {
-            return (mode & ColumnMode.Update) != ColumnMode.None;
+            return (mode & ColumnMode.Update) == ColumnMode.Update;
         }
 
         /// <summary>
@@ -32,7 +32,7 @@ namespace LiteOrm.Common
         /// <returns>如果允许读取则返回true，否则返回false</returns>
         public static bool CanRead(this ColumnMode mode)
         {
-            return (mode & ColumnMode.Read) != ColumnMode.None;
+            return (mode & ColumnMode.Read) == ColumnMode.Read;
         }
 
     }

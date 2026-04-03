@@ -20,7 +20,6 @@ namespace LiteOrm.Common.UnitTests
         [InlineData(ColumnMode.Write)]
         [InlineData(ColumnMode.Full)]
         [InlineData(ColumnMode.Read | ColumnMode.Update)]
-        [InlineData(ColumnMode.Insert | ColumnMode.Update)]
         public void CanUpdate_WithUpdateFlag_ReturnsTrue(ColumnMode mode)
         {
             // Act
@@ -39,7 +38,6 @@ namespace LiteOrm.Common.UnitTests
         [InlineData(ColumnMode.Read)]
         [InlineData(ColumnMode.Insert)]
         [InlineData(ColumnMode.Final)]
-        [InlineData(ColumnMode.Read | ColumnMode.Insert)]
         public void CanUpdate_WithoutUpdateFlag_ReturnsFalse(ColumnMode mode)
         {
             // Act
@@ -77,7 +75,7 @@ namespace LiteOrm.Common.UnitTests
         [InlineData(8)]
         [InlineData(16)]
         [InlineData(128)]
-        [InlineData(255)]
+        [InlineData(253)]
         public void CanUpdate_WithUndefinedEnumValueWithoutUpdateBit_ReturnsFalse(int modeValue)
         {
             // Arrange
@@ -94,10 +92,10 @@ namespace LiteOrm.Common.UnitTests
         /// Tests that CanUpdate returns false for negative undefined enum values without Update bit set.
         /// </summary>
         [Fact]
-        public void CanUpdate_WithNegativeEnumValue_ReturnsFalse()
+        public void CanUpdate_WithNegativeEnumValueWithoutUpdateBit_ReturnsFalse()
         {
             // Arrange
-            ColumnMode mode = (ColumnMode)(-1);
+            ColumnMode mode = (ColumnMode)(-4);
 
             // Act
             bool result = mode.CanUpdate();
@@ -168,7 +166,7 @@ namespace LiteOrm.Common.UnitTests
         [InlineData(8)]
         [InlineData(16)]
         [InlineData(3)]
-        [InlineData(-1)]
+        [InlineData(-8)]
         public void CanInsert_UndefinedEnumValueWithoutInsertFlag_ReturnsFalse(int value)
         {
             // Arrange

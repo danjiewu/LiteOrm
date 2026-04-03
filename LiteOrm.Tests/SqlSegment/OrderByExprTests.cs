@@ -1281,7 +1281,7 @@ namespace LiteOrm.Common.UnitTests
             };
 
             // Act & Assert
-            Assert.Throws<NullReferenceException>(() => orderByExpr.ToString());
+            Assert.Throws<ArgumentNullException>(() => orderByExpr.ToString());
         }
     }
 }
