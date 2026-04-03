@@ -87,6 +87,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 是否自动扩展连接的外表。当AutoExpand为true并且作为外表被引用时，自动将本表关联的外表引入连接。默认为false，即不自动扩展连接的外表。
+        /// </summary>
+        public bool AutoExpand { get; set; } = false;
+
+        /// <summary>
         /// 外键，联合主键的外键以","分隔，按照主键顺序排列
         /// </summary>
         public string ForeignKeys

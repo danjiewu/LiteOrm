@@ -54,6 +54,11 @@ namespace LiteOrm.Common
         public TableJoinType JoinType { get; set; }
 
         /// <summary>
+        /// 是否自动扩展连接的外表。当AutoExpand为true并且作为外表被引用时，自动将本表关联的外表引入连接。默认为false，即不自动扩展连接的外表。
+        /// </summary>
+        public bool AutoExpand { get; set; } = false;
+
+        /// <summary>
         /// 获取关联外部表的目标主键列集合。
         /// </summary>
         public ReadOnlyCollection<ColumnRef> ForeignPrimeKeys

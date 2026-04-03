@@ -26,8 +26,9 @@ namespace LiteOrm.Demo.Models
         [Column("ShipTime")]
         public DateTime? ShipTime { get; set; }
 
+        //自动扩展关联的用户表，引入用户所在部门，演示 ForeignTypeAttribute 的 AutoExpand 功能
         [Column("SalesUserId")]
-        [ForeignType(typeof(User))]
+        [ForeignType(typeof(User), AutoExpand = true)]
         public int SalesUserId { get; set; }
 
         /// <summary>
@@ -43,5 +44,8 @@ namespace LiteOrm.Demo.Models
     {
         [ForeignColumn(typeof(User))]
         public string? UserName { get; set; }
+        //无需显式关联 Department 表，已通过User表的 AutoExpand 引入 Department 表，直接使用 ForeignColumn 引用 Department 的 Name 列
+        [ForeignColumn(typeof(Department), Property = nameof(Department.Name))]
+        public string? DepartmentName { get; set; }
     }
 }

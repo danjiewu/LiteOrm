@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Reflection;
 
 namespace LiteOrm
@@ -128,9 +129,14 @@ namespace LiteOrm
                     column.Mode = columnAttribute.ColumnMode & ((property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None));
                     if (foreignTypeAttr is not null)
                     {
-                        column.ForeignTable = new ForeignTable() { ForeignType = foreignTypeAttr.ObjectType };
+                        column.ForeignTable = new ForeignTable()
+                        {
+                            ForeignType = foreignTypeAttr.ObjectType,
+                            JoinType = foreignTypeAttr.JoinType,
+                            Alias = foreignTypeAttr.Alias,
+                            AutoExpand = foreignTypeAttr.AutoExpand
+                        };
                     }
-                    column.ForeignAlias = foreignTypeAttr is null ? null : foreignTypeAttr.Alias;
                     return column;
                 }
             }
@@ -147,9 +153,14 @@ namespace LiteOrm
                 column.AllowNull = property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(column.PropertyType) is not null : true;
                 if (foreignTypeAttr is not null)
                 {
-                    column.ForeignTable = new ForeignTable() { ForeignType = foreignTypeAttr.ObjectType };
+                    column.ForeignTable = new ForeignTable()
+                    {
+                        ForeignType = foreignTypeAttr.ObjectType,
+                        JoinType = foreignTypeAttr.JoinType,
+                        Alias = foreignTypeAttr.Alias,
+                        AutoExpand = foreignTypeAttr.AutoExpand
+                    };
                 }
-                column.ForeignAlias = foreignTypeAttr is null ? null : foreignTypeAttr.Alias;
                 return column;
             }
         }
@@ -166,8 +177,13 @@ namespace LiteOrm
                 ForeignColumn foreignColumn = new ForeignColumn(property);
                 if (foreignTypeAttr is not null)
                 {
-                    foreignColumn.ForeignTable = new ForeignTable() { ForeignType = foreignTypeAttr.ObjectType };
-                    foreignColumn.ForeignAlias = foreignTypeAttr.Alias;
+                    foreignColumn.ForeignTable = new ForeignTable()
+                    {
+                        ForeignType = foreignTypeAttr.ObjectType,
+                        JoinType = foreignTypeAttr.JoinType,
+                        Alias = foreignTypeAttr.Alias,
+                        AutoExpand = foreignTypeAttr.AutoExpand
+                    };
                 }
                 return foreignColumn;
             }
@@ -193,7 +209,11 @@ namespace LiteOrm
                 var targetTableDef = GetTableDefinition(tableJoin.TargetType);
                 if (targetTableDef == null) continue;
 
-                JoinedTable joinedTable = new JoinedTable(targetTableDef);
+                JoinedTable joinedTable = new JoinedTable(targetTableDef)
+                {
+                    JoinType = tableJoin.JoinType,
+                    AutoExpand = tableJoin.AutoExpand
+                };
                 if (String.IsNullOrEmpty(tableJoin.AliasName))
                     tableJoin.AliasName = joinedTable.Name = tableJoin.TargetType.Name;
                 else
@@ -334,8 +354,13 @@ namespace LiteOrm
                 }
             }
 
+            if (joinedTable is null)
+            {
+                throw new ArgumentException($"Foreign table name {foreignTable} of property {column.PropertyName} does not exist in joined tables.");
+            }
+
             // 如果通过外键表名和外键表类型都找不到目标列，则尝试通过外键表类型在已连接的表中查找属性，再生成目标列
-            if (joinedTable != null && targetColumn is null)
+            if (targetColumn is null)
             {
                 var property = joinedTable.TableDefinition.ObjectType.GetProperty(primeProperty);
                 if (property is not null)
@@ -346,19 +371,11 @@ namespace LiteOrm
             }
 
             // 如果找不到目标列，则抛出异常
-            if (targetColumn == null)
+            if (targetColumn is null)
                 throw new ArgumentException($"Foreign table name {foreignTable} of property {column.PropertyName} does not exist in joined tables.");
 
-            // 标记外键表以及其所有上级表为已使用
-            JoinedTable usedTable = joinedTable;
-            while (usedTable is not null)
-            {
-                usedTable.Used = true;
-                if (usedTable.ForeignKeys.Count > 0)
-                    usedTable = usedTable.ForeignKeys[0].Table as JoinedTable;
-                else
-                    usedTable = null;
-            }
+            // 标记外键表为已使用
+            joinedTable.Used = true;
 
             return targetColumn;
         }
@@ -372,7 +389,7 @@ namespace LiteOrm
         {
             ColumnRef columnRef = columnRefs.Dequeue();
             SqlColumn column = columnRef.Column;
-            if (column.ForeignType is not null)
+            if (column.ForeignTable is not null)
             {
                 bool foreignTypeExists = false;
                 foreach (JoinedTable joinedTable in joinedTables.Values)
@@ -387,7 +404,11 @@ namespace LiteOrm
                 if (!foreignTypeExists)
                 {
                     TableDefinition foreignTable = GetTableDefinition(column.ForeignType);
-                    JoinedTable joinedTable = new JoinedTable(foreignTable);
+                    JoinedTable joinedTable = new JoinedTable(foreignTable)
+                    {
+                        JoinType = column.ForeignTable.JoinType,
+                        AutoExpand = column.ForeignTable.AutoExpand
+                    };
                     if (String.IsNullOrEmpty(column.ForeignAlias))
                         joinedTable.Name = column.ForeignType.Name;
                     else
@@ -397,11 +418,14 @@ namespace LiteOrm
                     joinedTable.ForeignKeys = foreignKeys.AsReadOnly();
                     joinedTables[joinedTable.Name] = joinedTable;
 
-                    //关闭自动扩展功能，避免过度连接
-                    //foreach (SqlColumn lcolumn in foreignTable.Columns)
-                    //{
-                    //    columnRefs.Enqueue(new ColumnRef(joinedTable, lcolumn));
-                    //}
+                    // 如果所引用外表的AutoExpand为true，将该外表中的列加入连接队列，自动扩展连接的外表
+                    if (joinedTable.AutoExpand)
+                    {
+                        foreach (SqlColumn lcolumn in foreignTable.Columns)
+                        {
+                            columnRefs.Enqueue(new ColumnRef(joinedTable, lcolumn));
+                        }
+                    }
                 }
             }
         }

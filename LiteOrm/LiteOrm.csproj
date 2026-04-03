@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.0.12.0</AssemblyVersion>
-		<FileVersion>8.0.12.0</FileVersion>
+		<AssemblyVersion>8.0.13.0</AssemblyVersion>
+		<FileVersion>8.0.13.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.0.12</VersionPrefix>
+		<VersionPrefix>8.0.13</VersionPrefix>
 		<Nullable>disable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,17 +16,7 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      新增ExistsRelated方法；
-      LogicSet拆分为AndExpr和OrExpr；
-      新增ExprValidator；
-      增加日期format，加TimeSpan类型支持；
-      优化Lambda解析机制，尽量将表达式计算值；
-      优化DAOContext生成机制，修复Sqlite读写冲突bug；
-      SessionManager改为缓加载；
-      优化异步方法为异步获取上下文，避免上下文释放影响效率；
-      优化数据库上下文释放机制，不再等待连接关闭；
-      优化生成SQL的格式，增加缩进；
-      修复一些bug。
+      将全局自动扩展关联表改为在关联时指定，避免关联关系混乱和性能损失。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

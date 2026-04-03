@@ -61,7 +61,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 关联的外部对象别名
         /// </summary>
-        public string ForeignAlias { get; internal set; }
+        public string ForeignAlias => ForeignTable?.Alias;
 
         /// <summary>
         /// 赋值

@@ -109,57 +109,115 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 
 ## 四、API 参考
 
-### EntityService<T>
+### IEntityService<T>（增删改）
 
-> 以下标注 *(扩展)* 的方法来自 `LambdaExprExtensions`，无需修改服务类即可使用。
+| 方法                                                   | 返回类型   |
+| ---------------------------------------------------- | ------ |
+| `Insert(T entity)`                                   | `bool` |
+| `Update(T entity)`                                   | `bool` |
+| `UpdateOrInsert(T entity)`                           | `bool` |
+| `Delete(T entity)`                                   | `bool` |
+| `DeleteID(object id, params string[] tableArgs)`     | `bool` |
+| `Delete(LogicExpr expr, params string[] tableArgs)`  | `int`  |
+| `Update(UpdateExpr expr, params string[] tableArgs)` | `int`  |
+| `BatchInsert(IEnumerable<T> entities)`               | `void` |
+| `BatchUpdate(IEnumerable<T> entities)`               | `void` |
+| `BatchUpdateOrInsert(IEnumerable<T> entities)`       | `void` |
+| `BatchDelete(IEnumerable<T> entities)`               | `void` |
+| `Batch(IEnumerable<EntityOperation<T>> entities)`    | `void` |
 
-| 方法                                                                                                                    | 返回类型                  |
-| --------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| `Insert(T entity)`                                                                                                    | `bool`                |
-| `InsertAsync(T entity, CancellationToken ct = default)`                                                               | `Task<bool>`          |
-| `Update(T entity)`                                                                                                    | `bool`                |
-| `UpdateAsync(T entity, CancellationToken ct = default)`                                                               | `Task<bool>`          |
-| `Delete(T entity)`                                                                                                    | `bool`                |
-| `DeleteAsync(T entity, CancellationToken ct = default)`                                                               | `Task<bool>`          |
-| `Delete(object id, params string[] tableArgs)`                                                                         | `bool`                |
-| `DeleteAsync(object id, string[] tableArgs = null, CancellationToken ct = default)`                                   | `Task<bool>`          |
-| `Delete(LogicExpr expr, params string[] tableArgs)`                                                                   | `int`                 |
-| `DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken ct = default)`                               | `Task<int>`           |
-| `BatchInsert(IEnumerable<T> entities)`                                                                                | `void`                |
-| `BatchInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`                                           | `Task`                |
-| `BatchUpdate(IEnumerable<T> entities)`                                                                                | `void`                |
-| `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)`                                           | `Task`                |
-| `BatchDelete(IEnumerable<T> entities)`                                                                                | `void`                |
-| `BatchDeleteAsync(IEnumerable<T> entities, CancellationToken ct = default)`                                           | `Task`                |
-| `BatchDeleteID(IEnumerable ids, CancellationToken ct = default, params string[] tableArgs)`                           | `Task`                |
-| `UpdateOrInsert(T entity)`                                                                                            | `UpdateOrInsertResult` |
-| `UpdateOrInsertAsync(T entity, CancellationToken ct = default)`                                                       | `Task<UpdateOrInsertResult>` |
-| `BatchUpdateOrInsert(IEnumerable<T> entities)`                                                                        | `void`                |
-| `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`                                   | `Task`                |
-| `Delete(Expression<Func<T, bool>> expression, params string[] tableArgs)` *(扩展)*                                      | `int`                 |
-| `DeleteAsync(Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)* | `Task<int>`           |
+### IEntityServiceAsync<T>（异步增删改）
+
+| 方法                                                                                        | 返回类型         |
+| ----------------------------------------------------------------------------------------- | ------------ |
+| `InsertAsync(T entity, CancellationToken ct = default)`                                   | `Task<bool>` |
+| `UpdateAsync(T entity, CancellationToken ct = default)`                                   | `Task<bool>` |
+| `UpdateOrInsertAsync(T entity, CancellationToken ct = default)`                           | `Task<bool>` |
+| `DeleteAsync(T entity, CancellationToken ct = default)`                                   | `Task<bool>` |
+| `DeleteIDAsync(object id, string[] tableArgs = null, CancellationToken ct = default)`     | `Task<bool>` |
+| `DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken ct = default)`  | `Task<int>`  |
+| `UpdateAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken ct = default)` | `Task<int>`  |
+| `BatchInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`               | `Task`       |
+| `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)`               | `Task`       |
+| `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`       | `Task`       |
+| `BatchDeleteAsync(IEnumerable<T> entities, CancellationToken ct = default)`               | `Task`       |
+| `BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken ct = default)`    | `Task`       |
 
 ### IEntityViewService<TView>（查询，Expr 风格）
 
-> *(扩展)* 方法来自 `LambdaExprExtensions`。
+| 方法                                                                  | 返回类型          |
+| ------------------------------------------------------------------- | ------------- |
+| `GetObject(object id, params string[] tableArgs)`                   | `TView`       |
+| `SearchOne(Expr expr, params string[] tableArgs)`                   | `TView`       |
+| `Search(Expr expr = null, params string[] tableArgs)`               | `List<TView>` |
+| `ForEach(Expr expr, Action<TView> func, params string[] tableArgs)` | `void`        |
+| `ExistsID(object id, params string[] tableArgs)`                    | `bool`        |
+| `Exists(Expr expr, params string[] tableArgs)`                      | `bool`        |
+| `Count(Expr expr = null, params string[] tableArgs)`                | `int`         |
 
-| 方法                                                                                                               | 返回类型          |
-| ---------------------------------------------------------------------------------------------------------------- | ------------- |
-| `GetObject(object id, params string[] tableArgs)`                                                                | `TView`       |
-| `SearchOne(Expr expr, params string[] tableArgs)`                                                                | `TView`       |
-| `Search(Expr expr = null, params string[] tableArgs)`                                                            | `List<TView>` |
-| `ForEach(Expr expr, Action<TView> func, params string[] tableArgs)`                                              | `void`        |
-| `Exists(Expr expr, params string[] tableArgs)`                                                                   | `bool`        |
-| `ExistsID(object id, params string[] tableArgs)`                                                                 | `bool`        |
-| `Count(Expr expr = null, params string[] tableArgs)`                                                             | `int`         |
-| `Search(Expression<Func<TView, bool>> expression, string[] tableArgs = null)` *(扩展)*                             | `List<TView>` |
-| `Search(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null)` *(扩展)*    | `List<TView>` |
-| `SearchOne(Expression<Func<TView, bool>> expression, string[] tableArgs = null)` *(扩展)*                          | `TView`       |
-| `SearchOne(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null)` *(扩展)* | `TView`       |
-| `Exists(Expression<Func<TView, bool>> expression, params string[] tableArgs)` *(扩展)*                             | `bool`        |
-| `Count(Expression<Func<TView, bool>> expression, params string[] tableArgs)` *(扩展)*                              | `int`         |
+### IEntityViewServiceAsync<TView>（异步查询）
 
-### IEntityViewServiceAsync<TView>
+| 方法                                                                                                           | 返回类型                |
+| ------------------------------------------------------------------------------------------------------------ | ------------------- |
+| `GetObjectAsync(object id, string[] tableArgs = null, CancellationToken ct = default)`                       | `Task<TView>`       |
+| `SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken ct = default)`                       | `Task<TView>`       |
+| `SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken ct = default)`                   | `Task<List<TView>>` |
+| `ForEachAsync(Expr expr, Func<TView, Task> func, string[] tableArgs = null, CancellationToken ct = default)` | `Task`              |
+| `ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken ct = default)`                        | `Task<bool>`        |
+| `ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken ct = default)`                          | `Task<bool>`        |
+| `CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken ct = default)`                    | `Task<int>`         |
+
+### Lambda 表达式扩展方法
+
+> 以下方法来自 `LambdaExprExtensions`，无需修改服务类即可使用。
+
+| 方法                                                                                                                                             | 返回类型                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `Delete(Expression<Func<T, bool>> expression, params string[] tableArgs)`                                                                      | `int`               |
+| `DeleteAsync(Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                                 | `Task<int>`         |
+| `Search(Expression<Func<TView, bool>> expression, string[] tableArgs = null)`                                                                  | `List<TView>`       |
+| `Search(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null)`                                         | `List<TView>`       |
+| `SearchOne(Expression<Func<TView, bool>> expression, string[] tableArgs = null)`                                                               | `TView`             |
+| `SearchOne(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null)`                                      | `TView`             |
+| `Exists(Expression<Func<TView, bool>> expression, params string[] tableArgs)`                                                                  | `bool`              |
+| `Count(Expression<Func<TView, bool>> expression, params string[] tableArgs)`                                                                   | `int`               |
+| `SearchAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                             | `Task<List<TView>>` |
+| `SearchAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)`    | `Task<List<TView>>` |
+| `SearchOneAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                          | `Task<TView>`       |
+| `SearchOneAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>`       |
+| `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                             | `Task<bool>`        |
+| `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                              | `Task<int>`         |
+
+### ObjectDAO<T>（仅增删改）
+
+| 方法                                                                                               | 返回类型                         |
+| ------------------------------------------------------------------------------------------------ | ---------------------------- |
+| `Insert(T entity)`                                                                               | `bool`                       |
+| `Update(T entity)`                                                                               | `bool`                       |
+| `Delete(T entity)`                                                                               | `bool`                       |
+| `DeleteID(object id, params string[] tableArgs)`                                                 | `bool`                       |
+| `Delete(LogicExpr expr)`                                                                         | `int`                        |
+| `Update(UpdateExpr expr)`                                                                        | `int`                        |
+| `BatchInsert(IEnumerable<T> entities)`                                                           | `void`                       |
+| `BatchUpdate(IEnumerable<T> entities)`                                                           | `void`                       |
+| `BatchDelete(IEnumerable<T> entities)`                                                           | `void`                       |
+| `BatchDeleteID(IEnumerable ids, params string[] tableArgs)`                                      | `void`                       |
+| `UpdateOrInsert(T entity)`                                                                       | `UpdateOrInsertResult`       |
+| `BatchUpdateOrInsert(IEnumerable<T> entities)`                                                   | `void`                       |
+| `InsertAsync(T entity, CancellationToken ct = default)`                                          | `Task<bool>`                 |
+| `UpdateAsync(T entity, CancellationToken ct = default)`                                          | `Task<bool>`                 |
+| `DeleteAsync(T entity, CancellationToken ct = default)`                                          | `Task<bool>`                 |
+| `DeleteIDAsync(object id, CancellationToken ct = default)`                                       | `Task<bool>`                 |
+| `DeleteAsync(LogicExpr expr, CancellationToken ct = default)`                                    | `Task<int>`                  |
+| `UpdateAsync(UpdateExpr expr, CancellationToken ct = default)`                                   | `Task<int>`                  |
+| `BatchInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`                      | `Task`                       |
+| `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)`                      | `Task`                       |
+| `BatchDeleteAsync(IEnumerable<T> entities, CancellationToken ct = default)`                      | `Task`                       |
+| `BatchDeleteIDAsync(IEnumerable ids, CancellationToken ct = default, params string[] tableArgs)` | `Task`                       |
+| `UpdateOrInsertAsync(T entity, CancellationToken ct = default)`                                  | `Task<UpdateOrInsertResult>` |
+| `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`              | `Task`                       |
+
+### ObjectViewDAO<T>（仅查询）
 
 | 方法                                                                                                                                                    | 返回类型                |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
@@ -211,11 +269,11 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | 方法                                                                                                                            | 返回类型                        |
 | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
 | `Search(Expr expr = null)`                                                                                                    | `EnumerableResult<T>`       |
-| `Search(Expression<Func<IQueryable<T>, IQueryable<T>>> expr)`                                                                  | `EnumerableResult<T>`       |
-| `Search(ref ExprString sqlBody, bool isFull = false)`                                                                          | `EnumerableResult<T>`       |
+| `Search(Expression<Func<IQueryable<T>, IQueryable<T>>> expr)`                                                                 | `EnumerableResult<T>`       |
+| `Search(ref ExprString sqlBody, bool isFull = false)`                                                                         | `EnumerableResult<T>`       |
 | `SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult> readerFunc = null)`                                     | `EnumerableResult<TResult>` |
 | `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)` | `EnumerableResult<TResult>` |
-| `SearchAs<TResult>(ref ExprString sqlBody)`                                                                                    | `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(ref ExprString sqlBody)`                                                                                   | `EnumerableResult<TResult>` |
 | `GetObject(params object[] keys)`                                                                                             | `EnumerableResult<T>`       |
 | `Count(Expr expr)`                                                                                                            | `ValueResult<int>`          |
 | `Exists(object o)` / `Exists(T o)`                                                                                            | `ValueResult<bool>`         |
@@ -226,11 +284,11 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 
 `DataTableResult` 支持：`.GetResult()` / `.GetResultAsync()`
 
-| 方法                                                             | 返回类型              |
-| -------------------------------------------------------------- | ----------------- |
-| `Search(Expr expr)`                                            | `DataTableResult` |
-| `Search(string[] propertyNames, Expr expr)`                    | `DataTableResult` |
-| `Search(ref ExprString sqlBody, bool isFull = false)`          | `DataTableResult` |
+| 方法                                                    | 返回类型              |
+| ----------------------------------------------------- | ----------------- |
+| `Search(Expr expr)`                                   | `DataTableResult` |
+| `Search(string[] propertyNames, Expr expr)`           | `DataTableResult` |
+| `Search(ref ExprString sqlBody, bool isFull = false)` | `DataTableResult` |
 
 ## 五、事务
 
@@ -309,30 +367,30 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 
 ### Expr 静态工厂方法
 
-| 方法                                        | 返回类型              | 说明                             |
-| ----------------------------------------- | ----------------- | ------------------------------ |
-| `Expr.Prop("Name")`                       | `PropertyExpr`    | 属性表达式                          |
-| `Expr.Prop("alias", "Name")`              | `PropertyExpr`    | 带表别名的属性表达式                     |
-| `Expr.Value(obj)`                         | `ValueExpr`       | 参数化值                           |
-| `Expr.Const(obj)`                         | `ValueExpr`       | 常量值（内联到 SQL，不参数化）              |
-| `Expr.PropEqual("Name", value)`           | `LogicBinaryExpr` | 属性等于值                          |
-| `Expr.Func("ABS", expr)`                  | `FunctionExpr`    | 函数调用                           |
-| `Expr.Aggregate("SUM", expr, isDistinct)` | `FunctionExpr` | 聚合函数（IsAggregate=true） |
-| `Expr.Concat(e1, e2)` | `ValueSet` | CONCAT 字符串拼接（扩展方法） |
-| `Expr.Lambda<T>(u => u.Age > 18)` | `LogicExpr` | Lambda 转 Expr |
-| `Expr.From<T>(tableArgs)`                 | `FromExpr`        | 链式查询起点                         |
-| `Expr.Sql("key", arg)`                    | `GenericSqlExpr`  | 动态 SQL 片段                      |
-| `Expr.Delete<T>(tableArgs)`               | `DeleteExpr`      | 创建 DELETE 表达式                  |
-| `Expr.If(condition, thenExpr, elseExpr)`  | `FunctionExpr`    | IF 表达式                         |
-| `Expr.Case(cases, elseExpr)`              | `FunctionExpr`    | CASE 表达式                       |
-| `Expr.Query<T>(expression)`               | `Expr`            | IQueryable Lambda 转 Expr       |
-| `Expr.Query<T, TResult>(expression)` | `Expr` | 带返回值的 IQueryable Lambda 转 Expr |
-| `Expr.Exists<T>(innerExpr, tableArgs)` | `ForeignExpr` | 关联表 EXISTS 查询 |
-| `Expr.Exists(type, innerExpr, tableArgs)` | `ForeignExpr` | 关联表 EXISTS 查询（指定类型） |
-| `Expr.ExistsRelated<T>(innerExpr, tableArgs)` | `ForeignExpr` | 自动关联的 EXISTS 查询 |
-| `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr` | 自动关联的 EXISTS 查询（指定类型） |
-| `Expr.Exists<T>(lambda)` | `bool` | 仅用于 Lambda 表达式中构造 EXISTS 查询（直接调用会抛出异常） |
-| `Expr.ExistsRelated<T>(lambda)` | `bool` | 仅用于 Lambda 表达式中构造自动关联的 EXISTS 查询（直接调用会抛出异常） |
+| 方法                                               | 返回类型              | 说明                                          |
+| ------------------------------------------------ | ----------------- | ------------------------------------------- |
+| `Expr.Prop("Name")`                              | `PropertyExpr`    | 属性表达式                                       |
+| `Expr.Prop("alias", "Name")`                     | `PropertyExpr`    | 带表别名的属性表达式                                  |
+| `Expr.Value(obj)`                                | `ValueExpr`       | 参数化值                                        |
+| `Expr.Const(obj)`                                | `ValueExpr`       | 常量值（内联到 SQL，不参数化）                           |
+| `Expr.PropEqual("Name", value)`                  | `LogicBinaryExpr` | 属性等于值                                       |
+| `Expr.Func("ABS", expr)`                         | `FunctionExpr`    | 函数调用                                        |
+| `Expr.Aggregate("SUM", expr, isDistinct)`        | `FunctionExpr`    | 聚合函数（IsAggregate=true）                      |
+| `Expr.Concat(e1, e2)`                            | `ValueSet`        | CONCAT 字符串拼接（扩展方法）                          |
+| `Expr.Lambda<T>(u => u.Age > 18)`                | `LogicExpr`       | Lambda 转 Expr                               |
+| `Expr.From<T>(tableArgs)`                        | `FromExpr`        | 链式查询起点                                      |
+| `Expr.Sql("key", arg)`                           | `GenericSqlExpr`  | 动态 SQL 片段                                   |
+| `Expr.Delete<T>(tableArgs)`                      | `DeleteExpr`      | 创建 DELETE 表达式                               |
+| `Expr.If(condition, thenExpr, elseExpr)`         | `FunctionExpr`    | IF 表达式                                      |
+| `Expr.Case(cases, elseExpr)`                     | `FunctionExpr`    | CASE 表达式                                    |
+| `Expr.Query<T>(expression)`                      | `Expr`            | IQueryable Lambda 转 Expr                    |
+| `Expr.Query<T, TResult>(expression)`             | `Expr`            | 带返回值的 IQueryable Lambda 转 Expr              |
+| `Expr.Exists<T>(innerExpr, tableArgs)`           | `ForeignExpr`     | 关联表 EXISTS 查询                               |
+| `Expr.Exists(type, innerExpr, tableArgs)`        | `ForeignExpr`     | 关联表 EXISTS 查询（指定类型）                         |
+| `Expr.ExistsRelated<T>(innerExpr, tableArgs)`    | `ForeignExpr`     | 自动关联的 EXISTS 查询                             |
+| `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr`     | 自动关联的 EXISTS 查询（指定类型）                       |
+| `Expr.Exists<T>(lambda)`                         | `bool`            | 仅用于 Lambda 表达式中构造 EXISTS 查询（直接调用会抛出异常）      |
+| `Expr.ExistsRelated<T>(lambda)`                  | `bool`            | 仅用于 Lambda 表达式中构造自动关联的 EXISTS 查询（直接调用会抛出异常） |
 
 ### 运算符重载
 
@@ -346,18 +404,18 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 
 `LogicExpr` 上的运算符：
 
-| 运算符  | 说明                           |
-| ---- | ---------------------------- |
-| `&`  | AND（左或右为 null 时返回另一侧，适合动态累加） |
-| `|` | OR                           |
-| `!`  | NOT                          |
+| 运算符 | 说明                           | 返回类型            |
+| --- | ---------------------------- | --------------- |
+| `&` | AND（左或右为 null 时返回另一侧，适合动态累加） | `AndExpr` |
+| `\|` | OR （左或右为 null 时返回另一侧，适合动态累加） | `OrExpr` |
+| `!` | NOT                          | `NotExpr` |
 
 ### PropertyExpr 扩展方法
 
 | 分类   | 方法                                                                                                         |
 | ---- | ---------------------------------------------------------------------------------------------------------- |
 | 比较   | `.Equal(v)` `.NotEqual(v)` `.GreaterThan(v)` `.LessThan(v)` `.GreaterThanOrEqual(v)` `.LessThanOrEqual(v)` |
-| 集合   | `.In(IEnumerable)` `.In(params items)` `.In(ValueTypeExpr)`                                                |
+| 集合   | `.In(IEnumerable)` `.In(params items)` `.In(Expr)`                                                         |
 | 范围   | `.Between(low, high)`                                                                                      |
 | 字符串  | `.Like(pattern)` `.Contains(text)` `.StartsWith(text)` `.EndsWith(text)`                                   |
 | Null | `.IsNull()` `.IsNotNull()`                                                                                 |
@@ -384,7 +442,7 @@ var query = Expr.From<User>()
     .Section(0, 20);                                      // SectionExpr (skip, take)
 ```
 
-`SelectExpr` 也是 `ValueTypeExpr`，可用于 IN 子查询：
+`SelectExpr` 可用于 IN 子查询：
 
 ```csharp
 // IN 子查询
@@ -434,3 +492,4 @@ var result = dao.SearchAs(
         .Select("Id", "UserName")
 ).ToList();
 ```
+
