@@ -117,26 +117,37 @@ LambdaExprConverter.RegisterMethodHandler("SumOver", (node, converter) =>
 ### 3.4 注册 SQL 处理器
 
 ```csharp
-SqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER", (_, args) =>
+SqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER",
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
+     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
 {
-    string amount = args[0].Key;
+    outSql.Append("SUM(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(") OVER (");
 
-    // ValueSet 格式为 "(col1,col2)"，用 Substring 去除首尾括号
-    string partitionSql = args.Count > 1 && args[1].Key.Length > 2
-        ? args[1].Key.Substring(1, args[1].Key.Length - 2)
-        : string.Empty;
+    if (expr.Args.Count > 1 && expr.Args[1] is ValueSet partitionSet && partitionSet.Items.Count > 0)
+    {
+        outSql.Append("PARTITION BY ");
+        for (int i = 0; i < partitionSet.Items.Count; i++)
+        {
+            if (i > 0) outSql.Append(", ");
+            partitionSet.Items[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
+        }
+    }
 
-    string orderSql = args.Count > 2 && args[2].Key.Length > 2
-        ? args[2].Key.Substring(1, args[2].Key.Length - 2)
-        : string.Empty;
+    if (expr.Args.Count > 2 && expr.Args[2] is ValueSet orderSet && orderSet.Items.Count > 0)
+    {
+        if (expr.Args.Count > 1 && expr.Args[1] is ValueSet part && part.Items.Count > 0)
+            outSql.Append(' ');
+        outSql.Append("ORDER BY ");
+        for (int i = 0; i < orderSet.Items.Count; i++)
+        {
+            if (i > 0) outSql.Append(", ");
+            orderSet.Items[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
+        }
+    }
 
-    var clauses = new List<string>();
-    if (!string.IsNullOrEmpty(partitionSql))
-        clauses.Add($"PARTITION BY {partitionSql}");
-    if (!string.IsNullOrEmpty(orderSql))
-        clauses.Add($"ORDER BY {orderSql}");
-
-    return $"SUM({amount}) OVER ({string.Join(" ", clauses)})";
+    outSql.Append(')');
 });
 ```
 
@@ -166,6 +177,34 @@ var sales = await saleService.SearchAsync<SaleView>(s => s.Select(
     }
 ));
 ```
+
+### 3.6 来自 Demo 的注册与查询流程
+
+下面这段整理自 `LiteOrm.Demo\Demos\WindowFunctionDemo.cs`：
+
+```csharp
+// 应用启动时先注册处理器
+WindowFunctionDemo.RegisterHandlers();
+
+// 查询时直接在投影里使用窗口函数扩展
+var results = await factory.SalesDAO
+    .WithArgs([tableMonth])
+    .SearchAs(q => q
+        .OrderBy(s => s.ProductId)
+        .Select(s => new SalesWindowView
+        {
+            Id = s.Id,
+            ProductId = s.ProductId,
+            ProductName = s.ProductName,
+            Amount = s.Amount,
+            SaleTime = s.SaleTime,
+            ProductTotal = s.Amount.SumOver<SalesRecord>(p => p.ProductId)
+        })
+    ).ToListAsync();
+```
+
+如果你准备把窗口函数能力提供给业务层长期复用，推荐采用这种“启动期注册 + 查询期直接调用”的模式。  
+而且从当前 API 设计看，也更建议使用 `FunctionSqlHandler` 新重载直接写 SQL 输出，而不是先拼接中间字符串再返回。
 
 **生成的 SQL**：
 
@@ -267,13 +306,19 @@ LambdaExprConverter.RegisterMethodHandler("RowNumber", (node, converter) =>
     return new FunctionExpr("ROW_NUMBER_OVER", new ValueSet(partitionExprs), new ValueSet());
 });
 
-SqlBuilder.Instance.RegisterFunctionSqlHandler("ROW_NUMBER_OVER", (_, args) =>
+SqlBuilder.Instance.RegisterFunctionSqlHandler("ROW_NUMBER_OVER", (ref outSql, expr, context, sqlBuilder, outputParams) =>
 {
-    string partitionSql = args.Count > 0 && args[0].Key.Length > 2
-        ? args[0].Key.Substring(1, args[0].Key.Length - 2) : string.Empty;
-    return string.IsNullOrEmpty(partitionSql)
-        ? "ROW_NUMBER() OVER ()"
-        : $"ROW_NUMBER() OVER (PARTITION BY {partitionSql})";
+    outSql.Append("ROW_NUMBER() OVER (");
+    if (expr.Args.Count > 0 && expr.Args[0] is ValueSet partitionSet && partitionSet.Items.Count > 0)
+    {
+        outSql.Append("PARTITION BY ");
+        for (int i = 0; i < partitionSet.Items.Count; i++)
+        {
+            if (i > 0) outSql.Append(", ");
+            partitionSet.Items[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
+        }
+    }
+    outSql.Append(')');
 });
 ```
 
@@ -286,9 +331,11 @@ LambdaExprConverter.RegisterMethodHandler("Lag", (node, converter) =>
     return new FunctionExpr("LAG_OVER", expr);
 });
 
-SqlBuilder.Instance.RegisterFunctionSqlHandler("LAG_OVER", (_, args) =>
+SqlBuilder.Instance.RegisterFunctionSqlHandler("LAG_OVER", (ref outSql, expr, context, sqlBuilder, outputParams) =>
 {
-    return $"LAG({args[0].Key})";
+    outSql.Append("LAG(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
 });
 ```
 
@@ -300,6 +347,8 @@ SqlBuilder.Instance.RegisterFunctionSqlHandler("LAG_OVER", (_, args) =>
 
 ## 8. 下一步
 
-- 关联查询：[关联查询](../05_Associations.md)
-- 表达式扩展：[表达式扩展](./EXP_ExpressionExtension.md)
-- 函数验证器：[函数验证器](./EXP_FunctionExprValidator.md)
+- [返回目录](../SUMMARY.md)
+- 关联查询：[关联查询](../02-core-usage/05-associations.md)
+- 表达式扩展：[表达式扩展](../04-extensibility/01-expression-extension.md)
+- 函数验证器：[函数验证器](../04-extensibility/02-function-validator.md)
+

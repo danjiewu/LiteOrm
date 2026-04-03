@@ -70,6 +70,19 @@ var result = await userService.SearchAs<UserView>(
 );
 ```
 
+### 3.1.1 来自 Demo 的投影思路
+
+`LiteOrm.Demo\Demos\WindowFunctionDemo.cs` 中使用 `SearchAs<T>` 和投影来避免读取不必要的列：
+
+```csharp
+var results = await factory.SalesDAO
+    .WithArgs([tableMonth])
+    .SearchAs<SalesWindowView>(selectExpr)
+    .ToListAsync();
+```
+
+这种模式特别适合报表、排行榜、聚合视图等“结果模型与实体模型不同”的查询。
+
 ### 3.2 使用合适的结果类型
 
 | 场景 | 推荐类型 | 原因 |
@@ -112,6 +125,18 @@ for (int i = 0; i < 100; i++)
 await userService.BatchInsertAsync(users);  // 推荐
 ```
 
+### 4.1.1 来自 Demo 的批量初始化示例
+
+`LiteOrm.Demo\Data\DbInitializer.cs` 中使用批量插入初始化多组数据：
+
+```csharp
+await deptService.BatchInsertAsync(depts);
+await userService.BatchInsertAsync(users);
+await salesService.BatchInsertAsync(records);
+```
+
+这个模式适合种子数据初始化、压测准备、演示数据构造等场景。相比循环逐条插入，它能显著减少数据库往返次数。
+
 ### 4.2 批量更新
 
 ```csharp
@@ -125,9 +150,26 @@ foreach (var user in users)
 await userService.BatchUpdateAsync(users);  // 推荐
 ```
 
-### 4.3 BulkProvider（高性能批量提供器）
+### 4.2.1 来自测试的批量增改删闭环
 
-BulkProvider 是 LiteOrm 提供的高性能批量操作扩展（可选依赖），用于大规模插入/更新/删除时显著减少网络往返与数据库负载。
+`LiteOrm.Tests\ServiceTests.cs` 对批量操作有一组很典型的闭环验证：
+
+```csharp
+await service.BatchInsertAsync(users);
+
+var inserted = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
+foreach (var user in inserted)
+    user.Age += 5;
+
+await service.BatchUpdateAsync(inserted);
+await service.BatchDeleteAsync(inserted);
+```
+
+如果你的业务需要导入一批数据、批量修正后再清理，这种模式可直接套用。
+
+### 4.3 `IBulkProvider` / `BulkProviderFactory`（高性能批量提供器）
+
+`IBulkProvider` 配合 `BulkProviderFactory` 构成 LiteOrm 的高性能批量操作扩展（可选依赖），用于大规模插入/更新/删除时显著减少网络往返与数据库负载。
 
 - 场景：导入大量数据、ETL、数据同步、冷数据回填。
 - 特点：
@@ -142,6 +184,40 @@ var factory = services.GetRequiredService<BulkProviderFactory>();
 var provider = factory.GetProvider(dbConnection.GetType());
 await provider.BulkInsertAsync(ToDataTable(users), dbConnection, transaction);
 ```
+
+### 4.3.1 来自 Demo 的 MySQL `IBulkProvider` 实现
+
+`LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs` 提供了一个真实的 `IBulkProvider` 实现：
+
+```csharp
+[AutoRegister(Key = typeof(MySqlConnection))]
+public class MySqlBulkCopyProvider : IBulkProvider
+{
+    public async Task<int> BulkInsertAsync(
+        DataTable dt,
+        IDbConnection dbConnection,
+        IDbTransaction transaction,
+        CancellationToken cancellationToken = default)
+    {
+        MySqlBulkCopy bulkCopy = new MySqlBulkCopy(
+            dbConnection as MySqlConnection,
+            transaction as MySqlTransaction);
+
+        bulkCopy.DestinationTableName = dt.TableName;
+        bulkCopy.ConflictOption = MySqlBulkLoaderConflictOption.Replace;
+
+        for (int i = 0; i < dt.Columns.Count; i++)
+            bulkCopy.ColumnMappings.Add(new MySqlBulkCopyColumnMapping(i, dt.Columns[i].ColumnName));
+
+        return (await bulkCopy.WriteToServerAsync(dt).ConfigureAwait(false)).RowsInserted;
+    }
+}
+```
+
+这个例子说明了两点：
+
+- `IBulkProvider` 可以按数据库连接类型自动注册，并通过 `BulkProviderFactory` 获取。
+- 真正的高性能批量写入通常依赖数据库原生能力，而不是 ORM 层循环拼接 SQL。
 
 在 LiteOrm 中的实现位置（参考）：
 
@@ -165,8 +241,8 @@ await provider.BulkInsertAsync(ToDataTable(usersToUpdate), dbConnection, transac
 
 注意事项：
 
-- 在使用 BulkProvider 时，务必在测试环境评估索引负载、日志增长与锁等待；对于写密集型场景，考虑在导入期间禁用辅助索引或延迟索引重建。
-- BulkProvider 实现会因数据库不同而不同：例如 SQL Server 常使用 SqlBulkCopy，MySQL 可使用 LOAD DATA INFILE 或 MySqlBulkCopy。请参考 LiteOrm.Demo 中的示例实现。
+- 在使用 `IBulkProvider` 时，务必在测试环境评估索引负载、日志增长与锁等待；对于写密集型场景，考虑在导入期间禁用辅助索引或延迟索引重建。
+- `IBulkProvider` 的实现会因数据库不同而不同：例如 SQL Server 常使用 `SqlBulkCopy`，MySQL 可使用 `LOAD DATA INFILE` 或 `MySqlBulkCopy`。请参考 LiteOrm.Demo 中的示例实现。
 
 ## 5. 异步编程
 
@@ -194,6 +270,12 @@ await Task.WhenAll(userTask, orderTask);
 var users = userTask.Result;
 var orders = orderTask.Result;
 ```
+
+### 5.3 什么时候适合并行
+
+- 两个查询互不依赖，并且不会共享同一个必须串行访问的事务上下文时。
+- 首页聚合面板、仪表盘统计、多个独立列表同时加载时。
+- 不要把强关联的小查询无脑并行化；如果能通过一个关联查询解决，优先减少数据库往返。
 
 ## 6. 索引优化
 
@@ -236,6 +318,18 @@ bool exists = await userService.ExistsAsync(u => u.Status == 1);
 if (exists) { ... }
 ```
 
+### 7.2.1 来自测试的存在性判断示例
+
+`LiteOrm.Tests\ServiceTests.cs` 中直接验证了 `ExistsAsync` 和 `CountAsync` 的差异化用途：
+
+```csharp
+bool exists = await viewService.ExistsAsync(Expr.Lambda<TestUser>(u => u.Name == "Unique"));
+int count = await viewService.CountAsync(Expr.Lambda<TestUser>(u => u.Age >= 50));
+```
+
+- 只关心“有没有”时用 `ExistsAsync`
+- 需要精确数量时才用 `CountAsync`
+
 ## 8. 连接管理
 
 ### 8.1 使用 Scoped 生命周期
@@ -272,6 +366,12 @@ await foreach (var user in userViewDAO.Search(Expr.Prop("Status") == 1))
 }
 ```
 
+### 9.1.1 使用建议
+
+- 适合日志导出、报表遍历、后台批处理。
+- 如果你只是为了拿几十条分页结果，不必使用流式遍历。
+- 流式处理时尽量把单条记录的处理逻辑做轻，避免拖长连接占用时间。
+
 ### 9.2 避免大对象
 
 ```csharp
@@ -296,6 +396,8 @@ LiteOrm 相比其他 ORM 的性能优势：
 
 ## 11. 下一步
 
-- 关联查询：[关联查询](../05_Associations.md)
-- 事务处理：[事务处理](./EXP_Transaction.md)
-- 表达式扩展：[表达式扩展](./EXP_ExpressionExtension.md)
+- [返回目录](../SUMMARY.md)
+- 关联查询：[关联查询](../02-core-usage/05-associations.md)
+- 事务处理：[事务处理](./01-transactions.md)
+- 表达式扩展：[表达式扩展](../04-extensibility/01-expression-extension.md)
+

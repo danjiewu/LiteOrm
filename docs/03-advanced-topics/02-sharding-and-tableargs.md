@@ -63,6 +63,26 @@ var logs = await logService.SearchAsync(
 );
 ```
 
+### 2.4 按月分表的完整流程
+
+```csharp
+var log = new Log
+{
+    Level = "ERROR",
+    Message = "Payment failed",
+    CreateTime = new DateTime(2026, 3, 15)
+};
+
+// 写入时使用 IArged.TableArgs => Logs_202603
+await logService.InsertAsync(log);
+
+// 查询单个月分表
+var marchLogs = await logService.SearchAsync(
+    l => l.Level == "ERROR",
+    tableArgs: new[] { "202603" }
+);
+```
+
 ## 3. 按用户 ID 分表
 
 ```csharp
@@ -144,7 +164,63 @@ for (int month = 1; month <= 12; month++)
 }
 ```
 
-## 6. TableArgs 优先级
+### 5.4 `IArged` 与 `tableArgs` 覆盖示例
+
+```csharp
+var order = new Order
+{
+    UserId = 25
+};
+
+// 插入时自动走 Orders_5
+await orderService.InsertAsync(order);
+
+// 查询时显式指定 tableArgs，会覆盖自动推导结果
+var archivedOrders = await orderService.SearchAsync(
+    o => o.UserId == 25,
+    tableArgs: new[] { "archive_5" }
+);
+```
+
+## 6. 来自 Demo 和测试的真实分表模式
+
+### 6.1 在 Lambda 中直接指定 `TableArgs`
+
+这个写法来自 `LiteOrm.Demo\Demos\ShardingQueryDemo.cs`：
+
+```csharp
+var sales = await salesService.SearchAsync(s =>
+    s.TableArgs == new[] { "202412" } && s.Amount > 40
+);
+```
+
+适合“查询固定月份或固定分片”的快速写法。
+
+### 6.2 显式传入 `tableArgs`
+
+```csharp
+var sales = await salesService.SearchAsync(
+    s => s.Amount > 100,
+    tableArgs: new[] { "202411" }
+);
+```
+
+这个模式和测试中的 `CountAsync(..., tableArgs: ...)` 一样，适合把分表参数放在调用层统一控制。
+
+### 6.3 使用 `Expr.From<T>(...)` 指定分表
+
+```csharp
+var sales = await salesService.SearchAsync(
+    Expr.From<SalesRecordView>("202411")
+        .Where(Expr.Prop("Amount") > 100)
+        .OrderBy(("Amount", false))
+        .Section(0, 3)
+);
+```
+
+这个模式同样来自 Demo，适合复杂查询、排序和分页组合使用。
+
+## 7. TableArgs 优先级
 
 | 来源                          | 优先级 | 说明                |
 | --------------------------- | --- | ----------------- |
@@ -153,7 +229,7 @@ for (int month = 1; month <= 12; month++)
 
 > **注意**：LiteOrm 并不能自动知道哪些分表存在，跨分表查询需要在应用层遍历可能的分表并合并结果。
 
-## 7. 分库场景
+## 8. 分库场景
 
 ### 7.1 多数据源 + 分表
 
@@ -191,15 +267,17 @@ public class Log : IArged
 }
 ```
 
-## 8. 注意事项
+## 9. 注意事项
 
 1. **分表键选择**：选择均匀分布的键，避免热点分表
 2. **分表数量**：考虑未来扩展，预留足够数量
 3. **跨分表查询**：应用层处理合并结果
 4. **IArged 实现**：确保 `TableArgs` 在插入前已正确赋值
 
-## 9. 下一步
+## 10. 下一步
 
-- 关联查询：[关联查询](../05_Associations.md)
-- 性能优化：[性能优化](./EXP_Performance.md)
-- 表达式扩展：[表达式扩展](./EXP_ExpressionExtension.md)
+- [返回目录](../SUMMARY.md)
+- 关联查询：[关联查询](../02-core-usage/05-associations.md)
+- 性能优化：[性能优化](./03-performance.md)
+- 表达式扩展：[表达式扩展](../04-extensibility/01-expression-extension.md)
+

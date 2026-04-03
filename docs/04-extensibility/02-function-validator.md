@@ -48,6 +48,14 @@ var validatorDisallow = FunctionExprValidator.Disallow;
 var validator = new FunctionExprValidator(FunctionPolicy.AllowRegisted);
 ```
 
+### 3.3 推荐策略模板
+
+| 环境或角色 | 推荐策略 |
+|------------|----------|
+| 本地开发 / 内部工具 | `AllowAll` |
+| 生产环境普通业务查询 | `AllowRegisted` |
+| 完全禁止自定义函数的受限场景 | `Disallow` |
+
 ## 4. 验证接口
 
 `FunctionExprValidator` 实现 `IExprNodeVisitor` 接口：
@@ -145,6 +153,20 @@ public class QueryInterceptor
 }
 ```
 
+### 5.4 与表达式扩展联动
+
+一个典型流程是：先注册允许使用的扩展函数，再在执行查询前用验证器做兜底校验。
+
+```csharp
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", ...);
+
+var validator = FunctionExprValidator.AllowRegisted;
+var expr = new FunctionExpr("DATE_FORMAT", ...);
+
+if (!validator.Validate(expr))
+    throw new InvalidOperationException("函数未注册，禁止执行");
+```
+
 ## 6. 与 SqlBuilder 配合
 
 `FunctionExprValidator.AllowRegisted` 依赖于 `SqlBuilder.RegisterFunctionSqlHandler` 注册的函数：
@@ -174,6 +196,8 @@ validator.Validate(expr2);  // false
 
 ## 8. 下一步
 
-- 关联查询：[关联查询](../05_Associations.md)
-- 表达式扩展：[表达式扩展](./EXP_ExpressionExtension.md)
-- 窗口函数：[窗口函数](./EXP_WindowFunctions.md)
+- [返回目录](../SUMMARY.md)
+- 关联查询：[关联查询](../02-core-usage/05-associations.md)
+- 表达式扩展：[表达式扩展](./01-expression-extension.md)
+- 窗口函数：[窗口函数](../03-advanced-topics/04-window-functions.md)
+

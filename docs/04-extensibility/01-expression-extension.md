@@ -26,6 +26,23 @@ SqlBuilder.RegisterFunctionSqlHandler()
 最终 SQL
 ```
 
+### 1.2 最小完整工作流
+
+第一次实现表达式扩展时，建议按下面 4 步来理解：
+
+1. 定义一个业务上可读的 C# 方法或属性。
+2. 用 `LambdaExprConverter` 把它转换成 `Expr`。
+3. 用 `SqlBuilder.RegisterFunctionSqlHandler` 把 `Expr` 转换成目标数据库 SQL。
+4. 在查询中直接像普通方法一样使用它。
+
+```csharp
+var users = await userService.SearchAsync(
+    u => u.CreateTime.Format("yyyy-MM-dd") == "2026-03-31"
+);
+```
+
+如果这段查询能成功执行，说明你的扩展链路已经打通。
+
 ## 2. LambdaExprConverter 方法
 
 ### 2.1 RegisterMethodHandler - 注册方法处理器
@@ -65,24 +82,37 @@ LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", handler);
 
 ### 3.1 RegisterFunctionSqlHandler - 注册函数 SQL 处理器
 
+当前更推荐使用新的底层重载：
+
 ```csharp
-// 为特定 Builder 注册函数处理器
-MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (funcName, args) => {
-    return $"DATE_FORMAT({args[0].Key}, {args[1].Key})";
+public delegate void FunctionSqlHandler(
+    ref ValueStringBuilder outSql,
+    FunctionExpr expr,
+    SqlBuildContext context,
+    ISqlBuilder sqlBuilder,
+    ICollection<KeyValuePair<string, object>> outputParams);
+```
+
+```csharp
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
+     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+{
+    outSql.Append("DATE_FORMAT(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(", ");
+    expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
 });
 ```
 
-**参数说明**：
+这个重载更适合以下场景：
 
-| 参数             | 类型                                                         | 说明                                    |
-| -------------- | ---------------------------------------------------------- | ------------------------------------- |
-| `functionName` | string                                                     | 函数名称，与 `FunctionExpr.FunctionName` 对应 |
-| `handler`      | `Func<string, List<KeyValuePair<string, string>>, string>` | SQL 构建逻辑                              |
+- 需要精细控制 SQL 输出过程
+- 需要直接复用 `Expr.ToSql(...)`
+- 需要同时处理参数输出和不同数据库方言
 
-**args 中的 Key**：
-
-- 已转换为 SQL 片段的表达式字符串
-- 如 `"DATE_FORMAT(t.CreateTime, '%Y-%m-%d')"`
+如果只是做非常简单的字符串格式拼接，也可以继续使用简化重载；但文档中的示例优先展示新的 `FunctionSqlHandler` 形式。
 
 ## 4. 示例一：日期格式化
 
@@ -111,10 +141,18 @@ LambdaExprConverter.RegisterMethodHandler("Format", (node, converter) => {
 ### 4.3 注册 SQL 处理器
 
 ```csharp
-MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (funcName, args) => {
-    if (args.Count != 2)
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
+     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+{
+    if (expr.Args.Count != 2)
         throw new ArgumentException("DATE_FORMAT requires 2 arguments");
-    return $"DATE_FORMAT({args[0].Key}, {args[1].Key})";
+
+    outSql.Append("DATE_FORMAT(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(", ");
+    expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
 });
 ```
 
@@ -125,6 +163,24 @@ var users = await userService.SearchAsync(
     u => u.CreateTime.Format("yyyy-MM-dd") == "2026-03-31"
 );
 ```
+
+### 4.5 来自 Demo 的真实格式化示例
+
+`LiteOrm.Demo\Demos\DateFormatDemo.cs` 中更推荐直接使用 `DateTime.ToString(format)`，它和手动 `FunctionExpr("Format", ...)` 最终都会落到数据库方言对应的格式化函数上：
+
+```csharp
+// 方式一：直接构造 FunctionExpr
+var formatExpr = new FunctionExpr("Format", Expr.Prop("CreateTime"), new ValueExpr("yyyy-MM-dd"));
+var results1 = await userService.SearchAsync(formatExpr == "2024-06-15");
+
+// 方式二：在 Lambda 中直接使用 ToString(format)
+Expression<Func<UserView, bool>> where =
+    u => u.CreateTime.ToString("yyyy-MM-dd") == "2024-12-25";
+var results2 = await userService.SearchAsync(where);
+```
+
+这个示例的价值在于：它验证了“手动构造函数表达式”和“直接写 Lambda”两条路径都能落到数据库原生格式化函数上。  
+如果项目里并不需要自定义 `DateTime.Format(...)` 这种业务别名，通常直接用 `ToString(format)` 更自然。
 
 ## 5. 示例二：计算属性
 
@@ -153,8 +209,13 @@ LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", (node, converter)
 ### 5.3 注册 SQL 处理器
 
 ```csharp
-SqlBuilder.Instance.RegisterFunctionSqlHandler("YEAR", (funcName, args) => {
-    return $"YEAR({args[0].Key})";
+SqlBuilder.Instance.RegisterFunctionSqlHandler("YEAR",
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
+     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+{
+    outSql.Append("YEAR(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
 });
 ```
 
@@ -178,10 +239,16 @@ LambdaExprConverter.RegisterMethodHandler("CustomProcess", (node, converter) => 
 ### 6.2 注册 SQL 处理器
 
 ```csharp
-SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_PROCESS", (funcName, args) => {
-    if (args.Count != 1)
+SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_PROCESS",
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
+     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+{
+    if (expr.Args.Count != 1)
         throw new ArgumentException("CUSTOM_PROCESS requires 1 argument");
-    return $"dbo.CustomProcess({args[0].Key})";
+
+    outSql.Append("dbo.CustomProcess(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
 });
 ```
 
@@ -211,18 +278,24 @@ var users = await userService.SearchAsync(
 
 ```csharp
 // MySQL
-MySqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (name, args) => {
-    return $"MYSQL_CUSTOM({args[0].Key})";
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
+    outSql.Append("MYSQL_CUSTOM(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
 });
 
 // SQL Server
-SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (name, args) => {
-    return $"dbo.CustomFunc({args[0].Key})";
+SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
+    outSql.Append("dbo.CustomFunc(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
 });
 
 // Oracle
-OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (name, args) => {
-    return $"CUSTOM_FUNC({args[0].Key})";
+OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
+    outSql.Append("CUSTOM_FUNC(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
 });
 ```
 
@@ -230,8 +303,10 @@ OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (name, args) =>
 
 ```csharp
 // 全局注册（SqlBuilder.Instance 对应默认数据库）
-SqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (name, args) => {
-    return $"CUSTOM_FUNC({args[0].Key})";
+SqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
+    outSql.Append("CUSTOM_FUNC(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
 });
 ```
 
@@ -331,6 +406,15 @@ LiteOrm 在启动时通过 `LiteOrmSqlFunctionInitializer` 自动注册了以下
 
 ## 11. 下一步
 
-- 关联查询：[关联查询](../05_Associations.md)
-- 窗口函数：[窗口函数](./EXP_WindowFunctions.md)
-- 函数验证器：[函数验证器](./EXP_FunctionExprValidator.md)
+- [返回目录](../SUMMARY.md)
+- 关联查询：[关联查询](../02-core-usage/05-associations.md)
+- 窗口函数：[窗口函数](../03-advanced-topics/04-window-functions.md)
+- 函数验证器：[函数验证器](./02-function-validator.md)
+
+
+## 12. 补充建议
+
+- 自定义表达式时，优先复用现有 `FunctionExpr`、`LogicBinaryExpr`、`PropertyExpr` 等基础表达式类型，避免重复造轮子。
+- 如果同一个函数需要适配多个数据库，请把差异留在不同的 `SqlBuilder` 处理器中，而不是把分支判断散落在业务代码里。
+- 对可被外部输入影响的函数扩展，建议与 [函数验证器](./02-function-validator.md) 结合使用。
+- 对旧数据库或私有数据库扩展，建议同时编写示例和生成 SQL 样例，便于回归验证。
