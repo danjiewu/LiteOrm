@@ -101,24 +101,24 @@ flowchart TD
     A[应用代码] -->|调用| B[Service层]
     B -->|使用| C[DAO层]
     C -->|构建SQL| D[SqlBuilder]
-    D -->|生成| H[SQL语句]
     C -->|创建命令| E[DAOContext]
     E -->|创建| J[DbCommandProxy]
-    H -->|设置| J
     J -->|执行| F[数据库]
-    F -->|返回数据| K[AutoLockDataReader]
-    K -->|返回| E
-    E -->|返回| C
-    C -->|转换| L[实体对象]
+    J -->|读取| K[AutoLockDataReader]
+    K -->|转换| L[实体对象]
     A -->|构建查询| G1[Lambda表达式]
     A -->|构建查询| G2[Expr表达式]
     A -->|构建查询| G3[ExprString]
     G1 -->|转换为| G2
     G2 -->|转换为| G3
+    G1 -->|传递| B
     G2 -->|传递| B
+    G1 -->|传递| C
     G2 -->|传递| C
     G3 -->|传递| C
     C -->|表达式转换| D
+    D -->|生成| H[SQL语句]
+    H -->|设置| J
     B -->|事务管理| I[SessionManager]
     I -->|控制| E
 ```
@@ -136,22 +136,18 @@ flowchart TD
    - DAO通过SqlBuilder构建SQL语句
    - DAO通过DAOContext创建DbCommandProxy命令对象
    - DbCommandProxy执行命令并连接数据库
-   - 数据库返回数据到AutoLockDataReader
-   - AutoLockDataReader将数据返回给DAOContext
-   - DAOContext将数据返回给DAO
-   - DAO将结果转换为实体对象返回
+   - DbCommandProxy使用AutoLockDataReader读取结果
+   - 结果转换为实体对象返回
 
 3. **查询流程**：
    - 通过Lambda表达式、Expr或ExprString构建查询条件
    - Lambda表达式可以转换为Expr，Expr可以转换为ExprString
-   - Expr可以传递给Service层或DAO层
-   - ExprString只能传递给DAO层使用
+   - Lambda和Expr可以传递给Service层或DAO层
+   - ExprString只能传递给DAO层使用，不能直接调用Service
    - DAO接收表达式并通过SqlBuilder转换为SQL语句
    - 创建DbCommandProxy执行查询
-   - 数据库返回数据到AutoLockDataReader
-   - AutoLockDataReader将数据返回给DAOContext
-   - DAOContext将数据返回给DAO
-   - DAO将结果转换为实体对象返回
+   - 使用AutoLockDataReader读取结果
+   - 结果转换为实体对象返回
 
 4. **事务流程**：
    - 通过`[Transaction]`属性标记需要事务的方法
@@ -163,8 +159,7 @@ flowchart TD
    - DAO通过DAOContext创建DbCommandProxy对象
    - DbCommandProxy设置命令文本和参数
    - DbCommandProxy执行命令并连接数据库
-   - 数据库返回数据到AutoLockDataReader
-   - AutoLockDataReader将数据返回给DAOContext
+   - DbCommandProxy使用AutoLockDataReader安全读取结果
    - 自动处理资源释放
 
 ## 4. 核心功能模块
