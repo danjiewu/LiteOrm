@@ -22,29 +22,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{983F697D-9928-444B-8D62-59ED0B779587}"
-	ProjectSection(SolutionItems) = preProject
-		docs\01_QuickStart.md = docs\01_QuickStart.md
-		docs\02_CoreConcepts.md = docs\02_CoreConcepts.md
-		docs\03_QueryGuide.md = docs\03_QueryGuide.md
-		docs\04_CrudGuide.md = docs\04_CrudGuide.md
-		docs\05_Associations.md = docs\05_Associations.md
-		CUSTOM_PAGING_EXAMPLE.md = CUSTOM_PAGING_EXAMPLE.md
-		EXPRESSION_EXTENSION.md = EXPRESSION_EXTENSION.md
-		LITEORM_API_GUIDE_FOR_AI.md = LITEORM_API_GUIDE_FOR_AI.md
-		LITEORM_API_REFERENCE.en.md = LITEORM_API_REFERENCE.en.md
-		LITEORM_API_REFERENCE.zh.md = LITEORM_API_REFERENCE.zh.md
-		docs\SUMMARY.md = docs\SUMMARY.md
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Example", "Example", "{209A7EE1-B9B7-446A-8F3A-819D6E20870E}"
-	ProjectSection(SolutionItems) = preProject
-		docs\EXP\EXP_ExpressionExtension.md = docs\EXP\EXP_ExpressionExtension.md
-		docs\EXP\EXP_FunctionExprValidator.md = docs\EXP\EXP_FunctionExprValidator.md
-		docs\EXP\EXP_Performance.md = docs\EXP\EXP_Performance.md
-		docs\EXP\EXP_Sharding.md = docs\EXP\EXP_Sharding.md
-		docs\EXP\EXP_Transaction.md = docs\EXP\EXP_Transaction.md
-		docs\EXP\EXP_WindowFunctions.md = docs\EXP\EXP_WindowFunctions.md
-	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -120,12 +97,9 @@ Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{209A7EE1-B9B7-446A-8F3A-819D6E20870E} = {983F697D-9928-444B-8D62-59ED0B779587}
-	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
 		VisualSVNWorkingCopyRoot = .
+		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
 	EndGlobalSection
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True
