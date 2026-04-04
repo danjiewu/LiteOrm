@@ -98,10 +98,8 @@ LiteOrm 采用分层架构设计，清晰地分离了数据访问、业务逻辑
 
 ```mermaid
 flowchart TD
-    A[应用代码]
-    B[Service层]
+    A[应用代码] -->|调用| B[Service层]
     B -->|使用| C[DAO层]
-    A -->|调用| C
     C -->|构建SQL| D[SqlBuilder]
     D -->|生成| H[SQL语句]
     C -->|创建命令| E[DAOContext]
@@ -109,7 +107,9 @@ flowchart TD
     H -->|设置| J
     J -->|执行| F[数据库]
     F -->|返回数据| K[AutoLockDataReader]
-    K -->|转换| L[实体对象]
+    K -->|返回| E
+    E -->|返回| C
+    C -->|转换| L[实体对象]
     A -->|构建查询| G1[Lambda表达式]
     A -->|构建查询| G2[Expr表达式]
     A -->|构建查询| G3[ExprString]
@@ -131,12 +131,15 @@ flowchart TD
    - 初始化数据库连接池和会话管理
 
 2. **数据访问流程**：
-   - 应用代码可以直接调用DAO层方法
+   - 应用代码调用Service层方法
+   - Service层使用DAO执行具体操作
    - DAO通过SqlBuilder构建SQL语句
    - DAO通过DAOContext创建DbCommandProxy命令对象
    - DbCommandProxy执行命令并连接数据库
    - 数据库返回数据到AutoLockDataReader
-   - AutoLockDataReader将结果转换为实体对象返回
+   - AutoLockDataReader将数据返回给DAOContext
+   - DAOContext将数据返回给DAO
+   - DAO将结果转换为实体对象返回
 
 3. **查询流程**：
    - 通过Lambda表达式、Expr或ExprString构建查询条件
@@ -146,7 +149,9 @@ flowchart TD
    - DAO接收表达式并通过SqlBuilder转换为SQL语句
    - 创建DbCommandProxy执行查询
    - 数据库返回数据到AutoLockDataReader
-   - 结果转换为实体对象返回
+   - AutoLockDataReader将数据返回给DAOContext
+   - DAOContext将数据返回给DAO
+   - DAO将结果转换为实体对象返回
 
 4. **事务流程**：
    - 通过`[Transaction]`属性标记需要事务的方法
@@ -159,6 +164,7 @@ flowchart TD
    - DbCommandProxy设置命令文本和参数
    - DbCommandProxy执行命令并连接数据库
    - 数据库返回数据到AutoLockDataReader
+   - AutoLockDataReader将数据返回给DAOContext
    - 自动处理资源释放
 
 ## 4. 核心功能模块
