@@ -98,27 +98,27 @@ LiteOrm 采用分层架构设计，清晰地分离了数据访问、业务逻辑
 
 ```mermaid
 flowchart TD
-    A[应用代码] -->|调用| B[Service层]
+    A[应用代码]
+    B[Service层]
     B -->|使用| C[DAO层]
+    A -->|调用| C
     C -->|构建SQL| D[SqlBuilder]
+    D -->|生成| H[SQL语句]
     C -->|创建命令| E[DAOContext]
     E -->|创建| J[DbCommandProxy]
+    H -->|设置| J
     J -->|执行| F[数据库]
-    J -->|读取| K[AutoLockDataReader]
+    F -->|返回数据| K[AutoLockDataReader]
     K -->|转换| L[实体对象]
     A -->|构建查询| G1[Lambda表达式]
     A -->|构建查询| G2[Expr表达式]
     A -->|构建查询| G3[ExprString]
     G1 -->|转换为| G2
     G2 -->|转换为| G3
-    G1 -->|传递| B
     G2 -->|传递| B
-    G1 -->|传递| C
     G2 -->|传递| C
     G3 -->|传递| C
     C -->|表达式转换| D
-    D -->|生成| H[SQL语句]
-    H -->|设置| J
     B -->|事务管理| I[SessionManager]
     I -->|控制| E
 ```
@@ -131,22 +131,21 @@ flowchart TD
    - 初始化数据库连接池和会话管理
 
 2. **数据访问流程**：
-   - 应用代码调用Service层方法
-   - Service层使用DAO执行具体操作
+   - 应用代码可以直接调用DAO层方法
    - DAO通过SqlBuilder构建SQL语句
    - DAO通过DAOContext创建DbCommandProxy命令对象
    - DbCommandProxy执行命令并连接数据库
-   - DbCommandProxy使用AutoLockDataReader读取结果
-   - 结果转换为实体对象返回
+   - 数据库返回数据到AutoLockDataReader
+   - AutoLockDataReader将结果转换为实体对象返回
 
 3. **查询流程**：
    - 通过Lambda表达式、Expr或ExprString构建查询条件
    - Lambda表达式可以转换为Expr，Expr可以转换为ExprString
-   - Lambda和Expr可以传递给Service层或DAO层
-   - ExprString只能传递给DAO层使用，不能直接调用Service
+   - Expr可以传递给Service层或DAO层
+   - ExprString只能传递给DAO层使用
    - DAO接收表达式并通过SqlBuilder转换为SQL语句
    - 创建DbCommandProxy执行查询
-   - 使用AutoLockDataReader读取结果
+   - 数据库返回数据到AutoLockDataReader
    - 结果转换为实体对象返回
 
 4. **事务流程**：
@@ -159,7 +158,7 @@ flowchart TD
    - DAO通过DAOContext创建DbCommandProxy对象
    - DbCommandProxy设置命令文本和参数
    - DbCommandProxy执行命令并连接数据库
-   - DbCommandProxy使用AutoLockDataReader安全读取结果
+   - 数据库返回数据到AutoLockDataReader
    - 自动处理资源释放
 
 ## 4. 核心功能模块
