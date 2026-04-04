@@ -101,8 +101,7 @@ flowchart TD
     A[应用代码]
     B[Service层]
     B -->|使用| C[DAO层]
-    C -->|创建命令| E[DAOContext]
-    E -->|创建| J[DbCommandProxy]
+    E[DAOContext] -->|创建| J[DbCommandProxy]
     J -->|执行| F[数据库]
     F -->|读取| K[AutoLockDataReader]
     J -->|构建| K
@@ -146,7 +145,8 @@ flowchart TD
    - Expr可以传递给Service层或DAO层
    - ExprString只能传递给DAO层使用
    - DAO接收表达式并构建SQL语句
-   - 创建DbCommandProxy执行查询
+   - DAO从DAOContextPool获取DAOContext
+   - DAOContext创建DbCommandProxy执行查询
    - 数据库返回数据，DbCommandProxy构建AutoLockDataReader
    - AutoLockDataReader读取结果并转换为实体对象
    - AutoLockDataReader释放资源到DAOContext
