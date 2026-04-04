@@ -1,4 +1,3 @@
-using Autofac.Extras.DynamicProxy;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -28,7 +27,7 @@ namespace LiteOrm.Service
     /// 7. 表参数支持 - 支持通过 tableArgs 参数动态指定表名
     /// 8. 拦截机制 - 自动应用 ServiceInvokeInterceptor 进行拦截
     /// 
-    /// 该类通过依赖注入框架以单例方式注册，使用 Autofac 的拦截功能进行方法拦截。
+    /// 该类通过依赖注入框架以作用域方式注册，解析接口时会自动应用服务拦截。
     /// 
     /// 使用示例：
     /// <code>
@@ -52,10 +51,15 @@ namespace LiteOrm.Service
     public class EntityViewService<TView> : IEntityViewService<TView>, IEntityViewServiceAsync<TView>, IEntityViewService, IEntityViewServiceAsync
          where TView : new()
     {
+        public EntityViewService(ObjectViewDAO<TView> objectViewDAO)
+        {
+            ObjectViewDAO = objectViewDAO ?? throw new ArgumentNullException(nameof(objectViewDAO));
+        }
+
         /// <summary>
         /// 获取或设置用于视图查询的数据访问对象。
         /// </summary>
-        public ObjectViewDAO<TView> ObjectViewDAO { get; set; }
+        public ObjectViewDAO<TView> ObjectViewDAO { get; }
 
         #region IEntityViewService<TView> 成员
 

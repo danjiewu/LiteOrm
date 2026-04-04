@@ -37,7 +37,12 @@ namespace LiteOrm
     [AutoRegister(Lifetime.Scoped)]
     public class ObjectViewDAO<T> : DAOBase, IObjectViewDAO<T> where T : new()
     {
+        public ObjectViewDAO(TableInfoProvider tableInfoProvider, BulkProviderFactory bulkFactory)
+            : base(tableInfoProvider, bulkFactory)
+        {
+        }
 
+ 
         #region 属性
         /// <summary>
         /// 实体对象类型

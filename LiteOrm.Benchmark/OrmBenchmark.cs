@@ -16,7 +16,7 @@ using SqlSugar;
 namespace LiteOrm.Benchmark
 {
     [MemoryDiagnoser]
-    [MediumRunJob]
+
     public class OrmBenchmark
     {
         private IHost _host;

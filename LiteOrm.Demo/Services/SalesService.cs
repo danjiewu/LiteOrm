@@ -10,5 +10,9 @@ namespace LiteOrm.Demo.Services
     /// </summary>
     public class SalesService : EntityService<SalesRecord, SalesRecordView>, ISalesService
     {
+        public SalesService(ObjectDAO<SalesRecord> objectDAO, ObjectViewDAO<SalesRecordView> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
     }
 }

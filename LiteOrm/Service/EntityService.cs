@@ -57,10 +57,16 @@ namespace LiteOrm.Service
     where TView : T, new()
     where T : new()
     {
+        public EntityService(ObjectDAO<T> objectDAO, ObjectViewDAO<TView> objectViewDAO)
+            : base(objectViewDAO)
+        {
+            ObjectDAO = objectDAO ?? throw new ArgumentNullException(nameof(objectDAO));
+        }
+
         /// <summary>
         /// 获取或设置实体数据访问对象。
         /// </summary>
-        public ObjectDAO<T> ObjectDAO { get; set; }
+        public ObjectDAO<T> ObjectDAO { get; }
 
         #region IEntityService<T> 成员
 
@@ -967,5 +973,9 @@ namespace LiteOrm.Service
     public class EntityService<T> : EntityService<T, T>
         where T : new()
     {
+        public EntityService(ObjectDAO<T> objectDAO, ObjectViewDAO<T> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
     }
 }

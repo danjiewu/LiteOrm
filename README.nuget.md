@@ -34,7 +34,7 @@ A lightweight, high-performance .NET ORM framework that combines micro-ORM speed
 ## 📋 Requirements
 
 - **.NET 8.0+** or **.NET Standard 2.0** (.NET Framework 4.6.1+)
-- **Dependencies**: Autofac, Castle.Core
+- **Dependencies**: Microsoft.Extensions.DependencyInjection, Castle.Core
 
 ## 📦 Installation
 
@@ -269,7 +269,7 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的
 ### 📋 环境要求
 
 - **.NET 8.0+** 或 **.NET Standard 2.0**（兼容 .NET Framework 4.6.1+）
-- **依赖库**：Autofac、Castle.Core
+- **依赖库**：Microsoft.Extensions.DependencyInjection、Castle.Core
 
 ### 📦 安装
 

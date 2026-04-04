@@ -10,6 +10,11 @@ namespace LiteOrm.Demo.Services
     /// </summary>
     public class UserService : EntityService<User, UserView>, IUserService
     {
+        public UserService(ObjectDAO<User> objectDAO, ObjectViewDAO<UserView> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
+
         /// <summary>
         /// 根据用户名异步获取用户信息
         /// </summary>

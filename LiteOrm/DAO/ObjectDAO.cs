@@ -31,6 +31,11 @@ namespace LiteOrm
     [AutoRegister(Lifetime.Scoped)]
     public class ObjectDAO<T> : DAOBase, IObjectDAO<T>
     {
+        public ObjectDAO(TableInfoProvider tableInfoProvider, BulkProviderFactory bulkFactory)
+            : base(tableInfoProvider, bulkFactory)
+        {
+        }
+
         /// <summary>
         /// 实体对象类型
         /// </summary>

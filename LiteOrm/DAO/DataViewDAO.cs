@@ -18,6 +18,11 @@ namespace LiteOrm
     [AutoRegister(Lifetime.Scoped)]
     public class DataViewDAO<T> : DAOBase, IDataViewDAO<T>
     {
+        public DataViewDAO(TableInfoProvider tableInfoProvider, BulkProviderFactory bulkFactory)
+            : base(tableInfoProvider, bulkFactory)
+        {
+        }
+
         /// <summary>
         /// 获取实体类型信息。
         /// </summary>

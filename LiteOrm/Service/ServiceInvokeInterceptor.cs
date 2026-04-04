@@ -32,7 +32,7 @@ namespace LiteOrm.Service
     /// 9. 方法元数据缓存 - 缓存方法的属性信息以提高性能
     /// 
     /// 该拦截器应用于所有被标记为需要拦截的服务类，
-    /// 通过 Autofac.Extras.DynamicProxy 库的 Intercept 特性应用。
+    /// 通过 LiteOrm 的 Intercept 特性和 Castle DynamicProxy 自动应用。
     /// 
     /// 支持的特性：
     /// - TransactionAttribute - 控制事务行为

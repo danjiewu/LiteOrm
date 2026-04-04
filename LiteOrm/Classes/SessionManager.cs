@@ -1,4 +1,3 @@
-using Autofac;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -53,7 +52,34 @@ namespace LiteOrm
         private readonly LinkedList<string> _sqlStack = new LinkedList<string>();
         private string _currentTransactionId;
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
-        private static readonly AsyncLocal<Lazy<SessionManager>> _currentAsyncLocal = new AsyncLocal<Lazy<SessionManager>>();
+        private sealed class SessionManagerScope
+        {
+            public SessionManagerScope Parent { get; set; }
+            public Lazy<SessionManager> Value { get; set; }
+        }
+
+        private sealed class SessionManagerScopeToken : IDisposable
+        {
+            private readonly SessionManagerScope _scope;
+            private bool _disposed;
+
+            public SessionManagerScopeToken(SessionManagerScope scope)
+            {
+                _scope = scope;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed) return;
+                _disposed = true;
+                if (_currentAsyncLocal.Value == _scope)
+                {
+                    _currentAsyncLocal.Value = _scope.Parent;
+                }
+            }
+        }
+
+        private static readonly AsyncLocal<SessionManagerScope> _currentAsyncLocal = new AsyncLocal<SessionManagerScope>();
 
         /// <summary>
         /// 唯一会话ID
@@ -65,8 +91,11 @@ namespace LiteOrm
         /// </summary>
         public static SessionManager Current
         {
-            get => _currentAsyncLocal.Value?.Value;
-            set => _currentAsyncLocal.Value = value is null ? null : new Lazy<SessionManager>(() => value);
+            get => _currentAsyncLocal.Value?.Value?.Value;
+            set => _currentAsyncLocal.Value = value is null ? null : new SessionManagerScope
+            {
+                Value = new Lazy<SessionManager>(() => value)
+            };
         }
 
         /// <summary>
@@ -75,7 +104,26 @@ namespace LiteOrm
         /// <param name="factory">返回 <see cref="SessionManager"/> 实例的工厂委托；传入 null 时清空当前上下文</param>
         public static void SetCurrentFactory(Func<SessionManager> factory)
         {
-            _currentAsyncLocal.Value = factory is null ? null : new Lazy<SessionManager>(factory);
+            _currentAsyncLocal.Value = factory is null ? null : new SessionManagerScope
+            {
+                Value = new Lazy<SessionManager>(factory)
+            };
+        }
+
+        /// <summary>
+        /// 将当前会话管理器工厂压入异步上下文栈，并在释放返回值时恢复上一个工厂。
+        /// </summary>
+        public static IDisposable PushCurrentFactory(Func<SessionManager> factory)
+        {
+            if (factory is null) throw new ArgumentNullException(nameof(factory));
+
+            var scope = new SessionManagerScope
+            {
+                Parent = _currentAsyncLocal.Value,
+                Value = new Lazy<SessionManager>(factory)
+            };
+            _currentAsyncLocal.Value = scope;
+            return new SessionManagerScopeToken(scope);
         }
 
         /// <summary>

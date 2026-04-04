@@ -16,7 +16,7 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      将全局自动扩展关联表改为在关联时指定，避免关联关系混乱和性能损失。
+      取消Autofac依赖，改为原生DI，提升兼容性。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
@@ -46,10 +46,9 @@
 
 
 	<ItemGroup>
-		<PackageReference Include="Autofac.Extensions.DependencyInjection" Version="10.0.0" />
-		<PackageReference Include="Autofac.Extras.DynamicProxy" Version="7.1.0" />
 		<PackageReference Include="Castle.Core" Version="5.2.1" />
 		<PackageReference Include="Castle.Core.AsyncInterceptor" Version="2.1.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.5" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
 	</ItemGroup>

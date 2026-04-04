@@ -26,6 +26,11 @@ namespace LiteOrm.Tests.Infrastructure
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class TestUserService : EntityService<TestUser>, ITestUserService
     {
+        public TestUserService(ObjectDAO<TestUser> objectDAO, ObjectViewDAO<TestUser> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
+
         public async Task<TestUser?> GetLatestUserAsync()
         {
             return await SearchOneAsync(
@@ -40,5 +45,9 @@ namespace LiteOrm.Tests.Infrastructure
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class TestDepartmentService : EntityService<TestDepartment>, ITestDepartmentService
     {
+        public TestDepartmentService(ObjectDAO<TestDepartment> objectDAO, ObjectViewDAO<TestDepartment> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
     }
 }

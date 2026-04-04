@@ -10,5 +10,9 @@ namespace LiteOrm.Demo.Services
     /// </summary>
     public class DepartmentService : EntityService<Department, DepartmentView>, IDepartmentService
     {
+        public DepartmentService(ObjectDAO<Department> objectDAO, ObjectViewDAO<DepartmentView> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
     }
 }

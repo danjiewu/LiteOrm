@@ -1,5 +1,3 @@
-using Autofac;
-using Autofac.Extensions.DependencyInjection;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

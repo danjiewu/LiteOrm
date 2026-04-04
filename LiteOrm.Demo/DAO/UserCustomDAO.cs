@@ -13,6 +13,11 @@ namespace LiteOrm.Demo
     /// </remarks>
     public class UserCustomDAO : ObjectViewDAO<UserView>, DAO.IUserCustomDAO
     {
+        public UserCustomDAO(TableInfoProvider tableInfoProvider, BulkProviderFactory bulkFactory)
+            : base(tableInfoProvider, bulkFactory)
+        {
+        }
+
         public async Task<List<UserView>> GetActiveUsersByDeptAsync(string deptName, CancellationToken cancellationToken = default)
         {
             // 使用 ExprString 方式构建查询

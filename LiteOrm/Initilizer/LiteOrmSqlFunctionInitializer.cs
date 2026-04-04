@@ -1,4 +1,3 @@
-using Autofac;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -12,7 +11,7 @@ namespace LiteOrm
     /// 在应用启动时注册函数映射，支持 SqlBuilder 的动态 SQL 生成。
     /// </summary>
     [AutoRegister(Lifetime = Lifetime.Singleton)]
-    public class LiteOrmSqlFunctionInitializer : IStartable
+    public class LiteOrmSqlFunctionInitializer : ILiteOrmInitializer
     {
         /// <summary>
         /// 启动时初始化 SQL 函数映射。

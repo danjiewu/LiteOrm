@@ -66,7 +66,6 @@ namespace LiteOrm
                    name.StartsWith("Microsoft.") ||
                    name.StartsWith("mscorlib") ||
                    name.StartsWith("netstandard") ||
-                   name.StartsWith("Autofac.") ||
                    name.StartsWith("Castle.") ||
                    name.StartsWith("xunit.");
         }

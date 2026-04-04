@@ -1,4 +1,3 @@
-using Autofac;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,9 +18,8 @@ namespace LiteOrm
     /// 3. 自动同步数据库表结构（创建表、添加列、创建索引）
     /// </summary>
     [AutoRegister(Lifetime = Lifetime.Singleton)]
-    public class LiteOrmCoreInitializer : IStartable
+    public class LiteOrmCoreInitializer : ILiteOrmInitializer
     {
-        private readonly SessionManager _sessionManager;
         private readonly TableInfoProvider _tableInfoProvider;
         private readonly ILogger<LiteOrmCoreInitializer> _logger;
         private readonly IDataSourceProvider _dataSourceProvider;
@@ -36,13 +34,11 @@ namespace LiteOrm
         /// <param name="daoContextPoolFactory">DAO上下文连接池工厂</param>
         /// <param name="logger">日志记录器</param>
         public LiteOrmCoreInitializer(
-            SessionManager sessionManager,
             TableInfoProvider tableInfoProvider,
             IDataSourceProvider dataSourceProvider,
             DAOContextPoolFactory daoContextPoolFactory,
             ILogger<LiteOrmCoreInitializer> logger = null)
         {
-            _sessionManager = sessionManager;
             _tableInfoProvider = tableInfoProvider;
             _dataSourceProvider = dataSourceProvider;
             _daoContextPoolFactory = daoContextPoolFactory;
@@ -76,7 +72,6 @@ namespace LiteOrm
         {
             try
             {
-                SessionManager.Current = _sessionManager;
                 TableInfoProvider.Default = _tableInfoProvider;
                 _logger?.LogInformation("LiteOrm global instances initialized");
             }
