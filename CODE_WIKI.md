@@ -109,16 +109,15 @@ flowchart TD
     A -->|构建查询| G1[Lambda表达式]
     A -->|构建查询| G2[Expr表达式]
     A -->|构建查询| G3[ExprString]
-    G1 -->|转换| H[SQL语句]
-    G2 -->|转换| H
-    G3 -->|转换| H
     G1 -->|传递| B
     G2 -->|传递| B
     G3 -->|传递| B
     G1 -->|传递| C
     G2 -->|传递| C
     G3 -->|传递| C
-    H -->|执行| J
+    C -->|表达式转换| D
+    D -->|生成| H[SQL语句]
+    H -->|设置| J
     B -->|事务管理| I[SessionManager]
     I -->|控制| E
 ```
@@ -133,7 +132,8 @@ flowchart TD
 2. **数据访问流程**：
    - 应用代码调用Service层方法
    - Service层使用DAO执行具体操作
-   - DAO创建DbCommandProxy命令对象
+   - DAO通过SqlBuilder构建SQL语句
+   - DAO创建DbCommandProxy命令对象并设置SQL语句
    - 通过DAOContext执行命令
    - 使用AutoLockDataReader读取结果
    - 结果转换为实体对象返回
@@ -141,7 +141,7 @@ flowchart TD
 3. **查询流程**：
    - 通过Lambda表达式、Expr或ExprString构建查询条件
    - 表达式可以直接传递给Service层或DAO层
-   - 表达式转换为SQL语句
+   - DAO接收表达式并通过SqlBuilder转换为SQL语句
    - 创建DbCommandProxy执行查询
    - 使用AutoLockDataReader读取结果
    - 结果转换为实体对象返回
@@ -152,8 +152,8 @@ flowchart TD
    - 多个操作在同一事务中执行
 
 5. **命令执行流程**：
-   - DAO创建DbCommandProxy对象
-   - 设置命令文本和参数
+   - DAO通过SqlBuilder构建SQL语句
+   - DAO创建DbCommandProxy对象并设置命令文本和参数
    - 通过DAOContext执行命令
    - 使用AutoLockDataReader安全读取结果
    - 自动处理资源释放
