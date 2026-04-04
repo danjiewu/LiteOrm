@@ -114,7 +114,8 @@ flowchart TD
     G2 -->|传递| B
     G2 -->|传递| C
     G3 -->|传递| C
-    C -->|构建SQL| H[SQL语句]
+    C -->|使用| D[SqlBuilder]
+    D -->|构建SQL| H[SQL语句]
     H -->|设置| J
     B -->|事务管理| I[SessionManager]
     I -->|控制| E
@@ -133,7 +134,8 @@ flowchart TD
    - Service层使用DAO执行具体操作
    - DAO从DAOContextPool获取DAOContext
    - DAOContext创建DbCommandProxy命令对象
-   - DAO构建SQL语句
+   - DAO使用SqlBuilder构建SQL语句
+   - SqlBuilder构建SQL语句
    - DbCommandProxy设置SQL语句并执行命令
    - 数据库返回数据，DbCommandProxy构建AutoLockDataReader
    - AutoLockDataReader读取数据并转换为实体对象
@@ -144,7 +146,8 @@ flowchart TD
    - Lambda表达式可以转换为Expr，Expr可以构建为ExprString
    - Expr可以传递给Service层或DAO层
    - ExprString只能传递给DAO层使用
-   - DAO接收表达式并构建SQL语句
+   - DAO接收表达式并使用SqlBuilder构建SQL语句
+   - SqlBuilder构建SQL语句
    - DAO从DAOContextPool获取DAOContext
    - DAOContext创建DbCommandProxy执行查询
    - 数据库返回数据，DbCommandProxy构建AutoLockDataReader
@@ -158,7 +161,8 @@ flowchart TD
    - 多个操作在同一事务中执行
 
 5. **命令执行流程**：
-   - DAO构建SQL语句
+   - DAO使用SqlBuilder构建SQL语句
+   - SqlBuilder构建SQL语句
    - DAO从DAOContextPool获取DAOContext
    - DAOContext创建DbCommandProxy对象
    - DbCommandProxy设置命令文本和参数
