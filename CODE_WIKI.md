@@ -102,8 +102,7 @@ flowchart TD
     B[Service层]
     B -->|使用| C[DAO层]
     E[DAOContext] -->|创建| J[DbCommandProxy]
-    J -->|执行| F[数据库]
-    F -->|读取| K[AutoLockDataReader]
+    F[数据库] -->|读取| K[AutoLockDataReader]
     J -->|构建| K
     K -->|转换| L[实体对象]
     A -->|构建查询| G1[Lambda表达式]
@@ -166,7 +165,7 @@ flowchart TD
    - DAO从DAOContextPool获取DAOContext
    - DAOContext创建DbCommandProxy对象
    - DbCommandProxy设置命令文本和参数
-   - DbCommandProxy执行命令并连接数据库
+   - DbCommandProxy执行命令
    - 数据库返回数据，DbCommandProxy构建AutoLockDataReader
    - AutoLockDataReader安全读取结果
    - AutoLockDataReader释放资源到DAOContext
