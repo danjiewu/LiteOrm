@@ -101,18 +101,18 @@ flowchart TD
     A[应用代码]
     B[Service层]
     B -->|使用| C[DAO层]
-    A -->|调用| C
     C -->|构建SQL| D[SqlBuilder]
     C -->|创建命令| E[DAOContext]
     E -->|创建| J[DbCommandProxy]
     J -->|执行| F[数据库]
-    J -->|读取| K[AutoLockDataReader]
+    F -->|读取| K[AutoLockDataReader]
+    J -->|构建| K
     K -->|转换| L[实体对象]
     A -->|构建查询| G1[Lambda表达式]
     A -->|构建查询| G2[Expr表达式]
     A -->|构建查询| G3[ExprString]
     G1 -->|转换为| G2
-    G2 -->|转换为| G3
+    G2 -->|构建| G3
     G2 -->|传递| B
     G2 -->|传递| C
     G3 -->|传递| C
@@ -120,7 +120,9 @@ flowchart TD
     D -->|生成| H[SQL语句]
     H -->|设置| J
     B -->|事务管理| I[SessionManager]
-    I -->|控制| E
+    I -->|控制| P[DAOContextPool]
+    P -->|提供| E
+    K -->|释放| E
 ```
 
 **主要流程说明：**
@@ -128,37 +130,44 @@ flowchart TD
 1. **初始化流程**：
    - 应用启动时，通过`RegisterLiteOrm()`注册服务
    - 扫描实体类型，构建元数据
-   - 初始化数据库连接池和会话管理
+   - 初始化数据库连接池和DAOContextPool
 
 2. **数据访问流程**：
-   - 应用代码直接调用DAO层方法
+   - Service层使用DAO执行具体操作
    - DAO通过SqlBuilder构建SQL语句
-   - DAO通过DAOContext创建DbCommandProxy命令对象
+   - DAO从DAOContextPool获取DAOContext
+   - DAOContext创建DbCommandProxy命令对象
    - DbCommandProxy执行命令并连接数据库
-   - DbCommandProxy使用AutoLockDataReader读取结果
-   - 结果转换为实体对象返回
+   - 数据库返回数据，DbCommandProxy构建AutoLockDataReader
+   - AutoLockDataReader读取数据并转换为实体对象
+   - AutoLockDataReader释放资源到DAOContext
 
 3. **查询流程**：
    - 通过Lambda表达式、Expr或ExprString构建查询条件
-   - Lambda表达式可以转换为Expr，Expr可以转换为ExprString
+   - Lambda表达式可以转换为Expr，Expr可以构建为ExprString
    - Expr可以传递给Service层或DAO层
    - ExprString只能传递给DAO层使用
    - DAO接收表达式并通过SqlBuilder转换为SQL语句
    - 创建DbCommandProxy执行查询
-   - 使用AutoLockDataReader读取结果
-   - 结果转换为实体对象返回
+   - 数据库返回数据，DbCommandProxy构建AutoLockDataReader
+   - AutoLockDataReader读取结果并转换为实体对象
+   - AutoLockDataReader释放资源到DAOContext
 
 4. **事务流程**：
    - 通过`[Transaction]`属性标记需要事务的方法
    - SessionManager管理事务上下文
+   - SessionManager从DAOContextPool获取DAOContext
    - 多个操作在同一事务中执行
 
 5. **命令执行流程**：
    - DAO通过SqlBuilder构建SQL语句
-   - DAO通过DAOContext创建DbCommandProxy对象
+   - DAO从DAOContextPool获取DAOContext
+   - DAOContext创建DbCommandProxy对象
    - DbCommandProxy设置命令文本和参数
    - DbCommandProxy执行命令并连接数据库
-   - DbCommandProxy使用AutoLockDataReader安全读取结果
+   - 数据库返回数据，DbCommandProxy构建AutoLockDataReader
+   - AutoLockDataReader安全读取结果
+   - AutoLockDataReader释放资源到DAOContext
    - 自动处理资源释放
 
 ## 4. 核心功能模块
