@@ -117,8 +117,8 @@ flowchart TD
     C -->|构建SQL| H[SQL语句]
     H -->|设置| J
     B -->|事务管理| I[SessionManager]
-    I -->|控制| P[DAOContextPool]
-    P -->|提供| E
+    I -->|控制| E
+    P[DAOContextPool] -->|提供| E
     K -->|释放| E
 ```
 
@@ -154,7 +154,7 @@ flowchart TD
 4. **事务流程**：
    - 通过`[Transaction]`属性标记需要事务的方法
    - SessionManager管理事务上下文
-   - SessionManager从DAOContextPool获取DAOContext
+   - SessionManager直接控制DAOContext
    - 多个操作在同一事务中执行
 
 5. **命令执行流程**：
