@@ -101,17 +101,18 @@ flowchart TD
     A[应用代码] -->|调用| B[Service层]
     B -->|使用| C[DAO层]
     C -->|构建SQL| D[SqlBuilder]
-    C -->|创建命令| J[DbCommandProxy]
-    J -->|执行| E[DAOContext]
-    E -->|连接| F[数据库]
-    E -->|读取结果| K[AutoLockDataReader]
+    C -->|创建命令| E[DAOContext]
+    E -->|创建| J[DbCommandProxy]
+    J -->|执行| F[数据库]
+    J -->|读取| K[AutoLockDataReader]
     K -->|转换| L[实体对象]
     A -->|构建查询| G1[Lambda表达式]
     A -->|构建查询| G2[Expr表达式]
     A -->|构建查询| G3[ExprString]
+    G1 -->|转换为| G2
+    G2 -->|转换为| G3
     G1 -->|传递| B
     G2 -->|传递| B
-    G3 -->|传递| B
     G1 -->|传递| C
     G2 -->|传递| C
     G3 -->|传递| C
@@ -133,14 +134,16 @@ flowchart TD
    - 应用代码调用Service层方法
    - Service层使用DAO执行具体操作
    - DAO通过SqlBuilder构建SQL语句
-   - DAO创建DbCommandProxy命令对象并设置SQL语句
-   - 通过DAOContext执行命令
-   - 使用AutoLockDataReader读取结果
+   - DAO通过DAOContext创建DbCommandProxy命令对象
+   - DbCommandProxy执行命令并连接数据库
+   - DbCommandProxy使用AutoLockDataReader读取结果
    - 结果转换为实体对象返回
 
 3. **查询流程**：
    - 通过Lambda表达式、Expr或ExprString构建查询条件
-   - 表达式可以直接传递给Service层或DAO层
+   - Lambda表达式可以转换为Expr，Expr可以转换为ExprString
+   - Lambda和Expr可以传递给Service层或DAO层
+   - ExprString只能传递给DAO层使用，不能直接调用Service
    - DAO接收表达式并通过SqlBuilder转换为SQL语句
    - 创建DbCommandProxy执行查询
    - 使用AutoLockDataReader读取结果
@@ -153,9 +156,10 @@ flowchart TD
 
 5. **命令执行流程**：
    - DAO通过SqlBuilder构建SQL语句
-   - DAO创建DbCommandProxy对象并设置命令文本和参数
-   - 通过DAOContext执行命令
-   - 使用AutoLockDataReader安全读取结果
+   - DAO通过DAOContext创建DbCommandProxy对象
+   - DbCommandProxy设置命令文本和参数
+   - DbCommandProxy执行命令并连接数据库
+   - DbCommandProxy使用AutoLockDataReader安全读取结果
    - 自动处理资源释放
 
 ## 4. 核心功能模块
