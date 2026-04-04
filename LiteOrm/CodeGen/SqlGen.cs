@@ -33,7 +33,7 @@ namespace LiteOrm.CodeGen
         /// <summary>
         /// 获取或设置表别名（例如在多表连接查询中使用）。
         /// </summary>
-        public string AliasName { get; set; }
+        public string Alias { get; set; }
 
         /// <summary>
         /// 获取或设置表名模板参数（通常用于分表场景，如 Table_{0}）。

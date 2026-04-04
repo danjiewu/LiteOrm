@@ -6,7 +6,7 @@ namespace LiteOrm.Demo.Models
     /// 用户实体类
     /// </summary>
     [Table("Users")]
-    [TableJoin("Dept", typeof(Department), nameof(Department.ParentId), AliasName = "Parent")]
+    [TableJoin("Dept", typeof(Department), nameof(Department.ParentId), Alias = "Parent")]
     public class User : ObjectBase
     {
         /// <summary>

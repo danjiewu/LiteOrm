@@ -1110,8 +1110,8 @@ namespace LiteOrm.Common.UnitTests
             var attribute = new TableJoinAttribute(typeof(string), "ForeignKey");
 
             // Act
-            attribute.AliasName = aliasName;
-            var result = attribute.AliasName;
+            attribute.Alias = aliasName;
+            var result = attribute.Alias;
 
             // Assert
             Assert.Equal(aliasName, result);
@@ -1127,7 +1127,7 @@ namespace LiteOrm.Common.UnitTests
             var attribute = new TableJoinAttribute(typeof(string), "ForeignKey");
 
             // Act
-            var result = attribute.AliasName;
+            var result = attribute.Alias;
 
             // Assert
             Assert.Null(result);
@@ -1143,10 +1143,10 @@ namespace LiteOrm.Common.UnitTests
             var attribute = new TableJoinAttribute(typeof(string), "ForeignKey");
 
             // Act
-            attribute.AliasName = "FirstAlias";
-            attribute.AliasName = "SecondAlias";
-            attribute.AliasName = "ThirdAlias";
-            var result = attribute.AliasName;
+            attribute.Alias = "FirstAlias";
+            attribute.Alias = "SecondAlias";
+            attribute.Alias = "ThirdAlias";
+            var result = attribute.Alias;
 
             // Assert
             Assert.Equal("ThirdAlias", result);
@@ -1160,11 +1160,11 @@ namespace LiteOrm.Common.UnitTests
         {
             // Arrange
             var attribute = new TableJoinAttribute(typeof(string), "ForeignKey");
-            attribute.AliasName = "SomeAlias";
+            attribute.Alias = "SomeAlias";
 
             // Act
-            attribute.AliasName = null;
-            var result = attribute.AliasName;
+            attribute.Alias = null;
+            var result = attribute.Alias;
 
             // Assert
             Assert.Null(result);

@@ -15,7 +15,7 @@ namespace LiteOrm.Tests.Models
         public int? ParentId { get; set; }
     }
 
-    [TableJoin(typeof(TestDepartment), "ParentId", AliasName = "Parent", JoinType = TableJoinType.Left)]
+    [TableJoin(typeof(TestDepartment), "ParentId", Alias = "Parent", JoinType = TableJoinType.Left)]
     public class TestDepartmentView : TestDepartment
     {
         [ForeignColumn("Parent", Property = "Name")]

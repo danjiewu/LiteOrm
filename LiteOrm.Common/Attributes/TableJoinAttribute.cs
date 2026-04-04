@@ -10,7 +10,7 @@ namespace LiteOrm.Common
     {
         private Type _targetType;
         private string _foreignKeys;
-        private string _aliasName;
+        private string _alias;
         private TableJoinType _joinType = TableJoinType.Left;
         private object _sourceTable;
 
@@ -71,10 +71,10 @@ namespace LiteOrm.Common
         /// <summary>
         /// 别名
         /// </summary>
-        public string AliasName
+        public string Alias
         {
-            get { return _aliasName; }
-            set { _aliasName = value; }
+            get { return _alias; }
+            set { _alias = value; }
         }
 
         /// <summary>
