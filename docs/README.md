@@ -95,7 +95,7 @@ LiteOrm 采用分层架构设计，清晰地分离了数据访问、业务逻辑
 ### 数据流向与主流程
 
 ```mermaid
-flowchart TD
+graph TD
     A[应用代码]
     B[Service层]
     B -->|使用| C[DAO层]
