@@ -100,7 +100,7 @@ public class UserService : EntityService<User>
 
 ## 相关链接
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - [实体映射与数据源](./01-entity-mapping.md)
 - [CRUD 指南](./04-crud-guide.md)
 - [事务管理](../03-advanced-topics/01-transactions.md)

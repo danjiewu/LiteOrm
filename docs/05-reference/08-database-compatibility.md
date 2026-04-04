@@ -134,7 +134,7 @@
 
 ## 相关链接
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - [示例索引](./06-example-index.md)
 - [生成 SQL 示例](./07-sql-examples.md)
 - [自定义分页](../03-advanced-topics/05-custom-paging.md)

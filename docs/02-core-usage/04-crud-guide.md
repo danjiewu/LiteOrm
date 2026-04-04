@@ -284,7 +284,7 @@ await service.BatchAsync(ops);
 
 ## 相关链接
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - [查询指南](./03-query-guide.md)
 - [事务管理](../03-advanced-topics/01-transactions.md)
 - [性能优化](../03-advanced-topics/03-performance.md)

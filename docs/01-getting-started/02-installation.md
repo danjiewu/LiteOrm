@@ -33,7 +33,7 @@ dotnet add package LiteOrm
 
 ## 相关链接
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - [配置与注册](./03-configuration-and-registration.md)
 - [第一个完整示例](./04-first-example.md)
 - [配置项速查](../05-reference/01-configuration-reference.md)

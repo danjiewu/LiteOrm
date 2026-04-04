@@ -148,7 +148,7 @@ var users = await userService.SearchAsync(u => u.Age >= 18);
 // 生成 SQL: SELECT * FROM Users WHERE Age >= 18
 
 var users = await userService.SearchAsync(u => u.Name == "admin");
-// 生成 SQL: SELECT * FROM Users WHERE Name = @p0（参数化）
+// 生成 SQL: SELECT * FROM Users WHERE Name = @0（参数化）
 ```
 
 **变量捕获与参数化**：
@@ -158,7 +158,7 @@ var users = await userService.SearchAsync(u => u.Name == "admin");
 ```csharp
 var age = 18;  // 在 Lambda 外定义
 var users = await userService.SearchAsync(u => u.Age > age);
-// 生成 SQL: SELECT * FROM Users WHERE Age > @p0（参数化）
+// 生成 SQL: SELECT * FROM Users WHERE Age > @0（参数化）
 ```
 
 `DateTime` 没有常量表达式，在 Lambda 中直接写 `DateTime.Now` 会被解析为 `NOW()` SQL 函数，而非参数化。如果希望 DateTime 值被参数化，需要先定义变量：
@@ -169,7 +169,7 @@ var users = await userService.SearchAsync(u => u.CreateTime > DateTime.Now);
 
 var now = DateTime.Now;  // 在 Lambda 外定义
 var users = await userService.SearchAsync(u => u.CreateTime > now);
-// 生成 SQL: SELECT * FROM Users WHERE CreateTime > @p0（参数化）
+// 生成 SQL: SELECT * FROM Users WHERE CreateTime > @0（参数化）
 ```
 
 **Expr 与 Lambda 组合**：
@@ -179,7 +179,7 @@ Lambda 中 `Expr` 类型的值可以与 Lambda 表达式组合拼接，但需要
 ```csharp
 var condition = u => u.Age >= 18 && Expr.Prop("Name").Contains("John").To<bool>();
 var users = await userService.SearchAsync(condition);
-// 生成 SQL: SELECT * FROM Users WHERE Age >= 18 AND Name LIKE @p0（参数化）
+// 生成 SQL: SELECT * FROM Users WHERE Age >= 18 AND Name LIKE @0（参数化）
 ```
 
 > 小技巧：当你已经用 `Expr.Prop(...)` 动态拼好了一个条件，但外层又想继续用 Lambda 组合时，可以把它写成 `expr.To<bool>()`。  
@@ -390,7 +390,7 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 | `Expr.If(condition, then, else)` | 条件表达式 CASE WHEN | `Expr.If(Expr.Prop("Age") > 18, Expr.Value("成年"), Expr.Value("未成年"))` |
 | `Expr.Now()` | 当前时间戳 | `Expr.Now()` |
 | `Expr.Today()` | 当前日期 | `Expr.Today()` |
-| `Expr.Sql(key, arg)` | 动态 SQL 片段 | `Expr.Sql("@p0", value)` |
+| `Expr.Sql(key, arg)` | 动态 SQL 片段 | `Expr.Sql("@0", value)` |
 
 ### 3.11 ExprExtensions 扩展方法
 
@@ -650,7 +650,7 @@ var combinedList = await viewService.SearchAsync(
 
 ## 8. 下一步
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - 关联查询：[关联查询](./05-associations.md)
 - 学习完整操作：[增删改查](./04-crud-guide.md)
 - 事务处理：[事务处理](../03-advanced-topics/01-transactions.md)

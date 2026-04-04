@@ -158,7 +158,7 @@ if (exists)
 
 ## 9. 下一步建议
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 跑通这个示例后，建议继续阅读：
 
 - [实体映射与数据源](../02-core-usage/01-entity-mapping.md)

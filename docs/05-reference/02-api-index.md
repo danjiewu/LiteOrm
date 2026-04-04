@@ -102,9 +102,9 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
 - [数据库差异与兼容性说明](./08-database-compatibility.md)
 
-## 相关链接
-
-- [返回目录](../SUMMARY.md)
+## 相关链接
+
+- [返回目录](../README.md)
 - [示例索引](./06-example-index.md)
 - [生成 SQL 示例](./07-sql-examples.md)
 - [数据库差异与兼容性说明](./08-database-compatibility.md)

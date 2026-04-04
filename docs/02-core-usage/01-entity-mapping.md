@@ -92,7 +92,7 @@ public class Log : IArged
 
 ## 相关链接
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - [视图模型与服务定义](./02-view-models-and-services.md)
 - [关联查询](./05-associations.md)
 - [术语表](../05-reference/03-glossary.md)

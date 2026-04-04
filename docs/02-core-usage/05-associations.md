@@ -22,7 +22,7 @@
 
 ## 使用示例
 
-### 0) 最小可用闭环
+### 1) 最小可用闭环
 
 下面这个例子适合第一次接触 LiteOrm 关联查询时先跑通：
 
@@ -61,7 +61,7 @@ var orders = await orderService.SearchAsync<OrderView>();
 
 如果 `OrderView.UserName` 能正确取到值，说明最基础的 `ForeignType + ForeignColumn` 关联链已经打通。
 
-### 1) ForeignType（属性级）
+### 2) ForeignType（属性级）
 
 ```csharp
 [Table("Orders")]
@@ -76,12 +76,11 @@ public class Order
 
     [Column("Amount")]
     public decimal Amount { get; set; }
-}
 ```
 
 - 说明：ForeignType 用于标注外键列对应的外部实体。查询视图时，通过视图类中的 ForeignColumn 可以自动生成 JOIN 并读取外表列。
 
-### 2) TableJoin（类级）
+### 3) TableJoin（类级）
 
 ```csharp
 [TableJoin(typeof(Department), "ParentId", AliasName = "Parent", JoinType = TableJoinType.Left)]
@@ -115,7 +114,7 @@ public class Shipment
 
 这类模型里，`Shipment.OrderId + Shipment.LineNo` 会按顺序关联到 `OrderItem` 的联合主键。
 
-### 3) 多级关联与 AutoExpand
+### 4) 多级关联与 AutoExpand
 
 ```csharp
 // SalesRecord 示例：SalesUserId 关联 User，并自动展开 User 的关联（如 Department）
@@ -138,7 +137,7 @@ public class SalesRecordView : SalesRecord
 - 注意：AutoExpand 的核心作用是“让下一层关联路径可被继续解析”。  
   实际是否生成更多 JOIN，仍然取决于查询里是否真的引用了这些路径上的字段或条件。
 
-### 4) AutoExpand 开关对比
+### 4.1 AutoExpand 开关对比
 
 | 场景 | `AutoExpand = false` | `AutoExpand = true` |
 |------|----------------------|---------------------|
@@ -147,7 +146,7 @@ public class SalesRecordView : SalesRecord
 | 大表、复杂视图、性能敏感 | 更稳妥 | 需谨慎评估 |
 | 想减少视图声明复杂度 | 一般 | 更方便 |
 
-### 4.1 来自 Demo 的 AutoExpand 级联示例
+### 4.2 级联示例
 
 `LiteOrm.Demo\Models\SalesRecord.cs` 给出了一个很实用的二级关联展开模型：
 
@@ -179,9 +178,9 @@ public class SalesRecordView : SalesRecord
 如果没有开启 `AutoExpand`，`DepartmentName` 这类二级字段通常需要额外声明连接路径。  
 这也是 `AutoExpand` 最常见、也最值得使用的场景：**补足多级关联的可解析路径**。
 
-### 5) 来自 Demo 的多级关联示例
+### 4.3 多级关联示例
 
-下面这个模型直接整理自 `LiteOrm.Demo\Models\User.cs`，演示“部门 + 上级部门”两级关联：
+演示“部门 + 上级部门”两级关联：
 
 ```csharp
 [Table("Users")]
@@ -205,9 +204,9 @@ public class UserView : User
 
 这类写法适合“用户 → 部门 → 上级部门”这种稳定的多级读取场景。
 
-### 6) 来自测试的查询示例
+### 4.4 查询示例
 
-下面的查询提炼自 `LiteOrm.Tests\ServiceTests.cs`，能直接验证多级关联字段是否可用于筛选：
+验证多级关联字段是否可用于筛选：
 
 ```csharp
 var usersByDept = await viewService.SearchAsync(u => u.DeptName == "Sub Dept");
@@ -218,7 +217,7 @@ var combinedUsers = await viewService.SearchAsync(
 );
 ```
 
-### 6.1 关联字段排序与分页
+### 4.5 关联字段排序与分页
 
 `LiteOrm.Tests\ServiceTests.cs` 还验证了关联字段可以直接参与排序与分页：
 
@@ -251,11 +250,32 @@ var users2 = await viewService.SearchAsync(expr2);
 - 排序
 - 分页窗口计算
 
-### 6.2 ExistsRelated 组合过滤示例
+---
 
-当你不想在视图模型中显式暴露关联字段，而只是想“按关联表条件过滤主表”时，可以使用 `ExistsRelated`。
+## 5. ExistsRelated
 
-下面的用法整理自 `LiteOrm.Demo\Demos\ExistsRelatedDemo.cs` 和 `LiteOrm.Tests\ExprEnhancedTests.cs`：
+当你不想在视图模型中显式暴露关联字段，而只是想“按关联表条件过滤主表”时，可以使用 `ExistsRelated`
+
+### 5.1 匹配规则
+
+`ExistsRelated` 在构造关联路径时遵循以下优先级规则：
+
+**关联匹配顺序：**
+1. **正向关联优先**：首先尝试从主表出发的外键关联（如 `Order.UserId -> User.Id`）
+2. **反向关联备选**：若主表上没有到目标类型的正向关联，则尝试从目标表反向推断（如 `User.DeptId -> Department.Id`）
+
+**多路径时的合并逻辑：**
+- 如果从主表到目标表存在多条关联路径，它们会以 `OR` 连接作为关联条件，也就是满足任意一个关联条件即匹配成功，请在使用时注意。
+
+```csharp
+// 查询"拥有名为 ERRev_User1 的用户"的部门
+var expr = Expr.ExistsRelated<TestUser>(Expr.Prop("Name") == "ERRev_User1");
+var results = await objectViewDAO.Search(expr).ToListAsync();
+```
+
+即使 `TestDepartment` 自身没有直接声明到 `TestUser` 的 `ForeignType`，框架仍可通过 `TestUser.DeptId -> TestDepartment.Id` 的已知关联关系完成反向推断。
+
+### 5.2 组合过滤
 
 ```csharp
 // 1. 正向：按关联部门过滤用户
@@ -278,126 +298,6 @@ var matureItUsers = await objectViewDAO.Search(
 
 - 只做过滤，不需要把关联字段投影到结果里：优先考虑 `ExistsRelated`
 - 既要过滤又要展示 `DeptName / ParentDeptName`：优先考虑 `ForeignColumn` 视图
-
-### 6.3 ExistsRelated 的反向路径
-
-`ExistsRelated` 不只支持“主表上显式声明了外键”的正向路径，也支持从对端元数据反推：
-
-```csharp
-// 查询“拥有名为 ERRev_User1 的用户”的部门
-var expr = Expr.ExistsRelated<TestUser>(Expr.Prop("Name") == "ERRev_User1");
-var results = await objectViewDAO.Search(expr).ToListAsync();
-```
-
-这个例子来自 `LiteOrm.Tests\ExprEnhancedTests.cs`。  
-即使 `TestDepartment` 自身没有直接声明到 `TestUser` 的 `ForeignType`，框架仍可通过 `TestUser.DeptId -> TestDepartment.Id` 的已知关联关系完成反向推断。
-
-### 6.4 AutoExpand 和 ExistsRelated 不是同类能力
-
-这两个概念很容易被放在一起比较，但它们解决的问题并不一样：
-
-| 能力 | 主要用途 | 常见搭配 |
-|------|----------|----------|
-| `AutoExpand` | 扩展可用的关联路径，让更深层的 `ForeignColumn` / 关联字段可以继续被解析 | `ForeignColumn` |
-| `ExistsRelated` | 利用已经存在的关联关系，构造 `EXISTS` / `NOT EXISTS` 过滤条件 | `Expr` / `SearchAsync` |
-
-更直接地说：
-
-- `AutoExpand` 用于**建立和延展可用的关联关系**
-- `ExistsRelated` 用于**使用这些关联关系构造查询条件**
-
-它们并不是二选一关系，很多场景下甚至会同时出现。
-
----
-
-#### 错误示例（说明性对比）
-
-##### 示例 A：未开启 AutoExpand 时，不能直接引用二级关联表的属性
-
-```csharp
-// 假设：User 类型通过 TableJoin 关联到 Department（User -> Department）
-public class SalesRecord
-{
-    [Column("SalesUserId")]
-    [ForeignType(typeof(User))]  // AutoExpand 未设置（默认 false）
-    public int SalesUserId { get; set; }
-}
-
-public class SalesRecordView : SalesRecord
-{
-    [ForeignColumn(typeof(Department), Property = "Name")]
-    public string? DepartmentName { get; set; } // 期望通过 SalesRecord -> User -> Department 引入 Department.Name
-}
-```
-
-说明：由于 SalesRecord 上的 ForeignType 未启用 AutoExpand，LiteOrm 不会将 User 的 TableJoin 级联到 Department。
-因此，视图中直接引用 Department 的字段不会自动生成对应的 JOIN。
-要么在 SalesRecord 或查询层显式声明 TableJoin，
-要么在中间的 ForeignType 上设置 AutoExpand = true。
-
-##### 示例 B：AutoExpand 会忽略已显式引用的别名以避免重复 JOIN
-
-```csharp
-[TableJoin(typeof(Department), "DeptId", AliasName = "Dept", JoinType = TableJoinType.Left)]
-public class User { /* ... */ }
-
-public class SalesRecord
-{
-    [Column("SalesUserId")]
-    [ForeignType(typeof(User), Alias = "U", AutoExpand = true)]
-    public int SalesUserId { get; set; }
-}
-
-public class SalesRecordView : SalesRecord
-{
-    [ForeignColumn(typeof(User), Property = "UserName")]
-    public string? UserName { get; set; }
-
-    [ForeignColumn("Dept", Property = "Name")]
-    public string? DepartmentName { get; set; }
-}
-```
-
-说明：SalesRecord 引用了 User 且 User 的 TableJoin 已包含 Alias "Dept"。
-当 AutoExpand = true 时，LiteOrm 会自动把 User 的 Dept 引入查询。
-如果视图已经通过别名 "Dept" 显式引用 Department 字段，框架会避免重复生成第二次 Dept 的 JOIN，以免产生冗余连接。
-
-##### 示例 C：未被任何属性直接或间接引用的关联表不会被构造为 JOIN（避免额外开销）
-
-```csharp
-[Table("Users")]
-[TableJoin(typeof(Department), "DeptId", AliasName = "Dept")]
-[TableJoin("Dept", typeof(Region), "RegionId", AliasName = "Region", AutoExpand = true)]
-public class User
-{
-    [Column("DeptId")]
-    public int DeptId { get; set; }
-}
-
-public class UserListView : User
-{
-    [ForeignColumn("Dept", Property = "Name")]
-    public string? DeptName { get; set; }
-
-    // 注意：这里没有声明 RegionName
-}
-
-var users = await userViewService.SearchAsync<UserListView>();
-```
-
-说明：虽然 `Dept -> Region` 的关联路径已经存在，甚至开启了 `AutoExpand = true`，但本次查询只读取 `DeptName`，没有任何属性或条件引用 `Region`。  
-因此，LiteOrm 只会生成到 `Dept` 为止的必要 JOIN，不会把 `Region` 无条件拼进 SQL。
-
-总结：
-
-- 当需要从二级或更深层级的关联中读取列时，若希望继续沿既有关系解析，请在中间 ForeignType 或 TableJoin 上设置 AutoExpand = true；
-- AutoExpand 会智能避免重复别名的重复 JOIN；
-- 框架只会为视图中声明的列构造必要的 JOIN，未引用的关联不会被加入。
-
----
-
-- 注意：AutoExpand 在复杂关联关系里要慎用，尤其是“同一张表有多条关联路径”时，可能让后续解析命中并非你原本预期的那条关系。  
-但它本身不会强制增加 JOIN 数量；是否生成 JOIN，仍取决于查询实际引用了哪些路径。
 
 ---
 
@@ -437,7 +337,7 @@ var users = await userViewService.SearchAsync<UserListView>();
 
 ## 下一步
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - 基础概念：[基础概念](./01-entity-mapping.md)
 - 查询指南：[查询指南](./03-query-guide.md)
 - 增删改查：[增删改查](./04-crud-guide.md)

@@ -202,6 +202,6 @@
 
 ## 相关链接
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - [API 索引](./02-api-index.md)
 - [迁移映射](./04-migration-map.md)

@@ -347,7 +347,7 @@ SqlBuilder.Instance.RegisterFunctionSqlHandler("LAG_OVER", (ref outSql, expr, co
 
 ## 8. 下一步
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - 关联查询：[关联查询](../02-core-usage/05-associations.md)
 - 表达式扩展：[表达式扩展](../04-extensibility/01-expression-extension.md)
 - 函数验证器：[函数验证器](../04-extensibility/02-function-validator.md)

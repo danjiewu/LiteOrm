@@ -88,7 +88,7 @@ builder.Host.RegisterLiteOrm(options =>
 
 ## 相关链接
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - [第一个完整示例](./04-first-example.md)
 - [配置项速查](../05-reference/01-configuration-reference.md)
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)

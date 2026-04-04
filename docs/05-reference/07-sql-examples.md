@@ -4,7 +4,7 @@
 
 注意：
 
-- 以下 SQL 以“结构示意”为主，不保证别名、参数名和不同数据库方言下完全逐字一致。
+- 以下 SQL 以"结构示意"为主，不保证别名、参数名和不同数据库方言下完全逐字一致。
 - 实际 SQL 可能因 `SqlBuilder`、数据库方言、分页写法和注册扩展而有所不同。
 
 ## 1. 基础条件查询
@@ -18,10 +18,9 @@ var users = await userService.SearchAsync(u => u.Age >= 18 && u.Name!.StartsWith
 典型 SQL 形态：
 
 ```sql
-SELECT T0.*
-FROM Users T0
-WHERE T0.Age >= @p0
-  AND T0.Name LIKE CONCAT(@p1, '%')
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+FROM [Users] [T0]
+WHERE [T0].[Age] >= @0 AND [T0].[Name] LIKE @1
 ```
 
 ### Expr 查询
@@ -34,10 +33,9 @@ var users = await userService.SearchAsync(expr);
 典型 SQL 形态：
 
 ```sql
-SELECT T0.*
-FROM Users T0
-WHERE T0.Age >= @p0
-  AND T0.Name LIKE CONCAT(@p1, '%')
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+FROM [Users] [T0]
+WHERE [T0].[Age] >= @0 AND [T0].[Name] LIKE @1
 ```
 
 ## 2. 排序与分页
@@ -53,10 +51,10 @@ var page = await userService.SearchAsync(
 典型 SQL 形态：
 
 ```sql
-SELECT T0.*
-FROM Users T0
-WHERE T0.Status = @p0
-ORDER BY T0.CreateTime DESC
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+FROM [Users] [T0]
+WHERE [T0].[Status] = @0
+ORDER BY [T0].[CreateTime] DESC
 OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY
 ```
 
@@ -73,13 +71,10 @@ var users = await userService.SearchAsync(
 典型 SQL 形态：
 
 ```sql
-SELECT T0.*
-FROM Users T0
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+FROM [Users] [T0]
 WHERE EXISTS (
-    SELECT 1
-    FROM Orders T1
-    WHERE T1.UserId = T0.Id
-      AND T1.Status = @p0
+  SELECT 1 FROM [Orders] [T1] WHERE [T1].[UserId] = [T0].[Id] AND [T1].[Status] = @0
 )
 ```
 
@@ -93,13 +88,10 @@ var users = await userService.SearchAsync(expr);
 典型 SQL 形态：
 
 ```sql
-SELECT T0.*
-FROM Users T0
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+FROM [Users] [T0]
 WHERE EXISTS (
-    SELECT 1
-    FROM Departments T1
-    WHERE T1.Id = T0.DeptId
-      AND T1.Name = @p0
+  SELECT 1 FROM [Departments] [T1] WHERE [T1].[Id] = [T0].[DeptId] AND [T1].[Name] = @0
 )
 ```
 
@@ -120,12 +112,11 @@ var users = await viewService.SearchAsync(u => u.DeptName == "IT Department");
 典型 SQL 形态：
 
 ```sql
-SELECT
-    T0.*,
-    T1.Name AS DeptName
-FROM Users T0
-LEFT JOIN Departments T1 ON T1.Id = T0.DeptId
-WHERE T1.Name = @p0
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status],
+  [T1].[Name] AS [DeptName]
+FROM [Users] [T0]
+LEFT JOIN [Departments] [T1] ON [T1].[Id] = [T0].[DeptId]
+WHERE [T1].[Name] = @0
 ```
 
 如果视图里继续引用 `ParentDeptName`，通常会继续追加一级 `JOIN Departments T2 ...`。
@@ -142,9 +133,9 @@ var sales = await salesService.SearchAsync(
 典型 SQL 形态：
 
 ```sql
-SELECT T0.*
-FROM Sales_202411 T0
-WHERE T0.Amount > @p0
+SELECT [T0].[Id], [T0].[ProductId], [T0].[Amount], [T0].[CreateTime]
+FROM [Sales_202411] [T0]
+WHERE [T0].[Amount] > @0
 ```
 
 如果实体实现了 `IArged`，插入时表名后缀也会按对象上的 `TableArgs` 自动路由。
@@ -160,11 +151,7 @@ await userService.BatchInsertAsync(users);
 ### 多值 INSERT
 
 ```sql
-INSERT INTO Users (UserName, Age, CreateTime)
-VALUES
-(@p0, @p1, @p2),
-(@p3, @p4, @p5),
-(@p6, @p7, @p8)
+INSERT INTO [Users] ([UserName], [Age], [CreateTime]) VALUES (@0, @1, @2), (@3, @4, @5), (@6, @7, @8)
 ```
 
 ### BulkProvider 原生批量写入
@@ -174,31 +161,35 @@ VALUES
 - SQL Server 的 `SqlBulkCopy`
 - MySQL 的 `MySqlBulkCopy`
 
-这类场景更接近“驱动级批量导入”，而不是 ORM 逐条拼接 SQL。
+这类场景更接近"驱动级批量导入"，而不是 ORM 逐条拼接 SQL。
 
 ## 8. UpdateExpr 条件更新
 
 ```csharp
 await userService.UpdateAsync(
     Expr.Update<User>()
-        .Set(u => u.Age, u => u.Age + 1)
-        .Where(u => u.Status == 1)
+        .Set("Age", Expr.Prop("Age") + 1)
+        .Where(Expr.Prop("Status") == 1)
 );
 ```
 
 典型 SQL 形态：
 
 ```sql
-UPDATE Users
-SET Age = Age + 1
-WHERE Status = @p0
+UPDATE [Users] SET [Age] = [Age] + 1 WHERE [Status] = @0
 ```
 
 ## 9. 窗口函数
 
 ```csharp
-var results = await factory.SalesDAO
-    .WithArgs([tableMonth])
+var amountSum = Func("SUM", Expr.Prop("Amount"))
+    .Over([Expr.Prop("ProductId")], [Expr.Prop("SaleTime").Asc()]);
+
+var selectExpr = Expr.From<SalesRecord>("202411")
+    .Select("Id", "ProductId", "ProductName", "Amount", "SaleTime")
+    .SelectMore(new SelectItemExpr(amountSum, "ProductTotal"));
+
+var results = await salesDAO
     .SearchAs<SalesWindowView>(selectExpr)
     .ToListAsync();
 ```
@@ -206,28 +197,21 @@ var results = await factory.SalesDAO
 典型 SQL 形态：
 
 ```sql
-SELECT
-    T0.Id,
-    T0.ProductId,
-    T0.Amount,
-    SUM(T0.Amount) OVER (PARTITION BY T0.ProductId) AS ProductTotal
-FROM Sales_202411 T0
+SELECT [T0].[Id], [T0].[ProductId], [T0].[ProductName], [T0].[Amount], [T0].[SaleTime],
+  SUM([T0].[Amount]) OVER (PARTITION BY [T0].[ProductId] ORDER BY [T0].[SaleTime] ASC) AS [ProductTotal]
+FROM [Sales_202411] [T0]
 ```
 
 窗口函数的最终 SQL 取决于你注册的函数处理器和当前数据库方言。
 
 ## 10. 如何查看真实 SQL
 
-- Demo 中很多示例会从 `SessionManager.Current?.SqlStack` 读取最近执行的 SQL。
-- 对复杂查询，建议先看：
-  - `查询指南`
-  - `关联查询`
-  - `窗口函数`
-  - `自定义 SqlBuilder / 方言扩展`
+- 从 `SessionManager.Current?.SqlStack` 可获取当前会话执行的 SQL。
+- `SqlStack`最多保留最后10条SQL，每次调用 `Service` 方法后`SqlStack` 会清空。
 
 ## 相关链接
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - [示例索引](./06-example-index.md)
 - [查询指南](../02-core-usage/03-query-guide.md)
 - [关联查询](../02-core-usage/05-associations.md)

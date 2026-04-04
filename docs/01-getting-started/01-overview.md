@@ -34,8 +34,8 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架。它兼顾了微 ORM 
 
 ## 相关链接
 
-- [返回目录](../SUMMARY.md)
-- [文档中心](../SUMMARY.md)
+- [返回目录](../README.md)
+- [文档中心](../README.md)
 - [API 索引](../05-reference/02-api-index.md)
 - [Demo 项目](../../LiteOrm.Demo/)
 

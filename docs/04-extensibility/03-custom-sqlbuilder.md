@@ -104,7 +104,7 @@ MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (ref outSql, exp
 
 ## 相关链接
 
-- [返回目录](../SUMMARY.md)
+- [返回目录](../README.md)
 - [自定义分页](../03-advanced-topics/05-custom-paging.md)
 - [表达式扩展](./01-expression-extension.md)
 - [配置与注册](../01-getting-started/03-configuration-and-registration.md)
