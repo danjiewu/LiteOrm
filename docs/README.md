@@ -30,6 +30,9 @@
 | [性能](./03-advanced-topics/03-performance.md) | [Performance](./03-advanced-topics/03-performance.en.md) | 性能调优建议 |
 | [窗口函数](./03-advanced-topics/04-window-functions.md) | [Window Functions](./03-advanced-topics/04-window-functions.en.md) | 窗口函数支持 |
 | [自定义分页](./03-advanced-topics/05-custom-paging.md) | [Custom Paging](./03-advanced-topics/05-custom-paging.en.md) | 分页方案扩展 |
+| [权限过滤](./03-advanced-topics/06-permission-filtering.md) | [Permission Filtering](./03-advanced-topics/06-permission-filtering.en.md) | 用户范围过滤与访问控制 |
+| [前端 QueryString 查询](./03-advanced-topics/07-frontend-querystring.md) | [Frontend QueryString](./03-advanced-topics/07-frontend-querystring.en.md) | 前端拼接查询参数并调用查询接口 |
+| [前端原生 Expr 查询](./03-advanced-topics/08-frontend-native-expr.md) | [Frontend Native Expr](./03-advanced-topics/08-frontend-native-expr.en.md) | 前端构造原生 Expr JSON 并调用查询接口 |
 
 ### 扩展开发篇 / Extensibility
 

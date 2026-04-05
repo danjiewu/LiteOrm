@@ -64,6 +64,70 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的
 
 
 
+## 🌐 Web 演示项目
+
+
+
+仓库现在包含 `LiteOrm.WebDemo`，用于演示在 ASP.NET Core 中集成 LiteOrm 的最小完整链路：
+
+
+
+- **简单身份验证**：`POST /api/auth/login` 返回演示型 Bearer Token
+- **订单增删改查**：`/api/orders` 提供创建、读取、更新、删除接口
+- **查询能力展示**：
+  - `GET /api/orders/query`：通过 QueryString 传参查询
+  - `POST /api/orders/query/expr`：通过原生 LiteOrm `WhereExpr / OrderByExpr / SectionExpr` JSON 查询
+  - 两种方式都会返回最近执行的 SQL
+- **统计接口**：`GET /api/orders/stats` 基于同一组查询条件返回汇总结果
+
+
+
+运行方式：
+
+
+
+```bash
+dotnet run --project .\LiteOrm.WebDemo\LiteOrm.WebDemo.csproj
+```
+
+
+
+默认使用 SQLite，本地启动后会自动建表和写入演示数据。可直接使用以下账号登录：
+
+
+
+- `admin / admin123`
+- `alice / demo123`
+
+
+
+启动后访问根路径 `/`，前端演示页会拆分为 5 个页面：
+
+
+
+- 登录页
+- QueryString 查询页（前端表单拼接 URL 参数并调用 `GET /api/orders/query` / `GET /api/orders/stats`）
+- Expr 查询页（前端可视化构造原生 `WhereExpr / OrderByExpr / SectionExpr` JSON 并调用 `POST /api/orders/query/expr`）
+- 订单管理页（列表、读取详情、编辑、删除）
+- 订单创建页
+
+
+
+`POST /api/orders/query/expr` 建议由调用方直接序列化 LiteOrm 原生 `Expr` 对象后提交，例如先在客户端构造：
+
+
+
+```csharp
+var expr = Expr.From<DemoOrderView>()
+    .Where(Expr.Prop("Status") == "Pending")
+    .OrderBy(Expr.Prop("CreatedTime").Desc())
+    .Section(0, 5);
+
+var json = JsonSerializer.Serialize(expr);
+```
+
+
+
 ## 📋 环境要求
 
 

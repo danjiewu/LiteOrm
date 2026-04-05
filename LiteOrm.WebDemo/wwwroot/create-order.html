@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LiteOrm 演示 - 订单创建</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <h2>订单创建页</h2>
+            <p>这个页面演示最基础的前后端写入交互：前端表单提交到 <code>POST /api/orders</code>，后台生成订单号并返回创建结果与 SQL。</p>
+        </section>
+
+        <nav class="nav">
+            <a href="/">登录</a>
+            <a href="/query-string.html">QueryString 查询</a>
+            <a href="/expr-query.html">Expr 查询</a>
+            <a href="/order-manage.html">订单管理</a>
+            <a class="active" href="/create-order.html">订单创建</a>
+        </nav>
+
+        <section class="card">
+            <h2>当前会话</h2>
+            <div id="sessionBox" class="token">尚未登录</div>
+        </section>
+
+        <section class="card">
+            <h2>订单表单</h2>
+            <div class="grid">
+                <div><label for="customerName">客户名称</label><input id="customerName" value="前端演示客户"></div>
+                <div><label for="productName">商品名称</label><input id="productName" value="交互演示套餐"></div>
+                <div><label for="quantity">数量</label><input id="quantity" type="number" value="2"></div>
+                <div><label for="unitPrice">单价</label><input id="unitPrice" type="number" step="0.01" value="199"></div>
+                <div>
+                    <label for="orderStatus">订单状态</label>
+                    <select id="orderStatus">
+                        <option value="Pending">待处理（Pending）</option>
+                        <option value="Paid">已支付（Paid）</option>
+                        <option value="Shipped">已发货（Shipped）</option>
+                        <option value="Completed">已完成（Completed）</option>
+                        <option value="Cancelled">已取消（Cancelled）</option>
+                    </select>
+                </div>
+                <div><label for="note">备注</label><input id="note" value="来自独立前端页面的创建请求"></div>
+            </div>
+            <div class="actions">
+                <button id="createButton">创建订单</button>
+            </div>
+            <div id="createStatus" class="status">等待创建...</div>
+        </section>
+
+        <section class="card">
+            <h2>最近响应</h2>
+            <pre id="jsonOutput">{}</pre>
+        </section>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        demoApp.renderSessionBox("sessionBox");
+
+        document.getElementById("createButton").addEventListener("click", async () => {
+            if (!demoApp.requireLogin("createStatus")) return;
+            try {
+                const payload = {
+                    customerName: document.getElementById("customerName").value.trim(),
+                    productName: document.getElementById("productName").value.trim(),
+                    quantity: Number(document.getElementById("quantity").value),
+                    unitPrice: Number(document.getElementById("unitPrice").value),
+                    status: document.getElementById("orderStatus").value,
+                    note: document.getElementById("note").value.trim()
+                };
+                const result = await demoApp.apiFetch("/api/orders", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                demoApp.renderJson("jsonOutput", result);
+                demoApp.setStatus("createStatus", `创建成功：${result.item?.orderNo ?? "N/A"}`, "success");
+            } catch (error) {
+                demoApp.setStatus("createStatus", `创建失败：${error.message}`, "error");
+            }
+        });
+    </script>
+</body>
+</html>
