@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LiteOrm 演示 - 登录</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <h1>LiteOrm Web 演示</h1>
+            <p>这个演示站点拆成了多个页面：登录、QueryString 查询、Expr 查询、订单创建。先在这里登录，再跳转到其它页面观察前后端交互。</p>
+        </section>
+
+        <nav class="nav">
+            <a class="active" href="/">登录</a>
+            <a href="/query-string.html">QueryString 查询</a>
+            <a href="/expr-query.html">Expr 查询</a>
+            <a href="/order-manage.html">订单管理</a>
+            <a href="/create-order.html">订单创建</a>
+        </nav>
+
+        <section class="card">
+            <h2>登录</h2>
+            <div class="grid">
+                <div>
+                    <label for="userName">用户名</label>
+                    <input id="userName" value="admin">
+                </div>
+                <div>
+                    <label for="password">密码</label>
+                    <input id="password" type="password" value="admin123">
+                </div>
+            </div>
+            <div class="actions">
+                <button id="loginButton">登录</button>
+                <button id="meButton" class="secondary">读取当前用户</button>
+                <button id="logoutButton" class="secondary">退出登录</button>
+            </div>
+            <div id="loginStatus" class="status">等待登录...</div>
+            <p class="subtle">默认账号：admin / admin123，alice / demo123</p>
+        </section>
+
+        <section class="card">
+            <h2>当前会话</h2>
+            <div id="sessionBox" class="token">尚未登录</div>
+        </section>
+
+        <section class="card">
+            <h2>最近响应</h2>
+            <pre id="jsonOutput">{}</pre>
+        </section>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        demoApp.renderSessionBox("sessionBox");
+
+        document.getElementById("loginButton").addEventListener("click", async () => {
+            try {
+                const payload = {
+                    userName: document.getElementById("userName").value.trim(),
+                    password: document.getElementById("password").value
+                };
+                const result = await demoApp.apiFetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                demoApp.saveSession(result.token, result.user);
+                demoApp.renderSessionBox("sessionBox");
+                demoApp.renderJson("jsonOutput", result);
+                demoApp.setStatus("loginStatus", `登录成功：${result.user.displayName}`, "success");
+            } catch (error) {
+                demoApp.setStatus("loginStatus", `登录失败：${error.message}`, "error");
+            }
+        });
+
+        document.getElementById("meButton").addEventListener("click", async () => {
+            if (!demoApp.requireLogin("loginStatus")) return;
+            try {
+                const result = await demoApp.apiFetch("/api/auth/me");
+                demoApp.renderJson("jsonOutput", result);
+                demoApp.setStatus("loginStatus", `当前用户：${result.displayName} / ${result.departmentName ?? "未分配部门"}`, "success");
+            } catch (error) {
+                demoApp.setStatus("loginStatus", `读取当前用户失败：${error.message}`, "error");
+            }
+        });
+
+        document.getElementById("logoutButton").addEventListener("click", async () => {
+            if (!demoApp.requireLogin("loginStatus")) return;
+            try {
+                const result = await demoApp.apiFetch("/api/auth/logout", { method: "POST" });
+                demoApp.clearSession();
+                demoApp.renderSessionBox("sessionBox");
+                demoApp.renderJson("jsonOutput", result);
+                demoApp.setStatus("loginStatus", "已退出登录。", "success");
+            } catch (error) {
+                demoApp.setStatus("loginStatus", `退出失败：${error.message}`, "error");
+            }
+        });
+    </script>
+</body>
+</html>

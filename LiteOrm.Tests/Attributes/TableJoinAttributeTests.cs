@@ -1091,7 +1091,7 @@ namespace LiteOrm.Common.UnitTests
         }
 
         /// <summary>
-        /// Tests that the AliasName property correctly sets and gets various string values including edge cases.
+        /// Tests that the  property correctly sets and gets various string values including edge cases.
         /// </summary>
         /// <param name="aliasName">The alias name value to test.</param>
         [Theory]
@@ -1110,15 +1110,15 @@ namespace LiteOrm.Common.UnitTests
             var attribute = new TableJoinAttribute(typeof(string), "ForeignKey");
 
             // Act
-            attribute.AliasName = aliasName;
-            var result = attribute.AliasName;
+            attribute.Alias = aliasName;
+            var result = attribute.Alias;
 
             // Assert
             Assert.Equal(aliasName, result);
         }
 
         /// <summary>
-        /// Tests that the AliasName property returns null when not explicitly set.
+        /// Tests that the  property returns null when not explicitly set.
         /// </summary>
         [Fact]
         public void AliasName_WhenNotSet_ReturnsNull()
@@ -1127,14 +1127,14 @@ namespace LiteOrm.Common.UnitTests
             var attribute = new TableJoinAttribute(typeof(string), "ForeignKey");
 
             // Act
-            var result = attribute.AliasName;
+            var result = attribute.Alias;
 
             // Assert
             Assert.Null(result);
         }
 
         /// <summary>
-        /// Tests that the AliasName property can be set multiple times and returns the latest value.
+        /// Tests that the  property can be set multiple times and returns the latest value.
         /// </summary>
         [Fact]
         public void AliasName_SetMultipleTimes_ReturnsLatestValue()
@@ -1143,28 +1143,28 @@ namespace LiteOrm.Common.UnitTests
             var attribute = new TableJoinAttribute(typeof(string), "ForeignKey");
 
             // Act
-            attribute.AliasName = "FirstAlias";
-            attribute.AliasName = "SecondAlias";
-            attribute.AliasName = "ThirdAlias";
-            var result = attribute.AliasName;
+            attribute.Alias = "FirstAlias";
+            attribute.Alias = "SecondAlias";
+            attribute.Alias = "ThirdAlias";
+            var result = attribute.Alias;
 
             // Assert
             Assert.Equal("ThirdAlias", result);
         }
 
         /// <summary>
-        /// Tests that the AliasName property can be set back to null after being set to a value.
+        /// Tests that the  property can be set back to null after being set to a value.
         /// </summary>
         [Fact]
         public void AliasName_SetToNullAfterValue_ReturnsNull()
         {
             // Arrange
             var attribute = new TableJoinAttribute(typeof(string), "ForeignKey");
-            attribute.AliasName = "SomeAlias";
+            attribute.Alias = "SomeAlias";
 
             // Act
-            attribute.AliasName = null;
-            var result = attribute.AliasName;
+            attribute.Alias = null;
+            var result = attribute.Alias;
 
             // Assert
             Assert.Null(result);

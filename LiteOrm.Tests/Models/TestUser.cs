@@ -25,8 +25,8 @@ namespace LiteOrm.Tests.Models
         public byte[]? Avatar { get; set; }
     }
 
-    [TableJoin(typeof(TestDepartment), "DeptId", AliasName = "Dept", JoinType = TableJoinType.Left)]
-    [TableJoin("Dept", typeof(TestDepartment), "ParentId", AliasName = "ParentDept", JoinType = TableJoinType.Left)]
+    [TableJoin(typeof(TestDepartment), "DeptId", Alias = "Dept", JoinType = TableJoinType.Left)]
+    [TableJoin("Dept", typeof(TestDepartment), "ParentId", Alias = "ParentDept", JoinType = TableJoinType.Left)]
     public class TestUserView : TestUser
     {
         [ForeignColumn("Dept", Property = "Name")]

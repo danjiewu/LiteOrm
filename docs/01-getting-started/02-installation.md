@@ -6,7 +6,7 @@
 
 - `.NET 8.0+`
 - `.NET Standard 2.0`（兼容 .NET Framework 4.6.1+）
-- 依赖库：`Autofac`、`Castle.Core`
+- 依赖库：`Microsoft.Extensions.DependencyInjection`、`Castle.Core`
 
 ## 支持的数据库
 

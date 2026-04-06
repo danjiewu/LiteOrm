@@ -960,10 +960,10 @@ namespace LiteOrm.Common
             private AndExpr ReadAndExpr(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 List<LogicExpr> items = null;
-
+                //reader.Read();
                 if (reader.TokenType == JsonTokenType.StartArray)
                 {
-                    items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<LogicExpr>().ToList();
+                    items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
                 }
                 else
                 {
@@ -975,7 +975,7 @@ namespace LiteOrm.Common
                         if (prop == "Items")
                         {
                             reader.Read();
-                            items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<LogicExpr>().ToList();
+                            items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
                         }
                         else
                         {
@@ -990,10 +990,10 @@ namespace LiteOrm.Common
             private OrExpr ReadOrExpr(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 List<LogicExpr> items = null;
-
+                //reader.Read();
                 if (reader.TokenType == JsonTokenType.StartArray)
                 {
-                    items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<LogicExpr>().ToList();
+                    items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
                 }
                 else
                 {
@@ -1005,7 +1005,7 @@ namespace LiteOrm.Common
                         if (prop == "Items")
                         {
                             reader.Read();
-                            items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<LogicExpr>().ToList();
+                            items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
                         }
                         else
                         {

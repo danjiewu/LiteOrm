@@ -214,10 +214,10 @@ namespace LiteOrm
                     JoinType = tableJoin.JoinType,
                     AutoExpand = tableJoin.AutoExpand
                 };
-                if (String.IsNullOrEmpty(tableJoin.AliasName))
-                    tableJoin.AliasName = joinedTable.Name = tableJoin.TargetType.Name;
+                if (String.IsNullOrEmpty(tableJoin.Alias))
+                    tableJoin.Alias = joinedTable.Name = tableJoin.TargetType.Name;
                 else
-                    joinedTable.Name = tableJoin.AliasName;
+                    joinedTable.Name = tableJoin.Alias;
                 if (joinedTables.ContainsKey(joinedTable.Name)) throw new ArgumentException($"Duplicate table alias name \"{joinedTable.Name}\"");
                 joinedTables[joinedTable.Name] = joinedTable;
             }
@@ -274,7 +274,7 @@ namespace LiteOrm
                     {
                         foreignKeys.Add(new ColumnRef(tableView.GetColumn(keyName)));
                     }
-                    joinedTables[tableJoin.AliasName].ForeignKeys = foreignKeys.AsReadOnly();
+                    joinedTables[tableJoin.Alias].ForeignKeys = foreignKeys.AsReadOnly();
                 }
                 //如果Source不为null，表示外键来自其他已连接的表，根据Source指定的表名或表类型找到对应的JoinedTable，再根据ForeignKeys属性指定的列名从该JoinedTable中找到对应的ColumnRef作为外键列
                 else
@@ -308,7 +308,7 @@ namespace LiteOrm
                     {
                         foreignKeys.Add(sourceTable.GetColumn(keyName));
                     }
-                    joinedTables[tableJoin.AliasName].ForeignKeys = foreignKeys.AsReadOnly();
+                    joinedTables[tableJoin.Alias].ForeignKeys = foreignKeys.AsReadOnly();
                 }
             }
 

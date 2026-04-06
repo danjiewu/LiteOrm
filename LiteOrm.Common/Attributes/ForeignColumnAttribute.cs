@@ -27,7 +27,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 关联的外部表，可以为外部表对应的Type，也可以为TableJoin中的AliasName
+        /// 关联的外部表，可以为外部表对应的Type，也可以为TableJoin中的Alias
         /// </summary>
         public object Foreign { get; private set; }
 

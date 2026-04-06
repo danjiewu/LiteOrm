@@ -23,6 +23,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{983F697D-9928-444B-8D62-59ED0B779587}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.WebDemo", "LiteOrm.WebDemo\LiteOrm.WebDemo.csproj", "{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -93,6 +95,18 @@ Global
 		{EB620150-BFE7-48FD-8007-160E96B628CA}.Release|x64.Build.0 = Release|Any CPU
 		{EB620150-BFE7-48FD-8007-160E96B628CA}.Release|x86.ActiveCfg = Release|Any CPU
 		{EB620150-BFE7-48FD-8007-160E96B628CA}.Release|x86.Build.0 = Release|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Debug|x64.Build.0 = Debug|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Debug|x86.Build.0 = Debug|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Release|x64.ActiveCfg = Release|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Release|x64.Build.0 = Release|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Release|x86.ActiveCfg = Release|Any CPU
+		{3CE47DAB-2D76-3B2D-F0F9-C344BB2A3F1D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

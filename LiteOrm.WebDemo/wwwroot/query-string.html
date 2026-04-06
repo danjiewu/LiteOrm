@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LiteOrm 演示 - QueryString 查询</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <h2>QueryString 查询页</h2>
+            <p>这个页面通过输入框拼接 URL 查询参数，调用 <code>GET /api/orders/query</code> 和 <code>GET /api/orders/stats</code>。非管理员用户会自动按自己的创建人 Id 收敛查询范围。</p>
+        </section>
+
+        <nav class="nav">
+            <a href="/">登录</a>
+            <a class="active" href="/query-string.html">QueryString 查询</a>
+            <a href="/expr-query.html">Expr 查询</a>
+            <a href="/order-manage.html">订单管理</a>
+            <a href="/create-order.html">订单创建</a>
+        </nav>
+
+        <section class="card">
+            <h2>当前会话</h2>
+            <div id="sessionBox" class="token">尚未登录</div>
+        </section>
+
+        <section class="card">
+            <h2>查询条件</h2>
+            <div class="grid">
+                <div><label for="keyword">关键字</label><input id="keyword" value="ORD"></div>
+                <div>
+                    <label for="status">订单状态</label>
+                    <select id="status">
+                        <option value="">全部</option>
+                        <option value="Pending">待处理（Pending）</option>
+                        <option value="Paid">已支付（Paid）</option>
+                        <option value="Shipped">已发货（Shipped）</option>
+                        <option value="Completed">已完成（Completed）</option>
+                        <option value="Cancelled">已取消（Cancelled）</option>
+                    </select>
+                </div>
+                <div><label for="departmentName">部门名称</label><input id="departmentName" placeholder="运营部"></div>
+                <div><label for="createdByUserName">创建人名称</label><input id="createdByUserName" placeholder="Demo Admin"></div>
+                <div><label for="sortBy">排序字段</label><select id="sortBy"><option value="CreatedTime">创建时间</option><option value="TotalAmount">总金额</option><option value="Status">状态</option><option value="DepartmentName">部门</option></select></div>
+                <div><label for="desc">排序方向</label><select id="desc"><option value="true">倒序</option><option value="false">正序</option></select></div>
+                <div><label for="page">页码</label><input id="page" type="number" value="1"></div>
+                <div><label for="pageSize">每页条数</label><input id="pageSize" type="number" value="5"></div>
+            </div>
+            <div class="actions">
+                <button id="queryButton">执行查询</button>
+                <button id="statsButton" class="secondary">读取统计</button>
+            </div>
+            <div id="pageStatus" class="status">等待查询...</div>
+        </section>
+
+        <section class="card">
+            <h2>结果</h2>
+            <div id="resultSummary" class="subtle">暂无结果</div>
+            <table>
+                <thead>
+                    <tr>
+                         <th>订单号</th>
+                         <th>状态</th>
+                         <th>客户</th>
+                         <th>商品</th>
+                         <th>总金额</th>
+                         <th>创建人</th>
+                         <th>部门</th>
+                    </tr>
+                </thead>
+                <tbody id="resultTable">
+                    <tr><td colspan="7" class="subtle">暂无数据</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>最近响应</h2>
+            <pre id="jsonOutput">{}</pre>
+        </section>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        demoApp.renderSessionBox("sessionBox");
+
+        function buildParams() {
+            const params = new URLSearchParams();
+            [["keyword","keyword"],["status","status"],["departmentName","departmentName"],["createdByUserName","createdByUserName"],["sortBy","sortBy"],["desc","desc"],["page","page"],["pageSize","pageSize"]]
+                .forEach(([id, name]) => {
+                    const value = document.getElementById(id).value.trim();
+                    if (value !== "") params.set(name, value);
+                });
+            return params.toString();
+        }
+
+        document.getElementById("queryButton").addEventListener("click", async () => {
+            if (!demoApp.requireLogin("pageStatus")) return;
+            try {
+                const result = await demoApp.apiFetch(`/api/orders/query?${buildParams()}`);
+                demoApp.renderJson("jsonOutput", result);
+                demoApp.renderOrders("resultTable", result.items);
+                document.getElementById("resultSummary").textContent = `共 ${result.total} 条，当前页 ${result.page}`;
+                demoApp.setStatus("pageStatus", "QueryString 查询成功。", "success");
+            } catch (error) {
+                demoApp.setStatus("pageStatus", `查询失败：${error.message}`, "error");
+            }
+        });
+
+        document.getElementById("statsButton").addEventListener("click", async () => {
+            if (!demoApp.requireLogin("pageStatus")) return;
+            try {
+                const params = new URLSearchParams();
+                const status = document.getElementById("status").value;
+                if (status) params.set("status", status);
+                const result = await demoApp.apiFetch(`/api/orders/stats?${params.toString()}`);
+                demoApp.renderJson("jsonOutput", result);
+                demoApp.setStatus("pageStatus", `统计成功：总数=${result.total}，总金额=${result.totalAmount}`, "success");
+            } catch (error) {
+                demoApp.setStatus("pageStatus", `统计失败：${error.message}`, "error");
+            }
+        });
+    </script>
+</body>
+</html>

@@ -27,7 +27,6 @@ Install LiteOrm and any required supporting packages for your project:
 
 ```powershell
 Install-Package LiteOrm
-Install-Package Autofac
 Install-Package Castle.Core
 ```
 

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LiteOrm 演示 - 订单管理</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <h2>订单管理页</h2>
+            <p>这个页面把订单查询、读取详情、编辑和删除串成一个完整演示流程。普通用户只能看到并操作自己创建的订单，管理员可以查看全部订单。</p>
+        </section>
+
+        <nav class="nav">
+            <a href="/">登录</a>
+            <a href="/query-string.html">QueryString 查询</a>
+            <a href="/expr-query.html">Expr 查询</a>
+            <a class="active" href="/order-manage.html">订单管理</a>
+            <a href="/create-order.html">订单创建</a>
+        </nav>
+
+        <section class="card">
+            <h2>当前会话</h2>
+            <div id="sessionBox" class="token">尚未登录</div>
+        </section>
+
+        <section class="card">
+            <h2>列表筛选</h2>
+            <div class="grid">
+                <div><label for="keyword">关键字</label><input id="keyword" placeholder="订单号 / 客户 / 商品"></div>
+                <div>
+                    <label for="status">订单状态</label>
+                    <select id="status">
+                        <option value="">全部</option>
+                        <option value="Pending">待处理（Pending）</option>
+                        <option value="Paid">已支付（Paid）</option>
+                        <option value="Shipped">已发货（Shipped）</option>
+                        <option value="Completed">已完成（Completed）</option>
+                        <option value="Cancelled">已取消（Cancelled）</option>
+                    </select>
+                </div>
+                <div><label for="sortBy">排序字段</label><select id="sortBy"><option value="CreatedTime">创建时间</option><option value="UpdatedTime">更新时间</option><option value="TotalAmount">总金额</option><option value="Status">状态</option></select></div>
+                <div><label for="desc">排序方向</label><select id="desc"><option value="true">倒序</option><option value="false">正序</option></select></div>
+                <div><label for="page">页码</label><input id="page" type="number" value="1" min="1"></div>
+                <div><label for="pageSize">每页条数</label><input id="pageSize" type="number" value="8" min="1" max="100"></div>
+            </div>
+            <div class="actions">
+                <button id="searchButton">查询订单</button>
+                <button id="resetButton" class="secondary">重置条件</button>
+            </div>
+            <div id="listStatus" class="status">等待查询...</div>
+        </section>
+
+        <section class="card">
+            <h2>订单列表</h2>
+            <div id="listSummary" class="subtle">暂无结果</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>订单号</th>
+                        <th>状态</th>
+                        <th>客户</th>
+                        <th>总金额</th>
+                        <th>创建人</th>
+                        <th>更新时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="manageTable">
+                    <tr><td colspan="7" class="subtle">暂无数据</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>订单详情与编辑</h2>
+            <div class="grid">
+                <div><label for="orderId">订单 Id</label><input id="orderId" class="readonly-box" readonly></div>
+                <div><label for="orderNo">订单号</label><input id="orderNo" class="readonly-box" readonly></div>
+                <div><label for="detailCreator">创建人</label><input id="detailCreator" class="readonly-box" readonly></div>
+                <div><label for="detailDepartment">所属部门</label><input id="detailDepartment" class="readonly-box" readonly></div>
+                <div><label for="detailCreatedTime">创建时间</label><input id="detailCreatedTime" class="readonly-box" readonly></div>
+                <div><label for="detailUpdatedTime">更新时间</label><input id="detailUpdatedTime" class="readonly-box" readonly></div>
+                <div><label for="customerName">客户名称</label><input id="customerName"></div>
+                <div><label for="productName">商品名称</label><input id="productName"></div>
+                <div><label for="quantity">数量</label><input id="quantity" type="number" min="1"></div>
+                <div><label for="unitPrice">单价</label><input id="unitPrice" type="number" min="0.01" step="0.01"></div>
+                <div>
+                    <label for="orderStatus">订单状态</label>
+                    <select id="orderStatus">
+                        <option value="Pending">待处理（Pending）</option>
+                        <option value="Paid">已支付（Paid）</option>
+                        <option value="Shipped">已发货（Shipped）</option>
+                        <option value="Completed">已完成（Completed）</option>
+                        <option value="Cancelled">已取消（Cancelled）</option>
+                    </select>
+                </div>
+                <div><label for="note">备注</label><input id="note"></div>
+            </div>
+            <div class="actions">
+                <button id="reloadButton" class="secondary">重新读取</button>
+                <button id="saveButton">保存修改</button>
+                <button id="deleteButton" class="secondary">删除当前订单</button>
+                <button id="clearButton" class="secondary">清空表单</button>
+            </div>
+            <div id="detailStatus" class="status">先从列表中选择一条订单。</div>
+        </section>
+
+        <section class="card">
+            <h2>最近响应</h2>
+            <pre id="jsonOutput">{}</pre>
+        </section>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        demoApp.renderSessionBox("sessionBox");
+
+        let lastQueryResult = null;
+        let selectedOrderId = null;
+
+        function formatDateTime(value) {
+            return value ? new Date(value).toLocaleString("zh-CN") : "";
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function buildQueryString() {
+            const params = new URLSearchParams();
+            [["keyword", "keyword"], ["status", "status"], ["sortBy", "sortBy"], ["desc", "desc"], ["page", "page"], ["pageSize", "pageSize"]]
+                .forEach(([id, name]) => {
+                    const value = document.getElementById(id).value.trim();
+                    if (value) params.set(name, value);
+                });
+            return params.toString();
+        }
+
+        function clearEditor() {
+            selectedOrderId = null;
+            ["orderId", "orderNo", "detailCreator", "detailDepartment", "detailCreatedTime", "detailUpdatedTime", "customerName", "productName", "quantity", "unitPrice", "note"]
+                .forEach(id => document.getElementById(id).value = "");
+            document.getElementById("orderStatus").value = "Pending";
+        }
+
+        function fillEditor(item) {
+            selectedOrderId = item.id;
+            document.getElementById("orderId").value = item.id;
+            document.getElementById("orderNo").value = item.orderNo;
+            document.getElementById("detailCreator").value = item.createdByUserName ?? "";
+            document.getElementById("detailDepartment").value = item.departmentName ?? "";
+            document.getElementById("detailCreatedTime").value = formatDateTime(item.createdTime);
+            document.getElementById("detailUpdatedTime").value = formatDateTime(item.updatedTime);
+            document.getElementById("customerName").value = item.customerName ?? "";
+            document.getElementById("productName").value = item.productName ?? "";
+            document.getElementById("quantity").value = item.quantity ?? "";
+            document.getElementById("unitPrice").value = item.unitPrice ?? "";
+            document.getElementById("orderStatus").value = item.status ?? "Pending";
+            document.getElementById("note").value = item.note ?? "";
+        }
+
+        function findItemById(id) {
+            return lastQueryResult?.items?.find(item => item.id === id) ?? null;
+        }
+
+        function renderManageTable(items) {
+            const el = document.getElementById("manageTable");
+            if (!items || items.length === 0) {
+                el.innerHTML = '<tr><td colspan="7" class="subtle">暂无数据</td></tr>';
+                return;
+            }
+
+            el.innerHTML = items.map(item => `
+                <tr>
+                    <td>${escapeHtml(item.orderNo)}</td>
+                    <td>${escapeHtml(item.status)}</td>
+                    <td>${escapeHtml(item.customerName)}</td>
+                    <td>${escapeHtml(item.totalAmount)}</td>
+                    <td>${escapeHtml(item.createdByUserName ?? "")}</td>
+                    <td>${escapeHtml(formatDateTime(item.updatedTime))}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button type="button" data-action="load" data-id="${item.id}">读取详情</button>
+                            <button type="button" class="secondary" data-action="delete" data-id="${item.id}">删除</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        async function queryOrders() {
+            if (!demoApp.requireLogin("listStatus")) return;
+            const result = await demoApp.apiFetch(`/api/orders/query?${buildQueryString()}`);
+            lastQueryResult = result;
+            demoApp.renderJson("jsonOutput", result);
+            renderManageTable(result.items);
+            document.getElementById("listSummary").textContent = `共 ${result.total} 条，当前页 ${result.page} / 每页 ${result.pageSize} 条。`;
+            demoApp.setStatus("listStatus", "订单列表加载成功。", "success");
+            return result;
+        }
+
+        async function loadDetail(id) {
+            if (!demoApp.requireLogin("detailStatus")) return;
+            const result = await demoApp.apiFetch(`/api/orders/${id}`);
+            fillEditor(result.item);
+            demoApp.renderJson("jsonOutput", result);
+            demoApp.setStatus("detailStatus", `已加载订单：${result.item.orderNo}`, "success");
+        }
+
+        async function deleteOrder(id) {
+            if (!demoApp.requireLogin("detailStatus")) return;
+            if (!confirm(`确认删除订单 ${id} 吗？`)) return;
+            const result = await demoApp.apiFetch(`/api/orders/${id}`, { method: "DELETE" });
+            demoApp.renderJson("jsonOutput", result);
+            demoApp.setStatus("detailStatus", `订单 ${id} 已删除。`, "success");
+            if (selectedOrderId === id) clearEditor();
+            await queryOrders();
+        }
+
+        document.getElementById("searchButton").addEventListener("click", async () => {
+            try {
+                await queryOrders();
+            } catch (error) {
+                demoApp.setStatus("listStatus", `查询失败：${error.message}`, "error");
+            }
+        });
+
+        document.getElementById("resetButton").addEventListener("click", () => {
+            document.getElementById("keyword").value = "";
+            document.getElementById("status").value = "";
+            document.getElementById("sortBy").value = "CreatedTime";
+            document.getElementById("desc").value = "true";
+            document.getElementById("page").value = "1";
+            document.getElementById("pageSize").value = "8";
+            demoApp.setStatus("listStatus", "筛选条件已重置。", "success");
+        });
+
+        document.getElementById("manageTable").addEventListener("click", async (event) => {
+            const button = event.target.closest("button[data-action]");
+            if (!button) return;
+            const id = Number(button.dataset.id);
+            try {
+                if (button.dataset.action === "load") {
+                    await loadDetail(id);
+                } else if (button.dataset.action === "delete") {
+                    await deleteOrder(id);
+                }
+            } catch (error) {
+                demoApp.setStatus("detailStatus", `操作失败：${error.message}`, "error");
+            }
+        });
+
+        document.getElementById("reloadButton").addEventListener("click", async () => {
+            if (!selectedOrderId) {
+                demoApp.setStatus("detailStatus", "请先从列表中选择一条订单。", "error");
+                return;
+            }
+            try {
+                await loadDetail(selectedOrderId);
+            } catch (error) {
+                demoApp.setStatus("detailStatus", `重新读取失败：${error.message}`, "error");
+            }
+        });
+
+        document.getElementById("saveButton").addEventListener("click", async () => {
+            if (!selectedOrderId) {
+                demoApp.setStatus("detailStatus", "请先从列表中选择一条订单。", "error");
+                return;
+            }
+
+            try {
+                const payload = {
+                    customerName: document.getElementById("customerName").value.trim(),
+                    productName: document.getElementById("productName").value.trim(),
+                    quantity: Number(document.getElementById("quantity").value),
+                    unitPrice: Number(document.getElementById("unitPrice").value),
+                    status: document.getElementById("orderStatus").value,
+                    note: document.getElementById("note").value.trim()
+                };
+
+                const result = await demoApp.apiFetch(`/api/orders/${selectedOrderId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                demoApp.renderJson("jsonOutput", result);
+                fillEditor(result.item);
+                demoApp.setStatus("detailStatus", `订单 ${result.item.orderNo} 修改成功。`, "success");
+                await queryOrders();
+            } catch (error) {
+                demoApp.setStatus("detailStatus", `保存失败：${error.message}`, "error");
+            }
+        });
+
+        document.getElementById("deleteButton").addEventListener("click", async () => {
+            if (!selectedOrderId) {
+                demoApp.setStatus("detailStatus", "请先从列表中选择一条订单。", "error");
+                return;
+            }
+
+            try {
+                await deleteOrder(selectedOrderId);
+            } catch (error) {
+                demoApp.setStatus("detailStatus", `删除失败：${error.message}`, "error");
+            }
+        });
+
+        document.getElementById("clearButton").addEventListener("click", () => {
+            clearEditor();
+            demoApp.setStatus("detailStatus", "编辑表单已清空。", "success");
+        });
+
+        clearEditor();
+    </script>
+</body>
+</html>
