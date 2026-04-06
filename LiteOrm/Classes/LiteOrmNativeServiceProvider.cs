@@ -93,6 +93,7 @@ namespace LiteOrm
         public IServiceProvider CreateServiceProvider(IServiceCollection containerBuilder)
         {
             var innerProvider = _innerFactory.CreateServiceProvider(containerBuilder);
+            LiteOrmServiceScopeFactoryPatcher.Patch(innerProvider, _runtimeRegistry);
             var provider = new LiteOrmServiceProvider(innerProvider, _runtimeRegistry, ownsInnerProvider: true);
             InitializeLiteOrm(provider);
             return provider;
@@ -156,7 +157,7 @@ namespace LiteOrm
         public object GetRequiredService(Type serviceType)
         {
             if (serviceType == typeof(IServiceScopeFactory))
-                return this;
+                return _scopeFactory;
 
             if (_runtimeRegistry.TryGetInterceptedService(serviceType, out var registration))
             {
@@ -175,7 +176,7 @@ namespace LiteOrm
         public object GetService(Type serviceType)
         {
             if (serviceType == typeof(IServiceScopeFactory))
-                return this;
+                return _scopeFactory;
 
             if (_runtimeRegistry.TryGetInterceptedService(serviceType, out var registration))
             {
@@ -187,7 +188,7 @@ namespace LiteOrm
 
         public IServiceScope CreateScope()
         {
-            return new LiteOrmServiceScope(_scopeFactory.CreateScope(), _runtimeRegistry);
+            return _scopeFactory.CreateScope();
         }
 
         public void Dispose()
@@ -249,23 +250,31 @@ namespace LiteOrm
     internal sealed class LiteOrmServiceScope : IServiceScope, IAsyncDisposable
     {
         private readonly IServiceScope _innerScope;
+        private readonly LiteOrmServiceProvider _serviceProvider;
         private readonly IDisposable _sessionScope;
 
         public LiteOrmServiceScope(IServiceScope innerScope, LiteOrmRuntimeRegistry runtimeRegistry)
         {
             _innerScope = innerScope ?? throw new ArgumentNullException(nameof(innerScope));
-            ServiceProvider = new LiteOrmServiceProvider(innerScope.ServiceProvider, runtimeRegistry, ownsInnerProvider: false);
-            _sessionScope = SessionManager.PushCurrentFactory(() => ServiceProvider.GetRequiredService<SessionManager>());
+            _serviceProvider = new LiteOrmServiceProvider(innerScope.ServiceProvider, runtimeRegistry, ownsInnerProvider: false);
+            _sessionScope = SessionManager.PushCurrentFactory(() => _serviceProvider.GetRequiredService<SessionManager>());
         }
 
-        public IServiceProvider ServiceProvider { get; }
+        public IServiceProvider ServiceProvider
+        {
+            get
+            {
+                if (SessionManager.Current is null)
+                    SessionManager.SetCurrentFactory(() => _serviceProvider.GetRequiredService<SessionManager>());
+                return _serviceProvider;
+            }
+        }
 
         public void Dispose()
         {
             _sessionScope.Dispose();
             _innerScope.Dispose();
-            if (ServiceProvider is IDisposable disposable)
-                disposable.Dispose();
+            _serviceProvider.Dispose();
         }
 
         public async ValueTask DisposeAsync()
@@ -276,10 +285,7 @@ namespace LiteOrm
             else
                 _innerScope.Dispose();
 
-            if (ServiceProvider is IAsyncDisposable providerAsyncDisposable)
-                await providerAsyncDisposable.DisposeAsync().ConfigureAwait(false);
-            else if (ServiceProvider is IDisposable providerDisposable)
-                providerDisposable.Dispose();
+            await _serviceProvider.DisposeAsync().ConfigureAwait(false);
         }
     }
 }

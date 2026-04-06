@@ -10,12 +10,6 @@ builder.Services.AddScoped<DemoAuthFilter>();
 
 var app = builder.Build();
 
-app.Use(async (context, next) =>
-{
-    using var _ = SessionManager.PushCurrentFactory(() => context.RequestServices.GetRequiredService<SessionManager>());
-    await next();
-});
-
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
