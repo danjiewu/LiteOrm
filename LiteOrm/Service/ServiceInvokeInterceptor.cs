@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -316,17 +317,13 @@ namespace LiteOrm.Service
         {
             var serviceDesc = GetDescription(invocation);
             var sessionManager = SessionManager.Current;
-
-            lock (sessionManager)
+            if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
             {
-                if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
-                {
-                    sessionManager.ExecuteInTransaction(sm => invocation.Proceed(), serviceDesc.IsolationLevel);
-                }
-                else
-                {
-                    invocation.Proceed();
-                }
+                sessionManager.ExecuteInTransaction(sm => invocation.Proceed(), serviceDesc.IsolationLevel);
+            }
+            else
+            {
+                invocation.Proceed();
             }
         }
 
@@ -379,7 +376,7 @@ namespace LiteOrm.Service
                 foreach (var sql in SessionManager.Current?.SqlStack.Reverse() ?? Array.Empty<string>())
                 {
                     if (sb.Length > 0) { sb.Append("\n"); }
-                    sb.Append($"{row++}. ");   
+                    sb.Append($"{row++}. ");
                     sb.Append(sql);
                 }
                 _logger.LogWarning("[{SessionID}]<SlowSQL>{SQL}", SessionManager.Current?.SessionID, sb.ToString());
@@ -415,7 +412,7 @@ namespace LiteOrm.Service
             var logArgs = new object[invocation.Arguments.Length];
 
             for (int i = 0; i < invocation.Arguments.Length; i++)
-                logArgs[i] = serviceDesc.ArgsLoggable[i] ? invocation.Arguments[i] : "***";
+                logArgs[i] = serviceDesc.ArgsLoggable[i] ? invocation.Arguments[i] : "*";
 
             return logArgs;
         }
@@ -565,6 +562,7 @@ namespace LiteOrm.Service
     /// </summary>
     public static class ServiceInterceptorExt
     {
+        private static readonly HashSet<Type> _exclusions = new HashSet<Type> { typeof(CancellationToken) };
         /// <summary>
         /// 从方法调用信息加载服务描述
         /// </summary>
@@ -623,7 +621,7 @@ namespace LiteOrm.Service
                     }
                 }
 
-                desc.ArgsLoggable[i] = logAtts.Length > 0 ? logAtts[0].Enabled : true;
+                desc.ArgsLoggable[i] = logAtts.Length > 0 ? logAtts[0].Enabled : !_exclusions.Contains(parameters[i].ParameterType);
             }
         }
         /// <summary>

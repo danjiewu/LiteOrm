@@ -26,7 +26,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="node">要访问的表达式节点</param>
         /// <returns>验证通过返回 true，失败返回 false</returns>
-        bool IExprNodeVisitor.Visit(Expr node)
+        public bool Visit(Expr node)
         {
             if (Validate(node)) return true;
             FailedExpr = node;

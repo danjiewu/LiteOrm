@@ -160,7 +160,7 @@ namespace LiteOrm.Common.UnitTests
             var node = CreateNodeWithExprType(nodeExprType);
 
             // Act
-            bool result = ExprTypeValidator.Minimum.Validate(node);
+            bool result = ExprValidator.CreateMinimum().Validate(node);
 
             // Assert
             Assert.Equal(expectedResult, result);
@@ -189,7 +189,7 @@ namespace LiteOrm.Common.UnitTests
             var node = CreateNodeWithExprType(nodeExprType);
 
             // Act
-            bool result = ExprTypeValidator.Query.Validate(node);
+            bool result = ExprValidator.CreateQueryOnly().Validate(node);
 
             // Assert
             Assert.Equal(expectedResult, result);
@@ -308,7 +308,7 @@ namespace LiteOrm.Common.UnitTests
         public void AllowedTypes_MinimumStaticInstance_ContainsExpectedTypes()
         {
             // Arrange & Act
-            var allowedTypes = ExprTypeValidator.Minimum.AllowedTypes;
+            var allowedTypes = ExprValidator.CreateMinimum().AllowedTypes;
 
             // Assert
             Assert.NotNull(allowedTypes);
@@ -334,7 +334,7 @@ namespace LiteOrm.Common.UnitTests
         public void AllowedTypes_MinimumStaticInstance_DoesNotContainQuerySpecificTypes()
         {
             // Arrange & Act
-            var allowedTypes = ExprTypeValidator.Minimum.AllowedTypes;
+            var allowedTypes = ExprValidator.CreateMinimum().AllowedTypes;
 
             // Assert
             Assert.DoesNotContain(ExprType.Select, allowedTypes);
@@ -350,7 +350,7 @@ namespace LiteOrm.Common.UnitTests
         public void AllowedTypes_QueryStaticInstance_ContainsExpectedTypes()
         {
             // Arrange & Act
-            var allowedTypes = ExprTypeValidator.Query.AllowedTypes;
+            var allowedTypes = ExprValidator.CreateQueryOnly().AllowedTypes;
 
             // Assert
             Assert.NotNull(allowedTypes);
@@ -384,7 +384,7 @@ namespace LiteOrm.Common.UnitTests
         public void AllowedTypes_QueryStaticInstance_DoesNotContainNonQueryTypes()
         {
             // Arrange & Act
-            var allowedTypes = ExprTypeValidator.Query.AllowedTypes;
+            var allowedTypes = ExprValidator.CreateQueryOnly().AllowedTypes;
 
             // Assert
             Assert.DoesNotContain(ExprType.Update, allowedTypes);

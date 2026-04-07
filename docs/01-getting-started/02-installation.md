@@ -11,7 +11,7 @@
 ## 支持的数据库
 
 - SQL Server 2012+
-- MySQL 5.7+ / MySQL 8.0+
+- &#x20;MySQL 8.0+
 - Oracle 12c+
 - PostgreSQL
 - SQLite

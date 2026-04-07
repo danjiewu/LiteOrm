@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 实现此接口以参与 <see cref="ExprVisitor.Visit(Expr, IExprNodeVisitor)"/> 驱动的树遍历。
+    /// 实现此接口以参与 <see cref="ExprVisitor.VisitAll(IExprNodeVisitor,Expr)"/> 驱动的树遍历。
     /// </summary>
     public interface IExprNodeVisitor
     {

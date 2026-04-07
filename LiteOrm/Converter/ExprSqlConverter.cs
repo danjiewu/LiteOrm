@@ -150,7 +150,7 @@ namespace LiteOrm.Common
             expr = Reduce(expr);
 
             int curPriority = GetPriority(expr);
-            bool needParen = expr is SelectExpr ? (curPriority <= priority) : (curPriority < priority);
+            bool needParen = curPriority < priority;
             if (needParen) sb.Append('(');
 
             switch (expr)
@@ -216,6 +216,7 @@ namespace LiteOrm.Common
             return expr;
         }
 
+        private static int MaxPriority = 1000;
         /// <summary>
         /// 计算表达式的优先级（用于决定是否需要在生成 SQL 时添加括号）。
         /// 返回值越大表示优先级越高（更紧密结合），在需要时会根据与外层优先级比较决定是否加括号。
@@ -240,7 +241,7 @@ namespace LiteOrm.Common
                 },
                 NotExpr _ => 17,
                 UnaryExpr _ => 18, 
-                _ => 100
+                _ => MaxPriority
             };
         }
 
@@ -762,7 +763,7 @@ namespace LiteOrm.Common
         {
             using (context.BeginScope())
             {
-                ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams, 1);
+                ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams, MaxPriority);
             }
             string aliasMain = expr.Alias ?? $"T{context.Sequence++}";
             context.DefaultTableAliasName = aliasMain;
@@ -918,9 +919,9 @@ namespace LiteOrm.Common
             foreach (var next in select.NextSelects)
             {
                 sb.Append($" \n{context.Indent}");
-                sqlBuilder.ToSqlSelectSetType(ref sb, next.SetType);
+                sb.Append(sqlBuilder.ToSqlSelectSetType(next.SetType));
                 sb.Append($" \n{context.Indent}");
-                ToSqlInternal(ref sb, next, context, sqlBuilder, outputParams, 1);
+                ToSqlInternal(ref sb, next, context, sqlBuilder, outputParams, 1);// Select默认优先级为1，NextSelects 中的 Select 如果有嵌套 NextSelects 则优先级为0，需要括号包裹
             }
         }
 

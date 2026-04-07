@@ -176,7 +176,7 @@ namespace LiteOrm.Common
                             if (mark == "table") { result = new TableExpr(); }
                             if (mark == "join") { result = new TableJoinExpr(); }
                             if (mark == "where") { result = new WhereExpr(); }
-                            if (mark == "order") { result = new OrderByExpr(); }
+                            if (mark == "orderby") { result = new OrderByExpr(); }
                             if (mark == "orderbyitem") { result = new OrderByItemExpr(); }
                             if (mark == "group") { result = new GroupByExpr(); }
                             if (mark == "having") { result = new HavingExpr(); }
@@ -291,6 +291,9 @@ namespace LiteOrm.Common
                                 if (join != null) fe.Joins.Add(join);
                             }
                         }
+                        break;
+                    case TableExpr te when propName == "Type":
+                        te.Type = GetObjectType(reader.GetString());
                         break;
                     case TableExpr te when propName == "Alias":
                         te.Alias = reader.GetString();
@@ -430,10 +433,9 @@ namespace LiteOrm.Common
                         }
                     }
                 }
-                else
+                else if (ss is SqlSegment segment)
                 {
-                    if (ss is SqlSegment chainedSegment)
-                        chainedSegment.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as SqlSegment;
+                    segment.Source = JsonSerializer.Deserialize<SqlSegment>(ref reader, options) ;
                 }
             }
 
@@ -540,7 +542,7 @@ namespace LiteOrm.Common
                     TableJoinExpr => "join",
                     FromExpr => "from",
                     WhereExpr => "where",
-                    OrderByExpr => "order",
+                    OrderByExpr => "orderby",
                     OrderByItemExpr => "orderbyitem",
                     GroupByExpr => "group",
                     HavingExpr => "having",
@@ -686,7 +688,7 @@ namespace LiteOrm.Common
                 { typeof(TableExpr), "table" },
                 { typeof(TableJoinExpr), "join" },
                 { typeof(WhereExpr), "where" },
-                { typeof(OrderByExpr), "order" },
+                { typeof(OrderByExpr), "orderby" },
                 { typeof(GroupByExpr), "group" },
                 { typeof(HavingExpr), "having" },
                 { typeof(SectionExpr), "section" },

@@ -104,8 +104,8 @@ namespace LiteOrm.Common
         /// <summary>
         /// 将集合操作类型转换为 SQL 语句
         /// </summary>
-        /// <param name="sb">字符串构建器</param>
         /// <param name="selectSetType">集合操作类型</param>
-        void ToSqlSelectSetType(ref ValueStringBuilder sb, SelectSetType selectSetType);
+        /// <returns>返回对应的 SQL 语句片段。</returns>
+        string ToSqlSelectSetType(SelectSetType selectSetType);
     }
 }

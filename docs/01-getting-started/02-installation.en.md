@@ -1,47 +1,39 @@
-# Installation and Requirements
+# Installation and Environment Requirements
 
-This page covers the minimum runtime requirements, supported databases, and the usual next steps after installing LiteOrm.
+This document covers the runtime environment, database support, and installation methods for LiteOrm.
 
-## 1. Runtime requirements
+## Environment Requirements
 
-- .NET `8.0+`
-- .NET Standard `2.0`
-- .NET Framework `4.6.1+`
+- `.NET 8.0+`
+- `.NET Standard 2.0` (compatible with .NET Framework 4.6.1+)
+- Dependencies: `Microsoft.Extensions.DependencyInjection`, `Castle.Core`
 
-Make sure your application also references the database provider package that matches your target connection type.
+## Supported Databases
 
-## 2. Supported databases
-
-LiteOrm is designed around provider-based access and `SqlBuilder` dialects. The repository documentation and samples mainly cover:
-
-- SQL Server
-- MySQL
+- SQL Server 2012+
+- MySQL 8.0+
+- Oracle 12c+
 - PostgreSQL
-- Oracle
+- SQLite
 
-If an older database version needs different paging or function SQL, use a custom `SqlBuilder`.
+> For older database versions where default pagination syntax is incompatible, refer to [Custom Paging](../03-advanced-topics/05-custom-paging.md) and [Custom SqlBuilder / Dialect Extension](../04-extensibility/03-custom-sqlbuilder.md).
 
-## 3. Install from NuGet
+## Install from NuGet
 
-Install LiteOrm and any required supporting packages for your project:
-
-```powershell
-Install-Package LiteOrm
-Install-Package Castle.Core
+```bash
+dotnet add package LiteOrm
 ```
 
-Also install the ADO.NET provider for your database, such as `MySqlConnector`, `Npgsql`, `System.Data.SqlClient`, or the Oracle provider you use internally.
+## Next Steps After Installation
 
-## 4. What to do next
-
-1. Configure the `LiteOrm` section in `appsettings.json`
-2. Call `RegisterLiteOrm()` during startup
-3. Define entities with `[Table]` and `[Column]`
-4. Run the [first example](./04-first-example.en.md)
+1. Prepare connection strings and data source configuration.
+2. Call `RegisterLiteOrm()` during host startup.
+3. Define entities, services, or DAOs.
+4. Use `SearchAsync`, `InsertAsync`, and other APIs to complete the first example.
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to docs hub](../README.md)
 - [Configuration and Registration](./03-configuration-and-registration.en.md)
 - [First End-to-End Example](./04-first-example.en.md)
 - [Configuration Reference](../05-reference/01-configuration-reference.en.md)

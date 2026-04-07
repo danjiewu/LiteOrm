@@ -44,6 +44,18 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 将集合操作类型（UNION/UNION ALL/INTERSECT/EXCEPT）转换为数据库合法的 SQL 关键字。
+        /// 子类可覆盖以提供数据库特定的关键字或语法差异。
+        /// </summary>
+        /// <param name="selectSetType">集合操作类型。</param>
+        /// <returns>数据库合法的 SQL 关键字。</returns>
+        /// <remarks>Oracle 不支持 EXCEPT 操作，使用 MINUS 替代。</remarks>
+        public override string ToSqlSelectSetType(SelectSetType selectSetType)
+        {
+            return selectSetType == SelectSetType.Except ? "MINUS" : base.ToSqlSelectSetType(selectSetType);
+        }
+
+        /// <summary>
         /// 构建带有标识列或序列插入的 SQL 语句。
         /// </summary>
         /// <param name="command">数据库命令对象。</param>
