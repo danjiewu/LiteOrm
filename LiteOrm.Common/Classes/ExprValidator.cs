@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -26,12 +26,23 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="node">要访问的表达式节点</param>
         /// <returns>验证通过返回 true，失败返回 false</returns>
-        public bool Visit(Expr node)
+        bool IExprNodeVisitor.Visit(Expr node)
         {
             if (Validate(node)) return true;
             FailedExpr = node;
             return false;
         }
+
+        /// <summary>
+        /// 创建一个最小验证器实例，允许基本值类型、一元表达式、集合类型、逻辑类型及基础 SQL 片段
+        /// </summary>
+        /// <returns></returns>
+        public static ExprTypeValidator CreateMinimum() => new ExprTypeValidator(ExprTypeValidator.Minimum);
+        /// <summary>
+        /// 创建一个查询验证器实例，允许完整的 SELECT 查询相关表达式类型
+        /// </summary>
+        /// <returns></returns>
+        public static ExprTypeValidator CreateQueryOnly() => new ExprTypeValidator(ExprTypeValidator.QueryOnly);
     }
 
     /// <summary>
@@ -82,9 +93,9 @@ namespace LiteOrm.Common
     public class ExprTypeValidator : ExprValidator
     {
         /// <summary>
-        /// 最小验证器集，允许基本值类型、一元表达式、集合类型、逻辑类型及基础 SQL 片段
+        /// 最小验证器集合，允许基本值类型、一元表达式、集合类型、逻辑类型及基础 SQL 片段
         /// </summary>
-        public static readonly ExprTypeValidator Minimum = new ExprTypeValidator(
+        public static readonly IReadOnlyCollection<ExprType> Minimum = new HashSet<ExprType> {
             ExprType.Value,
             ExprType.Property,
             ExprType.Unary,
@@ -96,12 +107,13 @@ namespace LiteOrm.Common
             ExprType.Where,
             ExprType.OrderBy,
             ExprType.OrderByItem,
-            ExprType.Section);
+            ExprType.Section};
 
         /// <summary>
-        /// 查询验证器集，允许完整的 SELECT 查询相关表达式类型
+        /// 查询验证器集合，允许完整的 SELECT 查询相关表达式类型
         /// </summary>
-        public static readonly ExprTypeValidator Query = new ExprTypeValidator(
+        public static readonly IReadOnlyCollection<ExprType> QueryOnly = new HashSet<ExprType>
+        {
             ExprType.Value,
             ExprType.Property,
             ExprType.Unary,
@@ -121,7 +133,7 @@ namespace LiteOrm.Common
             ExprType.GenericSql,
             ExprType.Function,
             ExprType.Table,
-            ExprType.TableJoin);
+            ExprType.TableJoin };
 
         private readonly HashSet<ExprType> _allowedTypes = new HashSet<ExprType>();
 
@@ -130,6 +142,15 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="allowedTypes">允许的表达式类型数组</param>
         public ExprTypeValidator(params ExprType[] allowedTypes)
+        {
+            _allowedTypes.UnionWith(allowedTypes);
+        }
+
+        /// <summary>
+        /// 初始化类型验证器
+        /// </summary>
+        /// <param name="allowedTypes">允许的表达式类型数组</param>
+        public ExprTypeValidator(IEnumerable<ExprType> allowedTypes)
         {
             _allowedTypes.UnionWith(allowedTypes);
         }
@@ -150,6 +171,6 @@ namespace LiteOrm.Common
             if (!_allowedTypes.Contains(node.ExprType))
                 return false;
             return true;
-        }
+        }       
     }
 }

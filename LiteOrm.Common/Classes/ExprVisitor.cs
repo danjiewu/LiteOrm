@@ -38,7 +38,7 @@ namespace LiteOrm.Common
         /// 因委托返回 <see langword="false"/> 而提前终止返回 <see langword="false"/>。
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="visitor"/> 为 <see langword="null"/>。</exception>
-        public static bool Visit(Expr root, Func<Expr, bool> visitor)
+        public static bool Visit(Func<Expr, bool> visitor, Expr root)
         {
             if (root == null) return true;
             if (visitor == null) throw new ArgumentNullException(nameof(visitor));
@@ -56,10 +56,10 @@ namespace LiteOrm.Common
         /// 因 <see cref="IExprNodeVisitor.Visit"/> 返回 <see langword="false"/> 而提前终止返回 <see langword="false"/>。
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="visitor"/> 为 <see langword="null"/>。</exception>
-        public static bool Visit(Expr root, IExprNodeVisitor visitor)
+        public static bool VisitAll(this IExprNodeVisitor visitor, Expr root)
         {
             if (visitor == null) throw new ArgumentNullException(nameof(visitor));
-            return Visit(root, visitor.Visit);
+            return Visit( visitor.Visit, root);
         }
 
         private static bool VisitNode(Expr node, Func<Expr, bool> visitor)

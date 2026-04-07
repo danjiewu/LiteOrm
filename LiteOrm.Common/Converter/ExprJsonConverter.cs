@@ -214,6 +214,9 @@ namespace LiteOrm.Common
                 reader.Read();
                 switch (result)
                 {
+                    case SqlSegment ss when propName == "Source":
+                        ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as SqlSegment;
+                        break;
                     case WhereExpr we when propName == "Where":
                         we.Where = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
                         break;
@@ -276,12 +279,6 @@ namespace LiteOrm.Common
                         break;
                     case DeleteExpr de when propName == "Where":
                         de.Where = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
-                        break;
-                    case SqlSegment ss when propName == "Source":
-                        ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as SqlSegment;
-                        break;
-                    case FromExpr fe when propName == "Source":
-                        fe.Table = JsonSerializer.Deserialize<Expr>(ref reader, options) as TableExpr;
                         break;
                     case FromExpr fe when propName == "Joins":
                         if (reader.TokenType == JsonTokenType.StartArray)
@@ -462,69 +459,66 @@ namespace LiteOrm.Common
 
             private void WriteExpr(Utf8JsonWriter writer, Expr value, JsonSerializerOptions options)
             {
-                if (value is null)
-                {
-                    writer.WriteNullValue();
-                    return;
-                }
-
-                // 结构化查询片段直接处理
-                if (value is SqlSegment segment)
-                {
-                    WriteSqlSegment(writer, segment, options);
-                    return;
-                }
-
-                // 优化序列化格式：基本值类型直接写入
-                if (value is ValueExpr ve)
-                {
-                    if (ve.Value is Expr innerExpr)
-                    {
-                        while (innerExpr is ValueExpr veInner && veInner.Value is Expr nestedExpr)
-                        {
-                            innerExpr = nestedExpr;
-                        }
-                        JsonSerializer.Serialize(writer, innerExpr, options);
-                    }
-                    else if (ve.IsConst)
-                    {
-                        // 常量值直接序列化                        
-                        JsonSerializer.Serialize(writer, ve.Value, _compactOptions);
-                    }
-                    else
-                    {
-                        // 变量值使用快捷方式 {"@": value}                        
-                        writer.WriteStartObject();
-                        writer.WritePropertyName("@");
-                        JsonSerializer.Serialize(writer, ve.Value, _compactOptions);
-                        writer.WriteEndObject();
-                    }
-                    return;
-                }
-
-                // 优化序列化格式：PropertyExpr 使用简写的 # 标识
-                if (value is PropertyExpr pe)
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("#", String.IsNullOrEmpty(pe.TableAlias) ? pe.PropertyName : pe.TableAlias + "." + pe.PropertyName);
-                    writer.WriteEndObject();
-                    return;
-                }
-
-                // 优化序列化格式：NotExpr 使用简写的 ! 标识
-                if (value is NotExpr ne)
-                {
-                    writer.WriteStartObject();
-                    writer.WritePropertyName("!");
-                    WriteExpr(writer, ne.Operand, options);
-                    writer.WriteEndObject();
-                    return;
-                }
-
                 if (value is LambdaExpr lambda)
                 {
-                    WriteExpr(writer, lambda.InnerExpr, options);
-                    return;
+                    value = lambda.InnerExpr;
+                }
+
+                // 优化序列化格式，使用简洁表示法
+                switch (value)
+                {
+                    case null:
+                        writer.WriteNullValue();
+                        return;
+                    case SqlSegment segment:
+                        WriteSqlSegment(writer, segment, options);
+                        return;
+                    case AndExpr andExpr:
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("$and");
+                        JsonSerializer.Serialize(writer, andExpr.Items, _compactOptions);
+                        writer.WriteEndObject();
+                        return;
+                    case OrExpr orExpr:
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("$or");
+                        JsonSerializer.Serialize(writer, orExpr.Items, _compactOptions);
+                        writer.WriteEndObject();
+                        return;
+                    case ValueExpr ve:
+                        if (ve.Value is Expr innerExpr)
+                        {
+                            while (innerExpr is ValueExpr veInner && veInner.Value is Expr nestedExpr)
+                            {
+                                innerExpr = nestedExpr;
+                            }
+                            JsonSerializer.Serialize(writer, innerExpr, options);
+                        }
+                        else if (ve.IsConst)
+                        {
+                            // 常量值直接序列化                        
+                            JsonSerializer.Serialize(writer, ve.Value, _compactOptions);
+                        }
+                        else
+                        {
+                            // 变量值使用快捷方式 {"@": value}                        
+                            writer.WriteStartObject();
+                            writer.WritePropertyName("@");
+                            JsonSerializer.Serialize(writer, ve.Value, _compactOptions);
+                            writer.WriteEndObject();
+                        }
+                        return;
+                    case PropertyExpr pe:
+                        writer.WriteStartObject();
+                        writer.WriteString("#", String.IsNullOrEmpty(pe.TableAlias) ? pe.PropertyName : pe.TableAlias + "." + pe.PropertyName);
+                        writer.WriteEndObject();
+                        return;
+                    case NotExpr ne:
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("!");
+                        WriteExpr(writer, ne.Operand, options);
+                        writer.WriteEndObject();
+                        return;
                 }
 
                 // 复杂表达式使用 $标识符
@@ -960,27 +954,23 @@ namespace LiteOrm.Common
             private AndExpr ReadAndExpr(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 List<LogicExpr> items = null;
-                //reader.Read();
-                if (reader.TokenType == JsonTokenType.StartArray)
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
-                    items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
-                }
-                else
-                {
-                    while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                    if (reader.TokenType == JsonTokenType.StartArray)
                     {
-                        if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                        items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
+                    }
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
-                        string prop = reader.GetString() ?? string.Empty;
-                        if (prop == "Items")
-                        {
-                            reader.Read();
-                            items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
-                        }
-                        else
-                        {
-                            reader.Skip();
-                        }
+                    string prop = reader.GetString() ?? string.Empty;
+                    if (prop == "Items")
+                    {
+                        reader.Read();
+                        items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
+                    }
+                    else
+                    {
+                        reader.Skip();
                     }
                 }
 
@@ -990,27 +980,23 @@ namespace LiteOrm.Common
             private OrExpr ReadOrExpr(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 List<LogicExpr> items = null;
-                //reader.Read();
-                if (reader.TokenType == JsonTokenType.StartArray)
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
-                    items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
-                }
-                else
-                {
-                    while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                    if (reader.TokenType == JsonTokenType.StartArray)
                     {
-                        if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                        items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
+                    }
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
-                        string prop = reader.GetString() ?? string.Empty;
-                        if (prop == "Items")
-                        {
-                            reader.Read();
-                            items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
-                        }
-                        else
-                        {
-                            reader.Skip();
-                        }
+                    string prop = reader.GetString() ?? string.Empty;
+                    if (prop == "Items")
+                    {
+                        reader.Read();
+                        items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
+                    }
+                    else
+                    {
+                        reader.Skip();
                     }
                 }
 

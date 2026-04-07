@@ -309,10 +309,6 @@
                 })
                 .filter(Boolean);
 
-            if (conditions.length === 0) {
-                return { "$": ">", Left: { "#": "Id" }, Right: { "@": 0 } };
-            }
-
             if (conditions.length === 1) {
                 return conditions[0];
             }
