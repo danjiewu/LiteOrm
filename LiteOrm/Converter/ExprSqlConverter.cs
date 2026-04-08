@@ -932,11 +932,11 @@ namespace LiteOrm.Common
                     {
                         if (i > 0) sql.Select.Append(", ");
                         // 在每个子表达式前检查当前行长度，如果超过 RowCharLimit 则换行以提高可读性
-                        if (sb.Length - sb.Mark > RowCharLimit)
+                        if (sql.Select.Length - sql.Select.Mark > RowCharLimit)
                         {
-                            sb.Append($" \n");
-                            sb.Mark = sb.Length; ;
-                            sb.Append($"{context.Indent}");
+                            sql.Select.Append($"\n");
+                            sql.Select.Mark = sql.Select.Length; ;
+                            sql.Select.Append($"{context.Indent}");
                         }
                         ToSql(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
                     }
