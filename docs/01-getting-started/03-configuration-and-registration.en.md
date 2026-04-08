@@ -85,7 +85,7 @@ Usually when paging syntax, function SQL, or legacy database behavior differs fr
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [First End-to-End Example](./04-first-example.en.md)
 - [Configuration Reference](../05-reference/01-configuration-reference.en.md)
 - [Custom SqlBuilder and Dialect Extension](../04-extensibility/03-custom-sqlbuilder.en.md)

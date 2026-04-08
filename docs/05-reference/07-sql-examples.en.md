@@ -12,37 +12,37 @@ Notes:
 ### Lambda Query
 
 ```csharp
-var users = await userService.SearchAsync(u => u.Age >= 18 && u.Name!.StartsWith("A"));
+var users = await userService.SearchAsync(u => u.Age >= 18 && u.UserName!.StartsWith("A"));
 ```
 
 Typical SQL shape:
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime]
 FROM [Users] [T0]
-WHERE [T0].[Age] >= @0 AND [T0].[Name] LIKE @1
+WHERE [T0].[Age] >= @0 AND [T0].[UserName] LIKE @1
 ```
 
 ### Expr Query
 
 ```csharp
-var expr = (Expr.Prop("Age") >= 18) & Expr.Prop("Name").StartsWith("A");
+var expr = (Expr.Prop("Age") >= 18) & Expr.Prop("UserName").StartsWith("A");
 var users = await userService.SearchAsync(expr);
 ```
 
 Typical SQL shape:
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime]
 FROM [Users] [T0]
-WHERE [T0].[Age] >= @0 AND [T0].[Name] LIKE @1
+WHERE [T0].[Age] >= @0 AND [T0].[UserName] LIKE @1
 ```
 
 ## 2. Sorting and Pagination
 
 ```csharp
 var page = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1)
+    q => q.Where(u => u.Age >= 18)
           .OrderByDescending(u => u.CreateTime)
           .Skip(20).Take(10)
 );
@@ -51,9 +51,9 @@ var page = await userService.SearchAsync(
 Typical SQL shape:
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime]
 FROM [Users] [T0]
-WHERE [T0].[Status] = @0
+WHERE [T0].[Age] >= @0
 ORDER BY [T0].[CreateTime] DESC
 OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY
 ```
@@ -64,17 +64,17 @@ Older databases or custom dialects may use `ROW_NUMBER()` or database-specific p
 
 ```csharp
 var users = await userService.SearchAsync(
-    u => Expr.Exists<Order>(o => o.UserId == u.Id && o.Status == 1)
+    u => Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "R&D")
 );
 ```
 
 Typical SQL shape:
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime]
 FROM [Users] [T0]
 WHERE EXISTS (
-  SELECT 1 FROM [Orders] [T1] WHERE [T1].[UserId] = [T0].[Id] AND [T1].[Status] = @0
+  SELECT 1 FROM [Departments] [T1] WHERE [T1].[Id] = [T0].[DeptId] AND [T1].[Name] = @0
 )
 ```
 
@@ -88,7 +88,7 @@ var users = await userService.SearchAsync(expr);
 Typical SQL shape:
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime]
 FROM [Users] [T0]
 WHERE EXISTS (
   SELECT 1 FROM [Departments] [T1] WHERE [T1].[Id] = [T0].[DeptId] AND [T1].[Name] = @0
@@ -106,13 +106,13 @@ The SQL becomes `NOT EXISTS (...)`.
 ## 5. ForeignColumn Join
 
 ```csharp
-var users = await viewService.SearchAsync(u => u.DeptName == "IT Department");
+var users = await viewService.SearchAsync(u => u.DeptName == "R&D");
 ```
 
 Typical SQL shape:
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status],
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime],
   [T1].[Name] AS [DeptName]
 FROM [Users] [T0]
 LEFT JOIN [Departments] [T1] ON [T1].[Id] = [T0].[DeptId]
@@ -131,7 +131,7 @@ var sales = await salesService.SearchAsync(
 Typical SQL shape:
 
 ```sql
-SELECT [T0].[Id], [T0].[ProductId], [T0].[Amount], [T0].[CreateTime]
+SELECT [T0].[Id], [T0].[ProductId], [T0].[Amount], [T0].[SaleTime]
 FROM [Sales_202411] [T0]
 WHERE [T0].[Amount] > @0
 ```
@@ -163,14 +163,14 @@ When `IBulkProvider` is registered, batch insert may use native bulk interfaces 
 await userService.UpdateAsync(
     Expr.Update<User>()
         .Set("Age", Expr.Prop("Age") + 1)
-        .Where(Expr.Prop("Status") == 1)
+        .Where(Expr.Prop("DeptId") == 2)
 );
 ```
 
 Typical SQL shape:
 
 ```sql
-UPDATE [Users] SET [Age] = [Age] + 1 WHERE [Status] = @0
+UPDATE [Users] SET [Age] = [Age] + 1 WHERE [DeptId] = @0
 ```
 
 ## 9. Window Functions

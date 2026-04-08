@@ -42,7 +42,11 @@ namespace LiteOrm.Demo.Demos
             {
                 var minAge = 18;
                 var searchName = "王";
-
+                LogicExpr expr = null;
+                var result = userSvc.Search(
+                    q => q.Where(a => a.UserName.Contains(searchName) && expr.To<bool>())
+                    .Take(20)
+                    );
                 DemoHelper.PrintSection("📋 场景说明",
                     "使用 Lambda 表达式进行链式查询，包括 WHERE、ORDER BY 和分页");
 

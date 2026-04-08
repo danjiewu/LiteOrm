@@ -52,7 +52,7 @@ Set `DataSources[].SqlBuilder` to the fully qualified builder type name.
 
 ```csharp
 var page = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1)
+    q => q.Where(u => u.Age >= 18)
           .OrderBy(u => u.Id)
           .Skip(20)
           .Take(20)
@@ -69,7 +69,7 @@ You can also use `Expr.Section(...)` or DAO-based paging. The point is that call
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Custom SqlBuilder and Dialect Extension](../04-extensibility/03-custom-sqlbuilder.en.md)
 - [Configuration and Registration](../01-getting-started/03-configuration-and-registration.en.md)
 - [Database Compatibility Notes](../05-reference/08-database-compatibility.en.md)

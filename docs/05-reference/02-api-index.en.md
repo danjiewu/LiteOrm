@@ -104,7 +104,7 @@ Related guides:
 
 ## Related links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Example Index](./06-example-index.en.md)
 - [Generated SQL Examples](./07-sql-examples.en.md)
 - [Database Compatibility Notes](./08-database-compatibility.en.md)

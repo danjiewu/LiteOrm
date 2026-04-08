@@ -111,7 +111,7 @@ namespace LiteOrm.Service
             {
                 try
                 {
-                    invocation.Proceed();
+                    InvokeWithTransaction(invocation);
                 }
                 catch (Exception e)
                 {
@@ -179,8 +179,7 @@ namespace LiteOrm.Service
             // 检查是否已经在处理中
             if (InProcess)
             {
-                invocation.Proceed();
-                await (Task)invocation.ReturnValue;
+                await InvokeWithTransactionAsync(invocation);
             }
             else
             {
@@ -221,8 +220,7 @@ namespace LiteOrm.Service
 
             if (InProcess)
             {
-                invocation.Proceed();
-                return await (Task<TResult>)invocation.ReturnValue;
+                return await InvokeWithTransactionAsync<TResult>(invocation);
             }
             else
             {
@@ -264,8 +262,6 @@ namespace LiteOrm.Service
             // 使用SemaphoreSlim替代lock，以支持异步等待
             if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
             {
-                // 假设SessionManager有异步执行事务的方法
-                // 如果没有，你需要实现一个异步版本
                 await sessionManager.ExecuteInTransactionAsync(async sm =>
                 {
                     invocation.Proceed();
@@ -291,7 +287,6 @@ namespace LiteOrm.Service
 
             if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
             {
-                // 假设SessionManager有异步执行事务的方法
                 TResult result = default;
                 await sessionManager.ExecuteInTransactionAsync(async sm =>
                 {

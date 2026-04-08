@@ -63,7 +63,7 @@ public async Task TransferMoney(long fromId, long toId, decimal amount)
 
 - `[Transaction]` 特性需要 Castle.Core 动态代理支持
 - 方法必须是 `public` 且通过接口调用才能生效
-- 避免在事务方法中使用 `await` 后切换线程，可能导致事务失效
+- 避免在事务方法里启动脱离当前调用链的后台任务；这类任务不会自动继承当前事务边界
 
 ### 1.4 业务闭环示例
 
@@ -124,18 +124,19 @@ bool success = await factory.BusinessService
 ### 2.1 基本用法
 
 ```csharp
-using var session = SessionManager.Current.BeginTransaction();
+var sessionManager = SessionManager.Current;
+sessionManager.BeginTransaction();
 try
 {
     // 执行多个操作
     await userService.InsertAsync(user);
     await orderService.InsertAsync(order);
 
-    session.Commit();
+    sessionManager.Commit();
 }
-catch (Exception ex)
+catch
 {
-    session.Rollback();
+    sessionManager.Rollback();
     throw;
 }
 ```
@@ -143,31 +144,33 @@ catch (Exception ex)
 ### 2.2 事务隔离级别
 
 ```csharp
-using var session = SessionManager.Current.BeginTransaction(IsolationLevel.ReadCommitted);
+var sessionManager = SessionManager.Current;
+sessionManager.BeginTransaction(IsolationLevel.ReadCommitted);
 try
 {
     // 操作
-    session.Commit();
+    sessionManager.Commit();
 }
 catch
 {
-    session.Rollback();
+    sessionManager.Rollback();
     throw;
 }
 ```
 
-### 2.3 只读事务
+### 2.3 查询也可以纳入事务边界
 
 ```csharp
-using var session = SessionManager.Current.BeginTransaction(IsolationLevel.ReadCommitted);
+var sessionManager = SessionManager.Current;
+sessionManager.BeginTransaction(IsolationLevel.ReadCommitted);
 try
 {
-    var users = await userService.SearchAsync(u => u.Status == 1);
-    session.Commit();
+    var users = await userService.SearchAsync(u => u.Age >= 18);
+    sessionManager.Commit();
 }
 catch
 {
-    session.Rollback();
+    sessionManager.Rollback();
     throw;
 }
 ```

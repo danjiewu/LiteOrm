@@ -36,13 +36,13 @@ Lambda 查询是最简洁的方式，编译时进行类型检查。
 var users = await userService.SearchAsync(u => u.UserName == "admin");
 
 // 不等于
-var users = await userService.SearchAsync(u => u.Status != 0);
+var users = await userService.SearchAsync(u => u.UserName != "admin");
 
 // 大于/小于
 var users = await userService.SearchAsync(u => u.Age >= 18);
 
 // 模糊查询
-var users = await userService.SearchAsync(u => u.Email.Contains("@test.com"));
+var users = await userService.SearchAsync(u => u.UserName.Contains("admin"));
 
 // IN 查询
 var users = await userService.SearchAsync(u => new[] { 1, 2, 3 }.Contains(u.Id));
@@ -63,7 +63,7 @@ var users = await userService.SearchAsync(
 
 // 多字段排序
 var users = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1)
+    q => q.Where(u => u.Age >= 18)
           .OrderBy(u => u.DeptId)
           .ThenByDescending(u => u.CreateTime)
 );
@@ -74,7 +74,7 @@ var users = await userService.SearchAsync(
 ```csharp
 // Skip/Take 分页
 var page = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1)
+    q => q.Where(u => u.Age >= 18)
           .OrderByDescending(u => u.CreateTime)
           .Skip(10).Take(20)
 );
@@ -85,12 +85,12 @@ var page = await userService.SearchAsync(
 ```csharp
 // 检查关联数据存在性
 var users = await userService.SearchAsync(
-    u => Expr.Exists<Order>(o => o.UserId == u.Id)
+    u => Expr.Exists<Department>(d => d.Id == u.DeptId)
 );
 
 // 带条件的 EXISTS
 var users = await userService.SearchAsync(
-    u => Expr.Exists<Order>(o => o.UserId == u.Id && o.Status == 1)
+    u => Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "研发中心")
 );
 ```
 
@@ -147,8 +147,8 @@ var marketAdults = await userService.SearchAsync(
 var users = await userService.SearchAsync(u => u.Age >= 18);
 // 生成 SQL: SELECT * FROM Users WHERE Age >= 18
 
-var users = await userService.SearchAsync(u => u.Name == "admin");
-// 生成 SQL: SELECT * FROM Users WHERE Name = @0（参数化）
+var users = await userService.SearchAsync(u => u.UserName == "admin");
+// 生成 SQL: SELECT * FROM Users WHERE UserName = @0（参数化）
 ```
 
 **变量捕获与参数化**：
@@ -177,9 +177,9 @@ var users = await userService.SearchAsync(u => u.CreateTime > now);
 Lambda 中 `Expr` 类型的值可以与 Lambda 表达式组合拼接，但需要通过 `To<T>()` 扩展方法满足 Lambda 的类型检查：
 
 ```csharp
-var condition = u => u.Age >= 18 && Expr.Prop("Name").Contains("John").To<bool>();
+var condition = u => u.Age >= 18 && Expr.Prop("UserName").Contains("John").To<bool>();
 var users = await userService.SearchAsync(condition);
-// 生成 SQL: SELECT * FROM Users WHERE Age >= 18 AND Name LIKE @0（参数化）
+// 生成 SQL: SELECT * FROM Users WHERE Age >= 18 AND UserName LIKE @0（参数化）
 ```
 
 > 小技巧：当你已经用 `Expr.Prop(...)` 动态拼好了一个条件，但外层又想继续用 Lambda 组合时，可以把它写成 `expr.To<bool>()`。  
@@ -206,11 +206,11 @@ var prop = Expr.Prop("U", "UserName");
 ```csharp
 // 使用运算符重载
 var expr = Expr.Prop("Age") > 18;
-var expr = Expr.Prop("Status") == 1;
+var expr = Expr.Prop("DeptId") == 2;
 var expr = Expr.Prop("UserName") != "admin";
 
 // 字符串比较
-var expr = Expr.Prop("Email").Contains("@test.com");
+var expr = Expr.Prop("UserName").Contains("admin");
 var expr = Expr.Prop("UserName").StartsWith("a");
 var expr = Expr.Prop("UserName").EndsWith("z");
 var expr = Expr.Prop("UserName").Like("%admin%");
@@ -258,16 +258,16 @@ var usersWithDept = await userService.SearchAsync(
 
 ```csharp
 // AND 运算
-var expr = Expr.Prop("Age") >= 18 & Expr.Prop("Status") == 1;
+var expr = Expr.Prop("Age") >= 18 & Expr.Prop("DeptId") == 2;
 
 // OR 运算
-var expr = Expr.Prop("Status") == 0 | Expr.Prop("Status") == 1;
+var expr = Expr.Prop("DeptId") == 2 | Expr.Prop("DeptId") == 3;
 
 // NOT 运算
-var expr = !Expr.Prop("IsDeleted").Equal(true);
+var expr = !Expr.Prop("UserName").StartsWith("Temp");
 
 // 组合示例
-var expr = (Expr.Prop("Age") >= 18) & (Expr.Prop("Status") == 1 | Expr.Prop("Status") == 2);
+var expr = (Expr.Prop("Age") >= 18) & (Expr.Prop("DeptId") == 2 | Expr.Prop("DeptId") == 3);
 ```
 
 ### 3.6 动态条件累加
@@ -310,11 +310,11 @@ public static LogicExpr BuildUserSearch(IReadOnlyDictionary<string, string?> que
     if (query.TryGetValue("keyword", out var keyword) && !string.IsNullOrWhiteSpace(keyword))
     {
         condition &= Expr.Prop("UserName").Contains(keyword)
-                  |  Expr.Prop("Email").Contains(keyword);
+                  |  Expr.Prop("DeptName").Contains(keyword);
     }
 
-    if (query.TryGetValue("activeOnly", out var activeOnly) && activeOnly == "true")
-        condition &= Expr.Prop("Status") == 1;
+    if (query.TryGetValue("withDept", out var withDept) && withDept == "true")
+        condition &= Expr.Prop("DeptId").IsNotNull();
 
     return condition;
 }
@@ -325,7 +325,7 @@ var filters = new Dictionary<string, string?>
 {
     ["minAge"] = "18",
     ["keyword"] = "demo",
-    ["activeOnly"] = "true"
+    ["withDept"] = "true"
 };
 
 var condition = BuildUserSearch(filters);
@@ -383,8 +383,8 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 | `Expr.From<T>()` | 创建 FROM 查询起点 | `Expr.From<User>()` |
 | `Expr.Update<T>()` | 创建 UPDATE 表达式 | `Expr.Update<User>()` |
 | `Expr.Delete<T>()` | 创建 DELETE 表达式 | `Expr.Delete<User>()` |
-| `Expr.Exists<T>(innerExpr)` | 创建 EXISTS 子查询 | `Expr.Exists<Order>(Expr.Prop("UserId") == Expr.Prop("Id"))` |
-| `Expr.ExistsRelated<T>(innerExpr)` | 自动关联 EXISTS 查询 | `Expr.ExistsRelated<Order>(...)` |
+| `Expr.Exists<T>(innerExpr)` | 创建 EXISTS 子查询 | `Expr.Exists<Department>(Expr.Prop("Id") == Expr.Prop("T0", "DeptId"))` |
+| `Expr.ExistsRelated<T>(innerExpr)` | 自动关联 EXISTS 查询 | `Expr.ExistsRelated<DepartmentView>(...)` |
 | `Expr.Lambda<T>(expr)` | 从 Lambda 表达式创建 LogicExpr | `Expr.Lambda<User>(u => u.Age > 18)` |
 | `Expr.Func(name, args)` | 创建函数调用表达式 | `Expr.Func("COUNT", Expr.Prop("Id"))` |
 | `Expr.If(condition, then, else)` | 条件表达式 CASE WHEN | `Expr.If(Expr.Prop("Age") > 18, Expr.Value("成年"), Expr.Value("未成年"))` |
@@ -400,15 +400,15 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
-| `.And(right)` | AND 连接 | `Expr.Prop("Age") > 18 .And(Expr.Prop("Status") == 1)` |
+| `.And(right)` | AND 连接 | `Expr.Prop("Age") > 18 .And(Expr.Prop("DeptId") == 2)` |
 | `.Or(right)` | OR 连接 | `condition1.Or(condition2)` |
-| `.Not()` | 取反 | `Expr.Prop("IsDeleted").Equal(true).Not()` |
+| `.Not()` | 取反 | `Expr.Prop("UserName").StartsWith("Temp").Not()` |
 
 **比较运算**：
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
-| `.Equal(right)` | 等于 | `Expr.Prop("Status").Equal(1)` |
+| `.Equal(right)` | 等于 | `Expr.Prop("DeptId").Equal(2)` |
 | `.GreaterThan(right)` | 大于 | `Expr.Prop("Age").GreaterThan(18)` |
 | `.LessThan(right)` | 小于 | `Expr.Prop("Age").LessThan(65)` |
 
@@ -424,7 +424,7 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 | 方法 | 说明 | 示例 |
 |------|------|------|
 | `.Like(pattern)` | LIKE 模式匹配 | `Expr.Prop("Name").Like("J%")` |
-| `.Contains(text)` | 包含 | `Expr.Prop("Email").Contains("@test.com")` |
+| `.Contains(text)` | 包含 | `Expr.Prop("UserName").Contains("admin")` |
 | `.StartsWith(text)` | 前缀 | `Expr.Prop("UserName").StartsWith("admin")` |
 
 **NULL 检查**：
@@ -432,7 +432,7 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 | 方法 | 说明 | 示例 |
 |------|------|------|
 | `.IsNull()` | IS NULL | `Expr.Prop("DeletedAt").IsNull()` |
-| `.IsNotNull()` | IS NOT NULL | `Expr.Prop("Email").IsNotNull()` |
+| `.IsNotNull()` | IS NOT NULL | `Expr.Prop("DeptId").IsNotNull()` |
 | `.IfNull(defaultValue)` | 空值替换 | `Expr.Prop("NickName").IfNull(Expr.Prop("UserName"))` |
 
 **聚合函数**：
@@ -458,10 +458,10 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 | `.Where(condition)` | WHERE 子句 | `fromExpr.Where(Expr.Prop("Age") > 18)` |
 | `.GroupBy(props)` | GROUP BY 子句 | `fromExpr.GroupBy("DeptId")` |
 | `.Having(condition)` | HAVING 子句 | `groupExpr.Having(Expr.Prop("Count").Count() > 5)` |
-| `.Select(props)` | SELECT 子句 | `fromExpr.Select("Id", "Name")` |
+| `.Select(props)` | SELECT 子句 | `fromExpr.Select("Id", "UserName")` |
 | `.OrderBy(props)` | ORDER BY 子句 | `fromExpr.OrderBy("CreateTime".Desc())` |
 | `.Section(skip, take)` | 分页子句 | `fromExpr.Section(0, 20)` |
-| `.Set(assignments)` | UPDATE SET 子句 | `updateExpr.Set(("Status", Expr.Value(1)))` |
+| `.Set(assignments)` | UPDATE SET 子句 | `updateExpr.Set(("Age", Expr.Value(18)))` |
 
 ## 4. ExprString 插值字符串
 
@@ -500,7 +500,7 @@ var dataTable = await dataViewDAO.Search(
 
 ```csharp
 // 推荐：只在必要片段上使用 ExprString
-var condition = Expr.Prop("Status") == 1;
+var condition = Expr.Prop("Age") >= 18;
 var result = await userViewDAO.Search(
     $"WHERE {condition} ORDER BY CreateTime DESC"
 ).ToListAsync();
@@ -584,9 +584,9 @@ var dataTableAsync = await result.GetResultAsync();
 ```csharp
 // 只查询部分字段
 var result = await userService.SearchAs<UserView>(
-    Expr.From<User>()
+    Expr.From<UserView>()
         .Where(Expr.Prop("Age") > 18)
-        .Select("Id", "UserName", "Email")
+        .Select("Id", "UserName", "DeptName")
 );
 ```
 
@@ -595,14 +595,14 @@ var result = await userService.SearchAs<UserView>(
 ```csharp
 var now = DateTime.Now;
 var query = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1 && u.CreateTime <= now)
+    q => q.Where(u => u.Age >= 18 && u.CreateTime <= now)
           .OrderByDescending(u => u.CreateTime)
           .ThenBy(u => u.Id)
           .Skip(0)
           .Take(20)
 );
 
-var total = await userService.CountAsync(u => u.Status == 1);
+var total = await userService.CountAsync(u => u.Age >= 18);
 var hasRecentUsers = await userService.ExistsAsync(u => u.CreateTime > now.AddDays(-7));
 ```
 

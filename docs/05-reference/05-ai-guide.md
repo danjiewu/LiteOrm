@@ -514,5 +514,4 @@ var lambdaExpr = Expr.Lambda<User>(u => Expr.ExistsRelated<Department>(d => d.Na
 - [返回目录](../README.md)
 - [API 索引](./02-api-index.md)
 - [术语表](./03-glossary.md)
-- [迁移映射](./04-migration-map.md)
 

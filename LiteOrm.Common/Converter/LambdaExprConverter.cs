@@ -283,12 +283,12 @@ namespace LiteOrm.Common
                 MemberExpression tableArgsMember = null;
                 Expression valueExpr = null;
 
-                if (node.Left is MemberExpression leftMember && leftMember.Member.Name == "TableArgs")
+                if (node.Left is MemberExpression leftMember && typeof(IArged).IsAssignableFrom(leftMember.Member.DeclaringType) && leftMember.Member.Name == nameof(IArged.TableArgs))
                 {
                     tableArgsMember = leftMember;
                     valueExpr = node.Right;
                 }
-                else if (node.Right is MemberExpression rightMember && rightMember.Member.Name == "TableArgs")
+                else if (node.Right is MemberExpression rightMember && typeof(IArged).IsAssignableFrom(rightMember.Member.DeclaringType) && rightMember.Member.Name == nameof(IArged.TableArgs))
                 {
                     tableArgsMember = rightMember;
                     valueExpr = node.Left;
@@ -437,7 +437,7 @@ namespace LiteOrm.Common
         private Expr EvaluateToExpr(Expression node)
         {
             var value = Evaluate(node);
-            if (value is Expr expr) return expr;
+            if (typeof(Expr).IsAssignableFrom(node.Type) || value is Expr) return value as Expr;
             return new ValueExpr(value);
         }
 
@@ -584,16 +584,19 @@ namespace LiteOrm.Common
                     case "Select": return HandleSelect(node);
                 }
             }
-            if (type == typeof(Expr) && (node.Method.Name == "Exists" || node.Method.Name == "ExistsRelated"))
+            if (type == typeof(Expr) && (node.Method.Name == nameof(Expr.Exists) || node.Method.Name == nameof(Expr.ExistsRelated)))
             {
                 return HandleExists(node);
             }
+            //else if (type == typeof(ExprExtensions) && node.Method.Name == nameof(ExprExtensions.To))
+            //{
+            //    return ConvertInternal(node.Arguments[0]);
+            //}
 
             // 处理类型成员处理器
             if (type != null && _typeMethodHandlers.TryGetValue((type, node.Method.Name), out var typeMethodHandler))
             {
-                var result = typeMethodHandler(node, this);
-                if (result is not null) return result;
+                return typeMethodHandler(node, this);
             }
 
             // 处理方法名处理器
@@ -1061,7 +1064,7 @@ namespace LiteOrm.Common
                     _parameterExprs.Remove(parameter.Name);
                     _parameterAliases.Remove(parameter.Name);
                     _currentAlias = lastAlias;
-                    if(node.Method.Name == nameof(Expr.ExistsRelated)) foreignExpr.AutoRelated = true;
+                    if (node.Method.Name == nameof(Expr.ExistsRelated)) foreignExpr.AutoRelated = true;
                     return foreignExpr;
                 }
             }

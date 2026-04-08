@@ -134,7 +134,7 @@ That keeps business-layer code more stable over time.
 
 ## Related links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Example Index](./06-example-index.en.md)
 - [Generated SQL Examples](./07-sql-examples.en.md)
 - [Custom paging](../03-advanced-topics/05-custom-paging.en.md)

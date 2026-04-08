@@ -8,9 +8,9 @@ This page focuses on write-side operations in LiteOrm: insert, update, delete, u
 var user = new User
 {
     UserName = "admin",
-    Email = "admin@test.com",
     Age = 30,
-    CreateTime = DateTime.Now
+    CreateTime = DateTime.Now,
+    DeptId = 1
 };
 
 bool inserted = await userService.InsertAsync(user);
@@ -27,7 +27,7 @@ Use `UpdateOrInsertAsync` when the caller does not want to split "create" and "u
 
 ```csharp
 var current = await userService.SearchOneAsync(u => u.Id == 1);
-current.Email = "newemail@test.com";
+current.UserName = "admin_v2";
 await userService.UpdateAsync(current);
 ```
 
@@ -38,8 +38,8 @@ int affected = await objectDAO.UpdateAsync(
     Expr.Update<User>()
         .Where(Expr.Prop("Age") < 18)
         .Set(
-            ("Status", Expr.Value(0)),
-            ("UpdateTime", Expr.Value(DateTime.Now))
+            ("Age", Expr.Value(18)),
+            ("CreateTime", Expr.Value(DateTime.Now))
         )
 );
 ```
@@ -55,7 +55,7 @@ await userService.BatchDeleteAsync(users);
 await userService.BatchDeleteIDAsync(new[] { 1, 2, 3 });
 
 int deleted = await objectDAO.DeleteAsync(
-    Expr.Prop("Status") == 0 & Expr.Prop("IsActive") == false
+    Expr.Prop("Age") < 18 & Expr.Prop("UserName").StartsWith("Temp")
 );
 ```
 
@@ -81,7 +81,8 @@ This pattern is useful for migration jobs and "replace old set with new set" syn
 |------|-----------------------|
 | `Insert` / `Update` / `Delete` | `bool` |
 | Conditional `UpdateExpr` / delete | `int` affected rows |
-| `UpdateOrInsert` | `UpdateOrInsertResult` |
+| Service-layer `UpdateOrInsert` | `bool` |
+| DAO-layer `UpdateOrInsert` | `UpdateOrInsertResult` |
 
 ## 6. Service-layer recap
 
@@ -104,7 +105,7 @@ Common write APIs on `IEntityService<T>` and `IEntityServiceAsync<T>` include:
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Query Guide](./03-query-guide.en.md)
 - [Transactions](../03-advanced-topics/01-transactions.en.md)
 - [Performance](../03-advanced-topics/03-performance.en.md)

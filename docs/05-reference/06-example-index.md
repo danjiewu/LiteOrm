@@ -115,7 +115,6 @@
   - `LiteOrm.Demo\Demos\TransactionDemo.cs`
 - 重点内容：
   - 声明式事务
-  - 手动事务
   - 失败回滚
   - 业务流程包裹
 
@@ -136,7 +135,7 @@
 - 文档入口：[性能优化](../03-advanced-topics/03-performance.md)
 - 代码来源：
   - `LiteOrm.Demo\Data\DbInitializer.cs`
-  - `LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs`
+  - `LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs`（文件内实现类为 `MySqlBulkCopyProvider`）
   - `LiteOrm.Tests\ServiceTests.cs`
 - 重点内容：
   - 批量初始化
@@ -204,4 +203,3 @@
 
 - [返回目录](../README.md)
 - [API 索引](./02-api-index.md)
-- [迁移映射](./04-migration-map.md)

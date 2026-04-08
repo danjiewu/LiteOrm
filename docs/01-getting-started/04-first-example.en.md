@@ -14,14 +14,14 @@ public class User
     [Column("UserName")]
     public string? UserName { get; set; }
 
-    [Column("Email")]
-    public string? Email { get; set; }
-
     [Column("Age")]
     public int Age { get; set; }
 
     [Column("CreateTime")]
-    public DateTime? CreateTime { get; set; }
+    public DateTime CreateTime { get; set; }
+
+    [Column("DeptId")]
+    public int? DeptId { get; set; }
 }
 ```
 
@@ -51,9 +51,9 @@ var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsy
 var user = new User
 {
     UserName = "demo-user",
-    Email = "demo@test.com",
     Age = 26,
-    CreateTime = DateTime.Now
+    CreateTime = DateTime.Now,
+    DeptId = 2
 };
 
 await userService.InsertAsync(user);
@@ -62,7 +62,7 @@ await userService.InsertAsync(user);
 var current = await userService.SearchOneAsync(u => u.Id == user.Id);
 // var current = await viewService.SearchOneAsync(u => u.Id == user.Id);
 
-current.Email = "updated@test.com";
+current.UserName = "updated-demo-user";
 await userService.UpdateAsync(current);
 // await entityService.UpdateAsync(current);
 
@@ -81,6 +81,6 @@ if (exists)
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Query Guide](../02-core-usage/03-query-guide.en.md)
 - [View Models and Services](../02-core-usage/02-view-models-and-services.en.md)

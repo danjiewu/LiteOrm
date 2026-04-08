@@ -42,6 +42,12 @@ namespace LiteOrm.Common
             { ValueOperator.Concat,"||" }
         };
 
+        private const int MaxPriority = 1000;
+        /// <summary>
+        /// 指定在生成 SQL 时，每行的最大字符数。超过该限制时会在适当的位置插入换行符以提高可读性。默认值为 160。
+        /// </summary>
+        public static int RowCharLimit = 160;
+
         /// <summary>
         /// 将当前表达式转换为 SQL 字符串片段。
         /// </summary>
@@ -77,7 +83,9 @@ namespace LiteOrm.Common
 
             context.AddTableAlias(joinAlias, joinTable);
 
-            sb.Append($" \n{context.Indent}");
+            sb.Append($" \n");
+            sb.Mark = sb.Length; ;
+            sb.Append($"{context.Indent}");
             sb.Append((expr.JoinType).ToString().ToUpper());
             sb.Append(" JOIN ");
             sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joinTable.Name)));
@@ -216,7 +224,6 @@ namespace LiteOrm.Common
             return expr;
         }
 
-        private static int MaxPriority = 1000;
         /// <summary>
         /// 计算表达式的优先级（用于决定是否需要在生成 SQL 时添加括号）。
         /// 返回值越大表示优先级越高（更紧密结合），在需要时会根据与外层优先级比较决定是否加括号。
@@ -231,8 +238,8 @@ namespace LiteOrm.Common
                 SelectExpr select => select.NextSelects?.Count > 0 ? 0 : 1,
                 ValueSet vs when vs.JoinType == ValueJoinType.List => 2,
                 OrExpr _ => 11,
-                AndExpr _ => 12,                
-                LogicBinaryExpr _ => 13,                
+                AndExpr _ => 12,
+                LogicBinaryExpr _ => 13,
                 ValueBinaryExpr vb => vb.Operator switch
                 {
                     ValueOperator.Add or ValueOperator.Subtract => 14,
@@ -240,7 +247,7 @@ namespace LiteOrm.Common
                     _ => 15
                 },
                 NotExpr _ => 17,
-                UnaryExpr _ => 18, 
+                UnaryExpr _ => 18,
                 _ => MaxPriority
             };
         }
@@ -583,7 +590,7 @@ namespace LiteOrm.Common
             {
                 foreach (JoinedTable joinedTable in TableInfoProvider.Default.GetTableView(context.Table.DefinitionType).JoinedTables)
                 {
-                    if (foreignExpr.Foreign.IsAssignableFrom(joinedTable.TableDefinition.DefinitionType))
+                    if (joinedTable.TableDefinition.DefinitionType.IsAssignableFrom(foreignExpr.Foreign))
                     {
                         // 找到当前表与目标表之间的关联关系，自动生成关联条件
                         joinedExpr |= new AndExpr(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
@@ -596,7 +603,7 @@ namespace LiteOrm.Common
                 {
                     foreach (JoinedTable joinedTable in foreignTable.JoinedTables)
                     {
-                        if (context.Table.DefinitionType.IsAssignableFrom(joinedTable.TableDefinition.DefinitionType))
+                        if (joinedTable.TableDefinition.DefinitionType.IsAssignableFrom(context.Table.DefinitionType))
                         {
                             // 找到当前表与目标表之间的关联关系，自动生成关联条件
                             joinedExpr |= new AndExpr(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
@@ -618,14 +625,15 @@ namespace LiteOrm.Common
                 sb.Append(sqlBuilder.ToSqlName(foreignAlias));
 
                 LogicExpr whereExpr = joinedExpr.And(foreignExpr.InnerExpr);
-                sb.Append($" \n{context.Indent}WHERE ");
+                sb.Append($" \n");
+                sb.Mark = sb.Length; ;
+                sb.Append($"{context.Indent}WHERE ");
                 int lenBefore = sb.Length;
                 ToSqlInternal(ref sb, whereExpr, context, sqlBuilder, outputParams);
                 if (sb.Length == lenBefore) sb.Length = lenBefore - 7;
 
                 sb.Append(")");
             }
-            sb.Append($" \n{context.Indent}");
         }
 
         /// <summary>
@@ -666,6 +674,13 @@ namespace LiteOrm.Common
             for (int i = 0; i < count; i++)
             {
                 int lenBefore = sb.Length;
+                // 在每个子表达式前检查当前行长度，如果超过 RowCharLimit 则换行以提高可读性
+                if (sb.Length - sb.Mark > RowCharLimit)
+                {
+                    sb.Append($"\n");
+                    sb.Mark = sb.Length; ;
+                    sb.Append($"{context.Indent}");
+                }
                 if (!first) sb.Append(" AND ");
                 int lenWithJoin = sb.Length;
 
@@ -694,6 +709,13 @@ namespace LiteOrm.Common
             for (int i = 0; i < count; i++)
             {
                 int lenBefore = sb.Length;
+                // 在每个子表达式前检查当前行长度，如果超过 RowCharLimit 则换行以提高可读性
+                if (sb.Length - sb.Mark > RowCharLimit)
+                {
+                    sb.Append($"\n");
+                    sb.Mark = sb.Length; ;
+                    sb.Append($"{context.Indent}");
+                }
                 if (!first) sb.Append(" OR ");
                 int lenWithJoin = sb.Length;
 
@@ -767,7 +789,7 @@ namespace LiteOrm.Common
             }
             string aliasMain = expr.Alias ?? $"T{context.Sequence++}";
             context.DefaultTableAliasName = aliasMain;
-            sql.From.Append($" {aliasMain}\n{context.Indent}");
+            sql.From.Append($" {aliasMain}");
             context.AddTableAlias(aliasMain, null);
         }
 
@@ -908,7 +930,14 @@ namespace LiteOrm.Common
                 {
                     for (int i = 0; i < select.Selects.Count; i++)
                     {
-                        if (i > 0) sql.Select.Append(",");
+                        if (i > 0) sql.Select.Append(", ");
+                        // 在每个子表达式前检查当前行长度，如果超过 RowCharLimit 则换行以提高可读性
+                        if (sb.Length - sb.Mark > RowCharLimit)
+                        {
+                            sb.Append($" \n");
+                            sb.Mark = sb.Length; ;
+                            sb.Append($"{context.Indent}");
+                        }
                         ToSql(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
                     }
                 }
@@ -920,7 +949,9 @@ namespace LiteOrm.Common
             {
                 sb.Append($" \n{context.Indent}");
                 sb.Append(sqlBuilder.ToSqlSelectSetType(next.SetType));
-                sb.Append($" \n{context.Indent}");
+                sb.Append($" \n");
+                sb.Mark = sb.Length; ;
+                sb.Append($"{context.Indent}");
                 ToSqlInternal(ref sb, next, context, sqlBuilder, outputParams, 1);// Select默认优先级为1，NextSelects 中的 Select 如果有嵌套 NextSelects 则优先级为0，需要括号包裹
             }
         }
@@ -958,7 +989,9 @@ namespace LiteOrm.Common
             {
                 using (context.BeginScope())
                 {
-                    sb.Append($" \n{context.Indent}WHERE ");
+                    sb.Append($" \n");
+                    sb.Mark = sb.Length; ;
+                    sb.Append($"{context.Indent}WHERE ");
                     ToSqlInternal(ref sb, expr.Where, context, sqlBuilder, outputParams);
                 }
             }
@@ -975,10 +1008,19 @@ namespace LiteOrm.Common
             var table = TableInfoProvider.Default.GetTableDefinition(tableExpr.Type);
             sb.Append("UPDATE ");
             ToSql(ref sb, tableExpr, context, sqlBuilder, outputParams);
-            sb.Append($" \n{context.Indent}SET ");
+            sb.Append($" \n");
+            sb.Mark = sb.Length;
+            sb.Append($"{context.Indent}SET ");
             for (int i = 0; i < expr.Sets.Count; i++)
             {
                 if (i > 0) sb.Append(", ");
+                // 在每个子表达式前检查当前行长度，如果超过 RowCharLimit 则换行以提高可读性
+                if (sb.Length - sb.Mark > RowCharLimit)
+                {
+                    sb.Append($" \n");
+                    sb.Mark = sb.Length; ;
+                    sb.Append($"{context.Indent}");
+                }
                 var set = expr.Sets[i];
                 int priority = GetPriority(expr);
                 SqlColumn column = table?.GetColumn(set.Item1.PropertyName);
@@ -992,7 +1034,9 @@ namespace LiteOrm.Common
             {
                 using (context.BeginScope())
                 {
-                    sb.Append($" \n{context.Indent}WHERE ");
+                    sb.Append($" \n");
+                    sb.Mark = sb.Length;
+                    sb.Append($"{context.Indent}WHERE ");
                     ToSqlInternal(ref sb, expr.Where, context, sqlBuilder, outputParams);
                 }
             }

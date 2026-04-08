@@ -50,7 +50,7 @@ Pair this with `LambdaExprConverter` registration when the function should also 
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Custom Paging](../03-advanced-topics/05-custom-paging.en.md)
 - [Expression Extension](./01-expression-extension.en.md)
 - [Configuration and Registration](../01-getting-started/03-configuration-and-registration.en.md)

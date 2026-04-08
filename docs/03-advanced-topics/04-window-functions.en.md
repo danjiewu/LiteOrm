@@ -59,6 +59,6 @@ var runningTotalExpr =
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Expression Extension Guide](../04-extensibility/01-expression-extension.en.md)
 - [SQL Examples](../05-reference/07-sql-examples.en.md)

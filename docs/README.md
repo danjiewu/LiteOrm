@@ -32,7 +32,7 @@
 | [自定义分页](./03-advanced-topics/05-custom-paging.md) | [Custom Paging](./03-advanced-topics/05-custom-paging.en.md) | 分页方案扩展 |
 | [权限过滤](./03-advanced-topics/06-permission-filtering.md) | [Permission Filtering](./03-advanced-topics/06-permission-filtering.en.md) | 用户范围过滤与访问控制 |
 | [前端 QueryString 查询](./03-advanced-topics/07-frontend-querystring.md) | [Frontend QueryString](./03-advanced-topics/07-frontend-querystring.en.md) | 前端拼接查询参数并调用查询接口 |
-| [前端原生 Expr 查询](./03-advanced-topics/08-frontend-native-expr.md) | [Frontend Native Expr](./03-advanced-topics/08-frontend-native-expr.md) | 前端构造原生 Expr JSON 并调用查询接口 |
+| [前端原生 Expr 查询](./03-advanced-topics/08-frontend-native-expr.md) | [Frontend Native Expr](./03-advanced-topics/08-frontend-native-expr.en.md) | 前端构造原生 Expr JSON 并调用查询接口 |
 
 ### 扩展开发篇 / Extensibility
 
@@ -50,7 +50,7 @@
 | [配置参考](./05-reference/01-configuration-reference.md) | [Config Reference](./05-reference/01-configuration-reference.en.md) | 配置项说明 |
 | [API索引](./05-reference/02-api-index.md) | [API Index](./05-reference/02-api-index.en.md) | API 快速索引 |
 | [术语表](./05-reference/03-glossary.md) | [Glossary](./05-reference/03-glossary.en.md) | 术语解释 |
-| [AI指南](./05-reference/05-ai-guide.md) | [AI Guide](./05-reference/05-ai-guide.md) | AI 辅助开发 |
+| [AI指南](./05-reference/05-ai-guide.md) | [AI Guide (Chinese only)](./05-reference/05-ai-guide.md) | AI 辅助开发 |
 | [示例索引](./05-reference/06-example-index.md) | [Example Index](./05-reference/06-example-index.en.md) | 示例代码索引 |
 | [SQL示例](./05-reference/07-sql-examples.md) | [SQL Examples](./05-reference/07-sql-examples.en.md) | SQL 生成示例 |
 | [兼容性](./05-reference/08-database-compatibility.md) | [Compatibility](./05-reference/08-database-compatibility.en.md) | 各数据库差异 |

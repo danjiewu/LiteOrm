@@ -71,6 +71,6 @@ public class UserViewDao : ObjectViewDAO<UserView>
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [First Example](../01-getting-started/04-first-example.en.md)
 - [Query Guide](./03-query-guide.en.md)

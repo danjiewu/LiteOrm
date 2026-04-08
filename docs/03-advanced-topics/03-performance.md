@@ -64,9 +64,9 @@ var users = await userService.SearchAsync();
 
 // 推荐：使用 SearchAs 选择字段
 var result = await userService.SearchAs<UserView>(
-    Expr.From<User>()
+    Expr.From<UserView>()
         .Where(Expr.Prop("Age") > 18)
-        .Select("Id", "UserName", "Email")
+        .Select("Id", "UserName", "DeptName")
 );
 ```
 
@@ -96,7 +96,7 @@ var results = await factory.SalesDAO
 ```csharp
 // 大偏移量分页（慢）
 var page = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1)
+    q => q.Where(u => u.Age >= 18)
           .OrderByDescending(u => u.CreateTime)
           .Skip(10000).Take(20)  // 偏移量大时慢
 );
@@ -104,7 +104,7 @@ var page = await userService.SearchAsync(
 // 推荐：基于 ID 的游标分页（快）
 var lastId = 10000;
 var page = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1 && u.Id > lastId)
+    q => q.Where(u => u.Age >= 18 && u.Id > lastId)
           .OrderByDescending(u => u.Id)
           .Take(20)
 );
@@ -118,7 +118,7 @@ var page = await userService.SearchAsync(
 // 单条插入（多次网络往返）
 for (int i = 0; i < 100; i++)
 {
-    await userService.InsertAsync(new User { Name = $"user{i}" });
+    await userService.InsertAsync(new User { UserName = $"user{i}", Age = 18 + i % 10, CreateTime = DateTime.Now });
 }
 
 // 批量插入（一次网络往返）
@@ -187,7 +187,7 @@ await provider.BulkInsertAsync(ToDataTable(users), dbConnection, transaction);
 
 ### 4.3.1 来自 Demo 的 MySQL `IBulkProvider` 实现
 
-`LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs` 提供了一个真实的 `IBulkProvider` 实现：
+`LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs` 文件中提供了一个真实的 `IBulkProvider` 实现（类名为 `MySqlBulkCopyProvider`）：
 
 ```csharp
 [AutoRegister(Key = typeof(MySqlConnection))]
@@ -261,14 +261,14 @@ var users = await userService.SearchAsync();  // 推荐
 ```csharp
 // 串行查询
 var users = await userService.SearchAsync();
-var orders = await orderService.SearchAsync();
+var departments = await departmentService.SearchAsync();
 
 // 并行查询
 var userTask = userService.SearchAsync();
-var orderTask = orderService.SearchAsync();
-await Task.WhenAll(userTask, orderTask);
+var departmentTask = departmentService.SearchAsync();
+await Task.WhenAll(userTask, departmentTask);
 var users = userTask.Result;
-var orders = orderTask.Result;
+var departments = departmentTask.Result;
 ```
 
 ### 5.3 什么时候适合并行
@@ -283,10 +283,10 @@ var orders = orderTask.Result;
 
 ```sql
 -- 查询条件
-WHERE Status = 1 AND Age >= 18
+WHERE DeptId = 2 AND Age >= 18
 
 -- 建议索引
-CREATE INDEX idx_status_age ON Users(Status, Age);
+CREATE INDEX idx_users_dept_age ON Users(DeptId, Age);
 ```
 
 ## 7. 避免 N+1 查询
@@ -295,14 +295,14 @@ CREATE INDEX idx_status_age ON Users(Status, Age);
 
 ```csharp
 // N+1 查询（不推荐）
-var orders = await orderService.SearchAsync();
-foreach (var order in orders)
+var sales = await salesService.SearchAsync(tableArgs: [DateTime.Now.ToString("yyyyMM")]);
+foreach (var sale in sales)
 {
-    var user = await userService.GetObjectAsync(order.UserId);  // 每次查询
+    var user = await userService.GetObjectAsync(sale.SalesUserId);  // 每次查询
 }
 
 // 关联查询（推荐）
-var orders = await orderService.SearchAsync<OrderView>();
+var sales = await salesService.SearchAsync<SalesRecordView>(tableArgs: [DateTime.Now.ToString("yyyyMM")]);
 // 自动 JOIN，一次查询
 ```
 
@@ -310,11 +310,11 @@ var orders = await orderService.SearchAsync<OrderView>();
 
 ```csharp
 // 低效
-int count = await userService.CountAsync(u => u.Status == 1);
+int count = await userService.CountAsync(u => u.Age >= 18);
 if (count > 0) { ... }
 
 // 高效
-bool exists = await userService.ExistsAsync(u => u.Status == 1);
+bool exists = await userService.ExistsAsync(u => u.Age >= 18);
 if (exists) { ... }
 ```
 
@@ -345,12 +345,18 @@ builder.Host.RegisterLiteOrm(options =>
 ### 8.2 及时释放连接
 
 ```csharp
-// 使用 using 确保释放
-using (var session = SessionManager.Current.BeginTransaction())
+var sessionManager = SessionManager.Current;
+sessionManager.BeginTransaction();
+try
 {
     // 操作
-    session.Commit();
-}  // 自动释放
+    sessionManager.Commit();
+}
+catch
+{
+    sessionManager.Rollback();
+    throw;
+}
 ```
 
 ## 9. 内存优化
@@ -359,7 +365,7 @@ using (var session = SessionManager.Current.BeginTransaction())
 
 ```csharp
 // 大数据量查询
-await foreach (var user in userViewDAO.Search(Expr.Prop("Status") == 1))
+await foreach (var user in userViewDAO.Search(Expr.Prop("Age") >= 18))
 {
     // 流式处理，避免一次性加载到内存
     Process(user);

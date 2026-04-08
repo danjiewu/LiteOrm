@@ -16,7 +16,7 @@ LiteOrm supports three main query styles: Lambda, `Expr`, and `ExprString`.
 var adults = await userService.SearchAsync(u => u.Age >= 18);
 
 var page = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1)
+    q => q.Where(u => u.Age >= 18)
           .OrderByDescending(u => u.CreateTime)
           .Skip(0).Take(20)
 );
@@ -26,7 +26,7 @@ var page = await userService.SearchAsync(
 
 ```csharp
 var users = await userService.SearchAsync(
-    u => Expr.Exists<Order>(o => o.UserId == u.Id && o.Status == 1)
+    u => Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "R&D")
 );
 ```
 
@@ -36,7 +36,7 @@ When you already have a dynamically built `Expr` but still want to keep a Lambda
 
 ```csharp
 var users = await userService.SearchAsync(
-    u => u.Age >= 18 && Expr.Prop("Name").Contains("John").To<bool>()
+    u => u.Age >= 18 && Expr.Prop("UserName").Contains("John").To<bool>()
 );
 ```
 
@@ -86,12 +86,12 @@ Use `ExprString` only for small custom SQL fragments.
 
 ```csharp
 var result = await userViewDAO.Search(
-    $"WHERE {Expr.Prop("Status") == 1} ORDER BY CreateTime DESC"
+    $"WHERE {Expr.Prop("Age") >= 18} ORDER BY CreateTime DESC"
 ).ToListAsync();
 ```
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Associations Guide](./05-associations.en.md)
 - [SQL Examples](../05-reference/07-sql-examples.en.md)

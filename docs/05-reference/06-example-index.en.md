@@ -115,7 +115,6 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
   - `LiteOrm.Demo\Demos\TransactionDemo.cs`
 - Focus:
   - declarative transactions
-  - manual transactions
   - rollback on failure
   - wrapping a business workflow
 
@@ -136,7 +135,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 - Entry doc: [Performance](../03-advanced-topics/03-performance.en.md)
 - Code sources:
   - `LiteOrm.Demo\Data\DbInitializer.cs`
-  - `LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs`
+  - `LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs` (implementation class: `MySqlBulkCopyProvider`)
   - `LiteOrm.Tests\ServiceTests.cs`
 - Focus:
   - bulk initialization
@@ -202,6 +201,5 @@ If you want to move from simple to advanced examples, this is a practical sequen
 
 ## Related links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [API Index](./02-api-index.en.md)
-- [Migration map](./04-migration-map.en.md)

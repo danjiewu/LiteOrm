@@ -12,37 +12,37 @@
 ### Lambda 查询
 
 ```csharp
-var users = await userService.SearchAsync(u => u.Age >= 18 && u.Name!.StartsWith("A"));
+var users = await userService.SearchAsync(u => u.Age >= 18 && u.UserName!.StartsWith("A"));
 ```
 
 典型 SQL 形态：
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime]
 FROM [Users] [T0]
-WHERE [T0].[Age] >= @0 AND [T0].[Name] LIKE @1
+WHERE [T0].[Age] >= @0 AND [T0].[UserName] LIKE @1
 ```
 
 ### Expr 查询
 
 ```csharp
-var expr = (Expr.Prop("Age") >= 18) & Expr.Prop("Name").StartsWith("A");
+var expr = (Expr.Prop("Age") >= 18) & Expr.Prop("UserName").StartsWith("A");
 var users = await userService.SearchAsync(expr);
 ```
 
 典型 SQL 形态：
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime]
 FROM [Users] [T0]
-WHERE [T0].[Age] >= @0 AND [T0].[Name] LIKE @1
+WHERE [T0].[Age] >= @0 AND [T0].[UserName] LIKE @1
 ```
 
 ## 2. 排序与分页
 
 ```csharp
 var page = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1)
+    q => q.Where(u => u.Age >= 18)
           .OrderByDescending(u => u.CreateTime)
           .Skip(20).Take(10)
 );
@@ -51,9 +51,9 @@ var page = await userService.SearchAsync(
 典型 SQL 形态：
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime]
 FROM [Users] [T0]
-WHERE [T0].[Status] = @0
+WHERE [T0].[Age] >= @0
 ORDER BY [T0].[CreateTime] DESC
 OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY
 ```
@@ -64,17 +64,17 @@ OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY
 
 ```csharp
 var users = await userService.SearchAsync(
-    u => Expr.Exists<Order>(o => o.UserId == u.Id && o.Status == 1)
+    u => Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "研发中心")
 );
 ```
 
 典型 SQL 形态：
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime]
 FROM [Users] [T0]
 WHERE EXISTS (
-  SELECT 1 FROM [Orders] [T1] WHERE [T1].[UserId] = [T0].[Id] AND [T1].[Status] = @0
+  SELECT 1 FROM [Departments] [T1] WHERE [T1].[Id] = [T0].[DeptId] AND [T1].[Name] = @0
 )
 ```
 
@@ -88,7 +88,7 @@ var users = await userService.SearchAsync(expr);
 典型 SQL 形态：
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status]
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime]
 FROM [Users] [T0]
 WHERE EXISTS (
   SELECT 1 FROM [Departments] [T1] WHERE [T1].[Id] = [T0].[DeptId] AND [T1].[Name] = @0
@@ -106,13 +106,13 @@ var expr = Expr.ExistsRelated<DepartmentView>(Expr.Prop("Name").StartsWith("研"
 ## 5. ForeignColumn 关联查询
 
 ```csharp
-var users = await viewService.SearchAsync(u => u.DeptName == "IT Department");
+var users = await viewService.SearchAsync(u => u.DeptName == "研发中心");
 ```
 
 典型 SQL 形态：
 
 ```sql
-SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime], [T0].[Status],
+SELECT [T0].[Id], [T0].[UserName], [T0].[Age], [T0].[DeptId], [T0].[CreateTime],
   [T1].[Name] AS [DeptName]
 FROM [Users] [T0]
 LEFT JOIN [Departments] [T1] ON [T1].[Id] = [T0].[DeptId]
@@ -133,7 +133,7 @@ var sales = await salesService.SearchAsync(
 典型 SQL 形态：
 
 ```sql
-SELECT [T0].[Id], [T0].[ProductId], [T0].[Amount], [T0].[CreateTime]
+SELECT [T0].[Id], [T0].[ProductId], [T0].[Amount], [T0].[SaleTime]
 FROM [Sales_202411] [T0]
 WHERE [T0].[Amount] > @0
 ```
@@ -169,14 +169,14 @@ INSERT INTO [Users] ([UserName], [Age], [CreateTime]) VALUES (@0, @1, @2), (@3, 
 await userService.UpdateAsync(
     Expr.Update<User>()
         .Set("Age", Expr.Prop("Age") + 1)
-        .Where(Expr.Prop("Status") == 1)
+        .Where(Expr.Prop("DeptId") == 2)
 );
 ```
 
 典型 SQL 形态：
 
 ```sql
-UPDATE [Users] SET [Age] = [Age] + 1 WHERE [Status] = @0
+UPDATE [Users] SET [Age] = [Age] + 1 WHERE [DeptId] = @0
 ```
 
 ## 9. 窗口函数

@@ -31,9 +31,9 @@ Use projection-oriented APIs when a view is narrower than the base entity:
 
 ```csharp
 var result = await userService.SearchAs<UserView>(
-    Expr.From<User>()
+    Expr.From<UserView>()
         .Where(Expr.Prop("Age") > 18)
-        .Select("Id", "UserName", "Email")
+        .Select("Id", "UserName", "DeptName")
 );
 ```
 
@@ -81,7 +81,7 @@ When you only need a yes/no answer, prefer `ExistsAsync` over `CountAsync`.
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Associations](../02-core-usage/05-associations.en.md)
 - [Transactions](./01-transactions.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)

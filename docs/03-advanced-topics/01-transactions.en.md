@@ -36,16 +36,17 @@ public async Task CreateUserWithOrderAsync(User user, Order order)
 Use `SessionManager` when the application must decide exactly when to commit or roll back:
 
 ```csharp
-using var session = SessionManager.Current.BeginTransaction();
+var sessionManager = SessionManager.Current;
+sessionManager.BeginTransaction();
 try
 {
     await userService.InsertAsync(user);
     await orderService.InsertAsync(order);
-    session.Commit();
+    sessionManager.Commit();
 }
 catch
 {
-    session.Rollback();
+    sessionManager.Rollback();
     throw;
 }
 ```
@@ -53,7 +54,8 @@ catch
 You can also specify an `IsolationLevel`:
 
 ```csharp
-using var session = SessionManager.Current.BeginTransaction(IsolationLevel.ReadCommitted);
+var sessionManager = SessionManager.Current;
+sessionManager.BeginTransaction(IsolationLevel.ReadCommitted);
 ```
 
 ## 4. Propagation behavior
@@ -77,10 +79,11 @@ using var session = SessionManager.Current.BeginTransaction(IsolationLevel.ReadC
 - Keep transaction boundaries in the application or business layer.
 - Prefer a single `EntityService` workflow method over scattering partial writes across controllers.
 - Use manual transactions when a loop, checkpoint, or conditional commit is part of the design.
+- Avoid fire-and-forget work inside a transaction scope; detached tasks do not automatically share the same transaction boundary.
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Associations](../02-core-usage/05-associations.en.md)
 - [Sharding and TableArgs](./02-sharding-and-tableargs.en.md)
 - [Performance](./03-performance.en.md)

@@ -186,7 +186,7 @@ var host = Host.CreateDefaultBuilder(args)
 ```csharp
 // 使用服务层
 var pageResult = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1)
+    q => q.Where(u => u.Age >= 18)
           .OrderBy(u => u.Id)
           .Skip(10).Take(20)
 );
@@ -194,7 +194,7 @@ var pageResult = await userService.SearchAsync(
 // 直接使用 DAO
 var users = await objectViewDAO.Search(
     Expr.From<User>()
-        .Where(u => u.Status == 1)
+        .Where(u => u.Age >= 18)
         .OrderBy(nameof(User.Id))
         .Section(10, 20) // 跳过10条，取20条
 ).ToListAsync();
@@ -204,7 +204,7 @@ var users = await objectViewDAO.Search(
 
 ```csharp
 var query = Expr.From<User>()
-    .Where(Expr.Prop("Age") > 18 & Expr.Prop("Status").In(1, 2, 3))
+    .Where(Expr.Prop("Age") > 18 & Expr.Prop("DeptId").In(1, 2, 3))
     .OrderByDescending("CreateTime")
     .Section(0, 10); // 第一页，10条记录
 
@@ -228,7 +228,7 @@ builder.Host.RegisterLiteOrm(options =>
 
 // 3. 正常使用分页 API，无需在业务代码里改写查询
 var page = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1)
+    q => q.Where(u => u.Age >= 18)
           .OrderBy(u => u.Id)
           .Skip(20)
           .Take(20)
@@ -242,9 +242,9 @@ var page = await userService.SearchAsync(
 ### 4.1 无分页查询
 
 ```sql
-SELECT "T0"."ID", "T0"."USERNAME", "T0"."EMAIL", "T0"."CREATETIME" 
+SELECT "T0"."ID", "T0"."USERNAME", "T0"."AGE", "T0"."CREATETIME" 
 FROM "USERS" "T0" 
-WHERE "T0"."STATUS" = :0 
+WHERE "T0"."AGE" >= :0 
 ORDER BY "T0"."ID"
 ```
 
@@ -252,9 +252,9 @@ ORDER BY "T0"."ID"
 
 ```sql
 SELECT * FROM (
-SELECT "T0"."ID", "T0"."USERNAME", "T0"."EMAIL", "T0"."CREATETIME",ROW_NUMBER() OVER (ORDER BY "T0"."ID") AS "RN__"
+SELECT "T0"."ID", "T0"."USERNAME", "T0"."AGE", "T0"."CREATETIME",ROW_NUMBER() OVER (ORDER BY "T0"."ID") AS "RN__"
 FROM "USERS" "T0" 
-WHERE "T0"."STATUS" = :0 
+WHERE "T0"."AGE" >= :0 
 ) "__T"
 WHERE "__T"."RN__" > 10 AND "__T"."RN__" <= 30
 ```

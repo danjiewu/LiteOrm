@@ -53,11 +53,11 @@ If the framework already supports `DateTime.ToString(format)` for your target da
 When you dynamically build an `Expr` but still want to combine it with a Lambda, use `To<T>()`:
 
 ```csharp
-u => u.Age >= 18 && Expr.Prop("Name").Contains("John").To<bool>()
+ u => u.Age >= 18 && Expr.Prop("UserName").Contains("John").To<bool>()
 ```
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Window Functions](../03-advanced-topics/04-window-functions.en.md)
 - [API Index](../05-reference/02-api-index.en.md)

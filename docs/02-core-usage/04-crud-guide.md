@@ -10,9 +10,9 @@
 var user = new User
 {
     UserName = "admin",
-    Email = "admin@test.com",
     Age = 30,
-    CreateTime = DateTime.Now
+    CreateTime = DateTime.Now,
+    DeptId = 1
 };
 
 bool success = await userService.InsertAsync(user);
@@ -52,9 +52,11 @@ await userService.BatchInsertAsync(users);
 ### Upsert
 
 ```csharp
-var result = await userService.UpdateOrInsertAsync(user);
-Console.WriteLine(result.OperationType); // Insert / Update
+bool success = await userService.UpdateOrInsertAsync(user);
+Console.WriteLine(success); // true 表示执行成功
 ```
+
+如果你需要区分本次到底是插入还是更新，可以直接使用 DAO 层的 `UpdateOrInsertResult`。
 
 ### 批量 Upsert
 
@@ -95,7 +97,7 @@ await service.BatchUpdateOrInsertAsync(new[] { existingUser, newUser });
 
 ```csharp
 var user = await userService.SearchOneAsync(u => u.Id == 1);
-user.Email = "newemail@test.com";
+user.UserName = "admin_v2";
 await userService.UpdateAsync(user);
 ```
 
@@ -104,7 +106,7 @@ await userService.UpdateAsync(user);
 ```csharp
 foreach (var user in users)
 {
-    user.Status = 1;
+    user.Age += 1;
 }
 
 await userService.BatchUpdateAsync(users);
@@ -143,8 +145,8 @@ await objectDao.UpdateAsync(
     Expr.Update<User>()
         .Where(Expr.Prop("Age") < 18)
         .Set(
-            ("Status", Expr.Value(0)),
-            ("UpdateTime", Expr.Value(DateTime.Now))
+            ("Age", Expr.Value(18)),
+            ("CreateTime", Expr.Value(DateTime.Now))
         )
 );
 ```
@@ -220,7 +222,7 @@ await service.BatchDeleteAsync(inserted);
 
 ```csharp
 await userService.DeleteAsync(u => u.CreateTime < DateTime.Today.AddYears(-1));
-await objectDao.Delete(Expr.Prop("Status") == 0 & Expr.Prop("IsActive") == false);
+await objectDao.Delete(Expr.Prop("Age") < 18 & Expr.Prop("UserName").StartsWith("Temp"));
 ```
 
 ### 来自测试的条件删除示例
@@ -242,7 +244,8 @@ int deleted = await service.DeleteAsync(
 | --- | --- | --- |
 | `Insert/Update/Delete` | `bool` | 是否成功执行。 |
 | 条件更新/删除 | `int` | 受影响行数。 |
-| `UpdateOrInsert` | `UpdateOrInsertResult` | 告知本次是插入还是更新。 |
+| Service 层 `UpdateOrInsert` | `bool` | 是否成功执行。 |
+| DAO 层 `UpdateOrInsert` | `UpdateOrInsertResult` | 告知本次是插入还是更新。 |
 
 ## 5. Service 接口速览
 

@@ -78,7 +78,7 @@ When a query or write call provides explicit `TableArgs`, that explicit value ta
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [View Models and Services](./02-view-models-and-services.en.md)
 - [Associations](./05-associations.en.md)
 - [Glossary](../05-reference/03-glossary.en.md)

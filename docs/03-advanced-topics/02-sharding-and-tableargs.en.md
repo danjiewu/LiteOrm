@@ -100,7 +100,7 @@ You can also pair this with `ReadOnlyConfigs` when shard reads may use replicas.
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Associations](../02-core-usage/05-associations.en.md)
 - [Performance](./03-performance.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)

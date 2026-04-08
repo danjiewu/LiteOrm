@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 
 namespace LiteOrm.Common
 {
@@ -9,6 +10,10 @@ namespace LiteOrm.Common
     /// </summary>
     public ref struct ValueStringBuilder
     {
+        /// <summary>
+        /// 标记，可用于标记位置，供外部使用者根据需要使用。
+        /// </summary>
+        public int Mark;
         private char[]? _arrayToReturnToPool;
         private Span<char> _chars;
         private int _length;

@@ -64,7 +64,7 @@ This fits:
 
 ## Related Links
 
-- [Back to English docs hub](../SUMMARY.en.md)
+- [Back to English docs hub](../README.md)
 - [Expression Extension](./01-expression-extension.en.md)
 - [Window Functions](../03-advanced-topics/04-window-functions.en.md)
 - [API Index](../05-reference/02-api-index.en.md)

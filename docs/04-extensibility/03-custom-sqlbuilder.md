@@ -76,7 +76,7 @@ public class User
 }
 
 // 4. 业务层继续按统一方式查询
-var users = await userService.SearchAsync(q => q.Where(u => u.Status == 1).Skip(0).Take(20));
+var users = await userService.SearchAsync(q => q.Where(u => u.Age >= 18).Skip(0).Take(20));
 ```
 
 这个模式适合把兼容逻辑封装在基础设施层，业务代码不需要知道数据库版本差异。

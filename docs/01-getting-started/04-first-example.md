@@ -16,14 +16,14 @@ public class User
     [Column("UserName")]
     public string? UserName { get; set; }
 
-    [Column("Email")]
-    public string? Email { get; set; }
-
     [Column("Age")]
     public int Age { get; set; }
 
     [Column("CreateTime")]
-    public DateTime? CreateTime { get; set; }
+    public DateTime CreateTime { get; set; }
+
+    [Column("DeptId")]
+    public int? DeptId { get; set; }
 }
 ```
 
@@ -74,9 +74,9 @@ builder.Host.RegisterLiteOrm(options =>
 var user = new User
 {
     UserName = "admin",
-    Email = "admin@test.com",
     Age = 30,
-    CreateTime = DateTime.Now
+    CreateTime = DateTime.Now,
+    DeptId = 1
 };
 
 await userService.InsertAsync(user);
@@ -118,9 +118,9 @@ var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsy
 var user = new User
 {
     UserName = "demo-user",
-    Email = "demo@test.com",
     Age = 26,
-    CreateTime = DateTime.Now
+    CreateTime = DateTime.Now,
+    DeptId = 2
 };
 
 // 1. 插入
@@ -133,7 +133,7 @@ var current = await userService.SearchOneAsync(u => u.Id == user.Id);
 // var current = await viewService.SearchOneAsync(u => u.Id == user.Id);
 
 // 3. 更新
-current.Email = "updated@test.com";
+current.UserName = "updated-demo-user";
 await userService.UpdateAsync(current);
 // await entityService.UpdateAsync(current);
 
