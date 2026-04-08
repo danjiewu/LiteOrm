@@ -197,7 +197,7 @@ validator.Validate(expr2);  // false
 ## 8. 下一步
 
 - [返回目录](../README.md)
-- 关联查询：[关联查询](../02-core-usage/05-associations.md)
-- 表达式扩展：[表达式扩展](./01-expression-extension.md)
-- 窗口函数：[窗口函数](../03-advanced-topics/04-window-functions.md)
+- [关联查询](../02-core-usage/05-associations.md)
+- [表达式扩展](./01-expression-extension.md)
+- [窗口函数](../03-advanced-topics/04-window-functions.md)
 

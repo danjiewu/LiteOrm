@@ -407,9 +407,9 @@ LiteOrm 在启动时通过 `LiteOrmSqlFunctionInitializer` 自动注册了以下
 ## 11. 下一步
 
 - [返回目录](../README.md)
-- 关联查询：[关联查询](../02-core-usage/05-associations.md)
-- 窗口函数：[窗口函数](../03-advanced-topics/04-window-functions.md)
-- 函数验证器：[函数验证器](./02-function-validator.md)
+- [关联查询](../02-core-usage/05-associations.md)
+- [窗口函数](../03-advanced-topics/04-window-functions.md)
+- [函数验证器](./02-function-validator.md)
 
 
 ## 12. 补充建议

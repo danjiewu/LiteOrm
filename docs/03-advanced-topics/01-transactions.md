@@ -204,7 +204,7 @@ LiteOrm 使用 `SessionManager` 管理数据库连接及事务：
 ## 5. 下一步
 
 - [返回目录](../README.md)
-- 关联查询：[关联查询](../02-core-usage/05-associations.md)
-- 分表分库：[分表分库](./02-sharding-and-tableargs.md)
-- 性能优化：[性能优化](./03-performance.md)
+- [关联查询](../02-core-usage/05-associations.md)
+- [分表分库](./02-sharding-and-tableargs.md)
+- [性能优化](./03-performance.md)
 

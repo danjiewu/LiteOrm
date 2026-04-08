@@ -33,6 +33,7 @@
 | [权限过滤](./03-advanced-topics/06-permission-filtering.md) | [Permission Filtering](./03-advanced-topics/06-permission-filtering.en.md) | 用户范围过滤与访问控制 |
 | [前端 QueryString 查询](./03-advanced-topics/07-frontend-querystring.md) | [Frontend QueryString](./03-advanced-topics/07-frontend-querystring.en.md) | 前端拼接查询参数并调用查询接口 |
 | [前端原生 Expr 查询](./03-advanced-topics/08-frontend-native-expr.md) | [Frontend Native Expr](./03-advanced-topics/08-frontend-native-expr.en.md) | 前端构造原生 Expr JSON 并调用查询接口 |
+| [Lambda 与 Expr 组合使用](./03-advanced-topics/09-lambda-expr-mixing.md) | [Lambda & Expr Mixing](./03-advanced-topics/09-lambda-expr-mixing.en.md) | 组合使用 Lambda 和 Expr |
 
 ### 扩展开发篇 / Extensibility
 

@@ -161,6 +161,6 @@ Expr.Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id
 ## 6. 下一步
 
 - [返回目录](../README.md)
-- 权限过滤：[权限过滤与用户范围控制](./06-permission-filtering.md)
-- 前端 QueryString 查询：[前端 QueryString 查询](./07-frontend-querystring.md)
-- 查询指南：[查询指南](../02-core-usage/03-query-guide.md)
+- [权限过滤](./06-permission-filtering.md)
+- [前端 QueryString 查询](./07-frontend-querystring.md)
+- [查询指南](../02-core-usage/03-query-guide.md)
