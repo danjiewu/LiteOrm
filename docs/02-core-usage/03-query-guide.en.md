@@ -10,6 +10,8 @@ LiteOrm supports three main query styles: Lambda, `Expr`, and `ExprString`.
 | `Expr` | Dynamic conditions, query builders, admin search screens |
 | `ExprString` | Small custom SQL fragments only |
 
+> 💡 Want to learn more about combining Lambda and Expr: See: [Lambda + Expr Mixing](../03-advanced-topics/09-lambda-expr-mixing.md)
+
 ## 2. Lambda queries
 
 ```csharp
