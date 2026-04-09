@@ -298,11 +298,17 @@ namespace LiteOrm
         /// </summary>
         /// <param name="methodName">方法名称</param>
         /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
+        /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
         /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
-        protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc)
+        protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy> configureCommand = null)
         {
             if (TableArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableArgs);
-            return GetDaoContext().PreparedCommands.GetOrAdd((ObjectType, methodName), _ => MakeNamedParamCommand(sqlFunc()));
+            return GetDaoContext().PreparedCommands.GetOrAdd((ObjectType, methodName), _ =>
+            {
+                var command = MakeNamedParamCommand(sqlFunc());
+                configureCommand?.Invoke(command);
+                return command;
+            });
         }
 
         /// <summary>
@@ -310,9 +316,10 @@ namespace LiteOrm
         /// </summary>
         /// <param name="methodName">方法名称</param>
         /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
+        /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
-        protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, CancellationToken cancellationToken = default)
+        protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy> configureCommand = null, CancellationToken cancellationToken = default)
         {
             if (TableArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableArgs);
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
@@ -322,8 +329,23 @@ namespace LiteOrm
             }
 
             command = await MakeNamedParamCommandAsync(sqlFunc(), cancellationToken).ConfigureAwait(false);
+            configureCommand?.Invoke(command);
             return daoContext.PreparedCommands.GetOrAdd((ObjectType, methodName), _ => command);
         }
+
+        /// <summary>
+        /// 异步获取预定义的 DbCommand。
+        /// </summary>
+        /// <param name="methodName">方法名称</param>
+        /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
+
+        protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, CancellationToken cancellationToken = default)
+        {
+            return await GetPreparedCommandAsync(methodName, sqlFunc, null, cancellationToken).ConfigureAwait(false);
+        }
+
 
 
         /// <summary>

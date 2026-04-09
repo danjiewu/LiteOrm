@@ -130,7 +130,7 @@ namespace LiteOrm
 
             string sql = IdentityColumn is null ?
                 $"INSERT INTO {ToSqlName(FactTableName)} ({strColumns.ToString()}) \nVALUES ({strValues.ToString()})"
-                : SqlBuilder.BuildIdentityInsertSql(null, IdentityColumn, FactTableName, strColumns.ToString(), strValues.ToString());
+                : SqlBuilder.BuildIdentityInsertSql(IdentityColumn, FactTableName, strColumns.ToString(), strValues.ToString());
 
             strColumns.Dispose();
             strValues.Dispose();
@@ -227,7 +227,7 @@ namespace LiteOrm
 
             string columnsStr = strColumns.ToString();
             string sql = IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity
-                ? SqlBuilder.BuildBatchIdentityInsertSql(null, IdentityColumn, FactTableName, columnsStr, valuesList)
+                ? SqlBuilder.BuildBatchIdentityInsertSql(IdentityColumn, FactTableName, columnsStr, valuesList)
                 : SqlBuilder.BuildBatchInsertSql(FactTableName, columnsStr, valuesList);
 
             strColumns.Dispose();
@@ -442,7 +442,7 @@ namespace LiteOrm
         public virtual bool Insert(T t)
         {
             if (t is null) throw new ArgumentNullException("t");
-            var insertCommand = GetPreparedCommand("Insert", MakeInsertSql);
+            var insertCommand = GetPreparedCommand("Insert", MakeInsertSql, ConfigureInsertCommand);
             var columns = InsertableColumns;
             int count = columns.Length;
             var parameters = insertCommand.Parameters;
@@ -889,7 +889,7 @@ namespace LiteOrm
         public async virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
         {
             if (t is null) throw new ArgumentNullException("t");
-            var insertCommand = await GetPreparedCommandAsync("Insert", MakeInsertSql, cancellationToken).ConfigureAwait(false);
+            var insertCommand = await GetPreparedCommandAsync("Insert", MakeInsertSql, ConfigureInsertCommand, cancellationToken).ConfigureAwait(false);
             var columns = InsertableColumns;
             int count = columns.Length;
             var parameters = insertCommand.Parameters;
@@ -920,6 +920,19 @@ namespace LiteOrm
             }
 
             return true;
+        }
+
+        private void ConfigureInsertCommand(DbCommandProxy command)
+        {
+            if (IdentityColumn is not null && SqlBuilder.ReturnIdentityByParam)
+            {
+                DbParameter param = command.CreateParameter();
+                param.Direction = ParameterDirection.Output;
+                param.Size = IdentityColumn.Length;
+                param.DbType = IdentityColumn.DbType;
+                param.ParameterName = ToParamName(IdentityColumn.PropertyName);
+                command.Parameters.Add(param);
+            }
         }
 
 

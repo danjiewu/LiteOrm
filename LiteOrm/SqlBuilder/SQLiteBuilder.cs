@@ -56,7 +56,7 @@ namespace LiteOrm
         /// <summary>
         /// 构建插入并返回自增标识的 SQL 语句。
         /// </summary>
-        public override string BuildIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
+        public override string BuildIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
             return $"INSERT INTO {ToSqlName(tableName)} ({strColumns}) \nVALUES ({strValues});\nSELECT LAST_INSERT_ROWID() AS [ID];";
         }
@@ -83,7 +83,7 @@ namespace LiteOrm
         /// <summary>
         /// 生成带标识列的批量插入 SQL，返回首个插入的 ID。
         /// </summary>
-        public override string BuildBatchIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
+        public override string BuildBatchIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
         {
             return $"{BuildBatchInsertSql(tableName, columns, valuesList)}; SELECT LAST_INSERT_ROWID() - ({valuesList.Count - 1}) * {identityColumn.IdentityIncreasement} AS [ID];";
         }

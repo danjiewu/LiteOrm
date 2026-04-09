@@ -108,14 +108,17 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            string selectPart = $"SELECT {string.Join(", ", Selects)} FROM {Source}";
-            if (!string.IsNullOrEmpty(Alias))
-            {
-                selectPart += $" AS {Alias}";
-            }
+            var selectItems = Selects?
+                .Where(s => s is not null)
+                .Select(s => s.ToString())
+                .ToList() ?? new List<string>();
+
+            string selectPart = $"SELECT {string.Join(", ", selectItems)}";
+            if (Source != null) selectPart += $" FROM {Source}";
+            if (!string.IsNullOrEmpty(Alias)) selectPart += $" AS {Alias}";
             if (_nextSelects != null && _nextSelects.Count > 0)
             {
-                foreach (var nxt in _nextSelects)
+                foreach (var nxt in _nextSelects.Where(n => n is not null))
                 {
                     string op = nxt.SetType switch
                     {
@@ -147,9 +150,9 @@ namespace LiteOrm.Common
             }
             return s;
         }
-        
+
     }
-    
+
 
     /// <summary>
     /// 选择项表达式，表示 SELECT 字段及其可选别名
@@ -222,7 +225,12 @@ namespace LiteOrm.Common
         /// 返回选择项的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>
-        public override string ToString() => string.IsNullOrEmpty(Alias) ? Value?.ToString() : $"{Value} AS {Alias}";
+        public override string ToString()
+        {
+            var valueText = Value?.ToString();
+            if (string.IsNullOrEmpty(valueText)) return string.Empty;
+            return string.IsNullOrEmpty(Alias) ? valueText : $"{valueText} AS {Alias}";
+        }
 
         /// <summary>
         /// 表达式类型标识

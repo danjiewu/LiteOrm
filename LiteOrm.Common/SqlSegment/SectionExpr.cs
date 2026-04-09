@@ -68,7 +68,13 @@ namespace LiteOrm.Common
         /// 返回分页片段的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>
-        public override string ToString() => $"{Source} SKIP {Skip} TAKE {Take}";
+        public override string ToString()
+        {
+            if (Source == null && Skip == 0) return $"TAKE {Take}";
+            else if (Source == null) return $"SKIP {Skip} TAKE {Take}";
+            else if (Skip == 0) return $"{Source} TAKE {Take}";
+            else return $"{Source} SKIP {Skip} TAKE {Take}";
+        }
 
         /// <summary>
         /// 克隆 SectionExpr

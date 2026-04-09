@@ -76,8 +76,8 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            string setStr = string.Join(", ", Sets.Select(s => $"{s.Item1} = {s.Item2}"));
-            return $"UPDATE {Table} SET {setStr}{(Where != null ? $" WHERE {Where}" : "")}";
+            string setStr = Sets is null ? string.Empty : " SET " + string.Join(", ", Sets.Select(s => $"{s.Item1} = {s.Item2}"));
+            return $"UPDATE {Table}{setStr}{(Where != null ? $" WHERE {Where}" : "")}";
         }
 
         /// <summary>

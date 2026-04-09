@@ -63,6 +63,12 @@ namespace LiteOrm.Common
         /// 返回筛选片段的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>
-        public override string ToString() => $"{Source} WHERE {Where}";
+        public override string ToString()
+        {
+            if (Source is null && Where is null) return string.Empty;
+            else if (Source is null) return $"WHERE {Where}";
+            else if (Where is null) return Source.ToString();
+            else return $"{Source} WHERE {Where}";
+        }
     }
 }

@@ -40,6 +40,14 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void ToString_WithoutTable_ReturnsEmptyString()
+        {
+            var expr = new DeleteExpr();
+
+            Assert.Equal(string.Empty, expr.ToString());
+        }
+
+        [Fact]
         public void Clone_CreatesEquivalentCopy()
         {
             var expr = new DeleteExpr(new TableExpr(typeof(TestUser)), Expr.Prop("Id") == 1);

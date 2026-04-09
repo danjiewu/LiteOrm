@@ -74,6 +74,22 @@ namespace LiteOrm.Common.UnitTests
             Assert.IsType<int>(hash);
         }
 
+        [Fact]
+        public void ToString_IgnoresNullOrderByItems()
+        {
+            // Arrange
+            var orderBy = new OrderByExpr(new FromExpr(typeof(TestUser)))
+            {
+                OrderBys = new List<OrderByItemExpr> { null, Expr.Prop("Age").Asc() }
+            };
+
+            // Act
+            var text = orderBy.ToString();
+
+            // Assert
+            Assert.Equal("TestUser ORDER BY [Age]", text);
+        }
+
         /// <summary>
         /// Tests that GetHashCode handles an empty OrderBys list correctly.
         /// Expected behavior: Returns a hash code based on Source and empty collection.
@@ -1210,11 +1226,11 @@ namespace LiteOrm.Common.UnitTests
         }
 
         /// <summary>
-        /// Tests that ToString returns correct format with non-null source and empty order by list.
-        /// Expected: "{Source} ORDER BY "
+        /// Tests that ToString returns source text when non-null source has no effective order by items.
+        /// Expected: "{Source}"
         /// </summary>
         [Fact]
-        public void ToString_WithSourceAndEmptyOrderBys_ReturnsSourceWithOrderByClause()
+        public void ToString_WithSourceAndEmptyOrderBys_ReturnsSourceOnly()
         {
             // Arrange
             var source = new FromExpr();
@@ -1224,8 +1240,7 @@ namespace LiteOrm.Common.UnitTests
             var result = orderByExpr.ToString();
 
             // Assert
-            Assert.Contains("ORDER BY", result);
-            Assert.EndsWith("ORDER BY ", result);
+            Assert.Equal(source.ToString(), result);
         }
 
         /// <summary>
@@ -1250,11 +1265,11 @@ namespace LiteOrm.Common.UnitTests
         }
 
         /// <summary>
-        /// Tests that ToString returns correct format when source is null and order by list is empty.
-        /// Expected: " ORDER BY "
+        /// Tests that ToString returns empty string when source is null and order by list is empty.
+        /// Expected: empty string
         /// </summary>
         [Fact]
-        public void ToString_WithNullSourceAndEmptyOrderBys_ReturnsOrderByClauseOnly()
+        public void ToString_WithNullSourceAndEmptyOrderBys_ReturnsEmptyString()
         {
             // Arrange
             var orderByExpr = new OrderByExpr(null);
@@ -1263,15 +1278,15 @@ namespace LiteOrm.Common.UnitTests
             var result = orderByExpr.ToString();
 
             // Assert
-            Assert.Contains("ORDER BY", result);
+            Assert.Equal(string.Empty, result);
         }
 
         /// <summary>
-        /// Tests that ToString throws NullReferenceException when OrderBys property is set to null.
-        /// Expected: NullReferenceException thrown
+        /// Tests that ToString safely handles a null OrderBys property.
+        /// Expected: source text only
         /// </summary>
         [Fact]
-        public void ToString_WithNullOrderBysList_ThrowsNullReferenceException()
+        public void ToString_WithNullOrderBysList_ReturnsSourceOnly()
         {
             // Arrange
             var source = new FromExpr();
@@ -1281,7 +1296,7 @@ namespace LiteOrm.Common.UnitTests
             };
 
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => orderByExpr.ToString());
+            Assert.Equal(source.ToString(), orderByExpr.ToString());
         }
     }
 }

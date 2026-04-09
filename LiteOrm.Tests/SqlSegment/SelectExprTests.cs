@@ -24,6 +24,14 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void SelectItemExpr_WithoutValue_ToStringReturnsEmptyString()
+        {
+            var item = new SelectItemExpr();
+
+            Assert.Equal(string.Empty, item.ToString());
+        }
+
+        [Fact]
         public void SelectItemExpr_WithInvalidAlias_ThrowsArgumentException()
         {
             Assert.Throws<ArgumentException>(() => new SelectItemExpr(Expr.Prop("Id"), "bad alias"));
@@ -37,6 +45,24 @@ namespace LiteOrm.Common.UnitTests
 
             Assert.Equal(2, select.Selects.Count);
             Assert.Equal("SELECT [Id], [Name] FROM TestUser", select.ToString());
+        }
+
+        [Fact]
+        public void SelectExpr_ToString_WithNullSelects_DoesNotThrow()
+        {
+            var select = new SelectExpr { Selects = null };
+
+            Assert.Equal("SELECT ", select.ToString());
+        }
+
+        [Fact]
+        public void SelectExpr_ToString_IgnoresNullNextSelects()
+        {
+            var select = new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Id"));
+            select.NextSelects.Add(null);
+            select.NextSelects.Add(new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Name")) { SetType = SelectSetType.UnionAll });
+
+            Assert.Equal("SELECT [Id] FROM TestUser UNION ALL SELECT [Name] FROM TestUser", select.ToString());
         }
 
         [Fact]

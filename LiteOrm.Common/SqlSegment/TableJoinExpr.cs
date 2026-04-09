@@ -85,7 +85,8 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            return Table == null ? string.Empty : $"{JoinType} JOIN {Table} ON {On}";
+            if (Table == null) return string.Empty;
+            return On == null ? $"{JoinType} JOIN {Table}" : $"{JoinType} JOIN {Table} ON {On}";
         }
 
         /// <summary>

@@ -24,7 +24,7 @@ namespace LiteOrm
         /// <summary>
         /// 生成带标识列的批量插入 SQL，返回首个插入的 ID。
         /// </summary>
-        public override string BuildBatchIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
+        public override string BuildBatchIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
         {
             return $"{BuildBatchInsertSql(tableName, columns, valuesList)}; SELECT SCOPE_IDENTITY() - ({valuesList.Count - 1}) * {identityColumn.IdentityIncreasement} AS [ID];";
         }

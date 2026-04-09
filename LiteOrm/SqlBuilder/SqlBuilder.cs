@@ -117,6 +117,10 @@ namespace LiteOrm
         /// 是否支持标识列插入。
         /// </summary>
         public virtual bool SupportIdentityInsert => true;
+        /// <summary>
+        /// 插入的标识值是否通过参数返回
+        /// </summary>
+        public virtual bool ReturnIdentityByParam => false;
 
         /// <summary>
         /// 将字符串内容转义为适合 LIKE 查询的值。
@@ -128,16 +132,16 @@ namespace LiteOrm
             return _sqlLikeEscapeReg.Replace(value, $"{Constants.LikeEscapeChar}$1");
         }
 
+
         /// <summary>
         /// 生成带标识列的插入 SQL。
         /// </summary>
-        /// <param name="command">数据库命令对象。</param>
         /// <param name="identityColumn">标识列定义。</param>
         /// <param name="tableName">目标表名。</param>
         /// <param name="strColumns">插入的列名集合。</param>
         /// <param name="strValues">值参数集合。</param>
         /// <returns>生成的 SQL 语句。</returns>
-        public virtual string BuildIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
+        public virtual string BuildIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
             return $"INSERT INTO {ToSqlName(tableName)} ({strColumns}) \nVALUES ({strValues}); SELECT @@IDENTITY AS [ID];";
         }
@@ -504,13 +508,12 @@ namespace LiteOrm
         /// <summary>
         /// 生成带标识列的批量插入 SQL，返回首个插入的 ID。
         /// </summary>
-        /// <param name="command">数据库命令对象。</param>
         /// <param name="identityColumn">标识列定义。</param>
         /// <param name="tableName">目标表名。</param>
         /// <param name="columns">插入的列名集合。</param>
         /// <param name="valuesList">占位符集合。</param>
         /// <returns>生成的 SQL 语句。</returns>
-        public virtual string BuildBatchIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
+        public virtual string BuildBatchIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
         {
             return BuildBatchInsertSql(tableName, columns, valuesList);
         }

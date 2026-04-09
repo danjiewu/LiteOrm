@@ -62,7 +62,7 @@ namespace LiteOrm.Common
         /// 返回删除片段的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>
-        public override string ToString() => $"DELETE FROM {Table}{(Where != null ? $" WHERE {Where}" : "")}";
+        public override string ToString() => Table == null ? string.Empty : $"DELETE FROM {Table}{(Where != null ? $" WHERE {Where}" : "")}";
 
         /// <summary>
         /// 克隆 DeleteExpr

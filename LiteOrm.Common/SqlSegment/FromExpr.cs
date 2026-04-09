@@ -127,8 +127,7 @@ namespace LiteOrm.Common
         public override string ToString()
         {
             if (Table == null) return string.Empty;
-            if (Joins == null || Joins.Count == 0) return Table.ToString();
-            return Table + " " + string.Join(" ", Joins);
+            return Table.ToString();
         }
 
         /// <summary>

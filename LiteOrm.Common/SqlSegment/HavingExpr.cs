@@ -52,7 +52,13 @@ namespace LiteOrm.Common
         /// 返回 Having 片段的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>
-        public override string ToString() => $"{Source} HAVING {Having}";
+        public override string ToString()
+        {
+            if(Source == null && Having == null) return string.Empty;
+            else if (Source == null) return $"HAVING {Having}";
+            else if (Having == null) return Source.ToString();
+            else return $"{Source} HAVING {Having}";
+        }
 
         /// <summary>
         /// 克隆 HavingExpr

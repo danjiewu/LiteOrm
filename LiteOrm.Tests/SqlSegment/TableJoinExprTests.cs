@@ -39,6 +39,14 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void ToString_WithoutOn_DoesNotAppendOnClause()
+        {
+            var expr = new TableJoinExpr(new TableExpr(typeof(TestEntity)), null) { JoinType = TableJoinType.Inner };
+
+            Assert.Equal($"Inner JOIN {nameof(TestEntity)}", expr.ToString());
+        }
+
+        [Fact]
         public void Clone_CreatesEquivalentCopy()
         {
             var expr = new TableJoinExpr(new TableExpr(typeof(TestEntity)), Expr.Prop("Id") == 1) { JoinType = TableJoinType.Full };

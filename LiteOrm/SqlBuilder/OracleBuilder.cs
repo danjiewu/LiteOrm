@@ -56,22 +56,20 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// Oracle 通过参数获取自增标识值（使用 RETURNING INTO 语法）。
+        /// </summary>
+        public override bool ReturnIdentityByParam => true;
+
+        /// <summary>
         /// 构建带有标识列或序列插入的 SQL 语句。
         /// </summary>
-        /// <param name="command">数据库命令对象。</param>
         /// <param name="identityColumn">标识列或含有序列的列定义。</param>
         /// <param name="tableName">表名。</param>
         /// <param name="strColumns">插入列名部分。</param>
         /// <param name="strValues">插入值名部分。</param>
         /// <returns>构建后的 SQL 语句。</returns>
-        public override string BuildIdentityInsertSql(IDbCommand command, ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
-        {
-            IDbDataParameter param = command.CreateParameter();
-            param.Direction = ParameterDirection.Output;
-            param.Size = identityColumn.Length;
-            param.DbType = identityColumn.DbType;
-            param.ParameterName = ToParamName(identityColumn.PropertyName);
-            command.Parameters.Add(param);
+        public override string BuildIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
+        {            
             if (IdentitySource == OracleIdentitySourceType.Sequence)
             {
                 strColumns += "," + ToSqlName(identityColumn.Name);

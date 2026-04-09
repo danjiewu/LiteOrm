@@ -54,7 +54,13 @@ namespace LiteOrm.Common
         /// 返回排序片段的字符串表示
         /// </summary>
         /// <returns>字符串表示</returns>
-        public override string ToString() => $"{Source} ORDER BY {string.Join(", ", OrderBys)}";
+        public override string ToString()
+        {
+            if (Source == null && (OrderBys == null || OrderBys.Count == 0)) return string.Empty;
+            else if (Source == null) return $"ORDER BY {string.Join(", ", OrderBys.Where(v => v is not null))}";
+            else if (OrderBys == null || OrderBys.Count == 0) return Source.ToString();
+            else return $"{Source} ORDER BY {string.Join(", ", OrderBys.Where(v => v is not null))}";
+        }
 
         /// <summary>
         /// 克隆 OrderByExpr
