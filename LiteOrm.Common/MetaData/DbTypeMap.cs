@@ -62,12 +62,10 @@ namespace LiteOrm.Common
         /// </summary>
         public static DbType GetDbType(Type type)
         {
-            Type underlyingType = type.GetUnderlyingType();
+            if (!_typeToDbType.ContainsKey(type) && type.IsEnum)
+                type = typeof(Enum);
 
-            if (!_typeToDbType.ContainsKey(underlyingType) && underlyingType.IsEnum)
-                underlyingType = typeof(Enum);
-
-            return _typeToDbType.TryGetValue(underlyingType, out var dbType) ? dbType : DbType.Object;
+            return _typeToDbType.TryGetValue(type, out var dbType) ? dbType : DbType.Object;
         }
 
         /// <summary>

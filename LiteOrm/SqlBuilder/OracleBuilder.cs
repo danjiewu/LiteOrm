@@ -37,10 +37,10 @@ namespace LiteOrm
         /// <param name="type">要转换的类型。</param>
         /// <returns></returns>
         /// <remarks>Oracle不支持布尔类型，布尔类型将被映射为字节类型</remarks>
-        public override DbType GetDbType(Type type)
+        protected override DbType GetDbTypeInternal(Type type)
         {
             if (type == typeof(bool)) return DbType.Byte; // Oracle 不支持布尔类型，使用数字代替
-            return base.GetDbType(type);
+            return base.GetDbTypeInternal(type);
         }
 
         /// <summary>

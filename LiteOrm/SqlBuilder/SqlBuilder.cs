@@ -180,7 +180,7 @@ namespace LiteOrm
             return result;
         }
 
-        
+
 
         /// <summary>
         /// 将集合操作类型（UNION/UNION ALL/INTERSECT/EXCEPT）转换为数据库合法的 SQL 关键字。
@@ -191,10 +191,10 @@ namespace LiteOrm
         {
             return selectSetType switch
             {
-                SelectSetType.Union=> "UNION",
-                SelectSetType.UnionAll=> "UNION ALL",
-                SelectSetType.Intersect=> "INTERSECT",
-                SelectSetType.Except=> "EXCEPT",
+                SelectSetType.Union => "UNION",
+                SelectSetType.UnionAll => "UNION ALL",
+                SelectSetType.Intersect => "INTERSECT",
+                SelectSetType.Except => "EXCEPT",
                 _ => throw new ArgumentOutOfRangeException(nameof(selectSetType), selectSetType, null)
             };
         }
@@ -455,9 +455,20 @@ namespace LiteOrm
         /// <summary>
         /// 获取对应的数据库类型
         /// </summary>
+        /// <param name="type">要转换的 .NET 类型，支持 Nullable 类型</param>
+        /// <returns>对应的数据库类型</returns>
+        public DbType GetDbType(Type type)
+        {
+            Type underlyingType = type.GetUnderlyingType();
+            return GetDbTypeInternal(underlyingType);
+        }
+
+        /// <summary>
+        /// 获取对应的数据库类型的内部实现方法，子类可覆盖以提供数据库特定的类型映射逻辑。
+        /// </summary>
         /// <param name="type">要转换的 .NET 类型</param>
         /// <returns>对应的数据库类型</returns>
-        public virtual DbType GetDbType(Type type)
+        protected virtual DbType GetDbTypeInternal(Type type)
         {
             return DbTypeMap.GetDbType(type);
         }

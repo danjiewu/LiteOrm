@@ -85,7 +85,7 @@ namespace LiteOrm
         {
             _daoContextPoolFactory = daoContextPoolFactory ?? throw new ArgumentNullException(nameof(daoContextPoolFactory));
             _logger = logger;
-            _logger?.LogDebug($"[{SessionID}]Session created.");
+            _logger?.LogDebug("[{SessionID}]Session created.", SessionID);
         }
 
         private void EnsureNotDisposed()
@@ -160,14 +160,14 @@ namespace LiteOrm
             {
                 if (InTransaction)
                 {
-                    _logger?.LogWarning("Already in a transaction, cannot begin a new one");
+                    _logger?.LogWarning("Session {SessionID} is already in a transaction, cannot begin a new one", SessionID);
                     return false;
                 }
 
                 _currentTransactionId = Guid.NewGuid().ToString();
                 _currentIsolationLevel = isolationLevel;
 
-                _logger?.LogDebug($"Session {SessionID} began transaction. ID: {_currentTransactionId}, Isolation: {isolationLevel}");
+                _logger?.LogDebug("Session {SessionID} began transaction. ID: {TransactionID}, Isolation: {IsolationLevel}", SessionID, _currentTransactionId, isolationLevel);
 
                 // 为所有已存在的上下文开启事务，只读连接跳过事务
                 foreach (var context in _daoContexts.Values)
@@ -181,10 +181,10 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, $"Session {SessionID} failed to begin transaction for pool '{context.Pool?.Name}'");
+                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction for pool '{PoolName}'", SessionID, context.Pool?.Name);
                         // 如果某个连接开启事务失败，回滚并抛出异常
                         RollbackInternal();
-                        throw new InvalidOperationException($"Failed to start transaction: {ex.Message}", ex);
+                        throw new InvalidOperationException($"Session {SessionID} failed to start transaction: {ex.Message}", ex);
                     }
                 }
 
@@ -210,14 +210,14 @@ namespace LiteOrm
             {
                 if (InTransaction)
                 {
-                    _logger?.LogWarning("Already in a transaction, cannot begin a new one");
+                    _logger?.LogWarning("Session {SessionID} is already in a transaction, cannot begin a new one", SessionID);
                     return false;
                 }
 
                 _currentTransactionId = Guid.NewGuid().ToString();
                 _currentIsolationLevel = isolationLevel;
 
-                _logger?.LogDebug($"Session {SessionID} began transaction. ID: {_currentTransactionId}, Isolation: {isolationLevel}");
+                _logger?.LogDebug("Session {SessionID} began transaction. ID: {TransactionID}, Isolation: {IsolationLevel}", SessionID, _currentTransactionId, isolationLevel);
 
                 foreach (var context in _daoContexts.Values)
                 {
@@ -230,9 +230,9 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, $"Session {SessionID} failed to begin transaction for pool '{context.Pool?.Name}'");
+                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction for pool '{PoolName}'", SessionID, context.Pool?.Name);
                         await RollbackInternalAsync(cancellationToken).ConfigureAwait(false);
-                        throw new InvalidOperationException($"Failed to start transaction: {ex.Message}", ex);
+                        throw new InvalidOperationException($"Session {SessionID} failed to start transaction: {ex.Message}", ex);
                     }
                 }
 
@@ -256,7 +256,7 @@ namespace LiteOrm
             {
                 if (!InTransaction)
                 {
-                    _logger?.LogWarning($"Session {SessionID} is not in a transaction, cannot commit");
+                    _logger?.LogWarning("Session {SessionID} is not in a transaction, cannot commit", SessionID);
                     return false;
                 }
 
@@ -281,7 +281,7 @@ namespace LiteOrm
             {
                 if (!InTransaction)
                 {
-                    _logger?.LogWarning($"Session {SessionID} is not in a transaction, cannot commit");
+                    _logger?.LogWarning("Session {SessionID} is not in a transaction, cannot commit", SessionID);
                     return false;
                 }
 
@@ -305,7 +305,7 @@ namespace LiteOrm
             {
                 if (!InTransaction)
                 {
-                    _logger?.LogWarning($"Session {SessionID} is not in a transaction, cannot roll back");
+                    _logger?.LogWarning("Session {SessionID} is not in a transaction, cannot roll back", SessionID);
                     return false;
                 }
 
@@ -330,7 +330,7 @@ namespace LiteOrm
             {
                 if (!InTransaction)
                 {
-                    _logger?.LogWarning($"Session {SessionID} is not in a transaction, cannot roll back");
+                    _logger?.LogWarning("Session {SessionID} is not in a transaction, cannot roll back", SessionID);
                     return false;
                 }
 
@@ -360,7 +360,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"Session {SessionID} failed to commit transaction. Pool: '{context.Pool?.Name}'");
+                    _logger?.LogError(ex, "Session {SessionID} failed to commit transaction. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
                     success = false;
                 }
             }
@@ -368,7 +368,7 @@ namespace LiteOrm
             // 清理事务状态
             _currentTransactionId = null;
 
-            _logger?.LogDebug($"Session {SessionID} transaction committed. ID: {_currentTransactionId}, Success: {success}");
+            _logger?.LogDebug("Session {SessionID} transaction committed. ID: {TransactionID}, Success: {Success}", SessionID, _currentTransactionId, success);
 
             if (!success)
             {
@@ -396,14 +396,14 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"Session {SessionID} failed to commit transaction. Pool: '{context.Pool?.Name}'");
+                    _logger?.LogError(ex, "Session {SessionID} failed to commit transaction. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
                     success = false;
                 }
             }
 
             _currentTransactionId = null;
 
-            _logger?.LogDebug($"Session {SessionID} transaction committed. ID: {_currentTransactionId}, Success: {success}");
+            _logger?.LogDebug("Session {SessionID} transaction committed. ID: {TransactionID}, Success: {Success}", SessionID, _currentTransactionId, success);
 
             if (!success)
             {
@@ -431,7 +431,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"Session {SessionID} failed to roll back transaction. Pool: '{context.Pool?.Name}'");
+                    _logger?.LogError(ex, "Session {SessionID} failed to roll back transaction. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
                     success = false;
                 }
             }
@@ -439,7 +439,7 @@ namespace LiteOrm
             // 清理事务状态
             _currentTransactionId = null;
 
-            _logger?.LogDebug($"Session {SessionID} transaction rolled back. ID: {_currentTransactionId}, Success: {success}");
+            _logger?.LogDebug("Session {SessionID} transaction rolled back. ID: {TransactionID}, Success: {Success}", SessionID, _currentTransactionId, success);
 
             if (!success)
             {
@@ -467,14 +467,14 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"Session {SessionID} failed to roll back transaction. Pool: '{context.Pool?.Name}'");
+                    _logger?.LogError(ex, "Session {SessionID} failed to roll back transaction. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
                     success = false;
                 }
             }
 
             _currentTransactionId = null;
 
-            _logger?.LogDebug($"Session {SessionID} transaction rolled back. ID: {_currentTransactionId}, Success: {success}");
+            _logger?.LogDebug("Session {SessionID} transaction rolled back. ID: {TransactionID}, Success: {Success}", SessionID, _currentTransactionId, success);
 
             if (!success)
             {
@@ -540,7 +540,7 @@ namespace LiteOrm
                         {
                             context.Dispose();
                         }
-                        _logger?.LogError(ex, $"Session {SessionID} failed to begin transaction. Pool: '{name}'");
+                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction. Pool: '{PoolName}'", SessionID, name);
                         throw;
                     }
                 }
@@ -606,7 +606,7 @@ namespace LiteOrm
                         {
                             await context.DisposeAsync().ConfigureAwait(false);
                         }
-                        _logger?.LogError(ex, $"Session {SessionID} failed to begin transaction. Pool: '{name}'");
+                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction. Pool: '{PoolName}'", SessionID, name);
                         throw;
                     }
                 }
@@ -642,7 +642,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"Session {SessionID} failed to return connection. Pool: '{context.Pool?.Name}'");
+                    _logger?.LogError(ex, "Session {SessionID} failed to return connection. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
                 }
             }
             _daoContexts.Clear();
@@ -669,7 +669,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, $"Session {SessionID} failed to return connection. Pool: '{context.Pool?.Name}'");
+                    _logger?.LogError(ex, "Session {SessionID} failed to return connection. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
                 }
             }
             _daoContexts.Clear();
@@ -703,7 +703,7 @@ namespace LiteOrm
             try
             {
                 if (_disposed) return;
-                _logger?.LogDebug($"[{SessionID}]Session disposed (async).");
+                _logger?.LogDebug("[{SessionID}]Session disposed (async).", SessionID);
                 _disposed = true;
 
                 if (InTransaction)
@@ -711,11 +711,11 @@ namespace LiteOrm
                     try
                     {
                         await RollbackInternalAsync().ConfigureAwait(false);
-                        _logger?.LogDebug("Transaction rolled back successfully on async dispose");
+                        _logger?.LogDebug("Session {SessionID} transaction rolled back successfully on async dispose. ID: {TransactionID}", SessionID, _currentTransactionId);
                     }
                     catch (Exception commitEx)
                     {
-                        _logger?.LogError(commitEx, "Failed to roll back transaction on async dispose");
+                        _logger?.LogError(commitEx, "Session {SessionID} failed to roll back transaction on async dispose. ID: {TransactionID}", SessionID, _currentTransactionId);
                     }
                 }
 
@@ -736,7 +736,7 @@ namespace LiteOrm
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed) return;
-            _logger?.LogDebug($"[{SessionID}]Session disposed ({(disposing ? "explicit" : "finalizer")}).");
+            _logger?.LogDebug("[{SessionID}]Session disposed ({DisposeType}).", SessionID, disposing ? "explicit" : "finalizer");
             _disposed = true;
             if (disposing)
             {
@@ -747,11 +747,11 @@ namespace LiteOrm
                     {
                         // 尝试回滚事务
                         RollbackInternal();
-                        _logger?.LogDebug("Transaction rolled back successfully on dispose");
+                        _logger?.LogDebug("Session {SessionID} transaction rolled back successfully on dispose. ID: {TransactionID}", SessionID, _currentTransactionId);
                     }
                     catch (Exception commitEx)
                     {
-                        _logger?.LogError(commitEx, "Failed to roll back transaction on dispose");
+                        _logger?.LogError(commitEx, "Session {SessionID} failed to roll back transaction on dispose. ID: {TransactionID}", SessionID, _currentTransactionId);
                     }
                 }
                 //归还所有连接
