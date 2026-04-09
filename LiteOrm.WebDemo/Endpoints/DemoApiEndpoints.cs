@@ -28,6 +28,8 @@ public static class DemoApiEndpoints
                 "GET /api/auth/me",
                 "GET /api/orders/query (query string)",
                 "POST /api/orders/query/expr (Expr JSON)",
+                "GET /api/orders/query/expr/history",
+                "DELETE /api/orders/query/expr/history/{id}",
                 "GET /api/orders/stats",
                 "GET /api/orders/{id}",
                 "POST /api/orders",
@@ -45,6 +47,8 @@ public static class DemoApiEndpoints
         var orders = endpoints.MapGroup("/api/orders").AddEndpointFilter<DemoAuthFilter>();
         orders.MapGet("/query", QueryOrdersAsync);
         orders.MapPost("/query/expr", QueryOrdersByExprAsync);
+        orders.MapGet("/query/expr/history", GetExprQueryHistoryAsync);
+        orders.MapDelete("/query/expr/history/{id:int}", DeleteExprQueryHistoryAsync);
         orders.MapGet("/stats", GetOrderStatsAsync);
         orders.MapGet("/{id:int}", GetOrderAsync);
         orders.MapPost("/", CreateOrderAsync);
@@ -85,7 +89,7 @@ public static class DemoApiEndpoints
         return Results.Ok(new OrderQueryResponse(result.Page, result.PageSize, result.Total, result.Sql, result.Items));
     }
 
-    private static async Task<IResult> QueryOrdersByExprAsync(HttpContext context, JsonElement requestBody, IDemoOrderService orderService, CancellationToken cancellationToken)
+    private static async Task<IResult> QueryOrdersByExprAsync(HttpContext context, JsonElement requestBody, IDemoOrderService orderService, IDemoExprQueryHistoryService exprQueryHistoryService, CancellationToken cancellationToken)
     {
         var currentUser = context.GetCurrentDemoUser();
         try
@@ -94,6 +98,7 @@ public static class DemoApiEndpoints
             var validation = ExprValidator.CreateMinimum();
             if (!validation.VisitAll(expr)) return Results.BadRequest(new { error = "非法 Expr 内容.", hint = "请确保提交的 JSON 结构符合 LiteOrm Expr 的要求，且仅包含基本值、逻辑表达式、集合表达式和基础 SQL 片段。" });
             var result = await orderService.QueryByExprAsync(expr, currentUser, cancellationToken);
+            await exprQueryHistoryService.SaveAsync(currentUser, requestBody.GetRawText(), cancellationToken);
             return Results.Ok(result);
         }
         catch (Exception ex) when (ex is ArgumentException or JsonException)
@@ -104,6 +109,22 @@ public static class DemoApiEndpoints
                 hint = "请提交 LiteOrm Expr 当前实际序列化后的 JSON 形状，例如使用 $section / $order / $where 表达链式片段。"
             });
         }
+    }
+
+    private static async Task<IResult> GetExprQueryHistoryAsync(HttpContext context, IDemoExprQueryHistoryService exprQueryHistoryService, int? take, CancellationToken cancellationToken)
+    {
+        var currentUser = context.GetCurrentDemoUser();
+        var items = await exprQueryHistoryService.ListAsync(currentUser, take ?? 20, cancellationToken);
+        return Results.Ok(new ExprQueryHistoryResponse(items));
+    }
+
+    private static async Task<IResult> DeleteExprQueryHistoryAsync(HttpContext context, int id, IDemoExprQueryHistoryService exprQueryHistoryService, CancellationToken cancellationToken)
+    {
+        var currentUser = context.GetCurrentDemoUser();
+        var deleted = await exprQueryHistoryService.DeleteAsync(currentUser, id, cancellationToken);
+        return deleted
+            ? Results.Ok(new { success = true })
+            : Results.NotFound(new { error = "历史记录不存在或无权删除。" });
     }
 
     private static async Task<IResult> GetOrderStatsAsync(HttpContext context, [AsParameters] OrderQueryRequest request, IDemoOrderService orderService, CancellationToken cancellationToken)

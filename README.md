@@ -43,6 +43,7 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的
 - **灵活查询**：支持基于 Lambda、`Expr` 或 `ExprString` 的多种查询方式
 - **自动关联**：通过特性实现无损的 JOIN 查询，无需手写 SQL
 - **声明式事务**：`[Transaction]` 特性实现 AOP 事务管理
+- **日志与诊断**：支持 `ServiceLog`、`Log` 特性及慢查询日志
 - **动态分表**：`IArged` 接口支持分表路由
 - **异步支持**：完整的 async/await 支持
 - **类型安全**：强类型泛型接口，编译时类型检查
@@ -502,8 +503,8 @@ public class Log : IArged
 
 | 资源 | 说明 |
 |:--- |:--- |
-| [文档中心](./docs/SUMMARY.md) | 按学习路径组织的中文文档 |
-| [English Docs Hub](./docs/SUMMARY.en.md) | 按学习路径组织的英文文档 |
+| [文档中心](./docs/README.md) | 按学习路径组织的中英文文档导航 |
+| [English Docs Hub](./docs/README.md) | Bilingual docs hub organized by learning path |
 | [API 索引](./docs/05-reference/02-api-index.md) | 按使用场景整理的接口与能力入口 |
 | [AI 使用指南](./docs/05-reference/05-ai-guide.md) | 面向 AI 和快速查阅场景的附录 |
 | [Demo 项目](./LiteOrm.Demo/) | 主要特性的演示工程 |

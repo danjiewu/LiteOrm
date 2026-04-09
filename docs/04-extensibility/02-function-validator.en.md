@@ -42,9 +42,11 @@ var validator = new FunctionExprValidator(FunctionPolicy.AllowRegisted);
 ## 4. Typical usage
 
 ```csharp
-if (!validator.Validate(expr))
+if (!validator.VisitAll(expr))
     throw new InvalidOperationException("The query uses an unauthorized function expression.");
 ```
+
+`Validate(node)` is the per-node override implemented by the validator itself. In application code, `VisitAll(expr)` is the safer choice because it walks the full expression tree instead of checking only the root node.
 
 This fits:
 
@@ -61,6 +63,12 @@ This fits:
 - internal development or trusted tooling: `AllowAll`
 - ordinary production queries: `AllowRegisted`
 - restricted environments: `Disallow`
+
+## 7. Practical reminder
+
+1. validate the full tree right before execution, not just one node during construction
+2. prefer `VisitAll(expr)` in application code
+3. keep `AllowRegisted` for production-facing dynamic query entry points
 
 ## Related Links
 

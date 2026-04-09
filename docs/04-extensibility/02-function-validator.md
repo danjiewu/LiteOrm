@@ -58,10 +58,10 @@ var validator = new FunctionExprValidator(FunctionPolicy.AllowRegisted);
 
 ## 4. 验证接口
 
-`FunctionExprValidator` 实现 `IExprNodeVisitor` 接口：
+`FunctionExprValidator` 继承自 `ExprValidator`，单个节点校验走 `Validate(node)`，整棵表达式树校验更常见的用法是 `VisitAll(expr)`：
 
 ```csharp
-public bool Validate(Expr node)
+public override bool Validate(Expr node)
 {
     if (node == null) return true;
     if (node is FunctionExpr funcExpr)
@@ -102,7 +102,7 @@ public class UserQueryService
     public async Task<List<User>> SearchAsync(Expr query)
     {
         // 验证查询表达式
-        if (!_validator.Validate(query))
+        if (!_validator.VisitAll(query))
             throw new InvalidOperationException("查询包含不允许的函数表达式");
 
         return await _userViewDAO.Search(query).ToListAsync();
@@ -120,7 +120,7 @@ public class SafeUserDAO : ObjectViewDAO<User>
 
     public async Task<List<User>> SafeSearchAsync(Expr expr)
     {
-        if (!Validator.Validate(expr))
+        if (!Validator.VisitAll(expr))
             throw new SecurityException("表达式验证失败");
 
         return await Search(expr).ToListAsync();
@@ -144,7 +144,7 @@ public class QueryInterceptor
 
     public void Intercept(Expr query)
     {
-        if (!_validator.Validate(query))
+        if (!_validator.VisitAll(query))
         {
             throw new UnauthorizedAccessException(
                 "查询包含未授权的函数表达式");
@@ -163,7 +163,7 @@ MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", ...);
 var validator = FunctionExprValidator.AllowRegisted;
 var expr = new FunctionExpr("DATE_FORMAT", ...);
 
-if (!validator.Validate(expr))
+if (!validator.VisitAll(expr))
     throw new InvalidOperationException("函数未注册，禁止执行");
 ```
 
@@ -181,18 +181,19 @@ var validator = FunctionExprValidator.AllowRegisted;
 
 // DATE_FORMAT - 允许（已注册）
 var expr1 = new FunctionExpr("DATE_FORMAT", ...);
-validator.Validate(expr1);  // true
+validator.VisitAll(expr1);  // true
 
 // CUSTOM_UNREGISTERED - 拒绝（未注册）
 var expr2 = new FunctionExpr("CUSTOM_UNREGISTERED", ...);
-validator.Validate(expr2);  // false
+validator.VisitAll(expr2);  // false
 ```
 
 ## 7. 注意事项
 
-1. **验证时机**：建议在查询执行前进行验证，而非查询构建时
-2. **性能影响**：验证过程会遍历表达式树，对性能有一定影响
-3. **安全考虑**：生产环境中建议使用 `AllowRegisted` 策略
+1. **验证时机**：建议在查询执行前对整棵 Expr 树做验证，而不是只检查根节点。
+2. **调用方式**：业务场景里优先使用 `validator.VisitAll(expr)`；`Validate(node)` 更适合实现验证器本身时覆盖。
+3. **性能影响**：验证过程会遍历表达式树，对性能有一定影响。
+4. **安全考虑**：生产环境中建议使用 `AllowRegisted` 策略。
 
 ## 8. 下一步
 

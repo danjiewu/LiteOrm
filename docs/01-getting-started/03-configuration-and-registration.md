@@ -70,6 +70,39 @@ builder.Host.RegisterLiteOrm(options =>
 });
 ```
 
+## 日志集成
+
+LiteOrm 的运行日志接入 `Microsoft.Extensions.Logging`。服务调用日志、异常日志和慢查询日志会跟随宿主应用的日志提供程序一起输出。
+
+### 宿主日志配置示例
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
+builder.Host.RegisterLiteOrm();
+```
+
+### `options.LoggerFactory` 的作用
+
+```csharp
+builder.Host.RegisterLiteOrm(options =>
+{
+    options.LoggerFactory = LoggerFactory.Create(logging =>
+    {
+        logging.AddConsole();
+        logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
+    });
+});
+```
+
+- 宿主 DI 中的 `ILoggerFactory`：用于常规 Service 调用日志。
+- `options.LoggerFactory`：主要用于框架注册和程序集扫描阶段的输出。
+
+详细用法参见：[日志与诊断](../03-advanced-topics/10-logging.md)
+
 ## 多数据源与读写分离建议
 
 - 在实体上通过 `[Table(DataSource = "...")]` 绑定数据源。

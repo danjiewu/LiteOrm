@@ -104,6 +104,14 @@ public sealed record OrderExprQueryResponse(
     IReadOnlyList<string> Sql,
     IReadOnlyList<OrderDto> Items);
 
+public sealed record ExprQueryHistoryDto(
+    int Id,
+    string ExprJson,
+    DateTime CreatedTime);
+
+public sealed record ExprQueryHistoryResponse(
+    IReadOnlyList<ExprQueryHistoryDto> Items);
+
 public static class OrderMappings
 {
     public static OrderDto ToDto(this DemoOrderView order) =>

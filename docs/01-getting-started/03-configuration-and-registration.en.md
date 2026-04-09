@@ -67,13 +67,46 @@ builder.Host.RegisterLiteOrm(options =>
 });
 ```
 
-## 4. Multi-data-source and read/write guidance
+## 4. Logging integration
+
+LiteOrm runtime logging is built on `Microsoft.Extensions.Logging`. Service-call logs, exception logs, and slow-query logs follow whatever providers the host application has configured.
+
+### Host logging example
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
+builder.Host.RegisterLiteOrm();
+```
+
+### What `options.LoggerFactory` is for
+
+```csharp
+builder.Host.RegisterLiteOrm(options =>
+{
+    options.LoggerFactory = LoggerFactory.Create(logging =>
+    {
+        logging.AddConsole();
+        logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
+    });
+});
+```
+
+- the host DI `ILoggerFactory` handles normal service invocation logs
+- `options.LoggerFactory` is mainly for framework registration and assembly-scan output
+
+For attribute usage and diagnostics guidance, see [Logging and Diagnostics](../03-advanced-topics/10-logging.en.md).
+
+## 5. Multi-data-source and read/write guidance
 
 - Use `[Table(DataSource = "...")]` to bind an entity to a non-default source.
 - Use `ReadOnlyConfigs` when reads can safely go to replicas.
 - Register a custom `SqlBuilder` when a provider needs database-version-specific SQL.
 
-## 5. Common questions
+## 6. Common questions
 
 ### What should `Provider` contain?
 

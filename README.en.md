@@ -33,6 +33,7 @@ LiteOrm is a lightweight, high-performance .NET ORM that combines micro-ORM spee
 - **Flexible Querying**: Multiple query methods via Lambda, `Expr`, or `ExprString`
 - **Automatic Associations**: Implement JOIN queries via attributes without manual SQL writing
 - **Declarative Transactions**: AOP transaction management via `[Transaction]` attribute
+- **Logging and Diagnostics**: Built-in `ServiceLog`, `Log`, and slow-query diagnostics
 - **Dynamic Sharding**: Table routing via `IArged` interface
 - **Async Support**: Complete async/await support
 - **Type Safety**: Strong-typed generic interfaces with compile-time type checking
@@ -487,8 +488,8 @@ For guided reading, start with the docs hub. Use the reference pages below when 
 
 | Resource | Description |
 |:--- |:--- |
-| [Documentation Hub](./docs/SUMMARY.en.md) | English docs organized by learning path |
-| [中文文档中心](./docs/SUMMARY.md) | Chinese docs hub organized by learning path |
+| [Documentation Hub](./docs/README.md) | Bilingual docs hub organized by learning path |
+| [中文文档中心](./docs/README.md) | 按学习路径组织的中英文文档导航 |
 | [API Index](./docs/05-reference/02-api-index.en.md) | Scenario-based API and capability entry points |
 | [AI Guide](./docs/05-reference/05-ai-guide.en.md) | Compact appendix for assistants and quick API orientation |
 | [Demo Project](./LiteOrm.Demo/) | Main feature demonstration project |

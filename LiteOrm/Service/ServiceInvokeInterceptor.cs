@@ -371,7 +371,7 @@ namespace LiteOrm.Service
                 foreach (var sql in SessionManager.Current?.SqlStack.Reverse() ?? Array.Empty<string>())
                 {
                     if (sb.Length > 0) { sb.Append("\n"); }
-                    sb.Append($"{row++}. ");
+                    sb.Append($"{row++}:");
                     sb.Append(sql);
                 }
                 _logger.LogWarning("[{SessionID}]<SlowSQL>{SQL}", SessionManager.Current?.SessionID, sb.ToString());

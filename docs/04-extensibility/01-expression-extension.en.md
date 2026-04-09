@@ -44,11 +44,22 @@ MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
 });
 ```
 
+`"Format"` is just an example method name. In real projects, prefer `nameof(SomeType.SomeMethod)` when possible so refactoring stays safer.
+
 ## 4. Practical note
 
 If the framework already supports `DateTime.ToString(format)` for your target database, you usually do not need to create a custom wrapper method such as `DateTime.Format(...)`.
 
-## 5. Tip: mix `Expr` into Lambda
+## 5. Member handler example
+
+```csharp
+LambdaExprConverter.RegisterMemberHandler("Length", handler);
+LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", handler);
+```
+
+`"Length"` is also just an example member name. For your own members, prefer `nameof(SomeType.SomeProperty)` when possible.
+
+## 6. Tip: mix `Expr` into Lambda
 
 When you dynamically build an `Expr` but still want to combine it with a Lambda, use `To<T>()`:
 

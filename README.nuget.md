@@ -436,9 +436,9 @@ Start with the docs hub, then use the scenario-based reference pages for faster 
 
 
 
-- **[Docs Hub (English)](https://github.com/danjiewu/LiteOrm/blob/master/docs/SUMMARY.en.md)** - Guided English documentation organized by learning path
+- **[Documentation Hub](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Bilingual docs hub organized by learning path
 
-- **[Docs Hub (中文)](https://github.com/danjiewu/LiteOrm/blob/master/docs/SUMMARY.md)** - Guided Chinese documentation organized by learning path
+- **[Docs Hub (中文)](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Guided Chinese and English documentation organized by learning path
 
 - **[API Index](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/02-api-index.en.md)** - Scenario-based API and capability entry points
 
@@ -772,9 +772,9 @@ var page = await userService.SearchAsync(
 
 
 
-- **[中文文档中心](https://github.com/danjiewu/LiteOrm/blob/master/docs/SUMMARY.md)** - 按学习路径组织的中文文档
+- **[中文文档中心](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - 按学习路径组织的中英文文档导航
 
-- **[English Docs Hub](https://github.com/danjiewu/LiteOrm/blob/master/docs/SUMMARY.en.md)** - 按学习路径组织的英文文档
+- **[English Docs Hub](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Bilingual docs hub organized by learning path
 
 - **[API 索引](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/02-api-index.md)** - 按使用场景整理的接口与能力入口
 
