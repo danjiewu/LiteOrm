@@ -42,13 +42,16 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 表表达式没有来源，因此重写 Source 属性，始终返回 null，并且设置时不执行任何操作
+        /// </summary>
+        [JsonIgnore]
+        public override SqlSegment Source { get => null; set => _ = value; }
+
+        /// <summary>
         /// 对象类型
         /// </summary>
         public Type Type { get; set; }
 
-        /// <summary>
-        /// 表参数
-        /// </summary>
         private string[] _tableArgs;
         /// <summary>
         /// 表参数

@@ -110,6 +110,11 @@ namespace LiteOrm.Common
         public string DefaultValue { get; set; }
 
         /// <summary>
+        /// 获取或设置列的固定筛选值。仅支持枚举列，支持使用枚举名、整型值或枚举成员声明。
+        /// </summary>
+        public object Constant { get; set; }
+
+        /// <summary>
         /// 获取或设置列映射模式。
         /// </summary>
         public ColumnMode ColumnMode { get; set; }

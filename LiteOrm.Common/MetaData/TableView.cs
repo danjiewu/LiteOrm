@@ -73,6 +73,14 @@ namespace LiteOrm.Common
         {
             get { return _table; }
         }
+
+        /// <summary>
+        /// 获取主表定义上的固定筛选条件。
+        /// </summary>
+        public LogicExpr ConstFilter
+        {
+            get { return _table.ConstFilter; }
+        }
     }
 
     /// <summary>

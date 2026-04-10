@@ -84,7 +84,43 @@ public class Shipment
 
 In this model, `Shipment.OrderId + Shipment.LineNo` will associate with the composite primary key of `OrderItem` in order.
 
-## 4. Multi-level relationships and AutoExpand
+## 4. Fixed filters with Column.Constant
+
+When an enum column must always carry a fixed condition at the model level, you can declare `Constant` on `Column`. LiteOrm converts it into `TableInfo.ConstFilter` during metadata parsing and injects it automatically when building SQL:
+
+- Main table: merged into `WHERE` with `AND`
+- Joined table: merged into `JOIN ... ON`, so you do not need to repeat the condition manually
+
+```csharp
+public enum RecordState
+{
+    Disabled = 0,
+    Enabled = 1
+}
+
+[Table("Departments")]
+public class Department
+{
+    [Column("Id", IsPrimaryKey = true)]
+    public int Id { get; set; }
+
+    [Column("State", Constant = RecordState.Enabled)]
+    public RecordState State { get; set; }
+}
+```
+
+These declaration forms are also supported:
+
+- `Constant = "Enabled"`: parse by enum member name
+- `Constant = 1`: parse by integral enum value
+
+Notes:
+
+- The Constant value does not need to be consistent with the actual property value. LiteOrm will only inject the value defined by the Constant as a fixed filter condition into the SQL. It is generally recommended to make it read-only and keep it consistent with the Constant definition to avoid confusion. If modification is required, it can be defined as writable.
+- The current semantics are fixed to `Column == ConstantValue`; other operators such as `>`, `IN`, or `LIKE` are intentionally not supported here.
+- This is best for model-level invariant filters such as fixed status, tenant partition flags, or compatibility views. It should not replace normal runtime `Where` conditions.
+
+## 5. Multi-level relationships and AutoExpand
 
 ```csharp
 // SalesRecord example: SalesUserId relates to User, and automatically expands User's relationships (such as Department)
@@ -275,8 +311,9 @@ Usage recommendations:
 - ForeignTypeAttribute: ObjectType, Alias, JoinType, AutoExpand
 - TableJoinAttribute: Source, TargetType, ForeignKeys, AliasName, JoinType, AutoExpand
 - ForeignColumnAttribute: Foreign (Type or AliasName), Property (column to retrieve)
+- ColumnAttribute: Constant (fixed equality filter)
 
-In implementation, LiteOrm merges ForeignType and TableJoin information during the metadata phase to generate JoinedTable / ForeignTable structures. When building SQL, TableJoinExpr is inserted into FromExpr.Joins.
+In implementation, LiteOrm merges ForeignType and TableJoin information during the metadata phase to generate JoinedTable / ForeignTable structures. `Column.Constant` is further reduced into `TableInfo.ConstFilter`. When building SQL, LiteOrm inserts TableJoinExpr into FromExpr.Joins and injects fixed filters into main-table `WHERE` and joined-table `JOIN ON`.
 
 ---
 
@@ -299,7 +336,10 @@ In implementation, LiteOrm merges ForeignType and TableJoin information during t
   A: AutoExpand expands level by level according to defined associations, but the actual expansion depth depends on registered TableJoin/ForeignType configurations. Control carefully to avoid circular or explosive expansion.
 
 - Q: How to choose between ForeignType and TableJoin?
-  A: Prefer ForeignType for single-column foreign keys; prefer TableJoin for joint primary keys, multi-column associations, relationships that need reuse, or when you need explicit named aliases.
+  A: Prefer ForeignType for single-column foreign keys; prefer TableJoin for joint primary keys or multi-column associations.
+
+- Q: When should I use `Column.Constant`?
+  A: Use it when the model itself always represents a specific enum state, such as enabled rows, published rows, or a fixed partition flag. If the condition depends on user input or business flow, keep using normal `Where` clauses.
 
 ---
 

@@ -24,7 +24,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 将 SqlObject 转换为 SQL 字符串片段。
         /// </summary>
-        public static void ToSql(this SqlObject sqlObject, ref ValueStringBuilder sb, SqlBuildContext context, ISqlBuilder sqlBuilder)
+        public static void ToSql(this SqlObject sqlObject, ref ValueStringBuilder sb, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams = null)
         {
             if (sqlObject == null) return;
 
@@ -45,13 +45,13 @@ namespace LiteOrm.Common
             }
             if (sqlObject is TableView tableView)
             {
-                ToSql(ref sb, tableView, context, sqlBuilder);
+                ToSql(ref sb, tableView, context, sqlBuilder, outputParams);
                 return;
             }
 
             if (sqlObject is JoinedTable joinedTable)
             {
-                ToSql(ref sb, joinedTable, context, sqlBuilder);
+                ToSql(ref sb, joinedTable, context, sqlBuilder, outputParams);
                 return;
             }
             if (sqlObject is SqlTable sqlTable)
@@ -115,7 +115,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 处理视图表（TableView）转换为SQL片段。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, TableView tableView, SqlBuildContext context, ISqlBuilder sqlBuilder)
+        private static void ToSql(ref ValueStringBuilder sb, TableView tableView, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (tableView == null) return;
 
@@ -129,7 +129,7 @@ namespace LiteOrm.Common
             {
                 if (joined.Used)
                 {
-                    joined.ToSql(ref sb, context, sqlBuilder);
+                    joined.ToSql(ref sb, context, sqlBuilder, outputParams);
                 }
             }
         }
@@ -137,7 +137,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 处理联合表的 SQL 生成。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, JoinedTable joined, SqlBuildContext context, ISqlBuilder sqlBuilder)
+        private static void ToSql(ref ValueStringBuilder sb, JoinedTable joined, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (joined == null) return;
 
@@ -148,6 +148,7 @@ namespace LiteOrm.Common
             sb.Append(" ");
             sb.Append(sqlBuilder.ToSqlName(joined.Name));
             sb.Append(" ON ");
+            context.AddTableAlias(joined.Name, joined.TableDefinition);
 
             bool isFirst = true;
             int count = joined.ForeignKeys.Count;

@@ -121,13 +121,13 @@ namespace LiteOrm.Common
             if (objectType.IsGenericType && (objectType.GetGenericTypeDefinition() == typeof(IQueryable<>) || objectType.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
                 objectType = objectType.GetGenericArguments()[0];
             _currentAlias = _parameterAliases[_rootParameter.Name] = Constants.DefaultTableAlias;
-            _parameterExprs[_rootParameter.Name] = _fromExpr = new FromExpr(objectType) { Alias = _currentAlias };
+            _parameterExprs[_rootParameter.Name] = _fromExpr = Expr.From(objectType).As(_currentAlias);
             _aliasCounter = 1;
         }
 
         private FromExpr _fromExpr;
         /// <summary>
-        /// 获取解析后的 FromExpr 对象，代表 Lambda 表达式中根参数对应的表信息。
+        /// 获取解析后的 TableExpr 对象，代表 Lambda 表达式中根参数对应的表信息。
         /// </summary>
         public FromExpr From => _fromExpr;
         /// <summary>
@@ -314,7 +314,7 @@ namespace LiteOrm.Common
                         {
                             if (paramArg is FromExpr fromExpr)
                             {
-                                fromExpr.TableArgs = tableArgs;
+                                fromExpr.Table.TableArgs = tableArgs;
                             }
                             else if (paramArg is ForeignExpr foreignExpr)
                             {

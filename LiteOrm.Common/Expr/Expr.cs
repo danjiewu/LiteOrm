@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 
 
@@ -382,10 +384,24 @@ namespace LiteOrm.Common
         /// <returns>From 表达式实例</returns>
         public static FromExpr From(Type objectType, params string[] tableArgs)
         {
-            var f = new FromExpr(objectType) { TableArgs = tableArgs };
-            var view = TableInfoProvider.Default.GetTableView(objectType);
+            var f = new FromExpr(new TableExpr(objectType) { TableArgs = tableArgs });
+            return f;
+        }
+
+
+        /// <summary>
+        /// 初始化 From 表达式的关联表信息，根据主表类型自动加载其关联的 JoinedTables，并构建对应的 TableJoinExpr 列表。
+        /// 每个 TableJoinExpr 包含关联表的 TableExpr 和 ON 条件表达式，ON 条件根据 JoinedTable 定义的外键关系自动生成。
+        /// 此方法适用于从实体类型推断关联关系并构建完整的 FROM 子句结构。
+        /// </summary>
+        /// <param name="fromExpr">From 表达式</param>
+        /// <returns>From 表达式实例</returns>
+        public static FromExpr InitJoins(FromExpr fromExpr)
+        {
+            var view = TableInfoProvider.Default.GetTableView(fromExpr?.Table?.Type);
             if (view != null)
             {
+                fromExpr.Joins.Clear();
                 foreach (var jt in view.JoinedTables)
                 {
                     if (jt.Used)
@@ -407,11 +423,11 @@ namespace LiteOrm.Common
                             on = on is null ? eq : on & eq;
                         }
                         join.On = on;
-                        f.Joins.Add(join);
+                        fromExpr.Joins.Add(join);
                     }
                 }
             }
-            return f;
+            return fromExpr;
         }
 
         /// <summary>

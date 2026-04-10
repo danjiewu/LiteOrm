@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using System.Collections.ObjectModel;
 
 namespace LiteOrm.Common
 {
@@ -9,7 +10,7 @@ namespace LiteOrm.Common
     /// From 片段，表示查询的数据源（由主表和连接表构成）
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class FromExpr : SqlSegment, ISourceAnchor, IArged
+    public sealed class FromExpr : SqlSegment, ISourceAnchor
     {
         /// <summary>
         /// 默认构造函数
@@ -38,52 +39,30 @@ namespace LiteOrm.Common
         /// 主表表达式
         /// </summary>
         [JsonIgnore]
-        public TableExpr Table
-        {
-            get
-            {
-                if (field is null) field = new TableExpr();
-                return field;
-            }
-            set;
-        }
+        public TableExpr Table { get; set; }
 
         /// <summary>
         /// 使用主表表达式重写源片段属性
         /// </summary>
         public override SqlSegment Source { get => Table; set => Table = (TableExpr)value; }
 
+        private List<TableJoinExpr> _joins = new List<TableJoinExpr>();
         /// <summary>
         /// 连接表集合
         /// </summary>
-        public List<TableJoinExpr> Joins { get; set; } = new List<TableJoinExpr>();
+        public List<TableJoinExpr> Joins => _joins;
 
         /// <summary>
         /// 别名
         /// </summary>
-        public string Alias
-        {
-            get => Table?.Alias;
-            set { Table.Alias = value; }
-        }
-
-        /// <summary>
-        /// 对象类型
-        /// </summary>
-        public Type Type
-        {
-            get => Table?.Type;
-            set { Table.Type = value; }
-        }
+        [JsonIgnore]
+        public string Alias => Table?.Alias;
 
         /// <summary>
         /// 表参数
         /// </summary>
-        public string[] TableArgs
-        {
-            get => Table?.TableArgs;
-            set { Table.TableArgs = value; }
-        }
+        [JsonIgnore]
+        public string[] TableArgs => Table?.TableArgs;
 
         /// <summary>
         /// 表达式类型
@@ -100,7 +79,9 @@ namespace LiteOrm.Common
             if (obj is FromExpr other)
             {
                 if (!Equals(Table, other.Table)) return false;
-                if (!Joins.SequenceEqual(other.Joins)) return false;
+                if (_joins is null && other._joins is not null) return false;
+                if (_joins is not null && other._joins is null) return false;
+                if (_joins is not null && other._joins is not null && !_joins.SequenceEqual(other._joins)) return false;
                 if (!Equals(Table, other.Table)) return false;
                 return true;
             }
@@ -116,7 +97,7 @@ namespace LiteOrm.Common
             return OrderedHashCodes(
                 typeof(FromExpr).GetHashCode(),
                 Table?.GetHashCode() ?? 0,
-                SequenceHash(Joins),
+                SequenceHash(_joins),
                 Table?.GetHashCode() ?? 0);
         }
 
@@ -137,7 +118,7 @@ namespace LiteOrm.Common
         {
             var f = new FromExpr();
             f.Table = (TableExpr)Table?.Clone();
-            f.Joins = Joins?.Select(j => (TableJoinExpr)j.Clone()).ToList() ?? new List<TableJoinExpr>();
+            f._joins = _joins?.Select(j => (TableJoinExpr)j.Clone()).ToList();
             return f;
         }
     }

@@ -95,7 +95,13 @@ namespace LiteOrm
                     columns.Add(column);
                 }
             }
-            return new TableDefinition(objectType, columns) { Name = tableName, DataProviderType = dsConfig.ProviderType, DataSource = tableAttribute.DataSource ?? _dataSourceProvider.DefaultDataSourceName };
+            return new TableDefinition(objectType, columns)
+            {
+                Name = tableName,
+                DataProviderType = dsConfig.ProviderType,
+                DataSource = tableAttribute.DataSource ?? _dataSourceProvider.DefaultDataSourceName,
+                ConstFilter = BuildConstFilter(columns)
+            };
         }
 
         private ColumnDefinition GenerateColumnDefinition(PropertyInfo property, ISqlBuilder sqlBuilder)
@@ -125,6 +131,7 @@ namespace LiteOrm
                     column.Length = columnAttribute.Length == 0 ? DbTypeMap.GetDefaultLength(column.DbType) : columnAttribute.Length;
                     column.AllowNull = columnAttribute.AllowNull && (property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(property.PropertyType) is not null : true);
                     column.DefaultValue = columnAttribute.DefaultValue;
+                    column.Constant = ParseConstant(property, columnAttribute.Constant);
                     column.IdentityIncreasement = columnAttribute.IdentityIncreasement;
                     column.Mode = columnAttribute.ColumnMode & ((property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None));
                     column.ForeignTables = foreignTables;
@@ -189,6 +196,7 @@ namespace LiteOrm
                     tableJoin.Alias = joinedTable.Name = tableJoin.TargetType.Name;
                 else
                     joinedTable.Name = tableJoin.Alias;
+                joinedTable.ConstFilter = AliasConstFilter(targetTableDef.ConstFilter, joinedTable.Name);
                 if (joinedTables.ContainsKey(joinedTable.Name)) throw new ArgumentException($"Duplicate table alias name \"{joinedTable.Name}\"");
                 joinedTables[joinedTable.Name] = joinedTable;
             }
@@ -429,7 +437,8 @@ namespace LiteOrm
             {
                 JoinType = foreignTableInfo.JoinType,
                 AutoExpand = foreignTableInfo.AutoExpand,
-                Name = joinedTableName
+                Name = joinedTableName,
+                ConstFilter = AliasConstFilter(foreignTable.ConstFilter, joinedTableName)
             };
             List<ColumnRef> foreignKeys = new List<ColumnRef>();
             foreignKeys.Add(columnRef);
@@ -445,6 +454,78 @@ namespace LiteOrm
                     columnRefs.Enqueue(new ColumnRef(joinedTable, lcolumn));
                 }
             }
+        }
+
+        private static LogicExpr BuildConstFilter(IEnumerable<ColumnDefinition> columns)
+        {
+            LogicExpr constFilter = null;
+            foreach (ColumnDefinition column in columns)
+            {
+                if (column.Constant is null) continue;
+                constFilter = constFilter.And(Expr.PropEqual(column.PropertyName, column.Constant));
+            }
+            return constFilter;
+        }
+
+        private static LogicExpr AliasConstFilter(LogicExpr constFilter, string tableAlias)
+        {
+            if (constFilter is null) return null;
+            LogicExpr aliasedFilter = (LogicExpr)constFilter.Clone();
+            ExprVisitor.Visit(node =>
+            {
+                if (node is PropertyExpr propertyExpr && String.IsNullOrEmpty(propertyExpr.TableAlias))
+                {
+                    propertyExpr.TableAlias = tableAlias;
+                }
+                return true;
+            }, aliasedFilter);
+            return aliasedFilter;
+        }
+
+        private static object ParseConstant(PropertyInfo property, object constant)
+        {
+            if (constant is null) return null;
+
+            Type propType = property.PropertyType.GetUnderlyingType();
+            Type constantType = constant.GetType();
+            if (constantType == propType) return constant;
+
+            if (propType.IsEnum)
+            {
+                if (constant is string text)
+                {
+                    text = text.Trim();
+                    if (text.Length == 0)
+                        throw new ArgumentException($"Column.Constant cannot be empty for enum property \"{property.DeclaringType?.FullName}.{property.Name}\".");
+                    if (Int32.TryParse(text, out int intValue))
+                        return Enum.ToObject(propType, intValue);
+                    return EnumUtil.Parse(propType, text) ?? Enum.Parse(propType, text);
+                }
+                else if (IsIntegerType(constantType))
+                {
+                    object numericValue = Convert.ChangeType(constant, Enum.GetUnderlyingType(propType));
+                    return Enum.ToObject(propType, numericValue);
+                }
+            }
+            try
+            {
+                return Convert.ChangeType(constant, Enum.GetUnderlyingType(propType));
+            }
+            catch { }
+            return constant;
+        }
+
+        private static bool IsIntegerType(Type type)
+        {
+            type = Nullable.GetUnderlyingType(type) ?? type;
+            return type == typeof(byte)
+                || type == typeof(sbyte)
+                || type == typeof(short)
+                || type == typeof(ushort)
+                || type == typeof(int)
+                || type == typeof(uint)
+                || type == typeof(long)
+                || type == typeof(ulong);
         }
 
         #endregion

@@ -244,6 +244,7 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal(DbType.Object, attribute.DbType);
             Assert.True(attribute.AllowNull);
             Assert.True(attribute.IsColumn);
+            Assert.Null(attribute.Constant);
         }
     }
 }

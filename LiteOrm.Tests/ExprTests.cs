@@ -496,20 +496,14 @@ namespace LiteOrm.Tests
         [Fact]
         public void FromExpr_TableArgs_Alias_Tests()
         {
-            var from1 = new FromExpr(typeof(TestUser)) { Alias = "u" };
-            from1.TableArgs = new[] { "arg1", "arg2" };
+            var from1 = new FromExpr(new TableExpr(typeof(TestUser)) { Alias = "u", TableArgs = new[] { "arg1", "arg2" } });
 
-            var from2 = new FromExpr(typeof(TestUser)) { Alias = "u" };
-            from2.TableArgs = new[] { "arg1", "arg2" };
+            var from2 = new FromExpr(new TableExpr(typeof(TestUser)) { Alias = "u", TableArgs = new[] { "arg1", "arg2" } });
 
-            var from3 = new FromExpr(typeof(TestUser)) { Alias = "u" };
-            from3.TableArgs = new[] { "arg1", "arg3" };
+            var from3 = new FromExpr(new TableExpr(typeof(TestUser)) { Alias = "u", TableArgs = new[] { "arg1", "arg3" } });
+            var from4 = new FromExpr(new TableExpr(typeof(TestUser)) { Alias = "u2", TableArgs = new[] { "arg1", "arg2" } });
 
-            var from4 = new FromExpr(typeof(TestUser)) { Alias = "u2" };
-            from4.TableArgs = new[] { "arg1", "arg2" };
-
-            var from5 = new FromExpr(typeof(TestUser));
-
+            var from5 = new FromExpr(new TableExpr(typeof(TestUser)));
             Assert.True(from1.Equals(from2));
             Assert.Equal(from1.GetHashCode(), from2.GetHashCode());
 
@@ -519,11 +513,10 @@ namespace LiteOrm.Tests
 
             TestSerialization(from1);
 
-            var fromWithAliasOnly = new FromExpr(typeof(TestUser)) { Alias = "t" };
+            var fromWithAliasOnly = new FromExpr(new TableExpr(typeof(TestUser)) { Alias = "t" });
             TestSerialization(fromWithAliasOnly);
 
-            var fromWithTableArgsOnly = new FromExpr(typeof(TestUser));
-            fromWithTableArgsOnly.TableArgs = new[] { "2024" };
+            var fromWithTableArgsOnly = new FromExpr(new TableExpr(typeof(TestUser)) { TableArgs = new[] { "2024" } });
             TestSerialization(fromWithTableArgsOnly);
         }
     }

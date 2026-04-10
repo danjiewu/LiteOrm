@@ -80,6 +80,11 @@ namespace LiteOrm.Common
         {
             get { return _foreignPrimeKeys; }
         }
+
+        /// <summary>
+        /// 获取或设置该关联表的固定筛选条件。
+        /// </summary>
+        public LogicExpr ConstFilter { get; internal set; }
     }
 
 }

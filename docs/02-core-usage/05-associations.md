@@ -145,7 +145,43 @@ public class Shipment
 
 这类模型里，`Shipment.OrderId + Shipment.LineNo` 会按顺序关联到 `OrderItem` 的联合主键。
 
-### 4) 多级关联与 AutoExpand
+### 4) 固定筛选（Column.Constant）
+
+当某个枚举列在模型层面需要始终带上固定条件时，可以在 `Column` 上声明 `Constant`。LiteOrm 会在元数据阶段把它收敛为 `TableInfo.ConstFilter`，并在生成 SQL 时自动注入：
+
+- 主表：自动并入 `WHERE`，与显式 `Where` 条件使用 `AND` 合并。
+- 关联表：自动并入 `JOIN ... ON`，不需要手写重复条件。
+
+```csharp
+public enum RecordState
+{
+    Disabled = 0,
+    Enabled = 1
+}
+
+[Table("Departments")]
+public class Department
+{
+    [Column("Id", IsPrimaryKey = true)]
+    public int Id { get; set; }
+
+    [Column("State", Constant = RecordState.Enabled)]
+    public RecordState State => RecordState.Enabled;
+}
+```
+
+也支持以下声明方式：
+
+- `Constant = "Enabled"`：按枚举名解析
+- `Constant = 1`：按整型值解析
+
+注意：
+
+- Constant 值与实际属性值不需要保持一致，LiteOrm 只会把 Constant 定义的值作为固定筛选条件注入 SQL，属性本身可以是任意实现，一般建议设为只读并保持与 Constant 定义一致，以免引起混淆，如果需要修改可以定义为可写。
+- 当前固定筛选语义固定为 `Column == ConstantValue`，不支持 `>`、`IN` 等其它操作符。
+- 适合表达软分区、固定状态、历史兼容表等“模型级恒定条件”，不建议替代正常的运行时查询条件。
+
+### 5) 多级关联与 AutoExpand
 
 ```csharp
 // SalesRecord 示例：SalesUserId 关联 User，并自动展开 User 的关联（如 Department）
@@ -337,9 +373,11 @@ var matureItUsers = await objectViewDAO.Search(
 - ForeignTypeAttribute: ObjectType、Alias、JoinType、AutoExpand
 - TableJoinAttribute: Source、TargetType、ForeignKeys、AliasName、JoinType、AutoExpand
 - ForeignColumnAttribute: Foreign（Type 或 AliasName）、Property（要获取的列）
+- ColumnAttribute: Constant（生成固定等值筛选）
 
 实现上，LiteOrm 会在元数据阶段合并 ForeignType 与 TableJoin 的信息，生成 JoinedTable / ForeignTable 结构。
-最终在构建 SQL 时，会把 TableJoinExpr 插入 FromExpr.Joins 中。
+`Column.Constant` 会进一步收敛为 `TableInfo.ConstFilter`。
+最终在构建 SQL 时，会把 TableJoinExpr 插入 FromExpr.Joins 中，并将主表 / 关联表的固定筛选分别注入到 `WHERE` / `JOIN ON`。
 
 ---
 
@@ -362,7 +400,10 @@ var matureItUsers = await objectViewDAO.Search(
   A：AutoExpand 按定义的关联逐级扩展，但实际扩展深度取决于已注册的 TableJoin/ForeignType 配置，需谨慎控制以避免循环或爆炸式扩展。
 
 - Q：ForeignType 和 TableJoin 怎么选？
-  A：单列外键优先选 ForeignType；只要涉及联合主键、多列关联、同一关系需要复用或显式命名别名，优先选 TableJoin。
+  A：单列外键优先选 ForeignType；只要涉及联合主键、多列关联，优先选 TableJoin。
+
+- Q：`Column.Constant` 什么时候适合用？
+  A：适合“这个模型天然只看某一类枚举状态”的场景，例如启用态、正式态、固定分区态。若条件来自用户输入、接口参数或业务流程，请继续使用普通 `Where`。
 
 ---
 

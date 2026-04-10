@@ -286,7 +286,10 @@ namespace LiteOrm.Common
         /// <returns>带有别名的From表达式</returns>
         public static FromExpr As(this FromExpr fromExpr, string alias)
         {
-            fromExpr.Alias = alias;
+            if (fromExpr?.Table != null)
+            {
+                fromExpr.Table.Alias = alias;
+            }
             return fromExpr;
         }
 
@@ -432,7 +435,11 @@ namespace LiteOrm.Common
                 }
                 if (firstSource is FromExpr fromExpr)
                 {
-                    fromExpr.Type = objectType;
+                    fromExpr.Table = new TableExpr(objectType);
+                }
+                else if (firstSource is TableExpr tableExpr)
+                {
+                    tableExpr.Type = objectType;
                 }
                 else if (firstSource is SqlSegment chainedSegment)
                 {

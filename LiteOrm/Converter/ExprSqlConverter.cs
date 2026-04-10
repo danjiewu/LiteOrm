@@ -80,6 +80,7 @@ namespace LiteOrm.Common
 
             var joinTable = TableInfoProvider.Default.GetTableDefinition(expr.Table.Type);
             string joinAlias = expr.Table.Alias ?? $"T{context.Sequence++}";
+            LogicExpr onExpr = expr.On.And(GetAliasedConstFilter(joinTable.ConstFilter, joinAlias));
 
             context.AddTableAlias(joinAlias, joinTable);
 
@@ -92,11 +93,11 @@ namespace LiteOrm.Common
             sb.Append(" ");
             sb.Append(sqlBuilder.ToSqlName(joinAlias));
 
-            if (expr.On != null)
+            if (onExpr != null)
             {
                 sb.Append(" ON ");
                 int lenBefore = sb.Length;
-                ToSqlInternal(ref sb, expr.On, context, sqlBuilder, outputParams);
+                ToSqlInternal(ref sb, onExpr, context, sqlBuilder, outputParams);
                 if (sb.Length == lenBefore) sb.Length = lenBefore;
             }
         }
@@ -106,21 +107,24 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, TableExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (expr == null) return;
-            var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.Type);
-            var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name));
+            if (expr.TableArgs != null && expr.TableArgs.Length > 0) context.TableArgs = expr.TableArgs;
             if (context.SingleTable)
             {
+                var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.Type);
+                var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name));
                 sb.Append(tableName);
                 context.AddTableAlias(tableName, tableDef);
             }
             else
             {
-                string aliasName = expr.Alias ?? $"T{context.Sequence++}";
+                var tableView = TableInfoProvider.Default.GetTableView(expr.Type);
+                var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name));
+                bool isMain = context.Depth <= 1;
+                string aliasName = expr.Alias ?? (isMain ? Constants.DefaultTableAlias : $"T{context.Sequence++}");
                 sb.Append(tableName);
                 sb.Append(" ");
                 sb.Append(sqlBuilder.ToSqlName(aliasName));
-                context.AddTableAlias(aliasName, tableDef);
+                context.AddTableAlias(aliasName, tableView);
             }
         }
 
@@ -148,7 +152,6 @@ namespace LiteOrm.Common
         /// <param name="outputParams">输出参数集合，对应于此构建过程中产生的参数化查询参数。</param>
         public static void ToSql(this Expr expr, ref ValueStringBuilder sb, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (expr is null) return;
             ToSqlInternal(ref sb, expr, context, sqlBuilder, outputParams);
         }
 
@@ -181,6 +184,7 @@ namespace LiteOrm.Common
                 case FromExpr from: ToSql(ref sb, from, context, sqlBuilder, outputParams); break;
                 case TableExpr table: ToSql(ref sb, table, context, sqlBuilder, outputParams); break;
                 case SelectExpr select: ToSql(ref sb, select, context, sqlBuilder, outputParams); break;
+                case SelectItemExpr selectItem: ToSql(ref sb, selectItem, context, sqlBuilder, outputParams); break;
                 case DeleteExpr delete: ToSql(ref sb, delete, context, sqlBuilder, outputParams); break;
                 case UpdateExpr update: ToSql(ref sb, update, context, sqlBuilder, outputParams); break;
                 default: throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
@@ -674,13 +678,7 @@ namespace LiteOrm.Common
             for (int i = 0; i < count; i++)
             {
                 int lenBefore = sb.Length;
-                // 在每个子表达式前检查当前行长度，如果超过 RowCharLimit 则换行以提高可读性
-                if (sb.Length - sb.Mark > RowCharLimit)
-                {
-                    sb.Append($"\n");
-                    sb.Mark = sb.Length; ;
-                    sb.Append($"{context.Indent}");
-                }
+                WrapIfNeeded(ref sb, context.Indent);
                 if (!first) sb.Append(" AND ");
                 int lenWithJoin = sb.Length;
 
@@ -709,13 +707,7 @@ namespace LiteOrm.Common
             for (int i = 0; i < count; i++)
             {
                 int lenBefore = sb.Length;
-                // 在每个子表达式前检查当前行长度，如果超过 RowCharLimit 则换行以提高可读性
-                if (sb.Length - sb.Mark > RowCharLimit)
-                {
-                    sb.Append($"\n");
-                    sb.Mark = sb.Length; ;
-                    sb.Append($"{context.Indent}");
-                }
+                WrapIfNeeded(ref sb, context.Indent);
                 if (!first) sb.Append(" OR ");
                 int lenWithJoin = sb.Length;
 
@@ -799,10 +791,11 @@ namespace LiteOrm.Common
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, WhereExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             AddSqlSegment(ref sql, expr.Source, context, sqlBuilder, outputParams);
-            if (expr.Where != null)
+            LogicExpr whereExpr = GetContextConstFilter(context).And(expr.Where);
+            if (whereExpr != null)
             {
                 if (sql.Where.Length > 0) sql.Where.Append(" AND ");
-                ToSqlInternal(ref sql.Where, expr.Where, context, sqlBuilder, outputParams);
+                ToSqlInternal(ref sql.Where, whereExpr, context, sqlBuilder, outputParams);
             }
         }
 
@@ -871,29 +864,10 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, FromExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (expr == null) return;
-            var tableArgs = expr.TableArgs ?? context.TableArgs ?? Array.Empty<string>();
-            if (context.SingleTable)
+            if (expr.Table == null) return;
+            ToSqlInternal(ref sb, expr.Table, context, sqlBuilder, outputParams);
+            if (!context.SingleTable)
             {
-                var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.Type);
-                context.TableArgs = tableArgs;
-                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name)));
-                context.AddTableAlias(tableDef.Name, tableDef);
-            }
-            else
-            {
-                bool isMain = context.Depth <= 1;
-                var mainTable = expr.Table;
-                var tableType = mainTable?.Type ?? expr.Type;
-                var tableView = TableInfoProvider.Default.GetTableView(tableType);
-                context.TableArgs = tableArgs;
-                string aliasName = (mainTable?.Alias) ?? expr.Alias ?? (isMain ? Constants.DefaultTableAlias : $"T{context.Sequence++}");
-
-                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name)));
-                sb.Append(" ");
-                sb.Append(sqlBuilder.ToSqlName(aliasName));
-                context.AddTableAlias(aliasName, tableView);
-
                 if (expr.Joins != null && expr.Joins.Count > 0)
                 {
                     foreach (var j in expr.Joins)
@@ -903,15 +877,50 @@ namespace LiteOrm.Common
                 }
                 else
                 {
+                    var tableView = TableInfoProvider.Default.GetTableView(expr.Table.Type);
                     foreach (var joined in tableView.JoinedTables)
                     {
                         if (joined.Used)
                         {
-                            joined.ToSql(ref sb, context, sqlBuilder);
+                            ToSql(ref sb, joined, context, sqlBuilder, outputParams);
                             context.AddTableAlias(joined.Name, joined.TableDefinition);
                         }
                     }
                 }
+            }
+        }
+
+        private static void ToSql(ref ValueStringBuilder sb, JoinedTable joined, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            if (joined == null) return;
+
+            sb.Append(" \n");
+            sb.Mark = sb.Length;
+            sb.Append(context.Indent);
+            sb.Append(joined.JoinType.ToString().ToUpper());
+            sb.Append(" JOIN ");
+            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joined.TableDefinition.Name)));
+            sb.Append(" ");
+            sb.Append(sqlBuilder.ToSqlName(joined.Name));
+            sb.Append(" ON ");
+
+            context.AddTableAlias(joined.Name, joined.TableDefinition);
+
+            bool isFirst = true;
+            int count = joined.ForeignKeys.Count;
+            for (int i = 0; i < count; i++)
+            {
+                if (!isFirst) sb.Append(" AND ");
+                joined.ForeignKeys[i].ToSql(ref sb, context, sqlBuilder);
+                sb.Append(" = ");
+                joined.ForeignPrimeKeys[i].ToSql(ref sb, context, sqlBuilder);
+                isFirst = false;
+            }
+
+            if (joined.ConstFilter != null)
+            {
+                if (!isFirst) sb.Append(" AND ");
+                ToSqlInternal(ref sb, joined.ConstFilter, context, sqlBuilder, outputParams);
             }
         }
 
@@ -931,17 +940,12 @@ namespace LiteOrm.Common
                     for (int i = 0; i < select.Selects.Count; i++)
                     {
                         if (i > 0) sql.Select.Append(", ");
-                        // 在每个子表达式前检查当前行长度，如果超过 RowCharLimit 则换行以提高可读性
-                        if (sql.Select.Length - sql.Select.Mark > RowCharLimit)
-                        {
-                            sql.Select.Append($"\n");
-                            sql.Select.Mark = sql.Select.Length; ;
-                            sql.Select.Append($"{context.Indent}");
-                        }
-                        ToSql(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
+                        WrapIfNeeded(ref sql.Select, context.Indent);
+                        ToSqlInternal(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
                     }
                 }
-
+                // 如果 SQL 片段链中缺少 Where 片段，则未触发常量过滤条件的插入，需补常量过滤条件到 Where 片段，以确保常量过滤条件始终生效
+                if (sql.Where.Length == 0) ToSqlInternal(ref sql.Where, GetContextConstFilter(context), context, sqlBuilder, outputParams);
                 sqlBuilder.BuildSelectSql(ref sql, ref sb);
                 sql.Dispose();
             }
@@ -985,14 +989,15 @@ namespace LiteOrm.Common
 
             sb.Append("DELETE FROM ");
             ToSql(ref sb, expr.Table ?? new TableExpr(context.Table.DefinitionType), context, sqlBuilder, outputParams);
-            if (expr.Where != null)
+            LogicExpr deleteWhere = expr.Where.And(GetContextConstFilter(context));
+            if (deleteWhere != null)
             {
                 using (context.BeginScope())
                 {
                     sb.Append($" \n");
                     sb.Mark = sb.Length; ;
                     sb.Append($"{context.Indent}WHERE ");
-                    ToSqlInternal(ref sb, expr.Where, context, sqlBuilder, outputParams);
+                    ToSqlInternal(ref sb, deleteWhere, context, sqlBuilder, outputParams);
                 }
             }
         }
@@ -1014,13 +1019,7 @@ namespace LiteOrm.Common
             for (int i = 0; i < expr.Sets.Count; i++)
             {
                 if (i > 0) sb.Append(", ");
-                // 在每个子表达式前检查当前行长度，如果超过 RowCharLimit 则换行以提高可读性
-                if (sb.Length - sb.Mark > RowCharLimit)
-                {
-                    sb.Append($" \n");
-                    sb.Mark = sb.Length; ;
-                    sb.Append($"{context.Indent}");
-                }
+                WrapIfNeeded(ref sb, context.Indent);
                 var set = expr.Sets[i];
                 int priority = GetPriority(expr);
                 SqlColumn column = table?.GetColumn(set.Item1.PropertyName);
@@ -1030,16 +1029,60 @@ namespace LiteOrm.Common
                 sb.Append("=");
                 ToSqlInternal(ref sb, set.Item2, context, sqlBuilder, outputParams, priority);
             }
-            if (expr.Where != null)
+            LogicExpr updateWhere = expr.Where.And(GetContextConstFilter(context));
+            if (updateWhere != null)
             {
                 using (context.BeginScope())
                 {
                     sb.Append($" \n");
                     sb.Mark = sb.Length;
                     sb.Append($"{context.Indent}WHERE ");
-                    ToSqlInternal(ref sb, expr.Where, context, sqlBuilder, outputParams);
+                    ToSqlInternal(ref sb, updateWhere, context, sqlBuilder, outputParams);
                 }
             }
+        }
+
+        // 检查当前行长度，如果超过 RowCharLimit 则换行以提高可读性
+        private static void WrapIfNeeded(ref ValueStringBuilder sb, string indent)
+        {
+            if (sb.Length - sb.Mark > RowCharLimit)
+            {
+                sb.Append($" \n");
+                sb.Mark = sb.Length;
+                sb.Append(indent);
+            }
+        }
+
+        private static LogicExpr GetContextConstFilter(SqlBuildContext context)
+        {
+            LogicExpr constFilter = context.Table?.Definition?.ConstFilter;
+            if (constFilter == null) return null;
+            if (context.SingleTable) return constFilter;
+            return constFilter;
+        }
+
+        private static LogicExpr GetAliasedConstFilter(LogicExpr constFilter, string tableAlias)
+        {
+            if (constFilter == null) return null;
+            if (String.IsNullOrEmpty(tableAlias)) return constFilter;
+
+            LogicExpr aliasedFilter = (LogicExpr)constFilter.Clone();
+            ExprVisitor.Visit(node =>
+            {
+                if (node is PropertyExpr propertyExpr && String.IsNullOrEmpty(propertyExpr.TableAlias))
+                {
+                    propertyExpr.TableAlias = tableAlias;
+                }
+                return true;
+            }, aliasedFilter);
+            return aliasedFilter;
+        }
+
+        private static void AppendWhere(ref ValueStringBuilder sb, LogicExpr whereExpr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            if (whereExpr == null) return;
+            if (sb.Length > 0) sb.Append(" AND ");
+            ToSqlInternal(ref sb, whereExpr, context, sqlBuilder, outputParams);
         }
     }
 }

@@ -69,6 +69,71 @@ namespace LiteOrm.Common.UnitTests
             Assert.Contains("Prime key column", ex.Message);
         }
 
+        [Fact]
+        public void GetTableDefinition_WithEnumNameConstant_BuildsConstFilter()
+        {
+            var provider = CreateProvider();
+
+            var tableDef = provider.GetTableDefinition(typeof(EnumNameConstantOrder));
+
+            var stateColumn = tableDef.GetColumn(nameof(EnumNameConstantOrder.State));
+            Assert.Equal(ConstFilterState.Enabled, stateColumn.Constant);
+            Assert.NotNull(tableDef.ConstFilter);
+        }
+
+        [Fact]
+        public void GetTableDefinition_WithEnumIntConstant_BuildsConstFilter()
+        {
+            var provider = CreateProvider();
+
+            var tableDef = provider.GetTableDefinition(typeof(EnumIntConstantOrder));
+
+            var stateColumn = tableDef.GetColumn(nameof(EnumIntConstantOrder.State));
+            Assert.Equal(ConstFilterState.Enabled, stateColumn.Constant);
+            Assert.NotNull(tableDef.ConstFilter);
+        }
+
+        [Fact]
+        public void GetTableDefinition_WithEnumMemberConstant_BuildsConstFilter()
+        {
+            var provider = CreateProvider();
+
+            var tableDef = provider.GetTableDefinition(typeof(EnumMemberConstantOrder));
+
+            var stateColumn = tableDef.GetColumn(nameof(EnumMemberConstantOrder.State));
+            Assert.Equal(ConstFilterState.Enabled, stateColumn.Constant);
+            Assert.NotNull(tableDef.ConstFilter);
+        }
+
+        [Fact]
+        public void GetTableView_WithJoinedEnumConstant_BuildsAliasedJoinedConstFilter()
+        {
+            var provider = CreateProvider();
+
+            var tableView = provider.GetTableView(typeof(ConstFilterJoinOrder));
+            var joinedTable = Assert.Single(tableView.JoinedTables);
+
+            Assert.NotNull(joinedTable.ConstFilter);
+
+            TableInfoProvider currentProvider = TableInfoProvider.Default;
+            try
+            {
+                TableInfoProvider.Default = provider;
+                var context = new SqlBuildContext(tableView, "T", null) { SingleTable = false };
+                context.AddTableAlias(joinedTable.Name, joinedTable.TableDefinition);
+                var sql = joinedTable.ConstFilter.ToPreparedSql(context, SqlBuilder.Instance);
+
+                Assert.Contains(joinedTable.Name, sql.Sql);
+                Assert.Contains("State", sql.Sql);
+                Assert.Single(sql.Params);
+                Assert.Equal(ConstFilterState.Enabled, sql.Params[0].Value);
+            }
+            finally
+            {
+                TableInfoProvider.Default = currentProvider;
+            }
+        }
+
         private static AttributeTableInfoProvider CreateProvider()
         {
             var sqlBuilderFactory = new Mock<ISqlBuilderFactory>();
@@ -150,6 +215,63 @@ namespace LiteOrm.Common.UnitTests
         {
             [Column("DepartmentCode")]
             public string DepartmentCode { get; set; } = string.Empty;
+        }
+
+        private enum ConstFilterState
+        {
+            Disabled = 0,
+            Enabled = 1
+        }
+
+        [Table("EnumNameConstantOrders")]
+        private class EnumNameConstantOrder
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("State", Constant = "Enabled")]
+            public ConstFilterState State { get; set; }
+        }
+
+        [Table("EnumIntConstantOrders")]
+        private class EnumIntConstantOrder
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("State", Constant = 1)]
+            public ConstFilterState State { get; set; }
+        }
+
+        [Table("EnumMemberConstantOrders")]
+        private class EnumMemberConstantOrder
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("State", Constant = ConstFilterState.Enabled)]
+            public ConstFilterState State { get; set; }
+        }
+
+        [Table("ConstFilterJoinOrders")]
+        private class ConstFilterJoinOrder
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("DepartmentId")]
+            [ForeignType(typeof(ConstFilterDepartment), Alias = "Dept")]
+            public int DepartmentId { get; set; }
+        }
+
+        [Table("ConstFilterDepartments")]
+        private class ConstFilterDepartment
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("State", Constant = "Enabled")]
+            public ConstFilterState State { get; set; }
         }
     }
 }
