@@ -102,7 +102,7 @@ namespace LiteOrm
         /// 将结构化的 SQL 片段组装成最终的 SELECT 语句 (SQLite 实现)。
         /// 使用 LIMIT n OFFSET m 语法进行分页。
         /// </summary>
-        public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+        public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
         {
             if (subSelect.Select.Length == 0) result.Append("SELECT *");
             else
@@ -113,37 +113,43 @@ namespace LiteOrm
 
             if (subSelect.From.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}FROM ");
+                result.NewLine(indent);
+                result.Append("FROM ");
                 result.Append(subSelect.From.AsSpan());
             }
 
             if (subSelect.Where.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}WHERE ");
+                result.NewLine(indent);
+                result.Append("WHERE ");
                 result.Append(subSelect.Where.AsSpan());
             }
 
             if (subSelect.GroupBy.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}GROUP BY ");
+                result.NewLine(indent);
+                result.Append("GROUP BY ");
                 result.Append(subSelect.GroupBy.AsSpan());
             }
 
             if (subSelect.Having.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}HAVING ");
+                result.NewLine(indent);
+                result.Append("HAVING ");
                 result.Append(subSelect.Having.AsSpan());
             }
 
             if (subSelect.OrderBy.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}ORDER BY ");
+                result.NewLine(indent);
+                result.Append("ORDER BY ");
                 result.Append(subSelect.OrderBy.AsSpan());
             }
 
             if (subSelect.Take > 0)
             {
-                result.Append($" \n{subSelect.Indent}LIMIT ");
+                result.NewLine(indent);
+                result.Append("LIMIT ");
                 result.Append(subSelect.Take.ToString());
                 if (subSelect.Skip > 0)
                 {

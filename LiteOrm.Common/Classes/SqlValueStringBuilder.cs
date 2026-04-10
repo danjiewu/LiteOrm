@@ -26,10 +26,6 @@ namespace LiteOrm.Common
         /// <summary>分页获取的记录数。</summary>
         public int Take;
         /// <summary>
-        /// 获取或设置当前 SQL 语句的缩进字符串，用于格式化输出。
-        /// </summary>
-        public string Indent;
-        /// <summary>
         /// 构造函数，使用默认容量的堆分配
         /// </summary>
         public SqlValueStringBuilder()

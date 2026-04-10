@@ -45,8 +45,6 @@ namespace LiteOrm.Common.UnitTests
                 Assert.Equal(0, builder.Skip);
                 Assert.Equal(0, builder.Take);
 
-                // Assert - Verify Indent is null
-                Assert.Null(builder.Indent);
             }
             finally
             {

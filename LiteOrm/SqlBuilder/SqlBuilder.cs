@@ -837,7 +837,8 @@ namespace LiteOrm
         /// </summary>
         /// <param name="subSelect">包含 SELECT 各个子句片段的结构体。</param>
         /// <param name="result">输出 SQL 语句的缓冲区。</param>
-        public virtual void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+        /// <param name="indent">当前缩进字符串的长度，用于格式化输出。</param>
+        public virtual void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
         {
             if (subSelect.Select.Length == 0) result.Append("SELECT *");
             else
@@ -848,31 +849,36 @@ namespace LiteOrm
 
             if (subSelect.From.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}FROM ");
+                result.NewLine(indent);
+                result.Append("FROM ");
                 result.Append(subSelect.From.AsSpan());
             }
 
             if (subSelect.Where.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}WHERE ");
+                result.NewLine(indent);
+                result.Append("WHERE ");
                 result.Append(subSelect.Where.AsSpan());
             }
 
             if (subSelect.GroupBy.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}GROUP BY ");
+                result.NewLine(indent);
+                result.Append("GROUP BY ");
                 result.Append(subSelect.GroupBy.AsSpan());
             }
 
             if (subSelect.Having.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}HAVING ");
+                result.NewLine(indent);
+                result.Append("HAVING ");
                 result.Append(subSelect.Having.AsSpan());
             }
 
             if (subSelect.OrderBy.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}ORDER BY ");
+                result.NewLine(indent);
+                result.Append("ORDER BY ");
                 result.Append(subSelect.OrderBy.AsSpan());
             }
 
@@ -880,10 +886,11 @@ namespace LiteOrm
             {
                 if (subSelect.OrderBy.Length == 0)
                 {
-                    result.Append($" \n{subSelect.Indent}ORDER BY 1");
+                    result.NewLine(indent);
+                    result.Append("ORDER BY 1");
                 }
-                result.Append($" \n{subSelect.Indent}OFFSET {subSelect.Skip} ROWS");
-                result.Append($" \n{subSelect.Indent}FETCH NEXT {subSelect.Take} ROWS ONLY");
+                result.NewLine(indent);
+                result.Append($"OFFSET {subSelect.Skip} ROWS FETCH NEXT {subSelect.Take} ROWS ONLY");
             }
         }
     }

@@ -61,9 +61,10 @@
 
 | 资源 | Resource |
 |-----|----------|
-| [Demo 项目](../LiteOrm.Demo/) | [Demo project](../LiteOrm.Demo/) |
-| [单元测试](../LiteOrm.Tests/) | [Unit tests](../LiteOrm.Tests/) |
-| [性能报告](../LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md) | [Benchmark report](../LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md) |
+| [Demo 项目](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo) | [Demo project](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo) |
+| [源代码](https://github.com/danjiewu/LiteOrm) | [Source code](https://github.com/danjiewu/LiteOrm) |
+| [单元测试](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests) | [Unit tests](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests) |
+| [性能报告](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md) | [Benchmark report](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md) |
 
 ### 推荐阅读路径
 

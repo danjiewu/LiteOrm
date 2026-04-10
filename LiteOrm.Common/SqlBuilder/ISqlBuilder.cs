@@ -99,7 +99,8 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="subSelect">包含 SELECT 各个子句片段的结构体。</param>
         /// <param name="result">输出 SQL 语句的缓冲区。</param>
-        void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result);
+        /// <param name="indent">缩进级别。</param>
+        void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result,int indent);
 
         /// <summary>
         /// 将集合操作类型转换为 SQL 语句

@@ -11,12 +11,16 @@ namespace LiteOrm.Common
     public ref struct ValueStringBuilder
     {
         /// <summary>
-        /// 标记，可用于标记位置，供外部使用者根据需要使用。
+        /// 最后一行的起始位置，必须通过<see cref="NewLine"/>换行才会有记录。
         /// </summary>
-        public int Mark;
+        public int LastLineStart;
         private char[]? _arrayToReturnToPool;
         private Span<char> _chars;
         private int _length;
+        /// <summary>
+        /// 指定在生成 SQL 时，每行的最大字符数。超过该限制时会在适当的位置插入换行符以提高可读性。默认值为 160。
+        /// </summary>
+        public static int RowCharLimit = 160;
 
         /// <summary>
         /// 使用指定的初始缓冲区初始化 <see cref="ValueStringBuilder"/> 的新实例。
@@ -79,6 +83,22 @@ namespace LiteOrm.Common
             Append(value.AsSpan());
         }
 
+        /// <summary>
+        /// 插入换行符，并根据指定的缩进参数添加适当数量的空格。
+        /// </summary>
+        /// <param name="intend">缩进的空格数。</param>
+        /// <param name="optional">如果为 true，则仅在当前行长度超过 RowCharLimit 时才添加缩进；如果为 false，则无条件添加缩进。</param>
+        public void NewLine(int intend, bool optional = false)
+        {
+            if (optional && _length - LastLineStart <= RowCharLimit) return;
+            Append('\n');
+            LastLineStart = _length;
+            intend = Math.Min(10, intend);
+            for (int i = 0; i < intend; i++)
+            {
+                Append(' ');
+            }
+        }
         /// <summary>
         /// 将指定 Unicode 字符的副本追加到此实例。
         /// </summary>

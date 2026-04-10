@@ -16,14 +16,15 @@ namespace LiteOrm.Demo.Demos
         /// 将结构化的 SQL 片段组装成最终的 SELECT 语句 (Oracle 实现)。 
         /// 使用 ROW_NUMBER() OVER(...) 双层嵌套子查询实现分页，兼容所有 Oracle 版本。 
         /// </summary> 
-        public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+        public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
         {
             bool hasPaging = subSelect.Take > 0;
 
             if (hasPaging)
             {
                 // 外层：过滤 ROW_NUMBER() 范围 
-                result.Append($"SELECT * FROM (\n{subSelect.Indent}");
+                result.Append($"SELECT * FROM (");
+                result.NewLine(indent);
             }
 
             // 内层：实际数据查询 
@@ -43,32 +44,37 @@ namespace LiteOrm.Demo.Demos
 
             if (subSelect.From.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}FROM ");
+                result.NewLine(indent);
+                result.Append("FROM ");
                 result.Append(subSelect.From.AsSpan());
             }
 
             if (subSelect.Where.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}WHERE ");
+                result.NewLine(indent);
+                result.Append("WHERE ");
                 result.Append(subSelect.Where.AsSpan());
             }
 
             if (subSelect.GroupBy.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}GROUP BY ");
+                result.NewLine(indent);
+                result.Append("GROUP BY ");
                 result.Append(subSelect.GroupBy.AsSpan());
             }
 
             if (subSelect.Having.Length > 0)
             {
-                result.Append($" \n{subSelect.Indent}HAVING ");
+                result.NewLine(indent);
+                result.Append("HAVING ");
                 result.Append(subSelect.Having.AsSpan());
             }
 
             if (hasPaging)
             {
-                // 关闭内层子查询，提供别名供外层层引用 
-                result.Append($"\n{subSelect.Indent}) \"__T\"\n{subSelect.Indent}");
+                // 关闭内层子查询，提供别名供外层层引用               
+                result.Append(") \"__T\"");
+                result.NewLine(indent);
                 // 按 ROW_NUMBER() 范围过滤（1-based，skip 条之后，共取 take 条） 
                 result.Append("WHERE \"RN__\" > ");
                 result.Append(subSelect.Skip.ToString());
@@ -79,7 +85,8 @@ namespace LiteOrm.Demo.Demos
             {
                 if (subSelect.OrderBy.Length > 0)
                 {
-                    result.Append($" \n{subSelect.Indent}ORDER BY ");
+                    result.NewLine(indent); 
+                    result.Append("ORDER BY ");
                     result.Append(subSelect.OrderBy.AsSpan());
                 }
             }

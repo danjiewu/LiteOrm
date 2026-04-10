@@ -59,16 +59,15 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取作用域对应的缩进字符串，根作用域无缩进，每增加一级作用域增加两个空格，最多八个空格
         /// </summary>
-        public string Indent => AutoIndent ? Depth switch
+        public int Indent => AutoIndent ? Depth switch
         {
-            0 => "",
-            1 => "",
-            2 => "  ",
-            3 => "    ",
-            4 => "      ",
-            _ => "        "
-        } : "";
-
+            0 => 0,
+            1 => 0,
+            2 => 2,
+            3 => 4,
+            4 => 6,
+            _ => 8
+        } : 0;
         /// <summary>
         /// 获取或设置是否自动添加缩进，默认为 true，设置为 false 后生成的 SQL 将不包含任何缩进
         /// </summary>

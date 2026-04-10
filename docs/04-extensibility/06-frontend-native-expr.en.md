@@ -137,4 +137,4 @@ Because LiteOrm `Expr` already has structural `Equals/GetHashCode`, repeated pag
 - [Permission filtering](../03-advanced-topics/06-permission-filtering.en.md)
 - [Frontend QueryString querying](./05-frontend-querystring.en.md)
 - [Query guide](../02-core-usage/03-query-guide.en.md)
-- [LiteOrm.WebDemo](../../LiteOrm.WebDemo/)
+- [LiteOrm.WebDemo](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.WebDemo/)
