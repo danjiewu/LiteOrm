@@ -94,6 +94,6 @@ Even if a list only returns “my items”, direct requests to `/api/orders/{id}
 ## 5. Next steps
 
 - [Back to index](../README.md)
-- [Frontend QueryString querying](./07-frontend-querystring.en.md)
-- [Frontend native Expr querying](./08-frontend-native-expr.en.md)
+- [Frontend QueryString querying](../04-extensibility/05-frontend-querystring.en.md)
+- [Frontend native Expr querying](../04-extensibility/06-frontend-native-expr.en.md)
 - [Associations](../02-core-usage/05-associations.en.md)

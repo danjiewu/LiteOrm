@@ -113,6 +113,6 @@ var myItems = items.Where(x => x.CreatedByUserId == currentUser.Id).ToList();
 ## 5. 下一步
 
 - [返回目录](../README.md)
-- [前端 QueryString 查询](./07-frontend-querystring.md)
-- [前端原生 Expr 查询](./08-frontend-native-expr.md)
+- [前端 QueryString 查询](../04-extensibility/05-frontend-querystring.md)
+- [前端原生 Expr 查询](../04-extensibility/06-frontend-native-expr.md)
 - [关联查询](../02-core-usage/05-associations.md)

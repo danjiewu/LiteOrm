@@ -17,35 +17,35 @@ For learning, this order works well:
 
 | Marker | Meaning | Example |
 |-------|---------|---------|
-| `#` | Property reference | `{"#": "Name"}` or `{"#": "u.Name"}` |
-| `@` | Variable value | `{"@": 42}` or `{"@": "hello"}` |
-| `$` | Type/operator identifier | `{"$": "table"}` or `{"$": "=="}` |
 | `!` | Negation (Not) | `{"!": {"#": "IsActive"}}` |
+| `#` | Property reference | `{"#": "Name"}` or `{"#": "u.Name"}` |
+| `$` | Type/operator identifier | `{"$": "table"}` or `{"$": "=="}` |
 | `$and` | Logical AND | `{"$and": [...]}` |
 | `$or` | Logical OR | `{"$or": [...]}` |
+| `@` | Variable value | `{"@": 42}` or `{"@": "hello"}` |
 
-### 1.2 SQL Operator Mapping
+### 1.2 Expr Comparison Operator Mapping
 
-| SQL Operator | JSON Short Form |
-|-------------|---------------|
-| `=` | `==` |
-| `<>` | `!=` |
-| `>` | `>` |
-| `>=` | `>=` |
-| `<` | `<` |
-| `<=` | `<=` |
-| `.In()` | `in` |
-| `.NotIn()` | `notin` |
-| `.Like()` | `like` |
-| `.NotLike()` | `notlike` |
+| Expr Comparison Operator | JSON Short Form |
+|-------------------------|----------------|
 | `.Contains()` | `contains` |
-| `.NotContains()` | `notcontains` |
-| `.StartsWith()` | `startswith` |
-| `.NotStartsWith()` | `notstartswith` |
 | `.EndsWith()` | `endswith` |
+| `.In()` | `in` |
+| `.Like()` | `like` |
+| `.NotContains()` | `notcontains` |
 | `.NotEndsWith()` | `notendswith` |
+| `.NotIn()` | `notin` |
+| `.NotLike()` | `notlike` |
 | `.RegexpLike()` | `regexp` |
 | `.NotRegexpLike()` | `notregexp` |
+| `.NotStartsWith()` | `notstartswith` |
+| `.StartsWith()` | `startswith` |
+| `<` | `<` |
+| `<=` | `<=` |
+| `<>` | `!=` |
+| `=` | `==` |
+| `>` | `>` |
+| `>=` | `>=` |
 
 ### 1.3 ExprType Type Reference
 
@@ -53,32 +53,32 @@ For learning, this order works well:
 
 | ExprType | Description | Short Marker | Normal Mode `$` Value |
 |----------|-------------|--------------|---------------------|
-| `Table` | Table segment, represents a single table or subquery | `$table` | `"table"` |
-| `TableJoin` | Table join segment, represents a JOIN clause | `$join` | `"join"` |
+| `And` | Logic AND expression group | `$and` | `"and"` |
+| `Delete` | Delete segment, represents DELETE | `$delete` | `"delete"` |
+| `Foreign` | Foreign-key EXISTS expression | `$foreign` | `"foreign"` |
 | `From` | From segment, represents a data source | `$from` | `"from"` |
+| `Function` | Function call expression | `{"$":"func","ActualFunctionName":[...]}` | `"func"` |
+| `GenericSql` | SQL fragment generated via delegate or registration | - | `"sql"` |
+| `GroupBy` | Group-by segment, represents GROUP BY | `$group` | `"group"` |
+| `Having` | Having segment, represents HAVING | `$having` | `"having"` |
+| `Lambda` | Lambda will be parsed into internal expressions | - | - |
+| `LogicBinary` | Logic binary expression (comparisons) |  `"$":"=="`, `"$":"!="`, `"$":">"`, `"$":">="`, `"$":"<"`, `"$":"<="`, `"$":"in"`...  | `"logic"` |
+| `Not` | Logic NOT expression | `!` | `"not"` |
+| `Or` | Logic OR expression group | `$or` | `"or"` |
+| `OrderBy` | Order-by segment, represents ORDER BY | `$orderby` | `"orderby"` |
+| `OrderByItem` | ORDER BY item | - | `"orderbyitem"` |
+| `Property` | Property (column) reference expression | `#` | `"prop"` |
+| `Section` | Pagination segment, represents LIMIT/OFFSET | `$section` | `"section"` |
 | `Select` | Select segment, represents a SELECT query | `$select` | `"select"` |
 | `SelectItem` | Select item, for SELECT column definition | - | `"selectitem"` |
-| `OrderByItem` | ORDER BY item | - | `"orderbyitem"` |
-| `Function` | Function call expression | `{"$":"func","ActualFunctionName":[...]}` | `"func"` |
-| `Foreign` | Foreign-key EXISTS expression | `$foreign` | `"foreign"` |
-| `Lambda` | Lambda wrapper expression (parse-time only) | - | `"lambda"` |
-| `LogicBinary` | Logic binary expression (comparisons) | `$==`, `$!=`, `$>`, `$>=`, `$<`, `$<=`, `$in`... | `"logic"` |
-| `And` | Logic AND expression group | `$and` | `"and"` |
-| `Or` | Logic OR expression group | `$or` | `"or"` |
-| `Not` | Logic NOT expression | `!` | `"not"` |
-| `ValueBinary` | Value binary expression (arithmetic or concat) | `$+`, `$-`, `$*`, `$/`, `$%`, `$||` | `"valuebinary"` |
-| `ValueSet` | Value-set expression (for IN or CONCAT) | - | `"valueset"` |
+| `Table` | Table segment, represents a single table or subquery | `$table` | `"table"` |
+| `TableJoin` | Table join segment, represents a JOIN clause | `$join` | `"join"` |
 | `Unary` | Unary expression (for example DISTINCT or -a) | - | `"unary"` |
-| `Property` | Property (column) reference expression | `#` | `"property"` |
-| `Value` | Value expression | `@` (variable) or direct value (const) | `"value"` |
-| `GenericSql` | SQL fragment generated via delegate or registration | - | `"genericsql"` |
 | `Update` | Update segment, represents UPDATE | `$update` | `"update"` |
-| `Delete` | Delete segment, represents DELETE | `$delete` | `"delete"` |
+| `Value` | Value expression | `@` (variable) or direct value (const) | `"value"` |
+| `ValueBinary` | Value binary expression (arithmetic or concat) |`"$":"+"`,`"$":"-"`,`"$":"*"`, `"$":"/`, `"$":"%"`, `"$":"||"` | `"bin"` |
+| `ValueSet` | Value-set expression (for IN or CONCAT) | - | `"set"` |
 | `Where` | Filter segment, represents WHERE | `$where` | `"where"` |
-| `GroupBy` | Group-by segment, represents GROUP BY | `$group` | `"group"` |
-| `OrderBy` | Order-by segment, represents ORDER BY | `$orderby` | `"orderby"` |
-| `Having` | Having segment, represents HAVING | `$having` | `"having"` |
-| `Section` | Pagination segment, represents LIMIT/OFFSET | `$section` | `"section"` |
 
 ## 2. Short Format vs Normal Format Comparison
 
@@ -519,4 +519,4 @@ This is usually the hardest part to read because `From -> Where -> OrderBy -> Se
 
 - [Back to docs hub](../README.md)
 - [Expression Extension](./01-expression-extension.en.md)
-- [Frontend Native Expr Query](../03-advanced-topics/08-frontend-native-expr.en.md)
+- [Frontend Native Expr Query](./06-frontend-native-expr.en.md)

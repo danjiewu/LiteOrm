@@ -22,7 +22,12 @@
 
 Start with the docs hub, then use the scenario-based reference pages for targeted lookups.
 
-**[Docs Hub](https://danjiewu.github.io/LiteOrm/)**
+**[Docs Hub](./docs/README.md)**
+
+- **Getting Started**: install LiteOrm, register it, and run the first working example
+- **Core Usage**: focus on entity mapping, querying, CRUD, associations, and **mixing Lambda with Expr**
+- **Advanced Topics**: cover transactions, sharding, performance, window functions, permission filtering, and diagnostics
+- **Extensibility**: cover expression extension, Expr serialization, and frontend QueryString / native Expr integration patterns
 
 LiteOrm is a lightweight, high-performance .NET ORM that combines micro-ORM speed with full-ORM ergonomics. It fits projects that need predictable performance while still handling rich SQL scenarios cleanly.
 

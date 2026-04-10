@@ -101,7 +101,7 @@ builder.Host.RegisterLiteOrm(options =>
 - 宿主 DI 中的 `ILoggerFactory`：用于常规 Service 调用日志。
 - `options.LoggerFactory`：主要用于框架注册和程序集扫描阶段的输出。
 
-详细用法参见：[日志与诊断](../03-advanced-topics/10-logging.md)
+详细用法参见：[日志与诊断](../03-advanced-topics/07-logging.md)
 
 ## 多数据源与读写分离建议
 

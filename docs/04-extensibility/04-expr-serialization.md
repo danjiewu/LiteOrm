@@ -17,68 +17,66 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
 
 | 标记 | 含义 | 示例 |
 |-----|------|------|
-| `#` | 属性引用（Property） | `{"#": "Name"}` 或 `{"#": "u.Name"}` |
-| `@` | 变量值 | `{"@": 42}` 或 `{"@": "hello"}` |
-| `$` | 类型/操作符标识符 | `{"$": "table"}` 或 `{"$": "=="}` |
 | `!` | 取反（Not） | `{"!": {"#": "IsActive"}}` |
+| `#` | 属性引用（Property） | `{"#": "Name"}` 或 `{"#": "u.Name"}` |
+| `$` | 类型/操作符标识符 | `{"$": "table"}` 或 `{"$": "=="}` |
 | `$and` | 逻辑与 | `{"$and": [...]}` |
 | `$or` | 逻辑或 | `{"$or": [...]}` |
+| `@` | 变量值 | `{"@": 42}` 或 `{"@": "hello"}` |
 
-### 1.2 SQL 操作符映射
+### 1.2 Expr 操作符映射
 
-| SQL 操作符 | JSON 简洁表示 |
+| Expr 比较操作符 | JSON 简洁表示 |
 |-----------|-------------|
-| `=` | `==` |
-| `<>` | `!=` |
-| `>` | `>` |
-| `>=` | `>=` |
-| `<` | `<` |
-| `<=` | `<=` |
-| `.In()` | `in` |
-| `.NotIn()` | `notin` |
-| `.Like()` | `like` |
-| `.NotLike()` | `notlike` |
 | `.Contains()` | `contains` |
-| `.NotContains()` | `notcontains` |
-| `.StartsWith()` | `startswith` |
-| `.NotStartsWith()` | `notstartswith` |
 | `.EndsWith()` | `endswith` |
+| `.In()` | `in` |
+| `.Like()` | `like` |
+| `.NotContains()` | `notcontains` |
 | `.NotEndsWith()` | `notendswith` |
+| `.NotIn()` | `notin` |
+| `.NotLike()` | `notlike` |
 | `.RegexpLike()` | `regexp` |
 | `.NotRegexpLike()` | `notregexp` |
+| `.NotStartsWith()` | `notstartswith` |
+| `.StartsWith()` | `startswith` |
+| `<` | `<` |
+| `<=` | `<=` |
+| `<>` | `!=` |
+| `=` | `==` |
+| `>` | `>` |
+| `>=` | `>=` |
 
 ### 1.3 ExprType 类型表格
 
-> 这一节最容易因历史资料混淆。以下名称、标记和值均按当前实现整理。
-
 | ExprType | 说明 | 简洁标记 | 正常模式 `$` 值 |
 |----------|------|---------|---------------|
-| `Table` | 表片段，表示单表或子查询引用 | `$table` | `"table"` |
-| `TableJoin` | 表连接片段，表示 JOIN 子句 | `$join` | `"join"` |
+| `And` | 逻辑 AND 表达式组合 | `$and` | `"and"` |
+| `Delete` | 删除片段，表示 DELETE 语句 | `$delete` | `"delete"` |
+| `Foreign` | 外键 EXISTS 表达式 | `$foreign` | `"foreign"` |
 | `From` | From 片段，表示数据源（表或视图） | `$from` | `"from"` |
+| `Function` | 函数调用表达式 | `{"$":"func","函数名":[...]}` | `"func"` |
+| `GenericSql` | 通过委托或注册生成的 SQL 片段 | - | `"sql"` |
+| `GroupBy` | 分组片段，表示 GROUP BY 子句 | `$group` | `"group"` |
+| `Having` | Having 片段，表示 HAVING 条件 | `$having` | `"having"` |
+| `Lambda` | Lambda 会被解析为内部表达式 | - | - |
+| `LogicBinary` | 逻辑二元表达式（比较运算） | `"$":"=="`, `"$":"!="`, `"$":">"`, `"$":">="`, `"$":"<"`, `"$":"<="`, `"$":"in"`... | `"logic"` |
+| `Not` | 逻辑 NOT 表达式 | `!` | `"not"` |
+| `Or` | 逻辑 OR 表达式组合 | `$or` | `"or"` |
+| `OrderBy` | 排序片段，表示 ORDER BY 子句 | `$orderby` | `"orderby"` |
+| `OrderByItem` | ORDER BY 项 | - | `"orderbyitem"` |
+| `Property` | 属性（列）引用表达式 | `#` | `"prop"` |
+| `Section` | 分页片段，表示 LIMIT/OFFSET 子句 | `$section` | `"section"` |
 | `Select` | 选择片段，表示 SELECT 查询 | `$select` | `"select"` |
 | `SelectItem` | Select 项，用于 SELECT 列定义 | - | `"selectitem"` |
-| `OrderByItem` | ORDER BY 项 | - | `"orderbyitem"` |
-| `Function` | 函数调用表达式 | `{"$":"func","函数名":[...]}` | `"func"` |
-| `Foreign` | 外键 EXISTS 表达式 | `$foreign` | `"foreign"` |
-| `Lambda` | Lambda 包装表达式（仅用于解析） | - | `"lambda"` |
-| `LogicBinary` | 逻辑二元表达式（比较运算） | `$==`, `$!=`, `$>`, `$>=`, `$<`, `$<=`, `$in`... | `"logic"` |
-| `And` | 逻辑 AND 表达式组合 | `$and` | `"and"` |
-| `Or` | 逻辑 OR 表达式组合 | `$or` | `"or"` |
-| `Not` | 逻辑 NOT 表达式 | `!` | `"not"` |
-| `ValueBinary` | 值二元表达式（算术或串联） | `$+`, `$-`, `$*`, `$/`, `$%`, `$||` | `"valuebinary"` |
-| `ValueSet` | 值集合表达式（用于 IN 或 CONCAT） | - | `"valueset"` |
+| `Table` | 表片段，表示单表或子查询引用 | `$table` | `"table"` |
+| `TableJoin` | 表连接片段，表示 JOIN 子句 | `$join` | `"join"` |
 | `Unary` | 一元表达式（如 DISTINCT, -a 等） | - | `"unary"` |
-| `Property` | 属性（列）引用表达式 | `#` | `"property"` |
-| `Value` | 值表达式 | `@`（变量）或直接值（常量） | `"value"` |
-| `GenericSql` | 通过委托或注册生成的 SQL 片段 | - | `"genericsql"` |
 | `Update` | 更新片段，表示 UPDATE 语句 | `$update` | `"update"` |
-| `Delete` | 删除片段，表示 DELETE 语句 | `$delete` | `"delete"` |
+| `Value` | 值表达式 | `@`（变量）或直接值（常量） | `"value"` |
+| `ValueBinary` | 值二元表达式（算术或串联） | `"$":"+"`,`"$":"-"`,`"$":"*"`, `"$":"/`, `"$":"%"`, `"$":"||"` | `"bin"` |
+| `ValueSet` | 值集合表达式（用于 IN 或 CONCAT） | - | `"set"` |
 | `Where` | 筛选片段，表示 WHERE 条件 | `$where` | `"where"` |
-| `GroupBy` | 分组片段，表示 GROUP BY 子句 | `$group` | `"group"` |
-| `OrderBy` | 排序片段，表示 ORDER BY 子句 | `$orderby` | `"orderby"` |
-| `Having` | Having 片段，表示 HAVING 条件 | `$having` | `"having"` |
-| `Section` | 分页片段，表示 LIMIT/OFFSET 子句 | `$section` | `"section"` |
 
 ## 2. 简洁模式 vs 正常模式对比
 
@@ -519,4 +517,4 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
 
 - [返回目录](../README.md)
 - [表达式扩展](./01-expression-extension.md)
-- [前端原生 Expr 查询](../03-advanced-topics/08-frontend-native-expr.md)
+- [前端原生 Expr 查询](./06-frontend-native-expr.md)

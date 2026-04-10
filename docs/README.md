@@ -20,6 +20,7 @@
 | [查询指南](./02-core-usage/03-query-guide.md) | [Query Guide](./02-core-usage/03-query-guide.en.md) | 各种查询方式 |
 | [CRUD指南](./02-core-usage/04-crud-guide.md) | [CRUD Guide](./02-core-usage/04-crud-guide.en.md) | 增删改查操作 |
 | [关联查询](./02-core-usage/05-associations.md) | [Associations](./02-core-usage/05-associations.en.md) | 表关联与 JOIN |
+| [Lambda 与 Expr 组合使用](./02-core-usage/06-lambda-expr-mixing.md) | [Lambda & Expr Mixing](./02-core-usage/06-lambda-expr-mixing.en.md) | 在强类型 Lambda 中复用动态 Expr |
 
 ### 高级特性篇 / Advanced Topics
 
@@ -31,10 +32,7 @@
 | [窗口函数](./03-advanced-topics/04-window-functions.md) | [Window Functions](./03-advanced-topics/04-window-functions.en.md) | 窗口函数支持 |
 | [自定义分页](./03-advanced-topics/05-custom-paging.md) | [Custom Paging](./03-advanced-topics/05-custom-paging.en.md) | 分页方案扩展 |
 | [权限过滤](./03-advanced-topics/06-permission-filtering.md) | [Permission Filtering](./03-advanced-topics/06-permission-filtering.en.md) | 用户范围过滤与访问控制 |
-| [前端 QueryString 查询](./03-advanced-topics/07-frontend-querystring.md) | [Frontend QueryString](./03-advanced-topics/07-frontend-querystring.en.md) | 前端拼接查询参数并调用查询接口 |
-| [前端原生 Expr 查询](./03-advanced-topics/08-frontend-native-expr.md) | [Frontend Native Expr](./03-advanced-topics/08-frontend-native-expr.en.md) | 前端构造原生 Expr JSON 并调用查询接口 |
-| [Lambda 与 Expr 组合使用](./03-advanced-topics/09-lambda-expr-mixing.md) | [Lambda & Expr Mixing](./03-advanced-topics/09-lambda-expr-mixing.en.md) | 组合使用 Lambda 和 Expr |
-| [日志与诊断](./03-advanced-topics/10-logging.md) | [Logging & Diagnostics](./03-advanced-topics/10-logging.en.md) | ServiceLog、Log 特性与慢查询日志 |
+| [日志与诊断](./03-advanced-topics/07-logging.md) | [Logging & Diagnostics](./03-advanced-topics/07-logging.en.md) | ServiceLog、Log 特性与慢查询日志 |
 
 ### 扩展开发篇 / Extensibility
 
@@ -44,6 +42,8 @@
 | [验证器](./04-extensibility/02-function-validator.md) | [Function Validator](./04-extensibility/02-function-validator.en.md) | 函数验证机制 |
 | [SqlBuilder](./04-extensibility/03-custom-sqlbuilder.md) | [SqlBuilder](./04-extensibility/03-custom-sqlbuilder.en.md) | SQL 方言扩展 |
 | [Expr 序列化格式](./04-extensibility/04-expr-serialization.md) | [Expr Serialization Format](./04-extensibility/04-expr-serialization.en.md) | JSON 简洁模式与正常模式对比 |
+| [前端 QueryString 查询](./04-extensibility/05-frontend-querystring.md) | [Frontend QueryString](./04-extensibility/05-frontend-querystring.en.md) | 用 URL 参数驱动后端 Expr 查询 |
+| [前端原生 Expr 查询](./04-extensibility/06-frontend-native-expr.md) | [Frontend Native Expr](./04-extensibility/06-frontend-native-expr.en.md) | 按 LiteOrm 序列化格式提交 Expr JSON |
 
 ### 参考文档 / Reference
 

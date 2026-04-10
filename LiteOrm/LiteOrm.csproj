@@ -17,7 +17,9 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
       将全局自动扩展关联表改为在关联时指定，避免关联关系混乱和性能损失；
-      And、Or表达式序列化默认使用简洁模式。
+      And、Or表达式序列化默认使用简洁模式；
+      修复Oracle自增列插入BUG；
+      修复Expr为空时扩展方法To不能正确解析问题。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

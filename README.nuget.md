@@ -292,6 +292,8 @@ var users = await userService.SearchAsync(u => u.Age > 18);
 
 ```
 
+Best for most day-to-day queries where readability and compile-time checking matter most.
+
 
 
 ### `Expr` queries
@@ -305,6 +307,8 @@ var expr = Expr.Prop("Age") > 18 & Expr.Prop("Status") == 1;
 var users = await userService.SearchAsync(expr);
 
 ```
+
+Best for dynamically assembled filters, admin search screens, and query-builder style scenarios.
 
 
 
@@ -325,6 +329,8 @@ var users = await objectViewDAO.Search(
 ).ToListAsync();
 
 ```
+
+Use this only for small custom SQL fragments that are hard to express with pure Lambda or pure `Expr`.
 
 
 
@@ -432,13 +438,13 @@ public class Log : IArged
 
 
 
-Start with the docs hub, then use the scenario-based reference pages for faster lookup.
+Start with the docs hub, then follow the section that matches your scenario.
 
 
 
-- **[Documentation Hub](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Bilingual docs hub organized by learning path
+- **[Documentation Hub](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Bilingual docs hub organized into Getting Started, Core Usage, Advanced Topics, and Extensibility
 
-- **[Docs Hub (中文)](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Guided Chinese and English documentation organized by learning path
+- **[Docs Hub (中文)](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Chinese and English docs hub with the same learning-path structure
 
 - **[API Index](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/02-api-index.en.md)** - Scenario-based API and capability entry points
 
@@ -750,11 +756,13 @@ var page = await userService.SearchAsync(
 
 
 
-- **Lambda 查询**：直观的 Lambda 表达式查询
+- **Lambda 查询**：默认优先的查询方式，适合大多数日常业务筛选
 
-- **Expr 表达式**：灵活的动态条件构建
+- **Expr 表达式**：适合后台筛选、查询构造器等动态条件拼装场景
 
-- **ExprString 查询**：参数化字符串查询
+- **ExprString 查询**：仅在需要补充少量自定义 SQL 片段时使用
+
+- **Lambda 与 Expr 组合**：在保留强类型可读性的同时复用动态条件
 
 - **自动关联**：无损的 JOIN 查询
 
@@ -768,13 +776,13 @@ var page = await userService.SearchAsync(
 
 
 
-建议先从文档中心进入，再按场景查阅索引页或兼容性说明。
+建议先从文档中心进入，再按“入门篇 / 核心使用篇 / 高级特性篇 / 扩展开发篇”的路径继续阅读。
 
 
 
-- **[中文文档中心](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - 按学习路径组织的中英文文档导航
+- **[中文文档中心](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - 按入门、核心使用、高级特性、扩展开发组织的文档入口
 
-- **[English Docs Hub](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Bilingual docs hub organized by learning path
+- **[English Docs Hub](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Same bilingual docs hub with aligned learning-path sections
 
 - **[API 索引](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/02-api-index.md)** - 按使用场景整理的接口与能力入口
 

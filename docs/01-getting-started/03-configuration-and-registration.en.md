@@ -98,7 +98,7 @@ builder.Host.RegisterLiteOrm(options =>
 - the host DI `ILoggerFactory` handles normal service invocation logs
 - `options.LoggerFactory` is mainly for framework registration and assembly-scan output
 
-For attribute usage and diagnostics guidance, see [Logging and Diagnostics](../03-advanced-topics/10-logging.en.md).
+For attribute usage and diagnostics guidance, see [Logging and Diagnostics](../03-advanced-topics/07-logging.en.md).
 
 ## 5. Multi-data-source and read/write guidance
 
