@@ -146,6 +146,10 @@ namespace LiteOrm.Common
             {
                 return new ValueExpr(e.Clone()) { IsConst = IsConst };
             }
+            else if(Value is ICloneable cloneable)
+            {
+                return new ValueExpr(cloneable.Clone()) { IsConst = IsConst };
+            }
             else
             {
                 return new ValueExpr(Value) { IsConst = IsConst };

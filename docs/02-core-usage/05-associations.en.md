@@ -32,6 +32,36 @@ public class Order
 
 Explanation: `ForeignType` is used to annotate the foreign key column corresponding to the external entity. When querying a view, `ForeignColumn` in the view class can automatically generate JOINs and read external table columns.
 
+### 2.1 Multiple `ForeignType` declarations on one column
+
+The same column can now declare multiple `ForeignType` entries. This is useful when one key needs to expose multiple readable relationship paths.
+
+```csharp
+[Table("Documents")]
+public class Document
+{
+    [Column("OwnerId")]
+    [ForeignType(typeof(User), Alias = "Owner")]
+    [ForeignType(typeof(Department), Alias = "OwnerDept")]
+    public int OwnerId { get; set; }
+}
+
+public class DocumentView : Document
+{
+    [ForeignColumn("Owner", Property = nameof(User.UserName))]
+    public string? OwnerName { get; set; }
+
+    [ForeignColumn("OwnerDept", Property = nameof(Department.Name))]
+    public string? OwnerDeptName { get; set; }
+}
+```
+
+Notes:
+
+- Each `ForeignType` still represents a **single-column** relationship, and LiteOrm exposes them uniformly through `SqlColumn.ForeignTables`.
+- If the same target type appears more than once, give each path an explicit `Alias` to avoid ambiguity.
+- `ForeignColumn` should reference the alias when you need a specific path; type-based lookup is only suitable when there is a single unambiguous target.
+
 ## 3. TableJoin
 
 `TableJoin` is suitable for expressing complex association relationships.

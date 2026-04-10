@@ -5,7 +5,7 @@ namespace LiteOrm.Common
     /// <summary>
     /// 关联的外部实体类型定义
     /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = true, Inherited = true)]
     public class ForeignTypeAttribute : System.Attribute
     {
         private Type _objectType;

@@ -513,7 +513,6 @@ This is usually the hardest part to read because `From -> Where -> OrderBy -> Se
 
 - in short format, the **function name itself becomes the property name**
 - in normal format, the name lives in `FunctionName` and parameters live in `Args`
-- if you see `$fn`, `"function"`, `MethodName`, or `MehtodName` in old notes, treat them as outdated
 
 ## Related Links
 

@@ -25,7 +25,7 @@ If the UI already needs grouped AND / OR logic, multi-column dynamic sorting, or
 
 ## 2. Supported parameters
 
-`GET /api/orders/query` in `LiteOrm.WebDemo` commonly uses:
+An endpoint such as `GET /api/orders/query` commonly uses:
 
 | Parameter | Purpose |
 |------|------|
@@ -77,6 +77,37 @@ The frontend only transports parameters. The backend should still centralize the
 
 That keeps list, stats, and export endpoints aligned on the same query behavior.
 
+### 4.1 Count caching
+
+If a list API always returns `total`, the backend usually needs an extra `Count` query. When the same filters and pages are requested repeatedly, that count query is a good candidate for short-lived caching.
+
+One practical approach for a demo-style project is:
+
+- cache only the `Count` result, not the page data
+- use the **final effective `Expr` object itself** as the cache key, together with the current cache version for validity checks
+- bump the cache version after successful create, update, or delete operations so old count entries become invalid
+- keep the TTL short so demo data does not stay stale for long
+
+### 4.2 Implementation approach
+
+A practical pattern looks like this:
+
+1. build the full filter in the service layer
+2. use the final `Expr` directly as the `IMemoryCache` key
+3. rely on LiteOrm's structural `Equals/GetHashCode` implementation for cache hits
+4. try `IMemoryCache` first
+5. on a miss, run `CountAsync(...)` and store the result
+6. invalidate by version after successful writes
+
+This keeps count caching scoped to "the same user + the same effective filter" and avoids cross-user reuse without converting the filter into JSON first.
+
+### 4.3 Things to watch
+
+- cache `total`, not the actual page items
+- make sure the user-scope filter is part of the cache key
+- in-process memory cache is fine for a demo app; multi-instance deployments should switch to distributed cache or skip this optimization
+- version-based invalidation is simple and safe, but it expires all count entries together, which is acceptable for demos and small admin apps, not ideal for very high write rates
+
 ## 5. Response shape
 
 The query API returns:
@@ -110,3 +141,4 @@ QueryString is only a transport format. Authorization is still enforced on the b
 - [Permission filtering](../03-advanced-topics/06-permission-filtering.en.md)
 - [Frontend native Expr querying](./06-frontend-native-expr.en.md)
 - [Query guide](../02-core-usage/03-query-guide.en.md)
+- [LiteOrm.WebDemo](../../LiteOrm.WebDemo/)

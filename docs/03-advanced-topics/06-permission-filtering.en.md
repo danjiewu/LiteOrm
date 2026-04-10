@@ -1,6 +1,6 @@
 # Permission Filtering and User Scope Control
 
-When a system needs to demonstrate rich querying while preventing regular users from reading or modifying data they do not own, permission filtering must live on the backend rather than in the frontend alone. This document uses `LiteOrm.WebDemo` to show a practical pattern for LiteOrm: **inject the user-scope condition before `Search` / `Count`, and add explicit checks for detail, update, and delete operations.**
+When a system needs to demonstrate rich querying while preventing regular users from reading or modifying data they do not own, permission filtering must live on the backend rather than in the frontend alone. This document shows a practical LiteOrm pattern: **inject the user-scope condition before `Search` / `Count`, and add explicit checks for detail, update, and delete operations.**
 
 ## Scenario Matrix
 
@@ -43,7 +43,7 @@ This keeps QueryString and native Expr flows aligned on the same permission boun
 
 ### 1.3 Detail, update, and delete
 
-List filtering is not enough. `LiteOrm.WebDemo` also checks access for:
+List filtering is not enough. You should also check access for:
 
 - `GET /api/orders/{id}`
 - `PUT /api/orders/{id}`
@@ -97,3 +97,4 @@ Even if a list only returns “my items”, direct requests to `/api/orders/{id}
 - [Frontend QueryString querying](../04-extensibility/05-frontend-querystring.en.md)
 - [Frontend native Expr querying](../04-extensibility/06-frontend-native-expr.en.md)
 - [Associations](../02-core-usage/05-associations.en.md)
+- [LiteOrm.WebDemo](../../LiteOrm.WebDemo/)

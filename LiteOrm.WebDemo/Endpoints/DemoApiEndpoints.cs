@@ -106,7 +106,7 @@ public static class DemoApiEndpoints
             return Results.BadRequest(new
             {
                 error = ex.Message,
-                hint = "请提交 LiteOrm Expr 当前实际序列化后的 JSON 形状，例如使用 $section / $order / $where 表达链式片段。"
+                hint = "请提交 LiteOrm Expr 当前实际序列化后的 JSON 形状，例如使用 $section / $orderby / $where 表达链式片段。"
             });
         }
     }
@@ -256,7 +256,7 @@ public static class DemoApiEndpoints
         }
 
         SqlTraceHelper.Reset();
-        var deleted = await orderService.DeleteIDAsync(id, cancellationToken: cancellationToken);
+        var deleted = await orderService.DeleteAsync(existing, cancellationToken);
         return deleted
             ? Results.Ok(new { success = true, sql = SqlTraceHelper.GetLatestSql() })
             : Results.NotFound();

@@ -6,6 +6,7 @@ using LiteOrm.WebDemo.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.RegisterLiteOrm();
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<DemoAuthFilter>();
 
 var app = builder.Build();

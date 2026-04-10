@@ -101,7 +101,7 @@ namespace LiteOrm
         private ColumnDefinition GenerateColumnDefinition(PropertyInfo property, ISqlBuilder sqlBuilder)
         {
             if (property.GetIndexParameters().Length != 0) return null;
-            ForeignTypeAttribute foreignTypeAttr = property.GetAttribute<ForeignTypeAttribute>();
+            ForeignTable[] foreignTables = GetForeignTables(property);
 
             if (property.GetAttribute<ForeignColumnAttribute>() is not null) return null;
 
@@ -127,16 +127,7 @@ namespace LiteOrm
                     column.DefaultValue = columnAttribute.DefaultValue;
                     column.IdentityIncreasement = columnAttribute.IdentityIncreasement;
                     column.Mode = columnAttribute.ColumnMode & ((property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None));
-                    if (foreignTypeAttr is not null)
-                    {
-                        column.ForeignTable = new ForeignTable()
-                        {
-                            ForeignType = foreignTypeAttr.ObjectType,
-                            JoinType = foreignTypeAttr.JoinType,
-                            Alias = foreignTypeAttr.Alias,
-                            AutoExpand = foreignTypeAttr.AutoExpand
-                        };
-                    }
+                    column.ForeignTables = foreignTables;
                     return column;
                 }
             }
@@ -151,16 +142,7 @@ namespace LiteOrm
                 column.DbType = dbType;
                 column.Length = DbTypeMap.GetDefaultLength(column.DbType);
                 column.AllowNull = property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(column.PropertyType) is not null : true;
-                if (foreignTypeAttr is not null)
-                {
-                    column.ForeignTable = new ForeignTable()
-                    {
-                        ForeignType = foreignTypeAttr.ObjectType,
-                        JoinType = foreignTypeAttr.JoinType,
-                        Alias = foreignTypeAttr.Alias,
-                        AutoExpand = foreignTypeAttr.AutoExpand
-                    };
-                }
+                column.ForeignTables = foreignTables;
                 return column;
             }
         }
@@ -172,19 +154,8 @@ namespace LiteOrm
             ForeignColumnAttribute foreignColumnAttribute = property.GetAttribute<ForeignColumnAttribute>();
             if (foreignColumnAttribute is not null)
             {
-                ForeignTypeAttribute foreignTypeAttr = property.GetAttribute<ForeignTypeAttribute>();
-
                 ForeignColumn foreignColumn = new ForeignColumn(property);
-                if (foreignTypeAttr is not null)
-                {
-                    foreignColumn.ForeignTable = new ForeignTable()
-                    {
-                        ForeignType = foreignTypeAttr.ObjectType,
-                        JoinType = foreignTypeAttr.JoinType,
-                        Alias = foreignTypeAttr.Alias,
-                        AutoExpand = foreignTypeAttr.AutoExpand
-                    };
-                }
+                foreignColumn.ForeignTables = GetForeignTables(property);
                 return foreignColumn;
             }
             else
@@ -389,43 +360,69 @@ namespace LiteOrm
         {
             ColumnRef columnRef = columnRefs.Dequeue();
             SqlColumn column = columnRef.Column;
-            if (column.ForeignTable is not null)
+            foreach (ForeignTable foreignTableInfo in column.ForeignTables)
             {
-                bool foreignTypeExists = false;
-                foreach (JoinedTable joinedTable in joinedTables.Values)
-                {
-                    if (joinedTable.TableDefinition.ObjectType == column.ForeignType && (joinedTable.Name == column.ForeignAlias || String.IsNullOrEmpty(column.ForeignAlias)))
-                    {
-                        foreignTypeExists = true;
-                        break;
-                    }
-                }
+                JoinColumn(joinedTables, columnRefs, columnRef, foreignTableInfo);
+            }
+        }
 
-                if (!foreignTypeExists)
-                {
-                    TableDefinition foreignTable = GetTableDefinition(column.ForeignType);
-                    JoinedTable joinedTable = new JoinedTable(foreignTable)
-                    {
-                        JoinType = column.ForeignTable.JoinType,
-                        AutoExpand = column.ForeignTable.AutoExpand
-                    };
-                    if (String.IsNullOrEmpty(column.ForeignAlias))
-                        joinedTable.Name = column.ForeignType.Name;
-                    else
-                        joinedTable.Name = column.ForeignAlias;
-                    List<ColumnRef> foreignKeys = new List<ColumnRef>();
-                    foreignKeys.Add(columnRef);
-                    joinedTable.ForeignKeys = foreignKeys.AsReadOnly();
-                    joinedTables[joinedTable.Name] = joinedTable;
+        private static ForeignTable[] GetForeignTables(PropertyInfo property)
+        {
+            ForeignTypeAttribute[] foreignTypeAttrs = (ForeignTypeAttribute[])property.GetCustomAttributes(typeof(ForeignTypeAttribute), true);
+            if (foreignTypeAttrs.Length == 0) return Array.Empty<ForeignTable>();
 
-                    // 如果所引用外表的AutoExpand为true，将该外表中的列加入连接队列，自动扩展连接的外表
-                    if (joinedTable.AutoExpand)
-                    {
-                        foreach (SqlColumn lcolumn in foreignTable.Columns)
-                        {
-                            columnRefs.Enqueue(new ColumnRef(joinedTable, lcolumn));
-                        }
-                    }
+            ForeignTable[] foreignTables = new ForeignTable[foreignTypeAttrs.Length];
+            for (int i = 0; i < foreignTypeAttrs.Length; i++)
+            {
+                foreignTables[i] = CreateForeignTable(foreignTypeAttrs[i]);
+            }
+            return foreignTables;
+        }
+
+        private static ForeignTable CreateForeignTable(ForeignTypeAttribute foreignTypeAttr)
+        {
+            return new ForeignTable()
+            {
+                ForeignType = foreignTypeAttr.ObjectType,
+                JoinType = foreignTypeAttr.JoinType,
+                Alias = foreignTypeAttr.Alias,
+                AutoExpand = foreignTypeAttr.AutoExpand
+            };
+        }
+
+        private void JoinColumn(ConcurrentDictionary<string, JoinedTable> joinedTables, Queue<ColumnRef> columnRefs, ColumnRef columnRef, ForeignTable foreignTableInfo)
+        {
+            string joinedTableName = String.IsNullOrEmpty(foreignTableInfo.Alias) ? foreignTableInfo.ForeignType.Name : foreignTableInfo.Alias;
+            if (joinedTables.TryGetValue(joinedTableName, out JoinedTable existingJoinedTable))
+            {
+                if (existingJoinedTable.TableDefinition.ObjectType != foreignTableInfo.ForeignType)
+                    throw new ArgumentException($"Duplicate table alias name \"{joinedTableName}\"");
+                if (existingJoinedTable.ForeignKeys is not null
+                    && existingJoinedTable.ForeignKeys.Count > 0
+                    && !existingJoinedTable.ForeignKeys[0].Equals(columnRef))
+                    throw new ArgumentException($"Duplicate table alias name \"{joinedTableName}\"");
+                return;
+            }
+
+            TableDefinition foreignTable = GetTableDefinition(foreignTableInfo.ForeignType);
+            JoinedTable joinedTable = new JoinedTable(foreignTable)
+            {
+                JoinType = foreignTableInfo.JoinType,
+                AutoExpand = foreignTableInfo.AutoExpand,
+                Name = joinedTableName
+            };
+            List<ColumnRef> foreignKeys = new List<ColumnRef>();
+            foreignKeys.Add(columnRef);
+            joinedTable.ForeignKeys = foreignKeys.AsReadOnly();
+            if (!joinedTables.TryAdd(joinedTable.Name, joinedTable))
+                throw new ArgumentException($"Duplicate table alias name \"{joinedTable.Name}\"");
+
+            // 如果所引用外表的AutoExpand为true，将该外表中的列加入连接队列，自动扩展连接的外表
+            if (joinedTable.AutoExpand)
+            {
+                foreach (SqlColumn lcolumn in foreignTable.Columns)
+                {
+                    columnRefs.Enqueue(new ColumnRef(joinedTable, lcolumn));
                 }
             }
         }

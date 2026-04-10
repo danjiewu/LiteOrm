@@ -87,12 +87,11 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
-        public void ForeignAlias_WhenForeignTableIsNull_ReturnsNull()
+        public void ForeignTables_WhenNoForeignTable_ReturnsEmpty()
         {
             var column = CreateColumn(nameof(TestEntity.Name));
 
-            Assert.Null(column.ForeignAlias);
-            Assert.Null(column.ForeignType);
+            Assert.Empty(column.ForeignTables);
         }
 
         private static ColumnDefinition CreateColumn(string propertyName)

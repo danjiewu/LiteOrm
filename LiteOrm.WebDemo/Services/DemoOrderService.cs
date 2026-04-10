@@ -3,6 +3,8 @@ using LiteOrm.Service;
 using LiteOrm.WebDemo.Contracts;
 using LiteOrm.WebDemo.Infrastructure;
 using LiteOrm.WebDemo.Models;
+using Microsoft.Extensions.Caching.Memory;
+using System.Threading;
 
 namespace LiteOrm.WebDemo.Services;
 
@@ -17,6 +19,8 @@ public interface IDemoOrderService :
 
 public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOrderService
 {
+    private static readonly TimeSpan CountCacheDuration = TimeSpan.FromSeconds(30);
+    private static long _countCacheVersion = 1;
     private static readonly IReadOnlyDictionary<string, string> SortFieldMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["OrderNo"] = nameof(DemoOrder.OrderNo),
@@ -29,6 +33,12 @@ public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOr
         ["CreatedByUserName"] = nameof(DemoOrderView.CreatedByUserName),
         ["DepartmentName"] = nameof(DemoOrderView.DepartmentName)
     };
+    private readonly IMemoryCache _memoryCache;
+
+    public DemoOrderService(IMemoryCache memoryCache)
+    {
+        _memoryCache = memoryCache;
+    }
 
     public async Task<OrderQueryResult> QueryAsync(OrderQueryRequest request, AuthSessionUser currentUser, CancellationToken cancellationToken = default)
     {
@@ -41,7 +51,7 @@ public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOr
 
         SqlTraceHelper.Reset();
 
-        var total = await CountAsync(filter, cancellationToken: cancellationToken);
+        var total = await CountCachedAsync(filter, cancellationToken);
         var query = Expr.From<DemoOrderView>()
             .Where(filter)
             .OrderBy(request.Desc == true ? Expr.Prop(sortField).Desc() : Expr.Prop(sortField).Asc())
@@ -86,7 +96,7 @@ public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOr
 
         SqlTraceHelper.Reset();
 
-        var total = await CountAsync(filter, cancellationToken: cancellationToken);
+        var total = await CountCachedAsync(filter, cancellationToken);
         var query = ApplyNativeOrderBy(Expr.From<DemoOrderView>().Where(filter), parts.OrderBys).Section(skip, take);
         var items = await SearchAsync(query, cancellationToken: cancellationToken);
 
@@ -151,6 +161,39 @@ public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOr
         }
 
         return filter;
+    }
+
+    public override async Task<bool> InsertAsync(DemoOrder entity, CancellationToken cancellationToken = default)
+    {
+        var inserted = await base.InsertAsync(entity, cancellationToken);
+        if (inserted)
+        {
+            InvalidateCountCache();
+        }
+
+        return inserted;
+    }
+
+    public override async Task<bool> UpdateAsync(DemoOrder entity, CancellationToken cancellationToken = default)
+    {
+        var updated = await base.UpdateAsync(entity, cancellationToken);
+        if (updated)
+        {
+            InvalidateCountCache();
+        }
+
+        return updated;
+    }
+
+    public override async Task<bool> DeleteAsync(DemoOrder entity, CancellationToken cancellationToken = default)
+    {
+        var deleted = await base.DeleteAsync(entity, cancellationToken);
+        if (deleted)
+        {
+            InvalidateCountCache();
+        }
+
+        return deleted;
     }
 
     private static LogicExpr BuildExprFilter(LogicExpr? filter, AuthSessionUser currentUser)
@@ -230,6 +273,26 @@ public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOr
     private static bool IsAdmin(AuthSessionUser currentUser) =>
         string.Equals(currentUser.Role, "Admin", StringComparison.OrdinalIgnoreCase);
 
+    private async Task<int> CountCachedAsync(Expr? filter, CancellationToken cancellationToken)
+    {
+        var cacheKey = filter ?? Expr.Null;
+        if (_memoryCache.TryGetValue<CountCacheEntry>(cacheKey, out var cached) && cached is not null
+            && cached.Version == Interlocked.Read(ref _countCacheVersion))
+        {
+            return cached.Total;
+        }
+
+        var total = await CountAsync(filter, cancellationToken: cancellationToken);
+        _memoryCache.Set(filter is null ? Expr.Null : (Expr)filter.Clone(), new CountCacheEntry(Interlocked.Read(ref _countCacheVersion), total), CountCacheDuration);
+
+        return total;
+    }
+
+    private static void InvalidateCountCache()
+    {
+        Interlocked.Increment(ref _countCacheVersion);
+    }
+
     private sealed class NativeExprParts
     {
         public LogicExpr? Filter { get; set; }
@@ -237,4 +300,6 @@ public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOr
         public int? Skip { get; set; }
         public int? Take { get; set; }
     }
+
+    private sealed record CountCacheEntry(long Version, int Total);
 }

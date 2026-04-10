@@ -511,7 +511,6 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
 
 - 简洁模式里，**函数名本身就是属性名**。
 - 正常模式里，函数名放在 `FunctionName`，参数放在 `Args`。
-- 如果旧文档或示例里看到 `$fn`、`"function"`、`MethodName` 或 `MehtodName`，都不是当前实现使用的字段。
 
 ## 相关链接
 

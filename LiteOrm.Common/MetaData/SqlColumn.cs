@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace LiteOrm.Common
@@ -49,19 +50,9 @@ namespace LiteOrm.Common
         public PropertyInfo Property { get { return _property; } }
 
         /// <summary>
-        /// 关联的外部对象类型
+        /// 关联的外表集合
         /// </summary>
-        public Type ForeignType { get { return ForeignTable?.ForeignType; } }
-
-        /// <summary>
-        /// 关联的外部表信息
-        /// </summary>
-        public ForeignTable ForeignTable { get; internal set; }
-
-        /// <summary>
-        /// 关联的外部对象别名
-        /// </summary>
-        public string ForeignAlias => ForeignTable?.Alias;
+        public IReadOnlyList<ForeignTable> ForeignTables { get; internal set; } = System.Array.Empty<ForeignTable>();
 
         /// <summary>
         /// 赋值

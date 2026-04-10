@@ -1,6 +1,6 @@
 # 权限过滤与用户范围控制
 
-当系统既要展示查询能力，又要避免普通用户读写到不属于自己的数据时，权限过滤就不能只停留在前端页面提示层。本文结合 `LiteOrm.WebDemo` 展示一种适合 LiteOrm 的做法：**在进入 `Search` / `Count` 之前，把用户范围条件拼进 Expr，再对详情、修改、删除补充显式访问校验。**
+当系统既要展示查询能力，又要避免普通用户读写到不属于自己的数据时，权限过滤就不能只停留在前端页面提示层。本文说明一种适合 LiteOrm 的做法：**在进入 `Search` / `Count` 之前，把用户范围条件拼进 Expr，再对详情、修改、删除补充显式访问校验。**
 
 ## 场景选型
 
@@ -15,7 +15,7 @@
 
 ### 1.1 QueryString 查询与统计
 
-`LiteOrm.WebDemo` 的 `GET /api/orders/query` 与 `GET /api/orders/stats` 会先构造业务过滤条件，再根据当前用户角色补充范围条件：
+`GET /api/orders/query` 与 `GET /api/orders/stats` 这类接口会先构造业务过滤条件，再根据当前用户角色补充范围条件：
 
 ```csharp
 if (request.OnlyMine == true || !IsAdmin(currentUser))
@@ -43,7 +43,7 @@ if (!IsAdmin(currentUser))
 
 ### 1.3 详情、修改、删除
 
-列表过滤不能替代对象级访问控制。`LiteOrm.WebDemo` 对以下接口额外做了显式访问校验：
+列表过滤不能替代对象级访问控制。对以下接口仍应额外做显式访问校验：
 
 - `GET /api/orders/{id}`
 - `PUT /api/orders/{id}`
@@ -116,3 +116,4 @@ var myItems = items.Where(x => x.CreatedByUserId == currentUser.Id).ToList();
 - [前端 QueryString 查询](../04-extensibility/05-frontend-querystring.md)
 - [前端原生 Expr 查询](../04-extensibility/06-frontend-native-expr.md)
 - [关联查询](../02-core-usage/05-associations.md)
+- [LiteOrm.WebDemo](../../LiteOrm.WebDemo/)

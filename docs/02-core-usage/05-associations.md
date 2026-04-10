@@ -80,6 +80,34 @@ public class Order
 
 - 说明：ForeignType 用于标注外键列对应的外部实体。查询视图时，通过视图类中的 ForeignColumn 可以自动生成 JOIN 并读取外表列。
 
+#### 2.1 一个列上声明多个 `ForeignType`
+
+现在同一个列可以重复声明多个 `ForeignType`。适合“底层还是单列外键，但需要暴露多条可读关联路径”的场景。
+
+```csharp
+[Table("Documents")]
+public class Document
+{
+    [Column("OwnerId")]
+    [ForeignType(typeof(User), Alias = "Owner")]
+    [ForeignType(typeof(Department), Alias = "OwnerDept")]
+    public int OwnerId { get; set; }
+}
+
+public class DocumentView : Document
+{
+    [ForeignColumn("Owner", Property = nameof(User.UserName))]
+    public string? OwnerName { get; set; }
+
+    [ForeignColumn("OwnerDept", Property = nameof(Department.Name))]
+    public string? OwnerDeptName { get; set; }
+}
+```
+
+- 每个 `ForeignType` 仍然只描述一条**单列关联**，运行时统一收敛到 `SqlColumn.ForeignTables`。
+- 如果同一个目标类型要出现多次，建议都显式指定 `Alias`，避免路径歧义。
+- 视图里的 `ForeignColumn` 需要精确命中某条路径时，优先引用 `Alias`；只有目标唯一时，才适合直接按类型引用。
+
 ### 3) TableJoin（类级）
 
 ```csharp
