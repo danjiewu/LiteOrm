@@ -68,6 +68,8 @@ Notes:
 
 If the target table uses a **composite primary key**, you can use `ForeignKeys = "Key1,Key2"` to provide multiple foreign key columns in order; `ForeignType` does not support this multi-column association scenario.
 
+If you have a compatibility-driven mapping that must join by non-primary target fields, you can explicitly override the target join keys with `PrimeKeys = "Code"` or `PrimeKeys = "Key1,Key2"`. This overrides the default "join by target primary key" behavior, but it is **not the recommended style** for normal models.
+
 ```csharp
 [TableJoin(typeof(OrderItem), "OrderId,LineNo", AliasName = "Item")]
 public class Shipment

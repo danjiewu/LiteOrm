@@ -13,6 +13,7 @@ namespace LiteOrm.Common
         private string _alias;
         private TableJoinType _joinType = TableJoinType.Left;
         private object _sourceTable;
+        private string _primeKeys;
 
         /// <summary>
         /// 指定源表，关联的对象类型和外键生成关联信息
@@ -97,6 +98,16 @@ namespace LiteOrm.Common
         public string ForeignKeys
         {
             get { return _foreignKeys; }
+        }
+
+        /// <summary>
+        /// 目标表用于关联的键属性，多个属性以","分隔，顺序需与 <see cref="ForeignKeys"/> 对应。
+        /// 默认使用目标表主键。该配置仅用于覆盖默认主键关联，属于兼容性写法，不推荐常规场景使用。
+        /// </summary>
+        public string PrimeKeys
+        {
+            get { return _primeKeys; }
+            set { _primeKeys = value; }
         }
     }
 }

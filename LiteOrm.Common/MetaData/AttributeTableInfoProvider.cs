@@ -180,7 +180,7 @@ namespace LiteOrm
                 var targetTableDef = GetTableDefinition(tableJoin.TargetType);
                 if (targetTableDef == null) continue;
 
-                JoinedTable joinedTable = new JoinedTable(targetTableDef)
+                JoinedTable joinedTable = new JoinedTable(targetTableDef, GetJoinPrimeKeys(targetTableDef, tableJoin))
                 {
                     JoinType = tableJoin.JoinType,
                     AutoExpand = tableJoin.AutoExpand
@@ -388,6 +388,26 @@ namespace LiteOrm
                 Alias = foreignTypeAttr.Alias,
                 AutoExpand = foreignTypeAttr.AutoExpand
             };
+        }
+
+        private static ColumnDefinition[] GetJoinPrimeKeys(TableDefinition targetTableDef, TableJoinAttribute tableJoin)
+        {
+            if (String.IsNullOrWhiteSpace(tableJoin.PrimeKeys))
+            {
+                return targetTableDef.Keys;
+            }
+
+            string[] primeKeyNames = tableJoin.PrimeKeys.Split(',');
+            ColumnDefinition[] primeKeys = new ColumnDefinition[primeKeyNames.Length];
+            for (int i = 0; i < primeKeyNames.Length; i++)
+            {
+                string primeKeyName = primeKeyNames[i].Trim();
+                ColumnDefinition primeKey = targetTableDef.GetColumn(primeKeyName);
+                if (primeKey == null)
+                    throw new ArgumentException($"Prime key column \"{primeKeyName}\" does not exist in target table \"{targetTableDef.ObjectType.Name}\".");
+                primeKeys[i] = primeKey;
+            }
+            return primeKeys;
         }
 
         private void JoinColumn(ConcurrentDictionary<string, JoinedTable> joinedTables, Queue<ColumnRef> columnRefs, ColumnRef columnRef, ForeignTable foreignTableInfo)

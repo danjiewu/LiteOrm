@@ -128,6 +128,9 @@ public class OrderView : Order
 - 说明：`TableJoin` 适合表达复合关联关系。  
   如果目标表使用**联合主键**，可以通过 `ForeignKeys = "Key1,Key2"` 这种写法，按目标主键顺序提供多个外键列；`ForeignType` 不支持这种多列关联场景。
 
+- 如确有历史兼容需求，也可以通过 `PrimeKeys = "Code"` 或 `PrimeKeys = "Key1,Key2"` 显式覆盖目标表参与关联的键属性。
+  这会覆盖默认“按目标表主键关联”的行为，但**不作为推荐写法**，常规场景仍应优先保持目标表主键定义与关联关系一致。
+
 ```csharp
 [TableJoin(typeof(OrderItem), "OrderId,LineNo", AliasName = "Item")]
 public class Shipment

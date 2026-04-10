@@ -289,7 +289,6 @@ namespace LiteOrm.Common.UnitTests
             // Arrange
             var list = new List<int> { 1, 2, 3 };
             var original = new ValueExpr(list) { IsConst = false };
-
             // Act
             var cloned = (ValueExpr)original.Clone();
 
@@ -314,7 +313,9 @@ namespace LiteOrm.Common.UnitTests
 
             // Assert
             Assert.NotSame(original, cloned);
-            Assert.Same(array, cloned.Value);
+            // Since array is cloneable, we expect a new instance of the array to be created, so we check for value equality rather than reference equality.
+            Assert.NotSame(array, cloned.Value);
+            Assert.Equal(array, (int[])cloned.Value);
             Assert.True(cloned.IsConst);
         }
 

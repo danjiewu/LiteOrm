@@ -43,6 +43,32 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal("Owner", ownerIdColumn.ForeignTables[0].Alias);
         }
 
+        [Fact]
+        public void GetTableView_WithTableJoinPrimeKeys_UsesPrimeKeyOverride()
+        {
+            var provider = CreateProvider();
+
+            var tableView = provider.GetTableView(typeof(TableJoinPrimeKeyView));
+            var joinedTable = Assert.Single(tableView.JoinedTables);
+
+            Assert.Equal("DeptByCode", joinedTable.Name);
+            Assert.Equal(nameof(PrimeKeyDepartment.Code), joinedTable.ForeignPrimeKeys[0].Column.PropertyName);
+            Assert.Equal(nameof(TableJoinPrimeKeyView.DepartmentCode), joinedTable.ForeignKeys[0].Column.PropertyName);
+
+            var deptNameColumn = (ForeignColumn)tableView.GetColumn(nameof(TableJoinPrimeKeyView.DepartmentName));
+            Assert.Equal(nameof(PrimeKeyDepartment.Name), deptNameColumn.TargetColumn.Column.PropertyName);
+        }
+
+        [Fact]
+        public void GetTableView_WithMissingTableJoinPrimeKey_ThrowsArgumentException()
+        {
+            var provider = CreateProvider();
+
+            var ex = Assert.Throws<ArgumentException>(() => provider.GetTableView(typeof(InvalidTableJoinPrimeKeyView)));
+
+            Assert.Contains("Prime key column", ex.Message);
+        }
+
         private static AttributeTableInfoProvider CreateProvider()
         {
             var sqlBuilderFactory = new Mock<ISqlBuilderFactory>();
@@ -92,6 +118,38 @@ namespace LiteOrm.Common.UnitTests
         {
             [Column("Id", IsPrimaryKey = true)]
             public int Id { get; set; }
+        }
+
+        [Table("PrimeKeyDepartments")]
+        private class PrimeKeyDepartment
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("Code")]
+            public string Code { get; set; } = string.Empty;
+
+            [Column("Name")]
+            public string Name { get; set; } = string.Empty;
+        }
+
+        [Table("TableJoinPrimeKeyViews")]
+        [TableJoin(typeof(PrimeKeyDepartment), nameof(TableJoinPrimeKeyView.DepartmentCode), Alias = "DeptByCode", PrimeKeys = nameof(PrimeKeyDepartment.Code))]
+        private class TableJoinPrimeKeyView
+        {
+            [Column("DepartmentCode")]
+            public string DepartmentCode { get; set; } = string.Empty;
+
+            [ForeignColumn("DeptByCode", Property = nameof(PrimeKeyDepartment.Name))]
+            public string? DepartmentName { get; set; }
+        }
+
+        [Table("InvalidTableJoinPrimeKeyViews")]
+        [TableJoin(typeof(PrimeKeyDepartment), nameof(InvalidTableJoinPrimeKeyView.DepartmentCode), PrimeKeys = "MissingCode")]
+        private class InvalidTableJoinPrimeKeyView
+        {
+            [Column("DepartmentCode")]
+            public string DepartmentCode { get; set; } = string.Empty;
         }
     }
 }

@@ -14,15 +14,30 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="foreignTable">外部表的定义信息。</param>
         public JoinedTable(TableDefinition foreignTable)
+            : this(foreignTable, foreignTable?.Keys)
+        {
+        }
+
+        /// <summary>
+        /// 使用指定的外部表定义和目标关联键初始化联合表。
+        /// </summary>
+        /// <param name="foreignTable">外部表的定义信息。</param>
+        /// <param name="foreignPrimeKeys">目标表用于参与关联的键列集合。</param>
+        public JoinedTable(TableDefinition foreignTable, IEnumerable<ColumnDefinition> foreignPrimeKeys)
             : base(foreignTable)
         {
+            if (foreignTable == null) throw new ArgumentNullException(nameof(foreignTable));
+            if (foreignPrimeKeys == null) throw new ArgumentNullException(nameof(foreignPrimeKeys));
+
             _foreignTable = foreignTable;
             JoinType = TableJoinType.Left;
             List<ColumnRef> keys = new List<ColumnRef>();
-            foreach (ColumnDefinition key in foreignTable.Keys)
+            foreach (ColumnDefinition key in foreignPrimeKeys)
             {
+                if (key == null) throw new ArgumentException("Target key column cannot be null.", nameof(foreignPrimeKeys));
                 keys.Add(new ColumnRef(this, key));
             }
+            if (keys.Count == 0) throw new ArgumentException("At least one target key column is required.", nameof(foreignPrimeKeys));
             _foreignPrimeKeys = keys.AsReadOnly();
         }
 
