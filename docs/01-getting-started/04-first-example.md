@@ -156,11 +156,9 @@ if (exists)
 如果你能顺利跑通这段代码，说明 LiteOrm 的基础接入已经完成。  
 推荐做法是：业务层稳定后再逐步把泛型服务收敛到自定义 `IUserService` 中，方便承载事务、审计和组合业务逻辑。
 
-## 9. 下一步建议
+## 相关链接
 
 - [返回目录](../README.md)
-跑通这个示例后，建议继续阅读：
-
 - [实体映射与数据源](../02-core-usage/01-entity-mapping.md)
 - [查询指南](../02-core-usage/03-query-guide.md)
 - [CRUD 指南](../02-core-usage/04-crud-guide.md)

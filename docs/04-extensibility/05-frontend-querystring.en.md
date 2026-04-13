@@ -139,6 +139,4 @@ QueryString is only a transport format. Authorization is still enforced on the b
 
 - [Back to index](../README.md)
 - [Permission filtering](../03-advanced-topics/06-permission-filtering.en.md)
-- [Frontend native Expr querying](./06-frontend-native-expr.en.md)
 - [Query guide](../02-core-usage/03-query-guide.en.md)
-- [LiteOrm.WebDemo](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.WebDemo//)

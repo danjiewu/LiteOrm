@@ -408,17 +408,17 @@ LiteOrm 在启动时通过 `LiteOrmSqlFunctionInitializer` 自动注册了以下
 
 **Oracle / PostgreSQL**：使用 `EXTRACT()` 处理时间间隔，`IfNull` → `NVL` / `COALESCE`
 
-## 11. 下一步
+## 11. 补充建议
+
+- 自定义表达式时，优先复用现有 `FunctionExpr`、`LogicBinaryExpr`、`PropertyExpr` 等基础表达式类型，避免重复造轮子。
+- 如果同一个函数需要适配多个数据库，请把差异留在不同的 `SqlBuilder` 处理器中，而不是把分支判断散落在业务代码里。
+- 对可被外部输入影响的函数扩展，建议与 [函数验证器](./02-function-validator.md) 结合使用。
+- 对旧数据库或私有数据库扩展，建议同时编写示例和生成 SQL 样例，便于回归验证。
+
+## 相关链接
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/05-associations.md)
 - [窗口函数](../03-advanced-topics/04-window-functions.md)
 - [函数验证器](./02-function-validator.md)
 
-
-## 12. 补充建议
-
-- 自定义表达式时，优先复用现有 `FunctionExpr`、`LogicBinaryExpr`、`PropertyExpr` 等基础表达式类型，避免重复造轮子。
-- 如果同一个函数需要适配多个数据库，请把差异留在不同的 `SqlBuilder` 处理器中，而不是把分支判断散落在业务代码里。
-- 对可被外部输入影响的函数扩展，建议与 [函数验证器](./02-function-validator.md) 结合使用。
-- 对旧数据库或私有数据库扩展，建议同时编写示例和生成 SQL 样例，便于回归验证。

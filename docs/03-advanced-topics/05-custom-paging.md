@@ -339,3 +339,10 @@ public class CustomPostgreSqlBuilder : PostgreSqlBuilder
 
 通过实现自定义的 `SqlBuilder`，可以为不同数据库版本和场景提供最优的分页策略，从而提高查询性能和兼容性。LiteOrm 的模块化设计使得这种扩展非常简单直观。
 
+## 相关链接
+
+- [返回目录](../README.md)
+- [SqlBuilder 与方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
+- [配置与注册](../01-getting-started/03-configuration-and-registration.md)
+- [兼容性说明](../05-reference/08-database-compatibility.md)
+

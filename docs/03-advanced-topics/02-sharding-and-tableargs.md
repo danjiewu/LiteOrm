@@ -274,7 +274,7 @@ public class Log : IArged
 3. **跨分表查询**：应用层处理合并结果
 4. **IArged 实现**：确保 `TableArgs` 在插入前已正确赋值
 
-## 10. 下一步
+## 相关链接
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/05-associations.md)

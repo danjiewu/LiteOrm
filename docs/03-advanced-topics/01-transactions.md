@@ -201,7 +201,7 @@ LiteOrm 使用 `SessionManager` 管理数据库连接及事务：
 - 当前 Scope 下 LiteOrm 的所有数据库操作都会自动受当前事务管理
 - 如需隔离事务，需要创建新的 Scope
 
-## 5. 下一步
+## 相关链接
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/05-associations.md)

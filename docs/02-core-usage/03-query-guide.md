@@ -650,7 +650,7 @@ var combinedList = await viewService.SearchAsync(
 );
 ```
 
-## 8. 下一步
+## 相关链接
 
 - [返回目录](../README.md)
 - [关联查询](./05-associations.md)

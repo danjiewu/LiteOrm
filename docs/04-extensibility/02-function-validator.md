@@ -195,7 +195,7 @@ validator.VisitAll(expr2);  // false
 3. **性能影响**：验证过程会遍历表达式树，对性能有一定影响。
 4. **安全考虑**：生产环境中建议使用 `AllowRegisted` 策略。
 
-## 8. 下一步
+## 相关链接
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/05-associations.md)

@@ -5,7 +5,7 @@
 - 涵盖 TableJoin（类级）与 ForeignType（属性级）的使用。
 - 说明 ForeignColumn 的取值方式、AutoExpand 的作用与常见实践。
 
-## 概念总览
+## 1. 概念总览
 
 - ForeignType（属性级）：在某个列上声明它引用的外表实体类型（例如外键列）。支持 Alias（别名）、JoinType（连接类型）、AutoExpand（自动扩展）。
   适用于**单列外键**场景。
@@ -20,9 +20,9 @@
 
 ---
 
-## 使用示例
+## 2. 使用示例
 
-### 1) 最小可用闭环
+### 2.1 最小可用闭环
 
 下面这个例子适合第一次接触 LiteOrm 关联查询时先跑通：
 
@@ -61,7 +61,7 @@ var orders = await orderService.SearchAsync<OrderView>();
 
 如果 `OrderView.UserName` 能正确取到值，说明最基础的 `ForeignType + ForeignColumn` 关联链已经打通。
 
-### 2) ForeignType（属性级）
+### 2.2 ForeignType（属性级）
 
 ```csharp
 [Table("Orders")]
@@ -80,7 +80,7 @@ public class Order
 
 - 说明：ForeignType 用于标注外键列对应的外部实体。查询视图时，通过视图类中的 ForeignColumn 可以自动生成 JOIN 并读取外表列。
 
-#### 2.1 一个列上声明多个 `ForeignType`
+#### 2.2.1 一个列上声明多个 `ForeignType`
 
 现在同一个列可以重复声明多个 `ForeignType`。适合“底层还是单列外键，但需要暴露多条可读关联路径”的场景。
 
@@ -108,7 +108,7 @@ public class DocumentView : Document
 - 如果同一个目标类型要出现多次，建议都显式指定 `Alias`，避免路径歧义。
 - 视图里的 `ForeignColumn` 需要精确命中某条路径时，优先引用 `Alias`；只有目标唯一时，才适合直接按类型引用。
 
-### 3) TableJoin（类级）
+### 2.3 TableJoin（类级）
 
 ```csharp
 [TableJoin(typeof(Department), "ParentId", AliasName = "Parent", JoinType = TableJoinType.Left)]
@@ -145,7 +145,7 @@ public class Shipment
 
 这类模型里，`Shipment.OrderId + Shipment.LineNo` 会按顺序关联到 `OrderItem` 的联合主键。
 
-### 4) 固定筛选（Column.Constant）
+### 2.4 固定筛选（Column.Constant）
 
 当某个枚举列在模型层面需要始终带上固定条件时，可以在 `Column` 上声明 `Constant`。LiteOrm 会在元数据阶段把它收敛为 `TableInfo.ConstFilter`，并在生成 SQL 时自动注入：
 
@@ -181,7 +181,7 @@ public class Department
 - 当前固定筛选语义固定为 `Column == ConstantValue`，不支持 `>`、`IN` 等其它操作符。
 - 适合表达软分区、固定状态、历史兼容表等“模型级恒定条件”，不建议替代正常的运行时查询条件。
 
-### 5) 多级关联与 AutoExpand
+### 2.5 多级关联与 AutoExpand
 
 ```csharp
 // SalesRecord 示例：SalesUserId 关联 User，并自动展开 User 的关联（如 Department）
@@ -204,7 +204,7 @@ public class SalesRecordView : SalesRecord
 - 注意：AutoExpand 的核心作用是“让下一层关联路径可被继续解析”。  
   实际是否生成更多 JOIN，仍然取决于查询里是否真的引用了这些路径上的字段或条件。
 
-### 4.1 AutoExpand 开关对比
+### 2.5.1 AutoExpand 开关对比
 
 | 场景 | `AutoExpand = false` | `AutoExpand = true` |
 |------|----------------------|---------------------|
@@ -213,7 +213,7 @@ public class SalesRecordView : SalesRecord
 | 大表、复杂视图、性能敏感 | 更稳妥 | 需谨慎评估 |
 | 想减少视图声明复杂度 | 一般 | 更方便 |
 
-### 4.2 级联示例
+### 2.6 级联示例
 
 `LiteOrm.Demo\Models\SalesRecord.cs` 给出了一个很实用的二级关联展开模型：
 
@@ -244,8 +244,9 @@ public class SalesRecordView : SalesRecord
 
 如果没有开启 `AutoExpand`，`DepartmentName` 这类二级字段通常需要额外声明连接路径。  
 这也是 `AutoExpand` 最常见、也最值得使用的场景：**补足多级关联的可解析路径**。
+更多示例请参考代码中的 Demo（LiteOrm.Demo.Models）以及单元测试中的 TableJoin/AutoExpand 相关测试用例。
 
-### 4.3 多级关联示例
+### 2.7 多级关联示例
 
 演示“部门 + 上级部门”两级关联：
 
@@ -271,7 +272,7 @@ public class UserView : User
 
 这类写法适合“用户 → 部门 → 上级部门”这种稳定的多级读取场景。
 
-### 4.4 查询示例
+### 2.8 查询示例
 
 验证多级关联字段是否可用于筛选：
 
@@ -284,7 +285,7 @@ var combinedUsers = await viewService.SearchAsync(
 );
 ```
 
-### 4.5 关联字段排序与分页
+### 2.8.1 关联字段排序与分页
 
 `LiteOrm.Tests\ServiceTests.cs` 还验证了关联字段可以直接参与排序与分页：
 
@@ -319,11 +320,11 @@ var users2 = await viewService.SearchAsync(expr2);
 
 ---
 
-## 5. ExistsRelated
+## 3. ExistsRelated
 
-当你不想在视图模型中显式暴露关联字段，而只是想“按关联表条件过滤主表”时，可以使用 `ExistsRelated`
+当你不想在视图模型中显式暴露关联字段，而只是想"按关联表条件过滤主表"时，可以使用 `ExistsRelated`
 
-### 5.1 匹配规则
+### 3.1 匹配规则
 
 `ExistsRelated` 在构造关联路径时遵循以下优先级规则：
 
@@ -342,7 +343,7 @@ var results = await objectViewDAO.Search(expr).ToListAsync();
 
 即使 `TestDepartment` 自身没有直接声明到 `TestUser` 的 `ForeignType`，框架仍可通过 `TestUser.DeptId -> TestDepartment.Id` 的已知关联关系完成反向推断。
 
-### 5.2 组合过滤
+### 3.2 组合过滤
 
 ```csharp
 // 1. 正向：按关联部门过滤用户
@@ -368,7 +369,7 @@ var matureItUsers = await objectViewDAO.Search(
 
 ---
 
-## API 要点
+## 4. API 要点
 
 - ForeignTypeAttribute: ObjectType、Alias、JoinType、AutoExpand
 - TableJoinAttribute: Source、TargetType、ForeignKeys、AliasName、JoinType、AutoExpand
@@ -381,7 +382,7 @@ var matureItUsers = await objectViewDAO.Search(
 
 ---
 
-## 最佳实践
+## 5. 最佳实践
 
 - 常规单列外键：优先使用 ForeignType + ForeignColumn，语义清晰、维护成本低。
 - 复合键、联合主键或需要复用的连接：使用 TableJoin 在类型上预定义，避免在多个视图重复声明。
@@ -391,7 +392,7 @@ var matureItUsers = await objectViewDAO.Search(
 
 ---
 
-## 常见问题
+## 6. 常见问题
 
 - Q：ForeignColumn 的 Foreign 可以是 TableJoin 的 Alias 吗？
   A：可以。ForeignColumn 的 Foreign 参数既可为外部类型（Type），也可为 TableJoin 中的 AliasName。
@@ -407,7 +408,7 @@ var matureItUsers = await objectViewDAO.Search(
 
 ---
 
-## 下一步
+## 7. 相关链接
 
 - [返回目录](../README.md)
 - [基础概念](./01-entity-mapping.md)
@@ -415,6 +416,4 @@ var matureItUsers = await objectViewDAO.Search(
 - [增删改查](./04-crud-guide.md)
 - [性能优化](../03-advanced-topics/03-performance.md)
 - [API 索引](../05-reference/02-api-index.md)
-
-更多示例请参考代码中的 Demo（LiteOrm.Demo.Models）以及单元测试中的 TableJoin/AutoExpand 相关测试用例。
 

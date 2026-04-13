@@ -345,7 +345,7 @@ SqlBuilder.Instance.RegisterFunctionSqlHandler("LAG_OVER", (ref outSql, expr, co
 2. **分区键选择**：选择高选择性的列可以提高窗口函数性能
 3. **ORDER BY**：窗口内的排序影响 `LAG/LEAD/RANK` 等函数的结果
 
-## 8. 下一步
+## 相关链接
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/05-associations.md)

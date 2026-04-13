@@ -518,4 +518,3 @@ This is usually the hardest part to read because `From -> Where -> OrderBy -> Se
 
 - [Back to docs hub](../README.md)
 - [Expression Extension](./01-expression-extension.en.md)
-- [Frontend Native Expr Query](./06-frontend-native-expr.en.md)

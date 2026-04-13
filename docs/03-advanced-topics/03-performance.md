@@ -400,7 +400,7 @@ LiteOrm 相比其他 ORM 的性能优势：
 | 更新 1000 条 | ~25ms | ~126ms | ~248ms |
 | 关联查询 | ~9ms | ~15ms | ~9ms |
 
-## 11. 下一步
+## 相关链接
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/05-associations.md)

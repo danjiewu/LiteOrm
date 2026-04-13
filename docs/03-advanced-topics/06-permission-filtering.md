@@ -110,10 +110,8 @@ var myItems = items.Where(x => x.CreatedByUserId == currentUser.Id).ToList();
 
 更推荐把“用户范围条件”收敛到服务层查询构建逻辑，这样 QueryString、Expr、统计和导出才能共享同一条规则。
 
-## 5. 下一步
+## 相关链接
 
 - [返回目录](../README.md)
-- [前端 QueryString 查询](../04-extensibility/05-frontend-querystring.md)
-- [前端原生 Expr 查询](../04-extensibility/06-frontend-native-expr.md)
 - [关联查询](../02-core-usage/05-associations.md)
-- [LiteOrm.WebDemo](../../LiteOrm.WebDemo/)
+- [Lambda 与 Expr 组合使用](../02-core-usage/06-lambda-expr-mixing.md)

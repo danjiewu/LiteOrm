@@ -2,7 +2,7 @@
 
 This page explains how LiteOrm models relationships with `ForeignType`, `TableJoin`, `ForeignColumn`, and `AutoExpand`.
 
-## 1. Core concepts
+## 1. Core Concepts
 
 - `ForeignType`: property-level relationship metadata, best for a single foreign key column
 - `TableJoin`: type-level relationship metadata, best for reusable joins and composite-key relationships
@@ -10,7 +10,50 @@ This page explains how LiteOrm models relationships with `ForeignType`, `TableJo
 - `AutoExpand`: extends the available relationship path so deeper related fields can be resolved later
 - `Expr.ExistsRelated(...)`: uses an existing relationship to build an `EXISTS` filter
 
-## 2. ForeignType
+---
+
+## 2. Usage Examples
+
+### 2.1 Minimal Working Example
+
+The following example is suitable for first-time LiteOrm association query users to get started:
+
+```csharp
+[Table("Users")]
+public class User
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [Column("UserName")]
+    public string? UserName { get; set; }
+}
+
+[Table("Orders")]
+public class Order
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [Column("UserId")]
+    [ForeignType(typeof(User))]
+    public int UserId { get; set; }
+}
+
+public class OrderView : Order
+{
+    [ForeignColumn(typeof(User), Property = nameof(User.UserName))]
+    public string? UserName { get; set; }
+}
+```
+
+```csharp
+var orders = await orderService.SearchAsync<OrderView>();
+```
+
+If `OrderView.UserName` retrieves the correct value, the most basic `ForeignType + ForeignColumn` association chain is working.
+
+### 2.2 ForeignType (Property-Level)
 
 Use `ForeignType` for a normal single-column foreign key.
 
@@ -32,7 +75,7 @@ public class Order
 
 Explanation: `ForeignType` is used to annotate the foreign key column corresponding to the external entity. When querying a view, `ForeignColumn` in the view class can automatically generate JOINs and read external table columns.
 
-### 2.1 Multiple `ForeignType` declarations on one column
+#### 2.2.1 Multiple `ForeignType` Declarations on One Column
 
 The same column can now declare multiple `ForeignType` entries. This is useful when one key needs to expose multiple readable relationship paths.
 
@@ -62,7 +105,7 @@ Notes:
 - If the same target type appears more than once, give each path an explicit `Alias` to avoid ambiguity.
 - `ForeignColumn` should reference the alias when you need a specific path; type-based lookup is only suitable when there is a single unambiguous target.
 
-## 3. TableJoin
+### 2.3 TableJoin (Type-Level)
 
 `TableJoin` is suitable for expressing complex association relationships.
 
@@ -84,7 +127,7 @@ public class Shipment
 
 In this model, `Shipment.OrderId + Shipment.LineNo` will associate with the composite primary key of `OrderItem` in order.
 
-## 4. Fixed filters with Column.Constant
+### 2.4 Fixed Filters with Column.Constant
 
 When an enum column must always carry a fixed condition at the model level, you can declare `Constant` on `Column`. LiteOrm converts it into `TableInfo.ConstFilter` during metadata parsing and injects it automatically when building SQL:
 
@@ -120,7 +163,7 @@ Notes:
 - The current semantics are fixed to `Column == ConstantValue`; other operators such as `>`, `IN`, or `LIKE` are intentionally not supported here.
 - This is best for model-level invariant filters such as fixed status, tenant partition flags, or compatibility views. It should not replace normal runtime `Where` conditions.
 
-## 5. Multi-level relationships and AutoExpand
+### 2.5 Multi-Level Relationships and AutoExpand
 
 ```csharp
 // SalesRecord example: SalesUserId relates to User, and automatically expands User's relationships (such as Department)
@@ -142,7 +185,7 @@ public class SalesRecordView : SalesRecord
 
 Note: The core purpose of AutoExpand is to "make the next level of relationship path resolvable". Whether more JOINs are actually generated still depends on whether the query really references fields or conditions on those paths.
 
-### 4.1 AutoExpand switch comparison
+#### 2.5.1 AutoExpand Switch Comparison
 
 | Scenario | `AutoExpand = false` | `AutoExpand = true` |
 |----------|----------------------|---------------------|
@@ -151,7 +194,7 @@ Note: The core purpose of AutoExpand is to "make the next level of relationship 
 | Large tables, complex views, performance-sensitive | Safer | Evaluate carefully |
 | Want to reduce view declaration complexity | Normal | More convenient |
 
-### 4.2 Cascade example
+### 2.6 Cascade Example
 
 `LiteOrm.Demo\Models\User.cs` provides a practical secondary relationship expansion model:
 
@@ -182,7 +225,7 @@ Key points:
 
 Without `AutoExpand` enabled, fields like `DepartmentName` at the secondary level typically require additional join path declarations. This is also the most common and worthwhile use case for `AutoExpand`: **filling in resolvable paths for multi-level relationships**.
 
-### 4.3 Multi-level relationship example
+### 2.7 Multi-Level Relationship Example
 
 Demonstrates "Department + Parent Department" two-level relationship:
 
@@ -208,7 +251,7 @@ public class UserView : User
 
 This pattern is suitable for stable multi-level read scenarios like "User → Department → Parent Department".
 
-### 4.4 Query example
+### 2.8 Query Example
 
 Verifying that multi-level relationship fields can be used for filtering:
 
@@ -221,7 +264,7 @@ var combinedUsers = await viewService.SearchAsync(
 );
 ```
 
-### 4.5 Association field sorting and pagination
+#### 2.8.1 Association Field Sorting and Pagination
 
 Association fields can directly participate in sorting and pagination:
 
@@ -256,11 +299,11 @@ This shows that `ForeignColumn` can not only display data, but also directly par
 
 ---
 
-## 5. ExistsRelated
+## 3. ExistsRelated
 
 When you don't want to explicitly expose association fields in the view model but just want to "filter the main table by association table conditions", you can use `ExistsRelated`.
 
-### 5.1 Matching rules
+### 3.1 Matching Rules
 
 `ExistsRelated` follows these priority rules when constructing relationship paths:
 
@@ -280,7 +323,7 @@ var results = await objectViewDAO.Search(expr).ToListAsync();
 
 Even if `TestDepartment` itself does not have a directly declared `ForeignType` to `TestUser`, the framework can still complete reverse inference through the known association `TestUser.DeptId -> TestDepartment.Id`.
 
-### 5.2 Combination filtering
+### 3.2 Combination Filtering
 
 ```csharp
 // 1. Forward: filter users by associated department
@@ -306,28 +349,28 @@ Usage recommendations:
 
 ---
 
-## API Key Points
+## 4. API Key Points
 
-- ForeignTypeAttribute: ObjectType, Alias, JoinType, AutoExpand
-- TableJoinAttribute: Source, TargetType, ForeignKeys, AliasName, JoinType, AutoExpand
-- ForeignColumnAttribute: Foreign (Type or AliasName), Property (column to retrieve)
-- ColumnAttribute: Constant (fixed equality filter)
+- `ForeignTypeAttribute`: ObjectType, Alias, JoinType, AutoExpand
+- `TableJoinAttribute`: Source, TargetType, ForeignKeys, AliasName, JoinType, AutoExpand
+- `ForeignColumnAttribute`: Foreign (Type or AliasName), Property (column to retrieve)
+- `ColumnAttribute`: Constant (fixed equality filter)
 
 In implementation, LiteOrm merges ForeignType and TableJoin information during the metadata phase to generate JoinedTable / ForeignTable structures. `Column.Constant` is further reduced into `TableInfo.ConstFilter`. When building SQL, LiteOrm inserts TableJoinExpr into FromExpr.Joins and injects fixed filters into main-table `WHERE` and joined-table `JOIN ON`.
 
 ---
 
-## Best Practices
+## 5. Best Practices
 
 - Regular single-column foreign keys: prefer ForeignType + ForeignColumn, clear semantics, low maintenance cost.
 - Composite keys, joint primary keys, or joins that need to be reused: use TableJoin to pre-define at the type level, avoiding repeated declarations across multiple views.
-- AutoExpand: only enable for stable, clear, and predictable cascade paths. If there are multiple relationships to the same target table, prefer explicit modeling and use cautiously.
+- AutoExpand: only enable for stable, clear, and predictable cascade paths. If the same target table has multiple relationships, prefer explicit modeling and use cautiously.
 - Alias: use Alias/AliasName to avoid column name conflicts, only declare necessary foreign columns in views to reduce network transmission.
 - Performance verification: review generated SQL for complex views before production and use database execution plans (EXPLAIN) to check indexes and join order.
 
 ---
 
-## FAQ
+## 6. FAQ
 
 - Q: Can ForeignColumn's Foreign be a TableJoin's Alias?
   A: Yes. ForeignColumn's Foreign parameter can be either an external type (Type) or an AliasName defined in TableJoin.
@@ -343,8 +386,11 @@ In implementation, LiteOrm merges ForeignType and TableJoin information during t
 
 ---
 
-## Next Steps
+## 7. Related Links
 
 - [Back to English docs hub](../README.md)
+- [Entity Mapping](./01-entity-mapping.en.md)
 - [Query Guide](./03-query-guide.en.md)
+- [CRUD Guide](./04-crud-guide.en.md)
+- [Performance](../03-advanced-topics/03-performance.en.md)
 - [API Index](../05-reference/02-api-index.en.md)

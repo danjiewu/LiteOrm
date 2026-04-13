@@ -91,10 +91,8 @@ Even if a list only returns “my items”, direct requests to `/api/orders/{id}
 2. Filtering lists but not detail/update/delete endpoints.
 3. Scattering permission rules across controllers instead of centralizing them in query-building logic.
 
-## 5. Next steps
+## Related Links
 
 - [Back to index](../README.md)
-- [Frontend QueryString querying](../04-extensibility/05-frontend-querystring.en.md)
-- [Frontend native Expr querying](../04-extensibility/06-frontend-native-expr.en.md)
 - [Associations](../02-core-usage/05-associations.en.md)
-- [LiteOrm.WebDemo](../../LiteOrm.WebDemo/)
+- [Lambda & Expr Mixing](../02-core-usage/06-lambda-expr-mixing.en.md)

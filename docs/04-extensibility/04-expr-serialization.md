@@ -516,4 +516,3 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
 
 - [返回目录](../README.md)
 - [表达式扩展](./01-expression-extension.md)
-- [前端原生 Expr 查询](./06-frontend-native-expr.md)
