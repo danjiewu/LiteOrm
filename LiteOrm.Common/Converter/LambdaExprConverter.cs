@@ -567,7 +567,12 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertMethodCall(MethodCallExpression node)
         {
-            var type = node.Method.DeclaringType;
+            var method = node.Method;
+            var type = method.DeclaringType;
+
+            // 处理隐式/显式转换运算符，直接返回参数表达式的转换结果（如 string s = (string)obj;）
+            if (method.IsSpecialName && method.IsStatic && (method.Name == "op_Implicit" || method.Name == "op_Explicit"))
+                return ConvertInternal(node.Arguments[0]);
 
             // 处理 LINQ 扩展方法（Queryable、Enumerable）
             if (type == typeof(Queryable) || type == typeof(Enumerable) || type != null && type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IQueryable<>) || type.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
@@ -584,7 +589,7 @@ namespace LiteOrm.Common
                     case "Select": return HandleSelect(node);
                 }
             }
-            if (type == typeof(Expr) && (node.Method.Name == nameof(Expr.Exists) || node.Method.Name == nameof(Expr.ExistsRelated)))
+            if (type == typeof(Expr) && (method.Name == nameof(Expr.Exists) || method.Name == nameof(Expr.ExistsRelated)))
             {
                 return HandleExists(node);
             }
@@ -594,13 +599,13 @@ namespace LiteOrm.Common
             //}
 
             // 处理类型成员处理器
-            if (type != null && _typeMethodHandlers.TryGetValue((type, node.Method.Name), out var typeMethodHandler))
+            if (type != null && _typeMethodHandlers.TryGetValue((type, method.Name), out var typeMethodHandler))
             {
                 return typeMethodHandler(node, this);
             }
 
             // 处理方法名处理器
-            if (_methodNameHandlers.TryGetValue(node.Method.Name, out var nameHandler))
+            if (_methodNameHandlers.TryGetValue(method.Name, out var nameHandler))
             {
                 var result = nameHandler(node, this);
                 if (result is not null) return result;

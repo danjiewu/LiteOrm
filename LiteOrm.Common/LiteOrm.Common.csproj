@@ -10,7 +10,7 @@
     <Nullable>disable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
-    <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
+    <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageReadmeFile>README.nuget.md</PackageReadmeFile>
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架。</Description>

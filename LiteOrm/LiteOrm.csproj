@@ -2,27 +2,21 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.0.13.0</AssemblyVersion>
-		<FileVersion>8.0.13.0</FileVersion>
+		<AssemblyVersion>8.0.14.0</AssemblyVersion>
+		<FileVersion>8.0.14.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.0.13</VersionPrefix>
+		<VersionPrefix>8.0.14</VersionPrefix>
 		<Nullable>disable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
 		<Description>LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架。</Description>
-		<PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
+		<PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      将全局自动扩展关联表改为在关联时指定，避免关联关系混乱和性能损失；
-      And、Or表达式序列化默认使用简洁模式；
-      TableJoin支持自定义外表主键；
-      ForeignType支持多重定义；
-      增加固定属性筛选功能；
-      修复Oracle自增列插入BUG；
-      修复Expr为空时扩展方法To不能正确解析问题。
+      Lambda解析支持显式转换和隐式转换。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
