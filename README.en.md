@@ -22,7 +22,7 @@
 
 Start with the docs hub, then use the scenario-based reference pages for targeted lookups.
 
-**[Docs Hub](./docs/README.md)**
+**[Docs Hub](https://danjiewu.github.io/LiteOrm/)**
 
 - **Getting Started**: install LiteOrm, register it, and run the first working example
 - **Core Usage**: focus on entity mapping, querying, CRUD, associations, and **mixing Lambda with Expr**
