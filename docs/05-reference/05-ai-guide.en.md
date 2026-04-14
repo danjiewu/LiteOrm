@@ -216,53 +216,10 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `BatchDeleteIDAsync(IEnumerable ids, CancellationToken ct = default, params string[] tableArgs)` | `Task` |
 | `UpdateOrInsertAsync(T entity, CancellationToken ct = default)` | `Task<UpdateOrInsertResult>` |
 | `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)` | `Task` |
-
-### ObjectViewDAO<T> (query only)
-
-`EnumerableResult<T>` supports: `.ToList()` / `.ToListAsync()` / `.FirstOrDefault()` / `.FirstOrDefaultAsync()` / `.GetResult()` / `.GetResultAsync()` / `await foreach`
-
-| Method | Return type |
-| --- | --- |
-| `GetObjectAsync(object id, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>` |
-| `SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>` |
-| `SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken ct = default)` | `Task<List<TView>>` |
-| `ForEachAsync(Expr expr, Func<TView, Task> func, string[] tableArgs = null, CancellationToken ct = default)` | `Task` |
-| `ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken ct = default)` | `Task<bool>` |
-| `ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken ct = default)` | `Task<bool>` |
-| `CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken ct = default)` | `Task<int>` |
-| `SearchAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(extension)* | `Task<List<TView>>` |
-| `SearchAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(extension)* | `Task<List<TView>>` |
-| `SearchOneAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(extension)* | `Task<TView>` |
-| `SearchOneAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(extension)* | `Task<TView>` |
-| `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(extension)* | `Task<bool>` |
-| `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(extension)* | `Task<int>` |
-
-### ObjectDAO<T> (create, update, delete only)
-
-| Method | Return type |
-| --- | --- |
-| `Insert(T entity)` | `bool` |
-| `InsertAsync(T entity, CancellationToken ct = default)` | `Task<bool>` |
-| `Update(T entity)` | `bool` |
-| `UpdateAsync(T entity, CancellationToken ct = default)` | `Task<bool>` |
-| `Delete(T entity)` | `bool` |
-| `DeleteAsync(T entity, CancellationToken ct = default)` | `Task<bool>` |
-| `BatchInsert(IEnumerable<T> entities)` | `void` |
-| `BatchInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)` | `Task` |
-| `BatchUpdate(IEnumerable<T> entities)` | `void` |
-| `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)` | `Task` |
-| `BatchDelete(IEnumerable<T> entities)` | `void` |
-| `BatchDeleteAsync(IEnumerable<T> entities, CancellationToken ct = default)` | `Task` |
-| `UpdateOrInsert(T entity)` | `UpdateOrInsertResult` |
-| `UpdateOrInsertAsync(T entity, CancellationToken ct = default)` | `Task<UpdateOrInsertResult>` |
-| `BatchUpdateOrInsert(IEnumerable<T> entities)` | `void` |
-| `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)` | `Task` |
 | `DeleteByKeys(params object[] keys)` | `bool` |
 | `DeleteByKeysAsync(object[] keys, CancellationToken ct = default)` | `Task<bool>` |
 | `BatchDeleteByKeys(IEnumerable keys)` | `void` |
 | `BatchDeleteByKeysAsync(IEnumerable keys, CancellationToken ct = default)` | `Task` |
-| `Delete(LogicExpr expr)` | `int` |
-| `DeleteAsync(LogicExpr expr, CancellationToken ct = default)` | `Task<int>` |
 
 ### ObjectViewDAO<T> (query only)
 
@@ -511,7 +468,7 @@ var users = await objectViewDAO.Search(expr).ToListAsync();
 var lambdaExpr = Expr.Lambda<User>(u => Expr.ExistsRelated<Department>(d => d.Name == "IT"));
 ```
 
-## Related links
+## Related Links
 
 - [Back to docs hub](../README.md)
 - [API Index](./02-api-index.en.md)

@@ -141,7 +141,7 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)`               | `Task`       |
 | `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`       | `Task`       |
 | `BatchDeleteAsync(IEnumerable<T> entities, CancellationToken ct = default)`               | `Task`       |
-| `BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken ct = default)`    | `Task`       |
+| `BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken ct = default)`     | `Task`       |
 
 ### IEntityViewService<TView>（查询，Expr 风格）
 
@@ -190,77 +190,36 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 
 ### ObjectDAO<T>（仅增删改）
 
-| 方法                                                                                               | 返回类型                         |
-| ------------------------------------------------------------------------------------------------ | ---------------------------- |
-| `Insert(T entity)`                                                                               | `bool`                       |
-| `Update(T entity)`                                                                               | `bool`                       |
-| `Delete(T entity)`                                                                               | `bool`                       |
-| `DeleteID(object id, params string[] tableArgs)`                                                 | `bool`                       |
-| `Delete(LogicExpr expr)`                                                                         | `int`                        |
-| `Update(UpdateExpr expr)`                                                                        | `int`                        |
-| `BatchInsert(IEnumerable<T> entities)`                                                           | `void`                       |
-| `BatchUpdate(IEnumerable<T> entities)`                                                           | `void`                       |
-| `BatchDelete(IEnumerable<T> entities)`                                                           | `void`                       |
-| `BatchDeleteID(IEnumerable ids, params string[] tableArgs)`                                      | `void`                       |
-| `UpdateOrInsert(T entity)`                                                                       | `UpdateOrInsertResult`       |
-| `BatchUpdateOrInsert(IEnumerable<T> entities)`                                                   | `void`                       |
-| `InsertAsync(T entity, CancellationToken ct = default)`                                          | `Task<bool>`                 |
-| `UpdateAsync(T entity, CancellationToken ct = default)`                                          | `Task<bool>`                 |
-| `DeleteAsync(T entity, CancellationToken ct = default)`                                          | `Task<bool>`                 |
-| `DeleteIDAsync(object id, CancellationToken ct = default)`                                       | `Task<bool>`                 |
-| `DeleteAsync(LogicExpr expr, CancellationToken ct = default)`                                    | `Task<int>`                  |
-| `UpdateAsync(UpdateExpr expr, CancellationToken ct = default)`                                   | `Task<int>`                  |
-| `BatchInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`                      | `Task`                       |
-| `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)`                      | `Task`                       |
-| `BatchDeleteAsync(IEnumerable<T> entities, CancellationToken ct = default)`                      | `Task`                       |
-| `BatchDeleteIDAsync(IEnumerable ids, CancellationToken ct = default, params string[] tableArgs)` | `Task`                       |
-| `UpdateOrInsertAsync(T entity, CancellationToken ct = default)`                                  | `Task<UpdateOrInsertResult>` |
-| `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`              | `Task`                       |
-
-### ObjectViewDAO<T>（仅查询）
-
-| 方法                                                                                                                                                    | 返回类型                |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| `GetObjectAsync(object id, string[] tableArgs = null, CancellationToken ct = default)`                                                                | `Task<TView>`       |
-| `SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken ct = default)`                                                                | `Task<TView>`       |
-| `SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken ct = default)`                                                            | `Task<List<TView>>` |
-| `ForEachAsync(Expr expr, Func<TView, Task> func, string[] tableArgs = null, CancellationToken ct = default)`                                          | `Task`              |
-| `ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken ct = default)`                                                                   | `Task<bool>`        |
-| `ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken ct = default)`                                                                 | `Task<bool>`        |
-| `CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken ct = default)`                                                             | `Task<int>`         |
-| `SearchAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)*                             | `Task<List<TView>>` |
-| `SearchAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)*    | `Task<List<TView>>` |
-| `SearchOneAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)*                          | `Task<TView>`       |
-| `SearchOneAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)* | `Task<TView>`       |
-| `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)*                             | `Task<bool>`        |
-| `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` *(扩展)*                              | `Task<int>`         |
-
-### ObjectDAO<T>（仅增删改）
-
 | 方法                                                                                  | 返回类型                         |
 | ----------------------------------------------------------------------------------- | ---------------------------- |
 | `Insert(T entity)`                                                                  | `bool`                       |
-| `InsertAsync(T entity, CancellationToken ct = default)`                             | `Task<bool>`                 |
 | `Update(T entity)`                                                                  | `bool`                       |
-| `UpdateAsync(T entity, CancellationToken ct = default)`                             | `Task<bool>`                 |
 | `Delete(T entity)`                                                                  | `bool`                       |
-| `DeleteAsync(T entity, CancellationToken ct = default)`                             | `Task<bool>`                 |
-| `BatchInsert(IEnumerable<T> entities)`                                              | `void`                       |
-| `BatchInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`         | `Task`                       |
-| `BatchUpdate(IEnumerable<T> entities)`                                              | `void`                       |
-| `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)`         | `Task`                       |
-| `BatchDelete(IEnumerable<T> entities)`                                              | `void`                       |
-| `BatchDeleteAsync(IEnumerable<T> entities, CancellationToken ct = default)`         | `Task`                       |
+| `DeleteID(object id, params string[] tableArgs)`                                      | `bool`                       |
+| `Delete(LogicExpr expr)`                                                            | `int`                        |
+| `Update(UpdateExpr expr)`                                                           | `int`                        |
+| `BatchInsert(IEnumerable<T> entities)`                                               | `void`                       |
+| `BatchUpdate(IEnumerable<T> entities)`                                               | `void`                       |
+| `BatchDelete(IEnumerable<T> entities)`                                               | `void`                       |
+| `BatchDeleteID(IEnumerable ids, params string[] tableArgs)`                           | `void`                       |
 | `UpdateOrInsert(T entity)`                                                          | `UpdateOrInsertResult`       |
-| `UpdateOrInsertAsync(T entity, CancellationToken ct = default)`                     | `Task<UpdateOrInsertResult>` |
 | `BatchUpdateOrInsert(IEnumerable<T> entities)`                                      | `void`                       |
+| `InsertAsync(T entity, CancellationToken ct = default)`                              | `Task<bool>`                 |
+| `UpdateAsync(T entity, CancellationToken ct = default)`                              | `Task<bool>`                 |
+| `DeleteAsync(T entity, CancellationToken ct = default)`                              | `Task<bool>`                 |
+| `DeleteIDAsync(object id, CancellationToken ct = default)`                          | `Task<bool>`                 |
+| `DeleteAsync(LogicExpr expr, CancellationToken ct = default)`                       | `Task<int>`                  |
+| `UpdateAsync(UpdateExpr expr, CancellationToken ct = default)`                      | `Task<int>`                  |
+| `BatchInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`       | `Task`                       |
+| `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)`         | `Task`                       |
+| `BatchDeleteAsync(IEnumerable<T> entities, CancellationToken ct = default)`         | `Task`                       |
+| `BatchDeleteIDAsync(IEnumerable ids, CancellationToken ct = default, params string[] tableArgs)` | `Task`                       |
+| `UpdateOrInsertAsync(T entity, CancellationToken ct = default)`                      | `Task<UpdateOrInsertResult>` |
 | `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)` | `Task`                       |
 | `DeleteByKeys(params object[] keys)`                                                | `bool`                       |
 | `DeleteByKeysAsync(object[] keys, CancellationToken ct = default)`                  | `Task<bool>`                 |
 | `BatchDeleteByKeys(IEnumerable keys)`                                               | `void`                       |
 | `BatchDeleteByKeysAsync(IEnumerable keys, CancellationToken ct = default)`          | `Task`                       |
-| `Delete(LogicExpr expr)`                                                            | `int`                        |
-| `DeleteAsync(LogicExpr expr, CancellationToken ct = default)`                       | `Task<int>`                  |
 
 ### ObjectViewDAO<T>（仅查询）
 
@@ -273,7 +232,7 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `Search(ref ExprString sqlBody, bool isFull = false)`                                                                         | `EnumerableResult<T>`       |
 | `SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult> readerFunc = null)`                                     | `EnumerableResult<TResult>` |
 | `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)` | `EnumerableResult<TResult>` |
-| `SearchAs<TResult>(ref ExprString sqlBody)`                                                                                   | `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(ref ExprString sqlBody)`                                                                                  | `EnumerableResult<TResult>` |
 | `GetObject(params object[] keys)`                                                                                             | `EnumerableResult<T>`       |
 | `Count(Expr expr)`                                                                                                            | `ValueResult<int>`          |
 | `Exists(object o)` / `Exists(T o)`                                                                                            | `ValueResult<bool>`         |
@@ -408,7 +367,7 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 | 运算符  | 说明                           | 返回类型      |
 | ---- | ---------------------------- | --------- |
 | `&`  | AND（左或右为 null 时返回另一侧，适合动态累加） | `AndExpr` |
-| `\|` | OR （左或右为 null 时返回另一侧，适合动态累加） | `OrExpr`  |
+| `|`  | OR （左或右为 null 时返回另一侧，适合动态累加） | `OrExpr`  |
 | `!`  | NOT                          | `NotExpr` |
 
 ### PropertyExpr 扩展方法
@@ -514,4 +473,3 @@ var lambdaExpr = Expr.Lambda<User>(u => Expr.ExistsRelated<Department>(d => d.Na
 - [返回目录](../README.md)
 - [API 索引](./02-api-index.md)
 - [术语表](./03-glossary.md)
-
