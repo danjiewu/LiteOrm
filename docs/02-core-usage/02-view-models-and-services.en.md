@@ -1,10 +1,10 @@
 # View Models and Services
 
-LiteOrm separates write-oriented entity access from read-oriented view access. This helps keep models clean and makes association queries easier to organize.
+LiteOrm decouples "entity writes" from "view queries". You can use DAO directly, or encapsulate business layer access logic through Service.
 
-## View models
+## View Models
 
-View models usually inherit from the entity and add `[ForeignColumn]` properties.
+View models typically inherit from entities and add association fields via `[ForeignColumn]`:
 
 ```csharp
 public class UserView : User
@@ -14,9 +14,11 @@ public class UserView : User
 }
 ```
 
-## Service patterns
+This way, when querying `UserView`, LiteOrm can automatically generate JOIN based on foreign key relationships.
 
-### Same entity and view type
+## Service Definition
+
+### Same Entity and View Type
 
 ```csharp
 public interface IUserService
@@ -28,7 +30,7 @@ public class UserService : EntityService<User>, IUserService
 { }
 ```
 
-### Different entity and view type
+### Different Entity and View Types
 
 ```csharp
 public interface IUserService
@@ -40,37 +42,65 @@ public class UserService : EntityService<User, UserView>, IUserService
 { }
 ```
 
-## DAO vs Service
+## DAO vs Service Responsibility
 
-| Type | Best fit |
-|------|----------|
-| `ObjectDAO<T>` | Insert, update, delete, batch write operations |
-| `ObjectViewDAO<T>` | `Search`, `SearchAs`, projections, association queries |
-| `EntityService<T>` | Business logic, transaction boundaries |
-| `EntityService<T, TView>` | Separate write model and read model |
+| Type | More Suitable Scenarios |
+|------|------------------------|
+| `ObjectDAO<T>` | Entity write operations like insert, update, delete, batch writes. |
+| `ObjectViewDAO<T>` | `Search` / `SearchAs`, projections, association view reads. |
+| `EntityService<T>` | Business layer encapsulation, transaction boundaries, combining multiple DAOs. |
+| `EntityService<T, TView>` | Business models where entity write and view read are separated. |
 
-## Important distinction
-
-`ObjectDAO<T>` is for entity writes and does **not** provide `Search(...)`.
-
-If you need query APIs such as `Search(...)` or `SearchAs(...)`, use `ObjectViewDAO<T>` instead.
+## Usage Differences Between `ObjectDAO` and `EntityService`
 
 ```csharp
 public class UserWriteDao : ObjectDAO<User>
 {
     public Task<bool> CreateAsync(User user, CancellationToken cancellationToken = default)
-        => InsertAsync(user, cancellationToken);
-}
-
-public class UserViewDao : ObjectViewDAO<UserView>
-{
-    public Task<List<UserView>> GetActiveUsersAsync(CancellationToken cancellationToken = default)
-        => Search(Expr.Prop("Age") >= 18).ToListAsync(cancellationToken);
+    {
+        return InsertAsync(user, cancellationToken);
+    }
 }
 ```
 
+```csharp
+public class UserViewDao : ObjectViewDAO<UserView>
+{
+    public Task<List<UserView>> GetActiveUsersAsync(CancellationToken cancellationToken = default)
+    {
+        return Search(Expr.Prop("Age") >= 18).ToListAsync(cancellationToken);
+    }
+}
+```
+
+```csharp
+public class UserService : EntityService<User>
+{
+    [Transaction]
+    public async Task CreateUserWithDefaultRole(User user)
+    {
+        await InsertAsync(user);
+        // Continue with role, audit log, etc.
+    }
+}
+```
+
+Important notes here:
+
+- `ObjectDAO<T>` handles entity write operations and itself **does not** have `Search(...)` query entry points.
+- Query capabilities like `Search(...)` and `SearchAs(...)` are on `ObjectViewDAO<T>`.
+- If you need both entity writes and view reads, you typically combine `ObjectDAO<T>` and `ObjectViewDAO<TView>` within a Service.
+
+## When to Use Which
+
+- DAO is usually more direct when there's only a single data access logic.
+- Prefer using Service when transactions, auditing, or cross-table business encapsulation are needed.
+- When the read result structure differs significantly from the write entity structure, use a separate `TView`.
+- When you only need pure query encapsulation, start from `ObjectViewDAO<T>`.
+
 ## Related Links
 
-- [Back to English docs hub](../README.md)
-- [First Example](../01-getting-started/04-first-example.en.md)
-- [Query Guide](./03-query-guide.en.md)
+- [Back to docs hub](../README.md)
+- [Entity Mapping and Data Sources](./01-entity-mapping.en.md)
+- [CRUD Guide](./04-crud-guide.en.md)
+- [Transactions](../03-advanced-topics/01-transactions.en.md)

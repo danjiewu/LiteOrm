@@ -1,8 +1,8 @@
 # Entity Mapping and Data Sources
 
-Entities define how LiteOrm maps CLR types to tables, columns, data sources, and sharded table names.
+Entity classes are the mapping foundation between LiteOrm and database tables. This article introduces core rules for entity definition, table-column mapping, multiple data sources, and sharding parameters.
 
-## 1. Basic entity shape
+## Basic Entity Structure
 
 ```csharp
 [Table("Users")]
@@ -16,34 +16,46 @@ public class User
 
     [Column("Age")]
     public int Age { get; set; }
+
+    [Column("DeptId")]
+    public int? DeptId { get; set; }
+
+    [Column("CreateTime")]
+    public DateTime CreateTime { get; set; }
 }
 ```
 
-`ObjectBase` is optional. Use it only when your project benefits from the shared base behavior.
+> `ObjectBase` is an optional base class. You can use LiteOrm perfectly fine without inheriting from it.
 
-## 2. `[Table]` metadata
+## `[Table]` Attribute
 
 ```csharp
 [Table("Users")]
 [Table("Logs_{0}", DataSource = "LogDB")]
 ```
 
-| Property | Meaning |
-|------|---------|
-| table name | Physical table name |
-| `DataSource` | Named data source for this entity |
-| placeholder segments like `{0}` | Slots later filled by `TableArgs` |
+| Parameter | Description |
+|-----------|-------------|
+| `Name` | Database table name, supports placeholder for sharding. |
+| `DataSource` | Specifies the data source for the current entity. |
 
-## 3. `[Column]` metadata
+## `[Column]` Attribute
 
 ```csharp
 [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
 [Column("Profile", DataType = typeof(UserProfile))]
 ```
 
-Use `DataType` when a property needs serialization into a database column.
+| Parameter | Description |
+|-----------|-------------|
+| `Name` | Database column name. |
+| `IsPrimaryKey` | Whether it is a primary key. |
+| `IsIdentity` | Whether it is an identity column. |
+| `DataType` | Serialization type, used for complex object storage. |
 
-## 4. Multi-data-source mapping
+## Multi-DataSource Mapping
+
+If there are multiple data sources in the project, you can explicitly mark them on the entity:
 
 ```csharp
 [Table("Orders", DataSource = "OrderDb")]
@@ -52,9 +64,11 @@ public class Order
 }
 ```
 
-This keeps the mapping decision in the model instead of repeating it in every query.
+This way, all default read/write operations for this entity will use the `OrderDb` data source.
 
-## 5. Sharding with `IArged` and `TableArgs`
+## Sharding Parameters and `IArged`
+
+When the table name contains placeholders, you can provide dynamic sharding parameters via `IArged`:
 
 ```csharp
 [Table("Logs_{0}")]
@@ -67,18 +81,18 @@ public class Log : IArged
 }
 ```
 
-When a query or write call provides explicit `TableArgs`, that explicit value takes precedence over the value inferred from `IArged`.
+For more details, see [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md).
 
-## 6. Modeling advice
+## Modeling Recommendations
 
-- Keep entities focused on persistence mapping.
-- Put relationship projection on view models, not on base entities.
-- Define primary keys and identity columns up front.
-- Decide data source and sharding strategy early so `EntityService`, `ObjectDAO`, and `ObjectViewDAO` all follow the same model rules.
+- Keep entities simple; avoid cramming too much business logic into entities.
+- Metadata like primary keys, identity columns, and data sources should be clearly defined at the model layer from the start.
+- For fields that need association queries, prefer using view models; don't pollute basic entities.
+- When dealing with cross-database or legacy database compatibility, confirm the corresponding dialect behavior in advance.
 
 ## Related Links
 
-- [Back to English docs hub](../README.md)
+- [Back to docs hub](../README.md)
 - [View Models and Services](./02-view-models-and-services.en.md)
 - [Associations](./05-associations.en.md)
 - [Glossary](../05-reference/03-glossary.en.md)

@@ -1,78 +1,203 @@
 # Function Expression Validator
 
-`FunctionExprValidator` checks whether a query is allowed to use function expressions under the current policy.
+`FunctionExprValidator` validates whether function expressions in queries comply with established security policies.
 
-## 1. Why it exists
+## 1. Overview
 
-When you expose custom functions through expression extension or dynamic query building, you may want a guardrail that allows only approved functions.
+When using expression extension features to register custom functions, you may need to restrict the usage scope of these functions to prevent abuse or security risks. `FunctionExprValidator` provides a mechanism to control which function expressions are allowed in queries.
 
-## 2. `FunctionPolicy`
+## 2. FunctionPolicy Enum
 
 ```csharp
 public enum FunctionPolicy
 {
-    AllowAll,
-    AllowRegisted,
-    Disallow
+    AllowAll,       // Allow all function expressions
+    AllowRegisted, // Only allow pre-registered function expressions
+    Disallow        // Disallow any function expressions
 }
 ```
 
-| Policy | Meaning |
-|------|---------|
-| `AllowAll` | allow any function expression |
-| `AllowRegisted` | allow only functions registered through `SqlBuilder.RegisterFunctionSqlHandler` |
-| `Disallow` | reject all function expressions |
+### 2.1 Policy Descriptions
 
-The enum member name is intentionally `AllowRegisted` because that is the code-level identifier used by the library.
+| Policy | Description |
+|--------|-------------|
+| `AllowAll` | Allow any function expression, including unregistered ones |
+| `AllowRegisted` | Only allow functions registered via `SqlBuilder.RegisterFunctionSqlHandler` |
+| `Disallow` | Disallow any function expressions |
 
-## 3. Built-in validator instances
+## 3. Usage
+
+### 3.1 Preconfigured Validators
+
+`FunctionExprValidator` provides three preconfigured static instances:
 
 ```csharp
-var allowAll = FunctionExprValidator.AllowAll;
-var allowRegisted = FunctionExprValidator.AllowRegisted;
-var disallow = FunctionExprValidator.Disallow;
+// Allow all functions
+var validatorAllowAll = FunctionExprValidator.AllowAll;
+
+// Only allow registered functions
+var validatorAllowRegisted = FunctionExprValidator.AllowRegisted;
+
+// Disallow any functions
+var validatorDisallow = FunctionExprValidator.Disallow;
 ```
 
-For custom setup:
+### 3.2 Custom Validator
 
 ```csharp
 var validator = new FunctionExprValidator(FunctionPolicy.AllowRegisted);
 ```
 
-## 4. Typical usage
+### 3.3 Recommended Policy Templates
+
+| Environment or Role | Recommended Policy |
+|--------------------|-------------------|
+| Local development / Internal tools | `AllowAll` |
+| Production environment business queries | `AllowRegisted` |
+| Restricted scenarios prohibiting custom functions | `Disallow` |
+
+## 4. Validation Interface
+
+`FunctionExprValidator` inherits from `ExprValidator`. Single node validation uses `Validate(node)`, while full expression tree validation more commonly uses `VisitAll(expr)`:
 
 ```csharp
-if (!validator.VisitAll(expr))
-    throw new InvalidOperationException("The query uses an unauthorized function expression.");
+public override bool Validate(Expr node)
+{
+    if (node == null) return true;
+    if (node is FunctionExpr funcExpr)
+    {
+        switch (FunctionPolicy)
+        {
+            case FunctionPolicy.AllowAll:
+                return true;
+            case FunctionPolicy.AllowRegisted:
+                return SqlBuilder.Instance.TryGetFunctionSqlHandler<SqlBuilder>(
+                    funcExpr.FunctionName, out _);
+            case FunctionPolicy.Disallow:
+                return false;
+        }
+    }
+    return true;
+}
 ```
 
-`Validate(node)` is the per-node override implemented by the validator itself. In application code, `VisitAll(expr)` is the safer choice because it walks the full expression tree instead of checking only the root node.
+## 5. Usage Scenarios
 
-This fits:
+### 5.1 Restrict User Queries
 
-- user-driven query builders
-- DAO wrappers with extra safety checks
-- global interception before query execution
+In multi-tenant scenarios, restrict which functions different tenants can use:
 
-## 5. Relationship to `SqlBuilder`
+```csharp
+public class UserQueryService
+{
+    private readonly FunctionExprValidator _validator;
 
-`AllowRegisted` depends on functions already registered through `SqlBuilder.RegisterFunctionSqlHandler`. That makes it a good production default when only known SQL translations should be available.
+    public UserQueryService(UserRole role)
+    {
+        _validator = role == UserRole.Admin
+            ? FunctionExprValidator.AllowAll
+            : FunctionExprValidator.AllowRegisted;
+    }
 
-## 6. Recommended policies
+    public async Task<List<User>> SearchAsync(Expr query)
+    {
+        // Validate query expression
+        if (!_validator.VisitAll(query))
+            throw new InvalidOperationException("Query contains disallowed function expressions");
 
-- internal development or trusted tooling: `AllowAll`
-- ordinary production queries: `AllowRegisted`
-- restricted environments: `Disallow`
+        return await _userViewDAO.Search(query).ToListAsync();
+    }
+}
+```
 
-## 7. Practical reminder
+### 5.2 Custom DAO Validation
 
-1. validate the full tree right before execution, not just one node during construction
-2. prefer `VisitAll(expr)` in application code
-3. keep `AllowRegisted` for production-facing dynamic query entry points
+```csharp
+public class SafeUserDAO : ObjectViewDAO<User>
+{
+    private static readonly FunctionExprValidator Validator =
+        FunctionExprValidator.AllowRegisted;
+
+    public async Task<List<User>> SafeSearchAsync(Expr expr)
+    {
+        if (!Validator.VisitAll(expr))
+            throw new SecurityException("Expression validation failed");
+
+        return await Search(expr).ToListAsync();
+    }
+}
+```
+
+### 5.3 Global Query Interception
+
+Perform global validation before query execution:
+
+```csharp
+public class QueryInterceptor
+{
+    private readonly FunctionExprValidator _validator;
+
+    public QueryInterceptor(FunctionPolicy policy)
+    {
+        _validator = new FunctionExprValidator(policy);
+    }
+
+    public void Intercept(Expr query)
+    {
+        if (!_validator.VisitAll(query))
+        {
+            throw new UnauthorizedAccessException(
+                "Query contains unauthorized function expressions");
+        }
+    }
+}
+```
+
+### 5.4 Integration with Expression Extension
+
+A typical flow: first register allowed extension functions, then use the validator as a final check before query execution.
+
+```csharp
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", ...);
+
+var validator = FunctionExprValidator.AllowRegisted;
+var expr = new FunctionExpr("DATE_FORMAT", ...);
+
+if (!validator.VisitAll(expr))
+    throw new InvalidOperationException("Function not registered, execution disallowed");
+```
+
+## 6. Working with SqlBuilder
+
+`FunctionExprValidator.AllowRegisted` depends on functions registered via `SqlBuilder.RegisterFunctionSqlHandler`:
+
+```csharp
+// Register function handlers
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", ...);
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("CONCAT", ...);
+
+// AllowRegisted validator only allows these registered functions
+var validator = FunctionExprValidator.AllowRegisted;
+
+// DATE_FORMAT - allowed (registered)
+var expr1 = new FunctionExpr("DATE_FORMAT", ...);
+validator.VisitAll(expr1);  // true
+
+// CUSTOM_UNREGISTERED - rejected (not registered)
+var expr2 = new FunctionExpr("CUSTOM_UNREGISTERED", ...);
+validator.VisitAll(expr2);  // false
+```
+
+## 7. Caveats
+
+1. **Validation timing**: It is recommended to validate the entire Expr tree before query execution, not just the root node.
+2. **Invocation method**: Prefer using `validator.VisitAll(expr)` in business scenarios; `Validate(node)` is more suitable for overriding when implementing validators.
+3. **Performance impact**: The validation process traverses the expression tree, which has some performance overhead.
+4. **Security consideration**: It is recommended to use `AllowRegisted` policy in production environments.
 
 ## Related Links
 
-- [Back to English docs hub](../README.md)
+- [Back to docs hub](../README.md)
+- [Associations](../02-core-usage/05-associations.en.md)
 - [Expression Extension](./01-expression-extension.en.md)
 - [Window Functions](../03-advanced-topics/04-window-functions.en.md)
-- [API Index](../05-reference/02-api-index.en.md)

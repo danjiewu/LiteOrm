@@ -1,21 +1,21 @@
 # Permission Filtering and User Scope Control
 
-When a system needs to demonstrate rich querying while preventing regular users from reading or modifying data they do not own, permission filtering must live on the backend rather than in the frontend alone. This document shows a practical LiteOrm pattern: **inject the user-scope condition before `Search` / `Count`, and add explicit checks for detail, update, and delete operations.**
+When a system needs to demonstrate rich querying while preventing regular users from reading or writing data they do not own, permission filtering cannot stop at the frontend UI layer. This document explains the recommended LiteOrm approach: **inject user-scope conditions into `Expr` before `Search` / `Count`, and add explicit access checks for detail, update, and delete operations.**
 
 ## Scenario Matrix
 
 | Scenario | Recommended approach | Why |
 |------|----------|------|
-| Admin views all orders | Do not inject a user-scope filter | Keeps the full operational view |
-| Regular user queries lists and stats | Automatically append `CreatedByUserId == currentUser.Id` | Ensures consistent visibility boundaries |
-| Regular user reads detail, updates, deletes | Add an explicit access check at the endpoint layer | Prevents direct URL access from bypassing list filtering |
-| Frontend hints | Use hints only, not final authorization | Backend authorization must remain authoritative |
+| Admin views all orders | No user-scope filter attached | Preserves full operational/audit perspective |
+| Regular user queries lists and counts | Auto-append `CreatedByUserId == currentUser.Id` | Consistently limits visible scope |
+| Regular user reads detail, updates, or deletes | Explicit access check at the endpoint layer | Prevents bypassing list filtering |
+| Frontend UI hints | Hints only, not final authorization | Backend authorization is authoritative |
 
-## 1. Filtering behavior in WebDemo
+## 1. Filtering Behavior in WebDemo
 
-### 1.1 QueryString queries and stats
+### 1.1 QueryString queries and counts
 
-`GET /api/orders/query` and `GET /api/orders/stats` first build business filters, then append the current-user scope:
+`GET /api/orders/query` and `GET /api/orders/stats` build business filters first, then append scope conditions based on the current user role:
 
 ```csharp
 if (request.OnlyMine == true || !IsAdmin(currentUser))
@@ -24,11 +24,11 @@ if (request.OnlyMine == true || !IsAdmin(currentUser))
 }
 ```
 
-The important part is that the permission rule becomes part of the query itself rather than an in-memory post-filter.
+The key point: **permission conditions are part of the query itself**, not an in-memory trim applied after results return.
 
 ### 1.2 Expr queries
 
-`POST /api/orders/query/expr` applies the same idea to LiteOrm Expr JSON built with the native `Source` chain:
+`POST /api/orders/query/expr` follows the same pattern, injecting the current user's scope into the native Expr before `SearchAsync` / `CountAsync`:
 
 ```csharp
 filter ??= Expr.Prop(nameof(DemoOrder.Id)) > 0;
@@ -39,23 +39,23 @@ if (!IsAdmin(currentUser))
 }
 ```
 
-This keeps QueryString and native Expr flows aligned on the same permission boundary.
+This ensures that whether the frontend uses a visual builder or submits a native `Source` chain Expr JSON directly, the backend permission boundary stays consistent.
 
 ### 1.3 Detail, update, and delete
 
-List filtering is not enough. You should also check access for:
+List filtering does not replace object-level access control. Explicit access checks are still required for:
 
 - `GET /api/orders/{id}`
 - `PUT /api/orders/{id}`
 - `DELETE /api/orders/{id}`
 
-Returning a clear `403` is recommended so the frontend can distinguish “forbidden” from “not found”.
+Returning a clear `403` is recommended so the frontend can distinguish "forbidden" from "not found".
 
-## 2. Recommended implementation pattern
+## 2. Recommended Implementation
 
-### 2.1 Inject permission into Expr before execution
+### 2.1 Inject permission into Expr, not post-query trimming
 
-Recommended:
+**Recommended:**
 
 ```csharp
 var filter = BuildBusinessFilter(request);
@@ -73,23 +73,42 @@ var result = await orderService.SearchAsync(
 );
 ```
 
-Avoid loading broad results and then trimming them in memory, because that breaks totals, paging, and data boundaries.
+**Avoid:**
 
-### 2.2 Combine list filtering with object-level checks
+```csharp
+var items = await orderService.SearchAsync(expr);
+var myItems = items.Where(x => x.CreatedByUserId == currentUser.Id).ToList();
+```
 
-Even if a list only returns “my items”, direct requests to `/api/orders/{id}` still need explicit authorization checks.
+The second approach creates three problems:
 
-## 3. Frontend guidance
+1. `Count` and pagination totals become inaccurate.
+2. Unfiltered aggregations, statistics, or exports remain possible.
+3. The query layer has already read data that should not have been accessed.
 
-- Tell regular users that results are automatically scoped to the current account.
-- Handle `403` as “you do not have access to this order”.
-- Do not rely on hidden buttons as the actual permission boundary.
+### 2.2 List filtering and detail checks must coexist
 
-## 4. Common mistakes
+A common misconception: since the list only returns "my items", the detail endpoint does not need to verify access. As long as callers can manually construct a URL to request `GET /api/orders/1`, the detail endpoint must re-check whether the current user has permission to access that object.
 
-1. Enforcing permissions only in the frontend.
-2. Filtering lists but not detail/update/delete endpoints.
-3. Scattering permission rules across controllers instead of centralizing them in query-building logic.
+## 3. Frontend Guidance
+
+- Clearly indicate to regular users that "query results are automatically filtered to the current account scope."
+- When encountering `403`, display "the current user does not have access to this data" rather than incorrectly reporting "record not found."
+- Do not rely on hidden buttons in the frontend for permission control; button hiding is a UX optimization, not a security boundary.
+
+## 4. Common Mistakes
+
+### 4.1 Permission control only in the frontend
+
+The frontend can hide buttons, but this cannot serve as the final authorization basis. The true permission boundary must be on the backend.
+
+### 4.2 Restricting only lists, not detail and delete
+
+As long as detail, update, and delete endpoints lack verification, users can still directly access objects they do not own.
+
+### 4.3 Hard-coding permission filters in controllers
+
+It is better to consolidate "user-scope conditions" into the service layer's query-building logic. This allows QueryString, Expr, statistics, and exports to share the same rules.
 
 ## Related Links
 

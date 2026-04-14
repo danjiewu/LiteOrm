@@ -390,35 +390,44 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 | `Expr.Lambda<T>(expr)` | 从 Lambda 表达式创建 LogicExpr | `Expr.Lambda<User>(u => u.Age > 18)` |
 | `Expr.Func(name, args)` | 创建函数调用表达式 | `Expr.Func("COUNT", Expr.Prop("Id"))` |
 | `Expr.If(condition, then, else)` | 条件表达式 CASE WHEN | `Expr.If(Expr.Prop("Age") > 18, Expr.Value("成年"), Expr.Value("未成年"))` |
+| `Expr.Case(cases, elseExpr)` | CASE WHEN 表达式 | `Expr.Case(new Dictionary<LogicExpr, ValueTypeExpr>{...}, defaultValue)` |
+| `Expr.Aggregate(name, expr, isDistinct)` | 聚合函数包装器 | `Expr.Aggregate("COUNT", Expr.Prop("Id"), true)` |
 | `Expr.Now()` | 当前时间戳 | `Expr.Now()` |
 | `Expr.Today()` | 当前日期 | `Expr.Today()` |
 | `Expr.Sql(key, arg)` | 动态 SQL 片段 | `Expr.Sql("@0", value)` |
+| `Expr.Query<T>(expression)` | Lambda 查询返回列表 | `Expr.Query<User>(q => q.Where(u => u.Age > 18))` |
+| `Expr.Query<T, TResult>(expression)` | Lambda 查询返回标量 | `Expr.Query<User, int>(q => q.Select(u => u.Id.Count()))` |
 
 ### 3.11 ExprExtensions 扩展方法
 
 `ExprExtensions` 为 `ValueTypeExpr` 和 `LogicExpr` 提供链式扩展方法：
 
-**逻辑表达式组合**：
+**逻辑表达式组合**（`LogicExpr`）：
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
-| `.And(right)` | AND 连接 | `Expr.Prop("Age") > 18 .And(Expr.Prop("DeptId") == 2)` |
-| `.Or(right)` | OR 连接 | `condition1.Or(condition2)` |
-| `.Not()` | 取反 | `Expr.Prop("UserName").StartsWith("Temp").Not()` |
+| `&` 或 `.And(right)` | AND 连接 | `Expr.Prop("Age") > 18 & Expr.Prop("DeptId") == 2` |
+| `\|` 或 `.Or(right)` | OR 连接 | `condition1 \| condition2` |
+| `!` 或 `.Not()` | 取反 | `!Expr.Prop("IsDeleted").Equal(true)` |
 
 **比较运算**：
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
 | `.Equal(right)` | 等于 | `Expr.Prop("DeptId").Equal(2)` |
+| `.NotEqual(right)` | 不等于 | `Expr.Prop("Status").NotEqual(0)` |
 | `.GreaterThan(right)` | 大于 | `Expr.Prop("Age").GreaterThan(18)` |
 | `.LessThan(right)` | 小于 | `Expr.Prop("Age").LessThan(65)` |
+| `.GreaterThanOrEqual(right)` | 大于等于 | `Expr.Prop("Age").GreaterThanOrEqual(18)` |
+| `.LessThanOrEqual(right)` | 小于等于 | `Expr.Prop("Age").LessThanOrEqual(65)` |
 
 **集合运算**：
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
-| `.In(items)` | IN 集合 | `Expr.Prop("Id").In(1, 2, 3)` |
+| `.In(params object[])` | IN 集合（params） | `Expr.Prop("Id").In(1, 2, 3)` |
+| `.In(IEnumerable)` | IN 集合（枚举） | `Expr.Prop("Id").In(ids)` |
+| `.In(Expr)` | IN 子查询 | `Expr.Prop("DeptId").In(subQuery)` |
 | `.Between(low, high)` | BETWEEN 范围 | `Expr.Prop("Age").Between(18, 65)` |
 
 **字符串匹配**：
@@ -428,6 +437,15 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 | `.Like(pattern)` | LIKE 模式匹配 | `Expr.Prop("Name").Like("J%")` |
 | `.Contains(text)` | 包含 | `Expr.Prop("UserName").Contains("admin")` |
 | `.StartsWith(text)` | 前缀 | `Expr.Prop("UserName").StartsWith("admin")` |
+| `.EndsWith(text)` | 后缀 | `Expr.Prop("UserName").EndsWith("admin")` |
+| `.RegexpLike(pattern)` | 正则匹配 | `Expr.Prop("Name").RegexpLike("^[A-Z]")` |
+
+**别名与转换**：
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `.As(name)` | 别名 | `Expr.Prop("Id").As("UserId")` |
+| `.Distinct()` | DISTINCT | `Expr.Prop("DeptId").Distinct()` |
 
 **NULL 检查**：
 
@@ -442,10 +460,18 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 | 方法 | 说明 | 示例 |
 |------|------|------|
 | `.Count()` | COUNT 聚合 | `Expr.Prop("Id").Count()` |
+| `.Count(isDistinct)` | COUNT 去重 | `Expr.Prop("DeptId").Count(true)` |
 | `.Sum()` | SUM 聚合 | `Expr.Prop("Salary").Sum()` |
 | `.Avg()` | AVG 聚合 | `Expr.Prop("Score").Avg()` |
 | `.Max()` | MAX 聚合 | `Expr.Prop("Price").Max()` |
 | `.Min()` | MIN 聚合 | `Expr.Prop("Price").Min()` |
+
+**排序**：
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `.Asc()` | 升序 | `Expr.Prop("CreateTime").Asc()` |
+| `.Desc()` | 降序 | `Expr.Prop("CreateTime").Desc()` |
 
 **窗口函数**：
 

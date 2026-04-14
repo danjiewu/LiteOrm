@@ -1,29 +1,29 @@
-# Frontend Native Expr Querying
+# Frontend Native Expr Query
 
-This is also an **integration pattern**. Once a page outgrows "a few fixed filters and one sort order", the frontend can send LiteOrm native `Expr` JSON directly.
+This document is part of the **Extension Integration Guide**: when the frontend no longer needs "just a few fixed filter options" but needs to dynamically combine fields, operators, sorting, and pagination, you can submit LiteOrm's native `Expr` JSON directly.
 
-The recommended approach is to follow **the actual serialized shape produced by `JsonSerializer.Serialize<Expr>(...)`** instead of inventing a separate frontend-only DSL.
+The recommended approach is: **the frontend constructs JSON according to the actual output shape of `JsonSerializer.Serialize<Expr>(...)`**, rather than inventing a separate DSL just for frontend use.
 
-## Scenario guide
+## Choosing the Right Approach
 
-| Scenario | Recommended approach | Why |
-|------|----------|------|
-| Dynamic multi-condition querying | Native Expr | Fields, operators, and values can be combined at runtime |
-| Switchable AND / OR logic | Native Expr | Composite logic stays explicit |
-| Multi-column sorting | Native Expr | `OrderBys` supports it directly |
-| Custom paging | Native Expr | `Skip` / `Take` are native |
+| Scenario | Recommended Approach | Reason |
+|----------|---------------------|--------|
+| Dynamic multi-condition query | Native Expr | Fields, operators, and values can all be combined at runtime |
+| Switchable AND / OR | Native Expr | Easier to express complex logic |
+| Multi-column sorting | Native Expr | `OrderBys` directly supports multiple columns |
+| Custom pagination | Native Expr | `Skip` / `Take` natively available |
 
-## 1. Integration rules
+## 1. Integration Principles
 
-If the frontend sends Expr directly, align on these rules first:
+When submitting Expr directly from the frontend, it is recommended to establish these three conventions first:
 
-- frontend and backend share LiteOrm's expression model
-- the frontend sends LiteOrm's real serialized shape
-- the backend still injects permission and safety checks after deserialization
+- Frontend and backend share LiteOrm's expression semantics
+- Frontend constructs JSON according to LiteOrm's actual serialization output
+- Backend must still supplement permission and security validation after receiving
 
-## 2. Actual JSON shape
+## 2. Current Actual JSON Shape
 
-LiteOrm serializes `SectionExpr -> OrderByExpr -> WhereExpr` into a shape like this:
+When LiteOrm serializes `SectionExpr -> OrderByExpr -> WhereExpr`, the output shape is approximately:
 
 ```json
 {
@@ -58,16 +58,61 @@ LiteOrm serializes `SectionExpr -> OrderByExpr -> WhereExpr` into a shape like t
 }
 ```
 
-The important rule is: `$section`, `$orderby`, and `$where` hold each segment's `Source`, while segment-specific properties stay at the same object level.
+Key points:
 
-## 3. Frontend construction steps
+1. The value of `$section` represents its `Source`
+2. `Skip` / `Take` are at the same level
+3. The value of `$orderby` represents its `Source`
+4. `OrderBys` are at the same level
+5. The value of `$where` represents its `Source`; can be `null` if no upstream segment
+6. `Where` is at the same level
 
-1. Build the business logic expression.
-2. Build the serialized `WhereExpr` shape.
-3. Wrap it in the serialized `OrderByExpr` shape.
-4. Wrap the whole result in the serialized `SectionExpr` shape.
+## 3. Frontend Construction Steps
 
-## 4. JavaScript example
+### 3.1 First Generate Logic Expression
+
+```javascript
+const logicExpr = {
+    "$": "and",
+    "Items": [
+        { "$": "==", "Left": { "#": "Status" }, "Right": { "@": "Pending" } },
+        { "$": ">=", "Left": { "#": "TotalAmount" }, "Right": { "@": 300 } }
+    ]
+};
+```
+
+### 3.2 Construct `WhereExpr` Serialization Result
+
+```javascript
+let expr = {
+    "$where": null,
+    "Where": logicExpr
+};
+```
+
+### 3.3 Construct `OrderByExpr` Serialization Result
+
+```javascript
+expr = {
+    "$orderby": expr,
+    "OrderBys": [
+        { "Field": { "#": "CreatedTime" }, "Asc": false },
+        { "Field": { "#": "TotalAmount" }, "Asc": true }
+    ]
+};
+```
+
+### 3.4 Wrap as `SectionExpr` Serialization Result
+
+```javascript
+expr = {
+    "$section": expr,
+    "Skip": 0,
+    "Take": 5
+};
+```
+
+## 4. JavaScript Call Example
 
 ```javascript
 const payload = {
@@ -95,44 +140,56 @@ const result = await demoApp.apiFetch("/api/orders/query/expr", {
 });
 ```
 
-## 5. Backend behavior
+## 5. What the Backend Does
 
-The backend typically accepts this JSON directly as `Expr`, then extracts:
+The backend typically receives this JSON as `Expr`, then parses out:
 
-- filters
-- sort items
-- paging settings
+- Filter conditions
+- Sort items
+- Pagination parameters
 
-After that, it injects permission filtering. Non-admin users are automatically limited to their own orders.
+Then supplements permission filtering. For non-`Admin` users, the backend automatically appends:
 
-### 5.1 Count caching
+```csharp
+Expr.Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id
+```
 
-Native Expr queries also often need to return `total`, so the `Count` call is a good place for short-lived caching.
+### 5.1 Count Caching
 
-One practical pattern for a demo-style project is:
+Native Expr queries also frequently need to return `total`, so it's also suitable for adding short-term caching to `Count`.
 
-- build the final effective filter as an `Expr`
-- use that `Expr` directly as the count cache key
-- make the user-scope filter part of that effective filter
-- invalidate old count entries by bumping a cache version after successful create, update, or delete operations
+A suitable approach for the demo project:
 
-Because LiteOrm `Expr` already has structural `Equals/GetHashCode`, repeated paging requests with the same effective filter can reuse the same count result without converting the filter into JSON first.
+- First organize the final effective filter conditions into `Expr`
+- Use that `Expr` directly as the count cache key
+- Include the converged filter conditions after user permission into the cache key semantics
+- After successful create, update, or delete, uniformly invalidate old caches by bumping the cache version number
 
-### 5.2 Things to watch
+LiteOrm's `Expr` already implements structured `Equals/GetHashCode`, so native Expr filter conditions with the same structure can reuse the same count result during continuous pagination without needing to convert to JSON first for key generation.
 
-- when total count is unaffected, `OrderBy`, `Skip`, and `Take` do not need to be part of the count cache key
-- if user scope is injected dynamically, build the cache key only after that permission filter is applied
-- this is meant to reduce repeated paging overhead, not to replace true aggregate caching
-- in-memory cache is fine for the demo app; multi-instance deployments should move to a shared cache
+### 5.2 Caveats
 
-## 6. Common mistakes
+- `OrderBy`, `Skip`, `Take` do not affect the total count, so you can cache count based only on the final filter conditions
+- If your native Expr allows injecting user scope, be sure to generate the cache key only after supplementing permission filtering
+- This type of cache is more suitable for reducing database pressure during repeated pagination, not for replacing real statistical aggregation caching
+- In-memory cache is sufficient for the demo; production environments with multiple instances need to switch to a shared caching solution
 
-1. Using the `"$": "section"` / `Source` shape instead of LiteOrm's actual serialized output.
-2. Putting `Skip` / `Take` inside the `$section` value instead of beside it.
-3. Putting `OrderBys` inside the `$orderby` value instead of beside it.
+## 6. Common Mistakes
 
-## Related Links
+### 6.1 Writing `"$": "section"` / `Source` Directly
 
-- [Back to index](../README.md)
-- [Permission filtering](../03-advanced-topics/06-permission-filtering.en.md)
-- [Query guide](../02-core-usage/03-query-guide.en.md)
+It is recommended to stay consistent with LiteOrm's actual serialization output rather than wrapping in an extra custom structure.
+
+### 6.2 Putting `Skip` / `Take` Inside the `$section` Object
+
+They should be at the same level as `$section`, not inside `$section`'s value.
+
+### 6.3 Putting `OrderBys` Inside `$orderby`'s Value
+
+`OrderBys` should be at the same level as `$orderby`; `$orderby`'s value only represents its `Source`.
+
+## 7. Related Links
+
+- [Back to docs hub](../README.md)
+- [Permission Filtering](../03-advanced-topics/06-permission-filtering.en.md)
+- [Query Guide](../02-core-usage/03-query-guide.en.md)
