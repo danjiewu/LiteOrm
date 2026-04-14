@@ -265,7 +265,7 @@ The `Expr` class provides the following static methods for building expressions:
 | Method | Description | Example |
 |--------|-------------|---------|
 | `&` or `.And(right)` | AND | `Expr.Prop("Age") > 18 & Expr.Prop("DeptId") == 2` |
-| `\|` or `.Or(right)` | OR | `condition1 \| condition2` |
+| `|` or `.Or(right)` | OR | `condition1 | condition2` |
 | `!` or `.Not()` | NOT | `!Expr.Prop("IsDeleted").Equal(true)` |
 
 **Comparison operators**:

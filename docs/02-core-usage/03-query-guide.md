@@ -407,7 +407,7 @@ var expr = Expr.Prop("DeptId").Count(isDistinct: true);
 | 方法 | 说明 | 示例 |
 |------|------|------|
 | `&` 或 `.And(right)` | AND 连接 | `Expr.Prop("Age") > 18 & Expr.Prop("DeptId") == 2` |
-| `\|` 或 `.Or(right)` | OR 连接 | `condition1 \| condition2` |
+| `|` 或 `.Or(right)` | OR 连接 | `condition1 | condition2` |
 | `!` 或 `.Not()` | 取反 | `!Expr.Prop("IsDeleted").Equal(true)` |
 
 **比较运算**：
