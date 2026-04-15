@@ -944,6 +944,7 @@ namespace LiteOrm.Common
             {
                 sb.NewLine(context.Indent);
                 sb.Append(sqlBuilder.ToSqlSelectSetType(next.SetType));
+                sb.Append(" ");
                 ToSqlInternal(ref sb, next, context, sqlBuilder, outputParams, 1);// Select默认优先级为1，NextSelects 中的 Select 如果有嵌套 NextSelects 则优先级为0，需要括号包裹
             }
         }

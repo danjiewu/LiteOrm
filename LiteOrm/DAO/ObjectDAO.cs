@@ -226,7 +226,7 @@ namespace LiteOrm
             }
 
             string columnsStr = strColumns.ToString();
-            string sql = IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity
+            string sql = IdentityColumn is not null
                 ? SqlBuilder.BuildBatchIdentityInsertSql(IdentityColumn, FactTableName, columnsStr, valuesList)
                 : SqlBuilder.BuildBatchInsertSql(FactTableName, columnsStr, valuesList);
 
@@ -519,7 +519,7 @@ namespace LiteOrm
                         batchCommand ??= GetPreparedCommand("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize));
                         SetParameterValues(insertableColumns, batch, batchCommand);
 
-                        if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                        if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                         {
                             object res = batchCommand.ExecuteScalar();
                             if (res != null && res != DBNull.Value)
@@ -543,7 +543,7 @@ namespace LiteOrm
                     {
                         SetParameterValues(insertableColumns, batch, command);
 
-                        if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                        if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                         {
                             object res = command.ExecuteScalar();
                             if (res != null && res != DBNull.Value)
@@ -985,7 +985,7 @@ namespace LiteOrm
                         batchCommand ??= await GetPreparedCommandAsync("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize), cancellationToken).ConfigureAwait(false);
                         SetParameterValues(insertableColumns, batch, batchCommand);
 
-                        if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                        if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                         {
                             object res = await batchCommand.ExecuteScalarAsync(cancellationToken);
                             if (res != null && res != DBNull.Value)
@@ -1007,7 +1007,7 @@ namespace LiteOrm
                     // 非固定批量大小不使用 GetPreparedCommand 缓存，直接创建命令
                     using DbCommandProxy command = await MakeNamedParamCommandAsync(MakeBatchInsertSql(batch.Count), cancellationToken).ConfigureAwait(false);
                     SetParameterValues(insertableColumns, batch, command);
-                    if (!idExists && IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                    if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                     {
                         object res = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
                         if (res != null && res != DBNull.Value)

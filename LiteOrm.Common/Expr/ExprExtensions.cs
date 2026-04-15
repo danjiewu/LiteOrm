@@ -758,8 +758,9 @@ namespace LiteOrm.Common
         /// 为 SQL 语句添加 ORDER BY 子句（属性名与排序方向元组数组）。
         /// </summary>
         /// <param name="source">SQL 语句构建起点。</param>
-        /// <param name="orderBys">排序表达式和方向的元组数组（属性名, 升序/降序）。</param>
-        /// <returns>包含 ORDER BY 子句的 SQL 表达式。</returns>
+        /// <param name="orderBys">排序表达式和方向的元组数组（属性名, 升序/降序）。
+        /// Item1: 属性名，Item2: true 表示升序（ASC），false 表示降序（DESC）。</param>
+        /// <returns>包含 ORDER BY 子句的排序表达式。</returns>
         /// <example>
         /// <code>
         /// var query = table.OrderBy(("CreatedDate", false));
