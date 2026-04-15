@@ -61,6 +61,37 @@ namespace LiteOrm
         public override bool ReturnIdentityByParam => true;
 
         /// <summary>
+        /// 批量插入时，如果标识列来源是序列或表达式，则自动将标识列添加到插入列和对应的值中。
+        /// </summary>
+        /// <param name="identityColumn">标识列或含有序列的列定义。</param>
+        /// <param name="tableName">表名。</param>
+        /// <param name="columns">插入列名部分。</param>
+        /// <param name="valuesList">每个实体的占位符集合。</param>
+        /// <returns>构建后的 SQL 语句。</returns>
+        public override string BuildBatchIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
+        {
+            if(IdentitySource== OracleIdentitySourceType.Sequence || IdentitySource == OracleIdentitySourceType.Expression)
+            {
+                columns += "," + ToSqlName(identityColumn.Name);
+                string identityValue = IdentitySource == OracleIdentitySourceType.Sequence
+                    ? tableName + "_seq.nextval" : identityColumn.IdentityExpression;
+                for (int i = 0; i < valuesList.Count; i++)
+                {
+                    valuesList[i] = valuesList[i].Trim();
+                    if (valuesList[i].StartsWith("(") && valuesList[i].EndsWith(")"))
+                    {
+                        valuesList[i] = valuesList[i].AsSpan(1, valuesList[i].Length - 2).ToString() + "," + identityValue;
+                    }
+                    else
+                    {
+                        valuesList[i] += "," + identityValue;
+                    }
+                }
+            }
+            return base.BuildBatchIdentityInsertSql(identityColumn, tableName, columns, valuesList);
+        }
+
+        /// <summary>
         /// 构建带有标识列或序列插入的 SQL 语句。
         /// </summary>
         /// <param name="identityColumn">标识列或含有序列的列定义。</param>
@@ -73,7 +104,7 @@ namespace LiteOrm
             if (IdentitySource == OracleIdentitySourceType.Sequence)
             {
                 strColumns += "," + ToSqlName(identityColumn.Name);
-                strValues += "," + (String.IsNullOrEmpty(identityColumn.IdentityExpression) ? tableName + "_seq.nextval" : identityColumn.IdentityExpression + ".nextval");
+                strValues += "," + tableName + "_seq.nextval";
             }
             else if (IdentitySource == OracleIdentitySourceType.Expression)
             {
