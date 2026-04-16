@@ -10,13 +10,12 @@ namespace LiteOrm
     /// <summary>
     /// LiteOrm Lambda 处理器初始化器，负责注册 Lambda 表达式到 Expr 对象的转换句柄。
     /// </summary>
-    [AutoRegister(Lifetime = Lifetime.Singleton)]
-    public class LiteOrmLambdaHandlerInitializer
+    public static class LiteOrmLambdaHandlerInitializer 
     {
         /// <summary>
         /// 启动时初始化 Lambda 处理器。
         /// </summary>
-        public void Start()
+        public static void InitialRegister()
         {
             // 注册 Lambda 表达式转换到 Expr 对象的成员句柄 (如 DateTime.Now)
             RegisterLambdaMemberHandlers();
@@ -27,7 +26,7 @@ namespace LiteOrm
         /// <summary>
         /// 注册 Lambda 表达式中的成员访问处理器（属性或字段）。
         /// </summary>
-        private void RegisterLambdaMemberHandlers()
+        private static void RegisterLambdaMemberHandlers()
         {
             // DateTime.Now：当前日期时间
             // 对应 SqlFunction: CURRENT_TIMESTAMP (NOW())
@@ -45,7 +44,7 @@ namespace LiteOrm
         /// <summary>
         /// 注册 Lambda 表达式中的方法调用处理器。
         /// </summary>
-        private void RegisterLambdaMethodHandlers()
+        private static void RegisterLambdaMethodHandlers()
         {
             // DateTime 类型方法：AddYears/Month/Day/Hour/Minute/Second 等日期加减操作
             // 对应 SqlFunction: DATE_ADD / DATEADD 等

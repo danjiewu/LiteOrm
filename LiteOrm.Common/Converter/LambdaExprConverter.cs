@@ -15,6 +15,14 @@ namespace LiteOrm.Common
     /// </summary>
     public class LambdaExprConverter
     {
+        /// <summary>
+        /// 初始化 Lambda 表达式转换器，注册默认的处理器。
+        /// </summary>
+        static LambdaExprConverter()
+        {
+            LiteOrmLambdaHandlerInitializer.InitialRegister();
+        }
+
         #region 静态成员
         private static readonly Dictionary<ExpressionType, object> _operatorMappings = new()
         {
@@ -33,6 +41,7 @@ namespace LiteOrm.Common
             { ExpressionType.Divide, ValueOperator.Divide },
             { ExpressionType.Modulo, ValueOperator.Modulo }
         };
+
 
         private static readonly ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>> _methodNameHandlers = new ConcurrentDictionary<string, Func<MethodCallExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
         private static readonly ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>> _typeMethodHandlers = new ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>>();
