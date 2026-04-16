@@ -62,10 +62,7 @@ public class UserService : EntityService<User>, IUserService
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
-builder.Host.RegisterLiteOrm(options =>
-{
-    options.Assemblies = new[] { typeof(UserService).Assembly };
-});
+builder.Host.RegisterLiteOrm();
 ```
 
 ## 5. 插入一条数据
@@ -101,6 +98,8 @@ var page = await userService.SearchAsync(
 ```
 
 ## 8. 完整调用闭环
+
+### 8.1 在 Program.cs 中手动验证
 
 下面的示例展示了一个更接近日常项目接入方式的完整流程。  
 日常项目里，你既可以注入自定义的 `IUserService`，也可以直接注入泛型接口 `IEntityServiceAsync<User>` 与 `IEntityViewServiceAsync<User>`。
@@ -153,8 +152,63 @@ if (exists)
 }
 ```
 
+### 8.2 在 Controller 中使用 LiteOrm
+
+在 ASP.NET Core 项目中，更常见的做法是通过构造函数注入服务，然后在 Controller 中使用：
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+
+    public UsersController(IUserService userService)
+    {
+        _userService = userService;
+    }
+
+    [HttpGet("{id}")]
+    public async Task<User?> GetById(int id)
+    {
+        return await _userService.SearchOneAsync(u => u.Id == id);
+    }
+
+    [HttpGet]
+    public async Task<List<User>> List([FromQuery] string? keyword)
+    {
+        if (string.IsNullOrEmpty(keyword))
+            return await _userService.SearchAsync();
+        return await _userService.SearchAsync(u => u.UserName.Contains(keyword));
+    }
+
+    [HttpPost]
+    public async Task<bool> Create(User user)
+    {
+        user.CreateTime = DateTime.Now;
+        return await _userService.InsertAsync(user);
+    }
+
+    [HttpPut]
+    public async Task<bool> Update(User user)
+    {
+        return await _userService.UpdateAsync(user);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<bool> Delete(int id)
+    {
+        var user = await _userService.SearchOneAsync(u => u.Id == id);
+        if (user == null) return false;
+        return await _userService.DeleteAsync(user);
+    }
+}
+```
+
 如果你能顺利跑通这段代码，说明 LiteOrm 的基础接入已经完成。  
 推荐做法是：业务层稳定后再逐步把泛型服务收敛到自定义 `IUserService` 中，方便承载事务、审计和组合业务逻辑。
+
+当实体较多时，还可以使用[泛型 Controller 或动态 Controller 生成](../04-extensibility/07-generic-controller.md)来减少重复代码。
 
 ## 相关链接
 

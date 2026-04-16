@@ -44,6 +44,7 @@
 | [Expr 序列化格式](./04-extensibility/04-expr-serialization.md) | [Expr Serialization Format](./04-extensibility/04-expr-serialization.en.md) | JSON 简洁模式与正常模式对比 |
 | [前端 QueryString 查询](./04-extensibility/05-frontend-querystring.md) | [Frontend QueryString](./04-extensibility/05-frontend-querystring.en.md) | 用 URL 参数驱动后端 Expr 查询 |
 | [前端原生 Expr 查询](./04-extensibility/06-frontend-native-expr.md) | [Frontend Native Expr](./04-extensibility/06-frontend-native-expr.en.md) | 按 LiteOrm 序列化格式提交 Expr JSON |
+| [泛型 Controller 与动态生成](./04-extensibility/07-generic-controller.md) | [Generic Controller](./04-extensibility/07-generic-controller.en.md) | 泛型基类 Controller 与动态 Controller 生成 |
 
 ### 参考文档 / Reference
 

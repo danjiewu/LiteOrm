@@ -10,7 +10,7 @@
     <div class="container">
         <section class="hero">
             <h2>Expr 查询页</h2>
-            <p>这个页面使用可视化构造器来拼装 LiteOrm 原生 Expr JSON。生成结果会和 <code>JsonSerializer.Serialize&lt;Expr&gt;(...)</code> 的输出形状保持一致：每个片段用 <code>$where / $order / $section</code> 挂出其 <code>Source</code>，片段自身属性平铺在同层。</p>
+            <p>这个页面使用可视化构造器来拼装 LiteOrm 原生 Expr JSON，通过泛型 Controller 的 <code>POST /api/DemoOrders/page</code> 端点执行分页查询。生成结果会和 <code>JsonSerializer.Serialize&lt;Expr&gt;(...)</code> 的输出形状保持一致：每个片段用 <code>$where / $orderby / $section</code> 挂出其 <code>Source</code>，片段自身属性平铺在同层。</p>
         </section>
 
         <nav class="nav">
@@ -46,18 +46,6 @@
                 <button id="presetRecentButton" class="secondary" type="button">示例：最近订单</button>
                 <button id="resetBuilderButton" class="secondary" type="button">重置构造器</button>
             </div>
-            <div class="toolbar" style="margin-top: 12px;">
-                <div class="inline-field" style="min-width: 320px;">
-                    <label for="exprHistorySelect">历史查询</label>
-                    <select id="exprHistorySelect">
-                        <option value="">登录后可查看历史记录</option>
-                    </select>
-                </div>
-                <button id="reloadExprHistoryButton" class="secondary" type="button">加载历史记录</button>
-                <button id="refreshExprHistoryButton" class="secondary" type="button">刷新历史记录</button>
-                <button id="deleteExprHistoryButton" class="secondary" type="button">删除当前历史</button>
-            </div>
-            <div id="exprHistorySummary" class="subtle">历史记录会在成功执行 Expr 查询后保存到服务端，并按当前登录用户隔离。</div>
         </section>
 
         <section class="card">
@@ -190,8 +178,6 @@
             take: 5
         };
 
-        let exprHistoryItems = [];
-
         function escapeHtml(value) {
             return String(value ?? "")
                 .replaceAll("&", "&amp;")
@@ -207,216 +193,6 @@
 
         function getOperatorLabel(kind, operator) {
             return operatorCatalog[kind]?.find(item => item.value === operator)?.label || operator;
-        }
-
-        function formatHistoryTime(value) {
-            const date = new Date(value);
-            return Number.isNaN(date.getTime())
-                ? String(value ?? "")
-                : date.toLocaleString("zh-CN", { hour12: false });
-        }
-
-        function toDateTimeLocalValue(value) {
-            if (!value) return "";
-            const date = new Date(value);
-            if (Number.isNaN(date.getTime())) return "";
-            const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-            return local.toISOString().slice(0, 16);
-        }
-
-        function parseConditionExpr(expr) {
-            if (!expr || typeof expr !== "object") return null;
-
-            const field = expr.Left?.["#"];
-            const operator = expr["$"];
-            if (!field || !operator) return null;
-
-            const fieldConfig = getFieldConfig(field);
-            let value = expr.Right?.["@"] ?? "";
-            if (fieldConfig.kind === "date") {
-                value = toDateTimeLocalValue(value);
-            } else if (fieldConfig.kind === "number") {
-                value = value === "" ? "" : String(value);
-            }
-
-            return createCondition(field, operator, value ?? "");
-        }
-
-        function parseLogicState(logicExpr) {
-            if (!logicExpr || typeof logicExpr !== "object") {
-                throw new Error("历史 Expr 缺少 Where 条件。");
-            }
-
-            if (Array.isArray(logicExpr.$and)) {
-                const conditions = logicExpr.$and.map(parseConditionExpr).filter(Boolean);
-                if (conditions.length === 0) throw new Error("历史 Expr 的 AND 条件不能为空。");
-                return { logic: "and", conditions };
-            }
-
-            if (Array.isArray(logicExpr.$or)) {
-                const conditions = logicExpr.$or.map(parseConditionExpr).filter(Boolean);
-                if (conditions.length === 0) throw new Error("历史 Expr 的 OR 条件不能为空。");
-                return { logic: "or", conditions };
-            }
-
-            const singleCondition = parseConditionExpr(logicExpr);
-            if (!singleCondition) {
-                throw new Error("历史 Expr 不是当前页面支持的条件结构。");
-            }
-
-            return { logic: "and", conditions: [singleCondition] };
-        }
-
-        function parseSortState(orderBys) {
-            if (!Array.isArray(orderBys) || orderBys.length === 0) {
-                return [createSort()];
-            }
-
-            const sorts = orderBys
-                .map(item => {
-                    const field = item?.Field?.["#"];
-                    return field ? createSort(field, item.Asc !== true) : null;
-                })
-                .filter(Boolean);
-
-            return sorts.length > 0 ? sorts : [createSort()];
-        }
-
-        function buildStateFromPayload(payload) {
-            if (!payload || typeof payload !== "object" || payload["$section"] === undefined) {
-                throw new Error("历史 Expr 缺少 $section 片段。");
-            }
-
-            const sectionSource = payload["$section"];
-            const skip = Math.max(0, Number(payload.Skip) || 0);
-            const take = Math.min(100, Math.max(1, Number(payload.Take) || 5));
-
-            let whereSource = sectionSource;
-            let sorts = [createSort()];
-
-            if (sectionSource && typeof sectionSource === "object" && sectionSource["$orderby"] !== undefined) {
-                sorts = parseSortState(sectionSource.OrderBys);
-                whereSource = sectionSource["$orderby"];
-            }
-
-            if (!whereSource || typeof whereSource !== "object" || whereSource["$where"] === undefined) {
-                throw new Error("历史 Expr 缺少 $where 片段。");
-            }
-
-            const logicState = parseLogicState(whereSource.Where);
-            return {
-                logic: logicState.logic,
-                conditions: logicState.conditions,
-                sorts,
-                skip,
-                take
-            };
-        }
-
-        function summarizeHistoryItem(item) {
-            try {
-                const payload = JSON.parse(item.exprJson);
-                const historyState = buildStateFromPayload(payload);
-                const logicText = historyState.logic === "or" ? " OR " : " AND ";
-                const conditionSummary = historyState.conditions
-                    .slice(0, 2)
-                    .map(condition => {
-                        const field = getFieldConfig(condition.field);
-                        return `${field.label} ${getOperatorLabel(field.kind, condition.operator)} ${condition.value || "空值"}`;
-                    })
-                    .join(logicText);
-                const extra = historyState.conditions.length > 2 ? ` 等 ${historyState.conditions.length} 个条件` : "";
-                return `${conditionSummary || "无条件"}${extra} / take=${historyState.take}`;
-            } catch {
-                return `Expr #${item.id}`;
-            }
-        }
-
-        function renderHistoryOptions(preferredId) {
-            const select = document.getElementById("exprHistorySelect");
-            const summary = document.getElementById("exprHistorySummary");
-
-            if (!demoApp.getToken()) {
-                select.innerHTML = `<option value="">登录后可查看历史记录</option>`;
-                summary.textContent = "历史记录会在成功执行 Expr 查询后保存到服务端，并按当前登录用户隔离。";
-                return;
-            }
-
-            if (exprHistoryItems.length === 0) {
-                select.innerHTML = `<option value="">暂无历史记录</option>`;
-                summary.textContent = "暂无历史记录。成功执行 Expr 查询后会自动保存到服务端。";
-                return;
-            }
-
-            select.innerHTML = `<option value="">请选择历史记录</option>${exprHistoryItems
-                .map(item => `<option value="${item.id}">${escapeHtml(`${formatHistoryTime(item.createdTime)} · ${summarizeHistoryItem(item)}`)}</option>`)
-                .join("")}`;
-
-            const selectedId = preferredId && exprHistoryItems.some(item => String(item.id) === String(preferredId))
-                ? String(preferredId)
-                : String(exprHistoryItems[0].id);
-
-            select.value = selectedId;
-            updateHistorySummary();
-        }
-
-        function updateHistorySummary() {
-            const selectedId = document.getElementById("exprHistorySelect").value;
-            const summary = document.getElementById("exprHistorySummary");
-            const selectedItem = exprHistoryItems.find(item => String(item.id) === selectedId);
-
-            summary.textContent = selectedItem
-                ? `${formatHistoryTime(selectedItem.createdTime)} 保存 · ${summarizeHistoryItem(selectedItem)}`
-                : "历史记录会在成功执行 Expr 查询后保存到服务端，并按当前登录用户隔离。";
-        }
-
-        async function loadExprHistory(options = {}) {
-            const preferredId = options.preferredId ?? document.getElementById("exprHistorySelect")?.value ?? "";
-            const summary = document.getElementById("exprHistorySummary");
-
-            if (!demoApp.getToken()) {
-                exprHistoryItems = [];
-                renderHistoryOptions("");
-                return;
-            }
-
-            try {
-                const result = await demoApp.apiFetch("/api/orders/query/expr/history?take=20");
-                exprHistoryItems = Array.isArray(result.items) ? result.items : [];
-                renderHistoryOptions(preferredId);
-            } catch (error) {
-                exprHistoryItems = [];
-                renderHistoryOptions("");
-                summary.textContent = `历史记录刷新失败：${error.message}`;
-                if (!options.silent) {
-                    throw error;
-                }
-            }
-        }
-
-        function loadSelectedHistory() {
-            const selectedId = document.getElementById("exprHistorySelect").value;
-            if (!selectedId) {
-                demoApp.setStatus("exprPageStatus", "请先选择一条历史记录。", "error");
-                return;
-            }
-
-            const item = exprHistoryItems.find(entry => String(entry.id) === selectedId);
-            if (!item) {
-                demoApp.setStatus("exprPageStatus", "所选历史记录不存在或已被移除。", "error");
-                return;
-            }
-
-            try {
-                const payload = JSON.parse(item.exprJson);
-                state = buildStateFromPayload(payload);
-                renderBuilder();
-                document.getElementById("exprHistorySelect").value = selectedId;
-                updateHistorySummary();
-                demoApp.setStatus("exprPageStatus", "历史 Expr 已载入构造器，可继续编辑后再查询。", "success");
-            } catch (error) {
-                demoApp.setStatus("exprPageStatus", `历史记录无法回填：${error.message}`, "error");
-            }
         }
 
         function renderOperatorOptions(kind, selectedOperator) {
@@ -723,37 +499,6 @@
         document.getElementById("presetPendingButton").addEventListener("click", loadPendingPreset);
         document.getElementById("presetRecentButton").addEventListener("click", loadRecentPreset);
         document.getElementById("resetBuilderButton").addEventListener("click", resetBuilder);
-        document.getElementById("exprHistorySelect").addEventListener("change", updateHistorySummary);
-        document.getElementById("reloadExprHistoryButton").addEventListener("click", () => {
-            if (!demoApp.requireLogin("exprPageStatus")) return;
-            loadSelectedHistory();
-        });
-        document.getElementById("refreshExprHistoryButton").addEventListener("click", async () => {
-            if (!demoApp.requireLogin("exprPageStatus")) return;
-            try {
-                await loadExprHistory();
-                demoApp.setStatus("exprPageStatus", "历史记录已刷新。", "success");
-            } catch (error) {
-                demoApp.setStatus("exprPageStatus", `历史记录刷新失败：${error.message}`, "error");
-            }
-        });
-        document.getElementById("deleteExprHistoryButton").addEventListener("click", async () => {
-            if (!demoApp.requireLogin("exprPageStatus")) return;
-
-            const selectedId = document.getElementById("exprHistorySelect").value;
-            if (!selectedId) {
-                demoApp.setStatus("exprPageStatus", "请先选择一条要删除的历史记录。", "error");
-                return;
-            }
-
-            try {
-                await demoApp.apiFetch(`/api/orders/query/expr/history/${selectedId}`, { method: "DELETE" });
-                await loadExprHistory({ silent: true });
-                demoApp.setStatus("exprPageStatus", "所选历史记录已删除。", "success");
-            } catch (error) {
-                demoApp.setStatus("exprPageStatus", `删除历史记录失败：${error.message}`, "error");
-            }
-        });
 
         document.getElementById("buildExprButton").addEventListener("click", () => {
             refreshPreview();
@@ -764,7 +509,7 @@
             if (!demoApp.requireLogin("exprPageStatus")) return;
             try {
                 const payload = refreshPreview();
-                const result = await demoApp.apiFetch("/api/orders/query/expr", {
+                const result = await demoApp.apiFetch("/api/DemoOrder/PageQuery", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
@@ -772,16 +517,13 @@
                 demoApp.renderJson("jsonOutput", result);
                 demoApp.renderOrders("exprResultTable", result.items);
                 document.getElementById("exprResultSummary").textContent = `Expr 查询成功，共 ${result.total} 条，本次返回 ${result.items.length} 条，skip=${result.skip}，take=${result.take}`;
-                await loadExprHistory({ silent: true });
-                demoApp.setStatus("exprPageStatus", "Expr 查询成功，已写入历史记录。", "success");
+                demoApp.setStatus("exprPageStatus", "Expr 查询成功。", "success");
             } catch (error) {
                 demoApp.setStatus("exprPageStatus", `Expr 查询失败：${error.message}`, "error");
             }
         });
 
         renderBuilder();
-        renderHistoryOptions("");
-        loadExprHistory({ silent: true });
     </script>
 </body>
 </html>

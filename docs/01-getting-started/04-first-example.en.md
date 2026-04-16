@@ -62,10 +62,7 @@ If you're not ready to define custom services in your project yet, you can also 
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
-builder.Host.RegisterLiteOrm(options =>
-{
-    options.Assemblies = new[] { typeof(UserService).Assembly };
-});
+builder.Host.RegisterLiteOrm();
 ```
 
 ## 5. Insert a Record
@@ -101,6 +98,8 @@ var page = await userService.SearchAsync(
 ```
 
 ## 8. Complete End-to-End Flow
+
+### 8.1 Manual verification in Program.cs
 
 The example below demonstrates a complete flow closer to everyday project integration.
 In daily projects, you can either inject your custom `IUserService` or directly inject the generic interfaces `IEntityServiceAsync<User>` and `IEntityViewServiceAsync<User>`.
@@ -153,8 +152,63 @@ if (exists)
 }
 ```
 
+### 8.2 Using LiteOrm in a Controller
+
+In ASP.NET Core projects, the more common approach is to inject services via constructor injection and use them in controllers:
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+
+    public UsersController(IUserService userService)
+    {
+        _userService = userService;
+    }
+
+    [HttpGet("{id}")]
+    public async Task<User?> GetById(int id)
+    {
+        return await _userService.SearchOneAsync(u => u.Id == id);
+    }
+
+    [HttpGet]
+    public async Task<List<User>> List([FromQuery] string? keyword)
+    {
+        if (string.IsNullOrEmpty(keyword))
+            return await _userService.SearchAsync();
+        return await _userService.SearchAsync(u => u.UserName.Contains(keyword));
+    }
+
+    [HttpPost]
+    public async Task<bool> Create(User user)
+    {
+        user.CreateTime = DateTime.Now;
+        return await _userService.InsertAsync(user);
+    }
+
+    [HttpPut]
+    public async Task<bool> Update(User user)
+    {
+        return await _userService.UpdateAsync(user);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<bool> Delete(int id)
+    {
+        var user = await _userService.SearchOneAsync(u => u.Id == id);
+        if (user == null) return false;
+        return await _userService.DeleteAsync(user);
+    }
+}
+```
+
 If you can successfully run this code, your basic LiteOrm integration is complete.
 The recommended approach is to gradually migrate generic services to custom `IUserService` after the business layer stabilizes, to accommodate transactions, auditing, and composite business logic.
+
+When you have many entities, you can also use [Generic Controller or Dynamic Controller Generation](../04-extensibility/07-generic-controller.en.md) to reduce repetitive code.
 
 ## Related Links
 

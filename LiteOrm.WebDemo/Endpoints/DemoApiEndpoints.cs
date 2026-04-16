@@ -97,6 +97,7 @@ public static class DemoApiEndpoints
             var expr = requestBody.Deserialize<Expr>();
             var validation = ExprValidator.CreateMinimum();
             if (!validation.VisitAll(expr)) return Results.BadRequest(new { error = "非法 Expr 内容.", hint = "请确保提交的 JSON 结构符合 LiteOrm Expr 的要求，且仅包含基本值、逻辑表达式、集合表达式和基础 SQL 片段。" });
+            
             var result = await orderService.QueryByExprAsync(expr, currentUser, cancellationToken);
             await exprQueryHistoryService.SaveAsync(currentUser, requestBody.GetRawText(), cancellationToken);
             return Results.Ok(result);
