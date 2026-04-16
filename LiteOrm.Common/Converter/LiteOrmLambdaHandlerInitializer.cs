@@ -1,6 +1,4 @@
-using Autofac;
 using LiteOrm.Common;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -13,7 +11,7 @@ namespace LiteOrm
     /// LiteOrm Lambda 处理器初始化器，负责注册 Lambda 表达式到 Expr 对象的转换句柄。
     /// </summary>
     [AutoRegister(Lifetime = Lifetime.Singleton)]
-    public class LiteOrmLambdaHandlerInitializer : IStartable
+    public class LiteOrmLambdaHandlerInitializer
     {
         /// <summary>
         /// 启动时初始化 Lambda 处理器。
