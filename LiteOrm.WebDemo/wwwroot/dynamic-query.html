@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LiteOrm 演示 - 动态 Controller 查询</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <h2>动态 Controller 查询页</h2>
+            <p>页面功能与 Expr 查询类似，但查询目标来自 <code>DynamicControllerBuilder</code> 生成的动态 Controller。你可以在部门、订单、产品、客户等实体之间切换，并复用同一套 Expr 构造方式。</p>
+        </section>
+
+        <nav class="nav">
+            <a href="/">登录</a>
+            <a href="/query-string.html">QueryString 查询</a>
+            <a href="/expr-query.html">Expr 查询</a>
+            <a class="active" href="/dynamic-query.html">动态查询</a>
+            <a href="/order-manage.html">订单管理</a>
+            <a href="/create-order.html">订单创建</a>
+        </nav>
+
+        <section class="card">
+            <h2>当前会话</h2>
+            <div id="sessionBox" class="token">尚未登录</div>
+        </section>
+
+        <section class="card">
+            <h2>查询目标</h2>
+            <div class="grid">
+                <div>
+                    <label for="entitySelector">实体类型</label>
+                    <select id="entitySelector"></select>
+                </div>
+                <div>
+                    <label>实体摘要</label>
+                    <div id="entitySummary" class="token">等待加载实体元数据...</div>
+                </div>
+            </div>
+            <div id="pageStatus" class="status">等待加载...</div>
+        </section>
+
+        <section class="card">
+            <h2>动态 Expr 构造器</h2>
+            <div class="toolbar" style="margin-top: 12px;">
+                <div class="inline-field">
+                    <label for="exprLogicMode">条件组合方式</label>
+                    <select id="exprLogicMode">
+                        <option value="and">满足全部条件（AND）</option>
+                        <option value="or">满足任一条件（OR）</option>
+                    </select>
+                </div>
+                <button id="addConditionButton" class="secondary" type="button">新增条件</button>
+                <button id="addSortButton" class="secondary" type="button">新增排序</button>
+                <button id="resetBuilderButton" class="secondary" type="button">重置构造器</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>筛选条件</h2>
+            <div id="conditionList" class="builder-stack"></div>
+        </section>
+
+        <section class="card">
+            <h2>排序与分页</h2>
+            <div id="sortList" class="builder-stack"></div>
+            <div class="grid" style="margin-top: 12px;">
+                <div>
+                    <label for="exprSkip">跳过条数（Skip）</label>
+                    <input id="exprSkip" type="number" value="0" min="0">
+                </div>
+                <div>
+                    <label for="exprTake">获取条数（Take）</label>
+                    <input id="exprTake" type="number" value="10" min="1" max="100">
+                </div>
+            </div>
+            <div class="actions">
+                <button id="buildExprButton" class="secondary">生成 Expr JSON</button>
+                <button id="runExprButton">执行动态查询</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>生成的 Expr JSON</h2>
+            <pre id="exprPreview">{}</pre>
+        </section>
+
+        <section class="card">
+            <h2>结果</h2>
+            <div id="resultSummary" class="subtle">暂无结果</div>
+            <table>
+                <thead id="resultHead"></thead>
+                <tbody id="resultBody">
+                    <tr><td class="subtle">暂无数据</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>最近响应</h2>
+            <pre id="jsonOutput">{}</pre>
+        </section>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        demoApp.renderSessionBox("sessionBox");
+
+        const operatorCatalog = {
+            string: [
+                { value: "contains", label: "包含" },
+                { value: "startswith", label: "前缀匹配" },
+                { value: "endswith", label: "后缀匹配" },
+                { value: "==", label: "等于" },
+                { value: "!=", label: "不等于" }
+            ],
+            number: [
+                { value: "==", label: "等于" },
+                { value: "!=", label: "不等于" },
+                { value: ">", label: "大于" },
+                { value: ">=", label: "大于等于" },
+                { value: "<", label: "小于" },
+                { value: "<=", label: "小于等于" }
+            ],
+            date: [
+                { value: ">", label: "晚于" },
+                { value: ">=", label: "晚于等于" },
+                { value: "<", label: "早于" },
+                { value: "<=", label: "早于等于" }
+            ],
+            bool: [
+                { value: "==", label: "等于" },
+                { value: "!=", label: "不等于" }
+            ]
+        };
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function createCondition(field = "", operator = "", value = "") {
+            return { field, operator, value };
+        }
+
+        function createSort(field = "", desc = true) {
+            return { field, desc };
+        }
+
+        let entities = [];
+        let currentEntity = null;
+        let state = {
+            logic: "and",
+            conditions: [],
+            sorts: [],
+            skip: 0,
+            take: 10
+        };
+
+        function getFields() {
+            return currentEntity?.fields ?? [];
+        }
+
+        function getFieldConfig(fieldName) {
+            return getFields().find(field => field.name === fieldName) || getFields()[0];
+        }
+
+        function getDefaultField(kind) {
+            const fields = getFields();
+            if (fields.length === 0) return "";
+            if (!kind) return fields[0].name;
+            return fields.find(field => field.kind === kind)?.name ?? fields[0].name;
+        }
+
+        function resetBuilder() {
+            const firstField = getDefaultField("string") || getDefaultField();
+            const firstConfig = getFieldConfig(firstField);
+            state = {
+                logic: "and",
+                conditions: [createCondition(firstField, operatorCatalog[firstConfig?.kind ?? "string"][0].value, "")],
+                sorts: [createSort(getDefaultField("date") || getDefaultField(), true)],
+                skip: 0,
+                take: 10
+            };
+            renderBuilder();
+        }
+
+        function renderEntitySelector() {
+            const selector = document.getElementById("entitySelector");
+            selector.innerHTML = entities.map(entity => `<option value="${entity.routeSegment}" ${entity.routeSegment === currentEntity?.routeSegment ? "selected" : ""}>${entity.displayName} (${entity.entityName})</option>`).join("");
+        }
+
+        function renderFieldOptions(selectedField) {
+            return getFields().map(field => `<option value="${field.name}" ${field.name === selectedField ? "selected" : ""}>${field.label}</option>`).join("");
+        }
+
+        function renderOperatorOptions(kind, selectedOperator) {
+            const options = operatorCatalog[kind] ?? operatorCatalog.string;
+            return options.map(op => `<option value="${op.value}" ${op.value === selectedOperator ? "selected" : ""}>${op.label}</option>`).join("");
+        }
+
+        function renderValueInput(condition, index) {
+            const field = getFieldConfig(condition.field);
+            const value = condition.value ?? "";
+
+            if (!field) {
+                return `<input data-part="value" data-index="${index}" value="${escapeHtml(value)}">`;
+            }
+
+            if (field.kind === "number") {
+                return `<input data-part="value" data-index="${index}" type="number" step="0.01" value="${escapeHtml(value)}" placeholder="请输入数值">`;
+            }
+
+            if (field.kind === "date") {
+                return `<input data-part="value" data-index="${index}" type="datetime-local" value="${escapeHtml(value)}">`;
+            }
+
+            if (field.kind === "bool") {
+                return `
+                    <select data-part="value" data-index="${index}">
+                        <option value="">请选择</option>
+                        <option value="true" ${String(value) === "true" ? "selected" : ""}>true</option>
+                        <option value="false" ${String(value) === "false" ? "selected" : ""}>false</option>
+                    </select>
+                `;
+            }
+
+            return `<input data-part="value" data-index="${index}" value="${escapeHtml(value)}" placeholder="请输入匹配值">`;
+        }
+
+        function renderConditions() {
+            const el = document.getElementById("conditionList");
+            el.innerHTML = state.conditions.map((condition, index) => {
+                const field = getFieldConfig(condition.field);
+                return `
+                    <div class="builder-row">
+                        <div>
+                            <label>字段</label>
+                            <select data-part="field" data-index="${index}">
+                                ${renderFieldOptions(condition.field)}
+                            </select>
+                        </div>
+                        <div>
+                            <label>操作符</label>
+                            <select data-part="operator" data-index="${index}">
+                                ${renderOperatorOptions(field?.kind ?? "string", condition.operator)}
+                            </select>
+                        </div>
+                        <div>
+                            <label>值</label>
+                            ${renderValueInput(condition, index)}
+                        </div>
+                        <div>
+                            <button type="button" class="secondary" data-part="remove" data-index="${index}">删除条件</button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function renderSorts() {
+            const el = document.getElementById("sortList");
+            el.innerHTML = state.sorts.map((sort, index) => `
+                <div class="builder-row">
+                    <div>
+                        <label>排序字段</label>
+                        <select data-part="field" data-sort-index="${index}">
+                            ${renderFieldOptions(sort.field)}
+                        </select>
+                    </div>
+                    <div>
+                        <label>方向</label>
+                        <select data-part="desc" data-sort-index="${index}">
+                            <option value="true" ${sort.desc ? "selected" : ""}>倒序</option>
+                            <option value="false" ${!sort.desc ? "selected" : ""}>正序</option>
+                        </select>
+                    </div>
+                    <div class="subtle">接口：${escapeHtml(currentEntity?.pageQueryUrl ?? "")}</div>
+                    <div>
+                        <button type="button" class="secondary" data-part="remove" data-sort-index="${index}">删除排序</button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        function convertValue(field, rawValue) {
+            if (rawValue === "" || rawValue === null || rawValue === undefined) return null;
+
+            if (field.kind === "number") {
+                const value = Number(rawValue);
+                return Number.isFinite(value) ? value : null;
+            }
+
+            if (field.kind === "date") {
+                const date = new Date(rawValue);
+                return Number.isNaN(date.getTime()) ? null : date.toISOString();
+            }
+
+            if (field.kind === "bool") {
+                if (rawValue === "true") return true;
+                if (rawValue === "false") return false;
+                return null;
+            }
+
+            return String(rawValue).trim();
+        }
+
+        function buildLogicExpr() {
+            const conditions = state.conditions
+                .map(condition => {
+                    const field = getFieldConfig(condition.field);
+                    if (!field) return null;
+
+                    const convertedValue = convertValue(field, condition.value);
+                    if (convertedValue === null || convertedValue === "") return null;
+
+                    return {
+                        "$": condition.operator,
+                        Left: { "#": condition.field },
+                        Right: { "@": convertedValue }
+                    };
+                })
+                .filter(Boolean);
+
+            if (conditions.length === 0) {
+                return { "$": ">", Left: { "#": "Id" }, Right: { "@": 0 } };
+            }
+
+            if (conditions.length === 1) {
+                return conditions[0];
+            }
+
+            return { "$": state.logic, Items: conditions };
+        }
+
+        function buildExprPayload() {
+            const logicExpr = buildLogicExpr();
+            let expr = {
+                "$where": null,
+                Where: logicExpr
+            };
+
+            const sortItems = state.sorts
+                .filter(sort => !!sort.field)
+                .map(sort => ({
+                    Field: { "#": sort.field },
+                    Asc: !sort.desc
+                }));
+
+            if (sortItems.length > 0) {
+                expr = {
+                    "$orderby": expr,
+                    OrderBys: sortItems
+                };
+            }
+
+            return {
+                "$section": expr,
+                Skip: Math.max(0, Number(state.skip) || 0),
+                Take: Math.min(100, Math.max(1, Number(state.take) || 10))
+            };
+        }
+
+        function refreshPreview() {
+            const payload = buildExprPayload();
+            demoApp.renderJson("exprPreview", payload);
+            return payload;
+        }
+
+        function renderEntitySummary() {
+            const fields = getFields();
+            document.getElementById("entitySummary").textContent = currentEntity
+                ? `Controller：${currentEntity.controllerName}\n接口：${currentEntity.pageQueryUrl}\n字段：${fields.map(field => `${field.name}:${field.kind}`).join(", ")}`
+                : "暂无实体";
+        }
+
+        function renderResult(items) {
+            const fields = getFields();
+            const head = document.getElementById("resultHead");
+            const body = document.getElementById("resultBody");
+
+            if (!items || items.length === 0) {
+                head.innerHTML = "";
+                body.innerHTML = '<tr><td class="subtle">暂无数据</td></tr>';
+                return;
+            }
+
+            head.innerHTML = `<tr>${fields.map(field => `<th>${escapeHtml(field.label)}</th>`).join("")}</tr>`;
+            body.innerHTML = items.map(item => `
+                <tr>
+                    ${fields.map(field => `<td>${escapeHtml(demoApp.getObjectValue(item, field.name))}</td>`).join("")}
+                </tr>
+            `).join("");
+        }
+
+        function renderBuilder() {
+            document.getElementById("exprLogicMode").value = state.logic;
+            document.getElementById("exprSkip").value = state.skip;
+            document.getElementById("exprTake").value = state.take;
+            renderEntitySelector();
+            renderEntitySummary();
+            renderConditions();
+            renderSorts();
+            refreshPreview();
+        }
+
+        async function loadEntities() {
+            if (!demoApp.requireLogin("pageStatus")) return;
+            const result = await demoApp.apiFetch("/api/dynamic-query/entities");
+            entities = result.items ?? [];
+            currentEntity = entities.find(entity => entity.routeSegment === "DemoOrder") ?? entities[0] ?? null;
+            if (!currentEntity) {
+                demoApp.setStatus("pageStatus", "没有可用的动态查询实体。", "error");
+                return;
+            }
+            resetBuilder();
+            demoApp.setStatus("pageStatus", `已加载 ${entities.length} 个动态查询实体。`, "success");
+        }
+
+        document.getElementById("entitySelector").addEventListener("change", (event) => {
+            currentEntity = entities.find(entity => entity.routeSegment === event.target.value) ?? entities[0] ?? null;
+            resetBuilder();
+        });
+
+        document.getElementById("exprLogicMode").addEventListener("change", (event) => {
+            state.logic = event.target.value;
+            refreshPreview();
+        });
+
+        document.getElementById("conditionList").addEventListener("change", (event) => {
+            const index = Number(event.target.dataset.index);
+            const part = event.target.dataset.part;
+            if (Number.isNaN(index) || !part) return;
+
+            const condition = state.conditions[index];
+            if (part === "field") {
+                const field = getFieldConfig(event.target.value);
+                condition.field = event.target.value;
+                condition.operator = operatorCatalog[field?.kind ?? "string"][0].value;
+                condition.value = "";
+                renderBuilder();
+                return;
+            }
+
+            condition[part] = event.target.value;
+            refreshPreview();
+        });
+
+        document.getElementById("conditionList").addEventListener("click", (event) => {
+            const button = event.target.closest("button[data-part='remove']");
+            if (!button) return;
+            const index = Number(button.dataset.index);
+            if (state.conditions.length === 1) {
+                state.conditions[0].value = "";
+                renderBuilder();
+                return;
+            }
+            state.conditions.splice(index, 1);
+            renderBuilder();
+        });
+
+        document.getElementById("sortList").addEventListener("change", (event) => {
+            const index = Number(event.target.dataset.sortIndex);
+            const part = event.target.dataset.part;
+            if (Number.isNaN(index) || !part) return;
+
+            const sort = state.sorts[index];
+            if (part === "field") {
+                sort.field = event.target.value;
+            } else if (part === "desc") {
+                sort.desc = event.target.value === "true";
+            }
+
+            refreshPreview();
+        });
+
+        document.getElementById("sortList").addEventListener("click", (event) => {
+            const button = event.target.closest("button[data-part='remove']");
+            if (!button) return;
+            const index = Number(button.dataset.sortIndex);
+            if (state.sorts.length === 1) {
+                state.sorts[0] = createSort(getDefaultField("date") || getDefaultField(), true);
+                renderBuilder();
+                return;
+            }
+            state.sorts.splice(index, 1);
+            renderBuilder();
+        });
+
+        document.getElementById("exprSkip").addEventListener("input", (event) => {
+            state.skip = event.target.value;
+            refreshPreview();
+        });
+
+        document.getElementById("exprTake").addEventListener("input", (event) => {
+            state.take = event.target.value;
+            refreshPreview();
+        });
+
+        document.getElementById("addConditionButton").addEventListener("click", () => {
+            const field = getDefaultField("string") || getDefaultField();
+            const config = getFieldConfig(field);
+            state.conditions.push(createCondition(field, operatorCatalog[config?.kind ?? "string"][0].value, ""));
+            renderBuilder();
+        });
+
+        document.getElementById("addSortButton").addEventListener("click", () => {
+            state.sorts.push(createSort(getDefaultField("date") || getDefaultField(), true));
+            renderBuilder();
+        });
+
+        document.getElementById("resetBuilderButton").addEventListener("click", resetBuilder);
+
+        document.getElementById("buildExprButton").addEventListener("click", () => {
+            refreshPreview();
+            demoApp.setStatus("pageStatus", `已为 ${currentEntity?.displayName ?? ""} 生成 Expr JSON。`, "success");
+        });
+
+        document.getElementById("runExprButton").addEventListener("click", async () => {
+            if (!demoApp.requireLogin("pageStatus")) return;
+            if (!currentEntity) {
+                demoApp.setStatus("pageStatus", "当前没有可查询的实体。", "error");
+                return;
+            }
+
+            try {
+                const payload = refreshPreview();
+                const result = await demoApp.apiFetch(currentEntity.pageQueryUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                demoApp.renderJson("jsonOutput", result);
+                renderResult(result.items);
+                document.getElementById("resultSummary").textContent = `${currentEntity.displayName} 查询成功，共 ${result.total} 条，本次返回 ${result.items.length} 条。`;
+                demoApp.setStatus("pageStatus", `${currentEntity.displayName} 动态查询成功。`, "success");
+            } catch (error) {
+                demoApp.setStatus("pageStatus", `动态查询失败：${error.message}`, "error");
+            }
+        });
+
+        loadEntities().catch(error => {
+            demoApp.setStatus("pageStatus", `加载动态实体失败：${error.message}`, "error");
+        });
+    </script>
+</body>
+</html>

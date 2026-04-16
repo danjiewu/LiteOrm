@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using LiteOrm.Common;
 using LiteOrm.Service;
+using LiteOrm.WebDemo.Infrastructure;
 using LiteOrm.WebDemo.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
@@ -17,18 +18,10 @@ public static class DynamicControllerBuilder
         var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
         var moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName.Name);
 
-        foreach (var entityType in typeof(DemoUser).Assembly.GetTypes())
+        foreach (var definition in DynamicQueryMetadata.GetEntities(defaultNamespace))
         {
-            if (!entityType.IsSubclassOf(typeof(ObjectBase)) || entityType.IsAbstract)
-                continue;
-            if (entityType.Name.EndsWith("View"))
-                continue;
-            if (entityType.GetConstructor(Type.EmptyTypes) == null)
-                continue;
-
-            var viewType = typeof(DemoUser).Assembly.GetType(entityType.FullName + "View");
-            if (viewType == null || !viewType.IsSubclassOf(entityType))
-                viewType = entityType;
+            var entityType = typeof(DemoUser).Assembly.GetType($"{typeof(DemoUser).Namespace}.{definition.EntityName}")!;
+            var viewType = typeof(DemoUser).Assembly.GetType($"{typeof(DemoUser).Namespace}.{definition.ViewName}") ?? entityType;
 
             var controllerName = $"{entityType.Name}Controller";
             var existingController = Type.GetType($"{defaultNamespace}.Controllers.{controllerName}");

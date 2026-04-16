@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LiteOrm.WebDemo.Controllers;
 
 [ApiController]
+[ServiceFilter(typeof(DemoControllerAuthFilter))]
 [Route("api/[controller]/[action]")]
 public abstract class EntityControllerBase<T, TView> : ControllerBase
     where T : class

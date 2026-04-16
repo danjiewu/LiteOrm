@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.RegisterLiteOrm();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<DemoAuthFilter>();
+builder.Services.AddScoped<DemoControllerAuthFilter>();
 
 var dynamicAssembly = DynamicControllerBuilder.BuildDynamicControllers("LiteOrm.WebDemo");
 builder.Services

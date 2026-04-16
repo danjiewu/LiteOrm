@@ -53,6 +53,24 @@
         el.textContent = JSON.stringify(data, null, 2);
     }
 
+    function getObjectValue(item, fieldName) {
+        if (!item || !fieldName) {
+            return "";
+        }
+
+        if (Object.prototype.hasOwnProperty.call(item, fieldName)) {
+            return item[fieldName];
+        }
+
+        const camelCaseName = fieldName.charAt(0).toLowerCase() + fieldName.slice(1);
+        if (Object.prototype.hasOwnProperty.call(item, camelCaseName)) {
+            return item[camelCaseName];
+        }
+
+        const matchedKey = Object.keys(item).find(key => key.toLowerCase() === fieldName.toLowerCase());
+        return matchedKey ? item[matchedKey] : "";
+    }
+
     function renderOrders(id, items) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -63,13 +81,13 @@
 
         el.innerHTML = items.map(item => `
             <tr>
-                <td>${item.orderNo}</td>
-                <td>${item.status}</td>
-                <td>${item.customerName}</td>
-                <td>${item.productName}</td>
-                <td>${item.totalAmount}</td>
-                <td>${item.createdByUserName ?? ""}</td>
-                <td>${item.departmentName ?? ""}</td>
+                <td>${getObjectValue(item, "orderNo")}</td>
+                <td>${getObjectValue(item, "status")}</td>
+                <td>${getObjectValue(item, "customerName")}</td>
+                <td>${getObjectValue(item, "productName")}</td>
+                <td>${getObjectValue(item, "totalAmount")}</td>
+                <td>${getObjectValue(item, "createdByUserName")}</td>
+                <td>${getObjectValue(item, "departmentName")}</td>
             </tr>
         `).join("");
     }
@@ -96,6 +114,7 @@
         apiFetch,
         clearSession,
         getToken,
+        getObjectValue,
         getUser,
         renderJson,
         renderOrders,

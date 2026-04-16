@@ -10,13 +10,14 @@
     <div class="container">
         <section class="hero">
             <h2>QueryString 查询页</h2>
-            <p>这个页面通过输入框拼接 URL 查询参数，调用泛型 Controller 的 <code>GET /api/DemoOrders</code> 端点。属性名和值会自动转换为 <code>Contains</code> 条件，支持排序和分页。非管理员用户会自动按自己的创建人 Id 收敛查询范围。</p>
+            <p>这个页面通过输入框拼接 URL 查询参数，调用 <code>GET /api/orders/query</code> 和 <code>GET /api/orders/stats</code>。非管理员用户会自动按自己的创建人 Id 收敛查询范围。</p>
         </section>
 
         <nav class="nav">
             <a href="/">登录</a>
             <a class="active" href="/query-string.html">QueryString 查询</a>
             <a href="/expr-query.html">Expr 查询</a>
+            <a href="/dynamic-query.html">动态查询</a>
             <a href="/order-manage.html">订单管理</a>
             <a href="/create-order.html">订单创建</a>
         </nav>
@@ -28,14 +29,11 @@
 
         <section class="card">
             <h2>查询条件</h2>
-            <div class="hint-box">
-                说明：输入属性名对应的值，后端会自动用 <code>Contains</code> 匹配。例如在"订单号"输入 <code>ORD</code>，会生成 <code>OrderNo.Contains("ORD")</code>。
-            </div>
             <div class="grid">
-                <div><label for="OrderNo">订单号</label><input id="OrderNo" value="ORD"></div>
+                <div><label for="keyword">关键字</label><input id="keyword" value="ORD"></div>
                 <div>
-                    <label for="Status">订单状态</label>
-                    <select id="Status">
+                    <label for="status">订单状态</label>
+                    <select id="status">
                         <option value="">全部</option>
                         <option value="Pending">待处理（Pending）</option>
                         <option value="Paid">已支付（Paid）</option>
@@ -44,24 +42,18 @@
                         <option value="Cancelled">已取消（Cancelled）</option>
                     </select>
                 </div>
-                <div><label for="DepartmentName">部门名称</label><input id="DepartmentName" placeholder="运营部"></div>
-                <div><label for="CreatedByUserName">创建人名称</label><input id="CreatedByUserName" placeholder="Demo Admin"></div>
-                <div><label for="CustomerName">客户名称</label><input id="CustomerName" placeholder="Contoso"></div>
-                <div><label for="ProductName">商品名称</label><input id="ProductName" placeholder="Keyboard"></div>
-                <div><label for="sort">排序字段</label><select id="sort"><option value="CreatedTime">创建时间</option><option value="TotalAmount">总金额</option><option value="Status">状态</option><option value="DepartmentName">部门</option></select></div>
+                <div><label for="departmentName">部门名称</label><input id="departmentName" placeholder="运营部"></div>
+                <div><label for="createdByUserName">创建人名称</label><input id="createdByUserName" placeholder="Demo Admin"></div>
+                <div><label for="sortBy">排序字段</label><select id="sortBy"><option value="CreatedTime">创建时间</option><option value="TotalAmount">总金额</option><option value="Status">状态</option><option value="DepartmentName">部门</option></select></div>
                 <div><label for="desc">排序方向</label><select id="desc"><option value="true">倒序</option><option value="false">正序</option></select></div>
                 <div><label for="page">页码</label><input id="page" type="number" value="1"></div>
-                <div><label for="rows">每页条数</label><input id="rows" type="number" value="5"></div>
+                <div><label for="pageSize">每页条数</label><input id="pageSize" type="number" value="5"></div>
             </div>
             <div class="actions">
                 <button id="queryButton">执行查询</button>
+                <button id="statsButton" class="secondary">读取统计</button>
             </div>
             <div id="pageStatus" class="status">等待查询...</div>
-        </section>
-
-        <section class="card">
-            <h2>请求 URL</h2>
-            <pre id="requestUrl" style="word-break:break-all;white-space:pre-wrap;">-</pre>
         </section>
 
         <section class="card">
@@ -70,13 +62,13 @@
             <table>
                 <thead>
                     <tr>
-                         <th>订单号</th>
-                         <th>状态</th>
-                         <th>客户</th>
-                         <th>商品</th>
-                         <th>总金额</th>
-                         <th>创建人</th>
-                         <th>部门</th>
+                        <th>订单号</th>
+                        <th>状态</th>
+                        <th>客户</th>
+                        <th>商品</th>
+                        <th>总金额</th>
+                        <th>创建人</th>
+                        <th>部门</th>
                     </tr>
                 </thead>
                 <tbody id="resultTable">
@@ -95,41 +87,40 @@
     <script>
         demoApp.renderSessionBox("sessionBox");
 
-        function buildQueryString() {
+        function buildParams() {
             const params = new URLSearchParams();
-            const fields = ["OrderNo", "Status", "DepartmentName", "CreatedByUserName", "CustomerName", "ProductName"];
-            fields.forEach(field => {
-                const value = document.getElementById(field).value.trim();
-                if (value) params.set(field, value);
-            });
-
-            const sort = document.getElementById("sort").value;
-            const desc = document.getElementById("desc").value;
-            const page = document.getElementById("page").value;
-            const rows = document.getElementById("rows").value;
-
-            params.set("sort", sort);
-            params.set("desc", desc);
-            params.set("page", page);
-            params.set("rows", rows);
-
+            [["keyword", "keyword"], ["status", "status"], ["departmentName", "departmentName"], ["createdByUserName", "createdByUserName"], ["sortBy", "sortBy"], ["desc", "desc"], ["page", "page"], ["pageSize", "pageSize"]]
+                .forEach(([id, name]) => {
+                    const value = document.getElementById(id).value.trim();
+                    if (value !== "") params.set(name, value);
+                });
             return params.toString();
         }
 
         document.getElementById("queryButton").addEventListener("click", async () => {
             if (!demoApp.requireLogin("pageStatus")) return;
             try {
-                const qs = buildQueryString();
-                const url = `/api/DemoOrder/Query?${qs}`;
-                document.getElementById("requestUrl").textContent = url;
-
-                const result = await demoApp.apiFetch(url);
+                const result = await demoApp.apiFetch(`/api/orders/query?${buildParams()}`);
                 demoApp.renderJson("jsonOutput", result);
                 demoApp.renderOrders("resultTable", result.items);
-                document.getElementById("resultSummary").textContent = `共 ${result.total} 条，当前页 ${result.page}，skip=${result.skip}，take=${result.take}`;
-                demoApp.setStatus("pageStatus", "查询成功。", "success");
+                document.getElementById("resultSummary").textContent = `共 ${result.total} 条，当前页 ${result.page}`;
+                demoApp.setStatus("pageStatus", "QueryString 查询成功。", "success");
             } catch (error) {
                 demoApp.setStatus("pageStatus", `查询失败：${error.message}`, "error");
+            }
+        });
+
+        document.getElementById("statsButton").addEventListener("click", async () => {
+            if (!demoApp.requireLogin("pageStatus")) return;
+            try {
+                const params = new URLSearchParams();
+                const status = document.getElementById("status").value;
+                if (status) params.set("status", status);
+                const result = await demoApp.apiFetch(`/api/orders/stats?${params.toString()}`);
+                demoApp.renderJson("jsonOutput", result);
+                demoApp.setStatus("pageStatus", `统计成功：总数=${result.total}，总金额=${result.totalAmount}`, "success");
+            } catch (error) {
+                demoApp.setStatus("pageStatus", `统计失败：${error.message}`, "error");
             }
         });
     </script>

@@ -21,14 +21,15 @@ public static class DemoApiEndpoints
                 new { userName = "alice", password = "demo123" }
             },
             orderStatuses = DemoOrderStatuses.All,
-            endpoints = new[]
-            {
-                "POST /api/auth/login",
-                "POST /api/auth/logout",
-                "GET /api/auth/me",
-                "GET /api/orders/query (query string)",
-                "POST /api/orders/query/expr (Expr JSON)",
-                "GET /api/orders/query/expr/history",
+             endpoints = new[]
+             {
+                 "POST /api/auth/login",
+                 "POST /api/auth/logout",
+                 "GET /api/auth/me",
+                 "GET /api/dynamic-query/entities",
+                 "GET /api/orders/query (query string)",
+                 "POST /api/orders/query/expr (Expr JSON)",
+                 "GET /api/orders/query/expr/history",
                 "DELETE /api/orders/query/expr/history/{id}",
                 "GET /api/orders/stats",
                 "GET /api/orders/{id}",
@@ -43,6 +44,9 @@ public static class DemoApiEndpoints
         auth.MapPost("/login", LoginAsync);
         auth.MapPost("/logout", LogoutAsync).AddEndpointFilter<DemoAuthFilter>();
         auth.MapGet("/me", MeAsync).AddEndpointFilter<DemoAuthFilter>();
+
+        var dynamicQuery = endpoints.MapGroup("/api/dynamic-query").AddEndpointFilter<DemoAuthFilter>();
+        dynamicQuery.MapGet("/entities", GetDynamicQueryEntitiesAsync);
 
         var orders = endpoints.MapGroup("/api/orders").AddEndpointFilter<DemoAuthFilter>();
         orders.MapGet("/query", QueryOrdersAsync);
@@ -82,6 +86,12 @@ public static class DemoApiEndpoints
         return Results.Ok(user);
     }
 
+    private static IResult GetDynamicQueryEntitiesAsync()
+    {
+        var items = DynamicQueryMetadata.GetEntities("LiteOrm.WebDemo");
+        return Results.Ok(new { items });
+    }
+
     private static async Task<IResult> QueryOrdersAsync(HttpContext context, [AsParameters] OrderQueryRequest request, IDemoOrderService orderService, CancellationToken cancellationToken)
     {
         var currentUser = context.GetCurrentDemoUser();
@@ -97,7 +107,7 @@ public static class DemoApiEndpoints
             var expr = requestBody.Deserialize<Expr>();
             var validation = ExprValidator.CreateMinimum();
             if (!validation.VisitAll(expr)) return Results.BadRequest(new { error = "非法 Expr 内容.", hint = "请确保提交的 JSON 结构符合 LiteOrm Expr 的要求，且仅包含基本值、逻辑表达式、集合表达式和基础 SQL 片段。" });
-            
+
             var result = await orderService.QueryByExprAsync(expr, currentUser, cancellationToken);
             await exprQueryHistoryService.SaveAsync(currentUser, requestBody.GetRawText(), cancellationToken);
             return Results.Ok(result);
@@ -107,7 +117,7 @@ public static class DemoApiEndpoints
             return Results.BadRequest(new
             {
                 error = ex.Message,
-                hint = "请提交 LiteOrm Expr 当前实际序列化后的 JSON 形状，例如使用 $section / $orderby / $where 表达链式片段。"
+                hint = "请提交 LiteOrm Expr 当前实际序列化后的 JSON 形状，例如使用 $section / $orderby / $where 与同层属性组合的结构。"
             });
         }
     }
