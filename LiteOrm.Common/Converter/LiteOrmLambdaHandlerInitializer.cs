@@ -10,7 +10,7 @@ namespace LiteOrm
     /// <summary>
     /// LiteOrm Lambda 处理器初始化器，负责注册 Lambda 表达式到 Expr 对象的转换句柄。
     /// </summary>
-    public static class LiteOrmLambdaHandlerInitializer 
+    public static class LiteOrmLambdaHandlerInitializer
     {
         /// <summary>
         /// 启动时初始化 Lambda 处理器。
@@ -146,29 +146,22 @@ namespace LiteOrm
             // 转换为 SQL IN 操作 (LogicBinaryExpr with In operator)
             LambdaExprConverter.RegisterMethodHandler(nameof(IList.Contains), (node, converter) =>
             {
-                if (node.Method.IsDefined(typeof(ExtensionAttribute), inherit: false))
+                if (node.Method.IsStatic)
                 {
                     if (node.Arguments.Count != 2)
                         throw new ArgumentException($"Invalid number of arguments for extension method {node.Method.Name}. Expected 2, got {node.Arguments.Count}.");
-
-                    if (!typeof(IEnumerable).IsAssignableFrom(node.Arguments[0].Type))
-                        throw new ArgumentException($"First argument of extension method {node.Method.Name} must be an IEnumerable. Got {node.Arguments[0].Type.FullName}.");
 
                     var collection = converter.Convert(node.Arguments[0]).AsValue();
                     var value = converter.Convert(node.Arguments[1]).AsValue();
 
                     return new LogicBinaryExpr(value, LogicOperator.In, collection);
                 }
-                else if (typeof(IEnumerable).IsAssignableFrom(node.Method.DeclaringType))
+                else
                 {
                     if (node.Arguments.Count != 1) throw new ArgumentException($"Invalid number of arguments for method {node.Method.Name}. Expected 1, got {node.Arguments.Count}.");
                     ValueTypeExpr collection = collection = converter.Convert(node.Object).AsValue();
                     ValueTypeExpr value = converter.Convert(node.Arguments[0]).AsValue();
                     return new LogicBinaryExpr(value, LogicOperator.In, collection);
-                }
-                else
-                {
-                    throw new ArgumentException($"Unsupported method for Contains: {node.Method.DeclaringType.FullName}.{node.Method.Name}");
                 }
             });
 
