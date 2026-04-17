@@ -25,7 +25,7 @@ LiteOrm 提供两种窗口函数实现方式：
 | 方式 | 说明 |
 |------|------|
 | Lambda 扩展方法 | 定义 C# 扩展方法，声明式调用 |
-| 纯 Expr | 直接构造 `FunctionExpr`，适合一次性使用 |
+| 纯 Expr | 直接使用 `FunctionExpr` 的 `Over` 扩展 |
 
 ## 3. Lambda 扩展方法方式
 
@@ -63,12 +63,13 @@ public static class WindowFunctionExtensions
         Expression<Func<T, object>>[] partitionBy,
         SumOverOrderBy<T>[] orderBy) => amount;
 
-    // 其他窗口函数示例
-    public static int RowNumber<T>(this int rowNum,
-        params Expression<Func<T, object>>[] partitionBy) => rowNum;
+    // decimal 版本
+    public static decimal SumOver<T>(this decimal amount,
+        params Expression<Func<T, object>>[] partitionBy) => amount;
 
-    public static int Rank<T>(this int rank,
-        params Expression<Func<T, object>>[] partitionBy) => rank;
+    public static decimal SumOver<T>(this decimal amount,
+        Expression<Func<T, object>>[] partitionBy,
+        SumOverOrderBy<T>[] orderBy) => amount;
 }
 ```
 
@@ -80,7 +81,7 @@ LambdaExprConverter.RegisterMethodHandler("SumOver", (node, converter) =>
     var amountExpr = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
 
     var partitionExprs = new List<ValueTypeExpr>();
-    var orderExprs = new List<ValueTypeExpr>();
+    var orderExprs = new List<OrderByItemExpr>();
 
     // 分区字段：NewArrayExpression，元素为 Quote(Lambda)
     if (node.Arguments.Count > 1 && node.Arguments[1] is NewArrayExpression partArray)
@@ -107,75 +108,40 @@ LambdaExprConverter.RegisterMethodHandler("SumOver", (node, converter) =>
         }
     }
 
-    return new FunctionExpr("SUM_OVER",
-        amountExpr,
-        new ValueSet(partitionExprs),
-        new ValueSet(orderExprs));
+    return Func("SUM", amountExpr)
+        .Over(partitionExprs.ToArray(), orderExprs.ToArray());
 });
 ```
 
-### 3.4 注册 SQL 处理器
+### 3.4 关于 `Over` 的 SQL 处理
 
 ```csharp
-SqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER",
-    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
-{
-    outSql.Append("SUM(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
-    outSql.Append(") OVER (");
-
-    if (expr.Args.Count > 1 && expr.Args[1] is ValueSet partitionSet && partitionSet.Items.Count > 0)
-    {
-        outSql.Append("PARTITION BY ");
-        for (int i = 0; i < partitionSet.Items.Count; i++)
-        {
-            if (i > 0) outSql.Append(", ");
-            partitionSet.Items[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
-        }
-    }
-
-    if (expr.Args.Count > 2 && expr.Args[2] is ValueSet orderSet && orderSet.Items.Count > 0)
-    {
-        if (expr.Args.Count > 1 && expr.Args[1] is ValueSet part && part.Items.Count > 0)
-            outSql.Append(' ');
-        outSql.Append("ORDER BY ");
-        for (int i = 0; i < orderSet.Items.Count; i++)
-        {
-            if (i > 0) outSql.Append(", ");
-            orderSet.Items[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
-        }
-    }
-
-    outSql.Append(')');
-});
+// 注意：SqlBuilder 已默认注册对 "Over" 的处理器（先输出内部函数，再追加 OVER (...) 语义），
+// 因此通常无需自行调用 RegisterFunctionSqlHandler 来注册 "Over"。
+// 直接使用 `Func("SUM", ...).Over(...)` 即可得到正确的 SQL 输出。
 ```
 
 ### 3.5 使用示例
 
 ```csharp
-var sales = await saleService.SearchAsync<SaleView>(s => s.Select(
-    x => new SaleView
+var sales = await saleService.SearchAs<SalesWindowView>(q => q
+    .OrderBy(s => s.ProductId)
+    .Select(s => new SalesWindowView
     {
-        Id = x.Id,
-        ProductId = x.ProductId,
-        Amount = x.Amount,
-        SaleDate = x.SaleDate,
-
-        // 按年、季度分区，无排序（累计季度总）
-        QuarterlyTotal = x.Amount.SumOver<Sale>(
-            p => p.Year, p => p.Quarter
-        ),
-
-        // 按年分区，按销售日期升序（累计年度 running total）
-        YearlyRunning = x.Amount.SumOver<Sale>(
-            partitionBy: new Expression<Func<Sale, object>>[] { p => p.Year },
-            orderBy: new SumOverOrderBy<Sale>[] {
-                new SumOverOrderBy<Sale>(p => p.SaleDate, true)
-            }
-        )
-    }
-));
+        Id = s.Id,
+        ProductId = s.ProductId,
+        ProductName = s.ProductName,
+        Amount = s.Amount,
+        SaleTime = s.SaleTime,
+        ProductTotal = s.Amount.SumOver<SalesRecord>(p => p.ProductId),
+        RunningTotal = s.Amount.SumOver<SalesRecord>(
+            partitionBy: new Expression<Func<SalesRecord, object>>[] { p => p.ProductId },
+            orderBy: new SumOverOrderBy<SalesRecord>[]
+            {
+                new SumOverOrderBy<SalesRecord>(p => p.SaleTime, true)
+            })
+    })
+);
 ```
 
 ### 3.6 来自 Demo 的注册与查询流程
@@ -204,7 +170,6 @@ var results = await factory.SalesDAO
 ```
 
 如果你准备把窗口函数能力提供给业务层长期复用，推荐采用这种“启动期注册 + 查询期直接调用”的模式。  
-而且从当前 API 设计看，也更建议使用 `FunctionSqlHandler` 新重载直接写 SQL 输出，而不是先拼接中间字符串再返回。
 
 **生成的 SQL**：
 
@@ -212,11 +177,11 @@ var results = await factory.SalesDAO
 SELECT
     s.Id,
     s.ProductId,
+    s.ProductName,
     s.Amount,
-    s.SaleDate,
-    SUM(s.Amount) OVER (PARTITION BY s.Year, s.Quarter) AS QuarterlyTotal,
-    SUM(s.Amount) OVER (PARTITION BY s.Year ORDER BY s.SaleDate ASC) AS YearlyRunning
-FROM Sale s
+    s.SaleTime,
+    SUM(s.Amount) OVER (PARTITION BY s.ProductId) AS ProductTotal
+FROM Sales_yyyyMM s
 ```
 
 ## 4. 纯 Expr 方式
@@ -226,36 +191,33 @@ FROM Sale s
 ### 4.1 直接构造 Expr
 
 ```csharp
-// 累计季度总
-var productTotalExpr = new FunctionExpr("SUM_OVER",
-    Expr.Prop("Amount"),
-    new ValueSet(Expr.Prop("ProductId")),
-    new ValueSet());
+// 累计总，使用内置 Over 函数
+var productTotalExpr = Func("SUM", Prop(nameof(SalesRecord.Amount)))
+    .Over(new[] { Prop(nameof(SalesRecord.ProductId)) });
 
-// 累计年度 running total
-var runningTotalExpr = new FunctionExpr("SUM_OVER",
-    Expr.Prop("Amount"),
-    new ValueSet(Expr.Prop("ProductId")),
-    new ValueSet(new OrderByItemExpr(Expr.Prop("SaleDate"), ascending: true)));
+// 按 SaleTime 升序的累计值
+var runningTotalExpr = Func("SUM", Prop(nameof(SalesRecord.Amount)))
+    .Over(new[] { Prop(nameof(SalesRecord.ProductId)) }, new[] { Prop(nameof(SalesRecord.SaleTime)).Asc() });
 ```
 
 ### 4.2 嵌入查询
 
-**方式一：Lambda 闭包变量**
+**方式一：嵌入 Lambda**
 
 ```csharp
 var results = await saleDAO
     .WithArgs([tableMonth])
-    .Search<SaleView>(q => q
+    .SearchAs<SalesWindowView>(q => q
         .OrderBy(s => s.ProductId)
-        .Select(s => new SaleView
+        .Select(s => new SalesWindowView
         {
             Id = s.Id,
             ProductId = s.ProductId,
+            ProductName = s.ProductName,
             Amount = s.Amount,
-            SaleDate = s.SaleDate,
-            ProductTotal = (int)productTotalExpr,
-            RunningTotal = (int)runningTotalExpr
+            SaleTime = s.SaleTime,
+            ProductTotal = productTotalExpr.To<int>(),
+            RunningTotal = runningTotalExpr.To<int>()
         })
     ).ToListAsync();
 ```
@@ -264,18 +226,19 @@ var results = await saleDAO
 
 ```csharp
 var selectExpr = new FromExpr(typeof(SalesRecord))
-    .OrderBy(new OrderByItemExpr(Expr.Prop("ProductId"), ascending: true))
+    .OrderBy(new OrderByItemExpr(Prop(nameof(SalesRecord.ProductId)), ascending: true))
     .Select(
-        new SelectItemExpr(Expr.Prop("Id"), "Id"),
-        new SelectItemExpr(Expr.Prop("ProductId"), "ProductId"),
-        new SelectItemExpr(Expr.Prop("Amount"), "Amount"),
-        new SelectItemExpr(Expr.Prop("SaleDate"), "SaleDate"),
-        new SelectItemExpr(productTotalExpr, "ProductTotal"),
-        new SelectItemExpr(runningTotalExpr, "RunningTotal"));
+        new SelectItemExpr(Prop(nameof(SalesRecord.Id)), nameof(SalesWindowView.Id)),
+        new SelectItemExpr(Prop(nameof(SalesRecord.ProductId)), nameof(SalesWindowView.ProductId)),
+        new SelectItemExpr(Prop(nameof(SalesRecord.ProductName)), nameof(SalesWindowView.ProductName)),
+        new SelectItemExpr(Prop(nameof(SalesRecord.Amount)), nameof(SalesWindowView.Amount)),
+        new SelectItemExpr(Prop(nameof(SalesRecord.SaleTime)), nameof(SalesWindowView.SaleTime)),
+        new SelectItemExpr(productTotalExpr, nameof(SalesWindowView.ProductTotal)),
+        new SelectItemExpr(runningTotalExpr, nameof(SalesWindowView.RunningTotal)));
 
 var results = await saleDAO
     .WithArgs([tableMonth])
-    .SearchAs<SaleView>(selectExpr)
+    .SearchAs<SalesWindowView>(selectExpr)
     .ToListAsync();
 ```
 
@@ -285,59 +248,13 @@ var results = await saleDAO
 |--------|----------------|---------|
 | 需要扩展方法定义 | ✅ 是 | ❌ 否 |
 | 需要 RegisterMethodHandler | ✅ 是 | ❌ 否 |
-| 需要 RegisterFunctionSqlHandler | ✅ 是 | ✅ 是 |
+| 需要 RegisterFunctionSqlHandler | ❌ 否（除非自定义 Over 输出） | ❌ 否 |
 | 代码提示 | ✅ 高 | ⚠️ 中 |
-| 适用场景 | 通用、高复用 | 一次性、快速原型 |
+| 适用场景 | 通用、高复用 | 快速原型 |
 
-## 6. 更多窗口函数示例
+## 6. 说明
 
-### 6.1 ROW_NUMBER - 行号
-
-```csharp
-LambdaExprConverter.RegisterMethodHandler("RowNumber", (node, converter) =>
-{
-    var partitionExprs = new List<ValueTypeExpr>();
-    if (node.Arguments.Count > 0 && node.Arguments[0] is NewArrayExpression arr)
-    {
-        foreach (var elem in arr.Expressions)
-            if (converter.Convert(elem) is ValueTypeExpr vte)
-                partitionExprs.Add(vte);
-    }
-    return new FunctionExpr("ROW_NUMBER_OVER", new ValueSet(partitionExprs), new ValueSet());
-});
-
-SqlBuilder.Instance.RegisterFunctionSqlHandler("ROW_NUMBER_OVER", (ref outSql, expr, context, sqlBuilder, outputParams) =>
-{
-    outSql.Append("ROW_NUMBER() OVER (");
-    if (expr.Args.Count > 0 && expr.Args[0] is ValueSet partitionSet && partitionSet.Items.Count > 0)
-    {
-        outSql.Append("PARTITION BY ");
-        for (int i = 0; i < partitionSet.Items.Count; i++)
-        {
-            if (i > 0) outSql.Append(", ");
-            partitionSet.Items[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
-        }
-    }
-    outSql.Append(')');
-});
-```
-
-### 6.2 LAG - 取前一行
-
-```csharp
-LambdaExprConverter.RegisterMethodHandler("Lag", (node, converter) =>
-{
-    var expr = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
-    return new FunctionExpr("LAG_OVER", expr);
-});
-
-SqlBuilder.Instance.RegisterFunctionSqlHandler("LAG_OVER", (ref outSql, expr, context, sqlBuilder, outputParams) =>
-{
-    outSql.Append("LAG(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
-    outSql.Append(')');
-});
-```
+当前仓库中的示例主要覆盖 `SumOver`，底层仍然依赖 `FunctionExpr.Over(...)`。如果后续需要扩展 `ROW_NUMBER`、`RANK`、`LAG` 等函数，可以沿用同样的注册模式。
 
 ## 7. 注意事项
 

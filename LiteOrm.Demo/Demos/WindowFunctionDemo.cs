@@ -9,13 +9,12 @@ namespace LiteOrm.Demo.Demos
     /// <summary>
     /// 窗口函数演示 (Window Function Demo)
     ///
-    /// 演示通过 RegisterMethodHandler + RegisterFunctionSqlHandler 扩展
-    /// LiteOrm 表达式处理能力，将 SumOver 方法调用转换为数据库窗口函数 SQL。
+    /// 演示通过 RegisterMethodHandler 扩展 LiteOrm 表达式处理能力，将 SumOver 方法调用转换为数据库窗口函数 SQL。
     /// </summary>
     public static class WindowFunctionDemo
     {
         /// <summary>
-        /// 注册 SumOver Lambda 处理器和 SUM_OVER SQL 处理器。
+        /// 注册 SumOver Lambda 处理器。
         /// 必须在首次查询前调用（通常在应用启动时）。
         /// </summary>
         public static void RegisterHandlers()

@@ -25,7 +25,7 @@ LiteOrm provides two window function implementation approaches:
 | Approach | Description |
 |----------|-------------|
 | Lambda extension methods | Define C# extension methods, declarative invocation |
-| Pure Expr | Directly construct `FunctionExpr`, suitable for one-time use |
+| Pure Expr | Directly use the `Over` extension on `FunctionExpr`, suitable for one-time or reusable flexible usage |
 
 ## 3. Lambda Extension Method Approach
 
@@ -63,12 +63,13 @@ public static class WindowFunctionExtensions
         Expression<Func<T, object>>[] partitionBy,
         SumOverOrderBy<T>[] orderBy) => amount;
 
-    // Other window function examples
-    public static int RowNumber<T>(this int rowNum,
-        params Expression<Func<T, object>>[] partitionBy) => rowNum;
+    // decimal overloads
+    public static decimal SumOver<T>(this decimal amount,
+        params Expression<Func<T, object>>[] partitionBy) => amount;
 
-    public static int Rank<T>(this int rank,
-        params Expression<Func<T, object>>[] partitionBy) => rank;
+    public static decimal SumOver<T>(this decimal amount,
+        Expression<Func<T, object>>[] partitionBy,
+        SumOverOrderBy<T>[] orderBy) => amount;
 }
 ```
 
@@ -80,7 +81,7 @@ LambdaExprConverter.RegisterMethodHandler("SumOver", (node, converter) =>
     var amountExpr = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
 
     var partitionExprs = new List<ValueTypeExpr>();
-    var orderExprs = new List<ValueTypeExpr>();
+    var orderExprs = new List<OrderByItemExpr>();
 
     // Partition fields: NewArrayExpression, elements are Quote(Lambda)
     if (node.Arguments.Count > 1 && node.Arguments[1] is NewArrayExpression partArray)
@@ -107,75 +108,41 @@ LambdaExprConverter.RegisterMethodHandler("SumOver", (node, converter) =>
         }
     }
 
-    return new FunctionExpr("SUM_OVER",
-        amountExpr,
-        new ValueSet(partitionExprs),
-        new ValueSet(orderExprs));
+    return Func("SUM", amountExpr)
+        .Over(partitionExprs.ToArray(), orderExprs.ToArray());
 });
 ```
 
-### 3.4 Register SQL Handler
+### 3.4 About SQL handling for `Over`
 
 ```csharp
-SqlBuilder.Instance.RegisterFunctionSqlHandler("SUM_OVER",
-    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
-{
-    outSql.Append("SUM(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
-    outSql.Append(") OVER (");
-
-    if (expr.Args.Count > 1 && expr.Args[1] is ValueSet partitionSet && partitionSet.Items.Count > 0)
-    {
-        outSql.Append("PARTITION BY ");
-        for (int i = 0; i < partitionSet.Items.Count; i++)
-        {
-            if (i > 0) outSql.Append(", ");
-            partitionSet.Items[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
-        }
-    }
-
-    if (expr.Args.Count > 2 && expr.Args[2] is ValueSet orderSet && orderSet.Items.Count > 0)
-    {
-        if (expr.Args.Count > 1 && expr.Args[1] is ValueSet part && part.Items.Count > 0)
-            outSql.Append(' ');
-        outSql.Append("ORDER BY ");
-        for (int i = 0; i < orderSet.Items.Count; i++)
-        {
-            if (i > 0) outSql.Append(", ");
-            orderSet.Items[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
-        }
-    }
-
-    outSql.Append(')');
-});
+// Note: SqlBuilder already registers a handler for "Over" by default (it emits the inner function
+// first and then appends the OVER (...) clause), so you usually do not need to call
+// RegisterFunctionSqlHandler for "Over" yourself.
+// Use `Func("SUM", ...).Over(...)` directly to get the correct SQL output.
 ```
 
 ### 3.5 Usage Example
 
 ```csharp
-var sales = await saleService.SearchAsync<SaleView>(s => s.Select(
-    x => new SaleView
+var sales = await saleService.SearchAs<SalesWindowView>(q => q
+    .OrderBy(s => s.ProductId)
+    .Select(s => new SalesWindowView
     {
-        Id = x.Id,
-        ProductId = x.ProductId,
-        Amount = x.Amount,
-        SaleDate = x.SaleDate,
-
-        // Partition by year and quarter, no order (cumulative quarterly total)
-        QuarterlyTotal = x.Amount.SumOver<Sale>(
-            p => p.Year, p => p.Quarter
-        ),
-
-        // Partition by year, order by sale date ascending (cumulative yearly running total)
-        YearlyRunning = x.Amount.SumOver<Sale>(
-            partitionBy: new Expression<Func<Sale, object>>[] { p => p.Year },
-            orderBy: new SumOverOrderBy<Sale>[] {
-                new SumOverOrderBy<Sale>(p => p.SaleDate, true)
-            }
-        )
-    }
-));
+        Id = s.Id,
+        ProductId = s.ProductId,
+        ProductName = s.ProductName,
+        Amount = s.Amount,
+        SaleTime = s.SaleTime,
+        ProductTotal = s.Amount.SumOver<SalesRecord>(p => p.ProductId),
+        RunningTotal = s.Amount.SumOver<SalesRecord>(
+            partitionBy: new Expression<Func<SalesRecord, object>>[] { p => p.ProductId },
+            orderBy: new SumOverOrderBy<SalesRecord>[]
+            {
+                new SumOverOrderBy<SalesRecord>(p => p.SaleTime, true)
+            })
+    })
+);
 ```
 
 ### 3.6 Registration and Query Flow from Demo
@@ -186,7 +153,7 @@ The following is organized from `LiteOrm.Demo\Demos\WindowFunctionDemo.cs`:
 // Register handlers at application startup
 WindowFunctionDemo.RegisterHandlers();
 
-// Use window function extension directly in projection during query
+// Use the window function extension directly in the projection
 var results = await factory.SalesDAO
     .WithArgs([tableMonth])
     .SearchAs(q => q
@@ -205,19 +172,17 @@ var results = await factory.SalesDAO
 
 If you plan to provide window function capabilities for long-term reuse in business logic, this "register at startup + call directly during query" pattern is recommended.
 
-Looking at the current API design, it's also advisable to use the `FunctionSqlHandler` new overload to write SQL output directly, rather than concatenating intermediate strings first.
-
 **Generated SQL**:
 
 ```sql
 SELECT
     s.Id,
     s.ProductId,
+    s.ProductName,
     s.Amount,
-    s.SaleDate,
-    SUM(s.Amount) OVER (PARTITION BY s.Year, s.Quarter) AS QuarterlyTotal,
-    SUM(s.Amount) OVER (PARTITION BY s.Year ORDER BY s.SaleDate ASC) AS YearlyRunning
-FROM Sale s
+    s.SaleTime,
+    SUM(s.Amount) OVER (PARTITION BY s.ProductId) AS ProductTotal
+FROM Sales_yyyyMM s
 ```
 
 ## 4. Pure Expr Approach
@@ -227,36 +192,33 @@ The pure Expr approach doesn't require defining extension methods or registering
 ### 4.1 Construct Expr Directly
 
 ```csharp
-// Cumulative quarterly total
-var productTotalExpr = new FunctionExpr("SUM_OVER",
-    Expr.Prop("Amount"),
-    new ValueSet(Expr.Prop("ProductId")),
-    new ValueSet());
+// Cumulative total using the built-in Over form (no custom SUM_OVER needed)
+var productTotalExpr = Func("SUM", Prop(nameof(SalesRecord.Amount)))
+    .Over(new[] { Prop(nameof(SalesRecord.ProductId)) });
 
-// Cumulative yearly running total
-var runningTotalExpr = new FunctionExpr("SUM_OVER",
-    Expr.Prop("Amount"),
-    new ValueSet(Expr.Prop("ProductId")),
-    new ValueSet(new OrderByItemExpr(Expr.Prop("SaleDate"), ascending: true)));
+// Running total ordered by SaleTime ascending
+var runningTotalExpr = Func("SUM", Prop(nameof(SalesRecord.Amount)))
+    .Over(new[] { Prop(nameof(SalesRecord.ProductId)) }, new[] { Prop(nameof(SalesRecord.SaleTime)).Asc() });
 ```
 
 ### 4.2 Embed in Query
 
-**Approach 1: Lambda closure variable**
+**Approach 1: Lambda projection**
 
 ```csharp
 var results = await saleDAO
     .WithArgs([tableMonth])
-    .Search<SaleView>(q => q
+    .SearchAs<SalesWindowView>(q => q
         .OrderBy(s => s.ProductId)
-        .Select(s => new SaleView
+        .Select(s => new SalesWindowView
         {
             Id = s.Id,
             ProductId = s.ProductId,
+            ProductName = s.ProductName,
             Amount = s.Amount,
-            SaleDate = s.SaleDate,
-            ProductTotal = (int)productTotalExpr,
-            RunningTotal = (int)runningTotalExpr
+            SaleTime = s.SaleTime,
+            ProductTotal = productTotalExpr.To<int>(),
+            RunningTotal = runningTotalExpr.To<int>()
         })
     ).ToListAsync();
 ```
@@ -265,18 +227,19 @@ var results = await saleDAO
 
 ```csharp
 var selectExpr = new FromExpr(typeof(SalesRecord))
-    .OrderBy(new OrderByItemExpr(Expr.Prop("ProductId"), ascending: true))
+    .OrderBy(new OrderByItemExpr(Prop(nameof(SalesRecord.ProductId)), ascending: true))
     .Select(
-        new SelectItemExpr(Expr.Prop("Id"), "Id"),
-        new SelectItemExpr(Expr.Prop("ProductId"), "ProductId"),
-        new SelectItemExpr(Expr.Prop("Amount"), "Amount"),
-        new SelectItemExpr(Expr.Prop("SaleDate"), "SaleDate"),
-        new SelectItemExpr(productTotalExpr, "ProductTotal"),
-        new SelectItemExpr(runningTotalExpr, "RunningTotal"));
+        new SelectItemExpr(Prop(nameof(SalesRecord.Id)), nameof(SalesWindowView.Id)),
+        new SelectItemExpr(Prop(nameof(SalesRecord.ProductId)), nameof(SalesWindowView.ProductId)),
+        new SelectItemExpr(Prop(nameof(SalesRecord.ProductName)), nameof(SalesWindowView.ProductName)),
+        new SelectItemExpr(Prop(nameof(SalesRecord.Amount)), nameof(SalesWindowView.Amount)),
+        new SelectItemExpr(Prop(nameof(SalesRecord.SaleTime)), nameof(SalesWindowView.SaleTime)),
+        new SelectItemExpr(productTotalExpr, nameof(SalesWindowView.ProductTotal)),
+        new SelectItemExpr(runningTotalExpr, nameof(SalesWindowView.RunningTotal)));
 
 var results = await saleDAO
     .WithArgs([tableMonth])
-    .SearchAs<SaleView>(selectExpr)
+    .SearchAs<SalesWindowView>(selectExpr)
     .ToListAsync();
 ```
 
@@ -286,59 +249,13 @@ var results = await saleDAO
 |------|------------------------|-----------|
 | Requires extension method definition | ✅ Yes | ❌ No |
 | Requires RegisterMethodHandler | ✅ Yes | ❌ No |
-| Requires RegisterFunctionSqlHandler | ✅ Yes | ✅ Yes |
+| Requires RegisterFunctionSqlHandler | ❌ No (unless overriding `Over` output) | ❌ No |
 | Code hints | ✅ High | ⚠️ Medium |
 | Applicable scenarios | General, high reusability | One-time, rapid prototyping |
 
-## 6. More Window Function Examples
+## 6. Notes
 
-### 6.1 ROW_NUMBER - Row Number
-
-```csharp
-LambdaExprConverter.RegisterMethodHandler("RowNumber", (node, converter) =>
-{
-    var partitionExprs = new List<ValueTypeExpr>();
-    if (node.Arguments.Count > 0 && node.Arguments[0] is NewArrayExpression arr)
-    {
-        foreach (var elem in arr.Expressions)
-            if (converter.Convert(elem) is ValueTypeExpr vte)
-                partitionExprs.Add(vte);
-    }
-    return new FunctionExpr("ROW_NUMBER_OVER", new ValueSet(partitionExprs), new ValueSet());
-});
-
-SqlBuilder.Instance.RegisterFunctionSqlHandler("ROW_NUMBER_OVER", (ref outSql, expr, context, sqlBuilder, outputParams) =>
-{
-    outSql.Append("ROW_NUMBER() OVER (");
-    if (expr.Args.Count > 0 && expr.Args[0] is ValueSet partitionSet && partitionSet.Items.Count > 0)
-    {
-        outSql.Append("PARTITION BY ");
-        for (int i = 0; i < partitionSet.Items.Count; i++)
-        {
-            if (i > 0) outSql.Append(", ");
-            partitionSet.Items[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
-        }
-    }
-    outSql.Append(')');
-});
-```
-
-### 6.2 LAG - Get Previous Row
-
-```csharp
-LambdaExprConverter.RegisterMethodHandler("Lag", (node, converter) =>
-{
-    var expr = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
-    return new FunctionExpr("LAG_OVER", expr);
-});
-
-SqlBuilder.Instance.RegisterFunctionSqlHandler("LAG_OVER", (ref outSql, expr, context, sqlBuilder, outputParams) =>
-{
-    outSql.Append("LAG(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
-    outSql.Append(')');
-});
-```
+The examples in this repository focus on `SumOver` and rely on `FunctionExpr.Over(...)` underneath. If you need `ROW_NUMBER`, `RANK`, `LAG`, or similar functions later, you can extend them with the same registration pattern.
 
 ## 7. Caveats
 
