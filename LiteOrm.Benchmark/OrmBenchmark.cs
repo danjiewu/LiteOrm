@@ -49,7 +49,7 @@ namespace LiteOrm.Benchmark
             // default to MySql
             return new MySqlConnector.MySqlConnection(_connectionString);
         }
-        [Params(100, 1000, 5000)]
+        [Params(10, 100, 1000, 10000, 100000)]
         public int BatchCount { get; set; }
         [GlobalSetup]
         public void Setup()
@@ -313,7 +313,7 @@ namespace LiteOrm.Benchmark
             }
         }
 
-        
+
 
         [Benchmark]
         public async Task SqlSugar_Update_Async()
@@ -332,7 +332,7 @@ namespace LiteOrm.Benchmark
             }
         }
 
-        
+
 
         [Benchmark]
         public async Task LiteOrm_Update_Async()
@@ -437,7 +437,7 @@ namespace LiteOrm.Benchmark
             }
         }
 
-        
+
 
         [Benchmark]
         public async Task LiteOrm_Upsert_Async()
