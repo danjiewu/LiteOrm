@@ -9,8 +9,8 @@ using Microsoft.Extensions.Hosting;
 using System.Data.Common;
 using Microsoft.Data.Sqlite;
 using Oracle.ManagedDataAccess.Client;
-using Oracle.EntityFrameworkCore;
 using SqlSugar;
+using LiteOrm.Service;
 
 
 namespace LiteOrm.Benchmark
@@ -260,9 +260,9 @@ namespace LiteOrm.Benchmark
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var dao = scope.ServiceProvider.GetRequiredService<ObjectDAO<BenchmarkUser>>();
+                var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
                 var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Lite", Age = 25, Email = "lite@test.com", CreateTime = DateTime.Now }).ToList();
-                await dao.BatchInsertAsync(users);
+                await service.BatchInsertAsync(users);
             }
         }
 
@@ -339,16 +339,16 @@ namespace LiteOrm.Benchmark
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var viewDao = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<BenchmarkUser>>();
-                var dao = scope.ServiceProvider.GetRequiredService<ObjectDAO<BenchmarkUser>>();
-                var users = await viewDao.Search(new SectionExpr(0, BatchCount)).ToListAsync();
+                var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
+                var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
+                var users = await viewService.SearchAsync(new SectionExpr(0, BatchCount));
                 foreach (var u in users)
                 {
                     u.Name = "LiteOrm" + Guid.NewGuid().ToString("N").Substring(0, 8);
                     u.Age = _random.Next(20, 60);
                     u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                 }
-                await dao.BatchUpdateAsync(users);
+                await service.BatchUpdateAsync(users);
             }
         }
 
@@ -444,13 +444,13 @@ namespace LiteOrm.Benchmark
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var viewDao = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<BenchmarkUser>>();
-                var dao = scope.ServiceProvider.GetRequiredService<ObjectDAO<BenchmarkUser>>();
-                var existingUsers = await viewDao.Search(new SectionExpr(0, BatchCount / 2)).ToListAsync();
+                var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
+                var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
+                var existingUsers = await viewService.SearchAsync(new SectionExpr(0, BatchCount / 2));
                 foreach (var u in existingUsers) { u.Name = "Lite_Upsert_U"; u.Age = _random.Next(20, 60); }
                 var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Lite_Upsert_I", Age = _random.Next(20, 60), Email = $"lite_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();
-                await dao.BatchUpdateOrInsertAsync(all);
+                await service.BatchUpdateOrInsertAsync(all);
             }
         }
 
@@ -532,11 +532,11 @@ namespace LiteOrm.Benchmark
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var dao = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<BenchmarkLogView>>();
-                var list = await dao.Search(q => q.Where(l => l.Age < 30)
+                var service = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkLogView>>();
+                var list = await service.SearchAsync(q => q.Where(l => l.Age < 30)
                           .OrderByDescending(l => l.Id)
                           .Skip(0).Take(BatchCount)
-                ).ToListAsync();
+                );
             }
         }
 
