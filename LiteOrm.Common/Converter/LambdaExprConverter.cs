@@ -6,6 +6,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 
 namespace LiteOrm.Common
 {
@@ -217,7 +218,8 @@ namespace LiteOrm.Common
         protected virtual Expr ConvertInternal(Expression node)
         {
             if (node is null) return null;
-            if (node is not ConstantExpression && _expressionDetector.CanEvaluate(node)) return EvaluateToExpr(node);
+            if (node is not ConstantExpression && _expressionDetector.CanEvaluate(node))
+                return EvaluateToExpr(node);
             return node switch
             {
                 BinaryExpression binary => ConvertBinary(binary),
@@ -473,6 +475,10 @@ namespace LiteOrm.Common
                 return ce2.Value;
             }
 
+            // 处理隐式/显式转换运算符，直接返回参数表达式的转换结果（如 string s = (string)obj;）
+            if (expr is MethodCallExpression call && call.Method.IsSpecialName && call.Method.IsStatic && (call.Method.Name == "op_Implicit" || call.Method.Name == "op_Explicit"))
+                return Evaluate(call.Arguments[0]);
+
             // 尝试编译并执行表达式（支持闭包、字段、属性等）
             try
             {
@@ -516,20 +522,14 @@ namespace LiteOrm.Common
 
             // 2. 优先匹配已注册的类型成员处理器 (如 DateTime.Now)
             if (node.Member.DeclaringType != null && _typeMemberHandlers.TryGetValue((node.Member.DeclaringType, node.Member.Name), out var typeMemberHandler))
-            {
-                var result = typeMemberHandler(node, this);
-                if (result is not null) return result;
-            }
+                if (typeMemberHandler != null) return typeMemberHandler(node, this);
 
             // 3. 匹配已注册的通用名称处理器 (如 Length)
             if (_memberNameHandlers.TryGetValue(node.Member.Name, out var nameMemberHandler))
-            {
-                var result = nameMemberHandler(node, this);
-                if (result is not null) return result;
-            }
+                if (nameMemberHandler != null) return nameMemberHandler(node, this);
 
-            // 4. 不依赖参数的成员访问（闭包/静态量）在本地计算结果
-            return EvaluateToExpr(node);
+            // 4. 兜底使用默认成员处理器，将成员访问转换为 FunctionExpr
+            return DefaultMemberHandler(node, this);
         }
 
         private Expr ConvertNewArray(NewArrayExpression node)
@@ -578,11 +578,7 @@ namespace LiteOrm.Common
         {
             var method = node.Method;
             var type = method.DeclaringType;
-
-            // 处理隐式/显式转换运算符，直接返回参数表达式的转换结果（如 string s = (string)obj;）
-            if (method.IsSpecialName && method.IsStatic && (method.Name == "op_Implicit" || method.Name == "op_Explicit"))
-                return ConvertInternal(node.Arguments[0]);
-
+     
             // 处理 LINQ 扩展方法（Queryable、Enumerable）
             if (type == typeof(Queryable) || type == typeof(Enumerable) || type != null && type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IQueryable<>) || type.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
             {
@@ -598,35 +594,19 @@ namespace LiteOrm.Common
                     case "Select": return HandleSelect(node);
                 }
             }
-            if (type == typeof(Expr) && (method.Name == nameof(Expr.Exists) || method.Name == nameof(Expr.ExistsRelated)))
-            {
+            else if (type == typeof(Expr) && (method.Name == nameof(Expr.Exists) || method.Name == nameof(Expr.ExistsRelated)))
                 return HandleExists(node);
-            }
-            //else if (type == typeof(ExprExtensions) && node.Method.Name == nameof(ExprExtensions.To))
-            //{
-            //    return ConvertInternal(node.Arguments[0]);
-            //}
 
             // 处理类型成员处理器
             if (type != null && _typeMethodHandlers.TryGetValue((type, method.Name), out var typeMethodHandler))
-            {
-                return typeMethodHandler(node, this);
-            }
+                if (typeMethodHandler != null) return typeMethodHandler(node, this);
 
             // 处理方法名处理器
             if (_methodNameHandlers.TryGetValue(method.Name, out var nameHandler))
-            {
-                var result = nameHandler(node, this);
-                if (result is not null) return result;
-            }
+                if (nameHandler != null) return nameHandler(node, this);
 
-            if (type.IsPrimitive)
-                return DefaultFunctionHandler(node, this);
-            else if (!_expressionDetector.CanEvaluate(node))
-                // 如果是实例方法且包含参数依赖
-                return DefaultFunctionHandler(node, this);
-            else
-                return EvaluateToExpr(node);
+            // 兜底使用默认函数表达式
+            return DefaultFunctionHandler(node, this);
         }
 
         /// <summary>
