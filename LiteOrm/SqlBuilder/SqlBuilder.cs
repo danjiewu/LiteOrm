@@ -148,13 +148,20 @@ namespace LiteOrm
 
 
         /// <summary>
-        /// 连接各字符串的 SQL 语句
+        /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。
         /// </summary>
+        /// <param name="sb">用于接收 SQL 片段的字符串构建器。</param>
         /// <param name="strs">需要连接的sql字符串</param>
         /// <returns>SQL语句</returns>
-        public virtual string BuildConcatSql(params string[] strs)
+        public virtual void BuildConcatSql(ref ValueStringBuilder sb, params string[] strs)
         {
-            return $"CONCAT({String.Join(",", strs)})";
+            sb.Append("CONCAT(");
+            for (int i = 0; i < strs.Length; i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append(strs[i]);
+            }
+            sb.Append(')');
         }
 
         /// <summary>
@@ -525,7 +532,6 @@ namespace LiteOrm
         /// <param name="tableName">表名。</param>
         /// <param name="columns">列定义集合。</param>
         public virtual string BuildCreateTableSql(string tableName, IEnumerable<ColumnDefinition> columns)
-
         {
             var sb = ValueStringBuilder.Create(512);
             sb.Append("CREATE TABLE ");

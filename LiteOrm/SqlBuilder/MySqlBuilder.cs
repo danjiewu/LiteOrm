@@ -18,16 +18,6 @@ namespace LiteOrm
         public static readonly new MySqlBuilder Instance = new MySqlBuilder();
 
         /// <summary>
-        /// 连接各字符串的SQL语句
-        /// </summary>
-        /// <param name="strs">需要连接的sql字符串</param>
-        /// <returns>SQL语句</returns>
-        public override string BuildConcatSql(params string[] strs)
-        {
-            return $"CONCAT({String.Join(",", strs)})";
-        }
-
-        /// <summary>
         /// 是否支持带自增列的批量插入并返回首个 ID。
         /// </summary>
         public override bool SupportBatchInsertWithIdentity => true;
@@ -64,7 +54,12 @@ namespace LiteOrm
         /// </summary>
         public override string BuildBatchIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
         {
-            return $"{BuildBatchInsertSql(tableName, columns, valuesList)};\nSELECT LAST_INSERT_ID() AS `ID`;";
+            var sb = ValueStringBuilder.Create(64);
+            sb.Append(BuildBatchInsertSql(tableName, columns, valuesList));
+            sb.Append(";\nSELECT LAST_INSERT_ID() AS `ID`;");
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
         /// <summary>

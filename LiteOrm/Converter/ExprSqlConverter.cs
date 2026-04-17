@@ -401,8 +401,7 @@ namespace LiteOrm.Common
                             nestedRightSb.Dispose();
 
                             string right = $"REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({nestedRight},'{escapeChar}', '{escapeChar}{escapeChar}'),'_', '{escapeChar}_'),'%', '{escapeChar}%'),'[', '{escapeChar}['),']', '{escapeChar}]')";
-                            right = sqlBuilder.BuildConcatSql("'%'", right);
-                            sb.Append(right);
+                            sqlBuilder.BuildConcatSql(ref sb, "'%'", right);
                             sb.Append($" ESCAPE '{escapeChar}'");
                         }
                     }
@@ -437,8 +436,7 @@ namespace LiteOrm.Common
                 ToSqlInternal(ref rightSb, expr.Right, context, sqlBuilder, outputParams);
                 string right = rightSb.ToString();
                 rightSb.Dispose();
-
-                sb.Append(sqlBuilder.BuildConcatSql(left, right));
+                sqlBuilder.BuildConcatSql(ref sb, left, right);
             }
             else
             {
@@ -735,7 +733,7 @@ namespace LiteOrm.Common
                     subExprs[i] = subSb.ToString();
                     subSb.Dispose();
                 }
-                sb.Append(sqlBuilder.BuildConcatSql(subExprs));
+                sqlBuilder.BuildConcatSql(ref sb, subExprs);
                 return;
             }
 

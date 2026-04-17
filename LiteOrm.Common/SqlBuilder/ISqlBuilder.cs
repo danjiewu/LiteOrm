@@ -66,11 +66,12 @@ namespace LiteOrm.Common
         void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ICollection<KeyValuePair<string, object>> outputParams);
 
         /// <summary>
-        /// 构建多个字符串连接的 SQL 表达式，兼容目标数据库的连接语法。
+        /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。
         /// </summary>
+        /// <param name="sb">接收输出 SQL 片段的字符串构建器。</param>
         /// <param name="strs">要连接的字符串或表达式片段。</param>
-        /// <returns>返回用于连接的 SQL 片段。</returns>
-        string BuildConcatSql(params string[] strs);
+        void BuildConcatSql(ref ValueStringBuilder sb, params string[] strs);
+
 
         /// <summary>
         /// 从数据库值转换为 .NET 对象值。

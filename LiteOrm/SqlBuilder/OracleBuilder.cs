@@ -125,7 +125,7 @@ namespace LiteOrm
         {
             if (valuesList == null || valuesList.Count == 0) return string.Empty;
 
-            var sb = ValueStringBuilder.Create(1024);
+            var sb = ValueStringBuilder.Create(2048);
             sb.Append("INSERT INTO ");
             sb.Append(ToSqlName(tableName));
             sb.Append(" (");
@@ -153,13 +153,17 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 连接各字符串的SQL语句
+        /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。
         /// </summary>
+        /// <param name="sb">用于接收 SQL 片段的字符串构建器。</param>
         /// <param name="strs">需要连接的sql字符串</param>
-        /// <returns>SQL语句</returns>
-        public override string BuildConcatSql(params string[] strs)
+        public override void BuildConcatSql(ref ValueStringBuilder sb, params string[] strs)
         {
-            return String.Join("||", strs);
+            for (int i = 0; i < strs.Length; i++)
+            {
+                if (i > 0) sb.Append("||");
+                sb.Append(strs[i]);
+            }
         }
 
         /// <summary>

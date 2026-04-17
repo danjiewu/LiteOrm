@@ -21,6 +21,21 @@ namespace LiteOrm
         /// </summary>
         public override bool SupportBatchInsertWithIdentity => true;
 
+
+        /// <summary>
+        /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。
+        /// </summary>
+        /// <param name="sb">用于接收 SQL 片段的字符串构建器。</param>
+        /// <param name="strs">需要连接的sql字符串</param>
+        public override void BuildConcatSql(ref ValueStringBuilder sb, params string[] strs)
+        {
+            for (int i = 0; i < strs.Length; i++)
+            {
+                if (i > 0) sb.Append(" + ");
+                sb.Append(strs[i]);
+            }
+        }
+
         /// <summary>
         /// 生成带标识列的批量插入 SQL，返回首个插入的 ID。
         /// </summary>
