@@ -49,7 +49,7 @@ namespace LiteOrm.Benchmark
             // default to MySql
             return new MySqlConnector.MySqlConnection(_connectionString);
         }
-        [Params(10, 100, 1000, 10000, 100000)]
+        [Params(10, 100, 1000, 10000)]
         public int BatchCount { get; set; }
         [GlobalSetup]
         public void Setup()
