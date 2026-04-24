@@ -217,14 +217,14 @@ namespace LiteOrm
                 for (int i = 0; i < updatableColumns.Length; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    sb.Append(ToSqlParam($"p{paramBase + i}"));
+                    sb.Append(ToSqlParam($"{paramBase + i}"));
                 }
 
                 // 键列参数 
                 for (int k = 0; k < keyColumns.Length; k++)
                 {
                     sb.Append(", ");
-                    sb.Append(ToSqlParam($"p{paramBase + updatableColumns.Length + k}"));
+                    sb.Append(ToSqlParam($"{paramBase + updatableColumns.Length + k}"));
                 }
 
                 sb.Append(")");

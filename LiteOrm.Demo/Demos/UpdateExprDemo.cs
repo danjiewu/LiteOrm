@@ -34,7 +34,7 @@ namespace LiteOrm.Demo.Demos
         {
             await userSvc.DeleteAsync(u => u.UserName != null && u.UserName.StartsWith("UpdateDemo_"));
             await userSvc.InsertAsync(new User { UserName = "UpdateDemo_Alice", Age = 20, CreateTime = DateTime.Now });
-            await userSvc.InsertAsync(new User { UserName = "UpdateDemo_Bob",   Age = 30, CreateTime = DateTime.Now });
+            await userSvc.InsertAsync(new User { UserName = "UpdateDemo_Bob", Age = 30, CreateTime = DateTime.Now });
             await userSvc.InsertAsync(new User { UserName = "UpdateDemo_Carol", Age = 25, CreateTime = DateTime.Now });
             Console.WriteLine("  测试数据已就绪（Alice=20, Bob=30, Carol=25）");
         }
@@ -58,19 +58,17 @@ namespace LiteOrm.Demo.Demos
                     "{\n" +
                     "    Source = new TableExpr(typeof(User)),\n" +
                     "    Where  = Prop(\"UserName\") == \"UpdateDemo_Alice\",\n" +
-                    "    Sets   = new List<(PropertyExpr, ValueTypeExpr)>\n" +
-                    "    {\n" +
-                    "        (Prop(\"Age\"), Const(28))\n" +
+                    "    Sets  = {\n" +
+                    "        new(Prop(\"Age\"), Const(28))\n" +
                     "    }\n" +
                     "};");
 
                 var update = new UpdateExpr
                 {
                     Table = new TableExpr(typeof(User)),
-                    Where  = Prop("UserName") == "UpdateDemo_Alice",
-                    Sets   = new List<(PropertyExpr, ValueTypeExpr)>
-                    {
-                        (Prop("Age"), Const(28))
+                    Where = Prop("UserName") == "UpdateDemo_Alice",
+                    Sets = {
+                        new(Prop("Age"), Const(28))
                     }
                 };
 
@@ -83,7 +81,7 @@ namespace LiteOrm.Demo.Demos
                 Console.WriteLine("✓ 演示6.1 完成\n");
             }
             catch (Exception ex)
-            {                
+            {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.1 失败: {ex.Message}\n");
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
@@ -200,7 +198,7 @@ namespace LiteOrm.Demo.Demos
                 Console.WriteLine("✓ 演示6.4 完成\n");
             }
             catch (Exception ex)
-            {                
+            {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.4 失败: {ex.Message}\n");
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
@@ -235,7 +233,7 @@ namespace LiteOrm.Demo.Demos
                     "   ))\r\n" +
                     "   .Where(Prop(\"UserName\") == \"UpdateDemo_Alice\");");
 
-                var update1 = 
+                var update1 =
                     Update<User>()
                     .Set(("Age", From<User>()
                         .Where(Prop("UserName").StartsWith("UpdateDemo_"))
@@ -314,7 +312,7 @@ namespace LiteOrm.Demo.Demos
                         new TableExpr(typeof(User)),
                         Lambda<User>(u => u.Age >= 28))
                     .Set(
-                        ("Age",        Prop("Age") + Const(1)),
+                        ("Age", Prop("Age") + Const(1)),
                         ("CreateTime", Const(DateTime.Now))
                     );
 

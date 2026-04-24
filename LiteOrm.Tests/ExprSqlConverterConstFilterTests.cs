@@ -78,7 +78,7 @@ namespace LiteOrm.Common.UnitTests
                 var expr = new UpdateExpr
                 {
                     Table = new TableExpr(typeof(ConstFilterOrder)),
-                    Sets = new List<(PropertyExpr, ValueTypeExpr)> { (Expr.Prop("Name"), Expr.Value("Updated")) },
+                    Sets = new() { new(Expr.Prop("Name"), Expr.Value("Updated")) },
                     Where = Expr.Prop("Id") == 1
                 };
 

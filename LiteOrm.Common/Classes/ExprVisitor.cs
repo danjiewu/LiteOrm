@@ -164,10 +164,10 @@ namespace LiteOrm.Common
 
                 case UpdateExpr upd:
                     if (!VisitChild(upd.Table as Expr, visitor)) return false;
-                    foreach ((PropertyExpr prop, ValueTypeExpr val) in upd.Sets)
+                    foreach (var set in upd.Sets)
                     {
-                        if (!VisitNode(prop, visitor)) return false;
-                        if (!VisitNode(val, visitor)) return false;
+                        if (!VisitNode(set.Property, visitor)) return false;
+                        if (!VisitNode(set.Value, visitor)) return false;
                     }
                     return VisitChild(upd.Where, visitor);
 

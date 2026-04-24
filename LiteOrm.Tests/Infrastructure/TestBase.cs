@@ -30,6 +30,8 @@ namespace LiteOrm.Tests.Infrastructure
 
         public DatabaseFixture()
         {
+            Oracle.ManagedDataAccess.Client.OracleConfiguration.BindByName = true; // 解决 Oracle 参数绑定问题
+
             Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
                 .ConfigureAppConfiguration((hostingContext, config) =>
                 {
@@ -37,6 +39,7 @@ namespace LiteOrm.Tests.Infrastructure
                 })
                 .RegisterLiteOrm()
                 .Build();
+            
             var pool = ServiceProvider.GetRequiredService<DAOContextPoolFactory>().GetPool("SQLite");
             pool.OnContextCreated += DatabaseFixture_OnContextCreated;
             pool.ClearPool(); // 确保使用新的连接，触发 OnContextCreated 事件注册函数

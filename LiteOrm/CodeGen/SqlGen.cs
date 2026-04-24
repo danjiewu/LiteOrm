@@ -75,7 +75,6 @@ namespace LiteOrm.CodeGen
         {     
             bool isFull = expr is UpdateExpr || expr is DeleteExpr || expr is SelectExpr;
             var context = CreateSqlBuildContext(!isFull);
-            context.SingleTable = !(expr is UpdateExpr || expr is DeleteExpr);
             // 执行递归解析
             return expr.ToPreparedSql(context, SqlBuilder);
         }

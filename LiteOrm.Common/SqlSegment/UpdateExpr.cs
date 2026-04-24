@@ -47,7 +47,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置要更新的字段和值列表
         /// </summary>
-        public List<(PropertyExpr, ValueTypeExpr)> Sets { get; set; } = new List<(PropertyExpr, ValueTypeExpr)>();
+        public List<SetItem> Sets { get; set; } = new List<SetItem>();
 
         /// <summary>
         /// 获取或设置筛选条件表达式
@@ -76,7 +76,7 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            string setStr = Sets is null ? string.Empty : " SET " + string.Join(", ", Sets.Select(s => $"{s.Item1} = {s.Item2}"));
+            string setStr = Sets is null ? string.Empty : " SET " + string.Join(", ", Sets.Select(s => $"{s.Property} = {s.Value}"));
             return $"UPDATE {Table}{setStr}{(Where != null ? $" WHERE {Where}" : "")}";
         }
 
@@ -88,8 +88,49 @@ namespace LiteOrm.Common
             var u = new UpdateExpr();
             u.Table = (TableExpr)Table?.Clone();
             u.Where = (LogicExpr)Where?.Clone();
-            u.Sets = Sets?.Select(s => ((PropertyExpr)s.Item1?.Clone(), (ValueTypeExpr)s.Item2?.Clone())).ToList() ?? new List<(PropertyExpr, ValueTypeExpr)>();
+            u.Sets = Sets?.Select(s => new SetItem((PropertyExpr)s.Property?.Clone(), (ValueTypeExpr)s.Value?.Clone())).ToList() ?? new List<SetItem>();
             return u;
         }
+    }
+
+    /// <summary>
+    /// 表示要更新的字段和值的结构体
+    /// </summary>
+    public struct SetItem
+    {
+        /// <summary>
+        /// 将属性表达式和值表达式的元组隐式转换为 SetItem 结构体实例
+        /// </summary>
+        /// <param name="tuple">包含属性表达式和值表达式的元组</param>
+        public static implicit operator SetItem(Tuple<PropertyExpr, ValueTypeExpr> tuple) => new SetItem { Property = tuple.Item1, Value = tuple.Item2 };
+
+        /// <summary>
+        /// 将 SetItem 结构体实例隐式转换为包含属性表达式和值表达式的元组
+        /// </summary>
+        /// <param name="item">要转换的 SetItem 实例</param>
+        public static implicit operator Tuple<PropertyExpr, ValueTypeExpr>(SetItem item) => new Tuple<PropertyExpr, ValueTypeExpr>(item.Property, item.Value);
+        /// <summary>
+        /// 获取或设置要更新的字段表达式
+        /// </summary>
+        public PropertyExpr Property { get; set; }
+        /// <summary>
+        /// 获取或设置要更新的值表达式
+        /// </summary>
+        public ValueTypeExpr Value { get; set; }
+        /// <summary>
+        /// 初始化 SetItem 结构的新实例
+        /// </summary>
+        /// <param name="property">要更新的字段表达式</param>
+        /// <param name="value">要更新的值表达式</param>
+        public SetItem(PropertyExpr property, ValueTypeExpr value)
+        {
+            Property = property;
+            Value = value;
+        }
+        /// <summary>
+        /// 返回 SetItem 的字符串表示，格式为 "Property = Value"
+        /// </summary>
+        /// <returns>字符串表示</returns>
+        public override string ToString() => $"{Property} = {Value}";
     }
 }

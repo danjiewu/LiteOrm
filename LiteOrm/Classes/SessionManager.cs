@@ -365,10 +365,10 @@ namespace LiteOrm
                 }
             }
 
+            var committedTransactionId = _currentTransactionId;
             // 清理事务状态
             _currentTransactionId = null;
-
-            _logger?.LogDebug("Session {SessionID} transaction committed. ID: {TransactionID}, Success: {Success}", SessionID, _currentTransactionId, success);
+            _logger?.LogDebug("Session {SessionID} transaction committed. ID: {TransactionID}, Success: {Success}", SessionID, committedTransactionId, success);
 
             if (!success)
             {
@@ -401,10 +401,10 @@ namespace LiteOrm
                 }
             }
 
+            var committedTransactionId = _currentTransactionId;
             _currentTransactionId = null;
-
-            _logger?.LogDebug("Session {SessionID} transaction committed. ID: {TransactionID}, Success: {Success}", SessionID, _currentTransactionId, success);
-
+            _logger?.LogDebug("Session {SessionID} transaction committed. ID: {TransactionID}, Success: {Success}", SessionID, committedTransactionId, success);
+            
             if (!success)
             {
                 throw new InvalidOperationException("An error occurred while committing the transaction");
@@ -436,10 +436,11 @@ namespace LiteOrm
                 }
             }
 
+            var rollbackTransactionId = _currentTransactionId;
             // 清理事务状态
             _currentTransactionId = null;
 
-            _logger?.LogDebug("Session {SessionID} transaction rolled back. ID: {TransactionID}, Success: {Success}", SessionID, _currentTransactionId, success);
+            _logger?.LogDebug("Session {SessionID} transaction rolled back. ID: {TransactionID}, Success: {Success}", SessionID, rollbackTransactionId, success);
 
             if (!success)
             {
@@ -472,9 +473,9 @@ namespace LiteOrm
                 }
             }
 
+            var rollbackTransactionId = _currentTransactionId;
             _currentTransactionId = null;
-
-            _logger?.LogDebug("Session {SessionID} transaction rolled back. ID: {TransactionID}, Success: {Success}", SessionID, _currentTransactionId, success);
+            _logger?.LogDebug("Session {SessionID} transaction rolled back. ID: {TransactionID}, Success: {Success}", SessionID, rollbackTransactionId, success);
 
             if (!success)
             {

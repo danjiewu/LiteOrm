@@ -219,9 +219,9 @@ namespace LiteOrm
         {
             simpleName = simpleName.Trim();
             if (simpleName.IsEmpty) return;
-            if (simpleName[0] != '[') sb.Append('[');
+            if (simpleName[0] != '"') sb.Append('"');
             sb.Append(simpleName);
-            if (simpleName[simpleName.Length - 1] != ']') sb.Append(']');
+            if (simpleName[simpleName.Length - 1] != '"') sb.Append('"');
         }
 
         /// <summary>
@@ -261,7 +261,7 @@ namespace LiteOrm
         /// <returns></returns>
         public virtual string ReplaceSqlName(string sql)
         {
-            return sql;
+            return ReplaceSqlName(sql, '"', '"');
         }
 
         /// <summary>
@@ -677,7 +677,7 @@ namespace LiteOrm
                 for (int i = 0; i < keyColumns.Length; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    string keyParam = "p" + (b * keyColumns.Length + i);
+                    string keyParam = (b * keyColumns.Length + i).ToString();
                     sb.Append(ToSqlParam(keyParam));
                 }
                 if (keyColumns.Length > 1) sb.Append(")");
@@ -710,7 +710,7 @@ namespace LiteOrm
                 for (int b = 0; b < batchSize; b++)
                 {
                     if (b > 0) sb.Append(", ");
-                    sb.Append(ToSqlParam("p" + b));
+                    sb.Append(ToSqlParam(b.ToString()));
                 }
                 sb.Append(")");
             }
@@ -724,7 +724,7 @@ namespace LiteOrm
                     {
                         if (k > 0) sb.Append(" AND ");
                         var key = keyColumns[k];
-                        string keyParam = "p" + (b * keyColumns.Length + k);
+                        string keyParam = (b * keyColumns.Length + k).ToString();
                         sb.Append(ToSqlName(key.Name));
                         sb.Append(" = ");
                         sb.Append(ToSqlParam(keyParam));
@@ -768,7 +768,7 @@ namespace LiteOrm
                     if (i > 0) sb.Append(", ");
                     sb.Append(ToSqlName(updatableColumns[i].Name));
                     sb.Append(" = ");
-                    sb.Append(ToSqlParam("p" + (b * paramsPerRecord + i)));
+                    sb.Append(ToSqlParam((b * paramsPerRecord + i).ToString()));
                 }
 
                 // 构建 WHERE 子句
@@ -778,7 +778,7 @@ namespace LiteOrm
                     if (k > 0) sb.Append(" AND ");
                     sb.Append(ToSqlName(keyColumns[k].Name));
                     sb.Append(" = ");
-                    sb.Append(ToSqlParam("p" + (b * paramsPerRecord + updatableColumns.Length + k)));
+                    sb.Append(ToSqlParam((b * paramsPerRecord + updatableColumns.Length + k).ToString()));
                 }
             }
 

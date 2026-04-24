@@ -188,7 +188,7 @@ namespace LiteOrm
                 for (int i = 0; i < paramsPerRecord; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    sb.Append(ToSqlParam("p" + (b * paramsPerRecord + i)));
+                    sb.Append(ToSqlParam((b * paramsPerRecord + i).ToString())); 
                     if (b == 0)
                     {
                         sb.Append(" AS ");

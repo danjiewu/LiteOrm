@@ -250,12 +250,12 @@ namespace LiteOrm
             {
                 foreach (var col in updatableColumns)
                 {
-                    paramValues.Add("p" + paramCount, null);
+                    paramValues.Add(paramCount.ToString(), null);
                     paramCount++;
                 }
                 foreach (var key in keyColumns)
                 {
-                    paramValues.Add("p" + paramCount, null);
+                    paramValues.Add(paramCount.ToString(), null);
                     paramCount++;
                 }
             }
@@ -277,7 +277,7 @@ namespace LiteOrm
             {
                 foreach (var key in keyColumns)
                 {
-                    paramValues.Add("p" + paramCount, null);
+                    paramValues.Add(paramCount.ToString(), null);
                     paramCount++;
                 }
             }
@@ -299,7 +299,7 @@ namespace LiteOrm
             {
                 foreach (var key in keyColumns)
                 {
-                    paramValues.Add("p" + paramCount, null);
+                    paramValues.Add(paramCount.ToString(), null);
                     paramCount++;
                 }
             }
@@ -310,7 +310,7 @@ namespace LiteOrm
 
         #region Helpers
 
-        private void SetParameterValues(ColumnDefinition[] insertableColumns, List<T> batch, DbCommandProxy command)
+        private void SetBatchInsertParameterValues(ColumnDefinition[] insertableColumns, List<T> batch, DbCommandProxy command)
         {
             int paramIndex = 0;
             var parameters = command.Parameters;
@@ -323,7 +323,7 @@ namespace LiteOrm
                 for (int j = 0; j < columnCount; j++)
                 {
                     ColumnDefinition column = insertableColumns[j];
-                    var param = (DbParameter)parameters[paramIndex++];
+                    var param = parameters[paramIndex++];
                     param.Value = ConvertToDbValue(column.GetValue(item), column.DbType);
                 }
             }
@@ -385,12 +385,12 @@ namespace LiteOrm
                 for (int j = 0; j < updatableCount; j++)
                 {
                     ColumnDefinition column = updatableColumns[j];
-                    ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(column.GetValue(item), column.DbType);
+                    parameters[paramIndex++].Value = ConvertToDbValue(column.GetValue(item), column.DbType);
                 }
                 for (int j = 0; j < keyCount; j++)
                 {
                     ColumnDefinition key = keyColumns[j];
-                    ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(key.GetValue(item), key.DbType);
+                    parameters[paramIndex++].Value = ConvertToDbValue(key.GetValue(item), key.DbType);
                 }
             }
         }
@@ -408,7 +408,7 @@ namespace LiteOrm
                 for (int j = 0; j < keyCount; j++)
                 {
                     ColumnDefinition key = keyColumns[j];
-                    ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(key.GetValue(item), key.DbType);
+                    parameters[paramIndex++].Value = ConvertToDbValue(key.GetValue(item), key.DbType);
                 }
             }
         }
@@ -426,7 +426,7 @@ namespace LiteOrm
                 for (int j = 0; j < keyCount; j++)
                 {
                     ColumnDefinition key = keyColumns[j];
-                    ((DbParameter)parameters[paramIndex++]).Value = ConvertToDbValue(keys[j], key.DbType);
+                    parameters[paramIndex++].Value = ConvertToDbValue(keys[j], key.DbType);
                 }
             }
         }
@@ -449,7 +449,7 @@ namespace LiteOrm
             for (int i = 0; i < count; i++)
             {
                 var column = columns[i];
-                var param = (DbParameter)parameters[i];
+                var param = parameters[i];
                 param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
             }
 
@@ -517,7 +517,7 @@ namespace LiteOrm
                     if (batch.Count == batchSize)
                     {
                         batchCommand ??= GetPreparedCommand("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize));
-                        SetParameterValues(insertableColumns, batch, batchCommand);
+                        SetBatchInsertParameterValues(insertableColumns, batch, batchCommand);
 
                         if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                         {
@@ -541,7 +541,7 @@ namespace LiteOrm
                     // 非固定批量大小不使用缓存，直接创建并在使用后释放命令
                     using (DbCommandProxy command = MakeNamedParamCommand(MakeBatchInsertSql(batch.Count)))
                     {
-                        SetParameterValues(insertableColumns, batch, command);
+                        SetBatchInsertParameterValues(insertableColumns, batch, command);
 
                         if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                         {
@@ -712,7 +712,7 @@ namespace LiteOrm
                     {
                         for (int j = 0; j < keyColumns.Length; j++)
                         {
-                            ((DbParameter)cmd.Parameters[i * paramsPerKey + j]).Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
+                            cmd.Parameters[i * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
                         }
                     }
                     using (var reader = cmd.ExecuteReader())
@@ -821,7 +821,7 @@ namespace LiteOrm
 
             for (int i = 0; i < count; i++)
             {
-                ((DbParameter)parameters[i]).Value = ConvertToDbValue(keys[i], keyColumns[i].DbType);
+                parameters[i].Value = ConvertToDbValue(keys[i], keyColumns[i].DbType);
             }
             return deleteCommand.ExecuteNonQuery() > 0;
         }
@@ -897,7 +897,7 @@ namespace LiteOrm
             for (int i = 0; i < count; i++)
             {
                 var column = columns[i];
-                ((DbParameter)parameters[i]).Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                parameters[i].Value = ConvertToDbValue(column.GetValue(t), column.DbType);
             }
 
             if (IdentityColumn is null)
@@ -983,7 +983,7 @@ namespace LiteOrm
                     if (batch.Count == batchSize)
                     {
                         batchCommand ??= await GetPreparedCommandAsync("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize), cancellationToken).ConfigureAwait(false);
-                        SetParameterValues(insertableColumns, batch, batchCommand);
+                        SetBatchInsertParameterValues(insertableColumns, batch, batchCommand);
 
                         if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                         {
@@ -1006,7 +1006,7 @@ namespace LiteOrm
                 {
                     // 非固定批量大小不使用 GetPreparedCommand 缓存，直接创建命令
                     using DbCommandProxy command = await MakeNamedParamCommandAsync(MakeBatchInsertSql(batch.Count), cancellationToken).ConfigureAwait(false);
-                    SetParameterValues(insertableColumns, batch, command);
+                    SetBatchInsertParameterValues(insertableColumns, batch, command);
                     if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                     {
                         object res = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);

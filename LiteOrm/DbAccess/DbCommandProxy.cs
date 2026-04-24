@@ -326,7 +326,6 @@ namespace LiteOrm
                 PostExcuteCommand(ExcuteType.ExecuteReader);
                 return ret;
             }
-
             catch
             {
                 scope.Dispose();

@@ -710,7 +710,7 @@ namespace LiteOrm.Common
         {
             foreach (var (propName, valueExpr) in assignments)
             {
-                source.Sets.Add((Expr.Prop(propName), valueExpr));
+                source.Sets.Add(new (Expr.Prop(propName), valueExpr));
             }
             return source;
         }
@@ -730,7 +730,7 @@ namespace LiteOrm.Common
         /// </example>
         public static UpdateExpr SetIf(this UpdateExpr source, bool condition, string propName, ValueTypeExpr valueExpr)
         {
-            if (condition) source.Sets.Add((Expr.Prop(propName), valueExpr));
+            if (condition) source.Sets.Add(new(Expr.Prop(propName), valueExpr));
             return source;
         }
         /// <summary>
@@ -753,21 +753,6 @@ namespace LiteOrm.Common
             }
             return new OrderByExpr(source as SqlSegment, orderBys);
         }
-
-        /// <summary>
-        /// 为 SQL 语句添加 ORDER BY 子句（属性名与排序方向元组数组）。
-        /// </summary>
-        /// <param name="source">SQL 语句构建起点。</param>
-        /// <param name="orderBys">排序表达式和方向的元组数组（属性名, 升序/降序）。
-        /// Item1: 属性名，Item2: true 表示升序（ASC），false 表示降序（DESC）。</param>
-        /// <returns>包含 ORDER BY 子句的排序表达式。</returns>
-        /// <example>
-        /// <code>
-        /// var query = table.OrderBy(("CreatedDate", false));
-        /// </code>
-        /// </example>
-        public static OrderByExpr OrderBy(this IOrderByAnchor source, params (string, bool)[] orderBys) =>
-            OrderBy(source, Array.ConvertAll(orderBys, tuple => new OrderByItemExpr(Expr.Prop(tuple.Item1), tuple.Item2)));
 
         /// <summary>
         /// 为 SQL 语句添加 ORDER BY 升序子句（属性名）。

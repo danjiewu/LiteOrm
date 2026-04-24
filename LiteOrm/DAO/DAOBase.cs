@@ -56,7 +56,7 @@ namespace LiteOrm
         /// <summary>
         /// 时间戳参数的内部名称。
         /// </summary>
-        protected const string TimestampParamName = "0";
+        protected const string TimestampParamName = "_STAMP";
         #endregion
 
         #region 私人变量
@@ -528,6 +528,8 @@ namespace LiteOrm
             }
         }
 
+
+
         /// <summary>
         /// 为command创建根据主键查询的条件，在参数集合中添加参数并返回where条件的语句
         /// </summary>
@@ -547,7 +549,7 @@ namespace LiteOrm
                 strConditions.Append(" = ");
                 strConditions.Append(ToSqlParam(key.PropertyName));
 
-                paramValues.Add(new KeyValuePair<string, object>(key.PropertyName, null));
+                paramValues.Add(new (key.PropertyName, null));
             }
             string result = strConditions.ToString();
             strConditions.Dispose();

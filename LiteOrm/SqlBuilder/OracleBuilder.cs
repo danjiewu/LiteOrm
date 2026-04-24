@@ -40,6 +40,7 @@ namespace LiteOrm
         protected override DbType GetDbTypeInternal(Type type)
         {
             if (type == typeof(bool)) return DbType.Byte; // Oracle 不支持布尔类型，使用数字代替
+            if (type == typeof(DateTime)) return DbType.Date;
             return base.GetDbTypeInternal(type);
         }
 
@@ -70,25 +71,43 @@ namespace LiteOrm
         /// <returns>构建后的 SQL 语句。</returns>
         public override string BuildBatchIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string columns, List<string> valuesList)
         {
-            if(IdentitySource== OracleIdentitySourceType.Sequence || IdentitySource == OracleIdentitySourceType.Expression)
+            if (IdentitySource == OracleIdentitySourceType.Sequence || IdentitySource == OracleIdentitySourceType.Expression)
             {
                 columns += "," + ToSqlName(identityColumn.Name);
                 string identityValue = IdentitySource == OracleIdentitySourceType.Sequence
                     ? tableName + "_seq.nextval" : identityColumn.IdentityExpression;
+
+                var sb = ValueStringBuilder.Create(2048);
+                sb.Append("INSERT INTO ");
+                sb.Append(ToSqlName(tableName));
+                sb.Append(" (");
+                sb.Append(columns);
+                sb.Append(")\n");
+                sb.Append("SELECT T.*, ");
+                sb.Append(identityValue);
+                sb.Append(" \nFROM(\n");
                 for (int i = 0; i < valuesList.Count; i++)
                 {
-                    valuesList[i] = valuesList[i].Trim();
-                    if (valuesList[i].StartsWith("(") && valuesList[i].EndsWith(")"))
+                    if (i > 0) sb.Append(" UNION ALL\n");
+                    sb.Append(" SELECT ");
+                    string values = valuesList[i];
+                    if (values.StartsWith("(") && values.EndsWith(")"))
                     {
-                        valuesList[i] = valuesList[i].AsSpan(1, valuesList[i].Length - 2).ToString() + "," + identityValue;
+                        sb.Append(values.AsSpan(1, values.Length - 2));
                     }
                     else
                     {
-                        valuesList[i] += "," + identityValue;
+                        sb.Append(values);
                     }
+                    sb.Append(" FROM DUAL");
                 }
+                sb.Append(") T");
+                string result = sb.ToString();
+                sb.Dispose();
+                return result;
             }
-            return base.BuildBatchIdentityInsertSql(identityColumn, tableName, columns, valuesList);
+            else
+                return base.BuildBatchIdentityInsertSql(identityColumn, tableName, columns, valuesList);
         }
 
         /// <summary>
@@ -100,7 +119,7 @@ namespace LiteOrm
         /// <param name="strValues">插入值名部分。</param>
         /// <returns>构建后的 SQL 语句。</returns>
         public override string BuildIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
-        {            
+        {
             if (IdentitySource == OracleIdentitySourceType.Sequence)
             {
                 strColumns += "," + ToSqlName(identityColumn.Name);
@@ -241,9 +260,11 @@ namespace LiteOrm
                 case DbType.Int64:
                     return "NUMBER";
                 case DbType.DateTime:
-                    return "TIMESTAMP";
+                    return "DATE";
                 case DbType.Boolean:
                     return "NUMBER(1)";
+                case DbType.Time:
+                    return "INTERVAL DAY TO SECOND";
                 default:
                     return base.GetSqlType(column);
             }
@@ -322,7 +343,7 @@ namespace LiteOrm
                 for (int i = 0; i < updatableColumns.Length; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    string valParam = ":p" + (b * paramsPerRecord + i);
+                    string valParam = ":" + (b * paramsPerRecord + i);
                     sb.Append(valParam);
                     sb.Append(" AS ");
                     sb.Append(ToSqlName(updatableColumns[i].Name));
@@ -332,7 +353,7 @@ namespace LiteOrm
                 for (int k = 0; k < keyColumns.Length; k++)
                 {
                     if (updatableColumns.Length > 0 || k > 0) sb.Append(", ");
-                    string keyParam = ":p" + (b * paramsPerRecord + updatableColumns.Length + k);
+                    string keyParam = ":" + (b * paramsPerRecord + updatableColumns.Length + k);
                     sb.Append(keyParam);
                     sb.Append(" AS ");
                     sb.Append(ToSqlName(keyColumns[k].Name));

@@ -48,7 +48,7 @@ namespace LiteOrm.Demo.Demos
                             var field = converter.Convert(ctorNew.Arguments[0]) as ValueTypeExpr;
                             bool isAsc = ctorNew.Arguments[1] is ConstantExpression { Value: bool b } && b;
                             if (field is not null)
-                                orderExprs.Add(new OrderByItemExpr(field, isAsc));
+                                orderExprs.Add((field, isAsc));
                         }
                     }
                 }

@@ -41,6 +41,12 @@ namespace LiteOrm.Common
             => new OrderByItemExpr(tuple.field, tuple.ascending);
 
         /// <summary>
+        /// 将 <see cref="string"/> 与 <see cref="bool"/> 的元组隐式转换为 <see cref="OrderByItemExpr"/>，字符串表示排序字段名称。
+        /// </summary>
+        public static implicit operator OrderByItemExpr((string property, bool ascending) tuple)
+            => new OrderByItemExpr(Prop(tuple.property), tuple.ascending);
+
+        /// <summary>
         /// 将 <see cref="OrderByItemExpr"/> 隐式转换为 <see cref="ValueTypeExpr"/> 与 <see cref="bool"/> 的元组。
         /// </summary>
         public static implicit operator (ValueTypeExpr, bool)(OrderByItemExpr item)

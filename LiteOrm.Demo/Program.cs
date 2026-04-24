@@ -5,9 +5,43 @@ using LiteOrm.Demo.Demos;
 using LiteOrm.Demo.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Oracle.ManagedDataAccess.Client;
+using System.Data;
+using System.Data.Common;
 using System.Linq.Expressions;
 using System.Text;
 using System.Text.Json;
+
+OracleConfiguration.BindByName = true;
+OracleConnection conn = new OracleConnection("Data Source=//oracle/orcl;User Id=ormbench;Password=orm!123");
+conn.Open();
+OracleCommand oracleCommand = new OracleCommand("select (sysdate - trunc(sysdate)) * 24 from dual", conn);
+var reader = oracleCommand.ExecuteReader();
+while (reader.Read())
+{
+    var res = reader.GetOracleValue(0);
+    Console.WriteLine(res.GetType());
+    Console.WriteLine(res);
+}
+reader.Close();
+
+oracleCommand = new OracleCommand("select (sysdate - :0) * 24  from dual", conn);
+DbParameter parameter = oracleCommand.CreateParameter();
+parameter.ParameterName = "0";
+parameter.Value = DateTime.Today;
+oracleCommand.Parameters.Add(parameter);
+reader = oracleCommand.ExecuteReader();
+while (reader.Read())
+{
+    var res = reader.GetValue(0);
+    Console.WriteLine(res.GetType());
+    Console.WriteLine(res);
+}
+reader.Close();
+
+
+
+
 
 // 使用 RegisterLiteOrm 从 appsettings.json 自动配置
 var host = Host.CreateDefaultBuilder(args)
@@ -26,7 +60,7 @@ WindowFunctionDemo.RegisterHandlers();
 
 // 执行数据库初始化
 using (var initScope = host.Services.CreateScope())
-{
+{    
     await DbInitializer.InitializeAsync(initScope.ServiceProvider);
 }
 

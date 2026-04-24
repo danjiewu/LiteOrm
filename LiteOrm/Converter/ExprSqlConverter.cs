@@ -234,7 +234,8 @@ namespace LiteOrm.Common
             return expr switch
             {
                 SelectExpr select => select.NextSelects?.Count > 0 ? 0 : 1,
-                ValueSet vs when vs.JoinType == ValueJoinType.List => 2,
+                ValueSet vs when vs.JoinType != ValueJoinType.Concat => 2,
+                ValueSet vs when vs.JoinType == ValueJoinType.Concat => 16,
                 OrExpr _ => 11,
                 AndExpr _ => 12,
                 LogicBinaryExpr _ => 13,
@@ -973,13 +974,13 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, DeleteExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-
-            sb.Append("DELETE FROM ");
-            ToSql(ref sb, expr.Table ?? new TableExpr(context.Table.DefinitionType), context, sqlBuilder, outputParams);
-            LogicExpr deleteWhere = expr.Where.And(GetContextConstFilter(context));
-            if (deleteWhere != null)
+            using (context.BeginScope())
             {
-                using (context.BeginScope())
+                context.SingleTable = true;// Delete 语句强制单表，禁止生成多表关联的 Delete 语句
+                sb.Append("DELETE FROM ");
+                ToSql(ref sb, expr.Table ?? new TableExpr(context.Table.DefinitionType), context, sqlBuilder, outputParams);
+                LogicExpr deleteWhere = expr.Where.And(GetContextConstFilter(context));
+                if (deleteWhere != null)
                 {
                     sb.NewLine(context.Indent);
                     sb.Append("WHERE ");
@@ -997,27 +998,28 @@ namespace LiteOrm.Common
             if (tableExpr == null)
                 throw new ArgumentException("UpdateExpr Source is null and context Table is null, cannot determine update target.");
             var table = TableInfoProvider.Default.GetTableDefinition(tableExpr.Type);
-            sb.Append("UPDATE ");
-            ToSql(ref sb, tableExpr, context, sqlBuilder, outputParams);
-            sb.NewLine(context.Indent);
-            sb.Append("SET ");
-            for (int i = 0; i < expr.Sets.Count; i++)
+            using (context.BeginScope())
             {
-                if (i > 0) sb.Append(", ");
-                sb.NewLine(context.Indent, true);
-                var set = expr.Sets[i];
-                int priority = GetPriority(expr);
-                SqlColumn column = table?.GetColumn(set.Item1.PropertyName);
-                if (column == null) throw new Exception($"Property \"{set.Item1}\" does not exist in type \"{context.Table.DefinitionType.FullName}\".");
-                sb.Append(sqlBuilder.ToSqlName(column.Name));
+                context.SingleTable = true;// Update 语句强制单表，禁止生成多表关联的 Update 语句
+                sb.Append("UPDATE ");
+                ToSql(ref sb, tableExpr, context, sqlBuilder, outputParams);
+                sb.NewLine(context.Indent);
+                sb.Append("SET ");
+                for (int i = 0; i < expr.Sets.Count; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    sb.NewLine(context.Indent, true);
+                    var set = expr.Sets[i];
+                    if (set.Property is null) throw new Exception($"SetItem.Property is null at index {i} in UpdateExpr.Sets.");
+                    SqlColumn column = table?.GetColumn(set.Property.PropertyName);
+                    if (column == null) throw new Exception($"Property \"{set.Property}\" does not exist in type \"{context.Table.DefinitionType.FullName}\".");
+                    sb.Append(sqlBuilder.ToSqlName(column.Name));
 
-                sb.Append("=");
-                ToSqlInternal(ref sb, set.Item2, context, sqlBuilder, outputParams, priority);
-            }
-            LogicExpr updateWhere = expr.Where.And(GetContextConstFilter(context));
-            if (updateWhere != null)
-            {
-                using (context.BeginScope())
+                    sb.Append(" = ");
+                    ToSqlInternal(ref sb, set.Value, context, sqlBuilder, outputParams, 14);//赋值表达式优先级低于计算表达式，确保在表达式树中正确添加括号
+                }
+                LogicExpr updateWhere = expr.Where.And(GetContextConstFilter(context));
+                if (updateWhere != null)
                 {
                     sb.NewLine(context.Indent);
                     sb.Append("WHERE ");
@@ -1029,10 +1031,7 @@ namespace LiteOrm.Common
 
         private static LogicExpr GetContextConstFilter(SqlBuildContext context)
         {
-            LogicExpr constFilter = context.Table?.Definition?.ConstFilter;
-            if (constFilter == null) return null;
-            if (context.SingleTable) return constFilter;
-            return constFilter;
+            return context.Table?.Definition?.ConstFilter;
         }
 
         private static LogicExpr GetAliasedConstFilter(LogicExpr constFilter, string tableAlias)

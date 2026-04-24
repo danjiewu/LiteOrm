@@ -1023,10 +1023,10 @@ namespace LiteOrm.Tests
             var updateExpr = new UpdateExpr
             {
                 Table = new TableExpr(typeof(TestUser)),
-                Sets = new List<(PropertyExpr, ValueTypeExpr)>
+                Sets = new ()
                 {
-                    (Expr.Prop("Age"), Expr.Prop("Age") + Expr.Const(5)), // 使用运算符重载和Expr.Const，Age = Age + 5
-                    (Expr.Prop("Name"), new FunctionExpr("UPPER", Expr.Prop("Name"))) // 使用UPPER函数，参数为Name属性
+                    new (Expr.Prop("Age"), Expr.Prop("Age") + Expr.Const(5)), // 使用运算符重载和Expr.Const，Age = Age + 5
+                    new (Expr.Prop("Name"), new FunctionExpr("UPPER", Expr.Prop("Name"))) // 使用UPPER函数，参数为Name属性
                 },
                 Where = Expr.Lambda<TestUser>(u => u.Name == "UpdateExprTest")
             };
@@ -1052,10 +1052,10 @@ namespace LiteOrm.Tests
             var updateExpr = new UpdateExpr
             {
                 Table = new TableExpr(typeof(TestUser)),
-                Sets = new List<(PropertyExpr, ValueTypeExpr)>
+                Sets = new ()
                 {
-                    (Expr.Prop("Age"), Expr.Prop("Age") + Expr.Const(10)), // 使用运算符重载和Expr.Const，Age = Age + 10
-                    (Expr.Prop("Name"), new FunctionExpr("CONCAT", Expr.Prop("Name"), Expr.Const("_Updated"))) // 使用CONCAT函数，参数为Name属性和字符串
+                    new (Expr.Prop("Age"), Expr.Prop("Age") + Expr.Const(10)), // 使用运算符重载和Expr.Const，Age = Age + 10
+                    new (Expr.Prop("Name"), new FunctionExpr("CONCAT", Expr.Prop("Name"), Expr.Const("_Updated"))) // 使用CONCAT函数，参数为Name属性和字符串
                 },
                 Where = Expr.Lambda<TestUser>(u => u.Name == "UpdateExprAsyncTest")
             };

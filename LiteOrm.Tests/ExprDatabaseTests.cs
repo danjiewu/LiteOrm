@@ -876,11 +876,12 @@ namespace LiteOrm.Tests
             var query = Expr.From<TestUser>()
                 .Where(Expr.Prop("Name") == "DateDiffTest")
                 .Select(
-                    Expr.Func("DateDiffDays", Expr.Prop("CreateTime"), Expr.Const(originTime)).As("Days"),
-                    Expr.Func("DateDiffHours", Expr.Prop("CreateTime"), Expr.Const(originTime)).As("Hours"),
-                    Expr.Func("DateDiffMinutes", Expr.Prop("CreateTime"), Expr.Const(originTime)).As("Minutes"),
-                    Expr.Func("DateDiffMilliseconds", Expr.Prop("CreateTime"), Expr.Const(originTime)).As("Milliseconds")
+                    Expr.Func("DateDiffDays", Expr.Prop("CreateTime"), originTime).As("Days"),
+                    Expr.Func("DateDiffHours", Expr.Prop("CreateTime"), originTime).As("Hours"),
+                    Expr.Func("DateDiffMinutes", Expr.Prop("CreateTime"), originTime).As("Minutes"),
+                    Expr.Func("DateDiffMilliseconds", Expr.Prop("CreateTime"), originTime).As("Milliseconds")
                 );
+            
             var dt = await dataViewDAO.Search(query).GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(dt);
             Assert.Single(dt.Rows);
@@ -931,9 +932,9 @@ namespace LiteOrm.Tests
             var query = Expr.From<TestLog>("202406")
                 .Where((Expr.Prop("Event") == "DurationFuncTest").And(Expr.Prop("UserID") == userId))
                 .Select(
-                    Expr.Func("TotalHours",        Expr.Prop("Duration")).As("Hours"),
-                    Expr.Func("TotalMinutes",      Expr.Prop("Duration")).As("Minutes"),
-                    Expr.Func("TotalSeconds",      Expr.Prop("Duration")).As("Seconds"),
+                    Expr.Func("TotalHours", Expr.Prop("Duration")).As("Hours"),
+                    Expr.Func("TotalMinutes", Expr.Prop("Duration")).As("Minutes"),
+                    Expr.Func("TotalSeconds", Expr.Prop("Duration")).As("Seconds"),
                     Expr.Func("TotalMilliseconds", Expr.Prop("Duration")).As("Milliseconds")
                 );
             var dt = await logDataViewDAO.Search(query).GetResultAsync(TestContext.Current.CancellationToken);
@@ -941,10 +942,10 @@ namespace LiteOrm.Tests
             Assert.Single(dt.Rows);
 
             var row = dt.Rows[0];
-            Assert.InRange(Convert.ToDouble(row["Hours"]),        2.9,          3.1);
-            Assert.InRange(Convert.ToDouble(row["Minutes"]),      179.5,        180.5);
-            Assert.InRange(Convert.ToDouble(row["Seconds"]),      10799.5,      10800.5);
-            Assert.InRange(Convert.ToDouble(row["Milliseconds"]), 10799999.5,   10800000.5);
+            Assert.InRange(Convert.ToDouble(row["Hours"]), 2.9, 3.1);
+            Assert.InRange(Convert.ToDouble(row["Minutes"]), 179.5, 180.5);
+            Assert.InRange(Convert.ToDouble(row["Seconds"]), 10799.5, 10800.5);
+            Assert.InRange(Convert.ToDouble(row["Milliseconds"]), 10799999.5, 10800000.5);
         }
 
         #endregion

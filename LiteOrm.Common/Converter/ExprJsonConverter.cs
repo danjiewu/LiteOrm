@@ -380,7 +380,7 @@ namespace LiteOrm.Common
                             reader.Read();
                             val = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
                         }
-                        if (prop is not null && val is not null) ue.Sets.Add((Expr.Prop(prop), val));
+                        if (prop is not null && val is not null) ue.Sets.Add(new(Expr.Prop(prop), val));
                     }
                 }
             }
@@ -808,8 +808,8 @@ namespace LiteOrm.Common
                             foreach (var set in ue.Sets)
                             {
                                 writer.WriteStartObject();
-                                writer.WritePropertyName(set.Item1.PropertyName);
-                                JsonSerializer.Serialize(writer, set.Item2, options);
+                                writer.WritePropertyName(set.Property.PropertyName);
+                                JsonSerializer.Serialize(writer, set.Value, options);
                                 writer.WriteEndObject();
                             }
                             writer.WriteEndArray();
