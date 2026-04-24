@@ -17,6 +17,8 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
       Lambda解析支持显式转换和隐式转换。
+      Lambda Contains方法只根据名称解析，以正确处理Span类型Contains扩展。
+      修复Oracle数据库DateDiff函数中使用DateTime值参数时返回类型不正确的错误。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

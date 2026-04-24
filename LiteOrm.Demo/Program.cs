@@ -13,35 +13,6 @@ using System.Text;
 using System.Text.Json;
 
 OracleConfiguration.BindByName = true;
-OracleConnection conn = new OracleConnection("Data Source=//oracle/orcl;User Id=ormbench;Password=orm!123");
-conn.Open();
-OracleCommand oracleCommand = new OracleCommand("select (sysdate - trunc(sysdate)) * 24 from dual", conn);
-var reader = oracleCommand.ExecuteReader();
-while (reader.Read())
-{
-    var res = reader.GetOracleValue(0);
-    Console.WriteLine(res.GetType());
-    Console.WriteLine(res);
-}
-reader.Close();
-
-oracleCommand = new OracleCommand("select (sysdate - :0) * 24  from dual", conn);
-DbParameter parameter = oracleCommand.CreateParameter();
-parameter.ParameterName = "0";
-parameter.Value = DateTime.Today;
-oracleCommand.Parameters.Add(parameter);
-reader = oracleCommand.ExecuteReader();
-while (reader.Read())
-{
-    var res = reader.GetValue(0);
-    Console.WriteLine(res.GetType());
-    Console.WriteLine(res);
-}
-reader.Close();
-
-
-
-
 
 // 使用 RegisterLiteOrm 从 appsettings.json 自动配置
 var host = Host.CreateDefaultBuilder(args)
