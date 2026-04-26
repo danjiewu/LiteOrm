@@ -61,7 +61,7 @@ namespace LiteOrm.CodeGen
         /// <exception cref="ArgumentNullException">当 <paramref name="objectType"/> 为 null 时抛出。</exception>
         /// <exception cref="InvalidOperationException">当 <see cref="TableInfoProvider.Default"/> 未设置或未找到对应的连接池时抛出。</exception>
         /// <exception cref="InvalidOperationException">当 <see cref="TableDefinition.DataSource"/> 未设置或无效时抛出。</exception>
-        public List<string> GenerateDdl(Type objectType, string[] tableArgs = null)
+        public List<string> GenerateDdl(Type objectType, string[]? tableArgs = null)
         {
             if (objectType == null) throw new ArgumentNullException(nameof(objectType));
             if (TableInfoProvider.Default == null) throw new InvalidOperationException("TableInfoProvider.Default is not set.");
@@ -127,7 +127,7 @@ namespace LiteOrm.CodeGen
                     if (type.GetAttribute<TableAttribute>() == null) continue;
                     if (typeof(IArged).IsAssignableFrom(type)) continue;
 
-                    TableDefinition tableDef;
+                    TableDefinition? tableDef;
                     try { tableDef = TableInfoProvider.Default?.GetTableDefinition(type); }
                     catch { continue; }
 

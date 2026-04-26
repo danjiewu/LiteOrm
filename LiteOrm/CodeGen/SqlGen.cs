@@ -1,8 +1,7 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
 namespace LiteOrm.CodeGen
@@ -33,17 +32,17 @@ namespace LiteOrm.CodeGen
         /// <summary>
         /// 获取或设置表别名（例如在多表连接查询中使用）。
         /// </summary>
-        public string Alias { get; set; }
+        public string? Alias { get; set; }
 
         /// <summary>
         /// 获取或设置表名模板参数（通常用于分表场景，如 Table_{0}）。
         /// </summary>
-        public string[] TableArgs { get; set; }
+        public string[]? TableArgs { get; set; }
 
         /// <summary>
         /// 获取与当前实体类型关联的 SQL 构建器实例，用于生成特定数据库方言的 SQL 语句。
         /// </summary>
-        public ISqlBuilder SqlBuilder
+        public ISqlBuilder? SqlBuilder
         {
             get
             {

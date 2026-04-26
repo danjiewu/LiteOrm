@@ -37,6 +37,7 @@ LiteOrm is a lightweight, high-performance .NET ORM that combines micro-ORM spee
 - **Multi-Database Support**: Native support for SQL Server, MySQL, Oracle, PostgreSQL, SQLite
 - **Flexible Querying**: Multiple query methods via Lambda, `Expr`, or `ExprString`
 - **Automatic Associations**: Implement JOIN queries via attributes without manual SQL writing
+- **Code Generation**: Includes the `LiteOrm.CodeGen` project for generating entities from database schema and converting basic `SELECT` SQL into View definitions plus C# query builder code
 - **Declarative Transactions**: AOP transaction management via `[Transaction]` attribute
 - **Logging and Diagnostics**: Built-in `ServiceLog`, `Log`, and slow-query diagnostics
 - **Dynamic Sharding**: Table routing via `IArged` interface
@@ -58,6 +59,23 @@ LiteOrm is a lightweight, high-performance .NET ORM that combines micro-ORM spee
 ```bash
 dotnet add package LiteOrm
 ```
+
+## 🛠️ LiteOrm.CodeGen
+
+The repository now includes a `LiteOrm.CodeGen` project for two generation workflows:
+
+- Generate LiteOrm entity definitions from live database schema
+- Convert a single `SELECT` statement into a View definition and `SelectExpr` / `Expr` style C# query builder code
+
+Examples:
+
+```bash
+dotnet run --project .\LiteOrm.CodeGen -- entity --data-source SQLite --namespace Demo.Models --table TestUsers,TestDepartments
+
+dotnet run --project .\LiteOrm.CodeGen -- select --data-source SQLite --view-name UserReportView --namespace Demo.Models --sql "SELECT u.Id, u.Name, d.Name AS DeptName FROM TestUsers u LEFT JOIN TestDepartments d ON u.DeptId = d.Id WHERE u.Age >= 18 ORDER BY u.Name"
+```
+
+The first version focuses on basic `SELECT + JOIN + WHERE + GROUP BY + ORDER BY`. For unsupported inputs such as `WITH`, `UNION`, subqueries, or window functions, the tool returns explicit reasons and guidance.
 
 
 ## 🚀 Quick Start
