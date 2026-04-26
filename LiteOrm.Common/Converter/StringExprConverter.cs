@@ -13,6 +13,94 @@ namespace LiteOrm.Common
     public static class StringExprConverter
     {
         /// <summary>
+        /// 从字符串查询条件生成表达式树。字符串查询条件的格式为：属性名=值，属性名可以使用大小写混合，值可以使用以下格式：
+        /// <see cref="Parse(PropertyInfo, string)"/> 
+        /// </summary>
+        /// <param name="objectType">实体类型。</param>
+        /// <param name="query">查询条件的键值对集合。</param>
+        /// <returns>生成的逻辑表达式。</returns>
+        public static LogicExpr Parse(Type objectType, IEnumerable<KeyValuePair<string, string>> query)
+        {
+            LogicExpr expr = null;
+            foreach (var kv in query)
+            {
+                if (objectType.GetProperty(kv.Key, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) is PropertyInfo property)
+                {
+                    LogicExpr e = Parse(property, kv.Value);
+                    expr &= e;
+                }
+            }
+            return expr;
+        }
+
+        /// <summary>
+        /// 从字符串查询条件生成表达式树。字符串查询条件的格式为：属性名=值，属性名可以使用大小写混合，值可以使用以下格式：
+        /// <see cref="Parse(PropertyInfo, string)"/> 
+        /// </summary>
+        /// <typeparam name="T">实体类型参数。</typeparam>
+        /// <param name="query">查询条件的键值对集合。</param>
+        /// <returns>生成的逻辑表达式。</returns>
+        public static LogicExpr Parse<T>(IEnumerable<KeyValuePair<string, string>> query)
+        {
+            return Parse(typeof(T), query);
+        }
+
+        /// <summary>
+        /// 生成分页查询的表达式树。字符串查询条件的格式为：属性名=值，属性名可以使用大小写混合，值可以使用以下格式：
+        /// <see cref="Parse(PropertyInfo, string)"/>   
+        /// </summary>
+        /// <param name="objectType">实体类型。</param>
+        /// <param name="query">查询条件的键值对集合。</param>
+        /// <param name="pagesize">每页的记录数。</param>
+        /// <returns>生成的分页查询表达式。</returns>
+        public static Expr ParsePagedQuery(Type objectType, IEnumerable<KeyValuePair<string, string>> query, int pagesize = 10)
+        {
+            LogicExpr expr = null;
+            List<OrderByItemExpr> orderBys = new List<OrderByItemExpr>();
+            int startoffset = 0;
+            foreach (var kv in query)
+            {
+                if (kv.Key.Equals("orderby", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (string item in kv.Value.Split(','))
+                    {
+                        string[] parts = item.Trim().Split(' ');
+                        if (parts.Length > 0 && objectType.GetProperty(parts[0], BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) != null)
+                        {
+                            orderBys.Add(new OrderByItemExpr
+                            {
+                                Field = Expr.Prop(parts[0]),
+                                Ascending = parts.Length < 2 || !parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase)
+                            });
+                        }
+                    }
+                }
+                else if (kv.Key.Equals("page", StringComparison.OrdinalIgnoreCase))
+                {
+                    startoffset = (int.Parse(kv.Value) - 1) * pagesize;
+                }
+                else if (objectType.GetProperty(kv.Key, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) is PropertyInfo property)
+                {
+                    expr &= Parse(property, kv.Value);
+                }
+            }
+            return expr.OrderBy(orderBys.ToArray()).Section(startoffset, pagesize);
+        }
+
+        /// <summary>
+        /// 生成分页查询的表达式树。字符串查询条件的格式为：属性名=值，属性名可以使用大小写混合，值可以使用以下格式：
+        /// <see cref="Parse(PropertyInfo, string)"/>
+        /// </summary>
+        /// <typeparam name="T">实体类型参数。</typeparam>
+        /// <param name="query">查询条件的键值对集合。</param>
+        /// <param name="pagesize">每页的记录数。</param>
+        /// <returns>生成的分页查询表达式。</returns>
+        public static Expr ParsePagedQuery<T>(IEnumerable<KeyValuePair<string, string>> query, int pagesize = 10)
+        {
+            return ParsePagedQuery(typeof(T), query, pagesize);
+        }
+
+        /// <summary>
         /// 将属性和字符串转换为简单查询条件。
         /// </summary>
         /// <param name="property">属性描述符。</param>
