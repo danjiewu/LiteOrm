@@ -23,16 +23,8 @@ public abstract class EntityControllerBase<T, TView> : ControllerBase
 {
     private const int MaxPageSize = 100;
 
-    protected readonly IEntityServiceAsync<T> EntityService;
-    protected readonly IEntityViewServiceAsync<TView> ViewService;
-
-    protected EntityControllerBase(
-        IEntityServiceAsync<T> entityService,
-        IEntityViewServiceAsync<TView> viewService)
-    {
-        EntityService = entityService;
-        ViewService = viewService;
-    }
+    protected IEntityServiceAsync<T> EntityService => HttpContext.RequestServices.GetRequiredService<IEntityServiceAsync<T>>();
+    protected IEntityViewServiceAsync<TView> ViewService => HttpContext.RequestServices.GetRequiredService<IEntityViewServiceAsync<TView>>();
 
     [HttpGet("{id}")]
     public virtual async Task<TView?> GetById(object id)
@@ -138,11 +130,7 @@ public abstract class EntityControllerBase<T, TView> : ControllerBase
 
 ```csharp
 public class UsersController : EntityControllerBase<User, UserView>
-{
-    public UsersController(
-        IEntityServiceAsync<User> entityService,
-        IEntityViewServiceAsync<User> viewService)
-        : base(entityService, viewService) { }
+{    
 }
 ```
 
@@ -153,11 +141,6 @@ public class UsersController : EntityControllerBase<User, UserView>
 ```csharp
 public class OrdersController : EntityControllerBase<DemoOrder, DemoOrderView>
 {
-    public OrdersController(
-        IEntityServiceAsync<DemoOrder> entityService,
-        IEntityViewServiceAsync<DemoOrderView> viewService)
-        : base(entityService, viewService) { }
-
     [HttpGet]
     public override async Task<List<DemoOrderView>> List()
     {
@@ -286,20 +269,11 @@ public static Assembly BuildDynamicControllers(string defaultNamespace)
             $"{defaultNamespace}.Controllers.{controllerName}",
             TypeAttributes.Public, parentType);
 
-        var ctorBuilder = typeBuilder.DefineConstructor(
-            MethodAttributes.Public, CallingConventions.Standard,
-            new[] { typeof(IEntityServiceAsync<>).MakeGenericType(entityType),
-                    typeof(IEntityViewServiceAsync<>).MakeGenericType(viewType) });
+        var ctorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes);
 
         var il = ctorBuilder.GetILGenerator();
         il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Ldarg_1);
-        il.Emit(OpCodes.Ldarg_2);
-        il.Emit(OpCodes.Call, parentType.GetConstructor(new[]
-        {
-            typeof(IEntityServiceAsync<>).MakeGenericType(entityType),
-            typeof(IEntityViewServiceAsync<>).MakeGenericType(viewType)
-        }));
+        il.Emit(OpCodes.Call, parentType.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, Type.EmptyTypes));
         il.Emit(OpCodes.Ret);
 
         typeBuilder.CreateType();

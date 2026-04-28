@@ -17,16 +17,8 @@ public abstract class EntityControllerBase<T, TView> : ControllerBase
 {
     private const int MaxPageSize = 100;
 
-    protected readonly IEntityServiceAsync<T> EntityService;
-    protected readonly IEntityViewServiceAsync<TView> ViewService;
-
-    protected EntityControllerBase(
-        IEntityServiceAsync<T> entityService,
-        IEntityViewServiceAsync<TView> viewService)
-    {
-        EntityService = entityService;
-        ViewService = viewService;
-    }
+    protected IEntityServiceAsync<T> EntityService => HttpContext.RequestServices.GetRequiredService<IEntityServiceAsync<T>>();
+    protected IEntityViewServiceAsync<TView> ViewService => HttpContext.RequestServices.GetRequiredService<IEntityViewServiceAsync<TView>>();
 
     [HttpGet("{id}")]
     public virtual async Task<TView?> GetById(object id)

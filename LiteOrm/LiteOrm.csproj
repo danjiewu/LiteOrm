@@ -19,6 +19,7 @@
       Lambda解析支持显式转换和隐式转换。
       Lambda Contains方法只根据名称解析，以正确处理Span类型Contains扩展。
       Update的Set节点类型改为SetItem。
+      修复Insert方法在自增列非参数返回方式下的错误。
       修复Oracle标识列来源是序列或表达式时批量插入的错误。
       修复Oracle数据库DateDiff函数中使用DateTime值参数时返回类型不正确的错误。
     </PackageReleaseNotes>

@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LiteOrm.WebDemo.Controllers;
-
 public static class DynamicControllerBuilder
 {
     public static Assembly BuildDynamicControllers(string defaultNamespace)
@@ -33,20 +32,11 @@ public static class DynamicControllerBuilder
                 $"{defaultNamespace}.Controllers.{controllerName}",
                 TypeAttributes.Public, parentType);
 
-            var ctorBuilder = typeBuilder.DefineConstructor(
-                MethodAttributes.Public, CallingConventions.Standard,
-                new[] { typeof(IEntityServiceAsync<>).MakeGenericType(entityType),
-                        typeof(IEntityViewServiceAsync<>).MakeGenericType(viewType) });
+            var ctorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes);
 
             var il = ctorBuilder.GetILGenerator();
             il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldarg_2);
-            il.Emit(OpCodes.Call, parentType.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, new[]
-            {
-                typeof(IEntityServiceAsync<>).MakeGenericType(entityType),
-                typeof(IEntityViewServiceAsync<>).MakeGenericType(viewType)
-            }));
+            il.Emit(OpCodes.Call, parentType.GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, Type.EmptyTypes));
             il.Emit(OpCodes.Ret);
 
             typeBuilder.CreateType();
