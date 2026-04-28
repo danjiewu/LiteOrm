@@ -175,7 +175,7 @@ Content-Type: application/json
 {
   "$section": {
     "$orderby": {
-      "$where": {"$from": {"$table": "LiteOrm.WebDemo.Models.DemoDepartment"}},
+      "$where": null,
       "Where": {
         "$": "==",
         "Left": {"#": "Name"},
