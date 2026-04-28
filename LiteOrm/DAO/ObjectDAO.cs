@@ -459,8 +459,9 @@ namespace LiteOrm
             }
             else
             {
-                DbParameter param = insertCommand.Parameters[ToParamName(IdentityColumn.PropertyName)] as DbParameter;
-                if (param is not null && param.Direction == ParameterDirection.Output)
+                string identityParamName = ToParamName(IdentityColumn.PropertyName);
+                DbParameter param = insertCommand.Parameters.Contains(identityParamName) ? insertCommand.Parameters[identityParamName] : null;
+                if (param != null && param.Direction == ParameterDirection.Output)
                 {
                     insertCommand.ExecuteNonQuery();
                     IdentityColumn.SetValue(t, ConvertFromDbValue(param.Value, IdentityColumn.PropertyType));
@@ -906,8 +907,8 @@ namespace LiteOrm
             }
             else
             {
-                string propertyName = ToParamName(IdentityColumn.PropertyName);
-                DbParameter param = insertCommand.Parameters.Contains(propertyName) ? insertCommand.Parameters[propertyName] : null;
+                string identityParamName = ToParamName(IdentityColumn.PropertyName);
+                DbParameter param = insertCommand.Parameters.Contains(identityParamName) ? insertCommand.Parameters[identityParamName] : null;
                 if (param is not null && param.Direction == ParameterDirection.Output)
                 {
                     await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
