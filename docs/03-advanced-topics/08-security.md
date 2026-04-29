@@ -103,7 +103,7 @@ var results = await viewService.SearchAsync(u => u.UserName == null);
 `ExprString` 是一个标记了 `[InterpolatedStringHandler]` 的 `ref struct`，借助 C# 编译器支持，在编译时解析插值字符串并自动区分 Expr 和普通值：
 
 ```csharp
-var sql = $"WHERE {Expr.Prop("Age")} > {minAge}";
+dao.Search($"WHERE {Expr.Prop("Age")} > {minAge}");
 // Expr.Prop("Age")  → 走 Expr.ToSql()，完整参数化
 // minAge (int)      → 自动生成参数占位符 @0，值加入 outputParams
 ```
@@ -132,7 +132,7 @@ int minAge = 18;
 // - {Expr.Prop("Age")} 是 Expr，走 ToSql 参数化路径
 // - " >= " 是字面量
 // - {minAge} 是普通值，自动参数化为 @1
-var sql = $"WHERE {Expr.Prop("UserName")} LIKE {'%' + keyword + '%'} AND {Expr.Prop("Age")} >= {minAge}";
+dao.Search($"WHERE {Expr.Prop("UserName")} LIKE {'%' + keyword + '%'} AND {Expr.Prop("Age")} >= {minAge}");
 ```
 
 ### 3.3 关键说明

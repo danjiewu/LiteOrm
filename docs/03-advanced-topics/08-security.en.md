@@ -103,7 +103,7 @@ Placeholder generation is abstracted by the `ISqlBuilder` interface, with each d
 `ExprString` is a `ref struct` marked with `[InterpolatedStringHandler]`, leveraging C# compiler support to parse interpolated strings at compile time and automatically distinguish between Expr and plain values:
 
 ```csharp
-var sql = $"WHERE {Expr.Prop("Age")} > {minAge}";
+dao.Search($"WHERE {Expr.Prop("Age")} > {minAge}");
 // Expr.Prop("Age")  → goes through Expr.ToSql(), fully parameterized
 // minAge (int)      → auto-generated parameter placeholder @0, value added to outputParams
 ```
@@ -132,7 +132,7 @@ int minAge = 18;
 // - {Expr.Prop("Age")} is an Expr, goes through ToSql parameterization
 // - " >= " is a literal
 // - {minAge} is a plain value, auto-parameterized as @1
-var sql = $"WHERE {Expr.Prop("UserName")} LIKE {'%' + keyword + '%'} AND {Expr.Prop("Age")} >= {minAge}";
+dao.Search($"WHERE {Expr.Prop("UserName")} LIKE {'%' + keyword + '%'} AND {Expr.Prop("Age")} >= {minAge}");
 ```
 
 ### 3.3 Key Points
