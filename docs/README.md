@@ -33,6 +33,7 @@
 | [自定义分页](./03-advanced-topics/05-custom-paging.md) | [Custom Paging](./03-advanced-topics/05-custom-paging.en.md) | 分页方案扩展 |
 | [权限过滤](./03-advanced-topics/06-permission-filtering.md) | [Permission Filtering](./03-advanced-topics/06-permission-filtering.en.md) | 用户范围过滤与访问控制 |
 | [日志与诊断](./03-advanced-topics/07-logging.md) | [Logging & Diagnostics](./03-advanced-topics/07-logging.en.md) | ServiceLog、Log 特性与慢查询日志 |
+| [安全性](./03-advanced-topics/08-security.md) | [Security](./03-advanced-topics/08-security.en.md) | SQL 注入防护与安全机制 |
 
 ### 扩展开发篇 / Extensibility
 
