@@ -7,7 +7,7 @@ namespace LiteOrm.Common
     /// 删除片段，表示 DELETE 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class DeleteExpr : SqlSegment
+    public class DeleteExpr : Expr
     {
         /// <summary>
         /// 初始化 DeleteExpr 类的新实例
@@ -28,12 +28,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置删除操作的源表
         /// </summary>
-        [JsonIgnore]
         public TableExpr Table { get; set; }
-        /// <summary>
-        /// 使用主表表达式重写源片段属性
-        /// </summary>
-        public override SqlSegment Source { get => Table; set => Table = (TableExpr)value; }
 
         /// <summary>
         /// 获取片段类型，返回 Delete 类型标识

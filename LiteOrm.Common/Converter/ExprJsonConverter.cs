@@ -172,6 +172,8 @@ namespace LiteOrm.Common
                             if (mark == "value") { result = ReadValueBody(ref reader, options); break; }
                             if (mark == "const") { result = ReadValueBody(ref reader, options, true); break; }
                             if (mark == "foreign") { result = ReadForeign(ref reader, options); break; }
+                            if (mark == "delete") { result = propName != "$" ? new DeleteExpr() { Table = JsonSerializer.Deserialize<TableExpr>(ref reader, options) } : new DeleteExpr(); }
+                            if (mark == "update") { result = propName != "$" ? new UpdateExpr() { Table = JsonSerializer.Deserialize<TableExpr>(ref reader, options) } : new UpdateExpr(); }
                             if (mark == "from") { result = new FromExpr(); }
                             if (mark == "table") { result = new TableExpr(); }
                             if (mark == "join") { result = new TableJoinExpr(); }
@@ -183,14 +185,12 @@ namespace LiteOrm.Common
                             if (mark == "section") { result = new SectionExpr(); }
                             if (mark == "select") { result = new SelectExpr(); }
                             if (mark == "selectitem") { result = new SelectItemExpr(); }
-                            if (mark == "delete") { result = new DeleteExpr(); }
-                            if (mark == "update") { result = new UpdateExpr(); }
-                            // 对于 SQL 片段类型且是通过简写形式传值（例如 "$from": "Full.Type.Name" 或 "$from": {...}）
-                            if (result is SqlSegment && propName != "$")
+                            // 对于 SQL 片段类型且是通过简写形式传值（例如 "$table": "Full.Type.Name" 或 "$from": {...}）
+                            if (result is SqlSegment segment && propName != "$")
                             {
                                 // 需要先读取属性值的位置
                                 reader.Read();
-                                ReadSqlSegmentProperty(ref reader, (SqlSegment)result, propName, options);
+                                ReadSqlSegmentProperty(ref reader, segment, propName, options);
                             }
                         }
                     }
@@ -215,10 +215,10 @@ namespace LiteOrm.Common
                 switch (result)
                 {
                     case SqlSegment ss when propName == "Source":
-                        ss.Source = JsonSerializer.Deserialize<Expr>(ref reader, options) as SqlSegment;
+                        ss.Source = JsonSerializer.Deserialize<SqlSegment>(ref reader, options);
                         break;
                     case WhereExpr we when propName == "Where":
-                        we.Where = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
+                        we.Where = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
                         break;
                     case OrderByExpr obe when propName == "OrderBys":
                         obe.OrderBys.Clear();
@@ -231,7 +231,7 @@ namespace LiteOrm.Common
                                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                                 {
                                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                                    if (reader.ValueTextEquals("Field")) { reader.Read(); expr = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue(); }
+                                    if (reader.ValueTextEquals("Field")) { reader.Read(); expr = JsonSerializer.Deserialize<ValueTypeExpr>(ref reader, options); }
                                     else if (reader.ValueTextEquals("Asc")) { reader.Read(); asc = reader.GetBoolean(); }
                                     else { reader.Read(); reader.Skip(); }
                                 }
@@ -240,7 +240,7 @@ namespace LiteOrm.Common
                         }
                         break;
                     case OrderByItemExpr obi when propName == "Field":
-                        obi.Field = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                        obi.Field = JsonSerializer.Deserialize<ValueTypeExpr>(ref reader, options);
                         break;
                     case OrderByItemExpr obi when propName == "Asc":
                         obi.Ascending = reader.GetBoolean();
@@ -251,7 +251,7 @@ namespace LiteOrm.Common
                         if (gList != null) gbe.GroupBys.AddRange(gList.Cast<ValueTypeExpr>());
                         break;
                     case HavingExpr he when propName == "Having":
-                        he.Having = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
+                        he.Having = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
                         break;
                     case SectionExpr se when propName == "Skip":
                         se.Skip = reader.GetInt32();
@@ -263,7 +263,7 @@ namespace LiteOrm.Common
                         ReadSelectItems(ref reader, sele, options);
                         break;
                     case SelectItemExpr sie when propName == "Value":
-                        sie.Value = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                        sie.Value = JsonSerializer.Deserialize<ValueTypeExpr>(ref reader, options);
                         break;
                     case SelectItemExpr sie when propName == "Alias":
                         sie.Alias = reader.GetString();
@@ -275,10 +275,10 @@ namespace LiteOrm.Common
                         ReadUpdateSets(ref reader, ue, options);
                         break;
                     case UpdateExpr ue when propName == "Where":
-                        ue.Where = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
+                        ue.Where = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
                         break;
                     case DeleteExpr de when propName == "Where":
-                        de.Where = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
+                        de.Where = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
                         break;
                     case FromExpr fe when propName == "Joins":
                         if (reader.TokenType == JsonTokenType.StartArray)
@@ -302,14 +302,14 @@ namespace LiteOrm.Common
                         te.TableArgs = JsonSerializer.Deserialize<string[]>(ref reader, options);
                         break;
                     case TableJoinExpr tje when propName == "Table":
-                        tje.Table = JsonSerializer.Deserialize<Expr>(ref reader, options) as TableExpr;
+                        tje.Table = JsonSerializer.Deserialize<TableExpr>(ref reader, options);
                         break;
                     case TableJoinExpr tje when propName == "JoinType":
                         if (reader.TokenType == JsonTokenType.String && Enum.TryParse<TableJoinType>(reader.GetString(), true, out var jt))
                             tje.JoinType = jt;
                         break;
                     case TableJoinExpr tje when propName == "On":
-                        tje.On = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
+                        tje.On = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
                         break;
                     default:
                         reader.Skip();
@@ -435,7 +435,7 @@ namespace LiteOrm.Common
                 }
                 else if (ss is SqlSegment segment)
                 {
-                    segment.Source = JsonSerializer.Deserialize<SqlSegment>(ref reader, options) ;
+                    segment.Source = JsonSerializer.Deserialize<SqlSegment>(ref reader, options);
                 }
             }
 
@@ -519,6 +519,33 @@ namespace LiteOrm.Common
                         writer.WriteStartObject();
                         writer.WritePropertyName("!");
                         WriteExpr(writer, ne.Operand, options);
+                        writer.WriteEndObject();
+                        return;
+                    case UpdateExpr ue:
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("$update");
+                        WriteExpr(writer, ue.Table, options);
+                        if (ue.Sets?.Count > 0)
+                        {
+                            writer.WritePropertyName("Sets");
+                            writer.WriteStartArray();
+                            foreach (var set in ue.Sets)
+                            {
+                                writer.WriteStartObject();
+                                writer.WritePropertyName(set.Property.PropertyName);
+                                JsonSerializer.Serialize(writer, set.Value, options);
+                                writer.WriteEndObject();
+                            }
+                            writer.WriteEndArray();
+                        }
+                        if (ue.Where is not null) { writer.WritePropertyName("Where"); WriteExpr(writer, ue.Where, options); }
+                        writer.WriteEndObject();
+                        return;
+                    case DeleteExpr de:
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("$delete");
+                        WriteExpr(writer, de.Table, options);
+                        if (de.Where is not null) { writer.WritePropertyName("Where"); WriteExpr(writer, de.Where, options); }
                         writer.WriteEndObject();
                         return;
                 }
@@ -799,25 +826,6 @@ namespace LiteOrm.Common
                     case SectionExpr se:
                         if (se.Skip != 0) writer.WriteNumber("Skip", se.Skip);
                         if (se.Take != 0) writer.WriteNumber("Take", se.Take);
-                        break;
-                    case UpdateExpr ue:
-                        if (ue.Sets?.Count > 0)
-                        {
-                            writer.WritePropertyName("Sets");
-                            writer.WriteStartArray();
-                            foreach (var set in ue.Sets)
-                            {
-                                writer.WriteStartObject();
-                                writer.WritePropertyName(set.Property.PropertyName);
-                                JsonSerializer.Serialize(writer, set.Value, options);
-                                writer.WriteEndObject();
-                            }
-                            writer.WriteEndArray();
-                        }
-                        if (ue.Where is not null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, ue.Where, options); }
-                        break;
-                    case DeleteExpr de:
-                        if (de.Where is not null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, de.Where, options); }
                         break;
                     case FromExpr fe:
                         if (fe.Joins?.Count > 0)

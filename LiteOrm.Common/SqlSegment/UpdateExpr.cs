@@ -9,7 +9,7 @@ namespace LiteOrm.Common
     /// 更新片段，表示 UPDATE 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class UpdateExpr : SqlSegment
+    public class UpdateExpr : Expr
     {
         /// <summary>
         /// 初始化 UpdateExpr 类的新实例
@@ -30,14 +30,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置更新操作的源片段（TableExpr）
         /// </summary>
-        [JsonIgnore]
         public TableExpr Table { get; set; }
-
-        /// <summary>
-        /// 使用主表表达式重写源片段属性
-        /// </summary>
-        public override SqlSegment Source { get => Table; set => Table = (TableExpr)value; }
-
 
         /// <summary>
         /// 获取片段类型，返回 Update 类型标识
