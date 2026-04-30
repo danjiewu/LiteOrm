@@ -5,6 +5,7 @@ using LiteOrm.Tests.Models;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -381,6 +382,70 @@ namespace LiteOrm.Tests
             Assert.NotNull(result);
             Assert.Equal("ByteArrayAnonTest", result.Name);
             Assert.Equal(avatar, result.Avatar);
+        }
+
+        [Fact]
+        public async Task ObjectViewDAO_ExistsOverloads_ShouldWork()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var user = new TestUser { Name = "ExistsOverloadUser", Age = 24, CreateTime = DateTime.Now };
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
+
+            Assert.True(await dao.ExistsKey(user.Id).GetResultAsync(TestContext.Current.CancellationToken));
+            Assert.True(await dao.Exists(user).GetResultAsync(TestContext.Current.CancellationToken));
+            Assert.True(await dao.Exists((object)user).GetResultAsync(TestContext.Current.CancellationToken));
+        }
+
+        [Fact]
+        public async Task ObjectViewDAO_Search_QueryableAndExprStringOverloads_ShouldWork()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            await service.InsertAsync(new TestUser { Name = "ObjectViewQueryable_A", Age = 21, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+            await service.InsertAsync(new TestUser { Name = "ObjectViewQueryable_B", Age = 31, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+            await service.InsertAsync(new TestUser { Name = "ObjectViewFullSql", Age = 41, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+
+            var queryableResults = await dao.Search(q => q.Where(u => u.Name.StartsWith("ObjectViewQueryable_"))
+                .OrderByDescending(u => u.Age)).ToListAsync(TestContext.Current.CancellationToken);
+
+            var exprStringResults = await dao.Search($"WHERE {Expr.Prop("Name").Like("ObjectViewQueryable_%")}").ToListAsync(TestContext.Current.CancellationToken);
+            var fullSqlResults = await dao.Search($"SELECT * FROM TestUsers WHERE Name = {"ObjectViewFullSql"}", true).ToListAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(2, queryableResults.Count);
+            Assert.True(queryableResults[0].Age > queryableResults[1].Age);
+            Assert.Equal(2, exprStringResults.Count);
+            Assert.Single(fullSqlResults);
+            Assert.Equal("ObjectViewFullSql", fullSqlResults[0].Name);
+        }
+
+        [Fact]
+        public async Task ObjectViewDAO_SearchAs_SelectExprAndExprStringOverloads_ShouldWork()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var user = new TestUser { Name = "ObjectViewSearchAs", Age = 29, CreateTime = DateTime.Now };
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
+
+            var selectExpr = Expr.From<TestUser>()
+                .Where(Expr.Prop("Name") == "ObjectViewSearchAs")
+                .Select(Expr.Prop("Name"), Expr.Prop("Age"));
+
+            var readerResult = await dao.SearchAs(selectExpr, static reader => ReadNameAndAge(reader))
+                .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+            var exprStringResult = await dao.SearchAs<string>($"SELECT Name FROM TestUsers WHERE Name = {"ObjectViewSearchAs"}")
+                .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal("ObjectViewSearchAs:29", readerResult);
+            Assert.Equal("ObjectViewSearchAs", exprStringResult);
+        }
+
+        private static string ReadNameAndAge(DbDataReader reader)
+        {
+            return $"{reader.GetString(0)}:{reader.GetInt32(1)}";
         }
     }
 }

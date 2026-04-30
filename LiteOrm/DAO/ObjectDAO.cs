@@ -856,9 +856,7 @@ namespace LiteOrm
             var batch = new List<object[]>(batchSize);
             foreach (var item in keys)
             {
-                object[] keyValues = item as object[];
-                if (keyValues == null || keyValues.Length != paramsPerDelete)
-                    throw new ArgumentException($"Composite key requires object[{paramsPerDelete}]");
+                object[] keyValues = NormalizeBatchDeleteKeyValues(item, paramsPerDelete);
 
                 batch.Add(keyValues);
                 if (batch.Count == batchSize)
@@ -1327,9 +1325,7 @@ namespace LiteOrm
             foreach (var item in keys)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                object[] keyValues = item as object[];
-                if (keyValues == null || keyValues.Length != paramsPerDelete)
-                    throw new ArgumentException($"Composite key requires object[{paramsPerDelete}]");
+                object[] keyValues = NormalizeBatchDeleteKeyValues(item, paramsPerDelete);
 
                 batch.Add(keyValues);
                 if (batch.Count == batchSize)
@@ -1347,6 +1343,19 @@ namespace LiteOrm
                 SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
                 await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }
+        }
+
+        private static object[] NormalizeBatchDeleteKeyValues(object item, int paramsPerDelete)
+        {
+            if (paramsPerDelete == 1 && item is not object[])
+            {
+                return [item];
+            }
+
+            object[] keyValues = item as object[];
+            if (keyValues == null || keyValues.Length != paramsPerDelete)
+                throw new ArgumentException($"Composite key requires object[{paramsPerDelete}]");
+            return keyValues;
         }
 
         #endregion
