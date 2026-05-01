@@ -1172,6 +1172,29 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public void EntityService_SyncInsertUpdate_AndViewExistsLambda_ShouldWork()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityService<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewService<TestUser>>();
+
+            var user = new TestUser { Name = "SyncInsertUpdate", Age = 23, CreateTime = DateTime.Now };
+
+            Assert.True(service.Insert(user));
+            Assert.True(user.Id > 0);
+            Assert.True(viewService.Exists(u => u.Name == "SyncInsertUpdate"));
+
+            user.Name = "SyncInsertUpdate_Updated";
+            user.Age = 24;
+            Assert.True(service.Update(user));
+
+            var fetched = viewService.GetObject(user.Id);
+            Assert.NotNull(fetched);
+            Assert.Equal("SyncInsertUpdate_Updated", fetched.Name);
+            Assert.Equal(24, fetched.Age);
+            Assert.True(viewService.Exists(u => u.Name == "SyncInsertUpdate_Updated" && u.Age == 24));
+        }
+
+        [Fact]
         public void EntityViewService_SyncMembers_ShouldWork()
         {
             var entityService = ServiceProvider.GetRequiredService<IEntityService<TestUser>>();

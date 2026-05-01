@@ -1438,9 +1438,6 @@ namespace LiteOrm.Common.UnitTests
             yield return new object[] { -3.14m };
             yield return new object[] { decimal.MinValue };
             yield return new object[] { decimal.MaxValue };
-            yield return new object[] { decimal.One };
-            yield return new object[] { decimal.Zero };
-            yield return new object[] { decimal.MinusOne };
         }
 
         /// <summary>

@@ -86,7 +86,7 @@ namespace LiteOrm.Tests
             dao.BatchDelete([users[0]]);
             Assert.False(await viewDao.ExistsKey(users[0].Id).GetResultAsync(TestContext.Current.CancellationToken));
 
-            dao.BatchDeleteByKeys(new[] { new object[] { users[1].Id }, new object[] { inserted.Id } });
+            dao.BatchDeleteByKeys(new object[] { users[1].Id, inserted.Id });
             Assert.False(await viewDao.ExistsKey(users[1].Id).GetResultAsync(TestContext.Current.CancellationToken));
             Assert.False(await viewDao.ExistsKey(inserted.Id).GetResultAsync(TestContext.Current.CancellationToken));
         }
@@ -183,7 +183,7 @@ namespace LiteOrm.Tests
 
             Assert.Equal(1, await dao.DeleteAsync(Expr.Lambda<TestUser>(u => u.Name == "ObjectDaoAsyncBatch_B"), TestContext.Current.CancellationToken));
             await dao.BatchDeleteAsync([users[0]], TestContext.Current.CancellationToken);
-            await dao.BatchDeleteByKeysAsync(new[] { new object[] { inserted.Id } }, TestContext.Current.CancellationToken);
+            await dao.BatchDeleteByKeysAsync(new object[] { inserted.Id }, TestContext.Current.CancellationToken);
 
             Assert.False(await viewDao.ExistsKey(users[0].Id).GetResultAsync(TestContext.Current.CancellationToken));
             Assert.False(await viewDao.ExistsKey(users[1].Id).GetResultAsync(TestContext.Current.CancellationToken));
