@@ -126,6 +126,15 @@ public class SalesRecord : IArged
 }
 ```
 
+Here, `{0}` and `{1}` map to `TableArgs[0]` and `TableArgs[1]`. For example:
+
+```csharp
+var args = new[] { "US", "2025" };
+// Resolves to table name: Sales_US_2025
+```
+
+By assigning different dimensions to different placeholder positions, you can pass structured parameters such as `region + year` directly instead of manually concatenating strings like `"US_2025"`.
+
 ## 5. Sharded Query Methods
 
 Service layer specifies shards via the `tableArgs` parameter of `SearchAsync`; DAO layer uses the `WithArgs` method.
@@ -135,7 +144,7 @@ Service layer specifies shards via the `tableArgs` parameter of `SearchAsync`; D
 ```csharp
 // Specify shard via tableArgs parameter
 var results = await salesService
-    .SearchAsync(s => s.Amount > 1000, tableArgs: new[] { "US_2025" });
+    .SearchAsync(s => s.Amount > 1000, tableArgs: new[] { "US", "2025" });
 ```
 
 ### 5.2 DAO Layer Sharded Query
@@ -143,12 +152,22 @@ var results = await salesService
 ```csharp
 // Specify shard via WithArgs method
 var results = await salesViewDAO
-    .WithArgs("US_2025")
+    .WithArgs("US", "2025")
     .Search(s => s.Amount > 1000)
     .ToListAsync();
 ```
 
-### 5.3 Batch Query Multiple Shards
+### 5.3 `TableArgs` Propagation
+
+`TableArgs` are not limited to just "the current table". They propagate through scopes:
+
+1. Once the main table specifies `tableArgs`, `WithArgs(...)`, or `Expr.From<T>(...)`, those arguments enter the current SQL scope.
+2. Later tables in the same scope, and nested tables in child scopes such as subqueries or association expressions, reuse those propagated arguments if they do not explicitly specify their own `TableArgs`.
+3. If a later table explicitly sets `TableArgs` on its own `TableExpr` or association expression, that explicit value overrides the inherited one.
+
+So when the same sharding dimensions apply across the whole query chain, you usually only need to specify the arguments once on the main table.
+
+### 5.4 Batch Query Multiple Shards
 
 You need to query each shard individually and merge the results:
 
@@ -164,7 +183,7 @@ for (int month = 1; month <= 12; month++)
 }
 ```
 
-### 5.4 `IArged` vs `tableArgs` Override Example
+### 5.5 `IArged` vs `tableArgs` Override Example
 
 ```csharp
 var order = new Order
@@ -194,7 +213,7 @@ var sales = await salesService.SearchAsync(s =>
 );
 ```
 
-Suitable for "querying fixed months or fixed shards" quick写法.
+Suitable for quickly querying a fixed month or a fixed shard.
 
 ### 6.2 Explicitly Pass `tableArgs`
 
@@ -220,12 +239,65 @@ var sales = await salesService.SearchAsync(
 
 This pattern also comes from Demo, suitable for combining complex queries, sorting, and pagination.
 
-## 7. TableArgs Priority
+### 6.4 Use Different Placeholder Positions for Different Dimensions
+
+```csharp
+var sales = await salesService.SearchAsync(
+    Expr.From<SalesRecord>("US", "2025")
+        .Where(Expr.Prop("Amount") > 100)
+        .Section(0, 20)
+);
+```
+
+For `[Table("Sales_{0}_{1}")]`, `"US"` replaces `{0}` and `"2025"` replaces `{1}`.
+
+This is clearer than passing a single concatenated string such as `"US_2025"`, and it makes region, year, and other dimensions easier to reuse independently at the call site.
+
+### 6.5 Let Different Tables Use Different Placeholder Positions
+
+Different tables can also share the same `TableArgs` array while consuming different placeholder positions. For example:
+
+```csharp
+[Table("Table1_{0}")]
+public class Table1Row
+{
+}
+
+[Table("Table2_{1}")]
+public class Table2Row
+{
+}
+```
+
+Pass the argument array only once on the main table:
+
+```csharp
+var args = new[] { "TenantA", "202501" };
+
+var expr = Expr.From<Table1Row>(args)
+    // Table2Row in the same scope or a child scope keeps using args
+    // unless it explicitly sets its own TableArgs.
+    .Where(Expr.Exists<Table2Row>(t => true));
+```
+
+Then:
+
+- `Table1_{0}` uses `args[0]`, so the resolved table name is `Table1_TenantA`
+- `Table2_{1}` uses `args[1]`, so the resolved table name is `Table2_202501`
+
+In other words, **one array** can feed **different tables** with different parameters, and each table only consumes the placeholder positions it references. This is especially useful for combinations such as `tenant + month` or `business-line + region`.
+
+## 7. TableArgs Priority and Inheritance
 
 | Source | Priority | Description |
 | --- | --- | --- |
 | `IArged.TableArgs` | Automatic | Entity implements interface, auto-used on insert/update |
 | `tableArgs` parameter / `WithArgs` | Explicit | Explicit on query, overrides IArged |
+
+For query chains, keep this additional rule in mind:
+
+- **Main table first, later tables inherit**: `TableArgs` determined by the main table propagate to tables in the same scope and in child scopes.
+- **Local explicit values win**: if a later table explicitly sets its own `TableArgs`, those values override the inherited ones.
 
 > **Note**: LiteOrm cannot automatically know which shards exist. Cross-shard queries require iterating through possible shards at the application layer and merging results.
 

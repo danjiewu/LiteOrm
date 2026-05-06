@@ -393,44 +393,11 @@ namespace LiteOrm.Common
                 // reader 已经在属性值的位置，直接处理
                 if (ss is TableExpr te && propName == "$table")
                 {
-                    if (reader.TokenType == JsonTokenType.String)
+                    string typeName = reader.GetString();
+                    if (!string.IsNullOrEmpty(typeName))
                     {
-                        string typeName = reader.GetString();
-                        if (!string.IsNullOrEmpty(typeName))
-                        {
-                            Type type = GetObjectType(typeName);
-                            if (type != null) te.Type = type;
-                        }
-                    }
-                    else if (reader.TokenType == JsonTokenType.StartObject)
-                    {
-                        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-                        {
-                            if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                            string prop = reader.GetString() ?? string.Empty;
-                            reader.Read();
-                            if (prop == "$")
-                            {
-                                string typeName = reader.GetString();
-                                if (!string.IsNullOrEmpty(typeName))
-                                {
-                                    Type type = GetObjectType(typeName);
-                                    if (type != null) te.Type = type;
-                                }
-                            }
-                            else if (prop == "TableArgs")
-                            {
-                                te.TableArgs = JsonSerializer.Deserialize<string[]>(ref reader, options);
-                            }
-                            else if (prop == "Alias")
-                            {
-                                te.Alias = reader.GetString();
-                            }
-                            else
-                            {
-                                reader.Skip();
-                            }
-                        }
+                        Type type = GetObjectType(typeName);
+                        if (type != null) te.Type = type;
                     }
                 }
                 else if (ss is SqlSegment segment)
@@ -736,27 +703,7 @@ namespace LiteOrm.Common
                 writer.WritePropertyName("$" + mark);
                 if (value is TableExpr te)
                 {
-                    if ((te.TableArgs != null && te.TableArgs.Length > 0) || !string.IsNullOrEmpty(te.Alias))
-                    {
-                        writer.WriteStartObject();
-                        writer.WritePropertyName("$");
-                        writer.WriteStringValue(te.Type?.FullName);
-                        if (te.TableArgs != null && te.TableArgs.Length > 0)
-                        {
-                            writer.WritePropertyName("TableArgs");
-                            JsonSerializer.Serialize(writer, te.TableArgs, options);
-                        }
-                        if (!string.IsNullOrEmpty(te.Alias))
-                        {
-                            writer.WritePropertyName("Alias");
-                            writer.WriteStringValue(te.Alias);
-                        }
-                        writer.WriteEndObject();
-                    }
-                    else
-                    {
-                        writer.WriteStringValue(te.Type?.FullName);
-                    }
+                    writer.WriteStringValue(te.Type?.FullName);
                 }
                 else
                 {
@@ -784,6 +731,18 @@ namespace LiteOrm.Common
                                 writer.WriteEndObject();
                             }
                             writer.WriteEndArray();
+                        }
+                        break;
+                    case TableExpr te2:
+                        if (te2.TableArgs != null && te2.TableArgs.Length > 0)
+                        {
+                            writer.WritePropertyName("TableArgs");
+                            JsonSerializer.Serialize(writer, te2.TableArgs, options);
+                        }
+                        if (!String.IsNullOrEmpty(te2.Alias))
+                        {
+                            writer.WritePropertyName("Alias");
+                            writer.WriteStringValue(te2.Alias);
                         }
                         break;
                     case TableJoinExpr tje:

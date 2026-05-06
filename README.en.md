@@ -417,6 +417,8 @@ public class Log : IArged
 }
 ```
 
+At query time, you can explicitly specify shard arguments through `tableArgs`, `WithArgs(...)`, or `Expr.From<T>(...)`. `TableArgs` defined on the main table propagate to later tables in the same scope and in child scopes, and inherited values continue to apply unless a later table overrides them explicitly. When a table name contains multiple placeholders such as `Sales_{0}_{1}`, you can also pass multi-dimensional arguments like `["US", "2025"]` directly instead of manually concatenating shard names. Different tables can even use different placeholder positions, such as `Table1_{0}` and `Table2_{1}`, while sharing the same `TableArgs` array.
+
 
 
 ## ⚡ Performance Benchmarks

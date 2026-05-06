@@ -247,11 +247,9 @@ This is usually the hardest part to read because `From -> Where -> OrderBy -> Se
 
 ```json
 {
-  "$table": {
-    "$": "LiteOrm.Tests.Models.TestUser",
-    "TableArgs": ["2024", "01"],
-    "Alias": "u"
-  }
+  "$table": "LiteOrm.Tests.Models.TestUser",
+  "TableArgs": ["2024", "01"],
+  "Alias": "u"
 }
 ```
 
@@ -273,11 +271,9 @@ This is usually the hardest part to read because `From -> Where -> OrderBy -> Se
 ```json
 {
   "$from": {
-    "$table": {
-      "$": "LiteOrm.Tests.Models.TestUser",
-      "TableArgs": ["2024", "01"],
-      "Alias": "u"
-    }
+    "$table": "LiteOrm.Tests.Models.TestUser",
+    "TableArgs": ["2024", "01"],
+    "Alias": "u"
   },
   "Joins": []
 }

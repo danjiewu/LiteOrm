@@ -245,11 +245,9 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
 
 ```json
 {
-  "$table": {
-    "$": "LiteOrm.Tests.Models.TestUser",
-    "TableArgs": ["2024", "01"],
-    "Alias": "u"
-  }
+  "$table": "LiteOrm.Tests.Models.TestUser",
+  "TableArgs": ["2024", "01"],
+  "Alias": "u"
 }
 ```
 
@@ -271,11 +269,9 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
 ```json
 {
   "$from": {
-    "$table": {
-      "$": "LiteOrm.Tests.Models.TestUser",
-      "TableArgs": ["2024", "01"],
-      "Alias": "u"
-    }
+    "$table": "LiteOrm.Tests.Models.TestUser",
+    "TableArgs": ["2024", "01"],
+    "Alias": "u"
   },
   "Joins": []
 }

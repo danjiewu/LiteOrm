@@ -12,7 +12,8 @@ namespace LiteOrm.Demo.Demos
     /// 分表查询演示
     /// 
     /// 本演示展示如何使用 LiteOrm 进行分表查询。分表场景中，表名包含参数（如 Sales_{0}），
-    /// 通过在 Lambda 表达式中显式指定 TableArgs 来指定要查询的具体分表。
+    /// 可通过在 Lambda、tableArgs 参数或 Expr.From<T>(...) 中显式指定 TableArgs 来指定要查询的具体分表。
+    /// 主表指定的 TableArgs 会传递给同作用域和下级作用域中的后续表，除非后续表再次显式覆盖。
     /// 推荐方式：s => s.TableArgs == new[] { "202412" } && s.Amount > 40
     /// </summary>
     public static class ShardingQueryDemo
