@@ -86,7 +86,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public virtual bool ExistsID(object id, params string[] tableArgs)
         {
-            return ObjectViewDAO.WithArgs(tableArgs).Exists(new object[] { id }).GetResult();
+            return ObjectViewDAO.WithArgs(tableArgs).ExistsKey(id).GetResult();
         }
 
         /// <summary>
@@ -217,7 +217,7 @@ namespace LiteOrm.Service
         /// <returns>是否存在</returns>
         public async virtual Task<bool> ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).Exists(new object[] { id }).GetResultAsync(cancellationToken);
+            return await ObjectViewDAO.WithArgs(tableArgs).ExistsKey(id).GetResultAsync(cancellationToken);
         }
 
         /// <summary>

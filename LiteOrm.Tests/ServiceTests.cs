@@ -1171,6 +1171,144 @@ namespace LiteOrm.Tests
             Assert.Equal(TimeSpan.FromHours(5), results[0].Duration);
         }
 
+        [Fact]
+        public void EntityService_SyncInsertUpdate_AndViewExistsLambda_ShouldWork()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityService<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewService<TestUser>>();
+
+            var user = new TestUser { Name = "SyncInsertUpdate", Age = 23, CreateTime = DateTime.Now };
+
+            Assert.True(service.Insert(user));
+            Assert.True(user.Id > 0);
+            Assert.True(viewService.Exists(u => u.Name == "SyncInsertUpdate"));
+
+            user.Name = "SyncInsertUpdate_Updated";
+            user.Age = 24;
+            Assert.True(service.Update(user));
+
+            var fetched = viewService.GetObject(user.Id);
+            Assert.NotNull(fetched);
+            Assert.Equal("SyncInsertUpdate_Updated", fetched.Name);
+            Assert.Equal(24, fetched.Age);
+            Assert.True(viewService.Exists(u => u.Name == "SyncInsertUpdate_Updated" && u.Age == 24));
+        }
+
+        [Fact]
+        public void EntityViewService_SyncMembers_ShouldWork()
+        {
+            var entityService = ServiceProvider.GetRequiredService<IEntityService<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewService<TestUser>>();
+
+            var user1 = new TestUser { Name = "SyncViewService_A", Age = 20, CreateTime = DateTime.Now };
+            var user2 = new TestUser { Name = "SyncViewService_B", Age = 30, CreateTime = DateTime.Now };
+
+            Assert.True(entityService.Insert(user1));
+            Assert.True(entityService.Insert(user2));
+
+            var fetched = viewService.GetObject(user1.Id);
+            Assert.NotNull(fetched);
+            Assert.Equal("SyncViewService_A", fetched.Name);
+            Assert.True(viewService.ExistsID(user1.Id));
+            Assert.True(viewService.Exists(Expr.Lambda<TestUser>(u => u.Name == "SyncViewService_B")));
+            Assert.Equal(2, viewService.Count(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("SyncViewService_"))));
+
+            var one = viewService.SearchOne(Expr.Lambda<TestUser>(u => u.Name == "SyncViewService_B"));
+            Assert.NotNull(one);
+            Assert.Equal(user2.Id, one.Id);
+
+            var all = viewService.Search(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("SyncViewService_")));
+            Assert.Equal(2, all.Count);
+
+            var iteratedNames = new List<string>();
+            viewService.ForEach(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("SyncViewService_")), u => iteratedNames.Add(u.Name!));
+            Assert.Equal(2, iteratedNames.Count);
+        }
+
+        [Fact]
+        public async Task EntityService_SyncBatchAndDeleteMembers_ShouldWork()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityService<TestUser>>();
+            var asyncViewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+
+            var users = new List<TestUser>
+            {
+                new TestUser { Name = "SyncEntityBatch_A", Age = 18, CreateTime = DateTime.Now },
+                new TestUser { Name = "SyncEntityBatch_B", Age = 28, CreateTime = DateTime.Now }
+            };
+
+            service.BatchInsert(users);
+            Assert.All(users, user => Assert.True(user.Id > 0));
+
+            users[0].Age = 19;
+            users[1].Age = 29;
+            service.BatchUpdate(users);
+
+            users[0].Name = "SyncEntityBatch_A_Upserted";
+            users[0].Age = 25;
+            var insertedByUpsert = new TestUser { Name = "SyncEntityBatch_C", Age = 35, CreateTime = DateTime.Now };
+            service.BatchUpdateOrInsert([users[0], insertedByUpsert]);
+            Assert.True(insertedByUpsert.Id > 0);
+
+            Assert.True(service.UpdateOrInsert(users[0]));
+
+            users[1].Age = 39;
+            var mixed = new[]
+            {
+                new EntityOperation<TestUser> { Operation = OpDef.Update, Entity = users[1] },
+                new EntityOperation<TestUser> { Operation = OpDef.Insert, Entity = new TestUser { Name = "SyncEntityBatch_D", Age = 45, CreateTime = DateTime.Now } }
+            };
+            service.Batch(mixed);
+
+            var afterBatch = await asyncViewService.SearchAsync(Expr.Prop("Name").Like("SyncEntityBatch%"), cancellationToken: TestContext.Current.CancellationToken);
+            Assert.Contains(afterBatch, user => user.Name == "SyncEntityBatch_A_Upserted" && user.Age == 25);
+            Assert.Contains(afterBatch, user => user.Name == "SyncEntityBatch_B" && user.Age == 39);
+            Assert.Contains(afterBatch, user => user.Name == "SyncEntityBatch_C");
+            Assert.Contains(afterBatch, user => user.Name == "SyncEntityBatch_D");
+
+            service.BatchDelete([insertedByUpsert]);
+            Assert.False(await asyncViewService.ExistsIDAsync(insertedByUpsert.Id, cancellationToken: TestContext.Current.CancellationToken));
+
+            var syncEntityBatchD = afterBatch.Find(user => user.Name == "SyncEntityBatch_D");
+            Assert.NotNull(syncEntityBatchD);
+            service.BatchDeleteID(new object[] { syncEntityBatchD.Id });
+            Assert.False(await asyncViewService.ExistsIDAsync(syncEntityBatchD.Id, cancellationToken: TestContext.Current.CancellationToken));
+
+            Assert.True(service.DeleteID(users[1].Id));
+            Assert.False(await asyncViewService.ExistsIDAsync(users[1].Id, cancellationToken: TestContext.Current.CancellationToken));
+
+            var deleteByEntity = new TestUser { Name = "SyncEntityDelete_Entity", Age = 50, CreateTime = DateTime.Now };
+            Assert.True(service.Insert(deleteByEntity));
+            Assert.True(service.Delete(deleteByEntity));
+
+            var deleteByExpr = new TestUser { Name = "SyncEntityDelete_Expr", Age = 60, CreateTime = DateTime.Now };
+            Assert.True(service.Insert(deleteByExpr));
+            Assert.Equal(1, service.Delete(Expr.Lambda<TestUser>(u => u.Name == "SyncEntityDelete_Expr")));
+        }
+
+        [Fact]
+        public async Task EntityService_AsyncDeleteIdAndExistsIdMembers_ShouldWork()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+
+            var user1 = new TestUser { Name = "AsyncDeleteId_A", Age = 22, CreateTime = DateTime.Now };
+            var user2 = new TestUser { Name = "AsyncDeleteId_B", Age = 32, CreateTime = DateTime.Now };
+            var user3 = new TestUser { Name = "AsyncDeleteId_C", Age = 42, CreateTime = DateTime.Now };
+
+            await service.InsertAsync(user1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(user2, TestContext.Current.CancellationToken);
+            await service.InsertAsync(user3, TestContext.Current.CancellationToken);
+
+            Assert.True(await viewService.ExistsIDAsync(user1.Id, cancellationToken: TestContext.Current.CancellationToken));
+            Assert.True(await service.DeleteIDAsync(user1.Id, cancellationToken: TestContext.Current.CancellationToken));
+            Assert.False(await viewService.ExistsIDAsync(user1.Id, cancellationToken: TestContext.Current.CancellationToken));
+
+            await service.BatchDeleteIDAsync(new object[] { user2.Id, user3.Id }, TestContext.Current.CancellationToken);
+            Assert.False(await viewService.ExistsIDAsync(user2.Id, cancellationToken: TestContext.Current.CancellationToken));
+            Assert.False(await viewService.ExistsIDAsync(user3.Id, cancellationToken: TestContext.Current.CancellationToken));
+        }
+
         #endregion
     }
 }

@@ -533,12 +533,15 @@ namespace LiteOrm
         /// <param name="columns">列定义集合。</param>
         public virtual string BuildCreateTableSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
+            var columnList = columns.ToList();
+            var keyColumns = columnList.Where(c => c.IsPrimaryKey).ToList();
+            bool hasCompositeKeys = keyColumns.Count > 1;
             var sb = ValueStringBuilder.Create(512);
             sb.Append("CREATE TABLE ");
             sb.Append(ToSqlName(tableName));
             sb.Append(" (");
             bool first = true;
-            foreach (var column in columns)
+            foreach (var column in columnList)
             {
                 if (!first) sb.Append(",");
                 sb.Append("\n  ");
@@ -550,10 +553,20 @@ namespace LiteOrm
                     sb.Append(" ");
                     sb.Append(GetAutoIncrementSql());
                 }
-                if (column.IsPrimaryKey) sb.Append(" PRIMARY KEY");
-                if (!column.AllowNull) sb.Append(" NOT NULL");
+                if (column.IsPrimaryKey && !hasCompositeKeys) sb.Append(" PRIMARY KEY");
+                if (!column.AllowNull || (hasCompositeKeys && column.IsPrimaryKey)) sb.Append(" NOT NULL");
                 if (!String.IsNullOrEmpty(column.DefaultValue)) sb.Append($" DEFAULT {column.DefaultValue}");
                 first = false;
+            }
+            if (hasCompositeKeys)
+            {
+                sb.Append(",\n  PRIMARY KEY (");
+                for (int i = 0; i < keyColumns.Count; i++)
+                {
+                    if (i > 0) sb.Append(", ");
+                    sb.Append(ToSqlName(keyColumns[i].Name));
+                }
+                sb.Append(")");
             }
             sb.Append("\n)");
             string result = sb.ToString();

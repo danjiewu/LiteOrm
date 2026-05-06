@@ -76,10 +76,15 @@ namespace LiteOrm.Tests.Infrastructure
             try
             {
                 // 先删除有外键引用的子表数据，再删除被引用的父表数据
-                string[] tables = ["TestUsers", "TestDepartments"];
+                string[] tables = ["TestUsers", "TestDepartments", "TestLog_202405", "TestShortIdentityEntities", "TestLongIdentityEntities", "TestCompositeKeyEntities"];
                 using var cmd = context.CreateCommand();
                 foreach (var table in tables)
-                {                   
+                {
+                    cmd.CommandText = $"SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '{table.Replace("'", "''")}'";
+                    if (cmd.ExecuteScalar() is null)
+                    {
+                        continue;
+                    }
                     cmd.CommandText = $"DELETE FROM {sqlBuilder.ToSqlName(table)}";
                     cmd.ExecuteNonQuery();
                 }

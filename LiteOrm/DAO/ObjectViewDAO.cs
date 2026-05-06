@@ -96,11 +96,11 @@ namespace LiteOrm
         {
             ThrowExceptionIfNoKeys();
             var paramValues = new Dictionary<string, object>();
-            
+
             // 构建 WHERE 子句
             string where = MakeKeyCondition(paramValues);
             
-            string sql = $"SELECT 1 \nFROM {FactTableName} {ToWhereSql(where)}";
+            string sql = $"SELECT 1 \nFROM {From} {ToWhereSql(where)}";
             return new PreparedSql(sql, paramValues);
         }
         #endregion
@@ -116,11 +116,10 @@ namespace LiteOrm
         {
             ThrowExceptionIfWrongKeys(keys);
             var getObjectCommand = GetPreparedCommand("GetObject", MakeGetObjectSql);
-            int i = 0;
-            foreach (DbParameter param in getObjectCommand.Parameters)
+            for (int i = 0; i < TableDefinition.Keys.Length; i++)
             {
-                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
-                i++;
+                var key = TableDefinition.Keys[i];
+                getObjectCommand.Parameters[ToParamName(key.PropertyName)].Value = ConvertToDbValue(keys[i], key.DbType);
             }
             return new EnumerableResult<T>(getObjectCommand, ConvertToObjectHandler);
         }
@@ -169,11 +168,10 @@ namespace LiteOrm
         {
             ThrowExceptionIfWrongKeys(keys);
             var objectExistsCommand = GetPreparedCommand("ExistsKey", MakeObjectExistsSql);
-            int i = 0;
-            foreach (DbParameter param in objectExistsCommand.Parameters)
+            for (int i = 0; i < TableDefinition.Keys.Length; i++)
             {
-                param.Value = ConvertToDbValue(keys[i], TableDefinition.Keys[i].DbType);
-                i++;
+                var key = TableDefinition.Keys[i];
+                objectExistsCommand.Parameters[ToParamName(key.PropertyName)].Value = ConvertToDbValue(keys[i], key.DbType);
             }
             return new ValueResult<bool>(objectExistsCommand, (obj) => obj != null && Convert.ToInt32(obj) > 0);
         }
