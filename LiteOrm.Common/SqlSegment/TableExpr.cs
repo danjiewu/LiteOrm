@@ -8,7 +8,7 @@ namespace LiteOrm.Common
     /// 表表达式
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public sealed class TableExpr : SqlSegment, IArged
+    public sealed class TableExpr : SourceExpr, IArged
     {
         /// <summary>
         /// 默认构造函数
@@ -22,23 +22,6 @@ namespace LiteOrm.Common
         public TableExpr(Type objectType)
         {
             Type = objectType;
-        }
-
-        /// <summary>
-        /// 别名
-        /// </summary>
-        private string _alias;
-        /// <summary>
-        /// 别名
-        /// </summary>
-        public string Alias
-        {
-            get => _alias;
-            set
-            {
-                ThrowIfInvalidSqlName(nameof(Alias), value);
-                _alias = value;
-            }
         }
 
         /// <summary>

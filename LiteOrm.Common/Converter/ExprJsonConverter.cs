@@ -247,8 +247,8 @@ namespace LiteOrm.Common
                         break;
                     case GroupByExpr gbe when propName == "GroupBys":
                         gbe.GroupBys.Clear();
-                        var gList = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
-                        if (gList != null) gbe.GroupBys.AddRange(gList.Cast<ValueTypeExpr>());
+                        var gList = JsonSerializer.Deserialize<List<ValueTypeExpr>>(ref reader, options);
+                        if (gList != null) gbe.GroupBys.AddRange(gList);
                         break;
                     case HavingExpr he when propName == "Having":
                         he.Having = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
@@ -267,9 +267,6 @@ namespace LiteOrm.Common
                         break;
                     case SelectItemExpr sie when propName == "Alias":
                         sie.Alias = reader.GetString();
-                        break;
-                    case OrderByItemExpr obi when propName == "Asc":
-                        obi.Ascending = reader.GetBoolean();
                         break;
                     case UpdateExpr ue when propName == "Sets":
                         ReadUpdateSets(ref reader, ue, options);
@@ -301,8 +298,8 @@ namespace LiteOrm.Common
                     case TableExpr te when propName == "TableArgs":
                         te.TableArgs = JsonSerializer.Deserialize<string[]>(ref reader, options);
                         break;
-                    case TableJoinExpr tje when propName == "Table":
-                        tje.Table = JsonSerializer.Deserialize<TableExpr>(ref reader, options);
+                    case TableJoinExpr tje when propName == "Source":
+                        tje.Source = JsonSerializer.Deserialize<SourceExpr>(ref reader, options);
                         break;
                     case TableJoinExpr tje when propName == "JoinType":
                         if (reader.TokenType == JsonTokenType.String && Enum.TryParse<TableJoinType>(reader.GetString(), true, out var jt))
@@ -656,10 +653,10 @@ namespace LiteOrm.Common
                         WriteExpr(writer, sie.Value, options);
                         break;
                     case TableJoinExpr tje:
-                        if (tje.Table != null)
+                        if (tje.Source != null)
                         {
-                            writer.WritePropertyName("Table");
-                            WriteExpr(writer, tje.Table, options);
+                            writer.WritePropertyName("Source");
+                            WriteExpr(writer, tje.Source, options);
                         }
                         if (tje.On != null)
                         {
@@ -758,7 +755,7 @@ namespace LiteOrm.Common
                         }
                         break;
                     case WhereExpr we:
-                        if (we.Where is not null) { writer.WritePropertyName("Where"); JsonSerializer.Serialize(writer, we.Where, options); }
+                        if (we.Where is not null) { writer.WritePropertyName("Where"); WriteExpr(writer, we.Where, options); }
                         break;
                     case OrderByExpr obe:
                         if (obe.OrderBys?.Count > 0)
@@ -769,15 +766,28 @@ namespace LiteOrm.Common
                             {
                                 writer.WriteStartObject();
                                 writer.WritePropertyName("Field");
-                                JsonSerializer.Serialize(writer, ob.Field, options);
-                                writer.WriteBoolean("Asc", ob.Ascending);
+                                WriteExpr(writer, ob.Field, options);
+                                if (ob.Ascending != true)
+                                {
+                                    writer.WritePropertyName("Asc");
+                                    writer.WriteBooleanValue(ob.Ascending);
+                                }
                                 writer.WriteEndObject();
                             }
                             writer.WriteEndArray();
                         }
                         break;
                     case GroupByExpr gbe:
-                        if (gbe.GroupBys?.Count > 0) { writer.WritePropertyName("GroupBys"); JsonSerializer.Serialize(writer, gbe.GroupBys, options); }
+                        if (gbe.GroupBys?.Count > 0)
+                        {
+                            writer.WritePropertyName("GroupBys");
+                            writer.WriteStartArray();
+                            foreach (var gb in gbe.GroupBys)
+                            {
+                                WriteExpr(writer, gb, options);
+                            }
+                            writer.WriteEndArray();
+                        }
                         break;
                     case HavingExpr he:
                         if (he.Having is not null) { writer.WritePropertyName("Having"); WriteExpr(writer, he.Having, options); }

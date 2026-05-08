@@ -72,20 +72,32 @@ namespace LiteOrm.Common
         private static void ToSql(ref ValueStringBuilder sb, TableJoinExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (expr == null) return;
-            if (expr.Table == null) return;
+            if (expr.Source == null) return;
 
-            var joinTable = TableInfoProvider.Default.GetTableDefinition(expr.Table.Type);
-            string joinAlias = expr.Table.Alias ?? $"T{context.Sequence++}";
-            LogicExpr onExpr = expr.On.And(GetAliasedConstFilter(joinTable.ConstFilter, joinAlias));
 
+            string joinAlias = expr.Source.Alias ?? $"T{context.Sequence++}";
+            TableDefinition joinTable = null;
+            if (expr.Source is TableExpr tbe) joinTable = TableInfoProvider.Default.GetTableDefinition(tbe.Type);
             context.AddTableAlias(joinAlias, joinTable);
 
+            LogicExpr onExpr = expr.On;
             sb.NewLine(context.Indent);
             sb.Append((expr.JoinType).ToString().ToUpper());
             sb.Append(" JOIN ");
-            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joinTable.Name)));
-            sb.Append(" ");
-            sb.Append(sqlBuilder.ToSqlName(joinAlias));
+            if (joinTable != null)
+            {
+                onExpr &= GetAliasedConstFilter(joinTable.ConstFilter, joinAlias);
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joinTable.Name)));
+                sb.Append(" ");
+                sb.Append(sqlBuilder.ToSqlName(joinAlias));
+            }
+            else
+            {
+                using (context.BeginScope())
+                {
+                    ToSqlInternal(ref sb, expr.Source, context, sqlBuilder, outputParams, MaxPriority);
+                }
+            }
 
             if (onExpr != null)
             {
@@ -113,12 +125,20 @@ namespace LiteOrm.Common
             {
                 var tableView = TableInfoProvider.Default.GetTableView(expr.Type);
                 var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name));
-                bool isMain = context.Depth <= 1;
+                bool isMain = context.Depth <= 1 && context.DefaultTableAliasName is null;
                 string aliasName = expr.Alias ?? (isMain ? Constants.DefaultTableAlias : $"T{context.Sequence++}");
                 sb.Append(tableName);
                 sb.Append(" ");
                 sb.Append(sqlBuilder.ToSqlName(aliasName));
                 context.AddTableAlias(aliasName, tableView);
+                foreach (var joined in tableView.JoinedTables)
+                {
+                    if (joined.Used)
+                    {
+                        ToSql(ref sb, joined, context, sqlBuilder, outputParams);
+                        context.AddTableAlias(joined.Name, joined.TableDefinition);
+                    }
+                }
             }
         }
 
@@ -285,6 +305,9 @@ namespace LiteOrm.Common
                     break;
                 case FromExpr from:
                     AddSqlSegment(ref sql, from, context, sqlBuilder, outputParams);
+                    break;
+                case TableExpr table:
+                    AddSqlSegment(ref sql, table, context, sqlBuilder, outputParams);
                     break;
                 default:
                     throw new NotSupportedException($"SQL segment type {sqlSegment.GetType().FullName} is not supported.");
@@ -793,7 +816,12 @@ namespace LiteOrm.Common
 
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, FromExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            ToSql(ref sql.From, expr, context, sqlBuilder, outputParams);
+            ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams);
+        }
+
+        private static void AddSqlSegment(ref SqlValueStringBuilder sql, TableExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams);
         }
 
         /// <summary>
@@ -856,8 +884,8 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, FromExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (expr.Table == null) return;
-            ToSqlInternal(ref sb, expr.Table, context, sqlBuilder, outputParams);
+            if (expr.Source == null) return;
+            ToSqlInternal(ref sb, expr.Source, context, sqlBuilder, outputParams);
             if (!context.SingleTable)
             {
                 if (expr.Joins != null && expr.Joins.Count > 0)
@@ -865,18 +893,6 @@ namespace LiteOrm.Common
                     foreach (var j in expr.Joins)
                     {
                         ToSql(ref sb, j, context, sqlBuilder, outputParams);
-                    }
-                }
-                else
-                {
-                    var tableView = TableInfoProvider.Default.GetTableView(expr.Table.Type);
-                    foreach (var joined in tableView.JoinedTables)
-                    {
-                        if (joined.Used)
-                        {
-                            ToSql(ref sb, joined, context, sqlBuilder, outputParams);
-                            context.AddTableAlias(joined.Name, joined.TableDefinition);
-                        }
                     }
                 }
             }

@@ -131,15 +131,15 @@ namespace LiteOrm.Common
             if (objectType.IsGenericType && (objectType.GetGenericTypeDefinition() == typeof(IQueryable<>) || objectType.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
                 objectType = objectType.GetGenericArguments()[0];
             _currentAlias = _parameterAliases[_rootParameter.Name] = Constants.DefaultTableAlias;
-            _parameterExprs[_rootParameter.Name] = _fromExpr = Expr.From(objectType).As(_currentAlias);
+            _parameterExprs[_rootParameter.Name] = _tableExpr = Expr.From(objectType).As(_currentAlias);
             _aliasCounter = 1;
         }
 
-        private FromExpr _fromExpr;
+        private TableExpr _tableExpr;
         /// <summary>
         /// 获取解析后的 TableExpr 对象，代表 Lambda 表达式中根参数对应的表信息。
         /// </summary>
-        public FromExpr From => _fromExpr;
+        public TableExpr Table => _tableExpr;
         /// <summary>
         /// 当前别名，用于生成 SQL 时的表别名。对于嵌套 Lambda 表达式会动态更新以支持多层别名映射。
         /// </summary>
@@ -320,12 +320,12 @@ namespace LiteOrm.Common
                         // 解析赋值的值（数组或集合）
                         var tableArgs = EvaluateTableArgs(valueExpr);
 
-                        // 设置 FromExpr 或 ForeignExpr 的 TableArgs
+                        // 设置 TableExpr 或 ForeignExpr 的 TableArgs
                         if (_parameterExprs.TryGetValue(paramExpr.Name, out var paramArg))
                         {
-                            if (paramArg is FromExpr fromExpr)
+                            if (paramArg is TableExpr tableExpr)
                             {
-                                fromExpr.Table.TableArgs = tableArgs;
+                                tableExpr.TableArgs = tableArgs;
                             }
                             else if (paramArg is ForeignExpr foreignExpr)
                             {

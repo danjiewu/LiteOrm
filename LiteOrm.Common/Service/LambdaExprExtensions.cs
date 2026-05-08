@@ -25,7 +25,7 @@ namespace LiteOrm.Common
         public static int Delete<T>(this IEntityService<T> entityService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityService.Delete(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.From?.TableArgs);
+            return entityService.Delete(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
         }
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace LiteOrm.Common
         public static List<T> Search<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityViewService.Search(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.From?.TableArgs);
+            return entityViewService.Search(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
         }
 
         /// <summary>
@@ -66,7 +66,7 @@ namespace LiteOrm.Common
         public static T SearchOne<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityViewService.SearchOne(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.From?.TableArgs);
+            return entityViewService.SearchOne(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace LiteOrm.Common
         public static bool Exists<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityViewService.Exists(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.From?.TableArgs);
+            return entityViewService.Exists(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
         }
 
         /// <summary>
@@ -97,7 +97,7 @@ namespace LiteOrm.Common
         public static int Count<T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityViewService.Count(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.From?.TableArgs);
+            return entityViewService.Count(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
         }
 
         /// <summary>
@@ -106,7 +106,7 @@ namespace LiteOrm.Common
         public static Task<bool> ExistsAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityViewService.ExistsAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.From?.TableArgs, cancellationToken);
+            return entityViewService.ExistsAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace LiteOrm.Common
         public static Task<int> CountAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityViewService.CountAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.From?.TableArgs, cancellationToken);
+            return entityViewService.CountAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace LiteOrm.Common
         public static Task<int> DeleteAsync<T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityService.DeleteAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.From?.TableArgs, cancellationToken);
+            return entityService.DeleteAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -153,7 +153,7 @@ namespace LiteOrm.Common
         public static Task<List<T>> SearchAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityViewService.SearchAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.From?.TableArgs, cancellationToken);
+            return entityViewService.SearchAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -182,7 +182,7 @@ namespace LiteOrm.Common
         public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityViewService.SearchOneAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.From?.TableArgs, cancellationToken);
+            return entityViewService.SearchOneAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
         }
 
         /// <summary>

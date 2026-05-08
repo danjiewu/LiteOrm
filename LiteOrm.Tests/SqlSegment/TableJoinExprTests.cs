@@ -12,7 +12,7 @@ namespace LiteOrm.Common.UnitTests
             var on = Expr.Prop("Id") == 1;
             var expr = new TableJoinExpr(table, on);
 
-            Assert.Same(table, expr.Table);
+            Assert.Same(table, expr.Source);
             Assert.Same(on, expr.On);
             Assert.Equal(TableJoinType.Left, expr.JoinType);
         }
@@ -54,7 +54,7 @@ namespace LiteOrm.Common.UnitTests
             var clone = (TableJoinExpr)expr.Clone();
 
             Assert.Equal(expr, clone);
-            Assert.NotSame(expr.Table, clone.Table);
+            Assert.NotSame(expr.Source, clone.Source);
             Assert.NotSame(expr.On, clone.On);
         }
 

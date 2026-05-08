@@ -120,7 +120,7 @@ namespace LiteOrm.Common
                     return true;
 
                 case FromExpr fe:
-                    if (!VisitChild(fe.Table as Expr, visitor)) return false;
+                    if (!VisitChild(fe.Source as Expr, visitor)) return false;
                     if (fe.Joins != null)
                     {
                         foreach (TableJoinExpr j in fe.Joins)
@@ -129,7 +129,7 @@ namespace LiteOrm.Common
                     return true;
 
                 case TableJoinExpr tje:
-                    if (!VisitChild(tje.Table as Expr, visitor)) return false;
+                    if (!VisitChild(tje.Source as Expr, visitor)) return false;
                     return VisitChild(tje.On, visitor);
 
                 case TableExpr _:

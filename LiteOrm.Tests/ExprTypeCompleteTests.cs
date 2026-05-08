@@ -141,9 +141,9 @@ namespace LiteOrm.Tests
         [Fact]
         public void FromExpr_WithAlias_Tests()
         {
-            var f1 = new FromExpr(typeof(TestUser)) { Table = new TableExpr(typeof(TestUser)) { Alias = "u" } };
-            var f2 = new FromExpr(typeof(TestUser)) { Table = new TableExpr(typeof(TestUser)) { Alias = "u" } };
-            var f3 = new FromExpr(typeof(TestUser)) { Table = new TableExpr(typeof(TestUser)) { Alias = "t" } };
+            var f1 = new FromExpr(typeof(TestUser)) { Source = new TableExpr(typeof(TestUser)) { Alias = "u" } };
+            var f2 = new FromExpr(typeof(TestUser)) { Source = new TableExpr(typeof(TestUser)) { Alias = "u" } };
+            var f3 = new FromExpr(typeof(TestUser)) { Source = new TableExpr(typeof(TestUser)) { Alias = "t" } };
 
             Assert.True(f1.Equals(f2));
             Assert.False(f1.Equals(f3));

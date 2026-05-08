@@ -31,7 +31,7 @@ namespace LiteOrm.Common
     /// 选择片段，表示 SELECT 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class SelectExpr : SqlSegment, ISourceAnchor, ISelectAnchor
+    public class SelectExpr : SourceExpr
     {
         /// <summary>
         /// 初始化 SelectExpr 类的新实例
@@ -69,11 +69,6 @@ namespace LiteOrm.Common
         /// 获取或设置要选择的字段表达式列表
         /// </summary>
         public List<SelectItemExpr> Selects { get; set; } = new List<SelectItemExpr>();
-
-        /// <summary>
-        /// 获取或设置 SelectExpr 的别名
-        /// </summary>
-        public string Alias { get; set; }
 
         private List<SelectExpr> _nextSelects;
         /// <summary>

@@ -279,18 +279,15 @@ namespace LiteOrm.Common
         public static SelectItemExpr As(this ValueTypeExpr expr, string name) => new SelectItemExpr(expr, name);
 
         /// <summary>
-        /// 为From表达式设置别名。
+        /// 为Table表达式设置别名。
         /// </summary>
-        /// <param name="fromExpr">From表达式</param>
+        /// <param name="tableExpr">Table表达式</param>
         /// <param name="alias">别名</param>
-        /// <returns>带有别名的From表达式</returns>
-        public static FromExpr As(this FromExpr fromExpr, string alias)
+        /// <returns>带有别名的Table表达式</returns>
+        public static TableExpr As(this TableExpr tableExpr, string alias)
         {
-            if (fromExpr?.Table != null)
-            {
-                fromExpr.Table.Alias = alias;
-            }
-            return fromExpr;
+            tableExpr.Alias = alias;
+            return tableExpr;
         }
 
         /// <summary>
@@ -435,7 +432,7 @@ namespace LiteOrm.Common
                 }
                 if (firstSource is FromExpr fromExpr)
                 {
-                    fromExpr.Table = new TableExpr(objectType);
+                    fromExpr.Source = new TableExpr(objectType);
                 }
                 else if (firstSource is TableExpr tableExpr)
                 {

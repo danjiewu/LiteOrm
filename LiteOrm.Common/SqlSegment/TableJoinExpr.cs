@@ -17,26 +17,21 @@ namespace LiteOrm.Common
         public TableJoinExpr() { }
 
         /// <summary>
-        /// 根据表表达式和连接条件初始化
+        /// 根据源片段和连接条件初始化
         /// </summary>
-        /// <param name="table">表表达式</param>
+        /// <param name="source">源片段</param>
         /// <param name="on">连接条件</param>
-        public TableJoinExpr(TableExpr table, LogicExpr on)
+        public TableJoinExpr(SourceExpr source, LogicExpr on)
         {
-            Table = table;
+            base.Source = source;
             On = on;
         }
 
-        /// <summary>
-        /// 表表达式
-        /// </summary>
-        [JsonIgnore]
-        public TableExpr Table { get; set; }
 
         /// <summary>
-        /// 使用主表表达式重写源片段属性
+        /// 使用源片段重写 Source 属性，确保它始终是一个 SourceExpr 类型
         /// </summary>
-        public override SqlSegment Source { get => Table; set => Table = (TableExpr)value; }
+        public new SourceExpr Source { get => (SourceExpr)base.Source; set => base.Source = (SourceExpr)value; }
 
         /// <summary>
         /// 连接条件
@@ -62,7 +57,7 @@ namespace LiteOrm.Common
         {
             if (obj is TableJoinExpr other)
             {
-                if (!Equals(Table, other.Table)) return false;
+                if (!Equals(Source, other.Source)) return false;
                 if (!Equals(JoinType, other.JoinType)) return false;
                 if (!Equals(On, other.On)) return false;
                 return true;
@@ -76,7 +71,7 @@ namespace LiteOrm.Common
         /// <returns>哈希码值</returns>
         public override int GetHashCode()
         {
-            return OrderedHashCodes(typeof(TableJoinExpr).GetHashCode(), JoinType.GetHashCode(), Table?.GetHashCode() ?? 0, On?.GetHashCode() ?? 0);
+            return OrderedHashCodes(typeof(TableJoinExpr).GetHashCode(), JoinType.GetHashCode(), base.Source?.GetHashCode() ?? 0, On?.GetHashCode() ?? 0);
         }
 
         /// <summary>
@@ -85,8 +80,8 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            if (Table == null) return string.Empty;
-            return On == null ? $"{JoinType} JOIN {Table}" : $"{JoinType} JOIN {Table} ON {On}";
+            if (base.Source == null) return string.Empty;
+            return On == null ? $"{JoinType} JOIN {base.Source}" : $"{JoinType} JOIN {base.Source} ON {On}";
         }
 
         /// <summary>
@@ -95,7 +90,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var j = new TableJoinExpr();
-            j.Table = (TableExpr)Table?.Clone();
+            j.Source = (SourceExpr)Source?.Clone();
             j.On = (LogicExpr)On?.Clone();
             j.JoinType = JoinType;
             return j;

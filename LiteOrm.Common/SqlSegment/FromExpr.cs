@@ -15,7 +15,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 默认构造函数
         /// </summary>
-        public FromExpr() { Table = new TableExpr(); }
+        public FromExpr() { Source = new TableExpr(); }
 
         /// <summary>
         /// 根据对象类型初始化
@@ -23,46 +23,28 @@ namespace LiteOrm.Common
         /// <param name="objectType">对象类型</param>
         public FromExpr(Type objectType)
         {
-            Table = new TableExpr(objectType);
+            Source = new TableExpr(objectType);
         }
 
         /// <summary>
         /// 根据主表表达式初始化
         /// </summary>
         /// <param name="source">主表表达式</param>
-        public FromExpr(TableExpr source)
+        public FromExpr(SourceExpr source)
         {
-            Table = source;
+            Source = source;
         }
 
         /// <summary>
-        /// 主表表达式
+        /// 使用源片段重写 Source 属性，确保它始终是一个 SourceExpr 类型
         /// </summary>
-        [JsonIgnore]
-        public TableExpr Table { get; set; }
-
-        /// <summary>
-        /// 使用主表表达式重写源片段属性
-        /// </summary>
-        public override SqlSegment Source { get => Table; set => Table = (TableExpr)value; }
+        public new SourceExpr Source { get => (SourceExpr)base.Source; set => base.Source = (SourceExpr)value; }       
 
         private List<TableJoinExpr> _joins = new List<TableJoinExpr>();
         /// <summary>
         /// 连接表集合
         /// </summary>
         public List<TableJoinExpr> Joins => _joins;
-
-        /// <summary>
-        /// 别名
-        /// </summary>
-        [JsonIgnore]
-        public string Alias => Table?.Alias;
-
-        /// <summary>
-        /// 表参数
-        /// </summary>
-        [JsonIgnore]
-        public string[] TableArgs => Table?.TableArgs;
 
         /// <summary>
         /// 表达式类型
@@ -78,11 +60,11 @@ namespace LiteOrm.Common
         {
             if (obj is FromExpr other)
             {
-                if (!Equals(Table, other.Table)) return false;
+                if (!Equals(Source, other.Source)) return false;
                 if (_joins is null && other._joins is not null) return false;
                 if (_joins is not null && other._joins is null) return false;
                 if (_joins is not null && other._joins is not null && !_joins.SequenceEqual(other._joins)) return false;
-                if (!Equals(Table, other.Table)) return false;
+                if (!Equals(Source, other.Source)) return false;
                 return true;
             }
             return false;
@@ -96,9 +78,9 @@ namespace LiteOrm.Common
         {
             return OrderedHashCodes(
                 typeof(FromExpr).GetHashCode(),
-                Table?.GetHashCode() ?? 0,
+                Source?.GetHashCode() ?? 0,
                 SequenceHash(_joins),
-                Table?.GetHashCode() ?? 0);
+                Source?.GetHashCode() ?? 0);
         }
 
         /// <summary>
@@ -107,8 +89,8 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            if (Table == null) return string.Empty;
-            return Table.ToString();
+            if (Source == null) return string.Empty;
+            return Source.ToString();
         }
 
         /// <summary>
@@ -117,7 +99,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var f = new FromExpr();
-            f.Table = (TableExpr)Table?.Clone();
+            f.Source = (TableExpr)Source?.Clone();
             f._joins = _joins?.Select(j => (TableJoinExpr)j.Clone()).ToList();
             return f;
         }

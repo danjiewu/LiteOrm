@@ -24,7 +24,7 @@ namespace LiteOrm.Tests
 
             Assert.IsType<WhereExpr>(expr);
             var where = (WhereExpr)expr;
-            Assert.IsType<FromExpr>(where.Source);
+            Assert.IsType<TableExpr>(where.Source);
             Assert.IsType<LogicBinaryExpr>(where.Where);
         }
 
@@ -161,7 +161,7 @@ namespace LiteOrm.Tests
             Assert.Single(groupBy.GroupBys);
 
             var where = Assert.IsType<WhereExpr>(groupBy.Source);
-            Assert.IsType<FromExpr>(where.Source);
+            Assert.IsType<TableExpr>(where.Source);
         }
 
         [Fact]
@@ -299,13 +299,13 @@ namespace LiteOrm.Tests
             // 2. 验证从 Lambda 生成的表达式的结构
             Assert.IsType<WhereExpr>(lambdaGeneratedExpr);
             var lambdaWhere = (WhereExpr)lambdaGeneratedExpr;
-            Assert.IsType<FromExpr>(lambdaWhere.Source);
+            Assert.IsType<TableExpr>(lambdaWhere.Source);
             Assert.IsType<AndExpr>(lambdaWhere.Where);
 
             // 3. 手动构造等效的 Expr
             var manualExpr = new WhereExpr
             {
-                Source = new FromExpr(typeof(TestUser)).As(Constants.DefaultTableAlias),
+                Source = new TableExpr(typeof(TestUser)).As(Constants.DefaultTableAlias),
                 Where = (Expr.Prop("Age") > 18).And(
                     Expr.Prop("Name").Contains("Test")
                 )
@@ -314,7 +314,7 @@ namespace LiteOrm.Tests
             // 4. 验证手动构造的表达式的结构
             Assert.IsType<WhereExpr>(manualExpr);
             var manualWhere = (WhereExpr)manualExpr;
-            Assert.IsType<FromExpr>(manualWhere.Source);
+            Assert.IsType<TableExpr>(manualWhere.Source);
             Assert.IsType<AndExpr>(manualWhere.Where);
 
             // 5. 比较两个表达式是否相等
@@ -341,7 +341,7 @@ namespace LiteOrm.Tests
 
             Assert.IsType<WhereExpr>(lambdaOrderBy.Source);
             var lambdaWhere2 = (WhereExpr)lambdaOrderBy.Source;
-            Assert.IsType<FromExpr>(lambdaWhere2.Source);
+            Assert.IsType<TableExpr>(lambdaWhere2.Source);
             Assert.IsType<AndExpr>(lambdaWhere2.Where);
 
             // 8. 为复杂情况手动构造等效的 Expr
@@ -351,7 +351,7 @@ namespace LiteOrm.Tests
                 {
                     Source = new WhereExpr
                     {
-                        Source = new FromExpr(typeof(TestUser)).As(Constants.DefaultTableAlias),
+                        Source = new TableExpr(typeof(TestUser)).As(Constants.DefaultTableAlias),
                         Where = (Expr.Prop("Age") > 18).And(
                             Expr.Prop("Name").Contains("Test")
                         )
@@ -378,7 +378,7 @@ namespace LiteOrm.Tests
 
             Assert.IsType<WhereExpr>(manualOrderBy.Source);
             var manualWhere2 = (WhereExpr)manualOrderBy.Source;
-            Assert.IsType<FromExpr>(manualWhere2.Source);
+            Assert.IsType<TableExpr>(manualWhere2.Source);
             Assert.IsType<AndExpr>(manualWhere2.Where);
         }
 

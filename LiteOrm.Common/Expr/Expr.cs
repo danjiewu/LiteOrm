@@ -371,7 +371,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static FromExpr From<T>(params string[] tableArgs)
+        public static TableExpr From<T>(params string[] tableArgs)
         {
             return From(typeof(T), tableArgs);
         }
@@ -382,9 +382,9 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体类型</param>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static FromExpr From(Type objectType, params string[] tableArgs)
+        public static TableExpr From(Type objectType, params string[] tableArgs)
         {
-            var f = new FromExpr(new TableExpr(objectType) { TableArgs = tableArgs });
+            var f = new TableExpr(objectType) { TableArgs = tableArgs };
             return f;
         }
 
@@ -398,32 +398,35 @@ namespace LiteOrm.Common
         /// <returns>From 表达式实例</returns>
         public static FromExpr InitJoins(FromExpr fromExpr)
         {
-            var view = TableInfoProvider.Default.GetTableView(fromExpr?.Table?.Type);
-            if (view != null)
+            if (fromExpr.Source is TableExpr tableExpr)
             {
-                fromExpr.Joins.Clear();
-                foreach (var jt in view.JoinedTables)
+                var view = TableInfoProvider.Default.GetTableView(tableExpr.Type);
+                if (view != null)
                 {
-                    if (jt.Used)
+                    fromExpr.Joins.Clear();
+                    foreach (var jt in view.JoinedTables)
                     {
-                        var join = new TableJoinExpr();
-                        join.Table = new TableExpr(jt.TableDefinition.ObjectType) { Alias = jt.Name };
-                        join.JoinType = jt.JoinType;
-
-                        // build ON condition: joined.ForeignKeys[i] = joined.ForeignPrimeKeys[i]
-                        LogicExpr on = null;
-                        int count = Math.Min(jt.ForeignKeys.Count, jt.ForeignPrimeKeys.Count);
-                        for (int i = 0; i < count; i++)
+                        if (jt.Used)
                         {
-                            var fk = jt.ForeignKeys[i];
-                            var pk = jt.ForeignPrimeKeys[i];
-                            var left = Expr.Prop(fk.Table?.Name, fk.Column?.Name ?? fk.Name);
-                            var right = Expr.Prop(pk.Table?.Name, pk.Column?.Name ?? pk.Name);
-                            var eq = left == right;
-                            on = on is null ? eq : on & eq;
+                            var join = new TableJoinExpr();
+                            join.Source = new TableExpr(jt.TableDefinition.ObjectType) { Alias = jt.Name };
+                            join.JoinType = jt.JoinType;
+
+                            // build ON condition: joined.ForeignKeys[i] = joined.ForeignPrimeKeys[i]
+                            LogicExpr on = null;
+                            int count = Math.Min(jt.ForeignKeys.Count, jt.ForeignPrimeKeys.Count);
+                            for (int i = 0; i < count; i++)
+                            {
+                                var fk = jt.ForeignKeys[i];
+                                var pk = jt.ForeignPrimeKeys[i];
+                                var left = Expr.Prop(fk.Table?.Name, fk.Column?.Name ?? fk.Name);
+                                var right = Expr.Prop(pk.Table?.Name, pk.Column?.Name ?? pk.Name);
+                                var eq = left == right;
+                                on = on is null ? eq : on & eq;
+                            }
+                            join.On = on;
+                            fromExpr.Joins.Add(join);
                         }
-                        join.On = on;
-                        fromExpr.Joins.Add(join);
                     }
                 }
             }
