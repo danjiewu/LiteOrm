@@ -597,6 +597,20 @@ namespace LiteOrm.Common
         public static SelectExpr Select(this ISelectAnchor source, params string[] selectProperties) => Select(source, Array.ConvertAll(selectProperties, prop => (ValueTypeExpr)Expr.Prop(prop)));
 
         /// <summary>
+        /// 将当前 SelectExpr 包装为公共表表达式（CTE），返回一个以该 CTE 为数据源的 <see cref="FromExpr"/>。
+        /// 生成的 SQL 将以 WITH 子句开头，后跟引用该 CTE 的主查询。
+        /// </summary>
+        /// <param name="selectExpr">CTE 定义查询。</param>
+        /// <param name="name">CTE 名称。</param>
+        /// <returns>以该 CTE 为数据源的 <see cref="FromExpr"/>。</returns>
+        public static FromExpr With(this SelectExpr selectExpr, string name)
+        {
+            selectExpr.Alias = name;
+            var cte = new CommonTableExpr(selectExpr);
+            return new FromExpr(cte);
+        }
+
+        /// <summary>
         /// 将当前 SelectExpr 与另一个 SelectExpr 以 UNION 连接。
         /// 若 <paramref name="source"/> 为 null 则返回 <paramref name="next"/>；若 <paramref name="next"/> 为 null 则返回 <paramref name="source"/>。
         /// 否则将连接类型写入 <paramref name="next"/>.SetType 并追加到 <paramref name="source"/> 的 NextSelects 列表。

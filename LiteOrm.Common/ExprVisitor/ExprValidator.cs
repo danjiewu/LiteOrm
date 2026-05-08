@@ -133,7 +133,8 @@ namespace LiteOrm.Common
             ExprType.GenericSql,
             ExprType.Function,
             ExprType.Table,
-            ExprType.TableJoin };
+            ExprType.TableJoin,
+            ExprType.CommonTable };
 
         private readonly HashSet<ExprType> _allowedTypes = new HashSet<ExprType>();
 

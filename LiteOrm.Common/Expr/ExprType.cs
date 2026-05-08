@@ -11,6 +11,10 @@ namespace LiteOrm.Common
     {
         /// <summary>表片段，表示单表或子查询引用</summary>
         Table,
+        /// <summary>
+        /// 公共表表达式（CTE）片段，表示 WITH 子句中的 CTE 定义
+        /// </summary>
+        CommonTable,
         /// <summary>表连接片段，表示 JOIN 子句</summary>
         TableJoin,
         /// <summary>From 片段，表示数据源（表或视图）</summary>

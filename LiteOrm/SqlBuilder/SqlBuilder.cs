@@ -54,6 +54,13 @@ namespace LiteOrm
         /// </summary>
         public static readonly SqlBuilder Instance = new SqlBuilder();
 
+        /// <summary>
+        /// 获取当前数据库是否支持公共表表达式（CTE / WITH 子句）。
+        /// 默认返回 <see langword="true"/>。不支持 CTE 的旧数据库版本可重写为 <see langword="false"/>，
+        /// 此时 CTE 将被展开为内联子查询。
+        /// </summary>
+        public virtual bool SupportCteExpr => true;
+
         private readonly Dictionary<string, string> _functionMappings = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase)
         {
             ["IndexOf"] = "CHARINDEX",

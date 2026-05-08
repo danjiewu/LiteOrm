@@ -18,7 +18,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 别名
         /// </summary>
-        public string Alias
+        public virtual string Alias
         {
             get => _alias;
             set

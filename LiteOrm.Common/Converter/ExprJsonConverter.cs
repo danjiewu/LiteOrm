@@ -185,6 +185,7 @@ namespace LiteOrm.Common
                             if (mark == "section") { result = new SectionExpr(); }
                             if (mark == "select") { result = new SelectExpr(); }
                             if (mark == "selectitem") { result = new SelectItemExpr(); }
+                            if (mark == "cte") { result = new CommonTableExpr(); }
                             // 对于 SQL 片段类型且是通过简写形式传值（例如 "$table": "Full.Type.Name" 或 "$from": {...}）
                             if (result is SqlSegment segment && propName != "$")
                             {
@@ -276,6 +277,9 @@ namespace LiteOrm.Common
                         break;
                     case DeleteExpr de when propName == "Where":
                         de.Where = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
+                        break;
+                    case CommonTableExpr cte when propName == "Alias":
+                        cte.Alias = reader.GetString();
                         break;
                     case FromExpr fe when propName == "Joins":
                         if (reader.TokenType == JsonTokenType.StartArray)
@@ -685,7 +689,8 @@ namespace LiteOrm.Common
                 { typeof(SectionExpr), "section" },
                 { typeof(SelectExpr), "select" },
                 { typeof(DeleteExpr), "delete" },
-                { typeof(UpdateExpr), "update" }
+                { typeof(UpdateExpr), "update" },
+                { typeof(CommonTableExpr), "cte" }
             };
 
             /// <summary>
@@ -803,6 +808,13 @@ namespace LiteOrm.Common
                             writer.WriteStartArray();
                             foreach (var join in fe.Joins) JsonSerializer.Serialize(writer, join, options);
                             writer.WriteEndArray();
+                        }
+                        break;
+                    case CommonTableExpr cte:
+                        if (!string.IsNullOrEmpty(cte.Alias))
+                        {
+                            writer.WritePropertyName("Alias");
+                            writer.WriteStringValue(cte.Alias);
                         }
                         break;
                 }

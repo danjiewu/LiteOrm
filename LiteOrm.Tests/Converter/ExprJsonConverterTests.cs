@@ -439,5 +439,18 @@ namespace LiteOrm.Common.UnitTests
 
             Assert.Equal(expr, result);
         }
+
+        [Fact]
+        public void SerializeAndDeserialize_CommonTableExpr_RoundTrips()
+        {
+            var cteSelect = new SelectExpr(new FromExpr(typeof(string)), Expr.Prop("Id").As("Id")) { Alias = "MyCTE" };
+            var expr = new CommonTableExpr(cteSelect);
+
+            var json = JsonSerializer.Serialize<Expr>(expr);
+            var result = JsonSerializer.Deserialize<Expr>(json);
+
+            var cte = Assert.IsType<CommonTableExpr>(result);
+            Assert.Equal("MyCTE", cte.Alias);
+        }
     }
 }

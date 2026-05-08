@@ -11,6 +11,12 @@ namespace LiteOrm.Common
     public interface ISqlBuilder
     {
         /// <summary>
+        /// 获取当前数据库是否支持公共表表达式（CTE / WITH 子句）。
+        /// 若为 <see langword="false"/>，CTE 将被展开为内联子查询。
+        /// </summary>
+        bool SupportCteExpr { get; }
+
+        /// <summary>
         /// 替换 SQL 中的命名占位符或标识符为目标数据库的命名格式。
         /// </summary>
         /// <param name="sql">原始 SQL 字符串。</param>

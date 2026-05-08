@@ -354,7 +354,7 @@ namespace LiteOrm.Common.UnitTests
 
             // Assert
             Assert.NotNull(allowedTypes);
-            Assert.Equal(20, allowedTypes.Count);
+            Assert.Equal(21, allowedTypes.Count);
             Assert.Contains(ExprType.Value, allowedTypes);
             Assert.Contains(ExprType.Property, allowedTypes);
             Assert.Contains(ExprType.Unary, allowedTypes);

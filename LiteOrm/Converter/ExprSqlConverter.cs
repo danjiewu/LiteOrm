@@ -56,14 +56,44 @@ namespace LiteOrm.Common
         {
             if (expr is null) return string.Empty;
 
-            else
+            // 预收集 CTE 定义，通过后序遍历表达式树获取所有 CommonTableExpr 节点
+            string withClause = null;
+            if (sqlBuilder.SupportCteExpr)
             {
-                var sb = ValueStringBuilder.Create(128);
-                ToSqlInternal(ref sb, expr, context, sqlBuilder, outputParams);
-                string res = sb.ToString();
-                sb.Dispose();
-                return res;
+                var cteList = new List<CommonTableExpr>();
+                ExprVisitor.Visit(node =>
+                {
+                    if (node is CommonTableExpr cte && cte.Source != null && !string.IsNullOrEmpty(cte.Alias))
+                        cteList.Add(cte);
+                    return true;
+                }, expr, ExprVisitOrder.PostOrder);
+
+                if (cteList.Count > 0)
+                {
+                    var withSb = ValueStringBuilder.Create(256);
+                    withSb.Append("WITH ");
+                    for (int i = 0; i < cteList.Count; i++)
+                    {
+                        if (i > 0)
+                        {
+                            withSb.Append(",");
+                            withSb.NewLine(0);
+                        }
+                        withSb.Append(sqlBuilder.ToSqlName(cteList[i].Alias));
+                        withSb.Append(" AS (");
+                        ToSqlInternal(ref withSb, cteList[i].Source, context, sqlBuilder, outputParams, MaxPriority);
+                        withSb.Append(")");
+                    }
+                    withClause = withSb.ToString();
+                    withSb.Dispose();
+                }
             }
+
+            var sb = ValueStringBuilder.Create(128);
+            ToSqlInternal(ref sb, expr, context, sqlBuilder, outputParams);
+            string res = withClause != null ? withClause + "\n" + sb.ToString() : sb.ToString();
+            sb.Dispose();
+            return res;
         }
 
         /// <summary>
@@ -201,6 +231,7 @@ namespace LiteOrm.Common
                 case SelectItemExpr selectItem: ToSql(ref sb, selectItem, context, sqlBuilder, outputParams); break;
                 case DeleteExpr delete: ToSql(ref sb, delete, context, sqlBuilder, outputParams); break;
                 case UpdateExpr update: ToSql(ref sb, update, context, sqlBuilder, outputParams); break;
+                case CommonTableExpr cte: ToSql(ref sb, cte, context, sqlBuilder, outputParams); break;
                 default: throw new NotSupportedException($"Expression type {expr.GetType().FullName} is not supported.");
             }
 
@@ -816,6 +847,10 @@ namespace LiteOrm.Common
 
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, FromExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
+            if (expr.Source is CommonTableExpr cte)
+            {
+                context.AddTableAlias(cte.Alias, null);
+            }
             ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams);
         }
 
@@ -1006,6 +1041,26 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 处理公共表表达式（CTE）。若 SqlBuilder 支持 CTE 则仅输出别名（CTE 定义已在顶层 WITH 子句中预生成）；
+        /// 否则按内联子查询方式展开。
+        /// </summary>
+        private static void ToSql(ref ValueStringBuilder sb, CommonTableExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
+            if (expr.Source == null) return;
+            if (sqlBuilder.SupportCteExpr)
+            {
+                sb.Append(sqlBuilder.ToSqlName(expr.Alias));
+            }
+            else
+            {
+                sb.Append("(");
+                ToSqlInternal(ref sb, expr.Source, context, sqlBuilder, outputParams, MaxPriority);
+                sb.Append(") ");
+                sb.Append(sqlBuilder.ToSqlName(expr.Alias));
+            }
+        }
+
+        /// <summary>
         /// 生成 UPDATE 语句对应的 SQL。
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, UpdateExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
@@ -1065,13 +1120,6 @@ namespace LiteOrm.Common
                 return true;
             }, aliasedFilter);
             return aliasedFilter;
-        }
-
-        private static void AppendWhere(ref ValueStringBuilder sb, LogicExpr whereExpr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
-        {
-            if (whereExpr == null) return;
-            if (sb.Length > 0) sb.Append(" AND ");
-            ToSqlInternal(ref sb, whereExpr, context, sqlBuilder, outputParams);
         }
     }
 }

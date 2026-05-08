@@ -11,11 +11,6 @@ namespace LiteOrm.Common
     public class SqlBuildContext
     {
         /// <summary>
-        /// 序列，用来生成表别名
-        /// </summary>
-        public int Sequence { get; set; } = 1;
-
-        /// <summary>
         /// 初始化 <see cref="SqlBuildContext"/> 类的新实例
         /// </summary>
         public SqlBuildContext()
@@ -41,6 +36,11 @@ namespace LiteOrm.Common
                 CurrentScope.AddTableAlias(aliasName ?? Constants.DefaultTableAlias, table);
             }
         }
+
+        /// <summary>
+        /// 序列，用来生成表别名
+        /// </summary>
+        public int Sequence { get; set; } = 1;        
 
         /// <summary>
         /// 默认表别名名称

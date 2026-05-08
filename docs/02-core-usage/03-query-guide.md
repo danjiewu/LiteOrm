@@ -676,6 +676,61 @@ var combinedList = await viewService.SearchAsync(
 );
 ```
 
+## 8. 公共表表达式（CTE）
+
+CTE（Common Table Expression）允许将子查询定义为命名的临时结果集，在主查询中通过名称引用。适合需要多次引用同一子查询、或需要将复杂查询拆解为更易读的多个步骤的场景。
+
+### 8.1 基础用法
+
+使用 `SelectExpr.With(name)` 扩展方法将 SELECT 查询包装为 CTE：
+
+```csharp
+// 定义 CTE 查询
+var cteDef = new SelectExpr(
+    Expr.From(typeof(User)),
+    Expr.Prop("Id").As("Id"),
+    Expr.Prop("UserName").As("Name")
+);
+
+// 包装为 CTE 并继续构建主查询
+var query = cteDef.With("ActiveUsers")
+    .Where(Expr.Prop("Name").Contains("admin"));
+```
+
+生成的 SQL：
+```sql
+WITH [ActiveUsers] AS (
+    SELECT [Id] AS [Id], [UserName] AS [Name] FROM [Users]
+)
+SELECT * FROM [ActiveUsers] WHERE [Name] LIKE '%admin%'
+```
+
+### 8.2 带过滤条件
+
+```csharp
+var cteDef = new SelectExpr(
+    Expr.From(typeof(User)).Where(Expr.Prop("Age") > 18),
+    Expr.Prop("Id").As("Id"),
+    Expr.Prop("UserName").As("Name"),
+    Expr.Prop("Age").As("Age")
+);
+
+var query = cteDef.With("AdultUsers")
+    .Where(Expr.Prop("Age") >= 25)
+    .OrderBy(Expr.Prop("Name").Asc());
+```
+
+### 8.3 兼容性控制
+
+`SqlBuilder` 提供 `SupportCteExpr` 属性（默认 `true`）。对于不支持 CTE 的旧数据库版本，可将该属性重写为 `false`，此时 CTE 将被展开为内联子查询：
+
+```csharp
+public class OldDatabaseBuilder : SqlBuilder
+{
+    public override bool SupportCteExpr => false;
+}
+```
+
 ## 相关链接
 
 - [返回目录](../README.md)
