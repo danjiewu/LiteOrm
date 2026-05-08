@@ -58,14 +58,15 @@ All paths produce an `Expr` tree (class hierarchy rooted at `LiteOrm.Common/Expr
 - Validated by `ExprValidator`
 - Converted to SQL by `ExprSqlConverter.ToSql()` in `LiteOrm/Converter/ExprSqlConverter.cs`
 - Rendered with provider-specific quoting/formatting by an `ISqlBuilder` implementation (e.g., `MySqlBuilder`, `SqlServerBuilder`, `PostgreSqlBuilder`, `OracleBuilder`, `SQLiteBuilder`)
+- Database-specific function translation is handled by `SqlHandlerMap` — a per-provider registry mapping function names to `FunctionSqlHandler` delegates, extensible via `RegisterFunctionSqlHandler<T>()`
 
 The Expr tree can also be serialized/deserialized to/from a compact JSON format via `ExprJsonConverter` for frontend-to-backend query transmission.
 
 ### Expr type hierarchy
 
 - `ValueTypeExpr` subclasses represent SQL value expressions (`ValueExpr`, `PropertyExpr`, `FunctionExpr`, `ValueBinaryExpr`, `UnaryExpr`, `ValueSet`).
-- `LogicExpr` subclasses represent boolean conditions (`LogicBinaryExpr`, `AndExpr`, `OrExpr`, `NotExpr`, `ForeignExpr` for EXISTS subqueries, `LambdaExpr`).
-- `SqlSegment` subclasses represent SQL clauses with chainable `Source` references (`TableExpr`, `FromExpr`, `WhereExpr`, `GroupByExpr`, `HavingExpr`, `OrderByExpr`, `SectionExpr`, `SelectExpr`, `TableJoinExpr`).
+- `LogicExpr` subclasses represent boolean conditions (`LogicBinaryExpr`, `AndExpr`, `OrExpr`, `NotExpr`, `ForeignExpr` for EXISTS subqueries, `LambdaExpr`, `GenericSqlExpr` for delegate-based dynamic SQL).
+- `SqlSegment` subclasses represent SQL clauses with chainable `Source` references. `SourceExpr` is the abstract base for data sources (`FromExpr` for subquery/table sources, `TableJoinExpr` for JOINs). Other segments: `TableExpr`, `WhereExpr`, `GroupByExpr`, `HavingExpr`, `OrderByExpr`, `SectionExpr`, `SelectExpr`.
 - `UpdateExpr` and `DeleteExpr` extend `Expr` directly (not `SqlSegment`).
 
 Fluent extension methods on these types live in `ExprExtensions.cs` — methods like `.Where()`, `.OrderBy()`, `.Section()`, `.Select()`, `.And()`, `.Or()`, `.Contains()`, `.In()`, etc.
@@ -82,13 +83,12 @@ Custom services compose the generic interfaces and inherit `EntityService<T>` or
 
 ### DAO layer
 
-Low-level data access in `LiteOrm/DAO/`: `ObjectDAO` (entity CRUD), `ObjectViewDAO` (entity queries), `DataDAO` (raw table access), `DataViewDAO` (DataTable queries). These are the building blocks that `EntityService` and `EntityViewService` wrap.
+Low-level data access in `LiteOrm/DAO/`: `ObjectDAO` (entity CRUD), `ObjectViewDAO` (entity queries), `DataDAO` (raw table access), `DataViewDAO` (DataTable queries). These are the building blocks that `EntityService` and `EntityViewService` wrap. The `PreparedSql` class carries the generated SQL string together with its named `DbParameter` collection.
 
 ### Tests
 
-- Use xUnit v3 with `[Collection("Database")]` for serialized database test execution.
-- `DatabaseFixture` builds the host once with SQLite in-memory, clears tables before each test class.
-- `TestBase` is the abstract base — inherit it for database-backed tests.
+- Use xUnit v3 (package `xunit.v3`) with `[Collection("Database")]` for serialized database test execution. The test project targets `net10.0` only.
+- `DatabaseFixture` and `TestBase` both live in `LiteOrm.Tests/Infrastructure/TestBase.cs`. The fixture builds the host once with SQLite in-memory, registers a custom `REGEXP_LIKE` SQLite function, and clears tables before each test class.
 - Models live in `LiteOrm.Tests/Models/`; example services in `Infrastructure/TestServices.cs`.
 - Pure unit tests (no database) test `Expr*`, attributes, converters, metadata, and SQL segments.
 - When adding or changing service/DAO behavior, extend the corresponding focused test files (`ServiceTests.cs`, `ObjectViewDAOTests.cs`, `DataViewTests.cs`, etc.) rather than only adding broad coverage elsewhere.
