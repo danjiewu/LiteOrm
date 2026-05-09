@@ -155,7 +155,7 @@ namespace LiteOrm.Common
             {
                 var tableView = TableInfoProvider.Default.GetTableView(expr.Type);
                 var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name));
-                bool isMain = context.Depth <= 1 && context.DefaultTableAliasName is null;
+                bool isMain = context.Depth == 0 && context.DefaultTableAliasName is null;
                 string aliasName = expr.Alias ?? (isMain ? Constants.DefaultTableAlias : $"T{context.Sequence++}");
                 sb.Append(tableName);
                 sb.Append(" ");
@@ -227,7 +227,15 @@ namespace LiteOrm.Common
                 case OrderByItemExpr obi: ToSql(ref sb, obi, context, sqlBuilder, outputParams); break;
                 case FromExpr from: ToSql(ref sb, from, context, sqlBuilder, outputParams); break;
                 case TableExpr table: ToSql(ref sb, table, context, sqlBuilder, outputParams); break;
-                case SelectExpr select: ToSql(ref sb, select, context, sqlBuilder, outputParams); break;
+                case SelectExpr select:
+                    if (priority > 0)// 只有在当前表达式作为子表达式才启用作用域，以避免不必要的作用域嵌套
+                        using (var scope = context.BeginScope())
+                        {
+                            ToSql(ref sb, select, context, sqlBuilder, outputParams);
+                        }
+                    else
+                        ToSql(ref sb, select, context, sqlBuilder, outputParams);
+                    break;
                 case SelectItemExpr selectItem: ToSql(ref sb, selectItem, context, sqlBuilder, outputParams); break;
                 case DeleteExpr delete: ToSql(ref sb, delete, context, sqlBuilder, outputParams); break;
                 case UpdateExpr update: ToSql(ref sb, update, context, sqlBuilder, outputParams); break;
@@ -284,8 +292,8 @@ namespace LiteOrm.Common
         {
             return expr switch
             {
-                SelectExpr select => select.NextSelects?.Count > 0 ? 0 : 1,
-                ValueSet vs when vs.JoinType != ValueJoinType.Concat => 2,
+                SelectExpr select => select.NextSelects?.Count > 0 ? 1 : 2,
+                ValueSet vs when vs.JoinType != ValueJoinType.Concat => 4,
                 ValueSet vs when vs.JoinType == ValueJoinType.Concat => 16,
                 OrExpr _ => 11,
                 AndExpr _ => 12,
@@ -821,10 +829,7 @@ namespace LiteOrm.Common
         /// </summary>
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, SelectExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            using (context.BeginScope())
-            {
-                ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams, MaxPriority);
-            }
+            ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams, MaxPriority);
             string aliasMain = expr.Alias ?? $"T{context.Sequence++}";
             context.DefaultTableAliasName = aliasMain;
             sql.From.Append($" {aliasMain}");
@@ -967,7 +972,7 @@ namespace LiteOrm.Common
 
         private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            using (context.BeginScope())
+            //using (context.BeginScope())
             {
                 SqlValueStringBuilder sql = new SqlValueStringBuilder();
                 AddSqlSegment(ref sql, select.Source, context, sqlBuilder, outputParams);
