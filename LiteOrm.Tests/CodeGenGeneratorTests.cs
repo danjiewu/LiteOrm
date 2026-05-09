@@ -46,6 +46,28 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public void SelectArtifactsGenerator_ShouldGenerateAggregateViewAndGroupByCode()
+        {
+            var schema = BuildSchema();
+            var generator = new SelectArtifactsGenerator();
+
+            var result = generator.Generate(
+                schema,
+                "SELECT d.Name AS DeptName, COUNT(u.Id) AS UserCount, SUM(u.Age) AS TotalAge FROM Users u LEFT JOIN Departments d ON u.DeptId = d.Id WHERE u.Age >= 18 GROUP BY d.Name ORDER BY d.Name",
+                new SelectGenerationOptions { Namespace = "Demo.Models", ViewName = "UserSummaryView" });
+
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.ViewCode);
+            Assert.NotNull(result.QueryCode);
+            Assert.Contains("[ForeignColumn(\"d\", Property = nameof(Department.Name))]", result.ViewCode);
+            Assert.Contains("public int UserCount { get; set; }", result.ViewCode);
+            Assert.Contains("public int TotalAge { get; set; }", result.ViewCode);
+            Assert.Contains("source = new GroupByExpr(source, Expr.Prop(\"d\", nameof(Department.Name)))", result.QueryCode);
+            Assert.Contains("Expr.Prop(\"u\", nameof(User.Id)).Count(false).As(\"UserCount\")", result.QueryCode);
+            Assert.Contains("Expr.Prop(\"u\", nameof(User.Age)).Sum().As(\"TotalAge\")", result.QueryCode);
+        }
+
+        [Fact]
         public void SelectArtifactsGenerator_ShouldReportUnsupportedSql()
         {
             var schema = BuildSchema();
@@ -58,6 +80,21 @@ namespace LiteOrm.Tests
 
             Assert.False(result.Succeeded);
             Assert.Contains(result.Diagnostics, d => d.Message.Contains("WITH", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        public void SelectArtifactsGenerator_ShouldReportUnsupportedHaving()
+        {
+            var schema = BuildSchema();
+            var generator = new SelectArtifactsGenerator();
+
+            var result = generator.Generate(
+                schema,
+                "SELECT d.Name AS DeptName, COUNT(u.Id) AS UserCount FROM Users u LEFT JOIN Departments d ON u.DeptId = d.Id GROUP BY d.Name HAVING COUNT(u.Id) > 1",
+                new SelectGenerationOptions { Namespace = "Demo.Models", ViewName = "UserSummaryView" });
+
+            Assert.False(result.Succeeded);
+            Assert.Contains(result.Diagnostics, d => d.Message.Contains("HAVING", StringComparison.OrdinalIgnoreCase));
         }
 
         private static DatabaseSchema BuildSchema()

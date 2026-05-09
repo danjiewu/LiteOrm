@@ -60,10 +60,7 @@ namespace LiteOrm.Common.UnitTests
             [
                 "LogicBinary",
                 "Property",
-                "Property",
-                "Value",
-                "Value",
-                "LogicBinary"
+                "Value"
             ], visited);
         }
 

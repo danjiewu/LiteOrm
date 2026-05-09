@@ -17,6 +17,7 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
       增加CTE表达式支持;
+      FromExpr和TableJoinExpr支持使用子查询作为源;
       修复ExistsKey错误;
       修复联合主键建表语句错误;
     </PackageReleaseNotes>

@@ -29,5 +29,20 @@ namespace LiteOrm.Tests
             Assert.Contains(users.Columns, c => c.Name == "DeptId" && c.PropertyName == "DeptId");
             Assert.Contains(departments!.Columns, c => c.Name == "ParentId");
         }
+
+        [Fact]
+        public void DatabaseSchemaReader_ShouldFilterTablesWhenRequested()
+        {
+            var reader = new DatabaseSchemaReader(
+                ServiceProvider.GetRequiredService<DAOContextPoolFactory>(),
+                ServiceProvider.GetRequiredService<SqlBuilderFactory>());
+
+            var schema = reader.ReadSchema("SQLite", new[] { "TestUsers" });
+
+            var users = Assert.Single(schema.Tables);
+            Assert.Equal("TestUsers", users.Name);
+            Assert.Equal("TestUser", users.ClassName);
+            Assert.Contains(users.Columns, c => c.Name == "DeptId" && c.PropertyName == "DeptId");
+        }
     }
 }

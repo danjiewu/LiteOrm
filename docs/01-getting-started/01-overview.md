@@ -44,7 +44,6 @@ LiteOrm 项目采用模块化设计，清晰地分离了核心功能、公共组
 ```text
 ├── LiteOrm/                # 核心库
 │   ├── Classes/            # 核心类
-│   ├── CodeGen/            # 代码生成
 │   ├── Converter/          # 转换器
 │   ├── DAO/                # 数据访问对象
 │   ├── DAOContext/         # 数据访问上下文

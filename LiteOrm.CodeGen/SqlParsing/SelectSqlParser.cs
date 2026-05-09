@@ -23,6 +23,7 @@ internal sealed class SelectSqlParser
         RejectUnsupportedKeyword("INTERSECT");
         RejectUnsupportedKeyword("EXCEPT");
         RejectUnsupportedKeyword("OVER");
+        RejectUnsupportedKeyword("HAVING");
 
         ExpectIdentifier("SELECT");
         if (MatchIdentifier("DISTINCT"))

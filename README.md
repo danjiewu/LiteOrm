@@ -47,7 +47,6 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的
 - **多数据库支持**：原生支持 SQL Server、MySQL、Oracle、PostgreSQL、SQLite
 - **灵活查询**：支持基于 Lambda、`Expr` 或 `ExprString` 的多种查询方式
 - **自动关联**：通过特性实现无损的 JOIN 查询，无需手写 SQL
-- **代码生成**：提供 `LiteOrm.CodeGen` 项目，可从数据库表结构生成实体，并将基础 `SELECT` 转换为 View 定义与 C# 查询构建代码
 - **声明式事务**：`[Transaction]` 特性实现 AOP 事务管理
 - **日志与诊断**：支持 `ServiceLog`、`Log` 特性及慢查询日志
 - **动态分表**：`IArged` 接口支持分表路由
@@ -75,25 +74,6 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的
 ```bash
 dotnet add package LiteOrm
 ```
-
-## 🛠️ LiteOrm.CodeGen
-
-仓库现已包含 `LiteOrm.CodeGen` 项目，用于两类代码生成场景：
-
-- 根据数据库表结构生成 LiteOrm 实体定义
-- 根据单条 `SELECT` 语句生成 View 定义与 `SelectExpr` / `Expr` 风格的 C# 查询构建代码
-
-示例：
-
-```bash
-dotnet run --project .\LiteOrm.CodeGen -- entity --data-source SQLite --namespace Demo.Models --table TestUsers,TestDepartments
-
-dotnet run --project .\LiteOrm.CodeGen -- select --data-source SQLite --view-name UserReportView --namespace Demo.Models --sql "SELECT u.Id, u.Name, d.Name AS DeptName FROM TestUsers u LEFT JOIN TestDepartments d ON u.DeptId = d.Id WHERE u.Age >= 18 ORDER BY u.Name"
-```
-
-当前首版聚焦基础 `SELECT + JOIN + WHERE + GROUP BY + ORDER BY`，遇到 `WITH`、`UNION`、子查询、窗口函数等暂不支持的 SQL，会输出原因和提示。
-
-
 
 ## 🚀 快速入门
 

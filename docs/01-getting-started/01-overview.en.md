@@ -44,7 +44,6 @@ LiteOrm uses a modular design that clearly separates core functionality, common 
 ```text
 ├── LiteOrm/                # Core library
 │   ├── Classes/            # Core classes
-│   ├── CodeGen/            # Code generation
 │   ├── Converter/          # Converters
 │   ├── DAO/                # Data access objects
 │   ├── DAOContext/         # Data access context
