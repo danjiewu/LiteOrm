@@ -1,5 +1,9 @@
 using LiteOrm.Common;
 using LiteOrm.Demo.Models;
+using Microsoft.Extensions.DependencyInjection;
+using System.Data;
+using System.Linq;
+using System.Text;
 using static LiteOrm.Common.Expr;
 
 namespace LiteOrm.Demo.Demos
@@ -10,94 +14,146 @@ namespace LiteOrm.Demo.Demos
     /// </summary>
     public static class CommonTableExprDemo
     {
-        public static void RunAll()
+        public static async Task RunAllAsync(IServiceProvider services)
         {
             Console.WriteLine("\n===== 9. 公共表表达式（CTE）演示 =====");
 
-            Demo1_BasicCte();
-            Demo2_CteWithFiltering();
-            Demo3_CteChainPreview();
+            var userDataViewDAO = services.GetRequiredService<DataViewDAO<User>>();
+
+            await Demo1_BasicCteAsync(userDataViewDAO);
+            await Demo2_CteWithFilteringAsync(userDataViewDAO);
+            await Demo3_CteAggregateAsync(userDataViewDAO);
         }
 
         /// <summary>
-        /// 9.1 基础 CTE：将 SELECT 子查询包装为 CTE，再用主查询引用
+        /// 9.1 基础 CTE：将 SELECT 子查询包装为 CTE，再用主查询引用并实际执行
         /// </summary>
-        private static void Demo1_BasicCte()
+        private static async Task Demo1_BasicCteAsync(DataViewDAO<User> userDataViewDAO)
         {
             DemoHelper.PrintSection("9.1 基础 CTE 定义与引用", "");
 
-            // 定义 CTE 的 SELECT 查询
-            var cteDef = new SelectExpr(
-                From(typeof(User)),
-                Prop("Id").As("Id"),
-                Prop("UserName").As("Name"),
-                Prop("Age").As("Age")
-            );
+            try
+            {
+                var cteDef = new SelectExpr(
+                    From(typeof(User)).Where(Prop("Age") >= 18),
+                    Prop("Id").As("Id"),
+                    Prop("UserName").As("Name"),
+                    Prop("Age").As("Age"),
+                    Prop("DeptId").As("DeptId")
+                );
 
-            // 使用扩展方法 .With(name) 包装为 CTE
-            var query = cteDef.With("ActiveUsers")
-                .Select(Prop("Name").As("Name"), Prop("Age").As("Age"));
+                var query = cteDef.With("ActiveUsers")
+                    .OrderBy(Prop("Age").Desc())
+                    .Section(0, 5)
+                    .Select(Prop("Name"), Prop("Age"), Prop("DeptId"));
 
-            var json = System.Text.Json.JsonSerializer.Serialize(query,
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                var dt = await userDataViewDAO.Search(query).GetResultAsync();
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
 
-            Console.WriteLine("CTE 表达式构建完成：");
-            Console.WriteLine($"  - CTE 名称: ActiveUsers");
-            Console.WriteLine($"  - CTE 定义: SELECT Id, UserName, Age FROM Users");
-            Console.WriteLine("JSON 序列化结果：");
-            Console.WriteLine(json);
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
+                DemoHelper.PrintSection("✅ 查询结果（年龄前 5 位）", FormatDataTable(dt, "Name", "Age", "DeptId"));
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"✗ 演示9.1 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
+                Console.ResetColor();
+            }
         }
 
         /// <summary>
-        /// 9.2 带过滤条件的 CTE：CTE 定义中包含 WHERE，主查询进一步过滤
+        /// 9.2 带过滤条件的 CTE：CTE 定义中包含 WHERE，主查询进一步过滤并实际执行
         /// </summary>
-        private static void Demo2_CteWithFiltering()
+        private static async Task Demo2_CteWithFilteringAsync(DataViewDAO<User> userDataViewDAO)
         {
             DemoHelper.PrintSection("9.2 带过滤条件的 CTE 查询", "");
 
-            // CTE：从 Users 表中筛选成年人
-            var cteDef = new SelectExpr(
-                From(typeof(User)).Where(Prop("Age") > 18),
-                Prop("Id").As("Id"),
-                Prop("UserName").As("Name"),
-                Prop("Age").As("Age")
-            );
+            try
+            {
+                var cteDef = new SelectExpr(
+                    From(typeof(User)).Where(Prop("Age") >= 18),
+                    Prop("Id").As("Id"),
+                    Prop("UserName").As("Name"),
+                    Prop("Age").As("Age")
+                );
 
-            // 主查询：从 CTE 中进一步筛选年龄 >= 25 的用户
-            var query = cteDef.With("AdultUsers")
-                .Where(Prop("Age") >= 25)
-                .OrderBy(Prop("Name").Asc());
+                var query = cteDef.With("AdultUsers")
+                    .Where(Prop("Age") >= 30)
+                    .OrderBy(Prop("Name").Asc())
+                    .Select(Prop("Name"), Prop("Age"));
 
-            Console.WriteLine("表达式结构：");
-            Console.WriteLine($"  WITH AdultUsers AS (");
-            Console.WriteLine($"    SELECT Id, UserName AS Name, Age");
-            Console.WriteLine($"    FROM Users WHERE Age > 18");
-            Console.WriteLine($"  )");
-            Console.WriteLine($"  SELECT * FROM AdultUsers WHERE Age >= 25 ORDER BY Name ASC");
+                var dt = await userDataViewDAO.Search(query).GetResultAsync();
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
+
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
+                DemoHelper.PrintSection("✅ 查询结果（30 岁及以上）", FormatDataTable(dt, "Name", "Age"));
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"✗ 演示9.2 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
+                Console.ResetColor();
+            }
         }
 
         /// <summary>
-        /// 9.3 CTE 链式预览：展示 Expr.From 配合 SelectExpr 构建 CTE 链
+        /// 9.3 聚合 CTE：先统计部门成年人数，再在主查询中过滤并排序
         /// </summary>
-        private static void Demo3_CteChainPreview()
+        private static async Task Demo3_CteAggregateAsync(DataViewDAO<User> userDataViewDAO)
         {
-            DemoHelper.PrintSection("9.3 CTE 与子查询表达式预览", "");
+            DemoHelper.PrintSection("9.3 聚合 CTE 实际查询", "");
 
-            // SelectExpr 既可以作为 CTE 定义，也可以直接作为子查询源
-            var subquery = new SelectExpr(
-                From(typeof(User)).Where(Prop("Age") > 18),
-                Prop("Id").As("Id"),
-                Prop("UserName").As("Name")
-            );
+            try
+            {
+                var cteDef = From<User>()
+                    .Where(Prop("Age") >= 25)
+                    .GroupBy(Prop("DeptId"))
+                    .Select(
+                        Prop("DeptId"),
+                        Prop("Id").Count().As("UserCount"),
+                        Prop("Age").Avg().As("AvgAge")
+                    );
 
-            Console.WriteLine("SelectExpr 可直接序列化为 JSON 用于前后端传输：");
-            Console.WriteLine("  - ExprType: CommonTable");
-            Console.WriteLine("  - 支持 SqlBuilder.SupportCteExpr 控制是否生成 WITH 子句");
-            Console.WriteLine("  - 当 SupportCteExpr = false 时，CTE 将展开为内联子查询");
+                var query = cteDef.With("DeptAdultStats")
+                    .Where(Prop("UserCount") >= 2)
+                    .OrderBy(Prop("UserCount").Desc())
+                    .Select(Prop("DeptId"), Prop("UserCount"), Prop("AvgAge"));
 
-            // 验证 ExprType
-            var cte = new CommonTableExpr(subquery);
-            Console.WriteLine($"\nCommonTableExpr.ExprType = {cte.ExprType}");
+                var dt = await userDataViewDAO.Search(query).GetResultAsync();
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
+
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
+                DemoHelper.PrintSection("✅ 查询结果（成年人数 >= 2 的部门）", FormatDataTable(dt, "DeptId", "UserCount", "AvgAge"));
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"✗ 演示9.3 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
+                Console.ResetColor();
+            }
+        }
+
+        private static string FormatDataTable(DataTable dt, params string[] columns)
+        {
+            if (dt.Rows.Count == 0)
+            {
+                return "  • 无匹配记录";
+            }
+
+            var sb = new StringBuilder();
+            foreach (var row in dt.Rows.Cast<DataRow>())
+            {
+                sb.Append("  • ");
+                sb.Append(string.Join(" | ", columns.Select(column => $"{column}: {row[column]}")));
+                sb.AppendLine();
+            }
+            return sb.ToString().TrimEnd();
         }
     }
 }

@@ -57,7 +57,7 @@ namespace LiteOrm.Common
             if (expr is null) return string.Empty;
 
             // 预收集 CTE 定义，通过后序遍历表达式树获取所有 CommonTableExpr 节点
-            string withClause = null;
+            var sb = ValueStringBuilder.Create(256);
             if (sqlBuilder.SupportCteExpr)
             {
                 var cteList = new List<CommonTableExpr>();
@@ -70,28 +70,21 @@ namespace LiteOrm.Common
 
                 if (cteList.Count > 0)
                 {
-                    var withSb = ValueStringBuilder.Create(256);
-                    withSb.Append("WITH ");
+                    sb.Append("WITH ");
                     for (int i = 0; i < cteList.Count; i++)
                     {
-                        if (i > 0)
-                        {
-                            withSb.Append(",");
-                            withSb.NewLine(0);
-                        }
-                        withSb.Append(sqlBuilder.ToSqlName(cteList[i].Alias));
-                        withSb.Append(" AS (");
-                        ToSqlInternal(ref withSb, cteList[i].Source, context, sqlBuilder, outputParams, MaxPriority);
-                        withSb.Append(")");
+                        if (i > 0) sb.Append(",");
+                        sb.Append(sqlBuilder.ToSqlName(cteList[i].Alias));
+                        sb.Append(" AS ");
+                        ToSqlInternal(ref sb, cteList[i].Source, context, sqlBuilder, outputParams, MaxPriority);
+                        sb.NewLine(0);
+                        context.AddTableAlias(cteList[i].Alias, null);
                     }
-                    withClause = withSb.ToString();
-                    withSb.Dispose();
+                    context.DefaultTableAliasName = null;// CTE 定义中的别名不应影响主查询的默认表别名解析
                 }
             }
-
-            var sb = ValueStringBuilder.Create(128);
             ToSqlInternal(ref sb, expr, context, sqlBuilder, outputParams);
-            string res = withClause != null ? withClause + "\n" + sb.ToString() : sb.ToString();
+            string res = sb.ToString();
             sb.Dispose();
             return res;
         }
@@ -318,7 +311,7 @@ namespace LiteOrm.Common
         /// <param name="context">SQL 构建上下文。</param>
         /// <param name="sqlBuilder">具体数据库的构建器。</param>
         /// <param name="outputParams">参数集合。</param>
-        private static void AddSqlSegment(ref SqlValueStringBuilder sql, SqlSegment sqlSegment, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void AddSqlSegmentInternal(ref SqlValueStringBuilder sql, SqlSegment sqlSegment, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (sqlSegment is null) throw new ArgumentNullException(nameof(sqlSegment));
 
@@ -344,6 +337,9 @@ namespace LiteOrm.Common
                     break;
                 case FromExpr from:
                     AddSqlSegment(ref sql, from, context, sqlBuilder, outputParams);
+                    break;
+                case CommonTableExpr commonTable:
+                    AddSqlSegment(ref sql, commonTable, context, sqlBuilder, outputParams);
                     break;
                 case TableExpr table:
                     AddSqlSegment(ref sql, table, context, sqlBuilder, outputParams);
@@ -830,10 +826,9 @@ namespace LiteOrm.Common
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, SelectExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams, MaxPriority);
-            string aliasMain = expr.Alias ?? $"T{context.Sequence++}";
-            context.DefaultTableAliasName = aliasMain;
-            sql.From.Append($" {aliasMain}");
-            context.AddTableAlias(aliasMain, null);
+            string aliasName = expr.Alias ?? $"T{context.Sequence++}";
+            sql.From.Append($" {aliasName}");
+            context.AddTableAlias(aliasName, null);
         }
 
         /// <summary>
@@ -841,7 +836,7 @@ namespace LiteOrm.Common
         /// </summary>
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, WhereExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            AddSqlSegment(ref sql, expr.Source, context, sqlBuilder, outputParams);
+            AddSqlSegmentInternal(ref sql, expr.Source, context, sqlBuilder, outputParams);
             LogicExpr whereExpr = GetContextConstFilter(context).And(expr.Where);
             if (whereExpr != null)
             {
@@ -852,10 +847,11 @@ namespace LiteOrm.Common
 
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, FromExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (expr.Source is CommonTableExpr cte)
-            {
-                context.AddTableAlias(cte.Alias, null);
-            }
+            ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams);
+        }
+
+        private static void AddSqlSegment(ref SqlValueStringBuilder sql, CommonTableExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        {
             ToSqlInternal(ref sql.From, expr, context, sqlBuilder, outputParams);
         }
 
@@ -869,7 +865,7 @@ namespace LiteOrm.Common
         /// </summary>
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, GroupByExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            AddSqlSegment(ref sql, expr.Source, context, sqlBuilder, outputParams);
+            AddSqlSegmentInternal(ref sql, expr.Source, context, sqlBuilder, outputParams);
             if (expr.GroupBys != null && expr.GroupBys.Count > 0)
             {
                 for (int i = 0; i < expr.GroupBys.Count; i++)
@@ -885,7 +881,7 @@ namespace LiteOrm.Common
         /// </summary>
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, OrderByExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            AddSqlSegment(ref sql, expr.Source, context, sqlBuilder, outputParams);
+            AddSqlSegmentInternal(ref sql, expr.Source, context, sqlBuilder, outputParams);
             if (expr.OrderBys != null && expr.OrderBys.Count > 0)
             {
                 for (int i = 0; i < expr.OrderBys.Count; i++)
@@ -902,7 +898,7 @@ namespace LiteOrm.Common
         /// </summary>
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, SectionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            AddSqlSegment(ref sql, expr.Source, context, sqlBuilder, outputParams);
+            AddSqlSegmentInternal(ref sql, expr.Source, context, sqlBuilder, outputParams);
             sql.Skip = expr.Skip;
             sql.Take = expr.Take;
         }
@@ -912,7 +908,7 @@ namespace LiteOrm.Common
         /// </summary>
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, HavingExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            AddSqlSegment(ref sql, expr.Source, context, sqlBuilder, outputParams);
+            AddSqlSegmentInternal(ref sql, expr.Source, context, sqlBuilder, outputParams);
             if (expr.Having != null)
             {
                 ToSqlInternal(ref sql.Having, expr.Having, context, sqlBuilder, outputParams);
@@ -972,29 +968,26 @@ namespace LiteOrm.Common
 
         private static void ToSql(ref ValueStringBuilder sb, SelectExpr select, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            //using (context.BeginScope())
-            {
-                SqlValueStringBuilder sql = new SqlValueStringBuilder();
-                AddSqlSegment(ref sql, select.Source, context, sqlBuilder, outputParams);
+            SqlValueStringBuilder sql = new SqlValueStringBuilder();
+            AddSqlSegmentInternal(ref sql, select.Source, context, sqlBuilder, outputParams);
 
-                if (select.Selects == null || select.Selects.Count == 0)
-                {
-                    sql.Select.Append("*");
-                }
-                else
-                {
-                    for (int i = 0; i < select.Selects.Count; i++)
-                    {
-                        if (i > 0) sql.Select.Append(", ");
-                        sql.Select.NewLine(context.Indent, true);
-                        ToSqlInternal(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
-                    }
-                }
-                // 如果 SQL 片段链中缺少 Where 片段，则未触发常量过滤条件的插入，需补常量过滤条件到 Where 片段，以确保常量过滤条件始终生效
-                if (sql.Where.Length == 0) ToSqlInternal(ref sql.Where, GetContextConstFilter(context), context, sqlBuilder, outputParams);
-                sqlBuilder.BuildSelectSql(ref sql, ref sb, context.Indent);
-                sql.Dispose();
+            if (select.Selects == null || select.Selects.Count == 0)
+            {
+                sql.Select.Append("*");
             }
+            else
+            {
+                for (int i = 0; i < select.Selects.Count; i++)
+                {
+                    if (i > 0) sql.Select.Append(", ");
+                    sql.Select.NewLine(context.Indent, true);
+                    ToSqlInternal(ref sql.Select, select.Selects[i], context, sqlBuilder, outputParams);
+                }
+            }
+            // 如果 SQL 片段链中缺少 Where 片段，则未触发常量过滤条件的插入，需补常量过滤条件到 Where 片段，以确保常量过滤条件始终生效
+            if (sql.Where.Length == 0) ToSqlInternal(ref sql.Where, GetContextConstFilter(context), context, sqlBuilder, outputParams);
+            sqlBuilder.BuildSelectSql(ref sql, ref sb, context.Indent);
+            sql.Dispose();
             foreach (var next in select.NextSelects)
             {
                 sb.NewLine(context.Indent);
@@ -1052,16 +1045,16 @@ namespace LiteOrm.Common
         private static void ToSql(ref ValueStringBuilder sb, CommonTableExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
             if (expr.Source == null) return;
-            if (sqlBuilder.SupportCteExpr)
+            if (!sqlBuilder.SupportCteExpr)
             {
                 sb.Append(sqlBuilder.ToSqlName(expr.Alias));
             }
             else
             {
-                sb.Append("(");
                 ToSqlInternal(ref sb, expr.Source, context, sqlBuilder, outputParams, MaxPriority);
-                sb.Append(") ");
+                sb.Append(" ");
                 sb.Append(sqlBuilder.ToSqlName(expr.Alias));
+                context.AddTableAlias(expr.Alias, null);
             }
         }
 

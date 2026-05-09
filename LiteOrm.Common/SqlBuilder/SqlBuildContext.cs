@@ -213,7 +213,7 @@ namespace LiteOrm.Common
             {
                 if (string.IsNullOrEmpty(aliasName)) throw new ArgumentException("Alias name cannot be null or empty.");
                 if (_aliasTableMap.ContainsKey(aliasName)) return false;
-                if (_aliasTableMap.Count == 0 && String.IsNullOrEmpty(DefaultTableAliasName)) DefaultTableAliasName = aliasName;
+                if (String.IsNullOrEmpty(DefaultTableAliasName)) DefaultTableAliasName = aliasName;
                 _aliasTableMap.Add(aliasName, table);
                 return true;
             }

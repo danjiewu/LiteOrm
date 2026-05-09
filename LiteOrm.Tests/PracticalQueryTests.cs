@@ -217,6 +217,103 @@ namespace LiteOrm.Tests
 
         #endregion
 
+        #region CommonTableExpr 实际数据库查询测试
+
+        [Fact]
+        public async Task CommonTableExpr_BasicQuery_ShouldReturnFilteredRows()
+        {
+            var ct = TestContext.Current.CancellationToken;
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            await userService.BatchInsertAsync(
+            [
+                new TestUser { Name = "CteBasic_User1", Age = 22, DeptId = 1, CreateTime = DateTime.Now },
+                new TestUser { Name = "CteBasic_User2", Age = 31, DeptId = 1, CreateTime = DateTime.Now },
+                new TestUser { Name = "CteBasic_User3", Age = 38, DeptId = 2, CreateTime = DateTime.Now }
+            ], ct);
+
+            var cteDef = new SelectExpr(
+                Expr.From<TestUser>().Where(Expr.Prop("Name").StartsWith("CteBasic_")),
+                Expr.Prop("Name").As("Name"),
+                Expr.Prop("Age").As("Age"),
+                Expr.Prop("DeptId").As("DeptId"));
+
+            var query = cteDef.With("AdultUsers")
+                .Where(Expr.Prop("Age") >= 30)
+                .OrderBy(Expr.Prop("Name").Asc())
+                .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Prop("DeptId"));
+
+            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder);
+            var dt = await dataViewDAO.Search(query).GetResultAsync(ct);
+
+            Assert.Contains("WITH", prepared.Sql, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("AdultUsers", prepared.Sql, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(2, dt.Rows.Count);
+
+            var names = dt.Rows.Cast<DataRow>().Select(r => r["Name"]?.ToString()).ToList();
+            Assert.Equal(["CteBasic_User2", "CteBasic_User3"], names);
+        }
+
+        [Fact]
+        public async Task CommonTableExpr_AggregateQuery_ShouldReturnGroupedRows()
+        {
+            var ct = TestContext.Current.CancellationToken;
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            var dept1 = new TestDepartment { Name = "CteStatsDept1" };
+            var dept2 = new TestDepartment { Name = "CteStatsDept2" };
+            await deptService.InsertAsync(dept1, ct);
+            await deptService.InsertAsync(dept2, ct);
+
+            await userService.BatchInsertAsync(
+            [
+                new TestUser { Name = "CteStats_User1", Age = 25, DeptId = dept1.Id, CreateTime = DateTime.Now },
+                new TestUser { Name = "CteStats_User2", Age = 35, DeptId = dept1.Id, CreateTime = DateTime.Now },
+                new TestUser { Name = "CteStats_User3", Age = 26, DeptId = dept2.Id, CreateTime = DateTime.Now },
+                new TestUser { Name = "CteStats_User4", Age = 31, DeptId = dept2.Id, CreateTime = DateTime.Now },
+                new TestUser { Name = "CteStats_User5", Age = 42, DeptId = dept2.Id, CreateTime = DateTime.Now }
+            ], ct);
+
+            var cteDef = Expr.From<TestUser>()
+                .Where(Expr.Prop("Name").StartsWith("CteStats_"))
+                .GroupBy(Expr.Prop("DeptId"))
+                .Select(
+                    Expr.Prop("DeptId"),
+                    Expr.Prop("Id").Count().As("UserCount"),
+                    Expr.Prop("Age").Avg().As("AvgAge"));
+
+            var query = cteDef.With("DeptStats")
+                .Where(Expr.Prop("UserCount") >= 2)
+                .OrderBy(Expr.Prop("UserCount").Desc())
+                .Select(Expr.Prop("DeptId"), Expr.Prop("UserCount"), Expr.Prop("AvgAge"));
+
+            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder);
+            var dt = await dataViewDAO.Search(query).GetResultAsync(ct);
+
+            Assert.Contains("WITH", prepared.Sql, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("DeptStats", prepared.Sql, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(2, dt.Rows.Count);
+
+            var rows = dt.Rows.Cast<DataRow>()
+                .Select(r => new
+                {
+                    DeptId = Convert.ToInt32(r["DeptId"]),
+                    UserCount = Convert.ToInt32(r["UserCount"])
+                })
+                .OrderBy(r => r.DeptId)
+                .ToList();
+
+            Assert.Equal(dept1.Id, rows[0].DeptId);
+            Assert.Equal(2, rows[0].UserCount);
+            Assert.Equal(dept2.Id, rows[1].DeptId);
+            Assert.Equal(3, rows[1].UserCount);
+        }
+
+        #endregion
+
         #region TableJoinExpr 实际数据库查询测试
 
         [Fact]
