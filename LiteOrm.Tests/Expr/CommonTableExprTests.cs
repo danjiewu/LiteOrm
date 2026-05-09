@@ -172,15 +172,14 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
-        public void SelectExpr_With_Extension_CreatesFromExprWithCte()
+        public void SelectExpr_With_Extension_CreatesExprWithCte()
         {
             var selectExpr = new SelectExpr(null, Expr.Prop("Id").As("Id"));
             var from = selectExpr.With("MyCTE");
 
-            Assert.IsType<FromExpr>(from);
-            var cte = Assert.IsType<CommonTableExpr>(from.Source);
+            Assert.IsType<CommonTableExpr>(from);
+            var cte = Assert.IsType<SelectExpr>(from.Source);
             Assert.Equal("MyCTE", cte.Alias);
-            Assert.Same(selectExpr, cte.Source);
         }
 
     }

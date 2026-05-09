@@ -16,9 +16,10 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-			修复ExistsKey错误;
-			修复联合主键建表语句错误;
-		</PackageReleaseNotes>
+      增加CTE表达式支持;
+      修复ExistsKey错误;
+      修复联合主键建表语句错误;
+    </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 using LiteOrm.Common;
 using Xunit;
@@ -451,6 +452,39 @@ namespace LiteOrm.Common.UnitTests
 
             var cte = Assert.IsType<CommonTableExpr>(result);
             Assert.Equal("MyCTE", cte.Alias);
+        }
+
+        [Fact]
+        public void SerializeAndDeserialize_DuplicateCommonTableAlias_UsesAliasOnlyAfterFirst()
+        {
+            var first = new SelectExpr(new FromExpr(typeof(string)), Expr.Prop("Id").As("Id")).With("MyCTE");
+            var second = new SelectExpr(new FromExpr(typeof(string)), Expr.Prop("Id").As("Id")).With("MyCTE");
+            var expr = first
+                .Where(Expr.Prop("Id").In(second.Select(Expr.Prop("Id"))))
+                .Select(Expr.Prop("Id"));
+
+            var json = JsonSerializer.Serialize<Expr>(expr);
+
+            Assert.Equal(1, Regex.Matches(json, "\"Alias\":\"MyCTE\"").Count);
+            Assert.Contains("\"$cte\":\"MyCTE\"", json);
+
+            var result = JsonSerializer.Deserialize<Expr>(json);
+            Assert.Equal(expr, result);
+        }
+
+        [Fact]
+        public void Serialize_DifferentCommonTableAliasDefinitions_ThrowsInvalidOperationException()
+        {
+            var first = new SelectExpr(new FromExpr(typeof(string)), Expr.Prop("Id").As("Id")).With("MyCTE");
+            var second = new SelectExpr(
+                new FromExpr(typeof(string)).Where(Expr.Prop("Age") > 18),
+                Expr.Prop("Id").As("Id")).With("MyCTE");
+            var expr = first
+                .Where(Expr.Prop("Id").In(second.Select(Expr.Prop("Id"))))
+                .Select(Expr.Prop("Id"));
+
+            var ex = Assert.Throws<InvalidOperationException>(() => JsonSerializer.Serialize<Expr>(expr));
+            Assert.Contains("MyCTE", ex.Message);
         }
     }
 }

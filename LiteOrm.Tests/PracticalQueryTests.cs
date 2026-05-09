@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -310,6 +311,48 @@ namespace LiteOrm.Tests
             Assert.Equal(2, rows[0].UserCount);
             Assert.Equal(dept2.Id, rows[1].DeptId);
             Assert.Equal(3, rows[1].UserCount);
+        }
+
+        [Fact]
+        public void CommonTableExpr_DuplicateEquivalentAliases_ShouldKeepSingleDefinition()
+        {
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            var first = Expr.From<TestUser>()
+                .Select(Expr.Prop("Name").As("Name"))
+                .With("DupCte");
+            var second = Expr.From<TestUser>()
+                .Select(Expr.Prop("Name").As("Name"))
+                .With("DupCte");
+
+            var query = first
+                .Select(Expr.Prop("Name"))
+                .Union(second.Select(Expr.Prop("Name")));
+
+            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder);
+
+            Assert.Equal(1, Regex.Matches(prepared.Sql, "\"DupCte\" AS", RegexOptions.IgnoreCase).Count);
+        }
+
+        [Fact]
+        public void CommonTableExpr_DuplicateDifferentAliases_ShouldThrowInvalidOperationException()
+        {
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            var first = Expr.From<TestUser>()
+                .Select(Expr.Prop("Name").As("Name"))
+                .With("DupCte");
+            var second = Expr.From<TestUser>()
+                .Where(Expr.Prop("Age") > 30)
+                .Select(Expr.Prop("Name").As("Name"))
+                .With("DupCte");
+
+            var query = first
+                .Select(Expr.Prop("Name"))
+                .Union(second.Select(Expr.Prop("Name")));
+
+            var ex = Assert.Throws<InvalidOperationException>(() => query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder));
+            Assert.Contains("DupCte", ex.Message);
         }
 
         #endregion

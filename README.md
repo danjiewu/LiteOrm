@@ -338,6 +338,36 @@ var dataTable = await dataViewDAO.Search(
 ).GetResultAsync();
 ```
 
+> `ExprString` 不支持把 `SelectExpr.With(name)` / `CommonTableExpr` 这样的 CTE 表达式自动转成 `WITH` SQL；如果需要 CTE，请使用 `Expr` / `SelectExpr` 构建，或在 DAO 层手动写完整 SQL。
+
+### `CTE`（公共表表达式）
+
+LiteOrm 支持用 `SelectExpr.With(name)` 构建 CTE：
+
+```csharp
+var cteDef = Expr.From<User>()
+    .Where(Expr.Prop("Age") >= 18)
+    .Select(
+        Expr.Prop("Id").As("Id"),
+        Expr.Prop("UserName").As("Name"),
+        Expr.Prop("Age").As("Age")
+    );
+
+var query = cteDef.With("AdultUsers")
+    .Where(Expr.Prop("Age") >= 25)
+    .OrderBy(Expr.Prop("Name").Asc())
+    .Select(Expr.Prop("Name"), Expr.Prop("Age"));
+
+var result = await dataViewDAO.Search(query).GetResultAsync();
+```
+
+同别名 CTE 现在会先做校验：
+
+- 定义相等：自动去重，只保留第一个
+- 定义不相等：抛出异常
+
+详细说明见：[CTE 指南](./docs/02-core-usage/07-cte-guide.md)
+
 
 
 ### `EXISTS` 子查询

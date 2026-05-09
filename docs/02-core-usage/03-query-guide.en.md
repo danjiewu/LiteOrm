@@ -383,6 +383,7 @@ var dataTable = await dataViewDAO.Search(
 - `ExprString` is better for "partial SQL customization". Don't stuff entire complex business SQL into interpolated strings.
 - Conditions that can be expressed with `Expr.Prop(...)` and `Expr.Value(...)` should not be handwritten.
 - If a certain SQL fragment is reused repeatedly, extract it to a DAO or extension method, rather than copying it throughout business code.
+- `ExprString` does **not** auto-expand `CommonTableExpr` / `SelectExpr.With(name)` into CTE SQL. If you need `WITH`, write the full SQL manually.
 
 ```csharp
 // Recommended: Use ExprString only for necessary fragments
@@ -390,6 +391,23 @@ var condition = Expr.Prop("Age") >= 18;
 var result = await userViewDAO.Search(
     $"WHERE {condition} ORDER BY CreateTime DESC"
 ).ToListAsync();
+```
+
+If you need CTE together with `ExprString`, write the full SQL explicitly:
+
+```csharp
+var result = await dataViewDAO.Search(
+    $"""
+    WITH ActiveUsers AS (
+        SELECT Id, UserName, Age
+        FROM Users
+        WHERE Age >= {minAge}
+    )
+    SELECT Id, UserName, Age
+    FROM ActiveUsers
+    """,
+    isFull: true
+).GetResultAsync();
 ```
 
 ## 5. Service vs DAO Queries
@@ -424,6 +442,7 @@ var users = await userViewDAO.Search($"WHERE {Expr.Prop("Age")} > {minAge}").ToL
 ## 6. Next steps
 
 - [Back to documentation hub](../README.md)
+- [CTE Guide](./07-cte-guide.en.md)
 - [Associations Guide](./05-associations.en.md)
 - [CRUD Guide](./04-crud-guide.en.md)
 - [Transactions](../03-advanced-topics/01-transactions.en.md)

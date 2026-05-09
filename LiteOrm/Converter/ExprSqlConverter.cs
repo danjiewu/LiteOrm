@@ -60,13 +60,7 @@ namespace LiteOrm.Common
             var sb = ValueStringBuilder.Create(256);
             if (sqlBuilder.SupportCteExpr)
             {
-                var cteList = new List<CommonTableExpr>();
-                ExprVisitor.Visit(node =>
-                {
-                    if (node is CommonTableExpr cte && cte.Source != null && !string.IsNullOrEmpty(cte.Alias))
-                        cteList.Add(cte);
-                    return true;
-                }, expr, ExprVisitOrder.PostOrder);
+                var cteList = CollectCteExprs(expr);
 
                 if (cteList.Count > 0)
                 {
@@ -87,6 +81,48 @@ namespace LiteOrm.Common
             string res = sb.ToString();
             sb.Dispose();
             return res;
+        }
+
+        private static List<CommonTableExpr> CollectCteExprs(Expr expr)
+        {
+            var cteList = new List<CommonTableExpr>();
+            var cteMap = new Dictionary<string, CommonTableExpr>(StringComparer.Ordinal);
+
+            ExprVisitor.Visit(node =>
+            {
+                if (node is not CommonTableExpr cte || string.IsNullOrEmpty(cte.Alias))
+                {
+                    return true;
+                }
+
+                if (!cteMap.TryGetValue(cte.Alias, out var existing))
+                {
+                    if (cte.Source == null)
+                    {
+                        throw new InvalidOperationException($"CTE '{cte.Alias}' is referenced before its definition is available.");
+                    }
+
+                    // 后序遍历保证第一次收集到的是最靠近定义的位置，后续同名节点只做一致性校验。
+                    cteMap.Add(cte.Alias, cte);
+                    cteList.Add(cte);
+                    return true;
+                }
+
+                if (cte.Source == null)
+                {
+                    // 只有别名的引用节点会复用首个完整定义，不再重复写入 WITH。
+                    return true;
+                }
+
+                if (!Equals(existing.Source, cte.Source))
+                {
+                    throw new InvalidOperationException($"CTE '{cte.Alias}' has multiple different definitions.");
+                }
+
+                return true;
+            }, expr, ExprVisitOrder.PostOrder);
+
+            return cteList;
         }
 
         /// <summary>
@@ -1044,17 +1080,28 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, CommonTableExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            if (expr.Source == null) return;
-            if (!sqlBuilder.SupportCteExpr)
+            if (sqlBuilder.SupportCteExpr)
             {
+                if (string.IsNullOrEmpty(expr.Alias))
+                {
+                    throw new InvalidOperationException("CTE alias cannot be null or empty when rendering a CTE reference.");
+                }
                 sb.Append(sqlBuilder.ToSqlName(expr.Alias));
             }
             else
             {
-                ToSqlInternal(ref sb, expr.Source, context, sqlBuilder, outputParams, MaxPriority);
-                sb.Append(" ");
+                if (expr.Source == null)
+                {
+                    throw new InvalidOperationException($"CTE '{expr.Alias}' cannot be inlined because its definition is unavailable.");
+                }
+
+                sb.Append("(");
+                using (context.BeginScope())
+                {
+                    ToSqlInternal(ref sb, expr.Source, context, sqlBuilder, outputParams);
+                }
+                sb.Append(") ");
                 sb.Append(sqlBuilder.ToSqlName(expr.Alias));
-                context.AddTableAlias(expr.Alias, null);
             }
         }
 

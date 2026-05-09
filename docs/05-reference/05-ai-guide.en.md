@@ -430,6 +430,8 @@ The interpolated string handler lets you embed Expr objects directly into the st
 var result = dao.Search($"WHERE {Expr.Prop("DeptName") == deptName} AND {Expr.Prop("Age") > 18}");
 ```
 
+> `ExprString` does not auto-expand `SelectExpr.With(name)` / `CommonTableExpr` into `WITH` SQL. When you need CTE, prefer the structured `Expr` / `SelectExpr` path; if you must use `ExprString`, handwrite the full `WITH ... SELECT ...` SQL.
+
 ### Common patterns
 
 ```csharp

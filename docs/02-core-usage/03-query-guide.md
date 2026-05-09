@@ -678,6 +678,8 @@ var combinedList = await viewService.SearchAsync(
 
 ## 8. 公共表表达式（CTE）
 
+> 这部分已整理为独立章节，建议优先阅读：[CTE 指南](./07-cte-guide.md)。
+
 CTE（Common Table Expression）允许将子查询定义为命名的临时结果集，在主查询中通过名称引用。适合需要多次引用同一子查询、或需要将复杂查询拆解为更易读的多个步骤的场景。
 
 ### 8.1 基础用法
@@ -731,9 +733,33 @@ public class OldDatabaseBuilder : SqlBuilder
 }
 ```
 
+### 8.4 `ExprString` 限制
+
+`ExprString` 不支持把 `CommonTableExpr` / `SelectExpr.With(name)` 这样的 CTE 表达式自动展开为 `WITH` SQL。
+
+- 如果你希望保持结构化表达式构建，请使用 `Expr` / `SelectExpr`
+- 如果你必须走 `ExprString` / DAO 原生 SQL，请手动写完整 `WITH ... SELECT ...` 语句
+
+```csharp
+// 正确：直接手写完整 CTE SQL
+var result = await dataViewDAO.Search(
+    $"""
+    WITH ActiveUsers AS (
+        SELECT Id, UserName, Age
+        FROM Users
+        WHERE Age >= {minAge}
+    )
+    SELECT Id, UserName, Age
+    FROM ActiveUsers
+    """,
+    isFull: true
+).GetResultAsync();
+```
+
 ## 相关链接
 
 - [返回目录](../README.md)
+- [CTE 指南](./07-cte-guide.md)
 - [关联查询](./05-associations.md)
 - [增删改查](./04-crud-guide.md)
 - [事务处理](../03-advanced-topics/01-transactions.md)

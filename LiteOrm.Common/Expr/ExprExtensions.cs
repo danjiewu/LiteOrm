@@ -597,17 +597,16 @@ namespace LiteOrm.Common
         public static SelectExpr Select(this ISelectAnchor source, params string[] selectProperties) => Select(source, Array.ConvertAll(selectProperties, prop => (ValueTypeExpr)Expr.Prop(prop)));
 
         /// <summary>
-        /// 将当前 SelectExpr 包装为公共表表达式（CTE），返回一个以该 CTE 为数据源的 <see cref="FromExpr"/>。
+        /// 将当前 SelectExpr 包装为公共表表达式（CTE） <see cref="CommonTableExpr"/>。
         /// 生成的 SQL 将以 WITH 子句开头，后跟引用该 CTE 的主查询。
         /// </summary>
         /// <param name="selectExpr">CTE 定义查询。</param>
-        /// <param name="name">CTE 名称。</param>
-        /// <returns>以该 CTE 为数据源的 <see cref="FromExpr"/>。</returns>
-        public static FromExpr With(this SelectExpr selectExpr, string name)
+        /// <param name="alias">CTE 名称。</param>
+        /// <returns> CTE 数据源。</returns>
+        public static CommonTableExpr With(this SelectExpr selectExpr, string alias)
         {
-            selectExpr.Alias = name;
-            var cte = new CommonTableExpr(selectExpr);
-            return new FromExpr(cte);
+            if (String.IsNullOrEmpty(alias)) throw new ArgumentNullException(nameof(alias));
+            return new CommonTableExpr(selectExpr) { Alias = alias };
         }
 
         /// <summary>
@@ -721,7 +720,7 @@ namespace LiteOrm.Common
         {
             foreach (var (propName, valueExpr) in assignments)
             {
-                source.Sets.Add(new (Expr.Prop(propName), valueExpr));
+                source.Sets.Add(new(Expr.Prop(propName), valueExpr));
             }
             return source;
         }
@@ -743,6 +742,35 @@ namespace LiteOrm.Common
         {
             if (condition) source.Sets.Add(new(Expr.Prop(propName), valueExpr));
             return source;
+        }
+
+        /// <summary>
+        /// 添加 JOIN 子句连接到目标数据源。
+        /// </summary>
+        /// <param name="source">源数据源表达式。</param>
+        /// <param name="target">目标数据源表达式。</param>
+        /// <param name="onCondition">连接条件表达式。</param>
+        /// <param name="joinType">连接类型，默认为左连接。</param>
+        /// <returns>包含 JOIN 子句的 FromExpr。</returns>
+        public static FromExpr Join(this FromExpr source, SourceExpr target, LogicExpr onCondition, TableJoinType joinType = TableJoinType.Left)
+        {
+            source.Joins.Add(new TableJoinExpr(target, onCondition) { JoinType = joinType });
+            return source;
+        }
+
+        /// <summary>
+        /// 创建一个新的 FromExpr，并在其上添加一个 JOIN 子句连接到目标数据源。
+        /// </summary>
+        /// <param name="source">源数据源表达式。</param>
+        /// <param name="target">目标数据源表达式。</param>
+        /// <param name="onCondition">连接条件表达式。</param>
+        /// <param name="joinType">连接类型，默认为左连接。</param>
+        /// <returns>包含 JOIN 子句的 FromExpr。</returns>
+        public static FromExpr Join(this SourceExpr source, SourceExpr target, LogicExpr onCondition, TableJoinType joinType = TableJoinType.Left)
+        {
+            FromExpr fromExpr = new FromExpr(source);
+            fromExpr.Joins.Add(new TableJoinExpr(target, onCondition) { JoinType = joinType });
+            return fromExpr;
         }
         /// <summary>
         /// 为 SQL 语句添加 ORDER BY 子句。

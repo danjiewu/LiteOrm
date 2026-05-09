@@ -321,6 +321,36 @@ var dataTable = await dataViewDAO.Search(
 ).GetResultAsync();
 ```
 
+> `ExprString` does not auto-convert `SelectExpr.With(name)` / `CommonTableExpr` into `WITH` SQL. If you need CTE, use the structured `Expr` / `SelectExpr` model, or handwrite the full SQL inside the DAO call.
+
+### `CTE` (Common Table Expression)
+
+LiteOrm supports CTE through `SelectExpr.With(name)`:
+
+```csharp
+var cteDef = Expr.From<User>()
+    .Where(Expr.Prop("Age") >= 18)
+    .Select(
+        Expr.Prop("Id").As("Id"),
+        Expr.Prop("UserName").As("Name"),
+        Expr.Prop("Age").As("Age")
+    );
+
+var query = cteDef.With("AdultUsers")
+    .Where(Expr.Prop("Age") >= 25)
+    .OrderBy(Expr.Prop("Name").Asc())
+    .Select(Expr.Prop("Name"), Expr.Prop("Age"));
+
+var result = await dataViewDAO.Search(query).GetResultAsync();
+```
+
+Duplicate CTE aliases are now validated before SQL generation:
+
+- equal definitions: deduplicated automatically, only the first is kept
+- different definitions: an exception is thrown
+
+See: [CTE Guide](./docs/02-core-usage/07-cte-guide.en.md)
+
 
 
 ### `EXISTS` subqueries

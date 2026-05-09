@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 
 namespace LiteOrm.Common
 {
@@ -74,6 +75,9 @@ namespace LiteOrm.Common
 
             private static readonly Dictionary<string, LogicOperator> _jsonToLogicOperator = new(StringComparer.OrdinalIgnoreCase);
             private static readonly Dictionary<string, ValueOperator> _jsonToValueOperator = new(StringComparer.OrdinalIgnoreCase);
+            // 同一次序列化/反序列化过程中需要跨递归层共享 CTE 定义表，才能实现“首个完整定义 + 后续别名引用”。
+            private static readonly AsyncLocal<CommonTableWriteContext> _writeContext = new();
+            private static readonly AsyncLocal<CommonTableReadContext> _readContext = new();
 
             static ExprJsonConverter()
             {
@@ -92,122 +96,130 @@ namespace LiteOrm.Common
 
             public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
             {
-                if (reader.TokenType == JsonTokenType.Null) return null;
-
-                // 非对象直接视为常量值
-                if (reader.TokenType != JsonTokenType.StartObject)
+                var context = EnterReadContext();
+                try
                 {
-                    return (T)(Expr)new ValueExpr(ReadNative(ref reader, options));
-                }
+                    if (reader.TokenType == JsonTokenType.Null) return null;
 
-                Expr result = null;
-                while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-                {
-                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                    string propName = reader.GetString() ?? string.Empty;
+                    // 非对象直接视为常量值
+                    if (reader.TokenType != JsonTokenType.StartObject)
+                    {
+                        return (T)(Expr)new ValueExpr(ReadNative(ref reader, options));
+                    }
 
-                    if (propName == "@")
+                    Expr result = null;
+                    while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                     {
-                        reader.Read();
-                        result = new ValueExpr(ReadNative(ref reader, options)) { IsConst = false };
-                    }
-                    else if (propName == "#")
-                    {
-                        reader.Read();
-                        string stringValue = reader.GetString() ?? string.Empty;
-                        string[] parts = stringValue.Split(['.'], 2, StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length == 2)
-                            result = Expr.Prop(parts[0], parts[1]);
-                        else
-                            result = Expr.Prop(stringValue);
-                    }
-                    else if (propName == "!")
-                    {
-                        reader.Read();
-                        result = new NotExpr(JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr);
-                    }
-                    else if (propName.StartsWith("$"))
-                    {
-                        // 读取标识（可能是 "$": "like" 或 "$like": {...}）
-                        string mark = propName == "$" ? null : propName.Substring(1);
-                        if (mark == null)
+                        if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                        string propName = reader.GetString() ?? string.Empty;
+
+                        if (propName == "@")
                         {
                             reader.Read();
-                            mark = reader.GetString()?.ToLower();
+                            result = new ValueExpr(ReadNative(ref reader, options)) { IsConst = false };
                         }
+                        else if (propName == "#")
+                        {
+                            reader.Read();
+                            string stringValue = reader.GetString() ?? string.Empty;
+                            string[] parts = stringValue.Split(['.'], 2, StringSplitOptions.RemoveEmptyEntries);
+                            if (parts.Length == 2)
+                                result = Expr.Prop(parts[0], parts[1]);
+                            else
+                                result = Expr.Prop(stringValue);
+                        }
+                        else if (propName == "!")
+                        {
+                            reader.Read();
+                            result = new NotExpr(JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr);
+                        }
+                        else if (propName.StartsWith("$"))
+                        {
+                            // 读取标识（可能是 "$": "like" 或 "$like": {...}）
+                            string mark = propName == "$" ? null : propName.Substring(1);
+                            if (mark == null)
+                            {
+                                reader.Read();
+                                mark = reader.GetString()?.ToLower();
+                            }
 
-                        if (mark is not null && _jsonToLogicOperator.TryGetValue(mark, out var lbop))
-                        {
-                            result = ReadLogicBinary(ref reader, options, lbop);
-                            break;
+                            if (mark is not null && _jsonToLogicOperator.TryGetValue(mark, out var lbop))
+                            {
+                                result = ReadLogicBinary(ref reader, options, lbop);
+                                break;
+                            }
+                            else if (mark is not null && _jsonToValueOperator.TryGetValue(mark, out var vbop))
+                            {
+                                result = ReadValueBinary(ref reader, options, vbop);
+                                break;
+                            }
+                            else if (mark is not null && Enum.TryParse<LogicOperator>(mark, true, out var lbop2))
+                            {
+                                result = ReadLogicBinary(ref reader, options, lbop2);
+                                break;
+                            }
+                            else if (mark is not null && Enum.TryParse<ValueOperator>(mark, true, out var vbop2))
+                            {
+                                result = ReadValueBinary(ref reader, options, vbop2);
+                                break;
+                            }
+                            else
+                            {
+                                // 特殊标识映射
+                                if (mark == "bin") { result = ReadValueBinary(ref reader, options); break; }
+                                if (mark == "logic") { result = ReadLogicBinary(ref reader, options); break; }
+                                if (mark == "and") { result = ReadAndExpr(ref reader, options); break; }
+                                if (mark == "or") { result = ReadOrExpr(ref reader, options); break; }
+                                if (mark == "set") { result = ReadValueSet(ref reader, options); break; }
+                                if (mark == "func") { result = ReadFunction(ref reader, options); break; }
+                                if (mark == "prop") { result = ReadProperty(ref reader, options); break; }
+                                if (mark == "not") { result = ReadNot(ref reader, options); break; }
+                                if (mark == "unary") { result = ReadValueUnary(ref reader, options); break; }
+                                if (mark == "sql") { result = ReadSql(ref reader, options); break; }
+                                if (mark == "value") { result = ReadValueBody(ref reader, options); break; }
+                                if (mark == "const") { result = ReadValueBody(ref reader, options, true); break; }
+                                if (mark == "foreign") { result = ReadForeign(ref reader, options); break; }
+                                if (mark == "delete") { result = propName != "$" ? new DeleteExpr() { Table = JsonSerializer.Deserialize<TableExpr>(ref reader, options) } : new DeleteExpr(); }
+                                if (mark == "update") { result = propName != "$" ? new UpdateExpr() { Table = JsonSerializer.Deserialize<TableExpr>(ref reader, options) } : new UpdateExpr(); }
+                                if (mark == "from") { result = new FromExpr(); }
+                                if (mark == "table") { result = new TableExpr(); }
+                                if (mark == "join") { result = new TableJoinExpr(); }
+                                if (mark == "where") { result = new WhereExpr(); }
+                                if (mark == "orderby") { result = new OrderByExpr(); }
+                                if (mark == "orderbyitem") { result = new OrderByItemExpr(); }
+                                if (mark == "group") { result = new GroupByExpr(); }
+                                if (mark == "having") { result = new HavingExpr(); }
+                                if (mark == "section") { result = new SectionExpr(); }
+                                if (mark == "select") { result = new SelectExpr(); }
+                                if (mark == "selectitem") { result = new SelectItemExpr(); }
+                                if (mark == "cte") { result = new CommonTableExpr(); }
+                                // 对于 SQL 片段类型且是通过简写形式传值（例如 "$table": "Full.Type.Name" 或 "$from": {...}）
+                                if (result is SqlSegment segment && propName != "$")
+                                {
+                                    // 需要先读取属性值的位置
+                                    reader.Read();
+                                    ReadSqlSegmentProperty(ref reader, segment, propName, options);
+                                }
+                            }
                         }
-                        else if (mark is not null && _jsonToValueOperator.TryGetValue(mark, out var vbop))
+                        else if (result is not null)
                         {
-                            result = ReadValueBinary(ref reader, options, vbop);
-                            break;
-                        }
-                        else if (mark is not null && Enum.TryParse<LogicOperator>(mark, true, out var lbop2))
-                        {
-                            result = ReadLogicBinary(ref reader, options, lbop2);
-                            break;
-                        }
-                        else if (mark is not null && Enum.TryParse<ValueOperator>(mark, true, out var vbop2))
-                        {
-                            result = ReadValueBinary(ref reader, options, vbop2);
-                            break;
+                            ReadResultProperty(ref reader, result, propName, options);
                         }
                         else
                         {
-                            // 特殊标识映射
-                            if (mark == "bin") { result = ReadValueBinary(ref reader, options); break; }
-                            if (mark == "logic") { result = ReadLogicBinary(ref reader, options); break; }
-                            if (mark == "and") { result = ReadAndExpr(ref reader, options); break; }
-                            if (mark == "or") { result = ReadOrExpr(ref reader, options); break; }
-                            if (mark == "set") { result = ReadValueSet(ref reader, options); break; }
-                            if (mark == "func") { result = ReadFunction(ref reader, options); break; }
-                            if (mark == "prop") { result = ReadProperty(ref reader, options); break; }
-                            if (mark == "not") { result = ReadNot(ref reader, options); break; }
-                            if (mark == "unary") { result = ReadValueUnary(ref reader, options); break; }
-                            if (mark == "sql") { result = ReadSql(ref reader, options); break; }
-                            if (mark == "value") { result = ReadValueBody(ref reader, options); break; }
-                            if (mark == "const") { result = ReadValueBody(ref reader, options, true); break; }
-                            if (mark == "foreign") { result = ReadForeign(ref reader, options); break; }
-                            if (mark == "delete") { result = propName != "$" ? new DeleteExpr() { Table = JsonSerializer.Deserialize<TableExpr>(ref reader, options) } : new DeleteExpr(); }
-                            if (mark == "update") { result = propName != "$" ? new UpdateExpr() { Table = JsonSerializer.Deserialize<TableExpr>(ref reader, options) } : new UpdateExpr(); }
-                            if (mark == "from") { result = new FromExpr(); }
-                            if (mark == "table") { result = new TableExpr(); }
-                            if (mark == "join") { result = new TableJoinExpr(); }
-                            if (mark == "where") { result = new WhereExpr(); }
-                            if (mark == "orderby") { result = new OrderByExpr(); }
-                            if (mark == "orderbyitem") { result = new OrderByItemExpr(); }
-                            if (mark == "group") { result = new GroupByExpr(); }
-                            if (mark == "having") { result = new HavingExpr(); }
-                            if (mark == "section") { result = new SectionExpr(); }
-                            if (mark == "select") { result = new SelectExpr(); }
-                            if (mark == "selectitem") { result = new SelectItemExpr(); }
-                            if (mark == "cte") { result = new CommonTableExpr(); }
-                            // 对于 SQL 片段类型且是通过简写形式传值（例如 "$table": "Full.Type.Name" 或 "$from": {...}）
-                            if (result is SqlSegment segment && propName != "$")
-                            {
-                                // 需要先读取属性值的位置
-                                reader.Read();
-                                ReadSqlSegmentProperty(ref reader, segment, propName, options);
-                            }
+                            // 未识别的属性，跳过
+                            reader.Read();
+                            reader.Skip();
                         }
                     }
-                    else if (result is not null)
-                    {
-                        ReadResultProperty(ref reader, result, propName, options);
-                    }
-                    else
-                    {
-                        // 未识别的属性，跳过
-                        reader.Read();
-                        reader.Skip();
-                    }
-                }
 
-                return (T)result;
+                    return (T)ResolveCommonTableReference(result);
+                }
+                finally
+                {
+                    ExitReadContext(context);
+                }
             }
 
             private void ReadResultProperty(ref Utf8JsonReader reader, Expr result, string propName, JsonSerializerOptions options)
@@ -403,7 +415,21 @@ namespace LiteOrm.Common
                 }
                 else if (ss is SqlSegment segment)
                 {
-                    segment.Source = JsonSerializer.Deserialize<SqlSegment>(ref reader, options);
+                    if (ss is CommonTableExpr cte && propName == "$cte")
+                    {
+                        if (reader.TokenType == JsonTokenType.String)
+                        {
+                            cte.Alias = reader.GetString();
+                        }
+                        else
+                        {
+                            cte.Source = JsonSerializer.Deserialize<SelectExpr>(ref reader, options);
+                        }
+                    }
+                    else
+                    {
+                        segment.Source = JsonSerializer.Deserialize<SqlSegment>(ref reader, options);
+                    }
                 }
             }
 
@@ -424,7 +450,16 @@ namespace LiteOrm.Common
 
             public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
             {
-                WriteExpr(writer, value, options);
+                // 顶层和递归层共用同一个上下文，避免嵌套对象重复重置 CTE 已定义状态。
+                var context = EnterWriteContext();
+                try
+                {
+                    WriteExpr(writer, value, options);
+                }
+                finally
+                {
+                    ExitWriteContext(context);
+                }
             }
 
             private void WriteExpr(Utf8JsonWriter writer, Expr value, JsonSerializerOptions options)
@@ -699,6 +734,12 @@ namespace LiteOrm.Common
             private void WriteSqlSegment(Utf8JsonWriter writer, SqlSegment value, JsonSerializerOptions options)
             {
                 if (value == null) { writer.WriteNullValue(); return; }
+
+                if (value is CommonTableExpr cte && TryWriteCommonTableAliasOnly(writer, cte))
+                {
+                    return;
+                }
+
                 writer.WriteStartObject();
 
                 string mark = _typeToMark.TryGetValue(value.GetType(), out string m) ? m : value.GetType().Name.Replace("Expr", "").ToLower();
@@ -810,15 +851,140 @@ namespace LiteOrm.Common
                             writer.WriteEndArray();
                         }
                         break;
-                    case CommonTableExpr cte:
-                        if (!string.IsNullOrEmpty(cte.Alias))
+                    case CommonTableExpr commonTable:
+                        if (!string.IsNullOrEmpty(commonTable.Alias))
                         {
                             writer.WritePropertyName("Alias");
-                            writer.WriteStringValue(cte.Alias);
+                            writer.WriteStringValue(commonTable.Alias);
                         }
                         break;
                 }
                 writer.WriteEndObject();
+            }
+
+            private bool TryWriteCommonTableAliasOnly(Utf8JsonWriter writer, CommonTableExpr cte)
+            {
+                if (string.IsNullOrEmpty(cte.Alias))
+                {
+                    return false;
+                }
+
+                var context = _writeContext.Value;
+                if (context == null)
+                {
+                    return false;
+                }
+
+                if (!context.Definitions.TryGetValue(cte.Alias, out var existing))
+                {
+                    if (cte.Source == null)
+                    {
+                        throw new InvalidOperationException($"CTE '{cte.Alias}' is referenced before its definition is serialized.");
+                    }
+
+                    // 首次出现必须输出完整定义，并登记下来供后续同名引用压缩成 alias-only。
+                    context.Definitions.Add(cte.Alias, cte.Source);
+                    return false;
+                }
+
+                if (cte.Source != null && !Equals(existing, cte.Source))
+                {
+                    throw new InvalidOperationException($"CTE '{cte.Alias}' has multiple different definitions.");
+                }
+
+                writer.WriteStartObject();
+                writer.WritePropertyName("$cte");
+                writer.WriteStringValue(cte.Alias);
+                writer.WriteEndObject();
+                return true;
+            }
+
+            private Expr ResolveCommonTableReference(Expr result)
+            {
+                if (result is not CommonTableExpr cte || string.IsNullOrEmpty(cte.Alias))
+                {
+                    return result;
+                }
+
+                var context = _readContext.Value;
+                if (context == null)
+                {
+                    return result;
+                }
+
+                if (!context.Definitions.TryGetValue(cte.Alias, out var existing))
+                {
+                    if (cte.Source == null)
+                    {
+                        throw new JsonException($"CTE '{cte.Alias}' is referenced before its definition is deserialized.");
+                    }
+
+                    // 第一次读到完整定义时登记原始 SelectExpr，后续 alias-only 节点再按它克隆恢复。
+                    context.Definitions.Add(cte.Alias, cte.Source);
+                    return cte;
+                }
+
+                if (cte.Source == null)
+                {
+                    // alias-only JSON 只带别名；这里补回一份克隆后的定义，避免多个节点共享同一实例。
+                    cte.Source = (SelectExpr)existing.Clone();
+                    return cte;
+                }
+
+                if (!Equals(existing, cte.Source))
+                {
+                    throw new JsonException($"CTE '{cte.Alias}' has multiple different definitions.");
+                }
+
+                return cte;
+            }
+
+            private static CommonTableWriteContext EnterWriteContext()
+            {
+                var context = _writeContext.Value ?? new CommonTableWriteContext();
+                context.Depth++;
+                _writeContext.Value = context;
+                return context;
+            }
+
+            private static void ExitWriteContext(CommonTableWriteContext context)
+            {
+                context.Depth--;
+                if (context.Depth == 0)
+                {
+                    _writeContext.Value = null;
+                }
+            }
+
+            private static CommonTableReadContext EnterReadContext()
+            {
+                var context = _readContext.Value ?? new CommonTableReadContext();
+                context.Depth++;
+                _readContext.Value = context;
+                return context;
+            }
+
+            private static void ExitReadContext(CommonTableReadContext context)
+            {
+                context.Depth--;
+                if (context.Depth == 0)
+                {
+                    _readContext.Value = null;
+                }
+            }
+
+            private sealed class CommonTableWriteContext
+            {
+                public int Depth { get; set; }
+
+                public Dictionary<string, SelectExpr> Definitions { get; } = new(StringComparer.Ordinal);
+            }
+
+            private sealed class CommonTableReadContext
+            {
+                public int Depth { get; set; }
+
+                public Dictionary<string, SelectExpr> Definitions { get; } = new(StringComparer.Ordinal);
             }
 
             private object ReadNative(ref Utf8JsonReader reader, JsonSerializerOptions options)
