@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.0.15.0</AssemblyVersion>
-		<FileVersion>8.0.15.0</FileVersion>
+		<AssemblyVersion>8.0.16.0</AssemblyVersion>
+		<FileVersion>8.0.16.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.0.15</VersionPrefix>
+		<VersionPrefix>8.0.16</VersionPrefix>
 		<Nullable>disable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,10 +16,6 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      增加CTE表达式支持;
-      FromExpr和TableJoinExpr支持使用子查询作为源;
-      修复ExistsKey错误;
-      修复联合主键建表语句错误;
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

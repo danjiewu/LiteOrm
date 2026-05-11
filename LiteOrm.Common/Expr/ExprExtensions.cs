@@ -1004,5 +1004,42 @@ namespace LiteOrm.Common
         /// <returns>窗口函数表达式。</returns>
         public static FunctionExpr Over(this FunctionExpr func, ValueTypeExpr[] partitionBy, OrderByItemExpr[] orderBy, bool range, int? begin, int? end) =>
             new FunctionExpr("Over", func, new ValueSet(partitionBy), new ValueSet(orderBy), new FunctionExpr(range ? "RangeBetween" : "RowsBetween", begin, end));
+
+
+        /// <summary>
+        /// 简化表达式树，主要用于将一些冗余的 NOT 表达式转换为更直接的比较表达式，或者消除双重否定等情况，以便生成更简洁的 SQL 语句。
+        /// </summary>
+        /// <param name="expr">要简化的表达式。</param>
+        /// <returns>简化后的表达式。</returns>
+        public static Expr Reduce(this Expr expr)
+        {
+            if (expr is NotExpr not)
+            {
+                if (not.Operand is LogicBinaryExpr be)
+                {
+                    // 将 NOT (a = b) 转换为 a <> b，减少冗余的 NOT 关键字
+                    var opposite = be.Operator.Opposite();
+                    return new LogicBinaryExpr(be.Left, opposite, be.Right);
+                }
+                else if (not.Operand is NotExpr inner)
+                {
+                    // 将双重否定 NOT (NOT a) 转换为 a
+                    return Reduce(inner.Operand);
+                }
+            }
+            else if (expr is AndExpr and && and.Count == 1)
+            {
+                return Reduce(and[0]);
+            }
+            else if (expr is OrExpr or && or.Count == 1)
+            {
+                return Reduce(or[0]);
+            }
+            else if (expr is ValueExpr ve && ve.Value is Expr innerExpr)
+            {
+                return Reduce(innerExpr);
+            }
+            return expr;
+        }
     }
 }
