@@ -42,7 +42,8 @@ namespace LiteOrm.Common
     /// <summary>
     /// 插值字符串处理器，编译时生成，可插入普通变量或 Expr 类型对象构建SQL语句。
     /// 1.Expr 转换为等效 SQL 片段，可以仅插入字段表达式，也可以插入复杂表达式，例如 $"WHERE {Expr.Prop("Age") &gt; 18}" 会转化为 "WHERE Age &gt; @0"并且参数列表包含 @0=18，而 $"WHERE {Expr.Prop("Age")} &gt; 18" 会转化为 "WHERE Age &gt; 18"；
-    /// 2.普通值（int、string 等）自动转为命名参数如 @0，防止 SQL 注入，例如 $"WHERE Age &gt; {18}" 转化为 "WHERE Age &gt; @0"，并且参数列表包含 @0=18。
+    /// 2.普通值（int、string 等）自动转为命名参数如 @0，防止 SQL 注入，例如 $"WHERE Age &gt; {18}" 转化为 "WHERE Age &gt; @0"，并且参数列表包含 @0=18；
+    /// 3.手写 SQL 片段中的 '['、']' 可作为通用引用符占位，在最终执行命令时由当前数据库的 <see cref="ISqlBuilder"/> 替换为真实引用符。
     /// </summary>
     /// <remarks>
     /// 插值字符串处理器按顺序处理插值字符串中的文本和格式化项。对于每个格式化项，如果是 Expr 类型，则调用其 ToSql 方法将其转换为 SQL 片段；如果是普通值，则生成一个参数占位符并将值添加到参数列表中。最终生成的 SQL 字符串和参数列表可以通过 GetSqlResult 和 GetParams 方法获取。

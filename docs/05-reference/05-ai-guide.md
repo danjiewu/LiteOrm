@@ -430,6 +430,8 @@ var delete = new DeleteExpr(Expr.From<User>(), Expr.Prop("Age") < 18);
 var result = dao.Search($"WHERE {Expr.Prop("DeptName") == deptName} AND {Expr.Prop("Age") > 18}");
 ```
 
+> 在 `ExprString` 里手写表名、列名时，可以用 `[`、`]` 作为通用引用符占位；LiteOrm 会在命令真正执行前替换成当前数据库的真实标识符引用符。
+>
 > `ExprString` 不支持把 `SelectExpr.With(name)` / `CommonTableExpr` 这种 CTE 表达式自动展开成 `WITH` SQL。需要 CTE 时，请使用 `Expr` / `SelectExpr` 结构化构建；如果必须走 `ExprString`，请手动写完整 `WITH ... SELECT ...` SQL。
 
 ### 常用模式

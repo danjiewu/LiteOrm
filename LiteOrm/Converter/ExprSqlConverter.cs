@@ -42,6 +42,58 @@ namespace LiteOrm.Common
             { ValueOperator.Concat,"||" }
         };
 
+        // 数值越大表示绑定越紧。
+        /// <summary>
+        /// 根优先级，表示最外层的表达式优先级。
+        /// </summary>
+        private const int RootPriority = 0;
+        /// <summary>
+        /// 表示集合查询，如 SELECT ... UNION SELECT ... 的优先级，通常最低，因为它们需要整个子查询作为一个整体。
+        /// </summary>
+        private const int SelectSetPriority = 1;
+        /// <summary>
+        /// 表示普通子查询（如 SELECT ...）的优先级，略高于集合查询，因为它们通常作为一个单独的表达式出现在其他操作中。
+        /// </summary>
+        private const int SelectPriority = 2;
+        /// <summary>
+        /// 表示值列表（如 IN (...)）的优先级，通常较低，因为它们需要整个列表作为一个整体进行处理。
+        /// </summary>
+        private const int ValueListPriority = 4;
+        /// <summary>
+        /// 表示逻辑 OR 操作的优先级，较低，因为 OR 通常需要整个表达式作为一个整体进行评估。
+        /// </summary>
+        private const int OrPriority = 11;
+        /// <summary>
+        /// 表示逻辑 AND 操作的优先级，略高于 OR。
+        /// </summary>
+        private const int AndPriority = 12;
+        /// <summary>
+        /// 表示比较操作（如 =、&lt;&gt;、&gt;、&lt;）的优先级，通常高于 AND 和 OR，因为它们需要先评估比较表达式的结果。
+        /// </summary>
+        private const int ComparisonPriority = 13;
+        /// <summary>
+        /// 表示字符串拼接操作的优先级，通常高于比较操作，因为它们需要先计算出字符串结果。
+        /// </summary>
+        private const int ConcatPriority = 14;
+        /// <summary>
+        /// 表示加减算术操作的优先级，通常高于比较操作，因为它们需要先计算数值结果。
+        /// </summary>
+        private const int AddSubtractPriority = 15;
+        /// <summary>
+        /// 表示乘除取模操作的优先级，高于加减计算。
+        /// </summary>
+        private const int MultiplyDivideModuloPriority = 16;
+        /// <summary>
+        /// 表示 NOT 操作的优先级，通常高于比较和算术操作。
+        /// </summary>
+        private const int NotPriority = 17;
+        /// <summary>
+        /// 表示一元操作（如取负、位取反）的优先级，通常高于 NOT。
+        /// </summary>
+        private const int UnaryPriority = 18;
+        /// <summary>
+        /// 最高优先级。
+        /// </summary>
         private const int MaxPriority = 1000;
 
         /// <summary>
@@ -228,7 +280,7 @@ namespace LiteOrm.Common
             ToSqlInternal(ref sb, expr, context, sqlBuilder, outputParams);
         }
 
-        private static void ToSqlInternal(ref ValueStringBuilder sb, Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority = 0)
+        private static void ToSqlInternal(ref ValueStringBuilder sb, Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, int priority = RootPriority)
         {
             if (expr is null) return;
             expr = Reduce(expr);
@@ -257,7 +309,7 @@ namespace LiteOrm.Common
                 case FromExpr from: ToSql(ref sb, from, context, sqlBuilder, outputParams); break;
                 case TableExpr table: ToSql(ref sb, table, context, sqlBuilder, outputParams); break;
                 case SelectExpr select:
-                    if (priority > 0)// 只有在当前表达式作为子表达式才启用作用域，以避免不必要的作用域嵌套
+                    if (priority > RootPriority)// 只有在当前表达式作为子表达式才启用作用域，以避免不必要的作用域嵌套
                         using (var scope = context.BeginScope())
                         {
                             ToSql(ref sb, select, context, sqlBuilder, outputParams);
@@ -275,6 +327,11 @@ namespace LiteOrm.Common
             if (needParen) sb.Append(')');
         }
 
+        /// <summary>
+        /// 简化表达式树，主要用于将一些冗余的 NOT 表达式转换为更直接的比较表达式，或者消除双重否定等情况，以便生成更简洁的 SQL 语句。
+        /// </summary>
+        /// <param name="expr">要简化的表达式。</param>
+        /// <returns>简化后的表达式。</returns>
         private static Expr Reduce(Expr expr)
         {
             if (expr is NotExpr not)
@@ -293,19 +350,15 @@ namespace LiteOrm.Common
             }
             else if (expr is AndExpr and && and.Count == 1)
             {
-                return and[0];
+                return Reduce(and[0]);
             }
             else if (expr is OrExpr or && or.Count == 1)
             {
-                return or[0];
+                return Reduce(or[0]);
             }
-            else if (expr is ValueExpr)
+            else if (expr is ValueExpr ve && ve.Value is Expr innerExpr)
             {
-                while (expr is ValueExpr ve && ve.Value is Expr innerExpr)
-                {
-                    expr = innerExpr;
-                }
-                return expr;
+                return Reduce(innerExpr);
             }
             return expr;
         }
@@ -313,7 +366,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 计算表达式的优先级（用于决定是否需要在生成 SQL 时添加括号）。
         /// 返回值越大表示优先级越高（更紧密结合），在需要时会根据与外层优先级比较决定是否加括号。
-        /// 特别约定：<see cref="SelectExpr"/> 的优先级为 1，以便在合适的上下文中生成括号包裹子查询。
+        /// 当前层级从低到高大致为：集合查询、普通子查询、值列表、OR、AND、比较、算术、拼接、NOT、一元运算、原子表达式。
         /// </summary>
         /// <param name="expr">要计算优先级的表达式。</param>
         /// <returns>表示表达式优先级的整数值。</returns>
@@ -321,20 +374,20 @@ namespace LiteOrm.Common
         {
             return expr switch
             {
-                SelectExpr select => select.NextSelects?.Count > 0 ? 1 : 2,
-                ValueSet vs when vs.JoinType != ValueJoinType.Concat => 4,
-                ValueSet vs when vs.JoinType == ValueJoinType.Concat => 16,
-                OrExpr _ => 11,
-                AndExpr _ => 12,
-                LogicBinaryExpr _ => 13,
+                SelectExpr select => select.NextSelects?.Count > 0 ? SelectSetPriority : SelectPriority,
+                ValueSet vs when vs.JoinType != ValueJoinType.Concat => ValueListPriority,
+                ValueSet vs when vs.JoinType == ValueJoinType.Concat => ConcatPriority,
+                OrExpr _ => OrPriority,
+                AndExpr _ => AndPriority,
+                LogicBinaryExpr _ => ComparisonPriority,
                 ValueBinaryExpr vb => vb.Operator switch
                 {
-                    ValueOperator.Add or ValueOperator.Subtract => 14,
-                    ValueOperator.Concat => 16,
-                    _ => 15
+                    ValueOperator.Add or ValueOperator.Subtract => AddSubtractPriority,
+                    ValueOperator.Concat => ConcatPriority,
+                    _ => MultiplyDivideModuloPriority
                 },
-                NotExpr _ => 17,
-                UnaryExpr _ => 18,
+                NotExpr _ => NotPriority,
+                UnaryExpr _ => UnaryPriority,
                 _ => MaxPriority
             };
         }
@@ -542,8 +595,7 @@ namespace LiteOrm.Common
                 sb.Append(op);
                 sb.Append(" ");
                 ToSqlInternal(ref sb, expr.Right, context, sqlBuilder, outputParams, isCommutative ? curPriority : curPriority + 1);
-            }
-            // Parenthesis are managed by ToSqlInternal.
+            }            
         }
 
         /// <summary>
@@ -551,7 +603,6 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, NotExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
         {
-            // Reduce has already simplified NOT (a = b) and double negation cases.
             int curPriority = GetPriority(expr);
             sb.Append("NOT ");
             ToSqlInternal(ref sb, expr.Operand, context, sqlBuilder, outputParams, curPriority);
@@ -1028,8 +1079,8 @@ namespace LiteOrm.Common
             {
                 sb.NewLine(context.Indent);
                 sb.Append(sqlBuilder.ToSqlSelectSetType(next.SetType));
-                sb.Append(" ");
-                ToSqlInternal(ref sb, next, context, sqlBuilder, outputParams, 1);// Select默认优先级为1，NextSelects 中的 Select 如果有嵌套 NextSelects 则优先级为0，需要括号包裹
+                sb.Append(" ");                
+                ToSqlInternal(ref sb, next, context, sqlBuilder, outputParams, SelectSetPriority);// 集合查询分支按 SelectSet 优先级渲染，嵌套集合查询时会自动补括号
             }
         }
 
@@ -1132,7 +1183,7 @@ namespace LiteOrm.Common
                     sb.Append(sqlBuilder.ToSqlName(column.Name));
 
                     sb.Append(" = ");
-                    ToSqlInternal(ref sb, set.Value, context, sqlBuilder, outputParams, 14);//赋值表达式优先级低于计算表达式，确保在表达式树中正确添加括号
+                    ToSqlInternal(ref sb, set.Value, context, sqlBuilder, outputParams, AddSubtractPriority);// 赋值右侧至少按算术表达式优先级渲染，比较等更低优先级表达式会自动补括号
                 }
                 LogicExpr updateWhere = expr.Where.And(GetContextConstFilter(context));
                 if (updateWhere != null)

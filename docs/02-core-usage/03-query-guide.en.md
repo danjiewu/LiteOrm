@@ -383,6 +383,7 @@ var dataTable = await dataViewDAO.Search(
 - `ExprString` is better for "partial SQL customization". Don't stuff entire complex business SQL into interpolated strings.
 - Conditions that can be expressed with `Expr.Prop(...)` and `Expr.Value(...)` should not be handwritten.
 - If a certain SQL fragment is reused repeatedly, extract it to a DAO or extension method, rather than copying it throughout business code.
+- When hand-writing table or column names, you can use `[` and `]` as provider-agnostic quote placeholders; LiteOrm rewrites them to the current database's real identifier delimiters before execution.
 - `ExprString` does **not** auto-expand `CommonTableExpr` / `SelectExpr.With(name)` into CTE SQL. If you need `WITH`, write the full SQL manually.
 
 ```csharp
@@ -392,6 +393,16 @@ var result = await userViewDAO.Search(
     $"WHERE {condition} ORDER BY CreateTime DESC"
 ).ToListAsync();
 ```
+
+```csharp
+// Use provider-agnostic quote placeholders for handwritten identifiers
+var result = await dataViewDAO.Search(
+    $"SELECT [Id], [UserName] FROM [Users] WHERE [Age] >= {minAge}",
+    isFull: true
+).GetResultAsync();
+```
+
+On SQL Server, those `[` and `]` remain square brackets. On databases such as PostgreSQL and Oracle, LiteOrm rewrites them to the provider-specific identifier quotes before the command is executed.
 
 If you need CTE together with `ExprString`, write the full SQL explicitly:
 

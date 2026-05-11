@@ -304,6 +304,8 @@ var dataTable = await dataViewDAO.Search(
 
 > `ExprString` does not auto-convert `SelectExpr.With(name)` / `CommonTableExpr` into `WITH` SQL. If you need CTE, use the structured `Expr` / `SelectExpr` model, or handwrite the full SQL inside the DAO call.
 
+> When you handwrite identifiers in `ExprString`, you can use `[` and `]` as provider-agnostic quote placeholders; LiteOrm replaces them with the current database's real identifier delimiters before execution.
+
 ### `CTE` (Common Table Expression)
 
 LiteOrm supports CTE through `SelectExpr.With(name)`:
@@ -323,6 +325,25 @@ var query = cteDef.With("AdultUsers")
     .Select(Expr.Prop("Name"), Expr.Prop("Age"));
 
 var result = await dataViewDAO.Search(query).GetResultAsync();
+```
+
+The same CTE expression can also be reused on both sides of a `UNION`:
+
+```csharp
+var adultUsers = Expr.From<User>()
+    .Where(Expr.Prop("Age") >= 18)
+    .Select(
+        Expr.Prop("UserName").As("Name"),
+        Expr.Prop("Age").As("Age"))
+    .With("AdultUsers");
+
+var query = adultUsers
+    .Where(Expr.Prop("Age") < 30)
+    .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Const("18-29").As("AgeGroup"))
+    .UnionAll(
+        adultUsers
+            .Where(Expr.Prop("Age") >= 30)
+            .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Const("30+").As("AgeGroup")));
 ```
 
 Duplicate CTE aliases are now validated before SQL generation:

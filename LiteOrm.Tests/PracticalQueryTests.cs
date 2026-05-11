@@ -314,6 +314,50 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public async Task CommonTableExpr_ReuseSameExprInUnion_ShouldKeepSingleDefinitionAndReturnRows()
+        {
+            var ct = TestContext.Current.CancellationToken;
+            var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            await userService.BatchInsertAsync(
+            [
+                new TestUser { Name = "CteUnionReuse_User1", Age = 22, DeptId = 1, CreateTime = DateTime.Now },
+                new TestUser { Name = "CteUnionReuse_User2", Age = 27, DeptId = 1, CreateTime = DateTime.Now },
+                new TestUser { Name = "CteUnionReuse_User3", Age = 31, DeptId = 2, CreateTime = DateTime.Now },
+                new TestUser { Name = "CteUnionReuse_User4", Age = 36, DeptId = 2, CreateTime = DateTime.Now }
+            ], ct);
+
+            var adultUsers = Expr.From<TestUser>()
+                .Where(Expr.Prop("Name").StartsWith("CteUnionReuse_"))
+                .Select(
+                    Expr.Prop("Name").As("Name"),
+                    Expr.Prop("Age").As("Age"),
+                    Expr.Prop("DeptId").As("DeptId"))
+                .With("AdultUsers");
+
+            var query = adultUsers
+                .Where(Expr.Prop("Age") < 30)
+                .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Prop("DeptId"), Expr.Const("18-29").As("AgeGroup"))
+                .UnionAll(
+                    adultUsers
+                        .Where(Expr.Prop("Age") >= 30)
+                        .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Prop("DeptId"), Expr.Const("30+").As("AgeGroup")));
+
+            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder);
+            var dt = await dataViewDAO.Search(query).GetResultAsync(ct);
+
+            Assert.Equal(1, Regex.Matches(prepared.Sql, "\"AdultUsers\" AS", RegexOptions.IgnoreCase).Count);
+            Assert.Equal(4, dt.Rows.Count);
+
+            var groups = dt.Rows.Cast<DataRow>()
+                .Select(r => r["AgeGroup"]?.ToString())
+                .OrderBy(x => x)
+                .ToList();
+            Assert.Equal(["18-29", "18-29", "30+", "30+"], groups);
+        }
+
+        [Fact]
         public void CommonTableExpr_DuplicateEquivalentAliases_ShouldKeepSingleDefinition()
         {
             var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();

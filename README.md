@@ -320,6 +320,8 @@ var dataTable = await dataViewDAO.Search(
 
 > `ExprString` 不支持把 `SelectExpr.With(name)` / `CommonTableExpr` 这样的 CTE 表达式自动转成 `WITH` SQL；如果需要 CTE，请使用 `Expr` / `SelectExpr` 构建，或在 DAO 层手动写完整 SQL。
 
+> `ExprString` 中手写标识符时，可以把 `[`、`]` 当作通用引用符占位使用；命令真正执行前，LiteOrm 会按当前数据库方言替换成实际引用符。
+
 ### `CTE`（公共表表达式）
 
 LiteOrm 支持用 `SelectExpr.With(name)` 构建 CTE：
@@ -339,6 +341,25 @@ var query = cteDef.With("AdultUsers")
     .Select(Expr.Prop("Name"), Expr.Prop("Age"));
 
 var result = await dataViewDAO.Search(query).GetResultAsync();
+```
+
+同一个 CTE 表达式也可以在 `UNION` 两侧复用：
+
+```csharp
+var adultUsers = Expr.From<User>()
+    .Where(Expr.Prop("Age") >= 18)
+    .Select(
+        Expr.Prop("UserName").As("Name"),
+        Expr.Prop("Age").As("Age"))
+    .With("AdultUsers");
+
+var query = adultUsers
+    .Where(Expr.Prop("Age") < 30)
+    .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Const("18-29").As("AgeGroup"))
+    .UnionAll(
+        adultUsers
+            .Where(Expr.Prop("Age") >= 30)
+            .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Const("30+").As("AgeGroup")));
 ```
 
 同别名 CTE 现在会先做校验：

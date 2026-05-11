@@ -62,10 +62,9 @@ namespace LiteOrm.Common
         public int Indent => AutoIndent ? Depth switch
         {
             0 => 0,
-            1 => 0,
-            2 => 2,
-            3 => 4,
-            4 => 6,
+            1 => 2,
+            2 => 4,
+            3 => 6,
             _ => 8
         } : 0;
         /// <summary>

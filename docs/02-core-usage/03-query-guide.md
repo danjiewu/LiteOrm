@@ -525,6 +525,7 @@ var dataTable = await dataViewDAO.Search(
 - ExprString 更适合“局部 SQL 自定义”，不要把整条复杂业务 SQL 都塞进插值字符串。
 - 能用 `Expr.Prop(...)`、`Expr.Value(...)` 表达的条件，优先不要手写列名和值。
 - 如果某段 SQL 会反复复用，优先抽到 DAO 或扩展方法，而不是在业务代码里到处复制。
+- 手写表名、字段名时，可以把 `[`、`]` 当作通用引用符占位；命令执行前会按当前数据库方言替换成真实引用符。
 
 ```csharp
 // 推荐：只在必要片段上使用 ExprString
@@ -533,6 +534,16 @@ var result = await userViewDAO.Search(
     $"WHERE {condition} ORDER BY CreateTime DESC"
 ).ToListAsync();
 ```
+
+```csharp
+// 手写标识符时可使用通用引用符占位
+var result = await dataViewDAO.Search(
+    $"SELECT [Id], [UserName] FROM [Users] WHERE [Age] >= {minAge}",
+    isFull: true
+).GetResultAsync();
+```
+
+在 SQL Server 中，上面的 `[`、`]` 会保持为方括号；在 PostgreSQL、Oracle 等数据库中，则会在命令执行前替换成对应数据库的真实标识符引用符。
 
 ## 5. Service vs DAO 查询
 

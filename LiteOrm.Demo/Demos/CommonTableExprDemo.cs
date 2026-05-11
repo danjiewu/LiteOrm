@@ -23,6 +23,7 @@ namespace LiteOrm.Demo.Demos
             await Demo1_BasicCteAsync(userDataViewDAO);
             await Demo2_CteWithFilteringAsync(userDataViewDAO);
             await Demo3_CteAggregateAsync(userDataViewDAO);
+            await Demo4_CteReuseInUnionAsync(userDataViewDAO);
         }
 
         /// <summary>
@@ -133,6 +134,57 @@ namespace LiteOrm.Demo.Demos
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示9.3 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
+                Console.ResetColor();
+            }
+        }
+
+        /// <summary>
+        /// 9.4 在 UNION 查询中复用同一个 CTE 表达式。
+        /// </summary>
+        private static async Task Demo4_CteReuseInUnionAsync(DataViewDAO<User> userDataViewDAO)
+        {
+            DemoHelper.PrintSection("9.4 UNION 中复用同一个 CTE", "");
+
+            try
+            {
+                var adultUsers = From<User>()
+                    .Where(Prop("Age") >= 18)
+                    .Select(
+                        Prop("UserName").As("Name"),
+                        Prop("Age").As("Age"),
+                        Prop("DeptId").As("DeptId"))
+                    .With("AdultUsers");
+
+                var youngerAdults = adultUsers
+                    .Where(Prop("Age") < 30)
+                    .Select(
+                        Prop("Name"),
+                        Prop("Age"),
+                        Prop("DeptId"),
+                        Const("18-29").As("AgeGroup"));
+
+                var olderAdults = adultUsers
+                    .Where(Prop("Age") >= 30)
+                    .Select(
+                        Prop("Name"),
+                        Prop("Age"),
+                        Prop("DeptId"),
+                        Const("30+").As("AgeGroup"));
+
+                var query = youngerAdults.UnionAll(olderAdults);
+
+                var dt = await userDataViewDAO.Search(query).GetResultAsync();
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
+
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
+                DemoHelper.PrintSection("✅ 查询结果（同一个 CTE 在 UNION 两侧复用）", FormatDataTable(dt, "Name", "Age", "DeptId", "AgeGroup"));
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"✗ 演示9.4 失败: {ex.Message}\n");
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
