@@ -132,9 +132,9 @@ var cteQuery = cteDef.With("ActiveUsers");
 // 不支持把 cteQuery 当成 ExprString 片段自动展开成 WITH SQL
 ```
 
-### 7.2 正确方式：手写完整 SQL
+### 7.2 正确方式：手动生成 WITH 片段
 
-如果场景必须走 `ExprString` / DAO 原生 SQL，请手动写 `WITH`：
+如果场景必须走 `ExprString` / DAO 原生 SQL，请手动写 `WITH` 部分：
 
 ```csharp
 int minAge = 18;
@@ -154,6 +154,30 @@ var result = await dataViewDAO.Search(
 ```
 
 这里的 `WITH ...` 是你手写的 SQL，LiteOrm 只负责继续处理插值参数。
+
+也可通过插入 `SelectExpr` 方式构造：
+
+```csharp
+using static LiteOrm.Expr;
+
+Expr cteDef = From(typeof(User))
+    .Select(
+    Prop("Id"),
+    Prop("UserName"),
+    Prop("Age")
+    ).Where(Prop("Age") >= 18);
+
+var result = await dataViewDAO.Search(
+    $"""
+    WITH ActiveUsers AS (
+        {cteDef}
+    )
+    SELECT Id, UserName, Age
+    FROM ActiveUsers
+    """,
+    isFull: true
+).GetResultAsync();
+```
 
 ## 8. 相关阅读
 

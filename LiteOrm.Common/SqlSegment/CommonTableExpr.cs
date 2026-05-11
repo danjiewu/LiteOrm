@@ -82,7 +82,9 @@ namespace LiteOrm.Common
         /// <returns>如果两个对象相等，则返回 true；否则返回 false。</returns>
         public override bool Equals(object obj)
         {
-            return obj is CommonTableExpr other && Equals(Source, other.Source);
+            return obj is CommonTableExpr other
+                && Alias == other.Alias
+                && Equals(Source, other.Source);
         }
 
         /// <summary>

@@ -87,11 +87,11 @@ namespace LiteOrm.Common
             unchecked
             {
                 int hashCode = GetType().GetHashCode();
-                hashCode = hashCode * HashSeed + FunctionName?.GetHashCode() ?? 0;
+                hashCode = (hashCode * HashSeed) + (FunctionName?.GetHashCode() ?? 0);
                 hashCode = hashCode * HashSeed + IsAggregate.GetHashCode();
                 foreach (var param in Args)
                 {
-                    hashCode = hashCode * HashSeed + param?.GetHashCode() ?? 0;
+                    hashCode = (hashCode * HashSeed) + (param?.GetHashCode() ?? 0);
                 }
                 return hashCode;
             }

@@ -132,7 +132,7 @@ var cteQuery = cteDef.With("ActiveUsers");
 // Not supported: cteQuery cannot be auto-expanded into WITH SQL inside ExprString
 ```
 
-### 7.2 Supported approach: write full SQL manually
+### 7.2 Supported approach: write WITH fragment manually
 
 If your scenario must use raw DAO SQL with `ExprString`, write the `WITH` clause yourself:
 
@@ -153,7 +153,31 @@ var result = await dataViewDAO.Search(
 ).GetResultAsync();
 ```
 
-Here the `WITH ...` part is handwritten SQL; LiteOrm only continues handling interpolated parameters.
+Here the `WITH ...` part is handwritten SQL, LiteOrm only continues handling interpolated parameters.
+
+It can also be constructed by inserting a `SelectExpr`:
+
+```csharp
+using static LiteOrm.Expr;
+
+Expr cteDef = From(typeof(User))
+    .Select(
+    Prop("Id"),
+    Prop("UserName"),
+    Prop("Age")
+    ).Where(Prop("Age") >= 18);
+
+var result = await dataViewDAO.Search(
+    $"""
+    WITH ActiveUsers AS (
+        {cteDef}
+    )
+    SELECT Id, UserName, Age
+    FROM ActiveUsers
+    """,
+    isFull: true
+).GetResultAsync();
+```
 
 ## 8. Related reading
 

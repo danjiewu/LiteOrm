@@ -89,13 +89,26 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is SelectExpr other && Equals(Source, other.Source) && Selects.SequenceEqual(other.Selects) && Alias == other.Alias;
+        public override bool Equals(object obj)
+            => obj is SelectExpr other
+            && Equals(Source, other.Source)
+            && Alias == other.Alias
+            && SetType == other.SetType
+            && SequenceEquals(Selects, other.Selects)
+            && SequenceEquals(_nextSelects, other._nextSelects);
 
         /// <summary>
         /// 获取当前对象的哈希码
         /// </summary>
         /// <returns>哈希码值</returns>
-        public override int GetHashCode() => OrderedHashCodes(typeof(SelectExpr).GetHashCode(), Source?.GetHashCode() ?? 0, SequenceHash(Selects), Alias?.GetHashCode() ?? 0);
+        public override int GetHashCode()
+            => OrderedHashCodes(
+                typeof(SelectExpr).GetHashCode(),
+                Source?.GetHashCode() ?? 0,
+                SequenceHashOrDefault(Selects),
+                Alias?.GetHashCode() ?? 0,
+                (int)SetType,
+                SequenceHashOrDefault(_nextSelects));
 
         /// <summary>
         /// 返回选择片段的字符串表示
@@ -144,6 +157,19 @@ namespace LiteOrm.Common
                 s._nextSelects = _nextSelects.Select(ns => (SelectExpr)ns.Clone()).ToList();
             }
             return s;
+        }
+
+        private static bool SequenceEquals<T>(IList<T> left, IList<T> right)
+        {
+            if (ReferenceEquals(left, right)) return true;
+            if (left == null || left.Count == 0) return right == null || right.Count == 0;
+            if (right == null || right.Count == 0) return false;
+            return left.SequenceEqual(right);
+        }
+
+        private static int SequenceHashOrDefault<T>(IList<T> items)
+        {
+            return items == null || items.Count == 0 ? 0 : SequenceHash(items);
         }
 
     }

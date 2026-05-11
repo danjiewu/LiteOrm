@@ -72,13 +72,24 @@ namespace LiteOrm.Common
         /// <inheritdoc/>
         public override bool Equals(object obj)
         {
-            return obj is LambdaExpr es && es.InnerExpr.Equals(InnerExpr);
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj is not LambdaExpr es) return false;
+
+            var innerExpr = GetComparableInnerExpr();
+            var otherInnerExpr = es.GetComparableInnerExpr();
+            return Equals(innerExpr, otherInnerExpr);
         }
 
         /// <inheritdoc/>
         public override int GetHashCode()
         {
-            return OrderedHashCodes(GetType().GetHashCode(), InnerExpr.GetHashCode());
+            return OrderedHashCodes(GetType().GetHashCode(), GetComparableInnerExpr()?.GetHashCode() ?? 0);
+        }
+
+        private LogicExpr GetComparableInnerExpr()
+        {
+            if (_expr != null) return _expr;
+            return Expression == null ? null : (_expr = new LambdaExprConverter(Expression).ToLogicExpr());
         }
     }
 }

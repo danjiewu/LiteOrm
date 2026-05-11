@@ -162,12 +162,8 @@ namespace LiteOrm.Common
         {
             if (obj is AndExpr and)
             {
-                if (items.Count != and.items.Count) return false;
-                if (items.Count == 0) return true;
-
-                var thisSet = new HashSet<LogicExpr>(items);
-                var otherSet = new HashSet<LogicExpr>(and.items);
-                return thisSet.SetEquals(otherSet);
+                if (items.Count == 0) return and.items.Count == 0;
+                return new HashSet<LogicExpr>(items).SetEquals(and.items);
             }
             return false;
         }
@@ -181,7 +177,7 @@ namespace LiteOrm.Common
             int hashcode = GetType().GetHashCode();
             hashcode = (hashcode * HashSeed);
             int itemsHashSum = 0;
-            foreach (var item in items)
+            foreach (var item in new HashSet<LogicExpr>(items))
             {
                 itemsHashSum = unchecked(itemsHashSum + (item?.GetHashCode() ?? 0));
             }

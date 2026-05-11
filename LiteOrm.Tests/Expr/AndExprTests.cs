@@ -262,6 +262,30 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void Equals_DifferentDuplicateDistribution_ReturnsTrue()
+        {
+            var a = Condition("A", 1);
+            var b = Condition("B", 2);
+
+            var left = new AndExpr(a, a, b);
+            var right = new AndExpr(a, b, b);
+
+            Assert.True(left.Equals(right));
+        }
+
+        [Fact]
+        public void GetHashCode_DuplicateItems_Ignored()
+        {
+            var a = Condition("A", 1);
+            var b = Condition("B", 2);
+
+            var left = new AndExpr(a, a, b);
+            var right = new AndExpr(a, b, b);
+
+            Assert.Equal(left.GetHashCode(), right.GetHashCode());
+        }
+
+        [Fact]
         public void Equals_SameReference_ReturnsTrue()
         {
             var expr = new AndExpr(Condition("A", 1));

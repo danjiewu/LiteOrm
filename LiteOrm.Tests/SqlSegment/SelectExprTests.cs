@@ -84,5 +84,29 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal(select, clone);
             Assert.NotSame(select.Selects[0], clone.Selects[0]);
         }
+
+        [Fact]
+        public void SelectExpr_Equals_DifferentNextSelects_ReturnsFalse()
+        {
+            var left = new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Id"));
+            left.NextSelects.Add(new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Name")) { SetType = SelectSetType.UnionAll });
+
+            var right = new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Id"));
+            right.NextSelects.Add(new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Age")) { SetType = SelectSetType.UnionAll });
+
+            Assert.False(left.Equals(right));
+        }
+
+        [Fact]
+        public void SelectExpr_GetHashCode_DifferentNextSelects_ReturnsDifferentHash()
+        {
+            var left = new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Id"));
+            left.NextSelects.Add(new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Name")) { SetType = SelectSetType.UnionAll });
+
+            var right = new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Id"));
+            right.NextSelects.Add(new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Age")) { SetType = SelectSetType.UnionAll });
+
+            Assert.NotEqual(left.GetHashCode(), right.GetHashCode());
+        }
     }
 }

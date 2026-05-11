@@ -223,6 +223,15 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void GetHashCode_DifferentNameWithTrailingNullArg_ReturnsDifferentHash()
+        {
+            var left = new FunctionExpr("SUM", Expr.Prop("Price"), null);
+            var right = new FunctionExpr("COUNT", Expr.Prop("Price"), null);
+
+            Assert.NotEqual(left.GetHashCode(), right.GetHashCode());
+        }
+
+        [Fact]
         public void GetHashCode_DifferentArgs_DifferentHash()
         {
             var left = new FunctionExpr("SUM", Expr.Prop("Price"));

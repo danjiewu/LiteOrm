@@ -63,7 +63,7 @@ using (var scope = host.Services.CreateScope())
     // 8. ToString(format) 日期格式化演示 (8.1: FunctionExpr直接构造、8.2: Lambda自动转换)
     await DateFormatDemo.RunAsync(serviceFactory);
 
-    // 9. CTE 公共表表达式演示 (9.1: 基础CTE、9.2: 带过滤、9.3: 聚合查询)
+    // 9. CTE 公共表表达式演示 (9.1: 基础CTE、9.2: 带过滤与UNION复用、9.3: 聚合查询)
     await CommonTableExprDemo.RunAllAsync(scope.ServiceProvider);
 }
 

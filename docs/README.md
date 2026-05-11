@@ -20,7 +20,7 @@
 | [查询指南](./02-core-usage/03-query-guide.md) | [Query Guide](./02-core-usage/03-query-guide.en.md) | 各种查询方式 |
 | [CRUD指南](./02-core-usage/04-crud-guide.md) | [CRUD Guide](./02-core-usage/04-crud-guide.en.md) | 增删改查操作 |
 | [关联查询](./02-core-usage/05-associations.md) | [Associations](./02-core-usage/05-associations.en.md) | 表关联与 JOIN |
-| [Lambda 与 Expr 组合使用](./02-core-usage/06-lambda-expr-mixing.md) | [Lambda & Expr Mixing](./02-core-usage/06-lambda-expr-mixing.en.md) | 在强类型 Lambda 中复用动态 Expr |
+| [Lambda 与 Expr 组合](./02-core-usage/06-lambda-expr-mixing.md) | [Lambda & Expr Mixing](./02-core-usage/06-lambda-expr-mixing.en.md) | 在强类型 Lambda 中复用动态 Expr |
 | [CTE 指南](./02-core-usage/07-cte-guide.md) | [CTE Guide](./02-core-usage/07-cte-guide.en.md) | 公共表表达式与注意事项 |
 
 ### 高级特性篇 / Advanced Topics
