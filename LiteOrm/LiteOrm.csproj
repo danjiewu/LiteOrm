@@ -16,12 +16,13 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
+      序列化功能优化，非基础值类型附带类型标记；
+      修正部分类型建表SQL错误；
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 	</PropertyGroup>
-
 	<PropertyGroup>
 		<LangVersion>14.0</LangVersion>
 	</PropertyGroup>

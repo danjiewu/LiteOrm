@@ -114,11 +114,28 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
 "hello"
 ```
 
+已映射的非基础值类型会使用带类型标记的包装格式，以便反序列化时恢复原始 CLR 类型：
+
+```json
+{"$datetime": "2024-01-15T10:30:45Z"}
+{"$datetimeoffset": "2024-01-15T10:30:45+08:00"}
+{"$timespan": "01:00:00"}
+{"$guid": "6f9619ff-8b86-d011-b42d-00c04fc964ff"}
+{"$bytes": "AQID/w=="}
+```
+
 **简洁模式 - IsConst=false（变量值）：**
 
 ```json
 {"@": 42}
 {"@": "variableName"}
+```
+
+对于变量值，同样会在 `@` 内使用类型包装：
+
+```json
+{"@": {"$guid": "6f9619ff-8b86-d011-b42d-00c04fc964ff"}}
+{"@": {"$bytes": "AQID/w=="}}
 ```
 
 **正常模式 - IsConst=true（常量值）：**
@@ -140,6 +157,14 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
   "IsConst": false
 }
 ```
+
+当前仅对以下已映射运行时类型使用类型包装：
+
+- `DateTime` -> `$datetime`
+- `DateTimeOffset` -> `$datetimeoffset`
+- `TimeSpan` -> `$timespan`
+- `Guid` -> `$guid`
+- `byte[]` -> `$bytes`
 
 ### 2.3 逻辑二元表达式（LogicBinaryExpr）
 

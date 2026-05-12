@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -41,6 +43,79 @@ namespace LiteOrm.Common.UnitTests
             var result = JsonSerializer.Deserialize<Expr>(json);
 
             Assert.Equal(expr, result);
+        }
+
+        [Fact]
+        public void SerializeAndDeserialize_ValueExpr_DateTime_RoundTripsWithTypeMarker()
+        {
+            var value = new DateTime(2024, 1, 15, 10, 30, 45, DateTimeKind.Utc);
+            Expr expr = new ValueExpr(value) { IsConst = true };
+
+            var json = JsonSerializer.Serialize(expr);
+            var result = JsonSerializer.Deserialize<Expr>(json);
+
+            Assert.Contains("\"$datetime\"", json);
+            var valueExpr = Assert.IsType<ValueExpr>(result);
+            Assert.Equal(value, valueExpr.Value);
+        }
+
+        [Fact]
+        public void SerializeAndDeserialize_ValueExpr_DateTimeOffset_RoundTripsWithTypeMarker()
+        {
+            var value = new DateTimeOffset(2024, 1, 15, 10, 30, 45, TimeSpan.FromHours(8));
+            Expr expr = new ValueExpr(value) { IsConst = false };
+
+            var json = JsonSerializer.Serialize(expr);
+            var result = JsonSerializer.Deserialize<Expr>(json);
+
+            Assert.Contains("\"$datetimeoffset\"", json);
+            var valueExpr = Assert.IsType<ValueExpr>(result);
+            Assert.Equal(value, valueExpr.Value);
+        }
+
+        [Fact]
+        public void SerializeAndDeserialize_ValueExpr_TimeSpanArray_RoundTripsWithTypeMarkers()
+        {
+            var value = new[] { TimeSpan.FromMinutes(5), TimeSpan.FromHours(1) };
+            Expr expr = new ValueExpr(value) { IsConst = true };
+
+            var json = JsonSerializer.Serialize(expr);
+            var result = JsonSerializer.Deserialize<Expr>(json);
+
+            Assert.Contains("\"$timespan\"", json);
+            var valueExpr = Assert.IsType<ValueExpr>(result);
+            var actual = Assert.IsType<List<object>>(valueExpr.Value);
+            Assert.Equal(value.Length, actual.Count);
+            Assert.Equal(value[0], Assert.IsType<TimeSpan>(actual[0]));
+            Assert.Equal(value[1], Assert.IsType<TimeSpan>(actual[1]));
+        }
+
+        [Fact]
+        public void SerializeAndDeserialize_ValueExpr_Guid_RoundTripsWithTypeMarker()
+        {
+            var value = Guid.Parse("6f9619ff-8b86-d011-b42d-00c04fc964ff");
+            Expr expr = new ValueExpr(value) { IsConst = true };
+
+            var json = JsonSerializer.Serialize(expr);
+            var result = JsonSerializer.Deserialize<Expr>(json);
+
+            Assert.Contains("\"$guid\"", json);
+            var valueExpr = Assert.IsType<ValueExpr>(result);
+            Assert.Equal(value, valueExpr.Value);
+        }
+
+        [Fact]
+        public void SerializeAndDeserialize_ValueExpr_ByteArray_RoundTripsWithTypeMarker()
+        {
+            var value = new byte[] { 1, 2, 3, 255 };
+            Expr expr = new ValueExpr(value) { IsConst = false };
+
+            var json = JsonSerializer.Serialize(expr);
+            var result = JsonSerializer.Deserialize<Expr>(json);
+
+            Assert.Contains("\"$bytes\"", json);
+            var valueExpr = Assert.IsType<ValueExpr>(result);
+            Assert.Equal(value, Assert.IsType<byte[]>(valueExpr.Value));
         }
 
         [Fact]

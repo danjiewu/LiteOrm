@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -75,6 +77,22 @@ namespace LiteOrm.Common
 
             private static readonly Dictionary<string, LogicOperator> _jsonToLogicOperator = new(StringComparer.OrdinalIgnoreCase);
             private static readonly Dictionary<string, ValueOperator> _jsonToValueOperator = new(StringComparer.OrdinalIgnoreCase);
+            private static readonly Dictionary<Type, string> _nativeTypeToJson = new()
+            {
+                { typeof(DateTime), "datetime" },
+                { typeof(DateTimeOffset), "datetimeoffset" },
+                { typeof(TimeSpan), "timespan" },
+                { typeof(Guid), "guid" },
+                { typeof(byte[]), "bytes" }
+            };
+            private static readonly Dictionary<string, Type> _jsonToNativeType = new(StringComparer.OrdinalIgnoreCase)
+            {
+                { "datetime", typeof(DateTime) },
+                { "datetimeoffset", typeof(DateTimeOffset) },
+                { "timespan", typeof(TimeSpan) },
+                { "guid", typeof(Guid) },
+                { "bytes", typeof(byte[]) }
+            };
             // 同一次序列化/反序列化过程中需要跨递归层共享 CTE 定义表，才能实现“首个完整定义 + 后续别名引用”。
             private static readonly AsyncLocal<CommonTableWriteContext> _writeContext = new();
             private static readonly AsyncLocal<CommonTableReadContext> _readContext = new();
@@ -131,12 +149,19 @@ namespace LiteOrm.Common
                         else if (propName == "!")
                         {
                             reader.Read();
-                            result = new NotExpr(JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr);
+                            result = JsonSerializer.Deserialize<LogicExpr>(ref reader, options).Not();
                         }
                         else if (propName.StartsWith("$"))
                         {
                             // 读取标识（可能是 "$": "like" 或 "$like": {...}）
                             string mark = propName == "$" ? null : propName.Substring(1);
+                            if (mark is not null && TryResolveNativeType(mark, out var nativeType))
+                            {
+                                reader.Read();
+                                result = new ValueExpr(JsonSerializer.Deserialize(ref reader, nativeType, options));
+                                continue;
+                            }
+
                             if (mark == null)
                             {
                                 reader.Read();
@@ -502,14 +527,14 @@ namespace LiteOrm.Common
                         else if (ve.IsConst)
                         {
                             // 常量值直接序列化                        
-                            JsonSerializer.Serialize(writer, ve.Value, _compactOptions);
+                            WriteNative(writer, ve.Value, options);
                         }
                         else
                         {
                             // 变量值使用快捷方式 {"@": value}                        
                             writer.WriteStartObject();
                             writer.WritePropertyName("@");
-                            JsonSerializer.Serialize(writer, ve.Value, _compactOptions);
+                            WriteNative(writer, ve.Value, options);
                             writer.WriteEndObject();
                         }
                         return;
@@ -641,14 +666,14 @@ namespace LiteOrm.Common
                         if (ge.Arg is not null)
                         {
                             writer.WritePropertyName("Arg");
-                            JsonSerializer.Serialize(writer, ge.Arg, options);
+                            WriteNative(writer, ge.Arg, options);
                         }
                         break;
                     case ValueExpr vve:
                         if (vve.Value is not null)
                         {
                             writer.WritePropertyName("Value");
-                            JsonSerializer.Serialize(writer, vve.Value, options);
+                            WriteNative(writer, vve.Value, options);
                         }
                         break;
                     case ForeignExpr fe:
@@ -991,35 +1016,174 @@ namespace LiteOrm.Common
             {
                 switch (reader.TokenType)
                 {
-                    case JsonTokenType.String: return reader.GetString();
+                    case JsonTokenType.String:
+                        return reader.GetString();
                     case JsonTokenType.Number:
                         if (reader.TryGetInt32(out int i)) return i;
                         else if (reader.TryGetInt64(out long l)) return l;
                         else if (reader.TryGetDecimal(out decimal d)) return d;
                         else return reader.GetDouble();
-                    case JsonTokenType.True: return true;
-                    case JsonTokenType.False: return false;
-                    case JsonTokenType.Null: return null;
+                    case JsonTokenType.True:
+                        return true;
+                    case JsonTokenType.False:
+                        return false;
+                    case JsonTokenType.Null:
+                        return null;
                     case JsonTokenType.StartObject:
-                        var dict = new Dictionary<string, object>();
-                        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-                        {
-                            if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                            string prop = reader.GetString();
-                            reader.Read();
-                            dict[prop ?? string.Empty] = ReadNative(ref reader, options);
-                        }
-                        return dict;
+                        return ReadObjectNative(ref reader, options);
                     case JsonTokenType.StartArray:
-                        var list = new List<object>();
-                        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
-                        {
-                            list.Add(ReadNative(ref reader, options));
-                        }
-                        return list;
+                        return ReadArrayNative(ref reader, options);
                     default:
                         return JsonSerializer.Deserialize<object>(ref reader, options);
                 }
+            }
+
+            private object ReadObjectNative(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                var dict = new Dictionary<string, object>();
+                if (!reader.Read()) return dict;
+                if (reader.TokenType == JsonTokenType.EndObject) return dict;
+
+                while (reader.TokenType == JsonTokenType.PropertyName)
+                {
+                    string propName = reader.GetString() ?? string.Empty;
+                    Type nativeType = null;
+                    bool isTypedValue = propName.Length > 1 && propName[0] == '$' && TryResolveNativeType(propName.Substring(1), out nativeType);
+
+                    reader.Read();
+                    object value = isTypedValue ? JsonSerializer.Deserialize(ref reader, nativeType, options) : ReadNative(ref reader, options);
+
+                    if (!reader.Read()) break;
+                    if (isTypedValue && dict.Count == 0 && reader.TokenType == JsonTokenType.EndObject)
+                    {
+                        return value;
+                    }
+
+                    dict[propName] = value;
+                    if (reader.TokenType == JsonTokenType.EndObject)
+                    {
+                        break;
+                    }
+                }
+
+                return dict;
+            }
+
+            private object ReadArrayNative(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            {
+                var list = new List<object>();
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+                {
+                    list.Add(ReadNative(ref reader, options));
+                }
+                return list;
+            }
+
+            private void WriteNative(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
+            {
+                if (value is null)
+                {
+                    writer.WriteNullValue();
+                    return;
+                }
+
+                Type valueType = value.GetType();
+                if (TryWriteSimpleNative(writer, value, valueType)) return;
+
+                if (TryGetNativeTypeMark(valueType, out string typeMark))
+                {
+                    writer.WriteStartObject();
+                    writer.WritePropertyName("$" + typeMark);
+                    JsonSerializer.Serialize(writer, value, valueType, options);
+                    writer.WriteEndObject();
+                    return;
+                }
+
+                if (value is IDictionary dictionary)
+                {
+                    writer.WriteStartObject();
+                    foreach (DictionaryEntry item in dictionary)
+                    {
+                        writer.WritePropertyName(item.Key?.ToString() ?? string.Empty);
+                        WriteNative(writer, item.Value, options);
+                    }
+                    writer.WriteEndObject();
+                    return;
+                }
+
+                if (value is IEnumerable enumerable && value is not string)
+                {
+                    writer.WriteStartArray();
+                    foreach (var item in enumerable)
+                    {
+                        WriteNative(writer, item, options);
+                    }
+                    writer.WriteEndArray();
+                    return;
+                }
+
+                JsonSerializer.Serialize(writer, value, valueType, options);
+            }
+
+            private static bool TryWriteSimpleNative(Utf8JsonWriter writer, object value, Type valueType)
+            {
+                switch (Type.GetTypeCode(valueType))
+                {
+                    case TypeCode.Boolean:
+                        writer.WriteBooleanValue((bool)value);
+                        return true;
+                    case TypeCode.Byte:
+                        writer.WriteNumberValue((byte)value);
+                        return true;
+                    case TypeCode.SByte:
+                        writer.WriteNumberValue((sbyte)value);
+                        return true;
+                    case TypeCode.Int16:
+                        writer.WriteNumberValue((short)value);
+                        return true;
+                    case TypeCode.UInt16:
+                        writer.WriteNumberValue((ushort)value);
+                        return true;
+                    case TypeCode.Int32:
+                        writer.WriteNumberValue((int)value);
+                        return true;
+                    case TypeCode.UInt32:
+                        writer.WriteNumberValue((uint)value);
+                        return true;
+                    case TypeCode.Int64:
+                        writer.WriteNumberValue((long)value);
+                        return true;
+                    case TypeCode.UInt64:
+                        writer.WriteNumberValue((ulong)value);
+                        return true;
+                    case TypeCode.Single:
+                        writer.WriteNumberValue((float)value);
+                        return true;
+                    case TypeCode.Double:
+                        writer.WriteNumberValue((double)value);
+                        return true;
+                    case TypeCode.Decimal:
+                        writer.WriteNumberValue((decimal)value);
+                        return true;
+                    case TypeCode.Char:
+                        writer.WriteStringValue(value.ToString());
+                        return true;
+                    case TypeCode.String:
+                        writer.WriteStringValue((string)value);
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+
+            private static bool TryGetNativeTypeMark(Type valueType, out string typeMark)
+            {
+                return _nativeTypeToJson.TryGetValue(valueType, out typeMark);
+            }
+
+            private static bool TryResolveNativeType(string typeMark, out Type type)
+            {
+                return _jsonToNativeType.TryGetValue(typeMark, out type);
             }
 
             private LogicBinaryExpr ReadLogicBinary(ref Utf8JsonReader reader, JsonSerializerOptions options, LogicOperator op = default)

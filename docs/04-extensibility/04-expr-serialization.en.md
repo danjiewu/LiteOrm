@@ -116,11 +116,28 @@ Use the examples below with one simple rule in mind:
 "hello"
 ```
 
+Mapped non-primitive value types use a typed wrapper so the CLR type survives round-tripping:
+
+```json
+{"$datetime": "2024-01-15T10:30:45Z"}
+{"$datetimeoffset": "2024-01-15T10:30:45+08:00"}
+{"$timespan": "01:00:00"}
+{"$guid": "6f9619ff-8b86-d011-b42d-00c04fc964ff"}
+{"$bytes": "AQID/w=="}
+```
+
 **Short Format - IsConst=false (Variable Value):**
 
 ```json
 {"@": 42}
 {"@": "variableName"}
+```
+
+For variable values, the same typed wrapper is used inside `@`:
+
+```json
+{"@": {"$guid": "6f9619ff-8b86-d011-b42d-00c04fc964ff"}}
+{"@": {"$bytes": "AQID/w=="}}
 ```
 
 **Normal Format - IsConst=true (Constant Value):**
@@ -142,6 +159,14 @@ Use the examples below with one simple rule in mind:
   "IsConst": false
 }
 ```
+
+Currently, typed wrappers are only used for these mapped runtime types:
+
+- `DateTime` -> `$datetime`
+- `DateTimeOffset` -> `$datetimeoffset`
+- `TimeSpan` -> `$timespan`
+- `Guid` -> `$guid`
+- `byte[]` -> `$bytes`
 
 ### 2.3 Logic Binary Expression (LogicBinaryExpr)
 
