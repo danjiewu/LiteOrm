@@ -477,6 +477,7 @@ namespace LiteOrm
         /// <returns>对应的数据库类型</returns>
         public DbType GetDbType(Type type)
         {
+            if (type is null) throw new ArgumentNullException(nameof(type));
             Type underlyingType = type.GetUnderlyingType();
             return GetDbTypeInternal(underlyingType);
         }
@@ -488,6 +489,7 @@ namespace LiteOrm
         /// <returns>对应的数据库类型</returns>
         protected virtual DbType GetDbTypeInternal(Type type)
         {
+            if (type is null) throw new ArgumentNullException(nameof(type));
             return DbTypeMap.GetDbType(type);
         }
 
@@ -552,17 +554,7 @@ namespace LiteOrm
             {
                 if (!first) sb.Append(",");
                 sb.Append("\n  ");
-                sb.Append(ToSqlName(column.Name));
-                sb.Append(" ");
-                sb.Append(GetSqlType(column));
-                if (column.IsIdentity)
-                {
-                    sb.Append(" ");
-                    sb.Append(GetAutoIncrementSql());
-                }
-                if (column.IsPrimaryKey && !hasCompositeKeys) sb.Append(" PRIMARY KEY");
-                if (!column.AllowNull || (hasCompositeKeys && column.IsPrimaryKey)) sb.Append(" NOT NULL");
-                if (!String.IsNullOrEmpty(column.DefaultValue)) sb.Append($" DEFAULT {column.DefaultValue}");
+                sb.Append(BuildCreateColumnDefinitionSql(column, column.IsPrimaryKey && !hasCompositeKeys, hasCompositeKeys && column.IsPrimaryKey));
                 first = false;
             }
             if (hasCompositeKeys)
@@ -589,8 +581,86 @@ namespace LiteOrm
         /// <param name="columns">列定义集合。</param>
         public virtual string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
-            var colSqls = columns.Select(c => $"{ToSqlName(c.Name)} {GetSqlType(c)}{GetNotNullConstraintSql(c)}");
+            var colSqls = columns.Select(BuildAddColumnDefinitionSql).ToList();
+            if (colSqls.Count == 0) return string.Empty;
             return $"ALTER TABLE {ToSqlName(tableName)} ADD {string.Join(", ", colSqls)}";
+        }
+
+        /// <summary>
+        /// 构建 CREATE TABLE 中单个列定义的 SQL 片段。
+        /// </summary>
+        protected virtual string BuildCreateColumnDefinitionSql(ColumnDefinition column, bool inlinePrimaryKey, bool forceNotNull)
+        {
+            var sb = ValueStringBuilder.Create(64);
+            sb.Append(ToSqlName(column.Name));
+            sb.Append(" ");
+            sb.Append(GetSqlType(column));
+
+            if (column.IsIdentity)
+            {
+                string autoIncrementSql = GetAutoIncrementSql();
+                if (!string.IsNullOrEmpty(autoIncrementSql))
+                {
+                    sb.Append(" ");
+                    sb.Append(autoIncrementSql);
+                }
+            }
+
+            if (inlinePrimaryKey) sb.Append(" PRIMARY KEY");
+            if (!string.IsNullOrEmpty(column.DefaultValue))
+            {
+                sb.Append(" DEFAULT ");
+                sb.Append(column.DefaultValue);
+            }
+            if (forceNotNull || !column.AllowNull) sb.Append(" NOT NULL");
+
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
+        }
+
+        /// <summary>
+        /// 构建 ALTER TABLE ADD COLUMN 中单个列定义的 SQL 片段。
+        /// </summary>
+        protected virtual string BuildAddColumnDefinitionSql(ColumnDefinition column)
+        {
+            var sb = ValueStringBuilder.Create(64);
+            sb.Append(ToSqlName(column.Name));
+            sb.Append(" ");
+            sb.Append(GetSqlType(column));
+
+            if (column.IsIdentity)
+            {
+                string autoIncrementSql = GetAutoIncrementSql();
+                if (!string.IsNullOrEmpty(autoIncrementSql))
+                {
+                    sb.Append(" ");
+                    sb.Append(autoIncrementSql);
+                }
+            }
+
+            if (column.IsPrimaryKey || !column.AllowNull)
+            {
+                if (!column.IsIdentity)
+                {
+                    sb.Append(" DEFAULT ");
+                    sb.Append(GetDefaultValueSql(column));
+                    sb.Append(" NOT NULL");
+                }
+            }
+            else if (!string.IsNullOrEmpty(column.DefaultValue))
+            {
+                sb.Append(" DEFAULT ");
+                sb.Append(column.DefaultValue);
+            }
+            else
+            {
+                sb.Append(" NULL");
+            }
+
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
         /// <summary>

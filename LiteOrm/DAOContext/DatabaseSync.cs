@@ -1,4 +1,5 @@
 using LiteOrm.Common;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -272,9 +273,18 @@ namespace LiteOrm
             {
                 if (sql.TrimStart().StartsWith("CREATE", StringComparison.OrdinalIgnoreCase)
                     && sql.IndexOf("INDEX", StringComparison.OrdinalIgnoreCase) >= 0)
-                    try { ExecuteSqlSync(daoContext, sql); } catch { }
+                     try { ExecuteSqlSync(daoContext, sql); } catch { }
                 else
-                    ExecuteSqlSync(daoContext, sql);
+                {
+                    try
+                    {
+                        ExecuteSqlSync(daoContext, sql);
+                    }
+                    catch (Exception ex) when (LogCreateTableFailure(sql, ex))
+                    {
+                        throw;
+                    }
+                }
             }
         }
 
@@ -284,10 +294,28 @@ namespace LiteOrm
             {
                 if (sql.TrimStart().StartsWith("CREATE", StringComparison.OrdinalIgnoreCase)
                     && sql.IndexOf("INDEX", StringComparison.OrdinalIgnoreCase) >= 0)
-                    try { await ExecuteSqlAsync(daoContext, sql).ConfigureAwait(false); } catch { }
+                     try { await ExecuteSqlAsync(daoContext, sql).ConfigureAwait(false); } catch { }
                 else
-                    await ExecuteSqlAsync(daoContext, sql).ConfigureAwait(false);
+                {
+                    try
+                    {
+                        await ExecuteSqlAsync(daoContext, sql).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (LogCreateTableFailure(sql, ex))
+                    {
+                        throw;
+                    }
+                }
             }
+        }
+
+        private bool LogCreateTableFailure(string sql, Exception ex)
+        {
+            if (!sql.TrimStart().StartsWith("CREATE TABLE", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            _daoContextPool.Logger?.LogError("Failed to create table in pool '{PoolName}'. Error: {ErrorMessage}. SQL: {Sql}", _daoContextPool.Name, ex.Message, sql);
+            return false;
         }
 
         private bool TableExistsSync(DAOContext daoContext, SqlBuilder sqlBuilder, string tableName)

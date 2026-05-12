@@ -109,7 +109,8 @@ namespace LiteOrm
         public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
             var sqlName = ToSqlName(tableName);
-            var colSqls = columns.Select(c => $"ALTER TABLE {sqlName} ADD COLUMN {ToSqlName(c.Name)} {GetSqlType(c)}{GetNotNullConstraintSql(c)}");
+            var colSqls = columns.Select(c => $"ALTER TABLE {sqlName} ADD COLUMN {BuildAddColumnDefinitionSql(c)}").ToList();
+            if (colSqls.Count == 0) return string.Empty;
             return string.Join("; ", colSqls);
         }
 
@@ -298,16 +299,7 @@ namespace LiteOrm
             {
                 if (!first) sb.Append(",");
                 sb.Append("\n  ");
-                sb.Append(ToSqlName(column.Name));
-                sb.Append(" ");
-                sb.Append(GetSqlType(column));
-                if (column.IsPrimaryKey && !hasCompositeKeys) sb.Append(" PRIMARY KEY");
-                if (column.IsIdentity)
-                {
-                    sb.Append(" ");
-                    sb.Append(GetAutoIncrementSql());
-                }
-                if ((!column.AllowNull || (hasCompositeKeys && column.IsPrimaryKey)) && !(column.IsPrimaryKey && !hasCompositeKeys)) sb.Append(" NOT NULL");
+                sb.Append(BuildCreateColumnDefinitionSql(column, column.IsPrimaryKey && !hasCompositeKeys, hasCompositeKeys && column.IsPrimaryKey));
                 first = false;
             }
             if (hasCompositeKeys)
@@ -321,6 +313,38 @@ namespace LiteOrm
                 sb.Append(")");
             }
             sb.Append("\n)");
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
+        }
+
+        /// <summary>
+        /// SQLite 要求 AUTOINCREMENT 紧跟在 PRIMARY KEY 之后，且单列主键不需要额外追加 NOT NULL。
+        /// </summary>
+        protected override string BuildCreateColumnDefinitionSql(ColumnDefinition column, bool inlinePrimaryKey, bool forceNotNull)
+        {
+            var sb = ValueStringBuilder.Create(64);
+            sb.Append(ToSqlName(column.Name));
+            sb.Append(" ");
+            sb.Append(GetSqlType(column));
+
+            if (inlinePrimaryKey) sb.Append(" PRIMARY KEY");
+            if (column.IsIdentity)
+            {
+                string autoIncrementSql = GetAutoIncrementSql();
+                if (!string.IsNullOrEmpty(autoIncrementSql))
+                {
+                    sb.Append(" ");
+                    sb.Append(autoIncrementSql);
+                }
+            }
+            if (!string.IsNullOrEmpty(column.DefaultValue))
+            {
+                sb.Append(" DEFAULT ");
+                sb.Append(column.DefaultValue);
+            }
+            if ((forceNotNull || !column.AllowNull) && !inlinePrimaryKey) sb.Append(" NOT NULL");
+
             string result = sb.ToString();
             sb.Dispose();
             return result;

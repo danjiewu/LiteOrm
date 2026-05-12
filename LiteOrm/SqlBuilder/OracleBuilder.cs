@@ -255,9 +255,14 @@ namespace LiteOrm
                 case DbType.String:
                 case DbType.AnsiString:
                     return column.Length > 0 && column.Length <= 4000 ? $"VARCHAR2({column.Length})" : "CLOB";
+                case DbType.SByte:
+                case DbType.Byte:
                 case DbType.Int16:
                 case DbType.Int32:
                 case DbType.Int64:
+                case DbType.UInt16:
+                case DbType.UInt32:
+                case DbType.UInt64:
                     return "NUMBER";
                 case DbType.DateTime:
                     return "DATE";
@@ -286,7 +291,8 @@ namespace LiteOrm
         /// </summary>
         public override string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
-            var colSqls = columns.Select(c => $"{ToSqlName(c.Name)} {GetSqlType(c)}{GetNotNullConstraintSql(c)}");
+            var colSqls = columns.Select(BuildAddColumnDefinitionSql).ToList();
+            if (colSqls.Count == 0) return string.Empty;
             return $"ALTER TABLE {ToSqlName(tableName)} ADD ({string.Join(", ", colSqls)})";
         }
 
