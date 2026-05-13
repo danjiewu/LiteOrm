@@ -80,13 +80,12 @@ namespace LiteOrm.Tests.Infrastructure
                 using var cmd = context.CreateCommand();
                 foreach (var table in tables)
                 {
-                    cmd.CommandText = $"SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '{table.Replace("'", "''")}'";
-                    if (cmd.ExecuteScalar() is null)
+                    try
                     {
-                        continue;
+                        cmd.CommandText = $"DELETE FROM {sqlBuilder.ToSqlName(table)}";
+                        cmd.ExecuteNonQuery();
                     }
-                    cmd.CommandText = $"DELETE FROM {sqlBuilder.ToSqlName(table)}";
-                    cmd.ExecuteNonQuery();
+                    catch { }
                 }
             }
             finally

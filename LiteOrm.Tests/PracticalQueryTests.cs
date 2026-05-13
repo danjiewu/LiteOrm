@@ -347,7 +347,8 @@ namespace LiteOrm.Tests
             var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder);
             var dt = await dataViewDAO.Search(query).GetResultAsync(ct);
 
-            Assert.Equal(1, Regex.Matches(prepared.Sql, "\"AdultUsers\" AS", RegexOptions.IgnoreCase).Count);
+            var cteName = dataViewDAO.SqlBuilder.ToSqlName("AdultUsers");
+            Assert.Equal(1, Regex.Matches(prepared.Sql, $"{cteName} AS", RegexOptions.IgnoreCase).Count);   
             Assert.Equal(4, dt.Rows.Count);
 
             var groups = dt.Rows.Cast<DataRow>()
@@ -374,8 +375,8 @@ namespace LiteOrm.Tests
                 .Union(second.Select(Expr.Prop("Name")));
 
             var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder);
-
-            Assert.Equal(1, Regex.Matches(prepared.Sql, "\"DupCte\" AS", RegexOptions.IgnoreCase).Count);
+            var cteName = dataViewDAO.SqlBuilder.ToSqlName("DupCte");
+            Assert.Equal(1, Regex.Matches(prepared.Sql, $"{cteName} AS", RegexOptions.IgnoreCase).Count);
         }
 
         [Fact]

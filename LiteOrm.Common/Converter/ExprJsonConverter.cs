@@ -149,7 +149,7 @@ namespace LiteOrm.Common
                         else if (propName == "!")
                         {
                             reader.Read();
-                            result = JsonSerializer.Deserialize<LogicExpr>(ref reader, options).Not();
+                            result = new NotExpr(JsonSerializer.Deserialize<LogicExpr>(ref reader, options));
                         }
                         else if (propName.StartsWith("$"))
                         {
