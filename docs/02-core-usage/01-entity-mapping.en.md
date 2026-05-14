@@ -53,6 +53,40 @@ public class User
 | `IsIdentity` | Whether it is an identity column. |
 | `DataType` | Serialization type, used for complex object storage. |
 
+## `[PropertyOrder]` Attribute
+
+Controls the ordering of entity properties in database operations (e.g., table creation, SQL column list generation).
+
+```csharp
+[Table("Users")]
+public class User
+{
+    [PropertyOrder(1)]
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [PropertyOrder(2)]
+    [Column("UserName")]
+    public string? UserName { get; set; }
+
+    [PropertyOrder(After = nameof(DeptId))]
+    [Column("Age")]
+    public int Age { get; set; }
+
+    [PropertyOrder(0)]
+    [Column("DeptId")]
+    public int? DeptId { get; set; }
+}
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `Order` | Sort priority. Lower values come first. Default is 0. Within the same topological level, properties with smaller Order values are placed first. |
+| `After` | Specifies a property name; indicates the current property should be placed after it. |
+| `Before` | Specifies a property name; indicates the current property should be placed before it. |
+
+> **Sorting Rule**: Properties are first sorted by Before/After topological dependencies, then within the same level by Order value ascending, and finally by original declaration order. An `InvalidOperationException` is thrown when circular dependencies are detected.
+
 ## Multi-DataSource Mapping
 
 If there are multiple data sources in the project, you can explicitly mark them on the entity:

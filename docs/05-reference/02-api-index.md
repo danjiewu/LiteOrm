@@ -26,11 +26,12 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 ### 实体与视图建模
 
-- `[Table]`
-- `[Column]`
-- `[ForeignType]`
-- `[ForeignColumn]`
-- `[TableJoin]`
+- `[Table]`
+- `[Column]`
+- `[PropertyOrder]`
+- `[ForeignType]`
+- `[ForeignColumn]`
+- `[TableJoin]`
 - `AutoExpand`
 
 对应文档：

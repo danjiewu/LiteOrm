@@ -26,11 +26,12 @@ Related guides:
 
 ### Entity mapping and view models
 
-- `[Table]`
-- `[Column]`
-- `[ForeignType]`
-- `[ForeignColumn]`
-- `[TableJoin]`
+- `[Table]`
+- `[Column]`
+- `[PropertyOrder]`
+- `[ForeignType]`
+- `[ForeignColumn]`
+- `[TableJoin]`
 - `AutoExpand`
 
 Related guides:

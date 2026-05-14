@@ -53,6 +53,40 @@ public class User
 | `IsIdentity` | 是否自增列。 |
 | `DataType` | 序列化类型，用于复杂对象存储。 |
 
+## `[PropertyOrder]` 特性
+
+用于控制实体属性在数据库操作（如建表、生成 SQL 列列表）中的排列顺序。
+
+```csharp
+[Table("Users")]
+public class User
+{
+    [PropertyOrder(1)]
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [PropertyOrder(2)]
+    [Column("UserName")]
+    public string? UserName { get; set; }
+
+    [PropertyOrder(After = nameof(DeptId))]
+    [Column("Age")]
+    public int Age { get; set; }
+
+    [PropertyOrder(0)]
+    [Column("DeptId")]
+    public int? DeptId { get; set; }
+}
+```
+
+| 参数 | 说明 |
+| --- | --- |
+| `Order` | 排序优先级，数值越小越靠前，默认值为 0。同一拓扑层级中 Order 值较小的属性优先排列。 |
+| `After` | 指定属性名，指示当前属性应排在该属性之后。 |
+| `Before` | 指定属性名，指示当前属性应排在该属性之前。 |
+
+> **排序规则**：首先按 Before/After 指定的拓扑依赖关系排序，同一层级按 Order 值升序排列，最后按属性原始声明顺序排列。当检测到循环依赖时，将抛出 `InvalidOperationException` 异常。
+
 ## 多数据源映射
 
 如果项目中存在多个数据源，可以在实体上显式标注：
