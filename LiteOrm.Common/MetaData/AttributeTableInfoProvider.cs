@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
 using System.Reflection;
 
 namespace LiteOrm
@@ -87,7 +88,9 @@ namespace LiteOrm
             var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType, tableAttribute.DataSource);
 
             List<ColumnDefinition> columns = new List<ColumnDefinition>();
-            foreach (PropertyInfo property in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+
+            var properties = objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList().SortProperty();
+            foreach (PropertyInfo property in properties)
             {
                 ColumnDefinition column = GenerateColumnDefinition(property, sqlBuilder);
                 if (column is not null)
@@ -203,20 +206,20 @@ namespace LiteOrm
 
             // 根据属性连接表，生成ColumnRef对象，并加入连接队列
             List<SqlColumn> columns = new List<SqlColumn>();
-            foreach (PropertyInfo property in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            var properties = objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList().SortProperty();
+            foreach (PropertyInfo property in properties)
             {
                 ColumnDefinition column = GenerateColumnDefinition(property, sqlBuilder);
                 if (column is not null)
                 {
                     columns.Add(column);
                 }
-            }
-
-            // 根据属性上的ForeignColumnAttribute连接表，生成ForeignColumn对象，并加入连接队列
-            foreach (PropertyInfo property in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-            {
-                ForeignColumn foreignColumn = GenerateForeignColumn(property);
-                if (foreignColumn is not null) columns.Add(foreignColumn);
+                else
+                {
+                    // 根据属性上的ForeignColumnAttribute连接表，生成ForeignColumn对象，并加入连接队列
+                    ForeignColumn foreignColumn = GenerateForeignColumn(property);
+                    if (foreignColumn is not null) columns.Add(foreignColumn);
+                }
             }
 
             // 将ColumnRef对象加入队列，准备进行连接操作

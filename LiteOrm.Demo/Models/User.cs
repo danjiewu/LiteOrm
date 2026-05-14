@@ -25,6 +25,7 @@ namespace LiteOrm.Demo.Models
         /// 年龄
         /// </summary>
         [Column("Age")]
+        [PropertyOrder(After = nameof(DeptId))]
         public int Age { get; set; }
 
         /// <summary>

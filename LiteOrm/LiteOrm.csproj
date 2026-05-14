@@ -17,6 +17,7 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
       序列化功能优化，非基础值类型附带类型标记；
+      增加属性排序功能；
       修正部分类型建表SQL错误；
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
