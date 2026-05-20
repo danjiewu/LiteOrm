@@ -266,30 +266,31 @@ var paged = await userService.SearchAsync(
 
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 手动构建表达式（支持更复杂的动态条件）
-var expr = Expr.Prop("Age") > 18 & Expr.Prop("Status") == 1;
+var expr = Prop("Age") > 18 & Prop("Status") == 1;
 var users = await userService.SearchAsync(expr);
 
 
 
 // IN 查询
 var users = await userService.SearchAsync(
-    Expr.Prop("Id").In(1, 2, 3, 4, 5)
+    Prop("Id").In(1, 2, 3, 4, 5)
 );
 
 
 
 // LIKE 查询
 var users = await userService.SearchAsync(
-    Expr.Prop("UserName").Contains("admin")
+    Prop("UserName").Contains("admin")
 );
 
 
 
 // 链式构建复杂查询
-var query = Expr.From<User>()
-    .Where(Expr.Prop("Age") > 18)
-    .OrderBy(Expr.Prop("CreateTime"))
+var query = From<User>()
+    .Where(Prop("Age") > 18)
+    .OrderBy(Prop("CreateTime"))
     .Section(0, 10);  // LIMIT/OFFSET
 var result = await userService.SearchAsync(query);
 ```
@@ -301,9 +302,10 @@ var result = await userService.SearchAsync(query);
 
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 使用参数化插值字符串，防止 SQL 注入
 int minAge = 18;
-var expr = Expr.Prop("Age") > 25;
+var expr = Prop("Age") > 25;
 
 
 
@@ -314,7 +316,7 @@ var users = await objectViewDAO.Search($"WHERE {expr} AND Age > {minAge}").ToLis
 
 // DataViewDAO 示例
 var dataTable = await dataViewDAO.Search(
-    $"SELECT Id, UserName FROM Users WHERE {Expr.Prop("Age")} > {minAge}"
+    $"SELECT Id, UserName FROM Users WHERE {Prop("Age")} > {minAge}"
 ).GetResultAsync();
 ```
 
@@ -327,18 +329,19 @@ var dataTable = await dataViewDAO.Search(
 LiteOrm 支持用 `SelectExpr.With(name)` 构建 CTE：
 
 ```csharp
-var cteDef = Expr.From<User>()
-    .Where(Expr.Prop("Age") >= 18)
+using static LiteOrm.Common.Expr;
+var cteDef = From<User>()
+    .Where(Prop("Age") >= 18)
     .Select(
-        Expr.Prop("Id").As("Id"),
-        Expr.Prop("UserName").As("Name"),
-        Expr.Prop("Age").As("Age")
+        Prop("Id").As("Id"),
+        Prop("UserName").As("Name"),
+        Prop("Age").As("Age")
     );
 
 var query = cteDef.With("AdultUsers")
-    .Where(Expr.Prop("Age") >= 25)
-    .OrderBy(Expr.Prop("Name").Asc())
-    .Select(Expr.Prop("Name"), Expr.Prop("Age"));
+    .Where(Prop("Age") >= 25)
+    .OrderBy(Prop("Name").Asc())
+    .Select(Prop("Name"), Prop("Age"));
 
 var result = await dataViewDAO.Search(query).GetResultAsync();
 ```
@@ -346,20 +349,21 @@ var result = await dataViewDAO.Search(query).GetResultAsync();
 同一个 CTE 表达式也可以在 `UNION` 两侧复用：
 
 ```csharp
-var adultUsers = Expr.From<User>()
-    .Where(Expr.Prop("Age") >= 18)
+using static LiteOrm.Common.Expr;
+var adultUsers = From<User>()
+    .Where(Prop("Age") >= 18)
     .Select(
-        Expr.Prop("UserName").As("Name"),
-        Expr.Prop("Age").As("Age"))
+        Prop("UserName").As("Name"),
+        Prop("Age").As("Age"))
     .With("AdultUsers");
 
 var query = adultUsers
-    .Where(Expr.Prop("Age") < 30)
-    .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Const("18-29").As("AgeGroup"))
+    .Where(Prop("Age") < 30)
+    .Select(Prop("Name"), Prop("Age"), Const("18-29").As("AgeGroup"))
     .UnionAll(
         adultUsers
-            .Where(Expr.Prop("Age") >= 30)
-            .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Const("30+").As("AgeGroup")));
+            .Where(Prop("Age") >= 30)
+            .Select(Prop("Name"), Prop("Age"), Const("30+").As("AgeGroup")));
 ```
 
 同别名 CTE 现在会先做校验：
@@ -376,9 +380,10 @@ var query = adultUsers
 
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 检查关联数据存在性
 var result = await userService.SearchAsync(
-    q => q.Where(u => Expr.Exists<Order>(o => o.UserId == u.Id))
+    q => q.Where(u => Exists<Order>(o => o.UserId == u.Id))
 );
 ```
 

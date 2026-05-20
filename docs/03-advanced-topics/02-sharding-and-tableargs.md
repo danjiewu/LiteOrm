@@ -229,9 +229,10 @@ var sales = await salesService.SearchAsync(
 ### 6.3 使用 `Expr.From<T>(...)` 指定分表
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var sales = await salesService.SearchAsync(
-    Expr.From<SalesRecordView>("202411")
-        .Where(Expr.Prop("Amount") > 100)
+    From<SalesRecordView>("202411")
+        .Where(Prop("Amount") > 100)
         .OrderBy(("Amount", false))
         .Section(0, 3)
 );
@@ -242,9 +243,10 @@ var sales = await salesService.SearchAsync(
 ### 6.4 利用不同占位符位置表达不同维度
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var sales = await salesService.SearchAsync(
-    Expr.From<SalesRecord>("US", "2025")
-        .Where(Expr.Prop("Amount") > 100)
+    From<SalesRecord>("US", "2025")
+        .Where(Prop("Amount") > 100)
         .Section(0, 20)
 );
 ```
@@ -272,12 +274,13 @@ public class Table2Row
 查询主表时只传一次参数数组：
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var args = new[] { "TenantA", "202501" };
 
-var expr = Expr.From<Table1Row>(args)
+var expr = From<Table1Row>(args)
     // 同作用域或下级作用域里的 Table2Row 如果没有单独指定 TableArgs，
     // 会继续使用这组 args。
-    .Where(Expr.Exists<Table2Row>(t => true));
+    .Where(Exists<Table2Row>(t => true));
 ```
 
 这时：

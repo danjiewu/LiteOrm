@@ -151,7 +151,8 @@ The backend typically receives this JSON as `Expr`, then parses out:
 Then supplements permission filtering. For non-`Admin` users, the backend automatically appends:
 
 ```csharp
-Expr.Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id
+using static LiteOrm.Common.Expr;
+Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id
 ```
 
 ### 5.1 Count Caching

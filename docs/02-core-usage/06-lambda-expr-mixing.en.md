@@ -22,8 +22,9 @@ The two main patterns are:
 ### 2.1 Smallest useful example
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var users = await userService.SearchAsync(
-    u => u.Age >= 18 && Expr.Prop("UserName").Contains("John").To<bool>()
+    u => u.Age >= 18 && Prop("UserName").Contains("John").To<bool>()
 );
 ```
 
@@ -32,13 +33,14 @@ This style works well for "stable main condition + dynamic extra filter" queries
 ### 2.2 Build dynamically first, then plug back into Lambda
 
 ```csharp
+using static LiteOrm.Common.Expr;
 LogicExpr filter = null;
 
 if (!string.IsNullOrWhiteSpace(keyword))
-    filter &= Expr.Prop("UserName").Contains(keyword);
+    filter &= Prop("UserName").Contains(keyword);
 
 if (minAge.HasValue)
-    filter &= Expr.Prop("Age") >= minAge.Value;
+    filter &= Prop("Age") >= minAge.Value;
 
 var users = await userService.SearchAsync(
     u => u.IsActive == true && filter.To<bool>()
@@ -50,8 +52,9 @@ You keep the dynamic part reusable while still letting the final query read like
 ### 2.3 Combine with related `EXISTS`
 
 ```csharp
-var hasOpenOrder = Expr.ExistsRelated<Order>(
-    Expr.Prop("Status") != "Completed"
+using static LiteOrm.Common.Expr;
+var hasOpenOrder = ExistsRelated<Order>(
+    Prop("Status") != "Completed"
 );
 
 var activeUsers = await userService.SearchAsync(
@@ -66,15 +69,16 @@ If relationships are already declared in the model, combining `ExistsRelated(...
 When the base business rule is naturally expressed as Lambda but still needs optional runtime filters, convert it first with `Expr.Lambda<T>()`.
 
 ```csharp
-var baseCondition = Expr.Lambda<User>(u => u.IsActive == true && u.Age >= 18);
+using static LiteOrm.Common.Expr;
+var baseCondition = Lambda<User>(u => u.IsActive == true && u.Age >= 18);
 
 LogicExpr extraFilter = null;
 
 if (!string.IsNullOrWhiteSpace(keyword))
-    extraFilter &= Expr.Prop("UserName").Contains(keyword);
+    extraFilter &= Prop("UserName").Contains(keyword);
 
 if (deptId.HasValue)
-    extraFilter &= Expr.Prop("DeptId") == deptId.Value;
+    extraFilter &= Prop("DeptId") == deptId.Value;
 
 var combined = baseCondition & extraFilter;
 
@@ -92,7 +96,8 @@ This is a good fit for "stable business baseline + optional filter set" query bu
 In query predicates that normally means `bool`:
 
 ```csharp
-u => u.Age >= 18 && expr.To<bool>()
+using static LiteOrm.Common.Expr;
+u => u.Age >= 18 && To<bool>()
 ```
 
 ### 4.2 Do not call `To<T>()` in normal runtime code

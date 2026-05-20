@@ -84,12 +84,13 @@ var users = await userService.SearchAsync(q => q.Where(u => u.Age >= 18).Skip(0)
 ## 扩展函数处理器
 
 ```csharp
+using static LiteOrm.Common.Expr;
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (ref outSql, expr, context, sqlBuilder, outputParams) =>
 {
     outSql.Append("DATE_FORMAT(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(", ");
-    expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```

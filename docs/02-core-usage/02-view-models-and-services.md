@@ -64,11 +64,12 @@ public class UserWriteDao : ObjectDAO<User>
 ```
 
 ```csharp
+using static LiteOrm.Common.Expr;
 public class UserViewDao : ObjectViewDAO<UserView>
 {
     public Task<List<UserView>> GetActiveUsersAsync(CancellationToken cancellationToken = default)
     {
-        return Search(Expr.Prop("Age") >= 18).ToListAsync(cancellationToken);
+        return Search(Prop("Age") >= 18).ToListAsync(cancellationToken);
     }
 }
 ```

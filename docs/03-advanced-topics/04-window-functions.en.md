@@ -206,6 +206,7 @@ var runningTotalExpr = Func("SUM", Prop(nameof(SalesRecord.Amount)))
 **Approach 1: Lambda projection**
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var results = await saleDAO
     .WithArgs([tableMonth])
     .SearchAs<SalesWindowView>(q => q

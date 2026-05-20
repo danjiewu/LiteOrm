@@ -250,30 +250,31 @@ var paged = await userService.SearchAsync(
 
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Manually build expressions (supports more complex dynamic conditions)
-var expr = Expr.Prop("Age") > 18 & Expr.Prop("Status") == 1;
+var expr = Prop("Age") > 18 & Prop("Status") == 1;
 var users = await userService.SearchAsync(expr);
 
 
 
 // IN query
 var users = await userService.SearchAsync(
-    Expr.Prop("Id").In(1, 2, 3, 4, 5)
+    Prop("Id").In(1, 2, 3, 4, 5)
 );
 
 
 
 // LIKE query
 var users = await userService.SearchAsync(
-    Expr.Prop("UserName").Contains("admin")
+    Prop("UserName").Contains("admin")
 );
 
 
 
 // Chain complex queries
-var query = Expr.From<User>()
-    .Where(Expr.Prop("Age") > 18)
-    .OrderBy(Expr.Prop("CreateTime"))
+var query = From<User>()
+    .Where(Prop("Age") > 18)
+    .OrderBy(Prop("CreateTime"))
     .Section(0, 10);  // LIMIT/OFFSET
 var result = await userService.SearchAsync(query);
 ```
@@ -285,9 +286,10 @@ var result = await userService.SearchAsync(query);
 
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Use parameterized interpolated strings to prevent SQL injection
 int minAge = 18;
-var expr = Expr.Prop("Age") > 25;
+var expr = Prop("Age") > 25;
 
 
 
@@ -298,7 +300,7 @@ var users = await objectViewDAO.Search($"WHERE {expr} AND Age > {minAge}").ToLis
 
 // `DataViewDAO` example
 var dataTable = await dataViewDAO.Search(
-    $"SELECT Id, UserName FROM Users WHERE {Expr.Prop("Age")} > {minAge}"
+    $"SELECT Id, UserName FROM Users WHERE {Prop("Age")} > {minAge}"
 ).GetResultAsync();
 ```
 
@@ -311,18 +313,19 @@ var dataTable = await dataViewDAO.Search(
 LiteOrm supports CTE through `SelectExpr.With(name)`:
 
 ```csharp
-var cteDef = Expr.From<User>()
-    .Where(Expr.Prop("Age") >= 18)
+using static LiteOrm.Common.Expr;
+var cteDef = From<User>()
+    .Where(Prop("Age") >= 18)
     .Select(
-        Expr.Prop("Id").As("Id"),
-        Expr.Prop("UserName").As("Name"),
-        Expr.Prop("Age").As("Age")
+        Prop("Id").As("Id"),
+        Prop("UserName").As("Name"),
+        Prop("Age").As("Age")
     );
 
 var query = cteDef.With("AdultUsers")
-    .Where(Expr.Prop("Age") >= 25)
-    .OrderBy(Expr.Prop("Name").Asc())
-    .Select(Expr.Prop("Name"), Expr.Prop("Age"));
+    .Where(Prop("Age") >= 25)
+    .OrderBy(Prop("Name").Asc())
+    .Select(Prop("Name"), Prop("Age"));
 
 var result = await dataViewDAO.Search(query).GetResultAsync();
 ```
@@ -330,20 +333,21 @@ var result = await dataViewDAO.Search(query).GetResultAsync();
 The same CTE expression can also be reused on both sides of a `UNION`:
 
 ```csharp
-var adultUsers = Expr.From<User>()
-    .Where(Expr.Prop("Age") >= 18)
+using static LiteOrm.Common.Expr;
+var adultUsers = From<User>()
+    .Where(Prop("Age") >= 18)
     .Select(
-        Expr.Prop("UserName").As("Name"),
-        Expr.Prop("Age").As("Age"))
+        Prop("UserName").As("Name"),
+        Prop("Age").As("Age"))
     .With("AdultUsers");
 
 var query = adultUsers
-    .Where(Expr.Prop("Age") < 30)
-    .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Const("18-29").As("AgeGroup"))
+    .Where(Prop("Age") < 30)
+    .Select(Prop("Name"), Prop("Age"), Const("18-29").As("AgeGroup"))
     .UnionAll(
         adultUsers
-            .Where(Expr.Prop("Age") >= 30)
-            .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Const("30+").As("AgeGroup")));
+            .Where(Prop("Age") >= 30)
+            .Select(Prop("Name"), Prop("Age"), Const("30+").As("AgeGroup")));
 ```
 
 Duplicate CTE aliases are now validated before SQL generation:
@@ -360,9 +364,10 @@ See: [CTE Guide](./docs/02-core-usage/07-cte-guide.en.md)
 
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Check for existence of related data
 var result = await userService.SearchAsync(
-    q => q.Where(u => Expr.Exists<Order>(o => o.UserId == u.Id))
+    q => q.Where(u => Exists<Order>(o => o.UserId == u.Id))
 );
 ```
 

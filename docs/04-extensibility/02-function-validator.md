@@ -61,6 +61,7 @@ var validator = new FunctionExprValidator(FunctionPolicy.AllowRegisted);
 `FunctionExprValidator` 继承自 `ExprValidator`，单个节点校验走 `Validate(node)`，整棵表达式树校验更常见的用法是 `VisitAll(expr)`：
 
 ```csharp
+using static LiteOrm.Common.Expr;
 public override bool Validate(Expr node)
 {
     if (node == null) return true;

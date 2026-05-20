@@ -184,6 +184,7 @@ var host = Host.CreateDefaultBuilder(args)
 #### 基本分页查询
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 使用服务层
 var pageResult = await userService.SearchAsync(
     q => q.Where(u => u.Age >= 18)
@@ -193,7 +194,7 @@ var pageResult = await userService.SearchAsync(
 
 // 直接使用 DAO
 var users = await objectViewDAO.Search(
-    Expr.From<User>()
+    From<User>()
         .Where(u => u.Age >= 18)
         .OrderBy(nameof(User.Id))
         .Section(10, 20) // 跳过10条，取20条
@@ -203,8 +204,9 @@ var users = await objectViewDAO.Search(
 #### 复杂条件分页
 
 ```csharp
-var query = Expr.From<User>()
-    .Where(Expr.Prop("Age") > 18 & Expr.Prop("DeptId").In(1, 2, 3))
+using static LiteOrm.Common.Expr;
+var query = From<User>()
+    .Where(Prop("Age") > 18 & Prop("DeptId").In(1, 2, 3))
     .OrderByDescending("CreateTime")
     .Section(0, 10); // 第一页，10条记录
 

@@ -15,6 +15,7 @@
 ### 1.1 定义泛型基类
 
 ```csharp
+using static LiteOrm.Common.Expr;
 [ApiController]
 [Route("api/[controller]")]
 public abstract class EntityControllerBase<T, TView> : ControllerBase
@@ -88,11 +89,11 @@ public abstract class EntityControllerBase<T, TView> : ControllerBase
         }
         else if (expr is LogicExpr logicExpr)
         {
-            expr = Expr.From<TView>().Where(logicExpr).Section(0, take);
+            expr = From<TView>().Where(logicExpr).Section(0, take);
         }
         else
         {
-            expr = Expr.From<TView>().Section(0, take);
+            expr = From<TView>().Section(0, take);
         }
 
         var countExpr = ExtractFilter(expr);
@@ -106,7 +107,7 @@ public abstract class EntityControllerBase<T, TView> : ControllerBase
     {
         var source = section.Source;
         var rebuilt = (source as ISectionAnchor)?.Section(skip, take)
-            ?? Expr.From<TView>().Section(skip, take);
+            ?? From<TView>().Section(skip, take);
         return (rebuilt as SectionExpr)!;
     }
 
@@ -211,12 +212,13 @@ Content-Type: application/json
 可以在基类中添加更多通用方法，例如条件统计等：
 
 ```csharp
+using static LiteOrm.Common.Expr;
 [HttpGet("count")]
 public virtual async Task<int> Count([FromQuery] string? keyword)
 {
     if (string.IsNullOrEmpty(keyword))
         return await ViewService.CountAsync();
-    return await ViewService.CountAsync(Expr.Prop("Name").Contains(keyword));
+    return await ViewService.CountAsync(Prop("Name").Contains(keyword));
 }
 
 [HttpGet("exists/{id}")]

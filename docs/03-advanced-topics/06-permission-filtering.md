@@ -18,9 +18,10 @@
 `GET /api/orders/query` 与 `GET /api/orders/stats` 这类接口会先构造业务过滤条件，再根据当前用户角色补充范围条件：
 
 ```csharp
+using static LiteOrm.Common.Expr;
 if (request.OnlyMine == true || !IsAdmin(currentUser))
 {
-    filter &= Expr.Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id;
+    filter &= Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id;
 }
 ```
 
@@ -31,11 +32,12 @@ if (request.OnlyMine == true || !IsAdmin(currentUser))
 `POST /api/orders/query/expr` 同样会在进入 `SearchAsync` / `CountAsync` 之前，把当前用户的范围条件并入原生 Expr：
 
 ```csharp
-filter ??= Expr.Prop(nameof(DemoOrder.Id)) > 0;
+using static LiteOrm.Common.Expr;
+filter ??= Prop(nameof(DemoOrder.Id)) > 0;
 
 if (!IsAdmin(currentUser))
 {
-    filter &= Expr.Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id;
+    filter &= Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id;
 }
 ```
 
@@ -58,17 +60,18 @@ if (!IsAdmin(currentUser))
 推荐：
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var filter = BuildBusinessFilter(request);
 
 if (!IsAdmin(currentUser))
 {
-    filter &= Expr.Prop(nameof(Order.CreatedByUserId)) == currentUser.Id;
+    filter &= Prop(nameof(Order.CreatedByUserId)) == currentUser.Id;
 }
 
 var result = await orderService.SearchAsync(
-    Expr.From<OrderView>()
+    From<OrderView>()
         .Where(filter)
-        .OrderBy(Expr.Prop(nameof(Order.CreatedTime)).Desc())
+        .OrderBy(Prop(nameof(Order.CreatedTime)).Desc())
         .Section(0, 20)
 );
 ```

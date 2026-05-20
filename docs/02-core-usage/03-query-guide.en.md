@@ -68,8 +68,9 @@ var users = await userService.SearchAsync(u => u.Age >= 18 && u.Age <= 65);
 ### 2.4 EXISTS
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var users = await userService.SearchAsync(
-    u => Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "R&D")
+    u => Exists<Department>(d => d.Id == u.DeptId && d.Name == "R&D")
 );
 ```
 
@@ -103,7 +104,8 @@ var users = await userService.SearchAsync(u => u.CreateTime > now);
 `Expr` values can be combined with Lambda expressions, but need the `To<T>()` extension method to satisfy Lambda type checking:
 
 ```csharp
-var condition = u => u.Age >= 18 && Expr.Prop("UserName").Contains("John").To<bool>();
+using static LiteOrm.Common.Expr;
+var condition = u => u.Age >= 18 && Prop("UserName").Contains("John").To<bool>();
 var users = await userService.SearchAsync(condition);
 // Generated SQL: SELECT * FROM Users WHERE Age >= 18 AND UserName LIKE @0 (parameterized)
 ```
@@ -119,81 +121,88 @@ For details, see: [Expression Extension - Default Registered Lambda Methods](../
 ### 3.1 Creating property expressions
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Basic property
-var prop = Expr.Prop("Age");
+var prop = Prop("Age");
 
 // With alias (for multi-table queries)
-var prop = Expr.Prop("U", "UserName");
+var prop = Prop("U", "UserName");
 ```
 
 ### 3.2 Comparison operators
 
 ```csharp
-var expr = Expr.Prop("Age") > 18;
-var expr = Expr.Prop("DeptId") == 2;
-var expr = Expr.Prop("UserName") != "admin";
+using static LiteOrm.Common.Expr;
+var expr = Prop("Age") > 18;
+var expr = Prop("DeptId") == 2;
+var expr = Prop("UserName") != "admin";
 ```
 
 ### 3.3 String matching
 
 ```csharp
-var expr = Expr.Prop("UserName").Contains("admin");
-var expr = Expr.Prop("UserName").StartsWith("a");
-var expr = Expr.Prop("UserName").EndsWith("z");
-var expr = Expr.Prop("UserName").Like("%admin%");
+using static LiteOrm.Common.Expr;
+var expr = Prop("UserName").Contains("admin");
+var expr = Prop("UserName").StartsWith("a");
+var expr = Prop("UserName").EndsWith("z");
+var expr = Prop("UserName").Like("%admin%");
 ```
 
 ### 3.4 IN and BETWEEN
 
 ```csharp
-var expr = Expr.Prop("Id").In(1, 2, 3, 4, 5);
+using static LiteOrm.Common.Expr;
+var expr = Prop("Id").In(1, 2, 3, 4, 5);
 
 // Subquery
-var subQuery = Expr.From<Department>()
-    .Where(Expr.Prop("Name") == "IT")
-    .Select(Expr.Prop("Id"));
-var expr = Expr.Prop("DeptId").In(subQuery);
+var subQuery = From<Department>()
+    .Where(Prop("Name") == "IT")
+    .Select(Prop("Id"));
+var expr = Prop("DeptId").In(subQuery);
 
-var expr = Expr.Prop("Age").Between(18, 30);
+var expr = Prop("Age").Between(18, 30);
 ```
 
 ### 3.5 EXISTS subqueries
 
 ```csharp
-var expr = Expr.Exists<Department>(
-    Expr.Prop("Id") == Expr.Prop("T0", "DeptId")
+using static LiteOrm.Common.Expr;
+var expr = Exists<Department>(
+    Prop("Id") == Prop("T0", "DeptId")
 );
 ```
 
 ### 3.6 Combining conditions
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // AND
-var expr = Expr.Prop("Age") >= 18 & Expr.Prop("DeptId") == 2;
+var expr = Prop("Age") >= 18 & Prop("DeptId") == 2;
 
 // OR
-var expr = Expr.Prop("DeptId") == 2 | Expr.Prop("DeptId") == 3;
+var expr = Prop("DeptId") == 2 | Prop("DeptId") == 3;
 
 // NOT
-var expr = !Expr.Prop("UserName").StartsWith("Temp");
+var expr = !Prop("UserName").StartsWith("Temp");
 
 // Complex combinations with parentheses
-var expr = (Expr.Prop("Age") >= 18) & (Expr.Prop("DeptId") == 2 | Expr.Prop("DeptId") == 3);
+var expr = (Prop("Age") >= 18) & (Prop("DeptId") == 2 | Prop("DeptId") == 3);
 ```
 
 ### 3.7 Dynamic condition building
 
 ```csharp
+using static LiteOrm.Common.Expr;
 LogicExpr condition = null;
 
 if (minAge.HasValue)
-    condition &= Expr.Prop("Age") >= minAge.Value;
+    condition &= Prop("Age") >= minAge.Value;
 
 if (deptId.HasValue)
-    condition &= Expr.Prop("DeptId") == deptId.Value;
+    condition &= Prop("DeptId") == deptId.Value;
 
 if (!string.IsNullOrEmpty(name))
-    condition &= Expr.Prop("UserName").Contains(name);
+    condition &= Prop("UserName").Contains(name);
 
 var users = await userService.SearchAsync(condition);
 ```
@@ -203,15 +212,16 @@ var users = await userService.SearchAsync(condition);
 Use `Expr.From<T>()` as a starting point for chain-style complete query building:
 
 ```csharp
-var query = Expr.From<User>()
-    .Where(Expr.Prop("Age") > 18)
-    .GroupBy(Expr.Prop("DeptId"))
-    .Having(Expr.Prop("Id").Count() > 5)
+using static LiteOrm.Common.Expr;
+var query = From<User>()
+    .Where(Prop("Age") > 18)
+    .GroupBy(Prop("DeptId"))
+    .Having(Prop("Id").Count() > 5)
     .Select(
-        Expr.Prop("DeptId"),
-        Expr.Prop("Id").Count().As("UserCount")
+        Prop("DeptId"),
+        Prop("Id").Count().As("UserCount")
     )
-    .OrderBy(Expr.Prop("UserCount").Desc());
+    .OrderBy(Prop("UserCount").Desc());
 
 var result = await userService.SearchAsync(query);
 ```
@@ -219,14 +229,15 @@ var result = await userService.SearchAsync(query);
 ### 3.9 Aggregate functions
 
 ```csharp
-var expr = Expr.Prop("Id").Count();
-var expr = Expr.Prop("Amount").Sum();
-var expr = Expr.Prop("Amount").Avg();
-var expr = Expr.Prop("Amount").Max();
-var expr = Expr.Prop("Amount").Min();
+using static LiteOrm.Common.Expr;
+var expr = Prop("Id").Count();
+var expr = Prop("Amount").Sum();
+var expr = Prop("Amount").Avg();
+var expr = Prop("Amount").Max();
+var expr = Prop("Amount").Min();
 
 // Distinct aggregate
-var expr = Expr.Prop("DeptId").Count(isDistinct: true);
+var expr = Prop("DeptId").Count(isDistinct: true);
 ```
 
 ### 3.10 Expr Static Methods
@@ -356,15 +367,17 @@ The `Expr` class provides the following static methods for building expressions:
 ### 4.1 Basic usage
 
 ```csharp
-var expr = Expr.Prop("Age") > 18;
+using static LiteOrm.Common.Expr;
+var expr = Prop("Age") > 18;
 var result = dao.Search($"WHERE {expr}").ToListAsync();
 ```
 
 ### 4.2 Parameterized safety
 
 ```csharp
+using static LiteOrm.Common.Expr;
 int minAge = 18;
-var expr = Expr.Prop("Age") > 25;
+var expr = Prop("Age") > 25;
 
 // Auto-parameterized, prevents SQL injection
 var result = dao.Search($"WHERE {expr} AND Age > {minAge}").ToListAsync();
@@ -373,8 +386,9 @@ var result = dao.Search($"WHERE {expr} AND Age > {minAge}").ToListAsync();
 ### 4.3 DataViewDAO usage
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var dataTable = await dataViewDAO.Search(
-    $"SELECT Id, UserName FROM Users WHERE {Expr.Prop("Age")} > {minAge}"
+    $"SELECT Id, UserName FROM Users WHERE {Prop("Age")} > {minAge}"
 ).GetResultAsync();
 ```
 
@@ -387,8 +401,9 @@ var dataTable = await dataViewDAO.Search(
 - `ExprString` does **not** auto-expand `CommonTableExpr` / `SelectExpr.With(name)` into CTE SQL. If you need `WITH`, write the full SQL manually.
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Recommended: Use ExprString only for necessary fragments
-var condition = Expr.Prop("Age") >= 18;
+var condition = Prop("Age") >= 18;
 var result = await userViewDAO.Search(
     $"WHERE {condition} ORDER BY CreateTime DESC"
 ).ToListAsync();
@@ -428,11 +443,12 @@ var result = await dataViewDAO.Search(
 Service layer supports both Lambda and Expr query styles:
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Lambda expression query
 var users = await userService.SearchAsync(u => u.Age >= 18);
 
 // Expr object query
-var users = await userService.SearchAsync(Expr.Prop("Age") >= 18);
+var users = await userService.SearchAsync(Prop("Age") >= 18);
 ```
 
 ### 5.2 DAO queries
@@ -440,14 +456,15 @@ var users = await userService.SearchAsync(Expr.Prop("Age") >= 18);
 DAO layer supports all three query styles: Lambda, Expr, and ExprString:
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Lambda expression query
 var users = await userViewDAO.Search(u => u.Age >= 18).ToListAsync();
 
 // Expr object query
-var users = await userViewDAO.Search(Expr.Prop("Age") >= 18).ToListAsync();
+var users = await userViewDAO.Search(Prop("Age") >= 18).ToListAsync();
 
 // ExprString interpolated string query
-var users = await userViewDAO.Search($"WHERE {Expr.Prop("Age")} > {minAge}").ToListAsync();
+var users = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListAsync();
 ```
 
 ## 6. Next steps

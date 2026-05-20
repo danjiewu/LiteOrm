@@ -18,9 +18,10 @@ When a system needs to demonstrate rich querying while preventing regular users 
 `GET /api/orders/query` and `GET /api/orders/stats` build business filters first, then append scope conditions based on the current user role:
 
 ```csharp
+using static LiteOrm.Common.Expr;
 if (request.OnlyMine == true || !IsAdmin(currentUser))
 {
-    filter &= Expr.Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id;
+    filter &= Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id;
 }
 ```
 
@@ -31,11 +32,12 @@ The key point: **permission conditions are part of the query itself**, not an in
 `POST /api/orders/query/expr` follows the same pattern, injecting the current user's scope into the native Expr before `SearchAsync` / `CountAsync`:
 
 ```csharp
-filter ??= Expr.Prop(nameof(DemoOrder.Id)) > 0;
+using static LiteOrm.Common.Expr;
+filter ??= Prop(nameof(DemoOrder.Id)) > 0;
 
 if (!IsAdmin(currentUser))
 {
-    filter &= Expr.Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id;
+    filter &= Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id;
 }
 ```
 
@@ -58,17 +60,18 @@ Returning a clear `403` is recommended so the frontend can distinguish "forbidde
 **Recommended:**
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var filter = BuildBusinessFilter(request);
 
 if (!IsAdmin(currentUser))
 {
-    filter &= Expr.Prop(nameof(Order.CreatedByUserId)) == currentUser.Id;
+    filter &= Prop(nameof(Order.CreatedByUserId)) == currentUser.Id;
 }
 
 var result = await orderService.SearchAsync(
-    Expr.From<OrderView>()
+    From<OrderView>()
         .Where(filter)
-        .OrderBy(Expr.Prop(nameof(Order.CreatedTime)).Desc())
+        .OrderBy(Prop(nameof(Order.CreatedTime)).Desc())
         .Section(0, 20)
 );
 ```

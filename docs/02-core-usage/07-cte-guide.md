@@ -17,17 +17,18 @@ CTE 适合以下场景：
 先定义一个 `SelectExpr`，再用 `.With(name)` 包装为 CTE：
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var cteDef = new SelectExpr(
-    Expr.From(typeof(User)),
-    Expr.Prop("Id").As("Id"),
-    Expr.Prop("UserName").As("Name"),
-    Expr.Prop("Age").As("Age")
+    From(typeof(User)),
+    Prop("Id").As("Id"),
+    Prop("UserName").As("Name"),
+    Prop("Age").As("Age")
 );
 
 var query = cteDef.With("ActiveUsers")
-    .Where(Expr.Prop("Age") >= 18)
-    .OrderBy(Expr.Prop("Name").Asc())
-    .Select(Expr.Prop("Name"), Expr.Prop("Age"));
+    .Where(Prop("Age") >= 18)
+    .OrderBy(Prop("Name").Asc())
+    .Select(Prop("Name"), Prop("Age"));
 ```
 
 生成的 SQL 形态：
@@ -48,19 +49,20 @@ ORDER BY [Name]
 CTE 很适合先聚合、再过滤：
 
 ```csharp
-var cteDef = Expr.From<User>()
-    .Where(Expr.Prop("Age") >= 25)
-    .GroupBy(Expr.Prop("DeptId"))
+using static LiteOrm.Common.Expr;
+var cteDef = From<User>()
+    .Where(Prop("Age") >= 25)
+    .GroupBy(Prop("DeptId"))
     .Select(
-        Expr.Prop("DeptId"),
-        Expr.Prop("Id").Count().As("UserCount"),
-        Expr.Prop("Age").Avg().As("AvgAge")
+        Prop("DeptId"),
+        Prop("Id").Count().As("UserCount"),
+        Prop("Age").Avg().As("AvgAge")
     );
 
 var query = cteDef.With("DeptAdultStats")
-    .Where(Expr.Prop("UserCount") >= 2)
-    .OrderBy(Expr.Prop("UserCount").Desc())
-    .Select(Expr.Prop("DeptId"), Expr.Prop("UserCount"), Expr.Prop("AvgAge"));
+    .Where(Prop("UserCount") >= 2)
+    .OrderBy(Prop("UserCount").Desc())
+    .Select(Prop("DeptId"), Prop("UserCount"), Prop("AvgAge"));
 ```
 
 ## 4. 在 UNION 中复用同一个 CTE 表达式
@@ -68,20 +70,21 @@ var query = cteDef.With("DeptAdultStats")
 除了在单个主查询里引用一次，CTE 也可以在 `UNION` / `UNION ALL` 两侧复用：
 
 ```csharp
-var adultUsers = Expr.From<User>()
-    .Where(Expr.Prop("Age") >= 18)
+using static LiteOrm.Common.Expr;
+var adultUsers = From<User>()
+    .Where(Prop("Age") >= 18)
     .Select(
-        Expr.Prop("UserName").As("Name"),
-        Expr.Prop("Age").As("Age"))
+        Prop("UserName").As("Name"),
+        Prop("Age").As("Age"))
     .With("AdultUsers");
 
 var query = adultUsers
-    .Where(Expr.Prop("Age") < 30)
-    .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Const("18-29").As("AgeGroup"))
+    .Where(Prop("Age") < 30)
+    .Select(Prop("Name"), Prop("Age"), Const("18-29").As("AgeGroup"))
     .UnionAll(
         adultUsers
-            .Where(Expr.Prop("Age") >= 30)
-            .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Const("30+").As("AgeGroup")));
+            .Where(Prop("Age") >= 30)
+            .Select(Prop("Name"), Prop("Age"), Const("30+").As("AgeGroup")));
 ```
 
 这种写法的重点是：

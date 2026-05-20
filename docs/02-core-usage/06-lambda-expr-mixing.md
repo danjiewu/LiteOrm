@@ -22,8 +22,9 @@
 ### 2.1 最简单的组合
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var users = await userService.SearchAsync(
-    u => u.Age >= 18 && Expr.Prop("UserName").Contains("John").To<bool>()
+    u => u.Age >= 18 && Prop("UserName").Contains("John").To<bool>()
 );
 ```
 
@@ -32,13 +33,14 @@ var users = await userService.SearchAsync(
 ### 2.2 先动态拼好，再放回 Lambda
 
 ```csharp
+using static LiteOrm.Common.Expr;
 LogicExpr filter = null;
 
 if (!string.IsNullOrWhiteSpace(keyword))
-    filter &= Expr.Prop("UserName").Contains(keyword);
+    filter &= Prop("UserName").Contains(keyword);
 
 if (minAge.HasValue)
-    filter &= Expr.Prop("Age") >= minAge.Value;
+    filter &= Prop("Age") >= minAge.Value;
 
 var users = await userService.SearchAsync(
     u => u.IsActive == true && filter.To<bool>()
@@ -50,8 +52,9 @@ var users = await userService.SearchAsync(
 ### 2.3 和关联 Exists 一起用
 
 ```csharp
-var hasOpenOrder = Expr.ExistsRelated<Order>(
-    Expr.Prop("Status") != "Completed"
+using static LiteOrm.Common.Expr;
+var hasOpenOrder = ExistsRelated<Order>(
+    Prop("Status") != "Completed"
 );
 
 var activeUsers = await userService.SearchAsync(
@@ -66,15 +69,16 @@ var activeUsers = await userService.SearchAsync(
 当“基础条件”本身非常适合用 Lambda 表达，但后面还要继续按参数追加条件时，可以先用 `Expr.Lambda<T>()` 把 Lambda 转成 `LogicExpr`。
 
 ```csharp
-var baseCondition = Expr.Lambda<User>(u => u.IsActive == true && u.Age >= 18);
+using static LiteOrm.Common.Expr;
+var baseCondition = Lambda<User>(u => u.IsActive == true && u.Age >= 18);
 
 LogicExpr extraFilter = null;
 
 if (!string.IsNullOrWhiteSpace(keyword))
-    extraFilter &= Expr.Prop("UserName").Contains(keyword);
+    extraFilter &= Prop("UserName").Contains(keyword);
 
 if (deptId.HasValue)
-    extraFilter &= Expr.Prop("DeptId") == deptId.Value;
+    extraFilter &= Prop("DeptId") == deptId.Value;
 
 var combined = baseCondition & extraFilter;
 
@@ -92,7 +96,8 @@ var users = await userService.SearchAsync(
 在查询条件里通常就是 `bool`：
 
 ```csharp
-u => u.Age >= 18 && expr.To<bool>()
+using static LiteOrm.Common.Expr;
+u => u.Age >= 18 && To<bool>()
 ```
 
 ### 4.2 不要在普通运行路径里直接执行 `To<T>()`

@@ -290,7 +290,8 @@ var combinedUsers = await viewService.SearchAsync(
 `LiteOrm.Tests\ServiceTests.cs` 还验证了关联字段可以直接参与排序与分页：
 
 ```csharp
-var expr1 = Expr.From<TestUserView>()
+using static LiteOrm.Common.Expr;
+var expr1 = From<TestUserView>()
     .Where<TestUserView>(u => u.DeptName != null)
     .OrderBy((nameof(TestUserView.DeptName), true))
     .OrderBy((nameof(TestUser.Age), false))
@@ -302,7 +303,8 @@ var users1 = await viewService.SearchAsync(expr1);
 以及更深一层的父部门字段：
 
 ```csharp
-var expr2 = Expr.From<TestUserView>()
+using static LiteOrm.Common.Expr;
+var expr2 = From<TestUserView>()
     .Where<TestUserView>(u => u.ParentDeptName == "Parent Dept")
     .OrderBy(nameof(TestUserView.ParentDeptName))
     .OrderBy(nameof(TestUserView.DeptName))
@@ -336,8 +338,9 @@ var users2 = await viewService.SearchAsync(expr2);
 - 如果从主表到目标表存在多条关联路径，它们会以 `OR` 连接作为关联条件，也就是满足任意一个关联条件即匹配成功，请在使用时注意。
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 查询"拥有名为 ERRev_User1 的用户"的部门
-var expr = Expr.ExistsRelated<TestUser>(Expr.Prop("Name") == "ERRev_User1");
+var expr = ExistsRelated<TestUser>(Prop("Name") == "ERRev_User1");
 var results = await objectViewDAO.Search(expr).ToListAsync();
 ```
 
@@ -346,19 +349,20 @@ var results = await objectViewDAO.Search(expr).ToListAsync();
 ### 3.2 组合过滤
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 1. 正向：按关联部门过滤用户
-var expr = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ER_IT");
+var expr = ExistsRelated<TestDepartment>(Prop("Name") == "ER_IT");
 var users = await objectViewDAO.Search(expr).ToListAsync();
 
 // 2. 取反：排除属于目标部门的用户
 var notInIT = await objectViewDAO.Search(
-    !Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ERNot_IT")
+    !ExistsRelated<TestDepartment>(Prop("Name") == "ERNot_IT")
 ).ToListAsync();
 
 // 3. 组合普通字段条件
 var matureItUsers = await objectViewDAO.Search(
-    Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ERCombo_IT")
-    & (Expr.Prop("Age") >= 30)
+    ExistsRelated<TestDepartment>(Prop("Name") == "ERCombo_IT")
+    & (Prop("Age") >= 30)
 ).ToListAsync();
 ```
 

@@ -205,6 +205,7 @@ var runningTotalExpr = Func("SUM", Prop(nameof(SalesRecord.Amount)))
 **方式一：嵌入 Lambda**
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var results = await saleDAO
     .WithArgs([tableMonth])
     .SearchAs<SalesWindowView>(q => q

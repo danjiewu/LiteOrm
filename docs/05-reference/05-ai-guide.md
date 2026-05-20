@@ -392,33 +392,36 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 `Expr.From<T>()` 起点，支持如下链式调用（顺序按 SQL 子句顺序）：
 
 ```csharp
-var query = Expr.From<User>()
-    .Where(Expr.Prop("Age") > 18)                         // WhereExpr
-    .GroupBy(Expr.Prop("DeptId"))                         // GroupByExpr
-    .Having(Expr.Prop("Id").Count() > 5)                  // HavingExpr
-    .Select(Expr.Prop("DeptId"),                          // SelectExpr
-            Expr.Prop("Id").Count().As("Cnt"))
-    .OrderBy(Expr.Prop("DeptId").Asc())                   // OrderByExpr
+using static LiteOrm.Common.Expr;
+var query = From<User>()
+    .Where(Prop("Age") > 18)                         // WhereExpr
+    .GroupBy(Prop("DeptId"))                         // GroupByExpr
+    .Having(Prop("Id").Count() > 5)                  // HavingExpr
+    .Select(Prop("DeptId"),                          // SelectExpr
+            Prop("Id").Count().As("Cnt"))
+    .OrderBy(Prop("DeptId").Asc())                   // OrderByExpr
     .Section(0, 20);                                      // SectionExpr (skip, take)
 ```
 
 `SelectExpr` 可用于 IN 子查询：
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // IN 子查询
-var subQuery = Expr.From<Department>()
-    .Where(Expr.Prop("Name") == "IT")
+var subQuery = From<Department>()
+    .Where(Prop("Name") == "IT")
     .Select("Id");
-var expr = Expr.Prop("DeptId").In(subQuery);
+var expr = Prop("DeptId").In(subQuery);
 ```
 
 UpdateExpr / DeleteExpr（用于 `ObjectDAO.Delete(LogicExpr)` 等）：
 
 ```csharp
-var update = new UpdateExpr(Expr.From<User>(), Expr.Prop("Id") == 1);
-update.Set(("UserName", Expr.Value("NewName")), ("Age", Expr.Value(30)));
+using static LiteOrm.Common.Expr;
+var update = new UpdateExpr(From<User>(), Prop("Id") == 1);
+update.Set(("UserName", Value("NewName")), ("Age", Value(30)));
 
-var delete = new DeleteExpr(Expr.From<User>(), Expr.Prop("Age") < 18);
+var delete = new DeleteExpr(From<User>(), Prop("Age") < 18);
 ```
 
 ### ExprString
@@ -426,8 +429,9 @@ var delete = new DeleteExpr(Expr.From<User>(), Expr.Prop("Age") < 18);
 插值字符串处理器，在 DAO 的 `Search(ExprString exprString)` 方法的字符串参数中中直接嵌入 Expr 对象：
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 嵌入 Expr 对象自动转为带参数 SQL 片段
-var result = dao.Search($"WHERE {Expr.Prop("DeptName") == deptName} AND {Expr.Prop("Age") > 18}");
+var result = dao.Search($"WHERE {Prop("DeptName") == deptName} AND {Prop("Age") > 18}");
 ```
 
 > 在 `ExprString` 里手写表名、列名时，可以用 `[`、`]` 作为通用引用符占位；LiteOrm 会在命令真正执行前替换成当前数据库的真实标识符引用符。
@@ -437,22 +441,23 @@ var result = dao.Search($"WHERE {Expr.Prop("DeptName") == deptName} AND {Expr.Pr
 ### 常用模式
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 动态条件累加（& 对 null 安全）
 LogicExpr condition = null;
-if (minAge.HasValue)  condition &= Expr.Prop("Age") >= minAge.Value;
-if (deptId.HasValue)  condition &= Expr.Prop("DeptId") == deptId.Value;
-if (!string.IsNullOrEmpty(name)) condition &= Expr.Prop("UserName").Contains(name);
+if (minAge.HasValue)  condition &= Prop("Age") >= minAge.Value;
+if (deptId.HasValue)  condition &= Prop("DeptId") == deptId.Value;
+if (!string.IsNullOrEmpty(name)) condition &= Prop("UserName").Contains(name);
 var users = await dao.Search(condition).ToListAsync();
 
 // 关联表 EXISTS 查询
-var expr = Expr.Exists<Department>(Expr.Prop("Name") == "IT");
+var expr = Exists<Department>(Prop("Name") == "IT");
 // 等价 Lambda 写法（在 Lambda 查询中）：
-var expr = Expr.Lambda<User>(u => Expr.Exists<Department>(d => d.Name == "IT"));
+var expr = Lambda<User>(u => Exists<Department>(d => d.Name == "IT"));
 
 // SearchAs 选择部分字段
 var result = dao.SearchAs(
-    Expr.From<User>()
-        .Where(Expr.Prop("Age") > 18)
+    From<User>()
+        .Where(Prop("Age") > 18)
         .Select("Id", "UserName")
 ).ToList();
 ```
@@ -464,12 +469,13 @@ var result = dao.SearchAs(
 **关联匹配顺序：正向关联优先，未找到正向关联再尝试反向关联。多条关联路径时以** **`OR`** **连接。**
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 按关联部门过滤用户
-var expr = Expr.ExistsRelated<Department>(Expr.Prop("Name") == "IT");
+var expr = ExistsRelated<Department>(Prop("Name") == "IT");
 var users = await objectViewDAO.Search(expr).ToListAsync();
 
 // Lambda 写法
-var lambdaExpr = Expr.Lambda<User>(u => Expr.ExistsRelated<Department>(d => d.Name == "IT"));
+var lambdaExpr = Lambda<User>(u => ExistsRelated<Department>(d => d.Name == "IT"));
 ```
 
 ## 相关链接

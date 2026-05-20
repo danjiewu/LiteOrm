@@ -26,7 +26,8 @@ WHERE [T0].[Age] >= @0 AND [T0].[UserName] LIKE @1
 ### Expr Query
 
 ```csharp
-var expr = (Expr.Prop("Age") >= 18) & Expr.Prop("UserName").StartsWith("A");
+using static LiteOrm.Common.Expr;
+var expr = (Prop("Age") >= 18) & Prop("UserName").StartsWith("A");
 var users = await userService.SearchAsync(expr);
 ```
 
@@ -63,8 +64,9 @@ Older databases or custom dialects may use `ROW_NUMBER()` or database-specific p
 ## 3. EXISTS Subquery
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var users = await userService.SearchAsync(
-    u => Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "R&D")
+    u => Exists<Department>(d => d.Id == u.DeptId && d.Name == "R&D")
 );
 ```
 
@@ -81,7 +83,8 @@ WHERE EXISTS (
 ## 4. ExistsRelated
 
 ```csharp
-var expr = Expr.ExistsRelated<DepartmentView>(Expr.Prop("Name") == "R&D");
+using static LiteOrm.Common.Expr;
+var expr = ExistsRelated<DepartmentView>(Prop("Name") == "R&D");
 var users = await userService.SearchAsync(expr);
 ```
 
@@ -98,7 +101,8 @@ WHERE EXISTS (
 If written as:
 
 ```csharp
-var expr = Expr.ExistsRelated<DepartmentView>(Expr.Prop("Name").StartsWith("R&D")).Not();
+using static LiteOrm.Common.Expr;
+var expr = ExistsRelated<DepartmentView>(Prop("Name").StartsWith("R&D")).Not();
 ```
 
 The SQL becomes `NOT EXISTS (...)`.
@@ -160,10 +164,11 @@ When `IBulkProvider` is registered, batch insert may use native bulk interfaces 
 ## 8. UpdateExpr
 
 ```csharp
+using static LiteOrm.Common.Expr;
 await userService.UpdateAsync(
-    Expr.Update<User>()
-        .Set("Age", Expr.Prop("Age") + 1)
-        .Where(Expr.Prop("DeptId") == 2)
+    Update<User>()
+        .Set("Age", Prop("Age") + 1)
+        .Where(Prop("DeptId") == 2)
 );
 ```
 
@@ -176,10 +181,11 @@ UPDATE [Users] SET [Age] = [Age] + 1 WHERE [DeptId] = @0
 ## 9. Window Functions
 
 ```csharp
-var amountSum = Func("SUM", Expr.Prop("Amount"))
-    .Over([Expr.Prop("ProductId")], [Expr.Prop("SaleTime").Asc()]);
+using static LiteOrm.Common.Expr;
+var amountSum = Func("SUM", Prop("Amount"))
+    .Over([Prop("ProductId")], [Prop("SaleTime").Asc()]);
 
-var selectExpr = Expr.From<SalesRecord>("202411")
+var selectExpr = From<SalesRecord>("202411")
     .Select("Id", "ProductId", "ProductName", "Amount", "SaleTime")
     .SelectMore(new SelectItemExpr(amountSum, "ProductTotal"));
 

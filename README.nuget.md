@@ -301,8 +301,9 @@ Best for most day-to-day queries where readability and compile-time checking mat
 
 
 ```csharp
+using static LiteOrm.Common.Expr;
 
-var expr = Expr.Prop("Age") > 18 & Expr.Prop("Status") == 1;
+var expr = Prop("Age") > 18 & Prop("Status") == 1;
 
 var users = await userService.SearchAsync(expr);
 
@@ -317,10 +318,11 @@ Best for dynamically assembled filters, admin search screens, and query-builder 
 
 
 ```csharp
+using static LiteOrm.Common.Expr;
 
 int minAge = 18;
 
-var expr = Expr.Prop("Age") > 25;
+var expr = Prop("Age") > 25;
 
 var users = await objectViewDAO.Search(
 

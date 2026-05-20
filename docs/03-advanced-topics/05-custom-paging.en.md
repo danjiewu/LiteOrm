@@ -184,6 +184,7 @@ Specify the custom SqlBuilder type name directly via the `SqlBuilder` field in `
 #### Basic Paged Query
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Using service layer
 var pageResult = await userService.SearchAsync(
     q => q.Where(u => u.Age >= 18)
@@ -193,7 +194,7 @@ var pageResult = await userService.SearchAsync(
 
 // Using DAO directly
 var users = await objectViewDAO.Search(
-    Expr.From<User>()
+    From<User>()
         .Where(u => u.Age >= 18)
         .OrderBy(nameof(User.Id))
         .Section(10, 20) // Skip 10 items, take 20 items
@@ -203,8 +204,9 @@ var users = await objectViewDAO.Search(
 #### Complex Condition Paging
 
 ```csharp
-var query = Expr.From<User>()
-    .Where(Expr.Prop("Age") > 18 & Expr.Prop("DeptId").In(1, 2, 3))
+using static LiteOrm.Common.Expr;
+var query = From<User>()
+    .Where(Prop("Age") > 18 & Prop("DeptId").In(1, 2, 3))
     .OrderByDescending("CreateTime")
     .Section(0, 10); // First page, 10 records
 

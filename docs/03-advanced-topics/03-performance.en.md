@@ -59,13 +59,14 @@ var users = await userViewDAO.Search($"WHERE UserName = {name}").ToListAsync();
 ### 3.1 Only Query Required Fields
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Not recommended: query all fields
 var users = await userService.SearchAsync();
 
 // Recommended: use SearchAs to select specific fields
 var result = await userService.SearchAs<UserView>(
-    Expr.From<UserView>()
-        .Where(Expr.Prop("Age") > 18)
+    From<UserView>()
+        .Where(Prop("Age") > 18)
         .Select("Id", "UserName", "DeptName")
 );
 ```
@@ -155,9 +156,10 @@ await userService.BatchUpdateAsync(users);  // Recommended
 `LiteOrm.Tests\ServiceTests.cs` has a typical complete cycle validation for batch operations:
 
 ```csharp
+using static LiteOrm.Common.Expr;
 await service.BatchInsertAsync(users);
 
-var inserted = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
+var inserted = await viewService.SearchAsync(Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
 foreach (var user in inserted)
     user.Age += 5;
 
@@ -323,8 +325,9 @@ if (exists) { ... }
 `LiteOrm.Tests\ServiceTests.cs` directly validates the different purposes of `ExistsAsync` and `CountAsync`:
 
 ```csharp
-bool exists = await viewService.ExistsAsync(Expr.Lambda<TestUser>(u => u.Name == "Unique"));
-int count = await viewService.CountAsync(Expr.Lambda<TestUser>(u => u.Age >= 50));
+using static LiteOrm.Common.Expr;
+bool exists = await viewService.ExistsAsync(Lambda<TestUser>(u => u.Name == "Unique"));
+int count = await viewService.CountAsync(Lambda<TestUser>(u => u.Age >= 50));
 ```
 
 - Use `ExistsAsync` when you only care about "whether any exist"
@@ -364,8 +367,9 @@ catch
 ### 9.1 Use Streams for Large Data
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Large data query
-await foreach (var user in userViewDAO.Search(Expr.Prop("Age") >= 18))
+await foreach (var user in userViewDAO.Search(Prop("Age") >= 18))
 {
     // Stream processing, avoid loading all into memory at once
     Process(user);

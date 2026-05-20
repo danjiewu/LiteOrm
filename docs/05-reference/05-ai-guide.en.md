@@ -392,33 +392,36 @@ Operators on `LogicExpr`:
 `Expr.From<T>()` is the entry point and supports the following chained calls in SQL clause order:
 
 ```csharp
-var query = Expr.From<User>()
-    .Where(Expr.Prop("Age") > 18)                         // WhereExpr
-    .GroupBy(Expr.Prop("DeptId"))                         // GroupByExpr
-    .Having(Expr.Prop("Id").Count() > 5)                  // HavingExpr
-    .Select(Expr.Prop("DeptId"),                          // SelectExpr
-            Expr.Prop("Id").Count().As("Cnt"))
-    .OrderBy(Expr.Prop("DeptId").Asc())                   // OrderByExpr
+using static LiteOrm.Common.Expr;
+var query = From<User>()
+    .Where(Prop("Age") > 18)                         // WhereExpr
+    .GroupBy(Prop("DeptId"))                         // GroupByExpr
+    .Having(Prop("Id").Count() > 5)                  // HavingExpr
+    .Select(Prop("DeptId"),                          // SelectExpr
+            Prop("Id").Count().As("Cnt"))
+    .OrderBy(Prop("DeptId").Asc())                   // OrderByExpr
     .Section(0, 20);                                      // SectionExpr (skip, take)
 ```
 
 `SelectExpr` can be used for `IN` subqueries:
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // IN subquery
-var subQuery = Expr.From<Department>()
-    .Where(Expr.Prop("Name") == "IT")
+var subQuery = From<Department>()
+    .Where(Prop("Name") == "IT")
     .Select("Id");
-var expr = Expr.Prop("DeptId").In(subQuery);
+var expr = Prop("DeptId").In(subQuery);
 ```
 
 UpdateExpr / DeleteExpr (used by `ObjectDAO.Delete(LogicExpr)` and similar APIs):
 
 ```csharp
-var update = new UpdateExpr(Expr.From<User>(), Expr.Prop("Id") == 1);
-update.Set(("UserName", Expr.Value("NewName")), ("Age", Expr.Value(30)));
+using static LiteOrm.Common.Expr;
+var update = new UpdateExpr(From<User>(), Prop("Id") == 1);
+update.Set(("UserName", Value("NewName")), ("Age", Value(30)));
 
-var delete = new DeleteExpr(Expr.From<User>(), Expr.Prop("Age") < 18);
+var delete = new DeleteExpr(From<User>(), Prop("Age") < 18);
 ```
 
 ### ExprString
@@ -426,8 +429,9 @@ var delete = new DeleteExpr(Expr.From<User>(), Expr.Prop("Age") < 18);
 The interpolated string handler lets you embed Expr objects directly into the string argument passed to the DAO `Search(ExprString exprString)` method:
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Embedded Expr objects are automatically converted into parameterized SQL fragments
-var result = dao.Search($"WHERE {Expr.Prop("DeptName") == deptName} AND {Expr.Prop("Age") > 18}");
+var result = dao.Search($"WHERE {Prop("DeptName") == deptName} AND {Prop("Age") > 18}");
 ```
 
 > When hand-writing table or column names in `ExprString`, you can use `[` and `]` as provider-agnostic quote placeholders. LiteOrm rewrites them to the current database's real identifier delimiters right before command execution.
@@ -437,22 +441,23 @@ var result = dao.Search($"WHERE {Expr.Prop("DeptName") == deptName} AND {Expr.Pr
 ### Common patterns
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Dynamically accumulate conditions (& is null-safe)
 LogicExpr condition = null;
-if (minAge.HasValue)  condition &= Expr.Prop("Age") >= minAge.Value;
-if (deptId.HasValue)  condition &= Expr.Prop("DeptId") == deptId.Value;
-if (!string.IsNullOrEmpty(name)) condition &= Expr.Prop("UserName").Contains(name);
+if (minAge.HasValue)  condition &= Prop("Age") >= minAge.Value;
+if (deptId.HasValue)  condition &= Prop("DeptId") == deptId.Value;
+if (!string.IsNullOrEmpty(name)) condition &= Prop("UserName").Contains(name);
 var users = await dao.Search(condition).ToListAsync();
 
 // EXISTS query on a related table
-var expr = Expr.Exists<Department>(Expr.Prop("Name") == "IT");
+var expr = Exists<Department>(Prop("Name") == "IT");
 // Equivalent Lambda form (inside a Lambda query):
-var expr = Expr.Lambda<User>(u => Expr.Exists<Department>(d => d.Name == "IT"));
+var expr = Lambda<User>(u => Exists<Department>(d => d.Name == "IT"));
 
 // SearchAs selects a subset of fields
 var result = dao.SearchAs(
-    Expr.From<User>()
-        .Where(Expr.Prop("Age") > 18)
+    From<User>()
+        .Where(Prop("Age") > 18)
         .Select("Id", "UserName")
 ).ToList();
 ```
@@ -464,12 +469,13 @@ var result = dao.SearchAs(
 **Relation matching order: forward relations first; if no forward relation is found, reverse relations are tried. Multiple relation paths are combined with** **`OR`** **.**
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Filter users by related department
-var expr = Expr.ExistsRelated<Department>(Expr.Prop("Name") == "IT");
+var expr = ExistsRelated<Department>(Prop("Name") == "IT");
 var users = await objectViewDAO.Search(expr).ToListAsync();
 
 // Lambda form
-var lambdaExpr = Expr.Lambda<User>(u => Expr.ExistsRelated<Department>(d => d.Name == "IT"));
+var lambdaExpr = Lambda<User>(u => ExistsRelated<Department>(d => d.Name == "IT"));
 ```
 
 ## Related Links

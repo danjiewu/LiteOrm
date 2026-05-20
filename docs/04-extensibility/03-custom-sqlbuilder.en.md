@@ -84,12 +84,13 @@ This pattern is suitable for encapsulating compatibility logic in the infrastruc
 ## Extension Function Handlers
 
 ```csharp
+using static LiteOrm.Common.Expr;
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (ref outSql, expr, context, sqlBuilder, outputParams) =>
 {
     outSql.Append("DATE_FORMAT(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(", ");
-    expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```

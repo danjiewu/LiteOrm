@@ -229,9 +229,10 @@ This pattern is the same as `CountAsync(..., tableArgs: ...)` in tests, suitable
 ### 6.3 Use `Expr.From<T>(...)` to Specify Shard
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var sales = await salesService.SearchAsync(
-    Expr.From<SalesRecordView>("202411")
-        .Where(Expr.Prop("Amount") > 100)
+    From<SalesRecordView>("202411")
+        .Where(Prop("Amount") > 100)
         .OrderBy(("Amount", false))
         .Section(0, 3)
 );
@@ -242,9 +243,10 @@ This pattern also comes from Demo, suitable for combining complex queries, sorti
 ### 6.4 Use Different Placeholder Positions for Different Dimensions
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var sales = await salesService.SearchAsync(
-    Expr.From<SalesRecord>("US", "2025")
-        .Where(Expr.Prop("Amount") > 100)
+    From<SalesRecord>("US", "2025")
+        .Where(Prop("Amount") > 100)
         .Section(0, 20)
 );
 ```
@@ -272,12 +274,13 @@ public class Table2Row
 Pass the argument array only once on the main table:
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var args = new[] { "TenantA", "202501" };
 
-var expr = Expr.From<Table1Row>(args)
+var expr = From<Table1Row>(args)
     // Table2Row in the same scope or a child scope keeps using args
     // unless it explicitly sets its own TableArgs.
-    .Where(Expr.Exists<Table2Row>(t => true));
+    .Where(Exists<Table2Row>(t => true));
 ```
 
 Then:

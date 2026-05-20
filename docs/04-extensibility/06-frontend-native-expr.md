@@ -151,7 +151,8 @@ const result = await demoApp.apiFetch("/api/orders/query/expr", {
 随后再补充权限过滤。对于非 `Admin` 用户，后端会自动附加：
 
 ```csharp
-Expr.Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id
+using static LiteOrm.Common.Expr;
+Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id
 ```
 
 ### 5.1 Count 缓存

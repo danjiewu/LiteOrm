@@ -139,12 +139,13 @@ This pattern is suitable for admin backend scenarios where you "read entities fi
 ### Conditional Update
 
 ```csharp
+using static LiteOrm.Common.Expr;
 await objectDao.UpdateAsync(
-    Expr.Update<User>()
-        .Where(Expr.Prop("Age") < 18)
+    Update<User>()
+        .Where(Prop("Age") < 18)
         .Set(
-            ("Age", Expr.Value(18)),
-            ("CreateTime", Expr.Value(DateTime.Now))
+            ("Age", Value(18)),
+            ("CreateTime", Value(DateTime.Now))
         )
 );
 ```
@@ -154,8 +155,9 @@ await objectDao.UpdateAsync(
 `LiteOrm.Demo\Demos\UpdateExprDemo.cs` demonstrates several typical uses of `UpdateExpr`:
 
 ```csharp
-var update = new UpdateExpr(new TableExpr(typeof(User)), Expr.Prop("UserName") == "UpdateDemo_Bob")
-    .Set(("Age", Expr.Const(35)));
+using static LiteOrm.Common.Expr;
+var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
+    .Set(("Age", Const(35)));
 
 int affected = await userService.UpdateAsync(update);
 ```
@@ -163,11 +165,12 @@ int affected = await userService.UpdateAsync(update);
 You can also write arithmetic expressions or function expressions directly in the `SET` clause:
 
 ```csharp
-var agePlusFive = new UpdateExpr(new TableExpr(typeof(User)), Expr.Prop("UserName") == "UpdateDemo_Carol")
-    .Set(("Age", Expr.Prop("Age") + Expr.Const(5)));
+using static LiteOrm.Common.Expr;
+var agePlusFive = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Carol")
+    .Set(("Age", Prop("Age") + Const(5)));
 
-var rename = new UpdateExpr(new TableExpr(typeof(User)), Expr.Prop("UserName") == "UpdateDemo_Bob")
-    .Set(("UserName", Expr.Func("CONCAT", Expr.Prop("UserName"), Expr.Const("_v2"))));
+var rename = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
+    .Set(("UserName", Func("CONCAT", Prop("UserName"), Const("_v2"))));
 ```
 
 ## 3. Delete
@@ -197,6 +200,7 @@ await userService.BatchDeleteIDAsync(new[] { 1, 2, 3 });
 `LiteOrm.Tests\ServiceTests.cs` has a complete validation cycle suitable for copying:
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var users = new List<TestUser>
 {
     new TestUser { Name = "Batch 1", Age = 10, CreateTime = DateTime.Now },
@@ -205,7 +209,7 @@ var users = new List<TestUser>
 
 await service.BatchInsertAsync(users);
 
-var inserted = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
+var inserted = await viewService.SearchAsync(Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
 
 foreach (var user in inserted)
     user.Age += 5;
@@ -219,8 +223,9 @@ This example is ideal for validating that batch interfaces cover the entire path
 ### Conditional Delete
 
 ```csharp
+using static LiteOrm.Common.Expr;
 await userService.DeleteAsync(u => u.CreateTime < DateTime.Today.AddYears(-1));
-await objectDao.Delete(Expr.Prop("Age") < 18 & Expr.Prop("UserName").StartsWith("Temp"));
+await objectDao.Delete(Prop("Age") < 18 & Prop("UserName").StartsWith("Temp"));
 ```
 
 ### Conditional Delete Example from Tests

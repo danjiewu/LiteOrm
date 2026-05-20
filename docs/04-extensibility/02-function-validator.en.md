@@ -61,6 +61,7 @@ var validator = new FunctionExprValidator(FunctionPolicy.AllowRegisted);
 `FunctionExprValidator` inherits from `ExprValidator`. Single node validation uses `Validate(node)`, while full expression tree validation more commonly uses `VisitAll(expr)`:
 
 ```csharp
+using static LiteOrm.Common.Expr;
 public override bool Validate(Expr node)
 {
     if (node == null) return true;

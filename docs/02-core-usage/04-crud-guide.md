@@ -141,12 +141,13 @@ await deptService.BatchUpdateAsync(updateDepts);
 ### 条件更新
 
 ```csharp
+using static LiteOrm.Common.Expr;
 await objectDao.UpdateAsync(
-    Expr.Update<User>()
-        .Where(Expr.Prop("Age") < 18)
+    Update<User>()
+        .Where(Prop("Age") < 18)
         .Set(
-            ("Age", Expr.Value(18)),
-            ("CreateTime", Expr.Value(DateTime.Now))
+            ("Age", Value(18)),
+            ("CreateTime", Value(DateTime.Now))
         )
 );
 ```
@@ -156,8 +157,9 @@ await objectDao.UpdateAsync(
 `LiteOrm.Demo\Demos\UpdateExprDemo.cs` 演示了 `UpdateExpr` 的几种典型玩法：
 
 ```csharp
-var update = new UpdateExpr(new TableExpr(typeof(User)), Expr.Prop("UserName") == "UpdateDemo_Bob")
-    .Set(("Age", Expr.Const(35)));
+using static LiteOrm.Common.Expr;
+var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
+    .Set(("Age", Const(35)));
 
 int affected = await userService.UpdateAsync(update);
 ```
@@ -165,11 +167,12 @@ int affected = await userService.UpdateAsync(update);
 也可以直接在 `SET` 子句里写算术表达式或函数表达式：
 
 ```csharp
-var agePlusFive = new UpdateExpr(new TableExpr(typeof(User)), Expr.Prop("UserName") == "UpdateDemo_Carol")
-    .Set(("Age", Expr.Prop("Age") + Expr.Const(5)));
+using static LiteOrm.Common.Expr;
+var agePlusFive = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Carol")
+    .Set(("Age", Prop("Age") + Const(5)));
 
-var rename = new UpdateExpr(new TableExpr(typeof(User)), Expr.Prop("UserName") == "UpdateDemo_Bob")
-    .Set(("UserName", Expr.Func("CONCAT", Expr.Prop("UserName"), Expr.Const("_v2"))));
+var rename = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
+    .Set(("UserName", Func("CONCAT", Prop("UserName"), Const("_v2"))));
 ```
 
 ## 3. 删除
@@ -199,6 +202,7 @@ await userService.BatchDeleteIDAsync(new[] { 1, 2, 3 });
 `LiteOrm.Tests\ServiceTests.cs` 中有一组很适合复制的闭环验证：
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var users = new List<TestUser>
 {
     new TestUser { Name = "Batch 1", Age = 10, CreateTime = DateTime.Now },
@@ -207,7 +211,7 @@ var users = new List<TestUser>
 
 await service.BatchInsertAsync(users);
 
-var inserted = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
+var inserted = await viewService.SearchAsync(Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
 
 foreach (var user in inserted)
     user.Age += 5;
@@ -221,8 +225,9 @@ await service.BatchDeleteAsync(inserted);
 ### 条件删除
 
 ```csharp
+using static LiteOrm.Common.Expr;
 await userService.DeleteAsync(u => u.CreateTime < DateTime.Today.AddYears(-1));
-await objectDao.Delete(Expr.Prop("Age") < 18 & Expr.Prop("UserName").StartsWith("Temp"));
+await objectDao.Delete(Prop("Age") < 18 & Prop("UserName").StartsWith("Temp"));
 ```
 
 ### 来自测试的条件删除示例

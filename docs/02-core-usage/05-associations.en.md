@@ -269,7 +269,8 @@ var combinedUsers = await viewService.SearchAsync(
 Association fields can directly participate in sorting and pagination:
 
 ```csharp
-var expr1 = Expr.From<TestUserView>()
+using static LiteOrm.Common.Expr;
+var expr1 = From<TestUserView>()
     .Where<TestUserView>(u => u.DeptName != null)
     .OrderBy((nameof(TestUserView.DeptName), true))
     .OrderBy((nameof(TestUser.Age), false))
@@ -281,7 +282,8 @@ var users1 = await viewService.SearchAsync(expr1);
 And for deeper parent department fields:
 
 ```csharp
-var expr2 = Expr.From<TestUserView>()
+using static LiteOrm.Common.Expr;
+var expr2 = From<TestUserView>()
     .Where<TestUserView>(u => u.ParentDeptName == "Parent Dept")
     .OrderBy(nameof(TestUserView.ParentDeptName))
     .OrderBy(nameof(TestUserView.DeptName))
@@ -316,8 +318,9 @@ When you don't want to explicitly expose association fields in the view model bu
 - Any one path matching returns success
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Query departments that "have users named ERRev_User1"
-var expr = Expr.ExistsRelated<TestUser>(Expr.Prop("Name") == "ERRev_User1");
+var expr = ExistsRelated<TestUser>(Prop("Name") == "ERRev_User1");
 var results = await objectViewDAO.Search(expr).ToListAsync();
 ```
 
@@ -326,19 +329,20 @@ Even if `TestDepartment` itself does not have a directly declared `ForeignType` 
 ### 3.2 Combination Filtering
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 1. Forward: filter users by associated department
-var expr = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ER_IT");
+var expr = ExistsRelated<TestDepartment>(Prop("Name") == "ER_IT");
 var users = await objectViewDAO.Search(expr).ToListAsync();
 
 // 2. Negation: exclude users belonging to the target department
 var notInIT = await objectViewDAO.Search(
-    !Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ERNot_IT")
+    !ExistsRelated<TestDepartment>(Prop("Name") == "ERNot_IT")
 ).ToListAsync();
 
 // 3. Combine with regular field conditions
 var matureItUsers = await objectViewDAO.Search(
-    Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ERCombo_IT")
-    & (Expr.Prop("Age") >= 30)
+    ExistsRelated<TestDepartment>(Prop("Name") == "ERCombo_IT")
+    & (Prop("Age") >= 30)
 ).ToListAsync();
 ```
 

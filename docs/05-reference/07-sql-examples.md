@@ -26,7 +26,8 @@ WHERE [T0].[Age] >= @0 AND [T0].[UserName] LIKE @1
 ### Expr 查询
 
 ```csharp
-var expr = (Expr.Prop("Age") >= 18) & Expr.Prop("UserName").StartsWith("A");
+using static LiteOrm.Common.Expr;
+var expr = (Prop("Age") >= 18) & Prop("UserName").StartsWith("A");
 var users = await userService.SearchAsync(expr);
 ```
 
@@ -63,8 +64,9 @@ OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY
 ## 3. EXISTS 子查询
 
 ```csharp
+using static LiteOrm.Common.Expr;
 var users = await userService.SearchAsync(
-    u => Expr.Exists<Department>(d => d.Id == u.DeptId && d.Name == "研发中心")
+    u => Exists<Department>(d => d.Id == u.DeptId && d.Name == "研发中心")
 );
 ```
 
@@ -81,7 +83,8 @@ WHERE EXISTS (
 ## 4. ExistsRelated 自动关联过滤
 
 ```csharp
-var expr = Expr.ExistsRelated<DepartmentView>(Expr.Prop("Name") == "研发中心");
+using static LiteOrm.Common.Expr;
+var expr = ExistsRelated<DepartmentView>(Prop("Name") == "研发中心");
 var users = await userService.SearchAsync(expr);
 ```
 
@@ -98,7 +101,8 @@ WHERE EXISTS (
 如果写成：
 
 ```csharp
-var expr = Expr.ExistsRelated<DepartmentView>(Expr.Prop("Name").StartsWith("研")).Not();
+using static LiteOrm.Common.Expr;
+var expr = ExistsRelated<DepartmentView>(Prop("Name").StartsWith("研")).Not();
 ```
 
 则典型 SQL 会变成 `NOT EXISTS (...)`。
@@ -166,10 +170,11 @@ INSERT INTO [Users] ([UserName], [Age], [CreateTime]) VALUES (@0, @1, @2), (@3, 
 ## 8. UpdateExpr 条件更新
 
 ```csharp
+using static LiteOrm.Common.Expr;
 await userService.UpdateAsync(
-    Expr.Update<User>()
-        .Set("Age", Expr.Prop("Age") + 1)
-        .Where(Expr.Prop("DeptId") == 2)
+    Update<User>()
+        .Set("Age", Prop("Age") + 1)
+        .Where(Prop("DeptId") == 2)
 );
 ```
 
@@ -182,10 +187,11 @@ UPDATE [Users] SET [Age] = [Age] + 1 WHERE [DeptId] = @0
 ## 9. 窗口函数
 
 ```csharp
-var amountSum = Func("SUM", Expr.Prop("Amount"))
-    .Over([Expr.Prop("ProductId")], [Expr.Prop("SaleTime").Asc()]);
+using static LiteOrm.Common.Expr;
+var amountSum = Func("SUM", Prop("Amount"))
+    .Over([Prop("ProductId")], [Prop("SaleTime").Asc()]);
 
-var selectExpr = Expr.From<SalesRecord>("202411")
+var selectExpr = From<SalesRecord>("202411")
     .Select("Id", "ProductId", "ProductName", "Amount", "SaleTime")
     .SelectMore(new SelectItemExpr(amountSum, "ProductTotal"));
 

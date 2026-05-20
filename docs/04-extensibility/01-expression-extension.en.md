@@ -98,14 +98,15 @@ public delegate void FunctionSqlHandler(
 ```
 
 ```csharp
+using static LiteOrm.Common.Expr;
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
      ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
 {
     outSql.Append("DATE_FORMAT(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(", ");
-    expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -145,17 +146,18 @@ LambdaExprConverter.RegisterMethodHandler("Format", (node, converter) => {
 ### 4.3 Register SQL Handler
 
 ```csharp
+using static LiteOrm.Common.Expr;
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
      ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
 {
-    if (expr.Args.Count != 2)
+    if (Args.Count != 2)
         throw new ArgumentException("DATE_FORMAT requires 2 arguments");
 
     outSql.Append("DATE_FORMAT(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(", ");
-    expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -173,8 +175,9 @@ var users = await userService.SearchAsync(
 In `LiteOrm.Demo\Demos\DateFormatDemo.cs`, using `DateTime.ToString(format)` directly is preferred. Both manually constructing `FunctionExpr` and using `FunctionExpr("Format", ...)` ultimately fall to the database dialect's formatting function:
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Method 1: Directly construct FunctionExpr
-var formatExpr = new FunctionExpr("Format", Expr.Prop("CreateTime"), new ValueExpr("yyyy-MM-dd"));
+var formatExpr = new FunctionExpr("Format", Prop("CreateTime"), new ValueExpr("yyyy-MM-dd"));
 var results1 = await userService.SearchAsync(formatExpr == "2024-06-15");
 
 // Method 2: Use ToString(format) directly in Lambda
@@ -213,12 +216,13 @@ LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", (node, converter)
 ### 5.3 Register SQL Handler
 
 ```csharp
+using static LiteOrm.Common.Expr;
 SqlBuilder.Instance.RegisterFunctionSqlHandler("YEAR",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
      ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
 {
     outSql.Append("YEAR(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -243,15 +247,16 @@ LambdaExprConverter.RegisterMethodHandler("CustomProcess", (node, converter) => 
 ### 6.2 Register SQL Handler
 
 ```csharp
+using static LiteOrm.Common.Expr;
 SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_PROCESS",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
      ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
 {
-    if (expr.Args.Count != 1)
+    if (Args.Count != 1)
         throw new ArgumentException("CUSTOM_PROCESS requires 1 argument");
 
     outSql.Append("dbo.CustomProcess(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -281,24 +286,25 @@ var users = await userService.SearchAsync(
 ### 7.1 Register for Different Databases Separately
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // MySQL
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
     outSql.Append("MYSQL_CUSTOM(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 
 // SQL Server
 SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
     outSql.Append("dbo.CustomFunc(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 
 // Oracle
 OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
     outSql.Append("CUSTOM_FUNC(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -306,10 +312,11 @@ OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, ex
 ### 7.2 Global Registration (Same for All Databases)
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // Global registration (SqlBuilder.Instance corresponds to default database)
 SqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
     outSql.Append("CUSTOM_FUNC(");
-    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -333,6 +340,7 @@ LambdaExprConverter.RegisterMethodHandler("InRange", (node, converter) => {
 ### 8.2 Returning Logic Expressions
 
 ```csharp
+using static LiteOrm.Common.Expr;
 LambdaExprConverter.RegisterMethodHandler("IsValid", (node, converter) => {
     var propExpr = converter.ConvertInternal(node.Object) as ValueTypeExpr;
     return propExpr.IsNotNull() & (propExpr != "");

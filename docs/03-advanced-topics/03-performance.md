@@ -59,13 +59,14 @@ var users = await userViewDAO.Search($"WHERE UserName = {name}").ToListAsync();
 ### 3.1 只查询需要的字段
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 不推荐：查询所有字段
 var users = await userService.SearchAsync();
 
 // 推荐：使用 SearchAs 选择字段
 var result = await userService.SearchAs<UserView>(
-    Expr.From<UserView>()
-        .Where(Expr.Prop("Age") > 18)
+    From<UserView>()
+        .Where(Prop("Age") > 18)
         .Select("Id", "UserName", "DeptName")
 );
 ```
@@ -155,9 +156,10 @@ await userService.BatchUpdateAsync(users);  // 推荐
 `LiteOrm.Tests\ServiceTests.cs` 对批量操作有一组很典型的闭环验证：
 
 ```csharp
+using static LiteOrm.Common.Expr;
 await service.BatchInsertAsync(users);
 
-var inserted = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
+var inserted = await viewService.SearchAsync(Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
 foreach (var user in inserted)
     user.Age += 5;
 
@@ -323,8 +325,9 @@ if (exists) { ... }
 `LiteOrm.Tests\ServiceTests.cs` 中直接验证了 `ExistsAsync` 和 `CountAsync` 的差异化用途：
 
 ```csharp
-bool exists = await viewService.ExistsAsync(Expr.Lambda<TestUser>(u => u.Name == "Unique"));
-int count = await viewService.CountAsync(Expr.Lambda<TestUser>(u => u.Age >= 50));
+using static LiteOrm.Common.Expr;
+bool exists = await viewService.ExistsAsync(Lambda<TestUser>(u => u.Name == "Unique"));
+int count = await viewService.CountAsync(Lambda<TestUser>(u => u.Age >= 50));
 ```
 
 - 只关心“有没有”时用 `ExistsAsync`
@@ -364,8 +367,9 @@ catch
 ### 9.1 使用 Stream 处理大数据
 
 ```csharp
+using static LiteOrm.Common.Expr;
 // 大数据量查询
-await foreach (var user in userViewDAO.Search(Expr.Prop("Age") >= 18))
+await foreach (var user in userViewDAO.Search(Prop("Age") >= 18))
 {
     // 流式处理，避免一次性加载到内存
     Process(user);
