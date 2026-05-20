@@ -303,6 +303,30 @@ services.AddServiceGenerator<ServiceFactory>();
 var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 ```
 
+### Service 异常 Hook
+
+```csharp
+[ExceptionHook(typeof(OrderExceptionHook), Mode = ServiceExceptionHookMode.Notify)]
+public interface IOrderService
+{
+    Task SubmitAsync(long id);
+}
+
+[AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
+public class OrderExceptionHook : IServiceExceptionHook
+{
+    public void OnException(ServiceExceptionContext context)
+    {
+        // 读取异常、方法名、参数、SQL 栈等上下文
+    }
+}
+```
+
+- `[ExceptionHook]` 可标记在方法、类、接口上
+- `Notify` 只做观察/告警，不允许吞异常
+- `Handle` 允许通过 `context.Handle(result)` 把异常转成约定结果
+- 执行顺序上，方法级 `ExceptionHook` 先于全局 `ServiceInvokeInterceptor.ExceptionHandling` 事件
+
 ## 七、特性速查
 
 | 特性                                                           | 用途                           |
@@ -313,6 +337,7 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 | `[TableJoin(typeof(T), ForeignKeys, AliasName, AutoExpand)]` | 类级关联定义，支持复合键和路径复用            |
 | `[ForeignColumn(typeof(T), Property)]`                       | 从关联表获取的列（用于视图）               |
 | `[Transaction]`                                              | 声明式事务                        |
+| `[ExceptionHook(typeof(THook), Mode = ...)]`                 | 声明服务异常 hook，可做告警或异常转结果        |
 | `[AutoRegister]`                                             | 自动注册到 DI 容器                  |
 
 ## 八、Expr 表达式系统

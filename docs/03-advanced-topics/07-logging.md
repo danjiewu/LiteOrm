@@ -196,7 +196,121 @@ public class PaymentRequest : ILogable
 
 这类对象被写入服务日志时，会优先使用 `ToLog()` 的结果。
 
-## 5. 慢查询与日志量控制
+## 5. `ExceptionHook`：在服务异常时追加处理逻辑
+
+`[ExceptionHook]` 适合放在**服务方法、类或接口**上，为 Service 拦截器补充“异常发生时还要做什么”的逻辑，例如：
+
+- 记录业务告警
+- 补充审计信息
+- 把特定异常转换成约定返回值
+
+它对应的 hook 类型必须实现 `IServiceExceptionHook`：
+
+```csharp
+public class OrderExceptionHook : IServiceExceptionHook
+{
+    public void OnException(ServiceExceptionContext context)
+    {
+        // 可读取异常、方法名、参数、SQL 栈等上下文
+    }
+}
+```
+
+然后在服务上声明：
+
+```csharp
+[ExceptionHook(typeof(OrderExceptionHook), Mode = ServiceExceptionHookMode.Notify)]
+public interface IOrderService
+{
+    Task SubmitAsync(long id);
+}
+```
+
+### 5.1 触发时机
+
+当服务方法抛出异常时，`ServiceInvokeInterceptor` 会按下面顺序处理：
+
+1. 创建 `ServiceExceptionContext`
+2. 依次执行当前方法/类/接口上声明的 `ExceptionHook`
+3. 再触发全局 `ServiceInvokeInterceptor.ExceptionHandling` 事件
+4. 如果仍未标记为已处理，则继续抛出原异常
+
+这意味着 `ExceptionHook` 更适合做**局部、贴近业务方法的异常扩展**；而 `ExceptionHandling` 事件更适合做**全局统一兜底**。
+
+### 5.2 `Notify` 和 `Handle` 的区别
+
+`ExceptionHookAttribute.Mode` 有两种模式：
+
+| 模式 | 含义 |
+|------|------|
+| `Notify` | 只通知，不允许把异常标记为已处理 |
+| `Handle` | 允许调用 `context.Handle(...)`，把异常转成正常返回结果 |
+
+#### `Notify`：只观察，不吞异常
+
+```csharp
+[ExceptionHook(typeof(NotifyOnlyHook), Mode = ServiceExceptionHookMode.Notify)]
+public void ThrowWithNotifyHook()
+{
+    throw new InvalidOperationException("notify");
+}
+```
+
+这种模式适合做告警、埋点、补充日志。异常仍会继续抛出。
+
+> 如果 `Notify` 模式下仍调用了 `context.Handle(...)`，框架会抛出 `InvalidOperationException`，防止“配置成只通知，实际却吞掉异常”的歧义行为。
+
+#### `Handle`：显式把异常转成结果
+
+```csharp
+[ExceptionHook(typeof(HandleHook), Mode = ServiceExceptionHookMode.Handle)]
+public int GetStatus()
+{
+    throw new InvalidOperationException("handle");
+}
+
+public class HandleHook : IServiceExceptionHook
+{
+    public void OnException(ServiceExceptionContext context)
+    {
+        context.Handle(123);
+    }
+}
+```
+
+当 hook 调用 `context.Handle(123)` 后，拦截器会把这次调用视为“已处理”，并直接返回 `123`。
+
+异步方法同样适用；对 `Task<T>`，返回值会按 `T` 的类型构造。
+
+### 5.3 `ServiceExceptionContext` 里能拿到什么
+
+`OnException(ServiceExceptionContext context)` 中通常会用到这些信息：
+
+- `context.Exception`：原始异常
+- `context.ServiceName` / `context.MethodName`：当前服务与方法
+- `context.Arguments` / `context.LogArguments`：原始参数与日志参数
+- `context.SessionID`：当前会话 ID
+- `context.SqlStack`：当前 SQL 栈
+
+因此它既能做日志增强，也能做“按异常类型决定是否降级返回”的判断。
+
+### 5.4 注册建议
+
+`ServiceInvokeInterceptor` 通过 DI 解析 hook 类型，因此 `ExceptionHook` 对应的实现类应注册到容器中。仓库里的常见写法是：
+
+```csharp
+[AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
+public class OrderExceptionHook : IServiceExceptionHook
+{
+    public void OnException(ServiceExceptionContext context)
+    {
+    }
+}
+```
+
+如果 hook 没有注册，框架会尝试按类型创建实例；但只要 hook 依赖其他服务，仍建议显式走 DI 注册。
+
+## 6. 慢查询与日志量控制
 
 `ServiceInvokeInterceptor` 还提供了两个常用静态参数：
 
@@ -208,12 +322,13 @@ ServiceInvokeInterceptor.MaxExpandedLogLength = 20;
 - `SlowQueryThreshold`：超过阈值会额外输出 `<Slow>` 和 `<SlowSQL>` 日志。
 - `MaxExpandedLogLength`：控制集合参数/结果的展开上限，避免日志过大。
 
-## 6. 推荐实践
+## 7. 推荐实践
 
 1. 给业务服务接口加 `ServiceLog`，把日志策略放在 Service 边界，而不是控制器里零散打印。
 2. 密码、令牌、密钥、身份证号等敏感值，一律用 `[Log(false)]` 或自定义 `ILogable` 脱敏。
 3. 开发阶段可用 `Debug + Full`，生产环境更建议按业务重要性收敛到 `Information` 或 `Warning`。
-4. 高频、低价值的方法可用 `ServiceLogLevel.None` 降噪。
+4. `ExceptionHook` 适合做方法级告警、补偿和异常转结果；跨服务统一策略更适合放在全局 `ExceptionHandling` 事件。
+5. 高频、低价值的方法可用 `ServiceLogLevel.None` 降噪。
 
 ## 相关链接
 

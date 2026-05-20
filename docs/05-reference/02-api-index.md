@@ -72,19 +72,21 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - [生成 SQL 示例](./07-sql-examples.md)
 
 ### 高级能力
-
+
 - `[Transaction]`
-- `SessionManager`
-- `IArged` / `TableArgs`
-- 窗口函数相关扩展
-- `Expr.ExistsRelated(...)`
+- `[ExceptionHook]` / `IServiceExceptionHook`
+- `SessionManager`
+- `IArged` / `TableArgs`
+- 窗口函数相关扩展
+- `Expr.ExistsRelated(...)`
 
 对应文档：
 
 - [事务管理](../03-advanced-topics/01-transactions.md)
-- [分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)
-- [窗口函数](../03-advanced-topics/04-window-functions.md)
-- [示例索引](./06-example-index.md)
+- [日志与诊断](../03-advanced-topics/07-logging.md)
+- [分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)
+- [窗口函数](../03-advanced-topics/04-window-functions.md)
+- [示例索引](./06-example-index.md)
 - [生成 SQL 示例](./07-sql-examples.md)
 - [数据库差异与兼容性说明](./08-database-compatibility.md)
 
