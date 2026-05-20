@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -61,9 +62,14 @@ namespace LiteOrm.Service
     /// }
     /// </code>
     /// </remarks>
-    [AutoRegister(Lifetime = Lifetime.Singleton)]
+    [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class ServiceInvokeInterceptor : IInterceptor, IAsyncInterceptor
     {
+        /// <summary>
+        /// 全局服务异常处理事件。
+        /// </summary>
+        public static event EventHandler<ServiceExceptionContext> ExceptionHandling;
+
         /// <summary>
         /// 设置慢查询阈值，超过该时间的方法调用将被记录为慢查询日志。默认值为3秒。
         /// </summary>
@@ -73,21 +79,25 @@ namespace LiteOrm.Service
         /// 超过此长度的集合将只记录类型和计数，以避免日志文件过大。
         /// </summary>
         public static int MaxExpandedLogLength { get; set; } = 10;
-        private readonly ConcurrentDictionary<MethodInfo, ServiceDescription> _methodDescriptions = new();
-        private static readonly AsyncLocal<bool> _inProcess = new AsyncLocal<bool>();
+        private static readonly ConcurrentDictionary<MethodInfo, ServiceDescription> _methodDescriptions = new();
         private readonly ILogger _logger;
-        /// <summary>
-        /// 获取或设置当前调用是否在处理过程中（防止递归调用）
-        /// </summary>
-        public static bool InProcess { get => _inProcess.Value; set => _inProcess.Value = value; }
+        private readonly IServiceProvider _serviceProvider;
+        private readonly SessionManager _sessionManager;
+        private bool _inProcess;
         /// <summary>
         /// 初始化 <see cref="ServiceInvokeInterceptor"/> 类的新实例。
         /// </summary>
         /// <param name="loggerFactory">日志工厂</param>
-        public ServiceInvokeInterceptor(ILoggerFactory loggerFactory)
+        /// <param name="serviceProvider">服务提供者</param>
+        /// <param name="sessionManager">会话管理器</param>
+        public ServiceInvokeInterceptor(ILoggerFactory loggerFactory, IServiceProvider serviceProvider, SessionManager sessionManager)
         {
             if (loggerFactory is null) throw new ArgumentNullException(nameof(loggerFactory));
+            if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
+            if (sessionManager is null) throw new ArgumentNullException(nameof(sessionManager));
             _logger = loggerFactory.CreateLogger<ServiceInvokeInterceptor>();
+            _serviceProvider = serviceProvider;
+            _sessionManager = sessionManager;
         }
 
         /// <summary>  
@@ -106,8 +116,7 @@ namespace LiteOrm.Service
         /// <param name="invocation">方法调用信息</param>
         public void InterceptSynchronous(IInvocation invocation)
         {
-            var sessionManager = SessionManager.Current;
-            if (InProcess)//如果已在会话中，不再记录日志和处理事务
+            if (_inProcess)//如果已在会话中，不再记录日志和处理事务
             {
                 try
                 {
@@ -116,16 +125,22 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
+                    if (TryHandleException(invocation, e, out object handledResult))
+                    {
+                        invocation.ReturnValue = handledResult;
+                        return;
+                    }
                     LogException(invocation, e);
-                    throw new Exception(e.Message + "\nSQL:" + SessionManager.Current?.SqlStack?.LastOrDefault(), e);
+                    ExceptionDispatchInfo.Capture(e).Throw();
+                    return;
                 }
             }
             else
             {
                 try
                 {
-                    InProcess = true;
-                    sessionManager.Reset();
+                    _inProcess = true;
+                    _sessionManager.Reset();
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
                     InvokeWithTransaction(invocation);
@@ -136,12 +151,18 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
+                    if (TryHandleException(invocation, e, out object handledResult))
+                    {
+                        invocation.ReturnValue = handledResult;
+                        return;
+                    }
                     LogException(invocation, e);
-                    throw;
+                    ExceptionDispatchInfo.Capture(e).Throw();
+                    return;
                 }
                 finally
                 {
-                    InProcess = false;
+                    _inProcess = false;
                 }
             }
         }
@@ -174,10 +195,8 @@ namespace LiteOrm.Service
         /// <returns>异步任务</returns>
         private async Task InterceptAsyncCore(IInvocation invocation)
         {
-            var sessionManager = SessionManager.Current;
-
             // 检查是否已经在处理中
-            if (InProcess)
+            if (_inProcess)
             {
                 await InvokeWithTransactionAsync(invocation);
             }
@@ -185,8 +204,8 @@ namespace LiteOrm.Service
             {
                 try
                 {
-                    InProcess = true;
-                    sessionManager.Reset();
+                    _inProcess = true;
+                    _sessionManager.Reset();
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
 
@@ -199,12 +218,15 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
+                    if (TryHandleException(invocation, e, out _))
+                        return;
                     LogException(invocation, e);
-                    throw;
+                    ExceptionDispatchInfo.Capture(e).Throw();
+                    return;
                 }
                 finally
                 {
-                    InProcess = false;
+                    _inProcess = false;
                 }
             }
         }
@@ -216,9 +238,7 @@ namespace LiteOrm.Service
         /// <returns>异步方法的返回结果</returns>
         private async Task<TResult> InterceptAsyncCore<TResult>(IInvocation invocation)
         {
-            var sessionManager = SessionManager.Current;
-
-            if (InProcess)
+            if (_inProcess)
             {
                 return await InvokeWithTransactionAsync<TResult>(invocation);
             }
@@ -226,8 +246,8 @@ namespace LiteOrm.Service
             {
                 try
                 {
-                    InProcess = true;
-                    sessionManager.Reset();
+                    _inProcess = true;
+                    _sessionManager.Reset();
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
                     // 执行异步方法，处理事务
@@ -239,12 +259,15 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
+                    if (TryHandleException(invocation, e, out object handledResult))
+                        return (TResult)handledResult;
                     LogException(invocation, e);
-                    throw;
+                    ExceptionDispatchInfo.Capture(e).Throw();
+                    return default; // 这行实际上永远不会执行，因为上面会抛出异常，但编译器需要一个返回值
                 }
                 finally
                 {
-                    InProcess = false;
+                    _inProcess = false;
                 }
             }
         }
@@ -257,12 +280,11 @@ namespace LiteOrm.Service
         private async Task InvokeWithTransactionAsync(IInvocation invocation)
         {
             var serviceDesc = GetDescription(invocation);
-            var sessionManager = SessionManager.Current;
 
             // 使用SemaphoreSlim替代lock，以支持异步等待
-            if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
+            if (serviceDesc.IsTransaction && !_sessionManager.InTransaction)
             {
-                await sessionManager.ExecuteInTransactionAsync(async sm =>
+                await _sessionManager.ExecuteInTransactionAsync(async sm =>
                 {
                     invocation.Proceed();
                     await (Task)invocation.ReturnValue;
@@ -283,12 +305,11 @@ namespace LiteOrm.Service
         private async Task<TResult> InvokeWithTransactionAsync<TResult>(IInvocation invocation)
         {
             var serviceDesc = GetDescription(invocation);
-            var sessionManager = SessionManager.Current;
 
-            if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
+            if (serviceDesc.IsTransaction && !_sessionManager.InTransaction)
             {
                 TResult result = default;
-                await sessionManager.ExecuteInTransactionAsync(async sm =>
+                await _sessionManager.ExecuteInTransactionAsync(async sm =>
                 {
                     invocation.Proceed();
                     result = await (Task<TResult>)invocation.ReturnValue;
@@ -311,10 +332,9 @@ namespace LiteOrm.Service
         private void InvokeWithTransaction(IInvocation invocation)
         {
             var serviceDesc = GetDescription(invocation);
-            var sessionManager = SessionManager.Current;
-            if (serviceDesc.IsTransaction && !sessionManager.InTransaction)
+            if (serviceDesc.IsTransaction && !_sessionManager.InTransaction)
             {
-                sessionManager.ExecuteInTransaction(sm => invocation.Proceed(), serviceDesc.IsolationLevel);
+                _sessionManager.ExecuteInTransaction(sm => invocation.Proceed(), serviceDesc.IsolationLevel);
             }
             else
             {
@@ -337,7 +357,7 @@ namespace LiteOrm.Service
                     ? GetLogString(GetLogArgs(invocation)) : null;
 
                 _logger.Log((LogLevel)serviceDesc.LogLevel,
-                    "[{SessionID}]<Invoke>{Service}.{Method}({Args})", SessionManager.Current?.SessionID,
+                    "[{SessionID}]<Invoke>{Service}.{Method}({Args})", _sessionManager.SessionID,
                     serviceDesc.ServiceName, serviceDesc.MethodName, argsLog);
             }
         }
@@ -360,21 +380,21 @@ namespace LiteOrm.Service
                 }
                 _logger.Log((LogLevel)serviceDesc.LogLevel,
                     "[{SessionID}]<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
-                     SessionManager.Current?.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
+                     _sessionManager.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
                     elapsedTime.TotalSeconds, returnLog);
             }
             if (elapsedTime > SlowQueryThreshold)//记录慢查询日志
             {
-                _logger.LogWarning("[{SessionID}]<Slow>{Service}.{Method} took {Duration} seconds", SessionManager.Current?.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName, elapsedTime.TotalSeconds);
+                _logger.LogWarning("[{SessionID}]<Slow>{Service}.{Method} took {Duration} seconds", _sessionManager.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName, elapsedTime.TotalSeconds);
                 ValueStringBuilder sb = ValueStringBuilder.Create(512);
                 int row = 1;
-                foreach (var sql in SessionManager.Current?.SqlStack.Reverse() ?? Array.Empty<string>())
+                foreach (var sql in _sessionManager.SqlStack.Reverse() ?? Array.Empty<string>())
                 {
                     if (sb.Length > 0) { sb.Append("\n"); }
                     sb.Append($"{row++}:");
                     sb.Append(sql);
                 }
-                _logger.LogWarning("[{SessionID}]<SlowSQL>{SQL}", SessionManager.Current?.SessionID, sb.ToString());
+                _logger.LogWarning("[{SessionID}]<SlowSQL>{SQL}", _sessionManager.SessionID, sb.ToString());
             }
         }
 
@@ -389,11 +409,116 @@ namespace LiteOrm.Service
             var innerExp = e.UnwrapTargetInvocationException();
             string argsLog = GetLogString(GetLogArgs(invocation));
             if (innerExp is ServiceException)
-                _logger.LogWarning("[{SessionID}]<Exception>{Service}.{Method}({Args}) {Message}", SessionManager.Current?.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
+                _logger.LogWarning("[{SessionID}]<Exception>{Service}.{Method}({Args}) {Message}", _sessionManager.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
                     argsLog, innerExp.Message);
             else
-                _logger.LogError("[{SessionID}]<Exception>{Service}.{Method}({Args}) {Exception}", SessionManager.Current?.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
+                _logger.LogError("[{SessionID}]<Exception>{Service}.{Method}({Args}) {Exception}", _sessionManager.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
                     argsLog, innerExp);
+        }
+
+        /// <summary>
+        /// 尝试通过方法级 hook 或全局事件处理异常。
+        /// </summary>
+        protected virtual bool TryHandleException(IInvocation invocation, Exception exception, out object handledResult)
+        {
+            var context = CreateExceptionContext(invocation, exception);
+            InvokeServiceExceptionHooks(invocation, context);
+            OnExceptionHandling(context);
+
+            if (!context.Handled)
+            {
+                handledResult = null;
+                return false;
+            }
+
+            handledResult = BuildHandledReturnValue(context);
+            return true;
+        }
+
+        /// <summary>
+        /// 创建异常处理上下文。
+        /// </summary>
+        protected virtual ServiceExceptionContext CreateExceptionContext(IInvocation invocation, Exception exception)
+        {
+            var serviceDesc = GetDescription(invocation);
+            var method = invocation.MethodInvocationTarget ?? invocation.Method;
+            var methodReturnType = method.ReturnType;
+            return new ServiceExceptionContext(
+                exception,
+                invocation.InvocationTarget,
+                invocation.TargetType,
+                serviceDesc.ServiceName,
+                method,
+                invocation.Arguments?.ToArray() ?? Array.Empty<object>(),
+                GetLogArgs(invocation),
+                _sessionManager.SessionID,
+                _sessionManager.SqlStack?.ToArray() ?? Array.Empty<string>(),
+                methodReturnType,
+                GetHandledResultType(methodReturnType));
+        }
+
+        /// <summary>
+        /// 执行方法级异常 hook。
+        /// </summary>
+        protected virtual void InvokeServiceExceptionHooks(IInvocation invocation, ServiceExceptionContext context)
+        {
+            var serviceDesc = GetDescription(invocation);
+            foreach (var hookAttribute in serviceDesc.ExceptionHooks ?? Array.Empty<ExceptionHookAttribute>())
+            {
+                var hook = ResolveExceptionHook(hookAttribute.HookType);
+                hook.OnException(context);
+
+                if (hookAttribute.Mode == ServiceExceptionHookMode.Notify && context.Handled)
+                {
+                    throw new InvalidOperationException($"Exception hook {hookAttribute.HookType.FullName} is configured as Notify but marked {context.ServiceName}.{context.MethodName} as handled.");
+                }
+
+                if (context.Handled)
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 触发全局异常处理事件。
+        /// </summary>
+        protected virtual void OnExceptionHandling(ServiceExceptionContext context)
+        {
+            ExceptionHandling?.Invoke(this, context);
+        }
+
+        /// <summary>
+        /// 构建处理后的返回值。
+        /// </summary>
+        protected virtual object BuildHandledReturnValue(ServiceExceptionContext context)
+        {
+            if (!context.HasResult)
+            {
+                if (context.MethodReturnType == typeof(Task))
+                    return Task.CompletedTask;
+                return null;
+            }
+
+            if (!context.ResultAssigned)
+                throw new InvalidOperationException($"Method {context.ServiceName}.{context.MethodName} was marked handled, but no result was assigned.");
+
+            return context.Result;
+        }
+
+        private IServiceExceptionHook ResolveExceptionHook(Type hookType)
+        {
+            var hook = ActivatorUtilities.GetServiceOrCreateInstance(_serviceProvider, hookType);
+            if (hook is not IServiceExceptionHook serviceExceptionHook)
+                throw new InvalidOperationException($"Resolved exception hook {hookType.FullName} does not implement {typeof(IServiceExceptionHook).FullName}.");
+            return serviceExceptionHook;
+        }
+
+        private static Type GetHandledResultType(Type returnType)
+        {
+            if (returnType == typeof(void) || returnType == typeof(Task))
+                return null;
+            if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>))
+                return returnType.GetGenericArguments()[0];
+            return returnType;
         }
 
         /// <summary>
@@ -598,6 +723,8 @@ namespace LiteOrm.Service
             if (serviceAtt is not null)
                 desc.IsService = serviceAtt.IsService;
 
+            desc.ExceptionHooks = GetServiceAttributes<ExceptionHookAttribute>(invocation).ToArray();
+
             // 参数日志格式
             var parameters = invocation.Method.GetParameters();
             desc.ArgsLoggable = new bool[parameters.Length];
@@ -639,10 +766,24 @@ namespace LiteOrm.Service
         }
         private static T GetServiceAttribute<T>(IInvocation invocation) where T : Attribute
         {
-            return invocation.Method.GetCustomAttribute<T>()
-                            ?? invocation.MethodInvocationTarget?.GetCustomAttribute<T>()
-                            ?? invocation.TargetType.GetCustomAttribute<T>()
-                            ?? invocation.Method.DeclaringType.GetCustomAttribute<T>();
+            return GetServiceAttributes<T>(invocation).FirstOrDefault();
+        }
+
+        private static IEnumerable<T> GetServiceAttributes<T>(IInvocation invocation) where T : Attribute
+        {
+            IEnumerable<T> methodAttributes = invocation.Method.GetCustomAttributes<T>();
+            IEnumerable<T> targetMethodAttributes = invocation.MethodInvocationTarget is not null && invocation.MethodInvocationTarget != invocation.Method
+                ? invocation.MethodInvocationTarget.GetCustomAttributes<T>()
+                : Array.Empty<T>();
+            IEnumerable<T> targetTypeAttributes = invocation.TargetType.GetCustomAttributes<T>();
+            IEnumerable<T> declaringTypeAttributes = invocation.Method.DeclaringType is not null && invocation.Method.DeclaringType != invocation.TargetType
+                ? invocation.Method.DeclaringType.GetCustomAttributes<T>()
+                : Array.Empty<T>();
+
+            return methodAttributes
+                .Concat(targetMethodAttributes)
+                .Concat(targetTypeAttributes)
+                .Concat(declaringTypeAttributes);
         }
 
         /// <summary>

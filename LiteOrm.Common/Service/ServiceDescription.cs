@@ -58,5 +58,10 @@ namespace LiteOrm.Service
         /// 允许访问的角色数组
         /// </summary>
         public string[] AllowRoles { get; set; }
+
+        /// <summary>
+        /// 服务异常 hook 配置。
+        /// </summary>
+        public ExceptionHookAttribute[] ExceptionHooks { get; set; } = Array.Empty<ExceptionHookAttribute>();
     }
 }
