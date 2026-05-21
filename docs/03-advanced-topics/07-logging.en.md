@@ -196,7 +196,121 @@ public class PaymentRequest : ILogable
 
 When such an object is logged by the interceptor, LiteOrm uses `ToLog()`.
 
-## 5. Slow-query and volume controls
+## 5. `ExceptionHook`: add method-level exception handling
+
+`[ExceptionHook]` can be placed on a **service method, class, or interface** to add logic that runs when the service interceptor catches an exception. Typical uses include:
+
+- sending alerts
+- adding audit records
+- converting a known exception into an agreed fallback result
+
+The hook type must implement `IServiceExceptionHook`:
+
+```csharp
+public class OrderExceptionHook : IServiceExceptionHook
+{
+    public void OnException(ServiceExceptionContext context)
+    {
+        // Access exception, method name, arguments, SQL stack, and more
+    }
+}
+```
+
+Then declare it on the service:
+
+```csharp
+[ExceptionHook(typeof(OrderExceptionHook), Mode = ServiceExceptionHookMode.Notify)]
+public interface IOrderService
+{
+    Task SubmitAsync(long id);
+}
+```
+
+### 5.1 When it runs
+
+When a service method throws, `ServiceInvokeInterceptor` handles it in this order:
+
+1. create `ServiceExceptionContext`
+2. execute each declared `ExceptionHook`
+3. raise the global `ServiceInvokeInterceptor.ExceptionHandling` event
+4. rethrow the original exception if it is still not marked as handled
+
+That makes `ExceptionHook` a good fit for **local, method-specific exception behavior**, while `ExceptionHandling` is better for **global fallback policies**.
+
+### 5.2 `Notify` vs `Handle`
+
+`ExceptionHookAttribute.Mode` has two modes:
+
+| Mode | Meaning |
+|------|---------|
+| `Notify` | Observe only; the hook must not mark the exception as handled |
+| `Handle` | The hook may call `context.Handle(...)` and convert the exception into a normal result |
+
+#### `Notify`: observe and rethrow
+
+```csharp
+[ExceptionHook(typeof(NotifyOnlyHook), Mode = ServiceExceptionHookMode.Notify)]
+public void ThrowWithNotifyHook()
+{
+    throw new InvalidOperationException("notify");
+}
+```
+
+This mode is for alerting, metrics, and extra logging. The exception still propagates.
+
+> If a `Notify` hook calls `context.Handle(...)`, LiteOrm throws an `InvalidOperationException` to prevent “configured as observe-only, but actually swallowed the exception” behavior.
+
+#### `Handle`: convert the exception into a result
+
+```csharp
+[ExceptionHook(typeof(HandleHook), Mode = ServiceExceptionHookMode.Handle)]
+public int GetStatus()
+{
+    throw new InvalidOperationException("handle");
+}
+
+public class HandleHook : IServiceExceptionHook
+{
+    public void OnException(ServiceExceptionContext context)
+    {
+        context.Handle(123);
+    }
+}
+```
+
+After `context.Handle(123)`, the interceptor treats the call as handled and returns `123`.
+
+This works for async methods too. For `Task<T>`, LiteOrm builds the handled result using `T`.
+
+### 5.3 What `ServiceExceptionContext` contains
+
+In `OnException(ServiceExceptionContext context)`, the most useful members are usually:
+
+- `context.Exception`: the original exception
+- `context.ServiceName` / `context.MethodName`: current service and method
+- `context.Arguments` / `context.LogArguments`: raw and log-safe arguments
+- `context.SessionID`: current session ID
+- `context.SqlStack`: current SQL stack
+
+So the hook can be used both for richer diagnostics and for exception-to-result decisions.
+
+### 5.4 Registration guidance
+
+`ServiceInvokeInterceptor` resolves hook types through DI, so hook implementations should usually be registered in the container. The common pattern in this repository is:
+
+```csharp
+[AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
+public class OrderExceptionHook : IServiceExceptionHook
+{
+    public void OnException(ServiceExceptionContext context)
+    {
+    }
+}
+```
+
+If the hook is not registered, LiteOrm may still try to create it by type, but explicit DI registration is the safer choice once the hook depends on other services.
+
+## 6. Slow-query and volume controls
 
 `ServiceInvokeInterceptor` exposes two useful static knobs:
 
@@ -208,12 +322,13 @@ ServiceInvokeInterceptor.MaxExpandedLogLength = 20;
 - `SlowQueryThreshold`: emits extra `<Slow>` and `<SlowSQL>` entries when exceeded
 - `MaxExpandedLogLength`: limits collection expansion to keep logs from exploding in size
 
-## 6. Recommended practice
+## 7. Recommended practice
 
 1. Put `ServiceLog` on service interfaces so logging stays aligned with service boundaries.
 2. Treat passwords, tokens, keys, and sensitive identifiers as opt-out-by-default: use `[Log(false)]` or a custom `ILogable`.
 3. Use `Debug + Full` during local troubleshooting, then narrow to `Information` or `Warning` in production.
-4. Silence high-frequency, low-value methods with `ServiceLogLevel.None`.
+4. Use `ExceptionHook` for method-level alerts, compensation, or exception-to-result conversion; use the global `ExceptionHandling` event for cross-service policy.
+5. Silence high-frequency, low-value methods with `ServiceLogLevel.None`.
 
 ## Related Links
 

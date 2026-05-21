@@ -72,19 +72,21 @@ Related guides:
 - [Generated SQL Examples](./07-sql-examples.en.md)
 
 ### Advanced features
-
+
 - `[Transaction]`
-- `SessionManager`
-- `IArged` / `TableArgs`
-- window function extensions
-- `Expr.ExistsRelated(...)`
+- `[ExceptionHook]` / `IServiceExceptionHook`
+- `SessionManager`
+- `IArged` / `TableArgs`
+- window function extensions
+- `Expr.ExistsRelated(...)`
 
 Related guides:
 
 - [Transactions](../03-advanced-topics/01-transactions.en.md)
-- [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
-- [Window functions](../03-advanced-topics/04-window-functions.en.md)
-- [Example Index](./06-example-index.en.md)
+- [Logging and Diagnostics](../03-advanced-topics/07-logging.en.md)
+- [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
+- [Window functions](../03-advanced-topics/04-window-functions.en.md)
+- [Example Index](./06-example-index.en.md)
 - [Generated SQL Examples](./07-sql-examples.en.md)
 - [Database Compatibility Notes](./08-database-compatibility.en.md)
 

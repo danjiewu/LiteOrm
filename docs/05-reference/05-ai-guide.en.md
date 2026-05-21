@@ -303,6 +303,30 @@ services.AddServiceGenerator<ServiceFactory>();
 var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 ```
 
+### Service exception hooks
+
+```csharp
+[ExceptionHook(typeof(OrderExceptionHook), Mode = ServiceExceptionHookMode.Notify)]
+public interface IOrderService
+{
+    Task SubmitAsync(long id);
+}
+
+[AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
+public class OrderExceptionHook : IServiceExceptionHook
+{
+    public void OnException(ServiceExceptionContext context)
+    {
+        // Access exception, method name, arguments, SQL stack, and more
+    }
+}
+```
+
+- `[ExceptionHook]` can be applied to methods, classes, and interfaces
+- `Notify` is observe-only and must not swallow exceptions
+- `Handle` can convert the exception into a defined result through `context.Handle(result)`
+- Method-level `ExceptionHook` runs before the global `ServiceInvokeInterceptor.ExceptionHandling` event
+
 ## 7. Attribute quick reference
 
 | Attribute | Purpose |
@@ -313,6 +337,7 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 | `[TableJoin(typeof(T), ForeignKeys, AliasName, AutoExpand)]` | Type-level relation definition supporting composite keys and path reuse |
 | `[ForeignColumn(typeof(T), Property)]` | Column projected from a related table (for view models) |
 | `[Transaction]` | Declarative transaction |
+| `[ExceptionHook(typeof(THook), Mode = ...)]` | Declares a service exception hook for alerting or exception-to-result handling |
 | `[AutoRegister]` | Automatically registers the type into the DI container |
 
 ## 8. Expr expression system
