@@ -130,7 +130,7 @@ namespace LiteOrm
                 strColumns += "," + ToSqlName(identityColumn.Name);
                 strValues += "," + identityColumn.IdentityExpression;
             }
-            return $"INSERT INTO {ToSqlName(tableName)} \n({strColumns})\nVALUES ({strValues}) \nRETURNING {ToSqlName(identityColumn.Name)} INTO {ToSqlParam(identityColumn.PropertyName)}";
+            return $"INSERT INTO {ToSqlName(tableName)} \n({strColumns})\nVALUES ({strValues}) \nRETURNING {ToSqlName(identityColumn.Name)} INTO {ToSqlParam(Constants.IdentityParamName)}";
         }
 
         /// <summary>

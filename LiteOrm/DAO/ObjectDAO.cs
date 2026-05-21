@@ -124,8 +124,8 @@ namespace LiteOrm
                 }
 
                 strColumns.Append(ToSqlName(column.Name));
-                strValues.Append(ToSqlParam(column.PropertyName));
-                paramValues.Add(column.PropertyName, null);
+                strValues.Append(ToSqlParam(i.ToString()));
+                paramValues.Add(i.ToString(), null);
             }
 
             string sql = IdentityColumn is null ?
@@ -450,8 +450,7 @@ namespace LiteOrm
             for (int i = 0; i < count; i++)
             {
                 var column = columns[i];
-                var param = parameters[i];
-                param.Value = ConvertToDbValue(column.GetValue(t), column.DbType);
+                parameters[i].Value = ConvertToDbValue(column.GetValue(t), column.DbType);
             }
 
             if (IdentityColumn is null)
@@ -460,7 +459,7 @@ namespace LiteOrm
             }
             else
             {
-                string identityParamName = ToParamName(IdentityColumn.PropertyName);
+                string identityParamName = ToParamName(Constants.IdentityParamName);
                 DbParameter param = insertCommand.Parameters.Contains(identityParamName) ? insertCommand.Parameters[identityParamName] : null;
                 if (param != null && param.Direction == ParameterDirection.Output)
                 {
@@ -906,7 +905,7 @@ namespace LiteOrm
             }
             else
             {
-                string identityParamName = ToParamName(IdentityColumn.PropertyName);
+                string identityParamName = ToParamName(Constants.IdentityParamName);
                 DbParameter param = insertCommand.Parameters.Contains(identityParamName) ? insertCommand.Parameters[identityParamName] : null;
                 if (param is not null && param.Direction == ParameterDirection.Output)
                 {

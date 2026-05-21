@@ -17,6 +17,11 @@ namespace LiteOrm.Common
         /// 默认的表别名，在生成 SQL 语句时使用，避免与用户定义的别名冲突。
         /// </summary>
         public const string DefaultTableAlias = "T0";
+
+        /// <summary>
+        /// 标识参数的内部名称，通常用于存储主键值或其他唯一标识符，以便在生成 SQL 语句时使用。
+        /// </summary>
+        public const string IdentityParamName = "_IDENTITY";
         /// <summary>
         /// SQL语句中like条件中的转义符
         /// </summary>

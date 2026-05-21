@@ -52,11 +52,6 @@ namespace LiteOrm
         /// 表示SQL查询中所有字段的标记
         /// </summary>
         public const string ParamAllFields = "{AllFields}";
-
-        /// <summary>
-        /// 时间戳参数的内部名称。
-        /// </summary>
-        protected const string TimestampParamName = "_STAMP";
         #endregion
 
         #region 私人变量
@@ -570,8 +565,9 @@ namespace LiteOrm
                 var columnDef = column.Definition;
                 if (columnDef.IsTimestamp)
                 {
-                    paramValues.Add(new KeyValuePair<string, object>(TimestampParamName, timestamp));
-                    return $"{ToColumnSql(column)} = {ToSqlParam(TimestampParamName)}";
+                    var paramName = "_" + columnDef.Name;
+                    paramValues.Add(new KeyValuePair<string, object>(paramName, timestamp));
+                    return $"{ToColumnSql(column)} = {ToSqlParam(paramName)}";
                 }
             }
             return null;
