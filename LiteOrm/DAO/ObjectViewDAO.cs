@@ -119,7 +119,7 @@ namespace LiteOrm
             for (int i = 0; i < TableDefinition.Keys.Length; i++)
             {
                 var key = TableDefinition.Keys[i];
-                getObjectCommand.Parameters[ToParamName(key.PropertyName)].Value = ConvertToDbValue(keys[i], key.DbType);
+                getObjectCommand.Parameters[i].Value = ConvertToDbValue(keys[i], key.DbType);
             }
             return new EnumerableResult<T>(getObjectCommand, ConvertToObjectHandler);
         }
@@ -171,7 +171,7 @@ namespace LiteOrm
             for (int i = 0; i < TableDefinition.Keys.Length; i++)
             {
                 var key = TableDefinition.Keys[i];
-                objectExistsCommand.Parameters[ToParamName(key.PropertyName)].Value = ConvertToDbValue(keys[i], key.DbType);
+                objectExistsCommand.Parameters[i].Value = ConvertToDbValue(keys[i], key.DbType);
             }
             return new ValueResult<bool>(objectExistsCommand, (obj) => obj != null && Convert.ToInt32(obj) > 0);
         }

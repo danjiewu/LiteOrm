@@ -151,11 +151,12 @@ namespace LiteOrm
             for (int i = 0; i < count; i++)
             {
                 ColumnDefinition column = columns[i];
+                var paramName = paramValues.Count.ToString();
                 if (i > 0) strColumns.Append(",");
                 strColumns.Append(ToSqlName(column.Name));
                 strColumns.Append(" = ");
-                strColumns.Append(ToSqlParam(column.PropertyName));
-                paramValues.Add(column.PropertyName, null);
+                strColumns.Append(ToSqlParam(paramName));
+                paramValues.Add(paramName, null);
             }
 
             // 构建 WHERE 子句
@@ -1258,11 +1259,13 @@ namespace LiteOrm
         {
             ThrowExceptionIfWrongKeys(keys);
             var deleteCommand = await GetPreparedCommandAsync("Delete", MakeDeleteSql, cancellationToken).ConfigureAwait(false);
-            int i = 0;
-            foreach (DbParameter param in deleteCommand.Parameters)
+            int count = deleteCommand.Parameters.Count;
+            var parameters = deleteCommand.Parameters;
+            var keyColumns = Table.Keys;
+
+            for (int i = 0; i < count; i++)
             {
-                param.Value = ConvertToDbValue(keys[i], Table.Keys[i].DbType);
-                i++;
+                parameters[i].Value = ConvertToDbValue(keys[i], keyColumns[i].DbType);
             }
             return await deleteCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
         }

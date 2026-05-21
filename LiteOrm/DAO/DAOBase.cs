@@ -544,12 +544,12 @@ namespace LiteOrm
             for (int i = 0; i < count; i++)
             {
                 ColumnDefinition key = keys[i];
+                var paramName = paramValues.Count.ToString();
                 if (i > 0) strConditions.Append(" AND ");
                 strConditions.Append(ToColumnSql(key));
                 strConditions.Append(" = ");
-                strConditions.Append(ToSqlParam(key.PropertyName));
-
-                paramValues.Add(new (key.PropertyName, null));
+                strConditions.Append(ToSqlParam(paramName));
+                paramValues.Add(new (paramName, null));
             }
             string result = strConditions.ToString();
             strConditions.Dispose();
