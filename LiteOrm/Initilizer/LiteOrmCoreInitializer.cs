@@ -76,7 +76,7 @@ namespace LiteOrm
         {
             try
             {
-                SessionManager.Current = _sessionManager;
+                SessionManager.SetCurrentFactory(() => _sessionManager);
                 TableInfoProvider.Default = _tableInfoProvider;
                 _logger?.LogInformation("LiteOrm global instances initialized");
             }

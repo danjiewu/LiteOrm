@@ -66,7 +66,6 @@ namespace LiteOrm
         public static SessionManager Current
         {
             get => _currentAsyncLocal.Value?.Value;
-            set => _currentAsyncLocal.Value = value is null ? null : new Lazy<SessionManager>(() => value);
         }
 
         /// <summary>
@@ -75,7 +74,7 @@ namespace LiteOrm
         /// <param name="factory">返回 <see cref="SessionManager"/> 实例的工厂委托；传入 null 时清空当前上下文</param>
         public static void SetCurrentFactory(Func<SessionManager> factory)
         {
-            _currentAsyncLocal.Value = factory is null ? null : new Lazy<SessionManager>(factory);
+            _currentAsyncLocal.Value = factory is null ? null : new Lazy<SessionManager>(factory, LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -404,7 +403,7 @@ namespace LiteOrm
             var committedTransactionId = _currentTransactionId;
             _currentTransactionId = null;
             _logger?.LogDebug("Session {SessionID} transaction committed. ID: {TransactionID}, Success: {Success}", SessionID, committedTransactionId, success);
-            
+
             if (!success)
             {
                 throw new InvalidOperationException("An error occurred while committing the transaction");
