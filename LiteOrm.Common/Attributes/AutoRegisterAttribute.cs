@@ -9,9 +9,9 @@ namespace LiteOrm.Common
     public class AutoRegisterAttribute : Attribute
     {
         /// <summary>
-        /// 服务生命周期，默认为Scoped
+        /// 服务生命周期，默认为Singleton
         /// </summary>
-        public Lifetime Lifetime { get; set; } = Lifetime.Scoped;
+        public Lifetime Lifetime { get; set; } = Lifetime.Singleton;
 
         /// <summary>
         /// 支持多个服务类型
