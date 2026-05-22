@@ -58,36 +58,27 @@ namespace LiteOrm
             return newDAO;
         }
 
+
+
+        /// <summary>
+        /// 获取可插入的列定义数组，排除自增列和不可插入的列。
+        /// </summary>
+        protected ColumnDefinition[] InsertableColumns => TableDefinition.InsertableColumns;
+
+        /// <summary>
+        /// 获取可更新的列定义数组，排除主键列和不可更新的列。
+        /// </summary>
+        protected ColumnDefinition[] UpdatableColumns => TableDefinition.UpdatableColumns;
+
         /// <summary>
         /// 识别列
         /// </summary>
-        protected ColumnDefinition IdentityColumn => TableDefinition.Columns.FirstOrDefault(col => col.IsIdentity);
-        private ColumnDefinition[] _insertableColumns;
-        private ColumnDefinition[] _updatableColumns;
+        protected ColumnDefinition IdentityColumn => TableDefinition.IdentityColumn;
 
-        private ColumnDefinition[] InsertableColumns
-        {
-            get
-            {
-                if (_insertableColumns is null)
-                {
-                    _insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
-                }
-                return _insertableColumns;
-            }
-        }
-
-        private ColumnDefinition[] UpdatableColumns
-        {
-            get
-            {
-                if (_updatableColumns is null)
-                {
-                    _updatableColumns = TableDefinition.Columns.Where(column => !column.IsPrimaryKey && column.Mode.CanUpdate()).ToArray();
-                }
-                return _updatableColumns;
-            }
-        }
+        /// <summary>
+        /// 时间戳列（用于乐观并发控制）
+        /// </summary>
+        protected ColumnDefinition TimestampColumn => TableDefinition.TimestampColumn;
 
         /// <summary>
         /// 获取或设置用于生成 SQL 的上下文。
@@ -165,11 +156,13 @@ namespace LiteOrm
             // 处理时间戳条件
             if (withTimestamp)
             {
-                string strTimestamp = MakeTimestampCondition(paramValues, null);
-                if (!String.IsNullOrEmpty(strTimestamp)) where += " AND " + strTimestamp;
+                if (TimestampColumn == null) throw new InvalidOperationException("Entity does not have a timestamp column for concurrency control.");
+                var paramName = paramValues.Count.ToString();
+                paramValues.Add(paramName, null);
+                where += $" AND {ToColumnSql(TimestampColumn)} = {ToSqlParam(paramName)}";
             }
 
-            string sql = $"UPDATE {ToSqlName(FactTableName)} SET {strColumns.ToString()} {ToWhereSql(where)}";
+            string sql = $"UPDATE {ToSqlName(FactTableName)} SET {strColumns.ToString()} \nWHERE {where}";
             strColumns.Dispose();
             return new PreparedSql(sql, paramValues);
         }
@@ -185,7 +178,7 @@ namespace LiteOrm
             // 构建 WHERE 子句
             string where = MakeKeyCondition(paramValues);
 
-            string sql = $"DELETE FROM {ToSqlName(FactTableName)} {ToWhereSql(where)}";
+            string sql = $"DELETE FROM {ToSqlName(FactTableName)} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);
         }
 
@@ -597,8 +590,8 @@ namespace LiteOrm
 
             if (timestamp != null)
             {
-                var timestampCol = TableDefinition.Columns.First(c => c.IsTimestamp);
-                parameters[paramIndex].Value = ConvertToDbValue(timestamp, timestampCol.DbType);
+                if (TimestampColumn == null) throw new InvalidOperationException("Entity does not have a timestamp column for concurrency control.");
+                parameters[paramIndex++].Value = ConvertToDbValue(timestamp, TimestampColumn.DbType);
             }
 
             return updateCommand.ExecuteNonQuery() > 0;
@@ -929,7 +922,7 @@ namespace LiteOrm
                 param.Direction = ParameterDirection.Output;
                 param.Size = IdentityColumn.Length;
                 param.DbType = IdentityColumn.DbType;
-                param.ParameterName = ToParamName(IdentityColumn.PropertyName);
+                param.ParameterName = ToParamName(Constants.IdentityParamName);
                 command.Parameters.Add(param);
             }
         }

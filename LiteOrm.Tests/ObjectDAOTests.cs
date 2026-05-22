@@ -191,6 +191,74 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public async Task ObjectDAO_Update_WithTimestamp_ShouldWork()
+        {
+            var dao = ServiceProvider.GetRequiredService<ObjectDAO<TestTimestampUser>>();
+            var viewDao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestTimestampUser>>();
+
+            var user = new TestTimestampUser
+            {
+                Name = "ObjectDaoTimestampSync",
+                Version = 1
+            };
+
+            Assert.True(dao.Insert(user));
+            Assert.True(user.Id > 0);
+
+            user.Name = "ObjectDaoTimestampSync_Updated";
+            user.Version = 2;
+            Assert.True(dao.Update(user, 1));
+
+            var updated = await viewDao.GetObject(user.Id).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(updated);
+            Assert.Equal("ObjectDaoTimestampSync_Updated", updated.Name);
+            Assert.Equal(2, updated.Version);
+
+            user.Name = "ObjectDaoTimestampSync_Stale";
+            user.Version = 3;
+            Assert.False(dao.Update(user, 1));
+
+            var unchanged = await viewDao.GetObject(user.Id).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(unchanged);
+            Assert.Equal("ObjectDaoTimestampSync_Updated", unchanged.Name);
+            Assert.Equal(2, unchanged.Version);
+        }
+
+        [Fact]
+        public async Task ObjectDAO_UpdateAsync_WithTimestamp_ShouldWork()
+        {
+            var dao = ServiceProvider.GetRequiredService<ObjectDAO<TestTimestampUser>>();
+            var viewDao = ServiceProvider.GetRequiredService<ObjectViewDAO<TestTimestampUser>>();
+
+            var user = new TestTimestampUser
+            {
+                Name = "ObjectDaoTimestampAsync",
+                Version = 1
+            };
+
+            Assert.True(await dao.InsertAsync(user, TestContext.Current.CancellationToken));
+            Assert.True(user.Id > 0);
+
+            user.Name = "ObjectDaoTimestampAsync_Updated";
+            user.Version = 2;
+            Assert.True(await dao.UpdateAsync(user, 1, TestContext.Current.CancellationToken));
+
+            var updated = await viewDao.GetObject(user.Id).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(updated);
+            Assert.Equal("ObjectDaoTimestampAsync_Updated", updated.Name);
+            Assert.Equal(2, updated.Version);
+
+            user.Name = "ObjectDaoTimestampAsync_Stale";
+            user.Version = 3;
+            Assert.False(await dao.UpdateAsync(user, 1, TestContext.Current.CancellationToken));
+
+            var unchanged = await viewDao.GetObject(user.Id).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(unchanged);
+            Assert.Equal("ObjectDaoTimestampAsync_Updated", unchanged.Name);
+            Assert.Equal(2, unchanged.Version);
+        }
+
+        [Fact]
         public async Task ObjectDAO_WithArgs_ShouldTargetShardTable()
         {
             var userService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();

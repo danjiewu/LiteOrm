@@ -127,6 +127,7 @@ namespace LiteOrm
                     if (!String.IsNullOrEmpty(columnAttribute.ColumnName)) column.Name = columnAttribute.ColumnName;
                     column.IsPrimaryKey = columnAttribute.IsPrimaryKey;
                     column.IsIdentity = columnAttribute.IsIdentity;
+                    column.IsTimestamp = columnAttribute.IsTimestamp;
                     column.IdentityExpression = columnAttribute.IdentityExpression;
                     column.IsUnique = columnAttribute.IsUnique;
                     column.IsIndex = columnAttribute.IsIndex;

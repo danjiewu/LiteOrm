@@ -54,7 +54,7 @@ namespace LiteOrm
         public const string ParamAllFields = "{AllFields}";
         #endregion
 
-        #region 私人变量
+        #region 私有变量
         private string _allFields = null;
         private string _factTableName = null;
         private string _fromTable = null;
@@ -227,13 +227,6 @@ namespace LiteOrm
                 return _allFields;
             }
         }
-
-        /// <summary>
-        /// 将条件字符串转换为 SQL WHERE 子句。
-        /// </summary>
-        /// <param name="where">条件字符串。</param>
-        /// <returns>生成的 WHERE 子句。</returns>
-        protected static string ToWhereSql(string where) => string.IsNullOrEmpty(where) ? string.Empty : $"\nWHERE {where}";
         #endregion
 
         #region 方法
@@ -549,28 +542,6 @@ namespace LiteOrm
             string result = strConditions.ToString();
             strConditions.Dispose();
             return result;
-        }
-
-
-        /// <summary>
-        /// 为command创建根据时间戳的条件，在参数集合中添加参数并返回where条件的语句
-        /// </summary>
-        /// <param name="paramValues">参数集合</param>
-        /// <param name="timestamp">时间戳</param>
-        /// <returns>where条件的语句</returns>
-        protected string MakeTimestampCondition(ICollection<KeyValuePair<string, object>> paramValues, object timestamp)
-        {
-            foreach (var column in Table.Columns)
-            {
-                var columnDef = column.Definition;
-                if (columnDef.IsTimestamp)
-                {
-                    var paramName = "_" + columnDef.Name;
-                    paramValues.Add(new KeyValuePair<string, object>(paramName, timestamp));
-                    return $"{ToColumnSql(column)} = {ToSqlParam(paramName)}";
-                }
-            }
-            return null;
         }
 
         /// <summary>

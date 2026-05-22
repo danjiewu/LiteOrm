@@ -76,7 +76,7 @@ namespace LiteOrm.Tests.Infrastructure
             try
             {
                 // 先删除有外键引用的子表数据，再删除被引用的父表数据
-                string[] tables = ["TestUsers", "TestDepartments", "TestLog_202405", "TestShortIdentityEntities", "TestLongIdentityEntities", "TestCompositeKeyEntities"];
+                string[] tables = ["TestUsers", "TestDepartments", "TestLog_202405", "TestShortIdentityEntities", "TestLongIdentityEntities", "TestCompositeKeyEntities", "TestTimestampUsers"];
                 using var cmd = context.CreateCommand();
                 foreach (var table in tables)
                 {

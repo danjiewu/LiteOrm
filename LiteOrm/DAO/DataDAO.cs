@@ -53,7 +53,8 @@ namespace LiteOrm
             }
             var context = CreateSqlBuildContext(true);
             string where = expr.ToSql(context, SqlBuilder, paramValues);
-            string updateSql = $"UPDATE {ParamTable} SET {String.Join(",", strSets.ToArray())} {ToWhereSql(where)}";
+            string whereClause = String.IsNullOrEmpty(where) ? "" : "\nWHERE " + where;
+            string updateSql = $"UPDATE {ParamTable} SET {String.Join(", ", strSets.ToArray())} {whereClause}";
             var command = MakeNamedParamCommand(updateSql, paramValues);
             return new NonQueryResult(command);
         }

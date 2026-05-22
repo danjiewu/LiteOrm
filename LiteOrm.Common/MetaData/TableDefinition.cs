@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace LiteOrm.Common
 {
@@ -52,6 +53,64 @@ namespace LiteOrm.Common
         /// 获取数据库表的列定义集合。
         /// </summary>
         public new ReadOnlyCollection<ColumnDefinition> Columns { get; }
+        private ColumnDefinition _dentityColumn;
+        private ColumnDefinition[] _insertableColumns;
+        private ColumnDefinition[] _updatableColumns;
+        private ColumnDefinition _timestampColumn;
+
+        /// <summary>
+        /// 获取可插入的列定义数组，排除自增列和不可插入的列。
+        /// </summary>
+        public ColumnDefinition[] InsertableColumns
+        {
+            get
+            {
+                if (_insertableColumns is null)
+                {
+                    _insertableColumns = Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
+                }
+                return _insertableColumns;
+            }
+        }
+
+        /// <summary>
+        /// 获取可更新的列定义数组，排除主键列和不可更新的列。
+        /// </summary>
+        public ColumnDefinition[] UpdatableColumns
+        {
+            get
+            {
+                if (_updatableColumns is null)
+                {
+                    _updatableColumns = Columns.Where(column => !column.IsPrimaryKey && column.Mode.CanUpdate()).ToArray();
+                }
+                return _updatableColumns;
+            }
+        }
+
+        /// <summary>
+        /// 识别列
+        /// </summary>
+        public ColumnDefinition IdentityColumn
+        {
+            get
+            {
+                if (_dentityColumn is null) _dentityColumn = Columns.FirstOrDefault(col => col.IsIdentity);
+                return _dentityColumn;
+            }
+        }
+
+        /// <summary>
+        /// 时间戳列（用于乐观并发控制）
+        /// </summary>
+        public ColumnDefinition TimestampColumn
+        {
+            get
+            {
+                if (_timestampColumn is null) _timestampColumn = Columns.FirstOrDefault(col => col.IsTimestamp);
+                return _timestampColumn;
+            }
+        }
 
         /// <summary>
         /// 获取或设置该表的固定筛选条件。

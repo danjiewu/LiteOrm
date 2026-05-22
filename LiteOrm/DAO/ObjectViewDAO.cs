@@ -84,7 +84,7 @@ namespace LiteOrm
             // 构建 WHERE 子句
             string where = MakeKeyCondition(paramValues);
             
-            string sql = $"SELECT {AllFields} \nFROM {From} {ToWhereSql(where)}";
+            string sql = $"SELECT {AllFields} \nFROM {From} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);
         }
 
@@ -100,7 +100,7 @@ namespace LiteOrm
             // 构建 WHERE 子句
             string where = MakeKeyCondition(paramValues);
             
-            string sql = $"SELECT 1 \nFROM {From} {ToWhereSql(where)}";
+            string sql = $"SELECT 1 \nFROM {From} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);
         }
         #endregion
