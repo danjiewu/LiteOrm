@@ -201,6 +201,41 @@ LiteOrm uses `SessionManager` to manage database connections and transactions:
 - All LiteOrm database operations under the current Scope are automatically managed by the current transaction
 - If transaction isolation is needed, create a new Scope
 
+## 5. How `timestamp` Relates to Transactions
+
+`timestamp`-based optimistic concurrency and transactions are complementary, not competing, mechanisms:
+
+- Transactions guarantee that a group of operations succeeds or fails as a unit.
+- `timestamp` checks prevent lost updates, where a later write silently overwrites an earlier one.
+
+A common combination is:
+
+1. Wrap the business workflow in a transaction.
+2. Update critical entities with `ObjectDAO<T>.Update(entity, timestamp)` or `UpdateAsync(entity, timestamp)`.
+3. Treat a `false` return value as a concurrency conflict and stop the workflow.
+
+```csharp
+[Transaction]
+public async Task<bool> RenameUserAsync(int id, string newName)
+{
+    var user = await _userViewDao.GetObject(id).FirstOrDefaultAsync();
+    if (user == null)
+        return false;
+
+    int originalVersion = user.Version;
+    user.UserName = newName;
+    user.Version = originalVersion + 1;
+
+    return await _userDao.UpdateAsync(user, originalVersion);
+}
+```
+
+Recommendation:
+
+- Use transactions when you need business-level atomicity.
+- Add `timestamp` checks when you need protection against concurrent overwrites.
+- For important read-then-write flows, using both together is usually the safest choice.
+
 ## Related Links
 
 - [Back to docs hub](../README.md)

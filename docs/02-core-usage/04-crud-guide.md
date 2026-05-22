@@ -138,6 +138,57 @@ await deptService.BatchUpdateAsync(updateDepts);
 
 适合“先读出实体，修改多个对象，再批量提交”的后台管理场景。
 
+### 使用 `timestamp` 做乐观并发更新
+
+如果你希望更新时额外校验“读取时版本”和“提交时版本”是否一致，可以给实体声明一个 `timestamp` 列，然后使用 `ObjectDAO<T>` 的 `Update(entity, timestamp)` / `UpdateAsync(entity, timestamp)` 重载。
+
+```csharp
+[Table("Users")]
+public class User : ObjectBase
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [Column("UserName")]
+    public string? UserName { get; set; }
+
+    [Column("Version", IsTimestamp = true)]
+    public int Version { get; set; }
+}
+```
+
+```csharp
+var dao = serviceProvider.GetRequiredService<ObjectDAO<User>>();
+var viewDao = serviceProvider.GetRequiredService<ObjectViewDAO<User>>();
+
+var user = await viewDao.GetObject(1).FirstOrDefaultAsync();
+int originalVersion = user.Version;
+
+user.UserName = "admin_v2";
+user.Version = originalVersion + 1; // 实体上的值会写回数据库
+
+bool updated = await dao.UpdateAsync(user, originalVersion);
+if (!updated)
+{
+    Console.WriteLine("发生并发冲突，记录已被其他人修改。");
+}
+```
+
+这一重载的行为要点：
+
+- 实体上的 `Version` 是将要写入数据库的新值。
+- `timestamp` 参数是查询时拿到的旧值，会被放进 `WHERE` 条件里做并发校验。
+- 当返回 `false` 时，通常表示主键存在，但 `timestamp` 已不匹配。
+- 通用 `IEntityService<T>` / `IEntityServiceAsync<T>` 的 `Update` 重载不带 `timestamp` 参数；需要乐观并发时，请直接使用 `ObjectDAO<T>`，或在自定义 Service 中封装 DAO。
+- `BatchUpdate` / `BatchUpdateAsync` 不会自动附带 `timestamp` 并发校验。
+
+### 来自测试的 `timestamp` 更新示例
+
+可参考：
+
+- `LiteOrm.Tests\ObjectDAOTests.cs`
+- `LiteOrm.Tests\Models\TestTimestampUser.cs`
+
 ### 条件更新
 
 ```csharp

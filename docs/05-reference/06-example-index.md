@@ -118,6 +118,18 @@
   - 失败回滚
   - 业务流程包裹
 
+### `timestamp` 乐观并发
+
+- 文档入口：[CRUD 指南](../02-core-usage/04-crud-guide.md)
+- 代码来源：
+  - `LiteOrm.Tests\ObjectDAOTests.cs`
+  - `LiteOrm.Tests\Models\TestTimestampUser.cs`
+- 重点内容：
+  - `[Column(..., IsTimestamp = true)]`
+  - `ObjectDAO<T>.Update(entity, timestamp)`
+  - `ObjectDAO<T>.UpdateAsync(entity, timestamp)`
+  - 并发冲突返回 `false`
+
 ### 分表与 `TableArgs`
 
 - 文档入口：[分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)

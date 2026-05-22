@@ -201,6 +201,41 @@ LiteOrm 使用 `SessionManager` 管理数据库连接及事务：
 - 当前 Scope 下 LiteOrm 的所有数据库操作都会自动受当前事务管理
 - 如需隔离事务，需要创建新的 Scope
 
+## 5. `timestamp` 与事务的关系
+
+`timestamp` 乐观并发控制和事务不是互斥关系，它们解决的是两个不同问题：
+
+- 事务：保证一组操作要么一起成功，要么一起失败。
+- `timestamp`：防止“后提交覆盖先提交”的丢失更新。
+
+典型组合方式是：
+
+1. 用事务包裹一个完整业务流程。
+2. 对关键实体更新时，使用 `ObjectDAO<T>.Update(entity, timestamp)` 或 `UpdateAsync(entity, timestamp)`。
+3. 当返回 `false` 时，将其视为并发冲突并中止当前流程。
+
+```csharp
+[Transaction]
+public async Task<bool> RenameUserAsync(int id, string newName)
+{
+    var user = await _userViewDao.GetObject(id).FirstOrDefaultAsync();
+    if (user == null)
+        return false;
+
+    int originalVersion = user.Version;
+    user.UserName = newName;
+    user.Version = originalVersion + 1;
+
+    return await _userDao.UpdateAsync(user, originalVersion);
+}
+```
+
+建议：
+
+- 需要保证业务原子性时使用事务。
+- 需要防止并发覆盖时增加 `timestamp` 校验。
+- 对“先查再改”的关键写操作，通常两者一起使用更稳妥。
+
 ## 相关链接
 
 - [返回目录](../README.md)

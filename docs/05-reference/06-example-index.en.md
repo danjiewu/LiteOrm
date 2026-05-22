@@ -118,6 +118,18 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
   - rollback on failure
   - wrapping a business workflow
 
+### `timestamp` optimistic concurrency
+
+- Entry doc: [CRUD Guide](../02-core-usage/04-crud-guide.en.md)
+- Code sources:
+  - `LiteOrm.Tests\ObjectDAOTests.cs`
+  - `LiteOrm.Tests\Models\TestTimestampUser.cs`
+- Focus:
+  - `[Column(..., IsTimestamp = true)]`
+  - `ObjectDAO<T>.Update(entity, timestamp)`
+  - `ObjectDAO<T>.UpdateAsync(entity, timestamp)`
+  - `false` as the concurrency-conflict result
+
 ### Sharding and `TableArgs`
 
 - Entry doc: [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)

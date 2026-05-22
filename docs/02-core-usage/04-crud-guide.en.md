@@ -136,6 +136,57 @@ await deptService.BatchUpdateAsync(updateDepts);
 
 This pattern is suitable for admin backend scenarios where you "read entities first, modify multiple objects, then batch commit."
 
+### Optimistic Concurrency with `timestamp`
+
+If you want an update to verify that the version read earlier still matches the current database row, declare a `timestamp` column and use the `ObjectDAO<T>` overloads `Update(entity, timestamp)` or `UpdateAsync(entity, timestamp)`.
+
+```csharp
+[Table("Users")]
+public class User : ObjectBase
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [Column("UserName")]
+    public string? UserName { get; set; }
+
+    [Column("Version", IsTimestamp = true)]
+    public int Version { get; set; }
+}
+```
+
+```csharp
+var dao = serviceProvider.GetRequiredService<ObjectDAO<User>>();
+var viewDao = serviceProvider.GetRequiredService<ObjectViewDAO<User>>();
+
+var user = await viewDao.GetObject(1).FirstOrDefaultAsync();
+int originalVersion = user.Version;
+
+user.UserName = "admin_v2";
+user.Version = originalVersion + 1; // the value on the entity is written back
+
+bool updated = await dao.UpdateAsync(user, originalVersion);
+if (!updated)
+{
+    Console.WriteLine("Concurrency conflict: the row was changed by someone else.");
+}
+```
+
+Important behavior details:
+
+- The `Version` value on the entity is the new value written to the database.
+- The `timestamp` argument is the original value and is added to the `WHERE` clause for concurrency checking.
+- A return value of `false` usually means the primary key matched but the `timestamp` no longer matched.
+- The generic `IEntityService<T>` / `IEntityServiceAsync<T>` update methods do not expose a `timestamp` overload. For optimistic concurrency, use `ObjectDAO<T>` directly or wrap it in a custom service.
+- `BatchUpdate` / `BatchUpdateAsync` do not automatically apply `timestamp` concurrency checks.
+
+### `timestamp` Update Example from Tests
+
+See:
+
+- `LiteOrm.Tests\ObjectDAOTests.cs`
+- `LiteOrm.Tests\Models\TestTimestampUser.cs`
+
 ### Conditional Update
 
 ```csharp
