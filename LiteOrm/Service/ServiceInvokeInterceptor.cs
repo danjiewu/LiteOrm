@@ -79,7 +79,7 @@ namespace LiteOrm.Service
         /// 超过此长度的集合将只记录类型和计数，以避免日志文件过大。
         /// </summary>
         public static int MaxExpandedLogLength { get; set; } = 10;
-        private static readonly ConcurrentDictionary<MethodInfo, ServiceDescription> _methodDescriptions = new();
+        private static readonly ConcurrentDictionary<(Type TargetType, MethodInfo Method), ServiceDescription> _methodDescriptions = new();
         private readonly ILogger _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly SessionManager _sessionManager;
@@ -667,7 +667,7 @@ namespace LiteOrm.Service
         /// <returns>服务描述对象</returns>
         protected virtual ServiceDescription GetDescription(IInvocation invocation)
         {
-            return _methodDescriptions.GetOrAdd(invocation.Method, m =>
+            return _methodDescriptions.GetOrAdd((invocation.TargetType, invocation.Method), _ =>
             {
                 var desc = new ServiceDescription();
                 desc.LoadFrom(invocation);
