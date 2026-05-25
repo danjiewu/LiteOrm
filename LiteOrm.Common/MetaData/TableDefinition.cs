@@ -115,7 +115,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置该表的固定筛选条件。
         /// </summary>
-        public LogicExpr ConstFilter { get; internal set; }
+        public LogicExpr ConstFilter { get; set; }
 
         /// <summary>
         /// 根据属性名获取对应的列定义，忽略大小写。
