@@ -167,6 +167,9 @@ var results = await salesViewDAO
 
 这意味着在“同一套分表维度贯穿整条查询链”的场景下，通常只需要在主表指定一次参数，后续表无需重复传参。
 
+> **安全提示**：`TableExpr` 上显式指定的 `TableArgs` 会覆盖当前 `SqlBuildContext` 里继承下来的分表参数。  
+> 如果你的上层上下文本来依赖这组参数来限制租户、分片或数据范围，那么下层 `TableExpr` 的显式覆盖可能绕开原有边界，使用时要特别注意避免数据越界访问。
+
 ### 5.4 批量查询多个分表
 
 需要逐个查询后合并结果：
@@ -200,6 +203,8 @@ var archivedOrders = await orderService.SearchAsync(
     tableArgs: new[] { "archive_5" }
 );
 ```
+
+如果把这种“显式覆盖”放到更深层的 `TableExpr`、子查询或关联表达式里，也会覆盖当前上下文继承值；在多租户或按业务范围隔离的系统里，务必确认这种覆盖是刻意为之。
 
 ## 6. 来自 Demo 和测试的真实分表模式
 
@@ -353,5 +358,6 @@ public class Log : IArged
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/05-associations.md)
+- [权限过滤](./06-permission-filtering.md)
 - [性能优化](./03-performance.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)

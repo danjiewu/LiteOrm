@@ -283,6 +283,8 @@ var users = await userService.SearchAsync(expr);
 2. **Supports parameterization**: The delegate signature includes `outputParams`, allowing safe passing of user values
 3. **Parameter passing**: Business parameters are passed via the `Arg` property, not concatenated into SQL
 
+If you want to use it for business scenarios such as "current-user scope filtering" or "multi-tenant filtering", read this together with [Permission Filtering](./06-permission-filtering.en.md), which focuses on **when to use runtime Expr / GenericSqlExpr versus `ConstFilter` or table routing**.
+
 ---
 
 ## 6. Expr Risk Points and Precautions

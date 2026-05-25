@@ -106,6 +106,30 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void GetTableDefinition_WithNonEnumStringNumericConstant_ConvertsToPropertyType()
+        {
+            var provider = CreateProvider();
+
+            var tableDef = provider.GetTableDefinition(typeof(IntStringConstantOrder));
+
+            var statusColumn = tableDef.GetColumn(nameof(IntStringConstantOrder.Status));
+            Assert.Equal(1, statusColumn.Constant);
+            Assert.NotNull(tableDef.ConstFilter);
+        }
+
+        [Fact]
+        public void GetTableDefinition_WithNonEnumBoolConstant_BuildsConstFilter()
+        {
+            var provider = CreateProvider();
+
+            var tableDef = provider.GetTableDefinition(typeof(BoolConstantOrder));
+
+            var deletedColumn = tableDef.GetColumn(nameof(BoolConstantOrder.IsDeleted));
+            Assert.Equal(false, deletedColumn.Constant);
+            Assert.NotNull(tableDef.ConstFilter);
+        }
+
+        [Fact]
         public void GetTableView_WithJoinedEnumConstant_BuildsAliasedJoinedConstFilter()
         {
             var provider = CreateProvider();
@@ -251,6 +275,26 @@ namespace LiteOrm.Common.UnitTests
 
             [Column("State", Constant = ConstFilterState.Enabled)]
             public ConstFilterState State { get; set; }
+        }
+
+        [Table("IntStringConstantOrders")]
+        private class IntStringConstantOrder
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("Status", Constant = "1")]
+            public int Status { get; set; }
+        }
+
+        [Table("BoolConstantOrders")]
+        private class BoolConstantOrder
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("IsDeleted", Constant = false)]
+            public bool IsDeleted { get; set; }
         }
 
         [Table("ConstFilterJoinOrders")]

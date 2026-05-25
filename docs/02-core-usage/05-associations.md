@@ -145,43 +145,7 @@ public class Shipment
 
 这类模型里，`Shipment.OrderId + Shipment.LineNo` 会按顺序关联到 `OrderItem` 的联合主键。
 
-### 2.4 固定筛选（Column.Constant）
-
-当某个枚举列在模型层面需要始终带上固定条件时，可以在 `Column` 上声明 `Constant`。LiteOrm 会在元数据阶段把它收敛为 `TableInfo.ConstFilter`，并在生成 SQL 时自动注入：
-
-- 主表：自动并入 `WHERE`，与显式 `Where` 条件使用 `AND` 合并。
-- 关联表：自动并入 `JOIN ... ON`，不需要手写重复条件。
-
-```csharp
-public enum RecordState
-{
-    Disabled = 0,
-    Enabled = 1
-}
-
-[Table("Departments")]
-public class Department
-{
-    [Column("Id", IsPrimaryKey = true)]
-    public int Id { get; set; }
-
-    [Column("State", Constant = RecordState.Enabled)]
-    public RecordState State => RecordState.Enabled;
-}
-```
-
-也支持以下声明方式：
-
-- `Constant = "Enabled"`：按枚举名解析
-- `Constant = 1`：按整型值解析
-
-注意：
-
-- Constant 值与实际属性值不需要保持一致，LiteOrm 只会把 Constant 定义的值作为固定筛选条件注入 SQL，属性本身可以是任意实现，一般建议设为只读并保持与 Constant 定义一致，以免引起混淆，如果需要修改可以定义为可写。
-- 当前固定筛选语义固定为 `Column == ConstantValue`，不支持 `>`、`IN` 等其它操作符。
-- 适合表达软分区、固定状态、历史兼容表等“模型级恒定条件”，不建议替代正常的运行时查询条件。
-
-### 2.5 多级关联与 AutoExpand
+### 2.4 多级关联与 AutoExpand
 
 ```csharp
 // SalesRecord 示例：SalesUserId 关联 User，并自动展开 User 的关联（如 Department）
@@ -204,7 +168,7 @@ public class SalesRecordView : SalesRecord
 - 注意：AutoExpand 的核心作用是“让下一层关联路径可被继续解析”。  
   实际是否生成更多 JOIN，仍然取决于查询里是否真的引用了这些路径上的字段或条件。
 
-### 2.5.1 AutoExpand 开关对比
+### 2.4.1 AutoExpand 开关对比
 
 | 场景 | `AutoExpand = false` | `AutoExpand = true` |
 |------|----------------------|---------------------|
@@ -213,7 +177,7 @@ public class SalesRecordView : SalesRecord
 | 大表、复杂视图、性能敏感 | 更稳妥 | 需谨慎评估 |
 | 想减少视图声明复杂度 | 一般 | 更方便 |
 
-### 2.6 级联示例
+### 2.5 级联示例
 
 `LiteOrm.Demo\Models\SalesRecord.cs` 给出了一个很实用的二级关联展开模型：
 
@@ -246,7 +210,7 @@ public class SalesRecordView : SalesRecord
 这也是 `AutoExpand` 最常见、也最值得使用的场景：**补足多级关联的可解析路径**。
 更多示例请参考代码中的 Demo（LiteOrm.Demo.Models）以及单元测试中的 TableJoin/AutoExpand 相关测试用例。
 
-### 2.7 多级关联示例
+### 2.6 多级关联示例
 
 演示“部门 + 上级部门”两级关联：
 
@@ -272,7 +236,7 @@ public class UserView : User
 
 这类写法适合“用户 → 部门 → 上级部门”这种稳定的多级读取场景。
 
-### 2.8 查询示例
+### 2.7 查询示例
 
 验证多级关联字段是否可用于筛选：
 
@@ -285,7 +249,7 @@ var combinedUsers = await viewService.SearchAsync(
 );
 ```
 
-### 2.8.1 关联字段排序与分页
+### 2.7.1 关联字段排序与分页
 
 `LiteOrm.Tests\ServiceTests.cs` 还验证了关联字段可以直接参与排序与分页：
 
@@ -378,11 +342,9 @@ var matureItUsers = await objectViewDAO.Search(
 - ForeignTypeAttribute: ObjectType、Alias、JoinType、AutoExpand
 - TableJoinAttribute: Source、TargetType、ForeignKeys、AliasName、JoinType、AutoExpand
 - ForeignColumnAttribute: Foreign（Type 或 AliasName）、Property（要获取的列）
-- ColumnAttribute: Constant（生成固定等值筛选）
+- ColumnAttribute: Constant（固定筛选；详见权限过滤文档）
 
-实现上，LiteOrm 会在元数据阶段合并 ForeignType 与 TableJoin 的信息，生成 JoinedTable / ForeignTable 结构。
-`Column.Constant` 会进一步收敛为 `TableInfo.ConstFilter`。
-最终在构建 SQL 时，会把 TableJoinExpr 插入 FromExpr.Joins 中，并将主表 / 关联表的固定筛选分别注入到 `WHERE` / `JOIN ON`。
+实现上，LiteOrm 会在元数据阶段合并 ForeignType 与 TableJoin 的信息，生成 JoinedTable / ForeignTable 结构。固定筛选相关的元数据与 SQL 注入细节，见[权限过滤与用户范围控制](../03-advanced-topics/06-permission-filtering.md)。
 
 ---
 
@@ -408,7 +370,7 @@ var matureItUsers = await objectViewDAO.Search(
   A：单列外键优先选 ForeignType；只要涉及联合主键、多列关联，优先选 TableJoin。
 
 - Q：`Column.Constant` 什么时候适合用？
-  A：适合“这个模型天然只看某一类枚举状态”的场景，例如启用态、正式态、固定分区态。若条件来自用户输入、接口参数或业务流程，请继续使用普通 `Where`。
+  A：适合“这个模型天然只看某一类固定切片”的场景。完整边界、`ConstFilter` 链路和多租户用法见[权限过滤与用户范围控制](../03-advanced-topics/06-permission-filtering.md)。
 
 ---
 
@@ -420,4 +382,3 @@ var matureItUsers = await objectViewDAO.Search(
 - [增删改查](./04-crud-guide.md)
 - [性能优化](../03-advanced-topics/03-performance.md)
 - [API 索引](../05-reference/02-api-index.md)
-

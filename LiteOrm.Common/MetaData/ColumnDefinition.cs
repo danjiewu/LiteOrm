@@ -75,7 +75,7 @@ namespace LiteOrm.Common
         public string DefaultValue { get; set; }
 
         /// <summary>
-        /// 获取或设置列的固定筛选值。仅在枚举列上有效。
+        /// 获取或设置列的固定筛选值。支持枚举和其他可转换到属性类型的常量值。
         /// </summary>
         public object Constant { get; internal set; }
         /// <summary>

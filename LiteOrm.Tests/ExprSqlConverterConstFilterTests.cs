@@ -107,6 +107,23 @@ namespace LiteOrm.Common.UnitTests
             });
         }
 
+        [Fact]
+        public void ToPreparedSql_Select_AppendsNonEnumConstFilter()
+        {
+            var provider = CreateProvider();
+
+            RunWithProvider(provider, () =>
+            {
+                var expr = new SelectExpr { Source = new FromExpr(typeof(NonEnumConstFilterOrder)) };
+
+                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+
+                Assert.Contains("WHERE", sql.Sql);
+                Assert.Contains("Status", sql.Sql);
+                Assert.Contains(sql.Params, param => Equals(param.Value, 1));
+            });
+        }
+
         private static void RunWithProvider(TableInfoProvider provider, Action action)
         {
             TableInfoProvider currentProvider = TableInfoProvider.Default;
@@ -195,6 +212,16 @@ namespace LiteOrm.Common.UnitTests
 
             [Column("State", Constant = ConstFilterState.Enabled)]
             public ConstFilterState State => ConstFilterState.Enabled;
+        }
+
+        [Table("NonEnumConstFilterOrders")]
+        private class NonEnumConstFilterOrder
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("Status", Constant = "1")]
+            public int Status { get; set; }
         }
     }
 }

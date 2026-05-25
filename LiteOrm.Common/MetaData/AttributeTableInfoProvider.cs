@@ -492,7 +492,7 @@ namespace LiteOrm
 
             Type propType = property.PropertyType.GetUnderlyingType();
             Type constantType = constant.GetType();
-            if (constantType == propType) return constant;
+            if (constantType == propType || propType.IsAssignableFrom(constantType)) return constant;
 
             if (propType.IsEnum)
             {
@@ -513,7 +513,7 @@ namespace LiteOrm
             }
             try
             {
-                return Convert.ChangeType(constant, Enum.GetUnderlyingType(propType));
+                return Convert.ChangeType(constant, propType);
             }
             catch { }
             return constant;

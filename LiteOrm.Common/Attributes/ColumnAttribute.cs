@@ -110,7 +110,7 @@ namespace LiteOrm.Common
         public string DefaultValue { get; set; }
 
         /// <summary>
-        /// 获取或设置列的固定筛选值。仅支持枚举列，支持使用枚举名、整型值或枚举成员声明。
+        /// 获取或设置列的固定筛选值。支持枚举和其他可转换到属性类型的常量值；对于枚举，支持使用枚举名、整型值或枚举成员声明。
         /// </summary>
         public object Constant { get; set; }
 

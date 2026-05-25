@@ -283,6 +283,8 @@ var users = await userService.SearchAsync(expr);
 2. **支持参数化**：委托签名包含 `outputParams`，可以安全地传递用户值
 3. **参数传递**：通过 `Arg` 属性传递业务参数，不拼接到 SQL 中
 
+如果你是想把它用于“当前用户范围过滤”或“多租户过滤”等业务场景，请再结合[权限过滤](./06-permission-filtering.md)一并阅读，那里更强调**什么时候该用运行时 Expr / GenericSqlExpr，什么时候该用 `ConstFilter` 或表路由**。
+
 ---
 
 ## 6. Expr 的风险点与注意事项

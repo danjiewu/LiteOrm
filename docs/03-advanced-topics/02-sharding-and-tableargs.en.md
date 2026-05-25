@@ -167,6 +167,9 @@ var results = await salesViewDAO
 
 So when the same sharding dimensions apply across the whole query chain, you usually only need to specify the arguments once on the main table.
 
+> **Security note**: explicit `TableArgs` on a `TableExpr` override the inherited shard arguments currently stored in `SqlBuildContext`.  
+> If your upper scope relies on those arguments to enforce tenant, shard, or data-range boundaries, a lower-level `TableExpr` override can bypass that boundary. Use this carefully to avoid out-of-scope data access.
+
 ### 5.4 Batch Query Multiple Shards
 
 You need to query each shard individually and merge the results:
@@ -200,6 +203,8 @@ var archivedOrders = await orderService.SearchAsync(
     tableArgs: new[] { "archive_5" }
 );
 ```
+
+The same rule applies when the explicit override is placed deeper in a `TableExpr`, subquery, or association expression: it replaces the inherited context value. In multi-tenant or scoped-data systems, make sure that override is intentional.
 
 ## 6. Real-World Sharding Patterns from Demo and Tests
 
@@ -353,5 +358,6 @@ public class Log : IArged
 
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/05-associations.en.md)
+- [Permission Filtering](./06-permission-filtering.en.md)
 - [Performance Optimization](./03-performance.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
