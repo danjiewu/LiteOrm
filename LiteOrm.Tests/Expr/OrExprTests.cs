@@ -77,6 +77,17 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void Add_DuplicateItem_IsIgnored()
+        {
+            var item = Condition("A", 1);
+            var expr = new OrExpr(item);
+
+            expr.Add(item);
+
+            Assert.Single(expr);
+        }
+
+        [Fact]
         public void Add_NestedOrExpr_FlattensItems()
         {
             var inner = new OrExpr(Condition("A", 1), Condition("B", 2));
@@ -349,6 +360,18 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal(expr, clone);
             Assert.NotSame(expr, clone);
             Assert.Empty(clone);
+        }
+
+        [Fact]
+        public void Items_ReturnsSet()
+        {
+            var item = Condition("A", 1);
+            var expr = new OrExpr(item, item);
+
+            var items = expr.Items;
+
+            Assert.Single(items);
+            Assert.IsAssignableFrom<System.Collections.Generic.ISet<LogicExpr>>(items);
         }
     }
 }

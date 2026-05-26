@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 
 namespace LiteOrm.Common
@@ -57,10 +56,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 获取集合中的逻辑表达式只读集合
+        /// 获取集合中的逻辑表达式集合快照。
         /// </summary>
-        public ReadOnlyCollection<LogicExpr> Items => items.AsReadOnly();
-        private List<LogicExpr> items = new List<LogicExpr>();
+        public ISet<LogicExpr> Items => new HashSet<LogicExpr>(itemSet);
+        private readonly List<LogicExpr> items = new List<LogicExpr>();
+        private readonly HashSet<LogicExpr> itemSet = new HashSet<LogicExpr>();
 
         /// <summary>
         /// 获取集合中的元素数量
@@ -88,11 +88,14 @@ namespace LiteOrm.Common
             if (item is null) return;
             if (item is OrExpr orExpr)
             {
-                items.AddRange(orExpr.items);
+                AddRange(orExpr.items);
             }
             else
             {
-                items.Add(item);
+                if (itemSet.Add(item))
+                {
+                    items.Add(item);
+                }
             }
         }
 
@@ -108,14 +111,18 @@ namespace LiteOrm.Common
         /// <summary>
         /// 清空集合中的所有元素
         /// </summary>
-        public void Clear() => items.Clear();
+        public void Clear()
+        {
+            items.Clear();
+            itemSet.Clear();
+        }
 
         /// <summary>
         /// 判断集合是否包含指定的逻辑表达式
         /// </summary>
         /// <param name="item">要查找的逻辑表达式</param>
         /// <returns>如果包含返回 true，否则返回 false</returns>
-        public bool Contains(LogicExpr item) => items.Contains(item);
+        public bool Contains(LogicExpr item) => itemSet.Contains(item);
 
         /// <summary>
         /// 将集合中的元素复制到指定的数组中
@@ -129,7 +136,12 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="item">要移除的逻辑表达式</param>
         /// <returns>如果成功移除返回 true，否则返回 false</returns>
-        public bool Remove(LogicExpr item) => items.Remove(item);
+        public bool Remove(LogicExpr item)
+        {
+            if (!itemSet.Remove(item)) return false;
+            items.Remove(item);
+            return true;
+        }
 
         /// <summary>
         /// 返回集合的枚举器
@@ -163,7 +175,7 @@ namespace LiteOrm.Common
             if (obj is OrExpr or)
             {
                 if (items.Count == 0) return or.items.Count == 0;
-                return new HashSet<LogicExpr>(items).SetEquals(or.items);
+                return itemSet.SetEquals(or.itemSet);
             }
             return false;
         }
@@ -177,7 +189,7 @@ namespace LiteOrm.Common
             int hashcode = GetType().GetHashCode();
             hashcode = (hashcode * HashSeed);
             int itemsHashSum = 0;
-            foreach (var item in new HashSet<LogicExpr>(items))
+            foreach (var item in itemSet)
             {
                 itemsHashSum = unchecked(itemsHashSum + (item?.GetHashCode() ?? 0));
             }
