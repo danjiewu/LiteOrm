@@ -146,7 +146,8 @@ The pipeline is:
 2. Multiple fixed-column conditions are merged into `TableDefinition.ConstFilter`.
 3. When SQL is generated, main-table fixed filters go into `WHERE`.
 4. Joined-table fixed filters go into `JOIN ... ON`.
-5. `UPDATE` / `DELETE` continue to carry the same fixed rule.
+5. `ForeignExpr` / `Exists` / `ExistsRelated` `EXISTS` subqueries also apply the target table's own `ConstFilter` before combining the relation condition and your `InnerExpr`.
+6. `UPDATE` / `DELETE` continue to carry the same fixed rule.
 
 It fits:
 
@@ -161,6 +162,8 @@ It does **not** fit:
 - any value coming from request arguments, tokens, or runtime context
 
 If you maintain a custom metadata provider, you can also assign `ConstFilter` directly while creating `TableDefinition`; the semantic rule is still the same: it should represent a fixed model rule, not a request-scoped variable.
+
+That also means: if you filter users with `ExistsRelated<Department>(...)`, and `Department` itself declares a fixed rule such as `State == Enabled`, that rule is automatically injected into the `EXISTS` subquery. You do not need to repeat it manually in `InnerExpr`.
 
 ### 2.3 Wrapping "read from user context" filters with `GenericSqlExpr`
 

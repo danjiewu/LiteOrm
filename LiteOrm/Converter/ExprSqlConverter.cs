@@ -559,7 +559,7 @@ namespace LiteOrm.Common
                 sb.Append(op);
                 sb.Append(" ");
                 ToSqlInternal(ref sb, expr.Right, context, sqlBuilder, outputParams, isCommutative ? curPriority : curPriority + 1);
-            }            
+            }
         }
 
         /// <summary>
@@ -694,8 +694,11 @@ namespace LiteOrm.Common
             LogicExpr joinedExpr = null;
             if (foreignExpr.AutoRelated && context.Table is not null)
             {
-                foreach (JoinedTable joinedTable in TableInfoProvider.Default.GetTableView(context.Table.DefinitionType).JoinedTables)
+                var mainTable = TableInfoProvider.Default.GetTableView(context.Table.DefinitionType);
+                // 首先尝试正向查找当前表与目标表之间的关联关系
+                foreach (JoinedTable joinedTable in mainTable.JoinedTables)
                 {
+                    if (joinedTable.TableDefinition is null) continue;
                     if (joinedTable.TableDefinition.DefinitionType.IsAssignableFrom(foreignExpr.Foreign))
                     {
                         // 找到当前表与目标表之间的关联关系，自动生成关联条件
@@ -709,6 +712,7 @@ namespace LiteOrm.Common
                 {
                     foreach (JoinedTable joinedTable in foreignTable.JoinedTables)
                     {
+                        if (joinedTable.TableDefinition is null) continue;
                         if (joinedTable.TableDefinition.DefinitionType.IsAssignableFrom(context.Table.DefinitionType))
                         {
                             // 找到当前表与目标表之间的关联关系，自动生成关联条件
@@ -730,7 +734,7 @@ namespace LiteOrm.Common
                 sb.Append(" ");
                 sb.Append(sqlBuilder.ToSqlName(foreignAlias));
 
-                LogicExpr whereExpr = joinedExpr.And(foreignExpr.InnerExpr);
+                LogicExpr whereExpr = foreignTable.Definition.ConstFilter & joinedExpr & foreignExpr.InnerExpr;
                 sb.NewLine(context.Indent);
                 sb.Append("WHERE ");
                 int lenBefore = sb.Length;
@@ -1043,7 +1047,7 @@ namespace LiteOrm.Common
             {
                 sb.NewLine(context.Indent);
                 sb.Append(sqlBuilder.ToSqlSelectSetType(next.SetType));
-                sb.Append(" ");                
+                sb.Append(" ");
                 ToSqlInternal(ref sb, next, context, sqlBuilder, outputParams, SelectSetPriority);// 集合查询分支按 SelectSet 优先级渲染，嵌套集合查询时会自动补括号
             }
         }

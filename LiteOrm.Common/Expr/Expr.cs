@@ -138,7 +138,7 @@ namespace LiteOrm.Common
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
         /// <returns>外键关联查询表达式。</returns>
-        public static ForeignExpr ExistsRelated<T>(LogicExpr innerExpr, params string[] tableArgs)
+        public static ForeignExpr ExistsRelated<T>(LogicExpr innerExpr = null, params string[] tableArgs)
         {
             return new ForeignExpr(typeof(T), innerExpr, tableArgs) { AutoRelated = true };
         }
@@ -150,7 +150,7 @@ namespace LiteOrm.Common
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
         /// <returns>外键关联查询表达式。</returns>
-        public static ForeignExpr ExistsRelated(Type type, LogicExpr innerExpr, params string[] tableArgs)
+        public static ForeignExpr ExistsRelated(Type type, LogicExpr innerExpr = null, params string[] tableArgs)
         {
             return new ForeignExpr(type, innerExpr, tableArgs) { AutoRelated = true };
         }

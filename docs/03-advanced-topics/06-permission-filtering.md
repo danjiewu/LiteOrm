@@ -146,7 +146,8 @@ public class Department
 2. 多个固定列条件会合并成 `TableDefinition.ConstFilter`。
 3. 生成 SQL 时，主表固定筛选进入 `WHERE`。
 4. 关联表固定筛选进入 `JOIN ... ON`。
-5. `UPDATE` / `DELETE` 这类语句也会继续带上这条固定规则。
+5. `ForeignExpr` / `Exists` / `ExistsRelated` 这类 `EXISTS` 子查询，也会先并入目标表自己的 `ConstFilter`，再叠加关联条件和你传入的 `InnerExpr`。
+6. `UPDATE` / `DELETE` 这类语句也会继续带上这条固定规则。
 
 它适合：
 
@@ -161,6 +162,8 @@ public class Department
 - 来自接口参数、令牌或运行时上下文的条件
 
 如果你有自定义元数据提供器，也可以在生成 `TableDefinition` 时直接设置 `ConstFilter`；但语义仍然应该保持“固定规则”，而不是“当前请求变量”。
+
+这也意味着：如果你在 `ExistsRelated<Department>(...)` 里按部门表过滤用户，而 `Department` 本身又声明了 `State == Enabled` 一类的固定规则，那么这条规则会自动进入 `EXISTS` 子查询，不需要你在 `InnerExpr` 里再手写一次。
 
 ### 2.3 用 `GenericSqlExpr` 封装“从用户上下文取值”的过滤
 

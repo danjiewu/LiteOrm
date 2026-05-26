@@ -298,8 +298,30 @@ var users2 = await viewService.SearchAsync(expr2);
 1. **正向关联优先**：首先尝试从主表出发的外键关联（如 `Order.UserId -> User.Id`）
 2. **反向关联备选**：若主表上没有到目标类型的正向关联，则尝试从目标表反向推断（如 `User.DeptId -> Department.Id`）
 
+这里的“匹配”不是按属性名字符串硬编码比较，而是按模型元数据里的已声明关联来找：
+
+- 先遍历当前作用域主表的关联表 `JoinedTables`
+- 找出已声明 `ForeignType` / `TableJoin` 的 `DefinitionType` 能够接收 `ExistsRelated<T>` 目标类型的关联，也就是**只匹配声明类型本身及其子类**
+- 如果正向完全没找到，再遍历目标表自己的 `JoinedTables`，尝试反向推断回当前主表
+
+也就是说，`ExistsRelated<TestDepartment>(...)` 依赖的是 `ForeignType` / `TableJoin` 等已经声明好的关联元数据，而不是运行时去猜一个“字段名看起来像外键”的关系。
+
+这也意味着：
+
+- 如果模型里声明的是基类，而你传入的是它的派生类型，仍然可以匹配成功。
+- 如果模型里声明的是派生类型，而你传入的是它的父类，**将不会匹配**。
+
 **多路径时的合并逻辑：**
 - 如果从主表到目标表存在多条关联路径，它们会以 `OR` 连接作为关联条件，也就是满足任意一个关联条件即匹配成功，请在使用时注意。
+- 如果某一条关联路径本身是复合键，那么这条路径内部的多个键列会以 `AND` 连接；也就是“同一路径内全部键列都匹配”才算命中该路径。
+
+可以把它理解成：
+
+```text
+(路径1的键1 = 键1 AND 路径1的键2 = 键2 ...)
+OR
+(路径2的键1 = 键1 AND 路径2的键2 = 键2 ...)
+```
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -309,6 +331,12 @@ var results = await objectViewDAO.Search(expr).ToListAsync();
 ```
 
 即使 `TestDepartment` 自身没有直接声明到 `TestUser` 的 `ForeignType`，框架仍可通过 `TestUser.DeptId -> TestDepartment.Id` 的已知关联关系完成反向推断。
+
+**使用建议：**
+
+- 如果你希望 `ExistsRelated` 生成“和当前主表相关联”的 `EXISTS` 子查询，就必须保证至少一侧已经声明了关联元数据。
+- 如果主表与目标表两边都没有可用的关联定义，就不要用 `ExistsRelated` 期待它自动补出关联条件；这类场景应改用显式 `Expr.Exists(...)` 自己写相关条件，或者先补上 `ForeignType` / `TableJoin`。
+- 如果目标表自己带有 `ConstFilter`，那么 `ExistsRelated` 生成的 `EXISTS` 子查询也会自动带上这条固定规则；`InnerExpr` 只需要表达你当前这次查询额外关心的条件。
 
 ### 3.2 组合过滤
 

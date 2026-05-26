@@ -124,6 +124,55 @@ namespace LiteOrm.Common.UnitTests
             });
         }
 
+        [Fact]
+        public void ToPreparedSql_ExistsForeignExpr_AppendsForeignConstFilter()
+        {
+            var provider = CreateProvider();
+
+            RunWithProvider(provider, () =>
+            {
+                var expr = new SelectExpr
+                {
+                    Source = new WhereExpr
+                    {
+                        Source = new FromExpr(typeof(PlainJoinOrder)),
+                        Where = Expr.Exists<ConstFilterDepartment>(Expr.Prop("Id") > 0)
+                    }
+                };
+
+                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+
+                Assert.Contains("EXISTS", sql.Sql);
+                Assert.Contains("State", sql.Sql);
+                Assert.Contains(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+            });
+        }
+
+        [Fact]
+        public void ToPreparedSql_ExistsRelated_AppendsForeignConstFilter()
+        {
+            var provider = CreateProvider();
+
+            RunWithProvider(provider, () =>
+            {
+                var expr = new SelectExpr
+                {
+                    Source = new WhereExpr
+                    {
+                        Source = new FromExpr(typeof(ConstFilterJoinOrder)),
+                        Where = Expr.ExistsRelated<ConstFilterDepartment>(Expr.Prop("Id") > 0)
+                    }
+                };
+
+                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+
+                Assert.Contains("EXISTS", sql.Sql);
+                Assert.Contains("State", sql.Sql);
+                Assert.Contains("DepartmentId", sql.Sql);
+                Assert.Contains(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+            });
+        }
+
         private static void RunWithProvider(TableInfoProvider provider, Action action)
         {
             TableInfoProvider currentProvider = TableInfoProvider.Default;
