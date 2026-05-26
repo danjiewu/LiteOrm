@@ -58,11 +58,11 @@ This page is a complete reference for LiteOrm configuration fields, defaults, an
 
 ## `ReadOnlyConfigs[]`
 
-All fields are optional. Missing fields inherit from the primary data-source configuration.
+Provide at least `ConnectionString` for each read-only replica. Any omitted pool-related fields inherit from the primary data-source configuration.
 
 | Field | Type | Default | Notes |
 |------|------|---------|-------|
-| `ConnectionString` | `string` | Required | read-replica connection string |
+| `ConnectionString` | `string` | Required | read-replica connection string; no read-only pool is created when it is empty |
 | `KeepAliveDuration` | `TimeSpan` | Inherit | connection keep-alive duration, format: `HH:mm:ss` |
 | `PoolSize` | `int` | Inherit | read-replica connection pool size |
 | `MaxPoolSize` | `int` | Inherit | read-replica maximum concurrent connections |

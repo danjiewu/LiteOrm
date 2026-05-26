@@ -85,6 +85,8 @@ var marchLogs = await logService.SearchAsync(
 
 ## 3. User ID-Based Sharding
 
+### 3.1 `Orders_{0}`: shard by user suffix
+
 ```csharp
 [Table("Orders_{0}")]
 public class Order : IArged
@@ -101,6 +103,51 @@ public class Order : IArged
     string[] IArged.TableArgs => new[] { (UserId % 10).ToString() };
 }
 ```
+
+This style fits scenarios where **one data source contains many physical tables**, for example:
+
+- `Orders_0`
+- `Orders_1`
+- ...
+- `Orders_9`
+
+On insert, the framework reads `IArged.TableArgs` and routes `UserId = 25` to `Orders_5`. On query, you can explicitly pick the shard with `tableArgs: new[] { "5" }` or `WithArgs("5")`.
+
+### 3.2 `{0}.Orders`: route by user into same-named tables under different databases/schemas
+
+Placeholders are not limited to table suffixes. They can also appear in the `database.table` or `schema.table` position:
+
+```csharp
+[Table("{0}.Orders")]
+public class UserOrder : IArged
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+
+    [Column("UserId")]
+    public long UserId { get; set; }
+
+    [Column("Amount")]
+    public decimal Amount { get; set; }
+
+    string[] IArged.TableArgs => new[] { $"UserShard_{UserId % 4}" };
+}
+```
+
+When `UserId = 25`, `TableArgs[0] = "UserShard_1"`, so the final SQL identifier becomes:
+
+```sql
+UserShard_1.Orders
+```
+
+This is still **TableArgs routing**. The only difference is that the placeholder is placed in the database/schema position. It works best when:
+
+1. The same connection can already access multiple databases or schemas.
+2. All shards share the same table structure.
+3. You want to keep using the same dynamic routing APIs: `IArged`, `tableArgs`, `WithArgs(...)`, and `Expr.From<T>(...)`.
+
+> **Important**: `{0}.Orders` depends on provider support for cross-database or cross-schema access on the current connection.  
+> If each shard requires a completely different connection string, prefer the `DataSource` approach below instead of pushing the database name into `TableArgs`.
 
 ## 4. Multi-Dimensional Sharding
 
@@ -309,19 +356,139 @@ For query chains, keep this additional rule in mind:
 
 > **Note**: LiteOrm cannot automatically know which shards exist. Cross-shard queries require iterating through possible shards at the application layer and merging results.
 
-## 8. Multi-Database Scenarios
+## 8. Database Routing with `DataSource`
 
-### 8.1 Multi-DataSource + Sharding
+`TableArgs` answers “**which physical table or placeholder-based database name should this operation hit at runtime?**”  
+`DataSource` answers “**which configured connection should this entity use by default?**”
+
+### 8.1 Bind an entity to a fixed data source
+
+```csharp
+[Table("Orders", DataSource = "OrderDbEast")]
+public class EastOrder : ObjectBase
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+}
+
+[Table("Orders", DataSource = "OrderDbWest")]
+public class WestOrder : ObjectBase
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+}
+```
+
+Configuration:
+
+```json
+{
+  "LiteOrm": {
+    "Default": "OrderDbEast",
+    "DataSources": [
+      {
+        "Name": "OrderDbEast",
+        "ConnectionString": "Server=east;Database=OrdersEast;...",
+        "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
+      },
+      {
+        "Name": "OrderDbWest",
+        "ConnectionString": "Server=west;Database=OrdersWest;...",
+        "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
+      }
+    ]
+  }
+}
+```
+
+Key characteristics:
+
+- `DataSource` is **static metadata** on `[Table(..., DataSource = "...")]`.
+- One entity type is fixed to one configured connection.
+- It is better for **predefined routing targets**, such as business domains, hot/cold storage, archive databases, or tenant groups that are known in advance.
+
+### 8.2 Dynamic database routing by overriding DAO `DataSource`
+
+If the target database must be chosen at runtime based on the current user, tenant, or request context, `[Table(DataSource = "...")]` is not enough because that metadata is static.
+
+In that case, the better fit is to **override the `DataSource` property in a custom DAO**.
+
+`DAOBase` provides this default implementation:
+
+```csharp
+protected virtual string DataSource => TableDefinition.DataSource;
+```
+
+You can replace it with a runtime decision:
+
+```csharp
+[AutoRegister(Lifetime.Scoped)]
+public class UserOrderDAO : ObjectDAO<UserOrder>
+{
+    private readonly IUserContext _userContext;
+
+    public UserOrderDAO(IUserContext userContext)
+    {
+        _userContext = userContext;
+    }
+
+    protected override string DataSource
+        => $"OrderDb_{_userContext.UserId % 4}";
+}
+```
+
+What this means:
+
+1. The entity still maps to the same logical table, such as `Orders`.
+2. When the DAO actually acquires a connection, it dynamically returns `OrderDb_0`, `OrderDb_1`, `OrderDb_2`, or `OrderDb_3`.
+3. Both `GetDaoContext()` and `SqlBuilder` follow the overridden `DataSource`.
+
+This pattern is especially useful when:
+
+- each shard has a different connection string;
+- the routing rule depends on the current user, tenant, request header, or business context;
+- the table shape stays the same, but the connection must switch dynamically inside the DAO layer.
+
+> **Boundary**: this is a **DAO-layer** dynamic database-routing pattern.  
+> If you are using the generic `EntityService<T>` / `IEntityService<T>` flow, you will usually wrap it with a custom service or factory that chooses the appropriate DAO first.
+
+### 8.3 Combine `DataSource` with `TableArgs`
+
+If a business area already lives in its own data source and still needs internal table sharding, combine both:
 
 ```csharp
 [Table("Logs_{0}", DataSource = "LogDB")]
 public class Log : IArged
 {
-    // ...
+    [Column("CreateTime")]
+    public DateTime CreateTime { get; set; }
+
+    string[] IArged.TableArgs => new[] { CreateTime.ToString("yyyyMM") };
 }
 ```
 
-### 8.2 Read-Write Separation
+This means:
+
+1. First choose the `LogDB` connection.
+2. Then, inside that connection, route to `Logs_202603`, `Logs_202604`, and so on.
+
+### 8.4 Comparison: `{0}.table` / `tableArgs` vs `DataSource`
+
+| Approach | Routing granularity | Runtime-dynamic? | Typical form | Best fit |
+| --- | --- | --- | --- | --- |
+| `Orders_{0}` / `{0}.Orders` + `TableArgs` | table name / database-name placeholder | Yes | `[Table("Orders_{0}")]`, `[Table("{0}.Orders")]` | Per-user, per-month, per-region dynamic routing on the same accessible connection scope |
+| `[Table(..., DataSource = "...")]` | configured connection | No (fixed per entity) | `[Table("Orders", DataSource = "OrderDbEast")]` | Fixed split by business domain, hot/cold storage, or known tenant groups |
+| override DAO `DataSource` | configured connection | Yes | `protected override string DataSource => ...` | Per-user, per-tenant, or per-request dynamic connection selection |
+| `DataSource` + `TableArgs` | choose connection first, then choose table | Partially | `[Table("Logs_{0}", DataSource = "LogDB")]` | A dedicated business database that still needs table sharding inside it |
+
+As a rule of thumb:
+
+- **Need per-call dynamic shard selection by user/time?** Prefer `TableArgs`.
+- **Need one entity to always use one connection?** Prefer `DataSource`.
+- **Need to switch connections dynamically by current user or tenant?** Prefer a custom DAO that overrides `DataSource`.
+- **Need to choose a business database first and then shard inside it?** Combine them.
+
+### 8.5 Read-Write Separation
 
 ```json
 {
@@ -361,4 +528,3 @@ public class Log : IArged
 - [Permission Filtering](./06-permission-filtering.en.md)
 - [Performance Optimization](./03-performance.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
-

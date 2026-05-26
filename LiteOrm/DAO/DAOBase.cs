@@ -87,6 +87,11 @@ namespace LiteOrm
             get { return Table.Definition; }
         }
 
+        /// <summary>
+        /// 数据源名称，默认为表定义中的数据源名称。对于某些操作（如获取数据库连接），可能需要使用数据源名称来确定连接字符串或数据库提供程序，因此在 DAO 中提供了这个属性来方便访问。子类可以根据需要重写这个属性来修改数据源名称，例如在多租户应用中可能需要根据当前租户动态返回不同的数据源名称。
+        /// </summary>
+        protected virtual string DataSource => TableDefinition.DataSource;
+
 
         /// <summary>
         /// 是否为视图，默认为 false。对于视图，某些操作（如插入、更新、删除）可能不适用，因此在生成 SQL 语句时需要特殊处理。
@@ -103,7 +108,7 @@ namespace LiteOrm
         /// </summary>
         public virtual SqlBuilder SqlBuilder
         {
-            get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType, TableDefinition.DataSource); }
+            get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType, DataSource); }
         }
 
         ISqlBuilder IExprStringBuildContext.SqlBuilder => SqlBuilder;
@@ -118,7 +123,7 @@ namespace LiteOrm
         /// </summary>
         public virtual DAOContext GetDaoContext()
         {
-            return CurrentSession.GetDaoContext(TableDefinition.DataSource, IsView);
+            return CurrentSession.GetDaoContext(DataSource, IsView);
         }
 
         /// <summary>
@@ -127,7 +132,7 @@ namespace LiteOrm
         /// <param name="cancellationToken">取消令牌</param>
         public virtual Task<DAOContext> GetDaoContextAsync(CancellationToken cancellationToken = default)
         {
-            return CurrentSession.GetDaoContextAsync(TableDefinition.DataSource, IsView, cancellationToken);
+            return CurrentSession.GetDaoContextAsync(DataSource, IsView, cancellationToken);
         }
 
         /// <summary>

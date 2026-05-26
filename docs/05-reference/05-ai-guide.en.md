@@ -193,27 +193,23 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | Method | Return type |
 | --- | --- |
 | `Insert(T entity)` | `bool` |
-| `Update(T entity)` | `bool` |
+| `Update(T entity, object timestamp = null)` | `bool` |
 | `Delete(T entity)` | `bool` |
-| `DeleteID(object id, params string[] tableArgs)` | `bool` |
 | `Delete(LogicExpr expr)` | `int` |
 | `Update(UpdateExpr expr)` | `int` |
 | `BatchInsert(IEnumerable<T> entities)` | `void` |
 | `BatchUpdate(IEnumerable<T> entities)` | `void` |
 | `BatchDelete(IEnumerable<T> entities)` | `void` |
-| `BatchDeleteID(IEnumerable ids, params string[] tableArgs)` | `void` |
 | `UpdateOrInsert(T entity)` | `UpdateOrInsertResult` |
 | `BatchUpdateOrInsert(IEnumerable<T> entities)` | `void` |
 | `InsertAsync(T entity, CancellationToken ct = default)` | `Task<bool>` |
-| `UpdateAsync(T entity, CancellationToken ct = default)` | `Task<bool>` |
+| `UpdateAsync(T entity, object timestamp = null, CancellationToken ct = default)` | `Task<bool>` |
 | `DeleteAsync(T entity, CancellationToken ct = default)` | `Task<bool>` |
-| `DeleteIDAsync(object id, CancellationToken ct = default)` | `Task<bool>` |
 | `DeleteAsync(LogicExpr expr, CancellationToken ct = default)` | `Task<int>` |
 | `UpdateAsync(UpdateExpr expr, CancellationToken ct = default)` | `Task<int>` |
 | `BatchInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)` | `Task` |
 | `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)` | `Task` |
 | `BatchDeleteAsync(IEnumerable<T> entities, CancellationToken ct = default)` | `Task` |
-| `BatchDeleteIDAsync(IEnumerable ids, CancellationToken ct = default, params string[] tableArgs)` | `Task` |
 | `UpdateOrInsertAsync(T entity, CancellationToken ct = default)` | `Task<UpdateOrInsertResult>` |
 | `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)` | `Task` |
 | `DeleteByKeys(params object[] keys)` | `bool` |

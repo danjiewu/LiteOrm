@@ -255,9 +255,132 @@ In day-to-day query code, the most common ones are usually:
 | `Expr.Query<T>(expression)` | Convert IQueryable Lambda to Expr | `Expr.Query<User>(...)` |
 | `Expr.Query<T, TResult>(expression)` | Convert IQueryable Lambda with scalar result to Expr | `Expr.Query<User, int>(...)` |
 
-## 7. ExprExtensions quick reference
+## 7. Operator overloads and implicit conversions
 
-### 7.1 Logic composition
+### 7.1 Operator overload quick view
+
+LiteOrm overloads common C# operators on `ValueTypeExpr` and `LogicExpr`, so many expressions read very close to ordinary code:
+
+| Operator | Applies to | Returns | Example |
+|------|------|------|------|
+| `==` `!=` `>` `<` `>=` `<=` | `ValueTypeExpr` | `LogicExpr` | `Prop("Age") >= 18` |
+| `+` `-` `*` `/` `%` | `ValueTypeExpr` | `ValueTypeExpr` | `Prop("Amount") * 0.9m` |
+| unary `-` / `~` | `ValueTypeExpr` | `ValueTypeExpr` | `-Prop("Balance")`, `~Prop("Flags")` |
+| `&` `\|` | `LogicExpr` | `LogicExpr` | `(Prop("Age") >= 18) & (Prop("Status") == 1)` |
+| `!` | `LogicExpr` | `LogicExpr` | `!(Prop("IsDeleted") == true)` |
+
+For example:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var scoreExpr = (Prop("MathScore") + Prop("ExtraScore")) / 2;
+var filter = (Prop("Age") >= 18 & Prop("Status") == 1)
+           | Prop("UserName").Contains("admin");
+```
+
+### 7.2 Null-friendly composition on `LogicExpr`
+
+`&` and `|` on `LogicExpr` are especially useful for dynamic filters because they are null-friendly:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+LogicExpr condition = null;
+condition &= Prop("Age") >= 18;
+condition &= Prop("Status") == 1;
+condition |= Prop("IsVip") == true;
+```
+
+The rules are:
+
+- `null & expr` => `expr`
+- `expr & null` => `expr`
+- `null | expr` => `expr`
+- `expr | null` => `expr`
+
+This removes the need to manually guard every composition step with a null check.
+
+### 7.3 Implicit conversion for scalar values
+
+`ValueTypeExpr` / `ValueExpr` support implicit conversion from:
+
+- `string`
+- `int`
+- `long`
+- `bool`
+- `DateTime`
+- `double`
+- `decimal`
+
+So you can write:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var expr1 = Prop("Age") >= 18;
+var expr2 = Prop("CreateTime") >= DateTime.Today;
+var expr3 = Prop("IsEnabled") == true;
+var expr4 = Prop("Amount") + 12.5m;
+```
+
+Those literals are automatically wrapped as `ValueExpr`, which usually means the same as:
+
+```csharp
+Prop("Age") >= Value(18)
+Prop("CreateTime") >= Value(DateTime.Today)
+```
+
+### 7.4 These implicit values are parameterized by default
+
+Ordinary literals used through operator overloads follow `Expr.Value(...)` semantics, not `Expr.Const(...)` semantics:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var expr = Prop("Status") == 1;            // parameterized
+var constExpr = Prop("Status") == Const(1); // inlined constant
+```
+
+Rule of thumb:
+
+- **Runtime value**: prefer a normal literal, or explicitly use `Value(...)`
+- **Must be inlined into SQL text**: explicitly use `Const(...)`
+
+### 7.5 `null` does not have an implicit conversion
+
+`null` is not implicitly converted into `ValueTypeExpr`, so null checks should be written explicitly:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var expr1 = Prop("DeletedTime").IsNull();
+var expr2 = Prop("DeletedTime") == Expr.Null;
+```
+
+For database semantics, `.IsNull()` / `.IsNotNull()` is usually clearer.
+
+### 7.6 Other convenient implicit conversions
+
+LiteOrm also includes a few ergonomic conversions for chained APIs:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var query = From<User>()
+    .OrderBy(("Age", false)); // (string property, bool ascending) -> OrderByItemExpr
+
+var update = Update<User>()
+    .Set((Prop("Age"), Prop("Age") + 1)); // (PropertyExpr, ValueTypeExpr) -> SetItem
+```
+
+These are mainly about reducing ceremony so `OrderBy(...)`, `Set(...)`, and similar APIs stay concise.
+
+> **Tip**: when mixing comparison, arithmetic, and logical operators, add parentheses instead of relying on C# operator precedence to make the final expression obvious.
+
+## 8. ExprExtensions quick reference
+
+### 8.1 Logic composition
 
 | Method | Description | Example |
 |------|------|------|
@@ -265,7 +388,7 @@ In day-to-day query code, the most common ones are usually:
 | `|` / `.Or(right)` | OR | `condition1 | condition2` |
 | `!` / `.Not()` | NOT | `!Prop("IsDeleted").Equal(true)` |
 
-### 7.2 Comparison and set operations
+### 8.2 Comparison and set operations
 
 | Method | Description |
 |------|------|
@@ -275,7 +398,7 @@ In day-to-day query code, the most common ones are usually:
 | `.In(params items)` `.In(IEnumerable)` `.In(Expr)` | IN set / subquery |
 | `.Between(low, high)` | BETWEEN |
 
-### 7.3 String and NULL helpers
+### 8.3 String and NULL helpers
 
 | Method | Description |
 |------|------|
@@ -285,7 +408,7 @@ In day-to-day query code, the most common ones are usually:
 | `.IsNull()` `.IsNotNull()` | NULL checks |
 | `.IfNull(defaultValue)` | null replacement |
 
-### 7.4 Alias, aggregate, and ordering helpers
+### 8.4 Alias, aggregate, and ordering helpers
 
 | Method | Description |
 |------|------|
@@ -295,7 +418,7 @@ In day-to-day query code, the most common ones are usually:
 | `.Asc()` `.Desc()` | ordering |
 | `.Over(partitionBy)` | window function |
 
-### 7.5 Chained SQL building
+### 8.5 Chained SQL building
 
 | Method | Description |
 |------|------|
@@ -307,9 +430,9 @@ In day-to-day query code, the most common ones are usually:
 | `.Section(skip, take)` | paging |
 | `.Set(assignments)` | UPDATE SET |
 
-## 8. Equals and composition semantics
+## 9. Equals and composition semantics
 
-### 8.1 Names and aliases are case-insensitive
+### 9.1 Names and aliases are case-insensitive
 
 Expression objects such as `PropertyExpr`, `TableExpr`, `ForeignExpr`, `FunctionExpr`, `SelectExpr`, `SelectItemExpr`, `CommonTableExpr`, and `GenericSqlExpr` treat **names and aliases as case-insensitive** in `Equals` / `GetHashCode`.
 
@@ -322,7 +445,7 @@ Expr.Prop("user", "name")
 
 are treated as equal expressions.
 
-### 8.2 `AndExpr` / `OrExpr` use set semantics
+### 9.2 `AndExpr` / `OrExpr` use set semantics
 
 `AndExpr.Items` and `OrExpr.Items` now use set semantics:
 
@@ -339,7 +462,7 @@ new AndExpr(a, b)
 
 are equivalent in composition semantics.
 
-## 9. Related links
+## 10. Related links
 
 - [Query Guide](./04-query-guide.en.md)
 - [CRUD Guide](./05-crud-guide.en.md)

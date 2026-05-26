@@ -256,9 +256,132 @@ var query = From<User>()
 | `Expr.Query<T>(expression)` | IQueryable Lambda 转 Expr | `Expr.Query<User>(...)` |
 | `Expr.Query<T, TResult>(expression)` | 带返回值的 IQueryable Lambda 转 Expr | `Expr.Query<User, int>(...)` |
 
-## 7. ExprExtensions 速查
+## 7. 运算符重载与隐式类型转换
 
-### 7.1 逻辑组合
+### 7.1 运算符重载速览
+
+LiteOrm 为 `ValueTypeExpr` 和 `LogicExpr` 提供了常用 C# 运算符重载，因此很多写法看起来和普通表达式非常接近：
+
+| 运算符 | 适用类型 | 返回类型 | 示例 |
+|------|------|------|------|
+| `==` `!=` `>` `<` `>=` `<=` | `ValueTypeExpr` | `LogicExpr` | `Prop("Age") >= 18` |
+| `+` `-` `*` `/` `%` | `ValueTypeExpr` | `ValueTypeExpr` | `Prop("Amount") * 0.9m` |
+| 一元 `-` / `~` | `ValueTypeExpr` | `ValueTypeExpr` | `-Prop("Balance")`、`~Prop("Flags")` |
+| `&` `\|` | `LogicExpr` | `LogicExpr` | `(Prop("Age") >= 18) & (Prop("Status") == 1)` |
+| `!` | `LogicExpr` | `LogicExpr` | `!(Prop("IsDeleted") == true)` |
+
+例如：
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var scoreExpr = (Prop("MathScore") + Prop("ExtraScore")) / 2;
+var filter = (Prop("Age") >= 18 & Prop("Status") == 1)
+           | Prop("UserName").Contains("admin");
+```
+
+### 7.2 `LogicExpr` 的空值友好组合
+
+`LogicExpr` 的 `&` / `|` 特别适合做动态筛选器，因为它们对 `null` 友好：
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+LogicExpr condition = null;
+condition &= Prop("Age") >= 18;
+condition &= Prop("Status") == 1;
+condition |= Prop("IsVip") == true;
+```
+
+规则是：
+
+- `null & expr` => `expr`
+- `expr & null` => `expr`
+- `null | expr` => `expr`
+- `expr | null` => `expr`
+
+这样可以避免每次拼接条件时手动判断“当前条件是否为空”。
+
+### 7.3 标量的隐式类型转换
+
+`ValueTypeExpr` / `ValueExpr` 支持以下标量自动转换：
+
+- `string`
+- `int`
+- `long`
+- `bool`
+- `DateTime`
+- `double`
+- `decimal`
+
+因此你可以直接写：
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var expr1 = Prop("Age") >= 18;
+var expr2 = Prop("CreateTime") >= DateTime.Today;
+var expr3 = Prop("IsEnabled") == true;
+var expr4 = Prop("Amount") + 12.5m;
+```
+
+这些字面量会自动变成 `ValueExpr`，通常等价于显式写法：
+
+```csharp
+Prop("Age") >= Value(18)
+Prop("CreateTime") >= Value(DateTime.Today)
+```
+
+### 7.4 这些隐式值默认是参数，不是 SQL 内嵌常量
+
+运算符重载里出现的普通值默认会走参数化，也就是 `Expr.Value(...)` 语义，而不是 `Expr.Const(...)`：
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var expr = Prop("Status") == 1;      // 参数化
+var constExpr = Prop("Status") == Const(1); // 常量内嵌
+```
+
+选择建议：
+
+- **运行时值**：优先直接写字面量，或显式用 `Value(...)`
+- **确实要把值直接写进 SQL**：显式使用 `Const(...)`
+
+### 7.5 `null` 没有对应的隐式转换
+
+`null` 不会自动转换为 `ValueTypeExpr`，因此涉及空判断时应显式使用：
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var expr1 = Prop("DeletedTime").IsNull();
+var expr2 = Prop("DeletedTime") == Expr.Null;
+```
+
+对于数据库语义，通常更推荐 `.IsNull()` / `.IsNotNull()`，因为意图更清晰。
+
+### 7.6 其它常见隐式转换
+
+除了标量值，LiteOrm 还提供了一些“为了链式 API 更顺手”的隐式转换：
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var query = From<User>()
+    .OrderBy(("Age", false)); // (string property, bool ascending) -> OrderByItemExpr
+
+var update = Update<User>()
+    .Set((Prop("Age"), Prop("Age") + 1)); // (PropertyExpr, ValueTypeExpr) -> SetItem
+```
+
+这类转换的价值在于减少样板代码，让 `OrderBy(...)`、`Set(...)` 等 API 更接近自然写法。
+
+> **建议**：混合比较、算术和逻辑运算时，尽量加上括号，避免依赖 C# 运算符优先级去猜测最终表达式结构。
+
+## 8. ExprExtensions 速查
+
+### 8.1 逻辑组合
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -266,7 +389,7 @@ var query = From<User>()
 | `|` / `.Or(right)` | OR | `condition1 | condition2` |
 | `!` / `.Not()` | NOT | `!Prop("IsDeleted").Equal(true)` |
 
-### 7.2 比较与集合
+### 8.2 比较与集合
 
 | 方法 | 说明 |
 |------|------|
@@ -276,7 +399,7 @@ var query = From<User>()
 | `.In(params items)` `.In(IEnumerable)` `.In(Expr)` | IN 集合 / 子查询 |
 | `.Between(low, high)` | BETWEEN |
 
-### 7.3 字符串与 NULL
+### 8.3 字符串与 NULL
 
 | 方法 | 说明 |
 |------|------|
@@ -286,7 +409,7 @@ var query = From<User>()
 | `.IsNull()` `.IsNotNull()` | NULL 检查 |
 | `.IfNull(defaultValue)` | 空值替换 |
 
-### 7.4 别名、聚合、排序
+### 8.4 别名、聚合、排序
 
 | 方法 | 说明 |
 |------|------|
@@ -296,7 +419,7 @@ var query = From<User>()
 | `.Asc()` `.Desc()` | 排序 |
 | `.Over(partitionBy)` | 窗口函数 |
 
-### 7.5 链式 SQL 构建
+### 8.5 链式 SQL 构建
 
 | 方法 | 说明 |
 |------|------|
@@ -308,9 +431,9 @@ var query = From<User>()
 | `.Section(skip, take)` | 分页 |
 | `.Set(assignments)` | UPDATE SET |
 
-## 8. Equals 与组合语义
+## 9. Equals 与组合语义
 
-### 8.1 名称和别名比较忽略大小写
+### 9.1 名称和别名比较忽略大小写
 
 `PropertyExpr`、`TableExpr`、`ForeignExpr`、`FunctionExpr`、`SelectExpr`、`SelectItemExpr`、`CommonTableExpr`、`GenericSqlExpr` 等表达式，在做 `Equals` / `GetHashCode` 时，**名称与别名按忽略大小写处理**。
 
@@ -323,7 +446,7 @@ Expr.Prop("user", "name")
 
 会被视为相等表达式。
 
-### 8.2 `AndExpr` / `OrExpr` 采用 Set 语义
+### 9.2 `AndExpr` / `OrExpr` 采用 Set 语义
 
 `AndExpr.Items` 与 `OrExpr.Items` 现在按 Set 语义处理：
 
@@ -340,7 +463,7 @@ new AndExpr(a, b)
 
 在组合语义上等价。
 
-## 9. 相关链接
+## 10. 相关链接
 
 - [查询指南](./04-query-guide.md)
 - [增删改查](./05-crud-guide.md)

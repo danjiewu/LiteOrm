@@ -145,7 +145,7 @@ using LiteOrm.Common;
 
 
 [Table("Users")]
-public class User
+public class User : ObjectBase
 {
     [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
     public int Id { get; set; }
@@ -155,6 +155,12 @@ public class User
 
     [Column("Email")]
     public string Email { get; set; }
+
+    [Column("Age")]
+    public int Age { get; set; }
+
+    [Column("Status")]
+    public int Status { get; set; }
 
     [Column("CreateTime")]
     public DateTime? CreateTime { get; set; }

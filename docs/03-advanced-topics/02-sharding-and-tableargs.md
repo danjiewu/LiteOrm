@@ -85,6 +85,8 @@ var marchLogs = await logService.SearchAsync(
 
 ## 3. 按用户 ID 分表
 
+### 3.1 `Orders_{0}`：按用户尾号分表
+
 ```csharp
 [Table("Orders_{0}")]
 public class Order : IArged
@@ -101,6 +103,51 @@ public class Order : IArged
     string[] IArged.TableArgs => new[] { (UserId % 10).ToString() };
 }
 ```
+
+这类写法适合“**同一个数据源里有多张物理表**”的场景，例如：
+
+- `Orders_0`
+- `Orders_1`
+- ...
+- `Orders_9`
+
+写入时框架会读取 `IArged.TableArgs`，把 `UserId = 25` 路由到 `Orders_5`；查询时可以通过 `tableArgs: new[] { "5" }` 或 `WithArgs("5")` 显式指定分表。
+
+### 3.2 `{0}.Orders`：按用户路由到不同库/Schema 下的同名表
+
+占位符不一定只能写在表名后缀里，也可以出现在 `库名.表名` 或 `Schema.表名` 的位置：
+
+```csharp
+[Table("{0}.Orders")]
+public class UserOrder : IArged
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+
+    [Column("UserId")]
+    public long UserId { get; set; }
+
+    [Column("Amount")]
+    public decimal Amount { get; set; }
+
+    string[] IArged.TableArgs => new[] { $"UserShard_{UserId % 4}" };
+}
+```
+
+当 `UserId = 25` 时，`TableArgs[0] = "UserShard_1"`，最终 SQL 标识符会变成：
+
+```sql
+UserShard_1.Orders
+```
+
+这种模式仍然属于 **TableArgs 路由**，只是把占位符放到了“库/Schema 名称”位置。它适合以下场景：
+
+1. 同一个连接已经可以访问多个库 / Schema。
+2. 各分片中的表结构相同，只是前缀库名或 Schema 名不同。
+3. 你希望继续沿用 `IArged`、`tableArgs`、`WithArgs(...)`、`Expr.From<T>(...)` 这一整套动态路由方式。
+
+> **注意**：`{0}.Orders` 依赖目标数据库支持当前连接跨库 / 跨 Schema 访问。  
+> 如果不同分片必须使用完全不同的连接字符串，应优先使用后文的 `DataSource` 方案，而不是把库名直接写进 `TableArgs`。
 
 ## 4. 多维度分表
 
@@ -309,19 +356,139 @@ var expr = From<Table1Row>(args)
 
 > **注意**：LiteOrm 并不能自动知道哪些分表存在，跨分表查询需要在应用层遍历可能的分表并合并结果。
 
-## 8. 分库场景
+## 8. `DataSource` 方式分库
 
-### 7.1 多数据源 + 分表
+`TableArgs` 解决的是“**同一个实体在运行时该落到哪个物理表 / 哪个库名占位符**”；  
+`DataSource` 解决的是“**这个实体默认应该使用哪个连接配置**”。
+
+### 8.1 固定绑定到某个数据源
+
+```csharp
+[Table("Orders", DataSource = "OrderDbEast")]
+public class EastOrder : ObjectBase
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+}
+
+[Table("Orders", DataSource = "OrderDbWest")]
+public class WestOrder : ObjectBase
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+}
+```
+
+对应配置：
+
+```json
+{
+  "LiteOrm": {
+    "Default": "OrderDbEast",
+    "DataSources": [
+      {
+        "Name": "OrderDbEast",
+        "ConnectionString": "Server=east;Database=OrdersEast;...",
+        "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
+      },
+      {
+        "Name": "OrderDbWest",
+        "ConnectionString": "Server=west;Database=OrdersWest;...",
+        "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
+      }
+    ]
+  }
+}
+```
+
+这个方案的关键特点是：
+
+- `DataSource` 是 **静态元数据**，写在 `[Table(..., DataSource = "...")]` 上。
+- 同一个实体类型会固定走同一个数据源，不会像 `TableArgs` 那样按单条记录动态切换。
+- 它更适合“按业务域、租户组、冷热库、历史库”这类**预先确定路由目标**的分库。
+
+### 8.2 通过重写 DAO 的 `DataSource` 属性实现动态分库
+
+如果你的分库目标是在运行时根据“当前用户 / 当前租户 / 当前请求上下文”决定的，那么仅靠实体上的 `[Table(DataSource = "...")]` 不够，因为它是静态元数据。
+
+这时更合适的方式是：**在自定义 DAO 中重写 `DataSource` 属性**。
+
+`DAOBase` 默认实现如下：
+
+```csharp
+protected virtual string DataSource => TableDefinition.DataSource;
+```
+
+你可以把它改成运行时返回：
+
+```csharp
+[AutoRegister(Lifetime.Scoped)]
+public class UserOrderDAO : ObjectDAO<UserOrder>
+{
+    private readonly IUserContext _userContext;
+
+    public UserOrderDAO(IUserContext userContext)
+    {
+        _userContext = userContext;
+    }
+
+    protected override string DataSource
+        => $"OrderDb_{_userContext.UserId % 4}";
+}
+```
+
+效果是：
+
+1. 实体仍然映射同一个逻辑表 `Orders`。
+2. DAO 在真正取连接时，会根据当前上下文动态返回 `OrderDb_0`、`OrderDb_1`、`OrderDb_2`、`OrderDb_3`。
+3. `GetDaoContext()` 和 `SqlBuilder` 都会使用这个重写后的 `DataSource`。
+
+这种方式尤其适合：
+
+- 每个分库对应不同连接字符串；
+- 路由规则依赖当前登录用户、租户、请求头或业务上下文；
+- 你希望“表结构保持一致，但连接在 DAO 层动态切换”。
+
+> **适用边界**：这是 **DAO 层** 的动态分库方案。  
+> 如果你走的是通用 `EntityService<T>` / `IEntityService<T>`，通常需要再包一层自定义 Service / Factory，把请求导向对应 DAO。
+
+### 8.3 `DataSource` + `TableArgs` 组合使用
+
+如果一个业务本身就放在独立数据源里，同时还要在这个数据源内部继续分表，可以把两者组合：
 
 ```csharp
 [Table("Logs_{0}", DataSource = "LogDB")]
 public class Log : IArged
 {
-    // ...
+    [Column("CreateTime")]
+    public DateTime CreateTime { get; set; }
+
+    string[] IArged.TableArgs => new[] { CreateTime.ToString("yyyyMM") };
 }
 ```
 
-### 7.2 读写分离
+这表示：
+
+1. 先固定走 `LogDB` 连接。
+2. 再在这个连接内部，根据 `TableArgs` 路由到 `Logs_202603`、`Logs_202604` 这类物理表。
+
+### 8.4 与 `{0}.table` / `tableArgs` 的用法对比
+
+| 方案 | 路由粒度 | 是否运行时动态 | 典型写法 | 更适合什么场景 |
+| --- | --- | --- | --- | --- |
+| `Orders_{0}` / `{0}.Orders` + `TableArgs` | 表名 / 库名占位符 | 是 | `[Table("Orders_{0}")]`、`[Table("{0}.Orders")]` | 同连接下按用户、月份、地区等维度动态路由 |
+| `[Table(..., DataSource = "...")]` | 连接配置 | 否（按实体固定） | `[Table("Orders", DataSource = "OrderDbEast")]` | 按业务域、冷热库、已知租户组固定分库 |
+| DAO 重写 `DataSource` | 连接配置 | 是 | `protected override string DataSource => ...` | 按当前用户 / 租户 / 请求上下文动态选库 |
+| `DataSource` + `TableArgs` | 先选连接，再选物理表 | 半动态 | `[Table("Logs_{0}", DataSource = "LogDB")]` | 独立业务库内部继续分表 |
+
+可以这样理解：
+
+- **想在一次调用里按用户 / 时间动态选分片**：优先 `TableArgs`。
+- **想让某个实体默认永远走某个连接**：优先 `DataSource`。
+- **想按当前用户或租户在运行时动态切换连接**：优先自定义 DAO 并重写 `DataSource`。
+- **想先选业务库，再在业务库中继续分表**：组合使用。
+
+### 8.5 读写分离
 
 ```json
 {
@@ -361,4 +528,3 @@ public class Log : IArged
 - [权限过滤](./06-permission-filtering.md)
 - [性能优化](./03-performance.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)
-

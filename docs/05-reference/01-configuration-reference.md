@@ -58,11 +58,11 @@
 
 ## `ReadOnlyConfigs[]`
 
-只读库配置的字段均可选，未填写的字段会自动继承主库配置。
+只读库至少应提供 `ConnectionString`；其余连接池相关字段未填写时会自动继承主库配置。
 
 | 字段 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `ConnectionString` | `string` | 必填 | 只读库连接字符串。 |
+| `ConnectionString` | `string` | 必填 | 只读库连接字符串；为空时不会创建只读连接池。 |
 | `KeepAliveDuration` | `TimeSpan` | 继承主库 | 连接保活时长，格式为 `HH:mm:ss`。 |
 | `PoolSize` | `int` | 继承主库 | 只读库连接池缓存数量。 |
 | `MaxPoolSize` | `int` | 继承主库 | 只读库最大并发连接数。 |
