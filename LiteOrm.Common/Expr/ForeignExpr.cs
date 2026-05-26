@@ -133,7 +133,7 @@ namespace LiteOrm.Common
         /// </summary>
         public override bool Equals(object obj)
         {
-            return obj is ForeignExpr f && f.Foreign == Foreign && f.Alias == Alias && f.AutoRelated == AutoRelated && Equals(f.InnerExpr, InnerExpr) &&
+            return obj is ForeignExpr f && f.Foreign == Foreign && SqlNameEquals(f.Alias, Alias) && f.AutoRelated == AutoRelated && Equals(f.InnerExpr, InnerExpr) &&
                    ((f.TableArgs == null && TableArgs == null) || (f.TableArgs != null && TableArgs != null && f.TableArgs.SequenceEqual(TableArgs)));
         }
 
@@ -143,7 +143,7 @@ namespace LiteOrm.Common
         /// <returns>哈希码值</returns>
         public override int GetHashCode()
         {
-            int hash = OrderedHashCodes(GetType().GetHashCode(), Foreign?.GetHashCode() ?? 0, Alias?.GetHashCode() ?? 0, AutoRelated ? 1 : 0, InnerExpr?.GetHashCode() ?? 0);
+            int hash = OrderedHashCodes(GetType().GetHashCode(), Foreign?.GetHashCode() ?? 0, SqlNameHashCode(Alias), AutoRelated ? 1 : 0, InnerExpr?.GetHashCode() ?? 0);
             if (TableArgs != null)
             {
                 foreach (var arg in TableArgs)

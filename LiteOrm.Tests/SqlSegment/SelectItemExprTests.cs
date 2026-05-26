@@ -76,6 +76,16 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void Equals_IgnoresCaseForAlias()
+        {
+            var left = new SelectItemExpr(Expr.Prop("Name"), "UserName");
+            var right = new SelectItemExpr(Expr.Prop("Name"), "username");
+
+            Assert.Equal(left, right);
+            Assert.Equal(left.GetHashCode(), right.GetHashCode());
+        }
+
+        [Fact]
         public void Equals_DifferentValue_ReturnsFalse()
         {
             var left = new SelectItemExpr(Expr.Prop("Name"), "Alias");

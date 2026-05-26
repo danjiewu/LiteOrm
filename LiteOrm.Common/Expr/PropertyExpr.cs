@@ -88,7 +88,9 @@ namespace LiteOrm.Common
         /// </summary>
         public override bool Equals(object obj)
         {
-            return obj is PropertyExpr p && p.TableAlias == TableAlias && p.PropertyName == PropertyName;
+            return obj is PropertyExpr p
+                && SqlNameEquals(p.TableAlias, TableAlias)
+                && SqlNameEquals(p.PropertyName, PropertyName);
         }
 
         /// <summary>
@@ -97,7 +99,7 @@ namespace LiteOrm.Common
         /// <returns>当前对象的哈希代码。</returns>
         public override int GetHashCode()
         {
-            return OrderedHashCodes(GetType().GetHashCode(), TableAlias?.GetHashCode() ?? 0, PropertyName?.GetHashCode() ?? 0);
+            return OrderedHashCodes(GetType().GetHashCode(), SqlNameHashCode(TableAlias), SqlNameHashCode(PropertyName));
         }
     }
 }

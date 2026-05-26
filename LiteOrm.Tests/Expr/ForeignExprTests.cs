@@ -46,6 +46,16 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void Equals_IgnoresCaseForAlias()
+        {
+            var left = new ForeignExpr(typeof(TestEntity), "Dept", Expr.Prop("Id") == 1);
+            var right = new ForeignExpr(typeof(TestEntity), "dept", Expr.Prop("Id") == 1);
+
+            Assert.Equal(left, right);
+            Assert.Equal(left.GetHashCode(), right.GetHashCode());
+        }
+
+        [Fact]
         public void Alias_WithInvalidSqlName_ThrowsArgumentException()
         {
             var expr = new ForeignExpr();

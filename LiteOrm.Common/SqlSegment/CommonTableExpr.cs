@@ -83,7 +83,7 @@ namespace LiteOrm.Common
         public override bool Equals(object obj)
         {
             return obj is CommonTableExpr other
-                && Alias == other.Alias
+                && SqlNameEquals(Alias, other.Alias)
                 && Equals(Source, other.Source);
         }
 
@@ -93,7 +93,7 @@ namespace LiteOrm.Common
         /// <returns>当前实例的哈希值。</returns>
         public override int GetHashCode()
         {
-            return OrderedHashCodes(typeof(CommonTableExpr).GetHashCode(), Source?.GetHashCode() ?? 0, Alias?.GetHashCode() ?? 0);
+            return OrderedHashCodes(typeof(CommonTableExpr).GetHashCode(), Source?.GetHashCode() ?? 0, SqlNameHashCode(Alias));
         }
 
         /// <summary>

@@ -70,7 +70,7 @@ namespace LiteOrm.Common
             if (obj is TableExpr other)
             {
                 if (!Equals(Type, other.Type)) return false;
-                if (Alias != other.Alias) return false;
+                if (!SqlNameEquals(Alias, other.Alias)) return false;
                 if (!ArrayEquals(TableArgs, other.TableArgs)) return false;
                 return true;
             }
@@ -93,7 +93,7 @@ namespace LiteOrm.Common
             return OrderedHashCodes(
                 typeof(TableExpr).GetHashCode(),
                 Type?.GetHashCode() ?? 0,
-                Alias?.GetHashCode() ?? 0,
+                SqlNameHashCode(Alias),
                 (TableArgs == null || TableArgs.Length == 0) ? 0 : SequenceHash(TableArgs));
         }
 

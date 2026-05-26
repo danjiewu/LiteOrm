@@ -136,6 +136,16 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void Equals_IgnoresCaseForFunctionName()
+        {
+            var left = new FunctionExpr("SUM", Expr.Prop("Price"));
+            var right = new FunctionExpr("sum", Expr.Prop("Price"));
+
+            Assert.Equal(left, right);
+            Assert.Equal(left.GetHashCode(), right.GetHashCode());
+        }
+
+        [Fact]
         public void Equals_DifferentName_ReturnsFalse()
         {
             var left = new FunctionExpr("SUM", Expr.Prop("Price"));

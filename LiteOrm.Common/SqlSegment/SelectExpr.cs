@@ -92,7 +92,7 @@ namespace LiteOrm.Common
         public override bool Equals(object obj)
             => obj is SelectExpr other
             && Equals(Source, other.Source)
-            && Alias == other.Alias
+            && SqlNameEquals(Alias, other.Alias)
             && SetType == other.SetType
             && SequenceEquals(Selects, other.Selects)
             && SequenceEquals(_nextSelects, other._nextSelects);
@@ -106,7 +106,7 @@ namespace LiteOrm.Common
                 typeof(SelectExpr).GetHashCode(),
                 Source?.GetHashCode() ?? 0,
                 SequenceHashOrDefault(Selects),
-                Alias?.GetHashCode() ?? 0,
+                SqlNameHashCode(Alias),
                 (int)SetType,
                 SequenceHashOrDefault(_nextSelects));
 
@@ -234,13 +234,13 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is SelectItemExpr other && Alias == other.Alias && Equals(Value, other.Value);
+        public override bool Equals(object obj) => obj is SelectItemExpr other && SqlNameEquals(Alias, other.Alias) && Equals(Value, other.Value);
 
         /// <summary>
         /// 获取当前对象的哈希码
         /// </summary>
         /// <returns>哈希码值</returns>
-        public override int GetHashCode() => OrderedHashCodes(typeof(SelectItemExpr).GetHashCode(), Alias?.GetHashCode() ?? 0, Value?.GetHashCode() ?? 0);
+        public override int GetHashCode() => OrderedHashCodes(typeof(SelectItemExpr).GetHashCode(), SqlNameHashCode(Alias), Value?.GetHashCode() ?? 0);
 
         /// <summary>
         /// 返回选择项的字符串表示

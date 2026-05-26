@@ -703,7 +703,7 @@ namespace LiteOrm.Common
                     {
                         // 找到当前表与目标表之间的关联关系，自动生成关联条件
                         joinedExpr |= new AndExpr(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
-                            Expr.Prop(foreignAlias, pk.Name) == Expr.Prop(fk.Table?.Name ?? context.DefaultTableAliasName, fk.Name)
+                            Expr.Prop(pk.Name) == Expr.Prop(fk.Table?.Name ?? context.DefaultTableAliasName, fk.Name)
                         ));
                     }
                 }
@@ -717,7 +717,7 @@ namespace LiteOrm.Common
                         {
                             // 找到当前表与目标表之间的关联关系，自动生成关联条件
                             joinedExpr |= new AndExpr(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
-                                Expr.Prop(fk.Table?.Name ?? foreignAlias, fk.Name) == Expr.Prop(context.DefaultTableAliasName, pk.Name)
+                                Expr.Prop(fk.Table?.Name, fk.Name) == Expr.Prop(context.DefaultTableAliasName, pk.Name)
                             ));
                         }
                     }

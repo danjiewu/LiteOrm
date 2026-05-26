@@ -85,6 +85,18 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 比较两个 SQL 名称或别名，忽略大小写。
+        /// </summary>
+        protected static bool SqlNameEquals(string a, string b)
+            => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// 计算 SQL 名称或别名的大小写无关哈希值。
+        /// </summary>
+        protected static int SqlNameHashCode(string name)
+            => name == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(name);
+
+        /// <summary>
         /// 创建属性表达式。
         /// </summary>
         /// <param name="propertyName">属性名称。</param>

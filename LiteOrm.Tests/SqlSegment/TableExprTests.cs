@@ -26,6 +26,16 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void Equals_IgnoresCaseForAlias()
+        {
+            var left = new TableExpr(typeof(TestEntity)) { Alias = "UserTable" };
+            var right = new TableExpr(typeof(TestEntity)) { Alias = "usertable" };
+
+            Assert.Equal(left, right);
+            Assert.Equal(left.GetHashCode(), right.GetHashCode());
+        }
+
+        [Fact]
         public void Equals_WithDifferentTableArgs_ReturnsFalse()
         {
             var left = new TableExpr(typeof(TestEntity)) { TableArgs = new[] { "A" } };

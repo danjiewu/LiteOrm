@@ -149,6 +149,16 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void Equals_AliasOnly_IgnoresCase()
+        {
+            var left = new CommonTableExpr { Alias = "Users" };
+            var right = new CommonTableExpr { Alias = "users" };
+
+            Assert.Equal(left, right);
+            Assert.Equal(left.GetHashCode(), right.GetHashCode());
+        }
+
+        [Fact]
         public void Clone_CreatesDeepCopy()
         {
             var selectExpr = new SelectExpr(null, Expr.Prop("Id").As("Id")) { Alias = "MyCTE" };

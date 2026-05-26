@@ -41,5 +41,15 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal(expr, clone);
             Assert.NotSame(expr, clone);
         }
+
+        [Fact]
+        public void Equals_IgnoresCaseForPropertyNameAndAlias()
+        {
+            var left = new PropertyExpr("Name") { TableAlias = "User" };
+            var right = new PropertyExpr("name") { TableAlias = "user" };
+
+            Assert.Equal(left, right);
+            Assert.Equal(left.GetHashCode(), right.GetHashCode());
+        }
     }
 }

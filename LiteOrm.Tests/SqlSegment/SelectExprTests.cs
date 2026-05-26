@@ -76,6 +76,16 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void SelectExpr_Equals_IgnoresCaseForAlias()
+        {
+            var left = new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Id")) { Alias = "Query" };
+            var right = new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Id")) { Alias = "query" };
+
+            Assert.Equal(left, right);
+            Assert.Equal(left.GetHashCode(), right.GetHashCode());
+        }
+
+        [Fact]
         public void SelectExpr_Clone_CreatesEquivalentCopy()
         {
             var select = new SelectExpr(new FromExpr(typeof(TestUser)), new SelectItemExpr(Expr.Prop("Id"), "UserId")) { Alias = "q" };

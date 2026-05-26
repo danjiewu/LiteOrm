@@ -75,7 +75,10 @@ namespace LiteOrm.Common
         /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
         public override bool Equals(object obj)
         {
-            return obj is FunctionExpr f && f.FunctionName == FunctionName && f.IsAggregate == IsAggregate && f.Args.SequenceEqual(Args);
+            return obj is FunctionExpr f
+                && SqlNameEquals(f.FunctionName, FunctionName)
+                && f.IsAggregate == IsAggregate
+                && f.Args.SequenceEqual(Args);
         }
 
         /// <summary>
@@ -87,7 +90,7 @@ namespace LiteOrm.Common
             unchecked
             {
                 int hashCode = GetType().GetHashCode();
-                hashCode = (hashCode * HashSeed) + (FunctionName?.GetHashCode() ?? 0);
+                hashCode = (hashCode * HashSeed) + SqlNameHashCode(FunctionName);
                 hashCode = hashCode * HashSeed + IsAggregate.GetHashCode();
                 foreach (var param in Args)
                 {
