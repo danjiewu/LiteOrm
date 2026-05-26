@@ -51,9 +51,9 @@ namespace LiteOrm
         /// <param name="selectSetType">集合操作类型。</param>
         /// <returns>数据库合法的 SQL 关键字。</returns>
         /// <remarks>Oracle 不支持 EXCEPT 操作，使用 MINUS 替代。</remarks>
-        public override string ToSqlSelectSetType(SelectSetType selectSetType)
+        public override string ToSelectSetTypeSql(SelectSetType selectSetType)
         {
-            return selectSetType == SelectSetType.Except ? "MINUS" : base.ToSqlSelectSetType(selectSetType);
+            return selectSetType == SelectSetType.Except ? "MINUS" : base.ToSelectSetTypeSql(selectSetType);
         }
 
         /// <summary>

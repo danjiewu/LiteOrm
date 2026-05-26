@@ -205,7 +205,7 @@ namespace LiteOrm
         /// 子类可覆盖以提供数据库特定的关键字或语法差异。
         /// </summary>
         /// <param name="selectSetType">集合操作类型。</param>
-        public virtual string ToSqlSelectSetType(SelectSetType selectSetType)
+        public virtual string ToSelectSetTypeSql(SelectSetType selectSetType)
         {
             return selectSetType switch
             {

@@ -1046,7 +1046,7 @@ namespace LiteOrm.Common
             foreach (var next in select.NextSelects)
             {
                 sb.NewLine(context.Indent);
-                sb.Append(sqlBuilder.ToSqlSelectSetType(next.SetType));
+                sb.Append(sqlBuilder.ToSelectSetTypeSql(next.SetType));
                 sb.Append(" ");
                 ToSqlInternal(ref sb, next, context, sqlBuilder, outputParams, SelectSetPriority);// 集合查询分支按 SelectSet 优先级渲染，嵌套集合查询时会自动补括号
             }

@@ -114,6 +114,6 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="selectSetType">集合操作类型</param>
         /// <returns>返回对应的 SQL 语句片段。</returns>
-        string ToSqlSelectSetType(SelectSetType selectSetType);
+        string ToSelectSetTypeSql(SelectSetType selectSetType);
     }
 }
