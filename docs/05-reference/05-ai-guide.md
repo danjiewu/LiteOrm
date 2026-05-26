@@ -377,6 +377,11 @@ public class OrderExceptionHook : IServiceExceptionHook
 | `Expr.Exists<T>(lambda)`                         | `bool`            | 仅用于 Lambda 表达式中构造 EXISTS 查询（直接调用会抛出异常）      |
 | `Expr.ExistsRelated<T>(lambda)`                  | `bool`            | 仅用于 Lambda 表达式中构造自动关联的 EXISTS 查询（直接调用会抛出异常） |
 
+补充规则：
+
+- `PropertyExpr`、`TableExpr`、`ForeignExpr`、`FunctionExpr`、`SelectExpr`、`SelectItemExpr`、`CommonTableExpr`、`GenericSqlExpr` 等表达式，在对象比较和哈希计算时，名称与别名按**忽略大小写**处理。
+- 因此 `Prop("User", "Name")` 与 `Prop("user", "name")` 可以视为同一个表达式；别名 `T0` 与 `t0` 也会被视为相同别名。
+
 ### 运算符重载
 
 `PropertyExpr` / `ValueTypeExpr` 上的运算符：

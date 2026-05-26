@@ -214,7 +214,8 @@ public class UsersController : ControllerBase
 
 - [返回目录](../README.md)
 - [实体映射与数据源](../02-core-usage/01-entity-mapping.md)
-- [查询指南](../02-core-usage/03-query-guide.md)
-- [CRUD 指南](../02-core-usage/04-crud-guide.md)
-- [关联查询](../02-core-usage/05-associations.md)
+- [Expr 使用指南](../02-core-usage/03-expr-guide.md)
+- [查询指南](../02-core-usage/04-query-guide.md)
+- [CRUD 指南](../02-core-usage/05-crud-guide.md)
+- [关联查询](../02-core-usage/06-associations.md)
 

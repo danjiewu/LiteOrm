@@ -25,7 +25,7 @@ Start with the docs hub, then use the scenario-based reference pages for targete
 **[Docs Hub](https://danjiewu.github.io/LiteOrm/)**
 
 - **Getting Started**: install LiteOrm, register it, and run the first working example
-- **Core Usage**: focus on entity mapping, querying, CRUD, associations, and **mixing Lambda with Expr**
+- **Core Usage**: focus on entity mapping, the Expr / query guides, CRUD, associations, and **mixing Lambda with Expr**
 - **Advanced Topics**: cover transactions, sharding, performance, window functions, permission filtering, and diagnostics
 - **Extensibility**: cover expression extension, Expr serialization, and frontend QueryString / native Expr integration patterns
 

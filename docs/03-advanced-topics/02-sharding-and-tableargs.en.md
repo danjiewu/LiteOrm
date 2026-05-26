@@ -357,7 +357,8 @@ public class Log : IArged
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [Associations](../02-core-usage/05-associations.en.md)
+- [Associations](../02-core-usage/06-associations.en.md)
 - [Permission Filtering](./06-permission-filtering.en.md)
 - [Performance Optimization](./03-performance.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
+

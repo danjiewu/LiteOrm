@@ -33,7 +33,8 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 2. [Configuration and Registration](./03-configuration-and-registration.en.md)
 3. [First End-to-End Example](./04-first-example.en.md)
 4. [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
-5. [Query Guide](../02-core-usage/03-query-guide.en.md)
+5. [Expr Guide](../02-core-usage/03-expr-guide.en.md)
+6. [Query Guide](../02-core-usage/04-query-guide.en.md)
 
 ---
 

@@ -266,7 +266,8 @@ var results = await saleDAO
 ## 相关链接
 
 - [返回目录](../README.md)
-- [关联查询](../02-core-usage/05-associations.md)
+- [关联查询](../02-core-usage/06-associations.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)
 - [函数验证器](../04-extensibility/02-function-validator.md)
+
 

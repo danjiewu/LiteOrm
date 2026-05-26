@@ -406,7 +406,8 @@ var matureItUsers = await objectViewDAO.Search(
 
 - [返回目录](../README.md)
 - [基础概念](./01-entity-mapping.md)
-- [查询指南](./03-query-guide.md)
-- [增删改查](./04-crud-guide.md)
+- [查询指南](./04-query-guide.md)
+- [增删改查](./05-crud-guide.md)
 - [性能优化](../03-advanced-topics/03-performance.md)
 - [API 索引](../05-reference/02-api-index.md)
+

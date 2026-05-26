@@ -2,6 +2,9 @@
 
 namespace LiteOrm.Common
 {
+    /// <summary>
+    /// 表示 SQL 中的 Common Table Expression（CTE）表达式，通常用于 WITH 子句中定义临时结果集。CommonTableExpr 继承自 SourceExpr，允许其 Source 属性为一个 SelectExpr 对象，表示 CTE 定义的查询部分。CommonTableExpr 还支持“只按别名引用前面已定义的 CTE”的情况，此时 Source 可以为 null，但仍需保留 Alias 属性以供引用。
+    /// </summary>
     public class CommonTableExpr : SourceExpr
     {
         // Source 为空时仍需要保留别名，以支持“只按别名引用前面已定义的 CTE”。

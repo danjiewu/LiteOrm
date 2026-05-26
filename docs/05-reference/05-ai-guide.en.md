@@ -377,6 +377,11 @@ public class OrderExceptionHook : IServiceExceptionHook
 | `Expr.Exists<T>(lambda)` | `bool` | Used only inside Lambda expressions to build EXISTS queries (direct calls throw an exception) |
 | `Expr.ExistsRelated<T>(lambda)` | `bool` | Used only inside Lambda expressions to build automatic-related EXISTS queries (direct calls throw an exception) |
 
+Additional rule:
+
+- Expression objects such as `PropertyExpr`, `TableExpr`, `ForeignExpr`, `FunctionExpr`, `SelectExpr`, `SelectItemExpr`, `CommonTableExpr`, and `GenericSqlExpr` treat names and aliases as **case-insensitive** when comparing objects and calculating hash codes.
+- As a result, `Prop("User", "Name")` and `Prop("user", "name")` are treated as the same expression, and aliases `T0` and `t0` are treated as the same alias.
+
 ### Operator overloads
 
 Operators on `PropertyExpr` / `ValueTypeExpr`:

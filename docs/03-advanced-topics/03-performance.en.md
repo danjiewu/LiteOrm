@@ -407,6 +407,7 @@ LiteOrm's performance advantages compared to other ORMs:
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [Associations](../02-core-usage/05-associations.en.md)
+- [Associations](../02-core-usage/06-associations.en.md)
 - [Transactions](./01-transactions.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
+

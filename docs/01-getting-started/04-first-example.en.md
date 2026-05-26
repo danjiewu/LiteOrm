@@ -214,6 +214,7 @@ When you have many entities, you can also use [Generic Controller or Dynamic Con
 
 - [Back to docs hub](../README.md)
 - [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
-- [Query Guide](../02-core-usage/03-query-guide.en.md)
-- [CRUD Guide](../02-core-usage/04-crud-guide.en.md)
-- [Associations](../02-core-usage/05-associations.en.md)
+- [Expr Guide](../02-core-usage/03-expr-guide.en.md)
+- [Query Guide](../02-core-usage/04-query-guide.en.md)
+- [CRUD Guide](../02-core-usage/05-crud-guide.en.md)
+- [Associations](../02-core-usage/06-associations.en.md)

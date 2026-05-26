@@ -128,5 +128,6 @@ For more details, see [Sharding and TableArgs](../03-advanced-topics/02-sharding
 
 - [Back to docs hub](../README.md)
 - [View Models and Services](./02-view-models-and-services.en.md)
-- [Associations](./05-associations.en.md)
+- [Associations](./06-associations.en.md)
 - [Glossary](../05-reference/03-glossary.en.md)
+

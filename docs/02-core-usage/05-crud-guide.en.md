@@ -1,10 +1,10 @@
-# CRUD 指南
+# CRUD Guide
 
-本文聚焦 LiteOrm 的写入、更新、删除和批量操作。查询能力请统一参考 [查询指南](./03-query-guide.md)。
+This page focuses on LiteOrm's write operations: insert, update, delete, upsert, and batching. For query capabilities, please refer to the [Query Guide](./04-query-guide.en.md).
 
-## 1. 插入
+## 1. Insert
 
-### 单条插入
+### Single Insert
 
 ```csharp
 var user = new User
@@ -18,22 +18,22 @@ var user = new User
 bool success = await userService.InsertAsync(user);
 ```
 
-### 批量插入
+### Batch Insert
 
 ```csharp
 await userService.BatchInsertAsync(users);
 ```
 
-### 来自 Demo 的批量初始化示例
+### Batch Initialization Example from Demo
 
-`LiteOrm.Demo\Data\DbInitializer.cs` 中使用批量插入来初始化部门、用户和销售记录，适合作为导入或初始化脚本参考：
+`LiteOrm.Demo\Data\DbInitializer.cs` uses batch inserts to initialize departments, users, and sales records. This pattern is ideal for seed data initialization, demo data generation, or pre-import data preparation:
 
 ```csharp
 var depts = new List<Department>
 {
-    new() { Id = 1, Name = "集团总部" },
-    new() { Id = 2, Name = "研发中心", ParentId = 1 },
-    new() { Id = 3, Name = "市场部", ParentId = 1 }
+    new() { Id = 1, Name = "Headquarters" },
+    new() { Id = 2, Name = "R&D Center", ParentId = 1 },
+    new() { Id = 3, Name = "Marketing", ParentId = 1 }
 };
 
 await deptService.BatchInsertAsync(depts);
@@ -41,32 +41,30 @@ await deptService.BatchInsertAsync(depts);
 var users = new List<User>
 {
     new() { Id = 1, UserName = "Admin", Age = 35, CreateTime = DateTime.Now, DeptId = 1 },
-    new() { Id = 2, UserName = "研发负责人", Age = 32, CreateTime = DateTime.Now, DeptId = 2 }
+    new() { Id = 2, UserName = "Lead Dev", Age = 32, CreateTime = DateTime.Now, DeptId = 2 }
 };
 
 await userService.BatchInsertAsync(users);
 ```
 
-这个模式适合种子数据初始化、演示数据生成、批量导入前的数据准备。
-
 ### Upsert
 
 ```csharp
 bool success = await userService.UpdateOrInsertAsync(user);
-Console.WriteLine(success); // true 表示执行成功
+Console.WriteLine(success); // true indicates successful execution
 ```
 
-如果你需要区分本次到底是插入还是更新，可以直接使用 DAO 层的 `UpdateOrInsertResult`。
+If you need to distinguish between insert and update, use the DAO layer's `UpdateOrInsertResult` instead.
 
-### 批量 Upsert
+### Batch Upsert
 
 ```csharp
 await userService.BatchUpdateOrInsertAsync(users);
 ```
 
-### 来自测试的 Batch Upsert 示例
+### Batch Upsert Example from Tests
 
-下面的例子提炼自 `LiteOrm.Tests\ServiceTests.cs`：同一批数据中既有“已存在需要更新”的实体，也有“需要新增”的实体。
+The following example is extracted from `LiteOrm.Tests\ServiceTests.cs`: the same batch contains entities that need updating (already exist) and entities that need inserting (new).
 
 ```csharp
 var users = new List<TestUser>
@@ -77,7 +75,7 @@ var users = new List<TestUser>
 await service.BatchInsertAsync(users);
 
 var existingUser = users[0];
-existingUser.Age = 15; // 更新现有记录
+existingUser.Age = 15; // Update existing record
 
 var newUser = new TestUser
 {
@@ -89,11 +87,11 @@ var newUser = new TestUser
 await service.BatchUpdateOrInsertAsync(new[] { existingUser, newUser });
 ```
 
-执行后，`Upsert A` 会被更新，`Upsert C` 会被插入。
+After execution, `Upsert A` will be updated and `Upsert C` will be inserted.
 
-## 2. 更新
+## 2. Update
 
-### 根据实体更新
+### Update by Entity
 
 ```csharp
 var user = await userService.SearchOneAsync(u => u.Id == 1);
@@ -101,7 +99,7 @@ user.UserName = "admin_v2";
 await userService.UpdateAsync(user);
 ```
 
-### 批量更新
+### Batch Update
 
 ```csharp
 foreach (var user in users)
@@ -112,9 +110,9 @@ foreach (var user in users)
 await userService.BatchUpdateAsync(users);
 ```
 
-### 来自 Demo 的批量更新示例
+### Batch Update Example from Demo
 
-`LiteOrm.Demo\Data\DbInitializer.cs` 中先查询出部门，再集中修改负责人，最后一次性提交：
+`LiteOrm.Demo\Data\DbInitializer.cs` queries departments first, then modifies managers in bulk, and finally commits in one batch:
 
 ```csharp
 var updateDepts = new List<Department>();
@@ -136,11 +134,11 @@ await MarkManager(4, 6);
 await deptService.BatchUpdateAsync(updateDepts);
 ```
 
-适合“先读出实体，修改多个对象，再批量提交”的后台管理场景。
+This pattern is suitable for admin backend scenarios where you "read entities first, modify multiple objects, then batch commit."
 
-### 使用 `timestamp` 做乐观并发更新
+### Optimistic Concurrency with `timestamp`
 
-如果你希望更新时额外校验“读取时版本”和“提交时版本”是否一致，可以给实体声明一个 `timestamp` 列，然后使用 `ObjectDAO<T>` 的 `Update(entity, timestamp)` / `UpdateAsync(entity, timestamp)` 重载。
+If you want an update to verify that the version read earlier still matches the current database row, declare a `timestamp` column and use the `ObjectDAO<T>` overloads `Update(entity, timestamp)` or `UpdateAsync(entity, timestamp)`.
 
 ```csharp
 [Table("Users")]
@@ -165,31 +163,31 @@ var user = await viewDao.GetObject(1).FirstOrDefaultAsync();
 int originalVersion = user.Version;
 
 user.UserName = "admin_v2";
-user.Version = originalVersion + 1; // 实体上的值会写回数据库
+user.Version = originalVersion + 1; // the value on the entity is written back
 
 bool updated = await dao.UpdateAsync(user, originalVersion);
 if (!updated)
 {
-    Console.WriteLine("发生并发冲突，记录已被其他人修改。");
+    Console.WriteLine("Concurrency conflict: the row was changed by someone else.");
 }
 ```
 
-这一重载的行为要点：
+Important behavior details:
 
-- 实体上的 `Version` 是将要写入数据库的新值。
-- `timestamp` 参数是查询时拿到的旧值，会被放进 `WHERE` 条件里做并发校验。
-- 当返回 `false` 时，通常表示主键存在，但 `timestamp` 已不匹配。
-- 通用 `IEntityService<T>` / `IEntityServiceAsync<T>` 的 `Update` 重载不带 `timestamp` 参数；需要乐观并发时，请直接使用 `ObjectDAO<T>`，或在自定义 Service 中封装 DAO。
-- `BatchUpdate` / `BatchUpdateAsync` 不会自动附带 `timestamp` 并发校验。
+- The `Version` value on the entity is the new value written to the database.
+- The `timestamp` argument is the original value and is added to the `WHERE` clause for concurrency checking.
+- A return value of `false` usually means the primary key matched but the `timestamp` no longer matched.
+- The generic `IEntityService<T>` / `IEntityServiceAsync<T>` update methods do not expose a `timestamp` overload. For optimistic concurrency, use `ObjectDAO<T>` directly or wrap it in a custom service.
+- `BatchUpdate` / `BatchUpdateAsync` do not automatically apply `timestamp` concurrency checks.
 
-### 来自测试的 `timestamp` 更新示例
+### `timestamp` Update Example from Tests
 
-可参考：
+See:
 
 - `LiteOrm.Tests\ObjectDAOTests.cs`
 - `LiteOrm.Tests\Models\TestTimestampUser.cs`
 
-### 条件更新
+### Conditional Update
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -203,9 +201,9 @@ await objectDao.UpdateAsync(
 );
 ```
 
-### 来自 Demo 的 UpdateExpr 实战示例
+### UpdateExpr Practical Examples from Demo
 
-`LiteOrm.Demo\Demos\UpdateExprDemo.cs` 演示了 `UpdateExpr` 的几种典型玩法：
+`LiteOrm.Demo\Demos\UpdateExprDemo.cs` demonstrates several typical uses of `UpdateExpr`:
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -215,7 +213,7 @@ var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "Up
 int affected = await userService.UpdateAsync(update);
 ```
 
-也可以直接在 `SET` 子句里写算术表达式或函数表达式：
+You can also write arithmetic expressions or function expressions directly in the `SET` clause:
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -226,31 +224,31 @@ var rename = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "Up
     .Set(("UserName", Func("CONCAT", Prop("UserName"), Const("_v2"))));
 ```
 
-## 3. 删除
+## 3. Delete
 
-### 根据实体删除
+### Delete by Entity
 
 ```csharp
 var user = await userService.SearchOneAsync(u => u.Id == 1);
 await userService.DeleteAsync(user);
 ```
 
-### 根据主键删除
+### Delete by Primary Key
 
 ```csharp
 await userService.DeleteAsync(1);
 ```
 
-### 批量删除
+### Batch Delete
 
 ```csharp
 await userService.BatchDeleteAsync(users);
 await userService.BatchDeleteIDAsync(new[] { 1, 2, 3 });
 ```
 
-### 来自测试的批量增改删闭环示例
+### Complete Batch Insert/Update/Delete Cycle from Tests
 
-`LiteOrm.Tests\ServiceTests.cs` 中有一组很适合复制的闭环验证：
+`LiteOrm.Tests\ServiceTests.cs` has a complete validation cycle suitable for copying:
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -271,9 +269,9 @@ await service.BatchUpdateAsync(inserted);
 await service.BatchDeleteAsync(inserted);
 ```
 
-这个例子很适合验证批量接口是否能覆盖“插入 → 更新 → 删除”的整条路径。
+This example is ideal for validating that batch interfaces cover the entire path of "insert → update → delete."
 
-### 条件删除
+### Conditional Delete
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -281,9 +279,9 @@ await userService.DeleteAsync(u => u.CreateTime < DateTime.Today.AddYears(-1));
 await objectDao.Delete(Prop("Age") < 18 & Prop("UserName").StartsWith("Temp"));
 ```
 
-### 来自测试的条件删除示例
+### Conditional Delete Example from Tests
 
-以下例子提炼自分表测试，但删除条件本身同样适用于普通表：
+The following example is extracted from sharding tests, but the delete conditions themselves apply to regular tables as well:
 
 ```csharp
 int deleted = await service.DeleteAsync(
@@ -292,18 +290,18 @@ int deleted = await service.DeleteAsync(
 );
 ```
 
-如果不是分表场景，去掉 `tableArgs` 即可。
+For non-sharded tables, simply remove the `tableArgs` parameter.
 
-## 4. 返回值与行为说明
+## 4. Return Values and Behavior
 
-| 方法类型 | 常见返回值 | 含义 |
+| Method Type | Common Return Value | Meaning |
 | --- | --- | --- |
-| `Insert/Update/Delete` | `bool` | 是否成功执行。 |
-| 条件更新/删除 | `int` | 受影响行数。 |
-| Service 层 `UpdateOrInsert` | `bool` | 是否成功执行。 |
-| DAO 层 `UpdateOrInsert` | `UpdateOrInsertResult` | 告知本次是插入还是更新。 |
+| `Insert/Update/Delete` | `bool` | Whether execution was successful. |
+| Conditional update/delete | `int` | Number of affected rows. |
+| Service layer `UpdateOrInsert` | `bool` | Whether execution was successful. |
+| DAO layer `UpdateOrInsert` | `UpdateOrInsertResult` | Indicates whether this was an insert or update. |
 
-## 5. Service 接口速览
+## 5. Service Interface Quick Reference
 
 ### `IEntityService<T>` / `IEntityServiceAsync<T>`
 
@@ -315,11 +313,11 @@ int deleted = await service.DeleteAsync(
 - `BatchDelete` / `BatchDeleteAsync`
 - `UpdateOrInsert` / `UpdateOrInsertAsync`
 
-如果你还需要按条件搜索、分页、`Exists`、`Count` 等能力，请转到 [查询指南](./03-query-guide.md)。
+If you also need conditional search, pagination, `Exists`, `Count`, etc., please refer to the [Query Guide](./04-query-guide.en.md).
 
-## 6. 混合批处理与 Upsert 补充
+## 6. Mixed Batch Processing and Upsert Supplement
 
-除了 `BatchInsertAsync`、`BatchUpdateAsync`、`BatchDeleteAsync` 这类同构操作，LiteOrm 还支持把不同操作放进同一批处理中。
+In addition to homogeneous operations like `BatchInsertAsync`, `BatchUpdateAsync`, and `BatchDeleteAsync`, LiteOrm also supports putting different operations into the same batch.
 
 ```csharp
 var newUser = new TestUser { Name = "Mixed 1", Age = 10, CreateTime = DateTime.Now };
@@ -333,18 +331,19 @@ var ops = new List<EntityOperation<TestUser>>
 await service.BatchAsync(ops);
 ```
 
-这个例子来自 `LiteOrm.Tests\ServiceTests.cs`，适合需要“新增一批数据，同时删除旧数据”的同步迁移场景。
+This example from `LiteOrm.Tests\ServiceTests.cs` is suitable for "insert new batch of data while deleting old data" sync migration scenarios.
 
-## 7. 实战建议
+## 7. Practical Recommendations
 
-- 高频写入场景优先考虑批量接口。
-- 需要显式控制 SQL 结构时，可使用 `Expr.Update<T>()` 和 DAO。
-- 跨多表业务操作建议放到 Service 中并配合事务。
+- Prioritize batch interfaces for high-frequency write scenarios.
+- When you need explicit control over SQL structure, use `Expr.Update<T>()` and DAO.
+- Cross-table business operations should be placed in Service layer with transaction coordination.
 
-## 相关链接
+## Related Links
 
-- [返回目录](../README.md)
-- [查询指南](./03-query-guide.md)
-- [事务管理](../03-advanced-topics/01-transactions.md)
-- [性能优化](../03-advanced-topics/03-performance.md)
+- [Back to docs hub](../README.md)
+- [Query Guide](./04-query-guide.en.md)
+- [Transactions](../03-advanced-topics/01-transactions.en.md)
+- [Performance Optimization](../03-advanced-topics/03-performance.en.md)
+
 

@@ -184,7 +184,8 @@ var result = await dataViewDAO.Search(
 
 ## 8. Related reading
 
-- [Query Guide](./03-query-guide.en.md)
-- [Lambda & Expr Mixing](./06-lambda-expr-mixing.en.md)
+- [Query Guide](./04-query-guide.en.md)
+- [Lambda & Expr Mixing](./07-lambda-expr-mixing.en.md)
 - [AI Guide](../05-reference/05-ai-guide.en.md)
 - [Back to docs hub](../README.md)
+
