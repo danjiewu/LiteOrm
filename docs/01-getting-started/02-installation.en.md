@@ -6,7 +6,7 @@ This document covers the runtime environment, database support, and installation
 
 - `.NET 8.0+`
 - `.NET Standard 2.0` (compatible with .NET Framework 4.6.1+)
-- Dependencies: `Microsoft.Extensions.DependencyInjection`, `Castle.Core`
+- Dependencies: `Autofac.Extensions.DependencyInjection`, `Autofac.Extras.DynamicProxy`, `Castle.Core`
 
 ## Supported Databases
 

@@ -10,13 +10,13 @@ LiteOrm 支持三种主要查询方式：Lambda、`Expr`、`ExprString`。
 |------|------|--------|----------|
 | Lambda | `u => u.Age > 18` | 固定条件、业务语义清晰 | ✅ 强 |
 | `Expr` | `Expr.Prop("Age") > 18` | 动态拼装、查询构造器、多条件后台筛选 | ✅ 编译期 |
-| `ExprString` | `$"WHERE {expr}"` | 局部手写 SQL 片段 | ❌ 运行时 |
+| `ExprString` | `$"WHERE {expr}"` | DAO 中的条件片段或完整 SQL | ❌ 运行时 |
 
 ### 1.1 经验性选择
 
 - **优先用 Lambda**：大部分业务查询最直观。
 - **条件需要动态累加时用 `Expr`**：例如管理后台筛选、前端构造器、跨层传递过滤条件。
-- **只在必须插入 SQL 片段时用 `ExprString`**：不要把整条复杂 SQL 都塞进插值字符串。
+- **只在 DAO 需要手写 SQL 时用 `ExprString`**：它既能补 `Search` 的条件片段，也能传完整 SQL；Service 层不提供这个入口。
 
 ## 2. Lambda 查询入口
 
@@ -122,7 +122,7 @@ var users = await userService.SearchAsync(condition);
 
 ## 5. `ExprString` 插值字符串
 
-`ExprString` 允许你在插值字符串中直接嵌入 `Expr` 对象和参数，适合 DAO 层里需要手动构造 SQL 的场景。
+`ExprString` 允许你在插值字符串中直接嵌入 `Expr` 对象和参数，适合 DAO 层里需要手动构造 `Search` 条件片段或完整 SQL 的场景。Service 层没有对应的公开查询重载。
 
 ### 5.1 基本用法
 
@@ -153,7 +153,7 @@ var result = await userViewDAO.Search(
 
 建议：
 
-- 只把它当作特殊需求 SQL 片段拼装工具，如 SQL Hint等特殊场景。
+- 把它当作 DAO 层的手写 SQL 入口：既可以补 `Search` 条件片段，也可以在需要时配合 `isFull: true` 传完整 SQL。
 - 能用 `Expr` 表达的过滤条件，建议先构造 `Expr` 后再插入 `ExprString`，而不是写死在字符串里。
 - `ExprString` 按照 `Expr` 插入的顺序进行解析，参数生成的顺序以及上下文逻辑与完整 `Expr` 解析存在差异，例如 `ExprString` 中 `SelectExpr` 早于 `FromExpr` 解析，若 `SelectExpr` 中未指定表别名的列可能不能正确匹配默认表（主查询已通过预先创建默认主表的上下文解决，但子查询会存在问题），使用时需注意。
 - 手写标识符时，可以把 `[` 和 `]` 当作通用引用符占位，执行前 LiteOrm 会按当前数据库方言把它们替换成真实的标识符引用符。
@@ -193,6 +193,9 @@ var users1 = await userService.SearchAsync(u => u.Age >= 18);
 var users2 = await userService.SearchAsync(Prop("Age") >= 18);
 ```
 
+- Service 查询入口以 Lambda / `Expr` 为主，适合业务语义清晰、需要事务/AOP/服务封装的场景。
+- Service 不提供 `ExprString` 查询重载；如果需求已经变成“手写 SQL”，就应该切到 DAO。
+
 ### 6.2 DAO
 
 ```csharp
@@ -202,6 +205,9 @@ var users1 = await userViewDAO.Search(u => u.Age >= 18).ToListAsync();
 var users2 = await userViewDAO.Search(Prop("Age") >= 18).ToListAsync();
 var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListAsync();
 ```
+
+- DAO 除了支持 Lambda / `Expr`，还支持 `ExprString`，因此更适合自定义 SQL 片段、完整 SQL、投影查询和 DataTable 查询。
+- 需要 `SearchAs(...)`、`Query(...)`、`Execute(...)`、`GetValue(...)` 这类更底层能力时，也应该直接使用 DAO。
 
 ## 7. 相关链接
 

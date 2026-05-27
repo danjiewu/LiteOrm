@@ -10,13 +10,13 @@ This page focuses on **how to choose between them** and the most common query en
 |------|------|--------|----------|
 | Lambda | `u => u.Age > 18` | Fixed conditions and clear business intent | ✅ Strong |
 | `Expr` | `Expr.Prop("Age") > 18` | Dynamic composition, query builders, admin filtering | ✅ Compile-time |
-| `ExprString` | `$"WHERE {expr}"` | Hand-writing a small SQL fragment | ❌ Runtime |
+| `ExprString` | `$"WHERE {expr}"` | DAO-side condition fragments or full SQL | ❌ Runtime |
 
 ### 1.1 Practical guidance
 
 - **Use Lambda by default**: it is the clearest choice for most business queries.
 - **Use `Expr` when conditions must be accumulated dynamically**: admin filters, frontend query builders, reusable cross-layer filters.
-- **Use `ExprString` only when you really need a SQL fragment**: do not move an entire complex query into interpolated strings.
+- **Use `ExprString` when the DAO layer needs handwritten SQL**: it can represent either a `Search` condition fragment or a full SQL statement, but Service APIs do not expose this entry point.
 
 ## 2. Lambda query entry points
 
@@ -123,7 +123,7 @@ And for the full `Expr` construction model, static methods, extension methods, a
 
 ## 5. `ExprString` Interpolated Strings
 
-`ExprString` lets you embed `Expr` objects and parameter values directly inside interpolated strings. It is suitable when the DAO layer needs to build SQL manually.
+`ExprString` lets you embed `Expr` objects and parameter values directly inside interpolated strings. It is suitable when the DAO layer needs to build a `Search` condition fragment or a full SQL statement manually. Service APIs do not expose a public `ExprString` query overload.
 
 ### 5.1 Basic usage
 
@@ -154,7 +154,7 @@ That is why it is better to interpolate structured objects such as `Expr.Prop(..
 
 Recommendations:
 
-- treat it as a special-purpose SQL fragment tool, for cases such as SQL hints or other database-specific fragments
+- treat it as the DAO-side handwritten SQL entry: it can append `Search` condition fragments, or carry full SQL together with `isFull: true`
 - when a filter can be expressed with `Expr`, build the `Expr` first and then interpolate it into `ExprString` rather than hardcoding the condition in the string
 - `ExprString` is parsed in the insertion order of the embedded `Expr` objects, so parameter generation order and context behavior can differ from full `Expr` parsing. For example, inside `ExprString`, `SelectExpr` is resolved before `FromExpr`; if the `SelectExpr` contains columns without an explicit table alias, they may not bind to the default table correctly. The main query already works around this by creating the default main-table context early, but subqueries still require extra care.
 - when hand-writing identifiers, you can use `[` and `]` as provider-agnostic quote placeholders; LiteOrm rewrites them to the real identifier quotes of the current database dialect before execution
@@ -196,6 +196,9 @@ var users1 = await userService.SearchAsync(u => u.Age >= 18);
 var users2 = await userService.SearchAsync(Prop("Age") >= 18);
 ```
 
+- Service query APIs mainly target Lambda and `Expr`, which fit business-facing query code, transactions, and AOP-backed service encapsulation.
+- Service does not provide an `ExprString` query overload; once the need becomes "handwritten SQL", switch to DAO.
+
 ### 6.2 DAO
 
 ```csharp
@@ -205,6 +208,9 @@ var users1 = await userViewDAO.Search(u => u.Age >= 18).ToListAsync();
 var users2 = await userViewDAO.Search(Prop("Age") >= 18).ToListAsync();
 var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListAsync();
 ```
+
+- DAO supports Lambda and `Expr`, and also adds `ExprString`, so it is the right layer for custom SQL fragments, full SQL, projections, and DataTable-oriented queries.
+- If you need lower-level entry points such as `SearchAs(...)`, `Query(...)`, `Execute(...)`, or `GetValue(...)`, go directly through DAO.
 
 ## 7. Related links
 

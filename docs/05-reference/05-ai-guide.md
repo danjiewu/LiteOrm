@@ -188,6 +188,8 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                             | `Task<bool>`        |
 | `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                              | `Task<int>`         |
 
+> 补充说明：Service 查询公开入口是 `Expr` 及其 Lambda 扩展；如果需要 `ExprString`、完整 SQL、`SearchAs(...)` 或 DataTable 查询，请切换到 DAO。
+
 ### ObjectDAO<T>（仅增删改）
 
 | 方法                                                                                  | 返回类型                         |
@@ -344,7 +346,7 @@ public class OrderExceptionHook : IServiceExceptionHook
 | ---------------------------- | --------------------- |
 | Lambda 表达式 `u => u.Age > 18` | 简单条件，编译时类型安全          |
 | Expr 对象（运算符 / Fluent 方法）     | 复杂条件、动态条件累加、链式查询      |
-| ExprString 插值字符串             | 自定义 DAO 中需要直接写 SQL 片段 |
+| ExprString 插值字符串             | 自定义 DAO 中的条件片段或完整 SQL |
 
 ### Expr 静态工厂方法
 
@@ -452,12 +454,18 @@ var delete = new DeleteExpr(From<User>(), Prop("Age") < 18);
 
 ### ExprString
 
-插值字符串处理器，在 DAO 的 `Search(ExprString exprString)` 方法的字符串参数中中直接嵌入 Expr 对象：
+插值字符串处理器，可在 DAO 的 `Search(...)` / `SearchAs(...)` 等支持 `ExprString` 的方法参数中直接嵌入 Expr 对象。Service 不提供 `ExprString` 查询入口：
 
 ```csharp
 using static LiteOrm.Common.Expr;
 // 嵌入 Expr 对象自动转为带参数 SQL 片段
 var result = dao.Search($"WHERE {Prop("DeptName") == deptName} AND {Prop("Age") > 18}");
+
+// 需要完整 SQL 时，在 DAO 中配合 isFull: true 使用
+var table = dataViewDao.Search(
+    $"SELECT [Id], [UserName] FROM [Users] WHERE {Prop("Age")} > {minAge}",
+    isFull: true
+);
 ```
 
 > 在 `ExprString` 里手写表名、列名时，可以用 `[`、`]` 作为通用引用符占位；LiteOrm 会在命令真正执行前替换成当前数据库的真实标识符引用符。

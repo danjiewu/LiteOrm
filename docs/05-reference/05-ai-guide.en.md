@@ -188,6 +188,8 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<bool>` |
 | `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<int>` |
 
+> Additional note: Service query APIs are the `Expr` overloads plus these Lambda extensions. If you need `ExprString`, full SQL, `SearchAs(...)`, or DataTable-oriented queries, switch to DAO.
+
 ### ObjectDAO<T> (create, update, delete only)
 
 | Method | Return type |
@@ -344,7 +346,7 @@ public class OrderExceptionHook : IServiceExceptionHook
 | --- | --- |
 | Lambda expression `u => u.Age > 18` | Simple conditions with compile-time type safety |
 | Expr object (operators / fluent methods) | Complex conditions, dynamically accumulated conditions, and chained queries |
-| ExprString interpolated string | Writing SQL fragments directly inside custom DAOs |
+| ExprString interpolated string | Condition fragments or full SQL inside custom DAOs |
 
 ### Expr static factory methods
 
@@ -452,12 +454,18 @@ var delete = new DeleteExpr(From<User>(), Prop("Age") < 18);
 
 ### ExprString
 
-The interpolated string handler lets you embed Expr objects directly into the string argument passed to the DAO `Search(ExprString exprString)` method:
+The interpolated string handler lets you embed Expr objects directly into DAO methods that accept `ExprString`, such as `Search(...)` and `SearchAs(...)`. Service query APIs do not expose `ExprString`:
 
 ```csharp
 using static LiteOrm.Common.Expr;
 // Embedded Expr objects are automatically converted into parameterized SQL fragments
 var result = dao.Search($"WHERE {Prop("DeptName") == deptName} AND {Prop("Age") > 18}");
+
+// Use full SQL through DAO together with isFull: true
+var table = dataViewDao.Search(
+    $"SELECT [Id], [UserName] FROM [Users] WHERE {Prop("Age")} > {minAge}",
+    isFull: true
+);
 ```
 
 > When hand-writing table or column names in `ExprString`, you can use `[` and `]` as provider-agnostic quote placeholders. LiteOrm rewrites them to the current database's real identifier delimiters right before command execution.

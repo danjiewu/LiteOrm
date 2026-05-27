@@ -315,8 +315,6 @@ Best for dynamically assembled filters, admin search screens, and query-builder 
 
 ### `ExprString` queries (.NET 8.0+)
 
-
-
 ```csharp
 using static LiteOrm.Common.Expr;
 
@@ -330,9 +328,17 @@ var users = await objectViewDAO.Search(
 
 ).ToListAsync();
 
+var dataTable = await dataViewDAO.Search(
+
+    $"SELECT Id, UserName FROM Users WHERE {Prop("Age")} > {minAge}",
+
+    isFull: true
+
+).GetResultAsync();
+
 ```
 
-Use this only for small custom SQL fragments that are hard to express with pure Lambda or pure `Expr`.
+Use this as the DAO-side SQL entry when Lambda or pure `Expr` is not enough. It can represent either a `Search` condition fragment or a full SQL statement. Service query APIs do not expose `ExprString`.
 
 
 
@@ -764,7 +770,7 @@ var page = await userService.SearchAsync(
 
 - **Expr 表达式**：适合后台筛选、查询构造器等动态条件拼装场景
 
-- **ExprString 查询**：仅在需要补充少量自定义 SQL 片段时使用
+- **ExprString 查询**：仅在 DAO 层使用，可传 `Search` 条件片段或完整 SQL
 
 - **Lambda 与 Expr 组合**：在保留强类型可读性的同时复用动态条件
 
@@ -821,6 +827,5 @@ var page = await userService.SearchAsync(
 
 
 [回到顶部](#liteorm)
-
 
 

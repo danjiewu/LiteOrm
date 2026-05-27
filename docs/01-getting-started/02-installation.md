@@ -6,7 +6,7 @@
 
 - `.NET 8.0+`
 - `.NET Standard 2.0`（兼容 .NET Framework 4.6.1+）
-- 依赖库：`Microsoft.Extensions.DependencyInjection`、`Castle.Core`
+- 依赖库：`Autofac.Extensions.DependencyInjection`、`Autofac.Extras.DynamicProxy`、`Castle.Core`
 
 ## 支持的数据库
 
@@ -37,4 +37,3 @@ dotnet add package LiteOrm
 - [配置与注册](./03-configuration-and-registration.md)
 - [第一个完整示例](./04-first-example.md)
 - [配置项速查](../05-reference/01-configuration-reference.md)
-

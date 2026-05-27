@@ -141,7 +141,7 @@ graph TD
 **Main Process Descriptions:**
 
 1. **Initialization Process**:
-   - During application startup, services are registered through `RegisterLiteOrm()`
+   - During application startup, `RegisterLiteOrm()` registers services and switches the host to Autofac
    - Entity types are scanned to build metadata
    - Database connection pool and DAOContextPool are initialized
 
@@ -157,10 +157,10 @@ graph TD
    - AutoLockDataReader releases DAOContext to Pool
 
 3. **Query Process**:
-   - Query conditions are built through Lambda expressions, Expr, or ExprString
-   - Lambda expressions can be converted to Expr, and Expr can build ExprString
+   - Queries are built through Lambda expressions, Expr, or DAO-side ExprString
+   - Lambda expressions are converted into Expr, and Expr can also be interpolated into ExprString fragments
    - Expr can be passed to Service layer or DAO layer
-   - ExprString can only be passed to DAO layer
+   - ExprString can only be passed to DAO entry points, where it may represent a `Search` condition fragment or a full SQL statement
    - DAO receives expressions and uses SqlBuilder to build SQL statements
    - SqlBuilder builds SQL statements
    - DAO obtains DAOContext from DAOContextPool through SessionManager
@@ -230,7 +230,7 @@ The Service layer encapsulates business logic and provides higher-level operatio
 
 ### 7.3 Expression System (Expr)
 
-The expression system is a distinctive feature of LiteOrm, providing powerful query building capabilities. It supports three query methods: Lambda expressions, Expr objects, and ExprString.
+The expression system is a distinctive feature of LiteOrm, providing powerful query building capabilities. It covers three common query entry styles: Lambda expressions, Expr objects, and DAO-only ExprString.
 
 **Main Components:**
 
@@ -456,7 +456,9 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 |----------|------|-----|
 | .NET | 8.0+ | Runtime environment |
 | .NET Standard | 2.0+ | Cross-platform support |
-| Microsoft.Extensions.DependencyInjection | 10.0.0 | Native dependency injection |
+| Autofac.Extensions.DependencyInjection | 10.0.0 | Autofac container integration used by `RegisterLiteOrm()` |
+| Autofac.Extras.DynamicProxy | 7.1.0 | Autofac interception support |
+| Microsoft.Extensions.DependencyInjection | 10.0.0 | DI abstractions and `ServiceCollection` ecosystem |
 | Castle.Core | 5.2.1 | Dynamic proxy core |
 | Castle.Core.AsyncInterceptor | 2.1.0 | Async interceptor |
 | Microsoft.Extensions.Hosting.Abstractions | 10.0.5 | Hosting abstractions |

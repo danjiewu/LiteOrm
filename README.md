@@ -305,8 +305,6 @@ var result = await userService.SearchAsync(query);
 
 ### `ExprString` 查询
 
-
-
 ```csharp
 using static LiteOrm.Common.Expr;
 // 使用参数化插值字符串，防止 SQL 注入
@@ -322,9 +320,12 @@ var users = await objectViewDAO.Search($"WHERE {expr} AND Age > {minAge}").ToLis
 
 // DataViewDAO 示例
 var dataTable = await dataViewDAO.Search(
-    $"SELECT Id, UserName FROM Users WHERE {Prop("Age")} > {minAge}"
+    $"SELECT Id, UserName FROM Users WHERE {Prop("Age")} > {minAge}",
+    isFull: true
 ).GetResultAsync();
 ```
+
+> `ExprString` 是 DAO 查询入口，不是 Service 查询入口。它既可以像上面第一个示例那样补 `Search` 的条件片段，也可以像第二个示例这样在 DAO 中传完整 SQL。
 
 > `ExprString` 不支持把 `SelectExpr.With(name)` / `CommonTableExpr` 这样的 CTE 表达式自动转成 `WITH` SQL；如果需要 CTE，请使用 `Expr` / `SelectExpr` 构建，或在 DAO 层手动写完整 SQL。
 
