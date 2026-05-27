@@ -289,8 +289,6 @@ var result = await userService.SearchAsync(query);
 
 ### `ExprString` queries
 
-
-
 ```csharp
 using static LiteOrm.Common.Expr;
 // Use parameterized interpolated strings to prevent SQL injection
@@ -306,9 +304,12 @@ var users = await objectViewDAO.Search($"WHERE {expr} AND Age > {minAge}").ToLis
 
 // `DataViewDAO` example
 var dataTable = await dataViewDAO.Search(
-    $"SELECT Id, UserName FROM Users WHERE {Prop("Age")} > {minAge}"
+    $"SELECT Id, UserName FROM Users WHERE {Prop("Age")} > {minAge}",
+    isFull: true
 ).GetResultAsync();
 ```
+
+> `ExprString` is a DAO query entry point, not a Service query entry point. It can be used either to append a `Search` condition fragment, or to send full SQL through DAO APIs as shown in the second example.
 
 > `ExprString` does not auto-convert `SelectExpr.With(name)` / `CommonTableExpr` into `WITH` SQL. If you need CTE, use the structured `Expr` / `SelectExpr` model, or handwrite the full SQL inside the DAO call.
 
