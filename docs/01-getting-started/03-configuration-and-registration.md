@@ -7,10 +7,10 @@
 ```json
 {
   "LiteOrm": {
-    "Default": "DefaultConnection",
+    "Default": "main",
     "DataSources": [
       {
-        "Name": "DefaultConnection",
+        "Name": "main",
         "ConnectionString": "Server=localhost;Database=TestDb;User Id=root;Password=123456;",
         "Provider": "MySqlConnector.MySqlConnection, MySqlConnector",
         "SqlBuilder": null,
@@ -19,7 +19,11 @@
         "MaxPoolSize": 100,
         "ParamCountLimit": 2000,
         "SyncTable": false,
-        "ReadOnlyConfigs": []
+        "ReadOnlyConfigs": [
+          {
+            "ConnectionString": "Server=localhost;Database=TestDb_ReadOnly;User Id=root;Password=123456;"
+          }
+        ]
       }
     ]
   }
@@ -66,7 +70,7 @@ builder.Host.RegisterLiteOrm(options =>
 {
     options.RegisterScope = true;
     options.Assemblies = new[] { typeof(MyService).Assembly };
-    options.RegisterSqlBuilder("DefaultConnection", new MySqlBuilder());
+    options.RegisterSqlBuilder("main", new MySqlBuilder());
 });
 ```
 
@@ -106,7 +110,11 @@ builder.Host.RegisterLiteOrm(options =>
 ## 多数据源与读写分离建议
 
 - 在实体上通过 `[Table(DataSource = "...")]` 绑定数据源。
-- 读多写少场景可使用 `ReadOnlyConfigs` 配置只读副本。
+- 读多写少场景可使用 `ReadOnlyConfigs` 配置只读副本：
+  - 默认情况下，查询/视图类 API 会优先使用只读连接。
+  - 同一个 `Session` 内，首次选中的只读副本会被缓存并复用（避免每次查询都重新轮询）。
+  - 在事务中，为保证一致性，读取会强制回落到主库连接。
+  - 未配置只读副本时，读取会自动回落主库连接。
 - 涉及数据库方言差异时，建议显式注册 `SqlBuilder`。
 
 ## 常见问题

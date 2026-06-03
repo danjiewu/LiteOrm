@@ -7,10 +7,10 @@ LiteOrm reads a `LiteOrm` configuration section, then wires up services, DAO typ
 ```json
 {
   "LiteOrm": {
-    "Default": "DefaultConnection",
+    "Default": "main",
     "DataSources": [
       {
-        "Name": "DefaultConnection",
+        "Name": "main",
         "ConnectionString": "Server=localhost;Database=TestDb;User Id=root;Password=123456;",
         "Provider": "MySqlConnector.MySqlConnection, MySqlConnector",
         "SqlBuilder": null,
@@ -19,7 +19,11 @@ LiteOrm reads a `LiteOrm` configuration section, then wires up services, DAO typ
         "MaxPoolSize": 100,
         "ParamCountLimit": 2000,
         "SyncTable": false,
-        "ReadOnlyConfigs": []
+        "ReadOnlyConfigs": [
+          {
+            "ConnectionString": "Server=localhost;Database=TestDb_ReadOnly;User Id=root;Password=123456;"
+          }
+        ]
       }
     ]
   }
@@ -63,7 +67,7 @@ builder.Host.RegisterLiteOrm(options =>
 {
     options.RegisterScope = true;
     options.Assemblies = new[] { typeof(MyService).Assembly };
-    options.RegisterSqlBuilder("DefaultConnection", new MySqlBuilder());
+    options.RegisterSqlBuilder("main", new MySqlBuilder());
 });
 ```
 
@@ -103,7 +107,11 @@ For attribute usage and diagnostics guidance, see [Logging and Diagnostics](../0
 ## 5. Multi-data-source and read/write guidance
 
 - Use `[Table(DataSource = "...")]` to bind an entity to a non-default source.
-- Use `ReadOnlyConfigs` when reads can safely go to replicas.
+- Use `ReadOnlyConfigs` when reads can safely go to replicas:
+  - Query/view APIs prefer read-only connections by default.
+  - Within the same `Session`, the first selected read-only replica is cached and reused.
+  - In transactions, reads are forced back to the primary connection for consistency.
+  - If `ReadOnlyConfigs` is empty, reads fall back to the primary connection.
 - Register a custom `SqlBuilder` when a provider needs database-version-specific SQL.
 
 ## 6. Common questions
