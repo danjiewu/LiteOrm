@@ -279,6 +279,24 @@ var filter = (Prop("Age") >= 18 & Prop("Status") == 1)
            | Prop("UserName").Contains("admin");
 ```
 
+#### String concatenation: do NOT use `+`, use `.Concat(...)`
+
+When hand-writing `Expr`, `ValueTypeExpr`'s `+` operator has **arithmetic-add** semantics, and may render SQL `+`, which is not portable for string concatenation across databases.
+
+Use concat explicitly:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var fullName = Prop("FirstName")
+    .Concat(" ")
+    .Concat(Prop("LastName"));
+```
+
+`Concat(...)` is rendered via `SqlBuilder.BuildConcatSql`, so providers can output `CONCAT(a,b,...)` or `a || b` as appropriate.
+
+> Note: In **Lambda** expressions (e.g. `SearchAsync(u => u.FirstName + " " + u.LastName == "..." )`), C# string `+` is typically converted to concat during parsing; but when hand-writing `Expr`, always use `.Concat(...)` explicitly.
+
 ### 7.2 Null-friendly composition on `LogicExpr`
 
 `&` and `|` on `LogicExpr` are especially useful for dynamic filters because they are null-friendly:

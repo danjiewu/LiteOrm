@@ -280,6 +280,24 @@ var filter = (Prop("Age") >= 18 & Prop("Status") == 1)
            | Prop("UserName").Contains("admin");
 ```
 
+#### 字符串拼接：不要用 `+`，用 `.Concat(...)`
+
+在手写 Expr 时，`ValueTypeExpr` 的 `+` 是“加法”语义，最终 SQL 可能生成 `+`，对字符串拼接并不跨数据库可靠。
+
+推荐显式使用 concat：
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var fullName = Prop("FirstName")
+    .Concat(" ")
+    .Concat(Prop("LastName"));
+```
+
+`Concat(...)` 会走底层 `SqlBuilder.BuildConcatSql`，由不同数据库方言输出 `CONCAT(a,b,...)` 或 `a || b`。
+
+> 注意：在 **Lambda** 场景下（例如 `SearchAsync(u => u.FirstName + " " + u.LastName == "..." )`），C# 的字符串 `+` 通常会在解析阶段被转换为 concat；但手写 Expr 时请显式使用 `.Concat(...)`。
+
 ### 7.2 `LogicExpr` 的空值友好组合
 
 `LogicExpr` 的 `&` / `|` 特别适合做动态筛选器，因为它们对 `null` 友好：
