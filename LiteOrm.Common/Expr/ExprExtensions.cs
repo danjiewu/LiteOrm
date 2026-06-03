@@ -489,7 +489,7 @@ namespace LiteOrm.Common
         {
             if (source is WhereExpr whereExpr)
             {
-                whereExpr.Where = whereExpr.Where is null ? where : whereExpr.Where.And(where);
+                whereExpr.Where &= where;
                 return whereExpr;
             }
             else return new WhereExpr(source as SqlSegment, where);
@@ -512,7 +512,7 @@ namespace LiteOrm.Common
         /// <returns>包含 WHERE 子句的 UPDATE 表达式。</returns>
         public static UpdateExpr Where(this UpdateExpr source, LogicExpr where)
         {
-            source.Where = source.Where is null ? where : source.Where.And(where);
+            source.Where &= where;
             return source;
         }
 
@@ -524,7 +524,7 @@ namespace LiteOrm.Common
         /// <returns>包含 WHERE 子句的 DELETE 表达式。</returns>
         public static DeleteExpr Where(this DeleteExpr source, LogicExpr where)
         {
-            source.Where = source.Where is null ? where : source.Where.And(where);
+            source.Where &= where;
             return source;
         }
 
@@ -726,25 +726,6 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 当条件为真时，向更新表达式追加一个 SET 子句。
-        /// </summary>
-        /// <param name="source">更新表达式。</param>
-        /// <param name="condition">为 true 时才追加该赋值。</param>
-        /// <param name="propName">属性名称。</param>
-        /// <param name="valueExpr">要设置的值表达式。</param>
-        /// <returns>更新表达式（链式调用）。</returns>
-        /// <example>
-        /// <code>
-        /// update.SetIf(newEmail != null, "Email", newEmail);
-        /// </code>
-        /// </example>
-        public static UpdateExpr SetIf(this UpdateExpr source, bool condition, string propName, ValueTypeExpr valueExpr)
-        {
-            if (condition) source.Sets.Add(new(Expr.Prop(propName), valueExpr));
-            return source;
-        }
-
-        /// <summary>
         /// 添加 JOIN 子句连接到目标数据源。
         /// </summary>
         /// <param name="source">源数据源表达式。</param>
@@ -923,45 +904,6 @@ namespace LiteOrm.Common
         /// </code>
         /// </example>
         public static FunctionExpr Min(this ValueTypeExpr expr) => new FunctionExpr("MIN", expr) { IsAggregate = true };
-
-        /// <summary>
-        /// 当条件为真时，使用 AND 逻辑将另一个表达式追加到当前逻辑表达式。
-        /// </summary>
-        /// <param name="left">当前逻辑表达式。</param>
-        /// <param name="condition">为 true 时才追加 <paramref name="right"/>。</param>
-        /// <param name="right">条件成立时追加的逻辑表达式。</param>
-        /// <returns>合并后的逻辑表达式，若条件为 false 则返回原表达式。</returns>
-        /// <example>
-        /// <code>
-        /// var condition = Expr.Prop("Age") > 18
-        ///     .AndIf(nameFilter != null, Expr.Prop("Name").Contains(nameFilter));
-        /// </code>
-        /// </example>
-        public static LogicExpr AndIf(this LogicExpr left, bool condition, LogicExpr right) => condition ? left.And(right) : left;
-
-        /// <summary>
-        /// 当条件为真时，使用 OR 逻辑将另一个表达式追加到当前逻辑表达式。
-        /// </summary>
-        /// <param name="left">当前逻辑表达式。</param>
-        /// <param name="condition">为 true 时才追加 <paramref name="right"/>。</param>
-        /// <param name="right">条件成立时追加的逻辑表达式。</param>
-        /// <returns>合并后的逻辑表达式，若条件为 false 则返回原表达式。</returns>
-        public static LogicExpr OrIf(this LogicExpr left, bool condition, LogicExpr right) => condition ? left.Or(right) : left;
-
-        /// <summary>
-        /// 当条件为真时，为 SQL 语句添加 WHERE 子句；否则直接返回原数据源。
-        /// </summary>
-        /// <param name="source">SQL 语句构建起点。</param>
-        /// <param name="condition">为 true 时才添加 WHERE 子句。</param>
-        /// <param name="where">WHERE 子句的逻辑表达式。</param>
-        /// <returns>添加了 WHERE 条件的表达式，或原数据源（条件为 false 时）。</returns>
-        /// <example>
-        /// <code>
-        /// var query = table.WhereIf(minAge.HasValue, Expr.Prop("Age") >= minAge ?? 0);
-        /// </code>
-        /// </example>
-        public static ISourceAnchor WhereIf(this ISourceAnchor source, bool condition, LogicExpr where)
-            => condition ? (ISourceAnchor)new WhereExpr(source as SqlSegment, where) : source;
 
         /// <summary>
         /// 将聚合或窗口函数应用到分区窗口（OVER PARTITION BY）。
