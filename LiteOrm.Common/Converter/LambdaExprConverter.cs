@@ -224,6 +224,7 @@ namespace LiteOrm.Common
             {
                 BinaryExpression binary => ConvertBinary(binary),
                 UnaryExpression unary => ConvertUnary(unary),
+                ConditionalExpression conditional => ConvertConditional(conditional),
                 MemberExpression member => ConvertMember(member),
                 NewArrayExpression newArray => ConvertNewArray(newArray),
                 ConstantExpression constant => ConvertConstant(constant),
@@ -342,7 +343,7 @@ namespace LiteOrm.Common
             // 处理 ?? 运算符，依赖参数时转为 COALESCE 函数，否则本地计算
             if (node.NodeType == ExpressionType.Coalesce)
             {
-                return _expressionDetector.CanEvaluate(node) ? EvaluateToExpr(node) : new FunctionExpr("COALESCE", ConvertInternal(node.Left).AsValue(), ConvertInternal(node.Right).AsValue());
+                return _expressionDetector.CanEvaluate(node) ? EvaluateToExpr(node) : ConvertInternal(node.Left).AsValue().IfNull(ConvertInternal(node.Right).AsValue());
             }
 
             var left = ConvertInternal(node.Left);
@@ -440,6 +441,19 @@ namespace LiteOrm.Common
                 ExpressionType.Convert or ExpressionType.Quote => operand,
                 _ => throw new NotSupportedException($"Unsupported unary operator: {node.NodeType}"),
             };
+        }
+
+        /// <summary>
+        /// 将条件表达式（如 a ? b : c）转换为对应的 Expr 对象，映射为 SQL 的 CASE WHEN 表达式。
+        /// </summary>
+        /// <param name="node">要转换的条件表达式节点</param>
+        /// <returns>转换后的 Expr 对象</returns>
+        private Expr ConvertConditional(ConditionalExpression node)
+        {
+            var test = ConvertInternal(node.Test).AsLogic();
+            var ifTrue = ConvertInternal(node.IfTrue).AsValue();
+            var ifFalse = ConvertInternal(node.IfFalse).AsValue();
+            return Expr.If(test, ifTrue, ifFalse);
         }
 
         /// <summary>
@@ -578,7 +592,7 @@ namespace LiteOrm.Common
         {
             var method = node.Method;
             var type = method.DeclaringType;
-     
+
             // 处理 LINQ 扩展方法（Queryable、Enumerable）
             if (type == typeof(Queryable) || type == typeof(Enumerable) || type != null && type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IQueryable<>) || type.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
             {
