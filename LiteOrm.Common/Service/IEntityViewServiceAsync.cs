@@ -53,7 +53,24 @@ namespace LiteOrm.Service
         /// <returns>符合条件的实体列表</returns>
         new Task<List<T>> SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
-   }
+        /// <summary>
+        /// 异步查询符合条件的实体列表，并将结果转换为指定类型的列表。
+        /// </summary>
+        /// <typeparam name="TResult">结果类型</typeparam>
+        /// <param name="selectExpr">完整查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>结果列表</returns>
+        Task<List<TResult>> SearchAsAsync<TResult>(SelectExpr selectExpr = null, params string[] tableArgs);
+
+        /// <summary>
+        /// 异步获取单个符合条件的实体，并将结果转换为指定类型的对象。
+        /// </summary>
+        /// <typeparam name="TResult">结果类型</typeparam>
+        /// <param name="selectExpr">完整查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>结果对象</returns>
+        Task<TResult> SearchOneAsAsync<TResult>(SelectExpr selectExpr = null, params string[] tableArgs);
+    }
 
     /// <summary>
     /// 异步版本 - 非泛型实体查询接口

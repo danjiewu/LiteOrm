@@ -155,6 +155,29 @@ namespace LiteOrm.Service
             return ObjectViewDAO.WithArgs(tableArgs).Search(expr).GetResult();
         }
 
+        /// <summary>
+        /// 根据条件查询视图对象列表，并将结果转换为指定类型的列表。
+        /// </summary>
+        /// <typeparam name="TResult">结果类型</typeparam>
+        /// <param name="selectExpr">完整查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>结果列表</returns>
+        public virtual List<TResult> SearchAs<TResult>(SelectExpr selectExpr = null, params string[] tableArgs)
+        {
+            return ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr).ToList();
+        }
+        /// <summary>
+        /// 根据条件获取单个符合条件的实体，并将结果转换为指定类型的对象。
+        /// </summary>
+        /// <typeparam name="TResult">结果类型</typeparam>
+        /// <param name="selectExpr">完整查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns></returns>
+        public virtual TResult SearchOneAs<TResult>(SelectExpr selectExpr = null, params string[] tableArgs)
+        {
+            return ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr).FirstOrDefault();
+        }
+
         #endregion
 
         #region IEntityViewService 成员
@@ -291,6 +314,30 @@ namespace LiteOrm.Service
         public async virtual Task<List<TView>> SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await ObjectViewDAO.WithArgs(tableArgs).Search(expr).GetResultAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// 异步查询符合条件的实体列表，并将结果转换为指定类型的列表。
+        /// </summary>
+        /// <typeparam name="TResult">结果类型</typeparam>
+        /// <param name="selectExpr">完整查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>结果列表</returns>
+        public async virtual Task<List<TResult>> SearchAsAsync<TResult>(SelectExpr selectExpr = null, params string[] tableArgs)
+        {
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr).ToListAsync();
+        }
+
+        /// <summary>
+        /// 异步获取单个符合条件的实体，并将结果转换为指定类型的对象。
+        /// </summary>
+        /// <typeparam name="TResult">结果类型</typeparam>
+        /// <param name="selectExpr">完整查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns>结果对象</returns>
+        public async virtual Task<TResult> SearchOneAsAsync<TResult>(SelectExpr selectExpr = null, params string[] tableArgs)
+        {
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr).FirstOrDefaultAsync();
         }
 
         #endregion

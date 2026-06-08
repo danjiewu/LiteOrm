@@ -43,6 +43,24 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
         new List<T> Search(Expr expr = null, params string[] tableArgs);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="TResult"></typeparam>
+        /// <param name="selectExpr"></param>
+        /// <param name="tableArgs"></param>
+        /// <returns></returns>
+        List<TResult> SearchAs<TResult>(SelectExpr selectExpr, params string[] tableArgs);
+
+        /// <summary>
+        /// 根据条件获取单个符合条件的实体，并将结果转换为指定类型的对象。
+        /// </summary>
+        /// <typeparam name="TResult">结果类型</typeparam>
+        /// <param name="selectExpr">完整查询表达式</param>
+        /// <param name="tableArgs">表名参数</param>
+        /// <returns></returns>
+        TResult SearchOneAs<TResult>(SelectExpr selectExpr, params string[] tableArgs);
     }
 
     /// <summary>
