@@ -575,6 +575,16 @@ namespace LiteOrm.Common
         {
             return new SelectExpr(source as SqlSegment, selects);
         }
+
+        /// <summary>
+        /// 创建 SELECT 表达式，选择所有列（SELECT *）。
+        /// </summary>
+        /// <param name="source">SQL 语句构建起点。</param>
+        /// <returns>包含 SELECT * 子句的 SQL 表达式。</returns>
+        public static SelectExpr SelectAll(this ISelectAnchor source)
+        {
+            return new SelectExpr(source as SqlSegment);
+        }
         /// <summary>
         /// 为 SQL 语句添加 SELECT 子句。
         /// </summary>

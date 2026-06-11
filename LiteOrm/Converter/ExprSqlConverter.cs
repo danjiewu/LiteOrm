@@ -653,10 +653,11 @@ namespace LiteOrm.Common
         {
             var table = context.GetTable(expr.TableAlias);
             var column = table?.GetColumn(expr.PropertyName);
+            var columnName = column?.Name ?? expr.PropertyName;
             if (context.SingleTable)
             {
                 // 单表模式下只需要输出列名
-                sb.Append(sqlBuilder.ToSqlName(column?.Name ?? expr.PropertyName));
+                sb.Append(sqlBuilder.ToSqlName(columnName));
             }
             else if (column is ForeignColumn foreignColumn)
             {
@@ -671,9 +672,9 @@ namespace LiteOrm.Common
                     sb.Append(sqlBuilder.ToSqlName(tableAlias));
                     sb.Append(".");
                 }
-                sb.Append(sqlBuilder.ToSqlName(column?.Name ?? expr.PropertyName));
+                sb.Append(sqlBuilder.ToSqlName(columnName));
             }
-            if (aliasName != null && !String.Equals(column?.Name, aliasName, StringComparison.OrdinalIgnoreCase))
+            if (aliasName != null && !String.Equals(columnName, aliasName, StringComparison.OrdinalIgnoreCase))
             {
                 sb.Append(" AS ");
                 sb.Append(sqlBuilder.ToSqlName(aliasName));

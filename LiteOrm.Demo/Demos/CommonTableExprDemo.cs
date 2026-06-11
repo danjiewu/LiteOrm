@@ -114,7 +114,7 @@ namespace LiteOrm.Demo.Demos
                         Prop("DeptId"),
                         Const("30+").As("AgeGroup"));
 
-                var unionQuery = youngerAdults.UnionAll(olderAdults);
+                var unionQuery = youngerAdults.UnionAll(olderAdults).OrderBy(Prop("Age").Asc()).SelectAll();
 
                 var unionResult = await userDataViewDAO.Search(unionQuery).GetResultAsync();
                 var unionSql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";

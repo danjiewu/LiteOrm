@@ -437,9 +437,10 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 
+        /// 转换表达式为 SelectExpr，如果表达式已经是 SelectExpr 则直接返回，否则创建一个新的 SelectExpr，并将表达式转换为数据源。
+        /// 这个方法主要用于将普通的表达式转换为查询表达式，以便在执行查询操作时使用。
         /// </summary>
-        /// <param name="expr"></param>
+        /// <param name="expr">待转换的表达式</param>
         /// <returns></returns>
         protected SelectExpr ToSelectExpr(Expr expr)
         {
@@ -542,7 +543,7 @@ namespace LiteOrm
                 strConditions.Append(ToColumnSql(key));
                 strConditions.Append(" = ");
                 strConditions.Append(ToSqlParam(paramName));
-                paramValues.Add(new (paramName, null));
+                paramValues.Add(new(paramName, null));
             }
             string result = strConditions.ToString();
             strConditions.Dispose();
