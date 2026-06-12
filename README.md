@@ -459,6 +459,7 @@ public class BusinessService
 
 
 ```csharp
+[Table("Logs_{0}")]  // {0} 会被 TableArgs 替换
 public class Log : IArged
 {
     [Column("Id", IsPrimaryKey = true)]
