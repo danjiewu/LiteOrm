@@ -103,7 +103,7 @@ namespace LiteOrm
             }
             else
             {
-                selects = Array.ConvertAll(SelectColumns, p => new SelectItemExpr(Expr.Prop(p.Name), p.Name)).ToList();
+                selects = SelectColumns.Select(p => new SelectItemExpr(Expr.Prop(p.Name), p.Name)).ToList();
             }
 
             SelectExpr selectExpr;

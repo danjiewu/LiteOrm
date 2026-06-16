@@ -14,7 +14,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var definition = CreateTableDefinition(typeof(TestEntity));
             var column = CreateColumn(nameof(TestEntity.Name));
-            var view = new TableView(definition, new List<JoinedTable>(), new SqlColumn[] { column });
+            var view = new TableView(definition, new List<SqlColumn> { column }, new List<JoinedTable>());
 
             Assert.Same(definition, view.Definition);
             Assert.Single(view.Columns);
@@ -25,7 +25,7 @@ namespace LiteOrm.Common.UnitTests
         public void JoinedTables_WithEmptyList_ReturnsCachedEmptyCollection()
         {
             var definition = CreateTableDefinition(typeof(TestEntity));
-            var view = new TableView(definition, new List<JoinedTable>(), Array.Empty<SqlColumn>());
+            var view = new TableView(definition, Array.Empty<SqlColumn>(), new List<JoinedTable>());
 
             var first = view.JoinedTables;
             var second = view.JoinedTables;

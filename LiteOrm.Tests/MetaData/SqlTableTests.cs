@@ -50,7 +50,7 @@ namespace LiteOrm.Common.UnitTests
 
             var keys = table.Keys;
 
-            Assert.Equal(2, keys.Length);
+            Assert.Equal(2, keys.Count);
             Assert.Equal(nameof(TestEntity.Id), keys[0].PropertyName);
             Assert.Equal(nameof(TestEntity.Name), keys[1].PropertyName);
         }
@@ -64,21 +64,6 @@ namespace LiteOrm.Common.UnitTests
             var table = CreateTable(new SqlColumn[] { readable, writeOnly, full });
 
             Assert.Equal(new SqlColumn[] { readable, full }, table.SelectColumns);
-        }
-
-        [Fact]
-        public void ClearCache_RebuildsNamedColumnCacheOnNextLookup()
-        {
-            var column = CreateColumn(nameof(TestEntity.Name));
-            var table = CreateTable(new SqlColumn[] { column });
-
-            var cacheBefore = GetNamedColumnCache(table);
-            table.ClearCache();
-            var cacheAfter = GetNamedColumnCache(table);
-
-            Assert.Single(cacheBefore);
-            Assert.Single(cacheAfter);
-            Assert.Same(cacheBefore, cacheAfter);
         }
 
         [Fact]
@@ -117,7 +102,7 @@ namespace LiteOrm.Common.UnitTests
                 args: new object[] { objectType ?? typeof(TestEntity), new List<ColumnDefinition>() },
                 culture: null)!;
 
-            var table = new TableView(definition, new List<JoinedTable>(), columns);
+            var table = new TableView(definition, columns, new List<JoinedTable>());
             typeof(SqlObject).GetProperty(nameof(SqlObject.Name), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
                 .SetValue(table, name);
             return table;

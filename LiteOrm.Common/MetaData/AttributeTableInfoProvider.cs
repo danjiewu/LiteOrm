@@ -245,7 +245,7 @@ namespace LiteOrm
 
             // 创建TableView对象
 
-            TableView tableView = new TableView(tableDef, joinedTables.Values, columns) { Name = objectType.Name };
+            TableView tableView = new TableView(tableDef, columns, joinedTables.Values) { Name = objectType.Name };
             // 根据TableJoinAttribute设置JoinedTable的ForeignKeys属性
             foreach (TableJoinAttribute tableJoin in atts)
             {
@@ -406,7 +406,7 @@ namespace LiteOrm
         {
             if (String.IsNullOrWhiteSpace(tableJoin.PrimeKeys))
             {
-                return targetTableDef.Keys;
+                return targetTableDef.Keys.ToArray();
             }
 
             string[] primeKeyNames = tableJoin.PrimeKeys.Split(',');

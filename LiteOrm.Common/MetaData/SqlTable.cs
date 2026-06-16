@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 
 namespace LiteOrm.Common
@@ -10,16 +11,13 @@ namespace LiteOrm.Common
     /// </summary>
     public abstract class SqlTable : SqlObject
     {
-        internal SqlTable(ICollection<SqlColumn> columns)
+        internal SqlTable(IEnumerable<SqlColumn> columns)
         {
-            _columns = columns.ToArray();
-            foreach (SqlColumn column in columns) column.Table = this;
+            Columns = columns.ToList().AsReadOnly();
+            foreach (SqlColumn column in Columns) column.Table = this;
         }
 
         #region 私有变量
-        private SqlColumn[] _columns;
-        private ColumnDefinition[] _keys = null;
-        private SqlColumn[] _selectColumns = null;
         private ConcurrentDictionary<string, SqlColumn> _namedColumnCache = new ConcurrentDictionary<string, SqlColumn>(StringComparer.OrdinalIgnoreCase);
         #endregion
 
@@ -42,19 +40,19 @@ namespace LiteOrm.Common
         /// <summary>
         /// 数据库表的列信息，包括关联的外部列
         /// </summary>
-        public SqlColumn[] Columns
+        public ReadOnlyCollection<SqlColumn> Columns
         {
-            get { return _columns; }
+            get;
         }
 
         /// <summary>
         /// 主键列，按属性名称的顺序排列
         /// </summary>
-        public ColumnDefinition[] Keys
+        public ReadOnlyCollection<ColumnDefinition> Keys
         {
             get
             {
-                if (_keys == null)
+                if (field == null)
                 {
                     List<ColumnDefinition> keyList = new List<ColumnDefinition>();
                     foreach (SqlColumn column in Columns)
@@ -62,9 +60,9 @@ namespace LiteOrm.Common
                         if (column is ColumnDefinition columnDef && columnDef.IsPrimaryKey) keyList.Add(columnDef);
                     }
                     keyList.Sort(delegate (ColumnDefinition column1, ColumnDefinition column2) { return String.Compare(column1.PropertyName, column2.PropertyName); });
-                    _keys = keyList.ToArray();
+                    field = keyList.AsReadOnly();
                 }
-                return _keys;
+                return field;
             }
         }
 
@@ -72,22 +70,22 @@ namespace LiteOrm.Common
         /// 查询时需要读取的列，即 <see cref="ColumnMode"/> 允许读取的列。
         /// 结果按列在 <see cref="Columns"/> 中的顺序排列，与执行 SELECT 时的列顺序一致。
         /// </summary>
-        public SqlColumn[] SelectColumns
+        public ReadOnlyCollection<SqlColumn> SelectColumns
         {
             get
             {
-                if (_selectColumns == null)
+                if (field == null)
                 {
-                    _selectColumns = Array.FindAll(Columns, col =>
+                    field = new ReadOnlyCollection<SqlColumn>(Columns.Where(col =>
                     {
                         SqlColumn column = col;
                         while (column is ForeignColumn foreignColumn) column = foreignColumn.TargetColumn.Column;
                         if (column is ColumnDefinition columnDefinition)
                             return columnDefinition.Mode.CanRead();
                         return true;
-                    });
+                    }).ToList());
                 }
-                return _selectColumns;
+                return field;
             }
         }
 
@@ -122,15 +120,6 @@ namespace LiteOrm.Common
             SqlColumn column;
             NamedColumnCache.TryGetValue(propertyName, out column);
             return column;
-        }
-
-        /// <summary>
-        /// 清空缓存
-        /// </summary>
-        public void ClearCache()
-        {
-            _namedColumnCache.Clear();
-            _selectColumns = null;
         }
 
         /// <summary>

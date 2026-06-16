@@ -287,7 +287,7 @@ namespace LiteOrm
         /// 编译基于 <see cref="SqlColumn"/> 定义的位置映射委托。
         /// <paramref name="selectColumns"/>[i] 对应读取器第 i 列，使用列的属性名定位目标属性。
         /// </summary>
-        private static Func<DbDataReader, TResult> CompileConverterByColumns<TResult>(SqlColumn[] selectColumns)
+        private static Func<DbDataReader, TResult> CompileConverterByColumns<TResult>(IList<SqlColumn> selectColumns)
         {
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(DbDataReader), "reader");
@@ -295,7 +295,7 @@ namespace LiteOrm
                 ?? throw new InvalidOperationException($"Type '{resultType.FullName}' does not have a public parameterless constructor.");
 
             var bindings = new List<MemberBinding>();
-            int count = selectColumns.Length;
+            int count = selectColumns.Count;
             for (int i = 0; i < count; i++)
             {
                 SqlColumn column = selectColumns[i];

@@ -660,25 +660,6 @@ namespace LiteOrm.Tests
                 int minAge = Convert.ToInt32(minDt.Rows[0]["MinAge"]);
                 Assert.Equal(20, minAge);
             }
-
-            // 测试AndIf扩展方法
-            var andIfExpr = (Expr.Prop("Age") > 18).AndIf(true, Expr.Prop("Name").Contains("Test"));
-            var andIfResults = await objectViewDAO.Search(andIfExpr).ToListAsync(TestContext.Current.CancellationToken);
-            Assert.NotNull(andIfResults);
-            Assert.NotEmpty(andIfResults);
-
-            // 测试OrIf扩展方法
-            var orIfExpr = (Expr.Prop("Age") > 35).OrIf(true, Expr.Prop("Name").Contains("Test"));
-            var orIfResults = await objectViewDAO.Search(orIfExpr).ToListAsync(TestContext.Current.CancellationToken);
-            Assert.NotNull(orIfResults);
-            Assert.NotEmpty(orIfResults);
-
-            // 测试WhereIf扩展方法
-            var whereIfQuery = Expr.From<TestUser>().Where(Expr.Prop("Age") > 18);
-            var whereIfResult = dataViewDAO.Search(whereIfQuery);
-            DataTable whereIfDt = await whereIfResult.GetResultAsync(TestContext.Current.CancellationToken);
-            Assert.NotNull(whereIfDt);
-            Assert.True(whereIfDt.Rows.Count >= 1);
         }
 
         #endregion

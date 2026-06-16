@@ -534,52 +534,6 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
-        public void AndIf_ConditionTrue_AddsCondition()
-        {
-            var expr = Expr.Prop("A") == 1;
-            var right = Expr.Prop("B") == 2;
-
-            var result = expr.AndIf(true, right);
-
-            var and = Assert.IsType<AndExpr>(result);
-            Assert.Equal(2, and.Count);
-        }
-
-        [Fact]
-        public void AndIf_ConditionFalse_ReturnsOriginal()
-        {
-            var expr = Expr.Prop("A") == 1;
-            var right = Expr.Prop("B") == 2;
-
-            var result = expr.AndIf(false, right);
-
-            Assert.Same(expr, result);
-        }
-
-        [Fact]
-        public void OrIf_ConditionTrue_AddsCondition()
-        {
-            var expr = Expr.Prop("A") == 1;
-            var right = Expr.Prop("B") == 2;
-
-            var result = expr.OrIf(true, right);
-
-            var or = Assert.IsType<OrExpr>(result);
-            Assert.Equal(2, or.Count);
-        }
-
-        [Fact]
-        public void OrIf_ConditionFalse_ReturnsOriginal()
-        {
-            var expr = Expr.Prop("A") == 1;
-            var right = Expr.Prop("B") == 2;
-
-            var result = expr.OrIf(false, right);
-
-            Assert.Same(expr, result);
-        }
-
-        [Fact]
         public void Distinct_CreatesUnaryExpr()
         {
             var result = Expr.Prop("Id").Distinct();

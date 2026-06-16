@@ -572,7 +572,7 @@ namespace LiteOrm
             var updatableColumns = UpdatableColumns;
             var keys = TableDefinition.Keys;
             int updatableCount = updatableColumns.Length;
-            int keyCount = keys.Length;
+            int keyCount = keys.Count;
             var parameters = updateCommand.Parameters;
             int paramIndex = 0;
 
@@ -650,14 +650,14 @@ namespace LiteOrm
             if (list.Count == 0) return;
 
             var keyColumns = TableDefinition.Keys;
-            if (keyColumns.Length == 0)
+            if (keyColumns.Count == 0)
             {
                 BatchInsert(list);
                 return;
             }
 
             var existingIds = new HashSet<List<object>>(new ListEqualityComparer<object>());
-            int paramsPerKey = keyColumns.Length;
+            int paramsPerKey = keyColumns.Count;
             int batchSize = GetDaoContext().ParamCountLimit / 10 / paramsPerKey * 10;
             if (batchSize == 0) batchSize = 1;
 
@@ -667,7 +667,7 @@ namespace LiteOrm
             foreach (var item in list)
             {
                 bool validId = true;
-                for (int j = 0; j < keyColumns.Length; j++)
+                for (int j = 0; j < keyColumns.Count; j++)
                 {
                     if (keyColumns[j].GetValue(item) == null || keyColumns[j].GetValue(item) == DBNull.Value)
                     {
@@ -678,7 +678,7 @@ namespace LiteOrm
 
                 if (!validId) continue;
 
-                for (int j = 0; j < keyColumns.Length; j++)
+                for (int j = 0; j < keyColumns.Count; j++)
                 {
                     command.Parameters[batch.Count * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].DbType);
                 }
@@ -691,7 +691,7 @@ namespace LiteOrm
                         while (reader.Read())
                         {
                             List<object> keyValues = new List<object>();
-                            for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                            for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
                             existingIds.Add(keyValues);
                         }
                     }
@@ -704,7 +704,7 @@ namespace LiteOrm
                 {
                     for (int i = 0; i < batch.Count; i++)
                     {
-                        for (int j = 0; j < keyColumns.Length; j++)
+                        for (int j = 0; j < keyColumns.Count; j++)
                         {
                             cmd.Parameters[i * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
                         }
@@ -714,7 +714,7 @@ namespace LiteOrm
                         while (reader.Read())
                         {
                             List<object> keyValues = new List<object>();
-                            for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                            for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
                             existingIds.Add(keyValues);
                         }
                     }
@@ -728,7 +728,7 @@ namespace LiteOrm
             {
                 List<object> keyValues = new List<object>();
                 bool validId = true;
-                for (int i = 0; i < keyColumns.Length; i++)
+                for (int i = 0; i < keyColumns.Count; i++)
                 {
                     var val = keyColumns[i].GetValue(item);
                     if (val == null || val == DBNull.Value)
@@ -1032,7 +1032,7 @@ namespace LiteOrm
             var updatableColumns = UpdatableColumns;
             var keys = TableDefinition.Keys;
             int updatableCount = updatableColumns.Length;
-            int keyCount = keys.Length;
+            int keyCount = keys.Count;
             var parameters = updateCommand.Parameters;
             int paramIndex = 0;
 
@@ -1111,14 +1111,14 @@ namespace LiteOrm
             if (list.Count == 0) return;
 
             var keyColumns = TableDefinition.Keys;
-            if (keyColumns.Length == 0)
+            if (keyColumns.Count == 0)
             {
                 await BatchInsertAsync(list, cancellationToken).ConfigureAwait(false);
                 return;
             }
 
             var existingIds = new HashSet<List<object>>(new ListEqualityComparer<object>());
-            int paramsPerKey = keyColumns.Length;
+            int paramsPerKey = keyColumns.Count;
             int batchSize = (await GetDaoContextAsync(cancellationToken).ConfigureAwait(false)).ParamCountLimit / 10 / paramsPerKey * 10;
             if (batchSize == 0) batchSize = 1;
 
@@ -1129,7 +1129,7 @@ namespace LiteOrm
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 bool validId = true;
-                for (int j = 0; j < keyColumns.Length; j++)
+                for (int j = 0; j < keyColumns.Count; j++)
                 {
                     if (keyColumns[j].GetValue(item) == null || keyColumns[j].GetValue(item) == DBNull.Value)
                     {
@@ -1140,7 +1140,7 @@ namespace LiteOrm
 
                 if (!validId) continue;
 
-                for (int j = 0; j < keyColumns.Length; j++)
+                for (int j = 0; j < keyColumns.Count; j++)
                 {
                     command.Parameters[batch.Count * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].DbType);
                 }
@@ -1153,7 +1153,7 @@ namespace LiteOrm
                         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                         {
                             List<object> keyValues = new List<object>();
-                            for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                            for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
                             existingIds.Add(keyValues);
                         }
                     }
@@ -1167,7 +1167,7 @@ namespace LiteOrm
                 using DbCommandProxy cmd = await MakeNamedParamCommandAsync(MakeBatchIDExistsSql(batch.Count), cancellationToken).ConfigureAwait(false);
                 for (int i = 0; i < batch.Count; i++)
                 {
-                    for (int j = 0; j < keyColumns.Length; j++)
+                    for (int j = 0; j < keyColumns.Count; j++)
                     {
                         cmd.Parameters[i * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].DbType);
                     }
@@ -1177,7 +1177,7 @@ namespace LiteOrm
                     while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                     {
                         List<object> keyValues = new List<object>();
-                        for (int i = 0; i < keyColumns.Length; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                        for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
                         existingIds.Add(keyValues);
                     }
                 }
@@ -1190,7 +1190,7 @@ namespace LiteOrm
             {
                 List<object> keyValues = new List<object>();
                 bool validId = true;
-                for (int i = 0; i < keyColumns.Length; i++)
+                for (int i = 0; i < keyColumns.Count; i++)
                 {
                     var val = keyColumns[i].GetValue(item);
                     if (val == null || val == DBNull.Value)

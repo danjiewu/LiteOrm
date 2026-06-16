@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Mime;
 using System.Reflection;
 
@@ -103,12 +104,13 @@ namespace LiteOrm.CodeGen
         /// 实现了 <see cref="IArged"/> 接口的动态表名类型会被跳过（因无法确定运行时表名）。
         /// 无法解析或数据源不存在的类型会被静默跳过。
         /// </summary>
+        /// <param name="createNew">指示是否只新建表而不是更新现有表。</param>
         /// <param name="assemblies">
         /// 要扫描的程序集数组。若为空或未指定，则自动扫描所有已加载的相关程序集
         /// （通过 <see cref="AssemblyAnalyzer.GetAllReferencedAssemblies"/>）。
         /// </param>
         /// <returns>按数据源分组的 ddl 语句集合，键为数据源名称，值为该数据源的 ddl 语句列表。</returns>
-        public IDictionary<string, List<string>> GenerateAllDdl(params Assembly[] assemblies)
+        public IDictionary<string, List<string>> GenerateAllDdl(bool createNew, params Assembly[] assemblies)
         {
             IEnumerable<Assembly> targetAssemblies = (assemblies != null && assemblies.Length > 0)
                 ? (IEnumerable<Assembly>)assemblies
@@ -155,7 +157,25 @@ namespace LiteOrm.CodeGen
                     foreach (var type in kvp.Value)
                     {
                         List<string> statements;
-                        try { statements = pool.DatabaseSync.ResolveEnsureTableDdl(context, type); }
+                        try
+                        {
+                            if (createNew)
+                            {
+
+                                TableDefinition? tableDef;
+                                try { tableDef = TableInfoProvider.Default?.GetTableDefinition(type); }
+                                catch { continue; }
+
+                                if (tableDef == null) continue;
+                                var tableName = tableDef.Name;
+                                statements = new List<string>();
+                                statements.Add(pool.SqlBuilder.BuildCreateTableSql(tableName, tableDef.Columns));
+                                foreach (var col in tableDef.Columns.Where(c => c.IsIndex || c.IsUnique))
+                                    statements.Add(pool.SqlBuilder.BuildCreateIndexSql(tableName, col));
+                            }
+                            else
+                                statements = pool.DatabaseSync.ResolveEnsureTableDdl(context, type);
+                        }
                         catch { continue; }
 
                         if (statements != null && statements.Count > 0)

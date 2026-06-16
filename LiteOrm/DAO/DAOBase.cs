@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -215,7 +216,7 @@ namespace LiteOrm
         /// <summary>
         /// 查询时需要获取的所有列
         /// </summary>
-        protected virtual SqlColumn[] SelectColumns => Table.SelectColumns;
+        protected virtual ReadOnlyCollection<SqlColumn> SelectColumns => Table.SelectColumns;
 
 
         /// <summary>
@@ -295,7 +296,7 @@ namespace LiteOrm
         /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
         protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy> configureCommand = null)
         {
-            if (TableArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableArgs);
+            if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
             return GetDaoContext().PreparedCommands.GetOrAdd((ObjectType, methodName), _ =>
             {
                 var command = MakeNamedParamCommand(sqlFunc());
@@ -314,7 +315,7 @@ namespace LiteOrm
         /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
         protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy> configureCommand = null, CancellationToken cancellationToken = default)
         {
-            if (TableArgs != null && Table.Columns.Length > 0) methodName += String.Join("_", TableArgs);
+            if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
             if (daoContext.PreparedCommands.TryGetValue((ObjectType, methodName), out var command))
             {
@@ -534,7 +535,7 @@ namespace LiteOrm
             ThrowExceptionIfNoKeys();
             var strConditions = ValueStringBuilder.Create(128);
             var keys = Table.Keys;
-            int count = keys.Length;
+            int count = keys.Count;
             for (int i = 0; i < count; i++)
             {
                 ColumnDefinition key = keys[i];
@@ -609,7 +610,7 @@ namespace LiteOrm
         /// <exception cref="Exception"></exception>
         protected void ThrowExceptionIfNoKeys()
         {
-            if (TableDefinition.Keys.Length == 0)
+            if (TableDefinition.Keys.Count == 0)
             {
                 throw new Exception($"No key definition found in type \"{Table.DefinitionType.FullName}\", please set the value of property \"IsPrimaryKey\" of key column to true.");
             }
@@ -635,7 +636,7 @@ namespace LiteOrm
         protected void ThrowExceptionIfWrongKeys(params object[] keys)
         {
             if (keys is null) throw new ArgumentNullException("keys");
-            if (keys.Length != TableDefinition.Keys.Length)
+            if (keys.Length != TableDefinition.Keys.Count)
             {
                 if (_exceptionWrongKeys is null)
                 {

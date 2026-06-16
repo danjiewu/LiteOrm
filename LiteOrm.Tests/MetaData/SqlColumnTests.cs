@@ -80,8 +80,8 @@ namespace LiteOrm.Common.UnitTests
                     binder: null,
                     args: new object[] { typeof(TestEntity), new List<ColumnDefinition>() },
                     culture: null)!,
-                new List<JoinedTable>(),
-                new SqlColumn[] { left, right });
+                new SqlColumn[] { left, right },
+                new List<JoinedTable>());
 
             Assert.True(left.Equals(right));
         }

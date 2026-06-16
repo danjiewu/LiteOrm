@@ -741,10 +741,10 @@ namespace LiteOrm
         /// <param name="keyColumns">主键列定义数组。</param>
         /// <param name="batchSize">批量大小。</param>
         /// <returns>生成的 SQL 语句。</returns>
-        public virtual string BuildBatchIDExistsSql(string tableName, ColumnDefinition[] keyColumns, int batchSize)
+        public virtual string BuildBatchIDExistsSql(string tableName, IList<ColumnDefinition> keyColumns, int batchSize)
         {
             var sb = ValueStringBuilder.Create(1024);
-            for (int i = 0; i < keyColumns.Length; i++)
+            for (int i = 0; i < keyColumns.Count; i++)
             {
                 if (i > 0) sb.Append(",");
                 sb.Append(ToSqlName(keyColumns[i].Name));
@@ -763,14 +763,14 @@ namespace LiteOrm
             for (int b = 0; b < batchSize; b++)
             {
                 if (b > 0) sb.Append(",");
-                if (keyColumns.Length > 1) sb.Append("(");
-                for (int i = 0; i < keyColumns.Length; i++)
+                if (keyColumns.Count > 1) sb.Append("(");
+                for (int i = 0; i < keyColumns.Count; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    string keyParam = (b * keyColumns.Length + i).ToString();
+                    string keyParam = (b * keyColumns.Count + i).ToString();
                     sb.Append(ToSqlParam(keyParam));
                 }
-                if (keyColumns.Length > 1) sb.Append(")");
+                if (keyColumns.Count > 1) sb.Append(")");
             }
             sb.Append(")");
             string result = sb.ToString();

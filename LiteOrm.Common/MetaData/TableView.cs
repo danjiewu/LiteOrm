@@ -13,9 +13,9 @@ namespace LiteOrm.Common
         /// 初始化该视图定义。
         /// </summary>
         /// <param name="table">基表（主表）定义。</param>
-        /// <param name="joinedTables">相关联的外部表集合。</param>
         /// <param name="columns">视图中包含的所有列信息。</param>
-        public TableView(TableDefinition table, ICollection<JoinedTable> joinedTables, ICollection<SqlColumn> columns)
+        /// <param name="joinedTables">相关联的外部表集合。</param>
+        public TableView(TableDefinition table, ICollection<SqlColumn> columns, ICollection<JoinedTable> joinedTables)
             : base(columns)
         {
             _table = table;
@@ -24,7 +24,6 @@ namespace LiteOrm.Common
 
         private readonly TableDefinition _table;
         private readonly List<JoinedTable> _tables;
-        private ReadOnlyCollection<JoinedTable> _joinedTables;
 
         /// <summary>
         /// 获取格式化后的联合表集合（已处理依赖排序）。
@@ -33,7 +32,7 @@ namespace LiteOrm.Common
         {
             get
             {
-                if (_joinedTables == null)
+                if (field == null)
                 {
                     _tables.Sort(delegate (JoinedTable t1, JoinedTable t2)
                     {
@@ -41,9 +40,9 @@ namespace LiteOrm.Common
                         else if (CheckDependOn(t2, t1)) return -1;
                         else return 0;
                     });
-                    _joinedTables = _tables.AsReadOnly();
+                    field = _tables.AsReadOnly();
                 }
-                return _joinedTables;
+                return field;
             }
         }
 
@@ -72,14 +71,6 @@ namespace LiteOrm.Common
 
         {
             get { return _table; }
-        }
-
-        /// <summary>
-        /// 获取主表定义上的固定筛选条件。
-        /// </summary>
-        public LogicExpr ConstFilter
-        {
-            get { return _table.ConstFilter; }
         }
     }
 

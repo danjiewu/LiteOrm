@@ -116,7 +116,7 @@ namespace LiteOrm
         {
             ThrowExceptionIfWrongKeys(keys);
             var getObjectCommand = GetPreparedCommand("GetObject", MakeGetObjectSql);
-            for (int i = 0; i < TableDefinition.Keys.Length; i++)
+            for (int i = 0; i < TableDefinition.Keys.Count; i++)
             {
                 var key = TableDefinition.Keys[i];
                 getObjectCommand.Parameters[i].Value = ConvertToDbValue(keys[i], key.DbType);
@@ -168,7 +168,7 @@ namespace LiteOrm
         {
             ThrowExceptionIfWrongKeys(keys);
             var objectExistsCommand = GetPreparedCommand("ExistsKey", MakeObjectExistsSql);
-            for (int i = 0; i < TableDefinition.Keys.Length; i++)
+            for (int i = 0; i < TableDefinition.Keys.Count; i++)
             {
                 var key = TableDefinition.Keys[i];
                 objectExistsCommand.Parameters[i].Value = ConvertToDbValue(keys[i], key.DbType);
