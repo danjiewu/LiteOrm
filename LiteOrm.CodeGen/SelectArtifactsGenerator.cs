@@ -280,26 +280,78 @@ public sealed class SelectArtifactsGenerator
 
     private static List<ViewPropertyModel> BuildViewProperties(BoundSelectModel model)
     {
-        var properties = new List<ViewPropertyModel>();
+        var slots = BuildVisibleProjectionSlots(model);
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var property = slots[i].ViewProperty;
+            if (property == null)
+                continue;
+
+            var orderArguments = new List<string>();
+            var previous = slots.Take(i).LastOrDefault()?.Anchor;
+            if (previous != null)
+                orderArguments.Add($"After = nameof({previous.OwnerTypeName}.{previous.PropertyName})");
+
+            var next = slots.Skip(i + 1).FirstOrDefault()?.Anchor;
+            if (next != null)
+                orderArguments.Add($"Before = nameof({next.OwnerTypeName}.{next.PropertyName})");
+
+            if (orderArguments.Count > 0)
+                property.Attributes.Add($"[PropertyOrder({string.Join(", ", orderArguments)})]");
+        }
+
+        return slots
+            .Where(slot => slot.ViewProperty != null)
+            .Select(slot => slot.ViewProperty!)
+            .ToList();
+    }
+
+    private static List<ViewPropertySlot> BuildVisibleProjectionSlots(BoundSelectModel model)
+    {
+        var slots = new List<ViewPropertySlot>();
+        var seenProperties = new HashSet<string>(StringComparer.Ordinal);
+
         foreach (var projection in model.Projections)
         {
             if (projection.Kind == ProjectionKind.Wildcard)
+            {
+                if (string.IsNullOrWhiteSpace(projection.WildcardAlias))
+                {
+                    foreach (var column in model.MainTable.Table.Columns.OrderBy(c => c.Ordinal))
+                    {
+                        TryAddVisibleProjectionSlot(
+                            slots,
+                            seenProperties,
+                            new PropertyAnchor(model.MainTable.Table.ClassName, column.PropertyName),
+                            viewProperty: null);
+                    }
+                }
+
                 continue;
+            }
 
             if (projection.Kind == ProjectionKind.Column && projection.Column != null)
             {
                 bool fromMain = string.Equals(projection.Column.TableAlias, model.MainTable.Alias, StringComparison.OrdinalIgnoreCase);
                 string propertyName = projection.Alias ?? projection.Column.Column.PropertyName;
-                if (fromMain && string.Equals(propertyName, projection.Column.Column.PropertyName, StringComparison.Ordinal))
-                    continue;
+                bool requiresGeneratedProperty = !fromMain || !string.Equals(propertyName, projection.Column.Column.PropertyName, StringComparison.Ordinal);
 
                 var attributes = new List<string>();
                 if (!fromMain)
                     attributes.Add($"[ForeignColumn(\"{projection.Column.TableAlias}\", Property = nameof({projection.Column.Table.ClassName}.{projection.Column.Column.PropertyName}))]");
-                else if (!string.Equals(propertyName, projection.Column.Column.PropertyName, StringComparison.Ordinal))
+                else if (requiresGeneratedProperty)
                     attributes.Add($"[Column(\"{projection.Alias}\")]");
 
-                properties.Add(new ViewPropertyModel(propertyName, CodeGenNaming.ToCSharpTypeName(projection.Column.Column.ClrType, projection.Column.Column.IsNullable), attributes));
+                TryAddVisibleProjectionSlot(
+                    slots,
+                    seenProperties,
+                    new PropertyAnchor(requiresGeneratedProperty ? model.ViewName : model.MainTable.Table.ClassName, propertyName),
+                    requiresGeneratedProperty
+                        ? new ViewPropertyModel(
+                            propertyName,
+                            CodeGenNaming.ToCSharpTypeName(projection.Column.Column.ClrType, projection.Column.Column.IsNullable),
+                            attributes)
+                        : null);
                 continue;
             }
 
@@ -314,14 +366,24 @@ public sealed class SelectArtifactsGenerator
                     "MIN" => projection.Function.Argument?.Column.ClrType ?? typeof(string),
                     _ => typeof(string)
                 };
-                properties.Add(new ViewPropertyModel(projection.Alias!, CodeGenNaming.ToCSharpTypeName(resultType, false), []));
+
+                TryAddVisibleProjectionSlot(
+                    slots,
+                    seenProperties,
+                    new PropertyAnchor(model.ViewName, projection.Alias!),
+                    new ViewPropertyModel(projection.Alias!, CodeGenNaming.ToCSharpTypeName(resultType, false), []));
             }
         }
 
-        return properties
-            .GroupBy(p => p.Name, StringComparer.Ordinal)
-            .Select(g => g.First())
-            .ToList();
+        return slots;
+    }
+
+    private static void TryAddVisibleProjectionSlot(List<ViewPropertySlot> slots, HashSet<string> seenProperties, PropertyAnchor anchor, ViewPropertyModel? viewProperty)
+    {
+        if (!seenProperties.Add(anchor.PropertyName))
+            return;
+
+        slots.Add(new ViewPropertySlot(anchor, viewProperty));
     }
 
     private static string GenerateQueryCode(BoundSelectModel model, SelectGenerationOptions options)
@@ -445,6 +507,10 @@ public sealed class SelectArtifactsGenerator
     }
 
     private sealed record ViewPropertyModel(string Name, string TypeName, List<string> Attributes);
+
+    private sealed record PropertyAnchor(string OwnerTypeName, string PropertyName);
+
+    private sealed record ViewPropertySlot(PropertyAnchor Anchor, ViewPropertyModel? ViewProperty);
 
     private sealed class BoundSelectModel
     {

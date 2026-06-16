@@ -40,9 +40,27 @@ namespace LiteOrm.Tests
             Assert.NotNull(result.QueryCode);
             Assert.Contains("[TableJoin(typeof(Department), nameof(User.DeptId), Alias = \"d\"", result.ViewCode);
             Assert.Contains("[ForeignColumn(\"d\", Property = nameof(Department.Name))]", result.ViewCode);
+            Assert.Contains("[PropertyOrder(After = nameof(User.Name))]", result.ViewCode);
             Assert.Contains("new TableJoinExpr", result.QueryCode);
             Assert.Contains("Expr.Prop(\"u\", nameof(User.Age)) >= 18", result.QueryCode);
             Assert.Contains("nameof(UserReportView.DeptName)", result.QueryCode);
+        }
+
+        [Fact]
+        public void SelectArtifactsGenerator_ShouldPlaceForeignColumnBetweenInheritedProperties()
+        {
+            var schema = BuildSchema();
+            var generator = new SelectArtifactsGenerator();
+
+            var result = generator.Generate(
+                schema,
+                "SELECT u.Id, d.Name AS DeptName, u.Name FROM Users u LEFT JOIN Departments d ON u.DeptId = d.Id ORDER BY u.Id",
+                new SelectGenerationOptions { Namespace = "Demo.Models", ViewName = "UserReportView" });
+
+            Assert.True(result.Succeeded);
+            Assert.NotNull(result.ViewCode);
+            Assert.Contains("[ForeignColumn(\"d\", Property = nameof(Department.Name))]", result.ViewCode);
+            Assert.Contains("[PropertyOrder(After = nameof(User.Id), Before = nameof(User.Name))]", result.ViewCode);
         }
 
         [Fact]
@@ -60,6 +78,9 @@ namespace LiteOrm.Tests
             Assert.NotNull(result.ViewCode);
             Assert.NotNull(result.QueryCode);
             Assert.Contains("[ForeignColumn(\"d\", Property = nameof(Department.Name))]", result.ViewCode);
+            Assert.Contains("[PropertyOrder(Before = nameof(UserSummaryView.UserCount))]", result.ViewCode);
+            Assert.Contains("[PropertyOrder(After = nameof(UserSummaryView.DeptName), Before = nameof(UserSummaryView.TotalAge))]", result.ViewCode);
+            Assert.Contains("[PropertyOrder(After = nameof(UserSummaryView.UserCount))]", result.ViewCode);
             Assert.Contains("public int UserCount { get; set; }", result.ViewCode);
             Assert.Contains("public int TotalAge { get; set; }", result.ViewCode);
             Assert.Contains("source = new GroupByExpr(source, Expr.Prop(\"d\", nameof(Department.Name)))", result.QueryCode);
