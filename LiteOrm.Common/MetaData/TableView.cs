@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace LiteOrm.Common
 {
@@ -34,16 +35,59 @@ namespace LiteOrm.Common
             {
                 if (field == null)
                 {
-                    _tables.Sort(delegate (JoinedTable t1, JoinedTable t2)
-                    {
-                        if (CheckDependOn(t1, t2)) return 1;
-                        else if (CheckDependOn(t2, t1)) return -1;
-                        else return 0;
-                    });
-                    field = _tables.AsReadOnly();
+                    field = SortTables().AsReadOnly();
                 }
                 return field;
             }
+        }
+
+        private List<JoinedTable> SortTables()
+        {
+            Dictionary<JoinedTable, HashSet<JoinedTable>> dependencies = new Dictionary<JoinedTable, HashSet<JoinedTable>>();
+            Dictionary<JoinedTable, int> indegrees = new Dictionary<JoinedTable, int>();
+            Queue<JoinedTable> queue = new Queue<JoinedTable>();
+            List<JoinedTable> sortedTables = new List<JoinedTable>(_tables.Count);
+
+            foreach (JoinedTable table in _tables)
+            {
+                HashSet<JoinedTable> dependencySet = new HashSet<JoinedTable>();
+                foreach (JoinedTable otherTable in _tables)
+                {
+                    if (!ReferenceEquals(table, otherTable) && CheckDependOn(table, otherTable))
+                        dependencySet.Add(otherTable);
+                }
+                dependencies[table] = dependencySet;
+                indegrees[table] = dependencySet.Count;
+            }
+
+            foreach (JoinedTable table in _tables)
+            {
+                if (indegrees[table] == 0)
+                    queue.Enqueue(table);
+            }
+
+            while (queue.Count > 0)
+            {
+                JoinedTable table = queue.Dequeue();
+                sortedTables.Add(table);
+                foreach (JoinedTable otherTable in _tables)
+                {
+                    if (dependencies[otherTable].Remove(table))
+                    {
+                        indegrees[otherTable]--;
+                        if (indegrees[otherTable] == 0)
+                            queue.Enqueue(otherTable);
+                    }
+                }
+            }
+
+            if (sortedTables.Count != _tables.Count)
+            {
+                string circularTables = string.Join(", ", indegrees.Where(item => item.Value > 0).Select(item => item.Key.Name));
+                throw new InvalidOperationException($"Detected circular joined table dependency: {circularTables}");
+            }
+
+            return sortedTables;
         }
 
         /// <summary>
@@ -58,7 +102,7 @@ namespace LiteOrm.Common
                 {
                     columnRef = foreignColumn.TargetColumn;
                 }
-                if (columnRef.Table != null && String.Equals(columnRef.Table.Name, baseTable.Name, StringComparison.OrdinalIgnoreCase))
+                if (ReferenceEquals(columnRef.Table, baseTable))
                     return true;
             }
             return false;

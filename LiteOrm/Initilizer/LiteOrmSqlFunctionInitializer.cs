@@ -336,8 +336,6 @@ namespace LiteOrm
                 outSql.Append("sysdate"));
             oracleBuilder.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append("trunc(sysdate)"));
-            oracleBuilder.RegisterFunctionSqlHandler("IfNull", (ref outSql, expr, context, sqlBuilder, outputParams) =>
-                outSql.Append($"NVL({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})"));
             oracleBuilder.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
                     outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + NUMTODSINTERVAL({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, '{expr.FunctionName.Substring(3).ToUpper().TrimEnd('S')}'))"));
@@ -457,8 +455,6 @@ namespace LiteOrm
                 outSql.Append("GETDATE()"));
             sqlServerBuilder.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append("CAST(GETDATE() AS DATE)"));
-            sqlServerBuilder.RegisterFunctionSqlHandler("IfNull", (ref outSql, expr, context, sqlBuilder, outputParams) =>
-                outSql.Append($"ISNULL({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})"));
             sqlServerBuilder.RegisterFunctionSqlHandler("Length", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"LEN({expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
             sqlServerBuilder.RegisterFunctionSqlHandler("IndexOf", (ref outSql, expr, context, sqlBuilder, outputParams) =>
