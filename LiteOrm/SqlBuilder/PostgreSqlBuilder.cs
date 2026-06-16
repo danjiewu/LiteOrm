@@ -85,13 +85,13 @@ namespace LiteOrm
         /// <summary>
         /// 获取 PostgreSql 列类型。
         /// </summary>
-        protected override string GetSqlType(ColumnDefinition column)
+        protected override string GetSqlTypeDefinition(ColumnDefinition column)
         {
             if (column.IsIdentity)
             {
                 return column.DbType == DbType.Int64 ? "BIGSERIAL" : "SERIAL";
             }
-            return base.GetSqlType(column);
+            return base.GetSqlTypeDefinition(column);
         }
 
         /// <summary>

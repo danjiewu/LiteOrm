@@ -3,6 +3,7 @@ using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 
 namespace LiteOrm
@@ -43,6 +44,21 @@ namespace LiteOrm
             // 注册通用的 SQL 映射
             sqlBuilder.RegisterFunctionSqlHandler("Now", (ref outSql, expr, context, sqlBuilder, outputParams) => outSql.Append("CURRENT_TIMESTAMP"));
             sqlBuilder.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) => outSql.Append("CURRENT_DATE"));
+            sqlBuilder.RegisterFunctionSqlHandler("CAST", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                outSql.Append("CAST(");
+                expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                outSql.Append(" AS ");
+                if (expr.Args.Count > 1 && expr.Args[1] is ValueExpr typeExpr && typeExpr.Value is DbType dbType)
+                {
+                    outSql.Append(sqlBuilder.GetSqlTypeName(dbType));
+                }
+                else if (expr.Args.Count > 1)
+                {
+                    expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                }
+                outSql.Append(")");
+            });
             sqlBuilder.RegisterFunctionSqlHandler(["DateDiffDays", "DateDiffHours", "DateDiffMinutes", "DateDiffSeconds", "DateDiffMilliseconds"], (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 Expr.Func(expr.FunctionName.Replace("DateDiff", "Total"), expr.Args[0] - expr.Args[1]).ToSql(ref outSql, context, sqlBuilder, outputParams);

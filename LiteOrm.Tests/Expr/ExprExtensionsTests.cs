@@ -432,7 +432,7 @@ namespace LiteOrm.Common.UnitTests
             var result = Expr.Prop("Name").IfNull(new ValueExpr("default"));
 
             var func = Assert.IsType<FunctionExpr>(result);
-            Assert.Equal("IfNull", func.FunctionName);
+            Assert.Equal("COALESCE", func.FunctionName);
         }
 
         [Fact]

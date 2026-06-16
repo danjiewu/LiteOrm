@@ -13,7 +13,7 @@ namespace LiteOrm
     /// <param name="context"></param>
     /// <param name="sqlBuilder"></param>
     /// <param name="outputParams"></param>
-    public delegate void FunctionSqlHandler(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams);
+    public delegate void FunctionSqlHandler(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams);
 
     /// <summary>
     /// 简单函数 SQL 生成委托，直接提供函数名称和参数列表，适用于仅需调整函数格式，不需要自定义解析参数的场景。
@@ -81,7 +81,7 @@ namespace LiteOrm
         /// <param name="handler">将函数名成和参数表达式直接写入输出缓冲区的处理委托。</param>
         public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, string functionName, SimpleFunctionSqlHandler handler) where T : SqlBuilder
         {
-            SqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+            SqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
             {
                 List<string> arguments = new List<string>();
                 foreach (var arg in expr.Args)

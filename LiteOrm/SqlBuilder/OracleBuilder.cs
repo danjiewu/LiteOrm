@@ -248,7 +248,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取 Oracle 列 type。
         /// </summary>
-        protected override string GetSqlType(ColumnDefinition column)
+        protected override string GetSqlTypeDefinition(ColumnDefinition column)
         {
             switch (column.DbType)
             {
@@ -271,7 +271,7 @@ namespace LiteOrm
                 case DbType.Time:
                     return "INTERVAL DAY TO SECOND";
                 default:
-                    return base.GetSqlType(column);
+                    return base.GetSqlTypeDefinition(column);
             }
         }
 

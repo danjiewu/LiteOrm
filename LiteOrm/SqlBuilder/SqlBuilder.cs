@@ -494,6 +494,36 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 将 <see cref="DbType"/> 转换为通用的 SQL 类型名称，用于 CAST 表达式等。
+        /// </summary>
+        public virtual string GetSqlTypeName(DbType dbType)
+        {
+            return dbType switch
+            {
+                DbType.String or DbType.AnsiString or DbType.AnsiStringFixedLength or DbType.StringFixedLength => "VARCHAR",
+                DbType.Int16 => "SMALLINT",
+                DbType.Int32 => "INT",
+                DbType.Int64 => "BIGINT",
+                DbType.Boolean => "BIT",
+                DbType.UInt16 => "SMALLINT",
+                DbType.UInt32 => "INT",
+                DbType.UInt64 => "BIGINT",
+                DbType.DateTime => "DATETIME",
+                DbType.DateTime2 => "TIMESTAMP",
+                DbType.DateTimeOffset => "DATETIMEOFFSET",
+                DbType.Date => "DATE",
+                DbType.Time => "TIME",
+                DbType.Decimal => "DECIMAL",
+                DbType.Double => "DOUBLE",
+                DbType.Single => "FLOAT",
+                DbType.Byte or DbType.SByte => "TINYINT",
+                DbType.Guid => "GUID",
+                DbType.Binary => "BLOB",
+                _ => "VARCHAR"
+            };
+        }
+
+        /// <summary>
         /// 是否支持带自增列的批量插入并返回首个 ID。
         /// </summary>
         public virtual bool SupportBatchInsertWithIdentity => false;
@@ -594,7 +624,7 @@ namespace LiteOrm
             var sb = ValueStringBuilder.Create(64);
             sb.Append(ToSqlName(column.Name));
             sb.Append(" ");
-            sb.Append(GetSqlType(column));
+            sb.Append(GetSqlTypeDefinition(column));
 
             if (column.IsIdentity)
             {
@@ -627,7 +657,7 @@ namespace LiteOrm
             var sb = ValueStringBuilder.Create(64);
             sb.Append(ToSqlName(column.Name));
             sb.Append(" ");
-            sb.Append(GetSqlType(column));
+            sb.Append(GetSqlTypeDefinition(column));
 
             if (column.IsIdentity)
             {
@@ -885,7 +915,7 @@ namespace LiteOrm
         /// <summary>
         /// 根据列定义获取数据库列类型。
         /// </summary>
-        protected virtual string GetSqlType(ColumnDefinition column)
+        protected virtual string GetSqlTypeDefinition(ColumnDefinition column)
         {
             switch (column.DbType)
             {

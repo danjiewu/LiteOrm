@@ -383,6 +383,13 @@ namespace LiteOrm.Common
         public static FunctionExpr IfNull(this ValueTypeExpr expr, ValueTypeExpr defaultValue) => new FunctionExpr("COALESCE", expr, defaultValue);
 
         /// <summary>
+        /// 创建 CAST 函数表达式，将 <paramref name="expr"/> 转换为指定的 <paramref name="targetType"/>。
+        /// </summary>
+        /// <param name="expr">待转换的值表达式。</param>
+        /// <param name="targetType">目标类型。</param>
+        /// <returns>CAST 函数表达式。</returns>
+        public static FunctionExpr Cast(this ValueTypeExpr expr, System.Data.DbType targetType) => new FunctionExpr("CAST", expr, new ValueExpr(targetType));
+        /// <summary>
         /// 创建 IS NOT NULL 表达式。
         /// </summary>
         /// <param name="left">左侧值表达式。</param>

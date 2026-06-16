@@ -84,10 +84,10 @@ namespace LiteOrm
         /// <summary>
         /// 获取 SQLite 列类型。对于主键自增列，必须使用 INTEGER。
         /// </summary>
-        protected override string GetSqlType(ColumnDefinition column)
+        protected override string GetSqlTypeDefinition(ColumnDefinition column)
         {
             if (column.IsPrimaryKey && column.IsIdentity) return "INTEGER";
-            return base.GetSqlType(column);
+            return base.GetSqlTypeDefinition(column);
         }
 
         /// <summary>
@@ -326,7 +326,7 @@ namespace LiteOrm
             var sb = ValueStringBuilder.Create(64);
             sb.Append(ToSqlName(column.Name));
             sb.Append(" ");
-            sb.Append(GetSqlType(column));
+            sb.Append(GetSqlTypeDefinition(column));
 
             if (inlinePrimaryKey) sb.Append(" PRIMARY KEY");
             if (column.IsIdentity)
