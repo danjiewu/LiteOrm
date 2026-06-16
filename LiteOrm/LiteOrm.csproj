@@ -16,12 +16,11 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      序列化功能优化，非基础值类型附带类型标记；
-      增加PropertyOrder特性支持指定属性顺序；
-      增加自定义全局和方法异常处理支持；
-      预定义数据库操作的参数名改用序列号，避免参数名与关键字冲突；
-      修复Timestamp列未生效问题；
-      修正部分类型建表SQL错误；
+      Expr增加SelectAll、Cast扩展，取消AndIf、OrIf、WhereIf、SetIf扩展方法；
+      Service增加SearchAs方法；
+      增加三目运算符（a ? b : c）解析为CASE语句；
+      表达式名称忽略大小写；
+      优化TableView关联表的排序逻辑；
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
