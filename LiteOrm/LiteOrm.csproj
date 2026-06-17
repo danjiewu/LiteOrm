@@ -20,6 +20,7 @@
       Service增加SearchAs方法；
       增加三目运算符（a ? b : c）解析为CASE语句；
       表达式名称忽略大小写；
+      优化Like语句escape逻辑，非必要时不生成escape片段；
       优化TableView关联表的排序逻辑；
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
