@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -466,7 +466,7 @@ namespace LiteOrm
             foreach (ColumnDefinition column in columns)
             {
                 if (column.Constant is null) continue;
-                constFilter = constFilter.And(Expr.PropEqual(column.PropertyName, column.Constant));
+                constFilter = constFilter.And(Expr.Prop(column.PropertyName) == Expr.Const(column.Constant));
             }
             return constFilter;
         }

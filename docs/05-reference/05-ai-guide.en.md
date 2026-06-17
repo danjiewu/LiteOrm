@@ -360,7 +360,6 @@ public class OrderExceptionHook : IServiceExceptionHook
 | `Expr.Prop("alias", "Name")` | `PropertyExpr` | Property expression with a table alias |
 | `Expr.Value(obj)` | `ValueExpr` | Parameterized value |
 | `Expr.Const(obj)` | `ValueExpr` | Constant value (inlined into SQL, not parameterized) |
-| `Expr.PropEqual("Name", value)` | `LogicBinaryExpr` | Property equals value |
 | `Expr.Func("ABS", expr)` | `FunctionExpr` | Function call |
 | `Expr.Aggregate("SUM", expr, isDistinct)` | `FunctionExpr` | Aggregate function (`IsAggregate=true`) |
 | `Expr.Concat(e1, e2)` | `ValueSet` | CONCAT string composition (extension method) |
@@ -369,7 +368,9 @@ public class OrderExceptionHook : IServiceExceptionHook
 | `Expr.Sql("key", arg)` | `GenericSqlExpr` | Dynamic SQL fragment |
 | `Expr.Delete<T>(tableArgs)` | `DeleteExpr` | Creates a DELETE expression |
 | `Expr.If(condition, thenExpr, elseExpr)` | `FunctionExpr` | IF expression |
-| `Expr.Case(cases, elseExpr)` | `FunctionExpr` | CASE expression |
+| `Expr.Case(cases, elseExpr)` | `FunctionExpr` | CASE expression (tuple array form) |
+| `Expr.Case(params (LogicExpr, ValueTypeExpr)[])` | `FunctionExpr` | CASE expression (tuple array form, no ELSE) |
+| `Expr.Case(params Expr[])` | `FunctionExpr` | CASE expression (alternating argument form) |
 | `Expr.Query<T>(expression)` | `Expr` | Converts an IQueryable Lambda to Expr |
 | `Expr.Query<T, TResult>(expression)` | `Expr` | Converts an IQueryable Lambda with a return value to Expr |
 | `Expr.Exists<T>(innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query on a related table |

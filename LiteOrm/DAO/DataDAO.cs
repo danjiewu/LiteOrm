@@ -73,7 +73,7 @@ namespace LiteOrm
             int i = 0;
             foreach (ColumnDefinition column in Table.Keys)
             {
-                expr.Add(Expr.PropEqual(column.PropertyName, keys[i++]));
+                expr.Add(Expr.Prop(column.PropertyName) == new ValueExpr(keys[i++]));
             }
             return UpdateAllValues(values, expr);
         }

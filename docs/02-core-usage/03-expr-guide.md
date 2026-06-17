@@ -61,8 +61,42 @@ var levelExpr = If(Prop("Age") >= 18, Const("Adult"), Const("Minor"));
 ```
 
 - `.Cast(DbType)`：把值表达式转换为目标数据库类型，对应 SQL `CAST(...)`
-- `Expr.If(condition, then, else)` / `Expr.Case(...)`：构造条件值表达式，对应 SQL `CASE`
+- `Expr.If(condition, then, else)`：构造简单条件表达式，等价于 `CASE WHEN condition THEN then ELSE else END`
+- `Expr.Case(...)`：构造多条件 CASE 表达式，支持以下重载：
+  - `Case((LogicExpr, ValueTypeExpr)[] cases, ValueTypeExpr elseExpr)` - 条件-结果元组数组 + ELSE
+  - `Case(params (LogicExpr, ValueTypeExpr)[] cases)` - 条件-结果元组数组（无 ELSE）
+  - `Case(params Expr[] cases)` - 交替传入条件和结果表达式，奇数个参数时最后一个为 ELSE
 - 在 **Lambda** 查询中，三目运算符 `a ? b : c` 会自动解析成 `Expr.If(...)`，最终生成 `CASE WHEN ... THEN ... ELSE ... END`
+
+示例：
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 使用元组数组构建 CASE 表达式（推荐）
+var ageGroup = Case(
+    new[] {
+        (Prop("Age") < 18, (ValueTypeExpr)Const("Minor")),
+        (Prop("Age") < 30, (ValueTypeExpr)Const("Young")),
+        (Prop("Age") < 50, (ValueTypeExpr)Const("Adult"))
+    },
+    Const("Senior")  // ELSE 分支
+);
+
+// 无 ELSE 分支
+var ageGroupNoElse = Case(
+    (Prop("Age") < 18, Const("Minor")),
+    (Prop("Age") < 30, Const("Young"))
+);
+
+// 使用交替参数形式
+var levelExpr = Case(
+    Prop("Score") >= 90, Const("A"),
+    Prop("Score") >= 80, Const("B"),
+    Prop("Score") >= 60, Const("C"),
+    Const("D")  // ELSE 分支（参数为奇数个时最后一个为 ELSE）
+);
+```
 
 ## 2. 子查询与关联过滤
 

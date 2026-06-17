@@ -190,53 +190,6 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 创建一个属性等于值的二元表达式。
-        /// </summary>
-        /// <param name="propertyName">属性名称。</param>
-        /// <param name="value">比较值。</param>
-        /// <returns>二元表达式。</returns>
-        public static LogicBinaryExpr PropEqual(string propertyName, object value)
-        {
-            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.Equal, new ValueExpr(value));
-        }
-
-
-        /// <summary>
-        /// 创建一个属性等于值的二元表达式。
-        /// </summary>
-        /// <param name="propertyName">属性名称。</param>
-        /// <param name="value">比较值。</param>
-        /// <returns>二元表达式。</returns>
-        public static LogicBinaryExpr PropEqual(string propertyName, ValueTypeExpr value)
-        {
-            return new LogicBinaryExpr(new PropertyExpr(propertyName), LogicOperator.Equal, value);
-        }
-
-        /// <summary>
-        /// 创建一个指定操作符的二元表达式。
-        /// </summary>
-        /// <param name="propertyName">属性名称。</param>
-        /// <param name="oper">二元操作符。</param>
-        /// <param name="value">比较值。</param>
-        /// <returns>二元表达式。</returns>
-        public static LogicBinaryExpr Prop(string propertyName, LogicOperator oper, object value)
-        {
-            return new LogicBinaryExpr(new PropertyExpr(propertyName), oper, new ValueExpr(value));
-        }
-
-        /// <summary>
-        /// 创建一个指定操作符的二元表达式。
-        /// </summary>
-        /// <param name="propertyName">属性名称。</param>
-        /// <param name="oper">二元操作符。</param>
-        /// <param name="value">表示比较值的表达式。</param>
-        /// <returns>二元表达式。</returns>
-        public static LogicBinaryExpr Prop(string propertyName, LogicOperator oper, ValueTypeExpr value)
-        {
-            return new LogicBinaryExpr(new PropertyExpr(propertyName), oper, value);
-        }
-
-        /// <summary>
         /// 从表达式树创建 Lambda 表达式封装。
         /// </summary>
         /// <typeparam name="T">实体类型。</typeparam>

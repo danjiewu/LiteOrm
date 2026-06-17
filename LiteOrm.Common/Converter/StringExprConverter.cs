@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -108,15 +108,15 @@ namespace LiteOrm.Common
         /// <returns>二元表达式查询条件。</returns>
         public static LogicBinaryExpr Parse(PropertyInfo property, string text)
         {
-            if (String.IsNullOrEmpty(text)) return Expr.PropEqual(property.Name, null);
+            if (String.IsNullOrEmpty(text)) return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.Equal, Expr.Null);
             if (text.Length > 1)
             {
                 switch (text.Substring(0, 2))
                 {
                     case "<=":
-                        return Expr.Prop(property.Name, LogicOperator.LessThanOrEqual, ParseValue(property, text.Substring(2)));
+                        return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.LessThanOrEqual, new ValueExpr(ParseValue(property, text.Substring(2))));
                     case ">=":
-                        return Expr.Prop(property.Name, LogicOperator.GreaterThanOrEqual, ParseValue(property, text.Substring(2)));
+                        return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.GreaterThanOrEqual, new ValueExpr(ParseValue(property, text.Substring(2))));
                 }
             }
             LogicOperator mask = LogicOperator.Equal;
@@ -131,22 +131,22 @@ namespace LiteOrm.Common
                 switch (text[0])
                 {
                     case '=':
-                        return Expr.Prop(property.Name, LogicOperator.Equal | mask, ParseValue(property, text.Substring(1)));
+                        return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.Equal | mask, new ValueExpr(ParseValue(property, text.Substring(1))));
                     case '>':
-                        return Expr.Prop(property.Name, LogicOperator.GreaterThan | mask, ParseValue(property, text.Substring(1)));
+                        return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.GreaterThan | mask, new ValueExpr(ParseValue(property, text.Substring(1))));
                     case '<':
-                        return Expr.Prop(property.Name, LogicOperator.LessThan | mask, ParseValue(property, text.Substring(1)));
+                        return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.LessThan | mask, new ValueExpr(ParseValue(property, text.Substring(1))));
                     case '%':
-                        return Expr.Prop(property.Name, LogicOperator.Contains | mask, text.Substring(1).Trim());
+                        return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.Contains | mask, new ValueExpr(text.Substring(1).Trim()));
                     case '*':
-                        return Expr.Prop(property.Name, LogicOperator.Like | mask, text.Substring(1).Trim());
+                        return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.Like | mask, new ValueExpr(text.Substring(1).Trim()));
                     case '$':
-                        return Expr.Prop(property.Name, LogicOperator.RegexpLike | mask, text.Substring(1).Trim());
+                        return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.RegexpLike | mask, new ValueExpr(text.Substring(1).Trim()));
                 }
             }
             else
             {
-                return Expr.Prop(property.Name, LogicOperator.Equal | mask, null);
+                return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.Equal | mask, Expr.Null);
             }
             if (text.IndexOf(',') >= 0)
             {
@@ -155,9 +155,9 @@ namespace LiteOrm.Common
                 {
                     values.Add(ParseValue(property, value));
                 }
-                return Expr.Prop(property.Name, LogicOperator.In | mask, values.ToArray());
+                return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.In | mask, new ValueExpr(values.ToArray()));
             }
-            return Expr.Prop(property.Name, LogicOperator.Equal | mask, ParseValue(property, text));
+            return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.Equal | mask, new ValueExpr(ParseValue(property, text)));
         }
 
         /// <summary>

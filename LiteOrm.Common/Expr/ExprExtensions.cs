@@ -92,6 +92,13 @@ namespace LiteOrm.Common
         public static LogicExpr Not(this LogicExpr expr) => expr is NotExpr notExpr ? notExpr.Operand : new NotExpr(expr);
 
         /// <summary>
+        /// 对二元逻辑表达式执行取反操作，返回一个新的 LogicBinaryExpr，其中操作符被替换为其相反的逻辑操作符。
+        /// </summary>
+        /// <param name="logic">要取反的二元逻辑表达式。</param>
+        /// <returns>取反后的二元逻辑表达式。</returns>
+        public static LogicBinaryExpr Not(this LogicBinaryExpr logic) => new LogicBinaryExpr(logic.Left, logic.Operator.Opposite(), logic.Right);
+
+        /// <summary>
         /// 创建等于比较表达式。
         /// </summary>
         /// <param name="left">左侧值表达式。</param>

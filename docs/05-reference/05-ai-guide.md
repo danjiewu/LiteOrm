@@ -360,7 +360,6 @@ public class OrderExceptionHook : IServiceExceptionHook
 | `Expr.Prop("alias", "Name")`                     | `PropertyExpr`    | 带表别名的属性表达式                                  |
 | `Expr.Value(obj)`                                | `ValueExpr`       | 参数化值                                        |
 | `Expr.Const(obj)`                                | `ValueExpr`       | 常量值（内联到 SQL，不参数化）                           |
-| `Expr.PropEqual("Name", value)`                  | `LogicBinaryExpr` | 属性等于值                                       |
 | `Expr.Func("ABS", expr)`                         | `FunctionExpr`    | 函数调用                                        |
 | `Expr.Aggregate("SUM", expr, isDistinct)`        | `FunctionExpr`    | 聚合函数（IsAggregate=true）                      |
 | `Expr.Concat(e1, e2)`                            | `ValueSet`        | CONCAT 字符串拼接（扩展方法）                          |
@@ -369,7 +368,9 @@ public class OrderExceptionHook : IServiceExceptionHook
 | `Expr.Sql("key", arg)`                           | `GenericSqlExpr`  | 动态 SQL 片段                                   |
 | `Expr.Delete<T>(tableArgs)`                      | `DeleteExpr`      | 创建 DELETE 表达式                               |
 | `Expr.If(condition, thenExpr, elseExpr)`         | `FunctionExpr`    | IF 表达式                                      |
-| `Expr.Case(cases, elseExpr)`                     | `FunctionExpr`    | CASE 表达式                                    |
+| `Expr.Case(cases, elseExpr)`                     | `FunctionExpr`    | CASE 表达式（元组数组形式）                          |
+| `Expr.Case(params (LogicExpr, ValueTypeExpr)[])` | `FunctionExpr`    | CASE 表达式（元组数组形式，无 ELSE）                  |
+| `Expr.Case(params Expr[])`                       | `FunctionExpr`    | CASE 表达式（交替参数形式）                          |
 | `Expr.Query<T>(expression)`                      | `Expr`            | IQueryable Lambda 转 Expr                    |
 | `Expr.Query<T, TResult>(expression)`             | `Expr`            | 带返回值的 IQueryable Lambda 转 Expr              |
 | `Expr.Exists<T>(innerExpr, tableArgs)`           | `ForeignExpr`     | 关联表 EXISTS 查询                               |

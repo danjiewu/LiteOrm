@@ -60,8 +60,42 @@ var levelExpr = If(Prop("Age") >= 18, Const("Adult"), Const("Minor"));
 ```
 
 - `.Cast(DbType)`: converts a value expression to a target database type, rendered as SQL `CAST(...)`
-- `Expr.If(condition, then, else)` / `Expr.Case(...)`: builds a conditional value expression, rendered as SQL `CASE`
+- `Expr.If(condition, then, else)`: builds a simple conditional expression, equivalent to `CASE WHEN condition THEN then ELSE else END`
+- `Expr.Case(...)`: builds a multi-condition CASE expression with the following overloads:
+  - `Case((LogicExpr, ValueTypeExpr)[] cases, ValueTypeExpr elseExpr)` - condition-result tuple array + ELSE
+  - `Case(params (LogicExpr, ValueTypeExpr)[] cases)` - condition-result tuple array (no ELSE)
+  - `Case(params Expr[] cases)` - alternating condition and result expressions; the last argument is ELSE when the count is odd
 - In **Lambda** queries, the conditional operator `a ? b : c` is automatically parsed into `Expr.If(...)`, then rendered as `CASE WHEN ... THEN ... ELSE ... END`
+
+Examples:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// Build CASE expression using tuple array (recommended)
+var ageGroup = Case(
+    new[] {
+        (Prop("Age") < 18, (ValueTypeExpr)Const("Minor")),
+        (Prop("Age") < 30, (ValueTypeExpr)Const("Young")),
+        (Prop("Age") < 50, (ValueTypeExpr)Const("Adult"))
+    },
+    Const("Senior")  // ELSE clause
+);
+
+// Without ELSE clause
+var ageGroupNoElse = Case(
+    (Prop("Age") < 18, Const("Minor")),
+    (Prop("Age") < 30, Const("Young"))
+);
+
+// Using alternating argument form
+var levelExpr = Case(
+    Prop("Score") >= 90, Const("A"),
+    Prop("Score") >= 80, Const("B"),
+    Prop("Score") >= 60, Const("C"),
+    Const("D")  // ELSE clause (last argument is ELSE when count is odd)
+);
+```
 
 ## 2. Subqueries and relation filters
 
