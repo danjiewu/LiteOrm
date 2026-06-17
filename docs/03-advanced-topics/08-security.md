@@ -9,7 +9,7 @@ LiteOrm 的 SQL 注入防护采用**多层纵深防御**策略：
 | 层次 | 机制 | 说明 |
 |------|------|------|
 | 参数化 SQL | `outputParams` + 占位符 | 所有用户值以参数形式传递，零例外 |
-| LIKE 转义 + 参数化 | 通配符转义 + `ESCAPE` 子句 | 双重保护防止 LIKE 注入 |
+| LIKE 转义 + 参数化 | 通配符转义 + 按需生成 `ESCAPE` 子句 | 双重保护防止 LIKE 注入 |
 | ExprString 自动参数化 | 非 Expr 值自动转为命名参数 | 插值字符串中的用户值自动参数化 |
 | 表达式类型白名单 | `ExprTypeValidator` | 控制允许的表达式类型 |
 | 函数策略控制 | `FunctionExprValidator` | 控制可执行的 SQL 函数范围 |
@@ -61,9 +61,13 @@ var users = await userService.SearchAsync(u => u.UserName == "O'Brien");
 
 ### 2.3 LIKE 查询的双重保护
 
-LIKE 查询同时使用**参数化**和**通配符转义**：
+LIKE 查询同时使用**参数化**和**通配符转义**。只有输入中确实包含需要转义的通配符时，才会追加 `ESCAPE` 子句：
 
 ```csharp
+var users1 = await userService.SearchAsync(u => u.UserName.Contains("john"));
+// SQL: SELECT * FROM Users WHERE UserName LIKE @0
+// 参数: @0 = "%john%"
+
 var users = await userService.SearchAsync(u => u.UserName.Contains("100%"));
 // SQL: SELECT * FROM Users WHERE UserName LIKE @0 ESCAPE '/'
 // 参数: @0 = "%100/%%"  （% 被转义为 /%）

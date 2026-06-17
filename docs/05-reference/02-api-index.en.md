@@ -79,17 +79,15 @@ Related guides:
 
 
 - `Search` / `SearchAsync`
-
+- `SearchAs` / `SearchAsAsync`
 - `SearchOne` / `SearchOneAsync`
-
 - `Exists` / `ExistsAsync`
-
 - `Count` / `CountAsync`
-
 - `Expr`, `LogicExpr`, `SelectExpr`
-
+- `SelectAll()` / `Cast(DbType)`
+- Lambda conditional operator `?:` (rendered as `CASE`)
+- case-insensitive expression names and aliases
 - `ObjectViewDAO<T>.Search(...)`
-
 - `SearchAs<T>()`
 
 
@@ -185,6 +183,8 @@ Related guides:
 
 - `FunctionExprValidator`
 
+- legacy `AndIf` / `OrIf` / `WhereIf` / `SetIf` helpers removed; use `if` + null-friendly composition instead
+
 
 
 Related guides:
@@ -211,6 +211,5 @@ Related guides:
 - [Generated SQL Examples](./07-sql-examples.en.md)
 
 - [Database Compatibility Notes](./08-database-compatibility.en.md)
-
 
 

@@ -43,10 +43,14 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 ### 查询接口
 
 - `Search` / `SearchAsync`
+- `SearchAs` / `SearchAsAsync`
 - `SearchOne` / `SearchOneAsync`
 - `Exists` / `ExistsAsync`
 - `Count` / `CountAsync`
 - `Expr`、`LogicExpr`、`SelectExpr`
+- `SelectAll()` / `Cast(DbType)`
+- Lambda 三目运算符 `?:`（转为 `CASE`）
+- 表达式名称与别名忽略大小写
 - `ObjectViewDAO<T>.Search(...)`
 - `SearchAs<T>()`
 
@@ -101,6 +105,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - `SqlBuilder.RegisterFunctionSqlHandler`
 - `FunctionSqlHandler`
 - `FunctionExprValidator`
+- 旧版 `AndIf` / `OrIf` / `WhereIf` / `SetIf` 已移除，改用 `if` + 空值友好组合
 
 对应文档：
 

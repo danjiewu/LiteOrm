@@ -230,6 +230,9 @@ var combinedUsers = await viewService.SearchAsync(
 
 #### 2.7.1 Association Field Sorting and Pagination
 
+LiteOrm first topologically sorts joined tables inside `TableView` by dependency before emitting JOINs.  
+That means when one related table depends on another, the generated join order is stabilized automatically, so sorting, paging, and deeper filters on related fields usually do not require manual JOIN reordering.
+
 Association fields can directly participate in sorting and pagination:
 
 ```csharp
@@ -392,4 +395,3 @@ In implementation, LiteOrm merges ForeignType and TableJoin information during t
 - [CRUD Guide](./05-crud-guide.en.md)
 - [Performance](../03-advanced-topics/03-performance.en.md)
 - [API Index](../05-reference/02-api-index.en.md)
-

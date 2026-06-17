@@ -150,6 +150,8 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `GetObject(object id, params string[] tableArgs)` | `TView` |
 | `SearchOne(Expr expr, params string[] tableArgs)` | `TView` |
 | `Search(Expr expr = null, params string[] tableArgs)` | `List<TView>` |
+| `SearchAs<TResult>(SelectExpr selectExpr, params string[] tableArgs)` | `List<TResult>` |
+| `SearchOneAs<TResult>(SelectExpr selectExpr, params string[] tableArgs)` | `TResult` |
 | `ForEach(Expr expr, Action<TView> func, params string[] tableArgs)` | `void` |
 | `ExistsID(object id, params string[] tableArgs)` | `bool` |
 | `Exists(Expr expr, params string[] tableArgs)` | `bool` |
@@ -162,6 +164,8 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `GetObjectAsync(object id, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>` |
 | `SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>` |
 | `SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken ct = default)` | `Task<List<TView>>` |
+| `SearchAsAsync<TResult>(SelectExpr selectExpr, params string[] tableArgs)` | `Task<List<TResult>>` |
+| `SearchOneAsAsync<TResult>(SelectExpr selectExpr, params string[] tableArgs)` | `Task<TResult>` |
 | `ForEachAsync(Expr expr, Func<TView, Task> func, string[] tableArgs = null, CancellationToken ct = default)` | `Task` |
 | `ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken ct = default)` | `Task<bool>` |
 | `ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken ct = default)` | `Task<bool>` |
@@ -188,7 +192,7 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<bool>` |
 | `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<int>` |
 
-> Additional note: Service query APIs are the `Expr` overloads plus these Lambda extensions. If you need `ExprString`, full SQL, `SearchAs(...)`, or DataTable-oriented queries, switch to DAO.
+> Additional note: Service query APIs include the `Expr` overloads, these Lambda extensions, and `SearchAs(...)` / `SearchAsAsync(...)` based on `SelectExpr`. If you need `ExprString`, full SQL, IQueryable-based `SearchAs(...)`, or DataTable-oriented queries, switch to DAO.
 
 ### ObjectDAO<T> (create, update, delete only)
 
@@ -398,6 +402,10 @@ Operators on `LogicExpr`:
 | `\|` | OR (returns the other side when left or right is null, useful for dynamic accumulation) | `OrExpr` |
 | `!` | NOT | `NotExpr` |
 
+Additional notes:
+
+- The Lambda conditional operator `a ? b : c` is automatically converted into `Expr.If(...)`, then rendered as SQL `CASE`
+
 ### PropertyExpr extension methods
 
 | Category | Methods |
@@ -407,6 +415,7 @@ Operators on `LogicExpr`:
 | Range | `.Between(low, high)` |
 | String | `.Like(pattern)` `.Contains(text)` `.StartsWith(text)` `.EndsWith(text)` |
 | Null | `.IsNull()` `.IsNotNull()` |
+| Type conversion | `.Cast(DbType)` |
 | Alias | `.As("alias")` → `SelectItemExpr` |
 | Aggregate | `.Count(isDistinct)` `.Sum()` `.Avg()` `.Max()` `.Min()` |
 | Sort | `.Asc()` `.Desc()` → `OrderByItemExpr` |
@@ -423,12 +432,24 @@ Operators on `LogicExpr`:
 using static LiteOrm.Common.Expr;
 var query = From<User>()
     .Where(Prop("Age") > 18)                         // WhereExpr
+    .SelectAll()                                     // SelectExpr, equivalent to SELECT *
+    .Where(Prop("Status") == 1)
+    .OrderBy(Prop("DeptId").Asc())                   // OrderByExpr
+    .Section(0, 20);                                 // SectionExpr (skip, take)
+```
+
+You can also explicitly project selected fields when needed:
+
+```csharp
+using static LiteOrm.Common.Expr;
+var query = From<User>()
+    .Where(Prop("Age") > 18)                         // WhereExpr
     .GroupBy(Prop("DeptId"))                         // GroupByExpr
     .Having(Prop("Id").Count() > 5)                  // HavingExpr
     .Select(Prop("DeptId"),                          // SelectExpr
             Prop("Id").Count().As("Cnt"))
     .OrderBy(Prop("DeptId").Asc())                   // OrderByExpr
-    .Section(0, 20);                                      // SectionExpr (skip, take)
+    .Section(0, 20);                                 // SectionExpr (skip, take)
 ```
 
 `SelectExpr` can be used for `IN` subqueries:

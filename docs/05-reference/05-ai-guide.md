@@ -150,6 +150,8 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `GetObject(object id, params string[] tableArgs)`                   | `TView`       |
 | `SearchOne(Expr expr, params string[] tableArgs)`                   | `TView`       |
 | `Search(Expr expr = null, params string[] tableArgs)`               | `List<TView>` |
+| `SearchAs<TResult>(SelectExpr selectExpr, params string[] tableArgs)` | `List<TResult>` |
+| `SearchOneAs<TResult>(SelectExpr selectExpr, params string[] tableArgs)` | `TResult` |
 | `ForEach(Expr expr, Action<TView> func, params string[] tableArgs)` | `void`        |
 | `ExistsID(object id, params string[] tableArgs)`                    | `bool`        |
 | `Exists(Expr expr, params string[] tableArgs)`                      | `bool`        |
@@ -162,6 +164,8 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `GetObjectAsync(object id, string[] tableArgs = null, CancellationToken ct = default)`                       | `Task<TView>`       |
 | `SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken ct = default)`                       | `Task<TView>`       |
 | `SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken ct = default)`                   | `Task<List<TView>>` |
+| `SearchAsAsync<TResult>(SelectExpr selectExpr, params string[] tableArgs)`                                   | `Task<List<TResult>>` |
+| `SearchOneAsAsync<TResult>(SelectExpr selectExpr, params string[] tableArgs)`                                | `Task<TResult>` |
 | `ForEachAsync(Expr expr, Func<TView, Task> func, string[] tableArgs = null, CancellationToken ct = default)` | `Task`              |
 | `ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken ct = default)`                        | `Task<bool>`        |
 | `ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken ct = default)`                          | `Task<bool>`        |
@@ -188,7 +192,7 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                             | `Task<bool>`        |
 | `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                              | `Task<int>`         |
 
-> 补充说明：Service 查询公开入口是 `Expr` 及其 Lambda 扩展；如果需要 `ExprString`、完整 SQL、`SearchAs(...)` 或 DataTable 查询，请切换到 DAO。
+> 补充说明：Service 查询公开入口包括 `Expr`、其 Lambda 扩展，以及基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)`；如果需要 `ExprString`、完整 SQL、IQueryable 投影版 `SearchAs(...)` 或 DataTable 查询，请切换到 DAO。
 
 ### ObjectDAO<T>（仅增删改）
 
@@ -398,6 +402,10 @@ public class OrderExceptionHook : IServiceExceptionHook
 | `|`  | OR （左或右为 null 时返回另一侧，适合动态累加） | `OrExpr`  |
 | `!`  | NOT                          | `NotExpr` |
 
+补充说明：
+
+- Lambda 中的三目运算符 `a ? b : c` 会自动转换为 `Expr.If(...)`，最终生成 SQL `CASE`
+
 ### PropertyExpr 扩展方法
 
 | 分类   | 方法                                                                                                         |
@@ -407,6 +415,7 @@ public class OrderExceptionHook : IServiceExceptionHook
 | 范围   | `.Between(low, high)`                                                                                      |
 | 字符串  | `.Like(pattern)` `.Contains(text)` `.StartsWith(text)` `.EndsWith(text)`                                   |
 | Null | `.IsNull()` `.IsNotNull()`                                                                                 |
+| 类型转换 | `.Cast(DbType)`                                                                                             |
 | 别名   | `.As("alias")` → `SelectItemExpr`                                                                          |
 | 聚合   | `.Count(isDistinct)` `.Sum()` `.Avg()` `.Max()` `.Min()`                                                   |
 | 排序   | `.Asc()` `.Desc()` → `OrderByItemExpr`                                                                     |
@@ -423,12 +432,24 @@ public class OrderExceptionHook : IServiceExceptionHook
 using static LiteOrm.Common.Expr;
 var query = From<User>()
     .Where(Prop("Age") > 18)                         // WhereExpr
+    .SelectAll()                                     // SelectExpr，等价于 SELECT *
+    .Where(Prop("Status") == 1)
+    .OrderBy(Prop("DeptId").Asc())                   // OrderByExpr
+    .Section(0, 20);                                 // SectionExpr (skip, take)
+```
+
+也可以按需显式选择字段：
+
+```csharp
+using static LiteOrm.Common.Expr;
+var query = From<User>()
+    .Where(Prop("Age") > 18)                         // WhereExpr
     .GroupBy(Prop("DeptId"))                         // GroupByExpr
     .Having(Prop("Id").Count() > 5)                  // HavingExpr
     .Select(Prop("DeptId"),                          // SelectExpr
             Prop("Id").Count().As("Cnt"))
     .OrderBy(Prop("DeptId").Asc())                   // OrderByExpr
-    .Section(0, 20);                                      // SectionExpr (skip, take)
+    .Section(0, 20);                                 // SectionExpr (skip, take)
 ```
 
 `SelectExpr` 可用于 IN 子查询：

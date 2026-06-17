@@ -251,7 +251,10 @@ var combinedUsers = await viewService.SearchAsync(
 
 ### 2.7.1 关联字段排序与分页
 
-`LiteOrm.Tests\ServiceTests.cs` 还验证了关联字段可以直接参与排序与分页：
+LiteOrm 会先按依赖关系对 `TableView` 中的关联表做拓扑排序，再生成 JOIN。
+当某个关联表依赖另一个关联表时，SQL 中的连接顺序会自动稳定下来，关联字段排序、分页和多级过滤通常不再需要手动调整 JOIN 先后。
+
+关联字段可以直接参与排序与分页：
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -410,4 +413,3 @@ var matureItUsers = await objectViewDAO.Search(
 - [增删改查](./05-crud-guide.md)
 - [性能优化](../03-advanced-topics/03-performance.md)
 - [API 索引](../05-reference/02-api-index.md)
-

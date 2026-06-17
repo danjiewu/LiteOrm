@@ -50,6 +50,20 @@ var currentUserFilter = Sql("CurrentUserFilter");
 - `Aggregate(name, expr, isDistinct)`：聚合函数包装
 - `Sql(key, arg)`：注册式动态 SQL 片段，适合运行时上下文过滤
 
+### 1.4 类型转换与条件值
+
+```csharp
+using static LiteOrm.Common.Expr;
+using System.Data;
+
+var ageText = Prop("Age").Cast(DbType.String);
+var levelExpr = If(Prop("Age") >= 18, Const("Adult"), Const("Minor"));
+```
+
+- `.Cast(DbType)`：把值表达式转换为目标数据库类型，对应 SQL `CAST(...)`
+- `Expr.If(condition, then, else)` / `Expr.Case(...)`：构造条件值表达式，对应 SQL `CASE`
+- 在 **Lambda** 查询中，三目运算符 `a ? b : c` 会自动解析成 `Expr.If(...)`，最终生成 `CASE WHEN ... THEN ... ELSE ... END`
+
 ## 2. 子查询与关联过滤
 
 ### 2.1 显式 `Exists`
@@ -119,6 +133,8 @@ if (!string.IsNullOrWhiteSpace(keyword))
 
 `&` / `|` 对 `null` 友好，非常适合做后台筛选器。
 
+> 旧版 `AndIf`、`OrIf`、`WhereIf`、`SetIf` 已移除。现在推荐直接使用 `if` 配合 `&` / `|` 的空值友好语义，或按条件控制链式调用是否追加。
+
 ### 3.2 从 QueryString / Dictionary 构造
 
 ```csharp
@@ -139,6 +155,8 @@ public static LogicExpr BuildUserSearch(IReadOnlyDictionary<string, string?> que
 ```
 
 这类写法适合开放查询接口、网关转发和前端条件构造器。
+
+补充说明：这类字符串入口里的属性名、`orderby` 字段名等，按模型属性匹配时通常**忽略大小写**。
 
 ### 3.3 和 Lambda 组合使用
 
@@ -397,6 +415,18 @@ var update = Update<User>()
 
 > **建议**：混合比较、算术和逻辑运算时，尽量加上括号，避免依赖 C# 运算符优先级去猜测最终表达式结构。
 
+### 7.7 Lambda 三目运算符
+
+在 Lambda 查询里，可以直接写 C# 三目表达式：
+
+```csharp
+var users = await userService.SearchAsync(
+    u => (u.Age >= 18 ? "Adult" : "Minor") == "Adult"
+);
+```
+
+LiteOrm 会把它解析成 `Expr.If(...)`，并进一步生成 SQL `CASE` 表达式。
+
 ## 8. ExprExtensions 速查
 
 ### 8.1 逻辑组合
@@ -426,6 +456,9 @@ var update = Update<User>()
 | `.RegexpLike(pattern)` | 正则匹配 |
 | `.IsNull()` `.IsNotNull()` | NULL 检查 |
 | `.IfNull(defaultValue)` | 空值替换 |
+| `.Cast(DbType)` | 转换为目标数据库类型 |
+
+补充说明：`Contains` / `StartsWith` / `EndsWith` / `Like` 仍会做参数化与通配符转义，但只有在模式字符串确实包含需要转义的特殊字符时，才会生成 `ESCAPE` 片段。
 
 ### 8.4 别名、聚合、排序
 
@@ -442,6 +475,7 @@ var update = Update<User>()
 | 方法 | 说明 |
 |------|------|
 | `.Where(condition)` | WHERE |
+| `.SelectAll()` | SELECT * |
 | `.GroupBy(props)` | GROUP BY |
 | `.Having(condition)` | HAVING |
 | `.Select(props)` | SELECT |

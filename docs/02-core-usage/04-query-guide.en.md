@@ -49,6 +49,16 @@ var users = await userService.SearchAsync(u => u.UserName.Contains(keyword));
 Variables declared outside the Lambda are parameterized.  
 For values such as `DateTime.Now`, assign them to a variable first if you want them parameterized.
 
+### 2.4 The conditional operator becomes `CASE`
+
+```csharp
+var users = await userService.SearchAsync(
+    u => (u.Age >= 18 ? "Adult" : "Minor") == "Adult"
+);
+```
+
+This kind of Lambda is first converted into `Expr.If(...)`, then rendered as SQL `CASE WHEN ... THEN ... ELSE ... END`.
+
 ## 3. `Exists` and `ExistsRelated`
 
 ### 3.1 Explicit `Exists`
@@ -194,9 +204,18 @@ using static LiteOrm.Common.Expr;
 
 var users1 = await userService.SearchAsync(u => u.Age >= 18);
 var users2 = await userService.SearchAsync(Prop("Age") >= 18);
+var users3 = await userService.SearchAsAsync<UserSummary>(
+    From<UserView>()
+        .Where(Prop("Age") >= 18)
+        .Select(
+            Prop("Id"),
+            Prop("UserName"),
+            Expr.If(Prop("IsVip") == true, "VIP", "Normal").As("Level")
+        )
+);
 ```
 
-- Service query APIs mainly target Lambda and `Expr`, which fit business-facing query code, transactions, and AOP-backed service encapsulation.
+- Service query APIs mainly target Lambda and `Expr`, and also support projection queries through `SearchAs(...)` / `SearchAsAsync(...)` with `SelectExpr`, which fits business-facing query code, transactions, and AOP-backed service encapsulation.
 - Service does not provide an `ExprString` query overload; once the need becomes "handwritten SQL", switch to DAO.
 
 ### 6.2 DAO
@@ -209,8 +228,8 @@ var users2 = await userViewDAO.Search(Prop("Age") >= 18).ToListAsync();
 var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListAsync();
 ```
 
-- DAO supports Lambda and `Expr`, and also adds `ExprString`, so it is the right layer for custom SQL fragments, full SQL, projections, and DataTable-oriented queries.
-- If you need lower-level entry points such as `SearchAs(...)`, `Query(...)`, `Execute(...)`, or `GetValue(...)`, go directly through DAO.
+- DAO supports Lambda and `Expr`, and also adds `ExprString`, so it is the right layer for custom SQL fragments, full SQL, richer projection queries, and DataTable-oriented queries.
+- If you need lower-level entry points such as IQueryable-based `SearchAs(...)`, `ExprString`-based `SearchAs(...)`, `Query(...)`, `Execute(...)`, or `GetValue(...)`, go directly through DAO.
 
 ## 7. Related links
 

@@ -372,6 +372,7 @@ LiteOrm automatically registers many default methods at startup through `LiteOrm
 | `IList` | `.Contains()` | Collection contains | SQL `IN` |
 | `TimeSpan` | `.TotalSeconds` / `.TotalDays` etc. | Time difference calculation | Database DateDiff function |
 | `Equals()` | Instance/static Equals | Equality comparison | SQL `=` |
+| C# `?:` | Conditional operator | Automatically converted to `Expr.If(...)` | SQL `CASE WHEN` |
 | `ExprExtensions.To()` | Convert object to Expr | Type conversion | - |
 
 ```csharp
@@ -429,4 +430,3 @@ LiteOrm automatically registers the following cross-database SqlFunctions at sta
 - [Associations](../02-core-usage/06-associations.en.md)
 - [Window Functions](../03-advanced-topics/04-window-functions.en.md)
 - [Function Validator](./02-function-validator.en.md)
-

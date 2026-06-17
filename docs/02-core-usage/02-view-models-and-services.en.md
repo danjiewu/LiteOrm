@@ -86,10 +86,21 @@ public class UserService : EntityService<User>
 }
 ```
 
+```csharp
+using static LiteOrm.Common.Expr;
+
+var summary = await userService.SearchAsAsync<UserSummary>(
+    From<UserView>()
+        .Where(Prop("Age") >= 18)
+        .Select("Id", "UserName")
+);
+```
+
 Important notes here:
 
 - `ObjectDAO<T>` handles entity write operations and itself **does not** have `Search(...)` query entry points.
-- Query capabilities like `Search(...)` and `SearchAs(...)` are on `ObjectViewDAO<T>`.
+- `ObjectViewDAO<T>` exposes the broadest query surface, including `Search(...)`, `SearchAs(...)`, and `ExprString` entry points.
+- The Service query side also exposes `Search(...)`, and now includes `SearchAs(...)` / `SearchAsAsync(...)` based on `SelectExpr` for service-layer projections.
 - If you need both entity writes and view reads, you typically combine `ObjectDAO<T>` and `ObjectViewDAO<TView>` within a Service.
 
 ## When to Use Which
@@ -105,4 +116,3 @@ Important notes here:
 - [Entity Mapping and Data Sources](./01-entity-mapping.en.md)
 - [CRUD Guide](./05-crud-guide.en.md)
 - [Transactions](../03-advanced-topics/01-transactions.en.md)
-

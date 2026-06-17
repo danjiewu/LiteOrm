@@ -49,6 +49,16 @@ var users = await userService.SearchAsync(u => u.UserName.Contains(keyword));
 Lambda 外定义的变量会被参数化。  
 如果是 `DateTime.Now` 这类值，希望参数化时应先赋给变量。
 
+### 2.4 三目运算符会转成 `CASE`
+
+```csharp
+var users = await userService.SearchAsync(
+    u => (u.Age >= 18 ? "Adult" : "Minor") == "Adult"
+);
+```
+
+这类 Lambda 会先转成 `Expr.If(...)`，最终生成 SQL `CASE WHEN ... THEN ... ELSE ... END`。
+
 ## 3. `Exists` 与 `ExistsRelated`
 
 ### 3.1 显式 `Exists`
@@ -191,9 +201,18 @@ using static LiteOrm.Common.Expr;
 
 var users1 = await userService.SearchAsync(u => u.Age >= 18);
 var users2 = await userService.SearchAsync(Prop("Age") >= 18);
+var users3 = await userService.SearchAsAsync<UserSummary>(
+    From<UserView>()
+        .Where(Prop("Age") >= 18)
+        .Select(
+            Prop("Id"),
+            Prop("UserName"),
+            Expr.If(Prop("IsVip") == true, "VIP", "Normal").As("Level")
+        )
+);
 ```
 
-- Service 查询入口以 Lambda / `Expr` 为主，适合业务语义清晰、需要事务/AOP/服务封装的场景。
+- Service 查询入口以 Lambda / `Expr` 为主，同时支持基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)` 投影查询，适合业务语义清晰、需要事务/AOP/服务封装的场景。
 - Service 不提供 `ExprString` 查询重载；如果需求已经变成“手写 SQL”，就应该切到 DAO。
 
 ### 6.2 DAO
@@ -206,8 +225,8 @@ var users2 = await userViewDAO.Search(Prop("Age") >= 18).ToListAsync();
 var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListAsync();
 ```
 
-- DAO 除了支持 Lambda / `Expr`，还支持 `ExprString`，因此更适合自定义 SQL 片段、完整 SQL、投影查询和 DataTable 查询。
-- 需要 `SearchAs(...)`、`Query(...)`、`Execute(...)`、`GetValue(...)` 这类更底层能力时，也应该直接使用 DAO。
+- DAO 除了支持 Lambda / `Expr`，还支持 `ExprString`，因此更适合自定义 SQL 片段、完整 SQL、复杂投影查询和 DataTable 查询。
+- 需要 IQueryable 投影版 `SearchAs(...)`、`ExprString` 版 `SearchAs(...)`、`Query(...)`、`Execute(...)`、`GetValue(...)` 这类更底层能力时，也应该直接使用 DAO。
 
 ## 7. 相关链接
 

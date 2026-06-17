@@ -372,6 +372,7 @@ LiteOrm 在启动时通过 `LiteOrmLambdaHandlerInitializer` 和 `LiteOrmSqlFunc
 | `IList` | `.Contains()` | 集合包含 | SQL `IN` |
 | `TimeSpan` | `.TotalSeconds` / `.TotalDays` 等 | 时间差计算 | 数据库 DateDiff 函数 |
 | `Equals()` | 实例/静态 Equals | 相等比较 | SQL `=` |
+| C# `?:` | 条件运算符 | 自动转换为 `Expr.If(...)` | SQL `CASE WHEN` |
 | `ExprExtensions.To()` | 将对象转为 Expr | 类型转换 | - |
 
 ```csharp
@@ -429,5 +430,4 @@ LiteOrm 在启动时通过 `LiteOrmSqlFunctionInitializer` 自动注册了以下
 - [关联查询](../02-core-usage/06-associations.md)
 - [窗口函数](../03-advanced-topics/04-window-functions.md)
 - [函数验证器](./02-function-validator.md)
-
 

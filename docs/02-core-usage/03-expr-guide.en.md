@@ -49,6 +49,20 @@ var currentUserFilter = Sql("CurrentUserFilter");
 - `Aggregate(name, expr, isDistinct)`: aggregate wrapper
 - `Sql(key, arg)`: registered dynamic SQL fragment for runtime-context filters
 
+### 1.4 Type conversion and conditional values
+
+```csharp
+using static LiteOrm.Common.Expr;
+using System.Data;
+
+var ageText = Prop("Age").Cast(DbType.String);
+var levelExpr = If(Prop("Age") >= 18, Const("Adult"), Const("Minor"));
+```
+
+- `.Cast(DbType)`: converts a value expression to a target database type, rendered as SQL `CAST(...)`
+- `Expr.If(condition, then, else)` / `Expr.Case(...)`: builds a conditional value expression, rendered as SQL `CASE`
+- In **Lambda** queries, the conditional operator `a ? b : c` is automatically parsed into `Expr.If(...)`, then rendered as `CASE WHEN ... THEN ... ELSE ... END`
+
 ## 2. Subqueries and relation filters
 
 ### 2.1 Explicit `Exists`
@@ -118,6 +132,8 @@ if (!string.IsNullOrWhiteSpace(keyword))
 
 `&` and `|` are null-friendly, which makes them ideal for admin search filters.
 
+> The old `AndIf`, `OrIf`, `WhereIf`, and `SetIf` helpers have been removed. Prefer normal `if` statements together with the null-friendly `&` / `|` composition rules, or conditionally append chained clauses.
+
 ### 3.2 Build from QueryString / Dictionary
 
 ```csharp
@@ -138,6 +154,8 @@ public static LogicExpr BuildUserSearch(IReadOnlyDictionary<string, string?> que
 ```
 
 This works well for open query endpoints, gateway forwarding, and frontend query builders.
+
+Additional note: in string-based entry points like these, property names and `orderby` field names are typically matched **case-insensitively** against the model.
 
 ### 3.3 Mix with Lambda
 
@@ -396,6 +414,18 @@ These are mainly about reducing ceremony so `OrderBy(...)`, `Set(...)`, and simi
 
 > **Tip**: when mixing comparison, arithmetic, and logical operators, add parentheses instead of relying on C# operator precedence to make the final expression obvious.
 
+### 7.7 Lambda conditional operator
+
+You can use the C# conditional operator directly inside Lambda queries:
+
+```csharp
+var users = await userService.SearchAsync(
+    u => (u.Age >= 18 ? "Adult" : "Minor") == "Adult"
+);
+```
+
+LiteOrm parses this into `Expr.If(...)`, which is then rendered as a SQL `CASE` expression.
+
 ## 8. ExprExtensions quick reference
 
 ### 8.1 Logic composition
@@ -425,6 +455,9 @@ These are mainly about reducing ceremony so `OrderBy(...)`, `Set(...)`, and simi
 | `.RegexpLike(pattern)` | regex predicate |
 | `.IsNull()` `.IsNotNull()` | NULL checks |
 | `.IfNull(defaultValue)` | null replacement |
+| `.Cast(DbType)` | convert to a target database type |
+
+Additional note: `Contains` / `StartsWith` / `EndsWith` / `Like` still use parameterization and wildcard escaping, but the `ESCAPE` fragment is emitted only when the pattern actually contains characters that need escaping.
 
 ### 8.4 Alias, aggregate, and ordering helpers
 
@@ -441,6 +474,7 @@ These are mainly about reducing ceremony so `OrderBy(...)`, `Set(...)`, and simi
 | Method | Description |
 |------|------|
 | `.Where(condition)` | WHERE |
+| `.SelectAll()` | SELECT * |
 | `.GroupBy(props)` | GROUP BY |
 | `.Having(condition)` | HAVING |
 | `.Select(props)` | SELECT |

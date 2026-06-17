@@ -9,7 +9,7 @@ LiteOrm's SQL injection prevention uses a **multi-layered defense-in-depth** str
 | Layer | Mechanism | Description |
 |-------|-----------|-------------|
 | Parameterized SQL | `outputParams` + placeholders | All user values are passed as parameters, no exceptions |
-| LIKE escaping + parameterization | Wildcard escaping + `ESCAPE` clause | Dual protection against LIKE injection |
+| LIKE escaping + parameterization | Wildcard escaping + conditional `ESCAPE` clause | Dual protection against LIKE injection |
 | ExprString auto-parameterization | Non-Expr values auto-converted to named params | User values in interpolated strings are automatically parameterized |
 | Expression type whitelist | `ExprTypeValidator` | Controls allowed expression types |
 | Function policy control | `FunctionExprValidator` | Controls the range of executable SQL functions |
@@ -61,9 +61,13 @@ var users = await userService.SearchAsync(u => u.UserName == "O'Brien");
 
 ### 2.3 Dual Protection for LIKE Queries
 
-LIKE queries use both **parameterization** and **wildcard escaping**:
+LIKE queries use both **parameterization** and **wildcard escaping**. The `ESCAPE` clause is added only when the input actually contains wildcard characters that must be escaped:
 
 ```csharp
+var users1 = await userService.SearchAsync(u => u.UserName.Contains("john"));
+// SQL: SELECT * FROM Users WHERE UserName LIKE @0
+// Parameters: @0 = "%john%"
+
 var users = await userService.SearchAsync(u => u.UserName.Contains("100%"));
 // SQL: SELECT * FROM Users WHERE UserName LIKE @0 ESCAPE '/'
 // Parameters: @0 = "%100/%%"  (% is escaped as /%)
