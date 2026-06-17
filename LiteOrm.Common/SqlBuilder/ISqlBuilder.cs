@@ -62,6 +62,13 @@ namespace LiteOrm.Common
         string ToSqlLikeValue(string value);
 
         /// <summary>
+        /// 判断字符串是否包含需要转义的 LIKE 特殊字符。
+        /// </summary>
+        /// <param name="value">要检查的字符串。</param>
+        /// <returns>如果包含需要转义的特殊字符则返回 true。</returns>
+        bool NeedLikeEscape(string value);
+
+        /// <summary>
         /// 构建一个函数调用的 SQL 片段，直接写入 <paramref name="outSql"/>。
         /// 实现应负责函数名和参数在目标数据库中的兼容性处理。
         /// </summary>

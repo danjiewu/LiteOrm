@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -137,6 +137,16 @@ namespace LiteOrm
         public virtual string ToSqlLikeValue(string value)
         {
             return _sqlLikeEscapeReg.Replace(value, $"{Constants.LikeEscapeChar}$1");
+        }
+
+        /// <summary>
+        /// 检测是否需要对 LIKE 查询的字符串进行转义（即是否包含特殊字符）。如果返回 <see langword="true"/>，则调用 <see cref="ToSqlLikeValue"/> 进行转义并补 ESCAPE 语句。
+        /// </summary>
+        /// <param name="value">要检查的字符串。</param>
+        /// <returns>如果字符串包含需要转义的特殊字符，则返回 <see langword="true"/>；否则返回 <see langword="false"/>。</returns>
+        public virtual bool NeedLikeEscape(string value)
+        {
+            return _sqlLikeEscapeReg.IsMatch(value);
         }
 
 

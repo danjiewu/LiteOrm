@@ -61,6 +61,52 @@ namespace LiteOrm.Tests
             Assert.DoesNotContain("UNSIGNED", sql);
         }
 
+        [Theory]
+        [InlineData("hello", false)]
+        [InlineData("test_value", true)]
+        [InlineData("100%", true)]
+        [InlineData("a/b", true)]
+        [InlineData("[test]", true)]
+        [InlineData("normal text", false)]
+        [InlineData("", false)]
+        [InlineData("abc123", false)]
+        public void NeedLikeEscape_ReturnsExpected(string value, bool expected)
+        {
+            Assert.Equal(expected, SqlBuilder.Instance.NeedLikeEscape(value));
+        }
+
+        [Theory]
+        [InlineData("hello", "hello")]
+        [InlineData("test_value", "test/_value")]
+        [InlineData("100%", "100/%")]
+        [InlineData("a/b", "a//b")]
+        [InlineData("[test]", "/[test/]")]
+        public void ToSqlLikeValue_EscapesCorrectly(string input, string expected)
+        {
+            Assert.Equal(expected, SqlBuilder.Instance.ToSqlLikeValue(input));
+        }
+
+        [Theory]
+        [InlineData("hello", false)]
+        [InlineData("test_value", true)]
+        [InlineData("100%", true)]
+        [InlineData("a/b", true)]
+        [InlineData("normal text", false)]
+        public void OracleNeedLikeEscape_ReturnsExpected(string value, bool expected)
+        {
+            Assert.Equal(expected, OracleBuilder.Instance.NeedLikeEscape(value));
+        }
+
+        [Theory]
+        [InlineData("hello", "hello")]
+        [InlineData("test_value", "test/_value")]
+        [InlineData("100%", "100/%")]
+        [InlineData("a/b", "a//b")]
+        public void OracleToSqlLikeValue_EscapesCorrectly(string input, string expected)
+        {
+            Assert.Equal(expected, OracleBuilder.Instance.ToSqlLikeValue(input));
+        }
+
         private static AttributeTableInfoProvider CreateProvider(SqlBuilder builder)
         {
             var sqlBuilderFactory = new Mock<ISqlBuilderFactory>();

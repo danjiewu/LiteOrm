@@ -465,17 +465,16 @@ namespace LiteOrm.Common
                 case LogicOperator.Contains:
                 case LogicOperator.StartsWith:
                 case LogicOperator.EndsWith:
-                    // 处理 LIKE 相关 的模糊查询
                     if (expr.Right is ValueExpr vs2 && vs2.Value is not Expr)
                     {
-                        // 使用 escape 子句转义用户输入中的特殊字符
                         ToSqlInternal(ref sb, expr.Left, context, sqlBuilder, outputParams, curPriority);
                         sb.Append(" ");
                         sb.Append(op);
                         sb.Append(" ");
-                        // 参数化处理：将包含通配符的字符串作为参数传入，避免 SQL 注入
                         string paramName = outputParams.Count.ToString();
-                        string val = sqlBuilder.ToSqlLikeValue(vs2.Value?.ToString());
+                        string rawValue = vs2.Value?.ToString() ?? string.Empty;
+                        bool needEscape = vs2.Value is string && sqlBuilder.NeedLikeEscape(rawValue);
+                        string val = needEscape ? sqlBuilder.ToSqlLikeValue(rawValue) : rawValue;
                         val = expr.OriginOperator switch
                         {
                             LogicOperator.StartsWith => $"{val}%",
@@ -485,7 +484,10 @@ namespace LiteOrm.Common
                         };
                         outputParams.Add(new(sqlBuilder.ToParamName(paramName), val));
                         sb.Append(sqlBuilder.ToSqlParam(paramName));
-                        sb.Append($" ESCAPE '{escapeChar}'");
+                        if (needEscape)
+                        {
+                            sb.Append($" ESCAPE '{escapeChar}'");
+                        }
                     }
                     else
                     {

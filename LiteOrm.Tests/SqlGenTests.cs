@@ -130,5 +130,101 @@ namespace LiteOrm.Tests
 
             Assert.NotEmpty(result.Sql);
         }
+
+        [Fact]
+        public void Contains_NoSpecialChars_NoEscapeClause()
+        {
+            var sqlGen = new SqlGen(typeof(TestUser));
+            var condition = Expr.Prop("Name").Contains("hello");
+            var select = new SelectExpr { Source = new WhereExpr { Source = new FromExpr(typeof(TestUser)), Where = condition } };
+            var result = sqlGen.ToSql(select);
+
+            Assert.Contains("LIKE", result.Sql);
+            Assert.DoesNotContain("ESCAPE", result.Sql);
+        }
+
+        [Fact]
+        public void Contains_WithSpecialChars_HasEscapeClause()
+        {
+            var sqlGen = new SqlGen(typeof(TestUser));
+            var condition = Expr.Prop("Name").Contains("test_value");
+            var select = new SelectExpr { Source = new WhereExpr { Source = new FromExpr(typeof(TestUser)), Where = condition } };
+            var result = sqlGen.ToSql(select);
+
+            Assert.Contains("LIKE", result.Sql);
+            Assert.Contains("ESCAPE", result.Sql);
+        }
+
+        [Fact]
+        public void StartsWith_NoSpecialChars_NoEscapeClause()
+        {
+            var sqlGen = new SqlGen(typeof(TestUser));
+            var condition = Expr.Prop("Name").StartsWith("abc");
+            var select = new SelectExpr { Source = new WhereExpr { Source = new FromExpr(typeof(TestUser)), Where = condition } };
+            var result = sqlGen.ToSql(select);
+
+            Assert.Contains("LIKE", result.Sql);
+            Assert.DoesNotContain("ESCAPE", result.Sql);
+        }
+
+        [Fact]
+        public void StartsWith_WithSpecialChars_HasEscapeClause()
+        {
+            var sqlGen = new SqlGen(typeof(TestUser));
+            var condition = Expr.Prop("Name").StartsWith("100%");
+            var select = new SelectExpr { Source = new WhereExpr { Source = new FromExpr(typeof(TestUser)), Where = condition } };
+            var result = sqlGen.ToSql(select);
+
+            Assert.Contains("LIKE", result.Sql);
+            Assert.Contains("ESCAPE", result.Sql);
+        }
+
+        [Fact]
+        public void EndsWith_NoSpecialChars_NoEscapeClause()
+        {
+            var sqlGen = new SqlGen(typeof(TestUser));
+            var condition = Expr.Prop("Name").EndsWith("xyz");
+            var select = new SelectExpr { Source = new WhereExpr { Source = new FromExpr(typeof(TestUser)), Where = condition } };
+            var result = sqlGen.ToSql(select);
+
+            Assert.Contains("LIKE", result.Sql);
+            Assert.DoesNotContain("ESCAPE", result.Sql);
+        }
+
+        [Fact]
+        public void EndsWith_WithSpecialChars_HasEscapeClause()
+        {
+            var sqlGen = new SqlGen(typeof(TestUser));
+            var condition = Expr.Prop("Name").EndsWith("test_");
+            var select = new SelectExpr { Source = new WhereExpr { Source = new FromExpr(typeof(TestUser)), Where = condition } };
+            var result = sqlGen.ToSql(select);
+
+            Assert.Contains("LIKE", result.Sql);
+            Assert.Contains("ESCAPE", result.Sql);
+        }
+
+        [Fact]
+        public void NotContains_NoSpecialChars_NoEscapeClause()
+        {
+            var sqlGen = new SqlGen(typeof(TestUser));
+            var condition = Expr.Prop("Name").Contains("hello").Not();
+            var select = new SelectExpr { Source = new WhereExpr { Source = new FromExpr(typeof(TestUser)), Where = condition } };
+            var result = sqlGen.ToSql(select);
+
+            Assert.Contains("NOT LIKE", result.Sql);
+            Assert.DoesNotContain("ESCAPE", result.Sql);
+        }
+
+        [Fact]
+        public void NotContains_WithSpecialChars_HasEscapeClause()
+        {
+            var sqlGen = new SqlGen(typeof(TestUser));
+            var condition = Expr.Prop("Name").Contains("test_value").Not();
+            var select = new SelectExpr { Source = new WhereExpr { Source = new FromExpr(typeof(TestUser)), Where = condition } };
+            var result = sqlGen.ToSql(select);
+
+            Assert.Contains("NOT LIKE", result.Sql);
+            Assert.Contains("ESCAPE", result.Sql);
+        }
     }
 }
