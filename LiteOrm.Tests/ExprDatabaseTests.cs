@@ -190,8 +190,8 @@ namespace LiteOrm.Tests
 
             // 测试Case方法
             var caseExpr = Expr.Case(
-                new[] { new KeyValuePair<LogicExpr, ValueTypeExpr>(Expr.Prop("Age") > 30, Expr.Const("Old")),
-                         new KeyValuePair<LogicExpr, ValueTypeExpr>(Expr.Prop("Age") > 20, Expr.Const("Young")) },
+                new[] { (Expr.Prop("Age") > 30, (ValueTypeExpr)Expr.Const("Old")),
+                         (Expr.Prop("Age") > 20, (ValueTypeExpr)Expr.Const("Young")) },
                 Expr.Const("Unknown")) == "Young";
             var caseResults = await objectViewDAO.Search(caseExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(caseResults);

@@ -631,9 +631,9 @@ namespace LiteOrm.Tests
 
             var caseExpr = Expr.Case(
                 new[] {
-                    new KeyValuePair<LogicExpr, ValueTypeExpr>(Expr.Prop("Age") < 18, Expr.Const("Minor")),
-                    new KeyValuePair<LogicExpr, ValueTypeExpr>(Expr.Prop("Age") < 30, Expr.Const("Young")),
-                    new KeyValuePair<LogicExpr, ValueTypeExpr>(Expr.Prop("Age") < 50, Expr.Const("Adult"))
+                    (Expr.Prop("Age") < 18, (ValueTypeExpr)Expr.Const("Minor")),
+                    (Expr.Prop("Age") < 30, (ValueTypeExpr)Expr.Const("Young")),
+                    (Expr.Prop("Age") < 50, (ValueTypeExpr)Expr.Const("Adult"))
                 },
                 Expr.Const("Senior")
             );

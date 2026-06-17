@@ -325,7 +325,7 @@ namespace LiteOrm.Common
         /// <param name="elseExpr">条件为假时的结果表达式，可选。</param>
         /// <returns>CASE WHEN 函数表达式。</returns>
         public static FunctionExpr If(LogicExpr condition, ValueTypeExpr thenExpr, ValueTypeExpr elseExpr = null)
-            => Case(new[] { new KeyValuePair<LogicExpr, ValueTypeExpr>(condition, thenExpr) }, elseExpr);
+            => Case(new[] { (condition, thenExpr) }, elseExpr);
 
         /// <summary>
         /// 创建获取当前时间戳的函数表达式（CURRENT_TIMESTAMP）。
@@ -345,17 +345,51 @@ namespace LiteOrm.Common
         /// <param name="cases">条件-结果对的集合。</param>
         /// <param name="elseExpr">可选的 ELSE 结果表达式。</param>
         /// <returns>表示 CASE 语句的函数表达式。</returns>
-        public static FunctionExpr Case(IEnumerable<KeyValuePair<LogicExpr, ValueTypeExpr>> cases, ValueTypeExpr elseExpr = null)
+        public static FunctionExpr Case((LogicExpr, ValueTypeExpr)[] cases, ValueTypeExpr elseExpr = null)
         {
             FunctionExpr caseExpr = new FunctionExpr("CASE");
-            foreach (var kv in cases)
+            foreach (var (condition, result) in cases)
             {
-                caseExpr.Args.Add(kv.Key.AsValue());
-                caseExpr.Args.Add(kv.Value);
+                caseExpr.Args.Add(condition.AsValue());
+                caseExpr.Args.Add(result);
             }
             if (elseExpr is not null)
             {
                 caseExpr.Args.Add(elseExpr);
+            }
+            return caseExpr;
+        }
+
+        /// <summary>
+        /// CASE 表达式构造器的重载版本，接受一个条件-结果对的集合，按顺序构建 CASE WHEN ... THEN ... 结构。
+        /// </summary>
+        /// <param name="cases">条件-结果对的集合。</param>
+        /// <returns>表示 CASE 语句的函数表达式。</returns>
+        public static FunctionExpr Case(params (LogicExpr, ValueTypeExpr)[] cases)
+        {
+            return Case(cases, null);
+        }
+
+        /// <summary>
+        /// 创建 CASE 表达式，接受一系列条件和结果表达式，按顺序构建 CASE WHEN ... THEN ... ELSE ... END 结构。
+        /// 参数若为偶数个，每两个组成一个条件-结果对，前一个为条件表达式，后一个为对应的结果表达式；
+        /// 如果参数个数为奇数，则最后一个参数作为 ELSE 的结果。
+        /// </summary>
+        /// <param name="cases">条件和结果表达式的集合。</param>
+        /// <returns>表示 CASE 语句的函数表达式。</returns>
+        public static FunctionExpr Case(params Expr[] cases)
+        {
+            FunctionExpr caseExpr = new FunctionExpr("CASE");
+            int i = 0;
+            while (i < cases.Length - 1)
+            {
+                caseExpr.Args.Add((cases[i]).AsValue());
+                caseExpr.Args.Add((cases[i + 1]).AsValue());
+                i += 2;
+            }
+            if (i == cases.Length - 1)
+            {
+                caseExpr.Args.Add((cases[i]).AsValue());
             }
             return caseExpr;
         }
