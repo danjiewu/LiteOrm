@@ -16,6 +16,7 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
+      新增CycleDetector用于检测Expr循环引用；
       Expr增加SelectAll、Cast扩展，取消AndIf、OrIf、WhereIf、SetIf扩展方法；
       Service增加SearchAs方法；
       增加三目运算符（a ? b : c）解析为CASE语句；
