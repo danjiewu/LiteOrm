@@ -56,6 +56,11 @@ namespace LiteOrm
         private static readonly AsyncLocal<Lazy<SessionManager>> _currentAsyncLocal = new AsyncLocal<Lazy<SessionManager>>();
 
         /// <summary>
+        /// 最大SQL历史记录条数，超过此数量的旧SQL将被丢弃
+        /// </summary>
+        public static int MaxSqlHistorySize = 10;
+
+        /// <summary>
         /// 唯一会话ID
         /// </summary>
         public string SessionID { get; } = Guid.NewGuid().ToString("N").Substring(0, 8);
@@ -135,7 +140,7 @@ namespace LiteOrm
             try
             {
                 _sqlStack.AddLast(sql);
-                while (_sqlStack.Count > 10)
+                while (_sqlStack.Count > MaxSqlHistorySize)
                 {
                     _sqlStack.RemoveFirst();
                 }
