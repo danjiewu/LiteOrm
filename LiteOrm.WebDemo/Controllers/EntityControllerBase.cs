@@ -132,8 +132,8 @@ public abstract class EntityControllerBase<T, TView> : ControllerBase
             return BadRequest(new { error = "Request body must be a valid Expr JSON." });
 
         var validation = ExprValidator.CreateQueryOnly();
-        if (!validation.VisitAll(expr))
-            return BadRequest(new { error = "Expr contains disallowed node types.", failedType = validation.FailedExpr?.GetType().Name });
+        if (!ExprVisitor.Validate(validation, expr))
+            return base.BadRequest(new { error = "Expr contains disallowed node types.", failedType = validation.FailedExpr?.GetType().Name });
 
         int skip = 0, take = 20;
 

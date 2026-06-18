@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using LiteOrm.Common;
 using Xunit;
 
@@ -147,7 +148,7 @@ namespace LiteOrm.Common.UnitTests
             var endVisited = new List<string>();
             var visitor = new TestVisitor(beginVisited.Add, endVisited.Add);
 
-            ExprVisitor.VisitAll(visitor, CreateSimpleExpr());
+            ExprVisitor.Visit(visitor, CreateSimpleExpr());
 
             Assert.Equal(3, beginVisited.Count);
             Assert.Equal(3, endVisited.Count);
@@ -163,14 +164,14 @@ namespace LiteOrm.Common.UnitTests
         public void VisitAll_IExprNodeVisitor_NullRoot_DoesNotThrow()
         {
             var visitor = new TestVisitor(_ => { }, _ => { });
-            var ex = Record.Exception(() => ExprVisitor.VisitAll(visitor, null));
+            var ex = Record.Exception(() => ExprVisitor.Visit(visitor, null));
             Assert.Null(ex);
         }
 
         [Fact]
         public void VisitAll_IExprNodeVisitor_NullVisitor_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => ExprVisitor.VisitAll((IExprNodeVisitor)null, CreateSimpleExpr()));
+            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Visit((IExprNodeVisitor)null, CreateSimpleExpr()));
         }
 
         [Fact]
@@ -178,7 +179,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var visited = new List<string>();
 
-            ExprVisitor.VisitAll(new TestValidator(node =>
+            ExprVisitor.Validate(new TestValidator(node =>
             {
                 visited.Add($"{node.ExprType}");
                 return true;
@@ -195,7 +196,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var visited = new List<string>();
 
-            ExprVisitor.VisitAll(new TestValidator(node =>
+            ExprVisitor.Validate(new TestValidator(node =>
             {
                 visited.Add($"{node.ExprType}");
                 return false;
@@ -208,7 +209,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void VisitAll_ExprValidator_ReturnsTrueOnSuccess()
         {
-            bool result = ExprVisitor.VisitAll(
+            bool result = ExprVisitor.Validate(
                 new TestValidator(_ => true),
                 CreateSimpleExpr());
 
@@ -218,7 +219,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void VisitAll_ExprValidator_ReturnsFalseOnFailure()
         {
-            bool result = ExprVisitor.VisitAll(
+            bool result = ExprVisitor.Validate(
                 new TestValidator(_ => false),
                 CreateSimpleExpr());
 
@@ -228,14 +229,14 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void VisitAll_ExprValidator_NullRoot_ReturnsTrue()
         {
-            bool result = ExprVisitor.VisitAll(new TestValidator(_ => false), null);
+            bool result = ExprVisitor.Validate(new TestValidator(_ => false), null);
             Assert.True(result);
         }
 
         [Fact]
         public void VisitAll_ExprValidator_NullValidator_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => ExprVisitor.VisitAll((ExprValidator)null, CreateSimpleExpr()));
+            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Validate((ExprValidator)null, CreateSimpleExpr()));
         }
 
         private static LogicExpr CreateSimpleExpr()
@@ -254,8 +255,8 @@ namespace LiteOrm.Common.UnitTests
                 _onEnd = onEnd;
             }
 
-            public void BeginVisit(Expr node) => _onBegin($"{node.ExprType}");
-            public void EndVisit(Expr node) => _onEnd($"{node.ExprType}");
+            public void BeginVisit(Expr node, CancellationToken cancellationToken) => _onBegin($"{node.ExprType}");
+            public void EndVisit(Expr node, CancellationToken cancellationToken) => _onEnd($"{node.ExprType}");
         }
 
         private class TestValidator : ExprValidator

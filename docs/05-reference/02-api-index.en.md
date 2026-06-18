@@ -182,8 +182,9 @@ Related guides:
 - `FunctionSqlHandler`
 
 - `FunctionExprValidator`
+- `CycleDetector` — Detects circular references in Expr trees
 
-- legacy `AndIf` / `OrIf` / `WhereIf` / `SetIf` helpers removed; use `if` + null-friendly composition instead
+
 
 
 

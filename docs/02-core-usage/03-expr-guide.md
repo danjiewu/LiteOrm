@@ -549,7 +549,74 @@ new AndExpr(a, b)
 
 在组合语义上等价。
 
-## 10. 相关链接
+## 10. 检测循环引用
+
+在动态构建 `Expr` 树时，如果不小心将节点的 `Source` 属性指向自身或形成回环，会导致遍历/转换时出现栈溢出。`CycleDetector` 使用 `ExprVisitor` 检测此类循环引用。
+
+### 10.1 基本用法
+
+```csharp
+using LiteOrm.Common;
+
+var expr = Expr.Prop("Age") > 18;
+bool hasCycle = CycleDetector.HasCycle(expr);   // false
+```
+
+### 10.2 API
+
+| 方法 | 返回值 | 说明 |
+|------|--------|------|
+| `CycleDetector.HasCycle(Expr root)` | `bool` | 是否存在循环引用 |
+| `CycleDetector.FindCycle(Expr root)` | `Expr` | 返回造成循环的节点，无循环返回 `null` |
+| `CycleDetector.Detect(Expr root)` | `CycleResult` | 返回包含 `CycleNode` 和 `Path` 的详细结果 |
+
+### 10.3 使用 Detect 获取详细路径
+
+```csharp
+var result = CycleDetector.Detect(someExpr);
+if (result.HasCycle)
+{
+    Console.WriteLine($"检测到循环引用，触发节点: {result.CycleNode.ExprType}");
+    Console.WriteLine("从根到循环节点的路径:");
+    foreach (var node in result.Path)
+    {
+        Console.WriteLine($"  → {node.ExprType}");
+    }
+}
+```
+
+`CycleResult.Path` 记录了从根节点到循环节点（第二次出现）的完整路径，路径末尾为重复节点自身，可用于快速定位循环位置。
+
+### 10.4 典型循环场景
+
+```csharp
+// 场景 1：直接自引用（Source 指向自身）
+var where = new WhereExpr();
+where.Source = where;                 // 自引用
+where.Where = Expr.Prop("Age") > 18;
+// CycleDetector.HasCycle(where) → true
+
+// 场景 2：间接回环（A → B → A）
+var whereA = new WhereExpr();
+var whereB = new WhereExpr();
+whereA.Source = whereB;
+whereB.Source = whereA;
+// CycleDetector.HasCycle(whereA) → true
+
+// 场景 3：正常链式结构（无循环）
+var query = Expr.From(typeof(User))
+    .Where(Expr.Prop("Age") > 18)
+    .OrderBy(Expr.Prop("Name").Asc());
+// CycleDetector.HasCycle(query) → false
+```
+
+### 10.5 实现原理
+
+`CycleDetector` 实现 `IExprNodeVisitor` 接口，在 `BeginVisit` 时将节点加入路径集合（基于引用相等性），在 `EndVisit` 时从路径中移除。当同一节点在路径集合中再次出现时，判定为循环引用并通过 `CancellationTokenSource.Cancel()` 中断遍历。
+
+> **注意**：检测使用引用相等性（`ReferenceEquals`）而非值相等性，即使两个节点内容相同但引用不同，也不会被误判为循环。
+
+## 11. 相关链接
 
 - [查询指南](./04-query-guide.md)
 - [增删改查](./05-crud-guide.md)

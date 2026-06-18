@@ -387,17 +387,28 @@ Additional rule:
 
 ### ExprVisitor traversal methods
 
-`ExprVisitor` provides four traversal modes:
+`ExprVisitor` provides four traversal modes. All methods accept an optional `CancellationToken` parameter for external interruption:
 
 | Method | Traversal mode | Short-circuit | Description |
 |--------|---------------|--------------|-------------|
-| `ExprVisitor.Visit(Func<Expr,bool>, root)` | `Func<Expr,bool>` delegate | ✅ | Returns `false` to stop |
-| `ExprVisitor.Visit(Func<Expr,bool>, root, order)` | `Func<Expr,bool>` delegate | ✅ | Specify PreOrder/PostOrder |
-| `ExprVisitor.Visit(Action<Expr>, root)` | `Action<Expr>` delegate | ❌ | Always completes full traversal |
-| `ExprVisitor.Visit(Action<Expr>, root, order)` | `Action<Expr>` delegate | ❌ | Specified order, always completes |
-| `visitor.VisitAll(root)` | `IExprNodeVisitor` interface | ❌ | BeginVisit (pre) + EndVisit (post) |
-| `validator.VisitAll(root)` | `ExprValidator` base class | ✅ | Validate returns `false` to stop |
-| `validator.VisitAll(root, order)` | `ExprValidator` base class | ✅ | Specified order |
+| `ExprVisitor.Visit(Func<Expr,bool>, root, order?, ct?)` | `Func<Expr,bool>` delegate | ✅ | Returns `false` or cancel to stop |
+| `ExprVisitor.Visit(Action<Expr>, root, order?, ct?)` | `Action<Expr>` delegate | ❌ | Always completes (unless cancelled) |
+| `ExprVisitor.Visit(IExprNodeVisitor, root, ct?)` | `IExprNodeVisitor` interface | ❌ | BeginVisit (pre) + EndVisit (post) |
+| `ExprVisitor.Validate(ExprValidator, root, order?, ct?)` | `ExprValidator` base class | ✅ | Validate returns `false` or cancel to stop |
+
+> `IExprNodeVisitor.BeginVisit(Expr, CancellationToken)` and `EndVisit(Expr, CancellationToken)` receive the cancellation token. If cancelled via `CancellationTokenSource.Cancel()` inside a callback, traversal will stop.
+
+### CycleDetector circular reference detection
+
+`CycleDetector` uses `ExprVisitor` to detect circular references in `Expr` trees (e.g., `Source` chain loops):
+
+| Method | Description |
+|--------|-------------|
+| `CycleDetector.HasCycle(Expr root)` | Whether a circular reference exists |
+| `CycleDetector.FindCycle(Expr root)` | Returns the node causing the cycle, or `null` |
+| `CycleDetector.Detect(Expr root)` | Returns `CycleResult` (with `CycleNode` and `Path`) |
+
+Detection is based on reference equality (`ReferenceEquals`) and uses `CancellationTokenSource` to interrupt traversal without exception-based control flow.
 
 ### Operator overloads
 

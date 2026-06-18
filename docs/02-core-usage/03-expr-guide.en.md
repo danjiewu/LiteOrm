@@ -548,7 +548,74 @@ new AndExpr(a, b)
 
 are equivalent in composition semantics.
 
-## 10. Related links
+## 10. Detecting circular references
+
+When dynamically building `Expr` trees, accidentally setting a node's `Source` property to itself or forming a loop can cause stack overflows during traversal/conversion. `CycleDetector` uses `ExprVisitor` to detect such circular references.
+
+### 10.1 Basic usage
+
+```csharp
+using LiteOrm.Common;
+
+var expr = Expr.Prop("Age") > 18;
+bool hasCycle = CycleDetector.HasCycle(expr);   // false
+```
+
+### 10.2 API
+
+| Method | Return type | Description |
+|--------|-------------|-------------|
+| `CycleDetector.HasCycle(Expr root)` | `bool` | Whether a circular reference exists |
+| `CycleDetector.FindCycle(Expr root)` | `Expr` | Returns the node causing the cycle, or `null` |
+| `CycleDetector.Detect(Expr root)` | `CycleResult` | Returns detailed result including `CycleNode` and `Path` |
+
+### 10.3 Using Detect for detailed path information
+
+```csharp
+var result = CycleDetector.Detect(someExpr);
+if (result.HasCycle)
+{
+    Console.WriteLine($"Circular reference detected, trigger node: {result.CycleNode.ExprType}");
+    Console.WriteLine("Path from root to cycle node:");
+    foreach (var node in result.Path)
+    {
+        Console.WriteLine($"  → {node.ExprType}");
+    }
+}
+```
+
+`CycleResult.Path` records the complete path from the root node to the cycle node (second occurrence), with the duplicate node at the end, making it easy to locate the cycle.
+
+### 10.4 Common cycle scenarios
+
+```csharp
+// Scenario 1: Direct self-reference (Source points to itself)
+var where = new WhereExpr();
+where.Source = where;                 // self-reference
+where.Where = Expr.Prop("Age") > 18;
+// CycleDetector.HasCycle(where) → true
+
+// Scenario 2: Indirect loop (A → B → A)
+var whereA = new WhereExpr();
+var whereB = new WhereExpr();
+whereA.Source = whereB;
+whereB.Source = whereA;
+// CycleDetector.HasCycle(whereA) → true
+
+// Scenario 3: Normal chain structure (no cycle)
+var query = Expr.From(typeof(User))
+    .Where(Expr.Prop("Age") > 18)
+    .OrderBy(Expr.Prop("Name").Asc());
+// CycleDetector.HasCycle(query) → false
+```
+
+### 10.5 Implementation principle
+
+`CycleDetector` implements the `IExprNodeVisitor` interface. During `BeginVisit`, it adds nodes to a path set (using reference equality). During `EndVisit`, it removes them from the path. When the same node appears in the path set again, a circular reference is detected and traversal is interrupted via `CancellationTokenSource.Cancel()`.
+
+> **Note**: Detection uses reference equality (`ReferenceEquals`) rather than value equality. Two nodes with identical content but different references will not be falsely reported as a cycle.
+
+## 11. Related links
 
 - [Query Guide](./04-query-guide.en.md)
 - [CRUD Guide](./05-crud-guide.en.md)

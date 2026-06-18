@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 表达式验证器基类，通过 <see cref="ExprVisitor.VisitAll(ExprValidator, Expr)"/> 驱动遍历验证。
+    /// 表达式验证器基类，通过 <see cref="ExprVisitor.Validate(ExprValidator, Expr, ExprVisitOrder, System.Threading.CancellationToken)"/> 驱动遍历验证。
     /// 验证失败时自动记录失败节点到 <see cref="FailedExpr"/>。
     /// </summary>
     public abstract class ExprValidator

@@ -105,7 +105,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - `SqlBuilder.RegisterFunctionSqlHandler`
 - `FunctionSqlHandler`
 - `FunctionExprValidator`
-- 旧版 `AndIf` / `OrIf` / `WhereIf` / `SetIf` 已移除，改用 `if` + 空值友好组合
+- `CycleDetector` — 检测 Expr 树中的循环引用
 
 对应文档：
 

@@ -952,7 +952,7 @@ namespace LiteOrm.Common.UnitTests
     }
 
     /// <summary>
-    /// Unit tests for ExprValidator and its interaction with ExprVisitor.VisitAll
+    /// Unit tests for ExprValidator and its interaction with ExprVisitor.Validate
     /// </summary>
     public class ExprValidatorVisitTests
     {
@@ -964,7 +964,7 @@ namespace LiteOrm.Common.UnitTests
             mockValidator.Setup(v => v.Validate(mockNode.Object)).Returns(true);
             mockValidator.CallBase = false;
 
-            bool result = ExprVisitor.VisitAll(mockValidator.Object, mockNode.Object);
+            bool result = ExprVisitor.Validate(mockValidator.Object, mockNode.Object);
 
             Assert.True(result);
             Assert.Null(mockValidator.Object.FailedExpr);
@@ -977,7 +977,7 @@ namespace LiteOrm.Common.UnitTests
             var mockNode = new Mock<Expr>();
             mockValidator.Setup(v => v.Validate(mockNode.Object)).Returns(false);
 
-            bool result = ExprVisitor.VisitAll(mockValidator.Object, mockNode.Object);
+            bool result = ExprVisitor.Validate(mockValidator.Object, mockNode.Object);
 
             Assert.False(result);
             Assert.Same(mockNode.Object, mockValidator.Object.FailedExpr);
@@ -1000,7 +1000,7 @@ namespace LiteOrm.Common.UnitTests
             var mockNode = new Mock<Expr>();
             mockValidator.Setup(v => v.Validate(mockNode.Object)).Returns(true);
 
-            ExprVisitor.VisitAll(mockValidator.Object, mockNode.Object);
+            ExprVisitor.Validate(mockValidator.Object, mockNode.Object);
 
             mockValidator.Verify(v => v.Validate(mockNode.Object), Times.Once);
         }
@@ -1011,7 +1011,7 @@ namespace LiteOrm.Common.UnitTests
             var mockValidator = new Mock<ExprValidator>();
             mockValidator.Setup(v => v.Validate(null)).Returns(true);
 
-            bool result = ExprVisitor.VisitAll(mockValidator.Object, null);
+            bool result = ExprVisitor.Validate(mockValidator.Object, null);
 
             Assert.True(result);
             mockValidator.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);

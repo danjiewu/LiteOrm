@@ -387,17 +387,28 @@ public class OrderExceptionHook : IServiceExceptionHook
 
 ### ExprVisitor 遍历方法
 
-`ExprVisitor` 提供四种遍历模式：
+`ExprVisitor` 提供四种遍历模式，所有方法均支持可选的 `CancellationToken` 参数用于外部中断：
 
 | 方法 | 遍历模式 | 短路终止 | 说明 |
 |------|---------|---------|------|
-| `ExprVisitor.Visit(Func<Expr,bool>, root)` | `Func<Expr,bool>` 委托 | ✅ | 返回 `false` 终止遍历 |
-| `ExprVisitor.Visit(Func<Expr,bool>, root, order)` | `Func<Expr,bool>` 委托 | ✅ | 指定 PreOrder/PostOrder |
-| `ExprVisitor.Visit(Action<Expr>, root)` | `Action<Expr>` 委托 | ❌ | 总是完整遍历 |
-| `ExprVisitor.Visit(Action<Expr>, root, order)` | `Action<Expr>` 委托 | ❌ | 指定顺序，总是完整遍历 |
-| `visitor.VisitAll(root)` | `IExprNodeVisitor` 接口 | ❌ | BeginVisit(前序) + EndVisit(后序) |
-| `validator.VisitAll(root)` | `ExprValidator` 基类 | ✅ | Validate 返回 `false` 终止 |
-| `validator.VisitAll(root, order)` | `ExprValidator` 基类 | ✅ | 指定顺序 |
+| `ExprVisitor.Visit(Func<Expr,bool>, root, order?, ct?)` | `Func<Expr,bool>` 委托 | ✅ | 返回 `false` 或取消令牌终止 |
+| `ExprVisitor.Visit(Action<Expr>, root, order?, ct?)` | `Action<Expr>` 委托 | ❌ | 总是完整遍历（除非取消） |
+| `ExprVisitor.Visit(IExprNodeVisitor, root, ct?)` | `IExprNodeVisitor` 接口 | ❌ | BeginVisit(前序) + EndVisit(后序) |
+| `ExprVisitor.Validate(ExprValidator, root, order?, ct?)` | `ExprValidator` 基类 | ✅ | Validate 返回 `false` 或取消终止 |
+
+> `IExprNodeVisitor` 的 `BeginVisit(Expr, CancellationToken)` 和 `EndVisit(Expr, CancellationToken)` 接收取消令牌。若在回调内通过 `CancellationTokenSource.Cancel()` 取消，遍历将中断。
+
+### CycleDetector 循环引用检测
+
+`CycleDetector` 使用 `ExprVisitor` 检测 `Expr` 树中的循环引用（如 `Source` 链回环）：
+
+| 方法 | 说明 |
+|------|------|
+| `CycleDetector.HasCycle(Expr root)` | 是否存在循环引用 |
+| `CycleDetector.FindCycle(Expr root)` | 返回造成循环的节点，无循环返回 `null` |
+| `CycleDetector.Detect(Expr root)` | 返回 `CycleResult`（含 `CycleNode` 和 `Path`） |
+
+检测基于引用相等性（`ReferenceEquals`），通过 `CancellationTokenSource` 中断遍历，不使用异常控制流。
 
 ### 运算符重载
 
