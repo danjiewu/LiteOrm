@@ -1,5 +1,3 @@
-﻿﻿﻿﻿
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -622,637 +620,401 @@ namespace LiteOrm.Common.UnitTests
     /// </summary>
     public class ExprValidatorGroupTests
     {
-        /// <summary>
-        /// Tests that Validate returns true when the input node is null.
-        /// Validates the special case where null nodes are considered valid.
-        /// </summary>
         [Fact]
         public void Validate_NullNode_ReturnsTrue()
         {
-            // Arrange
             var validator = new ExprValidatorGroup();
-
-            // Act
             bool result = validator.Validate(null);
-
-            // Assert
             Assert.True(result);
         }
 
-        /// <summary>
-        /// Tests that Validate returns true when no visitors are provided and node is non-null.
-        /// Validates that an empty validator group accepts all nodes.
-        /// </summary>
         [Fact]
-        public void Validate_NonNullNodeWithNoVisitors_ReturnsTrue()
+        public void Validate_NonNullNodeWithNoValidators_ReturnsTrue()
         {
-            // Arrange
             var validator = new ExprValidatorGroup();
             var mockExpr = new Mock<Expr>();
-
-            // Act
             bool result = validator.Validate(mockExpr.Object);
-
-            // Assert
             Assert.True(result);
         }
 
-        /// <summary>
-        /// Tests that Validate returns true when a single visitor returns true.
-        /// Validates successful validation with one passing validator.
-        /// </summary>
         [Fact]
-        public void Validate_NonNullNodeWithSinglePassingVisitor_ReturnsTrue()
+        public void Validate_NonNullNodeWithSinglePassingValidator_ReturnsTrue()
         {
-            // Arrange
-            var mockVisitor = new Mock<IExprNodeVisitor>();
+            var mockValidator = new Mock<ExprValidator>();
             var mockExpr = new Mock<Expr>();
-            mockVisitor.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            var validator = new ExprValidatorGroup(mockVisitor.Object);
+            mockValidator.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            var validator = new ExprValidatorGroup(mockValidator.Object);
 
-            // Act
             bool result = validator.Validate(mockExpr.Object);
 
-            // Assert
             Assert.True(result);
-            mockVisitor.Verify(v => v.Visit(mockExpr.Object), Times.Once);
+            mockValidator.Verify(v => v.Validate(mockExpr.Object), Times.Once);
         }
 
-        /// <summary>
-        /// Tests that Validate returns false when a single visitor returns false.
-        /// Validates that a failing validator causes validation to fail and sets FaildedVisitor.
-        /// </summary>
         [Fact]
-        public void Validate_NonNullNodeWithSingleFailingVisitor_ReturnsFalseAndSetsFaildedVisitor()
+        public void Validate_NonNullNodeWithSingleFailingValidator_ReturnsFalseAndSetsFailedValidator()
         {
-            // Arrange
-            var mockVisitor = new Mock<IExprNodeVisitor>();
+            var mockValidator = new Mock<ExprValidator>();
             var mockExpr = new Mock<Expr>();
-            mockVisitor.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(false);
-            var validator = new ExprValidatorGroup(mockVisitor.Object);
+            mockValidator.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(false);
+            var validator = new ExprValidatorGroup(mockValidator.Object);
 
-            // Act
             bool result = validator.Validate(mockExpr.Object);
 
-            // Assert
             Assert.False(result);
-            Assert.Same(mockVisitor.Object, validator.FaildedVisitor);
-            mockVisitor.Verify(v => v.Visit(mockExpr.Object), Times.Once);
+            Assert.Same(mockValidator.Object, validator.FailedValidator);
+            mockValidator.Verify(v => v.Validate(mockExpr.Object), Times.Once);
         }
 
-        /// <summary>
-        /// Tests that Validate returns true when all multiple visitors return true.
-        /// Validates successful validation with multiple passing validators.
-        /// </summary>
         [Fact]
-        public void Validate_NonNullNodeWithMultiplePassingVisitors_ReturnsTrue()
+        public void Validate_NonNullNodeWithMultiplePassingValidators_ReturnsTrue()
         {
-            // Arrange
-            var mockVisitor1 = new Mock<IExprNodeVisitor>();
-            var mockVisitor2 = new Mock<IExprNodeVisitor>();
-            var mockVisitor3 = new Mock<IExprNodeVisitor>();
+            var mockValidator1 = new Mock<ExprValidator>();
+            var mockValidator2 = new Mock<ExprValidator>();
+            var mockValidator3 = new Mock<ExprValidator>();
             var mockExpr = new Mock<Expr>();
 
-            mockVisitor1.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            mockVisitor2.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            mockVisitor3.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
+            mockValidator1.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            mockValidator2.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            mockValidator3.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
 
-            var validator = new ExprValidatorGroup(mockVisitor1.Object, mockVisitor2.Object, mockVisitor3.Object);
+            var validator = new ExprValidatorGroup(mockValidator1.Object, mockValidator2.Object, mockValidator3.Object);
 
-            // Act
             bool result = validator.Validate(mockExpr.Object);
 
-            // Assert
             Assert.True(result);
-            mockVisitor1.Verify(v => v.Visit(mockExpr.Object), Times.Once);
-            mockVisitor2.Verify(v => v.Visit(mockExpr.Object), Times.Once);
-            mockVisitor3.Verify(v => v.Visit(mockExpr.Object), Times.Once);
+            mockValidator1.Verify(v => v.Validate(mockExpr.Object), Times.Once);
+            mockValidator2.Verify(v => v.Validate(mockExpr.Object), Times.Once);
+            mockValidator3.Verify(v => v.Validate(mockExpr.Object), Times.Once);
         }
 
-        /// <summary>
-        /// Tests that Validate returns false when the first visitor fails.
-        /// Validates short-circuit behavior where remaining validators are not called.
-        /// </summary>
         [Fact]
-        public void Validate_NonNullNodeWithFirstVisitorFailing_ReturnsFalseAndShortCircuits()
+        public void Validate_NonNullNodeWithFirstValidatorFailing_ReturnsFalseAndShortCircuits()
         {
-            // Arrange
-            var mockVisitor1 = new Mock<IExprNodeVisitor>();
-            var mockVisitor2 = new Mock<IExprNodeVisitor>();
-            var mockVisitor3 = new Mock<IExprNodeVisitor>();
+            var mockValidator1 = new Mock<ExprValidator>();
+            var mockValidator2 = new Mock<ExprValidator>();
+            var mockValidator3 = new Mock<ExprValidator>();
             var mockExpr = new Mock<Expr>();
 
-            mockVisitor1.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(false);
-            mockVisitor2.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            mockVisitor3.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
+            mockValidator1.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(false);
+            mockValidator2.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            mockValidator3.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
 
-            var validator = new ExprValidatorGroup(mockVisitor1.Object, mockVisitor2.Object, mockVisitor3.Object);
+            var validator = new ExprValidatorGroup(mockValidator1.Object, mockValidator2.Object, mockValidator3.Object);
 
-            // Act
             bool result = validator.Validate(mockExpr.Object);
 
-            // Assert
             Assert.False(result);
-            Assert.Same(mockVisitor1.Object, validator.FaildedVisitor);
-            mockVisitor1.Verify(v => v.Visit(mockExpr.Object), Times.Once);
-            mockVisitor2.Verify(v => v.Visit(It.IsAny<Expr>()), Times.Never);
-            mockVisitor3.Verify(v => v.Visit(It.IsAny<Expr>()), Times.Never);
+            Assert.Same(mockValidator1.Object, validator.FailedValidator);
+            mockValidator1.Verify(v => v.Validate(mockExpr.Object), Times.Once);
+            mockValidator2.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);
+            mockValidator3.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);
         }
 
-        /// <summary>
-        /// Tests that Validate returns false when a middle visitor fails.
-        /// Validates short-circuit behavior and proper FaildedVisitor assignment.
-        /// </summary>
         [Fact]
-        public void Validate_NonNullNodeWithMiddleVisitorFailing_ReturnsFalseAndShortCircuits()
+        public void Validate_NonNullNodeWithMiddleValidatorFailing_ReturnsFalseAndShortCircuits()
         {
-            // Arrange
-            var mockVisitor1 = new Mock<IExprNodeVisitor>();
-            var mockVisitor2 = new Mock<IExprNodeVisitor>();
-            var mockVisitor3 = new Mock<IExprNodeVisitor>();
+            var mockValidator1 = new Mock<ExprValidator>();
+            var mockValidator2 = new Mock<ExprValidator>();
+            var mockValidator3 = new Mock<ExprValidator>();
             var mockExpr = new Mock<Expr>();
 
-            mockVisitor1.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            mockVisitor2.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(false);
-            mockVisitor3.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
+            mockValidator1.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            mockValidator2.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(false);
+            mockValidator3.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
 
-            var validator = new ExprValidatorGroup(mockVisitor1.Object, mockVisitor2.Object, mockVisitor3.Object);
+            var validator = new ExprValidatorGroup(mockValidator1.Object, mockValidator2.Object, mockValidator3.Object);
 
-            // Act
             bool result = validator.Validate(mockExpr.Object);
 
-            // Assert
             Assert.False(result);
-            Assert.Same(mockVisitor2.Object, validator.FaildedVisitor);
-            mockVisitor1.Verify(v => v.Visit(mockExpr.Object), Times.Once);
-            mockVisitor2.Verify(v => v.Visit(mockExpr.Object), Times.Once);
-            mockVisitor3.Verify(v => v.Visit(It.IsAny<Expr>()), Times.Never);
+            Assert.Same(mockValidator2.Object, validator.FailedValidator);
+            mockValidator1.Verify(v => v.Validate(mockExpr.Object), Times.Once);
+            mockValidator2.Verify(v => v.Validate(mockExpr.Object), Times.Once);
+            mockValidator3.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);
         }
 
-        /// <summary>
-        /// Tests that Validate returns false when the last visitor fails.
-        /// Validates that all previous validators are called and FaildedVisitor is set correctly.
-        /// </summary>
         [Fact]
-        public void Validate_NonNullNodeWithLastVisitorFailing_ReturnsFalseAndSetsFaildedVisitor()
+        public void Validate_NonNullNodeWithLastValidatorFailing_ReturnsFalseAndSetsFailedValidator()
         {
-            // Arrange
-            var mockVisitor1 = new Mock<IExprNodeVisitor>();
-            var mockVisitor2 = new Mock<IExprNodeVisitor>();
-            var mockVisitor3 = new Mock<IExprNodeVisitor>();
+            var mockValidator1 = new Mock<ExprValidator>();
+            var mockValidator2 = new Mock<ExprValidator>();
+            var mockValidator3 = new Mock<ExprValidator>();
             var mockExpr = new Mock<Expr>();
 
-            mockVisitor1.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            mockVisitor2.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            mockVisitor3.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(false);
+            mockValidator1.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            mockValidator2.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            mockValidator3.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(false);
 
-            var validator = new ExprValidatorGroup(mockVisitor1.Object, mockVisitor2.Object, mockVisitor3.Object);
+            var validator = new ExprValidatorGroup(mockValidator1.Object, mockValidator2.Object, mockValidator3.Object);
 
-            // Act
             bool result = validator.Validate(mockExpr.Object);
 
-            // Assert
             Assert.False(result);
-            Assert.Same(mockVisitor3.Object, validator.FaildedVisitor);
-            mockVisitor1.Verify(v => v.Visit(mockExpr.Object), Times.Once);
-            mockVisitor2.Verify(v => v.Visit(mockExpr.Object), Times.Once);
-            mockVisitor3.Verify(v => v.Visit(mockExpr.Object), Times.Once);
+            Assert.Same(mockValidator3.Object, validator.FailedValidator);
+            mockValidator1.Verify(v => v.Validate(mockExpr.Object), Times.Once);
+            mockValidator2.Verify(v => v.Validate(mockExpr.Object), Times.Once);
+            mockValidator3.Verify(v => v.Validate(mockExpr.Object), Times.Once);
         }
 
-        /// <summary>
-        /// Tests that Validate handles multiple consecutive validation calls correctly.
-        /// Validates that FaildedVisitor is updated properly on subsequent calls.
-        /// </summary>
         [Fact]
-        public void Validate_MultipleConsecutiveCalls_UpdatesFaildedVisitorCorrectly()
+        public void Validate_MultipleConsecutiveCalls_UpdatesFailedValidatorCorrectly()
         {
-            // Arrange
-            var mockVisitor1 = new Mock<IExprNodeVisitor>();
-            var mockVisitor2 = new Mock<IExprNodeVisitor>();
+            var mockValidator1 = new Mock<ExprValidator>();
+            var mockValidator2 = new Mock<ExprValidator>();
             var mockExpr1 = new Mock<Expr>();
             var mockExpr2 = new Mock<Expr>();
 
-            mockVisitor1.Setup(v => v.Visit(mockExpr1.Object)).Returns(false);
-            mockVisitor1.Setup(v => v.Visit(mockExpr2.Object)).Returns(true);
-            mockVisitor2.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
+            mockValidator1.Setup(v => v.Validate(mockExpr1.Object)).Returns(false);
+            mockValidator1.Setup(v => v.Validate(mockExpr2.Object)).Returns(true);
+            mockValidator2.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
 
-            var validator = new ExprValidatorGroup(mockVisitor1.Object, mockVisitor2.Object);
+            var validator = new ExprValidatorGroup(mockValidator1.Object, mockValidator2.Object);
 
-            // Act
             bool result1 = validator.Validate(mockExpr1.Object);
             bool result2 = validator.Validate(mockExpr2.Object);
 
-            // Assert
             Assert.False(result1);
-            Assert.Same(mockVisitor1.Object, validator.FaildedVisitor);
+            Assert.Same(mockValidator1.Object, validator.FailedValidator);
             Assert.True(result2);
-            // FaildedVisitor should still reference the previously failed visitor
-            Assert.Same(mockVisitor1.Object, validator.FaildedVisitor);
+            Assert.Same(mockValidator1.Object, validator.FailedValidator);
         }
 
-        /// <summary>
-        /// Tests that Validate with null node does not call any visitors.
-        /// Validates early return behavior for null input.
-        /// </summary>
         [Fact]
-        public void Validate_NullNodeWithVisitors_DoesNotCallVisitors()
+        public void Validate_NullNodeWithValidators_DoesNotCallValidators()
         {
-            // Arrange
-            var mockVisitor = new Mock<IExprNodeVisitor>();
-            mockVisitor.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            var validator = new ExprValidatorGroup(mockVisitor.Object);
+            var mockValidator = new Mock<ExprValidator>();
+            mockValidator.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            var validator = new ExprValidatorGroup(mockValidator.Object);
 
-            // Act
             bool result = validator.Validate(null);
 
-            // Assert
             Assert.True(result);
-            mockVisitor.Verify(v => v.Visit(It.IsAny<Expr>()), Times.Never);
+            mockValidator.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);
         }
 
-        /// <summary>
-        /// Tests that the constructor successfully creates an instance with no visitors.
-        /// Expected: The instance is created and Validate returns true for any node.
-        /// </summary>
         [Fact]
-        public void Constructor_WithNoVisitors_ShouldSucceed()
+        public void Constructor_WithNoValidators_ShouldSucceed()
         {
-            // Arrange & Act
             var validatorGroup = new ExprValidatorGroup();
             var mockNode = new Mock<Expr>();
 
-            // Assert
             Assert.NotNull(validatorGroup);
             Assert.True(validatorGroup.Validate(mockNode.Object));
         }
 
-        /// <summary>
-        /// Tests that the constructor successfully adds a single visitor.
-        /// Expected: The visitor is added and called during validation.
-        /// </summary>
         [Fact]
-        public void Constructor_WithSingleVisitor_ShouldAddVisitor()
+        public void Constructor_WithSingleValidator_ShouldAddValidator()
         {
-            // Arrange
-            var mockVisitor = new Mock<IExprNodeVisitor>();
+            var mockValidator = new Mock<ExprValidator>();
             var mockNode = new Mock<Expr>();
-            mockVisitor.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
+            mockValidator.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
 
-            // Act
-            var validatorGroup = new ExprValidatorGroup(mockVisitor.Object);
+            var validatorGroup = new ExprValidatorGroup(mockValidator.Object);
             var result = validatorGroup.Validate(mockNode.Object);
 
-            // Assert
             Assert.True(result);
-            mockVisitor.Verify(v => v.Visit(mockNode.Object), Times.Once);
+            mockValidator.Verify(v => v.Validate(mockNode.Object), Times.Once);
         }
 
-        /// <summary>
-        /// Tests that the constructor successfully adds multiple visitors.
-        /// Expected: All visitors are added and called in order during validation.
-        /// </summary>
         [Fact]
-        public void Constructor_WithMultipleVisitors_ShouldAddAllVisitors()
+        public void Constructor_WithMultipleValidators_ShouldAddAllValidators()
         {
-            // Arrange
-            var mockVisitor1 = new Mock<IExprNodeVisitor>();
-            var mockVisitor2 = new Mock<IExprNodeVisitor>();
-            var mockVisitor3 = new Mock<IExprNodeVisitor>();
+            var mockValidator1 = new Mock<ExprValidator>();
+            var mockValidator2 = new Mock<ExprValidator>();
+            var mockValidator3 = new Mock<ExprValidator>();
             var mockNode = new Mock<Expr>();
 
-            mockVisitor1.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            mockVisitor2.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            mockVisitor3.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
+            mockValidator1.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            mockValidator2.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            mockValidator3.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
 
-            // Act
-            var validatorGroup = new ExprValidatorGroup(mockVisitor1.Object, mockVisitor2.Object, mockVisitor3.Object);
+            var validatorGroup = new ExprValidatorGroup(mockValidator1.Object, mockValidator2.Object, mockValidator3.Object);
             var result = validatorGroup.Validate(mockNode.Object);
 
-            // Assert
             Assert.True(result);
-            mockVisitor1.Verify(v => v.Visit(mockNode.Object), Times.Once);
-            mockVisitor2.Verify(v => v.Visit(mockNode.Object), Times.Once);
-            mockVisitor3.Verify(v => v.Visit(mockNode.Object), Times.Once);
+            mockValidator1.Verify(v => v.Validate(mockNode.Object), Times.Once);
+            mockValidator2.Verify(v => v.Validate(mockNode.Object), Times.Once);
+            mockValidator3.Verify(v => v.Validate(mockNode.Object), Times.Once);
         }
 
-        /// <summary>
-        /// Tests that when a visitor fails validation, FaildedVisitor is set correctly.
-        /// Expected: Validation returns false and FaildedVisitor points to the failed visitor.
-        /// </summary>
         [Fact]
-        public void Constructor_WithVisitorThatFails_ShouldSetFailedVisitor()
+        public void Constructor_WithValidatorThatFails_ShouldSetFailedValidator()
         {
-            // Arrange
-            var mockVisitor = new Mock<IExprNodeVisitor>();
+            var mockValidator = new Mock<ExprValidator>();
             var mockNode = new Mock<Expr>();
-            mockVisitor.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(false);
+            mockValidator.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(false);
 
-            // Act
-            var validatorGroup = new ExprValidatorGroup(mockVisitor.Object);
+            var validatorGroup = new ExprValidatorGroup(mockValidator.Object);
             var result = validatorGroup.Validate(mockNode.Object);
 
-            // Assert
             Assert.False(result);
-            Assert.Same(mockVisitor.Object, validatorGroup.FaildedVisitor);
+            Assert.Same(mockValidator.Object, validatorGroup.FailedValidator);
         }
 
-        /// <summary>
-        /// Tests that when the first visitor fails, subsequent visitors are not called.
-        /// Expected: Validation returns false, only the first visitor is called, and FaildedVisitor is set.
-        /// </summary>
         [Fact]
-        public void Constructor_WithMultipleVisitors_FirstFails_ShouldStopAtFirstFailure()
+        public void Constructor_WithMultipleValidators_FirstFails_ShouldStopAtFirstFailure()
         {
-            // Arrange
-            var mockVisitor1 = new Mock<IExprNodeVisitor>();
-            var mockVisitor2 = new Mock<IExprNodeVisitor>();
-            var mockVisitor3 = new Mock<IExprNodeVisitor>();
+            var mockValidator1 = new Mock<ExprValidator>();
+            var mockValidator2 = new Mock<ExprValidator>();
+            var mockValidator3 = new Mock<ExprValidator>();
             var mockNode = new Mock<Expr>();
 
-            mockVisitor1.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(false);
-            mockVisitor2.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            mockVisitor3.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
+            mockValidator1.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(false);
+            mockValidator2.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            mockValidator3.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
 
-            // Act
-            var validatorGroup = new ExprValidatorGroup(mockVisitor1.Object, mockVisitor2.Object, mockVisitor3.Object);
+            var validatorGroup = new ExprValidatorGroup(mockValidator1.Object, mockValidator2.Object, mockValidator3.Object);
             var result = validatorGroup.Validate(mockNode.Object);
 
-            // Assert
             Assert.False(result);
-            Assert.Same(mockVisitor1.Object, validatorGroup.FaildedVisitor);
-            mockVisitor1.Verify(v => v.Visit(mockNode.Object), Times.Once);
-            mockVisitor2.Verify(v => v.Visit(It.IsAny<Expr>()), Times.Never);
-            mockVisitor3.Verify(v => v.Visit(It.IsAny<Expr>()), Times.Never);
+            Assert.Same(mockValidator1.Object, validatorGroup.FailedValidator);
+            mockValidator1.Verify(v => v.Validate(mockNode.Object), Times.Once);
+            mockValidator2.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);
+            mockValidator3.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);
         }
 
-        /// <summary>
-        /// Tests that when a middle visitor fails, subsequent visitors are not called.
-        /// Expected: Validation returns false, only visitors up to the failed one are called.
-        /// </summary>
         [Fact]
-        public void Constructor_WithMultipleVisitors_MiddleFails_ShouldStopAtFailure()
+        public void Constructor_WithMultipleValidators_MiddleFails_ShouldStopAtFailure()
         {
-            // Arrange
-            var mockVisitor1 = new Mock<IExprNodeVisitor>();
-            var mockVisitor2 = new Mock<IExprNodeVisitor>();
-            var mockVisitor3 = new Mock<IExprNodeVisitor>();
+            var mockValidator1 = new Mock<ExprValidator>();
+            var mockValidator2 = new Mock<ExprValidator>();
+            var mockValidator3 = new Mock<ExprValidator>();
             var mockNode = new Mock<Expr>();
 
-            mockVisitor1.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            mockVisitor2.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(false);
-            mockVisitor3.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
+            mockValidator1.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            mockValidator2.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(false);
+            mockValidator3.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
 
-            // Act
-            var validatorGroup = new ExprValidatorGroup(mockVisitor1.Object, mockVisitor2.Object, mockVisitor3.Object);
+            var validatorGroup = new ExprValidatorGroup(mockValidator1.Object, mockValidator2.Object, mockValidator3.Object);
             var result = validatorGroup.Validate(mockNode.Object);
 
-            // Assert
             Assert.False(result);
-            Assert.Same(mockVisitor2.Object, validatorGroup.FaildedVisitor);
-            mockVisitor1.Verify(v => v.Visit(mockNode.Object), Times.Once);
-            mockVisitor2.Verify(v => v.Visit(mockNode.Object), Times.Once);
-            mockVisitor3.Verify(v => v.Visit(It.IsAny<Expr>()), Times.Never);
+            Assert.Same(mockValidator2.Object, validatorGroup.FailedValidator);
+            mockValidator1.Verify(v => v.Validate(mockNode.Object), Times.Once);
+            mockValidator2.Verify(v => v.Validate(mockNode.Object), Times.Once);
+            mockValidator3.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);
         }
 
-        /// <summary>
-        /// Tests that passing null as the visitors parameter throws ArgumentNullException.
-        /// Expected: ArgumentNullException is thrown during construction.
-        /// </summary>
         [Fact]
         public void Constructor_WithNullArray_ShouldThrowArgumentNullException()
         {
-            // Arrange
-            IExprNodeVisitor[]? visitors = null;
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ExprValidatorGroup(visitors!));
+            ExprValidator[]? validators = null;
+            Assert.Throws<ArgumentNullException>(() => new ExprValidatorGroup(validators!));
         }
 
-        /// <summary>
-        /// Tests that an array containing a null element is accepted by the constructor.
-        /// Expected: Constructor succeeds, but validation throws NullReferenceException when visiting the null element.
-        /// </summary>
         [Fact]
         public void Constructor_WithArrayContainingNullElement_ShouldAcceptButFailOnValidate()
         {
-            // Arrange
-            var mockVisitor = new Mock<IExprNodeVisitor>();
-            mockVisitor.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
-            IExprNodeVisitor?[] visitors = new IExprNodeVisitor?[] { mockVisitor.Object, null! };
+            var mockValidator = new Mock<ExprValidator>();
+            mockValidator.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
+            ExprValidator?[] validators = new ExprValidator?[] { mockValidator.Object, null! };
             var mockNode = new Mock<Expr>();
 
-            // Act
-            var validatorGroup = new ExprValidatorGroup(visitors!);
+            var validatorGroup = new ExprValidatorGroup(validators!);
 
-            // Assert
             Assert.NotNull(validatorGroup);
             Assert.Throws<NullReferenceException>(() => validatorGroup.Validate(mockNode.Object));
         }
 
-        /// <summary>
-        /// Tests that an array containing only null elements is accepted by the constructor.
-        /// Expected: Constructor succeeds, but validation throws NullReferenceException.
-        /// </summary>
         [Fact]
         public void Constructor_WithArrayContainingOnlyNullElements_ShouldAcceptButFailOnValidate()
         {
-            // Arrange
-            IExprNodeVisitor?[] visitors = new IExprNodeVisitor?[] { null!, null! };
+            ExprValidator?[] validators = new ExprValidator?[] { null!, null! };
             var mockNode = new Mock<Expr>();
 
-            // Act
-            var validatorGroup = new ExprValidatorGroup(visitors!);
+            var validatorGroup = new ExprValidatorGroup(validators!);
 
-            // Assert
             Assert.NotNull(validatorGroup);
             Assert.Throws<NullReferenceException>(() => validatorGroup.Validate(mockNode.Object));
         }
 
-        /// <summary>
-        /// Tests that validation with null node returns true when no visitors are present.
-        /// Expected: Returns true (base case with null node).
-        /// </summary>
         [Fact]
-        public void Constructor_WithNoVisitors_ValidateNullNode_ShouldReturnTrue()
+        public void Constructor_WithNoValidators_ValidateNullNode_ShouldReturnTrue()
         {
-            // Arrange
             var validatorGroup = new ExprValidatorGroup();
-
-            // Act
             var result = validatorGroup.Validate(null!);
-
-            // Assert
             Assert.True(result);
         }
 
-        /// <summary>
-        /// Tests that validation with null node returns true even with visitors present.
-        /// Expected: Returns true without calling any visitors (null check happens before iteration).
-        /// </summary>
         [Fact]
-        public void Constructor_WithVisitors_ValidateNullNode_ShouldReturnTrueWithoutCallingVisitors()
+        public void Constructor_WithValidators_ValidateNullNode_ShouldReturnTrueWithoutCallingValidators()
         {
-            // Arrange
-            var mockVisitor = new Mock<IExprNodeVisitor>();
-            mockVisitor.Setup(v => v.Visit(It.IsAny<Expr>())).Returns(true);
+            var mockValidator = new Mock<ExprValidator>();
+            mockValidator.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
 
-            // Act
-            var validatorGroup = new ExprValidatorGroup(mockVisitor.Object);
+            var validatorGroup = new ExprValidatorGroup(mockValidator.Object);
             var result = validatorGroup.Validate(null!);
 
-            // Assert
             Assert.True(result);
-            mockVisitor.Verify(v => v.Visit(It.IsAny<Expr>()), Times.Never);
+            mockValidator.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);
         }
     }
 
     /// <summary>
-    /// Unit tests for ExprValidator.Visit method
+    /// Unit tests for ExprValidator and its interaction with ExprVisitor.VisitAll
     /// </summary>
-    public class ExprValidatorTests
+    public class ExprValidatorVisitTests
     {
-        /// <summary>
-        /// Tests that Visit returns true when Validate returns true,
-        /// and FailedExpr is not set.
-        /// </summary>
         [Fact]
-        public void Visit_ValidateReturnsTrue_ReturnsTrue()
+        public void VisitAll_ValidateReturnsTrue_ReturnsTrue()
         {
-            // Arrange
             var mockValidator = new Mock<ExprValidator>();
             var mockNode = new Mock<Expr>();
             mockValidator.Setup(v => v.Validate(mockNode.Object)).Returns(true);
+            mockValidator.CallBase = false;
 
-            // Act
-            bool result = mockValidator.Object.Visit(mockNode.Object);
+            bool result = ExprVisitor.VisitAll(mockValidator.Object, mockNode.Object);
 
-            // Assert
             Assert.True(result);
             Assert.Null(mockValidator.Object.FailedExpr);
         }
 
-        /// <summary>
-        /// Tests that Visit returns false when Validate returns false,
-        /// and sets FailedExpr to the node that failed validation.
-        /// </summary>
         [Fact]
-        public void Visit_ValidateReturnsFalse_ReturnsFalseAndSetsFailedExpr()
+        public void VisitAll_ValidateReturnsFalse_ReturnsFalseAndSetsFailedExpr()
         {
-            // Arrange
             var mockValidator = new Mock<ExprValidator>();
             var mockNode = new Mock<Expr>();
             mockValidator.Setup(v => v.Validate(mockNode.Object)).Returns(false);
-            mockValidator.CallBase = true;
 
-            // Act
-            bool result = mockValidator.Object.Visit(mockNode.Object);
+            bool result = ExprVisitor.VisitAll(mockValidator.Object, mockNode.Object);
 
-            // Assert
             Assert.False(result);
             Assert.Same(mockNode.Object, mockValidator.Object.FailedExpr);
         }
 
-        /// <summary>
-        /// Tests that Visit correctly handles multiple calls with different validation results,
-        /// ensuring FailedExpr is updated only when validation fails.
-        /// </summary>
         [Fact]
-        public void Visit_MultipleCallsWithDifferentResults_UpdatesFailedExprCorrectly()
+        public void Validate_MultipleCallsWithDifferentResults_NoFailedExprPersists()
         {
-            // Arrange
-            var mockValidator = new Mock<ExprValidator>();
-            var firstNode = new Mock<Expr>();
-            var secondNode = new Mock<Expr>();
-            mockValidator.Setup(v => v.Validate(firstNode.Object)).Returns(false);
-            mockValidator.Setup(v => v.Validate(secondNode.Object)).Returns(true);
-            mockValidator.CallBase = true;
-
-            // Act
-            bool firstResult = mockValidator.Object.Visit(firstNode.Object);
-            bool secondResult = mockValidator.Object.Visit(secondNode.Object);
-
-            // Assert
-            Assert.False(firstResult);
-            Assert.True(secondResult);
-            Assert.Same(firstNode.Object, mockValidator.Object.FailedExpr);
+            var validator = new ExprTypeValidator(ExprType.Value);
+            Assert.True(validator.Validate(new ValueExpr(123)));
+            Assert.Null(validator.FailedExpr);
+            Assert.False(validator.Validate(new PropertyExpr("Name")));
+            Assert.Null(validator.FailedExpr);
         }
 
-        /// <summary>
-        /// Tests that Visit correctly overwrites FailedExpr when multiple validations fail,
-        /// storing the most recent failed node.
-        /// </summary>
         [Fact]
-        public void Visit_ConsecutiveFailures_OverwritesFailedExpr()
+        public void VisitAll_InvokesValidateOnce()
         {
-            // Arrange
-            var mockValidator = new Mock<ExprValidator>();
-            var firstNode = new Mock<Expr>();
-            var secondNode = new Mock<Expr>();
-            mockValidator.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(false);
-            mockValidator.CallBase = true;
-
-            // Act
-            mockValidator.Object.Visit(firstNode.Object);
-            mockValidator.Object.Visit(secondNode.Object);
-
-            // Assert
-            Assert.Same(secondNode.Object, mockValidator.Object.FailedExpr);
-        }
-
-        /// <summary>
-        /// Tests that Visit invokes the Validate method exactly once with the provided node.
-        /// </summary>
-        [Fact]
-        public void Visit_InvokesValidateOnce()
-        {
-            // Arrange
             var mockValidator = new Mock<ExprValidator>();
             var mockNode = new Mock<Expr>();
             mockValidator.Setup(v => v.Validate(mockNode.Object)).Returns(true);
 
-            // Act
-            mockValidator.Object.Visit(mockNode.Object);
+            ExprVisitor.VisitAll(mockValidator.Object, mockNode.Object);
 
-            // Assert
             mockValidator.Verify(v => v.Validate(mockNode.Object), Times.Once);
         }
 
-        /// <summary>
-        /// Tests that Visit passes null node to Validate when null is provided,
-        /// and returns based on Validate's return value.
-        /// </summary>
         [Fact]
-        public void Visit_WithNullNode_PassesNullToValidate()
+        public void VisitAll_WithNullRoot_ReturnsTrue()
         {
-            // Arrange
             var mockValidator = new Mock<ExprValidator>();
             mockValidator.Setup(v => v.Validate(null)).Returns(true);
 
-            // Act
-            bool result = mockValidator.Object.Visit(null);
+            bool result = ExprVisitor.VisitAll(mockValidator.Object, null);
 
-            // Assert
             Assert.True(result);
-            mockValidator.Verify(v => v.Validate(null), Times.Once);
-        }
-
-        /// <summary>
-        /// Tests that Visit sets FailedExpr to null when null node fails validation.
-        /// </summary>
-        [Fact]
-        public void Visit_WithNullNodeValidationFails_SetsFailedExprToNull()
-        {
-            // Arrange
-            var mockValidator = new Mock<ExprValidator>();
-            mockValidator.Setup(v => v.Validate(null)).Returns(false);
-            mockValidator.CallBase = true;
-
-            // Act
-            bool result = mockValidator.Object.Visit(null);
-
-            // Assert
-            Assert.False(result);
-            Assert.Null(mockValidator.Object.FailedExpr);
+            mockValidator.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);
         }
     }
 }

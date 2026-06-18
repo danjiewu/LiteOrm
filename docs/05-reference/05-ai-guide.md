@@ -385,6 +385,20 @@ public class OrderExceptionHook : IServiceExceptionHook
 - `PropertyExpr`、`TableExpr`、`ForeignExpr`、`FunctionExpr`、`SelectExpr`、`SelectItemExpr`、`CommonTableExpr`、`GenericSqlExpr` 等表达式，在对象比较和哈希计算时，名称与别名按**忽略大小写**处理。
 - 因此 `Prop("User", "Name")` 与 `Prop("user", "name")` 可以视为同一个表达式；别名 `T0` 与 `t0` 也会被视为相同别名。
 
+### ExprVisitor 遍历方法
+
+`ExprVisitor` 提供四种遍历模式：
+
+| 方法 | 遍历模式 | 短路终止 | 说明 |
+|------|---------|---------|------|
+| `ExprVisitor.Visit(Func<Expr,bool>, root)` | `Func<Expr,bool>` 委托 | ✅ | 返回 `false` 终止遍历 |
+| `ExprVisitor.Visit(Func<Expr,bool>, root, order)` | `Func<Expr,bool>` 委托 | ✅ | 指定 PreOrder/PostOrder |
+| `ExprVisitor.Visit(Action<Expr>, root)` | `Action<Expr>` 委托 | ❌ | 总是完整遍历 |
+| `ExprVisitor.Visit(Action<Expr>, root, order)` | `Action<Expr>` 委托 | ❌ | 指定顺序，总是完整遍历 |
+| `visitor.VisitAll(root)` | `IExprNodeVisitor` 接口 | ❌ | BeginVisit(前序) + EndVisit(后序) |
+| `validator.VisitAll(root)` | `ExprValidator` 基类 | ✅ | Validate 返回 `false` 终止 |
+| `validator.VisitAll(root, order)` | `ExprValidator` 基类 | ✅ | 指定顺序 |
+
 ### 运算符重载
 
 `PropertyExpr` / `ValueTypeExpr` 上的运算符：

@@ -1,13 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 表达式验证器基类，访问表达式树进行验证
+    /// 表达式验证器基类，通过 <see cref="ExprVisitor.VisitAll(ExprValidator, Expr)"/> 驱动遍历验证。
+    /// 验证失败时自动记录失败节点到 <see cref="FailedExpr"/>。
     /// </summary>
-    public abstract class ExprValidator : IExprNodeVisitor
+    public abstract class ExprValidator
     {
         /// <summary>
         /// 验证指定表达式节点
@@ -19,19 +19,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取验证失败的表达式节点
         /// </summary>
-        public Expr FailedExpr { get; private set; }
-
-        /// <summary>
-        /// 访问并验证表达式节点，验证失败时记录节点引用
-        /// </summary>
-        /// <param name="node">要访问的表达式节点</param>
-        /// <returns>验证通过返回 true，失败返回 false</returns>
-        public bool Visit(Expr node)
-        {
-            if (Validate(node)) return true;
-            FailedExpr = node;
-            return false;
-        }
+        public Expr FailedExpr { get; internal set; }
 
         /// <summary>
         /// 创建一个最小验证器实例，允许基本值类型、一元表达式、集合类型、逻辑类型及基础 SQL 片段
@@ -46,24 +34,25 @@ namespace LiteOrm.Common
     }
 
     /// <summary>
-    /// 表达式验证器组，支持多个验证器组合使用
+    /// 表达式验证器组，支持多个验证器组合使用，任一验证器失败即短路停止
     /// </summary>
     public class ExprValidatorGroup : ExprValidator
     {
-        private readonly List<IExprNodeVisitor> _visitors = new List<IExprNodeVisitor>();
+        private readonly List<ExprValidator> _validators = new List<ExprValidator>();
 
         /// <summary>
-        /// 获取验证失败的访问器
+        /// 获取验证失败的验证器
         /// </summary>
-        public IExprNodeVisitor FaildedVisitor { get; private set; }
+        public ExprValidator FailedValidator { get; private set; }
 
         /// <summary>
         /// 初始化验证器组
         /// </summary>
-        /// <param name="visitors">要组合的验证器数组</param>
-        public ExprValidatorGroup(params IExprNodeVisitor[] visitors)
+        /// <param name="validators">要组合的验证器数组</param>
+        public ExprValidatorGroup(params ExprValidator[] validators)
         {
-            _visitors.AddRange(visitors);
+            if (validators == null) throw new ArgumentNullException(nameof(validators));
+            _validators.AddRange(validators);
         }
 
         /// <summary>
@@ -75,11 +64,11 @@ namespace LiteOrm.Common
         {
             if (node == null) return true;
 
-            foreach (var visitor in _visitors)
+            foreach (var validator in _validators)
             {
-                if (!visitor.Visit(node))
+                if (!validator.Validate(node))
                 {
-                    FaildedVisitor = visitor;
+                    FailedValidator = validator;
                     return false;
                 }
             }
@@ -172,6 +161,6 @@ namespace LiteOrm.Common
             if (!_allowedTypes.Contains(node.ExprType))
                 return false;
             return true;
-        }       
+        }
     }
 }

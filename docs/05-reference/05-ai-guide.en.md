@@ -385,6 +385,20 @@ Additional rule:
 - Expression objects such as `PropertyExpr`, `TableExpr`, `ForeignExpr`, `FunctionExpr`, `SelectExpr`, `SelectItemExpr`, `CommonTableExpr`, and `GenericSqlExpr` treat names and aliases as **case-insensitive** when comparing objects and calculating hash codes.
 - As a result, `Prop("User", "Name")` and `Prop("user", "name")` are treated as the same expression, and aliases `T0` and `t0` are treated as the same alias.
 
+### ExprVisitor traversal methods
+
+`ExprVisitor` provides four traversal modes:
+
+| Method | Traversal mode | Short-circuit | Description |
+|--------|---------------|--------------|-------------|
+| `ExprVisitor.Visit(Func<Expr,bool>, root)` | `Func<Expr,bool>` delegate | ✅ | Returns `false` to stop |
+| `ExprVisitor.Visit(Func<Expr,bool>, root, order)` | `Func<Expr,bool>` delegate | ✅ | Specify PreOrder/PostOrder |
+| `ExprVisitor.Visit(Action<Expr>, root)` | `Action<Expr>` delegate | ❌ | Always completes full traversal |
+| `ExprVisitor.Visit(Action<Expr>, root, order)` | `Action<Expr>` delegate | ❌ | Specified order, always completes |
+| `visitor.VisitAll(root)` | `IExprNodeVisitor` interface | ❌ | BeginVisit (pre) + EndVisit (post) |
+| `validator.VisitAll(root)` | `ExprValidator` base class | ✅ | Validate returns `false` to stop |
+| `validator.VisitAll(root, order)` | `ExprValidator` base class | ✅ | Specified order |
+
 ### Operator overloads
 
 Operators on `PropertyExpr` / `ValueTypeExpr`:
