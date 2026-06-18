@@ -517,7 +517,14 @@ namespace LiteOrm
                 string cacheKey = readOnly ? $"{name}:RO" : rwKey;
                 if (_daoContexts.TryGetValue(cacheKey, out DAOContext context))
                 {
-                    return context;
+                    if (context.IsValid)
+                        return context;
+                    // 如果连接无效，尝试丢弃并重新获取
+                    else
+                    {
+                        context.Dispose();
+                        _daoContexts.TryRemove(cacheKey, out context);
+                    }
                 }
                 // 从工厂获取上下文
                 context = pool.PeekContext(readOnly);
@@ -585,7 +592,13 @@ namespace LiteOrm
                 string cacheKey = readOnly ? $"{name}:RO" : rwKey;
                 if (_daoContexts.TryGetValue(cacheKey, out DAOContext context))
                 {
-                    return context;
+                    if (context.IsValid)
+                        return context;
+                    else
+                    {
+                        await context.DisposeAsync().ConfigureAwait(false);
+                        _daoContexts.TryRemove(cacheKey, out context);
+                    }
                 }
 
                 context = await pool.PeekContextAsync(readOnly).ConfigureAwait(false);

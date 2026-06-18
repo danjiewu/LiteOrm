@@ -32,6 +32,11 @@ namespace LiteOrm
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         /// <summary>
+        /// 设置或获取连接保持活跃的时间间隔。当连接在此时间内未被使用，则视为老化连接，可能会被连接池回收。
+        /// </summary>
+        public TimeSpan KeepAliveDuration { get; set; } = TimeSpan.FromMinutes(30);
+
+        /// <summary>
         /// 使用指定的数据库连接初始化 <see cref="DAOContext"/> 类的新实例。
         /// </summary>
         /// <param name="connection">底层的数据库连接实例。</param>
@@ -40,7 +45,7 @@ namespace LiteOrm
         {
             DbConnection = connection ?? throw new ArgumentNullException(nameof(connection));
             ProviderType = connection.GetType();
-            LastActiveTime = DateTime.Now;
+            SetActivate();
         }
 
         /// <summary>
@@ -51,6 +56,37 @@ namespace LiteOrm
         public DAOContext(DbConnection connection, DAOContextPool pool) : this(connection)
         {
             Pool = pool;
+        }
+
+        /// <summary>
+        /// 获取一个值，指示当前上下文是否处于有效状态。有效状态意味着连接未被标记为老化且物理连接未处于损坏状态。
+        /// </summary>
+        public bool IsValid
+        {
+            get
+            {
+                {
+                    // 检查连接是否存活
+                    if (KeepAliveDuration != TimeSpan.Zero &&
+                        LastActiveTime + KeepAliveDuration < DateTime.Now)
+                    {
+                        return false;
+                    }
+
+                    // 检查连接状态
+                    try
+                    {
+                        if (DbConnection.State == ConnectionState.Broken)
+                            return false;
+
+                        return true;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -107,6 +143,14 @@ namespace LiteOrm
         {
             EnsureNotDisposed();
             return new DbCommandProxy(this);
+        }
+
+        /// <summary>
+        /// 更新上下文的最后活动时间戳，通常在执行数据库操作时调用，以便连接池能够正确识别活跃连接和老化连接。
+        /// </summary>
+        public void SetActivate()
+        {
+            LastActiveTime = DateTime.Now;
         }
 
         /// <summary>
@@ -237,7 +281,7 @@ namespace LiteOrm
                 {
                     CurrentTransaction?.Dispose();
                     CurrentTransaction = null;
-                    LastActiveTime = DateTime.Now;
+                    SetActivate();
                 }
             }
         }
@@ -268,7 +312,7 @@ namespace LiteOrm
                 {
                     CurrentTransaction?.Dispose();
                     CurrentTransaction = null;
-                    LastActiveTime = DateTime.Now;
+                    SetActivate();
                 }
             }
         }
@@ -294,7 +338,7 @@ namespace LiteOrm
                 {
                     CurrentTransaction?.Dispose();
                     CurrentTransaction = null;
-                    LastActiveTime = DateTime.Now;
+                    SetActivate();
                 }
             }
         }
@@ -325,7 +369,7 @@ namespace LiteOrm
                 {
                     CurrentTransaction?.Dispose();
                     CurrentTransaction = null;
-                    LastActiveTime = DateTime.Now;
+                    SetActivate();
                 }
             }
         }
@@ -402,7 +446,7 @@ namespace LiteOrm
                     {
                         CurrentTransaction?.Dispose();
                         CurrentTransaction = null;
-                        LastActiveTime = DateTime.Now;
+                        SetActivate();
                     }
                 }
             }

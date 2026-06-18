@@ -120,7 +120,7 @@ namespace LiteOrm.Common.UnitTests
 
                 Assert.Contains("WHERE", sql.Sql);
                 Assert.Contains("Status", sql.Sql);
-                Assert.Contains(sql.Params, param => Equals(param.Value, 1));
+                Assert.Contains("404", sql.Sql);
             });
         }
 
@@ -269,7 +269,7 @@ namespace LiteOrm.Common.UnitTests
             [Column("Id", IsPrimaryKey = true)]
             public int Id { get; set; }
 
-            [Column("Status", Constant = "1")]
+            [Column("Status", Constant = "404")]
             public int Status { get; set; }
         }
     }

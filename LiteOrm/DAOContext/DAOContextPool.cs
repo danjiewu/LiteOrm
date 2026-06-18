@@ -280,7 +280,7 @@ namespace LiteOrm
             foreach (var pool in _readOnlyPools)
             {
                 await pool.ClearPoolAsync().ConfigureAwait(false);
-            } 
+            }
         }
 
         /// <summary>
@@ -297,7 +297,7 @@ namespace LiteOrm
                     var context = _pool.Dequeue();
 
                     // 检查连接是否仍然有效
-                    if (IsContextValid(context))
+                    if (context.IsValid)
                     {
                         context.EnsureConnectionOpen();
                         return context;
@@ -330,7 +330,7 @@ namespace LiteOrm
                     var context = _pool.Dequeue();
 
                     // 检查连接是否仍然有效
-                    if (IsContextValid(context))
+                    if (context.IsValid)
                     {
                         contextToUse = context;
                         break;
@@ -379,7 +379,7 @@ namespace LiteOrm
                 context.Reset();
 
                 // 如果连接无效，销毁
-                if (!IsContextValid(context))
+                if (!context.IsValid)
                 {
                     _logger?.LogDebug("Pool '{PoolName}': returned connection is invalid or expired, disposing.", Name);
                     context.Dispose();
@@ -408,33 +408,6 @@ namespace LiteOrm
             }
         }
 
-        private bool IsContextValid(DAOContext context)
-        {
-            if (context is null)
-                return false;
-
-            // 检查连接是否存活
-            if (KeepAliveDuration != TimeSpan.Zero &&
-                context.LastActiveTime + KeepAliveDuration < DateTime.Now)
-            {
-                return false;
-            }
-
-            // 检查连接状态
-            try
-            {
-                var connection = context.DbConnection;
-                if (connection.State == ConnectionState.Broken)
-                    return false;
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         /// <summary>
         /// 创建一个新的数据库连接上下文。
         /// </summary>
@@ -455,7 +428,8 @@ namespace LiteOrm
                 connection.ConnectionString = ConnectionString;
                 var context = new DAOContext(connection, this)
                 {
-                    IsReadOnly = IsReadOnlyPool
+                    IsReadOnly = IsReadOnlyPool,
+                    KeepAliveDuration = KeepAliveDuration
                 };
                 _logger?.LogDebug("Pool '{PoolName}': new connection created.", Name);
                 if (OnContextCreated != null) OnContextCreated(context);

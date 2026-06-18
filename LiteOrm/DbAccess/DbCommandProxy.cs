@@ -239,7 +239,7 @@ namespace LiteOrm
         /// <param name="excuteType">执行类型。</param>
         protected virtual void PostExcuteCommand(ExcuteType excuteType)
         {
-            Context.LastActiveTime = DateTime.Now;
+            Context.SetActivate();
         }
 
         #region IDbCommand 成员 

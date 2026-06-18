@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.0.17.0</AssemblyVersion>
-		<FileVersion>8.0.17.0</FileVersion>
+		<AssemblyVersion>8.0.18.0</AssemblyVersion>
+		<FileVersion>8.0.18.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.0.17</VersionPrefix>
+		<VersionPrefix>8.0.18</VersionPrefix>
 		<Nullable>disable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,14 +16,7 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      新增CycleDetector用于检测Expr循环引用；
-      Expr增加SelectAll、Cast扩展，取消AndIf、OrIf、WhereIf、SetIf扩展方法；
-      Service增加SearchAs方法；
-      增加三目运算符（a ? b : c）解析为CASE语句；
-      更新Case扩展方法参数类型；
-      表达式名称忽略大小写；
-      优化Like语句escape逻辑，非必要时不生成escape片段；
-      优化TableView关联表的排序逻辑；
+      DAOContext失效检测移至DAOConext.IsValid属性。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
