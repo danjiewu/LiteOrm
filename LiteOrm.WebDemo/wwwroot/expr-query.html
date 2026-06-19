@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
@@ -12,17 +12,16 @@
             <h2>Expr 查询页</h2>
             <p>这个页面使用可视化构造器来拼装 LiteOrm 原生 Expr JSON。生成结果会和 <code>JsonSerializer.Serialize&lt;Expr&gt;(...)</code> 的输出形状保持一致：每个片段用 <code>$where / $orderby / $section</code> 挂出其 <code>Source</code>，片段自身属性平铺在同层。</p>
         </section>
-
         <nav class="nav">
-            <a href="/">登录</a>
-            <a href="/query-string.html">QueryString 查询</a>
-            <a class="active" href="/expr-query.html">Expr 查询</a>
-            <a href="/dynamic-query.html">动态查询</a>
-            <a href="/order-manage.html">订单管理</a>
-            <a href="/create-order.html">订单创建</a>
-        </nav>
-
-        <section class="card">
+            <a href="/">首页/登录</a>
+            <a href="/query-string.html" data-page="query">QueryString 查询</a>
+            <a href="/expr-query.html" class="active" data-page="expr">Expr 查询</a>
+            <a href="/dynamic-query.html" data-page="dynamic">动态查询</a>
+            <a href="/order-manage.html" data-page="order-manage">订单管理</a>
+            <a href="/create-order.html" data-page="create-order">订单创建</a>
+            <a href="/sql-to-expr.html" data-page="sql">SQL 转 Expr</a>
+            <a href="/docs.html" data-page="docs">文档</a>
+        </nav><section class="card">
             <h2>当前会话</h2>
             <div id="sessionBox" class="token">尚未登录</div>
         </section>

@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
     const storageKeys = {
         token: "liteorm-demo-token",
         user: "liteorm-demo-user"
@@ -110,7 +110,31 @@
         return true;
     }
 
+
+    function initNav() {
+        var page = window.location.pathname;
+        if (page === '/' || page.endsWith('/index.html')) {
+            page = '/';
+        } else if (page.endsWith('.html')) {
+            page = page.substring(page.lastIndexOf('/'));
+        }
+        document.querySelectorAll('.nav a[data-page]').forEach(function(a) {
+            var match = a.getAttribute('data-page');
+            var matchPage = '/' + match + '.html';
+            var isActive = page === matchPage || (match === 'index' && (page === '/' || page === '/index.html'));
+            a.classList.toggle('active', isActive);
+        });
+    }
+
+    // Run initNav on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initNav);
+    } else {
+        initNav();
+    }
+
     window.demoApp = {
+        initNav: initNav,
         apiFetch,
         clearSession,
         getToken,

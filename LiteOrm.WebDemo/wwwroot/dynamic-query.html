@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
@@ -12,17 +12,16 @@
             <h2>动态 Controller 查询页</h2>
             <p>页面功能与 Expr 查询类似，但查询目标来自 <code>DynamicControllerBuilder</code> 生成的动态 Controller。你可以在部门、订单、产品、客户等实体之间切换，并复用同一套 Expr 构造方式。</p>
         </section>
-
         <nav class="nav">
-            <a href="/">登录</a>
-            <a href="/query-string.html">QueryString 查询</a>
-            <a href="/expr-query.html">Expr 查询</a>
-            <a class="active" href="/dynamic-query.html">动态查询</a>
-            <a href="/order-manage.html">订单管理</a>
-            <a href="/create-order.html">订单创建</a>
-        </nav>
-
-        <section class="card">
+            <a href="/">首页/登录</a>
+            <a href="/query-string.html" data-page="query">QueryString 查询</a>
+            <a href="/expr-query.html" data-page="expr">Expr 查询</a>
+            <a href="/dynamic-query.html" class="active" data-page="dynamic">动态查询</a>
+            <a href="/order-manage.html" data-page="order-manage">订单管理</a>
+            <a href="/create-order.html" data-page="create-order">订单创建</a>
+            <a href="/sql-to-expr.html" data-page="sql">SQL 转 Expr</a>
+            <a href="/docs.html" data-page="docs">文档</a>
+        </nav><section class="card">
             <h2>当前会话</h2>
             <div id="sessionBox" class="token">尚未登录</div>
         </section>

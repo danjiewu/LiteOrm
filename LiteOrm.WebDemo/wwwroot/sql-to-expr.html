@@ -1,0 +1,215 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LiteOrm SQL to Expr</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <h1>SQL 转 Expr</h1>
+            <p>输入 SELECT SQL，输出 View/Expr 代码，并展示 Expr 回生 SQL。</p>
+        </section>
+
+        <nav class="nav">
+            <a href="/">首页/登录</a>
+            <a href="/query-string.html">QueryString 查询</a>
+            <a href="/expr-query.html">Expr 查询</a>
+            <a href="/dynamic-query.html">动态查询</a>
+            <a href="/order-manage.html">订单管理</a>
+            <a href="/create-order.html">订单创建</a>
+            <a href="/sql-to-expr.html" class="active" data-page="sql">SQL 转 Expr</a>
+            <a href="/docs.html" data-page="docs">文档</a>
+        </nav>
+
+        <section class="card">
+            <label for="sql-input">SQL</label>
+            <textarea id="sql-input" spellcheck="false" style="min-height:120px;margin-top:8px;margin-bottom:16px;">SELECT u.Id, u.Name, u.Age, u.DeptId, d.Name AS DeptName 
+FROM Users u 
+LEFT JOIN Departments d ON u.DeptId = d.Id 
+WHERE u.Age >= 18 
+AND (d.Name LIKE '%技术%部%' OR d.Name LIKE '%财务%')
+AND u.Name LIKE '王%'
+ORDER BY u.Name</textarea>
+            <div class="grid">
+                <div>
+                    <label for="dialect">数据库</label>
+                    <select id="dialect">
+                        <option value="SQLite">SQLite</option>
+                        <option value="SqlServer">SqlServer</option>
+                        <option value="MySql">MySql</option>
+                        <option value="PostgreSql">PostgreSql</option>
+                        <option value="Oracle">Oracle</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="namespace">命名空间</label>
+                    <input id="namespace" value="SampleProject.Models">
+                </div>
+                <div>
+                    <label for="view-name">View 名称</label>
+                    <input id="view-name" placeholder="留空时默认 主实体名 + View">
+                </div>
+            </div>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;margin:12px 0;">
+                <label style="display:flex;align-items:center;gap:6px;width:auto;"><input id="use-static-expr" type="checkbox" checked> using static LiteOrm.Common.Expr</label>
+                <label style="display:flex;align-items:center;gap:6px;width:auto;"><input id="use-nameof" type="checkbox"> 使用 nameof</label>
+                <label style="display:flex;align-items:center;gap:6px;width:auto;"><input id="generate-full-select" type="checkbox"> 生成完整 Select</label>
+            </div>
+            <fieldset style="border:1px solid #dbe3ee;border-radius:10px;padding:12px;margin-bottom:16px;">
+                <legend style="padding:0 6px;color:#334155;">关联元数据方式</legend>
+                <label style="display:inline-flex;align-items:center;margin-right:20px;"><input type="radio" name="join-metadata-mode" value="ForeignType" checked style="width:auto;margin-right:8px;"> ForeignType</label>
+                <label style="display:inline-flex;align-items:center;"><input type="radio" name="join-metadata-mode" value="TableJoin" style="width:auto;margin-right:8px;"> TableJoin</label>
+            </fieldset>
+            <button id="convert-button" type="button">转换</button>
+            <p id="status" class="status" style="margin-top:12px;min-height:46px;padding:12px;border-radius:10px;background:#eff6ff;color:#1d4ed8;">等待输入...</p>
+        </section>
+
+        <section id="error-panel" class="card hidden" style="display:none;border-color:#fecaca;background:#fff7f7;">
+            <h2>错误信息</h2>
+            <pre id="diagnostics" style="background:#f8fafc;border-radius:8px;padding:12px;margin:0;white-space:pre-wrap;overflow-x:auto;">暂无输出</pre>
+        </section>
+
+        <section class="card">
+            <h2>转换结果</h2>
+            <div class="tab-list" role="tablist" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                <button type="button" class="tab-button active" id="tab-helper-button" role="tab" aria-selected="true" aria-controls="tab-helper" style="width:auto;background:#e2e8f0;border-color:#cbd5e1;color:#334155;padding:8px 14px;font-weight:500;">实体代码</button>
+                <button type="button" class="tab-button" id="tab-view-button" role="tab" aria-selected="false" aria-controls="tab-view" style="width:auto;background:#e2e8f0;border-color:#cbd5e1;color:#334155;padding:8px 14px;font-weight:500;">View 代码</button>
+                <button type="button" class="tab-button" id="tab-expr-button" role="tab" aria-selected="false" aria-controls="tab-expr" style="width:auto;background:#e2e8f0;border-color:#cbd5e1;color:#334155;padding:8px 14px;font-weight:500;">Expr 代码</button>
+                <button type="button" class="tab-button" id="tab-sql-button" role="tab" aria-selected="false" aria-controls="tab-sql" style="width:auto;background:#e2e8f0;border-color:#cbd5e1;color:#334155;padding:8px 14px;font-weight:500;">Expr 回生 SQL</button>
+            </div>
+            <div id="tab-helper" class="tab-content active" role="tabpanel">
+                <pre id="helper-code" class="output empty" style="background:#f8fafc;border-radius:8px;padding:12px;margin:0;white-space:pre-wrap;word-break:break-word;min-height:52px;overflow-x:auto;border:1px solid #e2e8f0;color:#94a3b8;">暂无输出</pre>
+            </div>
+            <div id="tab-view" class="tab-content hidden" role="tabpanel">
+                <pre id="view-code" class="output empty" style="background:#f8fafc;border-radius:8px;padding:12px;margin:0;white-space:pre-wrap;word-break:break-word;min-height:52px;overflow-x:auto;border:1px solid #e2e8f0;color:#94a3b8;">暂无输出</pre>
+            </div>
+            <div id="tab-expr" class="tab-content hidden" role="tabpanel">
+                <pre id="expr-code" class="output empty" style="background:#f8fafc;border-radius:8px;padding:12px;margin:0;white-space:pre-wrap;word-break:break-word;min-height:52px;overflow-x:auto;border:1px solid #e2e8f0;color:#94a3b8;">暂无输出</pre>
+            </div>
+            <div id="tab-sql" class="tab-content hidden" role="tabpanel">
+                <pre id="regenerated-sql" class="output empty" style="background:#f8fafc;border-radius:8px;padding:12px;margin:0;white-space:pre-wrap;word-break:break-word;min-height:52px;overflow-x:auto;border:1px solid #e2e8f0;color:#94a3b8;">暂无输出</pre>
+            </div>
+        </section>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        const sqlInput = document.getElementById("sql-input");
+        const dialect = document.getElementById("dialect");
+        const namespaceInput = document.getElementById("namespace");
+        const viewNameInput = document.getElementById("view-name");
+        const useStaticExpr = document.getElementById("use-static-expr");
+        const useNameof = document.getElementById("use-nameof");
+        const generateFullSelect = document.getElementById("generate-full-select");
+        const convertButton = document.getElementById("convert-button");
+        const statusNode = document.getElementById("status");
+        const errorPanel = document.getElementById("error-panel");
+        const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
+        const tabContents = Array.from(document.querySelectorAll(".tab-content"));
+
+        const outputs = {
+            diagnostics: document.getElementById("diagnostics"),
+            helperCode: document.getElementById("helper-code"),
+            viewCode: document.getElementById("view-code"),
+            exprCode: document.getElementById("expr-code"),
+            regeneratedSql: document.getElementById("regenerated-sql")
+        };
+
+        function setOutput(node, text) {
+            if (text && text.trim().length > 0) {
+                node.textContent = text;
+                node.classList.remove("empty");
+            } else {
+                node.textContent = "暂无输出";
+                node.classList.add("empty");
+            }
+        }
+
+        function setError(text) {
+            const hasError = text && text.trim().length > 0;
+            errorPanel.style.display = hasError ? "block" : "none";
+            setOutput(outputs.diagnostics, hasError ? text : "");
+        }
+
+        function activateTab(tabId) {
+            tabButtons.forEach(button => {
+                const isActive = button.getAttribute("aria-controls") === tabId;
+                button.classList.toggle("active", isActive);
+                button.setAttribute("aria-selected", String(isActive));
+                if (isActive) {
+                    button.style.background = "#2563eb";
+                    button.style.borderColor = "#2563eb";
+                    button.style.color = "#ffffff";
+                } else {
+                    button.style.background = "#e2e8f0";
+                    button.style.borderColor = "#cbd5e1";
+                    button.style.color = "#334155";
+                }
+            });
+            tabContents.forEach(content => {
+                const isActive = content.id === tabId;
+                content.classList.toggle("active", isActive);
+                content.classList.toggle("hidden", !isActive);
+            });
+        }
+
+        async function convert() {
+            statusNode.textContent = "转换中...";
+            statusNode.style.background = "#eff6ff";
+            statusNode.style.color = "#1d4ed8";
+            convertButton.disabled = true;
+            try {
+                const joinMetadataMode = document.querySelector('input[name="join-metadata-mode"]:checked')?.value || "ForeignType";
+                const response = await fetch("/api/convert", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        sql: sqlInput.value,
+                        dialect: dialect.value,
+                        namespace: namespaceInput.value,
+                        viewName: viewNameInput.value,
+                        useStaticExpr: useStaticExpr.checked,
+                        useNameof: useNameof.checked,
+                        generateFullSelect: generateFullSelect.checked,
+                        joinMetadataMode
+                    })
+                });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.error || "转换失败");
+                const diagnostics = (payload.diagnostics || [])
+                    .map(item => `[${item.severity}] ${item.message}${item.hint ? "\nHint: " + item.hint : ""}`)
+                    .join("\n\n");
+                setError(payload.succeeded ? "" : diagnostics || "转换失败");
+                setOutput(outputs.helperCode, payload.helperCode || "");
+                setOutput(outputs.viewCode, payload.viewCode || "");
+                setOutput(outputs.exprCode, payload.exprCode || "");
+                setOutput(outputs.regeneratedSql, payload.regeneratedSql || "");
+                statusNode.textContent = payload.succeeded ? "转换完成" : "转换完成，但存在错误";
+                statusNode.style.background = payload.succeeded ? "#ecfdf5" : "#fef3c7";
+                statusNode.style.color = payload.succeeded ? "#15803d" : "#b45309";
+            } catch (error) {
+                setError(String(error));
+                setOutput(outputs.helperCode, "");
+                setOutput(outputs.viewCode, "");
+                setOutput(outputs.exprCode, "");
+                setOutput(outputs.regeneratedSql, "");
+                statusNode.textContent = "转换失败: " + error.message;
+                statusNode.style.background = "#fef2f2";
+                statusNode.style.color = "#b91c1c";
+            } finally {
+                convertButton.disabled = false;
+            }
+        }
+
+        tabButtons.forEach(button => {
+            button.addEventListener("click", () => activateTab(button.getAttribute("aria-controls")));
+        });
+
+        activateTab("tab-helper");
+        convertButton.addEventListener("click", convert);
+    </script>
+</body>
+</html>

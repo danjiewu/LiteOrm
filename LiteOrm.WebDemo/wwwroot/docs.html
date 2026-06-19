@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LiteOrm 文档</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .docs-layout { display: flex; gap: 20px; align-items: flex-start; }
+        .docs-sidebar { width: 260px; flex-shrink: 0; background: #fff; border: 1px solid #dbe3ef; border-radius: 16px; padding: 16px; max-height: calc(100vh - 200px); overflow-y: auto; position: sticky; top: 20px; }
+        .docs-content { flex: 1; background: #fff; border: 1px solid #dbe3ef; border-radius: 16px; padding: 24px; min-height: 600px; }
+        .docs-chapter { margin-bottom: 16px; }
+        .docs-chapter-title { font-weight: 700; font-size: 14px; color: #1f2937; margin-bottom: 6px; padding: 4px 0; border-bottom: 1px solid #e5e7eb; }
+        .docs-article { display: block; padding: 5px 8px; border-radius: 6px; color: #4b5563; font-size: 13px; text-decoration: none; cursor: pointer; }
+        .docs-article:hover { background: #f3f4f6; color: #1d4ed8; }
+        .docs-article.active { background: #dbeafe; color: #1d4ed8; font-weight: 600; }
+        .docs-article .lang-tag { font-size: 11px; color: #9ca3af; margin-left: 4px; }
+        .docs-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb; }
+        .docs-toolbar select { width: auto; }
+        .docs-article-content { line-height: 1.8; }
+        .docs-article-content h1 { font-size: 22px; margin-bottom: 16px; }
+        .docs-article-content h2 { font-size: 18px; margin-top: 24px; margin-bottom: 12px; }
+        .docs-article-content h3 { font-size: 16px; margin-top: 20px; margin-bottom: 8px; }
+        .docs-article-content pre { background: #0f172a; color: #e2e8f0; border-radius: 10px; padding: 14px; overflow-x: auto; margin: 12px 0; }
+        .docs-article-content code { font-family: Consolas, monospace; background: #f1f5f9; padding: 2px 5px; border-radius: 4px; font-size: 13px; }
+        .docs-article-content pre code { background: transparent; padding: 0; color: inherit; }
+        .docs-article-content table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        .docs-article-content th, .docs-article-content td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; font-size: 13px; }
+        .docs-article-content th { background: #f8fafc; font-weight: 600; }
+        .docs-article-content a { color: #2563eb; }
+        .docs-article-content blockquote { border-left: 3px solid #dbeafe; background: #eff6ff; padding: 10px 14px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+        .docs-article-content ul, .docs-article-content ol { padding-left: 20px; }
+        .docs-article-content li { margin-bottom: 4px; }
+        .docs-loading { text-align: center; padding: 40px; color: #9ca3af; }
+        .docs-readme { background: #fff; border: 1px solid #dbe3ef; border-radius: 16px; padding: 24px; }
+        @media (max-width: 768px) {
+            .docs-layout { flex-direction: column; }
+            .docs-sidebar { width: 100%; max-height: 300px; position: static; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <section class="hero">
+            <h1>LiteOrm 文档中心</h1>
+            <p>LiteOrm 使用指南、API 参考与最佳实践。点击左侧章节即可浏览全文。</p>
+        </section>
+
+        <nav class="nav">
+            <a href="/">首页/登录</a>
+            <a href="/query-string.html">QueryString 查询</a>
+            <a href="/expr-query.html">Expr 查询</a>
+            <a href="/dynamic-query.html">动态查询</a>
+            <a href="/order-manage.html">订单管理</a>
+            <a href="/create-order.html">订单创建</a>
+            <a href="/sql-to-expr.html">SQL 转 Expr</a>
+            <a href="/docs.html" class="active" data-page="docs">文档</a>
+        </nav>
+
+        <div class="docs-layout" id="docsLayout">
+            <aside class="docs-sidebar" id="docsSidebar">
+                <div class="docs-loading">加载文档索引...</div>
+            </aside>
+            <main class="docs-content" id="docsContent">
+                <div class="docs-loading" id="mainLoading">正在加载文档...</div>
+            </main>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        let currentPath = '';
+        let currentLang = 'zh';
+
+        async function loadDocsIndex() {
+            try {
+                const res = await fetch('/api/docs/index');
+                if (!res.ok) throw new Error('加载索引失败');
+                const data = await res.json();
+                renderSidebar(data);
+                if (data.readmeHtml) {
+                    document.getElementById('docsContent').innerHTML = '<div class="docs-readme">' + data.readmeHtml + '</div>';
+                }
+                const params = new URLSearchParams(window.location.search);
+                const path = params.get('path');
+                const lang = params.get('lang') || 'zh';
+                if (path) {
+                    currentPath = path;
+                    currentLang = lang;
+                    await loadPage(path, lang);
+                }
+            } catch (err) {
+                document.getElementById('docsSidebar').innerHTML = '<div style="color:#b91c1c;padding:12px;">索引加载失败: ' + err.message + '</div>';
+            }
+        }
+
+        function renderSidebar(data) {
+            const el = document.getElementById('docsSidebar');
+            if (!data.chapters || data.chapters.length === 0) {
+                el.innerHTML = '<div style="color:#9ca3af;">暂无文档</div>';
+                return;
+            }
+            el.innerHTML = data.chapters.map(chapter => `
+                <div class="docs-chapter">
+                    <div class="docs-chapter-title">${escapeHtml(chapter.title || '')}</div>
+                    ${(chapter.articles || []).map(article => {
+                        const zhTitle = article.hasChinese ? article.title : (article.title + ' (EN)');
+                        const enTitle = article.hasEnglish ? article.title : null;
+                        return `<a class="docs-article" data-path="${escapeHtml(article.path)}" onclick="navigateTo('${escapeHtml(article.path)}', currentLang); return false;">
+                            ${escapeHtml(zhTitle)}
+                            ${enTitle ? `<span class="lang-tag">EN</span>` : ''}
+                        </a>`;
+                    }).join('')}
+                </div>
+            `).join('');
+        }
+
+        async function navigateTo(path, lang) {
+            currentPath = path;
+            currentLang = lang;
+            history.pushState({}, '', `/docs.html?path=${encodeURIComponent(path)}&lang=${lang}`);
+            await loadPage(path, lang);
+        }
+
+        async function loadPage(path, lang) {
+            const contentEl = document.getElementById('docsContent');
+            contentEl.innerHTML = '<div class="docs-loading">正在加载...</div>';
+            try {
+                const url = `/api/docs/page?path=${encodeURIComponent(path)}&lang=${lang}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('页面不存在');
+                const data = await res.json();
+                contentEl.innerHTML = `
+                    <div class="docs-toolbar">
+                        <select id="langSwitch" onchange="switchLang(this.value)" style="width:auto;">
+                            <option value="zh" ${lang === 'zh' ? 'selected' : ''}>中文</option>
+                            <option value="en" ${lang === 'en' ? 'selected' : ''}>English</option>
+                        </select>
+                        <span style="color:#6b7280;font-size:13px;">${escapeHtml(data.title || path)}</span>
+                    </div>
+                    <div class="docs-article-content">${data.html || '<p>暂无内容</p>'}</div>
+                `;
+                document.querySelectorAll('.docs-article').forEach(a => {
+                    a.classList.toggle('active', a.dataset.path === path);
+                });
+            } catch (err) {
+                contentEl.innerHTML = `<div style="color:#b91c1c;padding:20px;">加载失败: ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        function switchLang(lang) {
+            if (currentPath) navigateTo(currentPath, lang);
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        window.addEventListener('popstate', () => {
+            const params = new URLSearchParams(window.location.search);
+            const path = params.get('path') || '';
+            const lang = params.get('lang') || 'zh';
+            if (path) loadPage(path, lang);
+        });
+
+        loadDocsIndex();
+    </script>
+</body>
+</html>

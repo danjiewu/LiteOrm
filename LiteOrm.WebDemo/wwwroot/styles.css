@@ -264,8 +264,9 @@ button.secondary {
 
 .token,
 pre {
-    background: #0f172a;
-    color: #e2e8f0;
+    background: #f8fafc;
+    color: #1e3a8a;
+    border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 14px;
     overflow: auto;

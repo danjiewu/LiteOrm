@@ -1,20 +1,39 @@
+using System.Text.Json.Serialization;
 using LiteOrm;
-using LiteOrm.WebDemo.Controllers;
+using LiteOrm.SqlToExpr;
 using LiteOrm.WebDemo.Data;
 using LiteOrm.WebDemo.Endpoints;
-using LiteOrm.WebDemo.Infrastructure;
+using LiteOrm.WebDemo.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.RegisterLiteOrm();
 builder.Services.AddMemoryCache();
-builder.Services.AddScoped<DemoAuthFilter>();
-builder.Services.AddScoped<DemoControllerAuthFilter>();
+builder.Services.AddSingleton<SqlConversionService>();
+builder.Services.AddSingleton(_ =>
+{
+    var searchPaths = new[]
+    {
+        Path.Combine(AppContext.BaseDirectory, "docs"),
+        Path.Combine(Directory.GetCurrentDirectory(), "docs"),
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "docs"),
+        Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "docs"),
+    };
+    var path = searchPaths.FirstOrDefault(Directory.Exists) ?? searchPaths[0];
+    return new DocsService(path);
+});
 
-var dynamicAssembly = DynamicControllerBuilder.BuildDynamicControllers("LiteOrm.WebDemo");
 builder.Services
     .AddControllers()
-    .AddApplicationPart(dynamicAssembly);
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
+
+builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 var app = builder.Build();
 
@@ -27,6 +46,9 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.MapDemoEndpoints();
+app.MapSqlToExprEndpoints();
+app.MapExprQueryEndpoints();
+app.MapDocsEndpoints();
 app.MapControllers();
 
 app.Run();

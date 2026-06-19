@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
@@ -12,17 +12,16 @@
             <h2>订单创建页</h2>
             <p>这个页面演示最基础的前后端写入交互：前端表单提交到 <code>POST /api/orders</code>，后台生成订单号并返回创建结果与 SQL。</p>
         </section>
-
         <nav class="nav">
-            <a href="/">登录</a>
-            <a href="/query-string.html">QueryString 查询</a>
-            <a href="/expr-query.html">Expr 查询</a>
-            <a href="/dynamic-query.html">动态查询</a>
-            <a href="/order-manage.html">订单管理</a>
-            <a class="active" href="/create-order.html">订单创建</a>
-        </nav>
-
-        <section class="card">
+            <a href="/">首页/登录</a>
+            <a href="/query-string.html" data-page="query">QueryString 查询</a>
+            <a href="/expr-query.html" data-page="expr">Expr 查询</a>
+            <a href="/dynamic-query.html" data-page="dynamic">动态查询</a>
+            <a href="/order-manage.html" data-page="order-manage">订单管理</a>
+            <a href="/create-order.html" class="active" data-page="create-order">订单创建</a>
+            <a href="/sql-to-expr.html" data-page="sql">SQL 转 Expr</a>
+            <a href="/docs.html" data-page="docs">文档</a>
+        </nav><section class="card">
             <h2>当前会话</h2>
             <div id="sessionBox" class="token">尚未登录</div>
         </section>

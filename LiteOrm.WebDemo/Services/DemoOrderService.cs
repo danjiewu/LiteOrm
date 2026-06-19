@@ -12,27 +12,13 @@ public interface IDemoOrderService :
     IEntityServiceAsync<DemoOrder>,
     IEntityViewServiceAsync<DemoOrderView>
 {
-    Task<OrderQueryResult> QueryAsync(OrderQueryRequest request, AuthSessionUser currentUser, CancellationToken cancellationToken = default);
-    Task<OrderExprQueryResponse> QueryByExprAsync(Expr? expr, AuthSessionUser currentUser, CancellationToken cancellationToken = default);
-    Task<OrderStatsResponse> GetStatsAsync(OrderQueryRequest request, AuthSessionUser currentUser, CancellationToken cancellationToken = default);
+    Task<OrderExprQueryResponse> QueryByExprAsync(Expr? expr, CancellationToken cancellationToken = default);
 }
 
 public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOrderService
 {
     private static readonly TimeSpan CountCacheDuration = TimeSpan.FromSeconds(30);
     private static long _countCacheVersion = 1;
-    private static readonly IReadOnlyDictionary<string, string> SortFieldMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-    {
-        ["OrderNo"] = nameof(DemoOrder.OrderNo),
-        ["CustomerName"] = nameof(DemoOrder.CustomerName),
-        ["ProductName"] = nameof(DemoOrder.ProductName),
-        ["Status"] = nameof(DemoOrder.Status),
-        ["TotalAmount"] = nameof(DemoOrder.TotalAmount),
-        ["CreatedTime"] = nameof(DemoOrder.CreatedTime),
-        ["UpdatedTime"] = nameof(DemoOrder.UpdatedTime),
-        ["CreatedByUserName"] = nameof(DemoOrderView.CreatedByUserName),
-        ["DepartmentName"] = nameof(DemoOrderView.DepartmentName)
-    };
     private readonly IMemoryCache _memoryCache;
 
     public DemoOrderService(IMemoryCache memoryCache)
@@ -40,57 +26,10 @@ public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOr
         _memoryCache = memoryCache;
     }
 
-    public async Task<OrderQueryResult> QueryAsync(OrderQueryRequest request, AuthSessionUser currentUser, CancellationToken cancellationToken = default)
-    {
-        request.Normalize();
-        var filter = BuildFilter(request, currentUser);
-        var sortField = ResolveSortField(request.SortBy);
-        var page = request.Page ?? 1;
-        var pageSize = request.PageSize ?? 10;
-        var skip = (page - 1) * pageSize;
-
-        SqlTraceHelper.Reset();
-
-        var total = await CountCachedAsync(filter, cancellationToken);
-        var query = Expr.From<DemoOrderView>()
-            .Where(filter)
-            .OrderBy(request.Desc == true ? Expr.Prop(sortField).Desc() : Expr.Prop(sortField).Asc())
-            .Section(skip, pageSize);
-
-        var items = await SearchAsync(query, cancellationToken: cancellationToken);
-
-        return new OrderQueryResult(
-            page,
-            pageSize,
-            total,
-            SqlTraceHelper.GetLatestSql(),
-            items.Select(item => item.ToDto()).ToArray());
-    }
-
-    public async Task<OrderStatsResponse> GetStatsAsync(OrderQueryRequest request, AuthSessionUser currentUser, CancellationToken cancellationToken = default)
-    {
-        request.Normalize();
-        var filter = BuildFilter(request, currentUser);
-
-        SqlTraceHelper.Reset();
-
-        var items = await SearchAsync(Expr.From<DemoOrderView>().Where(filter), cancellationToken: cancellationToken);
-
-        return new OrderStatsResponse(
-            items.Count,
-            items.Sum(item => item.TotalAmount),
-            items.Count(item => string.Equals(item.Status, DemoOrderStatuses.Pending, StringComparison.OrdinalIgnoreCase)),
-            items.Count(item => string.Equals(item.Status, DemoOrderStatuses.Paid, StringComparison.OrdinalIgnoreCase)),
-            items.Count(item => string.Equals(item.Status, DemoOrderStatuses.Shipped, StringComparison.OrdinalIgnoreCase)),
-            items.Count(item => string.Equals(item.Status, DemoOrderStatuses.Completed, StringComparison.OrdinalIgnoreCase)),
-            items.Count(item => string.Equals(item.Status, DemoOrderStatuses.Cancelled, StringComparison.OrdinalIgnoreCase)),
-            SqlTraceHelper.GetLatestSql());
-    }
-
-    public async Task<OrderExprQueryResponse> QueryByExprAsync(Expr? expr, AuthSessionUser currentUser, CancellationToken cancellationToken = default)
+    public async Task<OrderExprQueryResponse> QueryByExprAsync(Expr? expr, CancellationToken cancellationToken = default)
     {
         var parts = ParseNativeExpr(expr);
-        var filter = BuildExprFilter(parts.Filter, currentUser);
+        var filter = parts.Filter ?? (Expr.Prop(nameof(DemoOrder.Id)) > 0);
         var skip = parts.Skip ?? 0;
         var take = parts.Take ?? 10;
 
@@ -108,115 +47,33 @@ public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOr
             items.Select(item => item.ToDto()).ToArray());
     }
 
-    private static LogicExpr BuildFilter(OrderQueryRequest request, AuthSessionUser currentUser)
-    {
-        LogicExpr filter = Expr.Prop(nameof(DemoOrder.Id)) > 0;
-
-        if (!string.IsNullOrWhiteSpace(request.Keyword))
-        {
-            var keyword = request.Keyword.Trim();
-            filter &= Expr.Prop(nameof(DemoOrder.OrderNo)).Contains(keyword)
-                   | Expr.Prop(nameof(DemoOrder.CustomerName)).Contains(keyword)
-                   | Expr.Prop(nameof(DemoOrder.ProductName)).Contains(keyword);
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Status))
-        {
-            filter &= Expr.Prop(nameof(DemoOrder.Status)) == request.Status;
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.DepartmentName))
-        {
-            filter &= Expr.Prop(nameof(DemoOrderView.DepartmentName)).Contains(request.DepartmentName);
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.CreatedByUserName))
-        {
-            filter &= Expr.Prop(nameof(DemoOrderView.CreatedByUserName)).Contains(request.CreatedByUserName);
-        }
-
-        if (request.MinTotalAmount.HasValue)
-        {
-            filter &= Expr.Prop(nameof(DemoOrder.TotalAmount)) >= request.MinTotalAmount.Value;
-        }
-
-        if (request.MaxTotalAmount.HasValue)
-        {
-            filter &= Expr.Prop(nameof(DemoOrder.TotalAmount)) <= request.MaxTotalAmount.Value;
-        }
-
-        if (request.CreatedFrom.HasValue)
-        {
-            filter &= Expr.Prop(nameof(DemoOrder.CreatedTime)) >= request.CreatedFrom.Value;
-        }
-
-        if (request.CreatedTo.HasValue)
-        {
-            filter &= Expr.Prop(nameof(DemoOrder.CreatedTime)) <= request.CreatedTo.Value;
-        }
-
-        if (request.OnlyMine == true || !IsAdmin(currentUser))
-        {
-            filter &= Expr.Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id;
-        }
-
-        return filter;
-    }
-
     public override async Task<bool> InsertAsync(DemoOrder entity, CancellationToken cancellationToken = default)
     {
         var inserted = await base.InsertAsync(entity, cancellationToken);
-        if (inserted)
-        {
-            InvalidateCountCache();
-        }
-
+        if (inserted) InvalidateCountCache();
         return inserted;
     }
 
     public override async Task<bool> UpdateAsync(DemoOrder entity, CancellationToken cancellationToken = default)
     {
         var updated = await base.UpdateAsync(entity, cancellationToken);
-        if (updated)
-        {
-            InvalidateCountCache();
-        }
-
+        if (updated) InvalidateCountCache();
         return updated;
     }
 
     public override async Task<bool> DeleteAsync(DemoOrder entity, CancellationToken cancellationToken = default)
     {
         var deleted = await base.DeleteAsync(entity, cancellationToken);
-        if (deleted)
-        {
-            InvalidateCountCache();
-        }
-
+        if (deleted) InvalidateCountCache();
         return deleted;
     }
 
-    private static LogicExpr BuildExprFilter(LogicExpr? filter, AuthSessionUser currentUser)
-    {
-        filter ??= Expr.Prop(nameof(DemoOrder.Id)) > 0;
-
-        if (!IsAdmin(currentUser))
-        {
-            filter &= Expr.Prop(nameof(DemoOrder.CreatedByUserId)) == currentUser.Id;
-        }
-
-        return filter;
-    }
-
-    private static OrderByExpr ApplyOrderBy(IOrderByAnchor query, IReadOnlyList<OrderByItemExpr>? orderByItems)
+    private static OrderByExpr ApplyNativeOrderBy(IOrderByAnchor query, IReadOnlyList<OrderByItemExpr>? orderByItems)
     {
         return orderByItems is { Count: > 0 }
             ? query.OrderBy(orderByItems.Select(item => (OrderByItemExpr)item.Clone()).ToArray())
             : query.OrderBy(Expr.Prop(nameof(DemoOrder.CreatedTime)).Desc());
     }
-
-    private static OrderByExpr ApplyNativeOrderBy(IOrderByAnchor query, IReadOnlyList<OrderByItemExpr>? orderByItems) =>
-        ApplyOrderBy(query, orderByItems);
 
     private static NativeExprParts ParseNativeExpr(Expr? expr)
     {
@@ -266,12 +123,6 @@ public class DemoOrderService : EntityService<DemoOrder, DemoOrderView>, IDemoOr
         > 100 => 100,
         _ => take
     };
-
-    private static string ResolveSortField(string? sortBy) =>
-        sortBy is not null && SortFieldMap.TryGetValue(sortBy, out var field) ? field : nameof(DemoOrder.CreatedTime);
-
-    private static bool IsAdmin(AuthSessionUser currentUser) =>
-        string.Equals(currentUser.Role, "Admin", StringComparison.OrdinalIgnoreCase);
 
     private async Task<int> CountCachedAsync(Expr? filter, CancellationToken cancellationToken)
     {
