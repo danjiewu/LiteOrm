@@ -53,11 +53,7 @@
         .docs-article .mermaid { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 12px 0; text-align: center; }
         .checkbox-grid-item { padding-top: 24px; }
         .checkbox-grid-item label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 0; }
-        .pill-group { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 20px; }
-        .pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: 20px; border: 1px solid #dbe3ef; background: #fff; cursor: pointer; font-size: 13px; color: #475569; user-select: none; transition: all 0.15s; }
-        .pill:hover { border-color: #2563eb; color: #2563eb; }
-        .pill.active { background: #2563eb; border-color: #2563eb; color: #fff; }
-        .pill input { display: none; }
+        
         .radio-group { display: flex; gap: 6px; padding-top: 4px; }
         .radio-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 20px; border: 1px solid #dbe3ef; background: #fff; cursor: pointer; font-size: 13px; color: #475569; user-select: none; transition: all 0.15s; }
         .radio-pill:hover { border-color: #2563eb; color: #2563eb; }
@@ -132,15 +128,22 @@
                         <div><label for="sqlNs" data-i18n="sqlNamespace">命名空间</label><input id="sqlNs" value="DemoProject.Models"></div>
                         <div><label for="sqlView" data-i18n="sqlViewName">视图名称</label><input id="sqlView" value="DemoOrderWithUser"></div>
                     </div>
-                    <div class="pill-group">
-                        <label class="pill active"><input type="checkbox" id="optStatic" checked> <span data-i18n="sqlOptStatic">使用静态 Expr</span></label>
-                        <label class="pill"><input type="checkbox" id="optNameof"> <span data-i18n="sqlOptNameof">使用 nameof</span></label>
-                        <label class="pill"><input type="checkbox" id="optFullSelect"> <span data-i18n="sqlOptFullSelect">生成完整 SELECT</span></label>
-                        <div style="flex:1;min-width:120px;"><label for="optJoin" data-i18n="sqlJoinMode">关联元数据模式</label>
-                            <select id="optJoin">
-                                <option value="ForeignType">ForeignType</option>
-                                <option value="TableJoin">TableJoin</option>
-                            </select>
+                    <div style="display:flex;flex-wrap:nowrap;gap:12px 24px;align-items:center;padding-top:20px;">
+                        <span style="display:inline-flex;flex-wrap:nowrap;gap:24px;">
+                            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#475569;">
+                                <input type="checkbox" id="optStatic" checked> <span data-i18n="sqlOptStatic">使用静态 Expr</span>
+                            </label>
+                            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#475569;">
+                                <input type="checkbox" id="optNameof"> <span data-i18n="sqlOptNameof">使用 nameof</span>
+                            </label>
+                            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#475569;">
+                                <input type="checkbox" id="optFullSelect"> <span data-i18n="sqlOptFullSelect">生成完整 SELECT</span>
+                            </label>
+                        </span>
+                        <span style="font-size:13px;color:#475569;white-space:nowrap;" data-i18n="sqlJoinMode">关联元数据模式</span>
+                        <div class="radio-group">
+                            <label class="radio-pill active"><input type="radio" name="optJoin" value="ForeignType" checked> ForeignType</label>
+                            <label class="radio-pill"><input type="radio" name="optJoin" value="TableJoin"> TableJoin</label>
                         </div>
                     </div>
                     <div class="actions">
@@ -520,9 +523,6 @@
             }
         });
 
-        document.querySelectorAll(".pill").forEach(function (pill) {
-            pill.addEventListener("click", function () { pill.classList.toggle("active"); });
-        });
         document.querySelectorAll(".radio-pill").forEach(function (pill) {
             pill.addEventListener("click", function () {
                 var name = pill.querySelector("input").name;
@@ -738,7 +738,7 @@
                 useStaticExpr: document.getElementById("optStatic").checked,
                 useNameof: document.getElementById("optNameof").checked,
                 generateFullSelect: document.getElementById("optFullSelect").checked,
-                joinMetadataMode: document.getElementById("optJoin").value
+                joinMetadataMode: document.querySelector('input[name="optJoin"]:checked').value
             };
             try {
                 const result = await postJson(API.convert, payload);
