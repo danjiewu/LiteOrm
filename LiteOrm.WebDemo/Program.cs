@@ -14,10 +14,9 @@ builder.Services.AddSingleton(_ =>
 {
     var searchPaths = new[]
     {
-        Path.Combine(AppContext.BaseDirectory, "docs"),
-        Path.Combine(Directory.GetCurrentDirectory(), "docs"),
-        Path.Combine(Directory.GetCurrentDirectory(), "..", "docs"),
-        Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "docs"),
+        Path.Combine(AppContext.BaseDirectory, "DocsContent"),
+        Path.Combine(Directory.GetCurrentDirectory(), "LiteOrm.WebDemo", "DocsContent"),
+        Path.Combine(Directory.GetCurrentDirectory(), "DocsContent"),
     };
     var path = searchPaths.FirstOrDefault(Directory.Exists) ?? searchPaths[0];
     return new DocsService(path);
