@@ -68,6 +68,10 @@
         .collapse-body.collapsed { display: none; }
         .collapse-body pre { margin: 0; border-radius: 0 0 12px 12px; border: none; max-height: 500px; min-height: 100px; }
         .docs-empty { color: #94a3b8; padding: 30px 18px; font-size: 13px; }
+        .sidebar-search { display:block; width:calc(100% - 32px); margin:10px 16px; padding:8px 12px; border:1px solid #334155; border-radius:6px; background:#1e293b; color:#e2e8f0; font-size:13px; outline:none; box-sizing:border-box; }
+        .sidebar-search:focus { border-color:#2563eb; }
+        .sidebar-search::placeholder { color:#64748b; }
+        .sidebar-group.filter-hidden { display:none; }
         textarea { background: #f8fafc; }
     </style>
 </head>
@@ -83,16 +87,19 @@
                 </div>
             </div>
         </div>
+        <input class="sidebar-search" id="menuSearch" type="text" placeholder="搜索菜单..." data-i18n-placeholder="searchMenu">
         <nav class="sidebar-menu" id="menu">
-            <a class="sidebar-link" data-section="sql-convert" data-i18n="navSqlConvert">SQL 转 Expr</a>
-            <a class="sidebar-link" data-section="expr-query" data-i18n="navExprQuery">Expr 查询</a>
-            <div class="sidebar-group" id="docsGroup">
+            <div id="docsIndex">
+                <div class="docs-empty" data-i18n="loading">加载中...</div>
+            </div>
+            <div class="sidebar-group collapsed" id="toolsGroup">
                 <div class="sidebar-group-header">
-                    <span class="sidebar-group-title" data-i18n="navDocs">在线文档</span>
+                    <span class="sidebar-group-title" data-i18n="navTools">在线工具</span>
                     <span class="sidebar-group-arrow">▼</span>
                 </div>
-                <div class="docs-list" id="docsIndex">
-                    <div class="docs-empty" data-i18n="loading">加载中...</div>
+                <div class="docs-list" style="padding:0 8px 8px;">
+                    <a class="sidebar-link" data-section="sql-convert" data-i18n="navSqlConvert">SQL 转 Expr</a>
+                    <a class="sidebar-link" data-section="expr-query" data-i18n="navExprQuery">Expr 查询</a>
                 </div>
             </div>
         </nav>
@@ -249,7 +256,8 @@
                 brandSubtitle: "Web 演示站点",
                 navSqlConvert: "SQL 转 Expr",
                 navExprQuery: "Expr 查询",
-                navDocs: "在线文档",
+                navTools: "在线工具",
+                searchMenu: "搜索菜单...",
                 loading: "加载中...",
                 docsTitle: "在线文档",
                 docsHint: "请从左侧菜单选择章节。",
@@ -318,7 +326,8 @@
                 brandSubtitle: "Web Demo Site",
                 navSqlConvert: "SQL to Expr",
                 navExprQuery: "Expr Query",
-                navDocs: "Online Docs",
+                navTools: "Online Tools",
+                searchMenu: "Search menu...",
                 loading: "Loading...",
                 docsTitle: "Online Docs",
                 docsHint: "Select a chapter from the left menu.",
@@ -390,6 +399,9 @@
         function applyLang() {
             document.querySelectorAll("[data-i18n]").forEach(function (el) {
                 el.textContent = t(el.getAttribute("data-i18n"));
+            });
+            document.querySelectorAll("[data-i18n-placeholder]").forEach(function (el) {
+                el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
             });
         }
 
@@ -523,6 +535,28 @@
             }
         });
 
+        // 菜单搜索过滤
+        document.getElementById("menuSearch").addEventListener("input", function () {
+            const q = this.value.trim().toLowerCase();
+            menu.querySelectorAll(".sidebar-group").forEach(function (group) {
+                const items = group.querySelectorAll(".docs-item, .sidebar-link");
+                if (!q) {
+                    group.classList.remove("filter-hidden");
+                    return;
+                }
+                let match = false;
+                for (let i = 0; i < items.length; i++) {
+                    const text = (items[i].textContent || "").toLowerCase();
+                    if (text.indexOf(q) >= 0) { match = true; break; }
+                }
+                if (match) {
+                    group.classList.remove("filter-hidden", "collapsed");
+                } else {
+                    group.classList.add("filter-hidden");
+                }
+            });
+        });
+
         document.querySelectorAll(".radio-pill").forEach(function (pill) {
             pill.addEventListener("click", function () {
                 var name = pill.querySelector("input").name;
@@ -564,7 +598,7 @@
                 let firstPath = null;
                 parts.forEach(function (chap) {
                     const groupDiv = document.createElement("div");
-                    groupDiv.className = "sidebar-group";
+                    groupDiv.className = "sidebar-group collapsed";
                     const headerDiv = document.createElement("div");
                     headerDiv.className = "sidebar-group-header";
                     const titleSpan = document.createElement("span");

@@ -2,12 +2,19 @@
 
 This page explains how LiteOrm models relationships with `ForeignType`, `TableJoin`, `ForeignColumn`, and `AutoExpand`.
 
+- Covers the usage of `TableJoin` (type-level) and `ForeignType` (property-level).
+- Explains how `ForeignColumn` retrieves values, the role of `AutoExpand`, and common practices.
+
 ## 1. Core Concepts
 
-- `ForeignType`: property-level relationship metadata, best for a single foreign key column
-- `TableJoin`: type-level relationship metadata, best for reusable joins and composite-key relationships
-- `ForeignColumn`: fields projected from related tables into a view model
-- `AutoExpand`: extends the available relationship path so deeper related fields can be resolved later
+- `ForeignType` (property-level): Declares the foreign entity type referenced by a column (e.g., a foreign key column). Supports `Alias`, `JoinType`, and `AutoExpand`. Suitable for **single-column foreign key** scenarios.
+
+- `TableJoin` (type-level): Pre-defines join relationships with other tables at the entity or table level. Suitable for composite-key joins or reusable join logic. Supports `Source`, `TargetType`, `ForeignKeys`, `AliasName`, `JoinType`, `AutoExpand`, etc.
+
+- `ForeignColumn` (view field): Declares columns to be selected from foreign tables in a view model. The `Foreign` parameter can be an external type or an `AliasName` defined in `TableJoin`.
+
+- `AutoExpand` (auto-expand): When set to `true`, if this table is referenced as a foreign table, LiteOrm exposes its already-defined association paths for subsequent relationship resolution. Its role is to **extend the available relationship paths** rather than acting as a standalone filter.
+
 - `Expr.ExistsRelated(...)`: uses an existing relationship to build an `EXISTS` filter
 
 ---
@@ -109,6 +116,23 @@ Notes:
 
 `TableJoin` is suitable for expressing complex association relationships.
 
+```csharp
+[TableJoin(typeof(Department), "ParentId", AliasName = "Parent", JoinType = TableJoinType.Left)]
+[TableJoin(typeof(Department), "DeptId", AliasName = "Dept", JoinType = TableJoinType.Left)]
+public class User { /* ... */ }
+
+public class OrderView : Order
+{
+    [ForeignColumn(typeof(User), Property = "UserName")]
+    public string? UserName { get; set; }
+
+    [ForeignColumn("Dept", Property = "Name")]
+    public string? DeptName { get; set; } // Uses TableJoin alias
+}
+```
+
+Explanation: `TableJoin` is suitable for composite relationships.
+
 If the target table uses a **composite primary key**, you can use `ForeignKeys = "Key1,Key2"` to provide multiple foreign key columns in order; `ForeignType` does not support this multi-column association scenario.
 
 If you have a compatibility-driven mapping that must join by non-primary target fields, you can explicitly override the target join keys with `PrimeKeys = "Code"` or `PrimeKeys = "Key1,Key2"`. This overrides the default "join by target primary key" behavior, but it is **not the recommended style** for normal models.
@@ -160,7 +184,7 @@ Note: The core purpose of AutoExpand is to "make the next level of relationship 
 
 ### 2.5 Cascade Example
 
-`LiteOrm.Demo\Models\User.cs` provides a practical secondary relationship expansion model:
+`LiteOrm.Demo\Models\SalesRecord.cs` provides a practical secondary relationship expansion model:
 
 ```csharp
 [Table("Sales_{0}")]
@@ -188,6 +212,7 @@ Key points:
 - `AutoExpand = true` allows `SalesRecordView` to directly read `Department.Name`
 
 Without `AutoExpand` enabled, fields like `DepartmentName` at the secondary level typically require additional join path declarations. This is also the most common and worthwhile use case for `AutoExpand`: **filling in resolvable paths for multi-level relationships**.
+For more examples, please refer to the Demos (`LiteOrm.Demo.Models`) and the TableJoin/AutoExpand related test cases in the unit tests.
 
 ### 2.6 Multi-Level Relationship Example
 

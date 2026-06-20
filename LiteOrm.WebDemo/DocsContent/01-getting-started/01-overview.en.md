@@ -1,4 +1,4 @@
-# Overview and Fit
+# Overview
 
 LiteOrm is a lightweight, high-performance .NET ORM framework that combines the speed of micro-ORMs with the functionality of full ORMs. It is suitable for projects that require flexible SQL query handling while prioritizing performance.
 
@@ -474,7 +474,7 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 
 ## Related Links
 
+- [GitHub Repository](https://github.com/danjiewu/LiteOrm)
 - [Back to docs hub](../README.md)
 - [Installation and Environment Requirements](./02-installation.en.md)
 - [API Index](../05-reference/02-api-index.en.md)
-- [Demo Project](../../LiteOrm.Demo/)

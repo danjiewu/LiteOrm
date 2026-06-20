@@ -1,6 +1,6 @@
-# 关联查询（TableJoin / ForeignType / AutoExpand）
+# 关联查询
 
-本文档介绍 LiteOrm 的关联查询能力。
+本文档介绍 LiteOrm 的关联查询能力，包括 TableJoin / ForeignType / ForeignColumn / AutoExpand 的使用说明。
 
 - 涵盖 TableJoin（类级）与 ForeignType（属性级）的使用。
 - 说明 ForeignColumn 的取值方式、AutoExpand 的作用与常见实践。
@@ -17,6 +17,8 @@
 
 - AutoExpand（自动扩展）：当被标记为 true 时，如果该表作为外表被引用，LiteOrm 会把该表已定义的关联路径继续暴露给后续关联解析使用。
   它的作用是**扩展可用的关联路径**，而不是单独作为过滤手段。
+
+- Expr.ExistsRelated(...)：利用已有的关联关系构建 `EXISTS` 过滤子查询，无需在视图模型中显式暴露关联字段。
 
 ---
 
@@ -307,12 +309,14 @@ var users2 = await viewService.SearchAsync(expr2);
 - 找出已声明 `ForeignType` / `TableJoin` 的 `DefinitionType` 能够接收 `ExistsRelated<T>` 目标类型的关联，也就是**只匹配声明类型本身及其子类**
 - 如果正向完全没找到，再遍历目标表自己的 `JoinedTables`，尝试反向推断回当前主表
 
-也就是说，`ExistsRelated<TestDepartment>(...)` 依赖的是 `ForeignType` / `TableJoin` 等已经声明好的关联元数据，而不是运行时去猜一个“字段名看起来像外键”的关系。
+也就是说，`ExistsRelated<TestDepartment>(...)` 依赖的是 `ForeignType` / `TableJoin` 等已经声明好的关联元数据，而不是运行时去猜一个"字段名看起来像外键"的关系。
 
 这也意味着：
 
 - 如果模型里声明的是基类，而你传入的是它的派生类型，仍然可以匹配成功。
 - 如果模型里声明的是派生类型，而你传入的是它的父类，**将不会匹配**。
+
+换句话说，`ForeignExpr` / `ExistsRelated<T>` 现在只遵循"声明类型 → 子类"这一方向进行继承匹配，不再支持父类回退。
 
 **多路径时的合并逻辑：**
 - 如果从主表到目标表存在多条关联路径，它们会以 `OR` 连接作为关联条件，也就是满足任意一个关联条件即匹配成功，请在使用时注意。
