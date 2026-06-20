@@ -18,14 +18,14 @@
         .lang-switch button.active { background: #2563eb; border-color: #2563eb; color: #fff; }
         .sidebar-menu { padding: 10px 0; overflow-y: auto; flex: 1; }
         .sidebar-group { margin-bottom: 4px; }
-        .sidebar-group-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; }
+        .sidebar-group-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; border-bottom: 1px solid #1e293b; }
         .sidebar-group-header:hover { background: #1e293b; }
-        .sidebar-group-title { color: #94a3b8; font-size: 14px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; }
+        .sidebar-group-title { color:#94a3b8; font-size:15px; letter-spacing:1px; text-transform:uppercase; font-weight:700; }
         .sidebar-group-arrow { color: #64748b; font-size: 12px; transition: transform 0.2s; }
         .sidebar-group.collapsed .sidebar-group-arrow { transform: rotate(-90deg); }
         .sidebar-group.collapsed .docs-list { display: none; }
-        .docs-list { padding: 0 8px 8px; }
-        .docs-item { padding: 9px 12px; color: #cbd5e1; font-size: 15px; border-radius: 6px; cursor: pointer; display: block; line-height: 1.5; text-decoration: none; }
+        .docs-list { padding: 4px 8px 8px; background: #162032; border-left: 2px solid #1e293b; border-radius: 0 0 8px 8px; }
+        .docs-item { padding: 9px 12px 9px 24px; color: #cbd5e1; font-size: 15px; border-radius: 6px; cursor: pointer; display: block; line-height: 1.5; text-decoration: none; }
         .docs-item:hover { color: #fff; background: #1e293b; }
         .docs-item.active { color: #fff; background: #1e3a5f; font-weight: 500; }
         .sidebar-link { display: block; padding: 12px 16px; color: #e2e8f0; text-decoration: none; cursor: pointer; border-left: 3px solid transparent; font-size: 16px; line-height: 1.5; }
@@ -72,6 +72,9 @@
         .sidebar-search:focus { border-color:#2563eb; }
         .sidebar-search::placeholder { color:#64748b; }
         .sidebar-group.filter-hidden { display:none; }
+        .filter-item-hidden { display:none !important; }
+        #backToTop { position:fixed; bottom:40px; right:40px; width:44px; height:44px; border-radius:50%; border:1px solid #334155; background:#1e293b; color:#94a3b8; font-size:20px; cursor:pointer; display:none; align-items:center; justify-content:center; z-index:999; transition:all 0.2s; line-height:1; }
+        #backToTop:hover { background:#2563eb; border-color:#2563eb; color:#fff; }
         textarea { background: #f8fafc; }
     </style>
 </head>
@@ -98,8 +101,8 @@
                     <span class="sidebar-group-arrow">▼</span>
                 </div>
                 <div class="docs-list" style="padding:0 8px 8px;">
-                    <a class="sidebar-link" data-section="sql-convert" data-i18n="navSqlConvert">SQL 转 Expr</a>
-                    <a class="sidebar-link" data-section="expr-query" data-i18n="navExprQuery">Expr 查询</a>
+                    <a class="docs-item" data-section="sql-convert" data-i18n="navSqlConvert">SQL 转 Expr</a>
+                    <a class="docs-item" data-section="expr-query" data-i18n="navExprQuery">Expr 查询</a>
                 </div>
             </div>
         </nav>
@@ -248,6 +251,8 @@
         </div>
     </main>
 
+    <button id="backToTop" data-i18n-title="backToTop" title="回到顶部">↑</button>
+
     <script>
         var currentLang = "zh";
 
@@ -258,6 +263,7 @@
                 navExprQuery: "Expr 查询",
                 navTools: "在线工具",
                 searchMenu: "搜索菜单...",
+                backToTop: "回到顶部",
                 loading: "加载中...",
                 docsTitle: "在线文档",
                 docsHint: "请从左侧菜单选择章节。",
@@ -328,6 +334,7 @@
                 navExprQuery: "Expr Query",
                 navTools: "Online Tools",
                 searchMenu: "Search menu...",
+                backToTop: "Back to Top",
                 loading: "Loading...",
                 docsTitle: "Online Docs",
                 docsHint: "Select a chapter from the left menu.",
@@ -402,6 +409,9 @@
             });
             document.querySelectorAll("[data-i18n-placeholder]").forEach(function (el) {
                 el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
+            });
+            document.querySelectorAll("[data-i18n-title]").forEach(function (el) {
+                el.title = t(el.getAttribute("data-i18n-title"));
             });
         }
 
@@ -503,7 +513,7 @@
                 document.getElementById("section-docs").classList.add("active");
                 if (extra && extra.docItem) extra.docItem.classList.add("active");
             } else {
-                const selector = '.sidebar-link[data-section="' + sectionKey + '"]';
+                const selector = '.sidebar-link[data-section="' + sectionKey + '"], .docs-item[data-section="' + sectionKey + '"]';
                 const link = menu.querySelector(selector);
                 if (link) link.classList.add("active");
                 document.getElementById(sections[sectionKey]).classList.add("active");
@@ -525,7 +535,7 @@
         });
 
         menu.addEventListener("click", function (ev) {
-            const link = ev.target.closest(".sidebar-link");
+            const link = ev.target.closest(".sidebar-link, .docs-item[data-section]");
             if (link) { switchSection(link.dataset.section); updateHash(link.dataset.section); return; }
             const groupHeader = ev.target.closest(".sidebar-group-header");
             if (groupHeader) {
@@ -539,17 +549,29 @@
         document.getElementById("menuSearch").addEventListener("input", function () {
             const q = this.value.trim().toLowerCase();
             menu.querySelectorAll(".sidebar-group").forEach(function (group) {
-                const items = group.querySelectorAll(".docs-item, .sidebar-link");
+                // 先恢复所有子项可见
+                group.querySelectorAll(".docs-item, .sidebar-link").forEach(function (el) {
+                    el.classList.remove("filter-item-hidden");
+                });
                 if (!q) {
                     group.classList.remove("filter-hidden");
                     return;
                 }
-                let match = false;
-                for (let i = 0; i < items.length; i++) {
-                    const text = (items[i].textContent || "").toLowerCase();
-                    if (text.indexOf(q) >= 0) { match = true; break; }
+                // 检查上级菜单标题是否匹配
+                var titleEl = group.querySelector(".sidebar-group-title");
+                var titleMatch = titleEl && (titleEl.textContent || "").toLowerCase().indexOf(q) >= 0;
+                // 检查下级子项是否匹配
+                var items = group.querySelectorAll(".docs-item, .sidebar-link");
+                var itemMatch = false;
+                for (var i = 0; i < items.length; i++) {
+                    var text = (items[i].textContent || "").toLowerCase();
+                    if (text.indexOf(q) >= 0) {
+                        itemMatch = true;
+                    } else {
+                        items[i].classList.add("filter-item-hidden");
+                    }
                 }
-                if (match) {
+                if (titleMatch || itemMatch) {
                     group.classList.remove("filter-hidden", "collapsed");
                 } else {
                     group.classList.add("filter-hidden");
@@ -677,6 +699,19 @@
                 summary.textContent = page.summary || "";
                 body.innerHTML = page.html || page.content || "";
                 updateHash("docs", path, lang || currentLang, fragment);
+
+                // 高亮左侧菜单对应条目
+                document.querySelectorAll(".sidebar-link, .docs-item").forEach(function (el) { el.classList.remove("active"); });
+                document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.remove("active"); });
+                document.getElementById("section-docs").classList.add("active");
+                var docItem = document.getElementById("docsIndex").querySelector('.docs-item[data-path="' + path.replace(/\\/g, "\\\\") + '"]');
+                if (docItem) {
+                    docItem.classList.add("active");
+                    var parentGroup = docItem.closest(".sidebar-group");
+                    if (parentGroup) parentGroup.classList.remove("collapsed");
+                }
+                window.scrollTo({ top: 0, behavior: "smooth" });
+
                 bindDocArticleLinks();
                 renderMermaid();
                 if (fragment) {
@@ -719,7 +754,6 @@
                             const lang = params.get("lang") || currentLang;
                             const fragment = params.get("fragment") || "";
                             if (path) {
-                                switchSection("docs", null);
                                 loadDocPage(path, lang, fragment);
                             }
                         } catch (e) { }
@@ -1054,6 +1088,15 @@
 
         loadDocsIndex().then(function () {
             parseInitialHash();
+        });
+
+        // 回到顶部
+        window.addEventListener("scroll", function () {
+            var btn = document.getElementById("backToTop");
+            if (btn) btn.style.display = window.scrollY > 400 ? "flex" : "none";
+        });
+        document.getElementById("backToTop").addEventListener("click", function () {
+            window.scrollTo({ top: 0, behavior: "smooth" });
         });
     </script>
 </body>
