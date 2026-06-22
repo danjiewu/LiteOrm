@@ -2,6 +2,8 @@
 
 本文说明 LiteOrm 的基础配置结构、常用配置项和启动注册方式。
 
+> **新手提示**：如果你是第一次配置，建议从最简单的配置开始——只配置一个数据源，使用 SQLite 作为数据库。等跑通基本流程后，再逐步添加多数据源、读写分离等高级配置。
+
 ## `appsettings.json` 示例
 
 ```json
@@ -30,21 +32,91 @@
 }
 ```
 
+### 各数据库最小配置示例
+
+> 以下是最精简的配置示例，只包含必填字段。你可以直接复制使用，替换其中的连接字符串即可。
+
+**SQL Server：**
+```json
+{
+  "LiteOrm": {
+    "Default": "main",
+    "DataSources": [
+      {
+        "Name": "main",
+        "ConnectionString": "Server=localhost;Database=MyDb;Trusted_Connection=True;TrustServerCertificate=True;",
+        "Provider": "Microsoft.Data.SqlClient.SqlConnection, Microsoft.Data.SqlClient"
+      }
+    ]
+  }
+}
+```
+
+**MySQL：**
+```json
+{
+  "LiteOrm": {
+    "Default": "main",
+    "DataSources": [
+      {
+        "Name": "main",
+        "ConnectionString": "Server=localhost;Database=MyDb;User Id=root;Password=123456;",
+        "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
+      }
+    ]
+  }
+}
+```
+
+**PostgreSQL：**
+```json
+{
+  "LiteOrm": {
+    "Default": "main",
+    "DataSources": [
+      {
+        "Name": "main",
+        "ConnectionString": "Host=localhost;Database=MyDb;Username=postgres;Password=123456;",
+        "Provider": "Npgsql.NpgsqlConnection, Npgsql"
+      }
+    ]
+  }
+}
+```
+
+**SQLite（推荐新手）：**
+```json
+{
+  "LiteOrm": {
+    "Default": "main",
+    "DataSources": [
+      {
+        "Name": "main",
+        "ConnectionString": "Data Source=myapp.db",
+        "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite"
+      }
+    ]
+  }
+}
+```
+
 ## 配置项说明
 
-| 配置项 | 说明 |
-| --- | --- |
-| `Default` | 默认数据源名称。 |
-| `DataSources[].Name` | 数据源标识，可被 `[Table(DataSource = ...)]` 引用。 |
-| `DataSources[].ConnectionString` | 数据库连接字符串。 |
-| `DataSources[].Provider` | 连接类型全名，格式为 `TypeName, AssemblyName`。 |
-| `DataSources[].SqlBuilder` | 可选，自定义方言构建器。 |
-| `DataSources[].KeepAliveDuration` | 连接保活时长。 |
-| `DataSources[].PoolSize` | 连接池缓存的最大连接数。 |
-| `DataSources[].MaxPoolSize` | 最大并发连接数上限。 |
-| `DataSources[].ParamCountLimit` | 单条 SQL 参数数量限制。 |
-| `DataSources[].SyncTable` | 是否自动同步建表。 |
-| `DataSources[].ReadOnlyConfigs` | 只读库配置，用于读写分离。 |
+| 配置项 | 说明 | 是否必填 | 默认值 |
+| --- | --- | --- | --- |
+| `Default` | 默认数据源名称。 | 是 | - |
+| `DataSources[].Name` | 数据源标识，可被 `[Table(DataSource = ...)]` 引用。 | 是 | - |
+| `DataSources[].ConnectionString` | 数据库连接字符串。 | 是 | - |
+| `DataSources[].Provider` | 连接类型全名，格式为 `TypeName, AssemblyName`。 | 是 | - |
+| `DataSources[].SqlBuilder` | 可选，自定义方言构建器。 | 否 | `null`（自动推断） |
+| `DataSources[].KeepAliveDuration` | 连接保活时长。 | 否 | `00:10:00` |
+| `DataSources[].PoolSize` | 连接池缓存的最大连接数。 | 否 | `16` |
+| `DataSources[].MaxPoolSize` | 最大并发连接数上限。 | 否 | `100` |
+| `DataSources[].ParamCountLimit` | 单条 SQL 参数数量限制。 | 否 | `2000` |
+| `DataSources[].SyncTable` | 是否自动同步建表。 | 否 | `false` |
+| `DataSources[].ReadOnlyConfigs` | 只读库配置，用于读写分离。 | 否 | `[]` |
+
+> **新手建议**：初次使用时，只需配置 `Name`、`ConnectionString`、`Provider` 三个必填项即可，其余使用默认值。
 
 ## 注册方式
 
@@ -63,6 +135,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.RegisterLiteOrm();
 ```
 
+> **注意**：`RegisterLiteOrm()` 必须调用在 `builder.Host` 上（不是 `builder.Services`），因为它需要替换底层的 DI 容器为 Autofac。
+
 ### 带选项注册
 
 ```csharp
@@ -72,6 +146,27 @@ builder.Host.RegisterLiteOrm(options =>
     options.Assemblies = new[] { typeof(MyService).Assembly };
     options.RegisterSqlBuilder("main", new MySqlBuilder());
 });
+```
+
+### 完整的 Program.cs 示例
+
+> 以下是一个完整的 ASP.NET Core 项目 `Program.cs` 示例，展示了 LiteOrm 注册的典型位置：
+
+```csharp
+using LiteOrm;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 添加控制器服务
+builder.Services.AddControllers();
+
+// 注册 LiteOrm（必须在 builder.Host 上调用）
+builder.Host.RegisterLiteOrm();
+
+var app = builder.Build();
+
+app.MapControllers();
+app.Run();
 ```
 
 ## 日志集成
@@ -126,6 +221,50 @@ builder.Host.RegisterLiteOrm(options =>
 ### 什么时候需要自定义 `SqlBuilder`？
 
 当数据库版本较老、分页语法或函数行为与默认实现不一致时，需要自定义 `SqlBuilder`。
+
+### 新手常见配置错误
+
+> 以下是初学者在配置阶段最容易遇到的问题：
+
+**1. 把 `RegisterLiteOrm()` 写在了 `builder.Services` 上**
+
+错误写法：`builder.Services.RegisterLiteOrm();` ❌
+
+正确写法：`builder.Host.RegisterLiteOrm();` ✅
+
+原因：LiteOrm 需要替换宿主级别的 DI 容器为 Autofac，所以必须在 `IHostBuilder` 上调用。
+
+**2. `Provider` 格式写错**
+
+错误写法：`"Provider": "SqlConnection"` ❌（缺少命名空间和程序集名）
+
+正确写法：`"Provider": "Microsoft.Data.SqlClient.SqlConnection, Microsoft.Data.SqlClient"` ✅
+
+格式必须是 `完整类型名, 程序集名`（注意中间是逗号+空格）。
+
+**3. 连接字符串中的特殊字符未转义**
+
+如果连接字符串中包含反斜杠（如 Windows 路径），在 JSON 中需要使用双反斜杠 `\\` 或正斜杠 `/`：
+
+```json
+"ConnectionString": "Data Source=C:\\data\\myapp.db"
+```
+
+**4. 忘记安装数据库驱动包**
+
+只安装了 `LiteOrm` 包，但没有安装对应数据库的 NuGet 驱动包（如 `Microsoft.Data.Sqlite`、`MySqlConnector` 等），运行时会抛出 `TypeLoadException`。
+
+**5. 配置了多个数据源但 `Default` 指向了不存在的名称**
+
+`Default` 的值必须与某个 `DataSources[].Name` 完全匹配，否则框架无法确定默认使用哪个数据源。
+
+### 如何验证配置是否正确？
+
+启动应用后，观察控制台输出。如果看到类似 `LiteOrm initialized successfully` 的日志，说明配置正确。如果出现异常，请检查：
+
+1. 连接字符串是否能正常连接数据库（可以用数据库管理工具先测试）。
+2. `Provider` 类型名是否与安装的 NuGet 包一致。
+3. 数据库服务是否已启动。
 
 ## 相关链接
 

@@ -19,6 +19,11 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 - Expression extension and `SqlBuilder` extension for custom database capabilities
 - Complete async/await support
 
+> **Quick understanding of the three query styles**:
+> - **Lambda**: Most intuitive—write query conditions like C# code. Example: `u => u.Age >= 18`.
+> - **Expr**: JSON-format expression objects, ideal for dynamic frontend parameters or programmatic complex queries.
+> - **ExprString**: SQL-like string fragments, DAO-layer only, for scenarios requiring precise SQL control.
+
 ## 3. Positioning vs other approaches
 
 | Option | Usually strongest at |
@@ -26,6 +31,8 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 | EF Core | Migrations, full ecosystem, conventions |
 | Dapper | Minimal abstraction and handwritten SQL |
 | LiteOrm | Performance, expression extensibility, automatic associations, flexible SQL control |
+
+> **How to choose?** If you come from EF Core, LiteOrm's entity definition style is similar (attribute-based) but lighter. If you come from Dapper, LiteOrm provides more convenient Lambda queries and automatic associations while retaining direct SQL execution capability.
 
 ## 4. Recommended reading order
 
@@ -35,6 +42,8 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 4. [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
 5. [Expr Guide](../02-core-usage/03-expr-guide.en.md)
 6. [Query Guide](../02-core-usage/04-query-guide.en.md)
+
+> **Learning advice**: If you're a beginner, read the four getting-started docs in order—each takes about 5-10 minutes. After the fourth doc, you should be able to perform basic database operations in a new project. Check the "FAQ" section at the end of each doc if you run into issues.
 
 ---
 
@@ -471,6 +480,30 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - PostgreSQL
 - MySQL8.0+
 - SQLite
+
+## 10. Common Beginner Misconceptions
+
+> Here are some common misunderstandings that beginners often have. Knowing them upfront can save you time.
+
+### Misconception 1: LiteOrm is just a "simplified EF Core"
+
+LiteOrm is not a simplified version of EF Core—it's an independently designed ORM framework. Its design philosophy is "give you enough abstraction, but don't hide the SQL." You can inspect generated SQL, execute raw SQL directly, and customize SQL builders—things that are often harder in EF Core.
+
+### Misconception 2: You must define a Service class to use LiteOrm
+
+You can directly inject the framework's generic interfaces `IEntityServiceAsync<T>` and `IEntityViewServiceAsync<T>` without defining any custom Service class. This is very convenient during prototyping. Once your business logic stabilizes, you can gradually encapsulate custom Services.
+
+### Misconception 3: Lambda queries and Expr queries are mutually exclusive
+
+The three query styles (Lambda, Expr, ExprString) can be mixed. Lambda expressions are automatically converted to Expr, and Expr can be embedded into ExprString as fragments. Choose the most appropriate style for each scenario.
+
+### Misconception 4: LiteOrm doesn't support complex queries
+
+LiteOrm supports subqueries, JOINs, CTEs (Common Table Expressions), window functions, grouping, and aggregation. Its API design simply favors explicit construction over implicit "convention over configuration" behavior.
+
+### Misconception 5: `[Table]` and `[Column]` attribute names must match C# property names
+
+The names in attributes are the actual database names. If your C# property name matches the database column name, you can omit the `[Column]` Name parameter (though explicit annotation is recommended for readability). The `[Table]` Name parameter must always specify the actual database table name.
 
 ## Related Links
 

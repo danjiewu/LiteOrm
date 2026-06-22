@@ -2,6 +2,8 @@
 
 LiteOrm reads a `LiteOrm` configuration section, then wires up services, DAO types, and optional dialect overrides during startup.
 
+> **Beginner tip**: If this is your first time configuring, start with the simplest setup—a single data source using SQLite. Once the basic flow works, gradually add multi-data-source, read/write splitting, and other advanced configurations.
+
 ## 1. `appsettings.json` example
 
 ```json
@@ -30,18 +32,88 @@ LiteOrm reads a `LiteOrm` configuration section, then wires up services, DAO typ
 }
 ```
 
+### Minimal Configuration Examples by Database
+
+> These are the most minimal configurations, containing only required fields. Copy and replace the connection string with your own.
+
+**SQL Server:**
+```json
+{
+  "LiteOrm": {
+    "Default": "main",
+    "DataSources": [
+      {
+        "Name": "main",
+        "ConnectionString": "Server=localhost;Database=MyDb;Trusted_Connection=True;TrustServerCertificate=True;",
+        "Provider": "Microsoft.Data.SqlClient.SqlConnection, Microsoft.Data.SqlClient"
+      }
+    ]
+  }
+}
+```
+
+**MySQL:**
+```json
+{
+  "LiteOrm": {
+    "Default": "main",
+    "DataSources": [
+      {
+        "Name": "main",
+        "ConnectionString": "Server=localhost;Database=MyDb;User Id=root;Password=123456;",
+        "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
+      }
+    ]
+  }
+}
+```
+
+**PostgreSQL:**
+```json
+{
+  "LiteOrm": {
+    "Default": "main",
+    "DataSources": [
+      {
+        "Name": "main",
+        "ConnectionString": "Host=localhost;Database=MyDb;Username=postgres;Password=123456;",
+        "Provider": "Npgsql.NpgsqlConnection, Npgsql"
+      }
+    ]
+  }
+}
+```
+
+**SQLite (recommended for beginners):**
+```json
+{
+  "LiteOrm": {
+    "Default": "main",
+    "DataSources": [
+      {
+        "Name": "main",
+        "ConnectionString": "Data Source=myapp.db",
+        "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite"
+      }
+    ]
+  }
+}
+```
+
 ## 2. Important fields
 
-| Setting | Purpose |
-|------|---------|
-| `Default` | Default data source name |
-| `DataSources[].Name` | Identifier referenced by `[Table(DataSource = "...")]` |
-| `Provider` | Fully qualified connection type name |
-| `SqlBuilder` | Optional custom dialect type |
-| `KeepAliveDuration` | Connection keep-alive duration |
-| `PoolSize` / `MaxPoolSize` | Connection pool sizing |
-| `ParamCountLimit` | Parameter-count cap for one SQL statement |
-| `ReadOnlyConfigs` | Read replicas for read/write splitting |
+| Setting | Purpose | Required | Default |
+|------|---------|---------|---------|
+| `Default` | Default data source name | Yes | - |
+| `DataSources[].Name` | Identifier referenced by `[Table(DataSource = "...")]` | Yes | - |
+| `Provider` | Fully qualified connection type name | Yes | - |
+| `SqlBuilder` | Optional custom dialect type | No | `null` (auto-detect) |
+| `KeepAliveDuration` | Connection keep-alive duration | No | `00:10:00` |
+| `PoolSize` / `MaxPoolSize` | Connection pool sizing | No | `16` / `100` |
+| `ParamCountLimit` | Parameter-count cap for one SQL statement | No | `2000` |
+| `ReadOnlyConfigs` | Read replicas for read/write splitting | No | `[]` |
+
+> **Beginner advice**: For your first setup, only configure the three required fields: `Name`, `ConnectionString`, and `Provider`. Use defaults for the rest.
 
 ## 3. Registration patterns
 
@@ -60,6 +132,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.RegisterLiteOrm();
 ```
 
+> **Important**: `RegisterLiteOrm()` must be called on `builder.Host` (not `builder.Services`), because it replaces the underlying DI container with Autofac.
+
 ### Registration with options
 
 ```csharp
@@ -69,6 +143,27 @@ builder.Host.RegisterLiteOrm(options =>
     options.Assemblies = new[] { typeof(MyService).Assembly };
     options.RegisterSqlBuilder("main", new MySqlBuilder());
 });
+```
+
+### Complete Program.cs Example
+
+> Here's a complete ASP.NET Core `Program.cs` showing the typical placement of LiteOrm registration:
+
+```csharp
+using LiteOrm;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add controller services
+builder.Services.AddControllers();
+
+// Register LiteOrm (must be called on builder.Host)
+builder.Host.RegisterLiteOrm();
+
+var app = builder.Build();
+
+app.MapControllers();
+app.Run();
 ```
 
 ## 4. Logging integration
@@ -123,6 +218,50 @@ Use the full connection type name, for example `System.Data.SqlClient.SqlConnect
 ### When do I need a custom `SqlBuilder`?
 
 Usually when paging syntax, function SQL, or legacy database behavior differs from LiteOrm's default dialect.
+
+### Common Beginner Configuration Mistakes
+
+> Here are the most common issues beginners encounter during configuration:
+
+**1. Calling `RegisterLiteOrm()` on `builder.Services`**
+
+Wrong: `builder.Services.RegisterLiteOrm();` ❌
+
+Correct: `builder.Host.RegisterLiteOrm();` ✅
+
+Reason: LiteOrm needs to replace the host-level DI container with Autofac, so it must be called on `IHostBuilder`.
+
+**2. Incorrect `Provider` format**
+
+Wrong: `"Provider": "SqlConnection"` ❌ (missing namespace and assembly name)
+
+Correct: `"Provider": "Microsoft.Data.SqlClient.SqlConnection, Microsoft.Data.SqlClient"` ✅
+
+The format must be `FullTypeName, AssemblyName` (note the comma and space).
+
+**3. Unescaped special characters in connection strings**
+
+If your connection string contains backslashes (e.g., Windows paths), use double backslashes `\\` or forward slashes `/` in JSON:
+
+```json
+"ConnectionString": "Data Source=C:\\data\\myapp.db"
+```
+
+**4. Forgetting to install the database driver package**
+
+Only the `LiteOrm` package is installed, but the corresponding database NuGet driver (e.g., `Microsoft.Data.Sqlite`, `MySqlConnector`) is missing. This causes a `TypeLoadException` at runtime.
+
+**5. `Default` points to a non-existent data source name**
+
+The `Default` value must exactly match one of the `DataSources[].Name` values, otherwise the framework cannot determine which data source to use by default.
+
+### How to verify your configuration is correct?
+
+After starting the application, check the console output. If you see a log message like `LiteOrm initialized successfully`, the configuration is correct. If an exception occurs, check:
+
+1. Whether the connection string can actually connect to the database (test with a database management tool first).
+2. Whether the `Provider` type name matches the installed NuGet package.
+3. Whether the database service is running.
 
 ## Related Links
 
