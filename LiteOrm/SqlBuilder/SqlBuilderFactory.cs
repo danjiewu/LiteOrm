@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Concurrent;
@@ -92,18 +92,17 @@ namespace LiteOrm
 
             if (providerType is null) throw new ArgumentNullException("providerType", "providerType cannot be null while dataSource is not specified");
             if (RegisteredSqlBuilders.ContainsKey(providerType)) return RegisteredSqlBuilders[providerType];
-            var connectionTypeName = providerType.Name;
-            connectionTypeName = connectionTypeName.ToUpper();
+            var connectionTypeName = providerType.FullName.ToUpper();
             if (connectionTypeName.Contains("ORACLE"))
                 return OracleBuilder.Instance;
             else if (connectionTypeName.Contains("MYSQL"))
                 return MySqlBuilder.Instance;
-            else if (connectionTypeName.Contains("SQLSERVER"))
-                return SqlServerBuilder.Instance;
-            else if (connectionTypeName.Contains("POSTGRE"))
-                return PostgreSqlBuilder.Instance;
             else if (connectionTypeName.Contains("SQLITE"))
                 return SQLiteBuilder.Instance;
+            else if (connectionTypeName.Contains("SQLCLIENT"))
+                return SqlServerBuilder.Instance;
+            else if (connectionTypeName.Contains("NPGSQL"))
+                return PostgreSqlBuilder.Instance;
             else return SqlBuilder.Instance;
         }
 
