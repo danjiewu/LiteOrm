@@ -28,7 +28,37 @@ var users = await userService.SearchAsync(u => u.UserName.Contains("admin"));
 var users = await userService.SearchAsync(u => new[] { 1, 2, 3 }.Contains(u.Id));
 ```
 
-### 2.2 Sorting and paging
+### 2.2 Sorting
+
+Lambda queries support sorting through `OrderBy` / `OrderByDescending` / `ThenBy` / `ThenByDescending` chain calls.
+
+**Single-column sorting:**
+
+```csharp
+// Sort by creation time ascending
+var users = await userService.SearchAsync(
+    q => q.OrderBy(u => u.CreateTime)
+);
+
+// Sort by age descending
+var users = await userService.SearchAsync(
+    q => q.OrderByDescending(u => u.Age)
+);
+```
+
+**Multi-column sorting (ThenBy):**
+
+```csharp
+// Sort by department ascending, then by creation time descending within the same department
+var users = await userService.SearchAsync(
+    q => q.OrderBy(u => u.DeptId)
+          .ThenByDescending(u => u.CreateTime)
+);
+```
+
+`ThenBy` / `ThenByDescending` must follow `OrderBy` / `OrderByDescending`. You can chain multiple calls.
+
+**Sorting with paging:**
 
 ```csharp
 var page = await userService.SearchAsync(
@@ -36,6 +66,20 @@ var page = await userService.SearchAsync(
           .OrderByDescending(u => u.CreateTime)
           .Skip(0)
           .Take(20)
+);
+```
+
+**Lambda sorting with computed expressions:**
+
+```csharp
+// Sort by computed field
+var users = await userService.SearchAsync(
+    q => q.OrderBy(u => u.FirstName + " " + u.LastName)
+);
+
+// Sort by time difference
+var users = await userService.SearchAsync(
+    q => q.OrderByDescending(u => (DateTime.Now - u.CreateTime).TotalMilliseconds)
 );
 ```
 
@@ -131,6 +175,121 @@ Lambda queries also go through `Expr` before SQL generation, so they are not a s
 
 And for the full `Expr` construction model, static methods, extension methods, and composition semantics, see [Expr Guide](./03-expr-guide.en.md).
 
+### 4.1 Sorting in Expr
+
+In Expr queries, sorting uses `.Asc()` / `.Desc()` to mark direction, combined with `.OrderBy()` chain calls.
+
+**Single-column sorting:**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var query = From<User>()
+    .Where(Prop("Age") >= 18)
+    .OrderBy(Prop("CreateTime").Desc())
+    .Section(0, 20);
+
+var users = await userService.SearchAsync(query);
+```
+
+**Multi-column sorting:**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var query = From<User>()
+    .Where(Prop("Age") >= 18)
+    .OrderBy(
+        Prop("DeptId").Asc(),
+        Prop("CreateTime").Desc()
+    )
+    .Section(0, 20);
+
+var users = await userService.SearchAsync(query);
+```
+
+`OrderBy` accepts multiple `OrderByItemExpr` parameters, generating `ORDER BY col1 ASC, col2 DESC, ...` in the order passed.
+
+**Sorting with aggregation:**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var query = From<User>()
+    .GroupBy(Prop("DeptId"))
+    .Select(
+        Prop("DeptId"),
+        Prop("Id").Count().As("UserCount")
+    )
+    .OrderBy(Prop("UserCount").Desc())
+    .Section(0, 10);
+
+var users = await userService.SearchAsync(query);
+```
+
+In aggregation queries, sort fields must use the aliases defined in `Select` (e.g., `UserCount`).
+
+**Dynamic sorting:**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// Dynamically build sorting from request parameters
+var sortField = "CreateTime";    // from frontend parameters
+var sortDesc = true;             // from frontend parameters
+
+var orderByItem = sortDesc
+    ? Prop(sortField).Desc()
+    : Prop(sortField).Asc();
+
+var query = From<User>()
+    .Where(Prop("Age") >= 18)
+    .OrderBy(orderByItem)
+    .Section(0, 20);
+
+var users = await userService.SearchAsync(query);
+```
+
+**Multi-condition dynamic sorting:**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// Parse multiple sort fields, e.g., "DeptId,CreateTime desc"
+var sortFields = new[] { "DeptId", "CreateTime desc" };
+var orderByItems = new List<OrderByItemExpr>();
+
+foreach (var field in sortFields)
+{
+    var parts = field.Trim().Split(' ');
+    var prop = parts[0];
+    var desc = parts.Length > 1 && parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase);
+    orderByItems.Add(desc ? Prop(prop).Desc() : Prop(prop).Asc());
+}
+
+var query = From<User>()
+    .Where(Prop("Age") >= 18)
+    .OrderBy(orderByItems.ToArray())
+    .Section(0, 20);
+
+var users = await userService.SearchAsync(query);
+```
+
+**Direct chaining from LogicExpr:**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var condition = Prop("Age") >= 18;
+var query = condition
+    .OrderBy(Prop("CreateTime").Desc())
+    .Section(0, 20);
+
+var users = await userService.SearchAsync(query);
+```
+
+`LogicExpr` also supports `.OrderBy(...)` and `.Section(...)`, suitable for scenarios where the condition is already built and you just need to add sorting and paging.
+
 ## 5. `ExprString` Interpolated Strings
 
 `ExprString` lets you embed `Expr` objects and parameter values directly inside interpolated strings. It is suitable when the DAO layer needs to build a `Search` condition fragment or a full SQL statement manually. Service APIs do not expose a public `ExprString` query overload.
@@ -190,6 +349,59 @@ var result = await dataViewDAO.Search(
     )
     SELECT Id, UserName, Age
     FROM ActiveUsers
+    """,
+    isFull: true
+).GetResultAsync();
+```
+
+### 5.4 Sorting in ExprString
+
+Sorting in ExprString is written directly in the `ORDER BY` clause of the SQL fragment. You can either write column names directly or embed `Expr` sort expressions.
+
+**Basic sorting:**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var condition = Prop("Age") >= 18;
+var users = await userViewDAO.Search(
+    $"WHERE {condition} ORDER BY CreateTime DESC"
+).ToListAsync();
+```
+
+**Multi-column sorting:**
+
+```csharp
+var users = await userViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY DeptId ASC, CreateTime DESC"
+).ToListAsync();
+```
+
+**Embedding Expr sort expressions:**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var orderBy = new OrderByExpr(
+    null,
+    Prop("DeptId").Asc(),
+    Prop("CreateTime").Desc()
+);
+
+var users = await userViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} {orderBy}"
+).ToListAsync();
+```
+
+**Sorting in full SQL:**
+
+```csharp
+var result = await dataViewDAO.Search(
+    $"""
+    SELECT [Id], [UserName], [Age]
+    FROM [Users]
+    WHERE [Age] >= {minAge}
+    ORDER BY [Age] DESC, [UserName] ASC
     """,
     isFull: true
 ).GetResultAsync();

@@ -28,7 +28,37 @@ var users = await userService.SearchAsync(u => u.UserName.Contains("admin"));
 var users = await userService.SearchAsync(u => new[] { 1, 2, 3 }.Contains(u.Id));
 ```
 
-### 2.2 排序与分页
+### 2.2 排序
+
+Lambda 查询中，排序通过 `OrderBy` / `OrderByDescending` / `ThenBy` / `ThenByDescending` 链式调用实现。
+
+**单列排序：**
+
+```csharp
+// 按创建时间升序
+var users = await userService.SearchAsync(
+    q => q.OrderBy(u => u.CreateTime)
+);
+
+// 按年龄降序
+var users = await userService.SearchAsync(
+    q => q.OrderByDescending(u => u.Age)
+);
+```
+
+**多列排序（ThenBy）：**
+
+```csharp
+// 先按部门升序，同部门内按创建时间降序
+var users = await userService.SearchAsync(
+    q => q.OrderBy(u => u.DeptId)
+          .ThenByDescending(u => u.CreateTime)
+);
+```
+
+`ThenBy` / `ThenByDescending` 必须在 `OrderBy` / `OrderByDescending` 之后使用，可以级联多个。
+
+**排序与分页组合：**
 
 ```csharp
 var page = await userService.SearchAsync(
@@ -36,6 +66,20 @@ var page = await userService.SearchAsync(
           .OrderByDescending(u => u.CreateTime)
           .Skip(0)
           .Take(20)
+);
+```
+
+**Lambda 排序的表达式支持：**
+
+```csharp
+// 按计算字段排序
+var users = await userService.SearchAsync(
+    q => q.OrderBy(u => u.FirstName + " " + u.LastName)
+);
+
+// 按时间差排序
+var users = await userService.SearchAsync(
+    q => q.OrderByDescending(u => (DateTime.Now - u.CreateTime).TotalMilliseconds)
 );
 ```
 
@@ -126,9 +170,124 @@ if (!string.IsNullOrWhiteSpace(keyword))
 var users = await userService.SearchAsync(condition);
 ```
 
-`Expr` 最大的价值在于“**先构造，再组合，再复用**”。  
+`Expr` 最大的价值在于"**先构造，再组合，再复用**"。  
 而 Lambda 查询也会先转成 `Expr` 再继续生成 SQL，所以两者并不是两套互相隔离的能力体系。  
 有关 `Expr` 的详细说明，请转到：[Expr 使用指南](./03-expr-guide.md)
+
+### 4.1 Expr 中的排序
+
+Expr 查询中，排序通过 `.Asc()` / `.Desc()` 标记方向，配合 `.OrderBy()` 链式调用。
+
+**单列排序：**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var query = From<User>()
+    .Where(Prop("Age") >= 18)
+    .OrderBy(Prop("CreateTime").Desc())
+    .Section(0, 20);
+
+var users = await userService.SearchAsync(query);
+```
+
+**多列排序：**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var query = From<User>()
+    .Where(Prop("Age") >= 18)
+    .OrderBy(
+        Prop("DeptId").Asc(),
+        Prop("CreateTime").Desc()
+    )
+    .Section(0, 20);
+
+var users = await userService.SearchAsync(query);
+```
+
+`OrderBy` 接受多个 `OrderByItemExpr` 参数，按传入顺序生成 `ORDER BY col1 ASC, col2 DESC, ...`。
+
+**排序与聚合组合：**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var query = From<User>()
+    .GroupBy(Prop("DeptId"))
+    .Select(
+        Prop("DeptId"),
+        Prop("Id").Count().As("UserCount")
+    )
+    .OrderBy(Prop("UserCount").Desc())
+    .Section(0, 10);
+
+var users = await userService.SearchAsync(query);
+```
+
+聚合查询中，排序字段必须使用 `Select` 中定义的别名（如 `UserCount`）。
+
+**动态排序：**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 从请求参数中动态构建排序
+var sortField = "CreateTime";    // 来自前端参数
+var sortDesc = true;             // 来自前端参数
+
+var orderByItem = sortDesc
+    ? Prop(sortField).Desc()
+    : Prop(sortField).Asc();
+
+var query = From<User>()
+    .Where(Prop("Age") >= 18)
+    .OrderBy(orderByItem)
+    .Section(0, 20);
+
+var users = await userService.SearchAsync(query);
+```
+
+**多条件动态排序：**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 解析多个排序字段，例如 "DeptId,CreateTime desc"
+var sortFields = new[] { "DeptId", "CreateTime desc" };
+var orderByItems = new List<OrderByItemExpr>();
+
+foreach (var field in sortFields)
+{
+    var parts = field.Trim().Split(' ');
+    var prop = parts[0];
+    var desc = parts.Length > 1 && parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase);
+    orderByItems.Add(desc ? Prop(prop).Desc() : Prop(prop).Asc());
+}
+
+var query = From<User>()
+    .Where(Prop("Age") >= 18)
+    .OrderBy(orderByItems.ToArray())
+    .Section(0, 20);
+
+var users = await userService.SearchAsync(query);
+```
+
+**从 LogicExpr 直接链式排序：**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var condition = Prop("Age") >= 18;
+var query = condition
+    .OrderBy(Prop("CreateTime").Desc())
+    .Section(0, 20);
+
+var users = await userService.SearchAsync(query);
+```
+
+`LogicExpr` 也支持 `.OrderBy(...)` 和 `.Section(...)`，适合条件已构造好、只需追加排序和分页的场景。
 
 ## 5. `ExprString` 插值字符串
 
@@ -187,6 +346,59 @@ var result = await dataViewDAO.Search(
     )
     SELECT Id, UserName, Age
     FROM ActiveUsers
+    """,
+    isFull: true
+).GetResultAsync();
+```
+
+### 5.4 ExprString 中的排序
+
+ExprString 中的排序直接写在 SQL 片段的 `ORDER BY` 子句中，支持两种方式：直接写列名或嵌入 `Expr` 排序表达式。
+
+**基本排序：**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var condition = Prop("Age") >= 18;
+var users = await userViewDAO.Search(
+    $"WHERE {condition} ORDER BY CreateTime DESC"
+).ToListAsync();
+```
+
+**多列排序：**
+
+```csharp
+var users = await userViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY DeptId ASC, CreateTime DESC"
+).ToListAsync();
+```
+
+**嵌入 Expr 排序表达式：**
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var orderBy = new OrderByExpr(
+    null,
+    Prop("DeptId").Asc(),
+    Prop("CreateTime").Desc()
+);
+
+var users = await userViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} {orderBy}"
+).ToListAsync();
+```
+
+**完整 SQL 中的排序：**
+
+```csharp
+var result = await dataViewDAO.Search(
+    $"""
+    SELECT [Id], [UserName], [Age]
+    FROM [Users]
+    WHERE [Age] >= {minAge}
+    ORDER BY [Age] DESC, [UserName] ASC
     """,
     isFull: true
 ).GetResultAsync();
