@@ -1020,7 +1020,7 @@ namespace LiteOrm.Common
             if (joined.ConstFilter != null)
             {
                 if (!isFirst) sb.Append(" AND ");
-                ToSqlInternal(ref sb, joined.ConstFilter, context, sqlBuilder, outputParams);
+                ToSqlInternal(ref sb, joined.ConstFilter, context, sqlBuilder, outputParams, AndPriority);
             }
         }
 
