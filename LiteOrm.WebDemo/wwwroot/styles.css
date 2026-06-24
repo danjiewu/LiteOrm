@@ -304,8 +304,19 @@ th {
     }
 }
 
-@media (max-width: 860px) {
-    .builder-row {
-        grid-template-columns: 1fr;
-    }
+.site-footer {
+    text-align: center;
+    padding: 16px 0;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 40px;
+}
+
+.site-footer a {
+    color: #9ca3af;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.site-footer a:hover {
+    color: #6b7280;
 }

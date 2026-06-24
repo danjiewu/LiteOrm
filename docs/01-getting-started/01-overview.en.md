@@ -1,4 +1,4 @@
-# Overview and Fit
+# Overview
 
 LiteOrm is a lightweight, high-performance .NET ORM framework that combines the speed of micro-ORMs with the functionality of full ORMs. It is suitable for projects that require flexible SQL query handling while prioritizing performance.
 
@@ -119,7 +119,7 @@ LiteOrm uses a layered architecture design that clearly separates data access, b
 5. **SQL Builder**: Generates optimized SQL statements for different databases
 6. **Context Management**: Handles database connections and sessions
 
-### Data Flow and Main Processes
+### Core Architecture Diagram
 
 ```mermaid
 graph TD
@@ -146,55 +146,6 @@ graph TD
     P[DAOContextPool] -->|Provides| E
     K -->|Releases| E
 ```
-
-**Main Process Descriptions:**
-
-1. **Initialization Process**:
-   - During application startup, `RegisterLiteOrm()` registers services and switches the host to Autofac
-   - Entity types are scanned to build metadata
-   - Database connection pool and DAOContextPool are initialized
-
-2. **Data Access Process**:
-   - Service layer uses DAO to execute specific operations
-   - DAO obtains DAOContext from DAOContextPool
-   - DAOContext creates DbCommandProxy command object
-   - DAO uses SqlBuilder to build SQL statements
-   - SqlBuilder builds SQL statements
-   - DbCommandProxy sets SQL statements and executes commands
-   - Database returns data, DbCommandProxy builds AutoLockDataReader
-   - AutoLockDataReader reads data and converts to entity objects
-   - AutoLockDataReader releases DAOContext to Pool
-
-3. **Query Process**:
-   - Queries are built through Lambda expressions, Expr, or DAO-side ExprString
-   - Lambda expressions are converted into Expr, and Expr can also be interpolated into ExprString fragments
-   - Expr can be passed to Service layer or DAO layer
-   - ExprString can only be passed to DAO entry points, where it may represent a `Search` condition fragment or a full SQL statement
-   - DAO receives expressions and uses SqlBuilder to build SQL statements
-   - SqlBuilder builds SQL statements
-   - DAO obtains DAOContext from DAOContextPool through SessionManager
-   - DAOContext creates DbCommandProxy to execute queries
-   - Database returns data, DbCommandProxy builds AutoLockDataReader
-   - AutoLockDataReader reads results and converts to entity objects
-   - AutoLockDataReader releases DAOContext to Pool
-
-4. **Transaction Process**:
-   - Methods requiring transactions are marked through `[Transaction]` attribute
-   - SessionManager manages transaction context
-   - SessionManager directly controls DAOContext
-   - Multiple operations execute within the same transaction
-
-5. **Command Execution Process**:
-   - DAO uses SqlBuilder to build SQL statements
-   - SqlBuilder builds SQL statements
-   - DAO obtains DAOContext from DAOContextPool
-   - DAOContext creates DbCommandProxy object
-   - DbCommandProxy sets command text and parameters
-   - DbCommandProxy executes commands
-   - Database returns data, DbCommandProxy builds AutoLockDataReader
-   - AutoLockDataReader safely reads results
-   - AutoLockDataReader releases DAOContext to Pool
-   - Automatic resource release handling
 
 ## 7. Core Function Modules
 
