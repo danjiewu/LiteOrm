@@ -1,4 +1,3 @@
-using Autofac.Extras.DynamicProxy;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -52,10 +51,22 @@ namespace LiteOrm.Service
     public class EntityViewService<TView> : IEntityViewService<TView>, IEntityViewServiceAsync<TView>, IEntityViewService, IEntityViewServiceAsync
          where TView : new()
     {
+        private ObjectViewDAO<TView> _objectViewDAO;
         /// <summary>
-        /// 获取或设置用于视图查询的数据访问对象。
+        /// 获取或设置对象视图数据访问对象
         /// </summary>
-        public ObjectViewDAO<TView> ObjectViewDAO { get; set; }
+        public ObjectViewDAO<TView> ObjectViewDAO
+        {
+            get
+            {
+                if (_objectViewDAO == null && ServiceProviderHolder.ServiceProvider != null)
+                {
+                    _objectViewDAO = ServiceProviderHolder.ServiceProvider.GetRequiredService<ObjectViewDAO<TView>>();
+                }
+                return _objectViewDAO;
+            }
+            set => _objectViewDAO = value;
+        }
 
         #region IEntityViewService<TView> 成员
 

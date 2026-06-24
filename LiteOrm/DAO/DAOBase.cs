@@ -102,7 +102,19 @@ namespace LiteOrm
         /// <summary>
         /// 批量插入提供程序工厂
         /// </summary>
-        public BulkProviderFactory BulkFactory { get; set; }
+        private BulkProviderFactory _bulkFactory;
+        public BulkProviderFactory BulkFactory
+        {
+            get
+            {
+                if (_bulkFactory == null && ServiceProviderHolder.ServiceProvider != null)
+                {
+                    _bulkFactory = ServiceProviderHolder.ServiceProvider.GetRequiredService<BulkProviderFactory>();
+                }
+                return _bulkFactory;
+            }
+            set => _bulkFactory = value;
+        }
 
         /// <summary>
         /// 构建SQL语句的SQLBuilder
@@ -168,12 +180,21 @@ namespace LiteOrm
             }
         }
 
+        private TableInfoProvider _tableInfoProvider;
         /// <summary>
         /// 表信息提供者
         /// </summary>
         public TableInfoProvider TableInfoProvider
         {
-            get; set;
+            get
+            {
+                if (_tableInfoProvider == null && ServiceProviderHolder.ServiceProvider != null)
+                {
+                    _tableInfoProvider = ServiceProviderHolder.ServiceProvider.GetRequiredService<TableInfoProvider>();
+                }
+                return _tableInfoProvider;
+            }
+            set => _tableInfoProvider = value;
         }
 
         /// <summary>

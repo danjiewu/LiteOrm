@@ -1,4 +1,3 @@
-using Autofac.Extras.DynamicProxy;
 using LiteOrm.Common;
 using LiteOrm.Service;
 using LiteOrm.Tests.Infrastructure;

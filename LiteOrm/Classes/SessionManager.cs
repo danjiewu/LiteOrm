@@ -1,8 +1,6 @@
-using Autofac;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -67,10 +65,27 @@ namespace LiteOrm
 
         /// <summary>
         /// 当前异步上下文的会话管理器（缓加载，首次访问时才从容器解析）
+        /// 若当前上下文未设置工厂，自动从全局 ServiceProvider 创建并缓存到当前上下文。
         /// </summary>
         public static SessionManager Current
         {
-            get => _currentAsyncLocal.Value?.Value;
+            get
+            {
+                var value = _currentAsyncLocal.Value;
+                if (value != null)
+                    return value.Value;
+
+                // 当前上下文未设置工厂时，从全局 ServiceProvider 自动创建
+                // 确保任意异步上下文中首次访问 Current 都能正常工作
+                if (ServiceProviderHolder.ServiceProvider != null)
+                {
+                    var sessionManager = ServiceProviderHolder.ServiceProvider.GetRequiredService<SessionManager>();
+                    _currentAsyncLocal.Value = new Lazy<SessionManager>(() => sessionManager, LazyThreadSafetyMode.PublicationOnly);
+                    return sessionManager;
+                }
+
+                return null;
+            }
         }
 
         /// <summary>

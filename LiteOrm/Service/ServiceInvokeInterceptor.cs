@@ -1,4 +1,4 @@
-﻿using Castle.DynamicProxy;
+using Castle.DynamicProxy;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -34,7 +34,7 @@ namespace LiteOrm.Service
     /// 9. 方法元数据缓存 - 缓存方法的属性信息以提高性能
     /// 
     /// 该拦截器应用于所有被标记为需要拦截的服务类，
-    /// 通过 Autofac.Extras.DynamicProxy 库的 Intercept 特性应用。
+    /// 通过 <see cref="InterceptAttribute"/> 特性应用。
     /// 
     /// 支持的特性：
     /// - TransactionAttribute - 控制事务行为
@@ -140,6 +140,7 @@ namespace LiteOrm.Service
                 try
                 {
                     _inProcess = true;
+                    EnsureCurrentSessionManager();
                     _sessionManager.Reset();
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
@@ -164,6 +165,21 @@ namespace LiteOrm.Service
                 {
                     _inProcess = false;
                 }
+            }
+        }
+
+        /// <summary>
+        /// 确保当前异步上下文的 ServiceProvider 和 SessionManager 指向当前 Scope 的实例
+        /// </summary>
+        private void EnsureCurrentSessionManager()
+        {
+            // 将当前作用域的 ServiceProvider 设置到 AsyncLocal，
+            // 供 DAOBase、EntityService 等属性注入的后备机制使用
+            ServiceProviderHolder.SetCurrentScope(_serviceProvider);
+
+            if (SessionManager.Current == null)
+            {
+                SessionManager.SetCurrentFactory(() => _sessionManager);
             }
         }
 
@@ -205,6 +221,7 @@ namespace LiteOrm.Service
                 try
                 {
                     _inProcess = true;
+                    EnsureCurrentSessionManager();
                     _sessionManager.Reset();
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
@@ -247,6 +264,7 @@ namespace LiteOrm.Service
                 try
                 {
                     _inProcess = true;
+                    EnsureCurrentSessionManager();
                     _sessionManager.Reset();
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();

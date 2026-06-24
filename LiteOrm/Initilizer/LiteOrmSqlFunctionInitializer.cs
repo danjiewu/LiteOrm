@@ -1,10 +1,12 @@
-using Autofac;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LiteOrm
 {
@@ -13,14 +15,23 @@ namespace LiteOrm
     /// 在应用启动时注册函数映射，支持 SqlBuilder 的动态 SQL 生成。
     /// </summary>
     [AutoRegister(Lifetime = Lifetime.Singleton)]
-    public class LiteOrmSqlFunctionInitializer : IStartable
+    public class LiteOrmSqlFunctionInitializer : IHostedService
     {
         /// <summary>
         /// 启动时初始化 SQL 函数映射。
         /// </summary>
-        public void Start()
+        public Task StartAsync(CancellationToken cancellationToken)
         {
             RegisterSqlFunctions();
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// 停止时执行清理逻辑。
+        /// </summary>
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
         }
 
         /// <summary>

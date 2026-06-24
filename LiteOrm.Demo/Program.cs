@@ -26,12 +26,15 @@ var host = Host.CreateDefaultBuilder(args)
 
 Console.WriteLine("--- LiteOrm 表达式演示程序 ---");
 
+// 启动宿主，触发 IHostedService 初始化（LiteOrmCoreInitializer 的表同步等）
+await host.StartAsync();
+
 // 注册窗口函数扩展处理器（必须在任何查询执行前完成）
 WindowFunctionDemo.RegisterHandlers();
 
 // 执行数据库初始化
 using (var initScope = host.Services.CreateScope())
-{    
+{
     await DbInitializer.InitializeAsync(initScope.ServiceProvider);
 }
 

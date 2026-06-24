@@ -57,10 +57,22 @@ namespace LiteOrm.Service
     where TView : T, new()
     where T : new()
     {
+        private ObjectDAO<T> _objectDAO;
         /// <summary>
         /// 获取或设置实体数据访问对象。
         /// </summary>
-        public ObjectDAO<T> ObjectDAO { get; set; }
+        public ObjectDAO<T> ObjectDAO
+        {
+            get
+            {
+                if (_objectDAO == null && ServiceProviderHolder.ServiceProvider != null)
+                {
+                    _objectDAO = ServiceProviderHolder.ServiceProvider.GetRequiredService<ObjectDAO<T>>();
+                }
+                return _objectDAO;
+            }
+            set => _objectDAO = value;
+        }
 
         #region IEntityService<T> 成员
 

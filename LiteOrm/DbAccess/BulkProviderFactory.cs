@@ -1,8 +1,10 @@
-﻿using Autofac.Features.Indexed;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using System.Reflection;
 
 namespace LiteOrm
 {
@@ -13,16 +15,36 @@ namespace LiteOrm
     [AutoRegister(Lifetime.Singleton)]
     public class BulkProviderFactory
     {
-        private readonly IIndex<Type, IBulkProvider> _keyedProviders;
+        private readonly Dictionary<Type, IBulkProvider> _providers;
 
         /// <summary>
         /// 构造函数
         /// </summary>
-        /// <param name="keyedProviders">用于查找的批量插入提供程序索引</param>
+        /// <param name="serviceProvider">服务提供者，用于解析所有 IBulkProvider 实现</param>
         public BulkProviderFactory(
-            IIndex<Type, IBulkProvider> keyedProviders)
+            IServiceProvider serviceProvider)
         {
-            _keyedProviders = keyedProviders;
+            var providers = serviceProvider.GetServices<IBulkProvider>();
+            _providers = new Dictionary<Type, IBulkProvider>();
+
+            foreach (var provider in providers)
+            {
+                var key = GetProviderKey(provider.GetType());
+                if (key != null && !_providers.ContainsKey(key))
+                {
+                    _providers[key] = provider;
+                }
+            }
+        }
+
+        private static Type GetProviderKey(Type providerType)
+        {
+            var attr = providerType.GetCustomAttribute<AutoRegisterAttribute>(true);
+            if (attr?.Key is Type keyType)
+            {
+                return keyType;
+            }
+            return null;
         }
 
         /// <summary>
@@ -41,7 +63,7 @@ namespace LiteOrm
                 throw new ArgumentException($"Type must implement IDbConnection: {dbConnectionType.Name}");
 
             // 尝试直接查找
-            if (_keyedProviders.TryGetValue(dbConnectionType, out var provider))
+            if (_providers.TryGetValue(dbConnectionType, out var provider))
             {
                 return provider;
             }
