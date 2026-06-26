@@ -1,8 +1,11 @@
+using LiteOrm.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading;
@@ -63,6 +66,7 @@ namespace LiteOrm.Service
         /// 注册远程服务服务端并扫描指定程序集中的服务接口类型。
         /// 扫描规则：接口标记了 <see cref="ServiceAttribute"/> 且 <see cref="ServiceAttribute.IsService"/> 为 true。
         /// 支持开放泛型接口（如 <c>IEntityService&lt;&gt;</c>）的注册，查找时由 <see cref="RemoteServiceRegistry"/> 动态构造闭合类型。
+        /// AutoRegister 自动注册与 <see cref="TableInfoProvider.Default"/> 初始化由 <see cref="LiteOrm"/> 主库处理。
         /// </summary>
         /// <param name="services">服务集合。</param>
         /// <param name="assemblies">要扫描的程序集。</param>

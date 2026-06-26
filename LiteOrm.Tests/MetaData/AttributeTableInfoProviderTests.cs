@@ -3,6 +3,7 @@ using System.Data.Common;
 
 using LiteOrm;
 using LiteOrm.Common;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
 
@@ -175,7 +176,10 @@ namespace LiteOrm.Common.UnitTests
                     Provider = typeof(DbConnection).AssemblyQualifiedName!
                 });
 
-            return new AttributeTableInfoProvider(sqlBuilderFactory.Object, dataSourceProvider.Object);
+            var services = new ServiceCollection();
+            services.AddSingleton(sqlBuilderFactory.Object);
+            services.AddSingleton(dataSourceProvider.Object);
+            return new AttributeTableInfoProvider(services.BuildServiceProvider());
         }
 
         [Table("Orders")]

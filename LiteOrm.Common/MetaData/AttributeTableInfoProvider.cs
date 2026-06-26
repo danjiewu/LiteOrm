@@ -23,13 +23,14 @@ namespace LiteOrm
 
         /// <summary>
         /// 初始化 <see cref="AttributeTableInfoProvider"/> 类的新实例。
+        /// 通过 <paramref name="serviceProvider"/> 解析 <see cref="ISqlBuilderFactory"/> 和 <see cref="IDataSourceProvider"/>（可为 null）。
+        /// 当两者或其解析结果为 null 时，DbType 通过内部 <see cref="DbTypeMap"/> 获得，不依赖 SqlBuilder。
         /// </summary>
-        /// <param name="sqlBuilderFactory">SQL 构建器工厂。</param>
-        /// <param name="dataSourceProvider">数据源提供者。</param>
-        public AttributeTableInfoProvider(ISqlBuilderFactory sqlBuilderFactory, IDataSourceProvider dataSourceProvider)
+        /// <param name="serviceProvider">DI 服务提供者，用于解析 <see cref="ISqlBuilderFactory"/> 和 <see cref="IDataSourceProvider"/>。</param>
+        public AttributeTableInfoProvider(IServiceProvider serviceProvider)
         {
-            _sqlBuilderFactory = sqlBuilderFactory ?? throw new ArgumentNullException(nameof(sqlBuilderFactory));
-            _dataSourceProvider = dataSourceProvider ?? throw new ArgumentNullException(nameof(dataSourceProvider));
+            _sqlBuilderFactory = serviceProvider.GetService(typeof(ISqlBuilderFactory)) as ISqlBuilderFactory;
+            _dataSourceProvider = serviceProvider.GetService(typeof(IDataSourceProvider)) as IDataSourceProvider;
         }
 
         /// <summary>
@@ -79,13 +80,21 @@ namespace LiteOrm
             string tableName = tableAttribute.TableName;
             if (String.IsNullOrEmpty(tableName)) tableName = objectType.Name;
 
-            var dsConfig = _dataSourceProvider.GetDataSource(tableAttribute.DataSource);
-            if (dsConfig == null)
+            DataSourceConfig dsConfig = null;
+            if (_dataSourceProvider is not null)
             {
-                throw new InvalidOperationException($"Data source '{tableAttribute.DataSource ?? "default"}' not found for type '{objectType.FullName}'. Check your configuration.");
+                dsConfig = _dataSourceProvider.GetDataSource(tableAttribute.DataSource);
+                if (dsConfig == null)
+                {
+                    throw new InvalidOperationException($"Data source '{tableAttribute.DataSource ?? "default"}' not found for type '{objectType.FullName}'. Check your configuration.");
+                }
             }
 
-            var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType, tableAttribute.DataSource);
+            ISqlBuilder sqlBuilder = null;
+            if (_sqlBuilderFactory is not null && dsConfig is not null)
+            {
+                sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType, tableAttribute.DataSource);
+            }
 
             List<ColumnDefinition> columns = new List<ColumnDefinition>();
 
@@ -101,8 +110,8 @@ namespace LiteOrm
             return new TableDefinition(objectType, columns)
             {
                 Name = tableName,
-                DataProviderType = dsConfig.ProviderType,
-                DataSource = tableAttribute.DataSource ?? _dataSourceProvider.DefaultDataSourceName,
+                DataProviderType = dsConfig?.ProviderType,
+                DataSource = tableAttribute.DataSource ?? _dataSourceProvider?.DefaultDataSourceName,
                 ConstFilter = BuildConstFilter(columns)
             };
         }
@@ -131,7 +140,7 @@ namespace LiteOrm
                     column.IdentityExpression = columnAttribute.IdentityExpression;
                     column.IsUnique = columnAttribute.IsUnique;
                     column.IsIndex = columnAttribute.IsIndex;
-                    column.DbType = columnAttribute.DbType == DbType.Object ? sqlBuilder.GetDbType(property.PropertyType) : columnAttribute.DbType;
+                    column.DbType = columnAttribute.DbType == DbType.Object ? GetDbTypeInternal(property.PropertyType, sqlBuilder) : columnAttribute.DbType;
                     column.Length = columnAttribute.Length == 0 ? DbTypeMap.GetDefaultLength(column.DbType) : columnAttribute.Length;
                     column.AllowNull = columnAttribute.AllowNull && (property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(property.PropertyType) is not null : true);
                     column.DefaultValue = columnAttribute.DefaultValue;
@@ -144,7 +153,7 @@ namespace LiteOrm
             }
             else
             {
-                DbType dbType = sqlBuilder.GetDbType(property.PropertyType);
+                DbType dbType = GetDbTypeInternal(property.PropertyType, sqlBuilder);
                 if (dbType == DbType.Object) return null;
 
                 ColumnDefinition column = new ColumnDefinition(property);
@@ -156,6 +165,15 @@ namespace LiteOrm
                 column.ForeignTables = foreignTables;
                 return column;
             }
+        }
+
+        /// <summary>
+        /// 获取属性类型对应的 DbType。优先使用 <paramref name="sqlBuilder"/>；当 sqlBuilder 为 null 时，使用 <see cref="DbTypeMap"/> 内部映射。
+        /// </summary>
+        private static DbType GetDbTypeInternal(Type propertyType, ISqlBuilder sqlBuilder)
+        {
+            if (sqlBuilder is not null) return sqlBuilder.GetDbType(propertyType);
+            return DbTypeMap.GetDbType(propertyType.GetUnderlyingType());
         }
 
         private static ForeignColumn GenerateForeignColumn(PropertyInfo property)
@@ -180,7 +198,11 @@ namespace LiteOrm
             var tableDef = GetTableDefinition(objectType);
             if (tableDef == null) return null;
 
-            var sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(tableDef.DataProviderType, tableDef.DataSource);
+            ISqlBuilder sqlBuilder = null;
+            if (_sqlBuilderFactory is not null && tableDef.DataProviderType is not null)
+            {
+                sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(tableDef.DataProviderType, tableDef.DataSource);
+            }
 
             TableJoinAttribute[] atts = (TableJoinAttribute[])objectType.GetCustomAttributes(typeof(TableJoinAttribute), true);
             ConcurrentDictionary<string, JoinedTable> joinedTables = new ConcurrentDictionary<string, JoinedTable>(StringComparer.OrdinalIgnoreCase);

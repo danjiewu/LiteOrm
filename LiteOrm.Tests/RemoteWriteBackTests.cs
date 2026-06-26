@@ -214,7 +214,10 @@ namespace LiteOrm.Tests
                 .Setup(p => p.GetDataSource(It.IsAny<string>()))
                 .Returns(new DataSourceConfig { Name = "default", Provider = typeof(DbConnection).AssemblyQualifiedName });
 
-            return new AttributeTableInfoProvider(sqlBuilderFactory.Object, dataSourceProvider.Object);
+            var services = new ServiceCollection();
+            services.AddSingleton(sqlBuilderFactory.Object);
+            services.AddSingleton(dataSourceProvider.Object);
+            return new AttributeTableInfoProvider(services.BuildServiceProvider());
         }
 
         /// <summary>
