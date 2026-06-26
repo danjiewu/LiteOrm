@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -35,9 +35,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LiteOrm.CodeGen\LiteOrm.CodeGen.csproj" />
     <ProjectReference Include="..\LiteOrm\LiteOrm.csproj" />
     <ProjectReference Include="..\LiteOrm.Common\LiteOrm.Common.csproj" />
+    <ProjectReference Include="..\LiteOrm.Remote\LiteOrm.Remote.csproj" />
+    <ProjectReference Include="..\LiteOrm.Remote.Server\LiteOrm.Remote.Server.csproj" />
   </ItemGroup>
 
 </Project>

@@ -65,7 +65,7 @@ namespace LiteOrm.Service
         /// <returns>
         /// true:成功
         /// false:失败</returns>
-        bool Insert(T entity);
+        bool Insert([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long))] T entity);
         /// <summary>
         /// 更新实体
         /// </summary>
@@ -81,7 +81,7 @@ namespace LiteOrm.Service
         /// <returns>
         /// true:成功
         /// false:失败</returns>
-        bool UpdateOrInsert(T entity);
+        bool UpdateOrInsert([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long))] T entity);
         /// <summary>
         /// 删除实体
         /// </summary>
@@ -95,7 +95,7 @@ namespace LiteOrm.Service
         /// </summary>
         /// <param name="entities">实体列表</param>
         [Transaction]
-        void BatchInsert(IEnumerable<T> entities);
+        void BatchInsert([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<T> entities);
         /// <summary>
         /// 批量更新实体
         /// </summary>
@@ -107,7 +107,7 @@ namespace LiteOrm.Service
         /// </summary>
         /// <param name="entities">实体列表</param>
         [Transaction]
-        void BatchUpdateOrInsert(IEnumerable<T> entities);
+        void BatchUpdateOrInsert([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<T> entities);
         /// <summary>
         /// 批量删除实体
         /// </summary>
@@ -119,7 +119,7 @@ namespace LiteOrm.Service
         /// </summary>
         /// <param name="entities">实体操作列表</param>
         [Transaction]
-        void Batch(IEnumerable<EntityOperation<T>> entities);
+        void Batch([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<EntityOperation<T>> entities);
     }
 
     /// <summary>

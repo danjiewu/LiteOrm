@@ -23,6 +23,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{983F697D-9928-444B-8D62-59ED0B779587}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.Remote", "LiteOrm.Remote\LiteOrm.Remote.csproj", "{9B3C7A66-8328-4052-8978-AE1774B1D743}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.Remote.Server", "LiteOrm.Remote.Server\LiteOrm.Remote.Server.csproj", "{D220D6EC-98EC-4351-BB41-0978EA954E6A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -93,13 +97,37 @@ Global
 		{EB620150-BFE7-48FD-8007-160E96B628CA}.Release|x64.Build.0 = Release|Any CPU
 		{EB620150-BFE7-48FD-8007-160E96B628CA}.Release|x86.ActiveCfg = Release|Any CPU
 		{EB620150-BFE7-48FD-8007-160E96B628CA}.Release|x86.Build.0 = Release|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Debug|x64.Build.0 = Debug|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Debug|x86.Build.0 = Debug|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Release|x64.ActiveCfg = Release|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Release|x64.Build.0 = Release|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Release|x86.ActiveCfg = Release|Any CPU
+		{9B3C7A66-8328-4052-8978-AE1774B1D743}.Release|x86.Build.0 = Release|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Debug|x64.Build.0 = Debug|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Debug|x86.Build.0 = Debug|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Release|x64.ActiveCfg = Release|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Release|x64.Build.0 = Release|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Release|x86.ActiveCfg = Release|Any CPU
+		{D220D6EC-98EC-4351-BB41-0978EA954E6A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		VisualSVNWorkingCopyRoot = .
 		SolutionGuid = {1703354A-7158-41F2-89B1-2A8D48893DA9}
+		VisualSVNWorkingCopyRoot = .
 	EndGlobalSection
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True

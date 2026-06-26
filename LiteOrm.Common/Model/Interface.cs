@@ -1,5 +1,17 @@
 ﻿namespace LiteOrm.Common
 {
+    /// <summary>
+    /// 可复制接口，定义对象复制功能
+    /// </summary>
+    /// <typeparam name="T">源对象类型</typeparam>
+    public interface ICopyable
+    {
+        /// <summary>
+        /// 从源对象复制数据
+        /// </summary>
+        /// <param name="source">源对象</param>
+        void CopyFrom(object source);
+    }
 
     /// <summary>
     /// 可记录日志接口，定义对象日志记录功能

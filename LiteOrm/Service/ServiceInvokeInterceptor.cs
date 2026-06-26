@@ -690,7 +690,7 @@ namespace LiteOrm.Service
         /// <param name="invocation">方法调用信息</param>
         public static void LoadFrom(this ServiceDescription desc, IInvocation invocation)
         {
-            desc.ServiceName = GetServiceName(invocation.TargetType);
+            desc.ServiceName = RemoteServiceNameUtil.GetServiceName(invocation.TargetType);
             desc.MethodName = invocation.Method.Name;
 
             // 日志特性
@@ -746,24 +746,7 @@ namespace LiteOrm.Service
                 desc.ArgsLoggable[i] = logAtts.Length > 0 ? logAtts[0].Enabled : !_exclusions.Contains(parameters[i].ParameterType);
             }
         }
-        /// <summary>
-        /// 获取服务类型的短名称。
-        /// 对于泛型类型，会返回类似 "GenericType&lt;T&gt;" 的可读格式。
-        /// </summary>
-        /// <param name="serviceType">目标服务类型。</param>
-        /// <returns>格式化后的服务名称。</returns>
-        private static string GetServiceName(Type serviceType)
-        {
-            if (serviceType.IsGenericType)
-            {
-                int backtickIndex = serviceType.Name.IndexOf('`');
-                return serviceType.Name.Substring(0, backtickIndex) + "<" + String.Join(",", from t in serviceType.GetGenericArguments() select t.Name) + ">";
-            }
-            else
-            {
-                return serviceType.Name;
-            }
-        }
+
         private static T GetServiceAttribute<T>(IInvocation invocation) where T : Attribute
         {
             return GetServiceAttributes<T>(invocation).FirstOrDefault();

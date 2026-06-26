@@ -21,7 +21,7 @@ namespace LiteOrm.Service
         /// <param name="entity">实体</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>操作结果，true表示成功，false表示失败</returns>
-        Task<bool> InsertAsync(T entity, CancellationToken cancellationToken = default);
+        Task<bool> InsertAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long))] T entity, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步更新实体
@@ -37,7 +37,7 @@ namespace LiteOrm.Service
         /// <param name="entity">实体</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>操作结果，true表示成功，false表示失败</returns>
-        Task<bool> UpdateOrInsertAsync(T entity, CancellationToken cancellationToken = default);
+        Task<bool> UpdateOrInsertAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long))] T entity, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步删除实体
@@ -54,7 +54,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
         [Transaction]
-        Task BatchInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+        Task BatchInsertAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步批量更新实体
@@ -72,7 +72,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
         [Transaction]
-        Task BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+        Task BatchUpdateOrInsertAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步批量删除实体
@@ -90,7 +90,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
         [Transaction]
-        Task BatchAsync(IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default);
+        Task BatchAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default);
     }
 
 

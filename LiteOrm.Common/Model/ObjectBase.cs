@@ -47,7 +47,7 @@ namespace LiteOrm.Common
     /// </remarks>
     [Serializable]
     [Table]
-    public abstract class ObjectBase : ICopyable<ObjectBase>, ICloneable, ILogable
+    public abstract class ObjectBase : ICopyable, ICloneable, ILogable
     {
         // 使用 ConcurrentDictionary 代替 Dictionary + lock
         private static readonly ConcurrentDictionary<Type, string[]> _logPropertiesCache =
@@ -62,7 +62,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="target">源对象</param>
         /// <exception cref="ArgumentNullException">当target为null时抛出</exception>
-        public virtual void CopyFrom(ObjectBase target)
+        public virtual void CopyFrom(object target)
         {
             if (target is null) throw new ArgumentNullException(nameof(target));
 
@@ -259,18 +259,5 @@ namespace LiteOrm.Common
         }
 
         #endregion
-    }
-
-    /// <summary>
-    /// 可复制接口，定义对象复制功能
-    /// </summary>
-    /// <typeparam name="T">源对象类型</typeparam>
-    public interface ICopyable<in T>
-    {
-        /// <summary>
-        /// 从源对象复制数据
-        /// </summary>
-        /// <param name="source">源对象</param>
-        void CopyFrom(T source);
     }
 }
