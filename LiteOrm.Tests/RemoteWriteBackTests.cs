@@ -17,8 +17,8 @@ namespace LiteOrm.Tests
     /// <summary>
     /// 远程调用参数属性回写功能测试。
     /// 验证 <see cref="ArgumentOutAttribute"/> 通过 <see cref="IArgumentOutHandler"/> 处理回写，
-    /// 覆盖 <see cref="IdentityArgumentOutHandler"/>、自定义处理器、不同 <see cref="IArgumentOutHandler.ReturnType"/>、
-    /// 以及 <see cref="CopyableArgumentOutHandler"/> + <see cref="ICopyable"/> 等场景，
+    /// 覆盖 <see cref="IdentityOutAttribute"/>、自定义处理器、不同 <see cref="IArgumentOutHandler.ReturnType"/>、
+    /// 以及 <see cref="CopyableOutAttribute"/> + <see cref="ICopyable"/> 等场景，
     /// 包含服务端 <see cref="IArgumentOutHandler.GenerateReturnValue"/> 与客户端 <see cref="IArgumentOutHandler.WriteBack"/> 两阶段流程。
     /// </summary>
     public class RemoteWriteBackTests
@@ -30,7 +30,7 @@ namespace LiteOrm.Tests
         };
 
         /// <summary>
-        /// 测试用实体。Id 标记为自增主键，配合 <see cref="IdentityArgumentOutHandler"/> 使用。
+        /// 测试用实体。Id 标记为自增主键，配合 <see cref="IdentityOutAttribute"/> 使用。
         /// </summary>
         [Table("Users")]
         public class User
@@ -45,7 +45,7 @@ namespace LiteOrm.Tests
         }
 
         /// <summary>
-        /// 实现了 <see cref="ICopyable"/> 的测试实体，配合 <see cref="CopyableArgumentOutHandler"/> 整体回写。
+        /// 实现了 <see cref="ICopyable"/> 的测试实体，配合 <see cref="CopyableOutAttribute"/> 整体回写。
         /// </summary>
         public class CopyableUser : ICopyable
         {
@@ -76,26 +76,26 @@ namespace LiteOrm.Tests
         /// </summary>
         public interface IUserService
         {
-            // IdentityArgumentOutHandler：仅回写自增主键（Id），返回值类型为 long
-            Task CreateAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long))] User user);
-            Task<long> CreateAndReturnIdAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long))] User user);
+            // IdentityOutAttribute：仅回写自增主键（Id），返回值类型为 long
+            Task CreateAsync([IdentityOut] User user);
+            Task<long> CreateAndReturnIdAsync([IdentityOut] User user);
             // 自定义处理器：返回值类型为 User
             Task CreateWithHandlerAsync([ArgumentOut(typeof(ToUpperNameHandler), typeof(User))] User user);
             Task CreateIdOnlyAsync([ArgumentOut(typeof(IdOnlyHandler), typeof(User))] User user);
             // 自定义处理器：返回值类型为 UserDelta
             Task CreateDeltaAsync([ArgumentOut(typeof(DeltaHandler), typeof(UserDelta))] User user);
             // 集合模式：逐项回写 Identity
-            Task CreateBatchAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] List<User> users);
+            Task CreateBatchAsync([IdentityOut(Mode = ArgumentMode.Collection)] List<User> users);
             // 集合模式 + 自定义处理器
             Task CreateBatchDeltaAsync([ArgumentOut(typeof(DeltaHandler), typeof(UserDelta), Mode = ArgumentMode.Collection)] List<User> users);
         }
 
         /// <summary>
-        /// 服务接口：使用通用 CopyableArgumentOutHandler 处理 ICopyable 参数。
+        /// 服务接口：使用通用 CopyableOutAttribute 处理 ICopyable 参数。
         /// </summary>
         public interface ICopyableUserService
         {
-            Task CreateAsync([ArgumentOut(typeof(CopyableArgumentOutHandler), typeof(CopyableUser))] CopyableUser user);
+            Task CreateAsync([CopyableOut(typeof(CopyableUser))] CopyableUser user);
         }
 
         /// <summary>
@@ -198,7 +198,7 @@ namespace LiteOrm.Tests
 
         /// <summary>
         /// 创建测试用 <see cref="TableInfoProvider"/>（基于 <see cref="AttributeTableInfoProvider"/>，依赖已 Mock）。
-        /// <see cref="IdentityArgumentOutHandler"/> 通过 <see cref="TableInfoProvider.Default"/> 解析 Identity 列，
+        /// <see cref="IdentityOutAttribute"/> 通过 <see cref="TableInfoProvider.Default"/> 解析 Identity 列，
         /// 客户端与服务端均需注册。
         /// </summary>
         private static TableInfoProvider CreateTestTableInfoProvider()
@@ -234,7 +234,7 @@ namespace LiteOrm.Tests
             public void Dispose() => TableInfoProvider.Default = _previous;
         }
 
-        // ========== 客户端测试：IdentityArgumentOutHandler ==========
+        // ========== 客户端测试：IdentityOutAttribute ==========
 
         [Fact]
         public async Task Client_IdentityHandler_WriteBack_Identity_Only()
@@ -243,7 +243,7 @@ namespace LiteOrm.Tests
             var user = new User { Name = "alice", Id = 0, CreatedAt = default };
             var stub = new StubTransport(req =>
             {
-                // 服务端 IdentityArgumentOutHandler 仅返回 Id 值
+                // 服务端 IdentityOutAttribute 仅返回 Id 值
                 return new RemoteInvocationResponse
                 {
                     Success = true,
@@ -264,7 +264,7 @@ namespace LiteOrm.Tests
 
             await proxy.CreateAsync(user);
 
-            // IdentityArgumentOutHandler 仅回写 Id，其他属性保持不变
+            // IdentityOutAttribute 仅回写 Id，其他属性保持不变
             Assert.Equal(42, user.Id);
             Assert.Equal("alice", user.Name);
             Assert.Equal(default, user.CreatedAt);
@@ -299,7 +299,7 @@ namespace LiteOrm.Tests
 
             long result = await proxy.CreateAndReturnIdAsync(user);
 
-            // IdentityArgumentOutHandler 仅回写 Id
+            // IdentityOutAttribute 仅回写 Id
             Assert.Equal(99, user.Id);
             Assert.Equal("alice", user.Name);
             Assert.Equal(default, user.CreatedAt);
@@ -535,12 +535,12 @@ namespace LiteOrm.Tests
             services.AddScoped<TInterface, TImpl>();
             var provider = services.BuildServiceProvider();
 
-            var registry = new RemoteServiceRegistry();
-            registry.Register<TInterface>();
+            var resolver = new DelegateRemoteServiceTypeResolver(name =>
+                name == RemoteServiceNameUtil.GetServiceName(typeof(TInterface)) ? typeof(TInterface) : null);
 
             var dispatcher = new RemoteServiceDispatcher(
                 provider,
-                registry,
+                resolver,
                 provider.GetRequiredService<ILoggerFactory>().CreateLogger<RemoteServiceDispatcher>());
             return (dispatcher, provider);
         }
@@ -573,7 +573,7 @@ namespace LiteOrm.Tests
             Assert.Single(response.WriteBackArguments);
             var wb = response.WriteBackArguments[0];
             Assert.Equal(0, wb.ArgumentIndex);
-            // IdentityArgumentOutHandler 仅返回 Id 值（long），而非整个 User 对象
+            // IdentityOutAttribute 仅返回 Id 值（long），而非整个 User 对象
             Assert.Equal(typeof(long).AssemblyQualifiedName, wb.TypeName);
             var writtenId = JsonSerializer.Deserialize<long>(wb.ValueJson!, _jsonOptions);
             Assert.Equal(123, writtenId);
@@ -631,7 +631,7 @@ namespace LiteOrm.Tests
             Assert.True(response.Success);
             Assert.Equal(999L, JsonSerializer.Deserialize<long>(response.ResultJson!, _jsonOptions));
             Assert.Single(response.WriteBackArguments);
-            // IdentityArgumentOutHandler 仅返回 Id 值
+            // IdentityOutAttribute 仅返回 Id 值
             var writtenId = JsonSerializer.Deserialize<long>(response.WriteBackArguments[0].ValueJson!, _jsonOptions);
             Assert.Equal(999, writtenId);
         }
@@ -790,7 +790,7 @@ namespace LiteOrm.Tests
 
             await proxy.CreateAsync(user);
 
-            // IdentityArgumentOutHandler 仅回写 Id，服务端设置的其他属性不会同步到客户端
+            // IdentityOutAttribute 仅回写 Id，服务端设置的其他属性不会同步到客户端
             Assert.Equal(123, user.Id);
             Assert.Equal("carol", user.Name);
             Assert.Equal(default, user.CreatedAt);

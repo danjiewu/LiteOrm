@@ -23,6 +23,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>id对应实体，若不存在则返回null</returns>
+        [ServiceMethod]
         new Task<T> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -32,6 +33,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
+        [ServiceMethod]
         new Task<T> SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -42,6 +44,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
+        [ServiceMethod(false)]
         Task ForEachAsync(Expr expr, Func<T, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -51,6 +54,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的实体列表</returns>
+        [ServiceMethod]
         new Task<List<T>> SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -60,6 +64,7 @@ namespace LiteOrm.Service
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>结果列表</returns>
+        [ServiceMethod]
         Task<List<TResult>> SearchAsAsync<TResult>(SelectExpr selectExpr = null, params string[] tableArgs);
 
         /// <summary>
@@ -69,6 +74,7 @@ namespace LiteOrm.Service
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>结果对象</returns>
+        [ServiceMethod]
         Task<TResult> SearchOneAsAsync<TResult>(SelectExpr selectExpr = null, params string[] tableArgs);
     }
 

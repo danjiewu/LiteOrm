@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -24,23 +25,29 @@ namespace LiteOrm.Service
             PropertyNameCaseInsensitive = true,
         };
 
+        /// <summary>
+        /// 服务类型 → 方法查找表的缓存。首次访问 serviceType 时遍历所有公共实例方法并应用匹配规则构建
+        /// 名称 → MethodInfo 的映射，后续调用直接查表。
+        /// </summary>
+        private static readonly ConcurrentDictionary<Type, Dictionary<string, MethodInfo>> _methodCache = new();
+
         private readonly IServiceProvider _serviceProvider;
-        private readonly RemoteServiceRegistry _registry;
+        private readonly IRemoteServiceTypeResolver _resolver;
         private readonly ILogger<RemoteServiceDispatcher>? _logger;
 
         /// <summary>
         /// 初始化 <see cref="RemoteServiceDispatcher"/> 类的新实例。
         /// </summary>
         /// <param name="serviceProvider">DI 服务提供者，用于解析服务实例。</param>
-        /// <param name="registry">服务注册表。</param>
+        /// <param name="resolver">服务类型解析器，根据 ServiceName 解析服务接口类型。</param>
         /// <param name="logger">日志记录器（可选）。</param>
         public RemoteServiceDispatcher(
             IServiceProvider serviceProvider,
-            RemoteServiceRegistry registry,
+            IRemoteServiceTypeResolver resolver,
             ILogger<RemoteServiceDispatcher>? logger = null)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+            _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
             _logger = logger;
         }
 
@@ -58,12 +65,13 @@ namespace LiteOrm.Service
             try
             {
                 // 1. 解析服务类型
-                if (!_registry.TryGetServiceType(request.ServiceName!, out var serviceType))
+                var serviceType = _resolver.ResolveService(request.ServiceName!);
+                if (serviceType is null)
                 {
                     response.Success = false;
                     response.ErrorType = nameof(ServiceException);
                     response.ErrorMessage = $"Remote service '{request.ServiceName}' is not registered.";
-                    _logger?.LogWarning("Remote service '{ServiceName}' not found in registry.", request.ServiceName);
+                    _logger?.LogWarning("Remote service '{ServiceName}' not found by resolver.", request.ServiceName);
                     return response;
                 }
 
@@ -79,7 +87,7 @@ namespace LiteOrm.Service
                 }
 
                 // 3. 匹配方法
-                var method = ResolveMethod(serviceType, request.MethodName!, request.Arguments);
+                var method = ResolveMethod(serviceType, request.MethodName!);
                 if (method is null)
                 {
                     response.Success = false;
@@ -126,57 +134,82 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 在服务类型上匹配方法。按方法名和参数数量（排除 CancellationToken）匹配；
-        /// 若有多个候选，则按参数类型兼容性选择最佳匹配。
+        /// 在服务类型上按名称查找方法。首次访问 serviceType 时遍历所有公共实例方法并构建名称查找表，
+        /// 后续调用直接查表。
+        /// <para>
+        /// 构建查找表时的匹配规则：
+        /// 1. 优先将标记了 <see cref="ServiceMethodAttribute"/>（<c>IsService=true</c>）的方法加入表，
+        ///    键为 <see cref="ServiceMethodAttribute.MethodName"/>（若设置），否则为方法名；
+        /// 2. 再将未标记 <see cref="ServiceMethodAttribute"/> 的方法按方法名加入表（仅当键不存在时）；
+        /// 3. 第一阶段出现重复键，抛出 <see cref="AmbiguousMatchException"/>；
+        /// 4. 第二阶段出现重复键（且未被第一阶段占用），抛出 <see cref="AmbiguousMatchException"/>；
+        /// 5. 标记了 <c>[ServiceMethod(false)]</c> 的方法不参与匹配。
+        /// </para>
         /// </summary>
-        private static MethodInfo? ResolveMethod(Type serviceType, string methodName, System.Collections.Generic.IList<RemoteArgument> arguments)
+        /// <param name="serviceType">服务接口类型。</param>
+        /// <param name="methodName">请求的方法名（对应 ServiceMethodAttribute.MethodName 或方法名）。</param>
+        /// <returns>匹配到的方法；未找到时返回 null。</returns>
+        private static MethodInfo? ResolveMethod(Type serviceType, string methodName)
         {
-            var argCount = arguments?.Count ?? 0;
-            var candidates = serviceType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.Name == methodName)
-                .ToList();
-
-            // 按非 CancellationToken 参数数量过滤
-            var matched = candidates
-                .Where(m => m.GetParameters().Count(p => p.ParameterType != typeof(CancellationToken)) == argCount)
-                .ToList();
-
-            if (matched.Count == 0) return null;
-            if (matched.Count == 1) return matched[0];
-
-            // 多个候选：按参数类型兼容性评分选择最佳
-            MethodInfo? best = null;
-            int bestScore = -1;
-            foreach (var m in matched)
-            {
-                int score = ScoreMethod(m, arguments!);
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    best = m;
-                }
-            }
-            return best;
+            var lookup = _methodCache.GetOrAdd(serviceType, BuildMethodLookup);
+            return lookup.TryGetValue(methodName, out var method) ? method : null;
         }
 
         /// <summary>
-        /// 为方法评分：每个参数的声明类型能从请求参数的实际类型赋值得分+1。
+        /// 为指定服务类型构建名称 → MethodInfo 查找表。
+        /// 扫描所有公共实例方法，排除 [ServiceMethod(false)] 标记的方法；标记 [ServiceMethod(true)] 的方法优先入表。
+        /// 同一阶段出现重复键时抛出 <see cref="AmbiguousMatchException"/>。
         /// </summary>
-        private static int ScoreMethod(MethodInfo method, System.Collections.Generic.IList<RemoteArgument> arguments)
+        /// <exception cref="AmbiguousMatchException">同一名称匹配到多个候选方法。</exception>
+        private static Dictionary<string, MethodInfo> BuildMethodLookup(Type serviceType)
         {
-            var parameters = method.GetParameters()
-                .Where(p => p.ParameterType != typeof(CancellationToken))
-                .ToArray();
+            var lookup = new Dictionary<string, MethodInfo>(StringComparer.Ordinal);
+            var unmarked = new List<MethodInfo>();
 
-            int score = 0;
-            for (int i = 0; i < parameters.Length && i < arguments.Count; i++)
+            // 第一阶段：收集所有候选方法，分离 marked / unmarked
+            foreach (var method in serviceType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
             {
-                var argType = Type.GetType(arguments[i].TypeName ?? string.Empty);
-                if (argType is null) continue;
-                if (parameters[i].ParameterType.IsAssignableFrom(argType))
-                    score++;
+                var attr = method.GetCustomAttribute<ServiceMethodAttribute>(true);
+                if (attr is { IsService: false }) continue; // 显式排除
+
+                if (attr is { IsService: true })
+                {
+                    var key = !string.IsNullOrEmpty(attr.MethodName) ? attr.MethodName : method.Name;
+                    if (lookup.TryGetValue(key, out var existing))
+                        throw new AmbiguousMatchException(
+                            $"Multiple [ServiceMethod] methods named '{key}' found on service '{serviceType.Name}'. " +
+                            $"Candidates: {existing.DeclaringType?.Name}.{existing.Name}, {method.DeclaringType?.Name}.{method.Name}.");
+                    lookup[key] = method;
+                }
+                else
+                {
+                    unmarked.Add(method);
+                }
             }
-            return score;
+
+            // 第二阶段：未标记的方法按方法名入表，仅当键不存在时（保留 ServiceMethod 优先级）
+            var unmarkedByName = new Dictionary<string, List<MethodInfo>>(StringComparer.Ordinal);
+            foreach (var method in unmarked)
+            {
+                if (lookup.ContainsKey(method.Name)) continue; // 已被 ServiceMethod 占用，跳过
+                if (!unmarkedByName.TryGetValue(method.Name, out var list))
+                {
+                    list = new List<MethodInfo>();
+                    unmarkedByName[method.Name] = list;
+                }
+                list.Add(method);
+            }
+
+            foreach (var kv in unmarkedByName)
+            {
+                if (kv.Value.Count > 1)
+                    throw new AmbiguousMatchException(
+                        $"Multiple methods named '{kv.Key}' found on service '{serviceType.Name}'. " +
+                        $"Candidates: {string.Join(", ", kv.Value.Select(m => m.DeclaringType?.Name + "." + m.Name))}.");
+                lookup[kv.Key] = kv.Value[0];
+            }
+
+            return lookup;
         }
 
         /// <summary>
@@ -284,6 +317,8 @@ namespace LiteOrm.Service
 
                 // 读取参数上的 ArgumentOutAttribute，通过 Resolver 创建处理器（DI 优先 + 构造函数传参）
                 var attr = parameters[paramIndex].GetCustomAttribute<ArgumentOutAttribute>(true);
+                if (attr is null)
+                    continue;
                 var handler = ArgumentOutHandlerResolver.Resolve(attr, _serviceProvider);
                 if (handler is null)
                     continue;

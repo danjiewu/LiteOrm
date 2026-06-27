@@ -118,9 +118,20 @@ namespace LiteOrm.Service
     public static class RemoteServiceNameUtil
     {
         /// <summary>
+        /// 获取或设置是否使用类型短名（不含命名空间）生成服务名称。默认为 true。
+        /// 设为 false 时将使用 <see cref="Type.FullName"/>（包含命名空间），
+        /// 适用于客户端与服务端实体命名空间不一致或存在同名短类型需要消歧的场景。
+        /// </summary>
+        public static bool UseShortTypeName { get; set; } = true;
+
+        /// <summary>
         /// 从服务接口类型生成服务名称。
-        /// 对于非泛型类型返回类型名（如 "IRemoteCalculator"）；
-        /// 对于泛型类型返回可读格式（如 "IRepository&lt;User&gt;"）。
+        /// 当 <see cref="UseShortTypeName"/> 为 true 时（默认）：
+        ///   - 非泛型类型返回类型短名（如 "IRemoteCalculator"）；
+        ///   - 泛型类型返回可读格式（如 "IRepository&lt;User&gt;"），类型参数使用短名。
+        /// 当 <see cref="UseShortTypeName"/> 为 false 时：
+        ///   - 非泛型类型返回全名（如 "MyApp.Services.IRemoteCalculator"）；
+        ///   - 泛型类型参数使用全名（如 "IRepository&lt;MyApp.Models.User&gt;"）。
         /// </summary>
         /// <param name="serviceType">服务接口类型。</param>
         /// <returns>服务名称。</returns>
@@ -133,9 +144,18 @@ namespace LiteOrm.Service
                 var baseName = backtickIndex > 0
                     ? serviceType.Name.Substring(0, backtickIndex)
                     : serviceType.Name;
-                return baseName + "<" + string.Join(",", serviceType.GetGenericArguments().Select(t => t.Name)) + ">";
+                return baseName + "<" + string.Join(",", serviceType.GetGenericArguments().Select(GetTypeName)) + ">";
             }
-            return serviceType.Name;
+            return GetTypeName(serviceType);
         }
+
+        /// <summary>
+        /// 根据当前配置返回类型的名称表示。
+        /// <see cref="UseShortTypeName"/> 为 true 时返回 <see cref="Type.Name"/>；否则返回 <see cref="Type.FullName"/>。
+        /// </summary>
+        /// <param name="type">目标类型。</param>
+        /// <returns>类型名称字符串。</returns>
+        private static string GetTypeName(Type type)
+            => UseShortTypeName ? type.Name : (type.FullName ?? type.Name);
     }
 }

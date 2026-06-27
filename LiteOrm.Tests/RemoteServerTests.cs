@@ -65,12 +65,12 @@ namespace LiteOrm.Tests
             services.AddScoped<IRemoteCalculator, CalculatorImpl>();
             var provider = services.BuildServiceProvider();
 
-            var registry = new RemoteServiceRegistry();
-            registry.Register<IRemoteCalculator>();
+            var resolver = new DelegateRemoteServiceTypeResolver(name =>
+                name == RemoteServiceNameUtil.GetServiceName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
 
             var dispatcher = new RemoteServiceDispatcher(
                 provider,
-                registry,
+                resolver,
                 provider.GetRequiredService<ILoggerFactory>().CreateLogger<RemoteServiceDispatcher>());
 
             var impl = provider.GetRequiredService<IRemoteCalculator>() as CalculatorImpl;
@@ -224,10 +224,10 @@ namespace LiteOrm.Tests
             services.AddScoped<IRemoteCalculator, ThrowingCalculator>();
             var provider = services.BuildServiceProvider();
 
-            var registry = new RemoteServiceRegistry();
-            registry.Register<IRemoteCalculator>();
+            var resolver = new DelegateRemoteServiceTypeResolver(name =>
+                name == RemoteServiceNameUtil.GetServiceName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
 
-            var dispatcher = new RemoteServiceDispatcher(provider, registry);
+            var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
             var response = await dispatcher.InvokeAsync(
                 Request(nameof(IRemoteCalculator.Add), Arg(1), Arg(2)));

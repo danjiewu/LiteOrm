@@ -65,7 +65,8 @@ namespace LiteOrm.Service
         /// <returns>
         /// true:成功
         /// false:失败</returns>
-        bool Insert([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long))] T entity);
+        [ServiceMethod]
+        bool Insert([IdentityOut] T entity);
         /// <summary>
         /// 更新实体
         /// </summary>
@@ -73,6 +74,7 @@ namespace LiteOrm.Service
         /// <returns>
         /// true:成功
         /// false:失败</returns>
+        [ServiceMethod]
         bool Update(T entity);
         /// <summary>
         /// 实体存在则更新，否则新增
@@ -81,7 +83,8 @@ namespace LiteOrm.Service
         /// <returns>
         /// true:成功
         /// false:失败</returns>
-        bool UpdateOrInsert([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long))] T entity);
+        [ServiceMethod]
+        bool UpdateOrInsert([IdentityOut] T entity);
         /// <summary>
         /// 删除实体
         /// </summary>
@@ -89,37 +92,43 @@ namespace LiteOrm.Service
         /// <returns>
         /// true:成功
         /// false:失败</returns>
+        [ServiceMethod]
         bool Delete(T entity);
         /// <summary>
         /// 批量新增实体
         /// </summary>
         /// <param name="entities">实体列表</param>
         [Transaction]
-        void BatchInsert([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<T> entities);
+        [ServiceMethod]
+        void BatchInsert([IdentityOut(Mode = ArgumentMode.Collection)] IEnumerable<T> entities);
         /// <summary>
         /// 批量更新实体
         /// </summary>
         /// <param name="entities">实体列表</param>
         [Transaction]
+        [ServiceMethod]
         void BatchUpdate(IEnumerable<T> entities);
         /// <summary>
         /// 批量更新或新增实体，实体存在则更新，否则新增
         /// </summary>
         /// <param name="entities">实体列表</param>
         [Transaction]
-        void BatchUpdateOrInsert([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<T> entities);
+        [ServiceMethod]
+        void BatchUpdateOrInsert([IdentityOut(Mode = ArgumentMode.Collection)] IEnumerable<T> entities);
         /// <summary>
         /// 批量删除实体
         /// </summary>
         /// <param name="entities">实体列表</param>
         [Transaction]
+        [ServiceMethod]
         void BatchDelete(IEnumerable<T> entities);
         /// <summary>
         /// 批量操作实体，操作类型可以为新增、更新或删除
         /// </summary>
         /// <param name="entities">实体操作列表</param>
         [Transaction]
-        void Batch([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<EntityOperation<T>> entities);
+        [ServiceMethod]
+        void Batch([IdentityOut(Mode = ArgumentMode.Collection)] IEnumerable<EntityOperation<T>> entities);
     }
 
     /// <summary>
@@ -163,7 +172,7 @@ namespace LiteOrm.Service
         /// <returns>
         /// true:成功
         /// false:失败</returns>
-        [Service]
+        [ServiceMethod]
         bool DeleteID(object id, params string[] tableArgs);
 
         /// <summary>
@@ -172,7 +181,7 @@ namespace LiteOrm.Service
         /// <param name="expr">删除条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>删除的记录数</returns>
-        [Service]
+        [ServiceMethod]
         int Delete(LogicExpr expr, params string[] tableArgs);
         
         /// <summary>
@@ -181,7 +190,7 @@ namespace LiteOrm.Service
         /// <param name="expr">更新表达式</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>更新的记录数</returns>
-        [Service]
+        [ServiceMethod]
         int Update(UpdateExpr expr, params string[] tableArgs);
         /// <summary>
         /// 批量新增实体

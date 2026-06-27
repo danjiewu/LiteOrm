@@ -68,6 +68,9 @@ namespace LiteOrm
                 throw new InvalidOperationException("Failed to initialize LiteOrm options", ex);
             }
 
+            // 应用短名/全名配置到共享的 RemoteServiceNameUtil，影响客户端发出的 ServiceName 格式
+            RemoteServiceNameUtil.UseShortTypeName = options.UseShortTypeName;
+
             // 先在 IServiceCollection 注册 IRemoteServiceTransport（HttpRemoteServiceTransport 或用户自定义实现）
             hostBuilder = hostBuilder.ConfigureServices((hostContext, services) =>
             {
@@ -152,6 +155,14 @@ namespace LiteOrm
             /// 自定义的远程调用传输层实例。若设置则优先使用，覆盖 <see cref="RemoteServiceUri"/> 的默认 HTTP 注册。
             /// </summary>
             public IRemoteServiceTransport? Transport { get; set; }
+
+            /// <summary>
+            /// 获取或设置是否使用类型短名（不含命名空间）作为远程调用 ServiceName。默认为 true。
+            /// 设为 false 时将使用类型全名（含命名空间），适用于服务端存在同名短类型需要消歧、
+            /// 或客户端与服务端实体命名空间不一致的场景。
+            /// 该设置在 <see cref="RegisterLiteOrmRemote"/> 初始化时应用到 <see cref="RemoteServiceNameUtil.UseShortTypeName"/>。
+            /// </summary>
+            public bool UseShortTypeName { get; set; } = true;
         }
 
         /// <summary>

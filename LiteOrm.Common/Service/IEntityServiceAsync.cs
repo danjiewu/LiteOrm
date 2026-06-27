@@ -21,7 +21,8 @@ namespace LiteOrm.Service
         /// <param name="entity">实体</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>操作结果，true表示成功，false表示失败</returns>
-        Task<bool> InsertAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long))] T entity, CancellationToken cancellationToken = default);
+        [ServiceMethod]
+        Task<bool> InsertAsync([IdentityOut] T entity, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步更新实体
@@ -29,6 +30,7 @@ namespace LiteOrm.Service
         /// <param name="entity">实体</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>操作结果，true表示成功，false表示失败</returns>
+        [ServiceMethod]
         Task<bool> UpdateAsync(T entity, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -37,7 +39,8 @@ namespace LiteOrm.Service
         /// <param name="entity">实体</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>操作结果，true表示成功，false表示失败</returns>
-        Task<bool> UpdateOrInsertAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long))] T entity, CancellationToken cancellationToken = default);
+        [ServiceMethod]
+        Task<bool> UpdateOrInsertAsync([IdentityOut] T entity, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步删除实体
@@ -45,6 +48,7 @@ namespace LiteOrm.Service
         /// <param name="entity">待删除的实体</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>操作结果，true表示成功，false表示失败</returns>
+        [ServiceMethod]
         Task<bool> DeleteAsync(T entity, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -54,7 +58,8 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
         [Transaction]
-        Task BatchInsertAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<T> entities, CancellationToken cancellationToken = default);
+        [ServiceMethod]
+        Task BatchInsertAsync([IdentityOut(Mode = ArgumentMode.Collection)] IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步批量更新实体
@@ -63,6 +68,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
         [Transaction]
+        [ServiceMethod]
         Task BatchUpdateAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -72,7 +78,8 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
         [Transaction]
-        Task BatchUpdateOrInsertAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<T> entities, CancellationToken cancellationToken = default);
+        [ServiceMethod]
+        Task BatchUpdateOrInsertAsync([IdentityOut(Mode = ArgumentMode.Collection)] IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步批量删除实体
@@ -81,6 +88,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
         [Transaction]
+        [ServiceMethod]
         Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -90,7 +98,8 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
         [Transaction]
-        Task BatchAsync([ArgumentOut(typeof(IdentityArgumentOutHandler), typeof(long), Mode = ArgumentMode.Collection)] IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default);
+        [ServiceMethod]
+        Task BatchAsync([IdentityOut(Mode = ArgumentMode.Collection)] IEnumerable<EntityOperation<T>> entities, CancellationToken cancellationToken = default);
     }
 
 

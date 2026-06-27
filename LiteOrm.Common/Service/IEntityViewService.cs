@@ -21,6 +21,7 @@ namespace LiteOrm.Service
         /// <param name="id">实体主键</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>id对应实体，若不存在则返回null</returns>
+        [ServiceMethod]
         new T GetObject(object id, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取单个实体
@@ -28,6 +29,7 @@ namespace LiteOrm.Service
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
+        [ServiceMethod]
         new T SearchOne(Expr expr, params string[] tableArgs);
         /// <summary>
         /// 根据条件遍历对象
@@ -35,6 +37,7 @@ namespace LiteOrm.Service
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="func">调用的函数委托</param>
         /// <param name="tableArgs">表名参数</param>
+        [ServiceMethod(false)]
         void ForEach(Expr expr, Action<T> func, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取实体列表
@@ -42,6 +45,7 @@ namespace LiteOrm.Service
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
+        [ServiceMethod]
         new List<T> Search(Expr expr = null, params string[] tableArgs);
 
         /// <summary>
@@ -51,6 +55,7 @@ namespace LiteOrm.Service
         /// <param name="selectExpr"></param>
         /// <param name="tableArgs"></param>
         /// <returns></returns>
+        [ServiceMethod]
         List<TResult> SearchAs<TResult>(SelectExpr selectExpr, params string[] tableArgs);
 
         /// <summary>
@@ -60,6 +65,7 @@ namespace LiteOrm.Service
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns></returns>
+        [ServiceMethod]
         TResult SearchOneAs<TResult>(SelectExpr selectExpr, params string[] tableArgs);
     }
 
@@ -84,7 +90,7 @@ namespace LiteOrm.Service
         /// <param name="id">实体主键</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>是否存在记录</returns>
-        [Service]
+        [ServiceMethod]
         bool ExistsID(object id, params string[] tableArgs);
         /// <summary>
         /// 根据条件检查是否存在记录
@@ -92,7 +98,7 @@ namespace LiteOrm.Service
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>是否存在记录</returns>
-        [Service]
+        [ServiceMethod]
         bool Exists(Expr expr, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取记录总数
@@ -100,7 +106,7 @@ namespace LiteOrm.Service
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的记录总数</returns>
-        [Service]
+        [ServiceMethod]
         int Count(Expr expr = null, params string[] tableArgs);
         /// <summary>
         /// 根据条件获取单个实体

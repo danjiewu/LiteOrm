@@ -937,24 +937,13 @@ namespace LiteOrm.Service
             }
         }
         /// <summary>
-        /// 获取服务类型的短名称。
-        /// 对于泛型类型，会返回类似 "GenericType&lt;T&gt;" 的可读格式。
+        /// 获取服务类型的服务名称。委托给 <see cref="RemoteServiceNameUtil.GetServiceName"/>，
+        /// 受 <see cref="RemoteServiceNameUtil.UseShortTypeName"/> 配置控制（短名/全名）。
         /// </summary>
         /// <param name="serviceType">目标服务类型。</param>
         /// <returns>格式化后的服务名称。</returns>
         private static string GetServiceName(Type serviceType)
-        {
-            if (serviceType is null) return string.Empty;
-            if (serviceType.IsGenericType)
-            {
-                int backtickIndex = serviceType.Name.IndexOf('`');
-                return serviceType.Name.Substring(0, backtickIndex) + "<" + String.Join(",", from t in serviceType.GetGenericArguments() select t.Name) + ">";
-            }
-            else
-            {
-                return serviceType.Name;
-            }
-        }
+            => RemoteServiceNameUtil.GetServiceName(serviceType);
         private static T GetServiceAttribute<T>(IInvocation invocation) where T : Attribute
         {
             return GetServiceAttributes<T>(invocation).FirstOrDefault();

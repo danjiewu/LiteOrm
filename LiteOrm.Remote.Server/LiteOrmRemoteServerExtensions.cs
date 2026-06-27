@@ -1,12 +1,8 @@
-using LiteOrm.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,9 +29,19 @@ namespace LiteOrm.Service
         };
 
         /// <summary>
-        /// 获取已注册的服务注册表，可通过它注册服务接口类型。
+        /// 获取或设置服务类型解析器实例。默认为 <see cref="DefaultServiceTypeResolver"/>（全程序集短名扫描）。
+        /// 可替换为 <see cref="DelegateRemoteServiceTypeResolver"/>、指定命名空间的 <see cref="DefaultServiceTypeResolver"/> 或自定义实现。
+        /// 若需要依赖其他 DI 服务构造解析器，可使用 <see cref="ServiceTypeResolverFactory"/>。
         /// </summary>
-        public RemoteServiceRegistry Registry { get; } = new RemoteServiceRegistry();
+        public IRemoteServiceTypeResolver ServiceTypeResolver { get; set; } = new DefaultServiceTypeResolver();
+
+        /// <summary>
+        /// 获取或设置自定义服务类型解析器的工厂函数。
+        /// 工厂接收 <see cref="IServiceProvider"/>，返回 <see cref="IRemoteServiceTypeResolver"/> 实例，
+        /// 可用于在解析器中注入其他 DI 服务。
+        /// 优先级高于 <see cref="ServiceTypeResolver"/>：若同时设置，工厂优先生效。
+        /// </summary>
+        public Func<IServiceProvider, IRemoteServiceTypeResolver>? ServiceTypeResolverFactory { get; set; }
     }
 
     /// <summary>
@@ -45,9 +51,12 @@ namespace LiteOrm.Service
     {
         /// <summary>
         /// 注册远程服务服务端到 DI 容器。
+        /// 默认使用 <see cref="DefaultServiceTypeResolver"/>（全程序集短名扫描）解析服务类型，
+        /// 可通过 <see cref="RemoteServerOptions.ServiceTypeResolver"/> 或 <see cref="RemoteServerOptions.ServiceTypeResolverFactory"/> 替换。
+        /// 服务类型解析优先级：<see cref="RemoteServerOptions.ServiceTypeResolverFactory"/> &gt; <see cref="RemoteServerOptions.ServiceTypeResolver"/>。
         /// </summary>
         /// <param name="services">服务集合。</param>
-        /// <param name="configure">配置回调，用于设置端点路径和注册服务接口类型。</param>
+        /// <param name="configure">配置回调，用于设置端点路径和解析器。</param>
         /// <returns>服务集合。</returns>
         public static IServiceCollection AddRemoteService(
             this IServiceCollection services,
@@ -56,43 +65,19 @@ namespace LiteOrm.Service
             var options = new RemoteServerOptions();
             configure?.Invoke(options);
 
-            services.AddSingleton(options.Registry);
+            // 注册 IRemoteServiceTypeResolver：工厂优先，否则使用实例（默认 DefaultServiceTypeResolver）
+            if (options.ServiceTypeResolverFactory is not null)
+            {
+                services.AddSingleton<IRemoteServiceTypeResolver>(options.ServiceTypeResolverFactory);
+            }
+            else
+            {
+                services.AddSingleton<IRemoteServiceTypeResolver>(options.ServiceTypeResolver);
+            }
+
             services.AddScoped<RemoteServiceDispatcher>();
             services.AddSingleton(options);
             return services;
-        }
-
-        /// <summary>
-        /// 注册远程服务服务端并扫描指定程序集中的服务接口类型。
-        /// 扫描规则：接口标记了 <see cref="ServiceAttribute"/> 且 <see cref="ServiceAttribute.IsService"/> 为 true。
-        /// 支持开放泛型接口（如 <c>IEntityService&lt;&gt;</c>）的注册，查找时由 <see cref="RemoteServiceRegistry"/> 动态构造闭合类型。
-        /// AutoRegister 自动注册与 <see cref="TableInfoProvider.Default"/> 初始化由 <see cref="LiteOrm"/> 主库处理。
-        /// </summary>
-        /// <param name="services">服务集合。</param>
-        /// <param name="assemblies">要扫描的程序集。</param>
-        /// <param name="configure">额外的配置回调。</param>
-        /// <returns>服务集合。</returns>
-        public static IServiceCollection AddRemoteServiceServer(
-            this IServiceCollection services,
-            System.Reflection.Assembly[] assemblies,
-            Action<RemoteServerOptions>? configure = null)
-        {
-            return services.AddRemoteService(opts =>
-            {
-                foreach (var assembly in assemblies)
-                {
-                    foreach (var type in assembly.GetTypes())
-                    {
-                        if (!type.IsInterface) continue;
-
-                        // 标记了 [Service] 且 IsService = true（支持开放泛型定义）
-                        var attr = type.GetCustomAttribute<ServiceAttribute>(true);
-                        if (attr != null && attr.IsService)
-                            opts.Registry.Register(type);
-                    }
-                }
-                configure?.Invoke(opts);
-            });
         }
 
         /// <summary>
