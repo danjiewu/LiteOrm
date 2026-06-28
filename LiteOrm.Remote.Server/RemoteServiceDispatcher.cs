@@ -240,29 +240,40 @@ namespace LiteOrm.Remote.Server
 
         /// <summary>
         /// 为指定服务类型构建名称 → MethodInfo 查找表。
+        /// 遍历 serviceType 本身及其所有基接口的公共实例方法（接口类型 <see cref="Type.GetMethods"/>
+        /// 仅返回直接声明的方法，不含基接口方法，故需手动遍历继承链）。
         /// </summary>
         private static Dictionary<string, MethodInfo> BuildMethodLookup(Type serviceType)
         {
             var lookup = new Dictionary<string, MethodInfo>(StringComparer.Ordinal);
             var unmarked = new List<MethodInfo>();
+            var seen = new HashSet<MethodInfo>();
 
-            foreach (var method in serviceType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+            // 收集 serviceType 本身及所有基接口
+            var typesToScan = new[] { serviceType }.Concat(serviceType.GetInterfaces());
+
+            foreach (var type in typesToScan)
             {
-                var attr = method.GetCustomAttribute<ServiceMethodAttribute>(true);
-                if (attr is { IsService: false }) continue;
+                foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    if (!seen.Add(method)) continue; // 同一 MethodInfo 可能从多个路径获取，去重
 
-                if (attr is { IsService: true })
-                {
-                    var key = !string.IsNullOrEmpty(attr.MethodName) ? attr.MethodName : method.Name;
-                    if (lookup.TryGetValue(key, out var existing))
-                        throw new AmbiguousMatchException(
-                            $"Multiple [ServiceMethod] methods named '{key}' found on service '{serviceType.Name}'. " +
-                            $"Candidates: {existing.DeclaringType?.Name}.{existing.Name}, {method.DeclaringType?.Name}.{method.Name}.");
-                    lookup[key] = method;
-                }
-                else
-                {
-                    unmarked.Add(method);
+                    var attr = method.GetCustomAttribute<ServiceMethodAttribute>(true);
+                    if (attr is { IsService: false }) continue;
+
+                    if (attr is { IsService: true })
+                    {
+                        var key = !string.IsNullOrEmpty(attr.MethodName) ? attr.MethodName : method.Name;
+                        if (lookup.TryGetValue(key, out var existing))
+                            throw new AmbiguousMatchException(
+                                $"Multiple [ServiceMethod] methods named '{key}' found on service '{serviceType.Name}'. " +
+                                $"Candidates: {existing.DeclaringType?.Name}.{existing.Name}, {method.DeclaringType?.Name}.{method.Name}.");
+                        lookup[key] = method;
+                    }
+                    else
+                    {
+                        unmarked.Add(method);
+                    }
                 }
             }
 

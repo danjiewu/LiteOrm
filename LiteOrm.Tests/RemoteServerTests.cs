@@ -270,5 +270,103 @@ namespace LiteOrm.Tests
             public Task<int> MultiplyAsync(int a, int b) => Task.FromResult(a * b);
             public Task<string> GreetAsync(string name, CancellationToken cancellationToken) => Task.FromResult(name);
         }
+
+        /// <summary>
+        /// 测试：派生接口继承基接口的 [ServiceMethod] 方法时，Server 端应能正确解析。
+        /// 复现 IDemoUserService.InsertAsync（声明在 IEntityServiceAsync&lt;T&gt;）无法解析的问题。
+        /// </summary>
+        [Fact]
+        public async Task Derived_Interface_Inherits_ServiceMethod_From_Base_Interface()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.SetMinimumLevel(LogLevel.None));
+            services.AddScoped<IDerivedService, DerivedServiceImpl>();
+            var provider = services.BuildServiceProvider();
+
+            var resolver = new DelegateRemoteServiceTypeResolver(name =>
+                name == ServiceNameUtil.GetServiceName(typeof(IDerivedService)) ? typeof(IDerivedService) : null);
+            var dispatcher = new RemoteServiceDispatcher(provider, resolver);
+
+            var method = typeof(IBaseService).GetMethod(nameof(IBaseService.BaseMethod))!;
+            var request = new RemoteInvocationRequest
+            {
+                ServiceName = ServiceNameUtil.GetServiceName(typeof(IDerivedService)),
+                Method = method,
+                Arguments = new object[] { 42 },
+            };
+
+            var response = await dispatcher.InvokeAsync(request);
+
+            Assert.True(response.Success, response.ErrorMessage ?? "(no error)");
+            Assert.Equal(42, response.Result);
+        }
+
+        public interface IBaseService
+        {
+            [ServiceMethod]
+            int BaseMethod(int x);
+        }
+
+        public interface IDerivedService : IBaseService
+        {
+            int DerivedMethod(int x);
+        }
+
+        private sealed class DerivedServiceImpl : IDerivedService
+        {
+            public int BaseMethod(int x) => x;
+            public int DerivedMethod(int x) => x * 2;
+        }
+
+        /// <summary>
+        /// 模拟 IDemoUserService 场景：泛型接口带 [ServiceMethod] 方法 + 非泛型基接口同名方法不带标记。
+        /// 通过 ParseRequest 端到端测试，验证 ResolveMethod/BuildMethodLookup 能正确解析基接口方法。
+        /// </summary>
+        [Fact]
+        public async Task Derived_Interface_With_Overloaded_BaseMethods_Prefers_ServiceMethod()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.SetMinimumLevel(LogLevel.None));
+            services.AddScoped<IOverloadDerived, OverloadDerivedImpl>();
+            var provider = services.BuildServiceProvider();
+
+            var resolver = new DelegateRemoteServiceTypeResolver(name =>
+                name == ServiceNameUtil.GetServiceName(typeof(IOverloadDerived)) ? typeof(IOverloadDerived) : null);
+            var dispatcher = new RemoteServiceDispatcher(provider, resolver);
+
+            // 构造请求 JSON，模拟客户端序列化后的格式
+            var requestJson = "{\"ServiceName\":\"" + ServiceNameUtil.GetServiceName(typeof(IOverloadDerived)) +
+                              "\",\"Method\":\"InsertAsync\",\"Arguments\":[42]}";
+            var request = dispatcher.ParseRequest(requestJson, _jsonOptions);
+
+            Assert.NotNull(request.Method);
+            Assert.Equal("InsertAsync", request.Method.Name);
+
+            var response = await dispatcher.InvokeAsync(request);
+
+            Assert.True(response.Success, response.ErrorMessage ?? "(no error)");
+            Assert.True((bool)response.Result!);
+        }
+
+        public interface IOverloadGeneric<T>
+        {
+            [ServiceMethod]
+            Task<bool> InsertAsync(T entity);
+        }
+
+        public interface IOverloadBase
+        {
+            Task<bool> InsertAsync(object entity);
+        }
+
+        public interface IOverloadDerived : IOverloadGeneric<int>, IOverloadBase
+        {
+        }
+
+        private sealed class OverloadDerivedImpl : IOverloadDerived
+        {
+            public Task<bool> InsertAsync(int entity) => Task.FromResult(true);
+            public Task<bool> InsertAsync(object entity) => Task.FromResult(false);
+        }
     }
 }
