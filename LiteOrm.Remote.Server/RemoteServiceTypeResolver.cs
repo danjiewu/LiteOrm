@@ -14,7 +14,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 根据 ServiceName 解析服务接口类型。
         /// </summary>
-        /// <param name="serviceName">服务名称（由客户端 <see cref="RemoteServiceNameUtil.GetServiceName"/> 生成）。</param>
+        /// <param name="serviceName">服务名称（由客户端 <see cref="ServiceNameUtil.GetServiceName"/> 生成）。</param>
         /// <returns>匹配到的服务接口类型；未找到时返回 null。</returns>
         Type? ResolveService(string serviceName);
     }
@@ -110,7 +110,10 @@ namespace LiteOrm.Service
             if (parsed is null) return null;
             var (baseName, argNames) = parsed.Value;
 
-            var openGeneric = RemoteServiceTypeResolverHelper.FindType(baseName, ServiceNamespace);
+            // 使用 CLR 泛型类型名格式 "Foo`1" 查找开放泛型定义，
+            // 避免与同名的非泛型类型冲突（如同时存在 Foo 和 Foo<T> 时，Foo 会错误匹配非泛型类型）
+            var genericTypeName = baseName + "`" + argNames.Length;
+            var openGeneric = RemoteServiceTypeResolverHelper.FindType(genericTypeName, ServiceNamespace);
             if (openGeneric is null || !openGeneric.IsGenericTypeDefinition)
                 return null;
 
@@ -160,8 +163,13 @@ namespace LiteOrm.Service
         /// 2. 若 <paramref name="defaultNamespace"/> 已设置且 <paramref name="typeName"/> 为短名（不含 '.'），
         ///    尝试 <c>defaultNamespace + "." + typeName</c> 精确匹配；
         /// 3. 回退到全程序集短名（<see cref="Type.Name"/>）扫描。
+        /// <para>
+        /// 泛型类型应使用 CLR 名称格式（含反引号 arity 后缀），如 <c>IEntityService`1</c>。
+        /// 这可避免与同名的非泛型类型冲突：查找 <c>Foo`1</c> 只匹配 <c>Foo&lt;T&gt;</c>，
+        /// 不会误匹配非泛型类型 <c>Foo</c>。
+        /// </para>
         /// </summary>
-        /// <param name="typeName">类型名称，可以是全名、短名或程序集限定名。</param>
+        /// <param name="typeName">类型名称，可以是全名、短名或程序集限定名。泛型类型应使用 <c>Foo`1</c> 格式。</param>
         /// <param name="defaultNamespace">默认命名空间（可选），用于将短名组合为全名。</param>
         /// <returns>匹配到的类型；未找到时返回 null。</returns>
         public static Type? FindType(string typeName, string? defaultNamespace = null)

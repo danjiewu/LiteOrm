@@ -399,7 +399,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 构建回写参数响应。从 <paramref name="method"/> 的参数上推算 <see cref="ArgumentOutAttribute"/> 标记，
         /// 通过 <see cref="ArgumentOutHandlerResolver"/> 创建处理器，调用 <see cref="IArgumentOutHandler.GenerateReturnValue"/>
-        /// 生成返回值并放入 <see cref="RemoteInvocationResponse.WriteBackArguments"/>。
+        /// 生成返回值并放入 <see cref="RemoteInvocationResponse.OutArguments"/>。
         /// 当返回值实际类型与 <see cref="IArgumentOutHandler.ReturnType"/> 不一致时，以 <see cref="TypeWrappedValue"/> 包装。
         /// </summary>
         private void BuildWriteBackResponse(RemoteInvocationResponse response, MethodInfo method, object?[] arguments)
@@ -483,7 +483,7 @@ namespace LiteOrm.Service
             }
 
             if (writeBacks.Count > 0)
-                response.WriteBackArguments = writeBacks;
+                response.OutArguments = writeBacks;
         }
 
         /// <summary>

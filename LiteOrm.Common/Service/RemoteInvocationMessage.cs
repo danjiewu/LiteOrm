@@ -13,13 +13,13 @@ namespace LiteOrm.Service
     /// <remarks>
     /// <see cref="Method"/> 直接使用 <see cref="MethodInfo"/> 类型，仅在客户端构建时赋值，
     /// 不参与序列化。序列化时由 <see cref="RemoteInvocationRequestConverter"/> 将方法名写入 JSON；
-    /// 反序列化由 <see cref="RemoteServiceDispatcher.ParseRequest"/> 完成——
+    /// 反序列化由 RemoteServiceDispatcher.ParseRequest 完成——
     /// 先根据 <see cref="ServiceName"/> 解析服务类型，再按方法名匹配 <see cref="MethodInfo"/>，
     /// 最后按方法参数类型反序列化 <see cref="Arguments"/>。
     /// <para>
     /// 序列化规则（<see cref="Arguments"/>）：
     /// 1. 当实参运行时类型与参数声明类型相同，或参数声明类型为 <see cref="Common.Expr"/> 派生类时，直接使用参数类型序列化，无需额外类型信息；
-    /// 2. 类型不一致时，以 <c>{"$type":"实际类型名","$value":<值>}</c> 结构包装。
+    /// 2. 类型不一致时，以 <c>{"$type":"实际类型名","$value":&lt;值&gt;}</c> 结构包装。
     /// </para>
     /// </remarks>
     [JsonConverter(typeof(RemoteInvocationRequestConverter))]
@@ -32,8 +32,8 @@ namespace LiteOrm.Service
 
         /// <summary>
         /// 方法信息。客户端构建请求时直接赋值 <c>invocation.Method</c>；
-        /// 不参与 JSON 序列化（<see cref="JsonIgnoreAttribute"/>）。
-        /// 服务端由 <see cref="RemoteServiceDispatcher.ParseRequest"/> 根据方法名查找到 <see cref="MethodInfo"/> 后赋值。
+        /// JSON 序列化只生成方法名（<see cref="JsonIgnoreAttribute"/>）。
+        /// 服务端根据方法名查找到 <see cref="MethodInfo"/> 。
         /// </summary>
         [JsonIgnore]
         public MethodInfo Method { get; set; }
@@ -68,7 +68,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 需要回写到客户端的参数列表。
         /// </summary>
-        public IList<OutputArgument> WriteBackArguments { get; set; } = Array.Empty<OutputArgument>();
+        public IList<OutputArgument> OutArguments { get; set; } = Array.Empty<OutputArgument>();
 
         /// <summary>
         /// 远程抛出异常的类型全名。
@@ -97,14 +97,14 @@ namespace LiteOrm.Service
         public int ArgumentIndex { get; set; }
 
         /// <summary>
-        /// 回写值。反序列化后为 <see cref="JsonElement"/>，调用方根据 <see cref="IArgumentOutHandler.ReturnType"/> 进行反序列化。
+        /// 回写值。反序列化后为 <see cref="JsonElement"/>，调用方根据 IArgumentOutHandler.ReturnType 进行反序列化。
         /// </summary>
         public object Value { get; set; }
     }
 
     /// <summary>
     /// 类型包装值。当实际值类型与预期类型不一致时使用，携带实际类型名与值。
-    /// 序列化为 <c>{"$type":"类型名","$value":<值>}</c> 结构。
+    /// 序列化为 &lt;c&gt;{"$type":"类型名","$value":&lt;值&gt;}&lt;/c&gt; 结构。
     /// </summary>
     public sealed class TypeWrappedValue
     {
@@ -123,17 +123,16 @@ namespace LiteOrm.Service
 
     /// <summary>
     /// 服务名称工具类。客户端与服务端共用，确保 ServiceName 生成逻辑一致。
+    /// 固定使用类型短名（不含命名空间）生成服务名称。
     /// </summary>
-    public static class RemoteServiceNameUtil
+    public static class ServiceNameUtil
     {
         /// <summary>
-        /// 获取或设置是否使用短类型名作为服务名。默认为 true。
-        /// 为 false 时使用类型全名（含命名空间），避免跨程序集同名接口冲突。
-        /// </summary>
-        public static bool UseShortTypeName { get; set; } = true;
-
-        /// <summary>
-        /// 从服务接口类型生成服务名称。
+        /// 从服务接口类型生成服务名称（固定使用类型短名）。
+        /// <para>
+        /// 非泛型类型返回 <see cref="Type.Name"/>；
+        /// 泛型类型返回 <c>基名&lt;参数短名1,参数短名2,...&gt;</c>（去除反引号 arity 后缀）。
+        /// </para>
         /// </summary>
         public static string GetServiceName(Type serviceType)
         {
@@ -144,10 +143,10 @@ namespace LiteOrm.Service
                 var baseName = backtickIndex > 0
                     ? serviceType.Name.Substring(0, backtickIndex)
                     : serviceType.Name;
-                var argNames = serviceType.GetGenericArguments().Select(t => UseShortTypeName ? t.Name : t.FullName);
+                var argNames = serviceType.GetGenericArguments().Select(t => t.Name);
                 return baseName + "<" + string.Join(",", argNames) + ">";
             }
-            return UseShortTypeName ? serviceType.Name : serviceType.FullName;
+            return serviceType.Name;
         }
     }
 }

@@ -14,14 +14,14 @@ namespace LiteOrm.Service
     /// <para>
     /// 反序列化（Read）不在此处完成 <see cref="MethodInfo"/> 的解析——转换器仅读取
     /// <see cref="RemoteInvocationRequest.ServiceName"/> 与 <see cref="RemoteInvocationRequest.Arguments"/>（元素为 <see cref="JsonElement"/>）。
-    /// 完整的反序列化由 <see cref="RemoteServiceDispatcher.ParseRequest"/> 完成：
+    /// 完整的反序列化由 RemoteServiceDispatcher.ParseRequest 完成：
     /// 先根据 <see cref="RemoteInvocationRequest.ServiceName"/> 匹配服务类型，再按方法名查找 <see cref="MethodInfo"/>，
     /// 最后按方法参数类型反序列化 <see cref="RemoteInvocationRequest.Arguments"/>。
     /// </para>
     /// <para>
     /// 序列化规则（<see cref="RemoteInvocationRequest.Arguments"/>）：
     /// 1. 实参运行时类型与参数声明类型相同，或参数声明类型为 <see cref="Common.Expr"/> 派生类 → 直接使用实参类型序列化，无额外类型信息；
-    /// 2. 类型不一致 → 以 <c>{"$type":"实际类型名","$value":<值>}</c> 结构包装。
+    /// 2. 类型不一致 → 以 <c>{"$type":"实际类型名","$value":&lt;值&gt;}</c> 结构包装。
     /// </para>
     /// </summary>
     public sealed class RemoteInvocationRequestConverter : JsonConverter<RemoteInvocationRequest>

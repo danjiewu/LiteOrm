@@ -68,7 +68,7 @@ namespace LiteOrm.Tests
             var provider = services.BuildServiceProvider();
 
             var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == RemoteServiceNameUtil.GetServiceName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
+                name == ServiceNameUtil.GetServiceName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
 
             var dispatcher = new RemoteServiceDispatcher(
                 provider,
@@ -248,7 +248,7 @@ namespace LiteOrm.Tests
             var provider = services.BuildServiceProvider();
 
             var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == RemoteServiceNameUtil.GetServiceName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
+                name == ServiceNameUtil.GetServiceName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
 
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 

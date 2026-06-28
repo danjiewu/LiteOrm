@@ -1,4 +1,4 @@
-﻿using Castle.DynamicProxy;
+using Castle.DynamicProxy;
 using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -690,7 +690,7 @@ namespace LiteOrm.Service
         /// <param name="invocation">方法调用信息</param>
         public static void LoadFrom(this ServiceDescription desc, IInvocation invocation)
         {
-            desc.ServiceName = RemoteServiceNameUtil.GetServiceName(invocation.TargetType);
+            desc.ServiceName = ServiceNameUtil.GetServiceName(invocation.TargetType);
             desc.MethodName = invocation.Method.Name;
 
             // 日志特性

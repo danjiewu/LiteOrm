@@ -18,15 +18,12 @@ namespace LiteOrm.Demo.Services
     public interface RemoteServiceFactory
     {
         /// <summary>远程用户服务。</summary>
-        IUserService UserService { get; }
+        IDemoUserService DemoUserService { get; }
 
-        /// <summary>远程销售服务。</summary>
-        ISalesService SalesService { get; }
-
-        /// <summary>远程综合业务服务。</summary>
-        IBusinessService BusinessService { get; }
+        /// <summary>远程订单服务。</summary>
+        IDemoOrderService DemoOrderService { get; }
 
         /// <summary>远程部门服务。</summary>
-        IDepartmentService DepartmentService { get; }
+        IDemoDepartmentService DemoDepartmentService { get; }
     }
 }

@@ -321,9 +321,9 @@ namespace LiteOrm.Service
         private void ApplyWriteBack(RemoteInvocationResponse response, List<WriteBackEntry> plan, IInvocation invocation)
         {
             if (plan is null || plan.Count == 0) return;
-            if (response?.WriteBackArguments is null || response.WriteBackArguments.Count == 0) return;
+            if (response?.OutArguments is null || response.OutArguments.Count == 0) return;
 
-            foreach (var wb in response.WriteBackArguments)
+            foreach (var wb in response.OutArguments)
             {
                 var entryIndex = -1;
                 for (int i = 0; i < plan.Count; i++)
@@ -452,7 +452,7 @@ namespace LiteOrm.Service
 
             var request = new RemoteInvocationRequest
             {
-                ServiceName = RemoteServiceNameUtil.GetServiceName(serviceType),
+                ServiceName = ServiceNameUtil.GetServiceName(serviceType),
                 Method = method,
                 Arguments = args.ToArray(),
             };
@@ -962,13 +962,13 @@ namespace LiteOrm.Service
             }
         }
         /// <summary>
-        /// 获取服务类型的服务名称。委托给 <see cref="RemoteServiceNameUtil.GetServiceName"/>，
-        /// 受 <see cref="RemoteServiceNameUtil.UseShortTypeName"/> 配置控制（短名/全名）。
+        /// 获取服务类型的服务名称。委托给 <see cref="ServiceNameUtil.GetServiceName"/>，
+        /// 固定使用类型短名生成服务名称。
         /// </summary>
         /// <param name="serviceType">目标服务类型。</param>
         /// <returns>格式化后的服务名称。</returns>
         private static string GetServiceName(Type serviceType)
-            => RemoteServiceNameUtil.GetServiceName(serviceType);
+            => ServiceNameUtil.GetServiceName(serviceType);
         private static T GetServiceAttribute<T>(IInvocation invocation) where T : Attribute
         {
             return GetServiceAttributes<T>(invocation).FirstOrDefault();

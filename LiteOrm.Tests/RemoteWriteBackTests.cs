@@ -227,7 +227,7 @@ namespace LiteOrm.Tests
             var methodInfo = typeof(TInterface).GetMethod(method, BindingFlags.Public | BindingFlags.Instance);
             return new RemoteInvocationRequest
             {
-                ServiceName = RemoteServiceNameUtil.GetServiceName(typeof(TInterface)),
+                ServiceName = ServiceNameUtil.GetServiceName(typeof(TInterface)),
                 Method = methodInfo,
                 Arguments = args,
             };
@@ -284,7 +284,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    WriteBackArguments = new[]
+                    OutArguments = new[]
                     {
                         new OutputArgument
                         {
@@ -317,7 +317,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    WriteBackArguments = new[]
+                    OutArguments = new[]
                     {
                         new OutputArgument
                         {
@@ -367,7 +367,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    WriteBackArguments = new[]
+                    OutArguments = new[]
                     {
                         new OutputArgument
                         {
@@ -400,7 +400,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    WriteBackArguments = new[]
+                    OutArguments = new[]
                     {
                         new OutputArgument
                         {
@@ -434,7 +434,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    WriteBackArguments = new[]
+                    OutArguments = new[]
                     {
                         new OutputArgument
                         {
@@ -466,7 +466,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    WriteBackArguments = new[]
+                    OutArguments = new[]
                     {
                         new OutputArgument
                         {
@@ -567,7 +567,7 @@ namespace LiteOrm.Tests
             var provider = services.BuildServiceProvider();
 
             var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == RemoteServiceNameUtil.GetServiceName(typeof(TInterface)) ? typeof(TInterface) : null);
+                name == ServiceNameUtil.GetServiceName(typeof(TInterface)) ? typeof(TInterface) : null);
 
             var dispatcher = new RemoteServiceDispatcher(
                 provider,
@@ -588,8 +588,8 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Single(response.WriteBackArguments);
-            var wb = response.WriteBackArguments[0];
+            Assert.Single(response.OutArguments);
+            var wb = response.OutArguments[0];
             Assert.Equal(0, wb.ArgumentIndex);
             // IdentityOutAttribute 仅返回 Id 值（long），而非整个 User 对象
             Assert.Equal(123L, wb.Value);
@@ -607,9 +607,9 @@ namespace LiteOrm.Tests
 
             Assert.True(response.Success);
             Assert.Equal(999L, response.Result);
-            Assert.Single(response.WriteBackArguments);
+            Assert.Single(response.OutArguments);
             // IdentityOutAttribute 仅返回 Id 值
-            Assert.Equal(999L, response.WriteBackArguments[0].Value);
+            Assert.Equal(999L, response.OutArguments[0].Value);
         }
 
         [Fact]
@@ -622,9 +622,9 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Single(response.WriteBackArguments);
+            Assert.Single(response.OutArguments);
             // DeltaHandler 生成了 UserDelta（ReturnType != User）
-            var delta = (UserDelta)response.WriteBackArguments[0].Value;
+            var delta = (UserDelta)response.OutArguments[0].Value;
             Assert.Equal(88, delta.Id);
             Assert.Equal(new DateTime(2026, 5, 5), delta.CreatedAt);
         }
@@ -639,8 +639,8 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Single(response.WriteBackArguments);
-            var written = (CopyableUser)response.WriteBackArguments[0].Value;
+            Assert.Single(response.OutArguments);
+            var written = (CopyableUser)response.OutArguments[0].Value;
             Assert.Equal(100, written.Id);
             Assert.Equal("server", written.Name);
         }
@@ -662,8 +662,8 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Single(response.WriteBackArguments);
-            var wb = response.WriteBackArguments[0];
+            Assert.Single(response.OutArguments);
+            var wb = response.OutArguments[0];
             // 集合模式：返回 List<long>
             var ids = (List<long>)wb.Value;
             Assert.Equal(new long[] { 100, 101, 102 }, ids);
@@ -684,8 +684,8 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Single(response.WriteBackArguments);
-            var wb = response.WriteBackArguments[0];
+            Assert.Single(response.OutArguments);
+            var wb = response.OutArguments[0];
             // DeltaHandler.ReturnType = typeof(UserDelta)，集合模式下序列化为 List<UserDelta>
             var deltas = (List<UserDelta>)wb.Value;
             Assert.Equal(2, deltas.Count);
