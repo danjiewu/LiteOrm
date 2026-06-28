@@ -60,6 +60,7 @@ namespace LiteOrm.Demo.Demos
             var remoteSection = configuration.GetSection("RemoteService");
             var remoteUri = remoteSection["Uri"];
             var remotePath = remoteSection["Path"] ?? "api/remote/invoke";
+            RemoteInvocationRequestConverter.DefaultNamespace = "LiteOrm.Demo.Models";
 
             if (string.IsNullOrEmpty(remoteUri))
             {

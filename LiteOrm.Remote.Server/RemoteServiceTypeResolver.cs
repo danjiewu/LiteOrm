@@ -1,8 +1,7 @@
+using LiteOrm.Service;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 
 namespace LiteOrm.Remote.Server
 {
@@ -103,17 +102,17 @@ namespace LiteOrm.Remote.Server
 
             // 非泛型：从 ServiceNamespace 解析
             if (ltIndex <= 0)
-                return RemoteServiceTypeResolverHelper.FindType(serviceName, ServiceNamespace);
+                return TypeResolverHelper.FindType(serviceName, ServiceNamespace);
 
             // 开放泛型：解析 "IEntityService<User>" → baseName="IEntityService", args=["User"]
-            var parsed = RemoteServiceTypeResolverHelper.TryParseGenericServiceName(serviceName);
+            var parsed = TypeResolverHelper.TryParseGenericServiceName(serviceName);
             if (parsed is null) return null;
             var (baseName, argNames) = parsed.Value;
 
             // 使用 CLR 泛型类型名格式 "Foo`1" 查找开放泛型定义，
             // 避免与同名的非泛型类型冲突（如同时存在 Foo 和 Foo<T> 时，Foo 会错误匹配非泛型类型）
             var genericTypeName = baseName + "`" + argNames.Length;
-            var openGeneric = RemoteServiceTypeResolverHelper.FindType(genericTypeName, ServiceNamespace);
+            var openGeneric = TypeResolverHelper.FindType(genericTypeName, ServiceNamespace);
             if (openGeneric is null || !openGeneric.IsGenericTypeDefinition)
                 return null;
 
@@ -123,90 +122,12 @@ namespace LiteOrm.Remote.Server
             var typeArgs = new Type[argNames.Length];
             for (int i = 0; i < argNames.Length; i++)
             {
-                var argType = RemoteServiceTypeResolverHelper.FindType(argNames[i], ModelNamespace);
+                var argType = TypeResolverHelper.FindType(argNames[i], ModelNamespace);
                 if (argType is null) return null;
                 typeArgs[i] = argType;
             }
 
             return openGeneric.MakeGenericType(typeArgs);
-        }
-    }
-
-    /// <summary>
-    /// 远程服务名称解析辅助方法。提供泛型 ServiceName 的解析与类型查找工具，供自定义解析器复用。
-    /// </summary>
-    public static class RemoteServiceTypeResolverHelper
-    {
-        /// <summary>
-        /// 尝试将 ServiceName 解析为开放泛型基名与类型参数名列表。
-        /// 例如 "IEntityService&lt;User&gt;" → ("IEntityService", ["User"])。
-        /// 非泛型 ServiceName 返回 null。
-        /// </summary>
-        /// <param name="serviceName">服务名称。</param>
-        /// <returns>解析结果（基名 + 类型参数名数组）；非泛型时返回 null。</returns>
-        public static (string BaseName, string[] ArgNames)? TryParseGenericServiceName(string serviceName)
-        {
-            var ltIndex = serviceName.IndexOf('<');
-            if (ltIndex <= 0) return null;
-            var gtIndex = serviceName.LastIndexOf('>');
-            if (gtIndex <= ltIndex) return null;
-
-            var baseName = serviceName.Substring(0, ltIndex);
-            var argsPart = serviceName.Substring(ltIndex + 1, gtIndex - ltIndex - 1);
-            var argNames = argsPart.Split(',').Select(s => s.Trim()).ToArray();
-            return (baseName, argNames);
-        }
-
-        /// <summary>
-        /// 按类型名称查找类型。解析顺序：
-        /// 1. 精确全名匹配（含命名空间或程序集限定名）；
-        /// 2. 若 <paramref name="defaultNamespace"/> 已设置且 <paramref name="typeName"/> 为短名（不含 '.'），
-        ///    尝试 <c>defaultNamespace + "." + typeName</c> 精确匹配；
-        /// 3. 回退到全程序集短名（<see cref="Type.Name"/>）扫描。
-        /// <para>
-        /// 泛型类型应使用 CLR 名称格式（含反引号 arity 后缀），如 <c>IEntityService`1</c>。
-        /// 这可避免与同名的非泛型类型冲突：查找 <c>Foo`1</c> 只匹配 <c>Foo&lt;T&gt;</c>，
-        /// 不会误匹配非泛型类型 <c>Foo</c>。
-        /// </para>
-        /// </summary>
-        /// <param name="typeName">类型名称，可以是全名、短名或程序集限定名。泛型类型应使用 <c>Foo`1</c> 格式。</param>
-        /// <param name="defaultNamespace">默认命名空间（可选），用于将短名组合为全名。</param>
-        /// <returns>匹配到的类型；未找到时返回 null。</returns>
-        public static Type? FindType(string typeName, string? defaultNamespace = null)
-        {
-            // 1. 精确全名匹配
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var type = assembly.GetType(typeName);
-                if (type != null) return type;
-            }
-
-            // 2. 默认命名空间 + 短名
-            if (!string.IsNullOrEmpty(defaultNamespace) && !typeName.Contains('.'))
-            {
-                var fullName = defaultNamespace + "." + typeName;
-                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    var type = assembly.GetType(fullName);
-                    if (type != null) return type;
-                }
-            }
-
-            // 3. 短名匹配
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    var match = assembly.GetTypes().FirstOrDefault(t => t.Name == typeName);
-                    if (match != null) return match;
-                }
-                catch (ReflectionTypeLoadException)
-                {
-                    // 跳过加载失败的程序集
-                }
-            }
-
-            return null;
         }
     }
 }
