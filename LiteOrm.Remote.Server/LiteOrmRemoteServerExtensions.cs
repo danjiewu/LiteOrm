@@ -81,8 +81,10 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 映射远程调用 HTTP 端点。接收 POST 请求，反序列化 <see cref="RemoteInvocationRequest"/>，
-        /// 调用 <see cref="RemoteServiceDispatcher"/>，返回 <see cref="RemoteInvocationResponse"/>。
+        /// 映射远程调用 HTTP 端点。接收 POST 请求，读取 JSON 并通过
+        /// <see cref="RemoteServiceDispatcher.ParseRequest"/> 解析为 <see cref="RemoteInvocationRequest"/>
+        /// （先匹配服务类型，再按方法名查找 <see cref="MethodInfo"/>，最后按参数类型反序列化参数），
+        /// 然后调用 <see cref="RemoteServiceDispatcher.InvokeAsync"/>，返回 <see cref="RemoteInvocationResponse"/>。
         /// </summary>
         /// <param name="endpoints">端点路由构建器。</param>
         /// <param name="path">端点路径。为 null 时使用 <see cref="RemoteServerOptions.InvokePath"/>。</param>
@@ -101,11 +103,11 @@ namespace LiteOrm.Service
                 var dispatcher = context.RequestServices.GetRequiredService<RemoteServiceDispatcher>();
                 var serializerOptions = options.JsonSerializerOptions;
 
-                RemoteInvocationRequest? request;
+                // 读取请求体 JSON 字符串
+                string json;
                 try
                 {
-                    request = await JsonSerializer
-                        .DeserializeAsync<RemoteInvocationRequest>(context.Request.Body, serializerOptions, context.RequestAborted)
+                    json = await new System.IO.StreamReader(context.Request.Body).ReadToEndAsync(context.RequestAborted)
                         .ConfigureAwait(false);
                 }
                 catch (Exception ex)
@@ -115,16 +117,30 @@ namespace LiteOrm.Service
                     {
                         Success = false,
                         ErrorType = ex.GetType().FullName,
-                        ErrorMessage = $"Failed to deserialize request: {ex.Message}",
+                        ErrorMessage = $"Failed to read request body: {ex.Message}",
                     };
                     await JsonSerializer.SerializeAsync(context.Response.Body, errorResponse, serializerOptions, context.RequestAborted)
                         .ConfigureAwait(false);
                     return;
                 }
 
-                if (request is null)
+                // 通过 dispatcher.ParseRequest 解析请求：匹配服务 → 查找方法 → 反序列化参数
+                RemoteInvocationRequest request;
+                try
+                {
+                    request = dispatcher.ParseRequest(json, serializerOptions);
+                }
+                catch (Exception ex)
                 {
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                    var errorResponse = new RemoteInvocationResponse
+                    {
+                        Success = false,
+                        ErrorType = ex.GetType().FullName,
+                        ErrorMessage = $"Failed to parse request: {ex.Message}",
+                    };
+                    await JsonSerializer.SerializeAsync(context.Response.Body, errorResponse, serializerOptions, context.RequestAborted)
+                        .ConfigureAwait(false);
                     return;
                 }
 

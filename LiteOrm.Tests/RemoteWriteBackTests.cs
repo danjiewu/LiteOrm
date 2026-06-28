@@ -6,7 +6,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System;
+using System.Collections.Generic;
 using System.Data.Common;
+using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,12 +26,6 @@ namespace LiteOrm.Tests
     /// </summary>
     public class RemoteWriteBackTests
     {
-        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
-        {
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            PropertyNameCaseInsensitive = true,
-        };
-
         /// <summary>
         /// 测试用实体。Id 标记为自增主键，配合 <see cref="IdentityOutAttribute"/> 使用。
         /// </summary>
@@ -166,17 +163,41 @@ namespace LiteOrm.Tests
             public RemoteInvocationRequest LastRequest { get; private set; } = null!;
             public int CallCount { get; private set; }
             private readonly Func<RemoteInvocationRequest, RemoteInvocationResponse> _responder;
+            private readonly RemoteServiceDispatcher? _dispatcher;
+            private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                PropertyNameCaseInsensitive = true,
+            };
 
-            public StubTransport(Func<RemoteInvocationRequest, RemoteInvocationResponse> responder)
+            /// <summary>
+            /// 初始化 StubTransport。
+            /// </summary>
+            /// <param name="responder">响应生成函数。</param>
+            /// <param name="dispatcher">
+            /// 若非 null，则模拟 HTTP 传输：将请求序列化为 JSON，再通过 <see cref="RemoteServiceDispatcher.ParseRequest"/> 解析，
+            /// 确保服务端收到的是参数副本而非客户端原始对象引用。
+            /// 若为 null（纯客户端测试），直接将原始请求传给 responder。
+            /// </param>
+            public StubTransport(Func<RemoteInvocationRequest, RemoteInvocationResponse> responder, RemoteServiceDispatcher? dispatcher = null)
             {
                 _responder = responder;
+                _dispatcher = dispatcher;
             }
 
             public Task<RemoteInvocationResponse> InvokeAsync(RemoteInvocationRequest request, CancellationToken cancellationToken = default)
             {
                 LastRequest = request;
                 CallCount++;
-                return Task.FromResult(_responder(request));
+
+                if (_dispatcher is null)
+                    return Task.FromResult(_responder(request));
+
+                // 模拟 HTTP 传输中的 JSON 序列化/反序列化，
+                // 通过 dispatcher.ParseRequest 解析 JSON：匹配服务 → 查找方法 → 反序列化参数
+                var json = JsonSerializer.Serialize(request, _jsonOptions);
+                var parsedRequest = _dispatcher.ParseRequest(json, _jsonOptions);
+                return Task.FromResult(_responder(parsedRequest));
             }
         }
 
@@ -194,6 +215,22 @@ namespace LiteOrm.Tests
             var services = new ServiceCollection();
             services.AddLogging(b => b.SetMinimumLevel(LogLevel.None));
             return services.BuildServiceProvider();
+        }
+
+        /// <summary>
+        /// 通过接口类型与方法名构建 <see cref="RemoteInvocationRequest"/>。
+        /// 通过反射设置 <see cref="RemoteInvocationRequest.Method"/>（<see cref="MethodInfo"/>），
+        /// 模拟经 <see cref="RemoteServiceDispatcher.ParseRequest"/> 解析后的请求。
+        /// </summary>
+        private static RemoteInvocationRequest Request<TInterface>(string method, params object[] args)
+        {
+            var methodInfo = typeof(TInterface).GetMethod(method, BindingFlags.Public | BindingFlags.Instance);
+            return new RemoteInvocationRequest
+            {
+                ServiceName = RemoteServiceNameUtil.GetServiceName(typeof(TInterface)),
+                Method = methodInfo,
+                Arguments = args,
+            };
         }
 
         /// <summary>
@@ -252,8 +289,7 @@ namespace LiteOrm.Tests
                         new OutputArgument
                         {
                             ArgumentIndex = 0,
-                            TypeName = typeof(long).AssemblyQualifiedName,
-                            ValueJson = JsonSerializer.Serialize(42L, typeof(long), _jsonOptions),
+                            Value = 42L,
                         }
                     }
                 };
@@ -269,7 +305,6 @@ namespace LiteOrm.Tests
             Assert.Equal("alice", user.Name);
             Assert.Equal(default, user.CreatedAt);
             Assert.Equal(string.Empty, user.ServerOnly);
-            Assert.Contains(0, stub.LastRequest.WriteBackArgumentIndices);
         }
 
         [Fact]
@@ -287,8 +322,7 @@ namespace LiteOrm.Tests
                         new OutputArgument
                         {
                             ArgumentIndex = 0,
-                            TypeName = typeof(long).AssemblyQualifiedName,
-                            ValueJson = JsonSerializer.Serialize(99L, typeof(long), _jsonOptions),
+                            Value = 99L,
                         }
                     }
                 };
@@ -304,7 +338,7 @@ namespace LiteOrm.Tests
             Assert.Equal("alice", user.Name);
             Assert.Equal(default, user.CreatedAt);
             Assert.Equal("client", user.ServerOnly);
-            // 未设置 ResultJson，返回值退回到 default(long)
+            // 未设置 Result，返回值退回到 default(long)
             Assert.Equal(0L, result);
         }
 
@@ -317,7 +351,8 @@ namespace LiteOrm.Tests
 
             await proxy.DoAsync("x");
 
-            Assert.Empty(stub.LastRequest.WriteBackArgumentIndices);
+            // ISimpleService.DoAsync 无 ArgumentOutAttribute，回写计划为空，调用正常完成
+            Assert.Equal(1, stub.CallCount);
         }
 
         // ========== 客户端测试：自定义处理器 ==========
@@ -337,8 +372,7 @@ namespace LiteOrm.Tests
                         new OutputArgument
                         {
                             ArgumentIndex = 0,
-                            TypeName = typeof(User).AssemblyQualifiedName,
-                            ValueJson = JsonSerializer.Serialize(serverUser, typeof(User), _jsonOptions),
+                            Value = serverUser,
                         }
                     }
                 };
@@ -371,8 +405,7 @@ namespace LiteOrm.Tests
                         new OutputArgument
                         {
                             ArgumentIndex = 0,
-                            TypeName = typeof(User).AssemblyQualifiedName,
-                            ValueJson = JsonSerializer.Serialize(serverUser, typeof(User), _jsonOptions),
+                            Value = serverUser,
                         }
                     }
                 };
@@ -406,8 +439,7 @@ namespace LiteOrm.Tests
                         new OutputArgument
                         {
                             ArgumentIndex = 0,
-                            TypeName = typeof(UserDelta).AssemblyQualifiedName,
-                            ValueJson = JsonSerializer.Serialize(delta, typeof(UserDelta), _jsonOptions),
+                            Value = delta,
                         }
                     }
                 };
@@ -439,8 +471,7 @@ namespace LiteOrm.Tests
                         new OutputArgument
                         {
                             ArgumentIndex = 0,
-                            TypeName = typeof(CopyableUser).AssemblyQualifiedName,
-                            ValueJson = JsonSerializer.Serialize(serverUser, typeof(CopyableUser), _jsonOptions),
+                            Value = serverUser,
                         }
                     }
                 };
@@ -552,20 +583,7 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher<IUserService, UserServiceImpl>();
 
             var userArg = new User { Name = "bob", Id = 0 };
-            var request = new RemoteInvocationRequest
-            {
-                ServiceName = nameof(IUserService),
-                MethodName = nameof(IUserService.CreateAsync),
-                Arguments = new[]
-                {
-                    new RemoteArgument
-                    {
-                        TypeName = typeof(User).AssemblyQualifiedName,
-                        ValueJson = JsonSerializer.Serialize(userArg, typeof(User), _jsonOptions),
-                    }
-                },
-                WriteBackArgumentIndices = new[] { 0 },
-            };
+            var request = Request<IUserService>(nameof(IUserService.CreateAsync), userArg);
 
             var response = await dispatcher.InvokeAsync(request);
 
@@ -574,35 +592,7 @@ namespace LiteOrm.Tests
             var wb = response.WriteBackArguments[0];
             Assert.Equal(0, wb.ArgumentIndex);
             // IdentityOutAttribute 仅返回 Id 值（long），而非整个 User 对象
-            Assert.Equal(typeof(long).AssemblyQualifiedName, wb.TypeName);
-            var writtenId = JsonSerializer.Deserialize<long>(wb.ValueJson!, _jsonOptions);
-            Assert.Equal(123, writtenId);
-        }
-
-        [Fact]
-        public async Task Server_NoWriteBackIndices_NoWriteBackData_Returned()
-        {
-            var (dispatcher, _) = CreateDispatcher<IUserService, UserServiceImpl>();
-
-            var request = new RemoteInvocationRequest
-            {
-                ServiceName = nameof(IUserService),
-                MethodName = nameof(IUserService.CreateAsync),
-                Arguments = new[]
-                {
-                    new RemoteArgument
-                    {
-                        TypeName = typeof(User).AssemblyQualifiedName,
-                        ValueJson = JsonSerializer.Serialize(new User { Name = "x" }, typeof(User), _jsonOptions),
-                    }
-                },
-                WriteBackArgumentIndices = Array.Empty<int>(),
-            };
-
-            var response = await dispatcher.InvokeAsync(request);
-
-            Assert.True(response.Success);
-            Assert.Empty(response.WriteBackArguments);
+            Assert.Equal(123L, wb.Value);
         }
 
         [Fact]
@@ -611,29 +601,15 @@ namespace LiteOrm.Tests
             using var scope = new TableInfoProviderScope(CreateTestTableInfoProvider());
             var (dispatcher, _) = CreateDispatcher<IUserService, UserServiceImpl>();
 
-            var request = new RemoteInvocationRequest
-            {
-                ServiceName = nameof(IUserService),
-                MethodName = nameof(IUserService.CreateAndReturnIdAsync),
-                Arguments = new[]
-                {
-                    new RemoteArgument
-                    {
-                        TypeName = typeof(User).AssemblyQualifiedName,
-                        ValueJson = JsonSerializer.Serialize(new User { Name = "x" }, typeof(User), _jsonOptions),
-                    }
-                },
-                WriteBackArgumentIndices = new[] { 0 },
-            };
+            var request = Request<IUserService>(nameof(IUserService.CreateAndReturnIdAsync), new User { Name = "x" });
 
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Equal(999L, JsonSerializer.Deserialize<long>(response.ResultJson!, _jsonOptions));
+            Assert.Equal(999L, response.Result);
             Assert.Single(response.WriteBackArguments);
             // IdentityOutAttribute 仅返回 Id 值
-            var writtenId = JsonSerializer.Deserialize<long>(response.WriteBackArguments[0].ValueJson!, _jsonOptions);
-            Assert.Equal(999, writtenId);
+            Assert.Equal(999L, response.WriteBackArguments[0].Value);
         }
 
         [Fact]
@@ -641,28 +617,14 @@ namespace LiteOrm.Tests
         {
             var (dispatcher, _) = CreateDispatcher<IUserService, UserServiceImpl>();
 
-            var request = new RemoteInvocationRequest
-            {
-                ServiceName = nameof(IUserService),
-                MethodName = nameof(IUserService.CreateDeltaAsync),
-                Arguments = new[]
-                {
-                    new RemoteArgument
-                    {
-                        TypeName = typeof(User).AssemblyQualifiedName,
-                        ValueJson = JsonSerializer.Serialize(new User { Name = "x" }, typeof(User), _jsonOptions),
-                    }
-                },
-                WriteBackArgumentIndices = new[] { 0 },
-            };
+            var request = Request<IUserService>(nameof(IUserService.CreateDeltaAsync), new User { Name = "x" });
 
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
             Assert.Single(response.WriteBackArguments);
             // DeltaHandler 生成了 UserDelta（ReturnType != User）
-            Assert.Equal(typeof(UserDelta).AssemblyQualifiedName, response.WriteBackArguments[0].TypeName);
-            var delta = JsonSerializer.Deserialize<UserDelta>(response.WriteBackArguments[0].ValueJson!, _jsonOptions)!;
+            var delta = (UserDelta)response.WriteBackArguments[0].Value;
             Assert.Equal(88, delta.Id);
             Assert.Equal(new DateTime(2026, 5, 5), delta.CreatedAt);
         }
@@ -672,26 +634,13 @@ namespace LiteOrm.Tests
         {
             var (dispatcher, _) = CreateDispatcher<ICopyableUserService, CopyableUserServiceImpl>();
 
-            var request = new RemoteInvocationRequest
-            {
-                ServiceName = nameof(ICopyableUserService),
-                MethodName = nameof(ICopyableUserService.CreateAsync),
-                Arguments = new[]
-                {
-                    new RemoteArgument
-                    {
-                        TypeName = typeof(CopyableUser).AssemblyQualifiedName,
-                        ValueJson = JsonSerializer.Serialize(new CopyableUser { Name = "x" }, typeof(CopyableUser), _jsonOptions),
-                    }
-                },
-                WriteBackArgumentIndices = new[] { 0 },
-            };
+            var request = Request<ICopyableUserService>(nameof(ICopyableUserService.CreateAsync), new CopyableUser { Name = "x" });
 
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
             Assert.Single(response.WriteBackArguments);
-            var written = JsonSerializer.Deserialize<CopyableUser>(response.WriteBackArguments[0].ValueJson!, _jsonOptions)!;
+            var written = (CopyableUser)response.WriteBackArguments[0].Value;
             Assert.Equal(100, written.Id);
             Assert.Equal("server", written.Name);
         }
@@ -708,29 +657,15 @@ namespace LiteOrm.Tests
                 new User { Name = "b", Id = 0 },
                 new User { Name = "c", Id = 0 },
             };
-            var request = new RemoteInvocationRequest
-            {
-                ServiceName = nameof(IUserService),
-                MethodName = nameof(IUserService.CreateBatchAsync),
-                Arguments = new[]
-                {
-                    new RemoteArgument
-                    {
-                        TypeName = typeof(List<User>).AssemblyQualifiedName,
-                        ValueJson = JsonSerializer.Serialize(users, typeof(List<User>), _jsonOptions),
-                    }
-                },
-                WriteBackArgumentIndices = new[] { 0 },
-            };
+            var request = Request<IUserService>(nameof(IUserService.CreateBatchAsync), users);
 
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
             Assert.Single(response.WriteBackArguments);
             var wb = response.WriteBackArguments[0];
-            // 集合模式：TypeName 为 List<long>
-            Assert.Equal(typeof(List<long>).AssemblyQualifiedName, wb.TypeName);
-            var ids = JsonSerializer.Deserialize<List<long>>(wb.ValueJson!, _jsonOptions)!;
+            // 集合模式：返回 List<long>
+            var ids = (List<long>)wb.Value;
             Assert.Equal(new long[] { 100, 101, 102 }, ids);
         }
 
@@ -744,20 +679,7 @@ namespace LiteOrm.Tests
                 new User { Name = "a", Id = 0 },
                 new User { Name = "b", Id = 0 },
             };
-            var request = new RemoteInvocationRequest
-            {
-                ServiceName = nameof(IUserService),
-                MethodName = nameof(IUserService.CreateBatchDeltaAsync),
-                Arguments = new[]
-                {
-                    new RemoteArgument
-                    {
-                        TypeName = typeof(List<User>).AssemblyQualifiedName,
-                        ValueJson = JsonSerializer.Serialize(users, typeof(List<User>), _jsonOptions),
-                    }
-                },
-                WriteBackArgumentIndices = new[] { 0 },
-            };
+            var request = Request<IUserService>(nameof(IUserService.CreateBatchDeltaAsync), users);
 
             var response = await dispatcher.InvokeAsync(request);
 
@@ -765,8 +687,7 @@ namespace LiteOrm.Tests
             Assert.Single(response.WriteBackArguments);
             var wb = response.WriteBackArguments[0];
             // DeltaHandler.ReturnType = typeof(UserDelta)，集合模式下序列化为 List<UserDelta>
-            Assert.Equal(typeof(List<UserDelta>).AssemblyQualifiedName, wb.TypeName);
-            var deltas = JsonSerializer.Deserialize<List<UserDelta>>(wb.ValueJson!, _jsonOptions)!;
+            var deltas = (List<UserDelta>)wb.Value;
             Assert.Equal(2, deltas.Count);
             Assert.Equal(200, deltas[0].Id);
             Assert.Equal(new DateTime(2026, 8, 1), deltas[0].CreatedAt);
@@ -781,7 +702,7 @@ namespace LiteOrm.Tests
         {
             using var scope = new TableInfoProviderScope(CreateTestTableInfoProvider());
             var (dispatcher, _) = CreateDispatcher<IUserService, UserServiceImpl>();
-            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult());
+            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult(), dispatcher);
 
             var provider = BuildProvider();
             var proxy = CreateProxy<IUserService>(provider, stubTransport);
@@ -801,7 +722,7 @@ namespace LiteOrm.Tests
         public async Task EndToEnd_Custom_Handler_WriteBack_Via_Server()
         {
             var (dispatcher, _) = CreateDispatcher<IUserService, UserServiceImpl>();
-            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult());
+            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult(), dispatcher);
 
             var provider = BuildProvider();
             var proxy = CreateProxy<IUserService>(provider, stubTransport);
@@ -819,7 +740,7 @@ namespace LiteOrm.Tests
         public async Task EndToEnd_DeltaHandler_Two_Phase_Flow_Via_Server()
         {
             var (dispatcher, _) = CreateDispatcher<IUserService, UserServiceImpl>();
-            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult());
+            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult(), dispatcher);
 
             var provider = BuildProvider();
             var proxy = CreateProxy<IUserService>(provider, stubTransport);
@@ -837,7 +758,7 @@ namespace LiteOrm.Tests
         public async Task EndToEnd_CopyableHandler_WriteBack_Via_ICopyable()
         {
             var (dispatcher, _) = CreateDispatcher<ICopyableUserService, CopyableUserServiceImpl>();
-            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult());
+            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult(), dispatcher);
 
             var provider = BuildProvider();
             var proxy = CreateProxy<ICopyableUserService>(provider, stubTransport);
@@ -856,7 +777,7 @@ namespace LiteOrm.Tests
         {
             using var scope = new TableInfoProviderScope(CreateTestTableInfoProvider());
             var (dispatcher, _) = CreateDispatcher<IUserService, UserServiceImpl>();
-            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult());
+            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult(), dispatcher);
 
             var provider = BuildProvider();
             var proxy = CreateProxy<IUserService>(provider, stubTransport);
@@ -883,7 +804,7 @@ namespace LiteOrm.Tests
         public async Task EndToEnd_CollectionMode_DeltaHandler_WriteBack_Each_Item()
         {
             var (dispatcher, _) = CreateDispatcher<IUserService, UserServiceImpl>();
-            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult());
+            var stubTransport = new StubTransport(req => dispatcher.InvokeAsync(req).GetAwaiter().GetResult(), dispatcher);
 
             var provider = BuildProvider();
             var proxy = CreateProxy<IUserService>(provider, stubTransport);

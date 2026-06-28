@@ -13,7 +13,6 @@ using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-
 namespace LiteOrm.Service
 {
     /// <summary>
@@ -234,7 +233,7 @@ namespace LiteOrm.Service
             var method = invocation.Method;
             var returnType = method.ReturnType;
             var request = BuildRequest(invocation);
-            var writeBackPlan = BuildWriteBackPlan(invocation, request);
+            var writeBackPlan = BuildWriteBackPlan(invocation);
             var cancellationToken = ExtractCancellationToken(invocation);
             var serviceInfo = $"{request.ServiceName}.{method.Name}";
 
@@ -286,15 +285,14 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 根据参数上的 <see cref="ArgumentOutAttribute"/> 标记构建回写计划，
-        /// 同时填充 <paramref name="request"/>.<see cref="RemoteInvocationRequest.WriteBackArgumentIndices"/>。
+        /// 根据参数上的 <see cref="ArgumentOutAttribute"/> 标记构建回写计划。
+        /// 回写参数索引从 <see cref="MethodInfo"/> 推算，不再存储在请求中。
         /// </summary>
-        private static List<WriteBackEntry> BuildWriteBackPlan(IInvocation invocation, RemoteInvocationRequest request)
+        private static List<WriteBackEntry> BuildWriteBackPlan(IInvocation invocation)
         {
             var plan = new List<WriteBackEntry>();
             var parameters = invocation.Method.GetParameters();
             var arguments = invocation.Arguments ?? Array.Empty<object>();
-            request.WriteBackArgumentIndices = new List<int>();
 
             int argListIndex = 0;
             for (int i = 0; i < arguments.Length && i < parameters.Length; i++)
@@ -306,7 +304,6 @@ namespace LiteOrm.Service
                 var paramAttr = parameters[i].GetCustomAttribute<ArgumentOutAttribute>(true);
                 if (paramAttr is not null)
                 {
-                    request.WriteBackArgumentIndices.Add(argListIndex);
                     plan.Add(new WriteBackEntry(argListIndex, i, paramAttr));
                 }
 
@@ -319,6 +316,7 @@ namespace LiteOrm.Service
         /// 将服务端响应中的回写参数值应用到客户端原始参数对象。
         /// 通过 <see cref="ArgumentOutHandlerResolver"/> 创建处理器实例，调用 <see cref="IArgumentOutHandler.WriteBack"/> 回写。
         /// 集合模式（<see cref="ArgumentMode.Collection"/>）下，反序列化返回值列表后逐项回写。
+        /// <see cref="OutputArgument.Value"/> 反序列化后为 <see cref="JsonElement"/>，可能含 $type 包装。
         /// </summary>
         private void ApplyWriteBack(RemoteInvocationResponse response, List<WriteBackEntry> plan, IInvocation invocation)
         {
@@ -343,6 +341,10 @@ namespace LiteOrm.Service
                 var handler = ArgumentOutHandlerResolver.Resolve(entry.Attribute, _serviceProvider);
                 if (handler is null) continue;
 
+                // Value 反序列化后为 JsonElement，可能含 $type 包装
+                var valueElement = ToJsonElement(wb.Value);
+                if (valueElement is null) continue;
+
                 if (entry.Attribute.Mode == ArgumentMode.Collection)
                 {
                     // 集合模式：反序列化返回值列表，逐项回写到原始集合对应元素
@@ -351,8 +353,7 @@ namespace LiteOrm.Service
 
                     var listType = typeof(List<>).MakeGenericType(handler.ReturnType);
 
-                    if (string.IsNullOrEmpty(wb.ValueJson)) continue;
-                    var returnValues = JsonSerializer.Deserialize(wb.ValueJson, listType, _serializerOptions) as IList;
+                    var returnValues = DeserializeTypedValue(valueElement.Value, listType) as IList;
                     if (returnValues is null) continue;
 
                     // 逐项回写（按索引对应）
@@ -364,13 +365,47 @@ namespace LiteOrm.Service
                 else
                 {
                     // 单对象模式：按 ReturnType 反序列化并回写
-                    if (string.IsNullOrEmpty(wb.ValueJson)) continue;
-                    var returnValue = JsonSerializer.Deserialize(wb.ValueJson, handler.ReturnType, _serializerOptions);
+                    var returnValue = DeserializeTypedValue(valueElement.Value, handler.ReturnType);
                     if (returnValue is null) continue;
 
                     handler.WriteBack(origArg, returnValue);
                 }
             }
+        }
+
+        /// <summary>
+        /// 将 <see cref="OutputArgument.Value"/>（反序列化后可能为 <see cref="JsonElement"/> 或 <see cref="TypeWrappedValue"/>）
+        /// 转换为 <see cref="JsonElement"/>。
+        /// </summary>
+        private static JsonElement? ToJsonElement(object value)
+        {
+            if (value is null) return null;
+            if (value is JsonElement element) return element;
+            // 如果是其他类型，序列化为 JsonElement
+            var json = JsonSerializer.Serialize(value, value.GetType(), _serializerOptions);
+            return JsonDocument.Parse(json).RootElement.Clone();
+        }
+
+        /// <summary>
+        /// 反序列化类型化值。若 <paramref name="element"/> 为 <c>$type</c> 包装，则按实际类型反序列化；
+        /// 否则按 <paramref name="expectedType"/> 反序列化。
+        /// </summary>
+        private static object DeserializeTypedValue(JsonElement element, Type expectedType)
+        {
+            if (element.ValueKind == JsonValueKind.Null)
+                return expectedType.IsValueType ? Activator.CreateInstance(expectedType) : null;
+
+            // 检查 $type 包装
+            if (element.ValueKind == JsonValueKind.Object &&
+                element.TryGetProperty("$type", out var typeProp))
+            {
+                var typeName = typeProp.GetString();
+                var actualType = Type.GetType(typeName);
+                if (actualType != null && element.TryGetProperty("$value", out var valueProp))
+                    return JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, _serializerOptions);
+            }
+
+            return JsonSerializer.Deserialize(element.GetRawText(), expectedType, _serializerOptions);
         }
 
         /// <summary>
@@ -393,39 +428,34 @@ namespace LiteOrm.Service
 
         /// <summary>
         /// 从当前方法调用构建远程调用请求。
+        /// 直接使用 <see cref="MethodInfo"/> 作为 <see cref="RemoteInvocationRequest.Method"/>，
+        /// 序列化时由 <see cref="RemoteInvocationRequestConverter"/> 从中提取方法名与参数类型。
         /// </summary>
         /// <param name="invocation">方法调用信息</param>
         /// <returns>远程调用请求</returns>
         protected virtual RemoteInvocationRequest BuildRequest(IInvocation invocation)
         {
             var serviceType = invocation.TargetType ?? invocation.Method.DeclaringType;
-            var request = new RemoteInvocationRequest
-            {
-                ServiceName = RemoteServiceNameUtil.GetServiceName(serviceType),
-                MethodName = invocation.Method.Name,
-            };
-
-            var parameters = invocation.Method.GetParameters();
+            var method = invocation.Method;
+            var parameters = method.GetParameters();
             var arguments = invocation.Arguments ?? Array.Empty<object>();
-            var args = new List<RemoteArgument>(arguments.Length);
+
+            // 过滤 CancellationToken 参数，保留其余参数原值
+            var args = new System.Collections.Generic.List<object>(arguments.Length);
             for (int i = 0; i < arguments.Length && i < parameters.Length; i++)
             {
                 var paramType = parameters[i].ParameterType;
-                // CancellationToken 不序列化到参数列表，由 ExtractCancellationToken 提取后传给传输层
                 if (paramType == typeof(CancellationToken))
                     continue;
-
-                var arg = arguments[i];
-                var declaredType = paramType;
-                var actualType = arg?.GetType() ?? declaredType;
-
-                args.Add(new RemoteArgument
-                {
-                    TypeName = actualType.AssemblyQualifiedName,
-                    ValueJson = JsonSerializer.Serialize(arg, actualType, _serializerOptions),
-                });
+                args.Add(arguments[i]);
             }
-            request.Arguments = args;
+
+            var request = new RemoteInvocationRequest
+            {
+                ServiceName = RemoteServiceNameUtil.GetServiceName(serviceType),
+                Method = method,
+                Arguments = args.ToArray(),
+            };
             return request;
         }
 
@@ -520,24 +550,19 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 将远程响应中的 ResultJson 反序列化为目标返回类型。优先使用响应携带的 ResultTypeName 以支持多态。
+        /// 将远程响应中的 Result 反序列化为目标返回类型。
+        /// <see cref="RemoteInvocationResponse.Result"/> 反序列化后为 <see cref="JsonElement"/>，可能含 $type 包装。
         /// </summary>
         /// <param name="response">远程调用响应</param>
         /// <param name="returnType">方法声明的返回类型</param>
         /// <returns>反序列化后的返回值</returns>
         protected static object DeserializeResult(RemoteInvocationResponse response, Type returnType)
         {
-            if (string.IsNullOrEmpty(response.ResultJson))
+            var element = ToJsonElement(response.Result);
+            if (element is null || element.Value.ValueKind == JsonValueKind.Null)
                 return returnType.IsValueType ? Activator.CreateInstance(returnType) : null;
 
-            Type deserializeType = returnType;
-            if (!string.IsNullOrEmpty(response.ResultTypeName))
-            {
-                var actualType = Type.GetType(response.ResultTypeName);
-                if (actualType != null && returnType.IsAssignableFrom(actualType))
-                    deserializeType = actualType;
-            }
-            return JsonSerializer.Deserialize(response.ResultJson, deserializeType, _serializerOptions);
+            return DeserializeTypedValue(element.Value, returnType);
         }
 
         #region 日志相关方法

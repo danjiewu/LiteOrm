@@ -2,6 +2,8 @@ using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -77,24 +79,44 @@ namespace LiteOrm.Tests
             return (dispatcher, impl!);
         }
 
-        private static RemoteArgument Arg<T>(T value)
+        /// <summary>
+        /// 通过方法名与参数构建 <see cref="RemoteInvocationRequest"/>。
+        /// 通过反射设置 <see cref="RemoteInvocationRequest.Method"/>（<see cref="MethodInfo"/>），
+        /// 模拟经 <see cref="RemoteServiceDispatcher.ParseRequest"/> 解析后的请求。
+        /// </summary>
+        private static RemoteInvocationRequest Request(string method, params object[] args)
         {
-            var type = value?.GetType() ?? typeof(T);
-            return new RemoteArgument
-            {
-                TypeName = type.AssemblyQualifiedName,
-                ValueJson = JsonSerializer.Serialize(value, type, _jsonOptions),
-            };
-        }
-
-        private static RemoteInvocationRequest Request(string method, params RemoteArgument[] args)
-        {
+            var methodInfo = typeof(IRemoteCalculator).GetMethod(method, BindingFlags.Public | BindingFlags.Instance);
             return new RemoteInvocationRequest
             {
                 ServiceName = nameof(IRemoteCalculator),
-                MethodName = method,
+                Method = methodInfo,
                 Arguments = args,
             };
+        }
+
+        /// <summary>
+        /// 将响应中的 <see cref="RemoteInvocationResponse.Result"/> 反序列化为强类型值。
+        /// 直连 dispatcher 测试时 Result 为原始对象（如 boxed int）；
+        /// 经 HTTP 传输后 Result 为 <see cref="JsonElement"/>（可能含 $type 包装）。
+        /// </summary>
+        private static T ReadResult<T>(RemoteInvocationResponse response)
+        {
+            Assert.NotNull(response.Result);
+            if (response.Result is T typed)
+                return typed;
+            if (response.Result is JsonElement element)
+            {
+                if (element.ValueKind == JsonValueKind.Object &&
+                    element.TryGetProperty("$type", out var typeProp))
+                {
+                    var actualType = Type.GetType(typeProp.GetString());
+                    if (actualType != null && element.TryGetProperty("$value", out var valueProp))
+                        return (T)JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, _jsonOptions);
+                }
+                return JsonSerializer.Deserialize<T>(element.GetRawText(), _jsonOptions);
+            }
+            return (T)Convert.ChangeType(response.Result, typeof(T));
         }
 
         [Fact]
@@ -105,7 +127,7 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(Request(nameof(IRemoteCalculator.Clear)));
 
             Assert.True(response.Success);
-            Assert.Null(response.ResultJson);
+            Assert.Null(response.Result);
         }
 
         [Fact]
@@ -114,10 +136,10 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.Add), Arg(3), Arg(4)));
+                Request(nameof(IRemoteCalculator.Add), 3, 4));
 
             Assert.True(response.Success);
-            Assert.Equal(7, JsonSerializer.Deserialize<int>(response.ResultJson!, _jsonOptions));
+            Assert.Equal(7, ReadResult<int>(response));
         }
 
         [Fact]
@@ -126,10 +148,10 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.Echo), Arg("hello")));
+                Request(nameof(IRemoteCalculator.Echo), "hello"));
 
             Assert.True(response.Success);
-            Assert.Equal("echo:hello", JsonSerializer.Deserialize<string>(response.ResultJson!, _jsonOptions));
+            Assert.Equal("echo:hello", ReadResult<string>(response));
         }
 
         [Fact]
@@ -141,7 +163,7 @@ namespace LiteOrm.Tests
                 Request(nameof(IRemoteCalculator.ResetAsync)));
 
             Assert.True(response.Success);
-            Assert.Null(response.ResultJson);
+            Assert.Null(response.Result);
         }
 
         [Fact]
@@ -150,10 +172,10 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.MultiplyAsync), Arg(6), Arg(7)));
+                Request(nameof(IRemoteCalculator.MultiplyAsync), 6, 7));
 
             Assert.True(response.Success);
-            Assert.Equal(42, JsonSerializer.Deserialize<int>(response.ResultJson!, _jsonOptions));
+            Assert.Equal(42, ReadResult<int>(response));
         }
 
         [Fact]
@@ -164,11 +186,11 @@ namespace LiteOrm.Tests
             using var cts = new CancellationTokenSource();
             // 请求中没有 CancellationToken 参数（客户端会过滤掉），但 dispatcher 会将传入的 token 注入
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.GreetAsync), Arg("world")),
+                Request(nameof(IRemoteCalculator.GreetAsync), "world"),
                 cts.Token);
 
             Assert.True(response.Success);
-            Assert.Equal("hello,world", JsonSerializer.Deserialize<string>(response.ResultJson!, _jsonOptions));
+            Assert.Equal("hello,world", ReadResult<string>(response));
             Assert.Equal(0, impl.LastCancellationTokenIsCanceled); // token 未取消
         }
 
@@ -181,7 +203,7 @@ namespace LiteOrm.Tests
             cts.Cancel();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.GreetAsync), Arg("world")),
+                Request(nameof(IRemoteCalculator.GreetAsync), "world"),
                 cts.Token);
 
             Assert.True(response.Success);
@@ -196,7 +218,7 @@ namespace LiteOrm.Tests
             var request = new RemoteInvocationRequest
             {
                 ServiceName = "IUnknownService",
-                MethodName = "Foo",
+                Method = typeof(IRemoteCalculator).GetMethod(nameof(IRemoteCalculator.Clear), BindingFlags.Public | BindingFlags.Instance),
             };
 
             var response = await dispatcher.InvokeAsync(request);
@@ -206,14 +228,15 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public async Task Unknown_Method_Returns_Failure()
+        public void Unknown_Method_Returns_Failure()
         {
             var (dispatcher, _) = CreateDispatcher();
 
-            var response = await dispatcher.InvokeAsync(Request("NonExistentMethod"));
-
-            Assert.False(response.Success);
-            Assert.Contains("NonExistentMethod", response.ErrorMessage!);
+            // 模拟 HTTP 传输：方法名在 JSON 中，由 ParseRequest 解析。
+            // 方法不存在时 ParseRequest 抛出 ServiceException
+            var json = $"{{\"ServiceName\":\"{nameof(IRemoteCalculator)}\",\"Method\":\"NonExistentMethod\",\"Arguments\":[]}}";
+            var ex = Assert.Throws<ServiceException>(() => dispatcher.ParseRequest(json, _jsonOptions));
+            Assert.Contains("NonExistentMethod", ex.Message);
         }
 
         [Fact]
@@ -230,7 +253,7 @@ namespace LiteOrm.Tests
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.Add), Arg(1), Arg(2)));
+                Request(nameof(IRemoteCalculator.Add), 1, 2));
 
             Assert.False(response.Success);
             Assert.Contains("deliberate", response.ErrorMessage!);

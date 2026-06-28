@@ -1,57 +1,57 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace LiteOrm.Service
 {
     /// <summary>
     /// 远程调用请求。
     /// </summary>
+    /// <remarks>
+    /// <see cref="Method"/> 直接使用 <see cref="MethodInfo"/> 类型，仅在客户端构建时赋值，
+    /// 不参与序列化。序列化时由 <see cref="RemoteInvocationRequestConverter"/> 将方法名写入 JSON；
+    /// 反序列化由 <see cref="RemoteServiceDispatcher.ParseRequest"/> 完成——
+    /// 先根据 <see cref="ServiceName"/> 解析服务类型，再按方法名匹配 <see cref="MethodInfo"/>，
+    /// 最后按方法参数类型反序列化 <see cref="Arguments"/>。
+    /// <para>
+    /// 序列化规则（<see cref="Arguments"/>）：
+    /// 1. 当实参运行时类型与参数声明类型相同，或参数声明类型为 <see cref="Common.Expr"/> 派生类时，直接使用参数类型序列化，无需额外类型信息；
+    /// 2. 类型不一致时，以 <c>{"$type":"实际类型名","$value":<值>}</c> 结构包装。
+    /// </para>
+    /// </remarks>
+    [JsonConverter(typeof(RemoteInvocationRequestConverter))]
     public sealed class RemoteInvocationRequest
     {
         /// <summary>
         /// 服务名称。客户端与服务端使用相同的 ServiceName 进行匹配。
-        /// 由 <see cref="RemoteServiceNameUtil.GetServiceName"/> 从服务接口类型生成。
         /// </summary>
         public string ServiceName { get; set; }
 
         /// <summary>
-        /// 被调用的方法名。
+        /// 方法信息。客户端构建请求时直接赋值 <c>invocation.Method</c>；
+        /// 不参与 JSON 序列化（<see cref="JsonIgnoreAttribute"/>）。
+        /// 服务端由 <see cref="RemoteServiceDispatcher.ParseRequest"/> 根据方法名查找到 <see cref="MethodInfo"/> 后赋值。
         /// </summary>
-        public string MethodName { get; set; }
+        [JsonIgnore]
+        public MethodInfo Method { get; set; }
 
         /// <summary>
-        /// 调用参数列表。已剔除 <see cref="System.Threading.CancellationToken"/> 等不可序列化参数。
+        /// 调用参数列表（不含 <see cref="System.Threading.CancellationToken"/>）。
         /// </summary>
-        public IList<RemoteArgument> Arguments { get; set; } = Array.Empty<RemoteArgument>();
-
-        /// <summary>
-        /// 需要服务端回写的参数索引列表（对应 <see cref="Arguments"/> 列表中的索引）。
-        /// 由客户端根据 <see cref="LiteOrm.Common.ArgumentOutAttribute"/> 标记生成。
-        /// 服务端在调用完成后将这些索引对应的参数对象重新序列化放入 <see cref="RemoteInvocationResponse.WriteBackArguments"/>。
-        /// </summary>
-        public IList<int> WriteBackArgumentIndices { get; set; } = Array.Empty<int>();
-    }
-
-    /// <summary>
-    /// 远程调用单个参数的序列化表示。
-    /// </summary>
-    public sealed class RemoteArgument
-    {
-        /// <summary>
-        /// 参数类型的程序集限定名。
-        /// </summary>
-        public string TypeName { get; set; }
-
-        /// <summary>
-        /// 参数值的 JSON 序列化字符串。
-        /// </summary>
-        public string ValueJson { get; set; }
+        public object[] Arguments { get; set; } = Array.Empty<object>();
     }
 
     /// <summary>
     /// 远程调用响应。
     /// </summary>
+    /// <remarks>
+    /// <see cref="Result"/> 与 <see cref="OutputArgument.Value"/> 为 <c>object</c> 类型，
+    /// 反序列化后为 <see cref="JsonElement"/>，由调用方根据已知预期类型进行二次反序列化。
+    /// 当服务端发现实际类型与预期类型不一致时，以 <see cref="TypeWrappedValue"/> 包装。
+    /// </remarks>
     public sealed class RemoteInvocationResponse
     {
         /// <summary>
@@ -60,17 +60,18 @@ namespace LiteOrm.Service
         public bool Success { get; set; }
 
         /// <summary>
-        /// 返回值类型的程序集限定名（用于支持多态返回类型）。无返回值时为 null。
+        /// 返回值。反序列化后为 <see cref="JsonElement"/> 或 <see cref="TypeWrappedValue"/> 的 JSON 表示，
+        /// 调用方根据方法返回类型进行反序列化。
         /// </summary>
-        public string ResultTypeName { get; set; }
+        public object Result { get; set; }
 
         /// <summary>
-        /// 返回值的 JSON 序列化字符串。无返回值时为 null。
+        /// 需要回写到客户端的参数列表。
         /// </summary>
-        public string ResultJson { get; set; }
+        public IList<OutputArgument> WriteBackArguments { get; set; } = Array.Empty<OutputArgument>();
 
         /// <summary>
-        /// 远程抛出异常的类型全名。仅当 <see cref="Success"/> 为 false 时有值。
+        /// 远程抛出异常的类型全名。
         /// </summary>
         public string ErrorType { get; set; }
 
@@ -83,16 +84,10 @@ namespace LiteOrm.Service
         /// 远程异常堆栈。
         /// </summary>
         public string ErrorStackTrace { get; set; }
-
-        /// <summary>
-        /// 需要回写到客户端的参数列表。每个元素对应请求 <see cref="RemoteInvocationRequest.Arguments"/> 中的一个参数（按索引）。
-        /// 仅当请求中标记了 <see cref="LiteOrm.Common.ArgumentOutAttribute"/> 的参数被服务端修改后才有值。
-        /// </summary>
-        public IList<OutputArgument> WriteBackArguments { get; set; } = Array.Empty<OutputArgument>();
     }
 
     /// <summary>
-    /// 远程调用回写参数项。表示服务端修改后需要同步回客户端的参数值。
+    /// 远程调用回写参数项。
     /// </summary>
     public sealed class OutputArgument
     {
@@ -102,14 +97,28 @@ namespace LiteOrm.Service
         public int ArgumentIndex { get; set; }
 
         /// <summary>
-        /// 参数类型的程序集限定名。
+        /// 回写值。反序列化后为 <see cref="JsonElement"/>，调用方根据 <see cref="IArgumentOutHandler.ReturnType"/> 进行反序列化。
         /// </summary>
-        public string TypeName { get; set; }
+        public object Value { get; set; }
+    }
+
+    /// <summary>
+    /// 类型包装值。当实际值类型与预期类型不一致时使用，携带实际类型名与值。
+    /// 序列化为 <c>{"$type":"类型名","$value":<值>}</c> 结构。
+    /// </summary>
+    public sealed class TypeWrappedValue
+    {
+        /// <summary>
+        /// 实际值类型的程序集限定名。
+        /// </summary>
+        [JsonPropertyName("$type")]
+        public string Type { get; set; }
 
         /// <summary>
-        /// 回写值的 JSON 序列化字符串（整个参数对象的序列化结果）。
+        /// 实际值。
         /// </summary>
-        public string ValueJson { get; set; }
+        [JsonPropertyName("$value")]
+        public object Value { get; set; }
     }
 
     /// <summary>
@@ -118,23 +127,14 @@ namespace LiteOrm.Service
     public static class RemoteServiceNameUtil
     {
         /// <summary>
-        /// 获取或设置是否使用类型短名（不含命名空间）生成服务名称。默认为 true。
-        /// 设为 false 时将使用 <see cref="Type.FullName"/>（包含命名空间），
-        /// 适用于客户端与服务端实体命名空间不一致或存在同名短类型需要消歧的场景。
+        /// 获取或设置是否使用短类型名作为服务名。默认为 true。
+        /// 为 false 时使用类型全名（含命名空间），避免跨程序集同名接口冲突。
         /// </summary>
         public static bool UseShortTypeName { get; set; } = true;
 
         /// <summary>
         /// 从服务接口类型生成服务名称。
-        /// 当 <see cref="UseShortTypeName"/> 为 true 时（默认）：
-        ///   - 非泛型类型返回类型短名（如 "IRemoteCalculator"）；
-        ///   - 泛型类型返回可读格式（如 "IRepository&lt;User&gt;"），类型参数使用短名。
-        /// 当 <see cref="UseShortTypeName"/> 为 false 时：
-        ///   - 非泛型类型返回全名（如 "MyApp.Services.IRemoteCalculator"）；
-        ///   - 泛型类型参数使用全名（如 "IRepository&lt;MyApp.Models.User&gt;"）。
         /// </summary>
-        /// <param name="serviceType">服务接口类型。</param>
-        /// <returns>服务名称。</returns>
         public static string GetServiceName(Type serviceType)
         {
             if (serviceType is null) return string.Empty;
@@ -144,18 +144,10 @@ namespace LiteOrm.Service
                 var baseName = backtickIndex > 0
                     ? serviceType.Name.Substring(0, backtickIndex)
                     : serviceType.Name;
-                return baseName + "<" + string.Join(",", serviceType.GetGenericArguments().Select(GetTypeName)) + ">";
+                var argNames = serviceType.GetGenericArguments().Select(t => UseShortTypeName ? t.Name : t.FullName);
+                return baseName + "<" + string.Join(",", argNames) + ">";
             }
-            return GetTypeName(serviceType);
+            return UseShortTypeName ? serviceType.Name : serviceType.FullName;
         }
-
-        /// <summary>
-        /// 根据当前配置返回类型的名称表示。
-        /// <see cref="UseShortTypeName"/> 为 true 时返回 <see cref="Type.Name"/>；否则返回 <see cref="Type.FullName"/>。
-        /// </summary>
-        /// <param name="type">目标类型。</param>
-        /// <returns>类型名称字符串。</returns>
-        private static string GetTypeName(Type type)
-            => UseShortTypeName ? type.Name : (type.FullName ?? type.Name);
     }
 }

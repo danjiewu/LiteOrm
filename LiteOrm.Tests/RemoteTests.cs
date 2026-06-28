@@ -3,7 +3,6 @@ using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -68,13 +67,16 @@ namespace LiteOrm.Tests
             return (proxy, transport);
         }
 
-        private static RemoteInvocationResponse Ok(object result = null, Type resultType = null)
+        /// <summary>
+        /// 构建成功响应。<see cref="RemoteInvocationResponse.Result"/> 直接存储原始对象，
+        /// 客户端拦截器会通过 <see cref="System.Text.Json.JsonElement"/> 中转后按方法返回类型反序列化。
+        /// </summary>
+        private static RemoteInvocationResponse Ok(object result = null)
         {
             return new RemoteInvocationResponse
             {
                 Success = true,
-                ResultJson = result is null ? null : JsonSerializer.Serialize(result, resultType ?? result.GetType()),
-                ResultTypeName = (resultType ?? result?.GetType())?.AssemblyQualifiedName,
+                Result = result,
             };
         }
 
@@ -96,7 +98,7 @@ namespace LiteOrm.Tests
 
             Assert.Equal(1, transport.CallCount);
             Assert.Equal(nameof(IRemoteCalculator), transport.LastRequest.ServiceName);
-            Assert.Equal(nameof(IRemoteCalculator.Clear), transport.LastRequest.MethodName);
+            Assert.Equal(nameof(IRemoteCalculator.Clear), transport.LastRequest.Method.Name);
             Assert.Empty(transport.LastRequest.Arguments);
         }
 
@@ -105,23 +107,22 @@ namespace LiteOrm.Tests
         {
             var (proxy, transport) = CreateProxy(req =>
             {
-                Assert.Equal(2, req.Arguments.Count);
-                Assert.Equal(typeof(int).AssemblyQualifiedName, req.Arguments[0].TypeName);
-                Assert.Equal("3", req.Arguments[0].ValueJson);
-                Assert.Equal("4", req.Arguments[1].ValueJson);
-                return Ok(7, typeof(int));
+                Assert.Equal(2, req.Arguments.Length);
+                Assert.Equal(3, req.Arguments[0]);
+                Assert.Equal(4, req.Arguments[1]);
+                return Ok(7);
             });
 
             int result = proxy.Add(3, 4);
 
             Assert.Equal(7, result);
-            Assert.Equal(nameof(IRemoteCalculator.Add), transport.LastRequest.MethodName);
+            Assert.Equal(nameof(IRemoteCalculator.Add), transport.LastRequest.Method.Name);
         }
 
         [Fact]
         public void Sync_Return_String_Deserializes_Response()
         {
-            var (proxy, transport) = CreateProxy(_ => Ok("hello-back", typeof(string)));
+            var (proxy, transport) = CreateProxy(_ => Ok("hello-back"));
 
             string result = proxy.Echo("hello");
 
@@ -136,7 +137,7 @@ namespace LiteOrm.Tests
             await proxy.ResetAsync();
 
             Assert.Equal(1, transport.CallCount);
-            Assert.Equal(nameof(IRemoteCalculator.ResetAsync), transport.LastRequest.MethodName);
+            Assert.Equal(nameof(IRemoteCalculator.ResetAsync), transport.LastRequest.Method.Name);
         }
 
         [Fact]
@@ -145,20 +146,20 @@ namespace LiteOrm.Tests
             var (proxy, transport) = CreateProxy(req =>
             {
                 // CancellationToken 被过滤，只剩两个 int 参数
-                Assert.Equal(2, req.Arguments.Count);
-                return Ok(42, typeof(int));
+                Assert.Equal(2, req.Arguments.Length);
+                return Ok(42);
             });
 
             int result = await proxy.MultiplyAsync(6, 7);
 
             Assert.Equal(42, result);
-            Assert.Equal(nameof(IRemoteCalculator.MultiplyAsync), transport.LastRequest.MethodName);
+            Assert.Equal(nameof(IRemoteCalculator.MultiplyAsync), transport.LastRequest.Method.Name);
         }
 
         [Fact]
         public async Task CancellationToken_Is_Filtered_From_Arguments_But_Passed_To_Transport()
         {
-            var (proxy, transport) = CreateProxy(_ => Ok("hi", typeof(string)));
+            var (proxy, transport) = CreateProxy(_ => Ok("hi"));
 
             using var cts = new CancellationTokenSource();
             string result = await proxy.GreetAsync("world", cts.Token);
@@ -166,8 +167,7 @@ namespace LiteOrm.Tests
             Assert.Equal("hi", result);
             // CancellationToken 不应出现在序列化参数中
             Assert.Single(transport.LastRequest.Arguments);
-            Assert.Equal(typeof(string).AssemblyQualifiedName, transport.LastRequest.Arguments[0].TypeName);
-            Assert.Equal("\"world\"", transport.LastRequest.Arguments[0].ValueJson);
+            Assert.Equal("world", transport.LastRequest.Arguments[0]);
             // CancellationToken 应被传递给 InvokeAsync
             Assert.Equal(cts.Token, transport.LastCancellationToken);
         }
@@ -175,7 +175,7 @@ namespace LiteOrm.Tests
         [Fact]
         public async Task CancellationToken_Default_Passed_As_None_When_No_Token_Parameter()
         {
-            var (proxy, transport) = CreateProxy(_ => Ok(42, typeof(int)));
+            var (proxy, transport) = CreateProxy(_ => Ok(42));
 
             await proxy.MultiplyAsync(6, 7);
 
@@ -252,7 +252,7 @@ namespace LiteOrm.Tests
             var stub = new StubTransport(req =>
             {
                 tcs.TrySetResult(req);
-                return Ok(5, typeof(int));
+                return Ok(5);
             });
 
             var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
@@ -272,7 +272,7 @@ namespace LiteOrm.Tests
 
                 Assert.Equal(5, result);
                 var captured = await tcs.Task;
-                Assert.Equal(nameof(IRemoteCalculator.MultiplyAsync), captured.MethodName);
+                Assert.Equal(nameof(IRemoteCalculator.MultiplyAsync), captured.Method.Name);
             }
             finally
             {
