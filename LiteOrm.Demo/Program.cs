@@ -65,6 +65,9 @@ using (var scope = host.Services.CreateScope())
 
     // 9. CTE 公共表表达式演示 (9.1: 基础CTE、9.2: 带过滤与UNION复用、9.3: 聚合查询)
     await CommonTableExprDemo.RunAllAsync(scope.ServiceProvider);
+
+    // 10. 远程服务调用演示 (AddRemoteServiceGenerator：从配置读取远程地址、工厂代理、远程调用)
+    await RemoteServiceDemo.RunAsync();
 }
 
 

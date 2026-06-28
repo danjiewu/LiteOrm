@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\LiteOrm\LiteOrm.csproj" />
     <ProjectReference Include="..\LiteOrm.Common\LiteOrm.Common.csproj" />
+    <ProjectReference Include="..\LiteOrm.Remote\LiteOrm.Remote.csproj" />
   </ItemGroup>
 
   <ItemGroup>

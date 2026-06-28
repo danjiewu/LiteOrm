@@ -373,12 +373,81 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 注册服务生成器，将接口获取服务通过动态代理转换为从 <see cref="IServiceProvider"/> 获取远程服务
+        /// 手动将单个服务接口注册为远程代理。
         /// </summary>
-        /// <typeparam name="TService">获取服务的接口，提供返回服务的属性或方法</typeparam>
+        /// <typeparam name="TService">远程服务接口类型。</typeparam>
+        /// <param name="services">服务集合。</param>
+        /// <param name="lifetime">服务生命周期，默认为 <see cref="Lifetime.Scoped"/>。</param>
+        /// <returns>返回修改后的服务集合以支持链式调用。</returns>
+        /// <remarks>
+        /// 创建无目标对象的接口代理，所有方法调用由 <see cref="RemoteServiceInvokeInterceptor"/>
+        /// 拦截并通过 <see cref="IRemoteServiceTransport"/> 转发到远程服务端。
+        /// <para>
+        /// 与 <see cref="AddRemoteServiceGenerator{TService}"/> 不同，本方法注册的是单个业务服务接口本身
+        /// （如 <c>IUserService</c>），解析时直接返回可调用远程服务的代理实例；
+        /// 而 <see cref="AddRemoteServiceGenerator{TService}"/> 注册的是返回服务的工厂接口
+        /// （如 <c>RemoteServiceFactory</c>），访问其属性时由
+        /// <see cref="RemoteServiceGenerateInterceptor"/> 从 DI 容器解析对应服务。
+        /// </para>
+        /// <para>
+        /// 使用示例：
+        /// <code>
+        /// services.AddRemoteService&lt;IUserService&gt;()
+        ///         .AddRemoteService&lt;ISalesService&gt;();
+        /// var userService = sp.GetRequiredService&lt;IUserService&gt;();
+        /// await userService.GetByUserNameAsync("alice");
+        /// </code>
+        /// </para>
+        /// </remarks>
+        public static IServiceCollection AddRemoteService<TService>(
+            this IServiceCollection services,
+            Lifetime lifetime = Lifetime.Scoped)
+            where TService : class
+        {
+            var lifetimeDescriptor = lifetime switch
+            {
+                Lifetime.Singleton => ServiceLifetime.Singleton,
+                Lifetime.Scoped => ServiceLifetime.Scoped,
+                Lifetime.Transient => ServiceLifetime.Transient,
+                _ => ServiceLifetime.Transient,
+            };
+            var serviceDescriptor = new ServiceDescriptor(typeof(TService),
+                sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget<TService>(
+                    sp.GetRequiredService<RemoteServiceInvokeInterceptor>().ToInterceptor()),
+                lifetimeDescriptor);
+            services.Add(serviceDescriptor);
+            return services;
+        }
+
+        /// <summary>
+        /// 注册服务生成器，将接口获取服务通过动态代理转换为从 <see cref="IServiceProvider"/> 获取远程服务。
+        /// 同时自动扫描工厂接口所有属性与方法的返回类型，将其中未注册的接口类型自动注册为远程代理。
+        /// </summary>
+        /// <typeparam name="TService">获取服务的工厂类，提供返回服务的属性或方法</typeparam>
         /// <param name="services">服务集合。</param>
         /// <param name="lifetime">服务生命周期。</param>
         /// <returns>返回修改后的服务集合以支持链式调用。</returns>
+        /// <remarks>
+        /// <para>
+        /// 工厂接口（如 <c>RemoteServiceFactory</c>）的每个属性/方法返回一个业务服务接口，
+        /// <see cref="RemoteServiceGenerateInterceptor"/> 访问属性时通过
+        /// <c>ServiceProvider.GetRequiredService(返回类型)</c> 解析对应服务。
+        /// </para>
+        /// <para>
+        /// 本方法自动扫描 <typeparamref name="TService"/> 的所有属性与方法返回类型，
+        /// 将满足以下条件的类型自动注册为远程代理（通过 <see cref="RemoteServiceInvokeInterceptor"/> 转发）：
+        /// 1. 为接口类型；
+        /// 2. 命名空间不属于 <c>System</c>；
+        /// 3. 未在 DI 容器中注册（避免覆盖手动注册）。
+        /// </para>
+        /// <para>
+        /// 使用后无需再手动调用 <see cref="AddRemoteService{TService}"/> 注册各业务接口：
+        /// <code>
+        /// services.AddRemoteServiceGenerator&lt;RemoteServiceFactory&gt;();
+        /// // IUserService、ISalesService 等已自动注册为远程代理
+        /// </code>
+        /// </para>
+        /// </remarks>
         public static IServiceCollection AddRemoteServiceGenerator<TService>(
             this IServiceCollection services,
             Lifetime lifetime = Lifetime.Scoped)
@@ -395,7 +464,65 @@ namespace LiteOrm
                 sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget<TService>(sp.GetRequiredService<RemoteServiceGenerateInterceptor>()),
                 lifetimeDescriptor);
             services.Add(serviceDescriptor);
+
+            // 自动扫描工厂接口的属性与方法返回类型，注册为远程代理
+            AutoRegisterRemoteServices(services, typeof(TService), lifetimeDescriptor);
+
             return services;
+        }
+
+        /// <summary>
+        /// 扫描工厂接口的所有属性与方法返回类型，将未注册的接口类型自动注册为远程代理。
+        /// </summary>
+        /// <param name="services">服务集合。</param>
+        /// <param name="factoryType">工厂接口类型。</param>
+        /// <param name="lifetimeDescriptor">服务生命周期。</param>
+        private static void AutoRegisterRemoteServices(
+            IServiceCollection services,
+            Type factoryType,
+            ServiceLifetime lifetimeDescriptor)
+        {
+            var serviceTypes = new HashSet<Type>();
+
+            // 从属性收集返回类型
+            foreach (var prop in factoryType.GetProperties())
+            {
+                CollectRemoteServiceType(prop.PropertyType, serviceTypes);
+            }
+
+            // 从方法收集返回类型（排除返回 void 的方法）
+            foreach (var method in factoryType.GetMethods())
+            {
+                if (method.ReturnType != typeof(void))
+                    CollectRemoteServiceType(method.ReturnType, serviceTypes);
+            }
+
+            // 注册未注册的服务接口为远程代理
+            foreach (var serviceType in serviceTypes)
+            {
+                if (services.Any(d => d.ServiceType == serviceType))
+                    continue;
+
+                var capturedType = serviceType;
+                services.Add(new ServiceDescriptor(serviceType,
+                    sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget(
+                        capturedType,
+                        sp.GetRequiredService<RemoteServiceInvokeInterceptor>().ToInterceptor()),
+                    lifetimeDescriptor));
+            }
+        }
+
+        /// <summary>
+        /// 判断类型是否为可注册的远程服务接口，若满足条件则加入集合。
+        /// 条件：为接口、命名空间不属于 System。
+        /// </summary>
+        private static void CollectRemoteServiceType(Type type, HashSet<Type> serviceTypes)
+        {
+            if (type is null) return;
+            if (!type.IsInterface) return;
+            var ns = type.Namespace ?? string.Empty;
+            if (ns == "System" || ns.StartsWith("System.")) return;
+            serviceTypes.Add(type);
         }
     }
 }
