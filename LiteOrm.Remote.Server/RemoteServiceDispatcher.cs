@@ -87,8 +87,8 @@ namespace LiteOrm.Remote.Server
                     return response;
                 }
 
-                // 3. 匹配方法：优先使用 Method（经 ParseRequest 或直连测试设置），否则通过方法名查找
-                method = request.Method ?? ResolveMethod(serviceType, request.Method?.Name);
+                // 3. 匹配方法
+                method = request.Method;
                 if (method is null)
                 {
                     response.Success = false;

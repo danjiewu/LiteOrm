@@ -54,6 +54,12 @@ namespace LiteOrm.Remote
         public static int MaxExpandedLogLength { get; set; } = 10;
 
         private static readonly ConcurrentDictionary<(Type TargetType, MethodInfo Method), ServiceDescription> _methodDescriptions = new();
+        /// <summary>
+        /// 代理类型 → 推断的服务接口类型缓存。<see cref="IInvocation.TargetType"/> 在
+        /// <c>CreateInterfaceProxyWithoutTarget</c> 场景下为 null，此时需从代理对象实现的接口中
+        /// 推断最派生的服务接口（叶子接口），避免回退到方法声明所在的基接口。
+        /// </summary>
+        private static readonly ConcurrentDictionary<Type, Type> _proxyServiceTypeCache = new();
         private static readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
@@ -437,7 +443,7 @@ namespace LiteOrm.Remote
         /// <returns>远程调用请求</returns>
         protected virtual RemoteInvocationRequest BuildRequest(IInvocation invocation)
         {
-            var serviceType = invocation.TargetType ?? invocation.Method.DeclaringType;
+            var serviceType = GetServiceType(invocation);
             var method = invocation.Method;
             var parameters = method.GetParameters();
             var arguments = invocation.Arguments ?? Array.Empty<object>();
@@ -663,7 +669,7 @@ namespace LiteOrm.Remote
             return new ServiceExceptionContext(
                 exception,
                 invocation.InvocationTarget,
-                invocation.TargetType ?? invocation.Method.DeclaringType,
+                GetServiceType(invocation),
                 serviceDesc.ServiceName,
                 method,
                 invocation.Arguments?.ToArray() ?? Array.Empty<object>(),
@@ -884,7 +890,7 @@ namespace LiteOrm.Remote
         /// <returns>服务描述对象</returns>
         protected virtual ServiceDescription GetDescription(IInvocation invocation)
         {
-            return _methodDescriptions.GetOrAdd((invocation.TargetType ?? invocation.Method.DeclaringType, invocation.Method), _ =>
+            return _methodDescriptions.GetOrAdd((GetServiceType(invocation), invocation.Method), _ =>
             {
                 var desc = new ServiceDescription();
                 desc.LoadFrom(invocation);
@@ -892,6 +898,39 @@ namespace LiteOrm.Remote
             });
         }
         #endregion
+
+        /// <summary>
+        /// 解析当前调用所属的服务接口类型。
+        /// <para>
+        /// 优先使用 <see cref="IInvocation.TargetType"/>；
+        /// 当其为 null（<c>CreateInterfaceProxyWithoutTarget</c> 拦截继承自基接口的方法时）
+        /// 从代理对象实现的接口中推断最派生的服务接口（不被其他实现接口继承的叶子接口），
+        /// 避免回退到 <see cref="MethodInfo.DeclaringType"/>（方法声明所在的基接口，如
+        /// <c>IEntityViewServiceAsync</c>），导致 ServiceName 丢失派生接口信息（如 <c>IDemoUserService</c>）。
+        /// </para>
+        /// <para>
+        /// 推断结果按代理类型缓存。无法唯一确定叶子接口时回退到 <see cref="MethodInfo.DeclaringType"/>。
+        /// </para>
+        /// </summary>
+        /// <param name="invocation">方法调用信息。</param>
+        /// <returns>解析到的服务接口类型。</returns>
+        internal static Type GetServiceType(IInvocation invocation)
+        {
+            if (invocation.TargetType is not null)
+                return invocation.TargetType;
+
+            var proxyType = invocation.Proxy.GetType();
+            return _proxyServiceTypeCache.GetOrAdd(proxyType, pt =>
+            {
+                var interfaces = pt.GetInterfaces();
+                // 叶子接口：不被代理实现的其他接口继承；排除 System 命名空间（Castle 内部接口等）
+                var candidates = interfaces
+                    .Where(i => (invocation.Method.DeclaringType.IsAssignableFrom(i) || i.IsAssignableFrom(invocation.Method.DeclaringType)) && (i.Namespace is null || !i.Namespace.StartsWith("System", StringComparison.Ordinal)))
+                    .Where(i => !interfaces.Any(other => other != i && i.IsAssignableFrom(other)))
+                    .ToList();
+                return candidates.Count > 0 ? candidates[0] : invocation.Method.DeclaringType;
+            });
+        }
     }
 
     /// <summary>
@@ -907,7 +946,7 @@ namespace LiteOrm.Remote
         /// <param name="invocation">方法调用信息</param>
         public static void LoadFrom(this ServiceDescription desc, IInvocation invocation)
         {
-            desc.ServiceName = GetServiceName(invocation.TargetType ?? invocation.Method.DeclaringType);
+            desc.ServiceName = GetServiceName(RemoteServiceInvokeInterceptor.GetServiceType(invocation));
             desc.MethodName = invocation.Method.Name;
 
             // 日志特性
