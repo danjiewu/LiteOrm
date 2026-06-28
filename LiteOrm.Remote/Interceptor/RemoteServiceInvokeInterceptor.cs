@@ -582,12 +582,13 @@ namespace LiteOrm.Remote
         protected virtual void LogBeforeInvoke(IInvocation invocation)
         {
             var serviceDesc = GetDescription(invocation);
-            if (_logger.IsEnabled((LogLevel)serviceDesc.LogLevel))
+            LogLevel level = GetLogLevel(serviceDesc.LogLevel);
+            if (_logger.IsEnabled(level))
             {
                 var argsLog = (serviceDesc.LogFormat & LogFormat.Args) == LogFormat.Args
                     ? GetLogString(GetLogArgs(invocation)) : null;
 
-                _logger.Log((LogLevel)serviceDesc.LogLevel,
+                _logger.Log(level,
                     "<Invoke>{Service}.{Method}({Args})",
                     serviceDesc.ServiceName, serviceDesc.MethodName, argsLog);
             }
@@ -602,14 +603,15 @@ namespace LiteOrm.Remote
         protected virtual void LogAfterInvoke(IInvocation invocation, object result, TimeSpan elapsedTime)
         {
             var serviceDesc = GetDescription(invocation);
-            if (_logger.IsEnabled((LogLevel)serviceDesc.LogLevel))
+            LogLevel level = GetLogLevel(serviceDesc.LogLevel);
+            if (_logger.IsEnabled(level))
             {
                 string returnLog = null;
                 if ((serviceDesc.LogFormat & LogFormat.ReturnValue) == LogFormat.ReturnValue)
                 {
                     returnLog = GetLogString(result, 0);
                 }
-                _logger.Log((LogLevel)serviceDesc.LogLevel,
+                _logger.Log(level,
                     "<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
                      serviceDesc.ServiceName, serviceDesc.MethodName,
                     elapsedTime.TotalSeconds, returnLog);
@@ -619,6 +621,20 @@ namespace LiteOrm.Remote
                 _logger.LogWarning("<Slow>{Service}.{Method} took {Duration} seconds",
                     serviceDesc.ServiceName, serviceDesc.MethodName, elapsedTime.TotalSeconds);
             }
+        }
+
+        static LogLevel GetLogLevel(ServiceLogLevel level)
+        {
+            return level switch
+            {
+                ServiceLogLevel.Trace => LogLevel.Trace,
+                ServiceLogLevel.Debug => LogLevel.Debug,
+                ServiceLogLevel.Information => LogLevel.Information,
+                ServiceLogLevel.Warning => LogLevel.Warning,
+                ServiceLogLevel.Error => LogLevel.Error,
+                ServiceLogLevel.Critical => LogLevel.Critical,
+                _ => LogLevel.None,
+            };
         }
 
         /// <summary>

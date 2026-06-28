@@ -72,7 +72,7 @@ namespace LiteOrm.Demo.Demos
                     }
                 };
 
-                int affected = await userSvc.UpdateAsync(update);
+                int affected = await userSvc.UpdateAllAsync(update);
 
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
@@ -111,7 +111,7 @@ namespace LiteOrm.Demo.Demos
                 var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
                     .Set(("Age", Const(35)));
 
-                int affected = await userSvc.UpdateAsync(update);
+                int affected = await userSvc.UpdateAllAsync(update);
 
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
@@ -150,7 +150,7 @@ namespace LiteOrm.Demo.Demos
                 var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Carol")
                     .Set(("Age", Prop("Age") + Const(5)));
 
-                int affected = await userSvc.UpdateAsync(update);
+                int affected = await userSvc.UpdateAllAsync(update);
 
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
@@ -189,7 +189,7 @@ namespace LiteOrm.Demo.Demos
                 var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
                     .Set(("UserName", Func("CONCAT", Prop("UserName"), Const("_v2"))));
 
-                int affected = await userSvc.UpdateAsync(update);
+                int affected = await userSvc.UpdateAllAsync(update);
 
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
@@ -242,7 +242,7 @@ namespace LiteOrm.Demo.Demos
                     ))
                     .Where(Prop("UserName") == "UpdateDemo_Alice");
 
-                int affected1 = await userSvc.UpdateAsync(update1);
+                int affected1 = await userSvc.UpdateAllAsync(update1);
 
                 var sql1 = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 场景1 执行的 SQL", sql1);
@@ -267,7 +267,7 @@ namespace LiteOrm.Demo.Demos
                 var update2 = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Carol")
                     .Set(("DeptId", subDept.AsValue()));
 
-                int affected2 = await userSvc.UpdateAsync(update2);
+                int affected2 = await userSvc.UpdateAllAsync(update2);
 
                 var sql2 = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 场景2 执行的 SQL", sql2);
@@ -316,7 +316,7 @@ namespace LiteOrm.Demo.Demos
                         ("CreateTime", Const(DateTime.Now))
                     );
 
-                int affected = await userSvc.UpdateAsync(update);
+                int affected = await userSvc.UpdateAllAsync(update);
 
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);

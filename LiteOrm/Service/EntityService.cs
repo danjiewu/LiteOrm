@@ -371,7 +371,7 @@ namespace LiteOrm.Service
         /// <param name="expr">删除条件表达式，用于筛选要删除的记录。</param>
         /// <param name="tableArgs">表名参数，用于支持分表场景。</param>
         /// <returns>删除的记录数。</returns>
-        public virtual int Delete(LogicExpr expr, params string[] tableArgs)
+        public virtual int DeleteAll(LogicExpr expr, params string[] tableArgs)
         {
             return ObjectDAO.WithArgs(tableArgs).Delete(expr);
         }
@@ -386,7 +386,7 @@ namespace LiteOrm.Service
         /// <param name="expr">更新表达式，包含更新的字段和条件。</param>
         /// <param name="tableArgs">表名参数，用于支持分表场景。</param>
         /// <returns>更新的记录数。</returns>
-        public virtual int Update(UpdateExpr expr, params string[] tableArgs)
+        public virtual int UpdateAll(UpdateExpr expr, params string[] tableArgs)
         {
             return ObjectDAO.WithArgs(tableArgs).Update(expr);
         }
@@ -591,9 +591,9 @@ namespace LiteOrm.Service
         /// <param name="expr">删除条件表达式。</param>
         /// <param name="tableArgs">表名参数。</param>
         /// <returns>删除的记录数。</returns>
-        int IEntityService.Delete(LogicExpr expr, params string[] tableArgs)
+        int IEntityService.DeleteAll(LogicExpr expr, params string[] tableArgs)
         {
-            return Delete(expr, tableArgs);
+            return DeleteAll(expr, tableArgs);
         }
 
         /// <summary>
@@ -715,9 +715,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，任务结果为删除的记录数。</returns>
-        async Task<int> IEntityServiceAsync.DeleteAsync(LogicExpr expr, string[] tableArgs, CancellationToken cancellationToken)
+        async Task<int> IEntityServiceAsync.DeleteAllAsync(LogicExpr expr, string[] tableArgs, CancellationToken cancellationToken)
         {
-            return await DeleteAsync(expr, tableArgs, cancellationToken);
+            return await DeleteAllAsync(expr, tableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -826,7 +826,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>受影响的行数。</returns>
-        public async Task<int> DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async Task<int> DeleteAllAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await ObjectDAO.WithArgs(tableArgs).DeleteAsync(expr, cancellationToken);
         }
@@ -838,7 +838,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，任务结果包含更新的记录数。</returns>
-        public async Task<int> UpdateAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async Task<int> UpdateAllAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await ObjectDAO.WithArgs(tableArgs).UpdateAsync(expr, cancellationToken);
         }

@@ -62,12 +62,12 @@ namespace LiteOrm.Remote
             => _proxy.DeleteIDAsync(id, tableArgs, cancellationToken);
 
         /// <inheritdoc />
-        public Task<int> DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
-            => _proxy.DeleteAsync(expr, tableArgs, cancellationToken);
+        public Task<int> DeleteAllAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+            => _proxy.DeleteAllAsync(expr, tableArgs, cancellationToken);
 
         /// <inheritdoc />
-        public Task<int> UpdateAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
-            => _proxy.UpdateAsync(expr, tableArgs, cancellationToken);
+        public Task<int> UpdateAllAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+            => _proxy.UpdateAllAsync(expr, tableArgs, cancellationToken);
 
         /// <inheritdoc />
         public Task BatchInsertAsync([IdentityOut(Mode = ArgumentMode.Collection)] IEnumerable<T> entities, CancellationToken cancellationToken = default)

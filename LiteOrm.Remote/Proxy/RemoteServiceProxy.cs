@@ -54,10 +54,10 @@ namespace LiteOrm.Remote
         public bool DeleteID(object id, params string[] tableArgs) => _proxy.DeleteID(id, tableArgs);
 
         /// <inheritdoc />
-        public int Delete(LogicExpr expr, params string[] tableArgs) => _proxy.Delete(expr, tableArgs);
+        public int DeleteAll(LogicExpr expr, params string[] tableArgs) => _proxy.DeleteAll(expr, tableArgs);
 
         /// <inheritdoc />
-        public int Update(UpdateExpr expr, params string[] tableArgs) => _proxy.Update(expr, tableArgs);
+        public int UpdateAll(UpdateExpr expr, params string[] tableArgs) => _proxy.UpdateAll(expr, tableArgs);
 
         /// <inheritdoc />
         public void BatchInsert([IdentityOut(Mode = ArgumentMode.Collection)] IEnumerable<T> entities) => _proxy.BatchInsert(entities);

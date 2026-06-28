@@ -38,7 +38,7 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user3, TestContext.Current.CancellationToken);
 
             var deleteExpr = Expr.Prop("Name") == "DeleteTest2";
-            var deleteResult = await service.DeleteAsync(deleteExpr, cancellationToken: TestContext.Current.CancellationToken);
+            var deleteResult = await service.DeleteAllAsync(deleteExpr, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.True(deleteResult > 0);
 
@@ -61,7 +61,7 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user3, TestContext.Current.CancellationToken);
 
             var deleteExpr = (Expr.Prop("Name") == "AndDelete1").And(Expr.Prop("Age") == 25);
-            var deleteResult = await service.DeleteAsync(deleteExpr, cancellationToken: TestContext.Current.CancellationToken);
+            var deleteResult = await service.DeleteAllAsync(deleteExpr, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(1, deleteResult);
 
@@ -83,7 +83,7 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user3, TestContext.Current.CancellationToken);
 
             var deleteExpr = (Expr.Prop("Age") <= 25).Or(Expr.Prop("Age") >= 40);
-            var deleteResult = await service.DeleteAsync(deleteExpr, cancellationToken: TestContext.Current.CancellationToken);
+            var deleteResult = await service.DeleteAllAsync(deleteExpr, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(2, deleteResult);
 
@@ -105,7 +105,7 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user3, TestContext.Current.CancellationToken);
 
             var deleteExpr = (Expr.Prop("Age") == 30).Not();
-            var deleteResult = await service.DeleteAsync(deleteExpr, cancellationToken: TestContext.Current.CancellationToken);
+            var deleteResult = await service.DeleteAllAsync(deleteExpr, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(2, deleteResult);
 
@@ -132,7 +132,7 @@ namespace LiteOrm.Tests
             var updateExpr = new UpdateExpr(new TableExpr(typeof(TestUser)), Expr.Prop("Name") == "UpdateTest1");
             updateExpr.Set(("Age", (ValueTypeExpr)Expr.Const(25)));
 
-            var updateResult = await service.UpdateAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
+            var updateResult = await service.UpdateAllAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.True(updateResult > 0);
 
@@ -156,7 +156,7 @@ namespace LiteOrm.Tests
                 ("Age", (ValueTypeExpr)Expr.Const(99))
             );
 
-            var updateResult = await service.UpdateAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
+            var updateResult = await service.UpdateAllAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.True(updateResult > 0);
 
@@ -180,7 +180,7 @@ namespace LiteOrm.Tests
                 (Expr.Prop("Name") == "AndUpdate1").And(Expr.Prop("Age") == 25));
             updateExpr.Set(("Age", (ValueTypeExpr)Expr.Const(50)));
 
-            var updateResult = await service.UpdateAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
+            var updateResult = await service.UpdateAllAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(1, updateResult);
 
@@ -208,7 +208,7 @@ namespace LiteOrm.Tests
                 (Expr.Prop("Age") <= 20).Or(Expr.Prop("Age") >= 30));
             updateExpr.Set(("Age", (ValueTypeExpr)Expr.Const(99)));
 
-            var updateResult = await service.UpdateAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
+            var updateResult = await service.UpdateAllAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(2, updateResult);
 

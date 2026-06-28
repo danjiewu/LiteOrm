@@ -144,12 +144,12 @@ namespace LiteOrm.Common.UnitTests
         public async Task DeleteAsync_WithPredicate_ForwardsConvertedExpression()
         {
             var service = new Mock<IEntityServiceAsync<TestEntity>>();
-            service.Setup(s => s.DeleteAsync(It.IsAny<LogicExpr>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>())).ReturnsAsync(2);
+            service.Setup(s => s.DeleteAllAsync(It.IsAny<LogicExpr>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>())).ReturnsAsync(2);
 
             var result = await service.Object.DeleteAsync(x => x.Id > 10, new[] { "Users" }, CancellationToken.None);
 
             Assert.Equal(2, result);
-            service.Verify(s => s.DeleteAsync(It.IsAny<LogicExpr>(), It.Is<string[]>(x => x.Length == 1 && x[0] == "Users"), CancellationToken.None), Times.Once);
+            service.Verify(s => s.DeleteAllAsync(It.IsAny<LogicExpr>(), It.Is<string[]>(x => x.Length == 1 && x[0] == "Users"), CancellationToken.None), Times.Once);
         }
 
         [Fact]

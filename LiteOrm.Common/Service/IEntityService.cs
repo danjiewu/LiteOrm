@@ -182,7 +182,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>删除的记录数</returns>
         [ServiceMethod]
-        int Delete(LogicExpr expr, params string[] tableArgs);
+        int DeleteAll(LogicExpr expr, params string[] tableArgs);
         
         /// <summary>
         /// 根据UpdateExpr更新实体
@@ -191,7 +191,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>更新的记录数</returns>
         [ServiceMethod]
-        int Update(UpdateExpr expr, params string[] tableArgs);
+        int UpdateAll(UpdateExpr expr, params string[] tableArgs);
         /// <summary>
         /// 批量新增实体
         /// </summary>

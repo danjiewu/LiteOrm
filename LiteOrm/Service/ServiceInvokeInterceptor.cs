@@ -351,15 +351,30 @@ namespace LiteOrm.Service
         protected virtual void LogBeforeInvoke(IInvocation invocation)
         {
             var serviceDesc = GetDescription(invocation);
-            if (_logger.IsEnabled((LogLevel)serviceDesc.LogLevel))
+            LogLevel logLevel = GetLogLevel(serviceDesc.LogLevel);
+            if (_logger.IsEnabled(logLevel))
             {
                 var argsLog = (serviceDesc.LogFormat & LogFormat.Args) == LogFormat.Args
                     ? GetLogString(GetLogArgs(invocation)) : null;
 
-                _logger.Log((LogLevel)serviceDesc.LogLevel,
+                _logger.Log(logLevel,
                     "[{SessionID}]<Invoke>{Service}.{Method}({Args})", _sessionManager.SessionID,
                     serviceDesc.ServiceName, serviceDesc.MethodName, argsLog);
             }
+        }
+
+        static LogLevel GetLogLevel(ServiceLogLevel level)
+        {
+            return level switch
+            {
+                ServiceLogLevel.Trace => LogLevel.Trace,
+                ServiceLogLevel.Debug => LogLevel.Debug,
+                ServiceLogLevel.Information => LogLevel.Information,
+                ServiceLogLevel.Warning => LogLevel.Warning,
+                ServiceLogLevel.Error => LogLevel.Error,
+                ServiceLogLevel.Critical => LogLevel.Critical,
+                _ => LogLevel.None,
+            };
         }
 
         /// <summary>
@@ -371,14 +386,15 @@ namespace LiteOrm.Service
         protected virtual void LogAfterInvoke(IInvocation invocation, object result, TimeSpan elapsedTime)
         {
             var serviceDesc = GetDescription(invocation);
-            if (_logger.IsEnabled((LogLevel)serviceDesc.LogLevel))
+            LogLevel level = GetLogLevel(serviceDesc.LogLevel);
+            if (_logger.IsEnabled(level))
             {
                 string returnLog = null;
                 if ((serviceDesc.LogFormat & LogFormat.ReturnValue) == LogFormat.ReturnValue)
                 {
                     returnLog = GetLogString(result, 0);
                 }
-                _logger.Log((LogLevel)serviceDesc.LogLevel,
+                _logger.Log(level,
                     "[{SessionID}]<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
                      _sessionManager.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
                     elapsedTime.TotalSeconds, returnLog);

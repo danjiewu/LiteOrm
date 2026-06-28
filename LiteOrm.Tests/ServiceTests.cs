@@ -1030,7 +1030,7 @@ namespace LiteOrm.Tests
                 },
                 Where = Expr.Lambda<TestUser>(u => u.Name == "UpdateExprTest")
             };
-            int affected = service.Update(updateExpr);
+            int affected = service.UpdateAll(updateExpr);
             var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
@@ -1059,7 +1059,7 @@ namespace LiteOrm.Tests
                 },
                 Where = Expr.Lambda<TestUser>(u => u.Name == "UpdateExprAsyncTest")
             };
-            int affected = await service.UpdateAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
+            int affected = await service.UpdateAllAsync(updateExpr, cancellationToken: TestContext.Current.CancellationToken);
             var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
@@ -1283,7 +1283,7 @@ namespace LiteOrm.Tests
 
             var deleteByExpr = new TestUser { Name = "SyncEntityDelete_Expr", Age = 60, CreateTime = DateTime.Now };
             Assert.True(service.Insert(deleteByExpr));
-            Assert.Equal(1, service.Delete(Expr.Lambda<TestUser>(u => u.Name == "SyncEntityDelete_Expr")));
+            Assert.Equal(1, service.DeleteAll(Expr.Lambda<TestUser>(u => u.Name == "SyncEntityDelete_Expr")));
         }
 
         [Fact]

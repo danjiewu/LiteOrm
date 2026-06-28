@@ -25,7 +25,7 @@ namespace LiteOrm.Common
         public static int Delete<T>(this IEntityService<T> entityService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityService.Delete(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
+            return entityService.DeleteAll(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
         }
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace LiteOrm.Common
         public static Task<int> DeleteAsync<T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return entityService.DeleteAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
+            return entityService.DeleteAllAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
         }
 
         /// <summary>
