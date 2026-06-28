@@ -44,12 +44,21 @@ namespace LiteOrm.Remote
             using var response = await _httpClient.PostAsync(_requestUri, content, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
+#if NETSTANDARD2_0 || NETSTANDARD2_1
+                // 针对 .NET Standard 2.0、2.1 的代码路径：不使用 CancellationToken
+                var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+#else
                 var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+#endif
                 throw new RemoteTransportException(
                     $"Remote service returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}. Body: {body}");
             }
-
+#if NETSTANDARD2_0 || NETSTANDARD2_1
+            // 针对 .NET Standard 2.0、2.1 的代码路径：不使用 CancellationToken
+            var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+#else
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+#endif
             return JsonSerializer.Deserialize<RemoteInvocationResponse>(responseJson, _serializerOptions)
                 ?? throw new RemoteTransportException("Remote service returned an empty response.");
         }

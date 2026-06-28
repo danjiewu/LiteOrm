@@ -10,6 +10,9 @@
     <FileVersion>8.0.1.0</FileVersion>
     <VersionPrefix>8.0.1</VersionPrefix>
     <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
+    <Copyright>Copyright @ 2026 danjiewu</Copyright>
+    <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <PropertyGroup>
