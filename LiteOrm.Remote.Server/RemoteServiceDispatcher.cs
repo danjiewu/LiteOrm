@@ -1,4 +1,5 @@
 using LiteOrm.Common;
+using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -11,7 +12,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace LiteOrm.Service
+namespace LiteOrm.Remote.Server
 {
     /// <summary>
     /// 远程服务调用分发器。接收 <see cref="RemoteInvocationRequest"/>，解析服务与方法，

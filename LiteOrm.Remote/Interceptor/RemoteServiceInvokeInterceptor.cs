@@ -1,5 +1,6 @@
 using Castle.DynamicProxy;
 using LiteOrm.Common;
+using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -13,7 +14,8 @@ using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-namespace LiteOrm.Service
+
+namespace LiteOrm.Remote
 {
     /// <summary>
     /// 远程服务调用拦截器 - 通过 <see cref="IRemoteServiceTransport"/> 将接口方法调用转发到远程服务。
@@ -338,7 +340,7 @@ namespace LiteOrm.Service
                 if (origArg is null) continue;
 
                 // 通过 Resolver 创建处理器实例（DI 优先 + 构造函数传参）
-                var handler = ArgumentOutHandlerResolver.Resolve(entry.Attribute, _serviceProvider);
+                var handler = ArgumentOutHandlerResolver.Resolve(entry.Attribute);
                 if (handler is null) continue;
 
                 // Value 反序列化后为 JsonElement，可能含 $type 包装

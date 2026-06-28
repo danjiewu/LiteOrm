@@ -4,8 +4,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using LiteOrm.Service;
 
-namespace LiteOrm.Service
+namespace LiteOrm.Remote
 {
     /// <summary>
     /// 基于 <see cref="HttpClient"/> + System.Text.Json 的远程服务调用传输实现。

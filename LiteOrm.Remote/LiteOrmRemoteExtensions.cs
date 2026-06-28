@@ -1,21 +1,13 @@
-using Autofac;
-using Autofac.Builder;
-using Autofac.Core.Lifetime;
-using Autofac.Extensions.DependencyInjection;
-using Autofac.Extras.DynamicProxy;
 using Castle.DynamicProxy;
 using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
 using System.Reflection;
 
-namespace LiteOrm
+
+namespace LiteOrm.Remote
 {
     /// <summary>
     /// LiteOrm服务提供者扩展方法集合
@@ -90,20 +82,23 @@ namespace LiteOrm
                         "LiteOrm.Remote requires either LiteOrmOptions.Transport or LiteOrmOptions.RemoteServiceUri to be set. " +
                         "Configure one of them in RegisterLiteOrmRemote(opts => { ... }).");
                 }
-            });
 
-            // 注册远程代理注册源
-            hostBuilder = hostBuilder
-                .ConfigureContainer<ContainerBuilder>((hostContext, builder) =>
+                services.AddSingleton<RemoteServiceInvokeInterceptor>();
+                services.AddScoped<RemoteServiceGenerateInterceptor>();
+                if(options.AutoRegisterEntityServices)
                 {
-                    // 自动注册所有实体服务为远程代理（通过 IRegistrationSource 按需创建代理）
-                    if (options.AutoRegisterEntityServices)
-                    {
-                        builder.RegisterSource(new RemoteServiceProxyRegistrationSource(
-                            new[] { typeof(IEntityService<>), typeof(IEntityServiceAsync<>), typeof(IEntityViewService<>), typeof(IEntityViewServiceAsync<>) },
-                            ServiceLifetime.Scoped));
-                    }
-                });
+                    // 1. 注册 4 个开放泛型接口的具体代理实现类
+                    //    当解析 IEntityService<T>、IEntityServiceAsync<T>、IEntityViewService<T>、IEntityViewServiceAsync<T> 时，
+                    //    DI 容器自动构造对应的代理类（内部持有 RemoteServiceInvokeInterceptor 创建的动态代理）
+                    services.AddScoped(typeof(IEntityService<>), typeof(RemoteServiceProxy<>));
+                    services.AddScoped(typeof(IEntityServiceAsync<>), typeof(RemoteServiceAsyncProxy<>));
+                    services.AddScoped(typeof(IEntityViewService<>), typeof(RemoteViewServiceProxy<>));
+                    services.AddScoped(typeof(IEntityViewServiceAsync<>), typeof(RemoteViewServiceAsyncProxy<>));
+
+                    // 2. 扫描程序集，将继承自上述泛型接口的自定义接口（如 IDemoUserService）注册为远程代理
+                    AutoRegisterCustomEntityServices(services, options.Assemblies);
+                }
+            });
 
             return hostBuilder;
         }
@@ -113,6 +108,12 @@ namespace LiteOrm
         /// </summary>
         public class LiteOrmOptions
         {
+            /// <summary>
+            /// 要扫描的程序集列表（用于 <see cref="AutoRegisterEntityServices"/> 扫描自定义实体服务接口）。
+            /// 未设置时扫描所有引用的程序集。
+            /// </summary>
+            public Assembly[]? Assemblies { get; set; }
+
             /// <summary>
             /// 日志工厂，用于记录服务注册过程中的程序集扫描日志（可选）。
             /// 默认为控制台输出，最低级别为 <see cref="ServiceLogLevel.Information"/>。
@@ -144,12 +145,15 @@ namespace LiteOrm
             /// <summary>
             /// 是否自动注册所有实体服务为远程代理。默认为 false。
             /// <para>
-            /// 设置为 true 时，通过 <see cref="RemoteServiceProxyRegistrationSource"/>（Autofac IRegistrationSource）
-            /// 按需为以下接口创建远程调用动态代理（无需扫描 [Table] 特性逐个注册）：
+            /// 设置为 true 时，将完成以下注册：
             /// <list type="bullet">
-            /// <item><c>IEntityServiceAsync&lt;T&gt;</c> 的任意闭合构造（如 <c>IEntityServiceAsync&lt;User&gt;</c>）</item>
-            /// <item><c>IEntityViewServiceAsync&lt;T&gt;</c> 的任意闭合构造（如 <c>IEntityViewServiceAsync&lt;UserView&gt;</c>）</item>
-            /// <item>继承自上述泛型接口的自定义服务接口（如 <c>IDemoUserService</c>）</item>
+            /// <item>通过 <c>RegisterGeneric</c> 注册 4 个开放泛型接口的具体代理实现类：
+            /// <c>IEntityService&lt;T&gt;</c> → <see cref="RemoteServiceProxy{T}"/>、
+            /// <c>IEntityServiceAsync&lt;T&gt;</c> → <see cref="RemoteServiceAsyncProxy{T}"/>、
+            /// <c>IEntityViewService&lt;T&gt;</c> → <see cref="RemoteViewServiceProxy{T}"/>、
+            /// <c>IEntityViewServiceAsync&lt;T&gt;</c> → <see cref="RemoteViewServiceAsyncProxy{T}"/></item>
+            /// <item>扫描 <see cref="Assemblies"/>（未设置则扫描所有引用程序集），
+            /// 将继承自上述泛型接口的自定义服务接口（如 <c>IDemoUserService</c>）注册为远程代理</item>
             /// </list>
             /// </para>
             /// <para>
@@ -311,6 +315,74 @@ namespace LiteOrm
             var ns = type.Namespace ?? string.Empty;
             if (ns == "System" || ns.StartsWith("System.")) return;
             serviceTypes.Add(type);
+        }
+
+        /// <summary>
+        /// 扫描程序集，将继承自 <c>IEntityService&lt;&gt;</c>、<c>IEntityServiceAsync&lt;&gt;</c>、
+        /// <c>IEntityViewService&lt;&gt;</c> 或 <c>IEntityViewServiceAsync&lt;&gt;</c> 的自定义接口
+        /// 注册为远程代理。
+        /// <para>
+        /// 已注册的服务接口不会被覆盖。
+        /// </para>
+        /// </summary>
+        /// <param name="services">服务集合。</param>
+        /// <param name="assemblies">要扫描的程序集列表。为 null 时扫描所有引用的程序集。</param>
+        private static void AutoRegisterCustomEntityServices(IServiceCollection services, Assembly[]? assemblies)
+        {
+            var openGenerics = new[]
+            {
+                typeof(IEntityService<>),
+                typeof(IEntityServiceAsync<>),
+                typeof(IEntityViewService<>),
+                typeof(IEntityViewServiceAsync<>)
+            };
+
+            var scanAssemblies = assemblies ?? AssemblyAnalyzer.GetAllReferencedAssemblies().ToArray();
+
+            foreach (var assembly in scanAssemblies)
+            {
+                Type[] types;
+                try
+                {
+                    types = assembly.GetTypes();
+                }
+                catch (ReflectionTypeLoadException)
+                {
+                    continue;
+                }
+
+                foreach (var type in types)
+                {
+                    // 仅处理接口类型（排除开放泛型定义自身）
+                    if (!type.IsInterface || type.IsGenericTypeDefinition)
+                        continue;
+
+                    // 检查是否实现了任一开放泛型接口
+                    bool isEntityService = false;
+                    foreach (var iface in type.GetInterfaces())
+                    {
+                        if (iface.IsGenericType && openGenerics.Contains(iface.GetGenericTypeDefinition()))
+                        {
+                            isEntityService = true;
+                            break;
+                        }
+                    }
+
+                    if (!isEntityService)
+                        continue;
+
+                    // 已注册的服务不覆盖
+                    if (services.Any(d => d.ServiceType == type))
+                        continue;
+
+                    var capturedType = type;
+                    services.Add(new ServiceDescriptor(type,
+                        sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget(
+                            capturedType,
+                            sp.GetRequiredService<RemoteServiceInvokeInterceptor>().ToInterceptor()),
+                        ServiceLifetime.Scoped));
+                }
+            }
         }
     }
 }

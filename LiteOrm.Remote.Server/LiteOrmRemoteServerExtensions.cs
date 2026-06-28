@@ -6,8 +6,9 @@ using System;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using LiteOrm.Service;
 
-namespace LiteOrm.Service
+namespace LiteOrm.Remote.Server
 {
     /// <summary>
     /// 服务端注册选项。

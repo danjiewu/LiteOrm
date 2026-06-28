@@ -1,7 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
+using LiteOrm.Service;
 
-namespace LiteOrm.Service
+namespace LiteOrm.Remote
 {
     /// <summary>
     /// 远程服务调用传输层抽象。

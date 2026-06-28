@@ -1,4 +1,5 @@
 using Castle.DynamicProxy;
+using LiteOrm.Remote;
 using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

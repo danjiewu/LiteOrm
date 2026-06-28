@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace LiteOrm.Service
+namespace LiteOrm.Remote.Server
 {
     /// <summary>
     /// 远程服务类型解析器抽象。服务端通过此接口根据请求中的 ServiceName 解析目标服务接口类型。

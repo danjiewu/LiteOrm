@@ -1,4 +1,4 @@
-using LiteOrm;
+using LiteOrm.Remote;
 using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using LiteOrm.Demo.Services;
@@ -72,22 +72,19 @@ namespace LiteOrm.Demo.Demos
             // 2. 构建远程客户端主机
             //    RegisterLiteOrmRemote 完成：
             //    - 注册 IRemoteServiceTransport（基于 HttpClient 的 HttpRemoteServiceTransport）
-            //    - 配置 Autofac 容器（UseServiceProviderFactory + ConfigureContainer）
-            //    - 扫描 [AutoRegister] 类型注册到 Autofac：
-            //      RemoteServiceInvokeInterceptor、RemoteServiceGenerateInterceptor、
-            //      AttributeTableInfoProvider（作为 TableInfoProvider）、
-            //      LiteOrmRemoteInitializer（IStartable，自动设置 TableInfoProvider.Default）
-            //    - AutoRegisterEntityServices = true 通过 RemoteServiceProxyRegistrationSource
-            //      （Autofac IRegistrationSource）按需为 IEntityServiceAsync<T>、IEntityViewServiceAsync<T>
-            //      及继承自它们的自定义接口（如 IDemoUserService）创建远程代理，
-            //      无需扫描 [Table] 特性逐个注册
+            //    - 注册 RemoteServiceInvokeInterceptor、RemoteServiceGenerateInterceptor
+            //    - AutoRegisterEntityServices = true 时：
+            //      a) 通过 RegisterGeneric 注册 4 个开放泛型接口的具体代理实现类：
+            //         IEntityService<T> → RemoteServiceProxy<T>、
+            //         IEntityServiceAsync<T> → RemoteServiceAsyncProxy<T>、
+            //         IEntityViewService<T> → RemoteViewServiceProxy<T>、
+            //         IEntityViewServiceAsync<T> → RemoteViewServiceAsyncProxy<T>
+            //      b) 扫描程序集，将继承自上述泛型接口的自定义接口（如 IDemoUserService）注册为远程代理
             var host = Host.CreateDefaultBuilder()
                 .RegisterLiteOrmRemote(opts =>
                 {
                     opts.RemoteServiceUri = new Uri(remoteUri);
                     opts.RemoteServicePath = remotePath;
-                    // 自动注册所有实体服务为远程代理，包括泛型 IEntityServiceAsync<T> 和 IEntityViewServiceAsync<T>
-                    // 通过 Autofac IRegistrationSource 按需创建代理，无需扫描 [Table] 特性
                     opts.AutoRegisterEntityServices = true;
                 })
                 .ConfigureServices(services =>
