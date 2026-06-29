@@ -734,10 +734,16 @@ namespace LiteOrm.Service
                 desc.IsTransaction = transAtt.IsTransaction;
             }
 
-            // 服务特性
-            var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
-            if (serviceAtt is not null)
-                desc.IsService = serviceAtt.IsService;
+            var serviceMethodAtt = GetServiceAttribute<ServiceMethodAttribute>(invocation);
+            if (serviceMethodAtt is not null)
+                desc.IsService = serviceMethodAtt.IsService;
+            else
+            {
+                // 服务特性
+                var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
+                if (serviceAtt is not null)
+                    desc.IsService = serviceAtt.IsService;
+            }
 
             desc.ExceptionHooks = GetServiceAttributes<ExceptionHookAttribute>(invocation).ToArray();
 

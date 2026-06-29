@@ -4,6 +4,7 @@ using LiteOrm.Demo.Models;
 
 namespace LiteOrm.Demo.Services;
 
+[Service]
 public interface IDemoUserService :
     IEntityServiceAsync<DemoUser>,
     IEntityViewServiceAsync<DemoUserView>

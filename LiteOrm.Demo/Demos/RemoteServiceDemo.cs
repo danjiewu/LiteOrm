@@ -239,19 +239,25 @@ namespace LiteOrm.Demo.Demos
             await orderService.BatchUpdateAsync(customerAOrders);
             Console.WriteLine($"[BatchUpdateAsync] 批量更新 {customerAOrders.Count} 条订单状态为 Completed");
 
-            // 6.5 使用 ForEachAsync 流式遍历查询结果（适合大结果集，避免一次性加载到内存）
-            //     注意：ForEachAsync 没有 Lambda 扩展方法，需通过 Expr.Lambda 显式构造条件
+            // 6.5 远程调用不支持 ForEachAsync 流式遍历，会抛出 NotSupportedException
             Console.WriteLine("[ForEachAsync] 遍历 Customer A 的订单：");
             var visited = 0;
-            await orderService.ForEachAsync(
-                Expr.Lambda<DemoOrder>(o => o.CustomerName == "Customer A"),
-                async o =>
-                {
-                    Interlocked.Increment(ref visited);
-                    await Task.CompletedTask;
-                    Console.WriteLine($"  - 访问：OrderNo={o.OrderNo}, Status={o.Status}");
-                });
-            Console.WriteLine($"[ForEachAsync] 共访问 {visited} 条订单");
+            try
+            {
+                await orderService.ForEachAsync(
+                    Expr.Lambda<DemoOrder>(o => o.CustomerName == "Customer A"),
+                    async o =>
+                    {
+                        Interlocked.Increment(ref visited);
+                        await Task.CompletedTask;
+                        Console.WriteLine($"  - 访问：OrderNo={o.OrderNo}, Status={o.Status}");
+                    });
+                Console.WriteLine($"[ForEachAsync] 共访问 {visited} 条订单");
+            }
+            catch (NotSupportedException ex)
+            {
+                Console.WriteLine($"[ForEachAsync] 遍历失败：{ex.Message}");
+            }
 
             // 6.6 使用 Lambda 条件删除
             var deletedCount = await orderService.DeleteAsync(o => o.CustomerName == "Customer A");

@@ -238,8 +238,12 @@ namespace LiteOrm.Remote
         /// <param name="invocation">方法调用信息</param>
         private void RemoteInvokeCore(IInvocation invocation)
         {
+            var desc = GetDescription(invocation);
+            if(!desc.IsService) throw new NotSupportedException($"Method '{desc.ServiceName}.{invocation.Method.Name}' does not support remote invocation.");
+
             var method = invocation.Method;
-            var returnType = method.ReturnType;
+            var returnType = method.ReturnType;            
+
             var request = BuildRequest(invocation);
             var writeBackPlan = BuildWriteBackPlan(invocation);
             var cancellationToken = ExtractCancellationToken(invocation);
@@ -465,7 +469,7 @@ namespace LiteOrm.Remote
                 Arguments = args.ToArray(),
             };
             return request;
-        }
+        } 
 
         /// <summary>
         /// 同步调用传输层（在客户端线程上阻塞等待）。用于同步拦截路径。
@@ -991,9 +995,15 @@ namespace LiteOrm.Remote
             }
 
             // 服务特性
-            var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
-            if (serviceAtt is not null)
-                desc.IsService = serviceAtt.IsService;
+            var serviceMethodAtt = GetServiceAttribute<ServiceMethodAttribute>(invocation);
+            if (serviceMethodAtt is not null)
+                desc.IsService = serviceMethodAtt.IsService;
+            else
+            {
+                var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
+                if (serviceAtt is not null)
+                    desc.IsService = serviceAtt.IsService;
+            }
 
             desc.ExceptionHooks = GetServiceAttributes<ExceptionHookAttribute>(invocation).ToArray();
 
