@@ -1,3 +1,5 @@
+using LiteOrm.Common;
+using LiteOrm.Remote;
 using LiteOrm.Remote.Server;
 using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,7 +71,7 @@ namespace LiteOrm.Tests
             var provider = services.BuildServiceProvider();
 
             var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == ServiceNameUtil.GetServiceName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
+                name == TypeResolverHelper.GetName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
 
             var dispatcher = new RemoteServiceDispatcher(
                 provider,
@@ -225,7 +227,7 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.False(response.Success);
-            Assert.Contains("IUnknownService", response.ErrorMessage!);
+            Assert.Contains("IUnknownService", response.Error?.ErrorMessage!);
         }
 
         [Fact]
@@ -249,7 +251,7 @@ namespace LiteOrm.Tests
             var provider = services.BuildServiceProvider();
 
             var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == ServiceNameUtil.GetServiceName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
+                name == TypeResolverHelper.GetName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
 
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
@@ -257,8 +259,8 @@ namespace LiteOrm.Tests
                 Request(nameof(IRemoteCalculator.Add), 1, 2));
 
             Assert.False(response.Success);
-            Assert.Contains("deliberate", response.ErrorMessage!);
-            Assert.Equal(nameof(InvalidOperationException), response.ErrorType?.Split('.').Last());
+            Assert.Contains("deliberate", response.Error?.ErrorMessage!);
+            Assert.Equal(nameof(InvalidOperationException), response.Error?.ErrorType?.Split('.').Last());
         }
 
         private sealed class ThrowingCalculator : IRemoteCalculator
@@ -284,20 +286,20 @@ namespace LiteOrm.Tests
             var provider = services.BuildServiceProvider();
 
             var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == ServiceNameUtil.GetServiceName(typeof(IDerivedService)) ? typeof(IDerivedService) : null);
+                name == TypeResolverHelper.GetName(typeof(IDerivedService)) ? typeof(IDerivedService) : null);
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
             var method = typeof(IBaseService).GetMethod(nameof(IBaseService.BaseMethod))!;
             var request = new RemoteInvocationRequest
             {
-                ServiceName = ServiceNameUtil.GetServiceName(typeof(IDerivedService)),
+                ServiceName = TypeResolverHelper.GetName(typeof(IDerivedService)),
                 Method = method,
                 Arguments = new object[] { 42 },
             };
 
             var response = await dispatcher.InvokeAsync(request);
 
-            Assert.True(response.Success, response.ErrorMessage ?? "(no error)");
+            Assert.True(response.Success, response.Error?.ErrorMessage ?? "(no error)");
             Assert.Equal(42, response.Result);
         }
 
@@ -331,11 +333,11 @@ namespace LiteOrm.Tests
             var provider = services.BuildServiceProvider();
 
             var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == ServiceNameUtil.GetServiceName(typeof(IOverloadDerived)) ? typeof(IOverloadDerived) : null);
+                name == TypeResolverHelper.GetName(typeof(IOverloadDerived)) ? typeof(IOverloadDerived) : null);
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
             // 构造请求 JSON，模拟客户端序列化后的格式
-            var requestJson = "{\"ServiceName\":\"" + ServiceNameUtil.GetServiceName(typeof(IOverloadDerived)) +
+            var requestJson = "{\"ServiceName\":\"" + TypeResolverHelper.GetName(typeof(IOverloadDerived)) +
                               "\",\"Method\":\"InsertAsync\",\"Arguments\":[42]}";
             var request = dispatcher.ParseRequest(requestJson, _jsonOptions);
 
@@ -344,7 +346,7 @@ namespace LiteOrm.Tests
 
             var response = await dispatcher.InvokeAsync(request);
 
-            Assert.True(response.Success, response.ErrorMessage ?? "(no error)");
+            Assert.True(response.Success, response.Error?.ErrorMessage ?? "(no error)");
             Assert.True((bool)response.Result!);
         }
 

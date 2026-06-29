@@ -706,7 +706,7 @@ namespace LiteOrm.Service
         /// <param name="invocation">方法调用信息</param>
         public static void LoadFrom(this ServiceDescription desc, IInvocation invocation)
         {
-            desc.ServiceName = ServiceNameUtil.GetServiceName(invocation.TargetType);
+            desc.ServiceName = TypeResolverHelper.GetName(invocation.TargetType);
             desc.MethodName = invocation.Method.Name;
 
             // 日志特性

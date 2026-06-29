@@ -229,7 +229,7 @@ namespace LiteOrm.Tests
             var methodInfo = typeof(TInterface).GetMethod(method, BindingFlags.Public | BindingFlags.Instance);
             return new RemoteInvocationRequest
             {
-                ServiceName = ServiceNameUtil.GetServiceName(typeof(TInterface)),
+                ServiceName = TypeResolverHelper.GetName(typeof(TInterface)),
                 Method = methodInfo,
                 Arguments = args,
             };
@@ -569,7 +569,7 @@ namespace LiteOrm.Tests
             var provider = services.BuildServiceProvider();
 
             var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == ServiceNameUtil.GetServiceName(typeof(TInterface)) ? typeof(TInterface) : null);
+                name == TypeResolverHelper.GetName(typeof(TInterface)) ? typeof(TInterface) : null);
 
             var dispatcher = new RemoteServiceDispatcher(
                 provider,

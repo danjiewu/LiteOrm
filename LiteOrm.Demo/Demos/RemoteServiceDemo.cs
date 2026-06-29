@@ -133,7 +133,7 @@ namespace LiteOrm.Demo.Demos
                 catch (Exception ex)
                 {
                     // 远程服务端未运行时，调用会失败——此处仅演示客户端代码结构
-                    Console.WriteLine($"远程调用失败（远程服务端未运行时属正常现象）：{ex.Message}");
+                    Console.WriteLine($"远程调用失败：{ex.Message}");
                 }
             }
             catch

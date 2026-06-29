@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Reflection;
 
-namespace LiteOrm.Service
+namespace LiteOrm.Common
 {
     /// <summary>
     /// 通用的类型名称 ↔ <see cref="Type"/> 双向转换工具。

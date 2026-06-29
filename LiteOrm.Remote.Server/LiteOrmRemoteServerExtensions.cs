@@ -117,8 +117,11 @@ namespace LiteOrm.Remote.Server
                     var errorResponse = new RemoteInvocationResponse
                     {
                         Success = false,
-                        ErrorType = ex.GetType().FullName,
-                        ErrorMessage = $"Failed to read request body: {ex.Message}",
+                        Error = new RemoteErrorInfo
+                        {
+                            ErrorType = ex.GetType().FullName,
+                            ErrorMessage = $"Failed to read request body: {ex.Message}",
+                        }
                     };
                     await JsonSerializer.SerializeAsync(context.Response.Body, errorResponse, serializerOptions, context.RequestAborted)
                         .ConfigureAwait(false);
@@ -137,8 +140,11 @@ namespace LiteOrm.Remote.Server
                     var errorResponse = new RemoteInvocationResponse
                     {
                         Success = false,
-                        ErrorType = ex.GetType().FullName,
-                        ErrorMessage = $"Failed to parse request: {ex.Message}",
+                        Error = new RemoteErrorInfo
+                        {
+                            ErrorType = ex.GetType().FullName,
+                            ErrorMessage = $"Failed to parse request: {ex.Message}",
+                        }                        
                     };
                     await JsonSerializer.SerializeAsync(context.Response.Body, errorResponse, serializerOptions, context.RequestAborted)
                         .ConfigureAwait(false);

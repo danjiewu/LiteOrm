@@ -1,10 +1,12 @@
+using LiteOrm.Service;
 using System;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using LiteOrm.Service;
+using System.Xml.Linq;
 
 namespace LiteOrm.Remote
 {
@@ -61,6 +63,28 @@ namespace LiteOrm.Remote
 #endif
             return JsonSerializer.Deserialize<RemoteInvocationResponse>(responseJson, _serializerOptions)
                 ?? throw new RemoteTransportException("Remote service returned an empty response.");
+        }
+
+
+        public RemoteInvocationResponse ParseResponse(string json, MethodInfo method, JsonSerializerOptions options)
+        {
+            if (string.IsNullOrEmpty(json)) throw new ArgumentNullException(nameof(json));
+
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            return new RemoteInvocationResponse
+            {
+                Success = root.GetProperty("Success").GetBoolean(),
+                Error = root.TryGetProperty("Error", out var errorProp) && errorProp.ValueKind == JsonValueKind.Object
+                    ? JsonSerializer.Deserialize<RemoteErrorInfo>(errorProp.GetRawText(), options)
+                    : null,
+                OutArguments = root.TryGetProperty("OutArguments", out var outArgsProp) && outArgsProp.ValueKind == JsonValueKind.Array
+                    ? JsonSerializer.Deserialize<List<OutputArgument>>(outArgsProp.GetRawText(), options)
+                    : Array.Empty<OutputArgument>(),
+                Result = root.TryGetProperty("Result", out var resultProp) && resultProp.ValueKind != JsonValueKind.Null
+                ? RemoteInvocationRequestConverter.DeserializeTypedValue(resultProp, method.ReturnType, options) : null,
+            };
         }
     }
 

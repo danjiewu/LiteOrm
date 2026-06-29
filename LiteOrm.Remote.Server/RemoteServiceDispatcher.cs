@@ -70,8 +70,11 @@ namespace LiteOrm.Remote.Server
                 if (serviceType is null)
                 {
                     response.Success = false;
-                    response.ErrorType = nameof(ServiceException);
-                    response.ErrorMessage = $"Remote service '{request.ServiceName}' is not registered.";
+                    response.Error = new RemoteErrorInfo
+                    {
+                        ErrorType = nameof(ServiceException),
+                        ErrorMessage = $"Remote service '{request.ServiceName}' is not registered."
+                    };
                     _logger?.LogWarning("Remote service '{ServiceName}' not found by resolver.", request.ServiceName);
                     return response;
                 }
@@ -81,8 +84,11 @@ namespace LiteOrm.Remote.Server
                 if (serviceInstance is null)
                 {
                     response.Success = false;
-                    response.ErrorType = nameof(ServiceException);
-                    response.ErrorMessage = $"Service implementation for '{request.ServiceName}' ({serviceType.FullName}) is not registered in DI container.";
+                    response.Error = new RemoteErrorInfo
+                    {
+                        ErrorType = nameof(ServiceException),
+                        ErrorMessage = $"Service implementation for '{request.ServiceName}' ({serviceType.FullName}) is not registered in DI container."
+                    };
                     _logger?.LogWarning("Service implementation for '{ServiceName}' ({ServiceType}) not resolved from DI.", request.ServiceName, serviceType.FullName);
                     return response;
                 }
@@ -92,14 +98,17 @@ namespace LiteOrm.Remote.Server
                 if (method is null)
                 {
                     response.Success = false;
-                    response.ErrorType = nameof(ServiceException);
-                    response.ErrorMessage = $"Method '{request.Method?.Name}' with matching signature not found on service '{request.ServiceName}'.";
+                    response.Error = new RemoteErrorInfo
+                    {
+                        ErrorType = nameof(ServiceException),
+                        ErrorMessage = $"Method '{request.Method?.Name}' with matching signature not found on service '{request.ServiceName}'."
+                    };
                     _logger?.LogWarning("Method '{MethodName}' not found on service '{ServiceName}'.", request.Method?.Name, request.ServiceName);
                     return response;
                 }
 
                 // 4. 反序列化参数（Arguments 反序列化后为 JsonElement 或实际对象）
-                var arguments = DeserializeArguments(method, request.Arguments, cancellationToken);
+                var arguments = GetArgumentsValues(method, request.Arguments, cancellationToken);
 
                 // 5. 调用方法
                 _logger?.LogDebug("Invoking {ServiceName}.{MethodName}", request.ServiceName, method.Name);
@@ -118,17 +127,23 @@ namespace LiteOrm.Remote.Server
             {
                 var inner = tie.InnerException ?? tie;
                 response.Success = false;
-                response.ErrorType = inner.GetType().FullName;
-                response.ErrorMessage = inner.Message;
-                response.ErrorStackTrace = inner.StackTrace;
+                response.Error = new RemoteErrorInfo
+                {
+                    ErrorType = inner.GetType().FullName,
+                    ErrorMessage = inner.Message,
+                    ErrorStackTrace = inner.StackTrace
+                };
                 _logger?.LogError(inner, "Remote service '{ServiceName}.{MethodName}' threw an exception.", request.ServiceName, method?.Name);
             }
             catch (Exception ex)
             {
                 response.Success = false;
-                response.ErrorType = ex.GetType().FullName;
-                response.ErrorMessage = ex.Message;
-                response.ErrorStackTrace = ex.StackTrace;
+                response.Error = new RemoteErrorInfo
+                {
+                    ErrorType = ex.GetType().FullName,
+                    ErrorMessage = ex.Message,
+                    ErrorStackTrace = ex.StackTrace
+                };
                 _logger?.LogError(ex, "Failed to dispatch remote call to '{ServiceName}.{MethodName}'.", request.ServiceName, method?.Name);
             }
             return response;
@@ -187,7 +202,7 @@ namespace LiteOrm.Remote.Server
                 foreach (var element in argsProp.EnumerateArray())
                 {
                     Type declaredType = paramIndex < paramTypes.Length ? paramTypes[paramIndex] : null;
-                    argList.Add(DeserializeArgumentElement(element, declaredType, options));
+                    argList.Add(RemoteInvocationRequestConverter.DeserializeTypedValue(element, declaredType, options));
                     paramIndex++;
                 }
                 arguments = argList.ToArray();
@@ -202,40 +217,13 @@ namespace LiteOrm.Remote.Server
         }
 
         /// <summary>
-        /// 反序列化单个 JSON 参数元素。含 $type → 按实际类型反序列化；否则按声明类型反序列化。
-        /// </summary>
-        private static object DeserializeArgumentElement(JsonElement element, Type declaredType, JsonSerializerOptions options)
-        {
-            if (element.ValueKind == JsonValueKind.Null)
-                return declaredType != null && declaredType.IsValueType
-                    ? Activator.CreateInstance(declaredType)
-                    : null;
-
-            // 检查 $type 包装
-            if (element.ValueKind == JsonValueKind.Object &&
-                element.TryGetProperty("$type", out var typeProp))
-            {
-                var typeName = typeProp.GetString();
-                var actualType = Type.GetType(typeName);
-                if (actualType != null && element.TryGetProperty("$value", out var valueProp))
-                    return JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, options);
-            }
-
-            // 按声明类型反序列化（若有）；否则返回原始 JsonElement
-            if (declaredType != null)
-                return JsonSerializer.Deserialize(element.GetRawText(), declaredType, options);
-
-            return element.Clone();
-        }
-
-        /// <summary>
         /// 在服务类型上按方法名查找 <see cref="MethodInfo"/>。
         /// </summary>
         private static MethodInfo? ResolveMethod(Type serviceType, string methodName)
         {
             if (string.IsNullOrEmpty(methodName)) return null;
-            var lookup = _methodCache.GetOrAdd(serviceType, BuildMethodLookup);
-            return lookup.TryGetValue(methodName, out var method) ? method : null;
+            var methodCache = _methodCache.GetOrAdd(serviceType, BuildMethodCache);
+            return methodCache.TryGetValue(methodName, out var method) ? method : null;
         }
 
         /// <summary>
@@ -243,7 +231,7 @@ namespace LiteOrm.Remote.Server
         /// 遍历 serviceType 本身及其所有基接口的公共实例方法（接口类型 <see cref="Type.GetMethods"/>
         /// 仅返回直接声明的方法，不含基接口方法，故需手动遍历继承链）。
         /// </summary>
-        private static Dictionary<string, MethodInfo> BuildMethodLookup(Type serviceType)
+        private static Dictionary<string, MethodInfo> BuildMethodCache(Type serviceType)
         {
             var lookup = new Dictionary<string, MethodInfo>(StringComparer.Ordinal);
             var unmarked = new List<MethodInfo>();
@@ -302,11 +290,9 @@ namespace LiteOrm.Remote.Server
         }
 
         /// <summary>
-        /// 反序列化请求参数为方法参数数组。
-        /// <see cref="RemoteInvocationRequest.Arguments"/> 反序列化后为 <see cref="JsonElement"/> 或实际对象，
-        /// 使用方法参数声明类型进行反序列化。
+        /// 将请求参数转换为方法参数数组。
         /// </summary>
-        private static object?[] DeserializeArguments(MethodInfo method, object[] arguments, CancellationToken cancellationToken)
+        private static object?[] GetArgumentsValues(MethodInfo method, object[] arguments, CancellationToken cancellationToken)
         {
             var parameters = method.GetParameters();
             var result = new object?[parameters.Length];
@@ -315,51 +301,11 @@ namespace LiteOrm.Remote.Server
             for (int i = 0; i < parameters.Length; i++)
             {
                 if (parameters[i].ParameterType == typeof(CancellationToken))
-                {
                     result[i] = cancellationToken;
-                    continue;
-                }
-
-                if (argIndex < arguments.Length)
-                {
-                    var arg = arguments[argIndex];
-                    var declaredType = parameters[i].ParameterType;
-                    result[i] = DeserializeArgumentValue(arg, declaredType);
-                    argIndex++;
-                }
+                else
+                    result[i] = arguments[argIndex++];
             }
             return result;
-        }
-
-        /// <summary>
-        /// 反序列化单个参数值。若为 <see cref="JsonElement"/> 则按声明类型反序列化（含 $type 包装检测）；
-        /// 若已是目标类型则直接返回。
-        /// </summary>
-        private static object? DeserializeArgumentValue(object arg, Type declaredType)
-        {
-            if (arg is null)
-                return declaredType.IsValueType ? Activator.CreateInstance(declaredType) : null;
-
-            if (arg is JsonElement element)
-            {
-                if (element.ValueKind == JsonValueKind.Null)
-                    return declaredType.IsValueType ? Activator.CreateInstance(declaredType) : null;
-
-                // 检查 $type 包装
-                if (element.ValueKind == JsonValueKind.Object &&
-                    element.TryGetProperty("$type", out var typeProp))
-                {
-                    var typeName = typeProp.GetString();
-                    var actualType = Type.GetType(typeName);
-                    if (actualType != null && element.TryGetProperty("$value", out var valueProp))
-                        return JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, _serializerOptions);
-                }
-
-                return JsonSerializer.Deserialize(element.GetRawText(), declaredType, _serializerOptions);
-            }
-
-            // 已是实际对象，直接返回
-            return arg;
         }
 
         /// <summary>
@@ -370,7 +316,7 @@ namespace LiteOrm.Remote.Server
         {
             var returnType = method.ReturnType;
 
-            if (returnType == typeof(void))
+            if (result == null || returnType == typeof(void))
                 return;
 
             if (returnType == typeof(Task))
@@ -388,24 +334,15 @@ namespace LiteOrm.Remote.Server
                 returnType = returnType.GetGenericArguments()[0];
             }
 
-            if (result is null)
-                return;
+            returnType = Nullable.GetUnderlyingType(returnType) ?? returnType;
 
-            // 实际类型与声明返回类型一致，或声明类型为 Expr → 直接设置，无需包装
-            var actualType = result.GetType();
-            if (actualType == returnType || ExprType.IsAssignableFrom(returnType))
-            {
+            if (result.GetType() == returnType ||
+                RemoteInvocationRequestConverter.IsCollectionInterface(returnType) ||
+                RemoteInvocationRequestConverter.IsPrimitiveLike(returnType) ||
+                RemoteInvocationRequestConverter.IsListOrArray(returnType))
                 response.Result = result;
-            }
             else
-            {
-                // 类型不一致 → 包装为 TypeWrappedValue
-                response.Result = new TypeWrappedValue
-                {
-                    Type = actualType.AssemblyQualifiedName,
-                    Value = result,
-                };
-            }
+                response.Result = new TypeWrappedValue(result);
         }
 
         /// <summary>
@@ -471,7 +408,7 @@ namespace LiteOrm.Remote.Server
                     writeBacks.Add(new OutputArgument
                     {
                         ArgumentIndex = argListIndex,
-                        Value = WrapIfNeeded(typedList, listType),
+                        Value = typedList,
                     });
                 }
                 else
@@ -487,7 +424,7 @@ namespace LiteOrm.Remote.Server
                     writeBacks.Add(new OutputArgument
                     {
                         ArgumentIndex = argListIndex,
-                        Value = WrapIfNeeded(returnValue, handler.ReturnType),
+                        Value = returnValue,
                     });
                 }
 
@@ -496,23 +433,6 @@ namespace LiteOrm.Remote.Server
 
             if (writeBacks.Count > 0)
                 response.OutArguments = writeBacks;
-        }
-
-        /// <summary>
-        /// 当实际类型与预期类型一致，或预期类型为 Expr → 直接返回值；
-        /// 否则包装为 <see cref="TypeWrappedValue"/>。
-        /// </summary>
-        private static object WrapIfNeeded(object value, Type expectedType)
-        {
-            if (value is null) return null;
-            var actualType = value.GetType();
-            if (actualType == expectedType || ExprType.IsAssignableFrom(expectedType))
-                return value;
-            return new TypeWrappedValue
-            {
-                Type = actualType.AssemblyQualifiedName,
-                Value = value,
-            };
         }
     }
 }

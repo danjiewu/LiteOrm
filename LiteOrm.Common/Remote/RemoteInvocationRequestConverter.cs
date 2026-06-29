@@ -1,13 +1,16 @@
+using LiteOrm.Common;
+using LiteOrm.Service;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 
-namespace LiteOrm.Service
+namespace LiteOrm.Remote
 {
     /// <summary>
     /// <see cref="RemoteInvocationRequest"/> 的自定义 JSON 转换器。
@@ -130,7 +133,7 @@ namespace LiteOrm.Service
             {
                 var argList = new System.Collections.Generic.List<object>();
                 foreach (var element in argumentsRaw.Value.EnumerateArray())
-                    argList.Add(DeserializeArgument(element, null, options));
+                    argList.Add(DeserializeTypedValue(element, null, options));
                 request.Arguments = argList.ToArray();
             }
 
@@ -157,7 +160,7 @@ namespace LiteOrm.Service
             {
                 var arg = arguments[i];
                 Type declaredType = i < paramTypes.Length ? paramTypes[i] : null;
-                WriteArgument(writer, arg, declaredType, options);
+                WriteTypedValue(writer, arg, declaredType, options);
             }
 
             writer.WriteEndArray();
@@ -177,9 +180,9 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 序列化单个参数。类型一致或 Expr 参数 → 直接序列化；类型不一致 → 包装为 $type/$value。
+        /// 序列化单个对象。类型一致或 Expr 参数 → 直接序列化；类型不一致 → 包装为 $type/$value。
         /// </summary>
-        private static void WriteArgument(Utf8JsonWriter writer, object arg, Type declaredType, JsonSerializerOptions options)
+        public static void WriteTypedValue(Utf8JsonWriter writer, object arg, Type declaredType, JsonSerializerOptions options)
         {
             if (arg is null)
             {
@@ -283,7 +286,7 @@ namespace LiteOrm.Service
         /// 判断类型是否为泛型集合接口（<c>IEnumerable&lt;&gt;</c>/<c>ICollection&lt;&gt;</c>/<c>IList&lt;&gt;</c>/
         /// <c>IReadOnlyList&lt;&gt;</c>/<c>IReadOnlyCollection&lt;&gt;</c>）。
         /// </summary>
-        private static bool IsCollectionInterface(Type type)
+        public static bool IsCollectionInterface(Type type)
         {
             if (!type.IsGenericType) return false;
             var def = type.GetGenericTypeDefinition();
@@ -291,13 +294,19 @@ namespace LiteOrm.Service
                    def == typeof(ICollection<>) ||
                    def == typeof(IList<>) ||
                    def == typeof(IReadOnlyList<>) ||
-                   def == typeof(IReadOnlyCollection<>);
+                   def == typeof(IReadOnlyCollection<>) ||
+                   def == typeof(ISet<>) ||
+#if NET5_0_OR_GREATER
+                   def == typeof(IReadOnlySet<>) ||
+#endif
+                   def == typeof(IDictionary<,>) ||
+                   def == typeof(IReadOnlyDictionary<,>);
         }
 
         /// <summary>
         /// 判断类型是否为 <see cref="List{T}"/> 或数组。
         /// </summary>
-        private static bool IsListOrArray(Type type)
+        public static bool IsListOrArray(Type type)
             => type.IsArray || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>));
 
         /// <summary>
@@ -308,7 +317,7 @@ namespace LiteOrm.Service
         /// 枚举，以及上述类型的可空（<see cref="Nullable{T}"/>）版本。
         /// </para>
         /// </summary>
-        private static bool IsPrimitiveLike(Type type)
+        public static bool IsPrimitiveLike(Type type)
         {
             if (type.IsPrimitive || type.IsEnum) return true;
             if (type == typeof(string) || type == typeof(decimal)) return true;
@@ -324,7 +333,7 @@ namespace LiteOrm.Service
         /// 反序列化单个参数。含 $type → 按实际类型反序列化；否则返回原始 <see cref="JsonElement"/>，
         /// 由服务端 dispatcher 按方法参数声明类型二次反序列化。
         /// </summary>
-        private static object DeserializeArgument(JsonElement element, Type declaredType, JsonSerializerOptions options)
+        public static object DeserializeTypedValue(JsonElement element, Type declaredType, JsonSerializerOptions options)
         {
             if (element.ValueKind == JsonValueKind.Null)
                 return declaredType != null && declaredType.IsValueType
@@ -384,8 +393,8 @@ namespace LiteOrm.Service
                     else if (element.TryGetDecimal(out decimal d)) number = d;
                     else if (element.TryGetDouble(out double dbl)) number = dbl;
                     else return false;
-                    value = number; 
-                    return true; 
+                    value = number;
+                    return true;
                 case JsonValueKind.String:
                     var s = element.GetString();
                     if (s is null) return false;
@@ -422,15 +431,15 @@ namespace LiteOrm.Service
                     if (targetType == typeof(TimeSpan) && TimeSpan.TryParse(s, out var ts)) { value = ts; return true; }
                     if (targetType == typeof(DateTime) && DateTime.TryParse(s, out var dt)) { value = dt; return true; }
                     if (targetType == typeof(DateTimeOffset) && DateTimeOffset.TryParse(s, out var dto)) { value = dto; return true; }
-                    value = s ; 
+                    value = s;
                     return true;
 
                 case JsonValueKind.True:
-                    value = true; 
-                    return true;                     
+                    value = true;
+                    return true;
 
                 case JsonValueKind.False:
-                    value = false; 
+                    value = false;
                     return true;
                 default:
                     return false;
@@ -449,35 +458,38 @@ namespace LiteOrm.Service
         /// <returns>可用于反序列化的具体类型。</returns>
         private static Type ResolveCollectionConcreteType(Type declaredType)
         {
-            var interfaces = declaredType.IsInterface ? new[] { declaredType } : declaredType.GetInterfaces();
-
-            // 优先匹配泛型集合接口，保留元素类型
-            foreach (var it in interfaces)
+            if (declaredType.IsInterface)
             {
-                if (!it.IsGenericType) continue;
-                var def = it.GetGenericTypeDefinition();
-                if (def == typeof(IEnumerable<>) ||
-                    def == typeof(ICollection<>) ||
-                    def == typeof(IList<>) ||
-                    def == typeof(IReadOnlyList<>) ||
-                    def == typeof(IReadOnlyCollection<>))
+                if (declaredType.IsGenericType)
                 {
-                    var elementType = it.GetGenericArguments()[0];
-                    return typeof(List<>).MakeGenericType(elementType);
+                    var def = declaredType.GetGenericTypeDefinition();
+                    var elementType = declaredType.GetGenericArguments();
+                    if (def == typeof(IEnumerable<>) ||
+                        def == typeof(ICollection<>) ||
+                        def == typeof(IList<>) ||
+                        def == typeof(IReadOnlyList<>) ||
+                        def == typeof(IReadOnlyCollection<>))
+                    {
+                        return typeof(List<>).MakeGenericType(elementType);
+                    }
+                    else if (def == typeof(ISet<>)
+#if NET5_0_OR_GREATER
+                        || def == typeof(IReadOnlySet<>)
+#endif
+                        )
+                    {
+                        return typeof(HashSet<>).MakeGenericType(elementType);
+                    }
+                    else if (def == typeof(IDictionary<,>) || def == typeof(IReadOnlyDictionary<,>))
+                    {
+                        return typeof(Dictionary<,>).MakeGenericType(elementType);
+                    }
                 }
-            }
-
-            // 非泛型集合接口 → List<object>
-            foreach (var it in interfaces)
-            {
-                if (it == typeof(IList) ||
-                    it == typeof(ICollection) ||
-                    it == typeof(IEnumerable))
+                else if (declaredType == typeof(IList) || declaredType == typeof(ICollection) || declaredType == typeof(IEnumerable))
                 {
                     return typeof(List<object>);
                 }
             }
-
             return declaredType;
         }
     }

@@ -86,8 +86,11 @@ namespace LiteOrm.Tests
             return new RemoteInvocationResponse
             {
                 Success = false,
-                ErrorType = errorType,
-                ErrorMessage = message,
+                Error = new RemoteErrorInfo
+                {
+                    ErrorType = errorType,
+                    ErrorMessage = message,
+                }
             };
         }
 

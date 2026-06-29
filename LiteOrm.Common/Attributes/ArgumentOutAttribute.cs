@@ -125,12 +125,21 @@ namespace LiteOrm.Common
         {
         }
 
+        /// <summary>
+        /// 初始化 <see cref="IdentityOutAttribute"/> 类的新实例，指定返回值类型。
+        /// </summary>
+        /// <param name="returnType">返回值类型。</param>
+        public IdentityOutAttribute(Type returnType)
+            : base(typeof(IdentityOutAttribute), returnType)
+        {
+        }
+
         /// <inheritdoc/>
         public object GenerateReturnValue(object argument)
         {
             if (argument is null) return null;
             var prop = ResolveIdentityProperty(argument.GetType());
-            return prop?.GetValueFast(argument);
+            return Convert.ChangeType(prop?.GetValueFast(argument), ReturnType);
         }
 
         /// <inheritdoc/>
@@ -139,6 +148,7 @@ namespace LiteOrm.Common
             if (originalArg is null || returnValue is null) return;
             var prop = ResolveIdentityProperty(originalArg.GetType());
             if (prop is null || !prop.CanWrite) return;
+            returnValue = Convert.ChangeType(returnValue, prop.PropertyType);
             prop.SetValueFast(originalArg, returnValue);
         }
 

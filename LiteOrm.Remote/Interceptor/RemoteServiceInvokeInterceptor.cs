@@ -460,7 +460,7 @@ namespace LiteOrm.Remote
 
             var request = new RemoteInvocationRequest
             {
-                ServiceName = ServiceNameUtil.GetServiceName(serviceType),
+                ServiceName = TypeResolverHelper.GetName(serviceType),
                 Method = method,
                 Arguments = args.ToArray(),
             };
@@ -554,7 +554,7 @@ namespace LiteOrm.Remote
                 throw new RemoteTransportException($"Remote service {serviceInfo} returned null response.");
             if (!response.Success)
                 throw new ServiceException(
-                    $"Remote service {serviceInfo} threw {response.ErrorType}: {response.ErrorMessage}");
+                    $"Remote service {serviceInfo} threw {response.Error?.ErrorType}: {response.Error?.ErrorMessage}");
         }
 
         /// <summary>
@@ -1025,7 +1025,7 @@ namespace LiteOrm.Remote
         /// <param name="serviceType">目标服务类型。</param>
         /// <returns>格式化后的服务名称。</returns>
         private static string GetServiceName(Type serviceType)
-            => ServiceNameUtil.GetServiceName(serviceType);
+            => TypeResolverHelper.GetName(serviceType);
         private static T GetServiceAttribute<T>(IInvocation invocation) where T : Attribute
         {
             return GetServiceAttributes<T>(invocation).FirstOrDefault();

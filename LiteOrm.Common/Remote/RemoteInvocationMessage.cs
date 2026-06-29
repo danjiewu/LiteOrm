@@ -1,3 +1,5 @@
+using LiteOrm.Common;
+using LiteOrm.Service;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,7 +7,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace LiteOrm.Service
+namespace LiteOrm.Remote
 {
     /// <summary>
     /// 远程调用请求。
@@ -71,8 +73,19 @@ namespace LiteOrm.Service
         public IList<OutputArgument> OutArguments { get; set; } = Array.Empty<OutputArgument>();
 
         /// <summary>
-        /// 远程抛出异常的类型全名。
+        /// 远程调用异常信息。仅在 <see cref="Success"/> 为 false 时返回。
         /// </summary>
+        public RemoteErrorInfo Error { get; set; }
+    }
+
+    /// <summary>
+    /// 远程调用异常信息。
+    /// </summary>
+    public sealed class RemoteErrorInfo
+    {
+        /// <summary>
+     /// 远程抛出异常的类型全名。
+     /// </summary>
         public string ErrorType { get; set; }
 
         /// <summary>
@@ -97,7 +110,7 @@ namespace LiteOrm.Service
         public int ArgumentIndex { get; set; }
 
         /// <summary>
-        /// 回写值。反序列化后为 <see cref="JsonElement"/>，调用方根据 IArgumentOutHandler.ReturnType 进行反序列化。
+        /// 回写值, 调用方根据 IArgumentOutHandler.ReturnType 进行反序列化。
         /// </summary>
         public object Value { get; set; }
     }
@@ -109,6 +122,19 @@ namespace LiteOrm.Service
     public sealed class TypeWrappedValue
     {
         /// <summary>
+        /// 初始化 <see cref="TypeWrappedValue"/> 类的新实例。
+        /// </summary>
+        public TypeWrappedValue() { }
+        /// <summary>
+        /// 初始化 <see cref="TypeWrappedValue"/> 类的新实例。
+        /// </summary>
+        /// <param name="value">需包装的值</param>
+        public TypeWrappedValue(object value)
+        {
+            Type = TypeResolverHelper.GetName(value?.GetType());
+            Value = value;
+        }
+        /// <summary>
         /// 实际值类型的程序集限定名。
         /// </summary>
         [JsonPropertyName("$type")]
@@ -119,34 +145,5 @@ namespace LiteOrm.Service
         /// </summary>
         [JsonPropertyName("$value")]
         public object Value { get; set; }
-    }
-
-    /// <summary>
-    /// 服务名称工具类。客户端与服务端共用，确保 ServiceName 生成逻辑一致。
-    /// 固定使用类型短名（不含命名空间）生成服务名称。
-    /// </summary>
-    public static class ServiceNameUtil
-    {
-        /// <summary>
-        /// 从服务接口类型生成服务名称（固定使用类型短名）。
-        /// <para>
-        /// 非泛型类型返回 <see cref="Type.Name"/>；
-        /// 泛型类型返回 <c>基名&lt;参数短名1,参数短名2,...&gt;</c>（去除反引号 arity 后缀）。
-        /// </para>
-        /// </summary>
-        public static string GetServiceName(Type serviceType)
-        {
-            if (serviceType is null) return string.Empty;
-            if (serviceType.IsGenericType)
-            {
-                int backtickIndex = serviceType.Name.IndexOf('`');
-                var baseName = backtickIndex > 0
-                    ? serviceType.Name.Substring(0, backtickIndex)
-                    : serviceType.Name;
-                var argNames = serviceType.GetGenericArguments().Select(t => t.Name);
-                return baseName + "<" + string.Join(",", argNames) + ">";
-            }
-            return serviceType.Name;
-        }
     }
 }
