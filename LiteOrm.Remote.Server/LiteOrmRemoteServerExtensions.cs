@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using LiteOrm.Common;
 using LiteOrm.Service;
 
 namespace LiteOrm.Remote.Server
@@ -43,6 +45,26 @@ namespace LiteOrm.Remote.Server
         /// 优先级高于 <see cref="ServiceTypeResolver"/>：若同时设置，工厂优先生效。
         /// </summary>
         public Func<IServiceProvider, IRemoteServiceTypeResolver>? ServiceTypeResolverFactory { get; set; }
+
+        /// <summary>
+        /// 是否自动扫描带 <see cref="ServiceAttribute"/> 特性的接口，通过 <see cref="TypeResolverHelper.Register"/>
+        /// 注册到全局名称映射。默认为 true。
+        /// <para>
+        /// 设置为 true 时，框架会扫描 <see cref="Assemblies"/>（未设置则扫描所有引用程序集）中标记了
+        /// <see cref="ServiceAttribute"/>（且 <c>IsService == true</c>）的接口，调用 <see cref="TypeResolverHelper.Register"/>
+        /// 注册名称映射。注册后 <see cref="DefaultServiceTypeResolver"/> 可通过自定义注册名优先匹配服务类型。
+        /// </para>
+        /// <para>
+        /// 若 <see cref="ServiceAttribute.Name"/> 非空，使用该名称注册；否则使用 <see cref="TypeResolverHelper.GetName"/> 生成的短名。
+        /// </para>
+        /// </summary>
+        public bool AutoRegisterEntityServices { get; set; } = true;
+
+        /// <summary>
+        /// 要扫描的程序集列表（用于 <see cref="AutoRegisterEntityServices"/> 扫描 <see cref="ServiceAttribute"/> 接口）。
+        /// 未设置时扫描所有引用的程序集。
+        /// </summary>
+        public Assembly[]? Assemblies { get; set; }
     }
 
     /// <summary>
@@ -65,6 +87,12 @@ namespace LiteOrm.Remote.Server
         {
             var options = new RemoteServerOptions();
             configure?.Invoke(options);
+
+            // 自动扫描带 [Service] 特性的接口，通过 TypeResolverHelper.Register 注册名称映射
+            if (options.AutoRegisterEntityServices)
+            {
+                AutoRegisterServiceTypes(options.Assemblies);
+            }
 
             // 注册 IRemoteServiceTypeResolver：工厂优先，否则使用实例（默认 DefaultServiceTypeResolver）
             if (options.ServiceTypeResolverFactory is not null)
@@ -158,6 +186,48 @@ namespace LiteOrm.Remote.Server
             });
 
             return endpoints;
+        }
+
+        /// <summary>
+        /// 扫描程序集，将标记了 <see cref="ServiceAttribute"/>（且 <c>IsService == true</c>）的接口
+        /// 通过 <see cref="TypeResolverHelper.Register"/> 注册到全局名称映射。
+        /// <para>
+        /// 若 <see cref="ServiceAttribute.Name"/> 非空，使用该名称注册；否则使用 <see cref="TypeResolverHelper.GetName"/> 生成的短名。
+        /// 注册后 <see cref="DefaultServiceTypeResolver"/> 的 FindType 优先返回自定义注册的类型，确保客户端与服务端 ServiceName 一致。
+        /// </para>
+        /// </summary>
+        /// <param name="assemblies">要扫描的程序集列表。为 null 时扫描所有引用的程序集。</param>
+        private static void AutoRegisterServiceTypes(Assembly[]? assemblies)
+        {
+            var scanAssemblies = assemblies ?? AssemblyAnalyzer.GetAllReferencedAssemblies().ToArray();
+
+            foreach (var assembly in scanAssemblies)
+            {
+                Type[] types;
+                try
+                {
+                    types = assembly.GetTypes();
+                }
+                catch (ReflectionTypeLoadException)
+                {
+                    continue;
+                }
+
+                foreach (var type in types)
+                {
+                    if (!type.IsInterface || type.IsGenericTypeDefinition)
+                        continue;
+
+                    var attr = type.GetCustomAttribute<ServiceAttribute>(true);
+                    if (attr is null || !attr.IsService)
+                        continue;
+
+                    var name = !string.IsNullOrEmpty(attr.Name)
+                        ? attr.Name
+                        : TypeResolverHelper.GetName(type);
+                    TypeResolverHelper.Register(name, type);
+                }
+            }
         }
     }
 }

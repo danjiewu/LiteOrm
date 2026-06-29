@@ -87,16 +87,17 @@ namespace LiteOrm.Remote
                 services.AddScoped<RemoteServiceGenerateInterceptor>();
                 if(options.AutoRegisterEntityServices)
                 {
-                    // 1. 注册 4 个开放泛型接口的具体代理实现类
+                    // 1. 扫描程序集，将带 [Service] 特性的接口通过 TypeResolverHelper.Register 注册，
+                    //    并注册为远程代理，确保客户端和服务端使用一致的 ServiceName 进行匹配
+                    AutoRegisterServiceTypes(services, options.Assemblies);
+
+                    // 2. 注册 4 个开放泛型接口的具体代理实现类
                     //    当解析 IEntityService<T>、IEntityServiceAsync<T>、IEntityViewService<T>、IEntityViewServiceAsync<T> 时，
                     //    DI 容器自动构造对应的代理类（内部持有 RemoteServiceInvokeInterceptor 创建的动态代理）
                     services.AddScoped(typeof(IEntityService<>), typeof(RemoteServiceProxy<>));
                     services.AddScoped(typeof(IEntityServiceAsync<>), typeof(RemoteServiceAsyncProxy<>));
                     services.AddScoped(typeof(IEntityViewService<>), typeof(RemoteViewServiceProxy<>));
                     services.AddScoped(typeof(IEntityViewServiceAsync<>), typeof(RemoteViewServiceAsyncProxy<>));
-
-                    // 2. 扫描程序集，将继承自上述泛型接口的自定义接口（如 IDemoUserService）注册为远程代理
-                    AutoRegisterCustomEntityServices(services, options.Assemblies);
                 }
             });
 
@@ -109,7 +110,7 @@ namespace LiteOrm.Remote
         public class LiteOrmOptions
         {
             /// <summary>
-            /// 要扫描的程序集列表（用于 <see cref="AutoRegisterEntityServices"/> 扫描自定义实体服务接口）。
+            /// 要扫描的程序集列表（用于 <see cref="AutoRegisterEntityServices"/> 扫描带 <see cref="ServiceAttribute"/> 特性的接口）。
             /// 未设置时扫描所有引用的程序集。
             /// </summary>
             public Assembly[]? Assemblies { get; set; }
@@ -143,25 +144,25 @@ namespace LiteOrm.Remote
             public IRemoteServiceTransport? Transport { get; set; }
 
             /// <summary>
-            /// 是否自动注册所有实体服务为远程代理。默认为 false。
+            /// 是否自动注册所有实体服务为远程代理。默认为 true。
             /// <para>
             /// 设置为 true 时，将完成以下注册：
             /// <list type="bullet">
-            /// <item>通过 <c>RegisterGeneric</c> 注册 4 个开放泛型接口的具体代理实现类：
+            /// <item>扫描程序集，将标记了 <see cref="ServiceAttribute"/>（且 <c>IsService == true</c>）的接口：
+            /// 通过 <see cref="TypeResolverHelper.Register"/> 注册名称映射，同时注册为远程代理</item>
+            /// <item>注册 4 个开放泛型接口的具体代理实现类：
             /// <c>IEntityService&lt;T&gt;</c> → <see cref="RemoteServiceProxy{T}"/>、
             /// <c>IEntityServiceAsync&lt;T&gt;</c> → <see cref="RemoteServiceAsyncProxy{T}"/>、
             /// <c>IEntityViewService&lt;T&gt;</c> → <see cref="RemoteViewServiceProxy{T}"/>、
             /// <c>IEntityViewServiceAsync&lt;T&gt;</c> → <see cref="RemoteViewServiceAsyncProxy{T}"/></item>
-            /// <item>扫描 <see cref="Assemblies"/>（未设置则扫描所有引用程序集），
-            /// 将继承自上述泛型接口的自定义服务接口（如 <c>IDemoUserService</c>）注册为远程代理</item>
             /// </list>
             /// </para>
             /// <para>
             /// 启用后无需手动调用 <see cref="AddRemoteService{TService}"/> 逐个注册，
-            /// 任何实体服务接口均可直接从 DI 容器解析。
+            /// 任何带 <c>[Service]</c> 特性的服务接口均可直接从 DI 容器解析。
             /// </para>
             /// </summary>
-            public bool AutoRegisterEntityServices { get; set; }
+            public bool AutoRegisterEntityServices { get; set; } = true;
         }
 
         /// <summary>
@@ -318,25 +319,20 @@ namespace LiteOrm.Remote
         }
 
         /// <summary>
-        /// 扫描程序集，将继承自 <c>IEntityService&lt;&gt;</c>、<c>IEntityServiceAsync&lt;&gt;</c>、
-        /// <c>IEntityViewService&lt;&gt;</c> 或 <c>IEntityViewServiceAsync&lt;&gt;</c> 的自定义接口
-        /// 注册为远程代理。
+        /// 扫描程序集，将标记了 <see cref="ServiceAttribute"/>（且 <c>IsService == true</c>）的接口：
+        /// <list type="number">
+        /// <item>通过 <see cref="TypeResolverHelper.Register"/> 注册到全局名称映射，确保客户端与服务端使用一致的 ServiceName</item>
+        /// <item>注册为远程代理（Castle DynamicProxy），所有方法调用由 <see cref="RemoteServiceInvokeInterceptor"/> 拦截并转发到远程服务端</item>
+        /// </list>
         /// <para>
+        /// 若 <see cref="ServiceAttribute.Name"/> 非空，使用该名称注册；否则使用 <see cref="TypeResolverHelper.GetName"/> 生成的短名。
         /// 已注册的服务接口不会被覆盖。
         /// </para>
         /// </summary>
         /// <param name="services">服务集合。</param>
         /// <param name="assemblies">要扫描的程序集列表。为 null 时扫描所有引用的程序集。</param>
-        private static void AutoRegisterCustomEntityServices(IServiceCollection services, Assembly[]? assemblies)
+        private static void AutoRegisterServiceTypes(IServiceCollection services, Assembly[]? assemblies)
         {
-            var openGenerics = new[]
-            {
-                typeof(IEntityService<>),
-                typeof(IEntityServiceAsync<>),
-                typeof(IEntityViewService<>),
-                typeof(IEntityViewServiceAsync<>)
-            };
-
             var scanAssemblies = assemblies ?? AssemblyAnalyzer.GetAllReferencedAssemblies().ToArray();
 
             foreach (var assembly in scanAssemblies)
@@ -353,28 +349,24 @@ namespace LiteOrm.Remote
 
                 foreach (var type in types)
                 {
-                    // 仅处理接口类型（排除开放泛型定义自身）
                     if (!type.IsInterface || type.IsGenericTypeDefinition)
                         continue;
 
-                    // 检查是否实现了任一开放泛型接口
-                    bool isEntityService = false;
-                    foreach (var iface in type.GetInterfaces())
-                    {
-                        if (iface.IsGenericType && openGenerics.Contains(iface.GetGenericTypeDefinition()))
-                        {
-                            isEntityService = true;
-                            break;
-                        }
-                    }
-
-                    if (!isEntityService)
+                    var attr = type.GetCustomAttribute<ServiceAttribute>(true);
+                    if (attr is null || !attr.IsService)
                         continue;
 
-                    // 已注册的服务不覆盖
+                    // 1. 注册名称映射
+                    var name = !string.IsNullOrEmpty(attr.Name)
+                        ? attr.Name
+                        : TypeResolverHelper.GetName(type);
+                    TypeResolverHelper.Register(name, type);
+
+                    // 2. 已注册的服务不覆盖
                     if (services.Any(d => d.ServiceType == type))
                         continue;
 
+                    // 3. 注册远程代理
                     var capturedType = type;
                     services.Add(new ServiceDescriptor(type,
                         sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget(
