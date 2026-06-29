@@ -59,7 +59,7 @@ namespace LiteOrm.Remote.Server
         /// <param name="services">服务集合。</param>
         /// <param name="configure">配置回调，用于设置端点路径和解析器。</param>
         /// <returns>服务集合。</returns>
-        public static IServiceCollection AddRemoteService(
+        public static IServiceCollection AddRemoteServer(
             this IServiceCollection services,
             Action<RemoteServerOptions>? configure = null)
         {
