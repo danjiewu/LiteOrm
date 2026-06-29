@@ -73,6 +73,7 @@ namespace LiteOrm.Tests
         /// <summary>
         /// 服务接口：参数级回写。
         /// </summary>
+        [Service]
         public interface IUserService
         {
             // IdentityOutAttribute：仅回写自增主键（Id），返回值类型为 long
@@ -92,6 +93,7 @@ namespace LiteOrm.Tests
         /// <summary>
         /// 服务接口：使用通用 CopyableOutAttribute 处理 ICopyable 参数。
         /// </summary>
+        [Service]
         public interface ICopyableUserService
         {
             Task CreateAsync([CopyableOut(typeof(CopyableUser))] CopyableUser user);
@@ -100,6 +102,7 @@ namespace LiteOrm.Tests
         /// <summary>
         /// 服务接口：无回写标记。
         /// </summary>
+        [Service]
         public interface ISimpleService
         {
             Task DoAsync(string name);
@@ -286,14 +289,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    OutArguments = new[]
-                    {
-                        new OutputArgument
-                        {
-                            ArgumentIndex = 0,
-                            Value = 42L,
-                        }
-                    }
+                    OutArguments = new SortedList<int, object> { [0] = 42L }
                 };
             });
 
@@ -319,14 +315,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    OutArguments = new[]
-                    {
-                        new OutputArgument
-                        {
-                            ArgumentIndex = 0,
-                            Value = 99L,
-                        }
-                    }
+                    OutArguments = new SortedList<int, object> { [0] = 99L }
                 };
             });
 
@@ -369,14 +358,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    OutArguments = new[]
-                    {
-                        new OutputArgument
-                        {
-                            ArgumentIndex = 0,
-                            Value = serverUser,
-                        }
-                    }
+                    OutArguments = new SortedList<int, object> { [0] = serverUser }
                 };
             });
 
@@ -402,14 +384,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    OutArguments = new[]
-                    {
-                        new OutputArgument
-                        {
-                            ArgumentIndex = 0,
-                            Value = serverUser,
-                        }
-                    }
+                    OutArguments = new SortedList<int, object> { [0] = serverUser }
                 };
             });
 
@@ -436,14 +411,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    OutArguments = new[]
-                    {
-                        new OutputArgument
-                        {
-                            ArgumentIndex = 0,
-                            Value = delta,
-                        }
-                    }
+                    OutArguments = new SortedList<int, object> { [0] = delta }
                 };
             });
 
@@ -468,14 +436,7 @@ namespace LiteOrm.Tests
                 return new RemoteInvocationResponse
                 {
                     Success = true,
-                    OutArguments = new[]
-                    {
-                        new OutputArgument
-                        {
-                            ArgumentIndex = 0,
-                            Value = serverUser,
-                        }
-                    }
+                    OutArguments = new SortedList<int, object> { [0] = serverUser }
                 };
             });
 
@@ -591,10 +552,9 @@ namespace LiteOrm.Tests
 
             Assert.True(response.Success);
             Assert.Single(response.OutArguments);
-            var wb = response.OutArguments[0];
-            Assert.Equal(0, wb.ArgumentIndex);
+            Assert.True(response.OutArguments.ContainsKey(0));
             // IdentityOutAttribute 仅返回 Id 值（long），而非整个 User 对象
-            Assert.Equal(123L, wb.Value);
+            Assert.Equal(123L, response.OutArguments[0]);
         }
 
         [Fact]
@@ -611,7 +571,7 @@ namespace LiteOrm.Tests
             Assert.Equal(999L, response.Result);
             Assert.Single(response.OutArguments);
             // IdentityOutAttribute 仅返回 Id 值
-            Assert.Equal(999L, response.OutArguments[0].Value);
+            Assert.Equal(999L, response.OutArguments[0]);
         }
 
         [Fact]
@@ -626,7 +586,7 @@ namespace LiteOrm.Tests
             Assert.True(response.Success);
             Assert.Single(response.OutArguments);
             // DeltaHandler 生成了 UserDelta（ReturnType != User）
-            var delta = (UserDelta)response.OutArguments[0].Value;
+            var delta = (UserDelta)response.OutArguments[0];
             Assert.Equal(88, delta.Id);
             Assert.Equal(new DateTime(2026, 5, 5), delta.CreatedAt);
         }
@@ -642,7 +602,7 @@ namespace LiteOrm.Tests
 
             Assert.True(response.Success);
             Assert.Single(response.OutArguments);
-            var written = (CopyableUser)response.OutArguments[0].Value;
+            var written = (CopyableUser)response.OutArguments[0];
             Assert.Equal(100, written.Id);
             Assert.Equal("server", written.Name);
         }
@@ -665,9 +625,8 @@ namespace LiteOrm.Tests
 
             Assert.True(response.Success);
             Assert.Single(response.OutArguments);
-            var wb = response.OutArguments[0];
             // 集合模式：返回 List<long>
-            var ids = (List<long>)wb.Value;
+            var ids = (List<long>)response.OutArguments[0];
             Assert.Equal(new long[] { 100, 101, 102 }, ids);
         }
 
@@ -687,9 +646,8 @@ namespace LiteOrm.Tests
 
             Assert.True(response.Success);
             Assert.Single(response.OutArguments);
-            var wb = response.OutArguments[0];
             // DeltaHandler.ReturnType = typeof(UserDelta)，集合模式下序列化为 List<UserDelta>
-            var deltas = (List<UserDelta>)wb.Value;
+            var deltas = (List<UserDelta>)response.OutArguments[0];
             Assert.Equal(2, deltas.Count);
             Assert.Equal(200, deltas[0].Id);
             Assert.Equal(new DateTime(2026, 8, 1), deltas[0].CreatedAt);

@@ -1,4 +1,5 @@
 using Castle.DynamicProxy;
+using LiteOrm.Common;
 using LiteOrm.Remote;
 using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,7 @@ namespace LiteOrm.Tests
         private static readonly ProxyGenerator _proxyGenerator = new ProxyGenerator();
 
         // 测试用服务接口 - 覆盖 void / 同步返回 / Task / Task<T> / CancellationToken 传递
+        [Service]
         public interface IRemoteCalculator
         {
             void Clear();

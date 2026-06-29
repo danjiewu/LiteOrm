@@ -50,9 +50,13 @@ namespace LiteOrm.Remote
     /// 远程调用响应。
     /// </summary>
     /// <remarks>
-    /// <see cref="Result"/> 与 <see cref="OutputArgument.Value"/> 为 <c>object</c> 类型，
+    /// <see cref="Result"/> 与 <see cref="OutArguments"/> 中的值为 <c>object</c> 类型，
     /// 反序列化后为 <see cref="JsonElement"/>，由调用方根据已知预期类型进行二次反序列化。
     /// 当服务端发现实际类型与预期类型不一致时，以 <see cref="TypeWrappedValue"/> 包装。
+    /// <para>
+    /// <see cref="OutArguments"/> 以参数在请求 <see cref="RemoteInvocationRequest.Arguments"/> 列表中的索引为键，
+    /// 回写值为值，按索引升序排列。
+    /// </para>
     /// </remarks>
     public sealed class RemoteInvocationResponse
     {
@@ -68,9 +72,10 @@ namespace LiteOrm.Remote
         public object Result { get; set; }
 
         /// <summary>
-        /// 需要回写到客户端的参数列表。
+        /// 需要回写到客户端的参数。键为参数在请求 <see cref="RemoteInvocationRequest.Arguments"/> 列表中的索引，
+        /// 值为回写值（反序列化后为 <see cref="JsonElement"/>，调用方根据 <c>IArgumentOutHandler.ReturnType</c> 进行二次反序列化）。
         /// </summary>
-        public IList<OutputArgument> OutArguments { get; set; } = Array.Empty<OutputArgument>();
+        public SortedList<int, object> OutArguments { get; set; } = new();
 
         /// <summary>
         /// 远程调用异常信息。仅在 <see cref="Success"/> 为 false 时返回。
@@ -97,22 +102,6 @@ namespace LiteOrm.Remote
         /// 远程异常堆栈。
         /// </summary>
         public string ErrorStackTrace { get; set; }
-    }
-
-    /// <summary>
-    /// 远程调用回写参数项。
-    /// </summary>
-    public sealed class OutputArgument
-    {
-        /// <summary>
-        /// 对应请求 <see cref="RemoteInvocationRequest.Arguments"/> 列表中的参数索引。
-        /// </summary>
-        public int ArgumentIndex { get; set; }
-
-        /// <summary>
-        /// 回写值, 调用方根据 IArgumentOutHandler.ReturnType 进行反序列化。
-        /// </summary>
-        public object Value { get; set; }
     }
 
     /// <summary>

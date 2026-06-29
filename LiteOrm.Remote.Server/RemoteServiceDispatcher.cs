@@ -348,13 +348,12 @@ namespace LiteOrm.Remote.Server
         /// <summary>
         /// 构建回写参数响应。从 <paramref name="method"/> 的参数上推算 <see cref="ArgumentOutAttribute"/> 标记，
         /// 通过 <see cref="ArgumentOutHandlerResolver"/> 创建处理器，调用 <see cref="IArgumentOutHandler.GenerateReturnValue"/>
-        /// 生成返回值并放入 <see cref="RemoteInvocationResponse.OutArguments"/>。
+        /// 生成返回值并放入 <see cref="RemoteInvocationResponse.OutArguments"/>（键为参数索引，值为回写值）。
         /// 当返回值实际类型与 <see cref="IArgumentOutHandler.ReturnType"/> 不一致时，以 <see cref="TypeWrappedValue"/> 包装。
         /// </summary>
         private void BuildWriteBackResponse(RemoteInvocationResponse response, MethodInfo method, object?[] arguments)
         {
             var parameters = method.GetParameters();
-            var writeBacks = new List<OutputArgument>();
 
             // 遍历参数，推算 ArgumentOutAttribute 标记的参数索引
             int argListIndex = 0;
@@ -405,11 +404,7 @@ namespace LiteOrm.Remote.Server
                     foreach (var item in items)
                         typedList.Add(handler.GenerateReturnValue(item));
 
-                    writeBacks.Add(new OutputArgument
-                    {
-                        ArgumentIndex = argListIndex,
-                        Value = typedList,
-                    });
+                    response.OutArguments[argListIndex] = typedList;
                 }
                 else
                 {
@@ -421,18 +416,11 @@ namespace LiteOrm.Remote.Server
                         continue;
                     }
 
-                    writeBacks.Add(new OutputArgument
-                    {
-                        ArgumentIndex = argListIndex,
-                        Value = returnValue,
-                    });
+                    response.OutArguments[argListIndex] = returnValue;
                 }
 
                 argListIndex++;
             }
-
-            if (writeBacks.Count > 0)
-                response.OutArguments = writeBacks;
         }
     }
 }

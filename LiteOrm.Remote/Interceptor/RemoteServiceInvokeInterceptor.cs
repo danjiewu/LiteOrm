@@ -328,7 +328,7 @@ namespace LiteOrm.Remote
         /// 将服务端响应中的回写参数值应用到客户端原始参数对象。
         /// 通过 <see cref="ArgumentOutHandlerResolver"/> 创建处理器实例，调用 <see cref="IArgumentOutHandler.WriteBack"/> 回写。
         /// 集合模式（<see cref="ArgumentMode.Collection"/>）下，反序列化返回值列表后逐项回写。
-        /// <see cref="OutputArgument.Value"/> 反序列化后为 <see cref="JsonElement"/>，可能含 $type 包装。
+        /// <see cref="RemoteInvocationResponse.OutArguments"/> 中的值反序列化后为 <see cref="JsonElement"/>，可能含 $type 包装。
         /// </summary>
         private void ApplyWriteBack(RemoteInvocationResponse response, List<WriteBackEntry> plan, IInvocation invocation)
         {
@@ -337,10 +337,11 @@ namespace LiteOrm.Remote
 
             foreach (var wb in response.OutArguments)
             {
+                var argIndex = wb.Key;
                 var entryIndex = -1;
                 for (int i = 0; i < plan.Count; i++)
                 {
-                    if (plan[i].ArgListIndex == wb.ArgumentIndex) { entryIndex = i; break; }
+                    if (plan[i].ArgListIndex == argIndex) { entryIndex = i; break; }
                 }
                 if (entryIndex < 0) continue;
                 var entry = plan[entryIndex];
@@ -353,7 +354,7 @@ namespace LiteOrm.Remote
                 var handler = ArgumentOutHandlerResolver.Resolve(entry.Attribute);
                 if (handler is null) continue;
 
-                // Value 反序列化后为 JsonElement，可能含 $type 包装
+                // 值反序列化后为 JsonElement，可能含 $type 包装
                 var valueElement = ToJsonElement(wb.Value);
                 if (valueElement is null) continue;
 
@@ -386,7 +387,7 @@ namespace LiteOrm.Remote
         }
 
         /// <summary>
-        /// 将 <see cref="OutputArgument.Value"/>（反序列化后可能为 <see cref="JsonElement"/> 或 <see cref="TypeWrappedValue"/>）
+        /// 将 <see cref="RemoteInvocationResponse.OutArguments"/> 中的值（反序列化后可能为 <see cref="JsonElement"/> 或 <see cref="TypeWrappedValue"/>）
         /// 转换为 <see cref="JsonElement"/>。
         /// </summary>
         private static JsonElement? ToJsonElement(object value)
