@@ -98,7 +98,7 @@ namespace LiteOrm.Demo.Demos
                     services.AddRemoteServiceGenerator<RemoteServiceFactory>();
                 })
                 .Build();
-
+            TableInfoProvider.Default = host.Services.GetService<TableInfoProvider>();
             try
             {
                 using var scope = host.Services.CreateScope();
