@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Security.Authentication.ExtendedProtection;
 
 namespace LiteOrm.Common
 {
@@ -10,7 +11,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 默认表信息提供类的实例。
         /// </summary>
-        public static TableInfoProvider Default { get; set; }
+        public static TableInfoProvider Default { get; set; } = new AttributeTableInfoProvider();
         /// <summary>
         /// 获取对象类型所对应的表定义。
         /// </summary>

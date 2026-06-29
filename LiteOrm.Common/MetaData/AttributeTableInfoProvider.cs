@@ -34,6 +34,11 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 使用默认构造函数初始化 <see cref="AttributeTableInfoProvider"/> 类的新实例。
+        /// </summary>
+        public AttributeTableInfoProvider() { }
+
+        /// <summary>
         /// 根据对象类型得到对应的数据库表定义
         /// </summary>
         /// <param name="objectType">对象类型</param>

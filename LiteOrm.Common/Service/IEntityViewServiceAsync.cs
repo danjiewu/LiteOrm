@@ -102,6 +102,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在记录</returns>
+        [ServiceMethod]
         Task<bool> ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -111,6 +112,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在记录</returns>
+        [ServiceMethod]
         Task<bool> ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -120,6 +122,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的记录总数</returns>
+        [ServiceMethod]
         Task<int> CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>

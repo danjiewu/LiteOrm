@@ -24,7 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LiteOrm\LiteOrm.csproj" />
     <ProjectReference Include="..\LiteOrm.Common\LiteOrm.Common.csproj" />
   </ItemGroup>
 

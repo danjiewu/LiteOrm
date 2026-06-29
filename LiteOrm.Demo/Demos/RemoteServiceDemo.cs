@@ -60,7 +60,6 @@ namespace LiteOrm.Demo.Demos
             var remoteSection = configuration.GetSection("RemoteService");
             var remoteUri = remoteSection["Uri"];
             var remotePath = remoteSection["Path"] ?? "api/remote/invoke";
-            RemoteInvocationRequestConverter.DefaultNamespace = "LiteOrm.Demo.Models";
 
             if (string.IsNullOrEmpty(remoteUri))
             {
@@ -86,7 +85,6 @@ namespace LiteOrm.Demo.Demos
                 {
                     opts.RemoteServiceUri = new Uri(remoteUri);
                     opts.RemoteServicePath = remotePath;
-                    opts.AutoRegisterEntityServices = true;
                 })
                 .ConfigureServices(services =>
                 {
@@ -98,7 +96,6 @@ namespace LiteOrm.Demo.Demos
                     services.AddRemoteServiceGenerator<RemoteServiceFactory>();
                 })
                 .Build();
-            TableInfoProvider.Default = host.Services.GetService<TableInfoProvider>();
             try
             {
                 using var scope = host.Services.CreateScope();

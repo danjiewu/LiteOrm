@@ -316,9 +316,6 @@ namespace LiteOrm.Remote.Server
         {
             var returnType = method.ReturnType;
 
-            if (result == null || returnType == typeof(void))
-                return;
-
             if (returnType == typeof(Task))
             {
                 await ((Task)result!).ConfigureAwait(false);
@@ -333,6 +330,9 @@ namespace LiteOrm.Remote.Server
                 result = resultProperty.GetValue(task);
                 returnType = returnType.GetGenericArguments()[0];
             }
+
+            if (result == null || returnType == typeof(void))
+                return;
 
             returnType = Nullable.GetUnderlyingType(returnType) ?? returnType;
 

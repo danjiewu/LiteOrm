@@ -135,7 +135,7 @@ namespace LiteOrm.Common
             if (string.IsNullOrEmpty(typeName)) return null;
             // 双层字典：外层按 typeName 索引，内层按 defaultNamespace 索引
             var inner = _findTypeCache.GetOrAdd(typeName, _ => new ConcurrentDictionary<string?, Type?>(StringComparer.Ordinal));
-            return inner.GetOrAdd(defaultNamespace, ns => FindTypeCore(typeName, ns));
+            return inner.GetOrAdd(defaultNamespace ?? string.Empty, ns => FindTypeCore(typeName, ns));
         }
 
         private static Type? FindTypeCore(string typeName, string? defaultNamespace)
