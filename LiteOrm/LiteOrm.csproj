@@ -16,9 +16,10 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      DAOContext失效检测移至DAOConext.IsValid属性。
-      修复PostgreSql和SqlServer连接类型不能正确识别bug。
-      修复Join条件未指定优先级导致不能正确添加括号bug。
+      DAOContext失效检测移至DAOConext.IsValid属性；
+      修复PostgreSql和SqlServer连接类型不能正确识别bug；
+      修复Join条件未指定优先级导致不能正确添加括号bug；
+      新增Remote/Server远程调用支持；
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
