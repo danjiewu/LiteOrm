@@ -90,8 +90,8 @@ namespace LiteOrm.Tests
                 Success = false,
                 Error = new RemoteErrorInfo
                 {
-                    ErrorType = errorType,
-                    ErrorMessage = message,
+                    Type = errorType,
+                    Message = message,
                 }
             };
         }

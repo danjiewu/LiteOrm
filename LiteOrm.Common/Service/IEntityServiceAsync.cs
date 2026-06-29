@@ -107,7 +107,6 @@ namespace LiteOrm.Service
     /// 异步版本 - 非泛型实体更改接口
     /// </summary>
     [AutoRegister(false)]
-    [Service]
     [ServicePermission(false)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]  
     public interface IEntityServiceAsync

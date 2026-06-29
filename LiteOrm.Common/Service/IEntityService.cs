@@ -134,7 +134,6 @@ namespace LiteOrm.Service
     /// <summary>
     /// 非泛型实体更改基接口，定义对任意实体类型的增删改操作
     /// </summary>
-    [Service]
     [ServicePermission(false)]
     [AutoRegister(false)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]

@@ -71,10 +71,10 @@ namespace LiteOrm.Service
 
     /// <summary>
     /// 提供对实体视图（只读或关联视图）进行查询操作的非泛型接口。
-    /// </summary>
+    /// </summary>  
+    [AutoRegister(false)]
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    [AutoRegister(false)]
     public interface IEntityViewService
     {
         /// <summary>

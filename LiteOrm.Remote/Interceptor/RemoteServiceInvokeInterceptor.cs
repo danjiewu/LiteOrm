@@ -559,7 +559,7 @@ namespace LiteOrm.Remote
                 throw new RemoteTransportException($"Remote service {serviceInfo} returned null response.");
             if (!response.Success)
                 throw new ServiceException(
-                    $"Remote service {serviceInfo} threw {response.Error?.ErrorType}: {response.Error?.ErrorMessage}");
+                    $"Remote service {serviceInfo} threw {response.Error?.Type}: {response.Error?.Message}");
         }
 
         /// <summary>
@@ -967,9 +967,6 @@ namespace LiteOrm.Remote
         /// <param name="invocation">方法调用信息</param>
         public static void LoadFrom(this ServiceDescription desc, IInvocation invocation)
         {
-            desc.ServiceName = GetServiceName(RemoteServiceInvokeInterceptor.GetServiceType(invocation));
-            desc.MethodName = invocation.Method.Name;
-
             // 日志特性
             var logAtt = GetServiceAttribute<ServiceLogAttribute>(invocation);
             if (logAtt is not null)
@@ -996,15 +993,16 @@ namespace LiteOrm.Remote
             }
 
             // 服务特性
+            var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
+            if (serviceAtt is not null)
+            {
+                desc.IsService = serviceAtt.IsService;
+            }
+            desc.ServiceName = serviceAtt?.Name ?? TypeResolverHelper.GetName(invocation.TargetType);
+
             var serviceMethodAtt = GetServiceAttribute<ServiceMethodAttribute>(invocation);
             if (serviceMethodAtt is not null)
                 desc.IsService = serviceMethodAtt.IsService;
-            else
-            {
-                var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
-                if (serviceAtt is not null)
-                    desc.IsService = serviceAtt.IsService;
-            }
 
             desc.ExceptionHooks = GetServiceAttributes<ExceptionHookAttribute>(invocation).ToArray();
 
@@ -1029,14 +1027,7 @@ namespace LiteOrm.Remote
                 desc.ArgsLoggable[i] = logAtts.Length > 0 ? logAtts[0].Enabled : !_exclusions.Contains(parameters[i].ParameterType);
             }
         }
-        /// <summary>
-        /// 获取服务类型的服务名称。委托给 <see cref="ServiceNameUtil.GetServiceName"/>，
-        /// 固定使用类型短名生成服务名称。
-        /// </summary>
-        /// <param name="serviceType">目标服务类型。</param>
-        /// <returns>格式化后的服务名称。</returns>
-        private static string GetServiceName(Type serviceType)
-            => TypeResolverHelper.GetName(serviceType);
+
         private static T GetServiceAttribute<T>(IInvocation invocation) where T : Attribute
         {
             return GetServiceAttributes<T>(invocation).FirstOrDefault();

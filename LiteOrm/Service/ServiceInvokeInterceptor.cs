@@ -706,9 +706,6 @@ namespace LiteOrm.Service
         /// <param name="invocation">方法调用信息</param>
         public static void LoadFrom(this ServiceDescription desc, IInvocation invocation)
         {
-            desc.ServiceName = TypeResolverHelper.GetName(invocation.TargetType);
-            desc.MethodName = invocation.Method.Name;
-
             // 日志特性
             var logAtt = GetServiceAttribute<ServiceLogAttribute>(invocation);
             if (logAtt is not null)
@@ -734,16 +731,17 @@ namespace LiteOrm.Service
                 desc.IsTransaction = transAtt.IsTransaction;
             }
 
+            // 服务特性
+            var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
+            if (serviceAtt is not null)
+            {
+                desc.IsService = serviceAtt.IsService;
+            }
+            desc.ServiceName = serviceAtt?.Name ?? TypeResolverHelper.GetName(invocation.TargetType);
+
             var serviceMethodAtt = GetServiceAttribute<ServiceMethodAttribute>(invocation);
             if (serviceMethodAtt is not null)
                 desc.IsService = serviceMethodAtt.IsService;
-            else
-            {
-                // 服务特性
-                var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
-                if (serviceAtt is not null)
-                    desc.IsService = serviceAtt.IsService;
-            }
 
             desc.ExceptionHooks = GetServiceAttributes<ExceptionHookAttribute>(invocation).ToArray();
 

@@ -227,7 +227,7 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.False(response.Success);
-            Assert.Contains("IUnknownService", response.Error?.ErrorMessage!);
+            Assert.Contains("IUnknownService", response.Error?.Message!);
         }
 
         [Fact]
@@ -259,8 +259,8 @@ namespace LiteOrm.Tests
                 Request(nameof(IRemoteCalculator.Add), 1, 2));
 
             Assert.False(response.Success);
-            Assert.Contains("deliberate", response.Error?.ErrorMessage!);
-            Assert.Equal(nameof(InvalidOperationException), response.Error?.ErrorType?.Split('.').Last());
+            Assert.Contains("deliberate", response.Error?.Message!);
+            Assert.Equal(nameof(InvalidOperationException), response.Error?.Type?.Split('.').Last());
         }
 
         private sealed class ThrowingCalculator : IRemoteCalculator
@@ -299,7 +299,7 @@ namespace LiteOrm.Tests
 
             var response = await dispatcher.InvokeAsync(request);
 
-            Assert.True(response.Success, response.Error?.ErrorMessage ?? "(no error)");
+            Assert.True(response.Success, response.Error?.Message ?? "(no error)");
             Assert.Equal(42, response.Result);
         }
 
@@ -346,7 +346,7 @@ namespace LiteOrm.Tests
 
             var response = await dispatcher.InvokeAsync(request);
 
-            Assert.True(response.Success, response.Error?.ErrorMessage ?? "(no error)");
+            Assert.True(response.Success, response.Error?.Message ?? "(no error)");
             Assert.True((bool)response.Result!);
         }
 

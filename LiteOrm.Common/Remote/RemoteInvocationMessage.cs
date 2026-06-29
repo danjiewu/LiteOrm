@@ -89,19 +89,19 @@ namespace LiteOrm.Remote
     public sealed class RemoteErrorInfo
     {
         /// <summary>
-     /// 远程抛出异常的类型全名。
-     /// </summary>
-        public string ErrorType { get; set; }
+        /// 远程抛出异常的类型全名。
+        /// </summary>
+        public string Type { get; set; }
 
         /// <summary>
         /// 远程异常消息。
         /// </summary>
-        public string ErrorMessage { get; set; }
+        public string Message { get; set; }
 
         /// <summary>
         /// 远程异常堆栈。
         /// </summary>
-        public string ErrorStackTrace { get; set; }
+        public string StackTrace { get; set; }
     }
 
     /// <summary>

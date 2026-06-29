@@ -72,8 +72,8 @@ namespace LiteOrm.Remote.Server
                     response.Success = false;
                     response.Error = new RemoteErrorInfo
                     {
-                        ErrorType = nameof(ServiceException),
-                        ErrorMessage = $"Remote service '{request.ServiceName}' is not registered."
+                        Type = nameof(ServiceException),
+                        Message = $"Remote service '{request.ServiceName}' is not registered."
                     };
                     _logger?.LogWarning("Remote service '{ServiceName}' not found by resolver.", request.ServiceName);
                     return response;
@@ -86,8 +86,8 @@ namespace LiteOrm.Remote.Server
                     response.Success = false;
                     response.Error = new RemoteErrorInfo
                     {
-                        ErrorType = nameof(ServiceException),
-                        ErrorMessage = $"Service implementation for '{request.ServiceName}' ({serviceType.FullName}) is not registered in DI container."
+                        Type = nameof(ServiceException),
+                        Message = $"Service implementation for '{request.ServiceName}' ({serviceType.FullName}) is not registered in DI container."
                     };
                     _logger?.LogWarning("Service implementation for '{ServiceName}' ({ServiceType}) not resolved from DI.", request.ServiceName, serviceType.FullName);
                     return response;
@@ -100,8 +100,8 @@ namespace LiteOrm.Remote.Server
                     response.Success = false;
                     response.Error = new RemoteErrorInfo
                     {
-                        ErrorType = nameof(ServiceException),
-                        ErrorMessage = $"Method '{request.Method?.Name}' with matching signature not found on service '{request.ServiceName}'."
+                        Type = nameof(ServiceException),
+                        Message = $"Method '{request.Method?.Name}' with matching signature not found on service '{request.ServiceName}'."
                     };
                     _logger?.LogWarning("Method '{MethodName}' not found on service '{ServiceName}'.", request.Method?.Name, request.ServiceName);
                     return response;
@@ -129,9 +129,9 @@ namespace LiteOrm.Remote.Server
                 response.Success = false;
                 response.Error = new RemoteErrorInfo
                 {
-                    ErrorType = inner.GetType().FullName,
-                    ErrorMessage = inner.Message,
-                    ErrorStackTrace = inner.StackTrace
+                    Type = inner.GetType().FullName,
+                    Message = inner.Message,
+                    StackTrace = inner.StackTrace
                 };
                 _logger?.LogError(inner, "Remote service '{ServiceName}.{MethodName}' threw an exception.", request.ServiceName, method?.Name);
             }
@@ -140,9 +140,9 @@ namespace LiteOrm.Remote.Server
                 response.Success = false;
                 response.Error = new RemoteErrorInfo
                 {
-                    ErrorType = ex.GetType().FullName,
-                    ErrorMessage = ex.Message,
-                    ErrorStackTrace = ex.StackTrace
+                    Type = ex.GetType().FullName,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace
                 };
                 _logger?.LogError(ex, "Failed to dispatch remote call to '{ServiceName}.{MethodName}'.", request.ServiceName, method?.Name);
             }
