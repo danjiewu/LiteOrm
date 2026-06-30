@@ -14,11 +14,24 @@
 
 ## 支持的数据库
 
+**主流数据库：**
+
 - SQL Server 2012+
 - MySQL 8.0+
 - Oracle 12c+
 - PostgreSQL
 - SQLite
+
+**国产 / 兼容数据库：**
+
+- 达梦 DM（Oracle 兼容）
+- 人大金仓 KingbaseES（PostgreSQL 兼容）
+- 华为 GaussDB / openGauss（PostgreSQL 兼容）
+- OceanBase（MySQL 兼容）
+- TiDB（MySQL 兼容）
+- 万里 GreatDB（MySQL 兼容）
+
+> 国产数据库继承对应主流数据库的方言行为，自动检测优先匹配。详见 [数据库差异与兼容性说明](../05-reference/08-database-compatibility.md)。
 
 > 对于旧版本数据库，如果默认分页语法不兼容，请参考 [自定义分页](../03-advanced-topics/05-custom-paging.md) 与 [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)。
 
