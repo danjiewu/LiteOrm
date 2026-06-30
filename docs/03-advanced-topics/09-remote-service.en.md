@@ -11,7 +11,7 @@ The client and server share DTOs in `LiteOrm.Common` (`RemoteInvocationRequest` 
 
 ## 1. Minimal Example
 
-### Server (3 lines of core code)
+### Server
 
 ```bash
 dotnet add package LiteOrm.Remote.Server
@@ -29,7 +29,7 @@ app.MapRemoteInvokeEndpoint();         // Map remote invocation endpoint
 app.Run();
 ```
 
-### Client (5 lines of core code)
+### Client
 
 ```bash
 dotnet add package LiteOrm.Remote
