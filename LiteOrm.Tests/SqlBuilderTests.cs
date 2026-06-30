@@ -18,6 +18,13 @@ namespace LiteOrm.Tests
             yield return new object[] { PostgreSqlBuilder.Instance };
             yield return new object[] { OracleBuilder.Instance };
             yield return new object[] { SQLiteBuilder.Instance };
+            // 国产 / 兼容数据库（继承自上方基础方言，确保测试覆盖其行为一致性）
+            yield return new object[] { DamengBuilder.Instance };
+            yield return new object[] { KingbaseESBuilder.Instance };
+            yield return new object[] { GaussDBBuilder.Instance };
+            yield return new object[] { OceanBaseBuilder.Instance };
+            yield return new object[] { TiDBBuilder.Instance };
+            yield return new object[] { GreatDBBuilder.Instance };
         }
 
         [Theory]

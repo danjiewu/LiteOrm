@@ -26,6 +26,12 @@ namespace LiteOrm
     /// - SQL Server (SqlServerBuilder)
     /// - PostgreSQL (PostgreSqlBuilder)
     /// - SQLite (SQLiteBuilder)
+    /// - 达梦 DM (DamengBuilder，Oracle 兼容)
+    /// - 人大金仓 KingbaseES (KingbaseESBuilder，PostgreSQL 兼容)
+    /// - 华为 GaussDB / openGauss (GaussDBBuilder，PostgreSQL 兼容)
+    /// - OceanBase (OceanBaseBuilder，MySQL 兼容模式)
+    /// - TiDB (TiDBBuilder，MySQL 兼容)
+    /// - GreatDB 万里数据库 (GreatDBBuilder，MySQL 兼容)
     /// - 其他未知类型 (默认使用 SqlBuilder)
     /// 
     /// 该类通过依赖注入框架以单例方式注册。
@@ -93,7 +99,21 @@ namespace LiteOrm
             if (providerType is null) throw new ArgumentNullException("providerType", "providerType cannot be null while dataSource is not specified");
             if (RegisteredSqlBuilders.ContainsKey(providerType)) return RegisteredSqlBuilders[providerType];
             var connectionTypeName = providerType.FullName.ToUpper();
-            if (connectionTypeName.Contains("ORACLE"))
+            // 国产 / 兼容数据库优先识别（避免被 Oracle / MySQL 等通用关键字提前匹配）
+            if (connectionTypeName.Contains("DAMENG") || connectionTypeName.Contains("DMNET") || connectionTypeName.Contains("DM.DMCONNECTION"))
+                return DamengBuilder.Instance;
+            else if (connectionTypeName.Contains("KINGBASE") || connectionTypeName.Contains("KDBNDP"))
+                return KingbaseESBuilder.Instance;
+            else if (connectionTypeName.Contains("GAUSSDB") || connectionTypeName.Contains("OPENGAUSS"))
+                return GaussDBBuilder.Instance;
+            else if (connectionTypeName.Contains("OCEANBASE"))
+                return OceanBaseBuilder.Instance;
+            else if (connectionTypeName.Contains("TIDB"))
+                return TiDBBuilder.Instance;
+            else if (connectionTypeName.Contains("GREATDB"))
+                return GreatDBBuilder.Instance;
+            // 通用数据库
+            else if (connectionTypeName.Contains("ORACLE"))
                 return OracleBuilder.Instance;
             else if (connectionTypeName.Contains("MYSQL"))
                 return MySqlBuilder.Instance;
