@@ -404,9 +404,124 @@ var result = await dataViewDAO.Search(
 ).GetResultAsync();
 ```
 
-## 6. Service 与 DAO 查询
+## 6. `Search` vs `SearchAs`
 
-### 6.1 Service
+`Search` 和 `SearchAs` 都是查询入口，但职责不同：
+
+| 维度 | `Search` / `SearchAsync` | `SearchAs<TResult>` / `SearchAsAsync<TResult>` |
+|------|--------------------------|------------------------------------------------|
+| 返回类型 | 实体类型 `T`（或视图 `TView`） | **任意** `TResult`：实体、匿名类型、标量、自定义投影类 |
+| 查询构造 | `Expr` / Lambda / `ExprString`（仅 DAO） | `SelectExpr`（Service+DAO）/ Lambda 投影 / `ExprString`（仅 DAO） |
+| 字段映射 | 按 `TableInfoProvider` 注册的 `SelectColumns` 位置映射 | 见下方注意事项 |
+| 典型场景 | 「查这张表的数据」 | 「跨表投影、聚合、计算列、换类型」 |
+
+### 6.1 基本用法对比
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// Search：返回 User 实体列表
+List<User> users = await viewService.SearchAsync(Prop("Age") >= 18);
+
+// SearchAs：投影到匿名类型
+var summaries = await viewService.SearchAsAsync<dynamic>(
+    From<UserView>()
+        .Where(Prop("Age") >= 18)
+        .Select(Prop("UserName"), Prop("Age"))
+);
+
+// SearchAs：投影到自定义类型
+var summaries = await viewService.SearchAsAsync<UserSummary>(
+    From<UserView>()
+        .Where(Prop("Age") >= 18)
+        .Select(
+            Prop("Id"),
+            Prop("UserName"),
+            Expr.If(Prop("IsVip") == true, "VIP", "Normal").As("Level")
+        )
+);
+```
+
+### 6.2 `SearchAs` 使用的注意事项
+
+`SearchAs<TResult>` 的结果映射依赖 [DataReaderConverter](file:///d:/Repos/LiteOrm/LiteOrm/Converter/DataReaderConverter.cs#L97-L117)，按 `TResult` 是否注册到 `TableInfoProvider` 走不同路径，**初学者最容易在以下几处翻车**：
+
+#### 6.2.1 `TResult` 的三种映射路径
+
+| `TResult` 类型 | 映射方式 | 是否需要注册 |
+|----------------|---------|-------------|
+| **标量类型**（`int` / `string` / `DateTime` 等） | 直接读第 0 列 | 否 |
+| **匿名类型**（`new { UserName = ..., Age = ... }`） | 按构造函数参数名匹配列名（不区分大小写） | 否 |
+| **注册到 `TableInfoProvider` 的类型** | 按 `SelectColumns` 位置映射 | 是 |
+| **未注册的普通类型** | 取**第一个公开构造函数**，按其参数名匹配列名（不区分大小写） | 否 |
+
+> 关键差别：注册过的类型走「位置映射」——要求 `Select` 列顺序与 `TableInfoProvider` 注册顺序一致；未注册的普通类型 / 匿名类型走「列名匹配」——要求 `Select` 列的别名与构造函数参数名一致。
+
+#### 6.2.2 列别名必须与目标成员名对应
+
+对于「按名称匹配」的类型（匿名类型、未注册普通类），`Select` 列的别名（`.As("xxx")`）必须与目标类型的成员名（构造函数参数名）一致，否则字段会落到默认值：
+
+```csharp
+public class UserSummary
+{
+    public string UserName { get; set; }
+    public string Level { get; set; }
+
+    // 注意：DataReaderConverter 取 GetConstructors()[0]
+    // 参数名必须与列别名一致
+    public UserSummary(string userName, string level)
+    {
+        UserName = userName;
+        Level = level;
+    }
+}
+
+// ✅ 列别名 "Level" 与构造函数参数名 level 匹配
+await viewService.SearchAsAsync<UserSummary>(
+    From<UserView>().Select(
+        Prop("UserName"),
+        Expr.If(Prop("IsVip") == true, "VIP", "Normal").As("Level")
+    )
+);
+
+// ❌ 没有用 .As("Level")，列名是 "Expr_If_..." 之类的自动名，Level 会变成 null
+```
+
+#### 6.2.3 标量结果用 `SearchAs<T>`，别用 `Search`
+
+`COUNT` / `SUM` / `MAX` 等聚合查询只返回一个标量值，应该用 `SearchAs<int>` / `SearchAs<long>` 直接读第 0 列：
+
+```csharp
+// ✅ 标量投影
+var count = await viewService.SearchAsAsync<int>(
+    From<UserView>().Select(Expr.Func("COUNT", Prop("Id")))
+);
+```
+
+#### 6.2.4 注册过的 `TResult` 走位置映射，列顺序要对
+
+如果 `TResult` 是注册到 `TableInfoProvider` 的实体类型（比如直接用 `SearchAs<User>`），按 `SelectColumns` 位置映射——`Select` 列的**顺序**必须与注册的列顺序一致，列名不参与匹配。建议**优先用未注册的投影类型**（DTO / 匿名类型）来避免顺序耦合。
+
+#### 6.2.5 `TResult` 必须可实例化
+
+- 需要有公开构造函数
+- 匿名类型天然满足（编译器生成）
+- DTO / record 需要有公共构造函数
+- 接口 / 抽象类 / 没有公开构造函数的类型会失败
+
+#### 6.2.6 DAO 比 Service 多两个重载
+
+| 重载 | Service | DAO |
+|------|---------|-----|
+| `SearchAs<TResult>(SelectExpr)` | ✅ 返回 `List<TResult>` | ✅ 返回 `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>>)` | ❌ | ✅ Lambda 投影 |
+| `SearchAs<TResult>(ref ExprString sqlBody)` | ❌ | ✅ 原生 SQL 投影 |
+
+需要 Lambda 投影或原生 SQL 投影时，切到 DAO（见 [7.2 DAO](#72-dao)）。
+
+## 7. Service 与 DAO 查询
+
+### 7.1 Service
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -427,7 +542,7 @@ var users3 = await userService.SearchAsAsync<UserSummary>(
 - Service 查询入口以 Lambda / `Expr` 为主，同时支持基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)` 投影查询，适合业务语义清晰、需要事务/AOP/服务封装的场景。
 - Service 不提供 `ExprString` 查询重载；如果需求已经变成“手写 SQL”，就应该切到 DAO。
 
-### 6.2 DAO
+### 7.2 DAO
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -440,7 +555,7 @@ var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListA
 - DAO 除了支持 Lambda / `Expr`，还支持 `ExprString`，因此更适合自定义 SQL 片段、完整 SQL、复杂投影查询和 DataTable 查询。
 - 需要 IQueryable 投影版 `SearchAs(...)`、`ExprString` 版 `SearchAs(...)`、`Query(...)`、`Execute(...)`、`GetValue(...)` 这类更底层能力时，也应该直接使用 DAO。
 
-## 7. 相关链接
+## 8. 相关链接
 
 - [Expr 使用指南](./03-expr-guide.md)
 - [增删改查](./05-crud-guide.md)

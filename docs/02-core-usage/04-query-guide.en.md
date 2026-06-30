@@ -407,9 +407,124 @@ var result = await dataViewDAO.Search(
 ).GetResultAsync();
 ```
 
-## 6. Service vs DAO queries
+## 6. `Search` vs `SearchAs`
 
-### 6.1 Service
+`Search` and `SearchAs` are both query entry points, but they serve different purposes:
+
+| Aspect | `Search` / `SearchAsync` | `SearchAs<TResult>` / `SearchAsAsync<TResult>` |
+|--------|--------------------------|------------------------------------------------|
+| Return type | Entity type `T` (or view `TView`) | **Any** `TResult`: entity, anonymous type, scalar, custom projection |
+| Query construction | `Expr` / Lambda / `ExprString` (DAO only) | `SelectExpr` (Service+DAO) / Lambda projection / `ExprString` (DAO only) |
+| Field mapping | Positional, by `SelectColumns` registered in `TableInfoProvider` | See notes below |
+| Typical scenario | "Query rows of this table" | "Cross-table projection, aggregation, computed columns, type transformation" |
+
+### 6.1 Basic usage comparison
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// Search: returns a list of User entities
+List<User> users = await viewService.SearchAsync(Prop("Age") >= 18);
+
+// SearchAs: project to an anonymous type
+var summaries = await viewService.SearchAsAsync<dynamic>(
+    From<UserView>()
+        .Where(Prop("Age") >= 18)
+        .Select(Prop("UserName"), Prop("Age"))
+);
+
+// SearchAs: project to a custom type
+var summaries = await viewService.SearchAsAsync<UserSummary>(
+    From<UserView>()
+        .Where(Prop("Age") >= 18)
+        .Select(
+            Prop("Id"),
+            Prop("UserName"),
+            Expr.If(Prop("IsVip") == true, "VIP", "Normal").As("Level")
+        )
+);
+```
+
+### 6.2 Notes on using `SearchAs`
+
+Result mapping for `SearchAs<TResult>` relies on [DataReaderConverter](file:///d:/Repos/LiteOrm/LiteOrm/Converter/DataReaderConverter.cs#L97-L117) and takes different paths depending on whether `TResult` is registered with `TableInfoProvider`. **Beginners most often trip over the following:**
+
+#### 6.2.1 The three mapping paths for `TResult`
+
+| `TResult` type | Mapping strategy | Registration required? |
+|----------------|-------------------|------------------------|
+| **Scalar type** (`int` / `string` / `DateTime`, etc.) | Reads column 0 directly | No |
+| **Anonymous type** (`new { UserName = ..., Age = ... }`) | Matches constructor parameter names to column names (case-insensitive) | No |
+| **Type registered with `TableInfoProvider`** | Positional mapping by `SelectColumns` | Yes |
+| **Unregistered plain type** | Uses the **first public constructor**, matches its parameter names to column names (case-insensitive) | No |
+
+> Key difference: registered types use **positional mapping** — `Select` column order must match the registered order in `TableInfoProvider`; unregistered plain types / anonymous types use **name matching** — `Select` column aliases must match constructor parameter names.
+
+#### 6.2.2 Column aliases must match target member names
+
+For "name-matched" types (anonymous types, unregistered plain classes), the alias of the `Select` column (`.As("xxx")`) must match a member name (constructor parameter name) of the target type. Otherwise the field silently falls back to the default value:
+
+```csharp
+public class UserSummary
+{
+    public string UserName { get; set; }
+    public string Level { get; set; }
+
+    // Note: DataReaderConverter uses GetConstructors()[0]
+    // Parameter names must match column aliases
+    public UserSummary(string userName, string level)
+    {
+        UserName = userName;
+        Level = level;
+    }
+}
+
+// ✅ Column alias "Level" matches constructor parameter level
+await viewService.SearchAsAsync<UserSummary>(
+    From<UserView>().Select(
+        Prop("UserName"),
+        Expr.If(Prop("IsVip") == true, "VIP", "Normal").As("Level")
+    )
+);
+
+// ❌ No .As("Level"): column name becomes something like "Expr_If_..." and Level ends up null
+```
+
+#### 6.2.3 Use `SearchAs<T>` for scalar results, not `Search`
+
+Aggregate queries like `COUNT` / `SUM` / `MAX` return a single scalar value. Use `SearchAs<int>` / `SearchAs<long>` to read column 0 directly:
+
+```csharp
+// ✅ Scalar projection
+var count = await viewService.SearchAsAsync<int>(
+    From<UserView>().Select(Expr.Func("COUNT", Prop("Id")))
+);
+```
+
+#### 6.2.4 Registered `TResult` uses positional mapping — keep column order correct
+
+If `TResult` is an entity type registered with `TableInfoProvider` (e.g. using `SearchAs<User>` directly), mapping is positional by `SelectColumns` — the **order** of `Select` columns must match the registered order; column names are not consulted. Prefer **unregistered projection types** (DTOs / anonymous types) to avoid this order coupling.
+
+#### 6.2.5 `TResult` must be instantiable
+
+- Must have a public constructor
+- Anonymous types satisfy this naturally (compiler-generated)
+- DTOs / records need a public constructor
+- Interfaces / abstract classes / types without a public constructor will fail
+
+#### 6.2.6 DAO has two overloads not available on Service
+
+| Overload | Service | DAO |
+|----------|---------|-----|
+| `SearchAs<TResult>(SelectExpr)` | ✅ Returns `List<TResult>` | ✅ Returns `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>>)` | ❌ | ✅ Lambda projection |
+| `SearchAs<TResult>(ref ExprString sqlBody)` | ❌ | ✅ Raw SQL projection |
+
+Switch to DAO when you need Lambda projection or raw SQL projection (see [7.2 DAO](#72-dao)).
+
+## 7. Service vs DAO queries
+
+### 7.1 Service
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -430,7 +545,7 @@ var users3 = await userService.SearchAsAsync<UserSummary>(
 - Service query APIs mainly target Lambda and `Expr`, and also support projection queries through `SearchAs(...)` / `SearchAsAsync(...)` with `SelectExpr`, which fits business-facing query code, transactions, and AOP-backed service encapsulation.
 - Service does not provide an `ExprString` query overload; once the need becomes "handwritten SQL", switch to DAO.
 
-### 6.2 DAO
+### 7.2 DAO
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -443,7 +558,7 @@ var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListA
 - DAO supports Lambda and `Expr`, and also adds `ExprString`, so it is the right layer for custom SQL fragments, full SQL, richer projection queries, and DataTable-oriented queries.
 - If you need lower-level entry points such as IQueryable-based `SearchAs(...)`, `ExprString`-based `SearchAs(...)`, `Query(...)`, `Execute(...)`, or `GetValue(...)`, go directly through DAO.
 
-## 7. Related links
+## 8. Related links
 
 - [Expr Guide](./03-expr-guide.en.md)
 - [CRUD Guide](./05-crud-guide.en.md)
