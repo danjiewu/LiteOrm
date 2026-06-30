@@ -359,7 +359,7 @@ namespace LiteOrm.Service
 
                 _logger.Log(logLevel,
                     "[{SessionID}]<Invoke>{Service}.{Method}({Args})", _sessionManager.SessionID,
-                    serviceDesc.ServiceName, serviceDesc.MethodName, argsLog);
+                    serviceDesc.ServiceName, invocation.Method.Name, argsLog);
             }
         }
 
@@ -396,12 +396,12 @@ namespace LiteOrm.Service
                 }
                 _logger.Log(level,
                     "[{SessionID}]<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
-                     _sessionManager.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
+                     _sessionManager.SessionID, serviceDesc.ServiceName, invocation.Method.Name,
                     elapsedTime.TotalSeconds, returnLog);
             }
             if (elapsedTime > SlowQueryThreshold)//记录慢查询日志
             {
-                _logger.LogWarning("[{SessionID}]<Slow>{Service}.{Method} took {Duration} seconds", _sessionManager.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName, elapsedTime.TotalSeconds);
+                _logger.LogWarning("[{SessionID}]<Slow>{Service}.{Method} took {Duration} seconds", _sessionManager.SessionID, serviceDesc.ServiceName, invocation.Method.Name, elapsedTime.TotalSeconds);
                 ValueStringBuilder sb = ValueStringBuilder.Create(512);
                 int row = 1;
                 foreach (var sql in _sessionManager.SqlStack.Reverse() ?? Array.Empty<string>())
@@ -425,10 +425,10 @@ namespace LiteOrm.Service
             var innerExp = e.UnwrapTargetInvocationException();
             string argsLog = GetLogString(GetLogArgs(invocation));
             if (innerExp is ServiceException)
-                _logger.LogWarning("[{SessionID}]<Exception>{Service}.{Method}({Args}) {Message}", _sessionManager.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
+                _logger.LogWarning("[{SessionID}]<Exception>{Service}.{Method}({Args}) {Message}", _sessionManager.SessionID, serviceDesc.ServiceName, invocation.Method.Name,
                     argsLog, innerExp.Message);
             else
-                _logger.LogError("[{SessionID}]<Exception>{Service}.{Method}({Args}) {Exception}", _sessionManager.SessionID, serviceDesc.ServiceName, serviceDesc.MethodName,
+                _logger.LogError("[{SessionID}]<Exception>{Service}.{Method}({Args}) {Exception}", _sessionManager.SessionID, serviceDesc.ServiceName, invocation.Method.Name,
                     argsLog, innerExp);
         }
 
@@ -742,6 +742,7 @@ namespace LiteOrm.Service
             var serviceMethodAtt = GetServiceAttribute<ServiceMethodAttribute>(invocation);
             if (serviceMethodAtt is not null)
                 desc.IsService = serviceMethodAtt.IsService;
+            desc.MethodName = serviceMethodAtt?.MethodName ?? invocation.Method.Name;
 
             desc.ExceptionHooks = GetServiceAttributes<ExceptionHookAttribute>(invocation).ToArray();
 

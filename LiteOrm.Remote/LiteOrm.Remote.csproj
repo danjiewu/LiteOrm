@@ -6,9 +6,12 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程服务调用</Description>
-    <AssemblyVersion>8.0.1.0</AssemblyVersion>
-    <FileVersion>8.0.1.0</FileVersion>
-    <VersionPrefix>8.0.1</VersionPrefix>
+    <AssemblyVersion>8.0.2.0</AssemblyVersion>
+    <FileVersion>8.0.2.0</FileVersion>
+    <VersionPrefix>8.0.2</VersionPrefix>
+    <PackageReleaseNotes>
+      修复日志MethodName为空的bug;
+    </PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
     <Copyright>Copyright @ 2026 danjiewu</Copyright>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

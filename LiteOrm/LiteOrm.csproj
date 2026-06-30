@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.0.18.0</AssemblyVersion>
-		<FileVersion>8.0.18.0</FileVersion>
+		<AssemblyVersion>8.0.19.0</AssemblyVersion>
+		<FileVersion>8.0.19.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.0.18</VersionPrefix>
+		<VersionPrefix>8.0.19</VersionPrefix>
 		<Nullable>disable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,11 +16,7 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      DAOContext失效检测移至DAOConext.IsValid属性；
-      修复PostgreSql和SqlServer连接类型不能正确识别bug；
-      修复Join条件未指定优先级导致不能正确添加括号bug；
-      新增Remote/Server远程调用支持；
-      新增部分国产数据库支持。
+      修复日志MethodName为空的bug;
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

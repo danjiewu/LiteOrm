@@ -239,10 +239,10 @@ namespace LiteOrm.Remote
         private void RemoteInvokeCore(IInvocation invocation)
         {
             var desc = GetDescription(invocation);
-            if(!desc.IsService) throw new NotSupportedException($"Method '{desc.ServiceName}.{invocation.Method.Name}' does not support remote invocation.");
+            if (!desc.IsService) throw new NotSupportedException($"Method '{desc.ServiceName}.{invocation.Method.Name}' does not support remote invocation.");
 
             var method = invocation.Method;
-            var returnType = method.ReturnType;            
+            var returnType = method.ReturnType;
 
             var request = BuildRequest(invocation);
             var writeBackPlan = BuildWriteBackPlan(invocation);
@@ -470,7 +470,7 @@ namespace LiteOrm.Remote
                 Arguments = args.ToArray(),
             };
             return request;
-        } 
+        }
 
         /// <summary>
         /// 同步调用传输层（在客户端线程上阻塞等待）。用于同步拦截路径。
@@ -595,7 +595,7 @@ namespace LiteOrm.Remote
 
                 _logger.Log(level,
                     "<Invoke>{Service}.{Method}({Args})",
-                    serviceDesc.ServiceName, serviceDesc.MethodName, argsLog);
+                    serviceDesc.ServiceName, invocation.Method.Name, argsLog);
             }
         }
 
@@ -618,13 +618,13 @@ namespace LiteOrm.Remote
                 }
                 _logger.Log(level,
                     "<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
-                     serviceDesc.ServiceName, serviceDesc.MethodName,
+                     serviceDesc.ServiceName, invocation.Method.Name,
                     elapsedTime.TotalSeconds, returnLog);
             }
             if (elapsedTime > SlowQueryThreshold)//记录慢调用日志
             {
                 _logger.LogWarning("<Slow>{Service}.{Method} took {Duration} seconds",
-                    serviceDesc.ServiceName, serviceDesc.MethodName, elapsedTime.TotalSeconds);
+                    serviceDesc.ServiceName, invocation.Method.Name, elapsedTime.TotalSeconds);
             }
         }
 
@@ -654,10 +654,10 @@ namespace LiteOrm.Remote
             string argsLog = GetLogString(GetLogArgs(invocation));
             if (innerExp is ServiceException)
                 _logger.LogWarning("<Exception>{Service}.{Method}({Args}) {Message}",
-                    serviceDesc.ServiceName, serviceDesc.MethodName, argsLog, innerExp.Message);
+                    serviceDesc.ServiceName, invocation.Method.Name, argsLog, innerExp.Message);
             else
                 _logger.LogError("<Exception>{Service}.{Method}({Args}) {Exception}",
-                    serviceDesc.ServiceName, serviceDesc.MethodName, argsLog, innerExp);
+                    serviceDesc.ServiceName, invocation.Method.Name, argsLog, innerExp);
         }
 
         /// <summary>
@@ -1003,6 +1003,8 @@ namespace LiteOrm.Remote
             var serviceMethodAtt = GetServiceAttribute<ServiceMethodAttribute>(invocation);
             if (serviceMethodAtt is not null)
                 desc.IsService = serviceMethodAtt.IsService;
+
+            desc.MethodName = serviceMethodAtt?.MethodName ?? invocation.Method.Name;
 
             desc.ExceptionHooks = GetServiceAttributes<ExceptionHookAttribute>(invocation).ToArray();
 
