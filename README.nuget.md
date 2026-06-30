@@ -44,7 +44,7 @@ A lightweight, high-performance .NET ORM framework that combines micro-ORM speed
 
 - **Ultra-Fast Performance**: Performance close to native Dapper, far exceeding EF Core
 
-- **Multi-Database Support**: Native support for SQL Server, MySQL, Oracle, PostgreSQL, SQLite
+- **Multi-Database Support**: Native support for SQL Server, MySQL, Oracle, PostgreSQL, SQLite; built-in dialects for domestic / compatible databases including Dameng (DM), KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, and GreatDB
 
 - **Flexible Querying**: Multiple query methods via Lambda, `Expr`, or `ExprString`
 
@@ -530,7 +530,7 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的
 
 - **极速性能**：性能接近原生 Dapper，远超 EF Core
 
-- **多数据库支持**：原生支持 SQL Server、MySQL、Oracle、PostgreSQL、SQLite
+- **多数据库支持**：原生支持 SQL Server、MySQL、Oracle、PostgreSQL、SQLite；内置达梦、人大金仓、华为 GaussDB、OceanBase、TiDB、GreatDB 等国产 / 兼容数据库方言
 
 - **灵活查询**：支持基于 Lambda、`Expr` 或 `ExprString` 的多种查询方式
 

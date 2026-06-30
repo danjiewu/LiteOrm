@@ -34,7 +34,7 @@ LiteOrm is a lightweight, high-performance .NET ORM that combines micro-ORM spee
 ## 🎯 Core Features
 
 - **Ultra-Fast Performance**: Performance close to native Dapper, far exceeding EF Core
-- **Multi-Database Support**: Native support for SQL Server, MySQL, Oracle, PostgreSQL, SQLite
+- **Multi-Database Support**: Native support for SQL Server, MySQL, Oracle, PostgreSQL, SQLite, Dameng (DM), KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, and GreatDB
 - **Flexible Querying**: Multiple query methods via Lambda, `Expr`, or `ExprString`
 - **Automatic Associations**: Implement JOIN queries via attributes without manual SQL writing
 - **Declarative Transactions**: AOP transaction management via `[Transaction]` attribute
@@ -47,7 +47,7 @@ LiteOrm is a lightweight, high-performance .NET ORM that combines micro-ORM spee
 
 - **.NET 8.0+** / **.NET Standard 2.0** (.NET Framework 4.6.1+ compatible)
 - **Dependencies**: Autofac, Castle.Core
-- **Supported databases**: SQL Server 2012+, Oracle 12c+, PostgreSQL, MySQL 8.0+, SQLite
+- **Supported databases**: SQL Server 2012+, Oracle 12c+, PostgreSQL, MySQL 8.0+, SQLite, Dameng (DM), KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, and GreatDB
 
   > Older database versions may require custom paging. See [Custom Paging](./docs/03-advanced-topics/05-custom-paging.en.md).
 
@@ -561,6 +561,7 @@ For guided reading, start with the docs hub. Use the reference pages below when 
 | [中文文档中心](./docs/README.md) | 按学习路径组织的中英文文档导航 |
 | [API Index](./docs/05-reference/02-api-index.en.md) | Scenario-based API and capability entry points |
 | [AI Guide](./docs/05-reference/05-ai-guide.en.md) | Compact appendix for assistants and quick API orientation |
+| [Domestic/Compatible Database SqlBuilder Guide](./docs/04-extensibility/08-domestic-database-sqlbuilder.en.md) | Custom database support |
 | [Demo Project](./LiteOrm.Demo/) | Main feature demonstration project |
 | [Performance Report](./LiteOrm.Benchmark/) | Detailed benchmark reports |
 | [Unit Tests](./LiteOrm.Tests/) | Behavior and regression coverage |

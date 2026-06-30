@@ -44,7 +44,7 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的
 ## 🎯 核心特性
 
 - **极速性能**：性能接近原生 Dapper，远超 EF Core
-- **多数据库支持**：原生支持 SQL Server、MySQL、Oracle、PostgreSQL、SQLite
+- **多数据库支持**：原生支持 SQL Server、MySQL、Oracle、PostgreSQL、SQLite；内置达梦、人大金仓、华为 GaussDB、OceanBase、TiDB、GreatDB 等国产 / 兼容数据库方言
 - **灵活查询**：支持基于 Lambda、`Expr` 或 `ExprString` 的多种查询方式
 - **自动关联**：通过特性实现无损的 JOIN 查询，无需手写 SQL
 - **声明式事务**：`[Transaction]` 特性实现 AOP 事务管理
@@ -61,7 +61,7 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的
 
 - **.NET 8.0+** / **.NET Standard 2.0**（兼容 .NET Framework 4.6.1+）
 - **依赖库**：Autofac、Castle.Core
-- **支持的数据库**：SQL Server 2012+、Oracle 12c+、PostgreSQL、MySQL 8.0+、SQLite
+- **支持的数据库**：SQL Server 2012+、Oracle 12c+、PostgreSQL、MySQL 8.0+、SQLite、达梦（DM）、人大金仓（KingbaseES）、华为 GaussDB / openGauss、OceanBase、TiDB、GreatDB
 
   > 如果目标数据库版本较旧，可能需要自定义分页，参见 [自定义分页](./docs/03-advanced-topics/05-custom-paging.md)。
 
@@ -576,6 +576,7 @@ public class Log : IArged
 | [English Docs Hub](./docs/README.md) | Bilingual docs hub organized by learning path |
 | [API 索引](./docs/05-reference/02-api-index.md) | 按使用场景整理的接口与能力入口 |
 | [AI 使用指南](./docs/05-reference/05-ai-guide.md) | 面向 AI 和快速查阅场景的附录 |
+| [国产/兼容数据库 SqlBuilder 开发指南](./docs/04-extensibility/08-domestic-database-sqlbuilder.md) | 自定义数据库支持 |
 | [Demo 项目](./LiteOrm.Demo/) | 主要特性的演示工程 |
 | [性能报告](./LiteOrm.Benchmark/) | 详细的性能基准测试报告 |
 | [单元测试](./LiteOrm.Tests/) | 行为与回归测试覆盖 |
