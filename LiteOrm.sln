@@ -18,6 +18,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 		LICENSE = LICENSE
 		README.md = README.md
 		README.nuget.md = README.nuget.md
+		README.Remote.nuget.md = README.Remote.nuget.md
+		README.Remote.Server.nuget.md = README.Remote.Server.nuget.md
 		README.zh.md = README.zh.md
 	EndProjectSection
 EndProject

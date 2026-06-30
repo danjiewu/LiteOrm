@@ -13,11 +13,18 @@
     <Copyright>Copyright @ 2026 danjiewu</Copyright>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.Remote.Server.nuget.md</PackageReadmeFile>
   </PropertyGroup>
-
   <PropertyGroup>
     <LangVersion>14.0</LangVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.Remote.Server.nuget.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
