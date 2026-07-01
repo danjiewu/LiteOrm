@@ -14,11 +14,24 @@ This document covers the runtime environment, database support, and installation
 
 ## Supported Databases
 
+**Mainstream databases:**
+
 - SQL Server 2012+
 - MySQL 8.0+
 - Oracle 12c+
 - PostgreSQL
 - SQLite
+
+**Domestic / compatible databases:**
+
+- Dameng DM (Oracle compatible)
+- KingbaseES (PostgreSQL compatible)
+- Huawei GaussDB / openGauss (PostgreSQL compatible)
+- OceanBase (MySQL compatible)
+- TiDB (MySQL compatible)
+- GreatDB (MySQL compatible)
+
+> Domestic databases inherit behavior from their mainstream counterparts and are auto-detected with priority. See [Database Compatibility Notes](../05-reference/08-database-compatibility.en.md) for details.
 
 > For older database versions where default pagination syntax is incompatible, refer to [Custom Paging](../03-advanced-topics/05-custom-paging.md) and [Custom SqlBuilder / Dialect Extension](../04-extensibility/03-custom-sqlbuilder.md).
 

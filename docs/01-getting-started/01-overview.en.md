@@ -429,8 +429,9 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - SQL Server 2012+
 - Oracle 12c+
 - PostgreSQL
-- MySQL8.0+
+- MySQL 8.0+
 - SQLite
+- Dameng DM, KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, GreatDB
 
 ## 10. Common Beginner Misconceptions
 
