@@ -288,7 +288,7 @@ namespace LiteOrm.Service
                 {
                     invocation.Proceed();
                     await (Task)invocation.ReturnValue;
-                });
+                }, serviceDesc.IsolationLevel);
             }
             else
             {
@@ -301,21 +301,18 @@ namespace LiteOrm.Service
         /// 异步事务处理逻辑（针对返回Task&lt;TResult&gt;的异步方法）
         /// </summary>
         /// <param name="invocation">方法调用信息</param>
-        /// <returns>异步任务，包含返回结果</returns>        
+        /// <returns>异步任务，包含返回结果</returns>
         private async Task<TResult> InvokeWithTransactionAsync<TResult>(IInvocation invocation)
         {
             var serviceDesc = GetDescription(invocation);
 
             if (serviceDesc.IsTransaction && !_sessionManager.InTransaction)
             {
-                TResult result = default;
-                await _sessionManager.ExecuteInTransactionAsync(async sm =>
+                return await _sessionManager.ExecuteInTransactionAsync(async sm =>
                 {
                     invocation.Proceed();
-                    result = await (Task<TResult>)invocation.ReturnValue;
-                    return result;
+                    return await (Task<TResult>)invocation.ReturnValue;
                 }, serviceDesc.IsolationLevel);
-                return result;
             }
             else
             {

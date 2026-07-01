@@ -36,6 +36,14 @@ namespace LiteOrm
         private static readonly MethodInfo _changeTypeMethod =
             typeof(AutoLockDataReader).GetMethod(nameof(AutoLockDataReader.ChangeType), new[] { typeof(object), typeof(Type) });
 
+        // 用于在动态读取委托的 catch 块中构造包含成员名/列号的明确异常
+        private static readonly MethodInfo _createColumnReadExceptionMethod =
+            typeof(DataReaderConverter).GetMethod(nameof(CreateColumnReadException),
+                BindingFlags.Static | BindingFlags.NonPublic,
+                null,
+                new[] { typeof(Exception), typeof(int), typeof(string), typeof(Type) },
+                null);
+
         private static readonly Dictionary<Type, MethodInfo> _typedReaderMethods = new Dictionary<Type, MethodInfo>
         {
             [typeof(bool)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean), new[] { typeof(int) }),
@@ -156,7 +164,7 @@ namespace LiteOrm
 
         private static Func<DbDataReader, TResult> CompileScalarConverter<TResult>(ParameterExpression readerParam)
         {
-            var body = BuildTypedReadExpression(readerParam, 0, typeof(TResult));
+            var body = BuildTypedReadExpression(readerParam, 0, typeof(TResult), null);
             return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
         }
 
@@ -184,7 +192,7 @@ namespace LiteOrm
                 {
                     ParameterInfo param = ctorParams[i];
                     args[i] = columnMap.TryGetValue(param.Name, out int ordinal)
-                        ? BuildTypedReadExpression(readerParam, ordinal, param.ParameterType)
+                        ? BuildTypedReadExpression(readerParam, ordinal, param.ParameterType, param.Name)
                         : Expression.Default(param.ParameterType);
                 }
                 body = Expression.New(ctor, args);
@@ -197,7 +205,7 @@ namespace LiteOrm
                 {
                     if (!prop.CanWrite) continue;
                     if (!columnMap.TryGetValue(prop.Name, out int ordinal)) continue;
-                    bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, ordinal, prop.PropertyType)));
+                    bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, ordinal, prop.PropertyType, prop.Name)));
                 }
                 body = Expression.MemberInit(Expression.New(ctor), bindings);
             }
@@ -206,13 +214,14 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 构建读取指定列的完整表达式（含 IsDBNull 守卫与 Nullable 封装）。
+        /// 构建读取指定列的完整表达式（含 IsDBNull 判定、Nullable 封装与列级异常包装）。
         /// 优先按 <paramref name="dbType"/> 选择与数据库列类型精确对应的读取方法；
         /// 若读取方法的返回类型与属性 CLR 类型不符（如枚举、数值扩宽），则自动插入 Convert 表达式。
         /// 未提供 <paramref name="dbType"/> 时退回到按属性 CLR 类型查找，仍无匹配则使用 GetValue + ConvertValue 兜底。
+        /// <paramref name="columnName"/> 用于在读取失败时抛出包含成员名（属性名或构造函数参数名）的明确异常；为 null 时仅依据 <paramref name="ordinal"/> 描述。
         /// </summary>
         private static Expression BuildTypedReadExpression(
-            ParameterExpression readerParam, int ordinal, Type targetType, DbType? dbType = null)
+            ParameterExpression readerParam, int ordinal, Type targetType, string columnName, DbType? dbType = null)
         {
             Type coreType = Nullable.GetUnderlyingType(targetType) ?? targetType;
             var ordinalExpr = Expression.Constant(ordinal);
@@ -242,7 +251,49 @@ namespace LiteOrm
                 readExpr = Expression.Convert(readExpr, targetType);
 
             var isNull = Expression.Call(readerParam, _isDBNullMethod, ordinalExpr);
-            return Expression.Condition(isNull, Expression.Default(targetType), readExpr);
+            var body = Expression.Condition(isNull, Expression.Default(targetType), readExpr);
+
+            // Wrap with try-catch to attach member name / ordinal information on failure
+            return WrapWithColumnErrorHandling(ordinal, columnName, targetType, body);
+        }
+
+        /// <summary>
+        /// 用 TryCatch 包裹列读取表达式，捕获任何异常后重新抛出包含成员名、列号与目标类型的明确异常。
+        /// </summary>
+        private static Expression WrapWithColumnErrorHandling(
+            int ordinal,
+            string memberName,
+            Type targetType,
+            Expression body)
+        {
+            var exVar = Expression.Parameter(typeof(Exception), "ex");
+
+            var rethrowExpr = Expression.Throw(
+                Expression.Call(
+                    _createColumnReadExceptionMethod,
+                    exVar,
+                    Expression.Constant(ordinal),
+                    Expression.Constant(memberName, typeof(string)),
+                    Expression.Constant(targetType, typeof(Type))),
+                body.Type);
+
+            return Expression.TryCatch(body, Expression.Catch(exVar, rethrowExpr));
+        }
+
+        /// <summary>
+        /// 构造包含成员名、列号与目标类型的明确异常，原始异常作为 InnerException 保留。
+        /// </summary>
+        private static Exception CreateColumnReadException(
+            Exception inner, int ordinal, string memberName, Type targetType)
+        {
+            string memberDesc = !string.IsNullOrEmpty(memberName)
+                ? $"member '{memberName}' (ordinal {ordinal})"
+                : $"ordinal {ordinal}";
+
+            return new InvalidOperationException(
+                $"Failed to read {memberDesc} and convert to target type '{targetType.FullName}'. " +
+                $"Check that the database column type is compatible with the target type. See inner exception for details.",
+                inner);
         }
 
         /// <summary>
@@ -303,7 +354,7 @@ namespace LiteOrm
                     BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                 if (prop == null || !prop.CanWrite) continue;
 
-                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType, column.Definition?.DbType)));
+                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType, column.PropertyName, column.Definition?.DbType)));
             }
 
             var body = Expression.MemberInit(Expression.New(ctor), bindings);
