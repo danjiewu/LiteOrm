@@ -1,5 +1,4 @@
 ﻿using LiteOrm.Common;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;

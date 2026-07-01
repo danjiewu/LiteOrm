@@ -1,6 +1,5 @@
 ﻿using Autofac.Features.Indexed;
 using LiteOrm.Common;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Data;
 

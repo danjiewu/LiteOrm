@@ -1,6 +1,5 @@
 using Autofac;
 using Autofac.Builder;
-using Autofac.Core.Lifetime;
 using Autofac.Extensions.DependencyInjection;
 using Autofac.Extras.DynamicProxy;
 using Castle.DynamicProxy;
