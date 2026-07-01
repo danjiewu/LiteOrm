@@ -71,9 +71,9 @@ var result = await userService.SearchAs<UserView>(
 );
 ```
 
-### 3.1.1 来自 Demo 的投影思路
+### 3.1.1 投影思路
 
-`LiteOrm.Demo\Demos\WindowFunctionDemo.cs` 中使用 `SearchAs<T>` 和投影来避免读取不必要的列：
+使用 `SearchAs<T>` 和投影来避免读取不必要的列：
 
 ```csharp
 var results = await factory.SalesDAO
@@ -126,9 +126,9 @@ for (int i = 0; i < 100; i++)
 await userService.BatchInsertAsync(users);  // 推荐
 ```
 
-### 4.1.1 来自 Demo 的批量初始化示例
+### 4.1.1 批量初始化示例
 
-`LiteOrm.Demo\Data\DbInitializer.cs` 中使用批量插入初始化多组数据：
+使用批量插入初始化多组数据：
 
 ```csharp
 await deptService.BatchInsertAsync(depts);
@@ -151,9 +151,9 @@ foreach (var user in users)
 await userService.BatchUpdateAsync(users);  // 推荐
 ```
 
-### 4.2.1 来自测试的批量增改删闭环
+### 4.2.1 批量增改删闭环
 
-`LiteOrm.Tests\ServiceTests.cs` 对批量操作有一组很典型的闭环验证：
+对批量操作的一组典型闭环验证：
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -187,9 +187,9 @@ var provider = factory.GetProvider(dbConnection.GetType());
 await provider.BulkInsertAsync(ToDataTable(users), dbConnection, transaction);
 ```
 
-### 4.3.1 来自 Demo 的 MySQL `IBulkProvider` 实现
+### 4.3.1 MySQL `IBulkProvider` 实现示例
 
-`LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs` 文件中提供了一个真实的 `IBulkProvider` 实现（类名为 `MySqlBulkCopyProvider`）：
+下面是一个真实的 `IBulkProvider` 实现（类名为 `MySqlBulkCopyProvider`）：
 
 ```csharp
 [AutoRegister(Key = typeof(MySqlConnection))]
@@ -320,9 +320,9 @@ bool exists = await userService.ExistsAsync(u => u.Age >= 18);
 if (exists) { ... }
 ```
 
-### 7.2.1 来自测试的存在性判断示例
+### 7.2.1 存在性判断示例
 
-`LiteOrm.Tests\ServiceTests.cs` 中直接验证了 `ExistsAsync` 和 `CountAsync` 的差异化用途：
+直接对比 `ExistsAsync` 和 `CountAsync` 的差异化用途：
 
 ```csharp
 using static LiteOrm.Common.Expr;

@@ -253,11 +253,9 @@ var archivedOrders = await orderService.SearchAsync(
 
 如果把这种“显式覆盖”放到更深层的 `TableExpr`、子查询或关联表达式里，也会覆盖当前上下文继承值；在多租户或按业务范围隔离的系统里，务必确认这种覆盖是刻意为之。
 
-## 6. 来自 Demo 和测试的真实分表模式
+## 6. 真实分表模式
 
 ### 6.1 在 Lambda 中直接指定 `TableArgs`
-
-这个写法来自 `LiteOrm.Demo\Demos\ShardingQueryDemo.cs`：
 
 ```csharp
 var sales = await salesService.SearchAsync(s =>
@@ -276,7 +274,7 @@ var sales = await salesService.SearchAsync(
 );
 ```
 
-这个模式和测试中的 `CountAsync(..., tableArgs: ...)` 一样，适合把分表参数放在调用层统一控制。
+适合把分表参数放在调用层统一控制。
 
 ### 6.3 使用 `Expr.From<T>(...)` 指定分表
 
@@ -290,7 +288,7 @@ var sales = await salesService.SearchAsync(
 );
 ```
 
-这个模式同样来自 Demo，适合复杂查询、排序和分页组合使用。
+适合复杂查询、排序和分页组合使用。
 
 ### 6.4 利用不同占位符位置表达不同维度
 

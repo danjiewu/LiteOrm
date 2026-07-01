@@ -546,7 +546,7 @@ namespace LiteOrm.Common
             return DefaultMemberHandler(node, this);
         }
 
-        private Expr ConvertNewArray(NewArrayExpression node)
+        protected Expr ConvertNewArray(NewArrayExpression node)
         {
             var items = new List<ValueTypeExpr>();
             foreach (var expression in node.Expressions)
@@ -561,7 +561,7 @@ namespace LiteOrm.Common
             return new ValueSet(items);
         }
 
-        private Expr ConvertListInit(ListInitExpression node)
+        protected Expr ConvertListInit(ListInitExpression node)
         {
             var items = new List<ValueTypeExpr>();
             foreach (var init in node.Initializers)

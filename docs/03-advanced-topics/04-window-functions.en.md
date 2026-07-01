@@ -145,9 +145,9 @@ var sales = await saleService.SearchAs<SalesWindowView>(q => q
 );
 ```
 
-### 3.6 Registration and Query Flow from Demo
+### 3.6 Registration and Query Flow
 
-The following is organized from `LiteOrm.Demo\Demos\WindowFunctionDemo.cs`:
+A complete registration and query flow:
 
 ```csharp
 // Register handlers at application startup

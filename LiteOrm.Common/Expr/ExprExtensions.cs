@@ -750,6 +750,19 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 更新表达式添加 SET 子句。
+        /// </summary>
+        /// <param name="source">更新表达式。</param>
+        /// <param name="prop">属性名称。</param>
+        /// <param name="value">值表达式。</param>
+        /// <returns>包含 SET 子句的更新表达式。</returns>
+        public static UpdateExpr Set(this UpdateExpr source, string prop, ValueTypeExpr value)
+        {
+            source.Sets.Add(new(Expr.Prop(prop), value));
+            return source;
+        }
+
+        /// <summary>
         /// 添加 JOIN 子句连接到目标数据源。
         /// </summary>
         /// <param name="source">源数据源表达式。</param>

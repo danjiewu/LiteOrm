@@ -231,6 +231,37 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 创建指定实体类型的 UPDATE 表达式，并根据提供的 Lambda 表达式设置更新字段和值，同时可选地指定 WHERE 条件。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="updateExpression">定义更新字段和值的 Lambda 表达式，必须是MemberInitExpression，即 u => new User{ UserName = "Bob", Age = u.Age + 1 } 形式。</param>
+        /// <param name="whereExpression">定义 WHERE 条件的 Lambda 表达式（可选）。</param>
+        /// <returns>UPDATE 表达式。</returns>
+        /// <exception cref="ArgumentNullException">当 updateExpression 为 null 时抛出。</exception>
+        /// <exception cref="ArgumentException">当 updateExpression 不是 MemberInitExpression 时抛出。</exception>
+        public static UpdateExpr Update<T>(Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> whereExpression)
+        {
+            if (updateExpression == null) throw new ArgumentNullException(nameof(updateExpression));
+            if (updateExpression.Body is not MemberInitExpression memberInitExpression) throw new ArgumentException("updateExpression must be a MemberInitExpression", nameof(updateExpression));
+            LambdaExprConverter updateConverter = new LambdaExprConverter(updateExpression);
+            var updateExpr = Expr.Update<T>();
+            if (whereExpression != null)
+            {               
+                var lambdaConvert = new LambdaExprConverter(whereExpression);
+                updateExpr.Where(lambdaConvert.ToLogicExpr());
+                updateExpr.Table.TableArgs = lambdaConvert.Table?.TableArgs;
+            }
+            foreach (var binding in memberInitExpression.Bindings)
+            {
+                if (binding is MemberAssignment assignment)
+                {
+                    updateExpr.Set(assignment.Member.Name, updateConverter.Convert(assignment.Expression).AsValue());
+                }
+            }
+            return updateExpr;
+        }
+
+        /// <summary>
         /// 创建指定实体类型的 DELETE 表达式。
         /// </summary>
         /// <typeparam name="T">实体类型。</typeparam>

@@ -216,6 +216,85 @@ namespace LiteOrm.Tests
             Assert.All(allUsers, u => Assert.Equal(99, u.Age));
         }
 
+        [Fact]
+        public async Task UpdateExpr_LambdaBasic_ShouldUpdateMatchingRows()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var user = new TestUser { Name = "LambdaUpdate1", Age = 20, CreateTime = DateTime.Now };
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
+
+            // 通过 Lambda 扩展方法执行更新：u => new TestUser { Age = 25 }
+            var updateResult = await service.UpdateAllAsync(
+                u => new TestUser { Age = 25 },
+                u => u.Name == "LambdaUpdate1",
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.True(updateResult > 0);
+
+            var updatedUser = (await objectViewDAO.Search(Expr.Prop("Name") == "LambdaUpdate1").ToListAsync(TestContext.Current.CancellationToken)).FirstOrDefault();
+            Assert.NotNull(updatedUser);
+            Assert.Equal(25, updatedUser.Age);
+        }
+
+        [Fact]
+        public async Task UpdateExpr_LambdaMultipleColumns_ShouldUpdateAllColumns()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var user = new TestUser { Name = "LambdaMulti", Age = 20, CreateTime = DateTime.Now };
+            await service.InsertAsync(user, TestContext.Current.CancellationToken);
+
+            // 通过 Lambda 扩展方法一次性更新多个字段
+            var updateResult = await service.UpdateAllAsync(
+                u => new TestUser { Name = "LambdaMulti_Updated", Age = 88 },
+                u => u.Name == "LambdaMulti",
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.True(updateResult > 0);
+
+            var updatedUser = (await objectViewDAO.Search(Expr.Prop("Name") == "LambdaMulti_Updated").ToListAsync(TestContext.Current.CancellationToken)).FirstOrDefault();
+            Assert.NotNull(updatedUser);
+            Assert.Equal(88, updatedUser.Age);
+        }
+
+        [Fact]
+        public async Task UpdateExpr_LambdaWithArithmeticAndLogicCondition_ShouldUpdateMatchingRows()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+
+            var user1 = new TestUser { Name = "LambdaArith1", Age = 28, CreateTime = DateTime.Now };
+            var user2 = new TestUser { Name = "LambdaArith2", Age = 35, CreateTime = DateTime.Now };
+            var user3 = new TestUser { Name = "LambdaArith3", Age = 20, CreateTime = DateTime.Now };
+            await service.InsertAsync(user1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(user2, TestContext.Current.CancellationToken);
+            await service.InsertAsync(user3, TestContext.Current.CancellationToken);
+
+            // 更新表达式引用原字段值参与运算（u.Age + 1），WHERE 条件使用逻辑组合（||）
+            var updateResult = await service.UpdateAllAsync(
+                u => new TestUser { Age = u.Age + 1, CreateTime = DateTime.Now },
+                u => u.Name == "LambdaArith1" || u.Name == "LambdaArith2",
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.Equal(2, updateResult);
+
+            var updated1 = (await objectViewDAO.Search(Expr.Prop("Name") == "LambdaArith1").ToListAsync(TestContext.Current.CancellationToken)).FirstOrDefault();
+            Assert.NotNull(updated1);
+            Assert.Equal(29, updated1.Age);
+
+            var updated2 = (await objectViewDAO.Search(Expr.Prop("Name") == "LambdaArith2").ToListAsync(TestContext.Current.CancellationToken)).FirstOrDefault();
+            Assert.NotNull(updated2);
+            Assert.Equal(36, updated2.Age);
+
+            // 未命中条件的记录保持不变
+            var unchanged = (await objectViewDAO.Search(Expr.Prop("Name") == "LambdaArith3").ToListAsync(TestContext.Current.CancellationToken)).FirstOrDefault();
+            Assert.NotNull(unchanged);
+            Assert.Equal(20, unchanged.Age);
+        }
+
         #endregion
 
         #region CommonTableExpr 实际数据库查询测试

@@ -71,9 +71,9 @@ var result = await userService.SearchAs<UserView>(
 );
 ```
 
-### 3.1.1 Projection Pattern from Demo
+### 3.1.1 Projection Pattern
 
-`LiteOrm.Demo\Demos\WindowFunctionDemo.cs` uses `SearchAs<T>` with projection to avoid reading unnecessary columns:
+Use `SearchAs<T>` with projection to avoid reading unnecessary columns:
 
 ```csharp
 var results = await factory.SalesDAO
@@ -126,9 +126,9 @@ for (int i = 0; i < 100; i++)
 await userService.BatchInsertAsync(users);  // Recommended
 ```
 
-### 4.1.1 Batch Initialization Example from Demo
+### 4.1.1 Batch Initialization Example
 
-`LiteOrm.Demo\Data\DbInitializer.cs` uses batch inserts to initialize multiple groups of data:
+Use batch inserts to initialize multiple groups of data:
 
 ```csharp
 await deptService.BatchInsertAsync(depts);
@@ -151,9 +151,9 @@ foreach (var user in users)
 await userService.BatchUpdateAsync(users);  // Recommended
 ```
 
-### 4.2.1 Complete Batch Insert/Update/Delete Cycle from Tests
+### 4.2.1 Complete Batch Insert/Update/Delete Cycle
 
-`LiteOrm.Tests\ServiceTests.cs` has a typical complete cycle validation for batch operations:
+A typical complete cycle validation for batch operations:
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -187,9 +187,9 @@ var provider = factory.GetProvider(dbConnection.GetType());
 await provider.BulkInsertAsync(ToDataTable(users), dbConnection, transaction);
 ```
 
-### 4.3.1 MySQL `IBulkProvider` Implementation from Demo
+### 4.3.1 MySQL `IBulkProvider` Implementation Example
 
-`LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs` provides a real `IBulkProvider` implementation (class `MySqlBulkCopyProvider`):
+Below is a real `IBulkProvider` implementation (class `MySqlBulkCopyProvider`):
 
 ```csharp
 [AutoRegister(Key = typeof(MySqlConnection))]
@@ -320,9 +320,9 @@ bool exists = await userService.ExistsAsync(u => u.Age >= 18);
 if (exists) { ... }
 ```
 
-### 7.2.1 Existence Check Examples from Tests
+### 7.2.1 Existence Check Example
 
-`LiteOrm.Tests\ServiceTests.cs` directly validates the different purposes of `ExistsAsync` and `CountAsync`:
+Directly compare the different purposes of `ExistsAsync` and `CountAsync`:
 
 ```csharp
 using static LiteOrm.Common.Expr;

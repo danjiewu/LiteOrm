@@ -153,6 +153,38 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void UpdateAll_WithLambdaUpdateAndPredicate_ForwardsToUnderlyingService()
+        {
+            var service = new Mock<IEntityService<TestEntity>>();
+            service.Setup(s => s.UpdateAll(It.IsAny<UpdateExpr>(), It.IsAny<string[]>())).Returns(1);
+
+            var result = service.Object.UpdateAll(
+                u => new TestEntity { Name = "Bob" },
+                u => u.Id == 1,
+                "Users");
+
+            Assert.Equal(1, result);
+            service.Verify(s => s.UpdateAll(It.IsAny<UpdateExpr>(), It.Is<string[]>(x => x.Length == 1 && x[0] == "Users")), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateAllAsync_WithLambdaUpdateAndPredicate_ForwardsCancellationToken()
+        {
+            var token = new CancellationTokenSource().Token;
+            var service = new Mock<IEntityServiceAsync<TestEntity>>();
+            service.Setup(s => s.UpdateAllAsync(It.IsAny<UpdateExpr>(), It.IsAny<string[]>(), token)).ReturnsAsync(3);
+
+            var result = await service.Object.UpdateAllAsync(
+                u => new TestEntity { Name = "Bob", Id = u.Id + 1 },
+                u => u.Name == "A",
+                null,
+                token);
+
+            Assert.Equal(3, result);
+            service.Verify(s => s.UpdateAllAsync(It.IsAny<UpdateExpr>(), It.IsAny<string[]>(), token), Times.Once);
+        }
+
+        [Fact]
         public void Search_WithNullExpression_ThrowsArgumentNullException()
         {
             var service = new Mock<IEntityViewService<TestEntity>>();

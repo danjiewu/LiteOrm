@@ -170,9 +170,9 @@ var users = await userService.SearchAsync(
 );
 ```
 
-### 4.5 来自 Demo 的真实格式化示例
+### 4.5 真实格式化示例
 
-`LiteOrm.Demo\Demos\DateFormatDemo.cs` 中更推荐直接使用 `DateTime.ToString(format)`，它和手动 `FunctionExpr("Format", ...)` 最终都会落到数据库方言对应的格式化函数上：
+更推荐直接使用 `DateTime.ToString(format)`，它和手动 `FunctionExpr("Format", ...)` 最终都会落到数据库方言对应的格式化函数上：
 
 ```csharp
 using static LiteOrm.Common.Expr;

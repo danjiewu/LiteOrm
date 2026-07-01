@@ -101,6 +101,20 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 使用 Lambda 表达式更新符合条件的实体。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityService">实体服务实例。</param>
+        /// <param name="updateExpression">定义更新操作的 Lambda 表达式。</param>
+        /// <param name="expression">定义更新条件的 Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <returns>受影响的行数。</returns>
+        public static int UpdateAll<T>(this IEntityService<T> entityService, Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> expression, params string[] tableArgs)
+        {
+            return entityService.UpdateAll(Expr.Update(updateExpression, expression), tableArgs);
+        }
+
+        /// <summary>
         /// 使用 Lambda 表达式异步检查是否存在符合条件的实体。
         /// </summary>
         public static Task<bool> ExistsAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
@@ -197,6 +211,21 @@ namespace LiteOrm.Common
         public static Task<T> SearchOneAsync<T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityViewService.SearchOneAsync(Expr.Query(expression), tableArgs, cancellationToken);
-        }        
+        }
+
+        /// <summary>
+        /// 使用 Lambda 表达式异步更新符合条件的实体。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <param name="entityService">支持异步操作的实体服务实例。</param>
+        /// <param name="updateExpression">定义更新字段和值的 Lambda 表达式。</param>
+        /// <param name="expression">定义 WHERE 条件的 Lambda 表达式（可选）。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <param name="cancellationToken">取消操作的令牌。</param>
+        /// <returns>表示异步更新操作的任务，结果包含受影响的行数。</returns>
+        public static Task<int> UpdateAllAsync<T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        {
+            return entityService.UpdateAllAsync(Expr.Update(updateExpression, expression), tableArgs, cancellationToken);
+        }
     }
 }

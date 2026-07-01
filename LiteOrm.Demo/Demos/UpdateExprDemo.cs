@@ -26,6 +26,7 @@ namespace LiteOrm.Demo.Demos
             await Demo4_FunctionExprAsync(userSvc);
             await Demo5_LambdaWhereMultiFieldAsync(userSvc);
             await Demo6_SubQuerySetAsync(userSvc);
+            await Demo7_LambdaUpdateAsync(userSvc);
 
             await userSvc.DeleteAsync(u => u.UserName != null && u.UserName.StartsWith("UpdateDemo_"));
         }
@@ -330,6 +331,65 @@ namespace LiteOrm.Demo.Demos
                 DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"✗ 演示6.5 失败: {ex.Message}\n");
+                Console.ResetColor();
+            }
+        }
+
+        /// <summary>
+        /// 演示6.7：纯 Lambda 表达式更新（UpdateAllAsync 扩展方法）
+        /// </summary>
+        private static async Task Demo7_LambdaUpdateAsync(IUserService userSvc)
+        {
+            Console.WriteLine("┌────────────────────────────────────────────────────────────┐");
+            Console.WriteLine("│ 演示6.7：纯 Lambda 表达式更新（UpdateAllAsync 扩展方法）  │");
+            Console.WriteLine("└────────────────────────────────────────────────────────────┘");
+
+            try
+            {
+                // 场景1：单字段更新 + 等值条件
+                DemoHelper.PrintSection("📋 场景1 说明",
+                    "通过 UpdateAllAsync 扩展方法直接使用两个 Lambda 表达式：第一个定义更新字段和值，第二个定义 WHERE 条件");
+
+                DemoHelper.PrintSection("📝 场景1 代码",
+                    "// 等价于 UPDATE Users SET Age = 29 WHERE UserName = 'UpdateDemo_Alice'\n" +
+                    "await userSvc.UpdateAllAsync(\n" +
+                    "    u => new User { Age = 29 },\n" +
+                    "    u => u.UserName == \"UpdateDemo_Alice\");");
+
+                int affected1 = await userSvc.UpdateAllAsync(
+                    u => new User { Age = 29 },
+                    u => u.UserName == "UpdateDemo_Alice");
+
+                var sql1 = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 场景1 执行的 SQL", sql1);
+                DemoHelper.PrintSection("✅ 场景1 结果", $"受影响行数: {affected1}（Alice.Age → 29）");
+
+                // 场景2：多字段更新 + 引用原字段值的算术运算 + 复合 WHERE 条件
+                DemoHelper.PrintSection("📋 场景2 说明",
+                    "更新表达式中可引用原实体字段参与运算（如 u.Age + 1），WHERE 条件支持 && / || 等逻辑组合");
+
+                DemoHelper.PrintSection("📝 场景2 代码",
+                    "// 等价于 UPDATE Users SET Age = Age + 1, CreateTime = @now WHERE Age >= 28\n" +
+                    "await userSvc.UpdateAllAsync(\n" +
+                    "    u => new User { Age = u.Age + 1, CreateTime = DateTime.Now },\n" +
+                    "    u => u.Age >= 28);");
+
+                int affected2 = await userSvc.UpdateAllAsync(
+                    u => new User { Age = u.Age + 1, CreateTime = DateTime.Now },
+                    u => u.Age >= 28);
+
+                var sql2 = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 场景2 执行的 SQL", sql2);
+                DemoHelper.PrintSection("✅ 场景2 结果", $"受影响行数: {affected2}（Age >= 28 的记录：Age+1 且 CreateTime 刷新）");
+
+                Console.WriteLine("✓ 演示6.7 完成\n");
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"✗ 演示6.7 失败: {ex.Message}\n");
+                var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
+                DemoHelper.PrintSection("🔍 执行的 SQL", sql);
                 Console.ResetColor();
             }
         }

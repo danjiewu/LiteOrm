@@ -170,9 +170,9 @@ var users = await userService.SearchAsync(
 );
 ```
 
-### 4.5 Real Formatting Example from Demo
+### 4.5 Real Formatting Example
 
-In `LiteOrm.Demo\Demos\DateFormatDemo.cs`, using `DateTime.ToString(format)` directly is preferred. Both manually constructing `FunctionExpr` and using `FunctionExpr("Format", ...)` ultimately fall to the database dialect's formatting function:
+Using `DateTime.ToString(format)` directly is preferred. Both manually constructing `FunctionExpr` and using `FunctionExpr("Format", ...)` ultimately fall to the database dialect's formatting function:
 
 ```csharp
 using static LiteOrm.Common.Expr;

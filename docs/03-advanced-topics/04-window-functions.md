@@ -144,9 +144,9 @@ var sales = await saleService.SearchAs<SalesWindowView>(q => q
 );
 ```
 
-### 3.6 来自 Demo 的注册与查询流程
+### 3.6 注册与查询流程
 
-下面这段整理自 `LiteOrm.Demo\Demos\WindowFunctionDemo.cs`：
+完整的注册与查询流程：
 
 ```csharp
 // 应用启动时先注册处理器

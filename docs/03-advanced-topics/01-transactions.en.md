@@ -99,9 +99,9 @@ public async Task SubmitOrderAsync(CreateOrderInput input)
 
 This pattern is suitable for typical business transactions like "main table + details + audit log."
 
-### 1.5 Rollback Example from Demo
+### 1.5 Failure Rollback Example
 
-`LiteOrm.Demo\Demos\TransactionDemo.cs` demonstrates a useful failure rollback scenario: create a user first, then insert an intentionally invalid sales record to trigger automatic transaction rollback.
+Below is a practical failure rollback scenario: create a user first, then insert an intentionally invalid sales record to trigger automatic transaction rollback.
 
 ```csharp
 var newUser = new User { UserName = "ThreeTierUser", Age = 25 };

@@ -24,9 +24,9 @@ bool success = await userService.InsertAsync(user);
 await userService.BatchInsertAsync(users);
 ```
 
-### Batch Initialization Example from Demo
+### Batch Initialization Example
 
-`LiteOrm.Demo\Data\DbInitializer.cs` uses batch inserts to initialize departments, users, and sales records. This pattern is ideal for seed data initialization, demo data generation, or pre-import data preparation:
+Use batch inserts to initialize departments, users, and sales records. This pattern is ideal for seed data initialization, demo data generation, or pre-import data preparation:
 
 ```csharp
 var depts = new List<Department>
@@ -62,9 +62,9 @@ If you need to distinguish between insert and update, use the DAO layer's `Updat
 await userService.BatchUpdateOrInsertAsync(users);
 ```
 
-### Batch Upsert Example from Tests
+### Batch Upsert Example
 
-The following example is extracted from `LiteOrm.Tests\ServiceTests.cs`: the same batch contains entities that need updating (already exist) and entities that need inserting (new).
+The same batch contains entities that need updating (already exist) and entities that need inserting (new):
 
 ```csharp
 var users = new List<TestUser>
@@ -110,9 +110,9 @@ foreach (var user in users)
 await userService.BatchUpdateAsync(users);
 ```
 
-### Batch Update Example from Demo
+### Batch Update Example
 
-`LiteOrm.Demo\Data\DbInitializer.cs` queries departments first, then modifies managers in bulk, and finally commits in one batch:
+Query departments first, then modify managers in bulk, and finally commit in one batch:
 
 ```csharp
 var updateDepts = new List<Department>();
@@ -180,12 +180,7 @@ Important behavior details:
 - The generic `IEntityService<T>` / `IEntityServiceAsync<T>` update methods do not expose a `timestamp` overload. For optimistic concurrency, use `ObjectDAO<T>` directly or wrap it in a custom service.
 - `BatchUpdate` / `BatchUpdateAsync` do not automatically apply `timestamp` concurrency checks.
 
-### `timestamp` Update Example from Tests
-
-See:
-
-- `LiteOrm.Tests\ObjectDAOTests.cs`
-- `LiteOrm.Tests\Models\TestTimestampUser.cs`
+> For a complete example, see `LiteOrm.Tests\ObjectDAOTests.cs` and `LiteOrm.Tests\Models\TestTimestampUser.cs`.
 
 ### Conditional Update
 
@@ -201,9 +196,9 @@ await objectDao.UpdateAsync(
 );
 ```
 
-### UpdateExpr Practical Examples from Demo
+### UpdateExpr Practical Examples
 
-`LiteOrm.Demo\Demos\UpdateExprDemo.cs` demonstrates several typical uses of `UpdateExpr`:
+Several typical uses of `UpdateExpr`:
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -222,6 +217,44 @@ var agePlusFive = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") =
 
 var rename = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
     .Set(("UserName", Func("CONCAT", Prop("UserName"), Const("_v2"))));
+```
+
+### Update with Lambda Expressions (Recommended)
+
+If you don't want to assemble an `UpdateExpr` by hand, you can call the `UpdateAll` / `UpdateAllAsync` Lambda extension methods directly. They accept two Lambda expressions: the first defines which fields to update and the values to set, and the second defines the `WHERE` condition. The framework internally converts them to an `UpdateExpr` via `LambdaExprConverter`, so the syntax is closer to EF Core and benefits from compile-time type checking.
+
+```csharp
+// Equivalent to: UPDATE Users SET Age = 29 WHERE UserName = 'UpdateDemo_Alice'
+await userService.UpdateAllAsync(
+    u => new User { Age = 29 },
+    u => u.UserName == "UpdateDemo_Alice"
+);
+```
+
+The update expression can also reference the original entity fields for arithmetic (e.g. increment, string concatenation), and the `WHERE` condition supports logical combinations such as `&&` / `||`:
+
+```csharp
+// Equivalent to: UPDATE Users SET Age = Age + 1, CreateTime = @now WHERE Age >= 28
+await userService.UpdateAllAsync(
+    u => new User { Age = u.Age + 1, CreateTime = DateTime.Now },
+    u => u.Age >= 28
+);
+```
+
+Usage notes:
+
+- The first Lambda must be an `Expression<Func<T, T>>` whose body is a `new T { ... }` form (a `MemberInitExpression`). Each `=` binding is translated into a `SET` clause.
+- The second Lambda is an `Expression<Func<T, bool>>`, i.e. a regular WHERE condition. It can be omitted (when `whereExpression` is not provided, all rows are updated — use with caution).
+- Referencing the original field (e.g. `u.Age + 1`) is translated to `Prop("Age") + Const(1)`, corresponding to the SQL `Age = Age + 1`.
+- You can also pass dynamic table name arguments via `params string[] tableArgs`.
+
+```csharp
+// Sync version + dynamic table name
+userService.UpdateAll(
+    u => new User { Age = 30 },
+    u => u.UserName == "UpdateDemo_Bob",
+    "Users_2026" // dynamic table name
+);
 ```
 
 ## 3. Delete
@@ -246,9 +279,9 @@ await userService.BatchDeleteAsync(users);
 await userService.BatchDeleteIDAsync(new[] { 1, 2, 3 });
 ```
 
-### Complete Batch Insert/Update/Delete Cycle from Tests
+### Complete Batch Insert/Update/Delete Cycle
 
-`LiteOrm.Tests\ServiceTests.cs` has a complete validation cycle suitable for copying:
+A complete validation cycle suitable for copying:
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -279,9 +312,9 @@ await userService.DeleteAsync(u => u.CreateTime < DateTime.Today.AddYears(-1));
 await objectDao.Delete(Prop("Age") < 18 & Prop("UserName").StartsWith("Temp"));
 ```
 
-### Conditional Delete Example from Tests
+### Conditional Delete Example
 
-The following example is extracted from sharding tests, but the delete conditions themselves apply to regular tables as well:
+Delete conditions in a sharding scenario — they also apply to regular tables (just drop the `tableArgs` parameter):
 
 ```csharp
 int deleted = await service.DeleteAsync(
@@ -289,8 +322,6 @@ int deleted = await service.DeleteAsync(
     tableArgs: new[] { "202401" }
 );
 ```
-
-For non-sharded tables, simply remove the `tableArgs` parameter.
 
 ## 4. Return Values and Behavior
 
@@ -305,13 +336,26 @@ For non-sharded tables, simply remove the `tableArgs` parameter.
 
 ### `IEntityService<T>` / `IEntityServiceAsync<T>`
 
+Entity-level writes and batch operations (parameters are strongly typed `T` or `IEnumerable<T>`):
+
 - `Insert` / `InsertAsync`
 - `Update` / `UpdateAsync`
+- `UpdateOrInsert` / `UpdateOrInsertAsync`
 - `Delete` / `DeleteAsync`
 - `BatchInsert` / `BatchInsertAsync`
 - `BatchUpdate` / `BatchUpdateAsync`
+- `BatchUpdateOrInsert` / `BatchUpdateOrInsertAsync`
 - `BatchDelete` / `BatchDeleteAsync`
-- `UpdateOrInsert` / `UpdateOrInsertAsync`
+- `Batch` / `BatchAsync`: mixed batch processing, each record can specify `OpDef.Insert` / `Update` / `Delete`
+
+Inherited from the non-generic `IEntityService` / `IEntityServiceAsync`, which also includes expression- or primary-key-based methods:
+
+- `UpdateAll` / `UpdateAllAsync`: update by `UpdateExpr` condition, returns number of affected rows
+- `DeleteAll` / `DeleteAllAsync`: delete by `LogicExpr` condition, returns number of affected rows
+- `DeleteID` / `DeleteIDAsync`: delete by primary key
+- `BatchDeleteID` / `BatchDeleteIDAsync`: batch delete by primary keys
+
+> The `UpdateAll` / `DeleteAll` methods above can also be called directly via the Lambda extension methods provided by `LambdaExprExtensions` (see the "Update with Lambda Expressions" and "Conditional Delete" sections in this document).
 
 If you also need conditional search, pagination, `Exists`, `Count`, etc., please refer to the [Query Guide](./04-query-guide.en.md).
 
@@ -331,7 +375,7 @@ var ops = new List<EntityOperation<TestUser>>
 await service.BatchAsync(ops);
 ```
 
-This example from `LiteOrm.Tests\ServiceTests.cs` is suitable for "insert new batch of data while deleting old data" sync migration scenarios.
+Suitable for "insert new batch of data while deleting old data" sync migration scenarios.
 
 ## 7. Practical Recommendations
 

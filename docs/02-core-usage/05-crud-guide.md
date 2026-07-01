@@ -24,9 +24,9 @@ bool success = await userService.InsertAsync(user);
 await userService.BatchInsertAsync(users);
 ```
 
-### 来自 Demo 的批量初始化示例
+### 批量初始化示例
 
-`LiteOrm.Demo\Data\DbInitializer.cs` 中使用批量插入来初始化部门、用户和销售记录，适合作为导入或初始化脚本参考：
+使用批量插入来初始化部门、用户和销售记录，适合作为导入或初始化脚本参考：
 
 ```csharp
 var depts = new List<Department>
@@ -64,9 +64,9 @@ Console.WriteLine(success); // true 表示执行成功
 await userService.BatchUpdateOrInsertAsync(users);
 ```
 
-### 来自测试的 Batch Upsert 示例
+### Batch Upsert 示例
 
-下面的例子提炼自 `LiteOrm.Tests\ServiceTests.cs`：同一批数据中既有“已存在需要更新”的实体，也有“需要新增”的实体。
+同一批数据中既有“已存在需要更新”的实体，也有“需要新增”的实体：
 
 ```csharp
 var users = new List<TestUser>
@@ -112,9 +112,9 @@ foreach (var user in users)
 await userService.BatchUpdateAsync(users);
 ```
 
-### 来自 Demo 的批量更新示例
+### 批量更新示例
 
-`LiteOrm.Demo\Data\DbInitializer.cs` 中先查询出部门，再集中修改负责人，最后一次性提交：
+先查询出部门，再集中修改负责人，最后一次性提交：
 
 ```csharp
 var updateDepts = new List<Department>();
@@ -182,12 +182,7 @@ if (!updated)
 - 通用 `IEntityService<T>` / `IEntityServiceAsync<T>` 的 `Update` 重载不带 `timestamp` 参数；需要乐观并发时，请直接使用 `ObjectDAO<T>`，或在自定义 Service 中封装 DAO。
 - `BatchUpdate` / `BatchUpdateAsync` 不会自动附带 `timestamp` 并发校验。
 
-### 来自测试的 `timestamp` 更新示例
-
-可参考：
-
-- `LiteOrm.Tests\ObjectDAOTests.cs`
-- `LiteOrm.Tests\Models\TestTimestampUser.cs`
+> 完整示例可参考 `LiteOrm.Tests\ObjectDAOTests.cs` 和 `LiteOrm.Tests\Models\TestTimestampUser.cs`。
 
 ### 条件更新
 
@@ -203,9 +198,9 @@ await objectDao.UpdateAsync(
 );
 ```
 
-### 来自 Demo 的 UpdateExpr 实战示例
+### UpdateExpr 实战示例
 
-`LiteOrm.Demo\Demos\UpdateExprDemo.cs` 演示了 `UpdateExpr` 的几种典型玩法：
+`UpdateExpr` 的几种典型玩法：
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -224,6 +219,44 @@ var agePlusFive = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") =
 
 var rename = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
     .Set(("UserName", Func("CONCAT", Prop("UserName"), Const("_v2"))));
+```
+
+### 使用 Lambda 表达式更新（推荐）
+
+如果不想手工拼 `UpdateExpr`，可以直接调用 `UpdateAll` / `UpdateAllAsync` 的 Lambda 扩展方法。它接受两个 Lambda 表达式：第一个定义“更新哪些字段、赋什么值”，第二个定义 `WHERE` 条件。框架内部会通过 `LambdaExprConverter` 自动转换为 `UpdateExpr`，因此写法更接近 EF Core，且具备编译期类型检查。
+
+```csharp
+// 等价于 UPDATE Users SET Age = 29 WHERE UserName = 'UpdateDemo_Alice'
+await userService.UpdateAllAsync(
+    u => new User { Age = 29 },
+    u => u.UserName == "UpdateDemo_Alice"
+);
+```
+
+更新表达式中还可以引用原实体字段参与运算（例如自增、字符串拼接），`WHERE` 条件也支持 `&&` / `||` 等逻辑组合：
+
+```csharp
+// 等价于 UPDATE Users SET Age = Age + 1, CreateTime = @now WHERE Age >= 28
+await userService.UpdateAllAsync(
+    u => new User { Age = u.Age + 1, CreateTime = DateTime.Now },
+    u => u.Age >= 28
+);
+```
+
+使用要点：
+
+- 第一个 Lambda 必须为 `Expression<Func<T, T>>`，且主体是 `new T { ... }` 形式的 `MemberInitExpression`，每个 `=` 绑定都会被翻译为一个 `SET` 子句。
+- 第二个 Lambda 为 `Expression<Func<T, bool>>`，即普通的 WHERE 条件，可以省略（不传 `whereExpression` 时表示更新全部记录，请谨慎使用）。
+- 引用原字段（如 `u.Age + 1`）会被翻译为 `Prop("Age") + Const(1)`，对应 SQL `Age = Age + 1`。
+- 还可以通过 `params string[] tableArgs` 传入动态表名参数。
+
+```csharp
+// 同步版本 + 动态表名
+userService.UpdateAll(
+    u => new User { Age = 30 },
+    u => u.UserName == "UpdateDemo_Bob",
+    "Users_2026" // 动态表名
+);
 ```
 
 ## 3. 删除
@@ -248,9 +281,9 @@ await userService.BatchDeleteAsync(users);
 await userService.BatchDeleteIDAsync(new[] { 1, 2, 3 });
 ```
 
-### 来自测试的批量增改删闭环示例
+### 批量增改删闭环示例
 
-`LiteOrm.Tests\ServiceTests.cs` 中有一组很适合复制的闭环验证：
+一组适合复制的闭环验证：
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -281,9 +314,9 @@ await userService.DeleteAsync(u => u.CreateTime < DateTime.Today.AddYears(-1));
 await objectDao.Delete(Prop("Age") < 18 & Prop("UserName").StartsWith("Temp"));
 ```
 
-### 来自测试的条件删除示例
+### 条件删除示例
 
-以下例子提炼自分表测试，但删除条件本身同样适用于普通表：
+分表场景下的删除条件，同样适用于普通表（去掉 `tableArgs` 即可）：
 
 ```csharp
 int deleted = await service.DeleteAsync(
@@ -291,8 +324,6 @@ int deleted = await service.DeleteAsync(
     tableArgs: new[] { "202401" }
 );
 ```
-
-如果不是分表场景，去掉 `tableArgs` 即可。
 
 ## 4. 返回值与行为说明
 
@@ -307,13 +338,26 @@ int deleted = await service.DeleteAsync(
 
 ### `IEntityService<T>` / `IEntityServiceAsync<T>`
 
+实体级写入与批量操作（参数为强类型 `T` 或 `IEnumerable<T>`）：
+
 - `Insert` / `InsertAsync`
 - `Update` / `UpdateAsync`
+- `UpdateOrInsert` / `UpdateOrInsertAsync`
 - `Delete` / `DeleteAsync`
 - `BatchInsert` / `BatchInsertAsync`
 - `BatchUpdate` / `BatchUpdateAsync`
+- `BatchUpdateOrInsert` / `BatchUpdateOrInsertAsync`
 - `BatchDelete` / `BatchDeleteAsync`
-- `UpdateOrInsert` / `UpdateOrInsertAsync`
+- `Batch` / `BatchAsync`：混合批处理，每条记录可指定 `OpDef.Insert` / `Update` / `Delete`
+
+继承自非泛型 `IEntityService` / `IEntityServiceAsync`，还包含以下按表达式或主键操作的方法：
+
+- `UpdateAll` / `UpdateAllAsync`：按 `UpdateExpr` 条件更新，返回受影响行数
+- `DeleteAll` / `DeleteAllAsync`：按 `LogicExpr` 条件删除，返回受影响行数
+- `DeleteID` / `DeleteIDAsync`：按主键删除
+- `BatchDeleteID` / `BatchDeleteIDAsync`：按主键批量删除
+
+> 上述 `UpdateAll` / `DeleteAll` 也都可以通过 `LambdaExprExtensions` 提供的 Lambda 扩展方法直接调用（见本文“使用 Lambda 表达式更新”及“条件删除”小节）。
 
 如果你还需要按条件搜索、分页、`Exists`、`Count` 等能力，请转到 [查询指南](./04-query-guide.md)。
 
@@ -333,7 +377,7 @@ var ops = new List<EntityOperation<TestUser>>
 await service.BatchAsync(ops);
 ```
 
-这个例子来自 `LiteOrm.Tests\ServiceTests.cs`，适合需要“新增一批数据，同时删除旧数据”的同步迁移场景。
+适合需要“新增一批数据，同时删除旧数据”的同步迁移场景。
 
 ## 7. 实战建议
 

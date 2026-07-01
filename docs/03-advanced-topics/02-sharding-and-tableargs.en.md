@@ -253,11 +253,9 @@ var archivedOrders = await orderService.SearchAsync(
 
 The same rule applies when the explicit override is placed deeper in a `TableExpr`, subquery, or association expression: it replaces the inherited context value. In multi-tenant or scoped-data systems, make sure that override is intentional.
 
-## 6. Real-World Sharding Patterns from Demo and Tests
+## 6. Real-World Sharding Patterns
 
 ### 6.1 Directly Specify `TableArgs` in Lambda
-
-This pattern comes from `LiteOrm.Demo\Demos\ShardingQueryDemo.cs`:
 
 ```csharp
 var sales = await salesService.SearchAsync(s =>
@@ -276,7 +274,7 @@ var sales = await salesService.SearchAsync(
 );
 ```
 
-This pattern is the same as `CountAsync(..., tableArgs: ...)` in tests, suitable for unified control of shard parameters at the caller layer.
+Suitable for unified control of shard parameters at the caller layer.
 
 ### 6.3 Use `Expr.From<T>(...)` to Specify Shard
 
@@ -290,7 +288,7 @@ var sales = await salesService.SearchAsync(
 );
 ```
 
-This pattern also comes from Demo, suitable for combining complex queries, sorting, and pagination.
+Suitable for combining complex queries, sorting, and pagination.
 
 ### 6.4 Use Different Placeholder Positions for Different Dimensions
 

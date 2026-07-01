@@ -99,9 +99,9 @@ public async Task SubmitOrderAsync(CreateOrderInput input)
 
 这个模式适合“主表 + 明细 + 审计日志”一类的典型业务事务。
 
-### 1.5 来自 Demo 的回滚示例
+### 1.5 失败回滚示例
 
-`LiteOrm.Demo\Demos\TransactionDemo.cs` 里演示了一个很实用的失败回滚场景：先创建用户，再插入一条故意不合法的销售记录，让事务自动回滚。
+下面是一个实用的失败回滚场景：先创建用户，再插入一条故意不合法的销售记录，让事务自动回滚。
 
 ```csharp
 var newUser = new User { UserName = "ThreeTierUser", Age = 25 };
