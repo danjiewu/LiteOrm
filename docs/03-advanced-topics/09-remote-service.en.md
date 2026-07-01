@@ -58,8 +58,8 @@ Set up a runnable remote service invocation in 5 minutes. Both ends share the sa
 ### 2.1 Define the Service Interface
 
 ```csharp
-using LiteOrm.Common;
-using LiteOrm.Common.Service;
+using LiteOrm;
+using LiteOrm.Service;
 
 [Service]                                              // Mark as remote service
 public interface IDemoUserService : IEntityServiceAsync<DemoUser>
@@ -147,7 +147,7 @@ public interface IInternalService
 ```csharp
 public interface IUserService
 {
-    [ServiceMethod("FindByAccount")]
+    [ServiceMethod(MethodName = "FindByAccount")]
     Task<User> GetByUserNameAsync(string userName);
 }
 ```
@@ -184,7 +184,7 @@ await userService.InsertAsync(user);
 user.DisplayName = "Alice Updated";
 await userService.UpdateAsync(user);
 
-// Batch insert (collection mode Id write-back)
+// Batch insert (auto-increment Id per-item write-back)
 var orders = new List<Order> { /* ... */ };
 await orderService.BatchInsertAsync(orders);
 
@@ -241,17 +241,8 @@ opts.ConfigureHttpClient = client =>
 
 Both server and client provide this setting, defaulting to `true`. The framework automatically scans interfaces marked with `[Service]` (and `IsService == true`):
 
-- **Client**: Registers name mappings via `TypeResolverHelper.Register` and registers them as remote proxies (Castle DynamicProxy), forwarding all method calls to the remote server
-- **Server**: Scans interfaces with `[Service]` attribute and registers name mappings, ensuring ServiceName consistency between both ends
-
-The client also registers 4 open generic interface proxy implementations via MS DI `AddScoped`:
-
-| Interface | Proxy Class |
-|-----------|-------------|
-| `IEntityService<T>` | `RemoteServiceProxy<T>` |
-| `IEntityServiceAsync<T>` | `RemoteServiceAsyncProxy<T>` |
-| `IEntityViewService<T>` | `RemoteViewServiceProxy<T>` |
-| `IEntityViewServiceAsync<T>` | `RemoteViewServiceAsyncProxy<T>` |
+- **Client**: Registers interfaces as remote proxies (Castle DynamicProxy), forwarding all method calls to the remote server
+- **Server**: Registers name mappings, ensuring ServiceName consistency between both ends
 
 **Registration rules**:
 - If `[Service(Name = "CustomName")]` sets `Name`, that name is used
@@ -552,7 +543,7 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 
 1. **`ForEachAsync` is not supported for remote calls**: Streaming iteration requires continuous data return, which the remote protocol does not support; throws `NotSupportedException`
 2. **`CancellationToken` transparent passing**: The cancellation token is not serialized; it is passed end-to-end by the transport layer
-3. **Client and server must register the same `TableInfoProvider.Default`**: `IdentityArgumentOutHandler` resolves the Identity column through `TableInfoProvider.Default`, with no reflection fallback
+3. **Client and server must register the same `TableInfoProvider.Default`**: `IdentityOutAttribute` resolves the Identity column through `TableInfoProvider.Default`, with no reflection fallback
 4. **`ServiceName` consistency**: When both ends enable `AutoRegisterEntityServices`, the framework ensures consistency automatically; when manually registering custom names, both ends must call `TypeResolverHelper.Register`
 5. **Generic service interfaces**: `DefaultServiceTypeResolver` uses the CLR name format `Foo`1` to look up open generics, avoiding conflicts with non-generic types of the same name
 6. **Base interface method inheritance**: Methods declared in the service type and all its base interfaces can be invoked; throws `AmbiguousMatchException` on duplicate method keys
