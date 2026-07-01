@@ -181,17 +181,206 @@ catch
 - 如果你需要在循环、批次或中间状态上决定何时提交，改用手动事务更合适。
 - 无论哪种方式，都建议把真正的事务边界控制在业务应用层，而不是控制器层。
 
-## 3. 事务传播行为
+## 3. 事务传播与嵌套行为
 
-LiteOrm 的事务传播行为：
+LiteOrm 的事务传播遵循"加入现有事务"语义：当一个 `[Transaction]` 方法调用另一个 `[Transaction]` 方法时，内层方法**不会**开启新事务，而是复用外层已开启的事务。
 
-| 场景 | 行为 |
-|------|------|
-| 无现有事务 | 创建新事务 |
-| 有现有事务 | 加入现有事务（嵌套） |
-| 事务失败 | 全部回滚 |
+### 3.1 传播规则
 
-## 4. 事务与 SessionManager
+| 调用上下文 | 内层 `[Transaction]` 行为 |
+|-----------|---------------------------|
+| 无外层事务 | 开启新事务，方法结束提交 |
+| 已有外层事务 | **加入外层事务**，不重复 Begin/Commit |
+| 外层事务失败 | 整条调用链回滚，内层不可见 |
+
+### 3.2 嵌套调用示例
+
+```csharp
+public class OrderService : EntityService<Order>
+{
+    private readonly IOrderItemService _orderItemService;
+
+    [Transaction]
+    public async Task SubmitOrderAsync(Order order, List<OrderItem> items)
+    {
+        await InsertAsync(order);                          // 外层事务已开启
+
+        foreach (var item in items)
+        {
+            item.OrderId = order.Id;
+            await _orderItemService.AppendAsync(item);     // 内层 [Transaction] 复用外层
+        }
+
+        // 外层方法正常结束后，整体事务提交
+    }
+}
+
+public class OrderItemService : EntityService<OrderItem>, IOrderItemService
+{
+    [Transaction]                                          // 内层事务标记
+    public async Task AppendAsync(OrderItem item)
+    {
+        await InsertAsync(item);
+        // 内层方法结束不会提交，事务由最外层统一管理
+    }
+}
+```
+
+### 3.3 嵌套事务的隔离级别被忽略
+
+**重要**：当外层已开启事务时，内层 `[Transaction(IsolationLevel = ...)]` 中指定的隔离级别**不会生效**，整个事务沿用外层方法的隔离级别。
+
+```csharp
+[Transaction(IsolationLevel = IsolationLevel.ReadCommitted)]
+public async Task OuterAsync()
+{
+    // 事务以 ReadCommitted 开启
+    await InnerAsync();
+}
+
+[Transaction(IsolationLevel = IsolationLevel.Serializable)]  // ⚠ 不生效
+public async Task InnerAsync()
+{
+    // 仍在 ReadCommitted 事务中执行
+}
+```
+
+如需让内层逻辑使用更高隔离级别，应将其拆分为独立的事务作用域（见第 4 节）。
+
+### 3.4 异常传播与回滚
+
+嵌套调用中任意一层抛出异常，整个事务（含外层已执行的写入）都会回滚：
+
+```csharp
+[Transaction]
+public async Task OuterAsync()
+{
+    await InsertAsync(user);                // ✓ 已写入，但最终会回滚
+    await InnerFailAsync();                 // ✗ 抛出异常
+    await InsertAsync(log);                 // ✗ 不会执行
+    // 整个事务回滚，user 不会落库
+}
+
+[Transaction]
+public async Task InnerFailAsync()
+{
+    await InsertAsync(record);
+    throw new InvalidOperationException("模拟业务失败");
+}
+```
+
+### 3.5 后台任务的事务时序陷阱
+
+`[Transaction]` 的事务上下文通过 `SessionManager.Current` 的 `AsyncLocal` 链路传递。`AsyncLocal` 会随 `ExecutionContext` 流入 `Task.Run`、`ThreadPool.QueueUserWorkItem` 等后台任务，因此后台任务**能**拿到同一个 `SessionManager`，与父流程共享同一事务。这恰恰是问题所在：
+
+- **时序不确定**：父方法 `await` 完成时，后台任务可能尚未执行写入；父事务随之提交，后台任务的写入被丢失（或因事务已结束而失败）。
+- **生命周期错配**：父事务提交/回滚后 `SessionManager` 可能被释放，后台任务继续使用会命中 `ObjectDisposedException`。
+- **异常不可见**：后台任务的异常不会冒泡到父流程，事务的"全部成功或全部回滚"约定被破坏。
+
+```csharp
+[Transaction]
+public async Task SubmitAsync()
+{
+    await InsertAsync(order);
+
+    // ⚠ 后台任务与父流程共享同一事务，但时序不可控
+    _ = Task.Run(async () =>
+    {
+        // 这里能拿到同一个 SessionManager，但父事务可能已经提交或结束
+        await _auditService.InsertAsync(new AuditLog { RefId = order.Id.ToString() });
+    });
+}
+```
+
+正确做法二选一：
+
+- **要与主事务一起提交**：直接 `await`，让后台逻辑纳入主调用链。
+- **要在主事务之外独立执行**：在后台任务内创建新的 DI 作用域（见第 4 节），让其运行在独立事务中，并自行决定何时触发（如主事务提交成功后再入队）。
+
+## 4. 子作用域事务隔离
+
+当需要让一段逻辑运行在**独立事务**中（独立提交、独立回滚、独立隔离级别），可创建新的 DI 作用域。LiteOrm 在子作用域起始时会自动切换 `SessionManager.SetCurrentFactory`，使子作用域内的 `SessionManager.Current` 解析到全新实例。
+
+### 4.1 触发机制
+
+`LiteOrmServiceExtensions.RegisterScope` 在每个子 LifetimeScope 开始时执行：
+
+```csharp
+scope.ChildLifetimeScopeBeginning += (sender, e) =>
+{
+    var childScope = e.LifetimeScope;
+    SessionManager.SetCurrentFactory(childScope.Resolve<SessionManager>);
+    // 子作用域结束恢复父作用域的 SessionManager
+};
+```
+
+因此 `IServiceScopeFactory.CreateScope()` 创建的 `IServiceScope` 内的所有 LiteOrm 操作都使用独立的 `SessionManager`，与父作用域的事务互不影响。
+
+### 4.2 基本用法
+
+```csharp
+public class ReportService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+
+    public async Task RunIndependentTxnAsync()
+    {
+        // 父作用域：可能在事务中
+        await _mainService.UpdateAsync(record);
+
+        // 子作用域：完全独立的事务
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var isolatedSvc = scope.ServiceProvider.GetRequiredService<IAuditService>();
+            // 即使父作用域后续回滚，这里的审计日志也会独立提交
+            await isolatedSvc.RecordAsync("processed", record.Id);
+        }
+
+        // 父作用域继续工作
+        await _mainService.UpdateAsync(other);
+    }
+}
+```
+
+### 4.3 独立隔离级别
+
+子作用域内可使用任意隔离级别，与父作用域互不影响：
+
+```csharp
+using (var scope = _scopeFactory.CreateScope())
+{
+    var sessionManager = scope.ServiceProvider.GetRequiredService<SessionManager>();
+    sessionManager.BeginTransaction(IsolationLevel.Serializable);
+    try
+    {
+        var svc = scope.ServiceProvider.GetRequiredService<IInventoryService>();
+        await svc.LockAndDecrementAsync(productId, quantity);
+        sessionManager.Commit();
+    }
+    catch
+    {
+        sessionManager.Rollback();
+        throw;
+    }
+}
+```
+
+适合"先做一次强隔离的库存锁定，再回到主流程的默认事务"等组合场景。
+
+### 4.4 跨作用域调用对比
+
+| 调用方式 | 是否共享事务 | 隔离级别 |
+|---------|-------------|---------|
+| `await _otherService.MethodAsync()` | 共享（同一 SessionManager） | 复用外层 |
+| `using (scope = _scopeFactory.CreateScope())` | **独立** | 可单独指定 |
+
+### 4.5 注意事项
+
+- 子作用域内的实体对象若来自父作用域的查询，可能持有旧的 `SessionManager` 上下文；写入时应通过子作用域内的服务重新查询或使用脱管对象。
+- 子作用域必须 `Dispose`，否则 `SessionManager` 不会释放，连接不归还连接池。
+- 子作用域隔离的是数据库事务，不是并发控制；多个子作用域并行操作同一资源时仍需 `Serializable` 或行锁。
+
+## 5. 事务与 SessionManager
 
 LiteOrm 使用 `SessionManager` 管理数据库连接及事务：
 
@@ -199,9 +388,9 @@ LiteOrm 使用 `SessionManager` 管理数据库连接及事务：
 - 事务开始时，当前 Scope 的 SessionManager 已有的数据库连接都将进入事务
 - 在事务过程中获取的数据库连接也会自动加上事务
 - 当前 Scope 下 LiteOrm 的所有数据库操作都会自动受当前事务管理
-- 如需隔离事务，需要创建新的 Scope
+- 如需隔离事务，需要创建新的 Scope（见第 4 节）
 
-## 5. `timestamp` 与事务的关系
+## 6. `timestamp` 与事务的关系
 
 `timestamp` 乐观并发控制和事务不是互斥关系，它们解决的是两个不同问题：
 
