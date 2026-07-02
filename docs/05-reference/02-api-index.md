@@ -65,8 +65,10 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 - `Insert` / `InsertAsync`
 - `Update` / `UpdateAsync`
+- `UpdateAll` / `UpdateAllAsync`（按 `UpdateExpr` 条件更新）
 - `ObjectDAO<T>.Update(entity, timestamp)` / `UpdateAsync(entity, timestamp)`
 - `Delete` / `DeleteAsync`
+- `DeleteAll` / `DeleteAllAsync`（按 `LogicExpr` 条件删除）
 - `BatchInsert` / `BatchUpdate`
 - `UpdateOrInsert`
 - `ObjectDAO<T>`

@@ -165,7 +165,7 @@ When `IBulkProvider` is registered, batch insert may use native bulk interfaces 
 
 ```csharp
 using static LiteOrm.Common.Expr;
-await userService.UpdateAsync(
+await userService.UpdateAllAsync(
     Update<User>()
         .Set("Age", Prop("Age") + 1)
         .Where(Prop("DeptId") == 2)

@@ -113,9 +113,13 @@ Related guides:
 
 - `Update` / `UpdateAsync`
 
+- `UpdateAll` / `UpdateAllAsync` (conditional update by `UpdateExpr`)
+
 - `ObjectDAO<T>.Update(entity, timestamp)` / `UpdateAsync(entity, timestamp)`
 
 - `Delete` / `DeleteAsync`
+
+- `DeleteAll` / `DeleteAllAsync` (conditional delete by `LogicExpr`)
 
 - `BatchInsert` / `BatchUpdate`
 

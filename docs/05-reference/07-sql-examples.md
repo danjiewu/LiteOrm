@@ -171,7 +171,7 @@ INSERT INTO [Users] ([UserName], [Age], [CreateTime]) VALUES (@0, @1, @2), (@3, 
 
 ```csharp
 using static LiteOrm.Common.Expr;
-await userService.UpdateAsync(
+await userService.UpdateAllAsync(
     Update<User>()
         .Set("Age", Prop("Age") + 1)
         .Where(Prop("DeptId") == 2)

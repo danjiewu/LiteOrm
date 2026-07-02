@@ -205,7 +205,7 @@ using static LiteOrm.Common.Expr;
 var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
     .Set(("Age", Const(35)));
 
-int affected = await userService.UpdateAsync(update);
+int affected = await userService.UpdateAllAsync(update);
 ```
 
 You can also write arithmetic expressions or function expressions directly in the `SET` clause:

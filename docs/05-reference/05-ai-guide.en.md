@@ -489,7 +489,7 @@ var subQuery = From<Department>()
 var expr = Prop("DeptId").In(subQuery);
 ```
 
-UpdateExpr / DeleteExpr (used by `ObjectDAO.Delete(LogicExpr)` and similar APIs):
+UpdateExpr / DeleteExpr (used by `ObjectDAO.Delete(LogicExpr)` / `ObjectDAO.Update(UpdateExpr)`, and the Service-layer `IEntityService<T>.DeleteAll(LogicExpr)` / `UpdateAll(UpdateExpr)` etc.):
 
 ```csharp
 using static LiteOrm.Common.Expr;

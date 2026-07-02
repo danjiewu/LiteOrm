@@ -207,7 +207,7 @@ using static LiteOrm.Common.Expr;
 var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
     .Set(("Age", Const(35)));
 
-int affected = await userService.UpdateAsync(update);
+int affected = await userService.UpdateAllAsync(update);
 ```
 
 也可以直接在 `SET` 子句里写算术表达式或函数表达式：
