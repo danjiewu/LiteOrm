@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Threading;
 
 namespace LiteOrm.Common
@@ -45,7 +44,7 @@ namespace LiteOrm.Common
     /// 提供对 <see cref="Expr"/> 树的多模式遍历能力。
     /// 支持四种遍历模式：
     /// <list type="bullet">
-    /// <item><see cref="Func{Expr, bool}"/> 委托：支持短路终止</item>
+    /// <item><see cref="Func{Expr, Boolean} "/> 委托：支持短路终止</item>
     /// <item><see cref="Action{Expr}"/> 委托：总是完整遍历</item>
     /// <item><see cref="IExprNodeVisitor"/> 接口：双向通知（进入/离开节点）</item>
     /// <item><see cref="ExprValidator"/> 基类：验证模式，支持短路终止</item>

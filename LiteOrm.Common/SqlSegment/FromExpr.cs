@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-using System.Collections.ObjectModel;
 
 namespace LiteOrm.Common
 {

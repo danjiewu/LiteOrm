@@ -1,9 +1,7 @@
 using Castle.DynamicProxy;
 using LiteOrm.Common;
 using LiteOrm.Service;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace LiteOrm.Remote
 {
@@ -63,6 +61,6 @@ namespace LiteOrm.Remote
         object IEntityViewService.SearchOne(Expr expr, params string[] tableArgs) => ((IEntityViewService)_proxy).SearchOne(expr, tableArgs);
 
         /// <inheritdoc />
-        IList IEntityViewService.Search(Expr expr = null, params string[] tableArgs) => ((IEntityViewService)_proxy).Search(expr, tableArgs);
+        IList IEntityViewService.Search(Expr expr, params string[] tableArgs) => ((IEntityViewService)_proxy).Search(expr, tableArgs);
     }
 }

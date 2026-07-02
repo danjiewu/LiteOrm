@@ -3,7 +3,6 @@
     /// <summary>
     /// 可复制接口，定义对象复制功能
     /// </summary>
-    /// <typeparam name="T">源对象类型</typeparam>
     public interface ICopyable
     {
         /// <summary>

@@ -1,9 +1,3 @@
-using LiteOrm.Common;
-using System;
-using System.Collections.Generic;
-using System.Data;
-
-
 namespace LiteOrm
 {
     /// <summary>
@@ -13,7 +7,7 @@ namespace LiteOrm
     /// TiDB 与 MySQL 协议高度兼容（使用 MySqlConnector / MySql.Data 驱动），
     /// 分页、参数前缀、自增等行为与 MySQL 一致，故直接继承自 <see cref="MySqlBuilder"/>。
     /// 注：TiDB 的自增列在分布式场景下仅保证唯一、不保证连续，
-    /// <see cref="BuildBatchIdentityInsertSql"/> 返回的 LAST_INSERT_ID() 仅作为首行参考值。
+    /// <see cref="MySqlBuilder.BuildBatchIdentityInsertSql"/> 返回的 LAST_INSERT_ID() 仅作为首行参考值。
     ///
     /// 默认匹配关键字：<c>TIDB</c>。
     /// </remarks>

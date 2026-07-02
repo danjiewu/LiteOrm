@@ -1,5 +1,3 @@
-using System;
-
 namespace LiteOrm.Common
 {
     /// <summary>

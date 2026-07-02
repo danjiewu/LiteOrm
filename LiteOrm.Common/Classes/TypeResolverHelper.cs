@@ -86,7 +86,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 生成类型的可序列化名称。
         /// <para>
-        /// 优先返回自定义注册的名称；否则使用短名（<see cref="Type.Name"/>），
+        /// 优先返回自定义注册的名称；否则使用短名（<see cref="MemberInfo.Name"/>），
         /// 泛型类型返回 <c>基名&lt;参数短名1,参数短名2,...&gt;</c>（去除反引号 arity 后缀，递归处理嵌套泛型）。
         /// </para>
         /// </summary>
@@ -118,7 +118,7 @@ namespace LiteOrm.Common
         /// 2. 精确全名匹配（含命名空间或程序集限定名）；
         /// 3. 若 <paramref name="defaultNamespace"/> 已设置且 <paramref name="typeName"/> 为短名（不含 '.'），
         ///    尝试 <c>defaultNamespace + "." + typeName</c> 精确匹配；
-        /// 4. 回退到全程序集短名（<see cref="Type.Name"/>）扫描。
+        /// 4. 回退到全程序集短名（<see cref="MemberInfo.Name"/>）扫描。
         /// <para>
         /// 结果按 (typeName, defaultNamespace) 缓存。
         /// </para>

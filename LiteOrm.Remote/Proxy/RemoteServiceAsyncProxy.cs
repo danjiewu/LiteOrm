@@ -2,8 +2,6 @@ using Castle.DynamicProxy;
 using LiteOrm.Common;
 using LiteOrm.Service;
 using System.Collections;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace LiteOrm.Remote
 {

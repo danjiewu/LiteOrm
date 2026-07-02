@@ -58,8 +58,8 @@ graph TB
 ### 2.1 定义服务接口
 
 ```csharp
-using LiteOrm.Common;
-using LiteOrm.Common.Service;
+using LiteOrm;
+using LiteOrm.Service;
 
 [Service]                                              // 标记为远程服务
 public interface IDemoUserService : IEntityServiceAsync<DemoUser>
@@ -147,7 +147,7 @@ public interface IInternalService
 ```csharp
 public interface IUserService
 {
-    [ServiceMethod("FindByAccount")]
+    [ServiceMethod(MethodName = "FindByAccount")]
     Task<User> GetByUserNameAsync(string userName);
 }
 ```
@@ -184,7 +184,7 @@ await userService.InsertAsync(user);
 user.DisplayName = "Alice Updated";
 await userService.UpdateAsync(user);
 
-// 批量新增（集合模式 Id 回写）
+// 批量新增（自增 Id 逐项回写）
 var orders = new List<Order> { /* ... */ };
 await orderService.BatchInsertAsync(orders);
 
@@ -241,17 +241,8 @@ opts.ConfigureHttpClient = client =>
 
 服务端和客户端均提供此设置，默认为 `true`。框架自动扫描程序集中标记了 `[Service]`（且 `IsService == true`）的接口：
 
-- **客户端**：将接口通过 `TypeResolverHelper.Register` 注册到全局名称映射，同时注册为远程代理（Castle DynamicProxy），所有方法调用转发到远程服务端
-- **服务端**：扫描带 `[Service]` 特性的接口，注册名称映射，确保两端 ServiceName 一致
-
-客户端还会通过 MS DI `AddScoped` 注册 4 个开放泛型接口的具体代理实现类：
-
-| 接口 | 代理类 |
-|------|--------|
-| `IEntityService<T>` | `RemoteServiceProxy<T>` |
-| `IEntityServiceAsync<T>` | `RemoteServiceAsyncProxy<T>` |
-| `IEntityViewService<T>` | `RemoteViewServiceProxy<T>` |
-| `IEntityViewServiceAsync<T>` | `RemoteViewServiceAsyncProxy<T>` |
+- **客户端**：将接口注册为远程代理（Castle DynamicProxy），所有方法调用转发到远程服务端
+- **服务端**：注册名称映射，确保两端 ServiceName 一致
 
 **注册规则**：
 - 若 `[Service(Name = "CustomName")]` 设置了 `Name`，使用该名称注册
@@ -552,7 +543,7 @@ opts.Transport = new MyTransport();
 
 1. **`ForEachAsync` 不支持远程调用**：流式遍历需要持续返回数据，远程协议不支持，会抛出 `NotSupportedException`
 2. **`CancellationToken` 透传**：取消令牌不参与序列化，通过传输层端到端传递
-3. **客户端与服务端必须注册相同的 `TableInfoProvider.Default`**：`IdentityArgumentOutHandler` 通过 `TableInfoProvider.Default` 解析 Identity 列，无反射回退
+3. **客户端与服务端必须注册相同的 `TableInfoProvider.Default`**：`IdentityOutAttribute` 通过 `TableInfoProvider.Default` 解析 Identity 列，无反射回退
 4. **`ServiceName` 一致性**：两端均启用 `AutoRegisterEntityServices` 时框架自动保证一致；手动注册自定义名称时，两端必须同时调用 `TypeResolverHelper.Register`
 5. **泛型服务接口**：`DefaultServiceTypeResolver` 使用 CLR 名格式 `Foo`1` 查找开放泛型，避免与非泛型同名类型冲突
 6. **基接口方法继承**：服务类型及其所有基接口声明的方法均可被调用；遇到重复方法键时抛出 `AmbiguousMatchException`

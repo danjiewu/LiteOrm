@@ -1,12 +1,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Xml.Linq;
 
 namespace LiteOrm.Common
 {
@@ -546,6 +543,11 @@ namespace LiteOrm.Common
             return DefaultMemberHandler(node, this);
         }
 
+        /// <summary>
+        /// 将数组初始化表达式（如 new[] { 1, 2, 3 }）转换为对应的 ValueSet 对象
+        /// </summary>
+        /// <param name="node">要转换的数组初始化表达式节点</param>
+        /// <returns>转换后的 Expr 对象</returns>
         protected Expr ConvertNewArray(NewArrayExpression node)
         {
             var items = new List<ValueTypeExpr>();
@@ -560,6 +562,12 @@ namespace LiteOrm.Common
 
             return new ValueSet(items);
         }
+
+        /// <summary>
+        /// 将集合初始化表达式（如 new List&lt;int&gt; { 1, 2, 3 }）转换为对应的 ValueSet 对象
+        /// </summary>
+        /// <param name="node">要转换的集合初始化表达式节点</param>
+        /// <returns>转换后的 Expr 对象</returns>
 
         protected Expr ConvertListInit(ListInitExpression node)
         {

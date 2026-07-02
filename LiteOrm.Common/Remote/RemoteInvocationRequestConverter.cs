@@ -1,9 +1,7 @@
 using LiteOrm.Common;
-using LiteOrm.Service;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -370,7 +368,7 @@ namespace LiteOrm.Remote
         }
 
         /// <summary>
-        /// 尝试从 <see cref="JsonElement"/> 读取基础类型值，并通过 <see cref="Convert.ChangeType"/> 转换为目标类型。
+        /// 尝试从 <see cref="JsonElement"/> 读取基础类型值，并通过 <see cref="Convert.ChangeType(object, Type)"/> 转换为目标类型。
         /// <para>
         /// 参考 <c>ExprJsonConverter.ReadNative</c> 的逐级数值尝试策略，兼容 JSON 数值与目标数值类型不完全匹配的场景。
         /// 支持基元、string、decimal、DateTime、DateTimeOffset、TimeSpan、Guid、枚举。

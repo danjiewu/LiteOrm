@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using LiteOrm.Common;
 
 #if NETSTANDARD2_0 || NETSTANDARD2_1 
 namespace System.Runtime.CompilerServices
