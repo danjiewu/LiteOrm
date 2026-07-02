@@ -21,12 +21,37 @@ namespace LiteOrm
         private readonly DAOContextPool _daoContextPool;
         private SqlBuilder sqlBuilder => _daoContextPool.SqlBuilder;
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="daoContextPool"></param>
         public DatabaseSync(DAOContextPool daoContextPool)
         {
             _daoContextPool = daoContextPool;
+        }
+
+        /// <summary>
+        /// 在对某个实体类型同步时触发，用于判定是否需要同步。
+        /// 可通过设置 <see cref="TableSyncingEventArgs.ShouldSync"/> 来覆盖默认的连接池级 <see cref="DAOContextPool.SyncTable"/> 决策，
+        /// 从而实现实体类级别的细粒度同步控制。
+        /// </summary>
+        public event EventHandler<TableSyncingEventArgs> OnTableSyncing;
+
+        /// <summary>
+        /// 判定是否需要对指定实体类型执行表结构同步。
+        /// 默认取连接池级 <see cref="DAOContextPool.SyncTable"/> 配置；若存在 <see cref="OnTableSyncing"/> 订阅者，则以订阅者的最终决策为准。
+        /// </summary>
+        /// <param name="objectType">实体类型。</param>
+        /// <param name="tableName">解析后的表名（已应用 tableArgs）。</param>
+        /// <returns>若需要同步返回 true，否则返回 false。</returns>
+        protected bool ShouldSyncTable(Type objectType, string tableName)
+        {
+            bool defaultSync = _daoContextPool.SyncTable;
+            var handler = OnTableSyncing;
+            if (handler == null) return defaultSync;
+
+            var args = new TableSyncingEventArgs(objectType, tableName, defaultSync);
+            handler(this, args);
+            return args.ShouldSync;
         }
         /// <summary>
         /// 将指定表名标记为已创建，同时缓存已知列名集合。
@@ -59,6 +84,10 @@ namespace LiteOrm
         {
             if (typeof(IArged).IsAssignableFrom(objectType) && (tableArgs == null || tableArgs.Length == 0)) return;
 
+            string tableName = ResolveTableName(objectType, tableArgs);
+            if (tableName == null) return;
+            if (!ShouldSyncTable(objectType, tableName)) return;
+
             var statements = ResolveEnsureTableDdl(daoContext, objectType, tableArgs);
             if (statements.Count == 0) return;
             ApplyDdl(daoContext, statements);
@@ -71,9 +100,27 @@ namespace LiteOrm
         public async Task EnsureTableAsync(DAOContext daoContext, Type objectType, string[] tableArgs = null)
         {
             if (typeof(IArged).IsAssignableFrom(objectType) && (tableArgs == null || tableArgs.Length == 0)) return;
+
+            string tableName = ResolveTableName(objectType, tableArgs);
+            if (tableName == null) return;
+            if (!ShouldSyncTable(objectType, tableName)) return;
+
             var statements = await ResolveEnsureTableDdlAsync(daoContext, objectType, tableArgs).ConfigureAwait(false);
             if (statements.Count == 0) return;
             await ApplyDdlAsync(daoContext, statements).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// 根据实体类型与动态表名参数解析出最终的表名。
+        /// </summary>
+        /// <returns>解析后的表名；若该类型无表定义则返回 null。</returns>
+        private static string ResolveTableName(Type objectType, string[] tableArgs)
+        {
+            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
+            if (tableDefinition == null) return null;
+            return tableArgs != null && tableArgs.Length > 0
+                ? string.Format(tableDefinition.Name, tableArgs)
+                : tableDefinition.Name;
         }
 
         /// <summary>
@@ -408,5 +455,40 @@ namespace LiteOrm
             _tableColumns.Clear();
             _createdTables.Clear();
         }
+    }
+
+    /// <summary>
+    /// 为 <see cref="DatabaseSync.OnTableSyncing"/> 事件提供数据，支持实体类级别的表结构同步判定。
+    /// </summary>
+    public class TableSyncingEventArgs : EventArgs
+    {
+        /// <summary>
+        /// 初始化 <see cref="TableSyncingEventArgs"/> 类的新实例。
+        /// </summary>
+        /// <param name="objectType">待同步的实体类型。</param>
+        /// <param name="tableName">解析后的表名（已应用 tableArgs）。</param>
+        /// <param name="defaultSync">基于连接池级 <see cref="DAOContextPool.SyncTable"/> 的默认决策。</param>
+        public TableSyncingEventArgs(Type objectType, string tableName, bool defaultSync)
+        {
+            ObjectType = objectType;
+            TableName = tableName;
+            ShouldSync = defaultSync;
+        }
+
+        /// <summary>
+        /// 获取待同步的实体类型。
+        /// </summary>
+        public Type ObjectType { get; }
+
+        /// <summary>
+        /// 获取解析后的表名（已应用 tableArgs）。
+        /// </summary>
+        public string TableName { get; }
+
+        /// <summary>
+        /// 获取或设置是否需要对该实体类型执行表结构同步。
+        /// 默认值为连接池级 <see cref="DAOContextPool.SyncTable"/> 配置，订阅者可覆盖此决策。
+        /// </summary>
+        public bool ShouldSync { get; set; }
     }
 }

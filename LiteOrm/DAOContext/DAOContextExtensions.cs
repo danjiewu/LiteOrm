@@ -15,7 +15,7 @@ namespace LiteOrm
         public static void EnsureTable(this DAOContext daoContext, Type objectType, string[] tableArgs = null)
         {
             DAOContextPool pool = daoContext?.Pool?.MasterPool;
-            if (pool != daoContext.Pool || !pool.SyncTable) return;
+            if (pool != daoContext.Pool) return;
             pool.DatabaseSync.EnsureTable(daoContext, objectType, tableArgs);
         }
 
@@ -25,7 +25,7 @@ namespace LiteOrm
         public static async Task EnsureTableAsync(this DAOContext daoContext, Type objectType, string[] tableArgs = null)
         {
             DAOContextPool pool = daoContext?.Pool?.MasterPool;
-            if (pool != daoContext.Pool || !pool.SyncTable) return;
+            if (pool != daoContext.Pool) return;
             await pool.DatabaseSync.EnsureTableAsync(daoContext, objectType, tableArgs).ConfigureAwait(false);
         }
 
@@ -35,10 +35,10 @@ namespace LiteOrm
         public static void EnsureTables(this DAOContext daoContext, IEnumerable<Type> objectTypes)
         {
             DAOContextPool pool = daoContext?.Pool?.MasterPool;
-            if (pool != daoContext.Pool || !pool.SyncTable) return;
+            if (pool != daoContext.Pool) return;
             foreach (var type in objectTypes)
             {
-                daoContext.Pool.DatabaseSync.EnsureTable(daoContext, type);
+                pool.DatabaseSync.EnsureTable(daoContext, type);
             }
         }
         /// <summary>
@@ -47,7 +47,7 @@ namespace LiteOrm
         public static async Task EnsureTablesAsync(this DAOContext daoContext, IEnumerable<Type> objectTypes)
         {
             DAOContextPool pool = daoContext?.Pool?.MasterPool;
-            if (pool != daoContext.Pool || !pool.SyncTable) return;
+            if (pool != daoContext.Pool) return;
             foreach (var type in objectTypes)
             {
                 await pool.DatabaseSync.EnsureTableAsync(daoContext, type).ConfigureAwait(false);
