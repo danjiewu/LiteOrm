@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿using LiteOrm.Common;
+﻿﻿﻿﻿﻿﻿using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -78,9 +78,9 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 获取自增标识 SQL 片段。
+        /// 获取自增标识 SQL 片段。PostgreSQL 通过 SERIAL/BIGSERIAL 类型实现自增，列级无需附加片段。
         /// </summary>
-        protected override string GetAutoIncrementSql() => "";
+        protected override string GetAutoIncrementSql(ColumnDefinition column) => "";
 
         /// <summary>
         /// 获取 PostgreSql 列类型。

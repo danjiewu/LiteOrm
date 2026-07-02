@@ -243,7 +243,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取自增标识 SQL 片段。
         /// </summary>
-        protected override string GetAutoIncrementSql() => IdentitySource == OracleIdentitySourceType.Identity ? "GENERATED AS IDENTITY" : "";
+        protected override string GetAutoIncrementSql(ColumnDefinition column) => IdentitySource == OracleIdentitySourceType.Identity ? $"GENERATED AS IDENTITY (START WITH {column.IdentityStart} INCREMENT BY {column.IdentityIncreasement})" : "";
 
         /// <summary>
         /// 获取 Oracle 列 type。

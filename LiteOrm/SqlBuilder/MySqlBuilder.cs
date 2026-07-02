@@ -154,9 +154,26 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 获取自增标识 SQL 片段。
+        /// 获取自增标识 SQL 片段。MySQL 的列级 AUTO_INCREMENT 不支持自定义起始值与增量，需通过表选项设置。
         /// </summary>
-        protected override string GetAutoIncrementSql() => "AUTO_INCREMENT";
+        protected override string GetAutoIncrementSql(ColumnDefinition column) => "AUTO_INCREMENT";
+
+        /// <summary>
+        /// 构建 CREATE TABLE 语句。MySQL 通过表级 <c>AUTO_INCREMENT = n</c> 选项设置自增起始值；
+        /// 增量步长由会话变量 <c>auto_increment_increment</c> 控制，无法在建表语句中指定。
+        /// </summary>
+        public override string BuildCreateTableSql(string tableName, IEnumerable<ColumnDefinition> columns)
+        {
+            var columnList = columns.ToList();
+            string baseSql = base.BuildCreateTableSql(tableName, columnList);
+
+            var identityColumn = columnList.FirstOrDefault(c => c.IsIdentity);
+            if (identityColumn != null && identityColumn.IdentityStart != 1)
+            {
+                return $"{baseSql} AUTO_INCREMENT = {identityColumn.IdentityStart}";
+            }
+            return baseSql;
+        }
 
         /// <summary>
         /// 生成加多个列的 SQL 语句。

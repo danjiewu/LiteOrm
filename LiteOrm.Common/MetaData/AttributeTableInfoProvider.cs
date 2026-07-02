@@ -149,6 +149,7 @@ namespace LiteOrm
                     column.AllowNull = columnAttribute.AllowNull && (property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(property.PropertyType) is not null : true);
                     column.DefaultValue = columnAttribute.DefaultValue;
                     column.Constant = ParseConstant(property, columnAttribute.Constant);
+                    column.IdentityStart = columnAttribute.IdentityStart;
                     column.IdentityIncreasement = columnAttribute.IdentityIncreasement;
                     column.Mode = columnAttribute.ColumnMode & ((property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None));
                     column.ForeignTables = foreignTables;

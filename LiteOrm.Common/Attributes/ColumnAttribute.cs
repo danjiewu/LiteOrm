@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 
 namespace LiteOrm.Common
@@ -63,6 +63,11 @@ namespace LiteOrm.Common
         /// 获取或设置一个值，该值指示该列是否为标识列（自增）。
         /// </summary>
         public bool IsIdentity { get; set; }
+
+        /// <summary>
+        /// 获取或设置标识列（自增）的起始值。
+        /// </summary>
+        public long IdentityStart { get; set; } = 1;
 
         /// <summary>
         /// 获取或设置标识列（自增）的增量值。

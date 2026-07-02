@@ -69,6 +69,38 @@ namespace LiteOrm.Tests
             Assert.DoesNotContain("UNSIGNED", sql);
         }
 
+        [Fact]
+        public void MySqlBuildCreateTableSql_WithCustomStartValue_AppendsAutoIncrementOption()
+        {
+            var tableDefinition = CreateProvider(MySqlBuilder.Instance).GetTableDefinition(typeof(IdentityStartValueModel));
+
+            var sql = MySqlBuilder.Instance.BuildCreateTableSql(tableDefinition.Name, tableDefinition.Columns);
+
+            Assert.Contains("AUTO_INCREMENT", sql);
+            Assert.Contains("AUTO_INCREMENT = 1000", sql);
+        }
+
+        [Fact]
+        public void MySqlBuildCreateTableSql_WithDefaultStartValue_DoesNotAppendAutoIncrementOption()
+        {
+            var tableDefinition = CreateProvider(MySqlBuilder.Instance).GetTableDefinition(typeof(SqlBuilderDefaultValueModel));
+
+            var sql = MySqlBuilder.Instance.BuildCreateTableSql(tableDefinition.Name, tableDefinition.Columns);
+
+            Assert.Contains("AUTO_INCREMENT", sql);
+            Assert.DoesNotContain("AUTO_INCREMENT =", sql);
+        }
+
+        [Fact]
+        public void DamengBuildCreateTableSql_WithCustomStartValueAndIncreasement_UsesIdentitySyntax()
+        {
+            var tableDefinition = CreateProvider(DamengBuilder.Instance).GetTableDefinition(typeof(IdentityStartValueModel));
+
+            var sql = DamengBuilder.Instance.BuildCreateTableSql(tableDefinition.Name, tableDefinition.Columns);
+
+            Assert.Contains("IDENTITY(1000, 5)", sql);
+        }
+
         [Theory]
         [InlineData("hello", false)]
         [InlineData("test_value", true)]
@@ -159,6 +191,16 @@ namespace LiteOrm.Tests
 
             [Column("UIntValue", AllowNull = false)]
             public uint UIntValue { get; set; }
+        }
+
+        [Table("IdentityStartValueModels")]
+        private class IdentityStartValueModel
+        {
+            [Column("Id", IsPrimaryKey = true, IsIdentity = true, IdentityStart = 1000, IdentityIncreasement = 5, AllowNull = false)]
+            public int Id { get; set; }
+
+            [Column("Name", AllowNull = true)]
+            public string? Name { get; set; }
         }
     }
 }

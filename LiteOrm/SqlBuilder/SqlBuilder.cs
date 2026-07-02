@@ -638,7 +638,7 @@ namespace LiteOrm
 
             if (column.IsIdentity)
             {
-                string autoIncrementSql = GetAutoIncrementSql();
+                string autoIncrementSql = GetAutoIncrementSql(column);
                 if (!string.IsNullOrEmpty(autoIncrementSql))
                 {
                     sb.Append(" ");
@@ -671,7 +671,7 @@ namespace LiteOrm
 
             if (column.IsIdentity)
             {
-                string autoIncrementSql = GetAutoIncrementSql();
+                string autoIncrementSql = GetAutoIncrementSql(column);
                 if (!string.IsNullOrEmpty(autoIncrementSql))
                 {
                     sb.Append(" ");
@@ -920,7 +920,8 @@ namespace LiteOrm
         /// <summary>
         /// 获取自增标识的 SQL 片段。
         /// </summary>
-        protected virtual string GetAutoIncrementSql() => "IDENTITY(1,1)";
+        /// <param name="column">当前列定义，可用于读取起始值与增量。</param>
+        protected virtual string GetAutoIncrementSql(ColumnDefinition column) => $"IDENTITY({column.IdentityStart},{column.IdentityIncreasement})";
 
         /// <summary>
         /// 根据列定义获取数据库列类型。

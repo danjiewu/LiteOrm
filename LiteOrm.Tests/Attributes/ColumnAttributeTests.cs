@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 
 using LiteOrm.Common;
@@ -180,6 +180,7 @@ namespace LiteOrm.Common.UnitTests
             Assert.True(attribute.AllowNull);
             Assert.False(attribute.IsPrimaryKey);
             Assert.False(attribute.IsIdentity);
+            Assert.Equal(1, attribute.IdentityStart);
             Assert.Equal(1, attribute.IdentityIncreasement);
             Assert.False(attribute.IsTimestamp);
             Assert.False(attribute.IsIndex);
@@ -245,6 +246,26 @@ namespace LiteOrm.Common.UnitTests
             Assert.True(attribute.AllowNull);
             Assert.True(attribute.IsColumn);
             Assert.Null(attribute.Constant);
+        }
+
+        /// <summary>
+        /// 测试 IdentityStart 与 IdentityIncreasement 可被自定义设置。
+        /// </summary>
+        [Fact]
+        public void ColumnAttribute_IdentityStartAndIncreasement_CanBeCustomized()
+        {
+            // 准备
+            var attribute = new ColumnAttribute();
+
+            // 执行
+            attribute.IsIdentity = true;
+            attribute.IdentityStart = 1000;
+            attribute.IdentityIncreasement = 5;
+
+            // 断言
+            Assert.True(attribute.IsIdentity);
+            Assert.Equal(1000, attribute.IdentityStart);
+            Assert.Equal(5, attribute.IdentityIncreasement);
         }
     }
 }

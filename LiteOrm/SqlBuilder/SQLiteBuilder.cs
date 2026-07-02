@@ -77,9 +77,9 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 获取自增标识 SQL 片段。
+        /// 获取自增标识 SQL 片段。SQLite 的 AUTOINCREMENT 不支持自定义起始值与增量，始终按 rowid 递增。
         /// </summary>
-        protected override string GetAutoIncrementSql() => "AUTOINCREMENT";
+        protected override string GetAutoIncrementSql(ColumnDefinition column) => "AUTOINCREMENT";
 
         /// <summary>
         /// 获取 SQLite 列类型。对于主键自增列，必须使用 INTEGER。
@@ -331,7 +331,7 @@ namespace LiteOrm
             if (inlinePrimaryKey) sb.Append(" PRIMARY KEY");
             if (column.IsIdentity)
             {
-                string autoIncrementSql = GetAutoIncrementSql();
+                string autoIncrementSql = GetAutoIncrementSql(column);
                 if (!string.IsNullOrEmpty(autoIncrementSql))
                 {
                     sb.Append(" ");

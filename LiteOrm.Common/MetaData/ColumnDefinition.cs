@@ -30,6 +30,11 @@ namespace LiteOrm.Common
         public bool IsIdentity { get; internal set; }
 
         /// <summary>
+        /// 获取或设置标识列（自增）的起始值。
+        /// </summary>
+        public long IdentityStart { get; set; } = 1;
+
+        /// <summary>
         /// 获取或设置标识列（自增）的增量值。
         /// </summary>
         public int IdentityIncreasement { get; set; } = 1;
