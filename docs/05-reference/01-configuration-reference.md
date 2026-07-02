@@ -53,8 +53,40 @@
 | `PoolSize` | `int` | `16` | 缓存连接数，控制连接池预热数量。 |
 | `MaxPoolSize` | `int` | `100` | 最大并发连接数上限。 |
 | `ParamCountLimit` | `int` | `2000` | 单条 SQL 参数数量限制，防止参数过多导致数据库不支持。 |
-| `SyncTable` | `bool` | `false` | 是否自动同步建表，生产环境建议关闭。 |
+| `SyncTable` | `bool` | `false` | 是否自动同步建表，生产环境建议关闭。可作为连接池级默认值，再通过 `DatabaseSync.OnTableSyncing` 事件按实体类型覆盖。 |
 | `ReadOnlyConfigs` | `array` | `[]` | 只读库配置列表，用于读写分离。 |
+
+### 动态同步判定（`OnTableSyncing` 事件）
+
+`SyncTable` 是连接池级的开关，对池内所有实体类型统一生效。若需要**按实体类型**细粒度控制是否同步建表（例如只允许某些表自动建表，或连接池关闭但个别类型开绿灯），可订阅 `DAOContextPool.DatabaseSync` 的 `OnTableSyncing` 事件：
+
+```csharp
+var pool = poolFactory.GetPool("SQLite");
+
+// 场景一：连接池开启同步，但仅对 User 表生效，其余跳过
+pool.SyncTable = true;
+pool.DatabaseSync.OnTableSyncing += (sender, e) =>
+{
+    e.ShouldSync = e.ObjectType == typeof(User);
+};
+
+// 场景二：连接池关闭同步，但对 Log 表开绿灯
+pool.SyncTable = false;
+pool.DatabaseSync.OnTableSyncing += (sender, e) =>
+{
+    if (e.ObjectType == typeof(Log)) e.ShouldSync = true;
+};
+```
+
+事件参数 `TableSyncingEventArgs` 携带：
+
+| 属性 | 说明 |
+| --- | --- |
+| `ObjectType` | 待同步的实体类型。 |
+| `TableName` | 解析后的表名（已应用 `tableArgs`，可用于分表场景判定）。 |
+| `ShouldSync` | 是否同步，默认值为连接池级 `SyncTable` 配置，订阅者可覆盖此决策。 |
+
+> 判定逻辑封装在 `DatabaseSync.ShouldSyncTable` 中，`EnsureTable` / `EnsureTableAsync` 在执行 DDL 前调用。无订阅者时回退到连接池级 `SyncTable` 配置。
 
 ## `ReadOnlyConfigs[]`
 

@@ -8,7 +8,7 @@ using Xunit;
 namespace LiteOrm.Tests
 {
     /// <summary>
-    /// 测试 DatabaseSync 的 SyncTableDeciding 事件与实体类级同步判定逻辑。
+    /// 测试 DatabaseSync 的 OnTableSyncing 事件与实体类级同步判定逻辑。
     /// </summary>
     [Collection("Database")]
     public class DatabaseSyncTests : TestBase

@@ -45,7 +45,7 @@
 | `DataSources[].PoolSize` | `int` | `16` | Maximum number of cached connections in the pool |
 | `DataSources[].MaxPoolSize` | `int` | `100` | Maximum concurrent connection limit |
 | `DataSources[].ParamCountLimit` | `int` | `2000` | Maximum SQL parameter count (`0` = unlimited) |
-| `DataSources[].SyncTable` | `bool` | `false` | Whether to automatically synchronize table creation |
+| `DataSources[].SyncTable` | `bool` | `false` | Whether to auto-sync table creation; pool-level default, overridable per entity type via `DatabaseSync.OnTableSyncing` event |
 | `DataSources[].ReadOnlyConfigs[]` | `array` | `[]` | Read-only replica configuration list (read/write splitting); omitted fields inherit from the primary data source |
 
 ### Service registration
@@ -334,7 +334,7 @@ public class OrderExceptionHook : IServiceExceptionHook
 | Attribute | Purpose |
 | --- | --- |
 | `[Table("TableName")]` | Specifies the table name; optional `DataSource` parameter |
-| `[Column("ColName", IsPrimaryKey, IsIdentity)]` | Specifies the column name and property behavior |
+| `[Column("ColName", IsPrimaryKey, IsIdentity, IdentityStart, IdentityIncreasement)]` | Specifies column name and properties; `IdentityStart`/`IdentityIncreasement` customize auto-increment start value and increment (column-level on SQL Server/Dameng/Oracle, MySQL via table-level `AUTO_INCREMENT=n`, not supported on SQLite/PG) |
 | `[ForeignType(typeof(T), Alias, AutoExpand)]` | Specifies the foreign-key related type; `AutoExpand` extends relation paths |
 | `[TableJoin(typeof(T), ForeignKeys, AliasName, AutoExpand)]` | Type-level relation definition supporting composite keys and path reuse |
 | `[ForeignColumn(typeof(T), Property)]` | Column projected from a related table (for view models) |

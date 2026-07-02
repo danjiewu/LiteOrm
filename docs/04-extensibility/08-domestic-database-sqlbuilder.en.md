@@ -48,13 +48,13 @@ Before writing code, list the differences between Dameng and the base dialect (O
 | Parameter prefix | `:p0` | Same |
 | String concatenation | `\|\|` | Same |
 | Paging syntax | `OFFSET ... FETCH` (12c+) | Same, Dameng supports `OFFSET ... FETCH` |
-| Auto-increment fragment | `GENERATED AS IDENTITY` | **`IDENTITY(1, 1)`** (Dameng-specific inline syntax) |
+| Auto-increment fragment | `GENERATED AS IDENTITY` | **`IDENTITY(start, increment)`** (Dameng-specific inline syntax) |
 | EXCEPT keyword | `MINUS` | Same, follows Oracle behavior |
 | Boolean type | `NUMBER(1)` | Same |
 | Batch update | `MERGE INTO` | Same |
 | Identity value return | `RETURNING ... INTO :p` | Same |
 
-Conclusion: Dameng only needs to override `GetAutoIncrementSql()`.
+Conclusion: Dameng only needs to override `GetAutoIncrementSql(ColumnDefinition)`.
 
 ### 3.2 Implement the Builder
 
@@ -79,7 +79,7 @@ namespace YourProject.SqlBuilder
     /// Dameng database (DM7/DM8) SQL syntax is highly compatible with Oracle and is accessed via the Dm driver,
     /// so this builder inherits from <see cref="OracleBuilder"/>. Main differences:
     /// <list type="bullet">
-    /// <item>Identity columns use the <c>IDENTITY(1, 1)</c> inline syntax instead of Oracle's GENERATED AS IDENTITY.</item>
+    /// <item>Identity columns use the <c>IDENTITY(start, increment)</c> inline syntax instead of Oracle's GENERATED AS IDENTITY.</item>
     /// <item>Default case-folding strategy is consistent with Oracle (double-quote wrapping, internal uppercasing).</item>
     /// <item>EXCEPT still needs to be translated to MINUS.</item>
     /// <item>Boolean type is mapped to NUMBER(1).</item>
@@ -93,9 +93,9 @@ namespace YourProject.SqlBuilder
         public static readonly new DamengBuilder Instance = new DamengBuilder();
 
         /// <summary>
-        /// Dameng uses IDENTITY(1, 1) inline syntax to generate identity columns, unlike Oracle's GENERATED AS IDENTITY.
+        /// Dameng uses IDENTITY(start, increment) inline syntax to generate identity columns, unlike Oracle's GENERATED AS IDENTITY.
         /// </summary>
-        protected override string GetAutoIncrementSql() => "IDENTITY(1, 1)";
+        protected override string GetAutoIncrementSql(ColumnDefinition column) => $"IDENTITY({column.IdentityStart}, {column.IdentityIncreasement})";
     }
 }
 ```
@@ -104,8 +104,8 @@ namespace YourProject.SqlBuilder
 
 1. **Inherit from `OracleBuilder` rather than `SqlBuilder`**: This lets us reuse all of Oracle's SQL generation logic (`MERGE INTO` batch updates, `MINUS` translation, `RETURNING INTO` identity value return, etc.) and only override the differences.
 2. **Provide `public static readonly new XxxBuilder Instance`**: All built-in builders follow the singleton pattern, and the factory returns this singleton.
-3. **Only override `GetAutoIncrementSql()`**: This is the only significant difference from Oracle.
-4. **Use `protected override` rather than `public override`**: Because the base class's `GetAutoIncrementSql()` is `protected virtual`, keep the access level consistent.
+3. **Only override `GetAutoIncrementSql(ColumnDefinition)`**: This is the only significant difference from Oracle.
+4. **Use `protected override` rather than `public override`**: Because the base class's `GetAutoIncrementSql(ColumnDefinition)` is `protected virtual`, keep the access level consistent.
 
 ### 3.3 Register the Custom SqlBuilder
 
@@ -198,7 +198,7 @@ The four registration methods above all ultimately write to the factory's two in
 
 ### 3.4 Write Unit Tests for the Subclass
 
-If you override a method and change the output semantics (such as Dameng's `GetAutoIncrementSql()` returning `IDENTITY(1, 1)`), it is recommended to add assertions in your own test project. `GetAutoIncrementSql` is `protected`, so verify it indirectly through `BuildCreateTableSql`:
+If you override a method and change the output semantics (such as Dameng's `GetAutoIncrementSql(ColumnDefinition)` returning `IDENTITY(start, increment)`), it is recommended to add assertions in your own test project. `GetAutoIncrementSql` is `protected`, so verify it indirectly through `BuildCreateTableSql`:
 
 ```csharp
 [Fact]
@@ -207,14 +207,14 @@ public void Dameng_GetAutoIncrementSql_ReturnsIdentitySyntax()
     // Build the test context via AttributeTableInfoProvider
     var tableDefinition = CreateProvider(DamengBuilder.Instance).GetTableDefinition(typeof(DamengIdentityModel));
     var sql = DamengBuilder.Instance.BuildCreateTableSql(tableDefinition.Name, tableDefinition.Columns);
-    Assert.Contains("IDENTITY(1, 1)", sql);
+    Assert.Contains("IDENTITY(1000, 5)", sql);
     Assert.DoesNotContain("GENERATED AS IDENTITY", sql);
 }
 
 [Table("DamengIdentityModels")]
 private class DamengIdentityModel
 {
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true, AllowNull = false)]
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true, IdentityStart = 1000, IdentityIncreasement = 5, AllowNull = false)]
     public int Id { get; set; }
 }
 ```
@@ -304,7 +304,7 @@ After integrating Dameng (or any new domestic database), verify in the following
 1. **Basic CRUD**: Confirm that identity column inserts correctly return auto-increment values (Dameng uses `RETURNING INTO`).
 2. **Sorting and paging**: The SQL generated by `Skip(...).Take(...)` is executable on the target database version.
 3. **Batch insert / batch update**: Dameng uses `MERGE INTO`; verify the parameter order of primary key columns and updatable columns.
-4. **DDL verification**: The `IDENTITY(1, 1)` syntax generated by `BuildCreateTableSql` is accepted by the Dameng executor.
+4. **DDL verification**: The `IDENTITY(start, increment)` syntax generated by `BuildCreateTableSql` is accepted by the Dameng executor.
 5. **Function translation**: If you have custom Lambda translations (such as `DateTime.Now` → `SYSDATE`), verify them separately.
 
 ### 5.2 Inspect Generated SQL First, Then ORM Code
@@ -313,7 +313,7 @@ When troubleshooting compatibility issues, follow this order:
 
 1. Confirm the target database version (DM7 / DM8 behavior differs slightly).
 2. View the actual generated SQL via logs to confirm whether the dialect was matched. See [Logging and Diagnostics](../03-advanced-topics/07-logging.en.md).
-3. If you find the generated SQL is Oracle dialect (such as `GENERATED AS IDENTITY`) rather than Dameng dialect (`IDENTITY(1, 1)`), it means the factory did not match your registered builder. First check whether `RegisterSqlBuilder(...)` was called at startup, then verify the data source name / connection type is consistent with the runtime.
+3. If you find the generated SQL is Oracle dialect (such as `GENERATED AS IDENTITY`) rather than Dameng dialect (`IDENTITY(start, increment)`), it means the factory did not match your registered builder. First check whether `RegisterSqlBuilder(...)` was called at startup, then verify the data source name / connection type is consistent with the runtime.
 4. If necessary, register explicitly to bypass keyword recognition:
 
    ```csharp
@@ -338,7 +338,7 @@ The following table summarizes the differences between the 6 built-in domestic /
 
 | Database | Base class | Main differences | Methods overridden |
 |----------|-----------|-------------------|---------------------|
-| Dameng DM | `OracleBuilder` | Auto-increment column uses `IDENTITY(1, 1)` | Override `GetAutoIncrementSql` |
+| Dameng DM | `OracleBuilder` | Auto-increment column uses `IDENTITY(start, increment)` | Override `GetAutoIncrementSql` |
 | KingbaseES | `PostgreSqlBuilder` | None (default is fully consistent with PG) | None |
 | Huawei GaussDB / openGauss | `PostgreSqlBuilder` | None (default is fully consistent with PG) | None |
 | OceanBase (MySQL mode) | `MySqlBuilder` | None (default is fully consistent with MySQL) | None |

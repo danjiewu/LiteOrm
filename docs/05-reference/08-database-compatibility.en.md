@@ -27,7 +27,7 @@ LiteOrm includes 11 database-specific `SqlBuilder` implementations (including 6 
 | TiDB | `TiDBBuilder` | `MySqlBuilder` | `TIDB` |
 | GreatDB | `GreatDBBuilder` | `MySqlBuilder` | `GREATDB` |
 
-> Domestic database builders are marker subclasses that inherit all behavior from their parent. `DamengBuilder` only overrides `GetAutoIncrementSql()` (returns `IDENTITY(1, 1)`); the other 5 have empty class bodies.
+> Domestic database builders are marker subclasses that inherit all behavior from their parent. `DamengBuilder` only overrides `GetAutoIncrementSql(ColumnDefinition)` (returns `IDENTITY(start, increment)`); the other 5 have empty class bodies.
 
 | Other (generic fallback) | `SqlBuilder` (base) | — | — |
 
@@ -108,6 +108,21 @@ Different databases handle .NET types differently. `SqlBuilder` subclasses handl
 | Oracle / Dameng | Custom expression | ❌ `false` | `OracleIdentitySourceType.Expression`, uses `IdentityExpression` |
 
 > The `OracleIdentitySourceType` enum has three members: `Identity` (default, Oracle 12c+), `Sequence`, and `Expression` (custom SQL expression).
+
+#### Start Value and Increment (`IdentityStart` / `IdentityIncreasement`)
+
+The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `IdentityIncreasement` (increment, default `1`) customize the auto-increment sequence. Database support:
+
+| Database | Start Value | Increment | Example Syntax |
+|----------|-------------|-----------|----------------|
+| SQL Server (base) | ✅ column-level `IDENTITY(n, m)` | ✅ same | `IDENTITY(1000,5)` |
+| Dameng DM | ✅ column-level `IDENTITY(n, m)` | ✅ same | `IDENTITY(1000, 5)` |
+| Oracle 12c+ | ✅ `START WITH n` | ✅ `INCREMENT BY m` | `GENERATED AS IDENTITY (START WITH 1000 INCREMENT BY 5)` |
+| MySQL / OceanBase / TiDB / GreatDB | ⚠️ table-level `AUTO_INCREMENT = n` | ❌ session variable `auto_increment_increment` | `CREATE TABLE ... ) AUTO_INCREMENT = 1000` |
+| SQLite | ❌ not customizable | ❌ not customizable | `AUTOINCREMENT` (fixed rowid increment) |
+| PostgreSQL / KingbaseES / GaussDB | ❌ controlled by sequence | ❌ same | no column-level fragment; operate the underlying sequence manually |
+
+> MySQL's increment step is a connection-level session variable that cannot be written into the CREATE TABLE statement; to customize the increment, execute `SET @@SESSION.auto_increment_increment = n` after obtaining a connection.
 
 ### 2.4 String Concatenation
 

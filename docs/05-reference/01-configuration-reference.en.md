@@ -53,8 +53,40 @@ This page is a complete reference for LiteOrm configuration fields, defaults, an
 | `PoolSize` | `int` | `16` | cached connection count, controls pool pre-warming |
 | `MaxPoolSize` | `int` | `100` | maximum concurrent connections |
 | `ParamCountLimit` | `int` | `2000` | parameter-count limit per SQL statement |
-| `SyncTable` | `bool` | `false` | whether to auto-sync table creation, disable in production |
+| `SyncTable` | `bool` | `false` | whether to auto-sync table creation, disable in production. Acts as the pool-level default; can be overridden per entity type via the `DatabaseSync.OnTableSyncing` event. |
 | `ReadOnlyConfigs` | `array` | `[]` | read-only replica configuration list |
+
+### Entity-Level Sync Decision (`OnTableSyncing` Event)
+
+`SyncTable` is a pool-level switch that applies uniformly to all entity types in the pool. To control whether to sync table creation **per entity type** (e.g. allow only certain tables to auto-create, or disable the pool but green-light specific types), subscribe to the `OnTableSyncing` event on `DAOContextPool.DatabaseSync`:
+
+```csharp
+var pool = poolFactory.GetPool("SQLite");
+
+// Scenario 1: pool-wide sync enabled, but only the User table is synced
+pool.SyncTable = true;
+pool.DatabaseSync.OnTableSyncing += (sender, e) =>
+{
+    e.ShouldSync = e.ObjectType == typeof(User);
+};
+
+// Scenario 2: pool-wide sync disabled, but green-light the Log table
+pool.SyncTable = false;
+pool.DatabaseSync.OnTableSyncing += (sender, e) =>
+{
+    if (e.ObjectType == typeof(Log)) e.ShouldSync = true;
+};
+```
+
+The event args `TableSyncingEventArgs` carries:
+
+| Property | Description |
+|-----------|-------------|
+| `ObjectType` | The entity type to sync. |
+| `TableName` | The resolved table name (with `tableArgs` applied, useful for sharded-table decisions). |
+| `ShouldSync` | Whether to sync; defaults to the pool-level `SyncTable` config, can be overridden by subscribers. |
+
+> The decision logic is encapsulated in `DatabaseSync.ShouldSyncTable`, invoked by `EnsureTable` / `EnsureTableAsync` before executing DDL. With no subscribers, it falls back to the pool-level `SyncTable` config.
 
 ## `ReadOnlyConfigs[]`
 

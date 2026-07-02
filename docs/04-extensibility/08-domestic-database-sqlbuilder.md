@@ -46,13 +46,13 @@ LiteOrm 自带以下方言构建器，可以直接通过数据源名或连接类
 | 参数前缀 | `:p0` | 一致 |
 | 字符串连接 | `\|\|` | 一致 |
 | 分页语法 | `OFFSET ... FETCH`（12c+） | 一致，达梦支持 `OFFSET ... FETCH` |
-| 自增列片段 | `GENERATED AS IDENTITY` | **`IDENTITY(1, 1)`**（达梦专属内联语法） |
+| 自增列片段 | `GENERATED AS IDENTITY` | **`IDENTITY(起始值, 增量)`**（达梦专属内联语法） |
 | EXCEPT 关键字 | `MINUS` | 一致，沿用 Oracle 行为 |
 | 布尔类型 | `NUMBER(1)` | 一致 |
 | 批量更新 | `MERGE INTO` | 一致 |
 | 标识值返回 | `RETURNING ... INTO :p` | 一致 |
 
-结论：达梦只需要覆盖 `GetAutoIncrementSql()` 一个方法。
+结论：达梦只需要覆盖 `GetAutoIncrementSql(ColumnDefinition)` 一个方法。
 
 ### 3.2 实现构建器
 
@@ -77,7 +77,7 @@ namespace YourProject.SqlBuilder
     /// 达梦数据库（DM7/DM8）SQL 语法与 Oracle 高度兼容，使用 Dm 驱动接入，
     /// 故本构建器继承自 <see cref="OracleBuilder"/>。主要差异点：
     /// <list type="bullet">
-    /// <item>标识列采用 <c>IDENTITY(1, 1)</c> 内联语法，而非 Oracle 的 GENERATED AS IDENTITY。</item>
+    /// <item>标识列采用 <c>IDENTITY(起始值, 增量)</c> 内联语法，而非 Oracle 的 GENERATED AS IDENTITY。</item>
     /// <item>默认大小写策略与 Oracle 一致（双引号包裹、内部转大写）。</item>
     /// <item>EXCEPT 仍需翻译为 MINUS。</item>
     /// <item>布尔类型映射为 NUMBER(1)。</item>
@@ -91,9 +91,9 @@ namespace YourProject.SqlBuilder
         public static readonly new DamengBuilder Instance = new DamengBuilder();
 
         /// <summary>
-        /// 达梦使用 IDENTITY(1, 1) 内联语法生成标识列，与 Oracle 的 GENERATED AS IDENTITY 不同。
+        /// 达梦使用 IDENTITY(起始值, 增量) 内联语法生成标识列，与 Oracle 的 GENERATED AS IDENTITY 不同。
         /// </summary>
-        protected override string GetAutoIncrementSql() => "IDENTITY(1, 1)";
+        protected override string GetAutoIncrementSql(ColumnDefinition column) => $"IDENTITY({column.IdentityStart}, {column.IdentityIncreasement})";
     }
 }
 ```
@@ -102,8 +102,8 @@ namespace YourProject.SqlBuilder
 
 1. **继承 `OracleBuilder` 而不是 `SqlBuilder`**：这样我们可以复用 Oracle 的所有 SQL 生成逻辑（`MERGE INTO` 批量更新、`MINUS` 翻译、`RETURNING INTO` 标识值返回等），只覆盖差异点。
 2. **提供 `public static readonly new XxxBuilder Instance`**：所有内置构建器都遵循单例模式，工厂返回的就是这个单例。
-3. **只覆盖 `GetAutoIncrementSql()`**：这是与 Oracle 的唯一显著差异。
-4. **使用 `protected override` 而不是 `public override`**：因为基类的 `GetAutoIncrementSql()` 就是 `protected virtual`，保持访问级别一致。
+3. **只覆盖 `GetAutoIncrementSql(ColumnDefinition)`**：这是与 Oracle 的唯一显著差异。
+4. **使用 `protected override` 而不是 `public override`**：因为基类的 `GetAutoIncrementSql(ColumnDefinition)` 就是 `protected virtual`，保持访问级别一致。
 
 ### 3.3 注册自定义 SqlBuilder
 
@@ -196,7 +196,7 @@ SqlBuilderFactory.Instance.RegisterSqlBuilder("Dameng", DamengBuilder.Instance);
 
 ### 3.4 为子类写单元测试
 
-如果你覆盖了某个方法并改变了输出语义（例如达梦的 `GetAutoIncrementSql()` 返回 `IDENTITY(1, 1)`），建议在你自己的测试项目中追加断言。`GetAutoIncrementSql` 是 `protected`，需通过 `BuildCreateTableSql` 间接验证：
+如果你覆盖了某个方法并改变了输出语义（例如达梦的 `GetAutoIncrementSql(ColumnDefinition)` 返回 `IDENTITY(起始值, 增量)`），建议在你自己的测试项目中追加断言。`GetAutoIncrementSql` 是 `protected`，需通过 `BuildCreateTableSql` 间接验证：
 
 ```csharp
 [Fact]
@@ -205,14 +205,14 @@ public void Dameng_GetAutoIncrementSql_ReturnsIdentitySyntax()
     // 通过 AttributeTableInfoProvider 构造测试上下文
     var tableDefinition = CreateProvider(DamengBuilder.Instance).GetTableDefinition(typeof(DamengIdentityModel));
     var sql = DamengBuilder.Instance.BuildCreateTableSql(tableDefinition.Name, tableDefinition.Columns);
-    Assert.Contains("IDENTITY(1, 1)", sql);
+    Assert.Contains("IDENTITY(1000, 5)", sql);
     Assert.DoesNotContain("GENERATED AS IDENTITY", sql);
 }
 
 [Table("DamengIdentityModels")]
 private class DamengIdentityModel
 {
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true, AllowNull = false)]
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true, IdentityStart = 1000, IdentityIncreasement = 5, AllowNull = false)]
     public int Id { get; set; }
 }
 ```
@@ -302,7 +302,7 @@ public class MyDamengBuilder : DamengBuilder
 1. **基础增删改查**：确认标识列插入能正确返回自增值（达梦通过 `RETURNING INTO`）。
 2. **排序分页**：`Skip(...).Take(...)` 生成的 SQL 在目标数据库版本下可执行。
 3. **批量插入 / 批量更新**：达梦走 `MERGE INTO`，需要验证主键列、可更新列的参数顺序。
-4. **DDL 验证**：`BuildCreateTableSql` 生成的 `IDENTITY(1, 1)` 语法可被达梦执行器接受。
+4. **DDL 验证**：`BuildCreateTableSql` 生成的 `IDENTITY(起始值, 增量)` 语法可被达梦执行器接受。
 5. **函数翻译**：如有自定义 Lambda 翻译（如 `DateTime.Now` 翻译为 `SYSDATE`），需要单独验证。
 
 ### 5.2 先看生成 SQL，再看 ORM 代码
@@ -311,7 +311,7 @@ public class MyDamengBuilder : DamengBuilder
 
 1. 确认目标数据库版本（DM7 / DM8 行为略有差异）。
 2. 通过日志查看实际生成的 SQL，确认方言是否命中。详见 [日志与诊断](../03-advanced-topics/07-logging.md)。
-3. 如果发现生成的 SQL 是 Oracle 方言（如 `GENERATED AS IDENTITY`）而不是达梦方言（`IDENTITY(1, 1)`），说明工厂没有命中你注册的构建器。先检查启动配置是否调用了 `RegisterSqlBuilder(...)`，再核对数据源名 / 连接类型是否与运行时一致。
+3. 如果发现生成的 SQL 是 Oracle 方言（如 `GENERATED AS IDENTITY`）而不是达梦方言（`IDENTITY(起始值, 增量)`），说明工厂没有命中你注册的构建器。先检查启动配置是否调用了 `RegisterSqlBuilder(...)`，再核对数据源名 / 连接类型是否与运行时一致。
 4. 必要时显式注册，绕过关键字识别：
 
    ```csharp
@@ -336,7 +336,7 @@ public class MyDamengBuilder : DamengBuilder
 
 | 数据库 | 基类 | 主要差异点 | 是否覆盖方法 |
 |--------|------|-----------|--------------|
-| 达梦 DM | `OracleBuilder` | 自增列用 `IDENTITY(1, 1)` | 覆盖 `GetAutoIncrementSql` |
+| 达梦 DM | `OracleBuilder` | 自增列用 `IDENTITY(起始值, 增量)` | 覆盖 `GetAutoIncrementSql` |
 | 人大金仓 KingbaseES | `PostgreSqlBuilder` | 无（默认与 PG 完全一致） | 无 |
 | 华为 GaussDB / openGauss | `PostgreSqlBuilder` | 无（默认与 PG 完全一致） | 无 |
 | OceanBase（MySQL 模式） | `MySqlBuilder` | 无（默认与 MySQL 完全一致） | 无 |

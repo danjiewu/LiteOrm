@@ -45,7 +45,7 @@
 | `DataSources[].PoolSize`          | `int`      | `16`       | 连接池缓存的最大连接数                            |
 | `DataSources[].MaxPoolSize`       | `int`      | `100`      | 最大并发连接数限制                              |
 | `DataSources[].ParamCountLimit`   | `int`      | `2000`     | SQL 参数数量上限（`0` = 无限制）                  |
-| `DataSources[].SyncTable`         | `bool`     | `false`    | 是否自动同步建表                               |
+| `DataSources[].SyncTable`         | `bool`     | `false`    | 是否自动同步建表；连接池级默认值，可通过 `DatabaseSync.OnTableSyncing` 事件按实体类型覆盖 |
 | `DataSources[].ReadOnlyConfigs[]` | `array`    | `[]`       | 只读库配置列表（读写分离），各字段不填时继承主库配置             |
 
 ### 服务注册
@@ -334,7 +334,7 @@ public class OrderExceptionHook : IServiceExceptionHook
 | 特性                                                           | 用途                           |
 | ------------------------------------------------------------ | ---------------------------- |
 | `[Table("TableName")]`                                       | 指定表名，可选 `DataSource` 参数      |
-| `[Column("ColName", IsPrimaryKey, IsIdentity)]`              | 指定列名和属性                      |
+| `[Column("ColName", IsPrimaryKey, IsIdentity, IdentityStart, IdentityIncreasement)]` | 指定列名和属性；`IdentityStart`/`IdentityIncreasement` 自定义自增起始值与增量（SQL Server/达梦/Oracle 列级支持，MySQL 表级 `AUTO_INCREMENT=n`，SQLite/PG 不支持） |
 | `[ForeignType(typeof(T), Alias, AutoExpand)]`                | 指定外键关联类型，`AutoExpand` 扩展关联路径 |
 | `[TableJoin(typeof(T), ForeignKeys, AliasName, AutoExpand)]` | 类级关联定义，支持复合键和路径复用            |
 | `[ForeignColumn(typeof(T), Property)]`                       | 从关联表获取的列（用于视图）               |
