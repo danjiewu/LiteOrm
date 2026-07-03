@@ -1,5 +1,10 @@
-﻿using System;
+﻿using LiteOrm.Common;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
 
 namespace LiteOrm.Service
 {
@@ -62,5 +67,99 @@ namespace LiteOrm.Service
         /// 服务异常 hook 配置。
         /// </summary>
         public ExceptionHookAttribute[] ExceptionHooks { get; set; } = Array.Empty<ExceptionHookAttribute>();
+    }
+
+    /// <summary>
+    /// 服务扩展方法
+    /// </summary>
+    public static class ServiceExt
+    {
+        private static readonly HashSet<Type> _exclusions = new HashSet<Type> { typeof(CancellationToken) };
+        /// <summary>
+        /// 从方法调用信息加载服务描述
+        /// </summary>
+        /// <param name="desc">服务描述对象</param>
+        /// <param name="method">方法信息</param>
+        public static void LoadFrom(this ServiceDescription desc, MethodInfo method)
+        {
+            // 日志特性
+            var logAtt = GetServiceAttribute<ServiceLogAttribute>(method);
+            if (logAtt is not null)
+            {
+                desc.LogFormat = logAtt.LogFormat;
+                desc.LogLevel = logAtt.LogLevel;
+            }
+
+            // 权限特性
+            var permAtt = GetServiceAttribute<ServicePermissionAttribute>(method);
+            if (permAtt is not null)
+            {
+                desc.AllowAnonymous = permAtt.AllowAnonymous;
+                if (!string.IsNullOrEmpty(permAtt.AllowRoles))
+                    desc.AllowRoles = permAtt.AllowRoles.Split(',');
+            }
+
+            // 事务特性
+            var transAtt = GetServiceAttribute<TransactionAttribute>(method);
+            if (transAtt is not null)
+            {
+                desc.IsolationLevel = transAtt.IsolationLevel;
+                desc.IsTransaction = transAtt.IsTransaction;
+            }
+
+            // 服务特性
+            var serviceAtt = GetServiceAttribute<ServiceAttribute>(method);
+            if (serviceAtt is not null)
+            {
+                desc.IsService = serviceAtt.IsService;
+            }
+            desc.ServiceName = serviceAtt?.Name ?? TypeResolverHelper.GetName(method.DeclaringType);
+
+            var serviceMethodAtt = GetServiceAttribute<ServiceMethodAttribute>(method);
+            if (serviceMethodAtt is not null)
+                desc.IsService = serviceMethodAtt.IsService;
+            desc.MethodName = serviceMethodAtt?.MethodName ?? method.Name;
+
+            desc.ExceptionHooks = GetServiceAttributes<ExceptionHookAttribute>(method).ToArray();
+
+            // 参数日志格式
+            var parameters = method.GetParameters();
+            desc.ArgsLoggable = new bool[parameters.Length];
+
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                var paramLogAttr = parameters[i].GetCustomAttribute(typeof(LogAttribute), true) as LogAttribute;
+                desc.ArgsLoggable[i] = paramLogAttr == null ? !_exclusions.Contains(parameters[i].ParameterType) : paramLogAttr.Enabled;
+            }
+        }
+
+        private static T GetServiceAttribute<T>(MethodInfo method) where T : Attribute
+        {
+            return GetServiceAttributes<T>(method).FirstOrDefault();
+        }
+
+        private static IEnumerable<T> GetServiceAttributes<T>(MethodInfo method) where T : Attribute
+        {
+            IEnumerable<T> methodAttributes = method.GetCustomAttributes<T>();
+            IEnumerable<T> declaringTypeAttributes = method.DeclaringType is not null && method.DeclaringType != method.ReflectedType
+                ? method.DeclaringType.GetCustomAttributes<T>()
+                : Array.Empty<T>();
+
+            return methodAttributes
+                .Concat(declaringTypeAttributes);
+        }
+
+        /// <summary>
+        /// 展开 TargetInvocationException 获取真实异常
+        /// </summary>
+        /// <param name="ex">异常对象</param>
+        /// <returns>真实异常对象</returns>
+        public static Exception UnwrapTargetInvocationException(this Exception ex)
+        {
+            var inner = ex;
+            while (inner is TargetInvocationException && inner.InnerException is not null)
+                inner = inner.InnerException;
+            return inner;
+        }
     }
 }

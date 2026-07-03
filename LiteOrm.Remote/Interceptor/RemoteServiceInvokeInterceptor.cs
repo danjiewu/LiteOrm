@@ -909,7 +909,7 @@ namespace LiteOrm.Remote
             return _methodDescriptions.GetOrAdd((GetServiceType(invocation), invocation.Method), _ =>
             {
                 var desc = new ServiceDescription();
-                desc.LoadFrom(invocation);
+                desc.LoadFrom(invocation.Method);
                 return desc;
             });
         }
@@ -947,119 +947,7 @@ namespace LiteOrm.Remote
                 return candidates.Count > 0 ? candidates[0] : invocation.Method.DeclaringType;
             });
         }
-    }
-
-    /// <summary>
-    /// 服务拦截器扩展方法
-    /// </summary>
-    public static class ServiceInterceptorExt
-    {
-        private static readonly HashSet<Type> _exclusions = new HashSet<Type> { typeof(CancellationToken) };
-        /// <summary>
-        /// 从方法调用信息加载服务描述
-        /// </summary>
-        /// <param name="desc">服务描述对象</param>
-        /// <param name="invocation">方法调用信息</param>
-        public static void LoadFrom(this ServiceDescription desc, IInvocation invocation)
-        {
-            // 日志特性
-            var logAtt = GetServiceAttribute<ServiceLogAttribute>(invocation);
-            if (logAtt is not null)
-            {
-                desc.LogFormat = logAtt.LogFormat;
-                desc.LogLevel = logAtt.LogLevel;
-            }
-
-            // 权限特性
-            var permAtt = GetServiceAttribute<ServicePermissionAttribute>(invocation);
-            if (permAtt is not null)
-            {
-                desc.AllowAnonymous = permAtt.AllowAnonymous;
-                if (!string.IsNullOrEmpty(permAtt.AllowRoles))
-                    desc.AllowRoles = permAtt.AllowRoles.Split(',');
-            }
-
-            // 事务特性
-            var transAtt = GetServiceAttribute<TransactionAttribute>(invocation);
-            if (transAtt is not null)
-            {
-                desc.IsolationLevel = transAtt.IsolationLevel;
-                desc.IsTransaction = transAtt.IsTransaction;
-            }
-
-            // 服务特性
-            var serviceAtt = GetServiceAttribute<ServiceAttribute>(invocation);
-            if (serviceAtt is not null)
-            {
-                desc.IsService = serviceAtt.IsService;
-            }
-            desc.ServiceName = serviceAtt?.Name ?? TypeResolverHelper.GetName(invocation.TargetType);
-
-            var serviceMethodAtt = GetServiceAttribute<ServiceMethodAttribute>(invocation);
-            if (serviceMethodAtt is not null)
-                desc.IsService = serviceMethodAtt.IsService;
-
-            desc.MethodName = serviceMethodAtt?.MethodName ?? invocation.Method.Name;
-
-            desc.ExceptionHooks = GetServiceAttributes<ExceptionHookAttribute>(invocation).ToArray();
-
-            // 参数日志格式
-            var parameters = invocation.Method.GetParameters();
-            desc.ArgsLoggable = new bool[parameters.Length];
-
-            for (int i = 0; i < parameters.Length; i++)
-            {
-                var logAtts = (LogAttribute[])parameters[i].GetCustomAttributes(typeof(LogAttribute), true);
-
-                if (logAtts.Length == 0)
-                {
-                    var targetMethod = invocation.MethodInvocationTarget;
-                    if (targetMethod is not null)
-                    {
-                        var targetParams = targetMethod.GetParameters();
-                        logAtts = (LogAttribute[])targetParams[i].GetCustomAttributes(typeof(LogAttribute), true);
-                    }
-                }
-
-                desc.ArgsLoggable[i] = logAtts.Length > 0 ? logAtts[0].Enabled : !_exclusions.Contains(parameters[i].ParameterType);
-            }
-        }
-
-        private static T GetServiceAttribute<T>(IInvocation invocation) where T : Attribute
-        {
-            return GetServiceAttributes<T>(invocation).FirstOrDefault();
-        }
-
-        private static IEnumerable<T> GetServiceAttributes<T>(IInvocation invocation) where T : Attribute
-        {
-            IEnumerable<T> methodAttributes = invocation.Method.GetCustomAttributes<T>();
-            IEnumerable<T> targetMethodAttributes = invocation.MethodInvocationTarget is not null && invocation.MethodInvocationTarget != invocation.Method
-                ? invocation.MethodInvocationTarget.GetCustomAttributes<T>()
-                : Array.Empty<T>();
-            IEnumerable<T> targetTypeAttributes = invocation.TargetType?.GetCustomAttributes<T>() ?? Array.Empty<T>();
-            IEnumerable<T> declaringTypeAttributes = invocation.Method.DeclaringType is not null && invocation.Method.DeclaringType != invocation.TargetType
-                ? invocation.Method.DeclaringType.GetCustomAttributes<T>()
-                : Array.Empty<T>();
-
-            return methodAttributes
-                .Concat(targetMethodAttributes)
-                .Concat(targetTypeAttributes)
-                .Concat(declaringTypeAttributes);
-        }
-
-        /// <summary>
-        /// 展开 TargetInvocationException 获取真实异常
-        /// </summary>
-        /// <param name="ex">异常对象</param>
-        /// <returns>真实异常对象</returns>
-        public static Exception UnwrapTargetInvocationException(this Exception ex)
-        {
-            var inner = ex;
-            while (inner is TargetInvocationException && inner.InnerException is not null)
-                inner = inner.InnerException;
-            return inner;
-        }
-    }
+    }  
 
     /// <summary>
     ///  动态服务生成

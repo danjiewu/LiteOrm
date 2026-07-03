@@ -17,7 +17,9 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
       修复日志MethodName为空的bug;
-      新增Expression形式的更新操作;    
+      新增Expression形式的更新操作; 
+      新增OnTableSyncing事件;
+      
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
