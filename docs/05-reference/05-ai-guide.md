@@ -305,29 +305,22 @@ services.AddServiceGenerator<ServiceFactory>();
 var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 ```
 
-### Service 异常 Hook
+### Service 异常处理事件
 
 ```csharp
-[ExceptionHook(typeof(OrderExceptionHook), Mode = ServiceExceptionHookMode.Notify)]
-public interface IOrderService
+// 全局静态事件，服务方法抛出异常时触发
+ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
 {
-    Task SubmitAsync(long id);
-}
-
-[AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
-public class OrderExceptionHook : IServiceExceptionHook
-{
-    public void OnException(ServiceExceptionContext context)
-    {
-        // 读取异常、方法名、参数、SQL 栈等上下文
-    }
-}
+    // 读取异常、方法名、参数、SQL 栈等上下文
+    if (context.Exception is TimeoutException)
+        context.Handle(123); // 把异常转成约定结果
+};
 ```
 
-- `[ExceptionHook]` 可标记在方法、类、接口上
-- `Notify` 只做观察/告警，不允许吞异常
-- `Handle` 允许通过 `context.Handle(result)` 把异常转成约定结果
-- 执行顺序上，方法级 `ExceptionHook` 先于全局 `ServiceInvokeInterceptor.ExceptionHandling` 事件
+- `ServiceInvokeInterceptor.ExceptionHandling` 为全局静态事件
+- `RemoteServiceInvokeInterceptor.ExceptionHandling` 行为一致
+- 不调用 `context.Handle(...)` 时异常继续抛出，适合只做告警/埋点
+- 调用 `context.Handle(result)` 后把异常转成正常返回结果
 
 ## 七、特性速查
 
@@ -339,7 +332,6 @@ public class OrderExceptionHook : IServiceExceptionHook
 | `[TableJoin(typeof(T), ForeignKeys, AliasName, AutoExpand)]` | 类级关联定义，支持复合键和路径复用            |
 | `[ForeignColumn(typeof(T), Property)]`                       | 从关联表获取的列（用于视图）               |
 | `[Transaction]`                                              | 声明式事务                        |
-| `[ExceptionHook(typeof(THook), Mode = ...)]`                 | 声明服务异常 hook，可做告警或异常转结果        |
 | `[AutoRegister]`                                             | 自动注册到 DI 容器                  |
 
 ## 八、Expr 表达式系统

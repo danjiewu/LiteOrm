@@ -1,7 +1,6 @@
 using Castle.DynamicProxy;
 using LiteOrm.Common;
 using LiteOrm.Service;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -24,7 +23,7 @@ namespace LiteOrm.Remote
     /// 1. 请求构建 - 将服务类型、方法名、参数序列化为 <see cref="RemoteInvocationRequest"/>
     /// 2. 远程调用 - 通过注入的传输层异步调用远程服务
     /// 3. 结果反序列化 - 将远程响应反序列化为方法返回类型，支持 void / Task / Task&lt;T&gt; / 同步返回
-    /// 4. 异常处理 - 远程异常封装为 <see cref="ServiceException"/> 抛出，并触发本地异常 hook
+    /// 4. 异常处理 - 远程异常封装为 <see cref="ServiceException"/> 抛出，并触发全局 <see cref="ExceptionHandling"/> 事件
     /// 5. 日志记录 - 记录调用前后、参数、耗时、慢调用、异常等
     /// 6. 异步支持 - 同时支持同步和异步方法拦截
     /// 7. 方法元数据缓存 - 缓存方法的特性信息以提高性能
@@ -67,22 +66,18 @@ namespace LiteOrm.Remote
              select m).First();
 
         private readonly ILogger _logger;
-        private readonly IServiceProvider _serviceProvider;
         private readonly IRemoteServiceTransport _transport;
 
         /// <summary>
         /// 初始化 <see cref="RemoteServiceInvokeInterceptor"/> 类的新实例。
         /// </summary>
         /// <param name="loggerFactory">日志工厂</param>
-        /// <param name="serviceProvider">服务提供者</param>
         /// <param name="transport">远程调用传输层</param>
-        public RemoteServiceInvokeInterceptor(ILoggerFactory loggerFactory, IServiceProvider serviceProvider, IRemoteServiceTransport transport)
+        public RemoteServiceInvokeInterceptor(ILoggerFactory loggerFactory, IRemoteServiceTransport transport)
         {
             if (loggerFactory is null) throw new ArgumentNullException(nameof(loggerFactory));
-            if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
             if (transport is null) throw new ArgumentNullException(nameof(transport));
             _logger = loggerFactory.CreateLogger<RemoteServiceInvokeInterceptor>();
-            _serviceProvider = serviceProvider;
             _transport = transport;
         }
 
@@ -656,12 +651,11 @@ namespace LiteOrm.Remote
         }
 
         /// <summary>
-        /// 尝试通过方法级 hook 或全局事件处理异常。
+        /// 尝试通过全局异常处理事件处理异常。
         /// </summary>
         protected virtual bool TryHandleException(IInvocation invocation, Exception exception, out object handledResult)
         {
             var context = CreateExceptionContext(invocation, exception);
-            InvokeServiceExceptionHooks(invocation, context);
             OnExceptionHandling(context);
 
             if (!context.Handled)
@@ -697,27 +691,6 @@ namespace LiteOrm.Remote
         }
 
         /// <summary>
-        /// 执行方法级异常 hook。
-        /// </summary>
-        protected virtual void InvokeServiceExceptionHooks(IInvocation invocation, ServiceExceptionContext context)
-        {
-            var serviceDesc = GetDescription(invocation);
-            foreach (var hookAttribute in serviceDesc.ExceptionHooks ?? Array.Empty<ExceptionHookAttribute>())
-            {
-                var hook = ResolveExceptionHook(hookAttribute.HookType);
-                hook.OnException(context);
-
-                if (hookAttribute.Mode == ServiceExceptionHookMode.Notify && context.Handled)
-                {
-                    throw new InvalidOperationException($"Exception hook {hookAttribute.HookType.FullName} is configured as Notify but marked {context.ServiceName}.{context.MethodName} as handled.");
-                }
-
-                if (context.Handled)
-                    break;
-            }
-        }
-
-        /// <summary>
         /// 触发全局异常处理事件。
         /// </summary>
         protected virtual void OnExceptionHandling(ServiceExceptionContext context)
@@ -741,14 +714,6 @@ namespace LiteOrm.Remote
                 throw new InvalidOperationException($"Method {context.ServiceName}.{context.MethodName} was marked handled, but no result was assigned.");
 
             return context.Result;
-        }
-
-        private IServiceExceptionHook ResolveExceptionHook(Type hookType)
-        {
-            var hook = ActivatorUtilities.GetServiceOrCreateInstance(_serviceProvider, hookType);
-            if (hook is not IServiceExceptionHook serviceExceptionHook)
-                throw new InvalidOperationException($"Resolved exception hook {hookType.FullName} does not implement {typeof(IServiceExceptionHook).FullName}.");
-            return serviceExceptionHook;
         }
 
         private static Type GetHandledResultType(Type returnType)

@@ -305,29 +305,22 @@ services.AddServiceGenerator<ServiceFactory>();
 var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 ```
 
-### Service exception hooks
+### Service exception handling event
 
 ```csharp
-[ExceptionHook(typeof(OrderExceptionHook), Mode = ServiceExceptionHookMode.Notify)]
-public interface IOrderService
+// Global static event, raised when a service method throws
+ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
 {
-    Task SubmitAsync(long id);
-}
-
-[AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
-public class OrderExceptionHook : IServiceExceptionHook
-{
-    public void OnException(ServiceExceptionContext context)
-    {
-        // Access exception, method name, arguments, SQL stack, and more
-    }
-}
+    // Access exception, method name, arguments, SQL stack, and more
+    if (context.Exception is TimeoutException)
+        context.Handle(123); // convert exception into an agreed result
+};
 ```
 
-- `[ExceptionHook]` can be applied to methods, classes, and interfaces
-- `Notify` is observe-only and must not swallow exceptions
-- `Handle` can convert the exception into a defined result through `context.Handle(result)`
-- Method-level `ExceptionHook` runs before the global `ServiceInvokeInterceptor.ExceptionHandling` event
+- `ServiceInvokeInterceptor.ExceptionHandling` is a global static event
+- `RemoteServiceInvokeInterceptor.ExceptionHandling` behaves the same
+- Without calling `context.Handle(...)`, the exception still propagates, which suits alerting/metrics
+- Calling `context.Handle(result)` converts the exception into a normal return value
 
 ## 7. Attribute quick reference
 
@@ -339,7 +332,6 @@ public class OrderExceptionHook : IServiceExceptionHook
 | `[TableJoin(typeof(T), ForeignKeys, AliasName, AutoExpand)]` | Type-level relation definition supporting composite keys and path reuse |
 | `[ForeignColumn(typeof(T), Property)]` | Column projected from a related table (for view models) |
 | `[Transaction]` | Declarative transaction |
-| `[ExceptionHook(typeof(THook), Mode = ...)]` | Declares a service exception hook for alerting or exception-to-result handling |
 | `[AutoRegister]` | Automatically registers the type into the DI container |
 
 ## 8. Expr expression system

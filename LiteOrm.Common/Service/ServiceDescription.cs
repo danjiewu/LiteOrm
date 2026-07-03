@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -62,11 +62,6 @@ namespace LiteOrm.Service
         /// 允许访问的角色数组
         /// </summary>
         public string[] AllowRoles { get; set; }
-
-        /// <summary>
-        /// 服务异常 hook 配置。
-        /// </summary>
-        public ExceptionHookAttribute[] ExceptionHooks { get; set; } = Array.Empty<ExceptionHookAttribute>();
     }
 
     /// <summary>
@@ -120,8 +115,6 @@ namespace LiteOrm.Service
                 desc.IsService = serviceMethodAtt.IsService;
             desc.MethodName = serviceMethodAtt?.MethodName ?? method.Name;
 
-            desc.ExceptionHooks = GetServiceAttributes<ExceptionHookAttribute>(method).ToArray();
-
             // 参数日志格式
             var parameters = method.GetParameters();
             desc.ArgsLoggable = new bool[parameters.Length];
@@ -141,8 +134,7 @@ namespace LiteOrm.Service
         private static IEnumerable<T> GetServiceAttributes<T>(MethodInfo method) where T : Attribute
         {
             IEnumerable<T> methodAttributes = method.GetCustomAttributes<T>();
-            IEnumerable<T> declaringTypeAttributes = method.DeclaringType is not null && method.DeclaringType != method.ReflectedType
-                ? method.DeclaringType.GetCustomAttributes<T>()
+            IEnumerable<T> declaringTypeAttributes = method.DeclaringType is not null ? method.DeclaringType.GetCustomAttributes<T>()
                 : Array.Empty<T>();
 
             return methodAttributes

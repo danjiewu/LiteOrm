@@ -210,7 +210,6 @@ namespace LiteOrm.Tests
         {
             var interceptor = new RemoteServiceInvokeInterceptor(
                 provider.GetRequiredService<ILoggerFactory>(),
-                provider,
                 transport);
             return new ProxyGenerator().CreateInterfaceProxyWithoutTarget<T>(interceptor.ToInterceptor());
         }
