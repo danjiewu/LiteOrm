@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.0.19.0</AssemblyVersion>
-		<FileVersion>8.0.19.0</FileVersion>
+		<AssemblyVersion>8.0.20.0</AssemblyVersion>
+		<FileVersion>8.0.20.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.0.19</VersionPrefix>
+		<VersionPrefix>8.0.20</VersionPrefix>
 		<Nullable>disable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,10 +16,7 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      修复日志MethodName为空的bug;
-      新增Expression形式的更新操作;
-      新增OnTableSyncing事件;
-      取消ExceptionHook，改为ExceptionHandling全局事件。
+      ExprString增加插入RawSql的方式。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
