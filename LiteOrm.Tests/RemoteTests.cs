@@ -64,7 +64,6 @@ namespace LiteOrm.Tests
             var transport = new StubTransport(responder);
             var interceptor = new RemoteServiceInvokeInterceptor(
                 provider.GetRequiredService<ILoggerFactory>(),
-                provider,
                 transport);
             var proxy = _proxyGenerator.CreateInterfaceProxyWithoutTarget<IRemoteCalculator>(interceptor.ToInterceptor());
             return (proxy, transport);

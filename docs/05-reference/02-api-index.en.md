@@ -148,9 +148,10 @@ Related guides:
 ### Advanced features
 
 
+
 - `[Transaction]`
 
-- `[ExceptionHook]` / `IServiceExceptionHook`
+- `ServiceInvokeInterceptor.ExceptionHandling`
 - `SessionManager`
 - `IArged` / `TableArgs`
 - window function extensions

@@ -17,48 +17,12 @@ namespace LiteOrm.Tests.Service
         }
 
         [Fact]
-        public void NotifyHook_ShouldObserveAndRethrow()
+        public void GlobalExceptionHandlingEvent_ShouldHandleExceptionWithResult()
         {
-            var recorder = ServiceProvider.GetRequiredService<ExceptionHookRecorder>();
-            var service = ServiceProvider.GetRequiredService<IExceptionHookTestService>();
-
-            var ex = Assert.Throws<InvalidOperationException>(() => service.ThrowWithNotifyHook());
-
-            Assert.Equal("notify", ex.Message);
-            Assert.Equal(1, recorder.NotifyCount);
-        }
-
-        [Fact]
-        public void HandleHook_ShouldReturnHandledResult()
-        {
-            var recorder = ServiceProvider.GetRequiredService<ExceptionHookRecorder>();
-            var service = ServiceProvider.GetRequiredService<IExceptionHookTestService>();
-
-            var result = service.ThrowWithHandleHook();
-
-            Assert.Equal(123, result);
-            Assert.Equal(1, recorder.HandleCount);
-        }
-
-        [Fact]
-        public async Task HandleHookAsync_ShouldReturnHandledResult()
-        {
-            var recorder = ServiceProvider.GetRequiredService<ExceptionHookRecorder>();
-            var service = ServiceProvider.GetRequiredService<IExceptionHookTestService>();
-
-            var result = await service.ThrowAsyncWithHandleHook();
-
-            Assert.Equal(456, result);
-            Assert.Equal(1, recorder.AsyncHandleCount);
-        }
-
-        [Fact]
-        public void GlobalExceptionHandlingEvent_ShouldHandleException()
-        {
-            var service = ServiceProvider.GetRequiredService<IExceptionHookTestService>();
+            var service = ServiceProvider.GetRequiredService<IExceptionHandlingTestService>();
             EventHandler<ServiceExceptionContext> handler = (sender, context) =>
             {
-                if (context.MethodName == nameof(IExceptionHookTestService.ThrowWithGlobalHandler))
+                if (context.MethodName == nameof(IExceptionHandlingTestService.ThrowWithGlobalHandler))
                     context.Handle(789);
             };
 
@@ -76,19 +40,63 @@ namespace LiteOrm.Tests.Service
         }
 
         [Fact]
-        public void NotifyHook_HandlingException_ShouldThrowInvalidOperationException()
+        public void GlobalExceptionHandlingEvent_ShouldHandleVoidException()
         {
-            var service = ServiceProvider.GetRequiredService<IExceptionHookTestService>();
+            var service = ServiceProvider.GetRequiredService<IExceptionHandlingTestService>();
+            EventHandler<ServiceExceptionContext> handler = (sender, context) =>
+            {
+                if (context.MethodName == nameof(IExceptionHandlingTestService.ThrowVoid))
+                    context.Handle();
+            };
 
-            var ex = Assert.Throws<InvalidOperationException>(() => service.ThrowWithInvalidNotifyHook());
+            ServiceInvokeInterceptor.ExceptionHandling += handler;
+            try
+            {
+                service.ThrowVoid();
+            }
+            finally
+            {
+                ServiceInvokeInterceptor.ExceptionHandling -= handler;
+            }
+        }
 
-            Assert.Contains("configured as Notify", ex.Message);
+        [Fact]
+        public async Task GlobalExceptionHandlingEvent_ShouldHandleAsyncExceptionWithResult()
+        {
+            var service = ServiceProvider.GetRequiredService<IExceptionHandlingTestService>();
+            EventHandler<ServiceExceptionContext> handler = (sender, context) =>
+            {
+                if (context.MethodName == nameof(IExceptionHandlingTestService.ThrowAsyncWithGlobalHandler))
+                    context.Handle(456);
+            };
+
+            ServiceInvokeInterceptor.ExceptionHandling += handler;
+            try
+            {
+                var result = await service.ThrowAsyncWithGlobalHandler();
+
+                Assert.Equal(456, result);
+            }
+            finally
+            {
+                ServiceInvokeInterceptor.ExceptionHandling -= handler;
+            }
+        }
+
+        [Fact]
+        public void UnhandledException_ShouldRethrow()
+        {
+            var service = ServiceProvider.GetRequiredService<IExceptionHandlingTestService>();
+
+            var ex = Assert.Throws<InvalidOperationException>(() => service.ThrowUnhandled());
+
+            Assert.Equal("unhandled", ex.Message);
         }
 
         [Fact]
         public void NestedServiceCall_ShouldRethrowOriginalException()
         {
-            var service = ServiceProvider.GetRequiredService<IOuterExceptionHookTestService>();
+            var service = ServiceProvider.GetRequiredService<IOuterExceptionHandlingTestService>();
 
             var ex = Assert.Throws<InvalidOperationException>(() => service.CallInnerThrow());
 
@@ -96,61 +104,51 @@ namespace LiteOrm.Tests.Service
         }
     }
 
-    public interface IExceptionHookTestService
+    public interface IExceptionHandlingTestService
     {
-        int ThrowWithHandleHook();
-        void ThrowWithNotifyHook();
-        Task<int> ThrowAsyncWithHandleHook();
         int ThrowWithGlobalHandler();
-        int ThrowWithInvalidNotifyHook();
+        void ThrowVoid();
+        Task<int> ThrowAsyncWithGlobalHandler();
+        int ThrowUnhandled();
     }
 
-    public interface IOuterExceptionHookTestService
+    public interface IOuterExceptionHandlingTestService
     {
         void CallInnerThrow();
     }
 
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     [Intercept(typeof(ServiceInvokeInterceptor))]
-    public class ExceptionHookTestService : IExceptionHookTestService
+    public class ExceptionHandlingTestService : IExceptionHandlingTestService
     {
-        [ExceptionHook(typeof(NotifyOnlyHook), Mode = ServiceExceptionHookMode.Notify)]
-        public void ThrowWithNotifyHook()
-        {
-            throw new InvalidOperationException("notify");
-        }
-
-        [ExceptionHook(typeof(HandleHook), Mode = ServiceExceptionHookMode.Handle)]
-        public int ThrowWithHandleHook()
-        {
-            throw new InvalidOperationException("handle");
-        }
-
-        [ExceptionHook(typeof(AsyncHandleHook), Mode = ServiceExceptionHookMode.Handle)]
-        public Task<int> ThrowAsyncWithHandleHook()
-        {
-            throw new InvalidOperationException("async");
-        }
-
         public int ThrowWithGlobalHandler()
         {
             throw new InvalidOperationException("global");
         }
 
-        [ExceptionHook(typeof(InvalidNotifyHook), Mode = ServiceExceptionHookMode.Notify)]
-        public int ThrowWithInvalidNotifyHook()
+        public void ThrowVoid()
         {
-            throw new InvalidOperationException("invalid");
+            throw new InvalidOperationException("void");
+        }
+
+        public Task<int> ThrowAsyncWithGlobalHandler()
+        {
+            throw new InvalidOperationException("async");
+        }
+
+        public int ThrowUnhandled()
+        {
+            throw new InvalidOperationException("unhandled");
         }
     }
 
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     [Intercept(typeof(ServiceInvokeInterceptor))]
-    public class OuterExceptionHookTestService : IOuterExceptionHookTestService
+    public class OuterExceptionHandlingTestService : IOuterExceptionHandlingTestService
     {
-        private readonly IInnerExceptionHookTestService _innerService;
+        private readonly IInnerExceptionHandlingTestService _innerService;
 
-        public OuterExceptionHookTestService(IInnerExceptionHookTestService innerService)
+        public OuterExceptionHandlingTestService(IInnerExceptionHandlingTestService innerService)
         {
             _innerService = innerService;
         }
@@ -161,85 +159,18 @@ namespace LiteOrm.Tests.Service
         }
     }
 
-    public interface IInnerExceptionHookTestService
+    public interface IInnerExceptionHandlingTestService
     {
         void ThrowNested();
     }
 
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     [Intercept(typeof(ServiceInvokeInterceptor))]
-    public class InnerExceptionHookTestService : IInnerExceptionHookTestService
+    public class InnerExceptionHandlingTestService : IInnerExceptionHandlingTestService
     {
         public void ThrowNested()
         {
             throw new InvalidOperationException("nested");
-        }
-    }
-
-    [AutoRegister(Lifetime = Lifetime.Scoped)]
-    public class ExceptionHookRecorder
-    {
-        public int NotifyCount { get; set; }
-        public int HandleCount { get; set; }
-        public int AsyncHandleCount { get; set; }
-    }
-
-    [AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
-    public class NotifyOnlyHook : IServiceExceptionHook
-    {
-        private readonly ExceptionHookRecorder _recorder;
-
-        public NotifyOnlyHook(ExceptionHookRecorder recorder)
-        {
-            _recorder = recorder;
-        }
-
-        public void OnException(ServiceExceptionContext context)
-        {
-            _recorder.NotifyCount++;
-        }
-    }
-
-    [AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
-    public class HandleHook : IServiceExceptionHook
-    {
-        private readonly ExceptionHookRecorder _recorder;
-
-        public HandleHook(ExceptionHookRecorder recorder)
-        {
-            _recorder = recorder;
-        }
-
-        public void OnException(ServiceExceptionContext context)
-        {
-            _recorder.HandleCount++;
-            context.Handle(123);
-        }
-    }
-
-    [AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
-    public class AsyncHandleHook : IServiceExceptionHook
-    {
-        private readonly ExceptionHookRecorder _recorder;
-
-        public AsyncHandleHook(ExceptionHookRecorder recorder)
-        {
-            _recorder = recorder;
-        }
-
-        public void OnException(ServiceExceptionContext context)
-        {
-            _recorder.AsyncHandleCount++;
-            context.Handle(456);
-        }
-    }
-
-    [AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
-    public class InvalidNotifyHook : IServiceExceptionHook
-    {
-        public void OnException(ServiceExceptionContext context)
-        {
-            context.Handle(999);
         }
     }
 }

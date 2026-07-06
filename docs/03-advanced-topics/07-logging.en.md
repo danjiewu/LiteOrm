@@ -196,34 +196,24 @@ public class PaymentRequest : ILogable
 
 When such an object is logged by the interceptor, LiteOrm uses `ToLog()`.
 
-## 5. `ExceptionHook`: add method-level exception handling
+## 5. `ExceptionHandling`: global service exception event
 
-`[ExceptionHook]` can be placed on a **service method, class, or interface** to add logic that runs when the service interceptor catches an exception. Typical uses include:
+`ServiceInvokeInterceptor.ExceptionHandling` is a **global static event** that runs when a service method throws an exception. Typical uses include:
 
 - sending alerts
 - adding audit records
 - converting a known exception into an agreed fallback result
 
-The hook type must implement `IServiceExceptionHook`:
+After subscribing, the handler can read the `ServiceExceptionContext` and call `context.Handle(...)` to convert the exception into a normal return value.
 
 ```csharp
-public class OrderExceptionHook : IServiceExceptionHook
+ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
 {
-    public void OnException(ServiceExceptionContext context)
+    if (context.MethodName == nameof(IOrderService.SubmitAsync))
     {
-        // Access exception, method name, arguments, SQL stack, and more
+        // alert, audit, etc.
     }
-}
-```
-
-Then declare it on the service:
-
-```csharp
-[ExceptionHook(typeof(OrderExceptionHook), Mode = ServiceExceptionHookMode.Notify)]
-public interface IOrderService
-{
-    Task SubmitAsync(long id);
-}
+};
 ```
 
 ### 5.1 When it runs
@@ -231,60 +221,33 @@ public interface IOrderService
 When a service method throws, `ServiceInvokeInterceptor` handles it in this order:
 
 1. create `ServiceExceptionContext`
-2. execute each declared `ExceptionHook`
-3. raise the global `ServiceInvokeInterceptor.ExceptionHandling` event
-4. rethrow the original exception if it is still not marked as handled
+2. raise the global `ServiceInvokeInterceptor.ExceptionHandling` event
+3. if the event marks it as handled, return the handled result; otherwise rethrow the original exception
 
-That makes `ExceptionHook` a good fit for **local, method-specific exception behavior**, while `ExceptionHandling` is better for **global fallback policies**.
+`RemoteServiceInvokeInterceptor` exposes the same `RemoteServiceInvokeInterceptor.ExceptionHandling` event with identical behavior.
 
-### 5.2 `Notify` vs `Handle`
+### 5.2 Converting an exception into a result
 
-`ExceptionHookAttribute.Mode` has two modes:
-
-| Mode | Meaning |
-|------|---------|
-| `Notify` | Observe only; the hook must not mark the exception as handled |
-| `Handle` | The hook may call `context.Handle(...)` and convert the exception into a normal result |
-
-#### `Notify`: observe and rethrow
+Call `context.Handle(...)` inside the handler to mark the exception as handled:
 
 ```csharp
-[ExceptionHook(typeof(NotifyOnlyHook), Mode = ServiceExceptionHookMode.Notify)]
-public void ThrowWithNotifyHook()
+ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
 {
-    throw new InvalidOperationException("notify");
-}
-```
-
-This mode is for alerting, metrics, and extra logging. The exception still propagates.
-
-> If a `Notify` hook calls `context.Handle(...)`, LiteOrm throws an `InvalidOperationException` to prevent “configured as observe-only, but actually swallowed the exception” behavior.
-
-#### `Handle`: convert the exception into a result
-
-```csharp
-[ExceptionHook(typeof(HandleHook), Mode = ServiceExceptionHookMode.Handle)]
-public int GetStatus()
-{
-    throw new InvalidOperationException("handle");
-}
-
-public class HandleHook : IServiceExceptionHook
-{
-    public void OnException(ServiceExceptionContext context)
-    {
-        context.Handle(123);
-    }
-}
+    if (context.Exception is TimeoutException)
+        context.Handle(123); // convert timeout into an agreed fallback
+};
 ```
 
 After `context.Handle(123)`, the interceptor treats the call as handled and returns `123`.
 
-This works for async methods too. For `Task<T>`, LiteOrm builds the handled result using `T`.
+- For void methods (`void` / `Task`), call the parameterless `context.Handle()` to swallow the exception.
+- For `Task<T>` methods, the result is built using `T`.
+
+> If you do not call `context.Handle(...)`, the exception still propagates, which is fine for alerting, metrics, and extra logging.
 
 ### 5.3 What `ServiceExceptionContext` contains
 
-In `OnException(ServiceExceptionContext context)`, the most useful members are usually:
+The most useful members in the handler are usually:
 
 - `context.Exception`: the original exception
 - `context.ServiceName` / `context.MethodName`: current service and method
@@ -292,23 +255,7 @@ In `OnException(ServiceExceptionContext context)`, the most useful members are u
 - `context.SessionID`: current session ID
 - `context.SqlStack`: current SQL stack
 
-So the hook can be used both for richer diagnostics and for exception-to-result decisions.
-
-### 5.4 Registration guidance
-
-`ServiceInvokeInterceptor` resolves hook types through DI, so hook implementations should usually be registered in the container. The common pattern in this repository is:
-
-```csharp
-[AutoRegister(Lifetime.Scoped, typeof(IServiceExceptionHook))]
-public class OrderExceptionHook : IServiceExceptionHook
-{
-    public void OnException(ServiceExceptionContext context)
-    {
-    }
-}
-```
-
-If the hook is not registered, LiteOrm may still try to create it by type, but explicit DI registration is the safer choice once the hook depends on other services.
+So the event can be used both for richer diagnostics and for exception-to-result decisions.
 
 ## 6. Slow-query and volume controls
 
@@ -327,7 +274,7 @@ ServiceInvokeInterceptor.MaxExpandedLogLength = 20;
 1. Put `ServiceLog` on service interfaces so logging stays aligned with service boundaries.
 2. Treat passwords, tokens, keys, and sensitive identifiers as opt-out-by-default: use `[Log(false)]` or a custom `ILogable`.
 3. Use `Debug + Full` during local troubleshooting, then narrow to `Information` or `Warning` in production.
-4. Use `ExceptionHook` for method-level alerts, compensation, or exception-to-result conversion; use the global `ExceptionHandling` event for cross-service policy.
+4. Use the global `ServiceInvokeInterceptor.ExceptionHandling` event for unified alerts, compensation, and exception-to-result conversion.
 5. Silence high-frequency, low-value methods with `ServiceLogLevel.None`.
 
 ## Related Links

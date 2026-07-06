@@ -1,6 +1,5 @@
 using Castle.DynamicProxy;
 using LiteOrm.Common;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
@@ -81,22 +80,18 @@ namespace LiteOrm.Service
         public static int MaxExpandedLogLength { get; set; } = 10;
         private static readonly ConcurrentDictionary<(Type TargetType, MethodInfo Method), ServiceDescription> _methodDescriptions = new();
         private readonly ILogger _logger;
-        private readonly IServiceProvider _serviceProvider;
         private readonly SessionManager _sessionManager;
         private bool _inProcess;
         /// <summary>
         /// 初始化 <see cref="ServiceInvokeInterceptor"/> 类的新实例。
         /// </summary>
         /// <param name="loggerFactory">日志工厂</param>
-        /// <param name="serviceProvider">服务提供者</param>
         /// <param name="sessionManager">会话管理器</param>
-        public ServiceInvokeInterceptor(ILoggerFactory loggerFactory, IServiceProvider serviceProvider, SessionManager sessionManager)
+        public ServiceInvokeInterceptor(ILoggerFactory loggerFactory, SessionManager sessionManager)
         {
             if (loggerFactory is null) throw new ArgumentNullException(nameof(loggerFactory));
-            if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
             if (sessionManager is null) throw new ArgumentNullException(nameof(sessionManager));
             _logger = loggerFactory.CreateLogger<ServiceInvokeInterceptor>();
-            _serviceProvider = serviceProvider;
             _sessionManager = sessionManager;
         }
 
@@ -430,12 +425,11 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 尝试通过方法级 hook 或全局事件处理异常。
+        /// 尝试通过全局异常处理事件处理异常。
         /// </summary>
         protected virtual bool TryHandleException(IInvocation invocation, Exception exception, out object handledResult)
         {
             var context = CreateExceptionContext(invocation, exception);
-            InvokeServiceExceptionHooks(invocation, context);
             OnExceptionHandling(context);
 
             if (!context.Handled)
@@ -471,27 +465,6 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 执行方法级异常 hook。
-        /// </summary>
-        protected virtual void InvokeServiceExceptionHooks(IInvocation invocation, ServiceExceptionContext context)
-        {
-            var serviceDesc = GetDescription(invocation);
-            foreach (var hookAttribute in serviceDesc.ExceptionHooks ?? Array.Empty<ExceptionHookAttribute>())
-            {
-                var hook = ResolveExceptionHook(hookAttribute.HookType);
-                hook.OnException(context);
-
-                if (hookAttribute.Mode == ServiceExceptionHookMode.Notify && context.Handled)
-                {
-                    throw new InvalidOperationException($"Exception hook {hookAttribute.HookType.FullName} is configured as Notify but marked {context.ServiceName}.{context.MethodName} as handled.");
-                }
-
-                if (context.Handled)
-                    break;
-            }
-        }
-
-        /// <summary>
         /// 触发全局异常处理事件。
         /// </summary>
         protected virtual void OnExceptionHandling(ServiceExceptionContext context)
@@ -515,14 +488,6 @@ namespace LiteOrm.Service
                 throw new InvalidOperationException($"Method {context.ServiceName}.{context.MethodName} was marked handled, but no result was assigned.");
 
             return context.Result;
-        }
-
-        private IServiceExceptionHook ResolveExceptionHook(Type hookType)
-        {
-            var hook = ActivatorUtilities.GetServiceOrCreateInstance(_serviceProvider, hookType);
-            if (hook is not IServiceExceptionHook serviceExceptionHook)
-                throw new InvalidOperationException($"Resolved exception hook {hookType.FullName} does not implement {typeof(IServiceExceptionHook).FullName}.");
-            return serviceExceptionHook;
         }
 
         private static Type GetHandledResultType(Type returnType)
