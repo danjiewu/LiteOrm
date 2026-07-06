@@ -23,6 +23,7 @@
 - `AppendLiteral(string)`：处理字面量片段，原样追加到缓冲区。
 - `AppendFormatted<T>(T value)`：处理每个插值项。
   - 当 `value` 是 `Expr` 时，调用 `expr.ToSql(...)` 把表达式翻译成 SQL 片段并拼入，附带其内部产生的参数；
+  - 当 `value` 是 `RawSql` 时（见 [第 8 节 插入原始 SQL](#8-插入原始-sql-rawsql)），其内容直接原样拼入缓冲区，不进行参数化或语法处理；
   - 否则把该值包装成一个命名参数（`@0`、`@1`……，按出现顺序命名，并通过 `ISqlBuilder.ToSqlParam` 转成当前方言的参数前缀），值进入参数列表。
 
 最终通过 `GetSql()` / `GetParams()` / `GetResult()` 取出 SQL 文本与参数，组装成 `PreparedSql` 交给 DAO 执行。
@@ -164,7 +165,85 @@ var result = await dataViewDAO.Search(
 
 > 自定义 DAO 可重写 `GetReplacements()` 添加更多标记，但不要破坏上述三个默认项。
 
-## 8. 可用入口一览
+## 8. 插入原始 SQL（RawSql）
+
+### 8.1 什么时候用
+
+`ExprString` 默认会保证安全：普通值被参数化、`Expr` 走结构化转换、手写标识符可统一用 `[ ]` 占位。但有时你确实需要把一段**数据库特定语法**原样拼进去，比如：
+
+- 方言特有的查询提示（如 SQL Server 的 `WITH (NOLOCK)`、MySQL 的 `FORCE INDEX(...)`）
+- 尚未在 `SqlBuilder` 中注册的函数调用
+- 复杂的 `CASE WHEN` 片段或原生 SQL 表达式
+
+这些文本无法用 `Expr` 表达，又不能走「普通值」路径（会被参数化成 `@N`）。此时使用 `RawSql` 标记类型显式声明「这一段是受信任的原始 SQL 文本」。
+
+### 8.2 类型定义
+
+`RawSql` 是一个独立的 `readonly struct`，**不**继承 `Expr`，仅作为 `ExprString` 的辅助入口存在：
+
+```csharp
+namespace LiteOrm.Common;
+
+public readonly struct RawSql
+{
+    public string Sql { get; }
+    public RawSql(string sql);
+    public static RawSql From(string sql);
+    public override string ToString();
+}
+```
+
+`ExprString` 对 `RawSql` 提供专门的 `AppendFormatted(RawSql value)` 重载：直接把 `Sql` 原样追加到 SQL 缓冲区，**不**生成参数、**不**做语法处理、**不**替换 `[ ]` 引用符占位。
+
+### 8.3 使用示例
+
+```csharp
+using LiteOrm.Common;
+
+// 1. 用构造函数
+var result = await dataViewDAO.Search(
+    $"SELECT {new RawSql("TOP 10 *")} FROM {From} WHERE {new RawSql("Status = 1")} AND {Expr.Prop("Age")} >= {minAge}",
+    isFull: true
+).GetResultAsync();
+
+// 2. 用工厂方法
+var result2 = await dataViewDAO.Search(
+    $"SELECT {RawSql.From("COUNT(*)")} FROM {From} WHERE {Expr.Prop("Name")} LIKE {"%test%"}",
+    isFull: true
+).GetResultAsync();
+```
+
+上面三处插值分别走三条路径：
+- `new RawSql("TOP 10 *")` → 原样拼入 `TOP 10 *`
+- `Expr.Prop("Age")` → 走 `Expr.ToSql`，列名按方言包裹引用符
+- `{minAge}` → 自动参数化为 `@0`
+
+### 8.4 安全约束
+
+`RawSql` 绕过 LiteOrm 的参数化机制，**调用方必须自行保证** `Sql` 文本中不包含任何用户可控的输入，否则可能引发 SQL 注入。请遵守以下规则：
+
+| 规则 | 说明 |
+|------|------|
+| 仅用于静态文本 | `RawSql` 内容必须是写死在代码里的常量片段，不接受运行时拼接用户输入 |
+| 不参与 ExprValidator 验证 | `RawSql` 不是 `Expr`，不会被 `ExprValidator.CreateQueryOnly()` 等验证器扫描——它只在受信任的服务端 DAO 代码中使用 |
+| 不支持 JSON 序列化往返 | `RawSql` 不是 `Expr`，无法通过 `ExprJsonConverter` 序列化/反序列化，前端 Expr JSON 中不能携带原始 SQL |
+| 优先用 Expr | 凡是能用 `Expr.Prop`/`Expr.Func`/`Expr.Sql`（预注册的 `GenericSqlExpr`）表达的，不要用 `RawSql` |
+
+> 如果需要在自定义 SQL 中安全地传递运行时值，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化，详见[安全性](../03-advanced-topics/08-security.md)。
+
+### 8.5 与 GenericSqlExpr 的区别
+
+| 维度 | `RawSql` | `GenericSqlExpr` |
+|------|----------|------------------|
+| 是否为 `Expr` | 否（独立 struct） | 是（继承 `LogicExpr`） |
+| 注册要求 | 无，直接构造 | 必须先 `Register` 注册回调 |
+| 参数化支持 | 不支持，纯静态文本 | 支持，回调内可用 `outputParams` |
+| 适用场景 | 一次性、静态、方言特定的 SQL 片段 | 可复用、需要运行时参数的动态 SQL 片段 |
+| 验证器管控 | 不被扫描 | `ExprValidator.CreateQueryOnly()` 默认放行 |
+
+简言之：**静态写死的小片段用 `RawSql`，需要参数化的可复用片段用 `GenericSqlExpr`**。
+
+## 9. 可用入口一览
 
 | DAO | 方法 | 说明 |
 |----|------|------|
@@ -177,7 +256,7 @@ var result = await dataViewDAO.Search(
 
 这些方法都使用 `[InterpolatedStringHandlerArgument("")]` 把当前 DAO 作为上下文传给 `ExprString`，所以调用时直接传插值字符串即可，不需要手动 `new ExprString(...)`。
 
-## 9. 边界与注意事项
+## 10. 边界与注意事项
 
 - **顺序敏感**：`ExprString` 按插值项出现顺序消费 `Expr`，参数编号也是按顺序递增。这跟完整 `SelectExpr` 的「按结构遍历」不同，复杂查询中表别名可能无法按作用域自动匹配。
 - **主表别名**：`ExprString` 创建时已在上下文注册主表及别名 `T0`。直接在插值项里再插入主表 `FromExpr` 可能造成主表别名重复分配错误——可给该 `FromExpr` 预先设定别名 `T0`，或改用 `{From}` 占位符。
@@ -200,67 +279,74 @@ var result = await dataViewDAO.Search(
 ).GetResultAsync();
 ```
 
-## 10. 常见错误示范
+## 11. 常见错误示范
 
 下面列出使用 `ExprString` 时容易踩的坑，每条给出「❌ 错误」与「✅ 正确」对照。
 
-### 10.1 LIKE 模式包住插值项
+### 11.1 LIKE 模式包住插值项
 
 `{keyword}` 会被参数化成 `@0`，但包在 `'%...%'` 字面量里会生成 `WHERE UserName LIKE '%@0%'`，占位符落在字面量内部不会被识别。
 
 ❌ `WHERE UserName LIKE '%{keyword}%'`
 ✅ `WHERE {Prop("UserName").Contains(keyword)}`
 
-### 10.2 列名当普通值插入
+### 11.2 列名当普通值插入
 
 普通值会被参数化成 `@0`，列名直接插入会变成字符串常量参数，而不是列引用。
 
 ❌ `WHERE {ageField} >= {minAge}`（`ageField` 是 `string`）
 ✅ `WHERE {Prop(ageField)} >= {minAge}`
 
-### 10.3 引用符写死成单一方言
+### 11.3 引用符写死成单一方言
 
 直接写 `` ` `` 或 `"` 不会被替换，跨数据库时失效。
 
 ❌ `` SELECT `Id` FROM `Users` ``
 ✅ `SELECT [Id] FROM [Users]`（框架按方言替换 `[ ]`）
 
-### 10.4 完整 SQL 忘记 `isFull: true`
+### 11.4 完整 SQL 忘记 `isFull: true`
 
 不传 `isFull: true` 时 DAO 会自动补 `SELECT {AllFields} FROM {From}`，导致重复 `SELECT`。
 
 ❌ 写完整 `SELECT ... FROM ...` 但不传 `isFull: true`
 ✅ 完整 SQL 显式声明 `isFull: true`
 
-### 10.5 重复插入主表 FromExpr
+### 11.5 重复插入主表 FromExpr
 
 `ExprString` 创建时已注册主表别名 `T0`，再插入主表 `FromExpr` 会触发别名重复分配。
 
 ❌ `WHERE {mainFrom} {Prop("Age")} >= {minAge}`（`mainFrom` 是主表）
 ✅ 直接写条件 `WHERE {Prop("Age")} >= {minAge}`，主表由上下文托管
 
-### 10.6 期望 CommonTableExpr 自动展开
+### 11.6 期望 CommonTableExpr 自动展开
 
 `ExprString` 不会把 `CommonTableExpr` 翻译成 `WITH` 子句。
 
 ❌ `SELECT * FROM {cte}`（`cte` 是 `CommonTableExpr`）
 ✅ 手写完整 `WITH ... SELECT ...`，或用 `SelectExpr.With(name)` 走结构化通道
 
-### 10.7 在 Service 层调用 ExprString
+### 11.7 在 Service 层调用 ExprString
 
 `ExprString` 重载只在 DAO 层暴露，Service 层没有对应入口，编译期就会报找不到重载。
 
 ❌ `userViewService.SearchAsync($"WHERE ...")`
 ✅ 用 Service 的 `Expr`/Lambda 重载，或下沉到自定义 DAO
 
-### 10.8 子查询 SelectExpr 早于 FromExpr 未指定别名
+### 11.8 子查询 SelectExpr 早于 FromExpr 未指定别名
 
 `ExprString` 按顺序消费 `Expr`，子查询里 `SelectExpr` 在 `FromExpr` 之前时，未指定表别名的列无法绑定默认表。
 
 ❌ 子查询先插 `SelectExpr`（列未指定别名）再插 `FromExpr`
 ✅ 给 `FromExpr` 和 `PropertyExpr` 都显式指定表别名
 
-## 11. 推荐写法小结
+### 11.9 把用户输入塞进 RawSql
+
+`RawSql` 内容会原样拼入 SQL，不经过参数化。把用户可控的字符串塞进去会直接导致 SQL 注入。
+
+❌ `$"WHERE {new RawSql($"Name = '{userInput}'")}"`（`userInput` 来自前端）
+✅ 用 `Expr.Prop("Name") == userInput` 或 `$"WHERE {Expr.Prop("Name")} = {userInput}"`，让框架参数化
+
+## 12. 推荐写法小结
 
 1. 能用 `Expr`/Lambda 表达的条件，优先构造 `Expr` 再插入 `ExprString`，避免在字符串里写死列名与值。
 2. 普通值通过 `{变量}` 插入，交给框架参数化；不要用字符串拼接引入用户输入。
@@ -268,8 +354,9 @@ var result = await dataViewDAO.Search(
 4. 复杂多表查询预先给 `FromExpr`/`PropertyExpr` 设好表别名，避免依赖上下文自动分配。
 5. 完整 SQL 用 `isFull: true`，并配合 `{Table}`/`{From}`/`{AllFields}` 复用 DAO 的表定义。
 6. CTE 直接写完整 `WITH ... SELECT ...`，或改用 `SelectExpr.With(name)`。
+7. 仅在静态、受信任的方言片段场景下使用 `RawSql`；任何运行时值都必须走 `Expr` 或参数化路径。
 
-## 12. 相关链接
+## 13. 相关链接
 
 - [查询总览](./04-query-overview.md)
 - [Lambda 查询指南](./05-lambda-guide.md)

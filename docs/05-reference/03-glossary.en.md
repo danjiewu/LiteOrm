@@ -16,6 +16,10 @@ An expression structure for conditional updates, commonly built with `Expr.Updat
 
 An interpolated-string way to build small SQL fragments. Use it for localized custom SQL, not as a replacement for normal query composition.
 
+## `RawSql`
+
+An `ExprString` helper marker type (an independent `readonly struct`, not inheriting from `Expr`) used to splice database-specific static SQL fragments (dialect hints, unregistered functions) verbatim into interpolated strings. Its content **bypasses parameterization** — only trusted server-side static text is allowed, never user input. It is not scanned by `ExprValidator` and does not support Expr JSON round-trip. For reusable fragments that need runtime parameterization, use `GenericSqlExpr` instead.
+
 ## `ObjectDAO<T>`
 
 The write-oriented DAO for entity operations such as insert, update, delete, and batching.

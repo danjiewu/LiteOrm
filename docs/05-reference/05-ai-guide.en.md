@@ -511,6 +511,38 @@ var table = dataViewDao.Search(
 >
 > `ExprString` does not auto-expand `SelectExpr.With(name)` / `CommonTableExpr` into `WITH` SQL. When you need CTE, prefer the structured `Expr` / `SelectExpr` path; if you must use `ExprString`, handwrite the full `WITH ... SELECT ...` SQL.
 
+#### RawSql — Inserting raw SQL fragments
+
+`RawSql` is an independent `readonly struct` (**not** an `Expr`) that serves as an `ExprString` helper. When interpolated into an `ExprString`, its content is **spliced verbatim into the SQL** — no parameterization, no syntax processing, no `[ ]` placeholder replacement:
+
+```csharp
+using LiteOrm.Common;
+using static LiteOrm.Common.Expr;
+
+// For dialect-specific static fragments: table hints, unregistered functions, native SQL expressions
+var result = await dataViewDAO.Search(
+    $"SELECT {new RawSql("TOP 10 *")} FROM {From} WHERE {new RawSql("Status = 1")} AND {Prop("Age")} >= {minAge}",
+    isFull: true
+).GetResultAsync();
+
+// Also available via RawSql.From(string) factory
+var result2 = await dataViewDAO.Search(
+    $"SELECT {RawSql.From("COUNT(*)")} FROM {From} WHERE {Prop("Name")} LIKE {"%test%"}",
+    isFull: true
+).GetResultAsync();
+```
+
+**Security constraints (must follow)**:
+
+| Rule | Description |
+|------|--------------|
+| Static text only | `RawSql` content must be hardcoded in code; never concatenate user input |
+| Not scanned by validators | `RawSql` is not an `Expr`; `ExprValidator.CreateQueryOnly()` does not scan it |
+| No JSON round-trip | `RawSql` cannot be serialized/deserialized via `ExprJsonConverter`; frontend Expr JSON cannot carry it |
+| Prefer Expr | Anything expressible via `Expr.Prop`/`Expr.Func`/`Expr.Sql` (pre-registered `GenericSqlExpr`) should not use `RawSql` |
+
+> When you need to pass runtime values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `outputParams` inside the callback. See [ExprString Guide - Section 8](../02-core-usage/07-exprstring-guide.en.md#8-inserting-raw-sql-rawsql) and [Security](../03-advanced-topics/08-security.en.md).
+
 ### Common patterns
 
 ```csharp

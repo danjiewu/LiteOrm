@@ -511,6 +511,38 @@ var table = dataViewDao.Search(
 >
 > `ExprString` 不支持把 `SelectExpr.With(name)` / `CommonTableExpr` 这种 CTE 表达式自动展开成 `WITH` SQL。需要 CTE 时，请使用 `Expr` / `SelectExpr` 结构化构建；如果必须走 `ExprString`，请手动写完整 `WITH ... SELECT ...` SQL。
 
+#### RawSql —— 插入原始 SQL 片段
+
+`RawSql` 是独立的 `readonly struct`（**不**继承 `Expr`），作为 `ExprString` 的辅助入口存在。在插值字符串中插入 `RawSql` 时，其内容会**原样拼入 SQL**，不参数化、不做语法处理、不替换 `[ ]` 占位符：
+
+```csharp
+using LiteOrm.Common;
+using static LiteOrm.Common.Expr;
+
+// 用于方言特定的静态片段：表提示、未注册函数、原生 SQL 表达式
+var result = await dataViewDAO.Search(
+    $"SELECT {new RawSql("TOP 10 *")} FROM {From} WHERE {new RawSql("Status = 1")} AND {Prop("Age")} >= {minAge}",
+    isFull: true
+).GetResultAsync();
+
+// 也可用 RawSql.From(string) 工厂
+var result2 = await dataViewDAO.Search(
+    $"SELECT {RawSql.From("COUNT(*)")} FROM {From} WHERE {Prop("Name")} LIKE {"%test%"}",
+    isFull: true
+).GetResultAsync();
+```
+
+**安全约束（务必遵守）**：
+
+| 规则 | 说明 |
+|------|------|
+| 仅用于静态文本 | `RawSql` 内容必须写死在代码中，禁止拼接用户输入 |
+| 不被验证器扫描 | `RawSql` 不是 `Expr`，`ExprValidator.CreateQueryOnly()` 不会扫描它 |
+| 不支持 JSON 往返 | `RawSql` 不能通过 `ExprJsonConverter` 序列化/反序列化，前端 Expr JSON 不能携带 |
+| 优先用 Expr | 凡是能用 `Expr.Prop`/`Expr.Func`/`Expr.Sql`（预注册 `GenericSqlExpr`）表达的，不要用 `RawSql` |
+
+> 需要在自定义 SQL 中传递运行时值时，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化。详见 [ExprString 指南 - 第 8 节](../02-core-usage/07-exprstring-guide.md#8-插入原始-sql-rawsql) 与 [安全性](../03-advanced-topics/08-security.md)。
+
 ### 常用模式
 
 ```csharp

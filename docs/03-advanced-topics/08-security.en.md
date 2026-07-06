@@ -120,10 +120,14 @@ Interpolated string $"..."
     │
     ├─ Format item is an Expr object → expr.ToSql() → full expression tree processing
     │
+    ├─ Format item is a RawSql      → appended verbatim (bypasses parameterization; static trusted text only)
+    │
     ├─ Format item is a plain value  → auto-generate @N placeholder + add to param list
     │
     └─ Literal string                → appended directly (developer-hardcoded SQL keywords/structure)
 ```
+
+> `RawSql` is an `ExprString` helper marker type (an independent `readonly struct`, not inheriting from `Expr`) used to splice database-specific static SQL fragments (e.g., `WITH (NOLOCK)`, unregistered function calls). It **bypasses parameterization**; the caller must guarantee the text contains no user input. See [ExprString Guide - Section 8 Inserting raw SQL](../02-core-usage/07-exprstring-guide.en.md#8-inserting-raw-sql-rawsql).
 
 **Code example**:
 
@@ -144,7 +148,8 @@ dao.Search($"WHERE {Prop("UserName")} LIKE {'%' + keyword + '%'} AND {Prop("Age"
 ### 3.3 Key Points
 
 - **Literal strings** (`AppendLiteral`) are developer-hardcoded SQL keywords and structure, **must not be controllable by users**
-- **Plain values in format items** (non-Expr) are **automatically parameterized**, no manual handling needed
+- **Plain values in format items** (non-Expr, non-RawSql) are **automatically parameterized**, no manual handling needed
+- **`RawSql`** bypasses the parameterization mechanism; **the caller must ensure** the text contains no user input. It is not scanned by `ExprValidator` and does not support Expr JSON round-trip
 
 ---
 
@@ -425,6 +430,7 @@ When using LiteOrm in production, confirm each item:
 | ✅ Use `outputParams` in custom SQL | Parameterize within GenericSqlExpr callbacks |
 | ✅ Expr.Prop has built-in name validation | Invalid names throw exceptions; use whitelist only for field range restrictions |
 | ✅ Use ExprString through DAO methods | Regular interpolated strings do not produce ExprString; use `dao.Search(...)` etc. |
+| ✅ Use RawSql only for static text | `RawSql` bypasses parameterization; never put user input inside; frontend Expr JSON cannot carry RawSql |
 | ✅ Coordinate with permission filtering | Layer user scope filtering on top of validators |
 | ✅ Don't accept raw wildcards in LIKE | Consider escaping/forbidding wildcards in frontend LIKE values |
 | ✅ Be aware of Expr flexibility | Expr is powerful; always configure validators in production to limit capabilities |

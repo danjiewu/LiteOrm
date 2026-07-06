@@ -90,11 +90,31 @@ namespace LiteOrm.Common
             {
                 expr.ToSql(ref _builder, _context, _sqlBuilder, _params);
             }
+            else if (value is RawSql rawSql)
+            {
+                // 防御性路径：仅当 RawSql 被装箱为 object 时触发；正常插值会直接命中下方的专重载
+                _builder.Append(rawSql.Sql);
+            }
             else if (value != null)
             {
                 string paramName = $"{_params.Count}";
                 _builder.Append(_sqlBuilder.ToSqlParam(paramName));
                 _params.Add(new KeyValuePair<string, object>(paramName, value));
+            }
+        }
+
+        /// <summary>
+        /// 添加原始 SQL 文本片段。其内容会原样拼接到生成的 SQL 中，不进行参数化或语法处理。
+        /// </summary>
+        /// <param name="value">原始 SQL 文本标记。</param>
+        /// <remarks>
+        /// 调用方必须保证 <paramref name="value"/> 中的文本不包含任何用户可控的内容，否则可能引发 SQL 注入。
+        /// </remarks>
+        public void AppendFormatted(RawSql value)
+        {
+            if (value.Sql != null)
+            {
+                _builder.Append(value.Sql);
             }
         }
 
