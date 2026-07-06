@@ -139,5 +139,5 @@ QueryString is only a transport format. Authorization is still enforced on the b
 
 - [Back to index](../README.md)
 - [Permission filtering](../03-advanced-topics/06-permission-filtering.en.md)
-- [Query guide](../02-core-usage/04-query-guide.en.md)
+- [Query Overview](../02-core-usage/04-query-overview.en.md)
 

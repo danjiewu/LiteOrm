@@ -291,6 +291,6 @@ Recommendation:
 
 ## Related Links
 
-- [Associations](../02-core-usage/06-associations.en.md)
+- [Associations](../02-core-usage/08-associations.en.md)
 - [Sharding and Table Routing](./02-sharding-and-tableargs.en.md)
 - [Performance Optimization](./03-performance.en.md)

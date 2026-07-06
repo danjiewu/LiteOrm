@@ -332,8 +332,8 @@ As long as detail, update, and delete endpoints lack verification, users can sti
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [Associations](../02-core-usage/06-associations.en.md)
+- [Associations](../02-core-usage/08-associations.en.md)
 - [Sharding and TableArgs](./02-sharding-and-tableargs.en.md)
 - [Security](./08-security.en.md)
-- [Lambda & Expr Mixing](../02-core-usage/07-lambda-expr-mixing.en.md)
+- [Lambda & Expr Mixing](../02-core-usage/09-lambda-expr-mixing.en.md)
 

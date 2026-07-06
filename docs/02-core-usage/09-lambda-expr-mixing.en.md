@@ -119,6 +119,9 @@ It is not a general conversion API. It exists for LiteOrm's Lambda parser.
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [Query Guide](./04-query-guide.en.md)
+- [Query Overview](./04-query-overview.en.md)
+- [Lambda Guide](./05-lambda-guide.en.md)
+- [Expr Guide](./06-expr-guide.en.md)
+- [ExprString Guide](./07-exprstring-guide.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
 

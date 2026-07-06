@@ -114,5 +114,5 @@ Important notes here:
 
 - [Back to docs hub](../README.md)
 - [Entity Mapping and Data Sources](./01-entity-mapping.en.md)
-- [CRUD Guide](./05-crud-guide.en.md)
+- [CRUD Guide](./03-crud-guide.en.md)
 - [Transactions](../03-advanced-topics/01-transactions.en.md)

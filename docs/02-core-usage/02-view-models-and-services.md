@@ -114,6 +114,6 @@ var summary = await userService.SearchAsAsync<UserSummary>(
 
 - [返回目录](../README.md)
 - [实体映射与数据源](./01-entity-mapping.md)
-- [CRUD 指南](./05-crud-guide.md)
+- [CRUD 指南](./03-crud-guide.md)
 - [事务管理](../03-advanced-topics/01-transactions.md)
 

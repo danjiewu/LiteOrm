@@ -38,7 +38,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 对应文档：
 
 - [实体映射与数据源](../02-core-usage/01-entity-mapping.md)
-- [关联查询](../02-core-usage/06-associations.md)
+- [关联查询](../02-core-usage/08-associations.md)
 
 ### 查询接口
 
@@ -56,8 +56,8 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 对应文档：
 
-- [Expr 使用指南](../02-core-usage/03-expr-guide.md)
-- [查询指南](../02-core-usage/04-query-guide.md)
+- [Expr 使用指南](../02-core-usage/06-expr-guide.md)
+- [查询总览](../02-core-usage/04-query-overview.md)
 - [示例索引](./06-example-index.md)
 - [生成 SQL 示例](./07-sql-examples.md)
 
@@ -76,7 +76,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 对应文档：
 
-- [CRUD 指南](../02-core-usage/05-crud-guide.md)
+- [CRUD 指南](../02-core-usage/03-crud-guide.md)
 - [事务管理](../03-advanced-topics/01-transactions.md)
 - [示例索引](./06-example-index.md)
 - [生成 SQL 示例](./07-sql-examples.md)

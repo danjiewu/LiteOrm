@@ -17,12 +17,14 @@
 |-|-|-|
 |[实体映射](./02-core-usage/01-entity-mapping.md)|[Entity Mapping](./02-core-usage/01-entity-mapping.en.md)|实体定义与映射|
 |[视图模型](./02-core-usage/02-view-models-and-services.md)|[View Models](./02-core-usage/02-view-models-and-services.en.md)|视图模型与服务层|
-|[Expr 使用指南](./02-core-usage/03-expr-guide.md)|[Expr Guide](./02-core-usage/03-expr-guide.en.md)|Expr 构造、组合与语义规则|
-|[查询指南](./02-core-usage/04-query-guide.md)|[Query Guide](./02-core-usage/04-query-guide.en.md)|查询方式选型与常见入口|
-|[CRUD指南](./02-core-usage/05-crud-guide.md)|[CRUD Guide](./02-core-usage/05-crud-guide.en.md)|增删改查操作|
-|[关联查询](./02-core-usage/06-associations.md)|[Associations](./02-core-usage/06-associations.en.md)|表关联与 JOIN|
-|[Lambda 与 Expr 组合](./02-core-usage/07-lambda-expr-mixing.md)|[Lambda \& Expr Mixing](./02-core-usage/07-lambda-expr-mixing.en.md)|在强类型 Lambda 中复用动态 Expr|
-|[CTE 指南](./02-core-usage/08-cte-guide.md)|[CTE Guide](./02-core-usage/08-cte-guide.en.md)|公共表表达式与注意事项|
+|[CRUD指南](./02-core-usage/03-crud-guide.md)|[CRUD Guide](./02-core-usage/03-crud-guide.en.md)|增删改查操作|
+|[查询总览](./02-core-usage/04-query-overview.md)|[Query Overview](./02-core-usage/04-query-overview.en.md)|三种查询方式对比与选型|
+|[Lambda 查询](./02-core-usage/05-lambda-guide.md)|[Lambda Guide](./02-core-usage/05-lambda-guide.en.md)|Lambda 过滤、排序、子查询|
+|[Expr 使用指南](./02-core-usage/06-expr-guide.md)|[Expr Guide](./02-core-usage/06-expr-guide.en.md)|Expr 构造、组合与语义规则|
+|[ExprString 指南](./02-core-usage/07-exprstring-guide.md)|[ExprString Guide](./02-core-usage/07-exprstring-guide.en.md)|插值字符串手写 SQL 与参数化|
+|[关联查询](./02-core-usage/08-associations.md)|[Associations](./02-core-usage/08-associations.en.md)|表关联与 JOIN|
+|[Lambda 与 Expr 组合](./02-core-usage/09-lambda-expr-mixing.md)|[Lambda \& Expr Mixing](./02-core-usage/09-lambda-expr-mixing.en.md)|在强类型 Lambda 中复用动态 Expr|
+|[CTE 指南](./02-core-usage/10-cte-guide.md)|[CTE Guide](./02-core-usage/10-cte-guide.en.md)|公共表表达式与注意事项|
 
 ### 高级特性篇 / Advanced Topics
 

@@ -195,7 +195,7 @@ await departmentService.UpdateOrInsertAsync(dept);
 int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 ```
 
-> Lambda condition queries are written identically to local services. The framework converts Lambda expressions to serializable `Expr` expression trees in the client process before transmission. See [Expression Guide](../02-core-usage/03-expr-guide.md).
+> Lambda condition queries are written identically to local services. The framework converts Lambda expressions to serializable `Expr` expression trees in the client process before transmission. See [Expression Guide](../02-core-usage/06-expr-guide.md).
 
 ---
 
@@ -579,6 +579,6 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 ## Related Links
 
 - [Configuration and Registration](../01-getting-started/03-configuration-and-registration.en.md) — Full documentation for `RegisterLiteOrm` / `RegisterLiteOrmRemote`
-- [Expression Guide](../02-core-usage/03-expr-guide.en.md) — Lambda condition queries, also applicable to remote calls
+- [Expression Guide](../02-core-usage/06-expr-guide.en.md) — Lambda condition queries, also applicable to remote calls
 - [Expression Serialization](../04-extensibility/04-expr-serialization.en.md) — Serialization mechanism for `Expr` expression trees
 - [RemoteServiceDemo.cs](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/RemoteServiceDemo.cs) — 13 typical client operation scenarios

@@ -213,7 +213,7 @@ Actual window function SQL depends on your registered function handlers and data
 
 - [Back to English docs hub](../README.md)
 - [API Index](./02-api-index.en.md)
-- [Query Guide](../02-core-usage/04-query-guide.en.md)
-- [Associations](../02-core-usage/06-associations.en.md)
+- [Query Overview](../02-core-usage/04-query-overview.en.md)
+- [Associations](../02-core-usage/08-associations.en.md)
 - [Custom SqlBuilder](../04-extensibility/03-custom-sqlbuilder.en.md)
 

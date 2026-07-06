@@ -184,8 +184,11 @@ var result = await dataViewDAO.Search(
 
 ## 8. 相关阅读
 
-- [查询指南](./04-query-guide.md)
-- [Lambda 与 Expr 组合使用](./07-lambda-expr-mixing.md)
+- [查询总览](./04-query-overview.md)
+- [Lambda 查询指南](./05-lambda-guide.md)
+- [Expr 使用指南](./06-expr-guide.md)
+- [ExprString 使用指南](./07-exprstring-guide.md)
+- [Lambda 与 Expr 组合使用](./09-lambda-expr-mixing.md)
 - [AI 指南](../05-reference/05-ai-guide.md)
 - [返回文档中心](../README.md)
 

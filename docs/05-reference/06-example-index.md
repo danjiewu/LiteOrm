@@ -17,7 +17,7 @@
 
 ### Lambda / `Expr` / `ExprString` 选型
 
-- 文档入口：[查询指南](../02-core-usage/04-query-guide.md)
+- 文档入口：[查询总览](../02-core-usage/04-query-overview.md)
 - 重点内容：
   - 三种查询方式的适用边界
   - 动态条件拼装
@@ -25,7 +25,7 @@
 
 ### `EXISTS` / `Expr.ExistsRelated(...)` / 子查询
 
-- 文档入口：[查询指南](../02-core-usage/04-query-guide.md)
+- 文档入口：[查询总览](../02-core-usage/04-query-overview.md)｜[Lambda 查询指南](../02-core-usage/05-lambda-guide.md)｜[Expr 使用指南](../02-core-usage/06-expr-guide.md)
 - 代码来源：
   - `LiteOrm.Demo\Demos\ExistsRelatedDemo.cs`
   - `LiteOrm.Tests\ExprEnhancedTests.cs`
@@ -40,7 +40,7 @@
 
 ### 常见条件与集合运算
 
-- 文档入口：[查询指南](../02-core-usage/04-query-guide.md)
+- 文档入口：[查询总览](../02-core-usage/04-query-overview.md)｜[Lambda 查询指南](../02-core-usage/05-lambda-guide.md)｜[Expr 使用指南](../02-core-usage/06-expr-guide.md)
 - 代码来源：
   - `LiteOrm.Demo\Demos\PracticalQueryDemo.cs`
   - `LiteOrm.Tests\PracticalQueryTests.cs`
@@ -54,7 +54,7 @@
 
 ### 批量插入、批量更新、批量删除
 
-- 文档入口：[CRUD 指南](../02-core-usage/05-crud-guide.md)
+- 文档入口：[CRUD 指南](../02-core-usage/03-crud-guide.md)
 - 代码来源：
   - `LiteOrm.Demo\Data\DbInitializer.cs`
   - `LiteOrm.Tests\ServiceTests.cs`
@@ -66,7 +66,7 @@
 
 ### Upsert 与混合批处理
 
-- 文档入口：[CRUD 指南](../02-core-usage/05-crud-guide.md)
+- 文档入口：[CRUD 指南](../02-core-usage/03-crud-guide.md)
 - 代码来源：
   - `LiteOrm.Tests\ServiceTests.cs`
   - `LiteOrm.Demo\Demos\UpdateExprDemo.cs`
@@ -79,12 +79,12 @@
 
 ### `ForeignType` + `ForeignColumn` 最小闭环
 
-- 文档入口：[关联查询](../02-core-usage/06-associations.md)
+- 文档入口：[关联查询](../02-core-usage/08-associations.md)
 - 适合场景：先理解一层外键关联如何映射到视图字段
 
 ### 多级关联与 `AutoExpand`
 
-- 文档入口：[关联查询](../02-core-usage/06-associations.md)
+- 文档入口：[关联查询](../02-core-usage/08-associations.md)
 - 代码来源：
   - `LiteOrm.Demo\Models\User.cs`
   - `LiteOrm.Demo\Models\SalesRecord.cs`
@@ -96,7 +96,7 @@
 
 ### `Expr.ExistsRelated(...)` 过滤型关联
 
-- 文档入口：[关联查询](../02-core-usage/06-associations.md)
+- 文档入口：[关联查询](../02-core-usage/08-associations.md)
 - 代码来源：
   - `LiteOrm.Demo\Demos\ExistsRelatedDemo.cs`
   - `LiteOrm.Tests\ExprEnhancedTests.cs`
@@ -120,7 +120,7 @@
 
 ### `timestamp` 乐观并发
 
-- 文档入口：[CRUD 指南](../02-core-usage/05-crud-guide.md)
+- 文档入口：[CRUD 指南](../02-core-usage/03-crud-guide.md)
 - 代码来源：
   - `LiteOrm.Tests\ObjectDAOTests.cs`
   - `LiteOrm.Tests\Models\TestTimestampUser.cs`
@@ -203,13 +203,16 @@
 如果想按“从简单到复杂”的顺序阅读示例，可以采用以下路径：
 
 1. [第一个完整示例](../01-getting-started/04-first-example.md)
-2. [查询指南](../02-core-usage/04-query-guide.md)
-3. [CRUD 指南](../02-core-usage/05-crud-guide.md)
-4. [关联查询](../02-core-usage/06-associations.md)
-5. [事务管理](../03-advanced-topics/01-transactions.md)
-6. [分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)
-7. [性能优化](../03-advanced-topics/03-performance.md)
-8. [表达式扩展](../04-extensibility/01-expression-extension.md)
+2. [CRUD 指南](../02-core-usage/03-crud-guide.md)
+3. [查询总览](../02-core-usage/04-query-overview.md)
+4. [Lambda 查询指南](../02-core-usage/05-lambda-guide.md)
+5. [Expr 使用指南](../02-core-usage/06-expr-guide.md)
+6. [ExprString 使用指南](../02-core-usage/07-exprstring-guide.md)
+7. [关联查询](../02-core-usage/08-associations.md)
+8. [事务管理](../03-advanced-topics/01-transactions.md)
+9. [分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)
+10. [性能优化](../03-advanced-topics/03-performance.md)
+11. [表达式扩展](../04-extensibility/01-expression-extension.md)
 
 ## 相关链接
 

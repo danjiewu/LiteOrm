@@ -40,8 +40,8 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 2. [Configuration and Registration](./03-configuration-and-registration.en.md)
 3. [First End-to-End Example](./04-first-example.en.md)
 4. [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
-5. [Expr Guide](../02-core-usage/03-expr-guide.en.md)
-6. [Query Guide](../02-core-usage/04-query-guide.en.md)
+5. [Query Overview](../02-core-usage/04-query-overview.en.md)
+6. [Lambda Guide](../02-core-usage/05-lambda-guide.en.md)
 
 > **Learning advice**: If you're a beginner, read the four getting-started docs in order—each takes about 5-10 minutes. After the fourth doc, you should be able to perform basic database operations in a new project. Check the "FAQ" section at the end of each doc if you run into issues.
 

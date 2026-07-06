@@ -195,7 +195,7 @@ await departmentService.UpdateOrInsertAsync(dept);
 int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 ```
 
-> Lambda 条件查询的写法与本地服务完全一致，框架会在客户端进程内将 Lambda 转换为可序列化的 `Expr` 表达式树后传输。详见 [表达式指南](../02-core-usage/03-expr-guide.md)。
+> Lambda 条件查询的写法与本地服务完全一致，框架会在客户端进程内将 Lambda 转换为可序列化的 `Expr` 表达式树后传输。详见 [表达式指南](../02-core-usage/06-expr-guide.md)。
 
 ---
 
@@ -579,6 +579,6 @@ opts.Transport = new MyTransport();
 ## 相关链接
 
 - [配置与注册](../01-getting-started/03-configuration-and-registration.md) — `RegisterLiteOrm` / `RegisterLiteOrmRemote` 的完整说明
-- [表达式指南](../02-core-usage/03-expr-guide.md) — Lambda 条件查询，远程调用同样适用
+- [表达式指南](../02-core-usage/06-expr-guide.md) — Lambda 条件查询，远程调用同样适用
 - [表达式序列化](../04-extensibility/04-expr-serialization.md) — `Expr` 表达式树的序列化机制
 - [RemoteServiceDemo.cs](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/RemoteServiceDemo.cs) — 客户端 13 种典型操作场景

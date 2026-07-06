@@ -1,7 +1,7 @@
 # Expr 使用指南
 
 `Expr` 是 LiteOrm 的核心表达式对象模型，本文主要讲解如何构造、组合、复用和理解它的语义。
-如果你关心 Lambda / `Expr` / `ExprString` 的选型，请继续查看[查询指南](./04-query-guide.md)。
+如果你关心 Lambda / `Expr` / `ExprString` 的选型，请先看[查询总览](./04-query-overview.md)；Lambda 写法见 [Lambda 查询指南](./05-lambda-guide.md)，DAO 层手写 SQL 见 [ExprString 使用指南](./07-exprstring-guide.md)。
 
 ## 1. 创建基础表达式
 
@@ -144,7 +144,7 @@ var expr = ExistsRelated<DepartmentView>(
 ```
 
 `ExistsRelated` 会根据 `ForeignType` / `TableJoin` 等元数据自动补关联条件。  
-详细匹配逻辑请看[关联查询](./06-associations.md)。
+详细匹配逻辑请看[关联查询](./08-associations.md)。
 
 ## 3. 动态拼装 Expr
 
@@ -205,7 +205,7 @@ var users = await userService.SearchAsync(
 );
 ```
 
-如果你想保持 Lambda 的业务可读性，同时又想复用动态 Expr，请继续阅读：[Lambda 与 Expr 组合使用](./07-lambda-expr-mixing.md)。
+如果你想保持 Lambda 的业务可读性，同时又想复用动态 Expr，请继续阅读：[Lambda 与 Expr 组合使用](./09-lambda-expr-mixing.md)。
 
 ## 4. 用 `Expr.From<T>()` 链式构建查询
 
@@ -418,18 +418,21 @@ var constExpr = Prop("Status") == Const(1); // 常量内嵌
 - **运行时值**：优先直接写字面量，或显式用 `Value(...)`
 - **确实要把值直接写进 SQL**：显式使用 `Const(...)`
 
-### 7.5 `null` 没有对应的隐式转换
+### 7.5 与 `null` 比较
 
-`null` 不会自动转换为 `ValueTypeExpr`，因此涉及空判断时应显式使用：
+`ValueTypeExpr` 是引用类型，`null` 可以直接作为 `operator ==` / `!=` 的右操作数传入，因此 `Prop("DeletedTime") == null` 是合法的——它会构造出一个右操作数为 `null` 引用的 `LogicBinaryExpr`。
+
+SQL 转换层对 `Equal`/`NotEqual` 与 `null` 的组合做了特殊处理：当某一侧为 `null` 引用，或是 `ValueExpr` 且其 `Value` 为 `null` 时，会输出 `IS NULL` / `IS NOT NULL`，而不会输出 `= NULL`（后者在 SQL 中恒为假）。因此下面三种写法在生成结果上等价：
 
 ```csharp
 using static LiteOrm.Common.Expr;
 
-var expr1 = Prop("DeletedTime").IsNull();
-var expr2 = Prop("DeletedTime") == Expr.Null;
+var expr1 = Prop("DeletedTime") == null;        // 生成 [DeletedTime] IS NULL
+var expr2 = Prop("DeletedTime") == Expr.Null;   // 同上
+var expr3 = Prop("DeletedTime").IsNull();       // 同上，语义最清晰
 ```
 
-对于数据库语义，通常更推荐 `.IsNull()` / `.IsNotNull()`，因为意图更清晰。
+> **建议**：空判断优先使用 `.IsNull()` / `.IsNotNull()`，意图最直白；`== null` / `== Expr.Null` 虽然能工作，但阅读时需要了解转换层的特殊处理。
 
 ### 7.6 其它常见隐式转换
 
@@ -468,8 +471,10 @@ LiteOrm 会把它解析成 `Expr.If(...)`，并进一步生成 SQL `CASE` 表达
 | 方法 | 说明 | 示例 |
 |------|------|------|
 | `&` / `.And(right)` | AND | `Prop("Age") > 18 & Prop("DeptId") == 2` |
-| `|` / `.Or(right)` | OR | `condition1 | condition2` |
+| \| / `.Or(right)` | OR | `cond1.Or(cond2)` |
 | `!` / `.Not()` | NOT | `!Prop("IsDeleted").Equal(true)` |
+
+> 三种运算符均可写成符号形式或方法形式；逻辑组合建议优先使用 `.And(...)` / `.Or(...)` / `.Not()`，可读性更好，也避免在文档/字符串中转义 `|`。
 
 ### 8.2 比较与集合
 
@@ -618,9 +623,11 @@ var query = Expr.From(typeof(User))
 
 ## 11. 相关链接
 
-- [查询指南](./04-query-guide.md)
-- [增删改查](./05-crud-guide.md)
-- [关联查询](./06-associations.md)
-- [Lambda 与 Expr 组合使用](./07-lambda-expr-mixing.md)
-- [CTE 指南](./08-cte-guide.md)
+- [查询总览](./04-query-overview.md)
+- [Lambda 查询指南](./05-lambda-guide.md)
+- [ExprString 使用指南](./07-exprstring-guide.md)
+- [增删改查](./03-crud-guide.md)
+- [关联查询](./08-associations.md)
+- [Lambda 与 Expr 组合使用](./09-lambda-expr-mixing.md)
+- [CTE 指南](./10-cte-guide.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)

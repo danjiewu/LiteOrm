@@ -291,6 +291,6 @@ public async Task<bool> RenameUserAsync(int id, string newName)
 
 ## 相关链接
 
-- [关联查询](../02-core-usage/06-associations.md)
+- [关联查询](../02-core-usage/08-associations.md)
 - [分表分库](./02-sharding-and-tableargs.md)
 - [性能优化](./03-performance.md)

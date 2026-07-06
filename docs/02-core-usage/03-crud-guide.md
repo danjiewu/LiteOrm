@@ -1,6 +1,6 @@
 # CRUD 指南
 
-本文聚焦 LiteOrm 的写入、更新、删除和批量操作。查询能力请统一参考 [查询指南](./04-query-guide.md)。
+本文聚焦 LiteOrm 的写入、更新、删除和批量操作。查询能力请统一参考 [查询总览](./04-query-overview.md)。
 
 ## 1. 插入
 
@@ -359,7 +359,7 @@ int deleted = await service.DeleteAsync(
 
 > 上述 `UpdateAll` / `DeleteAll` 也都可以通过 `LambdaExprExtensions` 提供的 Lambda 扩展方法直接调用（见本文“使用 Lambda 表达式更新”及“条件删除”小节）。
 
-如果你还需要按条件搜索、分页、`Exists`、`Count` 等能力，请转到 [查询指南](./04-query-guide.md)。
+如果你还需要按条件搜索、分页、`Exists`、`Count` 等能力，请转到 [查询总览](./04-query-overview.md)。
 
 ## 6. 混合批处理与 Upsert 补充
 
@@ -388,7 +388,9 @@ await service.BatchAsync(ops);
 ## 相关链接
 
 - [返回目录](../README.md)
-- [查询指南](./04-query-guide.md)
+- [查询总览](./04-query-overview.md)
+- [Lambda 查询指南](./05-lambda-guide.md)
+- [Expr 使用指南](./06-expr-guide.md)
 - [事务管理](../03-advanced-topics/01-transactions.md)
 - [性能优化](../03-advanced-topics/03-performance.md)
 

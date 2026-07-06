@@ -337,14 +337,15 @@ builder.Host.RegisterLiteOrm(options =>
 - [ ] 运行项目后，控制台没有异常输出。
 - [ ] 插入和查询操作返回了预期的结果。
 
-全部通过后，恭喜你！你已经成功完成了 LiteOrm 的基础接入。接下来可以继续学习 [实体映射与数据源](../02-core-usage/01-entity-mapping.md) 和 [Expr 使用指南](../02-core-usage/03-expr-guide.md)。
+全部通过后，恭喜你！你已经成功完成了 LiteOrm 的基础接入。接下来可以继续学习 [实体映射与数据源](../02-core-usage/01-entity-mapping.md) 和 [查询总览](../02-core-usage/04-query-overview.md)。
 
 ## 相关链接
 
 - [返回目录](../README.md)
 - [实体映射与数据源](../02-core-usage/01-entity-mapping.md)
-- [Expr 使用指南](../02-core-usage/03-expr-guide.md)
-- [查询指南](../02-core-usage/04-query-guide.md)
-- [CRUD 指南](../02-core-usage/05-crud-guide.md)
-- [关联查询](../02-core-usage/06-associations.md)
+- [查询总览](../02-core-usage/04-query-overview.md)
+- [Lambda 查询指南](../02-core-usage/05-lambda-guide.md)
+- [Expr 使用指南](../02-core-usage/06-expr-guide.md)
+- [CRUD 指南](../02-core-usage/03-crud-guide.md)
+- [关联查询](../02-core-usage/08-associations.md)
 

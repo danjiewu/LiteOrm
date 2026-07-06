@@ -522,7 +522,7 @@ public class Log : IArged
 ## 相关链接
 
 - [返回目录](../README.md)
-- [关联查询](../02-core-usage/06-associations.md)
+- [关联查询](../02-core-usage/08-associations.md)
 - [权限过滤](./06-permission-filtering.md)
 - [性能优化](./03-performance.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)

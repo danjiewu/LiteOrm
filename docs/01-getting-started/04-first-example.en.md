@@ -337,13 +337,14 @@ After completing the steps above, verify your project against this checklist:
 - [ ] No exceptions appear in the console when running the project.
 - [ ] Insert and query operations return expected results.
 
-If all items pass—congratulations! You've successfully completed the basic LiteOrm integration. Next, continue with [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md) and [Expr Guide](../02-core-usage/03-expr-guide.en.md).
+If all items pass—congratulations! You've successfully completed the basic LiteOrm integration. Next, continue with [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md) and [Query Overview](../02-core-usage/04-query-overview.en.md).
 
 ## Related Links
 
 - [Back to docs hub](../README.md)
 - [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
-- [Expr Guide](../02-core-usage/03-expr-guide.en.md)
-- [Query Guide](../02-core-usage/04-query-guide.en.md)
-- [CRUD Guide](../02-core-usage/05-crud-guide.en.md)
-- [Associations](../02-core-usage/06-associations.en.md)
+- [Query Overview](../02-core-usage/04-query-overview.en.md)
+- [Lambda Guide](../02-core-usage/05-lambda-guide.en.md)
+- [Expr Guide](../02-core-usage/06-expr-guide.en.md)
+- [CRUD Guide](../02-core-usage/03-crud-guide.en.md)
+- [Associations](../02-core-usage/08-associations.en.md)

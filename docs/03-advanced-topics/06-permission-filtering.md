@@ -332,8 +332,8 @@ public class TenantOrderViewDAO : ObjectViewDAO<TenantOrder>
 ## 相关链接
 
 - [返回目录](../README.md)
-- [关联查询](../02-core-usage/06-associations.md)
+- [关联查询](../02-core-usage/08-associations.md)
 - [分表分库](./02-sharding-and-tableargs.md)
 - [安全性](./08-security.md)
-- [Lambda 与 Expr 组合使用](../02-core-usage/07-lambda-expr-mixing.md)
+- [Lambda 与 Expr 组合使用](../02-core-usage/09-lambda-expr-mixing.md)
 

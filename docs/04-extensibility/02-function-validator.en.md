@@ -199,7 +199,7 @@ validator.VisitAll(expr2);  // false
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [Associations](../02-core-usage/06-associations.en.md)
+- [Associations](../02-core-usage/08-associations.en.md)
 - [Expression Extension](./01-expression-extension.en.md)
 - [Window Functions](../03-advanced-topics/04-window-functions.en.md)
 

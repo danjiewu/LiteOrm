@@ -70,7 +70,7 @@ Related guides:
 
 - [Entity mapping and data sources](../02-core-usage/01-entity-mapping.en.md)
 
-- [Associations](../02-core-usage/06-associations.en.md)
+- [Associations](../02-core-usage/08-associations.en.md)
 
 
 
@@ -96,8 +96,8 @@ Related guides:
 
 
 
-- [Expr Guide](../02-core-usage/03-expr-guide.en.md)
-- [Query guide](../02-core-usage/04-query-guide.en.md)
+- [Expr Guide](../02-core-usage/06-expr-guide.en.md)
+- [Query Overview](../02-core-usage/04-query-overview.en.md)
 
 - [Example Index](./06-example-index.en.md)
 
@@ -135,7 +135,7 @@ Related guides:
 
 
 
-- [CRUD guide](../02-core-usage/05-crud-guide.en.md)
+- [CRUD guide](../02-core-usage/03-crud-guide.en.md)
 
 - [Transactions](../03-advanced-topics/01-transactions.en.md)
 

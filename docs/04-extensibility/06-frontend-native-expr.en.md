@@ -193,5 +193,5 @@ They should be at the same level as `$section`, not inside `$section`'s value.
 
 - [Back to docs hub](../README.md)
 - [Permission Filtering](../03-advanced-topics/06-permission-filtering.en.md)
-- [Query Guide](../02-core-usage/04-query-guide.en.md)
+- [Query Overview](../02-core-usage/04-query-overview.en.md)
 

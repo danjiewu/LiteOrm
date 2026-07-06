@@ -391,7 +391,9 @@ In implementation, LiteOrm merges ForeignType and TableJoin information during t
 
 - [Back to English docs hub](../README.md)
 - [Entity Mapping](./01-entity-mapping.en.md)
-- [Query Guide](./04-query-guide.en.md)
-- [CRUD Guide](./05-crud-guide.en.md)
+- [Query Overview](./04-query-overview.en.md)
+- [Lambda Guide](./05-lambda-guide.en.md)
+- [Expr Guide](./06-expr-guide.en.md)
+- [CRUD Guide](./03-crud-guide.en.md)
 - [Performance](../03-advanced-topics/03-performance.en.md)
 - [API Index](../05-reference/02-api-index.en.md)

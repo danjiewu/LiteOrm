@@ -119,6 +119,9 @@ u => u.Age >= 18 && To<bool>()
 ## 6. 相关链接
 
 - [返回目录](../README.md)
-- [查询指南](./04-query-guide.md)
+- [查询总览](./04-query-overview.md)
+- [Lambda 查询指南](./05-lambda-guide.md)
+- [Expr 使用指南](./06-expr-guide.md)
+- [ExprString 使用指南](./07-exprstring-guide.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)
 

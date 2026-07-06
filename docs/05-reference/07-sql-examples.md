@@ -219,7 +219,7 @@ FROM [Sales_202411] [T0]
 
 - [返回目录](../README.md)
 - [示例索引](./06-example-index.md)
-- [查询指南](../02-core-usage/04-query-guide.md)
-- [关联查询](../02-core-usage/06-associations.md)
+- [查询总览](../02-core-usage/04-query-overview.md)
+- [关联查询](../02-core-usage/08-associations.md)
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
 

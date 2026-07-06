@@ -17,7 +17,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Choosing between Lambda, `Expr`, and `ExprString`
 
-- Entry doc: [Query guide](../02-core-usage/04-query-guide.en.md)
+- Entry doc: [Query Overview](../02-core-usage/04-query-overview.en.md)
 - Focus:
   - when to use each query style
   - dynamic condition composition
@@ -25,7 +25,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### `EXISTS`, `Expr.ExistsRelated(...)`, and subqueries
 
-- Entry doc: [Query guide](../02-core-usage/04-query-guide.en.md)
+- Entry doc: [Query Overview](../02-core-usage/04-query-overview.en.md) | [Lambda Guide](../02-core-usage/05-lambda-guide.en.md) | [Expr Guide](../02-core-usage/06-expr-guide.en.md)
 - Code sources:
   - `LiteOrm.Demo\Demos\ExistsRelatedDemo.cs`
   - `LiteOrm.Tests\ExprEnhancedTests.cs`
@@ -40,7 +40,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Common predicates and set operations
 
-- Entry doc: [Query guide](../02-core-usage/04-query-guide.en.md)
+- Entry doc: [Query Overview](../02-core-usage/04-query-overview.en.md) | [Lambda Guide](../02-core-usage/05-lambda-guide.en.md) | [Expr Guide](../02-core-usage/06-expr-guide.en.md)
 - Code sources:
   - `LiteOrm.Demo\Demos\PracticalQueryDemo.cs`
   - `LiteOrm.Tests\PracticalQueryTests.cs`
@@ -54,7 +54,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Batch insert, update, and delete
 
-- Entry doc: [CRUD guide](../02-core-usage/05-crud-guide.en.md)
+- Entry doc: [CRUD guide](../02-core-usage/03-crud-guide.en.md)
 - Code sources:
   - `LiteOrm.Demo\Data\DbInitializer.cs`
   - `LiteOrm.Tests\ServiceTests.cs`
@@ -66,7 +66,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Upsert and mixed batch processing
 
-- Entry doc: [CRUD guide](../02-core-usage/05-crud-guide.en.md)
+- Entry doc: [CRUD guide](../02-core-usage/03-crud-guide.en.md)
 - Code sources:
   - `LiteOrm.Tests\ServiceTests.cs`
   - `LiteOrm.Demo\Demos\UpdateExprDemo.cs`
@@ -79,12 +79,12 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Minimal `ForeignType` + `ForeignColumn` flow
 
-- Entry doc: [Associations](../02-core-usage/06-associations.en.md)
+- Entry doc: [Associations](../02-core-usage/08-associations.en.md)
 - Best for: understanding how a single foreign-key relationship maps into view-model fields
 
 ### Multi-level associations and `AutoExpand`
 
-- Entry doc: [Associations](../02-core-usage/06-associations.en.md)
+- Entry doc: [Associations](../02-core-usage/08-associations.en.md)
 - Code sources:
   - `LiteOrm.Demo\Models\User.cs`
   - `LiteOrm.Demo\Models\SalesRecord.cs`
@@ -96,7 +96,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Filtering with `Expr.ExistsRelated(...)`
 
-- Entry doc: [Associations](../02-core-usage/06-associations.en.md)
+- Entry doc: [Associations](../02-core-usage/08-associations.en.md)
 - Code sources:
   - `LiteOrm.Demo\Demos\ExistsRelatedDemo.cs`
   - `LiteOrm.Tests\ExprEnhancedTests.cs`
@@ -120,7 +120,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### `timestamp` optimistic concurrency
 
-- Entry doc: [CRUD Guide](../02-core-usage/05-crud-guide.en.md)
+- Entry doc: [CRUD Guide](../02-core-usage/03-crud-guide.en.md)
 - Code sources:
   - `LiteOrm.Tests\ObjectDAOTests.cs`
   - `LiteOrm.Tests\Models\TestTimestampUser.cs`
@@ -203,13 +203,16 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 If you want to move from simple to advanced examples, this is a practical sequence:
 
 1. [First end-to-end example](../01-getting-started/04-first-example.en.md)
-2. [Query guide](../02-core-usage/04-query-guide.en.md)
-3. [CRUD guide](../02-core-usage/05-crud-guide.en.md)
-4. [Associations](../02-core-usage/06-associations.en.md)
-5. [Transactions](../03-advanced-topics/01-transactions.en.md)
-6. [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
-7. [Performance](../03-advanced-topics/03-performance.en.md)
-8. [Expression extension](../04-extensibility/01-expression-extension.en.md)
+2. [CRUD guide](../02-core-usage/03-crud-guide.en.md)
+3. [Query Overview](../02-core-usage/04-query-overview.en.md)
+4. [Lambda Guide](../02-core-usage/05-lambda-guide.en.md)
+5. [Expr Guide](../02-core-usage/06-expr-guide.en.md)
+6. [ExprString Guide](../02-core-usage/07-exprstring-guide.en.md)
+7. [Associations](../02-core-usage/08-associations.en.md)
+8. [Transactions](../03-advanced-topics/01-transactions.en.md)
+9. [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
+10. [Performance](../03-advanced-topics/03-performance.en.md)
+11. [Expression extension](../04-extensibility/01-expression-extension.en.md)
 
 ## Related links
 

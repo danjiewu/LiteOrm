@@ -407,7 +407,7 @@ LiteOrm 相比其他 ORM 的性能优势：
 ## 相关链接
 
 - [返回目录](../README.md)
-- [关联查询](../02-core-usage/06-associations.md)
+- [关联查询](../02-core-usage/08-associations.md)
 - [事务处理](./01-transactions.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)
 

@@ -1,6 +1,6 @@
 # CRUD Guide
 
-This page focuses on LiteOrm's write operations: insert, update, delete, upsert, and batching. For query capabilities, please refer to the [Query Guide](./04-query-guide.en.md).
+This page focuses on LiteOrm's write operations: insert, update, delete, upsert, and batching. For query capabilities, please refer to the [Query Overview](./04-query-overview.en.md).
 
 ## 1. Insert
 
@@ -357,7 +357,7 @@ Inherited from the non-generic `IEntityService` / `IEntityServiceAsync`, which a
 
 > The `UpdateAll` / `DeleteAll` methods above can also be called directly via the Lambda extension methods provided by `LambdaExprExtensions` (see the "Update with Lambda Expressions" and "Conditional Delete" sections in this document).
 
-If you also need conditional search, pagination, `Exists`, `Count`, etc., please refer to the [Query Guide](./04-query-guide.en.md).
+If you also need conditional search, pagination, `Exists`, `Count`, etc., please refer to the [Query Overview](./04-query-overview.en.md).
 
 ## 6. Mixed Batch Processing and Upsert Supplement
 
@@ -386,7 +386,9 @@ Suitable for "insert new batch of data while deleting old data" sync migration s
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [Query Guide](./04-query-guide.en.md)
+- [Query Overview](./04-query-overview.en.md)
+- [Lambda Guide](./05-lambda-guide.en.md)
+- [Expr Guide](./06-expr-guide.en.md)
 - [Transactions](../03-advanced-topics/01-transactions.en.md)
 - [Performance Optimization](../03-advanced-topics/03-performance.en.md)
 

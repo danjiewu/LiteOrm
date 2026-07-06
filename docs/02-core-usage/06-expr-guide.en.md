@@ -1,7 +1,7 @@
 # Expr Guide
 
 `Expr` is LiteOrm's core object-expression model,and this article mainly explains how to construct, compose, reuse, and understand its semantics.  
-If your question is when to choose Lambda, `Expr`, or `ExprString`, continue with the [Query Guide](./04-query-guide.en.md). 
+For the choice between Lambda, `Expr`, or `ExprString`, start with the [Query Overview](./04-query-overview.en.md). For Lambda usage, see the [Lambda Guide](./05-lambda-guide.en.md); for handwritten SQL in the DAO, see the [ExprString Guide](./07-exprstring-guide.en.md). 
 ## 1. Creating basic expressions
 
 ### 1.1 Properties, values, and constants
@@ -143,7 +143,7 @@ var expr = ExistsRelated<DepartmentView>(
 ```
 
 `ExistsRelated` fills in the relation condition from metadata such as `ForeignType` and `TableJoin`.  
-For the detailed matching rules, see [Associations](./06-associations.en.md).
+For the detailed matching rules, see [Associations](./08-associations.en.md).
 
 ## 3. Building Expr dynamically
 
@@ -204,7 +204,7 @@ var users = await userService.SearchAsync(
 );
 ```
 
-If you want Lambda readability outside and dynamic Expr reuse inside, continue with [Mixing Lambda and Expr](./07-lambda-expr-mixing.en.md).
+If you want Lambda readability outside and dynamic Expr reuse inside, continue with [Mixing Lambda and Expr](./09-lambda-expr-mixing.en.md).
 
 ## 4. Build chained queries with `Expr.From<T>()`
 
@@ -417,18 +417,21 @@ Rule of thumb:
 - **Runtime value**: prefer a normal literal, or explicitly use `Value(...)`
 - **Must be inlined into SQL text**: explicitly use `Const(...)`
 
-### 7.5 `null` does not have an implicit conversion
+### 7.5 Comparing with `null`
 
-`null` is not implicitly converted into `ValueTypeExpr`, so null checks should be written explicitly:
+`ValueTypeExpr` is a reference type, so `null` can be passed directly as the right operand of `operator ==` / `!=`. `Prop("DeletedTime") == null` is therefore valid — it produces a `LogicBinaryExpr` whose right operand is a `null` reference.
+
+The SQL conversion layer special-cases `Equal`/`NotEqual` against `null`: when either side is a `null` reference, or a `ValueExpr` whose `Value` is `null`, it emits `IS NULL` / `IS NOT NULL` instead of `= NULL` (the latter is always false in SQL). The following three forms are equivalent in generated output:
 
 ```csharp
 using static LiteOrm.Common.Expr;
 
-var expr1 = Prop("DeletedTime").IsNull();
-var expr2 = Prop("DeletedTime") == Expr.Null;
+var expr1 = Prop("DeletedTime") == null;        // produces [DeletedTime] IS NULL
+var expr2 = Prop("DeletedTime") == Expr.Null;   // same
+var expr3 = Prop("DeletedTime").IsNull();       // same, clearest intent
 ```
 
-For database semantics, `.IsNull()` / `.IsNotNull()` is usually clearer.
+> **Recommendation**: prefer `.IsNull()` / `.IsNotNull()` for null checks — the intent is the most direct. `== null` / `== Expr.Null` work, but readers need to know about the conversion-layer special case.
 
 ### 7.6 Other convenient implicit conversions
 
@@ -467,8 +470,10 @@ LiteOrm parses this into `Expr.If(...)`, which is then rendered as a SQL `CASE` 
 | Method | Description | Example |
 |------|------|------|
 | `&` / `.And(right)` | AND | `Prop("Age") > 18 & Prop("DeptId") == 2` |
-| `|` / `.Or(right)` | OR | `condition1 | condition2` |
+| \| / `.Or(right)` | OR | `cond1.Or(cond2)` |
 | `!` / `.Not()` | NOT | `!Prop("IsDeleted").Equal(true)` |
+
+> All three operators have both a symbolic and a method form. For composition, prefer `.And(...)` / `.Or(...)` / `.Not()` — they read better and avoid escaping `|` in docs/strings.
 
 ### 8.2 Comparison and set operations
 
@@ -617,9 +622,11 @@ var query = Expr.From(typeof(User))
 
 ## 11. Related links
 
-- [Query Guide](./04-query-guide.en.md)
-- [CRUD Guide](./05-crud-guide.en.md)
-- [Associations](./06-associations.en.md)
-- [Mixing Lambda and Expr](./07-lambda-expr-mixing.en.md)
-- [CTE Guide](./08-cte-guide.en.md)
+- [Query Overview](./04-query-overview.en.md)
+- [Lambda Guide](./05-lambda-guide.en.md)
+- [ExprString Guide](./07-exprstring-guide.en.md)
+- [CRUD Guide](./03-crud-guide.en.md)
+- [Associations](./08-associations.en.md)
+- [Mixing Lambda and Expr](./09-lambda-expr-mixing.en.md)
+- [CTE Guide](./10-cte-guide.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
