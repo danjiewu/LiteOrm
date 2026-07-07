@@ -51,7 +51,7 @@
 |[前端 QueryString 查询](./04-extensibility/05-frontend-querystring.md)|[Frontend QueryString](./04-extensibility/05-frontend-querystring.en.md)|用 URL 参数驱动后端 Expr 查询|
 |[前端原生 Expr 查询](./04-extensibility/06-frontend-native-expr.md)|[Frontend Native Expr](./04-extensibility/06-frontend-native-expr.en.md)|按 LiteOrm 序列化格式提交 Expr JSON|
 |[泛型 Controller 与动态生成](./04-extensibility/07-generic-controller.md)|[Generic Controller](./04-extensibility/07-generic-controller.en.md)|泛型基类 Controller 与动态 Controller 生成|
-|[国产/兼容数据库 SqlBuilder 开发指南](./04-extensibility/08-domestic-database-sqlbuilder.md)|[Domestic/Compatible Database SqlBuilder Guide](./04-extensibility/08-domestic-database-sqlbuilder.en.md)|达梦、人大金仓、GaussDB、OceanBase、TiDB、GreatDB 接入指南|
+| [国产/兼容数据库 SqlBuilder 开发指南](./04-extensibility/08-domestic-database-sqlbuilder.md)|[Domestic/Compatible Database SqlBuilder Guide](./04-extensibility/08-domestic-database-sqlbuilder.en.md)|达梦、人大金仓、GaussDB、OceanBase、TiDB、GreatDB 接入指南|
 
 ### 参考文档 / Reference
 
@@ -73,6 +73,7 @@
 |[源代码](https://github.com/danjiewu/LiteOrm)|[Source code](https://github.com/danjiewu/LiteOrm)|
 |[单元测试](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests)|[Unit tests](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests)|
 |[性能报告](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)|[Benchmark report](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)|
+|[变更日志](./CHANGELOG.md)|[Changelog](./CHANGELOG.en.md)|
 
 ### 推荐阅读路径
 

@@ -561,7 +561,7 @@ For guided reading, start with the docs hub. Use the reference pages below when 
 | [中文文档中心](./docs/README.md) | 按学习路径组织的中英文文档导航 |
 | [API Index](./docs/05-reference/02-api-index.en.md) | Scenario-based API and capability entry points |
 | [AI Guide](./docs/05-reference/05-ai-guide.en.md) | Compact appendix for assistants and quick API orientation |
-| [Domestic/Compatible Database SqlBuilder Guide](./docs/04-extensibility/08-domestic-database-sqlbuilder.en.md) | Custom database support |
+| [Changelog](./docs/CHANGELOG.en.md) | Functional changes by version |
 | [Demo Project](./LiteOrm.Demo/) | Main feature demonstration project |
 | [Performance Report](./LiteOrm.Benchmark/) | Detailed benchmark reports |
 | [Unit Tests](./LiteOrm.Tests/) | Behavior and regression coverage |

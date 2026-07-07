@@ -576,7 +576,7 @@ public class Log : IArged
 | [English Docs Hub](./docs/README.md) | Bilingual docs hub organized by learning path |
 | [API 索引](./docs/05-reference/02-api-index.md) | 按使用场景整理的接口与能力入口 |
 | [AI 使用指南](./docs/05-reference/05-ai-guide.md) | 面向 AI 和快速查阅场景的附录 |
-| [国产/兼容数据库 SqlBuilder 开发指南](./docs/04-extensibility/08-domestic-database-sqlbuilder.md) | 自定义数据库支持 |
+| [变更日志](./docs/CHANGELOG.md) | 按版本号记录的功能性变更 |
 | [Demo 项目](./LiteOrm.Demo/) | 主要特性的演示工程 |
 | [性能报告](./LiteOrm.Benchmark/) | 详细的性能基准测试报告 |
 | [单元测试](./LiteOrm.Tests/) | 行为与回归测试覆盖 |
