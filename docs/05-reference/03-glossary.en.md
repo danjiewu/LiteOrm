@@ -18,7 +18,7 @@ An interpolated-string way to build small SQL fragments. Use it for localized cu
 
 ## `RawSql`
 
-An `ExprString` helper marker type (an independent `readonly struct`, not inheriting from `Expr`) used to splice database-specific static SQL fragments (dialect hints, unregistered functions) verbatim into interpolated strings. Its content **bypasses parameterization** — only trusted server-side static text is allowed, never user input. It is not scanned by `ExprValidator` and does not support Expr JSON round-trip. For reusable fragments that need runtime parameterization, use `GenericSqlExpr` instead.
+An `ExprString` helper marker type (an independent `readonly struct`, not inheriting from `Expr`) used exclusively to splice **dynamic values unsuitable for parameterization** verbatim into interpolated strings. Typical scenarios: `LIMIT`/`OFFSET` integer values, `ASC`/`DESC` sort direction, dynamic column names. Its content **bypasses parameterization** — when inlining dynamic values, the caller must validate first: numeric values via range validation (e.g. non-negative integers), string/token values via whitelist; never splice unvalidated user input. Purely static SQL text can be written directly in the `ExprString` literal — no `RawSql` needed. It is not scanned by `ExprValidator` and does not support Expr JSON round-trip. For reusable fragments that need runtime parameterization, use `GenericSqlExpr` instead.
 
 ## `ObjectDAO<T>`
 

@@ -3,7 +3,7 @@
 ## v8.0.20 (Unreleased)
 
 ### 新增功能
-- ExprString 增加插入 RawSql 的方式 (`6f401b6`)
+- ExprString 新增 `RawSql` 标记类型，专用于内联不适合参数化的动态值（如 `LIMIT`/`OFFSET` 行数、`ASC`/`DESC` 排序方向、动态列名等）；纯静态文本直接写字面量即可 (`6f401b6`)
 
 ## v8.0.19 (2026-07-06)
 

@@ -53,7 +53,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - 表达式名称与别名忽略大小写
 - `ObjectViewDAO<T>.Search(...)`
 - `SearchAs<T>()`
-- `RawSql`（`ExprString` 的辅助标记类型，用于插入受信任的静态 SQL 片段，详见 [ExprString 指南 - 第 8 节](../02-core-usage/07-exprstring-guide.md#8-插入原始-sql-rawsql)）
+- `RawSql`（`ExprString` 的辅助标记类型，专用于插入不适合参数化的动态值（如 `LIMIT`/`OFFSET` 行数、`ASC`/`DESC`、动态列名）；纯静态文本直接写字面量即可，详见 [ExprString 指南 - 第 8 节](../02-core-usage/07-exprstring-guide.md#8-插入原始-sql-rawsql)）
 
 对应文档：
 

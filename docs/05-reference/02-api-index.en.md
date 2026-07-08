@@ -89,7 +89,7 @@ Related guides:
 - case-insensitive expression names and aliases
 - `ObjectViewDAO<T>.Search(...)`
 - `SearchAs<T>()`
-- `RawSql` (an `ExprString` helper marker type for inserting trusted static SQL fragments; see [ExprString Guide - Section 8](../02-core-usage/07-exprstring-guide.en.md#8-inserting-raw-sql-rawsql))
+- `RawSql` (an `ExprString` helper marker type exclusively for inserting dynamic values unsuitable for parameterization (e.g. `LIMIT`/`OFFSET` row counts, `ASC`/`DESC`, dynamic column names); purely static text can just be written in the literal; see [ExprString Guide - Section 8](../02-core-usage/07-exprstring-guide.en.md#8-inserting-raw-sql-rawsql))
 
 
 

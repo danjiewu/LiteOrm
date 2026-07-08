@@ -3,7 +3,7 @@
 ## v8.0.20 (Unreleased)
 
 ### Added
-- ExprString supports inserting RawSql (`6f401b6`)
+- Added `RawSql` marker type to `ExprString` for inlining dynamic values unsuitable for parameterization (e.g. `LIMIT`/`OFFSET` row counts, `ASC`/`DESC` sort direction, dynamic column names); purely static text can be written directly in the literal (`6f401b6`)
 
 ## v8.0.19 (2026-07-06)
 

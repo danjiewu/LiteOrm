@@ -513,35 +513,47 @@ var table = dataViewDao.Search(
 
 #### RawSql —— 插入原始 SQL 片段
 
-`RawSql` 是独立的 `readonly struct`（**不**继承 `Expr`），作为 `ExprString` 的辅助入口存在。在插值字符串中插入 `RawSql` 时，其内容会**原样拼入 SQL**，不参数化、不做语法处理、不替换 `[ ]` 占位符：
+`RawSql` 是独立的 `readonly struct`（**不**继承 `Expr`），作为 `ExprString` 的辅助入口存在。在插值字符串中插入 `RawSql` 时，其内容会**原样拼入 SQL**，不参数化、不做语法处理、不替换 `[ ]` 占位符。专用于**不适合参数化的动态值**；纯静态的 SQL 文本直接写在 `ExprString` 字面量中即可，无需使用 `RawSql`：
 
 ```csharp
 using LiteOrm.Common;
 using static LiteOrm.Common.Expr;
 
-// 用于方言特定的静态片段：表提示、未注册函数、原生 SQL 表达式
-var result = await dataViewDAO.Search(
-    $"SELECT {new RawSql("TOP 10 *")} FROM {From} WHERE {new RawSql("Status = 1")} AND {Prop("Age")} >= {minAge}",
-    isFull: true
-).GetResultAsync();
+// 1) LIMIT/OFFSET 动态分页（数值类，校验范围：非负整数+上限）
+int pageSize = 20;
+int offset = pageSize * pageIndex;
+var paged = await dataViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY Id LIMIT {new RawSql(offset.ToString())}, {new RawSql(pageSize.ToString())}"
+).ToListAsync();
 
-// 也可用 RawSql.From(string) 工厂
-var result2 = await dataViewDAO.Search(
-    $"SELECT {RawSql.From("COUNT(*)")} FROM {From} WHERE {Prop("Name")} LIKE {"%test%"}",
-    isFull: true
-).GetResultAsync();
+// 2) 动态排序方向 ASC/DESC（SQL 关键字类，白名单枚举）
+string direction = ascending ? "ASC" : "DESC";
+var sorted = await dataViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY Id {new RawSql(direction)}"
+).ToListAsync();
+
+// 3) 动态列名/排序字段（标识符类，白名单校验：仅允许实体真实列名 + 字符集校验）
+string[] allowed = { "Id", "Name", "Age", "CreatedAt" };
+string sortField = allowed.Contains(userField) ? userField : "Id";
+var result = await dataViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY {new RawSql(sortField)} {new RawSql(direction)}"
+).ToListAsync();
+// 注：简单列名也可用 Expr.Prop(sortField)（自带名称校验和引用符包裹，更安全）；
+//     仅当列为复杂表达式或确需绕过名称校验时才用 RawSql。
 ```
 
 **安全约束（务必遵守）**：
 
 | 规则 | 说明 |
 |------|------|
-| 仅用于静态文本 | `RawSql` 内容必须写死在代码中，禁止拼接用户输入 |
+| 数值类动态值需范围校验 | 如 `LIMIT` 行数：非负整数 + 合理上限 |
+| 字符串/token 类需白名单校验 | `ASC`/`DESC` 用枚举白名单；列名用实体列名白名单 + 字符集校验 |
+| 纯静态内容不要用 RawSql | 写死的 SQL 片段直接写在 `ExprString` 字面量中即可，包成 `RawSql` 反而掩盖真实意图 |
 | 不被验证器扫描 | `RawSql` 不是 `Expr`，`ExprValidator.CreateQueryOnly()` 不会扫描它 |
 | 不支持 JSON 往返 | `RawSql` 不能通过 `ExprJsonConverter` 序列化/反序列化，前端 Expr JSON 不能携带 |
-| 优先用 Expr | 凡是能用 `Expr.Prop`/`Expr.Func`/`Expr.Sql`（预注册 `GenericSqlExpr`）表达的，不要用 `RawSql` |
+| 优先用 Expr | 简单列名用 `Expr.Prop`（自带名称校验和引用符包裹）；凡是能用 `Expr.Func`/`Expr.Sql`（预注册 `GenericSqlExpr`）表达的，不要用 `RawSql` |
 
-> 需要在自定义 SQL 中传递运行时值时，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化。详见 [ExprString 指南 - 第 8 节](../02-core-usage/07-exprstring-guide.md#8-插入原始-sql-rawsql) 与 [安全性](../03-advanced-topics/08-security.md)。
+> 需要在自定义 SQL 中传递运行时字符串/复杂值时，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化。详见 [ExprString 指南 - 第 8 节](../02-core-usage/07-exprstring-guide.md#8-插入原始-sql-rawsql) 与 [安全性](../03-advanced-topics/08-security.md)。
 
 ### 常用模式
 
