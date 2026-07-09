@@ -38,7 +38,7 @@ namespace LiteOrm
 
         /// <summary>
         /// 判定是否需要对指定实体类型执行表结构同步。
-        /// 默认取连接池级 <see cref="DAOContextPool.SyncTable"/> 配置；若存在 <see cref="OnTableSyncing"/> 订阅者，则以订阅者的最终决策为准。
+        /// 优先级从高到低依次为：<see cref="OnTableSyncing"/> 订阅者、<see cref="TableDefinition.SyncTable"/>（Never/Always 覆盖数据源配置）、连接池级 <see cref="DAOContextPool.SyncTable"/>。
         /// </summary>
         /// <param name="objectType">实体类型。</param>
         /// <param name="tableName">解析后的表名（已应用 tableArgs）。</param>
@@ -46,6 +46,22 @@ namespace LiteOrm
         protected bool ShouldSyncTable(Type objectType, string tableName)
         {
             bool defaultSync = _daoContextPool.SyncTable;
+
+            // 优先使用 TableDefinition.SyncTable 的显式配置（Never / Always 覆盖数据源级配置）
+            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
+            if (tableDefinition != null)
+            {
+                switch (tableDefinition.SyncTable)
+                {
+                    case SyncTableMode.Never:
+                        defaultSync = false;
+                        break;
+                    case SyncTableMode.Always:
+                        defaultSync = true;
+                        break;
+                }
+            }
+
             var handler = OnTableSyncing;
             if (handler == null) return defaultSync;
 
