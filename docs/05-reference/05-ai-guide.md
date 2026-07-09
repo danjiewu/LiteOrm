@@ -45,7 +45,7 @@
 | `DataSources[].PoolSize`          | `int`      | `16`       | 连接池缓存的最大连接数                            |
 | `DataSources[].MaxPoolSize`       | `int`      | `100`      | 最大并发连接数限制                              |
 | `DataSources[].ParamCountLimit`   | `int`      | `2000`     | SQL 参数数量上限（`0` = 无限制）                  |
-| `DataSources[].SyncTable`         | `bool`     | `false`    | 是否自动同步建表；连接池级默认值，可通过 `DatabaseSync.OnTableSyncing` 事件按实体类型覆盖 |
+| `DataSources[].SyncTable`         | `bool`     | `false`    | 是否自动同步建表；连接池级默认值，可被 `[Table(SyncTable = ...)]` 实体级配置或 `DatabaseSync.OnTableSyncing` 事件覆盖 |
 | `DataSources[].ReadOnlyConfigs[]` | `array`    | `[]`       | 只读库配置列表（读写分离），各字段不填时继承主库配置             |
 
 ### 服务注册
@@ -88,6 +88,24 @@ public class UserView : User
     public string? DeptName { get; set; }
 }
 ```
+
+### `[Table]` 特性
+
+| 参数 | 说明 |
+| --- | --- |
+| `Name` | 数据库表名，支持占位符分表。 |
+| `DataSource` | 指定当前实体所属数据源。 |
+| `SyncTable` | 实体级表结构同步模式，枚举 `SyncTableMode`（`Default` / `Never` / `Always`），默认 `Default`。`Never`/`Always` 覆盖数据源级 `SyncTable` 配置。 |
+
+```csharp
+[Table("Logs", SyncTable = SyncTableMode.Always)] // 始终自动建表，即使数据源 SyncTable=false
+public class Log { ... }
+
+[Table("Legacy", SyncTable = SyncTableMode.Never)] // 永不自动建表，即使数据源开启了 SyncTable
+public class Legacy { ... }
+```
+
+> `SyncTable` 判定优先级：`OnTableSyncing` 事件 > `[Table(SyncTable = ...)]`（`Never`/`Always`）> 连接池级 `SyncTable`。
 
 ## 三、服务定义
 

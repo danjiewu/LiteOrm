@@ -45,7 +45,7 @@
 | `DataSources[].PoolSize` | `int` | `16` | Maximum number of cached connections in the pool |
 | `DataSources[].MaxPoolSize` | `int` | `100` | Maximum concurrent connection limit |
 | `DataSources[].ParamCountLimit` | `int` | `2000` | Maximum SQL parameter count (`0` = unlimited) |
-| `DataSources[].SyncTable` | `bool` | `false` | Whether to auto-sync table creation; pool-level default, overridable per entity type via `DatabaseSync.OnTableSyncing` event |
+| `DataSources[].SyncTable` | `bool` | `false` | Whether to auto-sync table creation; pool-level default, overridable per entity type via the `[Table(SyncTable = ...)]` attribute or the `DatabaseSync.OnTableSyncing` event |
 | `DataSources[].ReadOnlyConfigs[]` | `array` | `[]` | Read-only replica configuration list (read/write splitting); omitted fields inherit from the primary data source |
 
 ### Service registration
@@ -88,6 +88,24 @@ public class UserView : User
     public string? DeptName { get; set; }
 }
 ```
+
+### `[Table]` Attribute
+
+| Parameter | Description |
+|-----------|-------------|
+| `Name` | Database table name, supports placeholder for sharding. |
+| `DataSource` | Specifies the data source for the current entity. |
+| `SyncTable` | Entity-level table-structure sync mode, enum `SyncTableMode` (`Default` / `Never` / `Always`), defaults to `Default`. `Never`/`Always` overrides the data-source-level `SyncTable` config. |
+
+```csharp
+[Table("Logs", SyncTable = SyncTableMode.Always)] // Always auto-create, even when the data source has SyncTable=false
+public class Log { ... }
+
+[Table("Legacy", SyncTable = SyncTableMode.Never)] // Never auto-create, even when the data source has SyncTable enabled
+public class Legacy { ... }
+```
+
+> `SyncTable` decision priority: `OnTableSyncing` event > `[Table(SyncTable = ...)]` (`Never`/`Always`) > pool-level `SyncTable`.
 
 ## 3. Service definitions
 

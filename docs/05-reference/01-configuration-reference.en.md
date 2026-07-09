@@ -53,12 +53,32 @@ This page is a complete reference for LiteOrm configuration fields, defaults, an
 | `PoolSize` | `int` | `16` | cached connection count, controls pool pre-warming |
 | `MaxPoolSize` | `int` | `100` | maximum concurrent connections |
 | `ParamCountLimit` | `int` | `2000` | parameter-count limit per SQL statement |
-| `SyncTable` | `bool` | `false` | whether to auto-sync table creation, disable in production. Acts as the pool-level default; can be overridden per entity type via the `DatabaseSync.OnTableSyncing` event. |
+| `SyncTable` | `bool` | `false` | whether to auto-sync table creation, disable in production. Pool-level default; can be overridden per entity type via the `[Table(SyncTable = ...)]` attribute or the `DatabaseSync.OnTableSyncing` event. |
 | `ReadOnlyConfigs` | `array` | `[]` | read-only replica configuration list |
 
-### Entity-Level Sync Decision (`OnTableSyncing` Event)
+### Entity-Level Sync Override (`[Table(SyncTable = ...)]`)
 
-`SyncTable` is a pool-level switch that applies uniformly to all entity types in the pool. To control whether to sync table creation **per entity type** (e.g. allow only certain tables to auto-create, or disable the pool but green-light specific types), subscribe to the `OnTableSyncing` event on `DAOContextPool.DatabaseSync`:
+In addition to the pool-level switch, you can declare an **entity-level sync mode** on the entity class via the `SyncTable` property of the `[Table]` attribute. The `SyncTableMode` enum values are:
+
+| Value | Description |
+|-------|-------------|
+| `Default` | Default value; follows the data-source-level `SyncTable` config, no override. |
+| `Never` | This entity never auto-creates its table, even when the data source has `SyncTable` enabled. |
+| `Always` | This entity always auto-creates its table, even when the data source has `SyncTable` disabled. |
+
+```csharp
+// Always auto-create this table, ignoring SyncTable=false on the data source
+[Table("Logs", SyncTable = SyncTableMode.Always)]
+public class Log { ... }
+
+// Never auto-create this table, even when the data source has SyncTable enabled
+[Table("Legacy", SyncTable = SyncTableMode.Never)]
+public class Legacy { ... }
+```
+
+### Dynamic Sync Decision (`OnTableSyncing` Event)
+
+The `SyncTable` decision priority, from highest to lowest, is: `OnTableSyncing` event subscribers > `[Table(SyncTable = ...)]` entity-level config (`Never` / `Always`) > pool-level `SyncTable`. If you need more dynamic control (e.g. based on runtime conditions), subscribe to the `OnTableSyncing` event on `DAOContextPool.DatabaseSync`:
 
 ```csharp
 var pool = poolFactory.GetPool("SQLite");
@@ -84,9 +104,9 @@ The event args `TableSyncingEventArgs` carries:
 |-----------|-------------|
 | `ObjectType` | The entity type to sync. |
 | `TableName` | The resolved table name (with `tableArgs` applied, useful for sharded-table decisions). |
-| `ShouldSync` | Whether to sync; defaults to the pool-level `SyncTable` config, can be overridden by subscribers. |
+| `ShouldSync` | Whether to sync; defaults to the entity-level `[Table(SyncTable = ...)]` (`Never`/`Always` overrides the pool config; `Default` falls back to the pool-level `SyncTable`), can be overridden by subscribers. |
 
-> The decision logic is encapsulated in `DatabaseSync.ShouldSyncTable`, invoked by `EnsureTable` / `EnsureTableAsync` before executing DDL. With no subscribers, it falls back to the pool-level `SyncTable` config.
+> The decision logic is encapsulated in `DatabaseSync.ShouldSyncTable`, invoked by `EnsureTable` / `EnsureTableAsync` before executing DDL. With no subscribers, it falls back to the entity-level `[Table(SyncTable = ...)]` (and `Default` further falls back to the pool-level `SyncTable`).
 
 ## `ReadOnlyConfigs[]`
 
