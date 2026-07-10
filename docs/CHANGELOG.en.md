@@ -5,6 +5,8 @@
 ### Added
 - ExprString supports inserting RawSql (`6f401b6`)
 
+---
+
 ## v8.0.19 (2026-07-06)
 
 ### Added
@@ -16,6 +18,8 @@
 
 ### Changed
 - Improved exception information on read failure (`0230f96`)
+
+---
 
 ## v8.0.18 (2026-06-30)
 
@@ -39,6 +43,8 @@
 - Fixed bug where log `MethodName` was empty (`5159a82`)
 - Fixed Server-side method matching failure (`60b8e20`)
 - Fixed Remote.Server generic service name matching bug (`2ea5e2c`)
+
+---
 
 ## v8.0.17 (2026-06-18)
 
@@ -71,6 +77,8 @@
 - Fixed default SqlBuilder matching to correctly identify PostgreSql and SqlServer (`e664272`)
 - Fixed property generation order for view extensions (`1dbe1f4`)
 
+---
+
 ## v8.0.16 (2026-05-27)
 
 ### Added
@@ -101,10 +109,14 @@
 ### Refactored
 - `FromExpr` and `TableJoinExpr` refactored to support subqueries as source (`8ec2c1d`)
 
+---
+
 ## v8.0.15 (2026-05-10)
 
 ### Added
 - Added CTE expression support (`cc4f8c2`)
+
+---
 
 ## v8.0.14 (2026-04-28)
 
@@ -120,6 +132,8 @@
 
 ### Fixed
 - Fixed Insert method error with non-parameter return for auto-increment columns (`073b4f7`)
+
+---
 
 ## v8.0.13 (2026-04-10)
 
@@ -155,6 +169,8 @@
 - Fixed `To` extension method parsing when Expr is empty (`b904948`)
 - Fixed `ExistsRelated` alias generation for foreign key via external column (`b8a14b1`)
 - Fixed serialization bug (`a694a0f`)
+
+---
 
 ## v8.0.12 (2026-04-02)
 
@@ -236,6 +252,8 @@
 - Fixed Oracle auto-increment column DDL (`96cbadf`)
 - Fixed single-table mode; table name without alias (`4afb92d`)
 
+---
+
 ## v8.0.10 / v8.0.11 (2026-03-11)
 
 ### Added
@@ -252,6 +270,8 @@
 
 ### Fixed
 - Fixed Assembly loading bug (`05f8b3a`)
+
+---
 
 ## v8.0.8 / v8.0.9 (2026-03-06)
 
@@ -278,6 +298,8 @@
 - `ExprInterpolatedStringHandler` moved to LiteOrm project (`e292c23`)
 - `SqlBuilder` and `CreateSqlBuildContext` made internal (`e3f1eb8`)
 - Refactor Result types and update DAO implementations (`aafea93`)
+
+---
 
 ## v8.0.0 ~ v8.0.7 (2026-02-11)
 
