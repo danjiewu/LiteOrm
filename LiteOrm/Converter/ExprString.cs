@@ -105,10 +105,14 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 添加原始 SQL 文本片段。其内容会原样拼接到生成的 SQL 中，不进行参数化或语法处理。
+        /// 专用于动态但不适合使用参数的 SQL 片段，典型场景：<c>LIMIT</c>/<c>OFFSET</c> 的整数值、
+        /// <c>ORDER BY</c> 的排序方向（<c>ASC</c>/<c>DESC</c>）、动态列名等；
+        /// 纯静态的 SQL 文本直接写在 <see cref="ExprString"/> 字面量中即可，无需使用 <c>RawSql</c>。
         /// </summary>
         /// <param name="value">原始 SQL 文本标记。</param>
         /// <remarks>
-        /// 调用方必须保证 <paramref name="value"/> 中的文本不包含任何用户可控的内容，否则可能引发 SQL 注入。
+        /// 调用方必须保证 <paramref name="value"/> 中的文本安全：数值类动态值需校验范围（如非负整数），
+        /// 字符串/token 类动态值（如列名、<c>ASC</c>/<c>DESC</c>）需用白名单校验，避免拼入未经验证的用户输入而引发 SQL 注入。
         /// </remarks>
         public void AppendFormatted(RawSql value)
         {

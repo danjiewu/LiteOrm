@@ -169,13 +169,18 @@ var result = await dataViewDAO.Search(
 
 ### 8.1 When to use
 
-`ExprString` is safe by default: plain values are parameterized, `Expr` goes through structured translation, and handwritten identifiers can use the `[ ]` placeholder. Sometimes, however, you genuinely need to splice a piece of **dialect-specific syntax** verbatim, for example:
+`ExprString` is safe by default: plain values are parameterized, `Expr` goes through structured translation, handwritten identifiers can use the `[ ]` placeholder, and **purely static SQL text can be written directly in the literal**. But there is one kind of content that can neither be parameterized nor hardcoded in the literal: **dynamic values unsuitable for parameters**. Typical scenarios:
 
-- Dialect-specific query hints (SQL Server `WITH (NOLOCK)`, MySQL `FORCE INDEX(...)`)
-- Function calls not yet registered in `SqlBuilder`
-- Complex `CASE WHEN` fragments or native SQL expressions
+| Scenario | Why it can't be parameterized | Why it can't be a literal |
+|----------|-------------------------------|---------------------------|
+| `LIMIT`/`OFFSET` integer values, page sizes | Some databases reject `LIMIT @0` or change the execution plan | Value is runtime-computed |
+| `ORDER BY` direction `ASC`/`DESC` | SQL keyword, not a value | Asc/desc is chosen by the user at runtime |
+| Dynamic column name / sort field | A column name is an identifier, not a value | Field is chosen by the user at runtime |
+| `TOP n` row count | Same as LIMIT | Value is runtime-computed |
 
-These texts cannot be expressed as `Expr`, and the "plain value" path is not suitable (it would be parameterized into `@N`). In this case, use the `RawSql` marker type to explicitly declare that "this is a trusted raw SQL fragment".
+In this case, use the `RawSql` marker type to inline the validated dynamic value verbatim into the SQL text as a string.
+
+> **When NOT to use RawSql**: All hardcoded SQL keywords, table names, function calls, `CASE WHEN` fragments, etc. — just write them in the literal part of the interpolated string; do not wrap them in `RawSql`.
 
 ### 8.2 Type definition
 
@@ -197,39 +202,70 @@ public readonly struct RawSql
 
 ### 8.3 Usage example
 
+**Example 1: LIMIT/OFFSET dynamic paging (numeric dynamic value)**
+
 ```csharp
 using LiteOrm.Common;
+using static LiteOrm.Common.Expr;
 
-// 1. Via constructor
+int pageSize = 20;
+int offset = pageSize * pageIndex;
+
+// Validate offset / pageSize as non-negative integers with upper bound before splicing (see 8.4)
 var result = await dataViewDAO.Search(
-    $"SELECT {new RawSql("TOP 10 *")} FROM {From} WHERE {new RawSql("Status = 1")} AND {Expr.Prop("Age")} >= {minAge}",
-    isFull: true
-).GetResultAsync();
-
-// 2. Via factory
-var result2 = await dataViewDAO.Search(
-    $"SELECT {RawSql.From("COUNT(*)")} FROM {From} WHERE {Expr.Prop("Name")} LIKE {"%test%"}",
-    isFull: true
-).GetResultAsync();
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY Id LIMIT {new RawSql(offset.ToString())}, {new RawSql(pageSize.ToString())}"
+).ToListAsync();
 ```
 
-The three interpolation holes above go through three different paths:
-- `new RawSql("TOP 10 *")` → spliced verbatim as `TOP 10 *`
+**Example 2: Dynamic sort direction ASC/DESC (SQL keyword dynamic value)**
+
+```csharp
+// Asc/desc is chosen by the user; validate via enum whitelist (only "ASC" / "DESC" allowed), then inline
+string direction = ascending ? "ASC" : "DESC";
+var result = await dataViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY Id {new RawSql(direction)}"
+).ToListAsync();
+```
+
+**Example 3: Dynamic column name / sort field (identifier dynamic value)**
+
+```csharp
+// sortField comes from the frontend; validate via whitelist (only real columns on the entity, alphanumeric + underscore)
+string[] allowed = { "Id", "Name", "Age", "CreatedAt" };
+string sortField = allowed.Contains(userField) ? userField : "Id";
+var result = await dataViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY {new RawSql(sortField)} {new RawSql(direction)}"
+).ToListAsync();
+
+// Note: simple column names can also use Expr.Prop(sortField) (built-in name validation and quote wrapping, safer);
+//       use RawSql only for complex expressions (e.g. "COALESCE(col1, col2)") or when you need to bypass name validation.
+```
+
+The interpolation holes above go through different paths:
+- `new RawSql(...)` → dynamic values spliced verbatim into the SQL text
 - `Expr.Prop("Age")` → goes through `Expr.ToSql`, with the column name wrapped in dialect quotes
 - `{minAge}` → auto-parameterized as `@0`
 
 ### 8.4 Security constraints
 
-`RawSql` bypasses LiteOrm's parameterization mechanism. **The caller must ensure** that the `Sql` text does not contain any user-controllable input, otherwise SQL injection may occur. Follow these rules:
+`RawSql` bypasses LiteOrm's parameterization mechanism. **The caller must ensure** the `Sql` text is safe. Validation differs by value type:
+
+| Dynamic value type | Validation | Example |
+|-------------------|------------|---------|
+| Numeric (LIMIT row count, etc.) | Range validation: non-negative integer + reasonable upper bound | `if (pageSize < 0 || pageSize > 1000) throw ...` |
+| SQL keyword (ASC/DESC) | Enum whitelist: only predefined legal tokens | `direction = ascending ? "ASC" : "DESC";` |
+| Identifier (column name) | Whitelist: only real columns on the entity, with charset validation (alphanumeric + underscore) | `string[] allowed = {...}; if (!allowed.Contains(f)) throw ...` |
+
+Other general rules:
 
 | Rule | Description |
 |------|--------------|
-| Static text only | The content of `RawSql` must be a constant fragment hardcoded in code; runtime concatenation of user input is not allowed |
 | Not covered by ExprValidator | `RawSql` is not an `Expr`; it is not scanned by validators such as `ExprValidator.CreateQueryOnly()` — use it only in trusted server-side DAO code |
 | No JSON round-trip | `RawSql` is not an `Expr` and cannot be serialized/deserialized via `ExprJsonConverter`; frontend Expr JSON cannot carry raw SQL |
-| Prefer Expr | Anything expressible via `Expr.Prop`/`Expr.Func`/`Expr.Sql` (the pre-registered `GenericSqlExpr`) should not use `RawSql` |
+| Do not use RawSql for static content | Hardcoded SQL fragments should be written directly in the `ExprString` literal; wrapping them in `RawSql` obscures the real intent |
+| Prefer Expr | Use `Expr.Prop` for simple column names (built-in name validation and quote wrapping); anything expressible via `Expr.Func`/`Expr.Sql` (pre-registered `GenericSqlExpr`) should not use `RawSql` |
 
-> If you need to safely pass runtime values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `outputParams` inside the callback. See [Security](../03-advanced-topics/08-security.en.md).
+> If you need to safely pass runtime strings/complex values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `outputParams` inside the callback. See [Security](../03-advanced-topics/08-security.en.md).
 
 ### 8.5 Difference from GenericSqlExpr
 
@@ -237,11 +273,11 @@ The three interpolation holes above go through three different paths:
 |--------|----------|------------------|
 | Is it an `Expr` | No (independent struct) | Yes (inherits `LogicExpr`) |
 | Registration | None, construct directly | Must call `Register` first |
-| Parameterization | Not supported, static text only | Supported, callback can use `outputParams` |
-| Use case | One-off, static, dialect-specific SQL fragments | Reusable, dynamic SQL fragments needing runtime parameters |
+| Parameterization | Not supported, plain text inlining | Supported, callback can use `outputParams` |
+| Use case | Dynamic values unsuitable for parameterization (LIMIT row counts, ASC/DESC, dynamic column names) | Reusable, dynamic SQL fragments needing runtime parameters |
 | Validator control | Not scanned | `ExprValidator.CreateQueryOnly()` allows it by default |
 
-In short: **use `RawSql` for small hardcoded fragments; use `GenericSqlExpr` for reusable fragments that need parameterization**.
+In short: **use `RawSql` for dynamic values that cannot be parameterized; use `GenericSqlExpr` for reusable fragments that need parameterization; write purely static content directly in the literal**.
 
 ## 9. Available entry points
 
@@ -339,12 +375,14 @@ Without `isFull: true`, the DAO auto-prepends `SELECT {AllFields} FROM {From}`, 
 ❌ Insert `SelectExpr` (columns without alias) before `FromExpr` in a subquery
 ✅ Assign explicit table aliases on both `FromExpr` and `PropertyExpr`
 
-### 11.9 Putting user input inside RawSql
+### 11.9 Putting unvalidated input inside RawSql
 
-`RawSql` content is spliced into SQL verbatim, with no parameterization. Putting user-controllable strings inside it directly causes SQL injection.
+`RawSql` content is spliced into SQL verbatim, with no parameterization. `RawSql` can inline dynamic values (e.g. a `LIMIT` row count), but the value **must be strictly validated first** (e.g. non-negative integer); never splice unvalidated user input, especially string-type input.
 
+❌ `$"LIMIT {new RawSql(userInput)}"` (`userInput` is a frontend string, unvalidated)
 ❌ `$"WHERE {new RawSql($"Name = '{userInput}'")}"` (`userInput` comes from the frontend)
-✅ Use `Expr.Prop("Name") == userInput` or `$"WHERE {Expr.Prop("Name")} = {userInput}"` so the framework parameterizes the value
+✅ Validate numeric dynamic values before inlining: `if (pageSize < 0 || pageSize > 1000) throw ...; ... LIMIT {new RawSql(pageSize.ToString())}`
+✅ Parameterize string-type user values: `$"WHERE {Expr.Prop("Name")} = {userInput}"`
 
 ## 12. Recommended style summary
 
@@ -354,7 +392,7 @@ Without `isFull: true`, the DAO auto-prepends `SELECT {AllFields} FROM {From}`, 
 4. For complex multi-table queries, pre-assign table aliases on `FromExpr`/`PropertyExpr` instead of relying on automatic context allocation.
 5. Use `isFull: true` for full SQL, and combine with `{Table}`/`{From}`/`{AllFields}` to reuse the DAO's table definition.
 6. Write CTEs as full `WITH ... SELECT ...`, or use `SelectExpr.With(name)`.
-7. Use `RawSql` only for static, trusted dialect-specific fragments; any runtime value must go through the `Expr` or parameterization path.
+7. Use `RawSql` only for dynamic values unsuitable for parameterization (e.g. `LIMIT` row counts, validate as non-negative integers first) or trusted static dialect fragments; string-type user values must go through the `Expr` or parameterization path.
 
 ## 13. Related links
 

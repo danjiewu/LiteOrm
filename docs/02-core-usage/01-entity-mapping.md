@@ -32,12 +32,14 @@ public class User
 ```csharp
 [Table("Users")]
 [Table("Logs_{0}", DataSource = "LogDB")]
+[Table("Logs", SyncTable = SyncTableMode.Always)]
 ```
 
 | 参数 | 说明 |
 | --- | --- |
 | `Name` | 数据库表名，支持占位符分表。 |
 | `DataSource` | 指定当前实体所属数据源。 |
+| `SyncTable` | 实体级表结构同步模式，枚举 `SyncTableMode`（`Default` / `Never` / `Always`），默认 `Default`。设为 `Never` 或 `Always` 时将覆盖数据源级别的 `SyncTable` 配置。 |
 
 ## `[Column]` 特性
 

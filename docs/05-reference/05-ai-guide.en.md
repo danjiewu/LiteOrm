@@ -45,7 +45,7 @@
 | `DataSources[].PoolSize` | `int` | `16` | Maximum number of cached connections in the pool |
 | `DataSources[].MaxPoolSize` | `int` | `100` | Maximum concurrent connection limit |
 | `DataSources[].ParamCountLimit` | `int` | `2000` | Maximum SQL parameter count (`0` = unlimited) |
-| `DataSources[].SyncTable` | `bool` | `false` | Whether to auto-sync table creation; pool-level default, overridable per entity type via `DatabaseSync.OnTableSyncing` event |
+| `DataSources[].SyncTable` | `bool` | `false` | Whether to auto-sync table creation; pool-level default, overridable per entity type via the `[Table(SyncTable = ...)]` attribute or the `DatabaseSync.OnTableSyncing` event |
 | `DataSources[].ReadOnlyConfigs[]` | `array` | `[]` | Read-only replica configuration list (read/write splitting); omitted fields inherit from the primary data source |
 
 ### Service registration
@@ -88,6 +88,24 @@ public class UserView : User
     public string? DeptName { get; set; }
 }
 ```
+
+### `[Table]` Attribute
+
+| Parameter | Description |
+|-----------|-------------|
+| `Name` | Database table name, supports placeholder for sharding. |
+| `DataSource` | Specifies the data source for the current entity. |
+| `SyncTable` | Entity-level table-structure sync mode, enum `SyncTableMode` (`Default` / `Never` / `Always`), defaults to `Default`. `Never`/`Always` overrides the data-source-level `SyncTable` config. |
+
+```csharp
+[Table("Logs", SyncTable = SyncTableMode.Always)] // Always auto-create, even when the data source has SyncTable=false
+public class Log { ... }
+
+[Table("Legacy", SyncTable = SyncTableMode.Never)] // Never auto-create, even when the data source has SyncTable enabled
+public class Legacy { ... }
+```
+
+> `SyncTable` decision priority: `OnTableSyncing` event > `[Table(SyncTable = ...)]` (`Never`/`Always`) > pool-level `SyncTable`.
 
 ## 3. Service definitions
 
@@ -513,35 +531,47 @@ var table = dataViewDao.Search(
 
 #### RawSql — Inserting raw SQL fragments
 
-`RawSql` is an independent `readonly struct` (**not** an `Expr`) that serves as an `ExprString` helper. When interpolated into an `ExprString`, its content is **spliced verbatim into the SQL** — no parameterization, no syntax processing, no `[ ]` placeholder replacement:
+`RawSql` is an independent `readonly struct` (**not** an `Expr`) that serves as an `ExprString` helper. When interpolated into an `ExprString`, its content is **spliced verbatim into the SQL** — no parameterization, no syntax processing, no `[ ]` placeholder replacement. It is used exclusively for **dynamic values unsuitable for parameterization**; purely static SQL text can be written directly in the `ExprString` literal — no `RawSql` needed:
 
 ```csharp
 using LiteOrm.Common;
 using static LiteOrm.Common.Expr;
 
-// For dialect-specific static fragments: table hints, unregistered functions, native SQL expressions
-var result = await dataViewDAO.Search(
-    $"SELECT {new RawSql("TOP 10 *")} FROM {From} WHERE {new RawSql("Status = 1")} AND {Prop("Age")} >= {minAge}",
-    isFull: true
-).GetResultAsync();
+// 1) LIMIT/OFFSET dynamic paging (numeric; range validation: non-negative integer + upper bound)
+int pageSize = 20;
+int offset = pageSize * pageIndex;
+var paged = await dataViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY Id LIMIT {new RawSql(offset.ToString())}, {new RawSql(pageSize.ToString())}"
+).ToListAsync();
 
-// Also available via RawSql.From(string) factory
-var result2 = await dataViewDAO.Search(
-    $"SELECT {RawSql.From("COUNT(*)")} FROM {From} WHERE {Prop("Name")} LIKE {"%test%"}",
-    isFull: true
-).GetResultAsync();
+// 2) Dynamic sort direction ASC/DESC (SQL keyword; enum whitelist)
+string direction = ascending ? "ASC" : "DESC";
+var sorted = await dataViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY Id {new RawSql(direction)}"
+).ToListAsync();
+
+// 3) Dynamic column name / sort field (identifier; whitelist: only real entity columns + charset validation)
+string[] allowed = { "Id", "Name", "Age", "CreatedAt" };
+string sortField = allowed.Contains(userField) ? userField : "Id";
+var result = await dataViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY {new RawSql(sortField)} {new RawSql(direction)}"
+).ToListAsync();
+// Note: simple column names can also use Expr.Prop(sortField) (built-in name validation and quote wrapping, safer);
+//       use RawSql only for complex expressions or when you need to bypass name validation.
 ```
 
 **Security constraints (must follow)**:
 
 | Rule | Description |
 |------|--------------|
-| Static text only | `RawSql` content must be hardcoded in code; never concatenate user input |
+| Numeric dynamic values need range validation | e.g. `LIMIT` row count: non-negative integer + reasonable upper bound |
+| String/token values need whitelist validation | `ASC`/`DESC` via enum whitelist; column names via entity column whitelist + charset validation |
+| Do not use RawSql for static content | Hardcoded SQL fragments should be written directly in the `ExprString` literal; wrapping them in `RawSql` obscures the real intent |
 | Not scanned by validators | `RawSql` is not an `Expr`; `ExprValidator.CreateQueryOnly()` does not scan it |
 | No JSON round-trip | `RawSql` cannot be serialized/deserialized via `ExprJsonConverter`; frontend Expr JSON cannot carry it |
-| Prefer Expr | Anything expressible via `Expr.Prop`/`Expr.Func`/`Expr.Sql` (pre-registered `GenericSqlExpr`) should not use `RawSql` |
+| Prefer Expr | Use `Expr.Prop` for simple column names (built-in name validation and quote wrapping); anything expressible via `Expr.Func`/`Expr.Sql` (pre-registered `GenericSqlExpr`) should not use `RawSql` |
 
-> When you need to pass runtime values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `outputParams` inside the callback. See [ExprString Guide - Section 8](../02-core-usage/07-exprstring-guide.en.md#8-inserting-raw-sql-rawsql) and [Security](../03-advanced-topics/08-security.en.md).
+> When you need to pass runtime strings/complex values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `outputParams` inside the callback. See [ExprString Guide - Section 8](../02-core-usage/07-exprstring-guide.en.md#8-inserting-raw-sql-rawsql) and [Security](../03-advanced-topics/08-security.en.md).
 
 ### Common patterns
 

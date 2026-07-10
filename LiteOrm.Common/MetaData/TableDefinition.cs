@@ -44,6 +44,14 @@ namespace LiteOrm.Common
         public string DataSource { get; protected internal set; }
 
         /// <summary>
+        /// 获取或设置该表的表结构同步模式。
+        /// 默认为 <see cref="SyncTableMode.Default"/>，即沿用数据源（连接池）级别的 <see cref="DataSourceConfig.SyncTable"/> 配置；
+        /// 设为 <see cref="SyncTableMode.Never"/> 或 <see cref="SyncTableMode.Always"/> 时将覆盖数据源配置。
+        /// 该值通常由 <see cref="TableAttribute.SyncTable"/> 映射而来。
+        /// </summary>
+        public SyncTableMode SyncTable { get; protected internal set; }
+
+        /// <summary>
         /// 获取或设置数据提供程序类型。
         /// 例如：Microsoft.Data.SqlClient.SqlConnection
         /// </summary>

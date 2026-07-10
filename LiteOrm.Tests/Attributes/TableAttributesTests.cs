@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 using LiteOrm.Common;
 using Xunit;
@@ -82,6 +82,35 @@ namespace LiteOrm.Common.UnitTests
 
             // Assert
             Assert.Null(attribute.TableName);
+        }
+
+        /// <summary>
+        /// 验证新建的 TableAttribute 实例的 SyncTable 属性默认值为 <see cref="SyncTableMode.Default"/>，
+        /// 即未显式设置时沿用数据源级别的 SyncTable 配置。
+        /// </summary>
+        [Fact]
+        public void TableAttribute_Default_SyncTableIsDefault()
+        {
+            // 准备 & 执行
+            var attribute = new TableAttribute();
+
+            // 断言
+            Assert.Equal(SyncTableMode.Default, attribute.SyncTable);
+        }
+
+        /// <summary>
+        /// 验证通过命名属性可以设置 SyncTable 为 Never 或 Always。
+        /// </summary>
+        [Theory]
+        [InlineData(SyncTableMode.Never)]
+        [InlineData(SyncTableMode.Always)]
+        public void TableAttribute_CanSetSyncTableProperty(SyncTableMode mode)
+        {
+            // 准备 & 执行
+            var attribute = new TableAttribute("Foo") { SyncTable = mode };
+
+            // 断言
+            Assert.Equal(mode, attribute.SyncTable);
         }
     }
 }

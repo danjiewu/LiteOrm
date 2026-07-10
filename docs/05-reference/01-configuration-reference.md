@@ -53,12 +53,32 @@
 | `PoolSize` | `int` | `16` | 缓存连接数，控制连接池预热数量。 |
 | `MaxPoolSize` | `int` | `100` | 最大并发连接数上限。 |
 | `ParamCountLimit` | `int` | `2000` | 单条 SQL 参数数量限制，防止参数过多导致数据库不支持。 |
-| `SyncTable` | `bool` | `false` | 是否自动同步建表，生产环境建议关闭。可作为连接池级默认值，再通过 `DatabaseSync.OnTableSyncing` 事件按实体类型覆盖。 |
+| `SyncTable` | `bool` | `false` | 是否自动同步建表，生产环境建议关闭。连接池级默认值，可被 `[Table(SyncTable = ...)]` 实体级配置或 `DatabaseSync.OnTableSyncing` 事件覆盖。 |
 | `ReadOnlyConfigs` | `array` | `[]` | 只读库配置列表，用于读写分离。 |
+
+### 实体级同步覆盖（`[Table(SyncTable = ...)]`）
+
+除连接池级开关外，可在实体类上通过 `[Table]` 特性的 `SyncTable` 属性声明**实体级同步模式**，枚举 `SyncTableMode` 取值如下：
+
+| 取值 | 说明 |
+| --- | --- |
+| `Default` | 默认值，沿用数据源级别的 `SyncTable` 配置，不进行覆盖。 |
+| `Never` | 该实体永不自动建表，即使数据源开启了 `SyncTable`。 |
+| `Always` | 该实体始终自动建表，即使数据源关闭了 `SyncTable`。 |
+
+```csharp
+// 该表始终自动建表，无视数据源 SyncTable=false
+[Table("Logs", SyncTable = SyncTableMode.Always)]
+public class Log { ... }
+
+// 该表永不自动建表，即使数据源开启了 SyncTable
+[Table("Legacy", SyncTable = SyncTableMode.Never)]
+public class Legacy { ... }
+```
 
 ### 动态同步判定（`OnTableSyncing` 事件）
 
-`SyncTable` 是连接池级的开关，对池内所有实体类型统一生效。若需要**按实体类型**细粒度控制是否同步建表（例如只允许某些表自动建表，或连接池关闭但个别类型开绿灯），可订阅 `DAOContextPool.DatabaseSync` 的 `OnTableSyncing` 事件：
+`SyncTable` 判定的优先级从高到低依次为：`OnTableSyncing` 事件订阅者 > `[Table(SyncTable = ...)]` 实体级配置（`Never` / `Always`）> 连接池级 `SyncTable`。若仍需更动态的控制（例如基于运行时条件），可订阅 `DAOContextPool.DatabaseSync` 的 `OnTableSyncing` 事件：
 
 ```csharp
 var pool = poolFactory.GetPool("SQLite");
@@ -84,9 +104,9 @@ pool.DatabaseSync.OnTableSyncing += (sender, e) =>
 | --- | --- |
 | `ObjectType` | 待同步的实体类型。 |
 | `TableName` | 解析后的表名（已应用 `tableArgs`，可用于分表场景判定）。 |
-| `ShouldSync` | 是否同步，默认值为连接池级 `SyncTable` 配置，订阅者可覆盖此决策。 |
+| `ShouldSync` | 是否同步，默认值为实体级 `[Table(SyncTable = ...)]`（`Never`/`Always` 覆盖连接池配置，`Default` 时回退到连接池级 `SyncTable`），订阅者可覆盖此决策。 |
 
-> 判定逻辑封装在 `DatabaseSync.ShouldSyncTable` 中，`EnsureTable` / `EnsureTableAsync` 在执行 DDL 前调用。无订阅者时回退到连接池级 `SyncTable` 配置。
+> 判定逻辑封装在 `DatabaseSync.ShouldSyncTable` 中，`EnsureTable` / `EnsureTableAsync` 在执行 DDL 前调用。无订阅者时回退到实体级 `[Table(SyncTable = ...)]`（若为 `Default` 则进一步回退到连接池级 `SyncTable`）。
 
 ## `ReadOnlyConfigs[]`
 

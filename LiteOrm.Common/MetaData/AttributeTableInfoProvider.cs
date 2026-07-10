@@ -116,6 +116,7 @@ namespace LiteOrm
                 Name = tableName,
                 DataProviderType = dsConfig?.ProviderType,
                 DataSource = tableAttribute.DataSource ?? _dataSourceProvider?.DefaultDataSourceName,
+                SyncTable = tableAttribute.SyncTable,
                 ConstFilter = BuildConstFilter(columns)
             };
         }

@@ -169,13 +169,18 @@ var result = await dataViewDAO.Search(
 
 ### 8.1 什么时候用
 
-`ExprString` 默认会保证安全：普通值被参数化、`Expr` 走结构化转换、手写标识符可统一用 `[ ]` 占位。但有时你确实需要把一段**数据库特定语法**原样拼进去，比如：
+`ExprString` 默认会保证安全：普通值被参数化、`Expr` 走结构化转换、手写标识符可统一用 `[ ]` 占位、**纯静态的 SQL 文本直接写在字面量中即可**。但有一类内容既不能参数化、也无法写死在字面量里：**动态但不适合使用参数的值**，典型场景：
 
-- 方言特有的查询提示（如 SQL Server 的 `WITH (NOLOCK)`、MySQL 的 `FORCE INDEX(...)`）
-- 尚未在 `SqlBuilder` 中注册的函数调用
-- 复杂的 `CASE WHEN` 片段或原生 SQL 表达式
+| 场景 | 为什么不能参数化 | 为什么不能写字面量 |
+|------|------------------|--------------------|
+| `LIMIT`/`OFFSET` 的整数值、分页行数 | 部分数据库拒绝 `LIMIT @0` 形式或改变执行计划 | 值是运行时计算的 |
+| `ORDER BY` 的排序方向 `ASC`/`DESC` | SQL 关键字，不是值 | 升降序由用户选择，运行时决定 |
+| 动态列名/排序字段 | 列名是标识符，不是值 | 字段由用户选择，运行时决定 |
+| `TOP n` 的行数 | 同 LIMIT | 值是运行时计算的 |
 
-这些文本无法用 `Expr` 表达，又不能走「普通值」路径（会被参数化成 `@N`）。此时使用 `RawSql` 标记类型显式声明「这一段是受信任的原始 SQL 文本」。
+此时使用 `RawSql` 标记类型，把已校验的动态值以字符串形式原样内联到 SQL 文本中。
+
+> **不需要 RawSql 的场景**：所有写死的 SQL 关键词、表名、函数调用、`CASE WHEN` 片段等，直接写在插值字符串的字面量部分即可，不要包成 `RawSql`。
 
 ### 8.2 类型定义
 
@@ -197,39 +202,70 @@ public readonly struct RawSql
 
 ### 8.3 使用示例
 
+**示例 1：LIMIT/OFFSET 动态分页（数值类动态值）**
+
 ```csharp
 using LiteOrm.Common;
+using static LiteOrm.Common.Expr;
 
-// 1. 用构造函数
+int pageSize = 20;
+int offset = pageSize * pageIndex;
+
+// 拼接前必须对 offset / pageSize 做非负整数及上限校验（见 8.4）
 var result = await dataViewDAO.Search(
-    $"SELECT {new RawSql("TOP 10 *")} FROM {From} WHERE {new RawSql("Status = 1")} AND {Expr.Prop("Age")} >= {minAge}",
-    isFull: true
-).GetResultAsync();
-
-// 2. 用工厂方法
-var result2 = await dataViewDAO.Search(
-    $"SELECT {RawSql.From("COUNT(*)")} FROM {From} WHERE {Expr.Prop("Name")} LIKE {"%test%"}",
-    isFull: true
-).GetResultAsync();
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY Id LIMIT {new RawSql(offset.ToString())}, {new RawSql(pageSize.ToString())}"
+).ToListAsync();
 ```
 
-上面三处插值分别走三条路径：
-- `new RawSql("TOP 10 *")` → 原样拼入 `TOP 10 *`
+**示例 2：动态排序方向 ASC/DESC（SQL 关键字类动态值）**
+
+```csharp
+// 升降序由用户选择；只能用白名单校验（仅允许 "ASC" / "DESC" 二选一），再内联
+string direction = ascending ? "ASC" : "DESC";
+var result = await dataViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY Id {new RawSql(direction)}"
+).ToListAsync();
+```
+
+**示例 3：动态列名/排序字段（标识符类动态值）**
+
+```csharp
+// sortField 来自前端；必须用白名单校验（仅允许实体中真实存在的列名，且仅含字母数字下划线）
+string[] allowed = { "Id", "Name", "Age", "CreatedAt" };
+string sortField = allowed.Contains(userField) ? userField : "Id";
+var result = await dataViewDAO.Search(
+    $"WHERE {Prop("Age")} >= {minAge} ORDER BY {new RawSql(sortField)} {new RawSql(direction)}"
+).ToListAsync();
+
+// 注：简单列名也可用 Expr.Prop(sortField) 表达（自带名称校验和引用符包裹，更安全）；
+//     仅当列名为复杂表达式（如 "COALESCE(col1, col2)"）或确需绕过名称校验时才用 RawSql。
+```
+
+上面插值分别走不同路径：
+- `new RawSql(...)` → 动态值原样拼入 SQL 文本
 - `Expr.Prop("Age")` → 走 `Expr.ToSql`，列名按方言包裹引用符
 - `{minAge}` → 自动参数化为 `@0`
 
 ### 8.4 安全约束
 
-`RawSql` 绕过 LiteOrm 的参数化机制，**调用方必须自行保证** `Sql` 文本中不包含任何用户可控的输入，否则可能引发 SQL 注入。请遵守以下规则：
+`RawSql` 绕过 LiteOrm 的参数化机制，**调用方必须自行保证** `Sql` 文本安全。校验方式因值类型而异：
+
+| 动态值类型 | 校验方式 | 示例 |
+|------------|----------|------|
+| 数值类（LIMIT 行数等） | 范围校验：非负整数 + 合理上限 | `if (pageSize < 0 || pageSize > 1000) throw ...` |
+| SQL 关键字类（ASC/DESC） | 枚举白名单：仅允许预定义的合法 token | `direction = ascending ? "ASC" : "DESC";` |
+| 标识符类（列名） | 白名单：仅允许实体中真实存在的列名，且校验字符集（仅字母数字下划线） | `string[] allowed = {...}; if (!allowed.Contains(f)) throw ...` |
+
+其他通用规则：
 
 | 规则 | 说明 |
 |------|------|
-| 仅用于静态文本 | `RawSql` 内容必须是写死在代码里的常量片段，不接受运行时拼接用户输入 |
 | 不参与 ExprValidator 验证 | `RawSql` 不是 `Expr`，不会被 `ExprValidator.CreateQueryOnly()` 等验证器扫描——它只在受信任的服务端 DAO 代码中使用 |
 | 不支持 JSON 序列化往返 | `RawSql` 不是 `Expr`，无法通过 `ExprJsonConverter` 序列化/反序列化，前端 Expr JSON 中不能携带原始 SQL |
-| 优先用 Expr | 凡是能用 `Expr.Prop`/`Expr.Func`/`Expr.Sql`（预注册的 `GenericSqlExpr`）表达的，不要用 `RawSql` |
+| 纯静态内容不要用 RawSql | 写死的 SQL 片段直接写在 `ExprString` 字面量中即可，包成 `RawSql` 反而掩盖真实意图 |
+| 优先用 Expr | 简单列名用 `Expr.Prop`（自带名称校验和引用符包裹）；凡是能用 `Expr.Func`/`Expr.Sql`（预注册的 `GenericSqlExpr`）表达的，不要用 `RawSql` |
 
-> 如果需要在自定义 SQL 中安全地传递运行时值，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化，详见[安全性](../03-advanced-topics/08-security.md)。
+> 如果需要在自定义 SQL 中安全地传递运行时字符串/复杂值，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化，详见[安全性](../03-advanced-topics/08-security.md)。
 
 ### 8.5 与 GenericSqlExpr 的区别
 
@@ -237,11 +273,11 @@ var result2 = await dataViewDAO.Search(
 |------|----------|------------------|
 | 是否为 `Expr` | 否（独立 struct） | 是（继承 `LogicExpr`） |
 | 注册要求 | 无，直接构造 | 必须先 `Register` 注册回调 |
-| 参数化支持 | 不支持，纯静态文本 | 支持，回调内可用 `outputParams` |
-| 适用场景 | 一次性、静态、方言特定的 SQL 片段 | 可复用、需要运行时参数的动态 SQL 片段 |
+| 参数化支持 | 不支持，纯文本内联 | 支持，回调内可用 `outputParams` |
+| 适用场景 | 不适合参数化的动态值（LIMIT 行数、ASC/DESC、动态列名） | 可复用、需要运行时参数的动态 SQL 片段 |
 | 验证器管控 | 不被扫描 | `ExprValidator.CreateQueryOnly()` 默认放行 |
 
-简言之：**静态写死的小片段用 `RawSql`，需要参数化的可复用片段用 `GenericSqlExpr`**。
+简言之：**不适合参数化的动态值用 `RawSql`，需要参数化的可复用片段用 `GenericSqlExpr`，纯静态内容直接写字面量**。
 
 ## 9. 可用入口一览
 
@@ -339,12 +375,14 @@ var result = await dataViewDAO.Search(
 ❌ 子查询先插 `SelectExpr`（列未指定别名）再插 `FromExpr`
 ✅ 给 `FromExpr` 和 `PropertyExpr` 都显式指定表别名
 
-### 11.9 把用户输入塞进 RawSql
+### 11.9 把未校验的输入塞进 RawSql
 
-`RawSql` 内容会原样拼入 SQL，不经过参数化。把用户可控的字符串塞进去会直接导致 SQL 注入。
+`RawSql` 内容会原样拼入 SQL，不经过参数化。`RawSql` 可用于内联动态值（如 `LIMIT` 的行数），但**必须先对值进行严格校验**（如限制为非负整数）；绝不可直接拼入未经验证的用户输入，尤其是字符串类输入。
 
+❌ `$"LIMIT {new RawSql(userInput)}"`（`userInput` 是来自前端的字符串，未校验）
 ❌ `$"WHERE {new RawSql($"Name = '{userInput}'")}"`（`userInput` 来自前端）
-✅ 用 `Expr.Prop("Name") == userInput` 或 `$"WHERE {Expr.Prop("Name")} = {userInput}"`，让框架参数化
+✅ 数值类动态值先校验再内联：`if (pageSize < 0 || pageSize > 1000) throw ...; ... LIMIT {new RawSql(pageSize.ToString())}`
+✅ 字符串类用户值走参数化：`$"WHERE {Expr.Prop("Name")} = {userInput}"`
 
 ## 12. 推荐写法小结
 
@@ -354,7 +392,7 @@ var result = await dataViewDAO.Search(
 4. 复杂多表查询预先给 `FromExpr`/`PropertyExpr` 设好表别名，避免依赖上下文自动分配。
 5. 完整 SQL 用 `isFull: true`，并配合 `{Table}`/`{From}`/`{AllFields}` 复用 DAO 的表定义。
 6. CTE 直接写完整 `WITH ... SELECT ...`，或改用 `SelectExpr.With(name)`。
-7. 仅在静态、受信任的方言片段场景下使用 `RawSql`；任何运行时值都必须走 `Expr` 或参数化路径。
+7. `RawSql` 仅用于不适合参数化的动态值（如 `LIMIT` 行数，需先校验为非负整数）或受信任的静态方言片段；字符串类用户值必须走 `Expr` 或参数化路径。
 
 ## 13. 相关链接
 

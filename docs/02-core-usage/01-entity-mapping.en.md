@@ -32,12 +32,14 @@ public class User
 ```csharp
 [Table("Users")]
 [Table("Logs_{0}", DataSource = "LogDB")]
+[Table("Logs", SyncTable = SyncTableMode.Always)]
 ```
 
 | Parameter | Description |
 |-----------|-------------|
 | `Name` | Database table name, supports placeholder for sharding. |
 | `DataSource` | Specifies the data source for the current entity. |
+| `SyncTable` | Entity-level table-structure sync mode, enum `SyncTableMode` (`Default` / `Never` / `Always`), defaults to `Default`. When set to `Never` or `Always`, it overrides the data-source-level `SyncTable` config. |
 
 ## `[Column]` Attribute
 

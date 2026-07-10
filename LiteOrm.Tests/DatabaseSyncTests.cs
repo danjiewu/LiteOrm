@@ -124,6 +124,68 @@ namespace LiteOrm.Tests
             }
         }
 
+        /// <summary>
+        /// 当实体类 TableAttribute.SyncTable=Never 时，即使连接池 SyncTable=true 也不应建表。
+        /// </summary>
+        [Fact]
+        public void EnsureTable_AttributeNever_OverridesPoolEnabled()
+        {
+            DropNeverTable();
+            _pool.DatabaseSync.ClearTableCache();
+
+            bool originalSync = _pool.SyncTable;
+            _pool.SyncTable = true;
+            try
+            {
+                var context = _pool.PeekContext();
+                try
+                {
+                    _pool.DatabaseSync.EnsureTable(context, typeof(NeverSyncTestModel));
+                }
+                finally
+                {
+                    _pool.ReturnContext(context);
+                }
+
+                Assert.False(NeverTableExists(), "TableAttribute.SyncTable=Never 时不应建表。");
+            }
+            finally
+            {
+                _pool.SyncTable = originalSync;
+            }
+        }
+
+        /// <summary>
+        /// 当实体类 TableAttribute.SyncTable=Always 时，即使连接池 SyncTable=false 也应建表。
+        /// </summary>
+        [Fact]
+        public void EnsureTable_AttributeAlways_OverridesPoolDisabled()
+        {
+            DropAlwaysTable();
+            _pool.DatabaseSync.ClearTableCache();
+
+            bool originalSync = _pool.SyncTable;
+            _pool.SyncTable = false;
+            try
+            {
+                var context = _pool.PeekContext();
+                try
+                {
+                    _pool.DatabaseSync.EnsureTable(context, typeof(AlwaysSyncTestModel));
+                }
+                finally
+                {
+                    _pool.ReturnContext(context);
+                }
+
+                Assert.True(AlwaysTableExists(), "TableAttribute.SyncTable=Always 时应建表。");
+            }
+            finally
+            {
+                _pool.SyncTable = originalSync;
+            }
+        }
+
         private bool TableExists()
         {
             var context = _pool.PeekContext();
@@ -158,10 +220,100 @@ namespace LiteOrm.Tests
                 _pool.ReturnContext(context);
             }
         }
+
+        private bool NeverTableExists()
+        {
+            var context = _pool.PeekContext();
+            try
+            {
+                using var cmd = context.CreateCommand();
+                cmd.CommandText = "SELECT 1 FROM \"NeverSyncTestTable\" WHERE 1=0";
+                cmd.ExecuteNonQuery();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                _pool.ReturnContext(context);
+            }
+        }
+
+        private void DropNeverTable()
+        {
+            var context = _pool.PeekContext();
+            try
+            {
+                using var cmd = context.CreateCommand();
+                cmd.CommandText = "DROP TABLE IF EXISTS \"NeverSyncTestTable\"";
+                cmd.ExecuteNonQuery();
+            }
+            finally
+            {
+                _pool.ReturnContext(context);
+            }
+        }
+
+        private bool AlwaysTableExists()
+        {
+            var context = _pool.PeekContext();
+            try
+            {
+                using var cmd = context.CreateCommand();
+                cmd.CommandText = "SELECT 1 FROM \"AlwaysSyncTestTable\" WHERE 1=0";
+                cmd.ExecuteNonQuery();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                _pool.ReturnContext(context);
+            }
+        }
+
+        private void DropAlwaysTable()
+        {
+            var context = _pool.PeekContext();
+            try
+            {
+                using var cmd = context.CreateCommand();
+                cmd.CommandText = "DROP TABLE IF EXISTS \"AlwaysSyncTestTable\"";
+                cmd.ExecuteNonQuery();
+            }
+            finally
+            {
+                _pool.ReturnContext(context);
+            }
+        }
     }
 
     [Table("SyncDecidingTestTable")]
     public class SyncDecidingTestModel
+    {
+        [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+        public int Id { get; set; }
+
+        [Column("Name")]
+        public string? Name { get; set; }
+    }
+
+    [Table("NeverSyncTestTable", SyncTable = SyncTableMode.Never)]
+    public class NeverSyncTestModel
+    {
+        [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+        public int Id { get; set; }
+
+        [Column("Name")]
+        public string? Name { get; set; }
+    }
+
+    [Table("AlwaysSyncTestTable", SyncTable = SyncTableMode.Always)]
+    public class AlwaysSyncTestModel
     {
         [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
         public int Id { get; set; }
