@@ -253,7 +253,7 @@ Usage notes:
 userService.UpdateAll(
     u => new User { Age = 30 },
     u => u.UserName == "UpdateDemo_Bob",
-    "Users_2026" // dynamic table name
+    "2026" // table name argument, fills {0} in [Table("Users_{0}")]
 );
 ```
 

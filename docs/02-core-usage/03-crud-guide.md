@@ -255,7 +255,7 @@ await userService.UpdateAllAsync(
 userService.UpdateAll(
     u => new User { Age = 30 },
     u => u.UserName == "UpdateDemo_Bob",
-    "Users_2026" // 动态表名
+    "2026" // 表名参数，对应 [Table("Users_{0}")] 中的 {0}
 );
 ```
 
