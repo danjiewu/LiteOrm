@@ -17,6 +17,13 @@ namespace LiteOrm.Common
         bool SupportCteExpr { get; }
 
         /// <summary>
+        /// 获取当前数据库是否要求显式声明递归 CTE（即使用 WITH RECURSIVE 语法）。
+        /// 若为 <see langword="true"/>，生成 SQL 时会在 WITH 后直接追加 RECURSIVE 关键字。
+        /// SQL Server、Oracle 等不需要显式 RECURSIVE 关键字的数据库可保持 <see langword="false"/>。
+        /// </summary>
+        bool ExplicitRecursive { get; }
+
+        /// <summary>
         /// 替换 SQL 中的命名占位符或标识符为目标数据库的命名格式。
         /// </summary>
         /// <param name="sql">原始 SQL 字符串。</param>

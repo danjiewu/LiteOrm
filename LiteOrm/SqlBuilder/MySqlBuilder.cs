@@ -18,6 +18,11 @@ namespace LiteOrm
         public static readonly new MySqlBuilder Instance = new MySqlBuilder();
 
         /// <summary>
+        /// MySQL 要求递归 CTE 必须使用 WITH RECURSIVE 语法显式声明。
+        /// </summary>
+        public override bool ExplicitRecursive => true;
+
+        /// <summary>
         /// 是否支持带自增列的批量插入并返回首个 ID。
         /// </summary>
         public override bool SupportBatchInsertWithIdentity => true;

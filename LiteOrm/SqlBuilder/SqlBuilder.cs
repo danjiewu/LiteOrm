@@ -61,6 +61,14 @@ namespace LiteOrm
         /// </summary>
         public virtual bool SupportCteExpr => true;
 
+        /// <summary>
+        /// 获取当前数据库是否要求显式声明递归 CTE（即使用 WITH RECURSIVE 语法）。
+        /// 默认返回 <see langword="false"/>，适用于 SQL Server、Oracle 等不需要显式 RECURSIVE 关键字的数据库。
+        /// MySQL、PostgreSQL、SQLite 等要求递归 CTE 必须使用 WITH RECURSIVE 语法的数据库应重写为 <see langword="true"/>。
+        /// 当本属性为 <see langword="true"/> 时，生成 SQL 会直接输出 WITH RECURSIVE。
+        /// </summary>
+        public virtual bool ExplicitRecursive => false;
+
         private readonly Dictionary<string, string> _functionMappings = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase)
         {
             ["IndexOf"] = "CHARINDEX",

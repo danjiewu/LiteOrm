@@ -18,6 +18,11 @@ namespace LiteOrm
         public static readonly new SQLiteBuilder Instance = new SQLiteBuilder();
 
         /// <summary>
+        /// SQLite 要求递归 CTE 必须使用 WITH RECURSIVE 语法显式声明。
+        /// </summary>
+        public override bool ExplicitRecursive => true;
+
+        /// <summary>
         /// 返回指定类型对应的Sqlite数据库类型。
         /// </summary>
         /// <param name="type">要转换的类型。</param>

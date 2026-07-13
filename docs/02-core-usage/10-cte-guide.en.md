@@ -103,6 +103,75 @@ LiteOrm now collects all CTEs in the expression tree and validates them by alias
 
 So you can safely reuse the same CTE expression multiple times, or reuse the same alias across a large expression tree, as long as the definition stays identical.
 
+## 5.1 Recursive CTE
+
+Recursive CTEs are used for hierarchical / tree-structured data (org charts, category trees, path finding, etc.). LiteOrm decides whether to emit the `RECURSIVE` keyword based on the database's `ExplicitRecursive` property.
+
+### Writing a recursive CTE
+
+To write a recursive CTE, reference the CTE's own alias within its definition. Create an alias-only `CommonTableExpr` for the self-reference:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// Anchor part: query root nodes
+var anchor = From<Category>()
+    .Where(Prop("ParentId") == 0)
+    .Select(
+        Prop("Id").As("Id"),
+        Prop("ParentId").As("ParentId"),
+        Prop("Name").As("Name"),
+        Const(1).As("Level"));
+
+// Recursive part: join children via self-referencing alias
+var selfRef = new CommonTableExpr { Alias = "CategoryTree" };
+var recursive = From<Category>()
+    .Join(selfRef, Prop("ParentId") == Prop("CategoryTree", "Id"))
+    .Select(
+        Prop("Id").As("Id"),
+        Prop("ParentId").As("ParentId"),
+        Prop("Name").As("Name"),
+        Prop("CategoryTree", "Level") + 1);
+
+// Combine anchor and recursive parts, wrap as CTE
+var cteDef = anchor.UnionAll(recursive);
+var query = cteDef.With("CategoryTree")
+    .Select(Prop("Id"), Prop("Name"), Prop("Level"));
+```
+
+### SQL generation behaviour
+
+Whether the `RECURSIVE` keyword is appended after `WITH` depends solely on the target database's `SqlBuilder.ExplicitRecursive` property:
+
+- `ExplicitRecursive` is `true`: all CTEs use `WITH RECURSIVE` (whether recursive or not)
+- `ExplicitRecursive` is `false`: all CTEs use `WITH` (no `RECURSIVE`)
+
+Default `ExplicitRecursive` values by database:
+
+| Database | `ExplicitRecursive` | Notes |
+|----------|---------------------|-------|
+| MySQL / TiDB / OceanBase / GreatDB | `true` | uses `WITH RECURSIVE` |
+| PostgreSQL / KingbaseES / GaussDB | `true` | uses `WITH RECURSIVE` |
+| SQLite | `true` | uses `WITH RECURSIVE` |
+| SQL Server | `false` | no `RECURSIVE` keyword needed |
+| Oracle / DM (Dameng) | `false` | no `RECURSIVE` keyword needed |
+
+For databases where `ExplicitRecursive` is `true`, the generated SQL looks like:
+
+```sql
+WITH RECURSIVE [CategoryTree] AS (
+    SELECT [Id], [ParentId], [Name], 1 AS [Level]
+    FROM [Categories]
+    WHERE [ParentId] = 0
+    UNION ALL
+    SELECT ... FROM [Categories] JOIN [CategoryTree] ON ...
+)
+SELECT [Id], [Name], [Level]
+FROM [CategoryTree]
+```
+
+For databases where `ExplicitRecursive` is `false` (e.g., SQL Server), only `WITH` is emitted (no `RECURSIVE`).
+
 ## 6. CTE serialization rules
 
 When an `Expr` / `SelectExpr` tree is serialized to JSON:

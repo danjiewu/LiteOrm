@@ -116,7 +116,7 @@ namespace LiteOrm.Common
 
                 if (cteList.Count > 0)
                 {
-                    sb.Append("WITH ");
+                    sb.Append(sqlBuilder.ExplicitRecursive ? "WITH RECURSIVE " : "WITH ");
                     for (int i = 0; i < cteList.Count; i++)
                     {
                         if (i > 0) sb.Append(",");
@@ -139,6 +139,8 @@ namespace LiteOrm.Common
         {
             var cteList = new List<CommonTableExpr>();
             var cteMap = new Dictionary<string, CommonTableExpr>(StringComparer.Ordinal);
+            // 记录引用了但尚未找到定义的别名（可能是递归 CTE 的自引用，定义在后序遍历中会稍晚到达）。
+            var pendingRefs = new HashSet<string>(StringComparer.Ordinal);
 
             ExprVisitor.Visit(node =>
             {
@@ -149,23 +151,31 @@ namespace LiteOrm.Common
 
                 if (!cteMap.TryGetValue(cte.Alias, out var existing))
                 {
-                    if (cte.Source == null)
+                    if (cte.Source != null)
                     {
-                        throw new InvalidOperationException($"CTE '{cte.Alias}' is referenced before its definition is available.");
+                        // 定义节点：加入集合
+                        cteMap.Add(cte.Alias, cte);
+                        cteList.Add(cte);
+                        // 定义已找到，从待解析集合中移除
+                        pendingRefs.Remove(cte.Alias);
                     }
-
-                    // 后序遍历保证第一次收集到的是最靠近定义的位置，后续同名节点只做一致性校验。
-                    cteMap.Add(cte.Alias, cte);
-                    cteList.Add(cte);
+                    else
+                    {
+                        // 引用节点（Source == null）且别名未定义：
+                        // 可能是递归 CTE 的自引用（定义节点在后序遍历中会稍晚到达），暂记录，不报错。
+                        pendingRefs.Add(cte.Alias);
+                    }
                     return true;
                 }
 
+                // 别名已存在
                 if (cte.Source == null)
                 {
                     // 只有别名的引用节点会复用首个完整定义，不再重复写入 WITH。
                     return true;
                 }
 
+                // 定义节点：校验一致性
                 if (!Equals(existing.Source, cte.Source))
                 {
                     throw new InvalidOperationException($"CTE '{cte.Alias}' has multiple different definitions.");
@@ -173,6 +183,12 @@ namespace LiteOrm.Common
 
                 return true;
             }, expr, ExprVisitOrder.PostOrder);
+
+            // 遍历结束后，检查是否有引用了但未定义的 CTE（排除递归自引用已找到定义的情况）
+            if (pendingRefs.Count > 0)
+            {
+                throw new InvalidOperationException($"CTE '{pendingRefs.First()}' is referenced but its definition is not available.");
+            }
 
             return cteList;
         }

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿using LiteOrm.Common;
+﻿﻿﻿﻿﻿using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -16,6 +16,11 @@ namespace LiteOrm
         /// PostgreSql SQL 构建器实例。
         /// </summary>
         public static readonly new PostgreSqlBuilder Instance = new PostgreSqlBuilder();
+
+        /// <summary>
+        /// PostgreSQL 要求递归 CTE 必须使用 WITH RECURSIVE 语法显式声明。
+        /// </summary>
+        public override bool ExplicitRecursive => true;
 
         /// <summary>
         /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。
