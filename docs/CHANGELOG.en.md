@@ -4,6 +4,8 @@
 
 ### Added
 - Added `RawSql` marker type to `ExprString` for inlining dynamic values unsuitable for parameterization (e.g. `LIMIT`/`OFFSET` row counts, `ASC`/`DESC` sort direction, dynamic column names); purely static text can be written directly in the literal (`6f401b6`)
+- Added CTE recursive keyword support (`81fade6`)
+- Added table-level `SyncTable` configuration on `[Table]` attribute, allowing per-entity `Never`/`Always` to override data-source-level sync strategy (`038e93b`)
 
 ---
 
