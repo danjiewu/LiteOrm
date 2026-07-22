@@ -7,6 +7,9 @@
 - Added CTE recursive keyword support (`81fade6`)
 - Added table-level `SyncTable` configuration on `[Table]` attribute, allowing per-entity `Never`/`Always` to override data-source-level sync strategy (`038e93b`)
 
+### Changed
+- When adding columns, `DatabaseSync` now appends a single bulk UPDATE for newly added columns whose `DefaultValue` is unset but whose property is a non-nullable value type, with type-appropriate defaults to satisfy NOT NULL constraints on pre-existing data (`8fd9662`)
+
 ---
 
 ## v8.0.19 (2026-07-06)
