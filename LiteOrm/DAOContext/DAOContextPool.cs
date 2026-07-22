@@ -46,6 +46,10 @@ namespace LiteOrm
     /// </remarks>
     public class DAOContextPool : IDisposable
     {
+        /// <summary>
+        /// 默认的最大参数数量限制，表示在执行SQL语句时允许的最大参数数量。超过此限制可能会导致性能下降或数据库错误。
+        /// </summary>
+        public const int DefaultParamCountLimit = 1000;
         private SemaphoreSlim _semaphore = new SemaphoreSlim(100, 100);
         private readonly Queue<DAOContext> _pool = new Queue<DAOContext>();
         private readonly object _poolLock = new object();
@@ -131,7 +135,7 @@ namespace LiteOrm
         /// <summary>
         /// 最大参数数量限制，0表示无限制，默认为2000。
         /// </summary>
-        public int ParamCountLimit { get; set; } = 2000;
+        public int ParamCountLimit { get; set; } = DefaultParamCountLimit;
 
         /// <summary>
         /// 获取或设置该连接池是否为只读连接池。

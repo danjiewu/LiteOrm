@@ -101,9 +101,9 @@ namespace LiteOrm
         public Type ProviderType { get; }
 
         /// <summary>
-        /// 最大参数数量，0表示无限制，默认为2000
+        /// 最大参数数量，0表示无限制，默认为1000
         /// </summary>
-        public int ParamCountLimit { get; set; } = 2000;
+        public int ParamCountLimit => Pool?.ParamCountLimit ?? DAOContextPool.DefaultParamCountLimit;
 
         /// <summary>
         /// 获取底层的数据库连接。
