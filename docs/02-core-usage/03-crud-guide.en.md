@@ -309,7 +309,7 @@ This example is ideal for validating that batch interfaces cover the entire path
 ```csharp
 using static LiteOrm.Common.Expr;
 await userService.DeleteAsync(u => u.CreateTime < DateTime.Today.AddYears(-1));
-await objectDao.Delete(Prop("Age") < 18 & Prop("UserName").StartsWith("Temp"));
+objectDao.Delete(Prop("Age") < 18 & Prop("UserName").StartsWith("Temp"));
 ```
 
 ### Conditional Delete Example

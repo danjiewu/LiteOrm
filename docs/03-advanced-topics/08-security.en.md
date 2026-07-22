@@ -138,10 +138,13 @@ int minAge = 18;
 
 // ExprString auto-handles:
 // - "WHERE " is a literal, appended directly
-// - {keyword} is a plain value, auto-parameterized as @0
+// - {Prop("UserName")} is an Expr, goes through ToSql parameterization
+// - " LIKE " is a literal
+// - {'%' + keyword + '%'} is a plain value, auto-parameterized
+// - " AND " is a literal
 // - {Prop("Age")} is an Expr, goes through ToSql parameterization
 // - " >= " is a literal
-// - {minAge} is a plain value, auto-parameterized as @1
+// - {minAge} is a plain value, auto-parameterized
 dao.Search($"WHERE {Prop("UserName")} LIKE {'%' + keyword + '%'} AND {Prop("Age")} >= {minAge}");
 ```
 

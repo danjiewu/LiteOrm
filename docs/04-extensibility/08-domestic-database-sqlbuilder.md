@@ -38,7 +38,7 @@ LiteOrm 自带以下方言构建器，可以直接通过数据源名或连接类
 
 ### 3.1 分析目标数据库的差异点
 
-在动手写代码之前，先对照 [差异速查表](#7-其他方言差异速查) 列出达梦与基础方言（Oracle）的差异：
+在动手写代码之前，先对照 [差异速查表](#6-其他方言差异速查) 列出达梦与基础方言（Oracle）的差异：
 
 | 差异点 | Oracle 默认 | 达梦期望 |
 |--------|-------------|----------|
@@ -414,7 +414,7 @@ options.RegisterSqlBuilder(typeof(YourCustomConnection), YourBuilder.Instance);
 接入一个新的国产 / 兼容数据库时，按以下步骤进行：
 
 1. **确定兼容基类**：根据目标数据库的 SQL 行为，从 `OracleBuilder` / `PostgreSqlBuilder` / `MySqlBuilder` / `SqlServerBuilder` / `SQLiteBuilder` / `SqlBuilder` 中选择最接近的基类。
-2. **列出差异点**：参照 [差异速查表](#7-其他方言差异速查) 与基础方言对照，列出需要覆盖的方法。
+2. **列出差异点**：参照 [差异速查表](#6-其他方言差异速查) 与基础方言对照，列出需要覆盖的方法。
 3. **实现子类**：在你自己的项目或独立包中新建 `XxxBuilder.cs`，仅覆盖差异方法，提供 `public static readonly new XxxBuilder Instance` 单例。
 4. **注册 SqlBuilder**：通过 `RegisterSqlBuilder(...)` 公开 API 写入 `RegisteredSqlBuilders` / `RegisteredSqlBuildersByDataSource` 字典。**无需修改 LiteOrm 源码**。详见 [3.3 注册自定义 SqlBuilder](#33-注册自定义-sqlbuilder)。
 5. **追加测试**：在你自己的测试项目中写断言，验证差异方法的输出符合预期；公共行为可参考 LiteOrm.Tests 中已有的参数化测试模式。

@@ -1,6 +1,6 @@
 # Expr Guide
 
-`Expr` is LiteOrm's core object-expression model,and this article mainly explains how to construct, compose, reuse, and understand its semantics.  
+`Expr` is LiteOrm's core object-expression model, and this article mainly explains how to construct, compose, reuse, and understand its semantics.  
 For the choice between Lambda, `Expr`, or `ExprString`, start with the [Query Overview](./04-query-overview.en.md). For Lambda usage, see the [Lambda Guide](./05-lambda-guide.en.md); for handwritten SQL in the DAO, see the [ExprString Guide](./07-exprstring-guide.en.md). 
 ## 1. Creating basic expressions
 

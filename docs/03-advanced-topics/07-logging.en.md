@@ -135,7 +135,7 @@ public interface IAccountService
 
 `[Log]` and `[Log(false)]` control **which data is allowed into logs**.
 
-## 4.1 On method parameters: hide sensitive inputs
+### 4.1 On method parameters: hide sensitive inputs
 
 The service interceptor reads `LogAttribute` from method parameters. If a parameter is marked as `[Log(false)]`, LiteOrm replaces its value with `*` in the invocation log.
 
@@ -176,7 +176,7 @@ public class User : ObjectBase
 
 With that setup, `PasswordHash` and `PasswordSalt` stay out of the generated log text.
 
-## 4.3 Customize log text for complex objects
+### 4.3 Customize log text for complex objects
 
 If the default `ObjectBase.ToLog()` output is not enough, a type can implement `ILogable` directly:
 

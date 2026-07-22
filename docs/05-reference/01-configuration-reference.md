@@ -17,7 +17,7 @@
         "KeepAliveDuration": "00:10:00",
         "PoolSize": 16,
         "MaxPoolSize": 100,
-        "ParamCountLimit": 2000,
+        "ParamCountLimit": 1000,
         "SyncTable": false,
         "ReadOnlyConfigs": [
           {
@@ -25,7 +25,7 @@
             "KeepAliveDuration": "00:15:00",
             "PoolSize": 32,
             "MaxPoolSize": 200,
-            "ParamCountLimit": 2000
+            "ParamCountLimit": 1000
           }
         ]
       }
@@ -52,7 +52,7 @@
 | `KeepAliveDuration` | `TimeSpan` | `00:10:00` | 连接保活时长，格式为 `HH:mm:ss`。 |
 | `PoolSize` | `int` | `16` | 缓存连接数，控制连接池预热数量。 |
 | `MaxPoolSize` | `int` | `100` | 最大并发连接数上限。 |
-| `ParamCountLimit` | `int` | `2000` | 单条 SQL 参数数量限制，防止参数过多导致数据库不支持。 |
+| `ParamCountLimit` | `int` | `1000` | 单条 SQL 参数数量限制，防止参数过多导致数据库不支持。 |
 | `SyncTable` | `bool` | `false` | 是否自动同步建表，生产环境建议关闭。连接池级默认值，可被 `[Table(SyncTable = ...)]` 实体级配置或 `DatabaseSync.OnTableSyncing` 事件覆盖。 |
 | `ReadOnlyConfigs` | `array` | `[]` | 只读库配置列表，用于读写分离。 |
 

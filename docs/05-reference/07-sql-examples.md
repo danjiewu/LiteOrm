@@ -213,7 +213,7 @@ FROM [Sales_202411] [T0]
 ## 10. 如何查看真实 SQL
 
 - 从 `SessionManager.Current?.SqlStack` 可获取当前会话执行的 SQL。
-- `SqlStack`最多保留最后10条SQL，每次调用 `Service` 方法后`SqlStack` 会清空。
+- `SqlStack`最多保留最后10条SQL，每次调用 `Service` 方法后 `SqlStack` 会清空。
 
 ## 相关链接
 

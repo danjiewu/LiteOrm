@@ -74,7 +74,7 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
 | `Unary` | 一元表达式（如 DISTINCT, -a 等） | - | `"unary"` |
 | `Update` | 更新片段，表示 UPDATE 语句 | `$update` | `"update"` |
 | `Value` | 值表达式 | `@`（变量）或直接值（常量） | `"value"` |
-| `ValueBinary` | 值二元表达式（算术或串联） | `"$":"+"`,`"$":"-"`,`"$":"*"`, `"$":"/`, `"$":"%"`, `"$":"||"` | `"bin"` |
+| `ValueBinary` | 值二元表达式（算术或串联） | `"$":"+"`,`"$":"-"`,`"$":"*"`, `"$":"/"`, `"$":"%"`, `"$":"||"` | `"bin"` |
 | `ValueSet` | 值集合表达式（用于 IN 或 CONCAT） | - | `"set"` |
 | `Where` | 筛选片段，表示 WHERE 条件 | `$where` | `"where"` |
 

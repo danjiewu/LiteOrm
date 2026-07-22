@@ -93,7 +93,7 @@ public delegate void FunctionSqlHandler(
     ref ValueStringBuilder outSql,
     FunctionExpr expr,
     SqlBuildContext context,
-    ISqlBuilder sqlBuilder,
+    SqlBuilder sqlBuilder,
     ICollection<KeyValuePair<string, object>> outputParams);
 ```
 
@@ -101,12 +101,12 @@ public delegate void FunctionSqlHandler(
 using static LiteOrm.Common.Expr;
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
 {
     outSql.Append("DATE_FORMAT(");
-    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(", ");
-    Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -149,15 +149,15 @@ LambdaExprConverter.RegisterMethodHandler("Format", (node, converter) => {
 using static LiteOrm.Common.Expr;
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
 {
-    if (Args.Count != 2)
+    if (expr.Args.Count != 2)
         throw new ArgumentException("DATE_FORMAT requires 2 arguments");
 
     outSql.Append("DATE_FORMAT(");
-    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(", ");
-    Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -219,10 +219,10 @@ LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", (node, converter)
 using static LiteOrm.Common.Expr;
 SqlBuilder.Instance.RegisterFunctionSqlHandler("YEAR",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
 {
     outSql.Append("YEAR(");
-    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -250,13 +250,13 @@ LambdaExprConverter.RegisterMethodHandler("CustomProcess", (node, converter) => 
 using static LiteOrm.Common.Expr;
 SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_PROCESS",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
 {
-    if (Args.Count != 1)
+    if (expr.Args.Count != 1)
         throw new ArgumentException("CUSTOM_PROCESS requires 1 argument");
 
     outSql.Append("dbo.CustomProcess(");
-    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -288,23 +288,23 @@ var users = await userService.SearchAsync(
 ```csharp
 using static LiteOrm.Common.Expr;
 // MySQL
-MySqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => {
     outSql.Append("MYSQL_CUSTOM(");
-    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 
 // SQL Server
-SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
+SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => {
     outSql.Append("dbo.CustomFunc(");
-    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 
 // Oracle
-OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
+OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => {
     outSql.Append("CUSTOM_FUNC(");
-    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```
@@ -314,9 +314,9 @@ OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, ex
 ```csharp
 using static LiteOrm.Common.Expr;
 // 全局注册（SqlBuilder.Instance 对应默认数据库）
-SqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref outSql, expr, context, sqlBuilder, outputParams) => {
+SqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => {
     outSql.Append("CUSTOM_FUNC(");
-    Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 ```

@@ -103,7 +103,7 @@ LiteOrm now collects all CTEs in the expression tree and validates them by alias
 
 So you can safely reuse the same CTE expression multiple times, or reuse the same alias across a large expression tree, as long as the definition stays identical.
 
-## 5.1 Recursive CTE
+### 5.1 Recursive CTE
 
 Recursive CTEs are used for hierarchical / tree-structured data (org charts, category trees, path finding, etc.). LiteOrm decides whether to emit the `RECURSIVE` keyword based on the database's `ExplicitRecursive` property.
 
@@ -230,7 +230,7 @@ Here the `WITH ...` part is handwritten SQL, LiteOrm only continues handling int
 It can also be constructed by inserting a `SelectExpr`:
 
 ```csharp
-using static LiteOrm.Expr;
+using static LiteOrm.Common.Expr;
 
 Expr cteDef = From(typeof(User))
     .Select(

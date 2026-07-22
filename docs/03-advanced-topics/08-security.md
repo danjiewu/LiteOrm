@@ -138,10 +138,13 @@ int minAge = 18;
 
 // ExprString 自动处理：
 // - "WHERE " 是字面量，直接追加
-// - {keyword} 是普通值，自动参数化为 @0
+// - {Prop("UserName")} 是 Expr，走 ToSql 参数化路径
+// - " LIKE " 是字面量
+// - {'%' + keyword + '%'} 是普通值，自动参数化
+// - " AND " 是字面量
 // - {Prop("Age")} 是 Expr，走 ToSql 参数化路径
 // - " >= " 是字面量
-// - {minAge} 是普通值，自动参数化为 @1
+// - {minAge} 是普通值，自动参数化
 dao.Search($"WHERE {Prop("UserName")} LIKE {'%' + keyword + '%'} AND {Prop("Age")} >= {minAge}");
 ```
 

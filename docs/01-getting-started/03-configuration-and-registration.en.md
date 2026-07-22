@@ -19,7 +19,7 @@ LiteOrm reads a `LiteOrm` configuration section, then wires up services, DAO typ
         "KeepAliveDuration": "00:10:00",
         "PoolSize": 16,
         "MaxPoolSize": 100,
-        "ParamCountLimit": 2000,
+        "ParamCountLimit": 1000,
         "SyncTable": false,
         "ReadOnlyConfigs": [
           {
@@ -110,7 +110,7 @@ LiteOrm reads a `LiteOrm` configuration section, then wires up services, DAO typ
 | `SqlBuilder` | Optional custom dialect type | No | `null` (auto-detect) |
 | `KeepAliveDuration` | Connection keep-alive duration | No | `00:10:00` |
 | `PoolSize` / `MaxPoolSize` | Connection pool sizing | No | `16` / `100` |
-| `ParamCountLimit` | Parameter-count cap for one SQL statement | No | `2000` |
+| `ParamCountLimit` | Parameter-count cap for one SQL statement | No | `1000` |
 | `DataSources[].SyncTable` | Whether to auto-sync table creation (pool-level default; can be overridden per entity type via the `[Table(SyncTable = ...)]` attribute) | No | `false` |
 | `ReadOnlyConfigs` | Read replicas for read/write splitting | No | `[]` |
 

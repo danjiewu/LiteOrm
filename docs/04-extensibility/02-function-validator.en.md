@@ -58,7 +58,7 @@ var validator = new FunctionExprValidator(FunctionPolicy.AllowRegisted);
 
 ## 4. Validation Interface
 
-`FunctionExprValidator` inherits from `ExprValidator`. Single node validation uses `Validate(node)`, while full expression tree validation more commonly uses `VisitAll(expr)`:
+`FunctionExprValidator` inherits from `ExprValidator`. Single node validation uses `Validate(node)`, while full expression tree validation more commonly uses `Validate(expr)`:
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -103,7 +103,7 @@ public class UserQueryService
     public async Task<List<User>> SearchAsync(Expr query)
     {
         // Validate query expression
-        if (!_validator.VisitAll(query))
+        if (!_validator.Validate(query))
             throw new InvalidOperationException("Query contains disallowed function expressions");
 
         return await _userViewDAO.Search(query).ToListAsync();
@@ -121,7 +121,7 @@ public class SafeUserDAO : ObjectViewDAO<User>
 
     public async Task<List<User>> SafeSearchAsync(Expr expr)
     {
-        if (!Validator.VisitAll(expr))
+        if (!Validator.Validate(expr))
             throw new SecurityException("Expression validation failed");
 
         return await Search(expr).ToListAsync();
@@ -145,7 +145,7 @@ public class QueryInterceptor
 
     public void Intercept(Expr query)
     {
-        if (!_validator.VisitAll(query))
+        if (!_validator.Validate(query))
         {
             throw new UnauthorizedAccessException(
                 "Query contains unauthorized function expressions");
@@ -164,7 +164,7 @@ MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", ...);
 var validator = FunctionExprValidator.AllowRegisted;
 var expr = new FunctionExpr("DATE_FORMAT", ...);
 
-if (!validator.VisitAll(expr))
+if (!validator.Validate(expr))
     throw new InvalidOperationException("Function not registered, execution disallowed");
 ```
 
@@ -182,17 +182,17 @@ var validator = FunctionExprValidator.AllowRegisted;
 
 // DATE_FORMAT - allowed (registered)
 var expr1 = new FunctionExpr("DATE_FORMAT", ...);
-validator.VisitAll(expr1);  // true
+validator.Validate(expr1);  // true
 
 // CUSTOM_UNREGISTERED - rejected (not registered)
 var expr2 = new FunctionExpr("CUSTOM_UNREGISTERED", ...);
-validator.VisitAll(expr2);  // false
+validator.Validate(expr2);  // false
 ```
 
 ## 7. Caveats
 
 1. **Validation timing**: It is recommended to validate the entire Expr tree before query execution, not just the root node.
-2. **Invocation method**: Prefer using `validator.VisitAll(expr)` in business scenarios; `Validate(node)` is more suitable for overriding when implementing validators.
+2. **Invocation method**: Prefer using `validator.Validate(expr)` in business scenarios; `Validate(node)` is more suitable for overriding when implementing validators.
 3. **Performance impact**: The validation process traverses the expression tree, which has some performance overhead.
 4. **Security consideration**: It is recommended to use `AllowRegisted` policy in production environments.
 

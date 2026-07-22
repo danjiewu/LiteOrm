@@ -150,7 +150,7 @@ public interface IAuthService
 
 > `CancellationToken` 在框架中默认不会展开记录，即使不写 `[Log(false)]` 也会被排除。
 
-## 4.2 用在实体属性上：避免对象日志泄露字段
+### 4.2 用在实体属性上：避免对象日志泄露字段
 
 `ObjectBase` 实现了 `ILogable`。当服务日志记录实体对象时，会优先调用 `ToLog()`；而 `ObjectBase.ToLog()` 会读取属性上的 `LogAttribute`。
 
@@ -176,7 +176,7 @@ public class User : ObjectBase
 
 这样在记录 `User` 对象时，`PasswordHash`、`PasswordSalt` 不会出现在日志文本里。
 
-## 4.3 自定义复杂对象的日志内容
+### 4.3 自定义复杂对象的日志内容
 
 如果默认的 `ObjectBase.ToLog()` 还不够，可以让类型自己实现 `ILogable`：
 

@@ -311,7 +311,7 @@ await service.BatchDeleteAsync(inserted);
 ```csharp
 using static LiteOrm.Common.Expr;
 await userService.DeleteAsync(u => u.CreateTime < DateTime.Today.AddYears(-1));
-await objectDao.Delete(Prop("Age") < 18 & Prop("UserName").StartsWith("Temp"));
+objectDao.Delete(Prop("Age") < 18 & Prop("UserName").StartsWith("Temp"));
 ```
 
 ### 条件删除示例

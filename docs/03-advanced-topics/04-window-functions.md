@@ -191,7 +191,7 @@ FROM Sales_yyyyMM s
 ### 4.1 直接构造 Expr
 
 ```csharp
-// 累计总，使用内置 Over 函数
+// 累计总和，使用内置 Over 函数
 var productTotalExpr = Func("SUM", Prop(nameof(SalesRecord.Amount)))
     .Over(new[] { Prop(nameof(SalesRecord.ProductId)) });
 

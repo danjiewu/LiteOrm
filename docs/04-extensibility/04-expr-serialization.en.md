@@ -76,7 +76,7 @@ For learning, this order works well:
 | `Unary` | Unary expression (for example DISTINCT or -a) | - | `"unary"` |
 | `Update` | Update segment, represents UPDATE | `$update` | `"update"` |
 | `Value` | Value expression | `@` (variable) or direct value (const) | `"value"` |
-| `ValueBinary` | Value binary expression (arithmetic or concat) |`"$":"+"`,`"$":"-"`,`"$":"*"`, `"$":"/`, `"$":"%"`, `"$":"||"` | `"bin"` |
+| `ValueBinary` | Value binary expression (arithmetic or concat) |`"$":"+"`,`"$":"-"`,`"$":"*"`, `"$":"/"`, `"$":"%"`, `"$":"||"` | `"bin"` |
 | `ValueSet` | Value-set expression (for IN or CONCAT) | - | `"set"` |
 | `Where` | Filter segment, represents WHERE | `$where` | `"where"` |
 

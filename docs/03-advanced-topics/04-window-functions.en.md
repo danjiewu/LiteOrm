@@ -4,7 +4,7 @@ LiteOrm supports window functions (Window Functions) through its expression exte
 
 ## 1. Window Functions Overview
 
-Window functions perform aggregate or analytical calculations on a **set of rows** while returning both the detail data for each row.
+Window functions perform aggregate or analytical calculations on a **set of rows** while returning the detail data for each row.
 
 ### 1.1 Common Window Functions
 

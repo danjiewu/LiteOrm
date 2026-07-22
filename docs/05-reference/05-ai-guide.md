@@ -17,7 +17,7 @@
         "KeepAliveDuration": "00:10:00",
         "PoolSize": 16,
         "MaxPoolSize": 100,
-        "ParamCountLimit": 2000,
+        "ParamCountLimit": 1000,
         "SyncTable": false,
         "ReadOnlyConfigs": [
           {
@@ -44,7 +44,7 @@
 | `DataSources[].KeepAliveDuration` | `TimeSpan` | `00:10:00` | 连接保活时长（`00:00:00` = 无限制）               |
 | `DataSources[].PoolSize`          | `int`      | `16`       | 连接池缓存的最大连接数                            |
 | `DataSources[].MaxPoolSize`       | `int`      | `100`      | 最大并发连接数限制                              |
-| `DataSources[].ParamCountLimit`   | `int`      | `2000`     | SQL 参数数量上限（`0` = 无限制）                  |
+| `DataSources[].ParamCountLimit`   | `int`      | `1000`     | SQL 参数数量上限（`0` = 无限制）                  |
 | `DataSources[].SyncTable`         | `bool`     | `false`    | 是否自动同步建表；连接池级默认值，可被 `[Table(SyncTable = ...)]` 实体级配置或 `DatabaseSync.OnTableSyncing` 事件覆盖 |
 | `DataSources[].ReadOnlyConfigs[]` | `array`    | `[]`       | 只读库配置列表（读写分离），各字段不填时继承主库配置             |
 
@@ -136,8 +136,8 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `UpdateOrInsert(T entity)`                           | `bool` |
 | `Delete(T entity)`                                   | `bool` |
 | `DeleteID(object id, params string[] tableArgs)`     | `bool` |
-| `Delete(LogicExpr expr, params string[] tableArgs)`  | `int`  |
-| `Update(UpdateExpr expr, params string[] tableArgs)` | `int`  |
+| `DeleteAll(LogicExpr expr, params string[] tableArgs)`  | `int`  |
+| `UpdateAll(UpdateExpr expr, params string[] tableArgs)` | `int`  |
 | `BatchInsert(IEnumerable<T> entities)`               | `void` |
 | `BatchUpdate(IEnumerable<T> entities)`               | `void` |
 | `BatchUpdateOrInsert(IEnumerable<T> entities)`       | `void` |
@@ -153,8 +153,8 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `UpdateOrInsertAsync(T entity, CancellationToken ct = default)`                           | `Task<bool>` |
 | `DeleteAsync(T entity, CancellationToken ct = default)`                                   | `Task<bool>` |
 | `DeleteIDAsync(object id, string[] tableArgs = null, CancellationToken ct = default)`     | `Task<bool>` |
-| `DeleteAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken ct = default)`  | `Task<int>`  |
-| `UpdateAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken ct = default)` | `Task<int>`  |
+| `DeleteAllAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken ct = default)`  | `Task<int>`  |
+| `UpdateAllAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken ct = default)` | `Task<int>`  |
 | `BatchInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`               | `Task`       |
 | `BatchUpdateAsync(IEnumerable<T> entities, CancellationToken ct = default)`               | `Task`       |
 | `BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken ct = default)`       | `Task`       |

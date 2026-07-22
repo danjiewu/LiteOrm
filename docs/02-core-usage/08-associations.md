@@ -76,6 +76,7 @@ public class Order
 
     [Column("Amount")]
     public decimal Amount { get; set; }
+}
 ```
 
 - 说明：ForeignType 用于标注外键列对应的外部实体。查询视图时，通过视图类中的 ForeignColumn 可以自动生成 JOIN 并读取外表列。
@@ -111,8 +112,8 @@ public class DocumentView : Document
 ### 2.3 TableJoin（类级）
 
 ```csharp
-[TableJoin(typeof(Department), "ParentId", AliasName = "Parent", JoinType = TableJoinType.Left)]
-[TableJoin(typeof(Department), "DeptId", AliasName = "Dept", JoinType = TableJoinType.Left)]
+[TableJoin(typeof(Department), "ParentId", Alias = "Parent", JoinType = TableJoinType.Left)]
+[TableJoin(typeof(Department), "DeptId", Alias = "Dept", JoinType = TableJoinType.Left)]
 public class User { /* ... */ }
 
 public class OrderView : Order
@@ -132,7 +133,7 @@ public class OrderView : Order
   这会覆盖默认“按目标表主键关联”的行为，但**不作为推荐写法**，常规场景仍应优先保持目标表主键定义与关联关系一致。
 
 ```csharp
-[TableJoin(typeof(OrderItem), "OrderId,LineNo", AliasName = "Item")]
+[TableJoin(typeof(OrderItem), "OrderId,LineNo", Alias = "Item")]
 public class Shipment
 {
     [Column("OrderId")]
@@ -216,7 +217,7 @@ public class SalesRecordView : SalesRecord
 
 ```csharp
 [Table("Users")]
-[TableJoin("Dept", typeof(Department), nameof(Department.ParentId), AliasName = "Parent")]
+[TableJoin("Dept", typeof(Department), nameof(Department.ParentId), Alias = "Parent")]
 public class User
 {
     [Column("DeptId")]

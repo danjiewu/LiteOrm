@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
@@ -133,7 +133,7 @@ namespace LiteOrm
         public string Name { get; set; }
 
         /// <summary>
-        /// 最大参数数量限制，0表示无限制，默认为2000。
+        /// 最大参数数量限制，0表示无限制，默认为1000。
         /// </summary>
         public int ParamCountLimit { get; set; } = DefaultParamCountLimit;
 

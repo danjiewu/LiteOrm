@@ -17,7 +17,7 @@ This page is a complete reference for LiteOrm configuration fields, defaults, an
         "KeepAliveDuration": "00:10:00",
         "PoolSize": 16,
         "MaxPoolSize": 100,
-        "ParamCountLimit": 2000,
+        "ParamCountLimit": 1000,
         "SyncTable": false,
         "ReadOnlyConfigs": [
           {
@@ -25,7 +25,7 @@ This page is a complete reference for LiteOrm configuration fields, defaults, an
             "KeepAliveDuration": "00:15:00",
             "PoolSize": 32,
             "MaxPoolSize": 200,
-            "ParamCountLimit": 2000
+            "ParamCountLimit": 1000
           }
         ]
       }
@@ -52,7 +52,7 @@ This page is a complete reference for LiteOrm configuration fields, defaults, an
 | `KeepAliveDuration` | `TimeSpan` | `00:10:00` | connection keep-alive duration, format: `HH:mm:ss` |
 | `PoolSize` | `int` | `16` | cached connection count, controls pool pre-warming |
 | `MaxPoolSize` | `int` | `100` | maximum concurrent connections |
-| `ParamCountLimit` | `int` | `2000` | parameter-count limit per SQL statement |
+| `ParamCountLimit` | `int` | `1000` | parameter-count limit per SQL statement |
 | `SyncTable` | `bool` | `false` | whether to auto-sync table creation, disable in production. Pool-level default; can be overridden per entity type via the `[Table(SyncTable = ...)]` attribute or the `DatabaseSync.OnTableSyncing` event. |
 | `ReadOnlyConfigs` | `array` | `[]` | read-only replica configuration list |
 

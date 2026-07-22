@@ -114,7 +114,7 @@ If the target table uses a **composite primary key**, you can use `ForeignKeys =
 If you have a compatibility-driven mapping that must join by non-primary target fields, you can explicitly override the target join keys with `PrimeKeys = "Code"` or `PrimeKeys = "Key1,Key2"`. This overrides the default "join by target primary key" behavior, but it is **not the recommended style** for normal models.
 
 ```csharp
-[TableJoin(typeof(OrderItem), "OrderId,LineNo", AliasName = "Item")]
+[TableJoin(typeof(OrderItem), "OrderId,LineNo", Alias = "Item")]
 public class Shipment
 {
     [Column("OrderId")]
@@ -160,7 +160,7 @@ Note: The core purpose of AutoExpand is to "make the next level of relationship 
 
 ### 2.5 Cascade Example
 
-`LiteOrm.Demo\Models\User.cs` provides a practical secondary relationship expansion model:
+`LiteOrm.Demo\Models\SalesRecord.cs` provides a practical secondary relationship expansion model:
 
 ```csharp
 [Table("Sales_{0}")]
@@ -195,7 +195,7 @@ Demonstrates "Department + Parent Department" two-level relationship:
 
 ```csharp
 [Table("Users")]
-[TableJoin("Dept", typeof(Department), nameof(Department.ParentId), AliasName = "Parent")]
+[TableJoin("Dept", typeof(Department), nameof(Department.ParentId), Alias = "Parent")]
 public class User
 {
     [Column("DeptId")]

@@ -19,7 +19,7 @@
         "KeepAliveDuration": "00:10:00",
         "PoolSize": 16,
         "MaxPoolSize": 100,
-        "ParamCountLimit": 2000,
+        "ParamCountLimit": 1000,
         "SyncTable": false,
         "ReadOnlyConfigs": [
           {
@@ -112,7 +112,7 @@
 | `DataSources[].KeepAliveDuration` | 连接保活时长。 | 否 | `00:10:00` |
 | `DataSources[].PoolSize` | 连接池缓存的最大连接数。 | 否 | `16` |
 | `DataSources[].MaxPoolSize` | 最大并发连接数上限。 | 否 | `100` |
-| `DataSources[].ParamCountLimit` | 单条 SQL 参数数量限制。 | 否 | `2000` |
+| `DataSources[].ParamCountLimit` | 单条 SQL 参数数量限制。 | 否 | `1000` |
 | `DataSources[].SyncTable` | 是否自动同步建表（连接池级默认值，可被 `[Table(SyncTable = ...)]` 实体级配置覆盖）。 | 否 | `false` |
 | `DataSources[].ReadOnlyConfigs` | 只读库配置，用于读写分离。 | 否 | `[]` |
 

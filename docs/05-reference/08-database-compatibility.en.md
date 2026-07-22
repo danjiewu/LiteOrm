@@ -118,7 +118,7 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 | SQL Server (base) | ✅ column-level `IDENTITY(n, m)` | ✅ same | `IDENTITY(1000,5)` |
 | Dameng DM | ✅ column-level `IDENTITY(n, m)` | ✅ same | `IDENTITY(1000, 5)` |
 | Oracle 12c+ | ✅ `START WITH n` | ✅ `INCREMENT BY m` | `GENERATED AS IDENTITY (START WITH 1000 INCREMENT BY 5)` |
-| MySQL / OceanBase / TiDB / GreatDB | ⚠️ table-level `AUTO_INCREMENT = n` | ❌ session variable `auto_increment_increment` | `CREATE TABLE ... ) AUTO_INCREMENT = 1000` |
+| MySQL / OceanBase / TiDB / GreatDB | ⚠️ table-level `AUTO_INCREMENT = n` | ❌ session variable `auto_increment_increment` | `CREATE TABLE (...) AUTO_INCREMENT = 1000` |
 | SQLite | ❌ not customizable | ❌ not customizable | `AUTOINCREMENT` (fixed rowid increment) |
 | PostgreSQL / KingbaseES / GaussDB | ❌ controlled by sequence | ❌ same | no column-level fragment; operate the underlying sequence manually |
 

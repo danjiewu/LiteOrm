@@ -237,7 +237,7 @@ var page = await userService.SearchAsync(
 );
 ```
 
-The key point of this pattern is: paging differences are only handled in `SqlBuilder`, while the business layer maintains a unified `Skip/Take`写法.
+The key point of this pattern is: paging differences are only handled in `SqlBuilder`, while the business layer maintains a unified `Skip/Take` syntax.
 
 ## 4. Generated SQL Examples
 

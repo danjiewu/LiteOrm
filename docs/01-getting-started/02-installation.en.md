@@ -33,7 +33,7 @@ This document covers the runtime environment, database support, and installation
 
 > Domestic databases inherit behavior from their mainstream counterparts and are auto-detected with priority. See [Database Compatibility Notes](../05-reference/08-database-compatibility.en.md) for details.
 
-> For older database versions where default pagination syntax is incompatible, refer to [Custom Paging](../03-advanced-topics/05-custom-paging.md) and [Custom SqlBuilder / Dialect Extension](../04-extensibility/03-custom-sqlbuilder.md).
+> For older database versions where default pagination syntax is incompatible, refer to [Custom Paging](../03-advanced-topics/05-custom-paging.en.md) and [Custom SqlBuilder / Dialect Extension](../04-extensibility/03-custom-sqlbuilder.en.md).
 
 ### Database Provider Reference Table
 
@@ -85,7 +85,7 @@ dotnet add package Microsoft.Data.Sqlite
 
 ## Creating a New Project from Scratch
 
-> Here are the complete commandsoodo create an ASP.NET Core project with LiteOrm from scratch:
+> Here are the complete commands to create an ASP.NET Core project with LiteOrm from scratch:
 
 ```bash
 # 1. Create a Web API project
