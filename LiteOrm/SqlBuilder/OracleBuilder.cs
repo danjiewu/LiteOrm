@@ -300,7 +300,7 @@ namespace LiteOrm
         /// 返回 Oracle 专用的 DEFAULT 值 SQL 字面量。
         /// 日期类型使用 Oracle 的 <c>TIMESTAMP '...'</c> 语法。
         /// </summary>
-        protected override string GetDefaultValueSql(ColumnDefinition column)
+        public override string GetDefaultValueSql(ColumnDefinition column)
         {
             switch (column.DbType)
             {

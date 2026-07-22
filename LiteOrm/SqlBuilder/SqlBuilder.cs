@@ -730,7 +730,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="column">列定义。</param>
         /// <returns>默认值 SQL 字面量，例如 <c>0</c>、<c>''</c>、<c>'1900-01-01'</c>。</returns>
-        protected virtual string GetDefaultValueSql(ColumnDefinition column)
+        public virtual string GetDefaultValueSql(ColumnDefinition column)
         {
             if (!string.IsNullOrEmpty(column.DefaultValue))
             {

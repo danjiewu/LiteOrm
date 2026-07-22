@@ -239,6 +239,8 @@ namespace LiteOrm
                     if (missing.Count > 0)
                     {
                         statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, missing));
+                        var updateSql = BuildMissingColumnsDefaultUpdateSql(tableName, missing);
+                        if (updateSql != null) statements.Add(updateSql);
                         foreach (var col in missing.Where(c => c.IsIndex || c.IsUnique))
                             statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
                         foreach (var c in missing) existingCols.Add(c.Name);
@@ -259,6 +261,8 @@ namespace LiteOrm
                     if (actualMissing.Count > 0)
                     {
                         statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, actualMissing));
+                        var updateSql = BuildMissingColumnsDefaultUpdateSql(tableName, actualMissing);
+                        if (updateSql != null) statements.Add(updateSql);
                         foreach (var col in actualMissing.Where(c => c.IsIndex || c.IsUnique))
                             statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
                     }
@@ -295,6 +299,8 @@ namespace LiteOrm
                     if (missing.Count > 0)
                     {
                         statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, missing));
+                        var updateSql = BuildMissingColumnsDefaultUpdateSql(tableName, missing);
+                        if (updateSql != null) statements.Add(updateSql);
                         foreach (var col in missing.Where(c => c.IsIndex || c.IsUnique))
                             statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
                         foreach (var c in missing) existingCols.Add(c.Name);
@@ -315,6 +321,8 @@ namespace LiteOrm
                     if (actualMissing.Count > 0)
                     {
                         statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, actualMissing));
+                        var updateSql = BuildMissingColumnsDefaultUpdateSql(tableName, actualMissing);
+                        if (updateSql != null) statements.Add(updateSql);
                         foreach (var col in actualMissing.Where(c => c.IsIndex || c.IsUnique))
                             statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
                     }
@@ -447,6 +455,33 @@ namespace LiteOrm
             using var cmd = daoContext.CreateCommand();
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>
+        /// 为新增列中未指定 <see cref="ColumnDefinition.DefaultValue"/> 但属性为非空值类型的列，
+        /// 生成一条全量 UPDATE 语句，将这些列在已有行中的 NULL 值填充为类型相关的默认值。
+        /// </summary>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="columns">本次新增的列集合。</param>
+        /// <returns>UPDATE 语句；若无符合条件的列则返回 <c>null</c>。</returns>
+        private string BuildMissingColumnsDefaultUpdateSql(string tableName, IEnumerable<ColumnDefinition> columns)
+        {
+            var setters = new List<string>();
+            foreach (var column in columns)
+            {
+                if (column.IsIdentity) continue;
+                if (!string.IsNullOrEmpty(column.DefaultValue)) continue;
+
+                var propType = column.PropertyType;
+                if (!propType.IsValueType) continue;
+                if (Nullable.GetUnderlyingType(propType) != null) continue;
+
+                string quotedCol = sqlBuilder.ToSqlName(column.Name);
+                string defaultValue = sqlBuilder.GetDefaultValueSql(column);
+                setters.Add($"{quotedCol} = {defaultValue}");
+            }
+            if (setters.Count == 0) return null;
+            return $"UPDATE {sqlBuilder.ToSqlName(tableName)} SET {string.Join(", ", setters)}";
         }
 
         private async Task ExecuteSqlAsync(DAOContext daoContext, string sql)
