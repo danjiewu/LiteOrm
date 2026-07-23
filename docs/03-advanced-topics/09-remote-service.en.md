@@ -221,7 +221,9 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `RemoteServiceUri` | `Uri?` | Remote service base address. When set, automatically registers `HttpRemoteServiceTransport` based on `HttpClient` |
 | `RemoteServicePath` | `string` | Request path relative to `RemoteServiceUri`, default `api/remote/invoke` |
 | `RemoteConnectPath` | `string` | Connect path relative to `RemoteServiceUri`, default `api/remote/connect` |
-| `Credentials` | `RemoteCredentials?` | Remote invocation credentials. Uses `Username`/`Password` or `ClientId`/`ClientSecret` based on `GrantType` to establish an authenticated session during the Connect phase |
+| `Credentials` | `RemoteCredentials?` | Remote invocation credentials. Only used when `CredentialsMode = SingleCredential` (default). The caller must manually call `ConnectAsync(credentials)` once; the cookie returned by the server is cached, and subsequent `InvokeAsync` calls automatically reuse it |
+| `CredentialsMode` | `RemoteCredentialsMode` | Credential mode, default `SingleCredential`. Set to `Dynamic` to resolve credentials per-session via `CredentialsResolver`. The transport caches each session's cookie by credential key, so multiple users do not interfere with each other |
+| `CredentialsResolver` | `Func<IServiceProvider, RemoteCredentials?>?` | Dynamic credential resolver. Only effective in `Dynamic` mode. Receives the DI Scope's `IServiceProvider` and returns the `RemoteCredentials` for that session; returning null means anonymous connection (Invoke without Cookie) |
 | `ConfigureHttpClient` | `Action<HttpClient>?` | Configure the internal `HttpClient` (timeout, default headers, etc.) |
 | `Transport` | `IRemoteServiceTransport?` | Custom transport layer instance. Takes precedence over `RemoteServiceUri` when set |
 | `AutoRegisterEntityServices` | `bool` | Whether to auto-register all entity services as remote proxies, default `true` |
@@ -466,9 +468,204 @@ var host = Host.CreateDefaultBuilder(args)
     .Build();
 ```
 
-After setting `Credentials`, the framework automatically calls `ConnectAsync` before the first invocation to complete authentication. When no credentials are set, anonymous connection is used.
+After setting `Credentials`, the caller must manually call `ConnectAsync` once to complete authentication: the server validates the credentials and returns a cookie, which the transport caches by credential key. All subsequent `InvokeAsync` calls automatically reuse that cookie without re-authenticating. If no credentials are set or `ConnectAsync` is not called, Invoke proceeds as anonymous.
 
-### 5.5 Accessing the Current User on the Server
+#### Manual Connect Trigger
+
+The framework does not auto-issue Connect. The caller must explicitly call `ConnectAsync` to establish an authenticated session. On success, the cookie is cached and subsequent Invoke calls reuse it:
+
+```csharp
+using var scope = host.Services.CreateScope();
+var transport = scope.ServiceProvider.GetRequiredService<IRemoteServiceTransport>();
+
+try
+{
+    // Actively establish an authenticated connection; throws RemoteTransportException immediately on invalid credentials
+    // On success, the cookie returned by the server is cached and all subsequent Invoke calls automatically reuse it
+    await transport.ConnectAsync(new RemoteCredentials
+    {
+        GrantType = AuthGrantType.ClientCredentials,
+        ClientId = "my-app",
+        ClientSecret = "secret-key",
+    });
+    Console.WriteLine("Connected");
+}
+catch (RemoteTransportException ex)
+{
+    Console.WriteLine($"Connection failed: {ex.Message}");
+}
+```
+
+> After a successful manual `ConnectAsync`, subsequent `InvokeAsync` calls will not repeat the Connect request; calling `ConnectAsync` again with new credentials switches identity.
+
+### 5.5 Dynamic Credentials Mode (Multi-User Session Isolation)
+
+`SingleCredential` mode shares one credential and one cookie across the entire process, which cannot distinguish multiple users. When a web backend needs to call the remote data service with the identity of "the end user of the current request" (i.e., BFF / gateway forwarding scenario), switch to `Dynamic` mode:
+
+- `IRemoteServiceTransport` is registered as **Singleton**, with a single shared `HttpClient` (`UseCookies` disabled)
+- `HttpRemoteServiceTransport` uses an internal `ConcurrentDictionary<string, string>` to **cache each session's cookie by credential key**, so multiple users do not interfere with each other
+- On `InvokeAsync`, `CredentialsResolver` resolves the current session's credentials and the cached cookie for that key is written to the `Cookie` request header; on cache miss, an anonymous (cookie-less) request is sent
+- The caller must call `ConnectAsync` once at the start of the session (e.g., the BFF login flow) to establish the cookie; all subsequent `InvokeAsync` calls in that session reuse it, **avoiding repeated authentication on every request**
+
+```mermaid
+graph LR
+    Browser["Browser (stores username/password cookie)"] -->|HTTP request with cookie| Web["Web Backend (BFF)"]
+    Web -->|Login flow calls ConnectAsync once| Transport["HttpRemoteServiceTransport (Singleton)"]
+    Transport -->|Caches cookie by credential key| Cache["Internal _dynamicCookies dictionary"]
+    Web -->|Subsequent business calls| Transport
+    Transport -->|InvokeAsync auto-writes Cookie header| Remote["Remote Data Service"]
+```
+
+#### Configuration
+
+```csharp
+builder.Services.AddHttpContextAccessor(); // required
+
+builder.Host.RegisterLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
+    opts.CredentialsMode = RemoteCredentialsMode.Dynamic;
+    opts.CredentialsResolver = sp =>
+    {
+        var httpCtx = sp.GetRequiredService<IHttpContextAccessor>().HttpContext;
+        var request = httpCtx?.Request;
+        if (request is null || !request.Cookies.TryGetValue("username", out var user) || user is null
+            || !request.Cookies.TryGetValue("password", out var pwd) || pwd is null)
+        {
+            return null; // anonymous connection
+        }
+        return new RemoteCredentials
+        {
+            GrantType = AuthGrantType.Password,
+            Username = user,
+            Password = pwd,
+        };
+    };
+});
+```
+
+> - `Credentials` is ignored in `Dynamic` mode; only the return value of `CredentialsResolver` is used
+> - Returning `null` means anonymous connection; Invoke will not carry a Cookie
+> - The caller must explicitly call `ConnectAsync` (with the user's credentials) at the start of the session to establish the cookie; all subsequent `InvokeAsync` calls in that session reuse the cached cookie without re-connecting
+
+#### Web Application Example: Store Credentials in Cookie and Forward
+
+Below is a complete example of an ASP.NET Core web backend acting as a BFF to forward LiteOrm remote calls. The end user's credentials are stored in a browser cookie, and the BFF extracts them on each request and forwards them to the remote data service.
+
+**1. Login endpoint: write credentials to the client cookie, and trigger a Connect to cache the server cookie**
+
+```csharp
+app.MapPost("/api/login", async (HttpContext ctx, LoginDto dto, IRemoteServiceTransport transport) =>
+{
+    // In real projects, validate username/password by querying a database / external auth service
+    if (dto.Username != "admin" || dto.Password != "pass")
+    {
+        ctx.Response.StatusCode = 401;
+        return;
+    }
+
+    // 1. Issue a Connect to the remote data service with the user's credentials once;
+    //    the cookie returned by the server is cached inside the transport.
+    //    All subsequent Invoke calls for this user automatically reuse this cookie without re-authenticating
+    await transport.ConnectAsync(new RemoteCredentials
+    {
+        GrantType = AuthGrantType.Password,
+        Username = dto.Username,
+        Password = dto.Password,
+    });
+
+    // 2. Write credentials to browser cookies (HttpOnly prevents XSS; in production, also encrypt / use Secure / SameSite)
+    //    CredentialsResolver extracts the user identity from the client cookie at Invoke time to look up the cached cookie
+    ctx.Response.Cookies.Append("username", dto.Username, new CookieOptions
+    {
+        HttpOnly = true,
+        MaxAge = TimeSpan.FromHours(2),
+    });
+    ctx.Response.Cookies.Append("password", dto.Password, new CookieOptions
+    {
+        HttpOnly = true,
+        MaxAge = TimeSpan.FromHours(2),
+    });
+});
+
+public class LoginDto
+{
+    public string Username { get; set; } = "";
+    public string Password { get; set; } = "";
+}
+```
+
+**2. Configure LiteOrm.Remote in BFF with Dynamic mode**
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHttpContextAccessor(); // required for Dynamic mode
+
+builder.Host.RegisterLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000"); // remote data service address
+    opts.CredentialsMode = RemoteCredentialsMode.Dynamic;
+    opts.CredentialsResolver = sp =>
+    {
+        var httpCtx = sp.GetRequiredService<IHttpContextAccessor>().HttpContext;
+        var request = httpCtx?.Request;
+        if (request is null) return null;
+
+        // Extract user identity from client cookie
+        if (!request.Cookies.TryGetValue("username", out var user) || string.IsNullOrEmpty(user)
+            || !request.Cookies.TryGetValue("password", out var pwd) || string.IsNullOrEmpty(pwd))
+        {
+            return null;
+        }
+        return new RemoteCredentials
+        {
+            GrantType = AuthGrantType.Password,
+            Username = user,
+            Password = pwd,
+        };
+    };
+});
+
+var app = builder.Build();
+// ... app.MapController / app.MapRemoteInvokeEndpoint etc.
+app.Run();
+```
+
+**3. BFF business endpoint calls the LiteOrm remote proxy; cookie reused automatically**
+
+```csharp
+app.MapGet("/api/me", async (HttpContext httpContext, IDemoUserService userService) =>
+{
+    // The userService proxy resolved within this request scope
+    // On InvokeAsync, CredentialsResolver resolves the current user's credential key,
+    // looks up the cached cookie established at login from the transport, and writes it to the request header — no repeated Connect
+    var username = httpContext.Request.Cookies["username"];
+    if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+    var user = await userService.GetByUserNameAsync(username);
+    return Results.Ok(user);
+});
+```
+
+Full call flow:
+
+| Step | Actor | Action |
+|------|-------|--------|
+| 1 | Browser | POST `/api/login` |
+| 2 | BFF | `transport.ConnectAsync(user credentials)` once; the cookie returned by the remote service is cached in the transport's internal dictionary |
+| 3 | BFF | Login succeeds; writes browser cookie, returns login response |
+| 4 | Browser | GET `/api/me`, carries browser cookie |
+| 5 | BFF | `CredentialsResolver` extracts `username`/`password` from `HttpContext.Request.Cookies` to derive the credential key |
+| 6 | BFF | `InvokeAsync` looks up the cached cookie for that key and writes it to the request header, then calls the remote business endpoint (no Connect) |
+| 7 | Remote service | `HttpContext.User` is restored, business logic runs |
+
+> **Production notes**:
+> - Storing plaintext passwords in cookies is insecure. Prefer storing encrypted credentials or short-lived tokens; decrypt them in `CredentialsResolver` to derive the credential key
+> - The server cookie cache is held by the `ConcurrentDictionary<string, string>` inside `HttpRemoteServiceTransport`, keyed by credential, thread-safe for concurrent multi-user access
+> - If the cookie expires and the remote service returns 401, the caller must re-call `ConnectAsync` to refresh the cache; optionally clear the cache entry for that credential key when InvokeAsync raises a 401
+> - If the remote service already uses stateless auth like JWT, return a `RemoteCredentials` with only `Extensions["token"]` and provide a custom `IRemoteAuthenticationHandler` on the server to validate the token
+
+### 5.6 Accessing the Current User on the Server
 
 The `Invoke` endpoint automatically restores `HttpContext.User` through the ASP.NET Core authentication middleware. To access the current user in business code, use `IHttpContextAccessor`:
 
@@ -490,7 +687,7 @@ public class MyService
 }
 ```
 
-### 5.6 Disabling Built-in Authentication
+### 5.7 Disabling Built-in Authentication
 
 To use JWT or other custom authentication schemes, set `EnableAuthentication = false`:
 

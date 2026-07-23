@@ -63,31 +63,42 @@ namespace LiteOrm.Remote
             // IServiceCollection 注册 IRemoteServiceTransport（HttpRemoteServiceTransport 或用户自定义实现）
             hostBuilder = hostBuilder.ConfigureServices((hostContext, services) =>
             {
+                // Dynamic 模式下凭据解析器通常依赖 IHttpContextAccessor，
+                // 调用方需自行调用 services.AddHttpContextAccessor() 注册（避免在客户端库中硬依赖 ASP.NET Core）。
+
                 if (options.Transport is not null)
                 {
+                    // 用户自定义传输层：原样注册为 Singleton
                     services.AddSingleton<IRemoteServiceTransport>(options.Transport);
                 }
                 else if (options.RemoteServiceUri is not null)
                 {
+                    // 默认 HttpRemoteServiceTransport，统一注册为 Singleton。
+                    // 多用户会话隔离由 HttpRemoteServiceTransport 内部按凭证 key 缓存 Cookie 实现，
+                    // 不依赖每个 Scope 一份 HttpClient，因此 Singleton 即可。
                     services.AddSingleton<IRemoteServiceTransport>(sp =>
                     {
 #if NET8_0_OR_GREATER
                         var handler = new SocketsHttpHandler
                         {
                             PooledConnectionLifetime = TimeSpan.FromMinutes(2), // 2分钟后重建连接，重解析DNS
-                            UseCookies = true,
-                            CookieContainer = new System.Net.CookieContainer(),
+                            UseCookies = false, // 禁用自动 Cookie 处理，由 HttpRemoteServiceTransport 手动管理，避免多用户串号
                         };
 #else
                         var handler = new HttpClientHandler
                         {
-                            UseCookies = true,
-                            CookieContainer = new System.Net.CookieContainer(),
-                        };                        
+                            UseCookies = false, // 禁用自动 Cookie 处理，由 HttpRemoteServiceTransport 手动管理，避免多用户串号
+                        };
 #endif
                         var httpClient = new HttpClient(handler) { BaseAddress = options.RemoteServiceUri };
                         options.ConfigureHttpClient?.Invoke(httpClient);
-                        return new HttpRemoteServiceTransport(httpClient, options.Credentials, options.RemoteServicePath, options.RemoteConnectPath);
+                        return new HttpRemoteServiceTransport(
+                            httpClient, options.Credentials, options.RemoteServicePath, options.RemoteConnectPath)
+                        {
+                            CredentialsMode = options.CredentialsMode,
+                            CredentialsResolver = options.CredentialsResolver,
+                            ServiceProvider = sp,
+                        };
                     });
                 }
                 else
@@ -167,8 +178,36 @@ namespace LiteOrm.Remote
             /// <item><see cref="AuthGrantType.ClientCredentials"/>：使用 ClientId/ClientSecret 认证</item>
             /// </list>
             /// </para>
+            /// <para>
+            /// 仅在 <see cref="CredentialsMode"/> 为 <see cref="RemoteCredentialsMode.SingleCredential"/> 时使用；
+            /// <see cref="RemoteCredentialsMode.Dynamic"/> 模式下改用 <see cref="CredentialsResolver"/> 动态解析。
+            /// </para>
             /// </summary>
             public RemoteCredentials? Credentials { get; set; }
+
+            /// <summary>
+            /// 凭据模式，默认为 <see cref="RemoteCredentialsMode.SingleCredential"/>。
+            /// <para>
+            /// <list type="bullet">
+            /// <item><see cref="RemoteCredentialsMode.SingleCredential"/>：使用 <see cref="Credentials"/> 中的固定凭据，
+            /// <see cref="IRemoteServiceTransport"/> 注册为 Singleton，全进程共享一个会话</item>
+            /// <item><see cref="RemoteCredentialsMode.Dynamic"/>：使用 <see cref="CredentialsResolver"/> 从当前会话上下文
+            /// 解析凭据，<see cref="IRemoteServiceTransport"/> 注册为 Scoped，每个请求独立一份会话，支持多用户并发隔离</item>
+            /// </list>
+            /// </para>
+            /// </summary>
+            public RemoteCredentialsMode CredentialsMode { get; set; } = RemoteCredentialsMode.SingleCredential;
+
+            /// <summary>
+            /// 动态凭据解析器。仅在 <see cref="CredentialsMode"/> 为
+            /// <see cref="RemoteCredentialsMode.Dynamic"/> 时生效，<see cref="Credentials"/> 被忽略。
+            /// <para>
+            /// 接收当前 DI Scope 的 <see cref="IServiceProvider"/>，返回该会话使用的 <see cref="RemoteCredentials"/>；
+            /// 返回 null 表示匿名连接。典型实现：从 <c>IHttpContextAccessor.HttpContext.Request.Cookies</c>
+            /// 提取用户名/密码或 ClientId/ClientSecret 后转发到远程服务端。
+            /// </para>
+            /// </summary>
+            public Func<IServiceProvider, RemoteCredentials?>? CredentialsResolver { get; set; }
 
             /// <summary>
             /// 自定义的远程调用传输层实例。若设置则优先使用，覆盖 <see cref="RemoteServiceUri"/> 的默认 HTTP 注册。

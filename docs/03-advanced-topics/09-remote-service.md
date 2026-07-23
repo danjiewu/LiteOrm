@@ -221,7 +221,9 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `RemoteServiceUri` | `Uri?` | 远程服务基础地址。设置后自动注册基于 `HttpClient` 的 `HttpRemoteServiceTransport` |
 | `RemoteServicePath` | `string` | 相对于 `RemoteServiceUri` 的请求路径，默认 `api/remote/invoke` |
 | `RemoteConnectPath` | `string` | 相对于 `RemoteServiceUri` 的连接路径，默认 `api/remote/connect` |
-| `Credentials` | `RemoteCredentials?` | 远程调用凭据。根据 `GrantType` 使用 `Username`/`Password` 或 `ClientId`/`ClientSecret` 建立已认证会话，Connect 阶段发送到服务端验证 |
+| `Credentials` | `RemoteCredentials?` | 远程调用凭据。仅在 `CredentialsMode = SingleCredential`（默认）时使用。调用方需手动 `ConnectAsync(credentials)` 一次，服务端返回的 Cookie 被缓存，后续 `InvokeAsync` 自动复用该 Cookie |
+| `CredentialsMode` | `RemoteCredentialsMode` | 凭据模式，默认 `SingleCredential`。设为 `Dynamic` 时改用 `CredentialsResolver` 从当前会话上下文动态解析凭据，传输层内部按凭证 key 缓存每个会话的 Cookie，多用户互不串号 |
+| `CredentialsResolver` | `Func<IServiceProvider, RemoteCredentials?>?` | 动态凭据解析器。仅在 `Dynamic` 模式下生效，接收当前 DI Scope 的 `IServiceProvider`，返回该会话使用的 `RemoteCredentials`；返回 null 表示匿名连接（Invoke 时不带 Cookie） |
 | `ConfigureHttpClient` | `Action<HttpClient>?` | 配置内部 `HttpClient`（超时、默认请求头等） |
 | `Transport` | `IRemoteServiceTransport?` | 自定义传输层实例。设置后优先于 `RemoteServiceUri` |
 | `AutoRegisterEntityServices` | `bool` | 是否自动注册所有实体服务为远程代理，默认 `true` |
@@ -466,9 +468,203 @@ var host = Host.CreateDefaultBuilder(args)
     .Build();
 ```
 
-设置 `Credentials` 后，框架自动在首次调用前调用 `ConnectAsync` 完成身份认证。未设置凭据时使用匿名连接。
+设置 `Credentials` 后，调用方需手动调用一次 `ConnectAsync` 完成身份认证：服务端验证通过后返回 Cookie，传输层将其按凭证 key 缓存，后续所有 `InvokeAsync` 自动复用该 Cookie，不再重复验证身份。未设置凭据或未调用 `ConnectAsync` 时以匿名身份发起 Invoke。
 
-### 5.5 服务端获取当前用户
+#### 手动触发 Connect
+
+框架不会自动发起 Connect。调用方需显式调用 `ConnectAsync` 建立已认证会话。成功后 Cookie 被缓存，后续 Invoke 直接复用：
+
+```csharp
+using var scope = host.Services.CreateScope();
+var transport = scope.ServiceProvider.GetRequiredService<IRemoteServiceTransport>();
+
+try
+{
+    // 主动建立已认证连接，凭据无效时立即抛出 RemoteTransportException
+    // 成功后服务端返回的 Cookie 被缓存，后续所有 Invoke 自动复用该 Cookie
+    await transport.ConnectAsync(new RemoteCredentials
+    {
+        GrantType = AuthGrantType.ClientCredentials,
+        ClientId = "my-app",
+        ClientSecret = "secret-key",
+    });
+    Console.WriteLine("连接成功");
+}
+catch (RemoteTransportException ex)
+{
+    Console.WriteLine($"连接失败: {ex.Message}");
+}
+```
+
+> 手动 `ConnectAsync` 成功后，后续 `InvokeAsync` 不会重复发起 Connect 请求；再次调用 `ConnectAsync` 传入新凭据可切换身份。
+
+### 5.5 动态凭据模式（多用户会话隔离）
+
+`SingleCredential` 模式整个进程共享一份凭据和一份 Cookie，无法区分多用户。当 Web 后端需要以「当前请求所属终端用户」的身份调用远程数据服务时（即 BFF / 网关转发场景），改用 `Dynamic` 模式：
+
+- `IRemoteServiceTransport` 注册为 **Singleton**，整个进程共享一个 `HttpClient`（禁用 `UseCookies`）
+- `HttpRemoteServiceTransport` 内部用 `ConcurrentDictionary<string, string>` **按凭证 key 缓存每个会话的 Cookie**，多用户互不串号
+- `InvokeAsync` 时通过 `CredentialsResolver` 解析当前会话的凭据，从缓存取出对应 Cookie 写入 `Cookie` 请求头；缓存未命中时以匿名身份（无 Cookie）发起请求
+- 调用方需在会话开始时（如 BFF 登录流程）调用一次 `ConnectAsync` 建立 Cookie，之后该会话的所有 `InvokeAsync` 均复用此 Cookie，**避免每次请求重复验证身份**
+
+```mermaid
+graph LR
+    Browser["浏览器（保存用户名/密码 Cookie）"] -->|HTTP 请求带 Cookie| Web["Web 后端（BFF）"]
+    Web -->|登录流程调用一次 ConnectAsync| Transport["HttpRemoteServiceTransport（Singleton）"]
+    Transport -->|按凭证 key 缓存 Cookie| Cache["内部 _dynamicCookies 字典"]
+    Web -->|后续业务调用| Transport
+    Transport -->|InvokeAsync 自动写入 Cookie 头| Remote["远程数据服务"]
+```
+
+#### 配置
+
+```csharp
+builder.Services.AddHttpContextAccessor(); // 必须注册
+
+builder.Host.RegisterLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
+    opts.CredentialsMode = RemoteCredentialsMode.Dynamic;
+    opts.CredentialsResolver = sp =>
+    {
+        var httpCtx = sp.GetRequiredService<IHttpContextAccessor>().HttpContext;
+        var request = httpCtx?.Request;
+        if (request is null || !request.Cookies.TryGetValue("username", out var user) || user is null
+            || !request.Cookies.TryGetValue("password", out var pwd) || pwd is null)
+        {
+            return null; // 匿名连接
+        }
+        return new RemoteCredentials
+        {
+            GrantType = AuthGrantType.Password,
+            Username = user,
+            Password = pwd,
+        };
+    };
+});
+```
+
+> - `Credentials` 在 `Dynamic` 模式下被忽略；只读取 `CredentialsResolver` 的返回值
+> - 返回 `null` 表示匿名连接，Invoke 时不带 Cookie
+> - 调用方需在会话开始时显式调用 `ConnectAsync`（传入该用户凭据）建立 Cookie；之后该会话的所有 `InvokeAsync` 复用缓存的 Cookie，不再重复 Connect
+
+#### Web 应用完整示例：Cookie 存储凭据并转发
+
+下面给出一个 ASP.NET Core Web 后端作为 BFF 转发 LiteOrm 远程调用的完整示例。终端用户的凭据保存在浏览器 Cookie 中，BFF 收到请求时从 Cookie 提取凭据转发到远程数据服务。
+
+**1. 登录端点：将凭据写入客户端 Cookie，并触发一次 Connect 缓存服务端 Cookie**
+
+```csharp
+app.MapPost("/api/login", async (HttpContext ctx, LoginDto dto, IRemoteServiceTransport transport) =>
+{
+    // 实际项目应通过查库 / 调用外部认证服务校验用户名密码
+    if (dto.Username != "admin" || dto.Password != "pass")
+    {
+        ctx.Response.StatusCode = 401;
+        return;
+    }
+
+    // 1. 以该用户凭据向远程数据服务发起一次 Connect，服务端返回的 Cookie 被缓存到 transport 内部
+    //    之后该用户的所有 Invoke 都会自动复用此 Cookie，不再重复验证身份
+    await transport.ConnectAsync(new RemoteCredentials
+    {
+        GrantType = AuthGrantType.Password,
+        Username = dto.Username,
+        Password = dto.Password,
+    });
+
+    // 2. 将凭据写入浏览器 Cookie（HttpOnly 防 XSS，生产环境建议配合加密 / Secure / SameSite）
+    //    CredentialsResolver 会从客户端 Cookie 提取出用户身份，用于 Invoke 时从缓存取出对应的 Cookie
+    ctx.Response.Cookies.Append("username", dto.Username, new CookieOptions
+    {
+        HttpOnly = true,
+        MaxAge = TimeSpan.FromHours(2),
+    });
+    ctx.Response.Cookies.Append("password", dto.Password, new CookieOptions
+    {
+        HttpOnly = true,
+        MaxAge = TimeSpan.FromHours(2),
+    });
+});
+
+public class LoginDto
+{
+    public string Username { get; set; } = "";
+    public string Password { get; set; } = "";
+}
+```
+
+**2. BFF 配置 LiteOrm.Remote 使用 Dynamic 模式**
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHttpContextAccessor(); // Dynamic 模式必需
+
+builder.Host.RegisterLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000"); // 远程数据服务地址
+    opts.CredentialsMode = RemoteCredentialsMode.Dynamic;
+    opts.CredentialsResolver = sp =>
+    {
+        var httpCtx = sp.GetRequiredService<IHttpContextAccessor>().HttpContext;
+        var request = httpCtx?.Request;
+        if (request is null) return null;
+
+        // 从客户端 Cookie 提取用户身份
+        if (!request.Cookies.TryGetValue("username", out var user) || string.IsNullOrEmpty(user)
+            || !request.Cookies.TryGetValue("password", out var pwd) || string.IsNullOrEmpty(pwd))
+        {
+            return null;
+        }
+        return new RemoteCredentials
+        {
+            GrantType = AuthGrantType.Password,
+            Username = user,
+            Password = pwd,
+        };
+    };
+});
+
+var app = builder.Build();
+// ... app.MapController / app.MapRemoteInvokeEndpoint 等
+app.Run();
+```
+
+**3. BFF 业务接口通过 LiteOrm 远程代理调用，Cookie 自动复用**
+
+```csharp
+app.MapGet("/api/me", async (HttpContext httpContext, IDemoUserService userService) =>
+{
+    // 该请求作用域内解析出的 userService 代理，
+    // InvokeAsync 时 CredentialsResolver 解析出当前用户的凭证 key，
+    // 从 transport 内部缓存取出登录时建立的 Cookie 写入请求头，无需重复 Connect
+    var username = httpContext.Request.Cookies["username"];
+    if (string.IsNullOrEmpty(username)) return Results.Unauthorized();
+    var user = await userService.GetByUserNameAsync(username);
+    return Results.Ok(user);
+});
+```
+
+完整调用流程：
+
+| 步骤 | 主体 | 动作 |
+|------|------|------|
+| 1 | 浏览器 | 提交 `/api/login` |
+| 2 | BFF | `transport.ConnectAsync(用户凭据)` 一次，服务端返回 Cookie 被缓存到 transport 内部字典 |
+| 3 | BFF | 登录成功，写浏览器 Cookie，返回登录响应 |
+| 4 | 浏览器 | 访问 `/api/me`，携带浏览器 Cookie |
+| 5 | BFF | `CredentialsResolver` 从 `HttpContext.Request.Cookies` 提取 `username`/`password` 得到凭证 key |
+| 6 | BFF | `InvokeAsync` 从缓存取出该 key 对应的 Cookie 写入请求头，调用远程业务接口（不再 Connect） |
+| 7 | 远程服务 | `HttpContext.User` 恢复用户上下文，执行业务 |
+
+> **生产环境注意事项**：
+> - Cookie 中直接存明文密码不安全，建议存加密后的凭据或短时令牌，由 `CredentialsResolver` 解密后得到凭证 key
+> - 服务端 Cookie 缓存由 `HttpRemoteServiceTransport` 内部 `ConcurrentDictionary<string, string>` 维护，按凭证 key 区分，多用户并发安全
+> - 若 Cookie 过期导致远程服务返回 401，调用方需重新 `ConnectAsync` 刷新缓存；可在 `InvokeAsync` 抛出 401 时清空对应凭证 key 的缓存
+> - 若远程服务已使用 JWT 等无状态认证，可让 `CredentialsResolver` 返回仅含 `Extensions["token"]` 的 `RemoteCredentials`，并在服务端自定义 `IRemoteAuthenticationHandler` 完成令牌校验
+
+### 5.6 服务端获取当前用户
 
 `Invoke` 端点通过 ASP.NET Core 认证中间件自动恢复 `HttpContext.User`。若需在业务代码中访问当前用户，通过 `IHttpContextAccessor` 获取：
 
@@ -490,7 +686,7 @@ public class MyService
 }
 ```
 
-### 5.6 禁用内置认证
+### 5.7 禁用内置认证
 
 若需使用 JWT 或其他自定义认证方案，设置 `EnableAuthentication = false`：
 
