@@ -32,6 +32,11 @@ namespace LiteOrm
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         /// <summary>
+        /// 获取当前上下文的唯一标识符，用于日志和异常追踪。
+        /// </summary>
+        public string Id { get; }
+
+        /// <summary>
         /// 设置或获取连接保持活跃的时间间隔。当连接在此时间内未被使用，则视为老化连接，可能会被连接池回收。
         /// </summary>
         public TimeSpan KeepAliveDuration { get; set; } = TimeSpan.FromMinutes(30);
@@ -45,6 +50,7 @@ namespace LiteOrm
         {
             DbConnection = connection ?? throw new ArgumentNullException(nameof(connection));
             ProviderType = connection.GetType();
+            Id = ShortId.NewId();
             SetActivate();
         }
 
@@ -174,7 +180,7 @@ namespace LiteOrm
                 return new DAOScope(_semaphore);
             }
 
-            throw new TimeoutException("Unable to acquire database context lock");
+            throw new TimeoutException($"Unable to acquire database context lock (ContextId: {Id})");
         }
 
         /// <summary>
@@ -189,7 +195,7 @@ namespace LiteOrm
             {
                 return new DAOScope(_semaphore);
             }
-            throw new TimeoutException("Unable to acquire database context lock");
+            throw new TimeoutException($"Unable to acquire database context lock (ContextId: {Id})");
         }
 
         /// <summary>
@@ -560,7 +566,7 @@ namespace LiteOrm
         private void EnsureNotDisposed()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(DAOContext));
+                throw new ObjectDisposedException(nameof(DAOContext), $"DAOContext has been disposed (ContextId: {Id})");
         }
 
         /// <summary>

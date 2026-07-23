@@ -3,12 +3,15 @@
 ## v8.0.20 (Unreleased)
 
 ### 新增功能
-- ExprString 新增 `RawSql` 标记类型，专用于内联不适合参数化的动态值（如 `LIMIT`/`OFFSET` 行数、`ASC`/`DESC` 排序方向、动态列名等）；纯静态文本直接写字面量即可 (`6f401b6`)
+- ExprString 新增 `RawSql` 标记类型，用于内联不宜参数化的动态值 (`6f401b6`)
 - 增加 CTE 递归关键字支持 (`81fade6`)
-- 新增表级 `SyncTable` 配置，可在 `[Table]` 特性上按实体类型设定 `Never`/`Always` 覆盖数据源级同步策略 (`038e93b`)
+- 新增表级 `SyncTable` 配置，按实体覆盖数据源级同步策略 (`038e93b`)
+- 新增 `ShortId` 工具类，生成 8 位 Base62 随机字符串 (`18d70be`)
+- `DAOContext` 新增 `Id` 属性，并在日志/异常中附加 `ContextId` (`18d70be`)
 
 ### 改进
-- `DatabaseSync` 补列时，对未指定 `DefaultValue` 但属性为非空值类型的新增列，在新增之后追加全量 UPDATE，填充为类型相关默认值，避免已有数据无法满足 NOT NULL 约束 (`8fd9662`)
+- `DatabaseSync` 补列时为非空值类型列追加 UPDATE 填充默认值 (`8fd9662`)
+- `SessionManager` 事务 ID 改用 `ShortId` (`18d70be`)
 
 ### 修复
 - 修复 `ParamCountLimit` 配置无效 bug；`DAOContext.ParamCountLimit` 改为只读，从所属 `DAOContextPool` 取值；默认值由 2000 调整为 1000 (`e4fa04b`)

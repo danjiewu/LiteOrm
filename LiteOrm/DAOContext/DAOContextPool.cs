@@ -304,7 +304,7 @@ namespace LiteOrm
                     }
 
                     // 无效则销毁，这会通对应的信号量释放计数
-                    _logger?.LogDebug("Pool '{PoolName}': pooled connection is invalid or expired, disposing.", Name);
+                    _logger?.LogDebug("Pool '{PoolName}': pooled connection is invalid or expired, disposing (ContextId: {ContextId}).", Name, context.Id);
                     context.Dispose();
                 }
             }
@@ -337,7 +337,7 @@ namespace LiteOrm
                     }
 
                     // 无效则销毁
-                    _logger?.LogDebug("Pool '{PoolName}': pooled connection is invalid or expired, disposing.", Name);
+                    _logger?.LogDebug("Pool '{PoolName}': pooled connection is invalid or expired, disposing (ContextId: {ContextId}).", Name, context.Id);
                     context.Dispose();
                 }
             }
@@ -381,7 +381,7 @@ namespace LiteOrm
                 // 如果连接无效，销毁
                 if (!context.IsValid)
                 {
-                    _logger?.LogDebug("Pool '{PoolName}': returned connection is invalid or expired, disposing.", Name);
+                    _logger?.LogDebug("Pool '{PoolName}': returned connection is invalid or expired, disposing (ContextId: {ContextId}).", Name, context.Id);
                     context.Dispose();
                     return;
                 }
@@ -389,8 +389,9 @@ namespace LiteOrm
                 // 如果池已满，销毁最旧的连接并添加新连接
                 if (_pool.Count >= PoolSize)
                 {
-                    _logger?.LogDebug("Pool '{PoolName}' is full (size: {PoolSize}), removing oldest idle connection.", Name, PoolSize);
-                    _pool.Dequeue().Dispose();
+                    var oldest = _pool.Dequeue();
+                    _logger?.LogDebug("Pool '{PoolName}' is full (size: {PoolSize}), removing oldest idle connection (ContextId: {ContextId}).", Name, PoolSize, oldest.Id);
+                    oldest.Dispose();
                 }
 
                 _pool.Enqueue(context);
@@ -431,7 +432,7 @@ namespace LiteOrm
                     IsReadOnly = IsReadOnlyPool,
                     KeepAliveDuration = KeepAliveDuration
                 };
-                _logger?.LogDebug("Pool '{PoolName}': new connection created.", Name);
+                _logger?.LogDebug("Pool '{PoolName}': new connection created (ContextId: {ContextId}).", Name, context.Id);
                 if (OnContextCreated != null) OnContextCreated(context);
                 return context;
             }

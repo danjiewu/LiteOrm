@@ -3,12 +3,15 @@
 ## v8.0.20 (Unreleased)
 
 ### Added
-- Added `RawSql` marker type to `ExprString` for inlining dynamic values unsuitable for parameterization (e.g. `LIMIT`/`OFFSET` row counts, `ASC`/`DESC` sort direction, dynamic column names); purely static text can be written directly in the literal (`6f401b6`)
+- Added `RawSql` marker type to `ExprString` for inlining non-parameterizable dynamic values (`6f401b6`)
 - Added CTE recursive keyword support (`81fade6`)
-- Added table-level `SyncTable` configuration on `[Table]` attribute, allowing per-entity `Never`/`Always` to override data-source-level sync strategy (`038e93b`)
+- Added table-level `SyncTable` config to override sync strategy per entity (`038e93b`)
+- Added `ShortId` utility for 8-char Base62 random strings (`18d70be`)
+- Added `Id` property to `DAOContext`; `ContextId` included in logs/exceptions (`18d70be`)
 
 ### Changed
-- When adding columns, `DatabaseSync` now appends a single bulk UPDATE for newly added columns whose `DefaultValue` is unset but whose property is a non-nullable value type, with type-appropriate defaults to satisfy NOT NULL constraints on pre-existing data (`8fd9662`)
+- `DatabaseSync` appends UPDATE to fill defaults for non-nullable value-type columns when adding columns (`8fd9662`)
+- `SessionManager` transaction ID now uses `ShortId` (`18d70be`)
 
 ### Fixed
 - Fixed `ParamCountLimit` configuration not taking effect; `DAOContext.ParamCountLimit` is now read-only and sourced from the owning `DAOContextPool`; default value adjusted from 2000 to 1000 (`e4fa04b`)

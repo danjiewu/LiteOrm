@@ -60,7 +60,7 @@ namespace LiteOrm
         /// <summary>
         /// 唯一会话ID
         /// </summary>
-        public string SessionID { get; } = Guid.NewGuid().ToString("N").Substring(0, 8);
+        public string SessionID { get; } = ShortId.NewId();
 
         /// <summary>
         /// 当前异步上下文的会话管理器（缓加载，首次访问时才从容器解析）
@@ -165,7 +165,7 @@ namespace LiteOrm
                     return false;
                 }
 
-                _currentTransactionId = Guid.NewGuid().ToString();
+                _currentTransactionId = ShortId.NewId();
                 _currentIsolationLevel = isolationLevel;
 
                 _logger?.LogDebug("Session {SessionID} began transaction. ID: {TransactionID}, Isolation: {IsolationLevel}", SessionID, _currentTransactionId, isolationLevel);
@@ -182,7 +182,7 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction for pool '{PoolName}'", SessionID, context.Pool?.Name);
+                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction for pool '{PoolName}' (ContextId: {ContextId})", SessionID, context.Pool?.Name, context.Id);
                         // 如果某个连接开启事务失败，回滚并抛出异常
                         RollbackInternal();
                         throw new InvalidOperationException($"Session {SessionID} failed to start transaction: {ex.Message}", ex);
@@ -215,7 +215,7 @@ namespace LiteOrm
                     return false;
                 }
 
-                _currentTransactionId = Guid.NewGuid().ToString();
+                _currentTransactionId = ShortId.NewId();
                 _currentIsolationLevel = isolationLevel;
 
                 _logger?.LogDebug("Session {SessionID} began transaction. ID: {TransactionID}, Isolation: {IsolationLevel}", SessionID, _currentTransactionId, isolationLevel);
@@ -231,7 +231,7 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction for pool '{PoolName}'", SessionID, context.Pool?.Name);
+                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction for pool '{PoolName}' (ContextId: {ContextId})", SessionID, context.Pool?.Name, context.Id);
                         await RollbackInternalAsync(cancellationToken).ConfigureAwait(false);
                         throw new InvalidOperationException($"Session {SessionID} failed to start transaction: {ex.Message}", ex);
                     }
@@ -361,7 +361,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Session {SessionID} failed to commit transaction. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
+                    _logger?.LogError(ex, "Session {SessionID} failed to commit transaction. Pool: '{PoolName}' (ContextId: {ContextId})", SessionID, context.Pool?.Name, context.Id);
                     success = false;
                 }
             }
@@ -397,7 +397,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Session {SessionID} failed to commit transaction. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
+                    _logger?.LogError(ex, "Session {SessionID} failed to commit transaction. Pool: '{PoolName}' (ContextId: {ContextId})", SessionID, context.Pool?.Name, context.Id);
                     success = false;
                 }
             }
@@ -432,7 +432,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Session {SessionID} failed to roll back transaction. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
+                    _logger?.LogError(ex, "Session {SessionID} failed to roll back transaction. Pool: '{PoolName}' (ContextId: {ContextId})", SessionID, context.Pool?.Name, context.Id);
                     success = false;
                 }
             }
@@ -469,7 +469,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Session {SessionID} failed to roll back transaction. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
+                    _logger?.LogError(ex, "Session {SessionID} failed to roll back transaction. Pool: '{PoolName}' (ContextId: {ContextId})", SessionID, context.Pool?.Name, context.Id);
                     success = false;
                 }
             }
@@ -549,7 +549,7 @@ namespace LiteOrm
                         {
                             context.Dispose();
                         }
-                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction. Pool: '{PoolName}'", SessionID, name);
+                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction. Pool: '{PoolName}' (ContextId: {ContextId})", SessionID, name, context.Id);
                         throw;
                     }
                 }
@@ -621,7 +621,7 @@ namespace LiteOrm
                         {
                             await context.DisposeAsync().ConfigureAwait(false);
                         }
-                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction. Pool: '{PoolName}'", SessionID, name);
+                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction. Pool: '{PoolName}' (ContextId: {ContextId})", SessionID, name, context.Id);
                         throw;
                     }
                 }
@@ -657,7 +657,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Session {SessionID} failed to return connection. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
+                    _logger?.LogError(ex, "Session {SessionID} failed to return connection. Pool: '{PoolName}' (ContextId: {ContextId})", SessionID, context.Pool?.Name, context.Id);
                 }
             }
             _daoContexts.Clear();
@@ -684,7 +684,7 @@ namespace LiteOrm
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Session {SessionID} failed to return connection. Pool: '{PoolName}'", SessionID, context.Pool?.Name);
+                    _logger?.LogError(ex, "Session {SessionID} failed to return connection. Pool: '{PoolName}' (ContextId: {ContextId})", SessionID, context.Pool?.Name, context.Id);
                 }
             }
             _daoContexts.Clear();
