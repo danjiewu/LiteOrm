@@ -12,6 +12,7 @@ namespace LiteOrm.Remote
         private readonly HttpClient _httpClient;
         private readonly string _requestUri;
         private readonly string _connectUri;
+        private readonly SemaphoreSlim _connectLock = new SemaphoreSlim(1, 1);
         private RemoteCredentials? _credentials;
         private bool _connected;
 
@@ -31,10 +32,21 @@ namespace LiteOrm.Remote
 
         public async Task EnsureConnectedAsync(CancellationToken cancellationToken = default)
         {
-            if (!_connected && _credentials != null)
+            if (_connected || _credentials is null)
+                return;
+
+            await _connectLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                await ConnectAsync(_credentials, cancellationToken).ConfigureAwait(false);
-                _connected = true;
+                if (!_connected)
+                {
+                    await ConnectAsync(_credentials, cancellationToken).ConfigureAwait(false);
+                    _connected = true;
+                }
+            }
+            finally
+            {
+                _connectLock.Release();
             }
         }
 
@@ -50,7 +62,7 @@ namespace LiteOrm.Remote
                 throw new RemoteTransportException(
                     $"Remote connect returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}. Body: {body}");
             }
-            _connected = true;
+            Volatile.Write(ref _connected, true);
         }
 
         public override async Task<RemoteInvocationResponse> InvokeAsync(RemoteInvocationRequest request, CancellationToken cancellationToken = default)

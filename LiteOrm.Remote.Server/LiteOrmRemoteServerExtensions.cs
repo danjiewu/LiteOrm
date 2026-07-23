@@ -240,6 +240,7 @@ namespace LiteOrm.Remote.Server
                     if (credentials is null || string.IsNullOrEmpty(credentials.Username))
                     {
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        context.Response.ContentType = "application/json; charset=utf-8";
                         await JsonSerializer.SerializeAsync(context.Response.Body,
                             new { Error = "Username is required for authenticated connection." },
                             serverOptions.JsonSerializerOptions, context.RequestAborted)
@@ -252,6 +253,7 @@ namespace LiteOrm.Remote.Server
                     if (principal is null)
                     {
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        context.Response.ContentType = "application/json; charset=utf-8";
                         await JsonSerializer.SerializeAsync(context.Response.Body,
                             new { Error = "Invalid username or password." },
                             serverOptions.JsonSerializerOptions, context.RequestAborted)

@@ -74,12 +74,18 @@ namespace LiteOrm.Remote
 #if NET8_0_OR_GREATER
                         var handler = new SocketsHttpHandler
                         {
-                            PooledConnectionLifetime = TimeSpan.FromMinutes(2) // 2分钟后重建连接，重解析DNS
+                            PooledConnectionLifetime = TimeSpan.FromMinutes(2), // 2分钟后重建连接，重解析DNS
+                            UseCookies = true,
+                            CookieContainer = new System.Net.CookieContainer(),
                         };
-                        var httpClient = new HttpClient(handler) { BaseAddress = options.RemoteServiceUri };
 #else
-                        var httpClient = new HttpClient() { BaseAddress = options.RemoteServiceUri };
+                        var handler = new HttpClientHandler
+                        {
+                            UseCookies = true,
+                            CookieContainer = new System.Net.CookieContainer(),
+                        };                        
 #endif
+                        var httpClient = new HttpClient(handler) { BaseAddress = options.RemoteServiceUri };
                         options.ConfigureHttpClient?.Invoke(httpClient);
                         return new HttpRemoteServiceTransport(httpClient, options.Credentials, options.RemoteServicePath, options.RemoteConnectPath);
                     });
