@@ -85,19 +85,6 @@ namespace LiteOrm.Remote
             _credentials = credentials;
         }
 
-        /// <summary>
-        /// 确保已与服务端建立连接。首次调用时通过传输层连接服务端，后续调用直接返回。
-        /// 若提供了 <see cref="RemoteCredentials"/>，则使用已认证连接；否则使用匿名连接。
-        /// </summary>
-        private void EnsureConnected(CancellationToken cancellationToken)
-        {
-            if (_connected) return;
-            if (_credentials is not null)
-                _transport.ConnectAsync(_credentials, cancellationToken).GetAwaiter().GetResult();
-            else
-                _transport.ConnectAsync(cancellationToken).GetAwaiter().GetResult();
-            _connected = true;
-        }
 
         /// <summary>
         /// 调用目标方法，将调用转发到远程服务。
@@ -253,7 +240,6 @@ namespace LiteOrm.Remote
             var returnType = method.ReturnType;
 
             var cancellationToken = ExtractCancellationToken(invocation);
-            EnsureConnected(cancellationToken);
             var request = BuildRequest(invocation);
             var writeBackPlan = BuildWriteBackPlan(invocation);
             var serviceInfo = $"[{request.RequestID}] {request.ServiceName}.{method.Name}";

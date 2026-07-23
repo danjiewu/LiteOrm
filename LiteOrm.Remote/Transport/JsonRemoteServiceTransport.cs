@@ -22,12 +22,6 @@ namespace LiteOrm.Remote
             await GetConnectResponseJsonAsync(credentials, cancellationToken).ConfigureAwait(false);
         }
 
-        /// <inheritdoc />
-        public async Task ConnectAsync(CancellationToken cancellationToken = default)
-        {
-            await GetConnectResponseJsonAsync(null, cancellationToken).ConfigureAwait(false);
-        }
-
         /// <summary>
         /// 异步获取建立会话的响应 JSON 字符串。
         /// <paramref name="credentials"/> 为 null 时使用匿名连接。

@@ -24,14 +24,6 @@ namespace LiteOrm.Remote
         Task ConnectAsync(RemoteCredentials credentials, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// 使用匿名身份与服务端连接。
-        /// 不发送凭据，服务端以匿名用户处理后续请求。
-        /// 多次调用仅首次生效，后续调用直接返回。
-        /// </summary>
-        /// <param name="cancellationToken">取消令牌。</param>
-        Task ConnectAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// 异步发送远程调用请求并返回响应。
         /// </summary>
         /// <param name="request">远程调用请求。</param>
