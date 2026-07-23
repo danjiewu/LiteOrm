@@ -31,6 +31,12 @@ namespace LiteOrm.Remote
         public string ServiceName { get; set; }
 
         /// <summary>
+        /// 请求唯一标识。客户端生成，使用 12 位 <see cref="ShortId"/>，
+        /// 服务端处理后在 <see cref="RemoteInvocationResponse"/> 中原样返回，用于日志关联与请求追踪。
+        /// </summary>
+        public string RequestID { get; set; } = ShortId.NewId(12);
+
+        /// <summary>
         /// 方法信息。客户端构建请求时直接赋值 <c>invocation.Method</c>；
         /// JSON 序列化只生成方法名（<see cref="JsonIgnoreAttribute"/>）。
         /// 服务端根据方法名查找到 <see cref="MethodInfo"/> 。
@@ -58,6 +64,12 @@ namespace LiteOrm.Remote
     /// </remarks>
     public sealed class RemoteInvocationResponse
     {
+        /// <summary>
+        /// 对应的请求唯一标识。服务端从 <see cref="RemoteInvocationRequest.RequestID"/> 复制，
+        /// 用于日志关联与请求追踪。
+        /// </summary>
+        public string RequestID { get; set; }
+
         /// <summary>
         /// 调用是否成功。
         /// </summary>

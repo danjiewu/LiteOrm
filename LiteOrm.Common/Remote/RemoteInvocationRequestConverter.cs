@@ -114,6 +114,9 @@ namespace LiteOrm.Remote
                     case "ServiceName":
                         request.ServiceName = reader.GetString();
                         break;
+                    case "RequestID":
+                        request.RequestID = reader.GetString();
+                        break;
                     case "Method":
                         // Method (MethodInfo) 按名称序列化，反序列化时由 dispatcher.ParseRequest 解析
                         // 此处仅跳过值（不赋值给 Method，因为无法在此解析 MethodInfo）
@@ -143,6 +146,7 @@ namespace LiteOrm.Remote
         {
             writer.WriteStartObject();
 
+            writer.WriteString("RequestID", value.RequestID);
             writer.WriteString("ServiceName", value.ServiceName);
 
             // Method (MethodInfo) 按名称序列化

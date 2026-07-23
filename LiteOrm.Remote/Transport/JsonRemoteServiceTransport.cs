@@ -42,6 +42,9 @@ namespace LiteOrm.Remote
 
             return new RemoteInvocationResponse
             {
+                RequestID = root.TryGetProperty("RequestID", out var requestIdProp) && requestIdProp.ValueKind == JsonValueKind.String
+                    ? requestIdProp.GetString()
+                    : null,
                 Success = root.GetProperty("Success").GetBoolean(),
                 Error = root.TryGetProperty("Error", out var errorProp) && errorProp.ValueKind == JsonValueKind.Object
                     ? JsonSerializer.Deserialize<RemoteErrorInfo>(errorProp.GetRawText(), options)

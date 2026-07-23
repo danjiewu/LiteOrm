@@ -237,7 +237,7 @@ namespace LiteOrm.Remote
             var request = BuildRequest(invocation);
             var writeBackPlan = BuildWriteBackPlan(invocation);
             var cancellationToken = ExtractCancellationToken(invocation);
-            var serviceInfo = $"{request.ServiceName}.{method.Name}";
+            var serviceInfo = $"[{request.RequestID}] {request.ServiceName}.{method.Name}";
 
             if (returnType == typeof(void))
             {
@@ -574,7 +574,8 @@ namespace LiteOrm.Remote
         /// 记录方法调用前的日志
         /// </summary>
         /// <param name="invocation">方法调用信息</param>
-        protected virtual void LogBeforeInvoke(IInvocation invocation)
+        /// <param name="requestId">可选请求唯一标识，用于日志关联。</param>
+        protected virtual void LogBeforeInvoke(IInvocation invocation, string requestId = null)
         {
             var serviceDesc = GetDescription(invocation);
             LogLevel level = GetLogLevel(serviceDesc.LogLevel);
@@ -583,9 +584,14 @@ namespace LiteOrm.Remote
                 var argsLog = (serviceDesc.LogFormat & LogFormat.Args) == LogFormat.Args
                     ? GetLogString(GetLogArgs(invocation)) : null;
 
-                _logger.Log(level,
-                    "<Invoke>{Service}.{Method}({Args})",
-                    serviceDesc.ServiceName, invocation.Method.Name, argsLog);
+                if (requestId != null)
+                    _logger.Log(level,
+                        "[{RequestID}] <Invoke>{Service}.{Method}({Args})",
+                        requestId, serviceDesc.ServiceName, invocation.Method.Name, argsLog);
+                else
+                    _logger.Log(level,
+                        "<Invoke>{Service}.{Method}({Args})",
+                        serviceDesc.ServiceName, invocation.Method.Name, argsLog);
             }
         }
 
@@ -595,7 +601,8 @@ namespace LiteOrm.Remote
         /// <param name="invocation">方法调用信息</param>
         /// <param name="result">方法返回值</param>
         /// <param name="elapsedTime">方法执行耗时</param>
-        protected virtual void LogAfterInvoke(IInvocation invocation, object result, TimeSpan elapsedTime)
+        /// <param name="requestId">可选请求唯一标识，用于日志关联。</param>
+        protected virtual void LogAfterInvoke(IInvocation invocation, object result, TimeSpan elapsedTime, string requestId = null)
         {
             var serviceDesc = GetDescription(invocation);
             LogLevel level = GetLogLevel(serviceDesc.LogLevel);
@@ -606,10 +613,16 @@ namespace LiteOrm.Remote
                 {
                     returnLog = GetLogString(result, 0);
                 }
-                _logger.Log(level,
-                    "<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
-                     serviceDesc.ServiceName, invocation.Method.Name,
-                    elapsedTime.TotalSeconds, returnLog);
+                if (requestId != null)
+                    _logger.Log(level,
+                        "[{RequestID}] <Return>{Service}.{Method}+{Duration}:{ReturnValue}",
+                         requestId, serviceDesc.ServiceName, invocation.Method.Name,
+                        elapsedTime.TotalSeconds, returnLog);
+                else
+                    _logger.Log(level,
+                        "<Return>{Service}.{Method}+{Duration}:{ReturnValue}",
+                         serviceDesc.ServiceName, invocation.Method.Name,
+                        elapsedTime.TotalSeconds, returnLog);
             }
             if (elapsedTime > SlowQueryThreshold)//记录慢调用日志
             {
@@ -637,17 +650,26 @@ namespace LiteOrm.Remote
         /// </summary>
         /// <param name="invocation">方法调用信息</param>
         /// <param name="e">异常对象</param>
-        protected virtual void LogException(IInvocation invocation, Exception e)
+        /// <param name="requestId">可选请求唯一标识，用于日志关联。</param>
+        protected virtual void LogException(IInvocation invocation, Exception e, string requestId = null)
         {
             var serviceDesc = GetDescription(invocation);
             var innerExp = e.UnwrapTargetInvocationException();
             string argsLog = GetLogString(GetLogArgs(invocation));
             if (innerExp is ServiceException)
-                _logger.LogWarning("<Exception>{Service}.{Method}({Args}) {Message}",
-                    serviceDesc.ServiceName, invocation.Method.Name, argsLog, innerExp.Message);
+                if (requestId != null)
+                    _logger.LogWarning("[{RequestID}] <Exception>{Service}.{Method}({Args}) {Message}",
+                        requestId, serviceDesc.ServiceName, invocation.Method.Name, argsLog, innerExp.Message);
+                else
+                    _logger.LogWarning("<Exception>{Service}.{Method}({Args}) {Message}",
+                        serviceDesc.ServiceName, invocation.Method.Name, argsLog, innerExp.Message);
             else
-                _logger.LogError("<Exception>{Service}.{Method}({Args}) {Exception}",
-                    serviceDesc.ServiceName, invocation.Method.Name, argsLog, innerExp);
+                if (requestId != null)
+                    _logger.LogError("[{RequestID}] <Exception>{Service}.{Method}({Args}) {Exception}",
+                        requestId, serviceDesc.ServiceName, invocation.Method.Name, argsLog, innerExp);
+                else
+                    _logger.LogError("<Exception>{Service}.{Method}({Args}) {Exception}",
+                        serviceDesc.ServiceName, invocation.Method.Name, argsLog, innerExp);
         }
 
         /// <summary>

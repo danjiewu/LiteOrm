@@ -55,7 +55,10 @@ namespace LiteOrm.Remote.Server
         {
             if (request is null) throw new ArgumentNullException(nameof(request));
 
-            var response = new RemoteInvocationResponse();
+            var response = new RemoteInvocationResponse
+            {
+                RequestID = request.RequestID
+            };
             MethodInfo method = null;
             try
             {
@@ -69,7 +72,7 @@ namespace LiteOrm.Remote.Server
                         Type = nameof(ServiceException),
                         Message = $"Remote service '{request.ServiceName}' is not registered."
                     };
-                    _logger?.LogWarning("Remote service '{ServiceName}' not found by resolver.", request.ServiceName);
+                    _logger?.LogWarning("[{RequestID}] Remote service '{ServiceName}' not found by resolver.", request.RequestID, request.ServiceName);
                     return response;
                 }
 
@@ -83,7 +86,7 @@ namespace LiteOrm.Remote.Server
                         Type = nameof(ServiceException),
                         Message = $"Service implementation for '{request.ServiceName}' ({serviceType.FullName}) is not registered in DI container."
                     };
-                    _logger?.LogWarning("Service implementation for '{ServiceName}' ({ServiceType}) not resolved from DI.", request.ServiceName, serviceType.FullName);
+                    _logger?.LogWarning("[{RequestID}] Service implementation for '{ServiceName}' ({ServiceType}) not resolved from DI.", request.RequestID, request.ServiceName, serviceType.FullName);
                     return response;
                 }
 
@@ -97,7 +100,7 @@ namespace LiteOrm.Remote.Server
                         Type = nameof(ServiceException),
                         Message = $"Method '{request.Method?.Name}' with matching signature not found on service '{request.ServiceName}'."
                     };
-                    _logger?.LogWarning("Method '{MethodName}' not found on service '{ServiceName}'.", request.Method?.Name, request.ServiceName);
+                    _logger?.LogWarning("[{RequestID}] Method '{MethodName}' not found on service '{ServiceName}'.", request.RequestID, request.Method?.Name, request.ServiceName);
                     return response;
                 }
 
@@ -105,7 +108,7 @@ namespace LiteOrm.Remote.Server
                 var arguments = GetArgumentsValues(method, request.Arguments, cancellationToken);
 
                 // 5. 调用方法
-                _logger?.LogDebug("Invoking {ServiceName}.{MethodName}", request.ServiceName, method.Name);
+                _logger?.LogDebug("[{RequestID}] Invoking {ServiceName}.{MethodName}", request.RequestID, request.ServiceName, method.Name);
                 var result = method.Invoke(serviceInstance, arguments);
 
                 // 6. 处理返回值
@@ -115,7 +118,7 @@ namespace LiteOrm.Remote.Server
                 BuildWriteBackResponse(response, method, arguments);
 
                 response.Success = true;
-                _logger?.LogDebug("Invoked {ServiceName}.{MethodName} successfully.", request.ServiceName, method.Name);
+                _logger?.LogDebug("[{RequestID}] Invoked {ServiceName}.{MethodName} successfully.", request.RequestID, request.ServiceName, method.Name);
             }
             catch (TargetInvocationException tie)
             {
@@ -127,7 +130,7 @@ namespace LiteOrm.Remote.Server
                     Message = inner.Message,
                     StackTrace = inner.StackTrace
                 };
-                _logger?.LogError(inner, "Remote service '{ServiceName}.{MethodName}' threw an exception.", request.ServiceName, method?.Name);
+                _logger?.LogError(inner, "[{RequestID}] Remote service '{ServiceName}.{MethodName}' threw an exception.", request.RequestID, request.ServiceName, method?.Name);
             }
             catch (Exception ex)
             {
@@ -138,7 +141,7 @@ namespace LiteOrm.Remote.Server
                     Message = ex.Message,
                     StackTrace = ex.StackTrace
                 };
-                _logger?.LogError(ex, "Failed to dispatch remote call to '{ServiceName}.{MethodName}'.", request.ServiceName, method?.Name);
+                _logger?.LogError(ex, "[{RequestID}] Failed to dispatch remote call to '{ServiceName}.{MethodName}'.", request.RequestID, request.ServiceName, method?.Name);
             }
             return response;
         }
@@ -167,11 +170,15 @@ namespace LiteOrm.Remote.Server
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            // 1. 提取 ServiceName
+            // 1. 提取 ServiceName 与 RequestID
             var serviceName = root.GetProperty("ServiceName").GetString();
             var serviceType = _resolver.ResolveService(serviceName);
             if (serviceType is null)
                 throw new ServiceException($"Remote service '{serviceName}' is not registered.");
+
+            var requestId = root.TryGetProperty("RequestID", out var requestIdProp) && requestIdProp.ValueKind == JsonValueKind.String
+                ? requestIdProp.GetString()
+                : null;
 
             // 2. 提取方法名，查找 MethodInfo
             string methodName = null;
@@ -205,6 +212,7 @@ namespace LiteOrm.Remote.Server
             return new RemoteInvocationRequest
             {
                 ServiceName = serviceName,
+                RequestID = requestId,
                 Method = method,
                 Arguments = arguments,
             };
