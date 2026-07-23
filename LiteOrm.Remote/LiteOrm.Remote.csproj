@@ -10,7 +10,7 @@
     <FileVersion>8.0.2.0</FileVersion>
     <VersionPrefix>8.0.2</VersionPrefix>
     <PackageReleaseNotes>
-      修复日志MethodName为空的bug;
+      修复日志 MethodName 为空的 bug；
     </PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
     <Copyright>Copyright @ 2026 danjiewu</Copyright>

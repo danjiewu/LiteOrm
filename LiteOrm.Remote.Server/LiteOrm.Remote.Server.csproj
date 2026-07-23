@@ -9,7 +9,9 @@
     <AssemblyVersion>8.0.2.0</AssemblyVersion>
     <FileVersion>8.0.2.0</FileVersion>
     <VersionPrefix>8.0.2</VersionPrefix>
-    <PackageReleaseNotes>      
+    <PackageReleaseNotes>
+      修复 Server 端方法匹配失败问题；
+      修复 Remote.Server 匹配泛型服务名称 bug；
     </PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
     <Copyright>Copyright @ 2026 danjiewu</Copyright>

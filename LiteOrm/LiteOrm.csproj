@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
@@ -16,8 +16,13 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      ExprString增加插入RawSql的方式;
-      增加实体类的SyncTable配置;
+      ExprString 新增 RawSql 标记类型；
+      增加 CTE 递归关键字支持；
+      新增表级 SyncTable 配置；
+      新增 ShortId 工具类，DAOContext 新增 Id 属性并在日志中附加 ContextId；
+      DatabaseSync 补列时为非空值类型列追加 UPDATE 填充默认值；
+      SessionManager 事务 ID 改用 ShortId；
+      修复 ParamCountLimit 配置无效 bug；
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

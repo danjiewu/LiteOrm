@@ -14,6 +14,11 @@
     <PackageReadmeFile>README.nuget.md</PackageReadmeFile>
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架。</Description>
+    <PackageReleaseNotes>
+      新增 ShortId 工具类；
+      SqlBuilder.GetDefaultValueSql 改为 public；
+      共享 DTO 调整；
+    </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
