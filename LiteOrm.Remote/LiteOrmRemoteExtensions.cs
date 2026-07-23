@@ -48,7 +48,7 @@ namespace LiteOrm.Remote
         /// <param name="hostBuilder">主机构建器</param>
         /// <param name="configureOptions">配置选项的回调函数</param>
         /// <returns>配置后的主机构建器</returns>
-        public static IHostBuilder RegisterLiteOrmRemote(this IHostBuilder hostBuilder, Action<LiteOrmOptions> configureOptions)
+        public static IHostBuilder RegisterLiteOrmRemote(this IHostBuilder hostBuilder, Action<LiteOrmOptions>? configureOptions)
         {
             var options = new LiteOrmOptions();
             try
@@ -71,9 +71,17 @@ namespace LiteOrm.Remote
                 {
                     services.AddSingleton<IRemoteServiceTransport>(sp =>
                     {
-                        var httpClient = new HttpClient { BaseAddress = options.RemoteServiceUri };
+#if NET8_0_OR_GREATER
+                        var handler = new SocketsHttpHandler
+                        {
+                            PooledConnectionLifetime = TimeSpan.FromMinutes(2) // 2分钟后重建连接，重解析DNS
+                        };
+                        var httpClient = new HttpClient(handler) { BaseAddress = options.RemoteServiceUri };
+#else
+                        var httpClient = new HttpClient() { BaseAddress = options.RemoteServiceUri };
+#endif
                         options.ConfigureHttpClient?.Invoke(httpClient);
-                        return new HttpRemoteServiceTransport(httpClient, options.RemoteServicePath, options.RemoteConnectPath);
+                        return new HttpRemoteServiceTransport(httpClient, options.Credentials, options.RemoteServicePath, options.RemoteConnectPath);
                     });
                 }
                 else
@@ -83,12 +91,9 @@ namespace LiteOrm.Remote
                         "Configure one of them in RegisterLiteOrmRemote(opts => { ... }).");
                 }
 
-                if (options.Credentials is not null)
-                    services.AddSingleton(options.Credentials);
-
                 services.AddSingleton<RemoteServiceInvokeInterceptor>();
                 services.AddScoped<RemoteServiceGenerateInterceptor>();
-                if(options.AutoRegisterEntityServices)
+                if (options.AutoRegisterEntityServices)
                 {
                     // 1. 扫描程序集，将带 [Service] 特性的接口通过 TypeResolverHelper.Register 注册，
                     //    并注册为远程代理，确保客户端和服务端使用一致的 ServiceName 进行匹配

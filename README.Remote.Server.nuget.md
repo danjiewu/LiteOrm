@@ -41,6 +41,12 @@ app.MapRemoteInvokeEndpoint();         // Map the remote invocation endpoint
 app.Run();
 ```
 
+For authenticated access, implement `IRemoteAuthenticationHandler` and register it in DI:
+
+```csharp
+builder.Services.AddSingleton<IRemoteAuthenticationHandler, MyAuthHandler>();
+```
+
 That's it — interfaces marked with `[Service]` and registered in DI are now remotely callable.
 
 ### How It Works
@@ -53,6 +59,7 @@ That's it — interfaces marked with `[Service]` and registered in DI are now re
 ### Highlights
 
 - **Zero-Controller Exposure**: no need to write controllers per service; one endpoint dispatches all `[Service]` interfaces.
+- **Cookie-based Authentication**: implement `IRemoteAuthenticationHandler` to validate credentials; the server calls `HttpContext.SignInAsync` on success — no SessionID needed.
 - **Identity Write-back**: `ArgumentOutAttribute` + `IdentityArgumentOutHandler` return auto-generated identity values to the client automatically.
 - **DI-Integrated**: services are resolved from the ASP.NET Core DI container, so scoped services and transactions work as expected.
 - **Shared Protocol**: DTOs live in `LiteOrm.Common`, keeping client/server wire format in sync.
@@ -95,6 +102,12 @@ app.MapRemoteInvokeEndpoint();         // 映射远程调用端点
 app.Run();
 ```
 
+如需身份认证，实现 `IRemoteAuthenticationHandler` 并注册到 DI：
+
+```csharp
+builder.Services.AddSingleton<IRemoteAuthenticationHandler, MyAuthHandler>();
+```
+
 完成 — 标记了 `[Service]` 特性并注册到 DI 的接口现在即可被远程调用。
 
 ### 工作原理
@@ -107,6 +120,7 @@ app.Run();
 ### 主要特性
 
 - **零 Controller 暴露**：无需为每个服务编写 Controller；单个端点分发所有 `[Service]` 接口。
+- **Cookie 身份认证**：实现 `IRemoteAuthenticationHandler` 验证凭据，通过后 `HttpContext.SignInAsync` 创建票据，无需 SessionID。
 - **标识值自动回写**：`ArgumentOutAttribute` + `IdentityArgumentOutHandler` 自动把生成的标识值返回给客户端。
 - **DI 集成**：服务从 ASP.NET Core DI 容器解析，作用域服务与事务行为符合预期。
 - **共享协议**：DTO 位于 `LiteOrm.Common`，客户端 / 服务端传输格式天然一致。

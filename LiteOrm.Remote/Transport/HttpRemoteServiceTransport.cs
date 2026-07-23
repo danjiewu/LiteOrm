@@ -12,6 +12,8 @@ namespace LiteOrm.Remote
         private readonly HttpClient _httpClient;
         private readonly string _requestUri;
         private readonly string _connectUri;
+        private RemoteCredentials? _credentials;
+        private bool _connected;
 
         /// <summary>
         /// 初始化 <see cref="HttpRemoteServiceTransport"/> 类的新实例。
@@ -19,27 +21,28 @@ namespace LiteOrm.Remote
         /// <param name="httpClient">已配置好 BaseAddress 的 HttpClient 实例。</param>
         /// <param name="requestUri">相对于 BaseAddress 的请求路径，默认为 <c>/api/remote/invoke</c>。</param>
         /// <param name="connectUri">相对于 BaseAddress 的连接路径，默认为 <c>/api/remote/connect</c>。</param>
-        public HttpRemoteServiceTransport(HttpClient httpClient, string requestUri = "api/remote/invoke", string connectUri = "api/remote/connect")
+        public HttpRemoteServiceTransport(HttpClient httpClient, RemoteCredentials? credentials = null, string requestUri = "api/remote/invoke", string connectUri = "api/remote/connect")
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _requestUri = string.IsNullOrEmpty(requestUri) ? "api/remote/invoke" : requestUri;
             _connectUri = string.IsNullOrEmpty(connectUri) ? "api/remote/connect" : connectUri;
+            _credentials = credentials;
         }
 
-        /// <inheritdoc />
-        protected override async Task<string> GetConnectResponseJsonAsync(RemoteCredentials? credentials, CancellationToken cancellationToken = default)
+        public async Task EnsureConnectedAsync(CancellationToken cancellationToken = default)
         {
-            HttpContent? content = null;
-            if (credentials is not null)
+            if (!_connected && _credentials != null)
             {
-                var body = JsonSerializer.Serialize(credentials, new JsonSerializerOptions
-                {
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                    PropertyNameCaseInsensitive = true,
-                });
-                content = new StringContent(body, Encoding.UTF8, "application/json");
+                await ConnectAsync(_credentials, cancellationToken).ConfigureAwait(false);
+                _connected = true;
             }
+        }
 
+        public override async Task ConnectAsync(RemoteCredentials credentials, CancellationToken cancellationToken = default)
+        {
+            _credentials = credentials;
+            var json = JsonSerializer.Serialize(credentials, _serializerOptions);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
             using var response = await _httpClient.PostAsync(_connectUri, content, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
@@ -47,7 +50,13 @@ namespace LiteOrm.Remote
                 throw new RemoteTransportException(
                     $"Remote connect returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}. Body: {body}");
             }
-            return await ReadBodyAsync(response, cancellationToken).ConfigureAwait(false);
+            _connected = true;
+        }
+
+        public override async Task<RemoteInvocationResponse> InvokeAsync(RemoteInvocationRequest request, CancellationToken cancellationToken = default)
+        {
+            await EnsureConnectedAsync(cancellationToken).ConfigureAwait(false);
+            return await base.InvokeAsync(request, cancellationToken).ConfigureAwait(false);
         }
 
         private static async Task<string> ReadBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
@@ -72,6 +81,7 @@ namespace LiteOrm.Remote
             }
             return await ReadBodyAsync(response, cancellationToken).ConfigureAwait(false);
         }
+
     }
 
     /// <summary>

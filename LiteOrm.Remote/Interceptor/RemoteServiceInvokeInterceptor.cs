@@ -34,7 +34,7 @@ namespace LiteOrm.Remote
         /// <summary>
         /// 全局服务异常处理事件。
         /// </summary>
-        public static event EventHandler<ServiceExceptionContext> ExceptionHandling;
+        public static event EventHandler<ServiceExceptionContext>? ExceptionHandling;
 
         /// <summary>
         /// 设置慢调用阈值，超过该时间的方法调用将被记录为慢调用日志。默认值为3秒。
@@ -67,22 +67,18 @@ namespace LiteOrm.Remote
 
         private readonly ILogger _logger;
         private readonly IRemoteServiceTransport _transport;
-        private readonly RemoteCredentials? _credentials;
-        private bool _connected;
 
         /// <summary>
         /// 初始化 <see cref="RemoteServiceInvokeInterceptor"/> 类的新实例。
         /// </summary>
         /// <param name="loggerFactory">日志工厂</param>
         /// <param name="transport">远程调用传输层</param>
-        /// <param name="credentials">远程调用凭据（可选）。提供凭据时使用已认证连接。</param>
-        public RemoteServiceInvokeInterceptor(ILoggerFactory loggerFactory, IRemoteServiceTransport transport, RemoteCredentials? credentials = null)
+        public RemoteServiceInvokeInterceptor(ILoggerFactory loggerFactory, IRemoteServiceTransport transport)
         {
             if (loggerFactory is null) throw new ArgumentNullException(nameof(loggerFactory));
             if (transport is null) throw new ArgumentNullException(nameof(transport));
             _logger = loggerFactory.CreateLogger<RemoteServiceInvokeInterceptor>();
-            _transport = transport;
-            _credentials = credentials;
+            _transport = transport;  
         }
 
 

@@ -8,15 +8,15 @@ namespace LiteOrm.Common
     public class RemoteCredentials
     {
         /// <summary>用户名。</summary>
-        public string? Username { get; set; }
+        public string Username { get; set; }
 
         /// <summary>密码。</summary>
-        public string? Password { get; set; }
+        public string Password { get; set; }
 
         /// <summary>
         /// 自定义扩展字段。可用于传递额外的身份信息（如租户 ID、令牌等），
         /// 服务端 <c>IRemoteAuthenticationHandler.ValidateCredentialsAsync</c> 可读取这些字段。
         /// </summary>
-        public Dictionary<string, object?>? Extensions { get; set; }
+        public Dictionary<string, string> Extensions { get; set; }
     }
 }

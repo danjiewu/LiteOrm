@@ -206,6 +206,8 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `InvokePath` | `string` | `"api/remote/invoke"` | Remote invocation HTTP endpoint path |
+| `ConnectPath` | `string` | `"api/remote/connect"` | HTTP endpoint path for establishing an authenticated session |
+| `EnableAuthentication` | `bool` | `true` | Enables Cookie authentication. When enabled, the Connect endpoint creates an identity ticket via `HttpContext.SignInAsync`; subsequent requests restore user context via `HttpContext.User` |
 | `JsonSerializerOptions` | `JsonSerializerOptions` | `UnsafeRelaxedJsonEscaping` + case-insensitive | JSON serialization options |
 | `ServiceTypeResolver` | `IRemoteServiceTypeResolver` | `DefaultServiceTypeResolver` | Service type resolver instance |
 | `ServiceTypeResolverFactory` | `Func<IServiceProvider, IRemoteServiceTypeResolver>?` | `null` | Resolver factory, takes precedence over `ServiceTypeResolver` |
@@ -218,6 +220,8 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 |----------|------|-------------|
 | `RemoteServiceUri` | `Uri?` | Remote service base address. When set, automatically registers `HttpRemoteServiceTransport` based on `HttpClient` |
 | `RemoteServicePath` | `string` | Request path relative to `RemoteServiceUri`, default `api/remote/invoke` |
+| `RemoteConnectPath` | `string` | Connect path relative to `RemoteServiceUri`, default `api/remote/connect` |
+| `Credentials` | `RemoteCredentials?` | Remote invocation credentials. When set, authenticates with username/password on Connect, sent to the server for validation |
 | `ConfigureHttpClient` | `Action<HttpClient>?` | Configure the internal `HttpClient` (timeout, default headers, etc.) |
 | `Transport` | `IRemoteServiceTransport?` | Custom transport layer instance. Takes precedence over `RemoteServiceUri` when set |
 | `AutoRegisterEntityServices` | `bool` | Whether to auto-register all entity services as remote proxies, default `true` |
@@ -448,28 +452,38 @@ Beyond the default HTTP transport, you can implement custom transports based on 
 
 ### 7.1 `IRemoteServiceTransport` Interface
 
-The base interface for all transport layer implementations, defining a single method:
+The base interface for all transport layer implementations, covering connection (authentication) and invocation:
 
 ```csharp
 public interface IRemoteServiceTransport
 {
+    Task ConnectAsync(RemoteCredentials credentials, CancellationToken cancellationToken = default);
     Task<RemoteInvocationResponse> InvokeAsync(
         RemoteInvocationRequest request, CancellationToken cancellationToken = default);
 }
 ```
 
+| Method | Description |
+|--------|-------------|
+| `ConnectAsync(RemoteCredentials)` | Establishes an authenticated connection with the server. After the server validates credentials via `HttpContext.SignInAsync`, subsequent requests carry the authentication cookie automatically |
+| `InvokeAsync` | Sends a remote invocation request and returns the response |
+
 ### 7.2 `JsonRemoteServiceTransport` Abstract Base Class (Recommended)
 
-In the `LiteOrm.Remote` namespace, handles request/response serialization and deserialization via `System.Text.Json`. **Custom transport layers should prefer inheriting from this class**, only needing to implement one abstract method:
+In the `LiteOrm.Remote` namespace, handles request/response serialization and deserialization via `System.Text.Json`. **Custom transport layers should prefer inheriting from this class**, only needing to implement two abstract methods:
 
 ```csharp
 public abstract class JsonRemoteServiceTransport : IRemoteServiceTransport
 {
-    // Already implemented: serialize request → call GetResponseJsonAsync → deserialize response
-    public async Task<RemoteInvocationResponse> InvokeAsync(
+    // Already implemented (virtual): serialize request → call GetResponseJsonAsync → deserialize response
+    public virtual async Task<RemoteInvocationResponse> InvokeAsync(
         RemoteInvocationRequest request, CancellationToken cancellationToken = default);
 
-    // Subclass only needs to implement: send JSON string to remote, return response JSON string
+    // Subclass must implement: carry credentials to establish an authenticated connection
+    public abstract Task ConnectAsync(RemoteCredentials credentials,
+        CancellationToken cancellationToken = default);
+
+    // Subclass must implement: send JSON string to remote, return response JSON string
     public abstract Task<string> GetResponseJsonAsync(
         string requestJson, CancellationToken cancellationToken = default);
 }
@@ -480,10 +494,19 @@ public abstract class JsonRemoteServiceTransport : IRemoteServiceTransport
 **Inheritance example** (named pipe based):
 
 ```csharp
+using LiteOrm.Common;
+
 public class NamedPipeTransport : JsonRemoteServiceTransport
 {
     private readonly string _pipeName;
     public NamedPipeTransport(string pipeName) => _pipeName = pipeName;
+
+    public override Task ConnectAsync(RemoteCredentials credentials,
+        CancellationToken cancellationToken = default)
+    {
+        // Named pipe can pass credentials through the pipe; simplified to no-op here
+        return Task.CompletedTask;
+    }
 
     public override async Task<string> GetResponseJsonAsync(
         string requestJson, CancellationToken cancellationToken = default)

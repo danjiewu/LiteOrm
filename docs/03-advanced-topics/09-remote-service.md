@@ -206,6 +206,8 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | 属性 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `InvokePath` | `string` | `"api/remote/invoke"` | 远程调用 HTTP 端点路径 |
+| `ConnectPath` | `string` | `"api/remote/connect"` | 建立会话的 HTTP 端点路径 |
+| `EnableAuthentication` | `bool` | `true` | 是否启用 Cookie 身份认证。启用后 Connect 端点通过 `HttpContext.SignInAsync` 创建身份票据，后续请求通过 `HttpContext.User` 恢复用户上下文 |
 | `JsonSerializerOptions` | `JsonSerializerOptions` | `UnsafeRelaxedJsonEscaping` + 大小写不敏感 | JSON 序列化选项 |
 | `ServiceTypeResolver` | `IRemoteServiceTypeResolver` | `DefaultServiceTypeResolver` | 服务类型解析器实例 |
 | `ServiceTypeResolverFactory` | `Func<IServiceProvider, IRemoteServiceTypeResolver>?` | `null` | 解析器工厂，优先级高于 `ServiceTypeResolver` |
@@ -218,6 +220,8 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 |------|------|------|
 | `RemoteServiceUri` | `Uri?` | 远程服务基础地址。设置后自动注册基于 `HttpClient` 的 `HttpRemoteServiceTransport` |
 | `RemoteServicePath` | `string` | 相对于 `RemoteServiceUri` 的请求路径，默认 `api/remote/invoke` |
+| `RemoteConnectPath` | `string` | 相对于 `RemoteServiceUri` 的连接路径，默认 `api/remote/connect` |
+| `Credentials` | `RemoteCredentials?` | 远程调用凭据。设置后将使用用户名/密码建立已认证会话，Connect 阶段发送到服务端验证 |
 | `ConfigureHttpClient` | `Action<HttpClient>?` | 配置内部 `HttpClient`（超时、默认请求头等） |
 | `Transport` | `IRemoteServiceTransport?` | 自定义传输层实例。设置后优先于 `RemoteServiceUri` |
 | `AutoRegisterEntityServices` | `bool` | 是否自动注册所有实体服务为远程代理，默认 `true` |
@@ -287,11 +291,134 @@ var user = await factory.DemoUserService.GetByUserNameAsync("alice");
 
 ---
 
-## 五、类型解析与服务名
+## 五、身份认证
+
+LiteOrm.Remote 使用 ASP.NET Core Cookie 认证标识用户身份，替代传统的 SessionID 机制。
+
+### 5.1 工作原理
+
+```mermaid
+sequenceDiagram
+    participant Client as 客户端
+    participant Server as 服务端
+    participant Store as IRemoteAuthenticationHandler
+
+    Client->>Server: POST /api/remote/connect {Username, Password, Extensions}
+    Server->>Store: ValidateCredentialsAsync(credentials)
+    Store-->>Server: ClaimsPrincipal（验证通过）/ null（验证失败）
+    alt 验证失败
+        Server-->>Client: 401 Unauthorized
+    else 验证通过
+        Server->>Server: HttpContext.SignInAsync(principal) → 设置 Cookie
+        Server-->>Client: 200 OK（Cookie 自动写入）
+    end
+    Note over Client,Server: 后续请求自动携带 Cookie
+    Client->>Server: POST /api/remote/invoke（含 Cookie）
+    Server->>Server: 认证中间件恢复 HttpContext.User
+    Server->>Server: 执行远程调用
+    Server-->>Client: RemoteInvocationResponse
+```
+
+### 5.2 实现 `IRemoteAuthenticationHandler`
+
+```csharp
+using System.Security.Claims;
+using LiteOrm.Common;
+using LiteOrm.Remote.Server;
+
+public class MyAuthHandler : IRemoteAuthenticationHandler
+{
+    public Task<ClaimsPrincipal?> ValidateCredentialsAsync(
+        RemoteCredentials credentials, CancellationToken cancellationToken = default)
+    {
+        // 校验用户名/密码
+        if (credentials.Username == "admin" && credentials.Password == "pass")
+        {
+            var identity = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.Name, credentials.Username),
+                new Claim("tenant_id", credentials.Extensions?["tenant"]?.ToString() ?? ""),
+            }, "Cookies");
+            return Task.FromResult<ClaimsPrincipal?>(new ClaimsPrincipal(identity));
+        }
+        return Task.FromResult<ClaimsPrincipal?>(null);
+    }
+}
+```
+
+### 5.3 注册服务端
+
+```csharp
+builder.Services.AddSingleton<IRemoteAuthenticationHandler, MyAuthHandler>();
+builder.Services.AddRemoteServer();
+```
+
+> 未注册 `IRemoteAuthenticationHandler` 时，服务端允许匿名连接（不验证身份）。
+
+### 5.4 客户端配置凭据
+
+```csharp
+var host = Host.CreateDefaultBuilder(args)
+    .RegisterLiteOrmRemote(opts =>
+    {
+        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+        opts.Credentials = new RemoteCredentials
+        {
+            Username = "admin",
+            Password = "pass",
+            Extensions = new Dictionary<string, object?>
+            {
+                ["tenant"] = "tenant-a",
+            },
+        };
+    })
+    .Build();
+```
+
+设置 `Credentials` 后，框架自动在首次调用前调用 `ConnectAsync` 完成身份认证。未设置凭据时使用匿名连接。
+
+### 5.5 服务端获取当前用户
+
+`Invoke` 端点通过 ASP.NET Core 认证中间件自动恢复 `HttpContext.User`。若需在业务代码中访问当前用户，通过 `IHttpContextAccessor` 获取：
+
+```csharp
+public class MyService
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    public MyService(IHttpContextAccessor httpContextAccessor)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    public Task DoSomethingAsync()
+    {
+        var user = _httpContextAccessor.HttpContext?.User;
+        var userName = user?.Identity?.Name ?? "anonymous";
+        // ...
+    }
+}
+```
+
+### 5.6 禁用内置认证
+
+若需使用 JWT 或其他自定义认证方案，设置 `EnableAuthentication = false`：
+
+```csharp
+builder.Services.AddRemoteServer(options =>
+{
+    options.EnableAuthentication = false;
+});
+// 自行配置认证中间件
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...);
+```
+
+---
+
+## 六、类型解析与服务名
 
 服务端根据请求中的 `ServiceName` 找到对应的 `Type`，客户端负责生成 `ServiceName`。理解这一节有助于自定义服务名和处理同名类型冲突。
 
-### 5.1 `TypeResolverHelper` —— 类型名 ↔ 类型双向解析
+### 6.1 `TypeResolverHelper` —— 类型名 ↔ 类型双向解析
 
 `LiteOrm.Common.TypeResolverHelper` 是公共工具类，提供类型名与 `Type` 的双向转换。
 
@@ -307,7 +434,7 @@ var user = await factory.DemoUserService.GetByUserNameAsync("alice");
 
 > **泛型类型名**：泛型类型应使用 CLR 名称格式 `Foo`1`（含反引号 arity 后缀），避免与同名的非泛型类型冲突。
 
-### 5.2 `IRemoteServiceTypeResolver` —— 服务端类型解析器
+### 6.2 `IRemoteServiceTypeResolver` —— 服务端类型解析器
 
 服务端通过 `IRemoteServiceTypeResolver` 将请求中的 `ServiceName` 解析为实际服务接口类型。
 
@@ -334,7 +461,7 @@ builder.Services.AddRemoteServer(options =>
 });
 ```
 
-### 5.3 `ServiceName` 一致性约定
+### 6.3 `ServiceName` 一致性约定
 
 - 两端均启用 `AutoRegisterEntityServices` 时框架自动保证一致
 - 手动注册自定义名称时，两端必须同时调用 `TypeResolverHelper.Register`
@@ -342,11 +469,11 @@ builder.Services.AddRemoteServer(options =>
 
 ---
 
-## 六、参数回写（ArgumentOut）
+## 七、参数回写（ArgumentOut）
 
 > 由于远程调用的**引用语义丢失**（参数在服务端是反序列化的新实例），服务端对参数的修改不会自动反映回客户端。`[ArgumentOut]` 系列特性用于声明需要回写的参数，由框架在服务端提取回写值、客户端应用回写值。
 
-### 6.1 `[IdentityOut]` —— 自增主键回写
+### 7.1 `[IdentityOut]` —— 自增主键回写
 
 `IEntityServiceAsync<T>` 的 `InsertAsync` / `BatchInsertAsync` 已默认标注 `[IdentityOut]`，调用后 Id 自动回写：
 
@@ -363,7 +490,7 @@ foreach (var o in orders)
 
 > **依赖**：`IdentityOutAttribute` 通过 `TableInfoProvider.Default` 解析 Identity 列，客户端与服务端均需注册（`LiteOrm` 主库的 `LiteOrmCoreInitializer` 会自动初始化）。
 
-### 6.2 `[CopyableOut]` —— 整体回写
+### 7.2 `[CopyableOut]` —— 整体回写
 
 适用于实现了 `ICopyable` 接口的参数类型。服务端直接返回参数对象本身，客户端通过 `ICopyable.CopyFrom` 整体复制到原始对象。
 
@@ -389,14 +516,14 @@ public interface ICopyableUserService
 }
 ```
 
-### 6.3 `ArgumentMode` 枚举
+### 7.3 `ArgumentMode` 枚举
 
 | 值 | 说明 | `ReturnType` 含义 |
 |----|------|-------------------|
 | `Single`（默认） | 单个参数回写 | 回写值的类型 |
 | `Collection` | 遍历 `IEnumerable`/`IList`，逐项调用 handler | **单个元素**的回写值类型（框架自动包装为 `List<ReturnType>` 序列化） |
 
-### 6.4 自定义回写处理器
+### 7.4 自定义回写处理器
 
 实现 `IArgumentOutHandler` 接口（位于 `LiteOrm.Common` 命名空间），通过 `[ArgumentOut(typeof(YourHandler), typeof(ReturnType))]` 标记参数：
 
@@ -442,23 +569,29 @@ public interface IMyService
 
 ---
 
-## 七、自定义传输层
+## 八、自定义传输层
 
 默认 HTTP 传输之外，可基于 named pipe、gRPC、消息队列等实现自定义传输。
 
-### 7.1 `IRemoteServiceTransport` 接口
+### 8.1 `IRemoteServiceTransport` 接口
 
-所有传输层实现的基础接口，只定义一个方法：
+所有传输层实现的基础接口，包含连接与会话管理方法：
 
 ```csharp
 public interface IRemoteServiceTransport
 {
+    Task ConnectAsync(RemoteCredentials credentials, CancellationToken cancellationToken = default);
     Task<RemoteInvocationResponse> InvokeAsync(
         RemoteInvocationRequest request, CancellationToken cancellationToken = default);
 }
 ```
 
-### 7.2 `JsonRemoteServiceTransport` 抽象基类（推荐基类）
+| 方法 | 说明 |
+|------|------|
+| `ConnectAsync(RemoteCredentials)` | 携带凭据与服务端建立已认证连接。服务端验证通过后通过 `HttpContext.SignInAsync` 创建身份票据，后续请求自动携带 Cookie |
+| `InvokeAsync` | 发送远程调用请求并返回响应 |
+
+### 8.2 `JsonRemoteServiceTransport` 抽象基类（推荐基类）
 
 位于 `LiteOrm.Remote` 命名空间，基于 `System.Text.Json` 完成请求/响应的序列化与反序列化，**自定义传输层优先继承此类**，只需实现一个抽象方法：
 
@@ -466,10 +599,14 @@ public interface IRemoteServiceTransport
 public abstract class JsonRemoteServiceTransport : IRemoteServiceTransport
 {
     // 已实现：序列化 request → 调用 GetResponseJsonAsync → 反序列化 response
-    public async Task<RemoteInvocationResponse> InvokeAsync(
+    public virtual async Task<RemoteInvocationResponse> InvokeAsync(
         RemoteInvocationRequest request, CancellationToken cancellationToken = default);
 
-    // 子类只需实现：发送 JSON 字符串到远端，返回响应 JSON 字符串
+    // 子类需实现的抽象方法：携带凭据建立已认证连接
+    public abstract Task ConnectAsync(RemoteCredentials credentials,
+        CancellationToken cancellationToken = default);
+
+    // 子类需实现的抽象方法：发送调用请求、返回 JSON
     public abstract Task<string> GetResponseJsonAsync(
         string requestJson, CancellationToken cancellationToken = default);
 }
@@ -480,10 +617,19 @@ public abstract class JsonRemoteServiceTransport : IRemoteServiceTransport
 **继承示例**（基于 named pipe）：
 
 ```csharp
+using LiteOrm.Common;
+
 public class NamedPipeTransport : JsonRemoteServiceTransport
 {
     private readonly string _pipeName;
     public NamedPipeTransport(string pipeName) => _pipeName = pipeName;
+
+    public override Task ConnectAsync(RemoteCredentials credentials,
+        CancellationToken cancellationToken = default)
+    {
+        // named pipe 场景可通过 pipe 传递凭证，此处简化为空实现
+        return Task.CompletedTask;
+    }
 
     public override async Task<string> GetResponseJsonAsync(
         string requestJson, CancellationToken cancellationToken = default)
@@ -500,11 +646,11 @@ public class NamedPipeTransport : JsonRemoteServiceTransport
 opts.Transport = new NamedPipeTransport("liteorm-remote");
 ```
 
-### 7.3 默认 HTTP 传输（`HttpRemoteServiceTransport`）
+### 8.3 默认 HTTP 传输（`HttpRemoteServiceTransport`）
 
 `JsonRemoteServiceTransport` 的内置子类，基于 `HttpClient`。通过 `RemoteServiceUri` + `ConfigureHttpClient` 即可配置（详见 [4.2 节](#42-客户端配置liteormoptions)）。
 
-### 7.4 完全自定义传输
+### 8.4 完全自定义传输
 
 直接实现 `IRemoteServiceTransport`（不继承 `JsonRemoteServiceTransport`），需自行处理序列化：
 
@@ -523,7 +669,7 @@ opts.Transport = new MyTransport();
 
 ---
 
-## 八、序列化约束
+## 九、序列化约束
 
 远程服务调用**完全依赖对输入参数和返回值的 JSON 序列化**。理解以下约束有助于避免常见陷阱。
 
@@ -539,7 +685,7 @@ opts.Transport = new MyTransport();
 
 ---
 
-## 九、注意事项
+## 十、注意事项
 
 1. **`ForEachAsync` 不支持远程调用**：流式遍历需要持续返回数据，远程协议不支持，会抛出 `NotSupportedException`
 2. **`CancellationToken` 透传**：取消令牌不参与序列化，通过传输层端到端传递
@@ -562,7 +708,7 @@ opts.Transport = new MyTransport();
 
 ---
 
-## 十、特点与优势
+## 十一、特点与优势
 
 | 特点 | 说明 |
 |------|------|

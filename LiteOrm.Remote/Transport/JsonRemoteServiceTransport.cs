@@ -9,30 +9,18 @@ namespace LiteOrm.Remote
     /// </summary>
     public abstract class JsonRemoteServiceTransport : IRemoteServiceTransport
     {
-        private static readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions
+        protected static readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             PropertyNameCaseInsensitive = true,
         };
 
         /// <inheritdoc />
-        public async Task ConnectAsync(RemoteCredentials credentials, CancellationToken cancellationToken = default)
-        {
-            if (credentials is null) throw new ArgumentNullException(nameof(credentials));
-            await GetConnectResponseJsonAsync(credentials, cancellationToken).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// 异步获取建立会话的响应 JSON 字符串。
-        /// <paramref name="credentials"/> 为 null 时使用匿名连接。
-        /// </summary>
-        /// <param name="credentials">远程调用凭据，匿名连接时为 null。</param>
-        /// <param name="cancellationToken">用于取消操作的 <see cref="CancellationToken"/>。</param>
-        /// <returns>建立会话返回的 JSON 字符串。</returns>
-        protected abstract Task<string> GetConnectResponseJsonAsync(RemoteCredentials? credentials, CancellationToken cancellationToken = default);
+        public abstract Task ConnectAsync(RemoteCredentials credentials, CancellationToken cancellationToken = default);
+ 
 
         /// <inheritdoc />
-        public async Task<RemoteInvocationResponse> InvokeAsync(RemoteInvocationRequest request, CancellationToken cancellationToken = default)
+        public virtual async Task<RemoteInvocationResponse> InvokeAsync(RemoteInvocationRequest request, CancellationToken cancellationToken = default)
         {
             if (request is null) throw new ArgumentNullException(nameof(request));
             var json = JsonSerializer.Serialize(request, _serializerOptions);
