@@ -1,4 +1,6 @@
+using LiteOrm.Common;
 using System.Text;
+using System.Text.Json;
 
 namespace LiteOrm.Remote
 {
@@ -9,16 +11,52 @@ namespace LiteOrm.Remote
     {
         private readonly HttpClient _httpClient;
         private readonly string _requestUri;
+        private readonly string _connectUri;
 
         /// <summary>
         /// 初始化 <see cref="HttpRemoteServiceTransport"/> 类的新实例。
         /// </summary>
         /// <param name="httpClient">已配置好 BaseAddress 的 HttpClient 实例。</param>
         /// <param name="requestUri">相对于 BaseAddress 的请求路径，默认为 <c>/api/remote/invoke</c>。</param>
-        public HttpRemoteServiceTransport(HttpClient httpClient, string requestUri = "api/remote/invoke")
+        /// <param name="connectUri">相对于 BaseAddress 的连接路径，默认为 <c>/api/remote/connect</c>。</param>
+        public HttpRemoteServiceTransport(HttpClient httpClient, string requestUri = "api/remote/invoke", string connectUri = "api/remote/connect")
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _requestUri = string.IsNullOrEmpty(requestUri) ? "api/remote/invoke" : requestUri;
+            _connectUri = string.IsNullOrEmpty(connectUri) ? "api/remote/connect" : connectUri;
+        }
+
+        /// <inheritdoc />
+        protected override async Task<string> GetConnectResponseJsonAsync(RemoteCredentials? credentials, CancellationToken cancellationToken = default)
+        {
+            HttpContent? content = null;
+            if (credentials is not null)
+            {
+                var body = JsonSerializer.Serialize(credentials, new JsonSerializerOptions
+                {
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                    PropertyNameCaseInsensitive = true,
+                });
+                content = new StringContent(body, Encoding.UTF8, "application/json");
+            }
+
+            using var response = await _httpClient.PostAsync(_connectUri, content, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await ReadBodyAsync(response, cancellationToken).ConfigureAwait(false);
+                throw new RemoteTransportException(
+                    $"Remote connect returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}. Body: {body}");
+            }
+            return await ReadBodyAsync(response, cancellationToken).ConfigureAwait(false);
+        }
+
+        private static async Task<string> ReadBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+        {
+#if NETSTANDARD2_0 || NETSTANDARD2_1
+            return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+#else
+            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+#endif
         }
 
         public override async Task<string> GetResponseJsonAsync(string requestJson, CancellationToken cancellationToken = default)
@@ -28,21 +66,11 @@ namespace LiteOrm.Remote
             using var response = await _httpClient.PostAsync(_requestUri, content, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-#if NETSTANDARD2_0 || NETSTANDARD2_1
-                // 针对 .NET Standard 2.0、2.1 的代码路径：不使用 CancellationToken
-                var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-#else
-                var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-#endif
+                var body = await ReadBodyAsync(response, cancellationToken).ConfigureAwait(false);
                 throw new RemoteTransportException(
                     $"Remote service returned HTTP {(int)response.StatusCode} {response.ReasonPhrase}. Body: {body}");
             }
-#if NETSTANDARD2_0 || NETSTANDARD2_1
-            // 针对 .NET Standard 2.0、2.1 的代码路径：不使用 CancellationToken
-            return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-#else
-            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-#endif
+            return await ReadBodyAsync(response, cancellationToken).ConfigureAwait(false);
         }
     }
 

@@ -1,4 +1,5 @@
 using Castle.DynamicProxy;
+using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Remote;
 using LiteOrm.Service;
@@ -45,6 +46,16 @@ namespace LiteOrm.Tests
             public StubTransport(Func<RemoteInvocationRequest, RemoteInvocationResponse> responder)
             {
                 _responder = responder;
+            }
+
+            public Task ConnectAsync(RemoteCredentials credentials, CancellationToken cancellationToken = default)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task ConnectAsync(CancellationToken cancellationToken = default)
+            {
+                return Task.CompletedTask;
             }
 
             public Task<RemoteInvocationResponse> InvokeAsync(RemoteInvocationRequest request, CancellationToken cancellationToken = default)

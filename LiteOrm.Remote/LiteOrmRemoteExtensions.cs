@@ -73,7 +73,7 @@ namespace LiteOrm.Remote
                     {
                         var httpClient = new HttpClient { BaseAddress = options.RemoteServiceUri };
                         options.ConfigureHttpClient?.Invoke(httpClient);
-                        return new HttpRemoteServiceTransport(httpClient, options.RemoteServicePath);
+                        return new HttpRemoteServiceTransport(httpClient, options.RemoteServicePath, options.RemoteConnectPath);
                     });
                 }
                 else
@@ -82,6 +82,9 @@ namespace LiteOrm.Remote
                         "LiteOrm.Remote requires either LiteOrmOptions.Transport or LiteOrmOptions.RemoteServiceUri to be set. " +
                         "Configure one of them in RegisterLiteOrmRemote(opts => { ... }).");
                 }
+
+                if (options.Credentials is not null)
+                    services.AddSingleton(options.Credentials);
 
                 services.AddSingleton<RemoteServiceInvokeInterceptor>();
                 services.AddScoped<RemoteServiceGenerateInterceptor>();
@@ -134,9 +137,20 @@ namespace LiteOrm.Remote
             public string RemoteServicePath { get; set; } = "api/remote/invoke";
 
             /// <summary>
+            /// 相对于 <see cref="RemoteServiceUri"/> 的连接路径，默认为 <c>api/remote/connect</c>。
+            /// 仅在使用默认 <see cref="HttpRemoteServiceTransport"/> 时生效。
+            /// </summary>
+            public string RemoteConnectPath { get; set; } = "api/remote/connect";
+
+            /// <summary>
             /// 用于配置默认 <see cref="HttpRemoteServiceTransport"/> 内部 HttpClient 的回调（如超时、默认请求头等）。
             /// </summary>
             public Action<HttpClient>? ConfigureHttpClient { get; set; }
+
+            /// <summary>
+            /// 远程调用凭据（可选）。设置后将使用用户名/密码建立已认证会话。
+            /// </summary>
+            public RemoteCredentials? Credentials { get; set; }
 
             /// <summary>
             /// 自定义的远程调用传输层实例。若设置则优先使用，覆盖 <see cref="RemoteServiceUri"/> 的默认 HTTP 注册。

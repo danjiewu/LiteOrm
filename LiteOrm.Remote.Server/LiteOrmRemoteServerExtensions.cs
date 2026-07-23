@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -5,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using System.Text.Json;
 using LiteOrm.Common;
+using System.Text;
 
 namespace LiteOrm.Remote.Server
 {
@@ -17,6 +19,12 @@ namespace LiteOrm.Remote.Server
         /// 远程调用 HTTP 端点路径。默认为 <c>api/remote/invoke</c>，需与客户端 <see cref="HttpRemoteServiceTransport"/> 的 requestUri 一致。
         /// </summary>
         public string InvokePath { get; set; } = "api/remote/invoke";
+
+        /// <summary>
+        /// 建立会话的 HTTP 端点路径。默认为 <c>api/remote/connect</c>，
+        /// 需与客户端 <see cref="HttpRemoteServiceTransport"/> 的 connectUri 一致。
+        /// </summary>
+        public string ConnectPath { get; set; } = "api/remote/connect";
 
         /// <summary>
         /// JSON 序列化选项。默认使用 UnsafeRelaxedJsonEscaping + 大小写不敏感。
@@ -61,6 +69,17 @@ namespace LiteOrm.Remote.Server
         /// 未设置时扫描所有引用的程序集。
         /// </summary>
         public Assembly[]? Assemblies { get; set; }
+
+        /// <summary>
+        /// 是否启用 Cookie 身份认证。启用后 Connect 端点通过 <c>HttpContext.SignInAsync</c>
+        /// 创建身份票据，后续请求通过 <c>HttpContext.User</c> 恢复用户上下文。
+        /// 默认为 true。
+        /// <para>
+        /// 设置为 false 时，Connect 端点不会尝试创建身份票据，Invoke 端点的
+        /// <c>HttpContext.User</c> 由用户自行配置的身份认证中间件填充（如 JWT、自定义方案等）。
+        /// </para>
+        /// </summary>
+        public bool EnableAuthentication { get; set; } = true;
     }
 
     /// <summary>
@@ -100,6 +119,12 @@ namespace LiteOrm.Remote.Server
                 services.AddSingleton<IRemoteServiceTypeResolver>(options.ServiceTypeResolver);
             }
 
+            if (options.EnableAuthentication)
+            {
+                services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme)
+                    .AddCookie();
+            }
+
             services.AddScoped<RemoteServiceDispatcher>();
             services.AddSingleton(options);
             return services;
@@ -118,13 +143,15 @@ namespace LiteOrm.Remote.Server
             this IEndpointRouteBuilder endpoints,
             string? path = null)
         {
-            var actualPath = path ?? "api/remote/invoke";
+            var sp = endpoints.ServiceProvider;
+            var options = sp.GetRequiredService<RemoteServerOptions>();
+
+            var actualPath = path ?? options.InvokePath;
             if (!actualPath.StartsWith('/'))
                 actualPath = "/" + actualPath;
 
             endpoints.MapPost(actualPath, async (HttpContext context) =>
             {
-                var options = context.RequestServices.GetRequiredService<RemoteServerOptions>();
                 var dispatcher = context.RequestServices.GetRequiredService<RemoteServiceDispatcher>();
                 var serializerOptions = options.JsonSerializerOptions;
 
@@ -179,6 +206,80 @@ namespace LiteOrm.Remote.Server
                 context.Response.ContentType = "application/json; charset=utf-8";
                 await JsonSerializer.SerializeAsync(context.Response.Body, response, serializerOptions, context.RequestAborted)
                     .ConfigureAwait(false);
+            });
+
+            // 建立会话端点：接收 POST 携带 RemoteCredentials JSON，
+            // 若注册了 IRemoteAuthenticationHandler 则验证凭据，通过后调用 HttpContext.SignInAsync 创建身份票据；
+            // 未注册 IRemoteAuthenticationHandler 时直接返回成功（匿名连接）。
+            var connectPath = options.ConnectPath;
+            if (!connectPath.StartsWith('/'))
+                connectPath = "/" + connectPath;
+
+            endpoints.MapPost(connectPath, async (HttpContext context) =>
+            {
+                var serverOptions = context.RequestServices.GetRequiredService<RemoteServerOptions>();
+                var authHandler = context.RequestServices.GetService<IRemoteAuthenticationHandler>();
+
+                // 读取请求体中的凭据（若存在）
+                RemoteCredentials? credentials = null;
+                using (var reader = new System.IO.StreamReader(context.Request.Body, Encoding.UTF8, false, 4096, true))
+                {
+                    var body = await reader.ReadToEndAsync().ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(body))
+                    {
+                        try
+                        {
+                            credentials = JsonSerializer.Deserialize<RemoteCredentials>(body, serverOptions.JsonSerializerOptions);
+                        }
+                        catch { }
+                    }
+                }
+
+                if (authHandler is not null)
+                {
+                    if (credentials is null || string.IsNullOrEmpty(credentials.Username))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        await JsonSerializer.SerializeAsync(context.Response.Body,
+                            new { Error = "Username is required for authenticated connection." },
+                            serverOptions.JsonSerializerOptions, context.RequestAborted)
+                            .ConfigureAwait(false);
+                        return;
+                    }
+
+                    var principal = await authHandler.ValidateCredentialsAsync(credentials, context.RequestAborted)
+                        .ConfigureAwait(false);
+                    if (principal is null)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        await JsonSerializer.SerializeAsync(context.Response.Body,
+                            new { Error = "Invalid username or password." },
+                            serverOptions.JsonSerializerOptions, context.RequestAborted)
+                            .ConfigureAwait(false);
+                        return;
+                    }
+
+                    // 验证通过，使用返回的 ClaimsPrincipal 创建身份票据
+                    await context.SignInAsync(principal)
+                        .ConfigureAwait(false);
+
+                    context.Response.StatusCode = StatusCodes.Status200OK;
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    await JsonSerializer.SerializeAsync(context.Response.Body,
+                        new { Success = true },
+                        serverOptions.JsonSerializerOptions, context.RequestAborted)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    // 未注册 IRemoteAuthenticationHandler —— 匿名连接，直接返回成功
+                    context.Response.StatusCode = StatusCodes.Status200OK;
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    await JsonSerializer.SerializeAsync(context.Response.Body,
+                        new { Success = true },
+                        serverOptions.JsonSerializerOptions, context.RequestAborted)
+                        .ConfigureAwait(false);
+                }
             });
 
             return endpoints;

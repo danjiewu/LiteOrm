@@ -67,18 +67,36 @@ namespace LiteOrm.Remote
 
         private readonly ILogger _logger;
         private readonly IRemoteServiceTransport _transport;
+        private readonly RemoteCredentials? _credentials;
+        private bool _connected;
 
         /// <summary>
         /// 初始化 <see cref="RemoteServiceInvokeInterceptor"/> 类的新实例。
         /// </summary>
         /// <param name="loggerFactory">日志工厂</param>
         /// <param name="transport">远程调用传输层</param>
-        public RemoteServiceInvokeInterceptor(ILoggerFactory loggerFactory, IRemoteServiceTransport transport)
+        /// <param name="credentials">远程调用凭据（可选）。提供凭据时使用已认证连接。</param>
+        public RemoteServiceInvokeInterceptor(ILoggerFactory loggerFactory, IRemoteServiceTransport transport, RemoteCredentials? credentials = null)
         {
             if (loggerFactory is null) throw new ArgumentNullException(nameof(loggerFactory));
             if (transport is null) throw new ArgumentNullException(nameof(transport));
             _logger = loggerFactory.CreateLogger<RemoteServiceInvokeInterceptor>();
             _transport = transport;
+            _credentials = credentials;
+        }
+
+        /// <summary>
+        /// 确保已与服务端建立连接。首次调用时通过传输层连接服务端，后续调用直接返回。
+        /// 若提供了 <see cref="RemoteCredentials"/>，则使用已认证连接；否则使用匿名连接。
+        /// </summary>
+        private void EnsureConnected(CancellationToken cancellationToken)
+        {
+            if (_connected) return;
+            if (_credentials is not null)
+                _transport.ConnectAsync(_credentials, cancellationToken).GetAwaiter().GetResult();
+            else
+                _transport.ConnectAsync(cancellationToken).GetAwaiter().GetResult();
+            _connected = true;
         }
 
         /// <summary>
@@ -234,9 +252,10 @@ namespace LiteOrm.Remote
             var method = invocation.Method;
             var returnType = method.ReturnType;
 
+            var cancellationToken = ExtractCancellationToken(invocation);
+            EnsureConnected(cancellationToken);
             var request = BuildRequest(invocation);
             var writeBackPlan = BuildWriteBackPlan(invocation);
-            var cancellationToken = ExtractCancellationToken(invocation);
             var serviceInfo = $"[{request.RequestID}] {request.ServiceName}.{method.Name}";
 
             if (returnType == typeof(void))
