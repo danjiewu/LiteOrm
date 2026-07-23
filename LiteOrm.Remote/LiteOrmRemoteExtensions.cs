@@ -159,7 +159,14 @@ namespace LiteOrm.Remote
             public Action<HttpClient>? ConfigureHttpClient { get; set; }
 
             /// <summary>
-            /// 远程调用凭据（可选）。设置后将使用用户名/密码建立已认证会话。
+            /// 远程调用凭据（可选）。设置后将在首次调用前通过 Connect 端点建立已认证会话。
+            /// <para>
+            /// 根据 <see cref="RemoteCredentials.GrantType"/> 区分授权模式：
+            /// <list type="bullet">
+            /// <item><see cref="AuthGrantType.Password"/>（默认）：使用 Username/Password 认证</item>
+            /// <item><see cref="AuthGrantType.ClientCredentials"/>：使用 ClientId/ClientSecret 认证</item>
+            /// </list>
+            /// </para>
             /// </summary>
             public RemoteCredentials? Credentials { get; set; }
 

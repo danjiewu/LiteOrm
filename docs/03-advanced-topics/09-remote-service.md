@@ -221,7 +221,7 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `RemoteServiceUri` | `Uri?` | 远程服务基础地址。设置后自动注册基于 `HttpClient` 的 `HttpRemoteServiceTransport` |
 | `RemoteServicePath` | `string` | 相对于 `RemoteServiceUri` 的请求路径，默认 `api/remote/invoke` |
 | `RemoteConnectPath` | `string` | 相对于 `RemoteServiceUri` 的连接路径，默认 `api/remote/connect` |
-| `Credentials` | `RemoteCredentials?` | 远程调用凭据。设置后将使用用户名/密码建立已认证会话，Connect 阶段发送到服务端验证 |
+| `Credentials` | `RemoteCredentials?` | 远程调用凭据。根据 `GrantType` 使用 `Username`/`Password` 或 `ClientId`/`ClientSecret` 建立已认证会话，Connect 阶段发送到服务端验证 |
 | `ConfigureHttpClient` | `Action<HttpClient>?` | 配置内部 `HttpClient`（超时、默认请求头等） |
 | `Transport` | `IRemoteServiceTransport?` | 自定义传输层实例。设置后优先于 `RemoteServiceUri` |
 | `AutoRegisterEntityServices` | `bool` | 是否自动注册所有实体服务为远程代理，默认 `true` |
@@ -293,7 +293,12 @@ var user = await factory.DemoUserService.GetByUserNameAsync("alice");
 
 ## 五、身份认证
 
-LiteOrm.Remote 使用 ASP.NET Core Cookie 认证标识用户身份，替代传统的 SessionID 机制。
+LiteOrm.Remote 使用 ASP.NET Core Cookie 认证标识用户身份，替代传统的 SessionID 机制。支持两种授权模式：
+
+| 授权模式 | `AuthGrantType` | 必填字段 | 适用场景 |
+|---------|----------------|---------|---------|
+| 密码模式 | `Password`（默认） | `Username` + `Password` | 认证用户身份，有明确的用户名/密码 |
+| 客户端凭据模式 | `ClientCredentials` | `ClientId` + `ClientSecret` | 认证客户端/应用身份，无具体用户（如服务间调用） |
 
 ### 5.1 工作原理
 
@@ -303,14 +308,19 @@ sequenceDiagram
     participant Server as 服务端
     participant Store as IRemoteAuthenticationHandler
 
-    Client->>Server: POST /api/remote/connect {Username, Password, Extensions}
-    Server->>Store: ValidateCredentialsAsync(credentials)
-    Store-->>Server: ClaimsPrincipal（验证通过）/ null（验证失败）
-    alt 验证失败
-        Server-->>Client: 401 Unauthorized
-    else 验证通过
-        Server->>Server: HttpContext.SignInAsync(principal) → 设置 Cookie
-        Server-->>Client: 200 OK（Cookie 自动写入）
+    Client->>Server: POST /api/remote/connect {GrantType, Username/ClientId, Password/ClientSecret, Extensions}
+    Server->>Server: 按 GrantType 校验必填字段是否完整
+    alt 字段缺失
+        Server-->>Client: 401 Unauthorized（提示缺失字段）
+    else 字段完整
+        Server->>Store: ValidateCredentialsAsync(credentials)
+        Store-->>Server: ClaimsPrincipal（验证通过）/ null（验证失败）
+        alt 验证失败
+            Server-->>Client: 401 Unauthorized
+        else 验证通过
+            Server->>Server: HttpContext.SignInAsync(principal) → 设置 Cookie
+            Server-->>Client: 200 OK（Cookie 自动写入）
+        end
     end
     Note over Client,Server: 后续请求自动携带 Cookie
     Client->>Server: POST /api/remote/invoke（含 Cookie）
@@ -321,18 +331,24 @@ sequenceDiagram
 
 ### 5.2 实现 `IRemoteAuthenticationHandler`
 
+`IRemoteAuthenticationHandler.ValidateCredentialsAsync` 接收 `RemoteCredentials`，实现方可在方法内根据 `GrantType` 执行不同的验证逻辑。框架在调用前已按授权模式校验必填字段是否完整。
+
+**密码模式示例：**
+
 ```csharp
 using System.Security.Claims;
 using LiteOrm.Common;
 using LiteOrm.Remote.Server;
 
-public class MyAuthHandler : IRemoteAuthenticationHandler
+public class PasswordAuthHandler : IRemoteAuthenticationHandler
 {
     public Task<ClaimsPrincipal?> ValidateCredentialsAsync(
         RemoteCredentials credentials, CancellationToken cancellationToken = default)
     {
-        // 校验用户名/密码
-        if (credentials.Username == "admin" && credentials.Password == "pass")
+        // Password 模式：校验用户名/密码
+        if (credentials.GrantType == AuthGrantType.Password
+            && credentials.Username == "admin"
+            && credentials.Password == "pass")
         {
             var identity = new ClaimsIdentity(new[]
             {
@@ -342,6 +358,61 @@ public class MyAuthHandler : IRemoteAuthenticationHandler
             return Task.FromResult<ClaimsPrincipal?>(new ClaimsPrincipal(identity));
         }
         return Task.FromResult<ClaimsPrincipal?>(null);
+    }
+}
+```
+
+**客户端凭据模式示例：**
+
+```csharp
+public class ClientCredentialsAuthHandler : IRemoteAuthenticationHandler
+{
+    public Task<ClaimsPrincipal?> ValidateCredentialsAsync(
+        RemoteCredentials credentials, CancellationToken cancellationToken = default)
+    {
+        // ClientCredentials 模式：校验 ClientId/ClientSecret
+        if (credentials.GrantType == AuthGrantType.ClientCredentials
+            && credentials.ClientId == "my-app"
+            && credentials.ClientSecret == "secret-key")
+        {
+            var identity = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, credentials.ClientId!),
+                new Claim("client_id", credentials.ClientId!),
+            }, "Cookies");
+            return Task.FromResult<ClaimsPrincipal?>(new ClaimsPrincipal(identity));
+        }
+        return Task.FromResult<ClaimsPrincipal?>(null);
+    }
+}
+```
+
+**同时支持两种模式：**
+
+```csharp
+public class MixedAuthHandler : IRemoteAuthenticationHandler
+{
+    public Task<ClaimsPrincipal?> ValidateCredentialsAsync(
+        RemoteCredentials credentials, CancellationToken cancellationToken = default)
+    {
+        return credentials.GrantType switch
+        {
+            AuthGrantType.Password => ValidatePasswordAsync(credentials),
+            AuthGrantType.ClientCredentials => ValidateClientCredentialsAsync(credentials),
+            _ => Task.FromResult<ClaimsPrincipal?>(null),
+        };
+    }
+
+    private Task<ClaimsPrincipal?> ValidatePasswordAsync(RemoteCredentials credentials)
+    {
+        // 校验用户名/密码（查用户数据库等）
+        // ...
+    }
+
+    private Task<ClaimsPrincipal?> ValidateClientCredentialsAsync(RemoteCredentials credentials)
+    {
+        // 校验 ClientId/ClientSecret（查应用注册表等）
+        // ...
     }
 }
 ```
@@ -357,6 +428,8 @@ builder.Services.AddRemoteServer();
 
 ### 5.4 客户端配置凭据
 
+**密码模式（默认）：**
+
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
     .RegisterLiteOrmRemote(opts =>
@@ -364,12 +437,30 @@ var host = Host.CreateDefaultBuilder(args)
         opts.RemoteServiceUri = new Uri("http://localhost:5000");
         opts.Credentials = new RemoteCredentials
         {
+            GrantType = AuthGrantType.Password,  // 默认值，可省略
             Username = "admin",
             Password = "pass",
-            Extensions = new Dictionary<string, object?>
+            Extensions = new Dictionary<string, string>
             {
                 ["tenant"] = "tenant-a",
             },
+        };
+    })
+    .Build();
+```
+
+**客户端凭据模式：**
+
+```csharp
+var host = Host.CreateDefaultBuilder(args)
+    .RegisterLiteOrmRemote(opts =>
+    {
+        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+        opts.Credentials = new RemoteCredentials
+        {
+            GrantType = AuthGrantType.ClientCredentials,
+            ClientId = "my-app",
+            ClientSecret = "secret-key",
         };
     })
     .Build();

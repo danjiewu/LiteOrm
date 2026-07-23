@@ -237,12 +237,12 @@ namespace LiteOrm.Remote.Server
 
                 if (authHandler is not null)
                 {
-                    if (credentials is null || string.IsNullOrEmpty(credentials.Username))
+                    if (credentials is null || !IsCredentialsValid(credentials))
                     {
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                         context.Response.ContentType = "application/json; charset=utf-8";
                         await JsonSerializer.SerializeAsync(context.Response.Body,
-                            new { Error = "Username is required for authenticated connection." },
+                            new { Error = GetMissingCredentialsMessage(credentials) },
                             serverOptions.JsonSerializerOptions, context.RequestAborted)
                             .ConfigureAwait(false);
                         return;
@@ -255,7 +255,7 @@ namespace LiteOrm.Remote.Server
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                         context.Response.ContentType = "application/json; charset=utf-8";
                         await JsonSerializer.SerializeAsync(context.Response.Body,
-                            new { Error = "Invalid username or password." },
+                            new { Error = "Authentication failed: invalid credentials." },
                             serverOptions.JsonSerializerOptions, context.RequestAborted)
                             .ConfigureAwait(false);
                         return;
@@ -285,6 +285,43 @@ namespace LiteOrm.Remote.Server
             });
 
             return endpoints;
+        }
+
+        /// <summary>
+        /// 根据 <see cref="AuthGrantType"/> 校验凭据必填字段是否完整。
+        /// <para>
+        /// <see cref="AuthGrantType.Password"/> 模式要求 <see cref="RemoteCredentials.Username"/> 非空；
+        /// <see cref="AuthGrantType.ClientCredentials"/> 模式要求 <see cref="RemoteCredentials.ClientId"/> 非空。
+        /// </para>
+        /// </summary>
+        /// <param name="credentials">待校验的凭据。</param>
+        /// <returns>必填字段均已提供返回 true；否则返回 false。</returns>
+        private static bool IsCredentialsValid(RemoteCredentials credentials)
+        {
+            return credentials.GrantType switch
+            {
+                AuthGrantType.Password => !string.IsNullOrEmpty(credentials.Username),
+                AuthGrantType.ClientCredentials => !string.IsNullOrEmpty(credentials.ClientId),
+                _ => false,
+            };
+        }
+
+        /// <summary>
+        /// 根据 <see cref="AuthGrantType"/> 生成缺失凭据字段的错误提示。
+        /// </summary>
+        /// <param name="credentials">凭据实例（可能为 null）。</param>
+        /// <returns>错误提示字符串。</returns>
+        private static string GetMissingCredentialsMessage(RemoteCredentials? credentials)
+        {
+            if (credentials is null)
+                return "Credentials are required for authenticated connection.";
+
+            return credentials.GrantType switch
+            {
+                AuthGrantType.Password => "Username is required for Password grant type.",
+                AuthGrantType.ClientCredentials => "ClientId is required for ClientCredentials grant type.",
+                _ => $"Unsupported grant type: {credentials.GrantType}",
+            };
         }
 
         /// <summary>

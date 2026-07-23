@@ -221,7 +221,7 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `RemoteServiceUri` | `Uri?` | Remote service base address. When set, automatically registers `HttpRemoteServiceTransport` based on `HttpClient` |
 | `RemoteServicePath` | `string` | Request path relative to `RemoteServiceUri`, default `api/remote/invoke` |
 | `RemoteConnectPath` | `string` | Connect path relative to `RemoteServiceUri`, default `api/remote/connect` |
-| `Credentials` | `RemoteCredentials?` | Remote invocation credentials. When set, authenticates with username/password on Connect, sent to the server for validation |
+| `Credentials` | `RemoteCredentials?` | Remote invocation credentials. Uses `Username`/`Password` or `ClientId`/`ClientSecret` based on `GrantType` to establish an authenticated session during the Connect phase |
 | `ConfigureHttpClient` | `Action<HttpClient>?` | Configure the internal `HttpClient` (timeout, default headers, etc.) |
 | `Transport` | `IRemoteServiceTransport?` | Custom transport layer instance. Takes precedence over `RemoteServiceUri` when set |
 | `AutoRegisterEntityServices` | `bool` | Whether to auto-register all entity services as remote proxies, default `true` |
@@ -291,11 +291,226 @@ var user = await factory.DemoUserService.GetByUserNameAsync("alice");
 
 ---
 
-## 5. Type Resolution and ServiceName
+## 5. Authentication
+
+LiteOrm.Remote uses ASP.NET Core Cookie authentication for user identity, replacing the traditional SessionID mechanism. Two grant types are supported:
+
+| Grant Type | `AuthGrantType` | Required Fields | Use Case |
+|------------|----------------|-----------------|----------|
+| Password | `Password` (default) | `Username` + `Password` | Authenticating user identity with explicit credentials |
+| Client Credentials | `ClientCredentials` | `ClientId` + `ClientSecret` | Authenticating client/application identity without a specific user (e.g., service-to-service calls) |
+
+### 5.1 How It Works
+
+```mermaid
+sequenceDiagram
+    participant Client as Client
+    participant Server as Server
+    participant Store as IRemoteAuthenticationHandler
+
+    Client->>Server: POST /api/remote/connect {GrantType, Username/ClientId, Password/ClientSecret, Extensions}
+    Server->>Server: Validate required fields by GrantType
+    alt Missing fields
+        Server-->>Client: 401 Unauthorized (indicates missing field)
+    else Fields complete
+        Server->>Store: ValidateCredentialsAsync(credentials)
+        Store-->>Server: ClaimsPrincipal (valid) / null (invalid)
+        alt Validation failed
+            Server-->>Client: 401 Unauthorized
+        else Validation passed
+            Server->>Server: HttpContext.SignInAsync(principal) → set Cookie
+            Server-->>Client: 200 OK (Cookie auto-written)
+        end
+    end
+    Note over Client,Server: Subsequent requests carry Cookie automatically
+    Client->>Server: POST /api/remote/invoke (with Cookie)
+    Server->>Server: Auth middleware restores HttpContext.User
+    Server->>Server: Execute remote invocation
+    Server-->>Client: RemoteInvocationResponse
+```
+
+### 5.2 Implementing `IRemoteAuthenticationHandler`
+
+`IRemoteAuthenticationHandler.ValidateCredentialsAsync` receives `RemoteCredentials`. Implementers can branch on `GrantType` to execute different validation logic. The framework has already validated required fields by grant type before calling this method.
+
+**Password grant type example:**
+
+```csharp
+using System.Security.Claims;
+using LiteOrm.Common;
+using LiteOrm.Remote.Server;
+
+public class PasswordAuthHandler : IRemoteAuthenticationHandler
+{
+    public Task<ClaimsPrincipal?> ValidateCredentialsAsync(
+        RemoteCredentials credentials, CancellationToken cancellationToken = default)
+    {
+        // Password grant: validate username/password
+        if (credentials.GrantType == AuthGrantType.Password
+            && credentials.Username == "admin"
+            && credentials.Password == "pass")
+        {
+            var identity = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.Name, credentials.Username),
+                new Claim("tenant_id", credentials.Extensions?["tenant"]?.ToString() ?? ""),
+            }, "Cookies");
+            return Task.FromResult<ClaimsPrincipal?>(new ClaimsPrincipal(identity));
+        }
+        return Task.FromResult<ClaimsPrincipal?>(null);
+    }
+}
+```
+
+**Client credentials grant type example:**
+
+```csharp
+public class ClientCredentialsAuthHandler : IRemoteAuthenticationHandler
+{
+    public Task<ClaimsPrincipal?> ValidateCredentialsAsync(
+        RemoteCredentials credentials, CancellationToken cancellationToken = default)
+    {
+        // ClientCredentials grant: validate ClientId/ClientSecret
+        if (credentials.GrantType == AuthGrantType.ClientCredentials
+            && credentials.ClientId == "my-app"
+            && credentials.ClientSecret == "secret-key")
+        {
+            var identity = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, credentials.ClientId!),
+                new Claim("client_id", credentials.ClientId!),
+            }, "Cookies");
+            return Task.FromResult<ClaimsPrincipal?>(new ClaimsPrincipal(identity));
+        }
+        return Task.FromResult<ClaimsPrincipal?>(null);
+    }
+}
+```
+
+**Supporting both grant types:**
+
+```csharp
+public class MixedAuthHandler : IRemoteAuthenticationHandler
+{
+    public Task<ClaimsPrincipal?> ValidateCredentialsAsync(
+        RemoteCredentials credentials, CancellationToken cancellationToken = default)
+    {
+        return credentials.GrantType switch
+        {
+            AuthGrantType.Password => ValidatePasswordAsync(credentials),
+            AuthGrantType.ClientCredentials => ValidateClientCredentialsAsync(credentials),
+            _ => Task.FromResult<ClaimsPrincipal?>(null),
+        };
+    }
+
+    private Task<ClaimsPrincipal?> ValidatePasswordAsync(RemoteCredentials credentials)
+    {
+        // Validate username/password (query user database, etc.)
+        // ...
+    }
+
+    private Task<ClaimsPrincipal?> ValidateClientCredentialsAsync(RemoteCredentials credentials)
+    {
+        // Validate ClientId/ClientSecret (query app registry, etc.)
+        // ...
+    }
+}
+```
+
+### 5.3 Registering the Server
+
+```csharp
+builder.Services.AddSingleton<IRemoteAuthenticationHandler, MyAuthHandler>();
+builder.Services.AddRemoteServer();
+```
+
+> When no `IRemoteAuthenticationHandler` is registered, the server allows anonymous connections (no identity verification).
+
+### 5.4 Client Credentials Configuration
+
+**Password grant type (default):**
+
+```csharp
+var host = Host.CreateDefaultBuilder(args)
+    .RegisterLiteOrmRemote(opts =>
+    {
+        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+        opts.Credentials = new RemoteCredentials
+        {
+            GrantType = AuthGrantType.Password,  // default, can be omitted
+            Username = "admin",
+            Password = "pass",
+            Extensions = new Dictionary<string, string>
+            {
+                ["tenant"] = "tenant-a",
+            },
+        };
+    })
+    .Build();
+```
+
+**Client credentials grant type:**
+
+```csharp
+var host = Host.CreateDefaultBuilder(args)
+    .RegisterLiteOrmRemote(opts =>
+    {
+        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+        opts.Credentials = new RemoteCredentials
+        {
+            GrantType = AuthGrantType.ClientCredentials,
+            ClientId = "my-app",
+            ClientSecret = "secret-key",
+        };
+    })
+    .Build();
+```
+
+After setting `Credentials`, the framework automatically calls `ConnectAsync` before the first invocation to complete authentication. When no credentials are set, anonymous connection is used.
+
+### 5.5 Accessing the Current User on the Server
+
+The `Invoke` endpoint automatically restores `HttpContext.User` through the ASP.NET Core authentication middleware. To access the current user in business code, use `IHttpContextAccessor`:
+
+```csharp
+public class MyService
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    public MyService(IHttpContextAccessor httpContextAccessor)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    public Task DoSomethingAsync()
+    {
+        var user = _httpContextAccessor.HttpContext?.User;
+        var userName = user?.Identity?.Name ?? "anonymous";
+        // ...
+    }
+}
+```
+
+### 5.6 Disabling Built-in Authentication
+
+To use JWT or other custom authentication schemes, set `EnableAuthentication = false`:
+
+```csharp
+builder.Services.AddRemoteServer(options =>
+{
+    options.EnableAuthentication = false;
+});
+
+// Configure your own authentication middleware
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...);
+```
+
+---
+
+## 6. Type Resolution and ServiceName
 
 The server finds the corresponding `Type` based on `ServiceName` in the request, and the client generates `ServiceName`. Understanding this section helps with custom service names and handling same-name type conflicts.
 
-### 5.1 `TypeResolverHelper` — Bidirectional Type Name ↔ Type Resolution
+### 6.1 `TypeResolverHelper` — Bidirectional Type Name ↔ Type Resolution
 
 `LiteOrm.Common.TypeResolverHelper` is a public utility class providing bidirectional conversion between type names and `Type`.
 
@@ -311,7 +526,7 @@ The server finds the corresponding `Type` based on `ServiceName` in the request,
 
 > **Generic type names**: Generic types should use the CLR name format `Foo`1` (with backtick arity suffix), to avoid conflicts with non-generic types of the same name.
 
-### 5.2 `IRemoteServiceTypeResolver` — Server Type Resolver
+### 6.2 `IRemoteServiceTypeResolver` — Server Type Resolver
 
 The server uses `IRemoteServiceTypeResolver` to resolve the `ServiceName` (short type name) in the request to the actual service interface type.
 
@@ -338,7 +553,7 @@ builder.Services.AddRemoteServer(options =>
 });
 ```
 
-### 5.3 ServiceName Consistency Convention
+### 6.3 ServiceName Consistency Convention
 
 - When both ends enable `AutoRegisterEntityServices`, the framework ensures consistency automatically
 - When manually registering custom names, both ends must call `TypeResolverHelper.Register`
@@ -346,11 +561,11 @@ builder.Services.AddRemoteServer(options =>
 
 ---
 
-## 6. Argument Write-back (ArgumentOut)
+## 7. Argument Write-back (ArgumentOut)
 
 > Due to the **loss of reference semantics** in remote calls (parameters are deserialized new instances on the server), modifications to parameters on the server are not automatically reflected back to the client. The `[ArgumentOut]` family of attributes is used to declare parameters that need write-back, with the framework extracting write-back values on the server and applying them on the client.
 
-### 6.1 `[IdentityOut]` — Auto-increment Primary Key Write-back
+### 7.1 `[IdentityOut]` — Auto-increment Primary Key Write-back
 
 `IEntityServiceAsync<T>`'s `InsertAsync` / `BatchInsertAsync` are already annotated with `[IdentityOut]` by default. After calling, the Id is automatically written back:
 
@@ -367,7 +582,7 @@ foreach (var o in orders)
 
 > **Dependency**: `IdentityOutAttribute` resolves the Identity column through `TableInfoProvider.Default`. Both client and server must register it (`LiteOrm` main library's `LiteOrmCoreInitializer` initializes it automatically).
 
-### 6.2 `[CopyableOut]` — Full Object Write-back
+### 7.2 `[CopyableOut]` — Full Object Write-back
 
 Applicable to parameter types that implement the `ICopyable` interface. The server returns the parameter object itself directly, and the client copies it entirely to the original object via `ICopyable.CopyFrom`.
 
@@ -393,7 +608,7 @@ public interface ICopyableUserService
 }
 ```
 
-### 6.3 `ArgumentMode` Enum
+### 7.3 `ArgumentMode` Enum
 
 | Value | Description | `ReturnType` Meaning |
 |-------|-------------|----------------------|
@@ -446,11 +661,11 @@ public interface IMyService
 
 ---
 
-## 7. Custom Transport Layer
+## 8. Custom Transport Layer
 
 Beyond the default HTTP transport, you can implement custom transports based on named pipes, gRPC, message queues, etc.
 
-### 7.1 `IRemoteServiceTransport` Interface
+### 8.1 `IRemoteServiceTransport` Interface
 
 The base interface for all transport layer implementations, covering connection (authentication) and invocation:
 
@@ -468,7 +683,7 @@ public interface IRemoteServiceTransport
 | `ConnectAsync(RemoteCredentials)` | Establishes an authenticated connection with the server. After the server validates credentials via `HttpContext.SignInAsync`, subsequent requests carry the authentication cookie automatically |
 | `InvokeAsync` | Sends a remote invocation request and returns the response |
 
-### 7.2 `JsonRemoteServiceTransport` Abstract Base Class (Recommended)
+### 8.2 `JsonRemoteServiceTransport` Abstract Base Class (Recommended)
 
 In the `LiteOrm.Remote` namespace, handles request/response serialization and deserialization via `System.Text.Json`. **Custom transport layers should prefer inheriting from this class**, only needing to implement two abstract methods:
 
@@ -523,11 +738,11 @@ public class NamedPipeTransport : JsonRemoteServiceTransport
 opts.Transport = new NamedPipeTransport("liteorm-remote");
 ```
 
-### 7.3 Default HTTP Transport (`HttpRemoteServiceTransport`)
+### 8.3 Default HTTP Transport (`HttpRemoteServiceTransport`)
 
 Built-in subclass of `JsonRemoteServiceTransport`, based on `HttpClient`. Configure via `RemoteServiceUri` + `ConfigureHttpClient` (see [Section 4.2](#42-client-configuration-liteormoptions)).
 
-### 7.4 Fully Custom Transport
+### 8.4 Fully Custom Transport
 
 Implement `IRemoteServiceTransport` directly (without inheriting `JsonRemoteServiceTransport`), handling serialization yourself:
 
@@ -546,7 +761,7 @@ opts.Transport = new MyTransport();
 
 ---
 
-## 8. Serialization Constraints
+## 9. Serialization Constraints
 
 Remote service invocation **completely relies on JSON serialization of input parameters and return values**. Understanding the following constraints helps avoid common pitfalls.
 
@@ -562,7 +777,7 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 
 ---
 
-## 9. Notes
+## 10. Notes
 
 1. **`ForEachAsync` is not supported for remote calls**: Streaming iteration requires continuous data return, which the remote protocol does not support; throws `NotSupportedException`
 2. **`CancellationToken` transparent passing**: The cancellation token is not serialized; it is passed end-to-end by the transport layer
@@ -585,7 +800,7 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 
 ---
 
-## 10. Features and Advantages
+## 11. Features and Advantages
 
 | Feature | Description |
 |---------|-------------|
