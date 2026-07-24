@@ -581,7 +581,7 @@ graph LR
     Browser["Browser (stores login ticket)"] -->|HTTP request with cookie| Web["Web Backend (BFF)"]
     Web -->|HttpContext resolves current user| Resolver["Custom ICredentialsResolver"]
     Web -->|Business calls| Transport["HttpRemoteServiceTransport (Singleton)"]
-    Transport -->|GetTicketAsync retrieves current user ticket| Resolver
+    Resolver -->|GetTicketAsync returns current user ticket| Transport
     Transport -->|InvokeAsync writes Cookie header| Remote["Remote Data Service"]
 ```
 

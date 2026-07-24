@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Data;
 using System.Data.Common;
@@ -165,9 +165,17 @@ namespace LiteOrm
         {
             using var scope = Context.AcquireScope();
             PreExcuteCommand(ExcuteType.ExecuteNonQuery);
-            int ret = Target.ExecuteNonQuery();
-            PostExcuteCommand(ExcuteType.ExecuteNonQuery);
-            return ret;
+            try
+            {
+                int ret = Target.ExecuteNonQuery();
+                PostExcuteCommand(ExcuteType.ExecuteNonQuery);
+                return ret;
+            }
+            catch
+            {
+                Context.RecordFailure();
+                throw;
+            }
         }
 
         /// <summary>
@@ -179,9 +187,17 @@ namespace LiteOrm
         {
             using var scope = await Context.AcquireScopeAsync(cancellationToken);
             PreExcuteCommand(ExcuteType.ExecuteNonQuery);
-            int ret = await Target.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            PostExcuteCommand(ExcuteType.ExecuteNonQuery);
-            return ret;
+            try
+            {
+                int ret = await Target.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                PostExcuteCommand(ExcuteType.ExecuteNonQuery);
+                return ret;
+            }
+            catch
+            {
+                Context.RecordFailure();
+                throw;
+            }
         }
 
         /// <summary>
@@ -192,9 +208,17 @@ namespace LiteOrm
         {
             using var scope = Context.AcquireScope();
             PreExcuteCommand(ExcuteType.ExecuteScalar);
-            object ret = Target.ExecuteScalar();
-            PostExcuteCommand(ExcuteType.ExecuteScalar);
-            return ret;
+            try
+            {
+                object ret = Target.ExecuteScalar();
+                PostExcuteCommand(ExcuteType.ExecuteScalar);
+                return ret;
+            }
+            catch
+            {
+                Context.RecordFailure();
+                throw;
+            }
         }
 
         /// <summary>
@@ -206,9 +230,17 @@ namespace LiteOrm
         {
             using var scope = await Context.AcquireScopeAsync(cancellationToken);
             PreExcuteCommand(ExcuteType.ExecuteScalar);
-            var ret = await Target.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-            PostExcuteCommand(ExcuteType.ExecuteScalar);
-            return ret;
+            try
+            {
+                var ret = await Target.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                PostExcuteCommand(ExcuteType.ExecuteScalar);
+                return ret;
+            }
+            catch
+            {
+                Context.RecordFailure();
+                throw;
+            }
         }
 
         /// <summary>
@@ -281,6 +313,7 @@ namespace LiteOrm
             }
             catch
             {
+                Context.RecordFailure();
                 scope.Dispose();
                 throw;
             }
@@ -328,6 +361,7 @@ namespace LiteOrm
             }
             catch
             {
+                Context.RecordFailure();
                 scope.Dispose();
                 throw;
             }

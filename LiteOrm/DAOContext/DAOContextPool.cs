@@ -50,6 +50,12 @@ namespace LiteOrm
         /// 默认的最大参数数量限制，表示在执行SQL语句时允许的最大参数数量。超过此限制可能会导致性能下降或数据库错误。
         /// </summary>
         public const int DefaultParamCountLimit = 1000;
+
+        /// <summary>
+        /// 默认的连续失败次数上限。上下文连续执行失败达到该值后将被标记为失效，
+        /// 不再被连接池复用。0 表示不启用失效检测。
+        /// </summary>
+        public const int DefaultMaxFailureLimit = 3;
         private SemaphoreSlim _semaphore = new SemaphoreSlim(100, 100);
         private readonly Queue<DAOContext> _pool = new Queue<DAOContext>();
         private readonly object _poolLock = new object();
@@ -136,6 +142,12 @@ namespace LiteOrm
         /// 最大参数数量限制，0表示无限制，默认为1000。
         /// </summary>
         public int ParamCountLimit { get; set; } = DefaultParamCountLimit;
+
+        /// <summary>
+        /// 获取或设置上下文连续执行失败的上限。达到该值后上下文被标记为失效，
+        /// 不再被连接池复用。0 表示不启用失效检测。默认为 <see cref="DefaultMaxFailureLimit"/>。
+        /// </summary>
+        public int MaxConsecutiveFailures { get; set; } = DefaultMaxFailureLimit;
 
         /// <summary>
         /// 获取或设置该连接池是否为只读连接池。
@@ -430,7 +442,8 @@ namespace LiteOrm
                 var context = new DAOContext(connection, this)
                 {
                     IsReadOnly = IsReadOnlyPool,
-                    KeepAliveDuration = KeepAliveDuration
+                    KeepAliveDuration = KeepAliveDuration,
+                    MaxFailureLimit = MaxConsecutiveFailures
                 };
                 _logger?.LogDebug("Pool '{PoolName}': new connection created (ContextId: {ContextId}).", Name, context.Id);
                 if (OnContextCreated != null) OnContextCreated(context);

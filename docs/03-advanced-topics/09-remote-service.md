@@ -580,7 +580,7 @@ graph LR
     Browser["浏览器（保存登录票据）"] -->|HTTP 请求带 Cookie| Web["Web 后端（BFF）"]
     Web -->|HttpContext 解析当前用户| Resolver["自定义 ICredentialsResolver"]
     Web -->|业务调用| Transport["HttpRemoteServiceTransport（Singleton）"]
-    Transport -->|GetTicketAsync 取出当前用户票据| Resolver
+    Resolver -->|GetTicketAsync 返回当前用户票据| Transport
     Transport -->|InvokeAsync 写入 Cookie 头| Remote["远程数据服务"]
 ```
 

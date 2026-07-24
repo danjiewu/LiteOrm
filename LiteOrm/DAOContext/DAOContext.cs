@@ -22,6 +22,8 @@ namespace LiteOrm
     public class DAOContext : IDisposable, IAsyncDisposable
     {
         private volatile bool _disposed;
+        private int _failureCount;
+        private bool _invalidated;
         /// <summary>
         /// 设置或获取作用域锁定的超时时间（毫秒）。
         /// </summary>
@@ -72,6 +74,10 @@ namespace LiteOrm
             get
             {
                 {
+                    // 因连续异常被显式失效，永久不可用
+                    if (_invalidated)
+                        return false;
+
                     // 检查连接是否存活
                     if (KeepAliveDuration != TimeSpan.Zero &&
                         LastActiveTime + KeepAliveDuration < DateTime.Now)
@@ -110,6 +116,17 @@ namespace LiteOrm
         /// 最大参数数量，0表示无限制，默认为1000
         /// </summary>
         public int ParamCountLimit => Pool?.ParamCountLimit ?? DAOContextPool.DefaultParamCountLimit;
+
+        /// <summary>
+        /// 获取或设置连续执行失败的上限。连续失败达到该值后上下文被标记为失效，
+        /// 不再被连接池复用。0 表示不启用失效检测。默认为 <see cref="DAOContextPool.DefaultMaxFailureLimit"/>。
+        /// </summary>
+        public int MaxFailureLimit { get; set; } = DAOContextPool.DefaultMaxFailureLimit;
+
+        /// <summary>
+        /// 获取当前连续失败次数。成功执行一次操作后归零。
+        /// </summary>
+        public int FailureCount => _failureCount;
 
         /// <summary>
         /// 获取底层的数据库连接。
@@ -152,11 +169,31 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 更新上下文的最后活动时间戳，通常在执行数据库操作时调用，以便连接池能够正确识别活跃连接和老化连接。
+        /// 更新上下文的最后活动时间戳，通常在执行数据库操作成功后调用，以便连接池能够正确识别活跃连接和老化连接。
+        /// 同时将连续失败计数归零。
         /// </summary>
         public void SetActivate()
         {
             LastActiveTime = DateTime.Now;
+            _failureCount = 0;
+        }
+
+        /// <summary>
+        /// 记录一次执行失败。连续失败次数达到 <see cref="MaxFailureLimit"/> 时，
+        /// 不再被连接池复用。
+        /// <para>
+        /// 当 <see cref="MaxFailureLimit"/> 为 0 时不进行任何处理（禁用失效检测）。
+        /// </para>
+        /// </summary>
+        public void RecordFailure()
+        {
+            if (MaxFailureLimit <= 0 || _invalidated)
+                return;
+            int count = Interlocked.Increment(ref _failureCount);
+            if (count >= MaxFailureLimit)
+            {
+                _invalidated = true;
+            }
         }
 
         /// <summary>
@@ -281,14 +318,18 @@ namespace LiteOrm
                 try
                 {
                     CurrentTransaction.Commit();
-                    return true;
                 }
-                finally
+                catch
                 {
                     CurrentTransaction?.Dispose();
                     CurrentTransaction = null;
-                    SetActivate();
+                    RecordFailure();
+                    throw;
                 }
+                CurrentTransaction?.Dispose();
+                CurrentTransaction = null;
+                SetActivate();
+                return true;
             }
         }
 
@@ -312,14 +353,18 @@ namespace LiteOrm
 #else
                     CurrentTransaction.Commit();
 #endif
-                    return true;
                 }
-                finally
+                catch
                 {
                     CurrentTransaction?.Dispose();
                     CurrentTransaction = null;
-                    SetActivate();
+                    RecordFailure();
+                    throw;
                 }
+                CurrentTransaction?.Dispose();
+                CurrentTransaction = null;
+                SetActivate();
+                return true;
             }
         }
 
@@ -338,14 +383,18 @@ namespace LiteOrm
                 try
                 {
                     CurrentTransaction.Rollback();
-                    return true;
                 }
-                finally
+                catch
                 {
                     CurrentTransaction?.Dispose();
                     CurrentTransaction = null;
-                    SetActivate();
+                    RecordFailure();
+                    throw;
                 }
+                CurrentTransaction?.Dispose();
+                CurrentTransaction = null;
+                SetActivate();
+                return true;
             }
         }
 
@@ -369,14 +418,18 @@ namespace LiteOrm
 #else
                     CurrentTransaction.Rollback();
 #endif
-                    return true;
                 }
-                finally
+                catch
                 {
                     CurrentTransaction?.Dispose();
                     CurrentTransaction = null;
-                    SetActivate();
+                    RecordFailure();
+                    throw;
                 }
+                CurrentTransaction?.Dispose();
+                CurrentTransaction = null;
+                SetActivate();
+                return true;
             }
         }
 
@@ -448,11 +501,11 @@ namespace LiteOrm
                         else
                             CurrentTransaction.Rollback();
                     }
+                    catch { /* 忽略回滚异常 */ }
                     finally
                     {
                         CurrentTransaction?.Dispose();
                         CurrentTransaction = null;
-                        SetActivate();
                     }
                 }
             }
