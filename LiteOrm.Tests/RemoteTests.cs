@@ -48,12 +48,6 @@ namespace LiteOrm.Tests
                 _responder = responder;
             }
 
-            public Task ConnectAsync(RemoteCredentials credentials, CancellationToken cancellationToken = default)
-            {
-                return Task.CompletedTask;
-            }
-
-
             public Task<RemoteInvocationResponse> InvokeAsync(RemoteInvocationRequest request, CancellationToken cancellationToken = default)
             {
                 LastRequest = request;

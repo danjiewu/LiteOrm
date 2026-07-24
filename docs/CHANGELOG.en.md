@@ -8,6 +8,7 @@
 - Added table-level `SyncTable` config to override sync strategy per entity (`038e93b`)
 - Added `ShortId` utility for 8-char Base62 random strings (`18d70be`)
 - Added `Id` property to `DAOContext`; `ContextId` included in logs/exceptions (`18d70be`)
+- Added Remote/Server authentication mechanism: SignIn endpoint + ticket-based; the client provides tickets via `ICredentialsResolver`, the server issues tickets via `IRemoteAuthenticationHandler`, supporting Cookie/JWT and other auth schemes
 
 ### Changed
 - `DatabaseSync` appends UPDATE to fill defaults for non-nullable value-type columns when adding columns (`8fd9662`)

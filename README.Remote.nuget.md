@@ -40,18 +40,36 @@ var host = Host.CreateDefaultBuilder(args)
     .Build();
 ```
 
-For authenticated connections, supply `RemoteCredentials`:
+For authenticated connections, use `StaticCredentialsResolver` to obtain a ticket from the server's SignIn endpoint:
 
 ```csharp
-opts.Credentials = new RemoteCredentials
+var host = Host.CreateDefaultBuilder(args)
+    .RegisterLiteOrmRemote(opts =>
+    {
+        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+
+        // Register StaticCredentialsResolver via factory
+        opts.CredentialsResolverFactory = sp =>
+        {
+            var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+            return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
+        };
+    })
+    .Build();
+
+// Log in once at startup (resolve the resolver from the DI container)
+using (var scope = host.Services.CreateScope())
 {
-    Username = "admin",
-    Password = "pass",
-    Extensions = new Dictionary<string, string?> { ["tenant"] = "a" },
-};
+    var resolver = scope.ServiceProvider.GetRequiredService<ICredentialsResolver>();
+    await ((StaticCredentialsResolver)resolver).LoginAsync(new RemoteCredentials
+    {
+        Username = "admin",
+        Password = "pass",
+    });
+}
 ```
 
-The framework calls `ConnectAsync` automatically before the first remote invocation.
+`HttpRemoteServiceTransport` calls `ICredentialsResolver.GetTicketAsync` on each `InvokeAsync` and writes the ticket to the HTTP request header.
 
 `AutoRegisterEntityServices` defaults to `true` — the framework scans interfaces marked with `[Service]` and registers them as remote proxies automatically. No per-interface registration needed.
 
@@ -70,7 +88,7 @@ Console.WriteLine($"Inserted user Id = {user.Id}");
 
 - **Transparent RPC**: dynamic proxies make remote calls look like local interface calls.
 - **Auto Identity Write-back**: `ArgumentOutAttribute` carries identity values back from the server.
-- **Cookie-based Authentication**: `RemoteCredentials` + `ConnectAsync` authenticates with the server; subsequent requests carry the auth cookie automatically.
+- **Ticket-based Authentication**: `ICredentialsResolver` provides an identity ticket on each `InvokeAsync`, written to the HTTP request header (Cookie by default, or `Authorization: Bearer` for JWT). Built-in `StaticCredentialsResolver` handles login for single-user scenarios.
 - **Pluggable Transport**: built-in HTTP transport; swap `IRemoteServiceTransport` for custom transports.
 - **Shared Protocol**: DTOs (`RemoteInvocationRequest` / `RemoteInvocationResponse`) live in `LiteOrm.Common`, so client and server stay in sync.
 
@@ -111,18 +129,36 @@ var host = Host.CreateDefaultBuilder(args)
     .Build();
 ```
 
-已认证连接需提供 `RemoteCredentials`：
+已认证连接需使用 `StaticCredentialsResolver`，从服务端 SignIn 端点获取票据：
 
 ```csharp
-opts.Credentials = new RemoteCredentials
+var host = Host.CreateDefaultBuilder(args)
+    .RegisterLiteOrmRemote(opts =>
+    {
+        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+
+        // 使用工厂注册 StaticCredentialsResolver
+        opts.CredentialsResolverFactory = sp =>
+        {
+            var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+            return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
+        };
+    })
+    .Build();
+
+// 启动时登录一次（从 DI 容器解析出 resolver 实例）
+using (var scope = host.Services.CreateScope())
 {
-    Username = "admin",
-    Password = "pass",
-    Extensions = new Dictionary<string, object?> { ["tenant"] = "a" },
-};
+    var resolver = scope.ServiceProvider.GetRequiredService<ICredentialsResolver>();
+    await ((StaticCredentialsResolver)resolver).LoginAsync(new RemoteCredentials
+    {
+        Username = "admin",
+        Password = "pass",
+    });
+}
 ```
 
-框架在首次远程调用前自动调用 `ConnectAsync` 完成身份认证。
+`HttpRemoteServiceTransport` 在每次 `InvokeAsync` 时调用 `ICredentialsResolver.GetTicketAsync` 获取票据并写入 HTTP 请求头。
 
 `AutoRegisterEntityServices` 默认为 `true`，框架自动扫描带 `[Service]` 特性的接口并注册为远程代理，无需手动逐个注册。
 
@@ -141,7 +177,7 @@ Console.WriteLine($"新增用户 Id = {user.Id}");
 
 - **透明 RPC**：动态代理让远程调用看起来与本地接口调用无异。
 - **自动 Identity 回写**：通过 `ArgumentOutAttribute` 把服务端生成的标识值回写到客户端。
-- **Cookie 身份认证**：通过 `RemoteCredentials` + `ConnectAsync` 完成认证，后续请求自动携带 Cookie
+- **票据身份认证**：`ICredentialsResolver` 在每次 `InvokeAsync` 时提供身份票据并写入 HTTP 请求头（默认 Cookie，JWT 场景可改为 `Authorization: Bearer`）。内置 `StaticCredentialsResolver` 处理单用户场景的登录。
 - **可插拔传输层**：内置 HTTP 传输；可实现 `IRemoteServiceTransport` 替换为自定义传输。
 - **共享协议**：DTO（`RemoteInvocationRequest` / `RemoteInvocationResponse`）位于 `LiteOrm.Common`，客户端与服务端协议天然一致。
 

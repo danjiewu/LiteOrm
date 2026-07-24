@@ -21,10 +21,10 @@ namespace LiteOrm.Remote.Server
         public string InvokePath { get; set; } = "api/remote/invoke";
 
         /// <summary>
-        /// 建立会话的 HTTP 端点路径。默认为 <c>api/remote/connect</c>，
-        /// 需与客户端 <see cref="HttpRemoteServiceTransport"/> 的 connectUri 一致。
+        /// 登录（签发身份票据）的 HTTP 端点路径。默认为 <c>api/remote/signin</c>，
+        /// 需与客户端 <see cref="StaticCredentialsResolver"/> 的 signInUri 一致。
         /// </summary>
-        public string ConnectPath { get; set; } = "api/remote/connect";
+        public string SignInPath { get; set; } = "api/remote/signin";
 
         /// <summary>
         /// JSON 序列化选项。默认使用 UnsafeRelaxedJsonEscaping + 大小写不敏感。
@@ -71,11 +71,11 @@ namespace LiteOrm.Remote.Server
         public Assembly[]? Assemblies { get; set; }
 
         /// <summary>
-        /// 是否启用 Cookie 身份认证。启用后 Connect 端点通过 <c>HttpContext.SignInAsync</c>
-        /// 创建身份票据，后续请求通过 <c>HttpContext.User</c> 恢复用户上下文。
+        /// 是否启用 Cookie 身份认证。启用后 SignIn 端点通过 <c>HttpContext.SignInAsync</c>
+        /// 创建身份票据，Invoke 端点通过 <c>HttpContext.User</c> 恢复用户上下文。
         /// 默认为 true。
         /// <para>
-        /// 设置为 false 时，Connect 端点不会尝试创建身份票据，Invoke 端点的
+        /// 设置为 false 时，SignIn 端点不会尝试创建身份票据，Invoke 端点的
         /// <c>HttpContext.User</c> 由用户自行配置的身份认证中间件填充（如 JWT、自定义方案等）。
         /// </para>
         /// </summary>
@@ -92,6 +92,11 @@ namespace LiteOrm.Remote.Server
         /// 默认使用 <see cref="DefaultServiceTypeResolver"/>（全程序集短名扫描）解析服务类型，
         /// 可通过 <see cref="RemoteServerOptions.ServiceTypeResolver"/> 或 <see cref="RemoteServerOptions.ServiceTypeResolverFactory"/> 替换。
         /// 服务类型解析优先级：<see cref="RemoteServerOptions.ServiceTypeResolverFactory"/> &gt; <see cref="RemoteServerOptions.ServiceTypeResolver"/>。
+        /// <para>
+        /// 框架不自动注册 <see cref="IRemoteAuthenticationHandler"/>，调用方需手动注册。
+        /// 推荐使用内置 <see cref="IdentityRemoteAuthenticationHandler{TUser}"/>：
+        /// <c>services.AddSingleton&lt;IRemoteAuthenticationHandler, IdentityRemoteAuthenticationHandler&lt;MyUser&gt;&gt;()</c>。
+        /// </para>
         /// </summary>
         /// <param name="services">服务集合。</param>
         /// <param name="configure">配置回调，用于设置端点路径和解析器。</param>
@@ -119,6 +124,12 @@ namespace LiteOrm.Remote.Server
                 services.AddSingleton<IRemoteServiceTypeResolver>(options.ServiceTypeResolver);
             }
 
+            // IHttpContextAccessor 是 IRemoteAuthenticationHandler 实现的常用依赖
+            services.AddHttpContextAccessor();
+
+            // 不自动注册 IRemoteAuthenticationHandler——由调用方手动注册
+            // 推荐使用内置 IdentityRemoteAuthenticationHandler<TUser>
+
             if (options.EnableAuthentication)
             {
                 services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme)
@@ -135,9 +146,13 @@ namespace LiteOrm.Remote.Server
         /// <see cref="RemoteServiceDispatcher.ParseRequest"/> 解析为 <see cref="RemoteInvocationRequest"/>
         /// （先匹配服务类型，再按方法名查找 <see cref="MethodInfo"/>，最后按参数类型反序列化参数），
         /// 然后调用 <see cref="RemoteServiceDispatcher.InvokeAsync"/>，返回 <see cref="RemoteInvocationResponse"/>。
+        /// <para>
+        /// 同时映射 <see cref="RemoteServerOptions.SignInPath"/> 端点：接收 <see cref="RemoteCredentials"/> JSON，
+        /// 调用 <see cref="IRemoteAuthenticationHandler.SignInAsync"/> 签发身份票据返回。
+        /// </para>
         /// </summary>
         /// <param name="endpoints">端点路由构建器。</param>
-        /// <param name="path">端点路径。为 null 时使用 <see cref="RemoteServerOptions.InvokePath"/>。</param>
+        /// <param name="path">Invoke 端点路径。为 null 时使用 <see cref="RemoteServerOptions.InvokePath"/>。</param>
         /// <returns>端点路由构建器。</returns>
         public static IEndpointRouteBuilder MapRemoteInvokeEndpoint(
             this IEndpointRouteBuilder endpoints,
@@ -208,19 +223,40 @@ namespace LiteOrm.Remote.Server
                     .ConfigureAwait(false);
             });
 
-            // 建立会话端点：接收 POST 携带 RemoteCredentials JSON，
-            // 若注册了 IRemoteAuthenticationHandler 则验证凭据，通过后调用 HttpContext.SignInAsync 创建身份票据；
-            // 未注册 IRemoteAuthenticationHandler 时直接返回成功（匿名连接）。
-            var connectPath = options.ConnectPath;
-            if (!connectPath.StartsWith('/'))
-                connectPath = "/" + connectPath;
+            MapSignInEndpoint(endpoints, options);
 
-            endpoints.MapPost(connectPath, async (HttpContext context) =>
+            return endpoints;
+        }
+
+        /// <summary>
+        /// 映射 SignIn 端点：接收 POST 携带 <see cref="RemoteCredentials"/> JSON，
+        /// 调用 <see cref="IRemoteAuthenticationHandler.SignInAsync"/> 签发身份票据。
+        /// 校验通过返回 200 OK 与 <c>{ "Ticket": "&lt;票据字符串&gt;" }</c>；校验失败返回 401 Unauthorized。
+        /// 未注册 <see cref="IRemoteAuthenticationHandler"/> 时返回 500 InternalServerError。
+        /// </summary>
+        private static void MapSignInEndpoint(IEndpointRouteBuilder endpoints, RemoteServerOptions options)
+        {
+            var signInPath = options.SignInPath;
+            if (!signInPath.StartsWith('/'))
+                signInPath = "/" + signInPath;
+
+            endpoints.MapPost(signInPath, async (HttpContext context) =>
             {
                 var serverOptions = context.RequestServices.GetRequiredService<RemoteServerOptions>();
                 var authHandler = context.RequestServices.GetService<IRemoteAuthenticationHandler>();
 
-                // 读取请求体中的凭据（若存在）
+                if (authHandler is null)
+                {
+                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    await JsonSerializer.SerializeAsync(context.Response.Body,
+                        new { Error = "No IRemoteAuthenticationHandler registered. Call AddRemoteServer() or register a custom handler." },
+                        serverOptions.JsonSerializerOptions, context.RequestAborted)
+                        .ConfigureAwait(false);
+                    return;
+                }
+
+                // 读取请求体中的凭据
                 RemoteCredentials? credentials = null;
                 using (var reader = new System.IO.StreamReader(context.Request.Body, Encoding.UTF8, false, 4096, true))
                 {
@@ -235,56 +271,37 @@ namespace LiteOrm.Remote.Server
                     }
                 }
 
-                if (authHandler is not null)
+                if (credentials is null || !IsCredentialsValid(credentials))
                 {
-                    if (credentials is null || !IsCredentialsValid(credentials))
-                    {
-                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                        context.Response.ContentType = "application/json; charset=utf-8";
-                        await JsonSerializer.SerializeAsync(context.Response.Body,
-                            new { Error = GetMissingCredentialsMessage(credentials) },
-                            serverOptions.JsonSerializerOptions, context.RequestAborted)
-                            .ConfigureAwait(false);
-                        return;
-                    }
-
-                    var principal = await authHandler.ValidateCredentialsAsync(credentials, context.RequestAborted)
-                        .ConfigureAwait(false);
-                    if (principal is null)
-                    {
-                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                        context.Response.ContentType = "application/json; charset=utf-8";
-                        await JsonSerializer.SerializeAsync(context.Response.Body,
-                            new { Error = "Authentication failed: invalid credentials." },
-                            serverOptions.JsonSerializerOptions, context.RequestAborted)
-                            .ConfigureAwait(false);
-                        return;
-                    }
-
-                    // 验证通过，使用返回的 ClaimsPrincipal 创建身份票据
-                    await context.SignInAsync(principal)
-                        .ConfigureAwait(false);
-
-                    context.Response.StatusCode = StatusCodes.Status200OK;
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                     context.Response.ContentType = "application/json; charset=utf-8";
                     await JsonSerializer.SerializeAsync(context.Response.Body,
-                        new { Success = true },
+                        new { Error = GetMissingCredentialsMessage(credentials) },
                         serverOptions.JsonSerializerOptions, context.RequestAborted)
                         .ConfigureAwait(false);
+                    return;
                 }
-                else
+
+                var ticket = await authHandler.SignInAsync(credentials, context.RequestAborted)
+                    .ConfigureAwait(false);
+                if (string.IsNullOrEmpty(ticket))
                 {
-                    // 未注册 IRemoteAuthenticationHandler —— 匿名连接，直接返回成功
-                    context.Response.StatusCode = StatusCodes.Status200OK;
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                     context.Response.ContentType = "application/json; charset=utf-8";
                     await JsonSerializer.SerializeAsync(context.Response.Body,
-                        new { Success = true },
+                        new { Error = "Authentication failed: invalid credentials." },
                         serverOptions.JsonSerializerOptions, context.RequestAborted)
                         .ConfigureAwait(false);
+                    return;
                 }
+
+                context.Response.StatusCode = StatusCodes.Status200OK;
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await JsonSerializer.SerializeAsync(context.Response.Body,
+                    new { Success = true, Ticket = ticket },
+                    serverOptions.JsonSerializerOptions, context.RequestAborted)
+                    .ConfigureAwait(false);
             });
-
-            return endpoints;
         }
 
         /// <summary>

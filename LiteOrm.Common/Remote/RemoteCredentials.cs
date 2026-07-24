@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 远程调用凭据。用于远程服务传输的 Connect 阶段身份认证。
+    /// 远程调用凭据。用于远程服务 SignIn 阶段的身份认证。
     /// <para>
     /// 根据 <see cref="GrantType"/> 区分两种授权模式：
     /// <list type="bullet">
@@ -31,7 +31,7 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 自定义扩展字段。可用于传递额外的身份信息（如租户 ID、令牌等），
-        /// 服务端 <c>IRemoteAuthenticationHandler.ValidateCredentialsAsync</c> 可读取这些字段。
+        /// 服务端 <see cref="IRemoteAuthenticationHandler.SignInAsync"/> 可读取这些字段。
         /// </summary>
         public Dictionary<string, string> Extensions { get; set; }
     }

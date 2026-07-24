@@ -8,6 +8,7 @@
 - 新增表级 `SyncTable` 配置，按实体覆盖数据源级同步策略 (`038e93b`)
 - 新增 `ShortId` 工具类，生成 8 位 Base62 随机字符串 (`18d70be`)
 - `DAOContext` 新增 `Id` 属性，并在日志/异常中附加 `ContextId` (`18d70be`)
+- 新增 Remote/Server 身份认证机制：基于 SignIn 端点 + 票据，客户端通过 `ICredentialsResolver` 提供票据，服务端通过 `IRemoteAuthenticationHandler` 签发票据，支持 Cookie/JWT 等多种认证方式
 
 ### 改进
 - `DatabaseSync` 补列时为非空值类型列追加 UPDATE 填充默认值 (`8fd9662`)

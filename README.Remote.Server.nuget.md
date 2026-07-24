@@ -41,10 +41,17 @@ app.MapRemoteInvokeEndpoint();         // Map the remote invocation endpoint
 app.Run();
 ```
 
-For authenticated access, implement `IRemoteAuthenticationHandler` and register it in DI:
+For authenticated access, implement `IRemoteAuthenticationHandler` and register it in DI. If using ASP.NET Core Identity, use the built-in `IdentityRemoteAuthenticationHandler<TUser>`:
 
 ```csharp
+// Using ASP.NET Core Identity
+builder.Services.AddIdentity<MyUser, MyRole>().AddEntityFrameworkStores<MyDbContext>();
+builder.Services.AddSingleton<IRemoteAuthenticationHandler, IdentityRemoteAuthenticationHandler<MyUser>>();
+builder.Services.AddRemoteServer(options => { options.EnableAuthentication = false; });
+
+// Or implement IRemoteAuthenticationHandler directly for custom auth (JWT, etc.)
 builder.Services.AddSingleton<IRemoteAuthenticationHandler, MyAuthHandler>();
+builder.Services.AddRemoteServer();
 ```
 
 That's it — interfaces marked with `[Service]` and registered in DI are now remotely callable.
@@ -59,7 +66,7 @@ That's it — interfaces marked with `[Service]` and registered in DI are now re
 ### Highlights
 
 - **Zero-Controller Exposure**: no need to write controllers per service; one endpoint dispatches all `[Service]` interfaces.
-- **Cookie-based Authentication**: implement `IRemoteAuthenticationHandler` to validate credentials; the server calls `HttpContext.SignInAsync` on success — no SessionID needed.
+- **Ticket-based Authentication**: implement `IRemoteAuthenticationHandler` or use the built-in `IdentityRemoteAuthenticationHandler<TUser>` (obtains `SignInManager<TUser>` from DI). The SignIn/SignOut endpoints are mapped automatically.
 - **Identity Write-back**: `ArgumentOutAttribute` + `IdentityArgumentOutHandler` return auto-generated identity values to the client automatically.
 - **DI-Integrated**: services are resolved from the ASP.NET Core DI container, so scoped services and transactions work as expected.
 - **Shared Protocol**: DTOs live in `LiteOrm.Common`, keeping client/server wire format in sync.
@@ -102,10 +109,17 @@ app.MapRemoteInvokeEndpoint();         // 映射远程调用端点
 app.Run();
 ```
 
-如需身份认证，实现 `IRemoteAuthenticationHandler` 并注册到 DI：
+如需身份认证，实现 `IRemoteAuthenticationHandler` 并注册到 DI。若使用 ASP.NET Core Identity，可直接使用内置的 `IdentityRemoteAuthenticationHandler<TUser>`：
 
 ```csharp
+// 使用 ASP.NET Core Identity
+builder.Services.AddIdentity<MyUser, MyRole>().AddEntityFrameworkStores<MyDbContext>();
+builder.Services.AddSingleton<IRemoteAuthenticationHandler, IdentityRemoteAuthenticationHandler<MyUser>>();
+builder.Services.AddRemoteServer(options => { options.EnableAuthentication = false; });
+
+// 或直接实现 IRemoteAuthenticationHandler 进行自定义认证（JWT 等）
 builder.Services.AddSingleton<IRemoteAuthenticationHandler, MyAuthHandler>();
+builder.Services.AddRemoteServer();
 ```
 
 完成 — 标记了 `[Service]` 特性并注册到 DI 的接口现在即可被远程调用。
@@ -120,7 +134,7 @@ builder.Services.AddSingleton<IRemoteAuthenticationHandler, MyAuthHandler>();
 ### 主要特性
 
 - **零 Controller 暴露**：无需为每个服务编写 Controller；单个端点分发所有 `[Service]` 接口。
-- **Cookie 身份认证**：实现 `IRemoteAuthenticationHandler` 验证凭据，通过后 `HttpContext.SignInAsync` 创建票据，无需 SessionID。
+- **票据身份认证**：实现 `IRemoteAuthenticationHandler` 或使用内置 `IdentityRemoteAuthenticationHandler<TUser>`（从 DI 获取 `SignInManager<TUser>`）。SignIn/SignOut 端点自动映射。
 - **标识值自动回写**：`ArgumentOutAttribute` + `IdentityArgumentOutHandler` 自动把生成的标识值返回给客户端。
 - **DI 集成**：服务从 ASP.NET Core DI 容器解析，作用域服务与事务行为符合预期。
 - **共享协议**：DTO 位于 `LiteOrm.Common`，客户端 / 服务端传输格式天然一致。

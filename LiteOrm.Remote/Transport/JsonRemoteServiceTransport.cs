@@ -16,10 +16,6 @@ namespace LiteOrm.Remote
         };
 
         /// <inheritdoc />
-        public abstract Task ConnectAsync(RemoteCredentials credentials, CancellationToken cancellationToken = default);
- 
-
-        /// <inheritdoc />
         public virtual async Task<RemoteInvocationResponse> InvokeAsync(RemoteInvocationRequest request, CancellationToken cancellationToken = default)
         {
             if (request is null) throw new ArgumentNullException(nameof(request));
