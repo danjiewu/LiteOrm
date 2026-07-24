@@ -1,3 +1,4 @@
+using Autofac;
 using LiteOrm.Common;
 using Microsoft.Extensions.Logging;
 using System;
@@ -45,12 +46,13 @@ namespace LiteOrm
         private readonly ILogger<SessionManager> _logger;
         private readonly SemaphoreSlim _syncLock = new SemaphoreSlim(1, 1);
         private bool _disposed = false;
+        private Task _disposeTask;
 
         private readonly ConcurrentDictionary<string, DAOContext> _daoContexts = new ConcurrentDictionary<string, DAOContext>(StringComparer.OrdinalIgnoreCase);
         private readonly LinkedList<string> _sqlStack = new LinkedList<string>();
         private string _currentTransactionId;
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
-        private static readonly AsyncLocal<Lazy<SessionManager>> _currentAsyncLocal = new AsyncLocal<Lazy<SessionManager>>();
+        private static readonly AsyncLocal<IComponentContext> _currentComponentContext = new AsyncLocal<IComponentContext>();
 
         /// <summary>
         /// 最大SQL历史记录条数，超过此数量的旧SQL将被丢弃
@@ -63,17 +65,18 @@ namespace LiteOrm
         public string SessionID { get; } = ShortId.NewId();
 
         /// <summary>
-        /// 当前异步上下文的会话管理器（缓加载）。持有的实例已释放时返回 null。
+        /// 当前异步上下文的会话管理器。始终从当前 scope 的 <see cref="IComponentContext"/> 解析，确保返回当前 scope 对应的实例。
+        /// 当前上下文未设置或实例已释放时返回 null。
         /// </summary>
         public static SessionManager Current
         {
             get
             {
-                var lazy = _currentAsyncLocal.Value;
-                if (lazy is null) return null;
+                var ctx = _currentComponentContext.Value;
+                if (ctx is null) return null;
                 try
                 {
-                    SessionManager instance = lazy.Value; 
+                    var instance = ctx.Resolve<SessionManager>();
                     if (instance is null || instance._disposed) return null;
                     return instance;
                 }
@@ -82,12 +85,13 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 为当前异步上下文设置缓加载的会话管理器工厂，首次访问 <see cref="Current"/> 时才调用 <paramref name="factory"/> 解析实例
+        /// 为当前异步上下文设置 <see cref="IComponentContext"/>，用于 <see cref="Current"/> 解析当前 scope 的 <see cref="SessionManager"/>。
+        /// 传入 null 时清空当前上下文。
         /// </summary>
-        /// <param name="factory">返回 <see cref="SessionManager"/> 实例的工厂委托；传入 null 时清空当前上下文</param>
-        public static void SetCurrentFactory(Func<SessionManager> factory)
+        /// <param name="componentContext">当前 scope 的 <see cref="IComponentContext"/>；传入 null 时清空当前上下文</param>
+        public static void SetCurrentComponentContext(IComponentContext componentContext)
         {
-            _currentAsyncLocal.Value = factory is null ? null : new Lazy<SessionManager>(factory, LazyThreadSafetyMode.PublicationOnly);
+            _currentComponentContext.Value = componentContext;
         }
 
         /// <summary>
@@ -726,10 +730,24 @@ namespace LiteOrm
         /// <summary>
         /// 异步释放资源
         /// </summary>
-        public async ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
         {
-            if (_disposed) return;
+            if (_disposed) return default;
 
+            if (_disposeTask != null)
+                return new ValueTask(_disposeTask);
+
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var existing = Interlocked.CompareExchange(ref _disposeTask, tcs.Task, null);
+            if (existing != null)
+                return new ValueTask(existing);
+
+            _ = DisposeAsyncInternal(tcs);
+            return new ValueTask(tcs.Task);
+        }
+
+        private async Task DisposeAsyncInternal(TaskCompletionSource<bool> tcs)
+        {
             bool lockAcquired = false;
             try
             {
@@ -743,7 +761,11 @@ namespace LiteOrm
 
             try
             {
-                if (_disposed) return;
+                if (_disposed)
+                {
+                    tcs.TrySetResult(true);
+                    return;
+                }
                 _logger?.LogDebug("[{SessionID}]Session disposed (async).", SessionID);
                 _disposed = true;
 
@@ -768,9 +790,11 @@ namespace LiteOrm
                 {
                     try { _syncLock.Release(); } catch { }
                 }
+                try { _syncLock.Dispose(); } catch { }
             }
 
             GC.SuppressFinalize(this);
+            tcs.TrySetResult(true);
         }
 
         /// <summary>
@@ -821,6 +845,7 @@ namespace LiteOrm
                     {
                         try { _syncLock.Release(); } catch { }
                     }
+                    try { _syncLock.Dispose(); } catch { }
                 }
             }
             else

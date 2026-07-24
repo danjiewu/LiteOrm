@@ -20,7 +20,7 @@ namespace LiteOrm
     [AutoRegister(Lifetime = Lifetime.Singleton)]
     public class LiteOrmCoreInitializer : IStartable
     {
-        private readonly SessionManager _sessionManager;
+        private readonly IComponentContext _componentContext;
         private readonly TableInfoProvider _tableInfoProvider;
         private readonly ILogger<LiteOrmCoreInitializer> _logger;
         private readonly IDataSourceProvider _dataSourceProvider;
@@ -29,19 +29,19 @@ namespace LiteOrm
         /// <summary>
         /// 初始化 <see cref="LiteOrmCoreInitializer"/> 类的新实例
         /// </summary>
-        /// <param name="sessionManager">会话管理器实例</param>
+        /// <param name="componentContext">组件上下文实例</param>
         /// <param name="tableInfoProvider">表信息提供者实例</param>
         /// <param name="dataSourceProvider">数据源提供者</param>
         /// <param name="daoContextPoolFactory">DAO上下文连接池工厂</param>
         /// <param name="logger">日志记录器</param>
         public LiteOrmCoreInitializer(
-            SessionManager sessionManager,
+            IComponentContext componentContext,
             TableInfoProvider tableInfoProvider,
             IDataSourceProvider dataSourceProvider,
             DAOContextPoolFactory daoContextPoolFactory,
             ILogger<LiteOrmCoreInitializer> logger = null)
         {
-            _sessionManager = sessionManager;
+            _componentContext = componentContext;
             _tableInfoProvider = tableInfoProvider;
             _dataSourceProvider = dataSourceProvider;
             _daoContextPoolFactory = daoContextPoolFactory;
@@ -75,7 +75,7 @@ namespace LiteOrm
         {
             try
             {
-                SessionManager.SetCurrentFactory(() => _sessionManager);
+                SessionManager.SetCurrentComponentContext(_componentContext);
                 TableInfoProvider.Default = _tableInfoProvider;
                 _logger?.LogInformation("LiteOrm global instances initialized");
             }

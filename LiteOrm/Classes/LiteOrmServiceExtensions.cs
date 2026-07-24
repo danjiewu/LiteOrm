@@ -188,11 +188,18 @@ namespace LiteOrm
             scope.ChildLifetimeScopeBeginning += (sender, e) =>
             {
                 var childScope = e.LifetimeScope;
-                SessionManager.SetCurrentFactory(childScope.Resolve<SessionManager>);
+                SessionManager.SetCurrentComponentContext(childScope);
                 e.LifetimeScope.CurrentScopeEnding += (s, args) =>
                 {
-                    // 子 scope 释放时恢复父 scope 的当前 SessionManager
-                    SessionManager.SetCurrentFactory(scope.Resolve<SessionManager>);
+                    try
+                    {
+                        SessionManager.SetCurrentComponentContext(scope);
+                    }
+                    catch
+                    {
+                        // 父 scope 可能已释放，清空当前上下文避免残留已释放 scope 的引用
+                        SessionManager.SetCurrentComponentContext(null);
+                    }
                 };
                 RegisterScope(e.LifetimeScope);
             };
