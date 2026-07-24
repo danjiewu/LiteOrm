@@ -63,11 +63,22 @@ namespace LiteOrm
         public string SessionID { get; } = ShortId.NewId();
 
         /// <summary>
-        /// 当前异步上下文的会话管理器（缓加载，首次访问时才从容器解析）
+        /// 当前异步上下文的会话管理器（缓加载）。持有的实例已释放时返回 null。
         /// </summary>
         public static SessionManager Current
         {
-            get => _currentAsyncLocal.Value?.Value;
+            get
+            {
+                var lazy = _currentAsyncLocal.Value;
+                if (lazy is null) return null;
+                try
+                {
+                    SessionManager instance = lazy.Value; 
+                    if (instance is null || instance._disposed) return null;
+                    return instance;
+                }
+                catch { return null; }
+            }
         }
 
         /// <summary>
@@ -521,11 +532,13 @@ namespace LiteOrm
                 {
                     if (context.IsValid)
                         return context;
-                    // 如果连接无效，尝试丢弃并重新获取
+                    // 先移除再释放，避免其他线程拿到已 Dispose 的实例
                     else
                     {
-                        context.Dispose();
-                        _daoContexts.TryRemove(cacheKey, out context);
+                        if (_daoContexts.TryRemove(cacheKey, out var stale))
+                        {
+                            stale.Dispose();
+                        }
                     }
                 }
                 // 从工厂获取上下文
@@ -598,8 +611,11 @@ namespace LiteOrm
                         return context;
                     else
                     {
-                        await context.DisposeAsync().ConfigureAwait(false);
-                        _daoContexts.TryRemove(cacheKey, out context);
+                        // 先移除再释放，避免其他线程拿到已 Dispose 的实例
+                        if (_daoContexts.TryRemove(cacheKey, out var stale))
+                        {
+                            await stale.DisposeAsync().ConfigureAwait(false);
+                        }
                     }
                 }
 
@@ -700,7 +716,7 @@ namespace LiteOrm
         }
         #region IDisposable 实现
 
-        ///<inheritdoc/> 
+        ///<inheritdoc/>
         public void Dispose()
         {
             Dispose(true);
@@ -714,7 +730,17 @@ namespace LiteOrm
         {
             if (_disposed) return;
 
-            await _syncLock.WaitAsync().ConfigureAwait(false);
+            bool lockAcquired = false;
+            try
+            {
+                await _syncLock.WaitAsync().ConfigureAwait(false);
+                lockAcquired = true;
+            }
+            catch
+            {
+                // 信号量可能已被释放，降级到无锁路径
+            }
+
             try
             {
                 if (_disposed) return;
@@ -738,7 +764,10 @@ namespace LiteOrm
             }
             finally
             {
-                _syncLock.Release();
+                if (lockAcquired)
+                {
+                    try { _syncLock.Release(); } catch { }
+                }
             }
 
             GC.SuppressFinalize(this);
@@ -751,35 +780,53 @@ namespace LiteOrm
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed) return;
-            _logger?.LogDebug("[{SessionID}]Session disposed ({DisposeType}).", SessionID, disposing ? "explicit" : "finalizer");
-            _disposed = true;
+
             if (disposing)
             {
-                // 如果有活动的事务，回滚
-                if (InTransaction)
+                // 同步 Dispose 也获取锁，避免与 DisposeAsync 并发归还连接造成 double-return
+                bool lockAcquired = false;
+                try
                 {
-                    try
+                    _syncLock.Wait();
+                    lockAcquired = true;
+                }
+                catch
+                {
+                    // 信号量可能已被释放，降级到无锁路径
+                }
+
+                try
+                {
+                    if (_disposed) return;
+                    _logger?.LogDebug("[{SessionID}]Session disposed ({DisposeType}).", SessionID, "explicit");
+                    _disposed = true;
+
+                    if (InTransaction)
                     {
-                        // 尝试回滚事务
-                        RollbackInternal();
-                        _logger?.LogDebug("Session {SessionID} transaction rolled back successfully on dispose. ID: {TransactionID}", SessionID, _currentTransactionId);
+                        try
+                        {
+                            RollbackInternal();
+                            _logger?.LogDebug("Session {SessionID} transaction rolled back successfully on dispose. ID: {TransactionID}", SessionID, _currentTransactionId);
+                        }
+                        catch (Exception commitEx)
+                        {
+                            _logger?.LogError(commitEx, "Session {SessionID} failed to roll back transaction on dispose. ID: {TransactionID}", SessionID, _currentTransactionId);
+                        }
                     }
-                    catch (Exception commitEx)
+                    ReturnAllContexts();
+                }
+                finally
+                {
+                    if (lockAcquired)
                     {
-                        _logger?.LogError(commitEx, "Session {SessionID} failed to roll back transaction on dispose. ID: {TransactionID}", SessionID, _currentTransactionId);
+                        try { _syncLock.Release(); } catch { }
                     }
                 }
-                //归还所有连接
-                ReturnAllContexts();
             }
-        }
-
-        /// <summary>
-        /// 析构函数
-        /// </summary>
-        ~SessionManager()
-        {
-            Dispose(false);
+            else
+            {
+                _disposed = true;
+            }
         }
         #endregion
     }
@@ -808,9 +855,14 @@ namespace LiteOrm
                 sessionManager.Commit();
                 return result;
             }
-            catch
+            catch (Exception original)
             {
-                sessionManager.Rollback();
+                // 回滚失败不掩盖原始异常
+                try { sessionManager.Rollback(); }
+                catch (Exception rollbackEx)
+                {
+                    throw new AggregateException(original, rollbackEx);
+                }
                 throw;
             }
         }
@@ -847,9 +899,21 @@ namespace LiteOrm
                 await sessionManager.CommitAsync().ConfigureAwait(false);
                 return result;
             }
-            catch
+            catch (Exception original)
             {
-                await sessionManager.RollbackAsync().ConfigureAwait(false);
+                // 回滚失败不掩盖原始异常；容忍 SessionManager 已释放
+                try
+                {
+                    await sessionManager.RollbackAsync().ConfigureAwait(false);
+                }
+                catch (Exception rollbackEx) when (rollbackEx is ObjectDisposedException)
+                {
+                    throw;
+                }
+                catch (Exception rollbackEx)
+                {
+                    throw new AggregateException(original, rollbackEx);
+                }
                 throw;
             }
         }

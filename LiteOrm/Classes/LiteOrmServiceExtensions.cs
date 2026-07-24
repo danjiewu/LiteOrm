@@ -191,6 +191,7 @@ namespace LiteOrm
                 SessionManager.SetCurrentFactory(childScope.Resolve<SessionManager>);
                 e.LifetimeScope.CurrentScopeEnding += (s, args) =>
                 {
+                    // 子 scope 释放时恢复父 scope 的当前 SessionManager
                     SessionManager.SetCurrentFactory(scope.Resolve<SessionManager>);
                 };
                 RegisterScope(e.LifetimeScope);
