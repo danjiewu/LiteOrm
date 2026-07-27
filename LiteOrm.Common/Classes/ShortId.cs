@@ -4,17 +4,17 @@ using System.Security.Cryptography;
 namespace LiteOrm
 {
     /// <summary>
-    /// 生成短随机标识符的工具，使用 Base62 字符集（0-9, A-Z, a-z）。
+    /// 生成短随机标识符的工具，使用 Base36 字符集（0-9, a-z）。
     /// </summary>
     public static class ShortId
     {
-        private const string Base62Chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        private const string Base36Chars = "0123456789abcdefghijklmnopqrstuvwxyz";
 
         /// <summary>
-        /// 生成指定位数的 Base62 随机字符串。默认生成 8 位。
+        /// 生成指定位数的 Base36 随机字符串。默认生成 8 位。
         /// </summary>
         /// <param name="length">生成字符串长度，默认为 8。</param>
-        /// <returns>Base62 随机字符串。</returns>
+        /// <returns>Base36 随机字符串。</returns>
         public static string NewId(int length = 8)
         {
             if (length <= 0) throw new ArgumentOutOfRangeException(nameof(length), "Length must be greater than 0");
@@ -26,7 +26,7 @@ namespace LiteOrm
             var chars = new char[length];
             for (int i = 0; i < length; i++)
             {
-                chars[i] = Base62Chars[bytes[i] % Base62Chars.Length];
+                chars[i] = Base36Chars[bytes[i] % Base36Chars.Length];
             }
             return new string(chars);
 #else
@@ -35,7 +35,7 @@ namespace LiteOrm
             {
                 for (int i = 0; i < src.Length; i++)
                 {
-                    span[i] = Base62Chars[src[i] % Base62Chars.Length];
+                    span[i] = Base36Chars[src[i] % Base36Chars.Length];
                 }
             });
 #endif

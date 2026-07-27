@@ -6,7 +6,7 @@
 - ExprString 新增 `RawSql` 标记类型，用于内联不宜参数化的动态值 (`6f401b6`)
 - 增加 CTE 递归关键字支持 (`81fade6`)
 - 新增表级 `SyncTable` 配置，按实体覆盖数据源级同步策略 (`038e93b`)
-- 新增 `ShortId` 工具类，生成 8 位 Base62 随机字符串 (`18d70be`)
+- 新增 `ShortId` 工具类，生成 8 位 Base36 随机字符串（数字加小写字母）(`18d70be`)
 - `DAOContext` 新增 `Id` 属性，并在日志/异常中附加 `ContextId` (`18d70be`)
 - 新增 Remote/Server 身份认证机制：基于 SignIn 端点 + 票据，客户端通过 `ICredentialsResolver` 提供票据，服务端通过 `IRemoteAuthenticationHandler` 签发票据，支持 Cookie/JWT 等多种认证方式
 
