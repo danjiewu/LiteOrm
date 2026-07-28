@@ -10,8 +10,8 @@
     <FileVersion>8.0.3.0</FileVersion>
     <VersionPrefix>8.0.3</VersionPrefix>
     <PackageReleaseNotes>
-      新增RequestID；
-      新增IRemoteAuthenticationHandler，支持自定义身份认证；
+      新增 Remote/Server 身份认证机制，支持 Cookie/JWT 等多种认证方式，支持UserName/Password、ClientID/Key模式，支持单用户/多用户身份模式；
+      新增 RequestID 用于跟踪请求；
     </PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
     <Copyright>Copyright @ 2026 danjiewu</Copyright>
