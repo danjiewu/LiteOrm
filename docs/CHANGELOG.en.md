@@ -1,6 +1,6 @@
 # Changelog
 
-## v8.0.20 (Unreleased)
+## v8.0.20 (2026-07-28)
 
 ### Added
 - Added `RawSql` marker type to `ExprString` for inlining non-parameterizable dynamic values (`6f401b6`)
