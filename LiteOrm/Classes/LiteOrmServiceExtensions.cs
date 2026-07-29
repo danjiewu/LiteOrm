@@ -1,10 +1,4 @@
-using Autofac;
-using Autofac.Builder;
-using Autofac.Extensions.DependencyInjection;
-using Autofac.Extras.DynamicProxy;
-using Castle.DynamicProxy;
 using LiteOrm.Common;
-using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -12,48 +6,50 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm服务提供者扩展方法集合
+    /// LiteOrm 服务提供者扩展方法集合。
     /// </summary>
     /// <remarks>
-    /// LiteOrmServiceProviderExtensions 提供了用于集成 LiteOrm 框架到依赖注入容器的扩展方法。
-    /// 它简化了 LiteOrm 框架与 ASP.NET Core 宿主的集成过程。
-    /// 
+    /// LiteOrmServiceExtensions 提供了将 LiteOrm 框架集成到 Microsoft.Extensions.DependencyInjection (MS DI)
+    /// 容器的扩展方法，简化 LiteOrm 框架与 .NET 通用主机 (IHostBuilder) 的集成过程。
+    ///
     /// 主要功能包括：
-    /// 1. 框架初始化 - 在宿主构建时初始化 LiteOrm 框架
-    /// 2. Autofac集成 - 将 Autofac 集成到依赖注入系统
-    /// 3. 服务注册 - 注册所有LiteOrm相关的服务
-    /// 
+    /// 1. 框架初始化 - 在宿主构建时通过 ConfigureServices 初始化 LiteOrm 框架；
+    /// 2. 自动服务注册 - 扫描程序集中带 [AutoRegister] 特性的类型并注册到 MS DI；
+    /// 3. SqlBuilder 注册 - 注册自定义 SqlBuilder 到 SqlBuilderFactory。
+    ///
     /// 使用示例：
     /// <code>
     /// var builder = Host.CreateDefaultBuilder(args)
-    ///     .RegisterLiteOrm()
-    ///     .ConfigureServices(services =>
-    ///         ...
-    ///     );
+    ///     .RegisterLiteOrm(options =&gt;
+    ///     {
+    ///         options.Assemblies = new[] { typeof(MyService).Assembly };
+    ///     });
     /// </code>
     /// </remarks>
     public static class LiteOrmServiceExtensions
     {
         /// <summary>
-        /// 注册LiteOrm框架到主机构建器
+        /// 注册 LiteOrm 框架到主机构建器。
         /// </summary>
-        /// <param name="hostBuilder">主机构建器</param>
-        /// <returns>配置后的主机构建器</returns>
+        /// <param name="hostBuilder">主机构建器。</param>
+        /// <returns>配置后的主机构建器。</returns>
         public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder)
         {
             return RegisterLiteOrm(hostBuilder, null);
         }
 
         /// <summary>
-        /// 注册LiteOrm框架到主机构建器，并允许配置选项
+        /// 注册 LiteOrm 框架到主机构建器，并允许配置选项。
         /// </summary>
-        /// <param name="hostBuilder">主机构建器</param>
-        /// <param name="configureOptions">配置选项的回调函数</param>
-        /// <returns>配置后的主机构建器</returns>
+        /// <param name="hostBuilder">主机构建器。</param>
+        /// <param name="configureOptions">配置选项的回调函数。</param>
+        /// <returns>配置后的主机构建器。</returns>
         public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder, Action<LiteOrmOptions> configureOptions)
         {
             var options = new LiteOrmOptions();
@@ -66,167 +62,129 @@ namespace LiteOrm
                 throw new InvalidOperationException("Failed to initialize LiteOrm options", ex);
             }
 
-            return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
-                .ConfigureContainer<ContainerBuilder>((builder, containerBuilder) =>
+            return hostBuilder.ConfigureServices(services =>
+            {
+                var logger = options.LoggerFactory?.CreateLogger(nameof(LiteOrmServiceExtensions));
+
+                // 自动扫描并注册标记 [AutoRegister] 的服务
+                try
+                {
+                    if (options.Assemblies != null && options.Assemblies.Length > 0)
+                    {
+                        services.RegisterAutoService(logger, options.Assemblies);
+                    }
+                    else
+                    {
+                        services.RegisterAutoService(logger);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Failed to register LiteOrm services automatically", ex);
+                }
+
+                // 注册自定义 SqlBuilder（按数据源名称），直接在 ConfigureServices 中完成（不再使用 RegisterBuildCallback）
+                foreach (var kvp in options.SqlBuilders)
                 {
                     try
                     {
-                        var logger = options.LoggerFactory?.CreateLogger(nameof(LiteOrmServiceExtensions));
-                        // 使用指定的程序集或默认程序集
-                        if (options.Assemblies != null && options.Assemblies.Length > 0)
-                        {
-                            containerBuilder.RegisterAutoService(logger, options.Assemblies);
-                        }
-                        else
-                        {
-                            containerBuilder.RegisterAutoService(logger);
-                        }
+                        SqlBuilderFactory.Instance.RegisterSqlBuilder(kvp.Key, kvp.Value);
                     }
                     catch (Exception ex)
                     {
-                        throw new InvalidOperationException("Failed to register LiteOrm services automatically", ex);
+                        throw new InvalidOperationException($"Failed to register SqlBuilder for data source '{kvp.Key}'", ex);
                     }
+                }
 
-                    containerBuilder.RegisterBuildCallback(container =>
+                // 注册自定义 SqlBuilder（按连接类型）
+                foreach (var kvp in options.SqlBuildersByType)
+                {
+                    try
                     {
-                        // 注册自定义SqlBuilder（按数据源名称）
-                        foreach (var kvp in options.SqlBuilders)
-                        {
-                            try
-                            {
-                                SqlBuilderFactory.Instance.RegisterSqlBuilder(kvp.Key, kvp.Value);
-                            }
-                            catch (Exception ex)
-                            {
-                                throw new InvalidOperationException($"Failed to register SqlBuilder for data source '{kvp.Key}'", ex);
-                            }
-                        }
-
-                        // 注册自定义SqlBuilder（按连接类型）
-                        foreach (var kvp in options.SqlBuildersByType)
-                        {
-                            try
-                            {
-                                SqlBuilderFactory.Instance.RegisterSqlBuilder(kvp.Key, kvp.Value);
-                            }
-                            catch (Exception ex)
-                            {
-                                throw new InvalidOperationException($"Failed to register SqlBuilder for connection type '{kvp.Key.FullName}'", ex);
-                            }
-                        }
-
-                        // 根据配置决定是否注册Scope
-                        if (options.RegisterScope)
-                        {
-                            try
-                            {
-                                RegisterScope(container);
-                            }
-                            catch (Exception ex)
-                            {
-                                throw new InvalidOperationException("Failed to register LiteOrm Scope", ex);
-                            }
-                        }
-                    });
-                });
+                        SqlBuilderFactory.Instance.RegisterSqlBuilder(kvp.Key, kvp.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException($"Failed to register SqlBuilder for connection type '{kvp.Key.FullName}'", ex);
+                    }
+                }
+            });
         }
 
         /// <summary>
-        /// LiteOrm配置选项
+        /// LiteOrm 配置选项。
         /// </summary>
         public class LiteOrmOptions
         {
             /// <summary>
-            /// 注册的SqlBuilder映射（按数据源名称）
+            /// 注册的 SqlBuilder 映射（按数据源名称）。
             /// </summary>
             internal Dictionary<string, SqlBuilder> SqlBuilders { get; } = new Dictionary<string, SqlBuilder>();
 
             /// <summary>
-            /// 注册的SqlBuilder映射（按连接类型）
+            /// 注册的 SqlBuilder 映射（按连接类型）。
             /// </summary>
             internal Dictionary<Type, SqlBuilder> SqlBuildersByType { get; } = new Dictionary<Type, SqlBuilder>();
 
             /// <summary>
-            /// 是否注册Scope（默认为true）
+            /// 是否注册 Scope 跟踪（默认为 true）。
+            /// <para>Scope 跟踪逻辑已迁移到 LiteOrm.Framework 项目，此选项由 Framework 读取。</para>
             /// </summary>
             public bool RegisterScope { get; set; } = true;
 
             /// <summary>
-            /// 要扫描的程序集列表
+            /// 要扫描的程序集列表。
             /// </summary>
-            public System.Reflection.Assembly[] Assemblies { get; set; }
+            public Assembly[] Assemblies { get; set; }
 
             /// <summary>
             /// 日志工厂，用于记录服务注册过程中的程序集扫描日志（可选）。
-            /// 默认为控制台输出，最低级别为 <see cref="ServiceLogLevel.Information"/>。
             /// </summary>
             public ILoggerFactory LoggerFactory { get; set; }
 
             /// <summary>
-            /// 注册自定义SqlBuilder（按数据源名称）
+            /// 注册自定义 SqlBuilder（按数据源名称）。
             /// </summary>
-            /// <param name="dataSourceName">数据源名称</param>
-            /// <param name="sqlBuilder">SqlBuilder实例</param>
+            /// <param name="dataSourceName">数据源名称。</param>
+            /// <param name="sqlBuilder">SqlBuilder 实例。</param>
             public void RegisterSqlBuilder(string dataSourceName, SqlBuilder sqlBuilder)
             {
                 SqlBuilders[dataSourceName] = sqlBuilder;
             }
 
             /// <summary>
-            /// 注册自定义SqlBuilder（按连接类型）
+            /// 注册自定义 SqlBuilder（按连接类型）。
             /// </summary>
-            /// <param name="providerType">数据库连接类型</param>
-            /// <param name="sqlBuilder">SqlBuilder实例</param>
+            /// <param name="providerType">数据库连接类型。</param>
+            /// <param name="sqlBuilder">SqlBuilder 实例。</param>
             public void RegisterSqlBuilder(Type providerType, SqlBuilder sqlBuilder)
             {
                 SqlBuildersByType[providerType] = sqlBuilder;
             }
         }
 
-        private static void RegisterScope(ILifetimeScope scope)
-        {
-            scope.ChildLifetimeScopeBeginning += (sender, e) =>
-            {
-                var childScope = e.LifetimeScope;
-                SessionManager.SetCurrentComponentContext(childScope);
-                e.LifetimeScope.CurrentScopeEnding += (s, args) =>
-                {
-                    try
-                    {
-                        SessionManager.SetCurrentComponentContext(scope);
-                    }
-                    catch
-                    {
-                        // 父 scope 可能已释放，清空当前上下文避免残留已释放 scope 的引用
-                        SessionManager.SetCurrentComponentContext(null);
-                    }
-                };
-                RegisterScope(e.LifetimeScope);
-            };
-        }
-
         /// <summary>
-        /// 扫描指定程序集，自动注册标记[AutoRegister]的类型
+        /// 扫描指定程序集，自动注册标记 [AutoRegister] 的类型。
         /// </summary>
-        /// <param name="builder">服务集合</param>
-        /// <param name="assemblies">目标程序集（为空则扫描当前域所有程序集）</param>
-        /// <returns>服务集合</returns>
-        public static ContainerBuilder RegisterAutoService(
-            this ContainerBuilder builder,
+        /// <param name="services">服务集合。</param>
+        /// <param name="assemblies">目标程序集（为空则扫描当前域所有引用程序集）。</param>
+        /// <returns>服务集合。</returns>
+        public static IServiceCollection RegisterAutoService(
+            this IServiceCollection services,
             params Assembly[] assemblies)
         {
-            return RegisterAutoService(builder, null, assemblies);
+            return RegisterAutoService(services, null, assemblies);
         }
 
         /// <summary>
-        /// 扫描指定程序集，自动注册标记[AutoRegister]的类型，并通过 <paramref name="logger"/> 输出扫描日志
+        /// 扫描指定程序集，自动注册标记 [AutoRegister] 的类型，并通过 <paramref name="logger"/> 输出扫描日志。
         /// </summary>
-        /// <param name="builder">服务集合</param>
-        /// <param name="logger">日志记录器（为 null 时跳过日志输出）</param>
-        /// <param name="assemblies">目标程序集（为空则扫描当前域所有程序集）</param>
-        /// <returns>服务集合</returns>
-        public static ContainerBuilder RegisterAutoService(
-            this ContainerBuilder builder,
+        /// <param name="services">服务集合。</param>
+        /// <param name="logger">日志记录器（为 null 时跳过日志输出）。</param>
+        /// <param name="assemblies">目标程序集（为空则扫描当前域所有引用程序集）。</param>
+        /// <returns>服务集合。</returns>
+        public static IServiceCollection RegisterAutoService(
+            this IServiceCollection services,
             ILogger logger,
             params Assembly[] assemblies)
         {
@@ -237,7 +195,7 @@ namespace LiteOrm
             assemblyList.Add(typeof(AutoRegisterAttribute).Assembly);
 
             // 若指定了程序集，则加入指定列表；否则扫描引用程序集
-            if (assemblies.Any())
+            if (assemblies != null && assemblies.Any())
             {
                 foreach (var assembly in assemblies)
                 {
@@ -254,7 +212,16 @@ namespace LiteOrm
 
             logger?.LogDebug("Scanning {Count} assemblies to register LiteOrm services", assemblyList.Count);
 
+            // netstandard2.0 不具备编译期可用的 MS DI Keyed Service 支持，使用注册表 + 工厂作为回退方案。
+            KeyedServiceRegistry keyedRegistry = null;
+#if !(NET8_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
+            keyedRegistry = new KeyedServiceRegistry();
+            services.AddSingleton(typeof(KeyedServiceRegistry), keyedRegistry);
+#endif
+
+            var autoActivateTypes = new List<Type>();
             var totalRegistered = 0;
+
             foreach (var assembly in assemblyList)
             {
                 IEnumerable<Type> types;
@@ -284,68 +251,140 @@ namespace LiteOrm
                         t.FullName,
                         attr?.Lifetime ?? Lifetime.Scoped,
                         attr?.AutoActivate ?? false);
-                    RegisterTypeWithInterception(builder, t);
+
+                    RegisterSingleType(services, t, attr, keyedRegistry, autoActivateTypes, logger);
                 }
+
                 totalRegistered += registrableTypes.Count;
+            }
+
+            // 将所有 AutoActivate 类型注册为一个 IHostedService，在宿主启动时统一解析以触发实例化。
+            if (autoActivateTypes.Count > 0)
+            {
+                var typesToActivate = autoActivateTypes.ToArray();
+                services.AddHostedService(sp => new AutoActivateHostedService(sp, typesToActivate));
+                logger?.LogDebug("Registered {Count} auto-activate type(s) via IHostedService", typesToActivate.Length);
             }
 
             logger?.LogInformation(
                 "LiteOrm service registration complete: scanned {AssemblyCount} assemblies, registered {Total} type(s)",
                 assemblyList.Count, totalRegistered);
-            return builder;
+
+            return services;
         }
 
         /// <summary>
-        /// 注册类型并应用拦截配置
+        /// 将单个带 [AutoRegister] 的类型注册到 MS DI。
         /// </summary>
-        /// <param name="builder">容器构建器</param>
-        /// <param name="implementationType">要注册的实现类型</param>
-        /// <returns>配置后的容器构建器</returns>
-        public static ContainerBuilder RegisterTypeWithInterception(this ContainerBuilder builder, Type implementationType)
+        /// <param name="services">服务集合。</param>
+        /// <param name="implementationType">实现类型。</param>
+        /// <param name="attr">自动注册特性。</param>
+        /// <param name="keyedRegistry">netstandard2.0 下用于键控服务回退查找的注册表（net8.0+/netstandard2.1+ 下为 null）。</param>
+        /// <param name="autoActivateTypes">收集需要自动激活的类型列表。</param>
+        /// <param name="logger">日志记录器。</param>
+        private static void RegisterSingleType(
+            IServiceCollection services,
+            Type implementationType,
+            AutoRegisterAttribute attr,
+            KeyedServiceRegistry keyedRegistry,
+            List<Type> autoActivateTypes,
+            ILogger logger)
         {
-            if (implementationType.IsGenericTypeDefinition)
+            var lifetime = ToServiceLifetime(attr?.Lifetime ?? Lifetime.Scoped);
+            var key = attr?.Key;
+            bool isGenericDefinition = implementationType.IsGenericTypeDefinition;
+            var serviceTypes = GetServiceTypes(implementationType, attr, out bool hasIntercept);
+
+            if (hasIntercept)
             {
-                builder.RegisterGeneric(implementationType).AddInterception(implementationType);
+                // 拦截由 LiteOrm.Framework 项目负责应用，此处仅记录不处理。
+                logger?.LogDebug(
+                    "Type '{Type}' is decorated with InterceptAttribute; interception will be applied by LiteOrm.Framework.",
+                    implementationType.FullName);
             }
-            else
+
+            // 自身注册：使实现类型可被直接解析，并作为多个服务类型之间共享同一实例的锚点。
+            // MS DI 内置容器不支持基于工厂的开放泛型，因此开放泛型使用类型描述符。
+            if (!services.Any(d => d.ServiceType == implementationType && d.ImplementationType == implementationType))
             {
-                builder.RegisterType(implementationType).AddInterception(implementationType);
+                services.Add(new ServiceDescriptor(implementationType, implementationType, lifetime));
             }
-            return builder;
+
+            foreach (var serviceType in serviceTypes)
+            {
+                if (serviceType == implementationType)
+                {
+                    // 已通过自身注册完成。
+                    continue;
+                }
+
+                if (isGenericDefinition)
+                {
+                    // 开放泛型：MS DI 不支持基于工厂的开放泛型，使用类型描述符。
+                    // 键控的开放泛型在 MS DI 中不被可靠支持，回退为非键控注册 +
+                    // (netstandard2.0) 注册表映射。
+                    if (key != null)
+                    {
+                        keyedRegistry?.Register(serviceType, key, implementationType);
+                    }
+                    services.Add(new ServiceDescriptor(serviceType, implementationType, lifetime));
+                }
+                else
+                {
+                    // 闭合类型：使用工厂从自身注册解析实例，保证多个服务类型共享同一实例。
+                    if (key != null)
+                    {
+#if NET8_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+                        services.Add(CreateKeyedDescriptor(
+                            serviceType,
+                            key,
+                            (sp, _) => sp.GetRequiredService(implementationType),
+                            lifetime));
+#else
+                        // netstandard2.0 回退：注册非键控工厂描述符（供 IEnumerable<T> 枚举）并记录键映射。
+                        keyedRegistry?.Register(serviceType, key, implementationType);
+                        services.Add(CreateDescriptor(serviceType, sp => sp.GetRequiredService(implementationType), lifetime));
+#endif
+                    }
+                    else
+                    {
+                        services.Add(CreateDescriptor(serviceType, sp => sp.GetRequiredService(implementationType), lifetime));
+                    }
+                }
+            }
+
+            if (attr?.AutoActivate ?? false)
+            {
+                autoActivateTypes.Add(implementationType);
+            }
         }
 
         /// <summary>
-        /// 为类型注册添加拦截配置
+        /// 计算类型应注册的服务类型集合，并检测是否存在 <see cref="InterceptAttribute"/>。
         /// </summary>
-        /// <typeparam name="TLimit">限制类型</typeparam>
-        /// <typeparam name="TActivatorData">激活器数据类型</typeparam>
-        /// <typeparam name="TRegistrationStyle">注册风格类型</typeparam>
-        /// <param name="registration">注册构建器</param>
-        /// <param name="implementationType">实现类型</param>
-        /// <returns>配置后的注册构建器</returns>
-        public static IRegistrationBuilder<TLimit, TActivatorData, TRegistrationStyle> AddInterception<TLimit, TActivatorData, TRegistrationStyle>(
-           this IRegistrationBuilder<TLimit, TActivatorData, TRegistrationStyle> registration,
-           Type implementationType) where TActivatorData : ReflectionActivatorData
+        private static List<Type> GetServiceTypes(Type implementationType, AutoRegisterAttribute attr, out bool hasIntercept)
         {
-            var attribute = implementationType.GetCustomAttribute<AutoRegisterAttribute>(true);
-            Lifetime lifetime = attribute?.Lifetime ?? Lifetime.Scoped;
-            List<Type> serviceTypes = new List<Type>();
+            hasIntercept = false;
+            var serviceTypes = new List<Type>();
 
-            // 若特性指定了ServiceTypes，直接使用
-            if (attribute?.ServiceTypes is not null && attribute.ServiceTypes.Any())
+            // 若特性指定了 ServiceTypes，直接使用
+            if (attr?.ServiceTypes is not null && attr.ServiceTypes.Any())
             {
-                serviceTypes.AddRange(attribute.ServiceTypes);
+                serviceTypes.AddRange(attr.ServiceTypes);
             }
-            // 否则自动获取所有实现的接口（排除系统接口如IDisposable）
             else
             {
+                // 否则自动获取所有实现的接口（排除 System.* 命名空间下的接口）
                 foreach (var serviceType in implementationType.GetInterfaces()
-                    .Where(i => !i.Namespace.StartsWith("System.") && i.Namespace != "System"
+                    .Where(i => i.Namespace != null
+                             && !i.Namespace.StartsWith("System.")
+                             && i.Namespace != "System"
                              && (i.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? true)))
                 {
                     if (implementationType.IsGenericTypeDefinition && serviceType.IsGenericType)
                     {
-                        if (implementationType.GetGenericArguments().Length == serviceType.GenericTypeArguments.Length && serviceType.GenericTypeArguments.All(t => t.DeclaringType == implementationType))
+                        if (implementationType.GetGenericArguments().Length == serviceType.GenericTypeArguments.Length
+                            && serviceType.GenericTypeArguments.All(t => t.DeclaringType == implementationType))
                         {
                             serviceTypes.Add(serviceType.GetGenericTypeDefinition());
                         }
@@ -358,84 +397,171 @@ namespace LiteOrm
                 }
             }
 
-            var interceptAttribute = implementationType.GetCustomAttribute<InterceptAttribute>() ??
-                                   implementationType.GetInterfaces()
-                                       .Select(i => i.GetCustomAttribute<InterceptAttribute>())
-                                       .FirstOrDefault(a => a is not null);
-            if (interceptAttribute is not null)
+            var interceptAttribute = implementationType.GetCustomAttribute<InterceptAttribute>()
+                ?? implementationType.GetInterfaces()
+                    .Select(i => i.GetCustomAttribute<InterceptAttribute>())
+                    .FirstOrDefault(a => a is not null);
+
+            if (interceptAttribute is null)
             {
-                registration.EnableInterfaceInterceptors();
-            }
-            else
-            {
+                // 没有拦截特性时，将实现类型自身也注册为服务。
                 serviceTypes.Add(implementationType);
             }
-
-            if (attribute?.Key != null)
-            {
-                foreach (var serviceType in serviceTypes)
-                {
-                    registration.Keyed(attribute.Key, serviceType);
-                }
-            }
             else
             {
-                registration.As(serviceTypes.ToArray());
+                // 存在拦截特性：此处不应用拦截（由 Framework 处理），仅记录。
+                hasIntercept = true;
             }
 
-            registration.PropertiesAutowired()
-            .SetLifetime(lifetime);
-            if (attribute.AutoActivate)
-                registration.AutoActivate();
-            return registration;
+            return serviceTypes;
         }
 
         /// <summary>
-        /// 设置服务的生命周期
+        /// 将 LiteOrm 的 <see cref="Lifetime"/> 枚举映射为 MS DI 的 <see cref="ServiceLifetime"/>。
         /// </summary>
-        /// <typeparam name="TLimit">限制类型</typeparam>
-        /// <typeparam name="TActivatorData">激活器数据类型</typeparam>
-        /// <typeparam name="TRegistrationStyle">注册风格类型</typeparam>
-        /// <param name="registration">注册构建器</param>
-        /// <param name="lifetime">服务生命周期</param>
-        /// <returns>配置后的注册构建器</returns>
-        public static IRegistrationBuilder<TLimit, TActivatorData, TRegistrationStyle> SetLifetime<TLimit, TActivatorData, TRegistrationStyle>(
-           this IRegistrationBuilder<TLimit, TActivatorData, TRegistrationStyle> registration,
-           Lifetime lifetime)
+        private static ServiceLifetime ToServiceLifetime(Lifetime lifetime)
         {
             return lifetime switch
             {
-                Lifetime.Singleton => registration.SingleInstance(),
-                Lifetime.Scoped => registration.InstancePerLifetimeScope(),
-                Lifetime.Transient => registration.InstancePerDependency(),
+                Lifetime.Singleton => ServiceLifetime.Singleton,
+                Lifetime.Scoped => ServiceLifetime.Scoped,
+                Lifetime.Transient => ServiceLifetime.Transient,
                 _ => throw new ArgumentOutOfRangeException(nameof(lifetime), lifetime, null)
             };
         }
 
         /// <summary>
-        /// 注册服务生成器，将接口获取服务通过动态代理转换为从 ServiceProvider 获取服务
+        /// 创建基于工厂的非键控 <see cref="ServiceDescriptor"/>。
         /// </summary>
-        /// <typeparam name="TService">获取服务的接口，提供返回服务的属性或方法</typeparam>
-        /// <param name="services">服务集合。</param>
-        /// <param name="lifetime">服务生命周期。</param>
-        /// <returns>返回修改后的服务集合以支持链式调用。</returns>
-        public static IServiceCollection AddServiceGenerator<TService>(
-            this IServiceCollection services,
-            Lifetime lifetime = Lifetime.Scoped)
-            where TService : class
+        private static ServiceDescriptor CreateDescriptor(Type serviceType, Func<IServiceProvider, object> factory, ServiceLifetime lifetime)
         {
-            var lifetimeDescriptor = lifetime switch
+            return lifetime switch
             {
-                Lifetime.Singleton => ServiceLifetime.Singleton,
-                Lifetime.Scoped => ServiceLifetime.Scoped,
-                Lifetime.Transient => ServiceLifetime.Transient,
-                _ => ServiceLifetime.Transient,
+                ServiceLifetime.Singleton => ServiceDescriptor.Singleton(serviceType, factory),
+                ServiceLifetime.Scoped => ServiceDescriptor.Scoped(serviceType, factory),
+                _ => ServiceDescriptor.Transient(serviceType, factory),
             };
-            var serviceDescriptor = new ServiceDescriptor(typeof(TService),
-                sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget<TService>(sp.GetRequiredService<ServiceGenerateInterceptor>()),
-                lifetimeDescriptor);
-            services.Add(serviceDescriptor);
-            return services;
+        }
+
+#if NET8_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+        /// <summary>
+        /// 创建基于工厂的键控 <see cref="ServiceDescriptor"/>（net8.0+/netstandard2.1+ 可用）。
+        /// </summary>
+        private static ServiceDescriptor CreateKeyedDescriptor(Type serviceType, object key, Func<IServiceProvider, object, object> factory, ServiceLifetime lifetime)
+        {
+            return lifetime switch
+            {
+                ServiceLifetime.Singleton => ServiceDescriptor.KeyedSingleton(serviceType, key, factory),
+                ServiceLifetime.Scoped => ServiceDescriptor.KeyedScoped(serviceType, key, factory),
+                _ => ServiceDescriptor.KeyedTransient(serviceType, key, factory),
+            };
+        }
+#endif
+
+        /// <summary>
+        /// 在宿主启动时解析所有标记为 AutoActivate 的类型，触发其实例化。
+        /// </summary>
+        internal sealed class AutoActivateHostedService : IHostedService
+        {
+            private readonly IServiceProvider _serviceProvider;
+            private readonly Type[] _types;
+
+            public AutoActivateHostedService(IServiceProvider serviceProvider, Type[] types)
+            {
+                _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+                _types = types ?? Type.EmptyTypes;
+            }
+
+            /// <inheritdoc/>
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return Task.FromCanceled(cancellationToken);
+                }
+
+                foreach (var type in _types)
+                {
+                    // 解析以触发实例化（构造失败将抛出，终止启动）。
+                    _serviceProvider.GetService(type);
+                }
+
+                return Task.CompletedTask;
+            }
+
+            /// <inheritdoc/>
+            public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// netstandard2.0 下键控服务的注册表，保存 (服务类型, 键) -> 实现类型 的映射，
+        /// 供 <see cref="LiteOrmKeyedServiceExtensions.ResolveKeyed"/> 解析使用。
+        /// </summary>
+        internal sealed class KeyedServiceRegistry
+        {
+            private readonly Dictionary<(Type ServiceType, object Key), Type> _map =
+                new Dictionary<(Type ServiceType, object Key), Type>();
+
+            public void Register(Type serviceType, object key, Type implementationType)
+            {
+                _map[(serviceType, key)] = implementationType;
+            }
+
+            public bool TryGet(Type serviceType, object key, out Type implementationType)
+            {
+                return _map.TryGetValue((serviceType, key), out implementationType);
+            }
         }
     }
+
+#if !(NET8_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
+    /// <summary>
+    /// netstandard2.0 下的键控服务解析扩展。
+    /// <para>MS DI 的 Keyed Service 仅在 net8.0+/netstandard2.1+ 下启用；netstandard2.0 通过
+    /// <see cref="LiteOrmServiceExtensions.KeyedServiceRegistry"/> + 本扩展方法提供等价的键控解析能力。</para>
+    /// </summary>
+    public static class LiteOrmKeyedServiceExtensions
+    {
+        /// <summary>
+        /// 按键解析服务（找不到时返回 default）。
+        /// </summary>
+        public static T ResolveKeyed<T>(this IServiceProvider provider, object key)
+        {
+            return (T)provider.ResolveKeyed(typeof(T), key);
+        }
+
+        /// <summary>
+        /// 按键解析服务（找不到时返回 null）。
+        /// </summary>
+        public static object ResolveKeyed(this IServiceProvider provider, Type serviceType, object key)
+        {
+            if (provider == null) throw new ArgumentNullException(nameof(provider));
+            if (serviceType == null) throw new ArgumentNullException(nameof(serviceType));
+
+            var registry = provider.GetService(typeof(LiteOrmServiceExtensions.KeyedServiceRegistry))
+                as LiteOrmServiceExtensions.KeyedServiceRegistry;
+
+            if (registry != null && registry.TryGet(serviceType, key, out var implementationType))
+            {
+                return provider.GetService(implementationType);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 按键解析必需的服务（找不到时抛出异常）。
+        /// </summary>
+        public static T ResolveRequiredKeyed<T>(this IServiceProvider provider, object key)
+        {
+            var service = provider.ResolveKeyed<T>(key);
+            if (service == null)
+            {
+                throw new InvalidOperationException(
+                    $"No keyed service of type '{typeof(T).FullName}' with key '{key}' is registered.");
+            }
+            return service;
+        }
+    }
+#endif
 }

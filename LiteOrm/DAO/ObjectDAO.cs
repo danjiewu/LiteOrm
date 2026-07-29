@@ -31,6 +31,16 @@ namespace LiteOrm
     public class ObjectDAO<T> : DAOBase, IObjectDAO<T>
     {
         /// <summary>
+        /// 初始化 <see cref="ObjectDAO{T}"/> 类的新实例。
+        /// </summary>
+        /// <param name="tableInfoProvider">表信息提供者</param>
+        /// <param name="bulkFactory">批量插入提供程序工厂</param>
+        public ObjectDAO(TableInfoProvider tableInfoProvider, BulkProviderFactory bulkFactory)
+            : base(tableInfoProvider, bulkFactory)
+        {
+        }
+
+        /// <summary>
         /// 实体对象类型
         /// </summary>
         public override Type ObjectType

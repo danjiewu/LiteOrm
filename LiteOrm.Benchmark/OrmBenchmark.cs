@@ -2,6 +2,7 @@ using BenchmarkDotNet.Attributes;
 using Dapper;
 using FreeSql;
 using LiteOrm.Common;
+using LiteOrm.Framework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -70,7 +71,7 @@ namespace LiteOrm.Benchmark
                             logging.Services.Remove(provider);
                         }
                     })
-                    .RegisterLiteOrm()
+                    .RegisterLiteOrmFramework()
                     .ConfigureServices((Action<HostBuilderContext, IServiceCollection>)((context, services) =>
                     {
                         // Support switching provider via LiteOrm section in configuration

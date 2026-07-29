@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
+		<RootNamespace>LiteOrm.Framework</RootNamespace>
+		<AssemblyVersion>8.0.22.0</AssemblyVersion>
+		<FileVersion>8.0.22.0</FileVersion>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<VersionPrefix>8.0.22</VersionPrefix>
+		<Nullable>disable</Nullable>
+		<Title>LiteOrm.Framework</Title>
+		<Authors>danjiewu</Authors>
+		<Description>LiteOrm Framework - Autofac DI 适配器 + Castle DynamicProxy 拦截器</Description>
+		<PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
+		<PackageTags>orm;autofac;castle;proxy;aop;interceptor;di;ioc</PackageTags>
+		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	</PropertyGroup>
+	<PropertyGroup>
+		<LangVersion>14.0</LangVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Autofac.Extensions.DependencyInjection" Version="10.0.0" />
+		<PackageReference Include="Autofac.Extras.DynamicProxy" Version="7.1.0" />
+		<PackageReference Include="Castle.Core" Version="5.2.1" />
+		<PackageReference Include="Castle.Core.AsyncInterceptor" Version="2.1.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.5" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\LiteOrm\LiteOrm.csproj" />
+		<ProjectReference Include="..\LiteOrm.Common\LiteOrm.Common.csproj" />
+	</ItemGroup>
+
+</Project>

@@ -3,6 +3,7 @@ using LiteOrm.Common;
 using LiteOrm.Demo.Data;
 using LiteOrm.Demo.Demos;
 using LiteOrm.Demo.Services;
+using LiteOrm.Framework;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Oracle.ManagedDataAccess.Client;
@@ -14,9 +15,9 @@ using System.Text.Json;
 
 OracleConfiguration.BindByName = true;
 
-// 使用 RegisterLiteOrm 从 appsettings.json 自动配置
+// 使用 RegisterLiteOrmFramework 从 appsettings.json 自动配置（Autofac + Castle 拦截器）
 var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrm()
+    .RegisterLiteOrmFramework()
     .ConfigureServices(services =>
     {
         // 注册应用程序服务

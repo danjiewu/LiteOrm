@@ -1,4 +1,5 @@
-﻿using LiteOrm.Common;
+﻿using LiteOrm;
+using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,5 +11,9 @@ namespace LiteOrm.Demo.Services
     /// </summary>
     public class DepartmentService : EntityService<Department, DepartmentView>, IDepartmentService
     {
+        public DepartmentService(ObjectDAO<Department> objectDAO, ObjectViewDAO<DepartmentView> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
     }
 }

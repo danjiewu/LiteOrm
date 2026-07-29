@@ -1,7 +1,8 @@
-﻿using Autofac.Features.Indexed;
 using LiteOrm.Common;
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Reflection;
 
 namespace LiteOrm
 {
@@ -12,16 +13,26 @@ namespace LiteOrm
     [AutoRegister(Lifetime.Singleton)]
     public class BulkProviderFactory
     {
-        private readonly IIndex<Type, IBulkProvider> _keyedProviders;
+        private readonly Dictionary<Type, IBulkProvider> _keyedProviders;
 
         /// <summary>
         /// 构造函数
         /// </summary>
-        /// <param name="keyedProviders">用于查找的批量插入提供程序索引</param>
-        public BulkProviderFactory(
-            IIndex<Type, IBulkProvider> keyedProviders)
+        /// <param name="providers">所有注册的批量插入提供程序</param>
+        public BulkProviderFactory(IEnumerable<IBulkProvider> providers)
         {
-            _keyedProviders = keyedProviders;
+            _keyedProviders = new Dictionary<Type, IBulkProvider>();
+            if (providers != null)
+            {
+                foreach (var provider in providers)
+                {
+                    var attr = provider.GetType().GetCustomAttribute<AutoRegisterAttribute>(true);
+                    if (attr?.Key is Type keyType)
+                    {
+                        _keyedProviders[keyType] = provider;
+                    }
+                }
+            }
         }
 
         /// <summary>

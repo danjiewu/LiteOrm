@@ -30,6 +30,19 @@ namespace LiteOrm
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     public abstract class DAOBase : IExprStringBuildContext
     {
+        #region 构造函数
+        /// <summary>
+        /// 初始化 <see cref="DAOBase"/> 类的新实例。
+        /// </summary>
+        /// <param name="tableInfoProvider">表信息提供者</param>
+        /// <param name="bulkFactory">批量插入提供程序工厂</param>
+        protected DAOBase(TableInfoProvider tableInfoProvider, BulkProviderFactory bulkFactory)
+        {
+            TableInfoProvider = tableInfoProvider ?? throw new ArgumentNullException(nameof(tableInfoProvider));
+            BulkFactory = bulkFactory ?? throw new ArgumentNullException(nameof(bulkFactory));
+        }
+        #endregion
+
         #region 预定义变量
         /// <summary>
         /// 表示SQL查询中条件语句的标记
@@ -96,7 +109,7 @@ namespace LiteOrm
         /// <summary>
         /// 批量插入提供程序工厂
         /// </summary>
-        public BulkProviderFactory BulkFactory { get; set; }
+        public BulkProviderFactory BulkFactory { get; }
 
         /// <summary>
         /// 构建SQL语句的SQLBuilder
@@ -165,10 +178,7 @@ namespace LiteOrm
         /// <summary>
         /// 表信息提供者
         /// </summary>
-        public TableInfoProvider TableInfoProvider
-        {
-            get; set;
-        }
+        public TableInfoProvider TableInfoProvider { get; }
 
         /// <summary>
         /// 实际表名

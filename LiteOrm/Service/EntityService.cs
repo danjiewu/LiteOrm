@@ -57,9 +57,20 @@ namespace LiteOrm.Service
     where T : new()
     {
         /// <summary>
-        /// 获取或设置实体数据访问对象。
+        /// 获取实体数据访问对象。
         /// </summary>
-        public ObjectDAO<T> ObjectDAO { get; set; }
+        protected ObjectDAO<T> ObjectDAO { get; }
+
+        /// <summary>
+        /// 初始化 <see cref="EntityService{T, TView}"/> 类的新实例。
+        /// </summary>
+        /// <param name="objectDAO">实体数据访问对象</param>
+        /// <param name="objectViewDAO">视图数据访问对象</param>
+        public EntityService(ObjectDAO<T> objectDAO, ObjectViewDAO<TView> objectViewDAO)
+            : base(objectViewDAO)
+        {
+            ObjectDAO = objectDAO ?? throw new ArgumentNullException(nameof(objectDAO));
+        }
 
         #region IEntityService<T> 成员
 
@@ -966,5 +977,14 @@ namespace LiteOrm.Service
     public class EntityService<T> : EntityService<T, T>
         where T : new()
     {
+        /// <summary>
+        /// 初始化 <see cref="EntityService{T}"/> 类的新实例。
+        /// </summary>
+        /// <param name="objectDAO">实体数据访问对象</param>
+        /// <param name="objectViewDAO">视图数据访问对象</param>
+        public EntityService(ObjectDAO<T> objectDAO, ObjectViewDAO<T> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
     }
 }

@@ -1,27 +1,26 @@
-using Autofac;
 using LiteOrm.Common;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm 核心初始化器，负责初始化系统和自动同步数据库表结构。
+    /// LiteOrm 核心初始化器，负责自动同步数据库表结构。
     /// 
     /// 主要职责：
-    /// 1. 初始化全局的会话管理器 (SessionManager)
-    /// 2. 初始化全局的表信息提供者 (TableInfoProvider)
-    /// 3. 自动同步数据库表结构（创建表、添加列、创建索引）
+    /// 1. 自动同步数据库表结构（创建表、添加列、创建索引）
+    /// 
+    /// 全局实例初始化（SessionManager、TableInfoProvider）由 LiteOrm.Framework 项目负责。
     /// </summary>
     [AutoRegister(Lifetime = Lifetime.Singleton)]
-    public class LiteOrmCoreInitializer : IStartable
+    public class LiteOrmCoreInitializer : IHostedService
     {
-        private readonly IComponentContext _componentContext;
-        private readonly TableInfoProvider _tableInfoProvider;
         private readonly ILogger<LiteOrmCoreInitializer> _logger;
         private readonly IDataSourceProvider _dataSourceProvider;
         private readonly DAOContextPoolFactory _daoContextPoolFactory;
@@ -29,36 +28,26 @@ namespace LiteOrm
         /// <summary>
         /// 初始化 <see cref="LiteOrmCoreInitializer"/> 类的新实例
         /// </summary>
-        /// <param name="componentContext">组件上下文实例</param>
-        /// <param name="tableInfoProvider">表信息提供者实例</param>
         /// <param name="dataSourceProvider">数据源提供者</param>
         /// <param name="daoContextPoolFactory">DAO上下文连接池工厂</param>
         /// <param name="logger">日志记录器</param>
         public LiteOrmCoreInitializer(
-            IComponentContext componentContext,
-            TableInfoProvider tableInfoProvider,
             IDataSourceProvider dataSourceProvider,
             DAOContextPoolFactory daoContextPoolFactory,
             ILogger<LiteOrmCoreInitializer> logger = null)
         {
-            _componentContext = componentContext;
-            _tableInfoProvider = tableInfoProvider;
             _dataSourceProvider = dataSourceProvider;
             _daoContextPoolFactory = daoContextPoolFactory;
             _logger = logger;
         }
 
         /// <summary>
-        /// 启动时执行初始化和表同步逻辑。
+        /// 启动时执行表结构同步逻辑。
         /// </summary>
-        public void Start()
+        public Task StartAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                // 步骤 1：初始化全局实例
-                InitializeGlobalInstances();
-
-                // 步骤 2：同步数据库表结构
                 SyncTables();
             }
             catch (Exception ex)
@@ -66,24 +55,15 @@ namespace LiteOrm
                 _logger?.LogCritical(ex, "LiteOrm startup initialization failed");
                 throw;
             }
+            return Task.CompletedTask;
         }
 
         /// <summary>
-        /// 初始化全局的会话管理器和表信息提供者
+        /// 停止时清理。
         /// </summary>
-        private void InitializeGlobalInstances()
+        public Task StopAsync(CancellationToken cancellationToken = default)
         {
-            try
-            {
-                SessionManager.SetCurrentComponentContext(_componentContext);
-                TableInfoProvider.Default = _tableInfoProvider;
-                _logger?.LogInformation("LiteOrm global instances initialized");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogCritical(ex, "LiteOrm global instance initialization failed");
-                throw new InvalidOperationException("LiteOrm global instance initialization failed", ex);
-            }
+            return Task.CompletedTask;
         }
 
         /// <summary>

@@ -17,14 +17,14 @@ namespace LiteOrm.Remote
     /// 它简化了 LiteOrm 框架与 ASP.NET Core 宿主的集成过程。
     /// 
     /// 主要功能包括：
-    /// 1. 框架初始化 - 在宿主构建时初始化 LiteOrm 框架
-    /// 2. Autofac集成 - 将 Autofac 集成到依赖注入系统
-    /// 3. 服务注册 - 注册所有LiteOrm相关的服务
+    /// 1. 框架初始化 - 在宿主构建时初始化 LiteOrm 远程服务框架
+    /// 2. 服务注册 - 注册所有 LiteOrm Remote 相关的服务
     /// 
     /// 使用示例：
     /// <code>
     /// var builder = Host.CreateDefaultBuilder(args)
-    ///     .RegisterLiteOrm()
+    ///     .RegisterLiteOrmFramework()
+    ///     .RegisterLiteOrmRemote()
     ///     .ConfigureServices(services =>
     ///         ...
     ///     );

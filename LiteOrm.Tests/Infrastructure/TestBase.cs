@@ -1,5 +1,4 @@
-using Autofac;
-using Autofac.Extensions.DependencyInjection;
+using LiteOrm.Framework;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,7 +36,7 @@ namespace LiteOrm.Tests.Infrastructure
                 {
                     config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false);
                 })
-                .RegisterLiteOrm()
+                .RegisterLiteOrmFramework()
                 .Build();
             
             var pool = ServiceProvider.GetRequiredService<DAOContextPoolFactory>().GetPool("SQLite");

@@ -1,5 +1,5 @@
-using Autofac;
 using LiteOrm.Common;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
@@ -52,7 +52,7 @@ namespace LiteOrm
         private readonly LinkedList<string> _sqlStack = new LinkedList<string>();
         private string _currentTransactionId;
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
-        private static readonly AsyncLocal<IComponentContext> _currentComponentContext = new AsyncLocal<IComponentContext>();
+        private static readonly AsyncLocal<IServiceProvider> _currentServiceProvider = new AsyncLocal<IServiceProvider>();
 
         /// <summary>
         /// 最大SQL历史记录条数，超过此数量的旧SQL将被丢弃
@@ -65,18 +65,18 @@ namespace LiteOrm
         public string SessionID { get; } = ShortId.NewId();
 
         /// <summary>
-        /// 当前异步上下文的会话管理器。始终从当前 scope 的 <see cref="IComponentContext"/> 解析，确保返回当前 scope 对应的实例。
+        /// 当前异步上下文的会话管理器。始终从当前 scope 的 <see cref="IServiceProvider"/> 解析，确保返回当前 scope 对应的实例。
         /// 当前上下文未设置或实例已释放时返回 null。
         /// </summary>
         public static SessionManager Current
         {
             get
             {
-                var ctx = _currentComponentContext.Value;
-                if (ctx is null) return null;
+                var sp = _currentServiceProvider.Value;
+                if (sp is null) return null;
                 try
                 {
-                    var instance = ctx.Resolve<SessionManager>();
+                    var instance = sp.GetService<SessionManager>();
                     if (instance is null || instance._disposed) return null;
                     return instance;
                 }
@@ -85,13 +85,13 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 为当前异步上下文设置 <see cref="IComponentContext"/>，用于 <see cref="Current"/> 解析当前 scope 的 <see cref="SessionManager"/>。
+        /// 为当前异步上下文设置 <see cref="IServiceProvider"/>，用于 <see cref="Current"/> 解析当前 scope 的 <see cref="SessionManager"/>。
         /// 传入 null 时清空当前上下文。
         /// </summary>
-        /// <param name="componentContext">当前 scope 的 <see cref="IComponentContext"/>；传入 null 时清空当前上下文</param>
-        public static void SetCurrentComponentContext(IComponentContext componentContext)
+        /// <param name="serviceProvider">当前 scope 的 <see cref="IServiceProvider"/>；传入 null 时清空当前上下文</param>
+        public static void SetCurrentServiceProvider(IServiceProvider serviceProvider)
         {
-            _currentComponentContext.Value = componentContext;
+            _currentServiceProvider.Value = serviceProvider;
         }
 
         /// <summary>

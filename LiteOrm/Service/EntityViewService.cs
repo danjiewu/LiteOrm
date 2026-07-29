@@ -1,4 +1,3 @@
-using Autofac.Extras.DynamicProxy;
 using LiteOrm.Common;
 using System;
 using System.Collections;
@@ -25,9 +24,9 @@ namespace LiteOrm.Service
     /// 5. 异步支持 - 提供基于 Task 的异步方法
     /// 6. 灵活的条件 - 支持使用 Expr 对象或 Lambda 表达式进行条件查询
     /// 7. 表参数支持 - 支持通过 tableArgs 参数动态指定表名
-    /// 8. 拦截机制 - 自动应用 ServiceInvokeInterceptor 进行拦截
+    /// 8. 拦截机制 - 可通过 LiteOrm.Framework 应用 ServiceInvokeInterceptor 进行拦截
     /// 
-    /// 该类通过依赖注入框架以单例方式注册，使用 Autofac 的拦截功能进行方法拦截。
+    /// 该类通过依赖注入框架以 Scoped 方式注册。
     /// 
     /// 使用示例：
     /// <code>
@@ -47,14 +46,22 @@ namespace LiteOrm.Service
     /// </code>
     /// </remarks>
     [AutoRegister(Lifetime.Scoped)]
-    [Intercept(typeof(ServiceInvokeInterceptor))]
     public class EntityViewService<TView> : IEntityViewService<TView>, IEntityViewServiceAsync<TView>, IEntityViewService, IEntityViewServiceAsync
          where TView : new()
     {
         /// <summary>
-        /// 获取或设置用于视图查询的数据访问对象。
+        /// 获取用于视图查询的数据访问对象。
         /// </summary>
-        public ObjectViewDAO<TView> ObjectViewDAO { get; set; }
+        protected ObjectViewDAO<TView> ObjectViewDAO { get; }
+
+        /// <summary>
+        /// 初始化 <see cref="EntityViewService{TView}"/> 类的新实例。
+        /// </summary>
+        /// <param name="objectViewDAO">视图数据访问对象</param>
+        public EntityViewService(ObjectViewDAO<TView> objectViewDAO)
+        {
+            ObjectViewDAO = objectViewDAO ?? throw new ArgumentNullException(nameof(objectViewDAO));
+        }
 
         #region IEntityViewService<TView> 成员
 

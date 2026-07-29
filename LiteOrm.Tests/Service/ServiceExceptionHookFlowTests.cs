@@ -1,5 +1,5 @@
-using Autofac.Extras.DynamicProxy;
 using LiteOrm.Common;
+using LiteOrm.Framework;
 using LiteOrm.Service;
 using LiteOrm.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
