@@ -1,21 +1,31 @@
 # 变更日志 (Changelog)
 
+## v8.0.21 (Unreleased)
+
+### 改进
+- `PreparedSql` 移至 `LiteOrm.Common` 项目，参数类型由 `KeyValuePair` 改为自定义 `Param` (`f50c72e`)
+
+---
+
 ## v8.0.20 (2026-07-28)
 
 ### 新增功能
-- ExprString 新增 `RawSql` 标记类型，用于内联不宜参数化的动态值 (`6f401b6`)
+- ExprString 新增 `RawSql` 标记类型 (`6f401b6`)
 - 增加 CTE 递归关键字支持 (`81fade6`)
-- 新增表级 `SyncTable` 配置，按实体覆盖数据源级同步策略 (`038e93b`)
-- 新增 `ShortId` 工具类，生成 8 位 Base36 随机字符串（数字加小写字母）(`18d70be`)
-- `DAOContext` 新增 `Id` 属性，并在日志/异常中附加 `ContextId` (`18d70be`)
-- 新增 Remote/Server 身份认证机制：基于 SignIn 端点 + 票据，客户端通过 `ICredentialsResolver` 提供票据，服务端通过 `IRemoteAuthenticationHandler` 签发票据，支持 Cookie/JWT 等多种认证方式
+- 新增表级 `SyncTable` 配置 (`038e93b`)
+- 新增 `ShortId` 工具类（数字加小写字母）(`18d70be`)
+- `DAOContext` 新增 `Id` 属性及连续异常失效机制 (`18d70be`, `4831a82`)
+- 新增 Remote/Server 身份认证机制，支持 `ClientId/Secret` 认证模式及多会话身份隔离 (`285de8b`, `37e0d2b`, `47eb3f1`, `b2e354b`)
+- `RemoteInvoke` 新增 `RequestID` 用于请求追踪 (`e092218`)
 
 ### 改进
-- `DatabaseSync` 补列时为非空值类型列追加 UPDATE 填充默认值 (`8fd9662`)
-- `SessionManager` 事务 ID 改用 `ShortId` (`18d70be`)
+- `DatabaseSync` 补列时为非空值类型列追加默认值 (`8fd9662`)
+- `SessionManager` 重构生命周期管理，`Current` 改为从当前 scope 实时解析 (`0698464`, `ce2435b`)
+- `LiteOrmCoreInitializer` 注入 `IComponentContext` 替代 `SessionManager`，消除 captive dependency
+- `HttpRemoteServiceTransport` 禁用 `HttpClient.UseCookies`，改由 `ICredentialsResolver` 管理票据 (`b456ab2`, `d322c04`, `37e0d2b`)
 
 ### 修复
-- 修复 `ParamCountLimit` 配置无效 bug；`DAOContext.ParamCountLimit` 改为只读，从所属 `DAOContextPool` 取值；默认值由 2000 调整为 1000 (`e4fa04b`)
+- 修复 `ParamCountLimit` 配置无效 bug，默认值调整为 1000 (`e4fa04b`)
 
 ---
 
