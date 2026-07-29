@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.0.20.0</AssemblyVersion>
-		<FileVersion>8.0.20.0</FileVersion>
+		<AssemblyVersion>8.0.21.0</AssemblyVersion>
+		<FileVersion>8.0.21.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.0.20</VersionPrefix>
+		<VersionPrefix>8.0.21</VersionPrefix>
 		<Nullable>disable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,13 +16,7 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      ExprString 新增 RawSql 标记类型；
-      增加 CTE 递归关键字支持；
-      新增表级 SyncTable 配置；
-      新增 ShortId 工具类，DAOContext 新增 Id 属性并在日志中附加 ContextId；
-      DatabaseSync 补列时为非空值类型列追加 UPDATE 填充默认值；
-      SessionManager 事务 ID 改用 ShortId；
-      修复 ParamCountLimit 配置无效 bug；
+      PreparedSql移至LiteOrm.Common项目中，参数类型由KeyValuePair改为自定义Param；
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

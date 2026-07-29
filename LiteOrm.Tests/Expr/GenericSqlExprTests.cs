@@ -49,7 +49,7 @@ namespace LiteOrm.Common.UnitTests
             GenericSqlExpr.Register(key, (_, _, _, arg) => $"X{arg}");
             var expr = GenericSqlExpr.Get(key, 3);
 
-            var sql = expr.GenerateSql(null!, null!, new List<KeyValuePair<string, object>>());
+            var sql = expr.GenerateSql(null!, null!, new List<Param>());
 
             Assert.Equal("X3", sql);
         }

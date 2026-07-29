@@ -73,11 +73,11 @@ namespace LiteOrm
         /// </summary>
         protected virtual PreparedSql MakeGetObjectSql()
         {
-            var paramValues = new Dictionary<string, object>();
-            
+            var paramValues = new List<Param>();
+
             // 构建 WHERE 子句
             string where = MakeKeyCondition(paramValues);
-            
+
             string sql = $"SELECT {AllFields} \nFROM {From} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);
         }
@@ -89,11 +89,11 @@ namespace LiteOrm
         protected virtual PreparedSql MakeObjectExistsSql()
         {
             ThrowExceptionIfNoKeys();
-            var paramValues = new Dictionary<string, object>();
+            var paramValues = new List<Param>();
 
             // 构建 WHERE 子句
             string where = MakeKeyCondition(paramValues);
-            
+
             string sql = $"SELECT 1 \nFROM {From} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);
         }

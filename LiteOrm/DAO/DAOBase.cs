@@ -372,6 +372,29 @@ namespace LiteOrm
             return command;
         }
         /// <summary>
+        /// 根据 SQL 语句和 <see cref="Param"/> 参数列表建立 <see cref="DbCommandProxy"/>，
+        /// 当参数指定了 <see cref="Param.DbType"/> 时将其应用到数据库参数。
+        /// </summary>
+        /// <param name="sql">SQL 语句。</param>
+        /// <param name="paramValues">参数列表。</param>
+        /// <returns>IDbCommand 实例。</returns>
+        internal protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<Param> paramValues)
+        {
+            var command = NewCommand();
+            command.CommandText = MutiReplacerInstance.Replace(sql);
+            if (paramValues is not null)
+                foreach (Param para in paramValues)
+                {
+                    DbParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName(ToNativeName(para.Name));
+                    param.Value = SqlBuilder.ConvertToDbValue(para.Value);
+                    if (para.DbType.HasValue)
+                        param.DbType = para.DbType.Value;
+                    command.Parameters.Add(param);
+                }
+            return command;
+        }
+        /// <summary>
         /// 异步根据 预处理的 SQL 语句和参数列表建立 <see cref="DbCommandProxy"/>。
         /// </summary>
         /// <param name="preparedSql"></param>
@@ -398,6 +421,30 @@ namespace LiteOrm
                     DbParameter param = command.CreateParameter();
                     param.ParameterName = ToParamName(ToNativeName(para.Key));
                     param.Value = SqlBuilder.ConvertToDbValue(para.Value);
+                    command.Parameters.Add(param);
+                }
+            return command;
+        }
+        /// <summary>
+        /// 异步根据 SQL 语句和 <see cref="Param"/> 参数列表建立 <see cref="DbCommandProxy"/>，
+        /// 当参数指定了 <see cref="Param.DbType"/> 时将其应用到数据库参数。
+        /// </summary>
+        /// <param name="sql">SQL 语句。</param>
+        /// <param name="paramValues">参数列表。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
+        /// <returns>IDbCommand 实例。</returns>
+        internal protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(string sql, IEnumerable<Param> paramValues, CancellationToken cancellationToken = default)
+        {
+            var command = await NewCommandAsync(cancellationToken).ConfigureAwait(false);
+            command.CommandText = MutiReplacerInstance.Replace(sql);
+            if (paramValues is not null)
+                foreach (Param para in paramValues)
+                {
+                    DbParameter param = command.CreateParameter();
+                    param.ParameterName = ToParamName(ToNativeName(para.Name));
+                    param.Value = SqlBuilder.ConvertToDbValue(para.Value);
+                    if (para.DbType.HasValue)
+                        param.DbType = para.DbType.Value;
                     command.Parameters.Add(param);
                 }
             return command;
@@ -524,7 +571,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="paramValues">参数集合</param>
         /// <returns>where条件的语句</returns>
-        protected string MakeKeyCondition(ICollection<KeyValuePair<string, object>> paramValues)
+        protected string MakeKeyCondition(ICollection<Param> paramValues)
         {
             ThrowExceptionIfNoKeys();
             var strConditions = ValueStringBuilder.Create(128);
@@ -538,7 +585,7 @@ namespace LiteOrm
                 strConditions.Append(ToColumnSql(key));
                 strConditions.Append(" = ");
                 strConditions.Append(ToSqlParam(paramName));
-                paramValues.Add(new(paramName, null));
+                paramValues.Add(new Param(paramName, null, key.DbType));
             }
             string result = strConditions.ToString();
             strConditions.Dispose();

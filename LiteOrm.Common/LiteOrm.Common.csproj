@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.0.20.0</AssemblyVersion>
-    <FileVersion>8.0.20.0</FileVersion>
+    <AssemblyVersion>8.0.21.0</AssemblyVersion>
+    <FileVersion>8.0.21.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.0.20</VersionPrefix>
+    <VersionPrefix>8.0.21</VersionPrefix>
     <Nullable>disable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
@@ -15,9 +15,7 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架。</Description>
     <PackageReleaseNotes>
-      新增 ShortId 工具类；
-      SqlBuilder.GetDefaultValueSql 改为 public；
-      共享 DTO 调整；
+      PreparedSql移至LiteOrm.Common项目中，参数类型由KeyValuePair改为自定义Param；
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

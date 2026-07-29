@@ -40,13 +40,13 @@ namespace LiteOrm
         public virtual NonQueryResult UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, LogicExpr expr)
         {
             List<string> strSets = new List<string>();
-            List<KeyValuePair<string, object>> paramValues = new List<KeyValuePair<string, object>>();
+            List<Param> paramValues = new List<Param>();
             foreach (KeyValuePair<string, object> value in values)
             {
-                SqlColumn column = Table.GetColumn(value.Key);
+                ColumnDefinition column = TableDefinition.GetColumn(value.Key);
                 if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
                 strSets.Add($"{SqlBuilder.ToSqlName(column.Name)} ={ToSqlParam(paramValues.Count.ToString())}");
-                paramValues.Add(new(paramValues.Count.ToString(), value.Value));
+                paramValues.Add(new Param(paramValues.Count.ToString(), value.Value, column.DbType));
             }
             var context = CreateSqlBuildContext(true);
             string where = expr.ToSql(context, SqlBuilder, paramValues);

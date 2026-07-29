@@ -83,7 +83,7 @@ namespace LiteOrm.Common
         /// <param name="expr">函数表达式，包含函数名及参数列表。</param>
         /// <param name="context">SQL 构建上下文。</param>
         /// <param name="outputParams">输出参数集合。</param>
-        void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ICollection<KeyValuePair<string, object>> outputParams);
+        void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ICollection<Param> outputParams);
 
         /// <summary>
         /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。

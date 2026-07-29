@@ -53,7 +53,7 @@ namespace LiteOrm.Common
     public ref struct ExprString
     {
         private ValueStringBuilder _builder;
-        private readonly List<KeyValuePair<string, object>> _params = new List<KeyValuePair<string, object>>();
+        private readonly List<Param> _params = new List<Param>();
         private readonly SqlBuildContext _context;
         private readonly ISqlBuilder _sqlBuilder;
 
@@ -99,7 +99,7 @@ namespace LiteOrm.Common
             {
                 string paramName = $"{_params.Count}";
                 _builder.Append(_sqlBuilder.ToSqlParam(paramName));
-                _params.Add(new KeyValuePair<string, object>(paramName, value));
+                _params.Add(new Param(paramName, value));
             }
         }
 
@@ -135,7 +135,7 @@ namespace LiteOrm.Common
         /// 获取参数列表
         /// </summary>
         /// <returns>参数列表</returns>
-        public List<KeyValuePair<string, object>> GetParams() => _params;
+        public List<Param> GetParams() => _params;
         /// <summary>
         /// 获取预处理的 SQL 语句和参数列表
         /// </summary>

@@ -14,7 +14,7 @@ namespace LiteOrm.Common
     /// <param name="outputParams">输出参数集合</param>
     /// <param name="arg">额外参数</param>
     /// <returns>生成的SQL字符串</returns>
-    public delegate string SqlGenerateHandler(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams, object arg);
+    public delegate string SqlGenerateHandler(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams, object arg);
 
     /// <summary>
     /// 通过委托生成的 SQL 片段表达式类。
@@ -54,7 +54,7 @@ namespace LiteOrm.Common
         /// <param name="sqlBuilder">SQL构造器 </param>
         /// <param name="outputParams">输出参数的列表</param>
         /// <returns></returns>
-        public string GenerateSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        public string GenerateSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
         {
             return SqlHandler?.Invoke(context, sqlBuilder, outputParams, Arg);
         }

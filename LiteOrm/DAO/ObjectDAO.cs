@@ -100,7 +100,7 @@ namespace LiteOrm
             Span<char> valBuf = stackalloc char[256];
             var strColumns = new ValueStringBuilder(colBuf);
             var strValues = new ValueStringBuilder(valBuf);
-            var paramValues = new Dictionary<string, object>();
+            var paramValues = new List<Param>();
 
             ColumnDefinition[] columns = InsertableColumns;
             int count = columns.Length;
@@ -115,7 +115,7 @@ namespace LiteOrm
 
                 strColumns.Append(ToSqlName(column.Name));
                 strValues.Append(ToSqlParam(i.ToString()));
-                paramValues.Add(i.ToString(), null);
+                paramValues.Add(new Param(i.ToString(), null, column.DbType));
             }
 
             string sql = IdentityColumn is null ?
@@ -135,7 +135,7 @@ namespace LiteOrm
         {
             Span<char> colBuf = stackalloc char[512];
             var strColumns = new ValueStringBuilder(colBuf);
-            var paramValues = new Dictionary<string, object>();
+            var paramValues = new List<Param>();
             ColumnDefinition[] columns = UpdatableColumns;
             int count = columns.Length;
             for (int i = 0; i < count; i++)
@@ -146,7 +146,7 @@ namespace LiteOrm
                 strColumns.Append(ToSqlName(column.Name));
                 strColumns.Append(" = ");
                 strColumns.Append(ToSqlParam(paramName));
-                paramValues.Add(paramName, null);
+                paramValues.Add(new Param(paramName, null, column.DbType));
             }
 
             // 构建 WHERE 子句
@@ -157,7 +157,7 @@ namespace LiteOrm
             {
                 if (TimestampColumn == null) throw new InvalidOperationException("Entity does not have a timestamp column for concurrency control.");
                 var paramName = paramValues.Count.ToString();
-                paramValues.Add(paramName, null);
+                paramValues.Add(new Param(paramName, null, TimestampColumn.DbType));
                 where += $" AND {ToColumnSql(TimestampColumn)} = {ToSqlParam(paramName)}";
             }
 
@@ -172,7 +172,7 @@ namespace LiteOrm
         /// <returns>返回删除命令实例。</returns>
         protected virtual PreparedSql MakeDeleteSql()
         {
-            var paramValues = new Dictionary<string, object>();
+            var paramValues = new List<Param>();
 
             // 构建 WHERE 子句
             string where = MakeKeyCondition(paramValues);
@@ -191,7 +191,7 @@ namespace LiteOrm
             Span<char> colBuf = stackalloc char[512];
             var strColumns = new ValueStringBuilder(colBuf);
             List<string> valuesList = new List<string>(batchSize);
-            var paramValues = new Dictionary<string, object>();
+            var paramValues = new List<Param>();
             ColumnDefinition[] insertColumns = InsertableColumns;
             int columnCount = insertColumns.Length;
 
@@ -211,7 +211,7 @@ namespace LiteOrm
 
                     string idxStr = paramIndex.ToString();
                     strValuesRepeat.Append(ToSqlParam(idxStr));
-                    paramValues.Add(idxStr, null);
+                    paramValues.Add(new Param(idxStr, null, insertColumns[j].DbType));
                     paramIndex++;
                 }
                 valuesList.Add($"({strValuesRepeat.ToString()})");
@@ -234,7 +234,7 @@ namespace LiteOrm
         {
             ColumnDefinition[] updatableColumns = UpdatableColumns;
             var keyColumns = TableDefinition.Keys.ToArray();
-            var paramValues = new Dictionary<string, object>();
+            var paramValues = new List<Param>();
 
             string sql = SqlBuilder.BuildBatchUpdateSql(FactTableName, updatableColumns, keyColumns, batchSize);
 
@@ -243,12 +243,12 @@ namespace LiteOrm
             {
                 foreach (var col in updatableColumns)
                 {
-                    paramValues.Add(paramCount.ToString(), null);
+                    paramValues.Add(new Param(paramCount.ToString(), null, col.DbType));
                     paramCount++;
                 }
                 foreach (var key in keyColumns)
                 {
-                    paramValues.Add(paramCount.ToString(), null);
+                    paramValues.Add(new Param(paramCount.ToString(), null, key.DbType));
                     paramCount++;
                 }
             }
@@ -262,7 +262,7 @@ namespace LiteOrm
         protected virtual PreparedSql MakeBatchIDExistsSql(int batchSize)
         {
             var keyColumns = TableDefinition.Keys;
-            var paramValues = new Dictionary<string, object>();
+            var paramValues = new List<Param>();
 
             string sql = SqlBuilder.BuildBatchIDExistsSql(FactTableName, keyColumns, batchSize);
             int paramCount = 0;
@@ -270,7 +270,7 @@ namespace LiteOrm
             {
                 foreach (var key in keyColumns)
                 {
-                    paramValues.Add(paramCount.ToString(), null);
+                    paramValues.Add(new Param(paramCount.ToString(), null, key.DbType));
                     paramCount++;
                 }
             }
@@ -283,7 +283,7 @@ namespace LiteOrm
         protected virtual PreparedSql MakeBatchDeleteSql(int batchSize)
         {
             ColumnDefinition[] keyColumns = TableDefinition.Keys.ToArray();
-            var paramValues = new Dictionary<string, object>();
+            var paramValues = new List<Param>();
 
             string sql = SqlBuilder.BuildBatchDeleteSql(FactTableName, keyColumns, batchSize);
 
@@ -292,7 +292,7 @@ namespace LiteOrm
             {
                 foreach (var key in keyColumns)
                 {
-                    paramValues.Add(paramCount.ToString(), null);
+                    paramValues.Add(new Param(paramCount.ToString(), null, key.DbType));
                     paramCount++;
                 }
             }

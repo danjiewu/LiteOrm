@@ -89,7 +89,7 @@ namespace LiteOrm
         /// <param name="expr">函数表达式，包含函数名及参数列表。</param>
         /// <param name="context">SQL 构建上下文。</param>
         /// <param name="outputParams">输出参数集合。</param>
-        public virtual void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ICollection<KeyValuePair<string, object>> outputParams)
+        public virtual void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ICollection<Param> outputParams)
         {
             if (expr is null) throw new ArgumentNullException(nameof(expr));
             string functionName = expr.FunctionName;
