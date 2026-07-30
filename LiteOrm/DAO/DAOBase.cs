@@ -334,8 +334,6 @@ namespace LiteOrm
             return await GetPreparedCommandAsync(methodName, sqlFunc, null, cancellationToken).ConfigureAwait(false);
         }
 
-
-
         /// <summary>
         /// 根据 预处理的 SQL 语句和参数列表建立 <see cref="DbCommandProxy"/>。
         /// 预处理的 SQL 包含 SQL 语句和与之对应的命名参数列表，SQL 语句中的参数名称需要与参数列表中的键对应。
@@ -348,29 +346,7 @@ namespace LiteOrm
         {
             return MakeNamedParamCommand(preparedSql.Sql, preparedSql.Params);
         }
-        /// <summary>
-        /// 根据 预处理的 SQL 语句和参数列表建立 <see cref="DbCommandProxy"/>。
-        /// 预处理的 SQL 包含 SQL 语句和与之对应的命名参数列表，SQL 语句中的参数名称需要与参数列表中的键对应。
-        /// SQL 语句中可以包含预定义的标记，如 {Table}、{From} 和 {AllFields}，这些标记会被替换为相应的值。
-        /// 参数列表中的值会被转换为数据库参数，并添加到命令中。
-        /// </summary>
-        /// <param name="sql">SQL 语句，SQL 中可以包含已命名的参数以及占位符。</param>
-        /// <param name="paramValues">参数列表，为空时表示没有参数。Key 需要与 SQL 中的参数名称对应。</param>
-        /// <returns>IDbCommand 实例。</returns>
-        internal protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<KeyValuePair<string, object>> paramValues)
-        {
-            var command = NewCommand();
-            command.CommandText = MutiReplacerInstance.Replace(sql);
-            if (paramValues is not null)
-                foreach (KeyValuePair<string, object> para in paramValues)
-                {
-                    DbParameter param = command.CreateParameter();
-                    param.ParameterName = ToParamName(ToNativeName(para.Key));
-                    param.Value = SqlBuilder.ConvertToDbValue(para.Value);
-                    command.Parameters.Add(param);
-                }
-            return command;
-        }
+
         /// <summary>
         /// 根据 SQL 语句和 <see cref="Param"/> 参数列表建立 <see cref="DbCommandProxy"/>，
         /// 当参数指定了 <see cref="Param.DbType"/> 时将其应用到数据库参数。
@@ -381,17 +357,7 @@ namespace LiteOrm
         internal protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<Param> paramValues)
         {
             var command = NewCommand();
-            command.CommandText = MutiReplacerInstance.Replace(sql);
-            if (paramValues is not null)
-                foreach (Param para in paramValues)
-                {
-                    DbParameter param = command.CreateParameter();
-                    param.ParameterName = ToParamName(ToNativeName(para.Name));
-                    param.Value = SqlBuilder.ConvertToDbValue(para.Value);
-                    if (para.DbType.HasValue)
-                        param.DbType = para.DbType.Value;
-                    command.Parameters.Add(param);
-                }
+            SetupCommand(command, sql, paramValues);
             return command;
         }
         /// <summary>
@@ -404,27 +370,28 @@ namespace LiteOrm
         {
             return await MakeNamedParamCommandAsync(preparedSql.Sql, preparedSql.Params, cancellationToken).ConfigureAwait(false);
         }
+
         /// <summary>
-        /// 异步根据 预处理的 SQL 语句和参数列表建立 <see cref="DbCommandProxy"/>。
+        /// 根据 SQL 语句和 <see cref="Param"/> 参数列表设定 <see cref="DbCommandProxy"/>，
         /// </summary>
-        /// <param name="sql"></param>
-        /// <param name="paramValues"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        internal protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(string sql, IEnumerable<KeyValuePair<string, object>> paramValues, CancellationToken cancellationToken = default)
+        /// <param name="command">要设置的数据库命令代理实例。</param>
+        /// <param name="sql">SQL 语句。</param>
+        /// <param name="paramValues">参数列表。</param>
+        private void SetupCommand(DbCommandProxy command,string sql, IEnumerable<Param> paramValues)
         {
-            var command = await NewCommandAsync(cancellationToken).ConfigureAwait(false);
             command.CommandText = MutiReplacerInstance.Replace(sql);
             if (paramValues is not null)
-                foreach (KeyValuePair<string, object> para in paramValues)
+                foreach (var para in paramValues)
                 {
-                    DbParameter param = command.CreateParameter();
-                    param.ParameterName = ToParamName(ToNativeName(para.Key));
-                    param.Value = SqlBuilder.ConvertToDbValue(para.Value);
-                    command.Parameters.Add(param);
+                    DbParameter dbParam = command.CreateParameter();
+                    dbParam.ParameterName = ToParamName(ToNativeName(para.Name));
+                    if (para.DbType.HasValue) dbParam.DbType = para.DbType.Value;
+                    else if (para.Value is not null) SqlBuilder.GetDbType(para.Value.GetType());
+                    dbParam.Value = SqlBuilder.ConvertToDbValue(para.Value);
+                    command.Parameters.Add(dbParam);
                 }
-            return command;
         }
+
         /// <summary>
         /// 异步根据 SQL 语句和 <see cref="Param"/> 参数列表建立 <see cref="DbCommandProxy"/>，
         /// 当参数指定了 <see cref="Param.DbType"/> 时将其应用到数据库参数。
@@ -436,17 +403,7 @@ namespace LiteOrm
         internal protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(string sql, IEnumerable<Param> paramValues, CancellationToken cancellationToken = default)
         {
             var command = await NewCommandAsync(cancellationToken).ConfigureAwait(false);
-            command.CommandText = MutiReplacerInstance.Replace(sql);
-            if (paramValues is not null)
-                foreach (Param para in paramValues)
-                {
-                    DbParameter param = command.CreateParameter();
-                    param.ParameterName = ToParamName(ToNativeName(para.Name));
-                    param.Value = SqlBuilder.ConvertToDbValue(para.Value);
-                    if (para.DbType.HasValue)
-                        param.DbType = para.DbType.Value;
-                    command.Parameters.Add(param);
-                }
+            SetupCommand(command,sql, paramValues);
             return command;
         }
 
