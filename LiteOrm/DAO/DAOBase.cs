@@ -377,7 +377,7 @@ namespace LiteOrm
         /// <param name="command">要设置的数据库命令代理实例。</param>
         /// <param name="sql">SQL 语句。</param>
         /// <param name="paramValues">参数列表。</param>
-        private void SetupCommand(DbCommandProxy command,string sql, IEnumerable<Param> paramValues)
+        private void SetupCommand(DbCommandProxy command, string sql, IEnumerable<Param> paramValues)
         {
             command.CommandText = MutiReplacerInstance.Replace(sql);
             if (paramValues is not null)
@@ -386,7 +386,7 @@ namespace LiteOrm
                     DbParameter dbParam = command.CreateParameter();
                     dbParam.ParameterName = ToParamName(ToNativeName(para.Name));
                     if (para.DbType.HasValue) dbParam.DbType = para.DbType.Value;
-                    else if (para.Value is not null) SqlBuilder.GetDbType(para.Value.GetType());
+                    else if (para.Value is not null) dbParam.DbType = SqlBuilder.GetDbType(para.Value.GetType());
                     dbParam.Value = SqlBuilder.ConvertToDbValue(para.Value);
                     command.Parameters.Add(dbParam);
                 }
@@ -403,7 +403,7 @@ namespace LiteOrm
         internal protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(string sql, IEnumerable<Param> paramValues, CancellationToken cancellationToken = default)
         {
             var command = await NewCommandAsync(cancellationToken).ConfigureAwait(false);
-            SetupCommand(command,sql, paramValues);
+            SetupCommand(command, sql, paramValues);
             return command;
         }
 
