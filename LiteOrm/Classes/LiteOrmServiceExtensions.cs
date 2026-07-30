@@ -66,6 +66,9 @@ namespace LiteOrm
             {
                 var logger = options.LoggerFactory?.CreateLogger(nameof(LiteOrmServiceExtensions));
 
+                // 显式注册核心服务（不再依赖 AutoRegister 特性）
+                services.AddCoreLiteOrmServices();
+
                 // 自动扫描并注册标记 [AutoRegister] 的服务
                 try
                 {
@@ -109,6 +112,43 @@ namespace LiteOrm
                     }
                 }
             });
+        }
+
+        /// <summary>
+        /// 显式注册 LiteOrm 核心服务。
+        /// 这些服务不再使用 [AutoRegister] 特性，而是通过此方法手动注册，确保注册行为的确定性。
+        /// </summary>
+        /// <remarks>
+        /// 注册的核心服务包括：
+        /// 1. <see cref="SqlBuilderFactory"/> - 单例，使用静态 <see cref="SqlBuilderFactory.Instance"/> 确保 DI 解析与静态访问一致；
+        /// 2. <see cref="DAOContextPoolFactory"/> - 单例，数据库连接池工厂；
+        /// 3. <see cref="SessionManager"/> - Scoped，每作用域一个会话管理器实例；
+        /// 4. <see cref="LiteOrmCoreInitializer"/> - HostedService，启动时自动同步数据库表结构。
+        /// 同时触发 <see cref="LiteOrmSqlFunctionInitializer.Initialize"/> 以注册 SQL 函数映射。
+        /// </remarks>
+        /// <param name="services">服务集合。</param>
+        /// <returns>服务集合。</returns>
+        public static IServiceCollection AddCoreLiteOrmServices(this IServiceCollection services)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
+            // SqlBuilderFactory 使用静态 Instance，确保 DI 解析的实例与静态访问 (SqlBuilderFactory.Instance) 一致
+            services.AddSingleton<SqlBuilderFactory>(sp => SqlBuilderFactory.Instance);
+            services.AddSingleton<ISqlBuilderFactory>(sp => sp.GetRequiredService<SqlBuilderFactory>());
+
+            // 连接池工厂 - 单例
+            services.AddSingleton<DAOContextPoolFactory>();
+
+            // 会话管理器 - 每作用域一个实例
+            services.AddScoped<SessionManager>();
+
+            // 启动时自动同步数据库表结构
+            services.AddHostedService<LiteOrmCoreInitializer>();
+
+            // 触发 SQL 函数初始化（静态构造函数仅执行一次，多次调用安全）
+            LiteOrmSqlFunctionInitializer.Initialize();
+
+            return services;
         }
 
         /// <summary>

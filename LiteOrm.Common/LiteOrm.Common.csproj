@@ -7,7 +7,7 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <VersionPrefix>8.0.21</VersionPrefix>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>

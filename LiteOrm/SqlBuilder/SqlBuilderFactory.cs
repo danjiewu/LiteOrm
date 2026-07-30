@@ -47,7 +47,6 @@ namespace LiteOrm
     /// factory.RegisterSqlBuilder(typeof(CustomConnection), new CustomSqlBuilder());
     /// </code>
     /// </remarks>
-    [AutoRegister(Lifetime.Singleton)]
     public class SqlBuilderFactory : ISqlBuilderFactory
     {
         /// <summary>

@@ -1,44 +1,38 @@
 using LiteOrm.Common;
-using Microsoft.Extensions.Hosting;
 using System;
 using System.Data;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace LiteOrm
 {
     /// <summary>
     /// LiteOrm SQL 函数初始化器，用于注册各个数据库的 SQL 函数处理器。
-    /// 在应用启动时注册函数映射，支持 SqlBuilder 的动态 SQL 生成。
+    /// 通过静态构造函数在首次访问时自动注册函数映射，支持 SqlBuilder 的动态 SQL 生成。
     /// </summary>
-    [AutoRegister(Lifetime = Lifetime.Singleton)]
-    public class LiteOrmSqlFunctionInitializer : IHostedService
+    /// <remarks>
+    /// 调用 <see cref="Initialize"/> 方法可显式触发静态构造函数，确保函数映射在应用启动时完成注册。
+    /// 静态构造函数只会执行一次，因此多次调用 <see cref="Initialize"/> 是安全的。
+    /// </remarks>
+    public static class LiteOrmSqlFunctionInitializer
     {
         /// <summary>
-        /// 启动时初始化 SQL 函数映射。
+        /// 静态构造函数，在首次访问类时自动注册所有 SQL 函数映射。
         /// </summary>
-        public Task StartAsync(CancellationToken cancellationToken = default)
+        static LiteOrmSqlFunctionInitializer()
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             RegisterSqlFunctions();
-            return Task.CompletedTask;
         }
 
         /// <summary>
-        /// 停止时清理。
+        /// 触发静态构造函数以注册 SQL 函数映射。可在应用启动时调用以确保函数映射已注册。
+        /// 多次调用是安全的——静态构造函数只会执行一次。
         /// </summary>
-        public Task StopAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public static void Initialize() { }
 
         /// <summary>
         /// 注册各数据库的 SQL 函数处理器映射。
-        /// 动态注册 Function 和 Handler 一般需要结合 SqlBuilder.RegisterFunctionSqlHandler 使用。
         /// </summary>
-        private void RegisterSqlFunctions()
+        private static void RegisterSqlFunctions()
         {
             RegisterBaseSqlFunctions(SqlBuilder.Instance);
             RegisterSQLiteFunctions(SQLiteBuilder.Instance);
@@ -48,7 +42,7 @@ namespace LiteOrm
             RegisterSqlServerFunctions(SqlServerBuilder.Instance);
         }
 
-        private void RegisterBaseSqlFunctions(SqlBuilder sqlBuilder)
+        private static void RegisterBaseSqlFunctions(SqlBuilder sqlBuilder)
         {
             // 注册 SQL 危险关键字为不可用，预防潜在风险，直接抛出异常提示用户。如确定需要使用，请自行重新注册自定义函数映射。
             sqlBuilder.RegisterFunctionSqlHandler(Constants.ExcludedSqlNames, (ref outSql, expr, context, sqlBuilder, outputParams) => throw new NotSupportedException($"Function '{expr.FunctionName}' is not supported. You must register it manually if it is absolutely necessary."));
@@ -227,7 +221,7 @@ namespace LiteOrm
             sqlBuilder.RegisterFunctionSqlHandler("Remove", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"LEFT({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})"));
         }
-        private void RegisterSQLiteFunctions(SQLiteBuilder sqliteBuilder)
+        private static void RegisterSQLiteFunctions(SQLiteBuilder sqliteBuilder)
         {
             sqliteBuilder.RegisterFunctionSqlHandler("Now", (ref outSql, expr, context, sqlBuilder, outputParams) => outSql.Append("datetime('now', 'localtime')"));
             sqliteBuilder.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) => outSql.Append("date('now', 'localtime')"));
@@ -299,7 +293,7 @@ namespace LiteOrm
             });
         }
 
-        private void RegisterMySqlFunctions(MySqlBuilder mySqlBuilder)
+        private static void RegisterMySqlFunctions(MySqlBuilder mySqlBuilder)
         {
             mySqlBuilder.RegisterFunctionSqlHandler("Now", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append("NOW()"));
@@ -357,7 +351,7 @@ namespace LiteOrm
             });
         }
 
-        private void RegisterOracleFunctions(OracleBuilder oracleBuilder)
+        private static void RegisterOracleFunctions(OracleBuilder oracleBuilder)
         {
             oracleBuilder.RegisterFunctionSqlHandler("Now", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append("sysdate"));
@@ -414,7 +408,7 @@ namespace LiteOrm
             });
         }
 
-        private void RegisterPostgreSqlFunctions(PostgreSqlBuilder postgreSqlBuilder)
+        private static void RegisterPostgreSqlFunctions(PostgreSqlBuilder postgreSqlBuilder)
         {
             postgreSqlBuilder.RegisterFunctionSqlHandler("Now", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append("Now()"));
@@ -476,7 +470,7 @@ namespace LiteOrm
             });
         }
 
-        private void RegisterSqlServerFunctions(SqlServerBuilder sqlServerBuilder)
+        private static void RegisterSqlServerFunctions(SqlServerBuilder sqlServerBuilder)
         {
             sqlServerBuilder.RegisterFunctionSqlHandler("Now", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append("GETDATE()"));

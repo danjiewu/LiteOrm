@@ -41,7 +41,6 @@ namespace LiteOrm
     /// pool.ReturnContext(context);
     /// </code>
     /// </remarks>
-    [AutoRegister(Lifetime.Singleton)]
     public class DAOContextPoolFactory : IDisposable
     {
         private readonly ConcurrentDictionary<string, DAOContextPool> _pools = new(StringComparer.OrdinalIgnoreCase);

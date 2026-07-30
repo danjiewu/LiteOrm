@@ -71,6 +71,11 @@ namespace LiteOrm.Framework
             }
 
             return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
+                .ConfigureServices(services =>
+                {
+                    // 显式注册核心服务（MS DI 注册会被 AutofacServiceProviderFactory 转移到 Autofac 容器）
+                    services.AddCoreLiteOrmServices();
+                })
                 .ConfigureContainer<ContainerBuilder>(builder =>
                 {
                     var logger = options.LoggerFactory?.CreateLogger(nameof(FrameworkServiceExtensions));

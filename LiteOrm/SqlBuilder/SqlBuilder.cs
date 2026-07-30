@@ -347,7 +347,7 @@ namespace LiteOrm
         /// <param name="dbValue">数据库取得的值。</param>
         /// <param name="objectType">目标属性类型。</param>
         /// <returns>转换后的对象值。</returns>
-        public object ConvertFromDbValue(object dbValue, Type objectType = null)
+        public object? ConvertFromDbValue(object dbValue, Type? objectType = null)
         {
             if (objectType == null)
             {

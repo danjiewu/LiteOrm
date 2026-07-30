@@ -18,7 +18,6 @@ namespace LiteOrm
     /// 
     /// 全局实例初始化（SessionManager、TableInfoProvider）由 LiteOrm.Framework 项目负责。
     /// </summary>
-    [AutoRegister(Lifetime = Lifetime.Singleton)]
     public class LiteOrmCoreInitializer : IHostedService
     {
         private readonly ILogger<LiteOrmCoreInitializer> _logger;

@@ -99,7 +99,7 @@ namespace LiteOrm.Common
         /// <param name="dbValue">数据库值。</param>
         /// <param name="objectType">目标对象类型（可选）。</param>
         /// <returns>返回转换后的 .NET 对象值。</returns>
-        object ConvertFromDbValue(object dbValue, Type objectType = null);
+        object? ConvertFromDbValue(object dbValue, Type? objectType = null);
         /// <summary>
         /// 转换 .NET 对象值为数据库可接受的值。
         /// </summary>
