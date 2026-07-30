@@ -1,21 +1,31 @@
 # Changelog
 
+## v8.0.21 (Unreleased)
+
+### Changed
+- Moved `PreparedSql` to `LiteOrm.Common`; parameter type changed from `KeyValuePair` to custom `Param` (`f50c72e`)
+
+---
+
 ## v8.0.20 (2026-07-28)
 
 ### Added
-- Added `RawSql` marker type to `ExprString` for inlining non-parameterizable dynamic values (`6f401b6`)
+- Added `RawSql` marker type to `ExprString` (`6f401b6`)
 - Added CTE recursive keyword support (`81fade6`)
-- Added table-level `SyncTable` config to override sync strategy per entity (`038e93b`)
-- Added `ShortId` utility for 8-char Base36 random strings (digits + lowercase letters) (`18d70be`)
-- Added `Id` property to `DAOContext`; `ContextId` included in logs/exceptions (`18d70be`)
-- Added Remote/Server authentication mechanism: SignIn endpoint + ticket-based; the client provides tickets via `ICredentialsResolver`, the server issues tickets via `IRemoteAuthenticationHandler`, supporting Cookie/JWT and other auth schemes
+- Added table-level `SyncTable` config (`038e93b`)
+- Added `ShortId` utility (digits + lowercase letters) (`18d70be`)
+- Added `Id` property and consecutive-failure invalidation to `DAOContext` (`18d70be`, `4831a82`)
+- Added Remote/Server authentication with `ClientId/Secret` mode and multi-session identity isolation (`285de8b`, `37e0d2b`, `47eb3f1`, `b2e354b`)
+- Added `RequestID` to `RemoteInvoke` for request tracing (`e092218`)
 
 ### Changed
-- `DatabaseSync` appends UPDATE to fill defaults for non-nullable value-type columns when adding columns (`8fd9662`)
-- `SessionManager` transaction ID now uses `ShortId` (`18d70be`)
+- `DatabaseSync` appends UPDATE to fill defaults for non-nullable value-type columns (`8fd9662`)
+- `SessionManager` lifecycle refactored; `Current` now resolves from current scope (`0698464`, `ce2435b`)
+- `LiteOrmCoreInitializer` injects `IComponentContext` instead of `SessionManager`, eliminating captive dependency
+- `HttpRemoteServiceTransport` disabled `HttpClient.UseCookies`; credentials now managed by `ICredentialsResolver` (`b456ab2`, `d322c04`, `37e0d2b`)
 
 ### Fixed
-- Fixed `ParamCountLimit` configuration not taking effect; `DAOContext.ParamCountLimit` is now read-only and sourced from the owning `DAOContextPool`; default value adjusted from 2000 to 1000 (`e4fa04b`)
+- Fixed `ParamCountLimit` configuration not taking effect; default adjusted to 1000 (`e4fa04b`)
 
 ---
 
