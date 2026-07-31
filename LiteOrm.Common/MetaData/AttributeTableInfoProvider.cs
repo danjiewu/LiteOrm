@@ -16,8 +16,8 @@ namespace LiteOrm
     {
         private readonly ConcurrentDictionary<Type, TableDefinition> _tableInfoCache = new ConcurrentDictionary<Type, TableDefinition>();
         private readonly ConcurrentDictionary<Type, TableView> _tableViewCache = new ConcurrentDictionary<Type, TableView>();
-        private readonly ISqlBuilderFactory _sqlBuilderFactory;
-        private readonly IDataSourceProvider _dataSourceProvider;
+        private readonly ISqlBuilderFactory? _sqlBuilderFactory;
+        private readonly IDataSourceProvider? _dataSourceProvider;
         private readonly object _syncLock = new object();
 
         /// <summary>
@@ -42,7 +42,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="objectType">对象类型</param>
         /// <returns>表定义</returns>
-        public override TableDefinition GetTableDefinition(Type objectType)
+        public override TableDefinition? GetTableDefinition(Type objectType)
         {
             if (objectType is null) return null;
             if (_tableInfoCache.TryGetValue(objectType, out var tableDef)) return tableDef;
@@ -61,7 +61,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="objectType">对象类型</param>
         /// <returns>表信息</returns>
-        public override TableView GetTableView(Type objectType)
+        public override TableView? GetTableView(Type objectType)
         {
             if (objectType is null) return null;
             if (_tableViewCache.TryGetValue(objectType, out var tableView)) return tableView;
@@ -76,25 +76,25 @@ namespace LiteOrm
         }
 
         #region
-        private TableDefinition GenerateTableDefinition(Type objectType)
+        private TableDefinition? GenerateTableDefinition(Type objectType)
         {
-            TableAttribute tableAttribute = objectType.GetAttribute<TableAttribute>();
+            TableAttribute? tableAttribute = objectType.GetAttribute<TableAttribute>();
             if (tableAttribute is null) return null;
 
-            string tableName = tableAttribute.TableName;
+            string? tableName = tableAttribute.TableName;
             if (String.IsNullOrEmpty(tableName)) tableName = objectType.Name;
 
-            DataSourceConfig dsConfig = null;
+            DataSourceConfig? dsConfig = null;
             if (_dataSourceProvider is not null)
             {
-                dsConfig = _dataSourceProvider.GetDataSource(tableAttribute.DataSource);
+                dsConfig = _dataSourceProvider.GetDataSource(tableAttribute.DataSource!);
                 if (dsConfig == null)
                 {
                     throw new InvalidOperationException($"Data source '{tableAttribute.DataSource ?? "default"}' not found for type '{objectType.FullName}'. Check your configuration.");
                 }
             }
 
-            ISqlBuilder sqlBuilder = null;
+            ISqlBuilder? sqlBuilder = null;
             if (_sqlBuilderFactory is not null && dsConfig is not null)
             {
                 sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType, tableAttribute.DataSource);
@@ -102,10 +102,10 @@ namespace LiteOrm
 
             List<ColumnDefinition> columns = new List<ColumnDefinition>();
 
-            var properties = objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList().SortProperty();
+            var properties = objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList().SortProperty() ?? new List<PropertyInfo>();
             foreach (PropertyInfo property in properties)
             {
-                ColumnDefinition column = GenerateColumnDefinition(property, sqlBuilder);
+                ColumnDefinition? column = GenerateColumnDefinition(property, sqlBuilder);
                 if (column is not null)
                 {
                     columns.Add(column);
@@ -113,7 +113,7 @@ namespace LiteOrm
             }
             return new TableDefinition(objectType, columns)
             {
-                Name = tableName,
+                Name = tableName ?? objectType.Name,
                 DataProviderType = dsConfig?.ProviderType,
                 DataSource = tableAttribute.DataSource ?? _dataSourceProvider?.DefaultDataSourceName,
                 SyncTable = tableAttribute.SyncTable,
@@ -121,14 +121,14 @@ namespace LiteOrm
             };
         }
 
-        private ColumnDefinition GenerateColumnDefinition(PropertyInfo property, ISqlBuilder sqlBuilder)
+        private ColumnDefinition? GenerateColumnDefinition(PropertyInfo property, ISqlBuilder? sqlBuilder)
         {
             if (property.GetIndexParameters().Length != 0) return null;
             ForeignTable[] foreignTables = GetForeignTables(property);
 
             if (property.GetAttribute<ForeignColumnAttribute>() is not null) return null;
 
-            ColumnAttribute columnAttribute = property.GetAttribute<ColumnAttribute>();
+            ColumnAttribute? columnAttribute = property.GetAttribute<ColumnAttribute>();
             if (columnAttribute is not null)
             {
                 if (!columnAttribute.IsColumn)
@@ -138,7 +138,7 @@ namespace LiteOrm
                 else
                 {
                     ColumnDefinition column = new ColumnDefinition(property);
-                    if (!String.IsNullOrEmpty(columnAttribute.ColumnName)) column.Name = columnAttribute.ColumnName;
+                    if (!String.IsNullOrEmpty(columnAttribute.ColumnName)) column.Name = columnAttribute.ColumnName ?? column.Name;
                     column.IsPrimaryKey = columnAttribute.IsPrimaryKey;
                     column.IsIdentity = columnAttribute.IsIdentity;
                     column.IsTimestamp = columnAttribute.IsTimestamp;
@@ -176,17 +176,17 @@ namespace LiteOrm
         /// <summary>
         /// 获取属性类型对应的 DbType。优先使用 <paramref name="sqlBuilder"/>；当 sqlBuilder 为 null 时，使用 <see cref="DbTypeMap"/> 内部映射。
         /// </summary>
-        private static DbType GetDbTypeInternal(Type propertyType, ISqlBuilder sqlBuilder)
+        private static DbType GetDbTypeInternal(Type propertyType, ISqlBuilder? sqlBuilder)
         {
             if (sqlBuilder is not null) return sqlBuilder.GetDbType(propertyType);
             return DbTypeMap.GetDbType(propertyType.GetUnderlyingType());
         }
 
-        private static ForeignColumn GenerateForeignColumn(PropertyInfo property)
+        private static ForeignColumn? GenerateForeignColumn(PropertyInfo property)
         {
             if (property.GetIndexParameters().Length != 0) return null;
 
-            ForeignColumnAttribute foreignColumnAttribute = property.GetAttribute<ForeignColumnAttribute>();
+            ForeignColumnAttribute? foreignColumnAttribute = property.GetAttribute<ForeignColumnAttribute>();
             if (foreignColumnAttribute is not null)
             {
                 ForeignColumn foreignColumn = new ForeignColumn(property);
@@ -199,12 +199,12 @@ namespace LiteOrm
             }
         }
 
-        private TableView GenerateTableView(Type objectType)
+        private TableView? GenerateTableView(Type objectType)
         {
             var tableDef = GetTableDefinition(objectType);
             if (tableDef == null) return null;
 
-            ISqlBuilder sqlBuilder = null;
+            ISqlBuilder? sqlBuilder = null;
             if (_sqlBuilderFactory is not null && tableDef.DataProviderType is not null)
             {
                 sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(tableDef.DataProviderType, tableDef.DataSource);
@@ -228,17 +228,17 @@ namespace LiteOrm
                     tableJoin.Alias = joinedTable.Name = tableJoin.TargetType.Name;
                 else
                     joinedTable.Name = tableJoin.Alias;
-                joinedTable.ConstFilter = AliasConstFilter(targetTableDef.ConstFilter, joinedTable.Name);
-                if (joinedTables.ContainsKey(joinedTable.Name)) throw new ArgumentException($"Duplicate table alias name \"{joinedTable.Name}\"");
-                joinedTables[joinedTable.Name] = joinedTable;
+                joinedTable.ConstFilter = AliasConstFilter(targetTableDef.ConstFilter, joinedTable.Name ?? string.Empty);
+                if (joinedTables.ContainsKey(joinedTable.Name ?? string.Empty)) throw new ArgumentException($"Duplicate table alias name \"{joinedTable.Name}\"");
+                joinedTables[joinedTable.Name ?? string.Empty] = joinedTable;
             }
 
             // 根据属性连接表，生成ColumnRef对象，并加入连接队列
             List<SqlColumn> columns = new List<SqlColumn>();
-            var properties = objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList().SortProperty();
+            var properties = objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList().SortProperty() ?? new List<PropertyInfo>();
             foreach (PropertyInfo property in properties)
             {
-                ColumnDefinition column = GenerateColumnDefinition(property, sqlBuilder);
+                ColumnDefinition? column = GenerateColumnDefinition(property, sqlBuilder);
                 if (column is not null)
                 {
                     columns.Add(column);
@@ -246,7 +246,7 @@ namespace LiteOrm
                 else
                 {
                     // 根据属性上的ForeignColumnAttribute连接表，生成ForeignColumn对象，并加入连接队列
-                    ForeignColumn foreignColumn = GenerateForeignColumn(property);
+                    ForeignColumn? foreignColumn = GenerateForeignColumn(property);
                     if (foreignColumn is not null) columns.Add(foreignColumn);
                 }
             }
@@ -283,14 +283,14 @@ namespace LiteOrm
                     List<ColumnRef> foreignKeys = new List<ColumnRef>();
                     foreach (string keyName in tableJoin.ForeignKeys.Split(','))
                     {
-                        foreignKeys.Add(new ColumnRef(tableView.GetColumn(keyName)));
+                        foreignKeys.Add(new ColumnRef(tableView.GetColumn(keyName)!));
                     }
-                    joinedTables[tableJoin.Alias].ForeignKeys = foreignKeys.AsReadOnly();
+                    joinedTables[tableJoin.Alias ?? tableJoin.TargetType.Name ?? string.Empty].ForeignKeys = foreignKeys.AsReadOnly();
                 }
                 //如果Source不为null，表示外键来自其他已连接的表，根据Source指定的表名或表类型找到对应的JoinedTable，再根据ForeignKeys属性指定的列名从该JoinedTable中找到对应的ColumnRef作为外键列
                 else
                 {
-                    JoinedTable sourceTable = null;
+                    JoinedTable? sourceTable = null;
                     if (tableJoin.Source is string)
                     {
                         string sourceName = (string)tableJoin.Source;
@@ -300,7 +300,7 @@ namespace LiteOrm
                     }
                     else
                     {
-                        Type sourceType = (Type)tableJoin.Source;
+                        Type sourceType = (Type)tableJoin.Source!;
                         foreach (JoinedTable joinedTable in joinedTables.Values)
                         {
                             if (joinedTable.TableDefinition.ObjectType == sourceType)
@@ -317,9 +317,9 @@ namespace LiteOrm
                     List<ColumnRef> foreignKeys = new List<ColumnRef>();
                     foreach (string keyName in tableJoin.ForeignKeys.Split(','))
                     {
-                        foreignKeys.Add(sourceTable.GetColumn(keyName));
+                        foreignKeys.Add(sourceTable.GetColumn(keyName)!);
                     }
-                    joinedTables[tableJoin.Alias].ForeignKeys = foreignKeys.AsReadOnly();
+                    joinedTables[tableJoin.Alias ?? tableJoin.TargetType.Name ?? string.Empty].ForeignKeys = foreignKeys.AsReadOnly();
                 }
             }
 
@@ -342,11 +342,11 @@ namespace LiteOrm
 
         private static ColumnRef GetTargetColumn(ConcurrentDictionary<string, JoinedTable> joinedTables, ForeignColumn column)
         {
-            ForeignColumnAttribute foreignColumnAttribute = column.Property.GetAttribute<ForeignColumnAttribute>();
-            string primeProperty = String.IsNullOrEmpty(foreignColumnAttribute.Property) ? column.PropertyName : foreignColumnAttribute.Property;
-            Type primeType = foreignColumnAttribute.Foreign as Type;
-            string foreignTable = primeType is null ? (string)foreignColumnAttribute.Foreign : primeType.Name;
-            ColumnRef targetColumn = null;
+            ForeignColumnAttribute? foreignColumnAttribute = column.Property.GetAttribute<ForeignColumnAttribute>();
+            string primeProperty = String.IsNullOrEmpty(foreignColumnAttribute!.Property) ? column.PropertyName ?? string.Empty : foreignColumnAttribute.Property ?? string.Empty;
+            Type? primeType = foreignColumnAttribute.Foreign as Type;
+            string foreignTable = primeType is null ? (string)foreignColumnAttribute.Foreign! : primeType.Name!;
+            ColumnRef? targetColumn = null;
             // 首先尝试直接通过外键表名找到目标列，如果找不到再通过外键表类型在已连接的表中查找目标列
             if (joinedTables.TryGetValue(foreignTable, out var joinedTable))
             {
@@ -376,7 +376,7 @@ namespace LiteOrm
                 var property = joinedTable.TableDefinition.ObjectType.GetProperty(primeProperty);
                 if (property is not null)
                 {
-                    ForeignColumn foreignColumn = GenerateForeignColumn(property);
+                    ForeignColumn? foreignColumn = GenerateForeignColumn(property);
                     if (foreignColumn is not null) targetColumn = GetTargetColumn(joinedTables, foreignColumn);
                 }
             }
@@ -437,12 +437,12 @@ namespace LiteOrm
                 return targetTableDef.Keys.ToArray();
             }
 
-            string[] primeKeyNames = tableJoin.PrimeKeys.Split(',');
+            string[] primeKeyNames = (tableJoin.PrimeKeys ?? string.Empty).Split(',');
             ColumnDefinition[] primeKeys = new ColumnDefinition[primeKeyNames.Length];
             for (int i = 0; i < primeKeyNames.Length; i++)
             {
                 string primeKeyName = primeKeyNames[i].Trim();
-                ColumnDefinition primeKey = targetTableDef.GetColumn(primeKeyName);
+                ColumnDefinition? primeKey = targetTableDef.GetColumn(primeKeyName);
                 if (primeKey == null)
                     throw new ArgumentException($"Prime key column \"{primeKeyName}\" does not exist in target table \"{targetTableDef.ObjectType.Name}\".");
                 primeKeys[i] = primeKey;
@@ -452,8 +452,8 @@ namespace LiteOrm
 
         private void JoinColumn(ConcurrentDictionary<string, JoinedTable> joinedTables, Queue<ColumnRef> columnRefs, ColumnRef columnRef, ForeignTable foreignTableInfo)
         {
-            string joinedTableName = String.IsNullOrEmpty(foreignTableInfo.Alias) ? foreignTableInfo.ForeignType.Name : foreignTableInfo.Alias;
-            if (joinedTables.TryGetValue(joinedTableName, out JoinedTable existingJoinedTable))
+            string joinedTableName = String.IsNullOrEmpty(foreignTableInfo.Alias) ? foreignTableInfo.ForeignType?.Name ?? string.Empty : foreignTableInfo.Alias ?? string.Empty;
+            if (joinedTables.TryGetValue(joinedTableName, out JoinedTable? existingJoinedTable))
             {
                 if (existingJoinedTable.TableDefinition.ObjectType != foreignTableInfo.ForeignType)
                     throw new ArgumentException($"Duplicate table alias name \"{joinedTableName}\"");
@@ -464,13 +464,13 @@ namespace LiteOrm
                 return;
             }
 
-            TableDefinition foreignTable = GetTableDefinition(foreignTableInfo.ForeignType);
-            JoinedTable joinedTable = new JoinedTable(foreignTable)
+            TableDefinition? foreignTable = GetTableDefinition(foreignTableInfo.ForeignType!);
+            JoinedTable joinedTable = new JoinedTable(foreignTable!)
             {
                 JoinType = foreignTableInfo.JoinType,
                 AutoExpand = foreignTableInfo.AutoExpand,
                 Name = joinedTableName,
-                ConstFilter = AliasConstFilter(foreignTable.ConstFilter, joinedTableName)
+                ConstFilter = AliasConstFilter(foreignTable!.ConstFilter, joinedTableName)
             };
             List<ColumnRef> foreignKeys = new List<ColumnRef>();
             foreignKeys.Add(columnRef);
@@ -488,18 +488,18 @@ namespace LiteOrm
             }
         }
 
-        private static LogicExpr BuildConstFilter(IEnumerable<ColumnDefinition> columns)
+        private static LogicExpr? BuildConstFilter(IEnumerable<ColumnDefinition> columns)
         {
-            LogicExpr constFilter = null;
+            LogicExpr? constFilter = null;
             foreach (ColumnDefinition column in columns)
             {
                 if (column.Constant is null) continue;
-                constFilter = constFilter.And(Expr.Prop(column.PropertyName) == Expr.Const(column.Constant));
+                constFilter = constFilter.And(Expr.Prop(column.PropertyName ?? string.Empty) == Expr.Const(column.Constant));
             }
             return constFilter;
         }
 
-        private static LogicExpr AliasConstFilter(LogicExpr constFilter, string tableAlias)
+        private static LogicExpr? AliasConstFilter(LogicExpr? constFilter, string tableAlias)
         {
             if (constFilter is null) return null;
             LogicExpr aliasedFilter = (LogicExpr)constFilter.Clone();
@@ -514,7 +514,7 @@ namespace LiteOrm
             return aliasedFilter;
         }
 
-        private static object ParseConstant(PropertyInfo property, object constant)
+        private static object? ParseConstant(PropertyInfo property, object? constant)
         {
             if (constant is null) return null;
 

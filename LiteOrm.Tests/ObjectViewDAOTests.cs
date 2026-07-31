@@ -104,7 +104,7 @@ namespace LiteOrm.Tests
 
             var results = await dao.SearchAs(
                 q => q.Where(u => u.Age > 20)
-                      .Where(u => u.Name.StartsWith("QueryFilterTest")))
+                      .Where(u => u.Name!.StartsWith("QueryFilterTest")))
                 .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Equal(2, results.Count);
@@ -176,7 +176,7 @@ namespace LiteOrm.Tests
             await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs<TestUser>(
-                q => q.Where(u => u.Name.StartsWith("QueryTopTest"))
+                q => q.Where(u => u.Name!.StartsWith("QueryTopTest"))
                       .OrderBy(u => u.Age)
                       .Take(2))
                 .ToListAsync(TestContext.Current.CancellationToken);
@@ -205,7 +205,7 @@ namespace LiteOrm.Tests
             await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             var names = await dao.SearchAs(
-                q => q.Where(u => u.Name.StartsWith("ScalarProjTest"))
+                q => q.Where(u => u.Name!.StartsWith("ScalarProjTest"))
                       .OrderBy(u => u.Name)
                       .Select(u => u.Name))
                 .ToListAsync(TestContext.Current.CancellationToken);
@@ -408,7 +408,7 @@ namespace LiteOrm.Tests
             await service.InsertAsync(new TestUser { Name = "ObjectViewQueryable_B", Age = 31, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await service.InsertAsync(new TestUser { Name = "ObjectViewFullSql", Age = 41, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var queryableResults = await dao.Search(q => q.Where(u => u.Name.StartsWith("ObjectViewQueryable_"))
+            var queryableResults = await dao.Search(q => q.Where(u => u.Name!.StartsWith("ObjectViewQueryable_"))
                 .OrderByDescending(u => u.Age)).ToListAsync(TestContext.Current.CancellationToken);
 
             var exprStringResults = await dao.Search($"WHERE {Expr.Prop("Name").Like("ObjectViewQueryable_%")}").ToListAsync(TestContext.Current.CancellationToken);

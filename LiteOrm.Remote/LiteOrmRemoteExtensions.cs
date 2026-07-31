@@ -433,7 +433,7 @@ namespace LiteOrm.Remote
 
                     // 1. 注册名称映射
                     var name = !string.IsNullOrEmpty(attr.Name)
-                        ? attr.Name
+                        ? attr.Name!
                         : TypeResolverHelper.GetName(type);
                     TypeResolverHelper.Register(name, type);
 

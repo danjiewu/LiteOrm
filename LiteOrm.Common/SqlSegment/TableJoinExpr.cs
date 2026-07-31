@@ -18,7 +18,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="on">连接条件</param>
-        public TableJoinExpr(SourceExpr source, LogicExpr on)
+        public TableJoinExpr(SourceExpr? source, LogicExpr? on)
         {
             base.Source = source;
             On = on;
@@ -28,12 +28,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 使用源片段重写 Source 属性，确保它始终是一个 SourceExpr 类型
         /// </summary>
-        public new SourceExpr Source { get => (SourceExpr)base.Source; set => base.Source = (SourceExpr)value; }
+        public new SourceExpr? Source { get => base.Source as SourceExpr; set => base.Source = value; }
 
         /// <summary>
         /// 连接条件
         /// </summary>
-        public LogicExpr On { get; set; }
+        public LogicExpr? On { get; set; }
 
         /// <summary>
         /// 连接类型（如 INNER/LEFT/RIGHT/OUTER/CROSS）
@@ -50,7 +50,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is TableJoinExpr other)
             {
@@ -87,8 +87,8 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var j = new TableJoinExpr();
-            j.Source = (SourceExpr)Source?.Clone();
-            j.On = (LogicExpr)On?.Clone();
+            j.Source = Source?.Clone() as SourceExpr;
+            j.On = On?.Clone() as LogicExpr;
             j.JoinType = JoinType;
             return j;
         }

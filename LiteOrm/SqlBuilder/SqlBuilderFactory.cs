@@ -89,14 +89,14 @@ namespace LiteOrm
         /// <param name="providerType">提供程序类型。</param>
         /// <param name="dataSourceName">数据源名称。</param>
         /// <returns>SQL 构建器实例。</returns>
-        public virtual SqlBuilder GetSqlBuilder(Type providerType, string dataSourceName = null)
+        public virtual SqlBuilder GetSqlBuilder(Type providerType, string? dataSourceName = null)
         {
             if (dataSourceName == null) dataSourceName = string.Empty;
             if (RegisteredSqlBuildersByDataSource.ContainsKey(dataSourceName)) return RegisteredSqlBuildersByDataSource[dataSourceName];
 
             if (providerType is null) throw new ArgumentNullException("providerType", "providerType cannot be null while dataSource is not specified");
             if (RegisteredSqlBuilders.ContainsKey(providerType)) return RegisteredSqlBuilders[providerType];
-            var connectionTypeName = providerType.FullName.ToUpper();
+            var connectionTypeName = providerType!.FullName!.ToUpper();
             // 国产 / 兼容数据库优先识别（避免被 Oracle / MySQL 等通用关键字提前匹配）
             if (connectionTypeName.Contains("DAMENG") || connectionTypeName.Contains("DMNET") || connectionTypeName.Contains("DM.DMCONNECTION"))
                 return DamengBuilder.Instance;
@@ -130,7 +130,7 @@ namespace LiteOrm
         /// <param name="providerType">提供程序类型。</param>
         /// <param name="dataSourceName">数据源名称。</param>
         /// <returns>SQL 构建器接口实例。</returns>
-        ISqlBuilder ISqlBuilderFactory.GetSqlBuilder(Type providerType, string dataSourceName)
+        ISqlBuilder ISqlBuilderFactory.GetSqlBuilder(Type providerType, string? dataSourceName)
         {
             return GetSqlBuilder(providerType, dataSourceName);
         }

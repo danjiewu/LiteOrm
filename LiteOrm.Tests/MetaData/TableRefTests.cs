@@ -27,7 +27,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var tableRef = new TestTableRef(CreateTableDefinition("Users"));
 
-            Assert.Null(tableRef.GetColumn(null));
+            Assert.Null(tableRef.GetColumn(null!));
             Assert.Null(tableRef.GetColumn(string.Empty));
         }
 

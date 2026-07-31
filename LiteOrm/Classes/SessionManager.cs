@@ -42,14 +42,14 @@ namespace LiteOrm
     public class SessionManager : IDisposable, IAsyncDisposable
     {
         private readonly DAOContextPoolFactory _daoContextPoolFactory;
-        private readonly ILogger<SessionManager> _logger;
+        private readonly ILogger<SessionManager>? _logger;
         private readonly SemaphoreSlim _syncLock = new SemaphoreSlim(1, 1);
         private bool _disposed = false;
-        private Task _disposeTask;
+        private Task? _disposeTask;
 
         private readonly ConcurrentDictionary<string, DAOContext> _daoContexts = new ConcurrentDictionary<string, DAOContext>(StringComparer.OrdinalIgnoreCase);
         private readonly LinkedList<string> _sqlStack = new LinkedList<string>();
-        private string _currentTransactionId;
+        private string? _currentTransactionId;
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
         private static readonly AsyncLocal<IServiceProvider> _currentServiceProvider = new AsyncLocal<IServiceProvider>();
 
@@ -67,7 +67,7 @@ namespace LiteOrm
         /// 当前异步上下文的会话管理器。始终从当前 scope 的 <see cref="IServiceProvider"/> 解析，确保返回当前 scope 对应的实例。
         /// 当前上下文未设置或实例已释放时返回 null。
         /// </summary>
-        public static SessionManager Current
+        public static SessionManager? Current
         {
             get
             {
@@ -96,7 +96,7 @@ namespace LiteOrm
         /// <summary>
         /// 构造函数
         /// </summary>
-        public SessionManager(DAOContextPoolFactory daoContextPoolFactory, ILogger<SessionManager> logger = null)
+        public SessionManager(DAOContextPoolFactory daoContextPoolFactory, ILogger<SessionManager>? logger = null)
         {
             _daoContextPoolFactory = daoContextPoolFactory ?? throw new ArgumentNullException(nameof(daoContextPoolFactory));
             _logger = logger;
@@ -121,7 +121,7 @@ namespace LiteOrm
         /// <summary>
         /// 当前事务ID
         /// </summary>
-        public string CurrentTransactionId => _currentTransactionId;
+        public string? CurrentTransactionId => _currentTransactionId;
 
         /// <summary>
         /// 清除所有状态（SqlStack）
@@ -507,7 +507,7 @@ namespace LiteOrm
         /// <param name="name">上下文名称，如果为null则使用默认名称"_"</param>
         /// <param name="readOnly">是否优先使用只读连接池，默认为 false。</param>
         /// <returns>DAO上下文实例</returns>
-        public DAOContext GetDaoContext(string name = null, bool readOnly = false)
+        public DAOContext GetDaoContext(string? name = null, bool readOnly = false)
         {
             EnsureNotDisposed();
             if (name is null) name = "_";
@@ -531,7 +531,7 @@ namespace LiteOrm
                 }
 
                 string cacheKey = readOnly ? $"{name}:RO" : rwKey;
-                if (_daoContexts.TryGetValue(cacheKey, out DAOContext context))
+                if (_daoContexts.TryGetValue(cacheKey, out DAOContext? context))
                 {
                     if (context.IsValid)
                         return context;
@@ -586,7 +586,7 @@ namespace LiteOrm
         /// <param name="readOnly">是否优先使用只读连接池，默认为 false。</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>DAO上下文实例</returns>
-        public async Task<DAOContext> GetDaoContextAsync(string name = null, bool readOnly = false, CancellationToken cancellationToken = default)
+        public async Task<DAOContext> GetDaoContextAsync(string? name = null, bool readOnly = false, CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
             if (name is null) name = "_";
@@ -608,7 +608,7 @@ namespace LiteOrm
                 }
 
                 string cacheKey = readOnly ? $"{name}:RO" : rwKey;
-                if (_daoContexts.TryGetValue(cacheKey, out DAOContext context))
+                if (_daoContexts.TryGetValue(cacheKey, out DAOContext? context))
                 {
                     if (context.IsValid)
                         return context;

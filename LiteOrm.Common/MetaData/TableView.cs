@@ -97,12 +97,12 @@ namespace LiteOrm.Common
         {
             foreach (ColumnRef column in tableToCheck.ForeignKeys)
             {
-                ColumnRef columnRef = column;
-                while (columnRef.Column is ForeignColumn foreignColumn)
+                ColumnRef? columnRef = column;
+                while (columnRef!.Column is ForeignColumn foreignColumn)
                 {
                     columnRef = foreignColumn.TargetColumn;
                 }
-                if (ReferenceEquals(columnRef.Table, baseTable))
+                if (ReferenceEquals(columnRef!.Table, baseTable))
                     return true;
             }
             return false;

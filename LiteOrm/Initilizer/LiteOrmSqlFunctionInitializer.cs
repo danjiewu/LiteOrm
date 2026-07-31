@@ -66,7 +66,7 @@ namespace LiteOrm
             });
             sqlBuilder.RegisterFunctionSqlHandler(["DateDiffDays", "DateDiffHours", "DateDiffMinutes", "DateDiffSeconds", "DateDiffMilliseconds"], (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
-                Expr.Func(expr.FunctionName.Replace("DateDiff", "Total"), expr.Args[0] - expr.Args[1]).ToSql(ref outSql, context, sqlBuilder, outputParams);
+                Expr.Func(expr.FunctionName!.Replace("DateDiff", "Total"), expr.Args[0] - expr.Args[1]).ToSql(ref outSql, context, sqlBuilder, outputParams);
             });
             sqlBuilder.RegisterFunctionSqlHandler("CASE", (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
@@ -139,7 +139,7 @@ namespace LiteOrm
                     int? pos = expr.Args[0] switch
                     {
                         ValueExpr vte when vte.Value is int intValue => intValue,
-                        _ => null
+                        _ => null!
                     };
                     if (pos == null)
                         outSql.Append(expr.Args[0].ToSql(context, sqlBuilder, outputParams));
@@ -156,12 +156,12 @@ namespace LiteOrm
                     int? begin = expr.Args[0] switch
                     {
                         ValueExpr vte when vte.Value is int intValue => intValue,
-                        _ => null
+                        _ => null!
                     };
                     int? end = expr.Args[1] switch
                     {
                         ValueExpr vte when vte.Value is int intValue => intValue,
-                        _ => null
+                        _ => null!
                     };
                     if (begin == null)
                         outSql.Append("UNBOUNDED PRECEDING");
@@ -228,7 +228,7 @@ namespace LiteOrm
 
             sqliteBuilder.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
-                    outSql.Append($"DATE({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, CAST({expr.Args[1].ToSql(context, sqlBuilder, outputParams)} AS TEXT)||' {expr.FunctionName.Substring(3).ToLower()}')"));
+                    outSql.Append($"DATE({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, CAST({expr.Args[1].ToSql(context, sqlBuilder, outputParams)} AS TEXT)||' {expr.FunctionName!.Substring(3).ToLower()}')"));
             sqliteBuilder.RegisterFunctionSqlHandler(["DateDiffMilliseconds", "DateDiffSeconds", "DateDiffMinutes", "DateDiffHours", "DateDiffDays"], (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 var e = $"julianday({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}) - julianday({expr.Args[1].ToSql(context, sqlBuilder, outputParams)})";
@@ -273,7 +273,7 @@ namespace LiteOrm
                         's' => "%S",
                         'f' => "%f",
                         't' => "%p",
-                        _ => null
+                        _ => null!
                     });
                     outSql.Append('\'');
                 }
@@ -303,9 +303,9 @@ namespace LiteOrm
                 outSql.Append($"CHAR_LENGTH({expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
             mySqlBuilder.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
-                    outSql.Append($"DATE_ADD({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, INTERVAL {expr.Args[1].ToSql(context, sqlBuilder, outputParams)} {expr.FunctionName.Substring(3).ToUpper().TrimEnd('S')})"));
+                    outSql.Append($"DATE_ADD({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, INTERVAL {expr.Args[1].ToSql(context, sqlBuilder, outputParams)} {expr.FunctionName!.Substring(3).ToUpper().TrimEnd('S')})"));
             mySqlBuilder.RegisterFunctionSqlHandler(["DateDiffSeconds", "DateDiffDays", "DateDiffHours", "DateDiffMinutes"], (ref outSql, expr, context, sqlBuilder, outputParams) =>
-                outSql.Append($"TIMESTAMPDIFF({expr.FunctionName.Substring(8).ToUpper().TrimEnd('S')}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
+                outSql.Append($"TIMESTAMPDIFF({expr.FunctionName!.Substring(8).ToUpper().TrimEnd('S')}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
             mySqlBuilder.RegisterFunctionSqlHandler(["DateDiffMilliseconds"], (ref outSql, expr, context, sqlBuilder, outputParams) =>
                  outSql.Append($"(TIMESTAMPDIFF(MICROSECOND, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[0].ToSql(context, sqlBuilder, outputParams)}) / 1000.0)"));
             mySqlBuilder.RegisterFunctionSqlHandler(["TotalSeconds", "TotalDays", "TotalHours", "TotalMinutes", "TotalMilliseconds"],
@@ -341,7 +341,7 @@ namespace LiteOrm
                         's' => "%S",
                         'f' => "%f",
                         't' => "%p",
-                        _ => null
+                        _ => null!
                     });
                     outSql.Append('\'');
                 }
@@ -359,10 +359,10 @@ namespace LiteOrm
                 outSql.Append("trunc(sysdate)"));
             oracleBuilder.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
-                    outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + NUMTODSINTERVAL({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, '{expr.FunctionName.Substring(3).ToUpper().TrimEnd('S')}'))"));
+                    outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + NUMTODSINTERVAL({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, '{expr.FunctionName!.Substring(3).ToUpper().TrimEnd('S')}'))"));
             oracleBuilder.RegisterFunctionSqlHandler(["AddMonths", "AddYears"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
-                    outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + NUMTOYMINTERVAL({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, '{expr.FunctionName.Substring(3).ToUpper().TrimEnd('S')}'))"));
+                    outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + NUMTOYMINTERVAL({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, '{expr.FunctionName!.Substring(3).ToUpper().TrimEnd('S')}'))"));
             // Oracle 没有直接的 DateDiff 函数，可以通过 (end - start) 来计算日期差，再根据需要转换为其他单位，默认 SqlBuilder 已实现，无需重复注册
             oracleBuilder.RegisterFunctionSqlHandler(["TotalSeconds", "TotalDays", "TotalHours", "TotalMinutes", "TotalMilliseconds"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
@@ -398,7 +398,7 @@ namespace LiteOrm
                         's' => "SS",
                         'f' => "FF3",
                         't' => "AM",
-                        _ => null
+                        _ => null!
                     }, '"');
                     outSql.Append('\'');
                 }
@@ -425,7 +425,7 @@ namespace LiteOrm
             });
             postgreSqlBuilder.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
-                    outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + ({expr.Args[1].ToSql(context, sqlBuilder, outputParams)} || ' {expr.FunctionName.Substring(3).ToLower()}')::interval)"));
+                    outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + ({expr.Args[1].ToSql(context, sqlBuilder, outputParams)} || ' {expr.FunctionName!.Substring(3).ToLower()}')::interval)"));
             //PostgreSql 没有直接的 DateDiff 函数，可以通过 EXTRACT(EPOCH FROM (end - start)) 来计算秒数差，再根据需要转换为其他单位，默认 SqlBuilder 已实现，无需重复注册
             postgreSqlBuilder.RegisterFunctionSqlHandler(["TotalSeconds", "TotalDays", "TotalHours", "TotalMinutes", "TotalMilliseconds"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
@@ -460,7 +460,7 @@ namespace LiteOrm
                         's' => "SS",
                         'f' => "MS",
                         't' => "AM",
-                        _ => null
+                        _ => null!
                     }, '"');
                     outSql.Append('\'');
                 }
@@ -494,9 +494,9 @@ namespace LiteOrm
             });
             sqlServerBuilder.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
-                    outSql.Append($"DATEADD({expr.FunctionName.Substring(3).ToLower().TrimEnd('s')}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
+                    outSql.Append($"DATEADD({expr.FunctionName!.Substring(3).ToLower().TrimEnd('s')}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
             sqlServerBuilder.RegisterFunctionSqlHandler(["DateDiffSeconds", "DateDiffDays", "DateDiffHours", "DateDiffMinutes", "DateDiffMilliseconds"], (ref outSql, expr, context, sqlBuilder, outputParams) =>
-                outSql.Append($"DATEDIFF({expr.FunctionName.Substring(8).ToUpper().TrimEnd('S')}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
+                outSql.Append($"DATEDIFF({expr.FunctionName!.Substring(8).ToUpper().TrimEnd('S')}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
             sqlServerBuilder.RegisterFunctionSqlHandler(["TotalSeconds", "TotalDays", "TotalHours", "TotalMinutes", "TotalMilliseconds"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 {

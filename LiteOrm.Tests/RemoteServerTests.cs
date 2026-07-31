@@ -113,11 +113,11 @@ namespace LiteOrm.Tests
                 if (element.ValueKind == JsonValueKind.Object &&
                     element.TryGetProperty("$type", out var typeProp))
                 {
-                    var actualType = Type.GetType(typeProp.GetString());
+                    var actualType = Type.GetType(typeProp.GetString()!);
                     if (actualType != null && element.TryGetProperty("$value", out var valueProp))
-                        return (T)JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, _jsonOptions);
+                        return (T)JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, _jsonOptions)!;
                 }
-                return JsonSerializer.Deserialize<T>(element.GetRawText(), _jsonOptions);
+                return JsonSerializer.Deserialize<T>(element.GetRawText(), _jsonOptions)!;
             }
             return (T)Convert.ChangeType(response.Result, typeof(T));
         }

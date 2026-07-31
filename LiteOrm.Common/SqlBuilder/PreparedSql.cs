@@ -48,7 +48,7 @@ namespace LiteOrm.Common
         /// 从 <see cref="Param"/> 隐式转换为 <see cref="KeyValuePair{TKey, TValue}"/>。
         /// </summary>
         public static implicit operator KeyValuePair<string, object>(Param p)
-            => new KeyValuePair<string, object>(p.Name, p.Value);
+            => new KeyValuePair<string, object>(p.Name, p.Value!);
 
         /// <inheritdoc/>
         public override string ToString() => $"{Name}={Value}";

@@ -18,7 +18,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="having">Having 条件表达式</param>
-        public HavingExpr(SqlSegment source, LogicExpr having)
+        public HavingExpr(SqlSegment? source, LogicExpr? having)
         {
             Source = source;
             Having = having;
@@ -32,14 +32,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置 Having 条件表达式
         /// </summary>
-        public LogicExpr Having { get; set; }
+        public LogicExpr? Having { get; set; }
 
         /// <summary>
         /// 判断两个 HavingExpr 是否相等
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is HavingExpr other && Equals(Source, other.Source) && Equals(Having, other.Having);
+        public override bool Equals(object? obj) => obj is HavingExpr other && Equals(Source, other.Source) && Equals(Having, other.Having);
 
         /// <summary>
         /// 获取当前对象的哈希码
@@ -55,7 +55,7 @@ namespace LiteOrm.Common
         {
             if(Source == null && Having == null) return string.Empty;
             else if (Source == null) return $"HAVING {Having}";
-            else if (Having == null) return Source.ToString();
+            else if (Having == null) return Source.ToString() ?? string.Empty;
             else return $"{Source} HAVING {Having}";
         }
 
@@ -65,8 +65,8 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var h = new HavingExpr();
-            h.Source = (SqlSegment)Source?.Clone();
-            h.Having = (LogicExpr)Having?.Clone();
+            h.Source = Source?.Clone() as SqlSegment;
+            h.Having = Having?.Clone() as LogicExpr;
             return h;
         }
     }

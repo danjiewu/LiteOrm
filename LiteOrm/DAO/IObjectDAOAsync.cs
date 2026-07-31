@@ -42,7 +42,7 @@ namespace LiteOrm.Common
         /// <param name="timestamp">时间戳</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回是否成功更新</returns>
-        Task<bool> UpdateAsync(T o, object timestamp = null, CancellationToken cancellationToken = default);
+        Task<bool> UpdateAsync(T o, object? timestamp = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步更新或插入对象

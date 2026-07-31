@@ -26,7 +26,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
-        new EnumerableResult<T> Search(Expr expr = null);
+        new EnumerableResult<T> Search(Expr? expr = null);
         /// <summary>
         /// 根据 Lambda 表达式查询对象集合。
         /// </summary>
@@ -53,7 +53,7 @@ namespace LiteOrm.Common
         /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
         /// <returns></returns>
 
-        EnumerableResult<TResult> SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null);
+        EnumerableResult<TResult> SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult>? readerFunc = null);
     }
     #endregion
 
@@ -124,7 +124,7 @@ namespace LiteOrm.Common
         /// <param name="selectExpr">SELECT 表达式。</param>
         /// <param name="readerFunc">读取器转换函数，为 null 时使用默认转换。</param>
         /// <returns>自定义类型的集合。</returns>
-        EnumerableResult<TResult> SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult> readerFunc = null);
+        EnumerableResult<TResult> SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult>? readerFunc = null);
         /// <summary>
         /// 使用带参数的SQL查询
         /// </summary>

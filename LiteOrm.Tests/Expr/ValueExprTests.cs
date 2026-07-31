@@ -233,7 +233,7 @@ namespace LiteOrm.Common.UnitTests
             Assert.NotSame(original, cloned);
             if (double.IsNaN(value))
             {
-                Assert.True(double.IsNaN((double)cloned.Value));
+                Assert.True(double.IsNaN((double)cloned.Value!));
             }
             else
             {
@@ -315,7 +315,7 @@ namespace LiteOrm.Common.UnitTests
             Assert.NotSame(original, cloned);
             // Since array is cloneable, we expect a new instance of the array to be created, so we check for value equality rather than reference equality.
             Assert.NotSame(array, cloned.Value);
-            Assert.Equal(array, (int[])cloned.Value);
+            Assert.Equal(array, (int[])cloned.Value!);
             Assert.True(cloned.IsConst);
         }
 
@@ -355,11 +355,11 @@ namespace LiteOrm.Common.UnitTests
             Assert.NotSame(outer, cloned);
             Assert.True(cloned.IsConst);
 
-            var clonedMiddle = (ValueExpr)cloned.Value;
+            var clonedMiddle = (ValueExpr)cloned.Value!;
             Assert.NotSame(middle, clonedMiddle);
             Assert.False(clonedMiddle.IsConst);
 
-            var clonedInnermost = (ValueExpr)clonedMiddle.Value;
+            var clonedInnermost = (ValueExpr)clonedMiddle.Value!;
             Assert.NotSame(innermost, clonedInnermost);
             Assert.Equal(42, clonedInnermost.Value);
             Assert.True(clonedInnermost.IsConst);
@@ -990,7 +990,7 @@ namespace LiteOrm.Common.UnitTests
         public void ToString_ValueIsCollectionWithNullItems_ReturnsNullAsNULL()
         {
             // Arrange
-            var expr = new ValueExpr(new List<object> { 1, null, 3, null, 5 });
+            var expr = new ValueExpr(new List<object?> { 1, null, 3, null, 5 });
 
             // Act
             var result = expr.ToString();
@@ -1006,7 +1006,7 @@ namespace LiteOrm.Common.UnitTests
         public void ToString_ValueIsCollectionWithAllNullItems_ReturnsAllNULL()
         {
             // Arrange
-            var expr = new ValueExpr(new List<object> { null, null, null });
+            var expr = new ValueExpr(new List<object?> { null, null, null });
 
             // Act
             var result = expr.ToString();
@@ -1022,7 +1022,7 @@ namespace LiteOrm.Common.UnitTests
         public void ToString_ValueIsCollectionWithMixedTypes_ReturnsCorrectString()
         {
             // Arrange
-            var expr = new ValueExpr(new List<object> { 1, "test", 3.14, true, null });
+            var expr = new ValueExpr(new List<object?> { 1, "test", 3.14, true, null });
 
             // Act
             var result = expr.ToString();
@@ -1190,7 +1190,7 @@ namespace LiteOrm.Common.UnitTests
         /// </summary>
         private class CustomTestObject
         {
-            public string Name { get; set; }
+            public string? Name { get; set; }
             public int Value { get; set; }
 
             public override string ToString()
@@ -2111,8 +2111,8 @@ namespace LiteOrm.Tests.UnitTests
         public void Equals_CollectionsWithNullElements_ReturnsTrue()
         {
             // Arrange
-            var expr1 = new ValueExpr(new List<object> { 1, null, 3 });
-            var expr2 = new ValueExpr(new List<object> { 1, null, 3 });
+            var expr1 = new ValueExpr(new List<object?> { 1, null, 3 });
+            var expr2 = new ValueExpr(new List<object?> { 1, null, 3 });
 
             // Act
             var result = expr1.Equals(expr2);
@@ -2128,8 +2128,8 @@ namespace LiteOrm.Tests.UnitTests
         public void Equals_CollectionsDifferInNullPositions_ReturnsFalse()
         {
             // Arrange
-            var expr1 = new ValueExpr(new List<object> { 1, null, 3 });
-            var expr2 = new ValueExpr(new List<object> { null, 1, 3 });
+            var expr1 = new ValueExpr(new List<object?> { 1, null, 3 });
+            var expr2 = new ValueExpr(new List<object?> { null, 1, 3 });
 
             // Act
             var result = expr1.Equals(expr2);

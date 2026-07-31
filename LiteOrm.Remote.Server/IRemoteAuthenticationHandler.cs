@@ -120,7 +120,7 @@ namespace LiteOrm.Remote.Server
 
             var pairs = headerValues
                 .Where(s => !string.IsNullOrEmpty(s))
-                .Select(c => c.Split(';')[0].Trim())
+                .Select(c => c!.Split(';')[0].Trim())
                 .Where(s => !string.IsNullOrEmpty(s))
                 .ToList();
             return pairs.Count == 0 ? null : string.Join("; ", pairs);

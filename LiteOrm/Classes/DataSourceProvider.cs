@@ -64,7 +64,7 @@ namespace LiteOrm
         /// <summary>
         /// 默认连接名称
         /// </summary>
-        public string DefaultDataSourceName
+        public string? DefaultDataSourceName
         {
             get; set;
         }
@@ -85,17 +85,19 @@ namespace LiteOrm
         /// </summary>
         /// <param name="name">数据源名称，如果为空则使用默认数据源</param>
         /// <returns>数据源配置，如果不存在则返回null</returns>
-        public DataSourceConfig GetDataSource(string name)
+        public DataSourceConfig? GetDataSource(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                if (!string.IsNullOrWhiteSpace(DefaultDataSourceName))
-                    name = DefaultDataSourceName;
+                var defaultName = DefaultDataSourceName;
+                if (!string.IsNullOrWhiteSpace(defaultName))
+                    name = defaultName!;
                 else if (_connections.Count > 0)
                     name = _connections.Keys.First();
                 else
                     return null;
             }
+            if (name is null) return null;
             if (_connections.TryGetValue(name, out var config))
                 return config;
             return null;
@@ -157,8 +159,9 @@ namespace LiteOrm
                 _connections = new(StringComparer.OrdinalIgnoreCase);
                 foreach (var config in connections)
                 {
-                    if (!string.IsNullOrEmpty(config.Name))
-                        _connections[config.Name] = config;
+                    var configName = config.Name;
+                    if (!string.IsNullOrEmpty(configName))
+                        _connections[configName!] = config;
                 }
             }
         }

@@ -33,7 +33,7 @@ namespace LiteOrm.Common
         /// <param name="o">待更新的对象</param>
         /// <param name="timestamp">时间戳</param>
         /// <returns>是否成功更新</returns>
-        bool Update(T o, object timestamp = null);
+        bool Update(T o, object? timestamp = null);
 
         /// <summary>
         /// 更新或插入对象

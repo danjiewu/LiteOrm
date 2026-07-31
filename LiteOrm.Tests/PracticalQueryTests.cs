@@ -499,7 +499,7 @@ namespace LiteOrm.Tests
 
             var userViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUserView>>();
 
-            Expr query = null;
+            Expr? query = null;
 
             var results = await userViewDAO.Search(query).ToListAsync(TestContext.Current.CancellationToken);
 

@@ -50,7 +50,7 @@ namespace LiteOrm
         /// <param name="hostBuilder">主机构建器。</param>
         /// <param name="configureOptions">配置选项的回调函数。</param>
         /// <returns>配置后的主机构建器。</returns>
-        public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder, Action<LiteOrmOptions> configureOptions)
+        public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder, Action<LiteOrmOptions>? configureOptions)
         {
             var options = new LiteOrmOptions();
             try
@@ -175,12 +175,12 @@ namespace LiteOrm
             /// <summary>
             /// 要扫描的程序集列表。
             /// </summary>
-            public Assembly[] Assemblies { get; set; }
+            public Assembly[]? Assemblies { get; set; }
 
             /// <summary>
             /// 日志工厂，用于记录服务注册过程中的程序集扫描日志（可选）。
             /// </summary>
-            public ILoggerFactory LoggerFactory { get; set; }
+            public ILoggerFactory? LoggerFactory { get; set; }
 
             /// <summary>
             /// 注册自定义 SqlBuilder（按数据源名称）。
@@ -225,7 +225,7 @@ namespace LiteOrm
         /// <returns>服务集合。</returns>
         public static IServiceCollection RegisterAutoService(
             this IServiceCollection services,
-            ILogger logger,
+            ILogger? logger,
             params Assembly[] assemblies)
         {
             var assemblyList = new HashSet<Assembly>();
@@ -253,7 +253,7 @@ namespace LiteOrm
             logger?.LogDebug("Scanning {Count} assemblies to register LiteOrm services", assemblyList.Count);
 
             // netstandard2.0 不具备编译期可用的 MS DI Keyed Service 支持，使用注册表 + 工厂作为回退方案。
-            KeyedServiceRegistry keyedRegistry = null;
+            KeyedServiceRegistry? keyedRegistry = null;
 #if !(NET8_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
             keyedRegistry = new KeyedServiceRegistry();
             services.AddSingleton(typeof(KeyedServiceRegistry), keyedRegistry);
@@ -272,7 +272,7 @@ namespace LiteOrm
                 catch (ReflectionTypeLoadException ex)
                 {
                     logger?.LogWarning(ex, "Failed to load types from assembly '{Assembly}', some types will be skipped", assembly.FullName);
-                    types = ex.Types.Where(t => t != null);
+                    types = ex.Types.OfType<Type>();
                 }
 
                 var registrableTypes = types
@@ -325,10 +325,10 @@ namespace LiteOrm
         private static void RegisterSingleType(
             IServiceCollection services,
             Type implementationType,
-            AutoRegisterAttribute attr,
-            KeyedServiceRegistry keyedRegistry,
+            AutoRegisterAttribute? attr,
+            KeyedServiceRegistry? keyedRegistry,
             List<Type> autoActivateTypes,
-            ILogger logger)
+            ILogger? logger)
         {
             var lifetime = ToServiceLifetime(attr?.Lifetime ?? Lifetime.Scoped);
             var key = attr?.Key;
@@ -402,7 +402,7 @@ namespace LiteOrm
         /// <summary>
         /// 计算类型应注册的服务类型集合，并检测是否存在 <see cref="InterceptAttribute"/>。
         /// </summary>
-        private static List<Type> GetServiceTypes(Type implementationType, AutoRegisterAttribute attr, out bool hasIntercept)
+        private static List<Type> GetServiceTypes(Type implementationType, AutoRegisterAttribute? attr, out bool hasIntercept)
         {
             hasIntercept = false;
             var serviceTypes = new List<Type>();
@@ -487,7 +487,7 @@ namespace LiteOrm
         /// <summary>
         /// 创建基于工厂的键控 <see cref="ServiceDescriptor"/>（net8.0+/netstandard2.1+ 可用）。
         /// </summary>
-        private static ServiceDescriptor CreateKeyedDescriptor(Type serviceType, object key, Func<IServiceProvider, object, object> factory, ServiceLifetime lifetime)
+        private static ServiceDescriptor CreateKeyedDescriptor(Type serviceType, object key, Func<IServiceProvider, object?, object> factory, ServiceLifetime lifetime)
         {
             return lifetime switch
             {
@@ -535,7 +535,7 @@ namespace LiteOrm
 
         /// <summary>
         /// netstandard2.0 下键控服务的注册表，保存 (服务类型, 键) -> 实现类型 的映射，
-        /// 供 <see cref="LiteOrmKeyedServiceExtensions.ResolveKeyed"/> 解析使用。
+        /// 供 LiteOrmKeyedServiceExtensions.ResolveKeyed 解析使用。
         /// </summary>
         internal sealed class KeyedServiceRegistry
         {
@@ -547,7 +547,7 @@ namespace LiteOrm
                 _map[(serviceType, key)] = implementationType;
             }
 
-            public bool TryGet(Type serviceType, object key, out Type implementationType)
+            public bool TryGet(Type serviceType, object key, out Type? implementationType)
             {
                 return _map.TryGetValue((serviceType, key), out implementationType);
             }
@@ -567,13 +567,13 @@ namespace LiteOrm
         /// </summary>
         public static T ResolveKeyed<T>(this IServiceProvider provider, object key)
         {
-            return (T)provider.ResolveKeyed(typeof(T), key);
+            return (T)provider.ResolveKeyed(typeof(T), key)!;
         }
 
         /// <summary>
         /// 按键解析服务（找不到时返回 null）。
         /// </summary>
-        public static object ResolveKeyed(this IServiceProvider provider, Type serviceType, object key)
+        public static object? ResolveKeyed(this IServiceProvider provider, Type serviceType, object key)
         {
             if (provider == null) throw new ArgumentNullException(nameof(provider));
             if (serviceType == null) throw new ArgumentNullException(nameof(serviceType));

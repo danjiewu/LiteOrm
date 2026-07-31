@@ -63,10 +63,10 @@ namespace LiteOrm
         #endregion
 
         #region 私有变量
-        private string _allFields = null;
-        private string _factTableName = null;
-        private string _fromTable = null;
-        private ArgumentOutOfRangeException _exceptionWrongKeys;
+        private string? _allFields = null;
+        private string? _factTableName = null;
+        private string? _fromTable = null;
+        private ArgumentOutOfRangeException? _exceptionWrongKeys;
         private Dictionary<SqlColumn, string> _columnSqlCache = new Dictionary<SqlColumn, string>();
         #endregion
 
@@ -98,7 +98,7 @@ namespace LiteOrm
         /// <summary>
         /// 数据源名称，默认为表定义中的数据源名称。对于某些操作（如获取数据库连接），可能需要使用数据源名称来确定连接字符串或数据库提供程序，因此在 DAO 中提供了这个属性来方便访问。子类可以根据需要重写这个属性来修改数据源名称，例如在多租户应用中可能需要根据当前租户动态返回不同的数据源名称。
         /// </summary>
-        protected virtual string DataSource => TableDefinition.DataSource;
+        protected virtual string? DataSource => TableDefinition.DataSource;
 
 
         /// <summary>
@@ -116,7 +116,7 @@ namespace LiteOrm
         /// </summary>
         public virtual SqlBuilder SqlBuilder
         {
-            get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType, DataSource); }
+            get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType!, DataSource); }
         }
 
         ISqlBuilder IExprStringBuildContext.SqlBuilder => SqlBuilder;
@@ -124,14 +124,14 @@ namespace LiteOrm
         /// <summary>
         /// 获取当前会话管理器
         /// </summary>
-        public virtual SessionManager CurrentSession => SessionManager.Current;
+        public virtual SessionManager? CurrentSession => SessionManager.Current;
 
         /// <summary>
         /// 获取当前数据访问对象上下文
         /// </summary>
         public virtual DAOContext GetDaoContext()
         {
-            return CurrentSession.GetDaoContext(DataSource, IsView);
+            return CurrentSession!.GetDaoContext(DataSource, IsView);
         }
 
         /// <summary>
@@ -140,13 +140,13 @@ namespace LiteOrm
         /// <param name="cancellationToken">取消令牌</param>
         public virtual Task<DAOContext> GetDaoContextAsync(CancellationToken cancellationToken = default)
         {
-            return CurrentSession.GetDaoContextAsync(DataSource, IsView, cancellationToken);
+            return CurrentSession!.GetDaoContextAsync(DataSource, IsView, cancellationToken);
         }
 
         /// <summary>
         /// 表名参数
         /// </summary>
-        public string[] TableArgs { get; internal set; }
+        public string[]? TableArgs { get; internal set; }
 
         /// <summary>
         /// 创建 SQL 执行上下文。
@@ -159,7 +159,7 @@ namespace LiteOrm
             else return new SqlBuildContext() { TableArgs = TableArgs, SingleTable = !IsView };
         }
 
-        private SqlBuildContext _initSqlBuildContext;
+        private SqlBuildContext? _initSqlBuildContext;
         /// <summary>
         /// 用于初始化表信息的 SQL 构建上下文，只有在需要初始化表信息时才创建，并且在整个 DAO 生命周期内保持不变，以提高性能。对于某些操作（如生成 SQL 语句），可能需要在上下文中包含表信息以正确解析列和别名等细节，因此提供了这个属性来避免重复创建上下文。子类可以根据需要重写 CreateSqlBuildContext 方法来修改上下文的内容，但 InitSqlBuildContext 将始终返回一个包含表信息的上下文实例。
         /// </summary>
@@ -189,16 +189,17 @@ namespace LiteOrm
             {
                 if (_factTableName is null)
                 {
-                    if (TableArgs != null && TableArgs.Length > 0)
+                    var tableArgs = TableArgs;
+                    if (tableArgs != null && tableArgs.Length > 0)
                     {
-                        _factTableName = String.Format(Table.Name, TableArgs);
+                        _factTableName = String.Format(Table.Name!, tableArgs);
                     }
                     else
                     {
                         _factTableName = Table.Name;
                     }
                 }
-                return _factTableName;
+                return _factTableName!;
             }
         }
 
@@ -298,7 +299,7 @@ namespace LiteOrm
         /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
         /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
         /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
-        protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy> configureCommand = null)
+        protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null)
         {
             if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
             return GetDaoContext().PreparedCommands.GetOrAdd((ObjectType, methodName), _ =>
@@ -317,7 +318,7 @@ namespace LiteOrm
         /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
-        protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy> configureCommand = null, CancellationToken cancellationToken = default)
+        protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null, CancellationToken cancellationToken = default)
         {
             if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
@@ -496,7 +497,7 @@ namespace LiteOrm
         /// <returns></returns>
         protected SelectExpr ToSelectExpr(Expr expr)
         {
-            if (expr is null) expr = Expr.From(ObjectType, TableArgs);
+            if (expr is null) expr = Expr.From(ObjectType, TableArgs!);
             if (expr is SelectExpr selectExpr) return selectExpr;
             return new SelectExpr()
             {
@@ -535,7 +536,7 @@ namespace LiteOrm
         /// <param name="sqlBody">查询SQL，使用插值字符串格式，可插入普通变量或 Expr。<see cref="LiteOrm.Common.ExprString"/></param>
         /// <param name="readerFunc">用于从 DbDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
         /// <returns>包含查询结果集的可枚举结果对象。</returns>
-        public virtual EnumerableResult<TResult> Query<TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, Func<DbDataReader, TResult> readerFunc = null)
+        public virtual EnumerableResult<TResult> Query<TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, Func<DbDataReader, TResult>? readerFunc = null)
         {
             return new EnumerableResult<TResult>(this, sqlBody.GetResult(), readerFunc);
         }
@@ -557,7 +558,7 @@ namespace LiteOrm
         /// <summary>
         /// MutiReplacer实例
         /// </summary>
-        private MultiReplacer _mutiReplacer;
+        private MultiReplacer? _mutiReplacer;
         private MultiReplacer MutiReplacerInstance
         {
             get
@@ -609,7 +610,7 @@ namespace LiteOrm
         /// <returns>数据列对应的 SQL 名称</returns>
         protected string ToColumnSql(SqlColumn column)
         {
-            if (_columnSqlCache.TryGetValue(column, out string cachedSql))
+            if (_columnSqlCache.TryGetValue(column, out string? cachedSql))
             {
                 return cachedSql;
             }
@@ -628,7 +629,7 @@ namespace LiteOrm
             List<object> values = new List<object>();
             foreach (ColumnDefinition key in TableDefinition.Keys)
             {
-                values.Add(key.GetValue(o));
+                values.Add(key.GetValue(o)!);
             }
             return values.ToArray();
         }
@@ -639,7 +640,7 @@ namespace LiteOrm
         /// <param name="dbValue">数据库取得的值</param>
         /// <param name="objectType">对象属性的类型</param>
         /// <returns>对象属性类型所对应的值</returns>
-        protected virtual object ConvertFromDbValue(object dbValue, Type objectType)
+        protected virtual object? ConvertFromDbValue(object? dbValue, Type objectType)
         {
             return SqlBuilder.ConvertFromDbValue(dbValue, objectType);
         }
@@ -650,7 +651,7 @@ namespace LiteOrm
         /// <param name="value">值</param>
         /// <param name="dbType">数据库类型</param>
         /// <returns>数据库中的值</returns>
-        protected virtual object ConvertToDbValue(object value, DbType dbType)
+        protected virtual object ConvertToDbValue(object? value, DbType dbType)
         {
             return SqlBuilder.ConvertToDbValue(value, dbType);
         }
@@ -692,7 +693,7 @@ namespace LiteOrm
                 if (_exceptionWrongKeys is null)
                 {
                     List<string> strKeys = new List<string>();
-                    foreach (ColumnDefinition key in TableDefinition.Keys) strKeys.Add(key.Name);
+                    foreach (ColumnDefinition key in TableDefinition.Keys) strKeys.Add(key.Name!);
                     _exceptionWrongKeys = new ArgumentOutOfRangeException(nameof(keys), $"Wrong keys' number. Type \"{Table.DefinitionType.FullName}\" has {strKeys.Count} key(s):'{String.Join("','", strKeys.ToArray())}'.");
                 }
                 throw _exceptionWrongKeys;

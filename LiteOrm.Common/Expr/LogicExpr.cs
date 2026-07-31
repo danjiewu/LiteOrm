@@ -15,10 +15,10 @@ namespace LiteOrm.Common
         /// <param name="left">左操作数。</param>
         /// <param name="right">右操作数。</param>
         /// <returns>组合后的 AND 表达式。</returns>
-        public static LogicExpr operator &(LogicExpr left, LogicExpr right)
+        public static LogicExpr operator &(LogicExpr? left, LogicExpr? right)
         {
-            if (left is null) return right;
-            else if (right is null) return left;
+            if (left is null) return right!;
+            else if (right is null) return left!;
             else return left.And(right);
         }
 
@@ -29,10 +29,10 @@ namespace LiteOrm.Common
         /// <param name="left">左操作数。</param>
         /// <param name="right">右操作数。</param>
         /// <returns>组合后的 OR 表达式。</returns>
-        public static LogicExpr operator |(LogicExpr left, LogicExpr right)
+        public static LogicExpr operator |(LogicExpr? left, LogicExpr? right)
         {
-            if (left is null) return right;
-            else if (right is null) return left;
+            if (left is null) return right!;
+            else if (right is null) return left!;
             else return left.Or(right);
         }
 
@@ -41,6 +41,6 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="expr">要取反的表达式。</param>
         /// <returns>逻辑取反后的表达式。</returns>
-        public static LogicExpr operator !(LogicExpr expr) => expr?.Not();
+        public static LogicExpr? operator !(LogicExpr expr) => expr?.Not();
     }
 }

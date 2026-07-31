@@ -57,7 +57,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var expr = new GroupByExpr(new FromExpr(typeof(TestUser)))
             {
-                GroupBys = new List<ValueTypeExpr> { null, Expr.Prop("DeptId") }
+                GroupBys = new List<ValueTypeExpr> { null!, Expr.Prop("DeptId") }
             };
 
             Assert.Equal($"{nameof(TestUser)} GROUP BY [DeptId]", expr.ToString());

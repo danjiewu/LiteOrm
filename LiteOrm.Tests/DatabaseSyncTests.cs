@@ -17,7 +17,7 @@ namespace LiteOrm.Tests
 
         public DatabaseSyncTests(DatabaseFixture fixture) : base(fixture)
         {
-            _pool = ServiceProvider.GetRequiredService<DAOContextPoolFactory>().GetPool("SQLite");
+            _pool = ServiceProvider.GetRequiredService<DAOContextPoolFactory>().GetPool("SQLite")!;
         }
 
         /// <summary>

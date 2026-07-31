@@ -18,7 +18,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="field">排序字段表达式。</param>
         /// <param name="ascending">true 表示升序（ASC），false 表示降序（DESC）。</param>
-        public OrderByItemExpr(ValueTypeExpr field, bool ascending = true)
+        public OrderByItemExpr(ValueTypeExpr? field, bool ascending = true)
         {
             Field = field;
             Ascending = ascending;
@@ -27,7 +27,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置排序字段表达式。
         /// </summary>
-        public ValueTypeExpr Field { get; set; }
+        public ValueTypeExpr? Field { get; set; }
 
         /// <summary>
         /// 获取或设置排序方向，true 表示升序（ASC），false 表示降序（DESC）。
@@ -50,10 +50,10 @@ namespace LiteOrm.Common
         /// 将 <see cref="OrderByItemExpr"/> 隐式转换为 <see cref="ValueTypeExpr"/> 与 <see cref="bool"/> 的元组。
         /// </summary>
         public static implicit operator (ValueTypeExpr, bool)(OrderByItemExpr item)
-            => (item.Field, item.Ascending);
+            => (item.Field!, item.Ascending);
 
         /// <inheritdoc/>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is OrderByItemExpr other && Equals(Field, other.Field) && Ascending == other.Ascending;
 
         /// <inheritdoc/>
@@ -73,7 +73,7 @@ namespace LiteOrm.Common
         /// </summary>
         public override Expr Clone()
         {
-            return new OrderByItemExpr((ValueTypeExpr)Field?.Clone(), Ascending);
+            return new OrderByItemExpr(Field?.Clone() as ValueTypeExpr, Ascending);
         }
     }
 }

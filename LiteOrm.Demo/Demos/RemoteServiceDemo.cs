@@ -242,7 +242,7 @@ namespace LiteOrm.Demo.Demos
             try
             {
                 await orderService.ForEachAsync(
-                    Expr.Lambda<DemoOrder>(o => o.CustomerName == "Customer A"),
+                    Expr.Lambda<DemoOrder>(o => o.CustomerName == "Customer A")!,
                     async o =>
                     {
                         Interlocked.Increment(ref visited);

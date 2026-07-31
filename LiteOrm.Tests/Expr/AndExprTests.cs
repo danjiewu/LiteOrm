@@ -45,7 +45,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Constructor_NullParamArray_DoesNotThrow()
         {
-            var expr = new AndExpr((LogicExpr[])null);
+            var expr = new AndExpr((LogicExpr[])null!);
 
             Assert.Empty(expr);
         }
@@ -53,7 +53,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Constructor_NullIEnumerable_DoesNotThrow()
         {
-            var expr = new AndExpr((System.Collections.Generic.IEnumerable<LogicExpr>)null);
+            var expr = new AndExpr((System.Collections.Generic.IEnumerable<LogicExpr>)null!);
 
             Assert.Empty(expr);
         }
@@ -71,7 +71,7 @@ namespace LiteOrm.Common.UnitTests
         public void Add_NullItem_IsIgnored()
         {
             var expr = new AndExpr();
-            expr.Add(null);
+            expr.Add(null!);
 
             Assert.Equal(0, expr.Count);
         }

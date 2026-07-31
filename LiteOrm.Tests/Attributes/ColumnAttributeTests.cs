@@ -96,7 +96,7 @@ namespace LiteOrm.Common.UnitTests
         public void ColumnAttribute_WithNullOrWhitespaceColumnName_AcceptsValue(string? columnName)
         {
             // Arrange & Act
-            var attribute = new ColumnAttribute(columnName);
+            var attribute = new ColumnAttribute(columnName!);
 
             // Assert
             Assert.Equal(columnName, attribute.ColumnName);

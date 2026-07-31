@@ -34,6 +34,6 @@ namespace LiteOrm.Common
         ///<summary>
         /// 外部实体的属性名称
         /// </summary>
-        public string Property { get; set; }
+        public string? Property { get; set; }
     }
 }

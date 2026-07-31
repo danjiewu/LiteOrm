@@ -41,7 +41,7 @@ namespace LiteOrm.Common
         /// 该名称通常对应于配置文件中 ConnectionStrings 节点的名称。
         /// 若为空，则使用默认数据源。
         /// </summary>
-        public string DataSource { get; protected internal set; }
+        public string? DataSource { get; protected internal set; }
 
         /// <summary>
         /// 获取或设置该表的表结构同步模式。
@@ -55,16 +55,16 @@ namespace LiteOrm.Common
         /// 获取或设置数据提供程序类型。
         /// 例如：Microsoft.Data.SqlClient.SqlConnection
         /// </summary>
-        public Type DataProviderType { get; protected internal set; }
+        public Type? DataProviderType { get; protected internal set; }
 
         /// <summary>
         /// 获取数据库表的列定义集合。
         /// </summary>
         public new ReadOnlyCollection<ColumnDefinition> Columns { get; }
-        private ColumnDefinition _dentityColumn;
-        private ColumnDefinition[] _insertableColumns;
-        private ColumnDefinition[] _updatableColumns;
-        private ColumnDefinition _timestampColumn;
+        private ColumnDefinition? _dentityColumn;
+        private ColumnDefinition[]? _insertableColumns;
+        private ColumnDefinition[]? _updatableColumns;
+        private ColumnDefinition? _timestampColumn;
 
         /// <summary>
         /// 获取可插入的列定义数组，排除自增列和不可插入的列。
@@ -99,7 +99,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 识别列
         /// </summary>
-        public ColumnDefinition IdentityColumn
+        public ColumnDefinition? IdentityColumn
         {
             get
             {
@@ -111,7 +111,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 时间戳列（用于乐观并发控制）
         /// </summary>
-        public ColumnDefinition TimestampColumn
+        public ColumnDefinition? TimestampColumn
         {
             get
             {
@@ -123,14 +123,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置该表的固定筛选条件。
         /// </summary>
-        public LogicExpr ConstFilter { get; set; }
+        public LogicExpr? ConstFilter { get; set; }
 
         /// <summary>
         /// 根据属性名获取对应的列定义，忽略大小写。
         /// </summary>
         /// <param name="propertyName">属性名称。</param>
         /// <returns>列定义，若不存在则返回null。</returns>
-        public new ColumnDefinition GetColumn(string propertyName)
+        public new ColumnDefinition? GetColumn(string propertyName)
         {
             return base.GetColumn(propertyName) as ColumnDefinition;
         }

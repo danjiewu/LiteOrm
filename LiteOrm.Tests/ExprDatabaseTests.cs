@@ -416,7 +416,7 @@ namespace LiteOrm.Tests
             Assert.Equal(5, likeResults.Count);
             // 验证每个结果的Name以"ExtensionTest"开头
             Assert.All(likeResults, u =>
-                Assert.True(u.Name.StartsWith("ExtensionTest"))
+                Assert.True(u.Name!.StartsWith("ExtensionTest"))
             );
 
             // 测试Contains扩展方法
@@ -427,7 +427,7 @@ namespace LiteOrm.Tests
             Assert.Equal(5, containsResults.Count);
             // 验证每个结果的Name包含"Extension"
             Assert.All(containsResults, u =>
-                Assert.True(u.Name.Contains("Extension"))
+                Assert.True(u.Name!.Contains("Extension"))
             );
 
             // 测试StartsWith扩展方法
@@ -438,7 +438,7 @@ namespace LiteOrm.Tests
             Assert.Equal(5, startsWithResults.Count);
             // 验证每个结果的Name以"Extension"开头
             Assert.All(startsWithResults, u =>
-                Assert.True(u.Name.StartsWith("Extension"))
+                Assert.True(u.Name!.StartsWith("Extension"))
             );
 
             // 测试EndsWith扩展方法
@@ -449,7 +449,7 @@ namespace LiteOrm.Tests
             Assert.Single(endsWithResults);
             // 验证每个结果的Name以"Test1"结尾
             Assert.All(endsWithResults, u =>
-                Assert.True(u.Name.EndsWith("Test1"))
+                Assert.True(u.Name!.EndsWith("Test1"))
             );
 
             // 测试RegexpLike扩展方法
@@ -468,9 +468,12 @@ namespace LiteOrm.Tests
             var isNullResults = await objectViewDAO.Search(isNullExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(isNullResults);
             // 验证每个结果的DeptId为null
+            // 说明：DeptId 在实体中为 int（非可空），此比较恒为 false 是测试模型的既有语义（验证 IsNull 查询返回结果集），故抑制 CS0472。
+#pragma warning disable CS0472
             Assert.All(isNullResults, u =>
                 Assert.True(u.DeptId == null)
             );
+#pragma warning restore CS0472
 
             // 测试IsNotNull扩展方法
             var isNotNullExpr = Expr.Prop("Name").IsNotNull();
@@ -735,7 +738,7 @@ namespace LiteOrm.Tests
             // 验证实际的LOWER值
             if (lowerDt.Rows.Count > 0 && lowerDt.Rows[0]["LowerName"] != DBNull.Value)
             {
-                string lowerName = lowerDt.Rows[0]["LowerName"].ToString();
+                string lowerName = lowerDt.Rows[0]["LowerName"].ToString()!;
                 Assert.True(lowerName.Equals(lowerName.ToLower()));
             }
 
@@ -833,7 +836,7 @@ namespace LiteOrm.Tests
             // 验证实际的CONCAT值
             if (concatDt.Rows.Count > 0 && concatDt.Rows[0]["NameWithSuffix"] != DBNull.Value)
             {
-                string nameWithSuffix = concatDt.Rows[0]["NameWithSuffix"].ToString();
+                string nameWithSuffix = concatDt.Rows[0]["NameWithSuffix"].ToString()!;
                 Assert.Contains(" Test", nameWithSuffix);
             }
         }

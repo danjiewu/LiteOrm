@@ -135,7 +135,7 @@ namespace LiteOrm.Common
         }
 
         /// <inheritdoc/>
-        public object GenerateReturnValue(object argument)
+        public object? GenerateReturnValue(object? argument)
         {
             if (argument is null) return null;
             var prop = ResolveIdentityProperty(argument.GetType());
@@ -143,7 +143,7 @@ namespace LiteOrm.Common
         }
 
         /// <inheritdoc/>
-        public void WriteBack(object originalArg, object returnValue)
+        public void WriteBack(object? originalArg, object? returnValue)
         {
             if (originalArg is null || returnValue is null) return;
             var prop = ResolveIdentityProperty(originalArg.GetType());
@@ -156,7 +156,7 @@ namespace LiteOrm.Common
         /// 通过 <see cref="TableInfoProvider.Default"/> 元数据解析类型上的 Identity 属性。
         /// 若未注册 <see cref="TableInfoProvider.Default"/> 或该类型无 Identity 列，则返回 null。
         /// </summary>
-        private static PropertyInfo ResolveIdentityProperty(Type type)
+        private static PropertyInfo? ResolveIdentityProperty(Type type)
         {
             var provider = TableInfoProvider.Default;
             if (provider is null) return null;
@@ -201,13 +201,13 @@ namespace LiteOrm.Common
         }
 
         /// <inheritdoc/>
-        public object GenerateReturnValue(object argument) => argument;
+        public object? GenerateReturnValue(object? argument) => argument;
 
         /// <inheritdoc/>
-        public void WriteBack(object originalArg, object returnValue)
+        public void WriteBack(object? originalArg, object? returnValue)
         {
             if (originalArg is ICopyable target)
-                target.CopyFrom(returnValue);
+                target.CopyFrom(returnValue!);
         }
     }
 }

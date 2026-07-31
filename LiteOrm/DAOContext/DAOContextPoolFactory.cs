@@ -47,7 +47,7 @@ namespace LiteOrm
         private bool _disposed = false;
         private readonly object _initLock = new object();
         private readonly IDataSourceProvider _dataSourceProvider;
-        private readonly ILogger<DAOContextPoolFactory> _logger;
+        private readonly ILogger<DAOContextPoolFactory>? _logger;
 
         /// <summary>
         /// 初始化 <see cref="DAOContextPoolFactory"/> 类的新实例。
@@ -55,7 +55,7 @@ namespace LiteOrm
         /// <param name="dataSourceProvider">数据源提供程序。</param>
         /// <param name="logger">日志记录器。</param>
         /// <exception cref="ArgumentNullException">当 <paramref name="dataSourceProvider"/> 为 null 时抛出。</exception>
-        public DAOContextPoolFactory(IDataSourceProvider dataSourceProvider, ILogger<DAOContextPoolFactory> logger = null)
+        public DAOContextPoolFactory(IDataSourceProvider dataSourceProvider, ILogger<DAOContextPoolFactory>? logger = null)
         {
             _dataSourceProvider = dataSourceProvider ?? throw new ArgumentNullException(nameof(dataSourceProvider));
             _logger = logger;
@@ -71,14 +71,15 @@ namespace LiteOrm
             {
                 foreach (var config in _dataSourceProvider)
                 {
-                    if (string.IsNullOrWhiteSpace(config.Name))
+                    var configName = config.Name;
+                    if (string.IsNullOrWhiteSpace(configName))
                     {
                         throw new InvalidOperationException("Name cannot be empty in connection configuration");
                     }
 
-                    if (_pools.ContainsKey(config.Name))
+                    if (_pools.ContainsKey(configName!))
                     {
-                        throw new InvalidOperationException($"Duplicate connection pool name: {config.Name}");
+                        throw new InvalidOperationException($"Duplicate connection pool name: {configName}");
                     }
 
                     try
@@ -87,8 +88,8 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, "Failed to initialize connection pool for data source '{DataSource}'", config.Name);
-                        throw new InvalidOperationException($"Failed to initialize connection pool for data source '{config.Name}'", ex);
+                        _logger?.LogError(ex, "Failed to initialize connection pool for data source '{DataSource}'", configName);
+                        throw new InvalidOperationException($"Failed to initialize connection pool for data source '{configName}'", ex);
                     }
                 }
             }
@@ -99,12 +100,18 @@ namespace LiteOrm
         /// </summary>
         private void CreatePool(DataSourceConfig config)
         {
+            var configName = config.Name;
+            if (string.IsNullOrWhiteSpace(configName))
+            {
+                throw new InvalidOperationException("Name cannot be empty in connection configuration");
+            }
+
             DAOContextPool pool;
             try
             {
                 pool = new DAOContextPool(config.ProviderType, config.ConnectionString)
                 {
-                    Name = config.Name,
+                    Name = configName!,
                     PoolSize = config.PoolSize,
                     MaxPoolSize = config.MaxPoolSize,
                     KeepAliveDuration = config.KeepAliveDuration,
@@ -114,7 +121,7 @@ namespace LiteOrm
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"Failed to create connection pool instance for data source '{config.Name}'", ex);
+                throw new InvalidOperationException($"Failed to create connection pool instance for data source '{configName}'", ex);
             }
 
             if (config.ReadOnlyConfigs != null)
@@ -127,7 +134,7 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        throw new InvalidOperationException($"Failed to add read-only connection pool for data source '{config.Name}'", ex);
+                        throw new InvalidOperationException($"Failed to add read-only connection pool for data source '{configName}'", ex);
                     }
                 }
             }
@@ -141,30 +148,30 @@ namespace LiteOrm
                     if (!sqlBuilderType.IsSubclassOf(typeof(SqlBuilder)))  throw new InvalidOperationException($"SqlBuilderType {sqlBuilderType.FullName} must be a subclass of SqlBuilder");
 
                     SqlBuilder sqlBuilder;
-                    PropertyInfo instanceProp = sqlBuilderType.GetProperty(nameof(SqlBuilder.Instance), BindingFlags.Static | BindingFlags.Public);
-                    if (instanceProp != null&& instanceProp.GetValue(null) is SqlBuilder instance)
+                    PropertyInfo? instanceProp = sqlBuilderType.GetProperty(nameof(SqlBuilder.Instance), BindingFlags.Static | BindingFlags.Public);
+                    if (instanceProp != null && instanceProp.GetValue(null) is SqlBuilder instance)
                         sqlBuilder = instance;
                     else
-                        sqlBuilder = (SqlBuilder)Activator.CreateInstance(config.SqlBuilderType);
-                    SqlBuilderFactory.Instance.RegisterSqlBuilder(config.Name, sqlBuilder);
-                    if (_dataSourceProvider.DefaultDataSourceName == config.Name)
+                        sqlBuilder = (SqlBuilder)Activator.CreateInstance(config.SqlBuilderType)!;
+                    SqlBuilderFactory.Instance.RegisterSqlBuilder(configName!, sqlBuilder);
+                    if (_dataSourceProvider.DefaultDataSourceName == configName)
                     {
                         SqlBuilderFactory.Instance.RegisterSqlBuilder(string.Empty, sqlBuilder);
                     }
                 }
                 catch (Exception ex)
                 {
-                    throw new InvalidOperationException($"Failed to create SqlBuilder of type {config.SqlBuilderType.FullName} for pool {config.Name}", ex);
+                    throw new InvalidOperationException($"Failed to create SqlBuilder of type {config.SqlBuilderType.FullName} for pool {configName}", ex);
                 }
             }
-            _pools.TryAdd(config.Name, pool);
+            _pools.TryAdd(configName!, pool);
         }
 
 
         /// <summary>
         /// 获取连接池
         /// </summary>
-        public DAOContextPool GetPool(string name = null)
+        public DAOContextPool? GetPool(string? name = null)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(DAOContextPoolFactory));
@@ -176,26 +183,26 @@ namespace LiteOrm
             {
                 throw new ArgumentException("Connection pool name cannot be empty", nameof(name));
             }
-            _pools.TryGetValue(name, out var pool);
+            _pools.TryGetValue(name!, out var pool);
             return pool;
         }
 
         /// <summary>
         /// 获取数据库上下文
         /// </summary>
-        public DAOContext PeekContext(string poolName = null, bool readOnly = false)
+        public DAOContext PeekContext(string? poolName = null, bool readOnly = false)
         {
             var pool = GetPool(poolName);
-            return pool.PeekContext(readOnly);
+            return pool!.PeekContext(readOnly);
         }
 
         /// <summary>
         /// 异步获取数据库上下文
         /// </summary>
-        public async Task<DAOContext> PeekContextAsync(string poolName = null, bool readOnly = false)
+        public async Task<DAOContext> PeekContextAsync(string? poolName = null, bool readOnly = false)
         {
             var pool = GetPool(poolName);
-            return await pool.PeekContextAsync(readOnly).ConfigureAwait(false);
+            return await pool!.PeekContextAsync(readOnly).ConfigureAwait(false);
         }
 
         /// <summary>

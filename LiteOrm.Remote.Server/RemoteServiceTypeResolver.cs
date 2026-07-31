@@ -13,7 +13,7 @@ namespace LiteOrm.Remote.Server
         /// </summary>
         /// <param name="serviceName">服务名称（由客户端 <see cref="ServiceNameUtil.GetServiceName"/> 生成）。</param>
         /// <returns>匹配到的服务接口类型；未找到时返回 null。</returns>
-        Type? ResolveService(string serviceName);
+        Type? ResolveService(string? serviceName);
     }
 
     /// <summary>
@@ -33,8 +33,8 @@ namespace LiteOrm.Remote.Server
         }
 
         /// <inheritdoc />
-        public Type? ResolveService(string serviceName)
-            => string.IsNullOrEmpty(serviceName) ? null : _resolver(serviceName);
+        public Type? ResolveService(string? serviceName)
+            => string.IsNullOrEmpty(serviceName) ? null : _resolver(serviceName!);
     }
 
     /// <summary>
@@ -88,10 +88,10 @@ namespace LiteOrm.Remote.Server
         }
 
         /// <inheritdoc />
-        public Type? ResolveService(string serviceName)
+        public Type? ResolveService(string? serviceName)
         {
             if (string.IsNullOrEmpty(serviceName)) return null;
-            return _cache.GetOrAdd(serviceName, ResolveCore);
+            return _cache.GetOrAdd(serviceName!, ResolveCore);
         }
 
         private Type? ResolveCore(string serviceName)

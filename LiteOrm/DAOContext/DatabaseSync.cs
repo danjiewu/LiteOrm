@@ -34,7 +34,7 @@ namespace LiteOrm
         /// 可通过设置 <see cref="TableSyncingEventArgs.ShouldSync"/> 来覆盖默认的连接池级 <see cref="DAOContextPool.SyncTable"/> 决策，
         /// 从而实现实体类级别的细粒度同步控制。
         /// </summary>
-        public event EventHandler<TableSyncingEventArgs> OnTableSyncing;
+        public event EventHandler<TableSyncingEventArgs>? OnTableSyncing;
 
         /// <summary>
         /// 判定是否需要对指定实体类型执行表结构同步。
@@ -72,7 +72,7 @@ namespace LiteOrm
         /// <summary>
         /// 将指定表名标记为已创建，同时缓存已知列名集合。
         /// </summary>
-        public void MarkTableCreated(string tableName, IEnumerable<string> columnNames = null)
+        public void MarkTableCreated(string tableName, IEnumerable<string>? columnNames = null)
         {
             var cols = columnNames != null
                 ? new HashSet<string>(columnNames, StringComparer.OrdinalIgnoreCase)
@@ -96,11 +96,11 @@ namespace LiteOrm
         /// 确保指定表已在数据库中存在且包含所有必要的列。
         /// 同步版本，供 DAO 在命令构建前调用。
         /// </summary>
-        public void EnsureTable(DAOContext daoContext, Type objectType, string[] tableArgs = null)
+        public void EnsureTable(DAOContext daoContext, Type objectType, string[]? tableArgs = null)
         {
             if (typeof(IArged).IsAssignableFrom(objectType) && (tableArgs == null || tableArgs.Length == 0)) return;
 
-            string tableName = ResolveTableName(objectType, tableArgs);
+            string? tableName = ResolveTableName(objectType, tableArgs);
             if (tableName == null) return;
             if (!ShouldSyncTable(objectType, tableName)) return;
 
@@ -113,11 +113,11 @@ namespace LiteOrm
         /// 确保指定表已在数据库中存在且包含所有必要的列。
         /// 异步版本，供初始化器调用。
         /// </summary>
-        public async Task EnsureTableAsync(DAOContext daoContext, Type objectType, string[] tableArgs = null)
+        public async Task EnsureTableAsync(DAOContext daoContext, Type objectType, string[]? tableArgs = null)
         {
             if (typeof(IArged).IsAssignableFrom(objectType) && (tableArgs == null || tableArgs.Length == 0)) return;
 
-            string tableName = ResolveTableName(objectType, tableArgs);
+            string? tableName = ResolveTableName(objectType, tableArgs);
             if (tableName == null) return;
             if (!ShouldSyncTable(objectType, tableName)) return;
 
@@ -130,13 +130,13 @@ namespace LiteOrm
         /// 根据实体类型与动态表名参数解析出最终的表名。
         /// </summary>
         /// <returns>解析后的表名；若该类型无表定义则返回 null。</returns>
-        private static string ResolveTableName(Type objectType, string[] tableArgs)
+        private static string? ResolveTableName(Type objectType, string[]? tableArgs)
         {
             var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
             if (tableDefinition == null) return null;
             return tableArgs != null && tableArgs.Length > 0
-                ? string.Format(tableDefinition.Name, tableArgs)
-                : tableDefinition.Name;
+                ? string.Format(tableDefinition.Name!, tableArgs)
+                : tableDefinition.Name!;
         }
 
         /// <summary>
@@ -148,14 +148,14 @@ namespace LiteOrm
         /// <param name="objectType">实体类型。</param>
         /// <param name="tableArgs">动态表名参数，适用于实现了 <see cref="IArged"/> 的类型。</param>
         /// <returns>需要执行的 DDL 语句列表（CREATE TABLE、ADD COLUMN、CREATE INDEX）。</returns>
-        public List<string> ResolveEnsureTableDdl(DAOContext daoContext, Type objectType, string[] tableArgs = null)
+        public List<string> ResolveEnsureTableDdl(DAOContext daoContext, Type objectType, string[]? tableArgs = null)
         {
             var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
             if (tableDefinition == null) return new List<string>();
 
             string tableName = tableArgs != null && tableArgs.Length > 0
-                ? string.Format(tableDefinition.Name, tableArgs)
-                : tableDefinition.Name;
+                ? string.Format(tableDefinition.Name!, tableArgs)
+                : tableDefinition.Name!;
             string tableTypeKey = GetTableTypeKey(tableName, objectType);
 
             if (_createdTables.ContainsKey(tableTypeKey))
@@ -179,14 +179,14 @@ namespace LiteOrm
         /// <summary>
         /// 根据实体类型和数据库当前状态，计算出需要执行的 DDL 语句列表（异步版本）。
         /// </summary>
-        public async Task<List<string>> ResolveEnsureTableDdlAsync(DAOContext daoContext, Type objectType, string[] tableArgs = null)
+        public async Task<List<string>> ResolveEnsureTableDdlAsync(DAOContext daoContext, Type objectType, string[]? tableArgs = null)
         {
             var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
             if (tableDefinition == null) return new List<string>();
 
             string tableName = tableArgs != null && tableArgs.Length > 0
-                ? string.Format(tableDefinition.Name, tableArgs)
-                : tableDefinition.Name;
+                ? string.Format(tableDefinition.Name!, tableArgs)
+                : tableDefinition.Name!;
             string tableTypeKey = GetTableTypeKey(tableName, objectType);
 
             if (_createdTables.ContainsKey(tableTypeKey))
@@ -229,13 +229,13 @@ namespace LiteOrm
                     statements.Add(sqlBuilder.BuildCreateTableSql(tableName, cols));
                     foreach (var col in cols.Where(c => c.IsIndex || c.IsUnique))
                         statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
-                    _tableColumns[tableName] = new HashSet<string>(cols.Select(c => c.Name), StringComparer.OrdinalIgnoreCase);
+                    _tableColumns[tableName] = new HashSet<string>(cols.Select(c => c.Name!), StringComparer.OrdinalIgnoreCase);
                 }
                 else
                 {
                     // 表存在，生成补列语句
                     var existingCols = GetExistingColumnsSync(daoContext, sqlBuilder.ToSqlName(tableName));
-                    var missing = cols.Where(c => !existingCols.Contains(c.Name)).ToList();
+                    var missing = cols.Where(c => !existingCols.Contains(c.Name!)).ToList();
                     if (missing.Count > 0)
                     {
                         statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, missing));
@@ -243,9 +243,9 @@ namespace LiteOrm
                         if (updateSql != null) statements.Add(updateSql);
                         foreach (var col in missing.Where(c => c.IsIndex || c.IsUnique))
                             statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
-                        foreach (var c in missing) existingCols.Add(c.Name);
+                        foreach (var c in missing) existingCols.Add(c.Name!);
                     }
-                    foreach (var c in cols) existingCols.Add(c.Name);
+                    foreach (var c in cols) existingCols.Add(c.Name!);
                     _tableColumns[tableName] = existingCols;
                 }
             }
@@ -253,11 +253,11 @@ namespace LiteOrm
             {
                 // 表在缓存中，检查是否需要添加列
                 var knownCols = _tableColumns[tableName];
-                var missing = cols.Where(c => !knownCols.Contains(c.Name)).ToList();
+                var missing = cols.Where(c => !knownCols.Contains(c.Name!)).ToList();
                 if (missing.Count > 0)
                 {
                     var existingCols = GetExistingColumnsSync(daoContext, sqlBuilder.ToSqlName(tableName));
-                    var actualMissing = missing.Where(c => !existingCols.Contains(c.Name)).ToList();
+                    var actualMissing = missing.Where(c => !existingCols.Contains(c.Name!)).ToList();
                     if (actualMissing.Count > 0)
                     {
                         statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, actualMissing));
@@ -267,7 +267,7 @@ namespace LiteOrm
                             statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
                     }
                     var newCols = new HashSet<string>(knownCols, StringComparer.OrdinalIgnoreCase);
-                    foreach (var c in missing) newCols.Add(c.Name);
+                    foreach (var c in missing) newCols.Add(c.Name!);
                     _tableColumns[tableName] = newCols;
                 }
             }
@@ -289,13 +289,13 @@ namespace LiteOrm
                     statements.Add(sqlBuilder.BuildCreateTableSql(tableName, cols));
                     foreach (var col in cols.Where(c => c.IsIndex || c.IsUnique))
                         statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
-                    _tableColumns[tableName] = new HashSet<string>(cols.Select(c => c.Name), StringComparer.OrdinalIgnoreCase);
+                    _tableColumns[tableName] = new HashSet<string>(cols.Select(c => c.Name!), StringComparer.OrdinalIgnoreCase);
                 }
                 else
                 {
                     // 表存在，生成补列语句
                     var existingCols = await GetExistingColumnsAsync(daoContext, sqlBuilder.ToSqlName(tableName)).ConfigureAwait(false);
-                    var missing = cols.Where(c => !existingCols.Contains(c.Name)).ToList();
+                    var missing = cols.Where(c => !existingCols.Contains(c.Name!)).ToList();
                     if (missing.Count > 0)
                     {
                         statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, missing));
@@ -303,9 +303,9 @@ namespace LiteOrm
                         if (updateSql != null) statements.Add(updateSql);
                         foreach (var col in missing.Where(c => c.IsIndex || c.IsUnique))
                             statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
-                        foreach (var c in missing) existingCols.Add(c.Name);
+                        foreach (var c in missing) existingCols.Add(c.Name!);
                     }
-                    foreach (var c in cols) existingCols.Add(c.Name);
+                    foreach (var c in cols) existingCols.Add(c.Name!);
                     _tableColumns[tableName] = existingCols;
                 }
             }
@@ -313,11 +313,11 @@ namespace LiteOrm
             {
                 // 表在缓存中，检查是否需要添加列
                 var knownCols = _tableColumns[tableName];
-                var missing = cols.Where(c => !knownCols.Contains(c.Name)).ToList();
+                var missing = cols.Where(c => !knownCols.Contains(c.Name!)).ToList();
                 if (missing.Count > 0)
                 {
                     var existingCols = await GetExistingColumnsAsync(daoContext, sqlBuilder.ToSqlName(tableName)).ConfigureAwait(false);
-                    var actualMissing = missing.Where(c => !existingCols.Contains(c.Name)).ToList();
+                    var actualMissing = missing.Where(c => !existingCols.Contains(c.Name!)).ToList();
                     if (actualMissing.Count > 0)
                     {
                         statements.Add(sqlBuilder.BuildAddColumnsSql(tableName, actualMissing));
@@ -327,7 +327,7 @@ namespace LiteOrm
                             statements.Add(sqlBuilder.BuildCreateIndexSql(tableName, col));
                     }
                     var newCols = new HashSet<string>(knownCols, StringComparer.OrdinalIgnoreCase);
-                    foreach (var c in missing) newCols.Add(c.Name);
+                    foreach (var c in missing) newCols.Add(c.Name!);
                     _tableColumns[tableName] = newCols;
                 }
             }
@@ -425,7 +425,7 @@ namespace LiteOrm
             {
                 var schema = daoContext.DbConnection.GetSchema("Columns", new[] { null, null, quotedTableName });
                 foreach (DataRow row in schema.Rows)
-                    columns.Add(row["COLUMN_NAME"].ToString());
+                    columns.Add(row["COLUMN_NAME"].ToString()!);
             }
             return columns;
         }
@@ -445,7 +445,7 @@ namespace LiteOrm
             {
                 var schema = daoContext.DbConnection.GetSchema("Columns", new[] { null, null, quotedTableName });
                 foreach (DataRow row in schema.Rows)
-                    columns.Add(row["COLUMN_NAME"].ToString());
+                    columns.Add(row["COLUMN_NAME"].ToString()!);
             }
             return columns;
         }
@@ -464,7 +464,7 @@ namespace LiteOrm
         /// <param name="tableName">目标表名。</param>
         /// <param name="columns">本次新增的列集合。</param>
         /// <returns>UPDATE 语句；若无符合条件的列则返回 <c>null</c>。</returns>
-        private string BuildMissingColumnsDefaultUpdateSql(string tableName, IEnumerable<ColumnDefinition> columns)
+        private string? BuildMissingColumnsDefaultUpdateSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
             var setters = new List<string>();
             foreach (var column in columns)
@@ -476,7 +476,7 @@ namespace LiteOrm
                 if (!propType.IsValueType) continue;
                 if (Nullable.GetUnderlyingType(propType) != null) continue;
 
-                string quotedCol = sqlBuilder.ToSqlName(column.Name);
+                string quotedCol = sqlBuilder.ToSqlName(column.Name!);
                 string defaultValue = sqlBuilder.GetDefaultValueSql(column);
                 setters.Add($"{quotedCol} = {defaultValue}");
             }

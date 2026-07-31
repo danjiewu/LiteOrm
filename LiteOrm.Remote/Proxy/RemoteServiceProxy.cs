@@ -54,7 +54,7 @@ namespace LiteOrm.Remote
         public bool DeleteID(object id, params string[] tableArgs) => _proxy.DeleteID(id, tableArgs);
 
         /// <inheritdoc />
-        public int DeleteAll(LogicExpr expr, params string[] tableArgs) => _proxy.DeleteAll(expr, tableArgs);
+        public int DeleteAll(LogicExpr? expr, params string[]? tableArgs) => _proxy.DeleteAll(expr, tableArgs);
 
         /// <inheritdoc />
         public int UpdateAll(UpdateExpr expr, params string[] tableArgs) => _proxy.UpdateAll(expr, tableArgs);

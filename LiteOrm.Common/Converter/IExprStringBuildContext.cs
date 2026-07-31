@@ -8,7 +8,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取SQL构建器
         /// </summary>
-        ISqlBuilder SqlBuilder { get; }
+        ISqlBuilder? SqlBuilder { get; }
 
         /// <summary>
         /// 创建SQL构建上下文

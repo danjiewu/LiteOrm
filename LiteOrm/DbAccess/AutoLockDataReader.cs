@@ -30,7 +30,7 @@ namespace LiteOrm
         /// </summary>
         private bool _disposed;
 
-        private Func<object, Type, object> _defalutConverter;
+        private Func<object?, Type?, object?>? _defalutConverter;
 
         /// <summary>
         /// 初始化 <see cref="AutoLockDataReader"/> 类的新实例。
@@ -39,10 +39,10 @@ namespace LiteOrm
         /// <param name="scope">需要管理的锁定作用域。</param>
         /// <param name="defalutConverter">可选的类型转换函数，默认为 Convert.ChangeType。</param>
         /// <exception cref="ArgumentNullException">当 <paramref name="innerReader"/> 或 <paramref name="scope"/> 为 null 时抛出。</exception>
-        public AutoLockDataReader(DbDataReader innerReader, IDisposable scope, Func<object, Type, object> defalutConverter = null)
+        public AutoLockDataReader(DbDataReader innerReader, IDisposable scope, Func<object?, Type?, object?>? defalutConverter = null)
         {
             _innerReader = innerReader ?? throw new ArgumentNullException(nameof(innerReader));
-            _defalutConverter = defalutConverter ?? Convert.ChangeType;
+            _defalutConverter = defalutConverter ?? ((v, t) => Convert.ChangeType(v!, t!));
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
         }
 
@@ -65,10 +65,10 @@ namespace LiteOrm
         /// <param name="value"></param>
         /// <param name="valueType"></param>
         /// <returns></returns>
-        public object ChangeType(object value, Type valueType)
+        public object? ChangeType(object value, Type valueType)
         {
             EnsureNotDisposed();
-            return _defalutConverter(value, valueType);
+            return _defalutConverter!(value, valueType);
         }
         /// <summary>
         /// 获取指定列的列值。
@@ -228,7 +228,7 @@ namespace LiteOrm
         /// <summary>
         /// 从指定列偏移量开始，将字节流从指定的列索引读入作为偏移量开始的缓冲区。
         /// </summary>
-        public override long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
+        public override long GetBytes(int i, long fieldOffset, byte[]? buffer, int bufferoffset, int length)
         {
             EnsureNotDisposed();
             return _innerReader.GetBytes(i, fieldOffset, buffer, bufferoffset, length);
@@ -246,7 +246,7 @@ namespace LiteOrm
         /// <summary>
         /// 从指定列偏移量开始，将字符流从指定的列索引读入作为偏移量开始的缓冲区。
         /// </summary>
-        public override long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
+        public override long GetChars(int i, long fieldoffset, char[]? buffer, int bufferoffset, int length)
         {
             EnsureNotDisposed();
             return _innerReader.GetChars(i, fieldoffset, buffer, bufferoffset, length);
@@ -258,7 +258,7 @@ namespace LiteOrm
         protected override DbDataReader GetDbDataReader(int i)
         {
             EnsureNotDisposed();
-            return _innerReader.GetData(i) as DbDataReader;
+            return (_innerReader.GetData(i) as DbDataReader)!;
         }
 
         /// <summary>
@@ -372,7 +372,7 @@ namespace LiteOrm
         /// <summary>
         /// 返回一个 <see cref="DataTable"/>，它描述 <see cref="IDataReader"/> 的列元数据。
         /// </summary>
-        public override DataTable GetSchemaTable()
+        public override DataTable? GetSchemaTable()
         {
             EnsureNotDisposed();
             return _innerReader.GetSchemaTable();
@@ -384,7 +384,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，其结果为 DataTable。</returns>
-        public override Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+        public override Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
             return _innerReader.GetSchemaTableAsync(cancellationToken);

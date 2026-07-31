@@ -45,7 +45,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var expr = new UpdateExpr(new TableExpr(typeof(TestUser)))
             {
-                Sets = null
+                Sets = null!
             };
 
             Assert.Equal($"UPDATE {nameof(TestUser)}", expr.ToString());

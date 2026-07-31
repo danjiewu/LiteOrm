@@ -18,7 +18,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="oper">一元运算符</param>
         /// <param name="operand">操作数表达式</param>
-        public UnaryExpr(UnaryOperator oper, ValueTypeExpr operand)
+        public UnaryExpr(UnaryOperator oper, ValueTypeExpr? operand)
         {
             Operator = oper;
             Operand = operand;
@@ -32,7 +32,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置操作数表达式
         /// </summary>
-        public ValueTypeExpr Operand { get; set; }
+        public ValueTypeExpr? Operand { get; set; }
 
         /// <summary>
         /// 返回表达式的字符串表示
@@ -50,7 +50,7 @@ namespace LiteOrm.Common
         /// </summary>
         public override Expr Clone()
         {
-            return new UnaryExpr(this.Operator, (ValueTypeExpr)(this.Operand?.Clone()));
+            return new UnaryExpr(this.Operator, this.Operand?.Clone() as ValueTypeExpr);
         }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is UnaryExpr p && p.Operator == Operator && Equals(p.Operand, Operand);
+        public override bool Equals(object? obj) => obj is UnaryExpr p && p.Operator == Operator && Equals(p.Operand, Operand);
 
         /// <summary>
         /// 获取当前对象的哈希码

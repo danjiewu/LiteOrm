@@ -47,7 +47,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置标识列的表达式（如序列名称）。
         /// </summary>
-        public string IdentityExpression { get; internal set; }
+        public string? IdentityExpression { get; internal set; }
 
         /// <summary>
         /// 获取或设置一个值，指示该列是否应创建索引。
@@ -77,12 +77,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置列的默认值，可以是一个常量值或一个数据库函数表达式。
         /// </summary>
-        public string DefaultValue { get; set; }
+        public string? DefaultValue { get; set; }
 
         /// <summary>
         /// 获取或设置列的固定筛选值。支持枚举和其他可转换到属性类型的常量值。
         /// </summary>
-        public object Constant { get; internal set; }
+        public object? Constant { get; internal set; }
         /// <summary>
         /// 获取或设置列映射模式。
         /// </summary>

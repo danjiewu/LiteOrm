@@ -39,7 +39,7 @@ namespace LiteOrm.Tests.Infrastructure
                 .RegisterLiteOrmFramework()
                 .Build();
             
-            var pool = ServiceProvider.GetRequiredService<DAOContextPoolFactory>().GetPool("SQLite");
+            var pool = ServiceProvider.GetRequiredService<DAOContextPoolFactory>().GetPool("SQLite")!;
             pool.OnContextCreated += DatabaseFixture_OnContextCreated;
             pool.ClearPool(); // 确保使用新的连接，触发 OnContextCreated 事件注册函数
 
@@ -69,7 +69,7 @@ namespace LiteOrm.Tests.Infrastructure
         {
             var poolFactory = ServiceProvider.GetRequiredService<DAOContextPoolFactory>();
             var sqlBuilderFactory = ServiceProvider.GetRequiredService<SqlBuilderFactory>();
-            var pool = poolFactory.GetPool();
+            var pool = poolFactory.GetPool()!;
             var sqlBuilder = sqlBuilderFactory.GetSqlBuilder(pool.ProviderType);
             var context = pool.PeekContext();
             try

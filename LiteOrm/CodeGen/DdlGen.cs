@@ -145,11 +145,11 @@ namespace LiteOrm.CodeGen
 
             foreach (var kvp in typesByDataSource)
             {
-                DAOContextPool pool;
+                DAOContextPool? pool;
                 try { pool = _factory.GetPool(kvp.Key); }
                 catch { continue; }
 
-                var context = pool.PeekContext();
+                var context = pool!.PeekContext();
                 try
                 {
                     var sqlList = new List<string>();
@@ -166,7 +166,7 @@ namespace LiteOrm.CodeGen
                                 catch { continue; }
 
                                 if (tableDef == null) continue;
-                                var tableName = tableDef.Name;
+                                var tableName = tableDef.Name!;
                                 statements = new List<string>();
                                 statements.Add(pool.SqlBuilder.BuildCreateTableSql(tableName, tableDef.Columns));
                                 foreach (var col in tableDef.Columns.Where(c => c.IsIndex || c.IsUnique))

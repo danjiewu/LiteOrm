@@ -114,7 +114,7 @@ namespace LiteOrm.Service
             var groups = entities.GroupBy(e => e.Operation);
             foreach (var group in groups)
             {
-                var items = group.Select(e => e.Entity);
+                var items = group.Select(e => e.Entity!);
                 switch (group.Key)
                 {
                     case OpDef.Insert:
@@ -145,7 +145,7 @@ namespace LiteOrm.Service
             foreach (var group in groups)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var items = group.Select(e => e.Entity);
+                var items = group.Select(e => e.Entity!);
                 switch (group.Key)
                 {
                     case OpDef.Insert:
@@ -174,7 +174,7 @@ namespace LiteOrm.Service
         {
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     await ObjectDAO.WithArgs(group.Key).BatchInsertAsync(group, cancellationToken);
@@ -197,7 +197,7 @@ namespace LiteOrm.Service
         {
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     await ObjectDAO.WithArgs(group.Key).BatchUpdateAsync(group, cancellationToken);
@@ -221,7 +221,7 @@ namespace LiteOrm.Service
         {
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     await ObjectDAO.WithArgs(group.Key).BatchUpdateOrInsertAsync(group, cancellationToken);
@@ -244,7 +244,7 @@ namespace LiteOrm.Service
         {
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     await ObjectDAO.WithArgs(group.Key).BatchDeleteAsync(group, cancellationToken);
@@ -413,7 +413,7 @@ namespace LiteOrm.Service
         {
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     ObjectDAO.WithArgs(group.Key).BatchInsert(group);
@@ -434,7 +434,7 @@ namespace LiteOrm.Service
         {
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     ObjectDAO.WithArgs(group.Key).BatchUpdate(group);
@@ -456,7 +456,7 @@ namespace LiteOrm.Service
         {
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     ObjectDAO.WithArgs(group.Key).BatchUpdateOrInsert(group);
@@ -477,7 +477,7 @@ namespace LiteOrm.Service
         {
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t).TableArgs, StringArrayEqualityComparer.Instance);
+                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     ObjectDAO.WithArgs(group.Key).BatchDelete(group);
@@ -601,9 +601,9 @@ namespace LiteOrm.Service
         /// <param name="expr">删除条件表达式。</param>
         /// <param name="tableArgs">表名参数。</param>
         /// <returns>删除的记录数。</returns>
-        int IEntityService.DeleteAll(LogicExpr expr, params string[] tableArgs)
+        int IEntityService.DeleteAll(LogicExpr? expr, params string[]? tableArgs)
         {
-            return DeleteAll(expr, tableArgs);
+            return DeleteAll(expr!, tableArgs!);
         }
 
         /// <summary>
@@ -725,9 +725,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，任务结果为删除的记录数。</returns>
-        async Task<int> IEntityServiceAsync.DeleteAllAsync(LogicExpr expr, string[] tableArgs, CancellationToken cancellationToken)
+        async Task<int> IEntityServiceAsync.DeleteAllAsync(LogicExpr? expr, string[]? tableArgs, CancellationToken cancellationToken)
         {
-            return await DeleteAllAsync(expr, tableArgs, cancellationToken);
+            return await DeleteAllAsync(expr!, tableArgs, cancellationToken);
         }
 
         /// <summary>
@@ -836,7 +836,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>受影响的行数。</returns>
-        public async Task<int> DeleteAllAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async Task<int> DeleteAllAsync(LogicExpr expr, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await ObjectDAO.WithArgs(tableArgs).DeleteAsync(expr, cancellationToken);
         }
@@ -848,7 +848,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，任务结果包含更新的记录数。</returns>
-        public async Task<int> UpdateAllAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async Task<int> UpdateAllAsync(UpdateExpr expr, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await ObjectDAO.WithArgs(tableArgs).UpdateAsync(expr, cancellationToken);
         }
@@ -860,7 +860,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>是否删除成功。</returns>
-        public async Task<bool> DeleteIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public async Task<bool> DeleteIDAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await DeleteIDCoreAsync(id, tableArgs, cancellationToken);
         }
@@ -944,7 +944,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>是否删除成功。</returns>
-        protected virtual async Task<bool> DeleteIDCoreAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        protected virtual async Task<bool> DeleteIDCoreAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             return await ObjectDAO.WithArgs(tableArgs).DeleteByKeysAsync(new object[] { id }, cancellationToken);
         }

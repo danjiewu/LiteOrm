@@ -32,7 +32,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取实体对应的数据库表或视图元数据。
         /// </summary>
-        public override SqlTable Table => TableInfoProvider.GetTableView(ObjectType);
+        public override SqlTable Table => TableInfoProvider.GetTableView(ObjectType)!;
 
         /// <summary>
         /// 指示当前 DAO 是视图查询 DAO。
@@ -49,11 +49,11 @@ namespace LiteOrm
         {
             DataRow row = dt.NewRow();
             int fieldCount = reader.FieldCount;
-            SqlColumn[] columns = new SqlColumn[fieldCount];
+            SqlColumn?[] columns = new SqlColumn?[fieldCount];
             for (int i = 0; i < fieldCount; i++)
             {
                 string name = reader.GetName(i);
-                SqlColumn column = Table.GetColumn(name);
+                SqlColumn? column = Table.GetColumn(name);
                 columns[i] = column;
                 Type propertyType = column?.PropertyType ?? reader.GetFieldType(i);
                 object value = reader.GetValue(i);
@@ -109,7 +109,7 @@ namespace LiteOrm
             }
             else
             {
-                selects = SelectColumns.Select(p => new SelectItemExpr(Expr.Prop(p.Name), p.Name)).ToList();
+                selects = SelectColumns.Select(p => new SelectItemExpr(Expr.Prop(p.Name!), p.Name)).ToList();
             }
 
             SelectExpr selectExpr;

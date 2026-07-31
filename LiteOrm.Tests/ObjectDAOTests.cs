@@ -107,7 +107,7 @@ namespace LiteOrm.Tests
             updateExpr.Set(("Age", Expr.Prop("Age") + Expr.Const(2)));
 
             Assert.Equal(1, dao.Update(updateExpr));
-            Assert.Equal(1, dao.Delete(Expr.Lambda<TestUser>(u => u.Name == "ObjectDaoExpr_Delete")));
+            Assert.Equal(1, dao.Delete(Expr.Lambda<TestUser>(u => u.Name == "ObjectDaoExpr_Delete")!));
 
             var updated = await viewDao.GetObject(exprUser.Id).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(updated);
@@ -181,7 +181,7 @@ namespace LiteOrm.Tests
             Assert.Contains(allUsers, user => user.Name == "ObjectDaoAsyncBatch_B" && user.Age == 42);
             Assert.Contains(allUsers, user => user.Name == "ObjectDaoAsyncBatch_C" && user.Age == 43);
 
-            Assert.Equal(1, await dao.DeleteAsync(Expr.Lambda<TestUser>(u => u.Name == "ObjectDaoAsyncBatch_B"), TestContext.Current.CancellationToken));
+            Assert.Equal(1, await dao.DeleteAsync(Expr.Lambda<TestUser>(u => u.Name == "ObjectDaoAsyncBatch_B")!, TestContext.Current.CancellationToken));
             await dao.BatchDeleteAsync([users[0]], TestContext.Current.CancellationToken);
             await dao.BatchDeleteByKeysAsync(new object[] { inserted.Id }, TestContext.Current.CancellationToken);
 

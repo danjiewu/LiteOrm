@@ -31,10 +31,10 @@ namespace LiteOrm.Tests
         [MemberData(nameof(AddColumnBuilders))]
         public void BuildAddColumnsSql_WithNullableDefaultValue_PreservesDefault(SqlBuilder builder)
         {
-            var tableDefinition = CreateProvider(builder).GetTableDefinition(typeof(SqlBuilderDefaultValueModel));
-            var nickNameColumn = tableDefinition.GetColumn(nameof(SqlBuilderDefaultValueModel.NickName));
+            var tableDefinition = CreateProvider(builder).GetTableDefinition(typeof(SqlBuilderDefaultValueModel))!;
+            var nickNameColumn = tableDefinition.GetColumn(nameof(SqlBuilderDefaultValueModel.NickName))!;
 
-            var sql = builder.BuildAddColumnsSql(tableDefinition.Name, new[] { nickNameColumn });
+            var sql = builder.BuildAddColumnsSql(tableDefinition.Name!, new[] { nickNameColumn! });
 
             Assert.Contains("DEFAULT 'guest'", sql);
             Assert.DoesNotContain("DEFAULT ''", sql);
@@ -43,9 +43,9 @@ namespace LiteOrm.Tests
         [Fact]
         public void SQLiteBuildCreateTableSql_WithDefaultValue_PreservesDefault()
         {
-            var tableDefinition = CreateProvider(SQLiteBuilder.Instance).GetTableDefinition(typeof(SqlBuilderDefaultValueModel));
+            var tableDefinition = CreateProvider(SQLiteBuilder.Instance).GetTableDefinition(typeof(SqlBuilderDefaultValueModel))!;
 
-            var sql = SQLiteBuilder.Instance.BuildCreateTableSql(tableDefinition.Name, tableDefinition.Columns);
+            var sql = SQLiteBuilder.Instance.BuildCreateTableSql(tableDefinition.Name!, tableDefinition.Columns);
 
             Assert.Contains(@"""NickName""", sql);
             Assert.Contains("DEFAULT 'guest'", sql);
@@ -60,9 +60,9 @@ namespace LiteOrm.Tests
         [Fact]
         public void OracleBuildCreateTableSql_WithByteAndUnsignedColumns_UsesNumber()
         {
-            var tableDefinition = CreateProvider(OracleBuilder.Instance).GetTableDefinition(typeof(OracleNumericModel));
+            var tableDefinition = CreateProvider(OracleBuilder.Instance).GetTableDefinition(typeof(OracleNumericModel))!;
 
-            var sql = OracleBuilder.Instance.BuildCreateTableSql(tableDefinition.Name, tableDefinition.Columns);
+            var sql = OracleBuilder.Instance.BuildCreateTableSql(tableDefinition.Name!, tableDefinition.Columns);
 
             Assert.Contains("NUMBER", sql);
             Assert.DoesNotContain("TINYINT", sql);
@@ -72,9 +72,9 @@ namespace LiteOrm.Tests
         [Fact]
         public void MySqlBuildCreateTableSql_WithCustomStartValue_AppendsAutoIncrementOption()
         {
-            var tableDefinition = CreateProvider(MySqlBuilder.Instance).GetTableDefinition(typeof(IdentityStartValueModel));
+            var tableDefinition = CreateProvider(MySqlBuilder.Instance).GetTableDefinition(typeof(IdentityStartValueModel))!;
 
-            var sql = MySqlBuilder.Instance.BuildCreateTableSql(tableDefinition.Name, tableDefinition.Columns);
+            var sql = MySqlBuilder.Instance.BuildCreateTableSql(tableDefinition.Name!, tableDefinition.Columns);
 
             Assert.Contains("AUTO_INCREMENT", sql);
             Assert.Contains("AUTO_INCREMENT = 1000", sql);
@@ -83,9 +83,9 @@ namespace LiteOrm.Tests
         [Fact]
         public void MySqlBuildCreateTableSql_WithDefaultStartValue_DoesNotAppendAutoIncrementOption()
         {
-            var tableDefinition = CreateProvider(MySqlBuilder.Instance).GetTableDefinition(typeof(SqlBuilderDefaultValueModel));
+            var tableDefinition = CreateProvider(MySqlBuilder.Instance).GetTableDefinition(typeof(SqlBuilderDefaultValueModel))!;
 
-            var sql = MySqlBuilder.Instance.BuildCreateTableSql(tableDefinition.Name, tableDefinition.Columns);
+            var sql = MySqlBuilder.Instance.BuildCreateTableSql(tableDefinition.Name!, tableDefinition.Columns);
 
             Assert.Contains("AUTO_INCREMENT", sql);
             Assert.DoesNotContain("AUTO_INCREMENT =", sql);
@@ -94,9 +94,9 @@ namespace LiteOrm.Tests
         [Fact]
         public void DamengBuildCreateTableSql_WithCustomStartValueAndIncreasement_UsesIdentitySyntax()
         {
-            var tableDefinition = CreateProvider(DamengBuilder.Instance).GetTableDefinition(typeof(IdentityStartValueModel));
+            var tableDefinition = CreateProvider(DamengBuilder.Instance).GetTableDefinition(typeof(IdentityStartValueModel))!;
 
-            var sql = DamengBuilder.Instance.BuildCreateTableSql(tableDefinition.Name, tableDefinition.Columns);
+            var sql = DamengBuilder.Instance.BuildCreateTableSql(tableDefinition.Name!, tableDefinition.Columns);
 
             Assert.Contains("IDENTITY(1000, 5)", sql);
         }

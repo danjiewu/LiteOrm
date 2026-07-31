@@ -92,8 +92,8 @@ namespace LiteOrm.Tests
             Assert.True(pa1.Equals(pa2));
             Assert.False(pa1.Equals(pa3)); // 不同的属性名
             Assert.False(pa1.Equals(pa4)); // 不同的属性
-            Assert.Equal("Name", (pa1 as PropertyExpr).PropertyName);
-            Assert.Equal("u", (pa1 as PropertyExpr).TableAlias);
+            Assert.Equal("Name", (pa1 as PropertyExpr)!.PropertyName);
+            Assert.Equal("u", (pa1 as PropertyExpr)!.TableAlias);
 
             // 表别名验证 - 应该对无效字符抛出异常
             var propWithAlias = new PropertyExpr("Name");
@@ -136,9 +136,9 @@ namespace LiteOrm.Tests
         public void UnaryExpr_Tests()
         {
             // 相等性测试
-            Expr u1 = !(Expr.Prop("IsDeleted") != 0);
-            Expr u2 = !(Expr.Prop("IsDeleted") != 0);
-            Expr u3 = !(Expr.Prop("IsActive") != 0);
+            Expr u1 = (!(Expr.Prop("IsDeleted") != 0))!;
+            Expr u2 = (!(Expr.Prop("IsDeleted") != 0))!;
+            Expr u3 = (!(Expr.Prop("IsActive") != 0))!;
 
             Assert.True(u1.Equals(u2));
             Assert.False(u1.Equals(u3));
@@ -188,9 +188,9 @@ namespace LiteOrm.Tests
         {
             // 相等性测试
             // LambdaExpr 使用 LambdaExprConverter.ToExpr() 进行相等性检查
-            Expr l1 = Expr.Lambda<TestUser>(u => u.Age > 18);
-            Expr l2 = Expr.Lambda<TestUser>(u => u.Age > 18);
-            Expr l3 = Expr.Lambda<TestUser>(u => u.Age > 20);
+            Expr l1 = Expr.Lambda<TestUser>(u => u.Age > 18)!;
+            Expr l2 = Expr.Lambda<TestUser>(u => u.Age > 18)!;
+            Expr l3 = Expr.Lambda<TestUser>(u => u.Age > 20)!;
 
             Assert.True(l1.Equals(l2));
             Assert.False(l1.Equals(l3));
@@ -233,7 +233,7 @@ namespace LiteOrm.Tests
         public void GenericSqlExpr_Tests()
         {
             // 注册一个虚拟处理器
-            GenericSqlExpr.Register("TestKey", (SqlBuildContext ctx, ISqlBuilder builder, ICollection<Param> pms, object arg) => "TEST SQL");
+            GenericSqlExpr.Register("TestKey", (SqlBuildContext ctx, ISqlBuilder builder, ICollection<Param> pms, object? arg) => "TEST SQL");
 
             // 相等性测试
             Expr g1 = GenericSqlExpr.Get("TestKey", 123);
@@ -294,7 +294,7 @@ namespace LiteOrm.Tests
             var listExpr = v1.In(new[] { v1, v2 });
 
             // Sql / StaticSql
-            GenericSqlExpr.Register("TestKey2", (SqlBuildContext ctx, ISqlBuilder builder, ICollection<Param> pms, object arg) => "TEST");
+            GenericSqlExpr.Register("TestKey2", (SqlBuildContext ctx, ISqlBuilder builder, ICollection<Param> pms, object? arg) => "TEST");
             Assert.Equal(GenericSqlExpr.Get("TestKey2", 1), Expr.Sql("TestKey2", 1));
             Assert.Equal(GenericSqlExpr.Get("TestKey2"), Expr.Sql("TestKey2"));
 
@@ -370,10 +370,10 @@ namespace LiteOrm.Tests
             Assert.Single(orderBy.OrderBys);
             Assert.False(orderBy.OrderBys[0].Ascending); // Desc
 
-            var select = (SelectExpr)orderBy.Source;
+            var select = (SelectExpr)orderBy.Source!;
             Assert.Equal(2, select.Selects.Count);
 
-            var where = (WhereExpr)select.Source;
+            var where = (WhereExpr)select.Source!;
             Assert.Equal(Expr.Prop("Age") > 18, where.Where);
 
             Assert.Equal(table, where.Source);
@@ -405,7 +405,7 @@ namespace LiteOrm.Tests
             var table = new FromExpr(typeof(TestUser));
             var groupBy = new GroupByExpr(table, Expr.Prop("DeptId"), Expr.Prop("Sex"));
             Assert.Equal(2, groupBy.GroupBys.Count);
-            Assert.Equal("DeptId", (groupBy.GroupBys[0] as PropertyExpr).PropertyName);
+            Assert.Equal("DeptId", (groupBy.GroupBys[0] as PropertyExpr)!.PropertyName);
             // 序列化和相等性测试
             TestSerialization(groupBy);
         }

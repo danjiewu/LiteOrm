@@ -55,7 +55,7 @@ namespace LiteOrm.Common
         private ValueStringBuilder _builder;
         private readonly List<Param> _params = new List<Param>();
         private readonly SqlBuildContext _context;
-        private readonly ISqlBuilder _sqlBuilder;
+        private readonly ISqlBuilder? _sqlBuilder;
 
         /// <summary>
         /// 初始化插值字符串处理器
@@ -88,7 +88,7 @@ namespace LiteOrm.Common
         {
             if (value is Expr expr)
             {
-                expr.ToSql(ref _builder, _context, _sqlBuilder, _params);
+                expr.ToSql(ref _builder, _context, _sqlBuilder!, _params);
             }
             else if (value is RawSql rawSql)
             {
@@ -98,7 +98,7 @@ namespace LiteOrm.Common
             else if (value != null)
             {
                 string paramName = $"{_params.Count}";
-                _builder.Append(_sqlBuilder.ToSqlParam(paramName));
+                _builder.Append(_sqlBuilder!.ToSqlParam(paramName));
                 _params.Add(new Param(paramName, value));
             }
         }

@@ -75,10 +75,10 @@ namespace LiteOrm.Common.UnitTests
         public void TableAttribute_WithNullTableName_SetsTableNamePropertyToNull()
         {
             // Arrange
-            string tableName = null;
+            string? tableName = null;
 
             // Act
-            var attribute = new TableAttribute(tableName);
+            var attribute = new TableAttribute(tableName!);
 
             // Assert
             Assert.Null(attribute.TableName);

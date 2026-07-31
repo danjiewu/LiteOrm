@@ -42,7 +42,7 @@ namespace LiteOrm
         /// <returns>对应的批量插入提供程序</returns>
         /// <exception cref="ArgumentNullException"></exception>
         /// <exception cref="ArgumentException"></exception>
-        public IBulkProvider GetProvider(Type dbConnectionType)
+        public IBulkProvider? GetProvider(Type dbConnectionType)
         {
             if (dbConnectionType == null)
                 throw new ArgumentNullException(nameof(dbConnectionType));

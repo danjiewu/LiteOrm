@@ -62,10 +62,10 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="propertyName">属性名</param>
         /// <returns>列定义，列名不存在则返回null</returns>
-        public virtual ColumnRef GetColumn(string propertyName)
+        public virtual ColumnRef? GetColumn(string propertyName)
         {
             if (String.IsNullOrEmpty(propertyName)) return null;
-            ColumnRef column;
+            ColumnRef? column;
             NamedColumnCache.TryGetValue(propertyName, out column);
             return column;
         }
@@ -73,7 +73,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 确定指定的对象是否等于当前对象。
         /// </summary>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(this, obj)) return true;
             if (obj == null || obj.GetType() != GetType()) return false;

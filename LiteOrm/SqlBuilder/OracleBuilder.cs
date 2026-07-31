@@ -73,8 +73,8 @@ namespace LiteOrm
         {
             if (IdentitySource == OracleIdentitySourceType.Sequence || IdentitySource == OracleIdentitySourceType.Expression)
             {
-                columns += "," + ToSqlName(identityColumn.Name);
-                string identityValue = IdentitySource == OracleIdentitySourceType.Sequence
+                columns += "," + ToSqlName(identityColumn.Name!);
+                string? identityValue = IdentitySource == OracleIdentitySourceType.Sequence
                     ? tableName + "_seq.nextval" : identityColumn.IdentityExpression;
 
                 var sb = ValueStringBuilder.Create(2048);
@@ -122,15 +122,15 @@ namespace LiteOrm
         {
             if (IdentitySource == OracleIdentitySourceType.Sequence)
             {
-                strColumns += "," + ToSqlName(identityColumn.Name);
+                strColumns += "," + ToSqlName(identityColumn.Name!);
                 strValues += "," + tableName + "_seq.nextval";
             }
             else if (IdentitySource == OracleIdentitySourceType.Expression)
             {
-                strColumns += "," + ToSqlName(identityColumn.Name);
+                strColumns += "," + ToSqlName(identityColumn.Name!);
                 strValues += "," + identityColumn.IdentityExpression;
             }
-            return $"INSERT INTO {ToSqlName(tableName)} \n({strColumns})\nVALUES ({strValues}) \nRETURNING {ToSqlName(identityColumn.Name)} INTO {ToSqlParam(Constants.IdentityParamName)}";
+            return $"INSERT INTO {ToSqlName(tableName)} \n({strColumns})\nVALUES ({strValues}) \nRETURNING {ToSqlName(identityColumn.Name!)} INTO {ToSqlParam(Constants.IdentityParamName)}";
         }
 
         /// <summary>
@@ -352,7 +352,7 @@ namespace LiteOrm
                     string valParam = ":" + (b * paramsPerRecord + i);
                     sb.Append(valParam);
                     sb.Append(" AS ");
-                    sb.Append(ToSqlName(updatableColumns[i].Name));
+                    sb.Append(ToSqlName(updatableColumns[i].Name!));
                 }
 
                 // 添加主键列的参数
@@ -362,7 +362,7 @@ namespace LiteOrm
                     string keyParam = ":" + (b * paramsPerRecord + updatableColumns.Length + k);
                     sb.Append(keyParam);
                     sb.Append(" AS ");
-                    sb.Append(ToSqlName(keyColumns[k].Name));
+                    sb.Append(ToSqlName(keyColumns[k].Name!));
                 }
 
                 sb.Append(" FROM DUAL\n");
@@ -376,9 +376,9 @@ namespace LiteOrm
             {
                 if (k > 0) sb.Append(" AND ");
                 sb.Append("t.");
-                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(ToSqlName(keyColumns[k].Name!));
                 sb.Append(" = s.");
-                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(ToSqlName(keyColumns[k].Name!));
             }
             sb.Append(")\n");
 
@@ -389,9 +389,9 @@ namespace LiteOrm
             {
                 if (i > 0) sb.Append(", ");
                 sb.Append("t.");
-                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(ToSqlName(updatableColumns[i].Name!));
                 sb.Append(" = s.");
-                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(ToSqlName(updatableColumns[i].Name!));
             }
 
             string result = sb.ToString();

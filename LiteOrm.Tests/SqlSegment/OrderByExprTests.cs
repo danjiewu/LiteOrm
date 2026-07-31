@@ -80,7 +80,7 @@ namespace LiteOrm.Common.UnitTests
             // Arrange
             var orderBy = new OrderByExpr(new FromExpr(typeof(TestUser)))
             {
-                OrderBys = new List<OrderByItemExpr> { null, Expr.Prop("Age").Asc() }
+                OrderBys = new List<OrderByItemExpr> { null!, Expr.Prop("Age").Asc() }
             };
 
             // Act
@@ -279,7 +279,7 @@ namespace LiteOrm.Common.UnitTests
             var original = new OrderByExpr
             {
                 Source = null,
-                OrderBys = null
+                OrderBys = null!
             };
 
             // Act
@@ -950,7 +950,7 @@ namespace LiteOrm.Common.UnitTests
             OrderByItemExpr[]? orderBys = null;
 
             // Act
-            var result = new OrderByExpr(mockSource.Object, orderBys);
+            var result = new OrderByExpr(mockSource.Object, orderBys!);
 
             // Assert
             Assert.Same(mockSource.Object, result.Source);
@@ -994,7 +994,7 @@ namespace LiteOrm.Common.UnitTests
             OrderByItemExpr[]? orderBys = null;
 
             // Act
-            var result = new OrderByExpr(source, orderBys);
+            var result = new OrderByExpr(source, orderBys!);
 
             // Assert
             Assert.Null(result.Source);
@@ -1063,7 +1063,7 @@ namespace LiteOrm.Common.UnitTests
             var orderBy2 = new OrderByItemExpr();
 
             // Act
-            var result = new OrderByExpr(mockSource.Object, orderBy1, nullOrderBy, orderBy2);
+            var result = new OrderByExpr(mockSource.Object, orderBy1, nullOrderBy!, orderBy2);
 
             // Assert
             Assert.Same(mockSource.Object, result.Source);
@@ -1292,7 +1292,7 @@ namespace LiteOrm.Common.UnitTests
             var source = new FromExpr();
             var orderByExpr = new OrderByExpr(source)
             {
-                OrderBys = null
+                OrderBys = null!
             };
 
             // Act & Assert

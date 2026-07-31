@@ -112,7 +112,7 @@ namespace LiteOrm.Common.UnitTests
             string? foreignName = null;
 
             // Act
-            var attribute = new ForeignColumnAttribute(foreignName);
+            var attribute = new ForeignColumnAttribute(foreignName!);
 
             // Assert
             Assert.Null(attribute.Foreign);

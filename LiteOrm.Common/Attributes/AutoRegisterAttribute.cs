@@ -16,7 +16,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 支持多个服务类型
         /// </summary>
-        public Type[] ServiceTypes { get; set; }
+        public Type[]? ServiceTypes { get; set; }
 
         /// <summary>
         /// 是否启用自动注册
@@ -26,7 +26,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 服务唯一标识
         /// </summary>
-        public object Key { get; set; }
+        public object? Key { get; set; }
 
         /// <summary>
         /// 是否自动激活服务（即在容器构建完成后立即解析实例），默认为 false

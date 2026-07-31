@@ -20,7 +20,7 @@ namespace LiteOrm
     /// </summary>
     public class LiteOrmCoreInitializer : IHostedService
     {
-        private readonly ILogger<LiteOrmCoreInitializer> _logger;
+        private readonly ILogger<LiteOrmCoreInitializer>? _logger;
         private readonly IDataSourceProvider _dataSourceProvider;
         private readonly DAOContextPoolFactory _daoContextPoolFactory;
 
@@ -33,7 +33,7 @@ namespace LiteOrm
         public LiteOrmCoreInitializer(
             IDataSourceProvider dataSourceProvider,
             DAOContextPoolFactory daoContextPoolFactory,
-            ILogger<LiteOrmCoreInitializer> logger = null)
+            ILogger<LiteOrmCoreInitializer>? logger = null)
         {
             _dataSourceProvider = dataSourceProvider;
             _daoContextPoolFactory = daoContextPoolFactory;
@@ -81,12 +81,12 @@ namespace LiteOrm
             {
                 try
                 {
-                    return (IEnumerable<Type>)a.GetTypes();
+                    return (IEnumerable<Type>)a.GetTypes().OfType<Type>();
                 }
                 catch (ReflectionTypeLoadException ex)
                 {
                     _logger?.LogWarning(ex, "Failed to load types from assembly '{Assembly}', some types will be skipped", a.FullName);
-                    return ex.Types.Where(t => t != null);
+                    return ex.Types.OfType<Type>();
                 }
             })
             .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null)
@@ -103,7 +103,7 @@ namespace LiteOrm
             var tableGroupsByDataSource = tableTypes.GroupBy(t =>
             {
                 var attr = t.GetCustomAttribute<TableAttribute>();
-                return attr.DataSource ?? _dataSourceProvider.DefaultDataSourceName;
+                return attr!.DataSource ?? _dataSourceProvider.DefaultDataSourceName;
             }).ToList();
 
             // 循环执行各个数据源的同步任务

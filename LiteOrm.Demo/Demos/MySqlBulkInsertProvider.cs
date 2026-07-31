@@ -24,7 +24,8 @@ namespace LiteOrm.Demo.Demos
 
         private static MySqlBulkCopy CreateBulkCopy(DataTable dt, IDbConnection dbConnection, IDbTransaction transaction)
         {
-            MySqlBulkCopy bulkCopy = new MySqlBulkCopy(dbConnection as MySqlConnection, transaction as MySqlTransaction);
+            var connection = dbConnection as MySqlConnection;
+            MySqlBulkCopy bulkCopy = new MySqlBulkCopy(connection!, transaction as MySqlTransaction);
             bulkCopy.DestinationTableName = dt.TableName;
             bulkCopy.ConflictOption = MySqlBulkLoaderConflictOption.Replace;
             for (int i = 0; i < dt.Columns.Count; i++)

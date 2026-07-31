@@ -130,7 +130,7 @@ namespace LiteOrm.Common.UnitTests
         public void Visit_Action_NullRoot_DoesNotThrow()
         {
             var visited = new List<string>();
-            var ex = Record.Exception(() => ExprVisitor.Visit(node => visited.Add("x"), null));
+            var ex = Record.Exception(() => ExprVisitor.Visit(node => visited.Add("x"), null!));
             Assert.Null(ex);
             Assert.Empty(visited);
         }
@@ -138,7 +138,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Visit_Action_NullVisitor_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Visit((Action<Expr>)null, CreateSimpleExpr()));
+            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Visit((Action<Expr>)null!, CreateSimpleExpr()));
         }
 
         [Fact]
@@ -164,14 +164,14 @@ namespace LiteOrm.Common.UnitTests
         public void VisitAll_IExprNodeVisitor_NullRoot_DoesNotThrow()
         {
             var visitor = new TestVisitor(_ => { }, _ => { });
-            var ex = Record.Exception(() => ExprVisitor.Visit(visitor, null));
+            var ex = Record.Exception(() => ExprVisitor.Visit(visitor, null!));
             Assert.Null(ex);
         }
 
         [Fact]
         public void VisitAll_IExprNodeVisitor_NullVisitor_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Visit((IExprNodeVisitor)null, CreateSimpleExpr()));
+            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Visit((IExprNodeVisitor)null!, CreateSimpleExpr()));
         }
 
         [Fact]
@@ -229,14 +229,14 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void VisitAll_ExprValidator_NullRoot_ReturnsTrue()
         {
-            bool result = ExprVisitor.Validate(new TestValidator(_ => false), null);
+            bool result = ExprVisitor.Validate(new TestValidator(_ => false), null!);
             Assert.True(result);
         }
 
         [Fact]
         public void VisitAll_ExprValidator_NullValidator_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Validate((ExprValidator)null, CreateSimpleExpr()));
+            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Validate((ExprValidator)null!, CreateSimpleExpr()));
         }
 
         private static LogicExpr CreateSimpleExpr()

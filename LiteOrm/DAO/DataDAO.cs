@@ -29,7 +29,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取实体对应的数据库表元数据。
         /// </summary>
-        public override SqlTable Table => TableInfoProvider.GetTableDefinition(ObjectType);
+        public override SqlTable Table => TableInfoProvider.GetTableDefinition(ObjectType)!;
 
         /// <summary>
         /// 获取或设置用于生成 SQL 的上下文。
@@ -53,9 +53,9 @@ namespace LiteOrm
             List<Param> paramValues = new List<Param>();
             foreach (KeyValuePair<string, object> value in values)
             {
-                ColumnDefinition column = TableDefinition.GetColumn(value.Key);
+                ColumnDefinition? column = TableDefinition.GetColumn(value.Key);
                 if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
-                strSets.Add($"{SqlBuilder.ToSqlName(column.Name)} ={ToSqlParam(paramValues.Count.ToString())}");
+                strSets.Add($"{SqlBuilder.ToSqlName(column.Name!)} ={ToSqlParam(paramValues.Count.ToString())}");
                 paramValues.Add(new Param(paramValues.Count.ToString(), value.Value, column.DbType));
             }
             var context = CreateSqlBuildContext(true);

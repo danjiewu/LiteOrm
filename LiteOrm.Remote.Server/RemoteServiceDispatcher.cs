@@ -59,7 +59,7 @@ namespace LiteOrm.Remote.Server
             {
                 RequestID = request.RequestID
             };
-            MethodInfo method = null;
+            MethodInfo? method = null;
             try
             {
                 // 1. 解析服务类型
@@ -181,7 +181,7 @@ namespace LiteOrm.Remote.Server
                 : null;
 
             // 2. 提取方法名，查找 MethodInfo
-            string methodName = null;
+            string? methodName = null;
             if (root.TryGetProperty("Method", out var methodProp) && methodProp.ValueKind == JsonValueKind.String)
                 methodName = methodProp.GetString();
 
@@ -190,7 +190,7 @@ namespace LiteOrm.Remote.Server
                 throw new ServiceException($"Method '{methodName}' with matching signature not found on service '{serviceName}'.");
 
             // 3. 按方法参数类型反序列化 Arguments
-            object[] arguments = Array.Empty<object>();
+            object?[] arguments = Array.Empty<object?>();
             if (root.TryGetProperty("Arguments", out var argsProp) && argsProp.ValueKind == JsonValueKind.Array)
             {
                 var paramTypes = method.GetParameters()
@@ -198,11 +198,11 @@ namespace LiteOrm.Remote.Server
                     .Select(p => p.ParameterType)
                     .ToArray();
 
-                var argList = new System.Collections.Generic.List<object>();
+                var argList = new System.Collections.Generic.List<object?>();
                 int paramIndex = 0;
                 foreach (var element in argsProp.EnumerateArray())
                 {
-                    Type declaredType = paramIndex < paramTypes.Length ? paramTypes[paramIndex] : null;
+                    Type? declaredType = paramIndex < paramTypes.Length ? paramTypes[paramIndex] : null;
                     argList.Add(RemoteInvocationRequestConverter.DeserializeTypedValue(element, declaredType, options));
                     paramIndex++;
                 }
@@ -221,7 +221,7 @@ namespace LiteOrm.Remote.Server
         /// <summary>
         /// 在服务类型上按方法名查找 <see cref="MethodInfo"/>。
         /// </summary>
-        private static MethodInfo? ResolveMethod(Type serviceType, string methodName)
+        private static MethodInfo? ResolveMethod(Type serviceType, string? methodName)
         {
             if (string.IsNullOrEmpty(methodName)) return null;
             var methodCache = _methodCache.GetOrAdd(serviceType, BuildMethodCache);
@@ -294,7 +294,7 @@ namespace LiteOrm.Remote.Server
         /// <summary>
         /// 将请求参数转换为方法参数数组。
         /// </summary>
-        private static object?[] GetArgumentsValues(MethodInfo method, object[] arguments, CancellationToken cancellationToken)
+        private static object?[] GetArgumentsValues(MethodInfo method, object?[] arguments, CancellationToken cancellationToken)
         {
             var parameters = method.GetParameters();
             var result = new object?[parameters.Length];
@@ -406,7 +406,7 @@ namespace LiteOrm.Remote.Server
                     foreach (var item in items)
                         typedList.Add(handler.GenerateReturnValue(item));
 
-                    response.OutArguments[argListIndex] = typedList;
+                    (response.OutArguments ??= new SortedList<int, object>())[argListIndex] = typedList;
                 }
                 else
                 {
@@ -418,7 +418,7 @@ namespace LiteOrm.Remote.Server
                         continue;
                     }
 
-                    response.OutArguments[argListIndex] = returnValue;
+                    (response.OutArguments ??= new SortedList<int, object>())[argListIndex] = returnValue;
                 }
 
                 argListIndex++;

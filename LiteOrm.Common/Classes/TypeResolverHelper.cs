@@ -25,7 +25,7 @@ namespace LiteOrm.Common
         /// <summary>自定义注册：类型 → 名称。</summary>
         private static readonly ConcurrentDictionary<Type, string> _typeToName = new();
         /// <summary>FindType 结果缓存：typeName → (defaultNamespace → 类型，未找到为 null)。双层字典便于按 typeName 维度整体失效。</summary>
-        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string?, Type?>> _findTypeCache = new(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, Type?>> _findTypeCache = new(StringComparer.Ordinal);
         /// <summary>GetName 结果缓存：类型 → 名称。</summary>
         private static readonly ConcurrentDictionary<Type, string> _getNameCache = new();
 
@@ -92,7 +92,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="type">类型。</param>
         /// <returns>类型名称；<paramref name="type"/> 为 null 时返回空字符串。</returns>
-        public static string GetName(Type type)
+        public static string GetName(Type? type)
         {
             if (type is null) return string.Empty;
             // 自定义注册优先（实时查询，确保 Register 后立即生效）
@@ -134,7 +134,7 @@ namespace LiteOrm.Common
         {
             if (string.IsNullOrEmpty(typeName)) return null;
             // 双层字典：外层按 typeName 索引，内层按 defaultNamespace 索引
-            var inner = _findTypeCache.GetOrAdd(typeName, _ => new ConcurrentDictionary<string?, Type?>(StringComparer.Ordinal));
+            var inner = _findTypeCache.GetOrAdd(typeName, _ => new ConcurrentDictionary<string, Type?>(StringComparer.Ordinal));
             return inner.GetOrAdd(defaultNamespace ?? string.Empty, ns => FindTypeCore(typeName, ns));
         }
 

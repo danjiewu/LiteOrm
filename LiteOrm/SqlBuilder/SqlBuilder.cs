@@ -92,18 +92,18 @@ namespace LiteOrm
         public virtual void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, ICollection<Param> outputParams)
         {
             if (expr is null) throw new ArgumentNullException(nameof(expr));
-            string functionName = expr.FunctionName;
+            string functionName = expr.FunctionName!;
             Type type = this.GetType();
             while (typeof(SqlBuilder).IsAssignableFrom(type))
             {
-                if (GetSqlHandlerMap(type).TryGetFunctionSqlHandler(functionName, out var handler))
+                if (GetSqlHandlerMap(type).TryGetFunctionSqlHandler(functionName, out var handler) && handler is not null)
                 {
                     handler(ref outSql, expr, context, this, outputParams);
                     return;
                 }
-                type = type.BaseType;
+                type = type.BaseType!;
             }
-            if (!expr.IsAggregate && _functionMappings.TryGetValue(functionName, out string mappedName))
+            if (!expr.IsAggregate && _functionMappings.TryGetValue(functionName, out string? mappedName))
             {
                 functionName = mappedName;
             }
@@ -297,9 +297,9 @@ namespace LiteOrm
         /// <param name="right">右定界符</param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        protected string ReplaceSqlName(string sql, char left, char right, Func<char, char> handler = null)
+        protected string ReplaceSqlName(string sql, char left, char right, Func<char, char>? handler = null)
         {
-            if (sql is null) return null;
+            if (sql is null) return null!;
             var sb = ValueStringBuilder.Create(sql.Length);
             bool passNext = false;
             Stack<char> stack = new Stack<char>();
@@ -347,7 +347,7 @@ namespace LiteOrm
         /// <param name="dbValue">数据库取得的值。</param>
         /// <param name="objectType">目标属性类型。</param>
         /// <returns>转换后的对象值。</returns>
-        public object? ConvertFromDbValue(object dbValue, Type? objectType = null)
+        public object? ConvertFromDbValue(object? dbValue, Type? objectType = null)
         {
             if (objectType == null)
             {
@@ -412,7 +412,7 @@ namespace LiteOrm
         /// <param name="value">值</param>
         /// <param name="dbType">数据字段类型</param>
         /// <returns>数据库中的值</returns>
-        public virtual object ConvertToDbValue(object value, DbType dbType = DbType.Object)
+        public virtual object ConvertToDbValue(object? value, DbType dbType = DbType.Object)
         {
             if (value is null) return DBNull.Value;
             if (dbType == DbType.Object)
@@ -426,7 +426,7 @@ namespace LiteOrm
                 if (dbType == DbType.String || dbType == DbType.AnsiString ||
                     dbType == DbType.StringFixedLength || dbType == DbType.AnsiStringFixedLength)
                 {
-                    return value.ToString();
+                    return value.ToString()!;
                 }
                 Type underlyingType = _enumUnderlyingTypeCache.GetOrAdd(type, t => Enum.GetUnderlyingType(t));
                 return Convert.ChangeType(value, underlyingType);
@@ -477,7 +477,7 @@ namespace LiteOrm
                 case DbType.AnsiStringFixedLength:
                     if (value is Guid g3) return g3.ToString();
                     if (value is TimeSpan ts) return ts.ToString();
-                    return value.ToString();
+                    return value.ToString()!;
             }
 
             // 兜底通用逻辑
@@ -611,7 +611,7 @@ namespace LiteOrm
                 for (int i = 0; i < keyColumns.Count; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    sb.Append(ToSqlName(keyColumns[i].Name));
+                    sb.Append(ToSqlName(keyColumns[i].Name!));
                 }
                 sb.Append(")");
             }
@@ -640,7 +640,7 @@ namespace LiteOrm
         protected virtual string BuildCreateColumnDefinitionSql(ColumnDefinition column, bool inlinePrimaryKey, bool forceNotNull)
         {
             var sb = ValueStringBuilder.Create(64);
-            sb.Append(ToSqlName(column.Name));
+            sb.Append(ToSqlName(column.Name!));
             sb.Append(" ");
             sb.Append(GetSqlTypeDefinition(column));
 
@@ -673,7 +673,7 @@ namespace LiteOrm
         protected virtual string BuildAddColumnDefinitionSql(ColumnDefinition column)
         {
             var sb = ValueStringBuilder.Create(64);
-            sb.Append(ToSqlName(column.Name));
+            sb.Append(ToSqlName(column.Name!));
             sb.Append(" ");
             sb.Append(GetSqlTypeDefinition(column));
 
@@ -734,7 +734,7 @@ namespace LiteOrm
         {
             if (!string.IsNullOrEmpty(column.DefaultValue))
             {
-                return column.DefaultValue;
+                return column.DefaultValue!;
             }
 
             switch (column.DbType)
@@ -779,7 +779,7 @@ namespace LiteOrm
         {
             string indexName = $"IX_{tableName}_{column.Name}";
             string unique = column.IsUnique ? "UNIQUE " : "";
-            return $"CREATE {unique}INDEX {ToSqlName(indexName)} ON {ToSqlName(tableName)} ({ToSqlName(column.Name)})";
+            return $"CREATE {unique}INDEX {ToSqlName(indexName)} ON {ToSqlName(tableName)} ({ToSqlName(column.Name!)})";
         }
 
         /// <summary>
@@ -795,7 +795,7 @@ namespace LiteOrm
             for (int i = 0; i < keyColumns.Count; i++)
             {
                 if (i > 0) sb.Append(",");
-                sb.Append(ToSqlName(keyColumns[i].Name));
+                sb.Append(ToSqlName(keyColumns[i].Name!));
             }
             string sqlKeys = sb.ToString();
             sb.Clear();
@@ -843,7 +843,7 @@ namespace LiteOrm
             if (keyColumns.Length == 1)
             {
                 var key = keyColumns[0];
-                sb.Append(ToSqlName(key.Name));
+                sb.Append(ToSqlName(key.Name!));
                 sb.Append(" IN (");
                 for (int b = 0; b < batchSize; b++)
                 {
@@ -863,7 +863,7 @@ namespace LiteOrm
                         if (k > 0) sb.Append(" AND ");
                         var key = keyColumns[k];
                         string keyParam = (b * keyColumns.Length + k).ToString();
-                        sb.Append(ToSqlName(key.Name));
+                        sb.Append(ToSqlName(key.Name!));
                         sb.Append(" = ");
                         sb.Append(ToSqlParam(keyParam));
                     }
@@ -904,7 +904,7 @@ namespace LiteOrm
                 for (int i = 0; i < updatableColumns.Length; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    sb.Append(ToSqlName(updatableColumns[i].Name));
+                    sb.Append(ToSqlName(updatableColumns[i].Name!));
                     sb.Append(" = ");
                     sb.Append(ToSqlParam((b * paramsPerRecord + i).ToString()));
                 }
@@ -914,7 +914,7 @@ namespace LiteOrm
                 for (int k = 0; k < keyColumns.Length; k++)
                 {
                     if (k > 0) sb.Append(" AND ");
-                    sb.Append(ToSqlName(keyColumns[k].Name));
+                    sb.Append(ToSqlName(keyColumns[k].Name!));
                     sb.Append(" = ");
                     sb.Append(ToSqlParam((b * paramsPerRecord + updatableColumns.Length + k).ToString()));
                 }

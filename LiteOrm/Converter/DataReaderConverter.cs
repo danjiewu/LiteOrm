@@ -20,31 +20,31 @@ namespace LiteOrm
         private static readonly ConcurrentDictionary<(Type, string), Delegate> _cache =
             new ConcurrentDictionary<(Type, string), Delegate>();
 
-        private static readonly MethodInfo _getValueMethod =
+        private static readonly MethodInfo? _getValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetValue), new[] { typeof(int) });
 
-        private static readonly MethodInfo _convertValueMethod =
+        private static readonly MethodInfo? _convertValueMethod =
             typeof(DataReaderConverter).GetMethod(nameof(ConvertValue), BindingFlags.Static | BindingFlags.NonPublic);
 
-        private static readonly MethodInfo _isDBNullMethod =
+        private static readonly MethodInfo? _isDBNullMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.IsDBNull), new[] { typeof(int) });
 
-        private static readonly MethodInfo _getFieldValueMethod =
+        private static readonly MethodInfo? _getFieldValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFieldValue), new[] { typeof(int) });
 
         // Use SqlBuilder.ConvertFromDbValue as the fallback conversion method (instance method on SqlBuilder.Instance)
-        private static readonly MethodInfo _changeTypeMethod =
+        private static readonly MethodInfo? _changeTypeMethod =
             typeof(AutoLockDataReader).GetMethod(nameof(AutoLockDataReader.ChangeType), new[] { typeof(object), typeof(Type) });
 
         // 用于在动态读取委托的 catch 块中构造包含成员名/列号的明确异常
-        private static readonly MethodInfo _createColumnReadExceptionMethod =
+        private static readonly MethodInfo? _createColumnReadExceptionMethod =
             typeof(DataReaderConverter).GetMethod(nameof(CreateColumnReadException),
                 BindingFlags.Static | BindingFlags.NonPublic,
                 null,
                 new[] { typeof(Exception), typeof(int), typeof(string), typeof(Type) },
                 null);
 
-        private static readonly Dictionary<Type, MethodInfo> _typedReaderMethods = new Dictionary<Type, MethodInfo>
+        private static readonly Dictionary<Type, MethodInfo?> _typedReaderMethods = new Dictionary<Type, MethodInfo?>
         {
             [typeof(bool)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean), new[] { typeof(int) }),
             [typeof(byte)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetByte), new[] { typeof(int) }),
@@ -65,7 +65,7 @@ namespace LiteOrm
         /// 按 <see cref="DbType"/> 选择最自然的类型化读取方法。
         /// <see cref="DbType.Binary"/> 单独处理（<see cref="DbDataReader.GetFieldValue{T}"/> 或 <see cref="DbDataReader.GetStream"/>）。
         /// </summary>
-        private static readonly Dictionary<DbType, MethodInfo> _dbTypeReaderMethods = new Dictionary<DbType, MethodInfo>
+        private static readonly Dictionary<DbType, MethodInfo?> _dbTypeReaderMethods = new Dictionary<DbType, MethodInfo?>
         {
             [DbType.Boolean] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean), new[] { typeof(int) }),
             [DbType.Byte] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetByte), new[] { typeof(int) }),
@@ -91,7 +91,7 @@ namespace LiteOrm
         private static readonly ConcurrentDictionary<Type, Delegate> _cacheByType =
             new ConcurrentDictionary<Type, Delegate>();
 
-        private static readonly MethodInfo _getConverterByTypeMethod =
+        private static readonly MethodInfo? _getConverterByTypeMethod =
             typeof(DataReaderConverter).GetMethod(nameof(GetConverter), BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
 
         /// <summary>
@@ -133,7 +133,7 @@ namespace LiteOrm
         public static Delegate GetConverter(Type resultType)
         {
             return _cacheByType.GetOrAdd(resultType,
-                t => (Delegate)_getConverterByTypeMethod.MakeGenericMethod(t).Invoke(null, null));
+                t => (Delegate)_getConverterByTypeMethod!.MakeGenericMethod(t).Invoke(null, null)!);
         }
 
         private static string BuildColumnKey(DbDataReader reader)
@@ -191,7 +191,7 @@ namespace LiteOrm
                 for (int i = 0; i < ctorParams.Length; i++)
                 {
                     ParameterInfo param = ctorParams[i];
-                    args[i] = columnMap.TryGetValue(param.Name, out int ordinal)
+                    args[i] = columnMap.TryGetValue(param.Name!, out int ordinal)
                         ? BuildTypedReadExpression(readerParam, ordinal, param.ParameterType, param.Name)
                         : Expression.Default(param.ParameterType);
                 }
@@ -221,7 +221,7 @@ namespace LiteOrm
         /// <paramref name="columnName"/> 用于在读取失败时抛出包含成员名（属性名或构造函数参数名）的明确异常；为 null 时仅依据 <paramref name="ordinal"/> 描述。
         /// </summary>
         private static Expression BuildTypedReadExpression(
-            ParameterExpression readerParam, int ordinal, Type targetType, string columnName, DbType? dbType = null)
+            ParameterExpression readerParam, int ordinal, Type targetType, string? columnName, DbType? dbType = null)
         {
             Type coreType = Nullable.GetUnderlyingType(targetType) ?? targetType;
             var ordinalExpr = Expression.Constant(ordinal);
@@ -239,7 +239,7 @@ namespace LiteOrm
                     readExpr = Expression.Convert(
                         Expression.Call(
                             Expression.Convert(readerParam, typeof(AutoLockDataReader)),
-                            _changeTypeMethod,
+                            _changeTypeMethod!,
                             Expression.Convert(readExpr, typeof(object)),
                             Expression.Constant(coreType)),
                         coreType);
@@ -250,7 +250,7 @@ namespace LiteOrm
             if (targetType != coreType)
                 readExpr = Expression.Convert(readExpr, targetType);
 
-            var isNull = Expression.Call(readerParam, _isDBNullMethod, ordinalExpr);
+            var isNull = Expression.Call(readerParam, _isDBNullMethod!, ordinalExpr);
             var body = Expression.Condition(isNull, Expression.Default(targetType), readExpr);
 
             // Wrap with try-catch to attach member name / ordinal information on failure
@@ -262,7 +262,7 @@ namespace LiteOrm
         /// </summary>
         private static Expression WrapWithColumnErrorHandling(
             int ordinal,
-            string memberName,
+            string? memberName,
             Type targetType,
             Expression body)
         {
@@ -270,7 +270,7 @@ namespace LiteOrm
 
             var rethrowExpr = Expression.Throw(
                 Expression.Call(
-                    _createColumnReadExceptionMethod,
+                    _createColumnReadExceptionMethod!,
                     exVar,
                     Expression.Constant(ordinal),
                     Expression.Constant(memberName, typeof(string)),
@@ -284,7 +284,7 @@ namespace LiteOrm
         /// 构造包含成员名、列号与目标类型的明确异常，原始异常作为 InnerException 保留。
         /// </summary>
         private static Exception CreateColumnReadException(
-            Exception inner, int ordinal, string memberName, Type targetType)
+            Exception inner, int ordinal, string? memberName, Type targetType)
         {
             string memberDesc = !string.IsNullOrEmpty(memberName)
                 ? $"member '{memberName}' (ordinal {ordinal})"
@@ -310,28 +310,28 @@ namespace LiteOrm
                 if (dbType.Value == DbType.Binary)
                 {
                     if (typeof(Stream).IsAssignableFrom(coreType))
-                        return Expression.Call(readerParam, _typedReaderMethods[typeof(Stream)], ordinalExpr);
+                        return Expression.Call(readerParam, _typedReaderMethods[typeof(Stream)]!, ordinalExpr);
                     return Expression.Call(readerParam,
-                        _getFieldValueMethod.MakeGenericMethod(typeof(byte[])), ordinalExpr);
+                        _getFieldValueMethod!.MakeGenericMethod(typeof(byte[])), ordinalExpr);
                 }
 
-                if (_dbTypeReaderMethods.TryGetValue(dbType.Value, out MethodInfo dbMethod))
-                    return Expression.Call(readerParam, dbMethod, ordinalExpr);
+                if (_dbTypeReaderMethods.TryGetValue(dbType.Value, out MethodInfo? dbMethod))
+                    return Expression.Call(readerParam, dbMethod!, ordinalExpr);
             }
 
             // 2. CLR type-driven: anonymous projections, scalar columns, and unmapped DbType values
-            if (_typedReaderMethods.TryGetValue(coreType, out MethodInfo typedMethod))
-                return Expression.Call(readerParam, typedMethod, ordinalExpr);
+            if (_typedReaderMethods.TryGetValue(coreType, out MethodInfo? typedMethod))
+                return Expression.Call(readerParam, typedMethod!, ordinalExpr);
 
             // 3. byte[] without DbType context
             if (coreType == typeof(byte[]))
                 return Expression.Call(readerParam,
-                    _getFieldValueMethod.MakeGenericMethod(typeof(byte[])), ordinalExpr);
+                    _getFieldValueMethod!.MakeGenericMethod(typeof(byte[])), ordinalExpr);
 
             // 4. Fallback: GetValue + ConvertValue<T> (enums, TimeSpan, DateTimeOffset, etc.)
             return Expression.Call(
-                _convertValueMethod.MakeGenericMethod(coreType),
-                Expression.Call(readerParam, _getValueMethod, ordinalExpr));
+                _convertValueMethod!.MakeGenericMethod(coreType),
+                Expression.Call(readerParam, _getValueMethod!, ordinalExpr));
         }
 
         /// <summary>
@@ -375,9 +375,9 @@ namespace LiteOrm
                 || type == typeof(TimeSpan);
         }
 
-        private static T ConvertValue<T>(object value)
+        private static T ConvertValue<T>(object? value)
         {
-            if (value == null || value is DBNull) return default;
+            if (value == null || value is DBNull) return default!;
             if (value is T t) return t;
             Type targetType = typeof(T);
             Type underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;

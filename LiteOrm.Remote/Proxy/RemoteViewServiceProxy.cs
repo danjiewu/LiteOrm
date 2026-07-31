@@ -31,13 +31,13 @@ namespace LiteOrm.Remote
         public T GetObject(object id, params string[] tableArgs) => _proxy.GetObject(id, tableArgs);
 
         /// <inheritdoc />
-        public T SearchOne(Expr expr, params string[] tableArgs) => _proxy.SearchOne(expr, tableArgs);
+        public T SearchOne(Expr? expr, params string[]? tableArgs) => _proxy.SearchOne(expr, tableArgs);
 
         /// <inheritdoc />
         public void ForEach(Expr expr, Action<T> func, params string[] tableArgs) => _proxy.ForEach(expr, func, tableArgs);
 
         /// <inheritdoc />
-        public List<T> Search(Expr expr = null, params string[] tableArgs) => _proxy.Search(expr, tableArgs);
+        public List<T> Search(Expr? expr = null, params string[]? tableArgs) => _proxy.Search(expr, tableArgs);
 
         /// <inheritdoc />
         public List<TResult> SearchAs<TResult>(SelectExpr selectExpr, params string[] tableArgs) => _proxy.SearchAs<TResult>(selectExpr, tableArgs);
@@ -49,18 +49,18 @@ namespace LiteOrm.Remote
         public bool ExistsID(object id, params string[] tableArgs) => _proxy.ExistsID(id, tableArgs);
 
         /// <inheritdoc />
-        public bool Exists(Expr expr, params string[] tableArgs) => _proxy.Exists(expr, tableArgs);
+        public bool Exists(Expr? expr, params string[]? tableArgs) => _proxy.Exists(expr, tableArgs);
 
         /// <inheritdoc />
-        public int Count(Expr expr = null, params string[] tableArgs) => _proxy.Count(expr, tableArgs);
+        public int Count(Expr? expr = null, params string[]? tableArgs) => _proxy.Count(expr, tableArgs);
 
         /// <inheritdoc />
         object IEntityViewService.GetObject(object id, params string[] tableArgs) => ((IEntityViewService)_proxy).GetObject(id, tableArgs);
 
         /// <inheritdoc />
-        object IEntityViewService.SearchOne(Expr expr, params string[] tableArgs) => ((IEntityViewService)_proxy).SearchOne(expr, tableArgs);
+        object IEntityViewService.SearchOne(Expr? expr, params string[]? tableArgs) => ((IEntityViewService)_proxy).SearchOne(expr, tableArgs);
 
         /// <inheritdoc />
-        IList IEntityViewService.Search(Expr expr, params string[] tableArgs) => ((IEntityViewService)_proxy).Search(expr, tableArgs);
+        IList IEntityViewService.Search(Expr? expr, params string[] tableArgs) => ((IEntityViewService)_proxy).Search(expr, tableArgs);
     }
 }

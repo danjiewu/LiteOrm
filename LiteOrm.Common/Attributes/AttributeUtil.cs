@@ -16,7 +16,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">特性类型</typeparam>
         /// <param name="memberInfo">成员信息</param>
         /// <returns>找到的特性，如果未找到则返回null</returns>
-        public static T GetAttribute<T>(this MemberInfo memberInfo) where T : System.Attribute
+        public static T? GetAttribute<T>(this MemberInfo memberInfo) where T : System.Attribute
         {
             return memberInfo.GetCustomAttribute<T>(true);
         }
@@ -28,7 +28,7 @@ namespace LiteOrm.Common
         /// <param name="properties">属性列表</param>
         /// <returns>排序后的属性列表</returns>
         /// <exception cref="InvalidOperationException">当检测到循环依赖时抛出</exception>
-        public static TList SortProperty<TList>(this TList properties) where TList : IList<PropertyInfo>
+        public static TList? SortProperty<TList>(this TList? properties) where TList : IList<PropertyInfo>
         {            
             if (properties == null || properties.Count <= 1)
             {
@@ -53,7 +53,7 @@ namespace LiteOrm.Common
 
             foreach (PropertyInfo property in properties)
             {
-                PropertyOrderAttribute orderAttribute = property.GetAttribute<PropertyOrderAttribute>();
+                PropertyOrderAttribute? orderAttribute = property.GetAttribute<PropertyOrderAttribute>();
                 if (orderAttribute == null)
                 {
                     continue;
@@ -102,21 +102,24 @@ namespace LiteOrm.Common
 
             return properties;
 
-            void AddDependency(string fromProperty, string toProperty)
+            void AddDependency(string? fromProperty, string? toProperty)
             {
                 if (string.IsNullOrWhiteSpace(fromProperty) || string.IsNullOrWhiteSpace(toProperty))
                 {
                     return;
                 }
 
-                if (!propertyDict.ContainsKey(fromProperty) || !propertyDict.ContainsKey(toProperty))
+                string from = fromProperty ?? string.Empty;
+                string to = toProperty ?? string.Empty;
+
+                if (!propertyDict.ContainsKey(from) || !propertyDict.ContainsKey(to))
                 {
                     return;
                 }
 
-                if (dependencyDict[fromProperty].Add(toProperty))
+                if (dependencyDict[from].Add(to))
                 {
-                    indegreeDict[toProperty]++;
+                    indegreeDict[to]++;
                 }
             }
         }

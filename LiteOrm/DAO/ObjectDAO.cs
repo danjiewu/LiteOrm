@@ -52,7 +52,7 @@ namespace LiteOrm
         /// </summary>
         public override SqlTable Table
         {
-            get { return TableInfoProvider.GetTableDefinition(ObjectType); }
+            get { return TableInfoProvider.GetTableDefinition(ObjectType)!; }
         }
 
         /// <summary>
@@ -60,9 +60,9 @@ namespace LiteOrm
         /// </summary>
         /// <param name="args">表名参数</param>
         /// <returns>新的DAO实例</returns>
-        public ObjectDAO<T> WithArgs(params string[] args)
+        public ObjectDAO<T> WithArgs(params string[]? args)
         {
-            ObjectDAO<T> newDAO = MemberwiseClone() as ObjectDAO<T>;
+            ObjectDAO<T> newDAO = (MemberwiseClone() as ObjectDAO<T>)!;
             newDAO.TableArgs = args;
             return newDAO;
         }
@@ -82,12 +82,12 @@ namespace LiteOrm
         /// <summary>
         /// 识别列
         /// </summary>
-        protected ColumnDefinition IdentityColumn => TableDefinition.IdentityColumn;
+        protected ColumnDefinition IdentityColumn => TableDefinition.IdentityColumn!;
 
         /// <summary>
         /// 时间戳列（用于乐观并发控制）
         /// </summary>
-        protected ColumnDefinition TimestampColumn => TableDefinition.TimestampColumn;
+        protected ColumnDefinition TimestampColumn => TableDefinition.TimestampColumn!;
 
         /// <summary>
         /// 获取或设置用于生成 SQL 的上下文。
@@ -123,7 +123,7 @@ namespace LiteOrm
                     strValues.Append(",");
                 }
 
-                strColumns.Append(ToSqlName(column.Name));
+                strColumns.Append(ToSqlName(column.Name!));
                 strValues.Append(ToSqlParam(i.ToString()));
                 paramValues.Add(new Param(i.ToString(), null, column.DbType));
             }
@@ -153,7 +153,7 @@ namespace LiteOrm
                 ColumnDefinition column = columns[i];
                 var paramName = paramValues.Count.ToString();
                 if (i > 0) strColumns.Append(",");
-                strColumns.Append(ToSqlName(column.Name));
+                strColumns.Append(ToSqlName(column.Name!));
                 strColumns.Append(" = ");
                 strColumns.Append(ToSqlParam(paramName));
                 paramValues.Add(new Param(paramName, null, column.DbType));
@@ -208,7 +208,7 @@ namespace LiteOrm
             for (int j = 0; j < columnCount; j++)
             {
                 if (j > 0) strColumns.Append(",");
-                strColumns.Append(ToSqlName(insertColumns[j].Name));
+                strColumns.Append(ToSqlName(insertColumns[j].Name!));
             }
 
             int paramIndex = 0;
@@ -366,7 +366,7 @@ namespace LiteOrm
                 for (int i = 0; i < columnCount; i++)
                 {
                     ColumnDefinition column = columns[i];
-                    dr[column.Name] = ConvertToDbValue(column.GetValue(t), column.DbType) ?? DBNull.Value;
+                    dr[column.Name!] = ConvertToDbValue(column.GetValue(t), column.DbType) ?? DBNull.Value;
                 }
                 dt.Rows.Add(dr);
             }
@@ -462,7 +462,7 @@ namespace LiteOrm
             else
             {
                 string identityParamName = ToParamName(Constants.IdentityParamName);
-                DbParameter param = insertCommand.Parameters.Contains(identityParamName) ? insertCommand.Parameters[identityParamName] : null;
+                DbParameter? param = insertCommand.Parameters.Contains(identityParamName) ? insertCommand.Parameters[identityParamName] : null;
                 if (param != null && param.Direction == ParameterDirection.Output)
                 {
                     insertCommand.ExecuteNonQuery();
@@ -483,7 +483,7 @@ namespace LiteOrm
         /// <param name="values">要插入的实体对象集合。</param>
         public virtual void BatchInsert(IEnumerable<T> values)
         {
-            var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType);
+            var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType!);
             var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
             var daoContext = GetDaoContext();
             if (provider is not null)
@@ -491,7 +491,7 @@ namespace LiteOrm
                 using (var scope = daoContext.AcquireScope())
                 {
                     daoContext.EnsureTable(ObjectType, TableArgs);
-                    provider.BulkInsert(ToDataTable(values, insertableColumns), daoContext.DbConnection, daoContext.CurrentTransaction);
+                    provider.BulkInsert(ToDataTable(values, insertableColumns), daoContext.DbConnection, daoContext.CurrentTransaction!);
                 }
             }
             else
@@ -505,13 +505,13 @@ namespace LiteOrm
                 bool idExists = false;
                 var batch = new List<T>(batchSize);
                 int increasement = IdentityColumn != null ? IdentityColumn.IdentityIncreasement : 0;
-                DbCommandProxy batchCommand = null;
+                DbCommandProxy? batchCommand = null;
                 foreach (var item in values)
                 {
                     if (!idExists && IdentityColumn is not null && !SqlBuilder.SupportBatchInsertWithIdentity)
                     {
                         Insert(item);
-                        nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)) + increasement;
+                        nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)!) + increasement;
                         idExists = true;
                         continue;
                     }
@@ -575,7 +575,7 @@ namespace LiteOrm
         /// <param name="timestamp">时间戳值，用于乐观并发控制。</param>
         /// <returns>如果更新成功则返回 true。</returns>
         /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
-        public virtual bool Update(T t, object timestamp = null)
+        public virtual bool Update(T t, object? timestamp = null)
         {
             var updateCommand = GetPreparedCommand(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateSql(timestamp != null));
             var updatableColumns = UpdatableColumns;
@@ -622,7 +622,7 @@ namespace LiteOrm
             var daoContext = GetDaoContext();
             int batchSize = daoContext.ParamCountLimit / 10 / paramsPerUpdate * 10;
             if (batchSize == 0) batchSize = Math.Max(daoContext.ParamCountLimit / paramsPerUpdate, 1);
-            DbCommandProxy batchCommand = null;
+            DbCommandProxy? batchCommand = null;
             var batch = new List<T>(batchSize);
             foreach (var item in values)
             {
@@ -700,7 +700,7 @@ namespace LiteOrm
                         while (reader.Read())
                         {
                             List<object> keyValues = new List<object>();
-                            for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                            for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType)!);
                             existingIds.Add(keyValues);
                         }
                     }
@@ -723,7 +723,7 @@ namespace LiteOrm
                         while (reader.Read())
                         {
                             List<object> keyValues = new List<object>();
-                            for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                            for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType)!);
                             existingIds.Add(keyValues);
                         }
                     }
@@ -908,7 +908,7 @@ namespace LiteOrm
             else
             {
                 string identityParamName = ToParamName(Constants.IdentityParamName);
-                DbParameter param = insertCommand.Parameters.Contains(identityParamName) ? insertCommand.Parameters[identityParamName] : null;
+                DbParameter? param = insertCommand.Parameters.Contains(identityParamName) ? insertCommand.Parameters[identityParamName] : null;
                 if (param is not null && param.Direction == ParameterDirection.Output)
                 {
                     await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -945,7 +945,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
         {
-            var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType);
+            var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType!);
             var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
             if (provider is not null)
@@ -953,7 +953,7 @@ namespace LiteOrm
                 using (var scope = await daoContext.AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
                 {
                     await daoContext.EnsureTableAsync(ObjectType, TableArgs).ConfigureAwait(false);
-                    await provider.BulkInsertAsync(ToDataTable(values, insertableColumns), daoContext.DbConnection, daoContext.CurrentTransaction, cancellationToken).ConfigureAwait(false);
+                    await provider.BulkInsertAsync(ToDataTable(values, insertableColumns), daoContext.DbConnection, daoContext.CurrentTransaction!, cancellationToken).ConfigureAwait(false);
                 }
             }
             else
@@ -966,7 +966,7 @@ namespace LiteOrm
                 long nextManualId = 0;
                 bool idExists = false;
                 var batch = new List<T>(batchSize);
-                DbCommandProxy batchCommand = null;
+                DbCommandProxy? batchCommand = null;
                 foreach (var item in values)
                 {
                     if (!idExists && IdentityColumn is not null && !SqlBuilder.SupportBatchInsertWithIdentity)
@@ -974,7 +974,7 @@ namespace LiteOrm
                         var res = await InsertAsync(item, cancellationToken);
                         if (res)
                         {
-                            nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)) + 1;
+                            nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)!) + 1;
                             idExists = true;
                         }
                         continue;
@@ -988,7 +988,7 @@ namespace LiteOrm
 
                         if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                         {
-                            object res = await batchCommand.ExecuteScalarAsync(cancellationToken);
+                            object? res = await batchCommand.ExecuteScalarAsync(cancellationToken);
                             if (res != null && res != DBNull.Value)
                             {
                                 nextManualId = Convert.ToInt64(res);
@@ -1010,7 +1010,7 @@ namespace LiteOrm
                     SetBatchInsertParameterValues(insertableColumns, batch, command);
                     if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                     {
-                        object res = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                        object? res = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
                         if (res != null && res != DBNull.Value)
                         {
                             nextManualId = Convert.ToInt64(res);
@@ -1035,7 +1035,7 @@ namespace LiteOrm
         /// <param name="timestamp">时间戳值，用于乐观并发控制。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，如果更新成功则返回 true。</returns>
-        public async virtual Task<bool> UpdateAsync(T t, object timestamp = null, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> UpdateAsync(T t, object? timestamp = null, CancellationToken cancellationToken = default)
         {
             var updateCommand = await GetPreparedCommandAsync(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateSql(timestamp != null), cancellationToken).ConfigureAwait(false);
             var updatableColumns = UpdatableColumns;
@@ -1085,7 +1085,7 @@ namespace LiteOrm
             if (batchSize == 0) batchSize = 1;
 
             var batch = new List<T>(batchSize);
-            DbCommandProxy batchCommand = null;
+            DbCommandProxy? batchCommand = null;
             foreach (var t in values)
             {
                 batch.Add(t);
@@ -1162,7 +1162,7 @@ namespace LiteOrm
                         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                         {
                             List<object> keyValues = new List<object>();
-                            for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                            for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType)!);
                             existingIds.Add(keyValues);
                         }
                     }
@@ -1186,7 +1186,7 @@ namespace LiteOrm
                     while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                     {
                         List<object> keyValues = new List<object>();
-                        for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType));
+                        for (int i = 0; i < keyColumns.Count; i++) keyValues.Add(ConvertFromDbValue(reader[i], keyColumns[i].PropertyType)!);
                         existingIds.Add(keyValues);
                     }
                 }
@@ -1356,7 +1356,7 @@ namespace LiteOrm
                 return [item];
             }
 
-            object[] keyValues = item as object[];
+            object[]? keyValues = item as object[];
             if (keyValues == null || keyValues.Length != paramsPerDelete)
                 throw new ArgumentException($"Composite key requires object[{paramsPerDelete}]");
             return keyValues;

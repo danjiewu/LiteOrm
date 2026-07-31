@@ -38,7 +38,7 @@ namespace LiteOrm.Tests
         /// </summary>
         private sealed class StubTransport : IRemoteServiceTransport
         {
-            public RemoteInvocationRequest LastRequest { get; private set; }
+            public RemoteInvocationRequest LastRequest { get; private set; } = null!;
             public CancellationToken LastCancellationToken { get; private set; }
             public int CallCount { get; private set; }
             private readonly Func<RemoteInvocationRequest, RemoteInvocationResponse> _responder;
@@ -74,7 +74,7 @@ namespace LiteOrm.Tests
         /// 构建成功响应。<see cref="RemoteInvocationResponse.Result"/> 直接存储原始对象，
         /// 客户端拦截器会通过 <see cref="System.Text.Json.JsonElement"/> 中转后按方法返回类型反序列化。
         /// </summary>
-        private static RemoteInvocationResponse Ok(object result = null)
+        private static RemoteInvocationResponse Ok(object? result = null)
         {
             return new RemoteInvocationResponse
             {
@@ -104,7 +104,7 @@ namespace LiteOrm.Tests
 
             Assert.Equal(1, transport.CallCount);
             Assert.Equal(nameof(IRemoteCalculator), transport.LastRequest.ServiceName);
-            Assert.Equal(nameof(IRemoteCalculator.Clear), transport.LastRequest.Method.Name);
+            Assert.Equal(nameof(IRemoteCalculator.Clear), transport.LastRequest.Method!.Name);
             Assert.Empty(transport.LastRequest.Arguments);
         }
 
@@ -122,7 +122,7 @@ namespace LiteOrm.Tests
             int result = proxy.Add(3, 4);
 
             Assert.Equal(7, result);
-            Assert.Equal(nameof(IRemoteCalculator.Add), transport.LastRequest.Method.Name);
+            Assert.Equal(nameof(IRemoteCalculator.Add), transport.LastRequest.Method!.Name);
         }
 
         [Fact]
@@ -143,7 +143,7 @@ namespace LiteOrm.Tests
             await proxy.ResetAsync();
 
             Assert.Equal(1, transport.CallCount);
-            Assert.Equal(nameof(IRemoteCalculator.ResetAsync), transport.LastRequest.Method.Name);
+            Assert.Equal(nameof(IRemoteCalculator.ResetAsync), transport.LastRequest.Method!.Name);
         }
 
         [Fact]
@@ -159,7 +159,7 @@ namespace LiteOrm.Tests
             int result = await proxy.MultiplyAsync(6, 7);
 
             Assert.Equal(42, result);
-            Assert.Equal(nameof(IRemoteCalculator.MultiplyAsync), transport.LastRequest.Method.Name);
+            Assert.Equal(nameof(IRemoteCalculator.MultiplyAsync), transport.LastRequest.Method!.Name);
         }
 
         [Fact]
@@ -278,7 +278,7 @@ namespace LiteOrm.Tests
 
                 Assert.Equal(5, result);
                 var captured = await tcs.Task;
-                Assert.Equal(nameof(IRemoteCalculator.MultiplyAsync), captured.Method.Name);
+                Assert.Equal(nameof(IRemoteCalculator.MultiplyAsync), captured.Method!.Name);
             }
             finally
             {

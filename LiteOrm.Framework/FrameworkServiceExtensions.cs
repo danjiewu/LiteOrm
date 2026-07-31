@@ -58,7 +58,7 @@ namespace LiteOrm.Framework
         /// <param name="hostBuilder">主机构建器。</param>
         /// <param name="configureOptions">配置选项的回调函数。</param>
         /// <returns>配置后的主机构建器。</returns>
-        public static IHostBuilder RegisterLiteOrmFramework(this IHostBuilder hostBuilder, Action<LiteOrmServiceExtensions.LiteOrmOptions> configureOptions)
+        public static IHostBuilder RegisterLiteOrmFramework(this IHostBuilder hostBuilder, Action<LiteOrmServiceExtensions.LiteOrmOptions>? configureOptions)
         {
             var options = new LiteOrmServiceExtensions.LiteOrmOptions();
             try
@@ -83,7 +83,7 @@ namespace LiteOrm.Framework
                     // 自动扫描并注册标记 [AutoRegister] 的服务（Autofac 版，含拦截器支持）
                     try
                     {
-                        builder.RegisterAutoService(logger, options.Assemblies);
+                        builder.RegisterAutoService(logger, options.Assemblies ?? Array.Empty<Assembly>());
                     }
                     catch (Exception ex)
                     {
@@ -166,7 +166,7 @@ namespace LiteOrm.Framework
         /// <returns>容器构建器。</returns>
         public static ContainerBuilder RegisterAutoService(
             this ContainerBuilder builder,
-            ILogger logger,
+            ILogger? logger,
             params Assembly[] assemblies)
         {
             var assemblyList = new HashSet<Assembly>();
@@ -200,7 +200,7 @@ namespace LiteOrm.Framework
                 catch (ReflectionTypeLoadException ex)
                 {
                     logger?.LogWarning(ex, "Failed to load types from assembly '{Assembly}', some types will be skipped", assembly.FullName);
-                    types = ex.Types.Where(t => t != null);
+                    types = ex.Types.OfType<Type>();
                 }
 
                 var registrableTypes = types
@@ -233,8 +233,8 @@ namespace LiteOrm.Framework
         private static void RegisterSingleType(
             ContainerBuilder builder,
             Type implementationType,
-            AutoRegisterAttribute attr,
-            ILogger logger)
+            AutoRegisterAttribute? attr,
+            ILogger? logger)
         {
             if (implementationType.IsGenericTypeDefinition)
             {
@@ -254,8 +254,8 @@ namespace LiteOrm.Framework
         private static void ApplyRegistrationSettings<TLimit, TActivatorData, TRegistrationStyle>(
             IRegistrationBuilder<TLimit, TActivatorData, TRegistrationStyle> registration,
             Type implementationType,
-            AutoRegisterAttribute attr,
-            ILogger logger)
+            AutoRegisterAttribute? attr,
+            ILogger? logger)
         {
             // 设置生命周期
             var lifetime = attr?.Lifetime ?? Lifetime.Scoped;
@@ -328,7 +328,7 @@ namespace LiteOrm.Framework
         /// <summary>
         /// 计算类型应注册的服务类型集合。
         /// </summary>
-        private static List<Type> GetServiceTypes(Type implementationType, AutoRegisterAttribute attr)
+        private static List<Type> GetServiceTypes(Type implementationType, AutoRegisterAttribute? attr)
         {
             var serviceTypes = new List<Type>();
 

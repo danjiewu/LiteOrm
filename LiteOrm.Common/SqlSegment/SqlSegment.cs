@@ -11,7 +11,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取当前片段的源片段，表示当前片段依赖的上一个片段
         /// </summary>
-        public virtual SqlSegment Source { get; set; }
+        public virtual SqlSegment? Source { get; set; }
     }
     /// <summary>
     /// 选择锚点接口，支持 Select 操作

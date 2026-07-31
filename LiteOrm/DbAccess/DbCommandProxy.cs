@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -55,14 +56,14 @@ namespace LiteOrm
         /// <summary>
         /// 获取 SQL 构建器。
         /// </summary>
-        public ISqlBuilder SqlBuilder { get; }
+        public ISqlBuilder? SqlBuilder { get; }
 
         #region DbCommand 重写
 
         /// <summary>
         /// 获取或设置该 <see cref="DbCommand"/> 使用的 <see cref="DbConnection"/>。
         /// </summary>
-        protected override DbConnection DbConnection
+        protected override DbConnection? DbConnection
         {
             get => Target.Connection;
             set => Target.Connection = value;
@@ -76,7 +77,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取或设置其在该中执行 .NET 数据提供程序的 Command 对象的事务。
         /// </summary>
-        protected override DbTransaction DbTransaction
+        protected override DbTransaction? DbTransaction
         {
             get => Target.Transaction;
             set => Target.Transaction = value;
@@ -91,17 +92,20 @@ namespace LiteOrm
             set => Target.DesignTimeVisible = value;
         }
 
-        private string commandText;
+        private string? commandText;
         /// <summary>
         /// 获取或设置要对数据源执行的文本命令。
         /// </summary>
+#if !NETSTANDARD2_0
+        [AllowNull]
+#endif
         public override string CommandText
         {
-            get { return commandText; }
+            get { return commandText!; }
             set
             {
                 commandText = value;
-                Target.CommandText = SqlBuilder?.ReplaceSqlName(value) ?? value;
+                Target.CommandText = SqlBuilder?.ReplaceSqlName(value!) ?? value;
             }
         }
 
@@ -210,7 +214,7 @@ namespace LiteOrm
             PreExcuteCommand(ExcuteType.ExecuteScalar);
             try
             {
-                object ret = Target.ExecuteScalar();
+                object ret = Target.ExecuteScalar()!;
                 PostExcuteCommand(ExcuteType.ExecuteScalar);
                 return ret;
             }
@@ -226,7 +230,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，其结果为结果集中第一行的第一列。</returns>
-        public override async Task<object> ExecuteScalarAsync(CancellationToken cancellationToken = default)
+        public override async Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken = default)
         {
             using var scope = await Context.AcquireScopeAsync(cancellationToken);
             PreExcuteCommand(ExcuteType.ExecuteScalar);
@@ -276,13 +280,13 @@ namespace LiteOrm
 
         #region IDbCommand 成员 
 
-        IDbConnection IDbCommand.Connection
+        IDbConnection? IDbCommand.Connection
         {
             get => Connection;
             set => Connection = value as DbConnection;
         }
 
-        IDbTransaction IDbCommand.Transaction
+        IDbTransaction? IDbCommand.Transaction
         {
             get => Transaction;
             set => Transaction = value as DbTransaction;
@@ -307,7 +311,7 @@ namespace LiteOrm
             try
             {
                 PreExcuteCommand(ExcuteType.ExecuteReader);
-                DbDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), scope, SqlBuilder.ConvertFromDbValue);
+                DbDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), scope, SqlBuilder!.ConvertFromDbValue);
                 PostExcuteCommand(ExcuteType.ExecuteReader);
                 return ret;
             }
@@ -355,7 +359,7 @@ namespace LiteOrm
             {
                 PreExcuteCommand(ExcuteType.ExecuteReader);
                 DbDataReader reader = await Target.ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
-                DbDataReader ret = new AutoLockDataReader(reader, scope, SqlBuilder.ConvertFromDbValue);
+                DbDataReader ret = new AutoLockDataReader(reader, scope, SqlBuilder!.ConvertFromDbValue);
                 PostExcuteCommand(ExcuteType.ExecuteReader);
                 return ret;
             }

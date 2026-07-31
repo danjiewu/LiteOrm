@@ -28,11 +28,11 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置一个属性名，指示当前属性应排在该属性之后。
         /// </summary>
-        public string After { get; set; }
+        public string? After { get; set; }
 
         /// <summary>
         /// 获取或设置一个属性名，指示当前属性应排在该属性之前。
         /// </summary>
-        public string Before { get; set; }
+        public string? Before { get; set; }
     }
 }

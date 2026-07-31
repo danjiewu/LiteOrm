@@ -60,7 +60,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="joinType">值之间的连接类型（List 或 Concat）</param>
         /// <param name="items">要添加的值类型表达式集合</param>
-        public ValueSet(ValueJoinType joinType, IEnumerable<ValueTypeExpr> items)
+        public ValueSet(ValueJoinType joinType, IEnumerable<ValueTypeExpr>? items)
         {
             JoinType = joinType;
             if (items != null)
@@ -196,7 +196,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is ValueSet set)
             {

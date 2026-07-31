@@ -67,7 +67,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 全局服务异常处理事件。
         /// </summary>
-        public static event EventHandler<ServiceExceptionContext> ExceptionHandling;
+        public static event EventHandler<ServiceExceptionContext>? ExceptionHandling;
 
         /// <summary>
         /// 设置慢查询阈值，超过该时间的方法调用将被记录为慢查询日志。默认值为3秒。
@@ -78,7 +78,7 @@ namespace LiteOrm.Service
         /// 超过此长度的集合将只记录类型和计数，以避免日志文件过大。
         /// </summary>
         public static int MaxExpandedLogLength { get; set; } = 10;
-        private static readonly ConcurrentDictionary<(Type TargetType, MethodInfo Method), ServiceDescription> _methodDescriptions = new();
+        private static readonly ConcurrentDictionary<(Type? TargetType, MethodInfo Method), ServiceDescription> _methodDescriptions = new();
         private readonly ILogger _logger;
         private readonly SessionManager _sessionManager;
         private bool _inProcess;
@@ -120,7 +120,7 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    if (TryHandleException(invocation, e, out object handledResult))
+                    if (TryHandleException(invocation, e, out object? handledResult))
                     {
                         invocation.ReturnValue = handledResult;
                         return;
@@ -146,7 +146,7 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    if (TryHandleException(invocation, e, out object handledResult))
+                    if (TryHandleException(invocation, e, out object? handledResult))
                     {
                         invocation.ReturnValue = handledResult;
                         return;
@@ -254,11 +254,11 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    if (TryHandleException(invocation, e, out object handledResult))
-                        return (TResult)handledResult;
+                    if (TryHandleException(invocation, e, out object? handledResult))
+                        return (TResult)handledResult!;
                     LogException(invocation, e);
                     ExceptionDispatchInfo.Capture(e).Throw();
-                    return default; // 这行实际上永远不会执行，因为上面会抛出异常，但编译器需要一个返回值
+                    return default!; // 这行实际上永远不会执行，因为上面会抛出异常，但编译器需要一个返回值
                 }
                 finally
                 {
@@ -282,13 +282,13 @@ namespace LiteOrm.Service
                 await _sessionManager.ExecuteInTransactionAsync(async sm =>
                 {
                     invocation.Proceed();
-                    await (Task)invocation.ReturnValue;
+                    await (Task)invocation.ReturnValue!;
                 }, serviceDesc.IsolationLevel);
             }
             else
             {
                 invocation.Proceed();
-                await (Task)invocation.ReturnValue;
+                await (Task)invocation.ReturnValue!;
             }
         }
 
@@ -306,13 +306,13 @@ namespace LiteOrm.Service
                 return await _sessionManager.ExecuteInTransactionAsync(async sm =>
                 {
                     invocation.Proceed();
-                    return await (Task<TResult>)invocation.ReturnValue;
+                    return await (Task<TResult>)invocation.ReturnValue!;
                 }, serviceDesc.IsolationLevel);
             }
             else
             {
                 invocation.Proceed();
-                return await (Task<TResult>)invocation.ReturnValue;
+                return await (Task<TResult>)invocation.ReturnValue!;
             }
         }
 
@@ -375,13 +375,13 @@ namespace LiteOrm.Service
         /// <param name="invocation">方法调用信息</param>
         /// <param name="result">方法返回值</param>
         /// <param name="elapsedTime">方法执行耗时</param>
-        protected virtual void LogAfterInvoke(IInvocation invocation, object result, TimeSpan elapsedTime)
+        protected virtual void LogAfterInvoke(IInvocation invocation, object? result, TimeSpan elapsedTime)
         {
             var serviceDesc = GetDescription(invocation);
             LogLevel level = GetLogLevel(serviceDesc.LogLevel);
             if (_logger.IsEnabled(level))
             {
-                string returnLog = null;
+                string? returnLog = null;
                 if ((serviceDesc.LogFormat & LogFormat.ReturnValue) == LogFormat.ReturnValue)
                 {
                     returnLog = GetLogString(result, 0);
@@ -427,7 +427,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 尝试通过全局异常处理事件处理异常。
         /// </summary>
-        protected virtual bool TryHandleException(IInvocation invocation, Exception exception, out object handledResult)
+        protected virtual bool TryHandleException(IInvocation invocation, Exception exception, out object? handledResult)
         {
             var context = CreateExceptionContext(invocation, exception);
             OnExceptionHandling(context);
@@ -456,7 +456,7 @@ namespace LiteOrm.Service
                 invocation.TargetType,
                 serviceDesc.ServiceName,
                 method,
-                invocation.Arguments?.ToArray() ?? Array.Empty<object>(),
+                invocation.Arguments?.ToArray() ?? Array.Empty<object?>(),
                 GetLogArgs(invocation),
                 _sessionManager.SessionID,
                 _sessionManager.SqlStack?.ToArray() ?? Array.Empty<string>(),
@@ -475,7 +475,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 构建处理后的返回值。
         /// </summary>
-        protected virtual object BuildHandledReturnValue(ServiceExceptionContext context)
+        protected virtual object? BuildHandledReturnValue(ServiceExceptionContext context)
         {
             if (!context.HasResult)
             {
@@ -490,7 +490,7 @@ namespace LiteOrm.Service
             return context.Result;
         }
 
-        private static Type GetHandledResultType(Type returnType)
+        private static Type? GetHandledResultType(Type returnType)
         {
             if (returnType == typeof(void) || returnType == typeof(Task))
                 return null;
@@ -504,13 +504,13 @@ namespace LiteOrm.Service
         /// </summary>
         /// <param name="invocation">方法调用信息</param>
         /// <returns>参数的日志表示数组</returns>
-        protected virtual object[] GetLogArgs(IInvocation invocation)
+        protected virtual object?[] GetLogArgs(IInvocation invocation)
         {
             var serviceDesc = GetDescription(invocation);
-            var logArgs = new object[invocation.Arguments.Length];
+            var logArgs = new object?[invocation.Arguments.Length];
 
             for (int i = 0; i < invocation.Arguments.Length; i++)
-                logArgs[i] = serviceDesc.ArgsLoggable[i] ? invocation.Arguments[i] : "*";
+                logArgs[i] = serviceDesc.ArgsLoggable![i] ? invocation.Arguments[i] : "*";
 
             return logArgs;
         }
@@ -523,7 +523,7 @@ namespace LiteOrm.Service
         /// <param name="values">待记录日志对象数组</param>
         /// <param name="expandDepth"></param>
         /// <returns>日志字符串</returns>
-        public static string GetLogString(object[] values, int expandDepth = 1)
+        public static string GetLogString(object?[] values, int expandDepth = 1)
         {
             var sb = ValueStringBuilder.Create(128);
             int expand = values.Length > MaxExpandedLogLength ? 0 : expandDepth;
@@ -543,7 +543,7 @@ namespace LiteOrm.Service
         /// <param name="obj">待记录日志对象</param>
         /// <param name="expandDepth">当前递归展开深度，默认为1。超过最大展开长度的集合将不再展开。</param>
         /// <returns></returns>
-        public static string GetLogString(object obj, int expandDepth = 1)
+        public static string GetLogString(object? obj, int expandDepth = 1)
         {
             var sb = ValueStringBuilder.Create(128);
             GetLogString(ref sb, obj, expandDepth);
@@ -560,7 +560,7 @@ namespace LiteOrm.Service
         /// <param name="obj">目标对象。</param>
         /// <param name="expandDepth">当前递归展开深度。</param>
         /// <returns>日志文本。</returns>
-        public static void GetLogString(ref ValueStringBuilder sb, object obj, int expandDepth)
+        public static void GetLogString(ref ValueStringBuilder sb, object? obj, int expandDepth)
         {
             if (obj is null)
             {

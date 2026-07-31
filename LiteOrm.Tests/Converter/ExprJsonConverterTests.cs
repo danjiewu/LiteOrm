@@ -335,7 +335,7 @@ namespace LiteOrm.Common.UnitTests
 
             var foreign = Assert.IsType<ForeignExpr>(result);
             Assert.Equal(typeof(string), foreign.Foreign);
-            Assert.Equal("Shard1", foreign.TableArgs[0]);
+            Assert.Equal("Shard1", foreign.TableArgs![0]);
         }
 
         [Fact]

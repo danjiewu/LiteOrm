@@ -14,16 +14,16 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置针对关联表的内部过滤表达式。
         /// </summary>
-        public LogicExpr InnerExpr { get; set; }
+        public LogicExpr? InnerExpr { get; set; }
 
         /// <summary>
         /// 获取或设置外部实体类型。
         /// </summary>
-        public Type Foreign { get; set; }
+        public Type? Foreign { get; set; }
         /// <summary>
         /// 获取或设置外部表的别名。
         /// </summary>
-        public string Alias
+        public string? Alias
         {
             get { return field; }
             set
@@ -36,7 +36,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置用于动态表名的参数集合。
         /// </summary>
-        public string[] TableArgs
+        public string[]? TableArgs
         {
             get { return field; }
             set
@@ -81,7 +81,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="foreign">外部实体类型。</param>
         /// <param name="expr">内部过滤表达式。</param>
-        public ForeignExpr(Type foreign, LogicExpr expr)
+        public ForeignExpr(Type foreign, LogicExpr? expr)
         {
             Foreign = foreign;
             InnerExpr = expr;
@@ -93,7 +93,7 @@ namespace LiteOrm.Common
         /// <param name="foreign">外部实体类型。</param>
         /// <param name="expr">内部过滤表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
-        public ForeignExpr(Type foreign, LogicExpr expr, params string[] tableArgs)
+        public ForeignExpr(Type foreign, LogicExpr? expr, params string[] tableArgs)
         {
             Foreign = foreign;
             InnerExpr = expr;
@@ -106,7 +106,7 @@ namespace LiteOrm.Common
         /// <param name="foreign">外部实体类型。</param>
         /// <param name="alias">外部表别名。</param>
         /// <param name="expr">内部过滤表达式。</param>
-        public ForeignExpr(Type foreign, string alias, LogicExpr expr)
+        public ForeignExpr(Type foreign, string alias, LogicExpr? expr)
         {
             Foreign = foreign;
             Alias = alias;
@@ -120,7 +120,7 @@ namespace LiteOrm.Common
         /// <param name="alias">外部表别名。</param>
         /// <param name="expr">内部过滤表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
-        public ForeignExpr(Type foreign, string alias, LogicExpr expr, params string[] tableArgs)
+        public ForeignExpr(Type foreign, string alias, LogicExpr? expr, params string[] tableArgs)
         {
             Foreign = foreign;
             Alias = alias;
@@ -131,7 +131,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 比较两个 ForeignExpr 是否相等。
         /// </summary>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is ForeignExpr f && f.Foreign == Foreign && SqlNameEquals(f.Alias, Alias) && f.AutoRelated == AutoRelated && Equals(f.InnerExpr, InnerExpr) &&
                    ((f.TableArgs == null && TableArgs == null) || (f.TableArgs != null && TableArgs != null && f.TableArgs.SequenceEqual(TableArgs)));
@@ -170,7 +170,7 @@ namespace LiteOrm.Common
             fe.Alias = this.Alias;
             fe.TableArgs = this.TableArgs == null ? null : (string[])this.TableArgs.Clone();
             fe.AutoRelated = this.AutoRelated;
-            fe.InnerExpr = (LogicExpr)this.InnerExpr?.Clone();
+            fe.InnerExpr = this.InnerExpr?.Clone() as LogicExpr;
             return fe;
         }
     }

@@ -17,7 +17,7 @@ namespace LiteOrm.Tests
         public void DataSource_Configuration_ShouldBeCorrect()
         {
             var dataSourceProvider = ServiceProvider.GetRequiredService<IDataSourceProvider>();
-            var config = dataSourceProvider.GetDataSource(null);
+            var config = dataSourceProvider.GetDataSource(null!);
 
             Assert.NotNull(config);
             Assert.True(config.SyncTable);
@@ -117,7 +117,7 @@ namespace LiteOrm.Tests
 
             // Act
             await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
-            var retrievedUsers = await viewService.SearchAsync(u => u.Name.StartsWith("Batch User"), cancellationToken: TestContext.Current.CancellationToken);
+            var retrievedUsers = await viewService.SearchAsync(u => u.Name!.StartsWith("Batch User"), cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
             Assert.Equal(10, retrievedUsers.Count);
@@ -331,7 +331,7 @@ namespace LiteOrm.Tests
 
             // Act
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateValue")).GetResultAsync(TestContext.Current.CancellationToken);
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateValue")!).GetResultAsync(TestContext.Current.CancellationToken);
             var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // Assert
@@ -446,7 +446,7 @@ namespace LiteOrm.Tests
 
             // Act - ForEachAsync
             int forEachCount = 0;
-            await viewService.ForEachAsync(Expr.Lambda<TestUser>(u => u.Name == "Mixed 1"), async u =>
+            await viewService.ForEachAsync(Expr.Lambda<TestUser>(u => u.Name == "Mixed 1")!, async u =>
             {
                 forEachCount++;
                 await Task.CompletedTask;
@@ -1221,7 +1221,7 @@ namespace LiteOrm.Tests
             Assert.Equal(2, all.Count);
 
             var iteratedNames = new List<string>();
-            viewService.ForEach(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("SyncViewService_")), u => iteratedNames.Add(u.Name!));
+            viewService.ForEach(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("SyncViewService_"))!, u => iteratedNames.Add(u.Name!));
             Assert.Equal(2, iteratedNames.Count);
         }
 

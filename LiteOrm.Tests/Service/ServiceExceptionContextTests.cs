@@ -38,7 +38,7 @@ namespace LiteOrm.Service.UnitTests
         [Fact]
         public void Handle_WithoutResult_OnVoidMethod_Succeeds()
         {
-            var context = CreateContext(null, typeof(void), nameof(DummyVoidMethod));
+            var context = CreateContext(null!, typeof(void), nameof(DummyVoidMethod));
 
             context.Handle();
 
@@ -46,14 +46,14 @@ namespace LiteOrm.Service.UnitTests
             Assert.False(context.ResultAssigned);
         }
 
-        private static ServiceExceptionContext CreateContext(Type resultType, Type methodReturnType = null, string methodName = nameof(DummyMethod))
+        private static ServiceExceptionContext CreateContext(Type resultType, Type methodReturnType = null!, string methodName = nameof(DummyMethod))
         {
             return new ServiceExceptionContext(
                 new InvalidOperationException("boom"),
                 new object(),
                 typeof(ServiceExceptionContextTests),
                 nameof(ServiceExceptionContextTests),
-                typeof(ServiceExceptionContextTests).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static),
+                typeof(ServiceExceptionContextTests).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Static)!,
                 Array.Empty<object>(),
                 Array.Empty<object>(),
                 "session",

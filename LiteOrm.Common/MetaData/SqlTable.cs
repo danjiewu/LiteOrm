@@ -79,7 +79,7 @@ namespace LiteOrm.Common
                     field = new ReadOnlyCollection<SqlColumn>(Columns.Where(col =>
                     {
                         SqlColumn column = col;
-                        while (column is ForeignColumn foreignColumn) column = foreignColumn.TargetColumn.Column;
+                        while (column is ForeignColumn foreignColumn) column = foreignColumn.TargetColumn!.Column;
                         if (column is ColumnDefinition columnDefinition)
                             return columnDefinition.Mode.CanRead();
                         return true;
@@ -114,10 +114,10 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="propertyName">属性名</param>
         /// <returns>列定义，列名不存在则返回null</returns>
-        public virtual SqlColumn GetColumn(string propertyName)
+        public virtual SqlColumn? GetColumn(string propertyName)
         {
             if (String.IsNullOrEmpty(propertyName)) return null;
-            SqlColumn column;
+            SqlColumn? column;
             NamedColumnCache.TryGetValue(propertyName, out column);
             return column;
         }
@@ -127,7 +127,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要与当前对象进行比较的对象。</param>
         /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(this, obj)) return true;
             if (obj == null || obj.GetType() != GetType()) return false;
@@ -149,7 +149,7 @@ namespace LiteOrm.Common
         /// <returns>表名。</returns>
         public override string ToString()
         {
-            return Name;
+            return Name ?? string.Empty;
         }
     }
 }

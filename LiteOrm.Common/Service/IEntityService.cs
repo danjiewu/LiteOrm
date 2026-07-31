@@ -47,7 +47,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 实体对象
         /// </summary>
-        public T Entity { get; set; }
+        public T? Entity { get; set; }
     }
     /// <summary>
     /// 实体类更改接口
@@ -181,7 +181,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>删除的记录数</returns>
         [ServiceMethod]
-        int DeleteAll(LogicExpr expr, params string[] tableArgs);
+        int DeleteAll(LogicExpr? expr, params string[]? tableArgs);
         
         /// <summary>
         /// 根据UpdateExpr更新实体

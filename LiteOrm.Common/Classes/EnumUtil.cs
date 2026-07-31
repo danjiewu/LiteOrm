@@ -27,7 +27,7 @@ namespace LiteOrm
             {
                 InitializeEnumName(typeof(T));
             }
-            if (_enumNameValue[typeof(T)].TryGetValue(displayName, out Enum r)) return (T)r;
+            if (_enumNameValue[typeof(T)].TryGetValue(displayName, out Enum? r)) return (T)r!;
             T res;
             if (Enum.TryParse<T>(displayName, false, out res)) return res;
             if (Enum.TryParse<T>(displayName, true, out res)) return res;
@@ -59,7 +59,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="value">枚举值。</param>
         /// <returns>显示名称字符串。</returns>
-        public static string GetDisplayName(Enum value)
+        public static string? GetDisplayName(Enum value)
         {
             if (value is null) return null;
 
@@ -86,7 +86,7 @@ namespace LiteOrm
                 object[] displayAttrs = field.GetCustomAttributes(typeof(Enum), true);
                 object[] displayNameAttrs = field.GetCustomAttributes(typeof(DisplayNameAttribute), true);
                 object[] descriptionAtts = field.GetCustomAttributes(typeof(DescriptionAttribute), true);
-                string displayName = null;
+                string? displayName = null;
                 if (displayNameAttrs.Length > 0)
                 {
                     DisplayNameAttribute att = (DisplayNameAttribute)displayNameAttrs[0];
@@ -99,8 +99,8 @@ namespace LiteOrm
                 }
                 else
                     displayName = field.Name;
-                enumNames[(Enum)field.GetValue(null)] = displayName;
-                nameValues[displayName] = (Enum)field.GetValue(null);
+                enumNames[(Enum)field.GetValue(null)!] = displayName;
+                nameValues[displayName] = (Enum)field.GetValue(null)!;
             }
             _enumTypeName[enumType] = enumNames;
             _enumNameValue[enumType] = nameValues;

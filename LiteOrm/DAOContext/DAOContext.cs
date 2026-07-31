@@ -136,7 +136,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取创建此上下文的连接池（如果该上下文由池管理）。
         /// </summary>
-        public DAOContextPool Pool { get; }
+        public DAOContextPool? Pool { get; }
 
         /// <summary>
         /// 获取或设置指示该上下文是否为只读连接的值。
@@ -151,7 +151,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取当前活动的事务对象。如果没有正在进行的事务，则为 null。
         /// </summary>
-        public DbTransaction CurrentTransaction { get; private set; }
+        public DbTransaction? CurrentTransaction { get; private set; }
 
         /// <summary>
         /// 获取一个值，指示当前上下文是否处于活动事务中。
@@ -312,7 +312,7 @@ namespace LiteOrm
             EnsureNotDisposed();
             using (AcquireScope())
             {
-                if (!InTransaction)
+                if (CurrentTransaction is null)
                     return false;
 
                 try
@@ -343,7 +343,7 @@ namespace LiteOrm
             EnsureNotDisposed();
             using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
             {
-                if (!InTransaction)
+                if (CurrentTransaction is null)
                     return false;
 
                 try
@@ -377,7 +377,7 @@ namespace LiteOrm
             EnsureNotDisposed();
             using (AcquireScope())
             {
-                if (!InTransaction)
+                if (CurrentTransaction is null)
                     return false;
 
                 try
@@ -408,7 +408,7 @@ namespace LiteOrm
             EnsureNotDisposed();
             using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
             {
-                if (!InTransaction)
+                if (CurrentTransaction is null)
                     return false;
 
                 try
@@ -488,7 +488,7 @@ namespace LiteOrm
             EnsureNotDisposed();
             using (await AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
             {
-                if (InTransaction)
+                if (CurrentTransaction is not null)
                 {
                     try
                     {

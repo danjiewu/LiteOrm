@@ -30,7 +30,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
         [ServiceMethod]
-        new T SearchOne(Expr expr, params string[] tableArgs);
+        new T SearchOne(Expr? expr, params string[]? tableArgs);
         /// <summary>
         /// 根据条件遍历对象
         /// </summary>
@@ -46,7 +46,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
         [ServiceMethod]
-        new List<T> Search(Expr expr = null, params string[] tableArgs);
+        new List<T> Search(Expr? expr = null, params string[]? tableArgs);
 
         /// <summary>
         /// 
@@ -99,7 +99,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>是否存在记录</returns>
         [ServiceMethod]
-        bool Exists(Expr expr, params string[] tableArgs);
+        bool Exists(Expr? expr, params string[]? tableArgs);
         /// <summary>
         /// 根据条件获取记录总数
         /// </summary>
@@ -107,20 +107,20 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的记录总数</returns>
         [ServiceMethod]
-        int Count(Expr expr = null, params string[] tableArgs);
+        int Count(Expr? expr = null, params string[]? tableArgs);
         /// <summary>
         /// 根据条件获取单个实体
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
-        object SearchOne(Expr expr, params string[] tableArgs);
+        object SearchOne(Expr? expr, params string[]? tableArgs);
         /// <summary>
         /// 根据条件获取实体列表
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
-        IList Search(Expr expr = null, params string[] tableArgs);
+        IList Search(Expr? expr = null, params string[] tableArgs);
     }
 }

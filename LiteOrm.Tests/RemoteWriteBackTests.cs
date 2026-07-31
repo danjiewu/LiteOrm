@@ -36,7 +36,7 @@ namespace LiteOrm.Tests
         {
             public string Name { get; set; } = string.Empty;
 
-            [Column(IsIdentity = true)]
+            [Column(IsPrimaryKey = true, IsIdentity = true)]
             public long Id { get; set; }
 
             public DateTime CreatedAt { get; set; }
@@ -115,11 +115,11 @@ namespace LiteOrm.Tests
         {
             public Type ReturnType { get; }
             public ToUpperNameHandler(Type returnType) { ReturnType = returnType; }
-            public object GenerateReturnValue(object argument) => argument;
-            public void WriteBack(object originalArg, object returnValue)
+            public object? GenerateReturnValue(object? argument) => argument;
+            public void WriteBack(object? originalArg, object? returnValue)
             {
-                var orig = (User)originalArg;
-                var server = (User)returnValue;
+                var orig = (User)originalArg!;
+                var server = (User)returnValue!;
                 orig.Id = server.Id;
                 orig.Name = server.Name.ToUpperInvariant();
             }
@@ -132,11 +132,11 @@ namespace LiteOrm.Tests
         {
             public Type ReturnType { get; }
             public IdOnlyHandler(Type returnType) { ReturnType = returnType; }
-            public object GenerateReturnValue(object argument) => argument;
-            public void WriteBack(object originalArg, object returnValue)
+            public object? GenerateReturnValue(object? argument) => argument;
+            public void WriteBack(object? originalArg, object? returnValue)
             {
-                var orig = (User)originalArg;
-                var server = (User)returnValue;
+                var orig = (User)originalArg!;
+                var server = (User)returnValue!;
                 orig.Id = server.Id;
             }
         }
@@ -148,15 +148,15 @@ namespace LiteOrm.Tests
         {
             public Type ReturnType { get; }
             public DeltaHandler(Type returnType) { ReturnType = returnType; }
-            public object GenerateReturnValue(object argument)
+            public object? GenerateReturnValue(object? argument)
             {
-                var u = (User)argument;
+                var u = (User)argument!;
                 return new UserDelta { Id = u.Id, CreatedAt = u.CreatedAt };
             }
-            public void WriteBack(object originalArg, object returnValue)
+            public void WriteBack(object? originalArg, object? returnValue)
             {
-                var orig = (User)originalArg;
-                var delta = (UserDelta)returnValue;
+                var orig = (User)originalArg!;
+                var delta = (UserDelta)returnValue!;
                 orig.Id = delta.Id;
                 orig.CreatedAt = delta.CreatedAt;
             }
@@ -550,10 +550,10 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Single(response.OutArguments);
-            Assert.True(response.OutArguments.ContainsKey(0));
+            Assert.Single(response.OutArguments!);
+            Assert.True(response.OutArguments!.ContainsKey(0));
             // IdentityOutAttribute 仅返回 Id 值（long），而非整个 User 对象
-            Assert.Equal(123L, response.OutArguments[0]);
+            Assert.Equal(123L, response.OutArguments![0]);
         }
 
         [Fact]
@@ -568,9 +568,9 @@ namespace LiteOrm.Tests
 
             Assert.True(response.Success);
             Assert.Equal(999L, response.Result);
-            Assert.Single(response.OutArguments);
+            Assert.Single(response.OutArguments!);
             // IdentityOutAttribute 仅返回 Id 值
-            Assert.Equal(999L, response.OutArguments[0]);
+            Assert.Equal(999L, response.OutArguments![0]);
         }
 
         [Fact]
@@ -583,9 +583,9 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Single(response.OutArguments);
+            Assert.Single(response.OutArguments!);
             // DeltaHandler 生成了 UserDelta（ReturnType != User）
-            var delta = (UserDelta)response.OutArguments[0];
+            var delta = (UserDelta)response.OutArguments![0];
             Assert.Equal(88, delta.Id);
             Assert.Equal(new DateTime(2026, 5, 5), delta.CreatedAt);
         }
@@ -600,8 +600,8 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Single(response.OutArguments);
-            var written = (CopyableUser)response.OutArguments[0];
+            Assert.Single(response.OutArguments!);
+            var written = (CopyableUser)response.OutArguments![0];
             Assert.Equal(100, written.Id);
             Assert.Equal("server", written.Name);
         }
@@ -623,9 +623,9 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Single(response.OutArguments);
+            Assert.Single(response.OutArguments!);
             // 集合模式：返回 List<long>
-            var ids = (List<long>)response.OutArguments[0];
+            var ids = (List<long>)response.OutArguments![0];
             Assert.Equal(new long[] { 100, 101, 102 }, ids);
         }
 
@@ -644,9 +644,9 @@ namespace LiteOrm.Tests
             var response = await dispatcher.InvokeAsync(request);
 
             Assert.True(response.Success);
-            Assert.Single(response.OutArguments);
+            Assert.Single(response.OutArguments!);
             // DeltaHandler.ReturnType = typeof(UserDelta)，集合模式下序列化为 List<UserDelta>
-            var deltas = (List<UserDelta>)response.OutArguments[0];
+            var deltas = (List<UserDelta>)response.OutArguments![0];
             Assert.Equal(2, deltas.Count);
             Assert.Equal(200, deltas[0].Id);
             Assert.Equal(new DateTime(2026, 8, 1), deltas[0].CreatedAt);

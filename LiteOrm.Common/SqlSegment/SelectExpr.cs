@@ -43,7 +43,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="selects">要选择的字段表达式列表</param>
-        public SelectExpr(SqlSegment source, params SelectItemExpr[] selects)
+        public SelectExpr(SqlSegment? source, params SelectItemExpr[] selects)
         {
             Source = source;
             Selects = selects?.ToList() ?? new List<SelectItemExpr>();
@@ -54,7 +54,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="selects">要选择的字段表达式列表</param>
-        public SelectExpr(SqlSegment source, params ValueTypeExpr[] selects)
+        public SelectExpr(SqlSegment? source, params ValueTypeExpr[] selects)
         {
             Source = source;
             Selects = selects?.Select(s => s is SelectItemExpr si ? si : new SelectItemExpr(s)).ToList() ?? new List<SelectItemExpr>();
@@ -70,7 +70,7 @@ namespace LiteOrm.Common
         /// </summary>
         public List<SelectItemExpr> Selects { get; set; } = new List<SelectItemExpr>();
 
-        private List<SelectExpr> _nextSelects;
+        private List<SelectExpr>? _nextSelects;
         /// <summary>
         /// 后续的 Select 表达式列表（用于表示多项集合操作链），每个元素自身包含 SetType，表示与前一查询之间的集合运算符
         /// 懒加载：若为 null 则在 getter 中创建新列表。
@@ -89,7 +89,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is SelectExpr other
             && Equals(Source, other.Source)
             && SqlNameEquals(Alias, other.Alias)
@@ -148,7 +148,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var s = new SelectExpr();
-            s.Source = (SqlSegment)(Source as Expr)?.Clone() ?? Source;
+            s.Source = Source?.Clone() as SqlSegment ?? Source;
             s.Alias = Alias;
             s.Selects = Selects?.Select(si => (SelectItemExpr)si.Clone()).ToList() ?? new List<SelectItemExpr>();
             s.SetType = SetType;
@@ -159,7 +159,7 @@ namespace LiteOrm.Common
             return s;
         }
 
-        private static bool SequenceEquals<T>(IList<T> left, IList<T> right)
+        private static bool SequenceEquals<T>(IList<T>? left, IList<T>? right)
         {
             if (ReferenceEquals(left, right)) return true;
             if (left == null || left.Count == 0) return right == null || right.Count == 0;
@@ -167,7 +167,7 @@ namespace LiteOrm.Common
             return left.SequenceEqual(right);
         }
 
-        private static int SequenceHashOrDefault<T>(IList<T> items)
+        private static int SequenceHashOrDefault<T>(IList<T>? items)
         {
             return items == null || items.Count == 0 ? 0 : SequenceHash(items);
         }
@@ -202,7 +202,7 @@ namespace LiteOrm.Common
         /// <param name="value">值表达式</param>
         /// <param name="aliasName">别名名称</param>
         /// <exception cref="ArgumentNullException">当 value 为 null 时抛出</exception>
-        public SelectItemExpr(ValueTypeExpr value, string aliasName)
+        public SelectItemExpr(ValueTypeExpr value, string? aliasName)
         {
             if (value is null) throw new ArgumentNullException(nameof(value));
             Value = value;
@@ -212,14 +212,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置选择项的值表达式
         /// </summary>
-        public new ValueTypeExpr Value { get; set; }
+        public new ValueTypeExpr? Value { get; set; }
 
-        private string _alias;
+        private string? _alias;
 
         /// <summary>
         /// 获取或设置选择项的别名
         /// </summary>
-        public string Alias
+        public string? Alias
         {
             get => _alias;
             set
@@ -234,7 +234,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is SelectItemExpr other && SqlNameEquals(Alias, other.Alias) && Equals(Value, other.Value);
+        public override bool Equals(object? obj) => obj is SelectItemExpr other && SqlNameEquals(Alias, other.Alias) && Equals(Value, other.Value);
 
         /// <summary>
         /// 获取当前对象的哈希码
@@ -248,7 +248,7 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            var valueText = Value?.ToString();
+            var valueText = Value?.ToString() ?? string.Empty;
             if (string.IsNullOrEmpty(valueText)) return string.Empty;
             return string.IsNullOrEmpty(Alias) ? valueText : $"{valueText} AS {Alias}";
         }
@@ -263,7 +263,7 @@ namespace LiteOrm.Common
         /// </summary>
         public override Expr Clone()
         {
-            return new SelectItemExpr((ValueTypeExpr)Value.Clone(), Alias);
+            return new SelectItemExpr((ValueTypeExpr)Value!.Clone(), Alias);
         }
     }
 }

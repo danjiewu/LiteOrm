@@ -36,7 +36,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var table = CreateTable(Array.Empty<SqlColumn>());
 
-            Assert.Null(table.GetColumn(null));
+            Assert.Null(table.GetColumn(null!));
             Assert.Null(table.GetColumn(string.Empty));
         }
 

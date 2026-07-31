@@ -14,8 +14,8 @@ namespace LiteOrm.Common
         private class TrieNode
         {
             public Dictionary<char, TrieNode> Children { get; set; } = new Dictionary<char, TrieNode>();
-            public string Key { get; set; }
-            public string Replacement { get; set; }
+            public string Key { get; set; } = string.Empty;
+            public string Replacement { get; set; } = string.Empty;
             public bool IsEndOfWord { get; set; }
         }
 
@@ -31,7 +31,7 @@ namespace LiteOrm.Common
             TrieNode node = root;
             foreach (char c in key)
             {
-                if (!node.Children.TryGetValue(c, out TrieNode value))
+                if (!node.Children.TryGetValue(c, out TrieNode? value))
                 {
                     value = new TrieNode();
                     node.Children[c] = value;
@@ -49,10 +49,10 @@ namespace LiteOrm.Common
         /// <param name="text">待搜索的文本</param>
         /// <param name="startIndex">起始索引</param>
         /// <returns>返回匹配的TrieNode节点，如果没有找到则返回null</returns>
-        private TrieNode FindLongestMatch(string text, int startIndex)
+        private TrieNode? FindLongestMatch(string text, int startIndex)
         {
             TrieNode node = root;
-            TrieNode maxLengthNode = null;
+            TrieNode? maxLengthNode = null;
 
             for (int i = startIndex; i < text.Length; i++)
             {
@@ -77,7 +77,7 @@ namespace LiteOrm.Common
         /// <param name="text">待替换的文本</param>
         /// <param name="replacementProvider">自定义替换提供委托，返回替换值或null表示使用默认替换。为空时使用默认替换。</param>
         /// <returns>替换后的文本</returns>
-        public string Replace(string text, Func<string, string> replacementProvider = null)
+        public string Replace(string text, Func<string, string>? replacementProvider = null)
         {
             if (string.IsNullOrEmpty(text))
             {
@@ -90,7 +90,7 @@ namespace LiteOrm.Common
 
             while (i < text.Length)
             {
-                TrieNode matchNode = FindLongestMatch(text, i);
+                TrieNode? matchNode = FindLongestMatch(text, i);
                 if (matchNode != null)
                 {
                     string replacement;

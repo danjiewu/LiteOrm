@@ -18,7 +18,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段（如 TableExpr）</param>
         /// <param name="where">筛选条件表达式</param>
-        public WhereExpr(SqlSegment source, LogicExpr where)
+        public WhereExpr(SqlSegment? source, LogicExpr? where)
         {
             Source = source;
             Where = where;
@@ -32,7 +32,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置筛选条件表达式
         /// </summary>
-        public LogicExpr Where { get; set; }
+        public LogicExpr? Where { get; set; }
 
         /// <summary>
         /// 克隆 WhereExpr
@@ -40,8 +40,8 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var w = new WhereExpr();
-            w.Source = (SqlSegment)Source?.Clone();
-            w.Where = (LogicExpr)Where?.Clone();
+            w.Source = Source?.Clone() as SqlSegment;
+            w.Where = Where?.Clone() as LogicExpr;
             return w;
         }
 
@@ -50,7 +50,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is WhereExpr other && Equals(Source, other.Source) && Equals(Where, other.Where);
+        public override bool Equals(object? obj) => obj is WhereExpr other && Equals(Source, other.Source) && Equals(Where, other.Where);
 
         /// <summary>
         /// 获取当前对象的哈希码
@@ -66,7 +66,7 @@ namespace LiteOrm.Common
         {
             if (Source is null && Where is null) return string.Empty;
             else if (Source is null) return $"WHERE {Where}";
-            else if (Where is null) return Source.ToString();
+            else if (Where is null) return Source.ToString() ?? string.Empty;
             else return $"{Source} WHERE {Where}";
         }
     }

@@ -18,7 +18,7 @@ public static class PropertyAccessorExtension
     /// <param name="instance">对象实例</param>
     /// <returns>属性值</returns>
     /// <exception cref="ArgumentNullException">当property为null时抛出</exception>
-    public static object GetValueFast(this PropertyInfo property, object instance)
+    public static object? GetValueFast(this PropertyInfo property, object instance)
     {
         if (property is null) throw new ArgumentNullException(nameof(property));
         if (instance is null) return null;
@@ -29,7 +29,8 @@ public static class PropertyAccessorExtension
             var instanceParam = Expression.Parameter(typeof(object), "instance");
 
             // 转换实例类型
-            var instanceCast = Expression.Convert(instanceParam, p.DeclaringType);
+            var declaringType = p.DeclaringType ?? throw new ArgumentNullException(nameof(property));
+            var instanceCast = Expression.Convert(instanceParam, declaringType);
 
             // 属性访问
             var propertyAccess = Expression.Property(instanceCast, p);
@@ -63,7 +64,8 @@ public static class PropertyAccessorExtension
             var instanceParam = Expression.Parameter(typeof(object), "instance");
             var valueParam = Expression.Parameter(typeof(object), "value");
 
-            var instanceCast = Expression.Convert(instanceParam, p.DeclaringType);
+            var declaringType = p.DeclaringType ?? throw new ArgumentNullException(nameof(property));
+            var instanceCast = Expression.Convert(instanceParam, declaringType);
             var valueCast = Expression.Convert(valueParam, p.PropertyType);
 
             var propertyAccess = Expression.Property(instanceCast, p);

@@ -22,7 +22,7 @@ namespace LiteOrm
         public static DataTableResult Search<T>(this IDataViewDAO<T> dataViewDao, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return dataViewDao.Search(lambdaConvert.ToLogicExpr());
+            return dataViewDao.Search(lambdaConvert.ToLogicExpr()!);
         }
 
         /// <summary>
@@ -49,7 +49,7 @@ namespace LiteOrm
         public static DataTableResult Search<T>(this IDataViewDAO<T> dataViewDao, string[] propertyNames, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return dataViewDao.Search(propertyNames, lambdaConvert.ToLogicExpr());
+            return dataViewDao.Search(propertyNames, lambdaConvert.ToLogicExpr()!);
         }
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace LiteOrm
         public static EnumerableResult<T> Search<T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return objectViewDao.Search(lambdaConvert.ToLogicExpr());
+            return objectViewDao.Search(lambdaConvert.ToLogicExpr()!);
         }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace LiteOrm
         public static ValueResult<int> Count<T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return objectViewDao.Count(lambdaConvert.ToLogicExpr());
+            return objectViewDao.Count(lambdaConvert.ToLogicExpr()!);
         }
 
         /// <summary>
@@ -118,7 +118,7 @@ namespace LiteOrm
         public static ValueResult<bool> Exists<T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
-            return objectViewDao.Exists(lambdaConvert.ToLogicExpr());
+            return objectViewDao.Exists(lambdaConvert.ToLogicExpr()!);
         }
 
         #endregion
