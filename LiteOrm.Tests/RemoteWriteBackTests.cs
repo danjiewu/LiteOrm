@@ -547,7 +547,7 @@ namespace LiteOrm.Tests
             var userArg = new User { Name = "bob", Id = 0 };
             var request = Request<IUserService>(nameof(IUserService.CreateAsync), userArg);
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Single(response.OutArguments!);
@@ -564,7 +564,7 @@ namespace LiteOrm.Tests
 
             var request = Request<IUserService>(nameof(IUserService.CreateAndReturnIdAsync), new User { Name = "x" });
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Equal(999L, response.Result);
@@ -580,7 +580,7 @@ namespace LiteOrm.Tests
 
             var request = Request<IUserService>(nameof(IUserService.CreateDeltaAsync), new User { Name = "x" });
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Single(response.OutArguments!);
@@ -597,7 +597,7 @@ namespace LiteOrm.Tests
 
             var request = Request<ICopyableUserService>(nameof(ICopyableUserService.CreateAsync), new CopyableUser { Name = "x" });
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Single(response.OutArguments!);
@@ -620,7 +620,7 @@ namespace LiteOrm.Tests
             };
             var request = Request<IUserService>(nameof(IUserService.CreateBatchAsync), users);
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Single(response.OutArguments!);
@@ -641,7 +641,7 @@ namespace LiteOrm.Tests
             };
             var request = Request<IUserService>(nameof(IUserService.CreateBatchDeltaAsync), users);
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Single(response.OutArguments!);

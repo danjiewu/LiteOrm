@@ -282,7 +282,7 @@ namespace LiteOrm.Tests
             }
             finally
             {
-                await host.StopAsync();
+                await host.StopAsync(TestContext.Current.CancellationToken);
                 host.Dispose();
             }
         }

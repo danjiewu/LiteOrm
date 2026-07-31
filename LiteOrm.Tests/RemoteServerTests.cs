@@ -127,7 +127,7 @@ namespace LiteOrm.Tests
         {
             var (dispatcher, _) = CreateDispatcher();
 
-            var response = await dispatcher.InvokeAsync(Request(nameof(IRemoteCalculator.Clear)));
+            var response = await dispatcher.InvokeAsync(Request(nameof(IRemoteCalculator.Clear)), TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Null(response.Result);
@@ -139,7 +139,7 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.Add), 3, 4));
+                Request(nameof(IRemoteCalculator.Add), 3, 4), TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Equal(7, ReadResult<int>(response));
@@ -151,7 +151,7 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.Echo), "hello"));
+                Request(nameof(IRemoteCalculator.Echo), "hello"), TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Equal("echo:hello", ReadResult<string>(response));
@@ -163,7 +163,7 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.ResetAsync)));
+                Request(nameof(IRemoteCalculator.ResetAsync)), TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Null(response.Result);
@@ -175,7 +175,7 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.MultiplyAsync), 6, 7));
+                Request(nameof(IRemoteCalculator.MultiplyAsync), 6, 7), TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Equal(42, ReadResult<int>(response));
@@ -224,7 +224,7 @@ namespace LiteOrm.Tests
                 Method = typeof(IRemoteCalculator).GetMethod(nameof(IRemoteCalculator.Clear), BindingFlags.Public | BindingFlags.Instance),
             };
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.False(response.Success);
             Assert.Contains("IUnknownService", response.Error?.Message!);
@@ -256,7 +256,7 @@ namespace LiteOrm.Tests
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.Add), 1, 2));
+                Request(nameof(IRemoteCalculator.Add), 1, 2), TestContext.Current.CancellationToken);
 
             Assert.False(response.Success);
             Assert.Contains("deliberate", response.Error?.Message!);
@@ -297,7 +297,7 @@ namespace LiteOrm.Tests
                 Arguments = new object[] { 42 },
             };
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success, response.Error?.Message ?? "(no error)");
             Assert.Equal(42, response.Result);
@@ -344,7 +344,7 @@ namespace LiteOrm.Tests
             Assert.NotNull(request.Method);
             Assert.Equal("InsertAsync", request.Method.Name);
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success, response.Error?.Message ?? "(no error)");
             Assert.True((bool)response.Result!);

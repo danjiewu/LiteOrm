@@ -540,7 +540,7 @@ namespace LiteOrm.Common.UnitTests
 
             var json = JsonSerializer.Serialize<Expr>(expr);
 
-            Assert.Equal(1, Regex.Matches(json, "\"Alias\":\"MyCTE\"").Count);
+            Assert.Single(Regex.Matches(json, "\"Alias\":\"MyCTE\""));
             Assert.Contains("\"$cte\":\"MyCTE\"", json);
 
             var result = JsonSerializer.Deserialize<Expr>(json);

@@ -133,7 +133,7 @@ namespace LiteOrm.UnitTests
 
         // Helper method for testing attribute application
         [ServicePermissionAttribute]
-        public void TestMethodWithAttribute()
+        internal void TestMethodWithAttribute()
         {
         }
 

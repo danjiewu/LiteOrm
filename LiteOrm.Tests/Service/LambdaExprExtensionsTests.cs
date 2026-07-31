@@ -110,7 +110,7 @@ namespace LiteOrm.Common.UnitTests
             var service = new Mock<IEntityViewServiceAsync<TestEntity>>();
             service.Setup(s => s.ExistsAsync(It.IsAny<Expr>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-            var result = await service.Object.ExistsAsync(x => x.Id > 0);
+            var result = await service.Object.ExistsAsync(x => x.Id > 0, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.True(result);
         }
@@ -121,7 +121,7 @@ namespace LiteOrm.Common.UnitTests
             var service = new Mock<IEntityViewServiceAsync<TestEntity>>();
             service.Setup(s => s.CountAsync(It.IsAny<Expr>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>())).ReturnsAsync(8);
 
-            var result = await service.Object.CountAsync(x => x.Id > 0);
+            var result = await service.Object.CountAsync(x => x.Id > 0, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(8, result);
         }

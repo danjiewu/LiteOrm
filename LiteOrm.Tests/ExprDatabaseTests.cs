@@ -416,7 +416,7 @@ namespace LiteOrm.Tests
             Assert.Equal(5, likeResults.Count);
             // 验证每个结果的Name以"ExtensionTest"开头
             Assert.All(likeResults, u =>
-                Assert.True(u.Name!.StartsWith("ExtensionTest"))
+                Assert.StartsWith("ExtensionTest", u.Name!)
             );
 
             // 测试Contains扩展方法
@@ -427,7 +427,7 @@ namespace LiteOrm.Tests
             Assert.Equal(5, containsResults.Count);
             // 验证每个结果的Name包含"Extension"
             Assert.All(containsResults, u =>
-                Assert.True(u.Name!.Contains("Extension"))
+                Assert.Contains("Extension", u.Name!)
             );
 
             // 测试StartsWith扩展方法
@@ -438,7 +438,7 @@ namespace LiteOrm.Tests
             Assert.Equal(5, startsWithResults.Count);
             // 验证每个结果的Name以"Extension"开头
             Assert.All(startsWithResults, u =>
-                Assert.True(u.Name!.StartsWith("Extension"))
+                Assert.StartsWith("Extension", u.Name!)
             );
 
             // 测试EndsWith扩展方法
@@ -449,7 +449,7 @@ namespace LiteOrm.Tests
             Assert.Single(endsWithResults);
             // 验证每个结果的Name以"Test1"结尾
             Assert.All(endsWithResults, u =>
-                Assert.True(u.Name!.EndsWith("Test1"))
+                Assert.EndsWith("Test1", u.Name!)
             );
 
             // 测试RegexpLike扩展方法
@@ -739,7 +739,7 @@ namespace LiteOrm.Tests
             if (lowerDt.Rows.Count > 0 && lowerDt.Rows[0]["LowerName"] != DBNull.Value)
             {
                 string lowerName = lowerDt.Rows[0]["LowerName"].ToString()!;
-                Assert.True(lowerName.Equals(lowerName.ToLower()));
+                Assert.Equal(lowerName.ToLower(), lowerName);
             }
 
             // 测试LENGTH函数

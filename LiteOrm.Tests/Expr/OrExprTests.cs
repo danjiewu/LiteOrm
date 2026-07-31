@@ -15,7 +15,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var expr = new OrExpr();
 
-            Assert.Equal(0, expr.Count);
+            Assert.Empty(expr);
             Assert.False(expr.IsReadOnly);
             Assert.Equal(ExprType.Or, expr.ExprType);
         }
@@ -64,7 +64,7 @@ namespace LiteOrm.Common.UnitTests
             var expr = new OrExpr();
             expr.Add(Condition("A", 1));
 
-            Assert.Equal(1, expr.Count);
+            Assert.Single(expr);
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace LiteOrm.Common.UnitTests
             var expr = new OrExpr();
             expr.Add(null!);
 
-            Assert.Equal(0, expr.Count);
+            Assert.Empty(expr);
         }
 
         [Fact]
@@ -106,7 +106,7 @@ namespace LiteOrm.Common.UnitTests
 
             outer.Add(inner);
 
-            Assert.Equal(1, outer.Count);
+            Assert.Single(outer);
             Assert.IsType<AndExpr>(outer[0]);
         }
 
@@ -125,7 +125,7 @@ namespace LiteOrm.Common.UnitTests
             var expr = new OrExpr(Condition("A", 1), Condition("B", 2));
             expr.Clear();
 
-            Assert.Equal(0, expr.Count);
+            Assert.Empty(expr);
         }
 
         [Fact]
