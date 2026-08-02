@@ -24,14 +24,12 @@ namespace LiteOrm.Framework
             rootScope.ChildLifetimeScopeBeginning += (sender, e) =>
             {
                 // 子作用域开始时，设置当前会话工厂为子作用域
-                var childSp = new AutofacServiceProvider(e.LifetimeScope);
-                SessionManager.SetCurrent(() => childSp.GetService<SessionManager>());
+                SessionManager.SetCurrent(() => e.LifetimeScope.Resolve<SessionManager>());
 
                 // 子作用域结束时，恢复为根作用域
                 e.LifetimeScope.CurrentScopeEnding += (s, args) =>
                 {
-                    var rootSp = new AutofacServiceProvider(rootScope);
-                    SessionManager.SetCurrent(() => rootSp.GetService<SessionManager>());
+                    SessionManager.SetCurrent(() => rootScope.Resolve<SessionManager>());
                 };
 
                 // 递归注册子作用域的子作用域跟踪

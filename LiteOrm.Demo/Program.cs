@@ -17,11 +17,10 @@ OracleConfiguration.BindByName = true;
 
 // 使用 RegisterLiteOrm 从 appsettings.json 自动配置（Autofac + Castle 拦截器）
 var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrm()
-    .ConfigureServices(services =>
+    .RegisterLiteOrm(options =>
     {
-        // 注册应用程序服务
-        services.AddServiceGenerator<ServiceFactory>();
+        // 注册服务工厂代理（通过 ServiceGenerateInterceptor 自动解析接口返回类型）
+        options.RegisterServiceGenerator<ServiceFactory>();
     })
     .Build();
 

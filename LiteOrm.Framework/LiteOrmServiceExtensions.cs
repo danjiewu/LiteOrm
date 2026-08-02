@@ -2,6 +2,7 @@ using Autofac;
 using Autofac.Builder;
 using Autofac.Extensions.DependencyInjection;
 using Autofac.Extras.DynamicProxy;
+using Castle.DynamicProxy;
 using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Service;
@@ -72,14 +73,12 @@ namespace LiteOrm.Framework
             }
 
             return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
-                .ConfigureServices(services =>
-                {
-                    // 显式注册核心服务（MS DI 注册会被 AutofacServiceProviderFactory 转移到 Autofac 容器）
-                    services.AddCoreLiteOrmServices();
-                })
                 .ConfigureContainer<ContainerBuilder>(builder =>
                 {
                     var logger = options.LoggerFactory?.CreateLogger(nameof(LiteOrmServiceExtensions));
+
+                    // 注册核心服务（Autofac 原生注册）
+                    builder.RegisterCoreServices();
 
                     // 自动扫描并注册标记 [AutoRegister] 的服务（Autofac 版，含拦截器支持）
                     try
@@ -89,6 +88,20 @@ namespace LiteOrm.Framework
                     catch (Exception ex)
                     {
                         throw new InvalidOperationException("Failed to register LiteOrm services automatically", ex);
+                    }
+
+                    // 注册服务生成器代理（通过 ServiceGenerateInterceptor 从 DI 容器解析返回类型）
+                    foreach (var serviceType in options.ServiceGenerators)
+                    {
+                        var capturedType = serviceType;
+                        builder.Register(c =>
+                            {
+                                var interceptor = c.Resolve<ServiceGenerateInterceptor>();
+                                return new ProxyGenerator().CreateInterfaceProxyWithoutTarget(
+                                    capturedType, interceptor);
+                            })
+                            .As(capturedType)
+                            .InstancePerLifetimeScope();
                     }
 
                     // 注册自定义 SqlBuilder
@@ -121,24 +134,18 @@ namespace LiteOrm.Framework
                     {
                         builder.RegisterBuildCallback(container =>
                         {
-                            var lifetimeScope = container as ILifetimeScope;
-                            if (lifetimeScope != null)
-                            {
-                                var sp = new AutofacServiceProvider(lifetimeScope);
+                            // 设置根作用域的会话工厂，使 SessionManager.Current 在根作用域可用
+                            SessionManager.SetCurrent(() => container.Resolve<SessionManager>());
 
-                                // 设置根作用域的会话工厂，使 SessionManager.Current 在根作用域可用
-                                SessionManager.SetCurrent(() => sp.GetService<SessionManager>());
-
-                                // 注册子作用域跟踪
-                                ScopeExtensions.RegisterScope(lifetimeScope);
-                            }
+                            // 注册子作用域跟踪
+                            ScopeExtensions.RegisterScope(container);
                         });
                     }
                 });
         }
 
         /// <summary>
-        /// 显式注册 LiteOrm 核心服务。
+        /// 显式注册 LiteOrm 核心服务到 Autofac 容器（原生注册）。
         /// 这些服务不再使用 [AutoRegister] 特性，而是通过此方法手动注册，确保注册行为的确定性。
         /// </summary>
         /// <remarks>
@@ -150,62 +157,90 @@ namespace LiteOrm.Framework
         /// 5. <see cref="LiteOrmCoreInitializer"/> - HostedService，启动时自动同步数据库表结构。
         /// 同时触发 <see cref="LiteOrmSqlFunctionInitializer.Initialize"/> 以注册 SQL 函数映射。
         /// </remarks>
-        /// <param name="services">服务集合。</param>
-        /// <returns>服务集合。</returns>
-        public static IServiceCollection AddCoreLiteOrmServices(this IServiceCollection services)
+        /// <param name="builder">Autofac 容器构建器。</param>
+        /// <returns>容器构建器。</returns>
+        public static ContainerBuilder RegisterCoreServices(this ContainerBuilder builder)
         {
-            if (services == null) throw new ArgumentNullException(nameof(services));
+            if (builder == null) throw new ArgumentNullException(nameof(builder));
 
             // 数据源提供程序 - 单例，从宿主 IConfiguration 的 LiteOrm 节点加载连接配置
-            services.AddSingleton<IDataSourceProvider>(sp =>
-            {
-                var configuration = sp.GetRequiredService<IConfiguration>();
-                var provider = new DataSourceProvider();
-                provider.LoadConfiguration(configuration.GetSection("LiteOrm"));
-                return provider;
-            });
-            services.AddSingleton<DataSourceProvider>(sp => (DataSourceProvider)sp.GetRequiredService<IDataSourceProvider>());
+            builder.Register(sp =>
+                {
+                    var configuration = sp.Resolve<IConfiguration>();
+                    var provider = new DataSourceProvider();
+                    provider.LoadConfiguration(configuration.GetSection("LiteOrm"));
+                    return provider;
+                })
+                .As<IDataSourceProvider>()
+                .As<DataSourceProvider>()
+                .SingleInstance();
 
             // SqlBuilderFactory 使用静态 Instance，确保 DI 解析的实例与静态访问 (SqlBuilderFactory.Instance) 一致
-            services.AddSingleton<SqlBuilderFactory>(sp => SqlBuilderFactory.Instance);
-            services.AddSingleton<ISqlBuilderFactory>(sp => sp.GetRequiredService<SqlBuilderFactory>());
+            builder.Register(_ => SqlBuilderFactory.Instance)
+                .As<SqlBuilderFactory>()
+                .As<ISqlBuilderFactory>()
+                .SingleInstance();
 
             // 连接池工厂 - 单例
-            services.AddSingleton<DAOContextPoolFactory>();
+            builder.RegisterType<DAOContextPoolFactory>()
+                .SingleInstance();
 
             // 会话管理器 - 每作用域一个实例
-            services.AddScoped<SessionManager>();
+            builder.RegisterType<SessionManager>()
+                .InstancePerLifetimeScope();
 
-            // 显式注册核心实体服务与数据访问对象（不再依赖 [AutoRegister] 特性扫描）。
+            // 显式注册核心实体服务与数据访问对象。
             // 注意：注册顺序决定了 IEntityViewService<> 解析到 EntityViewService<>，
             // IEntityService<>/IEntityServiceAsync<> 解析到 EntityService<>。
-            services.AddScoped(typeof(EntityService<>));
-            services.AddScoped(typeof(IEntityService<>), typeof(EntityService<>));
-            services.AddScoped(typeof(IEntityServiceAsync<>), typeof(EntityService<>));
-            services.AddScoped(typeof(EntityViewService<>));
-            services.AddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
-            services.AddScoped(typeof(IEntityViewServiceAsync<>), typeof(EntityViewService<>));
-            services.AddScoped(typeof(ObjectDAO<>));
-            services.AddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
-            services.AddScoped(typeof(ObjectViewDAO<>));
-            services.AddScoped(typeof(IObjectViewDAO<>), typeof(ObjectViewDAO<>));
-            services.AddScoped(typeof(DataDAO<>));
-            services.AddScoped(typeof(DataViewDAO<>));
-            services.AddScoped(typeof(IDataViewDAO<>), typeof(DataViewDAO<>));
+            builder.RegisterGeneric(typeof(EntityService<>))
+                .AsSelf()
+                .As(typeof(IEntityService<>))
+                .As(typeof(IEntityServiceAsync<>))
+                .InstancePerLifetimeScope();
+
+            builder.RegisterGeneric(typeof(EntityViewService<>))
+                .AsSelf()
+                .As(typeof(IEntityViewService<>))
+                .As(typeof(IEntityViewServiceAsync<>))
+                .InstancePerLifetimeScope();
+
+            builder.RegisterGeneric(typeof(ObjectDAO<>))
+                .AsSelf()
+                .As(typeof(IObjectDAO<>))
+                .InstancePerLifetimeScope();
+
+            builder.RegisterGeneric(typeof(ObjectViewDAO<>))
+                .AsSelf()
+                .As(typeof(IObjectViewDAO<>))
+                .InstancePerLifetimeScope();
+
+            builder.RegisterGeneric(typeof(DataDAO<>))
+                .AsSelf()
+                .InstancePerLifetimeScope();
+
+            builder.RegisterGeneric(typeof(DataViewDAO<>))
+                .AsSelf()
+                .As(typeof(IDataViewDAO<>))
+                .InstancePerLifetimeScope();
 
             // 表信息提供程序 - 单例
-            services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
+            builder.RegisterType<AttributeTableInfoProvider>()
+                .As<TableInfoProvider>()
+                .SingleInstance();
 
             // 批量插入提供程序工厂 - 单例
-            services.AddSingleton<BulkProviderFactory>();
+            builder.RegisterType<BulkProviderFactory>()
+                .SingleInstance();
 
-            // 初始化
-            services.AddHostedService<LiteOrmCoreInitializer>();
+            // 初始化 - HostedService
+            builder.RegisterType<LiteOrmCoreInitializer>()
+                .As<IHostedService>()
+                .SingleInstance();
 
             // 触发 SQL 函数初始化（静态构造函数仅执行一次，多次调用安全）
             LiteOrmSqlFunctionInitializer.Initialize();
 
-            return services;
+            return builder;
         }
 
         /// <summary>
@@ -222,6 +257,11 @@ namespace LiteOrm.Framework
             /// 注册的 SqlBuilder 映射（按连接类型）。
             /// </summary>
             internal Dictionary<Type, SqlBuilder> SqlBuildersByType { get; } = new Dictionary<Type, SqlBuilder>();
+
+            /// <summary>
+            /// 注册的服务生成器接口类型列表。
+            /// </summary>
+            internal List<Type> ServiceGenerators { get; } = new List<Type>();
 
             /// <summary>
             /// 是否注册 Scope 跟踪（默认为 true）。
@@ -257,6 +297,19 @@ namespace LiteOrm.Framework
             public void RegisterSqlBuilder(Type providerType, SqlBuilder sqlBuilder)
             {
                 SqlBuildersByType[providerType] = sqlBuilder;
+            }
+
+            /// <summary>
+            /// 注册服务生成器接口代理。
+            /// <para>
+            /// 将指定的工厂接口（如 <c>ServiceFactory</c>）注册为动态代理，
+            /// 访问其属性或方法时由 <see cref="ServiceGenerateInterceptor"/> 从 DI 容器解析对应服务。
+            /// </para>
+            /// </summary>
+            /// <typeparam name="TService">工厂接口类型。</typeparam>
+            public void RegisterServiceGenerator<TService>() where TService : class
+            {
+                ServiceGenerators.Add(typeof(TService));
             }
         }
 
