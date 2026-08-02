@@ -19,7 +19,7 @@
       8.1.0 Breaking Change: AutoRegisterAttribute 从 LiteOrm.Common 迁移至 LiteOrm.Framework；
       LiteOrm 核心的 DAO/Service 不再使用 [AutoRegister] 特性自动注册，改为由 LiteOrm.Framework 显式注册；
       LiteOrm 核心项目移除 Microsoft.Extensions.Hosting 依赖，DI 集成仅由 LiteOrm.Framework 提供；
-      DataSourceProvider 改为显式配置 API，不再接受 IConfiguration；
+      DataSourceProvider 新增 LoadConfiguration 扩展方法，支持从 IConfiguration 读取配置；
       BulkProvider 改用 BulkProviderAttribute 标记数据库连接类型；
       Lifetime 枚举移除，AutoRegisterAttribute.Lifetime 改用内置 ServiceLifetime（默认 Scoped）；
     </PackageReleaseNotes>
@@ -50,6 +50,7 @@
 
 
 	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.5" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
 	</ItemGroup>
 

@@ -1,18 +1,15 @@
-using LiteOrm;
 using LiteOrm.Common;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 
-namespace LiteOrm.Framework
+namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm.Framework 数据源配置扩展 - 从 <see cref="IConfiguration"/> 加载连接配置。
+    /// 数据源配置扩展 - 从 <see cref="IConfiguration"/> 加载连接配置。
     /// </summary>
     /// <remarks>
-    /// LiteOrm 核心项目的 <see cref="DataSourceProvider"/> 不再依赖 Microsoft.Extensions.Configuration，
-    /// 连接配置通过 <see cref="DataSourceProvider.AddDataSource"/> 显式提供。LiteOrm.Framework 作为 DI 集成层，
-    /// 负责从宿主应用的 <c>LiteOrm</c> 配置节点读取连接配置并填充到 <see cref="DataSourceProvider"/>。
+    /// 提供从宿主应用的 <c>LiteOrm</c> 配置节点读取连接配置并填充到 <see cref="DataSourceProvider"/> 的扩展方法。
     /// </remarks>
     public static class DataSourceProviderExtensions
     {

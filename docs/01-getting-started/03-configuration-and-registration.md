@@ -2,14 +2,18 @@
 
 LiteOrm 提供两种配置方式——**仅核心库（手动 API）** 和 **Framework（DI 自动绑定）**。你可以根据项目是否使用 DI 容器选择合适的方式：
 
-- **仅核心库**：不依赖 DI 容器，不读取 `appsettings.json`，通过代码手动配置数据源。适合控制台应用、批处理脚本或不依赖 DI 容器的项目。
+- **仅核心库**：不依赖 DI 容器，通过代码手动配置数据源，也可通过 `LoadConfiguration` 从 `IConfiguration` 读取配置。适合控制台应用、批处理脚本或不依赖 DI 容器的项目。
 - **Framework 集成**：通过 `appsettings.json` 声明配置，启动时由 `RegisterLiteOrm()` 自动完成 DI 绑定、DAO 注册和方言解析。适合 ASP.NET Core 等需要 Autofac、AOP 能力的项目。
 
 > **新手提示**：如果你是第一次配置，建议从最简单的配置开始——只配置一个数据源，使用 SQLite 作为数据库。等跑通基本流程后，再逐步添加多数据源、读写分离等高级配置。
 
 ## 方式一：仅核心库
 
-仅使用 `LiteOrm` 核心库时，不依赖 DI 容器（无需 Autofac），也不读取 `appsettings.json`，所有配置通过代码手动完成。通过 `DataSourceProvider` 的 `AddDataSource` API 手动配置数据源即可：
+仅使用 `LiteOrm` 核心库时，不依赖 DI 容器（无需 Autofac），配置通过代码手动完成或从 `IConfiguration` 读取。
+
+### 代码内手动配置
+
+通过 `DataSourceProvider` 的 `AddDataSource` API 手动配置数据源：
 
 ```csharp
 var dataSourceProvider = new DataSourceProvider();
@@ -28,9 +32,23 @@ var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 ```
 
+### 从 IConfiguration 读取
+
+核心库内置 `LoadConfiguration` 扩展方法，可从 `IConfiguration` 的 `LiteOrm` 节点批量加载数据源配置（配置格式与 Framework 方式一致，参见下方 `appsettings.json` 示例）：
+
+```csharp
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
+```
+
 > **说明**：
-> - 核心库不依赖 DI 容器，不读取 `appsettings.json`，配置全部通过代码完成。
-> - `AddDataSource` 添加数据源，`SetDefaultDataSource` 指定默认数据源。
+> - 核心库不依赖 DI 容器，配置可通过 `AddDataSource` 手动添加或通过 `LoadConfiguration` 从 `IConfiguration` 读取。
+> - `AddDataSource` 添加数据源，`SetDefaultDataSource` 指定默认数据源；`LoadConfiguration` 从配置节读取时，默认数据源由 `Default` 键指定。
 > - `LiteOrmSqlFunctionInitializer.Initialize()` 注册内置 SQL 函数映射，必须调用。
 > - 完整的核心库初始化流程（含 DAO/Service 构造）参见 [第一个完整示例（仅核心库）](./04-first-example.md)。
 

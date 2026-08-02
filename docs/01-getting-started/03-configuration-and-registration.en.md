@@ -2,14 +2,18 @@
 
 LiteOrm offers two configuration approaches—**Core Library Only (manual API)** and **Framework (DI auto-binding)**. Choose the one that fits whether your project uses a DI container:
 
-- **Core library only**: no DI container required, no `appsettings.json`, data sources are configured manually in code. Suited for console apps, batch scripts, or projects without a DI container.
+- **Core library only**: no DI container required, data sources are configured manually in code or loaded from `IConfiguration` via `LoadConfiguration`. Suited for console apps, batch scripts, or projects without a DI container.
 - **Framework integration**: configuration is declared in `appsettings.json`, and `RegisterLiteOrm()` automatically performs DI binding, DAO registration, and dialect resolution at startup. Suited for ASP.NET Core and other projects that need Autofac and AOP capabilities.
 
 > **Beginner tip**: If this is your first time configuring, start with the simplest setup—a single data source using SQLite. Once the basic flow works, gradually add multi-data-source, read/write splitting, and other advanced configurations.
 
 ## Approach 1: Core Library Only
 
-When using only the `LiteOrm` core library, there is no DI container dependency (no Autofac) and no `appsettings.json` is read; all configuration is done manually in code. Simply configure data sources through the `AddDataSource` API of `DataSourceProvider`:
+When using only the `LiteOrm` core library, there is no DI container dependency (no Autofac); configuration is done manually in code or loaded from `IConfiguration`.
+
+### Manual Code-Based Configuration
+
+Configure data sources through the `AddDataSource` API of `DataSourceProvider`:
 
 ```csharp
 var dataSourceProvider = new DataSourceProvider();
@@ -28,9 +32,23 @@ var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 ```
 
+### Read from IConfiguration
+
+The core library includes a built-in `LoadConfiguration` extension method that loads data source configuration in bulk from the `LiteOrm` section of an `IConfiguration` (the config format is identical to the Framework approach, see the `appsettings.json` example below):
+
+```csharp
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
+```
+
 > **Notes**:
-> - The core library does not depend on a DI container and does not read `appsettings.json`; all configuration is done in code.
-> - `AddDataSource` adds a data source; `SetDefaultDataSource` designates the default data source.
+> - The core library does not depend on a DI container; configuration can be added manually via `AddDataSource` or loaded from `IConfiguration` via `LoadConfiguration`.
+> - `AddDataSource` adds a data source; `SetDefaultDataSource` designates the default data source; when loading from a config section via `LoadConfiguration`, the default data source is specified by the `Default` key.
 > - `LiteOrmSqlFunctionInitializer.Initialize()` registers the built-in SQL function mappings and must be called.
 > - For the complete core-library initialization flow (including DAO/Service construction), see [First End-to-End Example (Core Library Only)](./04-first-example.en.md).
 

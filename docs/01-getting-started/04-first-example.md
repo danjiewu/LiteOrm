@@ -45,7 +45,9 @@ public class User
 
 ## 2. 手动初始化 LiteOrm
 
-核心库不提供 `RegisterLiteOrm()`，需要手动构造依赖链。以下是完整的初始化代码：
+核心库不提供 `RegisterLiteOrm()`，需要手动构造依赖链。数据源配置支持两种方式：代码内手动添加，或从 `appsettings.json` 等 `IConfiguration` 来源读取。
+
+### 方式一：代码内手动配置
 
 ```csharp
 using LiteOrm;
@@ -81,13 +83,170 @@ var objectViewDAO = new ObjectViewDAO<User>();
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
 ```
 
+### 方式二：从配置文件读取
+
+核心库内置 `LoadConfiguration` 扩展方法，可直接从 `IConfiguration` 的 `LiteOrm` 节点加载数据源配置，无需逐个调用 `AddDataSource`。
+
+先准备 `appsettings.json`：
+
+```json
+{
+  "LiteOrm": {
+    "Default": "DefaultConnection",
+    "DataSources": [
+      {
+        "Name": "DefaultConnection",
+        "ConnectionString": "Data Source=LiteOrmDemo.db",
+        "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+        "SyncTable": true
+      }
+    ]
+  }
+}
+```
+
+然后用 `LoadConfiguration` 替代手动 `AddDataSource`：
+
+```csharp
+using LiteOrm;
+using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.Extensions.Configuration;
+
+// 1. 读取配置文件
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+// 2. 通过 LoadConfiguration 从 LiteOrm 节点加载数据源
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
+
+// 3. 初始化 SQL 函数映射
+LiteOrmSqlFunctionInitializer.Initialize();
+
+// 4. 创建连接池工厂
+var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
+DAOContextPoolFactory.Set(() => poolFactory);
+
+// 5. 创建会话管理器并设为当前会话
+var sessionManager = new SessionManager(poolFactory);
+SessionManager.SetCurrent(() => sessionManager);
+
+// 6. 创建 DAO 和服务
+var objectDAO = new ObjectDAO<User>();
+var objectViewDAO = new ObjectViewDAO<User>();
+var userService = new EntityService<User>(objectDAO, objectViewDAO);
+```
+
+> 使用 `LoadConfiguration` 需额外安装 `Microsoft.Extensions.Configuration` 和 `Microsoft.Extensions.Configuration.Json` 包。核心库本身仅依赖 `Microsoft.Extensions.Configuration.Abstractions`（提供 `IConfiguration` 接口）。
+
 > **逐行解释**：
-> - `DataSourceProvider`：管理数据源配置。通过 `AddDataSource` 显式添加，`SetDefaultDataSource` 指定默认数据源。
+> - `DataSourceProvider`：管理数据源配置。通过 `AddDataSource` 显式添加，或通过 `LoadConfiguration` 从 `IConfiguration` 批量加载；`SetDefaultDataSource` 或配置节中的 `Default` 键指定默认数据源。
 > - `LiteOrmSqlFunctionInitializer.Initialize()`：注册各数据库方言的 SQL 函数映射（如 `NOW()`、`DATE_FORMAT` 等），必须调用。
 > - `DAOContextPoolFactory`：根据数据源配置创建连接池，管理连接的获取与回收。通过 `Set` 设置为全局单例，使 DAO 内部可通过静态属性获取提供程序类型。
 > - `SessionManager`：管理数据库会话、事务和异步上下文。通过 `SetCurrent` 设置为当前异步上下文的会话。
-> - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。内部通过 `TableInfoProvider.Instance` 和 `BulkProviderFactory.Instance` 获取全局单例，无需手动传入。
+> - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。两者均有无参构造函数，内部通过 `TableInfoProvider.Instance` 和 `BulkProviderFactory.Instance` 获取全局单例，无需手动传入。
 > - `EntityService<T>`：封装了 DAO 的业务服务，提供 `InsertAsync`、`SearchAsync`、`UpdateAsync`、`DeleteAsync` 等方法。
+
+## 2.5 通过 ServiceProvider 注册和获取服务
+
+上一节展示了纯手动构造依赖链的方式。如果你希望使用 `Microsoft.Extensions.DependencyInjection`（以下简称 MS DI）来管理服务生命周期，但**不引入 LiteOrm.Framework / Autofac**，可以手动将核心类型注册到 `IServiceCollection` 并构建 `ServiceProvider`。
+
+这种方式适合需要依赖注入但不需要 AOP 拦截的场景，例如单元测试、轻量级 Web API、或希望按作用域（Scope）管理 `SessionManager` 生命周期的项目。
+
+```csharp
+using LiteOrm;
+using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+// 1. 读取配置文件并通过 LoadConfiguration 加载数据源
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
+
+// 2. 初始化 SQL 函数映射
+LiteOrmSqlFunctionInitializer.Initialize();
+
+// 3. 创建连接池工厂并设为全局单例
+var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
+DAOContextPoolFactory.Set(() => poolFactory);
+
+// 4. 注册服务到 DI 容器
+var services = new ServiceCollection();
+
+// 单例服务
+services.AddSingleton(dataSourceProvider);        // 或 services.AddSingleton<DataSourceProvider>(dataSourceProvider);
+services.AddSingleton(poolFactory);               // 或 services.AddSingleton<DAOContextPoolFactory>(poolFactory);
+services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
+services.AddSingleton<BulkProviderFactory>();
+
+// Scoped 服务——每个作用域获得独立的 SessionManager
+services.AddScoped<SessionManager>();
+
+// 泛型 DAO 与服务（Scoped）
+services.AddScoped(typeof(ObjectDAO<>));
+services.AddScoped(typeof(ObjectViewDAO<>));
+services.AddScoped(typeof(EntityService<>));
+services.AddScoped(typeof(EntityViewService<>));
+
+// 5. 构建 ServiceProvider
+var serviceProvider = services.BuildServiceProvider();
+
+// 6. 将 SessionManager 的解析委托给 ServiceProvider
+//    SessionManager.SetCurrent 接受一个工厂委托，
+//    在首次访问 SessionManager.Current 时延迟执行并缓存结果
+SessionManager.SetCurrent(() => serviceProvider.GetService<SessionManager>());
+```
+
+注册完成后，通过创建作用域并解析服务来执行数据库操作：
+
+```csharp
+// 创建作用域（每个作用域拥有独立的 SessionManager 实例）
+using var scope = serviceProvider.CreateScope();
+var sp = scope.ServiceProvider;
+
+// 从 DI 容器解析服务
+var userService = sp.GetRequiredService<EntityService<User>>();
+
+// 后续操作与手动构造方式完全一致
+var user = new User
+{
+    UserName = "admin",
+    Age = 30,
+    CreateTime = DateTime.Now
+};
+await userService.InsertAsync(user);
+Console.WriteLine($"插入成功，自增 Id = {user.Id}");
+```
+
+> **作用域与 SessionManager 的关系**：
+> `SessionManager` 注册为 Scoped，每个 `CreateScope()` 创建的作用域会获得独立的 `SessionManager` 实例。但 `SessionManager.SetCurrent` 设置的是**当前异步上下文**（`AsyncLocal`）的会话工厂，它只会在首次访问时执行一次委托并缓存。
+>
+> 如果在多作用域场景下（如 Web 请求）需要每个作用域使用各自的 `SessionManager`，应在每次进入作用域时重新调用 `SessionManager.SetCurrent`：
+>
+> ```csharp
+> using var scope = serviceProvider.CreateScope();
+> var scopedSp = scope.ServiceProvider;
+> // 为当前异步上下文设置该作用域的 SessionManager
+> SessionManager.SetCurrent(() => scopedSp.GetService<SessionManager>());
+> var userService = scopedSp.GetRequiredService<EntityService<User>>();
+> ```
+
+应用退出时释放资源：
+
+```csharp
+// 释放 ServiceProvider（会自动 Dispose 所有单例和未释放的 Scoped 服务）
+await serviceProvider.DisposeAsync();
+poolFactory.Dispose();
+```
 
 ## 3. 插入一条数据
 
@@ -204,9 +363,9 @@ poolFactory.Dispose();
 | 声明式事务 `[Transaction]` | ❌ | ✅ AOP 拦截 |
 | 权限过滤 `[ServicePermission]` | ❌ | ✅ AOP 拦截 |
 | 自动日志 `[ServiceLog]` / `[Log]` | ❌ | ✅ AOP 拦截 |
-| DI 容器自动注册 | ❌ 手动构造 | ✅ `RegisterLiteOrm()` |
+| DI 容器注册 | ✅ 手动注册到 MS DI（见 §2.5） | ✅ `RegisterLiteOrm()`（Autofac） |
 | 动态 Controller 生成 | ❌ | ✅ |
-| 配置文件绑定 | ❌ 手动 `AddDataSource` | ✅ `appsettings.json` 自动绑定 |
+| 配置文件绑定 | ✅ `LoadConfiguration` 读取 `IConfiguration` | ✅ `appsettings.json` 自动绑定 |
 | 批量导入 `IBulkProvider` | ❌（Factory 可构造但不注册） | ✅ 自动注册 |
 
 > 如果你后续需要 AOP 能力，可以从核心库平滑迁移到 Framework，实体定义和 DAO/Service 用法完全一致。
@@ -235,11 +394,12 @@ poolFactory.Dispose();
 
 - [ ] `dotnet build` 编译通过，无错误。
 - [ ] 初始化代码中调用了 `LiteOrmSqlFunctionInitializer.Initialize()`。
-- [ ] 初始化代码中调用了 `SessionManager.SetCurrent(() => sessionManager)`。
+- [ ] 初始化代码中调用了 `SessionManager.SetCurrent(...)`（手动构造或 ServiceProvider 方式）。
 - [ ] 初始化代码中调用了 `DAOContextPoolFactory.Set(() => poolFactory)`。
+- [ ] 使用 ServiceProvider 方式时，`SessionManager` 注册为 Scoped，且在进入作用域时调用了 `SetCurrent`。
 - [ ] 实体类使用了 `[Table]` 和 `[Column]` 特性标注。
 - [ ] 插入和查询操作返回了预期的结果。
-- [ ] 应用退出前释放了 `SessionManager` 和 `DAOContextPoolFactory`。
+- [ ] 应用退出前释放了 `ServiceProvider`（或 `SessionManager`）和 `DAOContextPoolFactory`。
 
 ## 相关链接
 

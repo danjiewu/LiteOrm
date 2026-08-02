@@ -45,7 +45,9 @@ public class User
 
 ## 2. Manually Initialize LiteOrm
 
-The core library does not provide `RegisterLiteOrm()`; you must build the dependency chain manually. Below is the complete initialization code:
+The core library does not provide `RegisterLiteOrm()`; you must build the dependency chain manually. Data source configuration supports two approaches: manual code-based setup, or reading from `IConfiguration` sources such as `appsettings.json`.
+
+### Option A: Manual Code-Based Configuration
 
 ```csharp
 using LiteOrm;
@@ -53,25 +55,25 @@ using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Data.Sqlite;
 
-// 1. 配置数据源
+// 1. Configure data source
 var dataSourceProvider = new DataSourceProvider();
 dataSourceProvider.AddDataSource(new DataSourceConfig
 {
     Name = "DefaultConnection",
     ConnectionString = "Data Source=LiteOrmDemo.db",
     Provider = typeof(SqliteConnection).AssemblyQualifiedName,
-    SyncTable = true  // 自动建表（开发阶段推荐）
+    SyncTable = true  // auto-create table (recommended for development)
 });
 dataSourceProvider.SetDefaultDataSource("DefaultConnection");
 
-// 2. 初始化 SQL 函数映射（注册内置数据库函数处理器）
+// 2. Initialize SQL function mappings (registers built-in database function handlers)
 LiteOrmSqlFunctionInitializer.Initialize();
 
-// 3. 创建连接池工厂
+// 3. Create connection pool factory
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 DAOContextPoolFactory.Set(() => poolFactory);
 
-// 4. 创建会话管理器并设为当前会话
+// 4. Create session manager and set as current session
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
@@ -81,13 +83,170 @@ var objectViewDAO = new ObjectViewDAO<User>();
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
 ```
 
+### Option B: Read from Configuration File
+
+The core library includes a built-in `LoadConfiguration` extension method that loads data source configuration directly from the `LiteOrm` section of an `IConfiguration`, eliminating the need to call `AddDataSource` one by one.
+
+First, prepare `appsettings.json`:
+
+```json
+{
+  "LiteOrm": {
+    "Default": "DefaultConnection",
+    "DataSources": [
+      {
+        "Name": "DefaultConnection",
+        "ConnectionString": "Data Source=LiteOrmDemo.db",
+        "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+        "SyncTable": true
+      }
+    ]
+  }
+}
+```
+
+Then use `LoadConfiguration` in place of manual `AddDataSource`:
+
+```csharp
+using LiteOrm;
+using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.Extensions.Configuration;
+
+// 1. Read configuration file
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+// 2. Load data sources from the LiteOrm section via LoadConfiguration
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
+
+// 3. Initialize SQL function mappings
+LiteOrmSqlFunctionInitializer.Initialize();
+
+// 4. Create connection pool factory
+var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
+DAOContextPoolFactory.Set(() => poolFactory);
+
+// 5. Create session manager and set as current session
+var sessionManager = new SessionManager(poolFactory);
+SessionManager.SetCurrent(() => sessionManager);
+
+// 6. Create DAO and service
+var objectDAO = new ObjectDAO<User>();
+var objectViewDAO = new ObjectViewDAO<User>();
+var userService = new EntityService<User>(objectDAO, objectViewDAO);
+```
+
+> Using `LoadConfiguration` requires additionally installing the `Microsoft.Extensions.Configuration` and `Microsoft.Extensions.Configuration.Json` packages. The core library itself only depends on `Microsoft.Extensions.Configuration.Abstractions` (which provides the `IConfiguration` interface).
+
 > **Line-by-line explanation**:
-> - `DataSourceProvider`: manages data source configuration. Add sources explicitly via `AddDataSource`; designate the default via `SetDefaultDataSource`.
+> - `DataSourceProvider`: manages data source configuration. Add sources explicitly via `AddDataSource`, or load them in bulk from `IConfiguration` via `LoadConfiguration`; designate the default via `SetDefaultDataSource` or the `Default` key in the config section.
 > - `LiteOrmSqlFunctionInitializer.Initialize()`: registers SQL function mappings for each database dialect (e.g., `NOW()`, `DATE_FORMAT`); must be called.
 > - `DAOContextPoolFactory`: creates connection pools based on data source configuration and manages connection acquisition and recycling. Call `Set` to register it as the global singleton so DAOs can resolve the provider type internally via the static property.
 > - `SessionManager`: manages database sessions, transactions, and async context. `SetCurrent` sets it as the session for the current async context.
-> - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. They obtain global singletons via `TableInfoProvider.Instance` and `BulkProviderFactory.Instance` internally, no manual injection needed.
+> - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. Both have parameterless constructors and obtain global singletons via `TableInfoProvider.Instance` and `BulkProviderFactory.Instance` internally, no manual injection needed.
 > - `EntityService<T>`: a business service wrapping the DAOs, providing methods such as `InsertAsync`, `SearchAsync`, `UpdateAsync`, and `DeleteAsync`.
+
+## 2.5 Register and Resolve Services via ServiceProvider
+
+The previous section showed how to build the dependency chain entirely by hand. If you prefer to use `Microsoft.Extensions.DependencyInjection` (MS DI) for lifetime management **without introducing LiteOrm.Framework / Autofac**, you can manually register the core types into an `IServiceCollection` and build a `ServiceProvider`.
+
+This approach suits scenarios that need dependency injection but not AOP interception — unit tests, lightweight web APIs, or projects that want per-scope `SessionManager` lifetime management.
+
+```csharp
+using LiteOrm;
+using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+// 1. Read configuration file and load data sources via LoadConfiguration
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
+
+// 2. Initialize SQL function mappings
+LiteOrmSqlFunctionInitializer.Initialize();
+
+// 3. Create pool factory and set as global singleton
+var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
+DAOContextPoolFactory.Set(() => poolFactory);
+
+// 4. Register services into the DI container
+var services = new ServiceCollection();
+
+// Singleton services
+services.AddSingleton(dataSourceProvider);
+services.AddSingleton(poolFactory);
+services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
+services.AddSingleton<BulkProviderFactory>();
+
+// Scoped services — each scope gets its own SessionManager
+services.AddScoped<SessionManager>();
+
+// Generic DAOs and services (Scoped)
+services.AddScoped(typeof(ObjectDAO<>));
+services.AddScoped(typeof(ObjectViewDAO<>));
+services.AddScoped(typeof(EntityService<>));
+services.AddScoped(typeof(EntityViewService<>));
+
+// 5. Build the ServiceProvider
+var serviceProvider = services.BuildServiceProvider();
+
+// 6. Delegate SessionManager resolution to the ServiceProvider
+//    SessionManager.SetCurrent accepts a factory delegate that is
+//    executed lazily on first access to SessionManager.Current and cached
+SessionManager.SetCurrent(() => serviceProvider.GetService<SessionManager>());
+```
+
+After registration, create a scope and resolve services to perform database operations:
+
+```csharp
+// Create a scope (each scope gets its own SessionManager instance)
+using var scope = serviceProvider.CreateScope();
+var sp = scope.ServiceProvider;
+
+// Resolve service from the DI container
+var userService = sp.GetRequiredService<EntityService<User>>();
+
+// Subsequent operations are identical to the manual approach
+var user = new User
+{
+    UserName = "admin",
+    Age = 30,
+    CreateTime = DateTime.Now
+};
+await userService.InsertAsync(user);
+Console.WriteLine($"Insert succeeded, auto-increment Id = {user.Id}");
+```
+
+> **Scopes and SessionManager**:
+> `SessionManager` is registered as Scoped, so each `CreateScope()` call produces an independent instance. However, `SessionManager.SetCurrent` sets the session factory for the **current async context** (`AsyncLocal`) — the delegate executes only once on first access and the result is cached.
+>
+> In multi-scope scenarios (e.g., web requests) where each scope needs its own `SessionManager`, call `SessionManager.SetCurrent` when entering each scope:
+>
+> ```csharp
+> using var scope = serviceProvider.CreateScope();
+> var scopedSp = scope.ServiceProvider;
+> // Set this scope's SessionManager for the current async context
+> SessionManager.SetCurrent(() => scopedSp.GetService<SessionManager>());
+> var userService = scopedSp.GetRequiredService<EntityService<User>>();
+> ```
+
+Release resources when the application exits:
+
+```csharp
+// Dispose the ServiceProvider (auto-disposes all singletons and unreleased scoped services)
+await serviceProvider.DisposeAsync();
+poolFactory.Dispose();
+```
 
 ## 3. Insert a Record
 
@@ -204,9 +363,9 @@ poolFactory.Dispose();
 | Declarative transactions `[Transaction]` | ❌ | ✅ AOP interception |
 | Permission filtering `[ServicePermission]` | ❌ | ✅ AOP interception |
 | Automatic logging `[ServiceLog]` / `[Log]` | ❌ | ✅ AOP interception |
-| DI container auto-registration | ❌ manual construction | ✅ `RegisterLiteOrm()` |
+| DI container registration | ✅ manual MS DI registration (see §2.5) | ✅ `RegisterLiteOrm()` (Autofac) |
 | Dynamic Controller generation | ❌ | ✅ |
-| Config file binding | ❌ manual `AddDataSource` | ✅ `appsettings.json` auto-binding |
+| Config file binding | ✅ `LoadConfiguration` reads from `IConfiguration` | ✅ `appsettings.json` auto-binding |
 | Bulk import `IBulkProvider` | ❌ (Factory can be built but not registered) | ✅ auto-registered |
 
 > If you later need AOP capabilities, you can migrate smoothly from the core library to the Framework; entity definitions and DAO/Service usage remain identical.
@@ -235,11 +394,12 @@ poolFactory.Dispose();
 
 - [ ] `dotnet build` compiles without errors.
 - [ ] The initialization code calls `LiteOrmSqlFunctionInitializer.Initialize()`.
-- [ ] The initialization code calls `SessionManager.SetCurrent(() => sessionManager)`.
+- [ ] The initialization code calls `SessionManager.SetCurrent(...)` (manual construction or ServiceProvider approach).
 - [ ] The initialization code calls `DAOContextPoolFactory.Set(() => poolFactory)`.
+- [ ] When using the ServiceProvider approach, `SessionManager` is registered as Scoped and `SetCurrent` is called when entering a scope.
 - [ ] Entity classes are annotated with `[Table]` and `[Column]` attributes.
 - [ ] Insert and query operations return the expected results.
-- [ ] `SessionManager` and `DAOContextPoolFactory` are disposed before the application exits.
+- [ ] `ServiceProvider` (or `SessionManager`) and `DAOContextPoolFactory` are disposed before the application exits.
 
 ## Related Links
 
