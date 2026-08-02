@@ -20,6 +20,7 @@
       LiteOrm 核心项目移除 Microsoft.Extensions.Hosting 依赖，DI 集成仅由 LiteOrm.Framework 提供；
       DataSourceProvider 改为显式配置 API，不再接受 IConfiguration；
       BulkProvider 改用 BulkProviderAttribute 标记数据库连接类型；
+      Lifetime 枚举移除，AutoRegisterAttribute.Lifetime 改用内置 ServiceLifetime（默认 Scoped）；
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

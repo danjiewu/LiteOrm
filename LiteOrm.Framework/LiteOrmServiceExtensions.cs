@@ -341,7 +341,7 @@ namespace LiteOrm.Framework
                         "Registering {Kind} service '{Type}' [Lifetime={Lifetime}, AutoActivate={AutoActivate}]",
                         t.IsGenericTypeDefinition ? "generic" : "regular",
                         t.FullName,
-                        attr?.Lifetime ?? Lifetime.Scoped,
+                        attr?.Lifetime ?? ServiceLifetime.Scoped,
                         attr?.AutoActivate ?? false);
 
                     RegisterSingleType(builder, t, attr, logger);
@@ -382,16 +382,16 @@ namespace LiteOrm.Framework
             ILogger? logger)
         {
             // 设置生命周期
-            var lifetime = attr?.Lifetime ?? Lifetime.Scoped;
+            var lifetime = attr?.Lifetime ?? ServiceLifetime.Scoped;
             switch (lifetime)
             {
-                case Lifetime.Singleton:
+                case ServiceLifetime.Singleton:
                     registration.SingleInstance();
                     break;
-                case Lifetime.Scoped:
+                case ServiceLifetime.Scoped:
                     registration.InstancePerLifetimeScope();
                     break;
-                case Lifetime.Transient:
+                case ServiceLifetime.Transient:
                     registration.InstancePerDependency();
                     break;
             }

@@ -1,4 +1,4 @@
-using LiteOrm.Common;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 
 namespace LiteOrm.Framework
@@ -26,7 +26,7 @@ namespace LiteOrm.Framework
         /// 构造函数，指定服务生命周期
         /// </summary>
         /// <param name="lifetime">服务生命周期</param>
-        public AutoRegisterAttribute(Lifetime lifetime) => Lifetime = lifetime;
+        public AutoRegisterAttribute(ServiceLifetime lifetime) => Lifetime = lifetime;
 
         /// <summary>
         /// 构造函数，指定服务类型
@@ -39,7 +39,7 @@ namespace LiteOrm.Framework
         /// </summary>
         /// <param name="lifetime">服务生命周期</param>
         /// <param name="serviceTypes">服务类型数组</param>
-        public AutoRegisterAttribute(Lifetime lifetime, params Type[] serviceTypes)
+        public AutoRegisterAttribute(ServiceLifetime lifetime, params Type[] serviceTypes)
         {
             Lifetime = lifetime;
             ServiceTypes = serviceTypes;
@@ -47,7 +47,7 @@ namespace LiteOrm.Framework
         /// <summary>
         /// 服务生命周期，默认为 Scoped
         /// </summary>
-        public Lifetime Lifetime { get; set; } = Lifetime.Scoped;
+        public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Scoped;
 
         /// <summary>
         /// 支持多个服务类型

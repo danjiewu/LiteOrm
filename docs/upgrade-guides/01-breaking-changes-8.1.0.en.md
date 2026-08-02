@@ -20,7 +20,7 @@ This guide is for users upgrading from `v8.0.x` to `v8.1.0`. It describes the br
 |---|---|---|
 | 1 | `AutoRegisterAttribute` moved from `LiteOrm.Common` to `LiteOrm.Framework`; namespace changed to `LiteOrm.Framework` | High |
 | 2 | DI entry points merged into a single `RegisterLiteOrm()` (Autofac + Castle); `RegisterLiteOrmFramework()` and MS DI `RegisterLiteOrm()` removed | High |
-| 3 | `AutoRegisterAttribute.Lifetime` default changed from `Singleton` to `Scoped` | Medium |
+| 3 | `AutoRegisterAttribute.Lifetime` switched to built-in `ServiceLifetime`; default changed from `Singleton` to `Scoped` | Medium |
 | 4 | Core `LiteOrm` DAO/Service no longer use `[AutoRegister]`; they are explicitly registered by `LiteOrm.Framework` | High |
 | 5 | `LiteOrm` core removed the `Microsoft.Extensions.Hosting` dependency; DI integration is provided only by `LiteOrm.Framework` | High |
 | 6 | `DataSourceProvider` switched to an explicit configuration API and no longer accepts `IConfiguration` | Medium |
@@ -55,7 +55,7 @@ This guide is for users upgrading from `v8.0.x` to `v8.1.0`. It describes the br
    using LiteOrm.Framework;
    ```
 
-The `Lifetime` enum remains in `LiteOrm.Common` and is unaffected.
+The `Lifetime` enum was removed; `AutoRegisterAttribute.Lifetime` now uses the built-in `ServiceLifetime` (see section 3).
 
 ---
 
@@ -101,27 +101,30 @@ Host.CreateDefaultBuilder(args)
 
 ---
 
-## 3. `AutoRegisterAttribute.Lifetime` Default Changed to `Scoped`
+## 3. `AutoRegisterAttribute.Lifetime` Default Changed to `Scoped` and Switched to Built-in `ServiceLifetime`
 
 ### What Changed
 
-The default value of `AutoRegisterAttribute.Lifetime` changed from `Singleton` to `Scoped`. Types auto-registered without an explicit lifetime are now created per scope (one instance per request/`LifetimeScope`).
+- The type of `AutoRegisterAttribute.Lifetime` changed from the custom `Lifetime` enum to the built-in `ServiceLifetime` (`Microsoft.Extensions.DependencyInjection` namespace); the `Lifetime` enum in `LiteOrm.Common` was removed.
+- The default value of `AutoRegisterAttribute.Lifetime` changed from `Singleton` to `Scoped`. Types auto-registered without an explicit lifetime are now created per scope (one instance per request/`LifetimeScope`).
 
 ### Impact
 
 - Types using `[AutoRegister]` **without an explicit lifetime** change from singleton to scoped behavior.
-- Types that explicitly set `Lifetime` (e.g., `[AutoRegister(Lifetime.Singleton)]`) are unaffected.
+- Code referencing the `Lifetime` enum from `LiteOrm.Common` must switch to `ServiceLifetime` (add `using Microsoft.Extensions.DependencyInjection;`).
+- Types that explicitly set `Lifetime` (e.g., `[AutoRegister(ServiceLifetime.Singleton)]`) are unaffected.
 
 ### Migration
 
+- Replace `[AutoRegister(Lifetime.Scoped)]` style usages with `[AutoRegister(ServiceLifetime.Scoped)]` and add `using Microsoft.Extensions.DependencyInjection;`.
 - To keep a type singleton, declare it explicitly:
   ```csharp
-  [AutoRegister(Lifetime.Singleton)]
+  [AutoRegister(ServiceLifetime.Singleton)]
   public class MyService : IMyService { }
   ```
-- For stateless services, consider `Lifetime.Transient` for a smaller footprint:
+- For stateless services, consider `ServiceLifetime.Transient` for a smaller footprint:
   ```csharp
-  [AutoRegister(Lifetime.Transient)]
+  [AutoRegister(ServiceLifetime.Transient)]
   public class MyService : IMyService { }
   ```
 
@@ -171,7 +174,7 @@ services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
 services.AddSingleton<BulkProviderFactory>();
 ```
 
-> Note: Not relying on `[AutoRegister]` scanning means the scan surface is smaller and registration behavior is more deterministic. User-defined types (e.g., business services) can still use `[AutoRegister]` (now defined in `LiteOrm.Framework`) for auto-registration. For user-defined services resolved via interfaces, consider declaring `[AutoRegister(Lifetime.Scoped, typeof(IMyService))]` explicitly.
+> Note: Not relying on `[AutoRegister]` scanning means the scan surface is smaller and registration behavior is more deterministic. User-defined types (e.g., business services) can still use `[AutoRegister]` (now defined in `LiteOrm.Framework`) for auto-registration. For user-defined services resolved via interfaces, consider declaring `[AutoRegister(ServiceLifetime.Scoped, typeof(IMyService))]` explicitly.
 
 ---
 
@@ -305,7 +308,7 @@ Make sure the host uses `RegisterLiteOrm()` (from `LiteOrm.Framework`); it calls
 
 ### Q2: My business service uses `[AutoRegister]`. Does it still work?
 
-Yes. `[AutoRegister]` is now defined in `LiteOrm.Framework`. As long as the project references `LiteOrm.Framework` and adds `using LiteOrm.Framework;`, auto-registration of user-defined types works as before. Note the default lifetime is now `Scoped`; declare `[AutoRegister(Lifetime.Singleton)]` explicitly if you need a singleton.
+Yes. `[AutoRegister]` is now defined in `LiteOrm.Framework`. As long as the project references `LiteOrm.Framework` and adds `using LiteOrm.Framework;`, auto-registration of user-defined types works as before. Note the default lifetime is now `Scoped`; declare `[AutoRegister(ServiceLifetime.Singleton)]` explicitly if you need a singleton.
 
 ### Q3: My business service doesn't declare `ServiceTypes`. Can it still be resolved via its interface?
 

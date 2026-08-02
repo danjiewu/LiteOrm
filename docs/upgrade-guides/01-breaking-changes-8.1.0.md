@@ -20,7 +20,7 @@
 |---|---|---|
 | 1 | `AutoRegisterAttribute` 从 `LiteOrm.Common` 迁移到 `LiteOrm.Framework`，命名空间改为 `LiteOrm.Framework` | 高 |
 | 2 | DI 注册入口合并为唯一的 `RegisterLiteOrm()`（Autofac + Castle），`RegisterLiteOrmFramework()` 与 MS DI 版 `RegisterLiteOrm()` 移除 | 高 |
-| 3 | `AutoRegisterAttribute.Lifetime` 默认值由 `Singleton` 改为 `Scoped` | 中 |
+| 3 | `AutoRegisterAttribute.Lifetime` 改为内置 `ServiceLifetime`，默认值由 `Singleton` 改为 `Scoped` | 中 |
 | 4 | `LiteOrm` 核心 DAO/Service 不再使用 `[AutoRegister]` 自动注册，改为 `LiteOrm.Framework` 显式注册 | 高 |
 | 5 | `LiteOrm` 核心项目移除 `Microsoft.Extensions.Hosting` 依赖，DI 集成仅由 `LiteOrm.Framework` 提供 | 高 |
 | 6 | `DataSourceProvider` 改为显式配置 API，不再接受 `IConfiguration` | 中 |
@@ -55,7 +55,7 @@
    using LiteOrm.Framework;
    ```
 
-`Lifetime` 枚举仍保留在 `LiteOrm.Common` 中，不受影响。
+`Lifetime` 枚举已移除，`AutoRegisterAttribute.Lifetime` 直接使用内置的 `ServiceLifetime`（见第 3 节）。
 
 ---
 
@@ -101,27 +101,30 @@ Host.CreateDefaultBuilder(args)
 
 ---
 
-## 3. `AutoRegisterAttribute.Lifetime` 默认值改为 `Scoped`
+## 3. `AutoRegisterAttribute.Lifetime` 默认值改为 `Scoped`，枚举改为内置 `ServiceLifetime`
 
 ### 变更内容
 
-`AutoRegisterAttribute.Lifetime` 的默认值由 `Singleton` 改为 `Scoped`。未显式指定生命周期时，自动注册的服务现在默认按作用域（每请求/每 `LifetimeScope` 一个实例）创建。
+- `AutoRegisterAttribute.Lifetime` 的类型由自定义 `Lifetime` 枚举改为 .NET 内置的 `ServiceLifetime`（`Microsoft.Extensions.DependencyInjection` 命名空间），原 `LiteOrm.Common` 中的 `Lifetime` 枚举已移除。
+- `AutoRegisterAttribute.Lifetime` 的默认值由 `Singleton` 改为 `Scoped`。未显式指定生命周期时，自动注册的服务现在默认按作用域（每请求/每 `LifetimeScope` 一个实例）创建。
 
 ### 影响范围
 
 - 使用 `[AutoRegister]` 且**未显式指定生命周期**的类型，其注册行为从单例变为作用域。
-- 显式指定了 `Lifetime`（如 `[AutoRegister(Lifetime.Singleton)]`）的类型不受影响。
+- 引用 `LiteOrm.Common` 中 `Lifetime` 枚举的代码需要改用 `ServiceLifetime`（需 `using Microsoft.Extensions.DependencyInjection;`）。
+- 显式指定了 `Lifetime`（如 `[AutoRegister(ServiceLifetime.Singleton)]`）的类型不受影响。
 
 ### 迁移方法
 
+- 将 `[AutoRegister(Lifetime.Scoped)]` 等写法替换为 `[AutoRegister(ServiceLifetime.Scoped)]`，并添加 `using Microsoft.Extensions.DependencyInjection;`。
 - 如果你希望某个类型保持单例，请显式声明：
   ```csharp
-  [AutoRegister(Lifetime.Singleton)]
+  [AutoRegister(ServiceLifetime.Singleton)]
   public class MyService : IMyService { }
   ```
-- 无状态服务建议显式声明 `Lifetime.Transient` 以获得更小的占用：
+- 无状态服务建议显式声明 `ServiceLifetime.Transient` 以获得更小的占用：
   ```csharp
-  [AutoRegister(Lifetime.Transient)]
+  [AutoRegister(ServiceLifetime.Transient)]
   public class MyService : IMyService { }
   ```
 
@@ -171,7 +174,7 @@ services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
 services.AddSingleton<BulkProviderFactory>();
 ```
 
-> 注意：不再通过 `[AutoRegister]` 扫描注册意味着**扫描范围缩小**。核心类型不再依赖反射扫描，注册行为更加确定。用户自定义类型（如业务 Service）仍可继续使用 `[AutoRegister]` 特性（定义于 `LiteOrm.Framework`）进行自动注册。对于依赖接口注入的用户自定义服务，建议显式声明 `[AutoRegister(Lifetime.Scoped, typeof(IMyService))]`。
+> 注意：不再通过 `[AutoRegister]` 扫描注册意味着**扫描范围缩小**。核心类型不再依赖反射扫描，注册行为更加确定。用户自定义类型（如业务 Service）仍可继续使用 `[AutoRegister]` 特性（定义于 `LiteOrm.Framework`）进行自动注册。对于依赖接口注入的用户自定义服务，建议显式声明 `[AutoRegister(ServiceLifetime.Scoped, typeof(IMyService))]`。
 
 ---
 
@@ -305,7 +308,7 @@ public class MySqlBulkCopyProvider : IBulkProvider { }
 
 ### Q2: 我的业务 Service 用了 `[AutoRegister]`，升级后还能用吗？
 
-可以。`[AutoRegister]` 现在定义于 `LiteOrm.Framework`。只要项目引用了 `LiteOrm.Framework` 并添加 `using LiteOrm.Framework;`，用户自定义类型的自动注册行为不变。注意生命周期默认值已改为 `Scoped`，如需单例请显式声明 `[AutoRegister(Lifetime.Singleton)]`。
+可以。`[AutoRegister]` 现在定义于 `LiteOrm.Framework`。只要项目引用了 `LiteOrm.Framework` 并添加 `using LiteOrm.Framework;`，用户自定义类型的自动注册行为不变。注意生命周期默认值已改为 `Scoped`，如需单例请显式声明 `[AutoRegister(ServiceLifetime.Singleton)]`。
 
 ### Q3: 我的业务 Service 未显式指定 `ServiceTypes`，还能通过接口解析吗？
 

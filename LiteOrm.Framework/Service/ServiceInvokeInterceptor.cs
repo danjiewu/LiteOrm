@@ -1,6 +1,7 @@
 using Castle.DynamicProxy;
 using LiteOrm.Common;
 using LiteOrm.Framework;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
@@ -62,7 +63,7 @@ namespace LiteOrm.Service
     /// }
     /// </code>
     /// </remarks>
-    [AutoRegister(Lifetime = Lifetime.Scoped)]
+    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
     public class ServiceInvokeInterceptor : IInterceptor, IAsyncInterceptor
     {
         /// <summary>
@@ -659,7 +660,7 @@ namespace LiteOrm.Service
     /// <summary>
     ///  动态服务生成
     /// </summary>
-    [AutoRegister(Lifetime = Lifetime.Singleton)]
+    [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
     public class ServiceFactoryInterceptor : IInterceptor
     {
         /// <summary>

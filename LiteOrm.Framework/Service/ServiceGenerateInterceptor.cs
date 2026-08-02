@@ -9,7 +9,7 @@ namespace LiteOrm.Service
     /// <summary>
     /// 使用 Scope 服务自动生成接口示例的拦截器，将接口的调用转发至服务提供者
     /// </summary>
-    [AutoRegister(Lifetime = Lifetime.Scoped)]
+    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
     public class ServiceGenerateInterceptor : IInterceptor
     {
         private IServiceProvider _serviceProvider;

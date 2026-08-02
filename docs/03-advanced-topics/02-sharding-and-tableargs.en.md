@@ -420,7 +420,7 @@ protected virtual string DataSource => TableDefinition.DataSource;
 You can replace it with a runtime decision:
 
 ```csharp
-[AutoRegister(Lifetime.Scoped)]
+[AutoRegister(ServiceLifetime.Scoped)]
 public class UserOrderDAO : ObjectDAO<UserOrder>
 {
     private readonly IUserContext _userContext;

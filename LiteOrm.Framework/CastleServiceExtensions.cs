@@ -44,20 +44,13 @@ namespace LiteOrm.Framework
         /// </remarks>
         public static IServiceCollection AddServiceGenerator<TService>(
             this IServiceCollection services,
-            Lifetime lifetime = Lifetime.Scoped) where TService : class
+            ServiceLifetime lifetime = ServiceLifetime.Scoped) where TService : class
         {
-            var serviceLifetime = lifetime switch
-            {
-                Lifetime.Singleton => ServiceLifetime.Singleton,
-                Lifetime.Scoped => ServiceLifetime.Scoped,
-                _ => ServiceLifetime.Transient,
-            };
-
             services.Add(new ServiceDescriptor(typeof(TService), sp =>
             {
                 var interceptor = new ServiceFactoryInterceptor(sp);
                 return _proxyGenerator.CreateInterfaceProxyWithoutTarget<TService>(interceptor);
-            }, serviceLifetime));
+            }, lifetime));
 
             return services;
         }
