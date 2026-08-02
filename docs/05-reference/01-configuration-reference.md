@@ -1,4 +1,4 @@
-# 配置项速查
+﻿# 配置项速查
 
 本文汇总 LiteOrm 完整配置项、默认值和使用建议，适合作为接入与排障时的速查页。
 
@@ -142,6 +142,6 @@ pool.DatabaseSync.OnTableSyncing += (sender, e) =>
 ## 相关链接
 
 - [返回目录](../README.md)
-- [配置与注册](../01-getting-started/03-configuration-and-registration.md)
+- [配置与注册](../06-framework/01-configuration-and-registration.md)
 - [性能优化](../03-advanced-topics/03-performance.md)
 - [API 索引](./02-api-index.md)

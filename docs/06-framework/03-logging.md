@@ -1,4 +1,4 @@
-# 日志与诊断
+﻿# 日志与诊断
 
 LiteOrm 基于 `Microsoft.Extensions.Logging` 输出运行日志。只要宿主应用已经配置了日志提供程序（如 Console、Debug、Serilog），LiteOrm 的服务调用日志、异常日志和慢查询日志就会进入同一套日志管道。
 
@@ -135,7 +135,7 @@ public interface IAccountService
 
 `[Log]` / `[Log(false)]` 主要用来控制**哪些数据可以进入日志**。
 
-## 4.1 用在方法参数上：屏蔽敏感参数
+### 4.1 用在方法参数上：屏蔽敏感参数
 
 Service 拦截器会读取方法参数上的 `LogAttribute`。如果显式写成 `[Log(false)]`，日志里该参数会被替换为 `*`。
 
@@ -281,5 +281,5 @@ ServiceInvokeInterceptor.MaxExpandedLogLength = 20;
 
 - [返回目录](../README.md)
 - [配置与注册](../01-getting-started/03-configuration-and-registration.md)
-- [事务处理](./01-transactions.md)
-- [性能优化](./03-performance.md)
+- [事务](./01-transactions.md)
+- [性能优化](../03-advanced-topics/03-performance.md)

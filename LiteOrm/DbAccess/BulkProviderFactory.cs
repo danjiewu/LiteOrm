@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Reflection;
+using System.Threading;
 
 namespace LiteOrm
 {
@@ -12,6 +13,28 @@ namespace LiteOrm
     /// </summary>
     public class BulkProviderFactory
     {
+        private static Lazy<BulkProviderFactory?> _instance = new Lazy<BulkProviderFactory?>(
+            () => null,
+            LazyThreadSafetyMode.ExecutionAndPublication);
+
+        /// <summary>
+        /// 获取全局单例实例。实例在首次访问时通过工厂委托延迟创建并缓存。
+        /// 默认返回空。
+        /// </summary>
+        public static BulkProviderFactory? Instance => _instance.Value;
+
+        /// <summary>
+        /// 设置全局单例的工厂委托。工厂委托在 <see cref="Instance"/> 首次访问时通过 <see cref="Lazy{T}"/> 延迟执行并缓存结果。
+        /// 传入 null 时恢复为空。
+        /// </summary>
+        /// <param name="factory">返回批量提供者工厂实例的工厂委托；传入 null 时返回为空</param>
+        public static void Set(Func<BulkProviderFactory>? factory)
+        {
+            _instance = factory is null
+                ? new Lazy<BulkProviderFactory?>(() => null, LazyThreadSafetyMode.ExecutionAndPublication)
+                : new Lazy<BulkProviderFactory?>(factory, LazyThreadSafetyMode.ExecutionAndPublication);
+        }
+
         private readonly Dictionary<Type, IBulkProvider> _keyedProviders;
 
         /// <summary>

@@ -1,4 +1,4 @@
-# 前端 QueryString 查询
+﻿# 前端 QueryString 查询
 
 这篇文档讨论的不是 LiteOrm 内置查询语法，而是一种**前后端协作的接入模式**：前端把筛选条件放进 QueryString，后端再把这些参数转换成 LiteOrm `Expr` 并执行查询。
 
@@ -174,6 +174,6 @@ QueryString 只是传参方式，不承担授权职责。后端应统一注入�
 ## 8. 相关链接
 
 - [返回目录](../README.md)
-- [权限过滤](../03-advanced-topics/06-permission-filtering.md)
+- [权限过滤](../06-framework/02-permission-filtering.md)
 - [查询总览](../02-core-usage/04-query-overview.md)
 

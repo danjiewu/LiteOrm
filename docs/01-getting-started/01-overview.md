@@ -1,4 +1,4 @@
-# 概述
+﻿# 概述
 
 LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，结合了微ORM的速度和全ORM的功能性，适用于需要灵活处理SQL查询并且注重性能的场景。
 
@@ -37,61 +37,86 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，结合了微ORM的�
 ## 4. 快速开始
 
 1. 先完成 [安装与环境要求](./02-installation.md)。
-2. 再阅读 [配置与注册](./03-configuration-and-registration.md)。
-3. 跑通 [第一个完整示例](./04-first-example.md)。
+2. 阅读 [配置与注册](./03-configuration-and-registration.md)，了解核心库与 Framework 两种配置方式。
+3. 根据项目类型跑通第一个示例：[仅核心库](./04-first-example.md) 或 [Framework 版](./05-first-example-framework.md)。
 4. 然后进入 [实体映射与数据源](../02-core-usage/01-entity-mapping.md)、[查询总览](../02-core-usage/04-query-overview.md) 与 [Lambda 查询指南](../02-core-usage/05-lambda-guide.md)。
 
-> **学习建议**：如果你是初学者，建议按顺序阅读入门篇的四篇文档，每篇大约 5-10 分钟。读完第四篇后，你应该能够在一个新项目中完成基本的数据库操作。遇到问题时，可以先查看每篇文档末尾的"常见问题"部分。
+> **学习建议**：如果你是初学者，建议按顺序阅读入门篇文档，每篇大约 5-10 分钟。跑通第一个示例后，你应该能够在一个新项目中完成基本的数据库操作。遇到问题时，可以先查看每篇文档末尾的"常见问题"部分。
 
 ---
 
-## 5. 目录结构
+## 5. 项目组成与目录结构
 
-LiteOrm 项目采用模块化设计，清晰地分离了核心功能、公共组件、示例和测试代码。项目结构组织合理，便于维护和扩展。
+LiteOrm 采用模块化设计，核心功能由 `LiteOrm.Common` 与 `LiteOrm`（核心库）承载，宿主集成、远程调用能力则拆分为独立扩展包。项目结构组织合理，便于维护和扩展。
 
 ```text
-├── LiteOrm/                # 核心库
-│   ├── Classes/            # 核心类
-│   ├── Converter/          # 转换器
-│   ├── DAO/                # 数据访问对象
-│   ├── DAOContext/         # 数据访问上下文
-│   ├── DbAccess/           # 数据库访问
-│   ├── Initilizer/         # 初始化器
-│   ├── Service/            # 服务层
-│   └── SqlBuilder/         # SQL构建器
-├── LiteOrm.Common/         # 公共组件
-│   ├── Attributes/         # 特性
-│   ├── Classes/            # 公共类
-│   ├── Converter/          # 公共转换器
-│   ├── Expr/               # 表达式
-│   ├── MetaData/           # 元数据
-│   ├── Model/              # 模型
-│   ├── Service/            # 公共服务
+├── LiteOrm.Common/          # 公共组件（无运行时依赖，可独立引用）
+│   ├── Attributes/          # 特性
+│   ├── Classes/             # 公共类
+│   ├── Converter/           # 公共转换器
+│   ├── Expr/                # 表达式
+│   ├── MetaData/            # 元数据
+│   ├── Model/               # 模型
+│   ├── Service/             # 公共服务
 │   ├── SqlBuilder/          # 公共SQL构建器
 │   └── SqlSegment/          # SQL片段
-├── LiteOrm.Demo/           # 示例项目
-│   ├── DAO/                # 示例DAO
-│   ├── Data/               # 示例数据
-│   ├── Demos/              # 示例代码
-│   ├── Models/             # 示例模型
-│   └── Services/           # 示例服务
-├── LiteOrm.Tests/          # 测试项目
+├── LiteOrm/                 # 核心库
+│   ├── Classes/             # 核心类
+│   ├── Converter/           # 转换器
+│   ├── DAO/                 # 数据访问对象
+│   ├── DAOContext/          # 数据访问上下文
+│   ├── DbAccess/            # 数据库访问
+│   ├── Initilizer/          # 初始化器
+│   ├── Service/             # 服务层
+│   └── SqlBuilder/          # SQL构建器
+├── LiteOrm.Framework/       # 宿主集成包（Autofac + AOP + 动态 Controller）
+│   ├── Attributes/          # 注册/拦截相关特性
+│   └── Service/             # 集成与注册入口
+├── LiteOrm.Remote/          # 远程调用客户端
+│   ├── Interceptor/         # 远程代理拦截器
+│   ├── Proxy/               # 动态代理
+│   └── Transport/           # 传输层
+├── LiteOrm.Remote.Server/   # 远程调用服务端
+├── LiteOrm.Demo/            # 示例项目
+│   ├── DAO/                 # 示例DAO
+│   ├── Data/                # 示例数据
+│   ├── Demos/               # 示例代码
+│   ├── Models/              # 示例模型
+│   └── Services/            # 示例服务
+├── LiteOrm.Tests/           # 测试项目
 │   ├── Attributes/          # 特性测试
-│   ├── Classes/            # 类测试
+│   ├── Classes/             # 类测试
 │   ├── Converter/           # 转换器测试
-│   ├── Expr/               # 表达式测试
+│   ├── Expr/                # 表达式测试
 │   ├── Infrastructure/      # 测试基础设施
-│   ├── MetaData/           # 元数据测试
-│   ├── Models/             # 测试模型
-│   └── Service/            # 服务测试
-├── LiteOrm.Benchmark/      # 性能基准测试
+│   ├── MetaData/            # 元数据测试
+│   ├── Models/              # 测试模型
+│   └── Service/             # 服务测试
+├── LiteOrm.Benchmark/       # 性能基准测试
+├── LiteOrm.CodeGen/         # 代码生成 CLI（实体 / SELECT 查询生成）
 └── docs/                    # 文档
-    ├── 01-getting-started/ # 入门指南
-    ├── 02-core-usage/      # 核心使用
-    ├── 03-advanced-topics/ # 高级主题
-    ├── 04-extensibility/   # 扩展性
-    └── 05-reference/       # 参考
+    ├── 01-getting-started/  # 入门指南（概览、安装）
+    ├── 02-core-usage/       # 核心使用
+    ├── 03-advanced-topics/  # 高级主题
+    ├── 04-extensibility/    # 扩展性
+    ├── 05-reference/        # 参考
+    └── 06-framework/        # 框架使用（依赖 LiteOrm.Framework）
 ```
+
+### 5.1 五个核心项目
+
+| 项目 | 角色 | 使用场景 |
+|-----|-----|---------|
+| `LiteOrm.Common` | 公共组件：映射特性、`Expr` 对象模型、`SqlSegment`、公共服务接口 | 只想使用实体映射、表达式与 DAO 的底层能力，不需要宿主 DI 集成 |
+| `LiteOrm`（核心库） | DAO 层、SQL 生成、方言构建器、核心服务 | 使用 `ObjectDAO`/`DataDAO` 等底层访问能力，自行管理连接与生命周期 |
+| `LiteOrm.Framework` | 宿主集成：Autofac 容器、`RegisterLiteOrm()`、AOP 拦截（事务/权限/日志）、动态 Controller 生成 | ASP.NET Core 项目中通过 `builder.Host.RegisterLiteOrm()` 一键接入 |
+| `LiteOrm.Remote` | 远程调用客户端：接口动态代理、序列化传输 | 在客户端项目中以本地接口的方式调用远程服务 |
+| `LiteOrm.Remote.Server` | 远程调用服务端：接收与处理远程请求 | 部署远程服务端，配合 `LiteOrm.Remote` 使用 |
+
+> **如何选择？**
+> - 仅需要 ORM 核心能力（实体映射、查询、DAO）时，引用 `LiteOrm`（可选 `LiteOrm.Common`），无需引入任何 DI 框架。
+> - 需要宿主级集成（Autofac、AOP 事务/权限/日志、动态 Controller）时，引用 `LiteOrm.Framework`。
+> - 需要跨进程调用服务时，再引入 `LiteOrm.Remote` 与 `LiteOrm.Remote.Server`。
 
 **核心模块职责：**
 
@@ -218,6 +243,14 @@ SQL构建器负责根据表达式生成针对不同数据库的优化SQL语句�
 - **OracleBuilder**：Oracle专用构建器
 - **PostgreSqlBuilder**：PostgreSQL专用构建器
 - **SQLiteBuilder**：SQLite专用构建器
+- **DamengBuilder**：达梦（DM）专用构建器（继承 `OracleBuilder`）
+- **KingbaseESBuilder**：人大金仓专用构建器（继承 `PostgreSqlBuilder`）
+- **GaussDBBuilder**：华为 GaussDB / openGauss 专用构建器（继承 `PostgreSqlBuilder`）
+- **OceanBaseBuilder**：OceanBase 专用构建器（继承 `MySqlBuilder`）
+- **GreatDBBuilder**：万里 GreatDB 专用构建器（继承 `MySqlBuilder`）
+- **TiDBBuilder**：TiDB 专用构建器（继承 `MySqlBuilder`）
+
+> 注：国产/兼容数据库 Builder 均继承自主流数据库 Builder，仅在需要时覆盖差异点。
 
 **核心功能：**
 - 生成数据库特定的SQL语句
@@ -403,25 +436,29 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 **功能**：提供表信息的提供者
 
 **主要方法**：
-- `GetTable()`：获取表信息
-- `GetColumn()`：获取列信息
+- `GetTableDefinition(Type objectType)`：获取对象类型对应的表定义（返回 `TableDefinition`）
+- `GetTableView(Type objectType)`：获取指定类型的视图信息（返回 `TableView`）
 
 **使用场景**：构建和管理表的元数据
 
+> 注：`GetColumn(string)` 定义在 `SqlTable` 上，不在 `TableInfoProvider` 上。
+
 ## 9. 技术栈与依赖
 
-| 技术/依赖 | 版本 | 用途 |
-|----------|------|-----|
-| .NET | 8.0+ | 运行环境 |
-| .NET Standard | 2.0+ | 跨平台支持 |
-| Autofac.Extensions.DependencyInjection | 10.0.0 | Autofac 容器与 `RegisterLiteOrm()` 的宿主集成 |
-| Autofac.Extras.DynamicProxy | 7.1.0 | Autofac 拦截支持 |
-| Microsoft.Extensions.DependencyInjection | 10.0.0 | DI 抽象与 ServiceCollection 生态 |
-| Castle.Core | 5.2.1 | 动态代理核心 |
-| Castle.Core.AsyncInterceptor | 2.1.0 | 异步拦截器 |
-| Microsoft.Extensions.Hosting.Abstractions | 10.0.5 | 主机抽象 |
-| Microsoft.Extensions.Logging.Abstractions | 10.0.5 | 日志抽象 |
-| System.Text.Json | 10.0.5 | JSON处理 |
+| 技术/依赖 | 版本 | 用途 | 所在项目 |
+|----------|------|-----|---------|
+| .NET | 8.0+ | 运行环境 | LiteOrm / LiteOrm.Common |
+| .NET Standard | 2.0+ | 跨平台支持 | LiteOrm / LiteOrm.Common |
+| System.Text.Json | 10.0.5 | JSON处理 | LiteOrm.Common |
+| Autofac.Extensions.DependencyInjection | 10.0.0 | Autofac 容器与 `RegisterLiteOrm()` 的宿主集成 | LiteOrm.Framework |
+| Autofac.Extras.DynamicProxy | 7.1.0 | Autofac 拦截支持 | LiteOrm.Framework |
+| Microsoft.Extensions.DependencyInjection | 10.0.0 | DI 抽象与 ServiceCollection 生态 | LiteOrm.Framework |
+| Castle.Core | 5.2.1 | 动态代理核心 | LiteOrm.Framework |
+| Castle.Core.AsyncInterceptor | 2.1.0 | 异步拦截器 | LiteOrm.Framework |
+| Microsoft.Extensions.Hosting.Abstractions | 10.0.5 | 主机抽象 | LiteOrm.Framework |
+| Microsoft.Extensions.Logging.Abstractions | 10.0.5 | 日志抽象 | LiteOrm.Framework / LiteOrm.Remote |
+
+> Autofac、Castle 动态代理等宿主集成依赖只在 `LiteOrm.Framework` 中。仅引用 `LiteOrm` / `LiteOrm.Common` 时不引入任何 DI 框架，保持核心库轻量。
 
 **数据库支持：**
 - SQL Server 2012+
@@ -460,4 +497,5 @@ LiteOrm 支持子查询、JOIN、CTE（公共表表达式）、窗口函数、�
 - [GitHub 仓库](https://github.com/danjiewu/LiteOrm)
 - [返回目录](../README.md)
 - [安装与环境要求](./02-installation.md)
+- [配置与注册](./03-configuration-and-registration.md)
 - [API 索引](../05-reference/02-api-index.md)

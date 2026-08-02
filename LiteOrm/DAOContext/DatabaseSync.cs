@@ -48,7 +48,7 @@ namespace LiteOrm
             bool defaultSync = _daoContextPool.SyncTable;
 
             // 优先使用 TableDefinition.SyncTable 的显式配置（Never / Always 覆盖数据源级配置）
-            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
+            var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(objectType);
             if (tableDefinition != null)
             {
                 switch (tableDefinition.SyncTable)
@@ -132,7 +132,7 @@ namespace LiteOrm
         /// <returns>解析后的表名；若该类型无表定义则返回 null。</returns>
         private static string? ResolveTableName(Type objectType, string[]? tableArgs)
         {
-            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
+            var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(objectType);
             if (tableDefinition == null) return null;
             return tableArgs != null && tableArgs.Length > 0
                 ? string.Format(tableDefinition.Name!, tableArgs)
@@ -150,7 +150,7 @@ namespace LiteOrm
         /// <returns>需要执行的 DDL 语句列表（CREATE TABLE、ADD COLUMN、CREATE INDEX）。</returns>
         public List<string> ResolveEnsureTableDdl(DAOContext daoContext, Type objectType, string[]? tableArgs = null)
         {
-            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
+            var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(objectType);
             if (tableDefinition == null) return new List<string>();
 
             string tableName = tableArgs != null && tableArgs.Length > 0
@@ -181,7 +181,7 @@ namespace LiteOrm
         /// </summary>
         public async Task<List<string>> ResolveEnsureTableDdlAsync(DAOContext daoContext, Type objectType, string[]? tableArgs = null)
         {
-            var tableDefinition = TableInfoProvider.Default.GetTableDefinition(objectType);
+            var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(objectType);
             if (tableDefinition == null) return new List<string>();
 
             string tableName = tableArgs != null && tableArgs.Length > 0

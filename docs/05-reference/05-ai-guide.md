@@ -277,9 +277,10 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 public void Transfer() { ... }
 
 // 手动
-using var transaction = SessionManager.Current.BeginTransaction();
-try { transaction.Commit(); }
-catch { transaction.Rollback(); throw; }
+var sessionManager = SessionManager.Current;
+sessionManager.BeginTransaction();
+try { sessionManager.Commit(); }
+catch { sessionManager.Rollback(); throw; }
 ```
 
 ## 六、高级特性

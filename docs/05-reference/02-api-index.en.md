@@ -1,4 +1,4 @@
-# API Index
+﻿# API Index
 
 
 
@@ -138,7 +138,7 @@ Related guides:
 
 - [CRUD guide](../02-core-usage/03-crud-guide.en.md)
 
-- [Transactions](../03-advanced-topics/01-transactions.en.md)
+- [Transactions](../06-framework/01-transactions.en.md)
 
 - [Example Index](./06-example-index.en.md)
 
@@ -163,9 +163,9 @@ Related guides:
 
 
 
-- [Transactions](../03-advanced-topics/01-transactions.en.md)
+- [Transactions](../06-framework/01-transactions.en.md)
 
-- [Logging and Diagnostics](../03-advanced-topics/07-logging.en.md)
+- [Logging and Diagnostics](../06-framework/03-logging.en.md)
 - [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
 - [Window functions](../03-advanced-topics/04-window-functions.en.md)
 - [Example Index](./06-example-index.en.md)

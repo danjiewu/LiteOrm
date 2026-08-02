@@ -11,42 +11,54 @@ using System.Threading.Tasks;
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm 核心初始化器，负责自动同步数据库表结构。
+    /// LiteOrm 核心初始化器，负责在启动时初始化服务和自动同步数据库表结构。
     /// 
     /// 主要职责：
-    /// 1. 自动同步数据库表结构（创建表、添加列、创建索引）
-    /// 
-    /// 全局实例初始化（SessionManager、TableInfoProvider）由 LiteOrm.Framework 项目负责。
+    /// 1. 将 DI 解析的 TableInfoProvider、BulkProviderFactory、DAOContextPoolFactory 回写为全局静态单例
+    /// 2. 自动同步数据库表结构（创建表、添加列、创建索引）
     /// </summary>
     public class LiteOrmCoreInitializer : IHostedService
     {
         private readonly ILogger<LiteOrmCoreInitializer>? _logger;
         private readonly IDataSourceProvider _dataSourceProvider;
         private readonly DAOContextPoolFactory _daoContextPoolFactory;
+        private readonly TableInfoProvider _tableInfoProvider;
+        private readonly BulkProviderFactory _bulkProviderFactory;
 
         /// <summary>
         /// 初始化 <see cref="LiteOrmCoreInitializer"/> 类的新实例
         /// </summary>
         /// <param name="dataSourceProvider">数据源提供者</param>
         /// <param name="daoContextPoolFactory">DAO上下文连接池工厂</param>
+        /// <param name="tableInfoProvider">表信息提供者</param>
+        /// <param name="bulkProviderFactory">批量插入提供程序工厂</param>
         /// <param name="logger">日志记录器</param>
         public LiteOrmCoreInitializer(
             IDataSourceProvider dataSourceProvider,
             DAOContextPoolFactory daoContextPoolFactory,
+            TableInfoProvider tableInfoProvider,
+            BulkProviderFactory bulkProviderFactory,
             ILogger<LiteOrmCoreInitializer>? logger = null)
         {
             _dataSourceProvider = dataSourceProvider;
             _daoContextPoolFactory = daoContextPoolFactory;
+            _tableInfoProvider = tableInfoProvider;
+            _bulkProviderFactory = bulkProviderFactory;
             _logger = logger;
         }
 
         /// <summary>
-        /// 启动时执行表结构同步逻辑。
+        /// 启动时执行全局单例回写和表结构同步逻辑。
         /// </summary>
         public Task StartAsync(CancellationToken cancellationToken = default)
         {
             try
             {
+                // 将 DI 解析的实例回写为全局静态单例，确保 DAOBase 等通过静态属性访问时与 DI 实例一致
+                TableInfoProvider.Set(() => _tableInfoProvider);
+                BulkProviderFactory.Set(() => _bulkProviderFactory);
+                DAOContextPoolFactory.Set(() => _daoContextPoolFactory);
+
                 SyncTables();
             }
             catch (Exception ex)

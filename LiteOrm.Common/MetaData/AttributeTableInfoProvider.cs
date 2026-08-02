@@ -113,7 +113,6 @@ namespace LiteOrm
             return new TableDefinition(objectType, columns)
             {
                 Name = tableName ?? objectType.Name,
-                DataProviderType = dsConfig?.ProviderType,
                 DataSource = tableAttribute.DataSource ?? _dataSourceProvider?.DefaultDataSourceName,
                 SyncTable = tableAttribute.SyncTable,
                 ConstFilter = BuildConstFilter(columns)
@@ -204,9 +203,14 @@ namespace LiteOrm
             if (tableDef == null) return null;
 
             ISqlBuilder? sqlBuilder = null;
-            if (_sqlBuilderFactory is not null && tableDef.DataProviderType is not null)
+            if (_sqlBuilderFactory is not null && _dataSourceProvider is not null)
             {
-                sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(tableDef.DataProviderType, tableDef.DataSource);
+                var dsName = tableDef.DataSource ?? _dataSourceProvider.DefaultDataSourceName;
+                var dsConfig = _dataSourceProvider.GetDataSource(dsName!);
+                if (dsConfig is not null)
+                {
+                    sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType, tableDef.DataSource);
+                }
             }
 
             TableJoinAttribute[] atts = (TableJoinAttribute[])objectType.GetCustomAttributes(typeof(TableJoinAttribute), true);

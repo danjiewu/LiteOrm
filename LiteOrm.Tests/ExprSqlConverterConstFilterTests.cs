@@ -176,15 +176,15 @@ namespace LiteOrm.Common.UnitTests
 
         private static void RunWithProvider(TableInfoProvider provider, Action action)
         {
-            TableInfoProvider currentProvider = TableInfoProvider.Default;
+            TableInfoProvider currentProvider = TableInfoProvider.Instance;
             try
             {
-                TableInfoProvider.Default = provider;
+                TableInfoProvider.Set(() => provider);
                 action();
             }
             finally
             {
-                TableInfoProvider.Default = currentProvider;
+                TableInfoProvider.Set(() => currentProvider);
             }
         }
 

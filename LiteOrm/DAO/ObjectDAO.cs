@@ -32,10 +32,7 @@ namespace LiteOrm
         /// <summary>
         /// 初始化 <see cref="ObjectDAO{T}"/> 类的新实例。
         /// </summary>
-        /// <param name="tableInfoProvider">表信息提供者</param>
-        /// <param name="bulkFactory">批量插入提供程序工厂</param>
-        public ObjectDAO(TableInfoProvider tableInfoProvider, BulkProviderFactory bulkFactory)
-            : base(tableInfoProvider, bulkFactory)
+        public ObjectDAO()
         {
         }
 
@@ -482,7 +479,7 @@ namespace LiteOrm
         /// <param name="values">要插入的实体对象集合。</param>
         public virtual void BatchInsert(IEnumerable<T> values)
         {
-            var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType!);
+            var provider = BulkFactory?.GetProvider(GetProviderType()!);
             var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
             var daoContext = GetDaoContext();
             if (provider is not null)
@@ -944,7 +941,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
         {
-            var provider = BulkFactory.GetProvider(TableDefinition.DataProviderType!);
+            var provider = BulkFactory?.GetProvider(GetProviderType()!);
             var insertableColumns = TableDefinition.Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
             if (provider is not null)

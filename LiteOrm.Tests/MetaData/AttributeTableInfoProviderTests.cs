@@ -140,10 +140,10 @@ namespace LiteOrm.Common.UnitTests
 
             Assert.NotNull(joinedTable.ConstFilter);
 
-            TableInfoProvider currentProvider = TableInfoProvider.Default;
+            TableInfoProvider currentProvider = TableInfoProvider.Instance;
             try
             {
-                TableInfoProvider.Default = provider;
+                TableInfoProvider.Set(() => provider);
                 var context = new SqlBuildContext(tableView, "T", null) { SingleTable = false };
                 context.AddTableAlias(joinedTable.Name, joinedTable.TableDefinition);
                 var sql = joinedTable.ConstFilter.ToPreparedSql(context, SqlBuilder.Instance);
@@ -155,7 +155,7 @@ namespace LiteOrm.Common.UnitTests
             }
             finally
             {
-                TableInfoProvider.Default = currentProvider;
+                TableInfoProvider.Set(() => currentProvider);
             }
         }
 

@@ -204,7 +204,7 @@ namespace LiteOrm.Common
 
             string joinAlias = expr.Source.Alias ?? $"T{context.Sequence++}";
             TableDefinition? joinTable = null;
-            if (expr.Source is TableExpr tbe) joinTable = TableInfoProvider.Default.GetTableDefinition(tbe.Type!);
+            if (expr.Source is TableExpr tbe) joinTable = TableInfoProvider.Instance.GetTableDefinition(tbe.Type!);
             context.AddTableAlias(joinAlias, joinTable);
 
             LogicExpr? onExpr = expr.On;
@@ -243,14 +243,14 @@ namespace LiteOrm.Common
             if (expr.TableArgs != null && expr.TableArgs.Length > 0) context.TableArgs = expr.TableArgs;
             if (context.SingleTable)
             {
-                var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.Type!);
+                var tableDef = TableInfoProvider.Instance.GetTableDefinition(expr.Type!);
                 var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableDef!.Name!));
                 sb.Append(tableName);
                 context.AddTableAlias(tableName, tableDef);
             }
             else
             {
-                var tableView = TableInfoProvider.Default.GetTableView(expr.Type!);
+                var tableView = TableInfoProvider.Instance.GetTableView(expr.Type!);
                 var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableView!.Definition.Name!));
                 bool isMain = context.Depth == 0 && context.DefaultTableAliasName is null;
                 string aliasName = expr.Alias ?? (isMain ? Constants.DefaultTableAlias : $"T{context.Sequence++}");
@@ -706,14 +706,14 @@ namespace LiteOrm.Common
         {
             if (foreignExpr.Foreign == null) throw new ArgumentException("ForeignExpr.Foreign is required");
 
-            var foreignTable = TableInfoProvider.Default.GetTableView(foreignExpr.Foreign);
+            var foreignTable = TableInfoProvider.Instance.GetTableView(foreignExpr.Foreign);
             if (foreignTable == null) throw new ArgumentException($"Table info not found for type {foreignExpr.Foreign}");
 
             string? foreignAlias = string.IsNullOrEmpty(foreignExpr.Alias) ? $"T{context.Sequence++}" : foreignExpr.Alias;
             LogicExpr? joinedExpr = null;
             if (foreignExpr.AutoRelated && context.Table is not null)
             {
-                var mainTable = TableInfoProvider.Default.GetTableView(context.Table.DefinitionType);
+                var mainTable = TableInfoProvider.Instance.GetTableView(context.Table.DefinitionType);
                 // 首先尝试正向查找当前表与目标表之间的关联关系
                 foreach (JoinedTable joinedTable in mainTable!.JoinedTables)
                 {
@@ -1151,7 +1151,7 @@ namespace LiteOrm.Common
             TableExpr tableExpr = expr.Table ?? new TableExpr(context.Table!.DefinitionType);
             if (tableExpr == null)
                 throw new ArgumentException("UpdateExpr Source is null and context Table is null, cannot determine update target.");
-            var table = TableInfoProvider.Default.GetTableDefinition(tableExpr.Type!);
+            var table = TableInfoProvider.Instance.GetTableDefinition(tableExpr.Type!);
             using (context.BeginScope())
             {
                 context.SingleTable = true;// Update 语句强制单表，禁止生成多表关联的 Update 语句

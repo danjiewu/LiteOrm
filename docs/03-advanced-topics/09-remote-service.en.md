@@ -1,4 +1,4 @@
-# Remote Service (LiteOrm.Remote)
+﻿# Remote Service (LiteOrm.Remote)
 
 LiteOrm provides a complete remote service invocation solution, allowing business code to switch seamlessly between "local calls" and "remote calls" — **the interface definition stays the same, the call syntax stays the same**. Only the registration method needs to change to physically decouple the data access layer from the application process.
 
@@ -1001,7 +1001,7 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 |-----------|---------------|----------------|
 | Registration | `RegisterLiteOrm` auto-scans `[Service]` | `RegisterLiteOrmRemote` + proxy registration |
 | Invocation | Direct reflection call | Dynamic proxy interception + HTTP forwarding |
-| Transactions | `[Transaction]` AOP | Cross-process transactions not supported (see [Transactions Guide](01-transactions.en.md)) |
+| Transactions | `[Transaction]` AOP | Cross-process transactions not supported (see [Transactions Guide](../06-framework/01-transactions.en.md)) |
 | `ForEachAsync` | Streaming iteration | Throws `NotSupportedException` |
 | Parameter write-back | Direct object modification | Serialized write-back via `OutArguments` |
 | Exception propagation | Original exception | `RemoteInvocationResponse.Error` carries exception info |

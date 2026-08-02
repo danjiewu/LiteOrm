@@ -103,8 +103,8 @@ namespace LiteOrm.Common
     /// </para>
     /// <para>
     /// <see cref="IArgumentOutHandler.ReturnType"/> 固定为 <c>typeof(long)</c>。
-    /// Identity 列通过 <see cref="TableInfoProvider.Default"/> 元数据识别，
-    /// 客户端与服务端均需注册 <see cref="TableInfoProvider.Default"/>。
+    /// Identity 列通过 <see cref="TableInfoProvider.Instance"/> 元数据识别，
+    /// 客户端与服务端均需注册 <see cref="TableInfoProvider.Instance"/>。
     /// </para>
     /// <code>
     /// // 单对象回写
@@ -153,12 +153,12 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 通过 <see cref="TableInfoProvider.Default"/> 元数据解析类型上的 Identity 属性。
-        /// 若未注册 <see cref="TableInfoProvider.Default"/> 或该类型无 Identity 列，则返回 null。
+        /// 通过 <see cref="TableInfoProvider.Instance"/> 元数据解析类型上的 Identity 属性。
+        /// 若未注册 <see cref="TableInfoProvider.Instance"/> 或该类型无 Identity 列，则返回 null。
         /// </summary>
         private static PropertyInfo? ResolveIdentityProperty(Type type)
         {
-            var provider = TableInfoProvider.Default;
+            var provider = TableInfoProvider.Instance;
             if (provider is null) return null;
             try
             {

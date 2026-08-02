@@ -19,10 +19,7 @@ namespace LiteOrm.Demo
         /// <summary>
         /// 初始化 <see cref="UserCustomDAO"/> 类的新实例。
         /// </summary>
-        /// <param name="tableInfoProvider">表信息提供者</param>
-        /// <param name="bulkFactory">批量插入提供程序工厂</param>
-        public UserCustomDAO(LiteOrm.Common.TableInfoProvider tableInfoProvider, LiteOrm.BulkProviderFactory bulkFactory)
-            : base(tableInfoProvider, bulkFactory)
+        public UserCustomDAO()
         {
         }
 

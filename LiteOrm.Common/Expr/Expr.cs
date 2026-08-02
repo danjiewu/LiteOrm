@@ -430,7 +430,7 @@ namespace LiteOrm.Common
         {
             if (fromExpr.Source is TableExpr tableExpr)
             {
-                var view = TableInfoProvider.Default.GetTableView(tableExpr.Type ?? throw new InvalidOperationException("TableExpr.Type is null"));
+                var view = TableInfoProvider.Instance.GetTableView(tableExpr.Type ?? throw new InvalidOperationException("TableExpr.Type is null"));
                 if (view != null)
                 {
                     fromExpr.Joins.Clear();

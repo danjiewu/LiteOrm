@@ -1,4 +1,4 @@
-# 权限过滤与用户范围控制
+﻿# 权限过滤与用户范围控制
 
 当系统既要展示查询能力，又要避免普通用户读写到不属于自己的数据时，权限过滤就不能只停留在前端页面提示层。LiteOrm 中常见的承载位置有三层：
 
@@ -195,7 +195,7 @@ var filter = BuildBusinessFilter(request)
 - 可以和普通 Expr、软删除条件、统计查询一起组合
 - 仍然通过 `outputParams` 走参数化，不需要把用户值直接拼进 SQL
 
-安全注意事项见[安全性](./08-security.md)中的 `GenericSqlExpr` 章节。
+安全注意事项见[安全性](../03-advanced-topics/08-security.md)中的 `GenericSqlExpr` 章节。
 
 ## 3. 多租户实现方式
 
@@ -292,7 +292,7 @@ public class TenantOrderViewDAO : ObjectViewDAO<TenantOrder>
 - 希望 `Expr`、`ExprString`、DAO 查询统一继承同一套路由规则
 - 租户路由是“表名问题”，而不是“行过滤问题”
 
-之所以这条路径能生效，是因为 DAO 和 `ExprString` 都会通过 `CreateSqlBuildContext(...)` 创建 SQL 构建上下文；当你重写它并写入 `TableArgs` 时，后续 SQL 生成自然会沿用这组路由参数。更多分表细节见[分表分库](./02-sharding-and-tableargs.md)。
+之所以这条路径能生效，是因为 DAO 和 `ExprString` 都会通过 `CreateSqlBuildContext(...)` 创建 SQL 构建上下文；当你重写它并写入 `TableArgs` 时，后续 SQL 生成自然会沿用这组路由参数。更多分表细节见[分表分库](../03-advanced-topics/02-sharding-and-tableargs.md)。
 
 同时也要注意：如果某个下层 `TableExpr` 又显式指定了自己的 `TableArgs`，它会覆盖当前上下文中继承下来的值。  
 在多租户或受范围约束的查询里，这意味着你可能无意中跳出了原本的租户 / 分片边界，因此这种显式覆盖必须经过审查。
@@ -333,7 +333,7 @@ public class TenantOrderViewDAO : ObjectViewDAO<TenantOrder>
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/08-associations.md)
-- [分表分库](./02-sharding-and-tableargs.md)
-- [安全性](./08-security.md)
+- [分表分库](../03-advanced-topics/02-sharding-and-tableargs.md)
+- [安全性](../03-advanced-topics/08-security.md)
 - [Lambda 与 Expr 组合使用](../02-core-usage/09-lambda-expr-mixing.md)
 

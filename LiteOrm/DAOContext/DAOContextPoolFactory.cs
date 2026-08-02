@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LiteOrm
@@ -43,6 +44,28 @@ namespace LiteOrm
     /// </remarks>
     public class DAOContextPoolFactory : IDisposable
     {
+        private static Lazy<DAOContextPoolFactory?> _instance = new Lazy<DAOContextPoolFactory?>(
+            () => null,
+            LazyThreadSafetyMode.ExecutionAndPublication);
+
+        /// <summary>
+        /// 获取全局单例实例。实例在首次访问时通过工厂委托延迟创建并缓存。
+        /// 默认返回 null，需通过 <see cref="Set(Func{DAOContextPoolFactory?}?)"/> 设置工厂委托后使用。
+        /// </summary>
+        public static DAOContextPoolFactory? Instance => _instance.Value;
+
+        /// <summary>
+        /// 设置全局单例的工厂委托。工厂委托在 <see cref="Instance"/> 首次访问时通过 <see cref="Lazy{T}"/> 延迟执行并缓存结果。
+        /// 传入 null 时恢复为默认工厂（返回 null）。
+        /// </summary>
+        /// <param name="factory">返回连接池工厂实例的工厂委托；传入 null 时恢复默认工厂</param>
+        public static void Set(Func<DAOContextPoolFactory?>? factory)
+        {
+            _instance = factory is null
+                ? new Lazy<DAOContextPoolFactory?>(() => null, LazyThreadSafetyMode.ExecutionAndPublication)
+                : new Lazy<DAOContextPoolFactory?>(factory, LazyThreadSafetyMode.ExecutionAndPublication);
+        }
+
         private readonly ConcurrentDictionary<string, DAOContextPool> _pools = new(StringComparer.OrdinalIgnoreCase);
         private bool _disposed = false;
         private readonly object _initLock = new object();

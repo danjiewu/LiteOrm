@@ -45,17 +45,19 @@ public class User
 
 ```csharp
 [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-[Column("Profile", DataType = typeof(UserProfile))]
+[Column("Age", DbType = DbType.Int32)]
 ```
+
+> 复杂对象无法通过 `[Column]` 特性直接声明序列化类型。如需存储复杂对象，建议将其序列化为字符串后存入字符串列，并在属性的 getter/setter 中完成自定义转换。
 
 | 参数 | 说明 |
 | --- | --- |
-| `Name` | 数据库列名。 |
+| `ColumnName` | 数据库列名（构造函数位置参数）。 |
 | `IsPrimaryKey` | 是否主键。 |
 | `IsIdentity` | 是否自增列。 |
 | `IdentityStart` | 自增列起始值，默认 `1`。仅在支持起始值的数据库（SQL Server、达梦、Oracle）生效；MySQL 通过表级 `AUTO_INCREMENT = n` 选项设置；SQLite 不支持自定义。 |
 | `IdentityIncreasement` | 自增列增量值，默认 `1`。仅在支持增量的数据库（SQL Server、达梦、Oracle）生效；MySQL 需通过会话变量 `auto_increment_increment` 设置；SQLite 不支持自定义。 |
-| `DataType` | 序列化类型，用于复杂对象存储。 |
+| `DbType` | 数据库列类型（`System.Data.DbType` 枚举），默认 `DbType.Object`（按属性类型自动推断）。 |
 
 ## `[PropertyOrder]` 特性
 

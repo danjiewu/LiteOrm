@@ -1,4 +1,4 @@
-# SqlBuilder Development Guide for Domestic / Compatible Databases
+﻿# SqlBuilder Development Guide for Domestic / Compatible Databases
 
 This document is intended for **third-party developers** who need to integrate domestic databases or third-party-compatible databases (such as Dameng, KingbaseES, Huawei GaussDB, OceanBase, TiDB, GreatDB, etc.) into their business projects or standalone packages.
 
@@ -312,7 +312,7 @@ After integrating Dameng (or any new domestic database), verify in the following
 When troubleshooting compatibility issues, follow this order:
 
 1. Confirm the target database version (DM7 / DM8 behavior differs slightly).
-2. View the actual generated SQL via logs to confirm whether the dialect was matched. See [Logging and Diagnostics](../03-advanced-topics/07-logging.en.md).
+2. View the actual generated SQL via logs to confirm whether the dialect was matched. See [Logging and Diagnostics](../06-framework/03-logging.en.md).
 3. If you find the generated SQL is Oracle dialect (such as `GENERATED AS IDENTITY`) rather than Dameng dialect (`IDENTITY(start, increment)`), it means the factory did not match your registered builder. First check whether `RegisterSqlBuilder(...)` was called at startup, then verify the data source name / connection type is consistent with the runtime.
 4. If necessary, register explicitly to bypass keyword recognition:
 
@@ -431,4 +431,4 @@ When integrating a new domestic / compatible database, follow these steps:
 - [Database Differences and Compatibility Notes](../05-reference/08-database-compatibility.en.md)
 - [Expression Extension](./01-expression-extension.en.md)
 - [Configuration and Registration](../01-getting-started/03-configuration-and-registration.en.md)
-- [Logging and Diagnostics](../03-advanced-topics/07-logging.en.md)
+- [Logging and Diagnostics](../06-framework/03-logging.en.md)

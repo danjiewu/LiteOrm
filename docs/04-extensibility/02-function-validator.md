@@ -27,6 +27,8 @@ public enum FunctionPolicy
 
 ## 3. 使用方式
 
+> **命名空间说明**：`FunctionExprValidator` 位于 `LiteOrm` 命名空间（需 `using LiteOrm;`）；`ExprValidator`、`ExprValidatorGroup`、`ExprVisitor` 位于 `LiteOrm.Common` 命名空间（需 `using LiteOrm.Common;`）。下文示例默认已引入这两个命名空间。
+
 ### 3.1 预配置验证器
 
 `FunctionExprValidator` 提供了三个预配置的静态实例：
@@ -58,7 +60,7 @@ var validator = new FunctionExprValidator(FunctionPolicy.AllowRegisted);
 
 ## 4. 验证接口
 
-`FunctionExprValidator` 继承自 `ExprValidator`，单个节点校验走 `Validate(node)`，整棵表达式树校验更常见的用法是 `Validate(expr)`：
+`FunctionExprValidator` 继承自 `ExprValidator`。注意：`Validate(Expr node)` 是实例方法，**仅校验单个节点**，不会递归遍历子节点；若要对整棵表达式树进行校验，必须使用扩展方法 `ExprVisitor.Validate(validator, expr)`（命名空间 `LiteOrm.Common`），直接调用 `validator.Validate(expr)` 只会校验根节点本身：
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -102,8 +104,8 @@ public class UserQueryService
 
     public async Task<List<User>> SearchAsync(Expr query)
     {
-        // 验证查询表达式
-        if (!_validator.Validate(query))
+        // 验证整棵查询表达式树
+        if (!ExprVisitor.Validate(_validator, query))
             throw new InvalidOperationException("查询包含不允许的函数表达式");
 
         return await _userViewDAO.Search(query).ToListAsync();
@@ -121,7 +123,7 @@ public class SafeUserDAO : ObjectViewDAO<User>
 
     public async Task<List<User>> SafeSearchAsync(Expr expr)
     {
-        if (!Validator.Validate(expr))
+        if (!ExprVisitor.Validate(Validator, expr))
             throw new SecurityException("表达式验证失败");
 
         return await Search(expr).ToListAsync();
@@ -145,7 +147,7 @@ public class QueryInterceptor
 
     public void Intercept(Expr query)
     {
-        if (!_validator.Validate(query))
+        if (!ExprVisitor.Validate(_validator, query))
         {
             throw new UnauthorizedAccessException(
                 "查询包含未授权的函数表达式");
@@ -192,7 +194,7 @@ validator.Validate(expr2);  // false
 ## 7. 注意事项
 
 1. **验证时机**：建议在查询执行前对整棵 Expr 树做验证，而不是只检查根节点。
-2. **调用方式**：业务场景里优先使用 `validator.Validate(expr)`；`Validate(node)` 更适合实现验证器本身时覆盖。
+2. **调用方式**：业务场景里若需整树校验，必须使用扩展方法 `ExprVisitor.Validate(validator, expr)`（命名空间 `LiteOrm.Common`）；`Validate(node)` 实例方法仅校验单个节点，适合在实现验证器本身时重写，或仅校验单个根节点。
 3. **性能影响**：验证过程会遍历表达式树，对性能有一定影响。
 4. **安全考虑**：生产环境中建议使用 `AllowRegisted` 策略。
 

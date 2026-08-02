@@ -1,4 +1,4 @@
-# View Models and Services
+﻿# View Models and Services
 
 LiteOrm decouples "entity writes" from "view queries". You can use DAO directly, or encapsulate business layer access logic through Service.
 
@@ -115,4 +115,4 @@ Important notes here:
 - [Back to docs hub](../README.md)
 - [Entity Mapping and Data Sources](./01-entity-mapping.en.md)
 - [CRUD Guide](./03-crud-guide.en.md)
-- [Transactions](../03-advanced-topics/01-transactions.en.md)
+- [Transactions](../06-framework/01-transactions.en.md)

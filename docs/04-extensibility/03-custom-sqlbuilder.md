@@ -1,4 +1,4 @@
-# 自定义 SqlBuilder / 方言扩展
+﻿# 自定义 SqlBuilder / 方言扩展
 
 当默认数据库方言不足以覆盖目标数据库版本或特殊 SQL 行为时，可以通过自定义 `SqlBuilder` 扩展 LiteOrm。
 
@@ -25,7 +25,7 @@ public class Oracle11gBuilder : OracleBuilder
 {
     public readonly static new Oracle11gBuilder Instance = new Oracle11gBuilder();
 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // 使用 ROW_NUMBER() OVER(...) 包装分页
     }

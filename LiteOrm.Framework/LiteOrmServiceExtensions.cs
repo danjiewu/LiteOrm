@@ -126,15 +126,8 @@ namespace LiteOrm.Framework
                             {
                                 var sp = new AutofacServiceProvider(lifetimeScope);
 
-                                // 设置全局 TableInfoProvider（DI 解析的实例优先于默认的 AttributeTableInfoProvider）
-                                var tableInfoProvider = sp.GetService<TableInfoProvider>();
-                                if (tableInfoProvider != null)
-                                {
-                                    TableInfoProvider.Default = tableInfoProvider;
-                                }
-
-                                // 设置根作用域的 ServiceProvider，使 SessionManager.Current 在根作用域可用
-                                SessionManager.SetCurrentServiceProvider(sp);
+                                // 设置根作用域的会话工厂，使 SessionManager.Current 在根作用域可用
+                                SessionManager.SetCurrent(() => sp.GetService<SessionManager>());
 
                                 // 注册子作用域跟踪
                                 ScopeExtensions.RegisterScope(lifetimeScope);
@@ -206,7 +199,7 @@ namespace LiteOrm.Framework
             // 批量插入提供程序工厂 - 单例
             services.AddSingleton<BulkProviderFactory>();
 
-            // 启动时自动同步数据库表结构
+            // 初始化
             services.AddHostedService<LiteOrmCoreInitializer>();
 
             // 触发 SQL 函数初始化（静态构造函数仅执行一次，多次调用安全）

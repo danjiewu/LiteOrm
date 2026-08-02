@@ -1,4 +1,4 @@
-# 自定义分页实现示例
+﻿# 自定义分页实现示例
 
 本文档展示如何在 LiteOrm 中实现自定义分页策略，以 Oracle 11g 为例。
 
@@ -26,7 +26,7 @@ public class Oracle11gBuilder : OracleBuilder
     /// 将结构化的 SQL 片段组装成最终的 SELECT 语句 (Oracle 实现)。 
     /// 使用 ROW_NUMBER() OVER(...) 双层嵌套子查询实现分页，兼容所有 Oracle 版本。 
     /// </summary> 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result) 
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent) 
     {
         bool hasPaging = subSelect.Take > 0; 
 
@@ -295,7 +295,7 @@ public class SqlServer2008Builder : SqlServerBuilder
 {
     public readonly static new SqlServer2008Builder Instance = new SqlServer2008Builder();
     
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // 实现 TOP + ROW_NUMBER() 分页
         // ...
@@ -310,7 +310,7 @@ public class CustomPostgreSqlBuilder : PostgreSqlBuilder
 {
     public readonly static new CustomPostgreSqlBuilder Instance = new CustomPostgreSqlBuilder();
     
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // 实现自定义分页逻辑
         // ...

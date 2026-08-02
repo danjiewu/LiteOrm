@@ -1,4 +1,4 @@
-# 事务处理
+﻿# 事务处理
 
 LiteOrm 支持两种事务管理方式：声明式事务和手动事务。
 
@@ -291,6 +291,7 @@ public async Task<bool> RenameUserAsync(int id, string newName)
 
 ## 相关链接
 
+- [返回目录](../README.md)
 - [关联查询](../02-core-usage/08-associations.md)
-- [分表分库](./02-sharding-and-tableargs.md)
-- [性能优化](./03-performance.md)
+- [分表分库](../03-advanced-topics/02-sharding-and-tableargs.md)
+- [性能优化](../03-advanced-topics/03-performance.md)

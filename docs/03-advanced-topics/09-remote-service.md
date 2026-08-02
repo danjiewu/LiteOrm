@@ -1,4 +1,4 @@
-# 远程服务（LiteOrm.Remote）
+﻿# 远程服务（LiteOrm.Remote）
 
 LiteOrm 提供完整的远程服务调用方案，让业务代码在「本地调用」和「远程调用」之间无缝切换——**接口定义不变、调用写法不变**，只需更换注册方式即可将数据访问层从应用进程中物理剥离。
 
@@ -999,7 +999,7 @@ opts.Transport = new MyTransport();
 |------|---------|---------|
 | 注册方式 | `RegisterLiteOrm` 自动扫描 `[Service]` | `RegisterLiteOrmRemote` + 代理注册 |
 | 调用方式 | 直接反射调用 | 动态代理拦截 + HTTP 转发 |
-| 事务 | `[Transaction]` AOP | 不支持跨进程事务（详见 [事务指南](01-transactions.md)） |
+| 事务 | `[Transaction]` AOP | 不支持跨进程事务（详见 [事务指南](../06-framework/01-transactions.md)） |
 | `ForEachAsync` | 流式遍历 | 抛出 `NotSupportedException` |
 | 参数回写 | 直接修改对象 | 通过 `OutArguments` 序列化回写 |
 | 异常传播 | 原始异常 | `RemoteInvocationResponse.Error` 携带异常信息 |

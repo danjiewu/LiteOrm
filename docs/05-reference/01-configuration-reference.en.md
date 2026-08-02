@@ -1,4 +1,4 @@
-# Configuration Reference
+﻿# Configuration Reference
 
 This page is a complete reference for LiteOrm configuration fields, defaults, and usage recommendations.
 
@@ -142,6 +142,6 @@ Provide at least `ConnectionString` for each read-only replica. Any omitted pool
 ## Related Links
 
 - [Back to English docs hub](../README.md)
-- [Configuration and Registration](../01-getting-started/03-configuration-and-registration.en.md)
+- [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md)
 - [Performance](../03-advanced-topics/03-performance.en.md)
 - [API Index](./02-api-index.en.md)

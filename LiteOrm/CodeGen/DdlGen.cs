@@ -58,13 +58,13 @@ namespace LiteOrm.CodeGen
         /// <param name="tableArgs">动态表名参数，适用于实现了 <see cref="IArged"/> 的类型。</param>
         /// <returns>所需的 ddl 语句列表（CREATE TABLE、ADD COLUMN、CREATE INDEX）。</returns>
         /// <exception cref="ArgumentNullException">当 <paramref name="objectType"/> 为 null 时抛出。</exception>
-        /// <exception cref="InvalidOperationException">当 <see cref="TableInfoProvider.Default"/> 未设置或未找到对应的连接池时抛出。</exception>
+        /// <exception cref="InvalidOperationException">当 <see cref="TableInfoProvider.Instance"/> 未设置或未找到对应的连接池时抛出。</exception>
         /// <exception cref="InvalidOperationException">当 <see cref="TableDefinition.DataSource"/> 未设置或无效时抛出。</exception>
         public List<string> GenerateDdl(Type objectType, string[]? tableArgs = null)
         {
             if (objectType == null) throw new ArgumentNullException(nameof(objectType));
-            if (TableInfoProvider.Default == null) throw new InvalidOperationException("TableInfoProvider.Default is not set.");
-            var tableDef = TableInfoProvider.Default.GetTableDefinition(objectType);
+            if (TableInfoProvider.Instance == null) throw new InvalidOperationException("TableInfoProvider.Instance is not set.");
+            var tableDef = TableInfoProvider.Instance.GetTableDefinition(objectType);
             if (tableDef == null) return new List<string>();
 
             var pool = _factory.GetPool(tableDef.DataSource);
@@ -128,7 +128,7 @@ namespace LiteOrm.CodeGen
                     if (typeof(IArged).IsAssignableFrom(type)) continue;
 
                     TableDefinition? tableDef;
-                    try { tableDef = TableInfoProvider.Default?.GetTableDefinition(type); }
+                    try { tableDef = TableInfoProvider.Instance?.GetTableDefinition(type); }
                     catch { continue; }
 
                     if (tableDef == null) continue;
@@ -161,7 +161,7 @@ namespace LiteOrm.CodeGen
                             {
 
                                 TableDefinition? tableDef;
-                                try { tableDef = TableInfoProvider.Default?.GetTableDefinition(type); }
+                                try { tableDef = TableInfoProvider.Instance?.GetTableDefinition(type); }
                                 catch { continue; }
 
                                 if (tableDef == null) continue;

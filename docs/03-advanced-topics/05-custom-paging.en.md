@@ -1,4 +1,4 @@
-# Custom Paging Implementation Examples
+﻿# Custom Paging Implementation Examples
 
 This document shows how to implement custom paging strategies in LiteOrm, using Oracle 11g as an example.
 
@@ -26,7 +26,7 @@ public class Oracle11gBuilder : OracleBuilder
     /// Assembles the structured SQL fragment into the final SELECT statement (Oracle implementation).
     /// Uses ROW_NUMBER() OVER(...) double-layered nested subquery for paging, compatible with all Oracle versions.
     /// </summary>
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         bool hasPaging = subSelect.Take > 0;
 
@@ -295,7 +295,7 @@ public class SqlServer2008Builder : SqlServerBuilder
 {
     public readonly static new SqlServer2008Builder Instance = new SqlServer2008Builder();
 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // Implement TOP + ROW_NUMBER() paging
         // ...
@@ -310,7 +310,7 @@ public class CustomPostgreSqlBuilder : PostgreSqlBuilder
 {
     public readonly static new CustomPostgreSqlBuilder Instance = new CustomPostgreSqlBuilder();
 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // Implement custom paging logic
         // ...

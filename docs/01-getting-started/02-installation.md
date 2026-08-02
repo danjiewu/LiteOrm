@@ -1,14 +1,14 @@
-# 安装与环境要求
+﻿# 安装与环境要求
 
-本文介绍 LiteOrm 的运行环境、数据库支持和安装方式。
+本文介绍 LiteOrm 的运行环境、数据库支持，以及两种安装方式：仅使用核心库（`LiteOrm`）与使用框架集成包（`LiteOrm.Framework`）。
 
-> **新手提示**：如果你只是想快速体验 LiteOrm，建议使用 SQLite 作为数据库——它不需要安装任何数据库服务，开箱即用。本文末尾提供了 SQLite 的快速上手步骤。
+> **新手提示**：如果你只是想快速体验 LiteOrm，建议使用 SQLite 作为数据库——它不需要安装任何数据库服务，开箱即用。需要宿主级集成（Autofac、AOP）时再引入 `LiteOrm.Framework`。
 
 ## 环境要求
 
 - `.NET 8.0+`
 - `.NET Standard 2.0`（兼容 .NET Framework 4.6.1+）
-- 依赖库：`Autofac.Extensions.DependencyInjection`、`Autofac.Extras.DynamicProxy`、`Castle.Core`
+- 数据库驱动包：根据所选数据库安装对应的 NuGet 驱动
 
 > **如何检查 .NET 版本？** 在终端中运行 `dotnet --version`，确保输出为 `8.0.x` 或更高版本。如果尚未安装，请访问 [https://dotnet.microsoft.com/download](https://dotnet.microsoft.com/download) 下载安装。
 
@@ -49,13 +49,29 @@
 | Oracle | `Oracle.ManagedDataAccess.Core` | `Oracle.ManagedDataAccess.Client.OracleConnection, Oracle.ManagedDataAccess` |
 | SQLite | `Microsoft.Data.Sqlite` | `Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite` |
 
-> **注意**：除了安装 `LiteOrm` 包外，你还需要根据使用的数据库安装对应的 NuGet 驱动包（如上表第一列所示）。
+> **注意**：无论哪种安装方式，都需要根据使用的数据库安装对应的 NuGet 驱动包（如上表第一列所示）。
 
-## 通过 NuGet 安装
+## 方式一：仅使用核心库（`LiteOrm`）
+
+适合只需要实体映射、查询、DAO 等核心能力，且自行管理连接与生命周期的场景。此方式**不引入任何 DI 框架**，无需 Autofac 与 Castle 动态代理。
 
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework   # DI 注册（RegisterLiteOrm）需要
+dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
+```
+
+- 核心库由 `LiteOrm` 与 `LiteOrm.Common` 两个包构成，`LiteOrm` 会自动携带 `LiteOrm.Common`。
+- 不提供 `RegisterLiteOrm()`，也不含 AOP 拦截（事务/权限/日志）与动态 Controller 能力。
+- 数据访问通过 `ObjectDAO` / `DataDAO` 等 DAO 类型完成。
+
+## 方式二：使用框架集成包（`LiteOrm.Framework`）
+
+适合 ASP.NET Core 项目。`LiteOrm.Framework` 引入 Autofac 容器与 Castle 动态代理，通过 `builder.Host.RegisterLiteOrm()` 一键注册，并启用 AOP 事务/权限/日志与动态 Controller 生成。
+
+```bash
+dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework    # DI 注册（RegisterLiteOrm）需要
+dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
 ```
 
 ### 各数据库完整安装命令
@@ -90,7 +106,7 @@ dotnet add package Microsoft.Data.Sqlite
 
 ## 创建新项目的完整步骤
 
-> 以下是从零开始创建一个使用 LiteOrm 的 ASP.NET Core 项目的完整命令：
+> 以下是从零开始创建一个使用 LiteOrm.Framework 的 ASP.NET Core 项目的完整命令：
 
 ```bash
 # 1. 创建 Web API 项目
@@ -99,6 +115,7 @@ cd MyLiteOrmApp
 
 # 2. 安装 LiteOrm（以 SQLite 为例）
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package Microsoft.Data.Sqlite
 
 # 3. 运行项目确认环境正常
@@ -109,12 +126,10 @@ dotnet run
 
 ## 安装后的下一步
 
-1. 准备连接字符串和数据源配置。
-2. 在宿主启动阶段调用 `RegisterLiteOrm()`。
-3. 定义实体、服务或 DAO。
-4. 使用 `SearchAsync`、`InsertAsync` 等 API 完成首个示例。
+- **仅核心库**：参考 [配置与注册](./03-configuration-and-registration.md) 的"方式一"进行手动初始化，然后跑通 [第一个完整示例（仅核心库）](./04-first-example.md)。
+- **Framework 集成**：在宿主启动阶段调用 `RegisterLiteOrm()`，参考 [配置与注册](./03-configuration-and-registration.md) 的"方式二"与 [第一个完整示例（Framework 版）](./05-first-example-framework.md)。
 
-> **SQLite 快速上手**：如果你想用 SQLite 快速体验，连接字符串只需写 `Data Source=myapp.db`，无需安装任何数据库服务。完整示例请参考 [第一个完整示例](./04-first-example.md)。
+> **SQLite 快速上手**：如果你想用 SQLite 快速体验，连接字符串只需写 `Data Source=myapp.db`，无需安装任何数据库服务。
 
 ## 常见安装问题
 
@@ -132,11 +147,11 @@ dotnet run
 
 ### 安装后项目体积会很大吗？
 
-不会。LiteOrm 本身非常轻量，核心包只有几百 KB。加上必要的依赖（Autofac、Castle.Core），总体增量在 2-3 MB 左右。
+不会。LiteOrm 本身非常轻量，核心包只有几百 KB。加上必要的依赖（Autofac、Castle.Core），总体增量在 2-3 MB 左右。仅使用核心库时不引入 Autofac 与 Castle，体积更小。
 
 ## 相关链接
 
 - [返回目录](../README.md)
 - [配置与注册](./03-configuration-and-registration.md)
-- [第一个完整示例](./04-first-example.md)
+- [第一个完整示例](./05-first-example-framework.md)
 - [配置项速查](../05-reference/01-configuration-reference.md)

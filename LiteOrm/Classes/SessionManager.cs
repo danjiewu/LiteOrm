@@ -51,8 +51,7 @@ namespace LiteOrm
         private readonly LinkedList<string> _sqlStack = new LinkedList<string>();
         private string? _currentTransactionId;
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
-        private static readonly AsyncLocal<SessionManager> _currentSession = new AsyncLocal<SessionManager>();
-        private static readonly AsyncLocal<IServiceProvider> _currentServiceProvider = new AsyncLocal<IServiceProvider>();
+        private static readonly AsyncLocal<Lazy<SessionManager?>?> _currentSessionFactory = new AsyncLocal<Lazy<SessionManager?>?>();
 
         /// <summary>
         /// 最大SQL历史记录条数，超过此数量的旧SQL将被丢弃
@@ -65,22 +64,18 @@ namespace LiteOrm
         public string SessionID { get; } = ShortId.NewId();
 
         /// <summary>
-        /// 当前异步上下文的会话管理器。优先返回通过 <see cref="SetCurrent"/> 手动设置的会话；
-        /// 未手动设置时，尝试从当前 scope 的 <see cref="IServiceProvider"/>（由 <see cref="SetCurrentServiceProvider"/> 设置）解析。
-        /// 当前上下文未设置或实例已释放时返回 null。
+        /// 当前异步上下文的会话管理器。通过 <see cref="SetCurrent"/> 设置的工厂委托延迟创建并缓存；
+        /// 当前上下文未设置工厂、工厂返回 null 或实例已释放时返回 null。
         /// </summary>
         public static SessionManager? Current
         {
             get
             {
-                var session = _currentSession.Value;
-                if (session is not null && !session._disposed) return session;
-
-                var sp = _currentServiceProvider.Value;
-                if (sp is null) return null;
+                var factory = _currentSessionFactory.Value;
+                if (factory is null) return null;
                 try
                 {
-                    var instance = sp.GetService<SessionManager>();
+                    var instance = factory.Value;
                     if (instance is null || instance._disposed) return null;
                     return instance;
                 }
@@ -89,23 +84,23 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 为当前异步上下文手动设置 <see cref="SessionManager"/>，用于 <see cref="Current"/> 直接返回该实例。
-        /// 传入 null 时清空当前上下文。LiteOrm 核心不依赖 DI 容器，手动构造后通过此方法激活当前会话。
+        /// 为当前异步上下文设置会话工厂委托。工厂委托在 <see cref="Current"/> 首次访问时通过 <see cref="Lazy{T}"/> 延迟执行并缓存结果。
+        /// 传入 null 时清空当前上下文。
         /// </summary>
-        /// <param name="sessionManager">当前会话实例；传入 null 时清空当前上下文</param>
-        public static void SetCurrent(SessionManager? sessionManager)
+        /// <remarks>
+        /// 该方法合并了原先的手动设置会话与设置服务提供者两种场景：
+        /// <list type="bullet">
+        /// <item>手动构造场景：<c>SetCurrent(() =&gt; sessionManager)</c></item>
+        /// <item>DI 集成场景：<c>SetCurrent(() =&gt; serviceProvider.GetService&lt;SessionManager&gt;())</c></item>
+        /// </list>
+        /// LiteOrm 核心不依赖 DI 容器，手动构造后通过此方法激活当前会话。
+        /// </remarks>
+        /// <param name="sessionFactory">返回当前会话实例的工厂委托；传入 null 时清空当前上下文</param>
+        public static void SetCurrent(Func<SessionManager?>? sessionFactory)
         {
-            _currentSession.Value = sessionManager!;
-        }
-
-        /// <summary>
-        /// 为当前异步上下文设置 <see cref="IServiceProvider"/>，用于 <see cref="Current"/> 解析当前 scope 的 <see cref="SessionManager"/>。
-        /// 传入 null 时清空当前上下文。该机制供 LiteOrm.Framework 等 DI 集成场景使用。
-        /// </summary>
-        /// <param name="serviceProvider">当前 scope 的 <see cref="IServiceProvider"/>；传入 null 时清空当前上下文</param>
-        public static void SetCurrentServiceProvider(IServiceProvider serviceProvider)
-        {
-            _currentServiceProvider.Value = serviceProvider;
+            _currentSessionFactory.Value = sessionFactory is null
+                ? null
+                : new Lazy<SessionManager?>(sessionFactory, LazyThreadSafetyMode.ExecutionAndPublication);
         }
 
         /// <summary>
@@ -1007,7 +1002,7 @@ namespace LiteOrm
             if (sessionManager is null) throw new ArgumentNullException(nameof(sessionManager));
             _session = sessionManager;
             _previous = SessionManager.Current;
-            SessionManager.SetCurrent(sessionManager);
+            SessionManager.SetCurrent(() => sessionManager);
         }
 
         /// <summary>
@@ -1020,7 +1015,10 @@ namespace LiteOrm
         /// </summary>
         public void Dispose()
         {
-            SessionManager.SetCurrent(_previous);
+            if (_previous is null)
+                SessionManager.SetCurrent(null);
+            else
+                SessionManager.SetCurrent(() => _previous);
         }
     }
 }

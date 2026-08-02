@@ -34,12 +34,8 @@ namespace LiteOrm
         /// <summary>
         /// 初始化 <see cref="DAOBase"/> 类的新实例。
         /// </summary>
-        /// <param name="tableInfoProvider">表信息提供者</param>
-        /// <param name="bulkFactory">批量插入提供程序工厂</param>
-        protected DAOBase(TableInfoProvider tableInfoProvider, BulkProviderFactory bulkFactory)
+        protected DAOBase()
         {
-            TableInfoProvider = tableInfoProvider ?? throw new ArgumentNullException(nameof(tableInfoProvider));
-            BulkFactory = bulkFactory ?? throw new ArgumentNullException(nameof(bulkFactory));
         }
         #endregion
 
@@ -109,14 +105,24 @@ namespace LiteOrm
         /// <summary>
         /// 批量插入提供程序工厂
         /// </summary>
-        public BulkProviderFactory BulkFactory { get; }
+        public BulkProviderFactory BulkFactory => BulkProviderFactory.Instance!;
 
         /// <summary>
         /// 构建SQL语句的SQLBuilder
         /// </summary>
         public virtual SqlBuilder SqlBuilder
         {
-            get { return SqlBuilderFactory.Instance.GetSqlBuilder(TableDefinition.DataProviderType!, DataSource); }
+            get { return SqlBuilderFactory.Instance.GetSqlBuilder(GetProviderType()!, DataSource); }
+        }
+
+        /// <summary>
+        /// 获取当前数据源对应的数据库提供程序类型。
+        /// 通过 <see cref="DAOContextPoolFactory"/> 单例根据数据源名称查找连接池，再从连接池获取提供程序类型。
+        /// </summary>
+        /// <returns>数据库提供程序类型；若连接池工厂未初始化或数据源不存在则返回 null。</returns>
+        protected virtual Type? GetProviderType()
+        {
+            return DAOContextPoolFactory.Instance?.GetPool(DataSource)?.ProviderType;
         }
 
         ISqlBuilder IExprStringBuildContext.SqlBuilder => SqlBuilder;
@@ -178,7 +184,7 @@ namespace LiteOrm
         /// <summary>
         /// 表信息提供者
         /// </summary>
-        public TableInfoProvider TableInfoProvider { get; }
+        public TableInfoProvider TableInfoProvider => LiteOrm.Common.TableInfoProvider.Instance;
 
         /// <summary>
         /// 实际表名

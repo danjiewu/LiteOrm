@@ -1,4 +1,4 @@
-# Performance Optimization
+﻿# Performance Optimization
 
 This guide covers performance optimization techniques for LiteOrm.
 
@@ -404,10 +404,28 @@ LiteOrm's performance advantages compared to other ORMs:
 | Update 1000 rows | ~25ms | ~126ms | ~248ms |
 | JOIN query | ~9ms | ~15ms | ~9ms |
 
+### 10.1 Test Environment
+
+The benchmark data above is based on the following configuration (per `LiteOrm.Benchmark` project source and BenchmarkDotNet reports):
+
+| Configuration | Value |
+|---------------|-------|
+| Test framework | BenchmarkDotNet v0.15.8 |
+| .NET version | .NET 10 (net10.0), runtime .NET 10.0.4 |
+| Runtime | X64 RyuJIT x86-64-v3 |
+| OS | Windows 11 (10.0.22631) |
+| CPU | 13th Gen Intel Core i5-13400F 2.50GHz (16 logical / 10 physical cores) |
+| Database | MySQL (default; switchable to SQLite or Oracle via `appsettings.json`) |
+| Test data volume | BatchCount: 10 / 100 / 1000 / 10000 rows |
+| Benchmark mode | `[MemoryDiagnoser]` + `[MediumRunJob]` |
+| Compared ORMs | LiteOrm, EF Core, Dapper, SqlSugar, FreeSql |
+
+> Full BenchmarkDotNet reports are located in `LiteOrm.Benchmark/BenchmarkDotNet.Artifacts/results/`. The table above is a simplified summary; the actual reports contain complete measurements across different BatchCount values.
+
 ## Related Links
 
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/08-associations.en.md)
-- [Transactions](./01-transactions.en.md)
+- [Transactions](../06-framework/01-transactions.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
 

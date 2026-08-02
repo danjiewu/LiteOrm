@@ -239,7 +239,7 @@ namespace LiteOrm.Tests
 
         /// <summary>
         /// 创建测试用 <see cref="TableInfoProvider"/>（基于 <see cref="AttributeTableInfoProvider"/>，依赖已 Mock）。
-        /// <see cref="IdentityOutAttribute"/> 通过 <see cref="TableInfoProvider.Default"/> 解析 Identity 列，
+        /// <see cref="IdentityOutAttribute"/> 通过 <see cref="TableInfoProvider.Instance"/> 解析 Identity 列，
         /// 客户端与服务端均需注册。
         /// </summary>
         private static TableInfoProvider CreateTestTableInfoProvider()
@@ -262,17 +262,22 @@ namespace LiteOrm.Tests
         }
 
         /// <summary>
-        /// 设置 <see cref="TableInfoProvider.Default"/> 的作用域，Dispose 时恢复原值。
+        /// 设置 <see cref="TableInfoProvider.Instance"/> 的作用域，Dispose 时恢复原值。
         /// </summary>
         private readonly struct TableInfoProviderScope : IDisposable
         {
             private readonly TableInfoProvider _previous;
             public TableInfoProviderScope(TableInfoProvider provider)
             {
-                _previous = TableInfoProvider.Default;
-                TableInfoProvider.Default = provider;
+                _previous = TableInfoProvider.Instance;
+                var captured = provider;
+                TableInfoProvider.Set(() => captured);
             }
-            public void Dispose() => TableInfoProvider.Default = _previous;
+            public void Dispose()
+            {
+                var captured = _previous;
+                TableInfoProvider.Set(() => captured);
+            }
         }
 
         // ========== 客户端测试：IdentityOutAttribute ==========

@@ -52,12 +52,6 @@ namespace LiteOrm.Common
         public SyncTableMode SyncTable { get; protected internal set; }
 
         /// <summary>
-        /// 获取或设置数据提供程序类型。
-        /// 例如：Microsoft.Data.SqlClient.SqlConnection
-        /// </summary>
-        public Type? DataProviderType { get; protected internal set; }
-
-        /// <summary>
         /// 获取数据库表的列定义集合。
         /// </summary>
         public new ReadOnlyCollection<ColumnDefinition> Columns { get; }

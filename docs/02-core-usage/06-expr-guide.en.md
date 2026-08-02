@@ -60,7 +60,7 @@ var levelExpr = If(Prop("Age") >= 18, Const("Adult"), Const("Minor"));
 ```
 
 - `.Cast(DbType)`: converts a value expression to a target database type, rendered as SQL `CAST(...)`
-- `Expr.If(condition, then, else)`: builds a simple conditional expression, equivalent to `CASE WHEN condition THEN then ELSE else END`
+- `Expr.If(condition, then, else = null)`: builds a simple conditional expression, equivalent to `CASE WHEN condition THEN then ELSE else END`. The `elseExpr` parameter is optional and defaults to `null`; when omitted, no `ELSE` branch is generated
 - `Expr.Case(...)`: builds a multi-condition CASE expression with the following overloads:
   - `Case((LogicExpr, ValueTypeExpr)[] cases, ValueTypeExpr elseExpr)` - condition-result tuple array + ELSE
   - `Case(params (LogicExpr, ValueTypeExpr)[] cases)` - condition-result tuple array (no ELSE)
@@ -299,7 +299,7 @@ In day-to-day query code, the most common ones are usually:
 | `Expr.Lambda<T>(expr)` | Convert Lambda into `LogicExpr` | `Expr.Lambda<User>(u => u.Age > 18)` |
 | `Expr.Func(name, args)` | Create a function expression | `Expr.Func("COUNT", Expr.Prop("Id"))` |
 | `Expr.Aggregate(name, expr, isDistinct)` | Create an aggregate expression | `Expr.Aggregate("COUNT", Expr.Prop("Id"), true)` |
-| `Expr.If(condition, then, else)` | IF / CASE WHEN form | `Expr.If(... )` |
+| `Expr.If(condition, then, else = null)` | IF / CASE WHEN form (`elseExpr` optional, defaults to `null`) | `Expr.If(... )` |
 | `Expr.Case(cases, elseExpr)` | CASE expression | `Expr.Case(... )` |
 | `Expr.Now()` | Current timestamp | `Expr.Now()` |
 | `Expr.Today()` | Current date | `Expr.Today()` |

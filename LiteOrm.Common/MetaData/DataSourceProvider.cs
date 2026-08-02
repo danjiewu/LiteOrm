@@ -43,9 +43,9 @@ namespace LiteOrm.Common
         public int MaxPoolSize { get; set; } = 100;
 
         /// <summary>
-        /// 数据库参数最大数量限制，为0表示无限制，默认为2000
+        /// 数据库参数最大数量限制，为0表示无限制，默认为1000
         /// </summary>
-        public int ParamCountLimit { get; set; } = 2000;
+        public int ParamCountLimit { get; set; } = 1000;
 
         /// <summary>
         /// 是否开启自动建表同步

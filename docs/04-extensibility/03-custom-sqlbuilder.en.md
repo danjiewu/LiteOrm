@@ -1,4 +1,4 @@
-# Custom SqlBuilder / Dialect Extension
+﻿# Custom SqlBuilder / Dialect Extension
 
 When the default database dialect is insufficient to cover the target database version or special SQL behavior, you can extend LiteOrm by creating a custom `SqlBuilder`.
 
@@ -25,7 +25,7 @@ public class Oracle11gBuilder : OracleBuilder
 {
     public readonly static new Oracle11gBuilder Instance = new Oracle11gBuilder();
 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // Use ROW_NUMBER() OVER(...) for paging
     }

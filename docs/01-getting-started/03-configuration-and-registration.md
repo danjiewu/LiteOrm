@@ -1,10 +1,44 @@
-# 配置与注册
+﻿# 配置与注册
 
-本文说明 LiteOrm 的基础配置结构、常用配置项和启动注册方式。
+LiteOrm 提供两种配置方式——**仅核心库（手动 API）** 和 **Framework（DI 自动绑定）**。你可以根据项目是否使用 DI 容器选择合适的方式：
+
+- **仅核心库**：不依赖 DI 容器，不读取 `appsettings.json`，通过代码手动配置数据源。适合控制台应用、批处理脚本或不依赖 DI 容器的项目。
+- **Framework 集成**：通过 `appsettings.json` 声明配置，启动时由 `RegisterLiteOrm()` 自动完成 DI 绑定、DAO 注册和方言解析。适合 ASP.NET Core 等需要 Autofac、AOP 能力的项目。
 
 > **新手提示**：如果你是第一次配置，建议从最简单的配置开始——只配置一个数据源，使用 SQLite 作为数据库。等跑通基本流程后，再逐步添加多数据源、读写分离等高级配置。
 
-## `appsettings.json` 示例
+## 方式一：仅核心库
+
+仅使用 `LiteOrm` 核心库时，不依赖 DI 容器（无需 Autofac），也不读取 `appsettings.json`，所有配置通过代码手动完成。通过 `DataSourceProvider` 的 `AddDataSource` API 手动配置数据源即可：
+
+```csharp
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.AddDataSource(new DataSourceConfig
+{
+    Name = "DefaultConnection",
+    ConnectionString = "Data Source=demo.db",
+    Provider = typeof(SqliteConnection).AssemblyQualifiedName,
+    SyncTable = true
+});
+dataSourceProvider.SetDefaultDataSource("DefaultConnection");
+LiteOrmSqlFunctionInitializer.Initialize();
+var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
+DAOContextPoolFactory.Set(() => poolFactory);
+var sessionManager = new SessionManager(poolFactory);
+SessionManager.SetCurrent(() => sessionManager);
+```
+
+> **说明**：
+> - 核心库不依赖 DI 容器，不读取 `appsettings.json`，配置全部通过代码完成。
+> - `AddDataSource` 添加数据源，`SetDefaultDataSource` 指定默认数据源。
+> - `LiteOrmSqlFunctionInitializer.Initialize()` 注册内置 SQL 函数映射，必须调用。
+> - 完整的核心库初始化流程（含 DAO/Service 构造）参见 [第一个完整示例（仅核心库）](./04-first-example.md)。
+
+## 方式二：Framework 集成
+
+使用 `LiteOrm.Framework` 时，配置通过 `appsettings.json` 声明，启动时由 `RegisterLiteOrm()` 自动完成 DI 绑定、DAO 注册和方言解析。
+
+### `appsettings.json` 示例
 
 ```json
 {
@@ -32,7 +66,7 @@
 }
 ```
 
-### 各数据库最小配置示例
+#### 各数据库最小配置示例
 
 > 以下是最精简的配置示例，只包含必填字段。你可以直接复制使用，替换其中的连接字符串即可。
 
@@ -100,7 +134,7 @@
 }
 ```
 
-## 配置项说明
+### 配置项说明
 
 | 配置项 | 说明 | 是否必填 | 默认值 |
 | --- | --- | --- | --- |
@@ -118,11 +152,11 @@
 
 > **新手建议**：初次使用时，只需配置 `Name`、`ConnectionString`、`Provider` 三个必填项即可，其余使用默认值。
 
-## 注册方式
+### 注册方式
 
 > `RegisterLiteOrm()` 定义于 `LiteOrm.Framework` 包。使用前需执行 `dotnet add package LiteOrm.Framework` 并添加 `using LiteOrm.Framework;`。
 
-### 控制台应用
+#### 控制台应用
 
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
@@ -130,7 +164,7 @@ var host = Host.CreateDefaultBuilder(args)
     .Build();
 ```
 
-### ASP.NET Core 应用
+#### ASP.NET Core 应用
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -139,7 +173,7 @@ builder.Host.RegisterLiteOrm();
 
 > **注意**：`RegisterLiteOrm()` 必须调用在 `builder.Host` 上（不是 `builder.Services`），因为它需要替换底层的 DI 容器为 Autofac。
 
-### 带选项注册
+#### 带选项注册
 
 ```csharp
 builder.Host.RegisterLiteOrm(options =>
@@ -150,7 +184,7 @@ builder.Host.RegisterLiteOrm(options =>
 });
 ```
 
-### 完整的 Program.cs 示例
+#### 完整的 Program.cs 示例
 
 > 以下是一个完整的 ASP.NET Core 项目 `Program.cs` 示例，展示了 LiteOrm 注册的典型位置：
 
@@ -173,11 +207,11 @@ app.Run();
 
 > **注意**：`RegisterLiteOrm()` 定义于 `LiteOrm.Framework` 包，使用前需引用 `LiteOrm.Framework` 并添加 `using LiteOrm.Framework;`。
 
-## 日志集成
+### 日志集成
 
 LiteOrm 的运行日志接入 `Microsoft.Extensions.Logging`。服务调用日志、异常日志和慢查询日志会跟随宿主应用的日志提供程序一起输出。
 
-### 宿主日志配置示例
+#### 宿主日志配置示例
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -188,7 +222,7 @@ builder.Logging.AddConsole();
 builder.Host.RegisterLiteOrm();
 ```
 
-### `options.LoggerFactory` 的作用
+#### `options.LoggerFactory` 的作用
 
 ```csharp
 builder.Host.RegisterLiteOrm(options =>
@@ -204,9 +238,9 @@ builder.Host.RegisterLiteOrm(options =>
 - 宿主 DI 中的 `ILoggerFactory`：用于常规 Service 调用日志。
 - `options.LoggerFactory`：主要用于框架注册和程序集扫描阶段的输出。
 
-详细用法参见：[日志与诊断](../03-advanced-topics/07-logging.md)
+详细用法参见：[日志与诊断](../06-framework/03-logging.md)
 
-## 多数据源与读写分离建议
+### 多数据源与读写分离建议
 
 - 在实体上通过 `[Table(DataSource = "...")]` 绑定数据源。
 - 读多写少场景可使用 `ReadOnlyConfigs` 配置只读副本：
@@ -216,17 +250,17 @@ builder.Host.RegisterLiteOrm(options =>
   - 未配置只读副本时，读取会自动回落主库连接。
 - 涉及数据库方言差异时，建议显式注册 `SqlBuilder`。
 
-## 常见问题
+### 常见问题
 
-### `Provider` 应该填写什么？
+#### `Provider` 应该填写什么？
 
 填写数据库连接对象的完整类型名，例如 `System.Data.SqlClient.SqlConnection, System.Data.SqlClient`。
 
-### 什么时候需要自定义 `SqlBuilder`？
+#### 什么时候需要自定义 `SqlBuilder`？
 
 当数据库版本较老、分页语法或函数行为与默认实现不一致时，需要自定义 `SqlBuilder`。
 
-### 新手常见配置错误
+#### 新手常见配置错误
 
 > 以下是初学者在配置阶段最容易遇到的问题：
 
@@ -262,7 +296,7 @@ builder.Host.RegisterLiteOrm(options =>
 
 `Default` 的值必须与某个 `DataSources[].Name` 完全匹配，否则框架无法确定默认使用哪个数据源。
 
-### 如何验证配置是否正确？
+#### 如何验证配置是否正确？
 
 启动应用后，观察控制台输出。如果看到类似 `LiteOrm initialized successfully` 的日志，说明配置正确。如果出现异常，请检查：
 
@@ -273,7 +307,7 @@ builder.Host.RegisterLiteOrm(options =>
 ## 相关链接
 
 - [返回目录](../README.md)
-- [第一个完整示例](./04-first-example.md)
+- [第一个完整示例（仅核心库）](./04-first-example.md)
+- [第一个完整示例（Framework 版）](./05-first-example-framework.md)
 - [配置项速查](../05-reference/01-configuration-reference.md)
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
-

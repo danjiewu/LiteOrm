@@ -1,26 +1,23 @@
-# First Complete Example
+﻿# First End-to-End Example (Core Library Only)
 
-This article demonstrates a minimal runnable example of LiteOrm's typical usage flow: defining entities, registering services, inserting data, querying data, and paginated queries.
+This article walks through a minimal runnable example demonstrating the typical workflow of using **only the `LiteOrm` core library** (without `LiteOrm.Framework`, Autofac, or Castle dynamic proxies): manual initialization, defining entities, inserting data, querying data, and paginated queries.
 
-> **Beginner tip**: This article assumes you've completed [Installation](./02-installation.en.md) and [Configuration](./03-configuration-and-registration.en.md). If this is your first time with LiteOrm, follow along and type the code—it takes about 15 minutes. This article uses SQLite as the demo database, so no additional database server installation is needed.
+> **Applicable scenarios**: console apps, batch scripts, projects without a DI container, or scenarios where you want full control over lifetimes.
+>
+> If you use ASP.NET Core and need Autofac integration, AOP transactions/permissions/logging, dynamic Controllers, and similar capabilities, see [First End-to-End Example (Framework)](./05-first-example-framework.en.md).
 
 ## 0. Project Setup
 
-> If you haven't created a project yet, run these commands first:
-
 ```bash
-dotnet new webapi -n LiteOrmDemo
-cd LiteOrmDemo
+dotnet new console -n LiteOrmCoreDemo
+cd LiteOrmCoreDemo
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
 dotnet add package Microsoft.Data.Sqlite
 ```
 
-Then create a `Models` folder in the project root for your entity classes.
+> The core library `LiteOrm` automatically brings in `LiteOrm.Common`, so you don't need to install it separately. This example uses SQLite, which requires no additional database service.
 
-## 1. Define Entity
-
-> **What is an entity?** An entity is a C# class mapped to a database table and columns through `[Table]` and `[Column]` attributes. Each entity instance corresponds to a row in the database.
+## 1. Define the Entity
 
 ```csharp
 using LiteOrm.Common;
@@ -39,110 +36,88 @@ public class User
 
     [Column("CreateTime")]
     public DateTime CreateTime { get; set; }
-
-    [Column("DeptId")]
-    public int? DeptId { get; set; }
 }
 ```
 
-> **Line-by-line explanation**:
-> - `[Table("Users")]`: Tells LiteOrm this class maps to the `Users` table in the database.
-> - `[Column("Id", IsPrimaryKey = true, IsIdentity = true)]`: The `Id` property maps to the `Id` column, which is the primary key and auto-increment.
-> - `[Column("UserName")]`: The `UserName` property maps to the `UserName` column.
-> - `int? DeptId`: Nullable type, corresponding to a column that allows NULL in the database.
+> - `[Table("Users")]`: maps to the `Users` table in the database.
+> - `[Column("Id", IsPrimaryKey = true, IsIdentity = true)]`: primary key and auto-increment.
+> - The entity class does not need to inherit from `ObjectBase`; a plain POCO works.
 
-## 2. Define Service
+## 2. Manually Initialize LiteOrm
 
-> **What is a service?** A service encapsulates entity operations. LiteOrm offers two approaches: custom services (recommended for production projects) and direct use of generic interfaces (great for rapid prototyping).
+The core library does not provide `RegisterLiteOrm()`; you must build the dependency chain manually. Below is the complete initialization code:
 
 ```csharp
-public interface IUserService
-    : IEntityService<User>, IEntityServiceAsync<User>,
-      IEntityViewService<User>, IEntityViewServiceAsync<User>
-{ }
+using LiteOrm;
+using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.Data.Sqlite;
 
-public class UserService : EntityService<User>, IUserService
-{ }
-```
-
-> **Line-by-line explanation**:
-> - `IEntityService<User>`: Provides synchronous write operations (Insert, Update, Delete).
-> - `IEntityServiceAsync<User>`: Provides async write operations (InsertAsync, UpdateAsync, DeleteAsync).
-> - `IEntityViewService<User>`: Provides synchronous read operations (Search, SearchOne, Count).
-> - `IEntityViewServiceAsync<User>`: Provides async read operations (SearchAsync, SearchOneAsync, CountAsync).
-> - `EntityService<User>`: Framework-provided base class that already implements all the above interface methods.
-
-If you're not ready to define custom services in your project yet, you can also directly inject the framework's generic service interfaces. The complete flow below demonstrates both approaches.
-
-## 3. Prepare Configuration File
-
-> Add the LiteOrm configuration section to `appsettings.json`. The example below uses SQLite:
-
-```json
+// 1. 配置数据源
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.AddDataSource(new DataSourceConfig
 {
-  "LiteOrm": {
-    "Default": "DefaultConnection",
-    "DataSources": [
-      {
-        "Name": "DefaultConnection",
-        "ConnectionString": "Data Source=LiteOrmDemo.db",
-        "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite"
-      }
-    ]
-  }
-}
+    Name = "DefaultConnection",
+    ConnectionString = "Data Source=LiteOrmDemo.db",
+    Provider = typeof(SqliteConnection).AssemblyQualifiedName,
+    SyncTable = true  // 自动建表（开发阶段推荐）
+});
+dataSourceProvider.SetDefaultDataSource("DefaultConnection");
+
+// 2. 初始化 SQL 函数映射（注册内置数据库函数处理器）
+LiteOrmSqlFunctionInitializer.Initialize();
+
+// 3. 创建连接池工厂
+var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
+DAOContextPoolFactory.Set(() => poolFactory);
+
+// 4. 创建会话管理器并设为当前会话
+var sessionManager = new SessionManager(poolFactory);
+SessionManager.SetCurrent(() => sessionManager);
+
+// 5. Create DAO and service
+var objectDAO = new ObjectDAO<User>();
+var objectViewDAO = new ObjectViewDAO<User>();
+var userService = new EntityService<User>(objectDAO, objectViewDAO);
 ```
 
-> **Note**: The SQLite connection string `Data Source=LiteOrmDemo.db` means the database file will be created in the project's runtime directory. If the file doesn't exist, SQLite creates it automatically.
+> **Line-by-line explanation**:
+> - `DataSourceProvider`: manages data source configuration. Add sources explicitly via `AddDataSource`; designate the default via `SetDefaultDataSource`.
+> - `LiteOrmSqlFunctionInitializer.Initialize()`: registers SQL function mappings for each database dialect (e.g., `NOW()`, `DATE_FORMAT`); must be called.
+> - `DAOContextPoolFactory`: creates connection pools based on data source configuration and manages connection acquisition and recycling. Call `Set` to register it as the global singleton so DAOs can resolve the provider type internally via the static property.
+> - `SessionManager`: manages database sessions, transactions, and async context. `SetCurrent` sets it as the session for the current async context.
+> - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. They obtain global singletons via `TableInfoProvider.Instance` and `BulkProviderFactory.Instance` internally, no manual injection needed.
+> - `EntityService<T>`: a business service wrapping the DAOs, providing methods such as `InsertAsync`, `SearchAsync`, `UpdateAsync`, and `DeleteAsync`.
 
-## 4. Register LiteOrm
-
-> In `Program.cs`, register LiteOrm. **Important**: Must be called on `builder.Host`, not `builder.Services`. `RegisterLiteOrm()` is defined in the `LiteOrm.Framework` package (install via `dotnet add package LiteOrm.Framework`); add `using LiteOrm.Framework;`.
-
-```csharp
-using LiteOrm.Framework;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Register LiteOrm
-builder.Host.RegisterLiteOrm();
-
-var app = builder.Build();
-
-// Test code goes here
-
-app.Run();
-```
-
-## 5. Insert a Record
+## 3. Insert a Record
 
 ```csharp
 var user = new User
 {
     UserName = "admin",
     Age = 30,
-    CreateTime = DateTime.Now,
-    DeptId = 1
+    CreateTime = DateTime.Now
 };
 
 await userService.InsertAsync(user);
+Console.WriteLine($"插入成功，自增 Id = {user.Id}");
 ```
 
-> **Note**: `InsertAsync` inserts the entity into the database. If `Id` is an auto-increment column (`IsIdentity = true`), the entity's `Id` property is automatically populated with the database-generated value after insertion.
+> `InsertAsync` inserts the entity into the database. If `Id` is an auto-increment column (`IsIdentity = true`), the entity's `Id` property is auto-populated after insertion.
 
-## 6. Execute Queries
+## 4. Run a Query
 
 ```csharp
+// 条件查询
 var adults = await userService.SearchAsync(u => u.Age >= 18);
+Console.WriteLine($"成年用户数量：{adults.Count}");
+
+// 单条查询
 var admin = await userService.SearchOneAsync(u => u.UserName == "admin");
+Console.WriteLine($"查询到：{admin?.UserName}, Age = {admin?.Age}");
 ```
 
-> **Note**:
-> - `SearchAsync` returns a list of matching records. If called without parameters, it returns all records.
-> - `SearchOneAsync` returns the first matching record, or `null` if no match is found.
-> - The Lambda expression `u => u.Age >= 18` is automatically converted to SQL `WHERE Age >= 18`.
-
-## 7. Execute Pagination
+## 5. Pagination
 
 ```csharp
 var page = await userService.SearchAsync(
@@ -151,201 +126,127 @@ var page = await userService.SearchAsync(
           .Skip(0)
           .Take(10)
 );
+Console.WriteLine($"分页结果：{page.Count} 条");
 ```
 
-> **Note**:
-> - `Where`: Filter condition.
-> - `OrderByDescending`: Sort descending by the specified field (`OrderBy` for ascending).
-> - `Skip`: Skip the first N records.
-> - `Take`: Take N records.
-> - Together, these implement standard pagination: `SELECT ... WHERE Age >= 18 ORDER BY CreateTime DESC LIMIT 10 OFFSET 0`.
-
-## 8. Complete End-to-End Flow
-
-### 8.1 Manual verification in Program.cs
-
-The example below demonstrates a complete flow closer to everyday project integration.
-In daily projects, you can either inject your custom `IUserService` or directly inject the generic interfaces `IEntityServiceAsync<User>` and `IEntityViewServiceAsync<User>`.
-
-> **Tip**: Place the following code in `Program.cs` before `app.Run()` to quickly verify that LiteOrm is working correctly.
+## 6. Full Call Loop
 
 ```csharp
-using var scope = app.Services.CreateScope();
-
-// Approach 1: Custom service defined in the project
-var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-
-// Approach 2: Use framework-provided generic services directly
-var entityService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<User>>();
-var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<User>>();
-
+// 1. 插入
 var user = new User
 {
     UserName = "demo-user",
     Age = 26,
-    CreateTime = DateTime.Now,
-    DeptId = 2
+    CreateTime = DateTime.Now
 };
-
-// 1. Insert
-// Choose either approach 1 or 2
 await userService.InsertAsync(user);
-// await entityService.InsertAsync(user);
 
-// 2. Query
+// 2. 查询
 var current = await userService.SearchOneAsync(u => u.Id == user.Id);
-// var current = await viewService.SearchOneAsync(u => u.Id == user.Id);
 
-// 3. Update
-current.UserName = "updated-demo-user";
+// 3. 更新
+current!.UserName = "updated-demo-user";
 await userService.UpdateAsync(current);
-// await entityService.UpdateAsync(current);
 
-// 4. Count
+// 4. 统计
 var count = await userService.CountAsync(u => u.Age >= 18);
-// var count = await viewService.CountAsync(u => u.Age >= 18);
 
-// 5. Check existence
-var exists = await userService.ExistsAsync(u => u.UserName == "demo-user");
-// var exists = await viewService.ExistsAsync(u => u.UserName == "demo-user");
+// 5. 判断是否存在
+var exists = await userService.ExistsAsync(u => u.UserName == "updated-demo-user");
 
-// 6. Delete
+// 6. 删除
 if (exists)
 {
     await userService.DeleteAsync(current);
-    // await entityService.DeleteAsync(current);
+}
+
+Console.WriteLine($"Count={count}, Exists={exists}");
+```
+
+## 7. Manual Transaction
+
+The core library does not provide AOP declarative transactions (the `[Transaction]` attribute requires the Framework's Castle interceptor), but you can control transactions manually via `SessionManager`:
+
+```csharp
+sessionManager.BeginTransaction();
+try
+{
+    await userService.InsertAsync(new User { UserName = "user1", Age = 20, CreateTime = DateTime.Now });
+    await userService.InsertAsync(new User { UserName = "user2", Age = 25, CreateTime = DateTime.Now });
+    sessionManager.Commit();
+}
+catch
+{
+    sessionManager.Rollback();
+    throw;
 }
 ```
 
-> **Code explanation**:
-> - `using var scope = app.Services.CreateScope()`: Creates a DI scope for resolving services.
-> - `GetRequiredService<T>()`: Gets a service instance of the specified type from the DI container.
-> - The commented "Approach 2" shows how to use LiteOrm without defining a custom Service class.
+## 8. Resource Cleanup
 
-### 8.2 Using LiteOrm in a Controller
-
-In ASP.NET Core projects, the more common approach is to inject services via constructor injection and use them in controllers:
+In the core-library scenario, `SessionManager` and `DAOContextPoolFactory` hold database connections and should be disposed when done:
 
 ```csharp
-[ApiController]
-[Route("api/[controller]")]
-public class UsersController : ControllerBase
-{
-    private readonly IUserService _userService;
+// 应用退出时
+sessionManager.Dispose();
+poolFactory.Dispose();
 
-    public UsersController(IUserService userService)
-    {
-        _userService = userService;
-    }
-
-    [HttpGet("{id}")]
-    public async Task<User?> GetById(int id)
-    {
-        return await _userService.SearchOneAsync(u => u.Id == id);
-    }
-
-    [HttpGet]
-    public async Task<List<User>> List([FromQuery] string? keyword)
-    {
-        if (string.IsNullOrEmpty(keyword))
-            return await _userService.SearchAsync();
-        return await _userService.SearchAsync(u => u.UserName.Contains(keyword));
-    }
-
-    [HttpPost]
-    public async Task<bool> Create(User user)
-    {
-        user.CreateTime = DateTime.Now;
-        return await _userService.InsertAsync(user);
-    }
-
-    [HttpPut]
-    public async Task<bool> Update(User user)
-    {
-        return await _userService.UpdateAsync(user);
-    }
-
-    [HttpDelete("{id}")]
-    public async Task<bool> Delete(int id)
-    {
-        var user = await _userService.SearchOneAsync(u => u.Id == id);
-        if (user == null) return false;
-        return await _userService.DeleteAsync(user);
-    }
-}
+// 如果使用了 SyncTable=true，数据库文件会自动创建
+// 如果是 SQLite in-memory（Data Source=:memory:），连接关闭后数据丢失
 ```
 
-If you can successfully run this code, your basic LiteOrm integration is complete.
-The recommended approach is to gradually migrate generic services to custom `IUserService` after the business layer stabilizes, to accommodate transactions, auditing, and composite business logic.
+## 9. Core Library vs. Framework Capability Comparison
 
-When you have many entities, you can also use [Generic Controller or Dynamic Controller Generation](../04-extensibility/07-generic-controller.en.md) to reduce repetitive code.
+| Capability | Core Library Only (`LiteOrm`) | Framework (`LiteOrm.Framework`) |
+|------|----------------------|--------------------------------|
+| Entity mapping / CRUD / queries | ✅ | ✅ |
+| Manual transactions | ✅ `SessionManager.BeginTransaction()` | ✅ |
+| Declarative transactions `[Transaction]` | ❌ | ✅ AOP interception |
+| Permission filtering `[ServicePermission]` | ❌ | ✅ AOP interception |
+| Automatic logging `[ServiceLog]` / `[Log]` | ❌ | ✅ AOP interception |
+| DI container auto-registration | ❌ manual construction | ✅ `RegisterLiteOrm()` |
+| Dynamic Controller generation | ❌ | ✅ |
+| Config file binding | ❌ manual `AddDataSource` | ✅ `appsettings.json` auto-binding |
+| Bulk import `IBulkProvider` | ❌ (Factory can be built but not registered) | ✅ auto-registered |
 
-## 9. Common Beginner Troubleshooting
+> If you later need AOP capabilities, you can migrate smoothly from the core library to the Framework; entity definitions and DAO/Service usage remain identical.
 
-> Here are issues you might encounter when running your first example, along with solutions:
+## 10. Common Beginner Issues
 
-### Issue 1: `System.InvalidOperationException: Unable to resolve service for type 'IUserService'`
+### Issue 1: `SQLite Error 1: 'no such table: Users'`
 
-**Cause**: Your custom `IUserService` and `UserService` are not registered in the DI container.
+**Cause**: The `Users` table does not exist in the database.
 
-**Solution**: Make sure the `UserService` class is in an assembly scanned by `RegisterLiteOrm()`. If it's in a separate project, specify it via `options.Assemblies`:
+**Solution**: Set `SyncTable = true` in the data source configuration so LiteOrm auto-creates the table from the entity definition (recommended for development). Alternatively, run the table-creation SQL manually.
 
-```csharp
-builder.Host.RegisterLiteOrm(options =>
-{
-    options.Assemblies = new[] { typeof(UserService).Assembly };
-});
-```
+### Issue 2: `Object reference not set to instance` or `SessionManager.Current` is null
 
-### Issue 2: `Microsoft.Data.Sqlite.SqliteException: SQLite Error 1: 'no such table: Users'`
+**Cause**: You forgot to call `SessionManager.SetCurrent(() => sessionManager)`.
 
-**Cause**: The `Users` table doesn't exist in the database.
+**Solution**: Make sure to call `SessionManager.SetCurrent(() => sessionManager)` before creating service instances; otherwise the DAO cannot obtain a database connection when executing SQL.
 
-**Solutions**:
-- Option 1: Manually create the `Users` table in the database.
-- Option 2: Set `"SyncTable": true` in the configuration to let LiteOrm auto-create tables from entity definitions (recommended for development only).
-- Option 3: When using SQLite, make sure the database file path is correct and the app has write permissions.
+### Issue 3: `Function 'XXX' is not supported` exception
 
-### Issue 3: `user.Id` is still 0 after insertion
+**Cause**: You forgot to call `LiteOrmSqlFunctionInitializer.Initialize()`.
 
-**Cause**: SQLite auto-increment columns require `IsIdentity = true` to be correctly configured on the entity.
+**Solution**: Call `LiteOrmSqlFunctionInitializer.Initialize()` before creating the connection pool factory to register the built-in SQL function mappings.
 
-**Solution**: Check that `[Column("Id", IsPrimaryKey = true, IsIdentity = true)]` is correctly annotated. For other databases, verify that the column is indeed auto-increment in the table.
+## Run Verification Checklist
 
-### Issue 4: `SearchAsync` returns an empty list
-
-**Possible causes**:
-1. The table is genuinely empty—first confirm that the insert operation succeeded.
-2. The Lambda condition is wrong—check that field names and comparison operators are correct.
-3. The database connection points to the wrong database file.
-
-**Troubleshooting**: Add logging to your code, or use a database management tool to directly inspect the table contents.
-
-### Issue 5: `RegisterLiteOrm` method not found
-
-**Cause**: Missing `using LiteOrm.Framework;` reference, or only `LiteOrm` / `LiteOrm.Common` was installed instead of `LiteOrm.Framework`.
-
-**Solution**: Confirm that the `LiteOrm.Framework` NuGet package is installed (`RegisterLiteOrm()` is defined there), and add `using LiteOrm.Framework;` at the top of your file.
-
-## 10. Verification Checklist
-
-After completing the steps above, verify your project against this checklist:
-
-- [ ] `dotnet build` compiles successfully with no errors.
-- [ ] `appsettings.json` has the correct connection string and Provider.
-- [ ] `Program.cs` calls `builder.Host.RegisterLiteOrm()`.
-- [ ] Entity classes use `[Table]` and `[Column]` attributes.
-- [ ] No exceptions appear in the console when running the project.
-- [ ] Insert and query operations return expected results.
-
-If all items pass—congratulations! You've successfully completed the basic LiteOrm integration. Next, continue with [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md) and [Query Overview](../02-core-usage/04-query-overview.en.md).
+- [ ] `dotnet build` compiles without errors.
+- [ ] The initialization code calls `LiteOrmSqlFunctionInitializer.Initialize()`.
+- [ ] The initialization code calls `SessionManager.SetCurrent(() => sessionManager)`.
+- [ ] The initialization code calls `DAOContextPoolFactory.Set(() => poolFactory)`.
+- [ ] Entity classes are annotated with `[Table]` and `[Column]` attributes.
+- [ ] Insert and query operations return the expected results.
+- [ ] `SessionManager` and `DAOContextPoolFactory` are disposed before the application exits.
 
 ## Related Links
 
 - [Back to docs hub](../README.md)
+- [Installation](./02-installation.en.md)
+- [Configuration and Registration](./03-configuration-and-registration.en.md)
+- [First End-to-End Example (Framework)](./05-first-example-framework.en.md)
 - [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
 - [Query Overview](../02-core-usage/04-query-overview.en.md)
-- [Lambda Guide](../02-core-usage/05-lambda-guide.en.md)
-- [Expr Guide](../02-core-usage/06-expr-guide.en.md)
 - [CRUD Guide](../02-core-usage/03-crud-guide.en.md)
-- [Associations](../02-core-usage/08-associations.en.md)

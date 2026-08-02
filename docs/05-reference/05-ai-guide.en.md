@@ -277,9 +277,10 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 public void Transfer() { ... }
 
 // Manual
-using var transaction = SessionManager.Current.BeginTransaction();
-try { transaction.Commit(); }
-catch { transaction.Rollback(); throw; }
+var sessionManager = SessionManager.Current;
+sessionManager.BeginTransaction();
+try { sessionManager.Commit(); }
+catch { sessionManager.Rollback(); throw; }
 ```
 
 ## 6. Advanced features

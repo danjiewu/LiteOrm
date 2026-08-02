@@ -44,9 +44,10 @@ namespace LiteOrm.CodeGen
         {
             get
             {
-                var table = TableInfoProvider.Default.GetTableDefinition(ObjectType);
+                var table = TableInfoProvider.Instance.GetTableDefinition(ObjectType);
                 if (table == null) return null;
-                return SqlBuilderFactory.Instance.GetSqlBuilder(table.DataProviderType!, table.DataSource);
+                var providerType = DAOContextPoolFactory.Instance?.GetPool(table.DataSource)?.ProviderType;
+                return SqlBuilderFactory.Instance.GetSqlBuilder(providerType!, (string?)table.DataSource);
             }
         }
 
@@ -58,7 +59,7 @@ namespace LiteOrm.CodeGen
         public SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
             if (initTable)
-                return new SqlBuildContext(TableInfoProvider.Default.GetTableView(ObjectType), Constants.DefaultTableAlias, TableArgs);
+                return new SqlBuildContext(TableInfoProvider.Instance.GetTableView(ObjectType), Constants.DefaultTableAlias, TableArgs);
             else
                 return new SqlBuildContext() { TableArgs = TableArgs };
         }

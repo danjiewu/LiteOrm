@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace LiteOrm.Common
 {
@@ -7,10 +8,28 @@ namespace LiteOrm.Common
     /// </summary>
     public abstract class TableInfoProvider
     {
+        private static Lazy<TableInfoProvider> _instance = new Lazy<TableInfoProvider>(
+            () => new AttributeTableInfoProvider(),
+            LazyThreadSafetyMode.ExecutionAndPublication);
+
         /// <summary>
-        /// 默认表信息提供类的实例。
+        /// 获取全局单例实例。实例在首次访问时通过工厂委托延迟创建并缓存。
+        /// 默认返回 <see cref="AttributeTableInfoProvider"/> 实例。
         /// </summary>
-        public static TableInfoProvider Default { get; set; } = new AttributeTableInfoProvider();
+        public static TableInfoProvider Instance => _instance.Value;
+
+        /// <summary>
+        /// 设置全局单例的工厂委托。工厂委托在 <see cref="Instance"/> 首次访问时通过 <see cref="Lazy{T}"/> 延迟执行并缓存结果。
+        /// 传入 null 时恢复为默认工厂（创建 <see cref="AttributeTableInfoProvider"/>）。
+        /// </summary>
+        /// <param name="factory">返回表信息提供者实例的工厂委托；传入 null 时恢复默认工厂</param>
+        public static void Set(Func<TableInfoProvider>? factory)
+        {
+            _instance = factory is null
+                ? new Lazy<TableInfoProvider>(() => new AttributeTableInfoProvider(), LazyThreadSafetyMode.ExecutionAndPublication)
+                : new Lazy<TableInfoProvider>(factory, LazyThreadSafetyMode.ExecutionAndPublication);
+        }
+
         /// <summary>
         /// 获取对象类型所对应的表定义。
         /// </summary>

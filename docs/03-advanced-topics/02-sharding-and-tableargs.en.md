@@ -1,4 +1,4 @@
-# Dynamic Sharding and Table Routing
+﻿# Dynamic Sharding and Table Routing
 
 LiteOrm supports dynamic table sharding through the `IArged` interface, suitable for tables split by dimensions like time, region, etc.
 
@@ -523,6 +523,6 @@ As a rule of thumb:
 
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/08-associations.en.md)
-- [Permission Filtering](./06-permission-filtering.en.md)
+- [Permission Filtering](../06-framework/02-permission-filtering.en.md)
 - [Performance Optimization](./03-performance.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)

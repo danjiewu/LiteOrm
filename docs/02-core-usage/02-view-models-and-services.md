@@ -1,4 +1,4 @@
-# 视图模型与服务定义
+﻿# 视图模型与服务定义
 
 LiteOrm 将“实体写入”和“视图查询”解耦。你可以直接使用 DAO，也可以通过 Service 封装业务层访问逻辑。
 
@@ -115,5 +115,5 @@ var summary = await userService.SearchAsAsync<UserSummary>(
 - [返回目录](../README.md)
 - [实体映射与数据源](./01-entity-mapping.md)
 - [CRUD 指南](./03-crud-guide.md)
-- [事务管理](../03-advanced-topics/01-transactions.md)
+- [事务管理](../06-framework/01-transactions.md)
 

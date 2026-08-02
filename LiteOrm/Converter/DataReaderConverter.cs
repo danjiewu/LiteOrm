@@ -97,7 +97,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
         /// 对于匿名类型，基于读取器的列架构缓存编译委托，通过构造函数参数名与列名匹配；
-        /// 对于普通类型，委托给 <see cref="GetConverter{TResult}()"/> 使用 <see cref="TableInfoProvider.Default"/> 进行位置映射。
+        /// 对于普通类型，委托给 <see cref="GetConverter{TResult}()"/> 使用 <see cref="TableInfoProvider.Instance"/> 进行位置映射。
         /// </summary>
         /// <typeparam name="TResult">目标类型。</typeparam>
         /// <param name="reader">已打开的数据读取器，用于读取列架构信息（匿名类型时使用）。</param>
@@ -105,7 +105,7 @@ namespace LiteOrm
         public static Func<DbDataReader, TResult> GetConverter<TResult>(DbDataReader reader)
         {
             Type type = typeof(TResult);
-            if (TableInfoProvider.Default.GetTableView(type) != null)
+            if (TableInfoProvider.Instance.GetTableView(type) != null)
                 return GetConverter<TResult>();
             string columnKey = BuildColumnKey(reader);
             return (Func<DbDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileDataReaderConverter<TResult>(reader));
@@ -113,7 +113,7 @@ namespace LiteOrm
 
         /// <summary>
         /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
-        /// 通过 <see cref="TableInfoProvider.Default"/> 读取 <typeparamref name="TResult"/> 对应的表视图，
+        /// 通过 <see cref="TableInfoProvider.Instance"/> 读取 <typeparamref name="TResult"/> 对应的表视图，
         /// 并依据视图的 <see cref="SqlTable.SelectColumns"/> 进行位置映射，使用类型化读取方法避免装箱。
         /// 以 <typeparamref name="TResult"/> 类型为缓存键，首次调用时编译，后续调用直接复用。
         /// </summary>
@@ -156,7 +156,7 @@ namespace LiteOrm
             if (IsScalarType(resultType))
                 return CompileScalarConverter<TResult>(readerParam);
 
-            var selectColumns = (TableInfoProvider.Default?.GetTableView(resultType)
+            var selectColumns = (TableInfoProvider.Instance?.GetTableView(resultType)
                 ?? throw new InvalidOperationException($"TableInfoProvider.Default is not configured, cannot resolve columns for type '{resultType.FullName}'."))
                 .SelectColumns;
             return CompileConverterByColumns<TResult>(selectColumns);

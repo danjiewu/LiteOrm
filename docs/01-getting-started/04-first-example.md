@@ -1,26 +1,23 @@
-# 第一个完整示例
+﻿# 第一个完整示例（仅核心库）
 
-本文通过一个最小可运行示例展示 LiteOrm 的典型使用流程：定义实体、注册服务、插入数据、查询数据和分页查询。
+本文通过一个最小可运行示例展示**仅使用 `LiteOrm` 核心库**（不引入 `LiteOrm.Framework`、Autofac、Castle 动态代理）的典型使用流程：手动初始化、定义实体、插入数据、查询数据和分页查询。
 
-> **新手提示**：本文假设你已经完成了 [安装](./02-installation.md) 和 [配置](./03-configuration-and-registration.md)。如果你是第一次接触 LiteOrm，建议从头到尾跟着敲一遍代码，大约需要 15 分钟。本文使用 SQLite 作为演示数据库，无需额外安装数据库服务。
+> **适用场景**：控制台应用、批处理脚本、不依赖 DI 容器的项目，或希望对生命周期完全自管理的场景。
+>
+> 如果你使用 ASP.NET Core 且需要 Autofac 集成、AOP 事务/权限/日志、动态 Controller 等能力，请参考 [第一个完整示例（Framework 版）](./05-first-example-framework.md)。
 
 ## 0. 项目准备
 
-> 如果你还没有创建项目，请先执行以下命令：
-
 ```bash
-dotnet new webapi -n LiteOrmDemo
-cd LiteOrmDemo
+dotnet new console -n LiteOrmCoreDemo
+cd LiteOrmCoreDemo
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
 dotnet add package Microsoft.Data.Sqlite
 ```
 
-然后在项目根目录创建 `Models` 文件夹，用于存放实体类。
+> 核心库 `LiteOrm` 会自动携带 `LiteOrm.Common`，无需单独安装。此处以 SQLite 为例，无需额外安装数据库服务。
 
 ## 1. 定义实体
-
-> **什么是实体？** 实体就是一个 C# 类，通过 `[Table]` 和 `[Column]` 特性与数据库中的表和列建立映射关系。每个实体实例对应数据库中的一行数据。
 
 ```csharp
 using LiteOrm.Common;
@@ -39,110 +36,88 @@ public class User
 
     [Column("CreateTime")]
     public DateTime CreateTime { get; set; }
-
-    [Column("DeptId")]
-    public int? DeptId { get; set; }
 }
 ```
 
-> **逐行解释**：
-> - `[Table("Users")]`：告诉 LiteOrm 这个类映射到数据库中的 `Users` 表。
-> - `[Column("Id", IsPrimaryKey = true, IsIdentity = true)]`：`Id` 属性映射到 `Id` 列，是主键且自增。
-> - `[Column("UserName")]`：`UserName` 属性映射到 `UserName` 列。
-> - `int? DeptId`：可空类型，对应数据库中允许 NULL 的列。
+> - `[Table("Users")]`：映射到数据库 `Users` 表。
+> - `[Column("Id", IsPrimaryKey = true, IsIdentity = true)]`：主键且自增。
+> - 实体类不要求继承 `ObjectBase`，普通 POCO 即可。
 
-## 2. 定义服务
+## 2. 手动初始化 LiteOrm
 
-> **什么是服务？** 服务是对实体操作的封装。LiteOrm 提供了两种使用方式：自定义服务（推荐用于正式项目）和直接使用泛型接口（适合快速原型）。
+核心库不提供 `RegisterLiteOrm()`，需要手动构造依赖链。以下是完整的初始化代码：
 
 ```csharp
-public interface IUserService
-    : IEntityService<User>, IEntityServiceAsync<User>,
-      IEntityViewService<User>, IEntityViewServiceAsync<User>
-{ }
+using LiteOrm;
+using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.Data.Sqlite;
 
-public class UserService : EntityService<User>, IUserService
-{ }
-```
-
-> **逐行解释**：
-> - `IEntityService<User>`：提供同步的增删改操作（Insert、Update、Delete）。
-> - `IEntityServiceAsync<User>`：提供异步的增删改操作（InsertAsync、UpdateAsync、DeleteAsync）。
-> - `IEntityViewService<User>`：提供同步的查询操作（Search、SearchOne、Count）。
-> - `IEntityViewServiceAsync<User>`：提供异步的查询操作（SearchAsync、SearchOneAsync、CountAsync）。
-> - `EntityService<User>`：框架提供的基类，已经实现了上述所有接口的方法。
-
-如果你的项目暂时不准备定义自定义服务，也可以直接注入框架提供的泛型服务接口，后面的完整闭环里会同时演示两种写法。
-
-## 3. 准备配置文件
-
-> 在 `appsettings.json` 中添加 LiteOrm 配置节。以下使用 SQLite 作为示例：
-
-```json
+// 1. 配置数据源
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.AddDataSource(new DataSourceConfig
 {
-  "LiteOrm": {
-    "Default": "DefaultConnection",
-    "DataSources": [
-      {
-        "Name": "DefaultConnection",
-        "ConnectionString": "Data Source=LiteOrmDemo.db",
-        "Provider": "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite"
-      }
-    ]
-  }
-}
+    Name = "DefaultConnection",
+    ConnectionString = "Data Source=LiteOrmDemo.db",
+    Provider = typeof(SqliteConnection).AssemblyQualifiedName,
+    SyncTable = true  // 自动建表（开发阶段推荐）
+});
+dataSourceProvider.SetDefaultDataSource("DefaultConnection");
+
+// 2. 初始化 SQL 函数映射（注册内置数据库函数处理器）
+LiteOrmSqlFunctionInitializer.Initialize();
+
+// 3. 创建连接池工厂
+var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
+DAOContextPoolFactory.Set(() => poolFactory);
+
+// 4. 创建会话管理器并设为当前会话
+var sessionManager = new SessionManager(poolFactory);
+SessionManager.SetCurrent(() => sessionManager);
+
+// 5. 创建 DAO 和服务
+var objectDAO = new ObjectDAO<User>();
+var objectViewDAO = new ObjectViewDAO<User>();
+var userService = new EntityService<User>(objectDAO, objectViewDAO);
 ```
 
-> **说明**：SQLite 的连接字符串 `Data Source=LiteOrmDemo.db` 表示数据库文件将创建在项目运行目录下。如果文件不存在，SQLite 会自动创建。
+> **逐行解释**：
+> - `DataSourceProvider`：管理数据源配置。通过 `AddDataSource` 显式添加，`SetDefaultDataSource` 指定默认数据源。
+> - `LiteOrmSqlFunctionInitializer.Initialize()`：注册各数据库方言的 SQL 函数映射（如 `NOW()`、`DATE_FORMAT` 等），必须调用。
+> - `DAOContextPoolFactory`：根据数据源配置创建连接池，管理连接的获取与回收。通过 `Set` 设置为全局单例，使 DAO 内部可通过静态属性获取提供程序类型。
+> - `SessionManager`：管理数据库会话、事务和异步上下文。通过 `SetCurrent` 设置为当前异步上下文的会话。
+> - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。内部通过 `TableInfoProvider.Instance` 和 `BulkProviderFactory.Instance` 获取全局单例，无需手动传入。
+> - `EntityService<T>`：封装了 DAO 的业务服务，提供 `InsertAsync`、`SearchAsync`、`UpdateAsync`、`DeleteAsync` 等方法。
 
-## 4. 注册 LiteOrm
-
-> 在 `Program.cs` 中注册 LiteOrm。**注意**：必须在 `builder.Host` 上调用，不是 `builder.Services`。`RegisterLiteOrm()` 定义于 `LiteOrm.Framework` 包（需 `dotnet add package LiteOrm.Framework`），并添加 `using LiteOrm.Framework;`。
-
-```csharp
-using LiteOrm.Framework;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// 注册 LiteOrm
-builder.Host.RegisterLiteOrm();
-
-var app = builder.Build();
-
-// 测试代码将放在这里
-
-app.Run();
-```
-
-## 5. 插入一条数据
+## 3. 插入一条数据
 
 ```csharp
 var user = new User
 {
     UserName = "admin",
     Age = 30,
-    CreateTime = DateTime.Now,
-    DeptId = 1
+    CreateTime = DateTime.Now
 };
 
 await userService.InsertAsync(user);
+Console.WriteLine($"插入成功，自增 Id = {user.Id}");
 ```
 
-> **说明**：`InsertAsync` 会将实体插入数据库。如果 `Id` 是自增列（`IsIdentity = true`），插入后实体的 `Id` 属性会自动填充为数据库生成的值。
+> `InsertAsync` 会将实体插入数据库。如果 `Id` 是自增列（`IsIdentity = true`），插入后实体的 `Id` 属性会自动填充。
 
-## 6. 执行查询
+## 4. 执行查询
 
 ```csharp
+// 条件查询
 var adults = await userService.SearchAsync(u => u.Age >= 18);
+Console.WriteLine($"成年用户数量：{adults.Count}");
+
+// 单条查询
 var admin = await userService.SearchOneAsync(u => u.UserName == "admin");
+Console.WriteLine($"查询到：{admin?.UserName}, Age = {admin?.Age}");
 ```
 
-> **说明**：
-> - `SearchAsync` 返回满足条件的列表。如果不传参数，返回所有记录。
-> - `SearchOneAsync` 返回满足条件的第一条记录，如果没有匹配则返回 `null`。
-> - Lambda 表达式 `u => u.Age >= 18` 会被自动转换为 SQL 的 `WHERE Age >= 18`。
-
-## 7. 执行分页
+## 5. 执行分页
 
 ```csharp
 var page = await userService.SearchAsync(
@@ -151,202 +126,127 @@ var page = await userService.SearchAsync(
           .Skip(0)
           .Take(10)
 );
+Console.WriteLine($"分页结果：{page.Count} 条");
 ```
 
-> **说明**：
-> - `Where`：过滤条件。
-> - `OrderByDescending`：按指定字段降序排列（`OrderBy` 为升序）。
-> - `Skip`：跳过前 N 条记录。
-> - `Take`：取 N 条记录。
-> - 以上组合实现了标准的分页查询：`SELECT ... WHERE Age >= 18 ORDER BY CreateTime DESC LIMIT 10 OFFSET 0`。
-
-## 8. 完整调用闭环
-
-### 8.1 在 Program.cs 中手动验证
-
-下面的示例展示了一个更接近日常项目接入方式的完整流程。  
-日常项目里，你既可以注入自定义的 `IUserService`，也可以直接注入泛型接口 `IEntityServiceAsync<User>` 与 `IEntityViewServiceAsync<User>`。
-
-> **建议**：将以下代码放在 `Program.cs` 中 `app.Run()` 之前，用于快速验证 LiteOrm 是否正常工作。
+## 6. 完整调用闭环
 
 ```csharp
-using var scope = app.Services.CreateScope();
-
-// 写法一：项目里已经定义了自定义服务
-var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-
-// 写法二：直接使用框架提供的泛型服务
-var entityService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<User>>();
-var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<User>>();
-
+// 1. 插入
 var user = new User
 {
     UserName = "demo-user",
     Age = 26,
-    CreateTime = DateTime.Now,
-    DeptId = 2
+    CreateTime = DateTime.Now
 };
-
-// 1. 插入
-// 两种写法二选一即可
 await userService.InsertAsync(user);
-// await entityService.InsertAsync(user);
 
 // 2. 查询
 var current = await userService.SearchOneAsync(u => u.Id == user.Id);
-// var current = await viewService.SearchOneAsync(u => u.Id == user.Id);
 
 // 3. 更新
-current.UserName = "updated-demo-user";
+current!.UserName = "updated-demo-user";
 await userService.UpdateAsync(current);
-// await entityService.UpdateAsync(current);
 
 // 4. 统计
 var count = await userService.CountAsync(u => u.Age >= 18);
-// var count = await viewService.CountAsync(u => u.Age >= 18);
 
 // 5. 判断是否存在
-var exists = await userService.ExistsAsync(u => u.UserName == "demo-user");
-// var exists = await viewService.ExistsAsync(u => u.UserName == "demo-user");
+var exists = await userService.ExistsAsync(u => u.UserName == "updated-demo-user");
 
 // 6. 删除
 if (exists)
 {
     await userService.DeleteAsync(current);
-    // await entityService.DeleteAsync(current);
+}
+
+Console.WriteLine($"Count={count}, Exists={exists}");
+```
+
+## 7. 手动事务
+
+核心库不提供 AOP 声明式事务（`[Transaction]` 特性需要 Framework 的 Castle 拦截器），但可以通过 `SessionManager` 手动控制：
+
+```csharp
+sessionManager.BeginTransaction();
+try
+{
+    await userService.InsertAsync(new User { UserName = "user1", Age = 20, CreateTime = DateTime.Now });
+    await userService.InsertAsync(new User { UserName = "user2", Age = 25, CreateTime = DateTime.Now });
+    sessionManager.Commit();
+}
+catch
+{
+    sessionManager.Rollback();
+    throw;
 }
 ```
 
-> **代码解读**：
-> - `using var scope = app.Services.CreateScope()`：创建一个 DI 作用域，用于解析服务。
-> - `GetRequiredService<T>()`：从 DI 容器中获取指定类型的服务实例。
-> - 注释中的"写法二"展示了不定义自定义 Service 也能使用 LiteOrm 的方式。
+## 8. 资源释放
 
-### 8.2 在 Controller 中使用 LiteOrm
-
-在 ASP.NET Core 项目中，更常见的做法是通过构造函数注入服务，然后在 Controller 中使用：
+核心库场景下，`SessionManager` 和 `DAOContextPoolFactory` 持有数据库连接，使用完毕后需要释放：
 
 ```csharp
-[ApiController]
-[Route("api/[controller]")]
-public class UsersController : ControllerBase
-{
-    private readonly IUserService _userService;
+// 应用退出时
+sessionManager.Dispose();
+poolFactory.Dispose();
 
-    public UsersController(IUserService userService)
-    {
-        _userService = userService;
-    }
-
-    [HttpGet("{id}")]
-    public async Task<User?> GetById(int id)
-    {
-        return await _userService.SearchOneAsync(u => u.Id == id);
-    }
-
-    [HttpGet]
-    public async Task<List<User>> List([FromQuery] string? keyword)
-    {
-        if (string.IsNullOrEmpty(keyword))
-            return await _userService.SearchAsync();
-        return await _userService.SearchAsync(u => u.UserName.Contains(keyword));
-    }
-
-    [HttpPost]
-    public async Task<bool> Create(User user)
-    {
-        user.CreateTime = DateTime.Now;
-        return await _userService.InsertAsync(user);
-    }
-
-    [HttpPut]
-    public async Task<bool> Update(User user)
-    {
-        return await _userService.UpdateAsync(user);
-    }
-
-    [HttpDelete("{id}")]
-    public async Task<bool> Delete(int id)
-    {
-        var user = await _userService.SearchOneAsync(u => u.Id == id);
-        if (user == null) return false;
-        return await _userService.DeleteAsync(user);
-    }
-}
+// 如果使用了 SyncTable=true，数据库文件会自动创建
+// 如果是 SQLite in-memory（Data Source=:memory:），连接关闭后数据丢失
 ```
 
-如果你能顺利跑通这段代码，说明 LiteOrm 的基础接入已经完成。  
-推荐做法是：业务层稳定后再逐步把泛型服务收敛到自定义 `IUserService` 中，方便承载事务、审计和组合业务逻辑。
+## 9. 核心库与 Framework 的能力对比
 
-当实体较多时，还可以使用[泛型 Controller 或动态 Controller 生成](../04-extensibility/07-generic-controller.md)来减少重复代码。
+| 能力 | 仅核心库 (`LiteOrm`) | Framework (`LiteOrm.Framework`) |
+|------|----------------------|--------------------------------|
+| 实体映射 / CRUD / 查询 | ✅ | ✅ |
+| 手动事务 | ✅ `SessionManager.BeginTransaction()` | ✅ |
+| 声明式事务 `[Transaction]` | ❌ | ✅ AOP 拦截 |
+| 权限过滤 `[ServicePermission]` | ❌ | ✅ AOP 拦截 |
+| 自动日志 `[ServiceLog]` / `[Log]` | ❌ | ✅ AOP 拦截 |
+| DI 容器自动注册 | ❌ 手动构造 | ✅ `RegisterLiteOrm()` |
+| 动态 Controller 生成 | ❌ | ✅ |
+| 配置文件绑定 | ❌ 手动 `AddDataSource` | ✅ `appsettings.json` 自动绑定 |
+| 批量导入 `IBulkProvider` | ❌（Factory 可构造但不注册） | ✅ 自动注册 |
 
-## 9. 新手常见问题排查
+> 如果你后续需要 AOP 能力，可以从核心库平滑迁移到 Framework，实体定义和 DAO/Service 用法完全一致。
 
-> 以下是在运行第一个示例时可能遇到的问题及解决方法：
+## 10. 新手常见问题
 
-### 问题一：`System.InvalidOperationException: Unable to resolve service for type 'IUserService'`
-
-**原因**：自定义的 `IUserService` 和 `UserService` 没有被注册到 DI 容器中。
-
-**解决方法**：确保 `UserService` 类在 `RegisterLiteOrm()` 扫描的程序集中。如果放在单独的项目中，需要通过 `options.Assemblies` 指定：
-
-```csharp
-builder.Host.RegisterLiteOrm(options =>
-{
-    options.Assemblies = new[] { typeof(UserService).Assembly };
-});
-```
-
-### 问题二：`Microsoft.Data.Sqlite.SqliteException: SQLite Error 1: 'no such table: Users'`
+### 问题一：`SQLite Error 1: 'no such table: Users'`
 
 **原因**：数据库中没有 `Users` 表。
 
-**解决方法**：
-- 方案一：手动在数据库中创建 `Users` 表。
-- 方案二：在配置中设置 `"SyncTable": true`，让 LiteOrm 自动根据实体定义创建表（仅开发环境推荐）。
-- 方案三：使用 SQLite 时，确保数据库文件路径正确，且应用有写入权限。
+**解决方法**：在数据源配置中设置 `SyncTable = true`，让 LiteOrm 自动根据实体定义创建表（开发环境推荐）。或手动执行建表 SQL。
 
-### 问题三：插入后 `user.Id` 仍然是 0
+### 问题二：`Object reference not set to instance` 或 `SessionManager.Current` 为 null
 
-**原因**：SQLite 的自增列需要在实体上正确配置 `IsIdentity = true`。
+**原因**：忘记调用 `SessionManager.SetCurrent(() => sessionManager)`。
 
-**解决方法**：检查 `[Column("Id", IsPrimaryKey = true, IsIdentity = true)]` 是否正确标注。如果使用其他数据库，确认表中该列确实是自增列。
+**解决方法**：确保在创建服务实例之前调用 `SessionManager.SetCurrent(() => sessionManager)`，否则 DAO 在执行 SQL 时无法获取数据库连接。
 
-### 问题四：`SearchAsync` 返回空列表
+### 问题三：`Function 'XXX' is not supported` 异常
 
-**可能原因**：
-1. 表中确实没有数据——先确认插入操作是否成功。
-2. Lambda 条件写错——检查字段名和比较运算符是否正确。
-3. 数据库连接指向了错误的数据库文件。
+**原因**：忘记调用 `LiteOrmSqlFunctionInitializer.Initialize()`。
 
-**排查方法**：在代码中添加日志，或使用数据库管理工具直接查看表内容。
+**解决方法**：在创建连接池工厂之前调用 `LiteOrmSqlFunctionInitializer.Initialize()`，注册内置 SQL 函数映射。
 
-### 问题五：`RegisterLiteOrm` 方法找不到
-
-**原因**：没有添加 `using LiteOrm.Framework;` 引用，或者安装的是 `LiteOrm` / `LiteOrm.Common` 包而未安装 `LiteOrm.Framework` 包。
-
-**解决方法**：确认安装了 `LiteOrm.Framework` NuGet 包（`RegisterLiteOrm()` 定义于该包），并在文件顶部添加 `using LiteOrm.Framework;`。
-
-## 10. 运行验证清单
-
-完成以上步骤后，按以下清单验证你的项目：
+## 运行验证清单
 
 - [ ] `dotnet build` 编译通过，无错误。
-- [ ] `appsettings.json` 中配置了正确的连接字符串和 Provider。
-- [ ] `Program.cs` 中调用了 `builder.Host.RegisterLiteOrm()`。
+- [ ] 初始化代码中调用了 `LiteOrmSqlFunctionInitializer.Initialize()`。
+- [ ] 初始化代码中调用了 `SessionManager.SetCurrent(() => sessionManager)`。
+- [ ] 初始化代码中调用了 `DAOContextPoolFactory.Set(() => poolFactory)`。
 - [ ] 实体类使用了 `[Table]` 和 `[Column]` 特性标注。
-- [ ] 运行项目后，控制台没有异常输出。
 - [ ] 插入和查询操作返回了预期的结果。
-
-全部通过后，恭喜你！你已经成功完成了 LiteOrm 的基础接入。接下来可以继续学习 [实体映射与数据源](../02-core-usage/01-entity-mapping.md) 和 [查询总览](../02-core-usage/04-query-overview.md)。
+- [ ] 应用退出前释放了 `SessionManager` 和 `DAOContextPoolFactory`。
 
 ## 相关链接
 
 - [返回目录](../README.md)
+- [安装](./02-installation.md)
+- [配置与注册](./03-configuration-and-registration.md)
+- [第一个完整示例（Framework 版）](./05-first-example-framework.md)
 - [实体映射与数据源](../02-core-usage/01-entity-mapping.md)
 - [查询总览](../02-core-usage/04-query-overview.md)
-- [Lambda 查询指南](../02-core-usage/05-lambda-guide.md)
-- [Expr 使用指南](../02-core-usage/06-expr-guide.md)
 - [CRUD 指南](../02-core-usage/03-crud-guide.md)
-- [关联查询](../02-core-usage/08-associations.md)
-

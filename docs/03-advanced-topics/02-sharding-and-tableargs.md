@@ -1,4 +1,4 @@
-# 动态分表分库
+﻿# 动态分表分库
 
 LiteOrm 通过 `IArged` 接口支持动态分表，适用于按时间、地区等维度拆分的表。
 
@@ -523,6 +523,6 @@ public class Log : IArged
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/08-associations.md)
-- [权限过滤](./06-permission-filtering.md)
+- [权限过滤](../06-framework/02-permission-filtering.md)
 - [性能优化](./03-performance.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)
