@@ -74,6 +74,7 @@
 |[单元测试](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests)|[Unit tests](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests)|
 |[性能报告](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)|[Benchmark report](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)|
 |[变更日志](./CHANGELOG.md)|[Changelog](./CHANGELOG.en.md)|
+|[8.1.0 升级指南（Breaking Changes）](./upgrade-guides/01-breaking-changes-8.1.0.md)|[8.1.0 Upgrade Guide](./upgrade-guides/01-breaking-changes-8.1.0.en.md)|
 
 ### 推荐阅读路径
 

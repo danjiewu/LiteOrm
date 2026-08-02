@@ -36,7 +36,7 @@ namespace LiteOrm.Tests.Infrastructure
                 {
                     config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false);
                 })
-                .RegisterLiteOrmFramework()
+                .RegisterLiteOrm()
                 .Build();
             
             var pool = ServiceProvider.GetRequiredService<DAOContextPoolFactory>().GetPool("SQLite")!;

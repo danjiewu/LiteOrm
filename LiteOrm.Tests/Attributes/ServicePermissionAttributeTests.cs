@@ -1,5 +1,7 @@
 ﻿using System;
 
+using System.Reflection;
+
 using LiteOrm;
 using Xunit;
 
@@ -88,7 +90,9 @@ namespace LiteOrm.UnitTests
         public void ServicePermissionAttribute_DefaultConstructor_CanBeAppliedToMethod()
         {
             // Arrange
-            var methodInfo = typeof(ServicePermissionAttributeTests).GetMethod(nameof(TestMethodWithAttribute));
+            var methodInfo = typeof(ServicePermissionAttributeTests).GetMethod(
+                nameof(TestMethodWithAttribute),
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
 
             // Act
             var attributes = methodInfo?.GetCustomAttributes(typeof(ServicePermissionAttribute), false);

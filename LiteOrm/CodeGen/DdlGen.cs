@@ -36,7 +36,6 @@ namespace LiteOrm.CodeGen
     ///     Console.WriteLine(sql);
     /// </code>
     /// </remarks>
-    [AutoRegister]
     public class DdlGen
     {
         private readonly DAOContextPoolFactory _factory;

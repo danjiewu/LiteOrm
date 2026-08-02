@@ -120,6 +120,8 @@ LiteOrm reads a `LiteOrm` configuration section, then wires up services, DAO typ
 
 ### Console or worker application
 
+> `RegisterLiteOrm()` is defined in the `LiteOrm.Framework` package. Install `dotnet add package LiteOrm.Framework` and add `using LiteOrm.Framework;` before use.
+
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
     .RegisterLiteOrm()
@@ -151,7 +153,7 @@ builder.Host.RegisterLiteOrm(options =>
 > Here's a complete ASP.NET Core `Program.cs` showing the typical placement of LiteOrm registration:
 
 ```csharp
-using LiteOrm;
+using LiteOrm.Framework;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -166,6 +168,8 @@ var app = builder.Build();
 app.MapControllers();
 app.Run();
 ```
+
+> **Note**: `RegisterLiteOrm()` is defined in the `LiteOrm.Framework` package; reference `LiteOrm.Framework` and add `using LiteOrm.Framework;`.
 
 ## 4. Logging integration
 

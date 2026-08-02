@@ -71,7 +71,7 @@ namespace LiteOrm.Benchmark
                             logging.Services.Remove(provider);
                         }
                     })
-                    .RegisterLiteOrmFramework()
+                    .RegisterLiteOrm()
                     .ConfigureServices((Action<HostBuilderContext, IServiceCollection>)((context, services) =>
                     {
                         // Support switching provider via LiteOrm section in configuration

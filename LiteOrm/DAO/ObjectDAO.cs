@@ -27,7 +27,6 @@ namespace LiteOrm
     /// 该类继承自 DAOBase，使用泛型参数 T 来指定具体的实体类型，
     /// 提供强类型的数据访问接口。
     /// </remarks>
-    [AutoRegister(Lifetime.Scoped)]
     public class ObjectDAO<T> : DAOBase, IObjectDAO<T>
     {
         /// <summary>

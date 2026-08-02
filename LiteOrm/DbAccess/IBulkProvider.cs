@@ -8,7 +8,7 @@ namespace LiteOrm
     /// 批量插入提供程序接口
     /// </summary>
     /// <remarks>
-    /// IBulkProvider 定义了批量插入数据的约定，实现时需使用AutoRegister特性进行标记。
+    /// IBulkProvider 定义了批量插入数据的约定，实现时需使用BulkProvider特性进行标记。
     /// 不同的数据库系统提供了各自的批量插入机制和优化方案，例如 SQL Server 的 SqlBulkCopy、MySQL 的 LOAD DATA 等。
     /// 通过实现此接口，可以为特定的数据库系统提供最优的批量插入实现。
     /// 
@@ -21,7 +21,7 @@ namespace LiteOrm
     /// </remarks>
     /// <example>
     /// <code>
-    /// [AutoRegister(Key = typeof(MySqlConnection))]
+    /// [BulkProvider(typeof(MySqlConnection))]
     /// public class MysqlBulkInsertProvider : IBulkProvider
     /// {  
     ///     public int BulkInsert(DataTable dt, IDbConnection dbConnection, IDbTransaction transaction)

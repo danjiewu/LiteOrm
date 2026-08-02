@@ -51,6 +51,7 @@ namespace LiteOrm
         private readonly LinkedList<string> _sqlStack = new LinkedList<string>();
         private string? _currentTransactionId;
         private IsolationLevel _currentIsolationLevel = IsolationLevel.ReadCommitted;
+        private static readonly AsyncLocal<SessionManager> _currentSession = new AsyncLocal<SessionManager>();
         private static readonly AsyncLocal<IServiceProvider> _currentServiceProvider = new AsyncLocal<IServiceProvider>();
 
         /// <summary>
@@ -64,13 +65,17 @@ namespace LiteOrm
         public string SessionID { get; } = ShortId.NewId();
 
         /// <summary>
-        /// 当前异步上下文的会话管理器。始终从当前 scope 的 <see cref="IServiceProvider"/> 解析，确保返回当前 scope 对应的实例。
+        /// 当前异步上下文的会话管理器。优先返回通过 <see cref="SetCurrent"/> 手动设置的会话；
+        /// 未手动设置时，尝试从当前 scope 的 <see cref="IServiceProvider"/>（由 <see cref="SetCurrentServiceProvider"/> 设置）解析。
         /// 当前上下文未设置或实例已释放时返回 null。
         /// </summary>
         public static SessionManager? Current
         {
             get
             {
+                var session = _currentSession.Value;
+                if (session is not null && !session._disposed) return session;
+
                 var sp = _currentServiceProvider.Value;
                 if (sp is null) return null;
                 try
@@ -84,8 +89,18 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 为当前异步上下文手动设置 <see cref="SessionManager"/>，用于 <see cref="Current"/> 直接返回该实例。
+        /// 传入 null 时清空当前上下文。LiteOrm 核心不依赖 DI 容器，手动构造后通过此方法激活当前会话。
+        /// </summary>
+        /// <param name="sessionManager">当前会话实例；传入 null 时清空当前上下文</param>
+        public static void SetCurrent(SessionManager? sessionManager)
+        {
+            _currentSession.Value = sessionManager!;
+        }
+
+        /// <summary>
         /// 为当前异步上下文设置 <see cref="IServiceProvider"/>，用于 <see cref="Current"/> 解析当前 scope 的 <see cref="SessionManager"/>。
-        /// 传入 null 时清空当前上下文。
+        /// 传入 null 时清空当前上下文。该机制供 LiteOrm.Framework 等 DI 集成场景使用。
         /// </summary>
         /// <param name="serviceProvider">当前 scope 的 <see cref="IServiceProvider"/>；传入 null 时清空当前上下文</param>
         public static void SetCurrentServiceProvider(IServiceProvider serviceProvider)
@@ -861,6 +876,18 @@ namespace LiteOrm
     public static class SessionManagerExtensions
     {
         /// <summary>
+        /// 进入手动会话作用域：将 <paramref name="sessionManager"/> 设置为当前异步上下文的 <see cref="SessionManager.Current"/>，
+        /// 并在作用域结束时恢复之前的会话。LiteOrm 核心不依赖 DI 容器，手动构造后通过此方法激活当前会话。
+        /// </summary>
+        /// <param name="sessionManager">要激活的会话实例。</param>
+        /// <returns>会话作用域，Dispose 时恢复之前的当前会话。</returns>
+        public static SessionScope BeginScope(this SessionManager sessionManager)
+        {
+            if (sessionManager is null) throw new ArgumentNullException(nameof(sessionManager));
+            return new SessionScope(sessionManager);
+        }
+
+        /// <summary>
         /// 执行事务操作（简化版本）
         /// </summary>
         public static T ExecuteInTransaction<T>(this SessionManager sessionManager, Func<SessionManager, T> action,
@@ -953,6 +980,47 @@ namespace LiteOrm
                 await action(sm).ConfigureAwait(false);
                 return true;
             }, isolationLevel).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// 手动会话作用域。创建时将指定会话设置为当前异步上下文的 <see cref="SessionManager.Current"/>，
+    /// Dispose 时恢复之前的当前会话（若存在）。
+    /// </summary>
+    /// <remarks>
+    /// LiteOrm 核心不依赖 DI 容器。手动构造 <see cref="SessionManager"/> 后，通过
+    /// <see cref="SessionManagerExtensions.BeginScope"/> 或直接 new 本类型进入会话作用域，
+    /// 使 DAO/Service 通过 <see cref="SessionManager.Current"/> 获取会话。生命周期与
+    /// LiteOrm.Framework 中 DI 容器的内置 scope 周期保持一致（进入时设置，退出时恢复）。
+    /// </remarks>
+    public sealed class SessionScope : IDisposable
+    {
+        private readonly SessionManager _session;
+        private readonly SessionManager? _previous;
+
+        /// <summary>
+        /// 初始化 <see cref="SessionScope"/> 类的新实例。
+        /// </summary>
+        /// <param name="sessionManager">要激活的会话实例。</param>
+        public SessionScope(SessionManager sessionManager)
+        {
+            if (sessionManager is null) throw new ArgumentNullException(nameof(sessionManager));
+            _session = sessionManager;
+            _previous = SessionManager.Current;
+            SessionManager.SetCurrent(sessionManager);
+        }
+
+        /// <summary>
+        /// 当前作用域激活的会话实例。
+        /// </summary>
+        public SessionManager Session => _session;
+
+        /// <summary>
+        /// 恢复进入作用域之前的当前会话。
+        /// </summary>
+        public void Dispose()
+        {
+            SessionManager.SetCurrent(_previous);
         }
     }
 }

@@ -17,7 +17,8 @@ namespace LiteOrm
     /// <remarks>
     /// DAOBase 是一个抽象基类，为各种数据访问对象(DAO)提供通用的操作方法。
     /// 它封装了与数据库交互的常见操作，如生成SQL语句、创建数据库命令、处理参数等。
-    /// 通过 AutoRegister 特性自动注册为 Scoped 实例，方便在应用程序中使用依赖注入框架进行管理。
+    /// 
+    /// 依赖注入由 LiteOrm.Framework 显式注册，而不是通过 AutoRegister 特性自动注册。
     /// 
     /// 主要功能包括：
     /// 1. SQL语句和命令构建 - 根据对象类型和表定义生成SQL语句
@@ -27,7 +28,6 @@ namespace LiteOrm
     /// 5. 扩展性 - 通过虚方法和抽象属性，允许子类根据具体需求重写和扩展功能，如处理视图、添加更多的SQL替换标记等。
     /// 
     /// </remarks>
-    [AutoRegister(Lifetime = Lifetime.Scoped)]
     public abstract class DAOBase : IExprStringBuildContext
     {
         #region 构造函数

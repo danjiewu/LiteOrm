@@ -1,5 +1,6 @@
 ﻿using LiteOrm.Common;
 using LiteOrm.Demo.Models;
+using LiteOrm.Framework;
 using static LiteOrm.Common.Expr;
 
 namespace LiteOrm.Demo
@@ -9,8 +10,9 @@ namespace LiteOrm.Demo
     /// </summary>
     /// <remarks>
     /// 继承自 ObjectViewDAO<UserView> 以获得基本的查询能力。
-    /// 通过标记 [AutoRegister] 自动注册到 DI 容器。
+    /// 通过标记 [AutoRegister] 自动注册到 DI 容器（特性定义于 LiteOrm.Framework）。
     /// </remarks>
+    [AutoRegister(Lifetime.Scoped)]
     public class UserCustomDAO : ObjectViewDAO<UserView>, DAO.IUserCustomDAO
     {
         /// <summary>

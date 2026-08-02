@@ -11,7 +11,6 @@ namespace LiteOrm
     /// 提供视图查询功能，返回 DataTable 格式结果
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    [AutoRegister(Lifetime.Scoped)]
     public class DataViewDAO<T> : DAOBase, IDataViewDAO<T>
     {
         /// <summary>

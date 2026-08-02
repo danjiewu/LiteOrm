@@ -120,6 +120,8 @@
 
 ## 注册方式
 
+> `RegisterLiteOrm()` 定义于 `LiteOrm.Framework` 包。使用前需执行 `dotnet add package LiteOrm.Framework` 并添加 `using LiteOrm.Framework;`。
+
 ### 控制台应用
 
 ```csharp
@@ -153,7 +155,7 @@ builder.Host.RegisterLiteOrm(options =>
 > 以下是一个完整的 ASP.NET Core 项目 `Program.cs` 示例，展示了 LiteOrm 注册的典型位置：
 
 ```csharp
-using LiteOrm;
+using LiteOrm.Framework;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -168,6 +170,8 @@ var app = builder.Build();
 app.MapControllers();
 app.Run();
 ```
+
+> **注意**：`RegisterLiteOrm()` 定义于 `LiteOrm.Framework` 包，使用前需引用 `LiteOrm.Framework` 并添加 `using LiteOrm.Framework;`。
 
 ## 日志集成
 

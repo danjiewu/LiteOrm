@@ -15,9 +15,9 @@ using System.Text.Json;
 
 OracleConfiguration.BindByName = true;
 
-// 使用 RegisterLiteOrmFramework 从 appsettings.json 自动配置（Autofac + Castle 拦截器）
+// 使用 RegisterLiteOrm 从 appsettings.json 自动配置（Autofac + Castle 拦截器）
 var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmFramework()
+    .RegisterLiteOrm()
     .ConfigureServices(services =>
     {
         // 注册应用程序服务

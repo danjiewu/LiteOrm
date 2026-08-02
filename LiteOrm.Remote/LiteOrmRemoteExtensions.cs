@@ -23,7 +23,7 @@ namespace LiteOrm.Remote
     /// 使用示例：
     /// <code>
     /// var builder = Host.CreateDefaultBuilder(args)
-    ///     .RegisterLiteOrmFramework()
+    ///     .RegisterLiteOrm()
     ///     .RegisterLiteOrmRemote()
     ///     .ConfigureServices(services =>
     ///         ...
@@ -123,6 +123,7 @@ namespace LiteOrm.Remote
 
                 services.AddSingleton<RemoteServiceInvokeInterceptor>();
                 services.AddScoped<RemoteServiceGenerateInterceptor>();
+                services.AddSingleton<ServiceFactoryInterceptor>();
                 if (options.AutoRegisterEntityServices)
                 {
                     // 1. 扫描程序集，将带 [Service] 特性的接口通过 TypeResolverHelper.Register 注册，

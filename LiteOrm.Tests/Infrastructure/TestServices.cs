@@ -1,5 +1,6 @@
 using LiteOrm;
 using LiteOrm.Common;
+using LiteOrm.Framework;
 using LiteOrm.Service;
 using LiteOrm.Tests.Models;
 using Microsoft.Extensions.DependencyInjection;

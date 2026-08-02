@@ -11,7 +11,6 @@ namespace LiteOrm
     /// <summary>
     /// 根据Attribute的表信息提供者
     /// </summary>
-    [AutoRegister(Lifetime.Singleton, serviceTypes: typeof(TableInfoProvider))]
     public class AttributeTableInfoProvider : TableInfoProvider
     {
         private readonly ConcurrentDictionary<Type, TableDefinition> _tableInfoCache = new ConcurrentDictionary<Type, TableDefinition>();

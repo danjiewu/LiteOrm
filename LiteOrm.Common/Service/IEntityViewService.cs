@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -72,7 +72,6 @@ namespace LiteOrm.Service
     /// <summary>
     /// 提供对实体视图（只读或关联视图）进行查询操作的非泛型接口。
     /// </summary>  
-    [AutoRegister(false)]
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     public interface IEntityViewService

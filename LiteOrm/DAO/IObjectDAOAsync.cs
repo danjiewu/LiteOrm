@@ -80,7 +80,6 @@ namespace LiteOrm.Common
     /// <summary>
     /// 实体类的增删改等基本操作的异步非泛型接口
     /// </summary>
-    [AutoRegister(false)]
     public interface IObjectDAOAsync
     {
         /// <summary>

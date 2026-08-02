@@ -78,6 +78,8 @@ A lightweight, high-performance .NET ORM framework that combines micro-ORM speed
 
 dotnet add package LiteOrm
 
+dotnet add package LiteOrm.Framework   # required for DI registration (RegisterLiteOrm)
+
 ```
 
 
@@ -563,6 +565,8 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的
 ```bash
 
 dotnet add package LiteOrm
+
+dotnet add package LiteOrm.Framework   # DI 注册（RegisterLiteOrm）需要引用该包
 
 ```
 

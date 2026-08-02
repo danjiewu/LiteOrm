@@ -1,5 +1,6 @@
 ﻿using Castle.DynamicProxy;
 using LiteOrm.Common;
+using LiteOrm.Framework;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 

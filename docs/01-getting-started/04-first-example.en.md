@@ -12,6 +12,7 @@ This article demonstrates a minimal runnable example of LiteOrm's typical usage 
 dotnet new webapi -n LiteOrmDemo
 cd LiteOrmDemo
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package Microsoft.Data.Sqlite
 ```
 
@@ -96,10 +97,10 @@ If you're not ready to define custom services in your project yet, you can also 
 
 ## 4. Register LiteOrm
 
-> In `Program.cs`, register LiteOrm. **Important**: Must be called on `builder.Host`, not `builder.Services`.
+> In `Program.cs`, register LiteOrm. **Important**: Must be called on `builder.Host`, not `builder.Services`. `RegisterLiteOrm()` is defined in the `LiteOrm.Framework` package (install via `dotnet add package LiteOrm.Framework`); add `using LiteOrm.Framework;`.
 
 ```csharp
-using LiteOrm;
+using LiteOrm.Framework;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -322,9 +323,9 @@ builder.Host.RegisterLiteOrm(options =>
 
 ### Issue 5: `RegisterLiteOrm` method not found
 
-**Cause**: Missing `using LiteOrm;` reference, or the `LiteOrm.Common` package was installed instead of `LiteOrm`.
+**Cause**: Missing `using LiteOrm.Framework;` reference, or only `LiteOrm` / `LiteOrm.Common` was installed instead of `LiteOrm.Framework`.
 
-**Solution**: Confirm that the `LiteOrm` NuGet package is installed, and add `using LiteOrm;` at the top of your file.
+**Solution**: Confirm that the `LiteOrm.Framework` NuGet package is installed (`RegisterLiteOrm()` is defined there), and add `using LiteOrm.Framework;` at the top of your file.
 
 ## 10. Verification Checklist
 

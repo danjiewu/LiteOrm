@@ -7,7 +7,7 @@ using System.Text;
 
 namespace LiteOrm.Demo.Demos
 {
-    [AutoRegister(Key = typeof(MySqlConnection))]
+    [BulkProvider(typeof(MySqlConnection))]
     public class MySqlBulkCopyProvider : IBulkProvider
     {
         public int BulkInsert(DataTable dt, IDbConnection dbConnection, IDbTransaction transaction)

@@ -12,6 +12,7 @@
 dotnet new webapi -n LiteOrmDemo
 cd LiteOrmDemo
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package Microsoft.Data.Sqlite
 ```
 
@@ -96,10 +97,10 @@ public class UserService : EntityService<User>, IUserService
 
 ## 4. 注册 LiteOrm
 
-> 在 `Program.cs` 中注册 LiteOrm。**注意**：必须在 `builder.Host` 上调用，不是 `builder.Services`。
+> 在 `Program.cs` 中注册 LiteOrm。**注意**：必须在 `builder.Host` 上调用，不是 `builder.Services`。`RegisterLiteOrm()` 定义于 `LiteOrm.Framework` 包（需 `dotnet add package LiteOrm.Framework`），并添加 `using LiteOrm.Framework;`。
 
 ```csharp
-using LiteOrm;
+using LiteOrm.Framework;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -322,9 +323,9 @@ builder.Host.RegisterLiteOrm(options =>
 
 ### 问题五：`RegisterLiteOrm` 方法找不到
 
-**原因**：没有添加 `using LiteOrm;` 引用，或者安装的是 `LiteOrm.Common` 包而非 `LiteOrm` 包。
+**原因**：没有添加 `using LiteOrm.Framework;` 引用，或者安装的是 `LiteOrm` / `LiteOrm.Common` 包而未安装 `LiteOrm.Framework` 包。
 
-**解决方法**：确认安装了 `LiteOrm` NuGet 包，并在文件顶部添加 `using LiteOrm;`。
+**解决方法**：确认安装了 `LiteOrm.Framework` NuGet 包（`RegisterLiteOrm()` 定义于该包），并在文件顶部添加 `using LiteOrm.Framework;`。
 
 ## 10. 运行验证清单
 

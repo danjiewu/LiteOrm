@@ -1,10 +1,11 @@
 using Autofac;
 using Autofac.Builder;
-using Autofac.Extras.DynamicProxy;
 using Autofac.Extensions.DependencyInjection;
+using Autofac.Extras.DynamicProxy;
 using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Service;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,14 +18,14 @@ using InterceptAttribute = LiteOrm.Common.InterceptAttribute;
 namespace LiteOrm.Framework
 {
     /// <summary>
-    /// LiteOrm Framework 扩展方法集合 - 提供 Autofac DI 容器 + Castle DynamicProxy 拦截器的集成入口。
+    /// LiteOrm 服务提供者扩展方法集合。
     /// </summary>
     /// <remarks>
-    /// FrameworkServiceExtensions 提供了将 LiteOrm 框架集成到 Autofac DI 容器的扩展方法，
+    /// LiteOrmServiceExtensions 提供了将 LiteOrm 框架集成到 Autofac DI 容器的扩展方法，
     /// 同时启用 Castle DynamicProxy 拦截器支持。
     ///
     /// 主要功能包括：
-    /// 1. Autofac 容器集成 - 通过 <see cref="RegisterLiteOrmFramework(IHostBuilder, Action{LiteOrmServiceExtensions.LiteOrmOptions})"/>
+    /// 1. Autofac 容器集成 - 通过 <see cref="RegisterLiteOrm(IHostBuilder, Action{LiteOrmOptions})"/>
     ///    使用 Autofac 作为 DI 容器；
     /// 2. 自动服务注册 - 扫描程序集中带 [AutoRegister] 特性的类型并注册到 Autofac；
     /// 3. 拦截器应用 - 读取 <see cref="InterceptAttribute"/> 并自动应用 Castle DynamicProxy 拦截；
@@ -34,33 +35,33 @@ namespace LiteOrm.Framework
     /// 使用示例：
     /// <code>
     /// var builder = Host.CreateDefaultBuilder(args)
-    ///     .RegisterLiteOrmFramework(options =>
+    ///     .RegisterLiteOrm(options =>
     ///     {
     ///         options.Assemblies = new[] { typeof(MyService).Assembly };
     ///     });
     /// </code>
     /// </remarks>
-    public static class FrameworkServiceExtensions
+    public static class LiteOrmServiceExtensions
     {
         /// <summary>
-        /// 使用 Autofac 容器注册 LiteOrm 框架到主机构建器。
+        /// 注册 LiteOrm 框架到主机构建器（Autofac 容器 + Castle DynamicProxy 拦截器）。
         /// </summary>
         /// <param name="hostBuilder">主机构建器。</param>
         /// <returns>配置后的主机构建器。</returns>
-        public static IHostBuilder RegisterLiteOrmFramework(this IHostBuilder hostBuilder)
+        public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder)
         {
-            return RegisterLiteOrmFramework(hostBuilder, null);
+            return RegisterLiteOrm(hostBuilder, null);
         }
 
         /// <summary>
-        /// 使用 Autofac 容器注册 LiteOrm 框架到主机构建器，并允许配置选项。
+        /// 注册 LiteOrm 框架到主机构建器，并允许配置选项。
         /// </summary>
         /// <param name="hostBuilder">主机构建器。</param>
         /// <param name="configureOptions">配置选项的回调函数。</param>
         /// <returns>配置后的主机构建器。</returns>
-        public static IHostBuilder RegisterLiteOrmFramework(this IHostBuilder hostBuilder, Action<LiteOrmServiceExtensions.LiteOrmOptions>? configureOptions)
+        public static IHostBuilder RegisterLiteOrm(this IHostBuilder hostBuilder, Action<LiteOrmOptions>? configureOptions)
         {
-            var options = new LiteOrmServiceExtensions.LiteOrmOptions();
+            var options = new LiteOrmOptions();
             try
             {
                 configureOptions?.Invoke(options);
@@ -78,7 +79,7 @@ namespace LiteOrm.Framework
                 })
                 .ConfigureContainer<ContainerBuilder>(builder =>
                 {
-                    var logger = options.LoggerFactory?.CreateLogger(nameof(FrameworkServiceExtensions));
+                    var logger = options.LoggerFactory?.CreateLogger(nameof(LiteOrmServiceExtensions));
 
                     // 自动扫描并注册标记 [AutoRegister] 的服务（Autofac 版，含拦截器支持）
                     try
@@ -141,6 +142,129 @@ namespace LiteOrm.Framework
                         });
                     }
                 });
+        }
+
+        /// <summary>
+        /// 显式注册 LiteOrm 核心服务。
+        /// 这些服务不再使用 [AutoRegister] 特性，而是通过此方法手动注册，确保注册行为的确定性。
+        /// </summary>
+        /// <remarks>
+        /// 注册的核心服务包括：
+        /// 1. <see cref="DataSourceProvider"/> - 单例，从 <c>LiteOrm</c> 配置节点加载数据源；
+        /// 2. <see cref="SqlBuilderFactory"/> - 单例，使用静态 <see cref="SqlBuilderFactory.Instance"/> 确保 DI 解析与静态访问一致；
+        /// 3. <see cref="DAOContextPoolFactory"/> - 单例，数据库连接池工厂；
+        /// 4. <see cref="SessionManager"/> - Scoped，每作用域一个会话管理器实例；
+        /// 5. <see cref="LiteOrmCoreInitializer"/> - HostedService，启动时自动同步数据库表结构。
+        /// 同时触发 <see cref="LiteOrmSqlFunctionInitializer.Initialize"/> 以注册 SQL 函数映射。
+        /// </remarks>
+        /// <param name="services">服务集合。</param>
+        /// <returns>服务集合。</returns>
+        public static IServiceCollection AddCoreLiteOrmServices(this IServiceCollection services)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
+            // 数据源提供程序 - 单例，从宿主 IConfiguration 的 LiteOrm 节点加载连接配置
+            services.AddSingleton<IDataSourceProvider>(sp =>
+            {
+                var configuration = sp.GetRequiredService<IConfiguration>();
+                var provider = new DataSourceProvider();
+                provider.LoadConfiguration(configuration.GetSection("LiteOrm"));
+                return provider;
+            });
+            services.AddSingleton<DataSourceProvider>(sp => (DataSourceProvider)sp.GetRequiredService<IDataSourceProvider>());
+
+            // SqlBuilderFactory 使用静态 Instance，确保 DI 解析的实例与静态访问 (SqlBuilderFactory.Instance) 一致
+            services.AddSingleton<SqlBuilderFactory>(sp => SqlBuilderFactory.Instance);
+            services.AddSingleton<ISqlBuilderFactory>(sp => sp.GetRequiredService<SqlBuilderFactory>());
+
+            // 连接池工厂 - 单例
+            services.AddSingleton<DAOContextPoolFactory>();
+
+            // 会话管理器 - 每作用域一个实例
+            services.AddScoped<SessionManager>();
+
+            // 显式注册核心实体服务与数据访问对象（不再依赖 [AutoRegister] 特性扫描）。
+            // 注意：注册顺序决定了 IEntityViewService<> 解析到 EntityViewService<>，
+            // IEntityService<>/IEntityServiceAsync<> 解析到 EntityService<>。
+            services.AddScoped(typeof(EntityService<>));
+            services.AddScoped(typeof(IEntityService<>), typeof(EntityService<>));
+            services.AddScoped(typeof(IEntityServiceAsync<>), typeof(EntityService<>));
+            services.AddScoped(typeof(EntityViewService<>));
+            services.AddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
+            services.AddScoped(typeof(IEntityViewServiceAsync<>), typeof(EntityViewService<>));
+            services.AddScoped(typeof(ObjectDAO<>));
+            services.AddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
+            services.AddScoped(typeof(ObjectViewDAO<>));
+            services.AddScoped(typeof(IObjectViewDAO<>), typeof(ObjectViewDAO<>));
+            services.AddScoped(typeof(DataDAO<>));
+            services.AddScoped(typeof(DataViewDAO<>));
+            services.AddScoped(typeof(IDataViewDAO<>), typeof(DataViewDAO<>));
+
+            // 表信息提供程序 - 单例
+            services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
+
+            // 批量插入提供程序工厂 - 单例
+            services.AddSingleton<BulkProviderFactory>();
+
+            // 启动时自动同步数据库表结构
+            services.AddHostedService<LiteOrmCoreInitializer>();
+
+            // 触发 SQL 函数初始化（静态构造函数仅执行一次，多次调用安全）
+            LiteOrmSqlFunctionInitializer.Initialize();
+
+            return services;
+        }
+
+        /// <summary>
+        /// LiteOrm 配置选项。
+        /// </summary>
+        public class LiteOrmOptions
+        {
+            /// <summary>
+            /// 注册的 SqlBuilder 映射（按数据源名称）。
+            /// </summary>
+            internal Dictionary<string, SqlBuilder> SqlBuilders { get; } = new Dictionary<string, SqlBuilder>();
+
+            /// <summary>
+            /// 注册的 SqlBuilder 映射（按连接类型）。
+            /// </summary>
+            internal Dictionary<Type, SqlBuilder> SqlBuildersByType { get; } = new Dictionary<Type, SqlBuilder>();
+
+            /// <summary>
+            /// 是否注册 Scope 跟踪（默认为 true）。
+            /// <para>Scope 跟踪逻辑由本框架读取。</para>
+            /// </summary>
+            public bool RegisterScope { get; set; } = true;
+
+            /// <summary>
+            /// 要扫描的程序集列表。
+            /// </summary>
+            public Assembly[]? Assemblies { get; set; }
+
+            /// <summary>
+            /// 日志工厂，用于记录服务注册过程中的程序集扫描日志（可选）。
+            /// </summary>
+            public ILoggerFactory? LoggerFactory { get; set; }
+
+            /// <summary>
+            /// 注册自定义 SqlBuilder（按数据源名称）。
+            /// </summary>
+            /// <param name="dataSourceName">数据源名称。</param>
+            /// <param name="sqlBuilder">SqlBuilder 实例。</param>
+            public void RegisterSqlBuilder(string dataSourceName, SqlBuilder sqlBuilder)
+            {
+                SqlBuilders[dataSourceName] = sqlBuilder;
+            }
+
+            /// <summary>
+            /// 注册自定义 SqlBuilder（按连接类型）。
+            /// </summary>
+            /// <param name="providerType">数据库连接类型。</param>
+            /// <param name="sqlBuilder">SqlBuilder 实例。</param>
+            public void RegisterSqlBuilder(Type providerType, SqlBuilder sqlBuilder)
+            {
+                SqlBuildersByType[providerType] = sqlBuilder;
+            }
         }
 
         /// <summary>
@@ -326,6 +450,22 @@ namespace LiteOrm.Framework
         }
 
         /// <summary>
+        /// 判断是否为 LiteOrm 的非泛型标记接口（这些接口仅作为约定标记，不作为服务注册类型）。
+        /// <para>原先通过接口上的 <c>[AutoRegister(false)]</c> 排除，特性迁移后改为按接口名判断。</para>
+        /// </summary>
+        private static bool IsExcludedMarkerInterface(Type serviceType)
+        {
+            if (serviceType.IsGenericType) return false;
+            return serviceType.FullName is "LiteOrm.Common.IObjectViewDAO"
+                or "LiteOrm.Common.IObjectDAO"
+                or "LiteOrm.Common.IObjectDAOAsync"
+                or "LiteOrm.Service.IEntityService"
+                or "LiteOrm.Service.IEntityServiceAsync"
+                or "LiteOrm.Service.IEntityViewService"
+                or "LiteOrm.Service.IEntityViewServiceAsync";
+        }
+
+        /// <summary>
         /// 计算类型应注册的服务类型集合。
         /// </summary>
         private static List<Type> GetServiceTypes(Type implementationType, AutoRegisterAttribute? attr)
@@ -342,6 +482,7 @@ namespace LiteOrm.Framework
                     .Where(i => i.Namespace != null
                              && !i.Namespace.StartsWith("System.")
                              && i.Namespace != "System"
+                             && !IsExcludedMarkerInterface(i)
                              && (i.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? true)))
                 {
                     if (implementationType.IsGenericTypeDefinition && serviceType.IsGenericType)

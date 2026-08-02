@@ -81,7 +81,6 @@ namespace LiteOrm.Service
     /// <summary>
     /// 异步版本 - 非泛型实体查询接口
     /// </summary>
-    [AutoRegister(false)]
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     public interface IEntityViewServiceAsync

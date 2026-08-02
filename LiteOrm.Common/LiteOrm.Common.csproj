@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.0.21.0</AssemblyVersion>
-    <FileVersion>8.0.21.0</FileVersion>
+    <AssemblyVersion>8.1.0.0</AssemblyVersion>
+    <FileVersion>8.1.0.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.0.21</VersionPrefix>
+    <VersionPrefix>8.1.0</VersionPrefix>
     <Nullable>enable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
@@ -15,7 +15,11 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架。</Description>
     <PackageReleaseNotes>
-      PreparedSql移至LiteOrm.Common项目中，参数类型由KeyValuePair改为自定义Param；
+      8.1.0 Breaking Change: AutoRegisterAttribute 从 LiteOrm.Common 迁移至 LiteOrm.Framework；
+      LiteOrm 核心的 DAO/Service 不再使用 [AutoRegister] 特性自动注册，改为由 LiteOrm.Framework 显式注册；
+      LiteOrm 核心项目移除 Microsoft.Extensions.Hosting 依赖，DI 集成仅由 LiteOrm.Framework 提供；
+      DataSourceProvider 改为显式配置 API，不再接受 IConfiguration；
+      BulkProvider 改用 BulkProviderAttribute 标记数据库连接类型；
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

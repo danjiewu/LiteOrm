@@ -28,7 +28,6 @@ namespace LiteOrm.Remote
     /// 6. 异步支持 - 同时支持同步和异步方法拦截
     /// 7. 方法元数据缓存 - 缓存方法的特性信息以提高性能
     /// </remarks>
-    [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class RemoteServiceInvokeInterceptor : IInterceptor, IAsyncInterceptor
     {
         /// <summary>
@@ -942,7 +941,6 @@ namespace LiteOrm.Remote
     /// <summary>
     ///  动态服务生成
     /// </summary>
-    [AutoRegister(Lifetime = Lifetime.Singleton)]
     public class ServiceFactoryInterceptor : IInterceptor
     {
         /// <summary>

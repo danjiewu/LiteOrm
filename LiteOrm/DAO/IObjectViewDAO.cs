@@ -61,7 +61,6 @@ namespace LiteOrm.Common
     /// <summary>
     /// 实体类的查询数据访问对象的非泛型接口
     /// </summary>
-    [AutoRegister(false)]
     public interface IObjectViewDAO : IExprStringBuildContext
     {
         /// <summary>

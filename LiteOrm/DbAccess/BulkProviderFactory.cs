@@ -10,7 +10,6 @@ namespace LiteOrm
     /// <summary>
     /// 批量插入提供程序工厂
     /// </summary>
-    [AutoRegister(Lifetime.Singleton)]
     public class BulkProviderFactory
     {
         private readonly Dictionary<Type, IBulkProvider> _keyedProviders;
@@ -26,8 +25,8 @@ namespace LiteOrm
             {
                 foreach (var provider in providers)
                 {
-                    var attr = provider.GetType().GetCustomAttribute<AutoRegisterAttribute>(true);
-                    if (attr?.Key is Type keyType)
+                    var attr = provider.GetType().GetCustomAttribute<BulkProviderAttribute>(true);
+                    if (attr?.DbConnectionType is Type keyType)
                     {
                         _keyedProviders[keyType] = provider;
                     }

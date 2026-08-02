@@ -55,6 +55,7 @@ This document covers the runtime environment, database support, and installation
 
 ```bash
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework   # required for DI registration (RegisterLiteOrm)
 ```
 
 ### Complete Installation Commands by Database
@@ -62,24 +63,28 @@ dotnet add package LiteOrm
 **SQL Server project:**
 ```bash
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package Microsoft.Data.SqlClient
 ```
 
 **MySQL project:**
 ```bash
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package MySqlConnector
 ```
 
 **PostgreSQL project:**
 ```bash
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package Npgsql
 ```
 
 **SQLite project (recommended for beginners):**
 ```bash
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package Microsoft.Data.Sqlite
 ```
 
@@ -115,7 +120,7 @@ dotnet run
 
 ### Build error after installation: `RegisterLiteOrm` method not found
 
-Make sure you installed the `LiteOrm` package (not `LiteOrm.Common`), and add `using LiteOrm;` at the top of your code file.
+Make sure you installed the `LiteOrm.Framework` package (`RegisterLiteOrm()` is defined there; installing only `LiteOrm` or `LiteOrm.Common` won't provide it), and add `using LiteOrm.Framework;` at the top of your code file.
 
 ### Runtime error: database driver not found
 

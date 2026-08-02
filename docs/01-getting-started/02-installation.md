@@ -55,6 +55,7 @@
 
 ```bash
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework   # DI 注册（RegisterLiteOrm）需要
 ```
 
 ### 各数据库完整安装命令
@@ -62,24 +63,28 @@ dotnet add package LiteOrm
 **SQL Server 项目：**
 ```bash
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package Microsoft.Data.SqlClient
 ```
 
 **MySQL 项目：**
 ```bash
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package MySqlConnector
 ```
 
 **PostgreSQL 项目：**
 ```bash
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package Npgsql
 ```
 
 **SQLite 项目（推荐新手使用）：**
 ```bash
 dotnet add package LiteOrm
+dotnet add package LiteOrm.Framework
 dotnet add package Microsoft.Data.Sqlite
 ```
 
@@ -115,7 +120,7 @@ dotnet run
 
 ### 安装后编译报错：找不到 `RegisterLiteOrm` 方法
 
-确保安装了 `LiteOrm` 包（不是 `LiteOrm.Common`），并在代码文件顶部添加 `using LiteOrm;`。
+确保安装了 `LiteOrm.Framework` 包（`RegisterLiteOrm()` 定义于该包，仅安装 `LiteOrm` 或 `LiteOrm.Common` 不会提供此方法），并在代码文件顶部添加 `using LiteOrm.Framework;`。
 
 ### 运行时提示找不到数据库驱动
 

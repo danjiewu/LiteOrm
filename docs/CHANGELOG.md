@@ -1,5 +1,23 @@
 # 变更日志 (Changelog)
 
+## v8.1.0 (2026-08-02)
+
+### Breaking Changes
+
+本版本引入多项破坏性变更，详细迁移指南见 [8.1.0 升级指南](./upgrade-guides/01-breaking-changes-8.1.0.md)。
+
+- `AutoRegisterAttribute` 从 `LiteOrm.Common` 迁移至 `LiteOrm.Framework`（命名空间保持 `LiteOrm.Common` 不变），`Lifetime` 枚举留在 `LiteOrm.Common`
+- `LiteOrm` 核心 DAO/Service（`EntityService`/`EntityViewService`/`ObjectDAO`/`ObjectViewDAO`/`DataDAO`/`DataViewDAO`/`DAOBase`/`AttributeTableInfoProvider`/`BulkProviderFactory`/`DdlGen`）移除 `[AutoRegister]` 自动注册，改由 `LiteOrm.Framework` 的 `AddCoreLiteOrmServices()` 显式注册
+- `LiteOrm` 核心移除 `Microsoft.Extensions.Hosting` 依赖，DI 集成仅由 `LiteOrm.Framework` 提供；`LiteOrmServiceExtensions` 与 `LiteOrmCoreInitializer` 移至 `LiteOrm.Framework`
+- `DataSourceProvider` 改为显式配置 API（`AddDataSource`/`SetDefaultDataSource`），不再接受 `IConfiguration`；`LiteOrm.Framework` 新增 `LoadConfiguration` 扩展从宿主 `LiteOrm` 配置节点加载
+- 自定义 `IBulkProvider` 的数据库连接类型标记由 `[AutoRegister(Key = ...)]` 改为新增的 `[BulkProvider(typeof(...))]`（`LiteOrm.Common`）
+- 核心非泛型标记接口上的 `[AutoRegister(false)]` 移除，扫描逻辑改为按接口全名排除
+
+### 修复
+- `ServicePermissionAttributeTests`：internal 方法反射需带 `BindingFlags.NonPublic`
+
+---
+
 ## v8.0.21 (Unreleased)
 
 ### 改进
