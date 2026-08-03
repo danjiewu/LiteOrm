@@ -68,7 +68,6 @@ dataSourceProvider.SetDefaultDataSource("DefaultConnection");
 
 // 2. Create connection pool factory
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-DAOContextPoolFactory.Set(() => poolFactory);
 
 // 3. Create session manager and set as current session
 var sessionManager = new SessionManager(poolFactory);
@@ -122,7 +121,6 @@ dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
 
 // 3. Create connection pool factory
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-DAOContextPoolFactory.Set(() => poolFactory);
 
 // 4. Create session manager and set as current session
 var sessionManager = new SessionManager(poolFactory);
@@ -139,7 +137,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 > **Line-by-line explanation**:
 > - `DataSourceProvider`: manages data source configuration. Add sources explicitly via `AddDataSource`, or load them in bulk from `IConfiguration` via `LoadConfiguration`; designate the default via `SetDefaultDataSource` or the `Default` key in the config section.
 > - `LiteOrmSqlFunctionInitializer.Initialize()`: SQL function mappings are automatically registered via SqlBuilder's static constructor on first access—no manual call needed.
-> - `DAOContextPoolFactory`: creates connection pools based on data source configuration and manages connection acquisition and recycling. Call `Set` to register it as the global singleton so DAOs can resolve the provider type internally via the static property.
+> - `DAOContextPoolFactory`: creates connection pools based on data source configuration and manages connection acquisition and recycling. It is passed to `SessionManager` via the constructor; DAOs obtain the pool internally via `SessionManager.GetDAOContextPool()` to resolve the provider type.
 > - `SessionManager`: manages database sessions, transactions, and async context. `SetCurrent` sets it as the session for the current async context.
 > - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. Both have parameterless constructors and obtain global singletons via `TableInfoProvider.Instance` and `BulkProviderFactory.Instance` internally, no manual injection needed.
 > - `EntityService<T>`: a business service wrapping the DAOs, providing methods such as `InsertAsync`, `SearchAsync`, `UpdateAsync`, and `DeleteAsync`.
@@ -166,9 +164,8 @@ var configuration = new ConfigurationBuilder()
 var dataSourceProvider = new DataSourceProvider();
 dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
 
-// 2. Create pool factory and set as global singleton
+// 2. Create pool factory
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-DAOContextPoolFactory.Set(() => poolFactory);
 
 // 3. Register services into the DI container
 var services = new ServiceCollection();
@@ -385,7 +382,6 @@ poolFactory.Dispose();
 
 - [ ] `dotnet build` compiles without errors.
 - [ ] The initialization code calls `SessionManager.SetCurrent(...)` (manual construction or ServiceProvider approach).
-- [ ] The initialization code calls `DAOContextPoolFactory.Set(() => poolFactory)`.
 - [ ] When using the ServiceProvider approach, `SessionManager` is registered as Scoped and `SetCurrent` is called when entering a scope.
 - [ ] Entity classes are annotated with `[Table]` and `[Column]` attributes.
 - [ ] Insert and query operations return the expected results.

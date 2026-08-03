@@ -510,6 +510,17 @@ namespace LiteOrm
 
 
         /// <summary>
+        /// 获取指定数据源的连接池。当未指定名称时返回默认数据源的连接池。
+        /// </summary>
+        /// <param name="name">数据源名称；为 null 或空白时使用默认数据源。</param>
+        /// <returns>对应的 <see cref="DAOContextPool"/> 实例；若不存在则返回 null。</returns>
+        public DAOContextPool? GetDAOContextPool(string? name = null)
+        {
+            EnsureNotDisposed();
+            return _daoContextPoolFactory.GetPool(name);
+        }
+
+        /// <summary>
         /// 获取指定名称的DAO上下文
         /// </summary>
         /// <param name="name">上下文名称，如果为null则使用默认名称"_"</param>

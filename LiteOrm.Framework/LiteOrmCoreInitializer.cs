@@ -14,7 +14,7 @@ namespace LiteOrm
     /// LiteOrm 核心初始化器，负责在启动时初始化服务和自动同步数据库表结构。
     /// 
     /// 主要职责：
-    /// 1. 将 DI 解析的 TableInfoProvider、BulkProviderFactory、DAOContextPoolFactory 回写为全局静态单例
+    /// 1. 将 DI 解析的 TableInfoProvider、BulkProviderFactory 回写为全局静态单例
     /// 2. 自动同步数据库表结构（创建表、添加列、创建索引）
     /// </summary>
     public class LiteOrmCoreInitializer : IHostedService
@@ -57,7 +57,6 @@ namespace LiteOrm
                 // 将 DI 解析的实例回写为全局静态单例，确保 DAOBase 等通过静态属性访问时与 DI 实例一致
                 TableInfoProvider.Set(() => _tableInfoProvider);
                 BulkProviderFactory.Set(() => _bulkProviderFactory);
-                DAOContextPoolFactory.Set(() => _daoContextPoolFactory);
 
                 SyncTables();
             }

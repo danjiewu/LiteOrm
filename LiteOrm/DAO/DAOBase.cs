@@ -112,17 +112,17 @@ namespace LiteOrm
         /// </summary>
         public virtual SqlBuilder SqlBuilder
         {
-            get { return SqlBuilderFactory.Instance.GetSqlBuilder(GetProviderType()!, DataSource); }
+            get { return CurrentSession!.GetDAOContextPool(DataSource)!.SqlBuilder; }
         }
 
         /// <summary>
         /// 获取当前数据源对应的数据库提供程序类型。
-        /// 通过 <see cref="DAOContextPoolFactory"/> 单例根据数据源名称查找连接池，再从连接池获取提供程序类型。
+        /// 通过 <see cref="SessionManager.GetDAOContextPool"/> 根据数据源名称查找连接池，再从连接池获取提供程序类型。
         /// </summary>
-        /// <returns>数据库提供程序类型；若连接池工厂未初始化或数据源不存在则返回 null。</returns>
+        /// <returns>数据库提供程序类型；若当前会话未设置或数据源不存在则返回 null。</returns>
         protected virtual Type? GetProviderType()
         {
-            return DAOContextPoolFactory.Instance?.GetPool(DataSource)?.ProviderType;
+            return CurrentSession?.GetDAOContextPool(DataSource)?.ProviderType;
         }
 
         ISqlBuilder IExprStringBuildContext.SqlBuilder => SqlBuilder;

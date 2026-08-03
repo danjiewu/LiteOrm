@@ -38,19 +38,9 @@ namespace LiteOrm.CodeGen
         public string[]? TableArgs { get; set; }
 
         /// <summary>
-        /// 获取与当前实体类型关联的 SQL 构建器实例，用于生成特定数据库方言的 SQL 语句。
+        /// 获取与设置当前实体类型关联的 SQL 构建器实例，用于生成特定数据库方言的 SQL 语句，默认为 LiteOrm.SqlBuilder.Instance 实例。
         /// </summary>
-        public ISqlBuilder? SqlBuilder
-        {
-            get
-            {
-                var table = TableInfoProvider.Instance.GetTableDefinition(ObjectType);
-                if (table == null) return null;
-                var providerType = DAOContextPoolFactory.Instance?.GetPool(table.DataSource)?.ProviderType;
-                return SqlBuilderFactory.Instance.GetSqlBuilder(providerType!, (string?)table.DataSource);
-            }
-        }
-
+        public ISqlBuilder SqlBuilder { get; set; } = LiteOrm.SqlBuilder.Instance;
         /// <summary>
         /// 创建一个新的 <see cref="SqlBuildContext"/> 实例，用于在 SQL 生成过程中维护上下文信息。
         /// </summary>

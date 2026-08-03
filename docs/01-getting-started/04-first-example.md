@@ -68,7 +68,6 @@ dataSourceProvider.SetDefaultDataSource("DefaultConnection");
 
 // 2. 创建连接池工厂
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-DAOContextPoolFactory.Set(() => poolFactory);
 
 // 3. 创建会话管理器并设为当前会话
 var sessionManager = new SessionManager(poolFactory);
@@ -122,7 +121,6 @@ dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
 
 // 3. 创建连接池工厂
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-DAOContextPoolFactory.Set(() => poolFactory);
 
 // 4. 创建会话管理器并设为当前会话
 var sessionManager = new SessionManager(poolFactory);
@@ -139,7 +137,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 > **逐行解释**：
 > - `DataSourceProvider`：管理数据源配置。通过 `AddDataSource` 显式添加，或通过 `LoadConfiguration` 从 `IConfiguration` 批量加载；`SetDefaultDataSource` 或配置节中的 `Default` 键指定默认数据源。
 > - `LiteOrmSqlFunctionInitializer.Initialize()`：SQL 函数映射在首次访问 SqlBuilder 时由静态构造函数自动注册，无需手动调用。
-> - `DAOContextPoolFactory`：根据数据源配置创建连接池，管理连接的获取与回收。通过 `Set` 设置为全局单例，使 DAO 内部可通过静态属性获取提供程序类型。
+> - `DAOContextPoolFactory`：根据数据源配置创建连接池，管理连接的获取与回收。通过构造函数传入 `SessionManager`，DAO 内部通过 `SessionManager.GetDAOContextPool()` 获取连接池以解析提供程序类型。
 > - `SessionManager`：管理数据库会话、事务和异步上下文。通过 `SetCurrent` 设置为当前异步上下文的会话。
 > - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。两者均有无参构造函数，内部通过 `TableInfoProvider.Instance` 和 `BulkProviderFactory.Instance` 获取全局单例，无需手动传入。
 > - `EntityService<T>`：封装了 DAO 的业务服务，提供 `InsertAsync`、`SearchAsync`、`UpdateAsync`、`DeleteAsync` 等方法。
@@ -166,9 +164,8 @@ var configuration = new ConfigurationBuilder()
 var dataSourceProvider = new DataSourceProvider();
 dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
 
-// 2. 创建连接池工厂并设为全局单例
+// 2. 创建连接池工厂
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-DAOContextPoolFactory.Set(() => poolFactory);
 
 // 3. 注册服务到 DI 容器
 var services = new ServiceCollection();
@@ -385,7 +382,6 @@ poolFactory.Dispose();
 
 - [ ] `dotnet build` 编译通过，无错误。
 - [ ] 初始化代码中调用了 `SessionManager.SetCurrent(...)`（手动构造或 ServiceProvider 方式）。
-- [ ] 初始化代码中调用了 `DAOContextPoolFactory.Set(() => poolFactory)`。
 - [ ] 使用 ServiceProvider 方式时，`SessionManager` 注册为 Scoped，且在进入作用域时调用了 `SetCurrent`。
 - [ ] 实体类使用了 `[Table]` 和 `[Column]` 特性标注。
 - [ ] 插入和查询操作返回了预期的结果。
