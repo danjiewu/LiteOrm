@@ -937,34 +937,4 @@ namespace LiteOrm.Remote
             });
         }
     }  
-
-    /// <summary>
-    ///  动态服务生成
-    /// </summary>
-    public class ServiceFactoryInterceptor : IInterceptor
-    {
-        /// <summary>
-        /// 服务提供者
-        /// </summary>
-        protected IServiceProvider ServiceProvider { get; }
-        /// <summary>
-        /// 构造函数
-        /// </summary>
-        /// <param name="serviceProvider">服务提供者</param>
-        public ServiceFactoryInterceptor(IServiceProvider serviceProvider)
-        {
-            ServiceProvider = serviceProvider;
-        }
-        /// <summary>
-        /// 拦截方法调用，从服务提供者获取请求的服务实例。
-        /// </summary>
-        /// <param name="invocation">方法调用信息</param>
-        /// <remarks>
-        /// 该方法会拦截对服务工厂接口的调用，根据方法的返回类型从服务提供者中获取对应的服务实例。
-        /// </remarks>
-        public void Intercept(IInvocation invocation)
-        {
-            invocation.ReturnValue = ServiceProvider.GetService(invocation.Method.ReturnType);
-        }
-    }
 }

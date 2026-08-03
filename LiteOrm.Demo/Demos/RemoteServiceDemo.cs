@@ -93,7 +93,7 @@ namespace LiteOrm.Demo.Demos
                     //    此处注册工厂代理仅是为了演示工厂模式访问方式。
                     //    AddRemoteServiceGenerator 自动扫描 RemoteServiceFactory 的所有属性与方法返回类型，
                     //    将未注册的接口类型自动注册为远程代理（已注册的不会覆盖）。
-                    services.AddRemoteServiceGenerator<RemoteServiceFactory>();
+                    services.AddRemoteServiceFactory<RemoteServiceFactory>();
                 })
                 .Build();
             try

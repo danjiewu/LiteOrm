@@ -63,7 +63,6 @@ namespace LiteOrm.Service
     /// }
     /// </code>
     /// </remarks>
-    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
     public class ServiceInvokeInterceptor : IInterceptor, IAsyncInterceptor
     {
         /// <summary>

@@ -17,12 +17,16 @@ OracleConfiguration.BindByName = true;
 
 // 使用 RegisterLiteOrm 从 appsettings.json 自动配置（Autofac + Castle 拦截器）
 var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrm(options =>
+    .RegisterLiteOrm()
+    .ConfigureServices(sp =>
     {
         // 注册服务工厂代理（通过 ServiceGenerateInterceptor 自动解析接口返回类型）
-        options.RegisterServiceGenerator<ServiceFactory>();
+        sp.AddServiceGenerator<ServiceFactory>();
     })
     .Build();
+
+// 启动宿主以触发 IHostedService
+await host.StartAsync();
 
 Console.WriteLine("--- LiteOrm 表达式演示程序 ---");
 
@@ -31,7 +35,7 @@ WindowFunctionDemo.RegisterHandlers();
 
 // 执行数据库初始化
 using (var initScope = host.Services.CreateScope())
-{    
+{
     await DbInitializer.InitializeAsync(initScope.ServiceProvider);
 }
 
@@ -69,5 +73,6 @@ using (var scope = host.Services.CreateScope())
     // 10. 远程服务调用演示 (AddRemoteServiceGenerator：从配置读取远程地址、工厂代理、远程调用)
     await RemoteServiceDemo.RunAsync();
 }
+
 
 

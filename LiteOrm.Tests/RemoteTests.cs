@@ -19,8 +19,6 @@ namespace LiteOrm.Tests
     /// </summary>
     public class RemoteTests
     {
-        private static readonly ProxyGenerator _proxyGenerator = new ProxyGenerator();
-
         // 测试用服务接口 - 覆盖 void / 同步返回 / Task / Task<T> / CancellationToken 传递
         [Service]
         public interface IRemoteCalculator
@@ -59,14 +57,13 @@ namespace LiteOrm.Tests
 
         private static (IRemoteCalculator proxy, StubTransport transport) CreateProxy(Func<RemoteInvocationRequest, RemoteInvocationResponse> responder)
         {
+            var transport = new StubTransport(responder);
             var services = new ServiceCollection();
             services.AddLogging(b => b.SetMinimumLevel(LogLevel.None));
+            services.AddSingleton<IRemoteServiceTransport>(transport);
+            services.AddSingleton<RemoteServiceInvokeInterceptor>();
             var provider = services.BuildServiceProvider();
-            var transport = new StubTransport(responder);
-            var interceptor = new RemoteServiceInvokeInterceptor(
-                provider.GetRequiredService<ILoggerFactory>(),
-                transport);
-            var proxy = _proxyGenerator.CreateInterfaceProxyWithoutTarget<IRemoteCalculator>(interceptor.ToInterceptor());
+            var proxy = RemoteProxyGenerator.CreateRemoteServiceProxy<IRemoteCalculator>(provider);
             return (proxy, transport);
         }
 
@@ -271,8 +268,7 @@ namespace LiteOrm.Tests
                 var resolvedTransport = scope.ServiceProvider.GetRequiredService<IRemoteServiceTransport>();
                 Assert.Same(stub, resolvedTransport);
 
-                var interceptor = scope.ServiceProvider.GetRequiredService<RemoteServiceInvokeInterceptor>();
-                var proxy = _proxyGenerator.CreateInterfaceProxyWithoutTarget<IRemoteCalculator>(interceptor.ToInterceptor());
+                var proxy = RemoteProxyGenerator.CreateRemoteServiceProxy<IRemoteCalculator>(scope.ServiceProvider);
 
                 int result = await proxy.MultiplyAsync(2, 3);
 

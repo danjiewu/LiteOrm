@@ -122,8 +122,7 @@ namespace LiteOrm.Remote
                 }
 
                 services.AddSingleton<RemoteServiceInvokeInterceptor>();
-                services.AddScoped<RemoteServiceGenerateInterceptor>();
-                services.AddSingleton<ServiceFactoryInterceptor>();
+                services.AddScoped<ServiceGenerateInterceptor>();
                 if (options.AutoRegisterEntityServices)
                 {
                     // 1. 扫描程序集，将带 [Service] 特性的接口通过 TypeResolverHelper.Register 注册，
@@ -274,8 +273,7 @@ namespace LiteOrm.Remote
             where TService : class
         {
             var serviceDescriptor = new ServiceDescriptor(typeof(TService),
-                sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget<TService>(
-                    sp.GetRequiredService<RemoteServiceInvokeInterceptor>().ToInterceptor()),
+                RemoteProxyGenerator.CreateRemoteServiceProxy<TService>,
                 lifetime);
             services.Add(serviceDescriptor);
             return services;
@@ -292,7 +290,7 @@ namespace LiteOrm.Remote
         /// <remarks>
         /// <para>
         /// 工厂接口（如 <c>RemoteServiceFactory</c>）的每个属性/方法返回一个业务服务接口，
-        /// <see cref="RemoteServiceGenerateInterceptor"/> 访问属性时通过
+        /// <see cref="ServiceGenerateInterceptor"/> 访问属性时通过
         /// <c>ServiceProvider.GetRequiredService(返回类型)</c> 解析对应服务。
         /// </para>
         /// <para>
@@ -310,13 +308,13 @@ namespace LiteOrm.Remote
         /// </code>
         /// </para>
         /// </remarks>
-        public static IServiceCollection AddRemoteServiceGenerator<TService>(
+        public static IServiceCollection AddRemoteServiceFactory<TService>(
             this IServiceCollection services,
             ServiceLifetime lifetime = ServiceLifetime.Scoped)
             where TService : class
         {
             var serviceDescriptor = new ServiceDescriptor(typeof(TService),
-                sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget<TService>(sp.GetRequiredService<RemoteServiceGenerateInterceptor>()),
+                sp => RemoteProxyGenerator.CreateInterfaceProxy<TService>(sp.GetRequiredService<ServiceGenerateInterceptor>()),
                 lifetime);
             services.Add(serviceDescriptor);
 
@@ -360,9 +358,7 @@ namespace LiteOrm.Remote
 
                 var capturedType = serviceType;
                 services.Add(new ServiceDescriptor(serviceType,
-                    sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget(
-                        capturedType,
-                        sp.GetRequiredService<RemoteServiceInvokeInterceptor>().ToInterceptor()),
+                    sp => RemoteProxyGenerator.CreateRemoteServiceProxy(capturedType, sp),
                     lifetimeDescriptor));
             }
         }
@@ -431,9 +427,7 @@ namespace LiteOrm.Remote
                     // 3. 注册远程代理
                     var capturedType = type;
                     services.Add(new ServiceDescriptor(type,
-                        sp => new ProxyGenerator().CreateInterfaceProxyWithoutTarget(
-                            capturedType,
-                            sp.GetRequiredService<RemoteServiceInvokeInterceptor>().ToInterceptor()),
+                        sp => RemoteProxyGenerator.CreateRemoteServiceProxy(capturedType, sp),
                         ServiceLifetime.Scoped));
                 }
             }

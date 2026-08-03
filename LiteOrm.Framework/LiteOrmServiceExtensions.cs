@@ -45,6 +45,12 @@ namespace LiteOrm.Framework
     public static class LiteOrmServiceExtensions
     {
         /// <summary>
+        /// 共享的 <see cref="ProxyGenerator"/> 单例。Castle DynamicProxy 会在实例内部缓存生成的代理类型，
+        /// 复用同一实例可避免每次创建代理时重复生成类型，显著提升性能。
+        /// </summary>
+        private static readonly ProxyGenerator _proxyGenerator = new ProxyGenerator();
+
+        /// <summary>
         /// 注册 LiteOrm 框架到主机构建器（Autofac 容器 + Castle DynamicProxy 拦截器）。
         /// </summary>
         /// <param name="hostBuilder">主机构建器。</param>
@@ -88,20 +94,6 @@ namespace LiteOrm.Framework
                     catch (Exception ex)
                     {
                         throw new InvalidOperationException("Failed to register LiteOrm services automatically", ex);
-                    }
-
-                    // 注册服务生成器代理（通过 ServiceGenerateInterceptor 从 DI 容器解析返回类型）
-                    foreach (var serviceType in options.ServiceGenerators)
-                    {
-                        var capturedType = serviceType;
-                        builder.Register(c =>
-                            {
-                                var interceptor = c.Resolve<ServiceGenerateInterceptor>();
-                                return new ProxyGenerator().CreateInterfaceProxyWithoutTarget(
-                                    capturedType, interceptor);
-                            })
-                            .As(capturedType)
-                            .InstancePerLifetimeScope();
                     }
 
                     // 注册自定义 SqlBuilder
@@ -175,6 +167,14 @@ namespace LiteOrm.Framework
                 .As<DataSourceProvider>()
                 .SingleInstance();
 
+            //注册服务调用拦截器，为服务方法提供事务、日志和性能监控
+            builder.RegisterType<ServiceInvokeInterceptor>()
+                .InstancePerLifetimeScope();
+
+            //注册服务生成拦截器，根据接口自动生成服务
+            builder.RegisterType<ServiceGenerateInterceptor>()
+                .InstancePerLifetimeScope();
+
             // SqlBuilderFactory 使用静态 Instance，确保 DI 解析的实例与静态访问 (SqlBuilderFactory.Instance) 一致
             builder.Register(_ => SqlBuilderFactory.Instance)
                 .As<SqlBuilderFactory>()
@@ -244,6 +244,22 @@ namespace LiteOrm.Framework
         }
 
         /// <summary>
+        /// 注册服务生成器代理（通过 ServiceGenerateInterceptor 从 DI 容器解析返回类型）
+        /// </summary>
+        /// <typeparam name="T">服务生成工厂类</typeparam>
+        /// <param name="services">DI 容器</param>
+        /// <returns>DI 容器</returns>
+        public static IServiceCollection AddServiceGenerator<T>(this IServiceCollection services) where T : class
+        {
+            services.AddScoped<T>(sp =>
+            {
+                var interceptor = sp.GetRequiredService<ServiceGenerateInterceptor>();
+                return _proxyGenerator.CreateInterfaceProxyWithoutTarget<T>(interceptor);
+            });
+            return services;
+        }
+
+        /// <summary>
         /// LiteOrm 配置选项。
         /// </summary>
         public class LiteOrmOptions
@@ -257,11 +273,6 @@ namespace LiteOrm.Framework
             /// 注册的 SqlBuilder 映射（按连接类型）。
             /// </summary>
             internal Dictionary<Type, SqlBuilder> SqlBuildersByType { get; } = new Dictionary<Type, SqlBuilder>();
-
-            /// <summary>
-            /// 注册的服务生成器接口类型列表。
-            /// </summary>
-            internal List<Type> ServiceGenerators { get; } = new List<Type>();
 
             /// <summary>
             /// 是否注册 Scope 跟踪（默认为 true）。
@@ -297,19 +308,6 @@ namespace LiteOrm.Framework
             public void RegisterSqlBuilder(Type providerType, SqlBuilder sqlBuilder)
             {
                 SqlBuildersByType[providerType] = sqlBuilder;
-            }
-
-            /// <summary>
-            /// 注册服务生成器接口代理。
-            /// <para>
-            /// 将指定的工厂接口（如 <c>ServiceFactory</c>）注册为动态代理，
-            /// 访问其属性或方法时由 <see cref="ServiceGenerateInterceptor"/> 从 DI 容器解析对应服务。
-            /// </para>
-            /// </summary>
-            /// <typeparam name="TService">工厂接口类型。</typeparam>
-            public void RegisterServiceGenerator<TService>() where TService : class
-            {
-                ServiceGenerators.Add(typeof(TService));
             }
         }
 

@@ -20,13 +20,11 @@ namespace LiteOrm.Remote
         /// <summary>
         /// 初始化 <see cref="RemoteViewServiceProxy{T}"/> 类的新实例。
         /// </summary>
-        /// <param name="interceptor">远程调用拦截器，用于拦截代理方法调用并转发到远程服务端。</param>
-        public RemoteViewServiceProxy(RemoteServiceInvokeInterceptor interceptor)
+        /// <param name="sp">远程调用拦截器的服务提供者，用于获取<seealso cref="RemoteServiceInvokeInterceptor"/>远程代理拦截器。</param>
+        public RemoteViewServiceProxy(IServiceProvider sp)
         {
-            var generator = new ProxyGenerator();
-            _proxy = generator.CreateInterfaceProxyWithoutTarget<IEntityViewService<T>>(interceptor.ToInterceptor());
+            _proxy = RemoteProxyGenerator.CreateRemoteServiceProxy<IEntityViewService<T>>(sp);
         }
-
         /// <inheritdoc />
         public T GetObject(object id, params string[] tableArgs) => _proxy.GetObject(id, tableArgs);
 
