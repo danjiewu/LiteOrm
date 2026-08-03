@@ -55,6 +55,15 @@ namespace LiteOrm
         public static readonly SqlBuilder Instance = new SqlBuilder();
 
         /// <summary>
+        /// 静态构造函数，在首次访问 SqlBuilder 时自动触发 SQL 函数映射注册。
+        /// 这样使用方无需手动调用 <see cref="LiteOrmSqlFunctionInitializer.Initialize"/>。
+        /// </summary>
+        static SqlBuilder()
+        {
+            LiteOrmSqlFunctionInitializer.Initialize();
+        }
+
+        /// <summary>
         /// 获取当前数据库是否支持公共表表达式（CTE / WITH 子句）。
         /// 默认返回 <see langword="true"/>。不支持 CTE 的旧数据库版本可重写为 <see langword="false"/>，
         /// 此时 CTE 将被展开为内联子查询。

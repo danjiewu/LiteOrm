@@ -258,6 +258,6 @@ var result = await dataViewDAO.Search(
 - [Expr 使用指南](./06-expr-guide.md)
 - [ExprString 使用指南](./07-exprstring-guide.md)
 - [Lambda 与 Expr 组合使用](./09-lambda-expr-mixing.md)
-- [AI 指南](../05-reference/05-ai-guide.md)
+- [AI 指南](../05-reference/04-ai-guide.md)
 - [返回文档中心](../README.md)
 

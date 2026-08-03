@@ -147,7 +147,6 @@ namespace LiteOrm.Framework
         /// 3. <see cref="DAOContextPoolFactory"/> - 单例，数据库连接池工厂；
         /// 4. <see cref="SessionManager"/> - Scoped，每作用域一个会话管理器实例；
         /// 5. <see cref="LiteOrmCoreInitializer"/> - HostedService，启动时自动同步数据库表结构。
-        /// 同时触发 <see cref="LiteOrmSqlFunctionInitializer.Initialize"/> 以注册 SQL 函数映射。
         /// </remarks>
         /// <param name="builder">Autofac 容器构建器。</param>
         /// <returns>容器构建器。</returns>
@@ -237,9 +236,6 @@ namespace LiteOrm.Framework
                 .As<IHostedService>()
                 .SingleInstance();
 
-            // 触发 SQL 函数初始化（静态构造函数仅执行一次，多次调用安全）
-            LiteOrmSqlFunctionInitializer.Initialize();
-
             return builder;
         }
 
@@ -248,14 +244,17 @@ namespace LiteOrm.Framework
         /// </summary>
         /// <typeparam name="T">服务生成工厂类</typeparam>
         /// <param name="services">DI 容器</param>
+        /// <param name="lifetime">服务生命周期，默认为 Scoped</param>
         /// <returns>DI 容器</returns>
-        public static IServiceCollection AddServiceGenerator<T>(this IServiceCollection services) where T : class
+        public static IServiceCollection AddServiceGenerator<T>(
+            this IServiceCollection services,
+            ServiceLifetime lifetime = ServiceLifetime.Scoped) where T : class
         {
-            services.AddScoped<T>(sp =>
+            services.Add(new ServiceDescriptor(typeof(T), sp =>
             {
                 var interceptor = sp.GetRequiredService<ServiceGenerateInterceptor>();
                 return _proxyGenerator.CreateInterfaceProxyWithoutTarget<T>(interceptor);
-            });
+            }, lifetime));
             return services;
         }
 

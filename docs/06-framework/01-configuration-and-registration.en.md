@@ -1,62 +1,10 @@
-﻿# Configuration and Registration
+# Configuration and Registration
 
-LiteOrm offers two configuration approaches—**Core Library Only (manual API)** and **Framework (DI auto-binding)**. Choose the one that fits whether your project uses a DI container:
-
-- **Core library only**: no DI container required, data sources are configured manually in code or loaded from `IConfiguration` via `LoadConfiguration`. Suited for console apps, batch scripts, or projects without a DI container.
-- **Framework integration**: configuration is declared in `appsettings.json`, and `RegisterLiteOrm()` automatically performs DI binding, DAO registration, and dialect resolution at startup. Suited for ASP.NET Core and other projects that need Autofac and AOP capabilities.
+When using `LiteOrm.Framework`, configuration is declared in `appsettings.json`, and `RegisterLiteOrm()` automatically performs DI binding, DAO registration, and dialect resolution at startup. Suited for ASP.NET Core and other projects that need Autofac and AOP capabilities.
 
 > **Beginner tip**: If this is your first time configuring, start with the simplest setup—a single data source using SQLite. Once the basic flow works, gradually add multi-data-source, read/write splitting, and other advanced configurations.
 
-## Approach 1: Core Library Only
-
-When using only the `LiteOrm` core library, there is no DI container dependency (no Autofac); configuration is done manually in code or loaded from `IConfiguration`.
-
-### Manual Code-Based Configuration
-
-Configure data sources through the `AddDataSource` API of `DataSourceProvider`:
-
-```csharp
-var dataSourceProvider = new DataSourceProvider();
-dataSourceProvider.AddDataSource(new DataSourceConfig
-{
-    Name = "DefaultConnection",
-    ConnectionString = "Data Source=demo.db",
-    Provider = typeof(SqliteConnection).AssemblyQualifiedName,
-    SyncTable = true
-});
-dataSourceProvider.SetDefaultDataSource("DefaultConnection");
-LiteOrmSqlFunctionInitializer.Initialize();
-var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-DAOContextPoolFactory.Set(() => poolFactory);
-var sessionManager = new SessionManager(poolFactory);
-SessionManager.SetCurrent(() => sessionManager);
-```
-
-### Read from IConfiguration
-
-The core library includes a built-in `LoadConfiguration` extension method that loads data source configuration in bulk from the `LiteOrm` section of an `IConfiguration` (the config format is identical to the Framework approach, see the `appsettings.json` example below):
-
-```csharp
-var configuration = new ConfigurationBuilder()
-    .SetBasePath(AppContext.BaseDirectory)
-    .AddJsonFile("appsettings.json")
-    .Build();
-
-var dataSourceProvider = new DataSourceProvider();
-dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
-```
-
-> **Notes**:
-> - The core library does not depend on a DI container; configuration can be added manually via `AddDataSource` or loaded from `IConfiguration` via `LoadConfiguration`.
-> - `AddDataSource` adds a data source; `SetDefaultDataSource` designates the default data source; when loading from a config section via `LoadConfiguration`, the default data source is specified by the `Default` key.
-> - `LiteOrmSqlFunctionInitializer.Initialize()` registers the built-in SQL function mappings and must be called.
-> - For the complete core-library initialization flow (including DAO/Service construction), see [First End-to-End Example (Core Library Only)](./04-first-example.en.md).
-
-## Approach 2: Framework Integration
-
-When using `LiteOrm.Framework`, configuration is declared in `appsettings.json`, and `RegisterLiteOrm()` automatically performs DI binding, DAO registration, and dialect resolution at startup.
-
-### `appsettings.json` example
+## `appsettings.json` Example
 
 ```json
 {
@@ -84,7 +32,7 @@ When using `LiteOrm.Framework`, configuration is declared in `appsettings.json`,
 }
 ```
 
-#### Minimal Configuration Examples by Database
+### Minimal Configuration Examples by Database
 
 > These are the most minimal configurations, containing only required fields. Copy and replace the connection string with your own.
 
@@ -152,7 +100,7 @@ When using `LiteOrm.Framework`, configuration is declared in `appsettings.json`,
 }
 ```
 
-### Configuration Fields
+## Configuration Fields
 
 | Setting | Purpose | Required | Default |
 | --- | --- | --- | --- |
@@ -170,11 +118,11 @@ When using `LiteOrm.Framework`, configuration is declared in `appsettings.json`,
 
 > **Beginner advice**: For your first setup, only configure the three required fields: `Name`, `ConnectionString`, and `Provider`. Use defaults for the rest.
 
-### Registration Patterns
+## Registration Patterns
 
 > `RegisterLiteOrm()` is defined in the `LiteOrm.Framework` package. Install it with `dotnet add package LiteOrm.Framework` and add `using LiteOrm.Framework;` before use.
 
-#### Console or Worker Application
+### Console or Worker Application
 
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
@@ -182,7 +130,7 @@ var host = Host.CreateDefaultBuilder(args)
     .Build();
 ```
 
-#### ASP.NET Core Application
+### ASP.NET Core Application
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -202,7 +150,7 @@ builder.Host.RegisterLiteOrm(options =>
 });
 ```
 
-#### Complete Program.cs Example
+### Complete Program.cs Example
 
 > Here is a complete ASP.NET Core `Program.cs` showing the typical placement of LiteOrm registration:
 
@@ -225,11 +173,11 @@ app.Run();
 
 > **Note**: `RegisterLiteOrm()` is defined in the `LiteOrm.Framework` package; reference `LiteOrm.Framework` and add `using LiteOrm.Framework;`.
 
-### Logging Integration
+## Logging Integration
 
 LiteOrm runtime logging is built on `Microsoft.Extensions.Logging`. Service-call logs, exception logs, and slow-query logs follow whatever providers the host application has configured.
 
-#### Host Logging Example
+### Host Logging Example
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -240,7 +188,7 @@ builder.Logging.AddConsole();
 builder.Host.RegisterLiteOrm();
 ```
 
-#### What `options.LoggerFactory` is for
+### What `options.LoggerFactory` is for
 
 ```csharp
 builder.Host.RegisterLiteOrm(options =>
@@ -256,9 +204,9 @@ builder.Host.RegisterLiteOrm(options =>
 - The host DI `ILoggerFactory`: handles normal service invocation logs.
 - `options.LoggerFactory`: mainly for framework registration and assembly-scan output.
 
-For detailed usage, see [Logging and Diagnostics](../06-framework/03-logging.en.md).
+For detailed usage, see [Logging and Diagnostics](./03-logging.en.md).
 
-### Multi-Data-Source and Read/Write Guidance
+## Multi-Data-Source and Read/Write Guidance
 
 - Use `[Table(DataSource = "...")]` on an entity to bind it to a data source.
 - For read-heavy, write-light scenarios, use `ReadOnlyConfigs` to configure read replicas:
@@ -268,17 +216,17 @@ For detailed usage, see [Logging and Diagnostics](../06-framework/03-logging.en.
   - When no read replica is configured, reads fall back to the primary connection.
 - When database dialect differences are involved, register a `SqlBuilder` explicitly.
 
-### Common Questions
+## Common Questions
 
-#### What should `Provider` contain?
+### What should `Provider` contain?
 
 Use the full connection type name, for example `System.Data.SqlClient.SqlConnection, System.Data.SqlClient`.
 
-#### When do I need a custom `SqlBuilder`?
+### When do I need a custom `SqlBuilder`?
 
 When the database version is older, or when paging syntax or function behavior differs from the default implementation, you need a custom `SqlBuilder`.
 
-#### Common Beginner Configuration Mistakes
+### Common Beginner Configuration Mistakes
 
 > Here are the most common issues beginners encounter during configuration:
 
@@ -314,7 +262,7 @@ Only the `LiteOrm` package is installed, but the corresponding database NuGet dr
 
 The `Default` value must exactly match one of the `DataSources[].Name` values, otherwise the framework cannot determine which data source to use by default.
 
-#### How to verify your configuration is correct?
+### How to verify your configuration is correct?
 
 After starting the application, check the console output. If you see a log message like `LiteOrm initialized successfully`, the configuration is correct. If an exception occurs, check:
 
@@ -325,7 +273,6 @@ After starting the application, check the console output. If you see a log messa
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [First End-to-End Example (Core Library Only)](./04-first-example.en.md)
-- [First End-to-End Example (Framework)](./05-first-example-framework.en.md)
+- [First End-to-End Example (Framework)](../01-getting-started/05-first-example-framework.en.md)
 - [Configuration Reference](../05-reference/01-configuration-reference.en.md)
 - [Custom SqlBuilder / Dialect Extension](../04-extensibility/03-custom-sqlbuilder.en.md)

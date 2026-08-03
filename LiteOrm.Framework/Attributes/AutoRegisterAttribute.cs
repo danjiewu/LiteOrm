@@ -45,9 +45,9 @@ namespace LiteOrm.Framework
             ServiceTypes = serviceTypes;
         }
         /// <summary>
-        /// 服务生命周期，默认为 Scoped
+        /// 服务生命周期，默认为 Singleton
         /// </summary>
-        public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Scoped;
+        public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Singleton;
 
         /// <summary>
         /// 支持多个服务类型

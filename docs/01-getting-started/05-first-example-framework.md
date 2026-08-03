@@ -4,7 +4,7 @@
 
 > 如果你不需要 Autofac/AOP/DI，可以参考[第一个完整示例（仅核心库）](./04-first-example.md)
 
-> **新手提示**：本文假设你已经完成了 [安装](./02-installation.md) 和 [配置](./03-configuration-and-registration.md)。如果你是第一次接触 LiteOrm，建议从头到尾跟着敲一遍代码，大约需要 15 分钟。本文使用 SQLite 作为演示数据库，无需额外安装数据库服务。
+> **新手提示**：本文假设你已经完成了 [安装](./02-installation.md) 和 [配置](../06-framework/01-configuration-and-registration.md)。如果你是第一次接触 LiteOrm，建议从头到尾跟着敲一遍代码，大约需要 15 分钟。本文使用 SQLite 作为演示数据库，无需额外安装数据库服务。
 
 ## 0. 项目准备
 
@@ -280,7 +280,7 @@ public class UsersController : ControllerBase
 如果你能顺利跑通这段代码，说明 LiteOrm 的基础接入已经完成。  
 推荐做法是：业务层稳定后再逐步把泛型服务收敛到自定义 `IUserService` 中，方便承载事务、审计和组合业务逻辑。
 
-当实体较多时，还可以使用[泛型 Controller 或动态 Controller 生成](../06-framework/04-generic-controller.md)来减少重复代码。
+当实体较多时，还可以使用[泛型 Controller 或动态 Controller 生成](../06-framework/05-generic-controller.md)来减少重复代码。
 
 ## 9. 新手常见问题排查
 

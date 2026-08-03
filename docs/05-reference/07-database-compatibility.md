@@ -273,7 +273,7 @@ LiteOrm 通过 `IBulkProvider` 接口支持高性能批量写入，但**核心�
 ## 相关链接
 
 - [返回目录](../README.md)
-- [示例索引](./06-example-index.md)
-- [生成 SQL 示例](./07-sql-examples.md)
+- [示例索引](./05-example-index.md)
+- [生成 SQL 示例](./06-sql-examples.md)
 - [自定义分页](../03-advanced-topics/05-custom-paging.md)
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)

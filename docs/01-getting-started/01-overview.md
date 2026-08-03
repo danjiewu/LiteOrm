@@ -37,7 +37,7 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，结合了微ORM的�
 ## 4. 快速开始
 
 1. 先完成 [安装与环境要求](./02-installation.md)。
-2. 阅读 [配置与注册](./03-configuration-and-registration.md)，了解核心库与 Framework 两种配置方式。
+2. 使用 Framework 集成时，阅读 [配置与注册](../06-framework/01-configuration-and-registration.md)。
 3. 根据项目类型跑通第一个示例：[仅核心库](./04-first-example.md) 或 [Framework 版](./05-first-example-framework.md)。
 4. 然后进入 [实体映射与数据源](../02-core-usage/01-entity-mapping.md)、[查询总览](../02-core-usage/04-query-overview.md) 与 [Lambda 查询指南](../02-core-usage/05-lambda-guide.md)。
 
@@ -75,7 +75,8 @@ LiteOrm 采用模块化设计，核心功能由 `LiteOrm.Common` 与 `LiteOrm`�
 ├── LiteOrm.Remote/          # 远程调用客户端
 │   ├── Interceptor/         # 远程代理拦截器
 │   ├── Proxy/               # 动态代理
-│   └── Transport/           # 传输层
+│   ├── Transport/           # 传输层
+│   └── RemoteProxyGenerator.cs  # 远程代理生成器（共享 ProxyGenerator 单例）
 ├── LiteOrm.Remote.Server/   # 远程调用服务端
 ├── LiteOrm.Demo/            # 示例项目
 │   ├── DAO/                 # 示例DAO
@@ -497,5 +498,5 @@ LiteOrm 支持子查询、JOIN、CTE（公共表表达式）、窗口函数、�
 - [GitHub 仓库](https://github.com/danjiewu/LiteOrm)
 - [返回目录](../README.md)
 - [安装与环境要求](./02-installation.md)
-- [配置与注册](./03-configuration-and-registration.md)
+- [配置与注册](../06-framework/01-configuration-and-registration.md)
 - [API 索引](../05-reference/02-api-index.md)

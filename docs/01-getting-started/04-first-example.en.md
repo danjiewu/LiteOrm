@@ -66,18 +66,15 @@ dataSourceProvider.AddDataSource(new DataSourceConfig
 });
 dataSourceProvider.SetDefaultDataSource("DefaultConnection");
 
-// 2. Initialize SQL function mappings (registers built-in database function handlers)
-LiteOrmSqlFunctionInitializer.Initialize();
-
-// 3. Create connection pool factory
+// 2. Create connection pool factory
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 DAOContextPoolFactory.Set(() => poolFactory);
 
-// 4. Create session manager and set as current session
+// 3. Create session manager and set as current session
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 5. Create DAO and service
+// 4. Create DAO and service
 var objectDAO = new ObjectDAO<User>();
 var objectViewDAO = new ObjectViewDAO<User>();
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
@@ -123,18 +120,15 @@ var configuration = new ConfigurationBuilder()
 var dataSourceProvider = new DataSourceProvider();
 dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
 
-// 3. Initialize SQL function mappings
-LiteOrmSqlFunctionInitializer.Initialize();
-
-// 4. Create connection pool factory
+// 3. Create connection pool factory
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 DAOContextPoolFactory.Set(() => poolFactory);
 
-// 5. Create session manager and set as current session
+// 4. Create session manager and set as current session
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 6. Create DAO and service
+// 5. Create DAO and service
 var objectDAO = new ObjectDAO<User>();
 var objectViewDAO = new ObjectViewDAO<User>();
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
@@ -144,7 +138,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
 > **Line-by-line explanation**:
 > - `DataSourceProvider`: manages data source configuration. Add sources explicitly via `AddDataSource`, or load them in bulk from `IConfiguration` via `LoadConfiguration`; designate the default via `SetDefaultDataSource` or the `Default` key in the config section.
-> - `LiteOrmSqlFunctionInitializer.Initialize()`: registers SQL function mappings for each database dialect (e.g., `NOW()`, `DATE_FORMAT`); must be called.
+> - `LiteOrmSqlFunctionInitializer.Initialize()`: SQL function mappings are automatically registered via SqlBuilder's static constructor on first access—no manual call needed.
 > - `DAOContextPoolFactory`: creates connection pools based on data source configuration and manages connection acquisition and recycling. Call `Set` to register it as the global singleton so DAOs can resolve the provider type internally via the static property.
 > - `SessionManager`: manages database sessions, transactions, and async context. `SetCurrent` sets it as the session for the current async context.
 > - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. Both have parameterless constructors and obtain global singletons via `TableInfoProvider.Instance` and `BulkProviderFactory.Instance` internally, no manual injection needed.
@@ -172,14 +166,11 @@ var configuration = new ConfigurationBuilder()
 var dataSourceProvider = new DataSourceProvider();
 dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
 
-// 2. Initialize SQL function mappings
-LiteOrmSqlFunctionInitializer.Initialize();
-
-// 3. Create pool factory and set as global singleton
+// 2. Create pool factory and set as global singleton
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 DAOContextPoolFactory.Set(() => poolFactory);
 
-// 4. Register services into the DI container
+// 3. Register services into the DI container
 var services = new ServiceCollection();
 
 // Singleton services
@@ -197,10 +188,10 @@ services.AddScoped(typeof(ObjectViewDAO<>));
 services.AddScoped(typeof(EntityService<>));
 services.AddScoped(typeof(EntityViewService<>));
 
-// 5. Build the ServiceProvider
+// 4. Build the ServiceProvider
 var serviceProvider = services.BuildServiceProvider();
 
-// 6. Delegate SessionManager resolution to the ServiceProvider
+// 5. Delegate SessionManager resolution to the ServiceProvider
 //    SessionManager.SetCurrent accepts a factory delegate that is
 //    executed lazily on first access to SessionManager.Current and cached
 SessionManager.SetCurrent(() => serviceProvider.GetService<SessionManager>());
@@ -386,14 +377,13 @@ poolFactory.Dispose();
 
 ### Issue 3: `Function 'XXX' is not supported` exception
 
-**Cause**: You forgot to call `LiteOrmSqlFunctionInitializer.Initialize()`.
+**Cause**: This should not happen anymore as SQL function mappings are now auto-registered. If you encounter this, it means the function is not in the built-in mapping.
 
-**Solution**: Call `LiteOrmSqlFunctionInitializer.Initialize()` before creating the connection pool factory to register the built-in SQL function mappings.
+**Solution**: Register the function's SQL handler manually via `sqlBuilder.RegisterFunctionSqlHandler(...)`.
 
 ## Run Verification Checklist
 
 - [ ] `dotnet build` compiles without errors.
-- [ ] The initialization code calls `LiteOrmSqlFunctionInitializer.Initialize()`.
 - [ ] The initialization code calls `SessionManager.SetCurrent(...)` (manual construction or ServiceProvider approach).
 - [ ] The initialization code calls `DAOContextPoolFactory.Set(() => poolFactory)`.
 - [ ] When using the ServiceProvider approach, `SessionManager` is registered as Scoped and `SetCurrent` is called when entering a scope.
@@ -405,7 +395,7 @@ poolFactory.Dispose();
 
 - [Back to docs hub](../README.md)
 - [Installation](./02-installation.en.md)
-- [Configuration and Registration](./03-configuration-and-registration.en.md)
+- [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md)
 - [First End-to-End Example (Framework)](./05-first-example-framework.en.md)
 - [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
 - [Query Overview](../02-core-usage/04-query-overview.en.md)

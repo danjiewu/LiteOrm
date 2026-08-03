@@ -37,7 +37,7 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 ## 4. Recommended reading order
 
 1. [Installation](./02-installation.en.md)
-2. [Configuration and Registration](./03-configuration-and-registration.en.md) (when using `LiteOrm.Framework`)
+2. [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md) (when using `LiteOrm.Framework`)
 3. [First End-to-End Example](./05-first-example-framework.en.md)
 4. [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
 5. [Query Overview](../02-core-usage/04-query-overview.en.md)
@@ -77,7 +77,8 @@ LiteOrm uses a modular design that clearly separates core functionality, common 
 ├── LiteOrm.Remote/          # Remote client
 │   ├── Interceptor/         # Remote proxy interceptors
 │   ├── Proxy/               # Dynamic proxies
-│   └── Transport/           # Transport layer
+│   ├── Transport/           # Transport layer
+│   └── RemoteProxyGenerator.cs  # Remote proxy generator (shared ProxyGenerator singleton)
 ├── LiteOrm.Remote.Server/   # Remote server
 ├── LiteOrm.Demo/            # Demo project
 │   ├── DAO/                 # Demo DAO
@@ -498,6 +499,6 @@ The names in attributes are the actual database names. If your C# property name 
 
 - [Back to docs hub](../README.md)
 - [Installation and Environment Requirements](./02-installation.en.md)
-- [Configuration and Registration](./03-configuration-and-registration.en.md)
+- [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md)
 - [API Index](../05-reference/02-api-index.en.md)
 - [Demo Project](../../LiteOrm.Demo/)

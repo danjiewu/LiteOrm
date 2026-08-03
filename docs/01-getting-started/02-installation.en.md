@@ -31,7 +31,7 @@ This document covers the runtime environment, database support, and two installa
 - TiDB (MySQL compatible)
 - GreatDB (MySQL compatible)
 
-> Domestic databases inherit behavior from their mainstream counterparts and are auto-detected with priority. See [Database Compatibility Notes](../05-reference/08-database-compatibility.en.md) for details.
+> Domestic databases inherit behavior from their mainstream counterparts and are auto-detected with priority. See [Database Compatibility Notes](../05-reference/07-database-compatibility.en.md) for details.
 
 > For older database versions where default pagination syntax is incompatible, refer to [Custom Paging](../03-advanced-topics/05-custom-paging.en.md) and [Custom SqlBuilder / Dialect Extension](../04-extensibility/03-custom-sqlbuilder.en.md).
 
@@ -127,7 +127,7 @@ dotnet run
 ## Next Steps After Installation
 
 - **Core only**: use DAO directly for data access; see [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md) and [Query Overview](../02-core-usage/04-query-overview.en.md).
-- **Framework integration**: call `RegisterLiteOrm()` during host startup; see [Configuration and Registration](./03-configuration-and-registration.en.md) and [First End-to-End Example](./05-first-example-framework.en.md).
+- **Framework integration**: call `RegisterLiteOrm()` during host startup; see [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md) and [First End-to-End Example](./05-first-example-framework.en.md).
 
 > **SQLite quick start**: If you want to try SQLite quickly, the connection string is simply `Data Source=myapp.db`—no database server needed. See the [First End-to-End Example](./05-first-example-framework.en.md) for a complete walkthrough.
 
@@ -152,6 +152,6 @@ No. LiteOrm itself is very lightweight—the core package is only a few hundred 
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [Configuration and Registration](./03-configuration-and-registration.en.md)
+- [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md)
 - [First End-to-End Example](./05-first-example-framework.en.md)
 - [Configuration Reference](../05-reference/01-configuration-reference.en.md)

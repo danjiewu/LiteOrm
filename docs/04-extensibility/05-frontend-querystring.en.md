@@ -138,6 +138,6 @@ QueryString is only a transport format. Authorization is still enforced on the b
 ## Related Links
 
 - [Back to index](../README.md)
-- [Permission filtering](../06-framework/02-permission-filtering.en.md)
+- [Permission filtering](../06-framework/03-permission-filtering.en.md)
 - [Query Overview](../02-core-usage/04-query-overview.en.md)
 

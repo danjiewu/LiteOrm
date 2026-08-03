@@ -58,7 +58,7 @@ LiteOrm 的表达式对象模型，用来描述 SQL 结构，可用于动态拼�
 
 ## `ConstFilter` / `Column.Constant`
 
-`ColumnAttribute` 的 `Constant` 属性，用于声明固定筛选条件。在元数据阶段被解析并收敛为 `TableDefinition.ConstFilter`，生成 SQL 时自动注入主表 `WHERE` 和关联表 `JOIN ... ON`。适合启用态、固定分区、固定租户类型等模型级恒定规则，不适合当前用户或当前租户等运行时上下文。详见[权限过滤](../06-framework/02-permission-filtering.md)。
+`ColumnAttribute` 的 `Constant` 属性，用于声明固定筛选条件。在元数据阶段被解析并收敛为 `TableDefinition.ConstFilter`，生成 SQL 时自动注入主表 `WHERE` 和关联表 `JOIN ... ON`。适合启用态、固定分区、固定租户类型等模型级恒定规则，不适合当前用户或当前租户等运行时上下文。详见[权限过滤](../06-framework/03-permission-filtering.md)。
 
 ## `GenericSqlExpr`
 

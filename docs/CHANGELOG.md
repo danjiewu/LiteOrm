@@ -4,17 +4,11 @@
 
 ### Breaking Changes
 
-本版本引入多项破坏性变更，详细迁移指南见 [8.1.0 升级指南](./upgrade-guides/01-breaking-changes-8.1.0.md)。
+本版本引入多项破坏性变更，详细迁移指南见 [8.1 升级指南](./upgrade-guides/01-upgrade-guide-8.1.md)。
 
-- `AutoRegisterAttribute` 从 `LiteOrm.Common` 迁移至 `LiteOrm.Framework`（命名空间改为 `LiteOrm.Framework`），`Lifetime` 枚举移除，改用内置 `ServiceLifetime`（默认 `Scoped`）
-- `LiteOrm` 核心 DAO/Service（`EntityService`/`EntityViewService`/`ObjectDAO`/`ObjectViewDAO`/`DataDAO`/`DataViewDAO`/`DAOBase`/`AttributeTableInfoProvider`/`BulkProviderFactory`/`DdlGen`）移除 `[AutoRegister]` 自动注册，改由 `LiteOrm.Framework` 的 `AddCoreLiteOrmServices()` 显式注册
-- `LiteOrm` 核心移除 `Microsoft.Extensions.Hosting` 依赖，DI 集成仅由 `LiteOrm.Framework` 提供；`LiteOrmServiceExtensions` 与 `LiteOrmCoreInitializer` 移至 `LiteOrm.Framework`
-- `DataSourceProvider` 改为显式配置 API（`AddDataSource`/`SetDefaultDataSource`），不再接受 `IConfiguration`；`LiteOrm.Framework` 新增 `LoadConfiguration` 扩展从宿主 `LiteOrm` 配置节点加载
+- `RegisterLiteOrm()` 从 `LiteOrm` 核心包移至 `LiteOrm.Framework` 包（新增），命名空间由 `LiteOrm` 改为 `LiteOrm.Framework`
+- `AutoRegisterAttribute` 从 `LiteOrm.Common` 迁移至 `LiteOrm.Framework`（命名空间改为 `LiteOrm.Framework`），`Lifetime` 枚举移除，改用内置 `ServiceLifetime`（默认 `Singleton`）
 - 自定义 `IBulkProvider` 的数据库连接类型标记由 `[AutoRegister(Key = ...)]` 改为新增的 `[BulkProvider(typeof(...))]`（`LiteOrm.Common`）
-- 核心非泛型标记接口上的 `[AutoRegister(false)]` 移除，扫描逻辑改为按接口全名排除
-
-### 修复
-- `ServicePermissionAttributeTests`：internal 方法反射需带 `BindingFlags.NonPublic`
 
 ### 改进
 - `PreparedSql` 移至 `LiteOrm.Common` 项目，参数类型由 `KeyValuePair` 改为自定义 `Param` (`f50c72e`)

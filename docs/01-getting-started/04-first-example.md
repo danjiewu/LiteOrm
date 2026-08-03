@@ -66,18 +66,15 @@ dataSourceProvider.AddDataSource(new DataSourceConfig
 });
 dataSourceProvider.SetDefaultDataSource("DefaultConnection");
 
-// 2. 初始化 SQL 函数映射（注册内置数据库函数处理器）
-LiteOrmSqlFunctionInitializer.Initialize();
-
-// 3. 创建连接池工厂
+// 2. 创建连接池工厂
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 DAOContextPoolFactory.Set(() => poolFactory);
 
-// 4. 创建会话管理器并设为当前会话
+// 3. 创建会话管理器并设为当前会话
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 5. 创建 DAO 和服务
+// 4. 创建 DAO 和服务
 var objectDAO = new ObjectDAO<User>();
 var objectViewDAO = new ObjectViewDAO<User>();
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
@@ -123,18 +120,15 @@ var configuration = new ConfigurationBuilder()
 var dataSourceProvider = new DataSourceProvider();
 dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
 
-// 3. 初始化 SQL 函数映射
-LiteOrmSqlFunctionInitializer.Initialize();
-
-// 4. 创建连接池工厂
+// 3. 创建连接池工厂
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 DAOContextPoolFactory.Set(() => poolFactory);
 
-// 5. 创建会话管理器并设为当前会话
+// 4. 创建会话管理器并设为当前会话
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 6. 创建 DAO 和服务
+// 5. 创建 DAO 和服务
 var objectDAO = new ObjectDAO<User>();
 var objectViewDAO = new ObjectViewDAO<User>();
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
@@ -144,7 +138,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
 > **逐行解释**：
 > - `DataSourceProvider`：管理数据源配置。通过 `AddDataSource` 显式添加，或通过 `LoadConfiguration` 从 `IConfiguration` 批量加载；`SetDefaultDataSource` 或配置节中的 `Default` 键指定默认数据源。
-> - `LiteOrmSqlFunctionInitializer.Initialize()`：注册各数据库方言的 SQL 函数映射（如 `NOW()`、`DATE_FORMAT` 等），必须调用。
+> - `LiteOrmSqlFunctionInitializer.Initialize()`：SQL 函数映射在首次访问 SqlBuilder 时由静态构造函数自动注册，无需手动调用。
 > - `DAOContextPoolFactory`：根据数据源配置创建连接池，管理连接的获取与回收。通过 `Set` 设置为全局单例，使 DAO 内部可通过静态属性获取提供程序类型。
 > - `SessionManager`：管理数据库会话、事务和异步上下文。通过 `SetCurrent` 设置为当前异步上下文的会话。
 > - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。两者均有无参构造函数，内部通过 `TableInfoProvider.Instance` 和 `BulkProviderFactory.Instance` 获取全局单例，无需手动传入。
@@ -172,14 +166,11 @@ var configuration = new ConfigurationBuilder()
 var dataSourceProvider = new DataSourceProvider();
 dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
 
-// 2. 初始化 SQL 函数映射
-LiteOrmSqlFunctionInitializer.Initialize();
-
-// 3. 创建连接池工厂并设为全局单例
+// 2. 创建连接池工厂并设为全局单例
 var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 DAOContextPoolFactory.Set(() => poolFactory);
 
-// 4. 注册服务到 DI 容器
+// 3. 注册服务到 DI 容器
 var services = new ServiceCollection();
 
 // 单例服务
@@ -197,10 +188,10 @@ services.AddScoped(typeof(ObjectViewDAO<>));
 services.AddScoped(typeof(EntityService<>));
 services.AddScoped(typeof(EntityViewService<>));
 
-// 5. 构建 ServiceProvider
+// 4. 构建 ServiceProvider
 var serviceProvider = services.BuildServiceProvider();
 
-// 6. 将 SessionManager 的解析委托给 ServiceProvider
+// 5. 将 SessionManager 的解析委托给 ServiceProvider
 //    SessionManager.SetCurrent 接受一个工厂委托，
 //    在首次访问 SessionManager.Current 时延迟执行并缓存结果
 SessionManager.SetCurrent(() => serviceProvider.GetService<SessionManager>());
@@ -386,14 +377,13 @@ poolFactory.Dispose();
 
 ### 问题三：`Function 'XXX' is not supported` 异常
 
-**原因**：忘记调用 `LiteOrmSqlFunctionInitializer.Initialize()`。
+**原因**：SQL 函数映射现已自动注册，正常情况下不应出现此异常。如果遇到此异常，说明该函数不在内置映射中。
 
-**解决方法**：在创建连接池工厂之前调用 `LiteOrmSqlFunctionInitializer.Initialize()`，注册内置 SQL 函数映射。
+**解决方法**：通过 `sqlBuilder.RegisterFunctionSqlHandler(...)` 手动注册该函数的 SQL 处理器。
 
 ## 运行验证清单
 
 - [ ] `dotnet build` 编译通过，无错误。
-- [ ] 初始化代码中调用了 `LiteOrmSqlFunctionInitializer.Initialize()`。
 - [ ] 初始化代码中调用了 `SessionManager.SetCurrent(...)`（手动构造或 ServiceProvider 方式）。
 - [ ] 初始化代码中调用了 `DAOContextPoolFactory.Set(() => poolFactory)`。
 - [ ] 使用 ServiceProvider 方式时，`SessionManager` 注册为 Scoped，且在进入作用域时调用了 `SetCurrent`。
@@ -405,7 +395,7 @@ poolFactory.Dispose();
 
 - [返回目录](../README.md)
 - [安装](./02-installation.md)
-- [配置与注册](./03-configuration-and-registration.md)
+- [配置与注册](../06-framework/01-configuration-and-registration.md)
 - [第一个完整示例（Framework 版）](./05-first-example-framework.md)
 - [实体映射与数据源](../02-core-usage/01-entity-mapping.md)
 - [查询总览](../02-core-usage/04-query-overview.md)

@@ -6,12 +6,12 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程服务调用</Description>
-    <AssemblyVersion>8.0.3.0</AssemblyVersion>
-    <FileVersion>8.0.3.0</FileVersion>
-    <VersionPrefix>8.0.3</VersionPrefix>
+    <AssemblyVersion>8.0.4.0</AssemblyVersion>
+    <FileVersion>8.0.4.0</FileVersion>
+    <VersionPrefix>8.0.4</VersionPrefix>
     <PackageReleaseNotes>
-      新增 Remote/Server 身份认证机制，支持 Cookie/JWT 等多种认证方式，支持UserName/Password、ClientID/Key模式，支持单用户/多用户身份模式；
-      新增 RequestID 用于跟踪请求；
+      LiteOrm.Common更新至8.1；
+      ProxyGenerator采用单例模式。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
     <Copyright>Copyright @ 2026 danjiewu</Copyright>

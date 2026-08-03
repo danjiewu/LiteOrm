@@ -1,0 +1,115 @@
+# LiteOrm 8.1 Upgrade Guide
+
+This guide describes the changes required when upgrading to v8.1.0.
+
+## Version Overview
+
+| Package | New Version |
+|---|---|
+| `LiteOrm` | 8.1.0 |
+| `LiteOrm.Common` | 8.1.0 |
+| `LiteOrm.Framework` | 8.1.0 (new) |
+
+---
+
+## Migration Steps
+
+### Step 1: Reference the `LiteOrm.Framework` Package
+
+The `RegisterLiteOrm()` extension method moved from the `LiteOrm` core package to `LiteOrm.Framework`, and the namespace changed from `LiteOrm` to `LiteOrm.Framework`.
+
+```xml
+<PackageReference Include="LiteOrm.Framework" Version="8.1.0" />
+```
+
+`LiteOrm.Framework` transitively references `LiteOrm` and `LiteOrm.Common`; no need to declare them separately.
+
+Update `using`:
+
+```csharp
+// Old
+using LiteOrm;
+
+// New
+using LiteOrm.Framework;
+```
+
+The `RegisterLiteOrm()` method signature is unchanged; the calling convention remains the same.
+
+### Step 2: Update `[AutoRegister]` Namespace
+
+`AutoRegisterAttribute` moved from `LiteOrm.Common` to `LiteOrm.Framework`, and the namespace changed accordingly:
+
+```csharp
+// Old
+using LiteOrm.Common;  // AutoRegisterAttribute, Lifetime enum
+
+// New
+using LiteOrm.Framework;  // AutoRegisterAttribute
+using Microsoft.Extensions.DependencyInjection;  // ServiceLifetime
+```
+
+### Step 3: Replace `Lifetime` Enum
+
+The `Lifetime` enum in `LiteOrm.Common` was removed in favor of the built-in `ServiceLifetime`:
+
+```csharp
+// Old
+[AutoRegister(Lifetime.Singleton)]
+public class MyService : IMyService { }
+
+// New
+[AutoRegister(ServiceLifetime.Singleton)]
+public class MyService : IMyService { }
+```
+
+The default value remains `Singleton`.
+
+### Step 4: Update `BulkProvider` Attribute (If You Have Custom Implementations)
+
+Custom `IBulkProvider` implementations previously declared their target database connection type via `[AutoRegister(Key = typeof(XxxConnection))]`. This is now `[BulkProvider(typeof(XxxConnection))]`:
+
+```csharp
+// Old
+[AutoRegister(Key = typeof(MySqlConnection))]
+public class MySqlBulkCopyProvider : IBulkProvider { }
+
+// New
+[BulkProvider(typeof(MySqlConnection))]
+public class MySqlBulkCopyProvider : IBulkProvider { }
+```
+
+`BulkProviderAttribute` is defined in `LiteOrm.Common` (`LiteOrm.Common.Attributes` namespace).
+
+---
+
+## FAQ
+
+### Q1: `IEntityService<T>` can't be resolved from DI after upgrade?
+
+Make sure the host uses `RegisterLiteOrm()` (from `LiteOrm.Framework`). Core types (`EntityService<T>`, `ObjectDAO<T>`, etc.) are no longer registered via `[AutoRegister]` scanning but are explicitly registered by `RegisterCoreServices()`.
+
+### Q2: My business service uses `[AutoRegister]`. Does it still work?
+
+Yes. As long as the project references `LiteOrm.Framework` and adds `using LiteOrm.Framework;`, auto-registration works as before.
+
+### Q3: My business service doesn't declare `ServiceTypes`. Can it still be resolved via its interface?
+
+Yes. When `ServiceTypes` is not specified, the framework infers the non-system-namespace interfaces implemented by the type as service types. User-defined services resolved via interfaces need no explicit `ServiceTypes`.
+
+### Q4: Will my existing MS DI `IServiceCollection` registrations still work?
+
+Yes. `RegisterLiteOrm()` uses `AutofacServiceProviderFactory` internally to bridge MS DI. Existing `services.AddXxx()` registrations remain effective.
+
+---
+
+## Verification
+
+After upgrading, ensure:
+
+```bash
+dotnet build .\LiteOrm.sln
+dotnet test .\LiteOrm.sln
+```
+
+The full test suite (1922 tests) passing is the verification baseline for this release.

@@ -1,4 +1,4 @@
-﻿## 导航
+## 导航
 
 本文档是 LiteOrm 主要内容介绍。如需深入学习，请参考以下导航：
 
@@ -8,7 +8,6 @@
 |-|-|-|
 |[概览](./01-getting-started/01-overview.md)|[Overview](./01-getting-started/01-overview.en.md)|框架介绍、项目组成与适用场景|
 |[安装](./01-getting-started/02-installation.md)|[Installation](./01-getting-started/02-installation.en.md)|环境要求与安装（核心库 / Framework 双场景）|
-|[配置与注册](./01-getting-started/03-configuration-and-registration.md)|[Configuration & Registration](./01-getting-started/03-configuration-and-registration.en.md)|核心库手动配置与 Framework DI 注册|
 |[第一个完整示例（仅核心库）](./01-getting-started/04-first-example.md)|[First Example (Core Only)](./01-getting-started/04-first-example.en.md)|不依赖 DI 容器的最小可运行示例|
 |[第一个完整示例（Framework 版）](./01-getting-started/05-first-example-framework.md)|[First Example (Framework)](./01-getting-started/05-first-example-framework.en.md)|ASP.NET Core + Autofac 完整示例|
 
@@ -38,8 +37,6 @@
 |[安全性](./03-advanced-topics/08-security.md)|[Security](./03-advanced-topics/08-security.en.md)|SQL 注入防护与安全机制|
 |[远程服务](./03-advanced-topics/09-remote-service.md)|[Remote Service](./03-advanced-topics/09-remote-service.en.md)|Remote 客户端与服务端使用|
 
-> 注：事务、权限过滤、日志、泛型 Controller 等内容已迁移至框架使用篇（06）。
-
 ### 扩展开发篇 / Extensibility
 
 |中文|English|说明|
@@ -58,10 +55,11 @@
 
 |中文|English|说明|
 |-|-|-|
-|[事务](./06-framework/01-transactions.md)|[Transactions](./06-framework/01-transactions.en.md)|事务与并发控制|
-|[权限过滤](./06-framework/02-permission-filtering.md)|[Permission Filtering](./06-framework/02-permission-filtering.en.md)|用户范围过滤与访问控制|
-|[日志与诊断](./06-framework/03-logging.md)|[Logging \& Diagnostics](./06-framework/03-logging.en.md)|ServiceLog、Log 特性与慢查询日志|
-|[泛型 Controller 与动态生成](./06-framework/04-generic-controller.md)|[Generic Controller](./06-framework/04-generic-controller.en.md)|泛型基类 Controller 与动态 Controller 生成|
+|[配置与注册](./06-framework/01-configuration-and-registration.md)|[Configuration & Registration](./06-framework/01-configuration-and-registration.en.md)|Framework DI 注册与 appsettings.json 配置|
+|[事务](./06-framework/02-transactions.md)|[Transactions](./06-framework/02-transactions.en.md)|事务与并发控制|
+|[权限过滤](./06-framework/03-permission-filtering.md)|[Permission Filtering](./06-framework/03-permission-filtering.en.md)|用户范围过滤与访问控制|
+|[日志与诊断](./06-framework/04-logging.md)|[Logging \& Diagnostics](./06-framework/04-logging.en.md)|ServiceLog、Log 特性与慢查询日志|
+|[泛型 Controller 与动态生成](./06-framework/05-generic-controller.md)|[Generic Controller](./06-framework/05-generic-controller.en.md)|泛型基类 Controller 与动态 Controller 生成|
 
 ### 参考文档 / Reference
 
@@ -70,12 +68,10 @@
 |[配置参考](./05-reference/01-configuration-reference.md)|[Config Reference](./05-reference/01-configuration-reference.en.md)|配置项说明|
 |[API索引](./05-reference/02-api-index.md)|[API Index](./05-reference/02-api-index.en.md)|API 快速索引|
 |[术语表](./05-reference/03-glossary.md)|[Glossary](./05-reference/03-glossary.en.md)|术语解释|
-|[AI指南](./05-reference/05-ai-guide.md)|[AI Guide](./05-reference/05-ai-guide.en.md)|AI 辅助开发|
-|[示例索引](./05-reference/06-example-index.md)|[Example Index](./05-reference/06-example-index.en.md)|示例代码索引|
-|[SQL示例](./05-reference/07-sql-examples.md)|[SQL Examples](./05-reference/07-sql-examples.en.md)|SQL 生成示例|
-|[兼容性](./05-reference/08-database-compatibility.md)|[Compatibility](./05-reference/08-database-compatibility.en.md)|各数据库差异|
-
-> 注：04 编号为旧版迁移映射文档，已完成使命后删除。
+|[AI指南](./05-reference/04-ai-guide.md)|[AI Guide](./05-reference/04-ai-guide.en.md)|AI 辅助开发|
+|[示例索引](./05-reference/05-example-index.md)|[Example Index](./05-reference/05-example-index.en.md)|示例代码索引|
+|[SQL示例](./05-reference/06-sql-examples.md)|[SQL Examples](./05-reference/06-sql-examples.en.md)|SQL 生成示例|
+|[兼容性](./05-reference/07-database-compatibility.md)|[Compatibility](./05-reference/07-database-compatibility.en.md)|各数据库差异|
 
 ### 相关资源 / Related Resources
 
@@ -86,15 +82,14 @@
 |[单元测试](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests)|[Unit tests](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests)|
 |[性能报告](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)|[Benchmark report](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)|
 |[变更日志](./CHANGELOG.md)|[Changelog](./CHANGELOG.en.md)|
-|[8.1.0 升级指南（Breaking Changes）](./upgrade-guides/01-breaking-changes-8.1.0.md)|[8.1.0 Upgrade Guide](./upgrade-guides/01-breaking-changes-8.1.0.en.md)|
+|[8.1 升级指南](./upgrade-guides/01-upgrade-guide-8.1.md)|[8.1 Upgrade Guide](./upgrade-guides/01-upgrade-guide-8.1.en.md)|
 
 ### 推荐阅读路径
 
 1. 第一次接触 LiteOrm：先看"入门篇"的[概览](./01-getting-started/01-overview.md)与[安装](./01-getting-started/02-installation.md)。
 2. 配置与第一个示例：根据项目类型选择[仅核心库](./01-getting-started/04-first-example.md)或 [Framework 版](./01-getting-started/05-first-example-framework.md)。
 3. 准备接入业务项目：继续阅读"核心使用篇"，建立实体、查询、写入和关联的整体认识。
-4. 使用 `LiteOrm.Framework` 集成（Autofac、AOP、动态 Controller）：阅读"框架使用篇"。
+4. 使用 `LiteOrm.Framework` 集成（Autofac、AOP、动态 Controller）：先阅读"框架使用篇"的[配置与注册](./06-framework/01-configuration-and-registration.md)，再了解事务、权限过滤等特性。
 5. 涉及分表、性能或数据库方言差异：继续阅读"高级特性篇"。
 6. 需要扩展框架能力：查阅"扩展开发篇"。
 7. 需要快速确认配置项、接口名或术语：直接查阅"参考篇"。
-

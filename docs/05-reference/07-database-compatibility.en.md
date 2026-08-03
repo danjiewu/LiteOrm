@@ -273,7 +273,7 @@ That keeps business-layer code more stable over time.
 ## Related Links
 
 - [Back to English docs hub](../README.md)
-- [Example Index](./06-example-index.en.md)
-- [Generated SQL Examples](./07-sql-examples.en.md)
+- [Example Index](./05-example-index.en.md)
+- [Generated SQL Examples](./06-sql-examples.en.md)
 - [Custom paging](../03-advanced-topics/05-custom-paging.en.md)
 - [Custom SqlBuilder and dialect extension](../04-extensibility/03-custom-sqlbuilder.en.md)

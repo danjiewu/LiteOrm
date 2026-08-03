@@ -426,6 +426,6 @@ The benchmark data above is based on the following configuration (per `LiteOrm.B
 
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/08-associations.en.md)
-- [Transactions](../06-framework/01-transactions.en.md)
+- [Transactions](../06-framework/02-transactions.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
 

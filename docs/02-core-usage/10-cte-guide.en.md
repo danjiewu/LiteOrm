@@ -258,6 +258,6 @@ var result = await dataViewDAO.Search(
 - [Expr Guide](./06-expr-guide.en.md)
 - [ExprString Guide](./07-exprstring-guide.en.md)
 - [Lambda & Expr Mixing](./09-lambda-expr-mixing.en.md)
-- [AI Guide](../05-reference/05-ai-guide.en.md)
+- [AI Guide](../05-reference/04-ai-guide.en.md)
 - [Back to docs hub](../README.md)
 

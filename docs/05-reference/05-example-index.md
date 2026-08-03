@@ -110,7 +110,7 @@
 
 ### 事务
 
-- 文档入口：[事务管理](../06-framework/01-transactions.md)
+- 文档入口：[事务管理](../06-framework/02-transactions.md)
 - 代码来源：
   - `LiteOrm.Demo\Demos\TransactionDemo.cs`
 - 重点内容：
@@ -209,7 +209,7 @@
 5. [Expr 使用指南](../02-core-usage/06-expr-guide.md)
 6. [ExprString 使用指南](../02-core-usage/07-exprstring-guide.md)
 7. [关联查询](../02-core-usage/08-associations.md)
-8. [事务管理](../06-framework/01-transactions.md)
+8. [事务管理](../06-framework/02-transactions.md)
 9. [分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)
 10. [性能优化](../03-advanced-topics/03-performance.md)
 11. [表达式扩展](../04-extensibility/01-expression-extension.md)

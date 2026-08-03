@@ -4,17 +4,11 @@
 
 ### Breaking Changes
 
-This release introduces several breaking changes. See the [8.1.0 Upgrade Guide](./upgrade-guides/01-breaking-changes-8.1.0.en.md) for migration details.
+This release introduces several breaking changes. See the [8.1 Upgrade Guide](./upgrade-guides/01-upgrade-guide-8.1.en.md) for migration details.
 
-- `AutoRegisterAttribute` moved from `LiteOrm.Common` to `LiteOrm.Framework` (namespace changed to `LiteOrm.Framework`); the `Lifetime` enum was removed in favor of the built-in `ServiceLifetime` (default `Scoped`)
-- Core `LiteOrm` DAO/Service (`EntityService`/`EntityViewService`/`ObjectDAO`/`ObjectViewDAO`/`DataDAO`/`DataViewDAO`/`DAOBase`/`AttributeTableInfoProvider`/`BulkProviderFactory`/`DdlGen`) no longer use `[AutoRegister]`; they are now explicitly registered by `AddCoreLiteOrmServices()` in `LiteOrm.Framework`
-- `LiteOrm` core removed the `Microsoft.Extensions.Hosting` dependency; DI integration is provided only by `LiteOrm.Framework`. `LiteOrmServiceExtensions` and `LiteOrmCoreInitializer` moved to `LiteOrm.Framework`
-- `DataSourceProvider` switched to an explicit configuration API (`AddDataSource`/`SetDefaultDataSource`) and no longer accepts `IConfiguration`; `LiteOrm.Framework` added `LoadConfiguration` to read the host `LiteOrm` config section
+- `RegisterLiteOrm()` moved from the `LiteOrm` core package to the new `LiteOrm.Framework` package; namespace changed from `LiteOrm` to `LiteOrm.Framework`
+- `AutoRegisterAttribute` moved from `LiteOrm.Common` to `LiteOrm.Framework` (namespace changed to `LiteOrm.Framework`); the `Lifetime` enum was removed in favor of the built-in `ServiceLifetime` (default `Singleton`)
 - Custom `IBulkProvider` connection-type markers changed from `[AutoRegister(Key = ...)]` to the new `[BulkProvider(typeof(...))]` (`LiteOrm.Common`)
-- `[AutoRegister(false)]` removed from core marker interfaces; scan logic now excludes them by full name
-
-### Fixed
-- `ServicePermissionAttributeTests`: internal method reflection needs `BindingFlags.NonPublic`
 
 ### Changed
 - Moved `PreparedSql` to `LiteOrm.Common`; parameter type changed from `KeyValuePair` to custom `Param` (`f50c72e`)

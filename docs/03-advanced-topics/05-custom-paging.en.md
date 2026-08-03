@@ -345,5 +345,5 @@ By implementing a custom `SqlBuilder`, you can provide optimal paging strategies
 
 - [Back to docs hub](../README.md)
 - [SqlBuilder and Dialect Extension](../04-extensibility/03-custom-sqlbuilder.en.md)
-- [Configuration and Registration](../01-getting-started/03-configuration-and-registration.en.md)
-- [Compatibility Notes](../05-reference/08-database-compatibility.en.md)
+- [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md)
+- [Compatibility Notes](../05-reference/07-database-compatibility.en.md)

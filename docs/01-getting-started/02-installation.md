@@ -31,7 +31,7 @@
 - TiDB（MySQL 兼容）
 - 万里 GreatDB（MySQL 兼容）
 
-> 国产数据库继承对应主流数据库的方言行为，自动检测优先匹配。详见 [数据库差异与兼容性说明](../05-reference/08-database-compatibility.md)。
+> 国产数据库继承对应主流数据库的方言行为，自动检测优先匹配。详见 [数据库差异与兼容性说明](../05-reference/07-database-compatibility.md)。
 
 > 对于旧版本数据库，如果默认分页语法不兼容，请参考 [自定义分页](../03-advanced-topics/05-custom-paging.md) 与 [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)。
 
@@ -126,8 +126,8 @@ dotnet run
 
 ## 安装后的下一步
 
-- **仅核心库**：参考 [配置与注册](./03-configuration-and-registration.md) 的"方式一"进行手动初始化，然后跑通 [第一个完整示例（仅核心库）](./04-first-example.md)。
-- **Framework 集成**：在宿主启动阶段调用 `RegisterLiteOrm()`，参考 [配置与注册](./03-configuration-and-registration.md) 的"方式二"与 [第一个完整示例（Framework 版）](./05-first-example-framework.md)。
+- **仅核心库**：参考 [第一个完整示例（仅核心库）](./04-first-example.md) 进行手动初始化。
+- **Framework 集成**：在宿主启动阶段调用 `RegisterLiteOrm()`，参考 [配置与注册](../06-framework/01-configuration-and-registration.md) 与 [第一个完整示例（Framework 版）](./05-first-example-framework.md)。
 
 > **SQLite 快速上手**：如果你想用 SQLite 快速体验，连接字符串只需写 `Data Source=myapp.db`，无需安装任何数据库服务。
 
@@ -152,6 +152,6 @@ dotnet run
 ## 相关链接
 
 - [返回目录](../README.md)
-- [配置与注册](./03-configuration-and-registration.md)
+- [配置与注册](../06-framework/01-configuration-and-registration.md)
 - [第一个完整示例](./05-first-example-framework.md)
 - [配置项速查](../05-reference/01-configuration-reference.md)
