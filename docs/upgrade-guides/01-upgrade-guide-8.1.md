@@ -65,21 +65,19 @@ public class MyService : IMyService { }
 
 默认值保持 `Singleton` 不变。
 
-### 第 4 步：更新 `BulkProvider` 特性（如有自定义实现）
+### 第 4 步：更新 `BulkProvider` 使用方式（如有自定义实现）
 
-自定义 `IBulkProvider` 实现原先通过 `[AutoRegister(Key = typeof(XxxConnection))]` 标记，现在改用 `[BulkProvider(typeof(XxxConnection))]`：
+`BulkProviderFactory`、`BulkProviderAttribute` 与 `[AutoRegister(Key = ...)]` 标记方式均已移除。自定义 `IBulkProvider` 不再需要任何标记，实现后直接设置到对应的 `SqlBuilder.BulkProvider` 属性即可：
 
 ```csharp
-// 旧
-[AutoRegister(Key = typeof(MySqlConnection))]
-public class MySqlBulkCopyProvider : IBulkProvider { }
+// 旧：通过工厂按连接类型查找（已移除）
+var provider = services.GetRequiredService<BulkProviderFactory>().GetProvider(dbConnection.GetType());
 
-// 新
-[BulkProvider(typeof(MySqlConnection))]
-public class MySqlBulkCopyProvider : IBulkProvider { }
+// 新：直接设置到 SqlBuilder.BulkProvider
+SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider = new MySqlBulkCopyProvider();
 ```
 
-`BulkProviderAttribute` 定义于 `LiteOrm.Common`（`LiteOrm.Common.Attributes` 命名空间）。
+`SqlBuilder.BulkProvider` 未设置时返回 `null`，`BatchInsert`/`BatchInsertAsync` 自动回退到多值 INSERT 或逐条插入。
 
 ---
 

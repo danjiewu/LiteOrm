@@ -20,7 +20,7 @@
       LiteOrm 核心的 DAO/Service 不再使用 [AutoRegister] 特性自动注册，改为由 LiteOrm.Framework 显式注册；
       LiteOrm 核心项目移除 Microsoft.Extensions.Hosting 依赖，DI 集成仅由 LiteOrm.Framework 提供；
       DataSourceProvider 新增 LoadConfiguration 扩展方法，支持从 IConfiguration 读取配置；
-      BulkProvider 改用 BulkProviderAttribute 标记数据库连接类型；
+      BulkProvider 改为直接设置 SqlBuilder.BulkProvider 属性；
       Lifetime 枚举移除，AutoRegisterAttribute.Lifetime 改用内置 ServiceLifetime（默认 Scoped）；
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>

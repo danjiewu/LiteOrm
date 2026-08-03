@@ -78,7 +78,7 @@ LiteOrm 的表达式对象模型，用来描述 SQL 结构，可用于动态拼�
 
 ## `IBulkProvider`
 
-批量写入提供者接口，用于数据库原生批量导入（如 `MySqlBulkCopy`、`SqlBulkCopy`）。通过 `BulkProviderFactory` 按连接类型创建。位于 `LiteOrm` 命名空间。
+批量写入提供者接口，用于数据库原生批量导入（如 `MySqlBulkCopy`、`SqlBulkCopy`）。实现后直接设置到对应的 `SqlBuilder.BulkProvider` 属性即可生效，未设置时批量插入回退到普通 SQL。位于 `LiteOrm` 命名空间。
 
 ## `CycleDetector`
 

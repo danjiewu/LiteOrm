@@ -78,7 +78,7 @@ A function-expression validator (`class FunctionExprValidator : ExprValidator`) 
 
 ## `IBulkProvider`
 
-The bulk-write provider interface for database-native bulk imports (e.g. `MySqlBulkCopy`, `SqlBulkCopy`). Created by `BulkProviderFactory` keyed by connection type. Located in the `LiteOrm` namespace.
+The bulk-write provider interface for database-native bulk imports (e.g. `MySqlBulkCopy`, `SqlBulkCopy`). Assign an implementation to the `BulkProvider` property of the matching `SqlBuilder` to enable it; when unset, batch inserts fall back to regular SQL. Located in the `LiteOrm` namespace.
 
 ## `CycleDetector`
 

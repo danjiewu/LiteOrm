@@ -168,7 +168,7 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 
 ## 3. 批量写入能力（IBulkProvider）
 
-LiteOrm 通过 `IBulkProvider` 接口支持高性能批量写入，但**核心库不内置任何实现**——仅提供接口和工厂。
+LiteOrm 通过 `IBulkProvider` 接口支持高性能批量写入，但**核心库不内置任何实现**——仅提供接口。
 
 | 数据库 | 常见方案 | 内置实现 |
 |--------|---------|---------|
@@ -178,9 +178,13 @@ LiteOrm 通过 `IBulkProvider` 接口支持高性能批量写入，但**核心�
 | PostgreSQL | `COPY` 命令 | 无 |
 | SQLite | 普通 `INSERT` 批量 | 无 |
 
-`BulkProviderFactory` 通过 `[AutoRegister(Key = typeof(连接类型))]` 注册的 `IBulkProvider` 实例，按连接类型查找。未注册时返回 `null`，`BatchInsertAsync` 回退到逐条插入。
+启用方式：实现 `IBulkProvider` 后直接设置到对应的 `SqlBuilder.BulkProvider` 属性。未设置时 `SqlBuilder.BulkProvider` 为 `null`，`BatchInsert`/`BatchInsertAsync` 回退到多值 INSERT 或逐条插入。
 
-> 要启用高性能批量写入，需自行实现 `IBulkProvider` 并用 `[AutoRegister(Key = typeof(MySqlConnection))]` 标注注册。
+```csharp
+SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider = new MySqlBulkCopyProvider();
+```
+
+> 要启用高性能批量写入，需自行实现 `IBulkProvider` 并赋值给 `SqlBuilder.BulkProvider`。
 
 ## 4. 参数数量限制
 

@@ -160,7 +160,7 @@ INSERT INTO [Users] ([UserName], [Age], [CreateTime]) VALUES (@0, @1, @2), (@3, 
 
 ### BulkProvider 原生批量写入
 
-当项目注册了 `IBulkProvider` 时，批量写入可能不会表现为上面的普通 SQL，而是通过数据库驱动原生批量接口完成，例如：
+当给 `SqlBuilder.BulkProvider` 设置了 `IBulkProvider` 时，批量写入可能不会表现为上面的普通 SQL，而是通过数据库驱动原生批量接口完成，例如：
 
 - SQL Server 的 `SqlBulkCopy`
 - MySQL 的 `MySqlBulkCopy`

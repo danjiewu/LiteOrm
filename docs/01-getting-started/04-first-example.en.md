@@ -139,7 +139,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 > - `LiteOrmSqlFunctionInitializer.Initialize()`: SQL function mappings are automatically registered via SqlBuilder's static constructor on first access—no manual call needed.
 > - `DAOContextPoolFactory`: creates connection pools based on data source configuration and manages connection acquisition and recycling. It is passed to `SessionManager` via the constructor; DAOs obtain the pool internally via `SessionManager.GetDAOContextPool()` to resolve the provider type.
 > - `SessionManager`: manages database sessions, transactions, and async context. `SetCurrent` sets it as the session for the current async context.
-> - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. Both have parameterless constructors and obtain global singletons via `TableInfoProvider.Instance` and `BulkProviderFactory.Instance` internally, no manual injection needed.
+> - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. Both have parameterless constructors and obtain global singletons via `TableInfoProvider.Instance` internally, no manual injection needed.
 > - `EntityService<T>`: a business service wrapping the DAOs, providing methods such as `InsertAsync`, `SearchAsync`, `UpdateAsync`, and `DeleteAsync`.
 
 ## 2.5 Register and Resolve Services via ServiceProvider
@@ -174,7 +174,6 @@ var services = new ServiceCollection();
 services.AddSingleton(dataSourceProvider);
 services.AddSingleton(poolFactory);
 services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
-services.AddSingleton<BulkProviderFactory>();
 
 // Scoped services — each scope gets its own SessionManager
 services.AddScoped<SessionManager>();
@@ -354,7 +353,7 @@ poolFactory.Dispose();
 | DI container registration | ✅ manual MS DI registration (see §2.5) | ✅ `RegisterLiteOrm()` (Autofac) |
 | Dynamic Controller generation | ❌ | ✅ |
 | Config file binding | ✅ `LoadConfiguration` reads from `IConfiguration` | ✅ `appsettings.json` auto-binding |
-| Bulk import `IBulkProvider` | ❌ (Factory can be built but not registered) | ✅ auto-registered |
+| Bulk import `IBulkProvider` | ✅ set `SqlBuilder.BulkProvider` directly | ✅ set `SqlBuilder.BulkProvider` directly |
 
 > If you later need AOP capabilities, you can migrate smoothly from the core library to the Framework; entity definitions and DAO/Service usage remain identical.
 

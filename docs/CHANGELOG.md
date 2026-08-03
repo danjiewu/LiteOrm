@@ -8,7 +8,7 @@
 
 - `RegisterLiteOrm()` 从 `LiteOrm` 核心包移至 `LiteOrm.Framework` 包（新增），命名空间由 `LiteOrm` 改为 `LiteOrm.Framework`
 - `AutoRegisterAttribute` 从 `LiteOrm.Common` 迁移至 `LiteOrm.Framework`（命名空间改为 `LiteOrm.Framework`），`Lifetime` 枚举移除，改用内置 `ServiceLifetime`（默认 `Singleton`）
-- 自定义 `IBulkProvider` 的数据库连接类型标记由 `[AutoRegister(Key = ...)]` 改为新增的 `[BulkProvider(typeof(...))]`（`LiteOrm.Common`）
+- 自定义 `IBulkProvider` 不再使用任何特性标记，`BulkProviderFactory` 与 `BulkProviderAttribute` 已移除，改为直接设置 `SqlBuilder.BulkProvider` 属性
 
 ### 改进
 - `PreparedSql` 移至 `LiteOrm.Common` 项目，参数类型由 `KeyValuePair` 改为自定义 `Param` (`f50c72e`)

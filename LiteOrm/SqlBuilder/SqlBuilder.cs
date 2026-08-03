@@ -55,6 +55,12 @@ namespace LiteOrm
         public static readonly SqlBuilder Instance = new SqlBuilder();
 
         /// <summary>
+        /// 获取或设置当前 <see cref="SqlBuilder"/> 对应的数据库批量插入提供程序。
+        /// 直接赋值即可生效；未设置时为 null，此时批量插入将回退为逐条或普通批量 SQL 插入。
+        /// </summary>
+        public virtual IBulkProvider? BulkProvider { get; set; }
+
+        /// <summary>
         /// 静态构造函数，在首次访问 SqlBuilder 时自动触发 SQL 函数映射注册。
         /// 这样使用方无需手动调用 <see cref="LiteOrmSqlFunctionInitializer.Initialize"/>。
         /// </summary>

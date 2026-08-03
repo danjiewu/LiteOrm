@@ -169,30 +169,29 @@ await service.BatchDeleteAsync(inserted);
 
 如果你的业务需要导入一批数据、批量修正后再清理，这种模式可直接套用。
 
-### 4.3 `IBulkProvider` / `BulkProviderFactory`（高性能批量提供器）
+### 4.3 `IBulkProvider`（高性能批量提供器）
 
-`IBulkProvider` 配合 `BulkProviderFactory` 构成 LiteOrm 的高性能批量操作扩展（可选依赖），用于大规模插入/更新/删除时显著减少网络往返与数据库负载。
+`IBulkProvider` 是 LiteOrm 的高性能批量操作扩展接口（可选依赖），用于大规模插入时显著减少网络往返与数据库负载。
 
 - 场景：导入大量数据、ETL、数据同步、冷数据回填。
 - 特点：
-  - 使用数据库原生批量接口或高效的多值插入语句。
-  - 支持可配置的批次大小（BatchSize）、并发度（ParallelDegree）与事务边界（UseTransaction）。
-  - 可与事务配合，支持失败回滚或部分成功策略。
+  - 使用数据库原生批量接口（如 `SqlBulkCopy`、`MySqlBulkCopy`）。
+  - 未设置 provider 时，`BatchInsert`/`BatchInsertAsync` 自动回退到多值 INSERT 或逐条插入。
 
-示例：批量插入（伪代码）
+使用方式：实现 `IBulkProvider` 后，直接设置到对应的 `SqlBuilder.BulkProvider` 属性即可：
 
 ```csharp
-var factory = services.GetRequiredService<BulkProviderFactory>();
-var provider = factory.GetProvider(dbConnection.GetType());
-await provider.BulkInsertAsync(ToDataTable(users), dbConnection, transaction);
+var provider = new MySqlBulkCopyProvider();
+SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider = provider;
 ```
+
+`ObjectDAO.BatchInsert` / `BatchInsertAsync` 在执行批量插入时读取 `SqlBuilder.BulkProvider`，获取到 provider 后调用其 `BulkInsert` / `BulkInsertAsync`。
 
 ### 4.3.1 MySQL `IBulkProvider` 实现示例
 
-下面是一个真实的 `IBulkProvider` 实现（类名为 `MySqlBulkCopyProvider`）：
+下面是一个真实的 `IBulkProvider` 实现（类名为 `MySqlBulkCopyProvider`，位于 `LiteOrm.Demo`）：
 
 ```csharp
-[AutoRegister(Key = typeof(MySqlConnection))]
 public class MySqlBulkCopyProvider : IBulkProvider
 {
     public async Task<int> BulkInsertAsync(
@@ -214,22 +213,27 @@ public class MySqlBulkCopyProvider : IBulkProvider
         return (await bulkCopy.WriteToServerAsync(dt).ConfigureAwait(false)).RowsInserted;
     }
 }
+
+// 启用：直接设置到 SqlBuilder 的 BulkProvider 属性，无需任何自动注册
+SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider = new MySqlBulkCopyProvider();
 ```
 
 这个例子说明了两点：
 
-- `IBulkProvider` 可以按数据库连接类型自动注册，并通过 `BulkProviderFactory` 获取。
+- `IBulkProvider` 只需实现接口并赋值给 `SqlBuilder.BulkProvider` 即可生效，核心库不做自动注册。
 - 真正的高性能批量写入通常依赖数据库原生能力，而不是 ORM 层循环拼接 SQL。
 
 在 LiteOrm 中的实现位置（参考）：
 
-- 接口与工厂： LiteOrm.DbAccess.IBulkProvider、LiteOrm.DbAccess.BulkProviderFactory
-- 默认/示例实现： LiteOrm.Demo.Demos.MySqlBulkCopyProvider（演示如何使用 MySqlBulkCopy）
-- 使用点： LiteOrm.DAO.ObjectDAO 在执行批量插入时会调用 BulkProviderFactory 获取 provider 并调用 BulkInsert/BulkInsertAsync
+- 接口： LiteOrm.DbAccess.IBulkProvider
+- 示例实现： LiteOrm.Demo.Demos.MySqlBulkCopyProvider（演示如何使用 MySqlBulkCopy）
+- 使用点： LiteOrm.DAO.ObjectDAO 在执行批量插入时读取 `SqlBuilder.BulkProvider` 并调用 `BulkInsert`/`BulkInsertAsync`
 
 示例：批量更新（按主键）
 
 ```csharp
+// 获取当前数据源对应的 SqlBuilder，并确保其 BulkProvider 已设置
+var provider = SqlBuilderFactory.Instance.GetSqlBuilder(dbConnection.GetType()).BulkProvider;
 // 将需要更新的数据转换为 DataTable，然后调用 provider.BulkInsert/BulkInsertAsync 或 provider 支持的 BulkUpdate
 await provider.BulkInsertAsync(ToDataTable(usersToUpdate), dbConnection, transaction);
 ```

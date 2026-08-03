@@ -227,10 +227,6 @@ namespace LiteOrm.Framework
                 .As<TableInfoProvider>()
                 .SingleInstance();
 
-            // 批量插入提供程序工厂 - 单例
-            builder.RegisterType<BulkProviderFactory>()
-                .SingleInstance();
-
             // 初始化 - HostedService
             builder.RegisterType<LiteOrmCoreInitializer>()
                 .As<IHostedService>()

@@ -103,11 +103,6 @@ namespace LiteOrm
         protected virtual bool IsView => false;
 
         /// <summary>
-        /// 批量插入提供程序工厂
-        /// </summary>
-        public BulkProviderFactory BulkFactory => BulkProviderFactory.Instance!;
-
-        /// <summary>
         /// 构建SQL语句的SQLBuilder
         /// </summary>
         public virtual SqlBuilder SqlBuilder

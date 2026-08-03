@@ -32,7 +32,6 @@ namespace LiteOrm
             });
 
             services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
-            services.AddSingleton<BulkProviderFactory>();
 
             // Scoped 服务——每个作用域获得独立的 SessionManager
             services.AddScoped<SessionManager>();

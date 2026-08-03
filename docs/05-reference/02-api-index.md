@@ -16,7 +16,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 - `RegisterLiteOrm()`
 - `RegisterSqlBuilder(...)`
-- `BulkProviderFactory`
+- `SqlBuilder.BulkProvider`（批量插入提供程序）
 - 数据源配置、连接池配置、只读副本配置
 
 对应文档：

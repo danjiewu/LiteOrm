@@ -32,7 +32,7 @@ Use this page as a scenario-based index inside the docs set.
 
 - `RegisterSqlBuilder(...)`
 
-- `BulkProviderFactory`
+- `SqlBuilder.BulkProvider` (bulk insert provider)
 
 - data source settings, connection pool settings, read-only replicas
 

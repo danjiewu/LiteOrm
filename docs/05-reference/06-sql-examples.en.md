@@ -156,7 +156,7 @@ INSERT INTO [Users] ([UserName], [Age], [CreateTime]) VALUES (@0, @1, @2), (@3, 
 
 ### BulkProvider
 
-When `IBulkProvider` is registered, batch insert may use native bulk interfaces instead of regular SQL:
+When an `IBulkProvider` is assigned to `SqlBuilder.BulkProvider`, batch insert may use native bulk interfaces instead of regular SQL:
 
 - SQL Server `SqlBulkCopy`
 - MySQL `MySqlBulkCopy`

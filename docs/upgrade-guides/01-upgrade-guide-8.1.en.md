@@ -65,21 +65,19 @@ public class MyService : IMyService { }
 
 The default value remains `Singleton`.
 
-### Step 4: Update `BulkProvider` Attribute (If You Have Custom Implementations)
+### Step 4: Update `BulkProvider` Usage (If You Have Custom Implementations)
 
-Custom `IBulkProvider` implementations previously declared their target database connection type via `[AutoRegister(Key = typeof(XxxConnection))]`. This is now `[BulkProvider(typeof(XxxConnection))]`:
+`BulkProviderFactory`, `BulkProviderAttribute`, and the `[AutoRegister(Key = ...)]` marker have all been removed. Custom `IBulkProvider` implementations no longer need any marker—just implement the interface and assign it directly to the `BulkProvider` property of the matching `SqlBuilder`:
 
 ```csharp
-// Old
-[AutoRegister(Key = typeof(MySqlConnection))]
-public class MySqlBulkCopyProvider : IBulkProvider { }
+// Old: looked up by connection type via the factory (removed)
+var provider = services.GetRequiredService<BulkProviderFactory>().GetProvider(dbConnection.GetType());
 
-// New
-[BulkProvider(typeof(MySqlConnection))]
-public class MySqlBulkCopyProvider : IBulkProvider { }
+// New: assign directly to SqlBuilder.BulkProvider
+SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider = new MySqlBulkCopyProvider();
 ```
 
-`BulkProviderAttribute` is defined in `LiteOrm.Common` (`LiteOrm.Common.Attributes` namespace).
+When `SqlBuilder.BulkProvider` is unset it returns `null`, and `BatchInsert`/`BatchInsertAsync` automatically fall back to multi-value INSERT or row-by-row inserts.
 
 ---
 

@@ -139,7 +139,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 > - `LiteOrmSqlFunctionInitializer.Initialize()`：SQL 函数映射在首次访问 SqlBuilder 时由静态构造函数自动注册，无需手动调用。
 > - `DAOContextPoolFactory`：根据数据源配置创建连接池，管理连接的获取与回收。通过构造函数传入 `SessionManager`，DAO 内部通过 `SessionManager.GetDAOContextPool()` 获取连接池以解析提供程序类型。
 > - `SessionManager`：管理数据库会话、事务和异步上下文。通过 `SetCurrent` 设置为当前异步上下文的会话。
-> - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。两者均有无参构造函数，内部通过 `TableInfoProvider.Instance` 和 `BulkProviderFactory.Instance` 获取全局单例，无需手动传入。
+> - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。两者均有无参构造函数，内部通过 `TableInfoProvider.Instance` 获取全局单例，无需手动传入。
 > - `EntityService<T>`：封装了 DAO 的业务服务，提供 `InsertAsync`、`SearchAsync`、`UpdateAsync`、`DeleteAsync` 等方法。
 
 ## 2.5 通过 ServiceProvider 注册和获取服务
@@ -174,7 +174,6 @@ var services = new ServiceCollection();
 services.AddSingleton(dataSourceProvider);        // 或 services.AddSingleton<DataSourceProvider>(dataSourceProvider);
 services.AddSingleton(poolFactory);               // 或 services.AddSingleton<DAOContextPoolFactory>(poolFactory);
 services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
-services.AddSingleton<BulkProviderFactory>();
 
 // Scoped 服务——每个作用域获得独立的 SessionManager
 services.AddScoped<SessionManager>();
@@ -354,7 +353,7 @@ poolFactory.Dispose();
 | DI 容器注册 | ✅ 手动注册到 MS DI（见 §2.5） | ✅ `RegisterLiteOrm()`（Autofac） |
 | 动态 Controller 生成 | ❌ | ✅ |
 | 配置文件绑定 | ✅ `LoadConfiguration` 读取 `IConfiguration` | ✅ `appsettings.json` 自动绑定 |
-| 批量导入 `IBulkProvider` | ❌（Factory 可构造但不注册） | ✅ 自动注册 |
+| 批量导入 `IBulkProvider` | ✅ 直接设置 `SqlBuilder.BulkProvider` | ✅ 直接设置 `SqlBuilder.BulkProvider` |
 
 > 如果你后续需要 AOP 能力，可以从核心库平滑迁移到 Framework，实体定义和 DAO/Service 用法完全一致。
 
