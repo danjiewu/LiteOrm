@@ -1,12 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using System;
 
-namespace LiteOrm.Framework
+namespace LiteOrm.DependencyInjection
 {
     /// <summary>
     /// 自动注册特性，用于标记需要自动注册到依赖注入容器的类或接口。
-    /// <para>该类型从 LiteOrm.Common 迁移至 LiteOrm.Framework，命名空间随之调整为
-    /// <c>LiteOrm.Framework</c>，使用处需引用 <c>LiteOrm.Framework</c> 命名空间。</para>
+    /// <para>该类型从 LiteOrm.Common 迁移至 LiteOrm.DependencyInjection，命名空间随之调整为
+    /// <c>LiteOrm.DependencyInjection</c>，使用处需引用 <c>LiteOrm.DependencyInjection</c> 命名空间。</para>
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = true, AllowMultiple = false)]
     public class AutoRegisterAttribute : Attribute

@@ -1,4 +1,4 @@
-﻿# API Index
+# API Index
 
 
 
@@ -42,7 +42,7 @@ Related guides:
 
 
 
-- [Configuration and registration](../06-framework/01-configuration-and-registration.en.md)
+- [Configuration and registration](../06-di/01-configuration-and-registration.en.md)
 
 - [Configuration reference](./01-configuration-reference.en.md)
 
@@ -138,7 +138,7 @@ Related guides:
 
 - [CRUD guide](../02-core-usage/03-crud-guide.en.md)
 
-- [Transactions](../06-framework/02-transactions.en.md)
+- [Transactions](../06-di/02-transactions.en.md)
 
 - [Example Index](./05-example-index.en.md)
 
@@ -163,9 +163,9 @@ Related guides:
 
 
 
-- [Transactions](../06-framework/02-transactions.en.md)
+- [Transactions](../06-di/02-transactions.en.md)
 
-- [Logging and Diagnostics](../06-framework/04-logging.en.md)
+- [Logging and Diagnostics](../06-di/04-logging.en.md)
 - [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
 - [Window functions](../03-advanced-topics/04-window-functions.en.md)
 - [Example Index](./05-example-index.en.md)

@@ -1,18 +1,18 @@
-﻿# 泛型 Controller 与动态 Controller 生成
+# Generic Controller and Dynamic Controller Generation
 
-当项目中实体数量增多时，为每个实体手写 Controller 会产生大量重复代码。本文介绍两种减少重复的方式：**泛型基类 Controller** 和 **动态 Controller 生成**。
+When a project has many entities, writing a separate Controller for each one produces a lot of repetitive code. This document introduces two approaches to reduce duplication: **generic base Controller** and **dynamic Controller generation**.
 
-## 场景选型
+## Scenario guide
 
-| 场景 | 推荐做法 | 原因 |
+| Scenario | Recommended approach | Why |
 |------|----------|------|
-| 少量实体，每个都有自定义逻辑 | 手写 Controller | 灵活度最高 |
-| 实体较多，大部分只需标准 CRUD | 泛型基类 Controller | 减少重复，保留 override 扩展能力 |
-| 实体很多，CRUD 模式高度统一 | 动态 Controller 生成 | 零手写，自动扫描实体并生成 |
+| Few entities, each with custom logic | Hand-written Controller | Maximum flexibility |
+| Many entities, most only need standard CRUD | Generic base Controller | Reduces repetition while retaining override extensibility |
+| Many entities with highly uniform CRUD patterns | Dynamic Controller generation | Zero hand-written code; auto-scans entities and generates Controllers |
 
-## 1. 泛型基类 Controller
+## 1. Generic base Controller
 
-### 1.1 定义泛型基类
+### 1.1 Define the generic base class
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -125,19 +125,19 @@ public abstract class EntityControllerBase<T, TView> : ControllerBase
 }
 ```
 
-### 1.2 具体实体 Controller
+### 1.2 Concrete entity Controller
 
-具体实体的 Controller 只需继承并指定泛型参数：
+Concrete entity Controllers only need to inherit and specify the generic parameters:
 
 ```csharp
 public class UsersController : EntityControllerBase<User, UserView>
-{    
+{
 }
 ```
 
-### 1.3 自定义行为
+### 1.3 Custom behavior
 
-如果某个实体需要自定义行为，可以 override 对应方法：
+If an entity needs custom behavior, you can override the corresponding method:
 
 ```csharp
 public class OrdersController : EntityControllerBase<DemoOrder, DemoOrderView>
@@ -150,11 +150,11 @@ public class OrdersController : EntityControllerBase<DemoOrder, DemoOrderView>
 }
 ```
 
-### 1.4 PageQuery 分页查询
+### 1.4 PageQuery
 
-基类内置 `POST /api/{controller}/page` 端点，接受 JSON 序列化的 Expr 作为请求体，自动处理分页和总数统计：
+The base class includes a built-in `POST /api/{controller}/page` endpoint that accepts a JSON-serialized Expr as the request body, automatically handling pagination and total count:
 
-**提交 LogicExpr（自动包装分页）：**
+**Submit a LogicExpr (auto-wrapped with pagination):**
 
 ```json
 POST /api/DemoDepartments/page
@@ -167,7 +167,7 @@ Content-Type: application/json
 }
 ```
 
-**提交完整查询链（含排序和分页）：**
+**Submit a complete query chain (with sorting and pagination):**
 
 ```json
 POST /api/DemoDepartments/page
@@ -192,7 +192,7 @@ Content-Type: application/json
 }
 ```
 
-返回格式：
+Response format:
 
 ```json
 {
@@ -203,13 +203,13 @@ Content-Type: application/json
 }
 ```
 
-**分页安全限制**：`take` 最大值为 100，超过时自动截断为 100；小于 1 时默认为 20。
+**Pagination safety limit**: `take` is capped at 100; values exceeding 100 are automatically truncated. Values less than 1 default to 20.
 
-**Expr 类型校验**：使用 `ExprValidator.CreateQueryOnly()` 验证提交的 Expr，仅允许查询相关的表达式类型，防止注入风险。
+**Expr type validation**: The endpoint uses `ExprValidator.CreateQueryOnly()` to validate the submitted Expr, allowing only query-related expression types and preventing injection risks.
 
-### 1.5 扩展基类
+### 1.5 Extending the base class
 
-可以在基类中添加更多通用方法，例如条件统计等：
+You can add more common methods to the base class, such as conditional counts:
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -228,15 +228,15 @@ public virtual async Task<bool> Exists(object id)
 }
 ```
 
-## 2. 动态 Controller 生成
+## 2. Dynamic Controller Generation
 
-当实体数量很多且都遵循相同的 CRUD 模式时，可以通过 `System.Reflection.Emit` 在运行时动态生成 Controller 程序集，避免为每个实体手写 Controller 类。
+When you have a large number of entities that all follow the same CRUD pattern, you can use `System.Reflection.Emit` to dynamically generate Controller assemblies at runtime, avoiding the need to write Controller classes for each entity manually.
 
-### 2.1 前提条件
+### 2.1 Prerequisites
 
-首先定义与第 1 节相同的 `EntityControllerBase<T, TView>`，作为动态 Controller 的父类。
+First, define the same `EntityControllerBase<T, TView>` as in Section 1, which serves as the parent class for dynamic Controllers.
 
-### 2.2 动态生成 Controller
+### 2.2 Generate Controllers dynamically
 
 ```csharp
 using System.Reflection;
@@ -285,9 +285,9 @@ public static Assembly BuildDynamicControllers(string defaultNamespace)
 }
 ```
 
-### 2.3 注册动态 Controller
+### 2.3 Register dynamic Controllers
 
-在 `Program.cs` 中调用生成方法，并将动态程序集注册到 MVC：
+In `Program.cs`, call the generation method and register the dynamic assembly with MVC:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -303,31 +303,31 @@ app.MapControllers();
 app.Run();
 ```
 
-### 2.4 View 类型查找规则
+### 2.4 View type lookup rules
 
-动态生成时会按以下规则查找 View 类型：
+During dynamic generation, the View type is resolved using the following rules:
 
-1. 在实体同程序集中查找 `实体名 + View`（如 `User` → `UserView`）
-2. 如果找到且 View 类型是实体类型的子类，使用该 View 类型
-3. 否则回退到实体类型本身（`TView == T`）
+1. Look up `EntityName + View` (e.g. `User` → `UserView`) in the same assembly as the entity
+2. If found and the View type is a subclass of the entity type, use that View type
+3. Otherwise, fall back to the entity type itself (`TView == T`)
 
-### 2.5 与手写 Controller 共存
+### 2.5 Coexistence with hand-written Controllers
 
-动态生成时会检查是否已存在同名 Controller（通过 `Type.GetType` 查找）。如果已存在手写 Controller，则跳过该实体。因此可以混合使用：
+During dynamic generation, the code checks whether a Controller with the same name already exists (via `Type.GetType`). If a hand-written Controller already exists, that entity is skipped. This allows mixed usage:
 
-- 大部分实体使用动态生成的标准 CRUD Controller
-- 需要自定义逻辑的实体手写 Controller 继承泛型基类
+- Most entities use dynamically generated standard CRUD Controllers
+- Entities that need custom logic have hand-written Controllers that inherit the generic base class
 
-## 3. 注意事项
+## 3. Caveats
 
-- 动态 Controller 适合后台管理等 CRUD 模式高度统一的场景
-- 如果某些实体需要自定义逻辑（权限过滤、参数校验等），建议手写 Controller 继承泛型基类
-- 动态生成的 Controller 无法在编译时进行类型检查，调试时需要注意路由冲突
-- `AssemblyBuilderAccess.Run` 生成的程序集无法保存到磁盘，每次启动都会重新生成
+- Dynamic Controllers are best suited for admin panels and other scenarios where the CRUD pattern is highly uniform
+- If certain entities require custom logic (permission filtering, parameter validation, etc.), write a Controller by hand that inherits the generic base class
+- Dynamically generated Controllers cannot be type-checked at compile time; watch for route conflicts during debugging
+- Assemblies generated with `AssemblyBuilderAccess.Run` cannot be saved to disk and are regenerated on each startup
 
-## 相关链接
+## Related Links
 
-- [返回目录](../README.md)
-- [第一个完整示例（Framework 版）](../01-getting-started/05-first-example-framework.md)
-- [视图模型与服务层](../02-core-usage/02-view-models-and-services.md)
-- [权限过滤](./02-permission-filtering.md)
+- [Back to docs hub](../README.md)
+- [First Example (DI)](../01-getting-started/05-first-example-di.en.md)
+- [View Models and Services](../02-core-usage/02-view-models-and-services.en.md)
+- [Permission Filtering](./02-permission-filtering.en.md)

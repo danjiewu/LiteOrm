@@ -1,4 +1,4 @@
-﻿# Frontend QueryString Querying
+# Frontend QueryString Querying
 
 This is not a built-in LiteOrm query syntax. It is an **integration pattern**: the frontend sends filters through the query string, and the backend converts those parameters into LiteOrm `Expr` before running the query.
 
@@ -138,6 +138,6 @@ QueryString is only a transport format. Authorization is still enforced on the b
 ## Related Links
 
 - [Back to index](../README.md)
-- [Permission filtering](../06-framework/03-permission-filtering.en.md)
+- [Permission filtering](../06-di/03-permission-filtering.en.md)
 - [Query Overview](../02-core-usage/04-query-overview.en.md)
 

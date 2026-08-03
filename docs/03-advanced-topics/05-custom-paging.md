@@ -1,4 +1,4 @@
-﻿# 自定义分页实现示例
+# 自定义分页实现示例
 
 本文档展示如何在 LiteOrm 中实现自定义分页策略，以 Oracle 11g 为例。
 
@@ -345,6 +345,6 @@ public class CustomPostgreSqlBuilder : PostgreSqlBuilder
 
 - [返回目录](../README.md)
 - [SqlBuilder 与方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
-- [配置与注册](../06-framework/01-configuration-and-registration.md)
+- [配置与注册](../06-di/01-configuration-and-registration.md)
 - [兼容性说明](../05-reference/07-database-compatibility.md)
 

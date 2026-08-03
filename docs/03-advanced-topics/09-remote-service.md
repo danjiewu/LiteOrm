@@ -1,4 +1,4 @@
-﻿# 远程服务（LiteOrm.Remote）
+# 远程服务（LiteOrm.Remote）
 
 LiteOrm 提供完整的远程服务调用方案，让业务代码在「本地调用」和「远程调用」之间无缝切换——**接口定义不变、调用写法不变**，只需更换注册方式即可将数据访问层从应用进程中物理剥离。
 
@@ -999,7 +999,7 @@ opts.Transport = new MyTransport();
 |------|---------|---------|
 | 注册方式 | `RegisterLiteOrm` 自动扫描 `[Service]` | `RegisterLiteOrmRemote` + 代理注册 |
 | 调用方式 | 直接反射调用 | 动态代理拦截 + HTTP 转发 |
-| 事务 | `[Transaction]` AOP | 不支持跨进程事务（详见 [事务指南](../06-framework/02-transactions.md)） |
+| 事务 | `[Transaction]` AOP | 不支持跨进程事务（详见 [事务指南](../06-di/02-transactions.md)） |
 | `ForEachAsync` | 流式遍历 | 抛出 `NotSupportedException` |
 | 参数回写 | 直接修改对象 | 通过 `OutArguments` 序列化回写 |
 | 异常传播 | 原始异常 | `RemoteInvocationResponse.Error` 携带异常信息 |
@@ -1022,7 +1022,7 @@ opts.Transport = new MyTransport();
 
 ## 相关链接
 
-- [配置与注册](../06-framework/01-configuration-and-registration.md) — `RegisterLiteOrm` / `RegisterLiteOrmRemote` 的完整说明
+- [配置与注册](../06-di/01-configuration-and-registration.md) — `RegisterLiteOrm` / `RegisterLiteOrmRemote` 的完整说明
 - [表达式指南](../02-core-usage/06-expr-guide.md) — Lambda 条件查询，远程调用同样适用
 - [表达式序列化](../04-extensibility/04-expr-serialization.md) — `Expr` 表达式树的序列化机制
 - [RemoteServiceDemo.cs](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/RemoteServiceDemo.cs) — 客户端 13 种典型操作场景

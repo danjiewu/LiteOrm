@@ -6,8 +6,8 @@
 
 本版本引入多项破坏性变更，详细迁移指南见 [8.1 升级指南](./upgrade-guides/01-upgrade-guide-8.1.md)。
 
-- `RegisterLiteOrm()` 从 `LiteOrm` 核心包移至 `LiteOrm.Framework` 包（新增），命名空间由 `LiteOrm` 改为 `LiteOrm.Framework`
-- `AutoRegisterAttribute` 从 `LiteOrm.Common` 迁移至 `LiteOrm.Framework`（命名空间改为 `LiteOrm.Framework`），`Lifetime` 枚举移除，改用内置 `ServiceLifetime`（默认 `Singleton`）
+- `RegisterLiteOrm()` 从 `LiteOrm` 核心包移至 `LiteOrm.DependencyInjection` 包（新增），命名空间由 `LiteOrm` 改为 `LiteOrm.DependencyInjection`
+- `AutoRegisterAttribute` 从 `LiteOrm.Common` 迁移至 `LiteOrm.DependencyInjection`（命名空间改为 `LiteOrm.DependencyInjection`），`Lifetime` 枚举移除，改用内置 `ServiceLifetime`（默认 `Singleton`）
 - 自定义 `IBulkProvider` 不再使用任何特性标记，`BulkProviderFactory` 与 `BulkProviderAttribute` 已移除，改为直接设置 `SqlBuilder.BulkProvider` 属性
 
 ### 改进

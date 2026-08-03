@@ -1,4 +1,4 @@
-﻿# Custom Paging Implementation Examples
+# Custom Paging Implementation Examples
 
 This document shows how to implement custom paging strategies in LiteOrm, using Oracle 11g as an example.
 
@@ -345,5 +345,5 @@ By implementing a custom `SqlBuilder`, you can provide optimal paging strategies
 
 - [Back to docs hub](../README.md)
 - [SqlBuilder and Dialect Extension](../04-extensibility/03-custom-sqlbuilder.en.md)
-- [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md)
+- [Configuration and Registration](../06-di/01-configuration-and-registration.en.md)
 - [Compatibility Notes](../05-reference/07-database-compatibility.en.md)

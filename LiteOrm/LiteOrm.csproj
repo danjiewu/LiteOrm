@@ -16,12 +16,12 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      8.1.0 Breaking Change: AutoRegisterAttribute 从 LiteOrm.Common 迁移至 LiteOrm.Framework；
-      LiteOrm 核心的 DAO/Service 不再使用 [AutoRegister] 特性自动注册，改为由 LiteOrm.Framework 显式注册；
-      LiteOrm 核心项目移除 Microsoft.Extensions.Hosting 依赖，DI 集成仅由 LiteOrm.Framework 提供；
+      8.1.0 Breaking Change: AutoRegisterAttribute 从 LiteOrm.Common 迁移至 LiteOrm.DependencyInjection；
+      LiteOrm 核心的 DAO/Service 不再使用 [AutoRegister] 特性自动注册，改为由 LiteOrm.DependencyInjection 显式注册；
+      LiteOrm 核心项目移除 Microsoft.Extensions.Hosting 依赖，DI 集成仅由 LiteOrm.DependencyInjection 提供；
       DataSourceProvider 新增 LoadConfiguration 扩展方法，支持从 IConfiguration 读取配置；
       BulkProvider 改为直接设置 SqlBuilder.BulkProvider 属性；
-      Lifetime 枚举移除，AutoRegisterAttribute.Lifetime 改用内置 ServiceLifetime（默认 Scoped）；
+      Lifetime 枚举移除，AutoRegisterAttribute.Lifetime 改用内置 ServiceLifetime（默认 Singleton）；
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
@@ -55,7 +55,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="LiteOrm.Framework" />
+		<InternalsVisibleTo Include="LiteOrm.DependencyInjection" />
 	</ItemGroup>
 
 	<ItemGroup>

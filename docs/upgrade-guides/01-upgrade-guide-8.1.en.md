@@ -8,21 +8,21 @@ This guide describes the changes required when upgrading to v8.1.0.
 |---|---|
 | `LiteOrm` | 8.1.0 |
 | `LiteOrm.Common` | 8.1.0 |
-| `LiteOrm.Framework` | 8.1.0 (new) |
+| `LiteOrm.DependencyInjection` | 8.1.0 (new) |
 
 ---
 
 ## Migration Steps
 
-### Step 1: Reference the `LiteOrm.Framework` Package
+### Step 1: Reference the `LiteOrm.DependencyInjection` Package
 
-The `RegisterLiteOrm()` extension method moved from the `LiteOrm` core package to `LiteOrm.Framework`, and the namespace changed from `LiteOrm` to `LiteOrm.Framework`.
+The `RegisterLiteOrm()` extension method moved from the `LiteOrm` core package to `LiteOrm.DependencyInjection`, and the namespace changed from `LiteOrm` to `LiteOrm.DependencyInjection`.
 
 ```xml
-<PackageReference Include="LiteOrm.Framework" Version="8.1.0" />
+<PackageReference Include="LiteOrm.DependencyInjection" Version="8.1.0" />
 ```
 
-`LiteOrm.Framework` transitively references `LiteOrm` and `LiteOrm.Common`; no need to declare them separately.
+`LiteOrm.DependencyInjection` transitively references `LiteOrm` and `LiteOrm.Common`; no need to declare them separately.
 
 Update `using`:
 
@@ -31,21 +31,21 @@ Update `using`:
 using LiteOrm;
 
 // New
-using LiteOrm.Framework;
+using LiteOrm.DependencyInjection;
 ```
 
 The `RegisterLiteOrm()` method signature is unchanged; the calling convention remains the same.
 
 ### Step 2: Update `[AutoRegister]` Namespace
 
-`AutoRegisterAttribute` moved from `LiteOrm.Common` to `LiteOrm.Framework`, and the namespace changed accordingly:
+`AutoRegisterAttribute` moved from `LiteOrm.Common` to `LiteOrm.DependencyInjection`, and the namespace changed accordingly:
 
 ```csharp
 // Old
 using LiteOrm.Common;  // AutoRegisterAttribute, Lifetime enum
 
 // New
-using LiteOrm.Framework;  // AutoRegisterAttribute
+using LiteOrm.DependencyInjection;  // AutoRegisterAttribute
 using Microsoft.Extensions.DependencyInjection;  // ServiceLifetime
 ```
 
@@ -85,11 +85,11 @@ When `SqlBuilder.BulkProvider` is unset it returns `null`, and `BatchInsert`/`Ba
 
 ### Q1: `IEntityService<T>` can't be resolved from DI after upgrade?
 
-Make sure the host uses `RegisterLiteOrm()` (from `LiteOrm.Framework`). Core types (`EntityService<T>`, `ObjectDAO<T>`, etc.) are no longer registered via `[AutoRegister]` scanning but are explicitly registered by `RegisterCoreServices()`.
+Make sure the host uses `RegisterLiteOrm()` (from `LiteOrm.DependencyInjection`). Core types (`EntityService<T>`, `ObjectDAO<T>`, etc.) are no longer registered via `[AutoRegister]` scanning but are explicitly registered by `RegisterCoreServices()`.
 
 ### Q2: My business service uses `[AutoRegister]`. Does it still work?
 
-Yes. As long as the project references `LiteOrm.Framework` and adds `using LiteOrm.Framework;`, auto-registration works as before.
+Yes. As long as the project references `LiteOrm.DependencyInjection` and adds `using LiteOrm.DependencyInjection;`, auto-registration works as before.
 
 ### Q3: My business service doesn't declare `ServiceTypes`. Can it still be resolved via its interface?
 

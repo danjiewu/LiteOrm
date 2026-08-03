@@ -1,6 +1,6 @@
 # 配置与注册
 
-使用 `LiteOrm.Framework` 时，配置通过 `appsettings.json` 声明，启动时由 `RegisterLiteOrm()` 自动完成 DI 绑定、DAO 注册和方言解析。适合 ASP.NET Core 等需要 Autofac、AOP 能力的项目。
+使用 `LiteOrm.DependencyInjection` 时，配置通过 `appsettings.json` 声明，启动时由 `RegisterLiteOrm()` 自动完成 DI 绑定、DAO 注册和方言解析。适合 ASP.NET Core 等需要 Autofac、AOP 能力的项目。
 
 > **新手提示**：如果你是第一次配置，建议从最简单的配置开始——只配置一个数据源，使用 SQLite 作为数据库。等跑通基本流程后，再逐步添加多数据源、读写分离等高级配置。
 
@@ -120,7 +120,7 @@
 
 ## 注册方式
 
-> `RegisterLiteOrm()` 定义于 `LiteOrm.Framework` 包。使用前需执行 `dotnet add package LiteOrm.Framework` 并添加 `using LiteOrm.Framework;`。
+> `RegisterLiteOrm()` 定义于 `LiteOrm.DependencyInjection` 包。使用前需执行 `dotnet add package LiteOrm.DependencyInjection` 并添加 `using LiteOrm.DependencyInjection;`。
 
 ### 控制台应用
 
@@ -155,7 +155,7 @@ builder.Host.RegisterLiteOrm(options =>
 > 以下是一个完整的 ASP.NET Core 项目 `Program.cs` 示例，展示了 LiteOrm 注册的典型位置：
 
 ```csharp
-using LiteOrm.Framework;
+using LiteOrm.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -171,7 +171,7 @@ app.MapControllers();
 app.Run();
 ```
 
-> **注意**：`RegisterLiteOrm()` 定义于 `LiteOrm.Framework` 包，使用前需引用 `LiteOrm.Framework` 并添加 `using LiteOrm.Framework;`。
+> **注意**：`RegisterLiteOrm()` 定义于 `LiteOrm.DependencyInjection` 包，使用前需引用 `LiteOrm.DependencyInjection` 并添加 `using LiteOrm.DependencyInjection;`。
 
 ## 日志集成
 
@@ -273,6 +273,6 @@ builder.Host.RegisterLiteOrm(options =>
 ## 相关链接
 
 - [返回目录](../README.md)
-- [第一个完整示例（Framework 版）](../01-getting-started/05-first-example-framework.md)
+- [第一个完整示例（DI 版）](../01-getting-started/05-first-example-di.md)
 - [配置项速查](../05-reference/01-configuration-reference.md)
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)

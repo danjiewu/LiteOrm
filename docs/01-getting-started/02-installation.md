@@ -1,8 +1,8 @@
-﻿# 安装与环境要求
+# 安装与环境要求
 
-本文介绍 LiteOrm 的运行环境、数据库支持，以及两种安装方式：仅使用核心库（`LiteOrm`）与使用框架集成包（`LiteOrm.Framework`）。
+本文介绍 LiteOrm 的运行环境、数据库支持，以及两种安装方式：仅使用核心库（`LiteOrm`）与使用框架集成包（`LiteOrm.DependencyInjection`）。
 
-> **新手提示**：如果你只是想快速体验 LiteOrm，建议使用 SQLite 作为数据库——它不需要安装任何数据库服务，开箱即用。需要宿主级集成（Autofac、AOP）时再引入 `LiteOrm.Framework`。
+> **新手提示**：如果你只是想快速体验 LiteOrm，建议使用 SQLite 作为数据库——它不需要安装任何数据库服务，开箱即用。需要宿主级集成（Autofac、AOP）时再引入 `LiteOrm.DependencyInjection`。
 
 ## 环境要求
 
@@ -61,16 +61,16 @@ dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
 ```
 
 - 核心库由 `LiteOrm` 与 `LiteOrm.Common` 两个包构成，`LiteOrm` 会自动携带 `LiteOrm.Common`。
-- 不提供 `RegisterLiteOrm()`，也不含 AOP 拦截（事务/权限/日志）与动态 Controller 能力。
+- 不提供 `RegisterLiteOrm()`，也不含 AOP 拦截（事务/权限/日志）能力。
 - 数据访问通过 `ObjectDAO` / `DataDAO` 等 DAO 类型完成。
 
-## 方式二：使用框架集成包（`LiteOrm.Framework`）
+## 方式二：使用框架集成包（`LiteOrm.DependencyInjection`）
 
-适合 ASP.NET Core 项目。`LiteOrm.Framework` 引入 Autofac 容器与 Castle 动态代理，通过 `builder.Host.RegisterLiteOrm()` 一键注册，并启用 AOP 事务/权限/日志与动态 Controller 生成。
+适合 ASP.NET Core 项目。`LiteOrm.DependencyInjection` 引入 Autofac 容器与 Castle 动态代理，通过 `builder.Host.RegisterLiteOrm()` 一键注册，并启用 AOP 事务/权限/日志。
 
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework    # DI 注册（RegisterLiteOrm）需要
+dotnet add package LiteOrm.DependencyInjection    # DI 注册（RegisterLiteOrm）需要
 dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
 ```
 
@@ -79,34 +79,34 @@ dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
 **SQL Server 项目：**
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Microsoft.Data.SqlClient
 ```
 
 **MySQL 项目：**
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package MySqlConnector
 ```
 
 **PostgreSQL 项目：**
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Npgsql
 ```
 
 **SQLite 项目（推荐新手使用）：**
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Microsoft.Data.Sqlite
 ```
 
 ## 创建新项目的完整步骤
 
-> 以下是从零开始创建一个使用 LiteOrm.Framework 的 ASP.NET Core 项目的完整命令：
+> 以下是从零开始创建一个使用 LiteOrm.DependencyInjection 的 ASP.NET Core 项目的完整命令：
 
 ```bash
 # 1. 创建 Web API 项目
@@ -115,7 +115,7 @@ cd MyLiteOrmApp
 
 # 2. 安装 LiteOrm（以 SQLite 为例）
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Microsoft.Data.Sqlite
 
 # 3. 运行项目确认环境正常
@@ -127,7 +127,7 @@ dotnet run
 ## 安装后的下一步
 
 - **仅核心库**：参考 [第一个完整示例（仅核心库）](./04-first-example.md) 进行手动初始化。
-- **Framework 集成**：在宿主启动阶段调用 `RegisterLiteOrm()`，参考 [配置与注册](../06-framework/01-configuration-and-registration.md) 与 [第一个完整示例（Framework 版）](./05-first-example-framework.md)。
+- **Framework 集成**：在宿主启动阶段调用 `RegisterLiteOrm()`，参考 [配置与注册](../06-di/01-configuration-and-registration.md) 与 [第一个完整示例（DI 版）](./05-first-example-di.md)。
 
 > **SQLite 快速上手**：如果你想用 SQLite 快速体验，连接字符串只需写 `Data Source=myapp.db`，无需安装任何数据库服务。
 
@@ -135,7 +135,7 @@ dotnet run
 
 ### 安装后编译报错：找不到 `RegisterLiteOrm` 方法
 
-确保安装了 `LiteOrm.Framework` 包（`RegisterLiteOrm()` 定义于该包，仅安装 `LiteOrm` 或 `LiteOrm.Common` 不会提供此方法），并在代码文件顶部添加 `using LiteOrm.Framework;`。
+确保安装了 `LiteOrm.DependencyInjection` 包（`RegisterLiteOrm()` 定义于该包，仅安装 `LiteOrm` 或 `LiteOrm.Common` 不会提供此方法），并在代码文件顶部添加 `using LiteOrm.DependencyInjection;`。
 
 ### 运行时提示找不到数据库驱动
 
@@ -152,6 +152,6 @@ dotnet run
 ## 相关链接
 
 - [返回目录](../README.md)
-- [配置与注册](../06-framework/01-configuration-and-registration.md)
-- [第一个完整示例](./05-first-example-framework.md)
+- [配置与注册](../06-di/01-configuration-and-registration.md)
+- [第一个完整示例](./05-first-example-di.md)
 - [配置项速查](../05-reference/01-configuration-reference.md)

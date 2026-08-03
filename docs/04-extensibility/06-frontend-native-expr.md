@@ -1,4 +1,4 @@
-﻿# 前端原生 Expr 查询
+# 前端原生 Expr 查询
 
 这篇文档同样属于**扩展接入方案**：当前端已经不是“固定几个筛选项”，而是需要动态组合字段、操作符、排序和分页时，可以直接提交 LiteOrm 原生 `Expr` JSON。
 
@@ -192,6 +192,6 @@ LiteOrm 的 `Expr` 已经实现了结构化 `Equals/GetHashCode`，因此相同�
 ## 7. 相关链接
 
 - [返回目录](../README.md)
-- [权限过滤](../06-framework/03-permission-filtering.md)
+- [权限过滤](../06-di/03-permission-filtering.md)
 - [查询总览](../02-core-usage/04-query-overview.md)
 

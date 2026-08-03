@@ -1,6 +1,6 @@
 using Castle.DynamicProxy;
 using LiteOrm.Common;
-using LiteOrm.Framework;
+using LiteOrm.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -35,7 +35,7 @@ namespace LiteOrm.Service
     /// 9. 方法元数据缓存 - 缓存方法的属性信息以提高性能
     /// 
     /// 该拦截器应用于所有被标记为需要拦截的服务类，
-    /// 通过 LiteOrm.Framework 的 InterceptAttribute 特性应用。
+    /// 通过 LiteOrm.DependencyInjection 的 InterceptAttribute 特性应用。
     /// 
     /// 支持的特性：
     /// - TransactionAttribute - 控制事务行为

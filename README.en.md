@@ -57,7 +57,7 @@ LiteOrm is a lightweight, high-performance .NET ORM that combines micro-ORM spee
 
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework   # required for DI registration (RegisterLiteOrm)
+dotnet add package LiteOrm.DependencyInjection   # required for DI registration (RegisterLiteOrm)
 ```
 
 ## 🚀 Quick Start

@@ -1,4 +1,4 @@
-using LiteOrm.Framework;
+using LiteOrm.DependencyInjection;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

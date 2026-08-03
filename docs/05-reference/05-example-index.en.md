@@ -1,4 +1,4 @@
-﻿# Example Index
+# Example Index
 
 This page groups current LiteOrm examples by scenario instead of by chapter. Most examples come from `LiteOrm.Demo` (end-to-end flows) and `LiteOrm.Tests` (edge cases and verifiable patterns).
 
@@ -6,7 +6,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Minimal path from configuration to CRUD
 
-- Entry doc: [First end-to-end example](../01-getting-started/05-first-example-framework.en.md)
+- Entry doc: [First end-to-end example](../01-getting-started/05-first-example-di.en.md)
 - Best for: first-time LiteOrm setup when you want a working baseline quickly
 - Focus:
   - entity definition
@@ -110,7 +110,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Transactions
 
-- Entry doc: [Transactions](../06-framework/02-transactions.en.md)
+- Entry doc: [Transactions](../06-di/02-transactions.en.md)
 - Code source:
   - `LiteOrm.Demo\Demos\TransactionDemo.cs`
 - Focus:
@@ -202,14 +202,14 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 If you want to move from simple to advanced examples, this is a practical sequence:
 
-1. [First end-to-end example](../01-getting-started/05-first-example-framework.en.md)
+1. [First end-to-end example](../01-getting-started/05-first-example-di.en.md)
 2. [CRUD guide](../02-core-usage/03-crud-guide.en.md)
 3. [Query Overview](../02-core-usage/04-query-overview.en.md)
 4. [Lambda Guide](../02-core-usage/05-lambda-guide.en.md)
 5. [Expr Guide](../02-core-usage/06-expr-guide.en.md)
 6. [ExprString Guide](../02-core-usage/07-exprstring-guide.en.md)
 7. [Associations](../02-core-usage/08-associations.en.md)
-8. [Transactions](../06-framework/02-transactions.en.md)
+8. [Transactions](../06-di/02-transactions.en.md)
 9. [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
 10. [Performance](../03-advanced-topics/03-performance.en.md)
 11. [Expression extension](../04-extensibility/01-expression-extension.en.md)

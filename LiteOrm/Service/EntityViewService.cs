@@ -24,7 +24,7 @@ namespace LiteOrm.Service
     /// 5. 异步支持 - 提供基于 Task 的异步方法
     /// 6. 灵活的条件 - 支持使用 Expr 对象或 Lambda 表达式进行条件查询
     /// 7. 表参数支持 - 支持通过 tableArgs 参数动态指定表名
-    /// 8. 拦截机制 - 可通过 LiteOrm.Framework 应用 ServiceInvokeInterceptor 进行拦截
+    /// 8. 拦截机制 - 可通过 LiteOrm.DependencyInjection 应用 ServiceInvokeInterceptor 进行拦截
     /// 
     /// 该类通过依赖注入框架以 Scoped 方式注册。
     /// 

@@ -1,4 +1,4 @@
-﻿# CRUD Guide
+# CRUD Guide
 
 This page focuses on LiteOrm's write operations: insert, update, delete, upsert, and batching. For query capabilities, please refer to the [Query Overview](./04-query-overview.en.md).
 
@@ -389,7 +389,7 @@ Suitable for "insert new batch of data while deleting old data" sync migration s
 - [Query Overview](./04-query-overview.en.md)
 - [Lambda Guide](./05-lambda-guide.en.md)
 - [Expr Guide](./06-expr-guide.en.md)
-- [Transactions](../06-framework/02-transactions.en.md)
+- [Transactions](../06-di/02-transactions.en.md)
 - [Performance Optimization](../03-advanced-topics/03-performance.en.md)
 
 

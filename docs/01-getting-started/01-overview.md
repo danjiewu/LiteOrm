@@ -1,4 +1,4 @@
-﻿# 概述
+# 概述
 
 LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，结合了微ORM的速度和全ORM的功能性，适用于需要灵活处理SQL查询并且注重性能的场景。
 
@@ -37,8 +37,8 @@ LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，结合了微ORM的�
 ## 4. 快速开始
 
 1. 先完成 [安装与环境要求](./02-installation.md)。
-2. 使用 Framework 集成时，阅读 [配置与注册](../06-framework/01-configuration-and-registration.md)。
-3. 根据项目类型跑通第一个示例：[仅核心库](./04-first-example.md) 或 [Framework 版](./05-first-example-framework.md)。
+2. 使用 DI 集成时，阅读 [配置与注册](../06-di/01-configuration-and-registration.md)。
+3. 根据项目类型跑通第一个示例：[仅核心库](./04-first-example.md) 或 [DI 版](./05-first-example-di.md)。
 4. 然后进入 [实体映射与数据源](../02-core-usage/01-entity-mapping.md)、[查询总览](../02-core-usage/04-query-overview.md) 与 [Lambda 查询指南](../02-core-usage/05-lambda-guide.md)。
 
 > **学习建议**：如果你是初学者，建议按顺序阅读入门篇文档，每篇大约 5-10 分钟。跑通第一个示例后，你应该能够在一个新项目中完成基本的数据库操作。遇到问题时，可以先查看每篇文档末尾的"常见问题"部分。
@@ -69,7 +69,7 @@ LiteOrm 采用模块化设计，核心功能由 `LiteOrm.Common` 与 `LiteOrm`�
 │   ├── Initilizer/          # 初始化器
 │   ├── Service/             # 服务层
 │   └── SqlBuilder/          # SQL构建器
-├── LiteOrm.Framework/       # 宿主集成包（Autofac + AOP + 动态 Controller）
+├── LiteOrm.DependencyInjection/       # 宿主集成包（Autofac + AOP）
 │   ├── Attributes/          # 注册/拦截相关特性
 │   └── Service/             # 集成与注册入口
 ├── LiteOrm.Remote/          # 远程调用客户端
@@ -101,7 +101,7 @@ LiteOrm 采用模块化设计，核心功能由 `LiteOrm.Common` 与 `LiteOrm`�
     ├── 03-advanced-topics/  # 高级主题
     ├── 04-extensibility/    # 扩展性
     ├── 05-reference/        # 参考
-    └── 06-framework/        # 框架使用（依赖 LiteOrm.Framework）
+    └── 06-di/        # DI 使用（依赖 LiteOrm.DependencyInjection）
 ```
 
 ### 5.1 五个核心项目
@@ -110,13 +110,13 @@ LiteOrm 采用模块化设计，核心功能由 `LiteOrm.Common` 与 `LiteOrm`�
 |-----|-----|---------|
 | `LiteOrm.Common` | 公共组件：映射特性、`Expr` 对象模型、`SqlSegment`、公共服务接口 | 只想使用实体映射、表达式与 DAO 的底层能力，不需要宿主 DI 集成 |
 | `LiteOrm`（核心库） | DAO 层、SQL 生成、方言构建器、核心服务 | 使用 `ObjectDAO`/`DataDAO` 等底层访问能力，自行管理连接与生命周期 |
-| `LiteOrm.Framework` | 宿主集成：Autofac 容器、`RegisterLiteOrm()`、AOP 拦截（事务/权限/日志）、动态 Controller 生成 | ASP.NET Core 项目中通过 `builder.Host.RegisterLiteOrm()` 一键接入 |
+| `LiteOrm.DependencyInjection` | 宿主集成：Autofac 容器、`RegisterLiteOrm()`、AOP 拦截（事务/权限/日志） | ASP.NET Core 项目中通过 `builder.Host.RegisterLiteOrm()` 一键接入 |
 | `LiteOrm.Remote` | 远程调用客户端：接口动态代理、序列化传输 | 在客户端项目中以本地接口的方式调用远程服务 |
 | `LiteOrm.Remote.Server` | 远程调用服务端：接收与处理远程请求 | 部署远程服务端，配合 `LiteOrm.Remote` 使用 |
 
 > **如何选择？**
 > - 仅需要 ORM 核心能力（实体映射、查询、DAO）时，引用 `LiteOrm`（可选 `LiteOrm.Common`），无需引入任何 DI 框架。
-> - 需要宿主级集成（Autofac、AOP 事务/权限/日志、动态 Controller）时，引用 `LiteOrm.Framework`。
+> - 需要宿主级集成（Autofac、AOP 事务/权限/日志）时，引用 `LiteOrm.DependencyInjection`。
 > - 需要跨进程调用服务时，再引入 `LiteOrm.Remote` 与 `LiteOrm.Remote.Server`。
 
 **核心模块职责：**
@@ -451,15 +451,15 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 | .NET | 8.0+ | 运行环境 | LiteOrm / LiteOrm.Common |
 | .NET Standard | 2.0+ | 跨平台支持 | LiteOrm / LiteOrm.Common |
 | System.Text.Json | 10.0.5 | JSON处理 | LiteOrm.Common |
-| Autofac.Extensions.DependencyInjection | 10.0.0 | Autofac 容器与 `RegisterLiteOrm()` 的宿主集成 | LiteOrm.Framework |
-| Autofac.Extras.DynamicProxy | 7.1.0 | Autofac 拦截支持 | LiteOrm.Framework |
-| Microsoft.Extensions.DependencyInjection | 10.0.0 | DI 抽象与 ServiceCollection 生态 | LiteOrm.Framework |
-| Castle.Core | 5.2.1 | 动态代理核心 | LiteOrm.Framework |
-| Castle.Core.AsyncInterceptor | 2.1.0 | 异步拦截器 | LiteOrm.Framework |
-| Microsoft.Extensions.Hosting.Abstractions | 10.0.5 | 主机抽象 | LiteOrm.Framework |
-| Microsoft.Extensions.Logging.Abstractions | 10.0.5 | 日志抽象 | LiteOrm.Framework / LiteOrm.Remote |
+| Autofac.Extensions.DependencyInjection | 10.0.0 | Autofac 容器与 `RegisterLiteOrm()` 的宿主集成 | LiteOrm.DependencyInjection |
+| Autofac.Extras.DynamicProxy | 7.1.0 | Autofac 拦截支持 | LiteOrm.DependencyInjection |
+| Microsoft.Extensions.DependencyInjection | 10.0.0 | DI 抽象与 ServiceCollection 生态 | LiteOrm.DependencyInjection |
+| Castle.Core | 5.2.1 | 动态代理核心 | LiteOrm.DependencyInjection |
+| Castle.Core.AsyncInterceptor | 2.1.0 | 异步拦截器 | LiteOrm.DependencyInjection |
+| Microsoft.Extensions.Hosting.Abstractions | 10.0.5 | 主机抽象 | LiteOrm.DependencyInjection |
+| Microsoft.Extensions.Logging.Abstractions | 10.0.5 | 日志抽象 | LiteOrm.DependencyInjection / LiteOrm.Remote |
 
-> Autofac、Castle 动态代理等宿主集成依赖只在 `LiteOrm.Framework` 中。仅引用 `LiteOrm` / `LiteOrm.Common` 时不引入任何 DI 框架，保持核心库轻量。
+> Autofac、Castle 动态代理等宿主集成依赖只在 `LiteOrm.DependencyInjection` 中。仅引用 `LiteOrm` / `LiteOrm.Common` 时不引入任何 DI 框架，保持核心库轻量。
 
 **数据库支持：**
 - SQL Server 2012+
@@ -498,5 +498,5 @@ LiteOrm 支持子查询、JOIN、CTE（公共表表达式）、窗口函数、�
 - [GitHub 仓库](https://github.com/danjiewu/LiteOrm)
 - [返回目录](../README.md)
 - [安装与环境要求](./02-installation.md)
-- [配置与注册](../06-framework/01-configuration-and-registration.md)
+- [配置与注册](../06-di/01-configuration-and-registration.md)
 - [API 索引](../05-reference/02-api-index.md)

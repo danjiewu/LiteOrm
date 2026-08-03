@@ -29,7 +29,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.Remote", "LiteOrm.R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.Remote.Server", "LiteOrm.Remote.Server\LiteOrm.Remote.Server.csproj", "{D220D6EC-98EC-4351-BB41-0978EA954E6A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.Framework", "LiteOrm.Framework\LiteOrm.Framework.csproj", "{4EAA7C86-1D9F-4BBB-8F83-06B4CD982634}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiteOrm.DependencyInjection", "LiteOrm.DependencyInjection\LiteOrm.DependencyInjection.csproj", "{4EAA7C86-1D9F-4BBB-8F83-06B4CD982634}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

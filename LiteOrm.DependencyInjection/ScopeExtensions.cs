@@ -3,7 +3,7 @@ using Autofac.Extensions.DependencyInjection;
 using LiteOrm;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace LiteOrm.Framework
+namespace LiteOrm.DependencyInjection
 {
     /// <summary>
     /// Autofac 生命周期作用域跟踪扩展。

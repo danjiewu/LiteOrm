@@ -1,7 +1,7 @@
 using System;
 
 using LiteOrm.Common;
-using LiteOrm.Framework;
+using LiteOrm.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -14,7 +14,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var attribute = new AutoRegisterAttribute();
 
-            Assert.Equal(ServiceLifetime.Scoped, attribute.Lifetime);
+            Assert.Equal(ServiceLifetime.Singleton, attribute.Lifetime);
             Assert.True(attribute.Enabled);
             Assert.Null(attribute.ServiceTypes);
             Assert.Null(attribute.Key);
@@ -41,7 +41,7 @@ namespace LiteOrm.Common.UnitTests
             var attribute = new AutoRegisterAttribute(enabled);
 
             Assert.Equal(enabled, attribute.Enabled);
-            Assert.Equal(ServiceLifetime.Scoped, attribute.Lifetime);
+            Assert.Equal(ServiceLifetime.Singleton, attribute.Lifetime);
         }
 
         [Fact]

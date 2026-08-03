@@ -1,10 +1,10 @@
-﻿# First Example (Framework)
+# First Example (DI)
 
 This article demonstrates a minimal runnable example of LiteOrm's typical usage flow: defining entities, registering services, inserting data, querying data, and paginated queries.
 
 > If you don't need Autofac/AOP/DI, you can refer to [First Complete Example (Core Library Only)](./04-first-example.md)
 
-> **Beginner tip**: This article assumes you've completed [Installation](./02-installation.en.md) and [Configuration](../06-framework/01-configuration-and-registration.en.md). If this is your first time with LiteOrm, follow along and type the code—it takes about 15 minutes. This article uses SQLite as the demo database, so no additional database server installation is needed.
+> **Beginner tip**: This article assumes you've completed [Installation](./02-installation.en.md) and [Configuration](../06-di/01-configuration-and-registration.en.md). If this is your first time with LiteOrm, follow along and type the code—it takes about 15 minutes. This article uses SQLite as the demo database, so no additional database server installation is needed.
 
 ## 0. Project Setup
 
@@ -14,7 +14,7 @@ This article demonstrates a minimal runnable example of LiteOrm's typical usage 
 dotnet new webapi -n LiteOrmDemo
 cd LiteOrmDemo
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Microsoft.Data.Sqlite
 ```
 
@@ -99,10 +99,10 @@ If you're not ready to define custom services in your project yet, you can also 
 
 ## 4. Register LiteOrm
 
-> In `Program.cs`, register LiteOrm. **Important**: Must be called on `builder.Host`, not `builder.Services`. `RegisterLiteOrm()` is defined in the `LiteOrm.Framework` package (install via `dotnet add package LiteOrm.Framework`); add `using LiteOrm.Framework;`.
+> In `Program.cs`, register LiteOrm. **Important**: Must be called on `builder.Host`, not `builder.Services`. `RegisterLiteOrm()` is defined in the `LiteOrm.DependencyInjection` package (install via `dotnet add package LiteOrm.DependencyInjection`); add `using LiteOrm.DependencyInjection;`.
 
 ```csharp
-using LiteOrm.Framework;
+using LiteOrm.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -280,7 +280,7 @@ public class UsersController : ControllerBase
 If you can successfully run this code, your basic LiteOrm integration is complete.
 The recommended approach is to gradually migrate generic services to custom `IUserService` after the business layer stabilizes, to accommodate transactions, auditing, and composite business logic.
 
-When you have many entities, you can also use [Generic Controller or Dynamic Controller Generation](../06-framework/05-generic-controller.en.md) to reduce repetitive code.
+When you have many entities, you can also use [Generic Controller or Dynamic Controller Generation](../06-di/05-generic-controller.en.md) to reduce repetitive code.
 
 ## 9. Common Beginner Troubleshooting
 
@@ -325,9 +325,9 @@ builder.Host.RegisterLiteOrm(options =>
 
 ### Issue 5: `RegisterLiteOrm` method not found
 
-**Cause**: Missing `using LiteOrm.Framework;` reference, or only `LiteOrm` / `LiteOrm.Common` was installed instead of `LiteOrm.Framework`.
+**Cause**: Missing `using LiteOrm.DependencyInjection;` reference, or only `LiteOrm` / `LiteOrm.Common` was installed instead of `LiteOrm.DependencyInjection`.
 
-**Solution**: Confirm that the `LiteOrm.Framework` NuGet package is installed (`RegisterLiteOrm()` is defined there), and add `using LiteOrm.Framework;` at the top of your file.
+**Solution**: Confirm that the `LiteOrm.DependencyInjection` NuGet package is installed (`RegisterLiteOrm()` is defined there), and add `using LiteOrm.DependencyInjection;` at the top of your file.
 
 ## 10. Verification Checklist
 

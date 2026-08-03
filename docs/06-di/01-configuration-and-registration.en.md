@@ -1,6 +1,6 @@
 # Configuration and Registration
 
-When using `LiteOrm.Framework`, configuration is declared in `appsettings.json`, and `RegisterLiteOrm()` automatically performs DI binding, DAO registration, and dialect resolution at startup. Suited for ASP.NET Core and other projects that need Autofac and AOP capabilities.
+When using `LiteOrm.DependencyInjection`, configuration is declared in `appsettings.json`, and `RegisterLiteOrm()` automatically performs DI binding, DAO registration, and dialect resolution at startup. Suited for ASP.NET Core and other projects that need Autofac and AOP capabilities.
 
 > **Beginner tip**: If this is your first time configuring, start with the simplest setup—a single data source using SQLite. Once the basic flow works, gradually add multi-data-source, read/write splitting, and other advanced configurations.
 
@@ -120,7 +120,7 @@ When using `LiteOrm.Framework`, configuration is declared in `appsettings.json`,
 
 ## Registration Patterns
 
-> `RegisterLiteOrm()` is defined in the `LiteOrm.Framework` package. Install it with `dotnet add package LiteOrm.Framework` and add `using LiteOrm.Framework;` before use.
+> `RegisterLiteOrm()` is defined in the `LiteOrm.DependencyInjection` package. Install it with `dotnet add package LiteOrm.DependencyInjection` and add `using LiteOrm.DependencyInjection;` before use.
 
 ### Console or Worker Application
 
@@ -155,7 +155,7 @@ builder.Host.RegisterLiteOrm(options =>
 > Here is a complete ASP.NET Core `Program.cs` showing the typical placement of LiteOrm registration:
 
 ```csharp
-using LiteOrm.Framework;
+using LiteOrm.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -171,7 +171,7 @@ app.MapControllers();
 app.Run();
 ```
 
-> **Note**: `RegisterLiteOrm()` is defined in the `LiteOrm.Framework` package; reference `LiteOrm.Framework` and add `using LiteOrm.Framework;`.
+> **Note**: `RegisterLiteOrm()` is defined in the `LiteOrm.DependencyInjection` package; reference `LiteOrm.DependencyInjection` and add `using LiteOrm.DependencyInjection;`.
 
 ## Logging Integration
 
@@ -273,6 +273,6 @@ After starting the application, check the console output. If you see a log messa
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [First End-to-End Example (Framework)](../01-getting-started/05-first-example-framework.en.md)
+- [First End-to-End Example (DI)](../01-getting-started/05-first-example-di.en.md)
 - [Configuration Reference](../05-reference/01-configuration-reference.en.md)
 - [Custom SqlBuilder / Dialect Extension](../04-extensibility/03-custom-sqlbuilder.en.md)

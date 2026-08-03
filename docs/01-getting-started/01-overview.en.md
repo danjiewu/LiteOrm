@@ -1,4 +1,4 @@
-﻿# Overview
+# Overview
 
 LiteOrm is a lightweight, high-performance .NET ORM framework that combines the speed of micro-ORMs with the functionality of full ORMs. It is suitable for projects that require flexible SQL query handling while prioritizing performance.
 
@@ -37,8 +37,8 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 ## 4. Recommended reading order
 
 1. [Installation](./02-installation.en.md)
-2. [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md) (when using `LiteOrm.Framework`)
-3. [First End-to-End Example](./05-first-example-framework.en.md)
+2. [Configuration and Registration](../06-di/01-configuration-and-registration.en.md) (when using `LiteOrm.DependencyInjection`)
+3. [First End-to-End Example](./05-first-example-di.en.md)
 4. [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
 5. [Query Overview](../02-core-usage/04-query-overview.en.md)
 6. [Lambda Guide](../02-core-usage/05-lambda-guide.en.md)
@@ -71,7 +71,7 @@ LiteOrm uses a modular design that clearly separates core functionality, common 
 │   ├── Initilizer/          # Initializers
 │   ├── Service/             # Service layer
 │   └── SqlBuilder/          # SQL builders
-├── LiteOrm.Framework/       # Host integration (Autofac + AOP + dynamic controllers)
+├── LiteOrm.DependencyInjection/       # Host integration (Autofac + AOP)
 │   ├── Attributes/          # Registration/interception attributes
 │   └── Service/             # Integration and registration entry point
 ├── LiteOrm.Remote/          # Remote client
@@ -103,7 +103,7 @@ LiteOrm uses a modular design that clearly separates core functionality, common 
     ├── 03-advanced-topics/  # Advanced topics
     ├── 04-extensibility/    # Extensibility
     ├── 05-reference/        # Reference
-    └── 06-framework/        # Framework usage (requires LiteOrm.Framework)
+    └── 06-di/        # DI usage (requires LiteOrm.DependencyInjection)
 ```
 
 ### 5.1 The Five Core Projects
@@ -112,13 +112,13 @@ LiteOrm uses a modular design that clearly separates core functionality, common 
 |-----|-----|---------|
 | `LiteOrm.Common` | Common components: mapping attributes, the `Expr` object model, `SqlSegment`, common service interfaces | Use only the low-level capabilities (mapping, expressions, DAO contracts) without any host DI integration |
 | `LiteOrm` (core library) | DAO layer, SQL generation, dialect builders, core services | Use `ObjectDAO`/`DataDAO` and other low-level access, managing connections and lifecycle yourself |
-| `LiteOrm.Framework` | Host integration: Autofac container, `RegisterLiteOrm()`, AOP interception (transactions/permissions/logging), dynamic controller generation | ASP.NET Core projects integrating via `builder.Host.RegisterLiteOrm()` |
+| `LiteOrm.DependencyInjection` | Host integration: Autofac container, `RegisterLiteOrm()`, AOP interception (transactions/permissions/logging) | ASP.NET Core projects integrating via `builder.Host.RegisterLiteOrm()` |
 | `LiteOrm.Remote` | Remote client: interface dynamic proxies, serialized transport | Call remote services through local interfaces from a client project |
 | `LiteOrm.Remote.Server` | Remote server: receives and processes remote requests | Deploy the remote server alongside `LiteOrm.Remote` |
 
 > **How to choose?**
 > - For core ORM capabilities only (mapping, queries, DAO), reference `LiteOrm` (optionally `LiteOrm.Common`) with no DI framework required.
-> - For host-level integration (Autofac, AOP transactions/permissions/logging, dynamic controllers), reference `LiteOrm.Framework`.
+> - For host-level integration (Autofac, AOP transactions/permissions/logging), reference `LiteOrm.DependencyInjection`.
 > - For cross-process service calls, add `LiteOrm.Remote` and `LiteOrm.Remote.Server`.
 
 **Core Module Responsibilities:**
@@ -453,15 +453,15 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 | .NET | 8.0+ | Runtime environment | LiteOrm / LiteOrm.Common |
 | .NET Standard | 2.0+ | Cross-platform support | LiteOrm / LiteOrm.Common |
 | System.Text.Json | 10.0.5 | JSON processing | LiteOrm.Common |
-| Autofac.Extensions.DependencyInjection | 10.0.0 | Autofac container integration used by `RegisterLiteOrm()` | LiteOrm.Framework |
-| Autofac.Extras.DynamicProxy | 7.1.0 | Autofac interception support | LiteOrm.Framework |
-| Microsoft.Extensions.DependencyInjection | 10.0.0 | DI abstractions and `ServiceCollection` ecosystem | LiteOrm.Framework |
-| Castle.Core | 5.2.1 | Dynamic proxy core | LiteOrm.Framework |
-| Castle.Core.AsyncInterceptor | 2.1.0 | Async interceptor | LiteOrm.Framework |
-| Microsoft.Extensions.Hosting.Abstractions | 10.0.5 | Hosting abstractions | LiteOrm.Framework |
-| Microsoft.Extensions.Logging.Abstractions | 10.0.5 | Logging abstractions | LiteOrm.Framework / LiteOrm.Remote |
+| Autofac.Extensions.DependencyInjection | 10.0.0 | Autofac container integration used by `RegisterLiteOrm()` | LiteOrm.DependencyInjection |
+| Autofac.Extras.DynamicProxy | 7.1.0 | Autofac interception support | LiteOrm.DependencyInjection |
+| Microsoft.Extensions.DependencyInjection | 10.0.0 | DI abstractions and `ServiceCollection` ecosystem | LiteOrm.DependencyInjection |
+| Castle.Core | 5.2.1 | Dynamic proxy core | LiteOrm.DependencyInjection |
+| Castle.Core.AsyncInterceptor | 2.1.0 | Async interceptor | LiteOrm.DependencyInjection |
+| Microsoft.Extensions.Hosting.Abstractions | 10.0.5 | Hosting abstractions | LiteOrm.DependencyInjection |
+| Microsoft.Extensions.Logging.Abstractions | 10.0.5 | Logging abstractions | LiteOrm.DependencyInjection / LiteOrm.Remote |
 
-> Autofac and Castle dynamic-proxy dependencies live only in `LiteOrm.Framework`. Referencing just `LiteOrm` / `LiteOrm.Common` pulls in no DI framework, keeping the core library lightweight.
+> Autofac and Castle dynamic-proxy dependencies live only in `LiteOrm.DependencyInjection`. Referencing just `LiteOrm` / `LiteOrm.Common` pulls in no DI framework, keeping the core library lightweight.
 
 **Database Support:**
 - SQL Server 2012+
@@ -499,6 +499,6 @@ The names in attributes are the actual database names. If your C# property name 
 
 - [Back to docs hub](../README.md)
 - [Installation and Environment Requirements](./02-installation.en.md)
-- [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md)
+- [Configuration and Registration](../06-di/01-configuration-and-registration.en.md)
 - [API Index](../05-reference/02-api-index.en.md)
 - [Demo Project](../../LiteOrm.Demo/)

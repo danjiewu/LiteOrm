@@ -3,7 +3,7 @@ using LiteOrm.Common;
 using LiteOrm.Demo.Data;
 using LiteOrm.Demo.Demos;
 using LiteOrm.Demo.Services;
-using LiteOrm.Framework;
+using LiteOrm.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Oracle.ManagedDataAccess.Client;

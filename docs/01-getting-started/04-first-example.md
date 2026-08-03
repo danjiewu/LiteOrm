@@ -1,10 +1,10 @@
-﻿# 第一个完整示例（仅核心库）
+# 第一个完整示例（仅核心库）
 
-本文通过一个最小可运行示例展示**仅使用 `LiteOrm` 核心库**（不引入 `LiteOrm.Framework`、Autofac、Castle 动态代理）的典型使用流程：手动初始化、定义实体、插入数据、查询数据和分页查询。
+本文通过一个最小可运行示例展示**仅使用 `LiteOrm` 核心库**（不引入 `LiteOrm.DependencyInjection`、Autofac、Castle 动态代理）的典型使用流程：手动初始化、定义实体、插入数据、查询数据和分页查询。
 
 > **适用场景**：控制台应用、批处理脚本、不依赖 DI 容器的项目，或希望对生命周期完全自管理的场景。
 >
-> 如果你使用 ASP.NET Core 且需要 Autofac 集成、AOP 事务/权限/日志、动态 Controller 等能力，请参考 [第一个完整示例（Framework 版）](./05-first-example-framework.md)。
+> 如果你使用 ASP.NET Core 且需要 Autofac 集成、AOP 事务/权限/日志等能力，请参考 [第一个完整示例（DI 版）](./05-first-example-di.md)。
 
 ## 0. 项目准备
 
@@ -144,7 +144,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
 ## 2.5 通过 ServiceProvider 注册和获取服务
 
-上一节展示了纯手动构造依赖链的方式。如果你希望使用 `Microsoft.Extensions.DependencyInjection`（以下简称 MS DI）来管理服务生命周期，但**不引入 LiteOrm.Framework / Autofac**，可以手动将核心类型注册到 `IServiceCollection` 并构建 `ServiceProvider`。
+上一节展示了纯手动构造依赖链的方式。如果你希望使用 `Microsoft.Extensions.DependencyInjection`（以下简称 MS DI）来管理服务生命周期，但**不引入 LiteOrm.DependencyInjection / Autofac**，可以手动将核心类型注册到 `IServiceCollection` 并构建 `ServiceProvider`。
 
 这种方式适合需要依赖注入但不需要 AOP 拦截的场景，例如单元测试、轻量级 Web API、或希望按作用域（Scope）管理 `SessionManager` 生命周期的项目。
 
@@ -343,7 +343,7 @@ poolFactory.Dispose();
 
 ## 9. 核心库与 Framework 的能力对比
 
-| 能力 | 仅核心库 (`LiteOrm`) | Framework (`LiteOrm.Framework`) |
+| 能力 | 仅核心库 (`LiteOrm`) | Framework (`LiteOrm.DependencyInjection`) |
 |------|----------------------|--------------------------------|
 | 实体映射 / CRUD / 查询 | ✅ | ✅ |
 | 手动事务 | ✅ `SessionManager.BeginTransaction()` | ✅ |
@@ -351,7 +351,6 @@ poolFactory.Dispose();
 | 权限过滤 `[ServicePermission]` | ❌ | ✅ AOP 拦截 |
 | 自动日志 `[ServiceLog]` / `[Log]` | ❌ | ✅ AOP 拦截 |
 | DI 容器注册 | ✅ 手动注册到 MS DI（见 §2.5） | ✅ `RegisterLiteOrm()`（Autofac） |
-| 动态 Controller 生成 | ❌ | ✅ |
 | 配置文件绑定 | ✅ `LoadConfiguration` 读取 `IConfiguration` | ✅ `appsettings.json` 自动绑定 |
 | 批量导入 `IBulkProvider` | ✅ 直接设置 `SqlBuilder.BulkProvider` | ✅ 直接设置 `SqlBuilder.BulkProvider` |
 
@@ -390,8 +389,8 @@ poolFactory.Dispose();
 
 - [返回目录](../README.md)
 - [安装](./02-installation.md)
-- [配置与注册](../06-framework/01-configuration-and-registration.md)
-- [第一个完整示例（Framework 版）](./05-first-example-framework.md)
+- [配置与注册](../06-di/01-configuration-and-registration.md)
+- [第一个完整示例（DI 版）](./05-first-example-di.md)
 - [实体映射与数据源](../02-core-usage/01-entity-mapping.md)
 - [查询总览](../02-core-usage/04-query-overview.md)
 - [CRUD 指南](../02-core-usage/03-crud-guide.md)

@@ -1,10 +1,10 @@
-﻿# 第一个完整示例（Framework 版）
+# 第一个完整示例（DI 版）
 
 本文通过一个最小可运行示例展示 LiteOrm 的典型使用流程：定义实体、注册服务、插入数据、查询数据和分页查询。
 
 > 如果你不需要 Autofac/AOP/DI，可以参考[第一个完整示例（仅核心库）](./04-first-example.md)
 
-> **新手提示**：本文假设你已经完成了 [安装](./02-installation.md) 和 [配置](../06-framework/01-configuration-and-registration.md)。如果你是第一次接触 LiteOrm，建议从头到尾跟着敲一遍代码，大约需要 15 分钟。本文使用 SQLite 作为演示数据库，无需额外安装数据库服务。
+> **新手提示**：本文假设你已经完成了 [安装](./02-installation.md) 和 [配置](../06-di/01-configuration-and-registration.md)。如果你是第一次接触 LiteOrm，建议从头到尾跟着敲一遍代码，大约需要 15 分钟。本文使用 SQLite 作为演示数据库，无需额外安装数据库服务。
 
 ## 0. 项目准备
 
@@ -14,7 +14,7 @@
 dotnet new webapi -n LiteOrmDemo
 cd LiteOrmDemo
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Microsoft.Data.Sqlite
 ```
 
@@ -99,10 +99,10 @@ public class UserService : EntityService<User>, IUserService
 
 ## 4. 注册 LiteOrm
 
-> 在 `Program.cs` 中注册 LiteOrm。**注意**：必须在 `builder.Host` 上调用，不是 `builder.Services`。`RegisterLiteOrm()` 定义于 `LiteOrm.Framework` 包（需 `dotnet add package LiteOrm.Framework`），并添加 `using LiteOrm.Framework;`。
+> 在 `Program.cs` 中注册 LiteOrm。**注意**：必须在 `builder.Host` 上调用，不是 `builder.Services`。`RegisterLiteOrm()` 定义于 `LiteOrm.DependencyInjection` 包（需 `dotnet add package LiteOrm.DependencyInjection`），并添加 `using LiteOrm.DependencyInjection;`。
 
 ```csharp
-using LiteOrm.Framework;
+using LiteOrm.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -280,7 +280,7 @@ public class UsersController : ControllerBase
 如果你能顺利跑通这段代码，说明 LiteOrm 的基础接入已经完成。  
 推荐做法是：业务层稳定后再逐步把泛型服务收敛到自定义 `IUserService` 中，方便承载事务、审计和组合业务逻辑。
 
-当实体较多时，还可以使用[泛型 Controller 或动态 Controller 生成](../06-framework/05-generic-controller.md)来减少重复代码。
+当实体较多时，还可以使用[泛型 Controller 或动态 Controller 生成](../06-di/05-generic-controller.md)来减少重复代码。
 
 ## 9. 新手常见问题排查
 
@@ -325,9 +325,9 @@ builder.Host.RegisterLiteOrm(options =>
 
 ### 问题五：`RegisterLiteOrm` 方法找不到
 
-**原因**：没有添加 `using LiteOrm.Framework;` 引用，或者安装的是 `LiteOrm` / `LiteOrm.Common` 包而未安装 `LiteOrm.Framework` 包。
+**原因**：没有添加 `using LiteOrm.DependencyInjection;` 引用，或者安装的是 `LiteOrm` / `LiteOrm.Common` 包而未安装 `LiteOrm.DependencyInjection` 包。
 
-**解决方法**：确认安装了 `LiteOrm.Framework` NuGet 包（`RegisterLiteOrm()` 定义于该包），并在文件顶部添加 `using LiteOrm.Framework;`。
+**解决方法**：确认安装了 `LiteOrm.DependencyInjection` NuGet 包（`RegisterLiteOrm()` 定义于该包），并在文件顶部添加 `using LiteOrm.DependencyInjection;`。
 
 ## 10. 运行验证清单
 

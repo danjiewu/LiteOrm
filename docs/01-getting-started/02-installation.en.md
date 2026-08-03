@@ -1,8 +1,8 @@
-﻿# Installation and Environment Requirements
+# Installation and Environment Requirements
 
-This document covers the runtime environment, database support, and two installation methods: core-only (`LiteOrm`) and host integration (`LiteOrm.Framework`).
+This document covers the runtime environment, database support, and two installation methods: core-only (`LiteOrm`) and host integration (`LiteOrm.DependencyInjection`).
 
-> **Beginner tip**: If you just want to quickly try out LiteOrm, we recommend using SQLite—it requires no database server installation and works out of the box. Bring in `LiteOrm.Framework` only when you need host-level integration (Autofac, AOP).
+> **Beginner tip**: If you just want to quickly try out LiteOrm, we recommend using SQLite—it requires no database server installation and works out of the box. Bring in `LiteOrm.DependencyInjection` only when you need host-level integration (Autofac, AOP).
 
 ## Environment Requirements
 
@@ -61,16 +61,16 @@ dotnet add package Microsoft.Data.Sqlite   # choose based on your database
 ```
 
 - The core library consists of `LiteOrm` and `LiteOrm.Common`; `LiteOrm` automatically brings in `LiteOrm.Common`.
-- No `RegisterLiteOrm()` is provided, and no AOP interception (transactions/permissions/logging) or dynamic-controller generation.
+- No `RegisterLiteOrm()` is provided, and no AOP interception (transactions/permissions/logging).
 - Data access is done through DAO types such as `ObjectDAO` / `DataDAO`.
 
-## Option 2: Host Integration Package (`LiteOrm.Framework`)
+## Option 2: Host Integration Package (`LiteOrm.DependencyInjection`)
 
-For ASP.NET Core projects. `LiteOrm.Framework` brings in the Autofac container and Castle dynamic proxy, registers everything via `builder.Host.RegisterLiteOrm()`, and enables AOP transactions/permissions/logging plus dynamic-controller generation.
+For ASP.NET Core projects. `LiteOrm.DependencyInjection` brings in the Autofac container and Castle dynamic proxy, registers everything via `builder.Host.RegisterLiteOrm()`, and enables AOP transactions/permissions/logging.
 
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework    # required for DI registration (RegisterLiteOrm)
+dotnet add package LiteOrm.DependencyInjection    # required for DI registration (RegisterLiteOrm)
 dotnet add package Microsoft.Data.Sqlite   # choose based on your database
 ```
 
@@ -79,34 +79,34 @@ dotnet add package Microsoft.Data.Sqlite   # choose based on your database
 **SQL Server project:**
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Microsoft.Data.SqlClient
 ```
 
 **MySQL project:**
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package MySqlConnector
 ```
 
 **PostgreSQL project:**
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Npgsql
 ```
 
 **SQLite project (recommended for beginners):**
 ```bash
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Microsoft.Data.Sqlite
 ```
 
 ## Creating a New Project from Scratch
 
-> Here are the complete commands to create an ASP.NET Core project with LiteOrm.Framework from scratch:
+> Here are the complete commands to create an ASP.NET Core project with LiteOrm.DependencyInjection from scratch:
 
 ```bash
 # 1. Create a Web API project
@@ -115,7 +115,7 @@ cd MyLiteOrmApp
 
 # 2. Install LiteOrm (using SQLite as an example)
 dotnet add package LiteOrm
-dotnet add package LiteOrm.Framework
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Microsoft.Data.Sqlite
 
 # 3. Run the project to verify the environment
@@ -127,15 +127,15 @@ dotnet run
 ## Next Steps After Installation
 
 - **Core only**: use DAO directly for data access; see [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md) and [Query Overview](../02-core-usage/04-query-overview.en.md).
-- **Framework integration**: call `RegisterLiteOrm()` during host startup; see [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md) and [First End-to-End Example](./05-first-example-framework.en.md).
+- **Framework integration**: call `RegisterLiteOrm()` during host startup; see [Configuration and Registration](../06-di/01-configuration-and-registration.en.md) and [First End-to-End Example](./05-first-example-di.en.md).
 
-> **SQLite quick start**: If you want to try SQLite quickly, the connection string is simply `Data Source=myapp.db`—no database server needed. See the [First End-to-End Example](./05-first-example-framework.en.md) for a complete walkthrough.
+> **SQLite quick start**: If you want to try SQLite quickly, the connection string is simply `Data Source=myapp.db`—no database server needed. See the [First End-to-End Example](./05-first-example-di.en.md) for a complete walkthrough.
 
 ## Common Installation Issues
 
 ### Build error after installation: `RegisterLiteOrm` method not found
 
-Make sure you installed the `LiteOrm.Framework` package (`RegisterLiteOrm()` is defined there; installing only `LiteOrm` or `LiteOrm.Common` won't provide it), and add `using LiteOrm.Framework;` at the top of your code file.
+Make sure you installed the `LiteOrm.DependencyInjection` package (`RegisterLiteOrm()` is defined there; installing only `LiteOrm` or `LiteOrm.Common` won't provide it), and add `using LiteOrm.DependencyInjection;` at the top of your code file.
 
 ### Runtime error: database driver not found
 
@@ -152,6 +152,6 @@ No. LiteOrm itself is very lightweight—the core package is only a few hundred 
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md)
-- [First End-to-End Example](./05-first-example-framework.en.md)
+- [Configuration and Registration](../06-di/01-configuration-and-registration.en.md)
+- [First End-to-End Example](./05-first-example-di.en.md)
 - [Configuration Reference](../05-reference/01-configuration-reference.en.md)

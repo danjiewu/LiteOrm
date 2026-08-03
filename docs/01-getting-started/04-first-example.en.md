@@ -1,10 +1,10 @@
-﻿# First End-to-End Example (Core Library Only)
+# First End-to-End Example (Core Library Only)
 
-This article walks through a minimal runnable example demonstrating the typical workflow of using **only the `LiteOrm` core library** (without `LiteOrm.Framework`, Autofac, or Castle dynamic proxies): manual initialization, defining entities, inserting data, querying data, and paginated queries.
+This article walks through a minimal runnable example demonstrating the typical workflow of using **only the `LiteOrm` core library** (without `LiteOrm.DependencyInjection`, Autofac, or Castle dynamic proxies): manual initialization, defining entities, inserting data, querying data, and paginated queries.
 
 > **Applicable scenarios**: console apps, batch scripts, projects without a DI container, or scenarios where you want full control over lifetimes.
 >
-> If you use ASP.NET Core and need Autofac integration, AOP transactions/permissions/logging, dynamic Controllers, and similar capabilities, see [First End-to-End Example (Framework)](./05-first-example-framework.en.md).
+> If you use ASP.NET Core and need Autofac integration, AOP transactions/permissions/logging, and similar capabilities, see [First End-to-End Example (DI)](./05-first-example-di.en.md).
 
 ## 0. Project Setup
 
@@ -144,7 +144,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
 ## 2.5 Register and Resolve Services via ServiceProvider
 
-The previous section showed how to build the dependency chain entirely by hand. If you prefer to use `Microsoft.Extensions.DependencyInjection` (MS DI) for lifetime management **without introducing LiteOrm.Framework / Autofac**, you can manually register the core types into an `IServiceCollection` and build a `ServiceProvider`.
+The previous section showed how to build the dependency chain entirely by hand. If you prefer to use `Microsoft.Extensions.DependencyInjection` (MS DI) for lifetime management **without introducing LiteOrm.DependencyInjection / Autofac**, you can manually register the core types into an `IServiceCollection` and build a `ServiceProvider`.
 
 This approach suits scenarios that need dependency injection but not AOP interception — unit tests, lightweight web APIs, or projects that want per-scope `SessionManager` lifetime management.
 
@@ -343,7 +343,7 @@ poolFactory.Dispose();
 
 ## 9. Core Library vs. Framework Capability Comparison
 
-| Capability | Core Library Only (`LiteOrm`) | Framework (`LiteOrm.Framework`) |
+| Capability | Core Library Only (`LiteOrm`) | Framework (`LiteOrm.DependencyInjection`) |
 |------|----------------------|--------------------------------|
 | Entity mapping / CRUD / queries | ✅ | ✅ |
 | Manual transactions | ✅ `SessionManager.BeginTransaction()` | ✅ |
@@ -351,7 +351,6 @@ poolFactory.Dispose();
 | Permission filtering `[ServicePermission]` | ❌ | ✅ AOP interception |
 | Automatic logging `[ServiceLog]` / `[Log]` | ❌ | ✅ AOP interception |
 | DI container registration | ✅ manual MS DI registration (see §2.5) | ✅ `RegisterLiteOrm()` (Autofac) |
-| Dynamic Controller generation | ❌ | ✅ |
 | Config file binding | ✅ `LoadConfiguration` reads from `IConfiguration` | ✅ `appsettings.json` auto-binding |
 | Bulk import `IBulkProvider` | ✅ set `SqlBuilder.BulkProvider` directly | ✅ set `SqlBuilder.BulkProvider` directly |
 
@@ -390,8 +389,8 @@ poolFactory.Dispose();
 
 - [Back to docs hub](../README.md)
 - [Installation](./02-installation.en.md)
-- [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md)
-- [First End-to-End Example (Framework)](./05-first-example-framework.en.md)
+- [Configuration and Registration](../06-di/01-configuration-and-registration.en.md)
+- [First End-to-End Example (DI)](./05-first-example-di.en.md)
 - [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
 - [Query Overview](../02-core-usage/04-query-overview.en.md)
 - [CRUD Guide](../02-core-usage/03-crud-guide.en.md)

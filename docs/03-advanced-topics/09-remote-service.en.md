@@ -1,4 +1,4 @@
-﻿# Remote Service (LiteOrm.Remote)
+# Remote Service (LiteOrm.Remote)
 
 LiteOrm provides a complete remote service invocation solution, allowing business code to switch seamlessly between "local calls" and "remote calls" — **the interface definition stays the same, the call syntax stays the same**. Only the registration method needs to change to physically decouple the data access layer from the application process.
 
@@ -1001,7 +1001,7 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 |-----------|---------------|----------------|
 | Registration | `RegisterLiteOrm` auto-scans `[Service]` | `RegisterLiteOrmRemote` + proxy registration |
 | Invocation | Direct reflection call | Dynamic proxy interception + HTTP forwarding |
-| Transactions | `[Transaction]` AOP | Cross-process transactions not supported (see [Transactions Guide](../06-framework/02-transactions.en.md)) |
+| Transactions | `[Transaction]` AOP | Cross-process transactions not supported (see [Transactions Guide](../06-di/02-transactions.en.md)) |
 | `ForEachAsync` | Streaming iteration | Throws `NotSupportedException` |
 | Parameter write-back | Direct object modification | Serialized write-back via `OutArguments` |
 | Exception propagation | Original exception | `RemoteInvocationResponse.Error` carries exception info |
@@ -1024,7 +1024,7 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 
 ## Related Links
 
-- [Configuration and Registration](../06-framework/01-configuration-and-registration.en.md) — Full documentation for `RegisterLiteOrm` / `RegisterLiteOrmRemote`
+- [Configuration and Registration](../06-di/01-configuration-and-registration.en.md) — Full documentation for `RegisterLiteOrm` / `RegisterLiteOrmRemote`
 - [Expression Guide](../02-core-usage/06-expr-guide.en.md) — Lambda condition queries, also applicable to remote calls
 - [Expression Serialization](../04-extensibility/04-expr-serialization.en.md) — Serialization mechanism for `Expr` expression trees
 - [RemoteServiceDemo.cs](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/RemoteServiceDemo.cs) — 13 typical client operation scenarios

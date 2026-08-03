@@ -16,7 +16,7 @@ namespace LiteOrm
     /// LiteOrm 核心不依赖 DI 容器。手动构造 <see cref="SessionManager"/> 后，通过
     /// <see cref="SessionManagerExtensions.BeginScope"/> 或直接 new 本类型进入会话作用域，
     /// 使 DAO/Service 通过 <see cref="SessionManager.Current"/> 获取会话。生命周期与
-    /// LiteOrm.Framework 中 DI 容器的内置 scope 周期保持一致（进入时设置，退出时恢复）。
+    /// LiteOrm.DependencyInjection 中 DI 容器的内置 scope 周期保持一致（进入时设置，退出时恢复）。
     /// </remarks>
     public sealed class SessionScope : IDisposable
     {

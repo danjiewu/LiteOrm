@@ -1,4 +1,4 @@
-﻿# 自定义 SqlBuilder / 方言扩展
+# 自定义 SqlBuilder / 方言扩展
 
 当默认数据库方言不足以覆盖目标数据库版本或特殊 SQL 行为时，可以通过自定义 `SqlBuilder` 扩展 LiteOrm。
 
@@ -108,5 +108,5 @@ MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (ref ValueString
 - [返回目录](../README.md)
 - [自定义分页](../03-advanced-topics/05-custom-paging.md)
 - [表达式扩展](./01-expression-extension.md)
-- [配置与注册](../06-framework/01-configuration-and-registration.md)
+- [配置与注册](../06-di/01-configuration-and-registration.md)
 

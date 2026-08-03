@@ -3,7 +3,7 @@ using System;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 标记需要拦截的服务类型。由 DI 适配器（LiteOrm.Framework）读取并应用拦截。
+    /// 标记需要拦截的服务类型。由 DI 适配器（LiteOrm.DependencyInjection）读取并应用拦截。
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = true, AllowMultiple = true)]
     public class InterceptAttribute : Attribute

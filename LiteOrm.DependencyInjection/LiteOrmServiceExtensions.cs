@@ -16,7 +16,7 @@ using System.Linq;
 using System.Reflection;
 using InterceptAttribute = LiteOrm.Common.InterceptAttribute;
 
-namespace LiteOrm.Framework
+namespace LiteOrm.DependencyInjection
 {
     /// <summary>
     /// LiteOrm 服务提供者扩展方法集合。
