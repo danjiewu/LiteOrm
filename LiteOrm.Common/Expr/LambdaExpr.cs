@@ -38,13 +38,12 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 获取转换后的表达式对象。
-        /// 使用 <see cref="LambdaExprConverter.Default"/> 解析器，允许全局替换为自定义/AOT 实现。
         /// </summary>
         public LogicExpr? InnerExpr
         {
             get
             {
-                return _expr ?? (_expr = (LogicExpr?)LambdaExprConverter.Default.Parse(Expression!));
+                return _expr ?? (_expr = new LambdaExprConverter(Expression!).ToLogicExpr());
             }
         }
 
@@ -90,7 +89,7 @@ namespace LiteOrm.Common
         private LogicExpr? GetComparableInnerExpr()
         {
             if (_expr != null) return _expr;
-            return Expression == null ? null : (_expr = (LogicExpr?)LambdaExprConverter.Default.Parse(Expression!));
+            return Expression == null ? null : (_expr = new LambdaExprConverter(Expression!).ToLogicExpr());
         }
     }
 }
