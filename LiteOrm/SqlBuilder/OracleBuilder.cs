@@ -250,7 +250,7 @@ namespace LiteOrm
         /// </summary>
         protected override string GetSqlTypeDefinition(ColumnDefinition column)
         {
-            var dbType = column.DbType ?? GetDbType(column.PropertyType);
+            var dbType = column.ToDbType(this);
             switch (dbType)
             {
                 case DbType.String:
@@ -303,7 +303,7 @@ namespace LiteOrm
         /// </summary>
         public override string GetDefaultValueSql(ColumnDefinition column)
         {
-            var dbType = column.DbType ?? GetDbType(column.PropertyType);
+            var dbType = column.ToDbType(this);
             switch (dbType)
             {
                 case DbType.DateTime:

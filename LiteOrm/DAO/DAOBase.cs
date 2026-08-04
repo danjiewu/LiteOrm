@@ -107,7 +107,7 @@ namespace LiteOrm
         /// </summary>
         public virtual SqlBuilder SqlBuilder
         {
-            get { return CurrentSession!.GetDAOContextPool(DataSource)!.SqlBuilder; }
+            get { return field ?? (field = CurrentSession!.GetDAOContextPool(DataSource)!.SqlBuilder); }
         }
 
         /// <summary>
@@ -597,7 +597,7 @@ namespace LiteOrm
                 strConditions.Append(ToColumnSql(key));
                 strConditions.Append(" = ");
                 strConditions.Append(ToSqlParam(paramName));
-                paramValues.Add(new Param(paramName, null, key.DbType));
+                paramValues.Add(new Param(paramName, null, key.ToDbType(SqlBuilder)));
             }
             string result = strConditions.ToString();
             strConditions.Dispose();

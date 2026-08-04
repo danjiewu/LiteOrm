@@ -23,8 +23,9 @@ namespace LiteOrm
         private static readonly MethodInfo? _getValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetValue), new[] { typeof(int) });
 
-        private static readonly MethodInfo? _convertValueMethod =
-            typeof(DataReaderConverter).GetMethod(nameof(ConvertValue), BindingFlags.Static | BindingFlags.NonPublic);
+        // IDbConverter.ConvertFromDbValue：兜底转换委托给 reader.DbConverter，支持枚举、TimeSpan、DateTimeOffset 等
+        private static readonly MethodInfo _convertFromDbValueMethod =
+            typeof(IDbConverter).GetMethod(nameof(IDbConverter.ConvertFromDbValue), new[] { typeof(object), typeof(Type) })!;
 
         private static readonly MethodInfo? _isDBNullMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.IsDBNull), new[] { typeof(int) });
@@ -254,7 +255,7 @@ namespace LiteOrm
         /// 构建读取指定列的完整表达式（含 IsDBNull 判定、Nullable 封装与列级异常包装）。
         /// 优先按 <paramref name="dbType"/> 选择与数据库列类型精确对应的读取方法；
         /// 若读取方法的返回类型与属性 CLR 类型不符（如枚举、数值扩宽），则自动插入 Convert 表达式。
-        /// 未提供 <paramref name="dbType"/> 时退回到按属性 CLR 类型查找，仍无匹配则使用 GetValue + ConvertValue 兜底。
+        /// 未提供 <paramref name="dbType"/> 时退回到按属性 CLR 类型查找，仍无匹配则使用 GetValue + reader.DbConverter.ConvertFromDbValue 兜底。
         /// <paramref name="columnName"/> 用于在读取失败时抛出包含成员名（属性名或构造函数参数名）的明确异常；为 null 时仅依据 <paramref name="ordinal"/> 描述。
         /// </summary>
         private static Expression BuildTypedReadExpression(
@@ -335,7 +336,7 @@ namespace LiteOrm
 
         /// <summary>
         /// 返回读取列值的原始表达式（不含 IsDBNull 检查与 Nullable 封装）。
-        /// 选取顺序：DbType 映射 → CLR 类型映射 → byte[] 特殊路径 → GetValue + ConvertValue 兜底。
+        /// 选取顺序：DbType 映射 → CLR 类型映射 → byte[] 特殊路径 → GetValue + reader.DbConverter.ConvertFromDbValue 兜底。
         /// </summary>
         private static Expression BuildRawReadExpression(
             ParameterExpression readerParam, Expression ordinalExpr, Type coreType, DbType? dbType)
@@ -365,10 +366,12 @@ namespace LiteOrm
                 return Expression.Call(readerParam,
                     _getFieldValueMethod!.MakeGenericMethod(typeof(byte[])), ordinalExpr);
 
-            // 4. Fallback: GetValue + ConvertValue<T> (enums, TimeSpan, DateTimeOffset, etc.)
-            return Expression.Call(
-                _convertValueMethod!.MakeGenericMethod(coreType),
-                Expression.Call(readerParam, _getValueMethod!, ordinalExpr));
+            // 4. Fallback: GetValue + reader.DbConverter.ConvertFromDbValue (enums, TimeSpan, DateTimeOffset, etc.)
+            var getValueCall = Expression.Call(readerParam, _getValueMethod!, ordinalExpr);
+            var dbConverterExpr = Expression.Property(readerParam, nameof(AutoLockDataReader.DbConverter));
+            return Expression.Convert(
+                Expression.Call(dbConverterExpr, _convertFromDbValueMethod!, getValueCall, Expression.Constant(coreType, typeof(Type))),
+                coreType);
         }
 
         /// <summary>
@@ -414,17 +417,6 @@ namespace LiteOrm
                 || type == typeof(Stream)
                 || type == typeof(DateTimeOffset)
                 || type == typeof(TimeSpan);
-        }
-
-        private static T ConvertValue<T>(object? value)
-        {
-            if (value == null || value is DBNull) return default!;
-            if (value is T t) return t;
-            Type targetType = typeof(T);
-            Type underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
-            if (underlyingType.IsEnum)
-                return (T)Enum.ToObject(underlyingType, Convert.ChangeType(value, Enum.GetUnderlyingType(underlyingType)));
-            return (T)Convert.ChangeType(value, underlyingType);
         }
     }
 }

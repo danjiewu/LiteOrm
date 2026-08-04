@@ -752,7 +752,7 @@ namespace LiteOrm
                 return column.DefaultValue!;
             }
 
-            var dbType = column.DbType ?? GetDbType(column.PropertyType);
+            var dbType = column.ToDbType(this);
             switch (dbType)
             {
                 case DbType.Boolean:
@@ -952,7 +952,7 @@ namespace LiteOrm
         /// </summary>
         protected virtual string GetSqlTypeDefinition(ColumnDefinition column)
         {
-            var dbType = column.DbType ?? GetDbType(column.PropertyType);
+            var dbType = column.ToDbType(this);
             switch (dbType)
             {
                 case DbType.String:

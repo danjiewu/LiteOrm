@@ -94,7 +94,7 @@ namespace LiteOrm
         {
             if (column.IsIdentity)
             {
-                var dbType = column.DbType ?? GetDbType(column.PropertyType);
+                var dbType = column.ToDbType(this);
                 return dbType == DbType.Int64 ? "BIGSERIAL" : "SERIAL";
             }
             return base.GetSqlTypeDefinition(column);
