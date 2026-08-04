@@ -189,7 +189,7 @@ namespace LiteOrm.Generators
             public bool IsUnique { get; set; }
             public bool AllowNull { get; set; }
             public int Length { get; set; }
-            public string DbType { get; set; } = "Object";
+            public string? DbType { get; set; }
             public string ColumnMode { get; set; } = "7"; // ColumnMode.Full = Read|Update|Insert = 1|2|4 = 7
             public string? DefaultValue { get; set; }
             public string? IdentityExpression { get; set; }
@@ -338,11 +338,11 @@ namespace LiteOrm.Generators
             if (TryGetNamedArg(colAttr.NamedArguments, "IdentityStart", out var ist) && ist.Value is long lIst) info.IdentityStart = lIst;
             if (TryGetNamedArg(colAttr.NamedArguments, "IdentityIncreasement", out var iic) && iic.Value is int iIic) info.IdentityIncreasement = iIic;
 
-            // DbType
+            // DbType: 空表示未显式指定，运行时由 SqlBuilder 推断
             if (TryGetNamedArg(colAttr.NamedArguments, "DbType", out var dt) && !dt.IsNull && dt.Value is int dbTypeInt)
                 info.DbType = ((System.Data.DbType)dbTypeInt).ToString();
             else
-                info.DbType = "Object";
+                info.DbType = null;
 
             // ColumnMode: 存储整数值字符串，生成时直接写整数字面量
             if (TryGetNamedArg(colAttr.NamedArguments, "ColumnMode", out var cm) && !cm.IsNull)
@@ -500,7 +500,6 @@ namespace LiteOrm.Generators
             for (int i = 0; i < e.Columns.Count; i++)
             {
                 var c = e.Columns[i];
-                var dbTypeInt = (int)Enum.Parse(typeof(System.Data.DbType), c.DbType);
                 sb.AppendLine($"            columns[{i}].Name = \"{c.ColumnName}\";");
                 sb.AppendLine($"            columns[{i}].IsPrimaryKey = {c.IsPrimaryKey.ToString().ToLowerInvariant()};");
                 sb.AppendLine($"            columns[{i}].IsIdentity = {c.IsIdentity.ToString().ToLowerInvariant()};");
@@ -509,7 +508,12 @@ namespace LiteOrm.Generators
                 sb.AppendLine($"            columns[{i}].IsUnique = {c.IsUnique.ToString().ToLowerInvariant()};");
                 sb.AppendLine($"            columns[{i}].AllowNull = {c.AllowNull.ToString().ToLowerInvariant()};");
                 sb.AppendLine($"            columns[{i}].Length = {c.Length};");
-                sb.AppendLine($"            columns[{i}].DbType = (DbType){dbTypeInt};");
+                // DbType 为 null 表示未显式指定，留空(null)由 SqlBuilder 运行时推断
+                if (!string.IsNullOrEmpty(c.DbType) && c.DbType != "Object")
+                {
+                    var dbTypeInt = (int)Enum.Parse(typeof(System.Data.DbType), c.DbType);
+                    sb.AppendLine($"            columns[{i}].DbType = (DbType?){dbTypeInt};");
+                }
                 sb.AppendLine($"            columns[{i}].Mode = (ColumnMode){c.ColumnMode};");
                 if (!string.IsNullOrEmpty(c.IdentityExpression))
                     sb.AppendLine($"            columns[{i}].IdentityExpression = \"{c.IdentityExpression}\";");

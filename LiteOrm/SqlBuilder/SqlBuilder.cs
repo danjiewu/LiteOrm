@@ -752,7 +752,8 @@ namespace LiteOrm
                 return column.DefaultValue!;
             }
 
-            switch (column.DbType)
+            var dbType = column.DbType ?? GetDbType(column.PropertyType);
+            switch (dbType)
             {
                 case DbType.Boolean:
                 case DbType.Byte:
@@ -951,7 +952,8 @@ namespace LiteOrm
         /// </summary>
         protected virtual string GetSqlTypeDefinition(ColumnDefinition column)
         {
-            switch (column.DbType)
+            var dbType = column.DbType ?? GetDbType(column.PropertyType);
+            switch (dbType)
             {
                 case DbType.String:
                 case DbType.AnsiString:

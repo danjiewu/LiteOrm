@@ -652,9 +652,9 @@ namespace LiteOrm
         /// <param name="value">值</param>
         /// <param name="dbType">数据库类型</param>
         /// <returns>数据库中的值</returns>
-        protected virtual object ConvertToDbValue(object? value, DbType dbType)
+        protected virtual object ConvertToDbValue(object? value, DbType? dbType)
         {
-            return SqlBuilder.ConvertToDbValue(value, dbType);
+            return SqlBuilder.ConvertToDbValue(value, dbType ?? SqlBuilder.GetDbType(value?.GetType() ?? typeof(object)));
         }
 
         /// <summary>

@@ -529,7 +529,7 @@ namespace LiteOrm
         public DAOContext GetDaoContext(string? name = null, bool readOnly = false)
         {
             EnsureNotDisposed();
-            if (name is null) name = "_";
+            // 当 name 为 null 时，由 DAOContextPoolFactory.GetPool 解析为默认数据源
 
             // 如果在事务中，忽略 readOnly 参数，必须返回主写连接以保证事务一致性
             if (InTransaction) readOnly = false;
@@ -608,7 +608,7 @@ namespace LiteOrm
         public async Task<DAOContext> GetDaoContextAsync(string? name = null, bool readOnly = false, CancellationToken cancellationToken = default)
         {
             EnsureNotDisposed();
-            if (name is null) name = "_";
+            // 当 name 为 null 时，由 DAOContextPoolFactory.GetPool 解析为默认数据源
 
             if (InTransaction) readOnly = false;
 

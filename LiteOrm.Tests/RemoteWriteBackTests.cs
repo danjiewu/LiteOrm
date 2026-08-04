@@ -244,21 +244,7 @@ namespace LiteOrm.Tests
         /// </summary>
         private static TableInfoProvider CreateTestTableInfoProvider()
         {
-            var sqlBuilderFactory = new Mock<ISqlBuilderFactory>();
-            sqlBuilderFactory
-                .Setup(f => f.GetSqlBuilder(It.IsAny<Type>(), It.IsAny<string>()))
-                .Returns(SqlBuilder.Instance);
-
-            var dataSourceProvider = new Mock<IDataSourceProvider>();
-            dataSourceProvider.SetupGet(p => p.DefaultDataSourceName).Returns("default");
-            dataSourceProvider
-                .Setup(p => p.GetDataSource(It.IsAny<string>()))
-                .Returns(new DataSourceConfig { Name = "default", Provider = typeof(DbConnection).AssemblyQualifiedName });
-
-            var services = new ServiceCollection();
-            services.AddSingleton(sqlBuilderFactory.Object);
-            services.AddSingleton(dataSourceProvider.Object);
-            return new AttributeTableInfoProvider(services.BuildServiceProvider());
+            return new AttributeTableInfoProvider();
         }
 
         /// <summary>

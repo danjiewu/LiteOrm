@@ -15,7 +15,6 @@ namespace LiteOrm.Common
         public ColumnAttribute()
         {
             ColumnMode = ColumnMode.Full;
-            DbType = DbType.Object;
             AllowNull = true;
         }
 
@@ -101,8 +100,9 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 获取或设置数据库列的数据类型。
+        /// 为 null 时表示使用默认值，由 <see cref="SqlBuilder"/> 根据属性类型推断。
         /// </summary>
-        public DbType DbType { get; set; }
+        public DbType? DbType { get; set; }
 
         /// <summary>
         /// 获取或设置一个值，该值指示该列是否允许为空。

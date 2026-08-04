@@ -16,21 +16,13 @@ namespace LiteOrm
     {
         private readonly ConcurrentDictionary<Type, TableDefinition> _tableInfoCache = new ConcurrentDictionary<Type, TableDefinition>();
         private readonly ConcurrentDictionary<Type, TableView> _tableViewCache = new ConcurrentDictionary<Type, TableView>();
-        private readonly ISqlBuilderFactory? _sqlBuilderFactory;
-        private readonly IDataSourceProvider? _dataSourceProvider;
         private readonly object _syncLock = new object();
 
         /// <summary>
         /// 初始化 <see cref="AttributeTableInfoProvider"/> 类的新实例。
-        /// 通过 <paramref name="serviceProvider"/> 解析 <see cref="ISqlBuilderFactory"/> 和 <see cref="IDataSourceProvider"/>（可为 null）。
-        /// 当两者或其解析结果为 null 时，DbType 通过内部 <see cref="DbTypeMap"/> 获得，不依赖 SqlBuilder。
         /// </summary>
-        /// <param name="serviceProvider">DI 服务提供者，用于解析 <see cref="ISqlBuilderFactory"/> 和 <see cref="IDataSourceProvider"/>。</param>
-        public AttributeTableInfoProvider(IServiceProvider serviceProvider)
-        {
-            _sqlBuilderFactory = serviceProvider.GetService(typeof(ISqlBuilderFactory)) as ISqlBuilderFactory;
-            _dataSourceProvider = serviceProvider.GetService(typeof(IDataSourceProvider)) as IDataSourceProvider;
-        }
+        /// <param name="serviceProvider">DI 服务提供者（保留兼容性，当前实现不再依赖此参数）。</param>
+        public AttributeTableInfoProvider(IServiceProvider serviceProvider) { }
 
         /// <summary>
         /// 使用默认构造函数初始化 <see cref="AttributeTableInfoProvider"/> 类的新实例。
@@ -88,28 +80,12 @@ namespace LiteOrm
             string? tableName = tableAttribute.TableName;
             if (String.IsNullOrEmpty(tableName)) tableName = objectType.Name;
 
-            DataSourceConfig? dsConfig = null;
-            if (_dataSourceProvider is not null)
-            {
-                dsConfig = _dataSourceProvider.GetDataSource(tableAttribute.DataSource!);
-                if (dsConfig == null)
-                {
-                    throw new InvalidOperationException($"Data source '{tableAttribute.DataSource ?? "default"}' not found for type '{objectType.FullName}'. Check your configuration.");
-                }
-            }
-
-            ISqlBuilder? sqlBuilder = null;
-            if (_sqlBuilderFactory is not null && dsConfig is not null)
-            {
-                sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType, tableAttribute.DataSource);
-            }
-
             List<ColumnDefinition> columns = new List<ColumnDefinition>();
 
             var properties = objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList().SortProperty() ?? new List<PropertyInfo>();
             foreach (PropertyInfo property in properties)
             {
-                ColumnDefinition? column = GenerateColumnDefinition(property, sqlBuilder);
+                ColumnDefinition? column = GenerateColumnDefinition(property);
                 if (column is not null)
                 {
                     columns.Add(column);
@@ -118,13 +94,13 @@ namespace LiteOrm
             return new TableDefinition(objectType, columns)
             {
                 Name = tableName ?? objectType.Name,
-                DataSource = tableAttribute.DataSource ?? _dataSourceProvider?.DefaultDataSourceName,
+                DataSource = tableAttribute.DataSource,
                 SyncTable = tableAttribute.SyncTable,
                 ConstFilter = BuildConstFilter(columns)
             };
         }
 
-        private ColumnDefinition? GenerateColumnDefinition(PropertyInfo property, ISqlBuilder? sqlBuilder)
+        private ColumnDefinition? GenerateColumnDefinition(PropertyInfo property)
         {
             if (property.GetIndexParameters().Length != 0) return null;
             ForeignTable[] foreignTables = GetForeignTables(property);
@@ -147,9 +123,9 @@ namespace LiteOrm
                     column.IsTimestamp = columnAttribute.IsTimestamp;
                     column.IdentityExpression = columnAttribute.IdentityExpression;
                     column.IsUnique = columnAttribute.IsUnique;
-                    column.IsIndex = columnAttribute.IsIndex;
-                    column.DbType = columnAttribute.DbType == DbType.Object ? GetDbTypeInternal(property.PropertyType, sqlBuilder) : columnAttribute.DbType;
-                    column.Length = columnAttribute.Length == 0 ? DbTypeMap.GetDefaultLength(column.DbType) : columnAttribute.Length;
+                    column.IsIndex = columnAttribute.IsIndex;   
+                    column.DbType = columnAttribute.DbType;
+                    column.Length = columnAttribute.Length == 0 ? (column.DbType.HasValue ? DbTypeMap.GetDefaultLength(column.DbType.Value) : 0) : columnAttribute.Length;
                     column.AllowNull = columnAttribute.AllowNull && (property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(property.PropertyType) is not null : true);
                     column.DefaultValue = columnAttribute.DefaultValue;
                     column.Constant = ParseConstant(property, columnAttribute.Constant);
@@ -162,14 +138,15 @@ namespace LiteOrm
             }
             else
             {
-                DbType dbType = GetDbTypeInternal(property.PropertyType, sqlBuilder);
+                // 无 ColumnAttribute 的属性：根据类型推断 DbType
+                DbType dbType = GetDbTypeInternal(property.PropertyType);
                 if (dbType == DbType.Object) return null;
 
                 ColumnDefinition column = new ColumnDefinition(property);
                 column.Name = property.Name;
                 column.Mode = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
                 column.DbType = dbType;
-                column.Length = DbTypeMap.GetDefaultLength(column.DbType);
+                column.Length = DbTypeMap.GetDefaultLength(dbType);
                 column.AllowNull = property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(column.PropertyType) is not null : true;
                 column.ForeignTables = foreignTables;
                 return column;
@@ -177,11 +154,10 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 获取属性类型对应的 DbType。优先使用 <paramref name="sqlBuilder"/>；当 sqlBuilder 为 null 时，使用 <see cref="DbTypeMap"/> 内部映射。
+        /// 获取属性类型对应的 DbType，使用 <see cref="DbTypeMap"/> 内部映射。
         /// </summary>
-        private static DbType GetDbTypeInternal(Type propertyType, ISqlBuilder? sqlBuilder)
+        private static DbType GetDbTypeInternal(Type propertyType)
         {
-            if (sqlBuilder is not null) return sqlBuilder.GetDbType(propertyType);
             return DbTypeMap.GetDbType(propertyType.GetUnderlyingType());
         }
 
@@ -206,17 +182,6 @@ namespace LiteOrm
         {
             var tableDef = GetTableDefinition(objectType);
             if (tableDef == null) return null;
-
-            ISqlBuilder? sqlBuilder = null;
-            if (_sqlBuilderFactory is not null && _dataSourceProvider is not null)
-            {
-                var dsName = tableDef.DataSource ?? _dataSourceProvider.DefaultDataSourceName;
-                var dsConfig = _dataSourceProvider.GetDataSource(dsName!);
-                if (dsConfig is not null)
-                {
-                    sqlBuilder = _sqlBuilderFactory.GetSqlBuilder(dsConfig.ProviderType, tableDef.DataSource);
-                }
-            }
 
             TableJoinAttribute[] atts = (TableJoinAttribute[])objectType.GetCustomAttributes(typeof(TableJoinAttribute), true);
             ConcurrentDictionary<string, JoinedTable> joinedTables = new ConcurrentDictionary<string, JoinedTable>(StringComparer.OrdinalIgnoreCase);
@@ -246,7 +211,7 @@ namespace LiteOrm
             var properties = objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList().SortProperty() ?? new List<PropertyInfo>();
             foreach (PropertyInfo property in properties)
             {
-                ColumnDefinition? column = GenerateColumnDefinition(property, sqlBuilder);
+                ColumnDefinition? column = GenerateColumnDefinition(property);
                 if (column is not null)
                 {
                     columns.Add(column);
