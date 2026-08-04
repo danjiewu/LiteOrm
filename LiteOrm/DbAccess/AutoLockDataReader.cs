@@ -3,6 +3,7 @@ using System.Data;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
+using LiteOrm.Common;
 
 namespace LiteOrm
 {
@@ -30,20 +31,24 @@ namespace LiteOrm
         /// </summary>
         private bool _disposed;
 
-        private Func<object?, Type?, object?>? _defalutConverter;
+        /// <summary>
+        /// 获取或设置用于数据库值与 .NET 对象值之间转换的转换器。
+        /// 默认为 <see cref="SqlBuilder.Instance"/>。
+        /// </summary>
+        public IDbConverter DbConverter { get; set; }
 
         /// <summary>
         /// 初始化 <see cref="AutoLockDataReader"/> 类的新实例。
         /// </summary>
         /// <param name="innerReader">内部数据读取器实例。</param>
         /// <param name="scope">需要管理的锁定作用域。</param>
-        /// <param name="defalutConverter">可选的类型转换函数，默认为 Convert.ChangeType。</param>
+        /// <param name="dbConverter">可选的数据库值转换器，默认为 <see cref="SqlBuilder.Instance"/>。</param>
         /// <exception cref="ArgumentNullException">当 <paramref name="innerReader"/> 或 <paramref name="scope"/> 为 null 时抛出。</exception>
-        public AutoLockDataReader(DbDataReader innerReader, IDisposable scope, Func<object?, Type?, object?>? defalutConverter = null)
+        public AutoLockDataReader(DbDataReader innerReader, IDisposable scope, IDbConverter? dbConverter = null)
         {
             _innerReader = innerReader ?? throw new ArgumentNullException(nameof(innerReader));
-            _defalutConverter = defalutConverter ?? ((v, t) => Convert.ChangeType(v!, t!));
             _scope = scope ?? throw new ArgumentNullException(nameof(scope));
+            DbConverter = dbConverter ?? SqlBuilder.Instance;
         }
 
         #region 锁管理
@@ -60,7 +65,7 @@ namespace LiteOrm
 
         #region IDataReader 实现 - 转发到内部 Reader
         /// <summary>
-        /// 类型转换，=- SqlBuilder.ConvertFromDbValue 进行。
+        /// 类型转换，委托给 <see cref="DbConverter"/> 进行。
         /// </summary>
         /// <param name="value"></param>
         /// <param name="valueType"></param>
@@ -68,7 +73,7 @@ namespace LiteOrm
         public object? ChangeType(object value, Type valueType)
         {
             EnsureNotDisposed();
-            return _defalutConverter!(value, valueType);
+            return DbConverter.ConvertFromDbValue(value, valueType);
         }
         /// <summary>
         /// 获取指定列的列值。

@@ -16,7 +16,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="objectType">对应的实体类型。</param>
         /// <param name="columns">列定义集合。</param>
-        internal TableDefinition(Type objectType, ICollection<ColumnDefinition> columns) :
+        public TableDefinition(Type objectType, ICollection<ColumnDefinition> columns) :
             base(new List<ColumnDefinition>(columns).ConvertAll<SqlColumn>(column => column))
         {
             this.ObjectType = objectType;
@@ -41,7 +41,7 @@ namespace LiteOrm.Common
         /// 该名称通常对应于配置文件中 ConnectionStrings 节点的名称。
         /// 若为空，则使用默认数据源。
         /// </summary>
-        public string? DataSource { get; protected internal set; }
+        public string? DataSource { get; set; }
 
         /// <summary>
         /// 获取或设置该表的表结构同步模式。
@@ -49,7 +49,7 @@ namespace LiteOrm.Common
         /// 设为 <see cref="SyncTableMode.Never"/> 或 <see cref="SyncTableMode.Always"/> 时将覆盖数据源配置。
         /// 该值通常由 <see cref="TableAttribute.SyncTable"/> 映射而来。
         /// </summary>
-        public SyncTableMode SyncTable { get; protected internal set; }
+        public SyncTableMode SyncTable { get; set; }
 
         /// <summary>
         /// 获取数据库表的列定义集合。

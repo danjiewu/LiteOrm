@@ -301,17 +301,17 @@ namespace LiteOrm
         #region Execute 方法
 
         /// <summary>
-        /// 对 <see cref="DbConnection"/> 执行 <see cref="CommandText"/>，并使用 <see cref="CommandBehavior"/> 值之一返回 <see cref="IDataReader"/>。
+        /// 对 <see cref="DbConnection"/> 执行 <see cref="CommandText"/>，并使用 <see cref="CommandBehavior"/> 值之一返回 <see cref="AutoLockDataReader"/>。
         /// </summary>
         /// <param name="behavior">命令行为特性。</param>
-        /// <returns>一个 <see cref="IDataReader"/> 对象。</returns>
-        public new DbDataReader ExecuteReader(CommandBehavior behavior)
+        /// <returns>一个 <see cref="AutoLockDataReader"/> 对象。</returns>
+        public new AutoLockDataReader ExecuteReader(CommandBehavior behavior)
         {
             var scope = Context.AcquireScope();
             try
             {
                 PreExcuteCommand(ExcuteType.ExecuteReader);
-                DbDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), scope, SqlBuilder!.ConvertFromDbValue);
+                AutoLockDataReader ret = new AutoLockDataReader(Target.ExecuteReader(behavior), scope, SqlBuilder);
                 PostExcuteCommand(ExcuteType.ExecuteReader);
                 return ret;
             }
@@ -331,7 +331,7 @@ namespace LiteOrm
         /// 对 <see cref="DbConnection"/> 执行 <see cref="CommandText"/>，并返回 <see cref="IDataReader"/>。
         /// </summary>
         /// <returns>一个 <see cref="IDataReader"/> 对象。</returns>
-        public new DbDataReader ExecuteReader()
+        public new AutoLockDataReader ExecuteReader()
         {
             return ExecuteReader(CommandBehavior.Default);
         }
@@ -341,7 +341,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，其结果为一个 <see cref="IDataReader"/> 对象。</returns>
-        public new Task<DbDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
+        public new Task<AutoLockDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
         {
             return ExecuteReaderAsync(CommandBehavior.Default, cancellationToken);
         }
@@ -352,14 +352,14 @@ namespace LiteOrm
         /// <param name="behavior">命令行为特性。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，其结果为一个 <see cref="IDataReader"/> 对象。</returns>
-        public new async Task<DbDataReader> ExecuteReaderAsync(CommandBehavior behavior = CommandBehavior.Default, CancellationToken cancellationToken = default)
+        public new async Task<AutoLockDataReader> ExecuteReaderAsync(CommandBehavior behavior = CommandBehavior.Default, CancellationToken cancellationToken = default)
         {
             var scope = await Context.AcquireScopeAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 PreExcuteCommand(ExcuteType.ExecuteReader);
                 DbDataReader reader = await Target.ExecuteReaderAsync(behavior, cancellationToken).ConfigureAwait(false);
-                DbDataReader ret = new AutoLockDataReader(reader, scope, SqlBuilder!.ConvertFromDbValue);
+                AutoLockDataReader ret = new AutoLockDataReader(reader, scope, SqlBuilder);
                 PostExcuteCommand(ExcuteType.ExecuteReader);
                 return ret;
             }

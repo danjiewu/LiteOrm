@@ -52,7 +52,7 @@ namespace LiteOrm.Common.UnitTests
         {
             return (ColumnDefinition)Activator.CreateInstance(
                 typeof(ColumnDefinition),
-                BindingFlags.Instance | BindingFlags.NonPublic,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 binder: null,
                 args: new object[] { typeof(TestEntity).GetProperty(propertyName)! },
                 culture: null)!;

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 
@@ -41,7 +42,9 @@ namespace LiteOrm
         /// </summary>
         /// <param name="objectType">对象类型</param>
         /// <returns>表定义</returns>
-        public override TableDefinition? GetTableDefinition(Type objectType)
+        public override TableDefinition? GetTableDefinition(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            Type objectType)
         {
             if (objectType is null) return null;
             if (_tableInfoCache.TryGetValue(objectType, out var tableDef)) return tableDef;
@@ -60,7 +63,9 @@ namespace LiteOrm
         /// </summary>
         /// <param name="objectType">对象类型</param>
         /// <returns>表信息</returns>
-        public override TableView? GetTableView(Type objectType)
+        public override TableView? GetTableView(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            Type objectType)
         {
             if (objectType is null) return null;
             if (_tableViewCache.TryGetValue(objectType, out var tableView)) return tableView;

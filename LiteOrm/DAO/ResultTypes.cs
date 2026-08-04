@@ -197,7 +197,7 @@ namespace LiteOrm.Common
     /// <typeparam name="TResult">查询行转换后返回的元素类型。</typeparam>
     public class EnumerableResult<TResult> : CommandResult<List<TResult>>, IEnumerable<TResult>, IAsyncEnumerable<TResult>, IEnumerableResult
     {
-        private readonly Func<DbDataReader, TResult>? _readerFunc;
+        private readonly Func<AutoLockDataReader, TResult>? _readerFunc;
 
         /// <summary>
         /// 初始化 <see cref="EnumerableResult{TResult}"/> 类的新实例。
@@ -205,7 +205,7 @@ namespace LiteOrm.Common
         /// <param name="dao">要执行的DAO对象。</param>
         /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
         /// <param name="readerFunc">将 <see cref="IDataReader"/> 的一行数据转换为 <typeparamref name="TResult"/> 实例的委托。</param>
-        public EnumerableResult(DAOBase dao, PreparedSql sql, Func<DbDataReader, TResult>? readerFunc = null)
+        public EnumerableResult(DAOBase dao, PreparedSql sql, Func<AutoLockDataReader, TResult>? readerFunc = null)
             : base(dao, sql)
         {
             _readerFunc = readerFunc;
@@ -216,7 +216,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="preparedCommand">预定义的数据库命令代理实例。</param>
         /// <param name="readerFunc">将 <see cref="IDataReader"/> 的一行数据转换为 <typeparamref name="TResult"/> 实例的委托。</param>
-        public EnumerableResult(DbCommandProxy preparedCommand, Func<DbDataReader, TResult>? readerFunc = null)
+        public EnumerableResult(DbCommandProxy preparedCommand, Func<AutoLockDataReader, TResult>? readerFunc = null)
             : base(preparedCommand)
         {
             _readerFunc = readerFunc;
@@ -230,7 +230,7 @@ namespace LiteOrm.Common
         public IEnumerator<TResult> GetEnumerator()
         {
             var command = GetCommand();
-            using (DbDataReader reader = command.ExecuteReader())
+            using (var reader = command.ExecuteReader())
             {
                 var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
                 while (reader.Read())
@@ -267,7 +267,7 @@ namespace LiteOrm.Common
         public TResult FirstOrDefault()
         {
             var command = GetCommand();
-            using DbDataReader reader = command.ExecuteReader();
+            using var reader = command.ExecuteReader();
             if (!reader.Read()) return default!;
             var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
             return func(reader);
@@ -282,7 +282,7 @@ namespace LiteOrm.Common
         public async ValueTask<TResult> FirstOrDefaultAsync(CancellationToken cancellationToken = default)
         {
             var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
-            using DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
+            using var reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
             if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) return default!;
             var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
             return func(reader);
@@ -364,12 +364,12 @@ namespace LiteOrm.Common
 
         private class AsyncEnumerator : IAsyncEnumerator<TResult>
         {
-            private readonly Func<DbDataReader, TResult>? _readerFunc;
+            private readonly Func<AutoLockDataReader, TResult>? _readerFunc;
             private readonly CancellationToken _cancellationToken;
             private Func<CancellationToken, Task<DbCommandProxy>> _commandFunc;
-            private DbDataReader? _reader;
+            private AutoLockDataReader? _reader;
             private TResult? _current;
-            private Func<DbDataReader, TResult>? _func;
+            private Func<AutoLockDataReader, TResult>? _func;
 
             /// <summary>
             /// 初始化 <see cref="AsyncEnumerator"/> 类的新实例。
@@ -377,7 +377,7 @@ namespace LiteOrm.Common
             /// <param name="commandFunc">用于获取要执行的数据库命令的委托。</param>
             /// <param name="readerFunc">将数据行转换为元素的委托。</param>
             /// <param name="cancellationToken">取消令牌。</param>
-            public AsyncEnumerator(Func<CancellationToken, Task<DbCommandProxy>> commandFunc, Func<DbDataReader, TResult>? readerFunc, CancellationToken cancellationToken)
+            public AsyncEnumerator(Func<CancellationToken, Task<DbCommandProxy>> commandFunc, Func<AutoLockDataReader, TResult>? readerFunc, CancellationToken cancellationToken)
             {
                 _commandFunc = commandFunc;
                 _readerFunc = readerFunc;

@@ -31,6 +31,10 @@
 		<LangVersion>14.0</LangVersion>
 	</PropertyGroup>
 
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net8.0' OR '$(TargetFramework)' == 'net10.0'">
+		<IsAotCompatible>true</IsAotCompatible>
+	</PropertyGroup>
+
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard2.0|AnyCPU'">
 		<DefineConstants>TRACE</DefineConstants>
 		<DocumentationFile>bin\Release\LiteOrm.xml</DocumentationFile>
@@ -60,6 +64,12 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\LiteOrm.Common\LiteOrm.Common.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\LiteOrm.Generators\LiteOrm.Generators.csproj"
+						  OutputItemType="Analyzer"
+						  ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 </Project>

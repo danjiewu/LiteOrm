@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace LiteOrm.Common
 {
@@ -11,8 +12,20 @@ namespace LiteOrm.Common
     /// 将 Lambda 表达式转换为框架通用的 Expr 模型。
     /// 处理常见的成员访问、二元/一元运算以及重写部分常用的 C# 方法调用映射。
     /// </summary>
-    public class LambdaExprConverter
+    public class LambdaExprConverter : ILambdaExprParser
     {
+        /// <summary>
+        /// 全局默认的 Lambda 解析器实例，可替换为自定义实现以支持 AOT 等场景。
+        /// </summary>
+        public static ILambdaExprParser Default { get; set; } = new LambdaExprConverter(Array.Empty<object>());
+
+        /// <summary>
+        /// 创建一个无表达式的实例，仅用于作为默认解析器或注册处理器。
+        /// </summary>
+        private LambdaExprConverter(object[] _)
+        {
+        }
+
         /// <summary>
         /// 初始化 Lambda 表达式转换器，注册默认的处理器。
         /// </summary>
@@ -176,6 +189,27 @@ namespace LiteOrm.Common
         /// 执行整体转换并将根节点转为 ValueTypeExpr。
         /// </summary>
         public ValueTypeExpr ToValueExpr() => ConvertInternal(_expression.Body).AsValue();
+
+        /// <summary>
+        /// <see cref="ILambdaExprParser.Parse(LambdaExpression)"/>
+        /// </summary>
+        public Expr Parse(LambdaExpression lambda)
+        {
+            var converter = new LambdaExprConverter(lambda);
+            return converter.ToLogicExpr()!;
+        }
+
+        /// <summary>
+        /// <see cref="ILambdaExprParser.Parse(Expression, Dictionary{string, string}?, string?)"/>
+        /// </summary>
+        public Expr Parse(Expression node, Dictionary<string, string>? parameterAliases = null, string? currentAlias = null)
+        {
+            if (node is LambdaExpression lambda)
+            {
+                return Parse(lambda);
+            }
+            return Convert(node);
+        }
 
         /// <summary>
         /// 静态便捷入口，将 Lambda 表达式转换为 ValueTypeExpr 模型。
@@ -492,6 +526,12 @@ namespace LiteOrm.Common
             if (expr is MethodCallExpression call && call.Method.IsSpecialName && call.Method.IsStatic && (call.Method.Name == "op_Implicit" || call.Method.Name == "op_Explicit"))
                 return Evaluate(call.Arguments[0]);
 
+            // AOT 场景下不支持 Expression.Compile()，子类可重写 EvaluateCore 提供预编译实现
+            if (!RuntimeFeature.IsDynamicCodeSupported)
+                throw new PlatformNotSupportedException(
+                    $"Evaluating closure variables in Lambda expressions is not supported under NativeAOT. " +
+                    $"Expression: {expr}. Override EvaluateCore to provide a precompiled evaluator, or avoid capturing variables in Lambda expressions.");
+
             // 尝试编译并执行表达式（支持闭包、字段、属性等）
             try
             {
@@ -504,6 +544,12 @@ namespace LiteOrm.Common
                 throw new ArgumentException($"Unable to evaluate the value from expression: {expr}", ex);
             }
         }
+
+        /// <summary>
+        /// 核心求值方法，可被子类重写以提供预编译的求值逻辑（AOT 场景）。
+        /// 默认实现委托给 <see cref="Evaluate(Expression)"/>。
+        /// </summary>
+        protected virtual object? EvaluateCore(Expression expr) => Evaluate(expr);
 
         /// <summary>
         /// 将成员访问表达式（如 x.Name）转换为对应的 Expr 对象

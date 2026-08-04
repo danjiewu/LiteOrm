@@ -53,7 +53,7 @@ namespace LiteOrm.Common
         /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
         /// <returns></returns>
 
-        EnumerableResult<TResult> SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult>? readerFunc = null);
+        EnumerableResult<TResult> SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<AutoLockDataReader, TResult>? readerFunc = null);
     }
     #endregion
 
@@ -123,7 +123,7 @@ namespace LiteOrm.Common
         /// <param name="selectExpr">SELECT 表达式。</param>
         /// <param name="readerFunc">读取器转换函数，为 null 时使用默认转换。</param>
         /// <returns>自定义类型的集合。</returns>
-        EnumerableResult<TResult> SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult>? readerFunc = null);
+        EnumerableResult<TResult> SearchAs<TResult>(SelectExpr selectExpr, Func<AutoLockDataReader, TResult>? readerFunc = null);
         /// <summary>
         /// 使用带参数的SQL查询
         /// </summary>

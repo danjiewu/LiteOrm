@@ -76,7 +76,7 @@ namespace LiteOrm.Common.UnitTests
             _ = new TableView(
                 (TableDefinition)Activator.CreateInstance(
                     typeof(TableDefinition),
-                    BindingFlags.Instance | BindingFlags.NonPublic,
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                     binder: null,
                     args: new object[] { typeof(TestEntity), new List<ColumnDefinition>() },
                     culture: null)!,
@@ -99,7 +99,7 @@ namespace LiteOrm.Common.UnitTests
             var property = typeof(TestEntity).GetProperty(propertyName)!;
             return (ColumnDefinition)Activator.CreateInstance(
                 typeof(ColumnDefinition),
-                BindingFlags.Instance | BindingFlags.NonPublic,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 binder: null,
                 args: new object[] { property },
                 culture: null)!;
@@ -110,7 +110,7 @@ namespace LiteOrm.Common.UnitTests
             var mock = new Mock<SqlTable>(new List<SqlColumn>()) { CallBase = true };
             var definition = (TableDefinition)Activator.CreateInstance(
                 typeof(TableDefinition),
-                BindingFlags.Instance | BindingFlags.NonPublic,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 binder: null,
                 args: new object[] { typeof(TestEntity), new List<ColumnDefinition>() },
                 culture: null)!;

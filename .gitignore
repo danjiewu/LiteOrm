@@ -42,3 +42,4 @@ msbuild.wrn
 /count_code.ps1
 /LiteOrm.Demo/demo.db
 /docs/series
+*.binlog

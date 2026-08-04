@@ -12,7 +12,7 @@ using System.Text;
 namespace LiteOrm
 {
     /// <summary>
-    /// 通过动态编译创建将 <see cref="DbDataReader"/> 行映射到对象的委托。
+    /// 通过动态编译创建将 <see cref="AutoLockDataReader"/> 行映射到对象的委托。
     /// 编译结果按目标类型与列架构缓存，避免重复编译开销。
     /// </summary>
     public static class DataReaderConverter
@@ -32,7 +32,7 @@ namespace LiteOrm
         private static readonly MethodInfo? _getFieldValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFieldValue), new[] { typeof(int) });
 
-        // Use SqlBuilder.ConvertFromDbValue as the fallback conversion method (instance method on SqlBuilder.Instance)
+        // Use AutoLockDataReader.ChangeType as the fallback conversion method
         private static readonly MethodInfo? _changeTypeMethod =
             typeof(AutoLockDataReader).GetMethod(nameof(AutoLockDataReader.ChangeType), new[] { typeof(object), typeof(Type) });
 
@@ -88,6 +88,10 @@ namespace LiteOrm
             // DbType.Binary → GetFieldValue<byte[]> / GetStream (handled in BuildRawReadExpression)
         };
 
+        /// <summary>
+        /// 按目标类型缓存的映射委托（含源生成器预注册与运行时编译两种来源）。
+        /// AOT 场景下通过 <see cref="RegisterMapper{T}"/> 注册后可完全绕开运行时表达式编译。
+        /// </summary>
         private static readonly ConcurrentDictionary<Type, Delegate> _cacheByType =
             new ConcurrentDictionary<Type, Delegate>();
 
@@ -95,41 +99,62 @@ namespace LiteOrm
             typeof(DataReaderConverter).GetMethod(nameof(GetConverter), BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
 
         /// <summary>
-        /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
+        /// 注册预编译的 DataReader 映射委托，用于 NativeAOT 场景替代运行时 <see cref="Expression.Compile()"/>。
+        /// 注册后，<see cref="GetConverter{T}()"/> 和 <see cref="GetConverter(Type)"/> 将直接返回该委托。
+        /// </summary>
+        /// <typeparam name="T">目标实体类型。</typeparam>
+        /// <param name="mapper">将 <see cref="AutoLockDataReader"/> 当前行映射为 <typeparamref name="T"/> 实例的委托。</param>
+        public static void RegisterMapper<T>(Func<AutoLockDataReader, T> mapper)
+        {
+            _cacheByType[typeof(T)] = mapper;
+        }
+
+        /// <summary>
+        /// 注册预编译的 DataReader 映射委托（非泛型版本）。
+        /// </summary>
+        /// <param name="type">目标实体类型。</param>
+        /// <param name="mapper">将 <see cref="AutoLockDataReader"/> 当前行映射为目标类型实例的委托。</param>
+        public static void RegisterMapper(Type type, Func<AutoLockDataReader, object> mapper)
+        {
+            _cacheByType[type] = mapper;
+        }
+
+        /// <summary>
+        /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
         /// 对于匿名类型，基于读取器的列架构缓存编译委托，通过构造函数参数名与列名匹配；
         /// 对于普通类型，委托给 <see cref="GetConverter{TResult}()"/> 使用 <see cref="TableInfoProvider.Instance"/> 进行位置映射。
         /// </summary>
         /// <typeparam name="TResult">目标类型。</typeparam>
         /// <param name="reader">已打开的数据读取器，用于读取列架构信息（匿名类型时使用）。</param>
         /// <returns>编译后的映射委托。</returns>
-        public static Func<DbDataReader, TResult> GetConverter<TResult>(DbDataReader reader)
+        public static Func<AutoLockDataReader, TResult> GetConverter<TResult>(DbDataReader reader)
         {
             Type type = typeof(TResult);
             if (TableInfoProvider.Instance.GetTableView(type) != null)
                 return GetConverter<TResult>();
             string columnKey = BuildColumnKey(reader);
-            return (Func<DbDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileDataReaderConverter<TResult>(reader));
+            return (Func<AutoLockDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileDataReaderConverter<TResult>(reader));
         }
 
         /// <summary>
-        /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
+        /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
         /// 通过 <see cref="TableInfoProvider.Instance"/> 读取 <typeparamref name="TResult"/> 对应的表视图，
         /// 并依据视图的 <see cref="SqlTable.SelectColumns"/> 进行位置映射，使用类型化读取方法避免装箱。
         /// 以 <typeparamref name="TResult"/> 类型为缓存键，首次调用时编译，后续调用直接复用。
         /// </summary>
         /// <typeparam name="TResult">目标类型。</typeparam>
         /// <returns>编译后的映射委托。</returns>
-        public static Func<DbDataReader, TResult> GetConverter<TResult>()
+        public static Func<AutoLockDataReader, TResult> GetConverter<TResult>()
         {
-            return (Func<DbDataReader, TResult>)_cacheByType.GetOrAdd(typeof(TResult), _ => CompileConverter<TResult>());
+            return (Func<AutoLockDataReader, TResult>)_cacheByType.GetOrAdd(typeof(TResult), _ => CompileConverter<TResult>());
         }
 
         /// <summary>
-        /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <paramref name="resultType"/> 实例的编译委托。
+        /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <paramref name="resultType"/> 实例的编译委托。
         /// 与 <see cref="GetConverter{TResult}()"/> 共用同一缓存，首次调用时通过反射调用泛型版本完成编译。
         /// </summary>
         /// <param name="resultType">目标类型。</param>
-        /// <returns>编译后的映射委托，实际类型为 <see cref="Func{DbDataReader, TResult}"/>。</returns>
+        /// <returns>编译后的映射委托，实际类型为 <see cref="Func{AutoLockDataReader, TResult}"/>。</returns>
         public static Delegate GetConverter(Type resultType)
         {
             return _cacheByType.GetOrAdd(resultType,
@@ -148,10 +173,14 @@ namespace LiteOrm
             return sb.ToString();
         }
 
-        private static Func<DbDataReader, TResult> CompileConverter<TResult>()
+        private static Func<AutoLockDataReader, TResult> CompileConverter<TResult>()
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                throw new PlatformNotSupportedException(
+                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table].");
             Type resultType = typeof(TResult);
-            var readerParam = Expression.Parameter(typeof(DbDataReader), "reader");
+            var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
             if (IsScalarType(resultType))
                 return CompileScalarConverter<TResult>(readerParam);
@@ -162,16 +191,24 @@ namespace LiteOrm
             return CompileConverterByColumns<TResult>(selectColumns);
         }
 
-        private static Func<DbDataReader, TResult> CompileScalarConverter<TResult>(ParameterExpression readerParam)
+        private static Func<AutoLockDataReader, TResult> CompileScalarConverter<TResult>(ParameterExpression readerParam)
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                throw new PlatformNotSupportedException(
+                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table].");
             var body = BuildTypedReadExpression(readerParam, 0, typeof(TResult), null);
-            return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
+            return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
-        private static Func<DbDataReader, TResult> CompileDataReaderConverter<TResult>(DbDataReader reader)
+        private static Func<AutoLockDataReader, TResult> CompileDataReaderConverter<TResult>(DbDataReader reader)
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                throw new PlatformNotSupportedException(
+                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table].");
             Type resultType = typeof(TResult);
-            var readerParam = Expression.Parameter(typeof(DbDataReader), "reader");
+            var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
             if (IsScalarType(resultType))
                 return CompileScalarConverter<TResult>(readerParam);
@@ -210,7 +247,7 @@ namespace LiteOrm
                 body = Expression.MemberInit(Expression.New(ctor), bindings);
             }
 
-            return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
+            return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
         /// <summary>
@@ -238,7 +275,7 @@ namespace LiteOrm
                 {
                     readExpr = Expression.Convert(
                         Expression.Call(
-                            Expression.Convert(readerParam, typeof(AutoLockDataReader)),
+                            readerParam,
                             _changeTypeMethod!,
                             Expression.Convert(readExpr, typeof(object)),
                             Expression.Constant(coreType)),
@@ -338,10 +375,14 @@ namespace LiteOrm
         /// 编译基于 <see cref="SqlColumn"/> 定义的位置映射委托。
         /// <paramref name="selectColumns"/>[i] 对应读取器第 i 列，使用列的属性名定位目标属性。
         /// </summary>
-        private static Func<DbDataReader, TResult> CompileConverterByColumns<TResult>(IList<SqlColumn> selectColumns)
+        private static Func<AutoLockDataReader, TResult> CompileConverterByColumns<TResult>(IList<SqlColumn> selectColumns)
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                throw new PlatformNotSupportedException(
+                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table].");
             Type resultType = typeof(TResult);
-            var readerParam = Expression.Parameter(typeof(DbDataReader), "reader");
+            var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
             var ctor = resultType.GetConstructor(Type.EmptyTypes)
                 ?? throw new InvalidOperationException($"Type '{resultType.FullName}' does not have a public parameterless constructor.");
 
@@ -358,7 +399,7 @@ namespace LiteOrm
             }
 
             var body = Expression.MemberInit(Expression.New(ctor), bindings);
-            return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
+            return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
         private static bool IsScalarType(Type type)

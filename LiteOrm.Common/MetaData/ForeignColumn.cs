@@ -25,7 +25,7 @@ namespace LiteOrm.Common
             {
                 return TargetColumn == null ? null : TargetColumn.Name;
             }
-            protected internal set
+            set
             {
             }
         }

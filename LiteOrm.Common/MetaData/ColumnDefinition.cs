@@ -13,7 +13,7 @@ namespace LiteOrm.Common
         /// 初始化 <see cref="ColumnDefinition"/> 类的新实例。
         /// </summary>
         /// <param name="property">实体对应的属性信息。</param>
-        internal ColumnDefinition(PropertyInfo property)
+        public ColumnDefinition(PropertyInfo property)
             : base(property)
         {
 
@@ -22,12 +22,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置一个值，指示该列是否为主键。
         /// </summary>
-        public bool IsPrimaryKey { get; internal set; }
+        public bool IsPrimaryKey { get; set; }
 
         /// <summary>
         /// 获取或设置一个值，指示该列是否为自增标识列。
         /// </summary>
-        public bool IsIdentity { get; internal set; }
+        public bool IsIdentity { get; set; }
 
         /// <summary>
         /// 获取或设置标识列（自增）的起始值。
@@ -47,32 +47,32 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置标识列的表达式（如序列名称）。
         /// </summary>
-        public string? IdentityExpression { get; internal set; }
+        public string? IdentityExpression { get; set; }
 
         /// <summary>
         /// 获取或设置一个值，指示该列是否应创建索引。
         /// </summary>
-        public bool IsIndex { get; internal set; }
+        public bool IsIndex { get; set; }
 
         /// <summary>
         /// 获取或设置一个值，指示该列是否具有唯一约束。
         /// </summary>
-        public bool IsUnique { get; internal set; }
+        public bool IsUnique { get; set; }
 
         /// <summary>
         /// 获取或设置数据库列的长度。
         /// </summary>
-        public int Length { get; internal set; }
+        public int Length { get; set; }
 
         /// <summary>
         /// 获取或设置数据库列的数据类型。
         /// </summary>
-        public DbType DbType { get; internal set; }
+        public DbType DbType { get; set; }
 
         /// <summary>
         /// 获取或设置一个值，指示该列是否允许为空。
         /// </summary>
-        public bool AllowNull { get; internal set; }
+        public bool AllowNull { get; set; }
 
         /// <summary>
         /// 获取或设置列的默认值，可以是一个常量值或一个数据库函数表达式。
@@ -82,11 +82,11 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置列的固定筛选值。支持枚举和其他可转换到属性类型的常量值。
         /// </summary>
-        public object? Constant { get; internal set; }
+        public object? Constant { get; set; }
         /// <summary>
         /// 获取或设置列映射模式。
         /// </summary>
-        public ColumnMode Mode { get; internal set; }
+        public ColumnMode Mode { get; set; }
 
         /// <summary>
         /// 获取当前列的定义信息。

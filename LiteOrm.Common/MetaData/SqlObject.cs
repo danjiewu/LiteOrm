@@ -12,7 +12,7 @@
         public virtual string? Name
         {
             get { return _name; }
-            protected internal set
+            set
             {
                 _name = value;
             }
