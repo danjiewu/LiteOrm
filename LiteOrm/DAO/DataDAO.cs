@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm
 {
@@ -8,7 +9,7 @@ namespace LiteOrm
     /// 提供针对数据的基本更新操作实现
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    public class DataDAO<T> : DAOBase
+    public class DataDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : DAOBase
     {
         /// <summary>
         /// 初始化 <see cref="DataDAO{T}"/> 类的新实例。
@@ -20,6 +21,7 @@ namespace LiteOrm
         /// <summary>
         /// 实体对象类型
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public override Type ObjectType => typeof(T);
 
         /// <summary>

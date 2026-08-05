@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace LiteOrm.Common
@@ -16,7 +17,8 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="objectType">对应的实体类型。</param>
         /// <param name="columns">列定义集合。</param>
-        public TableDefinition(Type objectType, ICollection<ColumnDefinition> columns) :
+        public TableDefinition([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        Type objectType, ICollection<ColumnDefinition> columns) :
             base(new List<ColumnDefinition>(columns).ConvertAll<SqlColumn>(column => column))
         {
             this.ObjectType = objectType;
@@ -34,6 +36,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取对应的实体类型。
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public Type ObjectType { get; }
 
         /// <summary>

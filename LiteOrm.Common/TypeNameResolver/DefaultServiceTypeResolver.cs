@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace LiteOrm.Common
@@ -72,6 +73,7 @@ namespace LiteOrm.Common
             return _cache.GetOrAdd(name, ResolveCore);
         }
 
+        [RequiresDynamicCode("Pre-register all required closed generic types via TypeResolverHelper with typeof(T) to ensure trimming roots in AOT.")]
         private Type? ResolveCore(string name)
         {
             var ltIndex = name.IndexOf('<');

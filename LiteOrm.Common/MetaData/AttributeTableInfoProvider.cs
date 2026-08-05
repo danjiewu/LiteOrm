@@ -72,7 +72,9 @@ namespace LiteOrm
         }
 
         #region
-        private TableDefinition? GenerateTableDefinition(Type objectType)
+        private TableDefinition? GenerateTableDefinition(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            Type objectType)
         {
             TableAttribute? tableAttribute = objectType.GetAttribute<TableAttribute>();
             if (tableAttribute is null) return null;
@@ -123,7 +125,7 @@ namespace LiteOrm
                     column.IsTimestamp = columnAttribute.IsTimestamp;
                     column.IdentityExpression = columnAttribute.IdentityExpression;
                     column.IsUnique = columnAttribute.IsUnique;
-                    column.IsIndex = columnAttribute.IsIndex;   
+                    column.IsIndex = columnAttribute.IsIndex;
                     column.DbType = columnAttribute.DbType;
                     column.Length = columnAttribute.Length == 0 ? (column.DbType.HasValue ? DbTypeMap.GetDefaultLength(column.DbType.Value) : 0) : columnAttribute.Length;
                     column.AllowNull = columnAttribute.AllowNull && (property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(property.PropertyType) is not null : true);
@@ -178,7 +180,9 @@ namespace LiteOrm
             }
         }
 
-        private TableView? GenerateTableView(Type objectType)
+        private TableView? GenerateTableView(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] 
+            Type objectType)
         {
             var tableDef = GetTableDefinition(objectType);
             if (tableDef == null) return null;

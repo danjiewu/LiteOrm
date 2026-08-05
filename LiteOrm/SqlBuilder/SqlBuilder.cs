@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -362,7 +363,7 @@ namespace LiteOrm
         /// <param name="dbValue">数据库取得的值。</param>
         /// <param name="objectType">目标属性类型。</param>
         /// <returns>转换后的对象值。</returns>
-        public object? ConvertFromDbValue(object? dbValue, Type? objectType = null)
+        public object? ConvertFromDbValue(object? dbValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type? objectType = null)
         {
             if (objectType == null)
             {
@@ -425,13 +426,13 @@ namespace LiteOrm
         /// 为非可空值类型创建默认值（零值），替代 <see cref="Activator.CreateInstance(Type)"/>。
         /// <para>
         /// NativeAOT 下 <see cref="Activator.CreateInstance(Type)"/> 会触发 IL2072 裁剪告警；
-        /// 这里在 .NET 5+ 上使用 AOT 友好的 <see cref="System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject"/>
+        /// 这里在 .NET 5+ 上使用 AOT 友好的 <c>RuntimeHelpers.GetUninitializedObject</c>
         /// 为值类型生成零值装箱实例，语义与 <c>default(T)</c> 一致。
         /// </para>
         /// </summary>
         /// <param name="objectType">非可空值类型。</param>
         /// <returns>该值类型的零值（装箱后）。</returns>
-        private static object CreateDefaultValue(Type objectType)
+        private static object CreateDefaultValue([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType)
         {
 #if NET5_0_OR_GREATER
             return System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(objectType);

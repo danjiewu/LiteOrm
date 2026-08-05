@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,7 +46,7 @@ namespace LiteOrm.Service
     /// var userAsync = await service.GetObjectAsync(userId);
     /// </code>
     /// </remarks>
-    public class EntityViewService<TView> : IEntityViewService<TView>, IEntityViewServiceAsync<TView>, IEntityViewService, IEntityViewServiceAsync
+    public class EntityViewService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TView> : IEntityViewService<TView>, IEntityViewServiceAsync<TView>, IEntityViewService, IEntityViewServiceAsync
     {
         /// <summary>
         /// 获取用于视图查询的数据访问对象。
@@ -166,7 +167,7 @@ namespace LiteOrm.Service
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>结果列表</returns>
-        public virtual List<TResult> SearchAs<TResult>(SelectExpr? selectExpr = null, params string[]? tableArgs)
+        public virtual List<TResult> SearchAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[]? tableArgs)
         {
             return ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr!).ToList();
         }
@@ -177,7 +178,7 @@ namespace LiteOrm.Service
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns></returns>
-        public virtual TResult SearchOneAs<TResult>(SelectExpr? selectExpr = null, params string[]? tableArgs)
+        public virtual TResult SearchOneAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[]? tableArgs)
         {
             return ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr!).FirstOrDefault();
         }
@@ -327,7 +328,7 @@ namespace LiteOrm.Service
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>结果列表</returns>
-        public async virtual Task<List<TResult>> SearchAsAsync<TResult>(SelectExpr? selectExpr = null, params string[]? tableArgs)
+        public async virtual Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[]? tableArgs)
         {
             return await ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr!).ToListAsync();
         }
@@ -339,7 +340,7 @@ namespace LiteOrm.Service
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>结果对象</returns>
-        public async virtual Task<TResult> SearchOneAsAsync<TResult>(SelectExpr? selectExpr = null, params string[]? tableArgs)
+        public async virtual Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[]? tableArgs)
         {
             return await ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr!).FirstOrDefaultAsync();
         }

@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -11,7 +12,7 @@ namespace LiteOrm
     /// 提供视图查询功能，返回 DataTable 格式结果
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    public class DataViewDAO<T> : DAOBase, IDataViewDAO<T>
+    public class DataViewDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : DAOBase, IDataViewDAO<T>
     {
         /// <summary>
         /// 初始化 <see cref="DataViewDAO{T}"/> 类的新实例。
@@ -23,6 +24,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取实体类型信息。
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public override Type ObjectType => typeof(T);
 
         /// <summary>

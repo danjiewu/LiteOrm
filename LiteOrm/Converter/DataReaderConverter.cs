@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -100,7 +101,7 @@ namespace LiteOrm
             typeof(DataReaderConverter).GetMethod(nameof(GetConverter), BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
 
         /// <summary>
-        /// 注册预编译的 DataReader 映射委托，用于 NativeAOT 场景替代运行时 <see cref="Expression.Compile()"/>。
+        /// 注册预编译的 DataReader 映射委托，用于 NativeAOT 场景替代运行时 <see cref="LambdaExpression.Compile()"/>。
         /// 注册后，<see cref="GetConverter{T}()"/> 和 <see cref="GetConverter(Type)"/> 将直接返回该委托。
         /// </summary>
         /// <typeparam name="T">目标实体类型。</typeparam>
@@ -128,7 +129,7 @@ namespace LiteOrm
         /// <typeparam name="TResult">目标类型。</typeparam>
         /// <param name="reader">已打开的数据读取器，用于读取列架构信息（匿名类型时使用）。</param>
         /// <returns>编译后的映射委托。</returns>
-        public static Func<AutoLockDataReader, TResult> GetConverter<TResult>(DbDataReader reader)
+        public static Func<AutoLockDataReader, TResult> GetConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader)
         {
             Type type = typeof(TResult);
             if (TableInfoProvider.Instance.GetTableView(type) != null)
@@ -145,7 +146,7 @@ namespace LiteOrm
         /// </summary>
         /// <typeparam name="TResult">目标类型。</typeparam>
         /// <returns>编译后的映射委托。</returns>
-        public static Func<AutoLockDataReader, TResult> GetConverter<TResult>()
+        public static Func<AutoLockDataReader, TResult> GetConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>()
         {
             return (Func<AutoLockDataReader, TResult>)_cacheByType.GetOrAdd(typeof(TResult), _ => CompileConverter<TResult>());
         }
@@ -156,6 +157,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="resultType">目标类型。</param>
         /// <returns>编译后的映射委托，实际类型为 <see cref="Func{AutoLockDataReader, TResult}"/>。</returns>
+        [RequiresDynamicCode("Converter dynamic creation relies on MakeGenericMethod; not supported under NativeAOT.")]
         public static Delegate GetConverter(Type resultType)
         {
             return _cacheByType.GetOrAdd(resultType,
@@ -174,7 +176,7 @@ namespace LiteOrm
             return sb.ToString();
         }
 
-        private static Func<AutoLockDataReader, TResult> CompileConverter<TResult>()
+        private static Func<AutoLockDataReader, TResult> CompileConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>()
         {
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
                 throw new PlatformNotSupportedException(
@@ -192,7 +194,7 @@ namespace LiteOrm
             return CompileConverterByColumns<TResult>(selectColumns);
         }
 
-        private static Func<AutoLockDataReader, TResult> CompileScalarConverter<TResult>(ParameterExpression readerParam)
+        private static Func<AutoLockDataReader, TResult> CompileScalarConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(ParameterExpression readerParam)
         {
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
                 throw new PlatformNotSupportedException(
@@ -202,7 +204,7 @@ namespace LiteOrm
             return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
-        private static Func<AutoLockDataReader, TResult> CompileDataReaderConverter<TResult>(DbDataReader reader)
+        private static Func<AutoLockDataReader, TResult> CompileDataReaderConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader)
         {
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
                 throw new PlatformNotSupportedException(
@@ -378,7 +380,7 @@ namespace LiteOrm
         /// 编译基于 <see cref="SqlColumn"/> 定义的位置映射委托。
         /// <paramref name="selectColumns"/>[i] 对应读取器第 i 列，使用列的属性名定位目标属性。
         /// </summary>
-        private static Func<AutoLockDataReader, TResult> CompileConverterByColumns<TResult>(IList<SqlColumn> selectColumns)
+        private static Func<AutoLockDataReader, TResult> CompileConverterByColumns<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IList<SqlColumn> selectColumns)
         {
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
                 throw new PlatformNotSupportedException(

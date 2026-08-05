@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,7 +52,7 @@ namespace LiteOrm.Service
     /// await service.BatchInsertAsync(users);
     /// </code>
     /// </remarks>
-    public class EntityService<T, TView> : EntityViewService<TView>, IEntityService<T>, IEntityServiceAsync<T>, IEntityService, IEntityServiceAsync
+    public class EntityService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TView> : EntityViewService<TView>, IEntityService<T>, IEntityServiceAsync<T>, IEntityService, IEntityServiceAsync
     where TView : T
     {
         /// <summary>
@@ -971,7 +972,7 @@ namespace LiteOrm.Service
     /// 它简化了在这种常见场景中的类型参数传递。
     /// </remarks>
     /// <typeparam name="T">实体类型，同时也是实体视图类型。</typeparam>
-    public class EntityService<T> : EntityService<T, T>
+    public class EntityService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : EntityService<T, T>
     {
         /// <summary>
         /// 初始化 <see cref="EntityService{T}"/> 类的新实例。

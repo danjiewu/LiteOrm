@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using LiteOrm.Common;
@@ -305,6 +306,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取作为指定列类型的 <see cref="Type"/>。
         /// </summary>
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)]
         public override Type GetFieldType(int i)
         {
             EnsureNotDisposed();

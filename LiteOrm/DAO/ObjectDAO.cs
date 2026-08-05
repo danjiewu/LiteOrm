@@ -1,9 +1,10 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,7 +28,7 @@ namespace LiteOrm
     /// 该类继承自 DAOBase，使用泛型参数 T 来指定具体的实体类型，
     /// 提供强类型的数据访问接口。
     /// </remarks>
-    public class ObjectDAO<T> : DAOBase, IObjectDAO<T>
+    public class ObjectDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : DAOBase, IObjectDAO<T>
     {
         /// <summary>
         /// 初始化 <see cref="ObjectDAO{T}"/> 类的新实例。
@@ -41,6 +42,7 @@ namespace LiteOrm
         /// </summary>
         public override Type ObjectType
         {
+            [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
             get { return typeof(T); }
         }
         /// <summary>

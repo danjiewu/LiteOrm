@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -62,8 +63,10 @@ namespace LiteOrm.Common
             // JIT 模式回退：使用反射创建未知类型的转换器
             if (System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
             {
+#pragma warning disable IL3050
                 return (JsonConverter)Activator.CreateInstance(
                     typeof(ExprJsonConverter<>).MakeGenericType(typeToConvert))!;
+#pragma warning restore IL3050
             }
 
             throw new NotSupportedException(
@@ -382,7 +385,7 @@ namespace LiteOrm.Common
                             while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                             {
                                 if (reader.TokenType != JsonTokenType.StartObject) { reader.Skip(); continue; }
-                                var join = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()) as TableJoinExpr;
+                                var join = JsonSerializer.Deserialize(ref reader, GetTypeInfo<TableJoinExpr>());
                                 if (join != null) fe.Joins.Add(join);
                             }
                         }
@@ -491,7 +494,7 @@ namespace LiteOrm.Common
                     string? typeName = reader.GetString();
                     if (!string.IsNullOrEmpty(typeName))
                     {
-                        Type? type = ExprJsonConverterFactory.TypeNameResolver.GetType(typeName);
+                        Type? type = ExprJsonConverterFactory.TypeNameResolver.GetType(typeName!);
                         if (type != null) te.Type = type;
                     }
                 }
@@ -603,7 +606,7 @@ namespace LiteOrm.Common
                             {
                                 writer.WriteStartObject();
                                 writer.WritePropertyName(set.Property?.PropertyName ?? string.Empty);
-                                JsonSerializer.Serialize(writer, set.Value, GetTypeInfo<ValueTypeExpr>());
+                                JsonSerializer.Serialize(writer, set.Value, GetTypeInfo<ValueTypeExpr?>());
                                 writer.WriteEndObject();
                             }
                             writer.WriteEndArray();
@@ -746,7 +749,7 @@ namespace LiteOrm.Common
                         break;
                     case OrderByItemExpr oie:
                         writer.WritePropertyName("Field");
-                        JsonSerializer.Serialize(writer, oie.Field, GetTypeInfo<ValueTypeExpr>());
+                        JsonSerializer.Serialize(writer, oie.Field, GetTypeInfo<ValueTypeExpr?>());
                         writer.WriteBoolean("Asc", oie.Ascending);
                         break;
                     case SelectItemExpr sie:
@@ -817,7 +820,7 @@ namespace LiteOrm.Common
                 }
                 else
                 {
-                    JsonSerializer.Serialize(writer, value.Source, GetTypeInfo<SqlSegment>());
+                    JsonSerializer.Serialize(writer, value.Source, GetTypeInfo<SqlSegment?>());
                 }
 
                 switch (value)
@@ -1502,7 +1505,7 @@ namespace LiteOrm.Common
                         string? typeName = reader.GetString();
                         if (!string.IsNullOrEmpty(typeName))
                         {
-                            foreignExpr.Foreign = ExprJsonConverterFactory.TypeNameResolver.GetType(typeName);
+                            foreignExpr.Foreign = ExprJsonConverterFactory.TypeNameResolver.GetType(typeName!);
                         }
                     }
                     else if (prop == "Alias")

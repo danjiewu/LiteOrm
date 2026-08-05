@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace LiteOrm.Common
@@ -32,6 +33,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 对象类型
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public Type DefinitionType
         {
             get { return Definition.ObjectType; }

@@ -1,5 +1,6 @@
 ﻿using LiteOrm.Common;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -77,7 +78,7 @@ namespace LiteOrm
         /// <param name="objectViewDao">IObjectViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 Lambda 表达式。</param>
         /// <returns>符合条件的对象枚举。</returns>
-        public static EnumerableResult<T> Search<T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
+        public static EnumerableResult<T> Search<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return objectViewDao.Search(lambdaConvert.ToLogicExpr()!);
@@ -90,7 +91,7 @@ namespace LiteOrm
         /// <param name="objectViewDao">IObjectViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <returns>符合条件的对象枚举。</returns>
-        public static EnumerableResult<T> Search<T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<IQueryable<T>, IQueryable<T>>> expression)
+        public static EnumerableResult<T> Search<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<IQueryable<T>, IQueryable<T>>> expression)
         {
             return objectViewDao.Search(Expr.Query(expression));
         }

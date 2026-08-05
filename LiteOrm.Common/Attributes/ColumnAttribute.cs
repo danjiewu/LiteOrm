@@ -100,7 +100,7 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 获取或设置数据库列的数据类型。
-        /// 为 null 时表示使用默认值，由 <see cref="SqlBuilder"/> 根据属性类型推断。
+        /// 为 null 时表示使用默认值，由 <see cref="ISqlBuilder"/> 根据属性类型推断。
         /// </summary>
         public DbType? DbType { get; set; }
 

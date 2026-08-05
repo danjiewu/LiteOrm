@@ -10,7 +10,7 @@ namespace System.Diagnostics.CodeAnalysis
     /// On netstandard2.0/2.1 this is a no-op attribute that does not affect trimming.
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue | AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Struct | AttributeTargets.GenericParameter, Inherited = false)]
-    public sealed class DynamicallyAccessedMembersAttribute : Attribute
+    internal sealed class DynamicallyAccessedMembersAttribute : Attribute
     {
         public DynamicallyAccessedMembersAttribute(DynamicallyAccessedMemberTypes memberTypes)
         {
@@ -24,7 +24,7 @@ namespace System.Diagnostics.CodeAnalysis
     /// Polyfill for .NET 5+ DynamicallyAccessedMemberTypes enum.
     /// </summary>
     [Flags]
-    public enum DynamicallyAccessedMemberTypes
+    internal enum DynamicallyAccessedMemberTypes
     {
         None = 0,
         PublicParameterlessConstructor = 0x0001,
@@ -51,7 +51,7 @@ namespace System.Diagnostics.CodeAnalysis
     /// On netstandard2.0/2.1 this is a no-op attribute that does not affect AOT analysis.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class | AttributeTargets.Struct, Inherited = false)]
-    public sealed class RequiresDynamicCodeAttribute : Attribute
+    internal sealed class RequiresDynamicCodeAttribute : Attribute
     {
         public RequiresDynamicCodeAttribute(string message) { Message = message; }
         public string Message { get; }
@@ -68,7 +68,7 @@ namespace System.Diagnostics.CodeAnalysis
     /// On netstandard2.0/2.1 this is a no-op attribute that does not affect trimming.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class | AttributeTargets.Struct, Inherited = false)]
-    public sealed class RequiresUnreferencedCodeAttribute : Attribute
+    internal sealed class RequiresUnreferencedCodeAttribute : Attribute
     {
         public RequiresUnreferencedCodeAttribute(string message) { Message = message; }
         public string Message { get; }

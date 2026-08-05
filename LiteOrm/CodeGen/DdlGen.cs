@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 
@@ -60,7 +61,7 @@ namespace LiteOrm.CodeGen
         /// <exception cref="ArgumentNullException">当 <paramref name="objectType"/> 为 null 时抛出。</exception>
         /// <exception cref="InvalidOperationException">当 <see cref="TableInfoProvider.Instance"/> 未设置或未找到对应的连接池时抛出。</exception>
         /// <exception cref="InvalidOperationException">当 <see cref="TableDefinition.DataSource"/> 未设置或无效时抛出。</exception>
-        public List<string> GenerateDdl(Type objectType, string[]? tableArgs = null)
+        public List<string> GenerateDdl([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]Type objectType, string[]? tableArgs = null)
         {
             if (objectType == null) throw new ArgumentNullException(nameof(objectType));
             if (TableInfoProvider.Instance == null) throw new InvalidOperationException("TableInfoProvider.Instance is not set.");
@@ -87,7 +88,7 @@ namespace LiteOrm.CodeGen
         /// <param name="objectTypes">实体类型集合。</param>
         /// <returns>所有实体类型的 ddl 语句集合。</returns>
         /// <exception cref="ArgumentNullException">当 <paramref name="objectTypes"/> 为 null 时抛出。</exception>
-        public IEnumerable<string> GenerateDdl(IEnumerable<Type> objectTypes)
+        public IEnumerable<string> GenerateDdl([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] IEnumerable<Type> objectTypes)
         {
             if (objectTypes == null) throw new ArgumentNullException(nameof(objectTypes));
 
@@ -108,6 +109,8 @@ namespace LiteOrm.CodeGen
         /// （通过 <see cref="AssemblyAnalyzer.GetAllReferencedAssemblies"/>）。
         /// </param>
         /// <returns>按数据源分组的 ddl 语句集合，键为数据源名称，值为该数据源的 ddl 语句列表。</returns>
+        [RequiresDynamicCode("")]
+        [RequiresUnreferencedCode("")]
         public IDictionary<string, List<string>> GenerateAllDdl(bool createNew, params Assembly[] assemblies)
         {
             IEnumerable<Assembly> targetAssemblies = (assemblies != null && assemblies.Length > 0)

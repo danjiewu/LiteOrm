@@ -13,7 +13,7 @@ public static class PropertyAccessorExtension
     private static readonly ConcurrentDictionary<PropertyInfo, Action<object, object>> _setterCache = new ConcurrentDictionary<PropertyInfo, Action<object, object>>();
 
     /// <summary>
-    /// 注册预编译的属性访问器委托，用于 NativeAOT 场景替代运行时 <see cref="Expression.Compile"/>。
+    /// 注册预编译的属性访问器委托，用于 NativeAOT 场景替代运行时 <see cref="LambdaExpression.Compile()"/>。
     /// 注册后，<see cref="GetValueFast"/> 和 <see cref="SetValueFast"/> 将直接使用注册的委托。
     /// </summary>
     /// <param name="property">属性信息</param>

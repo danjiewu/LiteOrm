@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json.Serialization;
 
@@ -19,6 +20,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置外部实体类型。
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public Type? Foreign { get; set; }
         /// <summary>
         /// 获取或设置外部表的别名。
@@ -71,7 +73,8 @@ namespace LiteOrm.Common
         /// 使用指定的外部实体类型初始化 <see cref="ForeignExpr"/> 类的新实例。
         /// </summary>
         /// <param name="foreign">外部实体类型。</param>
-        public ForeignExpr(Type foreign)
+        public ForeignExpr([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            Type foreign)
         {
             Foreign = foreign;
         }
@@ -81,7 +84,8 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="foreign">外部实体类型。</param>
         /// <param name="expr">内部过滤表达式。</param>
-        public ForeignExpr(Type foreign, LogicExpr? expr)
+        public ForeignExpr([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            Type foreign, LogicExpr? expr)
         {
             Foreign = foreign;
             InnerExpr = expr;
@@ -93,7 +97,8 @@ namespace LiteOrm.Common
         /// <param name="foreign">外部实体类型。</param>
         /// <param name="expr">内部过滤表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
-        public ForeignExpr(Type foreign, LogicExpr? expr, params string[] tableArgs)
+        public ForeignExpr([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            Type foreign, LogicExpr? expr, params string[] tableArgs)
         {
             Foreign = foreign;
             InnerExpr = expr;
@@ -106,7 +111,8 @@ namespace LiteOrm.Common
         /// <param name="foreign">外部实体类型。</param>
         /// <param name="alias">外部表别名。</param>
         /// <param name="expr">内部过滤表达式。</param>
-        public ForeignExpr(Type foreign, string alias, LogicExpr? expr)
+        public ForeignExpr([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            Type foreign, string alias, LogicExpr? expr)
         {
             Foreign = foreign;
             Alias = alias;
@@ -120,7 +126,8 @@ namespace LiteOrm.Common
         /// <param name="alias">外部表别名。</param>
         /// <param name="expr">内部过滤表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
-        public ForeignExpr(Type foreign, string alias, LogicExpr? expr, params string[] tableArgs)
+        public ForeignExpr([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            Type foreign, string alias, LogicExpr? expr, params string[] tableArgs)
         {
             Foreign = foreign;
             Alias = alias;
