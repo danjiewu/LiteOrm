@@ -46,7 +46,6 @@ namespace LiteOrm.Service
     /// </code>
     /// </remarks>
     public class EntityViewService<TView> : IEntityViewService<TView>, IEntityViewServiceAsync<TView>, IEntityViewService, IEntityViewServiceAsync
-         where TView : new()
     {
         /// <summary>
         /// 获取用于视图查询的数据访问对象。

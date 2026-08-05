@@ -34,9 +34,13 @@ namespace LiteOrm
 
             // Scoped 服务——每个作用域获得独立的 SessionManager
             services.AddScoped<SessionManager>();
-            // 泛型 DAO 与服务（Scoped）
+            // 泛型 DAO 与服务（Scoped）。     
+            services.AddScoped(typeof(ObjectDAO<>));
+            services.AddScoped(typeof(ObjectViewDAO<>));
             services.AddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
             services.AddScoped(typeof(IObjectViewDAO<>), typeof(ObjectViewDAO<>));
+            services.AddScoped(typeof(EntityService<>));
+            services.AddScoped(typeof(EntityViewService<>));
             services.AddScoped(typeof(IEntityService<>), typeof(EntityService<>));
             services.AddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
             return services;

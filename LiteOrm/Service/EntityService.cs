@@ -52,8 +52,7 @@ namespace LiteOrm.Service
     /// </code>
     /// </remarks>
     public class EntityService<T, TView> : EntityViewService<TView>, IEntityService<T>, IEntityServiceAsync<T>, IEntityService, IEntityServiceAsync
-    where TView : T, new()
-    where T : new()
+    where TView : T
     {
         /// <summary>
         /// 获取实体数据访问对象。
@@ -973,7 +972,6 @@ namespace LiteOrm.Service
     /// </remarks>
     /// <typeparam name="T">实体类型，同时也是实体视图类型。</typeparam>
     public class EntityService<T> : EntityService<T, T>
-        where T : new()
     {
         /// <summary>
         /// 初始化 <see cref="EntityService{T}"/> 类的新实例。
