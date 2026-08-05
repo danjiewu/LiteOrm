@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 
 namespace LiteOrm
@@ -62,6 +63,20 @@ namespace LiteOrm
         /// 按数据源名称索引的已注册 SQL 构建器集合。
         /// </summary>
         protected ConcurrentDictionary<string, SqlBuilder> RegisteredSqlBuildersByDataSource { get; } = new();
+
+        /// <summary>
+        /// 注册 SqlBuilder 类型以支持 AOT 名称解析。
+        /// <para>
+        /// 将类型注册到 <see cref="TypeResolverHelper"/>，使 AOT 模式下可通过类型全名反查类型。
+        /// <typeparamref name="T"/> 上的 <see cref="DynamicallyAccessedMembersAttribute"/> 注解确保
+        /// 裁剪器保留其公共构造函数，从而 <see cref="Activator.CreateInstance(Type)"/> 在 AOT 下可用。
+        /// </para>
+        /// </summary>
+        /// <typeparam name="T">SqlBuilder 的类型。</typeparam>
+        public static void RegisterSqlBuilderType<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T>() where T : SqlBuilder, new()
+        {
+            TypeResolverHelper.Register(typeof(T).AssemblyQualifiedName!, typeof(T));
+        }
 
         /// <summary>
         /// 注册 SQL 构建器（重载方法，使用提供程序类型作为键）。

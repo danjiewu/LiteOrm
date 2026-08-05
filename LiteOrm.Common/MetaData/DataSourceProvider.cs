@@ -67,7 +67,7 @@ namespace LiteOrm.Common
                 if (string.IsNullOrEmpty(Provider))
                     throw new InvalidOperationException("Database provider not specified");
 
-                var type = Type.GetType(Provider);
+                var type = TypeResolverHelper.FindType(Provider!);
                 if (type == null)
                     throw new TypeLoadException($"Unable to load database provider type: {Provider}");
 
@@ -84,7 +84,7 @@ namespace LiteOrm.Common
             {
                 if (!string.IsNullOrEmpty(SqlBuilder))
                 {
-                    var type = Type.GetType(SqlBuilder);
+                    var type = TypeResolverHelper.FindType(SqlBuilder!);
                     if (type == null)
                         throw new TypeLoadException($"Unable to load SQL builder type: {SqlBuilder}");
                     return type;

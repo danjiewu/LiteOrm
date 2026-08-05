@@ -4,6 +4,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Threading.Tasks;
+using System.Diagnostics.CodeAnalysis;
+using System.Collections.Generic;
 
 namespace LiteOrm
 {
@@ -48,6 +50,20 @@ namespace LiteOrm
         private readonly object _initLock = new object();
         private readonly IDataSourceProvider _dataSourceProvider;
         private readonly ILogger<DAOContextPoolFactory>? _logger;
+
+        /// <summary>
+        /// 注册 DbConnection 类型以支持 AOT 名称解析。
+        /// <para>
+        /// 将类型注册到 <see cref="TypeResolverHelper"/>，使 AOT 模式下可通过类型全名反查类型。
+        /// <typeparamref name="T"/> 上的 <see cref="DynamicallyAccessedMembersAttribute"/> 注解确保
+        /// 裁剪器保留其公共构造函数，从而 <see cref="Activator.CreateInstance(Type)"/> 在 AOT 下可用。
+        /// </para>
+        /// </summary>
+        /// <typeparam name="T">DbConnection 的类型。</typeparam>
+        public static void RegisterDbConnectionType<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>() where T : System.Data.Common.DbConnection, new()
+        {
+            TypeResolverHelper.Register(typeof(T).AssemblyQualifiedName!, typeof(T));
+        }
 
         /// <summary>
         /// 初始化 <see cref="DAOContextPoolFactory"/> 类的新实例。
@@ -145,7 +161,7 @@ namespace LiteOrm
                 try
                 {
                     Type sqlBuilderType = config.SqlBuilderType;
-                    if (!sqlBuilderType.IsSubclassOf(typeof(SqlBuilder)))  throw new InvalidOperationException($"SqlBuilderType {sqlBuilderType.FullName} must be a subclass of SqlBuilder");
+                    if (!sqlBuilderType.IsSubclassOf(typeof(SqlBuilder))) throw new InvalidOperationException($"SqlBuilderType {sqlBuilderType.FullName} must be a subclass of SqlBuilder");
 
                     SqlBuilder sqlBuilder;
                     PropertyInfo? instanceProp = sqlBuilderType.GetProperty(nameof(SqlBuilder.Instance), BindingFlags.Static | BindingFlags.Public);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace LiteOrm.Common
@@ -37,7 +38,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="name">自定义名称。</param>
         /// <param name="type">对应的类型。</param>
-        public static void Register(string name, Type type)
+        public static void Register(string name, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type type)
         {
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             if (type is null) throw new ArgumentNullException(nameof(type));
@@ -84,7 +85,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 生成类型的可序列化名称。
         /// <para>
-        /// 优先返回自定义注册的名称；否则使用短名（<see cref="MemberInfo.Name"/>），
+        /// 优先返回自定义注册的名称；否则使用短名，
         /// 泛型类型返回 <c>基名&lt;参数短名1,参数短名2,...&gt;</c>（去除反引号 arity 后缀，递归处理嵌套泛型）。
         /// </para>
         /// </summary>
