@@ -592,7 +592,7 @@ namespace LiteOrm.Generators
             {
                 var c = e.Columns[i];
                 var trailing = i < e.Columns.Count - 1 ? "," : "";
-                sb.AppendLine($"                typeof({e.FullName}).GetProperty(\"{c.PropertyName}\"){trailing}");
+                sb.AppendLine($"                typeof({e.FullName}).GetProperty(\"{c.PropertyName}\")!{trailing}");
             }
             sb.AppendLine("            };");
             sb.AppendLine("            var columns = new List<ColumnDefinition>();");
@@ -717,7 +717,7 @@ namespace LiteOrm.Generators
             }
 
             var scalarRead = GenerateScalarReadCall(type, ordinal);
-            return $"reader.IsDBNull({ordinal}) ? default({type}) : {scalarRead}";
+            return $"reader.IsDBNull({ordinal}) ? default({type})! : {scalarRead}";
         }
 
         private static string GenerateScalarReadCall(string type, int ordinal)
@@ -736,7 +736,7 @@ namespace LiteOrm.Generators
                 "string" or "System.String" => $"reader.GetString({ordinal})",
                 "System.DateTime" => $"reader.GetDateTime({ordinal})",
                 "System.Guid" => $"reader.GetGuid({ordinal})",
-                _ => $"({type})reader.ChangeType(reader.GetValue({ordinal}), typeof({type}))"
+                _ => $"({type})reader.ChangeType(reader.GetValue({ordinal}), typeof({type}))!"
             };
         }
 
@@ -805,7 +805,7 @@ namespace LiteOrm.Generators
                 sb.AppendLine();
                 sb.AppendLine($"        private static object {e.SafeName}_{c.PropertyName}_Getter(object obj)");
                 sb.AppendLine("        {");
-                sb.AppendLine($"            return (({entityType})obj).{c.PropertyName};");
+                sb.AppendLine($"            return (({entityType})obj).{c.PropertyName}!;");
                 sb.AppendLine("        }");
             }
 
