@@ -484,9 +484,9 @@ namespace LiteOrm
             var daoContext = GetDaoContext();
             if (provider is not null)
             {
+                daoContext.EnsureTable(ObjectType, TableArgs);
                 using (var scope = daoContext.AcquireScope())
                 {
-                    daoContext.EnsureTable(ObjectType, TableArgs);
                     provider.BulkInsert(ToDataTable(values, insertableColumns), daoContext.DbConnection, daoContext.CurrentTransaction!);
                 }
             }
@@ -946,9 +946,9 @@ namespace LiteOrm
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
             if (provider is not null)
             {
+                await daoContext.EnsureTableAsync(ObjectType, TableArgs).ConfigureAwait(false);
                 using (var scope = await daoContext.AcquireScopeAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    await daoContext.EnsureTableAsync(ObjectType, TableArgs).ConfigureAwait(false);
                     await provider.BulkInsertAsync(ToDataTable(values, insertableColumns), daoContext.DbConnection, daoContext.CurrentTransaction!, cancellationToken).ConfigureAwait(false);
                 }
             }

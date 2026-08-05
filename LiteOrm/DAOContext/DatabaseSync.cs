@@ -162,7 +162,8 @@ namespace LiteOrm
                 return new List<string>();
 
             var sem = GetTableCreationLock(tableName);
-            sem.Wait(10000);
+            if (!sem.Wait(10000))
+                throw new TimeoutException($"Unable to acquire table creation lock for table '{tableName}'");
             try
             {
                 if (_createdTables.ContainsKey(tableTypeKey))
@@ -193,7 +194,8 @@ namespace LiteOrm
                 return new List<string>();
 
             var sem = GetTableCreationLock(tableName);
-            await sem.WaitAsync(10000).ConfigureAwait(false);
+            if (!await sem.WaitAsync(10000).ConfigureAwait(false))
+                throw new TimeoutException($"Unable to acquire table creation lock for table '{tableName}'");
             try
             {
                 if (_createdTables.ContainsKey(tableTypeKey))
