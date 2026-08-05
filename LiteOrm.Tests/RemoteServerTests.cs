@@ -70,8 +70,9 @@ namespace LiteOrm.Tests
             services.AddScoped<IRemoteCalculator, CalculatorImpl>();
             var provider = services.BuildServiceProvider();
 
-            var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == TypeResolverHelper.GetName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name == TypeResolverHelper.GetName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
 
             var dispatcher = new RemoteServiceDispatcher(
                 provider,
@@ -250,8 +251,9 @@ namespace LiteOrm.Tests
             services.AddScoped<IRemoteCalculator, ThrowingCalculator>();
             var provider = services.BuildServiceProvider();
 
-            var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == TypeResolverHelper.GetName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name == TypeResolverHelper.GetName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
 
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
@@ -285,8 +287,9 @@ namespace LiteOrm.Tests
             services.AddScoped<IDerivedService, DerivedServiceImpl>();
             var provider = services.BuildServiceProvider();
 
-            var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == TypeResolverHelper.GetName(typeof(IDerivedService)) ? typeof(IDerivedService) : null);
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name == TypeResolverHelper.GetName(typeof(IDerivedService)) ? typeof(IDerivedService) : null);
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
             var method = typeof(IBaseService).GetMethod(nameof(IBaseService.BaseMethod))!;
@@ -332,8 +335,9 @@ namespace LiteOrm.Tests
             services.AddScoped<IOverloadDerived, OverloadDerivedImpl>();
             var provider = services.BuildServiceProvider();
 
-            var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == TypeResolverHelper.GetName(typeof(IOverloadDerived)) ? typeof(IOverloadDerived) : null);
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name == TypeResolverHelper.GetName(typeof(IOverloadDerived)) ? typeof(IOverloadDerived) : null);
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
             // 构造请求 JSON，模拟客户端序列化后的格式

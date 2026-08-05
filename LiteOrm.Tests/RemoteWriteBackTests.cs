@@ -519,8 +519,9 @@ namespace LiteOrm.Tests
             services.AddScoped<TInterface, TImpl>();
             var provider = services.BuildServiceProvider();
 
-            var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == TypeResolverHelper.GetName(typeof(TInterface)) ? typeof(TInterface) : null);
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name == TypeResolverHelper.GetName(typeof(TInterface)) ? typeof(TInterface) : null);
 
             var dispatcher = new RemoteServiceDispatcher(
                 provider,

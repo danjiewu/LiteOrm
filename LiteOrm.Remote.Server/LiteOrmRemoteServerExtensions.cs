@@ -36,19 +36,19 @@ namespace LiteOrm.Remote.Server
         };
 
         /// <summary>
-        /// 获取或设置服务类型解析器实例。默认为 <see cref="DefaultServiceTypeResolver"/>（全程序集短名扫描）。
-        /// 可替换为 <see cref="DelegateRemoteServiceTypeResolver"/>、指定命名空间的 <see cref="DefaultServiceTypeResolver"/> 或自定义实现。
-        /// 若需要依赖其他 DI 服务构造解析器，可使用 <see cref="ServiceTypeResolverFactory"/>。
+        /// 获取或设置类型名称解析器实例。默认为 <see cref="DefaultServiceTypeResolver"/>（全程序集短名扫描）。
+        /// 可替换为指定命名空间的 <see cref="DefaultServiceTypeResolver"/> 或自定义 <see cref="ITypeNameResolver"/> 实现。
+        /// 若需要依赖其他 DI 服务构造解析器，可使用 <see cref="TypeNameResolverFactory"/>。
         /// </summary>
-        public IRemoteServiceTypeResolver ServiceTypeResolver { get; set; } = new DefaultServiceTypeResolver();
+        public ITypeNameResolver ServiceTypeResolver { get; set; } = DefaultServiceTypeResolver.Instance;
 
         /// <summary>
-        /// 获取或设置自定义服务类型解析器的工厂函数。
-        /// 工厂接收 <see cref="IServiceProvider"/>，返回 <see cref="IRemoteServiceTypeResolver"/> 实例，
+        /// 获取或设置自定义类型名称解析器的工厂函数。
+        /// 工厂接收 <see cref="IServiceProvider"/>，返回 <see cref="ITypeNameResolver"/> 实例，
         /// 可用于在解析器中注入其他 DI 服务。
         /// 优先级高于 <see cref="ServiceTypeResolver"/>：若同时设置，工厂优先生效。
         /// </summary>
-        public Func<IServiceProvider, IRemoteServiceTypeResolver>? ServiceTypeResolverFactory { get; set; }
+        public Func<IServiceProvider, ITypeNameResolver>? TypeNameResolverFactory { get; set; }
 
         /// <summary>
         /// 是否自动扫描带 <see cref="ServiceAttribute"/> 特性的接口，通过 <see cref="TypeResolverHelper.Register"/>
@@ -90,8 +90,8 @@ namespace LiteOrm.Remote.Server
         /// <summary>
         /// 注册远程服务服务端到 DI 容器。
         /// 默认使用 <see cref="DefaultServiceTypeResolver"/>（全程序集短名扫描）解析服务类型，
-        /// 可通过 <see cref="RemoteServerOptions.ServiceTypeResolver"/> 或 <see cref="RemoteServerOptions.ServiceTypeResolverFactory"/> 替换。
-        /// 服务类型解析优先级：<see cref="RemoteServerOptions.ServiceTypeResolverFactory"/> &gt; <see cref="RemoteServerOptions.ServiceTypeResolver"/>。
+        /// 可通过 <see cref="RemoteServerOptions.ServiceTypeResolver"/> 或 <see cref="RemoteServerOptions.TypeNameResolverFactory"/> 替换。
+        /// 服务类型解析优先级：<see cref="RemoteServerOptions.TypeNameResolverFactory"/> &gt; <see cref="RemoteServerOptions.ServiceTypeResolver"/>。
         /// <para>
         /// 框架不自动注册 <see cref="IRemoteAuthenticationHandler"/>，调用方需手动注册。
         /// 推荐使用内置 <see cref="IdentityRemoteAuthenticationHandler{TUser}"/>：
@@ -114,14 +114,14 @@ namespace LiteOrm.Remote.Server
                 AutoRegisterServiceTypes(options.Assemblies);
             }
 
-            // 注册 IRemoteServiceTypeResolver：工厂优先，否则使用实例（默认 DefaultServiceTypeResolver）
-            if (options.ServiceTypeResolverFactory is not null)
+            // 注册 ITypeNameResolver：工厂优先，否则使用实例（默认 DefaultServiceTypeResolver）
+            if (options.TypeNameResolverFactory is not null)
             {
-                services.AddSingleton<IRemoteServiceTypeResolver>(options.ServiceTypeResolverFactory);
+                services.AddSingleton(options.TypeNameResolverFactory);
             }
             else
             {
-                services.AddSingleton<IRemoteServiceTypeResolver>(options.ServiceTypeResolver);
+                services.AddSingleton(options.ServiceTypeResolver);
             }
 
             // IHttpContextAccessor 是 IRemoteAuthenticationHandler 实现的常用依赖

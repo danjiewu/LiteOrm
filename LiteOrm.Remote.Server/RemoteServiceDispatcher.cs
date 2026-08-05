@@ -28,7 +28,7 @@ namespace LiteOrm.Remote.Server
         private static readonly ConcurrentDictionary<Type, Dictionary<string, MethodInfo>> _methodCache = new();
 
         private readonly IServiceProvider _serviceProvider;
-        private readonly IRemoteServiceTypeResolver _resolver;
+        private readonly ITypeNameResolver _resolver;
         private readonly ILogger<RemoteServiceDispatcher>? _logger;
 
         /// <summary>
@@ -36,7 +36,7 @@ namespace LiteOrm.Remote.Server
         /// </summary>
         public RemoteServiceDispatcher(
             IServiceProvider serviceProvider,
-            IRemoteServiceTypeResolver resolver,
+            ITypeNameResolver resolver,
             ILogger<RemoteServiceDispatcher>? logger = null)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
@@ -63,7 +63,7 @@ namespace LiteOrm.Remote.Server
             try
             {
                 // 1. 解析服务类型
-                var serviceType = _resolver.ResolveService(request.ServiceName!);
+                var serviceType = _resolver.GetType(request.ServiceName!);
                 if (serviceType is null)
                 {
                     response.Success = false;
@@ -151,7 +151,7 @@ namespace LiteOrm.Remote.Server
         /// <para>
         /// 解析流程：
         /// 1. 读取 JSON，提取 <see cref="RemoteInvocationRequest.ServiceName"/>；
-        /// 2. 通过 <see cref="IRemoteServiceTypeResolver"/> 匹配服务类型；
+        /// 2. 通过 <see cref="ITypeNameResolver"/> 匹配服务类型；
         /// 3. 从 JSON 读取方法名，在服务类型上查找 <see cref="MethodInfo"/>；
         /// 4. 按 <see cref="MethodInfo"/> 参数类型反序列化 <see cref="RemoteInvocationRequest.Arguments"/>。
         /// </para>
@@ -172,7 +172,7 @@ namespace LiteOrm.Remote.Server
 
             // 1. 提取 ServiceName 与 RequestID
             var serviceName = root.GetProperty("ServiceName").GetString();
-            var serviceType = _resolver.ResolveService(serviceName);
+            var serviceType = _resolver.GetType(serviceName!);
             if (serviceType is null)
                 throw new ServiceException($"Remote service '{serviceName}' is not registered.");
 

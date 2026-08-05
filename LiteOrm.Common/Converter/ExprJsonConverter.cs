@@ -15,6 +15,21 @@ namespace LiteOrm.Common
     /// </summary>
     internal class ExprJsonConverterFactory : JsonConverterFactory
     {
+        /// <summary>
+        /// 类型名称解析器，用于 JSON 序列化/反序列化时 Type ↔ 名称 的双向转换。
+        /// 默认使用 <see cref="DefaultTypeNameResolver"/>，可通过此属性替换为自定义实现。
+        /// </summary>
+        private static ITypeNameResolver _typeNameResolver = DefaultTypeNameResolver.Instance;
+
+        /// <summary>
+        /// 获取或设置类型名称解析器。设置为 null 时抛出 <see cref="ArgumentNullException"/>。
+        /// </summary>
+        internal static ITypeNameResolver TypeNameResolver
+        {
+            get => _typeNameResolver;
+            set => _typeNameResolver = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
         // 预创建的泛型转换器实例，避免 Activator.CreateInstance + MakeGenericType（AOT 不兼容）
         private static readonly ExprJsonConverter<Expr> _exprConverter = new();
         private static readonly ExprJsonConverter<LogicExpr> _logicExprConverter = new();
@@ -373,7 +388,7 @@ namespace LiteOrm.Common
                         }
                         break;
                     case TableExpr te when propName == "Type":
-                        te.Type = GetObjectType(reader.GetString());
+                        te.Type = ExprJsonConverterFactory.TypeNameResolver.GetType(reader.GetString()!);
                         break;
                     case TableExpr te when propName == "Alias":
                         te.Alias = reader.GetString();
@@ -476,7 +491,7 @@ namespace LiteOrm.Common
                     string? typeName = reader.GetString();
                     if (!string.IsNullOrEmpty(typeName))
                     {
-                        Type? type = GetObjectType(typeName);
+                        Type? type = ExprJsonConverterFactory.TypeNameResolver.GetType(typeName);
                         if (type != null) te.Type = type;
                     }
                 }
@@ -498,21 +513,6 @@ namespace LiteOrm.Common
                         segment.Source = JsonSerializer.Deserialize(ref reader, GetTypeInfo<SqlSegment>());
                     }
                 }
-            }
-
-            private static Type? GetObjectType(string? typeName)
-            {
-                Type? type = Type.GetType(typeName!);
-                if (type == null)
-                {
-                    foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                    {
-                        type = assembly.GetType(typeName!);
-                        if (type != null) break;
-                    }
-                }
-
-                return type;
             }
 
             public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
@@ -722,7 +722,7 @@ namespace LiteOrm.Common
                         if (fe.Foreign is not null)
                         {
                             writer.WritePropertyName("$");
-                            writer.WriteStringValue(fe.Foreign.FullName);
+                            writer.WriteStringValue(ExprJsonConverterFactory.TypeNameResolver.GetName(fe.Foreign));
                         }
                         if (!string.IsNullOrEmpty(fe.Alias))
                         {
@@ -813,7 +813,7 @@ namespace LiteOrm.Common
                 writer.WritePropertyName("$" + mark);
                 if (value is TableExpr te)
                 {
-                    writer.WriteStringValue(te.Type?.FullName);
+                    writer.WriteStringValue(te.Type is not null ? ExprJsonConverterFactory.TypeNameResolver.GetName(te.Type) : null);
                 }
                 else
                 {
@@ -1502,16 +1502,7 @@ namespace LiteOrm.Common
                         string? typeName = reader.GetString();
                         if (!string.IsNullOrEmpty(typeName))
                         {
-                            Type? type = Type.GetType(typeName);
-                            if (type == null)
-                            {
-                                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                                {
-                                    type = assembly.GetType(typeName);
-                                    if (type != null) break;
-                                }
-                            }
-                            foreignExpr.Foreign = type;
+                            foreignExpr.Foreign = ExprJsonConverterFactory.TypeNameResolver.GetType(typeName);
                         }
                     }
                     else if (prop == "Alias")

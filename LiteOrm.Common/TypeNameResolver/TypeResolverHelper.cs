@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
-using System.Reflection;
 
 namespace LiteOrm.Common
 {
@@ -10,7 +9,7 @@ namespace LiteOrm.Common
     /// <para>
     /// 提供：
     /// 1. <see cref="GetName(Type)"/>：生成类型的可序列化名称（短名，泛型使用 <c>Base&lt;T1,T2&gt;</c> 格式）；
-    /// 2. <see cref="FindType(string, string?)"/>：按名称查找类型（支持自定义注册、全名、命名空间+短名、全程序集短名扫描）；
+    /// 2. <see cref="FindType(string)"/>：按名称查找类型（支持自定义注册、全名、全程序集短名扫描）；
     /// 3. <see cref="Register(string, Type)"/>/<see cref="Unregister(string)"/>：自定义名称 ↔ 类型的双向静态注册；
     /// 4. <see cref="TryParseGenericServiceName"/>：解析泛型服务名。
     /// </para>
@@ -24,8 +23,8 @@ namespace LiteOrm.Common
         private static readonly ConcurrentDictionary<string, Type> _nameToType = new(StringComparer.Ordinal);
         /// <summary>自定义注册：类型 → 名称。</summary>
         private static readonly ConcurrentDictionary<Type, string> _typeToName = new();
-        /// <summary>FindType 结果缓存：typeName → (defaultNamespace → 类型，未找到为 null)。双层字典便于按 typeName 维度整体失效。</summary>
-        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, Type?>> _findTypeCache = new(StringComparer.Ordinal);
+        /// <summary>FindType 结果缓存：typeName → 类型（未找到为 null）。</summary>
+        private static readonly ConcurrentDictionary<string, Type?> _findTypeCache = new(StringComparer.Ordinal);
         /// <summary>GetName 结果缓存：类型 → 名称。</summary>
         private static readonly ConcurrentDictionary<Type, string> _getNameCache = new();
 
@@ -49,7 +48,6 @@ namespace LiteOrm.Common
 
             // 失效缓存
             _getNameCache.TryRemove(type, out _);
-            // 失效该名称所有命名空间下的 FindType 缓存（双层字典：直接移除整个内层字典）
             _findTypeCache.TryRemove(name, out _);
         }
 
@@ -67,7 +65,7 @@ namespace LiteOrm.Common
                 _typeToName.TryRemove(type, out _);
                 _getNameCache.TryRemove(type, out _);
             }
-            // 失效该名称所有命名空间下的 FindType 缓存
+            // 失效 FindType 缓存
             _findTypeCache.TryRemove(name, out _);
             return removed;
         }
@@ -115,12 +113,9 @@ namespace LiteOrm.Common
         /// <summary>
         /// 按名称查找类型。解析顺序：
         /// 1. 自定义注册（<see cref="Register"/>）；
-        /// 2. 精确全名匹配（含命名空间或程序集限定名）；
-        /// 3. 若 <paramref name="defaultNamespace"/> 已设置且 <paramref name="typeName"/> 为短名（不含 '.'），
-        ///    尝试 <c>defaultNamespace + "." + typeName</c> 精确匹配；
-        /// 4. 回退到全程序集短名（<see cref="MemberInfo.Name"/>）扫描。
+        /// 2. 精确全名匹配（含命名空间或程序集限定名）。
         /// <para>
-        /// 结果按 (typeName, defaultNamespace) 缓存。
+        /// 结果按 typeName 缓存。
         /// </para>
         /// <para>
         /// 泛型类型应使用 CLR 名称格式（含反引号 arity 后缀），如 <c>IEntityService`1</c>，
@@ -128,17 +123,14 @@ namespace LiteOrm.Common
         /// </para>
         /// </summary>
         /// <param name="typeName">类型名称，可以是全名、短名或程序集限定名。泛型类型应使用 <c>Foo`1</c> 格式。</param>
-        /// <param name="defaultNamespace">默认命名空间（可选），用于将短名组合为全名进行精确匹配。</param>
         /// <returns>匹配到的类型；未找到时返回 null。</returns>
-        public static Type? FindType(string typeName, string? defaultNamespace = null)
+        public static Type? FindType(string typeName)
         {
             if (string.IsNullOrEmpty(typeName)) return null;
-            // 双层字典：外层按 typeName 索引，内层按 defaultNamespace 索引
-            var inner = _findTypeCache.GetOrAdd(typeName, _ => new ConcurrentDictionary<string, Type?>(StringComparer.Ordinal));
-            return inner.GetOrAdd(defaultNamespace ?? string.Empty, ns => FindTypeCore(typeName, ns));
+            return _findTypeCache.GetOrAdd(typeName, FindTypeCore);
         }
 
-        private static Type? FindTypeCore(string typeName, string? defaultNamespace)
+        private static Type? FindTypeCore(string typeName)
         {
             // 1. 自定义注册
             if (_nameToType.TryGetValue(typeName, out var registered)) return registered;
@@ -152,31 +144,6 @@ namespace LiteOrm.Common
             {
                 var type = assembly.GetType(typeName);
                 if (type != null) return type;
-            }
-
-            // 4. 默认命名空间 + 短名
-            if (!string.IsNullOrEmpty(defaultNamespace) && !typeName.Contains('.'))
-            {
-                var fullName = defaultNamespace + "." + typeName;
-                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    var type = assembly.GetType(fullName);
-                    if (type != null) return type;
-                }
-            }
-
-            // 5. 短名匹配
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    var match = assembly.GetTypes().FirstOrDefault(t => t.Name == typeName);
-                    if (match != null) return match;
-                }
-                catch (ReflectionTypeLoadException)
-                {
-                    // 跳过加载失败的程序集
-                }
             }
 
             return null;

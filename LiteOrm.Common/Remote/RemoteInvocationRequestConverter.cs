@@ -32,47 +32,25 @@ namespace LiteOrm.Remote
         private static readonly Type ExprType = typeof(Common.Expr);
 
         /// <summary>
-        /// 静态默认命名空间。序列化时 <c>$type</c> 使用 <see cref="TypeResolverHelper.GetName(Type)"/> 生成短名，
-        /// 反序列化时通过 <see cref="TypeResolverHelper.FindType(string, string?)"/> 解析，
-        /// 当短名无法精确匹配时以此命名空间组合 <c>命名空间.类型名</c> 进行匹配。
-        /// <para>
-        /// 为 null 时 <see cref="TypeResolverHelper"/> 回退到全程序集短名扫描。
-        /// </para>
+        /// 类型名称解析器，用于序列化/反序列化时 Type ↔ 名称 的双向转换。
+        /// 默认使用 <see cref="DefaultServiceTypeResolver.Instance"/>，可通过此属性替换为自定义实现。
         /// </summary>
-        public static string? DefaultNamespace { get; set; }
+        public static ITypeNameResolver TypeNameResolver { get; set; } = DefaultServiceTypeResolver.Instance;
 
         /// <summary>
-        /// 自定义类型 → 名称转换委托。序列化 <c>$type</c> 时优先调用，返回非 null 且非空字符串则采用，
-        /// 否则回退到 <see cref="TypeResolverHelper.GetName(Type)"/>。
-        /// </summary>
-        public static Func<Type, string?>? TypeNameResolver { get; set; }
-
-        /// <summary>
-        /// 自定义名称 → 类型转换委托。反序列化 <c>$type</c> 时优先调用，返回非 null 类型则采用，
-        /// 否则回退到 <see cref="TypeResolverHelper.FindType(string, string?)"/>。
-        /// </summary>
-        public static Func<string, Type?>? TypeResolver { get; set; }
-
-        /// <summary>
-        /// 解析类型名称：委托优先，否则用 <see cref="TypeResolverHelper.GetName"/>。
+        /// 解析类型名称：委托优先，否则用 <see cref="TypeNameResolver"/>.
         /// </summary>
         private static string ResolveTypeName(Type type)
-            => TypeNameResolver?.Invoke(type) is string name && name.Length > 0
-                ? name
-                : TypeResolverHelper.GetName(type);
+            => TypeNameResolver.GetName(type);
 
         /// <summary>
-        /// 解析类型：委托优先；其次解析 typeMark 缩写（datetime/guid 等）和 enum: 前缀；
-        /// 否则用 <see cref="TypeResolverHelper.FindType"/>（带 <see cref="DefaultNamespace"/>）。
+        /// 解析类型：typeMark 缩写（datetime/guid 等）和 enum: 前缀优先；
+        /// 否则用 <see cref="TypeNameResolver"/>.
         /// </summary>
         private static Type? ResolveType(string? typeName)
         {
             if (string.IsNullOrEmpty(typeName))
                 return null;
-
-            // 委托优先
-            if (TypeResolver?.Invoke(typeName!) is Type delegated)
-                return delegated;
 
             // typeMark 缩写（datetime/datetimeoffset/timespan/guid/bytes）
             if (_markToType.TryGetValue(typeName!, out var marked))
@@ -82,11 +60,11 @@ namespace LiteOrm.Remote
             if (typeName!.StartsWith(EnumMarkPrefix, StringComparison.Ordinal))
             {
                 var enumTypeName = typeName.Substring(EnumMarkPrefix.Length);
-                var enumType = TypeResolverHelper.FindType(enumTypeName, DefaultNamespace);
+                var enumType = TypeNameResolver.GetType(enumTypeName);
                 return enumType?.IsEnum == true ? enumType : null;
             }
 
-            return TypeResolverHelper.FindType(typeName, DefaultNamespace);
+            return TypeNameResolver.GetType(typeName);
         }
 
         /// <inheritdoc />

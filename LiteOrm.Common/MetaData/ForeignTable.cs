@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -10,6 +11,8 @@ namespace LiteOrm.Common
         /// <summary>
         /// 外部表对应的实体类型
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties |
+                                 DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public Type? ForeignType { get; set; }
         /// <summary>
         /// 联合查询连接类型（如 Left Join）。
