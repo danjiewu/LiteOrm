@@ -372,7 +372,7 @@ namespace LiteOrm
             bool nullable = !objectType.IsValueType || Nullable.GetUnderlyingType(objectType) is not null;
 
             if (dbValue is null || dbValue == DBNull.Value)
-                return nullable ? null : Activator.CreateInstance(objectType);
+                return nullable ? null : CreateDefaultValue(objectType);
 
             Type underlyingType = objectType.GetUnderlyingType();
 
@@ -380,7 +380,7 @@ namespace LiteOrm
                 return dbValue;
 
             if (dbValue is string s && s == string.Empty)
-                return nullable ? null : Activator.CreateInstance(objectType);
+                return nullable ? null : CreateDefaultValue(objectType);
 
             if (underlyingType.IsEnum)
             {
@@ -419,6 +419,25 @@ namespace LiteOrm
 
             return Convert.ChangeType(dbValue, underlyingType);
 
+        }
+
+        /// <summary>
+        /// 为非可空值类型创建默认值（零值），替代 <see cref="Activator.CreateInstance(Type)"/>。
+        /// <para>
+        /// NativeAOT 下 <see cref="Activator.CreateInstance(Type)"/> 会触发 IL2072 裁剪告警；
+        /// 这里在 .NET 5+ 上使用 AOT 友好的 <see cref="System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject"/>
+        /// 为值类型生成零值装箱实例，语义与 <c>default(T)</c> 一致。
+        /// </para>
+        /// </summary>
+        /// <param name="objectType">非可空值类型。</param>
+        /// <returns>该值类型的零值（装箱后）。</returns>
+        private static object CreateDefaultValue(Type objectType)
+        {
+#if NET5_0_OR_GREATER
+            return System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(objectType);
+#else
+            return Activator.CreateInstance(objectType)!;
+#endif
         }
 
         /// <summary>

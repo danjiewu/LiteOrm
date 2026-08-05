@@ -27,12 +27,28 @@ namespace LiteOrm.Generators
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            // 1) 过滤带 [Table] 特性的 class/record 声明
+            // 1) 收集 class/record 声明，类型自身或基类链上带 [Table] 特性即视为实体/视图。
+            //    视图模型自身没有 [Table]，通过继承基类实体的 [Table] 捕获（与运行时
+            //    GetCustomAttribute<TableAttribute>(true) 的继承语义一致）。
             var entityTypes = context.SyntaxProvider
-                .ForAttributeWithMetadataName(
-                    TableAttributeFullTypeName,
+                .CreateSyntaxProvider(
                     predicate: static (node, _) => node is TypeDeclarationSyntax,
-                    transform: static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol)
+                    transform: static (ctx, _) =>
+                    {
+                        if (ctx.Node is not TypeDeclarationSyntax tds) return null;
+                        if (ctx.SemanticModel.GetDeclaredSymbol(tds) is not INamedTypeSymbol symbol || symbol.IsStatic || symbol.IsAbstract)
+                            return null;
+                        for (var current = symbol;
+                             current != null && current.SpecialType != SpecialType.System_Object;
+                             current = current.BaseType)
+                        {
+                            if (current.GetAttributes().Any(a =>
+                                    a.AttributeClass != null &&
+                                    a.AttributeClass.ToDisplayString() == TableAttributeFullTypeName))
+                                return symbol;
+                        }
+                        return null;
+                    })
                 .Where(static t => t is not null);
 
             // 2) 检测 AOT/裁剪模式：仅当构建面向 NativeAOT（或启用裁剪分析）时才生成源码。
@@ -154,6 +170,8 @@ namespace LiteOrm.Generators
         private record struct ResolvedSymbols(
             INamedTypeSymbol TableAttribute,
             INamedTypeSymbol ColumnAttribute,
+            INamedTypeSymbol? ForeignColumnAttribute,
+            INamedTypeSymbol? TableJoinAttribute,
             INamedTypeSymbol TableDefinition,
             INamedTypeSymbol ColumnDefinition,
             INamedTypeSymbol TableView,
@@ -165,13 +183,19 @@ namespace LiteOrm.Generators
             INamedTypeSymbol? ColumnRef,
             INamedTypeSymbol? ForeignTable,
             INamedTypeSymbol DbType,
-            INamedTypeSymbol ColumnMode
+            INamedTypeSymbol ColumnMode,
+            INamedTypeSymbol? EnumUtil,
+            INamedTypeSymbol? TypeResolverHelper,
+            INamedTypeSymbol? DisplayNameAttribute,
+            INamedTypeSymbol? DescriptionAttribute
         );
 
         private static ResolvedSymbols? ResolveSymbols(Compilation compilation)
         {
             var tableAttr = compilation.GetTypeByMetadataName("LiteOrm.Common.TableAttribute");
             var columnAttr = compilation.GetTypeByMetadataName("LiteOrm.Common.ColumnAttribute");
+            var foreignColumnAttr = compilation.GetTypeByMetadataName("LiteOrm.Common.ForeignColumnAttribute");
+            var tableJoinAttr = compilation.GetTypeByMetadataName("LiteOrm.Common.TableJoinAttribute");
             var tableDef = compilation.GetTypeByMetadataName("LiteOrm.Common.TableDefinition");
             var colDef = compilation.GetTypeByMetadataName("LiteOrm.Common.ColumnDefinition");
             var tableView = compilation.GetTypeByMetadataName("LiteOrm.Common.TableView");
@@ -184,15 +208,19 @@ namespace LiteOrm.Generators
             var foreignTable = compilation.GetTypeByMetadataName("LiteOrm.Common.ForeignTable");
             var dbType = compilation.GetTypeByMetadataName("System.Data.DbType");
             var columnMode = compilation.GetTypeByMetadataName("LiteOrm.Common.ColumnMode");
+            var enumUtil = compilation.GetTypeByMetadataName("LiteOrm.EnumUtil");
+            var typeResolverHelper = compilation.GetTypeByMetadataName("LiteOrm.Common.TypeResolverHelper");
+            var displayNameAttr = compilation.GetTypeByMetadataName("System.ComponentModel.DisplayNameAttribute");
+            var descriptionAttr = compilation.GetTypeByMetadataName("System.ComponentModel.DescriptionAttribute");
 
             if (tableAttr == null || tableDef == null || colDef == null || tableView == null || provider == null
                 || propExt == null || sqlColumn == null || dbType == null || columnMode == null)
                 return null;
 
             return new ResolvedSymbols(
-                tableAttr, columnAttr!, tableDef, colDef, tableView, provider,
+                tableAttr, columnAttr!, foreignColumnAttr, tableJoinAttr, tableDef, colDef, tableView, provider,
                 drConverter, propExt, sqlColumn, joinedTable, columnRef, foreignTable,
-                dbType, columnMode
+                dbType, columnMode, enumUtil, typeResolverHelper, displayNameAttr, descriptionAttr
             );
         }
 
@@ -207,6 +235,7 @@ namespace LiteOrm.Generators
             public string? TableName { get; set; }
             public string? DataSource { get; set; }
             public int SyncTableInt { get; set; } = 0;
+            public bool IsView { get; set; } = false;
             public List<ColumnInfo> Columns { get; set; } = new();
             public List<JoinedTableInfo> JoinedTables { get; set; } = new();
             public List<ForeignColumnInfo> ForeignColumns { get; set; } = new();
@@ -279,10 +308,14 @@ namespace LiteOrm.Generators
                 SafeName = CodeGenHelper.SafeName(type.ToDisplayString().Replace("global::", "").Replace(".", "_").Replace(":", "_"))
             };
 
-            // 读取 TableAttribute
-            var tableAttr = type.GetAttributes().FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, symbols.TableAttribute));
+            // 读取 TableAttribute：视图模型本身没有 [Table]，通过基类链继承（与运行时
+            // GetCustomAttribute<TableAttribute>(true) 的继承语义一致）。
+            var tableAttr = FindTableAttribute(type, symbols);
             if (tableAttr == null)
                 return null;
+            // 仅当 [Table] 直接标注在当前类型上时才视为独立表实体；从基类继承的视为视图模型。
+            bool isView = !type.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, symbols.TableAttribute));
+            info.IsView = isView;
 
             // TableName
             string? tableName = null;
@@ -303,6 +336,11 @@ namespace LiteOrm.Generators
             // 收集列
             foreach (var prop in GetAllInstanceProperties(type))
             {
+                // 视图模型上的 [ForeignColumn] 投影属性不是真实列，跳过
+                if (symbols.ForeignColumnAttribute != null &&
+                    prop.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, symbols.ForeignColumnAttribute)))
+                    continue;
+
                 var colAttr = prop.GetAttributes().FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, symbols.ColumnAttribute));
                 if (colAttr != null)
                 {
@@ -341,6 +379,23 @@ namespace LiteOrm.Generators
             }
 
             return info;
+        }
+
+        /// <summary>
+        /// 在类型自身及其基类链上查找 [Table] 特性，与运行时
+        /// <c>GetCustomAttribute&lt;TableAttribute&gt;(true)</c> 的继承语义一致。
+        /// </summary>
+        private static AttributeData? FindTableAttribute(INamedTypeSymbol type, ResolvedSymbols symbols)
+        {
+            var current = type;
+            while (current != null && current.SpecialType != SpecialType.System_Object)
+            {
+                var attr = current.GetAttributes().FirstOrDefault(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, symbols.TableAttribute));
+                if (attr != null)
+                    return attr;
+                current = current.BaseType;
+            }
+            return null;
         }
 
         private static ColumnInfo BuildColumnInfo(IPropertySymbol prop, AttributeData colAttr, ResolvedSymbols symbols)
@@ -786,10 +841,139 @@ namespace LiteOrm.Generators
             sb.AppendLine("            TableInfoProvider.Set(() => new SourceGeneratedTableInfoProvider());");
             sb.AppendLine("            SourceGeneratedDataReaderMappers.RegisterAll();");
             sb.AppendLine("            SourceGeneratedPropertyAccessors.RegisterAll();");
+            sb.AppendLine("            RegisterTypeResolverNames();");
+            sb.AppendLine("            RegisterEnums();");
+            sb.AppendLine("        }");
+            sb.AppendLine();
+            sb.AppendLine("        /// <summary>");
+            sb.AppendLine("        /// 注册所有实体/视图类型到 TypeResolverHelper，使 Expr JSON 反序列化在 NativeAOT 下");
+            sb.AppendLine("        /// 无需 Type.GetType / 程序集扫描即可按名称解析类型。");
+            sb.AppendLine("        /// </summary>");
+            sb.AppendLine("        private static void RegisterTypeResolverNames()");
+            sb.AppendLine("        {");
+
+            foreach (var e in entities)
+            {
+                if (symbols.TypeResolverHelper == null) break;
+                // 先注册全名（Expr JSON 使用 DefaultTypeNameResolver.GetName = FullName），
+                // 再注册短名（保持 TypeResolverHelper.GetName 返回短名的原有行为）。
+                sb.AppendLine($"            TypeResolverHelper.Register(typeof({e.FullName}).FullName!, typeof({e.FullName}));");
+                sb.AppendLine($"            TypeResolverHelper.Register(typeof({e.FullName}).Name, typeof({e.FullName}));");
+            }
+
+            sb.AppendLine("        }");
+            sb.AppendLine();
+
+            var enumInfos = CollectEnumInfos(entities, symbols);
+            sb.AppendLine("        /// <summary>");
+            sb.AppendLine("        /// 预注册实体/视图列所用枚举类型的显示名称映射，替代 NativeAOT 下运行时反射扫描。");
+            sb.AppendLine("        /// </summary>");
+            sb.AppendLine("        private static void RegisterEnums()");
+            sb.AppendLine("        {");
+
+            if (symbols.EnumUtil != null)
+            {
+                foreach (var enumInfo in enumInfos)
+                {
+                    sb.AppendLine($"            global::LiteOrm.EnumUtil.Register(typeof({enumInfo.FullName}), new global::System.Collections.Generic.KeyValuePair<global::System.Enum, string>[]");
+                    sb.AppendLine("            {");
+                    for (int i = 0; i < enumInfo.Fields.Count; i++)
+                    {
+                        var f = enumInfo.Fields[i];
+                        var trailing = i < enumInfo.Fields.Count - 1 ? "," : "";
+                        sb.AppendLine($"                new global::System.Collections.Generic.KeyValuePair<global::System.Enum, string>({enumInfo.FullName}.{f.Name}, \"{EscapeString(f.DisplayName)}\"){trailing}");
+                    }
+                    sb.AppendLine("            });");
+                }
+            }
+
             sb.AppendLine("        }");
             sb.AppendLine("    }");
             sb.AppendLine("}");
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// 收集实体/视图列中使用的所有枚举类型及其字段显示名称，
+        /// 供生成器预注册到 <c>EnumUtil</c>。
+        /// </summary>
+        private static List<EnumInfo> CollectEnumInfos(List<EntityInfo> entities, ResolvedSymbols symbols)
+        {
+            var result = new List<EnumInfo>();
+            var seen = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+
+            foreach (var e in entities)
+            {
+                foreach (var c in e.Columns)
+                {
+                    var type = c.Symbol?.Type;
+                    if (type is null) continue;
+                    // 解包 Nullable<T>
+                    if (type is INamedTypeSymbol nts && nts.IsGenericType &&
+                        nts.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T &&
+                        nts.TypeArguments.Length == 1)
+                        type = nts.TypeArguments[0];
+                    if (type is not INamedTypeSymbol named || named.TypeKind != TypeKind.Enum) continue;
+                    if (!seen.Add(named)) continue;
+
+                    var fields = new List<EnumFieldInfo>();
+                    foreach (var member in named.GetMembers())
+                    {
+                        if (member is IFieldSymbol field &&
+                            field.IsConst &&
+                            field.HasConstantValue &&
+                            field.DeclaredAccessibility == Accessibility.Public &&
+                            field.Name != "value__")
+                        {
+                            fields.Add(new EnumFieldInfo(field.Name, GetEnumFieldDisplayName(field, symbols)));
+                        }
+                    }
+                    result.Add(new EnumInfo(
+                        named.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                        fields));
+                }
+            }
+            return result;
+        }
+
+        private static string GetEnumFieldDisplayName(IFieldSymbol field, ResolvedSymbols symbols)
+        {
+            foreach (var attr in field.GetAttributes())
+            {
+                if (symbols.DisplayNameAttribute != null && SymbolEqualityComparer.Default.Equals(attr.AttributeClass, symbols.DisplayNameAttribute))
+                {
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string dn && !string.IsNullOrEmpty(dn))
+                        return dn;
+                }
+            }
+            foreach (var attr in field.GetAttributes())
+            {
+                if (symbols.DescriptionAttribute != null && SymbolEqualityComparer.Default.Equals(attr.AttributeClass, symbols.DescriptionAttribute))
+                {
+                    if (attr.ConstructorArguments.Length > 0 && attr.ConstructorArguments[0].Value is string de && !string.IsNullOrEmpty(de))
+                        return de;
+                }
+            }
+            return field.Name;
+        }
+
+        private static string EscapeString(string value)
+        {
+            return value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n");
+        }
+
+        private sealed class EnumInfo
+        {
+            public EnumInfo(string fullName, List<EnumFieldInfo> fields) { FullName = fullName; Fields = fields; }
+            public string FullName { get; }
+            public List<EnumFieldInfo> Fields { get; }
+        }
+
+        private sealed class EnumFieldInfo
+        {
+            public EnumFieldInfo(string name, string displayName) { Name = name; DisplayName = displayName; }
+            public string Name { get; }
+            public string DisplayName { get; }
         }
 
         // ──────────────────────────────────────────────────────────────
