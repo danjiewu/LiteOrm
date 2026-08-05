@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -23,6 +24,8 @@ namespace LiteOrm.Remote
     /// </para>
     /// </remarks>
     [JsonConverter(typeof(RemoteInvocationRequestConverter))]
+    [RequiresDynamicCode("RemoteInvocationRequest serialization relies on reflection-based System.Text.Json; not supported under NativeAOT.")]
+    [RequiresUnreferencedCode("RemoteInvocationRequest serialization relies on reflection-based System.Text.Json.")]
     public sealed class RemoteInvocationRequest
     {
         /// <summary>
@@ -62,6 +65,8 @@ namespace LiteOrm.Remote
     /// 回写值为值，按索引升序排列。
     /// </para>
     /// </remarks>
+    [RequiresDynamicCode("RemoteInvocationResponse serialization relies on reflection-based System.Text.Json; not supported under NativeAOT.")]
+    [RequiresUnreferencedCode("RemoteInvocationResponse serialization relies on reflection-based System.Text.Json.")]
     public sealed class RemoteInvocationResponse
     {
         /// <summary>
@@ -119,6 +124,8 @@ namespace LiteOrm.Remote
     /// 类型包装值。当实际值类型与预期类型不一致时使用，携带实际类型名与值。
     /// 序列化为 &lt;c&gt;{"$type":"类型名","$value":&lt;值&gt;}&lt;/c&gt; 结构。
     /// </summary>
+    [RequiresDynamicCode("TypeWrappedValue serialization relies on reflection-based System.Text.Json; not supported under NativeAOT.")]
+    [RequiresUnreferencedCode("TypeWrappedValue serialization relies on reflection-based System.Text.Json.")]
     public sealed class TypeWrappedValue
     {
         /// <summary>

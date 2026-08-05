@@ -42,4 +42,38 @@ namespace System.Diagnostics.CodeAnalysis
         All = ~None,
     }
 }
+
+#if !NET7_0_OR_GREATER
+namespace System.Diagnostics.CodeAnalysis
+{
+    /// <summary>
+    /// Polyfill for .NET 7+ RequiresDynamicCodeAttribute.
+    /// On netstandard2.0/2.1 this is a no-op attribute that does not affect AOT analysis.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class | AttributeTargets.Struct, Inherited = false)]
+    public sealed class RequiresDynamicCodeAttribute : Attribute
+    {
+        public RequiresDynamicCodeAttribute(string message) { Message = message; }
+        public string Message { get; }
+        public string? Url { get; set; }
+    }
+}
+#endif
+
+#if !NETCOREAPP3_0_OR_GREATER
+namespace System.Diagnostics.CodeAnalysis
+{
+    /// <summary>
+    /// Polyfill for .NET Core 3.0+ RequiresUnreferencedCodeAttribute.
+    /// On netstandard2.0/2.1 this is a no-op attribute that does not affect trimming.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class | AttributeTargets.Struct, Inherited = false)]
+    public sealed class RequiresUnreferencedCodeAttribute : Attribute
+    {
+        public RequiresUnreferencedCodeAttribute(string message) { Message = message; }
+        public string Message { get; }
+        public string? Url { get; set; }
+    }
+}
+#endif
 #endif

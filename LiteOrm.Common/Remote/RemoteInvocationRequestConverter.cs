@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -27,15 +28,17 @@ namespace LiteOrm.Remote
     /// 2. 类型不一致 → 以 <c>{"$type":"实际类型名","$value":&lt;值&gt;}</c> 结构包装。
     /// </para>
     /// </summary>
+    [RequiresDynamicCode("RemoteInvocationRequest JSON conversion relies on reflection-based System.Text.Json serialization and runtime Type resolution; not supported under NativeAOT.")]
+    [RequiresUnreferencedCode("RemoteInvocationRequest JSON conversion relies on reflection-based System.Text.Json serialization and runtime Type resolution.")]
     public sealed class RemoteInvocationRequestConverter : JsonConverter<RemoteInvocationRequest>
     {
         private static readonly Type ExprType = typeof(Common.Expr);
 
-        /// <summary>
-        /// 类型名称解析器，用于序列化/反序列化时 Type ↔ 名称 的双向转换。
-        /// 默认使用 <see cref="DefaultServiceTypeResolver.Instance"/>，可通过此属性替换为自定义实现。
-        /// </summary>
-        public static ITypeNameResolver TypeNameResolver { get; set; } = DefaultServiceTypeResolver.Instance;
+    /// <summary>
+    /// 类型名称解析器，用于序列化/反序列化时 Type ↔ 名称 的双向转换。
+    /// 默认使用 <see cref="DefaultServiceTypeResolver.Instance"/>，可通过此属性替换为自定义实现。
+    /// </summary>
+    public static ITypeNameResolver TypeNameResolver { get; set; } = DefaultServiceTypeResolver.Instance;
 
         /// <summary>
         /// 解析类型名称：委托优先，否则用 <see cref="TypeNameResolver"/>.
@@ -162,6 +165,8 @@ namespace LiteOrm.Remote
         /// <summary>
         /// 序列化单个对象。类型一致或 Expr 参数 → 直接序列化；类型不一致 → 包装为 $type/$value。
         /// </summary>
+        [RequiresDynamicCode("WriteTypedValue uses reflection-based System.Text.Json serialization with runtime types; not supported under NativeAOT.")]
+        [RequiresUnreferencedCode("WriteTypedValue uses reflection-based System.Text.Json serialization with runtime types.")]
         public static void WriteTypedValue(Utf8JsonWriter writer, object? arg, Type? declaredType, JsonSerializerOptions options)
         {
             if (arg is null)
@@ -313,6 +318,8 @@ namespace LiteOrm.Remote
         /// 反序列化单个参数。含 $type → 按实际类型反序列化；否则返回原始 <see cref="JsonElement"/>，
         /// 由服务端 dispatcher 按方法参数声明类型二次反序列化。
         /// </summary>
+        [RequiresDynamicCode("DeserializeTypedValue uses reflection-based System.Text.Json deserialization with runtime types; not supported under NativeAOT.")]
+        [RequiresUnreferencedCode("DeserializeTypedValue uses reflection-based System.Text.Json deserialization with runtime types.")]
         public static object? DeserializeTypedValue(JsonElement element, Type? declaredType, JsonSerializerOptions options)
         {
             if (element.ValueKind == JsonValueKind.Null)

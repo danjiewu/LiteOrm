@@ -46,7 +46,6 @@ namespace LiteOrm.Common
     /// </code>
     /// </remarks>
     [Serializable]
-    [Table]
     public abstract class ObjectBase : ICopyable, ICloneable, ILogable
     {
         // 使用 ConcurrentDictionary 代替 Dictionary + lock

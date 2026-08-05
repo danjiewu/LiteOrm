@@ -10,8 +10,15 @@ namespace LiteOrm.Generators
 {
     /// <summary>
     /// 增量源生成器：扫描带 [Table] 特性的实体类型，在编译期生成
-    /// TableDefinition / DataReader 映射委托 / 属性访问器委托，
+    /// TableDefinition / DataReader 映射委托 / 属性访问器委托 / AOT 类型注册，
     /// 以替代运行时反射与 Expression.Compile()，支持 NativeAOT。
+    /// <para>
+    /// 仅在 AOT/裁剪模式下生成代码（如 <c>PublishAot=true</c>、<c>IsAotCompatible=true</c>、
+    /// <c>PublishTrimmed=true</c> 或 <c>IsTrimmable=true</c>，经 SDK 的
+    /// <c>enableaotanalyzer</c>/<c>enabletrimanalyzer</c> 等属性传递给分析器）；
+    /// 非 AOT 模式下运行时回退到反射与 <see cref="System.Linq.Expressions.Expression.Compile()"/>，
+    /// 不生成任何多余代码，避免额外的编译开销与程序集膨胀。
+    /// </para>
     /// </summary>
     [Generator]
     public class TableInfoGenerator : IIncrementalGenerator
@@ -28,13 +35,35 @@ namespace LiteOrm.Generators
                     transform: static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol)
                 .Where(static t => t is not null);
 
-            // 2) 收集所有实体类型符号，与当前 Compilation 组合
+            // 2) 检测 AOT/裁剪模式：仅当构建面向 NativeAOT（或启用裁剪分析）时才生成源码。
+            //    使用 SDK 提供给分析器可见的属性（build_property.* 小写）：
+            //    - enableaotanalyzer=true：PublishAot=true 或 IsAotCompatible=true
+            //    - enabletrimanalyzer=true：PublishTrimmed=true 或 IsTrimmable=true
+            var aotMode = context.AnalyzerConfigOptionsProvider.Select(static (provider, _) =>
+            {
+                bool IsTrue(string key) => provider.GlobalOptions.TryGetValue(key, out string? v) && v == "true";
+                return IsTrue("build_property.enableaotanalyzer")
+                    || IsTrue("build_property.enabletrimanalyzer")
+                    || IsTrue("build_property.publishaot")
+                    || IsTrue("build_property.isaotcompatible")
+                    || IsTrue("build_property.publishtrimmed")
+                    || IsTrue("build_property.istrimmable");
+            });
+
+            // 3) 收集所有实体类型符号，与当前 Compilation 组合
             var compilationAndEntities = entityTypes.Collect().Combine(context.CompilationProvider);
 
-            // 3) 生成代码
-            context.RegisterSourceOutput(compilationAndEntities, static (spc, source) =>
+            var pipeline = compilationAndEntities.Combine(aotMode);
+
+            // 4) 生成代码（仅 AOT 模式）
+            context.RegisterSourceOutput(pipeline, static (spc, source) =>
             {
-                var (entities, compilation) = source;
+                var ((entities, compilation), isAot) = source;
+                // 非 AOT 模式：运行时使用反射与 Expression.Compile()，无需生成额外代码
+                if (!isAot)
+                {
+                    return;
+                }
                 if (entities.IsEmpty)
                 {
                     return;
@@ -89,6 +118,9 @@ namespace LiteOrm.Generators
                     entity.DeclaredAccessibility == Accessibility.Protected ||
                     entity.DeclaredAccessibility == Accessibility.ProtectedOrInternal ||
                     entity.DeclaredAccessibility == Accessibility.ProtectedAndInternal)
+                    continue;
+                // 跳过抽象基类（如 ObjectBase），抽象类不是可映射的实体表
+                if (entity.IsAbstract)
                     continue;
 
                 var info = BuildEntityInfo(entity, compilation, resolved);
@@ -303,7 +335,7 @@ namespace LiteOrm.Generators
                         CanWrite = prop.SetMethod != null,
                         Symbol = prop,
                         AllowNull = !prop.Type.IsValueType || (prop.Type is INamedTypeSymbol nts && nts.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T),
-                        ColumnMode = "7"
+                        ColumnMode = ComputeDefaultColumnMode(prop.GetMethod != null, prop.SetMethod != null).ToString()
                     });
                 }
             }
@@ -347,28 +379,42 @@ namespace LiteOrm.Generators
             else
                 info.DbType = null;
 
-            // ColumnMode: 存储整数值字符串，生成时直接写整数字面量
+            int modeMask = ComputeDefaultColumnMode(info.CanRead, info.CanWrite);
             if (TryGetNamedArg(colAttr.NamedArguments, "ColumnMode", out var cm) && !cm.IsNull)
             {
                 // Roslyn 在处理枚举命名参数时可能返回装箱的枚举值（底层类型为 int）
                 // 需要统一转换为整数字符串
+                int rawMode;
                 if (cm.Value is int cmInt)
-                    info.ColumnMode = cmInt.ToString();
+                    rawMode = cmInt;
                 else if (cm.Value is Enum cmEnum)
-                    info.ColumnMode = ((int)(object)cmEnum).ToString();
+                    rawMode = (int)(object)cmEnum;
                 else if (cm.Value != null)
                 {
                     // 尝试通过 Convert.ToInt32 处理其他可能的数值类型
-                    try { info.ColumnMode = Convert.ToInt32(cm.Value).ToString(); }
-                    catch { info.ColumnMode = "0"; }
+                    try { rawMode = Convert.ToInt32(cm.Value); }
+                    catch { rawMode = 0; }
                 }
                 else
-                    info.ColumnMode = "0";
+                    rawMode = 0;
+                info.ColumnMode = (rawMode & modeMask).ToString();
             }
             else
-                info.ColumnMode = "0";
+                info.ColumnMode = modeMask.ToString();
 
             return info;
+        }
+
+        /// <summary>
+        /// 计算默认列操作模式，与运行时 <c>AttributeTableInfoProvider</c> 保持一致：
+        /// <c>Full &amp; ((CanRead ? Write : None) | (CanWrite ? Read : None))</c>。
+        /// Write = Insert|Update = 6，Read = 1；可读可写属性默认即为 Full(7)。
+        /// </summary>
+        private static int ComputeDefaultColumnMode(bool canRead, bool canWrite)
+        {
+            const int Write = 6; // ColumnMode.Insert | ColumnMode.Update
+            const int Read = 1;  // ColumnMode.Read
+            return (canRead ? Write : 0) | (canWrite ? Read : 0);
         }
 
         private static string InferDbType(ITypeSymbol type, ResolvedSymbols symbols)
@@ -412,6 +458,7 @@ namespace LiteOrm.Generators
             sb.AppendLine("using System.Data;");
             sb.AppendLine("using System.Reflection;");
             sb.AppendLine("using LiteOrm.Common;");
+            sb.AppendLine("using System.Diagnostics.CodeAnalysis;");
             sb.AppendLine();
             sb.AppendLine($"namespace {CodeGenHelper.ProviderFullNamespace}");
             sb.AppendLine("{");
@@ -440,7 +487,7 @@ namespace LiteOrm.Generators
             sb.AppendLine("            _views = new Dictionary<Type, TableView>();");
             sb.AppendLine("        }");
             sb.AppendLine();
-            sb.AppendLine("        public override TableDefinition? GetTableDefinition(Type objectType)");
+            sb.AppendLine("        public override TableDefinition? GetTableDefinition([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType)");
             sb.AppendLine("        {");
             sb.AppendLine("            if (objectType is null) return null;");
             sb.AppendLine("            lock (_syncLock)");
@@ -450,7 +497,7 @@ namespace LiteOrm.Generators
             sb.AppendLine("            }");
             sb.AppendLine("        }");
             sb.AppendLine();
-            sb.AppendLine("        public override TableView? GetTableView(Type objectType)");
+            sb.AppendLine("        public override TableView? GetTableView([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType)");
             sb.AppendLine("        {");
             sb.AppendLine("            if (objectType is null) return null;");
             sb.AppendLine("            lock (_syncLock)");
