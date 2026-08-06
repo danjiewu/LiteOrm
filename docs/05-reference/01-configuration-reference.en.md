@@ -192,14 +192,7 @@ Provide at least `ConnectionString` for each read-only replica. Any omitted pool
 
 ## Common Provider Values
 
-| Database | Provider Example |
-|----------|------------------|
-| MySQL | `MySqlConnector.MySqlConnection, MySqlConnector` |
-| SQL Server | `Microsoft.Data.SqlClient.SqlConnection, Microsoft.Data.SqlClient` |
-| SQL Server (legacy) | `System.Data.SqlClient.SqlConnection, System.Data.SqlClient` |
-| PostgreSQL | `Npgsql.NpgsqlConnection, Npgsql` |
-| Oracle | `Oracle.ManagedDataAccess.Client.OracleConnection, Oracle.ManagedDataAccess` |
-| SQLite | `Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite` |
+For the `Provider` value of each database (including domestic/compatible databases), see [Database Compatibility Notes](./07-database-compatibility.en.md).
 
 ## Recommended Values by Scenario
 

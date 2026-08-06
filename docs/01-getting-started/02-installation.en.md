@@ -35,21 +35,21 @@ This document covers the runtime environment, database support, and two installa
 
 > For older database versions where default pagination syntax is incompatible, refer to [Custom Paging](../03-advanced-topics/05-custom-paging.en.md) and [Custom SqlBuilder / Dialect Extension](../04-extensibility/03-custom-sqlbuilder.en.md).
 
-### Database Provider Reference Table
+### Database NuGet Driver Packages
 
-> When configuring `appsettings.json`, the `Provider` field requires the fully qualified type name of the database driver. Here are the common configurations:
+> Regardless of installation method, you need to install the corresponding NuGet driver package for your database:
 
-| Database | NuGet Package | Provider Value |
-|--------|----------|----------------|
-| SQL Server | `Microsoft.Data.SqlClient` | `Microsoft.Data.SqlClient.SqlConnection, Microsoft.Data.SqlClient` |
-| SQL Server (legacy) | `System.Data.SqlClient` | `System.Data.SqlClient.SqlConnection, System.Data.SqlClient` |
-| MySQL | `MySqlConnector` | `MySqlConnector.MySqlConnection, MySqlConnector` |
-| MySQL (legacy) | `MySql.Data` | `MySql.Data.MySqlClient.MySqlConnection, MySql.Data` |
-| PostgreSQL | `Npgsql` | `Npgsql.NpgsqlConnection, Npgsql` |
-| Oracle | `Oracle.ManagedDataAccess.Core` | `Oracle.ManagedDataAccess.Client.OracleConnection, Oracle.ManagedDataAccess` |
-| SQLite | `Microsoft.Data.Sqlite` | `Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite` |
+| Database | NuGet Package |
+|----------|---------------|
+| SQL Server | `Microsoft.Data.SqlClient` |
+| SQL Server (legacy) | `System.Data.SqlClient` |
+| MySQL | `MySqlConnector` |
+| MySQL (legacy) | `MySql.Data` |
+| PostgreSQL | `Npgsql` |
+| Oracle | `Oracle.ManagedDataAccess.Core` |
+| SQLite | `Microsoft.Data.Sqlite` |
 
-> **Note**: Regardless of installation method, you need to install the corresponding NuGet driver package for your database (as shown in the first column above).
+> When configuring `appsettings.json`, the `Provider` field requires the fully qualified type name of the database driver. See [Database Compatibility Notes](../05-reference/07-database-compatibility.en.md).
 
 ## Option 1: Base Library Only (`LiteOrm`)
 
@@ -72,36 +72,6 @@ For ASP.NET Core projects. `LiteOrm.DependencyInjection` brings in the Autofac c
 dotnet add package LiteOrm
 dotnet add package LiteOrm.DependencyInjection    # required for DI registration (RegisterLiteOrm)
 dotnet add package Microsoft.Data.Sqlite   # choose based on your database
-```
-
-### Complete Installation Commands by Database
-
-**SQL Server project:**
-```bash
-dotnet add package LiteOrm
-dotnet add package LiteOrm.DependencyInjection
-dotnet add package Microsoft.Data.SqlClient
-```
-
-**MySQL project:**
-```bash
-dotnet add package LiteOrm
-dotnet add package LiteOrm.DependencyInjection
-dotnet add package MySqlConnector
-```
-
-**PostgreSQL project:**
-```bash
-dotnet add package LiteOrm
-dotnet add package LiteOrm.DependencyInjection
-dotnet add package Npgsql
-```
-
-**SQLite project (recommended for beginners):**
-```bash
-dotnet add package LiteOrm
-dotnet add package LiteOrm.DependencyInjection
-dotnet add package Microsoft.Data.Sqlite
 ```
 
 ## Creating a New Project from Scratch
@@ -154,4 +124,3 @@ No. LiteOrm itself is very lightweight—the base package is only a few hundred 
 - [Back to docs hub](../README.md)
 - [Configuration Reference](../05-reference/01-configuration-reference.en.md)
 - [First End-to-End Example](./05-first-example-di.en.md)
-- [Configuration Reference](../05-reference/01-configuration-reference.en.md)

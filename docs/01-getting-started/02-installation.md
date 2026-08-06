@@ -35,21 +35,21 @@
 
 > 对于旧版本数据库，如果默认分页语法不兼容，请参考 [自定义分页](../03-advanced-topics/05-custom-paging.md) 与 [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)。
 
-### 各数据库 Provider 对照表
+### 各数据库 NuGet 驱动包
 
-> 配置 `appsettings.json` 时，`Provider` 字段需要填写对应数据库驱动的完整类型名。以下是常用数据库的 Provider 配置参考：
+> 无论哪种安装方式，都需要根据使用的数据库安装对应的 NuGet 驱动包：
 
-| 数据库 | NuGet 包 | Provider 配置值 |
-|--------|----------|----------------|
-| SQL Server | `Microsoft.Data.SqlClient` | `Microsoft.Data.SqlClient.SqlConnection, Microsoft.Data.SqlClient` |
-| SQL Server (旧版) | `System.Data.SqlClient` | `System.Data.SqlClient.SqlConnection, System.Data.SqlClient` |
-| MySQL | `MySqlConnector` | `MySqlConnector.MySqlConnection, MySqlConnector` |
-| MySQL (旧版) | `MySql.Data` | `MySql.Data.MySqlClient.MySqlConnection, MySql.Data` |
-| PostgreSQL | `Npgsql` | `Npgsql.NpgsqlConnection, Npgsql` |
-| Oracle | `Oracle.ManagedDataAccess.Core` | `Oracle.ManagedDataAccess.Client.OracleConnection, Oracle.ManagedDataAccess` |
-| SQLite | `Microsoft.Data.Sqlite` | `Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite` |
+| 数据库 | NuGet 包 |
+|--------|----------|
+| SQL Server | `Microsoft.Data.SqlClient` |
+| SQL Server (旧版) | `System.Data.SqlClient` |
+| MySQL | `MySqlConnector` |
+| MySQL (旧版) | `MySql.Data` |
+| PostgreSQL | `Npgsql` |
+| Oracle | `Oracle.ManagedDataAccess.Core` |
+| SQLite | `Microsoft.Data.Sqlite` |
 
-> **注意**：无论哪种安装方式，都需要根据使用的数据库安装对应的 NuGet 驱动包（如上表第一列所示）。
+> 配置 `appsettings.json` 时，`Provider` 字段需要填写对应数据库驱动的完整类型名，参见[数据库差异与兼容性说明](../05-reference/07-database-compatibility.md)。
 
 ## 方式一：仅使用基础库（`LiteOrm`）
 
@@ -72,36 +72,6 @@ dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
 dotnet add package LiteOrm
 dotnet add package LiteOrm.DependencyInjection    # DI 注册（RegisterLiteOrm）需要
 dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
-```
-
-### 各数据库完整安装命令
-
-**SQL Server 项目：**
-```bash
-dotnet add package LiteOrm
-dotnet add package LiteOrm.DependencyInjection
-dotnet add package Microsoft.Data.SqlClient
-```
-
-**MySQL 项目：**
-```bash
-dotnet add package LiteOrm
-dotnet add package LiteOrm.DependencyInjection
-dotnet add package MySqlConnector
-```
-
-**PostgreSQL 项目：**
-```bash
-dotnet add package LiteOrm
-dotnet add package LiteOrm.DependencyInjection
-dotnet add package Npgsql
-```
-
-**SQLite 项目（推荐新手使用）：**
-```bash
-dotnet add package LiteOrm
-dotnet add package LiteOrm.DependencyInjection
-dotnet add package Microsoft.Data.Sqlite
 ```
 
 ## 创建新项目的完整步骤
@@ -153,5 +123,4 @@ dotnet run
 
 - [返回目录](../README.md)
 - [配置参考](../05-reference/01-configuration-reference.md)
-- [第一个完整示例](./05-first-example-di.md)
-- [配置项速查](../05-reference/01-configuration-reference.md)
+- [第一个完整示例（DI 版）](./05-first-example-di.md)

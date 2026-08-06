@@ -192,14 +192,7 @@ pool.DatabaseSync.OnTableSyncing += (sender, e) =>
 
 ## 常见 Provider 值
 
-| 数据库 | Provider 示例 |
-| --- | --- |
-| MySQL | `MySqlConnector.MySqlConnection, MySqlConnector` |
-| SQL Server | `Microsoft.Data.SqlClient.SqlConnection, Microsoft.Data.SqlClient` |
-| SQL Server（旧版） | `System.Data.SqlClient.SqlConnection, System.Data.SqlClient` |
-| PostgreSQL | `Npgsql.NpgsqlConnection, Npgsql` |
-| Oracle | `Oracle.ManagedDataAccess.Client.OracleConnection, Oracle.ManagedDataAccess` |
-| SQLite | `Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite` |
+各数据库（含国产/兼容数据库）的 `Provider` 配置值，请参见[数据库差异与兼容性说明](./07-database-compatibility.md)。
 
 ## 建议值
 
