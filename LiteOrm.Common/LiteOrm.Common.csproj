@@ -13,12 +13,16 @@
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageReadmeFile>README.nuget.md</PackageReadmeFile>
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
-    <Description>LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架。</Description>
+    <Description>LiteOrm.Common 公共库：LiteOrm 的共享核心，提供表达式树（Expr）、SQL 片段、表元数据（TableInfoProvider）、特性与公共接口，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
-      8.1.0 Breaking Change:
-      LiteOrm 核心项目移除 Microsoft.Extensions.Hosting 依赖，DI 集成仅由 LiteOrm.DependencyInjection 提供；
-      DataSourceProvider 改为显式配置 API，不再接受 IConfiguration；
-      BulkProvider 改为直接设置 SqlBuilder.BulkProvider 属性；
+8.1.0 Breaking Changes:
+- PreparedSql 移至 LiteOrm.Common 项目，参数类型由 KeyValuePair 改为自定义 Param；
+- AttributeTableInfoProvider 不再依赖 SqlBuilderFactory、DataSourceProvider。
+
+8.1.0 New Features:
+- 新增 AOT / NativeAOT 支持：ExprJsonConverter、LambdaExprConverter 改为 AOT 安全实现，新增源生成的 ExprJsonSerializerContext；
+- ColumnDefinition.DbType 可为空，运行时自动判定 DbType 类型；
+- 目标依赖包版本降低，减少版本冲突。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

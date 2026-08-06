@@ -11,14 +11,21 @@
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
-		<Description>LiteOrm 是一个轻量级、高性能的 .NET ORM (对象关系映射) 框架。</Description>
+		<Description>LiteOrm 基础库：轻量级、高性能的 .NET ORM。内置多数据库方言与 Lambda、Expr、ExprString 查询，支持自动关联、声明式事务、动态分表与异步操作；不含 DI 与 AOP，可配合 LiteOrm.DependencyInjection 使用。</Description>
 		<PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
-      8.1.0 Breaking Change:
-      DataSourceProvider 新增 LoadConfiguration 扩展方法，支持从 IConfiguration 读取配置；
-      BulkProvider 改为直接设置 SqlBuilder.BulkProvider 属性；
+8.1.0 Breaking Changes:
+- RegisterLiteOrm() 移至 LiteOrm.DependencyInjection 包（命名空间由 LiteOrm 改为 LiteOrm.DependencyInjection）；
+- 自定义 IBulkProvider 不再使用特性标记，BulkProviderFactory / BulkProviderAttribute 已移除，改为直接设置 SqlBuilder.BulkProvider 属性；
+- DataSourceProvider 不再通过 [AutoRegister] 注册、不再从构造函数读取 IConfiguration，基础库场景需通过 AddDataSource 或 LoadConfiguration 显式配置。
+
+8.1.0 New Features:
+- 新增 AddLiteOrm()：纯 MS DI 注册（无 Autofac / AOP），自动应用 [AutoRegister] 源生成注册；
+- 新增 AOT / NativeAOT 支持（LiteOrm.Generators 源生成器）；
+- 优化建表加锁机制，避免死锁；
+- 目标依赖包版本降低，减少版本冲突。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

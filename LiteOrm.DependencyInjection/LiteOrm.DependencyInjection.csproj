@@ -11,16 +11,24 @@
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm.DependencyInjection</Title>
 		<Authors>danjiewu</Authors>
-		<Description>LiteOrm DependencyInjection - Autofac DI 适配器 + Castle DynamicProxy 拦截器</Description>
+		<Description>LiteOrm.DependencyInjection DI 扩展：LiteOrm 的依赖注入与 AOP 集成层。基于 Autofac 与 Castle DynamicProxy，通过 RegisterLiteOrm() 一键注册，支持声明式事务、权限、日志拦截与自动建表。</Description>
 		<PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
 		<PackageTags>orm;autofac;castle;proxy;aop;interceptor;di;ioc</PackageTags>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-      8.1.0 Breaking Change:
-      LiteOrm.DependencyInjection 新增核心实体服务与数据访问对象的显式注册；
-      DataSourceProvider 配置从 IConfiguration 读取改为 LiteOrm.DependencyInjection 的 DataSourceProviderExtensions；
+8.1.0 (New Package):
+- 新增 LiteOrm.DependencyInjection 包，RegisterLiteOrm() 由 LiteOrm 基础包移至本包（命名空间 LiteOrm.DependencyInjection）。
+
+Breaking Changes:
+- 核心实体服务与数据访问对象由 [AutoRegister] 扫描改为 RegisterCoreServices() 显式注册；
+- 数据源配置由 DataSourceProviderExtensions 从宿主 IConfiguration 的 LiteOrm 节点加载。
+
+New Features:
+- 基于 Autofac 与 Castle DynamicProxy 的 AOP 拦截（事务 / 权限 / 日志）；
+- 自动应用 [AutoRegister] 源生成注册；
+- 宿主集成 / Remote 使用单例 ProxyGenerator 优化性能。
     </PackageReleaseNotes>
 	</PropertyGroup>
 	<PropertyGroup>
@@ -37,7 +45,7 @@
 	<ItemGroup>
 		<PackageReference Include="Autofac.Extensions.DependencyInjection" Version="10.0.0" />
 		<PackageReference Include="Autofac.Extras.DynamicProxy" Version="7.1.0" />
-		<PackageReference Include="Castle.Core" Version="5.2.1" />
+		<PackageReference Include="Castle.Core" Version="5.1.1" />
 		<PackageReference Include="Castle.Core.AsyncInterceptor" Version="2.1.0" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
