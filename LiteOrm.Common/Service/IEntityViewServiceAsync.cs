@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,7 +15,9 @@ namespace LiteOrm.Service
     [Service]
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    public interface IEntityViewServiceAsync<T> : IEntityViewServiceAsync
+    public interface IEntityViewServiceAsync<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] 
+        T> : IEntityViewServiceAsync
     {
         /// <summary>
         /// 异步获取实体
@@ -65,7 +68,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>结果列表</returns>
         [ServiceMethod]
-        Task<List<TResult>> SearchAsAsync<TResult>(SelectExpr? selectExpr = null, params string[] tableArgs);
+        Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[] tableArgs);
 
         /// <summary>
         /// 异步获取单个符合条件的实体，并将结果转换为指定类型的对象。
@@ -75,7 +78,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>结果对象</returns>
         [ServiceMethod]
-        Task<TResult> SearchOneAsAsync<TResult>(SelectExpr? selectExpr = null, params string[] tableArgs);
+        Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[] tableArgs);
     }
 
     /// <summary>

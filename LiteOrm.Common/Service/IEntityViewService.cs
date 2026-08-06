@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Service
 {
@@ -13,7 +14,9 @@ namespace LiteOrm.Service
     [Service]
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    public interface IEntityViewService<T> : IEntityViewService
+    public interface IEntityViewService<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] 
+        T> : IEntityViewService
     {
         /// <summary>
         /// 获取实体
@@ -56,7 +59,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs"></param>
         /// <returns></returns>
         [ServiceMethod]
-        List<TResult> SearchAs<TResult>(SelectExpr selectExpr, params string[] tableArgs);
+        List<TResult> SearchAs<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            TResult>(SelectExpr selectExpr, params string[] tableArgs);
 
         /// <summary>
         /// 根据条件获取单个符合条件的实体，并将结果转换为指定类型的对象。
@@ -66,7 +71,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns></returns>
         [ServiceMethod]
-        TResult SearchOneAs<TResult>(SelectExpr selectExpr, params string[] tableArgs);
+        TResult SearchOneAs<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            TResult>(SelectExpr selectExpr, params string[] tableArgs);
     }
 
     /// <summary>

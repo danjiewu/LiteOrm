@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -10,7 +11,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 递归解释执行表达式树，返回计算结果。
         /// 覆盖常见的常量、成员访问、方法调用、一元/二元运算、条件、构造等。
-        /// </summary>
+        /// </summary> 
         public static object? Evaluate(Expression expr)
         {
             if (expr == null) throw new ArgumentNullException(nameof(expr));
@@ -179,10 +180,18 @@ namespace LiteOrm.Common
         }
 
         // ---------- 新建数组 ----------
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "AOT safe for primitive types")]
+#endif
         private static object? EvaluateNewArray(NewArrayExpression newArray)
         {
             var elementType = newArray.Type.GetElementType()!;
+#if NET10_0_OR_GREATER
+            Type arrayType = elementType.MakeArrayType();
+            var array = Array.CreateInstanceFromArrayType(arrayType, newArray.Expressions.Count);
+#else
             var array = Array.CreateInstance(elementType, newArray.Expressions.Count);
+#endif
             for (int i = 0; i < newArray.Expressions.Count; i++)
                 array.SetValue(Evaluate(newArray.Expressions[i]), i);
             return array;

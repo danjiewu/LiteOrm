@@ -194,22 +194,28 @@ namespace LiteOrm
             return CompileConverterByColumns<TResult>(selectColumns);
         }
 
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown instead of invoking Expression.Compile")]
+#endif
         private static Func<AutoLockDataReader, TResult> CompileScalarConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(ParameterExpression readerParam)
         {
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
                 throw new PlatformNotSupportedException(
                     $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
-                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table].");
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table], or call DataReaderConverter.RegisterMapper first.");            
             var body = BuildTypedReadExpression(readerParam, 0, typeof(TResult), null);
             return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown instead of invoking Expression.Compile")]
+#endif
         private static Func<AutoLockDataReader, TResult> CompileDataReaderConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader)
         {
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
                 throw new PlatformNotSupportedException(
                     $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
-                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table].");
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table], or call DataReaderConverter.RegisterMapper first.");
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
@@ -260,6 +266,7 @@ namespace LiteOrm
         /// 未提供 <paramref name="dbType"/> 时退回到按属性 CLR 类型查找，仍无匹配则使用 GetValue + reader.DbConverter.ConvertFromDbValue 兜底。
         /// <paramref name="columnName"/> 用于在读取失败时抛出包含成员名（属性名或构造函数参数名）的明确异常；为 null 时仅依据 <paramref name="ordinal"/> 描述。
         /// </summary>
+        [RequiresDynamicCode("The code for building the typed read expression used MakeGenericMethod and might not be available.")]
         private static Expression BuildTypedReadExpression(
             ParameterExpression readerParam, int ordinal, Type targetType, string? columnName, DbType? dbType = null)
         {
@@ -340,6 +347,7 @@ namespace LiteOrm
         /// 返回读取列值的原始表达式（不含 IsDBNull 检查与 Nullable 封装）。
         /// 选取顺序：DbType 映射 → CLR 类型映射 → byte[] 特殊路径 → GetValue + reader.DbConverter.ConvertFromDbValue 兜底。
         /// </summary>
+        [RequiresDynamicCode("The code for building the raw read expression used MakeGenericMethod and might not be available.")]
         private static Expression BuildRawReadExpression(
             ParameterExpression readerParam, Expression ordinalExpr, Type coreType, DbType? dbType)
         {
@@ -380,6 +388,9 @@ namespace LiteOrm
         /// 编译基于 <see cref="SqlColumn"/> 定义的位置映射委托。
         /// <paramref name="selectColumns"/>[i] 对应读取器第 i 列，使用列的属性名定位目标属性。
         /// </summary>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown instead of invoking Expression.Compile")]
+#endif
         private static Func<AutoLockDataReader, TResult> CompileConverterByColumns<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IList<SqlColumn> selectColumns)
         {
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)

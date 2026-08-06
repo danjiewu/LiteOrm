@@ -70,7 +70,9 @@ namespace LiteOrm.Common
         public Type? GetType(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;
+#pragma warning disable IL3050
             return _cache.GetOrAdd(name, ResolveCore);
+#pragma warning restore IL3050
         }
 
         [RequiresDynamicCode("Pre-register all required closed generic types via TypeResolverHelper with typeof(T) to ensure trimming roots in AOT.")]
