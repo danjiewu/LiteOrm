@@ -1,8 +1,6 @@
 using System;
 
 using LiteOrm.Common;
-using LiteOrm.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace LiteOrm.Common.UnitTests
@@ -14,7 +12,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var attribute = new AutoRegisterAttribute();
 
-            Assert.Equal(ServiceLifetime.Singleton, attribute.Lifetime);
+            Assert.Equal(Lifetime.Singleton, attribute.Lifetime);
             Assert.True(attribute.Enabled);
             Assert.Null(attribute.ServiceTypes);
             Assert.Null(attribute.Key);
@@ -22,10 +20,10 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Theory]
-        [InlineData(ServiceLifetime.Singleton)]
-        [InlineData(ServiceLifetime.Scoped)]
-        [InlineData(ServiceLifetime.Transient)]
-        public void Constructor_WithLifetime_SetsLifetime(ServiceLifetime lifetime)
+        [InlineData(Lifetime.Singleton)]
+        [InlineData(Lifetime.Scoped)]
+        [InlineData(Lifetime.Transient)]
+        public void Constructor_WithLifetime_SetsLifetime(Lifetime lifetime)
         {
             var attribute = new AutoRegisterAttribute(lifetime);
 
@@ -41,7 +39,7 @@ namespace LiteOrm.Common.UnitTests
             var attribute = new AutoRegisterAttribute(enabled);
 
             Assert.Equal(enabled, attribute.Enabled);
-            Assert.Equal(ServiceLifetime.Singleton, attribute.Lifetime);
+            Assert.Equal(Lifetime.Singleton, attribute.Lifetime);
         }
 
         [Fact]
@@ -57,9 +55,9 @@ namespace LiteOrm.Common.UnitTests
         public void Constructor_WithLifetimeAndServiceTypes_SetsBoth()
         {
             var serviceTypes = new[] { typeof(string) };
-            var attribute = new AutoRegisterAttribute(ServiceLifetime.Scoped, serviceTypes);
+            var attribute = new AutoRegisterAttribute(Lifetime.Scoped, serviceTypes);
 
-            Assert.Equal(ServiceLifetime.Scoped, attribute.Lifetime);
+            Assert.Equal(Lifetime.Scoped, attribute.Lifetime);
             Assert.Same(serviceTypes, attribute.ServiceTypes);
         }
 

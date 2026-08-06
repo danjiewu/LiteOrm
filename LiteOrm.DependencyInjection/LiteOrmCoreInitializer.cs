@@ -22,24 +22,20 @@ namespace LiteOrm
         private readonly ILogger<LiteOrmCoreInitializer>? _logger;
         private readonly IDataSourceProvider _dataSourceProvider;
         private readonly DAOContextPoolFactory _daoContextPoolFactory;
-        private readonly TableInfoProvider _tableInfoProvider;
 
         /// <summary>
         /// 初始化 <see cref="LiteOrmCoreInitializer"/> 类的新实例
         /// </summary>
         /// <param name="dataSourceProvider">数据源提供者</param>
         /// <param name="daoContextPoolFactory">DAO上下文连接池工厂</param>
-        /// <param name="tableInfoProvider">表信息提供者</param>
         /// <param name="logger">日志记录器</param>
         public LiteOrmCoreInitializer(
             IDataSourceProvider dataSourceProvider,
             DAOContextPoolFactory daoContextPoolFactory,
-            TableInfoProvider tableInfoProvider,
             ILogger<LiteOrmCoreInitializer>? logger = null)
         {
             _dataSourceProvider = dataSourceProvider;
             _daoContextPoolFactory = daoContextPoolFactory;
-            _tableInfoProvider = tableInfoProvider;
             _logger = logger;
         }
 
@@ -50,9 +46,6 @@ namespace LiteOrm
         {
             try
             {
-                // 将 DI 解析的实例回写为全局静态单例，确保 DAOBase 等通过静态属性访问时与 DI 实例一致
-                TableInfoProvider.Set(() => _tableInfoProvider);
-
                 SyncTables();
             }
             catch (Exception ex)

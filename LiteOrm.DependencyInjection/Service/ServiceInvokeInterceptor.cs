@@ -659,7 +659,7 @@ namespace LiteOrm.Service
     /// <summary>
     ///  动态服务生成
     /// </summary>
-    [AutoRegister(Lifetime = ServiceLifetime.Singleton)]
+    [AutoRegister(Lifetime = LiteOrm.Common.Lifetime.Singleton)]
     public class ServiceFactoryInterceptor : IInterceptor
     {
         /// <summary>

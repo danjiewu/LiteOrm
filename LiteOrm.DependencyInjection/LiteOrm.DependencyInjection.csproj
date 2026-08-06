@@ -17,11 +17,9 @@
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReleaseNotes>
-      8.1.0 Breaking Change: AutoRegisterAttribute 从 LiteOrm.Common 迁移至 LiteOrm.DependencyInjection；
-      LiteOrm 核心的 DAO/Service 不再使用 [AutoRegister] 特性自动注册，改为由 LiteOrm.DependencyInjection 显式注册；
+      8.1.0 Breaking Change:
       LiteOrm.DependencyInjection 新增核心实体服务与数据访问对象的显式注册；
       DataSourceProvider 配置从 IConfiguration 读取改为 LiteOrm.DependencyInjection 的 DataSourceProviderExtensions；
-      Lifetime 枚举移除，AutoRegisterAttribute.Lifetime 改用内置 ServiceLifetime（默认 Singleton）；
     </PackageReleaseNotes>
 	</PropertyGroup>
 	<PropertyGroup>

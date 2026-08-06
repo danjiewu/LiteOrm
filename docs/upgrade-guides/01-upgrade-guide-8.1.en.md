@@ -36,36 +36,7 @@ using LiteOrm.DependencyInjection;
 
 The `RegisterLiteOrm()` method signature is unchanged; the calling convention remains the same.
 
-### Step 2: Update `[AutoRegister]` Namespace
-
-`AutoRegisterAttribute` moved from `LiteOrm.Common` to `LiteOrm.DependencyInjection`, and the namespace changed accordingly:
-
-```csharp
-// Old
-using LiteOrm.Common;  // AutoRegisterAttribute, Lifetime enum
-
-// New
-using LiteOrm.DependencyInjection;  // AutoRegisterAttribute
-using Microsoft.Extensions.DependencyInjection;  // ServiceLifetime
-```
-
-### Step 3: Replace `Lifetime` Enum
-
-The `Lifetime` enum in `LiteOrm.Common` was removed in favor of the built-in `ServiceLifetime`:
-
-```csharp
-// Old
-[AutoRegister(Lifetime.Singleton)]
-public class MyService : IMyService { }
-
-// New
-[AutoRegister(ServiceLifetime.Singleton)]
-public class MyService : IMyService { }
-```
-
-The default value remains `Singleton`.
-
-### Step 4: Update `BulkProvider` Usage (If You Have Custom Implementations)
+### Step 2: Update `BulkProvider` Usage (If You Have Custom Implementations)
 
 `BulkProviderFactory`, `BulkProviderAttribute`, and the `[AutoRegister(Key = ...)]` marker have all been removed. Custom `IBulkProvider` implementations no longer need any marker—just implement the interface and assign it directly to the `BulkProvider` property of the matching `SqlBuilder`:
 
@@ -87,15 +58,11 @@ When `SqlBuilder.BulkProvider` is unset it returns `null`, and `BatchInsert`/`Ba
 
 Make sure the host uses `RegisterLiteOrm()` (from `LiteOrm.DependencyInjection`). Core types (`EntityService<T>`, `ObjectDAO<T>`, etc.) are no longer registered via `[AutoRegister]` scanning but are explicitly registered by `RegisterCoreServices()`.
 
-### Q2: My business service uses `[AutoRegister]`. Does it still work?
-
-Yes. As long as the project references `LiteOrm.DependencyInjection` and adds `using LiteOrm.DependencyInjection;`, auto-registration works as before.
-
-### Q3: My business service doesn't declare `ServiceTypes`. Can it still be resolved via its interface?
+### Q2: My business service doesn't declare `ServiceTypes`. Can it still be resolved via its interface?
 
 Yes. When `ServiceTypes` is not specified, the framework infers the non-system-namespace interfaces implemented by the type as service types. User-defined services resolved via interfaces need no explicit `ServiceTypes`.
 
-### Q4: Will my existing MS DI `IServiceCollection` registrations still work?
+### Q3: Will my existing MS DI `IServiceCollection` registrations still work?
 
 Yes. `RegisterLiteOrm()` uses `AutofacServiceProviderFactory` internally to bridge MS DI. Existing `services.AddXxx()` registrations remain effective.
 

@@ -2,6 +2,7 @@
 using LiteOrm.Service;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 
 namespace LiteOrm
 {
@@ -17,6 +18,27 @@ namespace LiteOrm
         /// <returns>配置后的服务集合</returns>
         public static IServiceCollection AddLiteOrm(this IServiceCollection services)
         {
+            return AddLiteOrm(services, null);
+        }
+
+        /// <summary>
+        /// 添加 LiteOrm 服务到依赖注入容器，并配置选项。
+        /// </summary>
+        /// <param name="services">依赖注入服务集合</param>
+        /// <param name="configureOptions">配置选项的回调函数。</param>
+        /// <returns>配置后的服务集合</returns>
+        public static IServiceCollection AddLiteOrm(this IServiceCollection services, Action<LiteOrmOptions>? configureOptions)
+        {
+            var options = new LiteOrmOptions();
+            try
+            {
+                configureOptions?.Invoke(options);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to initialize LiteOrm options", ex);
+            }
+
             // 在此注册 LiteOrm 所需的服务
             services.AddSingleton<IDataSourceProvider>(sp =>
             {
@@ -34,7 +56,7 @@ namespace LiteOrm
 
             // Scoped 服务——每个作用域获得独立的 SessionManager
             services.AddScoped<SessionManager>();
-            // 泛型 DAO 与服务（Scoped）。     
+            // 泛型 DAO 与服务（Scoped）。
             services.AddScoped(typeof(ObjectDAO<>));
             services.AddScoped(typeof(ObjectViewDAO<>));
             services.AddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
@@ -43,6 +65,16 @@ namespace LiteOrm
             services.AddScoped(typeof(EntityViewService<>));
             services.AddScoped(typeof(IEntityService<>), typeof(EntityService<>));
             services.AddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
+
+            // 自动注册自定义服务与 DAO（源生成器生成的注册代码 + 可选程序集扫描）
+            if (options.AutoRegisterServices)
+            {
+                LiteOrmAutoRegistration.Apply(services);
+            }
+
+            // 追加自定义服务注册
+            options.ConfigureServices?.Invoke(services);
+
             return services;
         }
     }

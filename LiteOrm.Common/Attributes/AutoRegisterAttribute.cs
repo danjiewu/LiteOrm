@@ -1,12 +1,11 @@
-using Microsoft.Extensions.DependencyInjection;
 using System;
 
-namespace LiteOrm.DependencyInjection
+namespace LiteOrm.Common
 {
     /// <summary>
     /// 自动注册特性，用于标记需要自动注册到依赖注入容器的类或接口。
-    /// <para>该类型从 LiteOrm.Common 迁移至 LiteOrm.DependencyInjection，命名空间随之调整为
-    /// <c>LiteOrm.DependencyInjection</c>，使用处需引用 <c>LiteOrm.DependencyInjection</c> 命名空间。</para>
+    /// <para>LiteOrm.Generators 源生成器在编译期扫描带 <c>[AutoRegister]</c> 特性的类型并生成注册代码；
+    /// LiteOrm.DependencyInjection 的 Autofac 扫描亦读取本特性进行运行时注册。</para>
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = true, AllowMultiple = false)]
     public class AutoRegisterAttribute : Attribute
@@ -26,7 +25,7 @@ namespace LiteOrm.DependencyInjection
         /// 构造函数，指定服务生命周期
         /// </summary>
         /// <param name="lifetime">服务生命周期</param>
-        public AutoRegisterAttribute(ServiceLifetime lifetime) => Lifetime = lifetime;
+        public AutoRegisterAttribute(Lifetime lifetime) => Lifetime = lifetime;
 
         /// <summary>
         /// 构造函数，指定服务类型
@@ -39,7 +38,7 @@ namespace LiteOrm.DependencyInjection
         /// </summary>
         /// <param name="lifetime">服务生命周期</param>
         /// <param name="serviceTypes">服务类型数组</param>
-        public AutoRegisterAttribute(ServiceLifetime lifetime, params Type[] serviceTypes)
+        public AutoRegisterAttribute(Lifetime lifetime, params Type[] serviceTypes)
         {
             Lifetime = lifetime;
             ServiceTypes = serviceTypes;
@@ -47,7 +46,7 @@ namespace LiteOrm.DependencyInjection
         /// <summary>
         /// 服务生命周期，默认为 Singleton
         /// </summary>
-        public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Singleton;
+        public Lifetime Lifetime { get; set; } = Lifetime.Singleton;
 
         /// <summary>
         /// 支持多个服务类型

@@ -117,7 +117,7 @@ namespace LiteOrm.Tests.Service
         void CallInnerThrow();
     }
 
-    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime = Lifetime.Scoped)]
     [Intercept(typeof(ServiceInvokeInterceptor))]
     public class ExceptionHandlingTestService : IExceptionHandlingTestService
     {
@@ -142,7 +142,7 @@ namespace LiteOrm.Tests.Service
         }
     }
 
-    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime = Lifetime.Scoped)]
     [Intercept(typeof(ServiceInvokeInterceptor))]
     public class OuterExceptionHandlingTestService : IOuterExceptionHandlingTestService
     {
@@ -164,7 +164,7 @@ namespace LiteOrm.Tests.Service
         void ThrowNested();
     }
 
-    [AutoRegister(Lifetime = ServiceLifetime.Scoped)]
+    [AutoRegister(Lifetime = Lifetime.Scoped)]
     [Intercept(typeof(ServiceInvokeInterceptor))]
     public class InnerExceptionHandlingTestService : IInnerExceptionHandlingTestService
     {

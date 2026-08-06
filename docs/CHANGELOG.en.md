@@ -7,7 +7,6 @@
 This release introduces several breaking changes. See the [8.1 Upgrade Guide](./upgrade-guides/01-upgrade-guide-8.1.en.md) for migration details.
 
 - `RegisterLiteOrm()` moved from the `LiteOrm` core package to the new `LiteOrm.DependencyInjection` package; namespace changed from `LiteOrm` to `LiteOrm.DependencyInjection`
-- `AutoRegisterAttribute` moved from `LiteOrm.Common` to `LiteOrm.DependencyInjection` (namespace changed to `LiteOrm.DependencyInjection`); the `Lifetime` enum was removed in favor of the built-in `ServiceLifetime` (default `Singleton`)
 - Custom `IBulkProvider` implementations no longer use any attribute markers; `BulkProviderFactory` and `BulkProviderAttribute` were removed in favor of assigning directly to the `SqlBuilder.BulkProvider` property
 
 ### Changed

@@ -356,8 +356,8 @@ For query chains, keep this additional rule in mind:
 
 ## 8. Database Routing with `DataSource`
 
-`TableArgs` answers â€œ**which physical table or placeholder-based database name should this operation hit at runtime?**â€  
-`DataSource` answers â€œ**which configured connection should this entity use by default?**â€
+`TableArgs` answers â€?*which physical table or placeholder-based database name should this operation hit at runtime?**â€? 
+`DataSource` answers â€?*which configured connection should this entity use by default?**â€?
 
 ### 8.1 Bind an entity to a fixed data source
 
@@ -420,7 +420,7 @@ protected virtual string DataSource => TableDefinition.DataSource;
 You can replace it with a runtime decision:
 
 ```csharp
-[AutoRegister(ServiceLifetime.Scoped)]
+[AutoRegister(Lifetime.Scoped)]
 public class UserOrderDAO : ObjectDAO<UserOrder>
 {
     private readonly IUserContext _userContext;
