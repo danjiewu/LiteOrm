@@ -310,7 +310,7 @@ public class MyDamengBuilder : DamengBuilder
 排查兼容性问题时按以下顺序：
 
 1. 确认目标数据库版本（DM7 / DM8 行为略有差异）。
-2. 通过日志查看实际生成的 SQL，确认方言是否命中。详见 [日志与诊断](../03-advanced-topics/07-logging.md)。
+2. 通过日志查看实际生成的 SQL，确认方言是否命中。详见 [日志与诊断](../06-di/03-logging.md)。
 3. 如果发现生成的 SQL 是 Oracle 方言（如 `GENERATED AS IDENTITY`）而不是达梦方言（`IDENTITY(起始值, 增量)`），说明工厂没有命中你注册的构建器。先检查启动配置是否调用了 `RegisterSqlBuilder(...)`，再核对数据源名 / 连接类型是否与运行时一致。
 4. 必要时显式注册，绕过关键字识别：
 
@@ -426,7 +426,7 @@ options.RegisterSqlBuilder(typeof(YourCustomConnection), YourBuilder.Instance);
 - [返回目录](../README.md)
 - [自定义 SqlBuilder / 方言扩展](./03-custom-sqlbuilder.md)
 - [自定义分页实现示例](../03-advanced-topics/05-custom-paging.md)
-- [数据库差异与兼容性说明](../05-reference/08-database-compatibility.md)
+- [数据库差异与兼容性说明](../05-reference/07-database-compatibility.md)
 - [表达式扩展](./01-expression-extension.md)
-- [配置与注册](../01-getting-started/03-configuration-and-registration.md)
-- [日志与诊断](../03-advanced-topics/07-logging.md)
+- [配置参考](../05-reference/01-configuration-reference.md)
+- [日志与诊断](../06-di/03-logging.md)

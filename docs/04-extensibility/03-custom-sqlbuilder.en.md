@@ -25,7 +25,7 @@ public class Oracle11gBuilder : OracleBuilder
 {
     public readonly static new Oracle11gBuilder Instance = new Oracle11gBuilder();
 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // Use ROW_NUMBER() OVER(...) for paging
     }
@@ -108,4 +108,4 @@ If the function comes from Lambda or member extensions, you also need to registe
 - [Back to docs hub](../README.md)
 - [Custom Paging](../03-advanced-topics/05-custom-paging.en.md)
 - [Expression Extension](./01-expression-extension.en.md)
-- [Configuration and Registration](../01-getting-started/03-configuration-and-registration.en.md)
+- [Configuration Reference](../05-reference/01-configuration-reference.en.md)

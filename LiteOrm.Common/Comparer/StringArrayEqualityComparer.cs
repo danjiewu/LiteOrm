@@ -18,7 +18,7 @@ namespace LiteOrm.Common
         /// <param name="x">第一个字符串数组</param>
         /// <param name="y">第二个字符串数组</param>
         /// <returns>如果两个数组长度相同且对应位置的元素相等，则返回true；否则返回false</returns>
-        public bool Equals(string[] x, string[] y)
+        public bool Equals(string[]? x, string[]? y)
         {
             if (ReferenceEquals(x, y)) return true;
             if (x is null || y is null) return false;

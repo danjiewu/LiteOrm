@@ -33,7 +33,7 @@ namespace LiteOrm
         /// <summary>
         /// 服务名称
         /// </summary>
-        public string Name { get; set; }
+        public string? Name { get; set; }
     }
 
     /// <summary>
@@ -67,6 +67,6 @@ namespace LiteOrm
         /// <summary>
         /// 服务方法名
         /// </summary>
-        public string MethodName { get; set; }
+        public string? MethodName { get; set; }
     }
 }

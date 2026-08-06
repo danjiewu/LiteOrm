@@ -349,7 +349,7 @@ LambdaExprConverter.RegisterMethodHandler("IsValid", (node, converter) => {
 
 ## 9. 默认注册的 Lambda 方法
 
-LiteOrm 在启动时通过 `LiteOrmLambdaHandlerInitializer` 和 `LiteOrmSqlFunctionInitializer` 自动注册了大量默认方法：
+LiteOrm 在首次访问对应组件时通过 `LiteOrmLambdaHandlerInitializer` 和 `LiteOrmSqlFunctionInitializer` 自动注册了大量默认方法（分别由 `LambdaExprConverter` 和 `SqlBuilder` 的静态构造函数触发）：
 
 | 类型 | 方法/成员 | 说明 | 对应 SqlFunction |
 |------|----------|------|------------------|
@@ -386,7 +386,7 @@ var users = await userService.SearchAsync(u => u.CreateTime.AddDays(7) > DateTim
 
 ## 10. 默认注册的 SqlFunction（跨数据库）
 
-LiteOrm 在启动时通过 `LiteOrmSqlFunctionInitializer` 自动注册了以下跨数据库 SqlFunction：
+LiteOrm 在首次访问 `SqlBuilder` 时通过 `LiteOrmSqlFunctionInitializer` 自动注册了以下跨数据库 SqlFunction：
 
 | SqlFunction | 说明 | 各数据库实现 |
 |-------------|------|-------------|

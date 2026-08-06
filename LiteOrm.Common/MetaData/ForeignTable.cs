@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -10,7 +11,9 @@ namespace LiteOrm.Common
         /// <summary>
         /// 外部表对应的实体类型
         /// </summary>
-        public Type ForeignType { get; set; }
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties |
+                                 DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        public Type? ForeignType { get; set; }
         /// <summary>
         /// 联合查询连接类型（如 Left Join）。
         /// </summary>
@@ -23,6 +26,6 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置外部表的别名。别名用于在 SQL 查询中引用该外部表，特别是在存在多个关联表时，可以通过别名区分不同的表。
         /// </summary>
-        public string Alias { get; set; }
+        public string? Alias { get; set; }
     }
 }

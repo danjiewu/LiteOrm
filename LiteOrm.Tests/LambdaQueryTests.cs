@@ -76,8 +76,8 @@ namespace LiteOrm.Tests
             Assert.IsType<SelectExpr>(expr);
             var select = (SelectExpr)expr;
             Assert.Equal(2, select.Selects.Count);
-            Assert.Equal("Name", (select.Selects[0].Value as PropertyExpr).PropertyName);
-            Assert.Equal("Age", (select.Selects[1].Value as PropertyExpr).PropertyName);
+            Assert.Equal("Name", (select.Selects[0].Value as PropertyExpr)!.PropertyName);
+            Assert.Equal("Age", (select.Selects[1].Value as PropertyExpr)!.PropertyName);
         }
 
         [Fact]
@@ -109,7 +109,7 @@ namespace LiteOrm.Tests
         {
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
                 .Where(u => u.Age > 18)
-                .Where(u => u.Name.Contains("A"));
+                .Where(u => u.Name!.Contains("A"));
 
             var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
 
@@ -147,7 +147,7 @@ namespace LiteOrm.Tests
             // 验证 OrderBy 中使用了别名
             var orderByValue = orderBy.OrderBys[0].Field;
             Assert.IsType<PropertyExpr>(orderByValue);
-            Assert.Equal("Total", (orderByValue as PropertyExpr).PropertyName);
+            Assert.Equal("Total", (orderByValue as PropertyExpr)!.PropertyName);
 
             var select = Assert.IsType<SelectExpr>(orderBy.Source);
             Assert.Equal(2, select.Selects.Count);
@@ -232,7 +232,7 @@ namespace LiteOrm.Tests
         {
             // 测试：查询部门中的用户，带排序和分页
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> queryExpr = q => q
-                .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name.Contains("Dept")))
+                .Where(u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name!.Contains("Dept")))
                 .OrderBy(u => u.Name)
                 .Skip(0)
                 .Take(10);
@@ -293,7 +293,7 @@ namespace LiteOrm.Tests
 
             // 1. 从 Lambda 生成 Expr
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> lambdaExpr = q => q
-                .Where(u => u.Age > 18 && u.Name.Contains("Test"));
+                .Where(u => u.Age > 18 && u.Name!.Contains("Test"));
             var lambdaGeneratedExpr = LambdaExprConverter.ToSqlSegment(lambdaExpr);
 
             // 2. 验证从 Lambda 生成的表达式的结构
@@ -323,7 +323,7 @@ namespace LiteOrm.Tests
 
             // 6. 测试复杂的情况
             Expression<Func<IQueryable<TestUser>, IQueryable<TestUser>>> lambdaExpr2 = q => q
-                .Where(u => u.Age > 18 && u.Name.Contains("Test"))
+                .Where(u => u.Age > 18 && u.Name!.Contains("Test"))
                 .OrderBy(u => u.Name)
                 .Skip(10)
                 .Take(5);

@@ -31,7 +31,7 @@ namespace LiteOrm.Common
         /// <param name="paramName">参数名称，用于异常消息中指示哪个参数无效。</param>
         /// <param name="sqlName">待验证的 SQL 名称。</param>
         /// <exception cref="ArgumentException"></exception>
-        public static void ThrowIfInvalidSqlName(string paramName, string sqlName)
+        public static void ThrowIfInvalidSqlName(string paramName, string? sqlName)
         {
             if (!string.IsNullOrEmpty(sqlName) && !Constants.ValidNameRegex.IsMatch(sqlName))
             {
@@ -84,13 +84,13 @@ namespace LiteOrm.Common
         /// <summary>
         /// 比较两个 SQL 名称或别名，忽略大小写。
         /// </summary>
-        protected static bool SqlNameEquals(string a, string b)
+        protected static bool SqlNameEquals(string? a, string? b)
             => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// 计算 SQL 名称或别名的大小写无关哈希值。
         /// </summary>
-        protected static int SqlNameHashCode(string name)
+        protected static int SqlNameHashCode(string? name)
             => name == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(name);
 
         /// <summary>
@@ -109,7 +109,7 @@ namespace LiteOrm.Common
         /// <param name="tableAlias">表别名。</param>
         /// <param name="propertyName">属性名称。</param>
         /// <returns>属性表达式。</returns>
-        public static PropertyExpr Prop(string tableAlias, string propertyName)
+        public static PropertyExpr Prop(string? tableAlias, string propertyName)
         {
             var prop = new PropertyExpr(propertyName);
             prop.TableAlias = tableAlias;
@@ -147,7 +147,7 @@ namespace LiteOrm.Common
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
         /// <returns>外键关联查询表达式。</returns>
-        public static ForeignExpr ExistsRelated<T>(LogicExpr innerExpr = null, params string[] tableArgs)
+        public static ForeignExpr ExistsRelated<T>(LogicExpr? innerExpr = null, params string[] tableArgs)
         {
             return new ForeignExpr(typeof(T), innerExpr, tableArgs) { AutoRelated = true };
         }
@@ -159,7 +159,7 @@ namespace LiteOrm.Common
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
         /// <returns>外键关联查询表达式。</returns>
-        public static ForeignExpr ExistsRelated(Type type, LogicExpr innerExpr = null, params string[] tableArgs)
+        public static ForeignExpr ExistsRelated(Type type, LogicExpr? innerExpr = null, params string[] tableArgs)
         {
             return new ForeignExpr(type, innerExpr, tableArgs) { AutoRelated = true };
         }
@@ -192,7 +192,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型。</typeparam>
         /// <param name="expression">Lambda 表达式。</param>
         /// <returns>表达式对象。</returns>
-        public static LogicExpr Lambda<T>(Expression<Func<T, bool>> expression)
+        public static LogicExpr? Lambda<T>(Expression<Func<T, bool>> expression)
         {
             return new LambdaExprConverter(expression).ToLogicExpr();
         }
@@ -246,7 +246,10 @@ namespace LiteOrm.Common
             {               
                 var lambdaConvert = new LambdaExprConverter(whereExpression);
                 updateExpr.Where(lambdaConvert.ToLogicExpr());
-                updateExpr.Table.TableArgs = lambdaConvert.Table?.TableArgs;
+                if (updateExpr.Table is { } table)
+                {
+                    table.TableArgs = lambdaConvert.Table?.TableArgs;
+                }
             }
             foreach (var binding in memberInitExpression.Bindings)
             {
@@ -305,7 +308,7 @@ namespace LiteOrm.Common
         /// <param name="thenExpr">条件为真时的结果表达式。</param>
         /// <param name="elseExpr">条件为假时的结果表达式，可选。</param>
         /// <returns>CASE WHEN 函数表达式。</returns>
-        public static FunctionExpr If(LogicExpr condition, ValueTypeExpr thenExpr, ValueTypeExpr elseExpr = null)
+        public static FunctionExpr If(LogicExpr condition, ValueTypeExpr thenExpr, ValueTypeExpr? elseExpr = null)
             => Case(new[] { (condition, thenExpr) }, elseExpr);
 
         /// <summary>
@@ -326,7 +329,7 @@ namespace LiteOrm.Common
         /// <param name="cases">条件-结果对的集合。</param>
         /// <param name="elseExpr">可选的 ELSE 结果表达式。</param>
         /// <returns>表示 CASE 语句的函数表达式。</returns>
-        public static FunctionExpr Case((LogicExpr, ValueTypeExpr)[] cases, ValueTypeExpr elseExpr = null)
+        public static FunctionExpr Case((LogicExpr, ValueTypeExpr)[] cases, ValueTypeExpr? elseExpr = null)
         {
             FunctionExpr caseExpr = new FunctionExpr("CASE");
             foreach (var (condition, result) in cases)
@@ -390,7 +393,7 @@ namespace LiteOrm.Common
         /// <param name="key">SQL 片段键名或模板文本。</param>
         /// <param name="arg">动态替换参数，为 null 时不替换。</param>
         /// <returns>动态 SQL 表达式。</returns>
-        public static GenericSqlExpr Sql(string key, object arg = null) => GenericSqlExpr.Get(key, arg);
+        public static GenericSqlExpr Sql(string key, object? arg = null) => GenericSqlExpr.Get(key, arg);
 
         /// <summary>
         /// 创建 From 表达式，支持动态表名参数。
@@ -427,7 +430,7 @@ namespace LiteOrm.Common
         {
             if (fromExpr.Source is TableExpr tableExpr)
             {
-                var view = TableInfoProvider.Default.GetTableView(tableExpr.Type);
+                var view = TableInfoProvider.Instance.GetTableView(tableExpr.Type ?? throw new InvalidOperationException("TableExpr.Type is null"));
                 if (view != null)
                 {
                     fromExpr.Joins.Clear();
@@ -440,14 +443,14 @@ namespace LiteOrm.Common
                             join.JoinType = jt.JoinType;
 
                             // build ON condition: joined.ForeignKeys[i] = joined.ForeignPrimeKeys[i]
-                            LogicExpr on = null;
+                            LogicExpr? on = null;
                             int count = Math.Min(jt.ForeignKeys.Count, jt.ForeignPrimeKeys.Count);
                             for (int i = 0; i < count; i++)
                             {
                                 var fk = jt.ForeignKeys[i];
                                 var pk = jt.ForeignPrimeKeys[i];
-                                var left = Expr.Prop(fk.Table?.Name, fk.Column?.Name ?? fk.Name);
-                                var right = Expr.Prop(pk.Table?.Name, pk.Column?.Name ?? pk.Name);
+                                var left = Expr.Prop(fk.Table?.Name, fk.Column?.Name ?? fk.Name ?? string.Empty);
+                                var right = Expr.Prop(pk.Table?.Name, pk.Column?.Name ?? pk.Name ?? string.Empty);
                                 var eq = left == right;
                                 on = on is null ? eq : on & eq;
                             }

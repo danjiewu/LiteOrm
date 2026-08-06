@@ -12,11 +12,11 @@ Use this page as a scenario-based index inside the docs set.
 
 
 
-- [Example Index](./06-example-index.en.md)
+- [Example Index](./05-example-index.en.md)
 
-- [Generated SQL Examples](./07-sql-examples.en.md)
+- [Generated SQL Examples](./06-sql-examples.en.md)
 
-- [Database Compatibility Notes](./08-database-compatibility.en.md)
+- [Database Compatibility Notes](./07-database-compatibility.en.md)
 
 
 
@@ -32,7 +32,7 @@ Use this page as a scenario-based index inside the docs set.
 
 - `RegisterSqlBuilder(...)`
 
-- `BulkProviderFactory`
+- `SqlBuilder.BulkProvider` (bulk insert provider)
 
 - data source settings, connection pool settings, read-only replicas
 
@@ -42,11 +42,11 @@ Related guides:
 
 
 
-- [Configuration and registration](../01-getting-started/03-configuration-and-registration.en.md)
+- [Configuration Reference](../05-reference/01-configuration-reference.en.md)
 
 - [Configuration reference](./01-configuration-reference.en.md)
 
-- [Database Compatibility Notes](./08-database-compatibility.en.md)
+- [Database Compatibility Notes](./07-database-compatibility.en.md)
 
 
 
@@ -100,9 +100,9 @@ Related guides:
 - [Expr Guide](../02-core-usage/06-expr-guide.en.md)
 - [Query Overview](../02-core-usage/04-query-overview.en.md)
 
-- [Example Index](./06-example-index.en.md)
+- [Example Index](./05-example-index.en.md)
 
-- [Generated SQL Examples](./07-sql-examples.en.md)
+- [Generated SQL Examples](./06-sql-examples.en.md)
 
 
 
@@ -138,11 +138,11 @@ Related guides:
 
 - [CRUD guide](../02-core-usage/03-crud-guide.en.md)
 
-- [Transactions](../03-advanced-topics/01-transactions.en.md)
+- [Transactions](../06-di/01-transactions.en.md)
 
-- [Example Index](./06-example-index.en.md)
+- [Example Index](./05-example-index.en.md)
 
-- [Generated SQL Examples](./07-sql-examples.en.md)
+- [Generated SQL Examples](./06-sql-examples.en.md)
 
 
 
@@ -163,15 +163,15 @@ Related guides:
 
 
 
-- [Transactions](../03-advanced-topics/01-transactions.en.md)
+- [Transactions](../06-di/01-transactions.en.md)
 
-- [Logging and Diagnostics](../03-advanced-topics/07-logging.en.md)
+- [Logging and Diagnostics](../06-di/03-logging.en.md)
 - [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
 - [Window functions](../03-advanced-topics/04-window-functions.en.md)
-- [Example Index](./06-example-index.en.md)
-- [Generated SQL Examples](./07-sql-examples.en.md)
+- [Example Index](./05-example-index.en.md)
+- [Generated SQL Examples](./06-sql-examples.en.md)
 
-- [Database Compatibility Notes](./08-database-compatibility.en.md)
+- [Database Compatibility Notes](./07-database-compatibility.en.md)
 
 
 
@@ -204,7 +204,7 @@ Related guides:
 
 - [Custom SqlBuilder and dialect extension](../04-extensibility/03-custom-sqlbuilder.en.md)
 
-- [Database Compatibility Notes](./08-database-compatibility.en.md)
+- [Database Compatibility Notes](./07-database-compatibility.en.md)
 
 
 
@@ -213,10 +213,10 @@ Related guides:
 
 
 - [Back to English docs hub](../README.md)
-- [Example Index](./06-example-index.en.md)
+- [Example Index](./05-example-index.en.md)
 
-- [Generated SQL Examples](./07-sql-examples.en.md)
+- [Generated SQL Examples](./06-sql-examples.en.md)
 
-- [Database Compatibility Notes](./08-database-compatibility.en.md)
+- [Database Compatibility Notes](./07-database-compatibility.en.md)
 
 

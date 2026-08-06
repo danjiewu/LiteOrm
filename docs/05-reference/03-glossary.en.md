@@ -55,3 +55,35 @@ The sharding mechanism used to fill placeholders in table names at runtime.
 ## `SqlBuilder`
 
 The dialect builder that converts LiteOrm expressions into executable SQL for a specific database flavor.
+
+## `ConstFilter` / `Column.Constant`
+
+The `Constant` property of `ColumnAttribute`, used to declare fixed filter conditions. Resolved at metadata stage into `TableDefinition.ConstFilter`, and automatically injected into main-table `WHERE` and related-table `JOIN ... ON` during SQL generation. Suited for model-level invariant rules such as enabled-state, fixed partitions, or fixed tenant types; not suited for runtime context like the current user or tenant. See [Permission Filtering](../06-di/02-permission-filtering.en.md).
+
+## `GenericSqlExpr`
+
+A delegate-based dynamic SQL expression (`sealed class GenericSqlExpr : LogicExpr`) that lets you inject custom SQL generation logic without building a full Expr tree. Register a callback delegate via `GenericSqlExpr.Register` and reference it with `Expr.Sql(key, arg)`. Located in the `LiteOrm.Common` namespace.
+
+## `ExprVisitor`
+
+The expression visitor (`static class`) providing multi-mode traversal of `Expr` trees (delegates, `IExprNodeVisitor`, `ExprValidator`). Its static extension method `Validate(this ExprValidator, Expr)` drives whole-tree validation. Located in the `LiteOrm.Common` namespace.
+
+## `ExprValidator`
+
+The expression validator base class (`abstract class`); the `Validate(Expr node)` instance method validates a single node only. Whole-tree validation is driven by `ExprVisitor.Validate(validator, expr)`, which records the failed node to `FailedExpr` automatically. Located in the `LiteOrm.Common` namespace.
+
+## `FunctionExprValidator`
+
+A function-expression validator (`class FunctionExprValidator : ExprValidator`) that controls function-expression usage via the `FunctionPolicy` enum (`AllowAll` / `AllowRegisted` / `Disallow`). Located in the `LiteOrm` namespace.
+
+## `IBulkProvider`
+
+The bulk-write provider interface for database-native bulk imports (e.g. `MySqlBulkCopy`, `SqlBulkCopy`). Assign an implementation to the `BulkProvider` property of the matching `SqlBuilder` to enable it; when unset, batch inserts fall back to regular SQL. Located in the `LiteOrm` namespace.
+
+## `CycleDetector`
+
+An Expr cycle-reference detector (`static class`) exposing `HasCycle` / `FindCycle` / `Detect` methods. It detects circular references in Expr trees using reference equality (`ReferenceEquals`), preventing stack overflows during traversal and conversion. Located in the `LiteOrm.Common` namespace.
+
+## `SqlBuildContext`
+
+The SQL build context, carrying table aliases, scopes, table-name arguments and other state during SQL generation for use by `ISqlBuilder` and the Expr-to-SQL pipeline. DAOs can customize the context by overriding `CreateSqlBuildContext` (e.g. to inject sharding arguments). Located in the `LiteOrm.Common` namespace.

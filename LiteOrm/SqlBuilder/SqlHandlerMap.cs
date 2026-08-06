@@ -34,7 +34,7 @@ namespace LiteOrm
             FunctionSqlHandlers[functionName] = handler;
         }
 
-        public bool TryGetFunctionSqlHandler(string functionName, out FunctionSqlHandler handler)
+        public bool TryGetFunctionSqlHandler(string functionName, out FunctionSqlHandler? handler)
         {
             return FunctionSqlHandlers.TryGetValue(functionName, out handler);
         }
@@ -115,9 +115,9 @@ namespace LiteOrm
         /// <param name="functionName">要获取的函数名称。</param>
         /// <param name="handler">输出参数，返回对应的函数 SQL 语句处理器。</param>
         /// <returns></returns>
-        public static bool TryGetFunctionSqlHandler<T>(this T sqlBuilder, string functionName, out FunctionSqlHandler handler) where T : SqlBuilder
+        public static bool TryGetFunctionSqlHandler<T>(this T sqlBuilder, string? functionName, out FunctionSqlHandler? handler) where T : SqlBuilder
         {
-            return SqlBuilder.GetSqlHandlerMap<T>().TryGetFunctionSqlHandler(functionName, out handler);
+            return SqlBuilder.GetSqlHandlerMap<T>().TryGetFunctionSqlHandler(functionName ?? throw new ArgumentNullException(nameof(functionName)), out handler);
         }
     }
 }

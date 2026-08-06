@@ -33,7 +33,7 @@ namespace LiteOrm.Common
         /// <param name="left">左操作数表达式</param>
         /// <param name="oper">值运算符</param>
         /// <param name="right">右操作数表达式</param>
-        public ValueBinaryExpr(ValueTypeExpr left, ValueOperator oper, ValueTypeExpr right)
+        public ValueBinaryExpr(ValueTypeExpr? left, ValueOperator oper, ValueTypeExpr? right)
         {
             Left = left;
             Operator = oper;
@@ -43,12 +43,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置左操作数表达式
         /// </summary>
-        public ValueTypeExpr Left { get; set; }
+        public ValueTypeExpr? Left { get; set; }
 
         /// <summary>
         /// 获取或设置右操作数表达式
         /// </summary>
-        public ValueTypeExpr Right { get; set; }
+        public ValueTypeExpr? Right { get; set; }
 
         /// <summary>
         /// 获取或设置二元运算符
@@ -61,7 +61,7 @@ namespace LiteOrm.Common
         /// <returns>字符串表示</returns>
         public override string ToString()
         {
-            if (!operatorTexts.TryGetValue(Operator, out string op)) op = Operator.ToString();
+            if (!operatorTexts.TryGetValue(Operator, out string? op)) op = Operator.ToString();
             return $"{Left} {op} {Right}";
         }
 
@@ -75,7 +75,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is ValueBinaryExpr b &&
                    b.Operator == Operator &&
@@ -97,7 +97,7 @@ namespace LiteOrm.Common
         /// </summary>
         public override Expr Clone()
         {
-            return new ValueBinaryExpr((ValueTypeExpr)Left?.Clone(), this.Operator, (ValueTypeExpr)Right?.Clone());
+            return new ValueBinaryExpr(Left?.Clone() as ValueTypeExpr, this.Operator, Right?.Clone() as ValueTypeExpr);
         }
     }
 }

@@ -1,14 +1,14 @@
 # 安装与环境要求
 
-本文介绍 LiteOrm 的运行环境、数据库支持和安装方式。
+本文介绍 LiteOrm 的运行环境、数据库支持，以及两种安装方式：仅使用基础库（`LiteOrm`）与使用框架集成包（`LiteOrm.DependencyInjection`）。
 
-> **新手提示**：如果你只是想快速体验 LiteOrm，建议使用 SQLite 作为数据库——它不需要安装任何数据库服务，开箱即用。本文末尾提供了 SQLite 的快速上手步骤。
+> **新手提示**：如果你只是想快速体验 LiteOrm，建议使用 SQLite 作为数据库——它不需要安装任何数据库服务，开箱即用。需要宿主级集成（Autofac、AOP）时再引入 `LiteOrm.DependencyInjection`。
 
 ## 环境要求
 
 - `.NET 8.0+`
 - `.NET Standard 2.0`（兼容 .NET Framework 4.6.1+）
-- 依赖库：`Autofac.Extensions.DependencyInjection`、`Autofac.Extras.DynamicProxy`、`Castle.Core`
+- 数据库驱动包：根据所选数据库安装对应的 NuGet 驱动
 
 > **如何检查 .NET 版本？** 在终端中运行 `dotnet --version`，确保输出为 `8.0.x` 或更高版本。如果尚未安装，请访问 [https://dotnet.microsoft.com/download](https://dotnet.microsoft.com/download) 下载安装。
 
@@ -31,61 +31,52 @@
 - TiDB（MySQL 兼容）
 - 万里 GreatDB（MySQL 兼容）
 
-> 国产数据库继承对应主流数据库的方言行为，自动检测优先匹配。详见 [数据库差异与兼容性说明](../05-reference/08-database-compatibility.md)。
+> 国产数据库继承对应主流数据库的方言行为，自动检测优先匹配。详见 [数据库差异与兼容性说明](../05-reference/07-database-compatibility.md)。
 
 > 对于旧版本数据库，如果默认分页语法不兼容，请参考 [自定义分页](../03-advanced-topics/05-custom-paging.md) 与 [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)。
 
-### 各数据库 Provider 对照表
+### 各数据库 NuGet 驱动包
 
-> 配置 `appsettings.json` 时，`Provider` 字段需要填写对应数据库驱动的完整类型名。以下是常用数据库的 Provider 配置参考：
+> 无论哪种安装方式，都需要根据使用的数据库安装对应的 NuGet 驱动包：
 
-| 数据库 | NuGet 包 | Provider 配置值 |
-|--------|----------|----------------|
-| SQL Server | `Microsoft.Data.SqlClient` | `Microsoft.Data.SqlClient.SqlConnection, Microsoft.Data.SqlClient` |
-| SQL Server (旧版) | `System.Data.SqlClient` | `System.Data.SqlClient.SqlConnection, System.Data.SqlClient` |
-| MySQL | `MySqlConnector` | `MySqlConnector.MySqlConnection, MySqlConnector` |
-| MySQL (旧版) | `MySql.Data` | `MySql.Data.MySqlClient.MySqlConnection, MySql.Data` |
-| PostgreSQL | `Npgsql` | `Npgsql.NpgsqlConnection, Npgsql` |
-| Oracle | `Oracle.ManagedDataAccess.Core` | `Oracle.ManagedDataAccess.Client.OracleConnection, Oracle.ManagedDataAccess` |
-| SQLite | `Microsoft.Data.Sqlite` | `Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite` |
+| 数据库 | NuGet 包 |
+|--------|----------|
+| SQL Server | `Microsoft.Data.SqlClient` |
+| SQL Server (旧版) | `System.Data.SqlClient` |
+| MySQL | `MySqlConnector` |
+| MySQL (旧版) | `MySql.Data` |
+| PostgreSQL | `Npgsql` |
+| Oracle | `Oracle.ManagedDataAccess.Core` |
+| SQLite | `Microsoft.Data.Sqlite` |
 
-> **注意**：除了安装 `LiteOrm` 包外，你还需要根据使用的数据库安装对应的 NuGet 驱动包（如上表第一列所示）。
+> 配置 `appsettings.json` 时，`Provider` 字段需要填写对应数据库驱动的完整类型名，参见[数据库差异与兼容性说明](../05-reference/07-database-compatibility.md)。
 
-## 通过 NuGet 安装
+## 方式一：仅使用基础库（`LiteOrm`）
+
+适合只需要实体映射、查询、DAO 等核心能力，且自行管理连接与生命周期的场景。此方式**不引入任何 DI 框架**，无需 Autofac 与 Castle 动态代理。
 
 ```bash
 dotnet add package LiteOrm
+dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
 ```
 
-### 各数据库完整安装命令
+- 基础库由 `LiteOrm` 与 `LiteOrm.Common` 两个包构成，`LiteOrm` 会自动携带 `LiteOrm.Common`。
+- 不提供 `RegisterLiteOrm()`，也不含 AOP 拦截（事务/权限/日志）能力。
+- 数据访问通过 `ObjectDAO` / `DataDAO` 等 DAO 类型完成。
 
-**SQL Server 项目：**
+## 方式二：使用框架集成包（`LiteOrm.DependencyInjection`）
+
+适合 ASP.NET Core 项目。`LiteOrm.DependencyInjection` 引入 Autofac 容器与 Castle 动态代理，通过 `builder.Host.RegisterLiteOrm()` 一键注册，并启用 AOP 事务/权限/日志。
+
 ```bash
 dotnet add package LiteOrm
-dotnet add package Microsoft.Data.SqlClient
-```
-
-**MySQL 项目：**
-```bash
-dotnet add package LiteOrm
-dotnet add package MySqlConnector
-```
-
-**PostgreSQL 项目：**
-```bash
-dotnet add package LiteOrm
-dotnet add package Npgsql
-```
-
-**SQLite 项目（推荐新手使用）：**
-```bash
-dotnet add package LiteOrm
-dotnet add package Microsoft.Data.Sqlite
+dotnet add package LiteOrm.DependencyInjection    # DI 注册（RegisterLiteOrm）需要
+dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
 ```
 
 ## 创建新项目的完整步骤
 
-> 以下是从零开始创建一个使用 LiteOrm 的 ASP.NET Core 项目的完整命令：
+> 以下是从零开始创建一个使用 LiteOrm.DependencyInjection 的 ASP.NET Core 项目的完整命令：
 
 ```bash
 # 1. 创建 Web API 项目
@@ -94,6 +85,7 @@ cd MyLiteOrmApp
 
 # 2. 安装 LiteOrm（以 SQLite 为例）
 dotnet add package LiteOrm
+dotnet add package LiteOrm.DependencyInjection
 dotnet add package Microsoft.Data.Sqlite
 
 # 3. 运行项目确认环境正常
@@ -104,18 +96,16 @@ dotnet run
 
 ## 安装后的下一步
 
-1. 准备连接字符串和数据源配置。
-2. 在宿主启动阶段调用 `RegisterLiteOrm()`。
-3. 定义实体、服务或 DAO。
-4. 使用 `SearchAsync`、`InsertAsync` 等 API 完成首个示例。
+- **仅基础库**：参考 [第一个完整示例（仅基础库）](./03-first-example.md) 进行手动初始化。
+- **LiteOrm.DependencyInjection 集成**：在宿主启动阶段调用 `RegisterLiteOrm()`，参考 [配置参考](../05-reference/01-configuration-reference.md) 与 [第一个完整示例（DI 版）](./05-first-example-di.md)。
 
-> **SQLite 快速上手**：如果你想用 SQLite 快速体验，连接字符串只需写 `Data Source=myapp.db`，无需安装任何数据库服务。完整示例请参考 [第一个完整示例](./04-first-example.md)。
+> **SQLite 快速上手**：如果你想用 SQLite 快速体验，连接字符串只需写 `Data Source=myapp.db`，无需安装任何数据库服务。
 
 ## 常见安装问题
 
 ### 安装后编译报错：找不到 `RegisterLiteOrm` 方法
 
-确保安装了 `LiteOrm` 包（不是 `LiteOrm.Common`），并在代码文件顶部添加 `using LiteOrm;`。
+确保安装了 `LiteOrm.DependencyInjection` 包（`RegisterLiteOrm()` 定义于该包，仅安装 `LiteOrm` 或 `LiteOrm.Common` 不会提供此方法），并在代码文件顶部添加 `using LiteOrm.DependencyInjection;`。
 
 ### 运行时提示找不到数据库驱动
 
@@ -127,11 +117,10 @@ dotnet run
 
 ### 安装后项目体积会很大吗？
 
-不会。LiteOrm 本身非常轻量，核心包只有几百 KB。加上必要的依赖（Autofac、Castle.Core），总体增量在 2-3 MB 左右。
+不会。LiteOrm 本身非常轻量，基础包只有几百 KB。加上必要的依赖（Autofac、Castle.Core），总体增量在 2-3 MB 左右。仅使用基础库时不引入 Autofac 与 Castle，体积更小。
 
 ## 相关链接
 
 - [返回目录](../README.md)
-- [配置与注册](./03-configuration-and-registration.md)
-- [第一个完整示例](./04-first-example.md)
-- [配置项速查](../05-reference/01-configuration-reference.md)
+- [配置参考](../05-reference/01-configuration-reference.md)
+- [第一个完整示例（DI 版）](./05-first-example-di.md)

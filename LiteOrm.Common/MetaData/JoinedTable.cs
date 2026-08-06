@@ -23,7 +23,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="foreignTable">外部表的定义信息。</param>
         /// <param name="foreignPrimeKeys">目标表用于参与关联的键列集合。</param>
-        public JoinedTable(TableDefinition foreignTable, IEnumerable<ColumnDefinition> foreignPrimeKeys)
+        public JoinedTable(TableDefinition foreignTable, IEnumerable<ColumnDefinition>? foreignPrimeKeys)
             : base(foreignTable)
         {
             if (foreignTable == null) throw new ArgumentNullException(nameof(foreignTable));
@@ -84,7 +84,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置该关联表的固定筛选条件。
         /// </summary>
-        public LogicExpr ConstFilter { get; internal set; }
+        public LogicExpr? ConstFilter { get; internal set; }
     }
 
 }

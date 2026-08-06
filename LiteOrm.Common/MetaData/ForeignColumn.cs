@@ -12,20 +12,20 @@ namespace LiteOrm.Common
         /// <summary>
         /// 指向的列
         /// </summary>
-        public ColumnRef TargetColumn { get; internal set; }
+        public ColumnRef? TargetColumn { get; internal set; }
 
 
 
         /// <summary>
         /// 名称
         /// </summary>
-        public override string Name
+        public override string? Name
         {
             get
             {
                 return TargetColumn == null ? null : TargetColumn.Name;
             }
-            protected internal set
+            set
             {
             }
         }
@@ -33,6 +33,6 @@ namespace LiteOrm.Common
         /// <summary>
         /// 目标列的定义
         /// </summary>
-        public override ColumnDefinition Definition => TargetColumn.Column.Definition;
+        public override ColumnDefinition Definition => TargetColumn!.Column.Definition;
     }
 }

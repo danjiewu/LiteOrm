@@ -356,8 +356,8 @@ For query chains, keep this additional rule in mind:
 
 ## 8. Database Routing with `DataSource`
 
-`TableArgs` answers “**which physical table or placeholder-based database name should this operation hit at runtime?**”  
-`DataSource` answers “**which configured connection should this entity use by default?**”
+`TableArgs` answers **which physical table or placeholder-based database name should this operation hit at runtime?**
+`DataSource` answers **which configured connection should this entity use by default?**
 
 ### 8.1 Bind an entity to a fixed data source
 
@@ -523,6 +523,6 @@ As a rule of thumb:
 
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/08-associations.en.md)
-- [Permission Filtering](./06-permission-filtering.en.md)
+- [Permission Filtering](../06-di/02-permission-filtering.en.md)
 - [Performance Optimization](./03-performance.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)

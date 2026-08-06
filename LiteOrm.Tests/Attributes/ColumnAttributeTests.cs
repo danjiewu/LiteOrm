@@ -80,7 +80,7 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal("UserId", attribute.ColumnName);
             Assert.True(attribute.IsColumn);
             Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
-            Assert.Equal(DbType.Object, attribute.DbType);
+            Assert.Null(attribute.DbType);
             Assert.True(attribute.AllowNull);
         }
 
@@ -96,7 +96,7 @@ namespace LiteOrm.Common.UnitTests
         public void ColumnAttribute_WithNullOrWhitespaceColumnName_AcceptsValue(string? columnName)
         {
             // Arrange & Act
-            var attribute = new ColumnAttribute(columnName);
+            var attribute = new ColumnAttribute(columnName!);
 
             // Assert
             Assert.Equal(columnName, attribute.ColumnName);
@@ -176,7 +176,7 @@ namespace LiteOrm.Common.UnitTests
 
             // Assert
             Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
-            Assert.Equal(DbType.Object, attribute.DbType);
+            Assert.Null(attribute.DbType);
             Assert.True(attribute.AllowNull);
             Assert.False(attribute.IsPrimaryKey);
             Assert.False(attribute.IsIdentity);
@@ -204,7 +204,7 @@ namespace LiteOrm.Common.UnitTests
             // 断言
             Assert.True(attribute.IsColumn);
             Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
-            Assert.Equal(DbType.Object, attribute.DbType);
+            Assert.Null(attribute.DbType);
             Assert.True(attribute.AllowNull);
         }
 
@@ -224,7 +224,7 @@ namespace LiteOrm.Common.UnitTests
             // 断言
             Assert.False(attribute.IsColumn);
             Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
-            Assert.Equal(DbType.Object, attribute.DbType);
+            Assert.Null(attribute.DbType);
             Assert.True(attribute.AllowNull);
         }
 
@@ -242,7 +242,7 @@ namespace LiteOrm.Common.UnitTests
             // Assert
             Assert.NotNull(attribute);
             Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
-            Assert.Equal(DbType.Object, attribute.DbType);
+            Assert.Null(attribute.DbType);
             Assert.True(attribute.AllowNull);
             Assert.True(attribute.IsColumn);
             Assert.Null(attribute.Constant);

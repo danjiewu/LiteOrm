@@ -6,7 +6,7 @@
     public class CommonTableExpr : SourceExpr
     {
         // Source 为空时仍需要保留别名，以支持“只按别名引用前面已定义的 CTE”。
-        private string _alias;
+        private string? _alias;
 
         /// <summary>
         /// 默认构造函数，初始化一个没有 Source 的实例。
@@ -19,7 +19,7 @@
         /// 创建一个新的 CommonTableExpr 实例，并将 Source 属性设置为提供的 SelectExpr 对象。Alias 属性将从 Source 的 Alias 属性继承（如果 Source 不为 null）。如果 Source 的 Alias 为空，则 Alias 将保持为 null，直到显式设置。
         /// </summary>
         /// <param name="source">SelectExpr 对象，用于初始化 Source 属性。</param>
-        public CommonTableExpr(SelectExpr source)
+        public CommonTableExpr(SelectExpr? source)
         {
             Source = source;
         }
@@ -27,9 +27,9 @@
         /// <summary>
         /// 获取或设置 CommonTableExpr 的数据源，必须是一个 SelectExpr 对象，表示 CTE 定义的查询部分。设置 Source 时，如果提供的 SelectExpr 对象不为 null，则会将其 Alias 属性与 CommonTableExpr 的 Alias 属性保持一致，以确保在重新挂回完整定义时继续沿用之前的别名。
         /// </summary>
-        public new SelectExpr Source
+        public new SelectExpr? Source
         {
-            get => (SelectExpr)base.Source;
+            get => base.Source as SelectExpr;
             set
             {
                 base.Source = value;
@@ -48,7 +48,7 @@
         /// <summary>
         /// CTE 的别名。对于“只按别名引用前面已定义的 CTE”，Source 可能为 null，此时仍需保留别名以供引用。
         /// </summary>
-        public override string Alias
+        public override string? Alias
         {
             get => Source?.Alias ?? _alias;
             set
@@ -73,7 +73,7 @@
         /// <returns>深复制的 CommonTableExpr 实例。</returns>
         public override Expr Clone()
         {
-            return new CommonTableExpr((SelectExpr)Source?.Clone()) { Alias = Alias };
+            return new CommonTableExpr(Source?.Clone() as SelectExpr) { Alias = Alias };
         }
 
         /// <summary>
@@ -81,7 +81,7 @@
         /// </summary>
         /// <param name="obj">要比较的对象。</param>
         /// <returns>如果两个对象相等，则返回 true；否则返回 false。</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is CommonTableExpr other
                 && SqlNameEquals(Alias, other.Alias)
@@ -103,7 +103,7 @@
         /// <returns>当前实例的字符串表示形式。</returns>
         public override string ToString()
         {
-            return Source == null ? Alias : $"{Alias} AS ({Source})";
+            return Source == null ? (Alias ?? string.Empty) : $"{Alias} AS ({Source})";
         }
     }
 }

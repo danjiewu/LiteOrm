@@ -32,7 +32,7 @@ namespace LiteOrm.Common
         /// 使用指定的逻辑表达式集合初始化 OR 表达式组合
         /// </summary>
         /// <param name="items">要添加的逻辑表达式集合</param>
-        public OrExpr(IEnumerable<LogicExpr> items)
+        public OrExpr(IEnumerable<LogicExpr>? items)
         {
             if (items != null)
             {
@@ -170,7 +170,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is OrExpr or)
             {

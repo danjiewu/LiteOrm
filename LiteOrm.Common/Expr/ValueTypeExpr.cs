@@ -127,5 +127,15 @@ namespace LiteOrm.Common
         /// 按位取反运算符 ~ 的重载。
         /// </summary>
         public static ValueTypeExpr operator ~(ValueTypeExpr expr) => new UnaryExpr(UnaryOperator.BitwiseNot, expr);
+
+        /// <summary>
+        /// 确定指定的对象是否等于当前对象（引用相等语义，与默认行为一致）。
+        /// </summary>
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj);
+
+        /// <summary>
+        /// 作为默认哈希函数。
+        /// </summary>
+        public override int GetHashCode() => base.GetHashCode();
     }
 }

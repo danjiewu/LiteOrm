@@ -16,9 +16,9 @@ namespace LiteOrm.Common.UnitTests
         {
             var provider = CreateProvider();
 
-            var tableView = provider.GetTableView(typeof(MultiForeignOrder));
+            var tableView = provider.GetTableView(typeof(MultiForeignOrder))!;
 
-            var ownerIdColumn = tableView.GetColumn(nameof(MultiForeignOrder.OwnerId));
+            var ownerIdColumn = tableView.GetColumn(nameof(MultiForeignOrder.OwnerId))!;
             Assert.NotNull(ownerIdColumn);
             Assert.Equal(2, ownerIdColumn.ForeignTables.Count);
             Assert.Equal(typeof(MultiForeignUser), ownerIdColumn.ForeignTables[0].ForeignType);
@@ -35,9 +35,9 @@ namespace LiteOrm.Common.UnitTests
         {
             var provider = CreateProvider();
 
-            var tableView = provider.GetTableView(typeof(SingleForeignOrder));
+            var tableView = provider.GetTableView(typeof(SingleForeignOrder))!;
 
-            var ownerIdColumn = tableView.GetColumn(nameof(SingleForeignOrder.OwnerId));
+            var ownerIdColumn = tableView.GetColumn(nameof(SingleForeignOrder.OwnerId))!;
             Assert.NotNull(ownerIdColumn);
             Assert.Single(ownerIdColumn.ForeignTables);
             Assert.Equal(typeof(MultiForeignUser), ownerIdColumn.ForeignTables[0].ForeignType);
@@ -49,15 +49,15 @@ namespace LiteOrm.Common.UnitTests
         {
             var provider = CreateProvider();
 
-            var tableView = provider.GetTableView(typeof(TableJoinPrimeKeyView));
-            var joinedTable = Assert.Single(tableView.JoinedTables);
+            var tableView = provider.GetTableView(typeof(TableJoinPrimeKeyView))!;
+            var joinedTable = Assert.Single(tableView.JoinedTables!);
 
             Assert.Equal("DeptByCode", joinedTable.Name);
             Assert.Equal(nameof(PrimeKeyDepartment.Code), joinedTable.ForeignPrimeKeys[0].Column.PropertyName);
             Assert.Equal(nameof(TableJoinPrimeKeyView.DepartmentCode), joinedTable.ForeignKeys[0].Column.PropertyName);
 
-            var deptNameColumn = (ForeignColumn)tableView.GetColumn(nameof(TableJoinPrimeKeyView.DepartmentName));
-            Assert.Equal(nameof(PrimeKeyDepartment.Name), deptNameColumn.TargetColumn.Column.PropertyName);
+            var deptNameColumn = (ForeignColumn)tableView.GetColumn(nameof(TableJoinPrimeKeyView.DepartmentName))!;
+            Assert.Equal(nameof(PrimeKeyDepartment.Name), deptNameColumn.TargetColumn!.Column.PropertyName);
         }
 
         [Fact]
@@ -75,9 +75,9 @@ namespace LiteOrm.Common.UnitTests
         {
             var provider = CreateProvider();
 
-            var tableDef = provider.GetTableDefinition(typeof(EnumNameConstantOrder));
+            var tableDef = provider.GetTableDefinition(typeof(EnumNameConstantOrder))!;
 
-            var stateColumn = tableDef.GetColumn(nameof(EnumNameConstantOrder.State));
+            var stateColumn = tableDef.GetColumn(nameof(EnumNameConstantOrder.State))!;
             Assert.Equal(ConstFilterState.Enabled, stateColumn.Constant);
             Assert.NotNull(tableDef.ConstFilter);
         }
@@ -87,9 +87,9 @@ namespace LiteOrm.Common.UnitTests
         {
             var provider = CreateProvider();
 
-            var tableDef = provider.GetTableDefinition(typeof(EnumIntConstantOrder));
+            var tableDef = provider.GetTableDefinition(typeof(EnumIntConstantOrder))!;
 
-            var stateColumn = tableDef.GetColumn(nameof(EnumIntConstantOrder.State));
+            var stateColumn = tableDef.GetColumn(nameof(EnumIntConstantOrder.State))!;
             Assert.Equal(ConstFilterState.Enabled, stateColumn.Constant);
             Assert.NotNull(tableDef.ConstFilter);
         }
@@ -99,9 +99,9 @@ namespace LiteOrm.Common.UnitTests
         {
             var provider = CreateProvider();
 
-            var tableDef = provider.GetTableDefinition(typeof(EnumMemberConstantOrder));
+            var tableDef = provider.GetTableDefinition(typeof(EnumMemberConstantOrder))!;
 
-            var stateColumn = tableDef.GetColumn(nameof(EnumMemberConstantOrder.State));
+            var stateColumn = tableDef.GetColumn(nameof(EnumMemberConstantOrder.State))!;
             Assert.Equal(ConstFilterState.Enabled, stateColumn.Constant);
             Assert.NotNull(tableDef.ConstFilter);
         }
@@ -111,9 +111,9 @@ namespace LiteOrm.Common.UnitTests
         {
             var provider = CreateProvider();
 
-            var tableDef = provider.GetTableDefinition(typeof(IntStringConstantOrder));
+            var tableDef = provider.GetTableDefinition(typeof(IntStringConstantOrder))!;
 
-            var statusColumn = tableDef.GetColumn(nameof(IntStringConstantOrder.Status));
+            var statusColumn = tableDef.GetColumn(nameof(IntStringConstantOrder.Status))!;
             Assert.Equal(1, statusColumn.Constant);
             Assert.NotNull(tableDef.ConstFilter);
         }
@@ -123,9 +123,9 @@ namespace LiteOrm.Common.UnitTests
         {
             var provider = CreateProvider();
 
-            var tableDef = provider.GetTableDefinition(typeof(BoolConstantOrder));
+            var tableDef = provider.GetTableDefinition(typeof(BoolConstantOrder))!;
 
-            var deletedColumn = tableDef.GetColumn(nameof(BoolConstantOrder.IsDeleted));
+            var deletedColumn = tableDef.GetColumn(nameof(BoolConstantOrder.IsDeleted))!;
             Assert.Equal(false, deletedColumn.Constant);
             Assert.NotNull(tableDef.ConstFilter);
         }
@@ -135,51 +135,33 @@ namespace LiteOrm.Common.UnitTests
         {
             var provider = CreateProvider();
 
-            var tableView = provider.GetTableView(typeof(ConstFilterJoinOrder));
-            var joinedTable = Assert.Single(tableView.JoinedTables);
+            var tableView = provider.GetTableView(typeof(ConstFilterJoinOrder))!;
+            var joinedTable = Assert.Single(tableView.JoinedTables!);
 
             Assert.NotNull(joinedTable.ConstFilter);
 
-            TableInfoProvider currentProvider = TableInfoProvider.Default;
+            TableInfoProvider currentProvider = TableInfoProvider.Instance;
             try
             {
-                TableInfoProvider.Default = provider;
+                TableInfoProvider.Set(() => provider);
                 var context = new SqlBuildContext(tableView, "T", null) { SingleTable = false };
                 context.AddTableAlias(joinedTable.Name, joinedTable.TableDefinition);
                 var sql = joinedTable.ConstFilter.ToPreparedSql(context, SqlBuilder.Instance);
 
-                Assert.Contains(joinedTable.Name, sql.Sql);
+                Assert.Contains(joinedTable.Name!, sql.Sql);
                 Assert.Contains("State", sql.Sql);
                 Assert.Single(sql.Params);
                 Assert.Equal(ConstFilterState.Enabled, sql.Params[0].Value);
             }
             finally
             {
-                TableInfoProvider.Default = currentProvider;
+                TableInfoProvider.Set(() => currentProvider);
             }
         }
 
         private static AttributeTableInfoProvider CreateProvider()
         {
-            var sqlBuilderFactory = new Mock<ISqlBuilderFactory>();
-            sqlBuilderFactory
-                .Setup(factory => factory.GetSqlBuilder(It.IsAny<Type>(), It.IsAny<string>()))
-                .Returns(SqlBuilder.Instance);
-
-            var dataSourceProvider = new Mock<IDataSourceProvider>();
-            dataSourceProvider.SetupGet(provider => provider.DefaultDataSourceName).Returns("default");
-            dataSourceProvider
-                .Setup(provider => provider.GetDataSource(It.IsAny<string>()))
-                .Returns(new DataSourceConfig
-                {
-                    Name = "default",
-                    Provider = typeof(DbConnection).AssemblyQualifiedName!
-                });
-
-            var services = new ServiceCollection();
-            services.AddSingleton(sqlBuilderFactory.Object);
-            services.AddSingleton(dataSourceProvider.Object);
-            return new AttributeTableInfoProvider(services.BuildServiceProvider());
+            return new AttributeTableInfoProvider();
         }
 
         [Table("Orders")]

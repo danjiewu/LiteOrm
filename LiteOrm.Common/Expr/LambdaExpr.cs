@@ -10,7 +10,7 @@ namespace LiteOrm.Common
     [JsonConverter(typeof(ExprJsonConverterFactory))]
     public sealed class LambdaExpr : LogicExpr
     {
-        private LogicExpr _expr;
+        private LogicExpr? _expr;
 
         /// <summary>
         /// 无参构造函数。
@@ -31,7 +31,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取 Lambda 表达式。
         /// </summary>
-        public LambdaExpression Expression
+        public LambdaExpression? Expression
         {
             get;
         }
@@ -39,18 +39,18 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取转换后的表达式对象。
         /// </summary>
-        public LogicExpr InnerExpr
+        public LogicExpr? InnerExpr
         {
             get
             {
-                return _expr ?? (_expr = new LambdaExprConverter(Expression).ToLogicExpr());
+                return _expr ?? (_expr = new LambdaExprConverter(Expression!).ToLogicExpr());
             }
         }
 
         /// <inheritdoc/>
         public override string ToString()
         {
-            return Expression.ToString();
+            return Expression!.ToString();
         }
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace LiteOrm.Common
         }
 
         /// <inheritdoc/>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(this, obj)) return true;
             if (obj is not LambdaExpr es) return false;
@@ -86,10 +86,10 @@ namespace LiteOrm.Common
             return OrderedHashCodes(GetType().GetHashCode(), GetComparableInnerExpr()?.GetHashCode() ?? 0);
         }
 
-        private LogicExpr GetComparableInnerExpr()
+        private LogicExpr? GetComparableInnerExpr()
         {
             if (_expr != null) return _expr;
-            return Expression == null ? null : (_expr = new LambdaExprConverter(Expression).ToLogicExpr());
+            return Expression == null ? null : (_expr = new LambdaExprConverter(Expression!).ToLogicExpr());
         }
     }
 }

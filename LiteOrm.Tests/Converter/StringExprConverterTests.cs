@@ -12,10 +12,10 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Parse_WithNullText_ReturnsEqualNullExpression()
         {
-            var expr = StringExprConverter.Parse(GetProperty(nameof(TestEntity.Name)), null);
+            var expr = StringExprConverter.Parse(GetProperty(nameof(TestEntity.Name)), null!);
 
             Assert.Equal(LogicOperator.Equal, expr.Operator);
-            Assert.Equal("Name", ((PropertyExpr)expr.Left).PropertyName);
+            Assert.Equal("Name", ((PropertyExpr)expr.Left!).PropertyName);
             Assert.True(expr.Right is null || expr.Right is ValueExpr { Value: null });
         }
 
@@ -25,14 +25,14 @@ namespace LiteOrm.Common.UnitTests
             var expr = StringExprConverter.Parse(GetProperty(nameof(TestEntity.Age)), ">18");
 
             Assert.Equal(LogicOperator.GreaterThan, expr.Operator);
-            Assert.Equal(18, ((ValueExpr)expr.Right).Value);
+            Assert.Equal(18, ((ValueExpr)expr.Right!).Value);
         }
 
         [Fact]
         public void Parse_WithCommaSeparatedText_ReturnsInExpression()
         {
             var expr = StringExprConverter.Parse(GetProperty(nameof(TestEntity.Age)), "1,2,3");
-            var values = Assert.IsType<object[]>(((ValueExpr)expr.Right).Value);
+            var values = Assert.IsType<object[]>(((ValueExpr)expr.Right!).Value);
 
             Assert.Equal(LogicOperator.In, expr.Operator);
             Assert.Equal(new object[] { 1, 2, 3 }, values);
@@ -43,13 +43,13 @@ namespace LiteOrm.Common.UnitTests
         {
             var expr = StringExprConverter.Parse(GetProperty(nameof(TestEntity.Enabled)), "Y");
 
-            Assert.Equal(true, ((ValueExpr)expr.Right).Value);
+            Assert.Equal(true, ((ValueExpr)expr.Right!).Value);
         }
 
         [Fact]
         public void ToText_WithEqualAndNull_ReturnsEqualsPrefix()
         {
-            Assert.Equal("=", StringExprConverter.ToText(LogicOperator.Equal, null));
+            Assert.Equal("=", StringExprConverter.ToText(LogicOperator.Equal, null!));
         }
 
         [Fact]

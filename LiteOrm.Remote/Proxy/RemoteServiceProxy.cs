@@ -17,18 +17,14 @@ namespace LiteOrm.Remote
     public class RemoteServiceProxy<T> : IEntityService<T> where T : class
     {
         private readonly IEntityService<T> _proxy;
-
         /// <summary>
         /// 初始化 <see cref="RemoteServiceProxy{T}"/> 类的新实例。
         /// </summary>
-        /// <param name="interceptor">远程调用拦截器，用于拦截代理方法调用并转发到远程服务端。</param>
-        public RemoteServiceProxy(RemoteServiceInvokeInterceptor interceptor)
+        /// <param name="sp">远程调用拦截器的服务提供者，用于获取<seealso cref="RemoteServiceInvokeInterceptor"/>远程代理拦截器。</param>
+        public RemoteServiceProxy(IServiceProvider sp)
         {
-            var generator = new ProxyGenerator();
-            // 为 IEntityService<T> 接口创建无目标代理，所有调用由拦截器转发
-            _proxy = generator.CreateInterfaceProxyWithoutTarget<IEntityService<T>>(interceptor.ToInterceptor());
+            _proxy = RemoteProxyGenerator.CreateRemoteServiceProxy<IEntityService<T>>(sp);
         }
-
         /// <inheritdoc />
         public bool Insert([IdentityOut] T entity) => _proxy.Insert(entity);
 
@@ -54,7 +50,7 @@ namespace LiteOrm.Remote
         public bool DeleteID(object id, params string[] tableArgs) => _proxy.DeleteID(id, tableArgs);
 
         /// <inheritdoc />
-        public int DeleteAll(LogicExpr expr, params string[] tableArgs) => _proxy.DeleteAll(expr, tableArgs);
+        public int DeleteAll(LogicExpr? expr, params string[]? tableArgs) => _proxy.DeleteAll(expr, tableArgs);
 
         /// <inheritdoc />
         public int UpdateAll(UpdateExpr expr, params string[] tableArgs) => _proxy.UpdateAll(expr, tableArgs);

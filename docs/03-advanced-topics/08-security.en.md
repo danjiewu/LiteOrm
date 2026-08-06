@@ -179,15 +179,15 @@ Controls allowed expression types via an `ExprType` whitelist:
 // Where, OrderBy, OrderByItem, Section
 // Forbidden: SelectItem, From, Table, Function, Update, Delete
 
-// QueryOnly: allows full SELECT queries (20 types)
-// Includes all Minimum types + SelectItem, From, GroupBy, TableJoin
+// QueryOnly: allows full SELECT queries (21 types, including CommonTable/CTE)
+// Includes all Minimum types + SelectItem, From, GroupBy, TableJoin, CommonTable
 // Explicitly forbidden: Update, Delete
 ```
 
 ```csharp
 var validator = ExprValidator.CreateQueryOnly();
 
-if (validator.VisitAll(expr))
+if (ExprVisitor.Validate(validator, expr))
 {
     var results = await userService.SearchAsync(expr);
 }
@@ -210,13 +210,13 @@ Controls the execution scope of `FunctionExpr`:
 
 ```csharp
 // Production recommendation: only allow registered functions
-var validator = ExprValidatorGroup.Create(
+var validator = new ExprValidatorGroup(
     ExprValidator.CreateQueryOnly(),
     FunctionExprValidator.AllowRegisted
 );
 
 // Validate before Search
-if (!validator.VisitAll(expr))
+if (!ExprVisitor.Validate(validator, expr))
 {
     throw new UnauthorizedAccessException(
         $"Blacklisted expression found: {validator.FailedExpr}"
@@ -236,12 +236,12 @@ case FunctionPolicy.AllowRegisted:
 ### 4.4 Composite Validators
 
 ```csharp
-var validator = ExprValidatorGroup.Create(
+var validator = new ExprValidatorGroup(
     ExprValidator.CreateQueryOnly(),      // only allow query types
     FunctionExprValidator.AllowRegisted   // only allow registered functions
 );
 
-if (!validator.VisitAll(expr))
+if (!ExprVisitor.Validate(validator, expr))
 {
     // validator.FailedExpr     — node that failed
     // validator.FailedVisitor  — validator that failed
@@ -295,7 +295,7 @@ var users = await userService.SearchAsync(expr);
 2. **Supports parameterization**: The delegate signature includes `outputParams`, allowing safe passing of user values
 3. **Parameter passing**: Business parameters are passed via the `Arg` property, not concatenated into SQL
 
-If you want to use it for business scenarios such as "current-user scope filtering" or "multi-tenant filtering", read this together with [Permission Filtering](./06-permission-filtering.en.md), which focuses on **when to use runtime Expr / GenericSqlExpr versus `ConstFilter` or table routing**.
+If you want to use it for business scenarios such as "current-user scope filtering" or "multi-tenant filtering", read this together with [Permission Filtering](../06-di/02-permission-filtering.en.md), which focuses on **when to use runtime Expr / GenericSqlExpr versus `ConstFilter` or table routing**.
 
 ---
 
@@ -372,23 +372,36 @@ var expr = Prop(propName) == "value";
 
 ### 6.4 Risk of Frontend-Submitted Expr JSON
 
-When allowing frontends to construct Expr via JSON (see [Frontend Native Expr](../04-extensibility/06-frontend-native-expr.en.md)), always use validators:
+When allowing frontends to construct Expr via JSON (see [Frontend Native Expr](../04-extensibility/06-frontend-native-expr.en.md)), always use validators. The `Expr` base class is already annotated with the `[JsonConverter(typeof(ExprJsonConverterFactory))]` attribute, which auto-registers the serialization converter — just use `JsonSerializer.Deserialize<Expr>(json)` directly, no manual converter registration needed:
 
 ```csharp
-var expr = ExprJsonConvert.Deserialize(json);
-var validator = ExprValidatorGroup.Create(
+var expr = JsonSerializer.Deserialize<Expr>(json);
+var validator = new ExprValidatorGroup(
     ExprValidator.CreateQueryOnly(),
     FunctionExprValidator.AllowRegisted
 );
 
-if (!validator.VisitAll(expr))
+if (!ExprVisitor.Validate(validator, expr))
 {
     throw new UnauthorizedAccessException("Query rejected by security validator");
 }
+```
 
-// Additional recommendation: restrict to specific tables and columns
+It is also recommended to additionally restrict access to specific tables and columns. LiteOrm does not ship a built-in property-name whitelist validator; `PropertyNameValidator` must be implemented by yourself (inherit from `ExprValidator`, override `Validate` to check `PropertyExpr.PropertyName`):
+
+```csharp
+// PropertyNameValidator must be implemented by yourself; LiteOrm has no built-in property-name whitelist validator
+public class PropertyNameValidator : ExprValidator
+{
+    private readonly HashSet<string> _allowed;
+    public PropertyNameValidator(IEnumerable<string> allowedProperties)
+        => _allowed = new HashSet<string>(allowedProperties, StringComparer.OrdinalIgnoreCase);
+    public override bool Validate(Expr node)
+        => node is not PropertyExpr prop || _allowed.Contains(prop.PropertyName);
+}
+
 var propValidator = new PropertyNameValidator(new[] { "UserName", "Age", "CreateTime" });
-if (!propValidator.VisitAll(expr))
+if (!ExprVisitor.Validate(propValidator, expr))
 {
     throw new UnauthorizedAccessException("Field access denied");
 }
@@ -396,7 +409,7 @@ if (!propValidator.VisitAll(expr))
 
 ### 6.5 Coordination with Permission Filtering
 
-Security filtering should be used in conjunction with [Permission Filtering](./06-permission-filtering.en.md):
+Security filtering should be used in conjunction with [Permission Filtering](../06-di/02-permission-filtering.en.md):
 
 ```csharp
 // Before entering Search, append user scope conditions
@@ -404,7 +417,7 @@ LogicExpr permissionFilter = GetCurrentUserPermissionExpr();
 LogicExpr finalExpr = expr & permissionFilter;
 
 // Then pass through security validator
-if (!securityValidator.VisitAll(finalExpr))
+if (!ExprVisitor.Validate(securityValidator, finalExpr))
     throw new UnauthorizedAccessException();
 
 var results = await userService.SearchAsync(finalExpr);
@@ -417,7 +430,7 @@ While the Expr expression system can eliminate SQL injection at the architectura
 - **Powerful expression capabilities**: Expr supports subqueries, function calls, cross-table joins, and other complex operations. Improper use may lead to performance issues or unexpected behavior
 - **Validators are not enabled by default**: `ExprValidator` is optional. Without configuring validators, Expr can generate arbitrary SQL structures (including UPDATE, DELETE, etc.)
 - **Always configure validators in production**: Use `ExprValidator.CreateQueryOnly()` + `FunctionExprValidator.AllowRegisted` to limit expression capabilities
-- **Always validate frontend-submitted Expr**: If allowing frontends to construct Expr JSON, always use `ExprValidator` + `PropertyNameValidator` for dual validation
+- **Always validate frontend-submitted Expr**: If allowing frontends to construct Expr JSON, always use `ExprValidator` for dual validation; if you need to restrict field access, implement your own property-name whitelist validator (`PropertyNameValidator` must be implemented by yourself; LiteOrm has no built-in one)
 - **Avoid excessive dynamism**: Try to avoid dynamically constructing overly complex expression trees based on user input; keep business logic predictable
 
 ---
@@ -444,6 +457,6 @@ When using LiteOrm in production, confirm each item:
 
 - [Back to docs hub](../README.md)
 - [Function Validator](../04-extensibility/02-function-validator.en.md)
-- [Permission Filtering](./06-permission-filtering.en.md)
+- [Permission Filtering](../06-di/02-permission-filtering.en.md)
 - [Frontend Native Expr](../04-extensibility/06-frontend-native-expr.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)

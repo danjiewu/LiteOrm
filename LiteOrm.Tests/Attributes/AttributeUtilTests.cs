@@ -55,28 +55,28 @@ namespace LiteOrm.Common.UnitTests
         private class PropertyOrderTestModel
         {
             [PropertyOrder(2)]
-            public string Alpha { get; set; }
+            public string? Alpha { get; set; }
 
             [PropertyOrder(1)]
-            public string Beta { get; set; }
+            public string? Beta { get; set; }
 
             [PropertyOrder(10, After = nameof(Beta))]
-            public string Gamma { get; set; }
+            public string? Gamma { get; set; }
 
             [PropertyOrder(100, Before = nameof(Epsilon))]
-            public string Delta { get; set; }
+            public string? Delta { get; set; }
 
             [PropertyOrder(0)]
-            public string Epsilon { get; set; }
+            public string? Epsilon { get; set; }
         }
 
         private class CircularPropertyOrderTestModel
         {
             [PropertyOrder(Before = nameof(Second))]
-            public string First { get; set; }
+            public string? First { get; set; }
 
             [PropertyOrder(Before = nameof(First))]
-            public string Second { get; set; }
+            public string? Second { get; set; }
         }
     }
 }

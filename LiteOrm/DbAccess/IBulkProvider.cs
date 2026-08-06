@@ -8,20 +8,19 @@ namespace LiteOrm
     /// 批量插入提供程序接口
     /// </summary>
     /// <remarks>
-    /// IBulkProvider 定义了批量插入数据的约定，实现时需使用AutoRegister特性进行标记。
-    /// 不同的数据库系统提供了各自的批量插入机制和优化方案，例如 SQL Server 的 SqlBulkCopy、MySQL 的 LOAD DATA 等。
+    /// IBulkProvider 定义了批量插入数据的约定。不同的数据库系统提供了各自的批量插入机制和优化方案，
+    /// 例如 SQL Server 的 SqlBulkCopy、MySQL 的 LOAD DATA 等。
     /// 通过实现此接口，可以为特定的数据库系统提供最优的批量插入实现。
+    /// 实现后直接设置到对应的 <see cref="SqlBuilder.BulkProvider"/> 属性即可生效。
     /// 
     /// 主要功能：
-    /// 1. 获取对应的数据库连接类型
-    /// 2. 执行批量插入操作，将 DataTable 中的数据高效地批量插入数据库
+    /// 1. 执行批量插入操作，将 DataTable 中的数据高效地批量插入数据库
     /// 
-    /// 实现者应该为相应的数据库连接类型提供高效的批量插入实现，
+    /// 实现者应该为相应的数据库系统提供高效的批量插入实现，
     /// 通常比逐行插入具有更好的性能。
     /// </remarks>
     /// <example>
     /// <code>
-    /// [AutoRegister(Key = typeof(MySqlConnection))]
     /// public class MysqlBulkInsertProvider : IBulkProvider
     /// {  
     ///     public int BulkInsert(DataTable dt, IDbConnection dbConnection, IDbTransaction transaction)
@@ -49,6 +48,9 @@ namespace LiteOrm
     ///         return res.RowsInserted;
     ///     }
     /// }
+    /// 
+    /// // 使用方式：直接设置到 SqlBuilder 的 BulkProvider 属性
+    /// SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider = new MysqlBulkInsertProvider();
     /// </code>
     /// </example>
     public interface IBulkProvider

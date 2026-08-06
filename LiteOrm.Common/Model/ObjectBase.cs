@@ -46,7 +46,6 @@ namespace LiteOrm.Common
     /// </code>
     /// </remarks>
     [Serializable]
-    [Table]
     public abstract class ObjectBase : ICopyable, ICloneable, ILogable
     {
         // 使用 ConcurrentDictionary 代替 Dictionary + lock
@@ -80,7 +79,7 @@ namespace LiteOrm.Common
                     try
                     {
                         var value = property.GetValueFast(target);
-                        property.SetValueFast(this, value);
+                        property.SetValueFast(this, value!);
                     }
                     catch
                     {
@@ -98,7 +97,7 @@ namespace LiteOrm.Common
         /// <returns>属性值</returns>
         /// <exception cref="ArgumentException">当propertyName为null或空时抛出</exception>
         /// <exception cref="ArgumentOutOfRangeException">当属性不存在时抛出</exception>
-        public virtual object this[string propertyName]
+        public virtual object? this[string propertyName]
         {
             get
             {
@@ -122,7 +121,7 @@ namespace LiteOrm.Common
                     throw new ArgumentOutOfRangeException(nameof(propertyName),
                         $"Property '{propertyName}' not found on type {this.GetType().Name}");
 
-                property.SetValueFast(this, value);
+                property.SetValueFast(this, value!);
             }
         }
 
@@ -169,7 +168,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="target">对比对象，如果提供则只记录变化的属性</param>
         /// <returns>日志字符串</returns>
-        public virtual string ToLog(object target)
+        public virtual string ToLog(object? target)
         {
             var properties = ToLogProperties();
             if (properties is null || properties.Length == 0)
@@ -230,7 +229,7 @@ namespace LiteOrm.Common
                  .ToArray());
         }
 
-        private static void AppendProperty(StringBuilder sb, string propertyName, object value)
+        private static void AppendProperty(StringBuilder sb, string propertyName, object? value)
         {
             if (value is null || (value is string str && string.IsNullOrEmpty(str)))
                 return;
@@ -255,7 +254,7 @@ namespace LiteOrm.Common
             if (value is IFormattable formattable)
                 return formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture);
 
-            return value.ToString();
+            return value.ToString() ?? string.Empty;
         }
 
         #endregion

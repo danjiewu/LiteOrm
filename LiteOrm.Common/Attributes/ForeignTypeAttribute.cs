@@ -29,7 +29,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 别名
         /// </summary>
-        public string Alias { get; set; }
+        public string? Alias { get; set; }
 
         /// <summary>
         /// 联合查询连接类型（如 Left Join）。

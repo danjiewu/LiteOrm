@@ -15,13 +15,13 @@ namespace LiteOrm
         /// </summary>
         /// <param name="entryAssembly">入口程序集</param>
         /// <returns>所有相关的程序集集合</returns>
-        public static IEnumerable<Assembly> GetAllReferencedAssemblies(Assembly entryAssembly = null)
+        public static IEnumerable<Assembly> GetAllReferencedAssemblies(Assembly? entryAssembly = null)
         {
             var result = new HashSet<Assembly>();
             var visited = new HashSet<Assembly>();
 
             // 自动加上 LiteOrm.Common 的 Assembly
-            result.Add(typeof(AutoRegisterAttribute).Assembly);
+            result.Add(typeof(AssemblyAnalyzer).Assembly);
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -61,6 +61,7 @@ namespace LiteOrm
         private static bool IsSystemAssembly(Assembly a)
         {
             var name = a.FullName;
+            if (name is null) return false;
             return name.StartsWith("System.") ||
                    name.StartsWith("Microsoft.") ||
                    name.StartsWith("mscorlib") ||

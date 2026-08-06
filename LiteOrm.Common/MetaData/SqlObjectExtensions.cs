@@ -12,7 +12,7 @@ namespace LiteOrm.Common
         /// </summary>
         public static string ToSql(this SqlObject sqlObject, SqlBuildContext context, ISqlBuilder sqlBuilder)
         {
-            if (sqlObject == null) return null;
+            if (sqlObject == null) return null!;
             var sb = ValueStringBuilder.Create(128);
             ToSql(sqlObject, ref sb, context, sqlBuilder);
             string result = sb.ToString();
@@ -23,7 +23,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 将 SqlObject 转换为 SQL 字符串片段。
         /// </summary>
-        public static void ToSql(this SqlObject sqlObject, ref ValueStringBuilder sb, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams = null)
+        public static void ToSql(this SqlObject sqlObject, ref ValueStringBuilder sb, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>>? outputParams = null)
         {
             if (sqlObject == null) return;
 
@@ -55,11 +55,11 @@ namespace LiteOrm.Common
             }
             if (sqlObject is SqlTable sqlTable)
             {
-                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(sqlTable.Name)));
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(sqlTable.Name ?? string.Empty)));
                 return;
             }
 
-            sb.Append(sqlBuilder.ToSqlName(sqlObject.Name));
+            sb.Append(sqlBuilder.ToSqlName(sqlObject.Name ?? string.Empty));
         }
 
         /// <summary>
@@ -79,11 +79,11 @@ namespace LiteOrm.Common
                 }
                 else if (column.Table != null)
                 {
-                    sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(column.Table.Name)));
+                    sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(column.Table.Name ?? string.Empty)));
                     sb.Append('.');
                 }
             }
-            sb.Append(sqlBuilder.ToSqlName(column.Name));
+            sb.Append(sqlBuilder.ToSqlName(column.Name ?? string.Empty));
         }
 
         /// <summary>
@@ -102,28 +102,28 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, ColumnRef columnRef, SqlBuildContext context, ISqlBuilder sqlBuilder)
         {
-            var tableName = columnRef.Table?.Name ?? context.DefaultTableAliasName;
+            var tableName = columnRef.Table?.Name ?? context.DefaultTableAliasName ?? string.Empty;
             sb.Append(sqlBuilder.ToSqlName(tableName));
             sb.Append('.');
             if (columnRef.Column != null)
             {
-                sb.Append(sqlBuilder.ToSqlName(columnRef.Column.Name));
+                sb.Append(sqlBuilder.ToSqlName(columnRef.Column.Name ?? string.Empty));
             }
         }
 
         /// <summary>
         /// 处理视图表（TableView）转换为SQL片段。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, TableView tableView, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, TableView tableView, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>>? outputParams)
         {
             if (tableView == null) return;
 
-            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name)));
+            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name ?? string.Empty)));
             sb.Append(" ");
             if (tableView == context.Table)
-                sb.Append(sqlBuilder.ToSqlName(context.DefaultTableAliasName));
+                sb.Append(sqlBuilder.ToSqlName(context.DefaultTableAliasName ?? string.Empty));
             else
-                sb.Append(sqlBuilder.ToSqlName(tableView.Name));
+                sb.Append(sqlBuilder.ToSqlName(tableView.Name ?? string.Empty));
             foreach (var joined in tableView.JoinedTables)
             {
                 if (joined.Used)
@@ -136,16 +136,16 @@ namespace LiteOrm.Common
         /// <summary>
         /// 处理联合表的 SQL 生成。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, JoinedTable joined, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams)
+        private static void ToSql(ref ValueStringBuilder sb, JoinedTable joined, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>>? outputParams)
         {
             if (joined == null) return;
 
             sb.Append("\n");
             sb.Append(joined.JoinType.ToString().ToUpper());
             sb.Append(" JOIN ");
-            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joined.TableDefinition.Name)));
+            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joined.TableDefinition.Name ?? string.Empty)));
             sb.Append(" ");
-            sb.Append(sqlBuilder.ToSqlName(joined.Name));
+            sb.Append(sqlBuilder.ToSqlName(joined.Name ?? string.Empty));
             sb.Append(" ON ");
             context.AddTableAlias(joined.Name, joined.TableDefinition);
 

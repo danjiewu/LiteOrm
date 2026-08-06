@@ -50,7 +50,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void SelectExpr_ToString_WithNullSelects_DoesNotThrow()
         {
-            var select = new SelectExpr { Selects = null };
+            var select = new SelectExpr { Selects = null! };
 
             Assert.Equal("SELECT ", select.ToString());
         }
@@ -59,7 +59,7 @@ namespace LiteOrm.Common.UnitTests
         public void SelectExpr_ToString_IgnoresNullNextSelects()
         {
             var select = new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Id"));
-            select.NextSelects.Add(null);
+            select.NextSelects.Add(null!);
             select.NextSelects.Add(new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Name")) { SetType = SelectSetType.UnionAll });
 
             Assert.Equal("SELECT [Id] FROM TestUser UNION ALL SELECT [Name] FROM TestUser", select.ToString());

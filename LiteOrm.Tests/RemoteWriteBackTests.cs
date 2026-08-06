@@ -36,7 +36,7 @@ namespace LiteOrm.Tests
         {
             public string Name { get; set; } = string.Empty;
 
-            [Column(IsIdentity = true)]
+            [Column(IsPrimaryKey = true, IsIdentity = true)]
             public long Id { get; set; }
 
             public DateTime CreatedAt { get; set; }
@@ -115,11 +115,11 @@ namespace LiteOrm.Tests
         {
             public Type ReturnType { get; }
             public ToUpperNameHandler(Type returnType) { ReturnType = returnType; }
-            public object GenerateReturnValue(object argument) => argument;
-            public void WriteBack(object originalArg, object returnValue)
+            public object? GenerateReturnValue(object? argument) => argument;
+            public void WriteBack(object? originalArg, object? returnValue)
             {
-                var orig = (User)originalArg;
-                var server = (User)returnValue;
+                var orig = (User)originalArg!;
+                var server = (User)returnValue!;
                 orig.Id = server.Id;
                 orig.Name = server.Name.ToUpperInvariant();
             }
@@ -132,11 +132,11 @@ namespace LiteOrm.Tests
         {
             public Type ReturnType { get; }
             public IdOnlyHandler(Type returnType) { ReturnType = returnType; }
-            public object GenerateReturnValue(object argument) => argument;
-            public void WriteBack(object originalArg, object returnValue)
+            public object? GenerateReturnValue(object? argument) => argument;
+            public void WriteBack(object? originalArg, object? returnValue)
             {
-                var orig = (User)originalArg;
-                var server = (User)returnValue;
+                var orig = (User)originalArg!;
+                var server = (User)returnValue!;
                 orig.Id = server.Id;
             }
         }
@@ -148,15 +148,15 @@ namespace LiteOrm.Tests
         {
             public Type ReturnType { get; }
             public DeltaHandler(Type returnType) { ReturnType = returnType; }
-            public object GenerateReturnValue(object argument)
+            public object? GenerateReturnValue(object? argument)
             {
-                var u = (User)argument;
+                var u = (User)argument!;
                 return new UserDelta { Id = u.Id, CreatedAt = u.CreatedAt };
             }
-            public void WriteBack(object originalArg, object returnValue)
+            public void WriteBack(object? originalArg, object? returnValue)
             {
-                var orig = (User)originalArg;
-                var delta = (UserDelta)returnValue;
+                var orig = (User)originalArg!;
+                var delta = (UserDelta)returnValue!;
                 orig.Id = delta.Id;
                 orig.CreatedAt = delta.CreatedAt;
             }
@@ -211,7 +211,7 @@ namespace LiteOrm.Tests
             var interceptor = new RemoteServiceInvokeInterceptor(
                 provider.GetRequiredService<ILoggerFactory>(),
                 transport);
-            return new ProxyGenerator().CreateInterfaceProxyWithoutTarget<T>(interceptor.ToInterceptor());
+            return RemoteProxyGenerator.CreateRemoteServiceProxy<T>(interceptor);
         }
 
         private static IServiceProvider BuildProvider()
@@ -239,40 +239,31 @@ namespace LiteOrm.Tests
 
         /// <summary>
         /// 创建测试用 <see cref="TableInfoProvider"/>（基于 <see cref="AttributeTableInfoProvider"/>，依赖已 Mock）。
-        /// <see cref="IdentityOutAttribute"/> 通过 <see cref="TableInfoProvider.Default"/> 解析 Identity 列，
+        /// <see cref="IdentityOutAttribute"/> 通过 <see cref="TableInfoProvider.Instance"/> 解析 Identity 列，
         /// 客户端与服务端均需注册。
         /// </summary>
         private static TableInfoProvider CreateTestTableInfoProvider()
         {
-            var sqlBuilderFactory = new Mock<ISqlBuilderFactory>();
-            sqlBuilderFactory
-                .Setup(f => f.GetSqlBuilder(It.IsAny<Type>(), It.IsAny<string>()))
-                .Returns(SqlBuilder.Instance);
-
-            var dataSourceProvider = new Mock<IDataSourceProvider>();
-            dataSourceProvider.SetupGet(p => p.DefaultDataSourceName).Returns("default");
-            dataSourceProvider
-                .Setup(p => p.GetDataSource(It.IsAny<string>()))
-                .Returns(new DataSourceConfig { Name = "default", Provider = typeof(DbConnection).AssemblyQualifiedName });
-
-            var services = new ServiceCollection();
-            services.AddSingleton(sqlBuilderFactory.Object);
-            services.AddSingleton(dataSourceProvider.Object);
-            return new AttributeTableInfoProvider(services.BuildServiceProvider());
+            return new AttributeTableInfoProvider();
         }
 
         /// <summary>
-        /// 设置 <see cref="TableInfoProvider.Default"/> 的作用域，Dispose 时恢复原值。
+        /// 设置 <see cref="TableInfoProvider.Instance"/> 的作用域，Dispose 时恢复原值。
         /// </summary>
         private readonly struct TableInfoProviderScope : IDisposable
         {
             private readonly TableInfoProvider _previous;
             public TableInfoProviderScope(TableInfoProvider provider)
             {
-                _previous = TableInfoProvider.Default;
-                TableInfoProvider.Default = provider;
+                _previous = TableInfoProvider.Instance;
+                var captured = provider;
+                TableInfoProvider.Set(() => captured);
             }
-            public void Dispose() => TableInfoProvider.Default = _previous;
+            public void Dispose()
+            {
+                var captured = _previous;
+                TableInfoProvider.Set(() => captured);
+            }
         }
 
         // ========== 客户端测试：IdentityOutAttribute ==========
@@ -528,8 +519,9 @@ namespace LiteOrm.Tests
             services.AddScoped<TInterface, TImpl>();
             var provider = services.BuildServiceProvider();
 
-            var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == TypeResolverHelper.GetName(typeof(TInterface)) ? typeof(TInterface) : null);
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name == TypeResolverHelper.GetName(typeof(TInterface)) ? typeof(TInterface) : null);
 
             var dispatcher = new RemoteServiceDispatcher(
                 provider,
@@ -547,13 +539,13 @@ namespace LiteOrm.Tests
             var userArg = new User { Name = "bob", Id = 0 };
             var request = Request<IUserService>(nameof(IUserService.CreateAsync), userArg);
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
-            Assert.Single(response.OutArguments);
-            Assert.True(response.OutArguments.ContainsKey(0));
+            Assert.Single(response.OutArguments!);
+            Assert.True(response.OutArguments!.ContainsKey(0));
             // IdentityOutAttribute 仅返回 Id 值（long），而非整个 User 对象
-            Assert.Equal(123L, response.OutArguments[0]);
+            Assert.Equal(123L, response.OutArguments![0]);
         }
 
         [Fact]
@@ -564,13 +556,13 @@ namespace LiteOrm.Tests
 
             var request = Request<IUserService>(nameof(IUserService.CreateAndReturnIdAsync), new User { Name = "x" });
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Equal(999L, response.Result);
-            Assert.Single(response.OutArguments);
+            Assert.Single(response.OutArguments!);
             // IdentityOutAttribute 仅返回 Id 值
-            Assert.Equal(999L, response.OutArguments[0]);
+            Assert.Equal(999L, response.OutArguments![0]);
         }
 
         [Fact]
@@ -580,12 +572,12 @@ namespace LiteOrm.Tests
 
             var request = Request<IUserService>(nameof(IUserService.CreateDeltaAsync), new User { Name = "x" });
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
-            Assert.Single(response.OutArguments);
+            Assert.Single(response.OutArguments!);
             // DeltaHandler 生成了 UserDelta（ReturnType != User）
-            var delta = (UserDelta)response.OutArguments[0];
+            var delta = (UserDelta)response.OutArguments![0];
             Assert.Equal(88, delta.Id);
             Assert.Equal(new DateTime(2026, 5, 5), delta.CreatedAt);
         }
@@ -597,11 +589,11 @@ namespace LiteOrm.Tests
 
             var request = Request<ICopyableUserService>(nameof(ICopyableUserService.CreateAsync), new CopyableUser { Name = "x" });
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
-            Assert.Single(response.OutArguments);
-            var written = (CopyableUser)response.OutArguments[0];
+            Assert.Single(response.OutArguments!);
+            var written = (CopyableUser)response.OutArguments![0];
             Assert.Equal(100, written.Id);
             Assert.Equal("server", written.Name);
         }
@@ -620,12 +612,12 @@ namespace LiteOrm.Tests
             };
             var request = Request<IUserService>(nameof(IUserService.CreateBatchAsync), users);
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
-            Assert.Single(response.OutArguments);
+            Assert.Single(response.OutArguments!);
             // 集合模式：返回 List<long>
-            var ids = (List<long>)response.OutArguments[0];
+            var ids = (List<long>)response.OutArguments![0];
             Assert.Equal(new long[] { 100, 101, 102 }, ids);
         }
 
@@ -641,12 +633,12 @@ namespace LiteOrm.Tests
             };
             var request = Request<IUserService>(nameof(IUserService.CreateBatchDeltaAsync), users);
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
-            Assert.Single(response.OutArguments);
+            Assert.Single(response.OutArguments!);
             // DeltaHandler.ReturnType = typeof(UserDelta)，集合模式下序列化为 List<UserDelta>
-            var deltas = (List<UserDelta>)response.OutArguments[0];
+            var deltas = (List<UserDelta>)response.OutArguments![0];
             Assert.Equal(2, deltas.Count);
             Assert.Equal(200, deltas[0].Id);
             Assert.Equal(new DateTime(2026, 8, 1), deltas[0].CreatedAt);

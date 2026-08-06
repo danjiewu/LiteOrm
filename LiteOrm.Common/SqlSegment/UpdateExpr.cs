@@ -21,7 +21,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="table">源片段</param>
         /// <param name="where">筛选条件表达式</param>
-        public UpdateExpr(TableExpr table, LogicExpr where = null)
+        public UpdateExpr(TableExpr table, LogicExpr? where = null)
         {
             Table = table;
             Where = where;
@@ -30,7 +30,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置更新操作的源片段（TableExpr）
         /// </summary>
-        public TableExpr Table { get; set; }
+        public TableExpr? Table { get; set; }
 
         /// <summary>
         /// 获取片段类型，返回 Update 类型标识
@@ -45,14 +45,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置筛选条件表达式
         /// </summary>
-        public LogicExpr Where { get; set; }
+        public LogicExpr? Where { get; set; }
 
         /// <summary>
         /// 判断两个 UpdateExpr 是否相等
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is UpdateExpr other
+        public override bool Equals(object? obj) => obj is UpdateExpr other
             && Equals(Table, other.Table)
             && Sets.SequenceEqual(other.Sets)
             && Equals(Where, other.Where);
@@ -79,9 +79,9 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var u = new UpdateExpr();
-            u.Table = (TableExpr)Table?.Clone();
-            u.Where = (LogicExpr)Where?.Clone();
-            u.Sets = Sets?.Select(s => new SetItem((PropertyExpr)s.Property?.Clone(), (ValueTypeExpr)s.Value?.Clone())).ToList() ?? new List<SetItem>();
+            u.Table = Table?.Clone() as TableExpr;
+            u.Where = Where?.Clone() as LogicExpr;
+            u.Sets = Sets?.Select(s => new SetItem(s.Property?.Clone() as PropertyExpr, s.Value?.Clone() as ValueTypeExpr)).ToList() ?? new List<SetItem>();
             return u;
         }
     }
@@ -101,21 +101,21 @@ namespace LiteOrm.Common
         /// 将 SetItem 结构体实例隐式转换为包含属性表达式和值表达式的元组
         /// </summary>
         /// <param name="item">要转换的 SetItem 实例</param>
-        public static implicit operator Tuple<PropertyExpr, ValueTypeExpr>(SetItem item) => new Tuple<PropertyExpr, ValueTypeExpr>(item.Property, item.Value);
+        public static implicit operator Tuple<PropertyExpr, ValueTypeExpr>(SetItem item) => new Tuple<PropertyExpr, ValueTypeExpr>(item.Property!, item.Value!);
         /// <summary>
         /// 获取或设置要更新的字段表达式
         /// </summary>
-        public PropertyExpr Property { get; set; }
+        public PropertyExpr? Property { get; set; }
         /// <summary>
         /// 获取或设置要更新的值表达式
         /// </summary>
-        public ValueTypeExpr Value { get; set; }
+        public ValueTypeExpr? Value { get; set; }
         /// <summary>
         /// 初始化 SetItem 结构的新实例
         /// </summary>
         /// <param name="property">要更新的字段表达式</param>
         /// <param name="value">要更新的值表达式</param>
-        public SetItem(PropertyExpr property, ValueTypeExpr value)
+        public SetItem(PropertyExpr? property, ValueTypeExpr? value)
         {
             Property = property;
             Value = value;

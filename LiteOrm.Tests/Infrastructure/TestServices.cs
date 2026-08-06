@@ -1,4 +1,6 @@
+using LiteOrm;
 using LiteOrm.Common;
+using LiteOrm.DependencyInjection;
 using LiteOrm.Service;
 using LiteOrm.Tests.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +28,11 @@ namespace LiteOrm.Tests.Infrastructure
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class TestUserService : EntityService<TestUser>, ITestUserService
     {
+        public TestUserService(ObjectDAO<TestUser> objectDAO, ObjectViewDAO<TestUser> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
+
         public async Task<TestUser?> GetLatestUserAsync()
         {
             return await SearchOneAsync(
@@ -35,10 +42,29 @@ namespace LiteOrm.Tests.Infrastructure
     }
 
     /// <summary>
-    /// 提供测试部门服务的具体实现类，目前没有额外的业务逻辑，仅继承自 EntityService 来提供基本的数据访问功能。
+    /// 测试部门服务的具体实现类，目前没有额外的业务逻辑，仅继承自 EntityService 来提供基本的数据访问功能。
     /// </summary>
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class TestDepartmentService : EntityService<TestDepartment>, ITestDepartmentService
+    {
+        public TestDepartmentService(ObjectDAO<TestDepartment> objectDAO, ObjectViewDAO<TestDepartment> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
+    }
+
+    /// <summary>
+    /// 带 [AutoRegister] 的抽象基类，派生类应继承该特性并自动注册。
+    /// </summary>
+    [AutoRegister(Lifetime = Lifetime.Singleton)]
+    public abstract class BaseAutoRegisteredService
+    {
+    }
+
+    /// <summary>
+    /// 继承带 [AutoRegister] 基类的具体服务，验证基类特性继承。
+    /// </summary>
+    public class InheritedAutoRegisteredService : BaseAutoRegisteredService
     {
     }
 }

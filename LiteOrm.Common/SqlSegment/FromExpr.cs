@@ -37,7 +37,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 使用源片段重写 Source 属性，确保它始终是一个 SourceExpr 类型
         /// </summary>
-        public new SourceExpr Source { get => (SourceExpr)base.Source; set => base.Source = (SourceExpr)value; }       
+        public new SourceExpr? Source { get => base.Source as SourceExpr; set => base.Source = value; }       
 
         private List<TableJoinExpr> _joins = new List<TableJoinExpr>();
         /// <summary>
@@ -55,7 +55,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is FromExpr other)
             {
@@ -89,7 +89,7 @@ namespace LiteOrm.Common
         public override string ToString()
         {
             if (Source == null) return string.Empty;
-            return Source.ToString();
+            return Source.ToString() ?? string.Empty;
         }
 
         /// <summary>
@@ -98,8 +98,8 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var f = new FromExpr();
-            f.Source = (TableExpr)Source?.Clone();
-            f._joins = _joins?.Select(j => (TableJoinExpr)j.Clone()).ToList();
+            f.Source = Source?.Clone() as TableExpr;
+            f._joins = _joins.Select(j => (TableJoinExpr)j.Clone()).ToList();
             return f;
         }
     }

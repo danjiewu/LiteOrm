@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Service
 {
@@ -47,7 +48,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 实体对象
         /// </summary>
-        public T Entity { get; set; }
+        public T? Entity { get; set; }
     }
     /// <summary>
     /// 实体类更改接口
@@ -56,7 +57,7 @@ namespace LiteOrm.Service
     [Service]
     [ServicePermission(false)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    public interface IEntityService<T> : IEntityService
+    public interface IEntityService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : IEntityService
     {
         /// <summary>
         /// 新增实体
@@ -135,7 +136,6 @@ namespace LiteOrm.Service
     /// 非泛型实体更改基接口，定义对任意实体类型的增删改操作
     /// </summary>
     [ServicePermission(false)]
-    [AutoRegister(false)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     public interface IEntityService
     {
@@ -181,7 +181,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>删除的记录数</returns>
         [ServiceMethod]
-        int DeleteAll(LogicExpr expr, params string[] tableArgs);
+        int DeleteAll(LogicExpr? expr, params string[]? tableArgs);
         
         /// <summary>
         /// 根据UpdateExpr更新实体

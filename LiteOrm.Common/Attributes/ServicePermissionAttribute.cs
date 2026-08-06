@@ -32,6 +32,6 @@ namespace LiteOrm
         /// <summary>
         /// 允许的角色，多个角色用逗号分隔
         /// </summary>
-        public string AllowRoles { get; set; }
+        public string? AllowRoles { get; set; }
     }
 }

@@ -120,7 +120,7 @@ namespace LiteOrm.Common
                     for (int i = 0; i < cteList.Count; i++)
                     {
                         if (i > 0) sb.Append(",");
-                        sb.Append(sqlBuilder.ToSqlName(cteList[i].Alias));
+                        sb.Append(sqlBuilder.ToSqlName(cteList[i].Alias!));
                         sb.Append(" AS ");
                         ToSqlInternal(ref sb, cteList[i].Source, context, sqlBuilder, outputParams, MaxPriority);
                         sb.NewLine(0);
@@ -149,21 +149,21 @@ namespace LiteOrm.Common
                     return true;
                 }
 
-                if (!cteMap.TryGetValue(cte.Alias, out var existing))
+                if (!cteMap.TryGetValue(cte.Alias!, out var existing))
                 {
                     if (cte.Source != null)
                     {
                         // 定义节点：加入集合
-                        cteMap.Add(cte.Alias, cte);
+                        cteMap.Add(cte.Alias!, cte);
                         cteList.Add(cte);
                         // 定义已找到，从待解析集合中移除
-                        pendingRefs.Remove(cte.Alias);
+                        pendingRefs.Remove(cte.Alias!);
                     }
                     else
                     {
                         // 引用节点（Source == null）且别名未定义：
                         // 可能是递归 CTE 的自引用（定义节点在后序遍历中会稍晚到达），暂记录，不报错。
-                        pendingRefs.Add(cte.Alias);
+                        pendingRefs.Add(cte.Alias!);
                     }
                     return true;
                 }
@@ -203,18 +203,18 @@ namespace LiteOrm.Common
 
 
             string joinAlias = expr.Source.Alias ?? $"T{context.Sequence++}";
-            TableDefinition joinTable = null;
-            if (expr.Source is TableExpr tbe) joinTable = TableInfoProvider.Default.GetTableDefinition(tbe.Type);
+            TableDefinition? joinTable = null;
+            if (expr.Source is TableExpr tbe) joinTable = TableInfoProvider.Instance.GetTableDefinition(tbe.Type!);
             context.AddTableAlias(joinAlias, joinTable);
 
-            LogicExpr onExpr = expr.On;
+            LogicExpr? onExpr = expr.On;
             sb.NewLine(context.Indent);
             sb.Append((expr.JoinType).ToString().ToUpper());
             sb.Append(" JOIN ");
             if (joinTable != null)
             {
                 onExpr &= GetAliasedConstFilter(joinTable.ConstFilter, joinAlias);
-                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joinTable.Name)));
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joinTable.Name!)));
                 sb.Append(" ");
                 sb.Append(sqlBuilder.ToSqlName(joinAlias));
             }
@@ -243,15 +243,15 @@ namespace LiteOrm.Common
             if (expr.TableArgs != null && expr.TableArgs.Length > 0) context.TableArgs = expr.TableArgs;
             if (context.SingleTable)
             {
-                var tableDef = TableInfoProvider.Default.GetTableDefinition(expr.Type);
-                var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name));
+                var tableDef = TableInfoProvider.Instance.GetTableDefinition(expr.Type!);
+                var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableDef!.Name!));
                 sb.Append(tableName);
                 context.AddTableAlias(tableName, tableDef);
             }
             else
             {
-                var tableView = TableInfoProvider.Default.GetTableView(expr.Type);
-                var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name));
+                var tableView = TableInfoProvider.Instance.GetTableView(expr.Type!);
+                var tableName = sqlBuilder.ToSqlName(context.FormatTableName(tableView!.Definition.Name!));
                 bool isMain = context.Depth == 0 && context.DefaultTableAliasName is null;
                 string aliasName = expr.Alias ?? (isMain ? Constants.DefaultTableAlias : $"T{context.Sequence++}");
                 sb.Append(tableName);
@@ -296,12 +296,12 @@ namespace LiteOrm.Common
             ToSqlInternal(ref sb, expr, context, sqlBuilder, outputParams);
         }
 
-        private static void ToSqlInternal(ref ValueStringBuilder sb, Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams, int priority = RootPriority)
+        private static void ToSqlInternal(ref ValueStringBuilder sb, Expr? expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams, int priority = RootPriority)
         {
             if (expr is null) return;
-            expr = expr.Reduce();
+            expr = expr.Reduce()!;
 
-            int curPriority = GetPriority(expr);
+            int curPriority = GetPriority(expr!);
             bool needParen = curPriority < priority;
             if (needParen) sb.Append('(');
 
@@ -380,7 +380,7 @@ namespace LiteOrm.Common
         /// <param name="context">SQL 构建上下文。</param>
         /// <param name="sqlBuilder">具体数据库的构建器。</param>
         /// <param name="outputParams">参数集合。</param>
-        private static void AddSqlSegmentInternal(ref SqlValueStringBuilder sql, SqlSegment sqlSegment, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
+        private static void AddSqlSegmentInternal(ref SqlValueStringBuilder sql, SqlSegment? sqlSegment, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
         {
             if (sqlSegment is null) throw new ArgumentNullException(nameof(sqlSegment));
 
@@ -426,11 +426,11 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, LogicBinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
         {
-            string op = String.Empty;
+            string? op = String.Empty;
             bool isOppsite = expr.Operator.IsNot();
             char escapeChar = Constants.LikeEscapeChar;
             _logicOperatorSymbols.TryGetValue(expr.Operator, out op);
-            int curPriority = GetPriority(expr);
+            int curPriority = GetPriority(expr!);
             switch (expr.OriginOperator)
             {
                 case LogicOperator.In:
@@ -509,13 +509,13 @@ namespace LiteOrm.Common
                     {
                         if (expr.OriginOperator == LogicOperator.Contains)
                         {
-                            var compExpr = Expr.Func("SubString", expr.Left, expr.Right) >= 0;
+                            var compExpr = Expr.Func("SubString", expr.Left!, expr.Right!) >= 0;
                             if (isOppsite) compExpr = compExpr.Not();
                             ToSqlInternal(ref sb, compExpr, context, sqlBuilder, outputParams, curPriority);
                         }
                         else if (expr.OriginOperator == LogicOperator.StartsWith)
                         {
-                            var compExpr = Expr.Func("SubString", expr.Left, expr.Right) == 0;
+                            var compExpr = Expr.Func("SubString", expr.Left!, expr.Right!) == 0;
                             if (isOppsite) compExpr = compExpr.Not();
                             ToSqlInternal(ref sb, compExpr, context, sqlBuilder, outputParams, curPriority);
                         }
@@ -551,9 +551,9 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, ValueBinaryExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
         {
-            string op = String.Empty;
+            string? op = String.Empty;
             _valueOperatorSymbols.TryGetValue(expr.Operator, out op);
-            int curPriority = GetPriority(expr);
+            int curPriority = GetPriority(expr!);
             if (expr.Operator == ValueOperator.Concat)
             {
                 // 字符串拼接逻辑委托给具体的 sqlBuilder，因为不同数据库的语法差异很大（如 || vs CONCAT）
@@ -585,7 +585,7 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, NotExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
         {
-            int curPriority = GetPriority(expr);
+            int curPriority = GetPriority(expr!);
             sb.Append("NOT ");
             ToSqlInternal(ref sb, expr.Operand, context, sqlBuilder, outputParams, curPriority);
         }
@@ -667,30 +667,30 @@ namespace LiteOrm.Common
         /// <summary>
         /// 处理属性名称表达式，映射为数据库列名。
         /// </summary>
-        private static void ToSql(ref ValueStringBuilder sb, PropertyExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams, string aliasName = null)
+        private static void ToSql(ref ValueStringBuilder sb, PropertyExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams, string? aliasName = null)
         {
             var table = context.GetTable(expr.TableAlias);
-            var column = table?.GetColumn(expr.PropertyName);
+            var column = table?.GetColumn(expr.PropertyName!);
             var columnName = column?.Name ?? expr.PropertyName;
             if (context.SingleTable)
             {
                 // 单表模式下只需要输出列名
-                sb.Append(sqlBuilder.ToSqlName(columnName));
+                sb.Append(sqlBuilder.ToSqlName(columnName!));
             }
             else if (column is ForeignColumn foreignColumn)
             {
-                foreignColumn.TargetColumn.ToSql(ref sb, context, sqlBuilder);
+                foreignColumn.TargetColumn!.ToSql(ref sb, context, sqlBuilder);
             }
             else
             {
-                string tableAlias = expr.TableAlias ?? context.DefaultTableAliasName;
+                string? tableAlias = expr.TableAlias ?? context.DefaultTableAliasName;
                 if (!String.IsNullOrEmpty(tableAlias))
                 {
                     // 如果 PropertyExpr 中指定了 TableAlias，则使用该别名来限定列名
-                    sb.Append(sqlBuilder.ToSqlName(tableAlias));
+                    sb.Append(sqlBuilder.ToSqlName(tableAlias!));
                     sb.Append(".");
                 }
-                sb.Append(sqlBuilder.ToSqlName(columnName));
+                sb.Append(sqlBuilder.ToSqlName(columnName!));
             }
             if (aliasName != null && !String.Equals(columnName, aliasName, StringComparison.OrdinalIgnoreCase))
             {
@@ -706,23 +706,23 @@ namespace LiteOrm.Common
         {
             if (foreignExpr.Foreign == null) throw new ArgumentException("ForeignExpr.Foreign is required");
 
-            var foreignTable = TableInfoProvider.Default.GetTableView(foreignExpr.Foreign);
+            var foreignTable = TableInfoProvider.Instance.GetTableView(foreignExpr.Foreign);
             if (foreignTable == null) throw new ArgumentException($"Table info not found for type {foreignExpr.Foreign}");
 
-            string foreignAlias = string.IsNullOrEmpty(foreignExpr.Alias) ? $"T{context.Sequence++}" : foreignExpr.Alias;
-            LogicExpr joinedExpr = null;
+            string? foreignAlias = string.IsNullOrEmpty(foreignExpr.Alias) ? $"T{context.Sequence++}" : foreignExpr.Alias;
+            LogicExpr? joinedExpr = null;
             if (foreignExpr.AutoRelated && context.Table is not null)
             {
-                var mainTable = TableInfoProvider.Default.GetTableView(context.Table.DefinitionType);
+                var mainTable = TableInfoProvider.Instance.GetTableView(context.Table.DefinitionType);
                 // 首先尝试正向查找当前表与目标表之间的关联关系
-                foreach (JoinedTable joinedTable in mainTable.JoinedTables)
+                foreach (JoinedTable joinedTable in mainTable!.JoinedTables)
                 {
                     if (joinedTable.TableDefinition is null) continue;
                     if (joinedTable.TableDefinition.DefinitionType.IsAssignableFrom(foreignExpr.Foreign))
                     {
                         // 找到当前表与目标表之间的关联关系，自动生成关联条件
                         joinedExpr |= new AndExpr(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
-                            Expr.Prop(pk.Name) == Expr.Prop(fk.Table?.Name ?? context.DefaultTableAliasName, fk.Name)
+                            Expr.Prop(pk.Name!) == Expr.Prop(fk.Table?.Name ?? context.DefaultTableAliasName, fk.Name!)
                         ));
                     }
                 }
@@ -736,7 +736,7 @@ namespace LiteOrm.Common
                         {
                             // 找到当前表与目标表之间的关联关系，自动生成关联条件
                             joinedExpr |= new AndExpr(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
-                                Expr.Prop(fk.Table?.Name, fk.Name) == Expr.Prop(context.DefaultTableAliasName, pk.Name)
+                                Expr.Prop(fk.Table?.Name, fk.Name!) == Expr.Prop(context.DefaultTableAliasName, pk.Name!)
                             ));
                         }
                     }
@@ -749,9 +749,9 @@ namespace LiteOrm.Common
                 context.TableArgs = foreignExpr.TableArgs;
 
                 sb.Append("EXISTS(SELECT 1 FROM ");
-                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(foreignTable.Definition.Name)));
+                sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(foreignTable.Definition.Name!)));
                 sb.Append(" ");
-                sb.Append(sqlBuilder.ToSqlName(foreignAlias));
+                sb.Append(sqlBuilder.ToSqlName(foreignAlias!));
 
                 LogicExpr whereExpr = foreignTable.Definition.ConstFilter & joinedExpr & foreignExpr.InnerExpr;
                 sb.NewLine(context.Indent);
@@ -796,7 +796,7 @@ namespace LiteOrm.Common
         {
             int count = expr.Count;
             if (count == 0) return;
-            int curPriority = GetPriority(expr);
+            int curPriority = GetPriority(expr!);
 
             bool first = true;
             for (int i = 0; i < count; i++)
@@ -826,7 +826,7 @@ namespace LiteOrm.Common
         {
             int count = expr.Count;
             if (count == 0) return;
-            int curPriority = GetPriority(expr);
+            int curPriority = GetPriority(expr!);
             bool first = true;
             for (int i = 0; i < count; i++)
             {
@@ -911,7 +911,7 @@ namespace LiteOrm.Common
         private static void AddSqlSegment(ref SqlValueStringBuilder sql, WhereExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
         {
             AddSqlSegmentInternal(ref sql, expr.Source, context, sqlBuilder, outputParams);
-            LogicExpr whereExpr = GetContextConstFilter(context).And(expr.Where);
+            LogicExpr whereExpr = GetContextConstFilter(context).And(expr.Where!);
             if (whereExpr != null)
             {
                 if (sql.Where.Length > 0) sql.Where.Append(" AND ");
@@ -1015,9 +1015,9 @@ namespace LiteOrm.Common
             sb.NewLine(context.Indent);
             sb.Append(joined.JoinType.ToString().ToUpper());
             sb.Append(" JOIN ");
-            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joined.TableDefinition.Name)));
+            sb.Append(sqlBuilder.ToSqlName(context.FormatTableName(joined.TableDefinition.Name!)));
             sb.Append(" ");
-            sb.Append(sqlBuilder.ToSqlName(joined.Name));
+            sb.Append(sqlBuilder.ToSqlName(joined.Name!));
             sb.Append(" ON ");
 
             context.AddTableAlias(joined.Name, joined.TableDefinition);
@@ -1087,7 +1087,7 @@ namespace LiteOrm.Common
                 if (!string.IsNullOrEmpty(expr.Alias))
                 {
                     sb.Append(" AS ");
-                    sb.Append(sqlBuilder.ToSqlName(expr.Alias));
+                    sb.Append(sqlBuilder.ToSqlName(expr.Alias!));
                 }
             }
         }
@@ -1101,8 +1101,8 @@ namespace LiteOrm.Common
             {
                 context.SingleTable = true;// Delete 语句强制单表，禁止生成多表关联的 Delete 语句
                 sb.Append("DELETE FROM ");
-                ToSql(ref sb, expr.Table ?? new TableExpr(context.Table.DefinitionType), context, sqlBuilder, outputParams);
-                LogicExpr deleteWhere = expr.Where.And(GetContextConstFilter(context));
+                ToSql(ref sb, expr.Table ?? new TableExpr(context.Table!.DefinitionType), context, sqlBuilder, outputParams);
+                LogicExpr deleteWhere = expr.Where.And(GetContextConstFilter(context)!);
                 if (deleteWhere != null)
                 {
                     sb.NewLine(context.Indent);
@@ -1124,7 +1124,7 @@ namespace LiteOrm.Common
                 {
                     throw new InvalidOperationException("CTE alias cannot be null or empty when rendering a CTE reference.");
                 }
-                sb.Append(sqlBuilder.ToSqlName(expr.Alias));
+                sb.Append(sqlBuilder.ToSqlName(expr.Alias!));
             }
             else
             {
@@ -1139,7 +1139,7 @@ namespace LiteOrm.Common
                     ToSqlInternal(ref sb, expr.Source, context, sqlBuilder, outputParams);
                 }
                 sb.Append(") ");
-                sb.Append(sqlBuilder.ToSqlName(expr.Alias));
+                sb.Append(sqlBuilder.ToSqlName(expr.Alias!));
             }
         }
 
@@ -1148,10 +1148,10 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, UpdateExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
         {
-            TableExpr tableExpr = expr.Table ?? new TableExpr(context.Table.DefinitionType);
+            TableExpr tableExpr = expr.Table ?? new TableExpr(context.Table!.DefinitionType);
             if (tableExpr == null)
                 throw new ArgumentException("UpdateExpr Source is null and context Table is null, cannot determine update target.");
-            var table = TableInfoProvider.Default.GetTableDefinition(tableExpr.Type);
+            var table = TableInfoProvider.Instance.GetTableDefinition(tableExpr.Type!);
             using (context.BeginScope())
             {
                 context.SingleTable = true;// Update 语句强制单表，禁止生成多表关联的 Update 语句
@@ -1165,14 +1165,14 @@ namespace LiteOrm.Common
                     sb.NewLine(context.Indent, true);
                     var set = expr.Sets[i];
                     if (set.Property is null) throw new Exception($"SetItem.Property is null at index {i} in UpdateExpr.Sets.");
-                    SqlColumn column = table?.GetColumn(set.Property.PropertyName);
-                    if (column == null) throw new Exception($"Property \"{set.Property}\" does not exist in type \"{context.Table.DefinitionType.FullName}\".");
-                    sb.Append(sqlBuilder.ToSqlName(column.Name));
+                    SqlColumn? column = table?.GetColumn(set.Property.PropertyName!);
+                    if (column == null) throw new Exception($"Property \"{set.Property}\" does not exist in type \"{context.Table!.DefinitionType.FullName}\".");
+                    sb.Append(sqlBuilder.ToSqlName(column.Name!));
 
                     sb.Append(" = ");
                     ToSqlInternal(ref sb, set.Value, context, sqlBuilder, outputParams, AddSubtractPriority);// 赋值右侧至少按算术表达式优先级渲染，比较等更低优先级表达式会自动补括号
                 }
-                LogicExpr updateWhere = expr.Where.And(GetContextConstFilter(context));
+                LogicExpr updateWhere = expr.Where.And(GetContextConstFilter(context)!);
                 if (updateWhere != null)
                 {
                     sb.NewLine(context.Indent);
@@ -1183,12 +1183,12 @@ namespace LiteOrm.Common
         }
 
 
-        private static LogicExpr GetContextConstFilter(SqlBuildContext context)
+        private static LogicExpr? GetContextConstFilter(SqlBuildContext context)
         {
             return context.Table?.Definition?.ConstFilter;
         }
 
-        private static LogicExpr GetAliasedConstFilter(LogicExpr constFilter, string tableAlias)
+        private static LogicExpr? GetAliasedConstFilter(LogicExpr? constFilter, string tableAlias)
         {
             if (constFilter == null) return null;
             if (String.IsNullOrEmpty(tableAlias)) return constFilter;

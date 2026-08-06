@@ -63,8 +63,8 @@ namespace LiteOrm
         private int _maxPoolSize = 100;
         private readonly List<DAOContextPool> _readOnlyPools = new List<DAOContextPool>();
         private int _readOnlyIndex = 0;
-        private DatabaseSync _databaseSync;
-        private ILogger _logger;
+        private DatabaseSync? _databaseSync;
+        private ILogger? _logger;
         /// <summary>
         /// 当创建新的DAO上下文时触发的事件委托，允许外部订阅以进行自定义初始化或日志记录等操作。
         /// </summary>
@@ -74,12 +74,12 @@ namespace LiteOrm
         /// <summary>
         /// 创建新上下文时触发的事件，允许外部订阅以进行自定义初始化或日志记录等操作。
         /// </summary>
-        public event ContextCreatedHandler OnContextCreated;
+        public event ContextCreatedHandler? OnContextCreated;
 
         /// <summary>
         /// 获取或设置日志记录器。
         /// </summary>
-        public ILogger Logger { get => _logger; set => _logger = value; }
+        public ILogger? Logger { get => _logger; set => _logger = value; }
 
         /// <summary>
         /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
@@ -87,7 +87,7 @@ namespace LiteOrm
         /// <param name="providerType">数据库提供程序类型。</param>
         /// <param name="connectionString">数据库连接字符串。</param>
         /// <exception cref="ArgumentNullException">当 <paramref name="providerType"/> 或 <paramref name="connectionString"/> 为 null 时抛出。</exception>
-        public DAOContextPool(Type providerType, string connectionString)
+        public DAOContextPool(Type providerType, string? connectionString)
         {
             ProviderType = providerType ?? throw new ArgumentNullException(nameof(providerType));
             ConnectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
@@ -333,7 +333,7 @@ namespace LiteOrm
         /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
         internal async Task<DAOContext> PeekContextInternalAsync()
         {
-            DAOContext contextToUse = null;
+            DAOContext? contextToUse = null;
             lock (_poolLock)
             {
                 // 尝试从池中获取可用的上下文

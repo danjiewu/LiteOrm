@@ -1,5 +1,7 @@
-﻿using LiteOrm.Common;
+using LiteOrm;
+using LiteOrm.Common;
 using LiteOrm.Demo.Models;
+using LiteOrm.DependencyInjection;
 using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,8 +10,14 @@ namespace LiteOrm.Demo.Services
     /// <summary>
     /// 用户服务实现
     /// </summary>
+    [AutoRegister(Lifetime.Scoped)]
     public class UserService : EntityService<User, UserView>, IUserService
     {
+        public UserService(ObjectDAO<User> objectDAO, ObjectViewDAO<UserView> objectViewDAO)
+            : base(objectDAO, objectViewDAO)
+        {
+        }
+
         /// <summary>
         /// 根据用户名异步获取用户信息
         /// </summary>

@@ -27,11 +27,11 @@ namespace LiteOrm.Common
             _table = table;
         }
 
-        private TableRef _table;
+        private TableRef? _table;
         /// <summary>
         /// 列所在的表
         /// </summary>
-        public TableRef Table
+        public TableRef? Table
         {
             get { return _table; }
             internal set { _table = value; }
@@ -49,7 +49,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 确定指定的对象是否等于当前对象。
         /// </summary>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(this, obj)) return true;
             if (obj == null || obj.GetType() != GetType()) return false;

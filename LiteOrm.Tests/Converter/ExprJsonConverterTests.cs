@@ -335,7 +335,7 @@ namespace LiteOrm.Common.UnitTests
 
             var foreign = Assert.IsType<ForeignExpr>(result);
             Assert.Equal(typeof(string), foreign.Foreign);
-            Assert.Equal("Shard1", foreign.TableArgs[0]);
+            Assert.Equal("Shard1", foreign.TableArgs![0]);
         }
 
         [Fact]
@@ -540,7 +540,7 @@ namespace LiteOrm.Common.UnitTests
 
             var json = JsonSerializer.Serialize<Expr>(expr);
 
-            Assert.Equal(1, Regex.Matches(json, "\"Alias\":\"MyCTE\"").Count);
+            Assert.Single(Regex.Matches(json, "\"Alias\":\"MyCTE\""));
             Assert.Contains("\"$cte\":\"MyCTE\"", json);
 
             var result = JsonSerializer.Deserialize<Expr>(json);

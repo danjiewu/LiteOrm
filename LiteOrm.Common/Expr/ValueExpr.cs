@@ -74,7 +74,7 @@ namespace LiteOrm.Common
         /// 使用指定的值初始化 ValueExpr。
         /// </summary>
         /// <param name="value">具体的值（如数字、字符串、日期）或可枚举集合（用于 IN 子句）。</param>
-        public ValueExpr(object value)
+        public ValueExpr(object? value)
         {
             Value = value;
         }
@@ -82,7 +82,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置该表达式持有的原始对象值。
         /// </summary>
-        public new object Value { get; set; }
+        public new object? Value { get; set; }
 
         /// <summary>
         /// 指示该值是否为常量。
@@ -115,13 +115,13 @@ namespace LiteOrm.Common
                 return result;
             }
             else
-                return Value.ToString();
+                return Value.ToString() ?? "NULL";
         }
 
         /// <summary>
         /// 确定值是否相等。
         /// </summary>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(this, obj)) return true;
             if (obj is not ValueExpr vs) return false;

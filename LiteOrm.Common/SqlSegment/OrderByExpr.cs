@@ -21,7 +21,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="orderBys">排序字段元组列表，每个元组包含字段表达式和升序/降序标识</param>
-        public OrderByExpr(SqlSegment source, params OrderByItemExpr[] orderBys)
+        public OrderByExpr(SqlSegment? source, params OrderByItemExpr[] orderBys)
         {
             Source = source;
             OrderBys = orderBys?.ToList() ?? new List<OrderByItemExpr>();
@@ -42,7 +42,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is OrderByExpr other && Equals(Source, other.Source) && OrderBys.SequenceEqual(other.OrderBys);
+        public override bool Equals(object? obj) => obj is OrderByExpr other && Equals(Source, other.Source) && OrderBys.SequenceEqual(other.OrderBys);
 
         /// <summary>
         /// 获取当前对象的哈希码
@@ -58,7 +58,7 @@ namespace LiteOrm.Common
         {
             if (Source == null && (OrderBys == null || OrderBys.Count == 0)) return string.Empty;
             else if (Source == null) return $"ORDER BY {string.Join(", ", OrderBys.Where(v => v is not null))}";
-            else if (OrderBys == null || OrderBys.Count == 0) return Source.ToString();
+            else if (OrderBys == null || OrderBys.Count == 0) return Source.ToString() ?? string.Empty;
             else return $"{Source} ORDER BY {string.Join(", ", OrderBys.Where(v => v is not null))}";
         }
 
@@ -68,7 +68,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var o = new OrderByExpr();
-            o.Source = (SqlSegment)Source?.Clone();
+            o.Source = Source?.Clone() as SqlSegment;
             o.OrderBys = OrderBys?.Select(ob => (OrderByItemExpr)ob.Clone()).ToList() ?? new List<OrderByItemExpr>();
             return o;
         }

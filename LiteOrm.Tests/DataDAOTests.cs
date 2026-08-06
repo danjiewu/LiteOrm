@@ -26,7 +26,7 @@ namespace LiteOrm.Tests
 
             // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValues")).GetResultAsync(TestContext.Current.CancellationToken);
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name == "UpdateAllValues")!).GetResultAsync(TestContext.Current.CancellationToken);
             var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // 断言
@@ -88,8 +88,8 @@ namespace LiteOrm.Tests
 
             // 执行
             var updateValues = new Dictionary<string, object> { { "Age", 99 } };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name.StartsWith("BatchUpdate"))).GetResultAsync(TestContext.Current.CancellationToken);
-            var retrievedUsers = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name.StartsWith("BatchUpdate")), cancellationToken: TestContext.Current.CancellationToken);
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Name!.StartsWith("BatchUpdate"))!).GetResultAsync(TestContext.Current.CancellationToken);
+            var retrievedUsers = await viewService.SearchAsync(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("BatchUpdate")), cancellationToken: TestContext.Current.CancellationToken);
 
             // 断言
             Assert.Equal(3, affected);
@@ -112,7 +112,7 @@ namespace LiteOrm.Tests
                 { "Age", 99 },
                 { "Name", "UpdatedName" }
             };
-            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Id == user.Id)).GetResultAsync(TestContext.Current.CancellationToken);
+            int affected = await dataDao.UpdateAllValues(updateValues, Expr.Lambda<TestUser>(u => u.Id == user.Id)!).GetResultAsync(TestContext.Current.CancellationToken);
             var retrieved = await viewService.GetObjectAsync(user.Id, cancellationToken: TestContext.Current.CancellationToken);
 
             // 断言   

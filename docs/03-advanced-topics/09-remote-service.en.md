@@ -1001,7 +1001,7 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 |-----------|---------------|----------------|
 | Registration | `RegisterLiteOrm` auto-scans `[Service]` | `RegisterLiteOrmRemote` + proxy registration |
 | Invocation | Direct reflection call | Dynamic proxy interception + HTTP forwarding |
-| Transactions | `[Transaction]` AOP | Cross-process transactions not supported (see [Transactions Guide](01-transactions.en.md)) |
+| Transactions | `[Transaction]` AOP | Cross-process transactions not supported (see [Transactions Guide](../06-di/01-transactions.en.md)) |
 | `ForEachAsync` | Streaming iteration | Throws `NotSupportedException` |
 | Parameter write-back | Direct object modification | Serialized write-back via `OutArguments` |
 | Exception propagation | Original exception | `RemoteInvocationResponse.Error` carries exception info |
@@ -1024,7 +1024,7 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 
 ## Related Links
 
-- [Configuration and Registration](../01-getting-started/03-configuration-and-registration.en.md) — Full documentation for `RegisterLiteOrm` / `RegisterLiteOrmRemote`
+- [Configuration Reference](../05-reference/01-configuration-reference.en.md) — Full documentation for `RegisterLiteOrm` / `RegisterLiteOrmRemote`
 - [Expression Guide](../02-core-usage/06-expr-guide.en.md) — Lambda condition queries, also applicable to remote calls
 - [Expression Serialization](../04-extensibility/04-expr-serialization.en.md) — Serialization mechanism for `Expr` expression trees
 - [RemoteServiceDemo.cs](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/RemoteServiceDemo.cs) — 13 typical client operation scenarios

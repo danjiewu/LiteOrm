@@ -68,7 +68,7 @@ namespace LiteOrm
             for (int i = 0; i < updatableColumns.Length; i++)
             {
                 if (i > 0) sb.Append(", ");
-                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(ToSqlName(updatableColumns[i].Name!));
                 sb.Append(" = S.v");
                 sb.Append(i.ToString());
             }
@@ -112,7 +112,7 @@ namespace LiteOrm
             {
                 if (k > 0) sb.Append(" AND ");
                 sb.Append("T.");
-                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(ToSqlName(keyColumns[k].Name!));
                 sb.Append(" = S.k");
                 sb.Append(k.ToString());
             }

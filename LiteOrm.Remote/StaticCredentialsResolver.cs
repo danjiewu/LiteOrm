@@ -107,7 +107,7 @@ namespace LiteOrm.Remote
         /// </summary>
         /// <param name="body">HTTP 响应体字符串。</param>
         /// <returns>票据字符串；响应为空、非 JSON 或不含 Ticket 字段时返回 <c>null</c>。</returns>
-        private static string? ParseTicket(string? body)
+        private static string? ParseTicket(string body)
         {
             if (string.IsNullOrWhiteSpace(body)) return null;
             try

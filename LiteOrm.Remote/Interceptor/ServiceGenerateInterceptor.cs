@@ -1,21 +1,20 @@
-﻿using Castle.DynamicProxy;
-using LiteOrm.Common;
+using Castle.DynamicProxy;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 
-namespace LiteOrm.Remote
+namespace LiteOrm
 {
     /// <summary>
-    /// 使用 Scope 服务自动生成接口示例的拦截器，将接口的调用转发至服务提供者
+    /// 使用服务自动生成接口实例的拦截器，将接口的调用转发至服务提供者
     /// </summary>
-    [AutoRegister(Lifetime = Lifetime.Scoped)]
-    public class RemoteServiceGenerateInterceptor : IInterceptor
+    public class ServiceGenerateInterceptor : IInterceptor
     {
         private IServiceProvider _serviceProvider;
         /// <summary>
-        /// 初始化 <see cref="RemoteServiceGenerateInterceptor"/> 类的新实例。
+        /// 初始化 <see cref="ServiceGenerateInterceptor"/> 类的新实例。
         /// </summary>
         /// <param name="serviceProvider">服务提供者</param>
-        public RemoteServiceGenerateInterceptor(IServiceProvider serviceProvider)
+        public ServiceGenerateInterceptor(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
         }

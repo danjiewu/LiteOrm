@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.Json.Serialization;
 
@@ -19,7 +20,7 @@ namespace LiteOrm.Common
         /// 根据对象类型初始化
         /// </summary>
         /// <param name="objectType">对象类型</param>
-        public TableExpr(Type objectType)
+        public TableExpr([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType)
         {
             Type = objectType;
         }
@@ -28,18 +29,19 @@ namespace LiteOrm.Common
         /// 表表达式没有来源，因此重写 Source 属性，始终返回 null，并且设置时不执行任何操作
         /// </summary>
         [JsonIgnore]
-        public override SqlSegment Source { get => null; set => _ = value; }
+        public override SqlSegment? Source { get => null; set => _ = value; }
 
         /// <summary>
         /// 对象类型
         /// </summary>
-        public Type Type { get; set; }
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        public Type? Type { get; set; }
 
-        private string[] _tableArgs;
+        private string[]? _tableArgs;
         /// <summary>
         /// 表参数
         /// </summary>
-        public string[] TableArgs
+        public string[]? TableArgs
         {
             get => _tableArgs;
             set
@@ -65,7 +67,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is TableExpr other)
             {
@@ -77,7 +79,7 @@ namespace LiteOrm.Common
             return false;
         }
 
-        private static bool ArrayEquals(string[] a, string[] b)
+        private static bool ArrayEquals(string[]? a, string[]? b)
         {
             if (a == null || a.Length == 0) return b == null || b.Length == 0;
             if (b == null || b.Length == 0) return false;

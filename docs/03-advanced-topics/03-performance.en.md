@@ -169,30 +169,29 @@ await service.BatchDeleteAsync(inserted);
 
 You can apply this pattern directly if your business requires importing a batch of data, making batch corrections, then cleaning up.
 
-### 4.3 `IBulkProvider` / `BulkProviderFactory` (High-Performance Bulk Provider)
+### 4.3 `IBulkProvider` (High-Performance Bulk Provider)
 
-`IBulkProvider` combined with `BulkProviderFactory` provides LiteOrm's high-performance bulk operation extension (optional dependency). It significantly reduces network round trips and database load for large-scale insert/update/delete operations.
+`IBulkProvider` is LiteOrm's high-performance bulk operation extension interface (optional dependency), significantly reducing network round trips and database load for large-scale inserts.
 
 - **Use cases**: Data import, ETL, data sync, cold data backfill.
 - **Features**:
-  - Uses database-native bulk interfaces or efficient multi-value insert statements.
-  - Supports configurable batch size (`BatchSize`), concurrency (`ParallelDegree`), and transaction boundaries (`UseTransaction`).
-  - Works with transactions, supporting failure rollback or partial success strategies.
+  - Uses database-native bulk interfaces (e.g., `SqlBulkCopy`, `MySqlBulkCopy`).
+  - When no provider is set, `BatchInsert`/`BatchInsertAsync` automatically falls back to multi-value INSERT or row-by-row inserts.
 
-**Example: Bulk insert (pseudocode)**
+**How to use**: implement `IBulkProvider` and assign it directly to the `BulkProvider` property of the matching `SqlBuilder`:
 
 ```csharp
-var factory = services.GetRequiredService<BulkProviderFactory>();
-var provider = factory.GetProvider(dbConnection.GetType());
-await provider.BulkInsertAsync(ToDataTable(users), dbConnection, transaction);
+var provider = new MySqlBulkCopyProvider();
+SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider = provider;
 ```
+
+`ObjectDAO.BatchInsert` / `BatchInsertAsync` reads `SqlBuilder.BulkProvider` when executing batch inserts and calls the provider's `BulkInsert` / `BulkInsertAsync`.
 
 ### 4.3.1 MySQL `IBulkProvider` Implementation Example
 
-Below is a real `IBulkProvider` implementation (class `MySqlBulkCopyProvider`):
+Below is a real `IBulkProvider` implementation (class `MySqlBulkCopyProvider`, located in `LiteOrm.Demo`):
 
 ```csharp
-[AutoRegister(Key = typeof(MySqlConnection))]
 public class MySqlBulkCopyProvider : IBulkProvider
 {
     public async Task<int> BulkInsertAsync(
@@ -214,22 +213,27 @@ public class MySqlBulkCopyProvider : IBulkProvider
         return (await bulkCopy.WriteToServerAsync(dt).ConfigureAwait(false)).RowsInserted;
     }
 }
+
+// Enable it: assign directly to SqlBuilder.BulkProvider, no auto-registration needed
+SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider = new MySqlBulkCopyProvider();
 ```
 
 This example demonstrates two key points:
 
-- `IBulkProvider` can be auto-registered by database connection type and retrieved via `BulkProviderFactory`.
+- `IBulkProvider` takes effect simply by implementing the interface and assigning it to `SqlBuilder.BulkProvider`; the base library does no auto-registration.
 - True high-performance bulk writing typically relies on database-native capabilities rather than ORM-level loop-generated SQL.
 
 **Implementation locations in LiteOrm (reference)**:
 
-- Interface and factory: `LiteOrm.DbAccess.IBulkProvider`, `LiteOrm.DbAccess.BulkProviderFactory`
-- Default/sample implementation: `LiteOrm.Demo.Demos.MySqlBulkCopyProvider` (demonstrates how to use MySqlBulkCopy)
-- Usage point: `LiteOrm.DAO.ObjectDAO` calls `BulkProviderFactory` to get a provider when executing batch inserts
+- Interface: `LiteOrm.DbAccess.IBulkProvider`
+- Sample implementation: `LiteOrm.Demo.Demos.MySqlBulkCopyProvider` (demonstrates how to use MySqlBulkCopy)
+- Usage point: `LiteOrm.DAO.ObjectDAO` reads `SqlBuilder.BulkProvider` when executing batch inserts
 
 **Example: Bulk update (by primary key)**
 
 ```csharp
+// Get the SqlBuilder for the current data source and make sure its BulkProvider is set
+var provider = SqlBuilderFactory.Instance.GetSqlBuilder(dbConnection.GetType()).BulkProvider;
 // Convert data to update into DataTable, then call provider's BulkInsert/BulkInsertAsync or provider-supported BulkUpdate
 await provider.BulkInsertAsync(ToDataTable(usersToUpdate), dbConnection, transaction);
 ```
@@ -404,10 +408,28 @@ LiteOrm's performance advantages compared to other ORMs:
 | Update 1000 rows | ~25ms | ~126ms | ~248ms |
 | JOIN query | ~9ms | ~15ms | ~9ms |
 
+### 10.1 Test Environment
+
+The benchmark data above is based on the following configuration (per `LiteOrm.Benchmark` project source and BenchmarkDotNet reports):
+
+| Configuration | Value |
+|---------------|-------|
+| Test framework | BenchmarkDotNet v0.15.8 |
+| .NET version | .NET 10 (net10.0), runtime .NET 10.0.4 |
+| Runtime | X64 RyuJIT x86-64-v3 |
+| OS | Windows 11 (10.0.22631) |
+| CPU | 13th Gen Intel Core i5-13400F 2.50GHz (16 logical / 10 physical cores) |
+| Database | MySQL (default; switchable to SQLite or Oracle via `appsettings.json`) |
+| Test data volume | BatchCount: 10 / 100 / 1000 / 10000 rows |
+| Benchmark mode | `[MemoryDiagnoser]` + `[MediumRunJob]` |
+| Compared ORMs | LiteOrm, EF Core, Dapper, SqlSugar, FreeSql |
+
+> Full BenchmarkDotNet reports are located in `LiteOrm.Benchmark/BenchmarkDotNet.Artifacts/results/`. The table above is a simplified summary; the actual reports contain complete measurements across different BatchCount values.
+
 ## Related Links
 
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/08-associations.en.md)
-- [Transactions](./01-transactions.en.md)
+- [Transactions](../06-di/01-transactions.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
 

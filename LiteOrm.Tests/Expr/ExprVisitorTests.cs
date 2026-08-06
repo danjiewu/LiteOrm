@@ -17,7 +17,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 visited.Add($"{node.ExprType}");
                 return true;
-            }, CreateSimpleExpr(), ExprVisitOrder.PreOrder);
+            }, CreateSimpleExpr(), ExprVisitOrder.PreOrder, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(
             [
@@ -36,7 +36,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 visited.Add($"{node.ExprType}");
                 return true;
-            }, CreateSimpleExpr(), ExprVisitOrder.PostOrder);
+            }, CreateSimpleExpr(), ExprVisitOrder.PostOrder, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(
             [
@@ -55,7 +55,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 visited.Add($"{node.ExprType}");
                 return true;
-            }, CreateSimpleExpr());
+            }, CreateSimpleExpr(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(
             [
@@ -74,7 +74,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 visited.Add($"{node.ExprType}");
                 return false;
-            }, CreateSimpleExpr());
+            }, CreateSimpleExpr(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(visited);
             Assert.Equal("LogicBinary", visited[0]);
@@ -88,7 +88,7 @@ namespace LiteOrm.Common.UnitTests
             ExprVisitor.Visit(node =>
             {
                 visited.Add($"{node.ExprType}");
-            }, CreateSimpleExpr(), ExprVisitOrder.PreOrder);
+            }, CreateSimpleExpr(), ExprVisitOrder.PreOrder, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(3, visited.Count);
             Assert.Equal("LogicBinary", visited[0]);
@@ -104,7 +104,7 @@ namespace LiteOrm.Common.UnitTests
             ExprVisitor.Visit(node =>
             {
                 visited.Add($"{node.ExprType}");
-            }, CreateSimpleExpr(), ExprVisitOrder.PostOrder);
+            }, CreateSimpleExpr(), ExprVisitOrder.PostOrder, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(3, visited.Count);
             Assert.Equal("Property", visited[0]);
@@ -120,7 +120,7 @@ namespace LiteOrm.Common.UnitTests
             ExprVisitor.Visit(node =>
             {
                 visited.Add($"{node.ExprType}");
-            }, CreateSimpleExpr());
+            }, CreateSimpleExpr(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(3, visited.Count);
             Assert.Equal("LogicBinary", visited[0]);
@@ -130,7 +130,7 @@ namespace LiteOrm.Common.UnitTests
         public void Visit_Action_NullRoot_DoesNotThrow()
         {
             var visited = new List<string>();
-            var ex = Record.Exception(() => ExprVisitor.Visit(node => visited.Add("x"), null));
+            var ex = Record.Exception(() => ExprVisitor.Visit(node => visited.Add("x"), null!, cancellationToken: TestContext.Current.CancellationToken));
             Assert.Null(ex);
             Assert.Empty(visited);
         }
@@ -138,7 +138,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Visit_Action_NullVisitor_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Visit((Action<Expr>)null, CreateSimpleExpr()));
+            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Visit((Action<Expr>)null!, CreateSimpleExpr(), cancellationToken: TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -148,7 +148,7 @@ namespace LiteOrm.Common.UnitTests
             var endVisited = new List<string>();
             var visitor = new TestVisitor(beginVisited.Add, endVisited.Add);
 
-            ExprVisitor.Visit(visitor, CreateSimpleExpr());
+            ExprVisitor.Visit(visitor, CreateSimpleExpr(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(3, beginVisited.Count);
             Assert.Equal(3, endVisited.Count);
@@ -164,14 +164,14 @@ namespace LiteOrm.Common.UnitTests
         public void VisitAll_IExprNodeVisitor_NullRoot_DoesNotThrow()
         {
             var visitor = new TestVisitor(_ => { }, _ => { });
-            var ex = Record.Exception(() => ExprVisitor.Visit(visitor, null));
+            var ex = Record.Exception(() => ExprVisitor.Visit(visitor, null!, cancellationToken: TestContext.Current.CancellationToken));
             Assert.Null(ex);
         }
 
         [Fact]
         public void VisitAll_IExprNodeVisitor_NullVisitor_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Visit((IExprNodeVisitor)null, CreateSimpleExpr()));
+            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Visit((IExprNodeVisitor)null!, CreateSimpleExpr(), cancellationToken: TestContext.Current.CancellationToken));
         }
 
         [Fact]
@@ -183,7 +183,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 visited.Add($"{node.ExprType}");
                 return true;
-            }), CreateSimpleExpr());
+            }), CreateSimpleExpr(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(3, visited.Count);
             Assert.Equal("LogicBinary", visited[0]);
@@ -200,7 +200,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 visited.Add($"{node.ExprType}");
                 return false;
-            }), CreateSimpleExpr());
+            }), CreateSimpleExpr(), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Single(visited);
             Assert.Equal("LogicBinary", visited[0]);
@@ -211,7 +211,8 @@ namespace LiteOrm.Common.UnitTests
         {
             bool result = ExprVisitor.Validate(
                 new TestValidator(_ => true),
-                CreateSimpleExpr());
+                CreateSimpleExpr(),
+                cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.True(result);
         }
@@ -221,7 +222,8 @@ namespace LiteOrm.Common.UnitTests
         {
             bool result = ExprVisitor.Validate(
                 new TestValidator(_ => false),
-                CreateSimpleExpr());
+                CreateSimpleExpr(),
+                cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.False(result);
         }
@@ -229,14 +231,14 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void VisitAll_ExprValidator_NullRoot_ReturnsTrue()
         {
-            bool result = ExprVisitor.Validate(new TestValidator(_ => false), null);
+            bool result = ExprVisitor.Validate(new TestValidator(_ => false), null!, cancellationToken: TestContext.Current.CancellationToken);
             Assert.True(result);
         }
 
         [Fact]
         public void VisitAll_ExprValidator_NullValidator_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Validate((ExprValidator)null, CreateSimpleExpr()));
+            Assert.Throws<ArgumentNullException>(() => ExprVisitor.Validate((ExprValidator)null!, CreateSimpleExpr(), cancellationToken: TestContext.Current.CancellationToken));
         }
 
         private static LogicExpr CreateSimpleExpr()

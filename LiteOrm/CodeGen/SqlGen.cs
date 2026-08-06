@@ -38,18 +38,9 @@ namespace LiteOrm.CodeGen
         public string[]? TableArgs { get; set; }
 
         /// <summary>
-        /// 获取与当前实体类型关联的 SQL 构建器实例，用于生成特定数据库方言的 SQL 语句。
+        /// 获取与设置当前实体类型关联的 SQL 构建器实例，用于生成特定数据库方言的 SQL 语句，默认为 LiteOrm.SqlBuilder.Instance 实例。
         /// </summary>
-        public ISqlBuilder? SqlBuilder
-        {
-            get
-            {
-                var table = TableInfoProvider.Default.GetTableDefinition(ObjectType);
-                if (table == null) return null;
-                return SqlBuilderFactory.Instance.GetSqlBuilder(table.DataProviderType, table.DataSource);
-            }
-        }
-
+        public ISqlBuilder SqlBuilder { get; set; } = LiteOrm.SqlBuilder.Instance;
         /// <summary>
         /// 创建一个新的 <see cref="SqlBuildContext"/> 实例，用于在 SQL 生成过程中维护上下文信息。
         /// </summary>
@@ -58,7 +49,7 @@ namespace LiteOrm.CodeGen
         public SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
             if (initTable)
-                return new SqlBuildContext(TableInfoProvider.Default.GetTableView(ObjectType), Constants.DefaultTableAlias, TableArgs);
+                return new SqlBuildContext(TableInfoProvider.Instance.GetTableView(ObjectType), Constants.DefaultTableAlias, TableArgs);
             else
                 return new SqlBuildContext() { TableArgs = TableArgs };
         }
@@ -72,8 +63,8 @@ namespace LiteOrm.CodeGen
         {     
             bool isFull = expr is UpdateExpr || expr is DeleteExpr || expr is SelectExpr;
             var context = CreateSqlBuildContext(!isFull);
-            // 执行递归解析
-            return expr.ToPreparedSql(context, SqlBuilder);
+            // 执行递归解析（SqlBuilder 在 GetSqlBuilder 无匹配时为 null，此处保持原有的 null 传递行为）
+            return expr.ToPreparedSql(context, SqlBuilder!);
         }
 
         /// <summary>

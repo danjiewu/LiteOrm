@@ -53,7 +53,7 @@ namespace LiteOrm.Common.UnitTests
         public void ToString_IgnoresNullJoinItems()
         {
             var expr = new FromExpr(typeof(TestUser));
-            expr.Joins.Add(null);
+            expr.Joins.Add(null!);
             expr.Joins.Add(new TableJoinExpr(new TableExpr(typeof(TestDepartment)), null)
             {
                 JoinType = TableJoinType.Inner

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 
@@ -18,9 +19,9 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体类型。</param>
         /// <param name="query">查询条件的键值对集合。</param>
         /// <returns>生成的逻辑表达式。</returns>
-        public static LogicExpr Parse(Type objectType, IEnumerable<KeyValuePair<string, string>> query)
+        public static LogicExpr? Parse([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType, IEnumerable<KeyValuePair<string, string>> query)
         {
-            LogicExpr expr = null;
+            LogicExpr? expr = null;
             foreach (var kv in query)
             {
                 if (objectType.GetProperty(kv.Key, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) is PropertyInfo property)
@@ -39,7 +40,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型参数。</typeparam>
         /// <param name="query">查询条件的键值对集合。</param>
         /// <returns>生成的逻辑表达式。</returns>
-        public static LogicExpr Parse<T>(IEnumerable<KeyValuePair<string, string>> query)
+        public static LogicExpr? Parse<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(IEnumerable<KeyValuePair<string, string>> query)
         {
             return Parse(typeof(T), query);
         }
@@ -52,9 +53,9 @@ namespace LiteOrm.Common
         /// <param name="query">查询条件的键值对集合。</param>
         /// <param name="pagesize">每页的记录数。</param>
         /// <returns>生成的分页查询表达式。</returns>
-        public static Expr ParsePagedQuery(Type objectType, IEnumerable<KeyValuePair<string, string>> query, int pagesize = 10)
+        public static Expr ParsePagedQuery([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType, IEnumerable<KeyValuePair<string, string>> query, int pagesize = 10)
         {
-            LogicExpr expr = null;
+            LogicExpr? expr = null;
             List<OrderByItemExpr> orderBys = new List<OrderByItemExpr>();
             int startoffset = 0;
             foreach (var kv in query)
@@ -94,7 +95,7 @@ namespace LiteOrm.Common
         /// <param name="query">查询条件的键值对集合。</param>
         /// <param name="pagesize">每页的记录数。</param>
         /// <returns>生成的分页查询表达式。</returns>
-        public static Expr ParsePagedQuery<T>(IEnumerable<KeyValuePair<string, string>> query, int pagesize = 10)
+        public static Expr ParsePagedQuery<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(IEnumerable<KeyValuePair<string, string>> query, int pagesize = 10)
         {
             return ParsePagedQuery(typeof(T), query, pagesize);
         }
@@ -149,7 +150,7 @@ namespace LiteOrm.Common
             }
             if (text.IndexOf(',') >= 0)
             {
-                List<object> values = new List<object>();
+                List<object?> values = new List<object?>();
                 foreach (string value in text.Split(','))
                 {
                     values.Add(ParseValue(property, value));
@@ -165,7 +166,7 @@ namespace LiteOrm.Common
         /// <param name="property">属性描述符。</param>
         /// <param name="value">输入字符串。</param>
         /// <returns>可被属性接受的值。</returns>
-        private static object ParseValue(PropertyInfo property, string value)
+        private static object? ParseValue(PropertyInfo property, string value)
         {
             if (String.IsNullOrEmpty(value)) return null;
             if (property.PropertyType == typeof(string)) return value;
@@ -201,34 +202,34 @@ namespace LiteOrm.Common
         /// <param name="op">条件操作符。</param>
         /// <param name="value">用于比较的值。</param>
         /// <returns>生成的字符串表示形式。</returns>
-        public static string ToText(LogicOperator op, object value)
+        public static string? ToText(LogicOperator op, object value)
         {
             switch (op)
             {
                 case LogicOperator.Equal:
-                    string str = ToText(value);
-                    if (String.IsNullOrEmpty(str) || "!<>=*%$".IndexOf(str[0]) >= 0 || str.IndexOf(',') >= 0)
+                    string? str = ToText(value);
+                    if (String.IsNullOrEmpty(str) || "!<>=*%$".IndexOf(str![0]) >= 0 || str.IndexOf(',') >= 0)
                         return '=' + str;
                     else
                         return str;
                 case LogicOperator.NotEqual:
                     str = ToText(value);
-                    if (!String.IsNullOrEmpty(str) && ("<>=*%$".IndexOf(str[0]) >= 0 || str.IndexOf(',') >= 0))
+                    if (!String.IsNullOrEmpty(str) && ("<>=*%$".IndexOf(str![0]) >= 0 || str.IndexOf(',') >= 0))
                         return "!=" + str;
                     else
                         return "!" + str;
                 case LogicOperator.In:
                     List<string> values = new List<string>();
-                    foreach (object o in value as IEnumerable)
+                    foreach (object o in (IEnumerable)value!)
                     {
-                        values.Add(ToText(o));
+                        values.Add(ToText(o) ?? string.Empty);
                     }
                     return ToText(String.Join(",", values), "!<>=*%$".ToCharArray());
                 case LogicOperator.NotIn:
                     values = new List<string>();
-                    foreach (object o in value as IEnumerable)
+                    foreach (object o in (IEnumerable)value!)
                     {
-                        values.Add(ToText(o));
+                        values.Add(ToText(o) ?? string.Empty);
                     }
                     return "!" + ToText(String.Join(",", values), "<>=*%$".ToCharArray());
                 case LogicOperator.GreaterThan: return ">" + ToText(value, '=');
@@ -245,11 +246,11 @@ namespace LiteOrm.Common
             }
         }
 
-        private static string ToText(object value, params char[] escapeChars)
+        private static string? ToText(object value, params char[] escapeChars)
         {
             if (value is Enum) return ((int)value).ToString();
             else if (value is bool) return (bool)value ? "1" : "0";
-            string text = Convert.ToString(value);
+            string? text = Convert.ToString(value);
             if (String.IsNullOrEmpty(text)) return text;
             if (Array.IndexOf(escapeChars, text[0]) >= 0) return ' ' + text;
             else return text;

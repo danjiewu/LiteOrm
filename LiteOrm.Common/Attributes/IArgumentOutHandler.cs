@@ -31,13 +31,13 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="argument">参数对象（可能已被服务方法修改）。</param>
         /// <returns>需要回传的返回值。返回 null 表示跳过该参数的回写。</returns>
-        object GenerateReturnValue(object argument);
+        object? GenerateReturnValue(object? argument);
 
         /// <summary>
         /// 客户端：从服务端返回值回写到原始参数对象。
         /// </summary>
         /// <param name="originalArg">客户端原始参数对象（保持引用不变，仅更新其状态）。</param>
         /// <param name="returnValue">服务端生成的返回值（已按 <see cref="ReturnType"/> 反序列化）。</param>
-        void WriteBack(object originalArg, object returnValue);
+        void WriteBack(object? originalArg, object? returnValue);
     }
 }

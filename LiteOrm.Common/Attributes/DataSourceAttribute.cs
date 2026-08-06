@@ -21,6 +21,6 @@ namespace LiteOrm.Common
         /// <summary>
         /// 数据库连接名
         /// </summary>
-        public string ConnectionName { get; set; }
+        public string? ConnectionName { get; set; }
     }
 }

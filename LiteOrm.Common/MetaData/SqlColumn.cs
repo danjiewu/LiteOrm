@@ -25,7 +25,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 所属的表信息
         /// </summary>
-        public SqlTable Table { get; internal set; }
+        public SqlTable? Table { get; internal set; }
 
         /// <summary>
         /// 属性名
@@ -59,16 +59,16 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="target">要赋值的对象</param>
         /// <param name="value">值</param>
-        public virtual void SetValue(object target, object value)
+        public virtual void SetValue(object? target, object? value)
         {
             if (target == null) throw new ArgumentNullException("target");
             try
             {
-                Property.SetValueFast(target, value);
+                Property.SetValueFast(target, value!);
             }
             catch (Exception e)
             {
-                throw new InvalidOperationException($"Value {value} can not be assigned to {Property.DeclaringType.Name}.{Property.Name}", e);
+                throw new InvalidOperationException($"Value {value} can not be assigned to {Property.DeclaringType!.Name}.{Property.Name}", e);
             }
         }
 
@@ -78,7 +78,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="target">对象</param>
         /// <returns>值</returns>
-        public virtual object GetValue(object target)
+        public virtual object? GetValue(object? target)
         {
             if (target == null) throw new ArgumentNullException("target");
             return Property.GetValueFast(target);
@@ -87,7 +87,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 确定指定的对象是否等于当前对象。
         /// </summary>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (ReferenceEquals(this, obj)) return true;
             if (obj == null || obj.GetType() != GetType()) return false;

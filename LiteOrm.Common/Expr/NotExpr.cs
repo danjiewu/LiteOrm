@@ -17,7 +17,7 @@ namespace LiteOrm.Common
         /// 使用指定的运算对象初始化逻辑非表达式
         /// </summary>
         /// <param name="operand">要取非的逻辑表达式</param>
-        public NotExpr(LogicExpr operand)
+        public NotExpr(LogicExpr? operand)
         {
             Operand = operand;
         }
@@ -25,7 +25,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置运算对象
         /// </summary>
-        public LogicExpr Operand { get; set; }
+        public LogicExpr? Operand { get; set; }
 
         /// <summary>
         /// 返回表达式的字符串表示
@@ -43,7 +43,7 @@ namespace LiteOrm.Common
         /// </summary>
         public override Expr Clone()
         {
-            return new NotExpr((LogicExpr)Operand?.Clone());
+            return new NotExpr(Operand?.Clone() as LogicExpr);
         }
 
         /// <summary>
@@ -51,7 +51,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is NotExpr p && Equals(p.Operand, Operand);
+        public override bool Equals(object? obj) => obj is NotExpr p && Equals(p.Operand, Operand);
 
         /// <summary>
         /// 获取当前对象的哈希码

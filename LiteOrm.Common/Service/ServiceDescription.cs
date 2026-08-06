@@ -17,12 +17,12 @@ namespace LiteOrm.Service
         /// <summary>
         /// 服务名称
         /// </summary>
-        public string ServiceName { get; set; }
+        public string? ServiceName { get; set; }
 
         /// <summary>
         /// 方法名称
         /// </summary>
-        public string MethodName { get; set; }
+        public string? MethodName { get; set; }
 
         /// <summary>
         /// 日志级别，默认为Information
@@ -37,7 +37,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 参数是否可记录日志的数组
         /// </summary>
-        public bool[] ArgsLoggable { get; set; }
+        public bool[]? ArgsLoggable { get; set; }
 
         /// <summary>
         /// 是否启用事务
@@ -61,7 +61,7 @@ namespace LiteOrm.Service
         /// <summary>
         /// 允许访问的角色数组
         /// </summary>
-        public string[] AllowRoles { get; set; }
+        public string[]? AllowRoles { get; set; }
     }
 
     /// <summary>
@@ -91,7 +91,7 @@ namespace LiteOrm.Service
             {
                 desc.AllowAnonymous = permAtt.AllowAnonymous;
                 if (!string.IsNullOrEmpty(permAtt.AllowRoles))
-                    desc.AllowRoles = permAtt.AllowRoles.Split(',');
+                    desc.AllowRoles = (permAtt.AllowRoles ?? string.Empty).Split(',');
             }
 
             // 事务特性
@@ -126,7 +126,7 @@ namespace LiteOrm.Service
             }
         }
 
-        private static T GetServiceAttribute<T>(MethodInfo method) where T : Attribute
+        private static T? GetServiceAttribute<T>(MethodInfo method) where T : Attribute
         {
             return GetServiceAttributes<T>(method).FirstOrDefault();
         }

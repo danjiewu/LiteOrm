@@ -14,7 +14,7 @@ namespace LiteOrm.Common
     /// <param name="outputParams">输出参数集合</param>
     /// <param name="arg">额外参数</param>
     /// <returns>生成的SQL字符串</returns>
-    public delegate string SqlGenerateHandler(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams, object arg);
+    public delegate string? SqlGenerateHandler(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams, object? arg);
 
     /// <summary>
     /// 通过委托生成的 SQL 片段表达式类。
@@ -30,7 +30,7 @@ namespace LiteOrm.Common
         /// 使用委托构造，返回生成 SQL 时所需的动态片段字符串。
         /// </summary>
         /// <param name="key">表达式唯一键。</param>
-        public GenericSqlExpr(string key)
+        public GenericSqlExpr(string? key)
         {
             Key = key;
         }
@@ -38,14 +38,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 生成该 SQL 所需委托的内部参数。
         /// </summary>
-        public object Arg { get; set; }
+        public object? Arg { get; set; }
 
-        private SqlGenerateHandler SqlHandler => String.IsNullOrEmpty(Key) ? null : _registry[Key].SqlHandler;
+        private SqlGenerateHandler? SqlHandler => String.IsNullOrEmpty(Key) ? null : _registry[Key!].SqlHandler;
 
         /// <summary>
         /// 表达式唯一键。
         /// </summary> 
-        public string Key { get; set; }
+        public string? Key { get; set; }
 
         /// <summary>
         /// 使用预注册的SQL生成委托和内部参数生成SQL字符串。
@@ -54,7 +54,7 @@ namespace LiteOrm.Common
         /// <param name="sqlBuilder">SQL构造器 </param>
         /// <param name="outputParams">输出参数的列表</param>
         /// <returns></returns>
-        public string GenerateSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
+        public string? GenerateSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
         {
             return SqlHandler?.Invoke(context, sqlBuilder, outputParams, Arg);
         }
@@ -78,7 +78,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要与当前对象进行比较的对象。</param>
         /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is GenericSqlExpr g && g.Key == Key && Equals(g.Arg, Arg);
         }
@@ -106,7 +106,7 @@ namespace LiteOrm.Common
         private class InnerSqlExpr
         {
             public bool IsValue { get; set; }
-            public SqlGenerateHandler SqlHandler { get; set; }
+            public SqlGenerateHandler? SqlHandler { get; set; }
         }
 
         private static readonly ConcurrentDictionary<string, InnerSqlExpr> _registry = new ConcurrentDictionary<string, InnerSqlExpr>();
@@ -149,7 +149,7 @@ namespace LiteOrm.Common
         /// <param name="key">表达式唯一键。</param>
         /// <param name="arg">参数。</param>
         /// <returns>GenericSqlExpr 实例。</returns>
-        public static GenericSqlExpr Get(string key, object arg)
+        public static GenericSqlExpr Get(string key, object? arg)
         {
             var expr = Get(key);
             expr.Arg = arg;

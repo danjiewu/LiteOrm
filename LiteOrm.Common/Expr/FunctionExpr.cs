@@ -31,11 +31,11 @@ namespace LiteOrm.Common
             Args = parameters.ToList();
         }
 
-        private string _functionName;
+        private string? _functionName;
         /// <summary>
         /// 获取或设置目标 SQL 函数名称。
         /// </summary>
-        public string FunctionName
+        public string? FunctionName
         {
             get { return _functionName; }
             set
@@ -73,7 +73,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要与当前对象进行比较的对象。</param>
         /// <returns>如果指定的对象等于当前对象，则为 true；否则为 false。</returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is FunctionExpr f
                 && SqlNameEquals(f.FunctionName, FunctionName)

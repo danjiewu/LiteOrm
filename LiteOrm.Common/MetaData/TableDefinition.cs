@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace LiteOrm.Common
@@ -16,7 +17,8 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="objectType">对应的实体类型。</param>
         /// <param name="columns">列定义集合。</param>
-        internal TableDefinition(Type objectType, ICollection<ColumnDefinition> columns) :
+        public TableDefinition([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        Type objectType, ICollection<ColumnDefinition> columns) :
             base(new List<ColumnDefinition>(columns).ConvertAll<SqlColumn>(column => column))
         {
             this.ObjectType = objectType;
@@ -34,6 +36,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取对应的实体类型。
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public Type ObjectType { get; }
 
         /// <summary>
@@ -41,7 +44,7 @@ namespace LiteOrm.Common
         /// 该名称通常对应于配置文件中 ConnectionStrings 节点的名称。
         /// 若为空，则使用默认数据源。
         /// </summary>
-        public string DataSource { get; protected internal set; }
+        public string? DataSource { get; set; }
 
         /// <summary>
         /// 获取或设置该表的表结构同步模式。
@@ -49,22 +52,16 @@ namespace LiteOrm.Common
         /// 设为 <see cref="SyncTableMode.Never"/> 或 <see cref="SyncTableMode.Always"/> 时将覆盖数据源配置。
         /// 该值通常由 <see cref="TableAttribute.SyncTable"/> 映射而来。
         /// </summary>
-        public SyncTableMode SyncTable { get; protected internal set; }
-
-        /// <summary>
-        /// 获取或设置数据提供程序类型。
-        /// 例如：Microsoft.Data.SqlClient.SqlConnection
-        /// </summary>
-        public Type DataProviderType { get; protected internal set; }
+        public SyncTableMode SyncTable { get; set; }
 
         /// <summary>
         /// 获取数据库表的列定义集合。
         /// </summary>
         public new ReadOnlyCollection<ColumnDefinition> Columns { get; }
-        private ColumnDefinition _dentityColumn;
-        private ColumnDefinition[] _insertableColumns;
-        private ColumnDefinition[] _updatableColumns;
-        private ColumnDefinition _timestampColumn;
+        private ColumnDefinition? _dentityColumn;
+        private ColumnDefinition[]? _insertableColumns;
+        private ColumnDefinition[]? _updatableColumns;
+        private ColumnDefinition? _timestampColumn;
 
         /// <summary>
         /// 获取可插入的列定义数组，排除自增列和不可插入的列。
@@ -99,7 +96,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 识别列
         /// </summary>
-        public ColumnDefinition IdentityColumn
+        public ColumnDefinition? IdentityColumn
         {
             get
             {
@@ -111,7 +108,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 时间戳列（用于乐观并发控制）
         /// </summary>
-        public ColumnDefinition TimestampColumn
+        public ColumnDefinition? TimestampColumn
         {
             get
             {
@@ -123,14 +120,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置该表的固定筛选条件。
         /// </summary>
-        public LogicExpr ConstFilter { get; set; }
+        public LogicExpr? ConstFilter { get; set; }
 
         /// <summary>
         /// 根据属性名获取对应的列定义，忽略大小写。
         /// </summary>
         /// <param name="propertyName">属性名称。</param>
         /// <returns>列定义，若不存在则返回null。</returns>
-        public new ColumnDefinition GetColumn(string propertyName)
+        public new ColumnDefinition? GetColumn(string propertyName)
         {
             return base.GetColumn(propertyName) as ColumnDefinition;
         }

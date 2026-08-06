@@ -107,7 +107,7 @@ LiteOrm 现在会先收集整棵表达式树里的 CTE，再按别名做校验�
 
 递归 CTE 用于处理树形 / 层次结构数据（如组织架构、分类层级、路径查找等）。LiteOrm 根据数据库的 `ExplicitRecursive` 属性决定是否输出 `RECURSIVE` 关键字。
 
-### 编写递归 CTE
+#### 编写递归 CTE
 
 编写递归 CTE 时，需要在 CTE 的定义中引用自身的别名。可以通过创建一个只包含别名的 `CommonTableExpr` 来实现自引用：
 
@@ -139,7 +139,7 @@ var query = cteDef.With("CategoryTree")
     .Select(Prop("Id"), Prop("Name"), Prop("Level"));
 ```
 
-### 生成 SQL 的行为
+#### 生成 SQL 的行为
 
 是否在 `WITH` 后追加 `RECURSIVE` 关键字，仅取决于目标数据库的 `SqlBuilder.ExplicitRecursive` 属性：
 
@@ -251,13 +251,13 @@ var result = await dataViewDAO.Search(
 ).GetResultAsync();
 ```
 
-## 8. 相关阅读
+## 8. 相关链接
 
 - [查询总览](./04-query-overview.md)
 - [Lambda 查询指南](./05-lambda-guide.md)
 - [Expr 使用指南](./06-expr-guide.md)
 - [ExprString 使用指南](./07-exprstring-guide.md)
 - [Lambda 与 Expr 组合使用](./09-lambda-expr-mixing.md)
-- [AI 指南](../05-reference/05-ai-guide.md)
+- [AI 指南](../05-reference/04-ai-guide.md)
 - [返回文档中心](../README.md)
 

@@ -25,7 +25,7 @@ public class Oracle11gBuilder : OracleBuilder
 {
     public readonly static new Oracle11gBuilder Instance = new Oracle11gBuilder();
 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // 使用 ROW_NUMBER() OVER(...) 包装分页
     }
@@ -108,5 +108,5 @@ MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (ref ValueString
 - [返回目录](../README.md)
 - [自定义分页](../03-advanced-topics/05-custom-paging.md)
 - [表达式扩展](./01-expression-extension.md)
-- [配置与注册](../01-getting-started/03-configuration-and-registration.md)
+- [配置参考](../05-reference/01-configuration-reference.md)
 

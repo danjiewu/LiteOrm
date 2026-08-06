@@ -31,9 +31,9 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 自定义扩展字段。可用于传递额外的身份信息（如租户 ID、令牌等），
-        /// 服务端 <see cref="IRemoteAuthenticationHandler.SignInAsync"/> 可读取这些字段。
+        /// 服务端 IRemoteAuthenticationHandler.SignInAsync 可读取这些字段。
         /// </summary>
-        public Dictionary<string, string> Extensions { get; set; }
+        public Dictionary<string, string>? Extensions { get; set; }
     }
 
     /// <summary>

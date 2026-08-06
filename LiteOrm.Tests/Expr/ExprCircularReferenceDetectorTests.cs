@@ -16,7 +16,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void HasCycle_NullRoot_ReturnsFalse()
         {
-            Assert.False(CycleDetector.HasCycle(null));
+            Assert.False(CycleDetector.HasCycle(null!));
         }
 
         [Fact]
@@ -104,7 +104,7 @@ namespace LiteOrm.Common.UnitTests
         public void HasCycle_NotExpr_ReturnsFalse()
         {
             var expr = (Expr.Prop("Age") > 18).Not();
-            Assert.False(CycleDetector.HasCycle(expr));
+            Assert.False(CycleDetector.HasCycle(expr!));
         }
 
         #endregion
@@ -224,7 +224,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void FindCycle_NullRoot_ReturnsNull()
         {
-            Assert.Null(CycleDetector.FindCycle(null));
+            Assert.Null(CycleDetector.FindCycle(null!));
         }
 
         [Fact]
@@ -269,7 +269,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Detect_NullRoot_ReturnsNoCycle()
         {
-            var result = CycleDetector.Detect(null);
+            var result = CycleDetector.Detect(null!);
             Assert.False(result.HasCycle);
             Assert.Null(result.CycleNode);
             Assert.Null(result.Path);
@@ -356,7 +356,7 @@ namespace LiteOrm.Common.UnitTests
         {
             // NotExpr 作用于 LogicExpr，例如 NOT (Age > 18)
             var expr = (Expr.Prop("Age") > 18).Not();
-            var result = CycleDetector.Detect(expr);
+            var result = CycleDetector.Detect(expr!);
 
             Assert.False(result.HasCycle);
         }
@@ -453,7 +453,7 @@ namespace LiteOrm.Common.UnitTests
         private class TestUser
         {
             public int Id { get; set; }
-            public string Name { get; set; }
+            public string? Name { get; set; }
             public int Age { get; set; }
             public int DeptId { get; set; }
             public int Status { get; set; }
@@ -465,7 +465,7 @@ namespace LiteOrm.Common.UnitTests
         private class TestDepartment
         {
             public int Id { get; set; }
-            public string DeptName { get; set; }
+            public string? DeptName { get; set; }
         }
 
         #endregion

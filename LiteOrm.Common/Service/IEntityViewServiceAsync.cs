@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,7 +15,9 @@ namespace LiteOrm.Service
     [Service]
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    public interface IEntityViewServiceAsync<T> : IEntityViewServiceAsync
+    public interface IEntityViewServiceAsync<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] 
+        T> : IEntityViewServiceAsync
     {
         /// <summary>
         /// 异步获取实体
@@ -24,7 +27,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>id对应实体，若不存在则返回null</returns>
         [ServiceMethod]
-        new Task<T> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        new Task<T> GetObjectAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件获取单个实体
@@ -34,7 +37,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
         [ServiceMethod]
-        new Task<T> SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        new Task<T> SearchOneAsync(Expr? expr, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件遍历对象
@@ -45,7 +48,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>异步任务</returns>
         [ServiceMethod(false)]
-        Task ForEachAsync(Expr expr, Func<T, Task> func, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task ForEachAsync(Expr expr, Func<T, Task> func, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件获取实体列表
@@ -55,7 +58,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的实体列表</returns>
         [ServiceMethod]
-        new Task<List<T>> SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        new Task<List<T>> SearchAsync(Expr? expr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步查询符合条件的实体列表，并将结果转换为指定类型的列表。
@@ -65,7 +68,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>结果列表</returns>
         [ServiceMethod]
-        Task<List<TResult>> SearchAsAsync<TResult>(SelectExpr selectExpr = null, params string[] tableArgs);
+        Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[] tableArgs);
 
         /// <summary>
         /// 异步获取单个符合条件的实体，并将结果转换为指定类型的对象。
@@ -75,13 +78,12 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>结果对象</returns>
         [ServiceMethod]
-        Task<TResult> SearchOneAsAsync<TResult>(SelectExpr selectExpr = null, params string[] tableArgs);
+        Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[] tableArgs);
     }
 
     /// <summary>
     /// 异步版本 - 非泛型实体查询接口
     /// </summary>
-    [AutoRegister(false)]
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     public interface IEntityViewServiceAsync
@@ -93,7 +95,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>id对应实体，若不存在则返回null</returns>
-        Task<object> GetObjectAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<object> GetObjectAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步检测ID是否存在
@@ -103,7 +105,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在记录</returns>
         [ServiceMethod]
-        Task<bool> ExistsIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<bool> ExistsIDAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件检查是否存在记录
@@ -113,7 +115,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>是否存在记录</returns>
         [ServiceMethod]
-        Task<bool> ExistsAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<bool> ExistsAsync(Expr? expr, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件获取记录总数
@@ -123,7 +125,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的记录总数</returns>
         [ServiceMethod]
-        Task<int> CountAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<int> CountAsync(Expr? expr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件获取单个实体
@@ -132,7 +134,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
-        Task<object> SearchOneAsync(Expr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<object> SearchOneAsync(Expr? expr, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件获取实体列表
@@ -141,6 +143,6 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>符合条件的实体列表</returns>
-        Task<IList> SearchAsync(Expr expr = null, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<IList> SearchAsync(Expr? expr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default);
     }
 }

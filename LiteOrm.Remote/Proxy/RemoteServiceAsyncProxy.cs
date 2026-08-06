@@ -16,15 +16,13 @@ namespace LiteOrm.Remote
     public class RemoteServiceAsyncProxy<T> : IEntityServiceAsync<T> where T : class
     {
         private readonly IEntityServiceAsync<T> _proxy;
-
         /// <summary>
         /// 初始化 <see cref="RemoteServiceAsyncProxy{T}"/> 类的新实例。
         /// </summary>
-        /// <param name="interceptor">远程调用拦截器，用于拦截代理方法调用并转发到远程服务端。</param>
-        public RemoteServiceAsyncProxy(RemoteServiceInvokeInterceptor interceptor)
+        /// <param name="sp">远程调用拦截器的服务提供者，用于获取<seealso cref="RemoteServiceInvokeInterceptor"/>远程代理拦截器。</param>
+        public RemoteServiceAsyncProxy(IServiceProvider sp)
         {
-            var generator = new ProxyGenerator();
-            _proxy = generator.CreateInterfaceProxyWithoutTarget<IEntityServiceAsync<T>>(interceptor.ToInterceptor());
+            _proxy = RemoteProxyGenerator.CreateRemoteServiceProxy<IEntityServiceAsync<T>>(sp);
         }
 
         /// <inheritdoc />
@@ -56,15 +54,15 @@ namespace LiteOrm.Remote
             => _proxy.DeleteAsync(entity, cancellationToken);
 
         /// <inheritdoc />
-        public Task<bool> DeleteIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public Task<bool> DeleteIDAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default)
             => _proxy.DeleteIDAsync(id, tableArgs, cancellationToken);
 
         /// <inheritdoc />
-        public Task<int> DeleteAllAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public Task<int> DeleteAllAsync(LogicExpr? expr, string[]? tableArgs = null, CancellationToken cancellationToken = default)
             => _proxy.DeleteAllAsync(expr, tableArgs, cancellationToken);
 
         /// <inheritdoc />
-        public Task<int> UpdateAllAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default)
+        public Task<int> UpdateAllAsync(UpdateExpr expr, string[]? tableArgs = null, CancellationToken cancellationToken = default)
             => _proxy.UpdateAllAsync(expr, tableArgs, cancellationToken);
 
         /// <inheritdoc />
