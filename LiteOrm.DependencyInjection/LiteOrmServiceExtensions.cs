@@ -195,12 +195,16 @@ namespace LiteOrm.DependencyInjection
                 .AsSelf()
                 .As(typeof(IEntityService<>))
                 .As(typeof(IEntityServiceAsync<>))
+                .EnableInterfaceInterceptors()
+                .InterceptedBy(typeof(ServiceInvokeInterceptor))
                 .InstancePerLifetimeScope();
 
             builder.RegisterGeneric(typeof(EntityViewService<>))
                 .AsSelf()
                 .As(typeof(IEntityViewService<>))
                 .As(typeof(IEntityViewServiceAsync<>))
+                .EnableInterfaceInterceptors()
+                .InterceptedBy(typeof(ServiceInvokeInterceptor))
                 .InstancePerLifetimeScope();
 
             builder.RegisterGeneric(typeof(ObjectDAO<>))
@@ -441,22 +445,6 @@ namespace LiteOrm.DependencyInjection
                 registration.AutoActivate();
             }
 
-            // 检测 InterceptAttribute
-            var interceptAttribute = implementationType.GetCustomAttribute<InterceptAttribute>()
-                ?? implementationType.GetInterfaces()
-                    .Select(i => i.GetCustomAttribute<InterceptAttribute>())
-                    .FirstOrDefault(a => a is not null);
-
-            if (interceptAttribute != null)
-            {
-                // 应用 Castle DynamicProxy 拦截
-                registration.EnableInterfaceInterceptors()
-                    .InterceptedBy(interceptAttribute.InterceptorType);
-                logger?.LogDebug(
-                    "Applied interception to '{Type}' with interceptor '{Interceptor}'",
-                    implementationType.FullName, interceptAttribute.InterceptorType.FullName);
-            }
-
             // 注册服务类型
             // 注意：Autofac 中 .As() 会覆盖默认的自身注册，因此需要显式注册 AsSelf() 以保证具体类型可解析
             var serviceTypes = GetServiceTypes(implementationType, attr);
@@ -478,13 +466,36 @@ namespace LiteOrm.DependencyInjection
                 }
             }
 
-            // 当有额外的服务类型注册且未启用拦截器时，显式注册自身以保证具体类型可解析
-            // （Autofac 中 .As() 会覆盖默认的自身注册）
-            // 注意：启用 EnableInterfaceInterceptors 时不能注册非接口类型作为服务，
-            // 否则 EnsureInterfaceInterceptionApplies 会抛出异常
-            if (hasAdditionalServices && interceptAttribute == null)
+            // 检测 InterceptAttribute
+            var interceptAttribute = implementationType.GetCustomAttribute<InterceptAttribute>()
+                ?? implementationType.GetInterfaces()
+                    .Select(i => i.GetCustomAttribute<InterceptAttribute>())
+                    .FirstOrDefault(a => a is not null);
+
+            if (interceptAttribute != null)
             {
-                registration.As(implementationType);
+                // 应用 Castle DynamicProxy 拦截
+                registration.EnableInterfaceInterceptors()
+                    .InterceptedBy(interceptAttribute.InterceptorType);
+                logger?.LogDebug(
+                    "Applied interception to '{Type}' with interceptor '{Interceptor}'",
+                    implementationType.FullName, interceptAttribute.InterceptorType.FullName);
+            }
+            else if (typeof(IEntityViewService).IsAssignableFrom(implementationType) || typeof(IEntityService).IsAssignableFrom(implementationType) || typeof(IEntityViewServiceAsync).IsAssignableFrom(implementationType) || typeof(IEntityServiceAsync).IsAssignableFrom(implementationType))
+            {
+                registration.EnableInterfaceInterceptors()
+                    .InterceptedBy(typeof(ServiceInvokeInterceptor));
+                logger?.LogDebug(
+                    "Applied interception to '{Type}' with interceptor 'ServiceInvokeInterceptor'",
+                    implementationType.FullName);
+            }
+            else if (hasAdditionalServices)
+            {
+                // 当有额外的服务类型注册且未启用拦截器时，显式注册自身以保证具体类型可解析
+                // （Autofac 中 .As() 会覆盖默认的自身注册）
+                // 注意：启用 EnableInterfaceInterceptors 时不能注册非接口类型作为服务，
+                // 否则 EnsureInterfaceInterceptionApplies 会抛出异常
+                    registration.As(implementationType);
             }
         }
 
