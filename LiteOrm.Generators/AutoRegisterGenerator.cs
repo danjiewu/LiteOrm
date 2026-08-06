@@ -66,9 +66,7 @@ namespace LiteOrm.Generators
                         if (ctx.Node is not TypeDeclarationSyntax tds) return null;
                         if (ctx.SemanticModel.GetDeclaredSymbol(tds) is not INamedTypeSymbol symbol) return null;
                         if (symbol.IsStatic || symbol.IsAbstract || symbol.TypeKind != TypeKind.Class) return null;
-                        var attr = symbol.GetAttributes().FirstOrDefault(a =>
-                            a.AttributeClass != null &&
-                            a.AttributeClass.ToDisplayString() == AutoRegisterAttributeFullTypeName);
+                        var attr = GetAutoRegisterAttribute(symbol);
                         if (attr == null) return null;
                         return new Candidate { Type = symbol, Attr = attr };
                     })
@@ -106,6 +104,22 @@ namespace LiteOrm.Generators
         // ──────────────────────────────────────────────────────────────
         // 特性解析
         // ──────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 获取类型上的 <c>[AutoRegister]</c> 特性，若类型自身未声明则沿基类链向上查找
+        /// （与运行时 <c>GetCustomAttribute&lt;AutoRegisterAttribute&gt;(true)</c> 的继承语义一致）。
+        /// </summary>
+        private static AttributeData? GetAutoRegisterAttribute(INamedTypeSymbol symbol)
+        {
+            for (INamedTypeSymbol? current = symbol; current != null; current = current.BaseType)
+            {
+                var attr = current.GetAttributes().FirstOrDefault(a =>
+                    a.AttributeClass != null &&
+                    a.AttributeClass.ToDisplayString() == AutoRegisterAttributeFullTypeName);
+                if (attr != null) return attr;
+            }
+            return null;
+        }
 
         private static bool TryGetNamedArg(AttributeData attr, string name, out TypedConstant value)
         {

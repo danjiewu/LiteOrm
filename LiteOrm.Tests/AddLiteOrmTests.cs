@@ -63,6 +63,17 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public void AddLiteOrm_AutoRegister_InheritedFromBaseClass_ShouldResolve()
+        {
+            var services = CreateServices().AddLiteOrm();
+            using var provider = services.BuildServiceProvider();
+
+            var inherited = provider.GetRequiredService<InheritedAutoRegisteredService>();
+            Assert.IsType<InheritedAutoRegisteredService>(inherited);
+            Assert.Same(inherited, provider.GetRequiredService<InheritedAutoRegisteredService>());
+        }
+
+        [Fact]
         public void AddLiteOrm_AutoRegisterDisabled_ShouldNotResolveCustomServices()
         {
             var services = CreateServices()

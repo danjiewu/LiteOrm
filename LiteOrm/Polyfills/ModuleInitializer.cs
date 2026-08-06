@@ -10,7 +10,7 @@ namespace System.Runtime.CompilerServices
     /// On netstandard2.0/2.1 this is a no-op attribute.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
-    public sealed class ModuleInitializerAttribute : Attribute
+    internal sealed class ModuleInitializerAttribute : Attribute
     {
     }
 }
