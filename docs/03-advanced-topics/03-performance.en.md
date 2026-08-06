@@ -220,7 +220,7 @@ SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider =
 
 This example demonstrates two key points:
 
-- `IBulkProvider` takes effect simply by implementing the interface and assigning it to `SqlBuilder.BulkProvider`; the core library does no auto-registration.
+- `IBulkProvider` takes effect simply by implementing the interface and assigning it to `SqlBuilder.BulkProvider`; the base library does no auto-registration.
 - True high-performance bulk writing typically relies on database-native capabilities rather than ORM-level loop-generated SQL.
 
 **Implementation locations in LiteOrm (reference)**:
@@ -430,6 +430,6 @@ The benchmark data above is based on the following configuration (per `LiteOrm.B
 
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/08-associations.en.md)
-- [Transactions](../06-di/02-transactions.en.md)
+- [Transactions](../06-di/01-transactions.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
 

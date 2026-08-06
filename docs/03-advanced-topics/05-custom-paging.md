@@ -345,6 +345,6 @@ public class CustomPostgreSqlBuilder : PostgreSqlBuilder
 
 - [返回目录](../README.md)
 - [SqlBuilder 与方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
-- [配置与注册](../06-di/01-configuration-and-registration.md)
+- [配置参考](../05-reference/01-configuration-reference.md)
 - [兼容性说明](../05-reference/07-database-compatibility.md)
 

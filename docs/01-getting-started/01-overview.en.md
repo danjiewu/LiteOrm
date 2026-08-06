@@ -37,7 +37,7 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 ## 4. Recommended reading order
 
 1. [Installation](./02-installation.en.md)
-2. [Configuration and Registration](../06-di/01-configuration-and-registration.en.md) (when using `LiteOrm.DependencyInjection`)
+2. [Configuration Reference](../05-reference/01-configuration-reference.en.md) (when using `LiteOrm.DependencyInjection`)
 3. [First End-to-End Example](./05-first-example-di.en.md)
 4. [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
 5. [Query Overview](../02-core-usage/04-query-overview.en.md)
@@ -49,7 +49,7 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 
 ## 5. Project Composition and Structure
 
-LiteOrm uses a modular design that clearly separates core functionality, common components, samples, and test code. Core capability lives in `LiteOrm.Common` and `LiteOrm` (the core library); host integration and remote invocation are split into separate extension packages. The project structure is well-organized for easy maintenance and extension.
+LiteOrm uses a modular design that clearly separates core functionality, common components, samples, and test code. Core capability lives in `LiteOrm.Common` and `LiteOrm` (the base library); host integration and remote invocation are split into separate extension packages. The project structure is well-organized for easy maintenance and extension.
 
 ```text
 ├── LiteOrm.Common/          # Common components (no runtime dependencies)
@@ -62,7 +62,7 @@ LiteOrm uses a modular design that clearly separates core functionality, common 
 │   ├── Service/             # Common services
 │   ├── SqlBuilder/          # Common SQL builders
 │   └── SqlSegment/          # SQL segments
-├── LiteOrm/                 # Core library
+├── LiteOrm/                 # base library
 │   ├── Classes/             # Core classes
 │   ├── Converter/           # Converters
 │   ├── DAO/                 # Data access objects
@@ -108,18 +108,41 @@ LiteOrm uses a modular design that clearly separates core functionality, common 
 
 ### 5.1 The Five Core Projects
 
-| Project | Role | Use case |
-|-----|-----|---------|
-| `LiteOrm.Common` | Common components: mapping attributes, the `Expr` object model, `SqlSegment`, common service interfaces | Use only the low-level capabilities (mapping, expressions, DAO contracts) without any host DI integration |
-| `LiteOrm` (core library) | DAO layer, SQL generation, dialect builders, core services | Use `ObjectDAO`/`DataDAO` and other low-level access, managing connections and lifecycle yourself |
-| `LiteOrm.DependencyInjection` | Host integration: Autofac container, `RegisterLiteOrm()`, AOP interception (transactions/permissions/logging) | ASP.NET Core projects integrating via `builder.Host.RegisterLiteOrm()` |
-| `LiteOrm.Remote` | Remote client: interface dynamic proxies, serialized transport | Call remote services through local interfaces from a client project |
-| `LiteOrm.Remote.Server` | Remote server: receives and processes remote requests | Deploy the remote server alongside `LiteOrm.Remote` |
+| Project | Role | Use case | AOT Support |
+|-----|-----|---------|---------|
+| `LiteOrm.Common` | Common components: mapping attributes, the `Expr` object model, `SqlSegment`, common service interfaces | Use only the low-level capabilities (mapping, expressions, DAO contracts) without any host DI integration | ✅ |
+| `LiteOrm` (base library) | DAO layer, SQL generation, dialect builders, core services, `AddLiteOrm()` | Use `ObjectDAO`/`DataDAO` and other low-level access, managing connections and lifecycle yourself | ✅ |
+| `LiteOrm.DependencyInjection` | Host integration: Autofac container, `RegisterLiteOrm()`, AOP interception (transactions/permissions/logging) | ASP.NET Core projects integrating via `builder.Host.RegisterLiteOrm()` | ❌ |
+| `LiteOrm.Remote` | Remote client: interface dynamic proxies, serialized transport | Call remote services through local interfaces from a client project | ❌ |
+| `LiteOrm.Remote.Server` | Remote server: receives and processes remote requests | Deploy the remote server alongside `LiteOrm.Remote` | ❌ |
+
+Dependency relationships between the five core projects:
+
+```mermaid
+graph TD
+    Common[LiteOrm.Common]
+    Core[LiteOrm] -->|references| Common
+    DI[LiteOrm.DependencyInjection] -->|references| Core
+    DI -->|references| Common
+    Remote[LiteOrm.Remote] -->|references| Common
+    Server[LiteOrm.Remote.Server] -->|references| Common
+```
+
+> - `LiteOrm.Generators` is referenced at compile time by `LiteOrm.Common` and `LiteOrm` (as an Analyzer); it participates only in compilation and adds no runtime dependency.
+> - `LiteOrm.Remote.Server` additionally depends on the ASP.NET Core shared framework (`Microsoft.AspNetCore.App`).
+
+**AOT support notes:**
+- ✅ means the project's net8.0 / net10.0 targets are marked `IsAotCompatible` and run under NativeAOT and full trimming.
+- ❌ means it relies on reflection / dynamic proxies and is not declared AOT-compatible: `LiteOrm.DependencyInjection` (Autofac + Castle dynamic proxies), `LiteOrm.Remote` / `LiteOrm.Remote.Server` (dynamic type serialization).
 
 > **How to choose?**
 > - For core ORM capabilities only (mapping, queries, DAO), reference `LiteOrm` (optionally `LiteOrm.Common`) with no DI framework required.
 > - For host-level integration (Autofac, AOP transactions/permissions/logging), reference `LiteOrm.DependencyInjection`.
 > - For cross-process service calls, add `LiteOrm.Remote` and `LiteOrm.Remote.Server`.
+
+**Database support:**
+- SQL Server 2012+, Oracle 12c+, PostgreSQL, MySQL 8.0+, SQLite
+- Dameng DM, KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, GreatDB
 
 **Core Module Responsibilities:**
 
@@ -446,32 +469,7 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 
 > Note: `GetColumn(string)` is defined on `SqlTable`, not on `TableInfoProvider`.
 
-## 9. Technology Stack and Dependencies
-
-| Technology/Dependency | Version | Purpose | Project |
-|----------|------|-----|---------|
-| .NET | 8.0+ | Runtime environment | LiteOrm / LiteOrm.Common |
-| .NET Standard | 2.0+ | Cross-platform support | LiteOrm / LiteOrm.Common |
-| System.Text.Json | 10.0.5 | JSON processing | LiteOrm.Common |
-| Autofac.Extensions.DependencyInjection | 10.0.0 | Autofac container integration used by `RegisterLiteOrm()` | LiteOrm.DependencyInjection |
-| Autofac.Extras.DynamicProxy | 7.1.0 | Autofac interception support | LiteOrm.DependencyInjection |
-| Microsoft.Extensions.DependencyInjection | 10.0.0 | DI abstractions and `ServiceCollection` ecosystem | LiteOrm.DependencyInjection |
-| Castle.Core | 5.2.1 | Dynamic proxy core | LiteOrm.DependencyInjection |
-| Castle.Core.AsyncInterceptor | 2.1.0 | Async interceptor | LiteOrm.DependencyInjection |
-| Microsoft.Extensions.Hosting.Abstractions | 10.0.5 | Hosting abstractions | LiteOrm.DependencyInjection |
-| Microsoft.Extensions.Logging.Abstractions | 10.0.5 | Logging abstractions | LiteOrm.DependencyInjection / LiteOrm.Remote |
-
-> Autofac and Castle dynamic-proxy dependencies live only in `LiteOrm.DependencyInjection`. Referencing just `LiteOrm` / `LiteOrm.Common` pulls in no DI framework, keeping the core library lightweight.
-
-**Database Support:**
-- SQL Server 2012+
-- Oracle 12c+
-- PostgreSQL
-- MySQL 8.0+
-- SQLite
-- Dameng DM, KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, GreatDB
-
-## 10. Common Beginner Misconceptions
+## 9. Common Beginner Misconceptions
 
 > Here are some common misunderstandings that beginners often have. Knowing them upfront can save you time.
 
@@ -499,6 +497,6 @@ The names in attributes are the actual database names. If your C# property name 
 
 - [Back to docs hub](../README.md)
 - [Installation and Environment Requirements](./02-installation.en.md)
-- [Configuration and Registration](../06-di/01-configuration-and-registration.en.md)
+- [Configuration Reference](../05-reference/01-configuration-reference.en.md)
 - [API Index](../05-reference/02-api-index.en.md)
 - [Demo Project](../../LiteOrm.Demo/)

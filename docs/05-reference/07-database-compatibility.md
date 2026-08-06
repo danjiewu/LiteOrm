@@ -168,7 +168,7 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 
 ## 3. 批量写入能力（IBulkProvider）
 
-LiteOrm 通过 `IBulkProvider` 接口支持高性能批量写入，但**核心库不内置任何实现**——仅提供接口。
+LiteOrm 通过 `IBulkProvider` 接口支持高性能批量写入，但**基础库不内置任何实现**——仅提供接口。
 
 | 数据库 | 常见方案 | 内置实现 |
 |--------|---------|---------|
@@ -215,7 +215,7 @@ SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider =
 | SQL Server | ✅ | ❌ | ❌ | ❌ |
 | 达梦 / OceanBase / TiDB / GreatDB | ✅ | ❌ | ❌ | ❌ |
 
-> 测试项目、Demo 和 Benchmark 仅配置了 MySQL、SQLite、Oracle 三种数据库。其他数据库的 `SqlBuilder` 已在核心库中实现但未经自动化测试验证。接入这些数据库时建议优先验证分页和批量操作。
+> 测试项目、Demo 和 Benchmark 仅配置了 MySQL、SQLite、Oracle 三种数据库。其他数据库的 `SqlBuilder` 已在基础库中实现但未经自动化测试验证。接入这些数据库时建议优先验证分页和批量操作。
 
 ## 6. 文档能力与兼容性工作的对应关系
 

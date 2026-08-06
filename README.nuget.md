@@ -1,835 +1,215 @@
 # LiteOrm
 
-
-
 [![License](https://img.shields.io/github/license/danjiewu/LiteOrm.svg)](https://github.com/danjiewu/LiteOrm/blob/master/LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-LiteOrm-brightgreen)](https://github.com/danjiewu/LiteOrm)
 
-
 ---
-
-
 
 ## 📖 English Version
 
+LiteOrm is a lightweight, high-performance .NET ORM that combines micro-ORM speed (near Dapper) with full-ORM ergonomics — ideal when you need predictable performance and flexible SQL composition.
 
+### Core Features
 
-A lightweight, high-performance .NET ORM framework that combines micro-ORM speed with full-ORM ergonomics. It is a strong fit for projects that need predictable performance and flexible SQL composition.
+- **Multi-database**: native support for SQL Server, MySQL, Oracle, PostgreSQL, SQLite; built-in dialects for Dameng (DM), KingbaseES, Huawei GaussDB/openGauss, OceanBase, TiDB, GreatDB
+- **Flexible querying**: Lambda, `Expr`, or `ExprString` styles, all converging on one expression tree
+- **Automatic associations**: JOIN queries via attributes, no manual SQL
+- **Declarative transactions**: `[Transaction]` AOP transactions
+- **Dynamic sharding**: table routing via the `IArged` interface
+- **Full async support** and strong-typed generic interfaces
 
+### Requirements
 
+- **.NET 8.0+** or **.NET Standard 2.0** (.NET Framework 4.6.1+ compatible)
 
-### Table of Contents
-
-- [Core Features](#-core-features)
-
-- [Requirements](#-requirements)
-
-- [Installation](#-installation)
-
-- [Quick Start](#-quick-start)
-
-- [Key Features](#-key-features)
-
-- [Documentation & Resources](#-documentation--resources)
-
-- [Contributing](#-contributing)
-
-- [License](#-license)
-
-
-
-## 🎯 Core Features
-
-
-
-- **Ultra-Fast Performance**: Performance close to native Dapper, far exceeding EF Core
-
-- **Multi-Database Support**: Native support for SQL Server, MySQL, Oracle, PostgreSQL, SQLite; built-in dialects for domestic / compatible databases including Dameng (DM), KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, and GreatDB
-
-- **Flexible Querying**: Multiple query methods via Lambda, `Expr`, or `ExprString`
-
-- **Automatic Associations**: Implement JOIN queries via attributes without manual SQL writing
-
-- **Declarative Transactions**: AOP transaction management via `[Transaction]` attribute
-
-- **Dynamic Sharding**: Table routing via `IArged` interface
-
-- **Async Support**: Complete async/await support
-
-- **Type Safety**: Strong-typed generic interfaces with compile-time type checking
-
-
-
-## 📋 Requirements
-
-
-
-- **.NET 8.0+** or **.NET Standard 2.0** (.NET Framework 4.6.1+)
-
-- **Dependencies**: Autofac, Castle.Core
-
-
-
-## 📦 Installation
-
-
+### Installation
 
 ```bash
-
 dotnet add package LiteOrm
-
-dotnet add package LiteOrm.DependencyInjection   # required for DI registration (RegisterLiteOrm)
-
 ```
 
+`LiteOrm` transitively references `LiteOrm.Common`.
 
-
----
-
-
-
-## 🚀 Quick Start
-
-
-
-### 1. Configure Connection
-
-
-
-In `appsettings.json`:
-
-
-
-```json
-
-{
-
-    "LiteOrm": {
-
-        "Default": "DefaultConnection",
-
-        "DataSources": [
-
-            {
-
-                "Name": "DefaultConnection",
-
-                "ConnectionString": "Server=localhost;Database=TestDb;...",
-
-                "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
-
-            }
-
-        ]
-
-    }
-
-}
-
-```
-
-
-
-In `Program.cs`:
-
-
-
-**Console:**
+### Quick Start (no DI)
 
 ```csharp
-
-var host = Host.CreateDefaultBuilder(args)
-
-    .RegisterLiteOrm()
-
-    .Build();
-
-```
-
-
-
-**ASP.NET Core:**
-
-```csharp
-
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Host.RegisterLiteOrm();
-
-```
-
-
-
-### 2. Define Entity
-
-
-
-```csharp
-
+using LiteOrm;
 using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.Data.Sqlite;
 
-
-
-[Table("Users")]
-
-public class User
-
+// 1. Configure data source
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.AddDataSource(new DataSourceConfig
 {
+    Name = "DefaultConnection",
+    ConnectionString = "Data Source=LiteOrmDemo.db",
+    Provider = typeof(SqliteConnection).AssemblyQualifiedName,
+    SyncTable = true   // auto create tables (recommended during development)
+});
+dataSourceProvider.SetDefaultDataSource("DefaultConnection");
 
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+// 2. Create the connection pool factory
+var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 
-    public int Id { get; set; }
+// 3. Create a session manager and set it as current
+var sessionManager = new SessionManager(poolFactory);
+SessionManager.SetCurrent(() => sessionManager);
 
+// 4. Create DAOs / services and use them
+var objectDAO = new ObjectDAO<User>();
+var objectViewDAO = new ObjectViewDAO<User>();
+var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
-
-    [Column("UserName")]
-
-    public string UserName { get; set; }
-
-
-
-    [Column("Email")]
-
-    public string Email { get; set; }
-
-
-
-    [Column("CreateTime")]
-
-    public DateTime? CreateTime { get; set; }
-
-}
-
-```
-
-
-
-### 3. Define a service (optional)
-
-
-
-```csharp
-
-public interface IUserService :
-
-    IEntityService<User>, IEntityServiceAsync<User>
-
-{
-
-}
-
-
-
-public class UserService : EntityService<User>, IUserService
-
-{
-
-}
-
-```
-
-
-
-### 4. Use the service
-
-
-
-```csharp
-
-// Insert
-
-var user = new User { UserName = "admin", Email = "admin@test.com" };
-
+var user = new User { UserName = "admin", Age = 18 };
 await userService.InsertAsync(user);
 
-
-
-// Query
-
-var users = await userService.SearchAsync(u => u.Email.Contains("test"));
-
-
-
-// Update
-
-user.Email = "newemail@test.com";
-
-await userService.UpdateAsync(user);
-
-
-
-// Delete
-
-await userService.DeleteAsync(user);
-
-
-
-// Pagination
-
-var page = await userService.SearchAsync(
-
-    q => q.Where(u => u.CreateTime > DateTime.Today)
-
-          .OrderByDescending(u => u.CreateTime)
-
-          .Skip(0).Take(10)
-
-);
-
-```
-
-
-
-## 💡 Key Features
-
-
-
-### Lambda Queries
-
-
-
-```csharp
-
 var users = await userService.SearchAsync(u => u.Age > 18);
-
 ```
 
-Best for most day-to-day queries where readability and compile-time checking matter most.
+Data sources can also be loaded from an `IConfiguration` `LiteOrm` section via the built-in `LoadConfiguration` extension method.
 
+### DI Integration
 
-
-### `Expr` queries
-
-
+**Option 1 — plain MS DI (no Autofac / AOP), built into the core library:**
 
 ```csharp
-using static LiteOrm.Common.Expr;
+using LiteOrm;
 
-var expr = Prop("Age") > 18 & Prop("Status") == 1;
-
-var users = await userService.SearchAsync(expr);
-
-```
-
-Best for dynamically assembled filters, admin search screens, and query-builder style scenarios.
-
-
-
-### `ExprString` queries (.NET 8.0+)
-
-```csharp
-using static LiteOrm.Common.Expr;
-
-int minAge = 18;
-
-var expr = Prop("Age") > 25;
-
-var users = await objectViewDAO.Search(
-
-    $"WHERE {expr} AND Age > {minAge}"
-
-).ToListAsync();
-
-var dataTable = await dataViewDAO.Search(
-
-    $"SELECT Id, UserName FROM Users WHERE {Prop("Age")} > {minAge}",
-
-    isFull: true
-
-).GetResultAsync();
-
-```
-
-Use this as the DAO-side SQL entry when Lambda or pure `Expr` is not enough. It can represent either a `Search` condition fragment or a full SQL statement. Service query APIs do not expose `ExprString`.
-
-
-
-### Automatic associations
-
-
-
-```csharp
-
-[Table("Orders")]
-
-public class Order
-
+builder.Services.AddLiteOrm(options =>
 {
-
-    [Column("Id", IsPrimaryKey = true)]
-
-    public int Id { get; set; }
-
-
-
-    [Column("UserId")]
-
-    [ForeignType(typeof(User))]
-
-    public int UserId { get; set; }
-
-}
-
-
-
-public class OrderView : Order
-
-{
-
-    [ForeignColumn(typeof(User), Property = "UserName")]
-
-    public string UserName { get; set; }
-
-}
-
-
-
-var orders = await orderService.SearchAsync<OrderView>();
-
+    options.AutoRegisterServices = true;   // default true: apply [AutoRegister] source-generated registrations
+    options.ConfigureServices = services => { /* add custom registrations */ };
+});
 ```
 
+**Option 2 — with Autofac / AOP**, use the [**LiteOrm.DependencyInjection**](https://www.nuget.org/packages/LiteOrm.DependencyInjection) package.
 
+### AOT Support
 
-### Declarative transactions
+- The **net8.0 / net10.0** targets are AOT-compatible (`IsAotCompatible`), and the libraries work under NativeAOT and full trimming.
+- `Expr` trees are serialized via the source-generated **`ExprJsonSerializerContext`** (registered through `[JsonConverter]` on `Expr`), so JSON round-trips of expressions require no reflection and are NativeAOT-safe.
+- When building with `PublishAot=true` / trimming enabled, the bundled source generator (`LiteOrm.Generators`) emits registration code at compile time for entity types, `SqlBuilder`/`DbConnection` types, DataReader mapping delegates and property accessors.
+- Runtime reflection-based paths are used only in the JIT fallback mode; AOT mode uses pre-registered converters and generators.
 
+### Key Features
 
+- **Lambda / Expr / ExprString** — pick the style that fits: strongly-typed lambdas for daily filters, dynamic `Expr` trees for query builders, `ExprString` for DAO-side SQL.
+- **Automatic associations** — `[ForeignType]` / `[ForeignColumn]` project joined fields onto view models without writing JOINs.
+- **Declarative transactions** — `[Transaction]` on a service method.
+- **Dynamic sharding** — implement `IArged.TableArgs` to route to physical tables.
 
-```csharp
+### Documentation & Resources
 
-[Transaction]
+- [Docs Hub (EN/中文)](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)
+- [GitHub Repository](https://github.com/danjiewu/LiteOrm) — source code & issue tracking
+- [Demo Project](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)
 
-public async Task CreateUserWithOrder(User user, Order order)
-
-{
-
-    await userService.InsertAsync(user);
-
-    order.UserId = user.Id;
-
-    await orderService.InsertAsync(order);
-
-}
-
-```
-
-
-
-### Dynamic sharding
-
-
-
-```csharp
-
-public class Log : IArged
-
-{
-
-    [Column("Id", IsPrimaryKey = true)]
-
-    public int Id { get; set; }
-
-
-
-    [Column("CreateTime")]
-
-    public DateTime CreateTime { get; set; }
-
-
-
-    string[] IArged.TableArgs => [CreateTime.ToString("yyyyMM")];
-
-}
-
-```
-
-查询时可通过 `tableArgs`、`WithArgs(...)` 或 `Expr.From<T>(...)` 显式指定分表参数；主表指定的 `TableArgs` 会传递给同作用域或下级作用域中的后续表，未显式指定时会继续沿用这组参数。若表名包含多个占位符（如 `Sales_{0}_{1}`），也可以分别传入 `["US", "2025"]` 这样的多维参数，避免手工拼接分表名。不同表还可以错开使用不同占位符位置，例如 `Table1_{0}` 与 `Table2_{1}` 可共享同一个参数数组，让一组 `TableArgs` 同时驱动多张表。
-
-
-
-## 📚 Documentation & Resources
-
-
-
-Start with the docs hub, then follow the section that matches your scenario.
-
-
-
-- **[Documentation Hub](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Bilingual docs hub organized into Getting Started, Core Usage, Advanced Topics, and Extensibility
-
-- **[Docs Hub (中文)](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Chinese and English docs hub with the same learning-path structure
-
-- **[API Index](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/02-api-index.en.md)** - Scenario-based API and capability entry points
-
-- **[Example Index](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/06-example-index.en.md)** - Example entry points grouped by scenario
-
-- **[Database Compatibility Notes](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/08-database-compatibility.en.md)** - Common cross-database differences and validation tips
-
-- **[AI Guide](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/05-ai-guide.en.md)** - Compact appendix for assistants and quick orientation
-
-- **[GitHub Repository](https://github.com/danjiewu/LiteOrm)** - Source code and issue tracking
-
-- **[Demo Project](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)** - Feature demonstrations
-
-- **[Performance Report](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark)** - Detailed benchmark reports
-
-
-
-## 🤝 Contributing
-
-
-
-Found a bug? Have a suggestion? Please open an [Issue](https://github.com/danjiewu/LiteOrm/issues) or [Pull Request](https://github.com/danjiewu/LiteOrm/pulls).
-
-
-
-## 📄 License
-
-
+### License
 
 [MIT License](https://github.com/danjiewu/LiteOrm/blob/master/LICENSE)
 
-
-
-[Back to top](#liteorm)
-
-
-
 ---
-
-
 
 ## 📖 中文版本
 
+LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的执行效率（接近 Dapper）与完整 ORM 的易用性，适合对性能敏感且需要灵活拼装 SQL 的场景。
 
+### 核心特性
 
-LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，兼顾微型 ORM 的执行效率和完整 ORM 的易用性，适合对性能敏感且需要灵活处理复杂 SQL 的场景。
-
-
-
-### 目录
-
-- [核心特性](#-核心特性)
-
-- [环境要求](#-环境要求)
-
-- [安装](#-安装)
-
-- [快速入门](#-快速入门)
-
-- [常见特性](#-常见特性)
-
-- [相关资源](#-相关资源)
-
-- [贡献与反馈](#-贡献与反馈)
-
-- [开源协议](#-开源协议)
-
-
-
-### 🎯 核心特性
-
-
-
-- **极速性能**：性能接近原生 Dapper，远超 EF Core
-
-- **多数据库支持**：原生支持 SQL Server、MySQL、Oracle、PostgreSQL、SQLite；内置达梦、人大金仓、华为 GaussDB、OceanBase、TiDB、GreatDB 等国产 / 兼容数据库方言
-
-- **灵活查询**：支持基于 Lambda、`Expr` 或 `ExprString` 的多种查询方式
-
+- **多数据库支持**：原生支持 SQL Server、MySQL、Oracle、PostgreSQL、SQLite；内置达梦、人大金仓、华为 GaussDB / openGauss、OceanBase、TiDB、GreatDB 等国产 / 兼容数据库方言
+- **灵活查询**：支持基于 Lambda、`Expr`、`ExprString` 的多种查询方式，统一收敛到同一套表达式树
 - **自动关联**：通过特性实现无损的 JOIN 查询，无需手写 SQL
-
 - **声明式事务**：`[Transaction]` 特性实现 AOP 事务管理
-
 - **动态分表**：`IArged` 接口支持分表路由
+- **完整异步支持**，并提供强类型泛型接口
 
-- **异步支持**：完整的 async/await 支持
-
-- **类型安全**：强类型泛型接口，编译时类型检查
-
-
-
-### 📋 环境要求
-
-
+### 环境要求
 
 - **.NET 8.0+** 或 **.NET Standard 2.0**（兼容 .NET Framework 4.6.1+）
 
-- **依赖库**：Autofac、Castle.Core
-
-
-
-### 📦 安装
-
-
+### 安装
 
 ```bash
-
 dotnet add package LiteOrm
-
-dotnet add package LiteOrm.DependencyInjection   # DI 注册（RegisterLiteOrm）需要引用该包
-
 ```
 
+`LiteOrm` 会自动携带 `LiteOrm.Common`。
 
-
----
-
-
-
-### 🚀 快速入门
-
-
-
-#### 1. 配置连接
-
-
-
-`appsettings.json`:
-
-```json
-
-{
-
-    "LiteOrm": {
-
-        "Default": "DefaultConnection",
-
-        "DataSources": [
-
-            {
-
-                "Name": "DefaultConnection",
-
-                "ConnectionString": "Server=localhost;Database=TestDb;...",
-
-                "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
-
-            }
-
-        ]
-
-    }
-
-}
-
-```
-
-
-
-`Program.cs`:
-
-
-
-**控制台应用：**
+### 快速入门（不使用 DI）
 
 ```csharp
-
-var host = Host.CreateDefaultBuilder(args)
-
-    .RegisterLiteOrm()
-
-    .Build();
-
-```
-
-
-
-**ASP.NET Core 应用：**
-
-```csharp
-
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Host.RegisterLiteOrm();
-
-```
-
-
-
-#### 2. 定义实体
-
-
-
-```csharp
-
+using LiteOrm;
 using LiteOrm.Common;
+using LiteOrm.Service;
+using Microsoft.Data.Sqlite;
 
-
-
-[Table("Users")]
-
-public class User
-
+// 1. 配置数据源
+var dataSourceProvider = new DataSourceProvider();
+dataSourceProvider.AddDataSource(new DataSourceConfig
 {
+    Name = "DefaultConnection",
+    ConnectionString = "Data Source=LiteOrmDemo.db",
+    Provider = typeof(SqliteConnection).AssemblyQualifiedName,
+    SyncTable = true   // 自动建表（开发阶段推荐）
+});
+dataSourceProvider.SetDefaultDataSource("DefaultConnection");
 
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+// 2. 创建连接池工厂
+var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 
-    public int Id { get; set; }
+// 3. 创建会话管理器并设为当前会话
+var sessionManager = new SessionManager(poolFactory);
+SessionManager.SetCurrent(() => sessionManager);
 
+// 4. 创建 DAO / 服务并使用
+var objectDAO = new ObjectDAO<User>();
+var objectViewDAO = new ObjectViewDAO<User>();
+var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
-
-    [Column("UserName")]
-
-    public string UserName { get; set; }
-
-
-
-    [Column("Email")]
-
-    public string Email { get; set; }
-
-
-
-    [Column("CreateTime")]
-
-    public DateTime? CreateTime { get; set; }
-
-}
-
-```
-
-
-
-#### 3. 定义服务（可选）
-
-
-
-```csharp
-
-public interface IUserService :
-
-    IEntityService<User>, IEntityServiceAsync<User>
-
-{
-
-}
-
-
-
-public class UserService : EntityService<User>, IUserService
-
-{
-
-}
-
-```
-
-
-
-#### 4. 使用服务
-
-
-
-```csharp
-
-// 插入
-
-var user = new User { UserName = "admin", Email = "admin@test.com" };
-
+var user = new User { UserName = "admin", Age = 18 };
 await userService.InsertAsync(user);
 
-
-
-// 查询
-
-var users = await userService.SearchAsync(u => u.Email.Contains("test"));
-
-
-
-// 更新
-
-user.Email = "newemail@test.com";
-
-await userService.UpdateAsync(user);
-
-
-
-// 删除
-
-await userService.DeleteAsync(user);
-
-
-
-// 分页
-
-var page = await userService.SearchAsync(
-
-    q => q.Where(u => u.CreateTime > DateTime.Today)
-
-          .OrderByDescending(u => u.CreateTime)
-
-          .Skip(0).Take(10)
-
-);
-
+var users = await userService.SearchAsync(u => u.Age > 18);
 ```
 
+数据源配置也可通过内置的 `LoadConfiguration` 扩展方法从 `IConfiguration` 的 `LiteOrm` 节点批量加载。
 
+### 快速入门（DI 集成）
 
-### 💡 常见特性
+```csharp
+using LiteOrm;
 
+builder.Services.AddLiteOrm(options =>
+{
+    options.AutoRegisterServices = true;   // 默认 true：应用 [AutoRegister] 源生成注册
+    options.ConfigureServices = services => { /* 追加自定义注册 */ };
+});
+```
+纯 MS DI 注册（无 Autofac / AOP），通过生成器自动注册 LiteOrm 核心服务（`SessionManager`、`DAOContextPoolFactory` 等），可支持 `[AutoRegister]` 方式生成注册。
 
+如需要更全面的自动会话管理、声明式事务、日志等**，请使用 [**LiteOrm.DependencyInjection**](https://www.nuget.org/packages/LiteOrm.DependencyInjection) 包。
 
-- **Lambda 查询**：默认优先的查询方式，适合大多数日常业务筛选
+### AOT 支持
 
-- **Expr 表达式**：适合后台筛选、查询构造器等动态条件拼装场景
+- **net8.0 / net10.0** 目标为 AOT 兼容（`IsAotCompatible`），库可在 NativeAOT 与完全裁剪（Trim）下正常工作。
+- `Expr` 表达式树通过源生成的 **`ExprJsonSerializerContext`** 序列化（经 `Expr` 上的 `[JsonConverter]` 自动注册），表达式的 JSON 序列化不依赖反射，天然兼容 NativeAOT。
+- 使用 `PublishAot=true` 或启用裁剪构建时，内置源生成器（`LiteOrm.Generators`）会在编译期生成实体类型、`SqlBuilder` / `DbConnection` 类型、DataReader 映射委托与属性访问器的注册代码。
+- 反射式路径仅在 JIT 回退模式下使用；AOT 模式下使用预注册的转换器与生成器。
 
-- **ExprString 查询**：仅在 DAO 层使用，可传 `Search` 条件片段或完整 SQL
+### 常见特性
 
-- **Lambda 与 Expr 组合**：在保留强类型可读性的同时复用动态条件
+- **Lambda / Expr / ExprString**——按场景选择：强类型 Lambda 适合日常筛选，`Expr` 表达式适合动态条件拼装，`ExprString` 用于 DAO 层 SQL。
+- **自动关联**——通过 `[ForeignType]` / `[ForeignColumn]` 把联表字段投影到视图模型，无需手写 JOIN。
+- **声明式事务**——服务方法上标注 `[Transaction]` 即可。
+- **动态分表**——实现 `IArged.TableArgs` 路由到物理表。
 
-- **自动关联**：无损的 JOIN 查询
+### 文档与资源
 
-- **声明式事务**：基于特性的 AOP 事务
+- [文档中心（EN/中文）](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)
+- [GitHub 仓库](https://github.com/danjiewu/LiteOrm) — 源代码与问题跟踪
+- [Demo 项目](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)
 
-- **动态分表**：自动分表路由
-
-
-
-### 📚 文档与资源
-
-
-
-建议先从文档中心进入，再按“入门篇 / 核心使用篇 / 高级特性篇 / 扩展开发篇”的路径继续阅读。
-
-
-
-- **[中文文档中心](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - 按入门、核心使用、高级特性、扩展开发组织的文档入口
-
-- **[English Docs Hub](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)** - Same bilingual docs hub with aligned learning-path sections
-
-- **[API 索引](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/02-api-index.md)** - 按使用场景整理的接口与能力入口
-
-- **[示例索引](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/06-example-index.md)** - 按场景整理的示例入口
-
-- **[数据库差异与兼容性说明](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/08-database-compatibility.md)** - 常见跨数据库差异与排查建议
-
-- **[AI 使用指南](https://github.com/danjiewu/LiteOrm/blob/master/docs/05-reference/05-ai-guide.md)** - 面向 AI 和快速查阅场景的附录
-
-- **[GitHub 仓库](https://github.com/danjiewu/LiteOrm)** - 源代码与问题跟踪
-
-- **[Demo 项目](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)** - 功能演示
-
-- **[性能报告](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark)** - 详细的性能基准
-
-
-
-### 🤝 贡献与反馈
-
-
-
-欢迎提交 [Issue](https://github.com/danjiewu/LiteOrm/issues) 或 [Pull Request](https://github.com/danjiewu/LiteOrm/pulls)。
-
-
-
-### 📄 开源协议
-
-
+### 开源协议
 
 [MIT 协议](https://github.com/danjiewu/LiteOrm/blob/master/LICENSE)
-
-
-
-[回到顶部](#liteorm)
-
-

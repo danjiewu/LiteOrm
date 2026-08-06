@@ -1,6 +1,6 @@
 # 安装与环境要求
 
-本文介绍 LiteOrm 的运行环境、数据库支持，以及两种安装方式：仅使用核心库（`LiteOrm`）与使用框架集成包（`LiteOrm.DependencyInjection`）。
+本文介绍 LiteOrm 的运行环境、数据库支持，以及两种安装方式：仅使用基础库（`LiteOrm`）与使用框架集成包（`LiteOrm.DependencyInjection`）。
 
 > **新手提示**：如果你只是想快速体验 LiteOrm，建议使用 SQLite 作为数据库——它不需要安装任何数据库服务，开箱即用。需要宿主级集成（Autofac、AOP）时再引入 `LiteOrm.DependencyInjection`。
 
@@ -51,7 +51,7 @@
 
 > **注意**：无论哪种安装方式，都需要根据使用的数据库安装对应的 NuGet 驱动包（如上表第一列所示）。
 
-## 方式一：仅使用核心库（`LiteOrm`）
+## 方式一：仅使用基础库（`LiteOrm`）
 
 适合只需要实体映射、查询、DAO 等核心能力，且自行管理连接与生命周期的场景。此方式**不引入任何 DI 框架**，无需 Autofac 与 Castle 动态代理。
 
@@ -60,7 +60,7 @@ dotnet add package LiteOrm
 dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
 ```
 
-- 核心库由 `LiteOrm` 与 `LiteOrm.Common` 两个包构成，`LiteOrm` 会自动携带 `LiteOrm.Common`。
+- 基础库由 `LiteOrm` 与 `LiteOrm.Common` 两个包构成，`LiteOrm` 会自动携带 `LiteOrm.Common`。
 - 不提供 `RegisterLiteOrm()`，也不含 AOP 拦截（事务/权限/日志）能力。
 - 数据访问通过 `ObjectDAO` / `DataDAO` 等 DAO 类型完成。
 
@@ -126,8 +126,8 @@ dotnet run
 
 ## 安装后的下一步
 
-- **仅核心库**：参考 [第一个完整示例（仅核心库）](./04-first-example.md) 进行手动初始化。
-- **Framework 集成**：在宿主启动阶段调用 `RegisterLiteOrm()`，参考 [配置与注册](../06-di/01-configuration-and-registration.md) 与 [第一个完整示例（DI 版）](./05-first-example-di.md)。
+- **仅基础库**：参考 [第一个完整示例（仅基础库）](./03-first-example.md) 进行手动初始化。
+- **LiteOrm.DependencyInjection 集成**：在宿主启动阶段调用 `RegisterLiteOrm()`，参考 [配置参考](../05-reference/01-configuration-reference.md) 与 [第一个完整示例（DI 版）](./05-first-example-di.md)。
 
 > **SQLite 快速上手**：如果你想用 SQLite 快速体验，连接字符串只需写 `Data Source=myapp.db`，无需安装任何数据库服务。
 
@@ -147,11 +147,11 @@ dotnet run
 
 ### 安装后项目体积会很大吗？
 
-不会。LiteOrm 本身非常轻量，核心包只有几百 KB。加上必要的依赖（Autofac、Castle.Core），总体增量在 2-3 MB 左右。仅使用核心库时不引入 Autofac 与 Castle，体积更小。
+不会。LiteOrm 本身非常轻量，基础包只有几百 KB。加上必要的依赖（Autofac、Castle.Core），总体增量在 2-3 MB 左右。仅使用基础库时不引入 Autofac 与 Castle，体积更小。
 
 ## 相关链接
 
 - [返回目录](../README.md)
-- [配置与注册](../06-di/01-configuration-and-registration.md)
+- [配置参考](../05-reference/01-configuration-reference.md)
 - [第一个完整示例](./05-first-example-di.md)
 - [配置项速查](../05-reference/01-configuration-reference.md)

@@ -2,9 +2,9 @@
 
 This article demonstrates a minimal runnable example of LiteOrm's typical usage flow: defining entities, registering services, inserting data, querying data, and paginated queries.
 
-> If you don't need Autofac/AOP/DI, you can refer to [First Complete Example (Core Library Only)](./04-first-example.md)
+> If you don't need Autofac/AOP/DI, you can refer to [First Complete Example (Base Library Only)](./03-first-example.md). The base library also offers `AddLiteOrm()` (plain MS DI, no Autofac/AOP) — you can start with it and upgrade smoothly to the host integration covered here.
 
-> **Beginner tip**: This article assumes you've completed [Installation](./02-installation.en.md) and [Configuration](../06-di/01-configuration-and-registration.en.md). If this is your first time with LiteOrm, follow along and type the code—it takes about 15 minutes. This article uses SQLite as the demo database, so no additional database server installation is needed.
+> **Beginner tip**: This article assumes you've completed [Installation](./02-installation.en.md) and [Configuration](../05-reference/01-configuration-reference.en.md). If this is your first time with LiteOrm, follow along and type the code—it takes about 15 minutes. This article uses SQLite as the demo database, so no additional database server installation is needed.
 
 ## 0. Project Setup
 
@@ -115,6 +115,10 @@ var app = builder.Build();
 
 app.Run();
 ```
+
+> **`RegisterLiteOrm()` or `AddLiteOrm()`?**
+> - `RegisterLiteOrm()` (this article): Autofac container + Castle AOP interception, supporting `[Transaction]`, `[ServicePermission]`, `[ServiceLog]` and more; called on `builder.Host`.
+> - `AddLiteOrm()` (base library, plain MS DI): use it when you don't need Autofac / AOP; call it on `builder.Services`. See [First Complete Example (Base Library Only)](./03-first-example.md).
 
 ## 5. Insert a Record
 
@@ -280,7 +284,7 @@ public class UsersController : ControllerBase
 If you can successfully run this code, your basic LiteOrm integration is complete.
 The recommended approach is to gradually migrate generic services to custom `IUserService` after the business layer stabilizes, to accommodate transactions, auditing, and composite business logic.
 
-When you have many entities, you can also use [Generic Controller or Dynamic Controller Generation](../06-di/05-generic-controller.en.md) to reduce repetitive code.
+When you have many entities, you can also use [Generic Controller or Dynamic Controller Generation](../06-di/04-generic-controller.en.md) to reduce repetitive code.
 
 ## 9. Common Beginner Troubleshooting
 

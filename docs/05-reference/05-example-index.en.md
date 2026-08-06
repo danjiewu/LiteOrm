@@ -110,7 +110,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Transactions
 
-- Entry doc: [Transactions](../06-di/02-transactions.en.md)
+- Entry doc: [Transactions](../06-di/01-transactions.en.md)
 - Code source:
   - `LiteOrm.Demo\Demos\TransactionDemo.cs`
 - Focus:
@@ -209,7 +209,7 @@ If you want to move from simple to advanced examples, this is a practical sequen
 5. [Expr Guide](../02-core-usage/06-expr-guide.en.md)
 6. [ExprString Guide](../02-core-usage/07-exprstring-guide.en.md)
 7. [Associations](../02-core-usage/08-associations.en.md)
-8. [Transactions](../06-di/02-transactions.en.md)
+8. [Transactions](../06-di/01-transactions.en.md)
 9. [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
 10. [Performance](../03-advanced-topics/03-performance.en.md)
 11. [Expression extension](../04-extensibility/01-expression-extension.en.md)

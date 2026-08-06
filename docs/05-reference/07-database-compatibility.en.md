@@ -168,7 +168,7 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 
 ## 3. Bulk Write Capabilities (IBulkProvider)
 
-LiteOrm supports high-performance bulk writes via the `IBulkProvider` interface, but **the core library does not include any built-in implementations**—only the interface is provided.
+LiteOrm supports high-performance bulk writes via the `IBulkProvider` interface, but **the base library does not include any built-in implementations**—only the interface is provided.
 
 | Database | Common Approach | Built-in Implementation |
 |----------|----------------|------------------------|
@@ -215,7 +215,7 @@ Recommended references:
 | SQL Server | ✅ | ❌ | ❌ | ❌ |
 | Dameng / OceanBase / TiDB / GreatDB | ✅ | ❌ | ❌ | ❌ |
 
-> The test, demo, and benchmark projects only configure MySQL, SQLite, and Oracle. Other database `SqlBuilder` implementations exist in the core library but are not covered by automated tests. When adopting these databases, prioritize validating paging and bulk operations.
+> The test, demo, and benchmark projects only configure MySQL, SQLite, and Oracle. Other database `SqlBuilder` implementations exist in the base library but are not covered by automated tests. When adopting these databases, prioritize validating paging and bulk operations.
 
 ## 6. How Docs Map to Compatibility Work
 

@@ -280,6 +280,6 @@ ServiceInvokeInterceptor.MaxExpandedLogLength = 20;
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [Configuration and Registration](./00-configuration-and-registration.en.md)
+- [Configuration Reference](../05-reference/01-configuration-reference.en.md)
 - [Transactions](./01-transactions.en.md)
 - [Performance](../03-advanced-topics/03-performance.en.md)

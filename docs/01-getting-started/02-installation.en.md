@@ -1,6 +1,6 @@
 # Installation and Environment Requirements
 
-This document covers the runtime environment, database support, and two installation methods: core-only (`LiteOrm`) and host integration (`LiteOrm.DependencyInjection`).
+This document covers the runtime environment, database support, and two installation methods: base-only (`LiteOrm`) and host integration (`LiteOrm.DependencyInjection`).
 
 > **Beginner tip**: If you just want to quickly try out LiteOrm, we recommend using SQLite—it requires no database server installation and works out of the box. Bring in `LiteOrm.DependencyInjection` only when you need host-level integration (Autofac, AOP).
 
@@ -51,7 +51,7 @@ This document covers the runtime environment, database support, and two installa
 
 > **Note**: Regardless of installation method, you need to install the corresponding NuGet driver package for your database (as shown in the first column above).
 
-## Option 1: Core Library Only (`LiteOrm`)
+## Option 1: Base Library Only (`LiteOrm`)
 
 For scenarios that only need core capabilities (entity mapping, queries, DAO) and manage connections and lifecycle yourself. This method **introduces no DI framework**—no Autofac or Castle dynamic proxy.
 
@@ -60,7 +60,7 @@ dotnet add package LiteOrm
 dotnet add package Microsoft.Data.Sqlite   # choose based on your database
 ```
 
-- The core library consists of `LiteOrm` and `LiteOrm.Common`; `LiteOrm` automatically brings in `LiteOrm.Common`.
+- The base library consists of `LiteOrm` and `LiteOrm.Common`; `LiteOrm` automatically brings in `LiteOrm.Common`.
 - No `RegisterLiteOrm()` is provided, and no AOP interception (transactions/permissions/logging).
 - Data access is done through DAO types such as `ObjectDAO` / `DataDAO`.
 
@@ -126,8 +126,8 @@ dotnet run
 
 ## Next Steps After Installation
 
-- **Core only**: use DAO directly for data access; see [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md) and [Query Overview](../02-core-usage/04-query-overview.en.md).
-- **Framework integration**: call `RegisterLiteOrm()` during host startup; see [Configuration and Registration](../06-di/01-configuration-and-registration.en.md) and [First End-to-End Example](./05-first-example-di.en.md).
+- **Base only**: use DAO directly for data access; see [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md) and [Query Overview](../02-core-usage/04-query-overview.en.md).
+- **LiteOrm.DependencyInjection integration**: call `RegisterLiteOrm()` during host startup; see [Configuration Reference](../05-reference/01-configuration-reference.en.md) and [First End-to-End Example](./05-first-example-di.en.md).
 
 > **SQLite quick start**: If you want to try SQLite quickly, the connection string is simply `Data Source=myapp.db`—no database server needed. See the [First End-to-End Example](./05-first-example-di.en.md) for a complete walkthrough.
 
@@ -147,11 +147,11 @@ Yes. LiteOrm supports `.NET Standard 2.0`, which is compatible with .NET Framewo
 
 ### Will the project size increase significantly after installation?
 
-No. LiteOrm itself is very lightweight—the core package is only a few hundred KB. With necessary dependencies (Autofac, Castle.Core), the total increase is about 2-3 MB. Core-only usage pulls in no Autofac or Castle, so the footprint is even smaller.
+No. LiteOrm itself is very lightweight—the base package is only a few hundred KB. With necessary dependencies (Autofac, Castle.Core), the total increase is about 2-3 MB. Base-only usage pulls in no Autofac or Castle, so the footprint is even smaller.
 
 ## Related Links
 
 - [Back to docs hub](../README.md)
-- [Configuration and Registration](../06-di/01-configuration-and-registration.en.md)
+- [Configuration Reference](../05-reference/01-configuration-reference.en.md)
 - [First End-to-End Example](./05-first-example-di.en.md)
 - [Configuration Reference](../05-reference/01-configuration-reference.en.md)

@@ -21,7 +21,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 对应文档：
 
-- [配置与注册](../06-di/01-configuration-and-registration.md)
+- [配置参考](../05-reference/01-configuration-reference.md)
 - [配置项速查](./01-configuration-reference.md)
 - [数据库差异与兼容性说明](./07-database-compatibility.md)
 
@@ -78,7 +78,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 对应文档：
 
 - [CRUD 指南](../02-core-usage/03-crud-guide.md)
-- [事务管理](../06-di/02-transactions.md)
+- [事务管理](../06-di/01-transactions.md)
 - [示例索引](./05-example-index.md)
 - [生成 SQL 示例](./06-sql-examples.md)
 
@@ -93,8 +93,8 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 对应文档：
 
-- [事务管理](../06-di/02-transactions.md)
-- [日志与诊断](../06-di/04-logging.md)
+- [事务管理](../06-di/01-transactions.md)
+- [日志与诊断](../06-di/03-logging.md)
 - [分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)
 - [窗口函数](../03-advanced-topics/04-window-functions.md)
 - [示例索引](./05-example-index.md)

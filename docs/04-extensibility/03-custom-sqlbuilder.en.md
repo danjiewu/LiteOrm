@@ -108,4 +108,4 @@ If the function comes from Lambda or member extensions, you also need to registe
 - [Back to docs hub](../README.md)
 - [Custom Paging](../03-advanced-topics/05-custom-paging.en.md)
 - [Expression Extension](./01-expression-extension.en.md)
-- [Configuration and Registration](../06-di/01-configuration-and-registration.en.md)
+- [Configuration Reference](../05-reference/01-configuration-reference.en.md)

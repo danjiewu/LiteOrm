@@ -7,9 +7,9 @@
 |中文|English|说明|
 |-|-|-|
 |[概览](./01-getting-started/01-overview.md)|[Overview](./01-getting-started/01-overview.en.md)|框架介绍、项目组成与适用场景|
-|[安装](./01-getting-started/02-installation.md)|[Installation](./01-getting-started/02-installation.en.md)|环境要求与安装（核心库 / Framework 双场景）|
-|[第一个完整示例（仅核心库）](./01-getting-started/04-first-example.md)|[First Example (Core Only)](./01-getting-started/04-first-example.en.md)|不依赖 DI 容器的最小可运行示例|
-|[第一个完整示例（DI 版）](./01-getting-started/05-first-example-di.md)|[First Example (DI)](./01-getting-started/05-first-example-di.en.md)|ASP.NET Core + Autofac 完整示例|
+|[安装](./01-getting-started/02-installation.md)|[Installation](./01-getting-started/02-installation.en.md)|环境要求与安装（基础库 / DI 扩展双场景）|
+|[第一个完整示例（仅基础库）](./01-getting-started/03-first-example.md)|[First Example (Base Only)](./01-getting-started/03-first-example.en.md)|不依赖 DI 扩展的最小可运行示例|
+|[第一个完整示例（DI 扩展）](./01-getting-started/05-first-example-di.md)|[First Example (DI Extension)](./01-getting-started/05-first-example-di.en.md)|依赖 `LiteOrm.DependencyInjection`, 支持 AOP 特性|
 
 ### 核心使用篇 / Core Usage
 
@@ -49,17 +49,15 @@
 |[前端原生 Expr 查询](./04-extensibility/06-frontend-native-expr.md)|[Frontend Native Expr](./04-extensibility/06-frontend-native-expr.en.md)|按 LiteOrm 序列化格式提交 Expr JSON|
 | [国产/兼容数据库 SqlBuilder 开发指南](./04-extensibility/08-domestic-database-sqlbuilder.md)|[Domestic/Compatible Database SqlBuilder Guide](./04-extensibility/08-domestic-database-sqlbuilder.en.md)|达梦、人大金仓、GaussDB、OceanBase、TiDB、GreatDB 接入指南|
 
-### 框架使用篇 / Framework
+### DI扩展 / DI Extension
 
-依赖 `LiteOrm.DependencyInjection`（Autofac 集成、AOP）的内容集中在本篇：
 
 |中文|English|说明|
 |-|-|-|
-|[配置与注册](./06-di/01-configuration-and-registration.md)|[Configuration & Registration](./06-di/01-configuration-and-registration.en.md)|Framework DI 注册与 appsettings.json 配置|
-|[事务](./06-di/02-transactions.md)|[Transactions](./06-di/02-transactions.en.md)|事务与并发控制|
-|[权限过滤](./06-di/03-permission-filtering.md)|[Permission Filtering](./06-di/03-permission-filtering.en.md)|用户范围过滤与访问控制|
-|[日志与诊断](./06-di/04-logging.md)|[Logging \& Diagnostics](./06-di/04-logging.en.md)|ServiceLog、Log 特性与慢查询日志|
-|[泛型 Controller 与动态生成](./06-di/05-generic-controller.md)|[Generic Controller](./06-di/05-generic-controller.en.md)|泛型基类 Controller 与动态 Controller 生成|
+|[事务](./06-di/01-transactions.md)|[Transactions](./06-di/01-transactions.en.md)|事务与并发控制|
+|[权限过滤](./06-di/02-permission-filtering.md)|[Permission Filtering](./06-di/02-permission-filtering.en.md)|用户范围过滤与访问控制|
+|[日志与诊断](./06-di/03-logging.md)|[Logging \& Diagnostics](./06-di/03-logging.en.md)|ServiceLog、Log 特性与慢查询日志|
+|[泛型 Controller 与动态生成](./06-di/04-generic-controller.md)|[Generic Controller](./06-di/04-generic-controller.en.md)|泛型基类 Controller 与动态 Controller 生成|
 
 ### 参考文档 / Reference
 
@@ -87,9 +85,9 @@
 ### 推荐阅读路径
 
 1. 第一次接触 LiteOrm：先看"入门篇"的[概览](./01-getting-started/01-overview.md)与[安装](./01-getting-started/02-installation.md)。
-2. 配置与第一个示例：根据项目类型选择[仅核心库](./01-getting-started/04-first-example.md)或 [DI 版](./01-getting-started/05-first-example-di.md)。
+2. 配置与第一个示例：根据项目类型选择[仅基础库](./01-getting-started/03-first-example.md)或 [DI 扩展](./01-getting-started/05-first-example-di.md)。
 3. 准备接入业务项目：继续阅读"核心使用篇"，建立实体、查询、写入和关联的整体认识。
-4. 使用 `LiteOrm.DependencyInjection` 集成（Autofac、AOP）：先阅读"框架使用篇"的[配置与注册](./06-di/01-configuration-and-registration.md)，再了解事务、权限过滤等特性。
+4. 使用 `LiteOrm.DependencyInjection` 集成（Autofac、AOP）：先阅读[配置参考](./05-reference/01-configuration-reference.md)，再了解"DI扩展"中的事务、权限过滤等特性。
 5. 涉及分表、性能或数据库方言差异：继续阅读"高级特性篇"。
 6. 需要扩展框架能力：查阅"扩展开发篇"。
 7. 需要快速确认配置项、接口名或术语：直接查阅"参考篇"。

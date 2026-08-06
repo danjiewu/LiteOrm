@@ -220,7 +220,7 @@ SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider =
 
 这个例子说明了两点：
 
-- `IBulkProvider` 只需实现接口并赋值给 `SqlBuilder.BulkProvider` 即可生效，核心库不做自动注册。
+- `IBulkProvider` 只需实现接口并赋值给 `SqlBuilder.BulkProvider` 即可生效，基础库不做自动注册。
 - 真正的高性能批量写入通常依赖数据库原生能力，而不是 ORM 层循环拼接 SQL。
 
 在 LiteOrm 中的实现位置（参考）：
@@ -430,7 +430,7 @@ LiteOrm 相比其他 ORM 的性能优势：
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/08-associations.md)
-- [事务处理](../06-di/02-transactions.md)
+- [事务处理](../06-di/01-transactions.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)
 
 
