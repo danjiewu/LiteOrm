@@ -209,7 +209,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Operator_And_LeftNull_ReturnsRight()
         {
-            LogicExpr left = null;
+            LogicExpr? left = null;
             var right = Expr.Prop("B") == new ValueExpr(2);
 
             var result = left & right;
@@ -221,7 +221,7 @@ namespace LiteOrm.Common.UnitTests
         public void Operator_And_RightNull_ReturnsLeft()
         {
             var left = Expr.Prop("A") == new ValueExpr(1);
-            LogicExpr right = null;
+            LogicExpr? right = null;
 
             var result = left & right;
 
@@ -231,7 +231,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Operator_Or_LeftNull_ReturnsRight()
         {
-            LogicExpr left = null;
+            LogicExpr? left = null;
             var right = Expr.Prop("B") == new ValueExpr(2);
 
             var result = left | right;
@@ -243,7 +243,7 @@ namespace LiteOrm.Common.UnitTests
         public void Operator_Or_RightNull_ReturnsLeft()
         {
             var left = Expr.Prop("A") == new ValueExpr(1);
-            LogicExpr right = null;
+            LogicExpr? right = null;
 
             var result = left | right;
 
@@ -265,7 +265,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void And_LeftNull_ReturnsRight()
         {
-            LogicExpr left = null;
+            LogicExpr? left = null;
             var right = Expr.Prop("B") == 2;
 
             var result = left.And(right);
@@ -288,7 +288,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Or_LeftNull_ReturnsRight()
         {
-            LogicExpr left = null;
+            LogicExpr? left = null;
             var right = Expr.Prop("B") == 2;
 
             var result = left.Or(right);
@@ -311,7 +311,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var operand = Expr.Prop("A") == 1;
 
-            var result = operand.Not().Not();
+            var result = operand.Not()!.Not();
 
             Assert.Same(operand, result);
         }
@@ -640,7 +640,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var s2 = new SelectExpr(null, Expr.Prop("Name").As("Name"));
 
-            Assert.Throws<ArgumentNullException>(() => ((SelectExpr)null).Intersect(s2));
+            Assert.Throws<ArgumentNullException>(() => ((SelectExpr)null!).Intersect(s2));
         }
 
         [Fact]
@@ -660,7 +660,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var s2 = new SelectExpr(null, Expr.Prop("Name").As("Name"));
 
-            Assert.Throws<ArgumentNullException>(() => ((SelectExpr)null).Except(s2));
+            Assert.Throws<ArgumentNullException>(() => ((SelectExpr)null!).Except(s2));
         }
 
         [Fact]

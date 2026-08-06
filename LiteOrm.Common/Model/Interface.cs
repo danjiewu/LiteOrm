@@ -32,7 +32,7 @@
         /// <summary>
         /// 获取表参数数组
         /// </summary>
-        string[] TableArgs { get; }
+        string[]? TableArgs { get; }
     }
 
     /// <summary>
@@ -45,6 +45,6 @@
         /// </summary>
         /// <param name="propertyName">属性名</param>
         /// <returns>属性的值</returns>
-        object this[string propertyName] { get; set; }
+        object? this[string propertyName] { get; set; }
     }
 }

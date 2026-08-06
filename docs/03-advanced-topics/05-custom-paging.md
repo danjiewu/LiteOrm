@@ -26,7 +26,7 @@ public class Oracle11gBuilder : OracleBuilder
     /// 将结构化的 SQL 片段组装成最终的 SELECT 语句 (Oracle 实现)。 
     /// 使用 ROW_NUMBER() OVER(...) 双层嵌套子查询实现分页，兼容所有 Oracle 版本。 
     /// </summary> 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result) 
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent) 
     {
         bool hasPaging = subSelect.Take > 0; 
 
@@ -295,7 +295,7 @@ public class SqlServer2008Builder : SqlServerBuilder
 {
     public readonly static new SqlServer2008Builder Instance = new SqlServer2008Builder();
     
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // 实现 TOP + ROW_NUMBER() 分页
         // ...
@@ -310,7 +310,7 @@ public class CustomPostgreSqlBuilder : PostgreSqlBuilder
 {
     public readonly static new CustomPostgreSqlBuilder Instance = new CustomPostgreSqlBuilder();
     
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // 实现自定义分页逻辑
         // ...
@@ -345,6 +345,6 @@ public class CustomPostgreSqlBuilder : PostgreSqlBuilder
 
 - [返回目录](../README.md)
 - [SqlBuilder 与方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
-- [配置与注册](../01-getting-started/03-configuration-and-registration.md)
-- [兼容性说明](../05-reference/08-database-compatibility.md)
+- [配置参考](../05-reference/01-configuration-reference.md)
+- [兼容性说明](../05-reference/07-database-compatibility.md)
 

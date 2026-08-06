@@ -67,7 +67,7 @@ namespace LiteOrm.Tests
         public void ExprString_RawSql_NullSql_ProducesEmptyFragment()
         {
             var sqlGen = new SqlGen(typeof(TestUser));
-            var rawSql = new RawSql(null);
+            var rawSql = new RawSql(null!);
             var result = sqlGen.ToSql($"WHERE {rawSql}1 = 1");
 
             Assert.Equal("WHERE 1 = 1", result.Sql);

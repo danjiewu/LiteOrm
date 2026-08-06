@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -12,7 +13,7 @@ using System.Text;
 namespace LiteOrm
 {
     /// <summary>
-    /// 通过动态编译创建将 <see cref="DbDataReader"/> 行映射到对象的委托。
+    /// 通过动态编译创建将 <see cref="AutoLockDataReader"/> 行映射到对象的委托。
     /// 编译结果按目标类型与列架构缓存，避免重复编译开销。
     /// </summary>
     public static class DataReaderConverter
@@ -20,31 +21,32 @@ namespace LiteOrm
         private static readonly ConcurrentDictionary<(Type, string), Delegate> _cache =
             new ConcurrentDictionary<(Type, string), Delegate>();
 
-        private static readonly MethodInfo _getValueMethod =
+        private static readonly MethodInfo? _getValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetValue), new[] { typeof(int) });
 
-        private static readonly MethodInfo _convertValueMethod =
-            typeof(DataReaderConverter).GetMethod(nameof(ConvertValue), BindingFlags.Static | BindingFlags.NonPublic);
+        // IDbConverter.ConvertFromDbValue：兜底转换委托给 reader.DbConverter，支持枚举、TimeSpan、DateTimeOffset 等
+        private static readonly MethodInfo _convertFromDbValueMethod =
+            typeof(IDbConverter).GetMethod(nameof(IDbConverter.ConvertFromDbValue), new[] { typeof(object), typeof(Type) })!;
 
-        private static readonly MethodInfo _isDBNullMethod =
+        private static readonly MethodInfo? _isDBNullMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.IsDBNull), new[] { typeof(int) });
 
-        private static readonly MethodInfo _getFieldValueMethod =
+        private static readonly MethodInfo? _getFieldValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFieldValue), new[] { typeof(int) });
 
-        // Use SqlBuilder.ConvertFromDbValue as the fallback conversion method (instance method on SqlBuilder.Instance)
-        private static readonly MethodInfo _changeTypeMethod =
+        // Use AutoLockDataReader.ChangeType as the fallback conversion method
+        private static readonly MethodInfo? _changeTypeMethod =
             typeof(AutoLockDataReader).GetMethod(nameof(AutoLockDataReader.ChangeType), new[] { typeof(object), typeof(Type) });
 
         // 用于在动态读取委托的 catch 块中构造包含成员名/列号的明确异常
-        private static readonly MethodInfo _createColumnReadExceptionMethod =
+        private static readonly MethodInfo? _createColumnReadExceptionMethod =
             typeof(DataReaderConverter).GetMethod(nameof(CreateColumnReadException),
                 BindingFlags.Static | BindingFlags.NonPublic,
                 null,
                 new[] { typeof(Exception), typeof(int), typeof(string), typeof(Type) },
                 null);
 
-        private static readonly Dictionary<Type, MethodInfo> _typedReaderMethods = new Dictionary<Type, MethodInfo>
+        private static readonly Dictionary<Type, MethodInfo?> _typedReaderMethods = new Dictionary<Type, MethodInfo?>
         {
             [typeof(bool)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean), new[] { typeof(int) }),
             [typeof(byte)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetByte), new[] { typeof(int) }),
@@ -65,7 +67,7 @@ namespace LiteOrm
         /// 按 <see cref="DbType"/> 选择最自然的类型化读取方法。
         /// <see cref="DbType.Binary"/> 单独处理（<see cref="DbDataReader.GetFieldValue{T}"/> 或 <see cref="DbDataReader.GetStream"/>）。
         /// </summary>
-        private static readonly Dictionary<DbType, MethodInfo> _dbTypeReaderMethods = new Dictionary<DbType, MethodInfo>
+        private static readonly Dictionary<DbType, MethodInfo?> _dbTypeReaderMethods = new Dictionary<DbType, MethodInfo?>
         {
             [DbType.Boolean] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean), new[] { typeof(int) }),
             [DbType.Byte] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetByte), new[] { typeof(int) }),
@@ -88,52 +90,78 @@ namespace LiteOrm
             // DbType.Binary → GetFieldValue<byte[]> / GetStream (handled in BuildRawReadExpression)
         };
 
+        /// <summary>
+        /// 按目标类型缓存的映射委托（含源生成器预注册与运行时编译两种来源）。
+        /// AOT 场景下通过 <see cref="RegisterMapper{T}"/> 注册后可完全绕开运行时表达式编译。
+        /// </summary>
         private static readonly ConcurrentDictionary<Type, Delegate> _cacheByType =
             new ConcurrentDictionary<Type, Delegate>();
 
-        private static readonly MethodInfo _getConverterByTypeMethod =
+        private static readonly MethodInfo? _getConverterByTypeMethod =
             typeof(DataReaderConverter).GetMethod(nameof(GetConverter), BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
 
         /// <summary>
-        /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
+        /// 注册预编译的 DataReader 映射委托，用于 NativeAOT 场景替代运行时 <see cref="LambdaExpression.Compile()"/>。
+        /// 注册后，<see cref="GetConverter{T}()"/> 和 <see cref="GetConverter(Type)"/> 将直接返回该委托。
+        /// </summary>
+        /// <typeparam name="T">目标实体类型。</typeparam>
+        /// <param name="mapper">将 <see cref="AutoLockDataReader"/> 当前行映射为 <typeparamref name="T"/> 实例的委托。</param>
+        public static void RegisterMapper<T>(Func<AutoLockDataReader, T> mapper)
+        {
+            _cacheByType[typeof(T)] = mapper;
+        }
+
+        /// <summary>
+        /// 注册预编译的 DataReader 映射委托（非泛型版本）。
+        /// </summary>
+        /// <param name="type">目标实体类型。</param>
+        /// <param name="mapper">将 <see cref="AutoLockDataReader"/> 当前行映射为目标类型实例的委托。</param>
+        public static void RegisterMapper(Type type, Func<AutoLockDataReader, object> mapper)
+        {
+            _cacheByType[type] = mapper;
+        }
+
+        /// <summary>
+        /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
         /// 对于匿名类型，基于读取器的列架构缓存编译委托，通过构造函数参数名与列名匹配；
-        /// 对于普通类型，委托给 <see cref="GetConverter{TResult}()"/> 使用 <see cref="TableInfoProvider.Default"/> 进行位置映射。
+        /// 对于普通类型，委托给 <see cref="GetConverter{TResult}()"/> 使用 <see cref="TableInfoProvider.Instance"/> 进行位置映射。
         /// </summary>
         /// <typeparam name="TResult">目标类型。</typeparam>
         /// <param name="reader">已打开的数据读取器，用于读取列架构信息（匿名类型时使用）。</param>
         /// <returns>编译后的映射委托。</returns>
-        public static Func<DbDataReader, TResult> GetConverter<TResult>(DbDataReader reader)
+        public static Func<AutoLockDataReader, TResult> GetConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader)
         {
             Type type = typeof(TResult);
-            if (TableInfoProvider.Default.GetTableView(type) != null)
+            if (TableInfoProvider.Instance.GetTableView(type) != null)
                 return GetConverter<TResult>();
             string columnKey = BuildColumnKey(reader);
-            return (Func<DbDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileDataReaderConverter<TResult>(reader));
+            return (Func<AutoLockDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileDataReaderConverter<TResult>(reader));
         }
 
         /// <summary>
-        /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
-        /// 通过 <see cref="TableInfoProvider.Default"/> 读取 <typeparamref name="TResult"/> 对应的表视图，
+        /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
+        /// 通过 <see cref="TableInfoProvider.Instance"/> 读取 <typeparamref name="TResult"/> 对应的表视图，
         /// 并依据视图的 <see cref="SqlTable.SelectColumns"/> 进行位置映射，使用类型化读取方法避免装箱。
         /// 以 <typeparamref name="TResult"/> 类型为缓存键，首次调用时编译，后续调用直接复用。
         /// </summary>
         /// <typeparam name="TResult">目标类型。</typeparam>
         /// <returns>编译后的映射委托。</returns>
-        public static Func<DbDataReader, TResult> GetConverter<TResult>()
+        public static Func<AutoLockDataReader, TResult> GetConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>()
         {
-            return (Func<DbDataReader, TResult>)_cacheByType.GetOrAdd(typeof(TResult), _ => CompileConverter<TResult>());
+            return (Func<AutoLockDataReader, TResult>)_cacheByType.GetOrAdd(typeof(TResult), _ => CompileConverter<TResult>());
         }
 
         /// <summary>
-        /// 获取将 <see cref="DbDataReader"/> 当前行转换为 <paramref name="resultType"/> 实例的编译委托。
+        /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <paramref name="resultType"/> 实例的编译委托。
         /// 与 <see cref="GetConverter{TResult}()"/> 共用同一缓存，首次调用时通过反射调用泛型版本完成编译。
         /// </summary>
         /// <param name="resultType">目标类型。</param>
-        /// <returns>编译后的映射委托，实际类型为 <see cref="Func{DbDataReader, TResult}"/>。</returns>
+        /// <returns>编译后的映射委托，实际类型为 <see cref="Func{AutoLockDataReader, TResult}"/>。</returns>
+        [RequiresDynamicCode("Converter dynamic creation relies on MakeGenericMethod; not supported under NativeAOT.")]
         public static Delegate GetConverter(Type resultType)
         {
             return _cacheByType.GetOrAdd(resultType,
-                t => (Delegate)_getConverterByTypeMethod.MakeGenericMethod(t).Invoke(null, null));
+                t => (Delegate)_getConverterByTypeMethod!.MakeGenericMethod(t).Invoke(null, null)!);
         }
 
         private static string BuildColumnKey(DbDataReader reader)
@@ -148,30 +176,48 @@ namespace LiteOrm
             return sb.ToString();
         }
 
-        private static Func<DbDataReader, TResult> CompileConverter<TResult>()
+        private static Func<AutoLockDataReader, TResult> CompileConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>()
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                throw new PlatformNotSupportedException(
+                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table].");
             Type resultType = typeof(TResult);
-            var readerParam = Expression.Parameter(typeof(DbDataReader), "reader");
+            var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
             if (IsScalarType(resultType))
                 return CompileScalarConverter<TResult>(readerParam);
 
-            var selectColumns = (TableInfoProvider.Default?.GetTableView(resultType)
+            var selectColumns = (TableInfoProvider.Instance?.GetTableView(resultType)
                 ?? throw new InvalidOperationException($"TableInfoProvider.Default is not configured, cannot resolve columns for type '{resultType.FullName}'."))
                 .SelectColumns;
             return CompileConverterByColumns<TResult>(selectColumns);
         }
 
-        private static Func<DbDataReader, TResult> CompileScalarConverter<TResult>(ParameterExpression readerParam)
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown instead of invoking Expression.Compile")]
+#endif
+        private static Func<AutoLockDataReader, TResult> CompileScalarConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(ParameterExpression readerParam)
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                throw new PlatformNotSupportedException(
+                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table], or call DataReaderConverter.RegisterMapper first.");            
             var body = BuildTypedReadExpression(readerParam, 0, typeof(TResult), null);
-            return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
+            return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
-        private static Func<DbDataReader, TResult> CompileDataReaderConverter<TResult>(DbDataReader reader)
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown instead of invoking Expression.Compile")]
+#endif
+        private static Func<AutoLockDataReader, TResult> CompileDataReaderConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader)
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                throw new PlatformNotSupportedException(
+                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table], or call DataReaderConverter.RegisterMapper first.");
             Type resultType = typeof(TResult);
-            var readerParam = Expression.Parameter(typeof(DbDataReader), "reader");
+            var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
             if (IsScalarType(resultType))
                 return CompileScalarConverter<TResult>(readerParam);
@@ -191,7 +237,7 @@ namespace LiteOrm
                 for (int i = 0; i < ctorParams.Length; i++)
                 {
                     ParameterInfo param = ctorParams[i];
-                    args[i] = columnMap.TryGetValue(param.Name, out int ordinal)
+                    args[i] = columnMap.TryGetValue(param.Name!, out int ordinal)
                         ? BuildTypedReadExpression(readerParam, ordinal, param.ParameterType, param.Name)
                         : Expression.Default(param.ParameterType);
                 }
@@ -210,18 +256,19 @@ namespace LiteOrm
                 body = Expression.MemberInit(Expression.New(ctor), bindings);
             }
 
-            return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
+            return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
         /// <summary>
         /// 构建读取指定列的完整表达式（含 IsDBNull 判定、Nullable 封装与列级异常包装）。
         /// 优先按 <paramref name="dbType"/> 选择与数据库列类型精确对应的读取方法；
         /// 若读取方法的返回类型与属性 CLR 类型不符（如枚举、数值扩宽），则自动插入 Convert 表达式。
-        /// 未提供 <paramref name="dbType"/> 时退回到按属性 CLR 类型查找，仍无匹配则使用 GetValue + ConvertValue 兜底。
+        /// 未提供 <paramref name="dbType"/> 时退回到按属性 CLR 类型查找，仍无匹配则使用 GetValue + reader.DbConverter.ConvertFromDbValue 兜底。
         /// <paramref name="columnName"/> 用于在读取失败时抛出包含成员名（属性名或构造函数参数名）的明确异常；为 null 时仅依据 <paramref name="ordinal"/> 描述。
         /// </summary>
+        [RequiresDynamicCode("The code for building the typed read expression used MakeGenericMethod and might not be available.")]
         private static Expression BuildTypedReadExpression(
-            ParameterExpression readerParam, int ordinal, Type targetType, string columnName, DbType? dbType = null)
+            ParameterExpression readerParam, int ordinal, Type targetType, string? columnName, DbType? dbType = null)
         {
             Type coreType = Nullable.GetUnderlyingType(targetType) ?? targetType;
             var ordinalExpr = Expression.Constant(ordinal);
@@ -238,8 +285,8 @@ namespace LiteOrm
                 {
                     readExpr = Expression.Convert(
                         Expression.Call(
-                            Expression.Convert(readerParam, typeof(AutoLockDataReader)),
-                            _changeTypeMethod,
+                            readerParam,
+                            _changeTypeMethod!,
                             Expression.Convert(readExpr, typeof(object)),
                             Expression.Constant(coreType)),
                         coreType);
@@ -250,7 +297,7 @@ namespace LiteOrm
             if (targetType != coreType)
                 readExpr = Expression.Convert(readExpr, targetType);
 
-            var isNull = Expression.Call(readerParam, _isDBNullMethod, ordinalExpr);
+            var isNull = Expression.Call(readerParam, _isDBNullMethod!, ordinalExpr);
             var body = Expression.Condition(isNull, Expression.Default(targetType), readExpr);
 
             // Wrap with try-catch to attach member name / ordinal information on failure
@@ -262,7 +309,7 @@ namespace LiteOrm
         /// </summary>
         private static Expression WrapWithColumnErrorHandling(
             int ordinal,
-            string memberName,
+            string? memberName,
             Type targetType,
             Expression body)
         {
@@ -270,7 +317,7 @@ namespace LiteOrm
 
             var rethrowExpr = Expression.Throw(
                 Expression.Call(
-                    _createColumnReadExceptionMethod,
+                    _createColumnReadExceptionMethod!,
                     exVar,
                     Expression.Constant(ordinal),
                     Expression.Constant(memberName, typeof(string)),
@@ -284,7 +331,7 @@ namespace LiteOrm
         /// 构造包含成员名、列号与目标类型的明确异常，原始异常作为 InnerException 保留。
         /// </summary>
         private static Exception CreateColumnReadException(
-            Exception inner, int ordinal, string memberName, Type targetType)
+            Exception inner, int ordinal, string? memberName, Type targetType)
         {
             string memberDesc = !string.IsNullOrEmpty(memberName)
                 ? $"member '{memberName}' (ordinal {ordinal})"
@@ -298,8 +345,9 @@ namespace LiteOrm
 
         /// <summary>
         /// 返回读取列值的原始表达式（不含 IsDBNull 检查与 Nullable 封装）。
-        /// 选取顺序：DbType 映射 → CLR 类型映射 → byte[] 特殊路径 → GetValue + ConvertValue 兜底。
+        /// 选取顺序：DbType 映射 → CLR 类型映射 → byte[] 特殊路径 → GetValue + reader.DbConverter.ConvertFromDbValue 兜底。
         /// </summary>
+        [RequiresDynamicCode("The code for building the raw read expression used MakeGenericMethod and might not be available.")]
         private static Expression BuildRawReadExpression(
             ParameterExpression readerParam, Expression ordinalExpr, Type coreType, DbType? dbType)
         {
@@ -310,38 +358,47 @@ namespace LiteOrm
                 if (dbType.Value == DbType.Binary)
                 {
                     if (typeof(Stream).IsAssignableFrom(coreType))
-                        return Expression.Call(readerParam, _typedReaderMethods[typeof(Stream)], ordinalExpr);
+                        return Expression.Call(readerParam, _typedReaderMethods[typeof(Stream)]!, ordinalExpr);
                     return Expression.Call(readerParam,
-                        _getFieldValueMethod.MakeGenericMethod(typeof(byte[])), ordinalExpr);
+                        _getFieldValueMethod!.MakeGenericMethod(typeof(byte[])), ordinalExpr);
                 }
 
-                if (_dbTypeReaderMethods.TryGetValue(dbType.Value, out MethodInfo dbMethod))
-                    return Expression.Call(readerParam, dbMethod, ordinalExpr);
+                if (_dbTypeReaderMethods.TryGetValue(dbType.Value, out MethodInfo? dbMethod))
+                    return Expression.Call(readerParam, dbMethod!, ordinalExpr);
             }
 
             // 2. CLR type-driven: anonymous projections, scalar columns, and unmapped DbType values
-            if (_typedReaderMethods.TryGetValue(coreType, out MethodInfo typedMethod))
-                return Expression.Call(readerParam, typedMethod, ordinalExpr);
+            if (_typedReaderMethods.TryGetValue(coreType, out MethodInfo? typedMethod))
+                return Expression.Call(readerParam, typedMethod!, ordinalExpr);
 
             // 3. byte[] without DbType context
             if (coreType == typeof(byte[]))
                 return Expression.Call(readerParam,
-                    _getFieldValueMethod.MakeGenericMethod(typeof(byte[])), ordinalExpr);
+                    _getFieldValueMethod!.MakeGenericMethod(typeof(byte[])), ordinalExpr);
 
-            // 4. Fallback: GetValue + ConvertValue<T> (enums, TimeSpan, DateTimeOffset, etc.)
-            return Expression.Call(
-                _convertValueMethod.MakeGenericMethod(coreType),
-                Expression.Call(readerParam, _getValueMethod, ordinalExpr));
+            // 4. Fallback: GetValue + reader.DbConverter.ConvertFromDbValue (enums, TimeSpan, DateTimeOffset, etc.)
+            var getValueCall = Expression.Call(readerParam, _getValueMethod!, ordinalExpr);
+            var dbConverterExpr = Expression.Property(readerParam, nameof(AutoLockDataReader.DbConverter));
+            return Expression.Convert(
+                Expression.Call(dbConverterExpr, _convertFromDbValueMethod!, getValueCall, Expression.Constant(coreType, typeof(Type))),
+                coreType);
         }
 
         /// <summary>
         /// 编译基于 <see cref="SqlColumn"/> 定义的位置映射委托。
         /// <paramref name="selectColumns"/>[i] 对应读取器第 i 列，使用列的属性名定位目标属性。
         /// </summary>
-        private static Func<DbDataReader, TResult> CompileConverterByColumns<TResult>(IList<SqlColumn> selectColumns)
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown instead of invoking Expression.Compile")]
+#endif
+        private static Func<AutoLockDataReader, TResult> CompileConverterByColumns<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IList<SqlColumn> selectColumns)
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                throw new PlatformNotSupportedException(
+                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table].");
             Type resultType = typeof(TResult);
-            var readerParam = Expression.Parameter(typeof(DbDataReader), "reader");
+            var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
             var ctor = resultType.GetConstructor(Type.EmptyTypes)
                 ?? throw new InvalidOperationException($"Type '{resultType.FullName}' does not have a public parameterless constructor.");
 
@@ -358,7 +415,7 @@ namespace LiteOrm
             }
 
             var body = Expression.MemberInit(Expression.New(ctor), bindings);
-            return Expression.Lambda<Func<DbDataReader, TResult>>(body, readerParam).Compile();
+            return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
         private static bool IsScalarType(Type type)
@@ -373,17 +430,6 @@ namespace LiteOrm
                 || type == typeof(Stream)
                 || type == typeof(DateTimeOffset)
                 || type == typeof(TimeSpan);
-        }
-
-        private static T ConvertValue<T>(object value)
-        {
-            if (value == null || value is DBNull) return default;
-            if (value is T t) return t;
-            Type targetType = typeof(T);
-            Type underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
-            if (underlyingType.IsEnum)
-                return (T)Enum.ToObject(underlyingType, Convert.ChangeType(value, Enum.GetUnderlyingType(underlyingType)));
-            return (T)Convert.ChangeType(value, underlyingType);
         }
     }
 }

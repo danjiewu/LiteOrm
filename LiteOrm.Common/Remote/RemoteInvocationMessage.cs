@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -23,18 +24,20 @@ namespace LiteOrm.Remote
     /// </para>
     /// </remarks>
     [JsonConverter(typeof(RemoteInvocationRequestConverter))]
+    [RequiresDynamicCode("RemoteInvocationRequest serialization relies on reflection-based System.Text.Json; not supported under NativeAOT.")]
+    [RequiresUnreferencedCode("RemoteInvocationRequest serialization relies on reflection-based System.Text.Json.")]
     public sealed class RemoteInvocationRequest
     {
         /// <summary>
         /// 服务名称。客户端与服务端使用相同的 ServiceName 进行匹配。
         /// </summary>
-        public string ServiceName { get; set; }
+        public string? ServiceName { get; set; }
 
         /// <summary>
         /// 请求唯一标识。客户端生成，使用 12 位 <see cref="ShortId"/>，
         /// 服务端处理后在 <see cref="RemoteInvocationResponse"/> 中原样返回，用于日志关联与请求追踪。
         /// </summary>
-        public string RequestID { get; set; } = ShortId.NewId(12);
+        public string? RequestID { get; set; } = ShortId.NewId(12);
 
         /// <summary>
         /// 方法信息。客户端构建请求时直接赋值 <c>invocation.Method</c>；
@@ -42,12 +45,12 @@ namespace LiteOrm.Remote
         /// 服务端根据方法名查找到 <see cref="MethodInfo"/> 。
         /// </summary>
         [JsonIgnore]
-        public MethodInfo Method { get; set; }
+        public MethodInfo? Method { get; set; }
 
         /// <summary>
         /// 调用参数列表（不含 <see cref="System.Threading.CancellationToken"/>）。
         /// </summary>
-        public object[] Arguments { get; set; } = Array.Empty<object>();
+        public object?[] Arguments { get; set; } = Array.Empty<object>();
     }
 
     /// <summary>
@@ -62,13 +65,15 @@ namespace LiteOrm.Remote
     /// 回写值为值，按索引升序排列。
     /// </para>
     /// </remarks>
+    [RequiresDynamicCode("RemoteInvocationResponse serialization relies on reflection-based System.Text.Json; not supported under NativeAOT.")]
+    [RequiresUnreferencedCode("RemoteInvocationResponse serialization relies on reflection-based System.Text.Json.")]
     public sealed class RemoteInvocationResponse
     {
         /// <summary>
         /// 对应的请求唯一标识。服务端从 <see cref="RemoteInvocationRequest.RequestID"/> 复制，
         /// 用于日志关联与请求追踪。
         /// </summary>
-        public string RequestID { get; set; }
+        public string? RequestID { get; set; }
 
         /// <summary>
         /// 调用是否成功。
@@ -77,20 +82,21 @@ namespace LiteOrm.Remote
 
         /// <summary>
         /// 返回值。反序列化后为 <see cref="JsonElement"/> 或 <see cref="TypeWrappedValue"/> 的 JSON 表示，
-        /// 调用方根据方法返回类型进行反序列化。
+        /// 调用方根据方法返回类型进行反序列化。无返回值或反序列化失败时为 null。
         /// </summary>
-        public object Result { get; set; }
+        public object? Result { get; set; }
 
         /// <summary>
         /// 需要回写到客户端的参数。键为参数在请求 <see cref="RemoteInvocationRequest.Arguments"/> 列表中的索引，
         /// 值为回写值（反序列化后为 <see cref="JsonElement"/>，调用方根据 <c>IArgumentOutHandler.ReturnType</c> 进行二次反序列化）。
+        /// 无回写参数或反序列化失败时为 null。
         /// </summary>
-        public SortedList<int, object> OutArguments { get; set; } = new();
+        public SortedList<int, object>? OutArguments { get; set; } = new();
 
         /// <summary>
-        /// 远程调用异常信息。仅在 <see cref="Success"/> 为 false 时返回。
+        /// 远程调用异常信息。仅在 <see cref="Success"/> 为 false 时返回；无异常时为 null。
         /// </summary>
-        public RemoteErrorInfo Error { get; set; }
+        public RemoteErrorInfo? Error { get; set; }
     }
 
     /// <summary>
@@ -101,23 +107,25 @@ namespace LiteOrm.Remote
         /// <summary>
         /// 远程抛出异常的类型全名。
         /// </summary>
-        public string Type { get; set; }
+        public string? Type { get; set; }
 
         /// <summary>
         /// 远程异常消息。
         /// </summary>
-        public string Message { get; set; }
+        public string? Message { get; set; }
 
         /// <summary>
         /// 远程异常堆栈。
         /// </summary>
-        public string StackTrace { get; set; }
+        public string? StackTrace { get; set; }
     }
 
     /// <summary>
     /// 类型包装值。当实际值类型与预期类型不一致时使用，携带实际类型名与值。
     /// 序列化为 &lt;c&gt;{"$type":"类型名","$value":&lt;值&gt;}&lt;/c&gt; 结构。
     /// </summary>
+    [RequiresDynamicCode("TypeWrappedValue serialization relies on reflection-based System.Text.Json; not supported under NativeAOT.")]
+    [RequiresUnreferencedCode("TypeWrappedValue serialization relies on reflection-based System.Text.Json.")]
     public sealed class TypeWrappedValue
     {
         /// <summary>
@@ -137,12 +145,12 @@ namespace LiteOrm.Remote
         /// 实际值类型的程序集限定名。
         /// </summary>
         [JsonPropertyName("$type")]
-        public string Type { get; set; }
+        public string? Type { get; set; }
 
         /// <summary>
         /// 实际值。
         /// </summary>
         [JsonPropertyName("$value")]
-        public object Value { get; set; }
+        public object? Value { get; set; }
     }
 }

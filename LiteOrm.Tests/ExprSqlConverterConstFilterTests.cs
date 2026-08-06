@@ -176,39 +176,21 @@ namespace LiteOrm.Common.UnitTests
 
         private static void RunWithProvider(TableInfoProvider provider, Action action)
         {
-            TableInfoProvider currentProvider = TableInfoProvider.Default;
+            TableInfoProvider currentProvider = TableInfoProvider.Instance;
             try
             {
-                TableInfoProvider.Default = provider;
+                TableInfoProvider.Set(() => provider);
                 action();
             }
             finally
             {
-                TableInfoProvider.Default = currentProvider;
+                TableInfoProvider.Set(() => currentProvider);
             }
         }
 
         private static AttributeTableInfoProvider CreateProvider()
         {
-            var sqlBuilderFactory = new Mock<ISqlBuilderFactory>();
-            sqlBuilderFactory
-                .Setup(factory => factory.GetSqlBuilder(It.IsAny<Type>(), It.IsAny<string>()))
-                .Returns(SqlBuilder.Instance);
-
-            var dataSourceProvider = new Mock<IDataSourceProvider>();
-            dataSourceProvider.SetupGet(provider => provider.DefaultDataSourceName).Returns("default");
-            dataSourceProvider
-                .Setup(provider => provider.GetDataSource(It.IsAny<string>()))
-                .Returns(new DataSourceConfig
-                {
-                    Name = "default",
-                    Provider = typeof(DbConnection).AssemblyQualifiedName!
-                });
-
-            var services = new ServiceCollection();
-            services.AddSingleton(sqlBuilderFactory.Object);
-            services.AddSingleton(dataSourceProvider.Object);
-            return new AttributeTableInfoProvider(services.BuildServiceProvider());
+            return new AttributeTableInfoProvider();
         }
 
         private enum ConstFilterState

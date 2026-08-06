@@ -42,9 +42,9 @@ namespace LiteOrm.Demo.Demos
             {
                 var minAge = 18;
                 var searchName = "王";
-                LogicExpr expr = null;
+                LogicExpr? expr = null;
                 var result = userSvc.Search(
-                    q => q.Where(a => a.UserName.Contains(searchName) && expr.To<bool>())
+                    q => q.Where(a => a.UserName!.Contains(searchName) && expr!.To<bool>())
                     .Take(20)
                     );
                 DemoHelper.PrintSection("📋 场景说明",
@@ -58,7 +58,7 @@ namespace LiteOrm.Demo.Demos
                     ");");
 
                 var results = await userSvc.SearchAsync(
-                    q => q.Where(u => u.Age >= minAge + 1 && u.UserName.Contains(searchName))
+                    q => q.Where(u => u.Age >= minAge + 1 && u.UserName!.Contains(searchName))
                           .OrderByDescending(u => u.Id)
                           .Skip(0).Take(10)
                 );
@@ -227,7 +227,7 @@ namespace LiteOrm.Demo.Demos
 
                 var results = await userSvc.SearchAsync(
                     q => q.Where(u => u.Age >= minAge && (Prop(nameof(User.Age)) <= maxAge).To<bool>())
-                          .Where(u => u.UserName.Contains(searchName))
+                          .Where(u => u.UserName!.Contains(searchName))
                           .OrderBy(u => u.Age)
                           .ThenBy(u => u.UserName)
                           .Skip(0).Take(5)

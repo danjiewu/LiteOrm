@@ -5,10 +5,37 @@ using System.Data;
 namespace LiteOrm.Common
 {
     /// <summary>
+    /// 表示用于数据库值与 .NET 对象值之间转换的接口。
+    /// </summary>
+    public interface IDbConverter
+    {
+        /// <summary>
+        /// 将数据库值转换为 .NET 对象值。
+        /// </summary>
+        /// <param name="dbValue">数据库值。</param>
+        /// <param name="objectType">目标对象类型（可选）。</param>
+        /// <returns>返回转换后的 .NET 对象值。</returns>
+        object? ConvertFromDbValue(object? dbValue, Type? objectType = null);
+        /// <summary>
+        /// 转换 .NET 对象值为数据库可接受的值。
+        /// </summary>
+        /// <param name="value">要转换的 .NET 对象值。</param>
+        /// <param name="dbType">目标数据库类型（可选）。</param>
+        /// <returns>返回转换后的数据库值。</returns>
+        object ConvertToDbValue(object? value, DbType dbType = DbType.Object);
+        /// <summary>
+        /// 将 .NET 类型映射为数据库对应的 <see cref="DbType"/>。
+        /// </summary>
+        /// <param name="type">要映射的 .NET 类型。</param>
+        /// <returns>返回对应的 <see cref="DbType"/> 值。</returns>
+        DbType GetDbType(Type type);
+    }
+
+    /// <summary>
     /// 表示用于生成数据库相关 SQL 片段的构建器接口。
     /// 不同数据库的实现负责将通用表达转换为目标数据库的原生 SQL 语法和参数格式。
     /// </summary>
-    public interface ISqlBuilder
+    public interface ISqlBuilder: IDbConverter
     {
         /// <summary>
         /// 获取当前数据库是否支持公共表表达式（CTE / WITH 子句）。
@@ -52,7 +79,6 @@ namespace LiteOrm.Common
         /// <returns>返回适用于 SQL 的名称。</returns>
         string ToSqlName(string name);
 
-
         /// <summary>
         /// 将本地参数名或变量名格式化为 SQL 中使用的参数占位符。
         /// 例如将参数名转换为 "@param" 或 ":param" 等形式。
@@ -91,29 +117,6 @@ namespace LiteOrm.Common
         /// <param name="sb">接收输出 SQL 片段的字符串构建器。</param>
         /// <param name="strs">要连接的字符串或表达式片段。</param>
         void BuildConcatSql(ref ValueStringBuilder sb, params string[] strs);
-
-
-        /// <summary>
-        /// 从数据库值转换为 .NET 对象值。
-        /// </summary>
-        /// <param name="dbValue">数据库值。</param>
-        /// <param name="objectType">目标对象类型（可选）。</param>
-        /// <returns>返回转换后的 .NET 对象值。</returns>
-        object ConvertFromDbValue(object dbValue, Type objectType = null);
-        /// <summary>
-        /// 转换 .NET 对象值为数据库可接受的值。
-        /// </summary>
-        /// <param name="value">要转换的 .NET 对象值。</param>
-        /// <param name="dbType">目标数据库类型（可选）。</param>
-        /// <returns>返回转换后的数据库值。</returns>
-        object ConvertToDbValue(object value, DbType dbType = DbType.Object);
-
-        /// <summary>
-        /// 将 .NET 类型映射为数据库对应的 <see cref="DbType"/>。
-        /// </summary>
-        /// <param name="type">要映射的 .NET 类型。</param>
-        /// <returns>返回对应的 <see cref="DbType"/> 值。</returns>
-        DbType GetDbType(Type type);
 
         /// <summary>
         /// 将结构化的 SQL 片段组装成最终的 SELECT 语句。

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -9,7 +10,7 @@ namespace LiteOrm.Common
     /// 实体类的增删改等基本操作的泛型接口
     /// </summary>
     /// <typeparam name="T">实体类类型</typeparam>
-    public interface IObjectDAO<T> : IObjectDAOAsync<T>, IObjectDAO
+    public interface IObjectDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : IObjectDAOAsync<T>, IObjectDAO
     {
         /// <summary>
         /// 添加对象
@@ -33,7 +34,7 @@ namespace LiteOrm.Common
         /// <param name="o">待更新的对象</param>
         /// <param name="timestamp">时间戳</param>
         /// <returns>是否成功更新</returns>
-        bool Update(T o, object timestamp = null);
+        bool Update(T o, object? timestamp = null);
 
         /// <summary>
         /// 更新或插入对象
@@ -67,7 +68,6 @@ namespace LiteOrm.Common
     /// <summary>
     /// 实体类的增删改等基本操作的非泛型接口
     /// </summary>
-    [AutoRegister(false)]
     public interface IObjectDAO : IObjectDAOAsync
     {
         /// <summary>

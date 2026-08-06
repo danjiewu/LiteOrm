@@ -357,7 +357,7 @@ Usage recommendations:
 - `ForeignColumnAttribute`: Foreign (Type or AliasName), Property (column to retrieve)
 - `ColumnAttribute`: Constant (fixed filter; see the permission filtering guide)
 
-In implementation, LiteOrm merges ForeignType and TableJoin information during the metadata phase to generate JoinedTable / ForeignTable structures. For fixed-filter metadata and SQL injection details, see [Permission Filtering and User Scope Control](../03-advanced-topics/06-permission-filtering.en.md).
+In implementation, LiteOrm merges ForeignType and TableJoin information during the metadata phase to generate JoinedTable / ForeignTable structures. For fixed-filter metadata and SQL injection details, see [Permission Filtering and User Scope Control](../06-di/02-permission-filtering.en.md).
 
 ---
 
@@ -383,7 +383,7 @@ In implementation, LiteOrm merges ForeignType and TableJoin information during t
   A: Prefer ForeignType for single-column foreign keys; prefer TableJoin for joint primary keys or multi-column associations.
 
 - Q: When should I use `Column.Constant`?
-  A: Use it when the model itself always represents one fixed slice. For the full boundary, `ConstFilter` pipeline, and multi-tenant guidance, see [Permission Filtering and User Scope Control](../03-advanced-topics/06-permission-filtering.en.md).
+  A: Use it when the model itself always represents one fixed slice. For the full boundary, `ConstFilter` pipeline, and multi-tenant guidance, see [Permission Filtering and User Scope Control](../06-di/02-permission-filtering.en.md).
 
 ---
 

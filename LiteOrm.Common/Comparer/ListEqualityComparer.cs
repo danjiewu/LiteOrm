@@ -16,7 +16,7 @@ namespace LiteOrm.Common
         /// <param name="x">第一个要比较的列表。</param>
         /// <param name="y">第二个要比较的列表。</param>
         /// <returns>如果指定的列表相等，则为 true；否则为 false。</returns>
-        public bool Equals(List<T> x, List<T> y)
+        public bool Equals(List<T>? x, List<T>? y)
         {
             if (ReferenceEquals(x, y)) return true;
             if (x is null || y is null) return false;

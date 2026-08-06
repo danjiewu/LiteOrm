@@ -40,7 +40,7 @@ namespace LiteOrm
         /// <param name="value">要转换的对象值。</param>
         /// <param name="dbType">要转换的数据库类型。</param>
         /// <returns>转换后的数据库值。</returns>
-        public override object ConvertToDbValue(object value, DbType dbType = DbType.Object)
+        public override object ConvertToDbValue(object? value, DbType dbType = DbType.Object)
         {
             if (value is DateTime dt)
             {
@@ -200,13 +200,13 @@ namespace LiteOrm
             for (int i = 0; i < updatableColumns.Length; i++)
             {
                 if (i > 0) sb.Append(", ");
-                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(ToSqlName(updatableColumns[i].Name!));
             }
 
             for (int k = 0; k < keyColumns.Length; k++)
             {
                 sb.Append(", ");
-                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(ToSqlName(keyColumns[k].Name!));
             }
 
             sb.Append(") AS (\n    VALUES ");
@@ -248,9 +248,9 @@ namespace LiteOrm
             {
                 if (i > 0) sb.Append(",\n");
                 sb.Append("    ");
-                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(ToSqlName(updatableColumns[i].Name!));
                 sb.Append(" = (\n        SELECT ");
-                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(ToSqlName(updatableColumns[i].Name!));
                 sb.Append("\n        FROM batch_data\n        WHERE ");
 
                 // 构建WHERE条件连接主键
@@ -259,9 +259,9 @@ namespace LiteOrm
                     if (k > 0) sb.Append("\n          AND ");
                     sb.Append(sqlTableName);
                     sb.Append(".");
-                    sb.Append(ToSqlName(keyColumns[k].Name));
+                    sb.Append(ToSqlName(keyColumns[k].Name!));
                     sb.Append(" = batch_data.");
-                    sb.Append(ToSqlName(keyColumns[k].Name));
+                    sb.Append(ToSqlName(keyColumns[k].Name!));
                 }
 
                 sb.Append("\n    )");
@@ -275,9 +275,9 @@ namespace LiteOrm
                 if (k > 0) sb.Append("\n      AND ");
                 sb.Append(sqlTableName);
                 sb.Append(".");
-                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(ToSqlName(keyColumns[k].Name!));
                 sb.Append(" = batch_data.");
-                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(ToSqlName(keyColumns[k].Name!));
             }
 
             sb.Append("\n);");
@@ -313,7 +313,7 @@ namespace LiteOrm
                 for (int i = 0; i < keyColumns.Count; i++)
                 {
                     if (i > 0) sb.Append(", ");
-                    sb.Append(ToSqlName(keyColumns[i].Name));
+                    sb.Append(ToSqlName(keyColumns[i].Name!));
                 }
                 sb.Append(")");
             }
@@ -329,7 +329,7 @@ namespace LiteOrm
         protected override string BuildCreateColumnDefinitionSql(ColumnDefinition column, bool inlinePrimaryKey, bool forceNotNull)
         {
             var sb = ValueStringBuilder.Create(64);
-            sb.Append(ToSqlName(column.Name));
+            sb.Append(ToSqlName(column.Name!));
             sb.Append(" ");
             sb.Append(GetSqlTypeDefinition(column));
 

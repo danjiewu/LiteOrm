@@ -66,9 +66,9 @@ namespace LiteOrm
             // 否则转换为 TotalSeconds 函数
             LambdaExprConverter.RegisterMemberHandler(typeof(TimeSpan), nameof(TimeSpan.TotalSeconds), (node, converter) =>
             {
-                var timeSpanExpr = converter.Convert(node.Expression);
+                var timeSpanExpr = converter.Convert(node.Expression!);
                 if (timeSpanExpr is ValueBinaryExpr binaryExpr && binaryExpr.Operator == ValueOperator.Subtract)
-                    return new FunctionExpr("DateDiffSeconds", binaryExpr.Left, binaryExpr.Right);
+                    return new FunctionExpr("DateDiffSeconds", binaryExpr.Left!, binaryExpr.Right!);
                 return new FunctionExpr("TotalSeconds", timeSpanExpr.AsValue());
             });
 
@@ -76,9 +76,9 @@ namespace LiteOrm
             // 特殊处理：如果两个日期相减 (date1 - date2).TotalDays，转换为 DateDiffDays 函数
             LambdaExprConverter.RegisterMemberHandler(typeof(TimeSpan), nameof(TimeSpan.TotalDays), (node, converter) =>
             {
-                var timeSpanExpr = converter.Convert(node.Expression);
+                var timeSpanExpr = converter.Convert(node.Expression!);
                 if (timeSpanExpr is ValueBinaryExpr binaryExpr && binaryExpr.Operator == ValueOperator.Subtract)
-                    return new FunctionExpr("DateDiffDays", binaryExpr.Left, binaryExpr.Right);
+                    return new FunctionExpr("DateDiffDays", binaryExpr.Left!, binaryExpr.Right!);
                 return new FunctionExpr("TotalDays", timeSpanExpr.AsValue());
             });
 
@@ -86,9 +86,9 @@ namespace LiteOrm
             // 特殊处理：如果两个日期相减 (date1 - date2).TotalHours，转换为 DateDiffHours 函数
             LambdaExprConverter.RegisterMemberHandler(typeof(TimeSpan), nameof(TimeSpan.TotalHours), (node, converter) =>
             {
-                var timeSpanExpr = converter.Convert(node.Expression);
+                var timeSpanExpr = converter.Convert(node.Expression!);
                 if (timeSpanExpr is ValueBinaryExpr binaryExpr && binaryExpr.Operator == ValueOperator.Subtract)
-                    return new FunctionExpr("DateDiffHours", binaryExpr.Left, binaryExpr.Right);
+                    return new FunctionExpr("DateDiffHours", binaryExpr.Left!, binaryExpr.Right!);
                 return new FunctionExpr("TotalHours", timeSpanExpr.AsValue());
             });
 
@@ -96,9 +96,9 @@ namespace LiteOrm
             // 特殊处理：如果两个日期相减 (date1 - date2).TotalMinutes，转换为 DateDiffMinutes 函数
             LambdaExprConverter.RegisterMemberHandler(typeof(TimeSpan), nameof(TimeSpan.TotalMinutes), (node, converter) =>
             {
-                var timeSpanExpr = converter.Convert(node.Expression);
+                var timeSpanExpr = converter.Convert(node.Expression!);
                 if (timeSpanExpr is ValueBinaryExpr binaryExpr && binaryExpr.Operator == ValueOperator.Subtract)
-                    return new FunctionExpr("DateDiffMinutes", binaryExpr.Left, binaryExpr.Right);
+                    return new FunctionExpr("DateDiffMinutes", binaryExpr.Left!, binaryExpr.Right!);
                 return new FunctionExpr("TotalMinutes", timeSpanExpr.AsValue());
             });
 
@@ -106,9 +106,9 @@ namespace LiteOrm
             // 特殊处理：如果两个日期相减 (date1 - date2).TotalMilliseconds，转换为 DateDiffMilliseconds 函数
             LambdaExprConverter.RegisterMemberHandler(typeof(TimeSpan), nameof(TimeSpan.TotalMilliseconds), (node, converter) =>
             {
-                var timeSpanExpr = converter.Convert(node.Expression);
+                var timeSpanExpr = converter.Convert(node.Expression!);
                 if (timeSpanExpr is ValueBinaryExpr binaryExpr && binaryExpr.Operator == ValueOperator.Subtract)
-                    return new FunctionExpr("DateDiffMilliseconds", binaryExpr.Left, binaryExpr.Right);
+                    return new FunctionExpr("DateDiffMilliseconds", binaryExpr.Left!, binaryExpr.Right!);
                 return new FunctionExpr("TotalMilliseconds", timeSpanExpr.AsValue());
             });
 
@@ -116,7 +116,7 @@ namespace LiteOrm
             // 转换为 SQL LIKE 'xxx%' (LogicBinaryExpr with StartsWith operator)
             LambdaExprConverter.RegisterMethodHandler(typeof(string), nameof(string.StartsWith), (node, converter) =>
             {
-                var left = converter.Convert(node.Object).AsValue();
+                var left = converter.Convert(node.Object!).AsValue();
                 var right = converter.Convert(node.Arguments[0]).AsValue();
                 return new LogicBinaryExpr(left, LogicOperator.StartsWith, right);
             });
@@ -125,7 +125,7 @@ namespace LiteOrm
             // 转换为 SQL LIKE '%xxx' (LogicBinaryExpr with EndsWith operator)
             LambdaExprConverter.RegisterMethodHandler(typeof(string), nameof(string.EndsWith), (node, converter) =>
             {
-                var left = converter.Convert(node.Object).AsValue();
+                var left = converter.Convert(node.Object!).AsValue();
                 var right = converter.Convert(node.Arguments[0]).AsValue();
                 return new LogicBinaryExpr(left, LogicOperator.EndsWith, right);
             });
@@ -134,7 +134,7 @@ namespace LiteOrm
             // 转换为 SQL LIKE '%xxx%' (LogicBinaryExpr with Contains operator)
             LambdaExprConverter.RegisterMethodHandler(typeof(string), nameof(string.Contains), (node, converter) =>
             {
-                var left = converter.Convert(node.Object).AsValue();
+                var left = converter.Convert(node.Object!).AsValue();
                 var right = converter.Convert(node.Arguments[0]).AsValue();
                 return new LogicBinaryExpr(left, LogicOperator.Contains, right);
             });
@@ -157,7 +157,7 @@ namespace LiteOrm
                 else
                 {
                     if (node.Arguments.Count != 1) throw new ArgumentException($"Invalid number of arguments for method {node.Method.Name}. Expected 1, got {node.Arguments.Count}.");
-                    ValueTypeExpr collection = collection = converter.Convert(node.Object).AsValue();
+                    ValueTypeExpr collection = collection = converter.Convert(node.Object!).AsValue();
                     ValueTypeExpr value = converter.Convert(node.Arguments[0]).AsValue();
                     return new LogicBinaryExpr(value, LogicOperator.In, collection);
                 }
@@ -169,7 +169,7 @@ namespace LiteOrm
             LambdaExprConverter.RegisterMethodHandler(typeof(string), nameof(string.Concat), (node, converter) =>
             {
                 List<ValueTypeExpr> args = new List<ValueTypeExpr>();
-                if (node.Object != null) args.Add(converter.Convert(node.Object).AsValue());
+                if (node.Object != null) args.Add(converter.Convert(node.Object!).AsValue());
 
                 if (node.Arguments.Count == 1)
                 {
@@ -194,11 +194,11 @@ namespace LiteOrm
             // 转换为 LogicBinaryExpr with Equal operator
             LambdaExprConverter.RegisterMethodHandler(nameof(Equals), (node, converter) =>
             {
-                ValueTypeExpr left = null;
-                ValueTypeExpr right = null;
+                ValueTypeExpr? left = null;
+                ValueTypeExpr? right = null;
                 if (node.Object != null)
                 {
-                    left = converter.Convert(node.Object).AsValue();
+                    left = converter.Convert(node.Object!).AsValue();
                     right = converter.Convert(node.Arguments[0]).AsValue();
                 }
                 else
@@ -216,12 +216,12 @@ namespace LiteOrm
             {
                 if (node.Arguments.Count > 0)
                 {
-                    var obj = converter.Convert(node.Object).AsValue();
+                    var obj = converter.Convert(node.Object!).AsValue();
                     var format = converter.Convert(node.Arguments[0]).AsValue();
                     if (obj is not null && format is not null)
                         return new FunctionExpr("Format", obj, format);
                 }
-                return converter.Convert(node.Object);
+                return converter.Convert(node.Object!);
             });
 
             // string.Trim() / TrimStart() / TrimEnd()：去除字符串首尾/头部/尾部空格

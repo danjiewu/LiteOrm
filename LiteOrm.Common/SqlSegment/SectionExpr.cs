@@ -30,7 +30,7 @@ namespace LiteOrm.Common
         /// <param name="source">源片段</param>
         /// <param name="skip">要跳过的记录数</param>
         /// <param name="take">要获取的记录数</param>
-        public SectionExpr(SqlSegment source, int skip, int take) : this(skip, take)
+        public SectionExpr(SqlSegment? source, int skip, int take) : this(skip, take)
         {
             Source = source;
         }
@@ -55,7 +55,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is SectionExpr other && Equals(Source, other.Source) && Skip == other.Skip && Take == other.Take;
+        public override bool Equals(object? obj) => obj is SectionExpr other && Equals(Source, other.Source) && Skip == other.Skip && Take == other.Take;
 
         /// <summary>
         /// 获取当前对象的哈希码
@@ -81,7 +81,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var s = new SectionExpr();
-            s.Source = (SqlSegment)Source?.Clone();
+            s.Source = Source?.Clone() as SqlSegment;
             s.Skip = Skip;
             s.Take = Take;
             return s;

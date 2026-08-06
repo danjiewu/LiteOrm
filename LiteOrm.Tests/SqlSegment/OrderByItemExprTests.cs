@@ -181,7 +181,7 @@ namespace LiteOrm.Common.UnitTests
         {
             OrderByItemExpr expr = ("Name", false);
 
-            Assert.Equal(Expr.Prop("Name").PropertyName, ((PropertyExpr)expr.Field).PropertyName);
+            Assert.Equal(Expr.Prop("Name").PropertyName, ((PropertyExpr)expr.Field!).PropertyName);
             Assert.False(expr.Ascending);
         }
 

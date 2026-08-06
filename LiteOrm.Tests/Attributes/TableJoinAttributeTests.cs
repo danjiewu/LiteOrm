@@ -294,7 +294,7 @@ namespace LiteOrm.Common.UnitTests
             string foreignKeysValue = "ForeignKeyId";
 
             // Act
-            var attribute = new TableJoinAttribute(sourceTableType, targetTypeParam, foreignKeysValue);
+            var attribute = new TableJoinAttribute(sourceTableType!, targetTypeParam, foreignKeysValue);
 
             // Assert
             Assert.Null(attribute.Source);
@@ -314,7 +314,7 @@ namespace LiteOrm.Common.UnitTests
             string foreignKeysValue = "ForeignKeyId";
 
             // Act
-            var attribute = new TableJoinAttribute(sourceTableType, targetTypeParam, foreignKeysValue);
+            var attribute = new TableJoinAttribute(sourceTableType, targetTypeParam!, foreignKeysValue);
 
             // Assert
             Assert.Equal(sourceTableType, attribute.Source);
@@ -334,7 +334,7 @@ namespace LiteOrm.Common.UnitTests
             string? foreignKeysValue = null;
 
             // Act
-            var attribute = new TableJoinAttribute(sourceTableType, targetTypeParam, foreignKeysValue);
+            var attribute = new TableJoinAttribute(sourceTableType, targetTypeParam, foreignKeysValue!);
 
             // Assert
             Assert.Equal(sourceTableType, attribute.Source);
@@ -397,7 +397,7 @@ namespace LiteOrm.Common.UnitTests
             string? foreignKeysValue = null;
 
             // Act
-            var attribute = new TableJoinAttribute(sourceTableType, targetTypeParam, foreignKeysValue);
+            var attribute = new TableJoinAttribute(sourceTableType!, targetTypeParam!, foreignKeysValue!);
 
             // Assert
             Assert.Null(attribute.Source);
@@ -534,7 +534,7 @@ namespace LiteOrm.Common.UnitTests
             string foreignKeys = "Id";
 
             // Act
-            TableJoinAttribute attribute = new TableJoinAttribute(sourceTable, targetType, foreignKeys);
+            TableJoinAttribute attribute = new TableJoinAttribute(sourceTable!, targetType, foreignKeys);
 
             // Assert
             Assert.Null(attribute.Source);
@@ -575,7 +575,7 @@ namespace LiteOrm.Common.UnitTests
             string foreignKeys = "Id";
 
             // Act
-            TableJoinAttribute attribute = new TableJoinAttribute(sourceTableType, targetType, foreignKeys);
+            TableJoinAttribute attribute = new TableJoinAttribute(sourceTableType!, targetType, foreignKeys);
 
             // Assert
             Assert.Null(attribute.Source);
@@ -611,8 +611,8 @@ namespace LiteOrm.Common.UnitTests
             TableJoinAttribute attribute = new TableJoinAttribute(sourceTable, targetType, foreignKeys);
 
             // Act
-            object firstAccess = attribute.Source;
-            object secondAccess = attribute.Source;
+            object? firstAccess = attribute.Source;
+            object? secondAccess = attribute.Source;
 
             // Assert
             Assert.Same(firstAccess, secondAccess);
@@ -728,7 +728,7 @@ namespace LiteOrm.Common.UnitTests
             var foreignKeys = "Id";
 
             // Act
-            var attribute = new TableJoinAttribute(sourceTable, null, foreignKeys);
+            var attribute = new TableJoinAttribute(sourceTable, null!, foreignKeys);
 
             // Assert
             Assert.Null(attribute.TargetType);
@@ -747,7 +747,7 @@ namespace LiteOrm.Common.UnitTests
             var foreignKeys = "Id";
 
             // Act
-            var attribute = new TableJoinAttribute(sourceTableType, null, foreignKeys);
+            var attribute = new TableJoinAttribute(sourceTableType, null!, foreignKeys);
 
             // Assert
             Assert.Null(attribute.TargetType);
@@ -765,7 +765,7 @@ namespace LiteOrm.Common.UnitTests
             var foreignKey = "Id";
 
             // Act
-            var attribute = new TableJoinAttribute(null, foreignKey);
+            var attribute = new TableJoinAttribute(null!, foreignKey);
 
             // Assert
             Assert.Null(attribute.TargetType);
@@ -972,7 +972,7 @@ namespace LiteOrm.Common.UnitTests
             string? foreignKeys = null;
 
             // Act
-            var attribute = new TableJoinAttribute(sourceTable, targetType, foreignKeys);
+            var attribute = new TableJoinAttribute(sourceTable, targetType, foreignKeys!);
 
             // Assert
             Assert.Null(attribute.ForeignKeys);
@@ -1016,7 +1016,7 @@ namespace LiteOrm.Common.UnitTests
             string? foreignKeys = null;
 
             // Act
-            var attribute = new TableJoinAttribute(sourceTable, targetType, foreignKeys);
+            var attribute = new TableJoinAttribute(sourceTable, targetType, foreignKeys!);
 
             // Assert
             Assert.Null(attribute.ForeignKeys);
@@ -1058,7 +1058,7 @@ namespace LiteOrm.Common.UnitTests
             string? foreignKey = null;
 
             // Act
-            var attribute = new TableJoinAttribute(targetType, foreignKey);
+            var attribute = new TableJoinAttribute(targetType, foreignKey!);
 
             // Assert
             Assert.Null(attribute.ForeignKeys);
@@ -1201,7 +1201,7 @@ namespace LiteOrm.Common.UnitTests
             string foreignKey = "UserId";
 
             // Act
-            var attribute = new TableJoinAttribute(targetType, foreignKey);
+            var attribute = new TableJoinAttribute(targetType!, foreignKey);
 
             // Assert
             Assert.Null(attribute.TargetType);
@@ -1220,7 +1220,7 @@ namespace LiteOrm.Common.UnitTests
             string? foreignKey = null;
 
             // Act
-            var attribute = new TableJoinAttribute(targetType, foreignKey);
+            var attribute = new TableJoinAttribute(targetType, foreignKey!);
 
             // Assert
             Assert.Equal(targetType, attribute.TargetType);
@@ -1239,7 +1239,7 @@ namespace LiteOrm.Common.UnitTests
             string? foreignKey = null;
 
             // Act
-            var attribute = new TableJoinAttribute(targetType, foreignKey);
+            var attribute = new TableJoinAttribute(targetType!, foreignKey!);
 
             // Assert
             Assert.Null(attribute.TargetType);

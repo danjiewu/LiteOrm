@@ -48,7 +48,7 @@ namespace LiteOrm.Tests
             Assert.False(t1.Equals(t3));
             Assert.False(t1.Equals(t4));
 
-            Assert.Equal("TestUser", t1.Type.Name);
+            Assert.Equal("TestUser", t1.Type!.Name);
             Assert.Null(t1.Alias);
             Assert.Empty(t1.TableArgs ?? Array.Empty<string>());
 
@@ -247,7 +247,7 @@ namespace LiteOrm.Tests
         {
             var item = new OrderByItemExpr(Expr.Prop("CreateTime"), false);
             Assert.False(item.Ascending);
-            Assert.Equal("CreateTime", (item.Field as PropertyExpr).PropertyName);
+            Assert.Equal("CreateTime", (item.Field as PropertyExpr)!.PropertyName);
             TestSerialization(item);
         }
 
@@ -344,9 +344,9 @@ namespace LiteOrm.Tests
         [Fact]
         public void LambdaExpr_Tests()
         {
-            var l1 = Expr.Lambda<TestUser>(u => u.Age > 18);
-            var l2 = Expr.Lambda<TestUser>(u => u.Age > 18);
-            var l3 = Expr.Lambda<TestUser>(u => u.Age > 20);
+            var l1 = Expr.Lambda<TestUser>(u => u.Age > 18)!;
+            var l2 = Expr.Lambda<TestUser>(u => u.Age > 18)!;
+            var l3 = Expr.Lambda<TestUser>(u => u.Age > 20)!;
 
             Assert.True(l1.Equals(l2));
             Assert.False(l1.Equals(l3));
@@ -390,8 +390,8 @@ namespace LiteOrm.Tests
             var reversed = expr.Reverse(true);
 
             Assert.Equal(LogicOperator.LessThan, reversed.Operator);
-            Assert.Equal(18, (reversed.Left as ValueExpr).Value);
-            Assert.Equal("Age", (reversed.Right as PropertyExpr).PropertyName);
+            Assert.Equal(18, (reversed.Left as ValueExpr)!.Value);
+            Assert.Equal("Age", (reversed.Right as PropertyExpr)!.PropertyName);
         }
 
         #endregion
@@ -568,7 +568,7 @@ namespace LiteOrm.Tests
         {
             var expr = -Expr.Prop("Score");
             Assert.IsType<UnaryExpr>(expr);
-            Assert.Equal(UnaryOperator.Nagive, (expr as UnaryExpr).Operator);
+            Assert.Equal(UnaryOperator.Nagive, (expr as UnaryExpr)!.Operator);
             TestSerialization(expr);
         }
 
@@ -577,7 +577,7 @@ namespace LiteOrm.Tests
         {
             var expr = ~Expr.Prop("Flag");
             Assert.IsType<UnaryExpr>(expr);
-            Assert.Equal(UnaryOperator.BitwiseNot, (expr as UnaryExpr).Operator);
+            Assert.Equal(UnaryOperator.BitwiseNot, (expr as UnaryExpr)!.Operator);
             TestSerialization(expr);
         }
 
@@ -970,7 +970,7 @@ namespace LiteOrm.Tests
                 var hash1 = expr.GetHashCode();
                 var json = JsonSerializer.Serialize<Expr>(expr, _jsonOptions);
                 var deserialized = JsonSerializer.Deserialize<Expr>(json, _jsonOptions);
-                var hash2 = deserialized.GetHashCode();
+                var hash2 = deserialized!.GetHashCode();
                 Assert.Equal(hash1, hash2);
             }
         }

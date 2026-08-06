@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Reflection;
 
 namespace LiteOrm
@@ -27,7 +28,7 @@ namespace LiteOrm
             {
                 InitializeEnumName(typeof(T));
             }
-            if (_enumNameValue[typeof(T)].TryGetValue(displayName, out Enum r)) return (T)r;
+            if (_enumNameValue[typeof(T)].TryGetValue(displayName, out Enum? r)) return (T)r!;
             T res;
             if (Enum.TryParse<T>(displayName, false, out res)) return res;
             if (Enum.TryParse<T>(displayName, true, out res)) return res;
@@ -59,7 +60,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="value">枚举值。</param>
         /// <returns>显示名称字符串。</returns>
-        public static string GetDisplayName(Enum value)
+        public static string? GetDisplayName(Enum value)
         {
             if (value is null) return null;
 
@@ -71,6 +72,39 @@ namespace LiteOrm
             ConcurrentDictionary<Enum, string> enumNames = _enumTypeName[enumType];
             if (!enumNames.ContainsKey(value)) enumNames[value] = value.ToString();
             return enumNames[value];
+        }
+
+        /// <summary>
+        /// 预注册枚举类型的显示名称映射，用于 NativeAOT 场景替代运行时反射扫描。
+        /// 注册后 <see cref="Parse{T}"/>、<see cref="Parse(Type, string)"/> 与 <see cref="GetDisplayName"/> 直接使用注册结果。
+        /// </summary>
+        /// <param name="enumType">枚举类型。</param>
+        /// <param name="entries">枚举值 → 显示名称 的映射集合。</param>
+        public static void Register(Type enumType, IEnumerable<KeyValuePair<Enum, string>> entries)
+        {
+            if (enumType is null) throw new ArgumentNullException(nameof(enumType));
+            if (entries is null) throw new ArgumentNullException(nameof(entries));
+
+            ConcurrentDictionary<Enum, string> enumNames = new ConcurrentDictionary<Enum, string>();
+            ConcurrentDictionary<string, Enum> nameValues = new ConcurrentDictionary<string, Enum>();
+            foreach (var entry in entries)
+            {
+                enumNames[entry.Key] = entry.Value;
+                nameValues[entry.Value] = entry.Key;
+            }
+            _enumTypeName[enumType] = enumNames;
+            _enumNameValue[enumType] = nameValues;
+        }
+
+        /// <summary>
+        /// 预注册枚举类型的显示名称映射（泛型版本）。
+        /// </summary>
+        /// <typeparam name="TEnum">枚举类型。</typeparam>
+        /// <param name="entries">枚举值 → 显示名称 的映射集合。</param>
+        public static void Register<TEnum>(IEnumerable<KeyValuePair<TEnum, string>> entries) where TEnum : struct, Enum
+        {
+            if (entries is null) throw new ArgumentNullException(nameof(entries));
+            Register(typeof(TEnum), entries.Select(e => new KeyValuePair<Enum, string>(e.Key, e.Value)));
         }
 
         /// <summary>
@@ -86,7 +120,7 @@ namespace LiteOrm
                 object[] displayAttrs = field.GetCustomAttributes(typeof(Enum), true);
                 object[] displayNameAttrs = field.GetCustomAttributes(typeof(DisplayNameAttribute), true);
                 object[] descriptionAtts = field.GetCustomAttributes(typeof(DescriptionAttribute), true);
-                string displayName = null;
+                string? displayName = null;
                 if (displayNameAttrs.Length > 0)
                 {
                     DisplayNameAttribute att = (DisplayNameAttribute)displayNameAttrs[0];
@@ -99,8 +133,8 @@ namespace LiteOrm
                 }
                 else
                     displayName = field.Name;
-                enumNames[(Enum)field.GetValue(null)] = displayName;
-                nameValues[displayName] = (Enum)field.GetValue(null);
+                enumNames[(Enum)field.GetValue(null)!] = displayName;
+                nameValues[displayName] = (Enum)field.GetValue(null)!;
             }
             _enumTypeName[enumType] = enumNames;
             _enumNameValue[enumType] = nameValues;

@@ -19,7 +19,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取验证失败的表达式节点
         /// </summary>
-        public Expr FailedExpr { get; internal set; }
+        public Expr? FailedExpr { get; internal set; }
 
         /// <summary>
         /// 创建一个最小验证器实例，允许基本值类型、一元表达式、集合类型、逻辑类型及基础 SQL 片段
@@ -43,7 +43,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取验证失败的验证器
         /// </summary>
-        public ExprValidator FailedValidator { get; private set; }
+        public ExprValidator? FailedValidator { get; private set; }
 
         /// <summary>
         /// 初始化验证器组

@@ -121,7 +121,7 @@ namespace LiteOrm.Common
         {
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
-                return Nullable.GetUnderlyingType(type);
+                return Nullable.GetUnderlyingType(type) ?? type;
             }
             return type;
         }

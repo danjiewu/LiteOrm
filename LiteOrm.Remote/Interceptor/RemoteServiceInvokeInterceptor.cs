@@ -28,7 +28,6 @@ namespace LiteOrm.Remote
     /// 6. 异步支持 - 同时支持同步和异步方法拦截
     /// 7. 方法元数据缓存 - 缓存方法的特性信息以提高性能
     /// </remarks>
-    [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class RemoteServiceInvokeInterceptor : IInterceptor, IAsyncInterceptor
     {
         /// <summary>
@@ -47,7 +46,7 @@ namespace LiteOrm.Remote
         /// </summary>
         public static int MaxExpandedLogLength { get; set; } = 10;
 
-        private static readonly ConcurrentDictionary<(Type TargetType, MethodInfo Method), ServiceDescription> _methodDescriptions = new();
+        private static readonly ConcurrentDictionary<(Type? TargetType, MethodInfo Method), ServiceDescription> _methodDescriptions = new();
         /// <summary>
         /// 代理类型 → 推断的服务接口类型缓存。<see cref="IInvocation.TargetType"/> 在
         /// <c>CreateInterfaceProxyWithoutTarget</c> 场景下为 null，此时需从代理对象实现的接口中
@@ -108,7 +107,7 @@ namespace LiteOrm.Remote
             catch (Exception e)
             {
                 e = e.UnwrapTargetInvocationException();
-                if (TryHandleException(invocation, e, out object handledResult))
+                if (TryHandleException(invocation, e, out object? handledResult))
                 {
                     invocation.ReturnValue = handledResult;
                     return;
@@ -187,11 +186,11 @@ namespace LiteOrm.Remote
             catch (Exception e)
             {
                 e = e.UnwrapTargetInvocationException();
-                if (TryHandleException(invocation, e, out object handledResult))
-                    return (TResult)handledResult;
+                if (TryHandleException(invocation, e, out object? handledResult))
+                    return (TResult)handledResult!;
                 LogException(invocation, e);
                 ExceptionDispatchInfo.Capture(e).Throw();
-                return default; // 这行实际上永远不会执行，因为上面会抛出异常，但编译器需要一个返回值
+                return default!; // 这行实际上永远不会执行，因为上面会抛出异常，但编译器需要一个返回值
             }
         }
 
@@ -204,7 +203,7 @@ namespace LiteOrm.Remote
         {
             // RemoteInvokeCore 会将 ReturnValue 设置为表示异步远程调用的 Task
             RemoteInvokeCore(invocation);
-            await (Task)invocation.ReturnValue;
+            await (Task)invocation.ReturnValue!;
         }
 
         /// <summary>
@@ -215,7 +214,7 @@ namespace LiteOrm.Remote
         private async Task<TResult> InvokeCoreAsync<TResult>(IInvocation invocation)
         {
             RemoteInvokeCore(invocation);
-            return await (Task<TResult>)invocation.ReturnValue;
+            return await (Task<TResult>)invocation.ReturnValue!;
         }
 
 
@@ -381,7 +380,7 @@ namespace LiteOrm.Remote
         /// 将 <see cref="RemoteInvocationResponse.OutArguments"/> 中的值（反序列化后可能为 <see cref="JsonElement"/> 或 <see cref="TypeWrappedValue"/>）
         /// 转换为 <see cref="JsonElement"/>。
         /// </summary>
-        private static JsonElement? ToJsonElement(object value)
+        private static JsonElement? ToJsonElement(object? value)
         {
             if (value is null) return null;
             if (value is JsonElement element) return element;
@@ -394,7 +393,7 @@ namespace LiteOrm.Remote
         /// 反序列化类型化值。若 <paramref name="element"/> 为 <c>$type</c> 包装，则按实际类型反序列化；
         /// 否则按 <paramref name="expectedType"/> 反序列化。
         /// </summary>
-        private static object DeserializeTypedValue(JsonElement element, Type expectedType)
+        private static object? DeserializeTypedValue(JsonElement element, Type expectedType)
         {
             if (element.ValueKind == JsonValueKind.Null)
                 return expectedType.IsValueType ? Activator.CreateInstance(expectedType) : null;
@@ -404,7 +403,7 @@ namespace LiteOrm.Remote
                 element.TryGetProperty("$type", out var typeProp))
             {
                 var typeName = typeProp.GetString();
-                var actualType = Type.GetType(typeName);
+                var actualType = typeName is not null ? Type.GetType(typeName) : null;
                 if (actualType != null && element.TryGetProperty("$value", out var valueProp))
                     return JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, _serializerOptions);
             }
@@ -445,7 +444,7 @@ namespace LiteOrm.Remote
             var arguments = invocation.Arguments ?? Array.Empty<object>();
 
             // 过滤 CancellationToken 参数，保留其余参数原值
-            var args = new System.Collections.Generic.List<object>(arguments.Length);
+            var args = new System.Collections.Generic.List<object?>(arguments.Length);
             for (int i = 0; i < arguments.Length && i < parameters.Length; i++)
             {
                 var paramType = parameters[i].ParameterType;
@@ -538,7 +537,7 @@ namespace LiteOrm.Remote
             }
             EnsureSuccess(response, serviceInfo);
             ApplyWriteBack(response, writeBackPlan, invocation);
-            return (TResult)DeserializeResult(response, typeof(TResult));
+            return (TResult)DeserializeResult(response, typeof(TResult))!;
         }
 
         /// <summary>
@@ -560,7 +559,7 @@ namespace LiteOrm.Remote
         /// <param name="response">远程调用响应</param>
         /// <param name="returnType">方法声明的返回类型</param>
         /// <returns>反序列化后的返回值</returns>
-        protected static object DeserializeResult(RemoteInvocationResponse response, Type returnType)
+        protected static object? DeserializeResult(RemoteInvocationResponse response, Type returnType)
         {
             var element = ToJsonElement(response.Result);
             if (element is null || element.Value.ValueKind == JsonValueKind.Null)
@@ -576,7 +575,7 @@ namespace LiteOrm.Remote
         /// </summary>
         /// <param name="invocation">方法调用信息</param>
         /// <param name="requestId">可选请求唯一标识，用于日志关联。</param>
-        protected virtual void LogBeforeInvoke(IInvocation invocation, string requestId = null)
+        protected virtual void LogBeforeInvoke(IInvocation invocation, string? requestId = null)
         {
             var serviceDesc = GetDescription(invocation);
             LogLevel level = GetLogLevel(serviceDesc.LogLevel);
@@ -603,13 +602,13 @@ namespace LiteOrm.Remote
         /// <param name="result">方法返回值</param>
         /// <param name="elapsedTime">方法执行耗时</param>
         /// <param name="requestId">可选请求唯一标识，用于日志关联。</param>
-        protected virtual void LogAfterInvoke(IInvocation invocation, object result, TimeSpan elapsedTime, string requestId = null)
+        protected virtual void LogAfterInvoke(IInvocation invocation, object? result, TimeSpan elapsedTime, string? requestId = null)
         {
             var serviceDesc = GetDescription(invocation);
             LogLevel level = GetLogLevel(serviceDesc.LogLevel);
             if (_logger.IsEnabled(level))
             {
-                string returnLog = null;
+                string? returnLog = null;
                 if ((serviceDesc.LogFormat & LogFormat.ReturnValue) == LogFormat.ReturnValue)
                 {
                     returnLog = GetLogString(result, 0);
@@ -652,7 +651,7 @@ namespace LiteOrm.Remote
         /// <param name="invocation">方法调用信息</param>
         /// <param name="e">异常对象</param>
         /// <param name="requestId">可选请求唯一标识，用于日志关联。</param>
-        protected virtual void LogException(IInvocation invocation, Exception e, string requestId = null)
+        protected virtual void LogException(IInvocation invocation, Exception e, string? requestId = null)
         {
             var serviceDesc = GetDescription(invocation);
             var innerExp = e.UnwrapTargetInvocationException();
@@ -676,7 +675,7 @@ namespace LiteOrm.Remote
         /// <summary>
         /// 尝试通过全局异常处理事件处理异常。
         /// </summary>
-        protected virtual bool TryHandleException(IInvocation invocation, Exception exception, out object handledResult)
+        protected virtual bool TryHandleException(IInvocation invocation, Exception exception, out object? handledResult)
         {
             var context = CreateExceptionContext(invocation, exception);
             OnExceptionHandling(context);
@@ -705,7 +704,7 @@ namespace LiteOrm.Remote
                 GetServiceType(invocation),
                 serviceDesc.ServiceName,
                 method,
-                invocation.Arguments?.ToArray() ?? Array.Empty<object>(),
+                invocation.Arguments?.ToArray() ?? Array.Empty<object?>(),
                 GetLogArgs(invocation),
                 sessionId: null,
                 sqlStack: Array.Empty<string>(),
@@ -724,7 +723,7 @@ namespace LiteOrm.Remote
         /// <summary>
         /// 构建处理后的返回值。
         /// </summary>
-        protected virtual object BuildHandledReturnValue(ServiceExceptionContext context)
+        protected virtual object? BuildHandledReturnValue(ServiceExceptionContext context)
         {
             if (!context.HasResult)
             {
@@ -739,7 +738,7 @@ namespace LiteOrm.Remote
             return context.Result;
         }
 
-        private static Type GetHandledResultType(Type returnType)
+        private static Type? GetHandledResultType(Type returnType)
         {
             if (returnType == typeof(void) || returnType == typeof(Task))
                 return null;
@@ -753,13 +752,13 @@ namespace LiteOrm.Remote
         /// </summary>
         /// <param name="invocation">方法调用信息</param>
         /// <returns>参数的日志表示数组</returns>
-        protected virtual object[] GetLogArgs(IInvocation invocation)
+        protected virtual object?[] GetLogArgs(IInvocation invocation)
         {
             var serviceDesc = GetDescription(invocation);
-            var logArgs = new object[invocation.Arguments.Length];
+            var logArgs = new object?[invocation.Arguments.Length];
 
             for (int i = 0; i < invocation.Arguments.Length; i++)
-                logArgs[i] = serviceDesc.ArgsLoggable[i] ? invocation.Arguments[i] : "*";
+                logArgs[i] = serviceDesc.ArgsLoggable![i] ? invocation.Arguments[i] : "*";
 
             return logArgs;
         }
@@ -772,7 +771,7 @@ namespace LiteOrm.Remote
         /// <param name="values">待记录日志对象数组</param>
         /// <param name="expandDepth"></param>
         /// <returns>日志字符串</returns>
-        public static string GetLogString(object[] values, int expandDepth = 1)
+        public static string GetLogString(object?[] values, int expandDepth = 1)
         {
             var sb = ValueStringBuilder.Create(128);
             int expand = values.Length > MaxExpandedLogLength ? 0 : expandDepth;
@@ -792,7 +791,7 @@ namespace LiteOrm.Remote
         /// <param name="obj">待记录日志对象</param>
         /// <param name="expandDepth">当前递归展开深度，默认为1。超过最大展开长度的集合将不再展开。</param>
         /// <returns></returns>
-        public static string GetLogString(object obj, int expandDepth = 1)
+        public static string GetLogString(object? obj, int expandDepth = 1)
         {
             var sb = ValueStringBuilder.Create(128);
             GetLogString(ref sb, obj, expandDepth);
@@ -809,7 +808,7 @@ namespace LiteOrm.Remote
         /// <param name="obj">目标对象。</param>
         /// <param name="expandDepth">当前递归展开深度。</param>
         /// <returns>日志文本。</returns>
-        public static void GetLogString(ref ValueStringBuilder sb, object obj, int expandDepth)
+        public static void GetLogString(ref ValueStringBuilder sb, object? obj, int expandDepth)
         {
             if (obj is null)
             {
@@ -928,43 +927,14 @@ namespace LiteOrm.Remote
             {
                 var interfaces = pt.GetInterfaces();
                 // 叶子接口：不被代理实现的其他接口继承；排除 System 命名空间（Castle 内部接口等）
+                // 接口方法的 DeclaringType 一定非空（仅 lambda/局部函数为 null），此处直接断言
+                var declaringType = invocation.Method.DeclaringType!;
                 var candidates = interfaces
-                    .Where(i => (invocation.Method.DeclaringType.IsAssignableFrom(i) || i.IsAssignableFrom(invocation.Method.DeclaringType)) && (i.Namespace is null || !i.Namespace.StartsWith("System", StringComparison.Ordinal)))
+                    .Where(i => (declaringType.IsAssignableFrom(i) || i.IsAssignableFrom(declaringType)) && (i.Namespace is null || !i.Namespace.StartsWith("System", StringComparison.Ordinal)))
                     .Where(i => !interfaces.Any(other => other != i && i.IsAssignableFrom(other)))
                     .ToList();
-                return candidates.Count > 0 ? candidates[0] : invocation.Method.DeclaringType;
+                return candidates.Count > 0 ? candidates[0] : declaringType;
             });
         }
     }  
-
-    /// <summary>
-    ///  动态服务生成
-    /// </summary>
-    [AutoRegister(Lifetime = Lifetime.Singleton)]
-    public class ServiceFactoryInterceptor : IInterceptor
-    {
-        /// <summary>
-        /// 服务提供者
-        /// </summary>
-        protected IServiceProvider ServiceProvider { get; }
-        /// <summary>
-        /// 构造函数
-        /// </summary>
-        /// <param name="serviceProvider">服务提供者</param>
-        public ServiceFactoryInterceptor(IServiceProvider serviceProvider)
-        {
-            ServiceProvider = serviceProvider;
-        }
-        /// <summary>
-        /// 拦截方法调用，从服务提供者获取请求的服务实例。
-        /// </summary>
-        /// <param name="invocation">方法调用信息</param>
-        /// <remarks>
-        /// 该方法会拦截对服务工厂接口的调用，根据方法的返回类型从服务提供者中获取对应的服务实例。
-        /// </remarks>
-        public void Intercept(IInvocation invocation)
-        {
-            invocation.ReturnValue = ServiceProvider.GetService(invocation.Method.ReturnType);
-        }
-    }
 }

@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 
@@ -36,7 +37,6 @@ namespace LiteOrm.CodeGen
     ///     Console.WriteLine(sql);
     /// </code>
     /// </remarks>
-    [AutoRegister]
     public class DdlGen
     {
         private readonly DAOContextPoolFactory _factory;
@@ -59,13 +59,13 @@ namespace LiteOrm.CodeGen
         /// <param name="tableArgs">动态表名参数，适用于实现了 <see cref="IArged"/> 的类型。</param>
         /// <returns>所需的 ddl 语句列表（CREATE TABLE、ADD COLUMN、CREATE INDEX）。</returns>
         /// <exception cref="ArgumentNullException">当 <paramref name="objectType"/> 为 null 时抛出。</exception>
-        /// <exception cref="InvalidOperationException">当 <see cref="TableInfoProvider.Default"/> 未设置或未找到对应的连接池时抛出。</exception>
+        /// <exception cref="InvalidOperationException">当 <see cref="TableInfoProvider.Instance"/> 未设置或未找到对应的连接池时抛出。</exception>
         /// <exception cref="InvalidOperationException">当 <see cref="TableDefinition.DataSource"/> 未设置或无效时抛出。</exception>
-        public List<string> GenerateDdl(Type objectType, string[]? tableArgs = null)
+        public List<string> GenerateDdl([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]Type objectType, string[]? tableArgs = null)
         {
             if (objectType == null) throw new ArgumentNullException(nameof(objectType));
-            if (TableInfoProvider.Default == null) throw new InvalidOperationException("TableInfoProvider.Default is not set.");
-            var tableDef = TableInfoProvider.Default.GetTableDefinition(objectType);
+            if (TableInfoProvider.Instance == null) throw new InvalidOperationException("TableInfoProvider.Instance is not set.");
+            var tableDef = TableInfoProvider.Instance.GetTableDefinition(objectType);
             if (tableDef == null) return new List<string>();
 
             var pool = _factory.GetPool(tableDef.DataSource);
@@ -88,7 +88,7 @@ namespace LiteOrm.CodeGen
         /// <param name="objectTypes">实体类型集合。</param>
         /// <returns>所有实体类型的 ddl 语句集合。</returns>
         /// <exception cref="ArgumentNullException">当 <paramref name="objectTypes"/> 为 null 时抛出。</exception>
-        public IEnumerable<string> GenerateDdl(IEnumerable<Type> objectTypes)
+        public IEnumerable<string> GenerateDdl([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] IEnumerable<Type> objectTypes)
         {
             if (objectTypes == null) throw new ArgumentNullException(nameof(objectTypes));
 
@@ -109,6 +109,8 @@ namespace LiteOrm.CodeGen
         /// （通过 <see cref="AssemblyAnalyzer.GetAllReferencedAssemblies"/>）。
         /// </param>
         /// <returns>按数据源分组的 ddl 语句集合，键为数据源名称，值为该数据源的 ddl 语句列表。</returns>
+        [RequiresDynamicCode("")]
+        [RequiresUnreferencedCode("")]
         public IDictionary<string, List<string>> GenerateAllDdl(bool createNew, params Assembly[] assemblies)
         {
             IEnumerable<Assembly> targetAssemblies = (assemblies != null && assemblies.Length > 0)
@@ -129,7 +131,7 @@ namespace LiteOrm.CodeGen
                     if (typeof(IArged).IsAssignableFrom(type)) continue;
 
                     TableDefinition? tableDef;
-                    try { tableDef = TableInfoProvider.Default?.GetTableDefinition(type); }
+                    try { tableDef = TableInfoProvider.Instance?.GetTableDefinition(type); }
                     catch { continue; }
 
                     if (tableDef == null) continue;
@@ -145,11 +147,11 @@ namespace LiteOrm.CodeGen
 
             foreach (var kvp in typesByDataSource)
             {
-                DAOContextPool pool;
+                DAOContextPool? pool;
                 try { pool = _factory.GetPool(kvp.Key); }
                 catch { continue; }
 
-                var context = pool.PeekContext();
+                var context = pool!.PeekContext();
                 try
                 {
                     var sqlList = new List<string>();
@@ -162,11 +164,11 @@ namespace LiteOrm.CodeGen
                             {
 
                                 TableDefinition? tableDef;
-                                try { tableDef = TableInfoProvider.Default?.GetTableDefinition(type); }
+                                try { tableDef = TableInfoProvider.Instance?.GetTableDefinition(type); }
                                 catch { continue; }
 
                                 if (tableDef == null) continue;
-                                var tableName = tableDef.Name;
+                                var tableName = tableDef.Name!;
                                 statements = new List<string>();
                                 statements.Add(pool.SqlBuilder.BuildCreateTableSql(tableName, tableDef.Columns));
                                 foreach (var col in tableDef.Columns.Where(c => c.IsIndex || c.IsUnique))

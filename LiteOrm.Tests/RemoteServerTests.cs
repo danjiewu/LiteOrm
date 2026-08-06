@@ -70,8 +70,9 @@ namespace LiteOrm.Tests
             services.AddScoped<IRemoteCalculator, CalculatorImpl>();
             var provider = services.BuildServiceProvider();
 
-            var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == TypeResolverHelper.GetName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name == TypeResolverHelper.GetName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
 
             var dispatcher = new RemoteServiceDispatcher(
                 provider,
@@ -113,11 +114,11 @@ namespace LiteOrm.Tests
                 if (element.ValueKind == JsonValueKind.Object &&
                     element.TryGetProperty("$type", out var typeProp))
                 {
-                    var actualType = Type.GetType(typeProp.GetString());
+                    var actualType = Type.GetType(typeProp.GetString()!);
                     if (actualType != null && element.TryGetProperty("$value", out var valueProp))
-                        return (T)JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, _jsonOptions);
+                        return (T)JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, _jsonOptions)!;
                 }
-                return JsonSerializer.Deserialize<T>(element.GetRawText(), _jsonOptions);
+                return JsonSerializer.Deserialize<T>(element.GetRawText(), _jsonOptions)!;
             }
             return (T)Convert.ChangeType(response.Result, typeof(T));
         }
@@ -127,7 +128,7 @@ namespace LiteOrm.Tests
         {
             var (dispatcher, _) = CreateDispatcher();
 
-            var response = await dispatcher.InvokeAsync(Request(nameof(IRemoteCalculator.Clear)));
+            var response = await dispatcher.InvokeAsync(Request(nameof(IRemoteCalculator.Clear)), TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Null(response.Result);
@@ -139,7 +140,7 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.Add), 3, 4));
+                Request(nameof(IRemoteCalculator.Add), 3, 4), TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Equal(7, ReadResult<int>(response));
@@ -151,7 +152,7 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.Echo), "hello"));
+                Request(nameof(IRemoteCalculator.Echo), "hello"), TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Equal("echo:hello", ReadResult<string>(response));
@@ -163,7 +164,7 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.ResetAsync)));
+                Request(nameof(IRemoteCalculator.ResetAsync)), TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Null(response.Result);
@@ -175,7 +176,7 @@ namespace LiteOrm.Tests
             var (dispatcher, _) = CreateDispatcher();
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.MultiplyAsync), 6, 7));
+                Request(nameof(IRemoteCalculator.MultiplyAsync), 6, 7), TestContext.Current.CancellationToken);
 
             Assert.True(response.Success);
             Assert.Equal(42, ReadResult<int>(response));
@@ -224,7 +225,7 @@ namespace LiteOrm.Tests
                 Method = typeof(IRemoteCalculator).GetMethod(nameof(IRemoteCalculator.Clear), BindingFlags.Public | BindingFlags.Instance),
             };
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.False(response.Success);
             Assert.Contains("IUnknownService", response.Error?.Message!);
@@ -250,13 +251,14 @@ namespace LiteOrm.Tests
             services.AddScoped<IRemoteCalculator, ThrowingCalculator>();
             var provider = services.BuildServiceProvider();
 
-            var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == TypeResolverHelper.GetName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name == TypeResolverHelper.GetName(typeof(IRemoteCalculator)) ? typeof(IRemoteCalculator) : null);
 
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
             var response = await dispatcher.InvokeAsync(
-                Request(nameof(IRemoteCalculator.Add), 1, 2));
+                Request(nameof(IRemoteCalculator.Add), 1, 2), TestContext.Current.CancellationToken);
 
             Assert.False(response.Success);
             Assert.Contains("deliberate", response.Error?.Message!);
@@ -285,8 +287,9 @@ namespace LiteOrm.Tests
             services.AddScoped<IDerivedService, DerivedServiceImpl>();
             var provider = services.BuildServiceProvider();
 
-            var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == TypeResolverHelper.GetName(typeof(IDerivedService)) ? typeof(IDerivedService) : null);
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name == TypeResolverHelper.GetName(typeof(IDerivedService)) ? typeof(IDerivedService) : null);
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
             var method = typeof(IBaseService).GetMethod(nameof(IBaseService.BaseMethod))!;
@@ -297,7 +300,7 @@ namespace LiteOrm.Tests
                 Arguments = new object[] { 42 },
             };
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success, response.Error?.Message ?? "(no error)");
             Assert.Equal(42, response.Result);
@@ -332,8 +335,9 @@ namespace LiteOrm.Tests
             services.AddScoped<IOverloadDerived, OverloadDerivedImpl>();
             var provider = services.BuildServiceProvider();
 
-            var resolver = new DelegateRemoteServiceTypeResolver(name =>
-                name == TypeResolverHelper.GetName(typeof(IOverloadDerived)) ? typeof(IOverloadDerived) : null);
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name == TypeResolverHelper.GetName(typeof(IOverloadDerived)) ? typeof(IOverloadDerived) : null);
             var dispatcher = new RemoteServiceDispatcher(provider, resolver);
 
             // 构造请求 JSON，模拟客户端序列化后的格式
@@ -344,7 +348,7 @@ namespace LiteOrm.Tests
             Assert.NotNull(request.Method);
             Assert.Equal("InsertAsync", request.Method.Name);
 
-            var response = await dispatcher.InvokeAsync(request);
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
 
             Assert.True(response.Success, response.Error?.Message ?? "(no error)");
             Assert.True((bool)response.Result!);

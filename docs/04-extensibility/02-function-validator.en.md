@@ -27,6 +27,8 @@ public enum FunctionPolicy
 
 ## 3. Usage
 
+> **Namespace note**: `FunctionExprValidator` is in the `LiteOrm` namespace (requires `using LiteOrm;`); `ExprValidator`, `ExprValidatorGroup`, and `ExprVisitor` are in the `LiteOrm.Common` namespace (requires `using LiteOrm.Common;`). The examples below assume both namespaces are imported.
+
 ### 3.1 Preconfigured Validators
 
 `FunctionExprValidator` provides three preconfigured static instances:
@@ -58,7 +60,7 @@ var validator = new FunctionExprValidator(FunctionPolicy.AllowRegisted);
 
 ## 4. Validation Interface
 
-`FunctionExprValidator` inherits from `ExprValidator`. Single node validation uses `Validate(node)`, while full expression tree validation more commonly uses `Validate(expr)`:
+`FunctionExprValidator` inherits from `ExprValidator`. Note: `Validate(Expr node)` is an instance method that **only validates a single node** and does not recursively traverse child nodes; to validate the entire expression tree you must use the extension method `ExprVisitor.Validate(validator, expr)` (namespace `LiteOrm.Common`). Calling `validator.Validate(expr)` directly only validates the root node itself:
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -102,8 +104,8 @@ public class UserQueryService
 
     public async Task<List<User>> SearchAsync(Expr query)
     {
-        // Validate query expression
-        if (!_validator.Validate(query))
+        // Validate the entire query expression tree
+        if (!ExprVisitor.Validate(_validator, query))
             throw new InvalidOperationException("Query contains disallowed function expressions");
 
         return await _userViewDAO.Search(query).ToListAsync();
@@ -121,7 +123,7 @@ public class SafeUserDAO : ObjectViewDAO<User>
 
     public async Task<List<User>> SafeSearchAsync(Expr expr)
     {
-        if (!Validator.Validate(expr))
+        if (!ExprVisitor.Validate(Validator, expr))
             throw new SecurityException("Expression validation failed");
 
         return await Search(expr).ToListAsync();
@@ -145,7 +147,7 @@ public class QueryInterceptor
 
     public void Intercept(Expr query)
     {
-        if (!_validator.Validate(query))
+        if (!ExprVisitor.Validate(_validator, query))
         {
             throw new UnauthorizedAccessException(
                 "Query contains unauthorized function expressions");
@@ -192,7 +194,7 @@ validator.Validate(expr2);  // false
 ## 7. Caveats
 
 1. **Validation timing**: It is recommended to validate the entire Expr tree before query execution, not just the root node.
-2. **Invocation method**: Prefer using `validator.Validate(expr)` in business scenarios; `Validate(node)` is more suitable for overriding when implementing validators.
+2. **Invocation method**: When whole-tree validation is needed in business scenarios, you must use the extension method `ExprVisitor.Validate(validator, expr)` (namespace `LiteOrm.Common`); the `Validate(node)` instance method only validates a single node, and is suitable for overriding when implementing validators, or for validating just a single root node.
 3. **Performance impact**: The validation process traverses the expression tree, which has some performance overhead.
 4. **Security consideration**: It is recommended to use `AllowRegisted` policy in production environments.
 

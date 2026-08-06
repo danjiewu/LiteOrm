@@ -1,9 +1,27 @@
 # Changelog
 
-## v8.0.21 (Unreleased)
+## v8.1.0 (2026-08-02)
+
+### Breaking Changes
+
+This release introduces several breaking changes. See the [8.1 Upgrade Guide](./upgrade-guides/01-upgrade-guide-8.1.en.md) for migration details.
+
+- `RegisterLiteOrm()` moved from the `LiteOrm` base package to the new `LiteOrm.DependencyInjection` package; namespace changed from `LiteOrm` to `LiteOrm.DependencyInjection`
+- Custom `IBulkProvider` implementations no longer use any attribute markers; `BulkProviderFactory` and `BulkProviderAttribute` were removed in favor of assigning directly to the `SqlBuilder.BulkProvider` property (`0f7fe25`)
+
+### Added
+- Added core `AddLiteOrm()`: plain MS DI registration (no Autofac / AOP) that applies `[AutoRegister]` source-generated registrations (`f1b2ef1`, `464b044`, `afecea3`)
+- Added AOT / NativeAOT support: the `LiteOrm.Generators` source generator emits entity / DAO / Service / type registration code at compile time; `ExprJsonConverter`, `LambdaExprConverter`, `DAOContextPoolFactory`, `SqlBuilderFactory` etc. are now AOT-safe (`90d75f1`, `1205f4f`, `1eb9dc0`, `0058f05`, `3ca894c`, `a5cfa31`)
+- Added the `LiteOrm.DependencyInjection` package (renamed from the host-integration project); DI capabilities split out of the base library (`b45aeeb`, `0322465`, `b0b4177`)
 
 ### Changed
 - Moved `PreparedSql` to `LiteOrm.Common`; parameter type changed from `KeyValuePair` to custom `Param` (`f50c72e`)
+- Lowered target dependency package versions to reduce conflicts (`ad695e6`)
+- Host integration / Remote use a singleton `ProxyGenerator` for better performance (`8f8753d`)
+- `AttributeTableInfoProvider` no longer depends on `SqlBuilderFactory`, `DataSourceProvider` (`b50b49a`)
+- Optimized table creation locking to avoid deadlocks (`148f2ac`)
+- DAO and Service now carry AOT-related attribute annotations (`36641fa`, `05e9305`, `1737234`, `e68ded4`)
+- `ColumnDefinition.DbType` is now nullable; DbType is inferred automatically at runtime (`09bd95d`)
 
 ---
 

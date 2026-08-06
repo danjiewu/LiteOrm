@@ -48,7 +48,7 @@ namespace LiteOrm.Common
         ///     .And(Expr.Prop("Name").Contains("John"));
         /// </code>
         /// </example>
-        public static LogicExpr And(this LogicExpr left, LogicExpr right) => left is null ? right : new AndExpr(left, right);
+        public static LogicExpr And(this LogicExpr? left, LogicExpr right) => left is null ? right : new AndExpr(left, right);
 
         /// <summary>
         /// 使用 OR 逻辑操作符将当前逻辑表达式与另一个逻辑表达式连接。
@@ -62,7 +62,7 @@ namespace LiteOrm.Common
         ///     .Or(Expr.Prop("IsVIP").Equal(true));
         /// </code>
         /// </example>
-        public static LogicExpr Or(this LogicExpr left, LogicExpr right) => left is null ? right : new OrExpr(left, right);
+        public static LogicExpr Or(this LogicExpr? left, LogicExpr right) => left is null ? right : new OrExpr(left, right);
 
         /// <summary>
         /// 使用 CONCAT（字符串拼接）操作符连接两个值表达式。
@@ -87,7 +87,7 @@ namespace LiteOrm.Common
         /// var condition = Expr.Prop("IsDeleted").Equal(true).Not();
         /// </code>
         /// </example>
-        public static LogicExpr Not(this LogicExpr expr) => expr is NotExpr notExpr ? notExpr.Operand : new NotExpr(expr);
+        public static LogicExpr? Not(this LogicExpr expr) => expr is NotExpr notExpr ? notExpr.Operand : new NotExpr(expr);
 
         /// <summary>
         /// 对二元逻辑表达式执行取反操作，返回一个新的 LogicBinaryExpr，其中操作符被替换为其相反的逻辑操作符。
@@ -324,7 +324,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="expr">要转换的表达式。</param>
         /// <returns>值类型表达式。</returns>
-        public static ValueTypeExpr AsValue(this Expr expr) => expr is ValueTypeExpr valueTypeExpr ? valueTypeExpr : new ValueExpr(expr);
+        public static ValueTypeExpr AsValue(this Expr? expr) => expr is ValueTypeExpr valueTypeExpr ? valueTypeExpr : new ValueExpr(expr);
 
         /// <summary>
         /// 将任意表达式转换为逻辑表达式，如果已经是逻辑表达式则直接返回，如果是值类型表达式则转换为非零即真，否则抛出异常。
@@ -332,7 +332,7 @@ namespace LiteOrm.Common
         /// <param name="expr">要转换的表达式。</param>
         /// <returns>逻辑表达式。</returns>
         /// <exception cref="NotSupportedException">当 expr 参数类型不是逻辑表达式或值类型表达式时抛出。</exception>
-        public static LogicExpr AsLogic(this Expr expr)
+        public static LogicExpr? AsLogic(this Expr expr)
         {
             if (expr is null) return null;
             if (expr is LogicExpr logicExpr) return logicExpr;
@@ -467,7 +467,7 @@ namespace LiteOrm.Common
         /// <param name="logic">逻辑条件表达式。</param>
         /// <param name="orderBys">排序定义序列。</param>
         /// <returns>排序表达式对象。</returns>
-        public static OrderByExpr OrderBy(this LogicExpr logic, params OrderByItemExpr[] orderBys) => new OrderByExpr(new WhereExpr(null, logic), orderBys);
+        public static OrderByExpr OrderBy(this LogicExpr? logic, params OrderByItemExpr[] orderBys) => new OrderByExpr(new WhereExpr(null, logic), orderBys);
 
         /// <summary>
         /// 基于逻辑条件开启分页子句构建。
@@ -497,7 +497,7 @@ namespace LiteOrm.Common
         /// var query = table.Where(Expr.Prop("Age") > 18);
         /// </code>
         /// </example>
-        public static WhereExpr Where(this ISourceAnchor source, LogicExpr where)
+        public static WhereExpr Where(this ISourceAnchor? source, LogicExpr where)
         {
             if (source is WhereExpr whereExpr)
             {
@@ -514,7 +514,7 @@ namespace LiteOrm.Common
         /// <param name="source">SQL 语句构建起点</param>
         /// <param name="expression">定义筛选条件的 Lambda 表达式</param>
         /// <returns>WHERE 条件表达式实例</returns>
-        public static WhereExpr Where<T>(this ISourceAnchor source, Expression<Func<T, bool>> expression) => new WhereExpr(source as SqlSegment, Expr.Lambda(expression));
+        public static WhereExpr Where<T>(this ISourceAnchor? source, Expression<Func<T, bool>> expression) => new WhereExpr(source as SqlSegment, Expr.Lambda(expression));
 
         /// <summary>
         /// 为 UPDATE 表达式添加 WHERE 条件。
@@ -522,7 +522,7 @@ namespace LiteOrm.Common
         /// <param name="source">UPDATE 表达式。</param>
         /// <param name="where">条件表达式。</param>
         /// <returns>包含 WHERE 子句的 UPDATE 表达式。</returns>
-        public static UpdateExpr Where(this UpdateExpr source, LogicExpr where)
+        public static UpdateExpr Where(this UpdateExpr source, LogicExpr? where)
         {
             source.Where &= where;
             return source;
@@ -551,7 +551,7 @@ namespace LiteOrm.Common
         /// var query = table.GroupBy(Expr.Prop("DepartmentId"));
         /// </code>
         /// </example>
-        public static GroupByExpr GroupBy(this IGroupByAnchor source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source as SqlSegment, groupBys);
+        public static GroupByExpr GroupBy(this IGroupByAnchor? source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source as SqlSegment, groupBys);
 
         /// <summary>
         /// 为 SQL 语句添加 GROUP BY 子句（属性名数组）。
@@ -574,7 +574,7 @@ namespace LiteOrm.Common
         ///     .Having(Expr.Prop("Count").Count().GreaterThan(10));
         /// </code>
         /// </example>
-        public static HavingExpr Having(this IHavingAnchor source, LogicExpr having) => new HavingExpr(source as SqlSegment, having);
+        public static HavingExpr Having(this IHavingAnchor? source, LogicExpr having) => new HavingExpr(source as SqlSegment, having);
 
 
         /// <summary>
@@ -583,7 +583,7 @@ namespace LiteOrm.Common
         /// <param name="source">SQL 语句构建起点。</param>
         /// <param name="selects">选择项表达式数组。</param>
         /// <returns>包含 SELECT 子句的 SQL 表达式。</returns>
-        public static SelectExpr Select(this ISelectAnchor source, params SelectItemExpr[] selects)
+        public static SelectExpr Select(this ISelectAnchor? source, params SelectItemExpr[] selects)
         {
             return new SelectExpr(source as SqlSegment, selects);
         }
@@ -593,7 +593,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">SQL 语句构建起点。</param>
         /// <returns>包含 SELECT * 子句的 SQL 表达式。</returns>
-        public static SelectExpr SelectAll(this ISelectAnchor source)
+        public static SelectExpr SelectAll(this ISelectAnchor? source)
         {
             return new SelectExpr(source as SqlSegment);
         }
@@ -608,7 +608,7 @@ namespace LiteOrm.Common
         /// var query = table.Select(Expr.Prop("Id"), Expr.Prop("Name"));
         /// </code>
         /// </example>
-        public static SelectExpr Select(this ISelectAnchor source, params ValueTypeExpr[] selects) => new SelectExpr(source as SqlSegment, selects);
+        public static SelectExpr Select(this ISelectAnchor? source, params ValueTypeExpr[] selects) => new SelectExpr(source as SqlSegment, selects);
 
         /// <summary>
         /// 为 SQL 语句添加 SELECT 子句（属性名数组）。
@@ -799,7 +799,7 @@ namespace LiteOrm.Common
         /// var query = table.OrderBy(Expr.Prop("CreatedDate").Desc());
         /// </code>
         /// </example>
-        public static OrderByExpr OrderBy(this IOrderByAnchor source, params OrderByItemExpr[] orderBys)
+        public static OrderByExpr OrderBy(this IOrderByAnchor? source, params OrderByItemExpr[] orderBys)
         {
             if (source is OrderByExpr existingOrderByExpr)
             {
@@ -839,7 +839,7 @@ namespace LiteOrm.Common
         /// var query = table.Section(0, 20); // 获取前 20 条记录
         /// </code>
         /// </example>
-        public static SectionExpr Section(this ISectionAnchor source, int skip, int take) => new SectionExpr(source as SqlSegment, skip, take);
+        public static SectionExpr Section(this ISectionAnchor? source, int skip, int take) => new SectionExpr(source as SqlSegment, skip, take);
 
         /// <summary>
         /// 将值表达式标记为升序排序。
@@ -980,7 +980,7 @@ namespace LiteOrm.Common
         /// <param name="end">窗口结束边界：0 当前行，负数向前，正数向后，null 无边界。</param>
         /// <returns>窗口函数表达式。</returns>
         public static FunctionExpr Over(this FunctionExpr func, ValueTypeExpr[] partitionBy, OrderByItemExpr[] orderBy, bool range, int? begin, int? end) =>
-            new FunctionExpr("Over", func, new ValueSet(partitionBy), new ValueSet(orderBy), new FunctionExpr(range ? "RangeBetween" : "RowsBetween", begin, end));
+            new FunctionExpr("Over", func, new ValueSet(partitionBy), new ValueSet(orderBy), new FunctionExpr(range ? "RangeBetween" : "RowsBetween", begin.HasValue ? new ValueExpr(begin.Value) : null!, end.HasValue ? new ValueExpr(end.Value) : null!));
 
 
         /// <summary>
@@ -988,7 +988,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="expr">要简化的表达式。</param>
         /// <returns>简化后的表达式。</returns>
-        public static Expr Reduce(this Expr expr)
+        public static Expr? Reduce(this Expr? expr)
         {
             if (expr is NotExpr not)
             {

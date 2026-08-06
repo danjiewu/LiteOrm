@@ -21,17 +21,17 @@ namespace LiteOrm.Common
         /// 使用属性名称初始化 PropertyExpr。
         /// </summary>
         /// <param name="propertyName">实体对应的属性名称（通常与数据库列名映射）。</param>
-        public PropertyExpr(string propertyName)
+        public PropertyExpr(string? propertyName)
         {
             if (propertyName == null) throw new ArgumentNullException(nameof(propertyName));
             PropertyName = propertyName;
         }
 
-        private string _tableAlias;
+        private string? _tableAlias;
         /// <summary>
         /// 获取或设置表别名（如果有）。在生成 SQL 时，如果提供了表别名，列名将以 "TableAlias.ColumnName" 的形式出现。
         /// </summary>
-        public string TableAlias
+        public string? TableAlias
         {
             get { return _tableAlias; }
             set
@@ -41,11 +41,11 @@ namespace LiteOrm.Common
             }
         }
 
-        private string _propertyName;
+        private string? _propertyName;
         /// <summary>
         /// 获取或设置目标属性（列）的名称。
         /// </summary>
-        public string PropertyName
+        public string? PropertyName
         {
             get { return _propertyName; }
             set
@@ -86,7 +86,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 比较两个 PropertyExpr 是否引用同一个属性。
         /// </summary>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is PropertyExpr p
                 && SqlNameEquals(p.TableAlias, TableAlias)

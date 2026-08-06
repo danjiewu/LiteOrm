@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace LiteOrm.Common
 {
@@ -68,7 +69,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="methodName">待拦截的方法名称。</param>
         /// <param name="handler">处理逻辑，若为 null 则使用默认处理器。</param>
-        public static void RegisterMethodHandler(string methodName, Func<MethodCallExpression, LambdaExprConverter, Expr> handler = null)
+        public static void RegisterMethodHandler(string methodName, Func<MethodCallExpression, LambdaExprConverter, Expr>? handler = null)
         {
             _methodNameHandlers[methodName] = handler ?? DefaultFunctionHandler;
         }
@@ -79,7 +80,7 @@ namespace LiteOrm.Common
         /// <param name="type">目标类型。</param>
         /// <param name="methodName">方法名称。若不指定，则扫描并注册所有公开方法。</param>
         /// <param name="handler">处理逻辑，若为 null 则使用默认处理器。</param>
-        public static void RegisterMethodHandler(Type type, string methodName = null, Func<MethodCallExpression, LambdaExprConverter, Expr> handler = null)
+        public static void RegisterMethodHandler(Type type, string? methodName = null, Func<MethodCallExpression, LambdaExprConverter, Expr>? handler = null)
         {
             handler ??= DefaultFunctionHandler;
             if (methodName == null)
@@ -98,7 +99,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 注册成员（属性/字段）的转换逻辑。
         /// </summary>
-        public static void RegisterMemberHandler(string memberName, Func<MemberExpression, LambdaExprConverter, Expr> handler = null)
+        public static void RegisterMemberHandler(string memberName, Func<MemberExpression, LambdaExprConverter, Expr>? handler = null)
         {
             if (String.IsNullOrEmpty(memberName)) throw new ArgumentNullException(nameof(memberName));
             _memberNameHandlers[memberName] = handler ?? DefaultMemberHandler;
@@ -107,7 +108,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 注册特定类型的成员转换逻辑。
         /// </summary>
-        public static void RegisterMemberHandler(Type type, string memberName, Func<MemberExpression, LambdaExprConverter, Expr> handler = null)
+        public static void RegisterMemberHandler(Type type, string memberName, Func<MemberExpression, LambdaExprConverter, Expr>? handler = null)
         {
             if (String.IsNullOrEmpty(memberName)) throw new ArgumentNullException(nameof(memberName));
             _typeMemberHandlers[(type, memberName)] = handler ?? DefaultMemberHandler;
@@ -127,8 +128,8 @@ namespace LiteOrm.Common
             Type objectType = _rootParameter.Type;
             if (objectType.IsGenericType && (objectType.GetGenericTypeDefinition() == typeof(IQueryable<>) || objectType.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
                 objectType = objectType.GetGenericArguments()[0];
-            _currentAlias = _parameterAliases[_rootParameter.Name] = Constants.DefaultTableAlias;
-            _parameterExprs[_rootParameter.Name] = _tableExpr = Expr.From(objectType).As(_currentAlias);
+            _currentAlias = _parameterAliases[_rootParameter.Name ?? string.Empty] = Constants.DefaultTableAlias;
+            _parameterExprs[_rootParameter.Name ?? string.Empty] = _tableExpr = Expr.From(objectType).As(_currentAlias);
             _aliasCounter = 1;
         }
 
@@ -170,7 +171,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 执行整体转换并将根节点转为 LogicExpr。
         /// </summary>
-        public LogicExpr ToLogicExpr() => ConvertInternal(_expression.Body).AsLogic();
+        public LogicExpr? ToLogicExpr() => ConvertInternal(_expression.Body).AsLogic();
 
         /// <summary>
         /// 执行整体转换并将根节点转为 ValueTypeExpr。
@@ -185,7 +186,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 静态便捷入口，将 Lambda 表达式转换为 LogicExpr 模型。
         /// </summary>
-        public static LogicExpr ToLogicExpr(LambdaExpression expression) => new LambdaExprConverter(expression).ToLogicExpr();
+        public static LogicExpr? ToLogicExpr(LambdaExpression expression) => new LambdaExprConverter(expression).ToLogicExpr();
 
         /// <summary>
         /// 执行表达式转换并将结果转换为 SqlSegment
@@ -214,7 +215,7 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertInternal(Expression node)
         {
-            if (node is null) return null;
+            if (node is null) return null!;
             if (node is not ConstantExpression && _expressionDetector.CanEvaluate(node))
                 return EvaluateToExpr(node);
             return node switch
@@ -241,16 +242,18 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertLambda(LambdaExpression lambda)
         {
-            ParameterExpression parameter = lambda.Parameters.FirstOrDefault();
+            ParameterExpression? parameter = lambda.Parameters.FirstOrDefault();
             if (parameter != null)
             {
-                _parameterAliases[parameter.Name] = _currentAlias;
+                string paramName = parameter.Name ?? string.Empty;
+                _parameterAliases[paramName] = _currentAlias;
             }
             var result = ConvertInternal(lambda.Body);
-            result = lambda.ReturnType == typeof(bool) ? result.AsLogic() : result.AsValue();
+            result = lambda.ReturnType == typeof(bool) ? result.AsLogic() ?? null! : result.AsValue();
             if (parameter != null)
             {
-                _parameterAliases.Remove(parameter.Name);
+                string paramName = parameter.Name ?? string.Empty;
+                _parameterAliases.Remove(paramName);
             }
             return result;
         }
@@ -262,8 +265,8 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertParameter(ParameterExpression parameter)
         {
-            _parameterExprs.TryGetValue(parameter.Name, out var expr);
-            return expr;
+            _parameterExprs.TryGetValue(parameter.Name ?? string.Empty, out var expr);
+            return expr ?? null!;
         }
 
         private Expr ConvertNew(NewExpression node)
@@ -289,8 +292,8 @@ namespace LiteOrm.Common
             if (node.NodeType == ExpressionType.Equal)
             {
                 // 检查左边或右边是否是 TableArgs 属性访问
-                MemberExpression tableArgsMember = null;
-                Expression valueExpr = null;
+                MemberExpression? tableArgsMember = null;
+                Expression? valueExpr = null;
 
                 if (node.Left is MemberExpression leftMember && typeof(IArged).IsAssignableFrom(leftMember.Member.DeclaringType) && leftMember.Member.Name == nameof(IArged.TableArgs))
                 {
@@ -313,13 +316,13 @@ namespace LiteOrm.Common
                     }
 
                     // 如果是参数表达式
-                    if (targetExpr is ParameterExpression paramExpr && _parameterAliases.ContainsKey(paramExpr.Name))
+                    if (targetExpr is ParameterExpression paramExpr && _parameterAliases.ContainsKey(paramExpr.Name ?? string.Empty))
                     {
                         // 解析赋值的值（数组或集合）
                         var tableArgs = EvaluateTableArgs(valueExpr);
 
                         // 设置 TableExpr 或 ForeignExpr 的 TableArgs
-                        if (_parameterExprs.TryGetValue(paramExpr.Name, out var paramArg))
+                        if (_parameterExprs.TryGetValue(paramExpr.Name ?? string.Empty, out var paramArg))
                         {
                             if (paramArg is TableExpr tableExpr)
                             {
@@ -332,7 +335,7 @@ namespace LiteOrm.Common
                         }
 
                         // 返回 null 表示这个赋值条件不产生额外的 SQL 条件
-                        return null;
+                        return null!;
                     }
                 }
             }
@@ -354,8 +357,8 @@ namespace LiteOrm.Common
                     {
                         var andLeft = left.AsLogic();
                         var andRight = right.AsLogic();
-                        if (andLeft is null) return andRight;
-                        if (andRight is null) return andLeft;
+                        if (andLeft is null) return andRight!;
+                        if (andRight is null) return andLeft!;
                         return andLeft.And(andRight);
                     }
                 case ExpressionType.Or:
@@ -363,8 +366,8 @@ namespace LiteOrm.Common
                     {
                         var orLeft = left.AsLogic();
                         var orRight = right.AsLogic();
-                        if (orLeft is null) return orRight;
-                        if (orRight is null) return orLeft;
+                        if (orLeft is null) return orRight!;
+                        if (orRight is null) return orLeft!;
                         return orLeft.Or(orRight);
                     }
                 case ExpressionType.Add:
@@ -450,7 +453,7 @@ namespace LiteOrm.Common
             var test = ConvertInternal(node.Test).AsLogic();
             var ifTrue = ConvertInternal(node.IfTrue).AsValue();
             var ifFalse = ConvertInternal(node.IfFalse).AsValue();
-            return Expr.If(test, ifTrue, ifFalse);
+            return Expr.If(test!, ifTrue, ifFalse);
         }
 
         /// <summary>
@@ -459,7 +462,7 @@ namespace LiteOrm.Common
         private Expr EvaluateToExpr(Expression node)
         {
             var value = Evaluate(node);
-            if (typeof(Expr).IsAssignableFrom(node.Type) || value is Expr) return value as Expr;
+            if (typeof(Expr).IsAssignableFrom(node.Type) || value is Expr) return (Expr)value!;
             return new ValueExpr(value);
         }
 
@@ -470,7 +473,7 @@ namespace LiteOrm.Common
         /// - 最后尝试编译并执行表达式以求值（用于闭包变量等）
         /// 若无法求值则抛出异常。
         /// </summary>
-        protected object Evaluate(Expression expr)
+        protected object? Evaluate(Expression expr)
         {
             if (expr is null) throw new ArgumentNullException(nameof(expr));
 
@@ -493,9 +496,16 @@ namespace LiteOrm.Common
             // 尝试编译并执行表达式（支持闭包、字段、属性等）
             try
             {
-                var lambda = Expression.Lambda(expr);
-                var compiled = lambda.Compile();
-                return compiled.DynamicInvoke();
+                if (!RuntimeFeature.IsDynamicCodeSupported)
+                {
+                    return ExpressionEvaluator.Evaluate(expr);
+                }
+                else
+                {
+                    var lambda = Expression.Lambda(expr);
+                    var compiled = lambda.Compile();
+                    return compiled.DynamicInvoke();
+                }                
             }
             catch (Exception ex)
             {
@@ -511,15 +521,15 @@ namespace LiteOrm.Common
         protected Expr ConvertMember(MemberExpression node)
         {
             // Nullable<T>.Value 自动降级处理
-            if (Nullable.GetUnderlyingType(node.Member.DeclaringType) is not null && node.Member.Name == "Value")
+            if (Nullable.GetUnderlyingType(node.Member.DeclaringType!) is not null && node.Member.Name == "Value")
             {
-                return ConvertInternal(node.Expression);
+                return ConvertInternal(node.Expression!);
             }
 
             // 1. 处理直接的实体参数访问 (映射为数据库列)
             if (node.Expression is ParameterExpression paramExpr)
             {
-                _parameterAliases.TryGetValue(paramExpr.Name, out var paramAlias);
+                _parameterAliases.TryGetValue(paramExpr.Name ?? string.Empty, out var paramAlias);
                 if (paramAlias == _currentAlias) paramAlias = null;
                 if (node.Member is PropertyInfo propertyInfo)
                 {
@@ -664,7 +674,7 @@ namespace LiteOrm.Common
                     var value = Evaluate(element);
                     if (value != null)
                     {
-                        args.Add(value.ToString());
+                        args.Add(value.ToString() ?? string.Empty);
                     }
                 }
                 return args.ToArray();
@@ -681,7 +691,7 @@ namespace LiteOrm.Common
                         var value = Evaluate(arg);
                         if (value != null)
                         {
-                            args.Add(value.ToString());
+                            args.Add(value.ToString() ?? string.Empty);
                         }
                     }
                 }
@@ -701,14 +711,14 @@ namespace LiteOrm.Common
                 {
                     if (item != null)
                     {
-                        args.Add(item.ToString());
+                        args.Add(item.ToString() ?? string.Empty);
                     }
                 }
                 return args.ToArray();
             }
             else if (evaluatedValue != null)
             {
-                return new[] { evaluatedValue.ToString() };
+                return new[] { evaluatedValue.ToString() ?? string.Empty };
             }
 
             return Array.Empty<string>();
@@ -765,22 +775,22 @@ namespace LiteOrm.Common
 
                 if (src is HavingExpr existingHaving)
                 {
-                    existingHaving.Having = new AndExpr(existingHaving.Having, havingLogic);
+                    existingHaving.Having = new AndExpr(existingHaving.Having!, havingLogic);
                     return existingHaving;
                 }
 
                 return havingAnchor.Having(havingLogic);
             }
 
-            SqlSegment source = src as SqlSegment;
+            SqlSegment? source = src as SqlSegment;
 
             ParameterExpression parameter = lambda.Parameters[0];
-            _parameterAliases[parameter.Name] = _currentAlias;
+            _parameterAliases[parameter.Name ?? string.Empty] = _currentAlias;
 
             // 将 Lambda 条件转换为 LogicExpr
             var newCondition = ConvertInternal(lambda.Body).AsLogic();
 
-            _parameterAliases.Remove(parameter.Name);
+            _parameterAliases.Remove(parameter.Name ?? string.Empty);
 
             // 条件为 null 时（如纯 TableArgs 赋值），直接返回源不添加 WHERE
             if (newCondition is null)
@@ -789,13 +799,13 @@ namespace LiteOrm.Common
             // 如果源已经是 WhereExpr，将新条件与现有条件用 AND 合并
             if (source is WhereExpr existingWhere)
             {
-                var combinedCondition = new AndExpr(existingWhere.Where, newCondition);
+                var combinedCondition = new AndExpr(existingWhere.Where!, newCondition);
                 existingWhere.Where = combinedCondition;
                 return existingWhere;
             }
 
             // 否则创建新的 WhereExpr，需要转换为 ISourceAnchor
-            return ((ISourceAnchor)source).Where(newCondition);
+            return (source as ISourceAnchor).Where(newCondition);
         }
 
         /// <summary>
@@ -859,10 +869,10 @@ namespace LiteOrm.Common
         /// <param name="lambda">要转换的 Lambda 表达式</param>
         /// <param name="groupKeys">分组键集合</param>
         /// <returns>转换后的 LogicExpr</returns>
-        private LogicExpr ConvertHavingLambda(LambdaExpression lambda, ValueTypeExpr[] groupKeys)
+        private LogicExpr ConvertHavingLambda(LambdaExpression lambda, ValueTypeExpr[]? groupKeys)
         {
             var expr = ConvertGroupedExpr(lambda.Body, lambda.Parameters[0], groupKeys);
-            return expr.AsLogic();
+            return expr.AsLogic()!;
         }
 
         /// <summary>
@@ -895,7 +905,7 @@ namespace LiteOrm.Common
         /// <param name="lambda">要转换的 Lambda 表达式</param>
         /// <param name="groupKeys">用于分组时的键集合</param>
         /// <returns>SelectItemExpr 数组</returns>
-        private SelectItemExpr[] ConvertSelectLambda(LambdaExpression lambda, ValueTypeExpr[] groupKeys)
+        private SelectItemExpr[] ConvertSelectLambda(LambdaExpression lambda, ValueTypeExpr[]? groupKeys)
         {
             var body = lambda.Body;
             var lambdaParam = lambda.Parameters[0];
@@ -949,7 +959,7 @@ namespace LiteOrm.Common
         /// <param name="lambdaParam">Lambda 表达式的参数</param>
         /// <param name="groupKeys">分组键集合</param>
         /// <returns>转换后的 Expr</returns>
-        private Expr ConvertGroupedExpr(Expression arg, ParameterExpression lambdaParam, ValueTypeExpr[] groupKeys)
+        private Expr ConvertGroupedExpr(Expression arg, ParameterExpression lambdaParam, ValueTypeExpr[]? groupKeys)
         {
             // 如果是 MemberAccess (如 g.Key) 
             if (arg is MemberExpression memberExpr)
@@ -977,8 +987,8 @@ namespace LiteOrm.Common
                 var aggregateName = GetAggregateName(methodCall.Method.Name);
                 if (aggregateName != null)
                 {
-                    Expression aggregateTarget = null;
-                    Expression fieldExpr = null;
+                    Expression? aggregateTarget = null;
+                    Expression? fieldExpr = null;
 
                     if (methodCall.Object != null && IsParameterAccess(methodCall.Object, lambdaParam))
                     {
@@ -1023,9 +1033,9 @@ namespace LiteOrm.Common
 
                 // Logic operation
                 if (binary.NodeType == ExpressionType.AndAlso || binary.NodeType == ExpressionType.And)
-                    return left.AsLogic().And(right.AsLogic());
+                    return left.AsLogic()!.And(right.AsLogic()!);
                 if (binary.NodeType == ExpressionType.OrElse || binary.NodeType == ExpressionType.Or)
-                    return left.AsLogic().Or(right.AsLogic());
+                    return left.AsLogic()!.Or(right.AsLogic()!);
 
                 // Other binary operators
                 var op = binary.NodeType switch
@@ -1036,14 +1046,14 @@ namespace LiteOrm.Common
                     ExpressionType.GreaterThanOrEqual => LogicOperator.GreaterThanOrEqual,
                     ExpressionType.LessThan => LogicOperator.LessThan,
                     ExpressionType.LessThanOrEqual => LogicOperator.LessThanOrEqual,
-                    _ => (object)null
+                    _ => (object?)null
                 };
 
                 if (op is LogicOperator lo) return new LogicBinaryExpr(left.AsValue(), lo, right.AsValue());
             }
 
             // 避免对 naked parameter 调用 ConvertInternal，这会触发 NotSupportedException
-            if (IsParameterAccess(arg, lambdaParam)) return null;
+            if (IsParameterAccess(arg, lambdaParam)) return null!;
 
             // 回退到普通转换
             return ConvertInternal(arg);
@@ -1067,24 +1077,24 @@ namespace LiteOrm.Common
                     ParameterExpression parameter = lambda.Parameters[0];
                     var lastAlias = _currentAlias;
                     // 为 Lambda 参数生成一个新的别名并缓存
-                    _currentAlias = _parameterAliases[parameter.Name] = "T" + _aliasCounter++;
+                    _currentAlias = _parameterAliases[parameter.Name ?? string.Empty] = "T" + _aliasCounter++;
                     // 创建 ForeignExpr 并缓存到 _parameterArgs
                     var foreignExpr = new ForeignExpr(parameter.Type) { Alias = _currentAlias };
                     // 将参数名与 ForeignExpr 关联，以便在转换 Lambda.Body 时正确解析参数访问
-                    _parameterExprs[parameter.Name] = foreignExpr;
+                    _parameterExprs[parameter.Name ?? string.Empty] = foreignExpr;
 
                     // 转换 Lambda.Body，得到内部的 LogicExpr
                     foreignExpr.InnerExpr = ConvertInternal(lambda.Body).AsLogic();
 
                     // 转换完成后清理缓存，恢复之前的别名
-                    _parameterExprs.Remove(parameter.Name);
-                    _parameterAliases.Remove(parameter.Name);
+                    _parameterExprs.Remove(parameter.Name ?? string.Empty);
+                    _parameterAliases.Remove(parameter.Name ?? string.Empty);
                     _currentAlias = lastAlias;
                     if (node.Method.Name == nameof(Expr.ExistsRelated)) foreignExpr.AutoRelated = true;
                     return foreignExpr;
                 }
             }
-            return null;
+            return null!;
         }
 
         /// <summary>
@@ -1092,7 +1102,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="name">方法名</param>
         /// <returns>聚合函数名称或 null</returns>
-        private static string GetAggregateName(string name) => name switch
+        private static string? GetAggregateName(string name) => name switch
         {
             "Count" or "LongCount" => "Count",
             "Sum" => "Sum",
@@ -1108,7 +1118,7 @@ namespace LiteOrm.Common
         /// <param name="node">要检查的表达式节点</param>
         /// <param name="lambdaParam">Lambda 的参数表达式</param>
         /// <returns>如果是对参数的访问则返回 true，否则返回 false</returns>
-        private bool IsParameterAccess(Expression node, ParameterExpression lambdaParam)
+        private bool IsParameterAccess(Expression? node, ParameterExpression lambdaParam)
         {
             if (node is null) return false;
             if (node is ParameterExpression pe) return ReferenceEquals(pe, lambdaParam);
@@ -1144,11 +1154,11 @@ namespace LiteOrm.Common
             /// </summary>
             /// <param name="node"></param>
             /// <returns></returns>
-            public override Expression Visit(Expression node)
+            public override Expression? Visit(Expression? node)
             {
                 if (node == null) return null;
                 if (!_result) return node;
-                Expression exp = base.Visit(node);
+                Expression? exp = base.Visit(node);
                 _expressionFindResults[node] = _result;
                 return exp;
             }
@@ -1171,7 +1181,7 @@ namespace LiteOrm.Common
             /// <returns></returns>
             protected override Expression VisitMethodCall(MethodCallExpression node)
             {
-                if (_typeMethodHandlers.TryGetValue((node.Method.DeclaringType, node.Method.Name), out _) || _methodNameHandlers.TryGetValue(node.Method.Name, out _))
+                if (_typeMethodHandlers.TryGetValue((node.Method.DeclaringType!, node.Method.Name), out _) || _methodNameHandlers.TryGetValue(node.Method.Name, out _))
                 {
                     _result = false;
                     return node; // 直接返回原节点，避免继续访问子表达式影响结果
@@ -1186,7 +1196,7 @@ namespace LiteOrm.Common
             /// <returns></returns>
             protected override Expression VisitMember(MemberExpression node)
             {
-                if (_typeMemberHandlers.TryGetValue((node.Member.DeclaringType, node.Member.Name), out _) || _memberNameHandlers.TryGetValue(node.Member.Name, out _))
+                if (_typeMemberHandlers.TryGetValue((node.Member.DeclaringType!, node.Member.Name), out _) || _memberNameHandlers.TryGetValue(node.Member.Name, out _))
                 {
                     _result = false;
                     return node; // 直接返回原节点，避免继续访问子表达式影响结果

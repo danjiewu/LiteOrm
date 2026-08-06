@@ -21,7 +21,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var set = new ValueSet();
 
-            set.Add(null);
+            set.Add(null!);
 
             Assert.Single(set);
             Assert.Equal("(NULL)", set.ToString());

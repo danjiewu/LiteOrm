@@ -26,7 +26,7 @@ public class Oracle11gBuilder : OracleBuilder
     /// Assembles the structured SQL fragment into the final SELECT statement (Oracle implementation).
     /// Uses ROW_NUMBER() OVER(...) double-layered nested subquery for paging, compatible with all Oracle versions.
     /// </summary>
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         bool hasPaging = subSelect.Take > 0;
 
@@ -295,7 +295,7 @@ public class SqlServer2008Builder : SqlServerBuilder
 {
     public readonly static new SqlServer2008Builder Instance = new SqlServer2008Builder();
 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // Implement TOP + ROW_NUMBER() paging
         // ...
@@ -310,7 +310,7 @@ public class CustomPostgreSqlBuilder : PostgreSqlBuilder
 {
     public readonly static new CustomPostgreSqlBuilder Instance = new CustomPostgreSqlBuilder();
 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result)
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // Implement custom paging logic
         // ...
@@ -345,5 +345,5 @@ By implementing a custom `SqlBuilder`, you can provide optimal paging strategies
 
 - [Back to docs hub](../README.md)
 - [SqlBuilder and Dialect Extension](../04-extensibility/03-custom-sqlbuilder.en.md)
-- [Configuration and Registration](../01-getting-started/03-configuration-and-registration.en.md)
-- [Compatibility Notes](../05-reference/08-database-compatibility.en.md)
+- [Configuration Reference](../05-reference/01-configuration-reference.en.md)
+- [Compatibility Notes](../05-reference/07-database-compatibility.en.md)

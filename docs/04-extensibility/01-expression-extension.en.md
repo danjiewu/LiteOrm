@@ -349,7 +349,7 @@ LambdaExprConverter.RegisterMethodHandler("IsValid", (node, converter) => {
 
 ## 9. Default Registered Lambda Methods
 
-LiteOrm automatically registers many default methods at startup through `LiteOrmLambdaHandlerInitializer` and `LiteOrmSqlFunctionInitializer`:
+LiteOrm automatically registers many default methods on first access through `LiteOrmLambdaHandlerInitializer` and `LiteOrmSqlFunctionInitializer` (triggered by the static constructors of `LambdaExprConverter` and `SqlBuilder` respectively):
 
 | Type | Method/Member | Description | Corresponding SqlFunction |
 |------|--------------|-------------|--------------------------|
@@ -386,7 +386,7 @@ var users = await userService.SearchAsync(u => u.CreateTime.AddDays(7) > DateTim
 
 ## 10. Default Registered SqlFunctions (Cross-Database)
 
-LiteOrm automatically registers the following cross-database SqlFunctions at startup through `LiteOrmSqlFunctionInitializer`:
+LiteOrm automatically registers the following cross-database SqlFunctions on first access to `SqlBuilder` through `LiteOrmSqlFunctionInitializer`:
 
 | SqlFunction | Description | Database Implementations |
 |-------------|-------------|-------------------------|

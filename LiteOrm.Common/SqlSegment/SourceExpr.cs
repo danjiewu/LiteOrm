@@ -11,11 +11,11 @@ namespace LiteOrm.Common
         /// <summary>
         /// 别名
         /// </summary>
-        private string _alias;
+        private string? _alias;
         /// <summary>
         /// 别名
         /// </summary>
-        public virtual string Alias
+        public virtual string? Alias
         {
             get => _alias;
             set

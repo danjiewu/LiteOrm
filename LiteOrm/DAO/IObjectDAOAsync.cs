@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,7 +10,7 @@ namespace LiteOrm.Common
     /// 实体类的增删改等基本操作的异步泛型接口
     /// </summary>
     /// <typeparam name="T">实体类类型</typeparam>
-    public interface IObjectDAOAsync<T> : IObjectDAOAsync
+    public interface IObjectDAOAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : IObjectDAOAsync
     {
         /// <summary>
         /// 异步添加对象
@@ -42,7 +43,7 @@ namespace LiteOrm.Common
         /// <param name="timestamp">时间戳</param>
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，返回是否成功更新</returns>
-        Task<bool> UpdateAsync(T o, object timestamp = null, CancellationToken cancellationToken = default);
+        Task<bool> UpdateAsync(T o, object? timestamp = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步更新或插入对象
@@ -80,7 +81,6 @@ namespace LiteOrm.Common
     /// <summary>
     /// 实体类的增删改等基本操作的异步非泛型接口
     /// </summary>
-    [AutoRegister(false)]
     public interface IObjectDAOAsync
     {
         /// <summary>

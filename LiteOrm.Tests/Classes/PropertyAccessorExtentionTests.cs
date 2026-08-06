@@ -61,7 +61,7 @@ namespace LiteOrm.Tests.UnitTests
             PropertyInfo property = typeof(Holder).GetProperty(nameof(Holder.Text)) ?? throw new Exception("Property not found");
 
             // Act
-            var result = property.GetValueFast(null);
+            var result = property.GetValueFast(null!);
 
             // Assert
             Assert.Null(result);
@@ -154,7 +154,7 @@ namespace LiteOrm.Tests.UnitTests
         private class Model
         {
             public int IntProp { get; set; }
-            public string StrProp { get; set; }
+            public string? StrProp { get; set; }
             public int? NullableIntProp { get; set; }
         }
 
@@ -214,23 +214,23 @@ namespace LiteOrm.Tests.UnitTests
             property.SetValue(model, initialValue);
 
             // Act
-            PropertyAccessorExtension.SetValueFast(property, model, valueToSet);
+            PropertyAccessorExtension.SetValueFast(property, model, valueToSet!);
 
             // Assert
             object? actual = property.GetValue(model);
             Assert.Equal(expectedAfter, actual);
         }
 
-        public static IEnumerable<object[]> ValidSetCases()
+        public static IEnumerable<object?[]> ValidSetCases()
         {
             // IntProp: boxed int assignment
-            yield return new object[] { nameof(Model.IntProp), 1, (object)42, (object)42 };
+            yield return new object?[] { nameof(Model.IntProp), 1, (object)42, (object)42 };
 
             // StrProp: set to null (reference type)
-            yield return new object[] { nameof(Model.StrProp), "initial", null, null };
+            yield return new object?[] { nameof(Model.StrProp), "initial", null, null };
 
             // NullableIntProp: set from null to boxed int
-            yield return new object[] { nameof(Model.NullableIntProp), null, (object)5, (object)5 };
+            yield return new object?[] { nameof(Model.NullableIntProp), null, (object)5, (object)5 };
         }
 
         /// <summary>

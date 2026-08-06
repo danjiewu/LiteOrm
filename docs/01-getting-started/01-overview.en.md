@@ -37,63 +37,112 @@ LiteOrm is a lightweight, high-performance .NET ORM framework that combines the 
 ## 4. Recommended reading order
 
 1. [Installation](./02-installation.en.md)
-2. [Configuration and Registration](./03-configuration-and-registration.en.md)
-3. [First End-to-End Example](./04-first-example.en.md)
+2. [Configuration Reference](../05-reference/01-configuration-reference.en.md) (when using `LiteOrm.DependencyInjection`)
+3. [First End-to-End Example](./05-first-example-di.en.md)
 4. [Entity Mapping and Data Sources](../02-core-usage/01-entity-mapping.en.md)
 5. [Query Overview](../02-core-usage/04-query-overview.en.md)
 6. [Lambda Guide](../02-core-usage/05-lambda-guide.en.md)
 
-> **Learning advice**: If you're a beginner, read the four getting-started docs in order—each takes about 5-10 minutes. After the fourth doc, you should be able to perform basic database operations in a new project. Check the "FAQ" section at the end of each doc if you run into issues.
+> **Learning advice**: If you're a beginner, read the getting-started docs in order—each takes about 5-10 minutes. After finishing the first example, you should be able to perform basic database operations in a new project. Check the "FAQ" section at the end of each doc if you run into issues.
 
 ---
 
-## 5. Project Structure
+## 5. Project Composition and Structure
 
-LiteOrm uses a modular design that clearly separates core functionality, common components, samples, and test code. The project structure is well-organized for easy maintenance and extension.
+LiteOrm uses a modular design that clearly separates core functionality, common components, samples, and test code. Core capability lives in `LiteOrm.Common` and `LiteOrm` (the base library); host integration and remote invocation are split into separate extension packages. The project structure is well-organized for easy maintenance and extension.
 
 ```text
-├── LiteOrm/                # Core library
-│   ├── Classes/            # Core classes
-│   ├── Converter/          # Converters
-│   ├── DAO/                # Data access objects
-│   ├── DAOContext/         # Data access context
-│   ├── DbAccess/           # Database access
-│   ├── Initilizer/         # Initializers
-│   ├── Service/            # Service layer
-│   └── SqlBuilder/         # SQL builders
-├── LiteOrm.Common/         # Common components
-│   ├── Attributes/         # Attributes
-│   ├── Classes/            # Common classes
-│   ├── Converter/          # Common converters
-│   ├── Expr/               # Expressions
-│   ├── MetaData/           # Metadata
-│   ├── Model/              # Models
-│   ├── Service/            # Common services
-│   ├── SqlBuilder/         # Common SQL builders
+├── LiteOrm.Common/          # Common components (no runtime dependencies)
+│   ├── Attributes/          # Attributes
+│   ├── Classes/             # Common classes
+│   ├── Converter/           # Common converters
+│   ├── Expr/                # Expressions
+│   ├── MetaData/            # Metadata
+│   ├── Model/               # Models
+│   ├── Service/             # Common services
+│   ├── SqlBuilder/          # Common SQL builders
 │   └── SqlSegment/          # SQL segments
-├── LiteOrm.Demo/           # Demo project
-│   ├── DAO/                # Demo DAO
-│   ├── Data/               # Demo data
-│   ├── Demos/              # Demo code
-│   ├── Models/             # Demo models
-│   └── Services/           # Demo services
-├── LiteOrm.Tests/          # Test project
-│   ├── Attributes/         # Attribute tests
-│   ├── Classes/            # Class tests
-│   ├── Converter/          # Converter tests
-│   ├── Expr/               # Expression tests
-│   ├── Infrastructure/     # Test infrastructure
-│   ├── MetaData/           # Metadata tests
-│   ├── Models/             # Test models
-│   └── Service/            # Service tests
-├── LiteOrm.Benchmark/      # Performance benchmark
-└── docs/                   # Documentation
-    ├── 01-getting-started/ # Getting started guide
-    ├── 02-core-usage/      # Core usage
-    ├── 03-advanced-topics/ # Advanced topics
-    ├── 04-extensibility/   # Extensibility
-    └── 05-reference/       # Reference
+├── LiteOrm/                 # base library
+│   ├── Classes/             # Core classes
+│   ├── Converter/           # Converters
+│   ├── DAO/                 # Data access objects
+│   ├── DAOContext/          # Data access context
+│   ├── DbAccess/            # Database access
+│   ├── Initilizer/          # Initializers
+│   ├── Service/             # Service layer
+│   └── SqlBuilder/          # SQL builders
+├── LiteOrm.DependencyInjection/       # Host integration (Autofac + AOP)
+│   ├── Attributes/          # Registration/interception attributes
+│   └── Service/             # Integration and registration entry point
+├── LiteOrm.Remote/          # Remote client
+│   ├── Interceptor/         # Remote proxy interceptors
+│   ├── Proxy/               # Dynamic proxies
+│   ├── Transport/           # Transport layer
+│   └── RemoteProxyGenerator.cs  # Remote proxy generator (shared ProxyGenerator singleton)
+├── LiteOrm.Remote.Server/   # Remote server
+├── LiteOrm.Demo/            # Demo project
+│   ├── DAO/                 # Demo DAO
+│   ├── Data/                # Demo data
+│   ├── Demos/               # Demo code
+│   ├── Models/              # Demo models
+│   └── Services/            # Demo services
+├── LiteOrm.Tests/           # Test project
+│   ├── Attributes/          # Attribute tests
+│   ├── Classes/             # Class tests
+│   ├── Converter/           # Converter tests
+│   ├── Expr/                # Expression tests
+│   ├── Infrastructure/      # Test infrastructure
+│   ├── MetaData/            # Metadata tests
+│   ├── Models/              # Test models
+│   └── Service/             # Service tests
+├── LiteOrm.Benchmark/       # Performance benchmark
+├── LiteOrm.CodeGen/         # Code generation CLI (entities / SELECT queries)
+└── docs/                    # Documentation
+    ├── 01-getting-started/  # Getting started (overview, installation)
+    ├── 02-core-usage/       # Core usage
+    ├── 03-advanced-topics/  # Advanced topics
+    ├── 04-extensibility/    # Extensibility
+    ├── 05-reference/        # Reference
+    └── 06-di/        # DI usage (requires LiteOrm.DependencyInjection)
 ```
+
+### 5.1 The Five Core Projects
+
+| Project | Role | Use case | AOT Support |
+|-----|-----|---------|---------|
+| `LiteOrm.Common` | Common components: mapping attributes, the `Expr` object model, `SqlSegment`, common service interfaces | Use only the low-level capabilities (mapping, expressions, DAO contracts) without any host DI integration | ✅ |
+| `LiteOrm` (base library) | DAO layer, SQL generation, dialect builders, core services, `AddLiteOrm()` | Use `ObjectDAO`/`DataDAO` and other low-level access, managing connections and lifecycle yourself | ✅ |
+| `LiteOrm.DependencyInjection` | Host integration: Autofac container, `RegisterLiteOrm()`, AOP interception (transactions/permissions/logging) | ASP.NET Core projects integrating via `builder.Host.RegisterLiteOrm()` | ❌ |
+| `LiteOrm.Remote` | Remote client: interface dynamic proxies, serialized transport | Call remote services through local interfaces from a client project | ❌ |
+| `LiteOrm.Remote.Server` | Remote server: receives and processes remote requests | Deploy the remote server alongside `LiteOrm.Remote` | ❌ |
+
+Dependency relationships between the five core projects:
+
+```mermaid
+graph TD
+    Common[LiteOrm.Common]
+    Core[LiteOrm] -->|references| Common
+    DI[LiteOrm.DependencyInjection] -->|references| Core
+    DI -->|references| Common
+    Remote[LiteOrm.Remote] -->|references| Common
+    Server[LiteOrm.Remote.Server] -->|references| Common
+```
+
+> - `LiteOrm.Generators` is referenced at compile time by `LiteOrm.Common` and `LiteOrm` (as an Analyzer); it participates only in compilation and adds no runtime dependency.
+> - `LiteOrm.Remote.Server` additionally depends on the ASP.NET Core shared framework (`Microsoft.AspNetCore.App`).
+
+**AOT support notes:**
+- ✅ means the project's net8.0 / net10.0 targets are marked `IsAotCompatible` and run under NativeAOT and full trimming.
+- ❌ means it relies on reflection / dynamic proxies and is not declared AOT-compatible: `LiteOrm.DependencyInjection` (Autofac + Castle dynamic proxies), `LiteOrm.Remote` / `LiteOrm.Remote.Server` (dynamic type serialization).
+
+> **How to choose?**
+> - For core ORM capabilities only (mapping, queries, DAO), reference `LiteOrm` (optionally `LiteOrm.Common`) with no DI framework required.
+> - For host-level integration (Autofac, AOP transactions/permissions/logging), reference `LiteOrm.DependencyInjection`.
+> - For cross-process service calls, add `LiteOrm.Remote` and `LiteOrm.Remote.Server`.
+
+**Database support:**
+- SQL Server 2012+, Oracle 12c+, PostgreSQL, MySQL 8.0+, SQLite
+- Dameng DM, KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, GreatDB
 
 **Core Module Responsibilities:**
 
@@ -220,6 +269,14 @@ The SQL Builder is responsible for generating optimized SQL statements for diffe
 - **OracleBuilder**: Oracle specific builder
 - **PostgreSqlBuilder**: PostgreSQL specific builder
 - **SQLiteBuilder**: SQLite specific builder
+- **DamengBuilder**: Dameng (DM) specific builder (inherits `OracleBuilder`)
+- **KingbaseESBuilder**: KingbaseES specific builder (inherits `PostgreSqlBuilder`)
+- **GaussDBBuilder**: Huawei GaussDB / openGauss specific builder (inherits `PostgreSqlBuilder`)
+- **OceanBaseBuilder**: OceanBase specific builder (inherits `MySqlBuilder`)
+- **GreatDBBuilder**: GreatDB specific builder (inherits `MySqlBuilder`)
+- **TiDBBuilder**: TiDB specific builder (inherits `MySqlBuilder`)
+
+> Note: Domestic/compatible database builders all inherit from mainstream database builders, overriding only where differences exist.
 
 **Core Features:**
 - Generate database-specific SQL statements
@@ -405,35 +462,14 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 **Function**: Provider of table information
 
 **Main Methods**:
-- `GetTable()`: Get table information
-- `GetColumn()`: Get column information
+- `GetTableDefinition(Type objectType)`: Get the table definition for an object type (returns `TableDefinition`)
+- `GetTableView(Type objectType)`: Get the view information for a type (returns `TableView`)
 
 **Use Case**: Build and manage table metadata
 
-## 9. Technology Stack and Dependencies
+> Note: `GetColumn(string)` is defined on `SqlTable`, not on `TableInfoProvider`.
 
-| Technology/Dependency | Version | Purpose |
-|----------|------|-----|
-| .NET | 8.0+ | Runtime environment |
-| .NET Standard | 2.0+ | Cross-platform support |
-| Autofac.Extensions.DependencyInjection | 10.0.0 | Autofac container integration used by `RegisterLiteOrm()` |
-| Autofac.Extras.DynamicProxy | 7.1.0 | Autofac interception support |
-| Microsoft.Extensions.DependencyInjection | 10.0.0 | DI abstractions and `ServiceCollection` ecosystem |
-| Castle.Core | 5.2.1 | Dynamic proxy core |
-| Castle.Core.AsyncInterceptor | 2.1.0 | Async interceptor |
-| Microsoft.Extensions.Hosting.Abstractions | 10.0.5 | Hosting abstractions |
-| Microsoft.Extensions.Logging.Abstractions | 10.0.5 | Logging abstractions |
-| System.Text.Json | 10.0.5 | JSON processing |
-
-**Database Support:**
-- SQL Server 2012+
-- Oracle 12c+
-- PostgreSQL
-- MySQL 8.0+
-- SQLite
-- Dameng DM, KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, GreatDB
-
-## 10. Common Beginner Misconceptions
+## 9. Common Beginner Misconceptions
 
 > Here are some common misunderstandings that beginners often have. Knowing them upfront can save you time.
 
@@ -461,5 +497,6 @@ The names in attributes are the actual database names. If your C# property name 
 
 - [Back to docs hub](../README.md)
 - [Installation and Environment Requirements](./02-installation.en.md)
+- [Configuration Reference](../05-reference/01-configuration-reference.en.md)
 - [API Index](../05-reference/02-api-index.en.md)
 - [Demo Project](../../LiteOrm.Demo/)

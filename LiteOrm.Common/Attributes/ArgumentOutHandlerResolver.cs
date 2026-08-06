@@ -19,7 +19,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="attribute">参数输出特性。</param>
         /// <returns>处理器实例；若无法创建则返回 null。</returns>
-        public static IArgumentOutHandler Resolve(ArgumentOutAttribute attribute)
+        public static IArgumentOutHandler? Resolve(ArgumentOutAttribute attribute)
         {
             if (attribute == null)
                 return null;
@@ -53,7 +53,7 @@ namespace LiteOrm.Common
         /// <param name="attribute">参数输出特性。</param>
         /// <param name="serviceProvider">服务提供者，用于 DI 解析（可空）。</param>
         /// <returns>处理器实例；若无法创建则返回 null。</returns>
-        public static IArgumentOutHandler Resolve(ArgumentOutAttribute attribute, IServiceProvider serviceProvider)
+        public static IArgumentOutHandler? Resolve(ArgumentOutAttribute attribute, IServiceProvider serviceProvider)
         {
             if (attribute == null)
                 return null;

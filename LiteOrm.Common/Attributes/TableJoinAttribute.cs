@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -10,10 +11,10 @@ namespace LiteOrm.Common
     {
         private Type _targetType;
         private string _foreignKeys;
-        private string _alias;
+        private string? _alias;
         private TableJoinType _joinType = TableJoinType.Left;
-        private object _sourceTable;
-        private string _primeKeys;
+        private object? _sourceTable;
+        private string? _primeKeys;
 
         /// <summary>
         /// 指定源表，关联的对象类型和外键生成关联信息
@@ -56,7 +57,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 源表，可以是字符串，也可以是对应的对象类型，默认为主表
         /// </summary>
-        public object Source
+        public object? Source
         {
             get { return _sourceTable; }
         }
@@ -64,6 +65,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 关联的对象类型
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public Type TargetType
         {
             get { return _targetType; }
@@ -72,7 +74,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 别名
         /// </summary>
-        public string Alias
+        public string? Alias
         {
             get { return _alias; }
             set { _alias = value; }
@@ -104,7 +106,7 @@ namespace LiteOrm.Common
         /// 目标表用于关联的键属性，多个属性以","分隔，顺序需与 <see cref="ForeignKeys"/> 对应。
         /// 默认使用目标表主键。该配置仅用于覆盖默认主键关联，属于兼容性写法，不推荐常规场景使用。
         /// </summary>
-        public string PrimeKeys
+        public string? PrimeKeys
         {
             get { return _primeKeys; }
             set { _primeKeys = value; }

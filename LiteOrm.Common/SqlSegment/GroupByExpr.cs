@@ -21,7 +21,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="source">源片段</param>
         /// <param name="groupBys">分组字段表达式列表</param>
-        public GroupByExpr(SqlSegment source, params ValueTypeExpr[] groupBys)
+        public GroupByExpr(SqlSegment? source, params ValueTypeExpr[] groupBys)
         {
             Source = source;
             GroupBys = groupBys?.ToList() ?? new List<ValueTypeExpr>();
@@ -42,7 +42,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is GroupByExpr other && Equals(Source, other.Source) && GroupBys.SequenceEqual(other.GroupBys);
+        public override bool Equals(object? obj) => obj is GroupByExpr other && Equals(Source, other.Source) && GroupBys.SequenceEqual(other.GroupBys);
 
         /// <summary>
         /// 获取当前对象的哈希码
@@ -58,7 +58,7 @@ namespace LiteOrm.Common
         {
             if (Source == null && (GroupBys == null || GroupBys.Count == 0)) return string.Empty;
             else if (Source == null) return $"GROUP BY {string.Join(", ", GroupBys.Where(v => v is not null))}";
-            else if (GroupBys == null || GroupBys.Count == 0) return Source.ToString();
+            else if (GroupBys == null || GroupBys.Count == 0) return Source.ToString() ?? string.Empty;
             else return $"{Source} GROUP BY {string.Join(", ", GroupBys.Where(v => v is not null))}";
         }
 
@@ -68,7 +68,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var g = new GroupByExpr();
-            g.Source = (SqlSegment)Source?.Clone();
+            g.Source = Source?.Clone() as SqlSegment;
             g.GroupBys = GroupBys?.Select(v => (ValueTypeExpr)v.Clone()).ToList() ?? new List<ValueTypeExpr>();
             return g;
         }

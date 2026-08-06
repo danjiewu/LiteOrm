@@ -27,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\LiteOrm\LiteOrm.csproj" />
     <ProjectReference Include="..\LiteOrm.Common\LiteOrm.Common.csproj" />
+    <ProjectReference Include="..\LiteOrm.DependencyInjection\LiteOrm.DependencyInjection.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="appsettings.json">

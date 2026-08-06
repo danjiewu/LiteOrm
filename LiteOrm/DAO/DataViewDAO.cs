@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -11,18 +12,25 @@ namespace LiteOrm
     /// 提供视图查询功能，返回 DataTable 格式结果
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    [AutoRegister(Lifetime.Scoped)]
-    public class DataViewDAO<T> : DAOBase, IDataViewDAO<T>
+    public class DataViewDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : DAOBase, IDataViewDAO<T>
     {
+        /// <summary>
+        /// 初始化 <see cref="DataViewDAO{T}"/> 类的新实例。
+        /// </summary>
+        public DataViewDAO()
+        {
+        }
+
         /// <summary>
         /// 获取实体类型信息。
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public override Type ObjectType => typeof(T);
 
         /// <summary>
         /// 获取实体对应的数据库表或视图元数据。
         /// </summary>
-        public override SqlTable Table => TableInfoProvider.GetTableView(ObjectType);
+        public override SqlTable Table => TableInfoProvider.GetTableView(ObjectType)!;
 
         /// <summary>
         /// 指示当前 DAO 是视图查询 DAO。
@@ -39,11 +47,11 @@ namespace LiteOrm
         {
             DataRow row = dt.NewRow();
             int fieldCount = reader.FieldCount;
-            SqlColumn[] columns = new SqlColumn[fieldCount];
+            SqlColumn?[] columns = new SqlColumn?[fieldCount];
             for (int i = 0; i < fieldCount; i++)
             {
                 string name = reader.GetName(i);
-                SqlColumn column = Table.GetColumn(name);
+                SqlColumn? column = Table.GetColumn(name);
                 columns[i] = column;
                 Type propertyType = column?.PropertyType ?? reader.GetFieldType(i);
                 object value = reader.GetValue(i);
@@ -99,7 +107,7 @@ namespace LiteOrm
             }
             else
             {
-                selects = SelectColumns.Select(p => new SelectItemExpr(Expr.Prop(p.Name), p.Name)).ToList();
+                selects = SelectColumns.Select(p => new SelectItemExpr(Expr.Prop(p.Name!), p.Name)).ToList();
             }
 
             SelectExpr selectExpr;

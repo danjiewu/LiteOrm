@@ -2,6 +2,7 @@ using BenchmarkDotNet.Attributes;
 using Dapper;
 using FreeSql;
 using LiteOrm.Common;
+using LiteOrm.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,8 +20,8 @@ namespace LiteOrm.Benchmark
     [MediumRunJob]
     public class OrmBenchmark
     {
-        private IHost _host;
-        private IServiceProvider _serviceProvider => _host.Services;
+        private IHost? _host;
+        private IServiceProvider _serviceProvider => _host!.Services;
         private readonly Random _random = new Random();
 
         private string? _connectionString;
@@ -28,9 +29,9 @@ namespace LiteOrm.Benchmark
         private string? _providerTypeName; // connection type assembly qualified name from config
         private record DataSourceConfig
         {
-            public string Name { get; init; }
-            public string ConnectionString { get; init; }
-            public string Provider { get; init; }
+            public string? Name { get; init; }
+            public string? ConnectionString { get; init; }
+            public string? Provider { get; init; }
             public bool SyncTable { get; init; }
         }
 
@@ -101,7 +102,7 @@ namespace LiteOrm.Benchmark
                             }
                             else
                             {
-                                options.UseMySQL(_connectionString);
+                                options.UseMySQL(_connectionString!);
                             }
                             options.LogTo(_ => { }, Microsoft.Extensions.Logging.LogLevel.None);
                         });
@@ -154,7 +155,7 @@ namespace LiteOrm.Benchmark
                     }))
                     .Build();
 
-                _host.Start();
+                _host!.Start();
                 Console.WriteLine("Host started.");
 
                 // 初始化数据库结构和种子数据

@@ -28,7 +28,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void GetHashCode_WithNull_ReturnsZero()
         {
-            Assert.Equal(0, StringArrayEqualityComparer.Instance.GetHashCode(null));
+            Assert.Equal(0, StringArrayEqualityComparer.Instance.GetHashCode(null!));
         }
 
         [Fact]

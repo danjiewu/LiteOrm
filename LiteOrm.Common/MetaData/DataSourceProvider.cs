@@ -11,21 +11,21 @@ namespace LiteOrm.Common
         /// <summary>
         /// 数据源名称
         /// </summary>
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         /// <summary>
         /// 数据库连接字符串
         /// </summary>
-        public string ConnectionString { get; set; }
+        public string? ConnectionString { get; set; }
 
         /// <summary>
         /// 数据库提供程序类型全名
         /// </summary>
-        public string Provider { get; set; }
+        public string? Provider { get; set; }
         /// <summary>
         /// SQL 构建器类型全名（可选，如果不指定则根据 Provider 自动匹配）
         /// </summary>
-        public string SqlBuilder { get; set; }
+        public string? SqlBuilder { get; set; }
 
         /// <summary>
         /// 连接保活时长
@@ -43,9 +43,9 @@ namespace LiteOrm.Common
         public int MaxPoolSize { get; set; } = 100;
 
         /// <summary>
-        /// 数据库参数最大数量限制，为0表示无限制，默认为2000
+        /// 数据库参数最大数量限制，为0表示无限制，默认为1000
         /// </summary>
-        public int ParamCountLimit { get; set; } = 2000;
+        public int ParamCountLimit { get; set; } = 1000;
 
         /// <summary>
         /// 是否开启自动建表同步
@@ -67,7 +67,7 @@ namespace LiteOrm.Common
                 if (string.IsNullOrEmpty(Provider))
                     throw new InvalidOperationException("Database provider not specified");
 
-                var type = Type.GetType(Provider);
+                var type = TypeResolverHelper.FindType(Provider!);
                 if (type == null)
                     throw new TypeLoadException($"Unable to load database provider type: {Provider}");
 
@@ -78,13 +78,13 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取 SQL 构建器类型，如果未指定则返回 null，由工厂根据 Provider 自动匹配
         /// </summary>
-        public Type SqlBuilderType
+        public Type? SqlBuilderType
         {
             get
             {
                 if (!string.IsNullOrEmpty(SqlBuilder))
                 {
-                    var type = Type.GetType(SqlBuilder);
+                    var type = TypeResolverHelper.FindType(SqlBuilder!);
                     if (type == null)
                         throw new TypeLoadException($"Unable to load SQL builder type: {SqlBuilder}");
                     return type;
@@ -102,16 +102,16 @@ namespace LiteOrm.Common
         /// <summary>
         /// 数据库连接字符串
         /// </summary>
-        public string ConnectionString { get; set; }
+        public string? ConnectionString { get; set; }
 
         /// <summary>
         /// 数据库提供程序类型全名
         /// </summary>
-        public string Provider { get; set; }
+        public string? Provider { get; set; }
         /// <summary>
         /// SQL 构建器类型全名（可选，如果不指定则根据 Provider 自动匹配）
         /// </summary>
-        public string SqlBuilder { get; set; }
+        public string? SqlBuilder { get; set; }
         /// <summary>
         /// 连接保活时长（可选，不设置则使用主库配置）
         /// </summary>
@@ -141,14 +141,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取默认数据源名称
         /// </summary>
-        string DefaultDataSourceName { get; }
+        string? DefaultDataSourceName { get; }
 
         /// <summary>
         /// 根据名称获取数据源配置
         /// </summary>
         /// <param name="name">数据源名称</param>
-        /// <returns>数据源配置</returns>
-        DataSourceConfig GetDataSource(string name);
+        /// <returns>数据源配置，不存在时返回 null</returns>
+        DataSourceConfig? GetDataSource(string name);
     }
 
 }

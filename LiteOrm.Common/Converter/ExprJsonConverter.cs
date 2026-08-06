@@ -1,10 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Threading;
 
 namespace LiteOrm.Common
@@ -15,6 +16,31 @@ namespace LiteOrm.Common
     /// </summary>
     internal class ExprJsonConverterFactory : JsonConverterFactory
     {
+        /// <summary>
+        /// 类型名称解析器，用于 JSON 序列化/反序列化时 Type ↔ 名称 的双向转换。
+        /// 默认使用 <see cref="DefaultTypeNameResolver"/>，可通过此属性替换为自定义实现。
+        /// </summary>
+        private static ITypeNameResolver _typeNameResolver = DefaultTypeNameResolver.Instance;
+
+        /// <summary>
+        /// 获取或设置类型名称解析器。设置为 null 时抛出 <see cref="ArgumentNullException"/>。
+        /// </summary>
+        internal static ITypeNameResolver TypeNameResolver
+        {
+            get => _typeNameResolver;
+            set => _typeNameResolver = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        // 预创建的泛型转换器实例，避免 Activator.CreateInstance + MakeGenericType（AOT 不兼容）
+        private static readonly ExprJsonConverter<Expr> _exprConverter = new();
+        private static readonly ExprJsonConverter<LogicExpr> _logicExprConverter = new();
+        private static readonly ExprJsonConverter<ValueTypeExpr> _valueTypeExprConverter = new();
+        private static readonly ExprJsonConverter<SqlSegment> _sqlSegmentConverter = new();
+        private static readonly ExprJsonConverter<SourceExpr> _sourceExprConverter = new();
+        private static readonly ExprJsonConverter<SelectExpr> _selectExprConverter = new();
+        private static readonly ExprJsonConverter<TableExpr> _tableExprConverter = new();
+        private static readonly ExprJsonConverter<TableJoinExpr> _tableJoinExprConverter = new();
+
         // 检查类型是否为 Expr 或其子类
         public override bool CanConvert(Type typeToConvert)
         {
@@ -24,8 +50,28 @@ namespace LiteOrm.Common
         // 创建针对特定 Expr 子类的泛型转换器
         public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
         {
-            return (JsonConverter)Activator.CreateInstance(
-                typeof(ExprJsonConverter<>).MakeGenericType(typeToConvert))!;
+            // 优先返回预创建实例（AOT 兼容）
+            if (typeToConvert == typeof(Expr)) return _exprConverter;
+            if (typeToConvert == typeof(LogicExpr)) return _logicExprConverter;
+            if (typeToConvert == typeof(ValueTypeExpr)) return _valueTypeExprConverter;
+            if (typeToConvert == typeof(SqlSegment)) return _sqlSegmentConverter;
+            if (typeToConvert == typeof(SourceExpr)) return _sourceExprConverter;
+            if (typeToConvert == typeof(SelectExpr)) return _selectExprConverter;
+            if (typeToConvert == typeof(TableExpr)) return _tableExprConverter;
+            if (typeToConvert == typeof(TableJoinExpr)) return _tableJoinExprConverter;
+
+            // JIT 模式回退：使用反射创建未知类型的转换器
+            if (System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+            {
+#pragma warning disable IL3050
+                return (JsonConverter)Activator.CreateInstance(
+                    typeof(ExprJsonConverter<>).MakeGenericType(typeToConvert))!;
+#pragma warning restore IL3050
+            }
+
+            throw new NotSupportedException(
+                $"Type '{typeToConvert}' is not supported for Expr JSON conversion in AOT mode. " +
+                $"Register the type in ExprJsonSerializerContext and ExprJsonConverterFactory.");
         }
 
         /// <summary>
@@ -34,12 +80,27 @@ namespace LiteOrm.Common
         /// </summary>
         private class ExprJsonConverter<T> : JsonConverter<T> where T : Expr
         {
-            // 使用非转义编码器，避免 HTML 字符被转义，提高 SQL 表达式的可读性
-            private static readonly JsonSerializerOptions _compactOptions = new JsonSerializerOptions
+            /// <summary>
+            /// 从 <see cref="ExprJsonSerializerContext"/> 获取指定类型的 <see cref="JsonTypeInfo{T}"/>，
+            /// 替代反射式 <c>JsonSerializer.Deserialize{T}(ref reader, options)</c> 调用以满足 AOT 兼容性。
+            /// </summary>
+            private static JsonTypeInfo<TValue> GetTypeInfo<TValue>()
             {
-                WriteIndented = false,
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
+                return (JsonTypeInfo<TValue>)(ExprJsonSerializerContext.Instance.GetTypeInfo(typeof(TValue))
+                    ?? throw new InvalidOperationException(
+                        $"Type '{typeof(TValue)}' is not registered in ExprJsonSerializerContext."));
+            }
+
+            /// <summary>
+            /// 从 <see cref="ExprJsonSerializerContext"/> 获取指定运行时类型的 <see cref="JsonTypeInfo"/>，
+            /// 用于原生类型（DateTime、Guid 等）的动态反序列化。
+            /// </summary>
+            private static JsonTypeInfo GetTypeInfo(Type type)
+            {
+                return ExprJsonSerializerContext.Instance.GetTypeInfo(type)
+                    ?? throw new InvalidOperationException(
+                        $"Type '{type}' is not registered in ExprJsonSerializerContext.");
+            }
 
             // 维护 C# 操作符与 JSON 短标识的映射
             private static readonly Dictionary<LogicOperator, string> _logicOperatorToJson = new()
@@ -93,8 +154,8 @@ namespace LiteOrm.Common
                 { "bytes", typeof(byte[]) }
             };
             // 同一次序列化/反序列化过程中需要跨递归层共享 CTE 定义表，才能实现“首个完整定义 + 后续别名引用”。
-            private static readonly AsyncLocal<CommonTableWriteContext> _writeContext = new();
-            private static readonly AsyncLocal<CommonTableReadContext> _readContext = new();
+            private static readonly AsyncLocal<CommonTableWriteContext?> _writeContext = new();
+            private static readonly AsyncLocal<CommonTableReadContext?> _readContext = new();
 
             static ExprJsonConverter()
             {
@@ -111,7 +172,7 @@ namespace LiteOrm.Common
                 _jsonToLogicOperator["<>"] = LogicOperator.NotEqual;
             }
 
-            public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            public override T? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
             {
                 var context = EnterReadContext();
                 try
@@ -124,7 +185,7 @@ namespace LiteOrm.Common
                         return (T)(Expr)new ValueExpr(ReadNative(ref reader, options));
                     }
 
-                    Expr result = null;
+                    Expr? result = null;
                     while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                     {
                         if (reader.TokenType != JsonTokenType.PropertyName) continue;
@@ -148,16 +209,16 @@ namespace LiteOrm.Common
                         else if (propName == "!")
                         {
                             reader.Read();
-                            result = new NotExpr(JsonSerializer.Deserialize<LogicExpr>(ref reader, options));
+                            result = new NotExpr(JsonSerializer.Deserialize(ref reader, GetTypeInfo<LogicExpr>()));
                         }
                         else if (propName.StartsWith("$"))
                         {
                             // 读取标识（可能是 "$": "like" 或 "$like": {...}）
-                            string mark = propName == "$" ? null : propName.Substring(1);
+                            string? mark = propName == "$" ? null : propName.Substring(1);
                             if (mark is not null && TryResolveNativeType(mark, out var nativeType))
                             {
                                 reader.Read();
-                                result = new ValueExpr(JsonSerializer.Deserialize(ref reader, nativeType, options));
+                                result = new ValueExpr(JsonSerializer.Deserialize(ref reader, GetTypeInfo(nativeType!)));
                                 continue;
                             }
 
@@ -203,8 +264,8 @@ namespace LiteOrm.Common
                                 if (mark == "value") { result = ReadValueBody(ref reader, options); break; }
                                 if (mark == "const") { result = ReadValueBody(ref reader, options, true); break; }
                                 if (mark == "foreign") { result = ReadForeign(ref reader, options); break; }
-                                if (mark == "delete") { result = propName != "$" ? new DeleteExpr() { Table = JsonSerializer.Deserialize<TableExpr>(ref reader, options) } : new DeleteExpr(); }
-                                if (mark == "update") { result = propName != "$" ? new UpdateExpr() { Table = JsonSerializer.Deserialize<TableExpr>(ref reader, options) } : new UpdateExpr(); }
+                                if (mark == "delete") { result = propName != "$" ? new DeleteExpr() { Table = JsonSerializer.Deserialize(ref reader, GetTypeInfo<TableExpr>()) } : new DeleteExpr(); }
+                                if (mark == "update") { result = propName != "$" ? new UpdateExpr() { Table = JsonSerializer.Deserialize(ref reader, GetTypeInfo<TableExpr>()) } : new UpdateExpr(); }
                                 if (mark == "from") { result = new FromExpr(); }
                                 if (mark == "table") { result = new TableExpr(); }
                                 if (mark == "join") { result = new TableJoinExpr(); }
@@ -238,7 +299,7 @@ namespace LiteOrm.Common
                         }
                     }
 
-                    return (T)ResolveCommonTableReference(result);
+                    return ResolveCommonTableReference(result) as T;
                 }
                 finally
                 {
@@ -252,10 +313,10 @@ namespace LiteOrm.Common
                 switch (result)
                 {
                     case SqlSegment ss when propName == "Source":
-                        ss.Source = JsonSerializer.Deserialize<SqlSegment>(ref reader, options);
+                        ss.Source = JsonSerializer.Deserialize(ref reader, GetTypeInfo<SqlSegment>());
                         break;
                     case WhereExpr we when propName == "Where":
-                        we.Where = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
+                        we.Where = JsonSerializer.Deserialize(ref reader, GetTypeInfo<LogicExpr>());
                         break;
                     case OrderByExpr obe when propName == "OrderBys":
                         obe.OrderBys.Clear();
@@ -264,11 +325,11 @@ namespace LiteOrm.Common
                             while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                             {
                                 if (reader.TokenType != JsonTokenType.StartObject) { reader.Skip(); continue; }
-                                ValueTypeExpr expr = null; bool asc = true;
+                                ValueTypeExpr? expr = null; bool asc = true;
                                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                                 {
                                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                                    if (reader.ValueTextEquals("Field")) { reader.Read(); expr = JsonSerializer.Deserialize<ValueTypeExpr>(ref reader, options); }
+                                    if (reader.ValueTextEquals("Field")) { reader.Read(); expr = JsonSerializer.Deserialize(ref reader, GetTypeInfo<ValueTypeExpr>()); }
                                     else if (reader.ValueTextEquals("Asc")) { reader.Read(); asc = reader.GetBoolean(); }
                                     else { reader.Read(); reader.Skip(); }
                                 }
@@ -277,18 +338,18 @@ namespace LiteOrm.Common
                         }
                         break;
                     case OrderByItemExpr obi when propName == "Field":
-                        obi.Field = JsonSerializer.Deserialize<ValueTypeExpr>(ref reader, options);
+                        obi.Field = JsonSerializer.Deserialize(ref reader, GetTypeInfo<ValueTypeExpr>());
                         break;
                     case OrderByItemExpr obi when propName == "Asc":
                         obi.Ascending = reader.GetBoolean();
                         break;
                     case GroupByExpr gbe when propName == "GroupBys":
                         gbe.GroupBys.Clear();
-                        var gList = JsonSerializer.Deserialize<List<ValueTypeExpr>>(ref reader, options);
+                        var gList = JsonSerializer.Deserialize(ref reader, GetTypeInfo<List<ValueTypeExpr>>());
                         if (gList != null) gbe.GroupBys.AddRange(gList);
                         break;
                     case HavingExpr he when propName == "Having":
-                        he.Having = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
+                        he.Having = JsonSerializer.Deserialize(ref reader, GetTypeInfo<LogicExpr>());
                         break;
                     case SectionExpr se when propName == "Skip":
                         se.Skip = reader.GetInt32();
@@ -300,7 +361,7 @@ namespace LiteOrm.Common
                         ReadSelectItems(ref reader, sele, options);
                         break;
                     case SelectItemExpr sie when propName == "Value":
-                        sie.Value = JsonSerializer.Deserialize<ValueTypeExpr>(ref reader, options);
+                        sie.Value = JsonSerializer.Deserialize(ref reader, GetTypeInfo<ValueTypeExpr>());
                         break;
                     case SelectItemExpr sie when propName == "Alias":
                         sie.Alias = reader.GetString();
@@ -309,10 +370,10 @@ namespace LiteOrm.Common
                         ReadUpdateSets(ref reader, ue, options);
                         break;
                     case UpdateExpr ue when propName == "Where":
-                        ue.Where = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
+                        ue.Where = JsonSerializer.Deserialize(ref reader, GetTypeInfo<LogicExpr>());
                         break;
                     case DeleteExpr de when propName == "Where":
-                        de.Where = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
+                        de.Where = JsonSerializer.Deserialize(ref reader, GetTypeInfo<LogicExpr>());
                         break;
                     case CommonTableExpr cte when propName == "Alias":
                         cte.Alias = reader.GetString();
@@ -324,29 +385,29 @@ namespace LiteOrm.Common
                             while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                             {
                                 if (reader.TokenType != JsonTokenType.StartObject) { reader.Skip(); continue; }
-                                var join = JsonSerializer.Deserialize<Expr>(ref reader, options) as TableJoinExpr;
+                                var join = JsonSerializer.Deserialize(ref reader, GetTypeInfo<TableJoinExpr>());
                                 if (join != null) fe.Joins.Add(join);
                             }
                         }
                         break;
                     case TableExpr te when propName == "Type":
-                        te.Type = GetObjectType(reader.GetString());
+                        te.Type = ExprJsonConverterFactory.TypeNameResolver.GetType(reader.GetString()!);
                         break;
                     case TableExpr te when propName == "Alias":
                         te.Alias = reader.GetString();
                         break;
                     case TableExpr te when propName == "TableArgs":
-                        te.TableArgs = JsonSerializer.Deserialize<string[]>(ref reader, options);
+                        te.TableArgs = JsonSerializer.Deserialize(ref reader, GetTypeInfo<string[]>());
                         break;
                     case TableJoinExpr tje when propName == "Source":
-                        tje.Source = JsonSerializer.Deserialize<SourceExpr>(ref reader, options);
+                        tje.Source = JsonSerializer.Deserialize(ref reader, GetTypeInfo<SourceExpr>());
                         break;
                     case TableJoinExpr tje when propName == "JoinType":
                         if (reader.TokenType == JsonTokenType.String && Enum.TryParse<TableJoinType>(reader.GetString(), true, out var jt))
                             tje.JoinType = jt;
                         break;
                     case TableJoinExpr tje when propName == "On":
-                        tje.On = JsonSerializer.Deserialize<LogicExpr>(ref reader, options);
+                        tje.On = JsonSerializer.Deserialize(ref reader, GetTypeInfo<LogicExpr>());
                         break;
                     default:
                         reader.Skip();
@@ -366,8 +427,8 @@ namespace LiteOrm.Common
                         if (reader.TokenType == JsonTokenType.StartObject)
                         {
                             // 按属性方式反序列化：读取 Name 和 Value 属性
-                            string name = null;
-                            ValueTypeExpr value = null;
+                            string? name = null;
+                            ValueTypeExpr? value = null;
                             while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                             {
                                 if (reader.TokenType != JsonTokenType.PropertyName) continue;
@@ -379,7 +440,7 @@ namespace LiteOrm.Common
                                 }
                                 else if (prop == "Value")
                                 {
-                                    value = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                                    value = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()).AsValue();
                                 }
                                 else
                                 {
@@ -390,7 +451,7 @@ namespace LiteOrm.Common
                         }
                         else
                         {
-                            var v = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                            var v = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()).AsValue();
                             if (v is not null) sele.Selects.Add(new SelectItemExpr(v));
                         }
                     }
@@ -408,14 +469,14 @@ namespace LiteOrm.Common
                     while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                     {
                         if (reader.TokenType != JsonTokenType.StartObject) { reader.Skip(); continue; }
-                        string prop = null;
-                        ValueTypeExpr val = null;
+                        string? prop = null;
+                        ValueTypeExpr? val = null;
                         while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                         {
                             if (reader.TokenType != JsonTokenType.PropertyName) continue;
                             prop = reader.GetString();
                             reader.Read();
-                            val = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                            val = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()).AsValue();
                         }
                         if (prop is not null && val is not null) ue.Sets.Add(new(Expr.Prop(prop), val));
                     }
@@ -430,10 +491,10 @@ namespace LiteOrm.Common
                 // reader 已经在属性值的位置，直接处理
                 if (ss is TableExpr te && propName == "$table")
                 {
-                    string typeName = reader.GetString();
+                    string? typeName = reader.GetString();
                     if (!string.IsNullOrEmpty(typeName))
                     {
-                        Type type = GetObjectType(typeName);
+                        Type? type = ExprJsonConverterFactory.TypeNameResolver.GetType(typeName!);
                         if (type != null) te.Type = type;
                     }
                 }
@@ -447,29 +508,14 @@ namespace LiteOrm.Common
                         }
                         else
                         {
-                            cte.Source = JsonSerializer.Deserialize<SelectExpr>(ref reader, options);
+                            cte.Source = JsonSerializer.Deserialize(ref reader, GetTypeInfo<SelectExpr>());
                         }
                     }
                     else
                     {
-                        segment.Source = JsonSerializer.Deserialize<SqlSegment>(ref reader, options);
+                        segment.Source = JsonSerializer.Deserialize(ref reader, GetTypeInfo<SqlSegment>());
                     }
                 }
-            }
-
-            private static Type GetObjectType(string typeName)
-            {
-                Type type = Type.GetType(typeName);
-                if (type == null)
-                {
-                    foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                    {
-                        type = assembly.GetType(typeName);
-                        if (type != null) break;
-                    }
-                }
-
-                return type;
             }
 
             public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
@@ -486,7 +532,7 @@ namespace LiteOrm.Common
                 }
             }
 
-            private void WriteExpr(Utf8JsonWriter writer, Expr value, JsonSerializerOptions options)
+            private void WriteExpr(Utf8JsonWriter writer, Expr? value, JsonSerializerOptions options)
             {
                 if (value is LambdaExpr lambda)
                 {
@@ -505,13 +551,13 @@ namespace LiteOrm.Common
                     case AndExpr andExpr:
                         writer.WriteStartObject();
                         writer.WritePropertyName("$and");
-                        JsonSerializer.Serialize(writer, andExpr.Items, _compactOptions);
+                        JsonSerializer.Serialize(writer, andExpr.Items, GetTypeInfo(typeof(HashSet<LogicExpr>)));
                         writer.WriteEndObject();
                         return;
                     case OrExpr orExpr:
                         writer.WriteStartObject();
                         writer.WritePropertyName("$or");
-                        JsonSerializer.Serialize(writer, orExpr.Items, _compactOptions);
+                        JsonSerializer.Serialize(writer, orExpr.Items, GetTypeInfo(typeof(HashSet<LogicExpr>)));
                         writer.WriteEndObject();
                         return;
                     case ValueExpr ve:
@@ -521,7 +567,7 @@ namespace LiteOrm.Common
                             {
                                 innerExpr = nestedExpr;
                             }
-                            JsonSerializer.Serialize(writer, innerExpr, options);
+                            JsonSerializer.Serialize(writer, innerExpr, GetTypeInfo<Expr>());
                         }
                         else if (ve.IsConst)
                         {
@@ -559,8 +605,8 @@ namespace LiteOrm.Common
                             foreach (var set in ue.Sets)
                             {
                                 writer.WriteStartObject();
-                                writer.WritePropertyName(set.Property.PropertyName);
-                                JsonSerializer.Serialize(writer, set.Value, options);
+                                writer.WritePropertyName(set.Property?.PropertyName ?? string.Empty);
+                                JsonSerializer.Serialize(writer, set.Value, GetTypeInfo<ValueTypeExpr?>());
                                 writer.WriteEndObject();
                             }
                             writer.WriteEndArray();
@@ -643,7 +689,7 @@ namespace LiteOrm.Common
                         writer.WriteEndArray();
                         break;
                     case FunctionExpr fe:
-                        writer.WritePropertyName(fe.FunctionName);
+                        writer.WritePropertyName(fe.FunctionName ?? string.Empty);
                         writer.WriteStartArray();
                         foreach (var param in fe.Args) WriteExpr(writer, param, options);
                         writer.WriteEndArray();
@@ -679,7 +725,7 @@ namespace LiteOrm.Common
                         if (fe.Foreign is not null)
                         {
                             writer.WritePropertyName("$");
-                            writer.WriteStringValue(fe.Foreign.FullName);
+                            writer.WriteStringValue(ExprJsonConverterFactory.TypeNameResolver.GetName(fe.Foreign));
                         }
                         if (!string.IsNullOrEmpty(fe.Alias))
                         {
@@ -698,12 +744,12 @@ namespace LiteOrm.Common
                         if (fe.TableArgs != null && fe.TableArgs.Length > 0)
                         {
                             writer.WritePropertyName("TableArgs");
-                            JsonSerializer.Serialize(writer, fe.TableArgs, options);
+                            JsonSerializer.Serialize(writer, fe.TableArgs, GetTypeInfo<string[]>());
                         }
                         break;
                     case OrderByItemExpr oie:
                         writer.WritePropertyName("Field");
-                        JsonSerializer.Serialize(writer, oie.Field, options);
+                        JsonSerializer.Serialize(writer, oie.Field, GetTypeInfo<ValueTypeExpr?>());
                         writer.WriteBoolean("Asc", oie.Ascending);
                         break;
                     case SelectItemExpr sie:
@@ -766,15 +812,15 @@ namespace LiteOrm.Common
 
                 writer.WriteStartObject();
 
-                string mark = _typeToMark.TryGetValue(value.GetType(), out string m) ? m : value.GetType().Name.Replace("Expr", "").ToLower();
+                string mark = _typeToMark.TryGetValue(value.GetType(), out string? m) ? (m ?? string.Empty) : value.GetType().Name.Replace("Expr", "").ToLower();
                 writer.WritePropertyName("$" + mark);
                 if (value is TableExpr te)
                 {
-                    writer.WriteStringValue(te.Type?.FullName);
+                    writer.WriteStringValue(te.Type is not null ? ExprJsonConverterFactory.TypeNameResolver.GetName(te.Type) : null);
                 }
                 else
                 {
-                    JsonSerializer.Serialize(writer, value.Source, options);
+                    JsonSerializer.Serialize(writer, value.Source, GetTypeInfo<SqlSegment?>());
                 }
 
                 switch (value)
@@ -804,7 +850,7 @@ namespace LiteOrm.Common
                         if (te2.TableArgs != null && te2.TableArgs.Length > 0)
                         {
                             writer.WritePropertyName("TableArgs");
-                            JsonSerializer.Serialize(writer, te2.TableArgs, options);
+                            JsonSerializer.Serialize(writer, te2.TableArgs, GetTypeInfo<string[]>());
                         }
                         if (!String.IsNullOrEmpty(te2.Alias))
                         {
@@ -871,7 +917,7 @@ namespace LiteOrm.Common
                         {
                             writer.WritePropertyName("Joins");
                             writer.WriteStartArray();
-                            foreach (var join in fe.Joins) JsonSerializer.Serialize(writer, join, options);
+                            foreach (var join in fe.Joins) JsonSerializer.Serialize(writer, join, GetTypeInfo<TableJoinExpr>());
                             writer.WriteEndArray();
                         }
                         break;
@@ -893,13 +939,14 @@ namespace LiteOrm.Common
                     return false;
                 }
 
+                string alias = cte.Alias ?? string.Empty;
                 var context = _writeContext.Value;
                 if (context == null)
                 {
                     return false;
                 }
 
-                if (!context.Definitions.TryGetValue(cte.Alias, out var existing))
+                if (!context.Definitions.TryGetValue(alias, out var existing))
                 {
                     if (cte.Source == null)
                     {
@@ -907,7 +954,7 @@ namespace LiteOrm.Common
                     }
 
                     // 首次出现必须输出完整定义，并登记下来供后续同名引用压缩成 alias-only。
-                    context.Definitions.Add(cte.Alias, cte.Source);
+                    context.Definitions.Add(alias, cte.Source);
                     return false;
                 }
 
@@ -923,7 +970,7 @@ namespace LiteOrm.Common
                 return true;
             }
 
-            private Expr ResolveCommonTableReference(Expr result)
+            private Expr? ResolveCommonTableReference(Expr? result)
             {
                 if (result is not CommonTableExpr cte || string.IsNullOrEmpty(cte.Alias))
                 {
@@ -936,7 +983,8 @@ namespace LiteOrm.Common
                     return result;
                 }
 
-                if (!context.Definitions.TryGetValue(cte.Alias, out var existing))
+                string alias = cte.Alias ?? string.Empty;
+                if (!context.Definitions.TryGetValue(alias, out var existing))
                 {
                     if (cte.Source == null)
                     {
@@ -944,7 +992,7 @@ namespace LiteOrm.Common
                     }
 
                     // 第一次读到完整定义时登记原始 SelectExpr，后续 alias-only 节点再按它克隆恢复。
-                    context.Definitions.Add(cte.Alias, cte.Source);
+                    context.Definitions.Add(cte.Alias ?? string.Empty, cte.Source);
                     return cte;
                 }
 
@@ -1011,7 +1059,7 @@ namespace LiteOrm.Common
                 public Dictionary<string, SelectExpr> Definitions { get; } = new(StringComparer.Ordinal);
             }
 
-            private object ReadNative(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            private object? ReadNative(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 switch (reader.TokenType)
                 {
@@ -1033,24 +1081,32 @@ namespace LiteOrm.Common
                     case JsonTokenType.StartArray:
                         return ReadArrayNative(ref reader, options);
                     default:
-                        return JsonSerializer.Deserialize<object>(ref reader, options);
+                        return JsonSerializer.Deserialize(ref reader, GetTypeInfo<object>());
                 }
             }
 
-            private object ReadObjectNative(ref Utf8JsonReader reader, JsonSerializerOptions options)
+            private object? ReadObjectNative(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
-                var dict = new Dictionary<string, object>();
+                var dict = new Dictionary<string, object?>();
                 if (!reader.Read()) return dict;
                 if (reader.TokenType == JsonTokenType.EndObject) return dict;
 
                 while (reader.TokenType == JsonTokenType.PropertyName)
                 {
                     string propName = reader.GetString() ?? string.Empty;
-                    Type nativeType = null;
+                    Type? nativeType = null;
                     bool isTypedValue = propName.Length > 1 && propName[0] == '$' && TryResolveNativeType(propName.Substring(1), out nativeType);
 
                     reader.Read();
-                    object value = isTypedValue ? JsonSerializer.Deserialize(ref reader, nativeType, options) : ReadNative(ref reader, options);
+                    object? value;
+                    if (isTypedValue && nativeType is not null)
+                    {
+                        value = JsonSerializer.Deserialize(ref reader, GetTypeInfo(nativeType));
+                    }
+                    else
+                    {
+                        value = ReadNative(ref reader, options);
+                    }
 
                     if (!reader.Read()) break;
                     if (isTypedValue && dict.Count == 0 && reader.TokenType == JsonTokenType.EndObject)
@@ -1073,12 +1129,12 @@ namespace LiteOrm.Common
                 var list = new List<object>();
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
                 {
-                    list.Add(ReadNative(ref reader, options));
+                    list.Add(ReadNative(ref reader, options)!);
                 }
                 return list;
             }
 
-            private void WriteNative(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
+            private void WriteNative(Utf8JsonWriter writer, object? value, JsonSerializerOptions options)
             {
                 if (value is null)
                 {
@@ -1089,11 +1145,11 @@ namespace LiteOrm.Common
                 Type valueType = value.GetType();
                 if (TryWriteSimpleNative(writer, value, valueType)) return;
 
-                if (TryGetNativeTypeMark(valueType, out string typeMark))
+                if (TryGetNativeTypeMark(valueType, out string? typeMark))
                 {
                     writer.WriteStartObject();
                     writer.WritePropertyName("$" + typeMark);
-                    JsonSerializer.Serialize(writer, value, valueType, options);
+                    JsonSerializer.Serialize(writer, value, GetTypeInfo(valueType));
                     writer.WriteEndObject();
                     return;
                 }
@@ -1121,7 +1177,7 @@ namespace LiteOrm.Common
                     return;
                 }
 
-                JsonSerializer.Serialize(writer, value, valueType, options);
+                JsonSerializer.Serialize(writer, value, GetTypeInfo(valueType));
             }
 
             private static bool TryWriteSimpleNative(Utf8JsonWriter writer, object value, Type valueType)
@@ -1175,12 +1231,12 @@ namespace LiteOrm.Common
                 }
             }
 
-            private static bool TryGetNativeTypeMark(Type valueType, out string typeMark)
+            private static bool TryGetNativeTypeMark(Type valueType, out string? typeMark)
             {
                 return _nativeTypeToJson.TryGetValue(valueType, out typeMark);
             }
 
-            private static bool TryResolveNativeType(string typeMark, out Type type)
+            private static bool TryResolveNativeType(string typeMark, out Type? type)
             {
                 return _jsonToNativeType.TryGetValue(typeMark, out type);
             }
@@ -1188,8 +1244,8 @@ namespace LiteOrm.Common
             private LogicBinaryExpr ReadLogicBinary(ref Utf8JsonReader reader, JsonSerializerOptions options, LogicOperator op = default)
             {
                 LogicOperator finalOp = op == default ? LogicOperator.Equal : op;
-                ValueTypeExpr left = null;
-                ValueTypeExpr right = null;
+                ValueTypeExpr? left = null;
+                ValueTypeExpr? right = null;
 
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
@@ -1198,14 +1254,14 @@ namespace LiteOrm.Common
                     if (reader.ValueTextEquals("Left"))
                     {
                         reader.Read();
-                        left = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                        left = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()).AsValue();
                     }
                     else if (reader.ValueTextEquals("Operator"))
                     {
                         reader.Read();
                         if (reader.TokenType == JsonTokenType.String)
                         {
-                            string opStr = reader.GetString();
+                            string? opStr = reader.GetString();
                             if (Enum.TryParse<LogicOperator>(opStr, true, out var lbop)) finalOp = lbop;
                         }
                         else
@@ -1216,7 +1272,7 @@ namespace LiteOrm.Common
                     else if (reader.ValueTextEquals("Right"))
                     {
                         reader.Read();
-                        right = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                        right = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()).AsValue();
                     }
                     else
                     {
@@ -1231,8 +1287,8 @@ namespace LiteOrm.Common
             private ValueBinaryExpr ReadValueBinary(ref Utf8JsonReader reader, JsonSerializerOptions options, ValueOperator op = default)
             {
                 ValueOperator finalOp = op == default ? ValueOperator.Add : op;
-                ValueTypeExpr left = null;
-                ValueTypeExpr right = null;
+                ValueTypeExpr? left = null;
+                ValueTypeExpr? right = null;
 
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
@@ -1241,14 +1297,14 @@ namespace LiteOrm.Common
                     if (reader.ValueTextEquals("Left"))
                     {
                         reader.Read();
-                        left = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                        left = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()).AsValue();
                     }
                     else if (reader.ValueTextEquals("Operator"))
                     {
                         reader.Read();
                         if (reader.TokenType == JsonTokenType.String)
                         {
-                            string opStr = reader.GetString();
+                            string? opStr = reader.GetString();
                             if (Enum.TryParse<ValueOperator>(opStr, true, out var vbop)) finalOp = vbop;
                         }
                         else
@@ -1259,7 +1315,7 @@ namespace LiteOrm.Common
                     else if (reader.ValueTextEquals("Right"))
                     {
                         reader.Read();
-                        right = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                        right = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()).AsValue();
                     }
                     else
                     {
@@ -1273,12 +1329,12 @@ namespace LiteOrm.Common
 
             private AndExpr ReadAndExpr(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
-                List<LogicExpr> items = null;
+                List<LogicExpr>? items = null;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType == JsonTokenType.StartArray)
                     {
-                        items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
+                        items = JsonSerializer.Deserialize(ref reader, GetTypeInfo<List<LogicExpr>>());
                     }
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
@@ -1286,7 +1342,7 @@ namespace LiteOrm.Common
                     if (prop == "Items")
                     {
                         reader.Read();
-                        items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
+                        items = JsonSerializer.Deserialize(ref reader, GetTypeInfo<List<LogicExpr>>());
                     }
                     else
                     {
@@ -1299,12 +1355,12 @@ namespace LiteOrm.Common
 
             private OrExpr ReadOrExpr(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
-                List<LogicExpr> items = null;
+                List<LogicExpr>? items = null;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType == JsonTokenType.StartArray)
                     {
-                        items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
+                        items = JsonSerializer.Deserialize(ref reader, GetTypeInfo<List<LogicExpr>>());
                     }
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
@@ -1312,7 +1368,7 @@ namespace LiteOrm.Common
                     if (prop == "Items")
                     {
                         reader.Read();
-                        items = JsonSerializer.Deserialize<List<LogicExpr>>(ref reader, options);
+                        items = JsonSerializer.Deserialize(ref reader, GetTypeInfo<List<LogicExpr>>());
                     }
                     else
                     {
@@ -1326,7 +1382,7 @@ namespace LiteOrm.Common
             private ValueSet ReadValueSet(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 ValueJoinType joinType = ValueJoinType.List;
-                List<ValueTypeExpr> items = null;
+                List<ValueTypeExpr>? items = null;
 
                 bool success = false;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
@@ -1339,7 +1395,7 @@ namespace LiteOrm.Common
                         reader.Read();
                         if (reader.TokenType == JsonTokenType.String)
                         {
-                            string jtStr = reader.GetString();
+                            string? jtStr = reader.GetString();
                             if (Enum.TryParse<ValueJoinType>(jtStr, true, out var vjt)) joinType = vjt;
                         }
                         else
@@ -1351,7 +1407,7 @@ namespace LiteOrm.Common
                     else if (prop == "Items")
                     {
                         reader.Read();
-                        items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<ValueTypeExpr>().ToList();
+                        items = JsonSerializer.Deserialize(ref reader, GetTypeInfo<List<Expr>>())?.Cast<ValueTypeExpr>().ToList();
                     }
                     else
                     {
@@ -1360,7 +1416,7 @@ namespace LiteOrm.Common
                             success = true;
                             joinType = vjt;
                             reader.Read();
-                            items = JsonSerializer.Deserialize<List<Expr>>(ref reader, options)?.Cast<ValueTypeExpr>().ToList();
+                            items = JsonSerializer.Deserialize(ref reader, GetTypeInfo<List<Expr>>())?.Cast<ValueTypeExpr>().ToList();
                         }
                         else
                         {
@@ -1389,7 +1445,7 @@ namespace LiteOrm.Common
                     else if (prop == "Args")
                     {
                         reader.Read();
-                        var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
+                        var parameters = JsonSerializer.Deserialize(ref reader, GetTypeInfo<List<Expr>>());
                         if (parameters != null) fe.Args.AddRange(parameters.Cast<ValueTypeExpr>());
                     }
                     else if (prop == "IsAggregate")
@@ -1403,7 +1459,7 @@ namespace LiteOrm.Common
                         {
                             fe.FunctionName = prop;
                             reader.Read();
-                            var parameters = JsonSerializer.Deserialize<List<Expr>>(ref reader, options);
+                            var parameters = JsonSerializer.Deserialize(ref reader, GetTypeInfo<List<Expr>>());
                             if (parameters != null) fe.Args.AddRange(parameters.Cast<ValueTypeExpr>());
                         }
                         else
@@ -1418,7 +1474,7 @@ namespace LiteOrm.Common
 
             private PropertyExpr ReadProperty(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
-                string name = null;
+                string? name = null;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
@@ -1446,19 +1502,10 @@ namespace LiteOrm.Common
                     if (prop == "$")
                     {
                         reader.Read();
-                        string typeName = reader.GetString();
+                        string? typeName = reader.GetString();
                         if (!string.IsNullOrEmpty(typeName))
                         {
-                            Type type = Type.GetType(typeName);
-                            if (type == null)
-                            {
-                                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                                {
-                                    type = assembly.GetType(typeName);
-                                    if (type != null) break;
-                                }
-                            }
-                            foreignExpr.Foreign = type;
+                            foreignExpr.Foreign = ExprJsonConverterFactory.TypeNameResolver.GetType(typeName!);
                         }
                     }
                     else if (prop == "Alias")
@@ -1474,12 +1521,12 @@ namespace LiteOrm.Common
                     else if (prop == "InnerExpr")
                     {
                         reader.Read();
-                        foreignExpr.InnerExpr = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
+                        foreignExpr.InnerExpr = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()) as LogicExpr;
                     }
                     else if (prop == "TableArgs")
                     {
                         reader.Read();
-                        foreignExpr.TableArgs = JsonSerializer.Deserialize<string[]>(ref reader, options);
+                        foreignExpr.TableArgs = JsonSerializer.Deserialize(ref reader, GetTypeInfo<string[]>());
                     }
                     else
                     {
@@ -1492,7 +1539,7 @@ namespace LiteOrm.Common
 
             private NotExpr ReadNot(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
-                LogicExpr operand = null;
+                LogicExpr? operand = null;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;
@@ -1500,7 +1547,7 @@ namespace LiteOrm.Common
                     if (prop == "Operand")
                     {
                         reader.Read();
-                        operand = JsonSerializer.Deserialize<Expr>(ref reader, options) as LogicExpr;
+                        operand = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()) as LogicExpr;
                     }
                     else
                     {
@@ -1514,7 +1561,7 @@ namespace LiteOrm.Common
             private UnaryExpr ReadValueUnary(ref Utf8JsonReader reader, JsonSerializerOptions options)
             {
                 UnaryOperator op = UnaryOperator.Nagive;
-                ValueTypeExpr operand = null;
+                ValueTypeExpr? operand = null;
                 bool success = false;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
@@ -1525,7 +1572,7 @@ namespace LiteOrm.Common
                         reader.Read();
                         if (reader.TokenType == JsonTokenType.String)
                         {
-                            string opStr = reader.GetString();
+                            string? opStr = reader.GetString();
                             if (Enum.TryParse<UnaryOperator>(opStr, true, out var vop)) op = vop;
                         }
                         else
@@ -1537,7 +1584,7 @@ namespace LiteOrm.Common
                     else if (prop == "Operand")
                     {
                         reader.Read();
-                        operand = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                        operand = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()).AsValue();
                     }
                     else
                     {
@@ -1546,7 +1593,7 @@ namespace LiteOrm.Common
                             success = true;
                             op = parsedOp;
                             reader.Read();
-                            operand = JsonSerializer.Deserialize<Expr>(ref reader, options).AsValue();
+                            operand = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>()).AsValue();
                         }
                         else
                         {
@@ -1585,7 +1632,7 @@ namespace LiteOrm.Common
 
             private ValueExpr ReadValueBody(ref Utf8JsonReader reader, JsonSerializerOptions options, bool isConst = false)
             {
-                object val = null;
+                object? val = null;
                 while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
                 {
                     if (reader.TokenType != JsonTokenType.PropertyName) continue;

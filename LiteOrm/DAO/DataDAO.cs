@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm
 {
@@ -8,18 +9,25 @@ namespace LiteOrm
     /// 提供针对数据的基本更新操作实现
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    [AutoRegister(Lifetime.Scoped)]
-    public class DataDAO<T> : DAOBase
+    public class DataDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : DAOBase
     {
+        /// <summary>
+        /// 初始化 <see cref="DataDAO{T}"/> 类的新实例。
+        /// </summary>
+        public DataDAO()
+        {
+        }
+
         /// <summary>
         /// 实体对象类型
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public override Type ObjectType => typeof(T);
 
         /// <summary>
         /// 获取实体对应的数据库表元数据。
         /// </summary>
-        public override SqlTable Table => TableInfoProvider.GetTableDefinition(ObjectType);
+        public override SqlTable Table => TableInfoProvider.GetTableDefinition(ObjectType)!;
 
         /// <summary>
         /// 获取或设置用于生成 SQL 的上下文。
@@ -43,10 +51,10 @@ namespace LiteOrm
             List<Param> paramValues = new List<Param>();
             foreach (KeyValuePair<string, object> value in values)
             {
-                ColumnDefinition column = TableDefinition.GetColumn(value.Key);
+                ColumnDefinition? column = TableDefinition.GetColumn(value.Key);
                 if (column is null) throw new Exception($"Property \"{value.Key}\" does not exist in type \"{Table.DefinitionType.FullName}\".");
-                strSets.Add($"{SqlBuilder.ToSqlName(column.Name)} ={ToSqlParam(paramValues.Count.ToString())}");
-                paramValues.Add(new Param(paramValues.Count.ToString(), value.Value, column.DbType));
+                strSets.Add($"{SqlBuilder.ToSqlName(column.Name!)} ={ToSqlParam(paramValues.Count.ToString())}");
+                paramValues.Add(new Param(paramValues.Count.ToString(), value.Value, column.ToDbType(SqlBuilder)));
             }
             var context = CreateSqlBuildContext(true);
             string where = expr.ToSql(context, SqlBuilder, paramValues);

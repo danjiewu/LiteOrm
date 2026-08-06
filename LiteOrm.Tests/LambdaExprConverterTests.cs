@@ -104,7 +104,7 @@ namespace LiteOrm.Tests
         public void Binary_Coalesce_WithoutParamDependency_LocalEval()
         {
             // 两侧均为闭包变量，无参数依赖 → 本地求值为 ValueExpr
-            string s1 = null;
+            string? s1 = null;
             string s2 = "fallback";
             Expression<Func<TestUser, string>> expr = u => (s1 ?? s2);
             var result = LambdaExprConverter.ToValueExpr(expr);
@@ -184,7 +184,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void Constant_Null_YieldsExprNull()
         {
-            Expression<Func<TestUser, string>> expr = u => null;
+            Expression<Func<TestUser, string?>> expr = u => null;
             var result = LambdaExprConverter.ToValueExpr(expr);
             Assert.Equal(Expr.Null, result);
         }
@@ -233,7 +233,7 @@ namespace LiteOrm.Tests
         public void MemberAccess_NullableValue_UnwrapsToInnerProperty()
         {
             // d.ParentId.Value 应等同于 d.ParentId 的访问
-            Expression<Func<TestDepartment, int>> exprWithValue = d => d.ParentId.Value;
+            Expression<Func<TestDepartment, int>> exprWithValue = d => d.ParentId!.Value;
             Expression<Func<TestDepartment, int?>> exprWithout = d => d.ParentId;
             var withValue = LambdaExprConverter.ToValueExpr(exprWithValue);
             var without = LambdaExprConverter.ToValueExpr(exprWithout);
@@ -250,8 +250,8 @@ namespace LiteOrm.Tests
             LambdaExprConverter.RegisterMemberHandler(typeof(DateTime), "Year", (node, converter) =>
             {
                 handlerCalled = true;
-                var innerExpr = converter.Convert(node.Expression) as ValueTypeExpr;
-                return new FunctionExpr("YEAR", innerExpr);
+                var innerExpr = converter.Convert(node.Expression!) as ValueTypeExpr;
+                return new FunctionExpr("YEAR", innerExpr!);
             });
             try
             {
@@ -264,7 +264,7 @@ namespace LiteOrm.Tests
             finally
             {
                 // 恢复：注册为 null 使用默认处理器
-                LambdaExprConverter.RegisterMemberHandler(typeof(DateTime), "Year", (node, converter) => null);
+                LambdaExprConverter.RegisterMemberHandler(typeof(DateTime), "Year", (node, converter) => null!);
             }
         }
 
@@ -290,7 +290,7 @@ namespace LiteOrm.Tests
             LambdaExprConverter.RegisterMethodHandler(typeof(string), "IsNullOrEmpty", (node, converter) =>
             {
                 handlerCalled = true;
-                return new FunctionExpr("IS_NULL_OR_EMPTY", converter.Convert(node.Arguments[0]) as ValueTypeExpr);
+                return new FunctionExpr("IS_NULL_OR_EMPTY", (converter.Convert(node.Arguments[0]) as ValueTypeExpr)!);
             });
             try
             {
@@ -301,7 +301,7 @@ namespace LiteOrm.Tests
             }
             finally
             {
-                LambdaExprConverter.RegisterMethodHandler(typeof(string), "IsNullOrEmpty", (node, converter) => null);
+                LambdaExprConverter.RegisterMethodHandler(typeof(string), "IsNullOrEmpty", (node, converter) => null!);
             }
         }
 
@@ -309,7 +309,7 @@ namespace LiteOrm.Tests
         public void MethodCall_WithParamDependency_InstanceMethod_ReturnsObjectConversion()
         {
             // 未注册处理器 + 依赖参数 + 实例方法 → ConvertInternal(node.Object) → FunctionExpr
-            Expression<Func<TestUser, string>> expr = u => u.Name.ToUpper();
+            Expression<Func<TestUser, string>> expr = u => u.Name!.ToUpper();
             var result = LambdaExprConverter.ToValueExpr(expr);
             // node.Object = u.Name.ToUpper()，转换结果为 FunctionExpr("ToUpper","PropertyExpr("Name"))
             var func = Assert.IsType<FunctionExpr>(result);
@@ -508,7 +508,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ToString_WithoutFormat_IsTransparentToProperty()
         {
-            Expression<Func<TestUser, string>> expr = u => u.Name.ToString();
+            Expression<Func<TestUser, string>> expr = u => u.Name!.ToString();
             var result = LambdaExprConverter.ToValueExpr(expr);
             Assert.Equal("Name", Assert.IsType<PropertyExpr>(result).PropertyName);
         }

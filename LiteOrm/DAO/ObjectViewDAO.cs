@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
@@ -28,9 +29,14 @@ namespace LiteOrm
     /// 处理复杂的SQL生成、参数处理和数据映射工作。
     /// 它支持与 TableJoinAttribute 定义的多表关联进行查询。
     /// </remarks>
-    [AutoRegister(Lifetime.Scoped)]
-    public class ObjectViewDAO<T> : DAOBase, IObjectViewDAO<T> where T : new()
+    public class ObjectViewDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : DAOBase, IObjectViewDAO<T>
     {
+        /// <summary>
+        /// 初始化 <see cref="ObjectViewDAO{T}"/> 类的新实例。
+        /// </summary>
+        public ObjectViewDAO()
+        {
+        }
 
         #region 属性
         /// <summary>
@@ -38,6 +44,7 @@ namespace LiteOrm
         /// </summary>
         public override Type ObjectType
         {
+            [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
             get { return typeof(T); }
         }
 
@@ -46,7 +53,7 @@ namespace LiteOrm
         /// </summary>
         public override SqlTable Table
         {
-            get { return TableInfoProvider.GetTableView(ObjectType); }
+            get { return TableInfoProvider.GetTableView(ObjectType)!; }
         }
 
         /// <summary>
@@ -59,9 +66,9 @@ namespace LiteOrm
         /// </summary>
         /// <param name="args">表名参数</param>
         /// <returns>新的DAO实例</returns>
-        public ObjectViewDAO<T> WithArgs(params string[] args)
+        public ObjectViewDAO<T> WithArgs(params string[]? args)
         {
-            ObjectViewDAO<T> newDAO = MemberwiseClone() as ObjectViewDAO<T>;
+            ObjectViewDAO<T> newDAO = (MemberwiseClone() as ObjectViewDAO<T>)!;
             newDAO.TableArgs = args;
             return newDAO;
         }
@@ -113,7 +120,7 @@ namespace LiteOrm
             for (int i = 0; i < TableDefinition.Keys.Count; i++)
             {
                 var key = TableDefinition.Keys[i];
-                getObjectCommand.Parameters[i].Value = ConvertToDbValue(keys[i], key.DbType);
+                getObjectCommand.Parameters[i].Value = ConvertToDbValue(keys[i], key.ToDbType(SqlBuilder));
             }
             return new EnumerableResult<T>(getObjectCommand, ConvertToObjectHandler);
         }
@@ -165,7 +172,7 @@ namespace LiteOrm
             for (int i = 0; i < TableDefinition.Keys.Count; i++)
             {
                 var key = TableDefinition.Keys[i];
-                objectExistsCommand.Parameters[i].Value = ConvertToDbValue(keys[i], key.DbType);
+                objectExistsCommand.Parameters[i].Value = ConvertToDbValue(keys[i], key.ToDbType(SqlBuilder));
             }
             return new ValueResult<bool>(objectExistsCommand, (obj) => obj != null && Convert.ToInt32(obj) > 0);
         }
@@ -188,9 +195,9 @@ namespace LiteOrm
         /// </summary>
         /// <param name="expr">查询表达式，为 null 时表示没有条件。</param>
         /// <returns>符合条件的对象集合。</returns>
-        public virtual EnumerableResult<T> Search(Expr expr = null)
+        public virtual EnumerableResult<T> Search(Expr? expr = null)
         {
-            expr = ToSelectExpr(expr);
+            expr = ToSelectExpr(expr!);
             var prepared = expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
             return new EnumerableResult<T>(this, prepared, ConvertToObjectHandler);
         }
@@ -215,7 +222,7 @@ namespace LiteOrm
         /// <param name="selectExpr">SELECT 表达式。</param>
         /// <param name="readerFunc">读取器转换函数，为 null 时使用默认转换。</param>
         /// <returns>自定义类型的集合。</returns>
-        public virtual EnumerableResult<TResult> SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult> readerFunc = null)
+        public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr selectExpr, Func<AutoLockDataReader, TResult>? readerFunc = null)
         {
             var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
             return new EnumerableResult<TResult>(this, prepared, readerFunc);
@@ -228,7 +235,7 @@ namespace LiteOrm
         /// <param name="expr">Lambda 表达式，用于生成 SQL 查询</param>
         /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
         /// <returns></returns>
-        public virtual EnumerableResult<TResult> SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)
+        public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<AutoLockDataReader, TResult>? readerFunc = null)
         {
             var seg = LambdaExprConverter.ToSqlSegment(expr);
             seg = ToSelectExpr(seg);
@@ -264,7 +271,7 @@ namespace LiteOrm
         /// var users = objectViewDAO.SearchAs&lt;User&gt;($"WHERE {Expr.Prop("Age") > 20 }");
         /// </code>
         /// </example>
-        public virtual EnumerableResult<TResult> SearchAs<TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
+        public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
             return new EnumerableResult<TResult>(this, sqlBody.GetResult());
         }
@@ -272,7 +279,7 @@ namespace LiteOrm
         /// <summary>
         /// 将一行记录转化为对象的转换处理器。
         /// </summary>
-        public static Func<DbDataReader, T> ConvertToObjectHandler = DataReaderConverter.GetConverter<T>();
+        public static Func<AutoLockDataReader, T> ConvertToObjectHandler = DataReaderConverter.GetConverter<T>();
 
         #endregion
 

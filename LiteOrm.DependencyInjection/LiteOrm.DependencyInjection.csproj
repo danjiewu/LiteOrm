@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
+		<RootNamespace>LiteOrm.DependencyInjection</RootNamespace>
+		<AssemblyVersion>8.1.0.0</AssemblyVersion>
+		<FileVersion>8.1.0.0</FileVersion>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<VersionPrefix>8.1.0</VersionPrefix>
+		<Nullable>enable</Nullable>
+		<Title>LiteOrm.DependencyInjection</Title>
+		<Authors>danjiewu</Authors>
+		<Description>LiteOrm DependencyInjection - Autofac DI 适配器 + Castle DynamicProxy 拦截器</Description>
+		<PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
+		<PackageTags>orm;autofac;castle;proxy;aop;interceptor;di;ioc</PackageTags>
+		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
+		<PackageReleaseNotes>
+      8.1.0 Breaking Change:
+      LiteOrm.DependencyInjection 新增核心实体服务与数据访问对象的显式注册；
+      DataSourceProvider 配置从 IConfiguration 读取改为 LiteOrm.DependencyInjection 的 DataSourceProviderExtensions；
+    </PackageReleaseNotes>
+	</PropertyGroup>
+	<PropertyGroup>
+		<LangVersion>14.0</LangVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\README.DependencyInjection.nuget.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Autofac.Extensions.DependencyInjection" Version="10.0.0" />
+		<PackageReference Include="Autofac.Extras.DynamicProxy" Version="7.1.0" />
+		<PackageReference Include="Castle.Core" Version="5.2.1" />
+		<PackageReference Include="Castle.Core.AsyncInterceptor" Version="2.1.0" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'netstandard2.0'">
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="2.2.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="2.2.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.2.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="2.2.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\LiteOrm\LiteOrm.csproj" />
+		<ProjectReference Include="..\LiteOrm.Common\LiteOrm.Common.csproj" />
+	</ItemGroup>
+
+</Project>

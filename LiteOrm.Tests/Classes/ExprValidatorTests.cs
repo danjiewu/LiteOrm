@@ -23,7 +23,7 @@ namespace LiteOrm.Common.UnitTests
             var validator = new ExprTypeValidator(ExprType.Value);
 
             // Act
-            bool result = validator.Validate(null);
+            bool result = validator.Validate(null!);
 
             // Assert
             Assert.True(result);
@@ -503,7 +503,7 @@ namespace LiteOrm.Common.UnitTests
         public void Constructor_NullArray_ThrowsArgumentNullException()
         {
             // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ExprTypeValidator(null));
+            Assert.Throws<ArgumentNullException>(() => new ExprTypeValidator(null!));
         }
 
         /// <summary>
@@ -624,7 +624,7 @@ namespace LiteOrm.Common.UnitTests
         public void Validate_NullNode_ReturnsTrue()
         {
             var validator = new ExprValidatorGroup();
-            bool result = validator.Validate(null);
+            bool result = validator.Validate(null!);
             Assert.True(result);
         }
 
@@ -787,7 +787,7 @@ namespace LiteOrm.Common.UnitTests
             mockValidator.Setup(v => v.Validate(It.IsAny<Expr>())).Returns(true);
             var validator = new ExprValidatorGroup(mockValidator.Object);
 
-            bool result = validator.Validate(null);
+            bool result = validator.Validate(null!);
 
             Assert.True(result);
             mockValidator.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);
@@ -964,7 +964,7 @@ namespace LiteOrm.Common.UnitTests
             mockValidator.Setup(v => v.Validate(mockNode.Object)).Returns(true);
             mockValidator.CallBase = false;
 
-            bool result = ExprVisitor.Validate(mockValidator.Object, mockNode.Object);
+            bool result = ExprVisitor.Validate(mockValidator.Object, mockNode.Object, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.True(result);
             Assert.Null(mockValidator.Object.FailedExpr);
@@ -977,7 +977,7 @@ namespace LiteOrm.Common.UnitTests
             var mockNode = new Mock<Expr>();
             mockValidator.Setup(v => v.Validate(mockNode.Object)).Returns(false);
 
-            bool result = ExprVisitor.Validate(mockValidator.Object, mockNode.Object);
+            bool result = ExprVisitor.Validate(mockValidator.Object, mockNode.Object, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.False(result);
             Assert.Same(mockNode.Object, mockValidator.Object.FailedExpr);
@@ -1000,7 +1000,7 @@ namespace LiteOrm.Common.UnitTests
             var mockNode = new Mock<Expr>();
             mockValidator.Setup(v => v.Validate(mockNode.Object)).Returns(true);
 
-            ExprVisitor.Validate(mockValidator.Object, mockNode.Object);
+            ExprVisitor.Validate(mockValidator.Object, mockNode.Object, cancellationToken: TestContext.Current.CancellationToken);
 
             mockValidator.Verify(v => v.Validate(mockNode.Object), Times.Once);
         }
@@ -1009,9 +1009,9 @@ namespace LiteOrm.Common.UnitTests
         public void VisitAll_WithNullRoot_ReturnsTrue()
         {
             var mockValidator = new Mock<ExprValidator>();
-            mockValidator.Setup(v => v.Validate(null)).Returns(true);
+            mockValidator.Setup(v => v.Validate(null!)).Returns(true);
 
-            bool result = ExprVisitor.Validate(mockValidator.Object, null);
+            bool result = ExprVisitor.Validate(mockValidator.Object, null!, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.True(result);
             mockValidator.Verify(v => v.Validate(It.IsAny<Expr>()), Times.Never);

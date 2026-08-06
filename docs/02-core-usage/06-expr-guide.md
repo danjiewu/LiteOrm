@@ -61,7 +61,7 @@ var levelExpr = If(Prop("Age") >= 18, Const("Adult"), Const("Minor"));
 ```
 
 - `.Cast(DbType)`：把值表达式转换为目标数据库类型，对应 SQL `CAST(...)`
-- `Expr.If(condition, then, else)`：构造简单条件表达式，等价于 `CASE WHEN condition THEN then ELSE else END`
+- `Expr.If(condition, then, else = null)`：构造简单条件表达式，等价于 `CASE WHEN condition THEN then ELSE else END`。`elseExpr` 为可选参数，默认 `null`，省略时不生成 `ELSE` 分支
 - `Expr.Case(...)`：构造多条件 CASE 表达式，支持以下重载：
   - `Case((LogicExpr, ValueTypeExpr)[] cases, ValueTypeExpr elseExpr)` - 条件-结果元组数组 + ELSE
   - `Case(params (LogicExpr, ValueTypeExpr)[] cases)` - 条件-结果元组数组（无 ELSE）
@@ -300,7 +300,7 @@ var query = From<User>()
 | `Expr.Lambda<T>(expr)` | 将 Lambda 转成 `LogicExpr` | `Expr.Lambda<User>(u => u.Age > 18)` |
 | `Expr.Func(name, args)` | 创建函数表达式 | `Expr.Func("COUNT", Expr.Prop("Id"))` |
 | `Expr.Aggregate(name, expr, isDistinct)` | 创建聚合函数表达式 | `Expr.Aggregate("COUNT", Expr.Prop("Id"), true)` |
-| `Expr.If(condition, then, else)` | IF / CASE WHEN 形式 | `Expr.If(... )` |
+| `Expr.If(condition, then, else = null)` | IF / CASE WHEN 形式（`elseExpr` 可选，默认 `null`） | `Expr.If(... )` |
 | `Expr.Case(cases, elseExpr)` | CASE 表达式 | `Expr.Case(... )` |
 | `Expr.Now()` | 当前时间戳 | `Expr.Now()` |
 | `Expr.Today()` | 当前日期 | `Expr.Today()` |

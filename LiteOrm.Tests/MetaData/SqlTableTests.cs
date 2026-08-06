@@ -36,7 +36,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var table = CreateTable(Array.Empty<SqlColumn>());
 
-            Assert.Null(table.GetColumn(null));
+            Assert.Null(table.GetColumn(null!));
             Assert.Null(table.GetColumn(string.Empty));
         }
 
@@ -97,7 +97,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var definition = (TableDefinition)Activator.CreateInstance(
                 typeof(TableDefinition),
-                BindingFlags.Instance | BindingFlags.NonPublic,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 binder: null,
                 args: new object[] { objectType ?? typeof(TestEntity), new List<ColumnDefinition>() },
                 culture: null)!;
@@ -113,7 +113,7 @@ namespace LiteOrm.Common.UnitTests
             var property = typeof(TestEntity).GetProperty(propertyName)!;
             var column = (ColumnDefinition)Activator.CreateInstance(
                 typeof(ColumnDefinition),
-                BindingFlags.Instance | BindingFlags.NonPublic,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                 binder: null,
                 args: new object[] { property },
                 culture: null)!;

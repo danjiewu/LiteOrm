@@ -15,7 +15,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var expr = new AndExpr();
 
-            Assert.Equal(0, expr.Count);
+            Assert.Empty(expr);
             Assert.False(expr.IsReadOnly);
             Assert.Equal(ExprType.And, expr.ExprType);
         }
@@ -45,7 +45,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Constructor_NullParamArray_DoesNotThrow()
         {
-            var expr = new AndExpr((LogicExpr[])null);
+            var expr = new AndExpr((LogicExpr[])null!);
 
             Assert.Empty(expr);
         }
@@ -53,7 +53,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Constructor_NullIEnumerable_DoesNotThrow()
         {
-            var expr = new AndExpr((System.Collections.Generic.IEnumerable<LogicExpr>)null);
+            var expr = new AndExpr((System.Collections.Generic.IEnumerable<LogicExpr>)null!);
 
             Assert.Empty(expr);
         }
@@ -64,16 +64,16 @@ namespace LiteOrm.Common.UnitTests
             var expr = new AndExpr();
             expr.Add(Condition("A", 1));
 
-            Assert.Equal(1, expr.Count);
+            Assert.Single(expr);
         }
 
         [Fact]
         public void Add_NullItem_IsIgnored()
         {
             var expr = new AndExpr();
-            expr.Add(null);
+            expr.Add(null!);
 
-            Assert.Equal(0, expr.Count);
+            Assert.Empty(expr);
         }
 
         [Fact]
@@ -106,7 +106,7 @@ namespace LiteOrm.Common.UnitTests
 
             outer.Add(inner);
 
-            Assert.Equal(1, outer.Count);
+            Assert.Single(outer);
         }
 
         [Fact]
@@ -135,7 +135,7 @@ namespace LiteOrm.Common.UnitTests
             var expr = new AndExpr(Condition("A", 1), Condition("B", 2));
             expr.Clear();
 
-            Assert.Equal(0, expr.Count);
+            Assert.Empty(expr);
         }
 
         [Fact]
@@ -144,7 +144,7 @@ namespace LiteOrm.Common.UnitTests
             var item = Condition("A", 1);
             var expr = new AndExpr(item);
 
-            Assert.True(expr.Contains(item));
+            Assert.Contains(item, expr);
         }
 
         [Fact]
@@ -152,7 +152,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var expr = new AndExpr(Condition("A", 1));
 
-            Assert.False(expr.Contains(Condition("B", 2)));
+            Assert.DoesNotContain(Condition("B", 2), expr);
         }
 
         [Fact]
@@ -162,7 +162,7 @@ namespace LiteOrm.Common.UnitTests
             var expr = new AndExpr(item);
 
             Assert.True(expr.Remove(item));
-            Assert.Equal(0, expr.Count);
+            Assert.Empty(expr);
         }
 
         [Fact]
@@ -171,7 +171,7 @@ namespace LiteOrm.Common.UnitTests
             var expr = new AndExpr(Condition("A", 1));
 
             Assert.False(expr.Remove(Condition("B", 2)));
-            Assert.Equal(1, expr.Count);
+            Assert.Single(expr);
         }
 
         [Fact]

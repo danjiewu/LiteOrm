@@ -376,7 +376,7 @@ var matureItUsers = await objectViewDAO.Search(
 - ForeignColumnAttribute: Foreign（Type 或 AliasName）、Property（要获取的列）
 - ColumnAttribute: Constant（固定筛选；详见权限过滤文档）
 
-实现上，LiteOrm 会在元数据阶段合并 ForeignType 与 TableJoin 的信息，生成 JoinedTable / ForeignTable 结构。固定筛选相关的元数据与 SQL 注入细节，见[权限过滤与用户范围控制](../03-advanced-topics/06-permission-filtering.md)。
+实现上，LiteOrm 会在元数据阶段合并 ForeignType 与 TableJoin 的信息，生成 JoinedTable / ForeignTable 结构。固定筛选相关的元数据与 SQL 注入细节，见[权限过滤与用户范围控制](../06-di/02-permission-filtering.md)。
 
 ---
 
@@ -402,7 +402,7 @@ var matureItUsers = await objectViewDAO.Search(
   A：单列外键优先选 ForeignType；只要涉及联合主键、多列关联，优先选 TableJoin。
 
 - Q：`Column.Constant` 什么时候适合用？
-  A：适合“这个模型天然只看某一类固定切片”的场景。完整边界、`ConstFilter` 链路和多租户用法见[权限过滤与用户范围控制](../03-advanced-topics/06-permission-filtering.md)。
+  A：适合“这个模型天然只看某一类固定切片”的场景。完整边界、`ConstFilter` 链路和多租户用法见[权限过滤与用户范围控制](../06-di/02-permission-filtering.md)。
 
 ---
 

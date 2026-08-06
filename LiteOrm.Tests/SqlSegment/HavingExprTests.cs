@@ -55,7 +55,7 @@ namespace LiteOrm.Common.UnitTests
             var expr = new HavingExpr(source, having);
 
             Assert.Contains("HAVING", expr.ToString());
-            Assert.Contains(having.ToString(), expr.ToString());
+            Assert.Contains(having.ToString()!, expr.ToString());
         }
 
         [Fact]

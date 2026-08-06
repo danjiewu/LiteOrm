@@ -179,15 +179,15 @@ ExprValidator (抽象基类)
 // Where, OrderBy, OrderByItem, Section 等
 // 禁止：SelectItem, From, Table, Function, Update, Delete
 
-// QueryOnly：允许完整 SELECT 查询（20 种类型）
-// 包含 Minimum 的所有类型 + SelectItem, From, GroupBy, TableJoin 等
+// QueryOnly：允许完整 SELECT 查询（21 种类型，含 CommonTable/CTE）
+// 包含 Minimum 的所有类型 + SelectItem, From, GroupBy, TableJoin, CommonTable 等
 // 明确禁止：Update, Delete
 ```
 
 ```csharp
 var validator = ExprValidator.CreateQueryOnly();
 
-if (validator.VisitAll(expr))
+if (ExprVisitor.Validate(validator, expr))
 {
     var results = await userService.SearchAsync(expr);
 }
@@ -210,13 +210,13 @@ else
 
 ```csharp
 // 生产环境推荐：只允许已注册的函数
-var validator = ExprValidatorGroup.Create(
+var validator = new ExprValidatorGroup(
     ExprValidator.CreateQueryOnly(),
     FunctionExprValidator.AllowRegisted
 );
 
 // 在 Search 前验证
-if (!validator.VisitAll(expr))
+if (!ExprVisitor.Validate(validator, expr))
 {
     throw new UnauthorizedAccessException(
         $"Blacklisted expression found: {validator.FailedExpr}"
@@ -236,12 +236,12 @@ case FunctionPolicy.AllowRegisted:
 ### 4.4 多验证器组合
 
 ```csharp
-var validator = ExprValidatorGroup.Create(
+var validator = new ExprValidatorGroup(
     ExprValidator.CreateQueryOnly(),      // 只允许查询类型
     FunctionExprValidator.AllowRegisted   // 只允许已注册的函数
 );
 
-if (!validator.VisitAll(expr))
+if (!ExprVisitor.Validate(validator, expr))
 {
     // validator.FailedExpr     — 失败节点
     // validator.FailedVisitor  — 失败的验证器
@@ -295,7 +295,7 @@ var users = await userService.SearchAsync(expr);
 2. **支持参数化**：委托签名包含 `outputParams`，可以安全地传递用户值
 3. **参数传递**：通过 `Arg` 属性传递业务参数，不拼接到 SQL 中
 
-如果你是想把它用于“当前用户范围过滤”或“多租户过滤”等业务场景，请再结合[权限过滤](./06-permission-filtering.md)一并阅读，那里更强调**什么时候该用运行时 Expr / GenericSqlExpr，什么时候该用 `ConstFilter` 或表路由**。
+如果你是想把它用于“当前用户范围过滤”或“多租户过滤”等业务场景，请再结合[权限过滤](../06-di/02-permission-filtering.md)一并阅读，那里更强调**什么时候该用运行时 Expr / GenericSqlExpr，什么时候该用 `ConstFilter` 或表路由**。
 
 ---
 
@@ -372,23 +372,36 @@ var expr = Prop(propName) == "value";
 
 ### 6.4 前端提交 Expr JSON 的风险
 
-当允许前端通过 JSON 构造 Expr 时（[前端原生 Expr 查询](../04-extensibility/06-frontend-native-expr.md)），务必配合验证器使用：
+当允许前端通过 JSON 构造 Expr 时（[前端原生 Expr 查询](../04-extensibility/06-frontend-native-expr.md)），务必配合验证器使用。`Expr` 基类已通过 `[JsonConverter(typeof(ExprJsonConverterFactory))]` 特性自动注册序列化转换器，直接使用 `JsonSerializer.Deserialize<Expr>(json)` 即可，无需手动注册转换器：
 
 ```csharp
-var expr = ExprJsonConvert.Deserialize(json);
-var validator = ExprValidatorGroup.Create(
+var expr = JsonSerializer.Deserialize<Expr>(json);
+var validator = new ExprValidatorGroup(
     ExprValidator.CreateQueryOnly(),
     FunctionExprValidator.AllowRegisted
 );
 
-if (!validator.VisitAll(expr))
+if (!ExprVisitor.Validate(validator, expr))
 {
     throw new UnauthorizedAccessException("Query rejected by security validator");
 }
+```
 
-// 建议额外限制：只允许特定表和列
+建议额外限制只允许访问特定表和列。LiteOrm 未内置属性名白名单验证器，`PropertyNameValidator` 需自行实现（继承 `ExprValidator`，重写 `Validate` 校验 `PropertyExpr.PropertyName`）：
+
+```csharp
+// PropertyNameValidator 需自行实现，LiteOrm 未内置属性名白名单验证器
+public class PropertyNameValidator : ExprValidator
+{
+    private readonly HashSet<string> _allowed;
+    public PropertyNameValidator(IEnumerable<string> allowedProperties)
+        => _allowed = new HashSet<string>(allowedProperties, StringComparer.OrdinalIgnoreCase);
+    public override bool Validate(Expr node)
+        => node is not PropertyExpr prop || _allowed.Contains(prop.PropertyName);
+}
+
 var propValidator = new PropertyNameValidator(new[] { "UserName", "Age", "CreateTime" });
-if (!propValidator.VisitAll(expr))
+if (!ExprVisitor.Validate(propValidator, expr))
 {
     throw new UnauthorizedAccessException("Field access denied");
 }
@@ -396,7 +409,7 @@ if (!propValidator.VisitAll(expr))
 
 ### 6.5 权限过滤的配合
 
-安全过滤应与[权限过滤](./06-permission-filtering.md)配合使用：
+安全过滤应与[权限过滤](../06-di/02-permission-filtering.md)配合使用：
 
 ```csharp
 // 在进入 Search 之前，先拼上用户范围条件
@@ -404,7 +417,7 @@ LogicExpr permissionFilter = GetCurrentUserPermissionExpr();
 LogicExpr finalExpr = expr & permissionFilter;
 
 // 再通过安全验证器
-if (!securityValidator.VisitAll(finalExpr))
+if (!ExprVisitor.Validate(securityValidator, finalExpr))
     throw new UnauthorizedAccessException();
 
 var results = await userService.SearchAsync(finalExpr);
@@ -417,7 +430,7 @@ Expr 表达式体系虽然可以从架构层面杜绝 SQL 注入，但其功能�
 - **表达式能力强大**：Expr 支持子查询、函数调用、跨表关联等复杂操作，不当使用可能导致性能问题或意外行为
 - **验证器并非默认启用**：`ExprValidator` 是可选的，如果不配置验证器，Expr 可以生成任意 SQL 结构（包括 UPDATE、DELETE 等）
 - **生产环境务必配置验证器**：使用 `ExprValidator.CreateQueryOnly()` + `FunctionExprValidator.AllowRegisted` 限制表达式能力范围
-- **前端提交 Expr 必须验证**：如果允许前端构造 Expr JSON，务必配合 `ExprValidator` + `PropertyNameValidator` 双重验证
+- **前端提交 Expr 必须验证**：如果允许前端构造 Expr JSON，务必配合 `ExprValidator` 双重验证；如需限制字段访问范围，可自行实现属性名白名单验证器（`PropertyNameValidator` 需自行实现，LiteOrm 未内置）
 - **避免过度动态化**：尽量避免根据用户输入动态构造过于复杂的表达式树，保持业务逻辑的可预测性
 
 ---
@@ -444,6 +457,6 @@ Expr 表达式体系虽然可以从架构层面杜绝 SQL 注入，但其功能�
 
 - [返回目录](../README.md)
 - [函数验证器](../04-extensibility/02-function-validator.md)
-- [权限过滤](./06-permission-filtering.md)
+- [权限过滤](../06-di/02-permission-filtering.md)
 - [前端原生 Expr 查询](../04-extensibility/06-frontend-native-expr.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)

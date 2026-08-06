@@ -56,3 +56,35 @@ LiteOrm 的表达式对象模型，用来描述 SQL 结构，可用于动态拼�
 
 数据库方言构建器，负责将表达式转换成具体数据库可执行的 SQL。
 
+## `ConstFilter` / `Column.Constant`
+
+`ColumnAttribute` 的 `Constant` 属性，用于声明固定筛选条件。在元数据阶段被解析并收敛为 `TableDefinition.ConstFilter`，生成 SQL 时自动注入主表 `WHERE` 和关联表 `JOIN ... ON`。适合启用态、固定分区、固定租户类型等模型级恒定规则，不适合当前用户或当前租户等运行时上下文。详见[权限过滤](../06-di/02-permission-filtering.md)。
+
+## `GenericSqlExpr`
+
+基于委托的动态 SQL 表达式（`sealed class GenericSqlExpr : LogicExpr`），允许在不构建完整 Expr 树的情况下注入自定义 SQL 生成逻辑。通过 `GenericSqlExpr.Register` 注册回调委托，使用时以 `Expr.Sql(key, arg)` 引用。位于 `LiteOrm.Common` 命名空间。
+
+## `ExprVisitor`
+
+表达式访问器（`static class`），提供对 `Expr` 树的多模式遍历能力（委托、`IExprNodeVisitor`、`ExprValidator`）。其静态扩展方法 `Validate(this ExprValidator, Expr)` 用于驱动整树校验。位于 `LiteOrm.Common` 命名空间。
+
+## `ExprValidator`
+
+表达式验证器基类（`abstract class`），`Validate(Expr node)` 实例方法仅校验单个节点；整树校验通过 `ExprVisitor.Validate(validator, expr)` 驱动遍历，验证失败时自动记录到 `FailedExpr`。位于 `LiteOrm.Common` 命名空间。
+
+## `FunctionExprValidator`
+
+函数表达式验证器（`class FunctionExprValidator : ExprValidator`），基于 `FunctionPolicy` 枚举（`AllowAll` / `AllowRegisted` / `Disallow`）控制函数表达式的使用策略。位于 `LiteOrm` 命名空间。
+
+## `IBulkProvider`
+
+批量写入提供者接口，用于数据库原生批量导入（如 `MySqlBulkCopy`、`SqlBulkCopy`）。实现后直接设置到对应的 `SqlBuilder.BulkProvider` 属性即可生效，未设置时批量插入回退到普通 SQL。位于 `LiteOrm` 命名空间。
+
+## `CycleDetector`
+
+Expr 循环引用检测器（`static class`），提供 `HasCycle` / `FindCycle` / `Detect` 方法，基于引用相等性（`ReferenceEquals`）检测 Expr 树中的循环引用，防止遍历/转换时出现栈溢出。位于 `LiteOrm.Common` 命名空间。
+
+## `SqlBuildContext`
+
+SQL 构建上下文，携带构建过程中的表别名、作用域、表名参数等状态信息，供 `ISqlBuilder` 和 Expr 转 SQL 流程使用。DAO 可通过重写 `CreateSqlBuildContext` 自定义上下文（如注入分表参数）。位于 `LiteOrm.Common` 命名空间。
+

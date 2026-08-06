@@ -30,12 +30,12 @@ namespace LiteOrm.Common
             /// <summary>
             /// 造成循环的节点（即第二次出现的节点，与路径中首次出现的节点引用相同）。
             /// </summary>
-            public Expr CycleNode { get; internal set; }
+            public Expr? CycleNode { get; internal set; }
 
             /// <summary>
             /// 从根节点到循环节点的路径（包含重复节点，路径中首次出现即为重复节点的父节点之一）。
             /// </summary>
-            public IReadOnlyList<Expr> Path { get; internal set; }
+            public IReadOnlyList<Expr>? Path { get; internal set; }
 
             /// <summary>
             /// 是否检测到循环引用。
@@ -58,7 +58,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="root">要检测的表达式树根节点，为 <see langword="null"/> 时返回 <see langword="null"/>。</param>
         /// <returns>造成循环的节点；无循环时返回 <see langword="null"/>。</returns>
-        public static Expr FindCycle(Expr root)
+        public static Expr? FindCycle(Expr root)
         {
             return Detect(root).CycleNode;
         }
@@ -103,7 +103,7 @@ namespace LiteOrm.Common
             /// <summary>
             /// 基于引用相等性比较两个 Expr 实例。
             /// </summary>
-            public bool Equals(Expr x, Expr y) => ReferenceEquals(x, y);
+            public bool Equals(Expr? x, Expr? y) => ReferenceEquals(x, y);
 
             /// <summary>
             /// 基于对象标识（而非其重写的 GetHashCode）获取哈希码。

@@ -22,7 +22,7 @@ namespace LiteOrm.Common
         /// <param name="table">SQL表定义</param>
         /// <param name="aliasName">表别名</param>
         /// <param name="tableArgs">动态表名参数</param>
-        public SqlBuildContext(SqlTable table, string aliasName, string[] tableArgs)
+        public SqlBuildContext(SqlTable? table, string aliasName, string[]? tableArgs)
         {
             CurrentScope = new SqlScopeContext
             {
@@ -43,16 +43,16 @@ namespace LiteOrm.Common
         /// <summary>
         /// 默认表别名名称
         /// </summary>
-        public string DefaultTableAliasName { get => CurrentScope.DefaultTableAliasName; set => CurrentScope.DefaultTableAliasName = value; }
+        public string? DefaultTableAliasName { get => CurrentScope!.DefaultTableAliasName; set => CurrentScope!.DefaultTableAliasName = value; }
 
         /// <summary>
         /// 动态表名参数数组
         /// </summary>
-        public string[] TableArgs { get => CurrentScope.TableArgs; set => CurrentScope.TableArgs = value; }
+        public string[]? TableArgs { get => CurrentScope!.TableArgs; set => CurrentScope!.TableArgs = value; }
         /// <summary>
         /// 当前作用域深度，根作用域为0，每进入一个新的作用域深度加1
         /// </summary>
-        public int Depth => CurrentScope.Depth;
+        public int Depth => CurrentScope!.Depth;
 
         /// <summary>
         /// 获取作用域对应的缩进字符串，根作用域无缩进，每增加一级作用域增加两个空格，最多八个空格
@@ -73,21 +73,21 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取当前表定义
         /// </summary>
-        public SqlTable Table => CurrentScope.Table;
+        public SqlTable? Table => CurrentScope!.Table;
 
         /// <summary>
         /// 是否单表模式，单表模式下字段名前无需加表名
         /// </summary>
-        public bool SingleTable { get => CurrentScope.SingleTable; set => CurrentScope.SingleTable = value; }
+        public bool SingleTable { get => CurrentScope!.SingleTable; set => CurrentScope!.SingleTable = value; }
 
         /// <summary>
         /// 根据别名获取表定义
         /// </summary>
         /// <param name="aliasName">表别名，为空时使用默认别名</param>
         /// <returns>表定义</returns>
-        public SqlTable GetTable(string aliasName = null)
+        public SqlTable? GetTable(string? aliasName = null)
         {
-            return CurrentScope.GetTable(aliasName);
+            return CurrentScope!.GetTable(aliasName);
         }
 
         /// <summary>
@@ -109,9 +109,9 @@ namespace LiteOrm.Common
         /// <param name="aliasName">表别名</param>
         /// <param name="table">表定义</param>
         /// <returns>是否添加成功</returns>
-        public bool AddTableAlias(string aliasName, SqlTable table)
+        public bool AddTableAlias(string? aliasName, SqlTable? table)
         {
-            return CurrentScope.AddTableAlias(aliasName, table);
+            return CurrentScope!.AddTableAlias(aliasName, table);
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace LiteOrm.Common
         /// <returns>作用域释放器</returns>
         public IDisposable BeginScope()
         {
-            CurrentScope = new SqlScopeContext() { Parent = CurrentScope, TableArgs = TableArgs, Depth = CurrentScope.Depth + 1 };
+            CurrentScope = new SqlScopeContext() { Parent = CurrentScope, TableArgs = TableArgs, Depth = CurrentScope!.Depth + 1 };
             return new SqlScope(this);
         }
 
@@ -148,7 +148,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取当前作用域上下文
         /// </summary>
-        public SqlScopeContext CurrentScope { get; private set; }
+        public SqlScopeContext? CurrentScope { get; private set; }
 
         /// <summary>
         /// SQL作用域上下文，用于管理当前作用域内的表别名映射和参数
@@ -162,12 +162,12 @@ namespace LiteOrm.Common
             /// <summary>
             /// 表别名
             /// </summary>
-            public string DefaultTableAliasName { get; set; }
+            public string? DefaultTableAliasName { get; set; }
 
             /// <summary>
             /// 表信息
             /// </summary>
-            public SqlTable Table { get => DefaultTableAliasName != null && _aliasTableMap.ContainsKey(DefaultTableAliasName) ? _aliasTableMap[DefaultTableAliasName] : null; }
+            public SqlTable? Table { get => DefaultTableAliasName != null && _aliasTableMap.ContainsKey(DefaultTableAliasName) ? _aliasTableMap[DefaultTableAliasName] : null; }
 
             /// <summary>
             /// 单表模式，字段名前无需加表名
@@ -179,7 +179,7 @@ namespace LiteOrm.Common
             /// <summary>
             /// 表名参数，用于动态生成表名
             /// </summary>
-            public string[] TableArgs
+            public string[]? TableArgs
             {
                 get => _tableArgs;
                 set
@@ -206,12 +206,12 @@ namespace LiteOrm.Common
             /// <param name="aliasName">表别名</param>
             /// <param name="table">表定义</param>
             /// <returns>是否添加成功</returns>
-            public bool AddTableAlias(string aliasName, SqlTable table)
+            public bool AddTableAlias(string? aliasName, SqlTable? table)
             {
                 if (string.IsNullOrEmpty(aliasName)) throw new ArgumentException("Alias name cannot be null or empty.");
-                if (_aliasTableMap.ContainsKey(aliasName)) return false;
+                if (_aliasTableMap.ContainsKey(aliasName!)) return false;
                 if (String.IsNullOrEmpty(DefaultTableAliasName)) DefaultTableAliasName = aliasName;
-                _aliasTableMap.Add(aliasName, table);
+                _aliasTableMap.Add(aliasName!, table!);
                 return true;
             }
 
@@ -220,18 +220,18 @@ namespace LiteOrm.Common
             /// </summary>
             /// <param name="aliasName">表别名，为空时使用默认别名</param>
             /// <returns>表定义</returns>
-            public SqlTable GetTable(string aliasName = null)
+            public SqlTable? GetTable(string? aliasName = null)
             {
                 if (string.IsNullOrEmpty(aliasName)) aliasName = DefaultTableAliasName;
                 if (string.IsNullOrEmpty(aliasName)) return null;
-                if (!_aliasTableMap.TryGetValue(aliasName, out SqlTable value)) return Parent?.GetTable(aliasName);
+                if (!_aliasTableMap.TryGetValue(aliasName!, out SqlTable? value)) return Parent?.GetTable(aliasName);
                 return value;
             }
 
             /// <summary>
             /// 链式结构中的上级上下文节点
             /// </summary>
-            public SqlScopeContext Parent { get; set; }
+            public SqlScopeContext? Parent { get; set; }
         }
     }
 }

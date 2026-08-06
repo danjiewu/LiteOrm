@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿using LiteOrm.Common;
+﻿﻿﻿﻿using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -46,7 +46,7 @@ namespace LiteOrm
         /// <returns>构建后的 SQL 语句。</returns>
         public override string BuildIdentityInsertSql(ColumnDefinition identityColumn, string tableName, string strColumns, string strValues)
         {
-            return $"INSERT INTO {ToSqlName(tableName)} ({strColumns}) \nVALUES ({strValues}) RETURNING {ToSqlName(identityColumn.Name)}";
+            return $"INSERT INTO {ToSqlName(tableName)} ({strColumns}) \nVALUES ({strValues}) RETURNING {ToSqlName(identityColumn.Name!)}";
         }
 
         /// <summary>
@@ -94,7 +94,8 @@ namespace LiteOrm
         {
             if (column.IsIdentity)
             {
-                return column.DbType == DbType.Int64 ? "BIGSERIAL" : "SERIAL";
+                var dbType = column.ToDbType(this);
+                return dbType == DbType.Int64 ? "BIGSERIAL" : "SERIAL";
             }
             return base.GetSqlTypeDefinition(column);
         }
@@ -130,7 +131,7 @@ namespace LiteOrm
             for (int i = 0; i < updatableColumns.Length; i++)
             {
                 if (i > 0) sb.Append(", ");
-                sb.Append(ToSqlName(updatableColumns[i].Name));
+                sb.Append(ToSqlName(updatableColumns[i].Name!));
                 sb.Append(" = v.v");
                 sb.Append(i.ToString());
             }
@@ -178,7 +179,7 @@ namespace LiteOrm
             {
                 if (k > 0) sb.Append(" AND ");
                 sb.Append("u.");
-                sb.Append(ToSqlName(keyColumns[k].Name));
+                sb.Append(ToSqlName(keyColumns[k].Name!));
                 sb.Append(" = v.k");
                 sb.Append(k.ToString());
             }

@@ -3,36 +3,13 @@ using System;
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 自动注册特性，用于标记需要自动注册到依赖注入容器的类或接口
+    /// 自动注册特性，用于标记需要自动注册到依赖注入容器的类或接口。
+    /// <para>LiteOrm.Generators 源生成器在编译期扫描带 <c>[AutoRegister]</c> 特性的类型并生成注册代码；
+    /// LiteOrm.DependencyInjection 的 Autofac 扫描亦读取本特性进行运行时注册。</para>
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, Inherited = true, AllowMultiple = false)]
     public class AutoRegisterAttribute : Attribute
     {
-        /// <summary>
-        /// 服务生命周期，默认为Singleton
-        /// </summary>
-        public Lifetime Lifetime { get; set; } = Lifetime.Singleton;
-
-        /// <summary>
-        /// 支持多个服务类型
-        /// </summary>
-        public Type[] ServiceTypes { get; set; }
-
-        /// <summary>
-        /// 是否启用自动注册
-        /// </summary>
-        public bool Enabled { get; } = true;
-
-        /// <summary>
-        /// 服务唯一标识
-        /// </summary>
-        public object Key { get; set; }
-
-        /// <summary>
-        /// 是否自动激活服务（即在容器构建完成后立即解析实例），默认为 false
-        /// </summary>
-        public bool AutoActivate { get; set; }
-
         /// <summary>
         /// 默认构造函数
         /// </summary>
@@ -66,24 +43,29 @@ namespace LiteOrm.Common
             Lifetime = lifetime;
             ServiceTypes = serviceTypes;
         }
-    }
+        /// <summary>
+        /// 服务生命周期，默认为 Singleton
+        /// </summary>
+        public Lifetime Lifetime { get; set; } = Lifetime.Singleton;
 
-    /// <summary>
-    /// 服务生命周期枚举
-    /// </summary>
-    public enum Lifetime
-    {
         /// <summary>
-        /// 单例模式，整个应用程序生命周期内只有一个实例
+        /// 支持多个服务类型
         /// </summary>
-        Singleton,
+        public Type[]? ServiceTypes { get; set; }
+
         /// <summary>
-        /// 作用域模式，每个作用域创建一个实例
+        /// 是否启用自动注册
         /// </summary>
-        Scoped,
+        public bool Enabled { get; } = true;
+
         /// <summary>
-        /// 瞬态模式，每次请求都创建新实例
+        /// 服务唯一标识
         /// </summary>
-        Transient
+        public object? Key { get; set; }
+
+        /// <summary>
+        /// 是否自动激活服务（即在容器构建完成后立即解析实例），默认为 false
+        /// </summary>
+        public bool AutoActivate { get; set; }
     }
 }

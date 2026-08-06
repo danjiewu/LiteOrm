@@ -45,17 +45,19 @@ public class User
 
 ```csharp
 [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-[Column("Profile", DataType = typeof(UserProfile))]
+[Column("Age", DbType = DbType.Int32)]
 ```
+
+> Complex objects cannot declare a serialization type directly via the `[Column]` attribute. To store a complex object, serialize it to a string and persist it in a string column, performing custom conversion in the property getter/setter.
 
 | Parameter | Description |
 |-----------|-------------|
-| `Name` | Database column name. |
+| `ColumnName` | Database column name (positional constructor parameter). |
 | `IsPrimaryKey` | Whether it is a primary key. |
 | `IsIdentity` | Whether it is an identity column. |
 | `IdentityStart` | Identity column start value, default `1`. Only takes effect on databases that support start value (SQL Server, Dameng, Oracle); MySQL via table-level `AUTO_INCREMENT = n` option; SQLite does not support customization. |
 | `IdentityIncreasement` | Identity column increment value, default `1`. Only takes effect on databases that support increment (SQL Server, Dameng, Oracle); MySQL requires session variable `auto_increment_increment`; SQLite does not support customization. |
-| `DataType` | Serialization type, used for complex object storage. |
+| `DbType` | Database column type (`System.Data.DbType` enum), defaults to `DbType.Object` (inferred from the property type). |
 
 ## `[PropertyOrder]` Attribute
 

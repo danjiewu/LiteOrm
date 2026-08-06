@@ -6,9 +6,9 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 ## 快速入口
 
-- [示例索引](./06-example-index.md)
-- [生成 SQL 示例](./07-sql-examples.md)
-- [数据库差异与兼容性说明](./08-database-compatibility.md)
+- [示例索引](./05-example-index.md)
+- [生成 SQL 示例](./06-sql-examples.md)
+- [数据库差异与兼容性说明](./07-database-compatibility.md)
 
 ## 按使用场景查阅
 
@@ -16,14 +16,14 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 - `RegisterLiteOrm()`
 - `RegisterSqlBuilder(...)`
-- `BulkProviderFactory`
+- `SqlBuilder.BulkProvider`（批量插入提供程序）
 - 数据源配置、连接池配置、只读副本配置
 
 对应文档：
 
-- [配置与注册](../01-getting-started/03-configuration-and-registration.md)
+- [配置参考](../05-reference/01-configuration-reference.md)
 - [配置项速查](./01-configuration-reference.md)
-- [数据库差异与兼容性说明](./08-database-compatibility.md)
+- [数据库差异与兼容性说明](./07-database-compatibility.md)
 
 ### 实体映射与视图模型
 
@@ -59,8 +59,8 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 - [Expr 使用指南](../02-core-usage/06-expr-guide.md)
 - [查询总览](../02-core-usage/04-query-overview.md)
-- [示例索引](./06-example-index.md)
-- [生成 SQL 示例](./07-sql-examples.md)
+- [示例索引](./05-example-index.md)
+- [生成 SQL 示例](./06-sql-examples.md)
 
 ### 写入接口
 
@@ -78,9 +78,9 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 对应文档：
 
 - [CRUD 指南](../02-core-usage/03-crud-guide.md)
-- [事务管理](../03-advanced-topics/01-transactions.md)
-- [示例索引](./06-example-index.md)
-- [生成 SQL 示例](./07-sql-examples.md)
+- [事务管理](../06-di/01-transactions.md)
+- [示例索引](./05-example-index.md)
+- [生成 SQL 示例](./06-sql-examples.md)
 
 ### 高级特性
 
@@ -93,13 +93,13 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 对应文档：
 
-- [事务管理](../03-advanced-topics/01-transactions.md)
-- [日志与诊断](../03-advanced-topics/07-logging.md)
+- [事务管理](../06-di/01-transactions.md)
+- [日志与诊断](../06-di/03-logging.md)
 - [分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)
 - [窗口函数](../03-advanced-topics/04-window-functions.md)
-- [示例索引](./06-example-index.md)
-- [生成 SQL 示例](./07-sql-examples.md)
-- [数据库差异与兼容性说明](./08-database-compatibility.md)
+- [示例索引](./05-example-index.md)
+- [生成 SQL 示例](./06-sql-examples.md)
+- [数据库差异与兼容性说明](./07-database-compatibility.md)
 
 ### 扩展开发
 
@@ -115,11 +115,11 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - [表达式扩展](../04-extensibility/01-expression-extension.md)
 - [函数验证器](../04-extensibility/02-function-validator.md)
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
-- [数据库差异与兼容性说明](./08-database-compatibility.md)
+- [数据库差异与兼容性说明](./07-database-compatibility.md)
 
 ## 相关链接
 
 - [返回文档目录](../README.md)
-- [示例索引](./06-example-index.md)
-- [生成 SQL 示例](./07-sql-examples.md)
-- [数据库差异与兼容性说明](./08-database-compatibility.md)
+- [示例索引](./05-example-index.md)
+- [生成 SQL 示例](./06-sql-examples.md)
+- [数据库差异与兼容性说明](./07-database-compatibility.md)

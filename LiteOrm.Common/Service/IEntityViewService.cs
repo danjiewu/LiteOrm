@@ -1,7 +1,8 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Service
 {
@@ -13,7 +14,9 @@ namespace LiteOrm.Service
     [Service]
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    public interface IEntityViewService<T> : IEntityViewService
+    public interface IEntityViewService<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] 
+        T> : IEntityViewService
     {
         /// <summary>
         /// 获取实体
@@ -30,7 +33,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
         [ServiceMethod]
-        new T SearchOne(Expr expr, params string[] tableArgs);
+        new T SearchOne(Expr? expr, params string[]? tableArgs);
         /// <summary>
         /// 根据条件遍历对象
         /// </summary>
@@ -46,7 +49,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
         [ServiceMethod]
-        new List<T> Search(Expr expr = null, params string[] tableArgs);
+        new List<T> Search(Expr? expr = null, params string[]? tableArgs);
 
         /// <summary>
         /// 
@@ -56,7 +59,9 @@ namespace LiteOrm.Service
         /// <param name="tableArgs"></param>
         /// <returns></returns>
         [ServiceMethod]
-        List<TResult> SearchAs<TResult>(SelectExpr selectExpr, params string[] tableArgs);
+        List<TResult> SearchAs<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            TResult>(SelectExpr selectExpr, params string[] tableArgs);
 
         /// <summary>
         /// 根据条件获取单个符合条件的实体，并将结果转换为指定类型的对象。
@@ -66,13 +71,14 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns></returns>
         [ServiceMethod]
-        TResult SearchOneAs<TResult>(SelectExpr selectExpr, params string[] tableArgs);
+        TResult SearchOneAs<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            TResult>(SelectExpr selectExpr, params string[] tableArgs);
     }
 
     /// <summary>
     /// 提供对实体视图（只读或关联视图）进行查询操作的非泛型接口。
     /// </summary>  
-    [AutoRegister(false)]
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     public interface IEntityViewService
@@ -99,7 +105,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>是否存在记录</returns>
         [ServiceMethod]
-        bool Exists(Expr expr, params string[] tableArgs);
+        bool Exists(Expr? expr, params string[]? tableArgs);
         /// <summary>
         /// 根据条件获取记录总数
         /// </summary>
@@ -107,20 +113,20 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的记录总数</returns>
         [ServiceMethod]
-        int Count(Expr expr = null, params string[] tableArgs);
+        int Count(Expr? expr = null, params string[]? tableArgs);
         /// <summary>
         /// 根据条件获取单个实体
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>第一个符合条件的实体，若不存在则返回null</returns>
-        object SearchOne(Expr expr, params string[] tableArgs);
+        object SearchOne(Expr? expr, params string[]? tableArgs);
         /// <summary>
         /// 根据条件获取实体列表
         /// </summary>
         /// <param name="expr">查询条件，若为null则表示没有条件</param>
         /// <param name="tableArgs">表名参数</param>
         /// <returns>符合条件的实体列表</returns>
-        IList Search(Expr expr = null, params string[] tableArgs);
+        IList Search(Expr? expr = null, params string[] tableArgs);
     }
 }

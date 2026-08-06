@@ -235,8 +235,8 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void GetHashCode_DifferentNameWithTrailingNullArg_ReturnsDifferentHash()
         {
-            var left = new FunctionExpr("SUM", Expr.Prop("Price"), null);
-            var right = new FunctionExpr("COUNT", Expr.Prop("Price"), null);
+            var left = new FunctionExpr("SUM", Expr.Prop("Price"), null!);
+            var right = new FunctionExpr("COUNT", Expr.Prop("Price"), null!);
 
             Assert.NotEqual(left.GetHashCode(), right.GetHashCode());
         }

@@ -1,9 +1,28 @@
 # 变更日志 (Changelog)
 
-## v8.0.21 (Unreleased)
+## v8.1.0 (2026-08-02)
+
+### Breaking Changes
+
+本版本引入多项破坏性变更，详细迁移指南见 [8.1 升级指南](./upgrade-guides/01-upgrade-guide-8.1.md)。
+
+- `RegisterLiteOrm()` 从 `LiteOrm` 基础包移至 `LiteOrm.DependencyInjection` 包（新增），命名空间由 `LiteOrm` 改为 `LiteOrm.DependencyInjection`
+- 自定义 `IBulkProvider` 不再使用任何特性标记，`BulkProviderFactory` 与 `BulkProviderAttribute` 已移除，改为直接设置 `SqlBuilder.BulkProvider` 属性 (`0f7fe25`)
+
+### 新增功能
+- 基础库新增 `AddLiteOrm()`：纯 MS DI 注册（无 Autofac / AOP），自动应用 `[AutoRegister]` 源生成注册 (`f1b2ef1`, `464b044`, `afecea3`)
+- 新增 AOT / NativeAOT 支持：`LiteOrm.Generators` 源生成器在编译期生成实体 / DAO / Service / 类型注册代码，`ExprJsonConverter`、`LambdaExprConverter`、`DAOContextPoolFactory`、`SqlBuilderFactory` 等改为 AOT 安全实现 (`90d75f1`, `1205f4f`, `1eb9dc0`, `0058f05`, `3ca894c`, `a5cfa31`)
+- 新增 `LiteOrm.DependencyInjection` 包（原宿主集成项目更名），DI 能力从基础库拆分独立 (`b45aeeb`, `0322465`, `b0b4177`)
+
 
 ### 改进
 - `PreparedSql` 移至 `LiteOrm.Common` 项目，参数类型由 `KeyValuePair` 改为自定义 `Param` (`f50c72e`)
+- 目标依赖包版本降低，减少版本冲突 (`ad695e6`)
+- 宿主集成 / Remote 使用单例 `ProxyGenerator` 优化性能 (`8f8753d`)
+- `AttributeTableInfoProvider` 不再依赖 `SqlBuilderFactory`、`DataSourceProvider` (`b50b49a`)
+- 优化建表加锁机制，避免发生死锁 (`148f2ac`)
+- DAO、Service 增加 AOT 相关特性标注 (`36641fa`, `05e9305`, `1737234`, `e68ded4`)
+- `ColumnDefinition.DbType` 可为空，运行时自动判定 DbType 类型 (`09bd95d`)
 
 ---
 

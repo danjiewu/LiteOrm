@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,7 +14,7 @@ namespace LiteOrm.Service
     [Service]
     [ServicePermission(false)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    public interface IEntityServiceAsync<T> : IEntityServiceAsync
+    public interface IEntityServiceAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : IEntityServiceAsync
     {
         /// <summary>
         /// 异步新增实体
@@ -106,7 +107,6 @@ namespace LiteOrm.Service
     /// <summary>
     /// 异步版本 - 非泛型实体更改接口
     /// </summary>
-    [AutoRegister(false)]
     [ServicePermission(false)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]  
     public interface IEntityServiceAsync
@@ -143,7 +143,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>操作结果，true表示成功，false表示失败</returns>
         [ServiceMethod]
-        Task<bool> DeleteIDAsync(object id, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<bool> DeleteIDAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据条件删除实体
@@ -153,7 +153,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>受影响的行数</returns>
         [ServiceMethod]
-        Task<int> DeleteAllAsync(LogicExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<int> DeleteAllAsync(LogicExpr? expr, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步根据UpdateExpr更新实体
@@ -163,7 +163,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>表示异步操作的任务，任务结果包含更新的记录数</returns>
         [ServiceMethod]
-        Task<int> UpdateAllAsync(UpdateExpr expr, string[] tableArgs = null, CancellationToken cancellationToken = default);
+        Task<int> UpdateAllAsync(UpdateExpr expr, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步批量新增实体

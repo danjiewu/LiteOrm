@@ -18,7 +18,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="table">源表</param>
         /// <param name="where">筛选条件表达式</param>
-        public DeleteExpr(TableExpr table, LogicExpr where = null)
+        public DeleteExpr(TableExpr table, LogicExpr? where = null)
         {
             Table = table;
             Where = where;
@@ -27,7 +27,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置删除操作的源表
         /// </summary>
-        public TableExpr Table { get; set; }
+        public TableExpr? Table { get; set; }
 
         /// <summary>
         /// 获取片段类型，返回 Delete 类型标识
@@ -37,14 +37,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置筛选条件表达式
         /// </summary>
-        public LogicExpr Where { get; set; }
+        public LogicExpr? Where { get; set; }
 
         /// <summary>
         /// 判断两个 DeleteExpr 是否相等
         /// </summary>
         /// <param name="obj">要比较的对象</param>
         /// <returns>如果相等返回 true，否则返回 false</returns>
-        public override bool Equals(object obj) => obj is DeleteExpr other && Equals(Table, other.Table) && Equals(Where, other.Where);
+        public override bool Equals(object? obj) => obj is DeleteExpr other && Equals(Table, other.Table) && Equals(Where, other.Where);
 
         /// <summary>
         /// 获取当前对象的哈希码
@@ -64,8 +64,8 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var d = new DeleteExpr();
-            d.Table = (TableExpr)Table?.Clone();
-            d.Where = (LogicExpr)Where?.Clone();
+            d.Table = Table?.Clone() as TableExpr;
+            d.Where = Where?.Clone() as LogicExpr;
             return d;
         }
     }

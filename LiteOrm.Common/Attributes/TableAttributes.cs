@@ -40,12 +40,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取或设置数据库表名。
         /// </summary>
-        public string TableName { get; set; }
+        public string? TableName { get; set; }
 
         /// <summary>
         /// 获取或设置数据源名称。该名称通常对应于配置文件中 ConnectionStrings 节点的名称。
         /// </summary>
-        public string DataSource { get; set; }
+        public string? DataSource { get; set; }
 
         /// <summary>
         /// 获取或设置该实体类型的表结构同步模式。

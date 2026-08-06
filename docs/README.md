@@ -6,10 +6,10 @@
 
 |中文|English|说明|
 |-|-|-|
-|[概览](./01-getting-started/01-overview.md)|[Overview](./01-getting-started/01-overview.en.md)|框架介绍与适用场景|
-|[安装](./01-getting-started/02-installation.md)|[Installation](./01-getting-started/02-installation.en.md)|安装步骤与环境配置|
-|[配置](./01-getting-started/03-configuration-and-registration.md)|[Configuration](./01-getting-started/03-configuration-and-registration.en.md)|服务注册与配置|
-|[示例](./01-getting-started/04-first-example.md)|[First Example](./01-getting-started/04-first-example.en.md)|完整使用示例|
+|[概览](./01-getting-started/01-overview.md)|[Overview](./01-getting-started/01-overview.en.md)|框架介绍、项目组成与适用场景|
+|[安装](./01-getting-started/02-installation.md)|[Installation](./01-getting-started/02-installation.en.md)|环境要求与安装（基础库 / DI 扩展双场景）|
+|[第一个完整示例（仅基础库）](./01-getting-started/03-first-example.md)|[First Example (Base Only)](./01-getting-started/03-first-example.en.md)|不依赖 DI 扩展的最小可运行示例|
+|[第一个完整示例（DI 扩展）](./01-getting-started/05-first-example-di.md)|[First Example (DI Extension)](./01-getting-started/05-first-example-di.en.md)|依赖 `LiteOrm.DependencyInjection`, 支持 AOP 特性|
 
 ### 核心使用篇 / Core Usage
 
@@ -30,13 +30,10 @@
 
 |中文|English|说明|
 |-|-|-|
-|[事务](./03-advanced-topics/01-transactions.md)|[Transactions](./03-advanced-topics/01-transactions.en.md)|事务与并发控制|
 |[分表分库](./03-advanced-topics/02-sharding-and-tableargs.md)|[Sharding](./03-advanced-topics/02-sharding-and-tableargs.en.md)|分表策略与路由|
 |[性能](./03-advanced-topics/03-performance.md)|[Performance](./03-advanced-topics/03-performance.en.md)|性能调优建议|
 |[窗口函数](./03-advanced-topics/04-window-functions.md)|[Window Functions](./03-advanced-topics/04-window-functions.en.md)|窗口函数支持|
 |[自定义分页](./03-advanced-topics/05-custom-paging.md)|[Custom Paging](./03-advanced-topics/05-custom-paging.en.md)|分页方案扩展|
-|[权限过滤](./03-advanced-topics/06-permission-filtering.md)|[Permission Filtering](./03-advanced-topics/06-permission-filtering.en.md)|用户范围过滤与访问控制|
-|[日志与诊断](./03-advanced-topics/07-logging.md)|[Logging \& Diagnostics](./03-advanced-topics/07-logging.en.md)|ServiceLog、Log 特性与慢查询日志|
 |[安全性](./03-advanced-topics/08-security.md)|[Security](./03-advanced-topics/08-security.en.md)|SQL 注入防护与安全机制|
 |[远程服务](./03-advanced-topics/09-remote-service.md)|[Remote Service](./03-advanced-topics/09-remote-service.en.md)|Remote 客户端与服务端使用|
 
@@ -50,8 +47,17 @@
 |[Expr 序列化格式](./04-extensibility/04-expr-serialization.md)|[Expr Serialization Format](./04-extensibility/04-expr-serialization.en.md)|JSON 简洁模式与正常模式对比|
 |[前端 QueryString 查询](./04-extensibility/05-frontend-querystring.md)|[Frontend QueryString](./04-extensibility/05-frontend-querystring.en.md)|用 URL 参数驱动后端 Expr 查询|
 |[前端原生 Expr 查询](./04-extensibility/06-frontend-native-expr.md)|[Frontend Native Expr](./04-extensibility/06-frontend-native-expr.en.md)|按 LiteOrm 序列化格式提交 Expr JSON|
-|[泛型 Controller 与动态生成](./04-extensibility/07-generic-controller.md)|[Generic Controller](./04-extensibility/07-generic-controller.en.md)|泛型基类 Controller 与动态 Controller 生成|
 | [国产/兼容数据库 SqlBuilder 开发指南](./04-extensibility/08-domestic-database-sqlbuilder.md)|[Domestic/Compatible Database SqlBuilder Guide](./04-extensibility/08-domestic-database-sqlbuilder.en.md)|达梦、人大金仓、GaussDB、OceanBase、TiDB、GreatDB 接入指南|
+
+### DI扩展 / DI Extension
+
+
+|中文|English|说明|
+|-|-|-|
+|[事务](./06-di/01-transactions.md)|[Transactions](./06-di/01-transactions.en.md)|事务与并发控制|
+|[权限过滤](./06-di/02-permission-filtering.md)|[Permission Filtering](./06-di/02-permission-filtering.en.md)|用户范围过滤与访问控制|
+|[日志与诊断](./06-di/03-logging.md)|[Logging \& Diagnostics](./06-di/03-logging.en.md)|ServiceLog、Log 特性与慢查询日志|
+|[泛型 Controller 与动态生成](./06-di/04-generic-controller.md)|[Generic Controller](./06-di/04-generic-controller.en.md)|泛型基类 Controller 与动态 Controller 生成|
 
 ### 参考文档 / Reference
 
@@ -60,10 +66,10 @@
 |[配置参考](./05-reference/01-configuration-reference.md)|[Config Reference](./05-reference/01-configuration-reference.en.md)|配置项说明|
 |[API索引](./05-reference/02-api-index.md)|[API Index](./05-reference/02-api-index.en.md)|API 快速索引|
 |[术语表](./05-reference/03-glossary.md)|[Glossary](./05-reference/03-glossary.en.md)|术语解释|
-|[AI指南](./05-reference/05-ai-guide.md)|[AI Guide](./05-reference/05-ai-guide.en.md)|AI 辅助开发|
-|[示例索引](./05-reference/06-example-index.md)|[Example Index](./05-reference/06-example-index.en.md)|示例代码索引|
-|[SQL示例](./05-reference/07-sql-examples.md)|[SQL Examples](./05-reference/07-sql-examples.en.md)|SQL 生成示例|
-|[兼容性](./05-reference/08-database-compatibility.md)|[Compatibility](./05-reference/08-database-compatibility.en.md)|各数据库差异|
+|[AI指南](./05-reference/04-ai-guide.md)|[AI Guide](./05-reference/04-ai-guide.en.md)|AI 辅助开发|
+|[示例索引](./05-reference/05-example-index.md)|[Example Index](./05-reference/05-example-index.en.md)|示例代码索引|
+|[SQL示例](./05-reference/06-sql-examples.md)|[SQL Examples](./05-reference/06-sql-examples.en.md)|SQL 生成示例|
+|[兼容性](./05-reference/07-database-compatibility.md)|[Compatibility](./05-reference/07-database-compatibility.en.md)|各数据库差异|
 
 ### 相关资源 / Related Resources
 
@@ -74,12 +80,14 @@
 |[单元测试](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests)|[Unit tests](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests)|
 |[性能报告](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)|[Benchmark report](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)|
 |[变更日志](./CHANGELOG.md)|[Changelog](./CHANGELOG.en.md)|
+|[8.1 升级指南](./upgrade-guides/01-upgrade-guide-8.1.md)|[8.1 Upgrade Guide](./upgrade-guides/01-upgrade-guide-8.1.en.md)|
 
 ### 推荐阅读路径
 
-1. 第一次接触 LiteOrm：先看"入门篇"的四篇文档。
-2. 准备接入业务项目：继续阅读"核心使用篇"，建立实体、查询、写入和关联的整体认识。
-3. 涉及事务、分表、性能或数据库方言差异：继续阅读"高级特性篇"。
-4. 需要扩展框架能力：查阅"扩展开发篇"。
-5. 需要快速确认配置项、接口名或术语：直接查阅"参考篇"。
-
+1. 第一次接触 LiteOrm：先看"入门篇"的[概览](./01-getting-started/01-overview.md)与[安装](./01-getting-started/02-installation.md)。
+2. 配置与第一个示例：根据项目类型选择[仅基础库](./01-getting-started/03-first-example.md)或 [DI 扩展](./01-getting-started/05-first-example-di.md)。
+3. 准备接入业务项目：继续阅读"核心使用篇"，建立实体、查询、写入和关联的整体认识。
+4. 使用 `LiteOrm.DependencyInjection` 集成（Autofac、AOP）：先阅读[配置参考](./05-reference/01-configuration-reference.md)，再了解"DI扩展"中的事务、权限过滤等特性。
+5. 涉及分表、性能或数据库方言差异：继续阅读"高级特性篇"。
+6. 需要扩展框架能力：查阅"扩展开发篇"。
+7. 需要快速确认配置项、接口名或术语：直接查阅"参考篇"。

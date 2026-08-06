@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -27,66 +28,46 @@ namespace LiteOrm.Remote
     /// 2. 类型不一致 → 以 <c>{"$type":"实际类型名","$value":&lt;值&gt;}</c> 结构包装。
     /// </para>
     /// </summary>
+    [RequiresDynamicCode("RemoteInvocationRequest JSON conversion relies on reflection-based System.Text.Json serialization and runtime Type resolution; not supported under NativeAOT.")]
+    [RequiresUnreferencedCode("RemoteInvocationRequest JSON conversion relies on reflection-based System.Text.Json serialization and runtime Type resolution.")]
     public sealed class RemoteInvocationRequestConverter : JsonConverter<RemoteInvocationRequest>
     {
         private static readonly Type ExprType = typeof(Common.Expr);
 
-        /// <summary>
-        /// 静态默认命名空间。序列化时 <c>$type</c> 使用 <see cref="TypeResolverHelper.GetName(Type)"/> 生成短名，
-        /// 反序列化时通过 <see cref="TypeResolverHelper.FindType(string, string?)"/> 解析，
-        /// 当短名无法精确匹配时以此命名空间组合 <c>命名空间.类型名</c> 进行匹配。
-        /// <para>
-        /// 为 null 时 <see cref="TypeResolverHelper"/> 回退到全程序集短名扫描。
-        /// </para>
-        /// </summary>
-        public static string? DefaultNamespace { get; set; }
+    /// <summary>
+    /// 类型名称解析器，用于序列化/反序列化时 Type ↔ 名称 的双向转换。
+    /// 默认使用 <see cref="DefaultServiceTypeResolver.Instance"/>，可通过此属性替换为自定义实现。
+    /// </summary>
+    public static ITypeNameResolver TypeNameResolver { get; set; } = DefaultServiceTypeResolver.Instance;
 
         /// <summary>
-        /// 自定义类型 → 名称转换委托。序列化 <c>$type</c> 时优先调用，返回非 null 且非空字符串则采用，
-        /// 否则回退到 <see cref="TypeResolverHelper.GetName(Type)"/>。
-        /// </summary>
-        public static Func<Type, string?>? TypeNameResolver { get; set; }
-
-        /// <summary>
-        /// 自定义名称 → 类型转换委托。反序列化 <c>$type</c> 时优先调用，返回非 null 类型则采用，
-        /// 否则回退到 <see cref="TypeResolverHelper.FindType(string, string?)"/>。
-        /// </summary>
-        public static Func<string, Type?>? TypeResolver { get; set; }
-
-        /// <summary>
-        /// 解析类型名称：委托优先，否则用 <see cref="TypeResolverHelper.GetName"/>。
+        /// 解析类型名称：委托优先，否则用 <see cref="TypeNameResolver"/>.
         /// </summary>
         private static string ResolveTypeName(Type type)
-            => TypeNameResolver?.Invoke(type) is string name && name.Length > 0
-                ? name
-                : TypeResolverHelper.GetName(type);
+            => TypeNameResolver.GetName(type);
 
         /// <summary>
-        /// 解析类型：委托优先；其次解析 typeMark 缩写（datetime/guid 等）和 enum: 前缀；
-        /// 否则用 <see cref="TypeResolverHelper.FindType"/>（带 <see cref="DefaultNamespace"/>）。
+        /// 解析类型：typeMark 缩写（datetime/guid 等）和 enum: 前缀优先；
+        /// 否则用 <see cref="TypeNameResolver"/>.
         /// </summary>
-        private static Type? ResolveType(string typeName)
+        private static Type? ResolveType(string? typeName)
         {
             if (string.IsNullOrEmpty(typeName))
                 return null;
 
-            // 委托优先
-            if (TypeResolver?.Invoke(typeName) is Type delegated)
-                return delegated;
-
             // typeMark 缩写（datetime/datetimeoffset/timespan/guid/bytes）
-            if (_markToType.TryGetValue(typeName, out var marked))
+            if (_markToType.TryGetValue(typeName!, out var marked))
                 return marked;
 
             // enum: 前缀 → 解析枚举类型名
-            if (typeName.StartsWith(EnumMarkPrefix, StringComparison.Ordinal))
+            if (typeName!.StartsWith(EnumMarkPrefix, StringComparison.Ordinal))
             {
                 var enumTypeName = typeName.Substring(EnumMarkPrefix.Length);
-                var enumType = TypeResolverHelper.FindType(enumTypeName, DefaultNamespace);
+                var enumType = TypeNameResolver.GetType(enumTypeName);
                 return enumType?.IsEnum == true ? enumType : null;
             }
 
-            return TypeResolverHelper.FindType(typeName, DefaultNamespace);
+            return TypeNameResolver.GetType(typeName);
         }
 
         /// <inheritdoc />
@@ -132,7 +113,7 @@ namespace LiteOrm.Remote
             // 由服务端 dispatcher.ParseRequest 在查找方法后按参数类型二次反序列化
             if (argumentsRaw.HasValue && argumentsRaw.Value.ValueKind == JsonValueKind.Array)
             {
-                var argList = new System.Collections.Generic.List<object>();
+                var argList = new System.Collections.Generic.List<object?>();
                 foreach (var element in argumentsRaw.Value.EnumerateArray())
                     argList.Add(DeserializeTypedValue(element, null, options));
                 request.Arguments = argList.ToArray();
@@ -161,7 +142,7 @@ namespace LiteOrm.Remote
             for (int i = 0; i < arguments.Length; i++)
             {
                 var arg = arguments[i];
-                Type declaredType = i < paramTypes.Length ? paramTypes[i] : null;
+                Type? declaredType = i < paramTypes.Length ? paramTypes[i] : null;
                 WriteTypedValue(writer, arg, declaredType, options);
             }
 
@@ -172,7 +153,7 @@ namespace LiteOrm.Remote
         /// <summary>
         /// 从 <see cref="MethodInfo"/> 提取参数类型（不含 <see cref="CancellationToken"/>）。
         /// </summary>
-        private static Type[] ResolveParameterTypes(MethodInfo method)
+        private static Type[] ResolveParameterTypes(MethodInfo? method)
         {
             if (method is null) return Array.Empty<Type>();
             return method.GetParameters()
@@ -184,7 +165,9 @@ namespace LiteOrm.Remote
         /// <summary>
         /// 序列化单个对象。类型一致或 Expr 参数 → 直接序列化；类型不一致 → 包装为 $type/$value。
         /// </summary>
-        public static void WriteTypedValue(Utf8JsonWriter writer, object arg, Type declaredType, JsonSerializerOptions options)
+        [RequiresDynamicCode("WriteTypedValue uses reflection-based System.Text.Json serialization with runtime types; not supported under NativeAOT.")]
+        [RequiresUnreferencedCode("WriteTypedValue uses reflection-based System.Text.Json serialization with runtime types.")]
+        public static void WriteTypedValue(Utf8JsonWriter writer, object? arg, Type? declaredType, JsonSerializerOptions options)
         {
             if (arg is null)
             {
@@ -271,7 +254,7 @@ namespace LiteOrm.Remote
         /// 尝试获取类型的名称缩写标记。DateTime/DateTimeOffset/TimeSpan/Guid/byte[] 返回固定缩写；
         /// 枚举返回 <c>"enum:" + 类型名</c>；其他类型返回 false。
         /// </summary>
-        private static bool TryGetTypeMark(Type type, out string mark)
+        private static bool TryGetTypeMark(Type type, out string? mark)
         {
             if (_typeToMark.TryGetValue(type, out mark))
                 return true;
@@ -335,7 +318,9 @@ namespace LiteOrm.Remote
         /// 反序列化单个参数。含 $type → 按实际类型反序列化；否则返回原始 <see cref="JsonElement"/>，
         /// 由服务端 dispatcher 按方法参数声明类型二次反序列化。
         /// </summary>
-        public static object DeserializeTypedValue(JsonElement element, Type declaredType, JsonSerializerOptions options)
+        [RequiresDynamicCode("DeserializeTypedValue uses reflection-based System.Text.Json deserialization with runtime types; not supported under NativeAOT.")]
+        [RequiresUnreferencedCode("DeserializeTypedValue uses reflection-based System.Text.Json deserialization with runtime types.")]
+        public static object? DeserializeTypedValue(JsonElement element, Type? declaredType, JsonSerializerOptions options)
         {
             if (element.ValueKind == JsonValueKind.Null)
                 return declaredType != null && declaredType.IsValueType
@@ -382,7 +367,7 @@ namespace LiteOrm.Remote
         /// <param name="targetType">目标基础类型（已去除 Nullable 包装）。</param>
         /// <param name="value">转换后的值。</param>
         /// <returns>是否成功读取并转换。</returns>
-        private static bool TryReadPrimitive(JsonElement element, Type targetType, out object value)
+        private static bool TryReadPrimitive(JsonElement element, Type targetType, out object? value)
         {
             value = null;
             switch (element.ValueKind)

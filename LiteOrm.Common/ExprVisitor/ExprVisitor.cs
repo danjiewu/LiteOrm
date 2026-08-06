@@ -144,7 +144,7 @@ namespace LiteOrm.Common
             }, root, order, cancellationToken);
         }
 
-        private static bool VisitNode(Expr node, Func<Expr, bool> visitor, ExprVisitOrder order, CancellationToken cancellationToken)
+        private static bool VisitNode(Expr? node, Func<Expr, bool>? visitor, ExprVisitOrder order, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested) return false;
 
@@ -153,7 +153,7 @@ namespace LiteOrm.Common
             return VisitNodeCore(node, onEnter, onLeave, cancellationToken);
         }
 
-        private static bool VisitNodeCore(Expr node, Func<Expr, bool> onEnter, Func<Expr, bool> onLeave, CancellationToken cancellationToken)
+        private static bool VisitNodeCore(Expr? node, Func<Expr, bool>? onEnter, Func<Expr, bool>? onLeave, CancellationToken cancellationToken)
         {
             if (node == null) return true;
             if (cancellationToken.IsCancellationRequested) return false;
@@ -185,7 +185,7 @@ namespace LiteOrm.Common
             return childrenResult && !cancellationToken.IsCancellationRequested;
         }
 
-        private static bool VisitChildrenCore(Expr node, Func<Expr, bool> onEnter, Func<Expr, bool> onLeave, CancellationToken cancellationToken)
+        private static bool VisitChildrenCore(Expr? node, Func<Expr, bool>? onEnter, Func<Expr, bool>? onLeave, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested) return false;
 

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -69,17 +70,17 @@ namespace LiteOrm.Common
         /// <summary>
         /// 要执行的DAO对象，子类通过该对象执行相应的数据库操作以获取结果。
         /// </summary>
-        protected readonly DAOBase _dao;
+        protected readonly DAOBase? _dao;
         /// <summary>
         /// 预处理的 SQL 语句和参数列表。
         /// </summary>
-        protected readonly PreparedSql _sql;
+        protected readonly PreparedSql? _sql;
         /// <summary>
         /// 预定义的数据库命令代理实例，子类可以直接使用该实例执行数据库操作以获取结果，适用于需要重复执行同一命令的场景。
         /// </summary>
-        protected readonly DbCommandProxy _preparedCommand;
+        protected readonly DbCommandProxy? _preparedCommand;
 
-        private DbCommandProxy _executedCommand;
+        private DbCommandProxy? _executedCommand;
 
         /// <summary>
         /// 初始化 <see cref="CommandResult{T}"/> 类的新实例。
@@ -114,7 +115,7 @@ namespace LiteOrm.Common
         /// <returns>用于执行查询的 <see cref="DbCommandProxy"/> 实例。</returns>
         internal protected DbCommandProxy GetCommand()
         {
-            return _executedCommand ??= _preparedCommand ?? _dao.MakeNamedParamCommand(_sql);
+            return _executedCommand ??= _preparedCommand ?? _dao!.MakeNamedParamCommand(_sql!);
         }
 
         /// <summary>
@@ -125,7 +126,7 @@ namespace LiteOrm.Common
         /// <returns>表示异步操作的任务，结果为命令代理实例。</returns>
         internal protected async Task<DbCommandProxy> GetCommandAsync(CancellationToken cancellationToken = default)
         {
-            return _executedCommand ??= _preparedCommand ?? await _dao.MakeNamedParamCommandAsync(_sql, cancellationToken);
+            return _executedCommand ??= _preparedCommand ?? await _dao!.MakeNamedParamCommandAsync(_sql!, cancellationToken);
         }
 
         /// <summary>
@@ -195,9 +196,9 @@ namespace LiteOrm.Common
     /// 支持使用 DAO/PreparedSql 按需创建命令，或通过预构造的 <see cref="DbCommandProxy"/> 重用命令。
     /// </summary>
     /// <typeparam name="TResult">查询行转换后返回的元素类型。</typeparam>
-    public class EnumerableResult<TResult> : CommandResult<List<TResult>>, IEnumerable<TResult>, IAsyncEnumerable<TResult>, IEnumerableResult
+    public class EnumerableResult<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult> : CommandResult<List<TResult>>, IEnumerable<TResult>, IAsyncEnumerable<TResult>, IEnumerableResult
     {
-        private readonly Func<DbDataReader, TResult> _readerFunc;
+        private readonly Func<AutoLockDataReader, TResult>? _readerFunc;
 
         /// <summary>
         /// 初始化 <see cref="EnumerableResult{TResult}"/> 类的新实例。
@@ -205,7 +206,7 @@ namespace LiteOrm.Common
         /// <param name="dao">要执行的DAO对象。</param>
         /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
         /// <param name="readerFunc">将 <see cref="IDataReader"/> 的一行数据转换为 <typeparamref name="TResult"/> 实例的委托。</param>
-        public EnumerableResult(DAOBase dao, PreparedSql sql, Func<DbDataReader, TResult> readerFunc = null)
+        public EnumerableResult(DAOBase dao, PreparedSql sql, Func<AutoLockDataReader, TResult>? readerFunc = null)
             : base(dao, sql)
         {
             _readerFunc = readerFunc;
@@ -216,7 +217,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="preparedCommand">预定义的数据库命令代理实例。</param>
         /// <param name="readerFunc">将 <see cref="IDataReader"/> 的一行数据转换为 <typeparamref name="TResult"/> 实例的委托。</param>
-        public EnumerableResult(DbCommandProxy preparedCommand, Func<DbDataReader, TResult> readerFunc = null)
+        public EnumerableResult(DbCommandProxy preparedCommand, Func<AutoLockDataReader, TResult>? readerFunc = null)
             : base(preparedCommand)
         {
             _readerFunc = readerFunc;
@@ -230,7 +231,7 @@ namespace LiteOrm.Common
         public IEnumerator<TResult> GetEnumerator()
         {
             var command = GetCommand();
-            using (DbDataReader reader = command.ExecuteReader())
+            using (var reader = command.ExecuteReader())
             {
                 var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
                 while (reader.Read())
@@ -267,8 +268,8 @@ namespace LiteOrm.Common
         public TResult FirstOrDefault()
         {
             var command = GetCommand();
-            using DbDataReader reader = command.ExecuteReader();
-            if (!reader.Read()) return default;
+            using var reader = command.ExecuteReader();
+            if (!reader.Read()) return default!;
             var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
             return func(reader);
         }
@@ -282,8 +283,8 @@ namespace LiteOrm.Common
         public async ValueTask<TResult> FirstOrDefaultAsync(CancellationToken cancellationToken = default)
         {
             var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
-            using DbDataReader reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
-            if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) return default;
+            using var reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
+            if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) return default!;
             var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
             return func(reader);
         }
@@ -364,12 +365,12 @@ namespace LiteOrm.Common
 
         private class AsyncEnumerator : IAsyncEnumerator<TResult>
         {
-            private readonly Func<DbDataReader, TResult> _readerFunc;
+            private readonly Func<AutoLockDataReader, TResult>? _readerFunc;
             private readonly CancellationToken _cancellationToken;
             private Func<CancellationToken, Task<DbCommandProxy>> _commandFunc;
-            private DbDataReader _reader;
-            private TResult _current;
-            private Func<DbDataReader, TResult> _func;
+            private AutoLockDataReader? _reader;
+            private TResult? _current;
+            private Func<AutoLockDataReader, TResult>? _func;
 
             /// <summary>
             /// 初始化 <see cref="AsyncEnumerator"/> 类的新实例。
@@ -377,7 +378,7 @@ namespace LiteOrm.Common
             /// <param name="commandFunc">用于获取要执行的数据库命令的委托。</param>
             /// <param name="readerFunc">将数据行转换为元素的委托。</param>
             /// <param name="cancellationToken">取消令牌。</param>
-            public AsyncEnumerator(Func<CancellationToken, Task<DbCommandProxy>> commandFunc, Func<DbDataReader, TResult> readerFunc, CancellationToken cancellationToken)
+            public AsyncEnumerator(Func<CancellationToken, Task<DbCommandProxy>> commandFunc, Func<AutoLockDataReader, TResult>? readerFunc, CancellationToken cancellationToken)
             {
                 _commandFunc = commandFunc;
                 _readerFunc = readerFunc;
@@ -387,7 +388,7 @@ namespace LiteOrm.Common
             /// <summary>
             /// 获取枚举器当前位置的元素。
             /// </summary>
-            public TResult Current => _current;
+            public TResult Current => _current!;
 
             public async ValueTask DisposeAsync()
             {
@@ -409,9 +410,9 @@ namespace LiteOrm.Common
                     _func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(_reader);
                 }
 
-                if (await _reader.ReadAsync(_cancellationToken).ConfigureAwait(false))
+                if (await _reader!.ReadAsync(_cancellationToken).ConfigureAwait(false))
                 {
-                    _current = _func(_reader);
+                    _current = _func!(_reader);
                     return true;
                 }
 
@@ -423,12 +424,12 @@ namespace LiteOrm.Common
         // IEnumerableResult接口的显式实现
         object IEnumerableResult.FirstOrDefault()
         {
-            return FirstOrDefault();
+            return FirstOrDefault()!;
         }
 
         async ValueTask<object> IEnumerableResult.FirstOrDefaultAsync(CancellationToken cancellationToken)
         {
-            return await FirstOrDefaultAsync(cancellationToken);
+            return (await FirstOrDefaultAsync(cancellationToken))!;
         }
 
         IList IEnumerableResult.GetResult()
@@ -443,12 +444,12 @@ namespace LiteOrm.Common
 
         void IEnumerableResult.ForEach(Action<object> action)
         {
-            ForEach(item => action(item));
+            ForEach(item => action(item!));
         }
 
         async Task IEnumerableResult.ForEachAsync(Action<object> action, CancellationToken cancellationToken)
         {
-            await ForEachAsync(item => action(item), cancellationToken);
+            await ForEachAsync(item => action(item!), cancellationToken);
         }
     }
 
@@ -467,12 +468,12 @@ namespace LiteOrm.Common
         /// <param name="dao">用于创建命令并执行查询的 <see cref="DAOBase"/>。</param>
         /// <param name="sql">预处理的 SQL 与参数集合。</param>
         /// <param name="resultConverter">可选的转换器，将数据库原始值转换为 TResult。</param>
-        public ValueResult(DAOBase dao, PreparedSql sql, Func<object, TResult> resultConverter = null)
+        public ValueResult(DAOBase dao, PreparedSql sql, Func<object, TResult>? resultConverter = null)
             : base(dao, sql)
         {
             _resultConverter = resultConverter ?? ((obj) =>
             {
-                return (TResult)dao.SqlBuilder.ConvertFromDbValue(obj, typeof(TResult));
+                return (TResult)dao.SqlBuilder.ConvertFromDbValue(obj, typeof(TResult))!;
             });
         }
 
@@ -481,12 +482,12 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="preparedCommand">预构建并可能缓存的数据库命令代理。</param>
         /// <param name="resultConverter">可选的转换器，将数据库原始值转换为 TResult。</param>
-        public ValueResult(DbCommandProxy preparedCommand, Func<object, TResult> resultConverter = null)
+        public ValueResult(DbCommandProxy preparedCommand, Func<object, TResult>? resultConverter = null)
             : base(preparedCommand)
         {
             _resultConverter = resultConverter ?? ((obj) =>
             {
-                return (TResult)preparedCommand.SqlBuilder.ConvertFromDbValue(obj, typeof(TResult));
+                return (TResult)preparedCommand.SqlBuilder!.ConvertFromDbValue(obj, typeof(TResult))!;
             });
         }
 
@@ -512,7 +513,7 @@ namespace LiteOrm.Common
         {
             var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
             var scalarValue = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-            return _resultConverter(scalarValue);
+            return _resultConverter(scalarValue!);
         }
     }
 
@@ -572,8 +573,8 @@ namespace LiteOrm.Common
         /// <summary>
         /// 读取 IDataReader 的一行数据并将其转换为 DataRow 的委托，允许用户自定义行转换逻辑，为空时使用默认转换逻辑。
         /// </summary>
-        public Func<IDataReader, DataTable, DataRow> ReadRowHandler;
-        private DataTable _dataTable;
+        public Func<IDataReader, DataTable, DataRow>? ReadRowHandler;
+        private DataTable? _dataTable;
 
         /// <summary>
         /// 初始化 <see cref="DataTableResult"/> 类的新实例。
@@ -581,7 +582,7 @@ namespace LiteOrm.Common
         /// <param name="dao">要执行的数据库DAO对象。</param>
         /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
         /// <param name="readRowHandler">将 <see cref="IDataReader"/> 的一行数据转换为 <see cref="DataRow"/> 的委托。</param>
-        public DataTableResult(DAOBase dao, PreparedSql sql, Func<IDataReader, DataTable, DataRow> readRowHandler = null)
+        public DataTableResult(DAOBase dao, PreparedSql sql, Func<IDataReader, DataTable, DataRow>? readRowHandler = null)
             : base(dao, sql)
         {
             ReadRowHandler = readRowHandler;
@@ -593,7 +594,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="preparedCommand">预构建并可能缓存的数据库命令代理。</param>
         /// <param name="readRowHandler">可选的行映射委托。</param>
-        public DataTableResult(DbCommandProxy preparedCommand, Func<IDataReader, DataTable, DataRow> readRowHandler = null)
+        public DataTableResult(DbCommandProxy preparedCommand, Func<IDataReader, DataTable, DataRow>? readRowHandler = null)
             : base(preparedCommand)
         {
             ReadRowHandler = readRowHandler;
@@ -610,7 +611,7 @@ namespace LiteOrm.Common
             {
                 LoadData();
             }
-            return _dataTable;
+            return _dataTable!;
         }
 
         /// <summary>
@@ -624,7 +625,7 @@ namespace LiteOrm.Common
             {
                 await LoadDataAsync(cancellationToken);
             }
-            return _dataTable;
+            return _dataTable!;
         }
 
         /// <summary>

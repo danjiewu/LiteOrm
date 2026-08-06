@@ -64,7 +64,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Constructor_WithNullServiceTypes_LeavesServiceTypesNull()
         {
-            var attribute = new AutoRegisterAttribute(serviceTypes: null);
+            var attribute = new AutoRegisterAttribute(serviceTypes: null!);
 
             Assert.Null(attribute.ServiceTypes);
         }

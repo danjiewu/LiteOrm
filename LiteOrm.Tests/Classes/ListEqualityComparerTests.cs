@@ -37,7 +37,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var comparer = new ListEqualityComparer<int>();
 
-            Assert.Equal(0, comparer.GetHashCode(null));
+            Assert.Equal(0, comparer.GetHashCode(null!));
         }
 
         [Fact]
