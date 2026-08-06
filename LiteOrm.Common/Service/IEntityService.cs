@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Service
 {
@@ -56,7 +57,7 @@ namespace LiteOrm.Service
     [Service]
     [ServicePermission(false)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    public interface IEntityService<T> : IEntityService
+    public interface IEntityService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : IEntityService
     {
         /// <summary>
         /// 新增实体
