@@ -3,11 +3,11 @@
 	<PropertyGroup>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<RootNamespace>LiteOrm.DependencyInjection</RootNamespace>
-		<AssemblyVersion>8.1.0.0</AssemblyVersion>
-		<FileVersion>8.1.0.0</FileVersion>
+		<AssemblyVersion>8.1.1.0</AssemblyVersion>
+		<FileVersion>8.1.1.0</FileVersion>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<VersionPrefix>8.1.0</VersionPrefix>
+		<VersionPrefix>8.1.1</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm.DependencyInjection</Title>
 		<Authors>danjiewu</Authors>
@@ -18,6 +18,9 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
+8.1.1 New Features:
+- RegisterLiteOrm() 的 LiteOrmOptions 新增 AutoRegisterServices 选项（默认 true），设为 false 可跳过自动扫描注册。
+
 8.1.0 (New Package):
 - 新增 LiteOrm.DependencyInjection 包，RegisterLiteOrm() 由 LiteOrm 基础包移至本包（命名空间 LiteOrm.DependencyInjection）。
 

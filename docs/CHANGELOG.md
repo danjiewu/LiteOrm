@@ -1,5 +1,16 @@
 # 变更日志 (Changelog)
 
+## v8.1.1 (2026-08-07)
+
+### 新增功能
+- `RegisterLiteOrm()` 的 `LiteOrmOptions` 新增 `AutoRegisterServices` 选项（默认 `true`），设为 `false` 可跳过自动扫描注册 (`009d2c3`)
+
+### 改进
+- 非 AOT 模式自动注册改用运行时程序集扫描（`LiteOrmAutoRegistration.Apply()`），不再生成源代码；AOT 模式仍由源生成器编译期生成，二者按 `RuntimeFeature.IsDynamicCodeSupported` 自动分流 (`009d2c3`)
+- `AutoRegisterGenerator` 的 AOT 判定与 `TableInfoGenerator` 统一，读取 `build_property.enableaotanalyzer` / `enabletrimanalyzer` 等分析器属性 (`009d2c3`)
+
+---
+
 ## v8.1.0 (2026-08-02)
 
 ### Breaking Changes
@@ -21,7 +32,7 @@
 - 宿主集成 / Remote 使用单例 `ProxyGenerator` 优化性能 (`8f8753d`)
 - `AttributeTableInfoProvider` 不再依赖 `SqlBuilderFactory`、`DataSourceProvider` (`b50b49a`)
 - 优化建表加锁机制，避免发生死锁 (`148f2ac`)
-- DAO、Service 增加 AOT 相关特性标注 (`36641fa`, `05e9305`, `1737234`, `e68ded4`)
+- DAO、Service 增加 AOT 相关特性标注 (`36641fa`, `0599305`, `1737234`, `e68ded4`)
 - `ColumnDefinition.DbType` 可为空，运行时自动判定 DbType 类型 (`09bd95d`)
 
 ---

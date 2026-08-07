@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.1.0.0</AssemblyVersion>
-		<FileVersion>8.1.0.0</FileVersion>
+		<AssemblyVersion>8.1.1.0</AssemblyVersion>
+		<FileVersion>8.1.1.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.1.0</VersionPrefix>
+		<VersionPrefix>8.1.1</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,6 +16,10 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 		<PackageReleaseNotes>
+8.1.1 改进:
+- 非 AOT 模式自动注册改用运行时程序集扫描（LiteOrmAutoRegistration.Apply()），不再生成源代码；AOT 模式仍由源生成器编译期生成，按 RuntimeFeature.IsDynamicCodeSupported 自动分流；
+- AutoRegisterGenerator 的 AOT 判定与 TableInfoGenerator 统一。
+
 8.1.0 Breaking Changes:
 - RegisterLiteOrm() 移至 LiteOrm.DependencyInjection 包（命名空间由 LiteOrm 改为 LiteOrm.DependencyInjection）；
 - 自定义 IBulkProvider 不再使用特性标记，BulkProviderFactory / BulkProviderAttribute 已移除，改为直接设置 SqlBuilder.BulkProvider 属性；
