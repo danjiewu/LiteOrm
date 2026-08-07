@@ -927,7 +927,7 @@ namespace LiteOrm
             {
                 DbParameter param = command.CreateParameter();
                 param.Direction = ParameterDirection.Output;
-                param.Size = IdentityColumn.Length;
+                if(IdentityColumn.Length > 0) param.Size = IdentityColumn.Length;
                 param.DbType = IdentityColumn.ToDbType(SqlBuilder);
                 param.ParameterName = ToParamName(Constants.IdentityParamName);
                 command.Parameters.Add(param);

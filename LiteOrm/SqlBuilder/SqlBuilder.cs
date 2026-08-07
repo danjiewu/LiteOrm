@@ -977,7 +977,9 @@ namespace LiteOrm
             {
                 case DbType.String:
                 case DbType.AnsiString:
-                    return column.Length > 0 && column.Length <= 4000 ? $"VARCHAR({column.Length})" : "TEXT";
+                    if (column.Length <= 0) return "VARCHAR(255)";
+                    else if (column.Length <= 4000) return $"VARCHAR({column.Length})";
+                    else return "TEXT";
                 case DbType.Int16: return "SMALLINT";
                 case DbType.Int32: return "INT";
                 case DbType.Int64: return "BIGINT";

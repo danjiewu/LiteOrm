@@ -127,7 +127,7 @@ namespace LiteOrm
                     column.IsUnique = columnAttribute.IsUnique;
                     column.IsIndex = columnAttribute.IsIndex;
                     column.DbType = columnAttribute.DbType;
-                    column.Length = columnAttribute.Length == 0 ? (column.DbType.HasValue ? DbTypeMap.GetDefaultLength(column.DbType.Value) : 0) : columnAttribute.Length;
+                    column.Length = columnAttribute.Length;
                     column.AllowNull = columnAttribute.AllowNull && (property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(property.PropertyType) is not null : true);
                     column.DefaultValue = columnAttribute.DefaultValue;
                     column.Constant = ParseConstant(property, columnAttribute.Constant);
@@ -141,14 +141,14 @@ namespace LiteOrm
             else
             {
                 // 无 ColumnAttribute 的属性：根据类型推断 DbType
-                DbType dbType = GetDbTypeInternal(property.PropertyType);
-                if (dbType == DbType.Object) return null;
+                DbType defaultDbType = GetDbTypeInternal(property.PropertyType);
+                if (defaultDbType == DbType.Object) return null;
 
                 ColumnDefinition column = new ColumnDefinition(property);
                 column.Name = property.Name;
                 column.Mode = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
-                column.DbType = dbType;
-                column.Length = DbTypeMap.GetDefaultLength(dbType);
+                column.DbType = defaultDbType;
+                column.Length = DbTypeMap.GetDefaultLength(defaultDbType);
                 column.AllowNull = property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(column.PropertyType) is not null : true;
                 column.ForeignTables = foreignTables;
                 return column;
@@ -181,7 +181,7 @@ namespace LiteOrm
         }
 
         private TableView? GenerateTableView(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] 
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
             Type objectType)
         {
             var tableDef = GetTableDefinition(objectType);
