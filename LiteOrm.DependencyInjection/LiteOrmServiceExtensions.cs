@@ -98,6 +98,44 @@ namespace LiteOrm.DependencyInjection
                             throw new InvalidOperationException("Failed to register LiteOrm services automatically", ex);
                         }
                     }
+                    else
+                    {
+                        // 显式注册核心实体服务与数据访问对象， 注册顺序决定了 IEntityViewService<> 解析到 EntityViewService<>，
+                        // IEntityService<>/IEntityServiceAsync<> 解析到 EntityService<>。
+                        // 注意：启用 EnableInterfaceInterceptors 时不能注册 AsSelf（具体类型非接口）
+                        builder.RegisterGeneric(typeof(EntityService<>))
+                            .As(typeof(IEntityService<>))
+                            .As(typeof(IEntityServiceAsync<>))
+                            .EnableInterfaceInterceptors()
+                            .InterceptedBy(typeof(ServiceInvokeInterceptor))
+                            .InstancePerLifetimeScope();
+
+                        builder.RegisterGeneric(typeof(EntityViewService<>))
+                            .As(typeof(IEntityViewService<>))
+                            .As(typeof(IEntityViewServiceAsync<>))
+                            .EnableInterfaceInterceptors()
+                            .InterceptedBy(typeof(ServiceInvokeInterceptor))
+                            .InstancePerLifetimeScope();
+
+                        builder.RegisterGeneric(typeof(ObjectDAO<>))
+                            .AsSelf()
+                            .As(typeof(IObjectDAO<>))
+                            .InstancePerLifetimeScope();
+
+                        builder.RegisterGeneric(typeof(ObjectViewDAO<>))
+                            .AsSelf()
+                            .As(typeof(IObjectViewDAO<>))
+                            .InstancePerLifetimeScope();
+
+                        builder.RegisterGeneric(typeof(DataDAO<>))
+                            .AsSelf()
+                            .InstancePerLifetimeScope();
+
+                        builder.RegisterGeneric(typeof(DataViewDAO<>))
+                            .AsSelf()
+                            .As(typeof(IDataViewDAO<>))
+                            .InstancePerLifetimeScope();
+                    }
 
                     // 注册自定义 SqlBuilder
                     foreach (var kvp in options.SqlBuilders)
@@ -189,42 +227,6 @@ namespace LiteOrm.DependencyInjection
 
             // 会话管理器 - 每作用域一个实例
             builder.RegisterType<SessionManager>()
-                .InstancePerLifetimeScope();
-
-            // 显式注册核心实体服务与数据访问对象， 注册顺序决定了 IEntityViewService<> 解析到 EntityViewService<>，
-            // IEntityService<>/IEntityServiceAsync<> 解析到 EntityService<>。
-            // 注意：启用 EnableInterfaceInterceptors 时不能注册 AsSelf（具体类型非接口）
-            builder.RegisterGeneric(typeof(EntityService<>))
-                .As(typeof(IEntityService<>))
-                .As(typeof(IEntityServiceAsync<>))
-                .EnableInterfaceInterceptors()
-                .InterceptedBy(typeof(ServiceInvokeInterceptor))
-                .InstancePerLifetimeScope();
-
-            builder.RegisterGeneric(typeof(EntityViewService<>))
-                .As(typeof(IEntityViewService<>))
-                .As(typeof(IEntityViewServiceAsync<>))
-                .EnableInterfaceInterceptors()
-                .InterceptedBy(typeof(ServiceInvokeInterceptor))
-                .InstancePerLifetimeScope();
-
-            builder.RegisterGeneric(typeof(ObjectDAO<>))
-                .AsSelf()
-                .As(typeof(IObjectDAO<>))
-                .InstancePerLifetimeScope();
-
-            builder.RegisterGeneric(typeof(ObjectViewDAO<>))
-                .AsSelf()
-                .As(typeof(IObjectViewDAO<>))
-                .InstancePerLifetimeScope();
-
-            builder.RegisterGeneric(typeof(DataDAO<>))
-                .AsSelf()
-                .InstancePerLifetimeScope();
-
-            builder.RegisterGeneric(typeof(DataViewDAO<>))
-                .AsSelf()
-                .As(typeof(IDataViewDAO<>))
                 .InstancePerLifetimeScope();
 
             // 表信息提供程序 - 单例
@@ -488,12 +490,13 @@ namespace LiteOrm.DependencyInjection
                     "Applied interception to '{Type}' with interceptor '{Interceptor}'",
                     implementationType.FullName, interceptAttribute.InterceptorType.FullName);
             }
-            else if (typeof(IEntityViewService).IsAssignableFrom(implementationType) || typeof(IEntityService).IsAssignableFrom(implementationType) || typeof(IEntityViewServiceAsync).IsAssignableFrom(implementationType) || typeof(IEntityServiceAsync).IsAssignableFrom(implementationType))
+            else if (HasServiceAttribute(implementationType))
             {
+                // 带 [Service] 特性的类型自动应用服务调用拦截器
                 registration.EnableInterfaceInterceptors()
                     .InterceptedBy(typeof(ServiceInvokeInterceptor));
                 logger?.LogDebug(
-                    "Applied interception to '{Type}' with interceptor 'ServiceInvokeInterceptor'",
+                    "Applied interception to '{Type}' with interceptor 'ServiceInvokeInterceptor' ([Service])",
                     implementationType.FullName);
             }
             else if (hasAdditionalServices)
@@ -502,7 +505,7 @@ namespace LiteOrm.DependencyInjection
                 // （Autofac 中 .As() 会覆盖默认的自身注册）
                 // 注意：启用 EnableInterfaceInterceptors 时不能注册非接口类型作为服务，
                 // 否则 EnsureInterfaceInterceptionApplies 会抛出异常
-                    registration.As(implementationType);
+                registration.As(implementationType);
             }
         }
 
@@ -524,50 +527,70 @@ namespace LiteOrm.DependencyInjection
 
         /// <summary>
         /// 计算类型应注册的服务类型集合。
+        /// <para>
+        /// <see cref="RegisterPolicy.All"/>（默认）：非 System、非标记接口 + 实现类型自身；
+        /// <see cref="RegisterPolicy.Interface"/>：仅已实现接口（排除带 <c>[AutoRegister(false)]</c> 的接口）；
+        /// <see cref="RegisterPolicy.Self"/>：仅实现类型自身。
+        /// </para>
         /// </summary>
         private static List<Type> GetServiceTypes(Type implementationType, AutoRegisterAttribute? attr)
         {
+            var mode = attr?.Policy ?? RegisterPolicy.All;
             var serviceTypes = new List<Type>();
 
-            if (attr?.ServiceTypes is not null && attr.ServiceTypes.Any())
+            // 没有拦截特性时，将实现类型自身也注册为服务（Autofac 拦截时不能注册非接口自身）
+            var hasIntercept = HasInterceptAttribute(implementationType);
+
+            if (mode == RegisterPolicy.Self)
             {
-                serviceTypes.AddRange(attr.ServiceTypes);
+                if (!hasIntercept) serviceTypes.Add(implementationType);
+                return serviceTypes;
             }
-            else
+
+            foreach (var serviceType in implementationType.GetInterfaces()
+                .Where(i => i.Namespace != null
+                         && !i.Namespace.StartsWith("System.")
+                         && i.Namespace != "System"
+                         && !IsExcludedMarkerInterface(i)
+                         && (i.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? true)))
             {
-                foreach (var serviceType in implementationType.GetInterfaces()
-                    .Where(i => i.Namespace != null
-                             && !i.Namespace.StartsWith("System.")
-                             && i.Namespace != "System"
-                             && !IsExcludedMarkerInterface(i)
-                             && (i.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? true)))
+                if (implementationType.IsGenericTypeDefinition && serviceType.IsGenericType)
                 {
-                    if (implementationType.IsGenericTypeDefinition && serviceType.IsGenericType)
+                    if (implementationType.GetGenericArguments().Length == serviceType.GenericTypeArguments.Length
+                        && serviceType.GenericTypeArguments.All(t => t.DeclaringType == implementationType))
                     {
-                        if (implementationType.GetGenericArguments().Length == serviceType.GenericTypeArguments.Length
-                            && serviceType.GenericTypeArguments.All(t => t.DeclaringType == implementationType))
-                        {
-                            serviceTypes.Add(serviceType.GetGenericTypeDefinition());
-                        }
+                        serviceTypes.Add(serviceType.GetGenericTypeDefinition());
                     }
-                    else if (!implementationType.IsGenericTypeDefinition)
-                    {
-                        serviceTypes.Add(serviceType);
-                    }
+                }
+                else if (!implementationType.IsGenericTypeDefinition)
+                {
+                    serviceTypes.Add(serviceType);
                 }
             }
 
-            // 没有拦截特性时，将实现类型自身也注册为服务
-            var hasIntercept = implementationType.GetCustomAttribute<InterceptAttribute>() != null
-                || implementationType.GetInterfaces()
-                    .Any(i => i.GetCustomAttribute<InterceptAttribute>() != null);
-
-            if (!hasIntercept && !serviceTypes.Contains(implementationType))
-            {
+            if (mode == RegisterPolicy.All && !hasIntercept && !serviceTypes.Contains(implementationType))
                 serviceTypes.Add(implementationType);
-            }
 
             return serviceTypes;
+        }
+
+        /// <summary>
+        /// 判断实现类型或其接口是否声明了 <see cref="InterceptAttribute"/>。
+        /// </summary>
+        private static bool HasInterceptAttribute(Type implementationType)
+        {
+            return implementationType.GetCustomAttribute<InterceptAttribute>() != null
+                || implementationType.GetInterfaces().Any(i => i.GetCustomAttribute<InterceptAttribute>() != null);
+        }
+
+        /// <summary>
+        /// 判断实现类型或其接口是否带 <see cref="ServiceAttribute"/> 且 <see cref="ServiceAttribute.IsService"/> 为 <c>true</c>。
+        /// </summary>
+        private static bool HasServiceAttribute(Type implementationType)
+        {
+            return implementationType.GetCustomAttributes<ServiceAttribute>(true).Any(a => a.IsService)
+                || implementationType.GetInterfaces()
+                    .Any(i => i.GetCustomAttributes<ServiceAttribute>(true).Any(a => a.IsService));
         }
     }
 }

@@ -56,20 +56,24 @@ namespace LiteOrm
 
             // Scoped 服务——每个作用域获得独立的 SessionManager
             services.AddScoped<SessionManager>();
-            // 泛型 DAO 与服务（Scoped）。
-            services.AddScoped(typeof(ObjectDAO<>));
-            services.AddScoped(typeof(ObjectViewDAO<>));
-            services.AddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
-            services.AddScoped(typeof(IObjectViewDAO<>), typeof(ObjectViewDAO<>));
-            services.AddScoped(typeof(EntityService<>));
-            services.AddScoped(typeof(EntityViewService<>));
-            services.AddScoped(typeof(IEntityService<>), typeof(EntityService<>));
-            services.AddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
+           
 
             // 自动注册自定义服务与 DAO（源生成器生成的注册代码 + 可选程序集扫描）
             if (options.AutoRegisterServices)
             {
                 LiteOrmAutoRegistration.Apply(services);
+            }
+            else
+            {
+                // 泛型 DAO 与服务（Scoped）。
+                services.AddScoped(typeof(ObjectDAO<>));
+                services.AddScoped(typeof(ObjectViewDAO<>));
+                services.AddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
+                services.AddScoped(typeof(IObjectViewDAO<>), typeof(ObjectViewDAO<>));
+                services.AddScoped(typeof(EntityService<>));
+                services.AddScoped(typeof(EntityViewService<>));
+                services.AddScoped(typeof(IEntityService<>), typeof(EntityService<>));
+                services.AddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
             }
 
             // 追加自定义服务注册

@@ -14,7 +14,7 @@ namespace LiteOrm.Common.UnitTests
 
             Assert.Equal(Lifetime.Singleton, attribute.Lifetime);
             Assert.True(attribute.Enabled);
-            Assert.Null(attribute.ServiceTypes);
+            Assert.Equal(RegisterPolicy.All, attribute.Policy);
             Assert.Null(attribute.Key);
             Assert.False(attribute.AutoActivate);
         }
@@ -28,7 +28,7 @@ namespace LiteOrm.Common.UnitTests
             var attribute = new AutoRegisterAttribute(lifetime);
 
             Assert.Equal(lifetime, attribute.Lifetime);
-            Assert.Null(attribute.ServiceTypes);
+            Assert.Equal(RegisterPolicy.All, attribute.Policy);
         }
 
         [Theory]
@@ -42,31 +42,27 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal(Lifetime.Singleton, attribute.Lifetime);
         }
 
-        [Fact]
-        public void Constructor_WithServiceTypes_SetsArrayReference()
+        [Theory]
+        [InlineData(RegisterPolicy.All)]
+        [InlineData(RegisterPolicy.Self)]
+        [InlineData(RegisterPolicy.Interface)]
+        public void Constructor_WithServiceTypes_SetsServiceTypes(RegisterPolicy serviceTypes)
         {
-            var serviceTypes = new[] { typeof(string), typeof(int) };
             var attribute = new AutoRegisterAttribute(serviceTypes);
 
-            Assert.Same(serviceTypes, attribute.ServiceTypes);
+            Assert.Equal(serviceTypes, attribute.Policy);
         }
 
-        [Fact]
-        public void Constructor_WithLifetimeAndServiceTypes_SetsBoth()
+        [Theory]
+        [InlineData(Lifetime.Scoped, RegisterPolicy.Self)]
+        [InlineData(Lifetime.Transient, RegisterPolicy.Interface)]
+        [InlineData(Lifetime.Singleton, RegisterPolicy.All)]
+        public void Constructor_WithLifetimeAndServiceTypes_SetsBoth(Lifetime lifetime, RegisterPolicy serviceTypes)
         {
-            var serviceTypes = new[] { typeof(string) };
-            var attribute = new AutoRegisterAttribute(Lifetime.Scoped, serviceTypes);
+            var attribute = new AutoRegisterAttribute(lifetime, serviceTypes);
 
-            Assert.Equal(Lifetime.Scoped, attribute.Lifetime);
-            Assert.Same(serviceTypes, attribute.ServiceTypes);
-        }
-
-        [Fact]
-        public void Constructor_WithNullServiceTypes_LeavesServiceTypesNull()
-        {
-            var attribute = new AutoRegisterAttribute(serviceTypes: null!);
-
-            Assert.Null(attribute.ServiceTypes);
+            Assert.Equal(lifetime, attribute.Lifetime);
+            Assert.Equal(serviceTypes, attribute.Policy);
         }
     }
 }

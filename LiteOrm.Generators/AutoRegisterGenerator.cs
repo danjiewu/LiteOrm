@@ -26,7 +26,18 @@ namespace LiteOrm.Generators
     public class AutoRegisterGenerator : IIncrementalGenerator
     {
         private const string AutoRegisterAttributeFullTypeName = "LiteOrm.Common.AutoRegisterAttribute";
+        private const string AutoRegisterServiceTypesFullTypeName = "LiteOrm.Common.AutoRegisterServiceTypes";
         private const string ServiceLifetimeFullTypeName = "LiteOrm.Common.Lifetime";
+
+        /// <summary>
+        /// 与运行时 <c>LiteOrm.Common.AutoRegisterServiceTypes</c> 数值一致。
+        /// </summary>
+        private enum AutoRegisterMode
+        {
+            All = 0,
+            Self = 1,
+            Interface = 2
+        }
         private const string RegistryFullTypeName = "LiteOrm.LiteOrmAutoRegistration";
         private const string ServiceCollectionTypeName = "Microsoft.Extensions.DependencyInjection.IServiceCollection";
 
@@ -193,86 +204,77 @@ namespace LiteOrm.Generators
         };
 
         /// <summary>
-        /// 读取显式指定的服务类型（命名参数 <c>ServiceTypes</c> 或 <c>params Type[]</c> 构造函数参数）。
+        /// 读取注册的服务类型范围：命名参数 <c>ServiceTypes</c> 优先，其次构造函数位置参数，
+        /// 默认 <see cref="AutoRegisterMode.All"/>。
         /// </summary>
-        private static List<INamedTypeSymbol> GetExplicitServiceTypes(AttributeData attr)
+        private static AutoRegisterMode GetServiceMode(AttributeData attr)
         {
-            var result = new List<INamedTypeSymbol>();
-            TypedConstant? arrayTc = null;
-            if (TryGetNamedArg(attr, "ServiceTypes", out var tc) && tc.Kind == TypedConstantKind.Array)
-                arrayTc = tc;
-            else
+            if (TryGetNamedArg(attr, "ServiceTypes", out var tc) &&
+                !tc.IsNull && tc.Kind == TypedConstantKind.Enum && tc.Value is int modeInt)
             {
-                foreach (var arg in attr.ConstructorArguments)
-                {
-                    if (arg.Kind == TypedConstantKind.Array)
-                    {
-                        arrayTc = arg;
-                        break;
-                    }
-                }
+                return (AutoRegisterMode)modeInt;
             }
-
-            if (arrayTc != null)
+            foreach (var arg in attr.ConstructorArguments)
             {
-                foreach (var element in arrayTc.Value.Values)
-                {
-                    if (element.Value is INamedTypeSymbol typeSymbol)
-                        result.Add(typeSymbol);
-                }
+                if (arg.Type?.ToDisplayString() == AutoRegisterServiceTypesFullTypeName && arg.Value is int mi)
+                    return (AutoRegisterMode)mi;
             }
-            return result;
+            return AutoRegisterMode.All;
         }
 
         /// <summary>
-        /// 计算注册的服务类型集合，与运行时 <c>GetServiceTypes</c> 语义一致：
-        /// 显式 <c>ServiceTypes</c> 优先；否则取所有非 System、非标记接口的已实现接口；始终包含实现类型自身。
+        /// 计算注册的服务类型集合，与运行时 <c>GetServiceTypes</c> 语义一致。
+        /// <para>
+        /// <see cref="AutoRegisterMode.All"/>（默认）：非 System、非标记接口 + 实现类型自身；
+        /// <see cref="AutoRegisterMode.Interface"/>：仅已实现接口（排除带 <c>[AutoRegister(false)]</c> 的接口）；
+        /// <see cref="AutoRegisterMode.Self"/>：仅实现类型自身。
+        /// </para>
         /// </summary>
-        private static List<ITypeSymbol> GetServiceTypes(INamedTypeSymbol implementationType, AttributeData attr)
+        private static List<ITypeSymbol> GetServiceTypes(INamedTypeSymbol implementationType, AutoRegisterMode mode)
         {
             var serviceTypes = new List<ITypeSymbol>();
 
-            var explicitTypes = GetExplicitServiceTypes(attr);
-            if (explicitTypes.Any())
+            if (mode == AutoRegisterMode.Self)
             {
-                serviceTypes.AddRange(explicitTypes);
+                serviceTypes.Add(implementationType);
+                return serviceTypes;
             }
-            else
+
+            foreach (var iface in implementationType.AllInterfaces)
             {
-                foreach (var iface in implementationType.AllInterfaces)
+                var ns = iface.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+                if (ns.Length == 0 || ns == "System" || ns.StartsWith("System.", StringComparison.Ordinal))
+                    continue;
+                if (IsExcludedMarkerInterface(iface))
+                    continue;
+
+                var ifaceAttr = iface.GetAttributes().FirstOrDefault(a =>
+                    a.AttributeClass != null && a.AttributeClass.ToDisplayString() == AutoRegisterAttributeFullTypeName);
+                if (ifaceAttr != null && !IsEnabled(ifaceAttr))
+                    continue;
+
+                if (implementationType.IsGenericType)
                 {
-                    var ns = iface.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-                    if (ns.Length == 0 || ns == "System" || ns.StartsWith("System.", StringComparison.Ordinal))
-                        continue;
-                    if (IsExcludedMarkerInterface(iface))
-                        continue;
-
-                    var ifaceAttr = iface.GetAttributes().FirstOrDefault(a =>
-                        a.AttributeClass != null && a.AttributeClass.ToDisplayString() == AutoRegisterAttributeFullTypeName);
-                    if (ifaceAttr != null && !IsEnabled(ifaceAttr))
-                        continue;
-
-                    if (implementationType.IsGenericType)
+                    if (iface.IsGenericType &&
+                        implementationType.TypeParameters.Length == iface.TypeArguments.Length &&
+                        iface.TypeArguments.All(t => t.TypeKind == TypeKind.TypeParameter &&
+                                                     SymbolEqualityComparer.Default.Equals(
+                                                         ((ITypeParameterSymbol)t).DeclaringType, implementationType)))
                     {
-                        if (iface.IsGenericType &&
-                            implementationType.TypeParameters.Length == iface.TypeArguments.Length &&
-                            iface.TypeArguments.All(t => t.TypeKind == TypeKind.TypeParameter &&
-                                                         SymbolEqualityComparer.Default.Equals(
-                                                             ((ITypeParameterSymbol)t).DeclaringType, implementationType)))
-                        {
-                            serviceTypes.Add(iface.OriginalDefinition);
-                        }
+                        serviceTypes.Add(iface.OriginalDefinition);
                     }
-                    else
-                    {
-                        serviceTypes.Add(iface);
-                    }
+                }
+                else
+                {
+                    serviceTypes.Add(iface);
                 }
             }
 
-            // 始终将实现类型自身注册为服务（MS.DI 无拦截器，无需因 Intercept 跳过自身）
-            if (!serviceTypes.Any(s => SymbolEqualityComparer.Default.Equals(s, implementationType)))
+            if (mode == AutoRegisterMode.All &&
+                !serviceTypes.Any(s => SymbolEqualityComparer.Default.Equals(s, implementationType)))
+            {
                 serviceTypes.Add(implementationType);
+            }
 
             return serviceTypes;
         }
@@ -291,7 +293,7 @@ namespace LiteOrm.Generators
         private static Registration? BuildRegistration(INamedTypeSymbol type, AttributeData attr)
         {
             var lifetime = GetLifetime(attr);
-            var serviceTypes = GetServiceTypes(type, attr);
+            var serviceTypes = GetServiceTypes(type, GetServiceMode(attr));
             if (serviceTypes.Count == 0) return null;
 
             var registration = new Registration

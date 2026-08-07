@@ -28,20 +28,20 @@ namespace LiteOrm.Common
         public AutoRegisterAttribute(Lifetime lifetime) => Lifetime = lifetime;
 
         /// <summary>
-        /// 构造函数，指定服务类型
+        /// 构造函数，指定注册的服务类型范围
         /// </summary>
-        /// <param name="serviceTypes">服务类型数组</param>
-        public AutoRegisterAttribute(params Type[] serviceTypes) => ServiceTypes = serviceTypes;
+        /// <param name="policy">注册的服务类型范围</param>
+        public AutoRegisterAttribute(RegisterPolicy policy) => Policy = policy;
 
         /// <summary>
-        /// 构造函数，指定服务生命周期和服务类型
+        /// 构造函数，指定服务生命周期和注册的服务类型范围
         /// </summary>
         /// <param name="lifetime">服务生命周期</param>
-        /// <param name="serviceTypes">服务类型数组</param>
-        public AutoRegisterAttribute(Lifetime lifetime, params Type[] serviceTypes)
+        /// <param name="serviceTypes">注册的服务类型范围</param>
+        public AutoRegisterAttribute(Lifetime lifetime, RegisterPolicy serviceTypes)
         {
             Lifetime = lifetime;
-            ServiceTypes = serviceTypes;
+            Policy = serviceTypes;
         }
         /// <summary>
         /// 服务生命周期，默认为 Singleton
@@ -49,9 +49,9 @@ namespace LiteOrm.Common
         public Lifetime Lifetime { get; set; } = Lifetime.Singleton;
 
         /// <summary>
-        /// 支持多个服务类型
+        /// 注册的服务类型范围，默认为 All（实现类型自身及其接口）。
         /// </summary>
-        public Type[]? ServiceTypes { get; set; }
+        public RegisterPolicy Policy { get; set; } = RegisterPolicy.All;
 
         /// <summary>
         /// 是否启用自动注册

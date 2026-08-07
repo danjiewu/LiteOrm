@@ -188,42 +188,45 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 计算类型应注册的服务类型集合，与源生成器语义一致：
-        /// 显式 <c>ServiceTypes</c> 优先；否则取所有非 System、非标记接口的已实现接口；始终包含实现类型自身。
+        /// 计算类型应注册的服务类型集合，与源生成器语义一致。
+        /// <para>
+        /// <see cref="RegisterPolicy.All"/>（默认）：非 System、非标记接口 + 实现类型自身；
+        /// <see cref="RegisterPolicy.Interface"/>：仅已实现接口（排除带 <c>[AutoRegister(false)]</c> 的接口）；
+        /// <see cref="RegisterPolicy.Self"/>：仅实现类型自身。
+        /// </para>
         /// </summary>
         private static List<Type> GetServiceTypes(Type implementationType, AutoRegisterAttribute attr)
         {
             var serviceTypes = new List<Type>();
 
-            if (attr.ServiceTypes != null && attr.ServiceTypes.Length > 0)
+            if (attr.Policy == RegisterPolicy.Self)
             {
-                serviceTypes.AddRange(attr.ServiceTypes);
+                serviceTypes.Add(implementationType);
+                return serviceTypes;
             }
-            else
+
+            foreach (var serviceType in implementationType.GetInterfaces()
+                .Where(i => i.Namespace != null
+                         && i.Namespace != "System"
+                         && !i.Namespace.StartsWith("System.")
+                         && !IsExcludedMarkerInterface(i)
+                         && (i.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? true)))
             {
-                foreach (var serviceType in implementationType.GetInterfaces()
-                    .Where(i => i.Namespace != null
-                             && i.Namespace != "System"
-                             && !i.Namespace.StartsWith("System.")
-                             && !IsExcludedMarkerInterface(i)
-                             && (i.GetCustomAttribute<AutoRegisterAttribute>(true)?.Enabled ?? true)))
+                if (implementationType.IsGenericTypeDefinition && serviceType.IsGenericType)
                 {
-                    if (implementationType.IsGenericTypeDefinition && serviceType.IsGenericType)
+                    if (implementationType.GetGenericArguments().Length == serviceType.GenericTypeArguments.Length
+                        && serviceType.GenericTypeArguments.All(t => t.DeclaringType == implementationType))
                     {
-                        if (implementationType.GetGenericArguments().Length == serviceType.GenericTypeArguments.Length
-                            && serviceType.GenericTypeArguments.All(t => t.DeclaringType == implementationType))
-                        {
-                            serviceTypes.Add(serviceType.GetGenericTypeDefinition());
-                        }
+                        serviceTypes.Add(serviceType.GetGenericTypeDefinition());
                     }
-                    else if (!implementationType.IsGenericTypeDefinition)
-                    {
-                        serviceTypes.Add(serviceType);
-                    }
+                }
+                else if (!implementationType.IsGenericTypeDefinition)
+                {
+                    serviceTypes.Add(serviceType);
                 }
             }
 
-            if (!serviceTypes.Contains(implementationType))
+            if (attr.Policy == RegisterPolicy.All && !serviceTypes.Contains(implementationType))
                 serviceTypes.Add(implementationType);
 
             return serviceTypes;

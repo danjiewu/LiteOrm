@@ -46,6 +46,7 @@ namespace LiteOrm.Service
     /// var userAsync = await service.GetObjectAsync(userId);
     /// </code>
     /// </remarks>
+    [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class EntityViewService<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         TView> : IEntityViewService<TView>, IEntityViewServiceAsync<TView>, IEntityViewService, IEntityViewServiceAsync

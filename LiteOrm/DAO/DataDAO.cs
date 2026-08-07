@@ -9,6 +9,7 @@ namespace LiteOrm
     /// 提供针对数据的基本更新操作实现
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
+    [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class DataDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : DAOBase
     {
         /// <summary>
