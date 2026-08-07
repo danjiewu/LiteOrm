@@ -188,7 +188,7 @@ builder.Services.AddLiteOrm(options =>
 ```
 纯 MS DI 注册（无 Autofac / AOP），通过生成器自动注册 LiteOrm 核心服务（`SessionManager`、`DAOContextPoolFactory` 等），可支持 `[AutoRegister]` 方式生成注册。
 
-如需要更全面的自动会话管理、声明式事务、日志等**，请使用 [**LiteOrm.DependencyInjection**](https://www.nuget.org/packages/LiteOrm.DependencyInjection) 包。
+如需要更全面的**自动会话管理、声明式事务、日志等**，请使用 [**LiteOrm.DependencyInjection**](https://www.nuget.org/packages/LiteOrm.DependencyInjection) 包。
 
 ### AOT 支持
 

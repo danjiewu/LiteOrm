@@ -87,13 +87,16 @@ namespace LiteOrm.DependencyInjection
                     builder.RegisterCoreServices();
 
                     // 自动扫描并注册标记 [AutoRegister] 的服务（Autofac 版，含拦截器支持）
-                    try
+                    if (options.AutoRegisterServices)
                     {
-                        builder.RegisterAutoService(logger, options.Assemblies ?? Array.Empty<Assembly>());
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new InvalidOperationException("Failed to register LiteOrm services automatically", ex);
+                        try
+                        {
+                            builder.RegisterAutoService(logger, options.Assemblies ?? Array.Empty<Assembly>());
+                        }
+                        catch (Exception ex)
+                        {
+                            throw new InvalidOperationException("Failed to register LiteOrm services automatically", ex);
+                        }
                     }
 
                     // 注册自定义 SqlBuilder
@@ -188,11 +191,10 @@ namespace LiteOrm.DependencyInjection
             builder.RegisterType<SessionManager>()
                 .InstancePerLifetimeScope();
 
-            // 显式注册核心实体服务与数据访问对象。
-            // 注意：注册顺序决定了 IEntityViewService<> 解析到 EntityViewService<>，
+            // 显式注册核心实体服务与数据访问对象， 注册顺序决定了 IEntityViewService<> 解析到 EntityViewService<>，
             // IEntityService<>/IEntityServiceAsync<> 解析到 EntityService<>。
+            // 注意：启用 EnableInterfaceInterceptors 时不能注册 AsSelf（具体类型非接口）
             builder.RegisterGeneric(typeof(EntityService<>))
-                .AsSelf()
                 .As(typeof(IEntityService<>))
                 .As(typeof(IEntityServiceAsync<>))
                 .EnableInterfaceInterceptors()
@@ -200,7 +202,6 @@ namespace LiteOrm.DependencyInjection
                 .InstancePerLifetimeScope();
 
             builder.RegisterGeneric(typeof(EntityViewService<>))
-                .AsSelf()
                 .As(typeof(IEntityViewService<>))
                 .As(typeof(IEntityViewServiceAsync<>))
                 .EnableInterfaceInterceptors()
@@ -278,6 +279,12 @@ namespace LiteOrm.DependencyInjection
             /// <para>Scope 跟踪逻辑由本框架读取。</para>
             /// </summary>
             public bool RegisterScope { get; set; } = true;
+
+            /// <summary>
+            /// 是否自动扫描程序集注册标记 <c>[AutoRegister]</c> 的类型到 Autofac 容器（含拦截器支持）。
+            /// 默认为 <c>true</c>；设为 <c>false</c> 时跳过自动扫描，需手动注册服务。
+            /// </summary>
+            public bool AutoRegisterServices { get; set; } = true;
 
             /// <summary>
             /// 要扫描的程序集列表。

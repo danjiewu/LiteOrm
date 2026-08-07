@@ -9,12 +9,17 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace LiteOrm.Generators
 {
     /// <summary>
-    /// 增量源生成器：扫描编译单元中带 <c>[AutoRegister]</c> 特性的自定义服务与 DAO，
-    /// 在编译期生成注册代码，通过模块初始化器登记到 <c>LiteOrm.LiteOrmAutoRegistration</c>，
-    /// 使 <c>AddLiteOrm()</c> 能够自动注册自定义服务与 DAO。
+    /// 增量源生成器：在 AOT 模式下（<c>PublishAot=true</c> 或 <c>IsAotCompatible=true</c>）
+    /// 扫描编译单元中带 <c>[AutoRegister]</c> 特性的自定义服务与 DAO，在编译期生成注册代码，
+    /// 通过模块初始化器登记到 <c>LiteOrm.LiteOrmAutoRegistration</c>，使 <c>AddLiteOrm()</c>
+    /// 能够自动注册自定义服务与 DAO。
     /// <para>
     /// 与运行时反射扫描（Autofac 的 <c>RegisterAutoService</c>）等价，但注册信息在编译期确定，
     /// 无需 <c>Assembly.GetTypes()</c> / 反射，支持 NativeAOT 裁剪。
+    /// </para>
+    /// <para>
+    /// 非 AOT 模式（常规 JIT）下不生成注册代码，由 <c>LiteOrmAutoRegistration</c> 在运行时
+    /// 扫描程序集注册，避免重复注册。
     /// </para>
     /// </summary>
     [Generator]
@@ -74,9 +79,25 @@ namespace LiteOrm.Generators
                 .Collect()
                 .Combine(context.CompilationProvider);
 
-            context.RegisterSourceOutput(candidates, static (spc, source) =>
+            // AOT/裁剪模式才生成注册代码；非 AOT 模式由 LiteOrmAutoRegistration 运行时程序集扫描注册。
+            // 使用 SDK 提供给分析器可见的属性（build_property.* 小写）：
+            // - enableaotanalyzer=true：PublishAot=true 或 IsAotCompatible=true
+            // - enabletrimanalyzer=true：PublishTrimmed=true 或 IsTrimmable=true
+            var aotMode = context.AnalyzerConfigOptionsProvider.Select(static (provider, _) =>
             {
-                var (items, compilation) = source;
+                bool IsTrue(string key) => provider.GlobalOptions.TryGetValue(key, out string? v) && v == "true";
+                return IsTrue("build_property.enableaotanalyzer")
+                    || IsTrue("build_property.enabletrimanalyzer")
+                    || IsTrue("build_property.publishaot")
+                    || IsTrue("build_property.isaotcompatible")
+                    || IsTrue("build_property.publishtrimmed")
+                    || IsTrue("build_property.istrimmable");
+            });
+
+            context.RegisterSourceOutput(candidates.Combine(aotMode), static (spc, source) =>
+            {
+                var (items, compilation) = source.Left;
+                if (!source.Right) return; // 非 AOT：不生成注册代码，交由运行时扫描程序集。
 
                 // 运行时注册中心（LiteOrm 核心程序集）必须可用，且编译需引用 DI 抽象
                 if (compilation.GetTypeByMetadataName(RegistryFullTypeName) == null) return;
