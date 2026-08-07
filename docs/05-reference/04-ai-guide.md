@@ -50,19 +50,56 @@
 
 ### 服务注册
 
-```csharp
-// 基本注册
-builder.Host.RegisterLiteOrm();
+LiteOrm 提供两条注册路径，按是否需要 AOP 拦截选择：
 
-// 带选项注册
+| 路径 | 包 | 调用位置 | AOP 拦截 |
+| --- | --- | --- | --- |
+| `AddLiteOrm()` | `LiteOrm`（基础库） | `builder.Services.AddLiteOrm(...)` | ❌ |
+| `RegisterLiteOrm()` | `LiteOrm.DependencyInjection` | `builder.Host.RegisterLiteOrm(...)` | ✅ Autofac + Castle 动态代理 |
+
+#### AddLiteOrm（纯 MS DI，无 AOP）
+
+```csharp
+using LiteOrm;
+
+builder.Services.AddLiteOrm();                        // 基本注册
+
+builder.Services.AddLiteOrm(options =>
+{
+    options.AutoRegisterServices = true;              // 默认 true，自动注册 [AutoRegister] 类型
+    options.ConfigureServices = sc => sc.AddMyApp();  // 追加自定义服务注册钩子（可选）
+});
+```
+
+#### RegisterLiteOrm（Autofac + AOP）
+
+```csharp
+using LiteOrm.DependencyInjection;
+
+builder.Host.RegisterLiteOrm();                        // 基本注册
+
 builder.Host.RegisterLiteOrm(options =>
 {
-    options.RegisterScope = true;                          // 默认 true，自动管理 DI Scope 生命周期
-    options.Assemblies = new[] { typeof(MyService).Assembly }; // 限定扫描程序集（默认扫描全部）
+    options.AutoRegisterServices = true;                          // 默认 true，扫描注册 [AutoRegister] 类型（含拦截器支持）
+    options.RegisterScope = true;                                // 默认 true，自动管理 DI Scope 生命周期
+    options.Assemblies = new[] { typeof(MyService).Assembly };    // 限定扫描程序集（默认扫描全部）
     options.RegisterSqlBuilder("DefaultConnection", new MySqlBuilder()); // 按数据源名称注册
     options.RegisterSqlBuilder(typeof(SqlConnection), new MySqlBuilder()); // 按连接类型注册
 });
 ```
+
+#### `[AutoRegister]` 自动注册机制
+
+标记 `[AutoRegister]` 的类型会被自动注册到 DI 容器。注册方式按构建模式自动选择，无需手动切换：
+
+| 构建模式 | 注册方式 | 说明 |
+| --- | --- | --- |
+| AOT / 裁剪（`PublishAot` / `IsAotCompatible` / `PublishTrimmed` 等为 `true`） | 编译期源生成器（`LiteOrm.Generators.AutoRegisterGenerator`） | 生成 `LiteOrmAutoRegister.g.cs`，由模块初始化器登记注册回调，无反射、AOT 友好 |
+| 非 AOT（默认） | 运行时程序集扫描 | `LiteOrmAutoRegistration.Apply()` 反射扫描引用程序集中带 `[AutoRegister]` 的类型 |
+
+- 两条路径均由 `AutoRegisterServices` 选项（默认 `true`）控制，设为 `false` 时完全跳过自动注册，需手动注册服务。
+- `AddLiteOrm()`：AOT 模式应用生成代码，非 AOT 模式走运行时扫描（由 `RuntimeFeature.IsDynamicCodeSupported` 自动分流）。
+- `RegisterLiteOrm()`：Autofac 程序集扫描注册，并自动应用 `[InterceptAttribute]` 与 `IEntityService` 系列接口的 Castle 拦截器。
 
 ## 二、实体与视图定义
 
@@ -351,7 +388,7 @@ ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
 | `[TableJoin(typeof(T), ForeignKeys, AliasName, AutoExpand)]` | 类级关联定义，支持复合键和路径复用            |
 | `[ForeignColumn(typeof(T), Property)]`                       | 从关联表获取的列（用于视图）               |
 | `[Transaction]`                                              | 声明式事务                        |
-| `[AutoRegister]`                                             | 自动注册到 DI 容器                  |
+| `[AutoRegister]`                                             | 自动注册到 DI 容器；AOT 模式由源生成器编译期生成注册代码，非 AOT 模式运行时程序集扫描 |
 
 ## 八、Expr 表达式系统
 

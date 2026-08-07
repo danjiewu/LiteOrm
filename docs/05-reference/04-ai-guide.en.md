@@ -50,19 +50,56 @@
 
 ### Service registration
 
-```csharp
-// Basic registration
-builder.Host.RegisterLiteOrm();
+LiteOrm provides two registration paths, chosen by whether AOP interception is needed:
 
-// Registration with options
+| Path | Package | Call site | AOP interception |
+| --- | --- | --- | --- |
+| `AddLiteOrm()` | `LiteOrm` (base library) | `builder.Services.AddLiteOrm(...)` | ❌ |
+| `RegisterLiteOrm()` | `LiteOrm.DependencyInjection` | `builder.Host.RegisterLiteOrm(...)` | ✅ Autofac + Castle dynamic proxy |
+
+#### AddLiteOrm (plain MS DI, no AOP)
+
+```csharp
+using LiteOrm;
+
+builder.Services.AddLiteOrm();                        // Basic registration
+
+builder.Services.AddLiteOrm(options =>
+{
+    options.AutoRegisterServices = true;              // Default true; auto-registers [AutoRegister] types
+    options.ConfigureServices = sc => sc.AddMyApp();  // Optional custom service registration hook
+});
+```
+
+#### RegisterLiteOrm (Autofac + AOP)
+
+```csharp
+using LiteOrm.DependencyInjection;
+
+builder.Host.RegisterLiteOrm();                        // Basic registration
+
 builder.Host.RegisterLiteOrm(options =>
 {
-    options.RegisterScope = true;                          // Default is true; automatically manages the DI scope lifecycle
-    options.Assemblies = new[] { typeof(MyService).Assembly }; // Restrict scanned assemblies (defaults to scanning all)
+    options.AutoRegisterServices = true;                          // Default true; scans and registers [AutoRegister] types (with interception)
+    options.RegisterScope = true;                                // Default true; automatically manages DI scope lifecycle
+    options.Assemblies = new[] { typeof(MyService).Assembly };    // Restrict scanned assemblies (defaults to scanning all)
     options.RegisterSqlBuilder("DefaultConnection", new MySqlBuilder()); // Register by data source name
     options.RegisterSqlBuilder(typeof(SqlConnection), new MySqlBuilder()); // Register by connection type
 });
 ```
+
+#### `[AutoRegister]` auto-registration mechanism
+
+Types marked with `[AutoRegister]` are automatically registered into the DI container. The registration method is chosen automatically by the build mode — no manual switching required:
+
+| Build mode | Registration method | Notes |
+| --- | --- | --- |
+| AOT / trim (`PublishAot` / `IsAotCompatible` / `PublishTrimmed` etc. set to `true`) | Compile-time source generator (`LiteOrm.Generators.AutoRegisterGenerator`) | Emits `LiteOrmAutoRegister.g.cs`; a module initializer registers the callback. No reflection, AOT-friendly |
+| Non-AOT (default) | Runtime assembly scan | `LiteOrmAutoRegistration.Apply()` reflects over referenced assemblies for `[AutoRegister]` types |
+
+- Both paths are controlled by the `AutoRegisterServices` option (default `true`); set to `false` to skip auto-registration entirely and register services manually.
+- `AddLiteOrm()`: applies generated code in AOT mode, runtime scan in non-AOT mode (auto-dispatched via `RuntimeFeature.IsDynamicCodeSupported`).
+- `RegisterLiteOrm()`: Autofac assembly-scan registration; automatically applies Castle interceptors from `[InterceptAttribute]` and the `IEntityService` interface family.
 
 ## 2. Entity and view definitions
 
@@ -351,7 +388,7 @@ ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
 | `[TableJoin(typeof(T), ForeignKeys, AliasName, AutoExpand)]` | Type-level relation definition supporting composite keys and path reuse |
 | `[ForeignColumn(typeof(T), Property)]` | Column projected from a related table (for view models) |
 | `[Transaction]` | Declarative transaction |
-| `[AutoRegister]` | Automatically registers the type into the DI container |
+| `[AutoRegister]` | Automatically registers the type into the DI container; AOT mode uses a compile-time source generator, non-AOT mode uses runtime assembly scan |
 
 ## 8. Expr expression system
 
