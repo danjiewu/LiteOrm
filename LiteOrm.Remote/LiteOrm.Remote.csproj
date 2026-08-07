@@ -6,11 +6,13 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程服务调用</Description>
-    <AssemblyVersion>8.0.4.0</AssemblyVersion>
-    <FileVersion>8.0.4.0</FileVersion>
-    <VersionPrefix>8.0.4</VersionPrefix>
+    <AssemblyVersion>8.1.1.0</AssemblyVersion>
+    <FileVersion>8.1.1.0</FileVersion>
+    <VersionPrefix>8.1.1</VersionPrefix>
     <PackageReleaseNotes>
-      LiteOrm.Common更新至8.1；
+      LiteOrm.Common更新至8.1.1；
+      [AutoRegister]的ServiceTypes改为枚举AutoRegisterServiceTypes（All/Self/Interface）；
+      带[Service]特性的类型在RegisterLiteOrm自动注册时自动应用ServiceInvokeInterceptor；
       ProxyGenerator采用单例模式。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>

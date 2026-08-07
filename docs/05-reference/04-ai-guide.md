@@ -98,8 +98,9 @@ builder.Host.RegisterLiteOrm(options =>
 | 非 AOT（默认） | 运行时程序集扫描 | `LiteOrmAutoRegistration.Apply()` 反射扫描引用程序集中带 `[AutoRegister]` 的类型 |
 
 - 两条路径均由 `AutoRegisterServices` 选项（默认 `true`）控制，设为 `false` 时完全跳过自动注册，需手动注册服务。
+- 注册范围由 `[AutoRegister]` 的 `ServiceTypes` 枚举 `AutoRegisterServiceTypes` 控制：`All`（默认，实现类型自身 + 接口）、`Self`（仅自身）、`Interface`（仅接口）。
 - `AddLiteOrm()`：AOT 模式应用生成代码，非 AOT 模式走运行时扫描（由 `RuntimeFeature.IsDynamicCodeSupported` 自动分流）。
-- `RegisterLiteOrm()`：Autofac 程序集扫描注册，并自动应用 `[InterceptAttribute]` 与 `IEntityService` 系列接口的 Castle 拦截器。
+- `RegisterLiteOrm()`：Autofac 程序集扫描注册，并自动应用 `[InterceptAttribute]`、`IEntityService` 系列接口，以及带 `[Service]`（`IsService=true`）特性的类型的 Castle 拦截器（`ServiceInvokeInterceptor`）。
 
 ## 二、实体与视图定义
 

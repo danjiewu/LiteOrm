@@ -92,6 +92,8 @@ builder.Services.AddLiteOrm(options =>
 
 - `[AutoRegister]` can now be declared on a base class; derived classes inherit the registration behavior.
 - The `LiteOrm.Generators` source generator scans `[AutoRegister]` types at compile time and emits registration code (equivalent to runtime reflection scanning, but without `Assembly.GetTypes()` and compatible with NativeAOT trimming). Both `RegisterLiteOrm()` and `AddLiteOrm()` apply it automatically.
+- The registration scope is controlled by the `ServiceTypes` enum `AutoRegisterServiceTypes`: `All` (default — the implementation type itself and its interfaces), `Self` (itself only), `Interface` (interfaces only). The previous `Type[]` form is removed.
+- The Service and DAO base classes (`EntityService<T>`, `ObjectDAO<T>`, etc.) now carry `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`, so derived classes inherit it. Use `AutoRegisterServiceTypes.Interface` for interface resolution only, or `Self` for the implementation type only.
 
 ### AOT / NativeAOT Support
 
@@ -117,7 +119,7 @@ Make sure the host uses `RegisterLiteOrm()` (from `LiteOrm.DependencyInjection`)
 
 ### Q2: My business service doesn't declare `ServiceTypes`. Can it still be resolved via its interface?
 
-Yes. When `ServiceTypes` is not specified, the framework infers the non-system-namespace interfaces implemented by the type as service types. User-defined services resolved via interfaces need no explicit `ServiceTypes`.
+Yes. `[AutoRegister]`'s `ServiceTypes` defaults to `AutoRegisterServiceTypes.All`, which registers both the implementation type itself and its non-System-namespace interfaces, so interface-injected user services need no explicit `ServiceTypes`. To register interfaces only, use `[AutoRegister(AutoRegisterServiceTypes.Interface, Lifetime = Lifetime.Scoped)]`.
 
 ### Q3: Will my existing MS DI `IServiceCollection` registrations still work?
 

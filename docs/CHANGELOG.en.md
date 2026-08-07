@@ -2,12 +2,19 @@
 
 ## v8.1.1 (2026-08-07)
 
+### Breaking Changes
+- `[AutoRegister]`'s `ServiceTypes` (previously `Type[]`) is now an enum `AutoRegisterServiceTypes`: `All` (default, implementation type itself + interfaces), `Self` (itself only), `Interface` (interfaces only). Replace the old `[AutoRegister(Lifetime.Scoped, typeof(IFoo))]` syntax with `[AutoRegister(AutoRegisterServiceTypes.Interface, Lifetime = Lifetime.Scoped)]`.
+
 ### Added
+
 - Added `AutoRegisterServices` option to `RegisterLiteOrm()`'s `LiteOrmOptions` (default `true`); set to `false` to skip automatic scan registration (`009d2c3`)
+- `EntityService<T>`, `EntityViewService<T>`, `ObjectDAO<T>`, `ObjectViewDAO<T>`, `DataDAO<T>`, `DataViewDAO<T>` base classes now carry `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`, so derived classes inherit the registration behavior automatically.
 
 ### Changed
+
 - Non-AOT builds now auto-register via runtime assembly scan (`LiteOrmAutoRegistration.Apply()`) instead of emitting source code; AOT builds still use the compile-time source generator, dispatched automatically by `RuntimeFeature.IsDynamicCodeSupported` (`009d2c3`)
 - `AutoRegisterGenerator` AOT detection aligned with `TableInfoGenerator`, reading `build_property.enableaotanalyzer` / `enabletrimanalyzer` analyzer properties (`009d2c3`)
+- In Autofac auto-registration (`RegisterLiteOrm()`), a type (or its interface) carrying `[Service]` (`IsService = true`) is automatically intercepted with `ServiceInvokeInterceptor` — no explicit `[Intercept]` needed.
 
 ---
 

@@ -18,7 +18,9 @@
 		<PackageReleaseNotes>
 8.1.1 改进:
 - 非 AOT 模式自动注册改用运行时程序集扫描（LiteOrmAutoRegistration.Apply()），不再生成源代码；AOT 模式仍由源生成器编译期生成，按 RuntimeFeature.IsDynamicCodeSupported 自动分流；
-- AutoRegisterGenerator 的 AOT 判定与 TableInfoGenerator 统一。
+- AutoRegisterGenerator 的 AOT 判定与 TableInfoGenerator 统一；
+- [AutoRegister] 的 ServiceTypes 改为枚举 AutoRegisterServiceTypes（All/Self/Interface，默认 All），原 Type[] 写法移除；
+- 实体 Service / DAO 基类新增 [AutoRegister]，派生类型自动继承注册。
 
 8.1.0 Breaking Changes:
 - RegisterLiteOrm() 移至 LiteOrm.DependencyInjection 包（命名空间由 LiteOrm 改为 LiteOrm.DependencyInjection）；

@@ -80,7 +80,7 @@ That is it — `[AutoRegister]` services, entity services (`IEntityService<T>`),
 
 - **Autofac container**: `RegisterLiteOrm()` switches the host to Autofac via `AutofacServiceProviderFactory`; existing `services.AddXxx()` registrations keep working through the MS DI bridge.
 - **Deterministic core registration**: `RegisterCoreServices()` explicitly registers `DataSourceProvider`, `SqlBuilderFactory`, `DAOContextPoolFactory`, `SessionManager`, generic entity services and DAOs — no `[AutoRegister]` scanning for core types.
-- **Auto-registration**: `RegisterAutoService()` scans assemblies and registers `[AutoRegister]` types with configurable lifetimes, keys, auto-activation and `[InterceptAttribute]` AOP wiring.
+- **Auto-registration**: `RegisterAutoService()` scans assemblies and registers `[AutoRegister]` types with configurable lifetimes, keys, auto-activation, `[InterceptAttribute]` AOP wiring, and automatic `ServiceInvokeInterceptor` for types (or interfaces) carrying `[Service]`.
 - **Scope tracking**: `ScopeExtensions.RegisterScope()` keeps `SessionManager.Current` pointing at the correct lifetime scope across async contexts.
 - **Schema sync**: `LiteOrmCoreInitializer` (a `IHostedService`) auto-creates tables/columns/indexes for entities on startup.
 - **Service generation proxies**: `AddServiceGenerator<T>()` creates Castle DynamicProxy interface proxies that resolve their return values from the DI container.
@@ -131,9 +131,9 @@ MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
 
 Make sure the host uses `RegisterLiteOrm()` (from `LiteOrm.DependencyInjection`). Core types (`EntityService<T>`, `ObjectDAO<T>`, ...) are no longer registered via `[AutoRegister]` scanning; they are registered explicitly by `RegisterCoreServices()`.
 
-**Q2: My custom services are still resolved by interface without `ServiceTypes`?**
+**Q2: My custom services are still resolved by an interface without specifying `ServiceTypes`?**
 
-Yes. When `ServiceTypes` is not specified, non-`System.*` interfaces of the implementation type are inferred automatically. Dependency-injected custom services do not need to declare `ServiceTypes`.
+Yes. `[AutoRegister]`'s `ServiceTypes` defaults to `AutoRegisterServiceTypes.All`, which registers both the implementation type itself and its non-`System.*` interfaces. Interface-injected custom services need no explicit `ServiceTypes`. Use `AutoRegisterServiceTypes.Interface` for interface-only or `Self` for self-only registration.
 
 **Q3: Do my existing MS DI `IServiceCollection` registrations still work?**
 
@@ -218,7 +218,7 @@ builder.Host.RegisterLiteOrm(options =>
 
 - **Autofac 容器**：`RegisterLiteOrm()` 通过 `AutofacServiceProviderFactory` 切换为 Autofac；已有的 `services.AddXxx()` 注册经 MS DI 桥接后仍然有效。
 - **确定性核心注册**：`RegisterCoreServices()` 显式注册 `DataSourceProvider`、`SqlBuilderFactory`、`DAOContextPoolFactory`、`SessionManager`、泛型实体服务与 DAO，核心类型不再依赖 `[AutoRegister]` 扫描。
-- **自动注册**：`RegisterAutoService()` 扫描程序集，按可配置的生命周期、Key、自动激活与 `[InterceptAttribute]` AOP 装配注册 `[AutoRegister]` 类型。
+- **自动注册**：`RegisterAutoService()` 扫描程序集，按可配置的生命周期、Key、自动激活、`[InterceptAttribute]` AOP 装配，以及带 `[Service]` 特性的类型（自动应用 `ServiceInvokeInterceptor`）注册 `[AutoRegister]` 类型。
 - **作用域跟踪**：`ScopeExtensions.RegisterScope()` 保证异步上下文中 `SessionManager.Current` 始终指向正确的生命周期作用域。
 - **表结构同步**：`LiteOrmCoreInitializer`（`IHostedService`）在启动时自动为实体创建表 / 列 / 索引。
 - **服务生成代理**：`AddServiceGenerator<T>()` 创建 Castle DynamicProxy 接口代理，返回值自动从 DI 容器解析。
@@ -271,7 +271,7 @@ MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
 
 **Q2：我的业务服务未显式指定 `ServiceTypes`，还能通过接口解析吗？**
 
-可以。未显式指定 `ServiceTypes` 时，会自动推断实现类型的非 `System.*` 命名空间接口作为服务类型，依赖接口注入的服务无需显式声明。
+可以。`[AutoRegister]` 的 `ServiceTypes` 默认值为 `AutoRegisterServiceTypes.All`，会同时注册实现类型自身及其非 `System.*` 命名空间接口，依赖接口注入的服务无需显式声明 `ServiceTypes`。需要仅注册接口时用 `AutoRegisterServiceTypes.Interface`，仅注册自身时用 `Self`。
 
 **Q3：原来用 MS DI 的 `IServiceCollection` 注册的服务还能用吗？**
 

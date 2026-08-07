@@ -19,7 +19,8 @@
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
 8.1.1 New Features:
-- RegisterLiteOrm() 的 LiteOrmOptions 新增 AutoRegisterServices 选项（默认 true），设为 false 可跳过自动扫描注册。
+- RegisterLiteOrm() 的 LiteOrmOptions 新增 AutoRegisterServices 选项（默认 true），设为 false 可跳过自动扫描注册；
+- 自动注册时，带 [Service] 特性（IsService = true）的类型自动应用 ServiceInvokeInterceptor。
 
 8.1.0 (New Package):
 - 新增 LiteOrm.DependencyInjection 包，RegisterLiteOrm() 由 LiteOrm 基础包移至本包（命名空间 LiteOrm.DependencyInjection）。

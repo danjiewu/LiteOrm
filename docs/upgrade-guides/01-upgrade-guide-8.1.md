@@ -92,6 +92,8 @@ builder.Services.AddLiteOrm(options =>
 
 - `[AutoRegister]` 特性可标注在基类上，派生类自动继承注册行为。
 - `LiteOrm.Generators` 源生成器在编译期扫描 `[AutoRegister]` 类型并生成注册代码（等价于运行时反射扫描，但无需 `Assembly.GetTypes()`，支持 NativeAOT 裁剪）。`RegisterLiteOrm()` 与 `AddLiteOrm()` 均自动应用。
+- 注册范围由 `[AutoRegister]` 的 `ServiceTypes` 枚举 `AutoRegisterServiceTypes` 控制：`All`（默认，注册实现类型自身与接口）、`Self`（仅自身）、`Interface`（仅接口）。原 `ServiceTypes` 的 `Type[]` 写法已移除。
+- Service 与 DAO 基类（`EntityService<T>`、`ObjectDAO<T>` 等）已标注 `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`，派生类自动继承；需指定接口注入时用 `AutoRegisterServiceTypes.Interface`，仅自身时用 `Self`。
 
 ### AOT / NativeAOT 支持
 
@@ -117,7 +119,7 @@ netstandard2.0 / 2.1 目标的依赖包版本降至最低，减少与宿主应�
 
 ### Q2: 我的业务 Service 未显式指定 `ServiceTypes`，还能通过接口解析吗？
 
-可以。未显式指定 `ServiceTypes` 时，会自动推断实现类型的非系统命名空间接口作为服务类型。依赖接口注入的用户自定义服务无需显式声明 `ServiceTypes`。
+可以。`[AutoRegister]` 的 `ServiceTypes` 默认值为 `AutoRegisterServiceTypes.All`，会自动注册实现类型自身及其非 System 命名空间接口，因此依赖接口注入的用户自定义服务无需显式声明 `ServiceTypes`。若只想注册接口，可写 `[AutoRegister(AutoRegisterServiceTypes.Interface, Lifetime = Lifetime.Scoped)]`。
 
 ### Q3: 原来用 MS DI 的 `IServiceCollection` 注册的服务还能用吗？
 

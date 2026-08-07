@@ -2,12 +2,19 @@
 
 ## v8.1.1 (2026-08-07)
 
+### Breaking Changes
+- `[AutoRegister]` 的 `ServiceTypes`（此前为 `Type[]`）已改为枚举 `AutoRegisterServiceTypes`：`All`（默认，实现类型自身 + 接口）、`Self`（仅自身）、`Interface`（仅接口）。原 `[AutoRegister(Lifetime.Scoped, typeof(IFoo))]` 写法请改为 `[AutoRegister(AutoRegisterServiceTypes.Interface, Lifetime = Lifetime.Scoped)]`。
+
 ### 新增功能
+
 - `RegisterLiteOrm()` 的 `LiteOrmOptions` 新增 `AutoRegisterServices` 选项（默认 `true`），设为 `false` 可跳过自动扫描注册 (`009d2c3`)
+- `EntityService<T>`、`EntityViewService<T>`、`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>` 基类新增 `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`，派生类自动继承注册行为。
 
 ### 改进
+
 - 非 AOT 模式自动注册改用运行时程序集扫描（`LiteOrmAutoRegistration.Apply()`），不再生成源代码；AOT 模式仍由源生成器编译期生成，二者按 `RuntimeFeature.IsDynamicCodeSupported` 自动分流 (`009d2c3`)
 - `AutoRegisterGenerator` 的 AOT 判定与 `TableInfoGenerator` 统一，读取 `build_property.enableaotanalyzer` / `enabletrimanalyzer` 等分析器属性 (`009d2c3`)
+- Autofac 自动注册（`RegisterLiteOrm()`）中，实现类型或其接口带 `[Service]` 特性（`IsService = true`）时会自动应用 `ServiceInvokeInterceptor` 拦截，无需显式声明 `[Intercept]`。
 
 ---
 

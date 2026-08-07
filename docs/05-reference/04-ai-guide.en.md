@@ -98,8 +98,9 @@ Types marked with `[AutoRegister]` are automatically registered into the DI cont
 | Non-AOT (default) | Runtime assembly scan | `LiteOrmAutoRegistration.Apply()` reflects over referenced assemblies for `[AutoRegister]` types |
 
 - Both paths are controlled by the `AutoRegisterServices` option (default `true`); set to `false` to skip auto-registration entirely and register services manually.
+- The registration scope is controlled by the `ServiceTypes` enum `AutoRegisterServiceTypes` on `[AutoRegister]`: `All` (default — the implementation type itself + interfaces), `Self` (itself only), `Interface` (interfaces only).
 - `AddLiteOrm()`: applies generated code in AOT mode, runtime scan in non-AOT mode (auto-dispatched via `RuntimeFeature.IsDynamicCodeSupported`).
-- `RegisterLiteOrm()`: Autofac assembly-scan registration; automatically applies Castle interceptors from `[InterceptAttribute]` and the `IEntityService` interface family.
+- `RegisterLiteOrm()`: Autofac assembly-scan registration; automatically applies Castle interceptors from `[InterceptAttribute]`, the `IEntityService` interface family, and types carrying `[Service]` (`IsService=true`) via `ServiceInvokeInterceptor`.
 
 ## 2. Entity and view definitions
 
