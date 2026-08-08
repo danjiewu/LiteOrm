@@ -77,9 +77,9 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 4. 创建 DAO 和服务
-var objectDAO = new ObjectDAO<User>();
-var objectViewDAO = new ObjectViewDAO<User>();
+// 4. 创建 DAO 和服务（8.1.1 起，DAO 构造需传入 SessionManager）
+var objectDAO = new ObjectDAO<User>(sessionManager);
+var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
 ```
 
@@ -130,9 +130,9 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 5. 创建 DAO 和服务
-var objectDAO = new ObjectDAO<User>();
-var objectViewDAO = new ObjectViewDAO<User>();
+// 5. 创建 DAO 和服务（8.1.1 起，DAO 构造需传入 SessionManager）
+var objectDAO = new ObjectDAO<User>(sessionManager);
+var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
 ```
 
@@ -143,7 +143,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 > - `LiteOrmSqlFunctionInitializer.Initialize()`：SQL 函数映射在首次访问 SqlBuilder 时由静态构造函数自动注册，无需手动调用。
 > - `DAOContextPoolFactory`：根据数据源配置创建连接池，管理连接的获取与回收。通过构造函数传入 `SessionManager`，DAO 内部通过 `SessionManager.GetDAOContextPool()` 获取连接池以解析提供程序类型。
 > - `SessionManager`：管理数据库会话、事务和异步上下文。通过 `SetCurrent` 设置为当前异步上下文的会话。
-> - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。两者均有无参构造函数，内部通过 `TableInfoProvider.Instance` 获取全局单例，无需手动传入。
+> - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。两者自 8.1.1 起构造时需传入 `SessionManager`，内部通过 `TableInfoProvider.Instance` 获取全局单例。依赖注入场景下由容器自动解析，手动构造则需自行传入已创建好的 `sessionManager`。
 > - `EntityService<T>`：封装了 DAO 的业务服务，提供 `InsertAsync`、`SearchAsync`、`UpdateAsync`、`DeleteAsync` 等方法。
 
 ### 2.2 通过 AddLiteOrm 注册和获取服务（推荐）
@@ -218,7 +218,7 @@ Console.WriteLine($"插入成功，自增 Id = {user.Id}");
 > });
 > ```
 >
-> 提示：使用 `LiteOrm.DependencyInjection`（Autofac）时无需手写中间件——`RegisterLiteOrm()` 内置作用域跟踪（`RegisterScope`，默认开启），会在每个作用域进入/退出时自动更新当前会话。
+> 提示：使用 `LiteOrm.DependencyInjection`（Autofac）时无需手写中间件——`RegisterLiteOrm()` 自动启用作用域跟踪（无需配置），会在每个作用域进入/退出时自动更新当前会话。
 
 应用退出时释放资源：
 

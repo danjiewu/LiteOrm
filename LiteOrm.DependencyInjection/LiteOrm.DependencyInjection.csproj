@@ -18,6 +18,9 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
+8.1.1 Breaking Changes:
+- RegisterLiteOrm() 移除 LiteOrmOptions.RegisterScope 选项，作用域跟踪始终默认启用。
+
 8.1.1 New Features:
 - RegisterLiteOrm() 的 LiteOrmOptions 新增 AutoRegisterServices 选项（默认 true），设为 false 可跳过自动扫描注册；
 - 自动注册时，带 [Service] 特性（IsService = true）的类型自动应用 ServiceInvokeInterceptor。

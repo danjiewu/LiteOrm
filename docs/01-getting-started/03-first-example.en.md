@@ -77,9 +77,9 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 4. Create DAO and service
-var objectDAO = new ObjectDAO<User>();
-var objectViewDAO = new ObjectViewDAO<User>();
+// 4. Create DAO and service (as of 8.1.1, DAO constructors require a SessionManager)
+var objectDAO = new ObjectDAO<User>(sessionManager);
+var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
 ```
 
@@ -130,9 +130,9 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 5. Create DAO and service
-var objectDAO = new ObjectDAO<User>();
-var objectViewDAO = new ObjectViewDAO<User>();
+// 5. Create DAO and service (as of 8.1.1, DAO constructors require a SessionManager)
+var objectDAO = new ObjectDAO<User>(sessionManager);
+var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
 ```
 
@@ -143,7 +143,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 > - `LiteOrmSqlFunctionInitializer.Initialize()`: SQL function mappings are automatically registered via SqlBuilder's static constructor on first access—no manual call needed.
 > - `DAOContextPoolFactory`: creates connection pools based on data source configuration and manages connection acquisition and recycling. It is passed to `SessionManager` via the constructor; DAOs obtain the pool internally via `SessionManager.GetDAOContextPool()` to resolve the provider type.
 > - `SessionManager`: manages database sessions, transactions, and async context. `SetCurrent` sets it as the session for the current async context.
-> - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. Both have parameterless constructors and obtain global singletons via `TableInfoProvider.Instance` internally, no manual injection needed.
+> - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. As of 8.1.1 their constructors require a `SessionManager`; internally they obtain global singletons via `TableInfoProvider.Instance`. Under DI the container resolves the `SessionManager` automatically; when constructing manually, pass the session manager you created.
 > - `EntityService<T>`: a business service wrapping the DAOs, providing methods such as `InsertAsync`, `SearchAsync`, `UpdateAsync`, and `DeleteAsync`.
 
 ### 2.2 Register and Resolve Services via AddLiteOrm (Recommended)
@@ -218,7 +218,7 @@ Console.WriteLine($"Insert succeeded, auto-increment Id = {user.Id}");
 > });
 > ```
 >
-> Tip: with `LiteOrm.DependencyInjection` (Autofac) no middleware is needed — `RegisterLiteOrm()` includes built-in scope tracking (`RegisterScope`, enabled by default) that automatically updates the current session on scope enter/exit.
+> Tip: with `LiteOrm.DependencyInjection` (Autofac) no middleware is needed — `RegisterLiteOrm()` enables scope tracking automatically (no configuration required) and updates the current session on scope enter/exit.
 
 Release resources when the application exits:
 

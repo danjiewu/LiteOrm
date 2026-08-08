@@ -162,18 +162,15 @@ namespace LiteOrm.DependencyInjection
                         }
                     }
 
-                    // 注册作用域跟踪和全局实例初始化
-                    if (options.RegisterScope)
+                    // 注册作用域跟踪和全局实例初始化（始终启用，无需额外配置）
+                    builder.RegisterBuildCallback(container =>
                     {
-                        builder.RegisterBuildCallback(container =>
-                        {
-                            // 设置根作用域的会话工厂，使 SessionManager.Current 在根作用域可用
-                            SessionManager.SetCurrent(() => container.Resolve<SessionManager>());
+                        // 设置根作用域的会话工厂，使 SessionManager.Current 在根作用域可用
+                        SessionManager.SetCurrent(() => container.Resolve<SessionManager>());
 
-                            // 注册子作用域跟踪
-                            ScopeExtensions.RegisterScope(container);
-                        });
-                    }
+                        // 注册子作用域跟踪
+                        ScopeExtensions.RegisterScope(container);
+                    });
                 });
         }
 
@@ -275,12 +272,6 @@ namespace LiteOrm.DependencyInjection
             /// 注册的 SqlBuilder 映射（按连接类型）。
             /// </summary>
             internal Dictionary<Type, SqlBuilder> SqlBuildersByType { get; } = new Dictionary<Type, SqlBuilder>();
-
-            /// <summary>
-            /// 是否注册 Scope 跟踪（默认为 true）。
-            /// <para>Scope 跟踪逻辑由本框架读取。</para>
-            /// </summary>
-            public bool RegisterScope { get; set; } = true;
 
             /// <summary>
             /// 是否自动扫描程序集注册标记 <c>[AutoRegister]</c> 的类型到 Autofac 容器（含拦截器支持）。

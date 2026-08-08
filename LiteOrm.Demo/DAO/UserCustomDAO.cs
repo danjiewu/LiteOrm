@@ -19,7 +19,9 @@ namespace LiteOrm.Demo
         /// <summary>
         /// 初始化 <see cref="UserCustomDAO"/> 类的新实例。
         /// </summary>
-        public UserCustomDAO()
+        /// <param name="sessionManager">会话管理器，由依赖注入容器自动解析。</param>
+        public UserCustomDAO(SessionManager sessionManager)
+            : base(sessionManager)
         {
         }
 

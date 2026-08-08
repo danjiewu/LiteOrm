@@ -56,9 +56,9 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 4. Create DAOs / services and use them
-var objectDAO = new ObjectDAO<User>();
-var objectViewDAO = new ObjectViewDAO<User>();
+// 4. Create DAOs / services and use them (as of 8.1.1, DAO constructors require a SessionManager)
+var objectDAO = new ObjectDAO<User>(sessionManager);
+var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
 var user = new User { UserName = "admin", Age = 18 };
@@ -162,9 +162,9 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 4. 创建 DAO / 服务并使用
-var objectDAO = new ObjectDAO<User>();
-var objectViewDAO = new ObjectViewDAO<User>();
+// 4. 创建 DAO / 服务并使用（8.1.1 起，DAO 构造需传入 SessionManager）
+var objectDAO = new ObjectDAO<User>(sessionManager);
+var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
 var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
 var user = new User { UserName = "admin", Age = 18 };

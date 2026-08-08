@@ -342,11 +342,8 @@ int count = await viewService.CountAsync(Lambda<TestUser>(u => u.Age >= 50));
 ### 8.1 Use Scoped Lifecycle
 
 ```csharp
-// In ASP.NET Core, use Scoped
-builder.Host.RegisterLiteOrm(options =>
-{
-    options.RegisterScope = true;  // Recommended
-});
+// In ASP.NET Core, use Scoped (scope tracking is enabled by default)
+builder.Host.RegisterLiteOrm();
 ```
 
 ### 8.2 Release Connections Promptly

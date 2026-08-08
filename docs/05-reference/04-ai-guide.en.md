@@ -81,7 +81,7 @@ builder.Host.RegisterLiteOrm();                        // Basic registration
 builder.Host.RegisterLiteOrm(options =>
 {
     options.AutoRegisterServices = true;                          // Default true; scans and registers [AutoRegister] types (with interception)
-    options.RegisterScope = true;                                // Default true; automatically manages DI scope lifecycle
+    // Scope tracking is enabled by default; no configuration needed
     options.Assemblies = new[] { typeof(MyService).Assembly };    // Restrict scanned assemblies (defaults to scanning all)
     options.RegisterSqlBuilder("DefaultConnection", new MySqlBuilder()); // Register by data source name
     options.RegisterSqlBuilder(typeof(SqlConnection), new MySqlBuilder()); // Register by connection type

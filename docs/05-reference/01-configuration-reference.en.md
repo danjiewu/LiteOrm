@@ -227,7 +227,6 @@ builder.Host.RegisterLiteOrm();
 ```csharp
 builder.Host.RegisterLiteOrm(options =>
 {
-    options.RegisterScope = true;
     options.Assemblies = new[] { typeof(MyService).Assembly };
     options.RegisterSqlBuilder("main", new MySqlBuilder());
 });

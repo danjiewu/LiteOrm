@@ -68,7 +68,6 @@ With options:
 ```csharp
 builder.Host.RegisterLiteOrm(options =>
 {
-    options.RegisterScope = true;
     options.Assemblies = new[] { typeof(MyService).Assembly };
     options.RegisterSqlBuilder("main", new MySqlBuilder());
 });
@@ -81,7 +80,7 @@ That is it — `[AutoRegister]` services, entity services (`IEntityService<T>`),
 - **Autofac container**: `RegisterLiteOrm()` switches the host to Autofac via `AutofacServiceProviderFactory`; existing `services.AddXxx()` registrations keep working through the MS DI bridge.
 - **Deterministic core registration**: `RegisterCoreServices()` explicitly registers `DataSourceProvider`, `SqlBuilderFactory`, `DAOContextPoolFactory`, `SessionManager`, generic entity services and DAOs — no `[AutoRegister]` scanning for core types.
 - **Auto-registration**: `RegisterAutoService()` scans assemblies and registers `[AutoRegister]` types with configurable lifetimes, keys, auto-activation, `[InterceptAttribute]` AOP wiring, and automatic `ServiceInvokeInterceptor` for types (or interfaces) carrying `[Service]`.
-- **Scope tracking**: `ScopeExtensions.RegisterScope()` keeps `SessionManager.Current` pointing at the correct lifetime scope across async contexts.
+- **Scope tracking**: scope tracking is always enabled; `RegisterScope()` keeps `SessionManager.Current` pointing at the correct lifetime scope across async contexts.
 - **Schema sync**: `LiteOrmCoreInitializer` (a `IHostedService`) auto-creates tables/columns/indexes for entities on startup.
 - **Service generation proxies**: `AddServiceGenerator<T>()` creates Castle DynamicProxy interface proxies that resolve their return values from the DI container.
 
@@ -91,23 +90,23 @@ That is it — `[AutoRegister]` services, entity services (`IEntityService<T>`),
 
 ---
 
-## 🔄 Migrating to 8.1.0 (from 8.0.20 or earlier)
+## 🔄 Migrating to 8.1.1 (from 8.0.20 or earlier)
 
-Version **8.1.0** introduces several breaking changes. If you are upgrading from **8.0.20 or earlier**, follow these steps:
+Versions **8.1.0** and **8.1.1** introduce several breaking changes. If you are upgrading from **8.0.20 or earlier**, follow these steps:
 
 ### 1. Add the new `LiteOrm.DependencyInjection` package
 
 `RegisterLiteOrm()` moved out of the `LiteOrm` core package into the new `LiteOrm.DependencyInjection` package, and the namespace changed from `LiteOrm` to `LiteOrm.DependencyInjection`:
 
 ```xml
-<PackageReference Include="LiteOrm.DependencyInjection" Version="8.1.0" />
+<PackageReference Include="LiteOrm.DependencyInjection" Version="8.1.1" />
 ```
 
 ```csharp
 // Old (8.0.20 or earlier)
 using LiteOrm;
 
-// New (8.1.0)
+// New (8.1.1)
 using LiteOrm.DependencyInjection;
 ```
 
@@ -124,6 +123,26 @@ var provider = services.GetRequiredService<BulkProviderFactory>().GetProvider(db
 // New: set it directly on the SqlBuilder
 MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
 ```
+
+### Upgrading to v8.1.1 (from v8.1.0 or lower)
+
+If you are already on **v8.1.0** and upgrading to **v8.1.1**, the changes are:
+
+- **DAO constructors now require a `SessionManager`.** `DAOBase`, `ObjectDAO<T>`, `ObjectViewDAO<T>`, `DataDAO<T>` and `DataViewDAO<T>` take a `SessionManager` parameter and no longer depend on the static `SessionManager.Current`. Under DI (`RegisterLiteOrm()` / `AddLiteOrm()`) the container resolves it automatically — no code change. When constructing DAOs manually, pass the session:
+
+  ```csharp
+  // Old (v8.1.0 and lower)
+  var dao = new ObjectDAO<User>();
+
+  // New (v8.1.1)
+  var dao = new ObjectDAO<User>(sessionManager);
+  ```
+
+  Custom DAOs deriving from a DAO base class must forward it in their constructor: `public MyDAO(SessionManager sessionManager) : base(sessionManager) { }`.
+
+- **`LiteOrmOptions.RegisterScope` has been removed.** Scope tracking is always enabled automatically — remove any `options.RegisterScope = ...` assignment.
+
+- **`AddLiteOrm()` binds `SessionManager.Current` automatically** per scope, so no middleware or manual `SessionManager.SetCurrent(...)` is needed.
 
 ### 3. FAQ
 
@@ -206,7 +225,6 @@ builder.Host.RegisterLiteOrm();
 ```csharp
 builder.Host.RegisterLiteOrm(options =>
 {
-    options.RegisterScope = true;
     options.Assemblies = new[] { typeof(MyService).Assembly };
     options.RegisterSqlBuilder("main", new MySqlBuilder());
 });
@@ -219,7 +237,7 @@ builder.Host.RegisterLiteOrm(options =>
 - **Autofac 容器**：`RegisterLiteOrm()` 通过 `AutofacServiceProviderFactory` 切换为 Autofac；已有的 `services.AddXxx()` 注册经 MS DI 桥接后仍然有效。
 - **确定性核心注册**：`RegisterCoreServices()` 显式注册 `DataSourceProvider`、`SqlBuilderFactory`、`DAOContextPoolFactory`、`SessionManager`、泛型实体服务与 DAO，核心类型不再依赖 `[AutoRegister]` 扫描。
 - **自动注册**：`RegisterAutoService()` 扫描程序集，按可配置的生命周期、Key、自动激活、`[InterceptAttribute]` AOP 装配，以及带 `[Service]` 特性的类型（自动应用 `ServiceInvokeInterceptor`）注册 `[AutoRegister]` 类型。
-- **作用域跟踪**：`ScopeExtensions.RegisterScope()` 保证异步上下文中 `SessionManager.Current` 始终指向正确的生命周期作用域。
+- **作用域跟踪**：作用域跟踪，自动保证异步上下文中 `SessionManager.Current` 始终指向正确的生命周期作用域。
 - **表结构同步**：`LiteOrmCoreInitializer`（`IHostedService`）在启动时自动为实体创建表 / 列 / 索引。
 - **服务生成代理**：`AddServiceGenerator<T>()` 创建 Castle DynamicProxy 接口代理，返回值自动从 DI 容器解析。
 
@@ -229,23 +247,23 @@ builder.Host.RegisterLiteOrm(options =>
 
 ---
 
-## 🔄 迁移到 8.1.0（从 8.0.20 及以下版本）
+## 🔄 迁移到 8.1.1（从 8.0.20 及以下版本）
 
-**8.1.0** 引入了若干破坏性变更。如果你正从 **8.0.20 及以下版本**升级，请按以下步骤操作：
+**8.1.0 / 8.1.1** 引入了若干破坏性变更。如果你正从 **8.0.20 及以下版本**升级，请按以下步骤操作：
 
 ### 1. 引用新的 `LiteOrm.DependencyInjection` 包
 
 `RegisterLiteOrm()` 从 `LiteOrm` 核心包移至新增的 `LiteOrm.DependencyInjection` 包，命名空间由 `LiteOrm` 改为 `LiteOrm.DependencyInjection`：
 
 ```xml
-<PackageReference Include="LiteOrm.DependencyInjection" Version="8.1.0" />
+<PackageReference Include="LiteOrm.DependencyInjection" Version="8.1.1" />
 ```
 
 ```csharp
 // 旧（8.0.20 及以下版本）
 using LiteOrm;
 
-// 新（8.1.0）
+// 新（8.1.1）
 using LiteOrm.DependencyInjection;
 ```
 
@@ -262,6 +280,26 @@ var provider = services.GetRequiredService<BulkProviderFactory>().GetProvider(db
 // 新：直接设置到 SqlBuilder.BulkProvider
 MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
 ```
+
+### 升级到 8.1.1（从 8.1.0 及更低版本）
+
+如果你已处于 **v8.1.0**，升级到 **v8.1.1** 的变更如下：
+
+- **DAO 构造函数现在需要 `SessionManager`。** `DAOBase`、`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>` 构造函数接收 `SessionManager` 参数，不再依赖静态 `SessionManager.Current`。使用 `RegisterLiteOrm()` / `AddLiteOrm()` 时由 DI 容器自动解析，无需改动；手动构造 DAO 时需传入会话：
+
+  ```csharp
+  // 旧（v8.1.0 及更低）
+  var dao = new ObjectDAO<User>();
+
+  // 新（v8.1.1）
+  var dao = new ObjectDAO<User>(sessionManager);
+  ```
+
+  自定义 DAO 若继承自 DAO 基类，构造函数需传入并转发：`public MyDAO(SessionManager sessionManager) : base(sessionManager) { }`。
+
+- **`LiteOrmOptions.RegisterScope` 选项已移除。** 作用域跟踪始终自动启用，请删除 `options.RegisterScope = ...` 赋值。
+
+- **`AddLiteOrm()` 自动按作用域绑定 `SessionManager.Current`**，无需中间件或手动 `SessionManager.SetCurrent(...)`。
 
 ### 3. 常见问题
 

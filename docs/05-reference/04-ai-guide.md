@@ -81,7 +81,7 @@ builder.Host.RegisterLiteOrm();                        // 基本注册
 builder.Host.RegisterLiteOrm(options =>
 {
     options.AutoRegisterServices = true;                          // 默认 true，扫描注册 [AutoRegister] 类型（含拦截器支持）
-    options.RegisterScope = true;                                // 默认 true，自动管理 DI Scope 生命周期
+    // 作用域跟踪默认自动启用，无需配置
     options.Assemblies = new[] { typeof(MyService).Assembly };    // 限定扫描程序集（默认扫描全部）
     options.RegisterSqlBuilder("DefaultConnection", new MySqlBuilder()); // 按数据源名称注册
     options.RegisterSqlBuilder(typeof(SqlConnection), new MySqlBuilder()); // 按连接类型注册

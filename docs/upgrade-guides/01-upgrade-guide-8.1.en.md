@@ -50,23 +50,31 @@ MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
 
 When `SqlBuilder.BulkProvider` is unset it returns `null`, and `BatchInsert`/`BatchInsertAsync` automatically fall back to multi-value INSERT or row-by-row inserts.
 
-### Step 3: `DataSourceProvider` Is Now Explicitly Configured (Base-only Usage)
+---
 
-`DataSourceProvider` is no longer registered via `[AutoRegister]` and no longer reads `IConfiguration` from its constructor. When using the base library directly (without the DI package), configure data sources explicitly via `AddDataSource` or load them via `LoadConfiguration`:
+## v8.1.1 Breaking Change: DAO Constructor Injection
+
+> This section applies when upgrading from **v8.1.0 or earlier** to **v8.1.1** (older DAO constructors had no parameters).
+
+As of v8.1.1, `DAOBase` and the DAO base classes (`ObjectDAO<T>`, `ObjectViewDAO<T>`, `DataDAO<T>`, `DataViewDAO<T>`) take a `SessionManager` constructor parameter; DAOs no longer depend on the static `SessionManager.Current`, which is kept solely as an external entry point.
+
+- **DI scenarios** (`RegisterLiteOrm()` / `AddLiteOrm()`): no change needed — the container resolves `SessionManager` automatically.
+- **Manual construction**: pass the `sessionManager` to the DAO constructors:
 
 ```csharp
-var provider = new DataSourceProvider();
-provider.AddDataSource(new DataSourceConfig
-{
-    Name = "DefaultConnection",
-    ConnectionString = "Data Source=myapp.db",
-    Provider = typeof(Microsoft.Data.Sqlite.SqliteConnection).AssemblyQualifiedName,
-    SyncTable = true
-});
-provider.SetDefaultDataSource("DefaultConnection");
+// Old (v8.1.0 and lower)
+var objectDAO = new ObjectDAO<User>();
+var objectViewDAO = new ObjectViewDAO<User>();
+var userService = new EntityService<User>(objectDAO, objectViewDAO);
+
+// New (v8.1.1)
+var objectDAO = new ObjectDAO<User>(sessionManager);
+var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
+var userService = new EntityService<User>(objectDAO, objectViewDAO);
 ```
 
-No changes are needed when using `RegisterLiteOrm()` (DI scenario) — `DataSourceProviderExtensions.LoadConfiguration` loads the `LiteOrm` node from the host `IConfiguration` automatically.
+- Custom DAOs deriving from the DAO base classes must forward the `SessionManager`: `public MyDAO(SessionManager sessionManager) : base(sessionManager) { }`.
+- `AddLiteOrm()` binds `SessionManager.Current` automatically when registering `SessionManager`; `RegisterLiteOrm()` enables scope tracking by default — no configuration required.
 
 ---
 
@@ -88,31 +96,7 @@ builder.Services.AddLiteOrm(options =>
 
 `AddLiteOrm()` registers the core services and generic DAOs/services (`IEntityService<T>`, `IEntityViewService<T>`, `IObjectDAO<T>`, etc.), and applies the compile-time registrations of `[AutoRegister]` services.
 
-Manual example to expose scoped SessionManager as SessionManager.Current (ASP.NET Core):
-
-```csharp
-public class LiteOrmSessionMiddleware
-{
-    private readonly RequestDelegate _next;
-    public LiteOrmSessionMiddleware(RequestDelegate next) => _next = next;
-    public async Task InvokeAsync(HttpContext context)
-    {
-        // Expose the scoped SessionManager to SessionManager.Current for this request
-        SessionManager.SetCurrent(() => context.RequestServices.GetService<SessionManager>());
-        try
-        {
-            await _next(context);
-        }
-        finally
-        {
-            SessionManager.SetCurrent(null);
-        }
-    }
-}
-
-// Register middleware in Program.cs / Startup.cs: app.UseMiddleware<LiteOrmSessionMiddleware>();
-
-See FAQ Q5 for troubleshooting when SessionManager.Current is not set.
+As of v8.1.1, `AddLiteOrm()` binds `SessionManager.Current` automatically when registering `SessionManager` (resolving to the scope's instance), so no middleware or manual `SessionManager.SetCurrent(...)` is required.
 
 ### Enhanced `[AutoRegister]` Mechanism
 
@@ -155,6 +139,6 @@ Yes. `RegisterLiteOrm()` uses `AutofacServiceProviderFactory` internally to brid
 
 No. `RegisterLiteOrm()` loads the data source configuration from the `LiteOrm` node of the host `IConfiguration` automatically; the existing configuration format is unchanged.
 
-### Q5: Why do I get InvalidOperationException: "SessionManager.Current is not set"?
+### Q5: Why is `SessionManager.Current` null?
 
-Occurs when scope tracking is not enabled in `RegisterLiteOrm()` (i.e. `ScopeExtensions.RegisterScope`), or when the application has not called `SessionManager.SetCurrent(...)` in manual/non-DI scenarios.
+Scope tracking is enabled automatically with `RegisterLiteOrm()` / `AddLiteOrm()` — no configuration required. In manual management scenarios, call `SessionManager.SetCurrent(...)` to set the current session.

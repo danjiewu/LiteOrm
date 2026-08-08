@@ -36,8 +36,10 @@ namespace LiteOrm
         /// <summary>
         /// 初始化 <see cref="DAOBase"/> 类的新实例。
         /// </summary>
-        protected DAOBase()
+        /// <param name="sessionManager">会话管理器，由依赖注入容器自动解析。</param>
+        protected DAOBase(SessionManager sessionManager)
         {
+            Session = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
         }
         #endregion
 
@@ -110,7 +112,7 @@ namespace LiteOrm
         /// </summary>
         public virtual SqlBuilder SqlBuilder
         {
-            get { return field ?? (field = GetCurrentSession().GetDAOContextPool(DataSource)!.SqlBuilder); }
+            get { return field ?? (field = Session.GetDAOContextPool(DataSource)!.SqlBuilder); }
         }
 
         /// <summary>
@@ -120,32 +122,25 @@ namespace LiteOrm
         /// <returns>数据库提供程序类型；若当前会话未设置或数据源不存在则返回 null。</returns>
         protected virtual Type? GetProviderType()
         {
-            return GetCurrentSession().GetDAOContextPool(DataSource)?.ProviderType;
+            return Session.GetDAOContextPool(DataSource)?.ProviderType;
         }
 
         ISqlBuilder IExprStringBuildContext.SqlBuilder => SqlBuilder;
 
         /// <summary>
-        /// 获取当前会话管理器
+        /// 会话管理器，由依赖注入容器在构造 DAO 时自动注入。
         /// </summary>
-        /// <returns>当前会话管理器实例</returns>
-        /// <exception cref="InvalidOperationException">当会话管理器未初始化时抛出</exception>
-        protected virtual SessionManager GetCurrentSession()
-        {
-            var session = SessionManager.Current;
-            if (session is null)
-            {
-                throw new InvalidOperationException("SessionManager.Current is not set. Enable scope tracking in RegisterLiteOrm() (ScopeExtensions.RegisterScope) or set SessionManager.Current manually via SessionManager.SetCurrent(...).");
-            }
-            return session;
-        }
+        /// <remarks>
+        /// 替代原先内部依赖的 <see cref="SessionManager.Current"/>；DAO 不再依赖全局静态会话。
+        /// </remarks>
+        public SessionManager Session { get; }
 
         /// <summary>
         /// 获取当前数据访问对象上下文
         /// </summary>
         public virtual DAOContext GetDaoContext()
         {
-            return GetCurrentSession().GetDaoContext(DataSource, IsView);
+            return Session.GetDaoContext(DataSource, IsView);
         }
 
         /// <summary>
@@ -154,7 +149,7 @@ namespace LiteOrm
         /// <param name="cancellationToken">取消令牌</param>
         public virtual Task<DAOContext> GetDaoContextAsync(CancellationToken cancellationToken = default)
         {
-            return GetCurrentSession().GetDaoContextAsync(DataSource, IsView, cancellationToken);
+            return Session.GetDaoContextAsync(DataSource, IsView, cancellationToken);
         }
 
         /// <summary>

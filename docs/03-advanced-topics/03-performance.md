@@ -342,11 +342,8 @@ int count = await viewService.CountAsync(Lambda<TestUser>(u => u.Age >= 50));
 ### 8.1 使用 Scoped 生命周期
 
 ```csharp
-// ASP.NET Core 中使用 Scoped
-builder.Host.RegisterLiteOrm(options =>
-{
-    options.RegisterScope = true;  // 推荐
-});
+// ASP.NET Core 中使用 Scoped（作用域跟踪默认自动启用）
+builder.Host.RegisterLiteOrm();
 ```
 
 ### 8.2 及时释放连接

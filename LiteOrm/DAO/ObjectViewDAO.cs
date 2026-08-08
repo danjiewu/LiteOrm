@@ -35,7 +35,9 @@ namespace LiteOrm
         /// <summary>
         /// 初始化 <see cref="ObjectViewDAO{T}"/> 类的新实例。
         /// </summary>
-        public ObjectViewDAO()
+        /// <param name="sessionManager">会话管理器，由依赖注入容器自动解析。</param>
+        public ObjectViewDAO(SessionManager sessionManager)
+            : base(sessionManager)
         {
         }
 

@@ -50,6 +50,31 @@ MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
 
 `SqlBuilder.BulkProvider` 未设置时返回 `null`，`BatchInsert`/`BatchInsertAsync` 自动回退到多值 INSERT 或逐条插入。
 
+---
+
+## v8.1.1 破坏性变更：DAO 构造函数注入
+
+> 本节适用于从 **v8.1.0 及更低版本** 升级到 **v8.1.1** 的用户（旧版 DAO 构造函数均无参数）。
+
+v8.1.1 起，`DAOBase` 及各 DAO 基类（`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>`）构造函数改为接收 `SessionManager` 参数，DAO 内部不再依赖静态 `SessionManager.Current`；`Current` 仅保留为外部调用入口。
+
+- **依赖注入场景**（`RegisterLiteOrm()` / `AddLiteOrm()`）：无需任何改动，DI 容器自动解析 `SessionManager`。
+- **手动构造场景**：需将 `sessionManager` 传入 DAO 构造函数：
+
+```csharp
+// 旧（v8.1.0 及更低）
+var objectDAO = new ObjectDAO<User>();
+var objectViewDAO = new ObjectViewDAO<User>();
+var userService = new EntityService<User>(objectDAO, objectViewDAO);
+
+// 新（v8.1.1）
+var objectDAO = new ObjectDAO<User>(sessionManager);
+var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
+var userService = new EntityService<User>(objectDAO, objectViewDAO);
+```
+
+- 自定义 DAO 若继承自 DAO 基类，构造函数需改为 `public MyDAO(SessionManager sessionManager) : base(sessionManager) { }`。
+- `AddLiteOrm()` 在注册 `SessionManager` 时自动绑定 `SessionManager.Current`；`RegisterLiteOrm()` 的作用域跟踪默认启用，二者均无需配置。
 
 ---
 
@@ -71,32 +96,7 @@ builder.Services.AddLiteOrm(options =>
 
 `AddLiteOrm()` 注册核心服务、泛型 DAO / Service（`IEntityService<T>`、`IEntityViewService<T>`、`IObjectDAO<T>` 等），并应用 `[AutoRegister]` 服务的编译期注册。
 
-同时 `SessionManager.Current` 需要手动管理，以 ASP.NET Core 自定义中间件为例，实现每个请求范围内将 DI 注册的 Scoped `SessionManager` 暴露为 `SessionManager.Current`：
-
-```csharp
-public class LiteOrmSessionMiddleware
-{
-    private readonly RequestDelegate _next;
-    public LiteOrmSessionMiddleware(RequestDelegate next) => _next = next;
-    public async Task InvokeAsync(HttpContext context)
-    {
-        // 在请求范围开始时将 Scoped 的 SessionManager 注入到 AsyncLocal
-        SessionManager.SetCurrent(() => context.RequestServices.GetService<SessionManager>());
-        try
-        {
-            await _next(context);
-        }
-        finally
-        {
-            SessionManager.SetCurrent(null);
-        }
-    }
-}
-
-// 在 Program.cs / Startup.cs 中注册中间件：
-// app.UseMiddleware<LiteOrmSessionMiddleware>();
-
-```
+8.1.1 起，`AddLiteOrm()` 在注册 `SessionManager` 时自动绑定 `SessionManager.Current`（每个作用域内解析到该作用域实例），无需手写中间件或手动调用 `SessionManager.SetCurrent(...)`。
 
 ### `[AutoRegister]` 机制增强
 
@@ -139,9 +139,9 @@ netstandard2.0 / 2.1 目标的依赖包版本降至最低，减少与宿主应�
 
 不需要。`RegisterLiteOrm()` 会自动从宿主 `IConfiguration` 的 `LiteOrm` 节点加载数据源配置，原有配置写法保持不变。
 
-### Q5: 为什么会报 InvalidOperationException 异常：SessionManager.Current is not set？
+### Q5: 为什么 `SessionManager.Current` 为空？
 
-引入 `LiteOrm.DependencyInjection` 并启用作用域跟踪（RegisterLiteOrm() 的 ScopeExtensions.RegisterScope），或手动管理场景中未调用 `SessionManager.SetCurrent(...)` 来设置当前会话。
+使用 `RegisterLiteOrm()` 或 `AddLiteOrm` 时会启用作用域跟踪，无需配置；手动管理场景中需调用 `SessionManager.SetCurrent(...)` 来设置当前会话。
 
 
 

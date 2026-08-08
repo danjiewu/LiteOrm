@@ -2,6 +2,7 @@
 using LiteOrm.Service;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 
 namespace LiteOrm
@@ -54,8 +55,17 @@ namespace LiteOrm
 
             services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
 
-            // Scoped 服务——每个作用域获得独立的 SessionManager
-            services.AddScoped<SessionManager>();
+            // Scoped 服务——每个作用域获得独立的 SessionManager。
+            // 通过工厂构造并绑定 SessionManager.Current，使 Current 仅作为供外部使用的便捷入口，
+            // 而 DAO 内的会话由构造参数注入，不再依赖 Current。
+            services.AddScoped<SessionManager>(sp =>
+            {
+                var sessionManager = new SessionManager(
+                    sp.GetRequiredService<DAOContextPoolFactory>(),
+                    sp.GetService<ILogger<SessionManager>>());
+                SessionManager.SetCurrent(() => sp.GetRequiredService<SessionManager>());
+                return sessionManager;
+            });
            
 
             // 自动注册自定义服务与 DAO（源生成器生成的注册代码 + 可选程序集扫描）
