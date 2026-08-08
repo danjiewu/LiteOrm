@@ -110,7 +110,7 @@ namespace LiteOrm
         /// </summary>
         public virtual SqlBuilder SqlBuilder
         {
-            get { return field ?? (field = CurrentSession!.GetDAOContextPool(DataSource)!.SqlBuilder); }
+            get { return field ?? (field = GetCurrentSession().GetDAOContextPool(DataSource)!.SqlBuilder); }
         }
 
         /// <summary>
@@ -120,7 +120,7 @@ namespace LiteOrm
         /// <returns>数据库提供程序类型；若当前会话未设置或数据源不存在则返回 null。</returns>
         protected virtual Type? GetProviderType()
         {
-            return CurrentSession?.GetDAOContextPool(DataSource)?.ProviderType;
+            return GetCurrentSession().GetDAOContextPool(DataSource)?.ProviderType;
         }
 
         ISqlBuilder IExprStringBuildContext.SqlBuilder => SqlBuilder;
@@ -128,14 +128,24 @@ namespace LiteOrm
         /// <summary>
         /// 获取当前会话管理器
         /// </summary>
-        public virtual SessionManager? CurrentSession => SessionManager.Current;
+        /// <returns>当前会话管理器实例</returns>
+        /// <exception cref="InvalidOperationException">当会话管理器未初始化时抛出</exception>
+        protected virtual SessionManager GetCurrentSession()
+        {
+            var session = SessionManager.Current;
+            if (session is null)
+            {
+                throw new InvalidOperationException("SessionManager.Current is not set. Enable scope tracking in RegisterLiteOrm() (ScopeExtensions.RegisterScope) or set SessionManager.Current manually via SessionManager.SetCurrent(...).");
+            }
+            return session;
+        }
 
         /// <summary>
         /// 获取当前数据访问对象上下文
         /// </summary>
         public virtual DAOContext GetDaoContext()
         {
-            return CurrentSession!.GetDaoContext(DataSource, IsView);
+            return GetCurrentSession().GetDaoContext(DataSource, IsView);
         }
 
         /// <summary>
@@ -144,7 +154,7 @@ namespace LiteOrm
         /// <param name="cancellationToken">取消令牌</param>
         public virtual Task<DAOContext> GetDaoContextAsync(CancellationToken cancellationToken = default)
         {
-            return CurrentSession!.GetDaoContextAsync(DataSource, IsView, cancellationToken);
+            return GetCurrentSession().GetDaoContextAsync(DataSource, IsView, cancellationToken);
         }
 
         /// <summary>

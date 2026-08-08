@@ -50,23 +50,6 @@ MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
 
 `SqlBuilder.BulkProvider` 未设置时返回 `null`，`BatchInsert`/`BatchInsertAsync` 自动回退到多值 INSERT 或逐条插入。
 
-### 第 3 步：`DataSourceProvider` 改为显式配置（仅直接使用基础库时）
-
-`DataSourceProvider` 不再通过 `[AutoRegister]` 注册，也不再从构造函数读取 `IConfiguration`。直接使用基础库（不使用 DI 包）时，需通过 `AddDataSource` 显式添加，或通过 `LoadConfiguration` 从 `IConfiguration` 加载：
-
-```csharp
-var provider = new DataSourceProvider();
-provider.AddDataSource(new DataSourceConfig
-{
-    Name = "DefaultConnection",
-    ConnectionString = "Data Source=myapp.db",
-    Provider = typeof(Microsoft.Data.Sqlite.SqliteConnection).AssemblyQualifiedName,
-    SyncTable = true
-});
-provider.SetDefaultDataSource("DefaultConnection");
-```
-
-使用 `RegisterLiteOrm()`（DI 场景）时无需改动，`DataSourceProviderExtensions.LoadConfiguration` 会自动从宿主 `IConfiguration` 的 `LiteOrm` 节点加载。
 
 ---
 
@@ -87,6 +70,33 @@ builder.Services.AddLiteOrm(options =>
 ```
 
 `AddLiteOrm()` 注册核心服务、泛型 DAO / Service（`IEntityService<T>`、`IEntityViewService<T>`、`IObjectDAO<T>` 等），并应用 `[AutoRegister]` 服务的编译期注册。
+
+同时 `SessionManager.Current` 需要手动管理，以 ASP.NET Core 自定义中间件为例，实现每个请求范围内将 DI 注册的 Scoped `SessionManager` 暴露为 `SessionManager.Current`：
+
+```csharp
+public class LiteOrmSessionMiddleware
+{
+    private readonly RequestDelegate _next;
+    public LiteOrmSessionMiddleware(RequestDelegate next) => _next = next;
+    public async Task InvokeAsync(HttpContext context)
+    {
+        // 在请求范围开始时将 Scoped 的 SessionManager 注入到 AsyncLocal
+        SessionManager.SetCurrent(() => context.RequestServices.GetService<SessionManager>());
+        try
+        {
+            await _next(context);
+        }
+        finally
+        {
+            SessionManager.SetCurrent(null);
+        }
+    }
+}
+
+// 在 Program.cs / Startup.cs 中注册中间件：
+// app.UseMiddleware<LiteOrmSessionMiddleware>();
+
+```
 
 ### `[AutoRegister]` 机制增强
 
@@ -129,15 +139,9 @@ netstandard2.0 / 2.1 目标的依赖包版本降至最低，减少与宿主应�
 
 不需要。`RegisterLiteOrm()` 会自动从宿主 `IConfiguration` 的 `LiteOrm` 节点加载数据源配置，原有配置写法保持不变。
 
----
+### Q5: 为什么会报 InvalidOperationException 异常：SessionManager.Current is not set？
 
-## 验证
+引入 `LiteOrm.DependencyInjection` 并启用作用域跟踪（RegisterLiteOrm() 的 ScopeExtensions.RegisterScope），或手动管理场景中未调用 `SessionManager.SetCurrent(...)` 来设置当前会话。
 
-升级后请确保：
 
-```bash
-dotnet build .\LiteOrm.sln
-dotnet test .\LiteOrm.sln
-```
 
-完整测试套件全部通过是本版本验证基线。

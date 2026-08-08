@@ -88,6 +88,32 @@ builder.Services.AddLiteOrm(options =>
 
 `AddLiteOrm()` registers the core services and generic DAOs/services (`IEntityService<T>`, `IEntityViewService<T>`, `IObjectDAO<T>`, etc.), and applies the compile-time registrations of `[AutoRegister]` services.
 
+Manual example to expose scoped SessionManager as SessionManager.Current (ASP.NET Core):
+
+```csharp
+public class LiteOrmSessionMiddleware
+{
+    private readonly RequestDelegate _next;
+    public LiteOrmSessionMiddleware(RequestDelegate next) => _next = next;
+    public async Task InvokeAsync(HttpContext context)
+    {
+        // Expose the scoped SessionManager to SessionManager.Current for this request
+        SessionManager.SetCurrent(() => context.RequestServices.GetService<SessionManager>());
+        try
+        {
+            await _next(context);
+        }
+        finally
+        {
+            SessionManager.SetCurrent(null);
+        }
+    }
+}
+
+// Register middleware in Program.cs / Startup.cs: app.UseMiddleware<LiteOrmSessionMiddleware>();
+
+See FAQ Q5 for troubleshooting when SessionManager.Current is not set.
+
 ### Enhanced `[AutoRegister]` Mechanism
 
 - `[AutoRegister]` can now be declared on a base class; derived classes inherit the registration behavior.
@@ -129,15 +155,6 @@ Yes. `RegisterLiteOrm()` uses `AutofacServiceProviderFactory` internally to brid
 
 No. `RegisterLiteOrm()` loads the data source configuration from the `LiteOrm` node of the host `IConfiguration` automatically; the existing configuration format is unchanged.
 
----
+### Q5: Why do I get InvalidOperationException: "SessionManager.Current is not set"?
 
-## Verification
-
-After upgrading, ensure:
-
-```bash
-dotnet build .\LiteOrm.sln
-dotnet test .\LiteOrm.sln
-```
-
-The full test suite passing is the verification baseline for this release.
+Occurs when scope tracking is not enabled in `RegisterLiteOrm()` (i.e. `ScopeExtensions.RegisterScope`), or when the application has not called `SessionManager.SetCurrent(...)` in manual/non-DI scenarios.
