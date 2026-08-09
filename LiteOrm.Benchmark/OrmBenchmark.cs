@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Data.Common;
+using System.Text;
 using Microsoft.Data.Sqlite;
 using Oracle.ManagedDataAccess.Client;
 using SqlSugar;
@@ -50,6 +51,58 @@ namespace LiteOrm.Benchmark
             // default to MySql
             return new MySqlConnector.MySqlConnection(_connectionString);
         }
+
+        /// <summary>
+        /// 批量插入：构建单条多行 VALUES INSERT 语句（分块避免 MySQL 参数上限 65535）
+        /// </summary>
+        private static async Task ExecuteBatchInsertAsync(DbConnection conn, IReadOnlyList<BenchmarkUser> users, DbTransaction trans)
+        {
+            const int chunkSize = 2000;
+            for (int offset = 0; offset < users.Count; offset += chunkSize)
+            {
+                var chunk = users.Skip(offset).Take(chunkSize).ToList();
+                var sb = new StringBuilder("INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime) VALUES ");
+                var p = new Dapper.DynamicParameters();
+                for (int i = 0; i < chunk.Count; i++)
+                {
+                    if (i > 0) sb.Append(',');
+                    sb.Append($"(@N{i},@A{i},@E{i},@T{i})");
+                    p.Add($"N{i}", chunk[i].Name);
+                    p.Add($"A{i}", chunk[i].Age);
+                    p.Add($"E{i}", chunk[i].Email);
+                    p.Add($"T{i}", chunk[i].CreateTime);
+                }
+                await conn.ExecuteAsync(sb.ToString(), p, trans);
+            }
+        }
+
+        /// <summary>
+        /// 批量更新/插入：INSERT ... ON DUPLICATE KEY UPDATE（MySQL 批量更新模式）
+        /// 用单条 SQL 完成全部行的更新，避免逐行 UPDATE
+        /// </summary>
+        private static async Task ExecuteBatchUpsertAsync(DbConnection conn, IReadOnlyList<BenchmarkUser> users, DbTransaction trans)
+        {
+            const int chunkSize = 2000;
+            for (int offset = 0; offset < users.Count; offset += chunkSize)
+            {
+                var chunk = users.Skip(offset).Take(chunkSize).ToList();
+                var sb = new StringBuilder("INSERT INTO BenchmarkUser (Id, Name, Age, Email, CreateTime) VALUES ");
+                var p = new Dapper.DynamicParameters();
+                for (int i = 0; i < chunk.Count; i++)
+                {
+                    if (i > 0) sb.Append(',');
+                    sb.Append($"(@I{i},@N{i},@A{i},@E{i},@T{i})");
+                    p.Add($"I{i}", chunk[i].Id);
+                    p.Add($"N{i}", chunk[i].Name);
+                    p.Add($"A{i}", chunk[i].Age);
+                    p.Add($"E{i}", chunk[i].Email);
+                    p.Add($"T{i}", chunk[i].CreateTime);
+                }
+                sb.Append(" ON DUPLICATE KEY UPDATE Name=VALUES(Name), Age=VALUES(Age), Email=VALUES(Email)");
+                await conn.ExecuteAsync(sb.ToString(), p, trans);
+            }
+        }
+
         [Params(10, 100, 1000, 10000)]
         public int BatchCount { get; set; }
         [GlobalSetup]
@@ -238,8 +291,10 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
+                db.ChangeTracker.AutoDetectChangesEnabled = false;
                 var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "EF", Age = 25, Email = "ef@test.com", CreateTime = DateTime.Now }).ToList();
                 await db.BenchmarkUsers.AddRangeAsync(users);
+                db.ChangeTracker.DetectChanges();
                 await db.SaveChangesAsync();
             }
         }
@@ -276,7 +331,7 @@ namespace LiteOrm.Benchmark
                 using (var trans = conn.BeginTransaction())
                 {
                     var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Dapper", Age = 25, Email = "dapper@test.com", CreateTime = DateTime.Now }).ToList();
-                    await conn.ExecuteAsync("INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime) VALUES (@Name, @Age, @Email, @CreateTime)", users, trans);
+                    await ExecuteBatchInsertAsync(conn, users, trans);
                     trans.Commit();
                 }
             }
@@ -303,6 +358,7 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
+                db.ChangeTracker.AutoDetectChangesEnabled = false;
                 var users = await db.BenchmarkUsers.Take(BatchCount).ToListAsync();
                 foreach (var u in users)
                 {
@@ -310,6 +366,7 @@ namespace LiteOrm.Benchmark
                     u.Age = _random.Next(20, 60);
                     u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                 }
+                db.ChangeTracker.DetectChanges();
                 await db.SaveChangesAsync();
             }
         }
@@ -371,7 +428,7 @@ namespace LiteOrm.Benchmark
                         u.Age = _random.Next(20, 60);
                         u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                     }
-                    await conn.ExecuteAsync("UPDATE BenchmarkUser SET Name = @Name, Age = @Age, Email = @Email WHERE Id = @Id", users, trans);
+                    await ExecuteBatchUpsertAsync(conn, users, trans);
                     trans.Commit();
                 }
             }
@@ -402,6 +459,7 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
+                db.ChangeTracker.AutoDetectChangesEnabled = false; 
                 var existingUsers = await db.BenchmarkUsers.Take(BatchCount / 2).ToListAsync();
                 var localRandom = new Random();
                 foreach (var u in existingUsers)
@@ -420,6 +478,7 @@ namespace LiteOrm.Benchmark
                 }).ToList();
 
                 await db.BenchmarkUsers.AddRangeAsync(newUsers);
+                db.ChangeTracker.DetectChanges();
                 await db.SaveChangesAsync();
             }
         }
@@ -466,17 +525,11 @@ namespace LiteOrm.Benchmark
                 using (var trans = conn.BeginTransaction())
                 {
                     foreach (var u in existingUsers) { u.Name = "Dapper_Upsert_U"; u.Age = _random.Next(20, 60); }
-                    if (existingUsers.Any())
-                    {
-                        await conn.ExecuteAsync("UPDATE BenchmarkUser SET Name = @Name, Age = @Age WHERE Id = @Id", existingUsers, trans);
-                    }
-
                     var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Dapper_Upsert_I", Age = _random.Next(20, 60), Email = $"dapper_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
-                    if (newUsers.Any())
-                    {
-                        await conn.ExecuteAsync("INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime) VALUES (@Name, @Age, @Email, @CreateTime)", newUsers, trans);
-                    }
-
+                    // 合并已有 + 新增，单条 INSERT ... ON DUPLICATE KEY UPDATE 完成全部
+                    var all = existingUsers.Concat(newUsers).ToList();
+                    if (all.Count > 0)
+                        await ExecuteBatchUpsertAsync(conn, all, trans);
                     trans.Commit();
                 }
             }
