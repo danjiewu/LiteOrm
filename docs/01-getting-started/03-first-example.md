@@ -168,16 +168,12 @@ builder.Services.AddLiteOrm(options =>
 // 2. 构建 Host，其 Services 即为 ServiceProvider
 var host = builder.Build();
 var serviceProvider = host.Services;
-
-// 3. 将 SessionManager 的解析委托给 ServiceProvider
-//    SessionManager.SetCurrent 接受一个工厂委托，
-//    在首次访问 SessionManager.Current 时延迟执行并缓存结果
-SessionManager.SetCurrent(() => serviceProvider.GetService<SessionManager>());
 ```
 
 > **`AddLiteOrm()` 注册了哪些服务？**
 > - 单例：`IDataSourceProvider`（从 `IConfiguration` 的 `LiteOrm` 节点加载）、`DAOContextPoolFactory`、`TableInfoProvider`。
 > - Scoped：`SessionManager`、泛型 `ObjectDAO<>` / `ObjectViewDAO<>`、`EntityService<>` / `EntityViewService<>`（含 `IObjectDAO<>`、`IEntityService<>` 等接口注册）。
+> - `AddLiteOrm()` 会在注册 `SessionManager` 时自动绑定 `SessionManager.Current`, 无需手动调用 `SessionManager.SetCurrent(...)`。
 > - 若 `AutoRegisterServices = true`（默认），还会应用 `[AutoRegister]` 自定义服务与 DAO 的编译期自动注册。
 
 > **需要安装哪些包？** `AddLiteOrm()` 从 DI 容器中解析 `IConfiguration`。`Host.CreateApplicationBuilder` 会自动加载 `appsettings.json` 并注册配置（含 `IConfiguration`），因此控制台应用只需额外安装 `Microsoft.Extensions.Hosting` 包，无需再手动构建 `ServiceCollection`。
@@ -204,21 +200,9 @@ Console.WriteLine($"插入成功，自增 Id = {user.Id}");
 ```
 
 > **作用域与 SessionManager 的关系**：
-> `SessionManager` 注册为 Scoped，每个 `CreateScope()`（如每个 Web 请求）创建的作用域会获得独立的 `SessionManager` 实例。但 `SessionManager.SetCurrent` 设置的是**当前异步上下文**（`AsyncLocal`）的会话工厂，它只会在首次访问时执行一次委托并缓存。
+> `SessionManager` 注册为 Scoped，每个 `CreateScope()`（如每个 Web 请求）创建的作用域会获得独立的 `SessionManager` 实例。`AddLiteOrm()` 在注册 `SessionManager` 时已自动绑定 `SessionManager.Current`（解析到当前作用域实例），因此无需手动调用 `SetCurrent` 或编写中间件。
 >
-> 在多作用域场景下（如 Web 请求），每个作用域需要使用各自的 `SessionManager`。建议使用中间件（Filter）在每个请求进入时，将当前请求作用域的 `SessionManager` 设为当前会话：
->
-> ```csharp
-> // 在每个请求作用域内，将 SessionManager 绑定到当前异步上下文
-> app.Use(async (context, next) =>
-> {
->     var sp = context.RequestServices;   // 当前请求作用域的 ServiceProvider
->     SessionManager.SetCurrent(() => sp.GetService<SessionManager>());
->     await next();
-> });
-> ```
->
-> 提示：使用 `LiteOrm.DependencyInjection`（Autofac）时无需手写中间件——`RegisterLiteOrm()` 自动启用作用域跟踪（无需配置），会在每个作用域进入/退出时自动更新当前会话。
+> 提示：使用 `LiteOrm.DependencyInjection`（Autofac）时同样无需配置——`RegisterLiteOrm()` 自动启用作用域跟踪，会在每个作用域进入/退出时自动更新当前会话。
 
 应用退出时释放资源：
 
@@ -358,9 +342,9 @@ poolFactory.Dispose();
 
 ### 问题二：`Object reference not set to instance` 或 `SessionManager.Current` 为 null
 
-**原因**：忘记调用 `SessionManager.SetCurrent(() => sessionManager)`。
+**原因**：手动构造方式下忘记调用 `SessionManager.SetCurrent(() => sessionManager)`（使用 `AddLiteOrm()` 时会自动绑定，不会出现此问题）。
 
-**解决方法**：确保在创建服务实例之前调用 `SessionManager.SetCurrent(() => sessionManager)`，否则 DAO 在执行 SQL 时无法获取数据库连接。
+**解决方法**：手动构造场景下，确保在创建服务实例之前调用 `SessionManager.SetCurrent(() => sessionManager)`；使用 `AddLiteOrm()` 时无需手动调用，框架会自动绑定。否则 DAO 在执行 SQL 时无法获取数据库连接。
 
 ### 问题三：`Function 'XXX' is not supported` 异常
 
@@ -371,8 +355,7 @@ poolFactory.Dispose();
 ## 运行验证清单
 
 - [ ] `dotnet build` 编译通过，无错误。
-- [ ] 初始化代码中调用了 `SessionManager.SetCurrent(...)`（手动构造或 ServiceProvider 方式）。
-- [ ] 使用 ServiceProvider 方式时，`SessionManager` 注册为 Scoped，且在进入作用域时调用了 `SetCurrent`。
+- [ ] 手动构造方式下已调用 `SessionManager.SetCurrent(...)`；使用 `AddLiteOrm()` 时自动绑定，无需手动调用。
 - [ ] 实体类使用了 `[Table]` 和 `[Column]` 特性标注。
 - [ ] 插入和查询操作返回了预期的结果。
 - [ ] 应用退出前释放了 `ServiceProvider`（或 `SessionManager`）和 `DAOContextPoolFactory`。

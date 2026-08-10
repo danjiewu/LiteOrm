@@ -168,16 +168,12 @@ builder.Services.AddLiteOrm(options =>
 // 2. Build the Host; its Services property is the ServiceProvider
 var host = builder.Build();
 var serviceProvider = host.Services;
-
-// 3. Delegate SessionManager resolution to the ServiceProvider
-//    SessionManager.SetCurrent accepts a factory delegate that is
-//    executed lazily on first access to SessionManager.Current and cached
-SessionManager.SetCurrent(() => serviceProvider.GetService<SessionManager>());
 ```
 
 > **What does `AddLiteOrm()` register?**
 > - Singleton: `IDataSourceProvider` (loaded from the `LiteOrm` section of `IConfiguration`), `DAOContextPoolFactory`, `TableInfoProvider`.
 > - Scoped: `SessionManager`, generic `ObjectDAO<>` / `ObjectViewDAO<>`, `EntityService<>` / `EntityViewService<>` (including interface registrations such as `IObjectDAO<>`, `IEntityService<>`).
+> - `AddLiteOrm()` binds `SessionManager.Current` automatically when registering `SessionManager` (resolving to the scope's instance), so no manual `SessionManager.SetCurrent(...)` call is required.
 > - If `AutoRegisterServices = true` (default), compile-time auto-registration of `[AutoRegister]` custom services and DAOs is applied as well.
 
 > **Which packages do I need?** `AddLiteOrm()` resolves `IConfiguration` from the DI container. `Host.CreateApplicationBuilder` automatically loads `appsettings.json` and registers configuration (including `IConfiguration`), so a console app only needs the `Microsoft.Extensions.Hosting` package — no manual `ServiceCollection` construction required.
@@ -204,21 +200,9 @@ Console.WriteLine($"Insert succeeded, auto-increment Id = {user.Id}");
 ```
 
 > **Scopes and SessionManager**:
-> `SessionManager` is registered as Scoped, so each `CreateScope()` call (e.g., each web request) produces an independent instance. However, `SessionManager.SetCurrent` sets the session factory for the **current async context** (`AsyncLocal`) — the delegate executes only once on first access and the result is cached.
+> `SessionManager` is registered as Scoped, so each `CreateScope()` call (e.g., each web request) produces an independent instance. `AddLiteOrm()` binds `SessionManager.Current` automatically when registering `SessionManager` (resolving to the scope's instance), so no manual `SetCurrent` call or middleware is required.
 >
-> In multi-scope scenarios (e.g., web requests) where each scope needs its own `SessionManager`, use a middleware (filter) to bind the current request scope's `SessionManager` as the current session when each request enters:
->
-> ```csharp
-> // Bind the SessionManager of the current request scope to the async context
-> app.Use(async (context, next) =>
-> {
->     var sp = context.RequestServices;   // ServiceProvider of the current request scope
->     SessionManager.SetCurrent(() => sp.GetService<SessionManager>());
->     await next();
-> });
-> ```
->
-> Tip: with `LiteOrm.DependencyInjection` (Autofac) no middleware is needed — `RegisterLiteOrm()` enables scope tracking automatically (no configuration required) and updates the current session on scope enter/exit.
+> Tip: with `LiteOrm.DependencyInjection` (Autofac) no configuration is needed either — `RegisterLiteOrm()` enables scope tracking automatically and updates the current session on scope enter/exit.
 
 Release resources when the application exits:
 
@@ -358,9 +342,9 @@ poolFactory.Dispose();
 
 ### Issue 2: `Object reference not set to instance` or `SessionManager.Current` is null
 
-**Cause**: You forgot to call `SessionManager.SetCurrent(() => sessionManager)`.
+**Cause**: In manual construction, you forgot to call `SessionManager.SetCurrent(() => sessionManager)` (with `AddLiteOrm()` the binding is automatic, so this does not occur).
 
-**Solution**: Make sure to call `SessionManager.SetCurrent(() => sessionManager)` before creating service instances; otherwise the DAO cannot obtain a database connection when executing SQL.
+**Solution**: In manual construction scenarios, make sure to call `SessionManager.SetCurrent(() => sessionManager)` before creating service instances; with `AddLiteOrm()` no manual call is needed — the framework binds automatically. Otherwise the DAO cannot obtain a database connection when executing SQL.
 
 ### Issue 3: `Function 'XXX' is not supported` exception
 
@@ -371,8 +355,7 @@ poolFactory.Dispose();
 ## Run Verification Checklist
 
 - [ ] `dotnet build` compiles without errors.
-- [ ] The initialization code calls `SessionManager.SetCurrent(...)` (manual construction or ServiceProvider approach).
-- [ ] When using the ServiceProvider approach, `SessionManager` is registered as Scoped and `SetCurrent` is called when entering a scope.
+- [ ] For manual construction, `SessionManager.SetCurrent(...)` is called; with `AddLiteOrm()` the binding is automatic — no manual call needed.
 - [ ] Entity classes are annotated with `[Table]` and `[Column]` attributes.
 - [ ] Insert and query operations return the expected results.
 - [ ] `ServiceProvider` (or `SessionManager`) and `DAOContextPoolFactory` are disposed before the application exits.
