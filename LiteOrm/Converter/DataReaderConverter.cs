@@ -411,7 +411,8 @@ namespace LiteOrm
                     BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                 if (prop == null || !prop.CanWrite) continue;
 
-                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType, column.PropertyName, column.Definition?.DbType)));
+                DbType? dbType = GetColumnReadDbType(column, prop.PropertyType);
+                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType, column.PropertyName, dbType)));
             }
 
             var body = Expression.MemberInit(Expression.New(ctor), bindings);
@@ -430,6 +431,19 @@ namespace LiteOrm
                 || type == typeof(Stream)
                 || type == typeof(DateTimeOffset)
                 || type == typeof(TimeSpan);
+        }
+
+        /// <summary>
+        /// 计算读取列时应使用的 <see cref="DbType"/>。
+        /// 数组/集合列返回 null，交由 <c>GetValue + DbConverter.ConvertFromDbValue</c> 兜底，
+        /// 避免对数组列调用标量读取器（如 <see cref="DbDataReader.GetInt32"/>）。
+        /// </summary>
+        private static DbType? GetColumnReadDbType(SqlColumn column, Type propertyType)
+        {
+            DbValueType dbValueType = column.Definition?.DbType ?? DbValueType.Default;
+            if (dbValueType == DbValueType.Default) return null;
+            if (dbValueType.HasArray() || ColumnDefinitionExtensions.IsCollectionType(propertyType)) return null;
+            return dbValueType.ToDbType();
         }
     }
 }

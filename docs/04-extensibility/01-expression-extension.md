@@ -417,6 +417,12 @@ LiteOrm 在首次访问 `SqlBuilder` 时通过 `LiteOrmSqlFunctionInitializer` �
 
 **Oracle / PostgreSQL**：使用 `EXTRACT()` 处理时间间隔，`IfNull` → `NVL` / `COALESCE`
 
+**数组与 JSON 函数**：
+
+- PostgreSQL 数组：`array_to_string(array, delimiter[, null_string])`、`array_append(array, element)`、`ANY(array)`（`value = ANY(array)`，数组作为单参数绑定）。
+- 通用 JSON 函数（`JsonExprExtensions`，命名空间 `LiteOrm.Common`）：`JsonExtract` / `JsonValue` / `JsonQuery` / `JsonContains` / `JsonObject` / `JsonArray` / `IsJson`，由各方言映射为原生函数（MySQL `JSON_EXTRACT` 等、SQLite `json_extract` 等、SQL Server `JSON_VALUE`/`JSON_QUERY`、Oracle `JSON_VALUE`/`JSON_QUERY`、PostgreSQL `->`/`->>`/`@>`）。
+- PgSQL 专用扩展（`LiteOrm.Pgsql` 命名空间）：`ArrayToString`、`ArrayAppend`、`Any`、`Contains`、`JsonbExtractPath`、`JsonbExtractPathText`、`JsonbContains`、`JsonbBuildObject`、`JsonbBuildArray`。
+
 ## 11. 补充建议
 
 - 自定义表达式时，优先复用现有 `FunctionExpr`、`LogicBinaryExpr`、`PropertyExpr` 等基础表达式类型，避免重复造轮子。

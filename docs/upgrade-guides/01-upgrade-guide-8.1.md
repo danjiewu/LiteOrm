@@ -78,6 +78,28 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
 ---
 
+## v8.1.1 破坏性变更：DbValueType 非空化与 ConvertToDbValue 签名调整
+
+> 本节适用于从 **v8.1.0 及更低版本** 升级到 **v8.1.1** 的用户。
+
+### 1. `DbValueType` 新增 `Default`，`Column.DbType` 改为非空
+
+`ColumnAttribute.DbType` 与 `ColumnDefinition.DbType` 由 `DbValueType?` 改为非空 `DbValueType`，默认值为 `DbValueType.Default`（`-1`），表示“未显式指定、运行时按属性类型自动推断”。
+
+- 原先 `DbType == null` 判定“未指定”的逻辑改为 `DbType == DbValueType.Default`。
+- 集合类型属性（`int[]`、`string[]`、`List<T>` 等）未显式指定时自动推断为 `DbValueType.Array`（此前为 `Json`）。
+- `DbValueType` 新增 `Jsonb`（PostgreSQL 二进制 JSON）与 `Array`。
+
+### 2. `ConvertToDbValue` 参数类型替换
+
+`IDbConverter.ConvertToDbValue` 的参数由 `System.Data.DbType` 替换为 `DbValueType`（默认 `DbValueType.Object`）。自定义 `IDbConverter` / `SqlBuilder` 实现需同步修改签名。
+
+### 3. `Param.DbType` 类型替换
+
+`Param.DbType` 类型由 `DbType?` 改为 `DbValueType`（默认 `DbValueType.Default`）；`DbParameter.DbType` 仍在 `DAOBase.SetupCommand` 内通过 `DbValueTypeMap.ToDbType` 派生，数组列不设置 `DbParameter.DbType`。
+
+---
+
 ## 新增功能
 
 ### 基础库新增 `AddLiteOrm()` —— 纯 MS DI 注册（无 Autofac）

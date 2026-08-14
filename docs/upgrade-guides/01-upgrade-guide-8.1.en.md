@@ -78,6 +78,28 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
 ---
 
+## v8.1.1 Breaking Changes: Non-nullable `DbValueType` and `ConvertToDbValue` Signature Change
+
+> This section applies when upgrading from **v8.1.0 or earlier** to **v8.1.1**.
+
+### 1. `DbValueType` gains `Default`; `Column.DbType` becomes non-nullable
+
+`ColumnAttribute.DbType` and `ColumnDefinition.DbType` changed from `DbValueType?` to non-nullable `DbValueType`, defaulting to `DbValueType.Default` (`-1`), which means "not specified — infer from the property type at runtime".
+
+- The previous `DbType == null` "unspecified" checks become `DbType == DbValueType.Default`.
+- Collection-typed properties (`int[]`, `string[]`, `List<T>`, etc.) without an explicit type are inferred as `DbValueType.Array` (previously `Json`).
+- `DbValueType` gains `Jsonb` (PostgreSQL binary JSON) and `Array`.
+
+### 2. `ConvertToDbValue` parameter type change
+
+`IDbConverter.ConvertToDbValue`'s parameter changed from `System.Data.DbType` to `DbValueType` (default `DbValueType.Object`). Custom `IDbConverter` / `SqlBuilder` implementations must update their signatures.
+
+### 3. `Param.DbType` type change
+
+`Param.DbType` changed from `DbType?` to `DbValueType` (default `DbValueType.Default`); `DbParameter.DbType` is still derived via `DbValueTypeMap.ToDbType` inside `DAOBase.SetupCommand`, and array columns do not set `DbParameter.DbType`.
+
+---
+
 ## New Features
 
 ### Core `AddLiteOrm()` — Plain MS DI Registration (no Autofac)

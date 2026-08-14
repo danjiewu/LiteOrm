@@ -405,9 +405,13 @@ namespace LiteOrm
                 {
                     DbParameter dbParam = command.CreateParameter();
                     dbParam.ParameterName = ToParamName(ToNativeName(para.Name));
-                    if (para.DbType.HasValue) dbParam.DbType = para.DbType.Value;
+                    if (para.DbType != DbValueType.Default)
+                    {
+                        // 数组列不设置 DbParameter.DbType，交由驱动按 CLR 数组推断
+                        if (!para.DbType.HasArray()) dbParam.DbType = para.DbType.ToDbType();
+                    }
                     else if (para.Value is not null) dbParam.DbType = SqlBuilder.GetDbType(para.Value.GetType());
-                    dbParam.Value = SqlBuilder.ConvertToDbValue(para.Value);
+                    dbParam.Value = SqlBuilder.ConvertToDbValue(para.Value, para.DbType);
                     command.Parameters.Add(dbParam);
                 }
         }
@@ -562,7 +566,7 @@ namespace LiteOrm
                 strConditions.Append(ToColumnSql(key));
                 strConditions.Append(" = ");
                 strConditions.Append(ToSqlParam(paramName));
-                paramValues.Add(new Param(paramName, null, key.ToDbType(SqlBuilder)));
+                paramValues.Add(new Param(paramName, null, key.GetDbValueType(SqlBuilder)));
             }
             string result = strConditions.ToString();
             strConditions.Dispose();
@@ -612,14 +616,14 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 将对象的属性值转化为数据库中的值，根据 DbType 进行转换
+        /// 将对象的属性值转化为数据库中的值，根据 DbValueType 进行转换
         /// </summary>
         /// <param name="value">值</param>
-        /// <param name="dbType">数据库类型</param>
+        /// <param name="dbValueType">数据库取值类型</param>
         /// <returns>数据库中的值</returns>
-        protected virtual object ConvertToDbValue(object? value, DbType? dbType)
+        protected virtual object ConvertToDbValue(object? value, DbValueType? dbValueType)
         {
-            return SqlBuilder.ConvertToDbValue(value, dbType ?? SqlBuilder.GetDbType(value?.GetType() ?? typeof(object)));
+            return SqlBuilder.ConvertToDbValue(value, dbValueType ?? DbValueType.Object);
         }
 
         /// <summary>

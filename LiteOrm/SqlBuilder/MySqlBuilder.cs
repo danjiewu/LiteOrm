@@ -164,6 +164,16 @@ namespace LiteOrm
         protected override string GetAutoIncrementSql(ColumnDefinition column) => "AUTO_INCREMENT";
 
         /// <summary>
+        /// 获取 MySQL 列类型。JSON/JSONB 列映射为 MySQL 原生 JSON 类型。
+        /// </summary>
+        protected override string GetSqlTypeDefinition(ColumnDefinition column)
+        {
+            DbValueType dbValueType = column.GetDbValueType(this);
+            if (dbValueType == DbValueType.Json || dbValueType == DbValueType.Jsonb) return "JSON";
+            return base.GetSqlTypeDefinition(column);
+        }
+
+        /// <summary>
         /// 构建 CREATE TABLE 语句。MySQL 通过表级 <c>AUTO_INCREMENT = n</c> 选项设置自增起始值；
         /// 增量步长由会话变量 <c>auto_increment_increment</c> 控制，无法在建表语句中指定。
         /// </summary>

@@ -1,10 +1,13 @@
 using LiteOrm.Common;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace LiteOrm
@@ -418,8 +421,65 @@ namespace LiteOrm
                 if (dbValue is string strDto && DateTimeOffset.TryParse(strDto, out DateTimeOffset dto)) return dto;
             }
 
+            // 集合类型属性：
+            // - 字符串按 JSON 反序列化（Json/Jsonb 列）
+            // - 数组/可枚举直接转换为目标集合（数组列，如 Npgsql 返回 T[]）
+            if (ColumnDefinitionExtensions.IsCollectionType(underlyingType))
+            {
+                if (dbValue is string jsonSource)
+                {
+                    return JsonSerializer.Deserialize(jsonSource, underlyingType);
+                }
+                if (dbValue is IEnumerable enumerable)
+                {
+                    return ConvertToCollection(enumerable, underlyingType);
+                }
+            }
+
             return Convert.ChangeType(dbValue, underlyingType);
 
+        }
+
+        /// <summary>
+        /// 将数据库返回的数组/可枚举值转换为目标集合类型（数组或 <see cref="List{T}"/>）。
+        /// 目标类型无法构造时回退为原始值。
+        /// </summary>
+        private static object ConvertToCollection(IEnumerable source, Type targetType)
+        {
+            // 目标为数组
+            if (targetType.IsArray)
+            {
+                Type elementType = targetType.GetElementType()!;
+                List<object?> items = new List<object?>();
+                foreach (object? item in source) items.Add(item);
+                Array array = Array.CreateInstance(elementType, items.Count);
+                for (int i = 0; i < items.Count; i++)
+                    array.SetValue(ChangeCollectionItem(items[i], elementType), i);
+                return array;
+            }
+
+            // 目标为 List<T>
+            if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                Type elementType = targetType.GetGenericArguments()[0];
+                System.Collections.IList list = (System.Collections.IList)Activator.CreateInstance(targetType)!;
+                foreach (object? item in source)
+                    list.Add(ChangeCollectionItem(item, elementType));
+                return list;
+            }
+
+            // 其他集合类型：尽力而为，返回原始值
+            return source;
+        }
+
+        /// <summary>
+        /// 将集合元素转换为目标元素类型；无法转换时返回原始值。
+        /// </summary>
+        private static object? ChangeCollectionItem(object? item, Type elementType)
+        {
+            if (item is null || elementType == typeof(object) || elementType.IsInstanceOfType(item)) return item;
+            try { return Convert.ChangeType(item, elementType); }
+            catch { return item; }
         }
 
         /// <summary>
@@ -442,18 +502,31 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 将对象的属性值转化为数据库中的值，根据列的 DbType 进行转换
+        /// 将对象的属性值转化为数据库中的值，根据列的 <see cref="DbValueType"/> 进行转换。
         /// </summary>
         /// <param name="value">值</param>
-        /// <param name="dbType">数据字段类型</param>
+        /// <param name="dbValueType">数据字段取值类型（可含 <see cref="DbValueType.Array"/> 掩码）。</param>
         /// <returns>数据库中的值</returns>
-        public virtual object ConvertToDbValue(object? value, DbType dbType = DbType.Object)
+        public virtual object ConvertToDbValue(object? value, DbValueType dbValueType = DbValueType.Object)
         {
             if (value is null) return DBNull.Value;
-            if (dbType == DbType.Object)
-                dbType = GetDbType(value.GetType());
+
+            // 数组列：非 byte[] 集合原样返回，交由驱动（如 Npgsql）按 CLR 数组/集合原生绑定
+            if (dbValueType.HasArray() && ColumnDefinitionExtensions.IsCollectionType(value.GetType()))
+                return value;
+
+            DbType dbType = (dbValueType == DbValueType.Object || dbValueType == DbValueType.Default)
+                ? GetDbType(value.GetType())
+                : DbValueTypeMap.ToDbType(dbValueType);
 
             Type type = value.GetType();
+
+            // Json/Jsonb 列：复杂值序列化为 JSON 字符串
+            if (dbValueType == DbValueType.Json || dbValueType == DbValueType.Jsonb)
+            {
+                if (IsComplexJsonValue(value)) return ToJsonString(value);
+                return value.ToString()!;
+            }
 
             // 处理枚举：优先根据基础类型转换，除非 DbType 要求字符串
             if (type.IsEnum)
@@ -512,6 +585,9 @@ namespace LiteOrm
                 case DbType.AnsiStringFixedLength:
                     if (value is Guid g3) return g3.ToString();
                     if (value is TimeSpan ts) return ts.ToString();
+                    if (value is string strValue) return strValue;
+                    // 非标量值（Json 列、集合等）序列化为 JSON 字符串
+                    if (IsComplexJsonValue(value)) return ToJsonString(value);
                     return value.ToString()!;
             }
 
@@ -521,6 +597,37 @@ namespace LiteOrm
             if (value is TimeSpan tsv) return tsv.Ticks;
 
             return value;
+        }
+
+        /// <summary>
+        /// 判断指定值是否需要以 JSON 序列化（非标量类型）。
+        /// </summary>
+        /// <param name="value">要判断的值。</param>
+        /// <returns>如果需要以 JSON 序列化则返回 true。</returns>
+        private static bool IsComplexJsonValue(object value)
+        {
+            Type type = value.GetType();
+            if (type.IsPrimitive) return false;
+            if (type.IsEnum) return false;
+            if (type == typeof(string)
+                || type == typeof(char)
+                || type == typeof(decimal)
+                || type == typeof(DateTime)
+                || type == typeof(DateTimeOffset)
+                || type == typeof(Guid)
+                || type == typeof(TimeSpan)
+                || type == typeof(byte[])) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// 将对象序列化为 JSON 字符串。
+        /// </summary>
+        /// <param name="value">要序列化的值。</param>
+        /// <returns>JSON 字符串。</returns>
+        protected virtual string ToJsonString(object value)
+        {
+            return JsonSerializer.Serialize(value, value.GetType());
         }
 
         /// <summary>
@@ -772,7 +879,9 @@ namespace LiteOrm
                 return column.DefaultValue!;
             }
 
-            var dbType = column.ToDbType(this);
+            DbValueType dbValueType = column.GetDbValueType(this);
+            if (dbValueType.HasArray()) return "'{}'";
+            var dbType = dbValueType.ToDbType();
             switch (dbType)
             {
                 case DbType.Boolean:
@@ -972,7 +1081,12 @@ namespace LiteOrm
         /// </summary>
         protected virtual string GetSqlTypeDefinition(ColumnDefinition column)
         {
-            var dbType = column.ToDbType(this);
+            DbValueType dbValueType = column.GetDbValueType(this);
+            // 非 PgSQL 方言无原生数组，回退为文本存储
+            if (dbValueType.HasArray()) return "TEXT";
+            if (dbValueType == DbValueType.Json || dbValueType == DbValueType.Jsonb) return "TEXT";
+
+            var dbType = dbValueType.ToDbType();
             switch (dbType)
             {
                 case DbType.String:

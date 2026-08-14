@@ -291,6 +291,19 @@ namespace LiteOrm
                     expr.Args[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
                 }
             });
+            // SQLite JSON 函数
+            sqliteBuilder.RegisterFunctionSqlHandler("JsonExtract", (ref outSql, functionName, arguments) =>
+                outSql.Append($"json_extract({string.Join(", ", arguments)})"));
+            sqliteBuilder.RegisterFunctionSqlHandler("JsonValue", (ref outSql, functionName, arguments) =>
+                outSql.Append($"json_extract({string.Join(", ", arguments)})"));
+            sqliteBuilder.RegisterFunctionSqlHandler("JsonQuery", (ref outSql, functionName, arguments) =>
+                outSql.Append($"json_extract({string.Join(", ", arguments)})"));
+            sqliteBuilder.RegisterFunctionSqlHandler("JsonObject", (ref outSql, functionName, arguments) =>
+                outSql.Append($"json_object({string.Join(", ", arguments)})"));
+            sqliteBuilder.RegisterFunctionSqlHandler("JsonArray", (ref outSql, functionName, arguments) =>
+                outSql.Append($"json_array({string.Join(", ", arguments)})"));
+            sqliteBuilder.RegisterFunctionSqlHandler("IsJson", (ref outSql, functionName, arguments) =>
+                outSql.Append($"json_valid({string.Join(", ", arguments)})"));
         }
 
         private static void RegisterMySqlFunctions(MySqlBuilder mySqlBuilder)
@@ -349,6 +362,21 @@ namespace LiteOrm
                     expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
                 outSql.Append(')');
             });
+            // MySQL JSON 函数
+            mySqlBuilder.RegisterFunctionSqlHandler("JsonExtract", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_EXTRACT({string.Join(", ", arguments)})"));
+            mySqlBuilder.RegisterFunctionSqlHandler("JsonValue", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_UNQUOTE(JSON_EXTRACT({string.Join(", ", arguments)}))"));
+            mySqlBuilder.RegisterFunctionSqlHandler("JsonQuery", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_EXTRACT({string.Join(", ", arguments)})"));
+            mySqlBuilder.RegisterFunctionSqlHandler("JsonContains", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_CONTAINS({string.Join(", ", arguments)})"));
+            mySqlBuilder.RegisterFunctionSqlHandler("JsonObject", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_OBJECT({string.Join(", ", arguments)})"));
+            mySqlBuilder.RegisterFunctionSqlHandler("JsonArray", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_ARRAY({string.Join(", ", arguments)})"));
+            mySqlBuilder.RegisterFunctionSqlHandler("IsJson", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_VALID({string.Join(", ", arguments)})"));
         }
 
         private static void RegisterOracleFunctions(OracleBuilder oracleBuilder)
@@ -406,6 +434,19 @@ namespace LiteOrm
                     expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
                 outSql.Append(')');
             });
+            // Oracle JSON 函数
+            oracleBuilder.RegisterFunctionSqlHandler("JsonExtract", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_QUERY({string.Join(", ", arguments)})"));
+            oracleBuilder.RegisterFunctionSqlHandler("JsonValue", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_VALUE({string.Join(", ", arguments)})"));
+            oracleBuilder.RegisterFunctionSqlHandler("JsonQuery", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_QUERY({string.Join(", ", arguments)})"));
+            oracleBuilder.RegisterFunctionSqlHandler("JsonObject", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_OBJECT({string.Join(", ", arguments)})"));
+            oracleBuilder.RegisterFunctionSqlHandler("JsonArray", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_ARRAY({string.Join(", ", arguments)})"));
+            oracleBuilder.RegisterFunctionSqlHandler("IsJson", (ref outSql, functionName, arguments) =>
+                outSql.Append($"({string.Join(", ", arguments)} IS JSON)"));
         }
 
         private static void RegisterPostgreSqlFunctions(PostgreSqlBuilder postgreSqlBuilder)
@@ -468,6 +509,68 @@ namespace LiteOrm
                     expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
                 outSql.Append(')');
             });
+
+            // PostgreSQL 数组函数
+            postgreSqlBuilder.RegisterFunctionSqlHandler("ANY", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                outSql.Append("ANY(");
+                if (expr.Args.Count > 0 && expr.Args[0] is ValueExpr ve && ve.Value is System.Collections.IEnumerable && !(ve.Value is string))
+                {
+                    // 数组作为单个参数绑定（不展开为 (p0,p1,...)）
+                    string paramName = outputParams.Count.ToString();
+                    outputParams.Add(new Param(sqlBuilder.ToParamName(paramName), ve.Value, DbValueTypeMap.InferFromPropertyType(ve.Value.GetType())));
+                    outSql.Append(sqlBuilder.ToSqlParam(paramName));
+                }
+                else if (expr.Args.Count > 0)
+                {
+                    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                }
+                outSql.Append(")");
+            });
+            postgreSqlBuilder.RegisterFunctionSqlHandler("array_to_string", (ref outSql, functionName, arguments) =>
+                outSql.Append($"{functionName}({string.Join(", ", arguments)})"));
+            postgreSqlBuilder.RegisterFunctionSqlHandler("array_append", (ref outSql, functionName, arguments) =>
+                outSql.Append($"{functionName}({string.Join(", ", arguments)})"));
+
+            // PostgreSQL JSON / JSONB 专用函数
+            postgreSqlBuilder.RegisterFunctionSqlHandler("jsonb_contains", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                outSql.Append(" @> ");
+                expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+            });
+            postgreSqlBuilder.RegisterFunctionSqlHandler(new[] { "jsonb_extract_path", "jsonb_extract_path_text", "jsonb_build_object", "jsonb_build_array" },
+                (ref outSql, functionName, arguments) => outSql.Append($"{functionName}({string.Join(", ", arguments)})"));
+
+            // 通用 JSON 函数映射到 PostgreSQL 语法（JsonExtract/JsonQuery 使用 ->，JsonValue 使用 ->>，JsonContains 使用 @>）
+            postgreSqlBuilder.RegisterFunctionSqlHandler("JsonExtract", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                outSql.Append(" -> ");
+                expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+            });
+            postgreSqlBuilder.RegisterFunctionSqlHandler("JsonValue", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                outSql.Append(" ->> ");
+                expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+            });
+            postgreSqlBuilder.RegisterFunctionSqlHandler("JsonQuery", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                outSql.Append(" -> ");
+                expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+            });
+            postgreSqlBuilder.RegisterFunctionSqlHandler("JsonContains", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                outSql.Append(" @> ");
+                expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+            });
+            postgreSqlBuilder.RegisterFunctionSqlHandler("JsonObject", (ref outSql, functionName, arguments) =>
+                outSql.Append($"jsonb_build_object({string.Join(", ", arguments)})"));
+            postgreSqlBuilder.RegisterFunctionSqlHandler("JsonArray", (ref outSql, functionName, arguments) =>
+                outSql.Append($"jsonb_build_array({string.Join(", ", arguments)})"));
         }
 
         private static void RegisterSqlServerFunctions(SqlServerBuilder sqlServerBuilder)
@@ -523,6 +626,20 @@ namespace LiteOrm
                     expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
                 outSql.Append(')');
             });
+
+            // SQL Server JSON 函数
+            sqlServerBuilder.RegisterFunctionSqlHandler("JsonExtract", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_QUERY({string.Join(", ", arguments)})"));
+            sqlServerBuilder.RegisterFunctionSqlHandler("JsonValue", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_VALUE({string.Join(", ", arguments)})"));
+            sqlServerBuilder.RegisterFunctionSqlHandler("JsonQuery", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_QUERY({string.Join(", ", arguments)})"));
+            sqlServerBuilder.RegisterFunctionSqlHandler("JsonObject", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_OBJECT({string.Join(", ", arguments)})"));
+            sqlServerBuilder.RegisterFunctionSqlHandler("JsonArray", (ref outSql, functionName, arguments) =>
+                outSql.Append($"JSON_ARRAY({string.Join(", ", arguments)})"));
+            sqlServerBuilder.RegisterFunctionSqlHandler("IsJson", (ref outSql, functionName, arguments) =>
+                outSql.Append($"ISJSON({string.Join(", ", arguments)})"));
         }
 
         /// <summary>

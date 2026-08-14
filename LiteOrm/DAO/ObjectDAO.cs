@@ -126,7 +126,7 @@ namespace LiteOrm
 
                 strColumns.Append(ToSqlName(column.Name!));
                 strValues.Append(ToSqlParam(i.ToString()));
-                paramValues.Add(new Param(i.ToString(), null, column.ToDbType(SqlBuilder)));
+                paramValues.Add(new Param(i.ToString(), null, column.GetDbValueType(SqlBuilder)));
             }
 
             string sql = IdentityColumn is null ?
@@ -157,7 +157,7 @@ namespace LiteOrm
                 strColumns.Append(ToSqlName(column.Name!));
                 strColumns.Append(" = ");
                 strColumns.Append(ToSqlParam(paramName));
-                paramValues.Add(new Param(paramName, null, column.ToDbType(SqlBuilder)));
+                paramValues.Add(new Param(paramName, null, column.GetDbValueType(SqlBuilder)));
             }
 
             // 构建 WHERE 子句
@@ -168,7 +168,7 @@ namespace LiteOrm
             {
                 if (TimestampColumn == null) throw new InvalidOperationException("Entity does not have a timestamp column for concurrency control.");
                 var paramName = paramValues.Count.ToString();
-                paramValues.Add(new Param(paramName, null, TimestampColumn.ToDbType(SqlBuilder)));
+                paramValues.Add(new Param(paramName, null, TimestampColumn.GetDbValueType(SqlBuilder)));
                 where += $" AND {ToColumnSql(TimestampColumn)} = {ToSqlParam(paramName)}";
             }
 
@@ -222,7 +222,7 @@ namespace LiteOrm
 
                     string idxStr = paramIndex.ToString();
                     strValuesRepeat.Append(ToSqlParam(idxStr));
-                    paramValues.Add(new Param(idxStr, null, insertColumns[j].ToDbType(SqlBuilder)));
+                    paramValues.Add(new Param(idxStr, null, insertColumns[j].GetDbValueType(SqlBuilder)));
                     paramIndex++;
                 }
                 valuesList.Add($"({strValuesRepeat.ToString()})");
@@ -254,12 +254,12 @@ namespace LiteOrm
             {
                 foreach (var col in updatableColumns)
                 {
-                    paramValues.Add(new Param(paramCount.ToString(), null, col.ToDbType(SqlBuilder)));
+                    paramValues.Add(new Param(paramCount.ToString(), null, col.GetDbValueType(SqlBuilder)));
                     paramCount++;
                 }
                 foreach (var key in keyColumns)
                 {
-                    paramValues.Add(new Param(paramCount.ToString(), null, key.ToDbType(SqlBuilder)));
+                    paramValues.Add(new Param(paramCount.ToString(), null, key.GetDbValueType(SqlBuilder)));
                     paramCount++;
                 }
             }
@@ -281,7 +281,7 @@ namespace LiteOrm
             {
                 foreach (var key in keyColumns)
                 {
-                    paramValues.Add(new Param(paramCount.ToString(), null, key.ToDbType(SqlBuilder)));
+                    paramValues.Add(new Param(paramCount.ToString(), null, key.GetDbValueType(SqlBuilder)));
                     paramCount++;
                 }
             }
@@ -303,7 +303,7 @@ namespace LiteOrm
             {
                 foreach (var key in keyColumns)
                 {
-                    paramValues.Add(new Param(paramCount.ToString(), null, key.ToDbType(SqlBuilder)));
+                    paramValues.Add(new Param(paramCount.ToString(), null, key.GetDbValueType(SqlBuilder)));
                     paramCount++;
                 }
             }
@@ -328,7 +328,7 @@ namespace LiteOrm
                 {
                     ColumnDefinition column = insertableColumns[j];
                     var param = parameters[paramIndex++];
-                    param.Value = ConvertToDbValue(column.GetValue(item), column.ToDbType(SqlBuilder));
+                    param.Value = ConvertToDbValue(column.GetValue(item), column.GetDbValueType(SqlBuilder));
                 }
             }
         }
@@ -367,7 +367,7 @@ namespace LiteOrm
                 for (int i = 0; i < columnCount; i++)
                 {
                     ColumnDefinition column = columns[i];
-                    dr[column.Name!] = ConvertToDbValue(column.GetValue(t), column.ToDbType(SqlBuilder)) ?? DBNull.Value;
+                    dr[column.Name!] = ConvertToDbValue(column.GetValue(t), column.GetDbValueType(SqlBuilder)) ?? DBNull.Value;
                 }
                 dt.Rows.Add(dr);
             }
@@ -389,12 +389,12 @@ namespace LiteOrm
                 for (int j = 0; j < updatableCount; j++)
                 {
                     ColumnDefinition column = updatableColumns[j];
-                    parameters[paramIndex++].Value = ConvertToDbValue(column.GetValue(item), column.ToDbType(SqlBuilder));
+                    parameters[paramIndex++].Value = ConvertToDbValue(column.GetValue(item), column.GetDbValueType(SqlBuilder));
                 }
                 for (int j = 0; j < keyCount; j++)
                 {
                     ColumnDefinition key = keyColumns[j];
-                    parameters[paramIndex++].Value = ConvertToDbValue(key.GetValue(item), key.ToDbType(SqlBuilder));
+                    parameters[paramIndex++].Value = ConvertToDbValue(key.GetValue(item), key.GetDbValueType(SqlBuilder));
                 }
             }
         }
@@ -412,7 +412,7 @@ namespace LiteOrm
                 for (int j = 0; j < keyCount; j++)
                 {
                     ColumnDefinition key = keyColumns[j];
-                    parameters[paramIndex++].Value = ConvertToDbValue(key.GetValue(item), key.ToDbType(SqlBuilder));
+                    parameters[paramIndex++].Value = ConvertToDbValue(key.GetValue(item), key.GetDbValueType(SqlBuilder));
                 }
             }
         }
@@ -430,7 +430,7 @@ namespace LiteOrm
                 for (int j = 0; j < keyCount; j++)
                 {
                     ColumnDefinition key = keyColumns[j];
-                    parameters[paramIndex++].Value = ConvertToDbValue(keys[j], key.ToDbType(SqlBuilder));
+                    parameters[paramIndex++].Value = ConvertToDbValue(keys[j], key.GetDbValueType(SqlBuilder));
                 }
             }
         }
@@ -453,7 +453,7 @@ namespace LiteOrm
             for (int i = 0; i < count; i++)
             {
                 var column = columns[i];
-                parameters[i].Value = ConvertToDbValue(column.GetValue(t), column.ToDbType(SqlBuilder));
+                parameters[i].Value = ConvertToDbValue(column.GetValue(t), column.GetDbValueType(SqlBuilder));
             }
 
             if (IdentityColumn is null)
@@ -589,19 +589,19 @@ namespace LiteOrm
             for (int i = 0; i < updatableCount; i++)
             {
                 var column = updatableColumns[i];
-                parameters[paramIndex++].Value = ConvertToDbValue(column.GetValue(t), column.ToDbType(SqlBuilder));
+                parameters[paramIndex++].Value = ConvertToDbValue(column.GetValue(t), column.GetDbValueType(SqlBuilder));
             }
 
             for (int i = 0; i < keyCount; i++)
             {
                 var key = keys[i];
-                parameters[paramIndex++].Value = ConvertToDbValue(key.GetValue(t), key.ToDbType(SqlBuilder));
+                parameters[paramIndex++].Value = ConvertToDbValue(key.GetValue(t), key.GetDbValueType(SqlBuilder));
             }
 
             if (timestamp != null)
             {
                 if (TimestampColumn == null) throw new InvalidOperationException("Entity does not have a timestamp column for concurrency control.");
-                parameters[paramIndex++].Value = ConvertToDbValue(timestamp, TimestampColumn.ToDbType(SqlBuilder));
+                parameters[paramIndex++].Value = ConvertToDbValue(timestamp, TimestampColumn.GetDbValueType(SqlBuilder));
             }
 
             return updateCommand.ExecuteNonQuery() > 0;
@@ -690,7 +690,7 @@ namespace LiteOrm
 
                 for (int j = 0; j < keyColumns.Count; j++)
                 {
-                    command.Parameters[batch.Count * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].ToDbType(SqlBuilder));
+                    command.Parameters[batch.Count * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].GetDbValueType(SqlBuilder));
                 }
 
                 batch.Add(item);
@@ -716,7 +716,7 @@ namespace LiteOrm
                     {
                         for (int j = 0; j < keyColumns.Count; j++)
                         {
-                            cmd.Parameters[i * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].ToDbType(SqlBuilder));
+                            cmd.Parameters[i * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].GetDbValueType(SqlBuilder));
                         }
                     }
                     using (var reader = cmd.ExecuteReader())
@@ -825,7 +825,7 @@ namespace LiteOrm
 
             for (int i = 0; i < count; i++)
             {
-                parameters[i].Value = ConvertToDbValue(keys[i], keyColumns[i].ToDbType(SqlBuilder));
+                parameters[i].Value = ConvertToDbValue(keys[i], keyColumns[i].GetDbValueType(SqlBuilder));
             }
             return deleteCommand.ExecuteNonQuery() > 0;
         }
@@ -899,7 +899,7 @@ namespace LiteOrm
             for (int i = 0; i < count; i++)
             {
                 var column = columns[i];
-                parameters[i].Value = ConvertToDbValue(column.GetValue(t), column.ToDbType(SqlBuilder));
+                parameters[i].Value = ConvertToDbValue(column.GetValue(t), column.GetDbValueType(SqlBuilder));
             }
 
             if (IdentityColumn is null)
@@ -931,7 +931,7 @@ namespace LiteOrm
                 DbParameter param = command.CreateParameter();
                 param.Direction = ParameterDirection.Output;
                 if(IdentityColumn.Length > 0) param.Size = IdentityColumn.Length;
-                param.DbType = IdentityColumn.ToDbType(SqlBuilder);
+                param.DbType = IdentityColumn.GetDbValueType(SqlBuilder).ToDbType();
                 param.ParameterName = ToParamName(Constants.IdentityParamName);
                 command.Parameters.Add(param);
             }
@@ -1049,19 +1049,19 @@ namespace LiteOrm
             for (int i = 0; i < updatableCount; i++)
             {
                 var column = updatableColumns[i];
-                parameters[paramIndex++].Value = ConvertToDbValue(column.GetValue(t), column.ToDbType(SqlBuilder));
+                parameters[paramIndex++].Value = ConvertToDbValue(column.GetValue(t), column.GetDbValueType(SqlBuilder));
             }
 
             for (int i = 0; i < keyCount; i++)
             {
                 var key = keys[i];
-                parameters[paramIndex++].Value = ConvertToDbValue(key.GetValue(t), key.ToDbType(SqlBuilder));
+                parameters[paramIndex++].Value = ConvertToDbValue(key.GetValue(t), key.GetDbValueType(SqlBuilder));
             }
 
             if (timestamp != null)
             {
                 var timestampCol = TableDefinition.Columns.First(c => c.IsTimestamp);
-                parameters[paramIndex].Value = ConvertToDbValue(timestamp, timestampCol.ToDbType(SqlBuilder));
+                parameters[paramIndex].Value = ConvertToDbValue(timestamp, timestampCol.GetDbValueType(SqlBuilder));
             }
             return await updateCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
         }
@@ -1152,7 +1152,7 @@ namespace LiteOrm
 
                 for (int j = 0; j < keyColumns.Count; j++)
                 {
-                    command.Parameters[batch.Count * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].ToDbType(SqlBuilder));
+                    command.Parameters[batch.Count * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(item), keyColumns[j].GetDbValueType(SqlBuilder));
                 }
 
                 batch.Add(item);
@@ -1179,7 +1179,7 @@ namespace LiteOrm
                 {
                     for (int j = 0; j < keyColumns.Count; j++)
                     {
-                        cmd.Parameters[i * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].ToDbType(SqlBuilder));
+                        cmd.Parameters[i * paramsPerKey + j].Value = ConvertToDbValue(keyColumns[j].GetValue(batch[i]), keyColumns[j].GetDbValueType(SqlBuilder));
                     }
                 }
                 using (var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
@@ -1267,7 +1267,7 @@ namespace LiteOrm
 
             for (int i = 0; i < count; i++)
             {
-                parameters[i].Value = ConvertToDbValue(keys[i], keyColumns[i].ToDbType(SqlBuilder));
+                parameters[i].Value = ConvertToDbValue(keys[i], keyColumns[i].GetDbValueType(SqlBuilder));
             }
             return await deleteCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
         }

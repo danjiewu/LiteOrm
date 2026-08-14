@@ -140,27 +140,19 @@ namespace LiteOrm
             }
             else
             {
-                // 无 ColumnAttribute 的属性：根据类型推断 DbType
-                DbType defaultDbType = GetDbTypeInternal(property.PropertyType);
-                if (defaultDbType == DbType.Object) return null;
+                // 无 ColumnAttribute 的属性：根据类型推断 DbType（集合属性推断为 Array）
+                DbValueType defaultDbType = DbValueTypeMap.InferFromPropertyType(property.PropertyType);
+                if (defaultDbType == DbValueType.Object) return null;
 
                 ColumnDefinition column = new ColumnDefinition(property);
                 column.Name = property.Name;
                 column.Mode = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
                 column.DbType = defaultDbType;
-                column.Length = DbTypeMap.GetDefaultLength(defaultDbType);
+                column.Length = DbTypeMap.GetDefaultLength(column.DbType.ToDbType());
                 column.AllowNull = property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(column.PropertyType) is not null : true;
                 column.ForeignTables = foreignTables;
                 return column;
             }
-        }
-
-        /// <summary>
-        /// 获取属性类型对应的 DbType，使用 <see cref="DbTypeMap"/> 内部映射。
-        /// </summary>
-        private static DbType GetDbTypeInternal(Type propertyType)
-        {
-            return DbTypeMap.GetDbType(propertyType.GetUnderlyingType());
         }
 
         private static ForeignColumn? GenerateForeignColumn(PropertyInfo property)

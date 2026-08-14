@@ -5,11 +5,20 @@
 ### Breaking Changes
 - `[AutoRegister]` 的 `ServiceTypes`（此前为 `Type[]`）已改为枚举 `AutoRegisterServiceTypes`：`All`（默认，实现类型自身 + 接口）、`Self`（仅自身）、`Interface`（仅接口）。原 `[AutoRegister(Lifetime.Scoped, typeof(IFoo))]` 写法请改为 `[AutoRegister(AutoRegisterServiceTypes.Interface, Lifetime = Lifetime.Scoped)]`。
 - `DAOBase` 及派生 DAO（`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>`）构造函数需传入 `SessionManager`，不再依赖静态 `SessionManager.Current`。手动构造 DAO 时请传入 `sessionManager`；依赖注入场景由容器自动解析。`SessionManager.Current` 仅保留为外部使用入口，`AddLiteOrm()` 会自动将其绑定到当前作用域实例。
+- `ColumnAttribute.DbType` 与 `ColumnDefinition.DbType` 由 `DbValueType?` 改为非空 `DbValueType`，默认值为新增的 `DbValueType.Default`（表示未显式指定、运行时按属性类型推断）。原 `DbType == null` 判空逻辑改为 `DbType == DbValueType.Default`。
+- `IDbConverter.ConvertToDbValue` 的参数由 `DbType` 改为 `DbValueType`（默认 `DbValueType.Object`），不再接受 `DbType` 参数。
+- `Param.DbType` 类型由 `DbType?` 改为 `DbValueType`（默认 `DbValueType.Default`）。
+- `DbValueType` 枚举新增 `Default = -1`、`Jsonb = 29`、`Array = 30`；集合类型属性未显式指定类型时自动推断为 `Array`（此前推断为 `Json`）。
 
 ### 新增功能
 
 - `RegisterLiteOrm()` 的 `LiteOrmOptions` 新增 `AutoRegisterServices` 选项（默认 `true`），设为 `false` 可跳过自动扫描注册 (`009d2c3`)
 - `EntityService<T>`、`EntityViewService<T>`、`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>` 基类新增 `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`，派生类自动继承注册行为。
+- 数组类型支持：集合属性自动推断为 `DbValueType.Array`；PostgreSQL 生成原生数组列（`integer[]`、`text[]` 等），其余方言回退文本 JSON 存储。
+- PostgreSQL 数组函数：新增 `array_to_string`、`array_append`、`ANY` 等函数的解析与 SQL 生成，`ANY` 支持数组作为单参数绑定。
+- 新增 `LiteOrm.Pgsql` 命名空间，提供 `ValueTypeExpr` 的 PgSQL 专用扩展（`ArrayToString`、`ArrayAppend`、`Any`、`Contains`、`JsonbExtractPath`、`JsonbExtractPathText`、`JsonbContains`、`JsonbBuildObject`、`JsonbBuildArray`）。
+- JSON/JSONB 类型：`DbValueType.Json`/`Jsonb` 支持，PostgreSQL 生成 `JSON`/`JSONB` 列，MySQL 生成 `JSON` 列。
+- 新增 `JsonExprExtensions` 公共 JSON 函数扩展（`JsonExtract`、`JsonValue`、`JsonQuery`、`JsonContains`、`JsonObject`、`JsonArray`、`IsJson`），并为 MySQL / SQLite / SQL Server / Oracle / PostgreSQL 注册各自原生 JSON 函数。
 
 ### 改进
 
@@ -17,6 +26,8 @@
 - `AutoRegisterGenerator` 的 AOT 判定与 `TableInfoGenerator` 统一，读取 `build_property.enableaotanalyzer` / `enabletrimanalyzer` 等分析器属性 (`009d2c3`)
 - Autofac 自动注册（`RegisterLiteOrm()`）中，实现类型或其接口带 `[Service]` 特性（`IsService = true`）时会自动应用 `ServiceInvokeInterceptor` 拦截，无需显式声明 `[Intercept]`。
 - `RegisterLiteOrm()` 移除 `LiteOrmOptions.RegisterScope` 选项，作用域跟踪始终默认自动启用（`ScopeExtensions.RegisterScope` 仍保留为内部调用）。
+- `ConvertFromDbValue` 支持数组/集合值到 `List<T>` 等目标集合的转换。
+- 源生成器 `TableInfoGenerator` 适配非空 `DbValueType` 生成。
 
 ---
 

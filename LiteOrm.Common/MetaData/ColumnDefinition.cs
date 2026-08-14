@@ -1,4 +1,3 @@
-using System.Data;
 using System.Reflection;
 
 namespace LiteOrm.Common
@@ -66,9 +65,9 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 获取或设置数据库列的数据类型。
-        /// 为 null 时表示使用默认值，由 <see cref="ISqlBuilder"/> 根据属性类型推断。
+        /// 为 <see cref="DbValueType.Default"/> 时表示使用默认值，由 <see cref="ISqlBuilder"/> 根据属性类型推断。
         /// </summary>
-        public DbType? DbType { get; set; }
+        public DbValueType DbType { get; set; } = DbValueType.Default;
 
         /// <summary>
         /// 获取或设置一个值，指示该列是否允许为空。

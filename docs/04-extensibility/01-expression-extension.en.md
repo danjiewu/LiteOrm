@@ -417,6 +417,12 @@ LiteOrm automatically registers the following cross-database SqlFunctions on fir
 
 **Oracle / PostgreSQL**: Use `EXTRACT()` for time intervals, `IfNull` → `NVL` / `COALESCE`
 
+**Array and JSON functions**:
+
+- PostgreSQL arrays: `array_to_string(array, delimiter[, null_string])`, `array_append(array, element)`, `ANY(array)` (`value = ANY(array)`, the array is bound as a single parameter).
+- Common JSON functions (`JsonExprExtensions`, namespace `LiteOrm.Common`): `JsonExtract` / `JsonValue` / `JsonQuery` / `JsonContains` / `JsonObject` / `JsonArray` / `IsJson`, mapped to native functions per dialect (MySQL `JSON_EXTRACT` and friends, SQLite `json_extract` and friends, SQL Server `JSON_VALUE`/`JSON_QUERY`, Oracle `JSON_VALUE`/`JSON_QUERY`, PostgreSQL `->`/`->>`/`@>`).
+- PgSQL-specific extensions (namespace `LiteOrm.Pgsql`): `ArrayToString`, `ArrayAppend`, `Any`, `Contains`, `JsonbExtractPath`, `JsonbExtractPathText`, `JsonbContains`, `JsonbBuildObject`, `JsonbBuildArray`.
+
 ## 11. Best Practices
 
 - When creating custom expressions, prefer reusing existing base expression types like `FunctionExpr`, `LogicBinaryExpr`, `PropertyExpr` to avoid reinventing the wheel.

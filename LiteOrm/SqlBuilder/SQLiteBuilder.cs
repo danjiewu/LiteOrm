@@ -38,9 +38,9 @@ namespace LiteOrm
         /// 将对象值转换为数据库值，Sqlite 中 DateTime、TimeSpan 类型将被转换为字符串存储。
         /// </summary>
         /// <param name="value">要转换的对象值。</param>
-        /// <param name="dbType">要转换的数据库类型。</param>
+        /// <param name="dbValueType">要转换的数据库取值类型。</param>
         /// <returns>转换后的数据库值。</returns>
-        public override object ConvertToDbValue(object? value, DbType dbType = DbType.Object)
+        public override object ConvertToDbValue(object? value, DbValueType dbValueType = DbValueType.Object)
         {
             if (value is DateTime dt)
             {
@@ -56,7 +56,7 @@ namespace LiteOrm
                 // SQLite中存储为字符串格式 "hh:mm:ss.fff"
                 return ts.ToString("c");
             }
-            return base.ConvertToDbValue(value, dbType);
+            return base.ConvertToDbValue(value, dbValueType);
         }
 
         /// <summary>

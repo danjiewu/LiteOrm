@@ -19,6 +19,13 @@
 8.1.1 Breaking Changes:
 - DAOBase 与 ObjectDAO&lt;T&gt; / ObjectViewDAO&lt;T&gt; / DataDAO&lt;T&gt; / DataViewDAO&lt;T&gt; 构造函数改为接收 SessionManager，DAO 内部不再依赖静态 SessionManager.Current；
 - SessionManager.Current 仅作为外部调用入口，AddLiteOrm() 会自动将其绑定到当前作用域实例。
+- ConvertToDbValue 参数与 Param.DbType 由 DbType 改为 DbValueType；
+- 集合类型属性自动推断为 DbValueType.Array（原为 Json）。
+
+8.1.1 New Features:
+- PostgreSQL 数组支持：数组列 DDL（integer[]/text[] 等）与 array_to_string/array_append/ANY 函数；
+- 新增 LiteOrm.Pgsql 命名空间与 PgSQL 专用 Expr 扩展（ArrayToString/ArrayAppend/Any/Jsonb* 等）；
+- 各方言 JSON 函数注册（MySQL JSON_*、SQLite json_*、SQL Server JSON_VALUE/JSON_QUERY、Oracle JSON_VALUE/JSON_QUERY、PostgreSQL ->/->>/@>）。
 
   8.1.1 改进:
   - 非 AOT 模式自动注册改用运行时程序集扫描（LiteOrmAutoRegistration.Apply()），不再生成源代码；AOT 模式仍由源生成器编译期生成，按 RuntimeFeature.IsDynamicCodeSupported 自动分流；

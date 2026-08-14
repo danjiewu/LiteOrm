@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using LiteOrm.Common;
+﻿﻿using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -97,7 +97,56 @@ namespace LiteOrm
                 var dbType = column.ToDbType(this);
                 return dbType == DbType.Int64 ? "BIGSERIAL" : "SERIAL";
             }
+
+            DbValueType dbValueType = column.GetDbValueType(this);
+            if (dbValueType.HasArray())
+            {
+                Type? elementType = ColumnDefinitionExtensions.GetCollectionElementType(column.PropertyType) ?? typeof(object);
+                DbValueType elementDbValueType = DbValueTypeMap.FromDbType(DbTypeMap.GetDbType(elementType));
+                return GetPostgresArrayElementType(elementDbValueType) + "[]";
+            }
+            if (dbValueType == DbValueType.Json) return "JSON";
+            if (dbValueType == DbValueType.Jsonb) return "JSONB";
             return base.GetSqlTypeDefinition(column);
+        }
+
+        /// <summary>
+        /// 将数组元素的 <see cref="DbValueType"/> 映射为 PostgreSQL 标量类型名。
+        /// </summary>
+        private static string GetPostgresArrayElementType(DbValueType elementType)
+        {
+            switch (elementType)
+            {
+                case DbValueType.String:
+                case DbValueType.AnsiString:
+                case DbValueType.AnsiStringFixedLength:
+                case DbValueType.StringFixedLength:
+                case DbValueType.Xml: return "text";
+                case DbValueType.Int16: return "smallint";
+                case DbValueType.Int32: return "integer";
+                case DbValueType.Int64: return "bigint";
+                case DbValueType.Boolean: return "boolean";
+                case DbValueType.Byte:
+                case DbValueType.SByte: return "smallint";
+                case DbValueType.UInt16: return "integer";
+                case DbValueType.UInt32: return "bigint";
+                case DbValueType.UInt64: return "numeric";
+                case DbValueType.Double: return "double precision";
+                case DbValueType.Single: return "real";
+                case DbValueType.Decimal:
+                case DbValueType.Currency:
+                case DbValueType.VarNumeric: return "numeric";
+                case DbValueType.DateTime:
+                case DbValueType.DateTime2: return "timestamp";
+                case DbValueType.Date: return "date";
+                case DbValueType.Time: return "time";
+                case DbValueType.DateTimeOffset: return "timestamptz";
+                case DbValueType.Guid: return "uuid";
+                case DbValueType.Binary: return "bytea";
+                case DbValueType.Json:
+                case DbValueType.Jsonb: return "jsonb";
+                default: return "text";
+            }
         }
 
         /// <summary>

@@ -17,6 +17,14 @@
     <PackageReleaseNotes>
 8.1.1 Breaking Changes:
 - [AutoRegister] 的 ServiceTypes 改为枚举 AutoRegisterServiceTypes（All/Self/Interface，默认 All），原 Type[] 写法移除。
+- DbValueType 新增 Default/Jsonb/Array 枚举值；ColumnAttribute.DbType 与 ColumnDefinition.DbType 由 DbValueType? 改为非空 DbValueType（默认 DbValueType.Default，集合属性自动推断为 Array）；
+- IDbConverter.ConvertToDbValue 参数由 DbType 改为 DbValueType；
+- Param.DbType 类型由 DbType? 改为 DbValueType。
+
+8.1.1 New Features:
+- 新增数组类型支持：集合属性自动推断为 DbValueType.Array；
+- 新增 JSON/JSONB 类型支持（DbValueType.Json/Jsonb）；
+- 新增 JsonExprExtensions 公共 JSON 函数扩展。
 
 8.1.0 Breaking Changes:
 - PreparedSql 移至 LiteOrm.Common 项目，参数类型由 KeyValuePair 改为自定义 Param；

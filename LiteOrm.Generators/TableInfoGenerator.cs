@@ -206,7 +206,7 @@ namespace LiteOrm.Generators
             var joinedTable = compilation.GetTypeByMetadataName("LiteOrm.Common.JoinedTable");
             var columnRef = compilation.GetTypeByMetadataName("LiteOrm.Common.ColumnRef");
             var foreignTable = compilation.GetTypeByMetadataName("LiteOrm.Common.ForeignTable");
-            var dbType = compilation.GetTypeByMetadataName("System.Data.DbType");
+            var dbType = compilation.GetTypeByMetadataName("LiteOrm.Common.DbValueType");
             var columnMode = compilation.GetTypeByMetadataName("LiteOrm.Common.ColumnMode");
             var enumUtil = compilation.GetTypeByMetadataName("LiteOrm.EnumUtil");
             var typeResolverHelper = compilation.GetTypeByMetadataName("LiteOrm.Common.TypeResolverHelper");
@@ -430,7 +430,7 @@ namespace LiteOrm.Generators
 
             // DbType: 空表示未显式指定，运行时由 SqlBuilder 推断
             if (TryGetNamedArg(colAttr.NamedArguments, "DbType", out var dt) && !dt.IsNull && dt.Value is int dbTypeInt)
-                info.DbType = ((System.Data.DbType)dbTypeInt).ToString();
+                info.DbType = GetEnumMemberName(symbols.DbType, dbTypeInt) ?? dbTypeInt.ToString();
             else
                 info.DbType = null;
 
@@ -470,6 +470,33 @@ namespace LiteOrm.Generators
             const int Write = 6; // ColumnMode.Insert | ColumnMode.Update
             const int Read = 1;  // ColumnMode.Read
             return (canRead ? Write : 0) | (canWrite ? Read : 0);
+        }
+
+        /// <summary>
+        /// 根据枚举成员的整数值获取成员名，供内部 DbType 名称转换使用。
+        /// </summary>
+        private static string? GetEnumMemberName(INamedTypeSymbol enumSymbol, int value)
+        {
+            foreach (var member in enumSymbol.GetMembers())
+            {
+                if (member is IFieldSymbol field && field.HasConstantValue && field.ConstantValue is int v && v == value)
+                    return field.Name;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 根据枚举成员名获取其整数值，供内部 DbType 生成使用。
+        /// 找不到时返回 -1，表示不生成 DbType。
+        /// </summary>
+        private static int GetEnumMemberValue(INamedTypeSymbol enumSymbol, string name)
+        {
+            foreach (var member in enumSymbol.GetMembers())
+            {
+                if (member is IFieldSymbol field && field.HasConstantValue && field.Name == name && field.ConstantValue is int v)
+                    return v;
+            }
+            return -1;
         }
 
         private static string InferDbType(ITypeSymbol type, ResolvedSymbols symbols)
@@ -613,11 +640,12 @@ namespace LiteOrm.Generators
                 sb.AppendLine($"            columns[{i}].IsUnique = {c.IsUnique.ToString().ToLowerInvariant()};");
                 sb.AppendLine($"            columns[{i}].AllowNull = {c.AllowNull.ToString().ToLowerInvariant()};");
                 sb.AppendLine($"            columns[{i}].Length = {c.Length};");
-                // DbType 为 null 表示未显式指定，留空(null)由 SqlBuilder 运行时推断
-                if (!string.IsNullOrEmpty(c.DbType) && c.DbType != "Object")
+                // DbType 为 Default（未显式指定）时留空，由 SqlBuilder 运行时推断
+                if (!string.IsNullOrEmpty(c.DbType) && c.DbType != "Object" && c.DbType != "Default")
                 {
-                    var dbTypeInt = (int)Enum.Parse(typeof(System.Data.DbType), c.DbType);
-                    sb.AppendLine($"            columns[{i}].DbType = (DbType?){dbTypeInt};");
+                    var dbTypeInt = GetEnumMemberValue(symbols.DbType, c.DbType!);
+                    if (dbTypeInt >= 0)
+                        sb.AppendLine($"            columns[{i}].DbType = (DbValueType){dbTypeInt};");
                 }
                 sb.AppendLine($"            columns[{i}].Mode = (ColumnMode){c.ColumnMode};");
                 if (!string.IsNullOrEmpty(c.IdentityExpression))

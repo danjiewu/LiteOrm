@@ -20,9 +20,9 @@ namespace LiteOrm.Common
         /// 转换 .NET 对象值为数据库可接受的值。
         /// </summary>
         /// <param name="value">要转换的 .NET 对象值。</param>
-        /// <param name="dbType">目标数据库类型（可选）。</param>
+        /// <param name="dbValueType">目标数据库取值类型（可选，可含 <see cref="DbValueType.Array"/> 掩码）。</param>
         /// <returns>返回转换后的数据库值。</returns>
-        object ConvertToDbValue(object? value, DbType dbType = DbType.Object);
+        object ConvertToDbValue(object? value, DbValueType dbValueType = DbValueType.Object);
         /// <summary>
         /// 将 .NET 类型映射为数据库对应的 <see cref="DbType"/>。
         /// </summary>

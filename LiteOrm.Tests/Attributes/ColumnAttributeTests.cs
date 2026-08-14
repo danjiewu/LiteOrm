@@ -80,7 +80,7 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal("UserId", attribute.ColumnName);
             Assert.True(attribute.IsColumn);
             Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
-            Assert.Null(attribute.DbType);
+            Assert.Equal(DbValueType.Default, attribute.DbType);
             Assert.True(attribute.AllowNull);
         }
 
@@ -176,7 +176,7 @@ namespace LiteOrm.Common.UnitTests
 
             // Assert
             Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
-            Assert.Null(attribute.DbType);
+            Assert.Equal(DbValueType.Default, attribute.DbType);
             Assert.True(attribute.AllowNull);
             Assert.False(attribute.IsPrimaryKey);
             Assert.False(attribute.IsIdentity);
@@ -204,7 +204,7 @@ namespace LiteOrm.Common.UnitTests
             // 断言
             Assert.True(attribute.IsColumn);
             Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
-            Assert.Null(attribute.DbType);
+            Assert.Equal(DbValueType.Default, attribute.DbType);
             Assert.True(attribute.AllowNull);
         }
 
@@ -224,13 +224,13 @@ namespace LiteOrm.Common.UnitTests
             // 断言
             Assert.False(attribute.IsColumn);
             Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
-            Assert.Null(attribute.DbType);
+            Assert.Equal(DbValueType.Default, attribute.DbType);
             Assert.True(attribute.AllowNull);
         }
 
         /// <summary>
         /// Tests that the parameterless constructor initializes all properties with their expected default values.
-        /// Verifies that ColumnMode is set to Full, DbType is set to Object, AllowNull is set to true,
+        /// Verifies that ColumnMode is set to Full, DbType is set to Default, AllowNull is set to true,
         /// and IsColumn is set to true (from field initializer).
         /// </summary>
         [Fact]
@@ -242,7 +242,7 @@ namespace LiteOrm.Common.UnitTests
             // Assert
             Assert.NotNull(attribute);
             Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
-            Assert.Null(attribute.DbType);
+            Assert.Equal(DbValueType.Default, attribute.DbType);
             Assert.True(attribute.AllowNull);
             Assert.True(attribute.IsColumn);
             Assert.Null(attribute.Constant);

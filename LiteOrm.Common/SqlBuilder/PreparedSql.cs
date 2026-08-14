@@ -21,17 +21,17 @@ namespace LiteOrm.Common
         public object? Value { get; set; }
 
         /// <summary>
-        /// 可选的数据库类型。设置后将在创建数据库参数时指定 <see cref="System.Data.Common.DbParameter.DbType"/>。
+        /// 数据库取值类型。为 <see cref="DbValueType.Default"/> 时表示未显式指定，按参数值类型推断。
         /// </summary>
-        public DbType? DbType { get; set; }
+        public DbValueType DbType { get; set; } = DbValueType.Default;
 
         /// <summary>
         /// 初始化 <see cref="Param"/> 类的新实例。
         /// </summary>
         /// <param name="name">参数名称。</param>
         /// <param name="value">参数值。</param>
-        /// <param name="dbType">可选的数据库类型。</param>
-        public Param(string name, object? value, DbType? dbType = null)
+        /// <param name="dbType">数据库取值类型。</param>
+        public Param(string name, object? value, DbValueType dbType = DbValueType.Default)
         {
             Name = name;
             Value = value;
