@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Data;
 using System.Threading.Tasks;
@@ -19,18 +19,6 @@ namespace LiteOrm
         public static SessionManager NewSession(this DAOContextPoolFactory factory, ILogger<SessionManager>? logger = null)
         {
             return new SessionManager(factory, logger);
-        }
-
-        /// <summary>
-        /// 进入手动会话作用域：将 <paramref name="sessionManager"/> 设置为当前异步上下文的 <see cref="SessionManager.Current"/>，
-        /// 并在作用域结束时恢复之前的会话。LiteOrm 核心不依赖 DI 容器，手动构造后通过此方法激活当前会话。
-        /// </summary>
-        /// <param name="sessionManager">要激活的会话实例。</param>
-        /// <returns>会话作用域，Dispose 时恢复之前的当前会话。</returns>
-        public static SessionScope BeginScope(this SessionManager sessionManager)
-        {
-            if (sessionManager is null) throw new ArgumentNullException(nameof(sessionManager));
-            return new SessionScope(sessionManager);
         }
 
         /// <summary>
