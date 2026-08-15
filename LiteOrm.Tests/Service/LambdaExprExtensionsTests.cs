@@ -201,6 +201,59 @@ namespace LiteOrm.Common.UnitTests
             Assert.Throws<NullReferenceException>(() => service.Search(x => x.Id > 0));
         }
 
+        [Fact]
+        public void SearchAs_WithQueryableExpression_ForwardsSelectExprToUnderlyingService()
+        {
+            var expected = new List<string> { "A", "B" };
+            var service = new Mock<IEntityViewService<TestEntity>>();
+            service.Setup(s => s.SearchAs<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>())).Returns(expected);
+
+            var result = service.Object.SearchAs(q => q.Select(x => x.Name));
+
+            Assert.Same(expected, result);
+            service.Verify(s => s.SearchAs<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>()), Times.Once);
+        }
+
+        [Fact]
+        public void SearchOneAs_WithQueryableExpression_ForwardsSelectExprToUnderlyingService()
+        {
+            var expected = "Bob";
+            var service = new Mock<IEntityViewService<TestEntity>>();
+            service.Setup(s => s.SearchOneAs<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>())).Returns(expected);
+
+            var result = service.Object.SearchOneAs(q => q.Where(x => x.Id > 0).Select(x => x.Name));
+
+            Assert.Equal(expected, result);
+            service.Verify(s => s.SearchOneAs<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task SearchAsAsync_WithQueryableExpression_ForwardsSelectExprToUnderlyingService()
+        {
+            var expected = new List<string> { "A" };
+            var service = new Mock<IEntityViewServiceAsync<TestEntity>>();
+            service.Setup(s => s.SearchAsAsync<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>())).ReturnsAsync(expected);
+
+            var result = await service.Object.SearchAsAsync(q => q.Select(x => x.Name));
+
+            Assert.Same(expected, result);
+            service.Verify(s => s.SearchAsAsync<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task SearchOneAsAsync_WithQueryableExpression_ForwardsSelectExprAndTableArgs()
+        {
+            var expected = "Alice";
+            var tableArgs = new[] { "Users" };
+            var service = new Mock<IEntityViewServiceAsync<TestEntity>>();
+            service.Setup(s => s.SearchOneAsAsync<string>(It.IsAny<SelectExpr>(), tableArgs)).ReturnsAsync(expected);
+
+            var result = await service.Object.SearchOneAsAsync(q => q.Select(x => x.Name), tableArgs);
+
+            Assert.Equal(expected, result);
+            service.Verify(s => s.SearchOneAsAsync<string>(It.IsAny<SelectExpr>(), tableArgs), Times.Once);
+        }
+
         public class TestEntity
         {
             public int Id { get; set; }

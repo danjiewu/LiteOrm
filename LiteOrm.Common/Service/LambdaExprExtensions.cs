@@ -1,6 +1,7 @@
 using LiteOrm.Service;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
@@ -225,6 +226,96 @@ namespace LiteOrm.Common
         public static Task<int> UpdateAllAsync<T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityService.UpdateAllAsync(Expr.Update(updateExpression, expression), tableArgs, cancellationToken);
+        }
+
+        /// <summary>
+        /// 使用 IQueryable 形式的 Lambda 表达式查询实体，并将结果投影为指定类型的列表。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <typeparam name="TResult">结果类型。</typeparam>
+        /// <param name="entityViewService">实体视图服务实例。</param>
+        /// <param name="expression">定义查询与投影的 IQueryable Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <returns>投影后的结果列表。</returns>
+        public static List<TResult> SearchAs<T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(
+            this IEntityViewService<T> entityViewService,
+            Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
+            string[]? tableArgs = null)
+        {
+            var selectExpr = LambdaExprConverter.ToSqlSegment(expression);
+            return entityViewService.SearchAs<TResult>(ToSelectExpr<T>(selectExpr), tableArgs!);
+        }
+
+        /// <summary>
+        /// 使用 IQueryable 形式的 Lambda 表达式查询单个实体，并将结果投影为指定类型。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <typeparam name="TResult">结果类型。</typeparam>
+        /// <param name="entityViewService">实体视图服务实例。</param>
+        /// <param name="expression">定义查询与投影的 IQueryable Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <returns>第一个符合条件的投影结果；未找到时返回默认值。</returns>
+        public static TResult SearchOneAs<T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(
+            this IEntityViewService<T> entityViewService,
+            Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
+            string[]? tableArgs = null)
+        {
+            var selectExpr = LambdaExprConverter.ToSqlSegment(expression);
+            return entityViewService.SearchOneAs<TResult>(ToSelectExpr<T>(selectExpr), tableArgs!);
+        }
+
+        /// <summary>
+        /// 使用 IQueryable 形式的 Lambda 表达式异步查询实体，并将结果投影为指定类型的列表。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <typeparam name="TResult">结果类型。</typeparam>
+        /// <param name="entityViewService">实体视图服务实例。</param>
+        /// <param name="expression">定义查询与投影的 IQueryable Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <returns>表示异步查询的任务，结果包含投影后的列表。</returns>
+        public static Task<List<TResult>> SearchAsAsync<T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(
+            this IEntityViewServiceAsync<T> entityViewService,
+            Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
+            string[]? tableArgs = null)
+        {
+            var selectExpr = LambdaExprConverter.ToSqlSegment(expression);
+            return entityViewService.SearchAsAsync<TResult>(ToSelectExpr<T>(selectExpr), tableArgs!);
+        }
+
+        /// <summary>
+        /// 使用 IQueryable 形式的 Lambda 表达式异步查询单个实体，并将结果投影为指定类型。
+        /// </summary>
+        /// <typeparam name="T">实体类型。</typeparam>
+        /// <typeparam name="TResult">结果类型。</typeparam>
+        /// <param name="entityViewService">实体视图服务实例。</param>
+        /// <param name="expression">定义查询与投影的 IQueryable Lambda 表达式。</param>
+        /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <returns>表示异步查询的任务，结果包含第一个符合条件的投影结果；未找到时返回默认值。</returns>
+        public static Task<TResult> SearchOneAsAsync<T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(
+            this IEntityViewServiceAsync<T> entityViewService,
+            Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
+            string[]? tableArgs = null)
+        {
+            var selectExpr = LambdaExprConverter.ToSqlSegment(expression);
+            return entityViewService.SearchOneAsAsync<TResult>(ToSelectExpr<T>(selectExpr), tableArgs!);
+        }
+
+        /// <summary>
+        /// 将 Lambda 转换得到的片段包装为 <see cref="SelectExpr"/>（若本身已是 <see cref="SelectExpr"/> 则直接返回）。
+        /// </summary>
+        private static SelectExpr ToSelectExpr<T>(Expr expr)
+        {
+            if (expr is SelectExpr selectExpr) return selectExpr;
+            var selects = new List<SelectItemExpr>();
+            TableView? view = TableInfoProvider.Instance.GetTableView(typeof(T));
+            if (view != null)
+            {
+                foreach (SqlColumn col in view.SelectColumns)
+                {
+                    selects.Add(new SelectItemExpr(Expr.Prop(col.PropertyName), col.PropertyName));
+                }
+            }
+            return new SelectExpr { Source = expr.ToSource(typeof(T)), Selects = selects };
         }
     }
 }

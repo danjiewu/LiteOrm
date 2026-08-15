@@ -1,4 +1,4 @@
-﻿﻿using LiteOrm.Common;
+﻿using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -21,6 +21,11 @@ namespace LiteOrm
         /// PostgreSQL 要求递归 CTE 必须使用 WITH RECURSIVE 语法显式声明。
         /// </summary>
         public override bool ExplicitRecursive => true;
+
+        /// <summary>
+        /// PostgreSQL 原生支持数组列（如 <c>integer[]</c>、<c>text[]</c>）。
+        /// </summary>
+        public override bool SupportsNativeArrays => true;
 
         /// <summary>
         /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。

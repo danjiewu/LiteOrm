@@ -19,6 +19,7 @@
 - 新增 `LiteOrm.Pgsql` 命名空间，提供 `ValueTypeExpr` 的 PgSQL 专用扩展（`ArrayToString`、`ArrayAppend`、`Any`、`Contains`、`JsonbExtractPath`、`JsonbExtractPathText`、`JsonbContains`、`JsonbBuildObject`、`JsonbBuildArray`）。
 - JSON/JSONB 类型：`DbValueType.Json`/`Jsonb` 支持，PostgreSQL 生成 `JSON`/`JSONB` 列，MySQL 生成 `JSON` 列。
 - 新增 `JsonExprExtensions` 公共 JSON 函数扩展（`JsonExtract`、`JsonValue`、`JsonQuery`、`JsonContains`、`JsonObject`、`JsonArray`、`IsJson`），并为 MySQL / SQLite / SQL Server / Oracle / PostgreSQL 注册各自原生 JSON 函数。
+- Service 新增 Lambda 方式的 `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` 扩展（`Expression<Func<IQueryable<T>, IQueryable<TResult>>>` 投影形式）。
 
 ### 改进
 

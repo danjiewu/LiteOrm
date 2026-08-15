@@ -19,6 +19,7 @@
 - New `LiteOrm.Pgsql` namespace with PgSQL-specific `ValueTypeExpr` extensions (`ArrayToString`, `ArrayAppend`, `Any`, `Contains`, `JsonbExtractPath`, `JsonbExtractPathText`, `JsonbContains`, `JsonbBuildObject`, `JsonbBuildArray`).
 - JSON/JSONB types: `DbValueType.Json`/`Jsonb` support; PostgreSQL emits `JSON`/`JSONB` columns, MySQL emits `JSON` columns.
 - New `JsonExprExtensions` common JSON function extensions (`JsonExtract`, `JsonValue`, `JsonQuery`, `JsonContains`, `JsonObject`, `JsonArray`, `IsJson`), with per-dialect native JSON functions registered for MySQL / SQLite / SQL Server / Oracle / PostgreSQL.
+- Added Lambda-style `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` extensions to the Service layer (`Expression<Func<IQueryable<T>, IQueryable<TResult>>>` projection form).
 
 ### Changed
 

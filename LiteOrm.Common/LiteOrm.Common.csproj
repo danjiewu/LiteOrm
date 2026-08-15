@@ -24,7 +24,8 @@
 8.1.1 New Features:
 - 新增数组类型支持：集合属性自动推断为 DbValueType.Array；
 - 新增 JSON/JSONB 类型支持（DbValueType.Json/Jsonb）；
-- 新增 JsonExprExtensions 公共 JSON 函数扩展。
+- 新增 JsonExprExtensions 公共 JSON 函数扩展；
+- Service 新增 Lambda 方式的 SearchAs / SearchOneAs / SearchAsAsync / SearchOneAsAsync 扩展。
 
 8.1.0 Breaking Changes:
 - PreparedSql 移至 LiteOrm.Common 项目，参数类型由 KeyValuePair 改为自定义 Param；

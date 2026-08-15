@@ -88,6 +88,12 @@ namespace LiteOrm
         /// </summary>
         public virtual bool ExplicitRecursive => false;
 
+        /// <summary>
+        /// 当前数据库是否原生支持数组列（如 PostgreSQL / KingbaseES / GaussDB 的 <c>T[]</c>）。
+        /// 为 <see langword="false"/> 时，数组列以 JSON 字符串存储（文本回退）。
+        /// </summary>
+        public virtual bool SupportsNativeArrays => false;
+
         private readonly Dictionary<string, string> _functionMappings = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase)
         {
             ["IndexOf"] = "CHARINDEX",
@@ -421,23 +427,39 @@ namespace LiteOrm
                 if (dbValue is string strDto && DateTimeOffset.TryParse(strDto, out DateTimeOffset dto)) return dto;
             }
 
-            // 集合类型属性：
-            // - 字符串按 JSON 反序列化（Json/Jsonb 列）
-            // - 数组/可枚举直接转换为目标集合（数组列，如 Npgsql 返回 T[]）
-            if (ColumnDefinitionExtensions.IsCollectionType(underlyingType))
+            // Json/Jsonb 列（或数组列在非原生数组方言下的文本回退）：
+            // 字符串值按 JSON 反序列化到集合或复杂对象类型
+            if (dbValue is string jsonSource && !IsScalarType(underlyingType))
             {
-                if (dbValue is string jsonSource)
-                {
-                    return JsonSerializer.Deserialize(jsonSource, underlyingType);
-                }
-                if (dbValue is IEnumerable enumerable)
-                {
-                    return ConvertToCollection(enumerable, underlyingType);
-                }
+                return JsonSerializer.Deserialize(jsonSource, underlyingType);
+            }
+
+            // 数组列（原生数组方言，如 Npgsql 返回 T[]）：转换为目标集合
+            if (dbValue is IEnumerable enumerable && ColumnDefinitionExtensions.IsCollectionType(underlyingType))
+            {
+                return ConvertToCollection(enumerable, underlyingType);
             }
 
             return Convert.ChangeType(dbValue, underlyingType);
 
+        }
+
+        /// <summary>
+        /// 判断类型是否为标量类型（字符串、数值、日期、Guid、TimeSpan、枚举、byte[] 等）。
+        /// 非标量类型（集合、数组、复杂对象）在遇到字符串值时按 JSON 反序列化。
+        /// </summary>
+        private static bool IsScalarType(Type type)
+        {
+            type = type.GetUnderlyingType();
+            if (type.IsPrimitive || type.IsEnum) return true;
+            return type == typeof(string)
+                || type == typeof(char)
+                || type == typeof(decimal)
+                || type == typeof(DateTime)
+                || type == typeof(DateTimeOffset)
+                || type == typeof(Guid)
+                || type == typeof(TimeSpan)
+                || type == typeof(byte[]);
         }
 
         /// <summary>
@@ -511,9 +533,9 @@ namespace LiteOrm
         {
             if (value is null) return DBNull.Value;
 
-            // 数组列：非 byte[] 集合原样返回，交由驱动（如 Npgsql）按 CLR 数组/集合原生绑定
+            // 数组列：原生数组方言（如 PostgreSQL）原样返回交由驱动绑定；其余方言回退为 JSON 字符串存储
             if (dbValueType.HasArray() && ColumnDefinitionExtensions.IsCollectionType(value.GetType()))
-                return value;
+                return SupportsNativeArrays ? value : ToJsonString(value);
 
             DbType dbType = (dbValueType == DbValueType.Object || dbValueType == DbValueType.Default)
                 ? GetDbType(value.GetType())
