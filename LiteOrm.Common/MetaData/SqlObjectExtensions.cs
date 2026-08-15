@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace LiteOrm.Common
 {
@@ -67,6 +69,12 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, SqlColumn column, SqlBuildContext context, ISqlBuilder sqlBuilder)
         {
+            // 计算列（非实际列）：按表达式渲染，不输出物理列名
+            if (column is ColumnDefinition columnDef && columnDef.IsComputed && !String.IsNullOrEmpty(columnDef.Expression))
+            {
+                sb.Append(columnDef.RenderComputedExpression(context, sqlBuilder));
+                return;
+            }
             if (!context.SingleTable)
             {
                 if (column.Table == null || column.Table == context.Table)
@@ -84,6 +92,32 @@ namespace LiteOrm.Common
                 }
             }
             sb.Append(sqlBuilder.ToSqlName(column.Name ?? string.Empty));
+        }
+
+        /// <summary>
+        /// 渲染计算列表达式：将 <c>{属性名}</c> 占位符替换为渲染后的列名（含必要的引号与表限定），
+        /// 并整体以括号包裹；不含占位符时按原始 SQL 片段返回。
+        /// </summary>
+        /// <param name="column">计算列定义。</param>
+        /// <param name="context">SQL 构建上下文。</param>
+        /// <param name="sqlBuilder">SQL 构建器。</param>
+        /// <returns>渲染后的表达式片段。</returns>
+        public static string RenderComputedExpression(this ColumnDefinition column, SqlBuildContext context, ISqlBuilder sqlBuilder)
+        {
+            string expression = column.Expression ?? string.Empty;
+            if (expression.Length == 0) return string.Empty;
+            string rendered = expression;
+            if (expression.IndexOf('{') >= 0)
+            {
+                rendered = Regex.Replace(expression, @"\{([^{}]+)\}", match =>
+                {
+                    string propertyName = match.Groups[1].Value;
+                    SqlColumn? refColumn = column.Table?.GetColumn(propertyName);
+                    if (refColumn != null) return refColumn.ToSql(context, sqlBuilder);
+                    return sqlBuilder.ToSqlName(propertyName);
+                });
+            }
+            return $"({rendered})";
         }
 
         /// <summary>

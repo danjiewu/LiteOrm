@@ -60,6 +60,8 @@ public class User
 | `IdentityStart` | 自增列起始值，默认 `1`。仅在支持起始值的数据库（SQL Server、达梦、Oracle）生效；MySQL 通过表级 `AUTO_INCREMENT = n` 选项设置；SQLite 不支持自定义。 |
 | `IdentityIncreasement` | 自增列增量值，默认 `1`。仅在支持增量的数据库（SQL Server、达梦、Oracle）生效；MySQL 需通过会话变量 `auto_increment_increment` 设置；SQLite 不支持自定义。 |
 | `DbType` | 数据库列类型（`DbValueType` 枚举），默认 `DbValueType.Default`（按属性类型自动推断）。`Json`/`Jsonb` 表示 JSON/JSONB 列，`Array` 表示数组列。 |
+| `Expression` | 计算列表达式（非实际列），用 `{属性名}` 引用同一实体的其他属性，或直接书写数据库方言 SQL 片段。 |
+| `ColumnMode` | 列操作模式（`ColumnMode` 枚举），默认 `Full`。计算列设为 `ColumnMode.Computed`。 |
 
 ### 数组列（PostgreSQL）
 
@@ -95,6 +97,35 @@ public class Product
 ```
 
 > JSON 列存储时复杂对象会被序列化为 JSON 字符串，读取时反序列化回属性类型。
+
+### 计算列（非实际列）
+
+计算列不生成物理数据库列、不参与插入/更新；查询时按 `Expression` 以表达式返回结果，查询条件中引用该属性时同样按表达式生成。表达式内用 `{属性名}` 引用同一实体的其他属性，占位符会按列名（含必要的引号与表限定）渲染；也可以直接书写数据库方言的原始 SQL 片段。
+
+```csharp
+[Table("Users")]
+public class User
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [Column("FirstName")]
+    public string? FirstName { get; set; }
+
+    [Column("LastName")]
+    public string? LastName { get; set; }
+
+    // 计算列：不生成物理列，SELECT 返回 (FirstName || ' ' || LastName)，WHERE 中也按表达式生成
+    [Column("FullName", Expression = "{FirstName} || ' ' || {LastName}", ColumnMode = ColumnMode.Computed)]
+    public string? FullName { get; set; }
+}
+```
+
+- **不生成物理列**：`CREATE TABLE` / `ALTER TABLE ADD COLUMN` 均跳过该列，插入/更新也不写入。
+- **表达式返回结果**：默认 SELECT 渲染为 `({expr}) AS "PropertyName"`，读取结果回填到属性。
+- **生成查询条件**：`SearchAsync(u => u.FullName == "张三 李四")` 会生成 `WHERE ("FirstName" || ' ' || "LastName") = @0`。
+- 设了 `Expression` 即使未写 `ColumnMode.Computed`，也会自动视为计算列；建议显式声明 `ColumnMode = ColumnMode.Computed`。
+- 表达式按数据库方言书写（示例为 SQLite/PostgreSQL 的 `||`，MySQL 用 `CONCAT(...)`）。
 
 ## `[PropertyOrder]` 特性
 

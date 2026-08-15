@@ -228,6 +228,8 @@ namespace LiteOrm
         private List<string> ResolveEnsureTableDdlCore(
             DAOContext daoContext, string tableName, IReadOnlyList<ColumnDefinition> cols)
         {
+            // 计算列（非实际列）不参与建表/补列 DDL
+            cols = cols.Where(c => !c.IsComputed).ToList();
             var statements = new List<string>();
 
             if (!_tableColumns.ContainsKey(tableName))
@@ -288,6 +290,8 @@ namespace LiteOrm
         private async Task<List<string>> ResolveEnsureTableDdlCoreAsync(
             DAOContext daoContext, string tableName, IReadOnlyList<ColumnDefinition> cols)
         {
+            // 计算列（非实际列）不参与建表/补列 DDL
+            cols = cols.Where(c => !c.IsComputed).ToList();
             var statements = new List<string>();
 
             if (!_tableColumns.ContainsKey(tableName))

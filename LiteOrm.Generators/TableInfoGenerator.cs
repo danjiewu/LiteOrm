@@ -254,6 +254,7 @@ namespace LiteOrm.Generators
             public bool AllowNull { get; set; }
             public int Length { get; set; }
             public string? DbType { get; set; }
+            public string? Expression { get; set; }
             public string ColumnMode { get; set; } = "7"; // ColumnMode.Full = Read|Update|Insert = 1|2|4 = 7
             public string? DefaultValue { get; set; }
             public string? IdentityExpression { get; set; }
@@ -434,7 +435,12 @@ namespace LiteOrm.Generators
             else
                 info.DbType = null;
 
+            // 计算列表达式（非实际列）
+            if (TryGetNamedArg(colAttr.NamedArguments, "Expression", out var ex) && !ex.IsNull)
+                info.Expression = ex.Value?.ToString();
+
             int modeMask = ComputeDefaultColumnMode(info.CanRead, info.CanWrite);
+            const int computedBit = 8; // ColumnMode.Computed
             if (TryGetNamedArg(colAttr.NamedArguments, "ColumnMode", out var cm) && !cm.IsNull)
             {
                 // Roslyn 在处理枚举命名参数时可能返回装箱的枚举值（底层类型为 int）
@@ -452,7 +458,8 @@ namespace LiteOrm.Generators
                 }
                 else
                     rawMode = 0;
-                info.ColumnMode = (rawMode & modeMask).ToString();
+                // 计算列位与读写掩码正交，需单独保留
+                info.ColumnMode = ((rawMode & modeMask) | (rawMode & computedBit)).ToString();
             }
             else
                 info.ColumnMode = modeMask.ToString();
@@ -497,6 +504,14 @@ namespace LiteOrm.Generators
                     return v;
             }
             return -1;
+        }
+
+        /// <summary>
+        /// 转义生成到 C# 字符串字面量中的文本（反斜杠与双引号）。
+        /// </summary>
+        private static string EscapeCSharpString(string value)
+        {
+            return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
 
         private static string InferDbType(ITypeSymbol type, ResolvedSymbols symbols)
@@ -647,6 +662,8 @@ namespace LiteOrm.Generators
                     if (dbTypeInt >= 0)
                         sb.AppendLine($"            columns[{i}].DbType = (DbValueType){dbTypeInt};");
                 }
+                if (!string.IsNullOrEmpty(c.Expression))
+                    sb.AppendLine($"            columns[{i}].Expression = \"{EscapeCSharpString(c.Expression!)}\";");
                 sb.AppendLine($"            columns[{i}].Mode = (ColumnMode){c.ColumnMode};");
                 if (!string.IsNullOrEmpty(c.IdentityExpression))
                     sb.AppendLine($"            columns[{i}].IdentityExpression = \"{c.IdentityExpression}\";");

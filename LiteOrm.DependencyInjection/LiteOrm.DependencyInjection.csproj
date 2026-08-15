@@ -18,24 +18,22 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-8.1.1 Breaking Changes:
-- RegisterLiteOrm() 移除 LiteOrmOptions.RegisterScope 选项，作用域跟踪始终默认启用。
+8.1.1:
+- 破坏性变更：
+  - RegisterLiteOrm() 移除 LiteOrmOptions.RegisterScope 选项，作用域跟踪始终默认启用。
+- 新特性：
+  - RegisterLiteOrm() 的 LiteOrmOptions 新增 AutoRegisterServices 选项（默认 true），设为 false 可跳过自动扫描注册；
+  - 自动注册时，带 [Service] 特性（IsService = true）的类型自动应用 ServiceInvokeInterceptor。
 
-8.1.1 New Features:
-- RegisterLiteOrm() 的 LiteOrmOptions 新增 AutoRegisterServices 选项（默认 true），设为 false 可跳过自动扫描注册；
-- 自动注册时，带 [Service] 特性（IsService = true）的类型自动应用 ServiceInvokeInterceptor。
-
-8.1.0 (New Package):
-- 新增 LiteOrm.DependencyInjection 包，RegisterLiteOrm() 由 LiteOrm 基础包移至本包（命名空间 LiteOrm.DependencyInjection）。
-
-Breaking Changes:
-- 核心实体服务与数据访问对象由 [AutoRegister] 扫描改为 RegisterCoreServices() 显式注册；
-- 数据源配置由 DataSourceProviderExtensions 从宿主 IConfiguration 的 LiteOrm 节点加载。
-
-New Features:
-- 基于 Autofac 与 Castle DynamicProxy 的 AOP 拦截（事务 / 权限 / 日志）；
-- 自动应用 [AutoRegister] 源生成注册；
-- 宿主集成 / Remote 使用单例 ProxyGenerator 优化性能。
+8.1.0:
+- 破坏性变更：
+  - 核心实体服务与数据访问对象由 [AutoRegister] 扫描改为 RegisterCoreServices() 显式注册；
+  - 数据源配置由 DataSourceProviderExtensions 从宿主 IConfiguration 的 LiteOrm 节点加载。
+- 新特性：
+  - 新增 LiteOrm.DependencyInjection 包，RegisterLiteOrm() 由 LiteOrm 基础包移至本包（命名空间 LiteOrm.DependencyInjection）；
+  - 基于 Autofac 与 Castle DynamicProxy 的 AOP 拦截（事务 / 权限 / 日志）；
+  - 自动应用 [AutoRegister] 源生成注册；
+  - 宿主集成 / Remote 使用单例 ProxyGenerator 优化性能。
     </PackageReleaseNotes>
 	</PropertyGroup>
 	<PropertyGroup>

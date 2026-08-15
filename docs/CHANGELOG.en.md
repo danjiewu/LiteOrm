@@ -10,7 +10,7 @@
 - `Param.DbType` type changed from `DbType?` to `DbValueType` (default `DbValueType.Default`).
 - `DbValueType` gains `Default = -1`, `Jsonb = 29`, and `Array = 30`. Collection-typed properties without an explicit type are now inferred as `Array` (previously `Json`).
 
-### Added
+### New Features
 
 - Added `AutoRegisterServices` option to `RegisterLiteOrm()`'s `LiteOrmOptions` (default `true`); set to `false` to skip automatic scan registration (`009d2c3`)
 - `EntityService<T>`, `EntityViewService<T>`, `ObjectDAO<T>`, `ObjectViewDAO<T>`, `DataDAO<T>`, `DataViewDAO<T>` base classes now carry `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`, so derived classes inherit the registration behavior automatically.
@@ -20,8 +20,9 @@
 - JSON/JSONB types: `DbValueType.Json`/`Jsonb` support; PostgreSQL emits `JSON`/`JSONB` columns, MySQL emits `JSON` columns.
 - New `JsonExprExtensions` common JSON function extensions (`JsonExtract`, `JsonValue`, `JsonQuery`, `JsonContains`, `JsonObject`, `JsonArray`, `IsJson`), with per-dialect native JSON functions registered for MySQL / SQLite / SQL Server / Oracle / PostgreSQL.
 - Added Lambda-style `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` extensions to the Service layer (`Expression<Func<IQueryable<T>, IQueryable<TResult>>>` projection form).
+- Entities now support computed (non-actual) columns: `ColumnAttribute.Expression` + `ColumnMode.Computed` — no physical column is generated, and results / query conditions are rendered from the expression.
 
-### Changed
+### Improvements
 
 - Non-AOT builds now auto-register via runtime assembly scan (`LiteOrmAutoRegistration.Apply()`) instead of emitting source code; AOT builds still use the compile-time source generator, dispatched automatically by `RuntimeFeature.IsDynamicCodeSupported` (`009d2c3`)
 - `AutoRegisterGenerator` AOT detection aligned with `TableInfoGenerator`, reading `build_property.enableaotanalyzer` / `enabletrimanalyzer` analyzer properties (`009d2c3`)
@@ -41,12 +42,12 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 - `RegisterLiteOrm()` moved from the `LiteOrm` base package to the new `LiteOrm.DependencyInjection` package; namespace changed from `LiteOrm` to `LiteOrm.DependencyInjection`
 - Custom `IBulkProvider` implementations no longer use any attribute markers; `BulkProviderFactory` and `BulkProviderAttribute` were removed in favor of assigning directly to the `SqlBuilder.BulkProvider` property (`0f7fe25`)
 
-### Added
+### New Features
 - Added core `AddLiteOrm()`: plain MS DI registration (no Autofac / AOP) that applies `[AutoRegister]` source-generated registrations (`f1b2ef1`, `464b044`, `afecea3`)
 - Added AOT / NativeAOT support: the `LiteOrm.Generators` source generator emits entity / DAO / Service / type registration code at compile time; `ExprJsonConverter`, `LambdaExprConverter`, `DAOContextPoolFactory`, `SqlBuilderFactory` etc. are now AOT-safe (`90d75f1`, `1205f4f`, `1eb9dc0`, `0058f05`, `3ca894c`, `a5cfa31`)
 - Added the `LiteOrm.DependencyInjection` package (renamed from the host-integration project); DI capabilities split out of the base library (`b45aeeb`, `0322465`, `b0b4177`)
 
-### Changed
+### Improvements
 - Moved `PreparedSql` to `LiteOrm.Common`; parameter type changed from `KeyValuePair` to custom `Param` (`f50c72e`)
 - Lowered target dependency package versions to reduce conflicts (`ad695e6`)
 - Host integration / Remote use a singleton `ProxyGenerator` for better performance (`8f8753d`)
@@ -59,7 +60,7 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ## v8.0.20 (2026-07-28)
 
-### Added
+### New Features
 - Added `RawSql` marker type to `ExprString` (`6f401b6`)
 - Added CTE recursive keyword support (`81fade6`)
 - Added table-level `SyncTable` config (`038e93b`)
@@ -68,7 +69,7 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 - Added Remote/Server authentication with `ClientId/Secret` mode and multi-session identity isolation (`285de8b`, `37e0d2b`, `47eb3f1`, `b2e354b`)
 - Added `RequestID` to `RemoteInvoke` for request tracing (`e092218`)
 
-### Changed
+### Improvements
 - `DatabaseSync` appends UPDATE to fill defaults for non-nullable value-type columns (`8fd9662`)
 - `SessionManager` lifecycle refactored; `Current` now resolves from current scope (`0698464`, `ce2435b`)
 - `LiteOrmCoreInitializer` injects `IComponentContext` instead of `SessionManager`, eliminating captive dependency
@@ -81,7 +82,7 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ## v8.0.19 (2026-07-06)
 
-### Added
+### New Features
 - Removed `ExceptionHook` mechanism, added `ExceptionHandling` global event for exception handling (`f552b91`)
 - Added `OnTableSyncing` hook to control table synchronization by `Type` (`5f17866`)
 - Auto-increment column DDL supports start value and increment (`a0a7d93`)
@@ -91,12 +92,12 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ## v8.0.18 (2026-06-30)
 
-### Added
+### New Features
 - Added domestic database SqlBuilder support (`cd73fb7`)
 - Added `JsonRemoteServiceTransport` transport implementation (`d8cddca`)
 - Remote/Server unified support for `AutoRegisterEntityServices`, default `true` (`edc3ffb`)
 
-### Changed
+### Improvements
 - Expr `Delete`/`Update` renamed to `DeleteAll`/`UpdateAll` to avoid naming conflicts (`f71d27b`)
 
 ### Fixed
@@ -107,7 +108,7 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ## v8.0.17 (2026-06-18)
 
-### Added
+### New Features
 - Added Remote module supporting remote proxy pattern (`e01a660`)
 - Added `CycleDetector` to detect Expr circular references (`02df339`)
 - Added ternary operator (`a ? b : c`) parsing to `CASE` statement (`eb0def4`)
@@ -123,7 +124,7 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ## v8.0.16 (2026-05-27)
 
-### Added
+### New Features
 - Added `Expr.Reduce` extension (`c206a6d`)
 - Added `PropertyOrder` attribute sorting (`7f7dd7e`)
 
@@ -137,14 +138,14 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ## v8.0.15 (2026-05-10)
 
-### Added
+### New Features
 - Added CTE expression support (`cc4f8c2`)
 
 ---
 
 ## v8.0.14 (2026-04-28)
 
-### Added
+### New Features
 - Added CodeGen project (`c862ffd`)
 - Added `StringExprConverter` with `Parse`/`ParsePagedQuery` methods by entity type (`b4d422f`)
 
@@ -155,7 +156,7 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ## v8.0.13 (2026-04-10)
 
-### Added
+### New Features
 - Added property constant filter mechanism (`ad1148c`)
 - `TableJoin` supports specifying foreign table primary key (`7cf1afc`)
 - `ForeignType` can declare multiple (`35f4e47`)
@@ -167,7 +168,7 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ## v8.0.12 (2026-04-02)
 
-### Added
+### New Features
 - Added `ExprValidator` validation mechanism (`2c9245e`)
 - Added `TableExpr` and `TableJoinExpr` with serialization (`1ee64b3`, `5b2a116`)
 - Added window function support (`b7245d1`)
@@ -181,7 +182,7 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 - Added `IdentityIncreasement` configuration (`894cc61`)
 - Added column default value support (`07b30b5`)
 
-### Changed
+### Improvements
 - Data reading optimized with dynamic compilation (`207fbe2`)
 - Optimized session management; `SessionManager` lifecycle fully maintained by container Scope (`c3b52fc`)
 
@@ -193,14 +194,14 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ## v8.0.10 / v8.0.11 (2026-03-11)
 
-### Added
+### New Features
 - Custom `SqlBuilder` registration and configuration support (`60041c8`)
 
 ---
 
 ## v8.0.8 / v8.0.9 (2026-03-06)
 
-### Added
+### New Features
 - Completed `ExprSqlConverter` ToSql implementation (`a41196e`)
 - Implemented ExprString for `ObjectViewDAO` (`fd0f746`)
 - Completed Expr API validation and tests (`5c5ba35`)
@@ -209,5 +210,5 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ## v8.0.0 ~ v8.0.7 (2026-02-11)
 
-### Added
+### New Features
 - Initial version; completed Expr API validation and tests (`5c5ba35`, `2948732`)

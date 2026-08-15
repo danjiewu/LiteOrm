@@ -10,7 +10,9 @@
     <FileVersion>8.1.1.0</FileVersion>
     <VersionPrefix>8.1.1</VersionPrefix>
     <PackageReleaseNotes>
-      LiteOrm.Common更新至8.1.1。
+8.1.1:
+- 改进：
+  - LiteOrm.Common 更新至 8.1.1。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
     <Copyright>Copyright @ 2026 danjiewu</Copyright>

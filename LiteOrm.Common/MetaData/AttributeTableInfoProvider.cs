@@ -127,13 +127,15 @@ namespace LiteOrm
                     column.IsUnique = columnAttribute.IsUnique;
                     column.IsIndex = columnAttribute.IsIndex;
                     column.DbType = columnAttribute.DbType;
+                    column.Expression = columnAttribute.Expression;
                     column.Length = columnAttribute.Length;
                     column.AllowNull = columnAttribute.AllowNull && (property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(property.PropertyType) is not null : true);
                     column.DefaultValue = columnAttribute.DefaultValue;
                     column.Constant = ParseConstant(property, columnAttribute.Constant);
                     column.IdentityStart = columnAttribute.IdentityStart;
                     column.IdentityIncreasement = columnAttribute.IdentityIncreasement;
-                    column.Mode = columnAttribute.ColumnMode & ((property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None));
+                    ColumnMode accessMask = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
+                    column.Mode = (columnAttribute.ColumnMode & accessMask) | (columnAttribute.ColumnMode & ColumnMode.Computed);
                     column.ForeignTables = foreignTables;
                     return column;
                 }

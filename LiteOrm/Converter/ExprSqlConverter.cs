@@ -672,6 +672,19 @@ namespace LiteOrm.Common
             var table = context.GetTable(expr.TableAlias);
             var column = table?.GetColumn(expr.PropertyName!);
             var columnName = column?.Name ?? expr.PropertyName;
+
+            // 计算列（非实际列）：按表达式渲染，不输出物理列名
+            if (column is ColumnDefinition columnDef && columnDef.IsComputed && !String.IsNullOrEmpty(columnDef.Expression))
+            {
+                sb.Append(columnDef.RenderComputedExpression(context, sqlBuilder));
+                if (aliasName != null)
+                {
+                    sb.Append(" AS ");
+                    sb.Append(sqlBuilder.ToSqlName(aliasName));
+                }
+                return;
+            }
+
             if (context.SingleTable)
             {
                 // 单表模式下只需要输出列名

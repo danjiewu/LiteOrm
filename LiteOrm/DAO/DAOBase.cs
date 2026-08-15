@@ -288,9 +288,10 @@ namespace LiteOrm
             for (int i = 0; i < len; i++)
             {
                 SqlColumn column = columns[i];
+                bool computed = column is ColumnDefinition cd && cd.IsComputed;
                 if (i > 0) strAllFields.Append(",");
                 strAllFields.Append(column.ToSql(InitSqlBuildContext, SqlBuilder));
-                if (!String.Equals(column.Name, column.PropertyName, StringComparison.OrdinalIgnoreCase))
+                if (computed || !String.Equals(column.Name, column.PropertyName, StringComparison.OrdinalIgnoreCase))
                 {
                     strAllFields.Append(" AS ");
                     strAllFields.Append(SqlBuilder.ToSqlName(column.PropertyName));

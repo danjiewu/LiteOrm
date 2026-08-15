@@ -292,7 +292,8 @@ namespace LiteOrm
         /// </summary>
         public override string BuildCreateTableSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
-            var columnList = columns.ToList();
+            // 计算列（非实际列）不生成物理列
+            var columnList = columns.Where(c => !c.IsComputed).ToList();
             var keyColumns = columnList.Where(c => c.IsPrimaryKey).ToList();
             bool hasCompositeKeys = keyColumns.Count > 1;
             var sb = ValueStringBuilder.Create(512);

@@ -70,6 +70,17 @@ namespace LiteOrm.Common
         public DbValueType DbType { get; set; } = DbValueType.Default;
 
         /// <summary>
+        /// 计算列表达式（非实际列）。设置后该列不生成物理列、不参与插入/更新；
+        /// 查询 SELECT 与条件中以表达式返回/生成。表达式内可用 <c>{属性名}</c> 引用同一实体的其他属性。
+        /// </summary>
+        public string? Expression { get; set; }
+
+        /// <summary>
+        /// 是否为计算列（非实际列）：显式声明 <see cref="ColumnMode.Computed"/> 或设置了 <see cref="Expression"/>。
+        /// </summary>
+        public bool IsComputed => Mode.IsComputed() || !string.IsNullOrEmpty(Expression);
+
+        /// <summary>
         /// 获取或设置一个值，指示该列是否允许为空。
         /// </summary>
         public bool AllowNull { get; set; }

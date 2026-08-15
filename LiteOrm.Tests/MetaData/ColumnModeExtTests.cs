@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 using LiteOrm;
 using LiteOrm.Common;
@@ -48,12 +48,13 @@ namespace LiteOrm.Common.UnitTests
         }
 
         /// <summary>
-        /// Tests that CanUpdate returns true for undefined enum values when the Update bit (2) is set.
+        /// Tests that CanUpdate returns true for undefined enum values when the Update bit (2) is set
+        /// and the Computed bit (8) is not set.
         /// </summary>
         /// <param name="modeValue">The integer value representing an undefined ColumnMode with Update bit set.</param>
         [Theory]
-        [InlineData(2 | 8)]
         [InlineData(2 | 16)]
+        [InlineData(2 | 32)]
         [InlineData(2 | 128)]
         public void CanUpdate_WithUndefinedEnumValueHavingUpdateBit_ReturnsTrue(int modeValue)
         {
@@ -105,10 +106,11 @@ namespace LiteOrm.Common.UnitTests
         }
 
         /// <summary>
-        /// Tests that CanUpdate returns true for negative undefined enum values with Update bit set.
+        /// Tests that CanUpdate returns false for negative undefined enum values:
+        /// negative values carry the Computed bit (8), so they are treated as computed columns.
         /// </summary>
         [Fact]
-        public void CanUpdate_WithNegativeEnumValueHavingUpdateBit_ReturnsTrue()
+        public void CanUpdate_WithNegativeEnumValueHavingComputedBit_ReturnsFalse()
         {
             // Arrange
             ColumnMode mode = (ColumnMode)(-2);
@@ -117,7 +119,7 @@ namespace LiteOrm.Common.UnitTests
             bool result = mode.CanUpdate();
 
             // Assert
-            Assert.True(result);
+            Assert.False(result);
         }
 
         /// <summary>
@@ -180,14 +182,14 @@ namespace LiteOrm.Common.UnitTests
         }
 
         /// <summary>
-        /// Tests that CanInsert returns true for undefined enum values that contain the Insert flag (bit 2).
-        /// Validates behavior with edge case values outside the defined enum range but with Insert bit set.
+        /// Tests that CanInsert returns true for undefined enum values that contain the Insert flag (bit 2)
+        /// but do not contain the Computed flag (bit 8).
         /// </summary>
-        /// <param name="value">The integer value to cast to ColumnMode (must have bit 2 set)</param>
+        /// <param name="value">The integer value to cast to ColumnMode (must have bit 2 set, but not bit 8)</param>
         [Theory]
-        [InlineData(12)]
         [InlineData(20)]
-        [InlineData(28)]
+        [InlineData(36)]
+        [InlineData(132)]
         public void CanInsert_UndefinedEnumValueWithInsertFlag_ReturnsTrue(int value)
         {
             // Arrange
@@ -275,7 +277,7 @@ namespace LiteOrm.Common.UnitTests
         [Theory]
         [InlineData(1, true)]
         [InlineData(0, false)]
-        [InlineData(8, false)]
+        [InlineData(8, true)]   // ColumnMode.Computed：按表达式读取，视为可读
         [InlineData(9, true)]
         [InlineData(-1, true)]
         [InlineData(int.MaxValue, true)]
@@ -290,6 +292,34 @@ namespace LiteOrm.Common.UnitTests
 
             // Assert
             Assert.Equal(expectedResult, result);
+        }
+
+        [Fact]
+        public void CanInsert_Computed_ReturnsFalse()
+        {
+            Assert.False(ColumnMode.Computed.CanInsert());
+        }
+
+        [Fact]
+        public void CanUpdate_Computed_ReturnsFalse()
+        {
+            Assert.False(ColumnMode.Computed.CanUpdate());
+        }
+
+        [Fact]
+        public void CanRead_Computed_ReturnsTrue()
+        {
+            Assert.True(ColumnMode.Computed.CanRead());
+        }
+
+        [Theory]
+        [InlineData(ColumnMode.Computed, true)]
+        [InlineData(ColumnMode.Computed | ColumnMode.Read, true)]
+        [InlineData(ColumnMode.Full, false)]
+        [InlineData(ColumnMode.None, false)]
+        public void IsComputed_ReturnsExpected(ColumnMode mode, bool expected)
+        {
+            Assert.Equal(expected, mode.IsComputed());
         }
     }
 }

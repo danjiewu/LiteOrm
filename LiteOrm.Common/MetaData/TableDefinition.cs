@@ -64,7 +64,7 @@ namespace LiteOrm.Common
         private ColumnDefinition? _timestampColumn;
 
         /// <summary>
-        /// 获取可插入的列定义数组，排除自增列和不可插入的列。
+        /// 获取可插入的列定义数组，排除计算列、自增列和不可插入的列。
         /// </summary>
         public ColumnDefinition[] InsertableColumns
         {
@@ -72,14 +72,14 @@ namespace LiteOrm.Common
             {
                 if (_insertableColumns is null)
                 {
-                    _insertableColumns = Columns.Where(column => !column.IsIdentity && column.Mode.CanInsert()).ToArray();
+                    _insertableColumns = Columns.Where(column => !column.IsComputed && !column.IsIdentity && column.Mode.CanInsert()).ToArray();
                 }
                 return _insertableColumns;
             }
         }
 
         /// <summary>
-        /// 获取可更新的列定义数组，排除主键列和不可更新的列。
+        /// 获取可更新的列定义数组，排除计算列、主键列和不可更新的列。
         /// </summary>
         public ColumnDefinition[] UpdatableColumns
         {
@@ -87,7 +87,7 @@ namespace LiteOrm.Common
             {
                 if (_updatableColumns is null)
                 {
-                    _updatableColumns = Columns.Where(column => !column.IsPrimaryKey && column.Mode.CanUpdate()).ToArray();
+                    _updatableColumns = Columns.Where(column => !column.IsComputed && !column.IsPrimaryKey && column.Mode.CanUpdate()).ToArray();
                 }
                 return _updatableColumns;
             }

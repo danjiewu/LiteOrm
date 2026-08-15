@@ -754,7 +754,8 @@ namespace LiteOrm
         /// <param name="columns">列定义集合。</param>
         public virtual string BuildCreateTableSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
-            var columnList = columns.ToList();
+            // 计算列（非实际列）不生成物理列
+            var columnList = columns.Where(c => !c.IsComputed).ToList();
             var keyColumns = columnList.Where(c => c.IsPrimaryKey).ToList();
             bool hasCompositeKeys = keyColumns.Count > 1;
             var sb = ValueStringBuilder.Create(512);
@@ -793,7 +794,7 @@ namespace LiteOrm
         /// <param name="columns">列定义集合。</param>
         public virtual string BuildAddColumnsSql(string tableName, IEnumerable<ColumnDefinition> columns)
         {
-            var colSqls = columns.Select(BuildAddColumnDefinitionSql).ToList();
+            var colSqls = columns.Where(c => !c.IsComputed).Select(BuildAddColumnDefinitionSql).ToList();
             if (colSqls.Count == 0) return string.Empty;
             return $"ALTER TABLE {ToSqlName(tableName)} ADD {string.Join(", ", colSqls)}";
         }

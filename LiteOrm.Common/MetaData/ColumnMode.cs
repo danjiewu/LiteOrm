@@ -35,6 +35,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 不可更改
         /// </summary>
-        Final = Insert | Read
+        Final = Insert | Read,
+        /// <summary>
+        /// 计算列（非实际列）：不生成物理列、不参与插入/更新；
+        /// 查询时按 <see cref="ColumnDefinition.Expression"/> 以表达式返回结果，
+        /// 查询条件中引用该属性时同样按表达式生成。
+        /// </summary>
+        Computed = 8
     }
 }

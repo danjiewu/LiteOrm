@@ -2,7 +2,7 @@
 
 ## v8.1.1 (2026-08-07)
 
-### Breaking Changes
+### 破坏性变更
 - `[AutoRegister]` 的 `ServiceTypes`（此前为 `Type[]`）已改为枚举 `AutoRegisterServiceTypes`：`All`（默认，实现类型自身 + 接口）、`Self`（仅自身）、`Interface`（仅接口）。原 `[AutoRegister(Lifetime.Scoped, typeof(IFoo))]` 写法请改为 `[AutoRegister(AutoRegisterServiceTypes.Interface, Lifetime = Lifetime.Scoped)]`。
 - `DAOBase` 及派生 DAO（`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>`）构造函数需传入 `SessionManager`，不再依赖静态 `SessionManager.Current`。手动构造 DAO 时请传入 `sessionManager`；依赖注入场景由容器自动解析。`SessionManager.Current` 仅保留为外部使用入口，`AddLiteOrm()` 会自动将其绑定到当前作用域实例。
 - `ColumnAttribute.DbType` 与 `ColumnDefinition.DbType` 由 `DbValueType?` 改为非空 `DbValueType`，默认值为新增的 `DbValueType.Default`（表示未显式指定、运行时按属性类型推断）。原 `DbType == null` 判空逻辑改为 `DbType == DbValueType.Default`。
@@ -10,7 +10,7 @@
 - `Param.DbType` 类型由 `DbType?` 改为 `DbValueType`（默认 `DbValueType.Default`）。
 - `DbValueType` 枚举新增 `Default = -1`、`Jsonb = 29`、`Array = 30`；集合类型属性未显式指定类型时自动推断为 `Array`（此前推断为 `Json`）。
 
-### 新增功能
+### 新特性
 
 - `RegisterLiteOrm()` 的 `LiteOrmOptions` 新增 `AutoRegisterServices` 选项（默认 `true`），设为 `false` 可跳过自动扫描注册 (`009d2c3`)
 - `EntityService<T>`、`EntityViewService<T>`、`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>` 基类新增 `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`，派生类自动继承注册行为。
@@ -20,6 +20,7 @@
 - JSON/JSONB 类型：`DbValueType.Json`/`Jsonb` 支持，PostgreSQL 生成 `JSON`/`JSONB` 列，MySQL 生成 `JSON` 列。
 - 新增 `JsonExprExtensions` 公共 JSON 函数扩展（`JsonExtract`、`JsonValue`、`JsonQuery`、`JsonContains`、`JsonObject`、`JsonArray`、`IsJson`），并为 MySQL / SQLite / SQL Server / Oracle / PostgreSQL 注册各自原生 JSON 函数。
 - Service 新增 Lambda 方式的 `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` 扩展（`Expression<Func<IQueryable<T>, IQueryable<TResult>>>` 投影形式）。
+- 实体支持计算列（非实际列）：`ColumnAttribute.Expression` + `ColumnMode.Computed`，不生成物理列、以表达式返回结果并生成查询条件。
 
 ### 改进
 
@@ -34,14 +35,14 @@
 
 ## v8.1.0 (2026-08-02)
 
-### Breaking Changes
+### 破坏性变更
 
 本版本引入多项破坏性变更，详细迁移指南见 [8.1 升级指南](./upgrade-guides/01-upgrade-guide-8.1.md)。
 
 - `RegisterLiteOrm()` 从 `LiteOrm` 基础包移至 `LiteOrm.DependencyInjection` 包（新增），命名空间由 `LiteOrm` 改为 `LiteOrm.DependencyInjection`
 - 自定义 `IBulkProvider` 不再使用任何特性标记，`BulkProviderFactory` 与 `BulkProviderAttribute` 已移除，改为直接设置 `SqlBuilder.BulkProvider` 属性 (`0f7fe25`)
 
-### 新增功能
+### 新特性
 - 基础库新增 `AddLiteOrm()`：纯 MS DI 注册（无 Autofac / AOP），自动应用 `[AutoRegister]` 源生成注册 (`f1b2ef1`, `464b044`, `afecea3`)
 - 新增 AOT / NativeAOT 支持：`LiteOrm.Generators` 源生成器在编译期生成实体 / DAO / Service / 类型注册代码，`ExprJsonConverter`、`LambdaExprConverter`、`DAOContextPoolFactory`、`SqlBuilderFactory` 等改为 AOT 安全实现 (`90d75f1`, `1205f4f`, `1eb9dc0`, `0058f05`, `3ca894c`, `a5cfa31`)
 - 新增 `LiteOrm.DependencyInjection` 包（原宿主集成项目更名），DI 能力从基础库拆分独立 (`b45aeeb`, `0322465`, `b0b4177`)
@@ -60,7 +61,7 @@
 
 ## v8.0.20 (2026-07-28)
 
-### 新增功能
+### 新特性
 - ExprString 新增 `RawSql` 标记类型 (`6f401b6`)
 - 增加 CTE 递归关键字支持 (`81fade6`)
 - 新增表级 `SyncTable` 配置 (`038e93b`)
@@ -82,7 +83,7 @@
 
 ## v8.0.19 (2026-07-06)
 
-### 新增功能
+### 新特性
 - 取消 `ExceptionHook` 机制，新增 `ExceptionHandling` 全局事件进行异常处理 (`f552b91`)
 - 新增 `OnTableSyncing` 钩子，可按 `Type` 设定是否同步表 (`5f17866`)
 - 自增列建表支持起始值和增量配置 (`a0a7d93`)
@@ -92,7 +93,7 @@
 
 ## v8.0.18 (2026-06-30)
 
-### 新增功能
+### 新特性
 - 新增国产数据库 SqlBuilder 支持 (`cd73fb7`)
 - 新增 `JsonRemoteServiceTransport` 传输实现 (`d8cddca`)
 - Remote/Server 统一支持 `AutoRegisterEntityServices`，默认为 `true` (`edc3ffb`)
@@ -108,7 +109,7 @@
 
 ## v8.0.17 (2026-06-18)
 
-### 新增功能
+### 新特性
 - 新增 Remote 模块，支持远程代理模式 (`e01a660`)
 - 新增 `CycleDetector` 检测 Expr 循环引用 (`02df339`)
 - 新增三目运算符 (`a ? b : c`) 解析为 `CASE` 语句 (`eb0def4`)
@@ -124,7 +125,7 @@
 
 ## v8.0.16 (2026-05-27)
 
-### 新增功能
+### 新特性
 - 新增 `Expr.Reduce` 扩展 (`c206a6d`)
 - 新增 `PropertyOrder` 属性排序功能 (`7f7dd7e`)
 
@@ -138,14 +139,14 @@
 
 ## v8.0.15 (2026-05-10)
 
-### 新增功能
+### 新特性
 - 增加 CTE 表达式支持 (`cc4f8c2`)
 
 ---
 
 ## v8.0.14 (2026-04-28)
 
-### 新增功能
+### 新特性
 - 新增 CodeGen 项目 (`c862ffd`)
 - 新增 `StringExprConverter` 按实体类型的 `Parse`/`ParsePagedQuery` 方法 (`b4d422f`)
 
@@ -156,7 +157,7 @@
 
 ## v8.0.13 (2026-04-10)
 
-### 新增功能
+### 新特性
 - 增加属性常量筛选机制 (`ad1148c`)
 - `TableJoin` 支持指定外表主键 (`7cf1afc`)
 - `ForeignType` 可声明多个 (`35f4e47`)
@@ -168,7 +169,7 @@
 
 ## v8.0.12 (2026-04-02)
 
-### 新增功能
+### 新特性
 - 新增 `ExprValidator` 验证机制 (`2c9245e`)
 - 新增 `TableExpr` 和 `TableJoinExpr` 及其序列化 (`1ee64b3`, `5b2a116`)
 - 新增窗口函数支持 (`b7245d1`)
@@ -194,14 +195,14 @@
 
 ## v8.0.10 / v8.0.11 (2026-03-11)
 
-### 新增功能
+### 新特性
 - 自定义 `SqlBuilder` 的注册和配置支持 (`60041c8`)
 
 ---
 
 ## v8.0.8 / v8.0.9 (2026-03-06)
 
-### 新增功能
+### 新特性
 - 完成 `ExprSqlConverter` 的 ToSql 实现 (`a41196e`)
 - 为 `ObjectViewDAO` 实现 ExprString 功能 (`fd0f746`)
 - 完善 Expr API 合法性校验与测试 (`5c5ba35`)
@@ -210,5 +211,5 @@
 
 ## v8.0.0 ~ v8.0.7 (2026-02-11)
 
-### 新增功能
+### 新特性
 - 初始版本，完善 Expr API 合法性校验与测试 (`5c5ba35`, `2948732`)

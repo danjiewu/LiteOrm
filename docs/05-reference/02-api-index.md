@@ -28,7 +28,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 ### 实体映射与视图模型
 
 - `[Table]`
-- `[Column]`
+- `[Column]`（含 `ColumnMode.Computed` 计算列与 `Expression` 表达式）
 - `[PropertyOrder]`
 - `[ForeignType]`
 - `[ForeignColumn]`

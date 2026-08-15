@@ -1,60 +1,24 @@
 # LiteOrm 8.1 升级指南
 
-本指南说明从 **8.0.20 及以下版本** 升级到 v8.1.0 需要改动的具体内容。
+本指南说明从 **8.0.20 及以下版本** 升级到 v8.1.x 需要改动的具体内容，按版本号组织：每个版本下再分「破坏性变更」「新特性」「改进」。
 
 ## 版本概览
 
 | 包 | 新版本 |
 |---|---|
-| `LiteOrm` | 8.1.0 |
-| `LiteOrm.Common` | 8.1.0 |
-| `LiteOrm.DependencyInjection` | 8.1.0（新增） |
+| `LiteOrm` | 8.1.1 |
+| `LiteOrm.Common` | 8.1.1 |
+| `LiteOrm.DependencyInjection` | 8.1.1（v8.1.0 新增） |
 
 ---
 
-## 迁移步骤
+## v8.1.1
 
-### 第 1 步：引用 `LiteOrm.DependencyInjection` 包
+### 破坏性变更
 
-`RegisterLiteOrm()` 扩展方法从 `LiteOrm` 基础包移至 `LiteOrm.DependencyInjection` 包，命名空间由 `LiteOrm` 改为 `LiteOrm.DependencyInjection`。
+#### 1. DAO 构造函数注入（`SessionManager`）
 
-```xml
-<PackageReference Include="LiteOrm.DependencyInjection" Version="8.1.0" />
-```
-
-`LiteOrm.DependencyInjection` 传递引用 `LiteOrm` 和 `LiteOrm.Common`，无需重复声明。
-
-更新 `using`：
-
-```csharp
-// 旧（8.0.20 及以下版本）
-using LiteOrm;
-
-// 新（8.1.0）
-using LiteOrm.DependencyInjection;
-```
-
-`RegisterLiteOrm()` 方法签名不变，调用方式无需改动。
-
-### 第 2 步：更新 `BulkProvider` 使用方式（如有自定义实现）
-
-`BulkProviderFactory`、`BulkProviderAttribute` 与 `[AutoRegister(Key = ...)]` 标记方式均已移除。自定义 `IBulkProvider` 不再需要任何标记，实现后直接设置到对应的 `SqlBuilder.BulkProvider` 属性即可。`GetSqlBuilder(typeof(MySqlConnection))` 返回的就是 `MySqlBuilder.Instance`，直接对其设置：
-
-```csharp
-// 旧：通过工厂按连接类型查找（已移除）
-var provider = services.GetRequiredService<BulkProviderFactory>().GetProvider(dbConnection.GetType());
-
-// 新：直接设置到 SqlBuilder.BulkProvider
-MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
-```
-
-`SqlBuilder.BulkProvider` 未设置时返回 `null`，`BatchInsert`/`BatchInsertAsync` 自动回退到多值 INSERT 或逐条插入。
-
----
-
-## v8.1.1 破坏性变更：DAO 构造函数注入
-
-> 本节适用于从 **v8.1.0 及更低版本** 升级到 **v8.1.1** 的用户（旧版 DAO 构造函数均无参数）。
+> 适用于从 **v8.1.0 及更低版本** 升级到 **v8.1.1** 的用户（旧版 DAO 构造函数均无参数）。
 
 v8.1.1 起，`DAOBase` 及各 DAO 基类（`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>`）构造函数改为接收 `SessionManager` 参数，DAO 内部不再依赖静态 `SessionManager.Current`；`Current` 仅保留为外部调用入口。
 
@@ -76,13 +40,9 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 - 自定义 DAO 若继承自 DAO 基类，构造函数需改为 `public MyDAO(SessionManager sessionManager) : base(sessionManager) { }`。
 - `AddLiteOrm()` 在注册 `SessionManager` 时自动绑定 `SessionManager.Current`；`RegisterLiteOrm()` 的作用域跟踪默认启用，二者均无需配置。
 
----
+#### 2. `DbValueType` 非空化与 `ConvertToDbValue` 签名调整
 
-## v8.1.1 破坏性变更：DbValueType 非空化与 ConvertToDbValue 签名调整
-
-> 本节适用于从 **v8.1.0 及更低版本** 升级到 **v8.1.1** 的用户。
-
-### 1. `DbValueType` 新增 `Default`，`Column.DbType` 改为非空
+##### 2.1 `DbValueType` 新增 `Default`，`Column.DbType` 改为非空
 
 `ColumnAttribute.DbType` 与 `ColumnDefinition.DbType` 由 `DbValueType?` 改为非空 `DbValueType`，默认值为 `DbValueType.Default`（`-1`），表示“未显式指定、运行时按属性类型自动推断”。
 
@@ -90,19 +50,86 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 - 集合类型属性（`int[]`、`string[]`、`List<T>` 等）未显式指定时自动推断为 `DbValueType.Array`（此前为 `Json`）。
 - `DbValueType` 新增 `Jsonb`（PostgreSQL 二进制 JSON）与 `Array`。
 
-### 2. `ConvertToDbValue` 参数类型替换
+##### 2.2 `ConvertToDbValue` 参数类型替换
 
 `IDbConverter.ConvertToDbValue` 的参数由 `System.Data.DbType` 替换为 `DbValueType`（默认 `DbValueType.Object`）。自定义 `IDbConverter` / `SqlBuilder` 实现需同步修改签名。
 
-### 3. `Param.DbType` 类型替换
+##### 2.3 `Param.DbType` 类型替换
 
 `Param.DbType` 类型由 `DbType?` 改为 `DbValueType`（默认 `DbValueType.Default`）；`DbParameter.DbType` 仍在 `DAOBase.SetupCommand` 内通过 `DbValueTypeMap.ToDbType` 派生，数组列不设置 `DbParameter.DbType`。
 
+### 新特性
+
+#### 数组 / JSON 类型支持
+
+- `DbValueType` 新增 `Array` / `Json` / `Jsonb`；集合类型属性自动推断为 `Array`，PostgreSQL 生成原生数组列（`integer[]`、`text[]` 等），其余方言回退为文本 JSON 存储。
+- 新增 `LiteOrm.Pgsql` 命名空间与 PgSQL 专用 `Expr` 扩展（`ArrayToString`、`ArrayAppend`、`Any`、`JsonbExtractPath` 等），`ANY` 支持数组单参数绑定。
+- 新增 `JsonExprExtensions` 公共 JSON 函数扩展（`JsonExtract`、`JsonValue`、`JsonContains` 等），并为 MySQL / SQLite / SQL Server / Oracle / PostgreSQL 注册各自原生 JSON 函数。
+
+#### Service `SearchAs` 投影扩展
+
+Service 层新增 IQueryable Lambda 形式的 `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` 扩展，可将结果投影为自定义类或匿名类（详见 [Lambda 查询指南](../02-core-usage/05-lambda-guide.md#6-投影查询searchas--searchoneas)）。
+
+#### 计算列（非实际列）
+
+`ColumnAttribute.Expression` + `ColumnMode.Computed` 支持计算列：不生成物理列、不参与插入/更新，SELECT 按表达式返回结果，查询条件按表达式生成（详见 [实体映射与数据源](../02-core-usage/01-entity-mapping.md)）。
+
+#### `AddLiteOrm()` 绑定 `SessionManager.Current`
+
+8.1.1 起，`AddLiteOrm()` 在注册 `SessionManager` 时自动绑定 `SessionManager.Current`（每个作用域内解析到该作用域实例），无需手写中间件或手动调用 `SessionManager.SetCurrent(...)`。
+
+### 改进
+
+- 非 AOT 模式自动注册改用运行时程序集扫描（`LiteOrmAutoRegistration.Apply()`），不再生成源代码；AOT 模式仍由源生成器编译期生成，按 `RuntimeFeature.IsDynamicCodeSupported` 自动分流。
+- `AutoRegisterGenerator` 的 AOT 判定与 `TableInfoGenerator` 统一。
+- Autofac 自动注册中，实现类型或其接口带 `[Service]` 特性（`IsService = true`）时自动应用 `ServiceInvokeInterceptor` 拦截，无需显式声明 `[Intercept]`。
+- `RegisterLiteOrm()` 移除 `LiteOrmOptions.RegisterScope` 选项，作用域跟踪始终默认自动启用。
+
 ---
 
-## 新增功能
+## v8.1.0
 
-### 基础库新增 `AddLiteOrm()` —— 纯 MS DI 注册（无 Autofac）
+### 破坏性变更
+
+#### 1. `RegisterLiteOrm()` 迁移至 `LiteOrm.DependencyInjection` 包
+
+`RegisterLiteOrm()` 扩展方法从 `LiteOrm` 基础包移至 `LiteOrm.DependencyInjection` 包（新增），命名空间由 `LiteOrm` 改为 `LiteOrm.DependencyInjection`。
+
+```xml
+<PackageReference Include="LiteOrm.DependencyInjection" Version="8.1.0" />
+```
+
+`LiteOrm.DependencyInjection` 传递引用 `LiteOrm` 和 `LiteOrm.Common`，无需重复声明。
+
+更新 `using`：
+
+```csharp
+// 旧（8.0.20 及以下版本）
+using LiteOrm;
+
+// 新（8.1.0）
+using LiteOrm.DependencyInjection;
+```
+
+`RegisterLiteOrm()` 方法签名不变，调用方式无需改动。
+
+#### 2. `BulkProvider` 用法变更（如有自定义实现）
+
+`BulkProviderFactory`、`BulkProviderAttribute` 与 `[AutoRegister(Key = ...)]` 标记方式均已移除。自定义 `IBulkProvider` 不再需要任何标记，实现后直接设置到对应的 `SqlBuilder.BulkProvider` 属性即可。`GetSqlBuilder(typeof(MySqlConnection))` 返回的就是 `MySqlBuilder.Instance`，直接对其设置：
+
+```csharp
+// 旧：通过工厂按连接类型查找（已移除）
+var provider = services.GetRequiredService<BulkProviderFactory>().GetProvider(dbConnection.GetType());
+
+// 新：直接设置到 SqlBuilder.BulkProvider
+MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
+```
+
+`SqlBuilder.BulkProvider` 未设置时返回 `null`，`BatchInsert`/`BatchInsertAsync` 自动回退到多值 INSERT 或逐条插入。
+
+### 新特性
+
+#### 基础库新增 `AddLiteOrm()` —— 纯 MS DI 注册（无 Autofac）
 
 不引入 `LiteOrm.DependencyInjection` / Autofac 时，可直接在 `IServiceCollection` 上注册核心服务：
 
@@ -118,23 +145,23 @@ builder.Services.AddLiteOrm(options =>
 
 `AddLiteOrm()` 注册核心服务、泛型 DAO / Service（`IEntityService<T>`、`IEntityViewService<T>`、`IObjectDAO<T>` 等），并应用 `[AutoRegister]` 服务的编译期注册。
 
-8.1.1 起，`AddLiteOrm()` 在注册 `SessionManager` 时自动绑定 `SessionManager.Current`（每个作用域内解析到该作用域实例），无需手写中间件或手动调用 `SessionManager.SetCurrent(...)`。
-
-### `[AutoRegister]` 机制增强
+#### `[AutoRegister]` 机制增强
 
 - `[AutoRegister]` 特性可标注在基类上，派生类自动继承注册行为。
 - `LiteOrm.Generators` 源生成器在编译期扫描 `[AutoRegister]` 类型并生成注册代码（等价于运行时反射扫描，但无需 `Assembly.GetTypes()`，支持 NativeAOT 裁剪）。`RegisterLiteOrm()` 与 `AddLiteOrm()` 均自动应用。
 - 注册范围由 `[AutoRegister]` 的 `ServiceTypes` 枚举 `AutoRegisterServiceTypes` 控制：`All`（默认，注册实现类型自身与接口）、`Self`（仅自身）、`Interface`（仅接口）。原 `ServiceTypes` 的 `Type[]` 写法已移除。
 - Service 与 DAO 基类（`EntityService<T>`、`ObjectDAO<T>` 等）已标注 `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`，派生类自动继承；需指定接口注入时用 `AutoRegisterServiceTypes.Interface`，仅自身时用 `Self`。
 
-### AOT / NativeAOT 支持
+#### AOT / NativeAOT 支持
 
 - **net8.0 / net10.0** 目标为 AOT 兼容（`IsAotCompatible`），库可在 NativeAOT 与完全裁剪下工作。
 - 使用 `PublishAot=true` 或启用裁剪构建时，`LiteOrm.Generators` 在编译期生成实体类型、`SqlBuilder` / `DbConnection` 类型、DataReader 映射委托与属性访问器的注册代码，运行时不依赖 `Expression.Compile()` 或 `Assembly.GetTypes()`。
 - `Expr` 表达式树通过源生成的 `ExprJsonSerializerContext` 序列化，无反射，NativeAOT 安全。
 - 使用 `LiteOrm.DependencyInjection` 的 AOP 拦截时，发布 AOT 应用需为 Castle DynamicProxy 启用模拟模式（`ProxyGenerator.EnableDynamicProxyEmulation()`，Castle.Core 5.1+）。
 
-### 依赖包版本调整
+### 改进
+
+#### 依赖包版本调整
 
 netstandard2.0 / 2.1 目标的依赖包版本降至最低，减少与宿主应用的版本冲突：
 
@@ -164,6 +191,3 @@ netstandard2.0 / 2.1 目标的依赖包版本降至最低，减少与宿主应�
 ### Q5: 为什么 `SessionManager.Current` 为空？
 
 使用 `RegisterLiteOrm()` 或 `AddLiteOrm` 时会启用作用域跟踪，无需配置；手动管理场景中需调用 `SessionManager.SetCurrent(...)` 来设置当前会话。
-
-
-

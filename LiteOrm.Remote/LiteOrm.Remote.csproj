@@ -10,10 +10,14 @@
     <FileVersion>8.1.1.0</FileVersion>
     <VersionPrefix>8.1.1</VersionPrefix>
     <PackageReleaseNotes>
-      LiteOrm.Common更新至8.1.1；
-      [AutoRegister]的ServiceTypes改为枚举AutoRegisterServiceTypes（All/Self/Interface）；
-      带[Service]特性的类型在RegisterLiteOrm自动注册时自动应用ServiceInvokeInterceptor；
-      ProxyGenerator采用单例模式。
+8.1.1:
+- 破坏性变更：
+  - [AutoRegister] 的 ServiceTypes 改为枚举 AutoRegisterServiceTypes（All/Self/Interface）。
+- 新特性：
+  - 带 [Service] 特性的类型在 RegisterLiteOrm 自动注册时自动应用 ServiceInvokeInterceptor。
+- 改进：
+  - LiteOrm.Common 更新至 8.1.1；
+  - ProxyGenerator 采用单例模式。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
     <Copyright>Copyright @ 2026 danjiewu</Copyright>

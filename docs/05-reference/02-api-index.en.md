@@ -55,7 +55,7 @@ Related guides:
 
 
 - `[Table]`
-- `[Column]`
+- `[Column]` (including `ColumnMode.Computed` computed columns and the `Expression` property)
 - `[PropertyOrder]`
 - `[ForeignType]`
 - `[ForeignColumn]`
