@@ -80,7 +80,7 @@ var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListA
 ```
 
 - DAO 除了支持 Lambda / `Expr`，还支持 `ExprString`，因此更适合自定义 SQL 片段、完整 SQL、复杂投影查询和 DataTable 查询。
-- 需要 IQueryable 投影版 `SearchAs(...)`、`ExprString` 版 `SearchAs(...)`、`Query(...)`、`Execute(...)`、`GetValue(...)` 这类更底层能力时，也应该直接使用 DAO。
+- 需要 `ExprString` 版 `SearchAs(...)`、`Query(...)`、`Execute(...)`、`GetValue(...)` 这类更底层能力时，也应该直接使用 DAO。
 
 ## 3. `Search` vs `SearchAs`
 
@@ -192,10 +192,10 @@ var count = await viewService.SearchAsAsync<int>(
 | 重载 | Service | DAO |
 |------|---------|-----|
 | `SearchAs<TResult>(SelectExpr)` | ✅ 返回 `List<TResult>` | ✅ 返回 `EnumerableResult<TResult>` |
-| `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>>)` | ❌ | ✅ Lambda 投影 |
+| `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>>)` | ✅ 返回 `List<TResult>`（Lambda 投影扩展） | ✅ Lambda 投影 |
 | `SearchAs<TResult>(ref ExprString sqlBody)` | ❌ | ✅ 原生 SQL 投影 |
 
-需要 Lambda 投影或原生 SQL 投影时，切到 DAO（见 [2.2 DAO](#22-dao)）。
+需要原生 SQL 投影（`ExprString`）时切到 DAO；Lambda 投影在 Service 已直接支持（见 [Lambda 查询指南](./05-lambda-guide.md#6-投影查询searchas--searchoneas)）。
 
 ## 4. 相关链接
 

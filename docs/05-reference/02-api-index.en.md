@@ -79,16 +79,20 @@ Related guides:
 
 
 - `Search` / `SearchAsync`
-- `SearchAs` / `SearchAsAsync`
+- `SearchAs` / `SearchAsAsync` (including the `Expression<Func<IQueryable<T>, IQueryable<TResult>>>` Lambda projection extension)
 - `SearchOne` / `SearchOneAsync`
+- `SearchOneAs` / `SearchOneAsAsync`
 - `Exists` / `ExistsAsync`
 - `Count` / `CountAsync`
 - `Expr`, `LogicExpr`, `SelectExpr`
 - `SelectAll()` / `Cast(DbType)`
 - Lambda conditional operator `?:` (rendered as `CASE`)
 - case-insensitive expression names and aliases
+- `DbValueType` (`Default` / `Json` / `Jsonb` / `Array`) and `DbValueTypeMap`
 - `ObjectViewDAO<T>.Search(...)`
 - `SearchAs<T>()`
+- `LiteOrm.Pgsql` array / JSONB extensions (`ArrayToString`, `ArrayAppend`, `Any`, `JsonbExtractPath`, etc.)
+- `JsonExprExtensions` (`JsonExtract`, `JsonValue`, `JsonContains`, `JsonObject`, etc.)
 - `RawSql` (an `ExprString` helper marker type exclusively for inserting dynamic values unsuitable for parameterization (e.g. `LIMIT`/`OFFSET` row counts, `ASC`/`DESC`, dynamic column names); purely static text can just be written in the literal; see [ExprString Guide - Section 8](../02-core-usage/07-exprstring-guide.en.md#8-inserting-raw-sql-rawsql))
 
 

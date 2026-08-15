@@ -100,7 +100,7 @@ Important notes here:
 
 - `ObjectDAO<T>` handles entity write operations and itself **does not** have `Search(...)` query entry points.
 - `ObjectViewDAO<T>` exposes the broadest query surface, including `Search(...)`, `SearchAs(...)`, and `ExprString` entry points.
-- The Service query side also exposes `Search(...)`, and now includes `SearchAs(...)` / `SearchAsAsync(...)` based on `SelectExpr` for service-layer projections.
+- The Service query side also exposes `Search(...)`, plus `SearchAs(...)` / `SearchAsAsync(...)` based on `SelectExpr`, and IQueryable Lambda projections `SearchAs(...)` / `SearchOneAs(...)` / `SearchAsAsync(...)` / `SearchOneAsAsync(...)` for service-layer projections.
 - If you need both entity writes and view reads, you typically combine `ObjectDAO<T>` and `ObjectViewDAO<TView>` within a Service.
 
 ## When to Use Which

@@ -247,8 +247,12 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `SearchOneAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>`       |
 | `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                             | `Task<bool>`        |
 | `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                              | `Task<int>`         |
+| `SearchAs(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)`                                     | `List<TResult>`     |
+| `SearchOneAs(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)`                                  | `TResult`           |
+| `SearchAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)`                               | `Task<List<TResult>>` |
+| `SearchOneAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)`                            | `Task<TResult>`     |
 
-> 补充说明：Service 查询公开入口包括 `Expr`、其 Lambda 扩展，以及基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)`；如果需要 `ExprString`、完整 SQL、IQueryable 投影版 `SearchAs(...)` 或 DataTable 查询，请切换到 DAO。
+> 补充说明：Service 查询公开入口包括 `Expr`、其 Lambda 扩展（含 `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` 投影），以及基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)`；如果需要 `ExprString`、完整 SQL 或 DataTable 查询，请切换到 DAO。
 
 ### ObjectDAO<T>（仅增删改）
 

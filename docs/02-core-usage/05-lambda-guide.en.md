@@ -121,7 +121,42 @@ var users = await userService.SearchAsync(
 
 `ExistsRelated` fills in the relation condition from metadata such as `ForeignType` and `TableJoin`. Use this when relationships are already declared in the model and you only want to filter the main table by related-table conditions. For matching rules, inheritance behavior, and `ConstFilter` interaction, see [Associations](./08-associations.en.md).
 
-## 6. Related links
+## 6. Projection Queries (`SearchAs` / `SearchOneAs`)
+
+`SearchAs` / `SearchOneAs` accept IQueryable-style lambdas and project the result into a target type (custom classes or anonymous types), which is convenient for "select only some columns" or "assemble view / summary objects":
+
+```csharp
+// Project to a custom class
+List<UserSummary> summaries = userService.SearchAs(
+    q => q.Where(u => u.Age >= 18)
+          .Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
+);
+
+// Project to an anonymous type (column aliases match the anonymous member names)
+var anon = userService.SearchAs(
+    q => q.Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
+);
+
+// Filter without projection: TResult is inferred as the entity type
+List<User> adults = userService.SearchAs(q => q.Where(u => u.Age >= 18));
+
+// Single record
+UserSummary? one = userService.SearchOneAs(
+    q => q.Where(u => u.Id == 1).Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
+);
+```
+
+Async versions are `SearchAsAsync` / `SearchOneAsAsync`:
+
+```csharp
+var list = await userService.SearchAsAsync(
+    q => q.Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
+);
+```
+
+> The `SearchAs` lambda is converted into a `SelectExpr` before execution (equivalent to the `SelectExpr` usage in [Query Overview](./04-query-overview.en.md#3-search-vs-searchas)). Result mapping is handled by `DataReaderConverter`: unregistered plain classes / anonymous types match by "member name ↔ column alias", while registered entity types match positionally — prefer DTO / anonymous-type projections. For sharded tables, pass the shard name via the `tableArgs` parameter.
+
+## 7. Related links
 
 - [Query Overview](./04-query-overview.en.md)
 - [Expr Guide](./06-expr-guide.en.md)

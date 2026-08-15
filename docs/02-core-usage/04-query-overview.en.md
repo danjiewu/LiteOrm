@@ -80,7 +80,7 @@ var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListA
 ```
 
 - The DAO supports Lambda / `Expr`, plus `ExprString`, so it is more suitable for custom SQL fragments, full SQL, complex projection queries, and DataTable queries.
-- When you need IQueryable projection `SearchAs(...)`, `ExprString` `SearchAs(...)`, `Query(...)`, `Execute(...)`, `GetValue(...)`, or similar lower-level capabilities, use the DAO directly.
+- When you need `ExprString` `SearchAs(...)`, `Query(...)`, `Execute(...)`, `GetValue(...)`, or similar lower-level capabilities, use the DAO directly.
 
 ## 3. `Search` vs `SearchAs`
 
@@ -193,10 +193,10 @@ If `TResult` is an entity type registered in `TableInfoProvider` (e.g. using `Se
 | Overload | Service | DAO |
 |----------|---------|-----|
 | `SearchAs<TResult>(SelectExpr)` | ✅ returns `List<TResult>` | ✅ returns `EnumerableResult<TResult>` |
-| `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>>)` | ❌ | ✅ Lambda projection |
+| `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>>)` | ✅ returns `List<TResult>` (Lambda projection extension) | ✅ Lambda projection |
 | `SearchAs<TResult>(ref ExprString sqlBody)` | ❌ | ✅ raw SQL projection |
 
-When you need Lambda projection or raw SQL projection, switch to the DAO (see [2.2 DAO](#22-dao)).
+Switch to the DAO only for raw SQL projection (`ExprString`); Lambda projection is now supported directly on the Service (see [Lambda Guide](./05-lambda-guide.en.md#6-projection-queriessearchas--searchoneas)).
 
 ## 4. Related links
 

@@ -247,8 +247,12 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `SearchOneAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>` |
 | `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<bool>` |
 | `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<int>` |
+| `SearchAs(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)` | `List<TResult>` |
+| `SearchOneAs(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)` | `TResult` |
+| `SearchAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)` | `Task<List<TResult>>` |
+| `SearchOneAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)` | `Task<TResult>` |
 
-> Additional note: Service query APIs include the `Expr` overloads, these Lambda extensions, and `SearchAs(...)` / `SearchAsAsync(...)` based on `SelectExpr`. If you need `ExprString`, full SQL, IQueryable-based `SearchAs(...)`, or DataTable-oriented queries, switch to DAO.
+> Additional note: Service query APIs include the `Expr` overloads, these Lambda extensions (including the `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` projections), and `SearchAs(...)` / `SearchAsAsync(...)` based on `SelectExpr`. If you need `ExprString`, full SQL, or DataTable-oriented queries, switch to DAO.
 
 ### ObjectDAO<T> (create, update, delete only)
 

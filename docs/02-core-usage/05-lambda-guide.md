@@ -195,7 +195,42 @@ var users = await userService.SearchAsync(
 
 `ExistsRelated` 会根据 `ForeignType` / `TableJoin` 等元数据自动补关联条件。适合模型里已经声明好关联路径，只想"按关联表条件过滤主表"的场景。匹配逻辑、继承链规则和 `ConstFilter` 行为请看[关联查询](./08-associations.md)。
 
-## 6. 常见问题
+## 6. 投影查询（`SearchAs` / `SearchOneAs`）
+
+`SearchAs` / `SearchOneAs` 支持 IQueryable 形式的 Lambda，把结果投影为指定类型（自定义类、匿名类均可），适合「只取部分列」或「组装成视图 / 摘要对象」：
+
+```csharp
+// 投影为自定义类
+List<UserSummary> summaries = userService.SearchAs(
+    q => q.Where(u => u.Age >= 18)
+          .Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
+);
+
+// 投影为匿名类（列别名与匿名成员名一一对应）
+var anon = userService.SearchAs(
+    q => q.Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
+);
+
+// 只过滤不投影：TResult 推断为实体类型
+List<User> adults = userService.SearchAs(q => q.Where(u => u.Age >= 18));
+
+// 单条
+UserSummary? one = userService.SearchOneAs(
+    q => q.Where(u => u.Id == 1).Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
+);
+```
+
+异步版本为 `SearchAsAsync` / `SearchOneAsAsync`：
+
+```csharp
+var list = await userService.SearchAsAsync(
+    q => q.Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
+);
+```
+
+> `SearchAs` 的 Lambda 会被转换为 `SelectExpr` 后执行（等价于 [查询总览](./04-query-overview.md#3-search-vs-searchas) 中的 `SelectExpr` 用法）。结果映射由 `DataReaderConverter` 完成：未注册的普通类 / 匿名类按「成员名 ↔ 列别名」匹配，注册过的实体类型按位置匹配——建议优先使用 DTO / 匿名类投影。分表时通过 `tableArgs` 参数指定分表名。
+
+## 7. 常见问题
 
 ### 6.1 Lambda 中不支持的方法会怎样？
 
@@ -216,7 +251,7 @@ Lambda 查询在**解析阶段**会将表达式树转换为 `Expr` 对象，这�
 
 也就是说，Lambda 的开销仅体现在表达式解析阶段，生成的 SQL 和执行路径与等价的手写 `Expr` 相同。在绝大多数业务场景中，解析开销可以忽略不计。
 
-## 7. 相关链接
+## 8. 相关链接
 
 - [查询总览](./04-query-overview.md)
 - [Expr 使用指南](./06-expr-guide.md)

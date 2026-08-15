@@ -43,16 +43,20 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 ### 查询接口
 
 - `Search` / `SearchAsync`
-- `SearchAs` / `SearchAsAsync`
+- `SearchAs` / `SearchAsAsync`（含 `Expression<Func<IQueryable<T>, IQueryable<TResult>>>` Lambda 投影扩展）
 - `SearchOne` / `SearchOneAsync`
+- `SearchOneAs` / `SearchOneAsAsync`
 - `Exists` / `ExistsAsync`
 - `Count` / `CountAsync`
 - `Expr`、`LogicExpr`、`SelectExpr`
 - `SelectAll()` / `Cast(DbType)`
 - Lambda 三目运算符 `?:`（转为 `CASE`）
 - 表达式名称与别名忽略大小写
+- `DbValueType`（`Default` / `Json` / `Jsonb` / `Array`）与 `DbValueTypeMap`
 - `ObjectViewDAO<T>.Search(...)`
 - `SearchAs<T>()`
+- `LiteOrm.Pgsql` 数组 / JSONB 扩展（`ArrayToString`、`ArrayAppend`、`Any`、`JsonbExtractPath` 等）
+- `JsonExprExtensions`（`JsonExtract`、`JsonValue`、`JsonContains`、`JsonObject` 等）
 - `RawSql`（`ExprString` 的辅助标记类型，专用于插入不适合参数化的动态值（如 `LIMIT`/`OFFSET` 行数、`ASC`/`DESC`、动态列名）；纯静态文本直接写字面量即可，详见 [ExprString 指南 - 第 8 节](../02-core-usage/07-exprstring-guide.md#8-插入原始-sql-rawsql)）
 
 对应文档：
