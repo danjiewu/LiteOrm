@@ -14,7 +14,7 @@ namespace LiteOrm.Service
     [Service]
     [ServicePermission(false)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    public interface IEntityServiceAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : IEntityServiceAsync
+    public interface IEntityServiceAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : IEntityServiceAsync
     {
         /// <summary>
         /// 异步新增实体
@@ -108,7 +108,7 @@ namespace LiteOrm.Service
     /// 异步版本 - 非泛型实体更改接口
     /// </summary>
     [ServicePermission(false)]
-    [ServiceLog(LogLevel = ServiceLogLevel.Debug)]  
+    [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     public interface IEntityServiceAsync
     {
         /// <summary>

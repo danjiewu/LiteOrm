@@ -82,6 +82,7 @@ namespace LiteOrm.Generators
                 }
                 if (entities.IsEmpty)
                 {
+                    GenerateAotTypeRegistration(spc, compilation);
                     return;
                 }
 
@@ -111,7 +112,7 @@ namespace LiteOrm.Generators
         // ──────────────────────────────────────────────────────────────
         private static void GenerateAll(SourceProductionContext spc, Compilation compilation, IReadOnlyList<INamedTypeSymbol> entities)
         {
-            // 始终生成 AOT 类型注册代码（即使没有 [Table] 实体）
+            // 为包含 [Table] 实体的工程生成 AOT 类型注册代码；无实体工程由调用方在入口处直接生成
             GenerateAotTypeRegistration(spc, compilation);
 
             var distinctEntities = entities.Distinct(SymbolEqualityComparer.Default).Cast<INamedTypeSymbol>().ToList();
@@ -148,7 +149,7 @@ namespace LiteOrm.Generators
                 return;
 
             // 1. 生成 TableInfo.g.cs
-            var tableInfoCode = GenerateTableInfoProvider(entityInfos, resolved);
+            var tableInfoCode = GenerateTableInfoRegistration(entityInfos, resolved);
             spc.AddSource("TableInfo.g.cs", tableInfoCode);
 
             // 2. 生成 DataReaderMappers.g.cs
@@ -184,6 +185,9 @@ namespace LiteOrm.Generators
             INamedTypeSymbol? ForeignTable,
             INamedTypeSymbol DbType,
             INamedTypeSymbol ColumnMode,
+              INamedTypeSymbol CommonTableInfoProvider,
+              INamedTypeSymbol TableInfo,
+              INamedTypeSymbol ColumnInfo,
             INamedTypeSymbol? EnumUtil,
             INamedTypeSymbol? TypeResolverHelper,
             INamedTypeSymbol? DisplayNameAttribute,
@@ -208,19 +212,24 @@ namespace LiteOrm.Generators
             var foreignTable = compilation.GetTypeByMetadataName("LiteOrm.Common.ForeignTable");
             var dbType = compilation.GetTypeByMetadataName("LiteOrm.Common.DbValueType");
             var columnMode = compilation.GetTypeByMetadataName("LiteOrm.Common.ColumnMode");
+            var commonTableInfoProvider = compilation.GetTypeByMetadataName("LiteOrm.Common.CommonTableInfoProvider");
+            var tableInfo = compilation.GetTypeByMetadataName("LiteOrm.Common.TableInfo");
+            var columnInfo = compilation.GetTypeByMetadataName("LiteOrm.Common.ColumnInfo");
             var enumUtil = compilation.GetTypeByMetadataName("LiteOrm.EnumUtil");
             var typeResolverHelper = compilation.GetTypeByMetadataName("LiteOrm.Common.TypeResolverHelper");
             var displayNameAttr = compilation.GetTypeByMetadataName("System.ComponentModel.DisplayNameAttribute");
             var descriptionAttr = compilation.GetTypeByMetadataName("System.ComponentModel.DescriptionAttribute");
 
             if (tableAttr == null || tableDef == null || colDef == null || tableView == null || provider == null
-                || propExt == null || sqlColumn == null || dbType == null || columnMode == null)
+                || propExt == null || sqlColumn == null || dbType == null || columnMode == null
+                || commonTableInfoProvider == null || tableInfo == null || columnInfo == null)
                 return null;
 
             return new ResolvedSymbols(
                 tableAttr, columnAttr!, foreignColumnAttr, tableJoinAttr, tableDef, colDef, tableView, provider,
                 drConverter, propExt, sqlColumn, joinedTable, columnRef, foreignTable,
-                dbType, columnMode, enumUtil, typeResolverHelper, displayNameAttr, descriptionAttr
+                dbType, columnMode, commonTableInfoProvider, tableInfo, columnInfo,
+                enumUtil, typeResolverHelper, displayNameAttr, descriptionAttr
             );
         }
 
@@ -360,7 +369,7 @@ namespace LiteOrm.Generators
                 else
                 {
                     // 无 ColumnAttribute 的属性：根据类型推断
-                    var dbType = InferDbType(prop.Type, symbols);
+                    var dbType = InferDbTypeFull(prop.Type, symbols);
                     if (dbType == "Object")
                         continue;
 
@@ -542,8 +551,76 @@ namespace LiteOrm.Generators
             };
         }
 
+        /// <summary>
+        /// 与运行时 <see cref="DbValueTypeMap.InferFromPropertyType"/> 对齐的完整类型推断，
+        /// 补齐 Guid、byte[]、DateTimeOffset、TimeSpan 以及数组/集合类型的 AOT 推断。
+        /// </summary>
+        private static string InferDbTypeFull(ITypeSymbol type, ResolvedSymbols symbols)
+        {
+            var t = type;
+            if (t is INamedTypeSymbol nts && nts.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T && nts.IsGenericType)
+                t = nts.TypeArguments[0];
+
+            // 数组：byte[] 映射 Binary，其他数组映射 Array
+            if (t is IArrayTypeSymbol arrayType)
+                return arrayType.ElementType.SpecialType == SpecialType.System_Byte ? "Binary" : "Array";
+
+            if (t is INamedTypeSymbol named)
+            {
+                var fullName = (named.ContainingNamespace != null && !named.ContainingNamespace.IsGlobalNamespace
+                    ? named.ContainingNamespace.ToDisplayString() + "."
+                    : string.Empty) + named.Name;
+
+                if (fullName == "System.Guid") return "Guid";
+                if (fullName == "System.DateTimeOffset") return "DateTimeOffset";
+                if (fullName == "System.TimeSpan") return "Time";
+            }
+
+            switch (t.SpecialType)
+            {
+                case SpecialType.System_Boolean: return "Boolean";
+                case SpecialType.System_Byte: return "Byte";
+                case SpecialType.System_SByte: return "SByte";
+                case SpecialType.System_Int16: return "Int16";
+                case SpecialType.System_UInt16: return "UInt16";
+                case SpecialType.System_Int32: return "Int32";
+                case SpecialType.System_UInt32: return "UInt32";
+                case SpecialType.System_Int64: return "Int64";
+                case SpecialType.System_UInt64: return "UInt64";
+                case SpecialType.System_Single: return "Single";
+                case SpecialType.System_Double: return "Double";
+                case SpecialType.System_Decimal: return "Decimal";
+                case SpecialType.System_String: return "String";
+                case SpecialType.System_DateTime: return "DateTime";
+                case SpecialType.System_Char: return "String";
+                case SpecialType.System_Object: return "Object";
+                default:
+                    if (t.TypeKind == TypeKind.Enum) return "Int32";
+                    if (t is INamedTypeSymbol namedType && IsCollectionType(namedType)) return "Array";
+                    return "Object";
+            }
+        }
+
+        /// <summary>
+        /// 判断类型是否为集合类型（排除 string 与 byte[]；byte[] 在调用方已按数组特判）。
+        /// </summary>
+        private static bool IsCollectionType(INamedTypeSymbol type)
+        {
+            if (type.SpecialType == SpecialType.System_String) return false;
+            if (type.SpecialType == SpecialType.System_Array) return true;
+            if (type.SpecialType == SpecialType.System_Collections_IEnumerable) return true;
+            if (type.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T) return true;
+
+            foreach (var iface in type.AllInterfaces)
+            {
+                if (iface.SpecialType == SpecialType.System_Collections_IEnumerable)
+                    return true;
+            }
+            return false;
+        }
+
         // ──────────────────────────────────────────────────────────────
-        // 1. 生成 TableInfo Provider
+        // 1. 生成 TableInfo Provider（兼容保留；当前实际使用 GenerateTableInfoRegistration 动态注册）
         // ──────────────────────────────────────────────────────────────
         private static string GenerateTableInfoProvider(List<EntityInfo> entities, ResolvedSymbols symbols)
         {
@@ -681,6 +758,68 @@ namespace LiteOrm.Generators
             sb.AppendLine("            };");
             sb.AppendLine("            return tableDef;");
             sb.AppendLine("        }");
+        }
+
+        private static string GenerateTableInfoRegistration(List<EntityInfo> entities, ResolvedSymbols symbols)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("// <auto-generated/>");
+            sb.AppendLine("#nullable enable");
+            sb.AppendLine("using System;");
+            sb.AppendLine();
+            sb.AppendLine($"namespace {CodeGenHelper.ProviderFullNamespace}");
+            sb.AppendLine("{");
+            sb.AppendLine("    /// <summary>");
+            sb.AppendLine("    /// 源生成的表信息注册器，将编译期收集的 TableInfo/ColumnInfo 动态注册到 CommonTableInfoProvider。");
+            sb.AppendLine("    /// </summary>");
+            sb.AppendLine("    internal static class LiteOrmGeneratedTableInfo");
+            sb.AppendLine("    {");
+            sb.AppendLine("        public static void RegisterAll()");
+            sb.AppendLine("        {");
+            foreach (var e in entities)
+            {
+                sb.AppendLine("            global::LiteOrm.Common.CommonTableInfoProvider.Instance.Register(");
+                sb.AppendLine("                new global::LiteOrm.Common.TableInfo(");
+                sb.AppendLine($"                    typeof({e.FullName}),");
+                sb.AppendLine($"                    \"{EscapeCSharpString(e.TableName!)}\",");
+                sb.AppendLine($"                    {(string.IsNullOrEmpty(e.DataSource) ? "null" : $"\"{EscapeCSharpString(e.DataSource!)}\"")},");
+                sb.AppendLine($"                    (global::LiteOrm.Common.SyncTableMode)({e.SyncTableInt}),");
+                sb.AppendLine("                    new global::LiteOrm.Common.ColumnInfo[]");
+                sb.AppendLine("                    {");
+                for (int i = 0; i < e.Columns.Count; i++)
+                {
+                    var c = e.Columns[i];
+                    int dbTypeInt = -1;
+                    if (!string.IsNullOrEmpty(c.DbType) && c.DbType != "Object" && c.DbType != "Default")
+                        dbTypeInt = GetEnumMemberValue(symbols.DbType, c.DbType!);
+                    if (dbTypeInt < 0) dbTypeInt = -1;
+
+                    sb.AppendLine("                        new global::LiteOrm.Common.ColumnInfo");
+                    sb.AppendLine("                        {");
+                    sb.AppendLine($"                            PropertyName = \"{EscapeCSharpString(c.PropertyName)}\",");
+                    sb.AppendLine($"                            ColumnName = \"{EscapeCSharpString(c.ColumnName)}\",");
+                    sb.AppendLine($"                            DbType = (global::LiteOrm.Common.DbValueType)({dbTypeInt}),");
+                    sb.AppendLine($"                            Mode = (global::LiteOrm.Common.ColumnMode)({c.ColumnMode}),");
+                    sb.AppendLine($"                            IsPrimaryKey = {c.IsPrimaryKey.ToString().ToLowerInvariant()},");
+                    sb.AppendLine($"                            IsIdentity = {c.IsIdentity.ToString().ToLowerInvariant()},");
+                    sb.AppendLine($"                            IsTimestamp = {c.IsTimestamp.ToString().ToLowerInvariant()},");
+                    sb.AppendLine($"                            IsIndex = {c.IsIndex.ToString().ToLowerInvariant()},");
+                    sb.AppendLine($"                            IsUnique = {c.IsUnique.ToString().ToLowerInvariant()},");
+                    sb.AppendLine($"                            AllowNull = {c.AllowNull.ToString().ToLowerInvariant()},");
+                    sb.AppendLine($"                            Length = {c.Length},");
+                    sb.AppendLine($"                            Expression = {(string.IsNullOrEmpty(c.Expression) ? "null" : $"\"{EscapeCSharpString(c.Expression!)}\"")},");
+                    sb.AppendLine($"                            DefaultValue = {(string.IsNullOrEmpty(c.DefaultValue) ? "null" : $"\"{EscapeCSharpString(c.DefaultValue!)}\"")},");
+                    sb.AppendLine($"                            IdentityExpression = {(string.IsNullOrEmpty(c.IdentityExpression) ? "null" : $"\"{EscapeCSharpString(c.IdentityExpression!)}\"")},");
+                    sb.AppendLine($"                            IdentityStart = {c.IdentityStart}L,");
+                    sb.AppendLine($"                            IdentityIncreasement = {c.IdentityIncreasement}");
+                    sb.AppendLine("                        },");
+                }
+                sb.AppendLine("                    }));");
+            }
+            sb.AppendLine("        }");
+            sb.AppendLine("    }");
+            sb.AppendLine("}");
+            return sb.ToString();
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -883,7 +1022,8 @@ namespace LiteOrm.Generators
             sb.AppendLine("        [ModuleInitializer]");
             sb.AppendLine("        internal static void Initialize()");
             sb.AppendLine("        {");
-            sb.AppendLine("            TableInfoProvider.Set(() => new SourceGeneratedTableInfoProvider());");
+            sb.AppendLine("            global::LiteOrm.Common.CommonTableInfoProvider.Install();");
+            sb.AppendLine("            LiteOrmGeneratedTableInfo.RegisterAll();");
             sb.AppendLine("            SourceGeneratedDataReaderMappers.RegisterAll();");
             sb.AppendLine("            SourceGeneratedPropertyAccessors.RegisterAll();");
             sb.AppendLine("            RegisterTypeResolverNames();");

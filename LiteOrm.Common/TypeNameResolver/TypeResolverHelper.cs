@@ -136,6 +136,11 @@ namespace LiteOrm.Common
             // 1. 自定义注册
             if (_nameToType.TryGetValue(typeName, out var registered)) return registered;
 
+            // AOT / 裁剪模式下 Type.GetType 与 AppDomain 程序集扫描不可用，
+            // 仅使用预注册映射（由 LiteOrm.Generators 源生成器在编译期登记）。
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                return null;
+
             // 2. 兼容程序集限定名（AssemblyQualifiedName）与全名：Type.GetType 支持这两种格式
             var byGetType = Type.GetType(typeName);
             if (byGetType != null) return byGetType;

@@ -77,5 +77,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LiteOrm.Generators\LiteOrm.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <None Include="..\LiteOrm.Generators\bin\$(Configuration)\netstandard2.0\LiteOrm.Generators.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
 </Project>

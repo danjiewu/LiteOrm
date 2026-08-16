@@ -1,10 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace LiteOrm.Common
 {
     /// <summary>
     /// 提供视图查询功能的接口，返回 DataTable 格式结果
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
-    public interface IDataViewDAO<T>
+    public interface IDataViewDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>
     {
         /// <summary>
         /// 根据条件查询数据

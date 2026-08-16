@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -115,6 +115,10 @@ namespace LiteOrm
         {
             ConcurrentDictionary<Enum, string> enumNames = new ConcurrentDictionary<Enum, string>();
             ConcurrentDictionary<string, Enum> nameValues = new ConcurrentDictionary<string, Enum>();
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                throw new NotSupportedException(
+                    $"Enum type '{enumType.FullName}' has not been pre-registered for AOT. Call EnumUtil.Register first or mark the entity so LiteOrm.Generators registers it.");
+
             foreach (FieldInfo field in enumType.GetFields(BindingFlags.Public | BindingFlags.Static))
             {
                 object[] displayAttrs = field.GetCustomAttributes(typeof(Enum), true);

@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,7 +53,7 @@ namespace LiteOrm
                 return new DAOContextPoolFactory(sp.GetRequiredService<IDataSourceProvider>());
             });
 
-            services.AddSingleton<TableInfoProvider, AttributeTableInfoProvider>();
+            services.AddSingleton<TableInfoProvider>(_ => TableInfoProvider.Instance);
 
             // Scoped 服务——每个作用域获得独立的 SessionManager。
             // 通过工厂构造并绑定 SessionManager.Current，使 Current 仅作为供外部使用的便捷入口，
