@@ -16,15 +16,15 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
-8.1.2:
-- 优化 AOT 编译：
+  8.1.2:
+  - 优化 AOT 编译：
   - 修复 AutoRegisterGenerator 枚举/属性名错位，AOT 模式下 [AutoRegister(RegisterPolicy.Interface/Self)] 现可正确生效。
   - 移除全局裁剪告警抑制。
   - RegisterSqlBuilderType / RegisterDbConnectionType 注册多种名称形式，支持配置文件短名在 AOT 下解析。
-- 新增 LiteOrm.AotDemo 工程，验证 NativeAOT 端到端路径。
+  - ExprSqlConverter 移至 LiteOrm.Common。
 
-8.1.1:
-- 破坏性变更：
+  8.1.1:
+  - 破坏性变更：
   - DAOBase 与 ObjectDAO&lt;T&gt; / ObjectViewDAO&lt;T&gt; / DataDAO&lt;T&gt; / DataViewDAO&lt;T&gt; 构造函数改为接收 SessionManager，DAO 内部不再依赖静态 SessionManager.Current；
   - SessionManager.Current 仅作为外部调用入口，AddLiteOrm() 会自动将其绑定到当前作用域实例。
   - ConvertToDbValue 参数与 Param.DbType 由 DbType 改为 DbValueType；
