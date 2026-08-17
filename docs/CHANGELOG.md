@@ -7,6 +7,10 @@
 - **修复 AutoRegisterGenerator 枚举/属性名错位**：生成器将 `AutoRegisterServiceTypes` 改为 `RegisterPolicy`，命名参数 `ServiceTypes` 改为 `Policy`。
 - **移除全局裁剪告警抑制**（`SuppressTrimAnalysisWarnings`），添加 `DynamicallyAccessedMembers` 注解链与 `UnconditionalSuppressMessage`，使裁剪/AOT 告警在编译期可见。
 
+### 新特性
+
+- **计算列支持 `ValueTypeExpr` 形式表达式**：`ColumnDefinition.ExpressionExpr` 属性允许使用 `Expr.Prop("Price") * Expr.Prop("Quantity")` 等 Expr 树动态设置计算列表达式；渲染时通过 `ExprSqlConverter` 转为 SQL，仅允许不生成参数的固定 SQL（属性引用、常量、函数、算术运算），产生参数时抛 `NotSupportedException`。与字符串形式 `Expression` 同时设置时优先使用 Expr 树形式。
+
 ---
 
 ## v8.1.1 (2026-08-07)

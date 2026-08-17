@@ -4,8 +4,12 @@
 
 ### AOT Compilation Improvements
 
-- **Fixed AutoRegisterGenerator enum/property name mismatch**: the generator looked up the non-existent `AutoRegisterServiceTypes` (corrected to `RegisterPolicy`) and the named argument `ServiceTypes` (corrected to `Policy`).
+- **Fixed AutoRegisterGenerator enum/property name mismatch**: corrected `AutoRegisterServiceTypes` to `RegisterPolicy` and named argument `ServiceTypes` to `Policy`.
 - **Removed global trim warning suppression** (`SuppressTrimAnalysisWarnings`); added `DynamicallyAccessedMembers` annotation chains and `UnconditionalSuppressMessage` so trimming/AOT warnings are visible at compile time.
+
+### New Features
+
+- **Computed column supports `ValueTypeExpr` form**: the `ColumnDefinition.ExpressionExpr` property allows setting computed column expressions dynamically using Expr trees such as `Expr.Prop("Price") * Expr.Prop("Quantity")`; rendering is handled by `ExprSqlConverter` to produce SQL, only fixed SQL expressions (property references, constants, functions, arithmetic) that produce no parameters are allowed — a `NotSupportedException` is thrown if the rendered expression produces parameterized values. Takes precedence over the string-form `Expression` when both are set.
 
 ---
 

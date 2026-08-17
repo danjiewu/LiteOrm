@@ -100,7 +100,10 @@ public class Product
 
 ### 计算列（非实际列）
 
-计算列不生成物理数据库列、不参与插入/更新；查询时按 `Expression` 以表达式返回结果，查询条件中引用该属性时同样按表达式生成。表达式内用 `{属性名}` 引用同一实体的其他属性，占位符会按列名（含必要的引号与表限定）渲染；也可以直接书写数据库方言的原始 SQL 片段。
+计算列不生成物理数据库列、不参与插入/更新；查询时按表达式返回结果，查询条件中引用该属性时同样按表达式生成。计算列表达式支持两种形式：
+
+- **字符串形式**（`ColumnAttribute.Expression`）：用 `{属性名}` 引用同一实体的其他属性，占位符会按列名（含必要的引号与表限定）渲染；也可以直接书写数据库方言的原始 SQL 片段。
+- **Expr 树形式**（`ColumnDefinition.ExpressionExpr`）：使用 `Expr.Prop("Price") * Expr.Prop("Quantity")` 等 Expr 树构建，运行时动态设置；仅允许不生成参数的固定 SQL 表达式（属性引用、常量、函数、算术运算），若渲染时产生参数化值将抛出 `NotSupportedException`。
 
 ```csharp
 [Table("Users")]
@@ -115,17 +118,44 @@ public class User
     [Column("LastName")]
     public string? LastName { get; set; }
 
-    // 计算列：不生成物理列，SELECT 返回 (FirstName || ' ' || LastName)，WHERE 中也按表达式生成
+    // 计算列（字符串形式）：不生成物理列，SELECT 返回 (FirstName || ' ' || LastName)，WHERE 中也按表达式生成
     [Column("FullName", Expression = "{FirstName} || ' ' || {LastName}", ColumnMode = ColumnMode.Computed)]
     public string? FullName { get; set; }
 }
 ```
 
+Expr 树形式需在运行时动态设置（`ColumnAttribute` 不支持 Expr 树）：
+
+```csharp
+[Table("Orders")]
+public class Order
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [Column("Price")]
+    public decimal Price { get; set; }
+
+    [Column("Quantity")]
+    public int Quantity { get; set; }
+
+    // 计算列（Expr 树形式）：声明为 Computed，表达式动态设置
+    [Column("Total", ColumnMode = ColumnMode.Computed)]
+    public decimal Total { get; set; }
+}
+
+// 运行时动态设置 ExpressionExpr
+var table = TableInfoProvider.Instance.GetTableDefinition(typeof(Order))!;
+table.Columns.First(c => c.Name == "Total").ExpressionExpr = Expr.Prop("Price") * Expr.Prop("Quantity");
+// 之后查询时 SELECT 渲染为 (T0."Price" * T0."Quantity") AS "Total"
+```
+
 - **不生成物理列**：`CREATE TABLE` / `ALTER TABLE ADD COLUMN` 均跳过该列，插入/更新也不写入。
 - **表达式返回结果**：默认 SELECT 渲染为 `({expr}) AS "PropertyName"`，读取结果回填到属性。
 - **生成查询条件**：`SearchAsync(u => u.FullName == "张三 李四")` 会生成 `WHERE ("FirstName" || ' ' || "LastName") = @0`。
-- 设了 `Expression` 即使未写 `ColumnMode.Computed`，也会自动视为计算列；建议显式声明 `ColumnMode = ColumnMode.Computed`。
-- 表达式按数据库方言书写（示例为 SQLite/PostgreSQL 的 `||`，MySQL 用 `CONCAT(...)`）。
+- 设了 `Expression` / `ExpressionExpr` 即使未写 `ColumnMode.Computed`，也会自动视为计算列；建议显式声明 `ColumnMode = ColumnMode.Computed`。
+- 字符串形式按数据库方言书写（示例为 SQLite/PostgreSQL 的 `||`，MySQL 用 `CONCAT(...)`）；Expr 树形式自动按方言渲染。
+- Expr 树形式同时设置时优先于字符串形式；仅允许固定 SQL（不生成参数），`Expr.Const(100)` 可用，`Expr.Value("str")` 会抛异常。
 
 ## `[PropertyOrder]` 特性
 

@@ -674,9 +674,9 @@ namespace LiteOrm.Common
             var columnName = column?.Name ?? expr.PropertyName;
 
             // 计算列（非实际列）：按表达式渲染，不输出物理列名
-            if (column is ColumnDefinition columnDef && columnDef.IsComputed && !String.IsNullOrEmpty(columnDef.Expression))
+            if (column is ColumnDefinition columnDef && columnDef.IsComputed && columnDef.HasExpression)
             {
-                sb.Append(columnDef.RenderComputedExpression(context, sqlBuilder));
+                columnDef.RenderComputedExpression(ref sb, context, sqlBuilder);
                 if (aliasName != null)
                 {
                     sb.Append(" AS ");

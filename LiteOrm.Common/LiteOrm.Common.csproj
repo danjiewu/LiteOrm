@@ -17,6 +17,7 @@
     <PackageReleaseNotes>
 8.1.2:
 - 优化 AOT 编译：移除全局裁剪告警抑制。
+- 新增 ColumnDefinition.ExpressionExpr：计算列支持 ValueTypeExpr 形式表达式（Expr 树），仅允许不生成参数的固定 SQL，优先于字符串形式 Expression。
 
 8.1.1:
 - 破坏性变更：

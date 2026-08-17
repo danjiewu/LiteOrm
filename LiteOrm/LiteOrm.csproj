@@ -21,6 +21,7 @@
   - 修复 AutoRegisterGenerator 枚举/属性名错位，AOT 模式下 [AutoRegister(RegisterPolicy.Interface/Self)] 现可正确生效。
   - 移除全局裁剪告警抑制。
   - RegisterSqlBuilderType / RegisterDbConnectionType 注册多种名称形式，支持配置文件短名在 AOT 下解析。
+- 新增 LiteOrm.AotDemo 工程，验证 NativeAOT 端到端路径。
 
 8.1.1:
 - 破坏性变更：

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace LiteOrm.Common
@@ -70,15 +72,35 @@ namespace LiteOrm.Common
         public DbValueType DbType { get; set; } = DbValueType.Default;
 
         /// <summary>
-        /// 计算列表达式（非实际列）。设置后该列不生成物理列、不参与插入/更新；
+        /// 计算列表达式（字符串形式，非实际列）。设置后该列不生成物理列、不参与插入/更新；
         /// 查询 SELECT 与条件中以表达式返回/生成。表达式内可用 <c>{属性名}</c> 引用同一实体的其他属性。
+        /// <para>
+        /// 也可通过 <see cref="ExpressionExpr"/> 设置 <see cref="ValueTypeExpr"/> 形式的表达式，
+        /// 两者同时设置时优先使用 <see cref="ExpressionExpr"/>。
+        /// </para>
         /// </summary>
         public string? Expression { get; set; }
 
         /// <summary>
-        /// 是否为计算列（非实际列）：显式声明 <see cref="ColumnMode.Computed"/> 或设置了 <see cref="Expression"/>。
+        /// 计算列表达式（<see cref="ValueTypeExpr"/> 形式，非实际列）。设置后该列不生成物理列、不参与插入/更新；
+        /// 查询 SELECT 与条件中以表达式返回/生成。
+        /// <para>
+        /// 与 <see cref="Expression"/>（字符串形式）互为替代，同时设置时优先使用本属性。
+        /// 使用 <c>Expr.Prop("Price") * Expr.Prop("Quantity")</c> 等 Expr 树构建， 最终替换所在列渲染为 SQL。
+        /// </para>
         /// </summary>
-        public bool IsComputed => Mode.IsComputed() || !string.IsNullOrEmpty(Expression);
+        public ValueTypeExpr? ExpressionExpr { get; set; }
+
+
+        /// <summary>
+        /// 是否为计算列（非实际列）：显式声明 <see cref="ColumnMode.Computed"/> 或设置了 <see cref="Expression"/> / <see cref="ExpressionExpr"/>。
+        /// </summary>
+        public bool IsComputed => Mode.IsComputed() || !string.IsNullOrEmpty(Expression) || ExpressionExpr is not null;
+
+        /// <summary>
+        /// 是否设置了计算列表达式（<see cref="Expression"/> 或 <see cref="ExpressionExpr"/>）。
+        /// </summary>
+        public bool HasExpression => !string.IsNullOrEmpty(Expression) || ExpressionExpr is not null;
 
         /// <summary>
         /// 获取或设置一个值，指示该列是否允许为空。

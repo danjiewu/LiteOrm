@@ -100,7 +100,10 @@ public class Product
 
 ### Computed Columns (Non-Actual Columns)
 
-A computed column does not create a physical database column and is excluded from inserts/updates; queries return the value via `Expression`, and references to the property in query conditions also render the expression. Within the expression, use `{PropertyName}` to reference other properties of the same entity — placeholders are rendered as column names (with the required quoting and table qualification). You may also write a dialect-specific raw SQL fragment.
+A computed column does not create a physical database column and is excluded from inserts/updates; queries return the value via an expression, and references to the property in query conditions also render the expression. The expression supports two forms:
+
+- **String form** (`ColumnAttribute.Expression`): use `{PropertyName}` to reference other properties of the same entity — placeholders are rendered as column names (with the required quoting and table qualification). You may also write a dialect-specific raw SQL fragment.
+- **Expr tree form** (`ColumnDefinition.ExpressionExpr`): build with `Expr.Prop("Price") * Expr.Prop("Quantity")` etc., set dynamically at runtime; only fixed SQL expressions (property references, constants, functions, arithmetic) that produce no parameters are allowed — a `NotSupportedException` is thrown if the rendered expression produces parameterized values.
 
 ```csharp
 [Table("Users")]
@@ -115,17 +118,44 @@ public class User
     [Column("LastName")]
     public string? LastName { get; set; }
 
-    // Computed column: no physical column; SELECT returns (FirstName || ' ' || LastName), WHERE renders the expression too
+    // Computed column (string form): no physical column; SELECT returns (FirstName || ' ' || LastName), WHERE renders the expression too
     [Column("FullName", Expression = "{FirstName} || ' ' || {LastName}", ColumnMode = ColumnMode.Computed)]
     public string? FullName { get; set; }
 }
 ```
 
+The Expr tree form must be set dynamically at runtime (`ColumnAttribute` does not support Expr trees):
+
+```csharp
+[Table("Orders")]
+public class Order
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [Column("Price")]
+    public decimal Price { get; set; }
+
+    [Column("Quantity")]
+    public int Quantity { get; set; }
+
+    // Computed column (Expr tree form): declared as Computed, expression set dynamically
+    [Column("Total", ColumnMode = ColumnMode.Computed)]
+    public decimal Total { get; set; }
+}
+
+// Set ExpressionExpr at runtime
+var table = TableInfoProvider.Instance.GetTableDefinition(typeof(Order))!;
+table.Columns.First(c => c.Name == "Total").ExpressionExpr = Expr.Prop("Price") * Expr.Prop("Quantity");
+// Subsequent queries render SELECT as (T0."Price" * T0."Quantity") AS "Total"
+```
+
 - **No physical column**: skipped by `CREATE TABLE` / `ALTER TABLE ADD COLUMN`, and not written on insert/update.
 - **Expression result**: the default SELECT renders `({expr}) AS "PropertyName"` and the read result is mapped back to the property.
 - **Query conditions**: `SearchAsync(u => u.FullName == "John Smith")` produces `WHERE ("FirstName" || ' ' || "LastName") = @0`.
-- Setting `Expression` alone (without `ColumnMode.Computed`) is also treated as a computed column; declaring `ColumnMode = ColumnMode.Computed` is recommended.
-- The expression is dialect-specific (the example uses SQLite/PostgreSQL `||`; MySQL uses `CONCAT(...)`).
+- Setting `Expression` / `ExpressionExpr` alone (without `ColumnMode.Computed`) is also treated as a computed column; declaring `ColumnMode = ColumnMode.Computed` is recommended.
+- The string form is dialect-specific (the example uses SQLite/PostgreSQL `||`; MySQL uses `CONCAT(...)`); the Expr tree form renders automatically per dialect.
+- When both forms are set, the Expr tree form takes precedence; only fixed SQL (no parameters) is allowed — `Expr.Const(100)` works, `Expr.Value("str")` throws.
 
 ## `[PropertyOrder]` Attribute
 
