@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace LiteOrm.Common
@@ -64,7 +65,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="type">要判断的类型。</param>
         /// <returns>如果类型是集合类型则返回 true。</returns>
-        public static bool IsCollectionType(Type type)
+        public static bool IsCollectionType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
         {
             if (type is null) return false;
             type = type.GetUnderlyingType();
@@ -79,7 +80,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="type">集合类型。</param>
         /// <returns>元素类型；无法解析时为 null。</returns>
-        public static Type? GetCollectionElementType(Type type)
+        public static Type? GetCollectionElementType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type type)
         {
             if (type is null) return null;
             type = type.GetUnderlyingType();

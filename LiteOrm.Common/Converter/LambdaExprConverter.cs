@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -80,7 +81,7 @@ namespace LiteOrm.Common
         /// <param name="type">目标类型。</param>
         /// <param name="methodName">方法名称。若不指定，则扫描并注册所有公开方法。</param>
         /// <param name="handler">处理逻辑，若为 null 则使用默认处理器。</param>
-        public static void RegisterMethodHandler(Type type, string? methodName = null, Func<MethodCallExpression, LambdaExprConverter, Expr>? handler = null)
+        public static void RegisterMethodHandler([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)] Type type, string? methodName = null, Func<MethodCallExpression, LambdaExprConverter, Expr>? handler = null)
         {
             handler ??= DefaultFunctionHandler;
             if (methodName == null)
@@ -120,6 +121,10 @@ namespace LiteOrm.Common
         /// 初始化 LambdaExprConverter 类的新实例。
         /// </summary>
         /// <param name="expression">要转换的 Lambda 表达式。</param>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "LambdaExpression.Type returns a runtime-known Type; properties are preserved via [Table] entities through the source generator; under AOT, ensure entity types are registered.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "LambdaExpression.Type is a runtime value; under AOT, users must annotate entity types with [Table] to ensure properties are preserved.")]
+#endif
         public LambdaExprConverter(LambdaExpression expression)
         {
             if (expression is null) throw new ArgumentNullException(nameof(expression));
@@ -1062,6 +1067,9 @@ namespace LiteOrm.Common
         /// <summary>
         /// Exists 方法处理器：将 Expr.Exists{T}(lambda) 转换为 ForeignExpr。
         /// </summary>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "ParameterExpression.Type returns a runtime-known Type; properties are preserved via [Table] entities through the source generator; under AOT, ensure entity types are registered.")]
+#endif
         private Expr HandleExists(MethodCallExpression node)
         {
             if (node.Arguments.Count == 1)

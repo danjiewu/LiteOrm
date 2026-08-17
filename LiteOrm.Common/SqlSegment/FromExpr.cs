@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -20,7 +21,7 @@ namespace LiteOrm.Common
         /// 根据对象类型初始化
         /// </summary>
         /// <param name="objectType">对象类型</param>
-        public FromExpr(Type objectType)
+        public FromExpr([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType)
         {
             Source = new TableExpr(objectType);
         }

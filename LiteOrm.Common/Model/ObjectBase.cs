@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -61,6 +62,10 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="target">源对象</param>
         /// <exception cref="ArgumentNullException">当target为null时抛出</exception>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "GetType() returns a runtime-known Type whose properties are naturally available; under AOT, entity types are preserved via [Table] + source generator.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "GetType() returns a runtime-known Type whose properties are naturally available; under AOT, entity types are preserved via [Table] + source generator.")]
+#endif
         public virtual void CopyFrom(object target)
         {
             if (target is null) throw new ArgumentNullException(nameof(target));
@@ -97,6 +102,9 @@ namespace LiteOrm.Common
         /// <returns>属性值</returns>
         /// <exception cref="ArgumentException">当propertyName为null或空时抛出</exception>
         /// <exception cref="ArgumentOutOfRangeException">当属性不存在时抛出</exception>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "GetType() returns a runtime-known Type whose properties are naturally available; under AOT, entity types are preserved via [Table] + source generator.")]
+#endif
         public virtual object? this[string propertyName]
         {
             get
@@ -138,6 +146,10 @@ namespace LiteOrm.Common
         /// 获取需要记录日志的属性列表
         /// </summary>
         /// <returns>需要记录日志的属性名数组</returns>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "GetType() returns a runtime-known Type whose properties are naturally available; under AOT, entity types are preserved via [Table] + source generator.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "ConcurrentDictionary.GetOrAdd lambda parameter carries no annotation, but t is the return value of GetType() whose properties are naturally available.")]
+#endif
         protected virtual string[] ToLogProperties()
         {
             var type = this.GetType();
@@ -221,7 +233,10 @@ namespace LiteOrm.Common
 
         #region Helper Methods
 
-        private static PropertyInfo[] GetProperties(Type type)
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "ConcurrentDictionary.GetOrAdd lambda parameter carries no annotation, but t is the return value of GetType() whose properties are naturally available.")]
+#endif
+        private static PropertyInfo[] GetProperties([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] Type type)
         {
             return _propertiesCache.GetOrAdd(type, t =>
                 t.GetProperties(BindingFlags.Public | BindingFlags.Instance)

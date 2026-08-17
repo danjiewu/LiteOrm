@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -29,6 +30,10 @@ namespace LiteOrm.Common
             => _getName(type);
 
         /// <inheritdoc />
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2073", Justification = "The Type returned by the delegate is user-supplied; callers must ensure annotation requirements. Under AOT, users should use the pre-registration path.")]
+#endif
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public Type? GetType(string name)
             => _getType(name);
     }

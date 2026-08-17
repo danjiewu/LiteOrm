@@ -73,9 +73,13 @@ namespace LiteOrm
         /// </para>
         /// </summary>
         /// <typeparam name="T">SqlBuilder 的类型。</typeparam>
-        public static void RegisterSqlBuilderType<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] T>() where T : SqlBuilder, new()
+        public static void RegisterSqlBuilderType<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>() where T : SqlBuilder, new()
         {
-            TypeResolverHelper.Register(typeof(T).AssemblyQualifiedName!, typeof(T));
+            var type = typeof(T);
+            // 注册多种名称形式，使配置文件中的短名（如 "LiteOrm.SQLiteBuilder, LiteOrm"）在 AOT 下也可解析
+            TypeResolverHelper.Register(type.AssemblyQualifiedName!, type);
+            TypeResolverHelper.Register(type.FullName!, type);
+            TypeResolverHelper.Register($"{type.FullName}, {type.Assembly.GetName().Name}", type);
         }
 
         /// <summary>

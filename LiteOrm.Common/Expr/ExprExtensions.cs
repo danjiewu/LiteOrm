@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -413,7 +414,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">目标对象类型。</typeparam>
         /// <returns>对应的 ISqlSegment 对象。</returns>
         /// <exception cref="ArgumentException">当 expr 参数类型不是 null、LogicExpr 或 ISqlSegment 时抛出。</exception>
-        public static SqlSegment ToSource<T>(this Expr expr)
+        public static SqlSegment ToSource<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this Expr expr)
         {
             return expr.ToSource(typeof(T));
         }
@@ -425,7 +426,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">目标对象类型。</param>
         /// <returns>对应的 ISqlSegment 对象。</returns>
         /// <exception cref="ArgumentException">当 expr 参数类型不是 null、LogicExpr 或 ISqlSegment 时抛出。</exception>
-        public static SqlSegment ToSource(this Expr expr, Type objectType)
+        public static SqlSegment ToSource(this Expr expr, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType)
         {
             if (expr is null)
             {

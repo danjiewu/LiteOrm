@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -87,7 +88,7 @@ namespace LiteOrm
         /// <param name="providerType">数据库提供程序类型。</param>
         /// <param name="connectionString">数据库连接字符串。</param>
         /// <exception cref="ArgumentNullException">当 <paramref name="providerType"/> 或 <paramref name="connectionString"/> 为 null 时抛出。</exception>
-        public DAOContextPool(Type providerType, string? connectionString)
+        public DAOContextPool([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type providerType, string? connectionString)
         {
             ProviderType = providerType ?? throw new ArgumentNullException(nameof(providerType));
             ConnectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
@@ -121,6 +122,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取数据库提供程序类型。
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public Type ProviderType { get; }
 
         /// <summary>

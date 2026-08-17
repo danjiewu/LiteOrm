@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text.Json.Serialization;
@@ -123,7 +124,7 @@ namespace LiteOrm.Common
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
         /// <returns>外键关联查询表达式。</returns>
-        public static ForeignExpr Exists(Type type, LogicExpr innerExpr, params string[] tableArgs)
+        public static ForeignExpr Exists([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type type, LogicExpr innerExpr, params string[] tableArgs)
         {
             return new ForeignExpr(type, innerExpr);
         }
@@ -135,7 +136,7 @@ namespace LiteOrm.Common
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
         /// <returns>外键关联查询表达式。</returns>
-        public static ForeignExpr Exists<T>(LogicExpr innerExpr, params string[] tableArgs)
+        public static ForeignExpr Exists<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(LogicExpr innerExpr, params string[] tableArgs)
         {
             return new ForeignExpr(typeof(T), innerExpr, tableArgs);
         }
@@ -147,7 +148,7 @@ namespace LiteOrm.Common
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
         /// <returns>外键关联查询表达式。</returns>
-        public static ForeignExpr ExistsRelated<T>(LogicExpr? innerExpr = null, params string[] tableArgs)
+        public static ForeignExpr ExistsRelated<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(LogicExpr? innerExpr = null, params string[] tableArgs)
         {
             return new ForeignExpr(typeof(T), innerExpr, tableArgs) { AutoRelated = true };
         }
@@ -159,7 +160,7 @@ namespace LiteOrm.Common
         /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
         /// <param name="tableArgs">动态表名参数。</param>
         /// <returns>外键关联查询表达式。</returns>
-        public static ForeignExpr ExistsRelated(Type type, LogicExpr? innerExpr = null, params string[] tableArgs)
+        public static ForeignExpr ExistsRelated([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type type, LogicExpr? innerExpr = null, params string[] tableArgs)
         {
             return new ForeignExpr(type, innerExpr, tableArgs) { AutoRelated = true };
         }
@@ -211,7 +212,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型。</typeparam>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>UPDATE 表达式。</returns>
-        public static UpdateExpr Update<T>(params string[] tableArgs)
+        public static UpdateExpr Update<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(params string[] tableArgs)
         {
             return new UpdateExpr(new TableExpr(typeof(T)) { TableArgs = tableArgs });
         }
@@ -222,7 +223,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体类型。</param>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>UPDATE 表达式。</returns>
-        public static UpdateExpr Update(Type objectType, params string[] tableArgs)
+        public static UpdateExpr Update([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType, params string[] tableArgs)
         {
             return new UpdateExpr(new TableExpr(objectType) { TableArgs = tableArgs });
         }
@@ -236,7 +237,7 @@ namespace LiteOrm.Common
         /// <returns>UPDATE 表达式。</returns>
         /// <exception cref="ArgumentNullException">当 updateExpression 为 null 时抛出。</exception>
         /// <exception cref="ArgumentException">当 updateExpression 不是 MemberInitExpression 时抛出。</exception>
-        public static UpdateExpr Update<T>(Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> whereExpression)
+        public static UpdateExpr Update<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> whereExpression)
         {
             if (updateExpression == null) throw new ArgumentNullException(nameof(updateExpression));
             if (updateExpression.Body is not MemberInitExpression memberInitExpression) throw new ArgumentException("updateExpression must be a MemberInitExpression", nameof(updateExpression));
@@ -267,7 +268,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型。</typeparam>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>DELETE 表达式。</returns>
-        public static DeleteExpr Delete<T>(params string[] tableArgs)
+        public static DeleteExpr Delete<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(params string[] tableArgs)
         {
             return Delete(typeof(T), tableArgs);
         }
@@ -278,7 +279,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体类型。</param>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>DELETE 表达式。</returns>
-        public static DeleteExpr Delete(Type objectType, params string[] tableArgs)
+        public static DeleteExpr Delete([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType, params string[] tableArgs)
         {
             return new DeleteExpr()
             {
@@ -401,7 +402,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static TableExpr From<T>(params string[] tableArgs)
+        public static TableExpr From<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(params string[] tableArgs)
         {
             return From(typeof(T), tableArgs);
         }
@@ -412,7 +413,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体类型</param>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>From 表达式实例</returns>
-        public static TableExpr From(Type objectType, params string[] tableArgs)
+        public static TableExpr From([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType, params string[] tableArgs)
         {
             var f = new TableExpr(objectType) { TableArgs = tableArgs };
             return f;

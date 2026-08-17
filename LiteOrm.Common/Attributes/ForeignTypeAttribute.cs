@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -8,12 +9,13 @@ namespace LiteOrm.Common
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = true, Inherited = true)]
     public class ForeignTypeAttribute : System.Attribute
     {
-        private Type _objectType;
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        private Type _objectType = null!;
         /// <summary>
         /// 关联的外部实体类型
         /// </summary>
         /// <param name="objectType">外部实体的类型</param>
-        public ForeignTypeAttribute(Type objectType)
+        public ForeignTypeAttribute([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType)
         {
             this._objectType = objectType;
         }
@@ -21,6 +23,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 外部实体类型
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public Type ObjectType
         {
             get { return _objectType; }

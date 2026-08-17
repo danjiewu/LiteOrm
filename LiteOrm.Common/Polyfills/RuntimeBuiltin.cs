@@ -39,6 +39,7 @@ namespace System.Diagnostics.CodeAnalysis
         PublicEvents = 0x0200,
         NonPublicEvents = 0x0400,
         NestedTypes = 0x0800,
+        Interfaces = 0x1000,
         All = ~None,
     }
 }
@@ -73,6 +74,27 @@ namespace System.Diagnostics.CodeAnalysis
         public RequiresUnreferencedCodeAttribute(string message) { Message = message; }
         public string Message { get; }
         public string? Url { get; set; }
+    }
+}
+#endif
+
+#if !NET5_0_OR_GREATER
+namespace System.Diagnostics.CodeAnalysis
+{
+    /// <summary>
+    /// Polyfill for .NET 5+ UnconditionalSuppressMessageAttribute.
+    /// On netstandard2.0/2.1 this is a no-op attribute that does not affect trimming.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.All, Inherited = false, AllowMultiple = true)]
+    internal sealed class UnconditionalSuppressMessageAttribute : Attribute
+    {
+        public UnconditionalSuppressMessageAttribute(string category, string checkId) { Category = category; CheckId = checkId; }
+        public string Category { get; }
+        public string CheckId { get; }
+        public string Scope { get; set; } = string.Empty;
+        public string Target { get; set; } = string.Empty;
+        public string MessageId { get; set; } = string.Empty;
+        public string Justification { get; set; } = string.Empty;
     }
 }
 #endif

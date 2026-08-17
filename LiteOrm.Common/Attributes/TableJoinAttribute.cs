@@ -9,7 +9,8 @@ namespace LiteOrm.Common
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
     public class TableJoinAttribute : System.Attribute
     {
-        private Type _targetType;
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        private Type _targetType = null!;
         private string _foreignKeys;
         private string? _alias;
         private TableJoinType _joinType = TableJoinType.Left;
@@ -22,7 +23,7 @@ namespace LiteOrm.Common
         /// <param name="sourceTable">关联的源表</param>
         /// <param name="targetType">关联的对象类型</param>
         /// <param name="foreignKeys">外键，联合主键的外键以","分隔，按照主键顺序排列</param>
-        public TableJoinAttribute(string sourceTable, Type targetType, string foreignKeys)
+        public TableJoinAttribute(string sourceTable, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type targetType, string foreignKeys)
         {
             this._sourceTable = sourceTable;
             this._targetType = targetType;
@@ -36,7 +37,7 @@ namespace LiteOrm.Common
         /// <param name="sourceTable">关联的源表</param>
         /// <param name="targetType">关联的对象类型</param>
         /// <param name="foreignKeys">外键，联合主键的外键以","分隔，按照主键顺序排列</param>
-        public TableJoinAttribute(Type sourceTable, Type targetType, string foreignKeys)
+        public TableJoinAttribute([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type sourceTable, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type targetType, string foreignKeys)
         {
             this._sourceTable = sourceTable;
             this._targetType = targetType;
@@ -48,7 +49,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="targetType">关联的对象类型</param>
         /// <param name="foreignKey">外键</param>
-        public TableJoinAttribute(Type targetType, string foreignKey)
+        public TableJoinAttribute([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type targetType, string foreignKey)
         {
             this._targetType = targetType;
             this._foreignKeys = foreignKey;

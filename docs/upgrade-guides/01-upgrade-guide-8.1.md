@@ -149,15 +149,17 @@ builder.Services.AddLiteOrm(options =>
 
 - `[AutoRegister]` 特性可标注在基类上，派生类自动继承注册行为。
 - `LiteOrm.Generators` 源生成器在编译期扫描 `[AutoRegister]` 类型并生成注册代码（等价于运行时反射扫描，但无需 `Assembly.GetTypes()`，支持 NativeAOT 裁剪）。`RegisterLiteOrm()` 与 `AddLiteOrm()` 均自动应用。
-- 注册范围由 `[AutoRegister]` 的 `ServiceTypes` 枚举 `AutoRegisterServiceTypes` 控制：`All`（默认，注册实现类型自身与接口）、`Self`（仅自身）、`Interface`（仅接口）。原 `ServiceTypes` 的 `Type[]` 写法已移除。
-- Service 与 DAO 基类（`EntityService<T>`、`ObjectDAO<T>` 等）已标注 `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`，派生类自动继承；需指定接口注入时用 `AutoRegisterServiceTypes.Interface`，仅自身时用 `Self`。
+- 注册范围由 `[AutoRegister]` 的 `Policy` 枚举 `RegisterPolicy` 控制：`All`（默认，注册实现类型自身与接口）、`Self`（仅自身）、`Interface`（仅接口）。原 `ServiceTypes` 的 `Type[]` 写法已移除。
+- Service 与 DAO 基类（`EntityService<T>`、`ObjectDAO<T>` 等）已标注 `[AutoRegister(RegisterPolicy.All, Lifetime = Lifetime.Scoped)]`，派生类自动继承；需指定接口注入时用 `RegisterPolicy.Interface`，仅自身时用 `Self`。
 
 #### AOT / NativeAOT 支持
 
 - **net8.0 / net10.0** 目标为 AOT 兼容（`IsAotCompatible`），库可在 NativeAOT 与完全裁剪下工作。
 - 使用 `PublishAot=true` 或启用裁剪构建时，`LiteOrm.Generators` 在编译期生成实体类型、`SqlBuilder` / `DbConnection` 类型、DataReader 映射委托与属性访问器的注册代码，运行时不依赖 `Expression.Compile()` 或 `Assembly.GetTypes()`。
 - `Expr` 表达式树通过源生成的 `ExprJsonSerializerContext` 序列化，无反射，NativeAOT 安全。
-- 使用 `LiteOrm.DependencyInjection` 的 AOP 拦截时，发布 AOT 应用需为 Castle DynamicProxy 启用模拟模式（`ProxyGenerator.EnableDynamicProxyEmulation()`，Castle.Core 5.1+）。
+- **AOT 模式下不可使用 `LiteOrm.DependencyInjection`**：基于 Autofac 与 Castle DynamicProxy 的 AOP 拦截依赖运行时反射与动态程序集生成，不兼容 NativeAOT。请改用基础库 `AddLiteOrm()` 进行纯 MS DI 注册（参考 `LiteOrm.AotDemo` 工程）。
+- **AOT 模式下不可使用 `LiteOrm.Remote` / `LiteOrm.Remote.Server`**：远程服务调用基于反射式 System.Text.Json 与运行时 Type 解析（已标注 `[RequiresDynamicCode]` / `[RequiresUnreferencedCode]`），不兼容 NativeAOT。
+- 完整 AOT 编译路径可参考 `LiteOrm.AotDemo` 工程（`PublishAot=true` + `TrimMode=full`）。
 
 ### 改进
 
@@ -178,7 +180,7 @@ netstandard2.0 / 2.1 目标的依赖包版本降至最低，减少与宿主应�
 
 ### Q2: 我的业务 Service 未显式指定 `ServiceTypes`，还能通过接口解析吗？
 
-可以。`[AutoRegister]` 的 `ServiceTypes` 默认值为 `AutoRegisterServiceTypes.All`，会自动注册实现类型自身及其非 System 命名空间接口，因此依赖接口注入的用户自定义服务无需显式声明 `ServiceTypes`。若只想注册接口，可写 `[AutoRegister(AutoRegisterServiceTypes.Interface, Lifetime = Lifetime.Scoped)]`。
+可以。`[AutoRegister]` 的 `Policy` 默认值为 `RegisterPolicy.All`，会自动注册实现类型自身及其非 System 命名空间接口，因此依赖接口注入的用户自定义服务无需显式声明 `Policy`。若只想注册接口，可写 `[AutoRegister(RegisterPolicy.Interface, Lifetime = Lifetime.Scoped)]`。
 
 ### Q3: 原来用 MS DI 的 `IServiceCollection` 注册的服务还能用吗？
 

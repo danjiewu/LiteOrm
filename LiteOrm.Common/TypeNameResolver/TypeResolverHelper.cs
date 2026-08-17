@@ -38,7 +38,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="name">自定义名称。</param>
         /// <param name="type">对应的类型。</param>
-        public static void Register(string name, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type type)
+        public static void Register(string name, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
         {
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             if (type is null) throw new ArgumentNullException(nameof(type));
@@ -122,15 +122,35 @@ namespace LiteOrm.Common
         /// 泛型类型应使用 CLR 名称格式（含反引号 arity 后缀），如 <c>IEntityService`1</c>，
         /// 避免与同名的非泛型类型冲突。
         /// </para>
+        /// <para>
+        /// AOT 模式下仅返回通过 <see cref="Register"/> 预注册的类型，其公共构造函数
+        /// 由 <c>[DynamicallyAccessedMembers]</c> 链上的注解保留；非 AOT 模式下
+        /// 回退到 <see cref="Type.GetType(string)"/> 与程序集扫描，此时返回的类型
+        /// 不保证构造函数被保留（调用方需自行处理）。
+        /// </para>
         /// </summary>
         /// <param name="typeName">类型名称，可以是全名、短名或程序集限定名。泛型类型应使用 <c>Foo`1</c> 格式。</param>
         /// <returns>匹配到的类型；未找到时返回 null。</returns>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2073",
+            Justification = "GetOrAdd calls FindTypeCore; under AOT only the _nameToType path is reachable (returns null early when IsDynamicCodeSupported is false); pre-registered types preserve all members via the Register(name, [DynamicallyAccessedMembers] Type) annotation chain. JIT path type lookup is naturally available via reflection.")]
+#endif
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public static Type? FindType(string typeName)
         {
             if (string.IsNullOrEmpty(typeName)) return null;
             return _findTypeCache.GetOrAdd(typeName, FindTypeCore);
         }
 
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2057",
+            Justification = "Type.GetType is only called when RuntimeFeature.IsDynamicCodeSupported is true (JIT mode); under AOT the method returns null early.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2026",
+            Justification = "Assembly.GetType is only called when RuntimeFeature.IsDynamicCodeSupported is true (JIT mode); under AOT the method returns null early.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2073",
+            Justification = "Return type annotation requirements are only satisfied on the AOT path (pre-registered types preserve all members); the Type returned on the JIT path is naturally available via reflection.")]
+#endif
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         private static Type? FindTypeCore(string typeName)
         {
             // 1. 自定义注册

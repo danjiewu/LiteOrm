@@ -17,7 +17,7 @@
     <PackageReleaseNotes>
 8.1.1:
 - 破坏性变更：
-  - [AutoRegister] 的 ServiceTypes 改为枚举 AutoRegisterServiceTypes（All/Self/Interface，默认 All），原 Type[] 写法移除。
+  - [AutoRegister] 的 ServiceTypes 改为枚举 RegisterPolicy（All/Self/Interface，默认 All），原 Type[] 写法移除。
   - DbValueType 新增 Default/Jsonb/Array 枚举值；ColumnAttribute.DbType 与 ColumnDefinition.DbType 由 DbValueType? 改为非空 DbValueType（默认 DbValueType.Default，集合属性自动推断为 Array）；
   - IDbConverter.ConvertToDbValue 参数由 DbType 改为 DbValueType；
   - Param.DbType 类型由 DbType? 改为 DbValueType。
@@ -46,7 +46,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0' OR '$(TargetFramework)' == 'net10.0'">
     <IsAotCompatible>true</IsAotCompatible>
-    <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|netstandard2.0|AnyCPU'">
     <DocumentationFile>bin\Release\LiteOrm.Common.xml</DocumentationFile>

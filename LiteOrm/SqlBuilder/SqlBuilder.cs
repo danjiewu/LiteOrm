@@ -372,6 +372,10 @@ namespace LiteOrm
         /// <param name="dbValue">数据库取得的值。</param>
         /// <param name="objectType">目标属性类型。</param>
         /// <returns>转换后的对象值。</returns>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050",
+            Justification = "JSON deserialization path is only triggered when dbValue is a string and the target type is a complex object/collection; under AOT, users must provide a System.Text.Json source-gen context for complex property types, otherwise a NotSupportedException is thrown at runtime.")]
+#endif
         public object? ConvertFromDbValue(object? dbValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type? objectType = null)
         {
             if (objectType == null)
@@ -466,7 +470,11 @@ namespace LiteOrm
         /// 将数据库返回的数组/可枚举值转换为目标集合类型（数组或 <see cref="List{T}"/>）。
         /// 目标类型无法构造时回退为原始值。
         /// </summary>
-        private static object ConvertToCollection(IEnumerable source, Type targetType)
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JIT path is guarded by RuntimeFeature.IsDynamicCodeSupported; AOT path throws PlatformNotSupportedException.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "JIT path is guarded by RuntimeFeature.IsDynamicCodeSupported; AOT path throws PlatformNotSupportedException.")]
+#endif
+        private static object ConvertToCollection(IEnumerable source, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type targetType)
         {
             // 目标为数组
             if (targetType.IsArray)
@@ -484,6 +492,13 @@ namespace LiteOrm
             if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(List<>))
             {
                 Type elementType = targetType.GetGenericArguments()[0];
+                // AOT 模式下 Activator.CreateInstance(Type) 需要 List<T> 的无参构造函数被保留，
+                // 但 targetType 为运行时变量，trimmer 无法静态追踪。
+                // 通过 RuntimeFeature.IsDynamicCodeSupported 守卫仅在 JIT 路径调用反射。
+                if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                    throw new PlatformNotSupportedException(
+                        $"Creating List<T> for type '{targetType.FullName}' in AOT mode requires the parameterless constructor to be preserved. " +
+                        $"Use T[] properties, or ensure the property type is rooted via source generator, to enable AOT support.");
                 System.Collections.IList list = (System.Collections.IList)Activator.CreateInstance(targetType)!;
                 foreach (object? item in source)
                     list.Add(ChangeCollectionItem(item, elementType));
@@ -529,6 +544,10 @@ namespace LiteOrm
         /// <param name="value">值</param>
         /// <param name="dbValueType">数据字段取值类型（可含 <see cref="DbValueType.Array"/> 掩码）。</param>
         /// <returns>数据库中的值</returns>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050",
+            Justification = "JSON serialization path is only triggered when the target type is a complex object/collection; under AOT, users must provide a System.Text.Json source-gen context for complex property types, otherwise a NotSupportedException is thrown at runtime.")]
+#endif
         public virtual object ConvertToDbValue(object? value, DbValueType dbValueType = DbValueType.Object)
         {
             if (value is null) return DBNull.Value;
@@ -647,6 +666,10 @@ namespace LiteOrm
         /// </summary>
         /// <param name="value">要序列化的值。</param>
         /// <returns>JSON 字符串。</returns>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050",
+            Justification = "JSON serialization is only triggered when the value is a complex object/collection; under AOT, users must provide a System.Text.Json source-gen context for complex property types, otherwise a NotSupportedException is thrown at runtime.")]
+#endif
         protected virtual string ToJsonString(object value)
         {
             return JsonSerializer.Serialize(value, value.GetType());

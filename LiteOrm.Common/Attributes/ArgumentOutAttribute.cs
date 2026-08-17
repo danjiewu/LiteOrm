@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace LiteOrm.Common
@@ -65,7 +66,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="handlerType">回写处理器类型，需实现 <see cref="IArgumentOutHandler"/> 接口。</param>
         /// <param name="returnType">处理器返回值的类型，用于服务端序列化和客户端反序列化。</param>
-        public ArgumentOutAttribute(Type handlerType, Type returnType)
+        public ArgumentOutAttribute([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type handlerType, Type returnType)
         {
             HandlerType = handlerType;
             ReturnType = returnType;
@@ -75,6 +76,7 @@ namespace LiteOrm.Common
         /// 回写处理器类型，需实现 <see cref="IArgumentOutHandler"/> 接口。
         /// 派生特性（如 <see cref="IdentityOutAttribute"/>）直接实现该接口时，此属性返回派生类型本身。
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
         public Type HandlerType { get; }
 
         /// <summary>
@@ -135,6 +137,9 @@ namespace LiteOrm.Common
         }
 
         /// <inheritdoc/>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "argument.GetType() returns a runtime-known Type whose properties are naturally available; this path is only called under JIT.")]
+#endif
         public object? GenerateReturnValue(object? argument)
         {
             if (argument is null) return null;
@@ -143,6 +148,9 @@ namespace LiteOrm.Common
         }
 
         /// <inheritdoc/>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "originalArg.GetType() returns a runtime-known Type whose properties are naturally available; this path is only called under JIT.")]
+#endif
         public void WriteBack(object? originalArg, object? returnValue)
         {
             if (originalArg is null || returnValue is null) return;
@@ -156,7 +164,7 @@ namespace LiteOrm.Common
         /// 通过 <see cref="TableInfoProvider.Instance"/> 元数据解析类型上的 Identity 属性。
         /// 若未注册 <see cref="TableInfoProvider.Instance"/> 或该类型无 Identity 列，则返回 null。
         /// </summary>
-        private static PropertyInfo? ResolveIdentityProperty(Type type)
+        private static PropertyInfo? ResolveIdentityProperty([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type type)
         {
             var provider = TableInfoProvider.Instance;
             if (provider is null) return null;

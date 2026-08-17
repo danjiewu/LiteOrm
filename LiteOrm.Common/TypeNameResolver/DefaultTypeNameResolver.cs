@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -28,6 +29,7 @@ namespace LiteOrm.Common
         }
 
         /// <inheritdoc />
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         public Type? GetType(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;

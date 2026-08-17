@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -27,6 +28,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="name">类型名称（全名、短名或程序集限定名）。</param>
         /// <returns>匹配到的类型；未找到时返回 null。</returns>
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
         Type? GetType(string name);
     }
 }

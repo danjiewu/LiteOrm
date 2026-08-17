@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -60,6 +61,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取提供程序类型
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public Type ProviderType
         {
             get
@@ -78,6 +80,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取 SQL 构建器类型，如果未指定则返回 null，由工厂根据 Provider 自动匹配
         /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public Type? SqlBuilderType
         {
             get

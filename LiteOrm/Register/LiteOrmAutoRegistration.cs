@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -45,6 +46,10 @@ namespace LiteOrm
         /// <para>非 AOT 模式下扫描程序集进行运行时注册；AOT 模式下应用源生成器登记的注册回调。</para>
         /// </summary>
         /// <param name="services">服务集合。</param>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050",
+            Justification = "RegisterByAssemblyScan is only called when RuntimeFeature.IsDynamicCodeSupported is true (JIT mode); under AOT, the ApplyGenerated path is used instead.")]
+#endif
         public static void Apply(IServiceCollection services)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
@@ -76,6 +81,8 @@ namespace LiteOrm
         /// 扫描相关程序集，运行时注册所有带 <c>[AutoRegister]</c> 特性的类型。
         /// 仅用于非 AOT 模式（动态代码可用，允许反射）。
         /// </summary>
+        [RequiresDynamicCode("Assembly scanning via Assembly.GetTypes requires JIT; not supported under NativeAOT. Use the source-generated registration path instead.")]
+        [RequiresUnreferencedCode("Assembly scanning may load types that are trimmed away in AOT/trimmed deployments.")]
         private static void RegisterByAssemblyScan(IServiceCollection services)
         {
             var assemblyList = new HashSet<Assembly>();

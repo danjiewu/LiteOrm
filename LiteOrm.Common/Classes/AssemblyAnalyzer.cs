@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace LiteOrm
@@ -15,6 +16,14 @@ namespace LiteOrm
         /// </summary>
         /// <param name="entryAssembly">入口程序集</param>
         /// <returns>所有相关的程序集集合</returns>
+        [RequiresDynamicCode("Assembly scanning via AppDomain.GetAssemblies / Assembly.Load requires JIT; not supported under NativeAOT.")]
+        [RequiresUnreferencedCode("Assembly scanning may load types that are trimmed away in AOT/trimmed deployments.")]
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2026",
+            Justification = "Assembly.GetReferencedAssemblies is only called under JIT; the whole method is annotated with RequiresDynamicCode / RequiresUnreferencedCode and is not reachable under AOT.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2057",
+            Justification = "Assembly.Load is only called under JIT; the whole method is annotated with RequiresDynamicCode / RequiresUnreferencedCode and is not reachable under AOT.")]
+#endif
         public static IEnumerable<Assembly> GetAllReferencedAssemblies(Assembly? entryAssembly = null)
         {
             var result = new HashSet<Assembly>();
@@ -40,6 +49,10 @@ namespace LiteOrm
             return result;
         }
 
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2026",
+            Justification = "Assembly.GetReferencedAssemblies / Assembly.Load are only called under JIT; this path is not executed under AOT.")]
+#endif
         private static void ScanAssemblies(Assembly assembly, HashSet<Assembly> result, HashSet<Assembly> visited)
         {
             if (!visited.Add(assembly)) return;

@@ -26,11 +26,11 @@ namespace LiteOrm.Generators
     public class AutoRegisterGenerator : IIncrementalGenerator
     {
         private const string AutoRegisterAttributeFullTypeName = "LiteOrm.Common.AutoRegisterAttribute";
-        private const string AutoRegisterServiceTypesFullTypeName = "LiteOrm.Common.AutoRegisterServiceTypes";
+        private const string RegisterPolicyFullTypeName = "LiteOrm.Common.RegisterPolicy";
         private const string ServiceLifetimeFullTypeName = "LiteOrm.Common.Lifetime";
 
         /// <summary>
-        /// 与运行时 <c>LiteOrm.Common.AutoRegisterServiceTypes</c> 数值一致。
+        /// 与运行时 <see cref="LiteOrm.Common.RegisterPolicy"/> 数值一致。
         /// </summary>
         private enum AutoRegisterMode
         {
@@ -204,19 +204,19 @@ namespace LiteOrm.Generators
         };
 
         /// <summary>
-        /// 读取注册的服务类型范围：命名参数 <c>ServiceTypes</c> 优先，其次构造函数位置参数，
+        /// 读取注册的服务类型范围：命名参数 <c>Policy</c> 优先，其次构造函数参数，
         /// 默认 <see cref="AutoRegisterMode.All"/>。
         /// </summary>
         private static AutoRegisterMode GetServiceMode(AttributeData attr)
         {
-            if (TryGetNamedArg(attr, "ServiceTypes", out var tc) &&
+            if (TryGetNamedArg(attr, "Policy", out var tc) &&
                 !tc.IsNull && tc.Kind == TypedConstantKind.Enum && tc.Value is int modeInt)
             {
                 return (AutoRegisterMode)modeInt;
             }
             foreach (var arg in attr.ConstructorArguments)
             {
-                if (arg.Type?.ToDisplayString() == AutoRegisterServiceTypesFullTypeName && arg.Value is int mi)
+                if (arg.Type?.ToDisplayString() == RegisterPolicyFullTypeName && arg.Value is int mi)
                     return (AutoRegisterMode)mi;
             }
             return AutoRegisterMode.All;

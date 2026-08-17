@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -55,7 +56,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="type">属性类型。</param>
         /// <returns>推断出的取值类型。</returns>
-        public static DbValueType InferFromPropertyType(Type type)
+        public static DbValueType InferFromPropertyType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
         {
             if (type is null) return DbValueType.Object;
             type = type.GetUnderlyingType();

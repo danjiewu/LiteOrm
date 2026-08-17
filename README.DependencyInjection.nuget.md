@@ -152,7 +152,7 @@ Make sure the host uses `RegisterLiteOrm()` (from `LiteOrm.DependencyInjection`)
 
 **Q2: My custom services are still resolved by an interface without specifying `ServiceTypes`?**
 
-Yes. `[AutoRegister]`'s `ServiceTypes` defaults to `AutoRegisterServiceTypes.All`, which registers both the implementation type itself and its non-`System.*` interfaces. Interface-injected custom services need no explicit `ServiceTypes`. Use `AutoRegisterServiceTypes.Interface` for interface-only or `Self` for self-only registration.
+Yes. `[AutoRegister]`'s `Policy` defaults to `RegisterPolicy.All`, which registers both the implementation type itself and its non-`System.*` interfaces. Interface-injected custom services need no explicit `Policy`. Use `RegisterPolicy.Interface` for interface-only or `Self` for self-only registration.
 
 **Q3: Do my existing MS DI `IServiceCollection` registrations still work?**
 
@@ -309,7 +309,7 @@ MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
 
 **Q2：我的业务服务未显式指定 `ServiceTypes`，还能通过接口解析吗？**
 
-可以。`[AutoRegister]` 的 `ServiceTypes` 默认值为 `AutoRegisterServiceTypes.All`，会同时注册实现类型自身及其非 `System.*` 命名空间接口，依赖接口注入的服务无需显式声明 `ServiceTypes`。需要仅注册接口时用 `AutoRegisterServiceTypes.Interface`，仅注册自身时用 `Self`。
+可以。`[AutoRegister]` 的 `Policy` 默认值为 `RegisterPolicy.All`，会同时注册实现类型自身及其非 `System.*` 命名空间接口，依赖接口注入的服务无需显式声明 `Policy`。需要仅注册接口时用 `RegisterPolicy.Interface`，仅注册自身时用 `Self`。
 
 **Q3：原来用 MS DI 的 `IServiceCollection` 注册的服务还能用吗？**
 

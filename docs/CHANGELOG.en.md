@@ -3,7 +3,7 @@
 ## v8.1.1 (2026-08-07)
 
 ### Breaking Changes
-- `[AutoRegister]`'s `ServiceTypes` (previously `Type[]`) is now an enum `AutoRegisterServiceTypes`: `All` (default, implementation type itself + interfaces), `Self` (itself only), `Interface` (interfaces only). Replace the old `[AutoRegister(Lifetime.Scoped, typeof(IFoo))]` syntax with `[AutoRegister(AutoRegisterServiceTypes.Interface, Lifetime = Lifetime.Scoped)]`.
+- `[AutoRegister]`'s `ServiceTypes` (previously `Type[]`) is now an enum `RegisterPolicy`: `All` (default, implementation type itself + interfaces), `Self` (itself only), `Interface` (interfaces only). Replace the old `[AutoRegister(Lifetime.Scoped, typeof(IFoo))]` syntax with `[AutoRegister(RegisterPolicy.Interface, Lifetime = Lifetime.Scoped)]`.
 - The `DAOBase` and derived DAO constructors (`ObjectDAO<T>`, `ObjectViewDAO<T>`, `DataDAO<T>`, `DataViewDAO<T>`) now require a `SessionManager` parameter and no longer depend on the static `SessionManager.Current`. When constructing DAOs manually, pass the `SessionManager`; under DI the container resolves it automatically. `SessionManager.Current` is kept solely as an external entry point, and `AddLiteOrm()` binds it to the current scope instance automatically.
 - `ColumnAttribute.DbType` and `ColumnDefinition.DbType` changed from `DbValueType?` to non-nullable `DbValueType`, defaulting to the new `DbValueType.Default` (meaning "not specified, infer from the property type at runtime"). The previous `DbType == null` checks are replaced by `DbType == DbValueType.Default`.
 - `IDbConverter.ConvertToDbValue` parameter changed from `DbType` to `DbValueType` (default `DbValueType.Object`); it no longer accepts a `DbType` argument.
@@ -13,7 +13,7 @@
 ### New Features
 
 - Added `AutoRegisterServices` option to `RegisterLiteOrm()`'s `LiteOrmOptions` (default `true`); set to `false` to skip automatic scan registration (`009d2c3`)
-- `EntityService<T>`, `EntityViewService<T>`, `ObjectDAO<T>`, `ObjectViewDAO<T>`, `DataDAO<T>`, `DataViewDAO<T>` base classes now carry `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`, so derived classes inherit the registration behavior automatically.
+- `EntityService<T>`, `EntityViewService<T>`, `ObjectDAO<T>`, `ObjectViewDAO<T>`, `DataDAO<T>`, `DataViewDAO<T>` base classes now carry `[AutoRegister(RegisterPolicy.All, Lifetime = Lifetime.Scoped)]`, so derived classes inherit the registration behavior automatically.
 - Array type support: collection properties are inferred as `DbValueType.Array`; PostgreSQL emits native array columns (`integer[]`, `text[]`, etc.), other dialects fall back to text-JSON storage.
 - PostgreSQL array functions: parsing and SQL generation for `array_to_string`, `array_append`, `ANY`, etc.; `ANY` binds arrays as a single parameter.
 - New `LiteOrm.Pgsql` namespace with PgSQL-specific `ValueTypeExpr` extensions (`ArrayToString`, `ArrayAppend`, `Any`, `Contains`, `JsonbExtractPath`, `JsonbExtractPathText`, `JsonbContains`, `JsonbBuildObject`, `JsonbBuildArray`).

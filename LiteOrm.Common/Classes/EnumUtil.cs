@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 
@@ -22,7 +23,7 @@ namespace LiteOrm
         /// <typeparam name="T">枚举类型。</typeparam>
         /// <param name="displayName">显示名称。</param>
         /// <returns>匹配的枚举值；若未找到则返回该类型的默认值。</returns>
-        public static T Parse<T>(string displayName) where T : struct, Enum
+        public static T Parse<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] T>(string displayName) where T : struct, Enum
         {
             if (!_enumNameValue.ContainsKey(typeof(T)))
             {
@@ -41,7 +42,7 @@ namespace LiteOrm
         /// <param name="enumType">枚举的 Type 对象。</param>
         /// <param name="displayName">显示名称。</param>
         /// <returns>枚举项对象。</returns>
-        public static object Parse(Type enumType, string displayName)
+        public static object Parse([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type enumType, string displayName)
         {
             if (!_enumTypeName.ContainsKey(enumType))
             {
@@ -80,7 +81,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="enumType">枚举类型。</param>
         /// <param name="entries">枚举值 → 显示名称 的映射集合。</param>
-        public static void Register(Type enumType, IEnumerable<KeyValuePair<Enum, string>> entries)
+        public static void Register([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type enumType, IEnumerable<KeyValuePair<Enum, string>> entries)
         {
             if (enumType is null) throw new ArgumentNullException(nameof(enumType));
             if (entries is null) throw new ArgumentNullException(nameof(entries));
@@ -101,7 +102,7 @@ namespace LiteOrm
         /// </summary>
         /// <typeparam name="TEnum">枚举类型。</typeparam>
         /// <param name="entries">枚举值 → 显示名称 的映射集合。</param>
-        public static void Register<TEnum>(IEnumerable<KeyValuePair<TEnum, string>> entries) where TEnum : struct, Enum
+        public static void Register<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] TEnum>(IEnumerable<KeyValuePair<TEnum, string>> entries) where TEnum : struct, Enum
         {
             if (entries is null) throw new ArgumentNullException(nameof(entries));
             Register(typeof(TEnum), entries.Select(e => new KeyValuePair<Enum, string>(e.Key, e.Value)));
@@ -111,7 +112,7 @@ namespace LiteOrm
         /// 扫描枚举类型的所有字段，并初始化其显示名称与值的双向缓存。
         /// </summary>
         /// <param name="enumType">枚举类型。</param>
-        private static void InitializeEnumName(Type enumType)
+        private static void InitializeEnumName([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields)] Type enumType)
         {
             ConcurrentDictionary<Enum, string> enumNames = new ConcurrentDictionary<Enum, string>();
             ConcurrentDictionary<string, Enum> nameValues = new ConcurrentDictionary<string, Enum>();

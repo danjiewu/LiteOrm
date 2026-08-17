@@ -106,6 +106,9 @@ namespace LiteOrm.Common
         /// <param name="property">属性描述符。</param>
         /// <param name="text">表示查询语句的字符串，可以使用 "="、"&lt;"、"&gt;"、"!"、"%"、"*"、"&lt;="、"&gt;=" 为起始字符表示条件符号。</param>
         /// <returns>二元表达式查询条件。</returns>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "PropertyInfo.PropertyType is a runtime-known Type whose properties are naturally available; under AOT, properties are preserved via [Table] + source generator.")]
+#endif
         public static LogicBinaryExpr Parse(PropertyInfo property, string text)
         {
             if (String.IsNullOrEmpty(text)) return new LogicBinaryExpr(Expr.Prop(property.Name), LogicOperator.Equal, Expr.Null);

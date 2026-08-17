@@ -3,7 +3,7 @@
 ## v8.1.1 (2026-08-07)
 
 ### 破坏性变更
-- `[AutoRegister]` 的 `ServiceTypes`（此前为 `Type[]`）已改为枚举 `AutoRegisterServiceTypes`：`All`（默认，实现类型自身 + 接口）、`Self`（仅自身）、`Interface`（仅接口）。原 `[AutoRegister(Lifetime.Scoped, typeof(IFoo))]` 写法请改为 `[AutoRegister(AutoRegisterServiceTypes.Interface, Lifetime = Lifetime.Scoped)]`。
+- `[AutoRegister]` 的 `ServiceTypes`（此前为 `Type[]`）已改为枚举 `RegisterPolicy`：`All`（默认，实现类型自身 + 接口）、`Self`（仅自身）、`Interface`（仅接口）。原 `[AutoRegister(Lifetime.Scoped, typeof(IFoo))]` 写法请改为 `[AutoRegister(RegisterPolicy.Interface, Lifetime = Lifetime.Scoped)]`。
 - `DAOBase` 及派生 DAO（`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>`）构造函数需传入 `SessionManager`，不再依赖静态 `SessionManager.Current`。手动构造 DAO 时请传入 `sessionManager`；依赖注入场景由容器自动解析。`SessionManager.Current` 仅保留为外部使用入口，`AddLiteOrm()` 会自动将其绑定到当前作用域实例。
 - `ColumnAttribute.DbType` 与 `ColumnDefinition.DbType` 由 `DbValueType?` 改为非空 `DbValueType`，默认值为新增的 `DbValueType.Default`（表示未显式指定、运行时按属性类型推断）。原 `DbType == null` 判空逻辑改为 `DbType == DbValueType.Default`。
 - `IDbConverter.ConvertToDbValue` 的参数由 `DbType` 改为 `DbValueType`（默认 `DbValueType.Object`），不再接受 `DbType` 参数。
@@ -13,7 +13,7 @@
 ### 新特性
 
 - `RegisterLiteOrm()` 的 `LiteOrmOptions` 新增 `AutoRegisterServices` 选项（默认 `true`），设为 `false` 可跳过自动扫描注册 (`009d2c3`)
-- `EntityService<T>`、`EntityViewService<T>`、`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>` 基类新增 `[AutoRegister(AutoRegisterServiceTypes.All, Lifetime = Lifetime.Scoped)]`，派生类自动继承注册行为。
+- `EntityService<T>`、`EntityViewService<T>`、`ObjectDAO<T>`、`ObjectViewDAO<T>`、`DataDAO<T>`、`DataViewDAO<T>` 基类新增 `[AutoRegister(RegisterPolicy.All, Lifetime = Lifetime.Scoped)]`，派生类自动继承注册行为。
 - 数组类型支持：集合属性自动推断为 `DbValueType.Array`；PostgreSQL 生成原生数组列（`integer[]`、`text[]` 等），其余方言回退文本 JSON 存储。
 - PostgreSQL 数组函数：新增 `array_to_string`、`array_append`、`ANY` 等函数的解析与 SQL 生成，`ANY` 支持数组作为单参数绑定。
 - 新增 `LiteOrm.Pgsql` 命名空间，提供 `ValueTypeExpr` 的 PgSQL 专用扩展（`ArrayToString`、`ArrayAppend`、`Any`、`Contains`、`JsonbExtractPath`、`JsonbExtractPathText`、`JsonbContains`、`JsonbBuildObject`、`JsonbBuildArray`）。

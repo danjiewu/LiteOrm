@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm
 {
@@ -42,6 +43,10 @@ namespace LiteOrm
         /// <summary>
         /// 注册 Lambda 表达式中的方法调用处理器。
         /// </summary>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Registers Lambda method handlers via reflection; under AOT, method members are preserved via the source generator.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "typeof(T) returns a compile-time-known Type whose public methods are naturally available.")]
+#endif
         private static void RegisterLambdaMethodHandlers()
         {
             // DateTime 类型方法：AddYears/Month/Day/Hour/Minute/Second 等日期加减操作

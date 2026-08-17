@@ -60,9 +60,13 @@ namespace LiteOrm
         /// </para>
         /// </summary>
         /// <typeparam name="T">DbConnection 的类型。</typeparam>
-        public static void RegisterDbConnectionType<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>() where T : System.Data.Common.DbConnection, new()
+        public static void RegisterDbConnectionType<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>() where T : System.Data.Common.DbConnection, new()
         {
-            TypeResolverHelper.Register(typeof(T).AssemblyQualifiedName!, typeof(T));
+            var type = typeof(T);
+            // 注册多种名称形式，使配置文件中的短名（如 "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite"）在 AOT 下也可解析
+            TypeResolverHelper.Register(type.AssemblyQualifiedName!, type);
+            TypeResolverHelper.Register(type.FullName!, type);
+            TypeResolverHelper.Register($"{type.FullName}, {type.Assembly.GetName().Name}", type);
         }
 
         /// <summary>
@@ -168,7 +172,7 @@ namespace LiteOrm
                     if (instanceProp != null && instanceProp.GetValue(null) is SqlBuilder instance)
                         sqlBuilder = instance;
                     else
-                        sqlBuilder = (SqlBuilder)Activator.CreateInstance(config.SqlBuilderType)!;
+                        sqlBuilder = (SqlBuilder)Activator.CreateInstance(sqlBuilderType)!;
                     SqlBuilderFactory.Instance.RegisterSqlBuilder(configName!, sqlBuilder);
                     if (_dataSourceProvider.DefaultDataSourceName == configName)
                     {

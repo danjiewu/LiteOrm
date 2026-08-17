@@ -485,6 +485,9 @@ namespace LiteOrm
             return aliasedFilter;
         }
 
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "PropertyInfo.PropertyType is a runtime-known Type whose properties are naturally available; under AOT, properties are preserved via [Table] + source generator.")]
+#endif
         private static object? ParseConstant(PropertyInfo property, object? constant)
         {
             if (constant is null) return null;
