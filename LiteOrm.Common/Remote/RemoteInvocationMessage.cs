@@ -26,6 +26,9 @@ namespace LiteOrm.Remote
     [JsonConverter(typeof(RemoteInvocationRequestConverter))]
     [RequiresDynamicCode("RemoteInvocationRequest serialization relies on reflection-based System.Text.Json; not supported under NativeAOT.")]
     [RequiresUnreferencedCode("RemoteInvocationRequest serialization relies on reflection-based System.Text.Json.")]
+#if NET8_0_OR_GREATER
+    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "JsonConverter attribute references RemoteInvocationRequestConverter which is marked RequiresUnreferencedCode; the class itself is already marked RequiresDynamicCode / RequiresUnreferencedCode, making this transitive warning redundant.")]
+#endif
     public sealed class RemoteInvocationRequest
     {
         /// <summary>

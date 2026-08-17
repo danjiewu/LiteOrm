@@ -1,5 +1,14 @@
 # Changelog
 
+## v8.1.2 (2026-08-17)
+
+### AOT Compilation Improvements
+
+- **Fixed AutoRegisterGenerator enum/property name mismatch**: the generator looked up the non-existent `AutoRegisterServiceTypes` (corrected to `RegisterPolicy`) and the named argument `ServiceTypes` (corrected to `Policy`).
+- **Removed global trim warning suppression** (`SuppressTrimAnalysisWarnings`); added `DynamicallyAccessedMembers` annotation chains and `UnconditionalSuppressMessage` so trimming/AOT warnings are visible at compile time.
+
+---
+
 ## v8.1.1 (2026-08-07)
 
 ### Breaking Changes

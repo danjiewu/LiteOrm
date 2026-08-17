@@ -1,5 +1,14 @@
 # 变更日志 (Changelog)
 
+## v8.1.2 (2026-08-17)
+
+### 优化 AOT 编译
+
+- **修复 AutoRegisterGenerator 枚举/属性名错位**：生成器将 `AutoRegisterServiceTypes` 改为 `RegisterPolicy`，命名参数 `ServiceTypes` 改为 `Policy`。
+- **移除全局裁剪告警抑制**（`SuppressTrimAnalysisWarnings`），添加 `DynamicallyAccessedMembers` 注解链与 `UnconditionalSuppressMessage`，使裁剪/AOT 告警在编译期可见。
+
+---
+
 ## v8.1.1 (2026-08-07)
 
 ### 破坏性变更

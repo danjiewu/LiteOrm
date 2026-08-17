@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.1.1.0</AssemblyVersion>
-    <FileVersion>8.1.1.0</FileVersion>
+    <AssemblyVersion>8.1.2.0</AssemblyVersion>
+    <FileVersion>8.1.2.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.1.1</VersionPrefix>
+    <VersionPrefix>8.1.2</VersionPrefix>
     <Nullable>enable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
@@ -15,6 +15,9 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm.Common 公共库：LiteOrm 的共享核心，提供表达式树（Expr）、SQL 片段、表元数据（TableInfoProvider）、特性与公共接口，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
+8.1.2:
+- 优化 AOT 编译：移除全局裁剪告警抑制。
+
 8.1.1:
 - 破坏性变更：
   - [AutoRegister] 的 ServiceTypes 改为枚举 RegisterPolicy（All/Self/Interface，默认 All），原 Type[] 写法移除。

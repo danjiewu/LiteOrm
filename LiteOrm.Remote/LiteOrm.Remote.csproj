@@ -6,10 +6,13 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程服务调用</Description>
-    <AssemblyVersion>8.1.1.0</AssemblyVersion>
-    <FileVersion>8.1.1.0</FileVersion>
-    <VersionPrefix>8.1.1</VersionPrefix>
+    <AssemblyVersion>8.1.2.0</AssemblyVersion>
+    <FileVersion>8.1.2.0</FileVersion>
+    <VersionPrefix>8.1.2</VersionPrefix>
     <PackageReleaseNotes>
+8.1.2:
+- LiteOrm.Common 更新至 8.1.2。
+
 8.1.1:
 - 改进：
   - LiteOrm.Common 更新至 8.1.1；
