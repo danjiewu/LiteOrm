@@ -16,10 +16,10 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
-  8.1.3:
-- 同步 LiteOrm.Common 8.1.3。
-- SqlBuilder 与各方言子类的类型映射改为 DbValueType。
-- DataReaderConverter 编译委托时传入当前 SqlBuilder 推断方言相关 DbType。
+8.1.3:
+  - 同步 LiteOrm.Common 8.1.3。
+  - SqlBuilder 与各方言子类的类型映射改为 DbValueType。
+  - DataReaderConverter 编译委托时传入当前 SqlBuilder 推断方言相关 DbType。
 
 8.1.2:
   - 优化 AOT 编译：
@@ -28,8 +28,8 @@
   - RegisterSqlBuilderType / RegisterDbConnectionType 注册多种名称形式，支持配置文件短名在 AOT 下解析。
   - ExprSqlConverter 移至 LiteOrm.Common。
 
-  8.1.1:
-  - 破坏性变更：
+8.1.1:
+- 破坏性变更：
   - DAOBase 与 ObjectDAO&lt;T&gt; / ObjectViewDAO&lt;T&gt; / DataDAO&lt;T&gt; / DataViewDAO&lt;T&gt; 构造函数改为接收 SessionManager，DAO 内部不再依赖静态 SessionManager.Current；
   - SessionManager.Current 仅作为外部调用入口，AddLiteOrm() 会自动将其绑定到当前作用域实例。
   - ConvertToDbValue 参数与 Param.DbType 由 DbType 改为 DbValueType；
@@ -37,7 +37,7 @@
 - 新特性：
   - PostgreSQL 数组支持：数组列 DDL（integer[]/text[] 等）与 array_to_string/array_append/ANY 函数；
   - 新增 LiteOrm.Pgsql 命名空间与 PgSQL 专用 Expr 扩展（ArrayToString/ArrayAppend/Any/Jsonb* 等）；
-  - 各方言 JSON 函数注册（MySQL JSON_*、SQLite json_*、SQL Server JSON_VALUE/JSON_QUERY、Oracle JSON_VALUE/JSON_QUERY、PostgreSQL ->/->>/@>）；
+  - 各方言 JSON 函数注册（MySQL JSON_*、SQLite json_*、SQL Server JSON_VALUE/JSON_QUERY、Oracle JSON_VALUE/JSON_QUERY、PostgreSQL -&gt;/-&gt;&gt;/@&gt;）；
   - 计算列（非实际列）：不生成物理列，SELECT/WHERE 按 Expression 渲染。
 - 改进：
   - 非 AOT 模式自动注册改用运行时程序集扫描（LiteOrmAutoRegistration.Apply()），不再生成源代码；AOT 模式仍由源生成器编译期生成，按 RuntimeFeature.IsDynamicCodeSupported 自动分流；
