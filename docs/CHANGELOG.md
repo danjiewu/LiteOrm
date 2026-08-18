@@ -1,5 +1,21 @@
 # 变更日志 (Changelog)
 
+## v8.1.3 (2026-08-18)
+
+### 破坏性变更
+
+- 统一使用 `DbValueType` 替代 `DbType`，仅在数据库操作边界转换为 `System.Data.DbType`。合并 `DbTypeMap` 至 `DbValueTypeMap`。
+- `IDbConverter.GetDbType(Type)` 改为 `GetDbValueType(Type)`；新增 `GetDefaultLength(DbValueType)`。
+- `DbValueType.Array` 改为掩码（值 128），可与标量类型按位或组合（如 `DbValueType.Int32 | DbValueType.Array`）。
+- `Expr.Cast` / `SqlBuilder.GetSqlTypeName` / `GetDefaultLength` 参数改为 `DbValueType`。
+
+### 改进
+
+- 计算列支持 `ValueTypeExpr` 形式表达式（`ColumnDefinition.ExpressionExpr`）。
+- `DataReaderConverter` 在 `DbValueType.Default` 时通过当前 `SqlBuilder` 推断方言相关的读取器类型。
+
+---
+
 ## v8.1.2 (2026-08-17)
 
 ### 优化 AOT 编译

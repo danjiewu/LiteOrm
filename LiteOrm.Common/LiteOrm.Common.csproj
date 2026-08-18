@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.1.2.0</AssemblyVersion>
-    <FileVersion>8.1.2.0</FileVersion>
+    <AssemblyVersion>8.1.3.0</AssemblyVersion>
+    <FileVersion>8.1.3.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.1.2</VersionPrefix>
+    <VersionPrefix>8.1.3</VersionPrefix>
     <Nullable>enable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
@@ -15,7 +15,14 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm.Common 公共库：LiteOrm 的共享核心，提供表达式树（Expr）、SQL 片段、表元数据（TableInfoProvider）、特性与公共接口，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
-      8.1.2:
+      8.1.3:
+- 统一使用 DbValueType 替代 DbType，合并 DbTypeMap 至 DbValueTypeMap。
+- IDbConverter.GetDbType 改为 GetDbValueType；新增 GetDefaultLength。
+- DbValueType.Array 改为掩码（128），可与标量类型按位或组合。
+- 计算列支持 ValueTypeExpr 形式表达式。
+- DataReaderConverter 在 Default 时通过当前 SqlBuilder 推断 DbType。
+
+8.1.2:
       - 优化 AOT 编译：移除全局裁剪告警抑制。
       - 新增 ColumnDefinition.ExpressionExpr：计算列支持 ValueTypeExpr 形式表达式（Expr 树），仅允许不生成参数的固定 SQL，优先于字符串形式 Expression。
       - ExprSqlConverter 移至 LiteOrm.Common。

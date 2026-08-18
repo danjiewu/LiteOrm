@@ -1,5 +1,21 @@
 # Changelog
 
+## v8.1.3 (2026-08-18)
+
+### Breaking Changes
+
+- Unified use of `DbValueType` instead of `DbType` internally; conversion to `System.Data.DbType` only at database operation boundaries. Merged `DbTypeMap` into `DbValueTypeMap`.
+- `IDbConverter.GetDbType(Type)` renamed to `GetDbValueType(Type)`; added `GetDefaultLength(DbValueType)`.
+- `DbValueType.Array` is now a bitmask (value 128), composable with scalar types via bitwise OR (e.g., `DbValueType.Int32 | DbValueType.Array`).
+- `Expr.Cast` / `SqlBuilder.GetSqlTypeName` / `GetDefaultLength` parameters changed to `DbValueType`.
+
+### Improvements
+
+- Computed column supports `ValueTypeExpr` form (`ColumnDefinition.ExpressionExpr`).
+- `DataReaderConverter` infers dialect-specific reader type via the current `SqlBuilder` when `DbValueType.Default`.
+
+---
+
 ## v8.1.2 (2026-08-17)
 
 ### AOT Compilation Improvements
