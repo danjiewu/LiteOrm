@@ -12,6 +12,8 @@ namespace LiteOrm.Tests
         {
             Assert.True(DbValueType.Array.HasArray());
             Assert.False(DbValueType.String.HasArray());
+            Assert.True((DbValueType.Int32 | DbValueType.Array).HasArray());
+            Assert.True((DbValueType.String | DbValueType.Array).HasArray());
         }
 
         [Fact]
@@ -21,6 +23,8 @@ namespace LiteOrm.Tests
             Assert.Equal(DbType.String, DbValueTypeMap.ToDbType(DbValueType.Json));
             Assert.Equal(DbType.String, DbValueTypeMap.ToDbType(DbValueType.Jsonb));
             Assert.Equal(DbType.Int32, DbValueTypeMap.ToDbType(DbValueType.Int32));
+            Assert.Equal(DbType.Int32, DbValueTypeMap.ToDbType(DbValueType.Int32 | DbValueType.Array));
+            Assert.Equal(DbType.String, DbValueTypeMap.ToDbType(DbValueType.String | DbValueType.Array));
         }
 
         [Fact]
@@ -38,8 +42,8 @@ namespace LiteOrm.Tests
             var tags = table.GetColumn(nameof(PgsqlArrayModel.Tags))!;
             var scores = table.GetColumn(nameof(PgsqlArrayModel.Scores))!;
 
-            Assert.Equal(DbValueType.Array, tags.GetDbValueType(SqlBuilder.Instance));
-            Assert.Equal(DbValueType.Array, scores.GetDbValueType(SqlBuilder.Instance));
+            Assert.Equal(DbValueType.String | DbValueType.Array, tags.GetDbValueType(SqlBuilder.Instance));
+            Assert.Equal(DbValueType.Int32 | DbValueType.Array, scores.GetDbValueType(SqlBuilder.Instance));
         }
 
         [Fact]

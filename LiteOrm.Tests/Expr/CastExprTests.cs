@@ -10,7 +10,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Cast_WithDbType_CreatesFunctionExpr()
         {
-            var expr = Expr.Prop("Age").Cast(DbType.Int32);
+            var expr = Expr.Prop("Age").Cast(DbValueType.Int32);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             Assert.Equal("CAST", func.FunctionName);
@@ -22,7 +22,7 @@ namespace LiteOrm.Common.UnitTests
         public void Cast_WithDbType_FirstArgIsSourceExpr()
         {
             var ageExpr = Expr.Prop("Age");
-            var expr = ageExpr.Cast(DbType.String);
+            var expr = ageExpr.Cast(DbValueType.String);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             Assert.Same(ageExpr, func.Args[0]);
@@ -31,47 +31,47 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Cast_WithDbType_SecondArgIsValueExprWithDbType()
         {
-            var expr = Expr.Prop("Score").Cast(DbType.Decimal);
+            var expr = Expr.Prop("Score").Cast(DbValueType.Decimal);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             var typeArg = Assert.IsType<ValueExpr>(func.Args[1]);
-            Assert.Equal(DbType.Decimal, typeArg.Value);
+            Assert.Equal(DbValueType.Decimal, typeArg.Value);
         }
 
         [Fact]
         public void Cast_WithDbTypeString_SecondArgIsString()
         {
-            var expr = Expr.Prop("Name").Cast(DbType.String);
+            var expr = Expr.Prop("Name").Cast(DbValueType.String);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             var typeArg = Assert.IsType<ValueExpr>(func.Args[1]);
-            Assert.Equal(DbType.String, typeArg.Value);
+            Assert.Equal(DbValueType.String, typeArg.Value);
         }
 
         [Fact]
         public void Cast_WithDbTypeDateTime_SecondArgIsDateTime()
         {
-            var expr = Expr.Prop("CreateTime").Cast(DbType.DateTime);
+            var expr = Expr.Prop("CreateTime").Cast(DbValueType.DateTime);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             var typeArg = Assert.IsType<ValueExpr>(func.Args[1]);
-            Assert.Equal(DbType.DateTime, typeArg.Value);
+            Assert.Equal(DbValueType.DateTime, typeArg.Value);
         }
 
         [Fact]
         public void Cast_WithDbTypeDouble_SecondArgIsDouble()
         {
-            var expr = Expr.Prop("Amount").Cast(DbType.Double);
+            var expr = Expr.Prop("Amount").Cast(DbValueType.Double);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             var typeArg = Assert.IsType<ValueExpr>(func.Args[1]);
-            Assert.Equal(DbType.Double, typeArg.Value);
+            Assert.Equal(DbValueType.Double, typeArg.Value);
         }
 
         [Fact]
         public void Cast_ChainedWithOtherExpr_Works()
         {
-            var expr = Expr.Prop("Age").Cast(DbType.Int32) > new ValueExpr(18);
+            var expr = Expr.Prop("Age").Cast(DbValueType.Int32) > new ValueExpr(18);
 
             var bin = Assert.IsType<LogicBinaryExpr>(expr);
             Assert.Equal(LogicOperator.GreaterThan, bin.Operator);
@@ -82,7 +82,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Cast_NullableProperty_Works()
         {
-            var expr = Expr.Prop("OptionalValue").Cast(DbType.Int32);
+            var expr = Expr.Prop("OptionalValue").Cast(DbValueType.Int32);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             Assert.Equal("CAST", func.FunctionName);
@@ -93,7 +93,7 @@ namespace LiteOrm.Common.UnitTests
         public void Cast_ComputedExpr_Works()
         {
             var computed = Expr.Prop("Price") * Expr.Prop("Quantity");
-            var expr = computed.Cast(DbType.Decimal);
+            var expr = computed.Cast(DbValueType.Decimal);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             Assert.Equal("CAST", func.FunctionName);
@@ -101,39 +101,39 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
-        public void Cast_WithDbTypeByte_SecondArgIsByte()
+        public void Cast_WithDbValueTypeByte_SecondArgIsByte()
         {
-            var expr = Expr.Prop("Flag").Cast(DbType.Byte);
+            var expr = Expr.Prop("Flag").Cast(DbValueType.Byte);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             var typeArg = Assert.IsType<ValueExpr>(func.Args[1]);
-            Assert.Equal(DbType.Byte, typeArg.Value);
+            Assert.Equal(DbValueType.Byte, typeArg.Value);
         }
 
         [Fact]
         public void Cast_WithDbTypeBoolean_SecondArgIsBoolean()
         {
-            var expr = Expr.Prop("IsActive").Cast(DbType.Boolean);
+            var expr = Expr.Prop("IsActive").Cast(DbValueType.Boolean);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             var typeArg = Assert.IsType<ValueExpr>(func.Args[1]);
-            Assert.Equal(DbType.Boolean, typeArg.Value);
+            Assert.Equal(DbValueType.Boolean, typeArg.Value);
         }
 
         [Fact]
         public void Cast_WithDbTypeInt64_SecondArgIsInt64()
         {
-            var expr = Expr.Prop("BigId").Cast(DbType.Int64);
+            var expr = Expr.Prop("BigId").Cast(DbValueType.Int64);
 
             var func = Assert.IsType<FunctionExpr>(expr);
             var typeArg = Assert.IsType<ValueExpr>(func.Args[1]);
-            Assert.Equal(DbType.Int64, typeArg.Value);
+            Assert.Equal(DbValueType.Int64, typeArg.Value);
         }
 
         [Fact]
         public void Cast_Clone_ProducesEqualExpr()
         {
-            var original = Expr.Prop("Age").Cast(DbType.String);
+            var original = Expr.Prop("Age").Cast(DbValueType.String);
 
             var clone = (FunctionExpr)original.Clone();
 

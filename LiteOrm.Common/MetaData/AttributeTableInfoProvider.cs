@@ -142,15 +142,11 @@ namespace LiteOrm
             }
             else
             {
-                // 无 ColumnAttribute 的属性：根据类型推断 DbType（集合属性推断为 Array）
-                DbValueType defaultDbType = DbValueTypeMap.InferFromPropertyType(property.PropertyType);
-                if (defaultDbType == DbValueType.Object) return null;
-
                 ColumnDefinition column = new ColumnDefinition(property);
                 column.Name = property.Name;
                 column.Mode = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
-                column.DbType = defaultDbType;
-                column.Length = DbTypeMap.GetDefaultLength(column.DbType.ToDbType());
+                column.DbType = DbValueType.Default;
+                column.Length = 0;
                 column.AllowNull = property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(column.PropertyType) is not null : true;
                 column.ForeignTables = foreignTables;
                 return column;

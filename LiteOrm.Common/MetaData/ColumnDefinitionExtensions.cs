@@ -44,19 +44,7 @@ namespace LiteOrm.Common
             if (dbConverter is null) throw new ArgumentNullException(nameof(dbConverter));
             if (column.DbType != DbValueType.Default) return column.DbType;
             if (IsCollectionType(column.PropertyType)) return DbValueTypeMap.InferFromPropertyType(column.PropertyType);
-            return DbValueTypeMap.FromDbType(dbConverter.GetDbType(column.PropertyType));
-        }
-
-        /// <summary>
-        /// 将 <see cref="DbValueType"/> 映射为 <see cref="DbType"/>。
-        /// <see cref="DbValueType.Json"/>/<see cref="DbValueType.Jsonb"/> 映射为 <see cref="DbType.String"/>，
-        /// <see cref="DbValueType.Array"/> 掩码被剥离，其余按标量映射。
-        /// </summary>
-        /// <param name="dbValueType">自定义取值类型。</param>
-        /// <returns>对应的 <see cref="DbType"/> 值。</returns>
-        public static DbType ToDbType(this DbValueType dbValueType)
-        {
-            return DbValueTypeMap.ToDbType(dbValueType);
+            return dbConverter.GetDbValueType(column.PropertyType);
         }
 
         /// <summary>

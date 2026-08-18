@@ -556,9 +556,9 @@ namespace LiteOrm
             if (dbValueType.HasArray() && ColumnDefinitionExtensions.IsCollectionType(value.GetType()))
                 return SupportsNativeArrays ? value : ToJsonString(value);
 
-            DbType dbType = (dbValueType == DbValueType.Object || dbValueType == DbValueType.Default)
-                ? GetDbType(value.GetType())
-                : DbValueTypeMap.ToDbType(dbValueType);
+            DbValueType dbType = (dbValueType == DbValueType.Object || dbValueType == DbValueType.Default)
+                ? GetDbValueType(value.GetType())
+                : dbValueType;
 
             Type type = value.GetType();
 
@@ -572,8 +572,8 @@ namespace LiteOrm
             // 处理枚举：优先根据基础类型转换，除非 DbType 要求字符串
             if (type.IsEnum)
             {
-                if (dbType == DbType.String || dbType == DbType.AnsiString ||
-                    dbType == DbType.StringFixedLength || dbType == DbType.AnsiStringFixedLength)
+                if (dbType == DbValueType.String || dbType == DbValueType.AnsiString ||
+                    dbType == DbValueType.StringFixedLength || dbType == DbValueType.AnsiStringFixedLength)
                 {
                     return value.ToString()!;
                 }
@@ -584,46 +584,46 @@ namespace LiteOrm
             // 根据 dbType 进行特定转换
             switch (dbType)
             {
-                case DbType.Boolean:
+                case DbValueType.Boolean:
                     return Convert.ToBoolean(value);
 
-                case DbType.Int16:
-                case DbType.Int32:
-                case DbType.Int64:
-                case DbType.Byte:
-                case DbType.SByte:
-                case DbType.UInt16:
-                case DbType.UInt32:
-                case DbType.UInt64:
+                case DbValueType.Int16:
+                case DbValueType.Int32:
+                case DbValueType.Int64:
+                case DbValueType.Byte:
+                case DbValueType.SByte:
+                case DbValueType.UInt16:
+                case DbValueType.UInt32:
+                case DbValueType.UInt64:
                     if (value is bool b) return b ? 1 : 0;
                     return Convert.ChangeType(value, dbType.ToType());
 
-                case DbType.Guid:
+                case DbValueType.Guid:
                     if (value is Guid guid) return guid;
                     if (value is string s && Guid.TryParse(s, out Guid g)) return g;
                     if (value is byte[] bytes && bytes.Length == 16) return new Guid(bytes);
                     break;
 
-                case DbType.Binary:
+                case DbValueType.Binary:
                     if (value is Guid g2) return g2.ToByteArray();
                     break;
 
-                case DbType.Date:
-                case DbType.DateTime:
-                case DbType.DateTime2:
+                case DbValueType.Date:
+                case DbValueType.DateTime:
+                case DbValueType.DateTime2:
                     if (value is DateTimeOffset dto) return dto.DateTime;
                     if (value is DateTime date) return date;
                     break;
-                case DbType.Time:
+                case DbValueType.Time:
                     if (value is TimeSpan timeSpan) return timeSpan;
                     break;
-                case DbType.DateTimeOffset:
+                case DbValueType.DateTimeOffset:
                     if (value is DateTime dt) return new DateTimeOffset(dt);
                     break;
-                case DbType.String:
-                case DbType.AnsiString:
-                case DbType.StringFixedLength:
-                case DbType.AnsiStringFixedLength:
+                case DbValueType.String:
+                case DbValueType.AnsiString:
+                case DbValueType.StringFixedLength:
+                case DbValueType.AnsiStringFixedLength:
                     if (value is Guid g3) return g3.ToString();
                     if (value is TimeSpan ts) return ts.ToString();
                     if (value is string strValue) return strValue;
@@ -679,51 +679,69 @@ namespace LiteOrm
         /// 获取对应的数据库类型
         /// </summary>
         /// <param name="type">要转换的 .NET 类型，支持 Nullable 类型</param>
-        /// <returns>对应的数据库类型</returns>
-        public DbType GetDbType(Type type)
+        /// <returns>对应的数据库取值类型</returns>
+        public DbValueType GetDbValueType(Type type)
         {
             if (type is null) throw new ArgumentNullException(nameof(type));
             Type underlyingType = type.GetUnderlyingType();
-            return GetDbTypeInternal(underlyingType);
+            return GetDbValueTypeInternal(underlyingType);
         }
 
         /// <summary>
-        /// 获取对应的数据库类型的内部实现方法，子类可覆盖以提供数据库特定的类型映射逻辑。
+        /// 获取对应的数据库取值类型的内部实现方法，子类可覆盖以提供数据库特定的类型映射逻辑。
         /// </summary>
         /// <param name="type">要转换的 .NET 类型</param>
-        /// <returns>对应的数据库类型</returns>
-        protected virtual DbType GetDbTypeInternal(Type type)
+        /// <returns>对应的数据库取值类型</returns>
+        protected virtual DbValueType GetDbValueTypeInternal(Type type)
         {
             if (type is null) throw new ArgumentNullException(nameof(type));
-            return DbTypeMap.GetDbType(type);
+            return DbValueTypeMap.GetDbValueType(type);
         }
 
         /// <summary>
-        /// 将 <see cref="DbType"/> 转换为通用的 SQL 类型名称，用于 CAST 表达式等。
+        /// 获取指定数据库取值类型的默认列长度。
         /// </summary>
-        public virtual string GetSqlTypeName(DbType dbType)
+        public virtual int GetDefaultLength(DbValueType dbValueType)
         {
-            return dbType switch
+            return dbValueType switch
             {
-                DbType.String or DbType.AnsiString or DbType.AnsiStringFixedLength or DbType.StringFixedLength => "VARCHAR",
-                DbType.Int16 => "SMALLINT",
-                DbType.Int32 => "INT",
-                DbType.Int64 => "BIGINT",
-                DbType.Boolean => "BIT",
-                DbType.UInt16 => "SMALLINT",
-                DbType.UInt32 => "INT",
-                DbType.UInt64 => "BIGINT",
-                DbType.DateTime => "DATETIME",
-                DbType.DateTime2 => "TIMESTAMP",
-                DbType.DateTimeOffset => "DATETIMEOFFSET",
-                DbType.Date => "DATE",
-                DbType.Time => "TIME",
-                DbType.Decimal => "DECIMAL",
-                DbType.Double => "DOUBLE",
-                DbType.Single => "FLOAT",
-                DbType.Byte or DbType.SByte => "TINYINT",
-                DbType.Guid => "GUID",
-                DbType.Binary => "BLOB",
+                DbValueType.Byte or DbValueType.SByte or DbValueType.Boolean => 1,
+                DbValueType.Int16 or DbValueType.UInt16 => 2,
+                DbValueType.Single or DbValueType.UInt32 or DbValueType.Int32 => 4,
+                DbValueType.Int64 or DbValueType.UInt64 or DbValueType.Double => 8,
+                DbValueType.String or DbValueType.AnsiString or DbValueType.AnsiStringFixedLength or DbValueType.StringFixedLength => 255,
+                DbValueType.Xml => 1 << 16,
+                DbValueType.Binary => Int32.MaxValue,
+                _ => 0
+            };
+        }
+
+        /// <summary>
+        /// 将 <see cref="DbValueType"/> 转换为通用的 SQL 类型名称，用于 CAST 表达式等。
+        /// </summary>
+        public virtual string GetSqlTypeName(DbValueType dbValueType)
+        {
+            return dbValueType switch
+            {
+                DbValueType.String or DbValueType.AnsiString or DbValueType.AnsiStringFixedLength or DbValueType.StringFixedLength => "VARCHAR",
+                DbValueType.Int16 => "SMALLINT",
+                DbValueType.Int32 => "INT",
+                DbValueType.Int64 => "BIGINT",
+                DbValueType.Boolean => "BIT",
+                DbValueType.UInt16 => "SMALLINT",
+                DbValueType.UInt32 => "INT",
+                DbValueType.UInt64 => "BIGINT",
+                DbValueType.DateTime => "DATETIME",
+                DbValueType.DateTime2 => "TIMESTAMP",
+                DbValueType.DateTimeOffset => "DATETIMEOFFSET",
+                DbValueType.Date => "DATE",
+                DbValueType.Time => "TIME",
+                DbValueType.Decimal => "DECIMAL",
+                DbValueType.Double => "DOUBLE",
+                DbValueType.Single => "FLOAT",
+                DbValueType.Byte or DbValueType.SByte => "TINYINT",
+                DbValueType.Guid => "GUID",
+                DbValueType.Binary => "BLOB",
                 _ => "VARCHAR"
             };
         }

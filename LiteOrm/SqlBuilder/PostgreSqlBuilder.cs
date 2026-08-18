@@ -107,7 +107,7 @@ namespace LiteOrm
             if (dbValueType.HasArray())
             {
                 Type? elementType = ColumnDefinitionExtensions.GetCollectionElementType(column.PropertyType) ?? typeof(object);
-                DbValueType elementDbValueType = DbValueTypeMap.FromDbType(DbTypeMap.GetDbType(elementType));
+                DbValueType elementDbValueType = DbValueTypeMap.GetDbValueType(elementType);
                 return GetPostgresArrayElementType(elementDbValueType) + "[]";
             }
             if (dbValueType == DbValueType.Json) return "JSON";

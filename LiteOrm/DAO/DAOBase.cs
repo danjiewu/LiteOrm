@@ -411,7 +411,7 @@ namespace LiteOrm
                         // 数组列不设置 DbParameter.DbType，交由驱动按 CLR 数组推断
                         if (!para.DbType.HasArray()) dbParam.DbType = para.DbType.ToDbType();
                     }
-                    else if (para.Value is not null) dbParam.DbType = SqlBuilder.GetDbType(para.Value.GetType());
+                    else if (para.Value is not null) dbParam.DbType = SqlBuilder.GetDbValueType(para.Value.GetType()).ToDbType();
                     dbParam.Value = SqlBuilder.ConvertToDbValue(para.Value, para.DbType);
                     command.Parameters.Add(dbParam);
                 }
@@ -505,7 +505,7 @@ namespace LiteOrm
         /// </summary>
         /// <typeparam name="TResult">结果类型</typeparam>
         /// <param name="sqlBody">查询SQL，使用插值字符串格式，可插入普通变量或 Expr。<see cref="LiteOrm.Common.ExprString"/></param>
-        /// <param name="readerFunc">用于从 DbDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}()"/></param>
+        /// <param name="readerFunc">用于从 DbDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}(IDbConverter)"/></param>
         /// <returns>包含查询结果集的可枚举结果对象。</returns>
         public virtual EnumerableResult<TResult> Query<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, Func<AutoLockDataReader, TResult>? readerFunc = null)
         {

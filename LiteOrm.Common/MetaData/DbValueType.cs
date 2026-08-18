@@ -5,6 +5,11 @@ namespace LiteOrm.Common
     /// 额外提供 <see cref="Default"/>、<see cref="Json"/>、<see cref="Jsonb"/> 与 <see cref="Array"/> 类型。
     /// <see cref="Default"/> 表示未显式指定，运行时按属性类型自动推断；
     /// 集合类型属性在未显式指定类型时按 <see cref="Array"/> 推断。
+    /// <para>
+    /// <see cref="Array"/> 作为掩码（值 128），可与其他标量类型按位或组合
+    ///（如 <c>DbValueType.Int32 | DbValueType.Array</c> 表示 Int32 数组）；
+    /// 使用 <see cref="DbValueTypeMap.HasArray"/> 检测是否含数组掩码。
+    /// </para>
     /// </summary>
     public enum DbValueType
     {
@@ -75,10 +80,12 @@ namespace LiteOrm.Common
         /// </summary>
         Jsonb = 29,
         /// <summary>
-        /// 数组类型。集合类型属性在未显式指定类型时按本类型推断；
+        /// 数组掩码（值 128）。可与其他标量类型按位或组合
+        ///（如 <c>DbValueType.Int32 | DbValueType.Array</c> 表示 Int32 数组）；
+        /// 集合类型属性未显式指定类型时自动附加本掩码。
         /// PostgreSQL 等支持原生数组的方言据此生成数组列（如 <c>integer[]</c>），
         /// 其他方言回退为文本 JSON 存储。
         /// </summary>
-        Array = 30
+        Array = 128
     }
 }

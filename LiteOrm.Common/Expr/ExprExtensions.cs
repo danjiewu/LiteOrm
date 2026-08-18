@@ -394,7 +394,7 @@ namespace LiteOrm.Common
         /// <param name="expr">待转换的值表达式。</param>
         /// <param name="targetType">目标类型。</param>
         /// <returns>CAST 函数表达式。</returns>
-        public static FunctionExpr Cast(this ValueTypeExpr expr, System.Data.DbType targetType) => new FunctionExpr("CAST", expr, new ValueExpr(targetType));
+        public static FunctionExpr Cast(this ValueTypeExpr expr, DbValueType targetType) => new FunctionExpr("CAST", expr, new ValueExpr(targetType));
         /// <summary>
         /// 创建 IS NOT NULL 表达式。
         /// </summary>

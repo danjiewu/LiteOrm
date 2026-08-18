@@ -233,7 +233,7 @@ namespace LiteOrm.Common
             var command = GetCommand();
             using (var reader = command.ExecuteReader())
             {
-                var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
+                var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader, command.SqlBuilder);
                 while (reader.Read())
                 {
                     yield return func(reader);
@@ -285,7 +285,7 @@ namespace LiteOrm.Common
             var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
             using var reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
             if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) return default!;
-            var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
+            var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader, command.SqlBuilder);
             return func(reader);
         }
 
@@ -407,7 +407,7 @@ namespace LiteOrm.Common
                 {
                     var command = await _commandFunc(_cancellationToken).ConfigureAwait(false);
                     _reader = await command.ExecuteReaderAsync(CommandBehavior.Default, _cancellationToken).ConfigureAwait(false);
-                    _func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(_reader);
+                    _func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(_reader, command.SqlBuilder);
                 }
 
                 if (await _reader!.ReadAsync(_cancellationToken).ConfigureAwait(false))

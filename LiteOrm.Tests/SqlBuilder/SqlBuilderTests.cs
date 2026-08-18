@@ -52,9 +52,9 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public void GetDbType_WithNullType_ThrowsArgumentNullException()
+        public void GetDbValueType_WithNullType_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => SqlBuilder.Instance.GetDbType(null!));
+            Assert.Throws<ArgumentNullException>(() => SqlBuilder.Instance.GetDbValueType(null!));
         }
 
         [Fact]

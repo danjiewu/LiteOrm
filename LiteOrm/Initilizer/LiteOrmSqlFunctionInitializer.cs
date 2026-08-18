@@ -54,7 +54,7 @@ namespace LiteOrm
                 outSql.Append("CAST(");
                 expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
                 outSql.Append(" AS ");
-                if (expr.Args.Count > 1 && expr.Args[1] is ValueExpr typeExpr && typeExpr.Value is DbType dbType)
+                if (expr.Args.Count > 1 && expr.Args[1] is ValueExpr typeExpr && typeExpr.Value is DbValueType dbType)
                 {
                     outSql.Append(sqlBuilder.GetSqlTypeName(dbType));
                 }

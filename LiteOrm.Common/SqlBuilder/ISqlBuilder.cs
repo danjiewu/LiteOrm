@@ -24,11 +24,17 @@ namespace LiteOrm.Common
         /// <returns>返回转换后的数据库值。</returns>
         object ConvertToDbValue(object? value, DbValueType dbValueType = DbValueType.Object);
         /// <summary>
-        /// 将 .NET 类型映射为数据库对应的 <see cref="DbType"/>。
+        /// 将 .NET 类型映射为数据库对应的 <see cref="DbValueType"/>。
         /// </summary>
         /// <param name="type">要映射的 .NET 类型。</param>
-        /// <returns>返回对应的 <see cref="DbType"/> 值。</returns>
-        DbType GetDbType(Type type);
+        /// <returns>返回对应的 <see cref="DbValueType"/> 值。</returns>
+        DbValueType GetDbValueType(Type type);
+        /// <summary>
+        /// 获取指定数据库取值类型的默认列长度。
+        /// </summary>
+        /// <param name="dbValueType">数据库取值类型。</param>
+        /// <returns>默认存储长度。</returns>
+        int GetDefaultLength(DbValueType dbValueType);
     }
 
     /// <summary>
