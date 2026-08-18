@@ -157,6 +157,73 @@ table.Columns.First(c => c.Name == "Total").ExpressionExpr = Expr.Prop("Price") 
 - 字符串形式按数据库方言书写（示例为 SQLite/PostgreSQL 的 `||`，MySQL 用 `CONCAT(...)`）；Expr 树形式自动按方言渲染。
 - Expr 树形式同时设置时优先于字符串形式；仅允许固定 SQL（不生成参数），`Expr.Const(100)` 可用，`Expr.Value("str")` 会抛异常。
 
+### 动态修改列定义
+
+通过 `TableInfoProvider.Instance.GetTableDefinition` 获取实体表定义后，可在运行时动态修改 `ColumnDefinition` 的属性，覆盖 `[Column]` 特性的静态声明：
+
+```csharp
+var table = TableInfoProvider.Instance.GetTableDefinition(typeof(Order))!;
+
+// 动态设置计算列表达式
+var totalCol = table.Columns.First(c => c.Name == "Total");
+totalCol.ExpressionExpr = Expr.Prop("Price") * Expr.Prop("Quantity");
+
+// 动态修改列长度、允许空、DbType 等
+var priceCol = table.Columns.First(c => c.Name == "Price");
+priceCol.Length = 18;
+priceCol.AllowNull = false;
+priceCol.DbType = DbValueType.Decimal;
+```
+
+> **注意**：`TableDefinition` 由 `TableInfoProvider` 全局缓存，修改后对所有后续查询生效。建议在应用启动阶段（如 `AddLiteOrm()` 之后、首次查询之前）统一设置，避免运行期竞争。
+
+### `[Column]` 特性参数一览
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `ColumnName` | `string` | 数据库列名，默认使用属性名。 |
+| `IsColumn` | `bool` | 是否为实际列，默认 `true`。设为 `false` 时该属性不参与任何数据库操作。 |
+| `IsPrimaryKey` | `bool` | 是否为主键。 |
+| `IsIdentity` | `bool` | 是否为自增标识列。 |
+| `IsTimestamp` | `bool` | 是否为时间戳列（乐观并发控制）。 |
+| `IsIndex` | `bool` | 是否创建索引。 |
+| `IsUnique` | `bool` | 是否具有唯一约束。 |
+| `AllowNull` | `bool` | 是否允许为空。 |
+| `Length` | `int` | 列长度，0 表示使用数据库默认值。 |
+| `DbType` | `DbValueType` | 列的取值类型，`Default` 表示按属性类型自动推断。 |
+| `Expression` | `string` | 计算列表达式（字符串形式），支持 `{属性名}` 占位符。 |
+| `DefaultValue` | `string` | 列的默认值（SQL 片段）。 |
+| `ColumnMode` | `ColumnMode` | 列操作模式（`Read`/`Insert`/`Update`/`Full`/`Computed`），默认 `Full`。 |
+| `IdentityExpression` | `string` | 标识列表达式（如 Oracle 序列名）。 |
+| `IdentityStart` | `long` | 自增起始值，默认 1。 |
+| `IdentityIncreasement` | `int` | 自增步长，默认 1。 |
+
+### 预注册 Lambda 解析实现计算列
+
+除了通过 `Expression`（字符串）或 `ExpressionExpr`（Expr 树）设置计算列外，还可以通过预注册 Lambda 成员处理器的方式，让实体上的只读计算属性直接在 Lambda 查询中使用：
+
+```csharp
+public class User
+{
+    public DateTime BirthDate { get; set; }
+
+    // Age 是只读计算属性，不存储在数据库
+    public int Age => DateTime.Now.Year - BirthDate.Year;
+}
+
+// 注册成员处理器，将 Lambda 中对 Age 的访问转换为 SQL 表达式
+LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", (node, converter) =>
+{
+    return new FunctionExpr("YEAR", new FunctionExpr("CURRENT_DATE"))
+         - new FunctionExpr("YEAR", new PropertyExpr("BirthDate"));
+});
+
+// 之后即可在 Lambda 查询中使用
+var adults = await userService.SearchAsync(u => u.Age >= 18);
+```
+
+此方式适用于无法通过 `[Column]` 特性静态声明的动态计算逻辑。完整步骤（含 SQL 函数处理器注册）见 [表达式扩展 — 示例二：计算属性](../04-extensibility/01-expression-extension.md#5-示例二计算属性)。
+
 ## `[PropertyOrder]` 特性
 
 用于控制实体属性在数据库操作（如建表、生成 SQL 列列表）中的排列顺序。

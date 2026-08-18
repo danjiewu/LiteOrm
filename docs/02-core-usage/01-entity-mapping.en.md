@@ -157,6 +157,73 @@ table.Columns.First(c => c.Name == "Total").ExpressionExpr = Expr.Prop("Price") 
 - The string form is dialect-specific (the example uses SQLite/PostgreSQL `||`; MySQL uses `CONCAT(...)`); the Expr tree form renders automatically per dialect.
 - When both forms are set, the Expr tree form takes precedence; only fixed SQL (no parameters) is allowed — `Expr.Const(100)` works, `Expr.Value("str")` throws.
 
+### Dynamically Modifying Column Definitions
+
+After obtaining a table definition via `TableInfoProvider.Instance.GetTableDefinition`, you can modify `ColumnDefinition` properties at runtime, overriding the static `[Column]` attribute declarations:
+
+```csharp
+var table = TableInfoProvider.Instance.GetTableDefinition(typeof(Order))!;
+
+// Dynamically set computed column expression
+var totalCol = table.Columns.First(c => c.Name == "Total");
+totalCol.ExpressionExpr = Expr.Prop("Price") * Expr.Prop("Quantity");
+
+// Dynamically modify column length, nullable, DbType, etc.
+var priceCol = table.Columns.First(c => c.Name == "Price");
+priceCol.Length = 18;
+priceCol.AllowNull = false;
+priceCol.DbType = DbValueType.Decimal;
+```
+
+> **Note**: `TableDefinition` is globally cached by `TableInfoProvider`; modifications take effect for all subsequent queries. It is recommended to make all dynamic modifications at application startup (after `AddLiteOrm()`, before the first query) to avoid runtime contention.
+
+### `[Column]` Attribute Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ColumnName` | `string` | Database column name; defaults to the property name. |
+| `IsColumn` | `bool` | Whether this is an actual column; default `true`. Set to `false` to exclude from all database operations. |
+| `IsPrimaryKey` | `bool` | Whether this is a primary key. |
+| `IsIdentity` | `bool` | Whether this is an auto-increment identity column. |
+| `IsTimestamp` | `bool` | Whether this is a timestamp column (optimistic concurrency). |
+| `IsIndex` | `bool` | Whether to create an index. |
+| `IsUnique` | `bool` | Whether this has a unique constraint. |
+| `AllowNull` | `bool` | Whether null values are allowed. |
+| `Length` | `int` | Column length; 0 uses database default. |
+| `DbType` | `DbValueType` | Column value type; `Default` infers from property type. |
+| `Expression` | `string` | Computed column expression (string form); supports `{PropertyName}` placeholders. |
+| `DefaultValue` | `string` | Column default value (SQL fragment). |
+| `ColumnMode` | `ColumnMode` | Column operation mode (`Read`/`Insert`/`Update`/`Full`/`Computed`); default `Full`. |
+| `IdentityExpression` | `string` | Identity column expression (e.g., Oracle sequence name). |
+| `IdentityStart` | `long` | Auto-increment start value; default 1. |
+| `IdentityIncreasement` | `int` | Auto-increment step; default 1. |
+
+### Pre-registering Lambda Parsers for Computed Columns
+
+In addition to setting computed columns via `Expression` (string) or `ExpressionExpr` (Expr tree), you can use pre-registered Lambda member handlers to enable read-only computed properties on entities to be used directly in Lambda queries:
+
+```csharp
+public class User
+{
+    public DateTime BirthDate { get; set; }
+
+    // Age is a read-only computed property, not stored in the database
+    public int Age => DateTime.Now.Year - BirthDate.Year;
+}
+
+// Register a member handler to convert Lambda access to Age into a SQL expression
+LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", (node, converter) =>
+{
+    return new FunctionExpr("YEAR", new FunctionExpr("CURRENT_DATE"))
+         - new FunctionExpr("YEAR", new PropertyExpr("BirthDate"));
+});
+
+// Now usable in Lambda queries
+var adults = await userService.SearchAsync(u => u.Age >= 18);
+```
+
+This approach is suitable for dynamic computation logic that cannot be statically declared via the `[Column]` attribute. For the complete steps (including SQL function handler registration), see [Expression Extension — Example 2: Computed Properties](../04-extensibility/01-expression-extension.en.md#5-example-2-computed-properties).
+
 ## `[PropertyOrder]` Attribute
 
 Controls the ordering of entity properties in database operations (e.g., table creation, SQL column list generation).
