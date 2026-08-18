@@ -428,7 +428,7 @@ namespace LiteOrm
                     // Oracle interval format: "+DD HH:MM:SS.FFFFFF"
                     if (strTs.Length > 3 && (strTs[0] == '+' || strTs[0] == '-') && strTs.Contains(' '))
                     {
-                        var parts = strTs.Substring(1).Split(' ', 2);
+                        var parts = strTs.Substring(1).Split(new[] { ' ' }, 2);
                         if (int.TryParse(parts[0], out int days) && parts.Length > 1 && TimeSpan.TryParse(parts[1], out TimeSpan time))
                             return new TimeSpan(days, time.Hours, time.Minutes, time.Seconds, time.Milliseconds);
                     }

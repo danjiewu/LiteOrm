@@ -412,13 +412,8 @@ namespace LiteOrm
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 {
                     var e = expr.Args[0].ToSql(context, sqlBuilder, outputParams);
-                    // Oracle stores TimeSpan as VARCHAR2 (e.g. "03:00:00" or "1.03:00:00").
-                    // 用字符串解析提取各部分，避免 TO_DSINTERVAL 格式问题。
-                    var hourPart = $"TO_NUMBER(REGEXP_SUBSTR({e}, '(\\d+):(\\d+):(\\d+)', 1, 1, NULL, 1))";
-                    var minPart = $"TO_NUMBER(REGEXP_SUBSTR({e}, '(\\d+):(\\d+):(\\d+)', 1, 1, NULL, 2))";
-                    var secPart = $"TO_NUMBER(REGEXP_SUBSTR({e}, '(\\d+):(\\d+):(\\d+)', 1, 1, NULL, 3))";
-                    var dayPart = $"NVL(TO_NUMBER(REGEXP_SUBSTR({e}, '^(\\d+)\\.', 1, 1, NULL, 1)), 0)";
-                    var totalSec = $"({dayPart} * 86400 + {hourPart} * 3600 + {minPart} * 60 + {secPart})";
+                    // TimeSpan 存储为 INTERVAL DAY TO SECOND，直接用 EXTRACT 拆解天/时/分/秒
+                    var totalSec = $"((EXTRACT(DAY FROM {e}) * 86400 + EXTRACT(HOUR FROM {e}) * 3600 + EXTRACT(MINUTE FROM {e}) * 60 + EXTRACT(SECOND FROM {e})))";
                     outSql.Append(expr.FunctionName switch
                     {
                         "TotalDays" => $"({totalSec} / 86400.0)",

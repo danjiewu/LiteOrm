@@ -409,10 +409,19 @@ namespace LiteOrm
                     if (para.DbType != DbValueType.Default)
                     {
                         // 数组列不设置 DbParameter.DbType，交由驱动按 CLR 类型推断（值为 JSON 字符串）
-                        if (!para.DbType.HasArray()) dbParam.DbType = SqlBuilder.ToDbType(para.DbType);
+                        if (!para.DbType.HasArray())
+                        {
+                            var dbType = SqlBuilder.ToDbType(para.DbType);
+                            // DbType.Object 表示由驱动按值类型推断（如 Oracle 的 INTERVAL DAY TO SECOND 绑定 TimeSpan）
+                            if (dbType != DbType.Object) dbParam.DbType = dbType;
+                        }
                         else dbParam.DbType = DbType.String;
                     }
-                    else if (para.Value is not null) dbParam.DbType = SqlBuilder.ToDbType(SqlBuilder.GetDbValueType(para.Value.GetType()));
+                    else if (para.Value is not null)
+                    {
+                        var dbType = SqlBuilder.ToDbType(SqlBuilder.GetDbValueType(para.Value.GetType()));
+                        if (dbType != DbType.Object) dbParam.DbType = dbType;
+                    }
                     dbParam.Value = SqlBuilder.ConvertToDbValue(para.Value, para.DbType);
                     command.Parameters.Add(dbParam);
                 }
