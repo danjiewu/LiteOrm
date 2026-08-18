@@ -35,6 +35,13 @@ namespace LiteOrm.Common
         /// <param name="dbValueType">数据库取值类型。</param>
         /// <returns>默认存储长度。</returns>
         int GetDefaultLength(DbValueType dbValueType);
+        /// <summary>
+        /// 将 <see cref="DbValueType"/> 转换为 <see cref="DbType"/>（数据库操作边界转换）。
+        /// 子类可覆盖以提供方言特定的映射（如 Oracle 将 Boolean 映射为 Byte、DateTime 映射为 Date）。
+        /// </summary>
+        /// <param name="dbValueType">数据库取值类型（可含 <see cref="DbValueType.Array"/> 掩码）。</param>
+        /// <returns>对应的 <see cref="DbType"/> 值。</returns>
+        DbType ToDbType(DbValueType dbValueType);
     }
 
     /// <summary>

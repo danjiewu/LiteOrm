@@ -409,9 +409,9 @@ namespace LiteOrm
                     if (para.DbType != DbValueType.Default)
                     {
                         // 数组列不设置 DbParameter.DbType，交由驱动按 CLR 数组推断
-                        if (!para.DbType.HasArray()) dbParam.DbType = para.DbType.ToDbType();
+                        if (!para.DbType.HasArray()) dbParam.DbType = SqlBuilder.ToDbType(para.DbType);
                     }
-                    else if (para.Value is not null) dbParam.DbType = SqlBuilder.GetDbValueType(para.Value.GetType()).ToDbType();
+                    else if (para.Value is not null) dbParam.DbType = SqlBuilder.ToDbType(SqlBuilder.GetDbValueType(para.Value.GetType()));
                     dbParam.Value = SqlBuilder.ConvertToDbValue(para.Value, para.DbType);
                     command.Parameters.Add(dbParam);
                 }

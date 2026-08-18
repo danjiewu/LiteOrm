@@ -454,11 +454,11 @@ namespace LiteOrm
             if (dbValueType == DbValueType.Default)
             {
                 if (dbConverter != null)
-                    return dbConverter.GetDbValueType(propertyType).ToDbType();
+                    return dbConverter.ToDbType(dbConverter.GetDbValueType(propertyType));
                 return null;
             }
             if (dbValueType.HasArray() || ColumnDefinitionExtensions.IsCollectionType(propertyType)) return null;
-            return dbValueType.ToDbType();
+            return dbConverter?.ToDbType(dbValueType) ?? DbValueTypeMap.ToDbType(dbValueType);
         }
     }
 }

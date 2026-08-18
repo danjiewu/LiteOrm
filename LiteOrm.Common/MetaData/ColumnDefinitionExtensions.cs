@@ -26,7 +26,7 @@ namespace LiteOrm.Common
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
             if (dbConverter is null) throw new ArgumentNullException(nameof(dbConverter));
-            return GetDbValueType(column, dbConverter).ToDbType();
+            return dbConverter.ToDbType(GetDbValueType(column, dbConverter));
         }
 
         /// <summary>

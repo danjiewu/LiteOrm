@@ -19,12 +19,12 @@ namespace LiteOrm.Tests
         [Fact]
         public void DbValueTypeMap_ToDbType_MapsArrayAndJson()
         {
-            Assert.Equal(DbType.Object, DbValueTypeMap.ToDbType(DbValueType.Array));
-            Assert.Equal(DbType.String, DbValueTypeMap.ToDbType(DbValueType.Json));
-            Assert.Equal(DbType.String, DbValueTypeMap.ToDbType(DbValueType.Jsonb));
-            Assert.Equal(DbType.Int32, DbValueTypeMap.ToDbType(DbValueType.Int32));
-            Assert.Equal(DbType.Int32, DbValueTypeMap.ToDbType(DbValueType.Int32 | DbValueType.Array));
-            Assert.Equal(DbType.String, DbValueTypeMap.ToDbType(DbValueType.String | DbValueType.Array));
+            Assert.Equal(DbType.Object, SqlBuilder.Instance.ToDbType(DbValueType.Array));
+            Assert.Equal(DbType.String, SqlBuilder.Instance.ToDbType(DbValueType.Json));
+            Assert.Equal(DbType.String, SqlBuilder.Instance.ToDbType(DbValueType.Jsonb));
+            Assert.Equal(DbType.Int32, SqlBuilder.Instance.ToDbType(DbValueType.Int32));
+            Assert.Equal(DbType.Int32, SqlBuilder.Instance.ToDbType(DbValueType.Int32 | DbValueType.Array));
+            Assert.Equal(DbType.String, SqlBuilder.Instance.ToDbType(DbValueType.String | DbValueType.Array));
         }
 
         [Fact]

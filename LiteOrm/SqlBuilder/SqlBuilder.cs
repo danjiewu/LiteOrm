@@ -699,6 +699,16 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 将 <see cref="DbValueType"/> 转换为 <see cref="DbType"/>（数据库操作边界转换）。
+        /// 默认实现剥离 <see cref="DbValueType.Array"/> 掩码后按标量映射；
+        /// 子类可覆盖以提供方言特定的映射（如 Oracle 将 Boolean 映射为 Byte）。
+        /// </summary>
+        public virtual DbType ToDbType(DbValueType dbValueType)
+        {
+            return DbValueTypeMap.ToDbType(dbValueType);
+        }
+
+        /// <summary>
         /// 获取指定数据库取值类型的默认列长度。
         /// </summary>
         public virtual int GetDefaultLength(DbValueType dbValueType)
@@ -945,7 +955,7 @@ namespace LiteOrm
 
             DbValueType dbValueType = column.GetDbValueType(this);
             if (dbValueType.HasArray()) return "'{}'";
-            var dbType = dbValueType.ToDbType();
+            var dbType = ToDbType(dbValueType);
             switch (dbType)
             {
                 case DbType.Boolean:
@@ -1150,7 +1160,7 @@ namespace LiteOrm
             if (dbValueType.HasArray()) return "TEXT";
             if (dbValueType == DbValueType.Json || dbValueType == DbValueType.Jsonb) return "TEXT";
 
-            var dbType = dbValueType.ToDbType();
+            var dbType = ToDbType(dbValueType);
             switch (dbType)
             {
                 case DbType.String:

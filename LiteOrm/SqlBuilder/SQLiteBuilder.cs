@@ -25,13 +25,14 @@ namespace LiteOrm
         /// <summary>
         /// 返回指定类型对应的Sqlite数据库类型。
         /// </summary>
-        /// <param name="type">要转换的类型。</param>
         /// <returns></returns>
-        /// <remarks>Sqlite不支持DateTime、TimeSpan类型，将被映射为DbType.String类型</remarks>
-        protected override DbValueType GetDbValueTypeInternal(Type type)
+        /// <remarks>SQLite 中 DateTime、TimeSpan、DateTimeOffset 映射为 String。</remarks>
+        public override DbType ToDbType(DbValueType dbValueType)
         {
-            if (type == typeof(DateTime) || type == typeof(TimeSpan) || type == typeof(DateTimeOffset)) return DbValueType.String;
-            return base.GetDbValueTypeInternal(type);
+            var scalar = dbValueType.StripArray();
+            if (scalar == DbValueType.DateTime || scalar == DbValueType.Time || scalar == DbValueType.DateTimeOffset)
+                return DbType.String;
+            return base.ToDbType(dbValueType);
         }
 
         /// <summary>

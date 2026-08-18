@@ -32,16 +32,27 @@ namespace LiteOrm
         public static readonly new OracleBuilder Instance = new OracleBuilder();
 
         /// <summary>
-        /// 返回指定类型对应的Oracle数据库类型。
+        /// 将 <see cref="DbValueType"/> 转换为 Oracle 方言的 <see cref="DbType"/>。
         /// </summary>
-        /// <param name="type">要转换的类型。</param>
-        /// <returns></returns>
-        /// <remarks>Oracle不支持布尔类型，布尔类型将被映射为字节类型</remarks>
-        protected override DbValueType GetDbValueTypeInternal(Type type)
+        /// <param name="dbValueType">数据库取值类型。</param>
+        /// <returns>Oracle 对应的 <see cref="DbType"/>。</returns>
+        /// <remarks>Oracle 不支持布尔类型，映射为 Byte；DateTime 映射为 Date。</remarks>
+        public override DbType ToDbType(DbValueType dbValueType)
         {
-            if (type == typeof(bool)) return DbValueType.Byte;
-            if (type == typeof(DateTime)) return DbValueType.Date;
-            return base.GetDbValueTypeInternal(type);
+            var scalar = dbValueType.StripArray();
+            if (scalar == DbValueType.Boolean) return DbType.Int32;
+            if (scalar == DbValueType.DateTime) return DbType.Date;
+            return base.ToDbType(dbValueType);
+        }
+
+        /// <summary>
+        /// Oracle 不支持布尔类型，bool 值在写入数据库时转换为整数（1/0）。
+        /// </summary>
+        public override object ConvertToDbValue(object? value, DbValueType dbValueType = DbValueType.Object)
+        {
+            if (value is bool b)
+                return b ? 1 : 0;
+            return base.ConvertToDbValue(value, dbValueType);
         }
 
         /// <summary>

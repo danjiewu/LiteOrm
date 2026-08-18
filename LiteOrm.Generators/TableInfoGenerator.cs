@@ -555,15 +555,15 @@ namespace LiteOrm.Generators
         /// 与运行时 <see cref="DbValueTypeMap.InferFromPropertyType"/> 对齐的完整类型推断，
         /// 补齐 Guid、byte[]、DateTimeOffset、TimeSpan 以及数组/集合类型的 AOT 推断。
         /// </summary>
-        private static string InferDbTypeFull(ITypeSymbol type, ResolvedSymbols symbols)
+        private static string? InferDbTypeFull(ITypeSymbol type, ResolvedSymbols symbols)
         {
             var t = type;
             if (t is INamedTypeSymbol nts && nts.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T && nts.IsGenericType)
                 t = nts.TypeArguments[0];
 
-            // 数组：byte[] 映射 Binary，其他数组映射 Array
+            // 数组：byte[] 映射 Binary，其他数组返回 null（运行时按元素类型 | Array 掩码推断）
             if (t is IArrayTypeSymbol arrayType)
-                return arrayType.ElementType.SpecialType == SpecialType.System_Byte ? "Binary" : "Array";
+                return arrayType.ElementType.SpecialType == SpecialType.System_Byte ? "Binary" : null;
 
             if (t is INamedTypeSymbol named)
             {
@@ -596,7 +596,8 @@ namespace LiteOrm.Generators
                 case SpecialType.System_Object: return "Object";
                 default:
                     if (t.TypeKind == TypeKind.Enum) return "Int32";
-                    if (t is INamedTypeSymbol namedType && IsCollectionType(namedType)) return "Array";
+                    // 集合类型返回 null，运行时按元素类型 | Array 掩码推断
+                    if (t is INamedTypeSymbol namedType && IsCollectionType(namedType)) return null;
                     return "Object";
             }
         }
