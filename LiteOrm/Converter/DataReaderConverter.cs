@@ -368,7 +368,10 @@ namespace LiteOrm
                         _getFieldValueMethod!.MakeGenericMethod(typeof(byte[])), ordinalExpr);
                 }
 
-                if (_dbTypeReaderMethods.TryGetValue(dbType.Value, out MethodInfo? dbMethod))
+                // 当 DbType 驱动的读取方法返回类型与目标类型不匹配时（如 DbType.String 读取 TimeSpan），
+                // 跳过直接调用读取方法，使用 GetValue + ConvertFromDbValue 兜底。
+                if (_dbTypeReaderMethods.TryGetValue(dbType.Value, out MethodInfo? dbMethod)
+                    && dbMethod!.ReturnType == coreType)
                     return Expression.Call(readerParam, dbMethod!, ordinalExpr);
             }
 

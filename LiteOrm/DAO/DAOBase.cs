@@ -408,8 +408,9 @@ namespace LiteOrm
                     dbParam.ParameterName = ToParamName(ToNativeName(para.Name));
                     if (para.DbType != DbValueType.Default)
                     {
-                        // 数组列不设置 DbParameter.DbType，交由驱动按 CLR 数组推断
+                        // 数组列不设置 DbParameter.DbType，交由驱动按 CLR 类型推断（值为 JSON 字符串）
                         if (!para.DbType.HasArray()) dbParam.DbType = SqlBuilder.ToDbType(para.DbType);
+                        else dbParam.DbType = DbType.String;
                     }
                     else if (para.Value is not null) dbParam.DbType = SqlBuilder.ToDbType(SqlBuilder.GetDbValueType(para.Value.GetType()));
                     dbParam.Value = SqlBuilder.ConvertToDbValue(para.Value, para.DbType);

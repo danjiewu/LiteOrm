@@ -376,7 +376,7 @@ namespace LiteOrm
         [UnconditionalSuppressMessage("AOT", "IL3050",
             Justification = "JSON deserialization path is only triggered when dbValue is a string and the target type is a complex object/collection; under AOT, users must provide a System.Text.Json source-gen context for complex property types, otherwise a NotSupportedException is thrown at runtime.")]
 #endif
-        public object? ConvertFromDbValue(object? dbValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type? objectType = null)
+        public virtual object? ConvertFromDbValue(object? dbValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type? objectType = null)
         {
             if (objectType == null)
             {
@@ -422,7 +422,17 @@ namespace LiteOrm
             if (underlyingType == typeof(TimeSpan))
             {
                 if (dbValue is long ticks) return TimeSpan.FromTicks(ticks);
-                if (dbValue is string strTs && TimeSpan.TryParse(strTs, out TimeSpan ts)) return ts;
+                if (dbValue is string strTs)
+                {
+                    if (TimeSpan.TryParse(strTs, out TimeSpan ts)) return ts;
+                    // Oracle interval format: "+DD HH:MM:SS.FFFFFF"
+                    if (strTs.Length > 3 && (strTs[0] == '+' || strTs[0] == '-') && strTs.Contains(' '))
+                    {
+                        var parts = strTs.Substring(1).Split(' ', 2);
+                        if (int.TryParse(parts[0], out int days) && parts.Length > 1 && TimeSpan.TryParse(parts[1], out TimeSpan time))
+                            return new TimeSpan(days, time.Hours, time.Minutes, time.Seconds, time.Milliseconds);
+                    }
+                }
             }
 
             if (underlyingType == typeof(DateTimeOffset))

@@ -392,11 +392,33 @@ namespace LiteOrm
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
                     outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + NUMTOYMINTERVAL({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, '{expr.FunctionName!.Substring(3).ToUpper().TrimEnd('S')}'))"));
             // Oracle 没有直接的 DateDiff 函数，可以通过 (end - start) 来计算日期差，再根据需要转换为其他单位，默认 SqlBuilder 已实现，无需重复注册
+            oracleBuilder.RegisterFunctionSqlHandler(["DateDiffDays", "DateDiffHours", "DateDiffMinutes", "DateDiffSeconds", "DateDiffMilliseconds"],
+                (ref outSql, expr, context, sqlBuilder, outputParams) =>
+                {
+                    var e0 = expr.Args[0].ToSql(context, sqlBuilder, outputParams);
+                    var e1 = expr.Args[1].ToSql(context, sqlBuilder, outputParams);
+                    var daysExpr = $"({e0} - {e1})";
+                    outSql.Append(expr.FunctionName switch
+                    {
+                        "DateDiffDays" => daysExpr,
+                        "DateDiffHours" => $"({daysExpr} * 24)",
+                        "DateDiffMinutes" => $"({daysExpr} * 1440)",
+                        "DateDiffSeconds" => $"({daysExpr} * 86400)",
+                        "DateDiffMilliseconds" => $"({daysExpr} * 86400000)",
+                        _ => daysExpr
+                    });
+                });
             oracleBuilder.RegisterFunctionSqlHandler(["TotalSeconds", "TotalDays", "TotalHours", "TotalMinutes", "TotalMilliseconds"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 {
                     var e = expr.Args[0].ToSql(context, sqlBuilder, outputParams);
-                    var totalSec = $"(EXTRACT(DAY FROM {e}) * 86400 + EXTRACT(HOUR FROM {e}) * 3600 + EXTRACT(MINUTE FROM {e}) * 60 + EXTRACT(SECOND FROM {e}))";
+                    // Oracle stores TimeSpan as VARCHAR2 (e.g. "03:00:00" or "1.03:00:00").
+                    // 用字符串解析提取各部分，避免 TO_DSINTERVAL 格式问题。
+                    var hourPart = $"TO_NUMBER(REGEXP_SUBSTR({e}, '(\\d+):(\\d+):(\\d+)', 1, 1, NULL, 1))";
+                    var minPart = $"TO_NUMBER(REGEXP_SUBSTR({e}, '(\\d+):(\\d+):(\\d+)', 1, 1, NULL, 2))";
+                    var secPart = $"TO_NUMBER(REGEXP_SUBSTR({e}, '(\\d+):(\\d+):(\\d+)', 1, 1, NULL, 3))";
+                    var dayPart = $"NVL(TO_NUMBER(REGEXP_SUBSTR({e}, '^(\\d+)\\.', 1, 1, NULL, 1)), 0)";
+                    var totalSec = $"({dayPart} * 86400 + {hourPart} * 3600 + {minPart} * 60 + {secPart})";
                     outSql.Append(expr.FunctionName switch
                     {
                         "TotalDays" => $"({totalSec} / 86400.0)",

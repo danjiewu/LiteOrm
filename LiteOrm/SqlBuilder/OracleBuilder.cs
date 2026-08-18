@@ -42,17 +42,42 @@ namespace LiteOrm
             var scalar = dbValueType.StripArray();
             if (scalar == DbValueType.Boolean) return DbType.Int32;
             if (scalar == DbValueType.DateTime) return DbType.Date;
+            if (scalar == DbValueType.Time) return DbType.String;
             return base.ToDbType(dbValueType);
         }
 
         /// <summary>
         /// Oracle 不支持布尔类型，bool 值在写入数据库时转换为整数（1/0）。
+        /// TimeSpan 在 Oracle 中以字符串形式存储。
         /// </summary>
         public override object ConvertToDbValue(object? value, DbValueType dbValueType = DbValueType.Object)
         {
             if (value is bool b)
                 return b ? 1 : 0;
+            if (value is TimeSpan ts)
+                return ts.ToString("c");
             return base.ConvertToDbValue(value, dbValueType);
+        }
+
+        public override object? ConvertFromDbValue(object? dbValue, Type? objectType = null)
+        {
+            if (dbValue is string s && objectType != null)
+            {
+                var underlying = Nullable.GetUnderlyingType(objectType) ?? objectType;
+                if (underlying == typeof(TimeSpan))
+                {
+                    if (TimeSpan.TryParse(s, out TimeSpan ts))
+                        return ts;
+                    // Oracle interval format: "+DD HH:MM:SS.FFFFFF"
+                    if (s.Length > 3 && (s[0] == '+' || s[0] == '-') && s.Contains(' '))
+                    {
+                        var parts = s.Substring(1).Split(' ', 2);
+                        if (int.TryParse(parts[0], out int days) && TimeSpan.TryParse(parts[1], out TimeSpan time))
+                            return new TimeSpan(days, time.Hours, time.Minutes, time.Seconds, time.Milliseconds);
+                    }
+                }
+            }
+            return base.ConvertFromDbValue(dbValue, objectType);
         }
 
         /// <summary>
@@ -261,13 +286,18 @@ namespace LiteOrm
         /// </summary>
         protected override string GetSqlTypeDefinition(ColumnDefinition column)
         {
-            var dbType = column.ToDbType(this);
+            var dbValueType = column.GetDbValueType(this);
+            // 数组列在 Oracle 中回退为 CLOB（文本 JSON 存储）
+            if (dbValueType.HasArray()) return "CLOB";
+            if (dbValueType == DbValueType.Json || dbValueType == DbValueType.Jsonb) return "CLOB";
+
+            var dbType = ToDbType(dbValueType);
             switch (dbType)
             {
                 case DbType.String:
                 case DbType.AnsiString:
-                    if (column.Length <= 0) return "VARCHAR(255)";
-                    else if (column.Length <= 4000) return $"VARCHAR({column.Length})";
+                    if (column.Length <= 0) return "VARCHAR2(255)";
+                    else if (column.Length <= 4000) return $"VARCHAR2({column.Length})";
                     else return "CLOB";
                 case DbType.SByte:
                 case DbType.Byte:
@@ -283,7 +313,7 @@ namespace LiteOrm
                 case DbType.Boolean:
                     return "NUMBER(1)";
                 case DbType.Time:
-                    return "INTERVAL DAY TO SECOND";
+                    return "VARCHAR2(30)";
                 default:
                     return base.GetSqlTypeDefinition(column);
             }
