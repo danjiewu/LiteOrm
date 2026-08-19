@@ -52,6 +52,48 @@ namespace LiteOrm.Common.UnitTests
             Assert.Contains("circular property order dependency", exception.Message, StringComparison.OrdinalIgnoreCase);
         }
 
+        [Fact]
+        public void SortProperty_IndexerDoesNotParticipate_NoFalseCircularOnDuplicateItemName()
+        {
+            List<PropertyInfo> properties = typeof(DuplicateItemNameTestModel)
+                .GetProperties()
+                .ToList();
+
+            Assert.Equal(2, properties.Count(property => property.Name == nameof(DuplicateItemNameTestModel.Item)));
+            Assert.Single(properties, property => property.GetIndexParameters().Length > 0);
+
+            List<PropertyInfo> sortedProperties = properties.SortProperty() ?? new List<PropertyInfo>();
+
+            Assert.Equal(properties.Count, sortedProperties.Count);
+            Assert.Equal(
+                properties.Select(property => property.Name).OrderBy(name => name),
+                sortedProperties.Select(property => property.Name).OrderBy(name => name));
+
+            int originalIndex = properties.FindIndex(property => property.GetIndexParameters().Length > 0);
+            int sortedIndex = sortedProperties.FindIndex(property => property.GetIndexParameters().Length > 0);
+            Assert.Equal(originalIndex, sortedIndex);
+            Assert.Same(properties[originalIndex], sortedProperties[sortedIndex]);
+        }
+
+        [Fact]
+        public void SortProperty_IndexerDoesNotParticipate_AppliesOrderingWithoutFalseCycle()
+        {
+            List<PropertyInfo> properties = typeof(DuplicateItemNameWithOrderTestModel)
+                .GetProperties()
+                .ToList();
+
+            List<PropertyInfo> sortedProperties = properties.SortProperty() ?? new List<PropertyInfo>();
+
+            Assert.Equal(properties.Count, sortedProperties.Count);
+
+            int itemIndex = sortedProperties.FindIndex(property => property.Name == nameof(DuplicateItemNameWithOrderTestModel.Item) && property.GetIndexParameters().Length == 0);
+            int dataIndex = sortedProperties.FindIndex(property => property.Name == nameof(DuplicateItemNameWithOrderTestModel.Data));
+
+            Assert.NotEqual(-1, itemIndex);
+            Assert.NotEqual(-1, dataIndex);
+            Assert.True(itemIndex < dataIndex);
+        }
+
         private class PropertyOrderTestModel
         {
             [PropertyOrder(2)]
@@ -77,6 +119,26 @@ namespace LiteOrm.Common.UnitTests
 
             [PropertyOrder(Before = nameof(First))]
             public string? Second { get; set; }
+        }
+
+        private class IndexerItemTestBase
+        {
+            public object? this[int i] => i;
+        }
+
+        private class DuplicateItemNameTestModel : IndexerItemTestBase
+        {
+            public string? Item { get; set; }
+
+            public string? Data { get; set; }
+        }
+
+        private class DuplicateItemNameWithOrderTestModel : IndexerItemTestBase
+        {
+            [PropertyOrder(Before = nameof(Data))]
+            public string? Item { get; set; }
+
+            public string? Data { get; set; }
         }
     }
 }

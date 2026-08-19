@@ -22,15 +22,24 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 按照PropertyOrder的Before、After及Order属性值对实体属性进行排序
+        /// 按照PropertyOrder的Before、After及Order属性值对实体属性进行排序。
+        /// 索引器属性（<see cref="PropertyInfo.GetIndexParameters()"/> 非空）不参与排序，保持在原位置。
         /// </summary>
         /// <typeparam name="TList">属性列表类型</typeparam>
         /// <param name="properties">属性列表</param>
         /// <returns>排序后的属性列表</returns>
         /// <exception cref="InvalidOperationException">当检测到循环依赖时抛出</exception>
         public static TList? SortProperty<TList>(this TList? properties) where TList : IList<PropertyInfo>
-        {            
+        {
             if (properties == null || properties.Count <= 1)
+            {
+                return properties;
+            }
+
+            List<PropertyInfo> sortableProperties = properties
+                .Where(property => property.GetIndexParameters().Length == 0)
+                .ToList();
+            if (sortableProperties.Count <= 1)
             {
                 return properties;
             }
@@ -41,9 +50,9 @@ namespace LiteOrm.Common
             Dictionary<string, int> orderDict = new Dictionary<string, int>();
             Dictionary<string, int> indexDict = new Dictionary<string, int>();
 
-            for (int i = 0; i < properties.Count; i++)
+            for (int i = 0; i < sortableProperties.Count; i++)
             {
-                PropertyInfo property = properties[i];
+                PropertyInfo property = sortableProperties[i];
                 propertyDict[property.Name] = property;
                 indegreeDict[property.Name] = 0;
                 dependencyDict[property.Name] = new HashSet<string>();
@@ -51,7 +60,7 @@ namespace LiteOrm.Common
                 indexDict[property.Name] = i;
             }
 
-            foreach (PropertyInfo property in properties)
+            foreach (PropertyInfo property in sortableProperties)
             {
                 PropertyOrderAttribute? orderAttribute = property.GetAttribute<PropertyOrderAttribute>();
                 if (orderAttribute == null)
@@ -67,7 +76,7 @@ namespace LiteOrm.Common
                 .Where(item => item.Value == 0)
                 .Select(item => item.Key)
                 .ToList();
-            List<PropertyInfo> sortedProperties = new List<PropertyInfo>(properties.Count);
+            List<PropertyInfo> sortedProperties = new List<PropertyInfo>(sortableProperties.Count);
 
             while (availableProperties.Count > 0)
             {
@@ -89,15 +98,18 @@ namespace LiteOrm.Common
                 }
             }
 
-            if (sortedProperties.Count != properties.Count)
+            if (sortedProperties.Count != sortableProperties.Count)
             {
                 string circularProperties = string.Join(", ", indegreeDict.Where(item => item.Value > 0).Select(item => item.Key));
                 throw new InvalidOperationException($"Detected circular property order dependency: {circularProperties}");
             }
 
-            for (int i = 0; i < sortedProperties.Count; i++)
+            for (int i = 0, j = 0; i < properties.Count; i++)
             {
-                properties[i] = sortedProperties[i];
+                if (properties[i].GetIndexParameters().Length == 0)
+                {
+                    properties[i] = sortedProperties[j++];
+                }
             }
 
             return properties;
