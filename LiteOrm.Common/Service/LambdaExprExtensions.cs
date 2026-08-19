@@ -272,14 +272,16 @@ namespace LiteOrm.Common
         /// <param name="entityViewService">实体视图服务实例。</param>
         /// <param name="expression">定义查询与投影的 IQueryable Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步查询的任务，结果包含投影后的列表。</returns>
         public static Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(
             this IEntityViewServiceAsync<T> entityViewService,
             Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
-            string[]? tableArgs = null)
+            string[]? tableArgs = null,
+            CancellationToken cancellationToken = default)
         {
             var selectExpr = LambdaExprConverter.ToSqlSegment(expression);
-            return entityViewService.SearchAsAsync<TResult>(ToSelectExpr<T>(selectExpr), tableArgs!);
+            return entityViewService.SearchAsAsync<TResult>(ToSelectExpr<T>(selectExpr), tableArgs!, cancellationToken);
         }
 
         /// <summary>
@@ -290,14 +292,16 @@ namespace LiteOrm.Common
         /// <param name="entityViewService">实体视图服务实例。</param>
         /// <param name="expression">定义查询与投影的 IQueryable Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
+        /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步查询的任务，结果包含第一个符合条件的投影结果；未找到时返回默认值。</returns>
         public static Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(
             this IEntityViewServiceAsync<T> entityViewService,
             Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
-            string[]? tableArgs = null)
+            string[]? tableArgs = null,
+            CancellationToken cancellationToken = default)
         {
             var selectExpr = LambdaExprConverter.ToSqlSegment(expression);
-            return entityViewService.SearchOneAsAsync<TResult>(ToSelectExpr<T>(selectExpr), tableArgs!);
+            return entityViewService.SearchOneAsAsync<TResult>(ToSelectExpr<T>(selectExpr), tableArgs!, cancellationToken);
         }
 
         /// <summary>

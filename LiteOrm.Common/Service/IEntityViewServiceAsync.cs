@@ -66,9 +66,10 @@ namespace LiteOrm.Service
         /// <typeparam name="TResult">结果类型</typeparam>
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>结果列表</returns>
         [ServiceMethod]
-        Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[] tableArgs);
+        Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步获取单个符合条件的实体，并将结果转换为指定类型的对象。
@@ -76,9 +77,10 @@ namespace LiteOrm.Service
         /// <typeparam name="TResult">结果类型</typeparam>
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
+        /// <param name="cancellationToken">取消令牌 </param>
         /// <returns>结果对象</returns>
         [ServiceMethod]
-        Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[] tableArgs);
+        Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
