@@ -38,26 +38,19 @@ namespace LiteOrm
         /// <summary>
         /// 将对象值转换为数据库值，Sqlite 中 DateTime、TimeSpan 类型将被转换为字符串存储。
         /// </summary>
-        /// <param name="value">要转换的对象值。</param>
+        /// <param name="sourceType">源值类型。</param>
         /// <param name="dbValueType">要转换的数据库取值类型。</param>
-        /// <returns>转换后的数据库值。</returns>
-        public override object ConvertToDbValue(object? value, DbValueType dbValueType = DbValueType.Object)
+        /// <returns>转换委托：输入 .NET 值，输出数据库可接受的值。</returns>
+        protected override Func<object?, object> BuildToDbValueConverter(Type sourceType, DbValueType dbValueType)
         {
-            if (value is DateTime dt)
-            {
-                // SQLite中存储为字符串格式 "yyyy-MM-dd HH:mm:ss.fff"
-                return dt.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            }
-            else if (value is DateTimeOffset dto)
-            {
-                return dto.ToString("yyyy-MM-dd HH:mm:ss.fff zzz");
-            }
-            else if (value is TimeSpan ts)
-            {
-                // SQLite中存储为字符串格式 "hh:mm:ss.fff"
-                return ts.ToString("c");
-            }
-            return base.ConvertToDbValue(value, dbValueType);
+            Func<object?, object> baseConverter = base.BuildToDbValueConverter(sourceType, dbValueType);
+            if (sourceType == typeof(DateTime))
+                return value => value is DateTime dt ? dt.ToString("yyyy-MM-dd HH:mm:ss.fff") : baseConverter(value);
+            if (sourceType == typeof(DateTimeOffset))
+                return value => value is DateTimeOffset dto ? dto.ToString("yyyy-MM-dd HH:mm:ss.fff zzz") : baseConverter(value);
+            if (sourceType == typeof(TimeSpan))
+                return value => value is TimeSpan ts ? ts.ToString("c") : baseConverter(value);
+            return baseConverter;
         }
 
         /// <summary>

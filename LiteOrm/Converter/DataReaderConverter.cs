@@ -25,19 +25,19 @@ namespace LiteOrm
         private static readonly MethodInfo? _getValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetValue), new[] { typeof(int) });
 
-        // IDbConverter.ConvertFromDbValue：兜底转换委托给 reader.DbConverter，支持枚举、TimeSpan、DateTimeOffset 等
-        private static readonly MethodInfo _convertFromDbValueMethod =
-            typeof(IDbConverter).GetMethod(nameof(IDbConverter.ConvertFromDbValue), new[] { typeof(object), typeof(Type) })!;
+        // IDbConverter.GetFromDbValueConverter：按目标类型获取预注册的转换委托，编译后的委托每次调用只做一次缓存查找再执行
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2111",
+            Justification = "在运行时通过 MethodInfo 获取并调用该委托工厂；AOT 场景下复杂类型列须由源生成器 mapper 处理，此处仅兜底已由 DAO 注册的目标类型。")]
+#endif
+        private static readonly MethodInfo _getFromDbValueConverterMethod =
+            typeof(IDbConverter).GetMethod(nameof(IDbConverter.GetFromDbValueConverter), new[] { typeof(Type) })!;
 
         private static readonly MethodInfo? _isDBNullMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.IsDBNull), new[] { typeof(int) });
 
         private static readonly MethodInfo? _getFieldValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFieldValue), new[] { typeof(int) });
-
-        // Use AutoLockDataReader.ChangeType as the fallback conversion method
-        private static readonly MethodInfo? _changeTypeMethod =
-            typeof(AutoLockDataReader).GetMethod(nameof(AutoLockDataReader.ChangeType), new[] { typeof(object), typeof(Type) });
 
         // 用于在动态读取委托的 catch 块中构造包含成员名/列号的明确异常
         private static readonly MethodInfo? _createColumnReadExceptionMethod =
@@ -268,7 +268,7 @@ namespace LiteOrm
         /// 构建读取指定列的完整表达式（含 IsDBNull 判定、Nullable 封装与列级异常包装）。
         /// 优先按 <paramref name="dbType"/> 选择与数据库列类型精确对应的读取方法；
         /// 若读取方法的返回类型与属性 CLR 类型不符（如枚举、数值扩宽），则自动插入 Convert 表达式。
-        /// 未提供 <paramref name="dbType"/> 时退回到按属性 CLR 类型查找，仍无匹配则使用 GetValue + reader.DbConverter.ConvertFromDbValue 兜底。
+        /// 未提供 <paramref name="dbType"/> 时退回到按属性 CLR 类型查找，仍无匹配则使用 GetValue + reader.DbConverter.GetFromDbValueConverter 兜底。
         /// <paramref name="columnName"/> 用于在读取失败时抛出包含成员名（属性名或构造函数参数名）的明确异常；为 null 时仅依据 <paramref name="ordinal"/> 描述。
         /// </summary>
         [RequiresDynamicCode("The code for building the typed read expression used MakeGenericMethod and might not be available.")]
@@ -289,11 +289,7 @@ namespace LiteOrm
                 catch (InvalidOperationException)
                 {
                     readExpr = Expression.Convert(
-                        Expression.Call(
-                            readerParam,
-                            _changeTypeMethod!,
-                            Expression.Convert(readExpr, typeof(object)),
-                            Expression.Constant(coreType)),
+                        InvokeFromDbValueConverter(readerParam, Expression.Convert(readExpr, typeof(object)), coreType),
                         coreType);
                 }
             }
@@ -350,7 +346,7 @@ namespace LiteOrm
 
         /// <summary>
         /// 返回读取列值的原始表达式（不含 IsDBNull 检查与 Nullable 封装）。
-        /// 选取顺序：DbType 映射 → CLR 类型映射 → byte[] 特殊路径 → GetValue + reader.DbConverter.ConvertFromDbValue 兜底。
+        /// 选取顺序：DbType 映射 → CLR 类型映射 → byte[] 特殊路径 → GetValue + reader.DbConverter.GetFromDbValueConverter 兜底。
         /// </summary>
         [RequiresDynamicCode("The code for building the raw read expression used MakeGenericMethod and might not be available.")]
         private static Expression BuildRawReadExpression(
@@ -369,7 +365,7 @@ namespace LiteOrm
                 }
 
                 // 当 DbType 驱动的读取方法返回类型与目标类型不匹配时（如 DbType.String 读取 TimeSpan），
-                // 跳过直接调用读取方法，使用 GetValue + ConvertFromDbValue 兜底。
+                // 跳过直接调用读取方法，使用 GetValue + GetFromDbValueConverter 兜底。
                 if (_dbTypeReaderMethods.TryGetValue(dbType.Value, out MethodInfo? dbMethod)
                     && dbMethod!.ReturnType == coreType)
                     return Expression.Call(readerParam, dbMethod!, ordinalExpr);
@@ -384,12 +380,21 @@ namespace LiteOrm
                 return Expression.Call(readerParam,
                     _getFieldValueMethod!.MakeGenericMethod(typeof(byte[])), ordinalExpr);
 
-            // 4. Fallback: GetValue + reader.DbConverter.ConvertFromDbValue (enums, TimeSpan, DateTimeOffset, etc.)
+            // 4. Fallback: GetValue + reader.DbConverter.GetFromDbValueConverter(targetType) 转换委托
+            // (enums, TimeSpan, DateTimeOffset, etc.)
             var getValueCall = Expression.Call(readerParam, _getValueMethod!, ordinalExpr);
+            return InvokeFromDbValueConverter(readerParam, getValueCall, coreType);
+        }
+
+        /// <summary>
+        /// 构建「获取 <paramref name="targetType"/> 的数据库值转换委托并调用」的表达式。
+        /// 每次调用先按目标类型从 <see cref="IDbConverter"/> 获取（缓存）转换委托，再对 <paramref name="valueExpr"/> 求值转换。
+        /// </summary>
+        private static Expression InvokeFromDbValueConverter(ParameterExpression readerParam, Expression valueExpr, Type targetType)
+        {
             var dbConverterExpr = Expression.Property(readerParam, nameof(AutoLockDataReader.DbConverter));
-            return Expression.Convert(
-                Expression.Call(dbConverterExpr, _convertFromDbValueMethod!, getValueCall, Expression.Constant(coreType, typeof(Type))),
-                coreType);
+            var converterExpr = Expression.Call(dbConverterExpr, _getFromDbValueConverterMethod!, Expression.Constant(targetType));
+            return Expression.Invoke(converterExpr, valueExpr);
         }
 
         /// <summary>
@@ -448,7 +453,7 @@ namespace LiteOrm
         /// 通过 <paramref name="dbConverter"/>（当前 SqlBuilder）按属性 CLR 类型推断 DbType，
         /// 使不同数据库方言能选择正确的类型化读取方法（如 Oracle 的 bool 映射为 Byte）。
         /// </para>
-        /// 数组/集合列返回 null，交由 <c>GetValue + DbConverter.ConvertFromDbValue</c> 兜底，
+        /// 数组/集合列返回 null，交由 <c>GetValue + DbConverter.GetFromDbValueConverter</c> 兜底，
         /// 避免对数组列调用标量读取器（如 <see cref="DbDataReader.GetInt32"/>）。
         /// </summary>
         private static DbType? GetColumnReadDbType(SqlColumn column, Type propertyType, IDbConverter? dbConverter)

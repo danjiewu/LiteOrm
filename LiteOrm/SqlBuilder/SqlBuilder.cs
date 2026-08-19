@@ -54,6 +54,17 @@ namespace LiteOrm
         private static readonly ConcurrentDictionary<Type, Type> _enumUnderlyingTypeCache = new ConcurrentDictionary<Type, Type>();
 
         /// <summary>
+        /// 按目标类型缓存的「数据库值 → 目标类型」转换委托。
+        /// </summary>
+        private readonly ConcurrentDictionary<Type, Func<object?, object?>> _fromDbValueConverterCache
+            = new ConcurrentDictionary<Type, Func<object?, object?>>();
+
+        /// <summary>
+        /// 按 (源类型, DbValueType) 缓存的「.NET 值 → 数据库值」转换委托。
+        /// </summary>
+        private readonly ConcurrentDictionary<(Type Source, DbValueType Target), Func<object?, object>> _toDbValueConverterCache
+            = new ConcurrentDictionary<(Type Source, DbValueType Target), Func<object?, object>>();
+        /// <summary>
         /// 获取默认的 <see cref="SqlBuilder"/> 实例。
         /// </summary>
         public static readonly SqlBuilder Instance = new SqlBuilder();
@@ -64,13 +75,14 @@ namespace LiteOrm
         /// </summary>
         public virtual IBulkProvider? BulkProvider { get; set; }
 
-        /// <summary>
-        /// 静态构造函数，在首次访问 SqlBuilder 时自动触发 SQL 函数映射注册。
-        /// 这样使用方无需手动调用 <see cref="LiteOrmSqlFunctionInitializer.Initialize"/>。
+                /// <summary>
+        /// 静态构造函数，在首次访问 SqlBuilder 时自动触发 SQL 函数映射注册与默认值转换器注册。
+        /// 这样使用方无需手动调用 <see cref="LiteOrmSqlFunctionInitializer.Initialize"/> 与 <see cref="LiteOrmConverterInitializer.Initialize"/>。
         /// </summary>
         static SqlBuilder()
         {
             LiteOrmSqlFunctionInitializer.Initialize();
+            LiteOrmConverterInitializer.Initialize();
         }
 
         /// <summary>
@@ -108,7 +120,7 @@ namespace LiteOrm
 
         /// <summary>
         /// 构建函数调用的 SQL 片段，直接写入 <paramref name="outSql"/>。
-        /// 会首先根据构造器类型及继承关系的顺序查找注册的函数处理器<seealso cref="SqlHandlerMapExtensions"/>，如果找到则使用处理器生成 SQL；否则按照默认规则生成函数调用 SQL。
+        /// 会首先根据构造器类型及继承关系的顺序查找注册的函数处理器<seealso cref="SqlBuilderExtensions"/>，如果找到则使用处理器生成 SQL；否则按照默认规则生成函数调用 SQL。
         /// </summary>
         /// <param name="outSql">接收输出 SQL 片段的字符串构建器。</param>
         /// <param name="expr">函数表达式，包含函数名及参数列表。</param>
@@ -366,96 +378,203 @@ namespace LiteOrm
             return result;
         }
 
-        /// <summary>
-        /// 将数据库取得的值转化为对象属性类型所对应的值。
+                /// <summary>
+        /// 尝试获取从 <typeparamref name="TSource"/> 到 <typeparamref name="TResult"/> 的预注册读取转换器。
+        /// 未注册精确源类型时，回退到 <c>(object, TResult)</c> 的通用处理器。
         /// </summary>
-        /// <param name="dbValue">数据库取得的值。</param>
+        /// <typeparam name="TSource">从数据库读取的值的类型。</typeparam>
+        /// <typeparam name="TResult">目标类型。</typeparam>
+        /// <param name="handler">输出转换器函数。</param>
+        /// <returns>如果成功获取转换器函数，则返回 true；否则返回 false。</returns>
+        public bool TryGetReadConverter<TSource, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] TResult>(out Func<TSource, TResult>? handler)
+        {
+            Type builderType = this.GetType();
+            while (typeof(SqlBuilder).IsAssignableFrom(builderType))
+            {
+                DbValueConverterMap map = GetDbValueConverterMap(builderType);
+                if (map.TryGetReadConverter<TSource, TResult>(out handler))
+                {
+                    return true;
+                }
+                // 未注册精确源类型时，回退到 (object, TResult) 的通用处理器
+                if (map.TryGetReadConverter((typeof(object), typeof(TResult)), out Func<object, object>? objHandler))
+                {
+                    handler = value => (TResult)objHandler!(value!)!;
+                    return true;
+                }
+                builderType = builderType.BaseType!;
+            }
+            handler = null;
+            return false;
+        }
+
+        /// <summary>
+        /// 按 (源类型, 目标类型) 查找预注册的读取转换器的非泛型版本。
+        /// 先精确匹配源类型，未命中时回退到 (object, 目标类型) 的通用处理器。
+        /// </summary>
+        public bool TryGetReadConverter((Type Source, Type Target) key, out Func<object, object>? handler)
+        {
+            Type builderType = this.GetType();
+            while (typeof(SqlBuilder).IsAssignableFrom(builderType))
+            {
+                DbValueConverterMap map = GetDbValueConverterMap(builderType);
+                if (map.TryGetReadConverter(key, out handler))
+                {
+                    return true;
+                }
+                if (map.TryGetReadConverter((typeof(object), key.Target), out handler))
+                {
+                    return true;
+                }
+                builderType = builderType.BaseType!;
+            }
+            handler = null;
+            return false;
+        }
+
+        /// <summary>
+        /// 按 (源类型, DbValueType) 查找预注册的写入转换器。
+        /// </summary>
+        public bool TryGetWriteConverter<T>(DbValueType targetType, out Func<T, object>? handler)
+        {
+            Type builderType = this.GetType();
+            while (typeof(SqlBuilder).IsAssignableFrom(builderType))
+            {
+                if (GetDbValueConverterMap(builderType).TryGetWriteConverter<T>((typeof(T), targetType), out handler))
+                {
+                    return true;
+                }
+                builderType = builderType.BaseType!;
+            }
+            handler = null;
+            return false;
+        }
+
+        /// <summary>
+        /// 按 (源类型, DbValueType) 查找预注册的写入转换器的非泛型版本。
+        /// </summary>
+        public bool TryGetWriteConverter((Type Source, DbValueType Target) key, out Func<object, object>? handler)
+        {
+            Type builderType = this.GetType();
+            while (typeof(SqlBuilder).IsAssignableFrom(builderType))
+            {
+                if (GetDbValueConverterMap(builderType).TryGetWriteConverter(key, out handler))
+                {
+                    return true;
+                }
+                builderType = builderType.BaseType!;
+            }
+            handler = null;
+            return false;
+        }
+
+                /// <summary>
+        /// 获取将数据库取得的值转化为 <paramref name="objectType"/> 类型值的转换委托。
+        /// 委托按目标类型缓存，调用方获取后可直接复用，避免每次转换都重新分发。
+        /// </summary>
         /// <param name="objectType">目标属性类型。</param>
-        /// <returns>转换后的对象值。</returns>
+        /// <returns>转换委托：输入数据库值，输出目标类型的值。</returns>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2111",
+            Justification = "BuildFromDbValueConverter 是受保护的虚方法，派生方言构建器保留相同的 DAM 要求；此处方法组转委托不会丢失类型要求。")]
+#endif
+        public virtual Func<object?, object?> GetFromDbValueConverter([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType)
+        {
+            return _fromDbValueConverterCache.GetOrAdd(objectType, BuildFromDbValueConverter);
+        }
+
+        /// <summary>
+        /// 构建将数据库取得的值转化为 <paramref name="objectType"/> 类型值的转换委托。
+        /// 子类可覆盖以提供方言特定的读取转换。
+        /// </summary>
+        /// <param name="objectType">目标属性类型。</param>
+        /// <returns>转换委托：输入数据库值，输出目标类型的值。</returns>
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("AOT", "IL3050",
             Justification = "JSON deserialization path is only triggered when dbValue is a string and the target type is a complex object/collection; under AOT, users must provide a System.Text.Json source-gen context for complex property types, otherwise a NotSupportedException is thrown at runtime.")]
 #endif
-        public virtual object? ConvertFromDbValue(object? dbValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type? objectType = null)
+        protected virtual Func<object?, object?> BuildFromDbValueConverter([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType)
         {
-            if (objectType == null)
-            {
-                return (dbValue == null || dbValue == DBNull.Value) ? null : dbValue;
-            }
-
-            bool nullable = !objectType.IsValueType || Nullable.GetUnderlyingType(objectType) is not null;
-
-            if (dbValue is null || dbValue == DBNull.Value)
-                return nullable ? null : CreateDefaultValue(objectType);
-
             Type underlyingType = objectType.GetUnderlyingType();
+            bool nullable = !objectType.IsValueType || Nullable.GetUnderlyingType(objectType) is not null;
+            // 预计算默认值，避免在闭包中捕获带 DAM 注解的 objectType（且非可空值类型的默认值语义与 default(T) 一致，可复用同一个装箱实例）
+            object? defaultValue = nullable ? null : CreateDefaultValue(objectType);
 
-            if (underlyingType.IsInstanceOfType(dbValue))
-                return dbValue;
-
-            if (dbValue is string s && s == string.Empty)
-                return nullable ? null : CreateDefaultValue(objectType);
-
-            if (underlyingType.IsEnum)
+            return dbValue =>
             {
-                if (dbValue is string strEnum) return Enum.Parse(underlyingType, strEnum, true);
-                return Enum.ToObject(underlyingType, Convert.ChangeType(dbValue, Enum.GetUnderlyingType(underlyingType)));
-            }
+                if (dbValue is null || dbValue == DBNull.Value)
+                    return defaultValue;
 
-            if (underlyingType == typeof(bool))
-            {
-                if (dbValue is string strBool)
+                if (underlyingType.IsInstanceOfType(dbValue))
+                    return dbValue;
+
+                if (dbValue is string s && s == string.Empty)
+                    return defaultValue;
+
+                // 优先调用预注册的读取转换器委托（bool/Guid/TimeSpan/DateTimeOffset 及方言自定义转换）
+                if (TryGetReadConverter((dbValue.GetType(), underlyingType), out Func<object, object>? converter))
+                    return converter!(dbValue);
+
+                if (underlyingType.IsEnum)
                 {
-                    if (bool.TryParse(strBool, out bool result)) return result;
-                    if (strBool == "1" || strBool.Equals("Y", StringComparison.OrdinalIgnoreCase) || strBool.Equals("T", StringComparison.OrdinalIgnoreCase)) return true;
-                    if (strBool == "0" || strBool.Equals("N", StringComparison.OrdinalIgnoreCase) || strBool.Equals("F", StringComparison.OrdinalIgnoreCase)) return false;
+                    if (dbValue is string strEnum) return Enum.Parse(underlyingType, strEnum, true);
+                    return Enum.ToObject(underlyingType, Convert.ChangeType(dbValue, Enum.GetUnderlyingType(underlyingType)));
                 }
-                return Convert.ToInt64(dbValue) != 0;
-            }
 
-            if (underlyingType == typeof(Guid))
-            {
-                if (dbValue is string strGuid && Guid.TryParse(strGuid, out Guid guid)) return guid;
-                if (dbValue is byte[] bytesGuid && bytesGuid.Length == 16) return new Guid(bytesGuid);
-            }
-
-            if (underlyingType == typeof(TimeSpan))
-            {
-                if (dbValue is long ticks) return TimeSpan.FromTicks(ticks);
-                if (dbValue is string strTs)
+                if (underlyingType == typeof(bool))
                 {
-                    if (TimeSpan.TryParse(strTs, out TimeSpan ts)) return ts;
-                    // Oracle interval format: "+DD HH:MM:SS.FFFFFF"
-                    if (strTs.Length > 3 && (strTs[0] == '+' || strTs[0] == '-') && strTs.Contains(' '))
+                    if (dbValue is string strBool)
                     {
-                        var parts = strTs.Substring(1).Split(new[] { ' ' }, 2);
-                        if (int.TryParse(parts[0], out int days) && parts.Length > 1 && TimeSpan.TryParse(parts[1], out TimeSpan time))
-                            return new TimeSpan(days, time.Hours, time.Minutes, time.Seconds, time.Milliseconds);
+                        if (bool.TryParse(strBool, out bool result)) return result;
+                        if (strBool == "1" || strBool.Equals("Y", StringComparison.OrdinalIgnoreCase) || strBool.Equals("T", StringComparison.OrdinalIgnoreCase)) return true;
+                        if (strBool == "0" || strBool.Equals("N", StringComparison.OrdinalIgnoreCase) || strBool.Equals("F", StringComparison.OrdinalIgnoreCase)) return false;
+                    }
+                    return Convert.ToInt64(dbValue) != 0;
+                }
+
+                if (underlyingType == typeof(Guid))
+                {
+                    if (dbValue is string strGuid && Guid.TryParse(strGuid, out Guid guid)) return guid;
+                    if (dbValue is byte[] bytesGuid && bytesGuid.Length == 16) return new Guid(bytesGuid);
+                }
+
+                if (underlyingType == typeof(TimeSpan))
+                {
+                    if (dbValue is long ticks) return TimeSpan.FromTicks(ticks);
+                    if (dbValue is string strTs)
+                    {
+                        if (TimeSpan.TryParse(strTs, out TimeSpan ts)) return ts;
+                        // Oracle interval format: "+DD HH:MM:SS.FFFFFF"
+                        if (strTs.Length > 3 && (strTs[0] == '+' || strTs[0] == '-') && strTs.IndexOf(' ') >= 0)
+                        {
+                            var parts = strTs.Substring(1).Split(new[] { ' ' }, 2);
+                            if (int.TryParse(parts[0], out int days) && parts.Length > 1 && TimeSpan.TryParse(parts[1], out TimeSpan time))
+                                return new TimeSpan(days, time.Hours, time.Minutes, time.Seconds, time.Milliseconds);
+                        }
                     }
                 }
-            }
 
-            if (underlyingType == typeof(DateTimeOffset))
-            {
-                if (dbValue is DateTime dt) return new DateTimeOffset(dt);
-                if (dbValue is string strDto && DateTimeOffset.TryParse(strDto, out DateTimeOffset dto)) return dto;
-            }
+                if (underlyingType == typeof(DateTimeOffset))
+                {
+                    if (dbValue is DateTime dt) return new DateTimeOffset(dt);
+                    if (dbValue is string strDto && DateTimeOffset.TryParse(strDto, out DateTimeOffset dto)) return dto;
+                }
 
-            // Json/Jsonb 列（或数组列在非原生数组方言下的文本回退）：
-            // 字符串值按 JSON 反序列化到集合或复杂对象类型
-            if (dbValue is string jsonSource && !IsScalarType(underlyingType))
-            {
-                return JsonSerializer.Deserialize(jsonSource, underlyingType);
-            }
+                // Json/Jsonb 列（或数组列在非原生数组方言下的文本回退）：
+                // 字符串值按 JSON 反序列化到集合或复杂对象类型
+                if (dbValue is string jsonSource && !IsScalarType(underlyingType))
+                {
+                    return JsonSerializer.Deserialize(jsonSource, underlyingType);
+                }
 
-            // 数组列（原生数组方言，如 Npgsql 返回 T[]）：转换为目标集合
-            if (dbValue is IEnumerable enumerable && ColumnDefinitionExtensions.IsCollectionType(underlyingType))
-            {
-                return ConvertToCollection(enumerable, underlyingType);
-            }
+                // 数组列（原生数组方言，如 Npgsql 返回 T[]）：转换为目标集合
+                if (dbValue is IEnumerable enumerable && ColumnDefinitionExtensions.IsCollectionType(underlyingType))
+                {
+                    return ConvertToCollection(enumerable, underlyingType);
+                }
 
-            return Convert.ChangeType(dbValue, underlyingType);
-
+                return Convert.ChangeType(dbValue, underlyingType);
+            };
         }
 
         /// <summary>
@@ -548,106 +667,128 @@ namespace LiteOrm
 #endif
         }
 
-        /// <summary>
-        /// 将对象的属性值转化为数据库中的值，根据列的 <see cref="DbValueType"/> 进行转换。
+                /// <summary>
+        /// 获取将对象的属性值转化为数据库值的转换委托（按源类型与目标取值类型缓存）。
+        /// 调用方获取后可直接复用，避免每次转换都重新分发。
         /// </summary>
-        /// <param name="value">值</param>
+        /// <param name="sourceType">源值类型。</param>
         /// <param name="dbValueType">数据字段取值类型（可含 <see cref="DbValueType.Array"/> 掩码）。</param>
-        /// <returns>数据库中的值</returns>
+        /// <returns>转换委托：输入 .NET 值，输出数据库可接受的值。</returns>
+        public virtual Func<object?, object> GetToDbValueConverter(Type sourceType, DbValueType dbValueType)
+        {
+            return _toDbValueConverterCache.GetOrAdd((sourceType, dbValueType), key => BuildToDbValueConverter(key.Source, key.Target));
+        }
+
+        /// <summary>
+        /// 构建将对象的属性值转化为数据库值的转换委托，根据列的 <see cref="DbValueType"/> 进行转换。
+        /// 子类可覆盖以提供方言特定的写入转换。
+        /// </summary>
+        /// <param name="sourceType">源值类型。</param>
+        /// <param name="dbValueType">数据字段取值类型（可含 <see cref="DbValueType.Array"/> 掩码）。</param>
+        /// <returns>转换委托：输入 .NET 值，输出数据库可接受的值。</returns>
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("AOT", "IL3050",
             Justification = "JSON serialization path is only triggered when the target type is a complex object/collection; under AOT, users must provide a System.Text.Json source-gen context for complex property types, otherwise a NotSupportedException is thrown at runtime.")]
 #endif
-        public virtual object ConvertToDbValue(object? value, DbValueType dbValueType = DbValueType.Object)
+        protected virtual Func<object?, object> BuildToDbValueConverter(Type sourceType, DbValueType dbValueType)
         {
-            if (value is null) return DBNull.Value;
-
-            // 数组列：原生数组方言（如 PostgreSQL）原样返回交由驱动绑定；其余方言回退为 JSON 字符串存储
-            if (dbValueType.HasArray() && ColumnDefinitionExtensions.IsCollectionType(value.GetType()))
-                return SupportsNativeArrays ? value : ToJsonString(value);
-
+            bool isArray = dbValueType.HasArray();
+            bool sourceIsCollection = isArray && ColumnDefinitionExtensions.IsCollectionType(sourceType);
             DbValueType dbType = (dbValueType == DbValueType.Object || dbValueType == DbValueType.Default)
-                ? GetDbValueType(value.GetType())
+                ? GetDbValueType(sourceType)
                 : dbValueType;
 
-            Type type = value.GetType();
-
-            // Json/Jsonb 列：复杂值序列化为 JSON 字符串
-            if (dbValueType == DbValueType.Json || dbValueType == DbValueType.Jsonb)
+            return value =>
             {
-                if (IsComplexJsonValue(value)) return ToJsonString(value);
-                return value.ToString()!;
-            }
+                if (value is null) return DBNull.Value;
 
-            // 处理枚举：优先根据基础类型转换，除非 DbType 要求字符串
-            if (type.IsEnum)
-            {
-                if (dbType == DbValueType.String || dbType == DbValueType.AnsiString ||
-                    dbType == DbValueType.StringFixedLength || dbType == DbValueType.AnsiStringFixedLength)
+                // 数组列：原生数组方言（如 PostgreSQL）原样返回交由驱动绑定；其余方言回退为 JSON 字符串存储
+                if (sourceIsCollection && ColumnDefinitionExtensions.IsCollectionType(value.GetType()))
+                    return SupportsNativeArrays ? value : ToJsonString(value);
+
+                Type type = value.GetType();
+
+                // Json/Jsonb 列：复杂值序列化为 JSON 字符串
+                if (dbValueType == DbValueType.Json || dbValueType == DbValueType.Jsonb)
                 {
-                    return value.ToString()!;
-                }
-                Type underlyingType = _enumUnderlyingTypeCache.GetOrAdd(type, t => Enum.GetUnderlyingType(t));
-                return Convert.ChangeType(value, underlyingType);
-            }
-
-            // 根据 dbType 进行特定转换
-            switch (dbType)
-            {
-                case DbValueType.Boolean:
-                    return Convert.ToBoolean(value);
-
-                case DbValueType.Int16:
-                case DbValueType.Int32:
-                case DbValueType.Int64:
-                case DbValueType.Byte:
-                case DbValueType.SByte:
-                case DbValueType.UInt16:
-                case DbValueType.UInt32:
-                case DbValueType.UInt64:
-                    if (value is bool b) return b ? 1 : 0;
-                    return Convert.ChangeType(value, dbType.ToType());
-
-                case DbValueType.Guid:
-                    if (value is Guid guid) return guid;
-                    if (value is string s && Guid.TryParse(s, out Guid g)) return g;
-                    if (value is byte[] bytes && bytes.Length == 16) return new Guid(bytes);
-                    break;
-
-                case DbValueType.Binary:
-                    if (value is Guid g2) return g2.ToByteArray();
-                    break;
-
-                case DbValueType.Date:
-                case DbValueType.DateTime:
-                case DbValueType.DateTime2:
-                    if (value is DateTimeOffset dto) return dto.DateTime;
-                    if (value is DateTime date) return date;
-                    break;
-                case DbValueType.Time:
-                    if (value is TimeSpan timeSpan) return timeSpan;
-                    break;
-                case DbValueType.DateTimeOffset:
-                    if (value is DateTime dt) return new DateTimeOffset(dt);
-                    break;
-                case DbValueType.String:
-                case DbValueType.AnsiString:
-                case DbValueType.StringFixedLength:
-                case DbValueType.AnsiStringFixedLength:
-                    if (value is Guid g3) return g3.ToString();
-                    if (value is TimeSpan ts) return ts.ToString();
-                    if (value is string strValue) return strValue;
-                    // 非标量值（Json 列、集合等）序列化为 JSON 字符串
                     if (IsComplexJsonValue(value)) return ToJsonString(value);
                     return value.ToString()!;
-            }
+                }
 
-            // 兜底通用逻辑
-            if (value is bool bv) return bv ? 1 : 0;
-            if (value is DateTimeOffset dtov) return dtov.DateTime;
-            if (value is TimeSpan tsv) return tsv.Ticks;
+                // 优先调用预注册的写入转换器委托（bool/Guid/TimeSpan/DateTime/DateTimeOffset/string 等）
+                if (TryGetWriteConverter((type, dbType), out Func<object, object>? writeConverter))
+                    return writeConverter!(value);
 
-            return value;
+                // 处理枚举：优先根据基础类型转换，除非 DbType 要求字符串
+                if (type.IsEnum)
+                {
+                    if (dbType == DbValueType.String || dbType == DbValueType.AnsiString ||
+                        dbType == DbValueType.StringFixedLength || dbType == DbValueType.AnsiStringFixedLength)
+                    {
+                        return value.ToString()!;
+                    }
+                    Type underlyingType = _enumUnderlyingTypeCache.GetOrAdd(type, t => Enum.GetUnderlyingType(t));
+                    return Convert.ChangeType(value, underlyingType);
+                }
+
+                // 根据 dbType 进行特定转换
+                switch (dbType)
+                {
+                    case DbValueType.Boolean:
+                        return Convert.ToBoolean(value);
+
+                    case DbValueType.Int16:
+                    case DbValueType.Int32:
+                    case DbValueType.Int64:
+                    case DbValueType.Byte:
+                    case DbValueType.SByte:
+                    case DbValueType.UInt16:
+                    case DbValueType.UInt32:
+                    case DbValueType.UInt64:
+                        if (value is bool b) return b ? 1 : 0;
+                        return Convert.ChangeType(value, dbType.ToType());
+
+                    case DbValueType.Guid:
+                        if (value is Guid guid) return guid;
+                        if (value is string s && Guid.TryParse(s, out Guid g)) return g;
+                        if (value is byte[] bytes && bytes.Length == 16) return new Guid(bytes);
+                        break;
+
+                    case DbValueType.Binary:
+                        if (value is Guid g2) return g2.ToByteArray();
+                        break;
+
+                    case DbValueType.Date:
+                    case DbValueType.DateTime:
+                    case DbValueType.DateTime2:
+                        if (value is DateTimeOffset dto) return dto.DateTime;
+                        if (value is DateTime date) return date;
+                        break;
+                    case DbValueType.Time:
+                        if (value is TimeSpan timeSpan) return timeSpan;
+                        break;
+                    case DbValueType.DateTimeOffset:
+                        if (value is DateTime dt) return new DateTimeOffset(dt);
+                        break;
+                    case DbValueType.String:
+                    case DbValueType.AnsiString:
+                    case DbValueType.StringFixedLength:
+                    case DbValueType.AnsiStringFixedLength:
+                        if (value is Guid g3) return g3.ToString();
+                        if (value is TimeSpan ts) return ts.ToString();
+                        if (value is string strValue) return strValue;
+                        // 非标量值（Json 列、集合等）序列化为 JSON 字符串
+                        if (IsComplexJsonValue(value)) return ToJsonString(value);
+                        return value.ToString()!;
+                }
+
+                // 兜底通用逻辑
+                if (value is bool bv) return bv ? 1 : 0;
+                if (value is DateTimeOffset dtov) return dtov.DateTime;
+                if (value is TimeSpan tsv) return tsv.Ticks;
+
+                return value;
+            };
         }
 
         /// <summary>
@@ -1203,6 +1344,8 @@ namespace LiteOrm
         }
 
         private static readonly ConcurrentDictionary<Type, SqlHandlerMap> _sqlHandlerMaps = new ConcurrentDictionary<Type, SqlHandlerMap>();
+        private static readonly ConcurrentDictionary<Type, DbValueConverterMap> _dbValueConverterMaps = new ConcurrentDictionary<Type, DbValueConverterMap>();
+
         internal static SqlHandlerMap GetSqlHandlerMap<T>() where T : SqlBuilder
         {
             return _sqlHandlerMaps.GetOrAdd(typeof(T), t => new SqlHandlerMap());
@@ -1211,6 +1354,16 @@ namespace LiteOrm
         internal static SqlHandlerMap GetSqlHandlerMap(Type type)
         {
             return _sqlHandlerMaps.GetOrAdd(type, t => new SqlHandlerMap());
+        }
+
+        internal static DbValueConverterMap GetDbValueConverterMap<T>() where T : SqlBuilder
+        {
+            return _dbValueConverterMaps.GetOrAdd(typeof(T), t => new DbValueConverterMap());
+        }
+
+        internal static DbValueConverterMap GetDbValueConverterMap(Type type)
+        {
+            return _dbValueConverterMaps.GetOrAdd(type, t => new DbValueConverterMap());
         }
 
         /// <summary>
@@ -1275,6 +1428,7 @@ namespace LiteOrm
                 result.Append($"OFFSET {subSelect.Skip} ROWS FETCH NEXT {subSelect.Take} ROWS ONLY");
             }
         }
+
     }
 }
 

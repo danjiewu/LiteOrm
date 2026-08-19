@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -10,19 +11,28 @@ namespace LiteOrm.Common
     public interface IDbConverter
     {
         /// <summary>
-        /// 将数据库值转换为 .NET 对象值。
+        /// 获取将数据库值转换为 <paramref name="objectType"/> 类型值的转换委托。
+        /// 委托按目标类型缓存，获取后可直接复用，避免每次转换都重新分发。
         /// </summary>
-        /// <param name="dbValue">数据库值。</param>
-        /// <param name="objectType">目标对象类型（可选）。</param>
-        /// <returns>返回转换后的 .NET 对象值。</returns>
-        object? ConvertFromDbValue(object? dbValue, Type? objectType = null);
+        /// <param name="objectType">目标对象类型。</param>
+        /// <returns>转换委托：输入数据库值，输出目标类型的值。</returns>
+        Func<object?, object?> GetFromDbValueConverter([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType);
         /// <summary>
-        /// 转换 .NET 对象值为数据库可接受的值。
+        /// 获取将 <paramref name="sourceType"/> 类型的 .NET 值转换为数据库可接受值的转换委托。
+        /// 委托按 (源类型, 目标取值类型) 缓存，获取后可直接复用，避免每次转换都重新分发。
         /// </summary>
-        /// <param name="value">要转换的 .NET 对象值。</param>
-        /// <param name="dbValueType">目标数据库取值类型（可选，可含 <see cref="DbValueType.Array"/> 掩码）。</param>
-        /// <returns>返回转换后的数据库值。</returns>
-        object ConvertToDbValue(object? value, DbValueType dbValueType = DbValueType.Object);
+        /// <param name="sourceType">源值类型。</param>
+        /// <param name="dbValueType">目标数据库取值类型（可含 <see cref="DbValueType.Array"/> 掩码）。</param>
+        /// <returns>转换委托：输入 .NET 值，输出数据库可接受的值。</returns>
+        Func<object?, object> GetToDbValueConverter(Type sourceType, DbValueType dbValueType);
+        /// <summary>
+        /// 尝试获取数据库读取从 <typeparamref name="TSource"/> 到 <typeparamref name="TResult"/> 的转换器函数。
+        /// </summary>
+        /// <typeparam name="TSource">从数据库读取的值的类型。</typeparam>
+        /// <typeparam name="TResult">要转换的目标实体属性类型。</typeparam>
+        /// <param name="handler">输出转换器函数。</param>
+        /// <returns>如果成功获取转换器函数，则返回 true；否则返回 false。</returns>
+        bool TryGetReadConverter<TSource, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] TResult>(out Func<TSource, TResult>? handler);
         /// <summary>
         /// 将 .NET 类型映射为数据库对应的 <see cref="DbValueType"/>。
         /// </summary>

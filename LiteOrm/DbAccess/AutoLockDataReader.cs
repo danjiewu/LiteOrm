@@ -66,17 +66,6 @@ namespace LiteOrm
 
         #region IDataReader 实现 - 转发到内部 Reader
         /// <summary>
-        /// 类型转换，委托给 <see cref="DbConverter"/> 进行。
-        /// </summary>
-        /// <param name="value"></param>
-        /// <param name="valueType"></param>
-        /// <returns></returns>
-        public object? ChangeType(object value, Type valueType)
-        {
-            EnsureNotDisposed();
-            return DbConverter.ConvertFromDbValue(value, valueType);
-        }
-        /// <summary>
         /// 获取指定列的列值。
         /// </summary>
         /// <param name="i">列的从零开始的索引。</param>

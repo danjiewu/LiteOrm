@@ -422,7 +422,7 @@ namespace LiteOrm
                         var dbType = SqlBuilder.ToDbType(SqlBuilder.GetDbValueType(para.Value.GetType()));
                         if (dbType != DbType.Object) dbParam.DbType = dbType;
                     }
-                    dbParam.Value = SqlBuilder.ConvertToDbValue(para.Value, para.DbType);
+                    dbParam.Value = ConvertToDbValue(para.Value, para.DbType);
                     command.Parameters.Add(dbParam);
                 }
         }
@@ -623,7 +623,7 @@ namespace LiteOrm
         /// <returns>对象属性类型所对应的值</returns>
         protected virtual object? ConvertFromDbValue(object? dbValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType)
         {
-            return SqlBuilder.ConvertFromDbValue(dbValue, objectType);
+            return SqlBuilder.GetFromDbValueConverter(objectType)(dbValue);
         }
 
         /// <summary>
@@ -634,7 +634,8 @@ namespace LiteOrm
         /// <returns>数据库中的值</returns>
         protected virtual object ConvertToDbValue(object? value, DbValueType? dbValueType)
         {
-            return SqlBuilder.ConvertToDbValue(value, dbValueType ?? DbValueType.Object);
+            if (value is null) return DBNull.Value;
+            return SqlBuilder.GetToDbValueConverter(value.GetType(), dbValueType ?? DbValueType.Object)(value);
         }
 
         /// <summary>
