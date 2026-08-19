@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.1.3.0</AssemblyVersion>
-		<FileVersion>8.1.3.0</FileVersion>
+		<AssemblyVersion>8.1.4.0</AssemblyVersion>
+		<FileVersion>8.1.4.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.1.3</VersionPrefix>
+		<VersionPrefix>8.1.4</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,6 +16,13 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
+8.1.4:
+- 破坏性变更：
+  - EntityService&lt;T&gt; / EntityViewService&lt;T&gt; 构造函数改为接收 IServiceProvider，由容器解析所需的 ObjectDAO&lt;T&gt; / ObjectViewDAO&lt;T&gt;。
+- 修复：
+  - 同步 LiteOrm.Common 8.1.4（SortProperty 排除索引器属性，修复内置 Item 与自定义 Item 属性重名导致的循环依赖误判）。
+  - SearchAsAsync / SearchOneAsAsync 对齐接口补充 CancellationToken 参数。
+
 8.1.3:
   - 同步 LiteOrm.Common 8.1.3。
   - SqlBuilder 与各方言子类的类型映射改为 DbValueType。

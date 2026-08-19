@@ -43,12 +43,12 @@ namespace LiteOrm.Remote
             => _proxy.SearchAsync(expr, tableArgs, cancellationToken);
 
         /// <inheritdoc />
-        public Task<List<TResult>> SearchAsAsync<TResult>(SelectExpr? selectExpr = null, params string[] tableArgs)
-            => _proxy.SearchAsAsync<TResult>(selectExpr, tableArgs);
+        public Task<List<TResult>> SearchAsAsync<TResult>(SelectExpr? selectExpr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+            => _proxy.SearchAsAsync<TResult>(selectExpr, tableArgs, cancellationToken);
 
         /// <inheritdoc />
-        public Task<TResult> SearchOneAsAsync<TResult>(SelectExpr? selectExpr = null, params string[] tableArgs)
-            => _proxy.SearchOneAsAsync<TResult>(selectExpr, tableArgs);
+        public Task<TResult> SearchOneAsAsync<TResult>(SelectExpr? selectExpr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+            => _proxy.SearchOneAsAsync<TResult>(selectExpr, tableArgs, cancellationToken);
 
         /// <inheritdoc />
         public Task<bool> ExistsIDAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default)

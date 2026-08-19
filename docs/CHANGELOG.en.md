@@ -1,5 +1,18 @@
 # Changelog
 
+## v8.1.4 (2026-08-19)
+
+### Breaking Changes
+
+- `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` constructors now take an `IServiceProvider`, resolving the required `ObjectDAO<T>` / `ObjectViewDAO<T>` from the container; derived service constructors were updated accordingly. No changes are needed under DI.
+
+### Fixes
+
+- `SortProperty` now excludes indexer properties, fixing a false circular-dependency error caused by a built-in `Item` (indexer) colliding with a custom `Item` property.
+- `SearchAsAsync` / `SearchOneAsAsync` now include the `CancellationToken` parameter declared by the interface, fixing `EntityViewService<T>` / `RemoteViewServiceAsyncProxy<T>` not implementing the interface members.
+
+---
+
 ## v8.1.3 (2026-08-18)
 
 ### Breaking Changes

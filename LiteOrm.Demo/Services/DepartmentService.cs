@@ -13,8 +13,8 @@ namespace LiteOrm.Demo.Services
     [AutoRegister(RegisterPolicy.Interface, Lifetime = Lifetime.Scoped)]
     public class DepartmentService : EntityService<Department, DepartmentView>, IDepartmentService
     {
-        public DepartmentService(ObjectDAO<Department> objectDAO, ObjectViewDAO<DepartmentView> objectViewDAO)
-            : base(objectDAO, objectViewDAO)
+        public DepartmentService(IServiceProvider serviceProvider)
+            : base(serviceProvider)
         {
         }
     }

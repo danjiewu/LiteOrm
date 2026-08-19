@@ -58,6 +58,7 @@ using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
 
 // 1. Configure data source
 var dataSourceProvider = new DataSourceProvider();
@@ -77,10 +78,17 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 4. Create DAO and service (as of 8.1.1, DAO constructors require a SessionManager)
-var objectDAO = new ObjectDAO<User>(sessionManager);
-var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
-var userService = new EntityService<User>(objectDAO, objectViewDAO);
+// 4. Build a minimal service provider and resolve the entity service
+//    (as of 8.1.3, EntityService/EntityViewService constructors take an IServiceProvider)
+var services = new ServiceCollection();
+services.AddScoped(_ => sessionManager);
+services.AddScoped(typeof(ObjectDAO<>));
+services.AddScoped(typeof(ObjectViewDAO<>));
+services.AddScoped(typeof(EntityService<>));
+services.AddScoped(typeof(EntityViewService<>));
+var serviceProvider = services.BuildServiceProvider();
+
+var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 ```
 
 #### Option B: Read from Configuration File
@@ -112,6 +120,7 @@ using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 // 1. Read configuration file
 var configuration = new ConfigurationBuilder()
@@ -130,10 +139,17 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 5. Create DAO and service (as of 8.1.1, DAO constructors require a SessionManager)
-var objectDAO = new ObjectDAO<User>(sessionManager);
-var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
-var userService = new EntityService<User>(objectDAO, objectViewDAO);
+// 5. Build a minimal service provider and resolve the entity service
+//    (as of 8.1.3, EntityService/EntityViewService constructors take an IServiceProvider)
+var services = new ServiceCollection();
+services.AddScoped(_ => sessionManager);
+services.AddScoped(typeof(ObjectDAO<>));
+services.AddScoped(typeof(ObjectViewDAO<>));
+services.AddScoped(typeof(EntityService<>));
+services.AddScoped(typeof(EntityViewService<>));
+var serviceProvider = services.BuildServiceProvider();
+
+var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 ```
 
 > Using `LoadConfiguration` requires additionally installing the `Microsoft.Extensions.Configuration` and `Microsoft.Extensions.Configuration.Json` packages. The base library itself only depends on `Microsoft.Extensions.Configuration.Abstractions` (which provides the `IConfiguration` interface).
@@ -144,6 +160,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 > - `DAOContextPoolFactory`: creates connection pools based on data source configuration and manages connection acquisition and recycling. It is passed to `SessionManager` via the constructor; DAOs obtain the pool internally via `SessionManager.GetDAOContextPool()` to resolve the provider type.
 > - `SessionManager`: manages database sessions, transactions, and async context. `SetCurrent` sets it as the session for the current async context.
 > - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. As of 8.1.1 their constructors require a `SessionManager`; internally they obtain global singletons via `TableInfoProvider.Instance`. Under DI the container resolves the `SessionManager` automatically; when constructing manually, pass the session manager you created.
+> - `ServiceCollection` / `ServiceProvider`: as of 8.1.3, the `EntityService<T>` / `EntityViewService<T>` constructors take an `IServiceProvider`, from which the container resolves their required `ObjectDAO<T>` / `ObjectViewDAO<T>`. Only the minimal services are registered here to demonstrate the manual scenario; for regular projects prefer `AddLiteOrm()` in section 2.2 below.
 > - `EntityService<T>`: a business service wrapping the DAOs, providing methods such as `InsertAsync`, `SearchAsync`, `UpdateAsync`, and `DeleteAsync`.
 
 ### 2.2 Register and Resolve Services via AddLiteOrm (Recommended)

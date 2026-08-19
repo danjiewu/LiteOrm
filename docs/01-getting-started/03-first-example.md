@@ -58,6 +58,7 @@ using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
 
 // 1. 配置数据源
 var dataSourceProvider = new DataSourceProvider();
@@ -77,10 +78,16 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 4. 创建 DAO 和服务（8.1.1 起，DAO 构造需传入 SessionManager）
-var objectDAO = new ObjectDAO<User>(sessionManager);
-var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
-var userService = new EntityService<User>(objectDAO, objectViewDAO);
+// 4. 构建最小服务提供程序并解析服务（8.1.3 起，EntityService/EntityViewService 构造函数接收 IServiceProvider）
+var services = new ServiceCollection();
+services.AddScoped(_ => sessionManager);
+services.AddScoped(typeof(ObjectDAO<>));
+services.AddScoped(typeof(ObjectViewDAO<>));
+services.AddScoped(typeof(EntityService<>));
+services.AddScoped(typeof(EntityViewService<>));
+var serviceProvider = services.BuildServiceProvider();
+
+var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 ```
 
 #### 方式二：从配置文件读取
@@ -112,6 +119,7 @@ using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 // 1. 读取配置文件
 var configuration = new ConfigurationBuilder()
@@ -130,10 +138,16 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 5. 创建 DAO 和服务（8.1.1 起，DAO 构造需传入 SessionManager）
-var objectDAO = new ObjectDAO<User>(sessionManager);
-var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
-var userService = new EntityService<User>(objectDAO, objectViewDAO);
+// 5. 构建最小服务提供程序并解析服务（8.1.3 起，EntityService/EntityViewService 构造函数接收 IServiceProvider）
+var services = new ServiceCollection();
+services.AddScoped(_ => sessionManager);
+services.AddScoped(typeof(ObjectDAO<>));
+services.AddScoped(typeof(ObjectViewDAO<>));
+services.AddScoped(typeof(EntityService<>));
+services.AddScoped(typeof(EntityViewService<>));
+var serviceProvider = services.BuildServiceProvider();
+
+var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 ```
 
 > 使用 `LoadConfiguration` 需额外安装 `Microsoft.Extensions.Configuration` 和 `Microsoft.Extensions.Configuration.Json` 包。基础库本身仅依赖 `Microsoft.Extensions.Configuration.Abstractions`（提供 `IConfiguration` 接口）。
@@ -144,6 +158,7 @@ var userService = new EntityService<User>(objectDAO, objectViewDAO);
 > - `DAOContextPoolFactory`：根据数据源配置创建连接池，管理连接的获取与回收。通过构造函数传入 `SessionManager`，DAO 内部通过 `SessionManager.GetDAOContextPool()` 获取连接池以解析提供程序类型。
 > - `SessionManager`：管理数据库会话、事务和异步上下文。通过 `SetCurrent` 设置为当前异步上下文的会话。
 > - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。两者自 8.1.1 起构造时需传入 `SessionManager`，内部通过 `TableInfoProvider.Instance` 获取全局单例。依赖注入场景下由容器自动解析，手动构造则需自行传入已创建好的 `sessionManager`。
+> - `ServiceCollection` / `ServiceProvider`：自 8.1.3 起 `EntityService<T>` / `EntityViewService<T>` 构造函数接收 `IServiceProvider`，由容器解析其所需的 `ObjectDAO<T>` / `ObjectViewDAO<T>`。此处仅注册最少服务以演示手动场景；常规项目建议使用下文 2.2 的 `AddLiteOrm()`。
 > - `EntityService<T>`：封装了 DAO 的业务服务，提供 `InsertAsync`、`SearchAsync`、`UpdateAsync`、`DeleteAsync` 等方法。
 
 ### 2.2 通过 AddLiteOrm 注册和获取服务（推荐）

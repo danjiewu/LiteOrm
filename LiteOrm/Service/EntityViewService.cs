@@ -1,4 +1,5 @@
 using LiteOrm.Common;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -59,10 +60,10 @@ namespace LiteOrm.Service
         /// <summary>
         /// 初始化 <see cref="EntityViewService{TView}"/> 类的新实例。
         /// </summary>
-        /// <param name="objectViewDAO">视图数据访问对象</param>
-        public EntityViewService(ObjectViewDAO<TView> objectViewDAO)
+        /// <param name="serviceProvider">服务提供程序，用于解析视图数据访问对象。</param>
+        public EntityViewService(IServiceProvider serviceProvider)
         {
-            ObjectViewDAO = objectViewDAO ?? throw new ArgumentNullException(nameof(objectViewDAO));
+            ObjectViewDAO = serviceProvider.GetRequiredService<ObjectViewDAO<TView>>();
         }
 
         #region IEntityViewService<TView> 成员
@@ -330,10 +331,11 @@ namespace LiteOrm.Service
         /// <typeparam name="TResult">结果类型</typeparam>
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>结果列表</returns>
-        public async virtual Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[]? tableArgs)
+        public async virtual Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr!).ToListAsync();
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr!).ToListAsync(cancellationToken);
         }
 
         /// <summary>
@@ -342,10 +344,11 @@ namespace LiteOrm.Service
         /// <typeparam name="TResult">结果类型</typeparam>
         /// <param name="selectExpr">完整查询表达式</param>
         /// <param name="tableArgs">表名参数</param>
+        /// <param name="cancellationToken">取消令牌</param>
         /// <returns>结果对象</returns>
-        public async virtual Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, params string[]? tableArgs)
+        public async virtual Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr!).FirstOrDefaultAsync();
+            return await ObjectViewDAO.WithArgs(tableArgs).SearchAs<TResult>(selectExpr!).FirstOrDefaultAsync(cancellationToken);
         }
 
         #endregion

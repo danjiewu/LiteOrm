@@ -13,8 +13,8 @@ namespace LiteOrm.Demo.Services
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class UserService : EntityService<User, UserView>, IUserService
     {
-        public UserService(ObjectDAO<User> objectDAO, ObjectViewDAO<UserView> objectViewDAO)
-            : base(objectDAO, objectViewDAO)
+        public UserService(IServiceProvider serviceProvider)
+            : base(serviceProvider)
         {
         }
 

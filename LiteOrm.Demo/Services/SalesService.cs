@@ -13,8 +13,8 @@ namespace LiteOrm.Demo.Services
     [AutoRegister(RegisterPolicy.Interface, Lifetime = Lifetime.Scoped)]
     public class SalesService : EntityService<SalesRecord, SalesRecordView>, ISalesService
     {
-        public SalesService(ObjectDAO<SalesRecord> objectDAO, ObjectViewDAO<SalesRecordView> objectViewDAO)
-            : base(objectDAO, objectViewDAO)
+        public SalesService(IServiceProvider serviceProvider)
+            : base(serviceProvider)
         {
         }
     }

@@ -30,13 +30,14 @@ dotnet add package LiteOrm
 
 `LiteOrm` transitively references `LiteOrm.Common`.
 
-### Quick Start (no DI)
+### Quick Start
 
 ```csharp
 using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
 
 // 1. Configure data source
 var dataSourceProvider = new DataSourceProvider();
@@ -56,10 +57,17 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 4. Create DAOs / services and use them (as of 8.1.1, DAO constructors require a SessionManager)
-var objectDAO = new ObjectDAO<User>(sessionManager);
-var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
-var userService = new EntityService<User>(objectDAO, objectViewDAO);
+// 4. Build a minimal service provider and resolve the entity service
+//    (as of 8.1.3, EntityService/EntityViewService constructors take an IServiceProvider)
+var services = new ServiceCollection();
+services.AddScoped(_ => sessionManager);
+services.AddScoped(typeof(ObjectDAO<>));
+services.AddScoped(typeof(ObjectViewDAO<>));
+services.AddScoped(typeof(EntityService<>));
+services.AddScoped(typeof(EntityViewService<>));
+var serviceProvider = services.BuildServiceProvider();
+
+var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 
 var user = new User { UserName = "admin", Age = 18 };
 await userService.InsertAsync(user);
@@ -136,13 +144,14 @@ dotnet add package LiteOrm
 
 `LiteOrm` 会自动携带 `LiteOrm.Common`。
 
-### 快速入门（不使用 DI）
+### 快速入门
 
 ```csharp
 using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
 
 // 1. 配置数据源
 var dataSourceProvider = new DataSourceProvider();
@@ -162,10 +171,16 @@ var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
 var sessionManager = new SessionManager(poolFactory);
 SessionManager.SetCurrent(() => sessionManager);
 
-// 4. 创建 DAO / 服务并使用（8.1.1 起，DAO 构造需传入 SessionManager）
-var objectDAO = new ObjectDAO<User>(sessionManager);
-var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
-var userService = new EntityService<User>(objectDAO, objectViewDAO);
+// 4. 构建最小服务提供程序并解析服务（8.1.3 起，EntityService/EntityViewService 构造函数接收 IServiceProvider）
+var services = new ServiceCollection();
+services.AddScoped(_ => sessionManager);
+services.AddScoped(typeof(ObjectDAO<>));
+services.AddScoped(typeof(ObjectViewDAO<>));
+services.AddScoped(typeof(EntityService<>));
+services.AddScoped(typeof(EntityViewService<>));
+var serviceProvider = services.BuildServiceProvider();
+
+var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 
 var user = new User { UserName = "admin", Age = 18 };
 await userService.InsertAsync(user);

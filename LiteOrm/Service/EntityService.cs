@@ -1,4 +1,5 @@
 using LiteOrm.Common;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -64,12 +65,11 @@ namespace LiteOrm.Service
         /// <summary>
         /// 初始化 <see cref="EntityService{T, TView}"/> 类的新实例。
         /// </summary>
-        /// <param name="objectDAO">实体数据访问对象</param>
-        /// <param name="objectViewDAO">视图数据访问对象</param>
-        public EntityService(ObjectDAO<T> objectDAO, ObjectViewDAO<TView> objectViewDAO)
-            : base(objectViewDAO)
+        /// <param name="serviceProvider">服务提供程序，用于解析数据访问对象。</param>
+        public EntityService(IServiceProvider serviceProvider)
+            : base(serviceProvider)
         {
-            ObjectDAO = objectDAO ?? throw new ArgumentNullException(nameof(objectDAO));
+            ObjectDAO = serviceProvider.GetRequiredService<ObjectDAO<T>>();
         }
 
         #region IEntityService<T> 成员
@@ -978,10 +978,9 @@ namespace LiteOrm.Service
         /// <summary>
         /// 初始化 <see cref="EntityService{T}"/> 类的新实例。
         /// </summary>
-        /// <param name="objectDAO">实体数据访问对象</param>
-        /// <param name="objectViewDAO">视图数据访问对象</param>
-        public EntityService(ObjectDAO<T> objectDAO, ObjectViewDAO<T> objectViewDAO)
-            : base(objectDAO, objectViewDAO)
+        /// <param name="serviceProvider">服务提供程序，用于解析数据访问对象。</param>
+        public EntityService(IServiceProvider serviceProvider)
+            : base(serviceProvider)
         {
         }
     }

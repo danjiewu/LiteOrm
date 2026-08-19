@@ -29,12 +29,20 @@ As of v8.1.1, `DAOBase` and the DAO base classes (`ObjectDAO<T>`, `ObjectViewDAO
 // Old (v8.1.0 and lower)
 var objectDAO = new ObjectDAO<User>();
 var objectViewDAO = new ObjectViewDAO<User>();
-var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
-// New (v8.1.1)
+// New (as of v8.1.1, DAO constructors require a SessionManager)
 var objectDAO = new ObjectDAO<User>(sessionManager);
 var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
-var userService = new EntityService<User>(objectDAO, objectViewDAO);
+
+// As of 8.1.3, EntityService/EntityViewService constructors take an IServiceProvider; resolve from a container
+var services = new ServiceCollection();
+services.AddScoped(_ => sessionManager);
+services.AddScoped(typeof(ObjectDAO<>));
+services.AddScoped(typeof(ObjectViewDAO<>));
+services.AddScoped(typeof(EntityService<>));
+services.AddScoped(typeof(EntityViewService<>));
+var serviceProvider = services.BuildServiceProvider();
+var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 ```
 
 - Custom DAOs deriving from the DAO base classes must forward the `SessionManager`: `public MyDAO(SessionManager sessionManager) : base(sessionManager) { }`.

@@ -29,12 +29,20 @@ v8.1.1 起，`DAOBase` 及各 DAO 基类（`ObjectDAO<T>`、`ObjectViewDAO<T>`�
 // 旧（v8.1.0 及更低）
 var objectDAO = new ObjectDAO<User>();
 var objectViewDAO = new ObjectViewDAO<User>();
-var userService = new EntityService<User>(objectDAO, objectViewDAO);
 
-// 新（v8.1.1）
+// 新（v8.1.1 起，DAO 构造需传入 SessionManager）
 var objectDAO = new ObjectDAO<User>(sessionManager);
 var objectViewDAO = new ObjectViewDAO<User>(sessionManager);
-var userService = new EntityService<User>(objectDAO, objectViewDAO);
+
+// 8.1.3 起，EntityService/EntityViewService 构造函数接收 IServiceProvider，需从容器解析
+var services = new ServiceCollection();
+services.AddScoped(_ => sessionManager);
+services.AddScoped(typeof(ObjectDAO<>));
+services.AddScoped(typeof(ObjectViewDAO<>));
+services.AddScoped(typeof(EntityService<>));
+services.AddScoped(typeof(EntityViewService<>));
+var serviceProvider = services.BuildServiceProvider();
+var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 ```
 
 - 自定义 DAO 若继承自 DAO 基类，构造函数需改为 `public MyDAO(SessionManager sessionManager) : base(sessionManager) { }`。

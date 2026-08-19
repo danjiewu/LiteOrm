@@ -1,5 +1,18 @@
 # 变更日志 (Changelog)
 
+## v8.1.4 (2026-08-19)
+
+### 破坏性变更
+
+- `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` 构造函数改为接收 `IServiceProvider`，由容器解析所需的 `ObjectDAO<T>` / `ObjectViewDAO<T>`；派生服务构造函数同步调整，依赖注入场景无需改动。
+
+### 修复
+
+- `SortProperty` 排除索引器属性，修复内置 `Item`（索引器）与自定义 `Item` 属性重名导致的循环依赖误判。
+- `SearchAsAsync` / `SearchOneAsAsync` 对齐接口补充 `CancellationToken` 参数，修复 `EntityViewService<T>` / `RemoteViewServiceAsyncProxy<T>` 未实现接口成员的问题。
+
+---
+
 ## v8.1.3 (2026-08-18)
 
 ### 破坏性变更
