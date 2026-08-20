@@ -48,21 +48,6 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// Oracle 不支持布尔类型，bool 值在写入数据库时转换为整数（1/0）。
-        /// TimeSpan 以原生值绑定 INTERVAL DAY TO SECOND 列，由驱动完成类型映射。
-        /// </summary>
-        /// <param name="sourceType">源值类型。</param>
-        /// <param name="dbValueType">数据字段取值类型。</param>
-        /// <returns>转换委托：输入 .NET 值，输出数据库可接受的值。</returns>
-        protected override Func<object?, object> BuildToDbValueConverter(Type sourceType, DbValueType dbValueType)
-        {
-            Func<object?, object> baseConverter = base.BuildToDbValueConverter(sourceType, dbValueType);
-            if (sourceType == typeof(bool))
-                return value => value is bool b ? (b ? 1 : 0) : baseConverter(value);
-            return baseConverter;
-        }
-
-        /// <summary>
         /// 将集合操作类型（UNION/UNION ALL/INTERSECT/EXCEPT）转换为数据库合法的 SQL 关键字。
         /// 子类可覆盖以提供数据库特定的关键字或语法差异。
         /// </summary>
