@@ -1092,7 +1092,7 @@ namespace LiteOrm.Common
             if (expr is null) return;
             if (expr.Value is PropertyExpr propertyExpr)
             {
-                ToSql(ref sb, propertyExpr, context, sqlBuilder, outputParams, expr.Alias);
+                ToSql(ref sb, propertyExpr, context, sqlBuilder, outputParams, expr.Alias ?? propertyExpr.PropertyName);
             }
             else
             {
