@@ -87,7 +87,7 @@ Recommended references:
 
 ### 2.2 Type Mapping Differences
 
-Different databases handle .NET types differently. `SqlBuilder` subclasses handle these in `GetDbTypeInternal` / `ConvertToDbValue`:
+Different databases handle .NET types differently. `SqlBuilder` subclasses handle these in `GetDbTypeInternal` / `ToDbValue` (dispatched through `LiteOrm.Common.DbConverterHelper`):
 
 | Database | Special Handling |
 |----------|-----------------|

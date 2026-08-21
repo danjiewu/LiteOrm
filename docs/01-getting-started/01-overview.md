@@ -434,10 +434,17 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 **主要方法**：
 - `ToSqlName()`：转换为SQL名称
 - `ToSqlParam()`：转换为SQL参数
-- `ConvertToDbValue()`：转换为数据库值
-- `ConvertFromDbValue()`：从数据库值转换
+- `ToDbValue()`：将值转换为数据库可接受的值（写入统一入口，无列上下文时使用）
+- `FromDbValue()`：从数据库值转换为 .NET 值（读取统一入口，无列上下文时使用）
 - `BuildSelectSql()`：构建SELECT语句
 - `BuildFunctionSql()`：构建函数SQL语句
+
+> **说明**：有列上下文的场景优先使用列级扩展（`ColumnDefinitionExtensions`）——写入方向 `GetToDbValue(target)`（从实体取值）/ `ToDbValue(value)`（裸值），读取方向 `SetFromDbValue(target, dbValue)`（写入实体）/ `FromDbValue(dbValue)`（裸值）。列级转换器（`SqlColumn.DbValueConverter`）优先于注册转换器。
+
+**相关基类/接口**：
+- `SqlBuilder`（基类）：`ToDbValue()` / `FromDbValue()` 虚方法统一委托 `LiteOrm.Common.DbConverterHelper` 分发
+- `IDbConverter`：写入方向统一入口 `ToDbValue(object?, DbValueType?)`
+- `ISqlBuilder.SupportsNativeArrays`：指示数据库是否原生支持数组列（PostgreSQL/金仓/GaussDB），为 `false` 时数组列以 JSON 字符串存储
 
 **使用场景**：生成数据库特定的SQL语句
 

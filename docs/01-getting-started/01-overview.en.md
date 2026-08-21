@@ -436,10 +436,17 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 **Main Methods**:
 - `ToSqlName()`: Convert to SQL name
 - `ToSqlParam()`: Convert to SQL parameter
-- `ConvertToDbValue()`: Convert to database value
-- `ConvertFromDbValue()`: Convert from database value
+- `ToDbValue()`: Convert a value to a database-acceptable value (unified write entry point, used when no column context)
+- `FromDbValue()`: Convert a database value to a .NET value (unified read entry point, used when no column context)
 - `BuildSelectSql()`: Build SELECT statement
 - `BuildFunctionSql()`: Build function SQL statement
+
+> **Note**: When a column is available, prefer the column-level extensions (`ColumnDefinitionExtensions`) — write direction `GetToDbValue(target)` (read from entity) / `ToDbValue(value)` (raw value), read direction `SetFromDbValue(target, dbValue)` (write into entity) / `FromDbValue(dbValue)` (raw value). The column-level converter (`SqlColumn.DbValueConverter`) takes precedence over registered converters.
+
+**Related base class / interfaces**:
+- `SqlBuilder` (base class): `ToDbValue()` / `FromDbValue()` virtual methods that delegate to `LiteOrm.Common.DbConverterHelper`
+- `IDbConverter`: unified write entry point `ToDbValue(object?, DbValueType?)`
+- `ISqlBuilder.SupportsNativeArrays`: indicates whether the database natively supports array columns (PostgreSQL/KingbaseES/GaussDB); when `false`, array columns are stored as JSON strings
 
 **Use Case**: Generate database-specific SQL statements
 

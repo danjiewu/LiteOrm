@@ -87,7 +87,7 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 
 ### 2.2 类型映射差异
 
-不同数据库对 .NET 类型的处理方式不同，`SqlBuilder` 子类在 `GetDbTypeInternal` / `ConvertToDbValue` 中做了针对性处理：
+不同数据库对 .NET 类型的处理方式不同，`SqlBuilder` 子类在 `GetDbTypeInternal` / `ToDbValue`（经 `LiteOrm.Common.DbConverterHelper` 统一分发）中做了针对性处理：
 
 | 数据库 | 特殊处理 |
 |--------|---------|
