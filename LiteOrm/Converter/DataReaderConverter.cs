@@ -1,5 +1,6 @@
 using LiteOrm.Common;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
@@ -10,6 +11,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 
 namespace LiteOrm
 {
@@ -31,8 +33,8 @@ namespace LiteOrm
             Justification = "在运行时通过 MethodInfo 获取并调用该方法；AOT 场景下复杂类型列须由源生成器 mapper 处理，此处仅兜底已由 DAO 注册的目标类型。")]
 #endif
         private static readonly MethodInfo _convertFromDbValueCoreMethod =
-            typeof(DataReaderConverter).GetMethod(nameof(ConvertFromDbValue),
-                BindingFlags.Static | BindingFlags.NonPublic,
+            typeof(DbConverterHelper).GetMethod(nameof(DbConverterHelper.ConvertFromDbValue),
+                BindingFlags.Static | BindingFlags.Public,
                 null,
                 new[] { typeof(IDbConverter), typeof(object), typeof(Type), typeof(DbValueType) },
                 null)!;
@@ -370,40 +372,8 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 读取列值的统一转换分发：按 (<paramref name="targetType"/>, <see cref="DbValueType.Object"/>) 注册的转换器优先，
-        /// 未注册时使用 SqlBuilder 的通用兜底转换（含空值短路、运行时类型注册命中、枚举、JSON、集合与 <see cref="Convert.ChangeType(object, Type)"/>）。
-        /// 供运行时编译的读取委托与源生成器生成的 mapper 代码共用。
-        /// </summary>
-        /// <param name="dbConverter">数据库值转换器（AutoLockDataReader.DbConverter）。</param>
-        /// <param name="value">数据库取得的原始值。</param>
-        /// <param name="targetType">目标属性 / 构造参数类型（已剥离 Nullable）。</param>
-        /// <returns>转换后的目标类型值。</returns>
-        public static object? ConvertFromDbValue(IDbConverter? dbConverter, object? value,
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type targetType)
-        {
-            return ConvertFromDbValue(dbConverter, value, targetType, DbValueType.Object);
-        }
-
-        /// <summary>同 <see cref="ConvertFromDbValue(IDbConverter, object?, Type)"/>，显式指定用于注册查找的 <paramref name="dbValueType"/>。</summary>
-        private static object? ConvertFromDbValue(IDbConverter? dbConverter, object? value,
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type targetType,
-            DbValueType dbValueType)
-        {
-            // 注册的转换器优先
-            if (dbConverter?.GetDbValueConverter(targetType, dbValueType) is IDbValueConverter converter)
-                return converter.ConvertFromDbValue(value!);
-
-            // 通用兜底（AutoLockDataReader.DbConverter 的实际类型总为 SqlBuilder）
-            if (dbConverter is SqlBuilder builder)
-                return builder.ConvertFromDbValue(value, targetType, dbValueType);
-
-            // 非 SqlBuilder 的 IDbConverter 实现：退化为 ChangeType
-            return value is null || value == DBNull.Value ? null : Convert.ChangeType(value, targetType);
-        }
-
-        /// <summary>
         /// 构建「按转换优先级对 <paramref name="valueExpr"/> 求值转换」的表达式。
-        /// 列级转换器直接以常量内联调用；否则调用 <see cref="ConvertFromDbValue(IDbConverter, object?, Type, DbValueType)"/>
+        /// 列级转换器直接以常量内联调用；否则调用 <see cref="DbConverterHelper.ConvertFromDbValue(IDbConverter, object?, Type, DbValueType)"/>
         /// 统一分发：注册转换器优先，未注册时由 SqlBuilder 通用兜底。
         /// </summary>
         private static Expression InvokeFromDbValueConverter(

@@ -5,9 +5,10 @@ using Xunit;
 namespace LiteOrm.Tests
 {
     /// <summary>
-    /// DbValueConverterMap / SqlBuilder 统一转换器机制单元测试。
-    /// 读写共用 (Type, DbValueType) 主键；GetDbValueConverter 仅查注册表（可空返回），
-    /// ConvertFromDbValue / ConvertToDbValue 负责注册优先 + 通用兜底的完整转换。
+    /// DbValueConverterMap / IDbConverter 统一转换器机制单元测试。
+    /// 读写共用 (Type, DbValueType) 主键；GetDbValueConverter 仅查注册表（可空返回）；
+    /// 读取分发见 <see cref="DbConverterHelper.ConvertFromDbValue(IDbConverter, object?, Type)"/>，
+    /// 写入分发见 <see cref="SqlBuilderExtensions.ConvertToDbValue(IDbConverter, object?, DbValueType?)"/>。
     /// 纯内存测试，无需数据库连接。
     /// 注意：DbValueConverterMap 为静态按构建器类型共享，各测试使用互不冲突的注册键。
     /// </summary>
@@ -58,8 +59,8 @@ namespace LiteOrm.Tests
                 o => new CustomValue { Text = "B:" + o },
                 v => v.Text!.Substring(2));
 
-            Assert.Equal("S:abc", ((CustomValue)builder.ConvertFromDbValue("abc", typeof(CustomValue), DbValueType.String)!).Text);
-            Assert.Equal("B:xyz", ((CustomValue)builder.ConvertFromDbValue("xyz", typeof(CustomValue), DbValueType.Binary)!).Text);
+            Assert.Equal("S:abc", ((CustomValue)DbConverterHelper.ConvertFromDbValue(builder, "abc", typeof(CustomValue), DbValueType.String)!).Text);
+            Assert.Equal("B:xyz", ((CustomValue)DbConverterHelper.ConvertFromDbValue(builder, "xyz", typeof(CustomValue), DbValueType.Binary)!).Text);
         }
 
         #endregion
@@ -74,7 +75,7 @@ namespace LiteOrm.Tests
                 o => new CustomValue { Text = (string)o },
                 v => "[" + v.Text + "]");
 
-            Assert.Equal("abc", ((CustomValue)builder.ConvertFromDbValue("abc", typeof(CustomValue), DbValueType.AnsiString)!).Text);
+            Assert.Equal("abc", ((CustomValue)DbConverterHelper.ConvertFromDbValue(builder, "abc", typeof(CustomValue), DbValueType.AnsiString)!).Text);
             Assert.Equal("[abc]", builder.ConvertToDbValue(new CustomValue { Text = "abc" }, DbValueType.AnsiString));
         }
 
@@ -86,7 +87,7 @@ namespace LiteOrm.Tests
                 o => Convert.ToInt32(o) * 2,
                 v => v / 2);
 
-            Assert.Equal(20, builder.ConvertFromDbValue(10L, typeof(int), DbValueType.Int32));
+            Assert.Equal(20, DbConverterHelper.ConvertFromDbValue(builder, 10L, typeof(int), DbValueType.Int32));
             Assert.Equal(10, builder.ConvertToDbValue(20, DbValueType.Int32));
         }
 
@@ -99,8 +100,8 @@ namespace LiteOrm.Tests
         {
             var builder = SqlBuilder.Instance;
 
-            Assert.True((bool)builder.ConvertFromDbValue(1, typeof(bool), DbValueType.Int32)!);
-            Assert.False((bool)builder.ConvertFromDbValue(0, typeof(bool), DbValueType.Int32)!);
+            Assert.True((bool)DbConverterHelper.ConvertFromDbValue(builder, 1, typeof(bool), DbValueType.Int32)!);
+            Assert.False((bool)DbConverterHelper.ConvertFromDbValue(builder, 0, typeof(bool), DbValueType.Int32)!);
 
             Assert.Equal(1, builder.ConvertToDbValue(true, DbValueType.Int32));
             Assert.Equal(0, builder.ConvertToDbValue(false, DbValueType.Int32));
@@ -112,10 +113,10 @@ namespace LiteOrm.Tests
             var builder = SqlBuilder.Instance;
             Guid guid = Guid.NewGuid();
 
-            Assert.Equal(guid, builder.ConvertFromDbValue(guid.ToString(), typeof(Guid), DbValueType.String));
+            Assert.Equal(guid, DbConverterHelper.ConvertFromDbValue(builder, guid.ToString(), typeof(Guid), DbValueType.String));
             Assert.Equal(guid.ToString(), builder.ConvertToDbValue(guid, DbValueType.String));
 
-            Assert.Equal(guid, builder.ConvertFromDbValue(guid.ToByteArray(), typeof(Guid), DbValueType.Binary));
+            Assert.Equal(guid, DbConverterHelper.ConvertFromDbValue(builder, guid.ToByteArray(), typeof(Guid), DbValueType.Binary));
             Assert.Equal(guid.ToByteArray(), builder.ConvertToDbValue(guid, DbValueType.Binary));
         }
 
@@ -125,7 +126,7 @@ namespace LiteOrm.Tests
             var builder = SqlBuilder.Instance;
             TimeSpan time = TimeSpan.FromMinutes(90);
 
-            Assert.Equal(time, builder.ConvertFromDbValue(time.Ticks, typeof(TimeSpan), DbValueType.Int64));
+            Assert.Equal(time, DbConverterHelper.ConvertFromDbValue(builder, time.Ticks, typeof(TimeSpan), DbValueType.Int64));
             Assert.Equal(time.Ticks, builder.ConvertToDbValue(time, DbValueType.Int64));
         }
 
@@ -135,8 +136,20 @@ namespace LiteOrm.Tests
             var builder = SqlBuilder.Instance;
             var dateTime = new DateTime(2024, 6, 1, 12, 0, 0, DateTimeKind.Unspecified);
 
-            Assert.Equal(new DateTimeOffset(dateTime), builder.ConvertFromDbValue(dateTime, typeof(DateTimeOffset), DbValueType.DateTime));
+            Assert.Equal(new DateTimeOffset(dateTime), DbConverterHelper.ConvertFromDbValue(builder, dateTime, typeof(DateTimeOffset), DbValueType.DateTime));
             Assert.Equal(dateTime, builder.ConvertToDbValue(new DateTimeOffset(dateTime), DbValueType.DateTime));
+        }
+
+        [Fact]
+        public void DefaultRegistration_StringToGuidColumn_ParsesOnWrite()
+        {
+            var builder = SqlBuilder.Instance;
+            Guid guid = Guid.NewGuid();
+
+            // 字符串值写入 Guid 列：解析为 Guid
+            Assert.Equal(guid, builder.ConvertToDbValue(guid.ToString(), DbValueType.Guid));
+            // 无效 Guid 字符串原样返回交由驱动处理
+            Assert.Equal("not-a-guid", builder.ConvertToDbValue("not-a-guid", DbValueType.Guid));
         }
 
         #endregion
@@ -152,7 +165,7 @@ namespace LiteOrm.Tests
                 v => v.Text!.Substring("override:".Length));
 
             // 子构建器命中自身的注册
-            Assert.Equal("override:abc", ((CustomValue)builder.ConvertFromDbValue("abc", typeof(CustomValue), DbValueType.String)!).Text);
+            Assert.Equal("override:abc", ((CustomValue)DbConverterHelper.ConvertFromDbValue(builder, "abc", typeof(CustomValue), DbValueType.String)!).Text);
 
             // 基类 SqlBuilder 查不到子构建器的注册（继承链不向下查找）
             Assert.Null(SqlBuilder.Instance.GetDbValueConverter(typeof(CustomValue), DbValueType.String));
@@ -174,7 +187,7 @@ namespace LiteOrm.Tests
             var dateTime = new DateTime(2024, 6, 1, 8, 30, 15, 123);
 
             Assert.Equal("2024-06-01 08:30:15.123", SQLiteBuilder.Instance.ConvertToDbValue(dateTime, DbValueType.DateTime));
-            Assert.Equal(dateTime, SQLiteBuilder.Instance.ConvertFromDbValue("2024-06-01 08:30:15.123", typeof(DateTime), DbValueType.DateTime));
+            Assert.Equal(dateTime, DbConverterHelper.ConvertFromDbValue(SQLiteBuilder.Instance, "2024-06-01 08:30:15.123", typeof(DateTime), DbValueType.DateTime));
         }
 
         #endregion
@@ -186,8 +199,8 @@ namespace LiteOrm.Tests
         {
             var builder = SqlBuilder.Instance;
 
-            Assert.Equal(5, builder.ConvertFromDbValue(5L, typeof(int), DbValueType.Object));
-            Assert.Equal(42, builder.ConvertFromDbValue("42", typeof(int), DbValueType.Object));
+            Assert.Equal(5, DbConverterHelper.ConvertFromDbValue(builder, 5L, typeof(int), DbValueType.Object));
+            Assert.Equal(42, DbConverterHelper.ConvertFromDbValue(builder, "42", typeof(int), DbValueType.Object));
         }
 
         [Fact]
@@ -195,12 +208,12 @@ namespace LiteOrm.Tests
         {
             var builder = SqlBuilder.Instance;
 
-            Assert.Equal(0, builder.ConvertFromDbValue(DBNull.Value, typeof(int), DbValueType.Object));
-            Assert.Equal(0, builder.ConvertFromDbValue(null, typeof(int), DbValueType.Object));
+            Assert.Equal(0, DbConverterHelper.ConvertFromDbValue(builder, DBNull.Value, typeof(int), DbValueType.Object));
+            Assert.Equal(0, DbConverterHelper.ConvertFromDbValue(builder, null, typeof(int), DbValueType.Object));
 
-            Assert.Null(builder.ConvertFromDbValue(DBNull.Value, typeof(string), DbValueType.Object));
+            Assert.Null(DbConverterHelper.ConvertFromDbValue(builder, DBNull.Value, typeof(string), DbValueType.Object));
 
-            Assert.Null(builder.ConvertFromDbValue(DBNull.Value, typeof(int?), DbValueType.Object));
+            Assert.Null(DbConverterHelper.ConvertFromDbValue(builder, DBNull.Value, typeof(int?), DbValueType.Object));
         }
 
         [Fact]
@@ -208,8 +221,8 @@ namespace LiteOrm.Tests
         {
             var builder = SqlBuilder.Instance;
 
-            Assert.Equal(0, builder.ConvertFromDbValue(string.Empty, typeof(int), DbValueType.Object));
-            Assert.Equal(Guid.Empty, builder.ConvertFromDbValue(string.Empty, typeof(Guid), DbValueType.String));
+            Assert.Equal(0, DbConverterHelper.ConvertFromDbValue(builder, string.Empty, typeof(int), DbValueType.Object));
+            Assert.Equal(Guid.Empty, DbConverterHelper.ConvertFromDbValue(builder, string.Empty, typeof(Guid), DbValueType.String));
         }
 
         [Fact]

@@ -5,8 +5,10 @@ namespace LiteOrm
 {
     /// <summary>
     /// LiteOrm 默认值转换器初始化器，用于在 <see cref="SqlBuilder"/> 类型上注册默认的双向值转换器。
-    /// 通过静态构造函数在首次访问时自动注册，供 GetDbValueConverter 查找、ConvertFromDbValue/ConvertToDbValue 分发使用。
-    /// 注册主键为 (值类型, DbValueType)，读取与写入共用同一注册表。
+    /// 通过静态构造函数在首次访问时自动注册，供 <see cref="IDbConverter.GetDbValueConverter"/> 查找。
+    /// 注册主键为 (值类型, DbValueType)，读取与写入共用同一注册表；
+    /// 读取分发见 <see cref="DbConverterHelper.ConvertFromDbValue(IDbConverter, object?, Type)"/>，
+    /// 写入分发见 <see cref="SqlBuilderExtensions.ConvertToDbValue(IDbConverter, object?, DbValueType?)"/>。
     /// </summary>
     /// <remarks>
     /// 调用 <see cref="Initialize"/> 方法可显式触发静态构造函数，确保转换器在应用启动时完成注册。
@@ -47,6 +49,11 @@ namespace LiteOrm
             sqlBuilder.RegisterDbValueConverter(DbValueType.Binary, ConvertToGuid, static g => g.ToByteArray());
             foreach (DbValueType stringType in _stringDbValueTypes)
                 sqlBuilder.RegisterDbValueConverter(stringType, ConvertToGuid, static g => g.ToString());
+
+            // string → Guid 列（字符串值写入 Guid 列时解析；读取方向同类型直返）
+            sqlBuilder.RegisterDbValueConverter(DbValueType.Guid,
+                static o => (string)o,
+                static s => Guid.TryParse(s, out Guid g) ? g : s);
 
             // DateTime / DateTimeOffset ↔ 日期时间类列
             foreach (DbValueType dateType in _dateDbValueTypes)

@@ -232,12 +232,12 @@ namespace LiteOrm.Common.UnitTests
         {
             var expected = new List<string> { "A" };
             var service = new Mock<IEntityViewServiceAsync<TestEntity>>();
-            service.Setup(s => s.SearchAsAsync<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>())).ReturnsAsync(expected);
+            service.Setup(s => s.SearchAsAsync<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
             var result = await service.Object.SearchAsAsync(q => q.Select(x => x.Name), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Same(expected, result);
-            service.Verify(s => s.SearchAsAsync<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>()), Times.Once);
+            service.Verify(s => s.SearchAsAsync<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -246,12 +246,12 @@ namespace LiteOrm.Common.UnitTests
             var expected = "Alice";
             var tableArgs = new[] { "Users" };
             var service = new Mock<IEntityViewServiceAsync<TestEntity>>();
-            service.Setup(s => s.SearchOneAsAsync<string>(It.IsAny<SelectExpr>(), tableArgs)).ReturnsAsync(expected);
+            service.Setup(s => s.SearchOneAsAsync<string>(It.IsAny<SelectExpr>(), tableArgs, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
             var result = await service.Object.SearchOneAsAsync(q => q.Select(x => x.Name), tableArgs, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(expected, result);
-            service.Verify(s => s.SearchOneAsAsync<string>(It.IsAny<SelectExpr>(), tableArgs), Times.Once);
+            service.Verify(s => s.SearchOneAsAsync<string>(It.IsAny<SelectExpr>(), tableArgs, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         public class TestEntity

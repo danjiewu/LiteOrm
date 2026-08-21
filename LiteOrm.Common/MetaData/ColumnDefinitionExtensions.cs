@@ -47,6 +47,34 @@ namespace LiteOrm.Common
             return dbConverter.GetDbValueType(column.PropertyType);
         }
 
+        public static object GetAsDbValue(this ColumnDefinition column, object target, IDbConverter? dbConverter = null)
+        {
+            object? value = column.GetValue(target);
+            if (value is null) return DBNull.Value;
+            if (dbConverter != null)
+            {
+                var dbType = column.GetDbValueType(dbConverter);
+                IDbValueConverter? converter = column.DbValueConverter ?? dbConverter.GetDbValueConverter(column.PropertyType, dbType);
+                if (converter != null)
+                {
+                    return converter.ConvertToDbValue(value);
+                }
+                // 最后兜底：目标类型一致直返；否则 ChangeType，失败时原样返回交由驱动绑定
+                Type targetType = dbType.ToType();
+                if (targetType.IsInstanceOfType(value))
+                    return value;
+                try
+                {
+                    return Convert.ChangeType(value, targetType);
+                }
+                catch (InvalidCastException)
+                {
+                    return value;
+                }
+            }
+            return value;
+        }
+
         /// <summary>
         /// 判断指定类型是否为集合类型（数组、<see cref="System.Collections.Generic.IEnumerable{T}"/> 等），
         /// 排除 <see cref="string"/> 与 <see cref="byte"/>[]。

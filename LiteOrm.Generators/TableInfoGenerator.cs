@@ -947,7 +947,7 @@ namespace LiteOrm.Generators
                 "string" or "System.String" => $"reader.GetString({ordinal})",
                 "System.DateTime" => $"reader.GetDateTime({ordinal})",
                 "System.Guid" => $"reader.GetGuid({ordinal})",
-                _ => $"({type})global::LiteOrm.DataReaderConverter.ConvertFromDbValue(reader.DbConverter, reader.GetValue({ordinal}), typeof({type}))!"
+                _ => $"({type})global::LiteOrm.DbConverterHelper.ConvertFromDbValue(reader.DbConverter, reader.GetValue({ordinal}), typeof({type}))!"
             };
         }
 

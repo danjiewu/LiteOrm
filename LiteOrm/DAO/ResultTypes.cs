@@ -473,7 +473,7 @@ namespace LiteOrm.Common
         {
             _resultConverter = resultConverter ?? ((obj) =>
             {
-                return (TResult)dao.SqlBuilder.ConvertFromDbValue(obj, typeof(TResult))!;
+                return (TResult)DbConverterHelper.ConvertFromDbValue(dao.SqlBuilder, obj, typeof(TResult))!;
             });
         }
 
@@ -487,7 +487,7 @@ namespace LiteOrm.Common
         {
             _resultConverter = resultConverter ?? ((obj) =>
             {
-                return (TResult)global::LiteOrm.DataReaderConverter.ConvertFromDbValue(preparedCommand.SqlBuilder, obj, typeof(TResult))!;
+                return (TResult)DbConverterHelper.ConvertFromDbValue(preparedCommand.SqlBuilder, obj, typeof(TResult))!;
             });
         }
 
