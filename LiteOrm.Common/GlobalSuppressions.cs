@@ -16,6 +16,6 @@
 
 using System.Diagnostics.CodeAnalysis;
 
-[assembly: UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "PropertyInfo.PropertyType / SqlColumn.PropertyType framework properties carry no annotation; entity properties are preserved via [Table] + source generator under AOT.")]
-[assembly: UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "PropertyInfo.PropertyType / SqlColumn.PropertyType framework properties carry no annotation; entity properties are preserved via [Table] + source generator under AOT.")]
-[assembly: UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "GetType() returns a Type without annotation; entity properties are preserved via [Table] + source generator under AOT.")]
+//[assembly: UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "PropertyInfo.PropertyType / SqlColumn.PropertyType framework properties carry no annotation; entity properties are preserved via [Table] + source generator under AOT.")]
+//[assembly: UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "PropertyInfo.PropertyType / SqlColumn.PropertyType framework properties carry no annotation; entity properties are preserved via [Table] + source generator under AOT.")]
+//[assembly: UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "GetType() returns a Type without annotation; entity properties are preserved via [Table] + source generator under AOT.")]

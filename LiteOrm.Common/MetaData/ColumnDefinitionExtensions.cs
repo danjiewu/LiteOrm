@@ -68,7 +68,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="type">集合类型。</param>
         /// <returns>元素类型；无法解析时为 null。</returns>
-        public static Type? GetCollectionElementType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.Interfaces)] Type type)
+        public static Type? GetCollectionElementType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
         {
             if (type is null) return null;
             type = type.GetUnderlyingType();

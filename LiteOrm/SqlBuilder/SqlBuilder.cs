@@ -367,130 +367,60 @@ namespace LiteOrm
             return result;
         }
 
-                /// <summary>
-        /// 尝试获取从 <typeparamref name="TSource"/> 到 <typeparamref name="TResult"/> 的预注册读取转换器。
-        /// 未注册精确源类型时，回退到 <c>(object, TResult)</c> 的通用处理器。
+        /// <summary>
+        /// 获取按 (值类型, 数据库取值类型) 沿 SqlBuilder 继承链查找注册的转换器（读取与写入共用注册表，方言注册优先于基类）。
         /// </summary>
-        /// <typeparam name="TSource">从数据库读取的值的类型。</typeparam>
-        /// <typeparam name="TResult">目标类型。</typeparam>
-        /// <param name="handler">输出转换器函数。</param>
-        /// <returns>如果成功获取转换器函数，则返回 true；否则返回 false。</returns>
-        public bool TryGetReadConverter<TSource, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] TResult>(out Func<TSource, TResult>? handler)
+        /// <param name="valueType">实体属性 / .NET 值类型。</param>
+        /// <param name="dbValueType">数据库取值类型。</param>
+        /// <returns>注册的转换器；未注册时返回 null。</returns>
+        public IDbValueConverter? GetDbValueConverter(Type valueType, DbValueType dbValueType)
         {
             Type builderType = this.GetType();
             while (typeof(SqlBuilder).IsAssignableFrom(builderType))
             {
-                DbValueConverterMap map = GetDbValueConverterMap(builderType);
-                if (map.TryGetReadConverter<TSource, TResult>(out handler))
+                if (GetDbValueConverterMap(builderType).TryGetConverter((valueType, dbValueType), out IDbValueConverter? converter))
                 {
-                    return true;
-                }
-                // 未注册精确源类型时，回退到 (object, TResult) 的通用处理器
-                if (map.TryGetReadConverter((typeof(object), typeof(TResult)), out Func<object, object>? objHandler))
-                {
-                    handler = value => (TResult)objHandler!(value!)!;
-                    return true;
+                    return converter;
                 }
                 builderType = builderType.BaseType!;
             }
-            handler = null;
-            return false;
+            return null;
         }
 
         /// <summary>
-        /// 按 (源类型, 目标类型) 查找预注册的读取转换器的非泛型版本。
-        /// 先精确匹配源类型，未命中时回退到 (object, 目标类型) 的通用处理器。
+        /// 将数据库值转换为 <paramref name="objectType"/> 类型的值：
+        /// null / <see cref="DBNull"/> / 空字符串直接返回目标类型默认值；
+        /// 优先使用按 (<paramref name="objectType"/>, <paramref name="dbValueType"/>) 注册的转换器，
+        /// 否则使用通用兜底转换（同类型直返、按运行时类型命中注册转换器、枚举解析、JSON 反序列化、集合转换、<see cref="Convert.ChangeType(object, Type)"/>）。
         /// </summary>
-        public bool TryGetReadConverter((Type Source, Type Target) key, out Func<object, object>? handler)
+        /// <param name="dbValue">数据库取得的值。</param>
+        /// <param name="objectType">目标对象类型。</param>
+        /// <param name="dbValueType">列的数据库取值类型（用于注册查找）。</param>
+        /// <returns>目标类型的值。</returns>
+        public object? ConvertFromDbValue(object? dbValue,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType,
+            DbValueType dbValueType = DbValueType.Object)
         {
-            Type builderType = this.GetType();
-            while (typeof(SqlBuilder).IsAssignableFrom(builderType))
+            // 空值短路：null / DBNull / 空字符串 → 目标类型默认值（引用类型与可空类型为 null，非可空值类型为零值）
+            if (dbValue is null || dbValue == DBNull.Value || (dbValue is string empty && empty.Length == 0))
             {
-                DbValueConverterMap map = GetDbValueConverterMap(builderType);
-                if (map.TryGetReadConverter(key, out handler))
-                {
-                    return true;
-                }
-                if (map.TryGetReadConverter((typeof(object), key.Target), out handler))
-                {
-                    return true;
-                }
-                builderType = builderType.BaseType!;
+                return objectType.IsValueType && Nullable.GetUnderlyingType(objectType) is null
+                    ? CreateDefaultValue(objectType)
+                    : null;
             }
-            handler = null;
-            return false;
-        }
 
-        /// <summary>
-        /// 按 (源类型, DbValueType) 查找预注册的写入转换器。
-        /// </summary>
-        public bool TryGetWriteConverter<T>(DbValueType targetType, out Func<T, object>? handler)
-        {
-            Type builderType = this.GetType();
-            while (typeof(SqlBuilder).IsAssignableFrom(builderType))
-            {
-                if (GetDbValueConverterMap(builderType).TryGetWriteConverter<T>((typeof(T), targetType), out handler))
-                {
-                    return true;
-                }
-                builderType = builderType.BaseType!;
-            }
-            handler = null;
-            return false;
-        }
-
-        /// <summary>
-        /// 按 (源类型, DbValueType) 查找预注册的写入转换器的非泛型版本。
-        /// </summary>
-        public bool TryGetWriteConverter((Type Source, DbValueType Target) key, out Func<object, object>? handler)
-        {
-            Type builderType = this.GetType();
-            while (typeof(SqlBuilder).IsAssignableFrom(builderType))
-            {
-                if (GetDbValueConverterMap(builderType).TryGetWriteConverter(key, out handler))
-                {
-                    return true;
-                }
-                builderType = builderType.BaseType!;
-            }
-            handler = null;
-            return false;
-        }
-
-                /// <summary>
-        /// 获取将数据库取得的值转化为 <paramref name="objectType"/> 类型值的转换委托。
-        /// 优先返回通过 <c>DbValueConverterMap.RegisterReadConverter</c> 注册的读取转换委托（含各方言在自身
-        /// <see cref="DbValueConverterMap"/> 上注册的特定转换）；未注册目标类型时返回通用兜底转换委托。
-        /// </summary>
-        /// <param name="objectType">目标属性类型。</param>
-        /// <returns>转换委托：输入数据库值，输出目标类型的值。</returns>
-        public virtual Func<object?, object?> GetFromDbValueConverter([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType)
-        {
+            // 注册的转换器优先
             Type underlyingType = objectType.GetUnderlyingType();
-            bool nullable = !objectType.IsValueType || Nullable.GetUnderlyingType(objectType) is not null;
-            // 预计算默认值，避免在闭包中捕获带 DAM 注解的 objectType（且非可空值类型的默认值语义与 default(T) 一致，可复用同一个装箱实例）
-            object? defaultValue = nullable ? null : CreateDefaultValue(objectType);
+            if (GetDbValueConverter(underlyingType, dbValueType) is IDbValueConverter converter)
+                return converter.ConvertFromDbValue(dbValue);
 
-            // 已注册的读取转换委托（源类型统一为 object，如 bool/Guid/TimeSpan/DateTimeOffset 及方言特定转换）
-            if (TryGetReadConverter((typeof(object), objectType), out Func<object, object>? handler))
-            {
-                return dbValue =>
-                {
-                    if (dbValue is null || dbValue == DBNull.Value)
-                        return defaultValue;
-                    if (dbValue is string s && s == string.Empty)
-                        return defaultValue;
-                    return handler!(dbValue!);
-                };
-            }
-
-            // 通用兜底：未注册目标类型（int/string/decimal/enum/JSON 集合等）的通用转换
-            return dbValue => ConvertFromDbValue(dbValue, underlyingType, defaultValue);
+            // 通用兜底（空值已在上方短路，defaultValue 不会被触发）
+            return ConvertFromDbValue(dbValue, underlyingType, defaultValue: null);
         }
 
         /// <summary>
         /// 通用兜底的「数据库值 → 目标类型」转换：null/DBNull 返回默认值、同类型原样返回、
-        /// 空字符串返回默认值、按实际源类型命中注册的读取转换器、枚举解析、JSON 反序列化、
+        /// 空字符串返回默认值、按值的实际运行时类型命中注册的转换器、枚举解析、JSON 反序列化、
         /// 集合转换，最后回退 <see cref="Convert.ChangeType(object, Type)"/>。
         /// </summary>
         /// <param name="dbValue">数据库取得的值。</param>
@@ -501,7 +431,7 @@ namespace LiteOrm
         [UnconditionalSuppressMessage("AOT", "IL3050",
             Justification = "JSON deserialization path is only triggered when dbValue is a string and the target type is a complex object/collection; under AOT, users must provide a System.Text.Json source-gen context for complex property types, otherwise a NotSupportedException is thrown at runtime.")]
 #endif
-        private object? ConvertFromDbValue(object? dbValue, Type underlyingType, object? defaultValue)
+        internal object? ConvertFromDbValue(object? dbValue, Type underlyingType, object? defaultValue)
         {
             if (dbValue is null || dbValue == DBNull.Value)
                 return defaultValue;
@@ -512,9 +442,9 @@ namespace LiteOrm
             if (dbValue is string s && s == string.Empty)
                 return defaultValue;
 
-            // 优先调用预注册的读取转换器委托（按实际源类型精确匹配，支持方言自定义转换）
-            if (TryGetReadConverter((dbValue.GetType(), underlyingType), out Func<object, object>? converter))
-                return converter!(dbValue);
+            // 按值的实际运行时类型推断 DbValueType 后命中注册的转换器（支持 ExecuteScalar 等无 DbType 上下文的场景）
+            if (GetDbValueConverter(underlyingType, DbValueTypeMap.GetDbValueType(dbValue.GetType())) is IDbValueConverter runtimeConverter)
+                return runtimeConverter.ConvertFromDbValue(dbValue);
 
             if (underlyingType.IsEnum)
             {
@@ -619,7 +549,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="objectType">非可空值类型。</param>
         /// <returns>该值类型的零值（装箱后）。</returns>
-        private static object CreateDefaultValue([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType)
+        internal static object CreateDefaultValue([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType)
         {
 #if NET5_0_OR_GREATER
             return System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(objectType);
@@ -628,31 +558,34 @@ namespace LiteOrm
 #endif
         }
 
-                /// <summary>
-        /// 获取将对象的属性值转化为数据库值的转换委托。
-        /// 优先返回通过 <c>DbValueConverterMap.RegisterWriteConverter</c> 注册的写入转换委托（含各方言在自身
-        /// <see cref="DbValueConverterMap"/> 上注册的特定转换）；未注册组合时返回通用兜底转换委托。
+        /// <summary>
+        /// 将 .NET 值转换为数据库可接受的值：
+        /// null 返回 <see cref="DBNull"/>；优先使用按 (值类型, 数据库取值类型) 注册的转换器，
+        /// 否则使用通用兜底转换（数组/Json 序列化、枚举转换与按 DbValueType 的特定转换）。
         /// </summary>
-        /// <param name="sourceType">源值类型。</param>
-        /// <param name="dbValueType">数据字段取值类型（可含 <see cref="DbValueType.Array"/> 掩码）。</param>
-        /// <returns>转换委托：输入 .NET 值，输出数据库可接受的值。</returns>
-        public virtual Func<object?, object> GetToDbValueConverter(Type sourceType, DbValueType dbValueType)
+        /// <param name="value">.NET 值。</param>
+        /// <param name="dbValueType">数据字段取值类型（可含 <see cref="DbValueType.Array"/> 掩码，为 null/Object/Default 时按值的运行时类型推断）。</param>
+        /// <returns>数据库可接受的值。</returns>
+        public object ConvertToDbValue(object? value, DbValueType? dbValueType)
         {
-            DbValueType dbType = (dbValueType == DbValueType.Object || dbValueType == DbValueType.Default)
-                ? GetDbValueType(sourceType)
-                : dbValueType;
+            if (value is null) return DBNull.Value;
 
-            // 已注册的写入转换委托（如 bool/Guid/TimeSpan/DateTime/DateTimeOffset/string 及方言特定转换）
-            if (TryGetWriteConverter((sourceType, dbType), out Func<object, object>? writeConverter))
+            Type type = value.GetType();
+            DbValueType dbType = (dbValueType is null || dbValueType == DbValueType.Object || dbValueType == DbValueType.Default)
+                ? GetDbValueType(type)
+                : dbValueType.Value;
+
+            // 注册的转换器优先（如 bool/Guid/TimeSpan/DateTime/DateTimeOffset/string 及方言特定转换）；
+            // 数组/Json 掩码的组合通常未注册，直接落入通用兜底
+            if (!dbType.HasArray()
+                && GetDbValueConverter(type.GetUnderlyingType(), dbType) is IDbValueConverter converter)
             {
-                return value => writeConverter!(value!);
+                return converter.ConvertToDbValue(value);
             }
 
-            // 通用兜底：未注册 (源类型, DbValueType) 组合的通用转换
-            bool isArray = dbValueType.HasArray();
-            bool sourceIsCollection = isArray && ColumnDefinitionExtensions.IsCollectionType(sourceType);
-            bool isJson = dbValueType == DbValueType.Json || dbValueType == DbValueType.Jsonb;
-            return value => ConvertToDbValue(value, dbType, sourceIsCollection, isJson);
+            bool sourceIsCollection = dbType.HasArray() && ColumnDefinitionExtensions.IsCollectionType(type);
+            bool isJson = dbType == DbValueType.Json || dbType == DbValueType.Jsonb;
+            return ConvertToDbValue(value, dbType, sourceIsCollection, isJson);
         }
 
         /// <summary>
@@ -667,7 +600,7 @@ namespace LiteOrm
         [UnconditionalSuppressMessage("AOT", "IL3050",
             Justification = "JSON serialization path is only triggered when the target type is a complex object/collection; under AOT, users must provide a System.Text.Json source-gen context for complex property types, otherwise a NotSupportedException is thrown at runtime.")]
 #endif
-        private object ConvertToDbValue(object? value, DbValueType dbType, bool sourceIsCollection, bool isJson)
+        internal object ConvertToDbValue(object? value, DbValueType dbType, bool sourceIsCollection, bool isJson)
         {
             if (value is null) return DBNull.Value;
 
@@ -684,9 +617,10 @@ namespace LiteOrm
                 return value.ToString()!;
             }
 
-            // 优先调用预注册的写入转换器委托（按实际值类型精确匹配，支持方言自定义转换）
-            if (TryGetWriteConverter((type, dbType), out Func<object, object>? writeConverter))
-                return writeConverter!(value);
+            // 优先命中按实际值类型注册的转换器（支持 object/多态属性按运行时类型转换）
+            if (!dbType.HasArray()
+                && GetDbValueConverter(type, dbType) is IDbValueConverter runtimeConverter)
+                return runtimeConverter.ConvertToDbValue(value);
 
             // 处理枚举：优先根据基础类型转换，除非 DbType 要求字符串
             if (type.IsEnum)

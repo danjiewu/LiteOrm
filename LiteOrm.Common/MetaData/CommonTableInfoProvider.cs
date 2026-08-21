@@ -122,6 +122,7 @@ namespace LiteOrm.Common
                     IdentityStart = columnInfo.IdentityStart,
                     IdentityIncreasement = columnInfo.IdentityIncreasement
                 };
+                column.DbValueConverter = columnInfo.ValueConverter;
 
                 columns.Add(column);
             }

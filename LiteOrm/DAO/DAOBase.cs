@@ -623,7 +623,7 @@ namespace LiteOrm
         /// <returns>对象属性类型所对应的值</returns>
         protected virtual object? ConvertFromDbValue(object? dbValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType)
         {
-            return SqlBuilder.GetFromDbValueConverter(objectType)(dbValue);
+            return SqlBuilder.ConvertFromDbValue(dbValue, objectType);
         }
 
         /// <summary>
@@ -634,8 +634,7 @@ namespace LiteOrm
         /// <returns>数据库中的值</returns>
         protected virtual object ConvertToDbValue(object? value, DbValueType? dbValueType)
         {
-            if (value is null) return DBNull.Value;
-            return SqlBuilder.GetToDbValueConverter(value.GetType(), dbValueType ?? DbValueType.Object)(value);
+            return SqlBuilder.ConvertToDbValue(value, dbValueType);
         }
 
         /// <summary>

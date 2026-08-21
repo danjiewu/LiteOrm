@@ -269,6 +269,7 @@ namespace LiteOrm.Generators
             public string? IdentityExpression { get; set; }
             public long IdentityStart { get; set; } = 1;
             public int IdentityIncreasement { get; set; } = 1;
+            public string? ValueConverterType { get; set; }
             public bool CanRead { get; set; }
             public bool CanWrite { get; set; }
             public IPropertySymbol Symbol { get; set; } = null!;
@@ -443,6 +444,10 @@ namespace LiteOrm.Generators
                 info.DbType = GetEnumMemberName(symbols.DbType, dbTypeInt) ?? dbTypeInt.ToString();
             else
                 info.DbType = null;
+
+            // ValueConverterType: typeof(X) 形式的命名参数，值为 INamedTypeSymbol
+            if (TryGetNamedArg(colAttr.NamedArguments, "ValueConverterType", out var vct) && !vct.IsNull && vct.Value is INamedTypeSymbol converterSymbol)
+                info.ValueConverterType = converterSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
             // 计算列表达式（非实际列）
             if (TryGetNamedArg(colAttr.NamedArguments, "Expression", out var ex) && !ex.IsNull)
@@ -749,6 +754,8 @@ namespace LiteOrm.Generators
                     sb.AppendLine($"            columns[{i}].DefaultValue = \"{c.DefaultValue}\";");
                 sb.AppendLine($"            columns[{i}].IdentityStart = {c.IdentityStart}L;");
                 sb.AppendLine($"            columns[{i}].IdentityIncreasement = {c.IdentityIncreasement};");
+                if (!string.IsNullOrEmpty(c.ValueConverterType))
+                    sb.AppendLine($"            columns[{i}].DbValueConverter = new {c.ValueConverterType}();");
             }
             sb.AppendLine();
             sb.AppendLine("            var tableDef = new TableDefinition(typeof(" + e.FullName + "), columns)");
@@ -812,7 +819,9 @@ namespace LiteOrm.Generators
                     sb.AppendLine($"                            DefaultValue = {(string.IsNullOrEmpty(c.DefaultValue) ? "null" : $"\"{EscapeCSharpString(c.DefaultValue!)}\"")},");
                     sb.AppendLine($"                            IdentityExpression = {(string.IsNullOrEmpty(c.IdentityExpression) ? "null" : $"\"{EscapeCSharpString(c.IdentityExpression!)}\"")},");
                     sb.AppendLine($"                            IdentityStart = {c.IdentityStart}L,");
-                    sb.AppendLine($"                            IdentityIncreasement = {c.IdentityIncreasement}");
+                    sb.AppendLine($"                            IdentityIncreasement = {c.IdentityIncreasement},");
+                    if (!string.IsNullOrEmpty(c.ValueConverterType))
+                        sb.AppendLine($"                            ValueConverter = new {c.ValueConverterType}()");
                     sb.AppendLine("                        },");
                 }
                 sb.AppendLine("                    }));");
@@ -869,6 +878,13 @@ namespace LiteOrm.Generators
         private static void GenerateMapperMethod(StringBuilder sb, EntityInfo e)
         {
             sb.AppendLine();
+            // 列级转换器静态实例（避免每行读取重复构造；转换器要求无状态）
+            for (int i = 0; i < e.Columns.Count; i++)
+            {
+                var c = e.Columns[i];
+                if (!c.CanWrite || string.IsNullOrEmpty(c.ValueConverterType)) continue;
+                sb.AppendLine($"        private static readonly {c.ValueConverterType} {e.SafeName}_Converter_{i} = new {c.ValueConverterType}();");
+            }
             sb.AppendLine($"        private static {e.FullName} {e.SafeName}_Mapper(global::LiteOrm.AutoLockDataReader reader)");
             sb.AppendLine("        {");
             sb.AppendLine($"            var entity = new {e.FullName}();");
@@ -876,14 +892,15 @@ namespace LiteOrm.Generators
             {
                 var c = e.Columns[i];
                 if (!c.CanWrite) continue;
-                var readExpr = GenerateTypedReadCall(c.PropertyType, i);
+                string? converterField = string.IsNullOrEmpty(c.ValueConverterType) ? null : $"{e.SafeName}_Converter_{i}";
+                var readExpr = GenerateTypedReadCall(c.PropertyType, i, converterField);
                 sb.AppendLine($"            entity.{c.PropertyName} = {readExpr};");
             }
             sb.AppendLine("            return entity;");
             sb.AppendLine("        }");
         }
 
-        private static string GenerateTypedReadCall(string propertyType, int ordinal)
+        private static string GenerateTypedReadCall(string propertyType, int ordinal, string? converterField = null)
         {
             // 去掉 global:: 前缀
             var type = propertyType.Replace("global::", "");
@@ -894,6 +911,15 @@ namespace LiteOrm.Generators
                 innerType = type.Substring("System.Nullable<".Length).TrimEnd('>');
             else if (type.EndsWith("?") && !type.EndsWith("??"))
                 innerType = type.TrimEnd('?');
+
+            if (converterField != null)
+            {
+                // 列级转换器：GetValue 原始值 + 转换器转换（null 列返回默认值）
+                var converted = $"({type}){converterField}.ConvertFromDbValue(reader.GetValue({ordinal}))!";
+                return innerType != null
+                    ? $"reader.IsDBNull({ordinal}) ? default({type}) : {converted}"
+                    : $"reader.IsDBNull({ordinal}) ? default({type})! : {converted}";
+            }
 
             if (innerType != null)
             {
@@ -921,7 +947,7 @@ namespace LiteOrm.Generators
                 "string" or "System.String" => $"reader.GetString({ordinal})",
                 "System.DateTime" => $"reader.GetDateTime({ordinal})",
                 "System.Guid" => $"reader.GetGuid({ordinal})",
-                _ => $"({type})reader.DbConverter.GetFromDbValueConverter(typeof({type}))(reader.GetValue({ordinal}))!"
+                _ => $"({type})global::LiteOrm.DataReaderConverter.ConvertFromDbValue(reader.DbConverter, reader.GetValue({ordinal}), typeof({type}))!"
             };
         }
 

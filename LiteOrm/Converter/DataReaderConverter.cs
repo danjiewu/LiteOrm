@@ -25,19 +25,30 @@ namespace LiteOrm
         private static readonly MethodInfo? _getValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetValue), new[] { typeof(int) });
 
-        // IDbConverter.GetFromDbValueConverter：按目标类型获取预注册的转换委托，编译后的委托每次调用只做一次缓存查找再执行
+        // 读取列值的统一转换分发（注册转换器优先，SqlBuilder 兜底），表达式树经 MethodInfo 调用
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2111",
-            Justification = "在运行时通过 MethodInfo 获取并调用该委托工厂；AOT 场景下复杂类型列须由源生成器 mapper 处理，此处仅兜底已由 DAO 注册的目标类型。")]
+            Justification = "在运行时通过 MethodInfo 获取并调用该方法；AOT 场景下复杂类型列须由源生成器 mapper 处理，此处仅兜底已由 DAO 注册的目标类型。")]
 #endif
-        private static readonly MethodInfo _getFromDbValueConverterMethod =
-            typeof(IDbConverter).GetMethod(nameof(IDbConverter.GetFromDbValueConverter), new[] { typeof(Type) })!;
+        private static readonly MethodInfo _convertFromDbValueCoreMethod =
+            typeof(DataReaderConverter).GetMethod(nameof(ConvertFromDbValue),
+                BindingFlags.Static | BindingFlags.NonPublic,
+                null,
+                new[] { typeof(IDbConverter), typeof(object), typeof(Type), typeof(DbValueType) },
+                null)!;
+
+        // IDbValueConverter.ConvertFromDbValue：数据库值 → .NET 值
+        private static readonly MethodInfo _convertFromDbValueMethod =
+            typeof(IDbValueConverter).GetMethod(nameof(IDbValueConverter.ConvertFromDbValue))!;
 
         private static readonly MethodInfo? _isDBNullMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.IsDBNull), new[] { typeof(int) });
 
         private static readonly MethodInfo? _getFieldValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFieldValue), new[] { typeof(int) });
+
+        private static readonly MethodInfo? _getStreamMethod =
+            typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetStream), new[] { typeof(int) });
 
         // 用于在动态读取委托的 catch 块中构造包含成员名/列号的明确异常
         private static readonly MethodInfo? _createColumnReadExceptionMethod =
@@ -46,23 +57,6 @@ namespace LiteOrm
                 null,
                 new[] { typeof(Exception), typeof(int), typeof(string), typeof(Type) },
                 null);
-
-        private static readonly Dictionary<Type, MethodInfo?> _typedReaderMethods = new Dictionary<Type, MethodInfo?>
-        {
-            [typeof(bool)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetBoolean), new[] { typeof(int) }),
-            [typeof(byte)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetByte), new[] { typeof(int) }),
-            [typeof(char)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetChar), new[] { typeof(int) }),
-            [typeof(short)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt16), new[] { typeof(int) }),
-            [typeof(int)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt32), new[] { typeof(int) }),
-            [typeof(long)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetInt64), new[] { typeof(int) }),
-            [typeof(float)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetFloat), new[] { typeof(int) }),
-            [typeof(double)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDouble), new[] { typeof(int) }),
-            [typeof(decimal)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDecimal), new[] { typeof(int) }),
-            [typeof(string)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetString), new[] { typeof(int) }),
-            [typeof(DateTime)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetDateTime), new[] { typeof(int) }),
-            [typeof(Guid)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetGuid), new[] { typeof(int) }),
-            [typeof(Stream)] = typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetStream), new[] { typeof(int) }),
-        };
 
         /// <summary>
         /// 按 <see cref="DbType"/> 选择最自然的类型化读取方法。
@@ -98,6 +92,11 @@ namespace LiteOrm
         private static readonly ConcurrentDictionary<Type, Delegate> _cacheByType =
             new ConcurrentDictionary<Type, Delegate>();
 
+        // 仅筛选 GetConverter<T>(IDbConverter) 泛型重载；GetMethods 枚举到的其他带 DAM 参数的 public 方法不会被调用
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2111",
+            Justification = "GetConverter<T>(IDbConverter) 无 DynamicallyAccessedMembers 约束，反射枚举到的其他方法不会被调用。")]
+#endif
         private static readonly MethodInfo? _getConverterByTypeMethod =
             typeof(DataReaderConverter).GetMethods(BindingFlags.Static | BindingFlags.Public)
                 .FirstOrDefault(m => m.IsGenericMethod && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(IDbConverter));
@@ -191,7 +190,7 @@ namespace LiteOrm
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
             if (IsScalarType(resultType))
-                return CompileScalarConverter<TResult>(readerParam);
+                return CompileScalarConverter<TResult>(readerParam, dbConverter);
 
             var selectColumns = (TableInfoProvider.Instance?.GetTableView(resultType)
                 ?? throw new InvalidOperationException($"TableInfoProvider.Default is not configured, cannot resolve columns for type '{resultType.FullName}'."))
@@ -202,13 +201,14 @@ namespace LiteOrm
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown instead of invoking Expression.Compile")]
 #endif
-        private static Func<AutoLockDataReader, TResult> CompileScalarConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(ParameterExpression readerParam)
+        private static Func<AutoLockDataReader, TResult> CompileScalarConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(ParameterExpression readerParam, IDbConverter? dbConverter)
         {
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
                 throw new PlatformNotSupportedException(
                     $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
-                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table], or call DataReaderConverter.RegisterMapper first.");            
-            var body = BuildTypedReadExpression(readerParam, 0, typeof(TResult), null);
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table], or call DataReaderConverter.RegisterMapper first.");
+            DbType? dbType = InferReadDbType(typeof(TResult), dbConverter, out DbValueType dbValueType);
+            var body = BuildTypedReadExpression(readerParam, 0, typeof(TResult), null, dbType, dbValueType, null);
             return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
@@ -225,7 +225,7 @@ namespace LiteOrm
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
             if (IsScalarType(resultType))
-                return CompileScalarConverter<TResult>(readerParam);
+                return CompileScalarConverter<TResult>(readerParam, dbConverter);
 
             var columnMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < reader.FieldCount; i++)
@@ -237,14 +237,18 @@ namespace LiteOrm
             Expression body;
             if (ctorParams.Length > 0)
             {
-                // 匿名类型：按构造函数参数名匹配列名
+                // 匿名类型：按构造函数参数名匹配列名，按参数 CLR 类型推断 DbType 选择类型化读取方法
                 var args = new Expression[ctorParams.Length];
                 for (int i = 0; i < ctorParams.Length; i++)
                 {
                     ParameterInfo param = ctorParams[i];
-                    args[i] = columnMap.TryGetValue(param.Name!, out int ordinal)
-                        ? BuildTypedReadExpression(readerParam, ordinal, param.ParameterType, param.Name)
-                        : Expression.Default(param.ParameterType);
+                    if (!columnMap.TryGetValue(param.Name!, out int ordinal))
+                    {
+                        args[i] = Expression.Default(param.ParameterType);
+                        continue;
+                    }
+                    DbType? dbType = InferReadDbType(param.ParameterType, dbConverter, out DbValueType dbValueType);
+                    args[i] = BuildTypedReadExpression(readerParam, ordinal, param.ParameterType, param.Name, dbType, dbValueType, null);
                 }
                 body = Expression.New(ctor, args);
             }
@@ -256,7 +260,8 @@ namespace LiteOrm
                 {
                     if (!prop.CanWrite) continue;
                     if (!columnMap.TryGetValue(prop.Name, out int ordinal)) continue;
-                    bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, ordinal, prop.PropertyType, prop.Name)));
+                    DbType? dbType = InferReadDbType(prop.PropertyType, dbConverter, out DbValueType dbValueType);
+                    bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, ordinal, prop.PropertyType, prop.Name, dbType, dbValueType, null)));
                 }
                 body = Expression.MemberInit(Expression.New(ctor), bindings);
             }
@@ -266,32 +271,25 @@ namespace LiteOrm
 
         /// <summary>
         /// 构建读取指定列的完整表达式（含 IsDBNull 判定、Nullable 封装与列级异常包装）。
-        /// 优先按 <paramref name="dbType"/> 选择与数据库列类型精确对应的读取方法；
-        /// 若读取方法的返回类型与属性 CLR 类型不符（如枚举、数值扩宽），则自动插入 Convert 表达式。
-        /// 未提供 <paramref name="dbType"/> 时退回到按属性 CLR 类型查找，仍无匹配则使用 GetValue + reader.DbConverter.GetFromDbValueConverter 兜底。
+        /// 转换优先级：<paramref name="columnConverter"/>（列级转换器）→ 数据库读取方法返回类型与属性 CLR 类型一致时直接赋值
+        /// → ConvertFromDbValue(reader.DbConverter, ..., 属性类型, <paramref name="dbValueType"/>) 统一分发（注册转换器优先，SqlBuilder 默认兜底）。
         /// <paramref name="columnName"/> 用于在读取失败时抛出包含成员名（属性名或构造函数参数名）的明确异常；为 null 时仅依据 <paramref name="ordinal"/> 描述。
         /// </summary>
         [RequiresDynamicCode("The code for building the typed read expression used MakeGenericMethod and might not be available.")]
         private static Expression BuildTypedReadExpression(
-            ParameterExpression readerParam, int ordinal, Type targetType, string? columnName, DbType? dbType = null)
+            ParameterExpression readerParam, int ordinal, Type targetType, string? columnName,
+            DbType? dbType, DbValueType dbValueType, IDbValueConverter? columnConverter)
         {
             Type coreType = Nullable.GetUnderlyingType(targetType) ?? targetType;
             var ordinalExpr = Expression.Constant(ordinal);
 
             Expression readExpr = BuildRawReadExpression(readerParam, ordinalExpr, coreType, dbType);
 
-            if (readExpr.Type != coreType)
+            // 列级转换器优先；否则读取类型与属性类型一致直接赋值；否则经 IDbValueConverter 转换
+            if (columnConverter != null || readExpr.Type != coreType)
             {
-                try
-                {
-                    readExpr = Expression.Convert(readExpr, coreType);
-                }
-                catch (InvalidOperationException)
-                {
-                    readExpr = Expression.Convert(
-                        InvokeFromDbValueConverter(readerParam, Expression.Convert(readExpr, typeof(object)), coreType),
-                        coreType);
-                }
+                Expression converted = InvokeFromDbValueConverter(readerParam, readExpr, coreType, dbValueType, columnConverter);
+                readExpr = Expression.Convert(converted, coreType);
             }
 
             // Wrap as Nullable<T>
@@ -346,55 +344,84 @@ namespace LiteOrm
 
         /// <summary>
         /// 返回读取列值的原始表达式（不含 IsDBNull 检查与 Nullable 封装）。
-        /// 选取顺序：DbType 映射 → CLR 类型映射 → byte[] 特殊路径 → GetValue + reader.DbConverter.GetFromDbValueConverter 兜底。
+        /// 选取顺序：Stream 目标（GetStream）→ DbType 映射的类型化读取方法 → GetValue 兜底
+        /// （Time/DateTimeOffset/Object/数组等无类型化读取方法的列）。
+        /// 后续是否需要 <see cref="IDbValueConverter"/> 转换由 <see cref="BuildTypedReadExpression"/> 决定。
         /// </summary>
         [RequiresDynamicCode("The code for building the raw read expression used MakeGenericMethod and might not be available.")]
         private static Expression BuildRawReadExpression(
             ParameterExpression readerParam, Expression ordinalExpr, Type coreType, DbType? dbType)
         {
-            // 1. DbType-driven: pick the reader method that matches the database column type
-            if (dbType.HasValue)
-            {
-                // Binary column: GetFieldValue<byte[]>, or GetStream if the target is a Stream
-                if (dbType.Value == DbType.Binary)
-                {
-                    if (typeof(Stream).IsAssignableFrom(coreType))
-                        return Expression.Call(readerParam, _typedReaderMethods[typeof(Stream)]!, ordinalExpr);
-                    return Expression.Call(readerParam,
-                        _getFieldValueMethod!.MakeGenericMethod(typeof(byte[])), ordinalExpr);
-                }
+            // Stream 目标：无论 DbType 如何均使用 GetStream（与历史行为一致）
+            if (typeof(Stream).IsAssignableFrom(coreType))
+                return Expression.Call(readerParam, _getStreamMethod!, ordinalExpr);
 
-                // 当 DbType 驱动的读取方法返回类型与目标类型不匹配时（如 DbType.String 读取 TimeSpan），
-                // 跳过直接调用读取方法，使用 GetValue + GetFromDbValueConverter 兜底。
-                if (_dbTypeReaderMethods.TryGetValue(dbType.Value, out MethodInfo? dbMethod)
-                    && dbMethod!.ReturnType == coreType)
-                    return Expression.Call(readerParam, dbMethod!, ordinalExpr);
-            }
-
-            // 2. CLR type-driven: anonymous projections, scalar columns, and unmapped DbType values
-            if (_typedReaderMethods.TryGetValue(coreType, out MethodInfo? typedMethod))
-                return Expression.Call(readerParam, typedMethod!, ordinalExpr);
-
-            // 3. byte[] without DbType context
-            if (coreType == typeof(byte[]))
+            // 二进制列：GetFieldValue<byte[]>
+            if (dbType == DbType.Binary)
                 return Expression.Call(readerParam,
                     _getFieldValueMethod!.MakeGenericMethod(typeof(byte[])), ordinalExpr);
 
-            // 4. Fallback: GetValue + reader.DbConverter.GetFromDbValueConverter(targetType) 转换委托
-            // (enums, TimeSpan, DateTimeOffset, etc.)
-            var getValueCall = Expression.Call(readerParam, _getValueMethod!, ordinalExpr);
-            return InvokeFromDbValueConverter(readerParam, getValueCall, coreType);
+            // 按 DbType 选择类型化读取方法（DbType 与目标 CLR 类型不一致时仍读取为数据库类型，转换交给 IDbValueConverter）
+            if (dbType.HasValue && _dbTypeReaderMethods.TryGetValue(dbType.Value, out MethodInfo? dbMethod) && dbMethod != null)
+                return Expression.Call(readerParam, dbMethod, ordinalExpr);
+
+            // 无 DbType 或无对应读取方法：GetValue 兜底
+            return Expression.Call(readerParam, _getValueMethod!, ordinalExpr);
         }
 
         /// <summary>
-        /// 构建「获取 <paramref name="targetType"/> 的数据库值转换委托并调用」的表达式。
-        /// 每次调用先按目标类型从 <see cref="IDbConverter"/> 获取（缓存）转换委托，再对 <paramref name="valueExpr"/> 求值转换。
+        /// 读取列值的统一转换分发：按 (<paramref name="targetType"/>, <see cref="DbValueType.Object"/>) 注册的转换器优先，
+        /// 未注册时使用 SqlBuilder 的通用兜底转换（含空值短路、运行时类型注册命中、枚举、JSON、集合与 <see cref="Convert.ChangeType(object, Type)"/>）。
+        /// 供运行时编译的读取委托与源生成器生成的 mapper 代码共用。
         /// </summary>
-        private static Expression InvokeFromDbValueConverter(ParameterExpression readerParam, Expression valueExpr, Type targetType)
+        /// <param name="dbConverter">数据库值转换器（AutoLockDataReader.DbConverter）。</param>
+        /// <param name="value">数据库取得的原始值。</param>
+        /// <param name="targetType">目标属性 / 构造参数类型（已剥离 Nullable）。</param>
+        /// <returns>转换后的目标类型值。</returns>
+        public static object? ConvertFromDbValue(IDbConverter? dbConverter, object? value,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type targetType)
         {
-            var dbConverterExpr = Expression.Property(readerParam, nameof(AutoLockDataReader.DbConverter));
-            var converterExpr = Expression.Call(dbConverterExpr, _getFromDbValueConverterMethod!, Expression.Constant(targetType));
-            return Expression.Invoke(converterExpr, valueExpr);
+            return ConvertFromDbValue(dbConverter, value, targetType, DbValueType.Object);
+        }
+
+        /// <summary>同 <see cref="ConvertFromDbValue(IDbConverter, object?, Type)"/>，显式指定用于注册查找的 <paramref name="dbValueType"/>。</summary>
+        private static object? ConvertFromDbValue(IDbConverter? dbConverter, object? value,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type targetType,
+            DbValueType dbValueType)
+        {
+            // 注册的转换器优先
+            if (dbConverter?.GetDbValueConverter(targetType, dbValueType) is IDbValueConverter converter)
+                return converter.ConvertFromDbValue(value!);
+
+            // 通用兜底（AutoLockDataReader.DbConverter 的实际类型总为 SqlBuilder）
+            if (dbConverter is SqlBuilder builder)
+                return builder.ConvertFromDbValue(value, targetType, dbValueType);
+
+            // 非 SqlBuilder 的 IDbConverter 实现：退化为 ChangeType
+            return value is null || value == DBNull.Value ? null : Convert.ChangeType(value, targetType);
+        }
+
+        /// <summary>
+        /// 构建「按转换优先级对 <paramref name="valueExpr"/> 求值转换」的表达式。
+        /// 列级转换器直接以常量内联调用；否则调用 <see cref="ConvertFromDbValue(IDbConverter, object?, Type, DbValueType)"/>
+        /// 统一分发：注册转换器优先，未注册时由 SqlBuilder 通用兜底。
+        /// </summary>
+        private static Expression InvokeFromDbValueConverter(
+            ParameterExpression readerParam, Expression valueExpr, Type targetType, DbValueType dbValueType, IDbValueConverter? columnConverter)
+        {
+            Expression boxedValue = Expression.Convert(valueExpr, typeof(object));
+
+            // 列级转换器：直接以常量内联调用
+            if (columnConverter != null)
+                return Expression.Call(Expression.Constant(columnConverter), _convertFromDbValueMethod!, boxedValue);
+
+            // 注册转换器 → SqlBuilder 兜底
+            return Expression.Call(
+                _convertFromDbValueCoreMethod!,
+                Expression.Property(readerParam, nameof(AutoLockDataReader.DbConverter)),
+                boxedValue,
+                Expression.Constant(targetType),
+                Expression.Constant(dbValueType));
         }
 
         /// <summary>
@@ -424,8 +451,8 @@ namespace LiteOrm
                     BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                 if (prop == null || !prop.CanWrite) continue;
 
-                DbType? dbType = GetColumnReadDbType(column, prop.PropertyType, dbConverter);
-                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType, column.PropertyName, dbType)));
+                DbType? dbType = GetColumnReadDbType(column, prop.PropertyType, dbConverter, out DbValueType dbValueType);
+                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType, column.PropertyName, dbType, dbValueType, column.DbValueConverter)));
             }
 
             var body = Expression.MemberInit(Expression.New(ctor), bindings);
@@ -447,26 +474,36 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 计算读取列时应使用的 <see cref="DbType"/>。
+        /// 计算读取列时应使用的 <see cref="DbType"/> 与用于转换器查找的 <see cref="DbValueType"/>。
         /// <para>
         /// 当列的 <see cref="DbValueType"/> 为 <see cref="DbValueType.Default"/>（未显式指定）时，
-        /// 通过 <paramref name="dbConverter"/>（当前 SqlBuilder）按属性 CLR 类型推断 DbType，
-        /// 使不同数据库方言能选择正确的类型化读取方法（如 Oracle 的 bool 映射为 Byte）。
+        /// 通过 <paramref name="dbConverter"/>（当前 SqlBuilder）按属性 CLR 类型推断，
+        /// 使不同数据库方言能选择正确的类型化读取方法（如 Oracle 的 bool 映射为 Int32、SQLite 的日期映射为 String）。
         /// </para>
-        /// 数组/集合列返回 null，交由 <c>GetValue + DbConverter.GetFromDbValueConverter</c> 兜底，
-        /// 避免对数组列调用标量读取器（如 <see cref="DbDataReader.GetInt32"/>）。
+        /// 数组/集合列的 DbType 返回 null（GetValue 兜底），但 <paramref name="dbValueType"/> 仍输出用于转换器查找。
         /// </summary>
-        private static DbType? GetColumnReadDbType(SqlColumn column, Type propertyType, IDbConverter? dbConverter)
+        private static DbType? GetColumnReadDbType(SqlColumn column, Type propertyType, IDbConverter? dbConverter, out DbValueType dbValueType)
         {
-            DbValueType dbValueType = column.Definition?.DbType ?? DbValueType.Default;
-            if (dbValueType == DbValueType.Default)
-            {
-                if (dbConverter != null)
-                    return dbConverter.ToDbType(dbConverter.GetDbValueType(propertyType));
-                return null;
-            }
+            DbValueType declared = column.Definition?.DbType ?? DbValueType.Default;
+            if (declared == DbValueType.Default)
+                return InferReadDbType(propertyType, dbConverter, out dbValueType);
+
+            dbValueType = declared;
+            if (declared.HasArray() || ColumnDefinitionExtensions.IsCollectionType(propertyType)) return null;
+            return dbConverter?.ToDbType(declared) ?? DbValueTypeMap.ToDbType(declared);
+        }
+
+        /// <summary>
+        /// 按属性 CLR 类型推断读取时应使用的 <see cref="DbType"/> 与 <see cref="DbValueType"/>（无列定义信息时的兜底）。
+        /// 数组/集合属性返回 null（GetValue 兜底）。
+        /// </summary>
+        private static DbType? InferReadDbType(Type propertyType, IDbConverter? dbConverter, out DbValueType dbValueType)
+        {
+            dbValueType = dbConverter != null
+                ? dbConverter.GetDbValueType(propertyType)
+                : DbValueTypeMap.InferFromPropertyType(propertyType);
             if (dbValueType.HasArray() || ColumnDefinitionExtensions.IsCollectionType(propertyType)) return null;
-            return dbConverter?.ToDbType(dbValueType) ?? DbValueTypeMap.ToDbType(dbValueType);
+            return dbConverter != null ? dbConverter.ToDbType(dbValueType) : DbValueTypeMap.ToDbType(dbValueType);
         }
     }
 }

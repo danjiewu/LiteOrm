@@ -137,6 +137,7 @@ namespace LiteOrm
                     ColumnMode accessMask = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
                     column.Mode = (columnAttribute.ColumnMode & accessMask) | (columnAttribute.ColumnMode & ColumnMode.Computed);
                     column.ForeignTables = foreignTables;
+                    column.DbValueConverter = CreateDbValueConverter(columnAttribute.ValueConverterType, property);
                     return column;
                 }
             }
@@ -479,6 +480,25 @@ namespace LiteOrm
                 return true;
             }, aliasedFilter);
             return aliasedFilter;
+        }
+
+        /// <summary>
+        /// 根据 <see cref="ColumnAttribute.ValueConverterType"/> 创建列级数据库值转换器实例。
+        /// </summary>
+        /// <param name="converterType">转换器类型，可为 null。</param>
+        /// <param name="property">转换器所应用的属性（用于异常提示）。</param>
+        /// <returns>转换器实例；未指定类型时返回 null。</returns>
+        private static IDbValueConverter? CreateDbValueConverter(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type? converterType,
+            PropertyInfo property)
+        {
+            if (converterType is null) return null;
+            if (!typeof(IDbValueConverter).IsAssignableFrom(converterType))
+                throw new ArgumentException($"属性 \"{property.DeclaringType?.FullName}.{property.Name}\" 的 ValueConverterType \"{converterType.FullName}\" 未实现 IDbValueConverter 接口。");
+            object? instance = Activator.CreateInstance(converterType);
+            if (instance is not IDbValueConverter converter)
+                throw new ArgumentException($"属性 \"{property.DeclaringType?.FullName}.{property.Name}\" 的 ValueConverterType \"{converterType.FullName}\" 无法创建 IDbValueConverter 实例（缺少公共无参构造函数）。");
+            return converter;
         }
 
 #if NET8_0_OR_GREATER

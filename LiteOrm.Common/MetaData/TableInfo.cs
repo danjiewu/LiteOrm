@@ -88,6 +88,11 @@ namespace LiteOrm.Common
         /// 标识列增量。
         /// </summary>
         public int IdentityIncreasement { get; set; } = 1;
+
+        /// <summary>
+        /// 列值转换器实例（由源生成器生成的注册代码直接构造并赋值，AOT 友好）。
+        /// </summary>
+        public IDbValueConverter? ValueConverter { get; set; }
     }
 
     /// <summary>

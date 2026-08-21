@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -48,6 +48,11 @@ namespace LiteOrm.Common
         /// 列对应的属性
         /// </summary>
         public PropertyInfo Property { get { return _property; } }
+
+        /// <summary>
+        /// 列级数据库值转换器。设置后读写该列时优先使用；为 null 时交由通用转换链处理。
+        /// </summary>
+        public IDbValueConverter? DbValueConverter { get; set; }
 
         /// <summary>
         /// 关联的外表集合

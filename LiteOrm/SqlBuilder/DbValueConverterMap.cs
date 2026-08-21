@@ -1,85 +1,39 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LiteOrm
 {
+    /// <summary>
+    /// 数据库值转换器统一注册表（读取与写入共用）。
+    /// Key = (值类型, 数据库取值类型枚举)：值类型为实体属性 / .NET 值类型（即 <see cref="IDbValueConverter.ValueType"/>），
+    /// 枚举为列的数据库取值类型。读取按 (目标属性类型, 列取值类型) 查找，写入按 (源值类型, 目标取值类型) 查找，
+    /// 同一 key 空间双向复用，一个转换器天然服务读、写两个方向。
+    /// </summary>
     internal class DbValueConverterMap
     {
-        // 注册表：Key = 注册(源类型, 目标类型) ，Value = 转换委托
-        private readonly ConcurrentDictionary<(Type Source, Type Target), Delegate> _registedReadConverters
-            = new ConcurrentDictionary<(Type, Type), Delegate>();
+        // 统一注册表：Key = (值类型, 数据库取值类型枚举) ，Value = 双向转换器
+        private readonly ConcurrentDictionary<(Type ValueType, DbValueType DbValueType), IDbValueConverter> _converters
+            = new ConcurrentDictionary<(Type, DbValueType), IDbValueConverter>();
 
-        // 非泛型缓存：Key = 注册(源类型, 目标类型) ，Value = 转换委托
-        private readonly ConcurrentDictionary<(Type Source, Type Target), Func<object, object>> _readAdapterCache
-            = new ConcurrentDictionary<(Type, Type), Func<object, object>>();
-
-        private readonly ConcurrentDictionary<(Type Source, DbValueType Target), Delegate> _registedWriteConverters
-    = new ConcurrentDictionary<(Type, DbValueType), Delegate>();
-
-        // 非泛型缓存：Key = 注册(源类型, 目标类型) ，Value = 转换委托
-        private readonly ConcurrentDictionary<(Type Source, DbValueType Target), Func<object, object>> _writeAdapterCache
-            = new ConcurrentDictionary<(Type, DbValueType), Func<object, object>>();
-
-        public void RegisterReadConverter<TSource, TTarget>(Func<TSource, TTarget> handler)
+        /// <summary>
+        /// 注册转换器。注册 key = (converter.ValueType, <paramref name="target"/>)；
+        /// 同一转换器实例可注册到多个枚举目标（如 string 类的多个枚举值）。
+        /// </summary>
+        /// <param name="converter">双向转换器实例。</param>
+        /// <param name="target">目标数据库取值类型。</param>
+        public void RegisterConverter(IDbValueConverter converter, DbValueType target)
         {
-            if (handler == null) throw new ArgumentNullException(nameof(handler));
-            var key = (typeof(TSource), typeof(TTarget));
-            _registedReadConverters[key] = handler;
-            _readAdapterCache[key] = obj => handler((TSource)obj)!;
-        }
-        public bool TryGetReadConverter<TSource, TTarget>(out Func<TSource, TTarget>? handler)
-        {
-            Delegate? handlerDelegate;
-            if (_registedReadConverters.TryGetValue((typeof(TSource), typeof(TTarget)), out handlerDelegate))
-            {
-                handler = (Func<TSource, TTarget>)handlerDelegate;
-                return true;
-            }
-            else
-            {
-                handler = null;
-                return false;
-            }
-        }
-
-        public bool TryGetReadConverter((Type Source, Type Target) key, out Func<object, object>? handler)
-        {
-            return _readAdapterCache.TryGetValue(key, out handler);
-        }
-
-        public void RegisterWriteConverter<TSource>(DbValueType Target, Func<TSource, object> handler)
-        {
-            if (handler == null) throw new ArgumentNullException(nameof(handler));
-            var key = (typeof(TSource), Target);
-            _registedWriteConverters[key] = handler;
-            _writeAdapterCache[key] = obj => handler((TSource)obj);
-        }
-
-        public bool TryGetWriteConverter<TSource>((Type Source, DbValueType Target) key, out Func<TSource, object>? handler)
-        {
-            Delegate? handlerDelegate;
-            if (_registedWriteConverters.TryGetValue(key, out handlerDelegate))
-            {
-                handler = (Func<TSource, object>)handlerDelegate;
-                return true;
-            }
-            else
-            {
-                handler = null;
-                return false;
-            }
+            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            _converters[(converter.ValueType, target)] = converter;
         }
 
         /// <summary>
-        /// 按 (源类型, DbValueType) 查找写入转换器的非泛型适配器。
+        /// 按 (值类型, 数据库取值类型) 查找注册的转换器。
         /// </summary>
-        public bool TryGetWriteConverter((Type Source, DbValueType Target) key, out Func<object, object>? handler)
+        public bool TryGetConverter((Type ValueType, DbValueType DbValueType) key, out IDbValueConverter? converter)
         {
-            return _writeAdapterCache.TryGetValue(key, out handler);
+            return _converters.TryGetValue(key, out converter);
         }
-
     }
 }

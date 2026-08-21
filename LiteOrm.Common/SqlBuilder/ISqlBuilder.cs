@@ -6,33 +6,118 @@ using System.Diagnostics.CodeAnalysis;
 namespace LiteOrm.Common
 {
     /// <summary>
+    /// 强类型数据库值转换器接口，提供数据库值与 .NET 值之间的双向转换。
+    /// </summary>
+    /// <typeparam name="TDbType">数据库驱动返回的数据库值 CLR 类型。</typeparam>
+    /// <typeparam name="TValueType">实体属性 / .NET 值类型。</typeparam>
+    public interface IDbValueConverter<TDbType, TValueType> : IDbValueConverter
+    {
+        /// <summary>将数据库值转换为 .NET 值。</summary>
+        /// <param name="value">数据库驱动返回的原始值。</param>
+        /// <returns>转换后的 .NET 值。</returns>
+        TValueType ConvertFromDbValue(TDbType value);
+
+        /// <summary>将 .NET 值转换为数据库可接受的值。</summary>
+        /// <param name="value">.NET 值。</param>
+        /// <returns>数据库可接受的值。</returns>
+        TDbType ConvertToDbValue(TValueType value);
+    }
+
+    /// <summary>
+    /// 数据库值转换器接口，提供数据库值与 .NET 值之间的双向转换。
+    /// 转换器注册表统一使用 (值类型, 数据库取值类型) 作为主键，读取与写入共用同一注册表。
+    /// </summary>
+    public interface IDbValueConverter
+    {
+        /// <summary>数据库值 CLR 类型。</summary>
+        Type DbValueType { get; }
+
+        /// <summary>实体属性 / .NET 值类型。</summary>
+        Type ValueType { get; }
+
+        /// <summary>将数据库值转换为 .NET 值。</summary>
+        /// <param name="value">数据库驱动返回的原始值。</param>
+        /// <returns>转换后的 .NET 值。</returns>
+        object ConvertFromDbValue(object value);
+
+        /// <summary>将 .NET 值转换为数据库可接受的值。</summary>
+        /// <param name="value">.NET 值。</param>
+        /// <returns>数据库可接受的值。</returns>
+        object ConvertToDbValue(object value);
+    }
+
+    /// <summary>
+    /// 基于委托的 <see cref="IDbValueConverter"/> 适配器。
+    /// 两个方向均可只提供单向委托，未提供委托的方向被调用时抛出 <see cref="NotSupportedException"/>。
+    /// 注册到 DbValueConverterMap 时建议双向提供委托，避免读取/写入链路单向命中后无回退。
+    /// </summary>
+    /// <typeparam name="TDbType">数据库驱动返回的数据库值 CLR 类型。</typeparam>
+    /// <typeparam name="TValueType">实体属性 / .NET 值类型。</typeparam>
+    public sealed class FuncDbValueConverter<TDbType, TValueType> : IDbValueConverter<TDbType, TValueType>
+    {
+        private readonly Func<TDbType, TValueType>? _fromDb;
+        private readonly Func<TValueType, TDbType>? _toDb;
+
+        /// <summary>
+        /// 创建基于委托的双向转换器。任一委托可为 null（该方向不支持）。
+        /// </summary>
+        /// <param name="fromDb">数据库值 → .NET 值 的转换委托。</param>
+        /// <param name="toDb">.NET 值 → 数据库值 的转换委托。</param>
+        public FuncDbValueConverter(Func<TDbType, TValueType>? fromDb, Func<TValueType, TDbType>? toDb)
+        {
+            _fromDb = fromDb;
+            _toDb = toDb;
+        }
+
+        Type IDbValueConverter.DbValueType => typeof(TDbType);
+        Type IDbValueConverter.ValueType => typeof(TValueType);
+
+        /// <summary>将数据库值转换为 <typeparamref name="TValueType"/> 值。</summary>
+        /// <param name="value">数据库驱动返回的原始值。</param>
+        /// <returns>转换后的 .NET 值。</returns>
+        public TValueType ConvertFromDbValue(TDbType value)
+        {
+            if (_fromDb == null)
+                throw new NotSupportedException($"转换器 {typeof(FuncDbValueConverter<TDbType, TValueType>)} 未提供数据库值到 {typeof(TValueType)} 的转换委托。");
+            return _fromDb(value);
+        }
+
+        /// <summary>将 <typeparamref name="TValueType"/> 值转换为数据库可接受的值。</summary>
+        /// <param name="value">.NET 值。</param>
+        /// <returns>数据库可接受的值。</returns>
+        public TDbType ConvertToDbValue(TValueType value)
+        {
+            if (_toDb == null)
+                throw new NotSupportedException($"转换器 {typeof(FuncDbValueConverter<TDbType, TValueType>)} 未提供 {typeof(TValueType)} 到数据库值的转换委托。");
+            return _toDb(value);
+        }
+
+        object IDbValueConverter.ConvertFromDbValue(object value)
+        {
+            return ConvertFromDbValue((TDbType)value)!;
+        }
+
+        object IDbValueConverter.ConvertToDbValue(object value)
+        {
+            return ConvertToDbValue((TValueType)value)!;
+        }
+    }
+
+    /// <summary>
     /// 表示用于数据库值与 .NET 对象值之间转换的接口。
+    /// 转换器注册表统一使用 (值类型, DbValueType) 作为主键，读取与写入共用同一注册表：
+    /// 读取按 (目标属性类型, 列取值类型) 查找，写入按 (源值类型, 目标取值类型) 查找。
     /// </summary>
     public interface IDbConverter
     {
         /// <summary>
-        /// 获取将数据库值转换为 <paramref name="objectType"/> 类型值的转换委托。
-        /// 委托按目标类型缓存，获取后可直接复用，避免每次转换都重新分发。
+        /// 获取按 (值类型, 数据库取值类型) 注册的转换器（读取与写入共用注册表，沿 SqlBuilder 继承链查找，方言注册优先于基类）。
+        /// 未注册时返回 null，由调用方决定兜底转换策略。
         /// </summary>
-        /// <param name="objectType">目标对象类型。</param>
-        /// <returns>转换委托：输入数据库值，输出目标类型的值。</returns>
-        Func<object?, object?> GetFromDbValueConverter([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType);
-        /// <summary>
-        /// 获取将 <paramref name="sourceType"/> 类型的 .NET 值转换为数据库可接受值的转换委托。
-        /// 委托按 (源类型, 目标取值类型) 缓存，获取后可直接复用，避免每次转换都重新分发。
-        /// </summary>
-        /// <param name="sourceType">源值类型。</param>
-        /// <param name="dbValueType">目标数据库取值类型（可含 <see cref="DbValueType.Array"/> 掩码）。</param>
-        /// <returns>转换委托：输入 .NET 值，输出数据库可接受的值。</returns>
-        Func<object?, object> GetToDbValueConverter(Type sourceType, DbValueType dbValueType);
-        /// <summary>
-        /// 尝试获取数据库读取从 <typeparamref name="TSource"/> 到 <typeparamref name="TResult"/> 的转换器函数。
-        /// </summary>
-        /// <typeparam name="TSource">从数据库读取的值的类型。</typeparam>
-        /// <typeparam name="TResult">要转换的目标实体属性类型。</typeparam>
-        /// <param name="handler">输出转换器函数。</param>
-        /// <returns>如果成功获取转换器函数，则返回 true；否则返回 false。</returns>
-        bool TryGetReadConverter<TSource, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] TResult>(out Func<TSource, TResult>? handler);
+        /// <param name="valueType">实体属性 / .NET 值类型。</param>
+        /// <param name="dbValueType">数据库取值类型。</param>
+        /// <returns>注册的转换器；未注册时返回 null。</returns>
+        IDbValueConverter? GetDbValueConverter(Type valueType, DbValueType dbValueType);
         /// <summary>
         /// 将 .NET 类型映射为数据库对应的 <see cref="DbValueType"/>。
         /// </summary>
@@ -58,7 +143,7 @@ namespace LiteOrm.Common
     /// 表示用于生成数据库相关 SQL 片段的构建器接口。
     /// 不同数据库的实现负责将通用表达转换为目标数据库的原生 SQL 语法和参数格式。
     /// </summary>
-    public interface ISqlBuilder: IDbConverter
+    public interface ISqlBuilder : IDbConverter
     {
         /// <summary>
         /// 获取当前数据库是否支持公共表表达式（CTE / WITH 子句）。
@@ -147,7 +232,7 @@ namespace LiteOrm.Common
         /// <param name="subSelect">包含 SELECT 各个子句片段的结构体。</param>
         /// <param name="result">输出 SQL 语句的缓冲区。</param>
         /// <param name="indent">缩进级别。</param>
-        void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result,int indent);
+        void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent);
 
         /// <summary>
         /// 将集合操作类型转换为 SQL 语句

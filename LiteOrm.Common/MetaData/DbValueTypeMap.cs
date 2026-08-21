@@ -78,9 +78,6 @@ namespace LiteOrm.Common
         ///<summary>
         /// 获取类型的基础类型。如果是 Nullable&lt;T&gt; 则返回 T，否则返回原类型。
         /// </summary>
-#if NET8_0_OR_GREATER
-        [UnconditionalSuppressMessage("Trimming", "IL2073", Justification = "Nullable.GetUnderlyingType returns a Type without annotation; the caller-supplied Type already has members preserved per context requirements; this method only unwraps Nullable<T>.")]
-#endif
         [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public static Type GetUnderlyingType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] this Type type)
         {

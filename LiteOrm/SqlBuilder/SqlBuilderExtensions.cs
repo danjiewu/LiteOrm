@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,83 +12,31 @@ namespace LiteOrm
     public static class SqlBuilderExtensions
     {
         /// <summary>
-        /// 注册从 <typeparamref name="TSource"/> 到 <typeparamref name="TResult"/> 的数据库读取转换器（泛型版本）。
+        /// 注册双向数据库值转换器。注册主键为 (值类型, 目标数据库取值类型)，读取与写入共用同一注册表：
+        /// 读取按 (目标属性类型, 列取值类型) 查找，写入按 (源值类型, 目标取值类型) 查找。
         /// </summary>
         /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
-        /// <typeparam name="TSource">从数据库读取的值的类型。</typeparam>
-        /// <typeparam name="TResult">要转换的目标实体属性类型。</typeparam>
-        /// <param name="sqlBuilder">要注册转换器的 SQL 构建器实例。</param>
-        /// <param name="handler">转换器函数。</param>
-        public static void RegisterDbReadConverter<T, TSource, TResult>(this T sqlBuilder, Func<TSource, TResult> handler) where T : SqlBuilder
-        {
-            SqlBuilder.GetDbValueConverterMap<T>().RegisterReadConverter(handler);
-        }
-
-        /// <summary>
-        /// 尝试获取从 <typeparamref name="TSource"/> 到 <typeparamref name="TResult"/> 的数据库读取转换器（泛型版本）。
-        /// </summary>
-        /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
-        /// <typeparam name="TSource">从数据库读取的值的类型。</typeparam>
-        /// <typeparam name="TResult">要转换的目标实体属性类型。</typeparam>
-        /// <param name="sqlBuilder">要获取转换器的 SQL 构建器实例。</param>
-        /// <param name="handler">输出转换器函数。</param>
-        /// <returns>如果成功获取转换器函数，则返回 true；否则返回 false。</returns>
-        public static bool TryGetDbReadConverter<T, TSource, TResult>(this T sqlBuilder, out Func<TSource, TResult>? handler) where T : SqlBuilder
-        {
-            return SqlBuilder.GetDbValueConverterMap<T>().TryGetReadConverter<TSource, TResult>(out handler);
-        }
-
-        /// <summary>
-        /// 按 (源类型, 目标类型) 查找数据库读取转换器的非泛型版本。
-        /// </summary>
-        /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
-        /// <param name="sqlBuilder">要获取转换器的 SQL 构建器实例。</param>
-        /// <param name="key">转换器的源类型与目标类型。</param>
-        /// <param name="handler">输出转换器函数。</param>
-        /// <returns>如果成功获取转换器函数，则返回 true；否则返回 false。</returns>
-        public static bool TryGetDbReadConverter<T>(this T sqlBuilder, (Type Source, Type Target) key, out Func<object, object>? handler) where T : SqlBuilder
-        {
-            return SqlBuilder.GetDbValueConverterMap<T>().TryGetReadConverter(key, out handler);
-        }
-
-        /// <summary>
-        /// 注册从 <typeparamref name="TSource"/> 到目标 <see cref="DbValueType"/> 的数据库写入转换器。
-        /// </summary>
-        /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
-        /// <typeparam name="TSource">源值类型。</typeparam>
         /// <param name="sqlBuilder">要注册转换器的 SQL 构建器实例。</param>
         /// <param name="targetType">目标数据库取值类型。</param>
-        /// <param name="handler">转换器函数。</param>
-        public static void RegisterDbWriteConverter<T, TSource>(this T sqlBuilder, DbValueType targetType, Func<TSource, object> handler) where T : SqlBuilder
+        /// <param name="converter">双向转换器实例。</param>
+        public static void RegisterDbValueConverter<T>(this T sqlBuilder, DbValueType targetType, IDbValueConverter converter) where T : SqlBuilder
         {
-            SqlBuilder.GetDbValueConverterMap<T>().RegisterWriteConverter(targetType, handler);
+            SqlBuilder.GetDbValueConverterMap<T>().RegisterConverter(converter, targetType);
         }
 
         /// <summary>
-        /// 尝试获取从 <typeparamref name="TSource"/> 到目标 <see cref="DbValueType"/> 的数据库写入转换器（泛型版本）。
+        /// 注册基于委托的双向数据库值转换器（快捷方式）。
+        /// 读取委托接收数据库驱动返回的原始值（object），写入委托返回数据库可接受的值（object，null 应转换为 <see cref="DBNull.Value"/>）。
         /// </summary>
         /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
-        /// <typeparam name="TSource">源值类型。</typeparam>
-        /// <param name="sqlBuilder">要获取转换器的 SQL 构建器实例。</param>
+        /// <typeparam name="TValueType">实体属性 / .NET 值类型。</typeparam>
+        /// <param name="sqlBuilder">要注册转换器的 SQL 构建器实例。</param>
         /// <param name="targetType">目标数据库取值类型。</param>
-        /// <param name="handler">输出转换器函数。</param>
-        /// <returns>如果成功获取转换器函数，则返回 true；否则返回 false。</returns>
-        public static bool TryGetDbWriteConverter<T, TSource>(this T sqlBuilder, DbValueType targetType, out Func<TSource, object>? handler) where T : SqlBuilder
+        /// <param name="fromDb">数据库值 → .NET 值 的转换委托。</param>
+        /// <param name="toDb">.NET 值 → 数据库值 的转换委托。</param>
+        public static void RegisterDbValueConverter<T, TValueType>(this T sqlBuilder, DbValueType targetType, Func<object, TValueType>? fromDb, Func<TValueType, object>? toDb) where T : SqlBuilder
         {
-            return SqlBuilder.GetDbValueConverterMap<T>().TryGetWriteConverter<TSource>((typeof(TSource), targetType), out handler);
-        }
-
-        /// <summary>
-        /// 按 (源类型, DbValueType) 查找数据库写入转换器的非泛型版本。
-        /// </summary>
-        /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
-        /// <param name="sqlBuilder">要获取转换器的 SQL 构建器实例。</param>
-        /// <param name="key">转换器的源类型与目标数据库取值类型。</param>
-        /// <param name="handler">输出转换器函数。</param>
-        /// <returns>如果成功获取转换器函数，则返回 true；否则返回 false。</returns>
-        public static bool TryGetDbWriteConverter<T>(this T sqlBuilder, (Type Source, DbValueType Target) key, out Func<object, object>? handler) where T : SqlBuilder
-        {
-            return SqlBuilder.GetDbValueConverterMap<T>().TryGetWriteConverter(key, out handler);
+            SqlBuilder.GetDbValueConverterMap<T>().RegisterConverter(new FuncDbValueConverter<object, TValueType>(fromDb, toDb), targetType);
         }
 
         /// <summary>

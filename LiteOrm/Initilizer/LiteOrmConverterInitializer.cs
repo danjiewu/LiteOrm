@@ -4,13 +4,15 @@ using System;
 namespace LiteOrm
 {
     /// <summary>
-    /// LiteOrm 默认值转换器初始化器，用于在 <see cref="SqlBuilder"/> 类型上注册默认的读取/写入转换器。
-    /// 通过静态构造函数在首次访问时自动注册，供 GetFromDbValueConverter/GetToDbValueConverter 的委托分发使用。
+    /// LiteOrm 默认值转换器初始化器，用于在 <see cref="SqlBuilder"/> 类型上注册默认的双向值转换器。
+    /// 通过静态构造函数在首次访问时自动注册，供 GetDbValueConverter 查找、ConvertFromDbValue/ConvertToDbValue 分发使用。
+    /// 注册主键为 (值类型, DbValueType)，读取与写入共用同一注册表。
     /// </summary>
     /// <remarks>
     /// 调用 <see cref="Initialize"/> 方法可显式触发静态构造函数，确保转换器在应用启动时完成注册。
     /// 静态构造函数只会执行一次，因此多次调用 <see cref="Initialize"/> 是安全的。
-    /// 各方言子类可通过 <see cref="SqlBuilderExtensions"/> 的 RegisterDbReadConverter/RegisterDbWriteConverter 扩展方法在自身类型上覆盖默认注册。
+    /// 各方言子类可通过 <see cref="SqlBuilderExtensions"/> 的 RegisterDbValueConverter 扩展方法在自身类型上覆盖默认注册
+    /// （通过继承链查找，方言注册优先于基类注册）。
     /// </remarks>
     public static class LiteOrmConverterInitializer
     {
@@ -29,57 +31,60 @@ namespace LiteOrm
         public static void Initialize() { }
 
         /// <summary>
-        /// 在 SqlBuilder 类型上注册默认的读取/写入转换器（预注册的方法委托）。
+        /// 在 SqlBuilder 类型上注册默认的双向值转换器。
         /// </summary>
         private static void RegisterDefaultConverters()
         {
-            // 读取转换器：源类型统一为 object，使 DataReaderConverter 的 GetFromDbValueConverter 兜底路径可直接命中
-            SqlBuilder.Instance.RegisterDbReadConverter<SqlBuilder, object, bool>(ConvertToBool);
-            SqlBuilder.Instance.RegisterDbReadConverter<SqlBuilder, object, Guid>(ConvertToGuid);
-            SqlBuilder.Instance.RegisterDbReadConverter<SqlBuilder, object, TimeSpan>(ConvertToTimeSpan);
-            SqlBuilder.Instance.RegisterDbReadConverter<SqlBuilder, object, DateTimeOffset>(ConvertToDateTimeOffset);
+            SqlBuilder sqlBuilder = SqlBuilder.Instance;
 
-            // 写入转换器：按 (源类型, DbValueType) 注册
+            // bool ↔ 数值列（数据库以数值存储布尔时双向转换）
             foreach (DbValueType numeric in _numericDbValueTypes)
-                SqlBuilder.Instance.RegisterDbWriteConverter(numeric, static (bool b) => b ? 1 : 0);
-            SqlBuilder.Instance.RegisterDbWriteConverter(DbValueType.Boolean, static (bool b) => Convert.ToBoolean(b));
+                sqlBuilder.RegisterDbValueConverter(numeric, ConvertToBool, static b => b ? 1 : 0);
+            sqlBuilder.RegisterDbValueConverter(DbValueType.Boolean, ConvertToBool, static b => b);
 
-            SqlBuilder.Instance.RegisterDbWriteConverter(DbValueType.Guid, static (Guid g) => g);
-            SqlBuilder.Instance.RegisterDbWriteConverter(DbValueType.Binary, static (Guid g) => g.ToByteArray());
+            // Guid ↔ Guid/Binary/字符串列
+            sqlBuilder.RegisterDbValueConverter(DbValueType.Guid, ConvertToGuid, static g => g);
+            sqlBuilder.RegisterDbValueConverter(DbValueType.Binary, ConvertToGuid, static g => g.ToByteArray());
             foreach (DbValueType stringType in _stringDbValueTypes)
-                SqlBuilder.Instance.RegisterDbWriteConverter(stringType, static (Guid g) => g.ToString());
+                sqlBuilder.RegisterDbValueConverter(stringType, ConvertToGuid, static g => g.ToString());
 
+            // DateTime / DateTimeOffset ↔ 日期时间类列
             foreach (DbValueType dateType in _dateDbValueTypes)
             {
-                SqlBuilder.Instance.RegisterDbWriteConverter(dateType, static (DateTime d) => d);
-                SqlBuilder.Instance.RegisterDbWriteConverter(dateType, static (DateTimeOffset d) => d.DateTime);
+                sqlBuilder.RegisterDbValueConverter(dateType, ConvertToDateTime, static d => d);
+                sqlBuilder.RegisterDbValueConverter(dateType, ConvertToDateTimeOffset, static d => d.DateTime);
             }
-            SqlBuilder.Instance.RegisterDbWriteConverter(DbValueType.DateTimeOffset, static (DateTimeOffset d) => d);
-            SqlBuilder.Instance.RegisterDbWriteConverter(DbValueType.DateTimeOffset, static (DateTime d) => new DateTimeOffset(d));
+            sqlBuilder.RegisterDbValueConverter(DbValueType.DateTimeOffset, ConvertToDateTimeOffset, static d => d);
+            sqlBuilder.RegisterDbValueConverter(DbValueType.DateTimeOffset, ConvertToDateTime, static d => new DateTimeOffset(d));
 
-            SqlBuilder.Instance.RegisterDbWriteConverter(DbValueType.Time, static (TimeSpan t) => t);
+            // TimeSpan ↔ Time/Int64(ticks)/字符串列
+            sqlBuilder.RegisterDbValueConverter(DbValueType.Time, ConvertToTimeSpan, static t => t);
+            sqlBuilder.RegisterDbValueConverter(DbValueType.Int64, ConvertToTimeSpan, static t => t.Ticks);
             foreach (DbValueType stringType in _stringDbValueTypes)
-                SqlBuilder.Instance.RegisterDbWriteConverter(stringType, static (TimeSpan t) => t.ToString());
+                sqlBuilder.RegisterDbValueConverter(stringType, ConvertToTimeSpan, static t => t.ToString());
 
+            // string ↔ 字符串列（读方向同类型直接赋值，此处注册保证写方向语义完整）
             foreach (DbValueType stringType in _stringDbValueTypes)
-                SqlBuilder.Instance.RegisterDbWriteConverter(stringType, static (string s) => s);
+                sqlBuilder.RegisterDbValueConverter(stringType, static o => (string)o, static s => s);
 
-            // Oracle 方言：在 OracleBuilder 自身的 DbValueConverterMap 上注册 bool 写入转换为整数 1/0
-            // （Oracle 无布尔类型）。通过基类型遍历，这些注册优先于 SqlBuilder 上的默认注册。
-            OracleBuilder.Instance.RegisterDbWriteConverter(DbValueType.Boolean, static (bool b) => b ? 1 : 0);
-            foreach (DbValueType numeric in _numericDbValueTypes)
-                OracleBuilder.Instance.RegisterDbWriteConverter(numeric, static (bool b) => b ? 1 : 0);
+            // Oracle 方言：bool 以整数 1/0 写入（Oracle 无布尔类型）。
+            // 通过基类型遍历，这些注册优先于 SqlBuilder 上的默认注册。
+            OracleBuilder.Instance.RegisterDbValueConverter(DbValueType.Boolean, ConvertToBool, static b => b ? 1 : 0);
 
-            // SQLite 方言：在 SQLiteBuilder 自身的 DbValueConverterMap 上注册 DateTime/DateTimeOffset/TimeSpan
-            // 写入转换为字符串存储（SQLite 无原生日期/时间类型）。
+            // SQLite 方言：DateTime/DateTimeOffset/TimeSpan 以字符串存储（SQLite 无原生日期/时间类型）。
             foreach (DbValueType dateType in _dateDbValueTypes)
             {
-                SQLiteBuilder.Instance.RegisterDbWriteConverter(dateType, static (DateTime d) => d.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                SQLiteBuilder.Instance.RegisterDbWriteConverter(dateType, static (DateTimeOffset d) => d.ToString("yyyy-MM-dd HH:mm:ss.fff zzz"));
+                SQLiteBuilder.Instance.RegisterDbValueConverter(dateType,
+                    ConvertToDateTime, static d => d.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+                SQLiteBuilder.Instance.RegisterDbValueConverter(dateType,
+                    ConvertToDateTimeOffset, static d => d.ToString("yyyy-MM-dd HH:mm:ss.fff zzz"));
             }
-            SQLiteBuilder.Instance.RegisterDbWriteConverter(DbValueType.DateTimeOffset, static (DateTime d) => d.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-            SQLiteBuilder.Instance.RegisterDbWriteConverter(DbValueType.DateTimeOffset, static (DateTimeOffset d) => d.ToString("yyyy-MM-dd HH:mm:ss.fff zzz"));
-            SQLiteBuilder.Instance.RegisterDbWriteConverter(DbValueType.Time, static (TimeSpan t) => t.ToString("c"));
+            SQLiteBuilder.Instance.RegisterDbValueConverter(DbValueType.DateTimeOffset,
+                ConvertToDateTime, static d => d.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+            SQLiteBuilder.Instance.RegisterDbValueConverter(DbValueType.DateTimeOffset,
+                ConvertToDateTimeOffset, static d => d.ToString("yyyy-MM-dd HH:mm:ss.fff zzz"));
+            SQLiteBuilder.Instance.RegisterDbValueConverter(DbValueType.Time,
+                ConvertToTimeSpan, static t => t.ToString("c"));
         }
 
         private static readonly DbValueType[] _numericDbValueTypes =
@@ -127,10 +132,11 @@ namespace LiteOrm
         /// </summary>
         private static TimeSpan ConvertToTimeSpan(object value)
         {
+            if (value is TimeSpan ts) return ts;
             if (value is long ticks) return TimeSpan.FromTicks(ticks);
             if (value is string strTs)
             {
-                if (TimeSpan.TryParse(strTs, out TimeSpan ts)) return ts;
+                if (TimeSpan.TryParse(strTs, out TimeSpan ts2)) return ts2;
                 // Oracle interval format: "+DD HH:MM:SS.FFFFFF"
                 if (strTs.Length > 3 && (strTs[0] == '+' || strTs[0] == '-') && strTs.IndexOf(' ') >= 0)
                 {
@@ -147,9 +153,21 @@ namespace LiteOrm
         /// </summary>
         private static DateTimeOffset ConvertToDateTimeOffset(object value)
         {
+            if (value is DateTimeOffset dto) return dto;
             if (value is DateTime dt) return new DateTimeOffset(dt);
-            if (value is string strDto && DateTimeOffset.TryParse(strDto, out DateTimeOffset dto)) return dto;
+            if (value is string strDto && DateTimeOffset.TryParse(strDto, out DateTimeOffset dto2)) return dto2;
             return (DateTimeOffset)Convert.ChangeType(value, typeof(DateTimeOffset));
+        }
+
+        /// <summary>
+        /// 将数据库值转换为 <see cref="DateTime"/>（DateTimeOffset、字符串或数值）。
+        /// </summary>
+        private static DateTime ConvertToDateTime(object value)
+        {
+            if (value is DateTime dt) return dt;
+            if (value is DateTimeOffset dto) return dto.DateTime;
+            if (value is string strDt && DateTime.TryParse(strDt, out DateTime dt2)) return dt2;
+            return (DateTime)Convert.ChangeType(value, typeof(DateTime));
         }
     }
 }

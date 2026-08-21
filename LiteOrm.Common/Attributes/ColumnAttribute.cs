@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm.Common
 {
@@ -132,5 +133,12 @@ namespace LiteOrm.Common
         /// 获取或设置列映射模式。
         /// </summary>
         public ColumnMode ColumnMode { get; set; }
+
+        /// <summary>
+        /// 获取或设置列值转换器类型。该类型须实现 <see cref="IDbValueConverter"/> 并具有公共无参构造函数，
+        /// 由表信息提供器实例化后赋给 <see cref="SqlColumn.DbValueConverter"/>。
+        /// </summary>
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
+        public Type? ValueConverterType { get; set; }
     }
 }
