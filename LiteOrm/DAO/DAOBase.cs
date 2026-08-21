@@ -422,7 +422,7 @@ namespace LiteOrm
                         var dbType = SqlBuilder.ToDbType(SqlBuilder.GetDbValueType(para.Value.GetType()));
                         if (dbType != DbType.Object) dbParam.DbType = dbType;
                     }
-                    dbParam.Value = ConvertToDbValue(para.Value, para.DbType);
+                    dbParam.Value = SqlBuilder.ToDbValue(para.Value, para.DbType);
                     command.Parameters.Add(dbParam);
                 }
         }
@@ -613,28 +613,6 @@ namespace LiteOrm
                 values.Add(key.GetValue(o)!);
             }
             return values.ToArray();
-        }
-
-        /// <summary>
-        /// 将数据库取得的值转化为对象属性类型所对应的值
-        /// </summary>
-        /// <param name="dbValue">数据库取得的值</param>
-        /// <param name="objectType">对象属性的类型</param>
-        /// <returns>对象属性类型所对应的值</returns>
-        protected virtual object? ConvertFromDbValue(object? dbValue, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType)
-        {
-            return DbConverterHelper.ConvertFromDbValue(SqlBuilder, dbValue, objectType);
-        }
-
-        /// <summary>
-        /// 将对象的属性值转化为数据库中的值，根据 DbValueType 进行转换
-        /// </summary>
-        /// <param name="value">值</param>
-        /// <param name="dbValueType">数据库取值类型</param>
-        /// <returns>数据库中的值</returns>
-        protected virtual object ConvertToDbValue(object? value, DbValueType? dbValueType)
-        {
-            return SqlBuilder.ConvertToDbValue(value, dbValueType);
         }
 
         /// <summary>

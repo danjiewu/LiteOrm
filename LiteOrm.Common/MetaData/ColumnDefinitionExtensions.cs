@@ -47,32 +47,92 @@ namespace LiteOrm.Common
             return dbConverter.GetDbValueType(column.PropertyType);
         }
 
-        public static object GetAsDbValue(this ColumnDefinition column, object target, IDbConverter? dbConverter = null)
+        /// <summary>
+        /// 从 <paramref name="target"/> 取列值并转换为数据库可接受的值（写入方向的列级入口，从实体取值场景）：
+        /// 等价于 <see cref="ToDbValue(ColumnDefinition, object?, IDbConverter?)"/>(<see cref="SqlColumn.GetValue"/> 的结果)。
+        /// </summary>
+        /// <param name="column">列定义。</param>
+        /// <param name="target">实体对象（从中取列值）。</param>
+        /// <param name="dbConverter">数据库值转换器；为 null 时仅做列级转换与裸值直返。</param>
+        /// <returns>数据库可接受的值。</returns>
+        public static object GetToDbValue(this ColumnDefinition column, object? target, IDbConverter? dbConverter = null)
         {
-            object? value = column.GetValue(target);
+            if (column is null) throw new ArgumentNullException(nameof(column));
+            return column.ToDbValue(column.GetValue(target), dbConverter);
+        }
+
+        /// <summary>
+        /// 将裸值按列上下文转换为数据库可接受的值（写入方向的列级入口，裸值场景，如主键查询条件、时间戳条件）：
+        /// null 返回 <see cref="DBNull.Value"/>；列级转换器（<see cref="SqlColumn.DbValueConverter"/>）优先；
+        /// 否则委托 <see cref="DbConverterHelper.ToDbValue(IDbConverter, object?, DbValueType?)"/> 统一链路
+        /// （注册转换器优先 + 数组/Json 序列化 + 枚举/bool/DateTimeOffset/TimeSpan 适配 + <see cref="Convert.ChangeType(object, Type)"/> 兜底）。
+        /// </summary>
+        /// <param name="column">列定义（提供列级转换器与列取值类型上下文）。</param>
+        /// <param name="value">要转换的裸值（非从实体属性取得）。</param>
+        /// <param name="dbConverter">数据库值转换器；为 null 时仅做列级转换与裸值直返。</param>
+        /// <returns>数据库可接受的值。</returns>
+        public static object ToDbValue(this ColumnDefinition column, object? value, IDbConverter? dbConverter = null)
+        {
+            if (column is null) throw new ArgumentNullException(nameof(column));
             if (value is null) return DBNull.Value;
-            if (dbConverter != null)
+
+            // 列级转换器优先（与读取方向的 FromDbValue 对称）
+            if (column.DbValueConverter is IDbValueConverter columnConverter)
+                return columnConverter.ConvertToDbValue(value);
+
+            return dbConverter != null
+                ? dbConverter.ToDbValue(value, column.GetDbValueType(dbConverter))
+                : value;
+        }
+
+        /// <summary>
+        /// 将数据库取得的值转换为列属性类型的值（读取方向的列级入口，裸值场景，如批量存在性检查的主键比较值）：
+        /// 空值短路（null / <see cref="DBNull"/> / 空字符串 → 属性类型默认值）后，
+        /// 列级转换器（<see cref="SqlColumn.DbValueConverter"/>）优先；
+        /// 否则委托 <see cref="DbConverterHelper.ConvertFromDbValue(IDbConverter, object?, Type, DbValueType)"/> 统一链路
+        /// （注册转换器优先 + 同类型直返 + 运行时类型注册命中 + 枚举解析 + JSON 反序列化 + 集合转换 + <see cref="Convert.ChangeType(object, Type)"/> 兜底）。
+        /// </summary>
+        /// <param name="column">列定义。</param>
+        /// <param name="dbValue">数据库取得的原始值。</param>
+        /// <param name="dbConverter">数据库值转换器；为 null 时退化为列级转换 + <see cref="Convert.ChangeType(object, Type)"/>。</param>
+        /// <returns>列属性类型的值。</returns>
+        public static object? FromDbValue(this ColumnDefinition column, object? dbValue, IDbConverter? dbConverter = null)
+        {
+            if (column is null) throw new ArgumentNullException(nameof(column));
+
+            // 空值短路：null / DBNull / 空字符串 → 属性类型默认值（引用类型与可空类型为 null，非可空值类型为零值）。
+            // 列级与注册转换器均不应收到空值（如 SQLite ALTER TABLE 加列产生的 DEFAULT '' 旧数据）。
+            if (dbValue is null || dbValue == DBNull.Value || (dbValue is string empty && empty.Length == 0))
             {
-                var dbType = column.GetDbValueType(dbConverter);
-                IDbValueConverter? converter = column.DbValueConverter ?? dbConverter.GetDbValueConverter(column.PropertyType, dbType);
-                if (converter != null)
-                {
-                    return converter.ConvertToDbValue(value);
-                }
-                // 最后兜底：目标类型一致直返；否则 ChangeType，失败时原样返回交由驱动绑定
-                Type targetType = dbType.ToType();
-                if (targetType.IsInstanceOfType(value))
-                    return value;
-                try
-                {
-                    return Convert.ChangeType(value, targetType);
-                }
-                catch (InvalidCastException)
-                {
-                    return value;
-                }
+                return column.PropertyType.IsValueType && Nullable.GetUnderlyingType(column.PropertyType) is null
+                    ? DbConverterHelper.CreateDefaultValue(column.PropertyType.GetUnderlyingType())
+                    : null;
             }
-            return value;
+
+            // 列级转换器优先
+            if (column.DbValueConverter is IDbValueConverter columnConverter)
+                return columnConverter.ConvertFromDbValue(dbValue);
+
+            if (dbConverter is null)
+                return Convert.ChangeType(dbValue, column.PropertyType.GetUnderlyingType());
+
+            return DbConverterHelper.ConvertFromDbValue(dbConverter, dbValue, column.PropertyType, column.GetDbValueType(dbConverter));
+        }
+
+        /// <summary>
+        /// 将数据库取得的值转换为列属性类型的值后直接写入 <paramref name="target"/> 的对应属性
+        /// （读取方向的列级入口，写入实体场景，如自增主键回填；与写入方向的
+        /// <see cref="GetToDbValue(ColumnDefinition, object?, IDbConverter?)"/> 对称）：
+        /// 转换链路同 <see cref="FromDbValue(ColumnDefinition, object?, IDbConverter?)"/>。
+        /// </summary>
+        /// <param name="column">列定义。</param>
+        /// <param name="target">实体对象（转换结果写入其对应属性）。</param>
+        /// <param name="dbValue">数据库取得的原始值。</param>
+        /// <param name="dbConverter">数据库值转换器；为 null 时退化为列级转换 + <see cref="Convert.ChangeType(object, Type)"/>。</param>
+        public static void SetFromDbValue(this ColumnDefinition column, object? target, object? dbValue, IDbConverter? dbConverter = null)
+        {
+            if (column is null) throw new ArgumentNullException(nameof(column));
+            column.SetValue(target, FromDbValue(column, dbValue, dbConverter));
         }
 
         /// <summary>

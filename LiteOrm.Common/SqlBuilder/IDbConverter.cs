@@ -119,6 +119,15 @@ namespace LiteOrm.Common
         /// <returns>注册的转换器；未注册时返回 null。</returns>
         IDbValueConverter? GetDbValueConverter(Type valueType, DbValueType dbValueType);
 
+        /// <summary>
+        /// 将 .NET 值转换为数据库可接受的值（写入方向的统一入口，委托 <see cref="DbConverterHelper.ToDbValue(IDbConverter, object?, DbValueType?)"/> 分发）：
+        /// null 返回 <see cref="DBNull.Value"/>；优先使用按 (值类型, 数据库取值类型) 注册的转换器，
+        /// 未注册时使用通用兜底：数组/Json 序列化、枚举转换、bool/DateTimeOffset/TimeSpan 适配，
+        /// 最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底（失败时原样返回交由驱动绑定）。
+        /// </summary>
+        /// <param name="value">要转换的对象值。</param>
+        /// <param name="dbValueType">数据库取值类型（可含 <see cref="DbValueType.Array"/> 掩码，为 null/Object/Default 时按值的运行时类型推断）。</param>
+        /// <returns>数据库可接受的值。</returns>
         object ToDbValue(object? value, DbValueType? dbValueType = null);
         /// <summary>
         /// 将 .NET 类型映射为数据库对应的 <see cref="DbValueType"/>。

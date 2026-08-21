@@ -58,7 +58,7 @@ namespace LiteOrm
                 columns[i] = column;
                 Type propertyType = column?.PropertyType ?? reader.GetFieldType(i);
                 object value = reader.GetValue(i);
-                row[i] = ConvertFromDbValue(value, propertyType) ?? DBNull.Value;
+                row[i] = SqlBuilder.FromDbValue(value, propertyType) ?? DBNull.Value;
             }
             return row;
         }

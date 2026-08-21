@@ -8,7 +8,7 @@ namespace LiteOrm
     /// 通过静态构造函数在首次访问时自动注册，供 <see cref="IDbConverter.GetDbValueConverter"/> 查找。
     /// 注册主键为 (值类型, DbValueType)，读取与写入共用同一注册表；
     /// 读取分发见 <see cref="DbConverterHelper.ConvertFromDbValue(IDbConverter, object?, Type)"/>，
-    /// 写入分发见 <see cref="SqlBuilderExtensions.ConvertToDbValue(IDbConverter, object?, DbValueType?)"/>。
+    /// 写入分发见 <see cref="DbConverterHelper.ToDbValue(IDbConverter, object?, DbValueType?)"/>。
     /// </summary>
     /// <remarks>
     /// 调用 <see cref="Initialize"/> 方法可显式触发静态构造函数，确保转换器在应用启动时完成注册。

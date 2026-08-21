@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -7,14 +7,101 @@ using System.Text.Json;
 
 namespace LiteOrm.Common
 {
+    /// <summary>
+    /// 数据库值转换的统一分发辅助类。
+    /// 读取方向见 <see cref="ConvertFromDbValue(IDbConverter, object?, Type)"/>，
+    /// 写入方向见 <see cref="ToDbValue(IDbConverter, object?, DbValueType?)"/>；
+    /// 两者均优先使用按 (值类型, 数据库取值类型) 注册的 <see cref="IDbValueConverter"/>，
+    /// 未注册时提供数组/Json 序列化、枚举/bool/DateTimeOffset/TimeSpan 适配与
+    /// <see cref="Convert.ChangeType(object, Type)"/> 兜底的通用转换链。
+    /// </summary>
     public static class DbConverterHelper
     {
+        /// <summary>
+        /// 将 .NET 值转换为数据库可接受的值（写入统一入口，与 <see cref="ConvertFromDbValue(IDbConverter, object?, Type)"/> 的读取方向对称）：
+        /// null 返回 <see cref="DBNull.Value"/>；优先使用按 (值类型, 数据库取值类型) 注册的转换器
+        /// （默认类型转换与方言特定转换均通过 LiteOrmConverterInitializer 预注册实现）；
+        /// 未注册时使用通用兜底：数组/Json 序列化、按运行时类型命中注册转换器、枚举转换、bool/DateTimeOffset/TimeSpan 适配，
+        /// 最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底（失败时原样返回交由驱动绑定）。
+        /// </summary>
+        /// <param name="converter">数据库值转换器。</param>
+        /// <param name="value">.NET 值。</param>
+        /// <param name="dbValueType">数据字段取值类型（可含 <see cref="DbValueType.Array"/> 掩码，为 null 时按值的运行时类型推断）。</param>
+        /// <returns>数据库可接受的值。</returns>
         public static object ToDbValue(this IDbConverter converter, object? value, DbValueType? dbValueType = null)
         {
             if (value is null) return DBNull.Value;
-            var dbType = dbValueType ?? converter.GetDbValueType(value.GetType());
-            IDbValueConverter? converterInstance = converter.GetDbValueConverter(value.GetType(), dbType);
-            return converterInstance?.ConvertToDbValue(value) ?? value;
+
+            Type type = value.GetType();
+            DbValueType dbType = (dbValueType is null || dbValueType == DbValueType.Object || dbValueType == DbValueType.Default)
+                ? converter.GetDbValueType(type)
+                : dbValueType.Value;
+
+            // 注册的转换器优先（如 bool/Guid/TimeSpan/DateTime/DateTimeOffset/string 及方言特定转换）；
+            // 数组/Json 掩码的组合通常未注册，直接落入通用兜底
+            if (!dbType.HasArray()
+                && converter.GetDbValueConverter(type.GetUnderlyingType(), dbType) is IDbValueConverter registered)
+            {
+                return registered.ConvertToDbValue(value);
+            }
+
+            return ToDbValueCore(converter, value, dbType);
+        }
+
+        /// <summary>
+        /// 通用兜底的「.NET 值 → 数据库值」转换：数组/Json 序列化、按运行时类型命中注册转换器、
+        /// 枚举转换、bool/DateTimeOffset/TimeSpan 适配，最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底。
+        /// </summary>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050",
+            Justification = "JSON serialization path is only triggered when the value is a complex object/collection; under AOT, users must provide a System.Text.Json source-gen context for complex property types, otherwise a NotSupportedException is thrown at runtime.")]
+#endif
+        private static object ToDbValueCore(IDbConverter converter, object value, DbValueType dbType)
+        {
+            // 数组列：原生数组方言（如 PostgreSQL）原样返回交由驱动绑定；其余方言回退为 JSON 字符串存储
+            if (dbType.HasArray() && ColumnDefinitionExtensions.IsCollectionType(value.GetType()))
+                return converter is ISqlBuilder { SupportsNativeArrays: true } ? value : JsonSerializer.Serialize(value, value.GetType());
+
+            // Json/Jsonb 列：复杂值序列化为 JSON 字符串，标量直返字符串形式
+            if (dbType == DbValueType.Json || dbType == DbValueType.Jsonb)
+                return IsComplexType(value.GetType()) ? JsonSerializer.Serialize(value, value.GetType()) : value.ToString()!;
+
+            Type type = value.GetType();
+
+            // 优先命中按实际值类型注册的转换器（支持 object/多态属性按运行时类型转换）
+            if (!dbType.HasArray()
+                && converter.GetDbValueConverter(type, dbType) is IDbValueConverter runtimeConverter)
+                return runtimeConverter.ConvertToDbValue(value);
+
+            // 处理枚举：字符串类列存名称，其余按基础类型转换
+            if (type.IsEnum)
+            {
+                if (dbType == DbValueType.String || dbType == DbValueType.AnsiString ||
+                    dbType == DbValueType.StringFixedLength || dbType == DbValueType.AnsiStringFixedLength)
+                {
+                    return value.ToString()!;
+                }
+                return Convert.ChangeType(value, Enum.GetUnderlyingType(type));
+            }
+
+            // 通用兜底：bool / DateTimeOffset / TimeSpan 的通用适配
+            if (value is bool b) return b ? 1 : 0;
+            if (value is DateTimeOffset dto) return dto.DateTime;
+            if (value is TimeSpan ts) return ts.Ticks;
+
+            // 字符串类列的非标量值（集合、复杂对象）序列化为 JSON 字符串（SQLite 等以字符串存储复杂类型的方言）
+            if ((dbType == DbValueType.String || dbType == DbValueType.AnsiString ||
+                 dbType == DbValueType.StringFixedLength || dbType == DbValueType.AnsiStringFixedLength)
+                && IsComplexType(type))
+            {
+                return JsonSerializer.Serialize(value, value.GetType());
+            }
+
+            // 最后兜底：目标类型一致直返；否则 ChangeType，失败时原样返回交由驱动绑定
+            Type targetType = dbType.ToType();
+            if (targetType.IsInstanceOfType(value)) return value;
+            try { return Convert.ChangeType(value, targetType); }
+            catch (InvalidCastException) { return value; }
         }
 
         /// <summary>

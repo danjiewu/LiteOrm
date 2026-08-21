@@ -386,22 +386,6 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 将对象序列化为 JSON 字符串（Json/Jsonb 列、数组列文本回退与字符串列的复杂值均经此序列化）。
-        /// 供写入转换兜底逻辑（<see cref="SqlBuilderExtensions.ConvertToDbValue(IDbConverter, object?, DbValueType?)"/>）调用，
-        /// 子类可覆盖以提供方言特定的 JSON 序列化行为。
-        /// </summary>
-        /// <param name="value">要序列化的值。</param>
-        /// <returns>JSON 字符串。</returns>
-#if NET8_0_OR_GREATER
-        [UnconditionalSuppressMessage("AOT", "IL3050",
-            Justification = "JSON serialization is only triggered when the value is a complex object/collection; under AOT, users must provide a System.Text.Json source-gen context for complex property types, otherwise a NotSupportedException is thrown at runtime.")]
-#endif
-        public virtual string ToJsonString(object value)
-        {
-            return JsonSerializer.Serialize(value, value.GetType());
-        }
-
-        /// <summary>
         /// 获取对应的数据库类型
         /// </summary>
         /// <param name="type">要转换的 .NET 类型，支持 Nullable 类型</param>
@@ -413,17 +397,40 @@ namespace LiteOrm
             return GetDbValueTypeInternal(underlyingType);
         }
         /// <summary>
-        /// 将对象值转换为数据库可接受的值，一般用于非数据列的数值转换。
+        /// 将对象值转换为数据库可接受的值（写入统一入口，无列上下文时使用；有列上下文时应使用列级入口——
+        /// 从实体取值用 <see cref="ColumnDefinitionExtensions.GetToDbValue(ColumnDefinition, object?, IDbConverter?)"/>，
+        /// 裸值（主键查询条件、时间戳条件等）用 <see cref="ColumnDefinitionExtensions.ToDbValue(ColumnDefinition, object?, IDbConverter?)"/>）：
+        /// null 返回 <see cref="DBNull.Value"/>；优先使用按 (值类型, 数据库取值类型) 注册的转换器
+        /// （默认类型转换与方言特定转换均通过 <see cref="LiteOrmConverterInitializer"/> 预注册实现）；
+        /// 未注册时使用通用兜底：数组/Json 序列化、按运行时类型命中注册转换器、枚举转换、bool/DateTimeOffset/TimeSpan 适配，
+        /// 最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底（失败时原样返回交由驱动绑定）。
         /// </summary>
         /// <param name="value">要转换的对象值</param>
-        /// <param name="dbValueType">数据库取值类型</param>
+        /// <param name="dbValueType">数据库取值类型（可含 <see cref="DbValueType.Array"/> 掩码，为 null/Object/Default 时按值的运行时类型推断）</param>
         /// <returns>数据库可接受的值</returns>
         public virtual object ToDbValue(object? value, DbValueType? dbValueType = null)
         {
-            if (value is null) return DBNull.Value;
-            var dbType = dbValueType ?? GetDbValueType(value.GetType());
-            IDbValueConverter? converterInstance = GetDbValueConverter(value.GetType(), dbType);
-            return converterInstance?.ConvertToDbValue(value) ?? value;
+            return DbConverterHelper.ToDbValue(this, value, dbValueType);
+        }
+
+        /// <summary>
+        /// 将数据库取得的值转换为 <paramref name="objectType"/> 类型的值（读取统一入口，无列上下文时使用；有列上下文时应使用列级入口——
+        /// 写入实体用 <see cref="ColumnDefinitionExtensions.SetFromDbValue(ColumnDefinition, object, object?, IDbConverter?)"/>，
+        /// 裸值转换用 <see cref="ColumnDefinitionExtensions.FromDbValue(ColumnDefinition, object?, IDbConverter?)"/>）：
+        /// 空值短路（null / <see cref="DBNull"/> / 空字符串 → 目标类型默认值）后，优先使用按
+        /// (<paramref name="objectType"/>, <paramref name="dbValueType"/>) 注册的转换器（默认类型转换与方言特定转换均通过
+        /// <see cref="LiteOrmConverterInitializer"/> 预注册实现）；未注册时使用通用兜底：同类型直返、按运行时类型命中注册转换器、
+        /// 枚举解析、JSON 反序列化、集合转换，最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底。
+        /// </summary>
+        /// <param name="dbValue">数据库取得的值</param>
+        /// <param name="objectType">目标类型</param>
+        /// <param name="dbValueType">列的数据库取值类型（用于注册查找）</param>
+        /// <returns>目标类型的值</returns>
+        public virtual object? FromDbValue(object? dbValue,
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType,
+            DbValueType dbValueType = DbValueType.Object)
+        {
+            return DbConverterHelper.ConvertFromDbValue(this, dbValue, objectType, dbValueType);
         }
 
         /// <summary>
