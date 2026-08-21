@@ -1,5 +1,6 @@
 using LiteOrm.Common;
 using System;
+using System.Text.Json;
 using Xunit;
 
 namespace LiteOrm.Tests
@@ -244,15 +245,32 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public void ConvertToDbValue_JsonColumn_StringPassthroughComplexSerialized()
+        public void ConvertToDbValue_JsonColumn_StringPassthroughComplexUnregisteredPassedThrough()
         {
             var builder = SqlBuilder.Instance;
+            var value = new CustomValue { Text = "abc" };
 
             // 标量字符串直返（不序列化为带引号 JSON）
             Assert.Equal("abc", builder.ToDbValue("abc", DbValueType.Json));
 
-            // 复杂对象序列化为 JSON 字符串
-            Assert.Equal("{\"Text\":\"abc\"}", builder.ToDbValue(new CustomValue { Text = "abc" }, DbValueType.Json));
+            // 未预注册的复杂类型不做 JSON 序列化，原样返回交由驱动绑定
+            Assert.Same(value, builder.ToDbValue(value, DbValueType.Json));
+        }
+
+        [Fact]
+        public void ConvertToDbValue_JsonColumn_RegisteredComplexConverterApplies()
+        {
+            // 使用独立构建器，避免污染 SqlBuilder.Instance 的静态注册表
+            var builder = new ConverterTestBuilder();
+            var value = new CustomValue { Text = "abc" };
+
+            // 预注册复杂类型的 Json 转换器后，写入走注册转换器（序列化为 JSON 字符串）
+            var jsonConverter = new FuncDbValueConverter<object, CustomValue>(
+                o => new CustomValue { Text = JsonSerializer.Deserialize<CustomValue>((string)o)!.Text! },
+                v => JsonSerializer.Serialize(v));
+            builder.RegisterDbValueConverter(DbValueType.Json, jsonConverter);
+
+            Assert.Equal("{\"Text\":\"abc\"}", builder.ToDbValue(value, DbValueType.Json));
         }
 
         #endregion

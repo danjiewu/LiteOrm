@@ -87,12 +87,6 @@ namespace LiteOrm
         /// </summary>
         public virtual bool ExplicitRecursive => false;
 
-        /// <summary>
-        /// 当前数据库是否原生支持数组列（如 PostgreSQL / KingbaseES / GaussDB 的 <c>T[]</c>）。
-        /// 为 <see langword="false"/> 时，数组列以 JSON 字符串存储（文本回退）。
-        /// </summary>
-        public virtual bool SupportsNativeArrays => false;
-
         private readonly Dictionary<string, string> _functionMappings = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase)
         {
             ["IndexOf"] = "CHARINDEX",
@@ -385,6 +379,12 @@ namespace LiteOrm
             return null;
         }
 
+
+        public IDbValueConverter<TDbValueType, TValueType>? GetDbValueConverter<TDbValueType, TValueType>(DbValueType dbValueType)
+        {
+            return GetDbValueConverter(typeof(TValueType), dbValueType) as IDbValueConverter<TDbValueType, TValueType>;
+        }
+
         /// <summary>
         /// 获取对应的数据库类型
         /// </summary>
@@ -402,8 +402,9 @@ namespace LiteOrm
         /// 裸值（主键查询条件、时间戳条件等）用 <see cref="ColumnDefinitionExtensions.ToDbValue(ColumnDefinition, object?, IDbConverter?)"/>）：
         /// null 返回 <see cref="DBNull.Value"/>；优先使用按 (值类型, 数据库取值类型) 注册的转换器
         /// （默认类型转换与方言特定转换均通过 <see cref="LiteOrmConverterInitializer"/> 预注册实现）；
-        /// 未注册时使用通用兜底：数组/Json 序列化、按运行时类型命中注册转换器、枚举转换、bool/DateTimeOffset/TimeSpan 适配，
+        /// 未注册时使用通用兜底：枚举转换、bool/DateTimeOffset/TimeSpan 适配，
         /// 最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底（失败时原样返回交由驱动绑定）。
+        /// 复杂类型（Collection/Json）不再自动序列化，需按 (值类型, DbValueType) 预注册转换器，未预注册的复杂类型不处理。
         /// </summary>
         /// <param name="value">要转换的对象值</param>
         /// <param name="dbValueType">数据库取值类型（可含 <see cref="DbValueType.Array"/> 掩码，为 null/Object/Default 时按值的运行时类型推断）</param>
@@ -420,7 +421,7 @@ namespace LiteOrm
         /// 空值短路（null / <see cref="DBNull"/> / 空字符串 → 目标类型默认值）后，优先使用按
         /// (<paramref name="objectType"/>, <paramref name="dbValueType"/>) 注册的转换器（默认类型转换与方言特定转换均通过
         /// <see cref="LiteOrmConverterInitializer"/> 预注册实现）；未注册时使用通用兜底：同类型直返、按运行时类型命中注册转换器、
-        /// 枚举解析、JSON 反序列化、集合转换，最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底。
+        /// 枚举解析，最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底（复杂类型需按 (值类型, DbValueType) 预注册转换器，未预注册的复杂类型不处理）。
         /// </summary>
         /// <param name="dbValue">数据库取得的值</param>
         /// <param name="objectType">目标类型</param>

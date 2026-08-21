@@ -65,7 +65,8 @@ namespace LiteOrm.Common
         /// 将裸值按列上下文转换为数据库可接受的值（写入方向的列级入口，裸值场景，如主键查询条件、时间戳条件）：
         /// null 返回 <see cref="DBNull.Value"/>；列级转换器（<see cref="SqlColumn.DbValueConverter"/>）优先；
         /// 否则委托 <see cref="DbConverterHelper.ToDbValue(IDbConverter, object?, DbValueType?)"/> 统一链路
-        /// （注册转换器优先 + 数组/Json 序列化 + 枚举/bool/DateTimeOffset/TimeSpan 适配 + <see cref="Convert.ChangeType(object, Type)"/> 兜底）。
+        /// （注册转换器优先 + 枚举/bool/DateTimeOffset/TimeSpan 适配 + <see cref="Convert.ChangeType(object, Type)"/> 兜底；
+        /// 复杂类型需按 (值类型, DbValueType) 预注册转换器，未预注册的复杂类型不处理）。
         /// </summary>
         /// <param name="column">列定义（提供列级转换器与列取值类型上下文）。</param>
         /// <param name="value">要转换的裸值（非从实体属性取得）。</param>
@@ -90,7 +91,8 @@ namespace LiteOrm.Common
         /// 空值短路（null / <see cref="DBNull"/> / 空字符串 → 属性类型默认值）后，
         /// 列级转换器（<see cref="SqlColumn.DbValueConverter"/>）优先；
         /// 否则委托 <see cref="DbConverterHelper.ConvertFromDbValue(IDbConverter, object?, Type, DbValueType)"/> 统一链路
-        /// （注册转换器优先 + 同类型直返 + 运行时类型注册命中 + 枚举解析 + JSON 反序列化 + 集合转换 + <see cref="Convert.ChangeType(object, Type)"/> 兜底）。
+        /// （注册转换器优先 + 同类型直返 + 运行时类型注册命中 + 枚举解析 + <see cref="Convert.ChangeType(object, Type)"/> 兜底；
+        /// 复杂类型需按 (值类型, DbValueType) 预注册转换器，未预注册的复杂类型不处理）。
         /// </summary>
         /// <param name="column">列定义。</param>
         /// <param name="dbValue">数据库取得的原始值。</param>

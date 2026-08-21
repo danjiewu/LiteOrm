@@ -26,13 +26,6 @@ namespace LiteOrm.Common
         bool ExplicitRecursive { get; }
 
         /// <summary>
-        /// 当前数据库是否原生支持数组列（如 PostgreSQL / KingbaseES / GaussDB 的 <c>T[]</c>）。
-        /// 为 <see langword="false"/> 时，数组列以 JSON 字符串存储（文本回退）。
-        /// 写入转换（<see cref="DbConverterHelper.ToDbValue(IDbConverter, object?, DbValueType?)"/>）依赖此属性决定数组列值的形态。
-        /// </summary>
-        bool SupportsNativeArrays { get; }
-
-        /// <summary>
         /// 替换 SQL 中的命名占位符或标识符为目标数据库的命名格式。
         /// </summary>
         /// <param name="sql">原始 SQL 字符串。</param>

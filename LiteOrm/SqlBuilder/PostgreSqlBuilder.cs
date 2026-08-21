@@ -23,11 +23,6 @@ namespace LiteOrm
         public override bool ExplicitRecursive => true;
 
         /// <summary>
-        /// PostgreSQL 原生支持数组列（如 <c>integer[]</c>、<c>text[]</c>）。
-        /// </summary>
-        public override bool SupportsNativeArrays => true;
-
-        /// <summary>
         /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。
         /// </summary>
         /// <param name="sb">用于接收 SQL 片段的字符串构建器。</param>
