@@ -1,27 +1,32 @@
 using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
 namespace LiteOrm.Common
 {
+
+    /// <summary>
+    /// 双向值转换委托：数据库值与 .NET 值之间的转换，读取（数据库值 → .NET 值）与写入（.NET 值 → 数据库值）共用同一类型。
+    /// </summary>
+    /// <param name="value">待转换的值（读取方向为数据库原始值，写入方向为 .NET 值）。</param>
+    /// <returns>转换后的值。</returns>
+    public delegate object DbConvertHandler(object value);
+
+    /// <summary>强类型双向往返值转换委托。</summary>
+    public delegate TResult DbConvertHandler<T, TResult>(T value);
+
     /// <summary>
     /// 强类型数据库值转换器接口，提供数据库值与 .NET 值之间的双向转换。
+    /// 委托为 null 表示该方向无需转换（直接赋值 / 直返）。
     /// </summary>
     /// <typeparam name="TDbType">数据库驱动返回的数据库值 CLR 类型。</typeparam>
     /// <typeparam name="TValueType">实体属性 / .NET 值类型。</typeparam>
     public interface IDbValueConverter<TDbType, TValueType> : IDbValueConverter
     {
-        /// <summary>将数据库值转换为 .NET 值。</summary>
-        /// <param name="value">数据库驱动返回的原始值。</param>
-        /// <returns>转换后的 .NET 值。</returns>
-        TValueType ConvertFromDbValue(TDbType value);
+        /// <summary>数据库值 → .NET 值的转换委托；为 null 时直接赋值。</summary>
+        new DbConvertHandler<TDbType, TValueType>? DbReadConverter { get; }
 
-        /// <summary>将 .NET 值转换为数据库可接受的值。</summary>
-        /// <param name="value">.NET 值。</param>
-        /// <returns>数据库可接受的值。</returns>
-        TDbType ConvertToDbValue(TValueType value);
+        /// <summary>.NET 值 → 数据库值的转换委托；为 null 时直接赋值。</summary>
+        new DbConvertHandler<TValueType, object>? DbWriteConverter { get; }
     }
 
     /// <summary>
@@ -36,71 +41,31 @@ namespace LiteOrm.Common
         /// <summary>实体属性 / .NET 值类型。</summary>
         Type ValueType { get; }
 
-        /// <summary>将数据库值转换为 .NET 值。</summary>
-        /// <param name="value">数据库驱动返回的原始值。</param>
-        /// <returns>转换后的 .NET 值。</returns>
-        object ConvertFromDbValue(object value);
+        /// <summary>数据库值 → .NET 值的转换委托；为 null 时表示无需转换，直接赋值。</summary>
+        DbConvertHandler? DbReadConverter { get; }
 
-        /// <summary>将 .NET 值转换为数据库可接受的值。</summary>
-        /// <param name="value">.NET 值。</param>
-        /// <returns>数据库可接受的值。</returns>
-        object ConvertToDbValue(object value);
-    }
-
-    public class DefaultDbValueConverter : IDbValueConverter
-    {
-        public DbValueType DbValueType => DbValueType.Object;
-        public Type ValueType { get; } 
-
-        public DefaultDbValueConverter(Type targetType)
-        {
-            ValueType = targetType ?? throw new ArgumentNullException(nameof(targetType));
-        }
-        public object ConvertFromDbValue(object value)
-        {
-            Type underlyingType = Nullable.GetUnderlyingType(ValueType) ?? ValueType;
-
-            // 通用兜底：同类型直返
-            if (underlyingType.IsInstanceOfType(value))
-                return value;
-
-            if (underlyingType.IsEnum)
-            {
-                if (value is string strEnum) return Enum.Parse(underlyingType, strEnum, true);
-                return Enum.ToObject(underlyingType, Convert.ChangeType(value, Enum.GetUnderlyingType(underlyingType)));
-            }
-
-            // 最后兜底：ChangeType 转换到目标类型；无法转换时原样返回交由读取方处理
-            // （未预注册的复杂类型不处理，不再自动 JSON 反序列化/集合转换）
-            try { return Convert.ChangeType(value, underlyingType); }
-            catch (InvalidCastException) { return value; }
-        }
-
-        public object ConvertToDbValue(object value)
-        {
-            if (value is null) return DBNull.Value;
-            return value;
-        }
+        /// <summary>.NET 值 → 数据库值的转换委托；为 null 时表示无需转换，直接赋值。</summary>
+        DbConvertHandler? DbWriteConverter { get; }
     }
 
     /// <summary>
     /// 基于委托的 <see cref="IDbValueConverter"/> 适配器。
-    /// 两个方向均可只提供单向委托，未提供委托的方向被调用时抛出 <see cref="NotSupportedException"/>。
-    /// 注册到 DbValueConverterMap 时建议双向提供委托，避免读取/写入链路单向命中后无回退。
+    /// 两个方向均可只提供单向委托；未提供的方向（委托为 null）表示无需转换，直接赋值。
+    /// 注册到 DbValueConverterMap 时建议双向提供委托，避免读写单向命中后无回方向转换。
     /// </summary>
     /// <typeparam name="TDbType">数据库驱动返回的数据库值 CLR 类型。</typeparam>
     /// <typeparam name="TValueType">实体属性 / .NET 值类型。</typeparam>
     public sealed class FuncDbValueConverter<TDbType, TValueType> : IDbValueConverter<TDbType, TValueType>
     {
-        private readonly Func<TDbType, TValueType>? _fromDb;
-        private readonly Func<TValueType, TDbType>? _toDb;
+        private readonly DbConvertHandler<TDbType, TValueType>? _fromDb;
+        private readonly DbConvertHandler<TValueType, object>? _toDb;
 
         /// <summary>
-        /// 创建基于委托的双向转换器。任一委托可为 null（该方向不支持）。
+        /// 创建基于委托的双向转换器。任一委托可为 null（该方向无需转换，直接赋值）。
         /// </summary>
         /// <param name="fromDb">数据库值 → .NET 值 的转换委托。</param>
         /// <param name="toDb">.NET 值 → 数据库值 的转换委托。</param>
-        public FuncDbValueConverter(Func<TDbType, TValueType>? fromDb, Func<TValueType, TDbType>? toDb)
+        public FuncDbValueConverter(DbConvertHandler<TDbType, TValueType>? fromDb, DbConvertHandler<TValueType, object>? toDb)
         {
             _fromDb = fromDb;
             _toDb = toDb;
@@ -109,35 +74,23 @@ namespace LiteOrm.Common
         DbValueType IDbValueConverter.DbValueType => DbValueType.Object;
         Type IDbValueConverter.ValueType => typeof(TValueType);
 
-        /// <summary>将数据库值转换为 <typeparamref name="TValueType"/> 值。</summary>
-        /// <param name="value">数据库驱动返回的原始值。</param>
-        /// <returns>转换后的 .NET 值。</returns>
-        public TValueType ConvertFromDbValue(TDbType value)
-        {
-            if (_fromDb == null)
-                throw new NotSupportedException($"转换器 {typeof(FuncDbValueConverter<TDbType, TValueType>)} 未提供数据库值到 {typeof(TValueType)} 的转换委托。");
-            return _fromDb(value);
-        }
+        /// <summary>数据库值 → <typeparamref name="TValueType"/> 的转换委托；为 null 时直接赋值。</summary>
+        public DbConvertHandler<TDbType, TValueType>? DbReadConverter => _fromDb;
 
-        /// <summary>将 <typeparamref name="TValueType"/> 值转换为数据库可接受的值。</summary>
-        /// <param name="value">.NET 值。</param>
-        /// <returns>数据库可接受的值。</returns>
-        public TDbType ConvertToDbValue(TValueType value)
-        {
-            if (_toDb == null)
-                throw new NotSupportedException($"转换器 {typeof(FuncDbValueConverter<TDbType, TValueType>)} 未提供 {typeof(TValueType)} 到数据库值的转换委托。");
-            return _toDb(value);
-        }
+        /// <summary><typeparamref name="TValueType"/> → 数据库值的转换委托；为 null 时直接赋值。</summary>
+        public DbConvertHandler<TValueType, object>? DbWriteConverter => _toDb;
 
-        object IDbValueConverter.ConvertFromDbValue(object value)
-        {
-            return ConvertFromDbValue((TDbType)value)!;
-        }
+        DbConvertHandler? IDbValueConverter.DbReadConverter =>
+            _fromDb == null ? null : new DbConvertHandler(obj =>
+                _fromDb(typeof(TDbType) == typeof(object) || typeof(TDbType).IsInstanceOfType(obj)
+                    ? (TDbType)obj!
+                    : (TDbType)Convert.ChangeType(obj, typeof(TDbType))));
 
-        object IDbValueConverter.ConvertToDbValue(object value)
-        {
-            return ConvertToDbValue((TValueType)value)!;
-        }
+        DbConvertHandler? IDbValueConverter.DbWriteConverter =>
+            _toDb == null ? null : new DbConvertHandler(obj =>
+                _toDb(typeof(TValueType).IsInstanceOfType(obj)
+                    ? (TValueType)obj!
+                    : (TValueType)Convert.ChangeType(obj, typeof(TValueType))));
     }
 
     /// <summary>
@@ -158,17 +111,6 @@ namespace LiteOrm.Common
 
         IDbValueConverter<TValueType, TDbType>? GetDbValueConverter<TValueType, TDbType>(DbValueType dbValueType);
 
-        /// <summary>
-        /// 将 .NET 值转换为数据库可接受的值（写入方向的统一入口，委托 <see cref="DbConverterHelper.ToDbValue(IDbConverter, object?, DbValueType?)"/> 分发）：
-        /// null 返回 <see cref="DBNull.Value"/>；优先使用按 (值类型, 数据库取值类型) 注册的转换器，
-        /// 未注册时使用通用兜底：枚举转换、bool/DateTimeOffset/TimeSpan 适配，
-        /// 最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底（失败时原样返回交由驱动绑定）。
-        /// 复杂类型（Collection/Json）不再自动序列化，需按 (值类型, DbValueType) 预注册转换器，未预注册的复杂类型不处理。
-        /// </summary>
-        /// <param name="value">要转换的对象值。</param>
-        /// <param name="dbValueType">数据库取值类型（可含 <see cref="DbValueType.Array"/> 掩码，为 null/Object/Default 时按值的运行时类型推断）。</param>
-        /// <returns>数据库可接受的值。</returns>
-        object ToDbValue(object? value, DbValueType? dbValueType = null);
         /// <summary>
         /// 将 .NET 类型映射为数据库对应的 <see cref="DbValueType"/>。
         /// </summary>

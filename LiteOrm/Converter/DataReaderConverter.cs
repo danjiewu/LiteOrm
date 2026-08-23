@@ -27,21 +27,19 @@ namespace LiteOrm
         private static readonly MethodInfo? _getValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetValue), new[] { typeof(int) });
 
-        // 读取列值的统一转换分发（注册转换器优先，SqlBuilder 兜底），表达式树经 MethodInfo 调用
+        // 泛型强类型读取（编译期按列读取方法返回类型闭包 tDb），表达式树经 MethodInfo 闭包泛型调用
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2111",
-            Justification = "在运行时通过 MethodInfo 获取并调用该方法；AOT 场景下复杂类型列须由源生成器 mapper 处理，此处仅兜底已由 DAO 注册的目标类型。")]
+            Justification = "在运行时通过 MethodInfo 获取并闭包泛型调用该方法；AOT 场景下复杂类型列须由源生成器 mapper 处理，此处仅兜底已由 DAO 注册的目标类型。")]
 #endif
-        private static readonly MethodInfo _convertFromDbValueCoreMethod =
-            typeof(DbConverterHelper).GetMethod(nameof(DbConverterHelper.ConvertFromDbValue),
-                BindingFlags.Static | BindingFlags.Public,
-                null,
-                new[] { typeof(IDbConverter), typeof(object), typeof(Type), typeof(DbValueType) },
-                null)!;
+        private static readonly MethodInfo _applyReadGenericMethod =
+            typeof(DbConverterHelper).GetMethod(nameof(DbConverterHelper.ApplyReadGeneric),
+                BindingFlags.Static | BindingFlags.Public)!;
 
-        // IDbValueConverter.ConvertFromDbValue：数据库值 → .NET 值
-        private static readonly MethodInfo _convertFromDbValueMethod =
-            typeof(IDbValueConverter).GetMethod(nameof(IDbValueConverter.ConvertFromDbValue))!;
+        // IDbConverter.GetDbValueConverter(Type, DbValueType)：运行时按 (目标类型, DbValueType) 解析转换器
+        private static readonly MethodInfo _getDbValueConverterMethod =
+            typeof(IDbConverter).GetMethod(nameof(IDbConverter.GetDbValueConverter),
+                new[] { typeof(Type), typeof(DbValueType) })!;
 
         private static readonly MethodInfo? _isDBNullMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.IsDBNull), new[] { typeof(int) });
@@ -273,8 +271,8 @@ namespace LiteOrm
 
         /// <summary>
         /// 构建读取指定列的完整表达式（含 IsDBNull 判定、Nullable 封装与列级异常包装）。
-        /// 转换优先级：<paramref name="columnConverter"/>（列级转换器）→ 数据库读取方法返回类型与属性 CLR 类型一致时直接赋值
-        /// → ConvertFromDbValue(reader.DbConverter, ..., 属性类型, <paramref name="dbValueType"/>) 统一分发（注册转换器优先，SqlBuilder 默认兜底）。
+        /// 转换优先级：<paramref name="columnConverter"/>（列级转换器，经 SqlBuilder 注册解析并回填列）→
+        /// 数据库读取方法返回类型与属性 CLR 类型一致时直接赋值 → ApplyRead 严格分发（列级 Converter 或注册解析，委托 null 则直返）。
         /// <paramref name="columnName"/> 用于在读取失败时抛出包含成员名（属性名或构造函数参数名）的明确异常；为 null 时仅依据 <paramref name="ordinal"/> 描述。
         /// </summary>
         [RequiresDynamicCode("The code for building the typed read expression used MakeGenericMethod and might not be available.")]
@@ -373,25 +371,25 @@ namespace LiteOrm
 
         /// <summary>
         /// 构建「按转换优先级对 <paramref name="valueExpr"/> 求值转换」的表达式。
-        /// 列级转换器直接以常量内联调用；否则调用 <see cref="DbConverterHelper.ConvertFromDbValue(IDbConverter, object?, Type, DbValueType)"/>
-        /// 统一分发：注册转换器优先，未注册时由 SqlBuilder 通用兜底。
+        /// 列级转换器以常量内联；否则运行时经 <c>reader.DbConverter.GetDbValueConverter</c> 解析。
+        /// 均闭包调用泛型强类型 <see cref="DbConverterHelper.ApplyReadGeneric"/>（tDb = <paramref name="valueExpr"/> 的类型）：
+        /// 转换器为匹配的泛型 <see cref="IDbValueConverter{TDbType,TValueType}.DbReadConverter"/> 时调用委托，否则直接赋值。
         /// </summary>
         private static Expression InvokeFromDbValueConverter(
-            ParameterExpression readerParam, Expression valueExpr, Type targetType, DbValueType dbValueType, IDbValueConverter? columnConverter)
+            ParameterExpression readerParam, Expression valueExpr, Type coreType, DbValueType dbValueType, IDbValueConverter? columnConverter)
         {
-            Expression boxedValue = Expression.Convert(valueExpr, typeof(object));
-
-            // 列级转换器：直接以常量内联调用
+            Expression converterExpr;
             if (columnConverter != null)
-                return Expression.Call(Expression.Constant(columnConverter), _convertFromDbValueMethod!, boxedValue);
+                converterExpr = Expression.Constant(columnConverter);
+            else
+                converterExpr = Expression.Call(
+                    Expression.Property(readerParam, nameof(AutoLockDataReader.DbConverter)),
+                    _getDbValueConverterMethod!,
+                    Expression.Constant(coreType),
+                    Expression.Constant(dbValueType));
 
-            // 注册转换器 → SqlBuilder 兜底
-            return Expression.Call(
-                _convertFromDbValueCoreMethod!,
-                Expression.Property(readerParam, nameof(AutoLockDataReader.DbConverter)),
-                boxedValue,
-                Expression.Constant(targetType),
-                Expression.Constant(dbValueType));
+            var genericMethod = _applyReadGenericMethod!.MakeGenericMethod(valueExpr.Type, coreType);
+            return Expression.Call(genericMethod, converterExpr, valueExpr);
         }
 
         /// <summary>
@@ -422,6 +420,11 @@ namespace LiteOrm
                 if (prop == null || !prop.CanWrite) continue;
 
                 DbType? dbType = GetColumnReadDbType(column, prop.PropertyType, dbConverter, out DbValueType dbValueType);
+
+                // 列级转换器为空且可用时，经 dbConverter 从 SqlBuilder 注册表解析并回填到列（缓存）
+                if (column.DbValueConverter is null && dbConverter is not null)
+                    column.DbValueConverter = dbConverter.GetDbValueConverter(prop.PropertyType, dbValueType);
+
                 bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType, column.PropertyName, dbType, dbValueType, column.DbValueConverter)));
             }
 

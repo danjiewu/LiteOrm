@@ -914,8 +914,8 @@ namespace LiteOrm.Generators
 
             if (converterField != null)
             {
-                // 列级转换器：GetValue 原始值 + 转换器转换（null 列返回默认值）
-                var converted = $"({type}){converterField}.ConvertFromDbValue(reader.GetValue({ordinal}))!";
+                // 列级转换器：GetValue 原始值 + 转换器委托转换（null 列返回默认值）
+                var converted = $"({type}){converterField}.DbReadConverter!(reader.GetValue({ordinal}))!";
                 return innerType != null
                     ? $"reader.IsDBNull({ordinal}) ? default({type}) : {converted}"
                     : $"reader.IsDBNull({ordinal}) ? default({type})! : {converted}";
@@ -947,7 +947,7 @@ namespace LiteOrm.Generators
                 "string" or "System.String" => $"reader.GetString({ordinal})",
                 "System.DateTime" => $"reader.GetDateTime({ordinal})",
                 "System.Guid" => $"reader.GetGuid({ordinal})",
-                _ => $"({type})global::LiteOrm.DbConverterHelper.ConvertFromDbValue(reader.DbConverter, reader.GetValue({ordinal}), typeof({type}))!"
+                _ => $"({type})global::LiteOrm.DbConverterHelper.ApplyRead(reader.DbConverter, null, reader.GetValue({ordinal}), typeof({type}), global::LiteOrm.Common.DbValueType.Object)!"
             };
         }
 

@@ -34,7 +34,9 @@ namespace LiteOrm
         /// <param name="toDb">.NET 值 → 数据库值 的转换委托。</param>
         public static void RegisterDbValueConverter<T, TValueType>(this T sqlBuilder, DbValueType targetType, Func<object, TValueType>? fromDb, Func<TValueType, object>? toDb) where T : SqlBuilder
         {
-            SqlBuilder.GetDbValueConverterMap<T>().RegisterConverter(new FuncDbValueConverter<object, TValueType>(fromDb, toDb), targetType);
+            SqlBuilder.GetDbValueConverterMap<T>().RegisterConverter(new FuncDbValueConverter<object, TValueType>(
+                fromDb == null ? null : new DbConvertHandler<object, TValueType>(fromDb),
+                toDb == null ? null : new DbConvertHandler<TValueType, object>(toDb)), targetType);
         }
 
         /// <summary>

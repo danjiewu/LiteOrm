@@ -5,14 +5,17 @@
 ### 破坏性变更
 
 - 移除 `DAOBase` 的 `ConvertToDbValue(object?, DbValueType?)` 与 `ConvertFromDbValue(object?, Type)` 方法。值转换逻辑下沉到列级扩展与 `SqlBuilder` 实例方法：
-- `IDbConverter` 接口新增 `object ToDbValue(object? value, DbValueType? dbValueType = null)` 方法（写入方向统一入口），自定义 `IDbConverter` 实现需补全该方法。
+- `DAOBase` / `IDbConverter` 的写入转换入口取消，值转换统一经列级 `DbValueConverter` 或 `SqlBuilder.GetDbValueConverter` 解析后应用 `DbWriteConverter` / `DbReadConverter` 委托。
 - `ISqlBuilder` 接口新增 `bool SupportsNativeArrays { get; }` 属性，指示数据库是否原生支持数组列（PostgreSQL / 金仓 / GaussDB 的 `T[]`）；为 `false` 时数组列以 JSON 字符串存储。自定义 `ISqlBuilder` 实现需实现该属性。
 - `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` 构造函数改为接收 `IServiceProvider`，由容器解析所需的 `ObjectDAO<T>` / `ObjectViewDAO<T>`；派生服务构造函数同步调整，依赖注入场景无需改动。
 - 移除 `ToDbValue` / `ConvertFromDbValue` 兜底链中复杂类型（Collection/Json）的自动序列化/反序列化与集合转换：未按 (值类型, `DbValueType`) 预注册转换器的复杂类型不再自动处理，原样返回或交由驱动/调用方。需要 JSON / 数组（反）序列化的复杂类型须通过 `RegisterDbValueConverter` 预注册。
+- `IDbValueConverter` / `IDbValueConverter<TDbType, TValueType>` 移除 `ConvertFromDbValue` / `ConvertToDbValue` 方法，改为仅暴露 `DbReadConverter` / `DbWriteConverter` 委托属性（null 表示无需转换、直接赋值）；自定义转换器实现需改为提供双向委托。读写委托类型统一为 `DbConvertHandler`（替代原 `DbReadConvertHandler` / `DbWriteConvertHandler`）。
+- 移除 `DbConverterHelper.ToDbValue` / `DbConverterHelper.ConvertFromDbValue` 统一分发中心，以及无列上下文的 `SqlBuilder.ToDbValue` / `SqlBuilder.FromDbValue`；裸值参数 / 标量读取改走列级入口或 `GetDbValueConverter` 解析。
+- 转换全面改为严格无兜底：列级 `DbValueConverter` 优先，为空时经 SqlBuilder 注册表按 (值类型, `DbValueType`) 解析并回填列；未注册或委托为 null 时直接赋值 / 直返，不再做 `Convert.ChangeType` / 枚举 / bool / TimeSpan 等通用回退。
 
 ### 改进
 
-- 值转换统一收敛至 `LiteOrm.Common` 的 `DbConverterHelper`，作为读取（`ConvertFromDbValue`）与写入（`ToDbValue`）共用的分发中心：注册转换器优先 + 列级转换器优先 + 枚举/bool/DateTimeOffset/TimeSpan 适配 + `Convert.ChangeType` 兜底。
+- 值转换收敛为「委托式 Converter」：读取经 `DbConverterHelper.ApplyRead`，写入经 `DbConverterHelper.ApplyWrite`；列级 `DbValueConverter` 优先，为空时按 (值类型, `DbValueType`) 从 SqlBuilder 注册表解析并回填列，委托为 null 时直接赋值。
 - 读取空值短路统一提前处理：null / `DBNull` / 空字符串 → 目标类型默认值，列级与注册转换器不再收到空值。
 - 数组列写入：`SupportsNativeArrays == true` 时原样返回交由驱动绑定；其余场景的数组序列化不再自动执行，需预注册转换器。
 

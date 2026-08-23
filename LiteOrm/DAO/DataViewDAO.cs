@@ -56,9 +56,11 @@ namespace LiteOrm
                 string name = reader.GetName(i);
                 SqlColumn? column = Table.GetColumn(name);
                 columns[i] = column;
-                Type propertyType = column?.PropertyType ?? reader.GetFieldType(i);
                 object value = reader.GetValue(i);
-                row[i] = SqlBuilder.FromDbValue(value, propertyType) ?? DBNull.Value;
+                // 有列时经列级转换（列 Converter 优先，否则 SqlBuilder 注册解析，委托 null 直返）；无列（动态列）时严格直返
+                row[i] = column != null
+                    ? column.Definition.FromDbValue(value, SqlBuilder) ?? DBNull.Value
+                    : value;
             }
             return row;
         }

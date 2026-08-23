@@ -422,9 +422,24 @@ namespace LiteOrm
                         var dbType = SqlBuilder.ToDbType(SqlBuilder.GetDbValueType(para.Value.GetType()));
                         if (dbType != DbType.Object) dbParam.DbType = dbType;
                     }
-                    dbParam.Value = SqlBuilder.ToDbValue(para.Value, para.DbType);
+                    dbParam.Value = ConvertDbValueForParameter(para.Value, para.DbType);
                     command.Parameters.Add(dbParam);
                 }
+        }
+
+        /// <summary>
+        /// 将无列上下文（裸 SQL 参数）的值转换为数据库可接受的值：
+        /// 按 (值运行时类型, 目标 DbValueType) 从 SqlBuilder 注册表解析转换器并取其 <see cref="IDbValueConverter.DbWriteConverter"/> 委托执行；
+        /// 未注册或委托为 null 时原样返回（严格无兜底）。
+        /// </summary>
+        private object ConvertDbValueForParameter(object? value, DbValueType dbType)
+        {
+            if (value is null) return DBNull.Value;
+            DbValueType targetDbType = dbType != DbValueType.Default
+                ? dbType
+                : SqlBuilder.GetDbValueType(value.GetType());
+            IDbValueConverter? converter = SqlBuilder.GetDbValueConverter(value.GetType(), targetDbType);
+            return converter?.DbWriteConverter != null ? converter.DbWriteConverter(value) : value;
         }
 
         /// <summary>

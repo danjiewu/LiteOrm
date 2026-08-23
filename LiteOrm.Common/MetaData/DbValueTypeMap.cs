@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
 
@@ -117,6 +118,39 @@ namespace LiteOrm.Common
         /// 将 <see cref="DbType"/> 映射为对应的 <see cref="DbValueType"/>（枚举值对齐，直接转换）。
         /// </summary>
         public static DbValueType FromDbType(DbType dbType) => (DbValueType)dbType;
+
+        /// <summary>
+        /// 获取 <see cref="DbDataReader"/> 按 <paramref name="dbType"/> 选择类型化读取方法（GetInt32/GetString/GetGuid 等）时
+        /// 返回的 CLR 类型；无对应类型化读取方法（如 Object / 其他）时返回 <see cref="object"/>。
+        /// 与 <c>DataReaderConverter</c> 的类型化读取方法选择（<c>_dbTypeReaderMethods</c>）保持一致。
+        /// </summary>
+        public static Type GetReaderReturnType(DbType dbType)
+        {
+            return _dbTypeToReaderType.TryGetValue(dbType, out Type? type) ? type : typeof(object);
+        }
+
+        private static readonly Dictionary<DbType, Type> _dbTypeToReaderType = new Dictionary<DbType, Type>
+        {
+            [DbType.Boolean] = typeof(bool),
+            [DbType.Byte] = typeof(byte),
+            [DbType.Int16] = typeof(short),
+            [DbType.Int32] = typeof(int),
+            [DbType.Int64] = typeof(long),
+            [DbType.Single] = typeof(float),
+            [DbType.Double] = typeof(double),
+            [DbType.Decimal] = typeof(decimal),
+            [DbType.Currency] = typeof(decimal),
+            [DbType.String] = typeof(string),
+            [DbType.AnsiString] = typeof(string),
+            [DbType.AnsiStringFixedLength] = typeof(string),
+            [DbType.StringFixedLength] = typeof(string),
+            [DbType.Xml] = typeof(string),
+            [DbType.DateTime] = typeof(DateTime),
+            [DbType.Date] = typeof(DateTime),
+            [DbType.DateTime2] = typeof(DateTime),
+            [DbType.Guid] = typeof(Guid),
+            [DbType.Binary] = typeof(byte[]),
+        };
 
         /// <summary>
         /// 根据属性 CLR 类型推断 <see cref="DbValueType"/>：

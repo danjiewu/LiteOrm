@@ -48,6 +48,17 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 确保列已解析出可用的 <see cref="ColumnDefinition.DbValueConverter"/>：列级转换器为空时，
+        /// 经 <paramref name="dbConverter"/>（SqlBuilder）按 (属性类型, 列取值类型) 从注册表解析并回填到列。
+        /// 委托为 null / 无注册时不赋值，交由调用方直返（严格无兜底）。
+        /// </summary>
+        private static void EnsureColumnConverter(ColumnDefinition column, IDbConverter? dbConverter)
+        {
+            if (column.DbValueConverter is null && dbConverter is not null)
+                column.DbValueConverter = dbConverter.GetDbValueConverter(column.PropertyType, column.GetDbValueType(dbConverter));
+        }
+
+        /// <summary>
         /// 从 <paramref name="target"/> 取列值并转换为数据库可接受的值（写入方向的列级入口，从实体取值场景）：
         /// 等价于 <see cref="ToDbValue(ColumnDefinition, object?, IDbConverter?)"/>(<see cref="SqlColumn.GetValue"/> 的结果)。
         /// </summary>
@@ -63,10 +74,9 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 将裸值按列上下文转换为数据库可接受的值（写入方向的列级入口，裸值场景，如主键查询条件、时间戳条件）：
-        /// null 返回 <see cref="DBNull.Value"/>；列级转换器（<see cref="SqlColumn.DbValueConverter"/>）优先；
-        /// 否则委托 <see cref="DbConverterHelper.ToDbValue(IDbConverter, object?, DbValueType?)"/> 统一链路
-        /// （注册转换器优先 + 枚举/bool/DateTimeOffset/TimeSpan 适配 + <see cref="Convert.ChangeType(object, Type)"/> 兜底；
-        /// 复杂类型需按 (值类型, DbValueType) 预注册转换器，未预注册的复杂类型不处理）。
+        /// null 返回 <see cref="DBNull.Value"/>；列级转换器（<see cref="ColumnDefinition.DbValueConverter"/>）优先，
+        /// 为空时经 <paramref name="dbConverter"/> 从注册表解析并回填列；取 <see cref="IDbValueConverter.DbWriteConverter"/> 委托执行，
+        /// 委托为 null 时直接返回原值（严格无兜底，无 ChangeType / 枚举 / bool / TimeSpan 回退）。
         /// </summary>
         /// <param name="column">列定义（提供列级转换器与列取值类型上下文）。</param>
         /// <param name="value">要转换的裸值（非从实体属性取得）。</param>
@@ -77,26 +87,20 @@ namespace LiteOrm.Common
             if (column is null) throw new ArgumentNullException(nameof(column));
             if (value is null) return DBNull.Value;
 
-            // 列级转换器优先（与读取方向的 FromDbValue 对称）
-            if (column.DbValueConverter is IDbValueConverter columnConverter)
-                return columnConverter.ConvertToDbValue(value);
+            EnsureColumnConverter(column, dbConverter);
 
-            return dbConverter != null
-                ? dbConverter.ToDbValue(value, column.GetDbValueType(dbConverter))
-                : value;
+            return column.DbValueConverter?.DbWriteConverter is DbConvertHandler write ? write(value) : value;
         }
 
         /// <summary>
         /// 将数据库取得的值转换为列属性类型的值（读取方向的列级入口，裸值场景，如批量存在性检查的主键比较值）：
         /// 空值短路（null / <see cref="DBNull"/> / 空字符串 → 属性类型默认值）后，
-        /// 列级转换器（<see cref="SqlColumn.DbValueConverter"/>）优先；
-        /// 否则委托 <see cref="DbConverterHelper.ConvertFromDbValue(IDbConverter, object?, Type, DbValueType)"/> 统一链路
-        /// （注册转换器优先 + 同类型直返 + 运行时类型注册命中 + 枚举解析 + <see cref="Convert.ChangeType(object, Type)"/> 兜底；
-        /// 复杂类型需按 (值类型, DbValueType) 预注册转换器，未预注册的复杂类型不处理）。
+        /// 列级转换器（<see cref="ColumnDefinition.DbValueConverter"/>）优先，为空时经 <paramref name="dbConverter"/> 从注册表解析并回填列；
+        /// 取 <see cref="IDbValueConverter.DbReadConverter"/> 委托执行，委托为 null 时直接返回原值（严格无兜底）。
         /// </summary>
         /// <param name="column">列定义。</param>
         /// <param name="dbValue">数据库取得的原始值。</param>
-        /// <param name="dbConverter">数据库值转换器；为 null 时退化为列级转换 + <see cref="Convert.ChangeType(object, Type)"/>。</param>
+        /// <param name="dbConverter">数据库值转换器；为 null 时退化为列级转换与裸值直返。</param>
         /// <returns>列属性类型的值。</returns>
         public static object? FromDbValue(this ColumnDefinition column, object? dbValue, IDbConverter? dbConverter = null)
         {
@@ -111,14 +115,9 @@ namespace LiteOrm.Common
                     : null;
             }
 
-            // 列级转换器优先
-            if (column.DbValueConverter is IDbValueConverter columnConverter)
-                return columnConverter.ConvertFromDbValue(dbValue);
+            EnsureColumnConverter(column, dbConverter);
 
-            if (dbConverter is null)
-                return Convert.ChangeType(dbValue, column.PropertyType.GetUnderlyingType());
-
-            return DbConverterHelper.ConvertFromDbValue(dbConverter, dbValue, column.PropertyType, column.GetDbValueType(dbConverter));
+            return column.DbValueConverter?.DbReadConverter is DbConvertHandler read ? read(dbValue) : dbValue;
         }
 
         /// <summary>
@@ -130,7 +129,7 @@ namespace LiteOrm.Common
         /// <param name="column">列定义。</param>
         /// <param name="target">实体对象（转换结果写入其对应属性）。</param>
         /// <param name="dbValue">数据库取得的原始值。</param>
-        /// <param name="dbConverter">数据库值转换器；为 null 时退化为列级转换 + <see cref="Convert.ChangeType(object, Type)"/>。</param>
+        /// <param name="dbConverter">数据库值转换器；为 null 时退化为列级转换与裸值直返。</param>
         public static void SetFromDbValue(this ColumnDefinition column, object? target, object? dbValue, IDbConverter? dbConverter = null)
         {
             if (column is null) throw new ArgumentNullException(nameof(column));

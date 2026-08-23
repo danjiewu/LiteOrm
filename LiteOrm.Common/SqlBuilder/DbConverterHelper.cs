@@ -1,82 +1,68 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 数据库值转换的统一分发辅助类。
-    /// 读取方向见 <see cref="ConvertFromDbValue(IDbConverter, object?, Type)"/>，
-    /// 写入方向见 <see cref="ToDbValue(IDbConverter, object?, DbValueType?)"/>；
-    /// 两者均优先使用按 (值类型, 数据库取值类型) 注册的 <see cref="IDbValueConverter"/>，
-    /// 未注册时提供枚举/bool/DateTimeOffset/TimeSpan 适配与
-    /// <see cref="Convert.ChangeType(object, Type)"/> 兜底的通用转换链。
-    /// 复杂类型（Collection/Json）不再作为兜底自动序列化，需用户按 (值类型, DbValueType) 预注册转换器，未预注册的复杂类型不处理。
+    /// 数据库值与 .NET 值转换的解析 + 委托应用助手。
+    /// 转换不再做通用兜底（无 ChangeType / 枚举 / bool / TimeSpan / Json / 集合回退），
+    /// 一律通过「列级 Converter 优先，否则解析自 SqlBuilder 注册表的 <see cref="IDbValueConverter"/>」，
+    /// 取其 <see cref="IDbValueConverter.DbReadConverter"/> / <see cref="IDbValueConverter.DbWriteConverter"/> 委托执行；
+    /// 委托为 null 表示无需转换，直接赋值 / 直返。
     /// </summary>
     public static class DbConverterHelper
     {
         /// <summary>
-        /// 将 .NET 值转换为数据库可接受的值（写入统一入口，与 <see cref="ConvertFromDbValue(IDbConverter, object?, Type)"/> 的读取方向对称）：
-        /// null 返回 <see cref="DBNull.Value"/>；优先使用按 (值类型, 数据库取值类型) 注册的转换器
-        /// （默认类型转换与方言特定转换均通过 LiteOrmConverterInitializer 预注册实现）；
-        /// 复杂类型（Collection/Json）不再作为兜底自动序列化，需按 (值类型, DbValueType) 预注册转换器，未预注册的复杂类型不处理。
-        /// 未注册时使用通用兜底：枚举转换、bool/DateTimeOffset/TimeSpan 适配，
-        /// 最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底（失败时原样返回交由驱动绑定）。
+        /// 以严格无兜底语义应用「数据库值 → .NET 值」转换：
+        /// 优先使用 <paramref name="colConv"/>（列级转换器），为空时按 (<paramref name="targetType"/>, <paramref name="dbType"/>) 从 <paramref name="c"/> 解析。
+        /// 解析到的转换器 <see cref="IDbValueConverter.DbReadConverter"/> 为 null 时原样返回 <paramref name="raw"/>（直接赋值）。
+        /// 不做 null / <see cref="DBNull"/> / 空串短路，调用方需自行判空。
         /// </summary>
-        /// <param name="converter">数据库值转换器。</param>
-        /// <param name="value">.NET 值。</param>
-        /// <param name="dbValueType">数据字段取值类型（可含 <see cref="DbValueType.Array"/> 掩码，为 null 时按值的运行时类型推断）。</param>
-        /// <returns>数据库可接受的值。</returns>
-        public static object ToDbValue(this IDbConverter converter, object? value, DbValueType? dbValueType = null)
+        /// <param name="c">数据库值转换器（SqlBuilder）；为 null 时仅使用 <paramref name="colConv"/>。</param>
+        /// <param name="colConv">列级转换器，优先于注册表解析。</param>
+        /// <param name="raw">数据库取得的原始值。</param>
+        /// <param name="targetType">目标属性 / 值类型。</param>
+        /// <param name="dbType">数据库取值类型（用于注册查找）。</param>
+        /// <returns>转换后的值；无转换器或委托为 null 时原样返回。</returns>
+        public static object? ApplyRead(IDbConverter? c, IDbValueConverter? colConv, object? raw,
+            Type targetType, DbValueType dbType)
         {
-            if (value is null) return DBNull.Value;
-
-            Type type = value.GetType();
-            DbValueType dbType = (dbValueType is null || dbValueType == DbValueType.Object || dbValueType == DbValueType.Default)
-                ? converter.GetDbValueType(type)
-                : dbValueType.Value;
-
-            // 注册的转换器优先（如 bool/Guid/TimeSpan/DateTime/DateTimeOffset/string 及方言特定转换，
-            // 以及用户为复杂/集合/Json 类型预注册的转换器）；未命中注册则落入通用兜底
-            if (converter.GetDbValueConverter(type, dbType) is IDbValueConverter registered)
-            {
-                return registered.ConvertToDbValue(value);
-            }
-
-            return ToDbValueCore(value, dbType);
+            IDbValueConverter? conv = colConv
+                ?? c?.GetDbValueConverter(Nullable.GetUnderlyingType(targetType) ?? targetType, dbType);
+            return conv?.DbReadConverter != null ? conv.DbReadConverter(raw) : raw;
         }
 
         /// <summary>
-        /// 通用兜底的「.NET 值 → 数据库值」转换：枚举转换、bool/DateTimeOffset/TimeSpan 适配，
-        /// 最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底。
-        /// 复杂类型（Collection/Json）不在此处自动序列化；未预注册时原样返回交由驱动绑定。
+        /// 以严格无兜底语义应用「.NET 值 → 数据库值」转换：
+        /// 优先使用 <paramref name="colConv"/>（列级转换器），为空时按 (<paramref name="value"/> 的运行时类型, <paramref name="dbType"/>) 从 <paramref name="c"/> 解析。
+        /// 解析到的转换器 <see cref="IDbValueConverter.DbWriteConverter"/> 为 null 时原样返回（直接赋值）。
         /// </summary>
-        private static object ToDbValueCore(object value, DbValueType dbType)
+        /// <param name="c">数据库值转换器（SqlBuilder）；为 null 时仅使用 <paramref name="colConv"/>。</param>
+        /// <param name="colConv">列级转换器，优先于注册表解析。</param>
+        /// <param name="value">.NET 值（非 null，调用方需处理 null）。</param>
+        /// <param name="dbType">数据库取值类型（用于注册查找）。</param>
+        /// <returns>转换后的数据库值；无转换器或委托为 null 时原样返回。</returns>
+        public static object ApplyWrite(IDbConverter? c, IDbValueConverter? colConv, object value,
+            DbValueType dbType)
         {
-            Type type = value.GetType();
+            IDbValueConverter? conv = colConv ?? c?.GetDbValueConverter(value.GetType(), dbType);
+            return conv?.DbWriteConverter != null ? conv.DbWriteConverter(value) : value;
+        }
 
-            // 处理枚举：字符串类列存名称，其余按基础类型转换
-            if (type.IsEnum)
-            {
-                if (dbType == DbValueType.String || dbType == DbValueType.AnsiString ||
-                    dbType == DbValueType.StringFixedLength || dbType == DbValueType.AnsiStringFixedLength)
-                {
-                    return value.ToString()!;
-                }
-                return Convert.ChangeType(value, Enum.GetUnderlyingType(type));
-            }
-
-            // 通用兜底：bool / DateTimeOffset / TimeSpan 的通用适配
-            if (value is bool b) return b ? 1 : 0;
-            if (value is DateTimeOffset dto) return dto.DateTime;
-            if (value is TimeSpan ts) return ts.Ticks;
-
-            // 最后兜底：目标类型一致直返；否则 ChangeType，失败时原样返回交由驱动绑定
-            // （未预注册的复杂类型不处理，原样返回）
-            Type targetType = dbType.ToType();
-            if (targetType.IsInstanceOfType(value)) return value;
-            try { return Convert.ChangeType(value, targetType); }
-            catch (InvalidCastException) { return value; }
+        /// <summary>
+        /// 强类型读取转换（供 DataReaderConverter 在编译期按已知的 DB 值与目标类型闭包调用）：
+        /// 当 <paramref name="converter"/> 是匹配 <typeparamref name="TDb"/> → <typeparamref name="TValue"/> 的泛型转换器时，
+        /// 调用其泛型 <see cref="IDbValueConverter{TDbType,TValueType}.DbReadConverter"/> 委托；否则直接赋值 / 直返。
+        /// </summary>
+        public static TValue ApplyReadGeneric<TDb, TValue>(IDbValueConverter? converter, TDb value)
+        {
+            // 优先使用与 TDb → TValue 匹配的泛型转换器委托
+            if (converter is IDbValueConverter<TDb, TValue> typed && typed.DbReadConverter is { } handler)
+                return handler(value);
+            // 兜底：非泛型转换器（object 传输）经非泛型 DbReadConverter；委托为 null 时直接赋值
+            if (converter?.DbReadConverter is { } objHandler)
+                return (TValue)objHandler(value!)!;
+            return (TValue)(object)value!;
         }
 
         /// <summary>
@@ -97,64 +83,5 @@ namespace LiteOrm.Common
             return Activator.CreateInstance(objectType)!;
 #endif
         }
-
-        /// <summary>
-        /// 读取列值的统一转换分发：空值短路（null / <see cref="DBNull"/> / 空字符串 → 目标类型默认值）后，
-        /// 优先使用按 (<paramref name="targetType"/>, <see cref="DbValueType.Object"/>) 注册的转换器
-        /// 未注册时使用通用兜底：同类型直返、按运行时类型命中注册转换器、枚举解析，
-        /// 最后以 <see cref="Convert.ChangeType(object, Type)"/> 兜底。
-        /// 复杂类型（Collection/Json）不再作为兜底自动反序列化/转换，需按 (值类型, DbValueType) 预注册转换器，未预注册的复杂类型不处理。
-        /// 供运行时编译的读取委托与源生成器生成的 mapper 代码共用。
-        /// </summary>
-        /// <param name="dbConverter">数据库值转换器（AutoLockDataReader.DbConverter）。</param>
-        /// <param name="value">数据库取得的原始值。</param>
-        /// <param name="targetType">目标属性 / 构造参数类型（已剥离 Nullable）。</param>
-        /// <returns>转换后的目标类型值。</returns>
-        public static object? ConvertFromDbValue(IDbConverter? dbConverter, object? value,
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type targetType)
-        {
-            return ConvertFromDbValue(dbConverter, value, targetType, DbValueType.Object);
-        }
-
-        /// <summary>同 <see cref="ConvertFromDbValue(IDbConverter, object?, Type)"/>，显式指定用于注册查找的 <paramref name="dbValueType"/>。</summary>
-        public static object? ConvertFromDbValue(IDbConverter? dbConverter, object? value,
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type targetType,
-            DbValueType dbValueType)
-        {
-            Type underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
-
-            // 空值短路：null / DBNull / 空字符串 → 目标类型默认值（引用类型与可空类型为 null，非可空值类型为零值）。
-            // 注册转换器不应收到空值（如 SQLite ALTER TABLE 加列产生的 DEFAULT '' 旧数据）。
-            if (value is null || value == DBNull.Value || (value is string empty && empty.Length == 0))
-            {
-                return targetType.IsValueType && Nullable.GetUnderlyingType(targetType) is null
-                    ? DbConverterHelper.CreateDefaultValue(underlyingType)
-                    : null;
-            }
-
-            // 注册的转换器优先（默认类型转换与方言特定转换均通过预注册实现）
-            if (dbConverter?.GetDbValueConverter(underlyingType, dbValueType) is IDbValueConverter converter)
-                return converter.ConvertFromDbValue(value);
-
-            // 通用兜底：同类型直返
-            if (underlyingType.IsInstanceOfType(value))
-                return value;
-
-            // 按值的实际运行时类型推断 DbValueType 后命中注册的转换器（支持 ExecuteScalar 等无 DbType 上下文的场景）
-            if (dbConverter?.GetDbValueConverter(underlyingType, DbValueTypeMap.GetDbValueType(value.GetType())) is IDbValueConverter runtimeConverter)
-                return runtimeConverter.ConvertFromDbValue(value);
-
-            if (underlyingType.IsEnum)
-            {
-                if (value is string strEnum) return Enum.Parse(underlyingType, strEnum, true);
-                return Enum.ToObject(underlyingType, Convert.ChangeType(value, Enum.GetUnderlyingType(underlyingType)));
-            }
-
-            // 最后兜底：ChangeType 转换到目标类型；无法转换时原样返回交由读取方处理
-            // （未预注册的复杂类型不处理，不再自动 JSON 反序列化/集合转换）
-            try { return Convert.ChangeType(value, underlyingType); }
-            catch (InvalidCastException) { return value; }
-        }
-
     }
 }

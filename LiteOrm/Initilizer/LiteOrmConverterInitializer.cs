@@ -7,8 +7,7 @@ namespace LiteOrm
     /// LiteOrm 默认值转换器初始化器，用于在 <see cref="SqlBuilder"/> 类型上注册默认的双向值转换器。
     /// 通过静态构造函数在首次访问时自动注册，供 <see cref="IDbConverter.GetDbValueConverter"/> 查找。
     /// 注册主键为 (值类型, DbValueType)，读取与写入共用同一注册表；
-    /// 读取分发见 <see cref="DbConverterHelper.ConvertFromDbValue(IDbConverter, object?, Type)"/>，
-    /// 写入分发见 <see cref="DbConverterHelper.ToDbValue(IDbConverter, object?, DbValueType?)"/>。
+    /// 读取经 <see cref="DbConverterHelper.ApplyRead"/>，写入经 <see cref="DbConverterHelper.ApplyWrite"/> 应用注册的转换器。
     /// </summary>
     /// <remarks>
     /// 调用 <see cref="Initialize"/> 方法可显式触发静态构造函数，确保转换器在应用启动时完成注册。
@@ -43,6 +42,20 @@ namespace LiteOrm
             foreach (DbValueType numeric in _numericDbValueTypes)
                 sqlBuilder.RegisterDbValueConverter(numeric, ConvertToBool, static b => b ? 1 : 0);
             sqlBuilder.RegisterDbValueConverter(DbValueType.Boolean, ConvertToBool, static b => b);
+
+            // 整型族 ↩ 整型 DB 值（标识/主键列 ExecuteScalar 回读 long 等整型值时 Convert.ChangeType 到属性整型）：
+            // 通过预注册实现整型间的数值转换，严格模式下不依赖运行时 ChangeType 兜底
+            foreach (DbValueType intDbType in _integerDbValueTypes)
+            {
+                RegisterIntegerConverters<byte>(sqlBuilder, intDbType);
+                RegisterIntegerConverters<sbyte>(sqlBuilder, intDbType);
+                RegisterIntegerConverters<short>(sqlBuilder, intDbType);
+                RegisterIntegerConverters<ushort>(sqlBuilder, intDbType);
+                RegisterIntegerConverters<int>(sqlBuilder, intDbType);
+                RegisterIntegerConverters<uint>(sqlBuilder, intDbType);
+                RegisterIntegerConverters<long>(sqlBuilder, intDbType);
+                RegisterIntegerConverters<ulong>(sqlBuilder, intDbType);
+            }
 
             // Guid ↔ Guid/Binary/字符串列
             sqlBuilder.RegisterDbValueConverter(DbValueType.Guid, ConvertToGuid, static g => g);
@@ -100,6 +113,12 @@ namespace LiteOrm
             DbValueType.Byte, DbValueType.SByte, DbValueType.UInt16, DbValueType.UInt32, DbValueType.UInt64
         };
 
+        private static readonly DbValueType[] _integerDbValueTypes =
+        {
+            DbValueType.Int16, DbValueType.Int32, DbValueType.Int64,
+            DbValueType.Byte, DbValueType.SByte, DbValueType.UInt16, DbValueType.UInt32, DbValueType.UInt64
+        };
+
         private static readonly DbValueType[] _stringDbValueTypes =
         {
             DbValueType.String, DbValueType.AnsiString, DbValueType.StringFixedLength, DbValueType.AnsiStringFixedLength
@@ -109,6 +128,16 @@ namespace LiteOrm
         {
             DbValueType.Date, DbValueType.DateTime, DbValueType.DateTime2
         };
+
+        /// <summary>
+        /// 注册整型值类型 <typeparamref name="T"/> 与指定整型 DB 取值类型的双向数值转换（读取用 <see cref="Convert.ChangeType(object, Type)"/>）。
+        /// </summary>
+        private static void RegisterIntegerConverters<T>(SqlBuilder sqlBuilder, DbValueType dbType) where T : struct
+        {
+            sqlBuilder.RegisterDbValueConverter<SqlBuilder, T>(dbType,
+                o => (T)Convert.ChangeType(o, typeof(T)),
+                v => v);
+        }
 
         /// <summary>
         /// 将数据库值转换为 <see cref="bool"/>（字符串 1/Y/T/0/N/F 或数值非零）。
