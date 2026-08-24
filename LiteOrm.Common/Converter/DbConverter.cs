@@ -77,7 +77,7 @@ namespace LiteOrm.Common
         public DbConvertHandler<TValueType, object>? DbWriteConverter => _toDb;
 
         DbConvertHandler? IDbValueConverter.DbReadConverter =>
-            _fromDb == null ? null : obj =>
+            _fromDb == null ? null : obj =>     
                 _fromDb(typeof(TDbType) == typeof(object) || obj is TDbType
                     ? (TDbType)obj!
                     : (TDbType)Convert.ChangeType(obj, typeof(TDbType)))!;

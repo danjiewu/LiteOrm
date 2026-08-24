@@ -13,7 +13,7 @@ namespace LiteOrm.Demo.Models
         /// 用户 ID
         /// </summary>
         [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-        public long Id { get; set; }
+        public int Id { get; set; }
 
         /// <summary>
         /// 用户名

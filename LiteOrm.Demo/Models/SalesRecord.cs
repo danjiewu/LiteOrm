@@ -9,7 +9,7 @@ namespace LiteOrm.Demo.Models
     public class SalesRecord : ObjectBase, IArged
     {
         [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-        public long Id { get; set; }
+        public int Id { get; set; }
 
         [Column("ProductId")]
         public int ProductId { get; set; }

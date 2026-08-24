@@ -50,16 +50,19 @@ namespace LiteOrm
             RegisterBoolConverter<ulong>(sqlBuilder, DbValueType.UInt64);
             sqlBuilder.RegisterDbValueConverter<SqlBuilder, bool, bool>(DbValueType.Boolean, null, null);
 
-            // 整型族 ↩ 整型 DB 值（标识/主键列 ExecuteScalar 回读、或列读取时的整型值）
-            // 按各整型 DbValueType 的 CLR 类型严格注册 TDbType，读取时严格区分 int/long/…。
-            RegisterIntegerConverters<short>(sqlBuilder, DbValueType.Int16);
-            RegisterIntegerConverters<int>(sqlBuilder, DbValueType.Int32);
-            RegisterIntegerConverters<long>(sqlBuilder, DbValueType.Int64);
-            RegisterIntegerConverters<byte>(sqlBuilder, DbValueType.Byte);
-            RegisterIntegerConverters<sbyte>(sqlBuilder, DbValueType.SByte);
-            RegisterIntegerConverters<ushort>(sqlBuilder, DbValueType.UInt16);
-            RegisterIntegerConverters<uint>(sqlBuilder, DbValueType.UInt32);
-            RegisterIntegerConverters<ulong>(sqlBuilder, DbValueType.UInt64);
+            // 数值族 ↩ 数值 DB 值（整型/浮点/Decimal 互转，如 Decimal↔Int32、float↔Int64 等）
+            // 按各数值 DbValueType 的 CLR 类型严格注册 TDbType，读取时严格区分 int/long/decimal/…。
+            RegisterNumericInt16(sqlBuilder, DbValueType.Int16);
+            RegisterNumericInt32(sqlBuilder, DbValueType.Int32);
+            RegisterNumericInt64(sqlBuilder, DbValueType.Int64);
+            RegisterNumericByte(sqlBuilder, DbValueType.Byte);
+            RegisterNumericSByte(sqlBuilder, DbValueType.SByte);
+            RegisterNumericUInt16(sqlBuilder, DbValueType.UInt16);
+            RegisterNumericUInt32(sqlBuilder, DbValueType.UInt32);
+            RegisterNumericUInt64(sqlBuilder, DbValueType.UInt64);
+            RegisterNumericDecimal(sqlBuilder, DbValueType.Decimal);
+            RegisterNumericSingle(sqlBuilder, DbValueType.Single);
+            RegisterNumericDouble(sqlBuilder, DbValueType.Double);
 
             // Guid ↔ Guid/Binary/字符串列
             sqlBuilder.RegisterDbValueConverter<SqlBuilder, Guid, Guid>(DbValueType.Guid, null, null);
@@ -133,28 +136,181 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 为指定整型 DB 取值类型注册全部整型值类型 <typeparamref name="TValueType"/> 的双向数值转换
-        /// （读取经 <see cref="Convert.ChangeType(object, Type)"/> 转到属性整型）。
-        /// <typeparamref name="TDbType"/> 为该 DbValueType 驱动的 CLR 类型，严格区分数值类型。
+        /// 以传入委托方式注册数值值类型 <typeparamref name="TValueType"/> 与数值 DB 列 <typeparamref name="TDbType"/> 的双向转换。
+        /// 读取转委托 <paramref name="fromDb"/> 由调用方针对具体类型提供（编译期特化强转，避免 <see cref="Convert.ChangeType(object, Type)"/> 的反射与装箱）；
+        /// 写入委托返回 <typeparamref name="TValueType"/> 值（dbType 绑定交由驱动/上层）。
         /// </summary>
-        private static void RegisterIntegerConverters<TDbType>(SqlBuilder sqlBuilder, DbValueType dbType) where TDbType : struct
-        {
-            RegisterIntegerConverters<TDbType, byte>(sqlBuilder, dbType);
-            RegisterIntegerConverters<TDbType, sbyte>(sqlBuilder, dbType);
-            RegisterIntegerConverters<TDbType, short>(sqlBuilder, dbType);
-            RegisterIntegerConverters<TDbType, ushort>(sqlBuilder, dbType);
-            RegisterIntegerConverters<TDbType, int>(sqlBuilder, dbType);
-            RegisterIntegerConverters<TDbType, uint>(sqlBuilder, dbType);
-            RegisterIntegerConverters<TDbType, long>(sqlBuilder, dbType);
-            RegisterIntegerConverters<TDbType, ulong>(sqlBuilder, dbType);
-        }
-
-        private static void RegisterIntegerConverters<TDbType, TValueType>(SqlBuilder sqlBuilder, DbValueType dbType)
+        private static void RegisterNumericConverters<TDbType, TValueType>(SqlBuilder sqlBuilder, DbValueType dbType,
+            DbConvertHandler<TDbType, TValueType> fromDb)
             where TDbType : struct where TValueType : struct
         {
-            sqlBuilder.RegisterDbValueConverter<SqlBuilder, TDbType, TValueType>(dbType,
-                o => (TValueType)(object)Convert.ChangeType(o, typeof(TValueType)),
-                v => v);
+            sqlBuilder.RegisterDbValueConverter<SqlBuilder, TDbType, TValueType>(dbType, fromDb, v => v);
+        }
+
+        // 以下按数值列 CLR 类型分别注册到全部数值值类型，fromDb 均为编译期强转委托（无反射、无装箱）。
+        private static void RegisterNumericInt16(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<short, byte>(sb, t, o => (byte)o);
+            RegisterNumericConverters<short, sbyte>(sb, t, o => (sbyte)o);
+            RegisterNumericConverters<short, short>(sb, t, o => o);
+            RegisterNumericConverters<short, ushort>(sb, t, o => (ushort)o);
+            RegisterNumericConverters<short, int>(sb, t, o => o);
+            RegisterNumericConverters<short, uint>(sb, t, o => (uint)o);
+            RegisterNumericConverters<short, long>(sb, t, o => o);
+            RegisterNumericConverters<short, ulong>(sb, t, o => (ulong)o);
+            RegisterNumericConverters<short, decimal>(sb, t, o => o);
+            RegisterNumericConverters<short, float>(sb, t, o => o);
+            RegisterNumericConverters<short, double>(sb, t, o => o);
+        }
+
+        private static void RegisterNumericInt32(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<int, byte>(sb, t, o => (byte)o);
+            RegisterNumericConverters<int, sbyte>(sb, t, o => (sbyte)o);
+            RegisterNumericConverters<int, short>(sb, t, o => (short)o);
+            RegisterNumericConverters<int, ushort>(sb, t, o => (ushort)o);
+            RegisterNumericConverters<int, int>(sb, t, o => o);
+            RegisterNumericConverters<int, uint>(sb, t, o => (uint)o);
+            RegisterNumericConverters<int, long>(sb, t, o => o);
+            RegisterNumericConverters<int, ulong>(sb, t, o => (ulong)o);
+            RegisterNumericConverters<int, decimal>(sb, t, o => o);
+            RegisterNumericConverters<int, float>(sb, t, o => o);
+            RegisterNumericConverters<int, double>(sb, t, o => o);
+        }
+
+        private static void RegisterNumericInt64(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<long, byte>(sb, t, o => (byte)o);
+            RegisterNumericConverters<long, sbyte>(sb, t, o => (sbyte)o);
+            RegisterNumericConverters<long, short>(sb, t, o => (short)o);
+            RegisterNumericConverters<long, ushort>(sb, t, o => (ushort)o);
+            RegisterNumericConverters<long, int>(sb, t, o => (int)o);
+            RegisterNumericConverters<long, uint>(sb, t, o => (uint)o);
+            RegisterNumericConverters<long, long>(sb, t, o => o);
+            RegisterNumericConverters<long, ulong>(sb, t, o => (ulong)o);
+            RegisterNumericConverters<long, decimal>(sb, t, o => o);
+            RegisterNumericConverters<long, float>(sb, t, o => o);
+            RegisterNumericConverters<long, double>(sb, t, o => o);
+        }
+
+        private static void RegisterNumericByte(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<byte, byte>(sb, t, o => o);
+            RegisterNumericConverters<byte, sbyte>(sb, t, o => (sbyte)o);
+            RegisterNumericConverters<byte, short>(sb, t, o => o);
+            RegisterNumericConverters<byte, ushort>(sb, t, o => o);
+            RegisterNumericConverters<byte, int>(sb, t, o => o);
+            RegisterNumericConverters<byte, uint>(sb, t, o => o);
+            RegisterNumericConverters<byte, long>(sb, t, o => o);
+            RegisterNumericConverters<byte, ulong>(sb, t, o => o);
+            RegisterNumericConverters<byte, decimal>(sb, t, o => o);
+            RegisterNumericConverters<byte, float>(sb, t, o => o);
+            RegisterNumericConverters<byte, double>(sb, t, o => o);
+        }
+
+        private static void RegisterNumericSByte(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<sbyte, byte>(sb, t, o => (byte)o);
+            RegisterNumericConverters<sbyte, sbyte>(sb, t, o => o);
+            RegisterNumericConverters<sbyte, short>(sb, t, o => o);
+            RegisterNumericConverters<sbyte, ushort>(sb, t, o => (ushort)o);
+            RegisterNumericConverters<sbyte, int>(sb, t, o => o);
+            RegisterNumericConverters<sbyte, uint>(sb, t, o => (uint)o);
+            RegisterNumericConverters<sbyte, long>(sb, t, o => o);
+            RegisterNumericConverters<sbyte, ulong>(sb, t, o => (ulong)o);
+            RegisterNumericConverters<sbyte, decimal>(sb, t, o => o);
+            RegisterNumericConverters<sbyte, float>(sb, t, o => o);
+            RegisterNumericConverters<sbyte, double>(sb, t, o => o);
+        }
+
+        private static void RegisterNumericUInt16(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<ushort, byte>(sb, t, o => (byte)o);
+            RegisterNumericConverters<ushort, sbyte>(sb, t, o => (sbyte)o);
+            RegisterNumericConverters<ushort, short>(sb, t, o => (short)o);
+            RegisterNumericConverters<ushort, ushort>(sb, t, o => o);
+            RegisterNumericConverters<ushort, int>(sb, t, o => o);
+            RegisterNumericConverters<ushort, uint>(sb, t, o => o);
+            RegisterNumericConverters<ushort, long>(sb, t, o => o);
+            RegisterNumericConverters<ushort, ulong>(sb, t, o => o);
+            RegisterNumericConverters<ushort, decimal>(sb, t, o => o);
+            RegisterNumericConverters<ushort, float>(sb, t, o => o);
+            RegisterNumericConverters<ushort, double>(sb, t, o => o);
+        }
+
+        private static void RegisterNumericUInt32(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<uint, byte>(sb, t, o => (byte)o);
+            RegisterNumericConverters<uint, sbyte>(sb, t, o => (sbyte)o);
+            RegisterNumericConverters<uint, short>(sb, t, o => (short)o);
+            RegisterNumericConverters<uint, ushort>(sb, t, o => (ushort)o);
+            RegisterNumericConverters<uint, int>(sb, t, o => (int)o);
+            RegisterNumericConverters<uint, uint>(sb, t, o => o);
+            RegisterNumericConverters<uint, long>(sb, t, o => o);
+            RegisterNumericConverters<uint, ulong>(sb, t, o => o);
+            RegisterNumericConverters<uint, decimal>(sb, t, o => o);
+            RegisterNumericConverters<uint, float>(sb, t, o => o);
+            RegisterNumericConverters<uint, double>(sb, t, o => o);
+        }
+
+        private static void RegisterNumericUInt64(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<ulong, byte>(sb, t, o => (byte)o);
+            RegisterNumericConverters<ulong, sbyte>(sb, t, o => (sbyte)o);
+            RegisterNumericConverters<ulong, short>(sb, t, o => (short)o);
+            RegisterNumericConverters<ulong, ushort>(sb, t, o => (ushort)o);
+            RegisterNumericConverters<ulong, int>(sb, t, o => (int)o);
+            RegisterNumericConverters<ulong, uint>(sb, t, o => (uint)o);
+            RegisterNumericConverters<ulong, long>(sb, t, o => (long)o);
+            RegisterNumericConverters<ulong, ulong>(sb, t, o => o);
+            RegisterNumericConverters<ulong, decimal>(sb, t, o => o);
+            RegisterNumericConverters<ulong, float>(sb, t, o => o);
+            RegisterNumericConverters<ulong, double>(sb, t, o => o);
+        }
+
+        private static void RegisterNumericDecimal(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<decimal, byte>(sb, t, o => (byte)o);
+            RegisterNumericConverters<decimal, sbyte>(sb, t, o => (sbyte)o);
+            RegisterNumericConverters<decimal, short>(sb, t, o => (short)o);
+            RegisterNumericConverters<decimal, ushort>(sb, t, o => (ushort)o);
+            RegisterNumericConverters<decimal, int>(sb, t, o => (int)o);
+            RegisterNumericConverters<decimal, uint>(sb, t, o => (uint)o);
+            RegisterNumericConverters<decimal, long>(sb, t, o => (long)o);
+            RegisterNumericConverters<decimal, ulong>(sb, t, o => (ulong)o);
+            RegisterNumericConverters<decimal, decimal>(sb, t, o => o);
+            RegisterNumericConverters<decimal, float>(sb, t, o => (float)o);
+            RegisterNumericConverters<decimal, double>(sb, t, o => (double)o);
+        }
+
+        private static void RegisterNumericSingle(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<float, byte>(sb, t, o => (byte)o);
+            RegisterNumericConverters<float, sbyte>(sb, t, o => (sbyte)o);
+            RegisterNumericConverters<float, short>(sb, t, o => (short)o);
+            RegisterNumericConverters<float, ushort>(sb, t, o => (ushort)o);
+            RegisterNumericConverters<float, int>(sb, t, o => (int)o);
+            RegisterNumericConverters<float, uint>(sb, t, o => (uint)o);
+            RegisterNumericConverters<float, long>(sb, t, o => (long)o);
+            RegisterNumericConverters<float, ulong>(sb, t, o => (ulong)o);
+            RegisterNumericConverters<float, decimal>(sb, t, o => (decimal)o);
+            RegisterNumericConverters<float, float>(sb, t, o => o);
+            RegisterNumericConverters<float, double>(sb, t, o => o);
+        }
+
+        private static void RegisterNumericDouble(SqlBuilder sb, DbValueType t)
+        {
+            RegisterNumericConverters<double, byte>(sb, t, o => (byte)o);
+            RegisterNumericConverters<double, sbyte>(sb, t, o => (sbyte)o);
+            RegisterNumericConverters<double, short>(sb, t, o => (short)o);
+            RegisterNumericConverters<double, ushort>(sb, t, o => (ushort)o);
+            RegisterNumericConverters<double, int>(sb, t, o => (int)o);
+            RegisterNumericConverters<double, uint>(sb, t, o => (uint)o);
+            RegisterNumericConverters<double, long>(sb, t, o => (long)o);
+            RegisterNumericConverters<double, ulong>(sb, t, o => (ulong)o);
+            RegisterNumericConverters<double, decimal>(sb, t, o => (decimal)o);
+            RegisterNumericConverters<double, float>(sb, t, o => (float)o);
+            RegisterNumericConverters<double, double>(sb, t, o => o);
         }
 
         /// <summary>
@@ -163,7 +319,6 @@ namespace LiteOrm
         private static TimeSpan ParseToTimeSpan(string value)
         {
             if (TimeSpan.TryParse(value, out TimeSpan ts)) return ts;
-            // Oracle interval format: "+DD HH:MM:SS.FFFFFF"
             if (value.Length > 3 && (value[0] == '+' || value[0] == '-') && value.IndexOf(' ') >= 0)
             {
                 var parts = value.Substring(1).Split(new[] { ' ' }, 2);

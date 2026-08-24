@@ -6,7 +6,7 @@ namespace LiteOrm.Demo.Models;
 public class DemoUser : ObjectBase
 {
     [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-    public long Id { get; set; }
+    public int Id { get; set; }
 
     [Column("UserName")]
     public string UserName { get; set; } = string.Empty;

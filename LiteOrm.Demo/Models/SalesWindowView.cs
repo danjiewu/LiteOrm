@@ -5,7 +5,7 @@ namespace LiteOrm.Demo.Models
     /// </summary>
     public class SalesWindowView
     {
-        public long Id { get; set; }
+        public int Id { get; set; }
         public int ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
         public int Amount { get; set; }

@@ -125,7 +125,7 @@ namespace LiteOrm
                 var key = TableDefinition.Keys[i];
                 getObjectCommand.Parameters[i].Value = key.ToDbValue(keys[i], SqlBuilder);
             }
-            return new EnumerableResult<T>(getObjectCommand, ConvertToObjectHandler);
+            return new EnumerableResult<T>(getObjectCommand);
         }
 
 
@@ -202,7 +202,7 @@ namespace LiteOrm
         {
             expr = ToSelectExpr(expr!);
             var prepared = expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
-            return new EnumerableResult<T>(this, prepared, ConvertToObjectHandler);
+            return new EnumerableResult<T>(this, prepared);
         }
 
         /// <summary>
@@ -215,7 +215,7 @@ namespace LiteOrm
             var seg = LambdaExprConverter.ToSqlSegment(expr);
             seg = ToSelectExpr(seg);
             var prepared = seg.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
-            return new EnumerableResult<T>(this, prepared, ConvertToObjectHandler);
+            return new EnumerableResult<T>(this, prepared);
         }
 
         /// <summary>
@@ -261,7 +261,7 @@ namespace LiteOrm
         {
             string sql = isFull ? sqlBody.GetSql() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSql()}";
             var prepared = new PreparedSql(sql, sqlBody.GetParams());
-            return new EnumerableResult<T>(this, prepared, ConvertToObjectHandler);
+            return new EnumerableResult<T>(this, prepared);
         }
 
         /// <summary>
@@ -278,11 +278,6 @@ namespace LiteOrm
         {
             return new EnumerableResult<TResult>(this, sqlBody.GetResult());
         }
-
-        /// <summary>
-        /// 将一行记录转化为对象的转换处理器。
-        /// </summary>
-        public static Func<AutoLockDataReader, T> ConvertToObjectHandler = DataReaderConverter.GetConverter<T>();
 
         #endregion
 
