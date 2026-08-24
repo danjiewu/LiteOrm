@@ -48,7 +48,7 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 确保列已解析出可用的 <see cref="ColumnDefinition.DbValueConverter"/>：列级转换器为空时，
+        /// 确保列已解析出可用的 <see cref="SqlColumn.DbValueConverter"/>：列级转换器为空时，
         /// 经 <paramref name="dbConverter"/>（SqlBuilder）按 (属性类型, 列取值类型) 从注册表解析并回填到列。
         /// 委托为 null / 无注册时不赋值，交由调用方直返（严格无兜底）。
         /// </summary>
@@ -74,7 +74,7 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 将裸值按列上下文转换为数据库可接受的值（写入方向的列级入口，裸值场景，如主键查询条件、时间戳条件）：
-        /// null 返回 <see cref="DBNull.Value"/>；列级转换器（<see cref="ColumnDefinition.DbValueConverter"/>）优先，
+        /// null 返回 <see cref="DBNull.Value"/>；列级转换器（<see cref="SqlColumn.DbValueConverter"/>）优先，
         /// 为空时经 <paramref name="dbConverter"/> 从注册表解析并回填列；取 <see cref="IDbValueConverter.DbWriteConverter"/> 委托执行，
         /// 委托为 null 时直接返回原值（严格无兜底，无 ChangeType / 枚举 / bool / TimeSpan 回退）。
         /// </summary>
@@ -95,13 +95,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 将数据库取得的值转换为列属性类型的值（读取方向的列级入口，裸值场景，如批量存在性检查的主键比较值）：
         /// 空值短路（null / <see cref="DBNull"/> / 空字符串 → 属性类型默认值）后，
-        /// 列级转换器（<see cref="ColumnDefinition.DbValueConverter"/>）优先，为空时经 <paramref name="dbConverter"/> 从注册表解析并回填列；
+        /// 列级转换器（<see cref="SqlColumn.DbValueConverter"/>）优先，为空时经 <paramref name="dbConverter"/> 从注册表解析并回填列；
         /// 取 <see cref="IDbValueConverter.DbReadConverter"/> 委托执行，委托为 null 时直接返回原值（严格无兜底）。
         /// </summary>
         /// <param name="column">列定义。</param>
         /// <param name="dbValue">数据库取得的原始值。</param>
         /// <param name="dbConverter">数据库值转换器；为 null 时退化为列级转换与裸值直返。</param>
         /// <returns>列属性类型的值。</returns>
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "GetUnderlyingType only checks Nullable<T> and is safe for known property types.")]
         public static object? FromDbValue(this ColumnDefinition column, object? dbValue, IDbConverter? dbConverter = null)
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
@@ -142,7 +143,9 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="type">要判断的类型。</param>
         /// <returns>如果类型是集合类型则返回 true。</returns>
-        public static bool IsCollectionType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "GetUnderlyingType only checks Nullable<T> and is safe for known property types.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "This collection-check helper performs no member enumeration; the Type argument is used for IEnumerable assignability checks only (runtime path).")]
+        public static bool IsCollectionType(Type type)
         {
             if (type is null) return false;
             type = type.GetUnderlyingType();

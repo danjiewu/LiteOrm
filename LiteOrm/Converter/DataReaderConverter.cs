@@ -387,6 +387,9 @@ namespace LiteOrm
         /// 均闭包调用泛型强类型 <see cref="DbConverterHelper.ApplyReadGeneric"/>（tDb = <paramref name="valueExpr"/> 的类型）：
         /// 转换器为匹配的泛型 <see cref="IDbValueConverter{TDbType,TValueType}.DbReadConverter"/> 时调用委托，否则直接赋值。
         /// </summary>
+        #if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown before this expression tree path is invoked (CompileConverter checks RuntimeFeature.IsDynamicCodeSupported).")]
+#endif
         private static Expression InvokeFromDbValueConverter(
             ParameterExpression readerParam, Expression valueExpr, Type coreType, DbValueType dbValueType, IDbValueConverter? columnConverter)
         {

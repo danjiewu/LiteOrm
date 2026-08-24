@@ -211,8 +211,8 @@ namespace LiteOrm.Tests
         {
             var builder = SqlBuilder.Instance;
 
-            // 无列级转换器且无注册：null 直接透传（空值短路属于列级 FromDbValue 职责）
-            Assert.Null(DbConverterHelper.ApplyRead(builder, null, null, typeof(int), DbValueType.Object));
+            // ApplyRead 自身不做空值短路：DBNull.Value 原样返回，交由调用方/列级处理
+            Assert.Same(DBNull.Value, DbConverterHelper.ApplyRead(builder, null, DBNull.Value, typeof(int), DbValueType.Object));
             // ApplyRead 自身不做空值短路：DBNull.Value 原样返回，交由调用方/列级处理
             Assert.Same(DBNull.Value, DbConverterHelper.ApplyRead(builder, null, DBNull.Value, typeof(string), DbValueType.Object));
         }

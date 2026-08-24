@@ -380,6 +380,15 @@ namespace LiteOrm
         }
 
 
+        /// <summary>
+        /// 获取按 <paramref name="dbValueType"/> 注册的、值类型为 <typeparamref name="TValueType"/>、数据库 CLR 类型为
+        /// <typeparamref name="TDbValueType"/> 的强类型转换器（沿继承链查找，方言注册优先于基类）；
+        /// 不存在或类型不匹配时返回 null。
+        /// </summary>
+        /// <typeparam name="TDbValueType">数据库驱动返回的数据库值 CLR 类型。</typeparam>
+        /// <typeparam name="TValueType">实体属性 / .NET 值类型。</typeparam>
+        /// <param name="dbValueType">数据库取值类型。</param>
+        /// <returns>匹配的强类型转换器；未注册或类型外键不匹配时返回 null。</returns>
         public IDbValueConverter<TDbValueType, TValueType>? GetDbValueConverter<TDbValueType, TValueType>(DbValueType dbValueType)
         {
             return GetDbValueConverter(typeof(TValueType), dbValueType) as IDbValueConverter<TDbValueType, TValueType>;

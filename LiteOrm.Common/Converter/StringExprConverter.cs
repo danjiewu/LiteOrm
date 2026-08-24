@@ -169,12 +169,14 @@ namespace LiteOrm.Common
         /// <param name="property">属性描述符。</param>
         /// <param name="value">输入字符串。</param>
         /// <returns>可被属性接受的值。</returns>
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "GetUnderlyingType only checks Nullable<T> and is safe for known property types.")]
         private static object? ParseValue(PropertyInfo property, string value)
         {
             if (String.IsNullOrEmpty(value)) return null;
             if (property.PropertyType == typeof(string)) return value;
             value = value.Trim();
             if (value.Length == 0) return null;
+
             Type type = property.PropertyType.GetUnderlyingType();
             if (type.IsEnum)
             {

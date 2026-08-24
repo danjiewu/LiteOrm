@@ -36,7 +36,7 @@ namespace LiteOrm
         public DbCommandProxy(DAOContext context)
         {
             Context = context ?? throw new ArgumentNullException(nameof(context));
-            SqlBuilder = context.Pool?.SqlBuilder;
+            SqlBuilder = context.Pool?.SqlBuilder!;
             Target = context.DbConnection.CreateCommand();
         }
 
@@ -56,7 +56,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取 SQL 构建器。
         /// </summary>
-        public ISqlBuilder? SqlBuilder { get; }
+        public ISqlBuilder SqlBuilder { get; }
 
         #region DbCommand 重写
 

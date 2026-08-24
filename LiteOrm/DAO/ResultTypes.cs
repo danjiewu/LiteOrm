@@ -489,7 +489,7 @@ namespace LiteOrm.Common
         {
             _resultConverter = resultConverter ?? ((obj) =>
             {
-                IDbValueConverter? converter = preparedCommand.SqlBuilder.GetDbValueConverter(typeof(TResult), DbValueType.Object)
+                IDbValueConverter? converter = preparedCommand.SqlBuilder!.GetDbValueConverter(typeof(TResult), DbValueType.Object)
                     ?? preparedCommand.SqlBuilder.GetDbValueConverter(typeof(TResult), DbValueTypeMap.GetDbValueType(obj.GetType()));
                 return converter?.DbReadConverter != null ? (TResult)converter.DbReadConverter(obj) : (TResult)obj;
             });

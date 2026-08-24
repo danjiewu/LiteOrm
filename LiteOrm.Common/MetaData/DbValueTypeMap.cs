@@ -120,7 +120,7 @@ namespace LiteOrm.Common
         public static DbValueType FromDbType(DbType dbType) => (DbValueType)dbType;
 
         /// <summary>
-        /// 获取 <see cref="DbDataReader"/> 按 <paramref name="dbType"/> 选择类型化读取方法（GetInt32/GetString/GetGuid 等）时
+        /// 获取 <see cref="System.Data.Common.DbDataReader"/> 按 <paramref name="dbType"/> 选择类型化读取方法（GetInt32/GetString/GetGuid 等）时
         /// 返回的 CLR 类型；无对应类型化读取方法（如 Object / 其他）时返回 <see cref="object"/>。
         /// 与 <c>DataReaderConverter</c> 的类型化读取方法选择（<c>_dbTypeReaderMethods</c>）保持一致。
         /// </summary>
@@ -160,7 +160,9 @@ namespace LiteOrm.Common
         /// <item>其余类型 → 通过 <see cref="GetDbValueType"/> 映射</item>
         /// </list>
         /// </summary>
-        public static DbValueType InferFromPropertyType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "GetUnderlyingType only checks Nullable<T> and is safe for known property types.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "Inference reads type metadata only to determine Array/Binary/known scalar; requires no preserved members (runtime path).")]
+        public static DbValueType InferFromPropertyType(Type type)
         {
             if (type is null) return DbValueType.Object;
             type = type.GetUnderlyingType();

@@ -139,6 +139,7 @@ namespace LiteOrm.Common
         /// <inheritdoc/>
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "argument.GetType() returns a runtime-known Type whose properties are naturally available; this path is only called under JIT.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "argument.GetType() returns a runtime-known Type whose properties are naturally available; this path is only called under JIT.")]
 #endif
         public object? GenerateReturnValue(object? argument)
         {
@@ -150,6 +151,7 @@ namespace LiteOrm.Common
         /// <inheritdoc/>
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "originalArg.GetType() returns a runtime-known Type whose properties are naturally available; this path is only called under JIT.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "originalArg.GetType() returns a runtime-known Type whose properties are naturally available; this path is only called under JIT.")]
 #endif
         public void WriteBack(object? originalArg, object? returnValue)
         {

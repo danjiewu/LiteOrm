@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -180,6 +180,9 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="target">对比对象，如果提供则只记录变化的属性</param>
         /// <returns>日志字符串</returns>
+        #if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "GetType() returns a runtime-known Type whose properties are naturally available; under AOT, entity types are preserved via [Table] + source generator.")]
+#endif
         public virtual string ToLog(object? target)
         {
             var properties = ToLogProperties();

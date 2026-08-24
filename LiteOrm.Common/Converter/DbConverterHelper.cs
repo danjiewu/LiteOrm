@@ -24,7 +24,7 @@ namespace LiteOrm.Common
         /// <param name="targetType">目标属性 / 值类型。</param>
         /// <param name="dbType">数据库取值类型（用于注册查找）。</param>
         /// <returns>转换后的值；无转换器或委托为 null 时原样返回。</returns>
-        public static object? ApplyRead(IDbConverter? c, IDbValueConverter? colConv, object? raw,
+        public static object? ApplyRead(IDbConverter? c, IDbValueConverter? colConv, object raw,
             Type targetType, DbValueType dbType)
         {
             IDbValueConverter? conv = colConv
