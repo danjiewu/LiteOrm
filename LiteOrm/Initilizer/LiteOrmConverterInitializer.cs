@@ -7,7 +7,7 @@ namespace LiteOrm
     /// LiteOrm 默认值转换器初始化器，用于在 <see cref="SqlBuilder"/> 类型上注册默认的双向值转换器。
     /// 通过静态构造函数在首次访问时自动注册，供 <see cref="IDbConverter.GetDbValueConverter"/> 查找。
     /// 注册主键为 (值类型, DbValueType)，读取与写入共用同一注册表；
-    /// 读取经 <see cref="DbConverterHelper.ApplyRead"/>，写入经 <see cref="DbConverterHelper.ApplyWrite"/> 应用注册的转换器。
+    /// 转换经注册转换器的 <see cref="IDbValueConverter.DbReadConverter"/> / <see cref="IDbValueConverter.DbWriteConverter"/> 委托应用，委托为 null 时直接赋值。
     /// </summary>
     /// <remarks>
     /// 调用 <see cref="Initialize"/> 方法可显式触发静态构造函数，确保转换器在应用启动时完成注册。

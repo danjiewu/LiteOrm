@@ -27,16 +27,7 @@ namespace LiteOrm
         private static readonly MethodInfo? _getValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetValue), new[] { typeof(int) });
 
-        // 泛型强类型读取（编译期按列读取方法返回类型闭包 tDb），表达式树经 MethodInfo 闭包泛型调用
-#if NET8_0_OR_GREATER
-        [UnconditionalSuppressMessage("Trimming", "IL2111",
-            Justification = "在运行时通过 MethodInfo 获取并闭包泛型调用该方法；AOT 场景下复杂类型列须由源生成器 mapper 处理，此处仅兜底已由 DAO 注册的目标类型。")]
-#endif
-        private static readonly MethodInfo _applyReadGenericMethod =
-            typeof(DbConverterHelper).GetMethod(nameof(DbConverterHelper.ApplyReadGeneric),
-                BindingFlags.Static | BindingFlags.Public)!;
-
-        // IDbConverter.GetDbValueConverter(Type, DbValueType)：运行时按 (目标类型, DbValueType) 解析转换器
+        // IDbConverter.GetDbValueConverter(Type, DbValueType)：编译期缺少 dbConverter 时发射运行时解析
         private static readonly MethodInfo _getDbValueConverterMethod =
             typeof(IDbConverter).GetMethod(nameof(IDbConverter.GetDbValueConverter),
                 new[] { typeof(Type), typeof(DbValueType) })!;
@@ -180,12 +171,22 @@ namespace LiteOrm
             return sb.ToString();
         }
 
-        private static Func<AutoLockDataReader, TResult> CompileConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IDbConverter? dbConverter)
+        /// <summary>
+        /// 动态读取委托编译仅在 JIT/Native（动态代码可用）下支持；AOT 下抛错并提示使用源生成器 mapper 或 <see cref="RegisterMapper{T}"/>。
+        /// </summary>
+        private static void EnsureDynamicCode<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
+            DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(bool suggestRegisterMapper)
         {
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
                 throw new PlatformNotSupportedException(
                     $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
-                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table].");
+                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table]" +
+                    (suggestRegisterMapper ? ", or call DataReaderConverter.RegisterMapper first." : "."));
+        }
+
+        private static Func<AutoLockDataReader, TResult> CompileConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IDbConverter? dbConverter)
+        {
+            EnsureDynamicCode<TResult>(suggestRegisterMapper: false);
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
@@ -203,12 +204,8 @@ namespace LiteOrm
 #endif
         private static Func<AutoLockDataReader, TResult> CompileScalarConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(ParameterExpression readerParam, IDbConverter? dbConverter)
         {
-            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
-                throw new PlatformNotSupportedException(
-                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
-                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table], or call DataReaderConverter.RegisterMapper first.");
-            DbType? dbType = DbConverterHelper.InferReadDbType(typeof(TResult), dbConverter, out DbValueType dbValueType);
-            var body = BuildTypedReadExpression(readerParam, 0, typeof(TResult), null, dbType, dbValueType, null);
+            EnsureDynamicCode<TResult>(suggestRegisterMapper: true);
+            var body = BuildMemberReadExpression(readerParam, 0, null, typeof(TResult), dbConverter);
             return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
@@ -217,10 +214,7 @@ namespace LiteOrm
 #endif
         private static Func<AutoLockDataReader, TResult> CompileDataReaderConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader, IDbConverter? dbConverter)
         {
-            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
-                throw new PlatformNotSupportedException(
-                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
-                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table], or call DataReaderConverter.RegisterMapper first.");
+            EnsureDynamicCode<TResult>(suggestRegisterMapper: true);
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
@@ -247,8 +241,7 @@ namespace LiteOrm
                         args[i] = Expression.Default(param.ParameterType);
                         continue;
                     }
-                    DbType? dbType = DbConverterHelper.InferReadDbType(param.ParameterType, dbConverter, out DbValueType dbValueType);
-                    args[i] = BuildTypedReadExpression(readerParam, ordinal, param.ParameterType, param.Name, dbType, dbValueType, null);
+                    args[i] = BuildMemberReadExpression(readerParam, ordinal, param.Name, param.ParameterType, dbConverter);
                 }
                 body = Expression.New(ctor, args);
             }
@@ -260,8 +253,7 @@ namespace LiteOrm
                 {
                     if (!prop.CanWrite) continue;
                     if (!columnMap.TryGetValue(prop.Name, out int ordinal)) continue;
-                    DbType? dbType = DbConverterHelper.InferReadDbType(prop.PropertyType, dbConverter, out DbValueType dbValueType);
-                    bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, ordinal, prop.PropertyType, prop.Name, dbType, dbValueType, null)));
+                    bindings.Add(Expression.Bind(prop, BuildMemberReadExpression(readerParam, ordinal, prop.Name, prop.PropertyType, dbConverter)));
                 }
                 body = Expression.MemberInit(Expression.New(ctor), bindings);
             }
@@ -271,48 +263,74 @@ namespace LiteOrm
 
         /// <summary>
         /// 构建读取指定列的完整表达式（含 IsDBNull 判定、Nullable 封装与列级异常包装）。
-        /// 转换优先级：<paramref name="columnConverter"/>（列级转换器，经 SqlBuilder 注册解析并回填列）→
-        /// 数据库读取方法返回类型与属性 CLR 类型一致时直接赋值 → ApplyRead 严格分发（列级 Converter 或注册解析，委托 null 则直返）。
+        /// 列级转换器（<paramref name="columnConverter"/>，编译期经 SqlBuilder 注册解析并回填列）优先：
+        /// 直接转为泛型 <see cref="IDbValueConverter{TDbType,TValueType}"/> 并内联调用其 <see cref="IDbValueConverter{TDbType,TValueType}.DbReadConverter"/>
+        /// 委托（注册的转换器均为泛型）；否则数据库读取方法返回类型与属性 CLR 类型一致时直接赋值。
         /// <paramref name="columnName"/> 用于在读取失败时抛出包含成员名（属性名或构造函数参数名）的明确异常；为 null 时仅依据 <paramref name="ordinal"/> 描述。
         /// </summary>
         [RequiresDynamicCode("The code for building the typed read expression used MakeGenericMethod and might not be available.")]
         private static Expression BuildTypedReadExpression(
             ParameterExpression readerParam, int ordinal, Type targetType, string? columnName,
-            DbType? dbType, DbValueType dbValueType, IDbValueConverter? columnConverter)
+            DbType? dbType, DbValueType dbValueType, IDbValueConverter? columnConverter, bool resolveConverterAtRuntime = false)
         {
             Type coreType = Nullable.GetUnderlyingType(targetType) ?? targetType;
             var ordinalExpr = Expression.Constant(ordinal);
 
             Expression readExpr = BuildRawReadExpression(readerParam, ordinalExpr, coreType, dbType);
 
-            // 列级转换器优先；否则读取类型与属性类型一致直接赋值；否则经 IDbValueConverter 转换。
-            // 列级转换器已注册但读取委托为 null（无需转换）时按直接赋值处理，构造时不再生成转换调用。
+            // 转换优先级：列转换器有可用读委托 → 转泛型并内联调用；否则读取类型与属性类型不一致时再处理
             if (columnConverter?.DbReadConverter != null)
             {
-                Expression converted = InvokeFromDbValueConverter(readerParam, readExpr, coreType, dbValueType, columnConverter);
-                readExpr = Expression.Convert(converted, coreType);
+                readExpr = InvokeFromDbValueConverter(readExpr, coreType, columnConverter, null);
             }
-            else if (columnConverter == null && readExpr.Type != coreType)
+            else if (readExpr.Type != coreType)
             {
-                // 未命中列级转换器且读取类型与属性类型不一致：运行时经注册表解析并转换
-                Expression converted = InvokeFromDbValueConverter(readerParam, readExpr, coreType, dbValueType, null);
-                readExpr = Expression.Convert(converted, coreType);
+                if (resolveConverterAtRuntime)
+                {
+                    // 编译期缺少 dbConverter：运行时经 reader.DbConverter 解析并转为泛型调用
+                    var runtimeConverter = Expression.Call(
+                        Expression.Property(readerParam, nameof(AutoLockDataReader.DbConverter)),
+                        _getDbValueConverterMethod!,
+                        Expression.Constant(coreType),
+                        Expression.Constant(dbValueType));
+                    readExpr = InvokeFromDbValueConverter(readExpr, coreType, null, runtimeConverter);
+                }
+                else
+                {
+                    readExpr = ConvertRuntimeSafe(readExpr, coreType);
+                }
             }
-            else
-            {
-                // 无列级转换器且读取类型一致，或列级转换器委托为 null（无需转换）：直接赋值
-                readExpr = Expression.Convert(readExpr, coreType);
-            }
+            // 否则（无可用读委托且读取类型一致）：直接赋值，跳过转换
 
             // Wrap as Nullable<T>
             if (targetType != coreType)
                 readExpr = Expression.Convert(readExpr, targetType);
 
             var isNull = Expression.Call(readerParam, _isDBNullMethod!, ordinalExpr);
-            var body = Expression.Condition(isNull, Expression.Default(targetType), readExpr);
+
+            // 空值分支：可空类型（Nullable<T> 或引用类型）直接赋 null；非可空值类型赋默认零值
+            Expression nullValue = targetType.IsValueType && Nullable.GetUnderlyingType(targetType) is null
+                ? Expression.Default(targetType)
+                : Expression.Constant(null, targetType);
+            var body = Expression.Condition(isNull, nullValue, readExpr);
 
             // Wrap with try-catch to attach member name / ordinal information on failure
             return WrapWithColumnErrorHandling(ordinal, columnName, targetType, body);
+        }
+
+        /// <summary>
+        /// 编译期解析并构建「读取单个成员（属性 / 构造参数）列」的表达式：
+        /// <paramref name="dbConverter"/> 非 null 时预解析转换器内联为常量；为 null 时标记运行时解析回退。
+        /// </summary>
+        private static Expression BuildMemberReadExpression(
+            ParameterExpression readerParam, int ordinal, string? memberName,
+            Type memberType, IDbConverter? dbConverter)
+        {
+            DbType? dbType = DbConverterHelper.InferReadDbType(memberType, dbConverter, out DbValueType dbValueType);
+            Type coreType = Nullable.GetUnderlyingType(memberType) ?? memberType;
+            bool resolveAtRuntime = dbConverter == null;
+            IDbValueConverter? conv = resolveAtRuntime ? null : dbConverter!.GetDbValueConverter(coreType, dbValueType);
+            return BuildTypedReadExpression(readerParam, ordinal, memberType, memberName, dbType, dbValueType, conv, resolveAtRuntime);
         }
 
         /// <summary>
@@ -382,29 +400,96 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 构建「按转换优先级对 <paramref name="valueExpr"/> 求值转换」的表达式。
-        /// 列级转换器以常量内联；否则运行时经 <c>reader.DbConverter.GetDbValueConverter</c> 解析。
-        /// 均闭包调用泛型强类型 <see cref="DbConverterHelper.ApplyReadGeneric"/>（tDb = <paramref name="valueExpr"/> 的类型）：
-        /// 转换器为匹配的泛型 <see cref="IDbValueConverter{TDbType,TValueType}.DbReadConverter"/> 时调用委托，否则直接赋值。
+        /// 编译期安全的「严格直接赋值」转换：
+        /// 优先尝试直接 <see cref="Expression.Convert"/>（合法数值/引用转换，如 int→long 在树构建期即可转换）；
+        /// 若该配对在树构建期即切线抛 <see cref="InvalidOperationException"/> No coercion（如 string→TimeSpan/DateTime），
+        /// 则退而装箱为 object 后再转 <paramref name="coreType"/>（unbox.any/castclass，构建期不再抛错），
+        /// 把不兼容推迟到运行期读取该行时以 <see cref="InvalidCastException"/> 报错（避免整棵 mapper 因单列类型不匹配而编译失败）。
         /// </summary>
-        #if NET8_0_OR_GREATER
+        private static Expression ConvertRuntimeSafe(Expression valueExpr, Type coreType)
+        {
+            try
+            {
+                return Expression.Convert(valueExpr, coreType);
+            }
+            catch (InvalidOperationException)
+            {
+                return Expression.Convert(Expression.Convert(valueExpr, typeof(object)), coreType);
+            }
+        }
+
+        /// <summary>
+        /// 对内联已读取的 <paramref name="valueExpr"/> 应用转换器读取。
+        /// 注册的转换器均为泛型 <see cref="IDbValueConverter{TDbType,TValueType}"/>，其 DB 侧类型即读取值的实际类型
+        /// <c>TDb = <paramref name="valueExpr"/>.Type</c>、实体侧 <c>TValue = <paramref name="coreType"/></c>，
+        /// 因此发射时直接把转换器转为 <c>IDbValueConverter{T, coreType}</c>（T 为属性实际读取类型，而非 object）
+        /// 并内联调用其 <see cref="IDbValueConverter{TDbType,TValueType}.DbReadConverter"/> 委托：
+        /// <list type="bullet">
+        /// <item>转换器为编译期常量（<paramref name="columnConverter"/>）时，其闭合泛型读取委托在编译期一次取得、烘焙为常量后内联调用；</item>
+        /// <item>否则若提供 <paramref name="runtimeConverterExpr"/>（编译期缺少 dbConverter），发射带 null/空缺守卫的运行时解析 + 泛型调用。</item>
+        /// </list>
+        /// 转换器缺失、非对应泛型或委托为 null 时严格直接赋值。
+        /// </summary>
+#if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown before this expression tree path is invoked (CompileConverter checks RuntimeFeature.IsDynamicCodeSupported).")]
 #endif
         private static Expression InvokeFromDbValueConverter(
-            ParameterExpression readerParam, Expression valueExpr, Type coreType, DbValueType dbValueType, IDbValueConverter? columnConverter)
+            Expression valueExpr, Type coreType, IDbValueConverter? columnConverter, Expression? runtimeConverterExpr)
         {
-            Expression converterExpr;
-            if (columnConverter != null)
-                converterExpr = Expression.Constant(columnConverter);
-            else
-                converterExpr = Expression.Call(
-                    Expression.Property(readerParam, nameof(AutoLockDataReader.DbConverter)),
-                    _getDbValueConverterMethod!,
-                    Expression.Constant(coreType),
-                    Expression.Constant(dbValueType));
+            Type closedInterface = typeof(IDbValueConverter<,>).MakeGenericType(valueExpr.Type, coreType);
+            Expression boxed = Expression.Convert(valueExpr, typeof(object));
 
-            var genericMethod = _applyReadGenericMethod!.MakeGenericMethod(valueExpr.Type, coreType);
-            return Expression.Call(genericMethod, converterExpr, valueExpr);
+            if (columnConverter != null)
+            {
+                // 编译期常量转换器：查找其闭合泛型 IDbValueConverter<TDb, coreType>，取后端 DbReadConverter 委托并内联调用
+                (Delegate? readDelegate, Type inputType) = TryGetTypedReadDelegate(columnConverter, coreType);
+                if (readDelegate != null)
+                    return Expression.Invoke(Expression.Constant(readDelegate), Expression.Convert(valueExpr, inputType));
+                return ConvertRuntimeSafe(valueExpr, coreType);
+            }
+
+            if (runtimeConverterExpr != null)
+            {
+                // 运行时解析 + 泛型调用（带 null / 空缺守卫；未命中泛型或读取委托为 null 时严格直接赋值）
+                var readProp = closedInterface.GetProperty(nameof(IDbValueConverter<object, object>.DbReadConverter))!;
+                var convVar = Expression.Variable(typeof(IDbValueConverter), "converter");
+                var castVar = Expression.Variable(closedInterface, "genericConverter");
+                var delegateVar = Expression.Variable(readProp.PropertyType, "readDelegate");
+                var nullDelegate = Expression.Constant(null, readProp.PropertyType);
+                var nullCast = Expression.Constant(null, closedInterface);
+
+                var result = Expression.Block(new[] { convVar, castVar, delegateVar },
+                    Expression.Assign(convVar, runtimeConverterExpr),
+                    Expression.Assign(castVar, Expression.TypeAs(convVar, closedInterface)),
+                    Expression.Assign(delegateVar,
+                        Expression.Condition(Expression.NotEqual(castVar, nullCast),
+                            Expression.Property(castVar, readProp),
+                            nullDelegate)),
+                    Expression.Condition(Expression.NotEqual(delegateVar, nullDelegate),
+                        Expression.Invoke(delegateVar, valueExpr),
+                        Expression.Convert(boxed, coreType)));
+                return result;
+            }
+
+            return ConvertRuntimeSafe(valueExpr, coreType);
+        }
+
+        /// <summary>
+        /// 从 <paramref name="converter"/> 上查找闭合泛型 <c>IDbValueConverter&lt;TDb, coreType&gt;</c> 接口，
+        /// 返回其后端 <see cref="IDbValueConverter{TDbType,TValueType}.DbReadConverter"/> 委托及其输入类型 <c>TDb</c>；
+        /// 未命中或读取委托为 null 时返回 (null, <paramref name="coreType"/>)。供编译期常量转换器内联调用（一次查找，非每行）。
+        /// </summary>
+        private static (Delegate?, Type) TryGetTypedReadDelegate(IDbValueConverter converter, Type coreType)
+        {
+            foreach (Type iface in converter.GetType().GetInterfaces())
+            {
+                if (!iface.IsGenericType || iface.GetGenericTypeDefinition() != typeof(IDbValueConverter<,>)) continue;
+                Type[] args = iface.GetGenericArguments();
+                if (args[1] != coreType) continue;
+                var readDelegate = iface.GetProperty(nameof(IDbValueConverter<object, object>.DbReadConverter))?.GetValue(converter) as Delegate;
+                return readDelegate == null ? (null, coreType) : (readDelegate, args[0]);
+            }
+            return (null, coreType);
         }
 
         /// <summary>
@@ -416,10 +501,7 @@ namespace LiteOrm
 #endif
         private static Func<AutoLockDataReader, TResult> CompileConverterByColumns<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IList<SqlColumn> selectColumns, IDbConverter? dbConverter)
         {
-            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
-                throw new PlatformNotSupportedException(
-                    $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
-                    $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table].");
+            EnsureDynamicCode<TResult>(suggestRegisterMapper: false);
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
             var ctor = resultType.GetConstructor(Type.EmptyTypes)
@@ -440,7 +522,8 @@ namespace LiteOrm
                 if (column.DbValueConverter is null && dbConverter is not null)
                     column.DbValueConverter = dbConverter.GetDbValueConverter(prop.PropertyType, dbValueType);
 
-                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType, column.PropertyName, dbType, dbValueType, column.DbValueConverter)));
+                bool resolveAtRuntime = dbConverter == null;
+                bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, i, prop.PropertyType, column.PropertyName, dbType, dbValueType, column.DbValueConverter, resolveAtRuntime)));
             }
 
             var body = Expression.MemberInit(Expression.New(ctor), bindings);
