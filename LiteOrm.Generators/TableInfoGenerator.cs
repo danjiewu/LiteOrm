@@ -772,13 +772,13 @@ namespace LiteOrm.Generators
                 if (!c.CanWrite || string.IsNullOrEmpty(c.ValueConverterType)) continue;
                 sb.AppendLine($"        private static readonly {c.ValueConverterType} {e.SafeName}_Converter_{i} = new {c.ValueConverterType}();");
             }
-            // 每列一个转换器缓存：按 DbConverter 具体类型缓存该列的读取转换委托（IDbValueConverter.DbReadConverter），
-            // 首次经 reader.DbConverter 解析，之后逐行直接复用——避免每行重复查找转换器、重复委托包装分配。
+            // 每列一个已解析的泛型转换器缓存（IDbValueConverter，按实体唯一方言构造器惰性解析一次）：
+            // 首次经 reader.DbConverter 解析，之后逐行复用；ValueConverterType 列走静态转换器字段，不需要该缓存字段.
             for (int i = 0; i < e.Columns.Count; i++)
             {
                 var c = e.Columns[i];
-                if (!c.CanWrite) continue;
-                sb.AppendLine($"        private static readonly System.Collections.Concurrent.ConcurrentDictionary<System.Type, global::LiteOrm.Common.DbConvertHandler> {e.SafeName}_read_{i} = new();");
+                if (!c.CanWrite || !string.IsNullOrEmpty(c.ValueConverterType)) continue;
+                sb.AppendLine($"        private static global::LiteOrm.Common.IDbValueConverter? {e.SafeName}_conv_{i};");
             }
             sb.AppendLine($"        private static {e.FullName} {e.SafeName}_Mapper(global::LiteOrm.AutoLockDataReader reader)");
             sb.AppendLine("        {");
@@ -792,10 +792,27 @@ namespace LiteOrm.Generators
                 // 数组/Json 等复杂类型默认不生成静态列读取绑定（列信息），需经注册转换器处理；
                 // 显式声明了列级转换器（ValueConverterType）时才生成，否则交运行时转换/原样返回。
                 if (IsComplexColumn(c) && string.IsNullOrEmpty(c.ValueConverterType)) continue;
-                string? converterField = string.IsNullOrEmpty(c.ValueConverterType) ? null : $"{e.SafeName}_Converter_{i}";
-                string? dbTypeExpr = GetReadDbValueTypeExpr(c, symbols);
-                var readExpr = GenerateTypedReadCall(c.PropertyType, i, dbTypeExpr,
-                    $"{e.SafeName}_read_{i}", converterField);
+
+                string core = StripNullable(c.PropertyType.Replace("global::", ""));
+                string convLocal = $"c_{i}";
+                string readLocal = $"h_{i}";
+
+                if (!string.IsNullOrEmpty(c.ValueConverterType))
+                {
+                    // 列级转换器（ValueConverterType）：直接取静态转换器实例（列级转换器优先）
+                    sb.AppendLine($"            var {convLocal} = {e.SafeName}_Converter_{i};");
+                }
+                else
+                {
+                    // 否则运行时经注册表解析，并惰性缓存到泛型 IDbValueConverter 字段（避免每行重复解析）
+                    string? dbTypeExpr = GetReadDbValueTypeExpr(c, symbols);
+                    string dbValueType = dbTypeExpr ?? $"converter.GetDbValueType(typeof({core}))";
+                    sb.AppendLine($"            var {convLocal} = {e.SafeName}_conv_{i} ??= converter.GetDbValueConverter(typeof({core}), {dbValueType});");
+                }
+                // 取该列转换器的读取委托（每行一次，避免重复求值）；无则退回类型化读取
+                sb.AppendLine($"            var {readLocal} = {convLocal}?.DbReadConverter;");
+
+                var readExpr = GenerateTypedReadCall(c.PropertyType, i, readLocal);
                 sb.AppendLine($"            entity.{c.PropertyName} = {readExpr};");
             }
             sb.AppendLine("            return entity;");
@@ -843,27 +860,41 @@ namespace LiteOrm.Generators
             return type;
         }
 
-        private static string GenerateTypedReadCall(string propertyType, int ordinal, string? dbTypeExpr,
-            string handlerField, string? converterField = null)
+        private static string GenerateTypedReadCall(string propertyType, int ordinal, string readDelegateLocal)
         {
             // 去掉 global:: 前缀
             var type = propertyType.Replace("global::", "");
-            // 可空剥离后的核心类型，用作转换器查找键与 DbValueType 推断
+            // 可空剥离后的核心类型，用于选择类型化读取方法
             string core = StripNullable(type);
+            string? typedRead = GetTypedReadMethodName(core);
 
-            // DbValueType 表达式：显式列类型为常量，否则运行时经 converter 按核心类型推断
-            string dbValueType = dbTypeExpr ?? $"converter.GetDbValueType(typeof({core}))";
+            // 读取委托（object→object）优先 → 否则类型化读取/GetValue；与运行时 BuildTypedReadExpression 语义一致
+            string fallbackExpr = typedRead != null
+                ? $"(object)reader.{typedRead}({ordinal})"
+                : $"reader.GetValue({ordinal})";
 
-            // 列级转换器优先，否则从注册表解析；两者都无有效读取委托时退化为恒等（直接赋值）
-            string convertSource = converterField != null
-                ? $"{converterField}.DbReadConverter ?? (global::LiteOrm.Common.DbConvertHandler)(o => o)"
-                : $"converter.GetDbValueConverter(typeof({core}), {dbValueType})?.DbReadConverter ?? (global::LiteOrm.Common.DbConvertHandler)(o => o)";
-
-            // 先经 AutoLockDataReader 的 DbConverter 解析并缓存该列读取转换委托，再逐列读取并转换
-            var read = $"({type}){handlerField}.GetOrAdd(converter.GetType(), _ => {convertSource})(reader.GetValue({ordinal}))!";
-
-            return $"reader.IsDBNull({ordinal}) ? default({type})! : {read}";
+            var read = $"reader.IsDBNull({ordinal}) ? default({type})! : ({type})({readDelegateLocal} != null ? {readDelegateLocal}(reader.GetValue({ordinal})) : {fallbackExpr})";
+            return read;
         }
+
+        /// <summary>
+        /// 返回核心 CLR 类型对应的类型化读取方法名（与运行时 <c>_dbTypeReaderMethods</c> 选取一致）；无对应方法（复杂/未知类型）返回 null。
+        /// </summary>
+        private static string? GetTypedReadMethodName(string core) => core switch
+        {
+            "System.Boolean" or "bool" => "GetBoolean",
+            "System.Byte" or "byte" => "GetByte",
+            "System.Int16" or "short" => "GetInt16",
+            "System.Int32" or "int" => "GetInt32",
+            "System.Int64" or "long" => "GetInt64",
+            "System.Single" or "float" => "GetFloat",
+            "System.Double" or "double" => "GetDouble",
+            "System.Decimal" or "decimal" => "GetDecimal",
+            "System.String" or "string" => "GetString",
+            "System.DateTime" => "GetDateTime",
+            "System.Guid" => "GetGuid",
+            _ => null,
+        };
 
         // ──────────────────────────────────────────────────────────────
         // 3. 生成 Property Accessors

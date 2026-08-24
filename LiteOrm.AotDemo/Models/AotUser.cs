@@ -19,6 +19,7 @@ namespace LiteOrm.AotDemo.Models
 
         [Column("CreateTime")]
         public DateTime CreateTime { get; set; }
+        public Guid Guid { get; set; }
     }
 
     /// <summary>

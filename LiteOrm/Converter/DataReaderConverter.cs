@@ -322,6 +322,7 @@ namespace LiteOrm
         /// 编译期解析并构建「读取单个成员（属性 / 构造参数）列」的表达式：
         /// <paramref name="dbConverter"/> 非 null 时预解析转换器内联为常量；为 null 时标记运行时解析回退。
         /// </summary>
+        [RequiresDynamicCode("Used only by the JIT emit path; under AOT, CompileScalarConverter/CompileDataReaderConverter guard with EnsureDynamicCode and throw first.")]
         private static Expression BuildMemberReadExpression(
             ParameterExpression readerParam, int ordinal, string? memberName,
             Type memberType, IDbConverter? dbConverter)
@@ -401,7 +402,7 @@ namespace LiteOrm
 
         /// <summary>
         /// 编译期安全的「严格直接赋值」转换：
-        /// 优先尝试直接 <see cref="Expression.Convert"/>（合法数值/引用转换，如 int→long 在树构建期即可转换）；
+        /// 优先尝试直接 <c>Expression.Convert</c>（合法数值/引用转换，如 int→long 在树构建期即可转换）；
         /// 若该配对在树构建期即切线抛 <see cref="InvalidOperationException"/> No coercion（如 string→TimeSpan/DateTime），
         /// 则退而装箱为 object 后再转 <paramref name="coreType"/>（unbox.any/castclass，构建期不再抛错），
         /// 把不兼容推迟到运行期读取该行时以 <see cref="InvalidCastException"/> 报错（避免整棵 mapper 因单列类型不匹配而编译失败）。
@@ -444,7 +445,13 @@ namespace LiteOrm
                 // 编译期常量转换器：查找其闭合泛型 IDbValueConverter<TDb, coreType>，取后端 DbReadConverter 委托并内联调用
                 (Delegate? readDelegate, Type inputType) = TryGetTypedReadDelegate(columnConverter, coreType);
                 if (readDelegate != null)
-                    return Expression.Invoke(Expression.Constant(readDelegate), Expression.Convert(valueExpr, inputType));
+                {
+                    // 若输入类型不匹配，添加转换（支持隐式转换）
+                    Expression inputExpr = (inputType == valueExpr.Type)
+                        ? valueExpr
+                        : Expression.Convert(valueExpr, inputType); // 此处允许隐式转换
+                    return Expression.Invoke(Expression.Constant(readDelegate), inputExpr);
+                }
                 return ConvertRuntimeSafe(valueExpr, coreType);
             }
 
