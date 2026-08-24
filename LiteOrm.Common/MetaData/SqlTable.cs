@@ -20,6 +20,7 @@ namespace LiteOrm.Common
 
         #region 私有变量
         private ConcurrentDictionary<string, SqlColumn> _namedColumnCache = new ConcurrentDictionary<string, SqlColumn>(StringComparer.OrdinalIgnoreCase);
+        private bool _convertersInitialized; // 是否已为该表惰性解析并填充列转换器（表对应转换器固定，初始化一次）
         #endregion
 
         /// <summary>
@@ -122,6 +123,26 @@ namespace LiteOrm.Common
             SqlColumn? column;
             NamedColumnCache.TryGetValue(propertyName, out column);
             return column;
+        }
+
+        /// <summary>
+        /// 为该表的所有列惰性解析并回填数据库值转换器（经 <see cref="SqlColumn.EnsureConverter(IDbConverter)"/>）。
+        /// 表对应的转换器来源固定，故仅初始化一次（以 <c>_convertersInitialized</c> 标记去重，避免重复查找）。
+        /// DAO 在首次取得 <see cref="IDbConverter"/>（SqlBuilder）时集中调用。
+        /// </summary>
+        /// <param name="dbConverter">当前使用的数据库值转换器（SqlBuilder）。</param>
+        public void EnsureConverters(IDbConverter? dbConverter)
+        {
+            if (dbConverter is null || _convertersInitialized) return;
+            lock (this)
+            {
+                if (_convertersInitialized) return;
+                foreach (SqlColumn column in Columns)
+                {
+                    column.EnsureConverter(dbConverter);
+                }
+                _convertersInitialized = true;
+            }
         }
 
         /// <summary>

@@ -139,6 +139,6 @@ namespace LiteOrm.Common
         /// 由表信息提供器实例化后赋给 <see cref="SqlColumn.DbValueConverter"/>。
         /// </summary>
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)]
-        public Type? ValueConverterType { get; set; }
+        public Type? ConverterType { get; set; }
     }
 }

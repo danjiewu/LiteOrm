@@ -112,7 +112,13 @@ namespace LiteOrm
         /// </summary>
         public virtual SqlBuilder SqlBuilder
         {
-            get { return field ?? (field = Session.GetDAOContextPool(DataSource)!.SqlBuilder); }
+            get
+            {
+                SqlBuilder sqlBuilder = field ?? (field = Session.GetDAOContextPool(DataSource)!.SqlBuilder);
+                // 惰性集中初始化该表各列的数据库值转换器（表内以标记去重，避免重复查找）
+                Table.EnsureConverters(sqlBuilder);
+                return sqlBuilder;
+            }
         }
 
         /// <summary>

@@ -189,7 +189,7 @@ namespace LiteOrm
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
-            if (IsScalarType(resultType))
+            if (DbConverterHelper.IsScalarType(resultType))
                 return CompileScalarConverter<TResult>(readerParam, dbConverter);
 
             var selectColumns = (TableInfoProvider.Instance?.GetTableView(resultType)
@@ -207,7 +207,7 @@ namespace LiteOrm
                 throw new PlatformNotSupportedException(
                     $"DataReader mapping for type '{typeof(TResult).FullName}' requires a source-generated mapper. " +
                     $"Ensure the LiteOrm.Generators package is referenced and the type is marked with [Table], or call DataReaderConverter.RegisterMapper first.");
-            DbType? dbType = InferReadDbType(typeof(TResult), dbConverter, out DbValueType dbValueType);
+            DbType? dbType = DbConverterHelper.InferReadDbType(typeof(TResult), dbConverter, out DbValueType dbValueType);
             var body = BuildTypedReadExpression(readerParam, 0, typeof(TResult), null, dbType, dbValueType, null);
             return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
@@ -224,7 +224,7 @@ namespace LiteOrm
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
 
-            if (IsScalarType(resultType))
+            if (DbConverterHelper.IsScalarType(resultType))
                 return CompileScalarConverter<TResult>(readerParam, dbConverter);
 
             var columnMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -247,7 +247,7 @@ namespace LiteOrm
                         args[i] = Expression.Default(param.ParameterType);
                         continue;
                     }
-                    DbType? dbType = InferReadDbType(param.ParameterType, dbConverter, out DbValueType dbValueType);
+                    DbType? dbType = DbConverterHelper.InferReadDbType(param.ParameterType, dbConverter, out DbValueType dbValueType);
                     args[i] = BuildTypedReadExpression(readerParam, ordinal, param.ParameterType, param.Name, dbType, dbValueType, null);
                 }
                 body = Expression.New(ctor, args);
@@ -260,7 +260,7 @@ namespace LiteOrm
                 {
                     if (!prop.CanWrite) continue;
                     if (!columnMap.TryGetValue(prop.Name, out int ordinal)) continue;
-                    DbType? dbType = InferReadDbType(prop.PropertyType, dbConverter, out DbValueType dbValueType);
+                    DbType? dbType = DbConverterHelper.InferReadDbType(prop.PropertyType, dbConverter, out DbValueType dbValueType);
                     bindings.Add(Expression.Bind(prop, BuildTypedReadExpression(readerParam, ordinal, prop.PropertyType, prop.Name, dbType, dbValueType, null)));
                 }
                 body = Expression.MemberInit(Expression.New(ctor), bindings);
@@ -434,7 +434,7 @@ namespace LiteOrm
                     BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                 if (prop == null || !prop.CanWrite) continue;
 
-                DbType? dbType = GetColumnReadDbType(column, prop.PropertyType, dbConverter, out DbValueType dbValueType);
+                DbType? dbType = DbConverterHelper.GetColumnReadDbType(column, prop.PropertyType, dbConverter, out DbValueType dbValueType);
 
                 // 列级转换器为空且可用时，经 dbConverter 从 SqlBuilder 注册表解析并回填到列（缓存）
                 if (column.DbValueConverter is null && dbConverter is not null)
@@ -445,53 +445,6 @@ namespace LiteOrm
 
             var body = Expression.MemberInit(Expression.New(ctor), bindings);
             return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
-        }
-
-        private static bool IsScalarType(Type type)
-        {
-            type = Nullable.GetUnderlyingType(type) ?? type;
-            return type.IsPrimitive
-                || type == typeof(string)
-                || type == typeof(decimal)
-                || type == typeof(DateTime)
-                || type == typeof(Guid)
-                || type == typeof(byte[])
-                || type == typeof(Stream)
-                || type == typeof(DateTimeOffset)
-                || type == typeof(TimeSpan);
-        }
-
-        /// <summary>
-        /// 计算读取列时应使用的 <see cref="DbType"/> 与用于转换器查找的 <see cref="DbValueType"/>。
-        /// <para>
-        /// 当列的 <see cref="DbValueType"/> 为 <see cref="DbValueType.Default"/>（未显式指定）时，
-        /// 通过 <paramref name="dbConverter"/>（当前 SqlBuilder）按属性 CLR 类型推断，
-        /// 使不同数据库方言能选择正确的类型化读取方法（如 Oracle 的 bool 映射为 Int32、SQLite 的日期映射为 String）。
-        /// </para>
-        /// 数组/集合列的 DbType 返回 null（GetValue 兜底），但 <paramref name="dbValueType"/> 仍输出用于转换器查找。
-        /// </summary>
-        private static DbType? GetColumnReadDbType(SqlColumn column, Type propertyType, IDbConverter? dbConverter, out DbValueType dbValueType)
-        {
-            DbValueType declared = column.Definition?.DbType ?? DbValueType.Default;
-            if (declared == DbValueType.Default)
-                return InferReadDbType(propertyType, dbConverter, out dbValueType);
-
-            dbValueType = declared;
-            if (declared.HasArray() || ColumnDefinitionExtensions.IsCollectionType(propertyType)) return null;
-            return dbConverter?.ToDbType(declared) ?? DbValueTypeMap.ToDbType(declared);
-        }
-
-        /// <summary>
-        /// 按属性 CLR 类型推断读取时应使用的 <see cref="DbType"/> 与 <see cref="DbValueType"/>（无列定义信息时的兜底）。
-        /// 数组/集合属性返回 null（GetValue 兜底）。
-        /// </summary>
-        private static DbType? InferReadDbType(Type propertyType, IDbConverter? dbConverter, out DbValueType dbValueType)
-        {
-            dbValueType = dbConverter != null
-                ? dbConverter.GetDbValueType(propertyType)
-                : DbValueTypeMap.InferFromPropertyType(propertyType);
-            if (dbValueType.HasArray() || ColumnDefinitionExtensions.IsCollectionType(propertyType)) return null;
-            return dbConverter != null ? dbConverter.ToDbType(dbValueType) : DbValueTypeMap.ToDbType(dbValueType);
         }
     }
 }

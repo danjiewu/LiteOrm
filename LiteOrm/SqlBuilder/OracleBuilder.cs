@@ -315,7 +315,7 @@ namespace LiteOrm
         {
             if (column.GetDbValueType(this) == DbValueType.Time)
                 return "INTERVAL '0' DAY";
-            var dbType = column.ToDbType(this);
+            var dbType = column.GetDbType(this);
             switch (dbType)
             {
                 case DbType.DateTime:

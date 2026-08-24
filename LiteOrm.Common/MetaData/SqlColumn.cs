@@ -55,6 +55,23 @@ namespace LiteOrm.Common
         public IDbValueConverter? DbValueConverter { get; set; }
 
         /// <summary>
+        /// 确保列级数据库值转换器已设置。如果未设置，则使用提供的 IDbConverter 获取默认的转换器。
+        /// </summary>
+        /// <param name="dbConverter">数据库转换器</param>
+        public void EnsureConverter(IDbConverter dbConverter)
+        {
+            if (DbValueConverter == null)
+            {
+                DbValueType dbValueType = Definition.DbType;
+                if (dbValueType == DbValueType.Default)
+                {
+                    dbValueType = dbConverter.GetDbValueType(PropertyType);
+                }
+                DbValueConverter = dbConverter.GetDbValueConverter(PropertyType, dbValueType);
+            }
+        }
+
+        /// <summary>
         /// 关联的外表集合
         /// </summary>
         public IReadOnlyList<ForeignTable> ForeignTables { get; internal set; } = System.Array.Empty<ForeignTable>();

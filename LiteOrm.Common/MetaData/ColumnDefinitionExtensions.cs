@@ -1,9 +1,6 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 
 namespace LiteOrm.Common
 {
@@ -22,7 +19,7 @@ namespace LiteOrm.Common
         /// <param name="column">列定义。</param>
         /// <param name="dbConverter">数据库类型转换器，用于在 <see cref="ColumnDefinition.DbType"/> 为 <see cref="DbValueType.Default"/> 时推断类型。</param>
         /// <returns>有效的 <see cref="DbType"/> 值。</returns>
-        public static DbType ToDbType(this ColumnDefinition column, IDbConverter dbConverter)
+        public static DbType GetDbType(this ColumnDefinition column, IDbConverter dbConverter)
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
             if (dbConverter is null) throw new ArgumentNullException(nameof(dbConverter));
@@ -43,67 +40,49 @@ namespace LiteOrm.Common
             if (column is null) throw new ArgumentNullException(nameof(column));
             if (dbConverter is null) throw new ArgumentNullException(nameof(dbConverter));
             if (column.DbType != DbValueType.Default) return column.DbType;
-            if (IsCollectionType(column.PropertyType)) return DbValueTypeMap.InferFromPropertyType(column.PropertyType);
+            if (DbConverterHelper.IsCollectionType(column.PropertyType)) return DbValueTypeMap.InferFromPropertyType(column.PropertyType);
             return dbConverter.GetDbValueType(column.PropertyType);
         }
 
-        /// <summary>
-        /// 确保列已解析出可用的 <see cref="SqlColumn.DbValueConverter"/>：列级转换器为空时，
-        /// 经 <paramref name="dbConverter"/>（SqlBuilder）按 (属性类型, 列取值类型) 从注册表解析并回填到列。
-        /// 委托为 null / 无注册时不赋值，交由调用方直返（严格无兜底）。
-        /// </summary>
-        private static void EnsureColumnConverter(ColumnDefinition column, IDbConverter? dbConverter)
-        {
-            if (column.DbValueConverter is null && dbConverter is not null)
-                column.DbValueConverter = dbConverter.GetDbValueConverter(column.PropertyType, column.GetDbValueType(dbConverter));
-        }
 
         /// <summary>
         /// 从 <paramref name="target"/> 取列值并转换为数据库可接受的值（写入方向的列级入口，从实体取值场景）：
-        /// 等价于 <see cref="ToDbValue(ColumnDefinition, object?, IDbConverter?)"/>(<see cref="SqlColumn.GetValue"/> 的结果)。
+        /// 等价于 <see cref="ToDbValue(ColumnDefinition, object?)"/>(<see cref="SqlColumn.GetValue"/> 的结果)。
         /// </summary>
         /// <param name="column">列定义。</param>
         /// <param name="target">实体对象（从中取列值）。</param>
-        /// <param name="dbConverter">数据库值转换器；为 null 时仅做列级转换与裸值直返。</param>
         /// <returns>数据库可接受的值。</returns>
-        public static object GetToDbValue(this ColumnDefinition column, object? target, IDbConverter? dbConverter = null)
+        public static object GetToDbValue(this ColumnDefinition column, object? target)
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
-            return column.ToDbValue(column.GetValue(target), dbConverter);
+            return column.ToDbValue(column.GetValue(target));
         }
 
         /// <summary>
         /// 将裸值按列上下文转换为数据库可接受的值（写入方向的列级入口，裸值场景，如主键查询条件、时间戳条件）：
-        /// null 返回 <see cref="DBNull.Value"/>；列级转换器（<see cref="SqlColumn.DbValueConverter"/>）优先，
-        /// 为空时经 <paramref name="dbConverter"/> 从注册表解析并回填列；取 <see cref="IDbValueConverter.DbWriteConverter"/> 委托执行，
-        /// 委托为 null 时直接返回原值（严格无兜底，无 ChangeType / 枚举 / bool / TimeSpan 回退）。
+        /// null 返回 <see cref="DBNull.Value"/>；列级转换器（<see cref="SqlColumn.DbValueConverter"/>）解析并返回结果。
         /// </summary>
         /// <param name="column">列定义（提供列级转换器与列取值类型上下文）。</param>
         /// <param name="value">要转换的裸值（非从实体属性取得）。</param>
-        /// <param name="dbConverter">数据库值转换器；为 null 时仅做列级转换与裸值直返。</param>
         /// <returns>数据库可接受的值。</returns>
-        public static object ToDbValue(this ColumnDefinition column, object? value, IDbConverter? dbConverter = null)
+        public static object ToDbValue(this ColumnDefinition column, object? value)
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
             if (value is null) return DBNull.Value;
-
-            EnsureColumnConverter(column, dbConverter);
-
             return column.DbValueConverter?.DbWriteConverter is DbConvertHandler write ? write(value) : value;
         }
 
         /// <summary>
         /// 将数据库取得的值转换为列属性类型的值（读取方向的列级入口，裸值场景，如批量存在性检查的主键比较值）：
         /// 空值短路（null / <see cref="DBNull"/> / 空字符串 → 属性类型默认值）后，
-        /// 列级转换器（<see cref="SqlColumn.DbValueConverter"/>）优先，为空时经 <paramref name="dbConverter"/> 从注册表解析并回填列；
+        /// 列级转换器（<see cref="SqlColumn.DbValueConverter"/>）解析并回填列；
         /// 取 <see cref="IDbValueConverter.DbReadConverter"/> 委托执行，委托为 null 时直接返回原值（严格无兜底）。
         /// </summary>
         /// <param name="column">列定义。</param>
         /// <param name="dbValue">数据库取得的原始值。</param>
-        /// <param name="dbConverter">数据库值转换器；为 null 时退化为列级转换与裸值直返。</param>
         /// <returns>列属性类型的值。</returns>
         [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "GetUnderlyingType only checks Nullable<T> and is safe for known property types.")]
-        public static object? FromDbValue(this ColumnDefinition column, object? dbValue, IDbConverter? dbConverter = null)
+        public static object? FromDbValue(this ColumnDefinition column, object? dbValue)
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
 
@@ -116,78 +95,22 @@ namespace LiteOrm.Common
                     : null;
             }
 
-            EnsureColumnConverter(column, dbConverter);
-
             return column.DbValueConverter?.DbReadConverter is DbConvertHandler read ? read(dbValue) : dbValue;
         }
 
         /// <summary>
         /// 将数据库取得的值转换为列属性类型的值后直接写入 <paramref name="target"/> 的对应属性
         /// （读取方向的列级入口，写入实体场景，如自增主键回填；与写入方向的
-        /// <see cref="GetToDbValue(ColumnDefinition, object?, IDbConverter?)"/> 对称）：
-        /// 转换链路同 <see cref="FromDbValue(ColumnDefinition, object?, IDbConverter?)"/>。
+        /// <see cref="GetToDbValue(ColumnDefinition, object?)"/> 对称）：
+        /// 转换链路同 <see cref="FromDbValue(ColumnDefinition, object?)"/>。
         /// </summary>
         /// <param name="column">列定义。</param>
         /// <param name="target">实体对象（转换结果写入其对应属性）。</param>
         /// <param name="dbValue">数据库取得的原始值。</param>
-        /// <param name="dbConverter">数据库值转换器；为 null 时退化为列级转换与裸值直返。</param>
-        public static void SetFromDbValue(this ColumnDefinition column, object? target, object? dbValue, IDbConverter? dbConverter = null)
+        public static void SetFromDbValue(this ColumnDefinition column, object? target, object? dbValue)
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
-            column.SetValue(target, FromDbValue(column, dbValue, dbConverter));
-        }
-
-        /// <summary>
-        /// 判断指定类型是否为集合类型（数组、<see cref="System.Collections.Generic.IEnumerable{T}"/> 等），
-        /// 排除 <see cref="string"/> 与 <see cref="byte"/>[]。
-        /// </summary>
-        /// <param name="type">要判断的类型。</param>
-        /// <returns>如果类型是集合类型则返回 true。</returns>
-        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "GetUnderlyingType only checks Nullable<T> and is safe for known property types.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "This collection-check helper performs no member enumeration; the Type argument is used for IEnumerable assignability checks only (runtime path).")]
-        public static bool IsCollectionType(Type type)
-        {
-            if (type is null) return false;
-            type = type.GetUnderlyingType();
-            if (type == typeof(string) || type == typeof(byte[])) return false;
-            return typeof(IEnumerable).IsAssignableFrom(type);
-        }
-
-        /// <summary>
-        /// 解析集合类型的元素类型。
-        /// 数组返回 <see cref="Type.GetElementType"/>；<c>IEnumerable&lt;T&gt;/ICollection&lt;T&gt;/IList&lt;T&gt;</c>
-        /// 返回泛型参数 <c>T</c>；非泛型集合返回 <see cref="object"/>；无法解析返回 <see langword="null"/>。
-        /// </summary>
-        /// <param name="type">集合类型。</param>
-        /// <returns>元素类型；无法解析时为 null。</returns>
-        public static Type? GetCollectionElementType([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
-        {
-            if (type is null) return null;
-            type = type.GetUnderlyingType();
-            if (type == typeof(string) || type == typeof(byte[])) return null;
-
-            if (type.IsArray) return type.GetElementType();
-
-            if (type.IsGenericType)
-            {
-                Type genericDef = type.GetGenericTypeDefinition();
-                if (genericDef == typeof(IEnumerable<>) || genericDef == typeof(ICollection<>)
-                    || genericDef == typeof(IList<>) || genericDef == typeof(List<>)
-                    || genericDef == typeof(IReadOnlyCollection<>) || genericDef == typeof(IReadOnlyList<>)
-                    || genericDef == typeof(ISet<>) || genericDef == typeof(HashSet<>))
-                {
-                    return type.GetGenericArguments()[0];
-                }
-
-                // 其他泛型集合接口实现：查找其实现的 IEnumerable<T>
-                Type? enumerable = type.GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
-                if (enumerable is not null) return enumerable.GetGenericArguments()[0];
-            }
-
-            if (typeof(IEnumerable).IsAssignableFrom(type)) return typeof(object);
-
-            return null;
+            column.SetValue(target, FromDbValue(column, dbValue));
         }
     }
 }

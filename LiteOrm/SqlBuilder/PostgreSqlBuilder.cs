@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -94,14 +94,14 @@ namespace LiteOrm
         {
             if (column.IsIdentity)
             {
-                var dbType = column.ToDbType(this);
+                var dbType = column.GetDbType(this);
                 return dbType == DbType.Int64 ? "BIGSERIAL" : "SERIAL";
             }
 
             DbValueType dbValueType = column.GetDbValueType(this);
             if (dbValueType.HasArray())
             {
-                Type? elementType = ColumnDefinitionExtensions.GetCollectionElementType(column.PropertyType) ?? typeof(object);
+                Type? elementType = DbConverterHelper.GetCollectionElementType(column.PropertyType) ?? typeof(object);
                 DbValueType elementDbValueType = DbValueTypeMap.GetDbValueType(elementType);
                 return GetPostgresArrayElementType(elementDbValueType) + "[]";
             }

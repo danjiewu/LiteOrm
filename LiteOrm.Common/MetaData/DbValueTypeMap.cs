@@ -167,9 +167,9 @@ namespace LiteOrm.Common
             if (type is null) return DbValueType.Object;
             type = type.GetUnderlyingType();
             if (type == typeof(byte[])) return DbValueType.Binary;
-            if (ColumnDefinitionExtensions.IsCollectionType(type))
+            if (DbConverterHelper.IsCollectionType(type))
             {
-                Type? elementType = ColumnDefinitionExtensions.GetCollectionElementType(type);
+                Type? elementType = DbConverterHelper.GetCollectionElementType(type);
                 if (elementType != null)
                     return GetDbValueType(elementType) | DbValueType.Array;
                 return DbValueType.Object | DbValueType.Array;

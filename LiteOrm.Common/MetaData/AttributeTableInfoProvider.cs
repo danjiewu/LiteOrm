@@ -137,7 +137,7 @@ namespace LiteOrm
                     ColumnMode accessMask = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
                     column.Mode = (columnAttribute.ColumnMode & accessMask) | (columnAttribute.ColumnMode & ColumnMode.Computed);
                     column.ForeignTables = foreignTables;
-                    column.DbValueConverter = CreateDbValueConverter(columnAttribute.ValueConverterType, property);
+                    column.DbValueConverter = CreateDbValueConverter(columnAttribute.ConverterType, property);
                     return column;
                 }
             }
@@ -169,6 +169,7 @@ namespace LiteOrm
             {
                 ForeignColumn foreignColumn = new ForeignColumn(property);
                 foreignColumn.ForeignTables = GetForeignTables(property);
+                foreignColumn.DbValueConverter = CreateDbValueConverter(foreignColumnAttribute.ConverterType, property);
                 return foreignColumn;
             }
             else
@@ -242,6 +243,10 @@ namespace LiteOrm
                 if (column is ForeignColumn foreignColumn)
                 {
                     foreignColumn.TargetColumn = GetTargetColumn(joinedTables, foreignColumn);
+                    if (foreignColumn.DbValueConverter is null && foreignColumn.TargetColumn?.Column is SqlColumn targetCol)
+                    {
+                        foreignColumn.DbValueConverter = targetCol.DbValueConverter ?? (targetCol as ForeignColumn)?.DbValueConverter;
+                    }
                 }
             }
 
@@ -489,7 +494,7 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 根据 <see cref="ColumnAttribute.ValueConverterType"/> 创建列级数据库值转换器实例。
+        /// 根据 <see cref="ColumnAttribute.ConverterType"/> 创建列级数据库值转换器实例。
         /// </summary>
         /// <param name="converterType">转换器类型，可为 null。</param>
         /// <param name="property">转换器所应用的属性（用于异常提示）。</param>
