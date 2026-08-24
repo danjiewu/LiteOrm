@@ -369,9 +369,11 @@ namespace LiteOrm.Generators
                 }
                 else
                 {
-                    // 无 ColumnAttribute 的属性：根据类型推断
+                    // 无 ColumnAttribute 的属性：根据类型推断。
+                    // 复杂类型（数组/集合 → null、Json/Jsonb/自定义类 → "Object"）不自动生成列元信息，
+                    // 必须显式加 [Column] 特性（可含 DbType）才会生成列。
                     var dbType = InferDbTypeFull(prop.Type, symbols);
-                    if (dbType == "Object")
+                    if (dbType is null or "Object" or "Json" or "Jsonb")
                         continue;
 
                     info.Columns.Add(new ColumnInfo
@@ -902,6 +904,9 @@ namespace LiteOrm.Generators
             {
                 var c = e.Columns[i];
                 if (!c.CanWrite) continue;
+                // 数组/Json 等复杂类型默认不生成静态列读取绑定（列信息），需经注册转换器处理；
+                // 显式声明了列级转换器（ValueConverterType）时才生成，否则交运行时转换/原样返回。
+                if (IsComplexColumn(c) && string.IsNullOrEmpty(c.ValueConverterType)) continue;
                 string? converterField = string.IsNullOrEmpty(c.ValueConverterType) ? null : $"{e.SafeName}_Converter_{i}";
                 string? dbTypeExpr = GetReadDbValueTypeExpr(c, symbols);
                 var readExpr = GenerateTypedReadCall(c.PropertyType, i, dbTypeExpr,
@@ -910,6 +915,21 @@ namespace LiteOrm.Generators
             }
             sb.AppendLine("            return entity;");
             sb.AppendLine("        }");
+        }
+
+        /// <summary>
+        /// 判断列是否为数组/Json 等复杂类型列：集合/数组（非 byte[]，byte[] 视为 Binary）或 DbType 为
+        /// Json/Jsonb/Object/Array 的列。这类列默认不生成静态列信息，需预注册转换器处理。
+        /// </summary>
+        private static bool IsComplexColumn(ColumnInfo c)
+        {
+            if (c.DbType is "Json" or "Jsonb" or "Object" or "Array")
+                return true;
+
+            var type = c.Symbol.Type;
+            if (type is IArrayTypeSymbol arrayType)
+                return arrayType.ElementType.SpecialType != SpecialType.System_Byte; // byte[] → Binary，非复杂
+            return type is INamedTypeSymbol named && IsCollectionType(named);
         }
 
         /// <summary>
