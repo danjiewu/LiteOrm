@@ -6,7 +6,7 @@ namespace LiteOrm.Demo.Models;
 public class DemoUser : ObjectBase
 {
     [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
     [Column("UserName")]
     public string UserName { get; set; } = string.Empty;
@@ -25,7 +25,7 @@ public class DemoUser : ObjectBase
 
     [Column("DepartmentId")]
     [ForeignType(typeof(DemoDepartment), Alias = "Dept")]
-    public int DepartmentId { get; set; }
+    public long DepartmentId { get; set; }
 
     [Column("CreatedTime")]
     public DateTime CreatedTime { get; set; }

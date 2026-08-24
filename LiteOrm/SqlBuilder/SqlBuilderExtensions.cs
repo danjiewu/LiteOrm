@@ -24,19 +24,19 @@ namespace LiteOrm
 
         /// <summary>
         /// 注册基于委托的双向数据库值转换器（快捷方式）。
-        /// 读取委托接收数据库驱动返回的原始值（object），写入委托返回数据库可接受的值（object，null 应转换为 <see cref="DBNull.Value"/>）。
+        /// 读取委托接收 <typeparamref name="TDbType"/> 类型的数据库原始值，写入委托返回数据库可接受的值
+        /// （<typeparamref name="TValueType"/> → object，null 应转换为 <see cref="DBNull.Value"/>）。
         /// </summary>
         /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
+        /// <typeparam name="TDbType">数据库驱动返回的数据库值 CLR 类型（读取委托的输入类型）。</typeparam>
         /// <typeparam name="TValueType">实体属性 / .NET 值类型。</typeparam>
         /// <param name="sqlBuilder">要注册转换器的 SQL 构建器实例。</param>
         /// <param name="targetType">目标数据库取值类型。</param>
         /// <param name="fromDb">数据库值 → .NET 值 的转换委托。</param>
         /// <param name="toDb">.NET 值 → 数据库值 的转换委托。</param>
-        public static void RegisterDbValueConverter<T, TValueType>(this T sqlBuilder, DbValueType targetType, Func<object, TValueType>? fromDb, Func<TValueType, object>? toDb) where T : SqlBuilder
+        public static void RegisterDbValueConverter<T, TDbType, TValueType>(this T sqlBuilder, DbValueType targetType, DbConvertHandler<TDbType, TValueType>? fromDb, DbConvertHandler<TValueType, object>? toDb) where T : SqlBuilder
         {
-            SqlBuilder.GetDbValueConverterMap<T>().RegisterConverter(new FuncDbValueConverter<object, TValueType>(
-                fromDb == null ? null : new DbConvertHandler<object, TValueType>(fromDb),
-                toDb == null ? null : new DbConvertHandler<TValueType, object>(toDb)), targetType);
+            SqlBuilder.GetDbValueConverterMap<T>().RegisterConverter(new FuncDbValueConverter<TDbType, TValueType>(fromDb, toDb), targetType);
         }
 
         /// <summary>

@@ -574,10 +574,6 @@ namespace LiteOrm.Common
     /// </summary>
     public class DataTableResult : CommandResult<DataTable>
     {
-        /// <summary>
-        /// 读取 IDataReader 的一行数据并将其转换为 DataRow 的委托，允许用户自定义行转换逻辑，为空时使用默认转换逻辑。
-        /// </summary>
-        public Func<IDataReader, DataTable, DataRow>? ReadRowHandler;
         private DataTable? _dataTable;
 
         /// <summary>
@@ -585,11 +581,9 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="dao">要执行的数据库DAO对象。</param>
         /// <param name="sql">预处理的 SQL 语句和参数列表。</param>
-        /// <param name="readRowHandler">将 <see cref="IDataReader"/> 的一行数据转换为 <see cref="DataRow"/> 的委托。</param>
-        public DataTableResult(DAOBase dao, PreparedSql sql, Func<IDataReader, DataTable, DataRow>? readRowHandler = null)
+        public DataTableResult(DAOBase dao, PreparedSql sql)
             : base(dao, sql)
         {
-            ReadRowHandler = readRowHandler;
             _dataTable = null;
         }
 
@@ -597,11 +591,9 @@ namespace LiteOrm.Common
         /// 使用已准备好的 <see cref="DbCommandProxy"/> 初始化 DataTableResult，适用于需要重用同一命令的场景。
         /// </summary>
         /// <param name="preparedCommand">预构建并可能缓存的数据库命令代理。</param>
-        /// <param name="readRowHandler">可选的行映射委托。</param>
-        public DataTableResult(DbCommandProxy preparedCommand, Func<IDataReader, DataTable, DataRow>? readRowHandler = null)
+        public DataTableResult(DbCommandProxy preparedCommand)
             : base(preparedCommand)
         {
-            ReadRowHandler = readRowHandler;
             _dataTable = null;
         }
 
@@ -654,18 +646,10 @@ namespace LiteOrm.Common
                 _dataTable.BeginLoadData();
                 while (reader.Read())
                 {
-                    DataRow row;
-                    if (ReadRowHandler != null)
+                    DataRow row = _dataTable.NewRow();
+                    for (int i = 0; i < reader.FieldCount; i++)
                     {
-                        row = ReadRowHandler(reader, _dataTable);
-                    }
-                    else
-                    {
-                        row = _dataTable.NewRow();
-                        for (int i = 0; i < reader.FieldCount; i++)
-                        {
-                            row[i] = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
-                        }
+                        row[i] = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
                     }
                     _dataTable.Rows.Add(row);
                 }
@@ -695,18 +679,10 @@ namespace LiteOrm.Common
                 _dataTable.BeginLoadData();
                 while (await reader.ReadAsync(cancellationToken))
                 {
-                    DataRow row;
-                    if (ReadRowHandler != null)
+                    DataRow row = _dataTable.NewRow();
+                    for (int i = 0; i < reader.FieldCount; i++)
                     {
-                        row = ReadRowHandler(reader, _dataTable);
-                    }
-                    else
-                    {
-                        row = _dataTable.NewRow();
-                        for (int i = 0; i < reader.FieldCount; i++)
-                        {
-                            row[i] = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
-                        }
+                        row[i] = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
                     }
                     _dataTable.Rows.Add(row);
                 }

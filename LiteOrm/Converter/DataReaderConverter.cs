@@ -285,11 +285,23 @@ namespace LiteOrm
 
             Expression readExpr = BuildRawReadExpression(readerParam, ordinalExpr, coreType, dbType);
 
-            // 列级转换器优先；否则读取类型与属性类型一致直接赋值；否则经 IDbValueConverter 转换
-            if (columnConverter != null || readExpr.Type != coreType)
+            // 列级转换器优先；否则读取类型与属性类型一致直接赋值；否则经 IDbValueConverter 转换。
+            // 列级转换器已注册但读取委托为 null（无需转换）时按直接赋值处理，构造时不再生成转换调用。
+            if (columnConverter?.DbReadConverter != null)
             {
                 Expression converted = InvokeFromDbValueConverter(readerParam, readExpr, coreType, dbValueType, columnConverter);
                 readExpr = Expression.Convert(converted, coreType);
+            }
+            else if (columnConverter == null && readExpr.Type != coreType)
+            {
+                // 未命中列级转换器且读取类型与属性类型不一致：运行时经注册表解析并转换
+                Expression converted = InvokeFromDbValueConverter(readerParam, readExpr, coreType, dbValueType, null);
+                readExpr = Expression.Convert(converted, coreType);
+            }
+            else
+            {
+                // 无列级转换器且读取类型一致，或列级转换器委托为 null（无需转换）：直接赋值
+                readExpr = Expression.Convert(readExpr, coreType);
             }
 
             // Wrap as Nullable<T>

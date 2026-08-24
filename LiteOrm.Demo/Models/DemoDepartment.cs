@@ -9,7 +9,7 @@ public class DemoDepartment : ObjectBase
 {
     [DisplayName("编号")]
     [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
     [DisplayName("名称")]
     [Column("Name")]

@@ -35,9 +35,6 @@ namespace LiteOrm.Common
     /// </summary>
     public interface IDbValueConverter
     {
-        /// <summary>数据库值类型。</summary>
-        DbValueType DbValueType { get; }
-
         /// <summary>实体属性 / .NET 值类型。</summary>
         Type ValueType { get; }
 
@@ -71,7 +68,6 @@ namespace LiteOrm.Common
             _toDb = toDb;
         }
 
-        DbValueType IDbValueConverter.DbValueType => DbValueType.Object;
         Type IDbValueConverter.ValueType => typeof(TValueType);
 
         /// <summary>数据库值 → <typeparamref name="TValueType"/> 的转换委托；为 null 时直接赋值。</summary>
@@ -81,16 +77,13 @@ namespace LiteOrm.Common
         public DbConvertHandler<TValueType, object>? DbWriteConverter => _toDb;
 
         DbConvertHandler? IDbValueConverter.DbReadConverter =>
-            _fromDb == null ? null : new DbConvertHandler(obj =>
-                _fromDb(typeof(TDbType) == typeof(object) || typeof(TDbType).IsInstanceOfType(obj)
+            _fromDb == null ? null : obj =>
+                _fromDb(typeof(TDbType) == typeof(object) || obj is TDbType
                     ? (TDbType)obj!
-                    : (TDbType)Convert.ChangeType(obj, typeof(TDbType))));
+                    : (TDbType)Convert.ChangeType(obj, typeof(TDbType)))!;
 
         DbConvertHandler? IDbValueConverter.DbWriteConverter =>
-            _toDb == null ? null : new DbConvertHandler(obj =>
-                _toDb(typeof(TValueType).IsInstanceOfType(obj)
-                    ? (TValueType)obj!
-                    : (TValueType)Convert.ChangeType(obj, typeof(TValueType))));
+            _toDb == null ? null : obj => _toDb((TValueType)obj);
     }
 
     /// <summary>

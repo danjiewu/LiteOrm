@@ -41,31 +41,6 @@ namespace LiteOrm
         protected override bool IsView => true;
 
         /// <summary>
-        /// 从Reader读取数据并创建DataRow
-        /// </summary>
-        /// <param name="reader">数据读取器</param>
-        /// <param name="dt">目标DataTable</param>
-        /// <returns>创建的DataRow</returns>
-        protected virtual DataRow ReadDataRow(IDataReader reader, DataTable dt)
-        {
-            DataRow row = dt.NewRow();
-            int fieldCount = reader.FieldCount;
-            SqlColumn?[] columns = new SqlColumn?[fieldCount];
-            for (int i = 0; i < fieldCount; i++)
-            {
-                string name = reader.GetName(i);
-                SqlColumn? column = Table.GetColumn(name);
-                columns[i] = column;
-                object value = reader.GetValue(i);
-                // 有列时经列级转换（列 Converter 优先，否则 SqlBuilder 注册解析，委托 null 直返）；无列（动态列）时严格直返
-                row[i] = column != null
-                    ? column.Definition.FromDbValue(value, SqlBuilder) ?? DBNull.Value
-                    : value;
-            }
-            return row;
-        }
-
-        /// <summary>
         /// 根据条件查询数据
         /// </summary>
         /// <param name="expr">查询条件，可以是SelectExpr指定字段，或WhereExpr指定条件</param>
@@ -73,7 +48,7 @@ namespace LiteOrm
         public virtual DataTableResult Search(Expr expr)
         {
             expr = ToSelectExpr(expr);
-            return new DataTableResult(this, expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder), ReadDataRow);
+            return new DataTableResult(this, expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder));
         }
 
         /// <summary>
@@ -85,7 +60,7 @@ namespace LiteOrm
         public virtual DataTableResult Search(string[] propertyNames, Expr expr)
         {
             SelectExpr selectExpr = BuildSelectExpr(propertyNames, expr);
-            return new DataTableResult(this, selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder), ReadDataRow);
+            return new DataTableResult(this, selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder));
         }
 
         /// <summary>
@@ -97,7 +72,7 @@ namespace LiteOrm
         public virtual DataTableResult Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)
         {
             PreparedSql sql = isFull ? sqlBody.GetResult() : new PreparedSql($"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSql()}", sqlBody.GetParams());
-            return new DataTableResult(this, sql, ReadDataRow);
+            return new DataTableResult(this, sql);
         }
 
         /// <summary>

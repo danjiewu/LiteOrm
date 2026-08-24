@@ -9,7 +9,7 @@ namespace LiteOrm.Demo.Models
     public class Department : ObjectBase
     {
         [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         [Column("Name")]
         public string Name { get; set; } = string.Empty;
@@ -20,14 +20,14 @@ namespace LiteOrm.Demo.Models
         /// </summary>
         [Column("ParentId")]
         [ForeignType(typeof(Department), Alias = "Parent")]
-        public int? ParentId { get; set; }
+        public long? ParentId { get; set; }
 
         /// <summary>
         /// 部门负责人 ID
         /// </summary>
         [Column("ManagerId")]
         [ForeignType(typeof(User))]
-        public int? ManagerId { get; set; }
+        public long? ManagerId { get; set; }
     }
 
     /// <summary>

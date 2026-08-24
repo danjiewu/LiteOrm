@@ -53,10 +53,10 @@ namespace LiteOrm.Tests
         public void RegisterDbValueConverter_SameTypeDifferentDbValueType_ResolvesIndependently()
         {
             var builder = new ConverterTestBuilder();
-            builder.RegisterDbValueConverter<ConverterTestBuilder, CustomValue>(DbValueType.String,
+            builder.RegisterDbValueConverter<ConverterTestBuilder, string, CustomValue>(DbValueType.String,
                 o => new CustomValue { Text = "S:" + o },
                 v => v.Text!.Substring(2));
-            builder.RegisterDbValueConverter<ConverterTestBuilder, CustomValue>(DbValueType.Binary,
+            builder.RegisterDbValueConverter<ConverterTestBuilder, object, CustomValue>(DbValueType.Binary,
                 o => new CustomValue { Text = "B:" + o },
                 v => v.Text!.Substring(2));
 
@@ -72,7 +72,7 @@ namespace LiteOrm.Tests
         public void RegisterDbValueConverter_ByDelegates_ServesBothReadAndWrite()
         {
             var builder = new ConverterTestBuilder();
-            builder.RegisterDbValueConverter<ConverterTestBuilder, CustomValue>(DbValueType.AnsiString,
+            builder.RegisterDbValueConverter<ConverterTestBuilder, string, CustomValue>(DbValueType.AnsiString,
                 o => new CustomValue { Text = (string)o },
                 v => "[" + v.Text + "]");
 
@@ -84,7 +84,7 @@ namespace LiteOrm.Tests
         public void RegisteredIntConverter_RoundTripsThroughBothDirections()
         {
             var builder = new ConverterTestBuilder();
-            builder.RegisterDbValueConverter<ConverterTestBuilder, int>(DbValueType.Int32,
+            builder.RegisterDbValueConverter<ConverterTestBuilder, long, int>(DbValueType.Int32,
                 o => Convert.ToInt32(o) * 2,
                 v => v / 2);
 
@@ -161,7 +161,7 @@ namespace LiteOrm.Tests
         public void DialectRegistration_OverridesBaseRegistration()
         {
             var builder = new OverrideTestBuilder();
-            builder.RegisterDbValueConverter<OverrideTestBuilder, CustomValue>(DbValueType.String,
+            builder.RegisterDbValueConverter<OverrideTestBuilder, string, CustomValue>(DbValueType.String,
                 o => new CustomValue { Text = "override:" + o },
                 v => v.Text!.Substring("override:".Length));
 

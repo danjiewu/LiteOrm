@@ -10,7 +10,7 @@ public class DemoOrder : ObjectBase
 {
     [DisplayName("编号")]
     [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
     [DisplayName("订单号")]
     [Column("OrderNo")]
@@ -55,7 +55,7 @@ public class DemoOrder : ObjectBase
     [DisplayName("创建人编号")]
     [Column("CreatedByUserId")]
     [ForeignType(typeof(DemoUser), Alias = "Creator")]
-    public int CreatedByUserId { get; set; }
+    public long CreatedByUserId { get; set; }
 }
 
 public class DemoOrderView : DemoOrder

@@ -867,7 +867,7 @@ namespace LiteOrm.Generators
             foreach (var e in entities)
             {
                 if (e.Columns.Count == 0) continue;
-                GenerateMapperMethod(sb, e);
+                GenerateMapperMethod(sb, e, symbols);
             }
 
             sb.AppendLine("    }");
@@ -875,7 +875,7 @@ namespace LiteOrm.Generators
             return sb.ToString();
         }
 
-        private static void GenerateMapperMethod(StringBuilder sb, EntityInfo e)
+        private static void GenerateMapperMethod(StringBuilder sb, EntityInfo e, ResolvedSymbols symbols)
         {
             sb.AppendLine();
             // 列级转换器静态实例（避免每行读取重复构造；转换器要求无状态）
@@ -885,70 +885,79 @@ namespace LiteOrm.Generators
                 if (!c.CanWrite || string.IsNullOrEmpty(c.ValueConverterType)) continue;
                 sb.AppendLine($"        private static readonly {c.ValueConverterType} {e.SafeName}_Converter_{i} = new {c.ValueConverterType}();");
             }
+            // 每列一个转换器缓存：按 DbConverter 具体类型缓存该列的读取转换委托（IDbValueConverter.DbReadConverter），
+            // 首次经 reader.DbConverter 解析，之后逐行直接复用——避免每行重复查找转换器、重复委托包装分配。
+            for (int i = 0; i < e.Columns.Count; i++)
+            {
+                var c = e.Columns[i];
+                if (!c.CanWrite) continue;
+                sb.AppendLine($"        private static readonly System.Collections.Concurrent.ConcurrentDictionary<System.Type, global::LiteOrm.Common.DbConvertHandler> {e.SafeName}_read_{i} = new();");
+            }
             sb.AppendLine($"        private static {e.FullName} {e.SafeName}_Mapper(global::LiteOrm.AutoLockDataReader reader)");
             sb.AppendLine("        {");
             sb.AppendLine($"            var entity = new {e.FullName}();");
+            // 先取 AutoLockDataReader 的 DbConverter，供各列解析并缓存转换器
+            sb.AppendLine("            var converter = reader.DbConverter;");
             for (int i = 0; i < e.Columns.Count; i++)
             {
                 var c = e.Columns[i];
                 if (!c.CanWrite) continue;
                 string? converterField = string.IsNullOrEmpty(c.ValueConverterType) ? null : $"{e.SafeName}_Converter_{i}";
-                var readExpr = GenerateTypedReadCall(c.PropertyType, i, converterField);
+                string? dbTypeExpr = GetReadDbValueTypeExpr(c, symbols);
+                var readExpr = GenerateTypedReadCall(c.PropertyType, i, dbTypeExpr,
+                    $"{e.SafeName}_read_{i}", converterField);
                 sb.AppendLine($"            entity.{c.PropertyName} = {readExpr};");
             }
             sb.AppendLine("            return entity;");
             sb.AppendLine("        }");
         }
 
-        private static string GenerateTypedReadCall(string propertyType, int ordinal, string? converterField = null)
+        /// <summary>
+        /// 计算读取该列用于转换器查找的 <see cref="DbValueType"/> 表达式。
+        /// 列显式声明了 DbType 时返回编译期常量；否则经 <c>converter.GetDbValueType(typeof(属性类型))</c> 运行时推断
+        /// （与运行时 <c>GetColumnReadDbType</c> 默认分支一致，支持方言推断）。
+        /// </summary>
+        private static string? GetReadDbValueTypeExpr(ColumnInfo c, ResolvedSymbols symbols)
+        {
+            if (string.IsNullOrEmpty(c.DbType) || c.DbType == "Object" || c.DbType == "Default")
+                return null;
+            int dbTypeInt = GetEnumMemberValue(symbols.DbType, c.DbType!);
+            if (dbTypeInt < 0) return null;
+            return $"(global::LiteOrm.Common.DbValueType)({dbTypeInt})";
+        }
+
+        /// <summary>
+        /// 剥离可空值类型标记（<c>System.Nullable&lt;T&gt;</c> 或 <c>T?</c>），返回用于转换器查找的核心类型。
+        /// </summary>
+        private static string StripNullable(string type)
+        {
+            if (type.StartsWith("System.Nullable<"))
+                return type.Substring("System.Nullable<".Length).TrimEnd('>');
+            if (type.EndsWith("?") && !type.EndsWith("??"))
+                return type.Substring(0, type.Length - 1);
+            return type;
+        }
+
+        private static string GenerateTypedReadCall(string propertyType, int ordinal, string? dbTypeExpr,
+            string handlerField, string? converterField = null)
         {
             // 去掉 global:: 前缀
             var type = propertyType.Replace("global::", "");
+            // 可空剥离后的核心类型，用作转换器查找键与 DbValueType 推断
+            string core = StripNullable(type);
 
-            // 处理 Nullable<T> 或 T? 语法
-            string? innerType = null;
-            if (type.StartsWith("System.Nullable<"))
-                innerType = type.Substring("System.Nullable<".Length).TrimEnd('>');
-            else if (type.EndsWith("?") && !type.EndsWith("??"))
-                innerType = type.TrimEnd('?');
+            // DbValueType 表达式：显式列类型为常量，否则运行时经 converter 按核心类型推断
+            string dbValueType = dbTypeExpr ?? $"converter.GetDbValueType(typeof({core}))";
 
-            if (converterField != null)
-            {
-                // 列级转换器：GetValue 原始值 + 转换器委托转换（null 列返回默认值）
-                var converted = $"({type}){converterField}.DbReadConverter!(reader.GetValue({ordinal}))!";
-                return innerType != null
-                    ? $"reader.IsDBNull({ordinal}) ? default({type}) : {converted}"
-                    : $"reader.IsDBNull({ordinal}) ? default({type})! : {converted}";
-            }
+            // 列级转换器优先，否则从注册表解析；两者都无有效读取委托时退化为恒等（直接赋值）
+            string convertSource = converterField != null
+                ? $"{converterField}.DbReadConverter ?? (global::LiteOrm.Common.DbConvertHandler)(o => o)"
+                : $"converter.GetDbValueConverter(typeof({core}), {dbValueType})?.DbReadConverter ?? (global::LiteOrm.Common.DbConvertHandler)(o => o)";
 
-            if (innerType != null)
-            {
-                var readCall = GenerateScalarReadCall(innerType, ordinal);
-                return $"reader.IsDBNull({ordinal}) ? default({type}) : {readCall}";
-            }
+            // 先经 AutoLockDataReader 的 DbConverter 解析并缓存该列读取转换委托，再逐列读取并转换
+            var read = $"({type}){handlerField}.GetOrAdd(converter.GetType(), _ => {convertSource})(reader.GetValue({ordinal}))!";
 
-            var scalarRead = GenerateScalarReadCall(type, ordinal);
-            return $"reader.IsDBNull({ordinal}) ? default({type})! : {scalarRead}";
-        }
-
-        private static string GenerateScalarReadCall(string type, int ordinal)
-        {
-            return type switch
-            {
-                "bool" or "System.Boolean" => $"reader.GetBoolean({ordinal})",
-                "byte" or "System.Byte" => $"reader.GetByte({ordinal})",
-                "char" or "System.Char" => $"reader.GetChar({ordinal})",
-                "short" or "System.Int16" => $"reader.GetInt16({ordinal})",
-                "int" or "System.Int32" => $"reader.GetInt32({ordinal})",
-                "long" or "System.Int64" => $"reader.GetInt64({ordinal})",
-                "float" or "System.Single" => $"reader.GetFloat({ordinal})",
-                "double" or "System.Double" => $"reader.GetDouble({ordinal})",
-                "decimal" or "System.Decimal" => $"reader.GetDecimal({ordinal})",
-                "string" or "System.String" => $"reader.GetString({ordinal})",
-                "System.DateTime" => $"reader.GetDateTime({ordinal})",
-                "System.Guid" => $"reader.GetGuid({ordinal})",
-                _ => $"({type})global::LiteOrm.DbConverterHelper.ApplyRead(reader.DbConverter, null, reader.GetValue({ordinal}), typeof({type}), global::LiteOrm.Common.DbValueType.Object)!"
-            };
+            return $"reader.IsDBNull({ordinal}) ? default({type})! : {read}";
         }
 
         // ──────────────────────────────────────────────────────────────

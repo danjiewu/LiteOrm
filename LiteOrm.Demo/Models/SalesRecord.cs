@@ -9,7 +9,7 @@ namespace LiteOrm.Demo.Models
     public class SalesRecord : ObjectBase, IArged
     {
         [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         [Column("ProductId")]
         public int ProductId { get; set; }
@@ -29,7 +29,7 @@ namespace LiteOrm.Demo.Models
         //自动扩展关联的用户表，引入用户所在部门，演示 ForeignTypeAttribute 的 AutoExpand 功能
         [Column("SalesUserId")]
         [ForeignType(typeof(User), AutoExpand = true)]
-        public int SalesUserId { get; set; }
+        public long SalesUserId { get; set; }
 
         /// <summary>
         /// 实现 IArged 接口，返回表名后缀参数 (例如: "202512")
