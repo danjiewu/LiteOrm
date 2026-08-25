@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Nodes;
 
 namespace LiteOrm.Common
 {
@@ -42,6 +43,7 @@ namespace LiteOrm.Common
             Set(typeof(string), DbValueType.String);
             Set(typeof(TimeSpan), DbValueType.Time);
             Set(typeof(DateTimeOffset), DbValueType.DateTimeOffset);
+            Set(typeof(JsonNode), DbValueType.Json);
         }
 
         /// <summary>

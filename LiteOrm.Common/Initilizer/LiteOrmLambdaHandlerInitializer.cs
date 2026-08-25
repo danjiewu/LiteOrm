@@ -3,6 +3,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
+using System.Text;
+using System.Text.Json.Nodes;
 
 namespace LiteOrm
 {
@@ -45,7 +48,7 @@ namespace LiteOrm
         /// </summary>
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Registers Lambda method handlers via reflection; under AOT, method members are preserved via the source generator.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2067", Justification = "typeof(T) returns a compile-time-known Type whose public methods are naturally available.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "Only uses JsonNode indexer, does not call ReplaceWith or other dangerous methods.")]
 #endif
         private static void RegisterLambdaMethodHandlers()
         {
@@ -66,6 +69,22 @@ namespace LiteOrm
                 converter.Convert(node.Arguments[0])
             );
 
+            // JsonNode 索引访问 json["a"]["b"]（编译器以 get_Item 方法调用表示）：映射到 JsonExtract
+            // 常量键（字符串/整数）拼接为固定 JSON 路径；动态键（不可编译期求值，转出非 ValueExpr）作为参数经 string Concat 拼入路径。
+            LambdaExprConverter.RegisterMethodHandler(typeof(JsonNode), "get_Item", (node, converter) =>
+            {
+                var (baseExpr, path) = BuildJsonAccess(converter, node);
+                return new FunctionExpr("JsonExtract", baseExpr, path);
+            });
+
+            // JsonNode.GetValue<T>()：提取当前 JSON 节点的标量值，映射到 JsonValue
+            // 直接从对象链构建单一路径（JSON_VALUE(col, '$.path')），避免在已 JsonExtract 的结果上再套一层 '$'。
+            LambdaExprConverter.RegisterMethodHandler(typeof(JsonNode), "GetValue", (node, converter) =>
+            {
+                var (baseExpr, path) = BuildJsonAccess(converter, node.Object!);
+                return new FunctionExpr("JsonValue", baseExpr, path);
+            });
+
             // TimeSpan.TotalSeconds 属性
             // 特殊处理：如果两个日期相减 (date1 - date2).TotalSeconds，转换为 DateDiffSeconds 函数
             // 否则转换为 TotalSeconds 函数
@@ -76,8 +95,6 @@ namespace LiteOrm
                     return new FunctionExpr("DateDiffSeconds", binaryExpr.Left!, binaryExpr.Right!);
                 return new FunctionExpr("TotalSeconds", timeSpanExpr.AsValue());
             });
-
-            // TimeSpan.TotalDays 属性
             // 特殊处理：如果两个日期相减 (date1 - date2).TotalDays，转换为 DateDiffDays 函数
             LambdaExprConverter.RegisterMemberHandler(typeof(TimeSpan), nameof(TimeSpan.TotalDays), (node, converter) =>
             {
@@ -240,6 +257,91 @@ namespace LiteOrm
             // string.ToUpper() / string.ToLower()：大小写转换
             // 直接使用基类注册的映射：ToUpper -> UPPER, ToLower -> LOWER
 
+        }
+
+        /// <summary>
+        /// 从 JsonNode 访问链构建基础表达式与 JSON 路径。
+        /// <para>
+        /// 逐层解包 <c>get_Item</c> 索引链（对应 <c>json["a"]["b"]</c>）到内层 JsonNode 列/成员；
+        /// 常量键（字符串/整数）拼接为固定 JSON 路径，动态键（转出非 ValueExpr）作为参数经 string Concat 拼入路径。
+        /// 无索引链（收到的是 JsonNode 列本身）时路径为 <c>$</c>。
+        /// </para>
+        /// </summary>
+        /// <param name="converter">当前转换器。</param>
+        /// <param name="node">JsonNode 访问表达式（可能是 get_Item 链，也可能是直接的 JsonNode 成员列）。</param>
+        /// <returns>(基础表达式, JSON 路径表达式)。</returns>
+        private static (ValueTypeExpr Base, ValueTypeExpr Path) BuildJsonAccess(LambdaExprConverter converter, Expression node)
+        {
+            // 逐层解包 get_Item 索引链到内层 JsonNode 基础表达式
+            Expression current = node;
+            var keysReverse = new List<Expression>();
+            while (current is MethodCallExpression mc
+                   && mc.Method.Name == "get_Item"
+                   && mc.Object is { } obj
+                   && typeof(JsonNode).IsAssignableFrom(mc.Method.DeclaringType))
+            {
+                if (mc.Arguments.Count != 1)
+                    throw new InvalidOperationException("JsonNode index access requires exactly one key.");
+                keysReverse.Add(mc.Arguments[0]);
+                current = obj;
+            }
+
+            ValueTypeExpr baseExpr = converter.Convert(current).AsValue()
+                ?? throw new InvalidOperationException("JsonNode access requires a resolvable base expression.");
+
+            if (keysReverse.Count == 0)
+                return (baseExpr, new ValueExpr("$"));
+
+            // 逆转为根端→叶端顺序，用于拼接 JSON 路径
+            keysReverse.Reverse();
+
+            var parts = new List<ValueTypeExpr>();
+            var literal = new StringBuilder(16);
+            literal.Append('$');
+            bool hasDynamic = false;
+
+            void Flush()
+            {
+                if (literal.Length > 0)
+                {
+                    parts.Add(new ValueExpr(literal.ToString()));
+                    literal.Clear();
+                }
+            }
+
+            foreach (Expression key in keysReverse)
+            {
+                ValueTypeExpr k = converter.Convert(key).AsValue() ?? throw new InvalidOperationException("Unsupported JsonNode index key.");
+                if (k is ValueExpr { Value: string s })
+                    literal.Append('.').Append(s);
+                else if (k is ValueExpr { Value: int i })
+                    literal.Append('[').Append(i).Append(']');
+                else
+                {
+                    // 动态键：作为参数经 string Concat 拼入路径
+                    // JsonNode 索引器键仅可为 string/int（不可空），无需 GetUnderlyingType
+                    hasDynamic = true;
+                    Flush();
+                    if (key.Type == typeof(int) || key.Type == typeof(long))
+                    {
+                        parts.Add(new ValueExpr("["));
+                        parts.Add(k);
+                        parts.Add(new ValueExpr("]"));
+                    }
+                    else
+                    {
+                        parts.Add(new ValueExpr("."));
+                        parts.Add(k);
+                    }
+                }
+            }
+            Flush();
+
+            ValueTypeExpr path = hasDynamic
+                ? new ValueSet(ValueJoinType.Concat, parts)
+                : parts[0];
+
+            return (baseExpr, path);
         }
     }
 }

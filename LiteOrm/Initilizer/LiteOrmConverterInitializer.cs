@@ -1,5 +1,6 @@
 using LiteOrm.Common;
 using System;
+using System.Text.Json.Nodes;
 
 namespace LiteOrm
 {
@@ -93,6 +94,11 @@ namespace LiteOrm
             // string ↔ 字符串列（读方向同类型直接赋值，此处注册保证写方向语义完整）
             foreach (DbValueType stringType in _stringDbValueTypes)
                 sqlBuilder.RegisterDbValueConverter<SqlBuilder, string, string>(stringType, null, null);
+
+            // JsonNode ↔ Json 列（默认映射到 DbValueType.Json，以字符串存储）
+            sqlBuilder.RegisterDbValueConverter(DbValueType.Json,
+                (string s) => JsonNode.Parse(s),
+                (JsonNode? n) => n?.ToJsonString() ?? "null");
 
             // Oracle 方言：bool 以整数 1/0 写入（Oracle 无布尔类型）。
             // 通过派生类型注册，这些注册优先于 SqlBuilder 上的默认注册。

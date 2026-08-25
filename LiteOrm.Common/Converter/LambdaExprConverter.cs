@@ -670,7 +670,6 @@ namespace LiteOrm.Common
         /// <returns>TableArgs 数组</returns>
         private string[] EvaluateTableArgs(Expression expr)
         {
-            // 处理数组初始化：new[] { "202401", "202402" }
             if (expr is NewArrayExpression newArrayExpr)
             {
                 var args = new List<string>();
@@ -684,8 +683,6 @@ namespace LiteOrm.Common
                 }
                 return args.ToArray();
             }
-
-            // 处理集合初始化：new List<string> { "202401" } 或隐式数组 ["202401"]
             if (expr is ListInitExpression listInitExpr)
             {
                 var args = new List<string>();
