@@ -125,7 +125,7 @@ namespace LiteOrm
                 var key = TableDefinition.Keys[i];
                 getObjectCommand.Parameters[i].Value = key.ToDbValue(keys[i]);
             }
-            return new EnumerableResult<T>(getObjectCommand, DataReaderConverter.GetConverter<T>(SqlBuilder));
+            return new EnumerableResult<T>(getObjectCommand, DataReaderConverter.GetConverterByTable<T>(SqlBuilder));
         }
 
 
@@ -202,7 +202,7 @@ namespace LiteOrm
         {
             expr = ToSelectExpr(expr!);
             var prepared = expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
-            return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverter<T>(SqlBuilder));
+            return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverterByTable<T>(SqlBuilder));
         }
 
         /// <summary>
@@ -215,7 +215,7 @@ namespace LiteOrm
             var seg = LambdaExprConverter.ToSqlSegment(expr);
             seg = ToSelectExpr(seg);
             var prepared = seg.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
-            return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverter<T>(SqlBuilder));
+            return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverterByTable<T>(SqlBuilder));
         }
 
         /// <summary>
@@ -236,7 +236,7 @@ namespace LiteOrm
         /// </summary>
         /// <typeparam name="TResult">结果类型</typeparam>
         /// <param name="expr">Lambda 表达式，用于生成 SQL 查询</param>
-        /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}(IDbConverter)"/></param>
+        /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverterByTable{TResult}(IDbConverter)"/></param>
         /// <returns></returns>
         public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<AutoLockDataReader, TResult>? readerFunc = null)
         {
@@ -261,7 +261,7 @@ namespace LiteOrm
         {
             string sql = isFull ? sqlBody.GetSql() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSql()}";
             var prepared = new PreparedSql(sql, sqlBody.GetParams());
-            return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverter<T>(SqlBuilder));
+            return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverterByTable<T>(SqlBuilder));
         }
 
         /// <summary>

@@ -78,14 +78,17 @@ foreach (var v in projected)
     Console.WriteLine($"  Id={v.Id}, UserName={v.UserName}, Age={v.Age}");
 }
 
-var oneAs = userService.SearchOneAs(u => u.Where(x => x.UserName == "bob").Select(x => new AotUserView { Id = x.Id, UserName = x.UserName, Age = x.Age }));
-Console.WriteLine(oneAs is null ? "bob (as view) not found" : $"SearchOneAs<AotUserView>(UserName == bob): Id={oneAs.Id}, Age={oneAs.Age}");
+var oneAs = userService.SearchOneAs(u => u.Where(x => x.UserName == "bob").Select(x => new { Id = x.Id, Name = x.UserName, Age = x.Age }));
+Console.WriteLine(oneAs is null ? "bob (as view) not found" : $"SearchOneAs<AotUserView>(UserName == bob): Id={oneAs.Id}, Name={oneAs.Name}, Age={oneAs.Age}");
 
 var projectedAsync = await userService.SearchAsAsync(u => u.Where(x => x.Age > 20));
 Console.WriteLine($"SearchAsAsync<AotUserView>(Age > 20) found {projectedAsync.Count}.");
 
 var oneAsAsync = await userService.SearchOneAsAsync(u => u.Where(x => x.UserName == "carol"));
 Console.WriteLine(oneAsAsync is null ? "carol (as view, async) not found" : $"SearchOneAsAsync<AotUserView>(UserName == carol): Id={oneAsAsync.Id}, Age={oneAsAsync.Age}");
+
+var anon = userService.SearchAs(u => u.Where(x => x.Age > 20).Select(x => new { x.Id, x.UserName }));
+Console.WriteLine($"SearchAs<anonymous>(Age > 20) found {anon.Count}: {string.Join(", ", anon.Select(a => $"{a.Id}:{a.UserName}"))}");
 
 Console.WriteLine("\n=== 6. Update / BatchUpdate / UpdateOrInsert ===");
 if (alice is not null)

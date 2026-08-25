@@ -27,10 +27,8 @@ namespace LiteOrm
         private static readonly MethodInfo? _getValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetValue), new[] { typeof(int) });
 
-        // IDbConverter.GetDbValueConverter(Type, DbValueType)：编译期缺少 dbConverter 时发射运行时解析
-        private static readonly MethodInfo _getDbValueConverterMethod =
-            typeof(IDbConverter).GetMethod(nameof(IDbConverter.GetDbValueConverter),
-                new[] { typeof(Type), typeof(DbValueType) })!;
+        private static readonly MethodInfo? _getConverterByTypeMethod =
+            typeof(DataReaderConverter).GetMethod(nameof(DataReaderConverter.GetConverterByTable));
 
         private static readonly MethodInfo? _isDBNullMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.IsDBNull), new[] { typeof(int) });
@@ -83,18 +81,9 @@ namespace LiteOrm
         private static readonly ConcurrentDictionary<Type, Delegate> _cacheByType =
             new ConcurrentDictionary<Type, Delegate>();
 
-        // 仅筛选 GetConverter<T>(IDbConverter) 泛型重载；GetMethods 枚举到的其他带 DAM 参数的 public 方法不会被调用
-#if NET8_0_OR_GREATER
-        [UnconditionalSuppressMessage("Trimming", "IL2111",
-            Justification = "GetConverter<T>(IDbConverter) 无 DynamicallyAccessedMembers 约束，反射枚举到的其他方法不会被调用。")]
-#endif
-        private static readonly MethodInfo? _getConverterByTypeMethod =
-            typeof(DataReaderConverter).GetMethods(BindingFlags.Static | BindingFlags.Public)
-                .FirstOrDefault(m => m.IsGenericMethod && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(IDbConverter));
-
         /// <summary>
         /// 注册预编译的 DataReader 映射委托，用于 NativeAOT 场景替代运行时 <see cref="LambdaExpression.Compile()"/>。
-        /// 注册后，<see cref="GetConverter{T}(IDbConverter)"/> 和 <see cref="GetConverter(Type, IDbConverter)"/> 将直接返回该委托。
+        /// 注册后，<see cref="GetConverterByTable{T}(IDbConverter)"/> 和 <see cref="GetConverterByType(Type, IDbConverter)"/> 将直接返回该委托。
         /// </summary>
         /// <typeparam name="T">目标实体类型。</typeparam>
         /// <param name="mapper">将 <see cref="AutoLockDataReader"/> 当前行映射为 <typeparamref name="T"/> 实例的委托。</param>
@@ -116,13 +105,13 @@ namespace LiteOrm
         /// <summary>
         /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托（**基于列架构**，供 <c>SearchAs</c> 投影路径使用）。
         /// 基于读取器的列架构缓存编译委托，匿名类型按构造函数参数名匹配列名，通过 <see cref="CompileDataReaderConverter{TResult}"/> 生成编译委托。
-        /// 预定义的实体类型请改用 <see cref="GetConverter{TResult}(IDbConverter)"/>（基于表列位置映射，含 AOT 预注册 mapper）。
+        /// 预定义的实体类型请改用 <see cref="GetConverterByTable{TResult}(IDbConverter)"/>（基于表列位置映射，含 AOT 预注册 mapper）。
         /// </summary>
         /// <typeparam name="TResult">目标类型（可为任意投影类型 / 匿名类型）。</typeparam>
         /// <param name="reader">已打开的数据读取器，用于读取列架构信息。</param>
         /// <param name="dbConverter">数据库值转换器，用于推断 <see cref="DbValueType.Default"/> 列的 <see cref="DbType"/>。</param>
         /// <returns>编译后的映射委托。</returns>
-        public static Func<AutoLockDataReader, TResult> GetConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader, IDbConverter dbConverter)
+        public static Func<AutoLockDataReader, TResult> GetConverterBySchema<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader, IDbConverter dbConverter)
         {
             string columnKey = BuildColumnKey(reader);
             return (Func<AutoLockDataReader, TResult>)_cache.GetOrAdd((typeof(TResult), columnKey), _ => CompileDataReaderConverter<TResult>(reader, dbConverter));
@@ -133,25 +122,25 @@ namespace LiteOrm
         /// 通过 <see cref="TableInfoProvider.Instance"/> 读取 <typeparamref name="TResult"/> 对应的表视图，
         /// 并依据视图的 <see cref="SqlTable.SelectColumns"/> 进行位置映射，使用类型化读取方法避免装箱。
         /// 以 <typeparamref name="TResult"/> 类型为缓存键，首次调用时编译，后续调用直接复用（含 AOT 通过 <see cref="RegisterMapper{T}"/> 预注册的 mapper）。
-        /// 任意投影 / 匿名类型请改用 <see cref="GetConverter{TResult}(DbDataReader, IDbConverter)"/>（基于列架构）。
+        /// 任意投影 / 匿名类型请改用 <see cref="GetConverterBySchema{TResult}(DbDataReader, IDbConverter)"/>（基于列架构）。
         /// </summary>
         /// <typeparam name="TResult">目标类型。</typeparam>
         /// <param name="dbConverter">数据库值转换器，用于推断 <see cref="DbValueType.Default"/> 列的 <see cref="DbType"/>。</param>
         /// <returns>编译后的映射委托。</returns>
-        public static Func<AutoLockDataReader, TResult> GetConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IDbConverter dbConverter)
+        public static Func<AutoLockDataReader, TResult> GetConverterByTable<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IDbConverter dbConverter)
         {
             return (Func<AutoLockDataReader, TResult>)_cacheByType.GetOrAdd(typeof(TResult), _ => CompileConverter<TResult>(dbConverter));
         }
 
         /// <summary>
         /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <paramref name="resultType"/> 实例的编译委托。
-        /// 与 <see cref="GetConverter{TResult}(IDbConverter?)"/> 共用同一缓存，首次调用时通过反射调用泛型版本完成编译。
+        /// 与 <see cref="GetConverterByTable{TResult}(IDbConverter)"/> 共用同一缓存，首次调用时通过反射调用泛型版本完成编译。
         /// </summary>
         /// <param name="resultType">目标类型。</param>
         /// <param name="dbConverter">数据库值转换器，用于推断 <see cref="DbValueType.Default"/> 列的 <see cref="DbType"/>。</param>
         /// <returns>编译后的映射委托，实际类型为 <see cref="Func{AutoLockDataReader, TResult}"/>。</returns>
         [RequiresDynamicCode("Converter dynamic creation relies on MakeGenericMethod; not supported under NativeAOT.")]
-        public static Delegate GetConverter(Type resultType, IDbConverter? dbConverter = null)
+        public static Delegate GetConverterByType(Type resultType, IDbConverter? dbConverter = null)
         {
             return _cacheByType.GetOrAdd(resultType,
                 t => (Delegate)_getConverterByTypeMethod!.MakeGenericMethod(t).Invoke(null, new object?[] { dbConverter })!);
@@ -184,6 +173,18 @@ namespace LiteOrm
 
         private static Func<AutoLockDataReader, TResult> CompileConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IDbConverter dbConverter)
         {
+            // AOT：无动态代码，经反射 + 转换委托构建映射
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+            {
+                Type rt = typeof(TResult);
+                if (DbConverterHelper.IsScalarType(rt))
+                    return CompileAotScalarMapper<TResult>(dbConverter);
+                var aotColumns = (TableInfoProvider.Instance?.GetTableView(rt)
+                    ?? throw new InvalidOperationException($"TableInfoProvider.Instance is not configured, cannot resolve columns for type '{rt.FullName}'."))
+                    .SelectColumns;
+                return CompileAotColumnsMapper<TResult>(aotColumns, dbConverter);
+            }
+
             EnsureDynamicCode<TResult>(suggestRegisterMapper: false);
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
@@ -192,26 +193,182 @@ namespace LiteOrm
                 return CompileScalarConverter<TResult>(readerParam, dbConverter);
 
             var selectColumns = (TableInfoProvider.Instance?.GetTableView(resultType)
-                ?? throw new InvalidOperationException($"TableInfoProvider.Default is not configured, cannot resolve columns for type '{resultType.FullName}'."))
+                ?? throw new InvalidOperationException($"TableInfoProvider.Instance is not configured, cannot resolve columns for type '{resultType.FullName}'."))
                 .SelectColumns;
             return CompileConverterByColumns<TResult>(selectColumns, dbConverter);
         }
 
+        /// <summary>在 AOT 下标量结果的反射映射（读取第 0 列并转换）。</summary>
+        private static Func<AutoLockDataReader, TResult> CompileAotScalarMapper<TResult>(IDbConverter dbConverter)
+        {
+            Type t = typeof(TResult);
+            DbConvertHandler? handler = dbConverter.GetDbValueConverter(t, dbConverter.GetDbValueType(t))?.DbReadConverter;
+            return reader =>
+            {
+                if (reader.IsDBNull(0)) return default(TResult)!;
+                object raw = reader.GetValue(0);
+                if (handler == null)
+                {
+                    // 仅首次调用：依 reader.DbConverter 按（核心类型 + 第 0 列实际 DbValueType）解析并按需缓存。
+                    DbValueType dbValueType = reader.DbConverter.GetDbValueType(reader.GetFieldType(0));
+                    handler = reader.DbConverter.GetDbValueConverter(t, dbValueType)?.DbReadConverter;
+                }
+                object? value = handler != null ? handler(raw) : Convert.ChangeType(raw, t);
+                return (TResult)value!;
+            };
+        }
+
+        /// <summary>按读取器列架构构建标量/列映射（SearchAs/投影，AOT 反射路径）。</summary>
+        private static Func<AutoLockDataReader, TResult> CompileAotDataReaderMapper<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader, IDbConverter dbConverter)
+        {
+            Type resultType = typeof(TResult);
+            if (DbConverterHelper.IsScalarType(resultType))
+                return CompileAotScalarMapper<TResult>(dbConverter);
+
+            // 具名类型（公开无参构造函数）：按可写属性 setter 映射；匿名/构造类型（仅带参构造函数）：按构造参数名匹配列映射。
+            List<ColumnReadSpec> specs = resultType.GetConstructor(Type.EmptyTypes) != null
+                ? BuildPropertySpecs(reader, dbConverter, resultType)
+                : BuildCtorSpecs(reader, dbConverter, resultType);
+            return new AotReflectionMapper<TResult>(specs).Map;
+        }
+
+        /// <summary>具名类型：按列名匹配可写属性，构建属性 setter 映射规范（AOT 反射路径）。</summary>
+        private static List<ColumnReadSpec> BuildPropertySpecs(DbDataReader reader, IDbConverter dbConverter, Type resultType)
+        {
+            var specs = new List<ColumnReadSpec>();
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                var prop = resultType.GetProperty(reader.GetName(i), BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                if (prop == null || !prop.CanWrite) continue;
+                specs.Add(BuildColumnReadSpecFromProperty(i, prop, dbConverter, reader));
+            }
+            if (specs.Count == 0)
+                throw new PlatformNotSupportedException(
+                    $"AOT DataReader mapping for type '{resultType.FullName}' failed: no writable property matches any result column. " +
+                    "Use a parameterless-constructor type with public settable properties, or register an explicit mapper via DataReaderConverter.RegisterMapper.");
+            return specs;
+        }
+
+        /// <summary>匿名/构造类型：按公开构造函数参数名匹配列名，构建构造函数参数映射规范（AOT 反射路径）。</summary>
+        private static List<ColumnReadSpec> BuildCtorSpecs(DbDataReader reader, IDbConverter dbConverter, Type resultType)
+        {
+            var ctor = resultType.GetConstructors()[0]; // 匿名类型通常仅一个公开构造函数
+            ParameterInfo[] ctorParams = ctor.GetParameters();
+
+            var columnMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < reader.FieldCount; i++)
+                columnMap[reader.GetName(i)] = i;
+
+            var specs = new List<ColumnReadSpec>();
+            for (int p = 0; p < ctorParams.Length; p++)
+            {
+                ParameterInfo param = ctorParams[p];
+                if (!columnMap.TryGetValue(param.Name!, out int ordinal)) continue;
+                specs.Add(BuildColumnReadSpecFromParameter(ordinal, p, param.ParameterType, dbConverter, reader));
+            }
+            if (specs.Count == 0)
+                throw new PlatformNotSupportedException(
+                    $"AOT DataReader mapping for type '{resultType.FullName}' failed: no constructor parameter matches any result column. " +
+                    "Register an explicit mapper via DataReaderConverter.RegisterMapper.");
+            return specs;
+        }
+
+        /// <summary>按 <see cref="SqlTable.SelectColumns"/> 位置构建实体映射（Search，AOT 反射路径）。</summary>
+        private static Func<AutoLockDataReader, TResult> CompileAotColumnsMapper<
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IList<SqlColumn> selectColumns, IDbConverter dbConverter)
+        {
+            Type resultType = typeof(TResult);
+            var specs = new List<ColumnReadSpec>();
+            for (int i = 0; i < selectColumns.Count; i++)
+            {
+                SqlColumn column = selectColumns[i];
+                var prop = resultType.GetProperty(column.PropertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                if (prop == null || !prop.CanWrite) continue;
+                specs.Add(BuildColumnReadSpecFromColumn(i, column, prop, dbConverter));
+            }
+            return new AotReflectionMapper<TResult>(specs).Map;
+        }
+
+        private static ColumnReadSpec BuildColumnReadSpecFromProperty(
+            int ordinal, PropertyInfo prop, IDbConverter dbConverter, DbDataReader reader)
+        {
+            Type core = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+            // 以实际数据库 CLR 类型推断 dbValueType，命中"按实际存储形式"注册的转换器
+            // （如 SQLite 将 Guid 存为 String 文本 → (Guid, String) 的 Guid.Parse 转换器），
+            // 避免按属性类型推断得到 (Guid, Guid) 恒等转换器、从而退回 ChangeType(string→Guid) 失败。
+            DbValueType dbValueType = dbConverter.GetDbValueType(reader.GetFieldType(ordinal));
+            return new ColumnReadSpec
+            {
+                Ordinal = ordinal,
+                Property = prop,
+                ParameterIndex = -1,
+                CoreType = core,
+                ReadHandler = ResolveHandler(dbConverter, reader, core, dbValueType)
+            };
+        }
+
+        private static ColumnReadSpec BuildColumnReadSpecFromParameter(
+            int ordinal, int parameterIndex, Type parameterType, IDbConverter dbConverter, DbDataReader reader)
+        {
+            Type core = Nullable.GetUnderlyingType(parameterType) ?? parameterType;
+            // 与属性路径一致：以实际数据库 CLR 类型推断 dbValueType，命中按实际存储形式注册的转换器。
+            DbValueType dbValueType = dbConverter.GetDbValueType(reader.GetFieldType(ordinal));
+            return new ColumnReadSpec
+            {
+                Ordinal = ordinal,
+                ParameterIndex = parameterIndex,
+                CoreType = core,
+                ReadHandler = ResolveHandler(dbConverter, reader, core, dbValueType)
+            };
+        }
+
+        /// <summary>
+        /// 解析列读取转换委托：优先用查询的 <paramref name="dbConverter"/>，未命中时回退到
+        /// <see cref="AutoLockDataReader.DbConverter"/>（如全局 <see cref="SqlBuilder.Instance"/> 预注册的转换器）。
+        /// 一次解析后固化为 <see cref="ColumnReadSpec.ReadHandler"/>，映射逐行时不再重复解析。
+        /// </summary>
+        private static DbConvertHandler? ResolveHandler(IDbConverter dbConverter, DbDataReader reader, Type core, DbValueType dbValueType)
+        {
+            DbConvertHandler? handler = dbConverter.GetDbValueConverter(core, dbValueType)?.DbReadConverter;
+            if (handler == null && reader is AutoLockDataReader alr)
+                handler = alr.DbConverter.GetDbValueConverter(core, dbValueType)?.DbReadConverter;
+            return handler;
+        }
+
+        private static ColumnReadSpec BuildColumnReadSpecFromColumn(int ordinal, SqlColumn column, PropertyInfo prop, IDbConverter dbConverter)
+        {
+            DbConverterHelper.GetColumnReadDbType(column, prop.PropertyType, dbConverter, out DbValueType dbValueType);
+            column.EnsureConverter(dbConverter);
+            return new ColumnReadSpec
+            {
+                Ordinal = ordinal,
+                Property = prop,
+                ParameterIndex = -1,
+                CoreType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType,
+                ReadHandler = column.DbValueConverter?.DbReadConverter
+            };
+        }
+
 #if NET8_0_OR_GREATER
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown instead of invoking Expression.Compile")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, the reflection mapper is used instead of invoking Expression.Compile")]
 #endif
         private static Func<AutoLockDataReader, TResult> CompileScalarConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(ParameterExpression readerParam, IDbConverter dbConverter)
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                return CompileAotScalarMapper<TResult>(dbConverter);
             EnsureDynamicCode<TResult>(suggestRegisterMapper: true);
             var body = BuildMemberReadExpression(readerParam, 0, null, typeof(TResult), dbConverter);
             return Expression.Lambda<Func<AutoLockDataReader, TResult>>(body, readerParam).Compile();
         }
 
 #if NET8_0_OR_GREATER
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown instead of invoking Expression.Compile")]
+        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, the reflection mapper is used instead of invoking Expression.Compile")]
 #endif
         private static Func<AutoLockDataReader, TResult> CompileDataReaderConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader, IDbConverter dbConverter)
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                return CompileAotDataReaderMapper<TResult>(reader, dbConverter);
             EnsureDynamicCode<TResult>(suggestRegisterMapper: true);
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");
@@ -491,6 +648,8 @@ namespace LiteOrm
 #endif
         private static Func<AutoLockDataReader, TResult> CompileConverterByColumns<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IList<SqlColumn> selectColumns, IDbConverter dbConverter)
         {
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                return CompileAotColumnsMapper<TResult>(selectColumns, dbConverter);
             EnsureDynamicCode<TResult>(suggestRegisterMapper: false);
             Type resultType = typeof(TResult);
             var readerParam = Expression.Parameter(typeof(AutoLockDataReader), "reader");

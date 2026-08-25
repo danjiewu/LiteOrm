@@ -51,7 +51,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <typeparam name="TResult">结果类型</typeparam>
         /// <param name="expr">Lambda 表达式，用于生成 SQL 查询</param>
-        /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverter{TResult}(IDbConverter)"/></param>
+        /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverterByTable{TResult}(IDbConverter)"/></param>
         /// <returns></returns>
 
         EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<AutoLockDataReader, TResult>? readerFunc = null);

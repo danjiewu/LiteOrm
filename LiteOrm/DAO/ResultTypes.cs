@@ -226,7 +226,7 @@ namespace LiteOrm.Common
         /// <summary>解析读取委托：显式 readerFunc 优先，否则采用基于列架构的转换（<c>SearchAs</c>/投影路径）。</summary>
         private Func<AutoLockDataReader, TResult> GetReaderFunc(AutoLockDataReader reader, IDbConverter dbConverter)
         {
-            return _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader, dbConverter);
+            return _readerFunc ?? DataReaderConverter.GetConverterBySchema<TResult>(reader, dbConverter);
         }
 
         /// <summary>
@@ -413,7 +413,7 @@ namespace LiteOrm.Common
                 {
                     var command = await _commandFunc(_cancellationToken).ConfigureAwait(false);
                     _reader = await command.ExecuteReaderAsync(CommandBehavior.Default, _cancellationToken).ConfigureAwait(false);
-                    _func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(_reader, command.SqlBuilder);
+                    _func = _readerFunc ?? DataReaderConverter.GetConverterBySchema<TResult>(_reader, command.SqlBuilder);
                 }
 
                 if (await _reader!.ReadAsync(_cancellationToken).ConfigureAwait(false))

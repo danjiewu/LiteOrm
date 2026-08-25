@@ -93,7 +93,7 @@ namespace LiteOrm
 
             Task.Run(() =>
             {
-                foreach (var tableType in tableTypes) { DataReaderConverter.GetConverter(tableType); }
+                foreach (var tableType in tableTypes) { DataReaderConverter.GetConverterByType(tableType); }
             });
 
             tableTypes = tableTypes.Where(t => !typeof(IArged).IsAssignableFrom(t)).ToList();

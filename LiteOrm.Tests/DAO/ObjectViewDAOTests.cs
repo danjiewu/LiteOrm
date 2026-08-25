@@ -86,7 +86,7 @@ namespace LiteOrm.Tests
 
         /// <summary>
         /// Query&lt;T&gt; with WHERE only; TResult == T; readerFunc is null.
-        /// GetConverter&lt;T&gt;(reader) routes to GetConverter&lt;T&gt;() via TableInfoProvider.
+        /// GetConverterBySchema&lt;T&gt;(reader) resolves the converter from the reader column schema.
         /// </summary>
         [Fact]
         public async Task Query_Filter_ReturnsSameType()
@@ -113,7 +113,7 @@ namespace LiteOrm.Tests
 
         /// <summary>
         /// Anonymous type projection with no readerFunc.
-        /// EnumerableResult calls GetConverter&lt;TResult&gt;(reader) which routes to
+        /// EnumerableResult calls GetConverterBySchema&lt;TResult&gt;(reader) which routes to
         /// CompileAnonymousConverter — matches ctor parameter names to reader column names.
         /// </summary>
         [Fact]
@@ -137,7 +137,7 @@ namespace LiteOrm.Tests
 
         /// <summary>
         /// Same as above but uses the async path (IAsyncEnumerable / FirstOrDefaultAsync),
-        /// which goes through AsyncEnumerator.MoveNextAsync → GetConverter&lt;TResult&gt;(reader).
+        /// which goes through AsyncEnumerator.MoveNextAsync → GetConverterBySchema&lt;TResult&gt;(reader).
         /// </summary>
         [Fact]
         public async Task Query_AnonymousProjection_Async()
