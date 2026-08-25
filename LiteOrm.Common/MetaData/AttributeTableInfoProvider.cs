@@ -352,7 +352,7 @@ namespace LiteOrm
             // 如果通过外键表名和外键表类型都找不到目标列，则尝试通过外键表类型在已连接的表中查找属性，再生成目标列
             if (targetColumn is null)
             {
-                var property = joinedTable.TableDefinition.ObjectType.GetProperty(primeProperty);
+                var property = joinedTable.TableDefinition.ObjectType.Find(primeProperty);
                 if (property is not null)
                 {
                     ForeignColumn? foreignColumn = GenerateForeignColumn(property);

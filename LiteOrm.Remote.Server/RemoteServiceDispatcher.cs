@@ -328,7 +328,7 @@ namespace LiteOrm.Remote.Server
             {
                 var task = (Task)result!;
                 await task.ConfigureAwait(false);
-                var resultProperty = returnType.GetProperty("Result")!;
+                var resultProperty = returnType.Find("Result")!;
                 result = resultProperty.GetValue(task);
                 returnType = returnType.GetGenericArguments()[0];
             }

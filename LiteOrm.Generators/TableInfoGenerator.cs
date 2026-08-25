@@ -917,7 +917,7 @@ namespace LiteOrm.Generators
                 {
                     if (!c.CanRead) continue;
                     sb.AppendLine($"            PropertyAccessorExtension.RegisterAccessor(");
-                    sb.AppendLine($"                typeof({e.FullName}).GetProperty(\"{c.PropertyName}\")!,");
+                    sb.AppendLine($"                typeof({e.FullName}).Find(\"{c.PropertyName}\")!,");
                     sb.AppendLine($"                {e.SafeName}_{c.PropertyName}_Getter,");
                     if (c.CanWrite)
                         sb.AppendLine($"                {e.SafeName}_{c.PropertyName}_Setter);");

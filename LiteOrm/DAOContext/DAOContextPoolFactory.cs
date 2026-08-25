@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
@@ -168,7 +168,7 @@ namespace LiteOrm
                     if (!sqlBuilderType.IsSubclassOf(typeof(SqlBuilder))) throw new InvalidOperationException($"SqlBuilderType {sqlBuilderType.FullName} must be a subclass of SqlBuilder");
 
                     SqlBuilder sqlBuilder;
-                    PropertyInfo? instanceProp = sqlBuilderType.GetProperty(nameof(SqlBuilder.Instance), BindingFlags.Static | BindingFlags.Public);
+                    PropertyInfo? instanceProp = sqlBuilderType.Find(nameof(SqlBuilder.Instance), BindingFlags.Static | BindingFlags.Public);
                     if (instanceProp != null && instanceProp.GetValue(null) is SqlBuilder instance)
                         sqlBuilder = instance;
                     else

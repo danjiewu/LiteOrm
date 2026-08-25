@@ -239,7 +239,7 @@ namespace LiteOrm
             var specs = new List<ColumnReadSpec>();
             for (int i = 0; i < reader.FieldCount; i++)
             {
-                var prop = resultType.GetProperty(reader.GetName(i), BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                var prop = resultType.Find(reader.GetName(i), BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                 if (prop == null || !prop.CanWrite) continue;
                 specs.Add(BuildColumnReadSpecFromProperty(i, prop, dbConverter, reader));
             }
@@ -283,7 +283,7 @@ namespace LiteOrm
             for (int i = 0; i < selectColumns.Count; i++)
             {
                 SqlColumn column = selectColumns[i];
-                var prop = resultType.GetProperty(column.PropertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                var prop = resultType.Find(column.PropertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                 if (prop == null || !prop.CanWrite) continue;
                 specs.Add(BuildColumnReadSpecFromColumn(i, column, prop, dbConverter));
             }
@@ -661,7 +661,7 @@ namespace LiteOrm
             for (int i = 0; i < count; i++)
             {
                 SqlColumn column = selectColumns[i];
-                var prop = resultType.GetProperty(column.PropertyName,
+                var prop = resultType.Find(column.PropertyName,
                     BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
                 if (prop == null || !prop.CanWrite) continue;
 

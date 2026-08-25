@@ -112,7 +112,7 @@ namespace LiteOrm.Common
                 if (string.IsNullOrEmpty(propertyName))
                     throw new ArgumentException("Property name cannot be null or empty", nameof(propertyName));
 
-                var property = this.GetType().GetProperty(propertyName);
+                var property = this.GetType().Find(propertyName);
                 if (property is null)
                     throw new ArgumentOutOfRangeException(nameof(propertyName),
                         $"Property '{propertyName}' not found on type {this.GetType().Name}");
@@ -124,7 +124,7 @@ namespace LiteOrm.Common
                 if (string.IsNullOrEmpty(propertyName))
                     throw new ArgumentException("Property name cannot be null or empty", nameof(propertyName));
 
-                var property = this.GetType().GetProperty(propertyName);
+                var property = this.GetType().Find(propertyName);
                 if (property is null)
                     throw new ArgumentOutOfRangeException(nameof(propertyName),
                         $"Property '{propertyName}' not found on type {this.GetType().Name}");
@@ -197,7 +197,7 @@ namespace LiteOrm.Common
                 // 对比模式：只记录变化的属性
                 foreach (var propertyName in properties)
                 {
-                    var property = type.GetProperty(propertyName);
+                    var property = type.Find(propertyName);
                     if (property is null) continue;
 
                     var thisValue = property.GetValueFast(this);
@@ -214,7 +214,7 @@ namespace LiteOrm.Common
                 // 完整记录模式
                 foreach (var propertyName in properties)
                 {
-                    var property = type.GetProperty(propertyName);
+                    var property = type.Find(propertyName);
                     if (property is null) continue;
 
                     var value = property.GetValueFast(this);

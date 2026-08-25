@@ -97,7 +97,7 @@ namespace LiteOrm.Common
             {
                 if (string.IsNullOrEmpty(columnInfo.PropertyName)) continue;
 
-                var property = tableInfo.ObjectType.GetProperty(
+                var property = tableInfo.ObjectType.Find(
                     columnInfo.PropertyName,
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (property is null)

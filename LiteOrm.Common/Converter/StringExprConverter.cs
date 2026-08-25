@@ -24,7 +24,7 @@ namespace LiteOrm.Common
             LogicExpr? expr = null;
             foreach (var kv in query)
             {
-                if (objectType.GetProperty(kv.Key, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) is PropertyInfo property)
+                if (objectType.Find(kv.Key, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) is PropertyInfo property)
                 {
                     LogicExpr e = Parse(property, kv.Value);
                     expr &= e;
@@ -65,7 +65,7 @@ namespace LiteOrm.Common
                     foreach (string item in kv.Value.Split(','))
                     {
                         string[] parts = item.Trim().Split(' ');
-                        if (parts.Length > 0 && objectType.GetProperty(parts[0], BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) != null)
+                        if (parts.Length > 0 && objectType.Find(parts[0], BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) != null)
                         {
                             orderBys.Add(new OrderByItemExpr
                             {
@@ -79,7 +79,7 @@ namespace LiteOrm.Common
                 {
                     startoffset = (int.Parse(kv.Value) - 1) * pagesize;
                 }
-                else if (objectType.GetProperty(kv.Key, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) is PropertyInfo property)
+                else if (objectType.Find(kv.Key, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) is PropertyInfo property)
                 {
                     expr &= Parse(property, kv.Value);
                 }
