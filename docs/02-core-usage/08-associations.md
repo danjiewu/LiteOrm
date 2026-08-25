@@ -373,8 +373,10 @@ var matureItUsers = await objectViewDAO.Search(
 
 - ForeignTypeAttribute: ObjectType、Alias、JoinType、AutoExpand
 - TableJoinAttribute: Source、TargetType、ForeignKeys、AliasName、JoinType、AutoExpand
-- ForeignColumnAttribute: Foreign（Type 或 AliasName）、Property（要获取的列）
+- ForeignColumnAttribute: Foreign（Type 或 AliasName）、Property（要获取的列）、ConverterType（可选，列级转换器，优先于目标列）
 - ColumnAttribute: Constant（固定筛选；详见权限过滤文档）
+
+> `ForeignColumnAttribute.ConverterType` 指定该外键投影列自己的列级转换器；读取时**优先使用自身声明的转换器，否则回退目标列的转换器**（目标列本身也可为 `ForeignColumn`，支持逐层回退）。用法与 `ColumnAttribute.ConverterType` 一致：提供一个实现 `IDbValueConverter` 的转换器类型。
 
 实现上，LiteOrm 会在元数据阶段合并 ForeignType 与 TableJoin 的信息，生成 JoinedTable / ForeignTable 结构。固定筛选相关的元数据与 SQL 注入细节，见[权限过滤与用户范围控制](../06-di/02-permission-filtering.md)。
 

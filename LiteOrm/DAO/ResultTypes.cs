@@ -223,6 +223,12 @@ namespace LiteOrm.Common
             _readerFunc = readerFunc;
         }
 
+        /// <summary>解析读取委托：显式 readerFunc 优先，否则采用基于列架构的转换（<c>SearchAs</c>/投影路径）。</summary>
+        private Func<AutoLockDataReader, TResult> GetReaderFunc(AutoLockDataReader reader, IDbConverter dbConverter)
+        {
+            return _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader, dbConverter);
+        }
+
         /// <summary>
         /// 获取同步枚举器，用于逐行读取并转换结果集。
         /// 使用完毕后枚举器会关闭底层的 <see cref="DbDataReader"/> 并释放相关命令（若为按需创建）。
@@ -233,7 +239,7 @@ namespace LiteOrm.Common
             var command = GetCommand();
             using (var reader = command.ExecuteReader())
             {
-                var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader, command.SqlBuilder);
+                var func = GetReaderFunc(reader, command.SqlBuilder);
                 while (reader.Read())
                 {
                     yield return func(reader);
@@ -270,7 +276,7 @@ namespace LiteOrm.Common
             var command = GetCommand();
             using var reader = command.ExecuteReader();
             if (!reader.Read()) return default!;
-            var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader, command.SqlBuilder);
+            var func = GetReaderFunc(reader, command.SqlBuilder);
             return func(reader);
         }
 
@@ -285,7 +291,7 @@ namespace LiteOrm.Common
             var command = await GetCommandAsync(cancellationToken).ConfigureAwait(false);
             using var reader = await command.ExecuteReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
             if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) return default!;
-            var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader, command.SqlBuilder);
+            var func = GetReaderFunc(reader, command.SqlBuilder);
             return func(reader);
         }
 

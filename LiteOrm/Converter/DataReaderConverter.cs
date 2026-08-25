@@ -114,28 +114,26 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
-        /// 对于匿名类型，基于读取器的列架构缓存编译委托，通过构造函数参数名与列名匹配；
-        /// 对于普通类型，委托给 <see cref="GetConverter{TResult}(IDbConverter)"/> 使用 <see cref="TableInfoProvider.Instance"/> 进行位置映射。
+        /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托（**基于列架构**，供 <c>SearchAs</c> 投影路径使用）。
+        /// 基于读取器的列架构缓存编译委托，匿名类型按构造函数参数名匹配列名，通过 <see cref="CompileDataReaderConverter{TResult}"/> 生成编译委托。
+        /// 预定义的实体类型请改用 <see cref="GetConverter{TResult}(IDbConverter)"/>（基于表列位置映射，含 AOT 预注册 mapper）。
         /// </summary>
-        /// <typeparam name="TResult">目标类型。</typeparam>
-        /// <param name="reader">已打开的数据读取器，用于读取列架构信息（匿名类型时使用）。</param>
+        /// <typeparam name="TResult">目标类型（可为任意投影类型 / 匿名类型）。</typeparam>
+        /// <param name="reader">已打开的数据读取器，用于读取列架构信息。</param>
         /// <param name="dbConverter">数据库值转换器，用于推断 <see cref="DbValueType.Default"/> 列的 <see cref="DbType"/>。</param>
         /// <returns>编译后的映射委托。</returns>
         public static Func<AutoLockDataReader, TResult> GetConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(DbDataReader reader, IDbConverter dbConverter)
         {
-            Type type = typeof(TResult);
-            if (TableInfoProvider.Instance.GetTableView(type) != null)
-                return GetConverter<TResult>(dbConverter);
             string columnKey = BuildColumnKey(reader);
-            return (Func<AutoLockDataReader, TResult>)_cache.GetOrAdd((type, columnKey), _ => CompileDataReaderConverter<TResult>(reader, dbConverter));
+            return (Func<AutoLockDataReader, TResult>)_cache.GetOrAdd((typeof(TResult), columnKey), _ => CompileDataReaderConverter<TResult>(reader, dbConverter));
         }
 
         /// <summary>
-        /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托。
+        /// 获取将 <see cref="AutoLockDataReader"/> 当前行转换为 <typeparamref name="TResult"/> 实例的编译委托（**基于表列位置映射**，供 <c>Search</c> / 预定义实体类型使用）。
         /// 通过 <see cref="TableInfoProvider.Instance"/> 读取 <typeparamref name="TResult"/> 对应的表视图，
         /// 并依据视图的 <see cref="SqlTable.SelectColumns"/> 进行位置映射，使用类型化读取方法避免装箱。
-        /// 以 <typeparamref name="TResult"/> 类型为缓存键，首次调用时编译，后续调用直接复用。
+        /// 以 <typeparamref name="TResult"/> 类型为缓存键，首次调用时编译，后续调用直接复用（含 AOT 通过 <see cref="RegisterMapper{T}"/> 预注册的 mapper）。
+        /// 任意投影 / 匿名类型请改用 <see cref="GetConverter{TResult}(DbDataReader, IDbConverter)"/>（基于列架构）。
         /// </summary>
         /// <typeparam name="TResult">目标类型。</typeparam>
         /// <param name="dbConverter">数据库值转换器，用于推断 <see cref="DbValueType.Default"/> 列的 <see cref="DbType"/>。</param>

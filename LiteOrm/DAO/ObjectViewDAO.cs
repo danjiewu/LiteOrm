@@ -125,7 +125,7 @@ namespace LiteOrm
                 var key = TableDefinition.Keys[i];
                 getObjectCommand.Parameters[i].Value = key.ToDbValue(keys[i]);
             }
-            return new EnumerableResult<T>(getObjectCommand);
+            return new EnumerableResult<T>(getObjectCommand, DataReaderConverter.GetConverter<T>(SqlBuilder));
         }
 
 
@@ -202,7 +202,7 @@ namespace LiteOrm
         {
             expr = ToSelectExpr(expr!);
             var prepared = expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
-            return new EnumerableResult<T>(this, prepared);
+            return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverter<T>(SqlBuilder));
         }
 
         /// <summary>
@@ -215,7 +215,7 @@ namespace LiteOrm
             var seg = LambdaExprConverter.ToSqlSegment(expr);
             seg = ToSelectExpr(seg);
             var prepared = seg.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
-            return new EnumerableResult<T>(this, prepared);
+            return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverter<T>(SqlBuilder));
         }
 
         /// <summary>
@@ -261,7 +261,7 @@ namespace LiteOrm
         {
             string sql = isFull ? sqlBody.GetSql() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSql()}";
             var prepared = new PreparedSql(sql, sqlBody.GetParams());
-            return new EnumerableResult<T>(this, prepared);
+            return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverter<T>(SqlBuilder));
         }
 
         /// <summary>

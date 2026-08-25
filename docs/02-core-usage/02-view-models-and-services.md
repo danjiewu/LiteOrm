@@ -16,6 +16,8 @@ public class UserView : User
 
 这样查询 `UserView` 时，LiteOrm 能根据外键关系自动生成 JOIN。
 
+`ForeignColumn` 支持声明自己的列级转换器：`[ForeignColumn(typeof(Department), Property = "Name", ConverterType = typeof(SomeValueConverter))]`。读取时**优先使用自身声明的 `ConverterType`，否则回退目标列的转换器**；`ConverterType` 用法与 `ColumnAttribute.ConverterType` 一致（提供实现 `IDbValueConverter` 的转换器类型）。
+
 ## Service 定义
 
 ### 实体类型与视图类型相同

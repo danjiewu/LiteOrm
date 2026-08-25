@@ -172,6 +172,12 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ## 6. Extensibility examples
 
+### NativeAOT
+
+- Entry doc: [NativeAOT Support](../03-advanced-topics/06-aot.en.md)
+- Source: `LiteOrm.AotDemo\Program.cs` (an end-to-end example covering full CRUD + `SearchAs`/`SearchOneAs`)
+- Best for: publishing without a JIT; verifying AOT compatibility of source-generated table metadata and DataReader mappings
+
 ### Expression extension
 
 - Entry doc: [Expression extension](../04-extensibility/01-expression-extension.en.md)

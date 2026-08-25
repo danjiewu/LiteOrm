@@ -16,6 +16,8 @@ public class UserView : User
 
 This way, when querying `UserView`, LiteOrm can automatically generate JOIN based on foreign key relationships.
 
+`ForeignColumn` supports declaring its own column-level converter: `[ForeignColumn(typeof(Department), Property = "Name", ConverterType = typeof(SomeValueConverter))]`. When reading, **it prefers its own `ConverterType` and otherwise falls back to the target column's converter**. `ConverterType` works like `ColumnAttribute.ConverterType` (provide a type implementing `IDbValueConverter`).
+
 ## Service Definition
 
 ### Same Entity and View Type

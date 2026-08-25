@@ -172,6 +172,12 @@
 
 ## 6. 扩展开发示例
 
+### NativeAOT
+
+- 文档入口：[NativeAOT 支持](../03-advanced-topics/06-aot.md)
+- 代码来源：`LiteOrm.AotDemo\Program.cs`（完整 CRUD + `SearchAs`/`SearchOneAs` 端到端示例）
+- 适合场景：无 JIT 环境下的发布；验证源生成器表元信息与 DataReader 映射的 AOT 兼容性
+
 ### 表达式扩展
 
 - 文档入口：[表达式扩展](../04-extensibility/01-expression-extension.md)

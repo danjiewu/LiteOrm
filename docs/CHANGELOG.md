@@ -1,28 +1,22 @@
 # 变更日志 (Changelog)
 
-## v8.1.4 (2026-08-21)
+## v8.1.4 (2026-08-24)
 
 ### 破坏性变更
 
-- 移除 `DAOBase` 的 `ConvertToDbValue(object?, DbValueType?)` 与 `ConvertFromDbValue(object?, Type)` 方法。值转换逻辑下沉到列级扩展与 `SqlBuilder` 实例方法：
-- `DAOBase` / `IDbConverter` 的写入转换入口取消，值转换统一经列级 `DbValueConverter` 或 `SqlBuilder.GetDbValueConverter` 解析后应用 `DbWriteConverter` / `DbReadConverter` 委托。
-- `ISqlBuilder` 接口新增 `bool SupportsNativeArrays { get; }` 属性，指示数据库是否原生支持数组列（PostgreSQL / 金仓 / GaussDB 的 `T[]`）；为 `false` 时数组列以 JSON 字符串存储。自定义 `ISqlBuilder` 实现需实现该属性。
+- 复杂类型（数组/集合、`Json`/`Jsonb`、自定义类）属性**不再自动生成列为表列**，须显式标注 `[Column]`（并按需指定 `DbType = Array`/`Json`/`Jsonb`）；已知标量（数值、`string`/`char`、`byte[]`、`Guid`、日期、枚举）仍自动映射。
 - `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` 构造函数改为接收 `IServiceProvider`，由容器解析所需的 `ObjectDAO<T>` / `ObjectViewDAO<T>`；派生服务构造函数同步调整，依赖注入场景无需改动。
-- 移除 `ToDbValue` / `ConvertFromDbValue` 兜底链中复杂类型（Collection/Json）的自动序列化/反序列化与集合转换：未按 (值类型, `DbValueType`) 预注册转换器的复杂类型不再自动处理，原样返回或交由驱动/调用方。需要 JSON / 数组（反）序列化的复杂类型须通过 `RegisterDbValueConverter` 预注册。
-- `IDbValueConverter` / `IDbValueConverter<TDbType, TValueType>` 移除 `ConvertFromDbValue` / `ConvertToDbValue` 方法，改为仅暴露 `DbReadConverter` / `DbWriteConverter` 委托属性（null 表示无需转换、直接赋值）；自定义转换器实现需改为提供双向委托。读写委托类型统一为 `DbConvertHandler`（替代原 `DbReadConvertHandler` / `DbWriteConvertHandler`）。
-- 移除 `DbConverterHelper.ToDbValue` / `DbConverterHelper.ConvertFromDbValue` 统一分发中心，以及无列上下文的 `SqlBuilder.ToDbValue` / `SqlBuilder.FromDbValue`；裸值参数 / 标量读取改走列级入口或 `GetDbValueConverter` 解析。
-- 转换全面改为严格无兜底：列级 `DbValueConverter` 优先，为空时经 SqlBuilder 注册表按 (值类型, `DbValueType`) 解析并回填列；未注册或委托为 null 时直接赋值 / 直返，不再做 `Convert.ChangeType` / 枚举 / bool / TimeSpan 等通用回退。
 
 ### 改进
 
-- 值转换收敛为「委托式 Converter」：读取经 `DbConverterHelper.ApplyRead`，写入经 `DbConverterHelper.ApplyWrite`；列级 `DbValueConverter` 优先，为空时按 (值类型, `DbValueType`) 从 SqlBuilder 注册表解析并回填列，委托为 null 时直接赋值。
-- 读取空值短路统一提前处理：null / `DBNull` / 空字符串 → 目标类型默认值，列级与注册转换器不再收到空值。
-- 数组列写入：`SupportsNativeArrays == true` 时原样返回交由驱动绑定；其余场景的数组序列化不再自动执行，需预注册转换器。
+- `ColumnAttribute` / `ForeignColumnAttribute` 均新增 `ConverterType` 用于声明列级转换器；`ForeignColumn` 读取外键投影列时**优先自身声明的转换器，否则回退目标列**。
+- 数值类型互转现已默认注册（覆盖 `decimal`/`float`/`double` 与整型族互转，如 `Decimal→Int32`），跨数值类型读写无需手动注册。
+- 值转换机制优化：转换统一收敛为「委托式转换器」，解析优先级固定为 列级转换器 → 按 (值类型, 数据库取值类型) 的注册表 → 直接赋值；`null`/`DBNull`/空字符串 等空值统一提前短路，未注册或无需转换时不再做通用兜底。
 
 ### 修复
 
 - 修正自定义查询 `SearchAs`/`SearchOneAs` 中，当自定义 `SelectItem` 的列名与结果属性名不一致且未显式指定别名时无法正确读取结果的问题（自动补充 `AS` 子句）。
-- 修复部分调用点将实体对象整体当作裸值绑定到驱动导致的 `No mapping exists from object type ...` 错误（发生在列级转换方法签名回归后，已将实体取值与裸值场景正确分流）。
+- 修复部分调用点将实体对象整体当作裸值绑定到驱动导致的 `No mapping exists from object type ...` 错误。
 - `SortProperty` 排除索引器属性，修复内置 `Item`（索引器）与自定义 `Item` 属性重名导致的循环依赖误判。
 - `SearchAsAsync` / `SearchOneAsAsync` 对齐接口补充 `CancellationToken` 参数，修复 `EntityViewService<T>` / `RemoteViewServiceAsyncProxy<T>` 未实现接口成员的问题。
 

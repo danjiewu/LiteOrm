@@ -1,24 +1,22 @@
 # Changelog
 
-## v8.1.4 (2026-08-21)
+## v8.1.4 (2026-08-24)
 
 ### Breaking Changes
 
-- Removed `ConvertToDbValue(object?, DbValueType?)` and `ConvertFromDbValue(object?, Type)` from `DAOBase`. Value conversion now lives in column-level extensions and `SqlBuilder` instance methods:
-- `IDbConverter` now declares `object ToDbValue(object? value, DbValueType? dbValueType = null)` (the unified write entry point); custom `IDbConverter` implementations must implement it.
-- `ISqlBuilder` now declares `bool SupportsNativeArrays { get; }`, indicating whether the database natively supports array columns (PostgreSQL / KingbaseES / GaussDB `T[]`); when `false`, array columns are stored as JSON strings. Custom `ISqlBuilder` implementations must implement this property.
+- Properties of complex types (arrays/collections, `Json`/`Jsonb`, custom classes) are **no longer auto-mapped as table columns**; they require an explicit `[Column]` (and, as appropriate, `DbType = Array`/`Json`/`Jsonb`). Known scalars (numerics, `string`/`char`, `byte[]`, `Guid`, dates, enums) are still auto-mapped.
 - `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` constructors now take an `IServiceProvider`, resolving the required `ObjectDAO<T>` / `ObjectViewDAO<T>` from the container; derived service constructors were updated accordingly. No changes are needed under DI.
 
 ### Enhancements
 
-- Value conversion now converges on `DbConverterHelper` in `LiteOrm.Common` as the shared dispatch center for both directions (`ConvertFromDbValue` for reads, `ToDbValue` for writes): registered converters first + column-level converter first + array/JSON serialization + enum/bool/DateTimeOffset/TimeSpan adaptation + `Convert.ChangeType` fallback.
-- Read-side null short-circuiting is now handled up front: null / `DBNull` / empty string → target-type default, so column-level and registered converters never receive nulls.
-- Array column writes: returned as-is for driver binding when `SupportsNativeArrays == true`, otherwise serialized to a JSON string.
+- Both `ColumnAttribute` and `ForeignColumnAttribute` now expose `ConverterType` to declare a column-level converter. When reading a foreign projection column, `ForeignColumn` **prefers its own declared converter, otherwise falls back to the target column's**.
+- Cross-numeric-type conversion is now registered by default (covering `decimal`/`float`/`double` and the integer family, e.g. `Decimal→Int32`), so no manual registration is needed.
+- Value-conversion mechanism optimized: conversion now converges on a delegating converter, resolved with a fixed priority of column-level converter → registry keyed by (value type, database value type) → direct assignment; null/`DBNull`/empty-string values are short-circuited up front, and no generic fallback is applied when nothing is registered or no conversion is needed.
 
 ### Fixes
 
 - Fixed a bug in custom `SearchAs`/`SearchOneAs` queries where results could not be read correctly when a custom `SelectItem`'s column name differed from the result property name and no alias was given (an `AS` clause is now added automatically).
-- Fixed an error in several call sites that bound the whole entity object as a raw value (`No mapping exists from object type ...`) after a column-level conversion method signature regression; entity-value and raw-value scenarios are now correctly routed.
+- Fixed an error in several call sites that bound the whole entity object as a raw value (`No mapping exists from object type ...`).
 - `SortProperty` now excludes indexer properties, fixing a false circular-dependency error caused by a built-in `Item` (indexer) colliding with a custom `Item` property.
 - `SearchAsAsync` / `SearchOneAsAsync` now include the `CancellationToken` parameter declared by the interface, fixing `EntityViewService<T>` / `RemoteViewServiceAsyncProxy<T>` not implementing the interface members.
 

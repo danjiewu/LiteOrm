@@ -354,8 +354,10 @@ Usage recommendations:
 
 - `ForeignTypeAttribute`: ObjectType, Alias, JoinType, AutoExpand
 - `TableJoinAttribute`: Source, TargetType, ForeignKeys, AliasName, JoinType, AutoExpand
-- `ForeignColumnAttribute`: Foreign (Type or AliasName), Property (column to retrieve)
+- `ForeignColumnAttribute`: Foreign (Type or AliasName), Property (column to retrieve), ConverterType (optional, a column-level converter that takes precedence over the target column)
 - `ColumnAttribute`: Constant (fixed filter; see the permission filtering guide)
+
+> `ForeignColumnAttribute.ConverterType` declares this foreign projection column's own column-level converter. When reading, **it prefers its own declared converter and otherwise falls back to the target column's converter** (the target column may itself be another `ForeignColumn`, enabling stepwise fallback). Its usage matches `ColumnAttribute.ConverterType` — provide a type implementing `IDbValueConverter`.
 
 In implementation, LiteOrm merges ForeignType and TableJoin information during the metadata phase to generate JoinedTable / ForeignTable structures. For fixed-filter metadata and SQL injection details, see [Permission Filtering and User Scope Control](../06-di/02-permission-filtering.en.md).
 
