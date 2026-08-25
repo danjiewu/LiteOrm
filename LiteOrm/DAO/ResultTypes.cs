@@ -270,7 +270,7 @@ namespace LiteOrm.Common
             var command = GetCommand();
             using var reader = command.ExecuteReader();
             if (!reader.Read()) return default!;
-            var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader);
+            var func = _readerFunc ?? DataReaderConverter.GetConverter<TResult>(reader, command.SqlBuilder);
             return func(reader);
         }
 

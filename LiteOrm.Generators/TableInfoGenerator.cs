@@ -270,7 +270,7 @@ namespace LiteOrm.Generators
             public string? IdentityExpression { get; set; }
             public long IdentityStart { get; set; } = 1;
             public int IdentityIncreasement { get; set; } = 1;
-            public string? ValueConverterType { get; set; }
+            public string? ConverterType { get; set; }
             public bool CanRead { get; set; }
             public bool CanWrite { get; set; }
             public IPropertySymbol Symbol { get; set; } = null!;
@@ -430,7 +430,7 @@ namespace LiteOrm.Generators
             };
             // ConverterType: typeof(X) 形式的命名参数，值为 INamedTypeSymbol
             if (TryGetNamedArg(foreignAttr.NamedArguments, "ConverterType", out var ct) && !ct.IsNull && ct.Value is INamedTypeSymbol converterSymbol)
-                info.ValueConverterType = converterSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                info.ConverterType = converterSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             return info;
         }
 
@@ -472,7 +472,7 @@ namespace LiteOrm.Generators
 
             // ValueConverterType: typeof(X) 形式的命名参数，值为 INamedTypeSymbol
             if (TryGetNamedArg(colAttr.NamedArguments, "ValueConverterType", out var vct) && !vct.IsNull && vct.Value is INamedTypeSymbol converterSymbol)
-                info.ValueConverterType = converterSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                info.ConverterType = converterSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
             // 计算列表达式（非实际列）
             if (TryGetNamedArg(colAttr.NamedArguments, "Expression", out var ex) && !ex.IsNull)
@@ -707,8 +707,8 @@ namespace LiteOrm.Generators
                     sb.AppendLine($"                            IdentityExpression = {(string.IsNullOrEmpty(c.IdentityExpression) ? "null" : $"\"{EscapeCSharpString(c.IdentityExpression!)}\"")},");
                     sb.AppendLine($"                            IdentityStart = {c.IdentityStart}L,");
                     sb.AppendLine($"                            IdentityIncreasement = {c.IdentityIncreasement},");
-                    if (!string.IsNullOrEmpty(c.ValueConverterType))
-                        sb.AppendLine($"                            ValueConverter = new {c.ValueConverterType}()");
+                    if (!string.IsNullOrEmpty(c.ConverterType))
+                        sb.AppendLine($"                            ValueConverter = new {c.ConverterType}()");
                     sb.AppendLine("                        },");
                 }
                 sb.AppendLine("                    }));");
@@ -765,55 +765,65 @@ namespace LiteOrm.Generators
         private static void GenerateMapperMethod(StringBuilder sb, EntityInfo e, ResolvedSymbols symbols)
         {
             sb.AppendLine();
-            // 列级转换器静态实例（避免每行读取重复构造；转换器要求无状态）
-            for (int i = 0; i < e.Columns.Count; i++)
-            {
-                var c = e.Columns[i];
-                if (!c.CanWrite || string.IsNullOrEmpty(c.ValueConverterType)) continue;
-                sb.AppendLine($"        private static readonly {c.ValueConverterType} {e.SafeName}_Converter_{i} = new {c.ValueConverterType}();");
-            }
-            // 每列一个已解析的泛型转换器缓存（IDbValueConverter，按实体唯一方言构造器惰性解析一次）：
-            // 首次经 reader.DbConverter 解析，之后逐行复用；ValueConverterType 列走静态转换器字段，不需要该缓存字段.
-            for (int i = 0; i < e.Columns.Count; i++)
-            {
-                var c = e.Columns[i];
-                if (!c.CanWrite || !string.IsNullOrEmpty(c.ValueConverterType)) continue;
-                sb.AppendLine($"        private static global::LiteOrm.Common.IDbValueConverter? {e.SafeName}_conv_{i};");
-            }
-            sb.AppendLine($"        private static {e.FullName} {e.SafeName}_Mapper(global::LiteOrm.AutoLockDataReader reader)");
-            sb.AppendLine("        {");
-            sb.AppendLine($"            var entity = new {e.FullName}();");
-            // 先取 AutoLockDataReader 的 DbConverter，供各列解析并缓存转换器
-            sb.AppendLine("            var converter = reader.DbConverter;");
+            // 每列一个非泛型转换器字段 IDbValueConverter（AOT 走 GetValue 方式，非泛型解析）
             for (int i = 0; i < e.Columns.Count; i++)
             {
                 var c = e.Columns[i];
                 if (!c.CanWrite) continue;
-                // 数组/Json 等复杂类型默认不生成静态列读取绑定（列信息），需经注册转换器处理；
-                // 显式声明了列级转换器（ValueConverterType）时才生成，否则交运行时转换/原样返回。
-                if (IsComplexColumn(c) && string.IsNullOrEmpty(c.ValueConverterType)) continue;
-
-                string core = StripNullable(c.PropertyType.Replace("global::", ""));
-                string convLocal = $"c_{i}";
-                string readLocal = $"h_{i}";
-
-                if (!string.IsNullOrEmpty(c.ValueConverterType))
+                if (IsComplexColumn(c) && string.IsNullOrEmpty(c.ConverterType)) continue;
+                sb.AppendLine($"        private static global::LiteOrm.Common.IDbValueConverter? {e.SafeName}_conv_{i};");
+            }
+            // 一次性初始化本类型下所有转换器的静态方法，用标记位保证只初始化一次（惰性，遇首个 mapper 调用触发）
+            sb.AppendLine($"        private static bool {e.SafeName}ConvInitialized;");
+            sb.AppendLine($"        private static void Initialize{e.SafeName}Converter(global::LiteOrm.Common.IDbConverter converter)");
+            sb.AppendLine("        {");
+            sb.AppendLine($"            if ({e.SafeName}ConvInitialized) return;");
+            sb.AppendLine($"            {e.SafeName}ConvInitialized = true;");
+            for (int i = 0; i < e.Columns.Count; i++)
+            {
+                var c = e.Columns[i];
+                if (!c.CanWrite) continue;
+                if (IsComplexColumn(c) && string.IsNullOrEmpty(c.ConverterType)) continue;
+                string tw = StripNullable(c.PropertyType.Replace("global::", ""));
+                string field = $"{e.SafeName}_conv_{i}";
+                if (!string.IsNullOrEmpty(c.ConverterType))
                 {
-                    // 列级转换器（ValueConverterType）：直接取静态转换器实例（列级转换器优先）
-                    sb.AppendLine($"            var {convLocal} = {e.SafeName}_Converter_{i};");
+                    // 列级转换器（ConverterType）：直接使用其实例
+                    sb.AppendLine($"            {field} ??= new {c.ConverterType}();");
                 }
                 else
                 {
-                    // 否则运行时经注册表解析，并惰性缓存到泛型 IDbValueConverter 字段（避免每行重复解析）
+                    // 注册表解析并缓存到非泛型 IDbValueConverter 字段（一次性初始化，逐行复用）
                     string? dbTypeExpr = GetReadDbValueTypeExpr(c, symbols);
-                    string dbValueType = dbTypeExpr ?? $"converter.GetDbValueType(typeof({core}))";
-                    sb.AppendLine($"            var {convLocal} = {e.SafeName}_conv_{i} ??= converter.GetDbValueConverter(typeof({core}), {dbValueType});");
+                    string dbValueType = dbTypeExpr ?? $"converter.GetDbValueType(typeof({tw}))";
+                    sb.AppendLine($"            {field} ??= converter.GetDbValueConverter(typeof({tw}), {dbValueType});");
                 }
-                // 取该列转换器的读取委托（每行一次，避免重复求值）；无则退回类型化读取
-                sb.AppendLine($"            var {readLocal} = {convLocal}?.DbReadConverter;");
+            }
+            sb.AppendLine("        }");
+            sb.AppendLine($"        private static {e.FullName} {e.SafeName}_Mapper(global::LiteOrm.AutoLockDataReader reader)");
+            sb.AppendLine("        {");
+            sb.AppendLine($"            var entity = new {e.FullName}();");
+            // 先取 AutoLockDataReader 的 DbConverter 并一次性初始化本类型所有列转换器
+            sb.AppendLine("            var converter = reader.DbConverter;");
+            sb.AppendLine($"            Initialize{e.SafeName}Converter(converter);");
+            for (int i = 0; i < e.Columns.Count; i++)
+            {
+                var c = e.Columns[i];
+                if (!c.CanWrite) continue;
+                if (IsComplexColumn(c) && string.IsNullOrEmpty(c.ConverterType)) continue;
 
-                var readExpr = GenerateTypedReadCall(c.PropertyType, i, readLocal);
-                sb.AppendLine($"            entity.{c.PropertyName} = {readExpr};");
+                string type = c.PropertyType.Replace("global::", "");
+                string tw = StripNullable(type);
+                string readLocal = $"d_{i}";
+                // 非泛型读取委托（object→object），以 GetValue 为输入；分支内各自强转/类型化读取，无外层包裹
+                sb.AppendLine($"            var {readLocal} = {e.SafeName}_conv_{i}?.DbReadConverter;");
+                string? typedRead = GetTypedReadMethodName(tw);
+                string fallback = typedRead != null
+                    ? $"reader.{typedRead}({i})"
+                    : $"({type})reader.GetValue({i})!";
+                string readExpr = $"{readLocal} != null ? ({type}){readLocal}(reader.GetValue({i})!) : {fallback}";
+                // default({type}) 使用完整属性类型：可空属性（如 Guid?/string）的默认值即为 null
+                sb.AppendLine($"            entity.{c.PropertyName} = reader.IsDBNull({i}) ? default({type})! : {readExpr};");
             }
             sb.AppendLine("            return entity;");
             sb.AppendLine("        }");
@@ -858,23 +868,6 @@ namespace LiteOrm.Generators
             if (type.EndsWith("?") && !type.EndsWith("??"))
                 return type.Substring(0, type.Length - 1);
             return type;
-        }
-
-        private static string GenerateTypedReadCall(string propertyType, int ordinal, string readDelegateLocal)
-        {
-            // 去掉 global:: 前缀
-            var type = propertyType.Replace("global::", "");
-            // 可空剥离后的核心类型，用于选择类型化读取方法
-            string core = StripNullable(type);
-            string? typedRead = GetTypedReadMethodName(core);
-
-            // 读取委托（object→object）优先 → 否则类型化读取/GetValue；与运行时 BuildTypedReadExpression 语义一致
-            string fallbackExpr = typedRead != null
-                ? $"(object)reader.{typedRead}({ordinal})"
-                : $"reader.GetValue({ordinal})";
-
-            var read = $"reader.IsDBNull({ordinal}) ? default({type})! : ({type})({readDelegateLocal} != null ? {readDelegateLocal}(reader.GetValue({ordinal})) : {fallbackExpr})";
-            return read;
         }
 
         /// <summary>
