@@ -32,7 +32,7 @@ namespace LiteOrm.Common
             BindingFlags levelFlags = flags | BindingFlags.DeclaredOnly;
             for (Type? current = type; current is not null; current = current.BaseType)
             {
-                PropertyInfo? property = current.GetProperty(name, levelFlags);
+                PropertyInfo? property = current.GetProperty(name, levelFlags, null, null, Type.EmptyTypes, null);
                 if (property is not null) return property;
             }
             return null;
