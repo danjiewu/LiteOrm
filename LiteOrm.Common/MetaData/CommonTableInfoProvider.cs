@@ -79,7 +79,7 @@ namespace LiteOrm.Common
                 var tableDef = GetTableDefinition(objectType);
                 if (tableDef is null) return null;
 
-                var columns = new List<SqlColumn>();
+                               var columns = new List<SqlColumn>();
                 foreach (var column in tableDef.Columns)
                     columns.Add(column);
 

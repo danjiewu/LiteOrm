@@ -220,6 +220,40 @@ namespace LiteOrm
             });
             sqlBuilder.RegisterFunctionSqlHandler("Remove", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"LEFT({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})"));
+            sqlBuilder.RegisterFunctionSqlHandler("Char", (ref outSql, functionName, arguments) =>
+                outSql.Append($"CHAR({string.Join(", ", arguments)})"));
+            sqlBuilder.RegisterFunctionSqlHandler("ToLower", (ref outSql, functionName, arguments) =>
+                outSql.Append($"LOWER({string.Join(", ", arguments)})"));
+            sqlBuilder.RegisterFunctionSqlHandler("ToUpper", (ref outSql, functionName, arguments) =>
+                outSql.Append($"UPPER({string.Join(", ", arguments)})"));
+            sqlBuilder.RegisterFunctionSqlHandler("Pow", (ref outSql, functionName, arguments) =>
+                outSql.Append($"POWER({string.Join(", ", arguments)})"));
+            sqlBuilder.RegisterFunctionSqlHandler("Ceiling", (ref outSql, functionName, arguments) =>
+                outSql.Append($"CEILING({string.Join(", ", arguments)})"));
+            sqlBuilder.RegisterFunctionSqlHandler("Truncate", (ref outSql, functionName, arguments) =>
+                outSql.Append($"TRUNCATE({string.Join(", ", arguments)},0)"));
+            sqlBuilder.RegisterFunctionSqlHandler("Concat", (ref outSql, functionName, arguments) =>
+                outSql.Append($"CONCAT({string.Join(", ", arguments)})"));
+            sqlBuilder.RegisterFunctionSqlHandler("Max", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                outSql.Append(expr.IsAggregate ? "MAX(" : "GREATEST(");
+                for (int i = 0; i < expr.Args.Count; i++)
+                {
+                    if (i > 0) outSql.Append(", ");
+                    expr.Args[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                }
+                outSql.Append(")");
+            });
+            sqlBuilder.RegisterFunctionSqlHandler("Min", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                outSql.Append(expr.IsAggregate ? "MIN(" : "LEAST(");
+                for (int i = 0; i < expr.Args.Count; i++)
+                {
+                    if (i > 0) outSql.Append(", ");
+                    expr.Args[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                }
+                outSql.Append(")");
+            });
         }
         private static void RegisterSQLiteFunctions(SQLiteBuilder sqliteBuilder)
         {
@@ -291,6 +325,10 @@ namespace LiteOrm
                     expr.Args[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
                 }
             });
+            sqliteBuilder.RegisterFunctionSqlHandler("Max", (ref outSql, functionName, arguments) =>
+                outSql.Append($"max({string.Join(", ", arguments)})"));
+            sqliteBuilder.RegisterFunctionSqlHandler("Min", (ref outSql, functionName, arguments) =>
+                outSql.Append($"min({string.Join(", ", arguments)})"));
             // SQLite JSON 函数
             sqliteBuilder.RegisterFunctionSqlHandler("JsonExtract", (ref outSql, functionName, arguments) =>
                 outSql.Append($"json_extract({string.Join(", ", arguments)})"));
@@ -385,6 +423,28 @@ namespace LiteOrm
                 outSql.Append("sysdate"));
             oracleBuilder.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append("trunc(sysdate)"));
+            oracleBuilder.RegisterFunctionSqlHandler("Char", (ref outSql, functionName, arguments) =>
+                outSql.Append($"CHR({string.Join(", ", arguments)})"));
+            oracleBuilder.RegisterFunctionSqlHandler("Ceiling", (ref outSql, functionName, arguments) =>
+                outSql.Append($"CEIL({string.Join(", ", arguments)})"));
+            oracleBuilder.RegisterFunctionSqlHandler("Log", (ref outSql, functionName, arguments) =>
+                outSql.Append($"LN({string.Join(", ", arguments)})"));
+            oracleBuilder.RegisterFunctionSqlHandler("Log10", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                outSql.Append("LOG(10,");
+                expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                outSql.Append(")");
+            });
+            oracleBuilder.RegisterFunctionSqlHandler("Truncate", (ref outSql, functionName, arguments) =>
+                outSql.Append($"TRUNC({string.Join(", ", arguments)})"));
+            oracleBuilder.RegisterFunctionSqlHandler("Concat", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                for (int i = 0; i < expr.Args.Count; i++)
+                {
+                    if (i > 0) outSql.Append("||");
+                    expr.Args[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                }
+            });
             oracleBuilder.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays"],
                 (ref outSql, expr, context, sqlBuilder, outputParams) =>
                     outSql.Append($"({expr.Args[0].ToSql(context, sqlBuilder, outputParams)} + NUMTODSINTERVAL({expr.Args[1].ToSql(context, sqlBuilder, outputParams)}, '{expr.FunctionName!.Substring(3).ToUpper().TrimEnd('S')}'))"));
@@ -472,6 +532,16 @@ namespace LiteOrm
                 outSql.Append("Now()"));
             postgreSqlBuilder.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append("CURRENT_DATE"));
+            postgreSqlBuilder.RegisterFunctionSqlHandler("Char", (ref outSql, functionName, arguments) =>
+                outSql.Append($"CHR({string.Join(", ", arguments)})"));
+            postgreSqlBuilder.RegisterFunctionSqlHandler("Ceiling", (ref outSql, functionName, arguments) =>
+                outSql.Append($"CEIL({string.Join(", ", arguments)})"));
+            postgreSqlBuilder.RegisterFunctionSqlHandler("Log", (ref outSql, functionName, arguments) =>
+                outSql.Append($"LN({string.Join(", ", arguments)})"));
+            postgreSqlBuilder.RegisterFunctionSqlHandler("Log10", (ref outSql, functionName, arguments) =>
+                outSql.Append($"LOG({string.Join(", ", arguments)})"));
+            postgreSqlBuilder.RegisterFunctionSqlHandler("Truncate", (ref outSql, functionName, arguments) =>
+                outSql.Append($"TRUNC({string.Join(", ", arguments)})"));
             postgreSqlBuilder.RegisterFunctionSqlHandler("IndexOf", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"POSITION({expr.Args[1].ToSql(context, sqlBuilder, outputParams)} IN {expr.Args[0].ToSql(context, sqlBuilder, outputParams)})-1"));
             postgreSqlBuilder.RegisterFunctionSqlHandler("Substring", (ref outSql, expr, context, sqlBuilder, outputParams) =>
@@ -598,6 +668,10 @@ namespace LiteOrm
                 outSql.Append("CAST(GETDATE() AS DATE)"));
             sqlServerBuilder.RegisterFunctionSqlHandler("Length", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"LEN({expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
+            sqlServerBuilder.RegisterFunctionSqlHandler("Atan2", (ref outSql, functionName, arguments) =>
+                outSql.Append($"ATN2({string.Join(", ", arguments)})"));
+            sqlServerBuilder.RegisterFunctionSqlHandler("Truncate", (ref outSql, functionName, arguments) =>
+                outSql.Append($"ROUND({string.Join(", ", arguments)},0,1)"));
             sqlServerBuilder.RegisterFunctionSqlHandler("IndexOf", (ref outSql, expr, context, sqlBuilder, outputParams) =>
             {
                 if (expr.Args.Count > 2)

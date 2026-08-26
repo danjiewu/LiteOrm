@@ -207,13 +207,11 @@ namespace LiteOrm
                 if (joinedTables.ContainsKey(joinedTable.Name ?? string.Empty)) throw new ArgumentException($"Duplicate table alias name \"{joinedTable.Name}\"");
                 joinedTables[joinedTable.Name ?? string.Empty] = joinedTable;
             }
-
-            // 根据属性连接表，生成ColumnRef对象，并加入连接队列
             List<SqlColumn> columns = new List<SqlColumn>();
             var properties = objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList().SortProperty() ?? new List<PropertyInfo>();
             foreach (PropertyInfo property in properties)
             {
-                ColumnDefinition? column = GenerateColumnDefinition(property);
+                ColumnDefinition? column = tableDef.GetColumn(property.Name);
                 if (column is not null)
                 {
                     columns.Add(column);
