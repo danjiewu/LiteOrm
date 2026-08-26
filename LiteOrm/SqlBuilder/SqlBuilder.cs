@@ -100,8 +100,30 @@ namespace LiteOrm
         };
 
         /// <summary>
+        /// 默认的函数 SQL 处理器，按「函数名(参数列表)」的形式生成 SQL。
+        /// 应用 <see cref="_functionMappings"/> 中配置的函数名映射后输出（聚合函数不映射）。
+        /// 适用于无需特殊处理的函数：未注册专用处理器的函数将自动使用本处理器，
+        /// 也可在注册时直接引用以复用默认渲染逻辑，避免重复实现「函数名(参数)」的拼装代码。
+        /// </summary>
+        public static readonly FunctionSqlHandler DefaultFunctionSqlHandler = static (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<Param> outputParams) =>
+        {
+            string functionName = expr.FunctionName!;
+            if (!expr.IsAggregate && sqlBuilder._functionMappings.TryGetValue(functionName, out string? mappedName))
+                functionName = mappedName;
+            outSql.Append(functionName);
+            outSql.Append("(");
+            int count = expr.Args.Count;
+            for (int i = 0; i < count; i++)
+            {
+                if (i > 0) outSql.Append(", ");
+                expr.Args[i].ToSql(ref outSql, context, sqlBuilder, outputParams);
+            }
+            outSql.Append(")");
+        };
+
+        /// <summary>
         /// 构建函数调用的 SQL 片段，直接写入 <paramref name="outSql"/>。
-        /// 会首先根据构造器类型及继承关系的顺序查找注册的函数处理器<seealso cref="SqlBuilderExtensions"/>，如果找到则使用处理器生成 SQL；否则按照默认规则生成函数调用 SQL。
+        /// 会首先根据构造器类型及继承关系的顺序查找注册的函数处理器<seealso cref="SqlBuilderExtensions"/>，如果找到则使用处理器生成 SQL；否则使用 <see cref="DefaultFunctionSqlHandler"/> 按默认规则生成函数调用 SQL。
         /// </summary>
         /// <param name="outSql">接收输出 SQL 片段的字符串构建器。</param>
         /// <param name="expr">函数表达式，包含函数名及参数列表。</param>
@@ -121,20 +143,7 @@ namespace LiteOrm
                 }
                 type = type.BaseType!;
             }
-            if (!expr.IsAggregate && _functionMappings.TryGetValue(functionName, out string? mappedName))
-            {
-                functionName = mappedName;
-            }
-
-            outSql.Append(functionName);
-            outSql.Append("(");
-            int count = expr.Args.Count;
-            for (int i = 0; i < count; i++)
-            {
-                if (i > 0) outSql.Append(", ");
-                expr.Args[i].ToSql(ref outSql, context, this, outputParams);
-            }
-            outSql.Append(")");
+            DefaultFunctionSqlHandler(ref outSql, expr, context, this, outputParams);
         }
 
 

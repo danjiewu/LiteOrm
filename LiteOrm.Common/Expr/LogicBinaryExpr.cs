@@ -20,7 +20,13 @@ namespace LiteOrm.Common
             { LogicOperator.LessThan,"<" },
             { LogicOperator.NotEqual,"!=" },
             { LogicOperator.GreaterThanOrEqual,">=" },
-            { LogicOperator.LessThanOrEqual,"<=" }
+            { LogicOperator.LessThanOrEqual,"<=" },
+            { LogicOperator.Like,"LIKE" },
+            { LogicOperator.NotLike,"NOT LIKE" },
+            { LogicOperator.In,"IN" },
+            { LogicOperator.NotIn,"NOT IN" },
+            { LogicOperator.RegexpLike,"REGEXP_LIKE" },
+            { LogicOperator.NotRegexpLike,"NOT REGEXP_LIKE" }
         };
 
         /// <summary>

@@ -4,8 +4,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace LiteOrm
 {
@@ -161,6 +163,50 @@ namespace LiteOrm
                 return new LogicBinaryExpr(left, LogicOperator.Contains, right);
             });
 
+            // Regex.IsMatch(input, pattern)：正则匹配谓词
+            // 静态形式 Regex.IsMatch(input, pattern) 与实例形式 new Regex(pattern).IsMatch(input) / regex.IsMatch(input)（闭包变量）
+            // 均映射到 REGEXP_LIKE(input, pattern)（由 ExprSqlConverter 的 RegexpLike 分支渲染各方言原生语法）
+            LambdaExprConverter.RegisterMethodHandler(typeof(Regex), nameof(Regex.IsMatch), (node, converter) =>
+            {
+                ValueTypeExpr input, pattern;
+                if (node.Object is not null)
+                {
+                    // 实例形式：new Regex(pattern).IsMatch(input) 或通过闭包变量得到的 Regex 实例
+                    pattern = ExtractRegexPattern(node.Object, converter);
+                    input = converter.Convert(node.Arguments[0]).AsValue();
+                }
+                else
+                {
+                    // 静态形式：Regex.IsMatch(input, pattern[, options[, timeout]])
+                    input = converter.Convert(node.Arguments[0]).AsValue();
+                    pattern = converter.Convert(node.Arguments[1]).AsValue();
+                }
+                return new LogicBinaryExpr(input, LogicOperator.RegexpLike, pattern);
+            });
+
+            // Regex.Replace(input, pattern, replacement)：正则替换
+            // 静态形式 Regex.Replace(input, pattern, replacement) 与实例形式 new Regex(pattern).Replace(input, replacement) / regex.Replace(input, replacement)
+            // 均映射到 REGEXP_REPLACE(input, pattern, replacement)
+            LambdaExprConverter.RegisterMethodHandler(typeof(Regex), nameof(Regex.Replace), (node, converter) =>
+            {
+                ValueTypeExpr input, pattern, replacement;
+                if (node.Object is not null)
+                {
+                    // 实例形式：new Regex(pattern).Replace(input, replacement) 或通过闭包变量得到的 Regex 实例
+                    pattern = ExtractRegexPattern(node.Object, converter);
+                    input = converter.Convert(node.Arguments[0]).AsValue();
+                    replacement = converter.Convert(node.Arguments[1]).AsValue();
+                }
+                else
+                {
+                    // 静态形式：Regex.Replace(input, pattern, replacement[, options])
+                    input = converter.Convert(node.Arguments[0]).AsValue();
+                    pattern = converter.Convert(node.Arguments[1]).AsValue();
+                    replacement = converter.Convert(node.Arguments[2]).AsValue();
+                }
+                return new FunctionExpr("REGEXP_REPLACE", input, pattern, replacement);
+            });
+
             // IList.Contains() / Enumerable.Contains()：集合包含判断
             // 支持静态方法 (Enumerable.Contains(collection, value)) 和实例方法 (collection.Contains(value))
             // 转换为 SQL IN 操作 (LogicBinaryExpr with In operator)
@@ -245,18 +291,28 @@ namespace LiteOrm
                 }
                 return converter.Convert(node.Object!);
             });
+        }
 
-            // string.Trim() / TrimStart() / TrimEnd()：去除字符串首尾/头部/尾部空格
-            // 直接使用默认处理转换为 FunctionExpr("Trim") / FunctionExpr("TrimStart") / FunctionExpr("TrimEnd")
-            // SQL 函数的具体生成逻辑在 LiteOrmSqlFunctionInitializer 中注册
-
-            // string.Remove()：删除从指定位置到结尾的字符
-            // 默认转换为 FunctionExpr("Remove", str, count)
-            // SqlFunction 中注册为 SQL LEFT(str, count)
-
-            // string.ToUpper() / string.ToLower()：大小写转换
-            // 直接使用基类注册的映射：ToUpper -> UPPER, ToLower -> LOWER
-
+        /// <summary>
+        /// 从 Regex 实例表达式中提取正则模式字符串并包装为 <see cref="ValueTypeExpr"/>。
+        /// 支持 <see cref="NewExpression"/>（如 <c>new Regex(pattern)</c>，从构造参数取模式）
+        /// 与可求值的实例表达式（如闭包变量、字段，通过求值得到 <see cref="Regex"/> 对象后读取其 Pattern 成员）。
+        /// </summary>
+        /// <param name="regexExpr">表示 Regex 实例的表达式节点。</param>
+        /// <param name="converter">当前转换器，用于子表达式转换与求值。</param>
+        /// <returns>表示正则模式字符串的值表达式。</returns>
+        private static ValueTypeExpr ExtractRegexPattern(Expression regexExpr, LambdaExprConverter converter)
+        {
+            if (regexExpr is NewExpression regexNew)
+            {
+                return converter.Convert(regexNew.Arguments[0]).AsValue();
+            }
+            // 闭包变量、字段等可求值形式：求值得到 Regex 实例后读取 Pattern（protected internal，经反射访问）
+            if (converter.Evaluate(regexExpr) is Regex regex)
+            {                
+                return new ValueExpr(regex.ToString());
+            }
+            throw new NotSupportedException($"Cannot extract regex pattern from expression: {regexExpr}");
         }
 
         /// <summary>

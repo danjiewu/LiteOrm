@@ -220,6 +220,7 @@ namespace LiteOrm
             });
             sqlBuilder.RegisterFunctionSqlHandler("Remove", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"LEFT({expr.Args[0].ToSql(context, sqlBuilder, outputParams)}, {expr.Args[1].ToSql(context, sqlBuilder, outputParams)})"));
+            sqlBuilder.RegisterFunctionSqlHandler(new[] { "REGEXP_LIKE", "REGEXP_REPLACE", "REGEXP_INSTR", "REGEXP_SUBSTR", "REGEXP_COUNT" });
             sqlBuilder.RegisterFunctionSqlHandler("Char", (ref outSql, functionName, arguments) =>
                 outSql.Append($"CHAR({string.Join(", ", arguments)})"));
             sqlBuilder.RegisterFunctionSqlHandler("ToLower", (ref outSql, functionName, arguments) =>
@@ -350,6 +351,13 @@ namespace LiteOrm
                 outSql.Append("NOW()"));
             mySqlBuilder.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append("CURDATE()"));
+            // MySQL 使用 REGEXP 运算符进行正则匹配（无 REGEXP_LIKE 函数）
+            mySqlBuilder.RegisterFunctionSqlHandler("REGEXP_LIKE", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                outSql.Append(" REGEXP ");
+                expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+            });
             mySqlBuilder.RegisterFunctionSqlHandler("LENGTH", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append($"CHAR_LENGTH({expr.Args[0].ToSql(context, sqlBuilder, outputParams)})"));
             mySqlBuilder.RegisterFunctionSqlHandler(["AddSeconds", "AddMinutes", "AddHours", "AddDays", "AddMonths", "AddYears"],
@@ -532,6 +540,13 @@ namespace LiteOrm
                 outSql.Append("Now()"));
             postgreSqlBuilder.RegisterFunctionSqlHandler("Today", (ref outSql, expr, context, sqlBuilder, outputParams) =>
                 outSql.Append("CURRENT_DATE"));
+            // PostgreSQL 使用 POSIX 正则运算符 ~ 进行大小写敏感匹配（无 REGEXP_LIKE 函数）
+            postgreSqlBuilder.RegisterFunctionSqlHandler("REGEXP_LIKE", (ref outSql, expr, context, sqlBuilder, outputParams) =>
+            {
+                expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+                outSql.Append(" ~ ");
+                expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
+            });
             postgreSqlBuilder.RegisterFunctionSqlHandler("Char", (ref outSql, functionName, arguments) =>
                 outSql.Append($"CHR({string.Join(", ", arguments)})"));
             postgreSqlBuilder.RegisterFunctionSqlHandler("Ceiling", (ref outSql, functionName, arguments) =>
@@ -614,10 +629,8 @@ namespace LiteOrm
                 }
                 outSql.Append(")");
             });
-            postgreSqlBuilder.RegisterFunctionSqlHandler("array_to_string", (ref outSql, functionName, arguments) =>
-                outSql.Append($"{functionName}({string.Join(", ", arguments)})"));
-            postgreSqlBuilder.RegisterFunctionSqlHandler("array_append", (ref outSql, functionName, arguments) =>
-                outSql.Append($"{functionName}({string.Join(", ", arguments)})"));
+            postgreSqlBuilder.RegisterFunctionSqlHandler("array_to_string");
+            postgreSqlBuilder.RegisterFunctionSqlHandler("array_append");
 
             // PostgreSQL JSON / JSONB 专用函数
             postgreSqlBuilder.RegisterFunctionSqlHandler("jsonb_contains", (ref outSql, expr, context, sqlBuilder, outputParams) =>
@@ -626,8 +639,7 @@ namespace LiteOrm
                 outSql.Append(" @> ");
                 expr.Args[1].ToSql(ref outSql, context, sqlBuilder, outputParams);
             });
-            postgreSqlBuilder.RegisterFunctionSqlHandler(new[] { "jsonb_extract_path", "jsonb_extract_path_text", "jsonb_build_object", "jsonb_build_array" },
-                (ref outSql, functionName, arguments) => outSql.Append($"{functionName}({string.Join(", ", arguments)})"));
+            postgreSqlBuilder.RegisterFunctionSqlHandler(new[] { "jsonb_extract_path", "jsonb_extract_path_text", "jsonb_build_object", "jsonb_build_array" });
 
             // 通用 JSON 函数映射到 PostgreSQL 语法（JsonExtract/JsonQuery 使用 ->，JsonValue 使用 ->>，JsonContains 使用 @>）
             postgreSqlBuilder.RegisterFunctionSqlHandler("JsonExtract", (ref outSql, expr, context, sqlBuilder, outputParams) =>

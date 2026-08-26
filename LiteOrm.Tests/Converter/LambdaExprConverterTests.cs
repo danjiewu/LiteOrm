@@ -1,6 +1,7 @@
 using LiteOrm.Common;
 using LiteOrm.Tests.Models;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace LiteOrm.Tests
@@ -585,6 +586,92 @@ namespace LiteOrm.Tests
             var func = Assert.IsType<FunctionExpr>(result);
             Assert.Equal("TotalDays", func.FunctionName);
             Assert.Single(func.Args);
+        }
+
+        #endregion
+
+        #region Regex 方法映射
+
+        [Fact]
+        public void Regex_IsMatch_Static_YieldsRegexpLikeLogicBinaryExpr()
+        {
+            // Regex.IsMatch(u.Name, @"\d+") → REGEXP_LIKE(Name, pattern)
+            Expression<Func<TestUser, bool>> expr = u => Regex.IsMatch(u.Name!, @"\d+");
+            var result = LambdaExprConverter.ToLogicExpr(expr);
+            var bin = Assert.IsType<LogicBinaryExpr>(result);
+            Assert.Equal(LogicOperator.RegexpLike, bin.Operator);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(bin.Left).PropertyName);
+            Assert.IsType<ValueExpr>(bin.Right);
+        }
+
+        [Fact]
+        public void Regex_IsMatch_Instance_YieldsRegexpLikeLogicBinaryExpr()
+        {
+            // new Regex(@"\d+").IsMatch(u.Name) → REGEXP_LIKE(Name, pattern)
+            Expression<Func<TestUser, bool>> expr = u => new Regex(@"\d+").IsMatch(u.Name!);
+            var result = LambdaExprConverter.ToLogicExpr(expr);
+            var bin = Assert.IsType<LogicBinaryExpr>(result);
+            Assert.Equal(LogicOperator.RegexpLike, bin.Operator);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(bin.Left).PropertyName);
+            Assert.IsType<ValueExpr>(bin.Right);
+        }
+
+        [Fact]
+        public void Regex_Replace_Static_YieldsRegexpReplaceFunctionExpr()
+        {
+            // Regex.Replace(u.Name, @"\d", "X") → REGEXP_REPLACE(Name, pattern, replacement)
+            Expression<Func<TestUser, string>> expr = u => Regex.Replace(u.Name!, @"\d", "X");
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("REGEXP_REPLACE", func.FunctionName);
+            Assert.Equal(3, func.Args.Count);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.IsType<ValueExpr>(func.Args[1]);
+            Assert.IsType<ValueExpr>(func.Args[2]);
+        }
+
+        [Fact]
+        public void Regex_Replace_Instance_YieldsRegexpReplaceFunctionExpr()
+        {
+            // new Regex(@"\d").Replace(u.Name, "X") → REGEXP_REPLACE(Name, pattern, replacement)
+            Expression<Func<TestUser, string>> expr = u => new Regex(@"\d").Replace(u.Name!, "X");
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("REGEXP_REPLACE", func.FunctionName);
+            Assert.Equal(3, func.Args.Count);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.IsType<ValueExpr>(func.Args[1]);
+            Assert.IsType<ValueExpr>(func.Args[2]);
+        }
+
+        [Fact]
+        public void Regex_IsMatch_ClosureVariable_YieldsRegexpLikeLogicBinaryExpr()
+        {
+            // 闭包变量 regex.IsMatch(u.Name) → 求值 regex 实例，从 Pattern 提取模式 → REGEXP_LIKE(Name, pattern)
+            var regex = new Regex(@"\d+");
+            Expression<Func<TestUser, bool>> expr = u => regex.IsMatch(u.Name!);
+            var result = LambdaExprConverter.ToLogicExpr(expr);
+            var bin = Assert.IsType<LogicBinaryExpr>(result);
+            Assert.Equal(LogicOperator.RegexpLike, bin.Operator);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(bin.Left).PropertyName);
+            var patternValue = Assert.IsType<ValueExpr>(bin.Right);
+            Assert.Equal(@"\d+", patternValue.Value);
+        }
+
+        [Fact]
+        public void Regex_Replace_ClosureVariable_YieldsRegexpReplaceFunctionExpr()
+        {
+            // 闭包变量 regex.Replace(u.Name, "X") → 求值 regex 实例，从 Pattern 提取模式 → REGEXP_REPLACE(Name, pattern, replacement)
+            var regex = new Regex(@"\d");
+            Expression<Func<TestUser, string>> expr = u => regex.Replace(u.Name!, "X");
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("REGEXP_REPLACE", func.FunctionName);
+            Assert.Equal(3, func.Args.Count);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            var patternValue = Assert.IsType<ValueExpr>(func.Args[1]);
+            Assert.Equal(@"\d", patternValue.Value);
+            Assert.Equal("X", Assert.IsType<ValueExpr>(func.Args[2]).Value);
         }
 
         #endregion

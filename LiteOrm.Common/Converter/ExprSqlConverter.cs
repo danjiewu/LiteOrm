@@ -449,13 +449,10 @@ namespace LiteOrm.Common
                     }
                     break;
                 case LogicOperator.RegexpLike:
-                    // 正则表达式匹配通常使用特定的函数调用语法
-                    sb.Append(op);
-                    sb.Append("(");
-                    ToSqlInternal(ref sb, expr.Left, context, sqlBuilder, outputParams, curPriority);
-                    sb.Append(",");
-                    ToSqlInternal(ref sb, expr.Right, context, sqlBuilder, outputParams, curPriority);
-                    sb.Append(")");
+                    // 通过构造 FunctionExpr 委托给 SqlBuilder 中注册的 REGEXP_LIKE 函数处理器生成各方言 SQL
+                    if (isOppsite) sb.Append("NOT ");
+                    var regexpFunc = Expr.Func("REGEXP_LIKE", expr.Left!, expr.Right!);
+                    ToSqlInternal(ref sb, regexpFunc, context, sqlBuilder, outputParams);
                     break;
                 case LogicOperator.Equal:
                     // 特殊处理 NULL 值的比较：在 SQL 中 a = NULL 始终为假，必须使用 IS NULL

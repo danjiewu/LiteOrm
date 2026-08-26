@@ -472,13 +472,13 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 尝试从任意表达式中解析值：
+        /// 对不依赖 Lambda 参数的子表达式求值，返回其运行时值。
         /// - 直接读取 ConstantExpression
         /// - 处理 UnaryExpression(转换) 包含的常量
         /// - 最后尝试编译并执行表达式以求值（用于闭包变量等）
         /// 若无法求值则抛出异常。
         /// </summary>
-        protected object? Evaluate(Expression expr)
+        internal protected object? Evaluate(Expression expr)
         {
             if (expr is null) throw new ArgumentNullException(nameof(expr));
 

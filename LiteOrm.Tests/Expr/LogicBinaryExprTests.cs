@@ -65,7 +65,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var expr = new LogicBinaryExpr(Expr.Prop("Id"), LogicOperator.In, new ValueExpr(1));
 
-            Assert.Equal("[Id] In 1", expr.ToString());
+            Assert.Equal("[Id] IN 1", expr.ToString());
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var expr = new LogicBinaryExpr(Expr.Prop("Name"), LogicOperator.Like, new ValueExpr("%test%"));
 
-            Assert.Equal("[Name] Like %test%", expr.ToString());
+            Assert.Equal("[Name] LIKE %test%", expr.ToString());
         }
 
         [Fact]

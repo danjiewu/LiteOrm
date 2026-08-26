@@ -102,6 +102,32 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 注册按默认方式（函数名加参数列表）生成 SQL 的函数处理器，等价于注册 <see cref="SqlBuilder.DefaultFunctionSqlHandler"/>。
+        /// 适用于函数名与目标 SQL 函数名一致、参数直接拼接即可的场景。
+        /// </summary>
+        /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
+        /// <param name="sqlBuilder">要注册处理器的 SQL 构建器实例。</param>
+        /// <param name="functionName">要处理的函数名称。</param>
+        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, string functionName) where T : SqlBuilder
+        {
+            SqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, SqlBuilder.DefaultFunctionSqlHandler);
+        }
+
+        /// <summary>
+        /// 注册按默认方式（函数名加参数列表）生成 SQL 的多个函数处理器，等价于为每个函数名注册 <see cref="SqlBuilder.DefaultFunctionSqlHandler"/>。
+        /// </summary>
+        /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
+        /// <param name="sqlBuilder">要注册处理器的 SQL 构建器实例。</param>
+        /// <param name="functionNames">要处理的函数名称集合。</param>
+        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, IEnumerable<string> functionNames) where T : SqlBuilder
+        {
+            foreach (string functionName in functionNames)
+            {
+                SqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, SqlBuilder.DefaultFunctionSqlHandler);
+            }
+        }
+
+        /// <summary>
         /// 获取函数的 SQL 语句处理器
         /// </summary>
         /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>

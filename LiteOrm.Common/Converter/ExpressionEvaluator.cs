@@ -168,7 +168,6 @@ namespace LiteOrm.Common
 
         // ---------- 新建对象 ----------
 #if NET8_0_OR_GREATER
-        [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "Expression evaluation is only used under JIT (LiteOrm does not call this path under AOT); the IL3050 warning from Activator.CreateInstance does not apply here.")]
         [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Expression evaluation is only used under JIT (LiteOrm does not call this path under AOT); newExpr.Type constructors are naturally available under JIT.")]
 #endif
         private static object? EvaluateNew(NewExpression newExpr)
