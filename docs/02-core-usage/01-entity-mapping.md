@@ -63,7 +63,7 @@ public class User
 | `Expression` | 计算列表达式（非实际列），用 `{属性名}` 引用同一实体的其他属性，或直接书写数据库方言 SQL 片段。 |
 | `ColumnMode` | 列操作模式（`ColumnMode` 枚举），默认 `Full`。计算列设为 `ColumnMode.Computed`。 |
 
-> **复杂类型需显式 `[Column]`**：数组/集合、`Json`/`Jsonb`、以及自定义类（映射为 `Object`）等复杂类型的属性，若未标注 `[Column]` **不再被自动识别为表列**，必须显式 `[Column]`（并按其场景指定 `DbType = Array`/`Json`/`Jsonb` 等）才会持久化。已知标量（数值、`string`/`char`、`byte[]`→`Binary`、`Guid`、日期、枚举→`Int32`）仍会自动映射为列。该规则在运行时（`AttributeTableInfoProvider`）与 AOT 源生成器（`TableInfoGenerator`）中保持行为一致。
+> **复杂类型需显式 `[Column]`**：数组/集合、以及自定义类（映射为 `Object`）等复杂类型的属性，若未标注 `[Column]` **不再被自动识别为表列**，必须显式 `[Column]`（并按其场景指定 `DbType = Array` 等）才会持久化。已知标量（数值、`string`/`char`、`byte[]`→`Binary`、`Guid`、日期、枚举→`Int32`）以及 `Json`/`Jsonb` 映射类型仍会自动映射为列。该规则在运行时（`AttributeTableInfoProvider`）与 AOT 源生成器（`TableInfoGenerator`）中保持行为一致。
 
 ### 数组列（PostgreSQL）
 

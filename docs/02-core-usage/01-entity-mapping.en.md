@@ -63,7 +63,7 @@ public class User
 | `Expression` | Computed column expression (non-actual column); reference other properties of the same entity via `{PropertyName}`, or write a dialect-specific raw SQL fragment. |
 | `ColumnMode` | Column operation mode (`ColumnMode` enum), defaults to `Full`. Set to `ColumnMode.Computed` for computed columns. |
 
-> **Complex types require an explicit `[Column]`**: properties of complex types — arrays/collections, `Json`/`Jsonb`, and custom classes (mapped as `Object`) — are **no longer auto-recognized as table columns** when they lack a `[Column]`. You must mark them explicitly with `[Column]` (specifying `DbType = Array` / `Json` / `Jsonb` as appropriate) to persist them. Known scalars (numerics, `string`/`char`, `byte[]` → `Binary`, `Guid`, dates, enums → `Int32`) are still auto-mapped as columns. The runtime (`AttributeTableInfoProvider`) and the AOT source generator (`TableInfoGenerator`) behave consistently.
+> **Complex types require an explicit `[Column]`**: properties of complex types — arrays/collections and custom classes (mapped as `Object`) — are **no longer auto-recognized as table columns** when they lack a `[Column]`. You must mark them explicitly with `[Column]` (specifying `DbType = Array` as appropriate) to persist them. Known scalars (numerics, `string`/`char`, `byte[]` → `Binary`, `Guid`, dates, enums → `Int32`) and `Json`/`Jsonb` mapped types are still auto-mapped as columns. The runtime (`AttributeTableInfoProvider`) and the AOT source generator (`TableInfoGenerator`) behave consistently.
 
 ### Array Columns (PostgreSQL)
 

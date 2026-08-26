@@ -143,10 +143,10 @@ namespace LiteOrm
             }
             else
             {
-                // 未标注 [Column] 的属性：复杂类型（数组/集合 → Array 掩码、Json/Jsonb/自定义类 → Object）
-                // 不自动生成列元信息，必须手动加 [Column] 特性才会作为列；仅已知标量类型（数值、string、byte[]、Guid、日期等）自动映射为列。
+                // 未标注 [Column] 的属性：复杂类型（数组/集合 → Array 掩码、自定义类 → Object）
+                // 不自动生成列元信息，必须手动加 [Column] 特性才会作为列；仅已知标量类型（数值、string、byte[]、Guid、日期等）及 Json/Jsonb 映射类型自动映射为列。
                 DbValueType inferred = DbValueTypeMap.InferFromPropertyType(property.PropertyType);
-                if (inferred.HasArray() || inferred is DbValueType.Object or DbValueType.Json or DbValueType.Jsonb)
+                if (inferred.HasArray() || inferred is DbValueType.Object)
                     return null;
 
                 ColumnDefinition column = new ColumnDefinition(property);

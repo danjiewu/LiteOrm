@@ -33,7 +33,7 @@ LiteOrm has first-class NativeAOT support. With `PublishAot` enabled, the `LiteO
 
 ## Rules and Constraints
 
-- **Complex types require an explicit `[Column]`**: properties of complex types — arrays/collections, `Json`/`Jsonb`, custom classes (`Object`) — are not auto-recognized as table columns without `[Column]`; mark them explicitly (specifying `DbType = Array` / `Json` / `Jsonb` as needed) to persist them.
+- **Complex types require an explicit `[Column]`**: properties of complex types — arrays/collections and custom classes (`Object`) — are not auto-recognized as table columns without `[Column]`; mark them explicitly (specifying `DbType = Array` as needed) to persist them. `Json`/`Jsonb` mapped types are now auto-generated as columns.
 - **Converters must be declared or pre-registered**: complex/custom conversions must be declared via `Column.ConverterType`, `ForeignColumn.ConverterType`, or pre-registered via `SqlBuilder.RegisterDbValueConverter`. `Column.ConverterType` requires a type implementing `IDbValueConverter`. A column with `ForeignColumn.ConverterType` prefers its own converter when reading and otherwise falls back to the target column's.
 - Avoid introducing runtime reflection into entities/conversion chains that the source generator cannot cover.
 

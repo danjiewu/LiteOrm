@@ -33,7 +33,7 @@ LiteOrm 具备完善的 NativeAOT 兼容能力。开启 `PublishAot` 后，编�
 
 ## 规则与约束
 
-- **复杂类型需显式 `[Column]`**：数组/集合、`Json`/`Jsonb`、自定义类（`Object`）等复杂类型属性，未标注 `[Column]` 时不会被自动识别为表列；需显式 `[Column]`（并按需指定 `DbType = Array`/`Json`/`Jsonb`）才会持久化。
+- **复杂类型需显式 `[Column]`**：数组/集合、自定义类（`Object`）等复杂类型属性，未标注 `[Column]` 时不会被自动识别为表列；需显式 `[Column]`（并按需指定 `DbType = Array`）才会持久化。`Json`/`Jsonb` 映射类型已支持自动生成列。
 - **转换器需显式声明或预注册**：复杂/自定义转换须通过列级 `Column.ConverterType`、`ForeignColumn.ConverterType` 声明，或经 `SqlBuilder.RegisterDbValueConverter` 预注册；`Column.ConverterType` 需提供实现 `IDbValueConverter` 的转换器类型。声明了 `ForeignColumn.ConverterType` 的列在读取时优先使用自身转换器，否则回退目标列。
 - 避免在实体/转换链路中引入无法被源生成器覆盖的运行期反射。
 

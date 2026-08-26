@@ -4,7 +4,7 @@
 
 ### Breaking Changes
 
-- Properties of complex types (arrays/collections, `Json`/`Jsonb`, custom classes) are **no longer auto-mapped as table columns**; they require an explicit `[Column]` (and, as appropriate, `DbType = Array`/`Json`/`Jsonb`). Known scalars (numerics, `string`/`char`, `byte[]`, `Guid`, dates, enums) are still auto-mapped.
+	- Properties of complex types (arrays/collections, custom classes) are **no longer auto-mapped as table columns**; they require an explicit `[Column]` (and, as appropriate, `DbType = Array`).Known scalars (numerics, `string`/`char`, `byte[]`, `Guid`, dates, enums) and `Json`/`Jsonb` mapped types are still auto-mapped.
 - `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` constructors now take an `IServiceProvider`, resolving the required `ObjectDAO<T>` / `ObjectViewDAO<T>` from the container; derived service constructors were updated accordingly. No changes are needed under DI.
 
 ### Enhancements

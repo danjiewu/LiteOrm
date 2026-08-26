@@ -4,7 +4,7 @@
 
 ### 破坏性变更
 
-- 复杂类型（数组/集合、`Json`/`Jsonb`、自定义类）属性**不再自动生成列为表列**，须显式标注 `[Column]`（并按需指定 `DbType = Array`/`Json`/`Jsonb`）；已知标量（数值、`string`/`char`、`byte[]`、`Guid`、日期、枚举）仍自动映射。
+	- 复杂类型（数组/集合、自定义类）属性**不再自动生成列为表列**，须显式标注 `[Column]`（并按需指定 `DbType = Array`）；已知标量（数值、`string`/`char`、`byte[]`、`Guid`、日期、枚举）及 `Json`/`Jsonb` 映射类型仍自动映射。
 - `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` 构造函数改为接收 `IServiceProvider`，由容器解析所需的 `ObjectDAO<T>` / `ObjectViewDAO<T>`；派生服务构造函数同步调整，依赖注入场景无需改动。
 
 ### 改进
