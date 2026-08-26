@@ -33,6 +33,19 @@
   - `Max`/`Min` distinguish aggregate (`MAX`/`MIN`) from scalar (`GREATEST`/`LEAST`) via `IsAggregate`; SQLite's `max`/`min` support both.
   - Standard same-name functions (`Abs`, `Round`, `Floor`, `Sqrt`, `Exp`, `Sin`/`Cos`/`Tan`/`Asin`/`Acos`/`Atan`, `Sign`, `Replace`, `Coalesce`, `Upper`/`Lower` via ExprExtensions) need no registration — default rendering works across databases.
 - `ISqlBuilder` gains `TryAppendSqlLiteral`: string constants (`Expr.Const(string)`) containing only regular characters (no backslash or control characters) are inlined directly as `'value'` (single quotes escaped via `''`); strings with special characters fall back to parameterization. String constants like `Expr.Const(" ")` can now be used in computed column expressions.
+- Added Lambda-to-SQL-function mappings for `System.Text.RegularExpressions.Regex` methods, supporting static form `Regex.M(...)`, instance form `new Regex(pattern).M(...)`, and closure-variable form `regex.M(...)` (instance forms evaluate the Regex object and read `Pattern` via reflection):
+
+  | C# Method/Member | SQL Function | Description |
+  |------------------|--------------|-------------|
+  | `Regex.IsMatch(input, pattern)` | `REGEXP_LIKE` | Regex match predicate (WHERE) |
+  | `Regex.Replace(input, pattern, replacement)` | `REGEXP_REPLACE` | Regex replace |
+  | `Regex.Match(input, pattern).Value` | `REGEXP_SUBSTR` | Extract first match substring |
+  | `Regex.Match(input, pattern).Index` | `REGEXP_INSTR - 1` | First match position (converted to 0-based to match C# `Match.Index`) |
+  | `Regex.Match(input, pattern).Success` | `REGEXP_LIKE` | Whether matched (predicate) |
+
+  - Dialect registration: `REGEXP_LIKE` uses the `REGEXP` operator on MySQL and the `~` operator on PostgreSQL; `REGEXP_REPLACE`/`REGEXP_INSTR`/`REGEXP_SUBSTR`/`REGEXP_COUNT` default to rendering same-name functions (native on Oracle/MySQL 8.0+/PostgreSQL).
+  - `SqlBuilder.DefaultFunctionSqlHandler` renders as `FunctionName(args)`; the `RegisterFunctionSqlHandler(functionName)` name-only overload directly reuses the default rendering.
+- Oracle identifiers are no longer forced to uppercase, consistent with other databases.
 
 ### Fixes
 

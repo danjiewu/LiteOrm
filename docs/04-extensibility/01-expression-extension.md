@@ -369,6 +369,11 @@ LiteOrm 在首次访问对应组件时通过 `LiteOrmLambdaHandlerInitializer` �
 | `string` | `.Remove()` | 删除字符 | SQL LEFT |
 | `string` | `.ToString(format)` | 格式化 | SQL Format |
 | `Math` | `.Abs()` / `.Max()` / `.Min()` 等 | 数学函数 | 直接转换为 SQL |
+| `Regex` | `Regex.IsMatch(input, pattern)` | 正则匹配谓词 | `REGEXP_LIKE`（MySQL: `REGEXP`，PostgreSQL: `~`） |
+| `Regex` | `Regex.Replace(input, pattern, replacement)` | 正则替换 | `REGEXP_REPLACE` |
+| `Regex` | `Regex.Match(input, pattern).Value` | 提取匹配子串 | `REGEXP_SUBSTR` |
+| `Regex` | `Regex.Match(input, pattern).Index` | 匹配起始位置 | `REGEXP_INSTR - 1` |
+| `Regex` | `Regex.Match(input, pattern).Success` | 是否匹配 | `REGEXP_LIKE` |
 | `IList` | `.Contains()` | 集合包含 | SQL `IN` |
 | `TimeSpan` | `.TotalSeconds` / `.TotalDays` 等 | 时间差计算 | 数据库 DateDiff 函数 |
 | `Equals()` | 实例/静态 Equals | 相等比较 | SQL `=` |
@@ -382,6 +387,11 @@ var users = await userService.SearchAsync(u => u.UserName.StartsWith("A"));
 var users = await userService.SearchAsync(u => u.UserName.Contains("test"));
 var users = await userService.SearchAsync(u => u.Tags.Contains(1));
 var users = await userService.SearchAsync(u => u.CreateTime.AddDays(7) > DateTime.Now);
+// 正则表达式匹配（REGEXP_LIKE）
+var users = await userService.SearchAsync(u => Regex.IsMatch(u.UserName!, @"\d+"));
+// 正则替换（REGEXP_REPLACE）
+var dt = await dao.Search(Expr.Query<TestUser, IQueryable<object>>(q => q
+    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })));
 ```
 
 ## 10. 默认注册的 SqlFunction（跨数据库）
@@ -406,6 +416,11 @@ LiteOrm 在首次访问 `SqlBuilder` 时通过 `LiteOrmSqlFunctionInitializer` �
 | `AddSeconds` / `AddMinutes` 等 | 日期加减 | 各数据库 DATE\_ADD / DATEADD |
 | `DateDiffSeconds` / `DateDiffDays` 等 | 日期间差计算 | 各数据库对应函数 |
 | `TotalSeconds` / `TotalDays` 等 | 时间值转数值 | 各数据库对应函数 |
+| `REGEXP_LIKE` | 正则匹配谓词 | MySQL: `REGEXP`，PostgreSQL: `~`，其余: `REGEXP_LIKE(a, b)` |
+| `REGEXP_REPLACE` | 正则替换 | Oracle/MySQL8+/PostgreSQL: `REGEXP_REPLACE` |
+| `REGEXP_SUBSTR` | 提取匹配子串 | Oracle/MySQL8+/PostgreSQL: `REGEXP_SUBSTR` |
+| `REGEXP_INSTR` | 匹配位置 | Oracle/MySQL8+: `REGEXP_INSTR`（1 基，`Match().Index` 映射时自动 -1） |
+| `REGEXP_COUNT` | 匹配次数 | Oracle/MySQL8+: `REGEXP_COUNT` |
 
 **各数据库特有函数**：
 

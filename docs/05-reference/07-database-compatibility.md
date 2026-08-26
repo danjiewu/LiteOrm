@@ -160,6 +160,19 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 >
 > 日期/时间函数（`Now`、`Today`、`Add*`、`DateDiff*`、`Total*`、`Format`）、字符串函数（`IndexOf`、`Substring`、`Trim`/`TrimStart`/`TrimEnd`、`Remove`）、JSON 函数（`JsonExtract`、`JsonValue` 等）均已按各方言注册，详见 `LiteOrmSqlFunctionInitializer`。
 
+#### 正则表达式函数
+
+`Regex` Lambda 方法经 `LambdaExprConverter` 映射为 `REGEXP_*` 函数，由各方言注册处理器生成对应 SQL：
+
+| C# 方法 | SQL 函数 | 基类 (SQLite/Oracle/SQLServer) | MySQL | PostgreSQL |
+|---------|----------|------|-------|------------|
+| `Regex.IsMatch` / `.Success` | `REGEXP_LIKE` | `REGEXP_LIKE(a, b)` | `a REGEXP b` | `a ~ b` |
+| `Regex.Replace` | `REGEXP_REPLACE` | `REGEXP_REPLACE(a, b, c)` | 同名 | 同名 |
+| `Regex.Match().Value` | `REGEXP_SUBSTR` | `REGEXP_SUBSTR(a, b)` | 同名 | 同名 |
+| `Regex.Match().Index` | `REGEXP_INSTR - 1` | `REGEXP_INSTR(a, b) - 1` | 同名 | 同名 |
+
+> `REGEXP_INSTR` 在 Oracle/MySQL 为 1 基，映射时自动减 1 转为 C# 的 0 基 `Match.Index`。`Regex.IsMatch`/`Replace` 支持静态形式、`new Regex(pattern)` 实例形式与闭包变量形式（实例形式通过求值 Regex 对象反射读取 Pattern）。
+
 ### 2.6 标识符引用与参数前缀
 
 | 数据库 | 标识符引用 | 参数前缀 | 名称大小写处理 |

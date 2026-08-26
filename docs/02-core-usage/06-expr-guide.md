@@ -499,6 +499,25 @@ LiteOrm 会把它解析成 `Expr.If(...)`，并进一步生成 SQL `CASE` 表达
 
 补充说明：`Contains` / `StartsWith` / `EndsWith` / `Like` 仍会做参数化与通配符转义，但只有在模式字符串确实包含需要转义的特殊字符时，才会生成 `ESCAPE` 片段。
 
+#### 正则表达式（Lambda）
+
+在 Lambda 表达式中可直接使用 `System.Text.RegularExpressions.Regex`，自动映射为数据库正则函数：
+
+```csharp
+// WHERE REGEXP_LIKE(Name, '\d+')（MySQL: REGEXP，PostgreSQL: ~）
+await dao.Search(u => Regex.IsMatch(u.Name!, @"\d+"));
+
+// SELECT REGEXP_REPLACE(Name, '\d+', '#')
+await dao.Search(Expr.Query<TestUser, IQueryable<object>>(q => q
+    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })));
+
+// SELECT REGEXP_SUBSTR(Name, '\d+')  -- 提取首个匹配
+// SELECT REGEXP_INSTR(Name, '\d+') - 1  -- 匹配位置（0 基）
+// WHERE REGEXP_LIKE(Name, '\d+')  -- .Success 谓词
+```
+
+支持静态形式 `Regex.IsMatch(...)`、实例形式 `new Regex(pattern).IsMatch(...)`、闭包变量形式 `regex.IsMatch(...)`。
+
 ### 8.4 别名、聚合、排序
 
 | 方法 | 说明 |

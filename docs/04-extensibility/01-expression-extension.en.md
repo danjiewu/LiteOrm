@@ -369,6 +369,11 @@ LiteOrm automatically registers many default methods on first access through `Li
 | `string` | `.Remove()` | Remove characters | SQL LEFT |
 | `string` | `.ToString(format)` | Formatting | SQL Format |
 | `Math` | `.Abs()` / `.Max()` / `.Min()` etc. | Math functions | Directly converted to SQL |
+| `Regex` | `Regex.IsMatch(input, pattern)` | Regex match predicate | `REGEXP_LIKE` (MySQL: `REGEXP`, PostgreSQL: `~`) |
+| `Regex` | `Regex.Replace(input, pattern, replacement)` | Regex replace | `REGEXP_REPLACE` |
+| `Regex` | `Regex.Match(input, pattern).Value` | Extract match substring | `REGEXP_SUBSTR` |
+| `Regex` | `Regex.Match(input, pattern).Index` | Match start position | `REGEXP_INSTR - 1` |
+| `Regex` | `Regex.Match(input, pattern).Success` | Whether matched | `REGEXP_LIKE` |
 | `IList` | `.Contains()` | Collection contains | SQL `IN` |
 | `TimeSpan` | `.TotalSeconds` / `.TotalDays` etc. | Time difference calculation | Database DateDiff function |
 | `Equals()` | Instance/static Equals | Equality comparison | SQL `=` |
@@ -382,6 +387,11 @@ var users = await userService.SearchAsync(u => u.UserName.StartsWith("A"));
 var users = await userService.SearchAsync(u => u.UserName.Contains("test"));
 var users = await userService.SearchAsync(u => u.Tags.Contains(1));
 var users = await userService.SearchAsync(u => u.CreateTime.AddDays(7) > DateTime.Now);
+// Regex match (REGEXP_LIKE)
+var users = await userService.SearchAsync(u => Regex.IsMatch(u.UserName!, @"\d+"));
+// Regex replace (REGEXP_REPLACE)
+var dt = await dao.Search(Expr.Query<TestUser, IQueryable<object>>(q => q
+    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })));
 ```
 
 ## 10. Default Registered SqlFunctions (Cross-Database)
@@ -406,6 +416,11 @@ LiteOrm automatically registers the following cross-database SqlFunctions on fir
 | `AddSeconds` / `AddMinutes` etc. | Date arithmetic | Database DATE_ADD / DATEADD |
 | `DateDiffSeconds` / `DateDiffDays` etc. | Date difference calculation | Database-specific functions |
 | `TotalSeconds` / `TotalDays` etc. | Time value to number | Database-specific functions |
+| `REGEXP_LIKE` | Regex match predicate | MySQL: `REGEXP`, PostgreSQL: `~`, others: `REGEXP_LIKE(a, b)` |
+| `REGEXP_REPLACE` | Regex replace | Oracle/MySQL8+/PostgreSQL: `REGEXP_REPLACE` |
+| `REGEXP_SUBSTR` | Extract match substring | Oracle/MySQL8+/PostgreSQL: `REGEXP_SUBSTR` |
+| `REGEXP_INSTR` | Match position | Oracle/MySQL8+: `REGEXP_INSTR` (1-based; `Match().Index` mapping auto-subtracts 1) |
+| `REGEXP_COUNT` | Match count | Oracle/MySQL8+: `REGEXP_COUNT` |
 
 **Database-Specific Functions:**
 

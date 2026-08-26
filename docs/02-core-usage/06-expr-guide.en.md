@@ -498,6 +498,25 @@ LiteOrm parses this into `Expr.If(...)`, which is then rendered as a SQL `CASE` 
 
 Additional note: `Contains` / `StartsWith` / `EndsWith` / `Like` still use parameterization and wildcard escaping, but the `ESCAPE` fragment is emitted only when the pattern actually contains characters that need escaping.
 
+#### Regular Expressions (Lambda)
+
+`System.Text.RegularExpressions.Regex` can be used directly in Lambda expressions, automatically mapped to database regex functions:
+
+```csharp
+// WHERE REGEXP_LIKE(Name, '\d+') (MySQL: REGEXP, PostgreSQL: ~)
+await dao.Search(u => Regex.IsMatch(u.Name!, @"\d+"));
+
+// SELECT REGEXP_REPLACE(Name, '\d+', '#')
+await dao.Search(Expr.Query<TestUser, IQueryable<object>>(q => q
+    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })));
+
+// SELECT REGEXP_SUBSTR(Name, '\d+')  -- extract first match
+// SELECT REGEXP_INSTR(Name, '\d+') - 1  -- match position (0-based)
+// WHERE REGEXP_LIKE(Name, '\d+')  -- .Success predicate
+```
+
+Supports static form `Regex.IsMatch(...)`, instance form `new Regex(pattern).IsMatch(...)`, and closure-variable form `regex.IsMatch(...)`.
+
 ### 8.4 Alias, aggregate, and ordering helpers
 
 | Method | Description |

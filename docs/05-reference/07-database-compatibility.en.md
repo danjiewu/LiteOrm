@@ -160,6 +160,19 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 >
 > Date/time functions (`Now`, `Today`, `Add*`, `DateDiff*`, `Total*`, `Format`), string functions (`IndexOf`, `Substring`, `Trim`/`TrimStart`/`TrimEnd`, `Remove`), and JSON functions (`JsonExtract`, `JsonValue`, etc.) are all registered per dialect — see `LiteOrmSqlFunctionInitializer`.
 
+#### Regular Expression Functions
+
+`Regex` Lambda methods are mapped to `REGEXP_*` functions via `LambdaExprConverter`, with dialect-specific handlers generating the corresponding SQL:
+
+| C# Method | SQL Function | Base (SQLite/Oracle/SQLServer) | MySQL | PostgreSQL |
+|-----------|--------------|------|-------|------------|
+| `Regex.IsMatch` / `.Success` | `REGEXP_LIKE` | `REGEXP_LIKE(a, b)` | `a REGEXP b` | `a ~ b` |
+| `Regex.Replace` | `REGEXP_REPLACE` | `REGEXP_REPLACE(a, b, c)` | Same name | Same name |
+| `Regex.Match().Value` | `REGEXP_SUBSTR` | `REGEXP_SUBSTR(a, b)` | Same name | Same name |
+| `Regex.Match().Index` | `REGEXP_INSTR - 1` | `REGEXP_INSTR(a, b) - 1` | Same name | Same name |
+
+> `REGEXP_INSTR` is 1-based on Oracle/MySQL; the mapping subtracts 1 to match C#'s 0-based `Match.Index`. `Regex.IsMatch`/`Replace` support static form, `new Regex(pattern)` instance form, and closure-variable form (instance forms evaluate the Regex object and read `Pattern` via reflection).
+
 ### 2.6 Identifier Quoting and Parameter Prefix
 
 | Database | Identifier Quoting | Param Prefix | Case Handling |

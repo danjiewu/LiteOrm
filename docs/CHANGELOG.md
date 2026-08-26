@@ -33,6 +33,19 @@
   - `Max`/`Min` 通过 `IsAggregate` 区分聚合（`MAX`/`MIN`）与标量（`GREATEST`/`LEAST`）；SQLite 的 `max`/`min` 同时支持标量与聚合。
   - `Abs`、`Round`、`Floor`、`Sqrt`、`Exp`、`Sin`/`Cos`/`Tan`/`Asin`/`Acos`/`Atan`、`Sign`、`Replace`、`Coalesce`、`Upper`/`Lower`（ExprExtensions 形式）等标准 SQL 同名函数无需注册，默认渲染即可跨数据库工作。
 - `ISqlBuilder` 新增 `TryAppendSqlLiteral` 方法：字符串常量（`Expr.Const(string)`）渲染时，仅含常规字符（无反斜杠、控制字符）的字符串以 `'value'` 形式直接内联（单引号以 `''` 转义），含特殊字符的仍走参数化，兼顾安全与性能。计算列表达式中可使用 `Expr.Const(" ")` 等字符串常量。
+- 新增 `System.Text.RegularExpressions.Regex` 方法的 Lambda 到 SQL 函数映射，支持静态形式 `Regex.M(...)`、实例形式 `new Regex(pattern).M(...)`、闭包变量形式 `regex.M(...)`（实例形式通过求值 Regex 对象反射读取 Pattern）：
+
+  | C# 方法/成员 | SQL 函数 | 说明 |
+  |-------------|----------|------|
+  | `Regex.IsMatch(input, pattern)` | `REGEXP_LIKE` | 正则匹配谓词（WHERE） |
+  | `Regex.Replace(input, pattern, replacement)` | `REGEXP_REPLACE` | 正则替换 |
+  | `Regex.Match(input, pattern).Value` | `REGEXP_SUBSTR` | 提取首个匹配子串 |
+  | `Regex.Match(input, pattern).Index` | `REGEXP_INSTR - 1` | 首个匹配位置（转为 0 基以匹配 C# `Match.Index`） |
+  | `Regex.Match(input, pattern).Success` | `REGEXP_LIKE` | 是否匹配（谓词） |
+
+  - 各方言注册：`REGEXP_LIKE` 在 MySQL 使用 `REGEXP` 运算符、PostgreSQL 使用 `~` 运算符；`REGEXP_REPLACE`/`REGEXP_INSTR`/`REGEXP_SUBSTR`/`REGEXP_COUNT` 默认渲染同名函数（Oracle/MySQL 8.0+/PostgreSQL 原生支持）。
+  - `SqlBuilder.DefaultFunctionSqlHandler` 默认处理器按「函数名(参数列表)」渲染，`RegisterFunctionSqlHandler(functionName)` 仅含名称的重载直接复用默认渲染。
+- Oracle 标识符不再强制转大写，与其他数据库行为一致。
 
 ### 修复
 
