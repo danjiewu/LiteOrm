@@ -538,7 +538,8 @@ namespace LiteOrm
         /// <param name="sqlBody">查询SQL，使用插值字符串格式，可插入普通变量或 Expr。<see cref="LiteOrm.Common.ExprString"/></param>
         /// <param name="readerFunc">用于从 DbDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverterByTable{TResult}(IDbConverter)"/></param>
         /// <returns>包含查询结果集的可枚举结果对象。</returns>
-        public virtual EnumerableResult<TResult> Query<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, Func<AutoLockDataReader, TResult>? readerFunc = null)
+        public virtual EnumerableResult<TResult> Query<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>
+            ([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, Func<AutoLockDataReader, TResult>? readerFunc = null)
         {
             return new EnumerableResult<TResult>(this, sqlBody.GetResult(), readerFunc);
         }

@@ -92,7 +92,6 @@ namespace LiteOrm
             set => Target.DesignTimeVisible = value;
         }
 
-        private string? commandText;
         /// <summary>
         /// 获取或设置要对数据源执行的文本命令。
         /// </summary>
@@ -101,12 +100,8 @@ namespace LiteOrm
 #endif
         public override string CommandText
         {
-            get { return commandText!; }
-            set
-            {
-                commandText = value;
-                Target.CommandText = SqlBuilder?.ReplaceSqlName(value!) ?? value;
-            }
+            get { return Target.CommandText; }
+            set { Target.CommandText = value; }
         }
 
         /// <summary>

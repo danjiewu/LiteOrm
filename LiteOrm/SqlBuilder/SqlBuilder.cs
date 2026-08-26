@@ -208,7 +208,7 @@ namespace LiteOrm
         public virtual void BuildConcatSql(ref ValueStringBuilder sb, params string[] strs)
         {
             if (strs == null || strs.Length == 0) return;
-            if(strs.Length == 1 )
+            if (strs.Length == 1)
             {
                 sb.Append(strs[0]);
                 return;
@@ -354,52 +354,98 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 将列名、表名等替换为数据库合法名称
+        /// 将 SQL 中的方括号 [] 替换为指定的标识符定界符，同时避免替换字符串字面量内部的方括号。
         /// </summary>
-        /// <param name="sql">sql语句</param>
-        /// <param name="left">左定界符</param>
-        /// <param name="right">右定界符</param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        protected string ReplaceSqlName(string sql, char left, char right, Func<char, char>? handler = null)
+        /// <param name="sql">原始 SQL 文本。</param>
+        /// <param name="left">标识符左定界符（如 '`'、'"'）。</param>
+        /// <param name="right">标识符右定界符。</param>
+        /// <param name="handler">可选字符处理器，仅对不在字符串内的字符调用（标识符定界符和方括号替换结果除外）。</param>
+        /// <param name="backslashEscapes">是否在字符串内将反斜杠视为转义字符（MySQL 默认 true，标准 SQL false）。</param>
+        /// <returns> 替换后的SQL </returns>
+        protected string ReplaceSqlName(string sql, char left, char right,
+                                        Func<char, char>? handler = null,
+                                        bool backslashEscapes = false)
         {
-            if (sql is null) return null!;
-            var sb = ValueStringBuilder.Create(sql.Length);
-            bool passNext = false;
-            Stack<char> stack = new Stack<char>();
-            foreach (char ch in sql)
+            if (sql is null) return string.Empty; // 或抛出异常，按需调整
+
+            // 预分配足够容量（原长度 + 可能增加的长度：方括号替换可能改变长度，但通常定界符长度 <= 2）
+            var sb = ValueStringBuilder.Create(sql.Length + 16);
+
+            bool inSingleQuote = false;   // 是否在单引号字符串内
+            bool escapeNext = false;      // 反斜杠转义：下一个字符原样输出
+
+            for (int i = 0; i < sql.Length; i++)
             {
-                if (passNext)
+                char ch = sql[i];
+
+                // 处理反斜杠转义
+                if (escapeNext)
                 {
                     sb.Append(ch);
-                    passNext = false;
+                    escapeNext = false;
+                    continue;
+                }
+
+                if (backslashEscapes && inSingleQuote && ch == '\\')
+                {
+                    // 字符串内的反斜杠：跳过下一个字符的语义处理
+                    sb.Append(ch);
+                    escapeNext = true;
+                    continue;
+                }
+
+                // 处理引号状态
+                if (ch == '\'')
+                {
+                    if (inSingleQuote)
+                    {
+                        // 检查是否双写转义：如果下一个字符也是单引号，则原样输出两个引号并跳过下一个
+                        if (i + 1 < sql.Length && sql[i + 1] == '\'')
+                        {
+                            sb.Append("''");
+                            i++; // 跳过下一个引号
+                        }
+                        else
+                        {
+                            // 字符串结束
+                            inSingleQuote = false;
+                            sb.Append(ch);
+                        }
+                    }
+                    else
+                    {
+                        inSingleQuote = true;
+                        sb.Append(ch);
+                    }
+                    continue;
+                }
+
+                // 处理方括号替换
+                if (!inSingleQuote) // 不在单引号字符串内
+                {
+                    if (ch == '[')
+                    {
+                        sb.Append(left);
+                        continue;
+                    }
+                    if (ch == ']')
+                    {
+                        sb.Append(right);
+                        continue;
+                    }
+                }
+
+                // 其他字符：调用 handler 或原样输出
+                if (handler != null && !inSingleQuote)
+                {
+                    sb.Append(handler(ch));
                 }
                 else
                 {
-                    switch (ch)
-                    {
-                        case '[': sb.Append(stack.Count == 0 ? left : ch); break;
-                        case ']': sb.Append(stack.Count == 0 ? right : ch); break;
-                        case '"':
-                            if (stack.Count > 0 && stack.Peek() == '"') stack.Pop();
-                            else stack.Push(ch);
-                            sb.Append(ch); break;
-                        case '\'':
-                            if (stack.Count > 0 && stack.Peek() == '\'') stack.Pop();
-                            else stack.Push(ch);
-                            sb.Append(ch); break;
-                        case '\\': sb.Append(ch); passNext = true; break;
-                        default:
-                            if (handler is not null && stack.Count == 0)
-                            {
-                                sb.Append(handler(ch));
-                            }
-                            else
-                                sb.Append(ch);
-                            break;
-                    }
+                    sb.Append(ch);
                 }
             }
+
             string result = sb.ToString();
             sb.Dispose();
             return result;
