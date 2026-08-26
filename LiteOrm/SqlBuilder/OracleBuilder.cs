@@ -195,7 +195,7 @@ namespace LiteOrm
         /// <returns></returns>
         public override string ReplaceSqlName(string sql)
         {
-            return ReplaceSqlName(sql, '"', '"', Char.ToUpper);
+            return ReplaceSqlName(sql, '"', '"');
         }
 
         /// <summary>

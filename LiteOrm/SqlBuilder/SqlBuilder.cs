@@ -376,15 +376,15 @@ namespace LiteOrm
                         case ']': sb.Append(stack.Count == 0 ? right : ch); break;
                         case '"':
                             if (stack.Count > 0 && stack.Peek() == '"') stack.Pop();
-                            else stack.Push('"');
+                            else stack.Push(ch);
                             sb.Append(ch); break;
                         case '\'':
                             if (stack.Count > 0 && stack.Peek() == '\'') stack.Pop();
-                            else stack.Push('\'');
+                            else stack.Push(ch);
                             sb.Append(ch); break;
                         case '\\': sb.Append(ch); passNext = true; break;
                         default:
-                            if (handler is not null)
+                            if (handler is not null && stack.Count == 0)
                             {
                                 sb.Append(handler(ch));
                             }
