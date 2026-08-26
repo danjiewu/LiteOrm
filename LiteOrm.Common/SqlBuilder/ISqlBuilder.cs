@@ -63,6 +63,16 @@ namespace LiteOrm.Common
         string ToSqlParam(string nativeName);
 
         /// <summary>
+        /// 尝试将字符串值作为 SQL 字符串字面量追加到指定的构建器中。
+        /// 如果检测到可能导致注入或解析异常的字符（反斜杠、任何控制字符），
+        /// 则返回 <see langword="false"/>，不修改构建器，由调用方改用参数化查询。
+        /// </summary>
+        /// <param name="builder">目标字符串构建器。</param>
+        /// <param name="value">原始字符串值，可为 null。</param>
+        /// <returns>成功追加时返回 <see langword="true"/>。</returns>
+        bool TryAppendSqlLiteral(ref ValueStringBuilder builder, string? value);
+
+        /// <summary>
         /// 将一个值格式化为用于 LIKE 查询的 SQL 表达式（包含必要的转义或通配符处理）。
         /// </summary>
         /// <param name="value">原始匹配值。</param>

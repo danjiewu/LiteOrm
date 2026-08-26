@@ -12,6 +12,27 @@
 - `ColumnAttribute` / `ForeignColumnAttribute` 均新增 `ConverterType` 用于声明列级转换器；`ForeignColumn` 读取外键投影列时**优先自身声明的转换器，否则回退目标列**。
 - 数值类型互转现已默认注册（覆盖 `decimal`/`float`/`double` 与整型族互转，如 `Decimal→Int32`），跨数值类型读写无需手动注册。
 - 值转换机制优化：转换统一收敛为「委托式转换器」，解析优先级固定为 列级转换器 → 按 (值类型, 数据库取值类型) 的注册表 → 直接赋值；`null`/`DBNull`/空字符串 等空值统一提前短路，未注册或无需转换时不再做通用兜底。
+- 补全各数据库通用 SQL 函数的方言注册，C# 方法名经 `LambdaExprConverter` 转为 `FunctionExpr` 后不再因函数名不匹配或方言差异生成无效 SQL：
+
+  | 函数 | 基类 (SQLite/MySQL/SQLServer) | Oracle | PostgreSQL | SQL Server |
+  |------|------|--------|------------|------------|
+  | `ToLower` | `LOWER` | — | — | — |
+  | `ToUpper` | `UPPER` | — | — | — |
+  | `Pow` | `POWER` | — | — | — |
+  | `Char` | `CHAR` | `CHR` | `CHR` | — |
+  | `Ceiling` | `CEILING` | `CEIL` | `CEIL` | — |
+  | `Truncate` | `TRUNCATE(x,0)` | `TRUNC` | `TRUNC` | `ROUND(x,0,1)` |
+  | `Concat` | `CONCAT` | `||` | — | — |
+  | `Log` | `LOG` | `LN` | `LN` | — |
+  | `Log10` | `LOG10` | `LOG(10,x)` | `LOG` | — |
+  | `Atan2` | `ATAN2` | — | — | `ATN2` |
+  | `Max` (标量) | `GREATEST` | — | — | — |
+  | `Min` (标量) | `LEAST` | — | — | — |
+  | `Max`/`Min` (SQLite) | — | — | — | `max`/`min` |
+
+  - `Max`/`Min` 通过 `IsAggregate` 区分聚合（`MAX`/`MIN`）与标量（`GREATEST`/`LEAST`）；SQLite 的 `max`/`min` 同时支持标量与聚合。
+  - `Abs`、`Round`、`Floor`、`Sqrt`、`Exp`、`Sin`/`Cos`/`Tan`/`Asin`/`Acos`/`Atan`、`Sign`、`Replace`、`Coalesce`、`Upper`/`Lower`（ExprExtensions 形式）等标准 SQL 同名函数无需注册，默认渲染即可跨数据库工作。
+- `ISqlBuilder` 新增 `TryAppendSqlLiteral` 方法：字符串常量（`Expr.Const(string)`）渲染时，仅含常规字符（无反斜杠、控制字符）的字符串以 `'value'` 形式直接内联（单引号以 `''` 转义），含特殊字符的仍走参数化，兼顾安全与性能。计算列表达式中可使用 `Expr.Const(" ")` 等字符串常量。
 
 ### 修复
 

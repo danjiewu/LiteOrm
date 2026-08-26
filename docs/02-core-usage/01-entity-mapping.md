@@ -157,7 +157,7 @@ table.Columns.First(c => c.Name == "Total").ExpressionExpr = Expr.Prop("Price") 
 - **生成查询条件**：`SearchAsync(u => u.FullName == "张三 李四")` 会生成 `WHERE ("FirstName" || ' ' || "LastName") = @0`。
 - 设了 `Expression` / `ExpressionExpr` 即使未写 `ColumnMode.Computed`，也会自动视为计算列；建议显式声明 `ColumnMode = ColumnMode.Computed`。
 - 字符串形式按数据库方言书写（示例为 SQLite/PostgreSQL 的 `||`，MySQL 用 `CONCAT(...)`）；Expr 树形式自动按方言渲染。
-- Expr 树形式同时设置时优先于字符串形式；仅允许固定 SQL（不生成参数），`Expr.Const(100)` 可用，`Expr.Value("str")` 会抛异常。
+- Expr 树形式同时设置时优先于字符串形式；仅允许固定 SQL（不生成参数）。`Expr.Const(100)` 可用；`Expr.Const(" ")` 等常规字符串常量以 `' '` 形式内联（单引号以 `''` 转义），含反斜杠或控制字符的字符串仍会参数化并抛异常；`Expr.Value("str")` 始终参数化，会抛异常。
 
 ### 动态修改列定义
 
@@ -178,6 +178,8 @@ priceCol.DbType = DbValueType.Decimal;
 ```
 
 > **注意**：`TableDefinition` 由 `TableInfoProvider` 全局缓存，修改后对所有后续查询生效。建议在应用启动阶段（如 `AddLiteOrm()` 之后、首次查询之前）统一设置，避免运行期竞争。
+>
+> `GenerateTableView` 复用 `TableDefinition` 中的 `ColumnDefinition` 对象（不重复创建），因此动态修改 `ExpressionExpr` 等属性只需在 `TableDefinition` 上设置一处，`TableView`（SELECT 渲染）即可同时生效。
 
 ### `[Column]` 特性参数一览
 

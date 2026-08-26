@@ -185,10 +185,10 @@ namespace LiteOrm.Demo.Demos
 
                 DemoHelper.PrintSection("📝 代码实现",
                     "var update = new UpdateExpr(From<User>(), Prop(\"UserName\") == \"UpdateDemo_Bob\")\n" +
-                    "    .Set((\"UserName\", Func(\"CONCAT\", Prop(\"UserName\"), Const(\"_v2\"))));");
+                    "    .Set((\"UserName\", Prop(\"UserName\").Concat(Const(\"_v2\"))));");
 
                 var update = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "UpdateDemo_Bob")
-                    .Set(("UserName", Func("CONCAT", Prop("UserName"), Const("_v2"))));
+                    .Set(("UserName", Prop("UserName").Concat(Const("_v2"))));
 
                 int affected = await userSvc.UpdateAllAsync(update);
 

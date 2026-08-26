@@ -12,6 +12,27 @@
 - Both `ColumnAttribute` and `ForeignColumnAttribute` now expose `ConverterType` to declare a column-level converter. When reading a foreign projection column, `ForeignColumn` **prefers its own declared converter, otherwise falls back to the target column's**.
 - Cross-numeric-type conversion is now registered by default (covering `decimal`/`float`/`double` and the integer family, e.g. `Decimal→Int32`), so no manual registration is needed.
 - Value-conversion mechanism optimized: conversion now converges on a delegating converter, resolved with a fixed priority of column-level converter → registry keyed by (value type, database value type) → direct assignment; null/`DBNull`/empty-string values are short-circuited up front, and no generic fallback is applied when nothing is registered or no conversion is needed.
+- Registered cross-dialect SQL functions for all database builders so that C# method names converted via `LambdaExprConverter` no longer produce invalid SQL due to name mismatch or dialect differences:
+
+  | Function | Base (SQLite/MySQL/SQLServer) | Oracle | PostgreSQL | SQL Server |
+  |----------|------|--------|------------|------------|
+  | `ToLower` | `LOWER` | — | — | — |
+  | `ToUpper` | `UPPER` | — | — | — |
+  | `Pow` | `POWER` | — | — | — |
+  | `Char` | `CHAR` | `CHR` | `CHR` | — |
+  | `Ceiling` | `CEILING` | `CEIL` | `CEIL` | — |
+  | `Truncate` | `TRUNCATE(x,0)` | `TRUNC` | `TRUNC` | `ROUND(x,0,1)` |
+  | `Concat` | `CONCAT` | `||` | — | — |
+  | `Log` | `LOG` | `LN` | `LN` | — |
+  | `Log10` | `LOG10` | `LOG(10,x)` | `LOG` | — |
+  | `Atan2` | `ATAN2` | — | — | `ATN2` |
+  | `Max` (scalar) | `GREATEST` | — | — | — |
+  | `Min` (scalar) | `LEAST` | — | — | — |
+  | `Max`/`Min` (SQLite) | — | — | — | `max`/`min` |
+
+  - `Max`/`Min` distinguish aggregate (`MAX`/`MIN`) from scalar (`GREATEST`/`LEAST`) via `IsAggregate`; SQLite's `max`/`min` support both.
+  - Standard same-name functions (`Abs`, `Round`, `Floor`, `Sqrt`, `Exp`, `Sin`/`Cos`/`Tan`/`Asin`/`Acos`/`Atan`, `Sign`, `Replace`, `Coalesce`, `Upper`/`Lower` via ExprExtensions) need no registration — default rendering works across databases.
+- `ISqlBuilder` gains `TryAppendSqlLiteral`: string constants (`Expr.Const(string)`) containing only regular characters (no backslash or control characters) are inlined directly as `'value'` (single quotes escaped via `''`); strings with special characters fall back to parameterization. String constants like `Expr.Const(" ")` can now be used in computed column expressions.
 
 ### Fixes
 

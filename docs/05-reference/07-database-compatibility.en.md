@@ -132,7 +132,35 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 | PostgreSQL / SQLite / Oracle / Dameng | `||` operator |
 | MySQL / OceanBase / TiDB / GreatDB | `CONCAT(...)` function (base default) |
 
-### 2.5 Identifier Quoting and Parameter Prefix
+### 2.5 String Constant Inlining
+
+`ISqlBuilder.TryAppendSqlLiteral` is used to inline string constants (`Expr.Const(string)`) directly as SQL literals. Strings containing only regular characters (no backslash or control characters) are safely inlined — single quotes are escaped via standard `''`. Strings with backslash or control characters return `false`, causing the caller to fall back to parameterization, preventing MySQL backslash injection. This behavior is consistent across all databases with no per-dialect override needed.
+
+### 2.5 Built-in SQL Function Registration
+
+`LiteOrmSqlFunctionInitializer` registers SQL function handlers at startup, mapping C# method names (converted to `FunctionExpr` via `LambdaExprConverter`) to the correct database functions. Unregistered function names fall through to default rendering (`FunctionName(args)`); standard same-name functions (e.g. `ABS`, `ROUND`, `FLOOR`, `SQRT`, `SIN`, `COALESCE`) need no registration.
+
+| Function | Base (SQLite/MySQL/SQLServer) | Oracle | PostgreSQL | SQL Server |
+|----------|------|--------|------------|------------|
+| `ToLower` | `LOWER` | — | — | — |
+| `ToUpper` | `UPPER` | — | — | — |
+| `Pow` | `POWER` | — | — | — |
+| `Char` | `CHAR` | `CHR` | `CHR` | — |
+| `Ceiling` | `CEILING` | `CEIL` | `CEIL` | — |
+| `Truncate` | `TRUNCATE(x,0)` | `TRUNC` | `TRUNC` | `ROUND(x,0,1)` |
+| `Concat` | `CONCAT` | `||` | — | — |
+| `Log` | `LOG` (natural) | `LN` | `LN` | — |
+| `Log10` | `LOG10` | `LOG(10,x)` | `LOG` | — |
+| `Atan2` | `ATAN2` | — | — | `ATN2` |
+| `Max` (scalar) | `GREATEST` | — | — | — |
+| `Min` (scalar) | `LEAST` | — | — | — |
+| `Max`/`Min` (SQLite) | — | — | — | `max`/`min` |
+
+> `Max`/`Min` distinguish aggregate (`MAX`/`MIN`) from scalar (`GREATEST`/`LEAST`) via `IsAggregate`; SQLite's `max`/`min` support both.
+>
+> Date/time functions (`Now`, `Today`, `Add*`, `DateDiff*`, `Total*`, `Format`), string functions (`IndexOf`, `Substring`, `Trim`/`TrimStart`/`TrimEnd`, `Remove`), and JSON functions (`JsonExtract`, `JsonValue`, etc.) are all registered per dialect — see `LiteOrmSqlFunctionInitializer`.
+
+### 2.6 Identifier Quoting and Parameter Prefix
 
 | Database | Identifier Quoting | Param Prefix | Case Handling |
 |----------|-------------------|-------------|---------------|
@@ -142,14 +170,14 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 | PostgreSQL / KingbaseES / GaussDB | `"name"` (double quotes) | `@` | Lowercase |
 | SQLite | `"name"` (double quotes) | `@` | No conversion |
 
-### 2.6 Set Operations
+### 2.7 Set Operations
 
 | Database | EXCEPT Syntax |
 |----------|--------------|
 | Oracle / Dameng | `MINUS` |
 | Others | `EXCEPT` (base default) |
 
-### 2.7 Batch Update
+### 2.8 Batch Update
 
 | Database | Batch Update Method |
 |----------|---------------------|
@@ -159,7 +187,7 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 | PostgreSQL / KingbaseES / GaussDB | `UPDATE table u SET ... FROM (VALUES ...) AS v(...) WHERE u.key = v.k0` |
 | SQLite | `WITH batch_data(...) AS (VALUES (...)) UPDATE table SET col = (SELECT ... FROM batch_data WHERE ...) WHERE EXISTS (...)` |
 
-### 2.8 Batch Insert
+### 2.9 Batch Insert
 
 | Database | Batch Insert Method |
 |----------|---------------------|

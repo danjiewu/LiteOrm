@@ -147,6 +147,58 @@ namespace LiteOrm.Tests
             Assert.Equal(expected, OracleBuilder.Instance.ToSqlLikeValue(input));
         }
 
+        [Theory]
+        [InlineData(null, true, "NULL")]
+        [InlineData("", true, "''")]
+        [InlineData("hello", true, "'hello'")]
+        [InlineData(" ", true, "' '")]
+        [InlineData("John Smith", true, "'John Smith'")]
+        [InlineData("2026-08-26", true, "'2026-08-26'")]
+        [InlineData("it's", true, "'it''s'")]
+        [InlineData("a'b", true, "'a''b'")]
+        [InlineData("a\\b", false, null)]
+        [InlineData("trailing\\", false, null)]
+        [InlineData("a\tb", false, null)]
+        [InlineData("a\nb", false, null)]
+        public void TryAppendSqlLiteral_DetectsSafeAndUnsafe(string? input, bool expectedResult, string? expectedOutput)
+        {
+            var sb = new ValueStringBuilder();
+            bool result = SqlBuilder.Instance.TryAppendSqlLiteral(ref sb, input);
+            Assert.Equal(expectedResult, result);
+            string output = sb.ToString();
+            sb.Dispose();
+            Assert.Equal(expectedOutput, expectedResult ? output : null);
+
+            var sb2 = new ValueStringBuilder();
+            Assert.Equal(expectedResult, MySqlBuilder.Instance.TryAppendSqlLiteral(ref sb2, input));
+            Assert.Equal(expectedOutput, expectedResult ? sb2.ToString() : null);
+            sb2.Dispose();
+
+            var sb3 = new ValueStringBuilder();
+            Assert.Equal(expectedResult, SQLiteBuilder.Instance.TryAppendSqlLiteral(ref sb3, input));
+            Assert.Equal(expectedOutput, expectedResult ? sb3.ToString() : null);
+            sb3.Dispose();
+        }
+
+        [Theory]
+        [InlineData("hello", 0)]     // safe string: inlined, no params
+        [InlineData(" ", 0)]         // space: inlined, no params
+        [InlineData("it's", 0)]      // single quote: inlined via '', no params
+        [InlineData("a\\b", 1)]      // backslash: parameterized
+        [InlineData("a\tb", 1)]      // tab: parameterized
+        [InlineData("", 0)]           // empty string: inlined
+        public void ConstString_RendersLiteralOrParam_DependingOnSafety(string value, int expectedParamCount)
+        {
+            var builder = SQLiteBuilder.Instance;
+            var context = new SqlBuildContext(null, "T0", null);
+            var sb = new ValueStringBuilder();
+            var outputParams = new List<Param>();
+            var expr = (Expr)new ValueExpr(value) { IsConst = true };
+            expr.ToSql(ref sb, context, builder, outputParams);
+            sb.Dispose();
+            Assert.Equal(expectedParamCount, outputParams.Count);
+        }
+
         private static AttributeTableInfoProvider CreateProvider(SqlBuilder builder)
         {
             return new AttributeTableInfoProvider();

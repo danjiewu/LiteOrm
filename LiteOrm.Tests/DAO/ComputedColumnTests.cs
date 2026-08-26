@@ -1,4 +1,4 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
 using LiteOrm.Service;
 using LiteOrm.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,10 +16,10 @@ namespace LiteOrm.Tests
             // FullName 计算列采用动态注册：声明时仅标记 ColumnMode.Computed。
             // 运行时通过全局单例 TableInfoProvider.Instance 设置 ExpressionExpr。
             // 使用 .Concat() 链（ValueSet，由 BuildConcatSql 按方言生成 ||），
-            // 空格用 Char(32) 表达（LiteOrmSqlFunctionInitializer 注册各数据库方言），避免字符串常量参数化。
+            // 空格用 Expr.Const(" ") 直接输出 SQL 字符串字面量，不再生成参数。
             var table = TableInfoProvider.Instance.GetTableDefinition(typeof(ComputedUserModel))!;
             table.Columns.First(c => c.Name == "FullName").ExpressionExpr = Expr.Prop("FirstName")
-                .Concat(Expr.Func("Char", Expr.Const(32)))
+                .Concat(Expr.Const(" "))
                 .Concat(Expr.Prop("LastName"));
         }
 

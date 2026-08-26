@@ -628,6 +628,16 @@ namespace LiteOrm.Common
                 // 数值类型常量直接以字面量形式输出，较为高效
                 sb.Append(expr.Value.ToString());
             }
+            else if (expr.IsConst && expr.Value is string s)
+            {
+                // 字符串常量尝试直接输出为字面量，如果不支持则使用参数化
+                if (!sqlBuilder.TryAppendSqlLiteral(ref sb, s))
+                {
+                    string paramName = outputParams.Count.ToString();
+                    outputParams.Add(new Param(sqlBuilder.ToParamName(paramName), s));
+                    sb.Append(sqlBuilder.ToSqlParam(paramName));
+                }
+            }
             else if (expr.Value is Expr innerExpr)
             {
                 ToSqlInternal(ref sb, innerExpr, context, sqlBuilder, outputParams);

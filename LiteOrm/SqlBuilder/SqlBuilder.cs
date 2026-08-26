@@ -278,6 +278,37 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 尝试将字符串值作为 SQL 字符串字面量追加到指定的构建器中。
+        /// 如果检测到可能导致注入或解析异常的字符（反斜杠、任何控制字符），
+        /// 则返回 false，不修改构建器，由调用方改用参数化查询。
+        /// </summary>
+        public virtual bool TryAppendSqlLiteral(ref ValueStringBuilder builder, string? value)
+        {
+            if (value is null)
+            {
+                builder.Append("NULL");
+                return true;
+            }
+
+            foreach (char c in value)
+            {
+                if (c == '\\' || char.IsControl(c))
+                    return false;
+            }
+
+            builder.Append('\'');
+            foreach (char c in value)
+            {
+                if (c == '\'')
+                    builder.Append("''");
+                else
+                    builder.Append(c);
+            }
+            builder.Append('\'');
+            return true;
+        }
+
+        /// <summary>
         /// 原始名称转化为参数名称
         /// </summary>
         /// <param name="nativeName">原始名称</param>

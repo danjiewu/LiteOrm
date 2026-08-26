@@ -157,7 +157,7 @@ table.Columns.First(c => c.Name == "Total").ExpressionExpr = Expr.Prop("Price") 
 - **Query conditions**: `SearchAsync(u => u.FullName == "John Smith")` produces `WHERE ("FirstName" || ' ' || "LastName") = @0`.
 - Setting `Expression` / `ExpressionExpr` alone (without `ColumnMode.Computed`) is also treated as a computed column; declaring `ColumnMode = ColumnMode.Computed` is recommended.
 - The string form is dialect-specific (the example uses SQLite/PostgreSQL `||`; MySQL uses `CONCAT(...)`); the Expr tree form renders automatically per dialect.
-- When both forms are set, the Expr tree form takes precedence; only fixed SQL (no parameters) is allowed — `Expr.Const(100)` works, `Expr.Value("str")` throws.
+- When both forms are set, the Expr tree form takes precedence; only fixed SQL (no parameters) is allowed. `Expr.Const(100)` works; regular string constants like `Expr.Const(" ")` are inlined as `' '` (single quotes escaped via `''`); strings with backslash or control characters are parameterized and throw; `Expr.Value("str")` is always parameterized and throws.
 
 ### Dynamically Modifying Column Definitions
 
@@ -178,6 +178,8 @@ priceCol.DbType = DbValueType.Decimal;
 ```
 
 > **Note**: `TableDefinition` is globally cached by `TableInfoProvider`; modifications take effect for all subsequent queries. It is recommended to make all dynamic modifications at application startup (after `AddLiteOrm()`, before the first query) to avoid runtime contention.
+>
+> `GenerateTableView` reuses `ColumnDefinition` objects from `TableDefinition` (no duplication), so setting `ExpressionExpr` etc. on `TableDefinition` automatically applies to `TableView` (SELECT rendering) as well.
 
 ### `[Column]` Attribute Parameters
 
