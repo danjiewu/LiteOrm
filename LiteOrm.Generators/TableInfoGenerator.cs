@@ -325,9 +325,6 @@ namespace LiteOrm.Generators
             var tableAttr = FindTableAttribute(type, symbols);
             if (tableAttr == null)
                 return null;
-            // 仅当 [Table] 直接标注在当前类型上时才视为独立表实体；从基类继承的视为视图模型。
-            bool isView = !type.GetAttributes().Any(a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, symbols.TableAttribute));
-            info.IsView = isView;
 
             // TableName
             string? tableName = null;
@@ -916,6 +913,7 @@ namespace LiteOrm.Generators
                 foreach (var c in e.Columns)
                 {
                     if (!c.CanRead) continue;
+                    if (!IsDeclaredOnEntity(c, e.Type)) continue;
                     sb.AppendLine($"            PropertyAccessorExtension.RegisterAccessor(");
                     sb.AppendLine($"                typeof({e.FullName}).Find(\"{c.PropertyName}\")!,");
                     sb.AppendLine($"                {e.SafeName}_{c.PropertyName}_Getter,");
@@ -934,6 +932,7 @@ namespace LiteOrm.Generators
             {
                 foreach (var c in e.Columns)
                 {
+                    if (!IsDeclaredOnEntity(c, e.Type)) continue;
                     GenerateAccessorMethods(sb, e, c);
                 }
             }
@@ -968,6 +967,13 @@ namespace LiteOrm.Generators
                 sb.AppendLine("        }");
             }
         }
+
+        /// <summary>
+        /// 判断列对应的属性是否由当前实体类型自身声明（而非继承自基类）。
+        /// 视图类型仅注册自身声明属性的访问器，继承属性的访问器由基类实体注册。
+        /// </summary>
+        private static bool IsDeclaredOnEntity(ColumnInfo c, INamedTypeSymbol entityType)
+            => c.Symbol != null && SymbolEqualityComparer.Default.Equals(c.Symbol.ContainingType, entityType);
 
         // ──────────────────────────────────────────────────────────────
         // 4. 生成模块初始化器
