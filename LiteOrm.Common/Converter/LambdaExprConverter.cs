@@ -52,7 +52,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 默认的方法处理器：将方法名作为 SQL 函数名生成 FunctionExpr。
         /// </summary>
-        protected static Func<MethodCallExpression, LambdaExprConverter, Expr> DefaultFunctionHandler => (node, converter) =>
+        public static Func<MethodCallExpression, LambdaExprConverter, Expr> DefaultFunctionHandler => static (node, converter) =>
         {
             return converter.CreateFunctionExpr(node);
         };
@@ -60,7 +60,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 默认的成员处理器：将成员（属性/字段）名映射为 FunctionExpr 或 PropertyExpr。
         /// </summary>
-        protected static Func<MemberExpression, LambdaExprConverter, Expr> DefaultMemberHandler => (node, converter) =>
+        public static Func<MemberExpression, LambdaExprConverter, Expr> DefaultMemberHandler => static (node, converter) =>
         {
             return node.Expression is null ? new FunctionExpr(node.Member.Name) : new FunctionExpr(node.Member.Name, converter.Convert(node.Expression).AsValue());
         };

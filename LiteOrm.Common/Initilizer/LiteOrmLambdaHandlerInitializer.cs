@@ -43,6 +43,24 @@ namespace LiteOrm
             // string.Length：字符串长度
             // 各数据库实现：MySQL 用 CHAR_LENGTH()，SQL Server 用 LEN()
             LambdaExprConverter.RegisterMemberHandler(typeof(string), "Length");
+
+            // Regex.Match(input, pattern).Value → REGEXP_SUBSTR(input, pattern)：提取首个匹配的子串
+            LambdaExprConverter.RegisterMemberHandler(typeof(Capture), nameof(Capture.Value), (node, converter) =>
+                TryExtractRegexMatchArgs(node.Expression, converter, out var input, out var pattern)
+                    ? new FunctionExpr("REGEXP_SUBSTR", input, pattern)
+                    : LambdaExprConverter.DefaultMemberHandler(node, converter));
+
+            // Regex.Match(input, pattern).Index → REGEXP_INSTR(input, pattern) - 1：首个匹配的起始位置（转为 0 基以匹配 C# Match.Index）
+            LambdaExprConverter.RegisterMemberHandler(typeof(Capture), nameof(Capture.Index), (node, converter) =>
+                TryExtractRegexMatchArgs(node.Expression, converter, out var input, out var pattern)
+                    ? new FunctionExpr("REGEXP_INSTR", input, pattern) - Expr.Const(1)
+                    : LambdaExprConverter.DefaultMemberHandler(node, converter));
+
+            // Regex.Match(input, pattern).Success → REGEXP_LIKE(input, pattern)：是否匹配（谓词）
+            LambdaExprConverter.RegisterMemberHandler(typeof(Group), nameof(Group.Success), (node, converter) =>
+                TryExtractRegexMatchArgs(node.Expression, converter, out var input, out var pattern)
+                    ? new LogicBinaryExpr(input, LogicOperator.RegexpLike, pattern)
+                    : LambdaExprConverter.DefaultMemberHandler(node, converter));
         }
 
         /// <summary>
@@ -313,6 +331,37 @@ namespace LiteOrm
                 return new ValueExpr(regex.ToString());
             }
             throw new NotSupportedException($"Cannot extract regex pattern from expression: {regexExpr}");
+        }
+
+        /// <summary>
+        /// 尝试从 <c>Regex.Match</c> 调用表达式中提取输入与正则模式，
+        /// 支持静态形式 <c>Regex.Match(input, pattern)</c> 与实例形式 <c>new Regex(pattern).Match(input)</c> / 闭包变量 <c>regex.Match(input)</c>。
+        /// </summary>
+        /// <param name="expr">可能是 <c>Regex.Match</c> 调用的表达式节点。</param>
+        /// <param name="converter">当前转换器。</param>
+        /// <param name="input">输出：输入字符串表达式。</param>
+        /// <param name="pattern">输出：正则模式表达式。</param>
+        /// <returns>若 <paramref name="expr"/> 为 <c>Regex.Match</c> 调用则返回 true，并填充输出参数；否则返回 false。</returns>
+        private static bool TryExtractRegexMatchArgs(Expression? expr, LambdaExprConverter converter,
+            out ValueTypeExpr input, out ValueTypeExpr pattern)
+        {
+            input = null!;
+            pattern = null!;
+            if (expr is not MethodCallExpression mc) return false;
+            if (mc.Method.DeclaringType != typeof(Regex) || mc.Method.Name != nameof(Regex.Match)) return false;
+            if (mc.Object is not null)
+            {
+                // 实例形式：new Regex(pattern).Match(input) 或 regex.Match(input)
+                pattern = ExtractRegexPattern(mc.Object, converter);
+                input = converter.Convert(mc.Arguments[0]).AsValue();
+            }
+            else
+            {
+                // 静态形式：Regex.Match(input, pattern[, options])
+                input = converter.Convert(mc.Arguments[0]).AsValue();
+                pattern = converter.Convert(mc.Arguments[1]).AsValue();
+            }
+            return true;
         }
 
         /// <summary>

@@ -48,18 +48,38 @@ namespace LiteOrm.Tests.Infrastructure
 
         private void DatabaseFixture_OnContextCreated(DAOContext context)
         {
-            ((SqliteConnection)context.DbConnection).CreateFunction("REGEXP_LIKE", (string input, string pattern) =>
+            var connection = (SqliteConnection)context.DbConnection;
+            connection.CreateFunction("REGEXP_LIKE", (string input, string pattern) =>
             {
-                if (input == null || pattern == null)
-                    return false;
+                if (input == null || pattern == null) return false;
+                try { return System.Text.RegularExpressions.Regex.IsMatch(input, pattern); }
+                catch { return false; }
+            });
+            connection.CreateFunction("REGEXP_REPLACE", (string input, string pattern, string replacement) =>
+            {
+                if (input == null || pattern == null || replacement == null) return null!;
+                try { return System.Text.RegularExpressions.Regex.Replace(input, pattern, replacement); }
+                catch { return null!; }
+            });
+            connection.CreateFunction("REGEXP_SUBSTR", (string input, string pattern) =>
+            {
+                if (input == null || pattern == null) return null!;
                 try
                 {
-                    return System.Text.RegularExpressions.Regex.IsMatch(input, pattern);
+                    var match = System.Text.RegularExpressions.Regex.Match(input, pattern);
+                    return match.Success ? match.Value : null!;
                 }
-                catch
+                catch { return null!; }
+            });
+            connection.CreateFunction("REGEXP_INSTR", (string input, string pattern) =>
+            {
+                if (input == null || pattern == null) return 0L;
+                try
                 {
-                    return false;
+                    var match = System.Text.RegularExpressions.Regex.Match(input, pattern);
+                    return match.Success ? (long)match.Index + 1 : 0L;
                 }
+                catch { return 0L; }
             });
         }
         /// <summary>

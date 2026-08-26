@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -930,6 +931,103 @@ namespace LiteOrm.Tests
             Assert.InRange(Convert.ToDouble(row["Minutes"]), 179.5, 180.5);
             Assert.InRange(Convert.ToDouble(row["Seconds"]), 10799.5, 10800.5);
             Assert.InRange(Convert.ToDouble(row["Milliseconds"]), 10799999.5, 10800000.5);
+        }
+
+        #endregion
+
+        #region 正则函数测试
+
+        [Fact]
+        public async Task RegexFunctions_Tests()
+        {
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+            var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
+
+            // 插入测试数据：名称含数字，便于正则匹配
+            var user1 = new TestUser { Name = "RegexTest1", Age = 20, CreateTime = DateTime.Now };
+            var user2 = new TestUser { Name = "RegexTest2", Age = 30, CreateTime = DateTime.Now };
+            var user3 = new TestUser { Name = "RegexTest3", Age = 25, CreateTime = DateTime.Now };
+            await service.InsertAsync(user1, TestContext.Current.CancellationToken);
+            await service.InsertAsync(user2, TestContext.Current.CancellationToken);
+            await service.InsertAsync(user3, TestContext.Current.CancellationToken);
+
+            // Regex.IsMatch（静态形式）在 Where 中 → REGEXP_LIKE 谓词
+            var isMatchResults = await objectViewDAO.Search(u => Regex.IsMatch(u.Name!, @"Test[12]"))
+                .ToListAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(isMatchResults);
+            Assert.Equal(2, isMatchResults.Count);
+            Assert.All(isMatchResults, u => Assert.True(u.Name == "RegexTest1" || u.Name == "RegexTest2"));
+
+            // Regex.IsMatch（实例形式 new Regex）在 Where 中
+            var instanceResults = await objectViewDAO.Search(u => new Regex(@"Test3").IsMatch(u.Name!))
+                .ToListAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(instanceResults);
+            Assert.Single(instanceResults);
+            Assert.Equal("RegexTest3", instanceResults[0].Name);
+
+            // Regex.IsMatch（闭包变量形式）在 Where 中
+            var closureRegex = new Regex(@"Test[12]");
+            var closureResults = await objectViewDAO.Search(u => closureRegex.IsMatch(u.Name!))
+                .ToListAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(closureResults);
+            Assert.Equal(2, closureResults.Count);
+
+            // Regex.Match().Success 在 Where 中 → REGEXP_LIKE 谓词
+            var successResults = await objectViewDAO.Search(u => Regex.Match(u.Name!, @"\d+").Success)
+                .ToListAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(successResults);
+            Assert.Equal(3, successResults.Count);
+
+            // Regex.Replace 在 Select 中 → REGEXP_REPLACE
+            var replaceDt = await dataViewDAO.Search(
+                Expr.Query<TestUser, IQueryable<object>>(q => q
+                    .Where(u => u.Name!.StartsWith("RegexTest"))
+                    .OrderBy(u => u.Name)
+                    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") }))
+            ).GetResultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(replaceDt);
+            Assert.Equal(3, replaceDt.Rows.Count);
+            Assert.All(replaceDt.Rows.Cast<DataRow>(), row =>
+                Assert.Equal("RegexTest#", row["Replaced"]));
+
+            // Regex.Match().Value 在 Select 中 → REGEXP_SUBSTR
+            var valueDt = await dataViewDAO.Search(
+                Expr.Query<TestUser, IQueryable<object>>(q => q
+                    .Where(u => u.Name!.StartsWith("RegexTest"))
+                    .OrderBy(u => u.Name)
+                    .Select(u => new { Matched = Regex.Match(u.Name!, @"\d+").Value }))
+            ).GetResultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(valueDt);
+            Assert.Equal(3, valueDt.Rows.Count);
+            Assert.Equal("1", valueDt.Rows[0]["Matched"]);
+            Assert.Equal("2", valueDt.Rows[1]["Matched"]);
+            Assert.Equal("3", valueDt.Rows[2]["Matched"]);
+
+            // Regex.Match().Index 在 Select 中 → REGEXP_INSTR
+            var indexDt = await dataViewDAO.Search(
+                Expr.Query<TestUser, IQueryable<object>>(q => q
+                    .Where(u => u.Name!.StartsWith("RegexTest"))
+                    .OrderBy(u => u.Name)
+                    .Select(u => new { Position = Regex.Match(u.Name!, @"\d+").Index }))
+            ).GetResultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(indexDt);
+            Assert.Equal(3, indexDt.Rows.Count);
+            Assert.All(indexDt.Rows.Cast<DataRow>(), row =>
+                Assert.Equal(9L, Convert.ToInt64(row["Position"])));
+
+            // Regex.Replace（闭包变量实例形式）在 Select 中
+            var reRegex = new Regex(@"\d+");
+            var closureReplaceDt = await dataViewDAO.Search(
+                Expr.Query<TestUser, IQueryable<object>>(q => q
+                    .Where(u => u.Name!.StartsWith("RegexTest"))
+                    .OrderBy(u => u.Name)
+                    .Select(u => new { Replaced = reRegex.Replace(u.Name!, "#") }))
+            ).GetResultAsync(TestContext.Current.CancellationToken);
+            Assert.NotNull(closureReplaceDt);
+            Assert.Equal(3, closureReplaceDt.Rows.Count);
+            Assert.All(closureReplaceDt.Rows.Cast<DataRow>(), row =>
+                Assert.Equal("RegexTest#", row["Replaced"]));
         }
 
         #endregion

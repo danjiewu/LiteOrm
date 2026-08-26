@@ -674,6 +674,73 @@ namespace LiteOrm.Tests
             Assert.Equal("X", Assert.IsType<ValueExpr>(func.Args[2]).Value);
         }
 
+        [Fact]
+        public void Regex_Match_Value_YieldsRegexpSubstrFunctionExpr()
+        {
+            // Regex.Match(u.Name, @"\d+").Value → REGEXP_SUBSTR(Name, pattern)
+            Expression<Func<TestUser, string>> expr = u => Regex.Match(u.Name!, @"\d+").Value;
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("REGEXP_SUBSTR", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.IsType<ValueExpr>(func.Args[1]);
+        }
+
+        [Fact]
+        public void Regex_Match_Index_YieldsRegexpInstrMinusOneExpr()
+        {
+            // Regex.Match(u.Name, @"\d+").Index → REGEXP_INSTR(Name, pattern) - 1（转为 0 基）
+            Expression<Func<TestUser, int>> expr = u => Regex.Match(u.Name!, @"\d+").Index;
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var binary = Assert.IsType<ValueBinaryExpr>(result);
+            Assert.Equal(ValueOperator.Subtract, binary.Operator);
+            var func = Assert.IsType<FunctionExpr>(binary.Left);
+            Assert.Equal("REGEXP_INSTR", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.Equal(1, Assert.IsType<ValueExpr>(binary.Right).Value);
+        }
+
+        [Fact]
+        public void Regex_Match_Success_YieldsRegexpLikeLogicBinaryExpr()
+        {
+            // Regex.Match(u.Name, @"\d+").Success → REGEXP_LIKE(Name, pattern)
+            Expression<Func<TestUser, bool>> expr = u => Regex.Match(u.Name!, @"\d+").Success;
+            var result = LambdaExprConverter.ToLogicExpr(expr);
+            var bin = Assert.IsType<LogicBinaryExpr>(result);
+            Assert.Equal(LogicOperator.RegexpLike, bin.Operator);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(bin.Left).PropertyName);
+            Assert.IsType<ValueExpr>(bin.Right);
+        }
+
+        [Fact]
+        public void Regex_Match_Instance_Value_YieldsRegexpSubstrFunctionExpr()
+        {
+            // new Regex(@"\d+").Match(u.Name).Value → REGEXP_SUBSTR(Name, pattern)
+            Expression<Func<TestUser, string>> expr = u => new Regex(@"\d+").Match(u.Name!).Value;
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("REGEXP_SUBSTR", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.Equal(@"\d+", Assert.IsType<ValueExpr>(func.Args[1]).Value);
+        }
+
+        [Fact]
+        public void Regex_Match_ClosureVariable_Value_YieldsRegexpSubstrFunctionExpr()
+        {
+            // 闭包变量 regex.Match(u.Name).Value → REGEXP_SUBSTR(Name, pattern)
+            var regex = new Regex(@"\d+");
+            Expression<Func<TestUser, string>> expr = u => regex.Match(u.Name!).Value;
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("REGEXP_SUBSTR", func.FunctionName);
+            Assert.Equal(2, func.Args.Count);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(func.Args[0]).PropertyName);
+            Assert.Equal(@"\d+", Assert.IsType<ValueExpr>(func.Args[1]).Value);
+        }
+
         #endregion
     }
 }
