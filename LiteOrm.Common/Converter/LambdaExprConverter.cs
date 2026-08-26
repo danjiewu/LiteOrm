@@ -510,7 +510,7 @@ namespace LiteOrm.Common
                     var lambda = Expression.Lambda(expr);
                     var compiled = lambda.Compile();
                     return compiled.DynamicInvoke();
-                }                
+                }
             }
             catch (Exception ex)
             {
@@ -655,7 +655,7 @@ namespace LiteOrm.Common
         {
             if (node.Value is Expr expr) return expr;
             if (node.Value == null) return Expr.Null;
-            bool isConst = node.Type.IsPrimitive;
+            bool isConst = node.Type.IsPrimitive || node.Type == typeof(string);
             return new ValueExpr(node.Value) { IsConst = isConst };
         }
 

@@ -553,17 +553,7 @@ namespace LiteOrm.Common
             int curPriority = GetPriority(expr!);
             if (expr.Operator == ValueOperator.Concat)
             {
-                // 字符串拼接逻辑委托给具体的 sqlBuilder，因为不同数据库的语法差异很大（如 || vs CONCAT）
-                var leftSb = ValueStringBuilder.Create(64);
-                ToSqlInternal(ref leftSb, expr.Left, context, sqlBuilder, outputParams);
-                string left = leftSb.ToString();
-                leftSb.Dispose();
-
-                var rightSb = ValueStringBuilder.Create(64);
-                ToSqlInternal(ref rightSb, expr.Right, context, sqlBuilder, outputParams);
-                string right = rightSb.ToString();
-                rightSb.Dispose();
-                sqlBuilder.BuildConcatSql(ref sb, left, right);
+                ToSqlInternal(ref sb, new ValueSet(ValueJoinType.Concat, expr.Left, expr.Right), context, sqlBuilder, outputParams, curPriority);
             }
             else
             {
@@ -878,15 +868,38 @@ namespace LiteOrm.Common
 
             if (expr.JoinType == ValueJoinType.Concat)
             {
-                string[] subExprs = new string[count];
+                List<string> subExprs = new List<string>();
+                var subSb = ValueStringBuilder.Create(64);
+                void Flush(ref ValueStringBuilder sb)
+                {
+                    if (sb.Length > 0)
+                    {
+                        subExprs.Add(sb.ToString());
+                        sb.Length = 0;
+                    }
+                }
                 for (int i = 0; i < count; i++)
                 {
-                    var subSb = ValueStringBuilder.Create(64);
+                    if (expr[i] is ValueExpr { IsConst: true } valueExpr)
+                    {
+                        if (valueExpr.Value is string str)
+                        {
+                            if (sqlBuilder.TryAppendSqlLiteral(ref subSb, str))
+                                continue;
+                        }
+                        else
+                        {
+                            subSb.Append(valueExpr.Value?.ToString());
+                            continue;
+                        }
+                    }
+                    Flush(ref subSb);
                     ToSqlInternal(ref subSb, expr[i], context, sqlBuilder, outputParams);
-                    subExprs[i] = subSb.ToString();
-                    subSb.Dispose();
+                    Flush(ref subSb);
                 }
-                sqlBuilder.BuildConcatSql(ref sb, subExprs);
+                Flush(ref subSb);
+                subSb.Dispose();
+                sqlBuilder.BuildConcatSql(ref sb, subExprs.ToArray());
                 return;
             }
 

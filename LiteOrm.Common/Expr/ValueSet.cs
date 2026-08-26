@@ -21,7 +21,7 @@ namespace LiteOrm.Common
         /// 使用指定的值类型表达式数组初始化值集合
         /// </summary>
         /// <param name="items">要添加的值类型表达式数组</param>
-        public ValueSet(params ValueTypeExpr[] items)
+        public ValueSet(params ValueTypeExpr?[] items)
         {
             if (items != null)
             {
@@ -33,7 +33,7 @@ namespace LiteOrm.Common
         /// 使用指定的值类型表达式集合初始化值集合
         /// </summary>
         /// <param name="items">要添加的值类型表达式集合</param>
-        public ValueSet(IEnumerable<ValueTypeExpr> items)
+        public ValueSet(IEnumerable<ValueTypeExpr?> items)
         {
             if (items != null)
             {
@@ -46,7 +46,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="joinType">值之间的连接类型（List 或 Concat）</param>
         /// <param name="items">要添加的值类型表达式数组</param>
-        public ValueSet(ValueJoinType joinType, params ValueTypeExpr[] items)
+        public ValueSet(ValueJoinType joinType, params ValueTypeExpr?[] items)
         {
             JoinType = joinType;
             if (items != null)
@@ -60,7 +60,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="joinType">值之间的连接类型（List 或 Concat）</param>
         /// <param name="items">要添加的值类型表达式集合</param>
-        public ValueSet(ValueJoinType joinType, IEnumerable<ValueTypeExpr>? items)
+        public ValueSet(ValueJoinType joinType, IEnumerable<ValueTypeExpr?>? items)
         {
             JoinType = joinType;
             if (items != null)
@@ -106,7 +106,7 @@ namespace LiteOrm.Common
         /// 向集合中添加一个值类型表达式
         /// </summary>
         /// <param name="item">要添加的值类型表达式</param>
-        public void Add(ValueTypeExpr item)
+        public void Add(ValueTypeExpr? item)
         {
             if (item is null) item = Null;
             if (item is ValueSet set && set.JoinType == JoinType)
@@ -123,7 +123,7 @@ namespace LiteOrm.Common
         /// 向集合中添加多个值类型表达式
         /// </summary>
         /// <param name="items">要添加的值类型表达式集合</param>
-        public void AddRange(IEnumerable<ValueTypeExpr> items)
+        public void AddRange(IEnumerable<ValueTypeExpr?> items)
         {
             foreach (var item in items) Add(item);
         }

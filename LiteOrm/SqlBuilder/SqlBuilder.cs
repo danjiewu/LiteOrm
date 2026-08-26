@@ -207,6 +207,12 @@ namespace LiteOrm
         /// <returns>SQL语句</returns>
         public virtual void BuildConcatSql(ref ValueStringBuilder sb, params string[] strs)
         {
+            if (strs == null || strs.Length == 0) return;
+            if(strs.Length == 1 )
+            {
+                sb.Append(strs[0]);
+                return;
+            }
             sb.Append("CONCAT(");
             for (int i = 0; i < strs.Length; i++)
             {

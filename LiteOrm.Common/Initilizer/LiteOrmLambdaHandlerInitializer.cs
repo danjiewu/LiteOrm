@@ -360,7 +360,7 @@ namespace LiteOrm
             {
                 if (literal.Length > 0)
                 {
-                    parts.Add(new ValueExpr(literal.ToString()));
+                    parts.Add(Expr.Const(literal.ToString()));
                     literal.Clear();
                 }
             }
@@ -380,13 +380,13 @@ namespace LiteOrm
                     Flush();
                     if (key.Type == typeof(int) || key.Type == typeof(long))
                     {
-                        parts.Add(new ValueExpr("["));
+                        parts.Add(Expr.Const("["));
                         parts.Add(k);
-                        parts.Add(new ValueExpr("]"));
+                        parts.Add(Expr.Const("]"));
                     }
                     else
                     {
-                        parts.Add(new ValueExpr("."));
+                        parts.Add(Expr.Const("."));
                         parts.Add(k);
                     }
                 }
