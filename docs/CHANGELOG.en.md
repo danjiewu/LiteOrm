@@ -6,6 +6,8 @@
 
 	- Properties of complex types (arrays/collections, custom classes) are **no longer auto-mapped as table columns**; they require an explicit `[Column]` (and, as appropriate, `DbType = Array`).Known scalars (numerics, `string`/`char`, `byte[]`, `Guid`, dates, enums) and `Json`/`Jsonb` mapped types are still auto-mapped.
 - `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` constructors now take an `IServiceProvider`, resolving the required `ObjectDAO<T>` / `ObjectViewDAO<T>` from the container; derived service constructors were updated accordingly. No changes are needed under DI.
+- `ServiceInvokeInterceptor` removed the **global static `ExceptionHandling` event** (and the `context.Handle(...)` suppress/convert-result mechanism), replaced by dependency-injected service-call events; exceptions are notified and then rethrown as-is.
+- `EntityService<T>` / `EntityService<T, TView>` removed the `protected virtual` `*Core` methods (`InsertCore` / `UpdateCore` / `DeleteCore` / `DeleteIDCore` / `UpdateOrInsertCore` and their async variants); their logic is inlined into the public methods. Custom services that override these methods must be adjusted.
 
 ### Enhancements
 
@@ -46,6 +48,9 @@
   - Dialect registration: `REGEXP_LIKE` uses the `REGEXP` operator on MySQL and the `~` operator on PostgreSQL; `REGEXP_REPLACE`/`REGEXP_INSTR`/`REGEXP_SUBSTR`/`REGEXP_COUNT` default to rendering same-name functions (native on Oracle/MySQL 8.0+/PostgreSQL).
   - `SqlBuilder.DefaultFunctionSqlHandler` renders as `FunctionName(args)`; the `RegisterFunctionSqlHandler(functionName)` name-only overload directly reuses the default rendering.
 - Oracle identifiers are no longer forced to uppercase, consistent with other databases.
+- `EntityService` adds an observer-based entity event interface `IEntityServiceEvent<T>` (plus the convenience base class `EntityServiceEventBase<T>`) that fires `OnXxxing` / `OnXxxed` callbacks before/after insert, update, delete, `UpdateOrInsert`, `DeleteID`, `DeleteAll`, `UpdateAll`, etc.; returning `false` from a `Before` callback cancels the operation. Batch methods (`BatchInsert` / `BatchUpdate` / `BatchDelete`) raise single-entity events per item, supporting per-item filtering.
+- `System.Text.Json.Nodes.JsonNode`-typed properties are now supported out of the box: they auto-map to a `DbValueType.Json` column (stored as a JSON string round-trip) and support JSON-path Lambda mapping via the indexer / `GetValue<T>()` (e.g. `JsonExtract`, `JsonValue` SQL functions).
+- `ServiceInvokeInterceptor` adds three **DI-injected event interfaces** `IServiceInvokingEvent` / `IServiceInvokedEvent` / `IServiceExceptionEvent`, raised before a service method runs, after it returns successfully, and when it throws, respectively; `ServiceInvokeContext` carries raw (unmasked) arguments, duration, and return value. Each can be implemented and registered independently and does not affect the call flow.
 
 ### Fixes
 

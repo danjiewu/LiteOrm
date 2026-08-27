@@ -89,7 +89,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 ### 高级特性
 
 - `[Transaction]`
-- `ServiceInvokeInterceptor.ExceptionHandling`
+- `IServiceInvokingEvent` / `IServiceInvokedEvent` / `IServiceExceptionEvent`
 - `SessionManager`
 - `IArged` / `TableArgs`
 - 窗口函数相关扩展

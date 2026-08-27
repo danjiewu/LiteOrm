@@ -100,6 +100,22 @@ public class Product
 
 > JSON 列存储时复杂对象会被序列化为 JSON 字符串，读取时反序列化回属性类型。
 
+`System.Text.Json.Nodes.JsonNode` 类型的属性已内置支持：无需显式指定 `DbType`，会自动映射为 `DbValueType.Json` 列，写入时序列化为 JSON 字符串、读取时还原为 `JsonNode`。查询时还可直接用索引器或 `GetValue<T>()` 走 JSON 路径（对应 `JsonExtract` / `JsonValue` SQL 函数）：
+
+```csharp
+[Table("Products")]
+public class Product
+{
+    [Column("Meta")]                 // JsonNode 自动映射为 DbValueType.Json
+    public JsonNode? Meta { get; set; }
+}
+
+// 查询：Meta['price'] 提取 JSON 属性
+Expr.Lambda<Product>(p => p.Meta!["price"] > 10);
+// 查询：Meta['name'].GetValue<string>() 提取标量
+Expr.Lambda<Product>(p => p.Meta!["name"].GetValue<string>() == "Lite");
+```
+
 ### 计算列（非实际列）
 
 计算列不生成物理数据库列、不参与插入/更新；查询时按表达式返回结果，查询条件中引用该属性时同样按表达式生成。计算列表达式支持两种形式：

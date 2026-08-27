@@ -66,11 +66,6 @@ namespace LiteOrm.Service
     public class ServiceInvokeInterceptor : IInterceptor, IAsyncInterceptor
     {
         /// <summary>
-        /// 全局服务异常处理事件。
-        /// </summary>
-        public static event EventHandler<ServiceExceptionContext>? ExceptionHandling;
-
-        /// <summary>
         /// 设置慢查询阈值，超过该时间的方法调用将被记录为慢查询日志。默认值为3秒。
         /// </summary>
         public static TimeSpan SlowQueryThreshold = TimeSpan.FromSeconds(3);
@@ -82,18 +77,60 @@ namespace LiteOrm.Service
         private static readonly ConcurrentDictionary<(Type? TargetType, MethodInfo Method), ServiceDescription> _methodDescriptions = new();
         private readonly ILogger _logger;
         private readonly SessionManager _sessionManager;
+        private readonly IReadOnlyList<IServiceInvokingEvent> _invokingListeners;
+        private readonly IReadOnlyList<IServiceInvokedEvent> _invokedListeners;
+        private readonly IReadOnlyList<IServiceExceptionEvent> _exceptionListeners;
         private bool _inProcess;
         /// <summary>
         /// 初始化 <see cref="ServiceInvokeInterceptor"/> 类的新实例。
         /// </summary>
         /// <param name="loggerFactory">日志工厂</param>
         /// <param name="sessionManager">会话管理器</param>
-        public ServiceInvokeInterceptor(ILoggerFactory loggerFactory, SessionManager sessionManager)
+        /// <param name="serviceProvider">服务提供程序，用于解析注入的事件服务。</param>
+        public ServiceInvokeInterceptor(ILoggerFactory loggerFactory, SessionManager sessionManager, IServiceProvider serviceProvider)
         {
             if (loggerFactory is null) throw new ArgumentNullException(nameof(loggerFactory));
             if (sessionManager is null) throw new ArgumentNullException(nameof(sessionManager));
+            if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
             _logger = loggerFactory.CreateLogger<ServiceInvokeInterceptor>();
             _sessionManager = sessionManager;
+            _invokingListeners = serviceProvider.GetServices<IServiceInvokingEvent>() as IReadOnlyList<IServiceInvokingEvent> ?? serviceProvider.GetServices<IServiceInvokingEvent>().ToList();
+            _invokedListeners = serviceProvider.GetServices<IServiceInvokedEvent>() as IReadOnlyList<IServiceInvokedEvent> ?? serviceProvider.GetServices<IServiceInvokedEvent>().ToList();
+            _exceptionListeners = serviceProvider.GetServices<IServiceExceptionEvent>() as IReadOnlyList<IServiceExceptionEvent> ?? serviceProvider.GetServices<IServiceExceptionEvent>().ToList();
+        }
+
+        /// <summary>
+        /// 触发服务方法执行前事件。
+        /// </summary>
+        private void OnInvoking(ServiceInvokeContext context)
+        {
+            foreach (var listener in _invokingListeners)
+            {
+                listener.OnInvoking(context);
+            }
+        }
+
+        /// <summary>
+        /// 触发服务方法成功返回后事件。
+        /// </summary>
+        private void OnInvoked(ServiceInvokeContext context)
+        {
+            foreach (var listener in _invokedListeners)
+            {
+                listener.OnInvoked(context);
+            }
+        }
+
+        /// <summary>
+        /// 触发服务方法异常事件。
+        /// </summary>
+        private void OnInvokeException(IInvocation invocation, Exception exception)
+        {
+            var context = CreateExceptionContext(invocation, exception);
+            foreach (var listener in _exceptionListeners)
+            {
+                listener.OnException(context);
+            }
         }
 
         /// <summary>  
@@ -121,11 +158,7 @@ namespace LiteOrm.Service
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    if (TryHandleException(invocation, e, out object? handledResult))
-                    {
-                        invocation.ReturnValue = handledResult;
-                        return;
-                    }
+                    OnInvokeException(invocation, e);
                     LogException(invocation, e);
                     ExceptionDispatchInfo.Capture(e).Throw();
                     return;
@@ -137,21 +170,21 @@ namespace LiteOrm.Service
                 {
                     _inProcess = true;
                     _sessionManager.Reset();
+                    var invokeContext = CreateInvokeContext(invocation);
+                    OnInvoking(invokeContext);
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
                     InvokeWithTransaction(invocation);
                     timer.Stop();
+                    invokeContext.Duration = timer.Elapsed;
+                    invokeContext.Result = invocation.ReturnValue;
                     LogAfterInvoke(invocation, invocation.ReturnValue, timer.Elapsed);
-
+                    OnInvoked(invokeContext);
                 }
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    if (TryHandleException(invocation, e, out object? handledResult))
-                    {
-                        invocation.ReturnValue = handledResult;
-                        return;
-                    }
+                    OnInvokeException(invocation, e);
                     LogException(invocation, e);
                     ExceptionDispatchInfo.Capture(e).Throw();
                     return;
@@ -202,6 +235,8 @@ namespace LiteOrm.Service
                 {
                     _inProcess = true;
                     _sessionManager.Reset();
+                    var invokeContext = CreateInvokeContext(invocation);
+                    OnInvoking(invokeContext);
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
 
@@ -209,13 +244,15 @@ namespace LiteOrm.Service
                     await InvokeWithTransactionAsync(invocation);
 
                     timer.Stop();
+                    invokeContext.Duration = timer.Elapsed;
+                    invokeContext.Result = null;
                     LogAfterInvoke(invocation, null, timer.Elapsed);
+                    OnInvoked(invokeContext);
                 }
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    if (TryHandleException(invocation, e, out _))
-                        return;
+                    OnInvokeException(invocation, e);
                     LogException(invocation, e);
                     ExceptionDispatchInfo.Capture(e).Throw();
                     return;
@@ -244,19 +281,23 @@ namespace LiteOrm.Service
                 {
                     _inProcess = true;
                     _sessionManager.Reset();
+                    var invokeContext = CreateInvokeContext(invocation);
+                    OnInvoking(invokeContext);
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
                     // 执行异步方法，处理事务
                     TResult result = await InvokeWithTransactionAsync<TResult>(invocation);
                     timer.Stop();
+                    invokeContext.Duration = timer.Elapsed;
+                    invokeContext.Result = result;
                     LogAfterInvoke(invocation, result, timer.Elapsed);
+                    OnInvoked(invokeContext);
                     return result;
                 }
                 catch (Exception e)
                 {
                     e = e.UnwrapTargetInvocationException();
-                    if (TryHandleException(invocation, e, out object? handledResult))
-                        return (TResult)handledResult!;
+                    OnInvokeException(invocation, e);
                     LogException(invocation, e);
                     ExceptionDispatchInfo.Capture(e).Throw();
                     return default!; // 这行实际上永远不会执行，因为上面会抛出异常，但编译器需要一个返回值
@@ -426,25 +467,7 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 尝试通过全局异常处理事件处理异常。
-        /// </summary>
-        protected virtual bool TryHandleException(IInvocation invocation, Exception exception, out object? handledResult)
-        {
-            var context = CreateExceptionContext(invocation, exception);
-            OnExceptionHandling(context);
-
-            if (!context.Handled)
-            {
-                handledResult = null;
-                return false;
-            }
-
-            handledResult = BuildHandledReturnValue(context);
-            return true;
-        }
-
-        /// <summary>
-        /// 创建异常处理上下文。
+        /// 创建异常上下文。
         /// </summary>
         protected virtual ServiceExceptionContext CreateExceptionContext(IInvocation invocation, Exception exception)
         {
@@ -466,29 +489,18 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 触发全局异常处理事件。
+        /// 创建服务调用上下文。
         /// </summary>
-        protected virtual void OnExceptionHandling(ServiceExceptionContext context)
+        protected virtual ServiceInvokeContext CreateInvokeContext(IInvocation invocation)
         {
-            ExceptionHandling?.Invoke(this, context);
-        }
-
-        /// <summary>
-        /// 构建处理后的返回值。
-        /// </summary>
-        protected virtual object? BuildHandledReturnValue(ServiceExceptionContext context)
-        {
-            if (!context.HasResult)
-            {
-                if (context.MethodReturnType == typeof(Task))
-                    return Task.CompletedTask;
-                return null;
-            }
-
-            if (!context.ResultAssigned)
-                throw new InvalidOperationException($"Method {context.ServiceName}.{context.MethodName} was marked handled, but no result was assigned.");
-
-            return context.Result;
+            var serviceDesc = GetDescription(invocation);
+            var method = invocation.MethodInvocationTarget ?? invocation.Method;
+            return new ServiceInvokeContext(
+                invocation.TargetType,
+                serviceDesc.ServiceName!,
+                method,
+                invocation.Arguments?.ToArray() ?? Array.Empty<object?>(),
+                _sessionManager.SessionID);
         }
 
         private static Type? GetHandledResultType(Type returnType)

@@ -62,15 +62,47 @@ namespace LiteOrm.Service
         /// </summary>
         protected ObjectDAO<T> ObjectDAO { get; }
 
+        private readonly IReadOnlyList<IEntityServiceEvent<T>> _eventListeners;
+
         /// <summary>
         /// 初始化 <see cref="EntityService{T, TView}"/> 类的新实例。
         /// </summary>
-        /// <param name="serviceProvider">服务提供程序，用于解析数据访问对象。</param>
+        /// <param name="serviceProvider">服务提供程序，用于解析数据访问对象和事件订阅者。</param>
         public EntityService(IServiceProvider serviceProvider)
             : base(serviceProvider)
         {
             ObjectDAO = serviceProvider.GetRequiredService<ObjectDAO<T>>();
+            var listeners = serviceProvider.GetServices<IEntityServiceEvent<T>>();
+            _eventListeners = listeners as IReadOnlyList<IEntityServiceEvent<T>> ?? listeners.ToList();
         }
+
+        #region Event Notification
+
+        /// <summary>
+        /// 触发 Before 事件回调；任一订阅者返回 <see langword="false"/> 即取消操作。
+        /// </summary>
+        private bool Notify(Func<IEntityServiceEvent<T>, bool> notify)
+        {
+            foreach (var listener in _eventListeners)
+            {
+                if (!notify(listener))
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 触发 After 事件回调。
+        /// </summary>
+        private void Notify(Action<IEntityServiceEvent<T>> notify)
+        {
+            foreach (var listener in _eventListeners)
+            {
+                notify(listener);
+            }
+        }
+
+        #endregion
 
         #region IEntityService<T> 成员
 
@@ -89,7 +121,16 @@ namespace LiteOrm.Service
         /// <returns>是否插入成功</returns>
         public virtual bool Insert(T entity)
         {
-            return InsertCore(entity);
+            if (!Notify(l => l.OnInserting(entity)))
+                return false;
+            bool result;
+            if (entity is IArged arg)
+                result = ObjectDAO.WithArgs(arg.TableArgs).Insert(entity);
+            else
+                result = ObjectDAO.Insert(entity);
+            if (result)
+                Notify(l => l.OnInserted(entity));
+            return result;
         }
 
         /// <summary>
@@ -99,7 +140,16 @@ namespace LiteOrm.Service
         /// <returns>是否更新成功</returns>
         public virtual bool Update(T entity)
         {
-            return UpdateCore(entity);
+            if (!Notify(l => l.OnUpdating(entity)))
+                return false;
+            bool result;
+            if (entity is IArged arg)
+                result = ObjectDAO.WithArgs(arg.TableArgs).Update(entity);
+            else
+                result = ObjectDAO.Update(entity);
+            if (result)
+                Notify(l => l.OnUpdated(entity));
+            return result;
         }
 
         /// <summary>
@@ -172,16 +222,29 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
+            var items = entities as IReadOnlyList<T> ?? entities.ToList();
+            var remaining = new List<T>(items.Count);
+            foreach (var item in items)
+            {
+                if (Notify(l => l.OnInserting(item)))
+                    remaining.Add(item);
+            }
+            if (remaining.Count == 0)
+                return;
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
+                var groups = remaining.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     await ObjectDAO.WithArgs(group.Key).BatchInsertAsync(group, cancellationToken);
                 }
             }
             else
-                await ObjectDAO.BatchInsertAsync(entities, cancellationToken);
+                await ObjectDAO.BatchInsertAsync(remaining, cancellationToken);
+            foreach (var item in remaining)
+            {
+                Notify(l => l.OnInserted(item));
+            }
         }
 
         /// <summary>
@@ -195,16 +258,29 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchUpdateAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
+            var items = entities as IReadOnlyList<T> ?? entities.ToList();
+            var remaining = new List<T>(items.Count);
+            foreach (var item in items)
+            {
+                if (Notify(l => l.OnUpdating(item)))
+                    remaining.Add(item);
+            }
+            if (remaining.Count == 0)
+                return;
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
+                var groups = remaining.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     await ObjectDAO.WithArgs(group.Key).BatchUpdateAsync(group, cancellationToken);
                 }
             }
             else
-                await ObjectDAO.BatchUpdateAsync(entities, cancellationToken);
+                await ObjectDAO.BatchUpdateAsync(remaining, cancellationToken);
+            foreach (var item in remaining)
+            {
+                Notify(l => l.OnUpdated(item));
+            }
         }
 
         /// <summary>
@@ -242,16 +318,29 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchDeleteAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
+            var items = entities as IReadOnlyList<T> ?? entities.ToList();
+            var remaining = new List<T>(items.Count);
+            foreach (var item in items)
+            {
+                if (Notify(l => l.OnDeleting(item)))
+                    remaining.Add(item);
+            }
+            if (remaining.Count == 0)
+                return;
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
+                var groups = remaining.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     await ObjectDAO.WithArgs(group.Key).BatchDeleteAsync(group, cancellationToken);
                 }
             }
             else
-                await ObjectDAO.BatchDeleteAsync(entities, cancellationToken);
+                await ObjectDAO.BatchDeleteAsync(remaining, cancellationToken);
+            foreach (var item in remaining)
+            {
+                Notify(l => l.OnDeleted(item));
+            }
         }
 
         /// <summary>
@@ -267,7 +356,10 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchDeleteIDAsync(IEnumerable ids, CancellationToken cancellationToken = default, params string[] tableArgs)
         {
+            if (!Notify(l => l.OnBatchDeleteIDing(ids, tableArgs)))
+                return;
             await ObjectDAO.WithArgs(tableArgs).BatchDeleteByKeysAsync(ids, cancellationToken).ConfigureAwait(false);
+            Notify(l => l.OnBatchDeleteIDed(ids, tableArgs));
         }
 
         /// <summary>
@@ -282,7 +374,16 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务，任务结果为是否插入成功。</returns>
         public async virtual Task<bool> InsertAsync(T entity, CancellationToken cancellationToken = default)
         {
-            return await InsertCoreAsync(entity, cancellationToken);
+            if (!Notify(l => l.OnInserting(entity)))
+                return false;
+            bool result;
+            if (entity is IArged arg)
+                result = await ObjectDAO.WithArgs(arg.TableArgs).InsertAsync(entity, cancellationToken);
+            else
+                result = await ObjectDAO.InsertAsync(entity, cancellationToken);
+            if (result)
+                Notify(l => l.OnInserted(entity));
+            return result;
         }
 
         /// <summary>
@@ -297,7 +398,16 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务，任务结果为是否更新成功。</returns>
         public async virtual Task<bool> UpdateAsync(T entity, CancellationToken cancellationToken = default)
         {
-            return await UpdateCoreAsync(entity, cancellationToken);
+            if (!Notify(l => l.OnUpdating(entity)))
+                return false;
+            bool result;
+            if (entity is IArged arg)
+                result = await ObjectDAO.WithArgs(arg.TableArgs).UpdateAsync(entity, null, cancellationToken);
+            else
+                result = await ObjectDAO.UpdateAsync(entity, null, cancellationToken);
+            if (result)
+                Notify(l => l.OnUpdated(entity));
+            return result;
         }
 
         /// <summary>
@@ -311,10 +421,18 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务，任务结果为是否操作成功。</returns>
         public async virtual Task<bool> UpdateOrInsertAsync(T entity, CancellationToken cancellationToken = default)
         {
-            switch (await UpdateOrInsertCoreAsync(entity, cancellationToken))
+            if (!Notify(l => l.OnUpdating(entity)))
+                return false;
+            var dao = ObjectDAO;
+            if (entity is IArged arg)
+                dao = dao.WithArgs(arg.TableArgs);
+            switch (await dao.UpdateOrInsertAsync(entity, cancellationToken))
             {
                 case UpdateOrInsertResult.Inserted:
+                    Notify(l => l.OnInserted(entity));
+                    return true;
                 case UpdateOrInsertResult.Updated:
+                    Notify(l => l.OnUpdated(entity));
                     return true;
                 default:
                     return false;
@@ -333,10 +451,18 @@ namespace LiteOrm.Service
         /// <returns>是否操作成功（插入或更新）。</returns>
         public virtual bool UpdateOrInsert(T entity)
         {
-            switch (UpdateOrInsertCore(entity))
+            if (!Notify(l => l.OnUpdating(entity)))
+                return false;
+            var dao = ObjectDAO;
+            if (entity is IArged arg)
+                dao = dao.WithArgs(arg.TableArgs);
+            switch (dao.UpdateOrInsert(entity))
             {
                 case UpdateOrInsertResult.Inserted:
+                    Notify(l => l.OnInserted(entity));
+                    return true;
                 case UpdateOrInsertResult.Updated:
+                    Notify(l => l.OnUpdated(entity));
                     return true;
                 default:
                     return false;
@@ -354,7 +480,12 @@ namespace LiteOrm.Service
         /// <returns>是否删除成功。</returns>
         public virtual bool DeleteID(object id, params string[] tableArgs)
         {
-            return DeleteIDCore(id, tableArgs);
+            if (!Notify(l => l.OnDeleteIDing(id, tableArgs)))
+                return false;
+            var result = ObjectDAO.WithArgs(tableArgs).DeleteByKeys(id);
+            if (result)
+                Notify(l => l.OnDeleteIDed(id, tableArgs));
+            return result;
         }
 
         /// <summary>
@@ -368,7 +499,16 @@ namespace LiteOrm.Service
         /// <returns>是否删除成功</returns>
         public virtual bool Delete(T entity)
         {
-            return DeleteCore(entity);
+            if (!Notify(l => l.OnDeleting(entity)))
+                return false;
+            bool result;
+            if (entity is IArged arg)
+                result = ObjectDAO.WithArgs(arg.TableArgs).Delete(entity);
+            else
+                result = ObjectDAO.Delete(entity);
+            if (result)
+                Notify(l => l.OnDeleted(entity));
+            return result;
         }
 
         /// <summary>
@@ -383,7 +523,12 @@ namespace LiteOrm.Service
         /// <returns>删除的记录数。</returns>
         public virtual int DeleteAll(LogicExpr expr, params string[] tableArgs)
         {
-            return ObjectDAO.WithArgs(tableArgs).Delete(expr);
+            if (!Notify(l => l.OnDeleteAlling(expr, tableArgs)))
+                return 0;
+            var count = ObjectDAO.WithArgs(tableArgs).Delete(expr);
+            if (count > 0)
+                Notify(l => l.OnDeleteAlled(count, expr, tableArgs));
+            return count;
         }
 
         /// <summary>
@@ -398,7 +543,12 @@ namespace LiteOrm.Service
         /// <returns>更新的记录数。</returns>
         public virtual int UpdateAll(UpdateExpr expr, params string[] tableArgs)
         {
-            return ObjectDAO.WithArgs(tableArgs).Update(expr);
+            if (!Notify(l => l.OnUpdateAlling(expr, tableArgs)))
+                return 0;
+            var count = ObjectDAO.WithArgs(tableArgs).Update(expr);
+            if (count > 0)
+                Notify(l => l.OnUpdateAlled(count, expr, tableArgs));
+            return count;
         }
 
         /// <summary>
@@ -411,16 +561,29 @@ namespace LiteOrm.Service
         /// <param name="entities">要插入的实体集合。</param>
         public virtual void BatchInsert(IEnumerable<T> entities)
         {
+            var items = entities as IReadOnlyList<T> ?? entities.ToList();
+            var remaining = new List<T>(items.Count);
+            foreach (var item in items)
+            {
+                if (Notify(l => l.OnInserting(item)))
+                    remaining.Add(item);
+            }
+            if (remaining.Count == 0)
+                return;
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
+                var groups = remaining.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     ObjectDAO.WithArgs(group.Key).BatchInsert(group);
                 }
             }
             else
-                ObjectDAO.BatchInsert(entities);
+                ObjectDAO.BatchInsert(remaining);
+            foreach (var item in remaining)
+            {
+                Notify(l => l.OnInserted(item));
+            }
         }
 
         /// <summary>
@@ -432,16 +595,29 @@ namespace LiteOrm.Service
         /// <param name="entities">要更新的实体集合。</param>
         public virtual void BatchUpdate(IEnumerable<T> entities)
         {
+            var items = entities as IReadOnlyList<T> ?? entities.ToList();
+            var remaining = new List<T>(items.Count);
+            foreach (var item in items)
+            {
+                if (Notify(l => l.OnUpdating(item)))
+                    remaining.Add(item);
+            }
+            if (remaining.Count == 0)
+                return;
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
+                var groups = remaining.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     ObjectDAO.WithArgs(group.Key).BatchUpdate(group);
                 }
             }
             else
-                ObjectDAO.BatchUpdate(entities);
+                ObjectDAO.BatchUpdate(remaining);
+            foreach (var item in remaining)
+            {
+                Notify(l => l.OnUpdated(item));
+            }
         }
 
         /// <summary>
@@ -475,16 +651,29 @@ namespace LiteOrm.Service
         /// <param name="entities">要删除的实体集合。</param>
         public virtual void BatchDelete(IEnumerable<T> entities)
         {
+            var items = entities as IReadOnlyList<T> ?? entities.ToList();
+            var remaining = new List<T>(items.Count);
+            foreach (var item in items)
+            {
+                if (Notify(l => l.OnDeleting(item)))
+                    remaining.Add(item);
+            }
+            if (remaining.Count == 0)
+                return;
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
+                var groups = remaining.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     ObjectDAO.WithArgs(group.Key).BatchDelete(group);
                 }
             }
             else
-                ObjectDAO.BatchDelete(entities);
+                ObjectDAO.BatchDelete(remaining);
+            foreach (var item in remaining)
+            {
+                Notify(l => l.OnDeleted(item));
+            }
         }
 
         /// <summary>
@@ -498,79 +687,12 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">分表参数。</param>
         public virtual void BatchDeleteID(IEnumerable ids, params string[] tableArgs)
         {
+            if (!Notify(l => l.OnBatchDeleteIDing(ids, tableArgs)))
+                return;
             ObjectDAO.WithArgs(tableArgs).BatchDeleteByKeys(ids);
+            Notify(l => l.OnBatchDeleteIDed(ids, tableArgs));
         }
 
-        #endregion
-
-        #region NoNotify Methods
-
-        /// <summary>
-        /// 核心插入逻辑。
-        /// </summary>
-        /// <remarks>
-        /// 这是内部使用的核心插入方法，处理 IArged 接口的分表参数。
-        /// 不触发任何通知或验证，直接执行数据库插入操作。
-        /// </remarks>
-        /// <param name="entity">要插入的实体对象。</param>
-        /// <returns>是否插入成功。</returns>
-        protected virtual bool InsertCore(T entity)
-        {
-            if (entity is IArged arg)
-                return ObjectDAO.WithArgs(arg.TableArgs).Insert(entity);
-            return ObjectDAO.Insert(entity);
-        }
-
-        /// <summary>
-        /// 核心更新逻辑。
-        /// </summary>
-        /// <remarks>
-        /// 这是内部使用的核心更新方法，处理 IArged 接口的分表参数。
-        /// 根据实体的主键值更新对应的数据库记录。
-        /// 不触发任何通知或验证，直接执行数据库更新操作。
-        /// </remarks>
-        /// <param name="entity">要更新的实体对象。</param>
-        /// <returns>是否更新成功。</returns>
-        protected virtual bool UpdateCore(T entity)
-        {
-            if (entity is IArged arg)
-                return ObjectDAO.WithArgs(arg.TableArgs).Update(entity);
-            return ObjectDAO.Update(entity);
-        }
-
-
-        /// <summary>
-        /// 核心基于 ID 的删除逻辑。
-        /// </summary>
-        /// <remarks>
-        /// 这是内部使用的核心按主键删除方法。
-        /// 根据提供的主键值删除对应的数据库记录。
-        /// 不触发任何通知或验证，直接执行数据库删除操作。
-        /// </remarks>
-        /// <param name="id">实体的主键值。</param>
-        /// <param name="tableArgs">表名参数，用于支持分表场景。</param>
-        /// <returns>是否删除成功。</returns>
-        protected virtual bool DeleteIDCore(object id, params string[] tableArgs)
-        {
-            return ObjectDAO.WithArgs(tableArgs).DeleteByKeys(id);
-        }
-
-        /// <summary>
-        /// 核心删除逻辑。
-        /// </summary>
-        /// <remarks>
-        /// 这是内部使用的核心删除方法，处理 IArged 接口的分表参数。
-        /// 根据实体的主键值删除对应的数据库记录。
-        /// 不触发任何通知或验证，直接执行数据库删除操作。
-        /// </remarks>
-        /// <param name="entity">要删除的实体对象。</param>
-        /// <returns>是否删除成功。</returns>
-        protected virtual bool DeleteCore(T entity)
-        {
-            if (entity is IArged arg)
-                return ObjectDAO.WithArgs(arg.TableArgs).Delete(entity);
-            return ObjectDAO.Delete(entity);
-        }
         #endregion
 
         #region IEntityService 成员
@@ -838,7 +960,13 @@ namespace LiteOrm.Service
         /// <returns>受影响的行数。</returns>
         public async Task<int> DeleteAllAsync(LogicExpr expr, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectDAO.WithArgs(tableArgs).DeleteAsync(expr, cancellationToken);
+            var args = tableArgs ?? Array.Empty<string>();
+            if (!Notify(l => l.OnDeleteAlling(expr, args)))
+                return 0;
+            var count = await ObjectDAO.WithArgs(tableArgs).DeleteAsync(expr, cancellationToken);
+            if (count > 0)
+                Notify(l => l.OnDeleteAlled(count, expr, args));
+            return count;
         }
 
         /// <summary>
@@ -850,7 +978,13 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务，任务结果包含更新的记录数。</returns>
         public async Task<int> UpdateAllAsync(UpdateExpr expr, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await ObjectDAO.WithArgs(tableArgs).UpdateAsync(expr, cancellationToken);
+            var args = tableArgs ?? Array.Empty<string>();
+            if (!Notify(l => l.OnUpdateAlling(expr, args)))
+                return 0;
+            var count = await ObjectDAO.WithArgs(tableArgs).UpdateAsync(expr, cancellationToken);
+            if (count > 0)
+                Notify(l => l.OnUpdateAlled(count, expr, args));
+            return count;
         }
 
         /// <summary>
@@ -862,7 +996,13 @@ namespace LiteOrm.Service
         /// <returns>是否删除成功。</returns>
         public async Task<bool> DeleteIDAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
-            return await DeleteIDCoreAsync(id, tableArgs, cancellationToken);
+            var args = tableArgs ?? Array.Empty<string>();
+            if (!Notify(l => l.OnDeleteIDing(id, args)))
+                return false;
+            var result = await ObjectDAO.WithArgs(tableArgs).DeleteByKeysAsync(new object[] { id }, cancellationToken);
+            if (result)
+                Notify(l => l.OnDeleteIDed(id, args));
+            return result;
         }
 
         /// <summary>
@@ -873,93 +1013,16 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务，任务结果为是否删除成功。</returns>
         public async virtual Task<bool> DeleteAsync(T entity, CancellationToken cancellationToken = default)
         {
-            return await DeleteCoreAsync(entity, cancellationToken);
-        }
-
-        #endregion
-
-        #region Core Async Methods
-
-        /// <summary>
-        /// 核心异步插入逻辑。
-        /// </summary>
-        /// <param name="entity">要插入的实体对象。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>是否插入成功。</returns>
-        protected virtual async Task<bool> InsertCoreAsync(T entity, CancellationToken cancellationToken = default)
-        {
+            if (!Notify(l => l.OnDeleting(entity)))
+                return false;
+            bool result;
             if (entity is IArged arg)
-                return await ObjectDAO.WithArgs(arg.TableArgs).InsertAsync(entity, cancellationToken);
-            return await ObjectDAO.InsertAsync(entity, cancellationToken);
-        }
-
-        /// <summary>
-        /// 核心异步更新逻辑。
-        /// </summary>
-        /// <param name="entity">要更新的实体对象。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>是否更新成功。</returns>
-        protected virtual async Task<bool> UpdateCoreAsync(T entity, CancellationToken cancellationToken = default)
-        {
-            if (entity is IArged arg)
-                return await ObjectDAO.WithArgs(arg.TableArgs).UpdateAsync(entity, null, cancellationToken);
-            return await ObjectDAO.UpdateAsync(entity, null, cancellationToken);
-        }
-
-        /// <summary>
-        /// 异步更新或插入实体集合的核心逻辑。
-        /// </summary>
-        /// <param name="entity">待处理的实体对象。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>操作结果枚举。</returns>
-        protected virtual async Task<UpdateOrInsertResult> UpdateOrInsertCoreAsync(T entity, CancellationToken cancellationToken = default)
-        {
-            var dao = ObjectDAO;
-            if (entity is IArged arg)
-            {
-                dao = dao.WithArgs(arg.TableArgs);
-            }
-            return await dao.UpdateOrInsertAsync(entity, cancellationToken);
-        }
-
-        /// <summary>
-        /// 核心同步更新或插入逻辑。
-        /// </summary>
-        /// <param name="entity">要处理的实体对象。</param>
-        /// <returns>操作结果枚举。</returns>
-        protected virtual UpdateOrInsertResult UpdateOrInsertCore(T entity)
-        {
-            var dao = ObjectDAO;
-            if (entity is IArged arg)
-            {
-                dao = dao.WithArgs(arg.TableArgs);
-            }
-            return dao.UpdateOrInsert(entity);
-        }
-
-        /// <summary>
-        /// 核心异步基于 ID 的删除逻辑。
-        /// </summary>
-        /// <param name="id">实体的主键值。</param>
-        /// <param name="tableArgs">表名参数。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>是否删除成功。</returns>
-        protected virtual async Task<bool> DeleteIDCoreAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default)
-        {
-            return await ObjectDAO.WithArgs(tableArgs).DeleteByKeysAsync(new object[] { id }, cancellationToken);
-        }
-
-        /// <summary>
-        /// 核心异步删除逻辑。
-        /// </summary>
-        /// <param name="entity">要删除的实体对象。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>是否删除成功。</returns>
-        protected virtual async Task<bool> DeleteCoreAsync(T entity, CancellationToken cancellationToken = default)
-        {
-            if (entity is IArged arg)
-                return await ObjectDAO.WithArgs(arg.TableArgs).DeleteAsync(entity, cancellationToken);
-            return await ObjectDAO.DeleteAsync(entity, cancellationToken);
+                result = await ObjectDAO.WithArgs(arg.TableArgs).DeleteAsync(entity, cancellationToken);
+            else
+                result = await ObjectDAO.DeleteAsync(entity, cancellationToken);
+            if (result)
+                Notify(l => l.OnDeleted(entity));
+            return result;
         }
 
         #endregion

@@ -368,20 +368,24 @@ var factory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
 
 ### Service 异常处理事件
 
+通过注入 `IServiceExceptionEvent` 订阅服务方法异常（通知性质，不影响调用流程）：
+
 ```csharp
-// 全局静态事件，服务方法抛出异常时触发
-ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
+public class ExceptionEvent : IServiceExceptionEvent
 {
-    // 读取异常、方法名、参数、SQL 栈等上下文
-    if (context.Exception is TimeoutException)
-        context.Handle(123); // 把异常转成约定结果
-};
+    public void OnException(ServiceExceptionContext context)
+    {
+        // 读取异常、方法名、参数、SQL 栈等上下文
+    }
+}
+
+services.AddScoped<ExceptionEvent>();
+services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<ExceptionEvent>());
 ```
 
-- `ServiceInvokeInterceptor.ExceptionHandling` 为全局静态事件
-- `RemoteServiceInvokeInterceptor.ExceptionHandling` 行为一致
-- 不调用 `context.Handle(...)` 时异常继续抛出，适合只做告警/埋点
-- 调用 `context.Handle(result)` 后把异常转成正常返回结果
+- `ServiceInvokeInterceptor` 通过 `IServiceInvokingEvent` / `IServiceInvokedEvent` / `IServiceExceptionEvent` 三个注入式事件接口通知调用生命周期
+- 异常事件为通知性质，异常仍会原样抛出
+- `RemoteServiceInvokeInterceptor.ExceptionHandling` 为远程服务保留的静态事件，可把异常转成约定返回结果
 
 ## 七、特性速查
 

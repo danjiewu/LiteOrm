@@ -4,8 +4,10 @@
 
 ### 破坏性变更
 
-	- 复杂类型（数组/集合、自定义类）属性**不再自动生成列为表列**，须显式标注 `[Column]`（并按需指定 `DbType = Array`）；已知标量（数值、`string`/`char`、`byte[]`、`Guid`、日期、枚举）及 `Json`/`Jsonb` 映射类型仍自动映射。
+- 复杂类型（数组/集合、自定义类）属性**不再自动生成列为表列**，须显式标注 `[Column]`（并按需指定 `DbType = Array`）；已知标量（数值、`string`/`char`、`byte[]`、`Guid`、日期、枚举）及 `Json`/`Jsonb` 映射类型仍自动映射。
 - `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` 构造函数改为接收 `IServiceProvider`，由容器解析所需的 `ObjectDAO<T>` / `ObjectViewDAO<T>`；派生服务构造函数同步调整，依赖注入场景无需改动。
+- `ServiceInvokeInterceptor` 移除**全局静态事件 `ExceptionHandling`**（及 `context.Handle(...)` 抑制/转结果机制），改为通过依赖注入订阅服务调用事件；异常在通知后仍原样抛出。
+- `EntityService<T>` / `EntityService<T, TView>` 移除 `protected virtual` 的 `*Core` 系列方法（`InsertCore` / `UpdateCore` / `DeleteCore` / `DeleteIDCore` / `UpdateOrInsertCore` 及异步版本），逻辑内联到对应公开方法；重写这些方法的自定义服务需调整。
 
 ### 改进
 
@@ -46,6 +48,9 @@
   - 各方言注册：`REGEXP_LIKE` 在 MySQL 使用 `REGEXP` 运算符、PostgreSQL 使用 `~` 运算符；`REGEXP_REPLACE`/`REGEXP_INSTR`/`REGEXP_SUBSTR`/`REGEXP_COUNT` 默认渲染同名函数（Oracle/MySQL 8.0+/PostgreSQL 原生支持）。
   - `SqlBuilder.DefaultFunctionSqlHandler` 默认处理器按「函数名(参数列表)」渲染，`RegisterFunctionSqlHandler(functionName)` 仅含名称的重载直接复用默认渲染。
 - Oracle 标识符不再强制转大写，与其他数据库行为一致。
+- `EntityService` 新增基于观察者的实体事件接口 `IEntityServiceEvent<T>`（含便捷基类 `EntityServiceEventBase<T>`），在插入、更新、删除、`UpdateOrInsert`、`DeleteID`、`DeleteAll`、`UpdateAll` 等操作前后触发 `OnXxxing` / `OnXxxed` 回调，Before 返回 `false` 可取消操作；批量方法（`BatchInsert` / `BatchUpdate` / `BatchDelete`）逐条触发单条事件，支持逐条剔除。
+- `System.Text.Json.Nodes.JsonNode` 类型属性现已内置支持：自动映射为 `DbValueType.Json` 列（JSON 字符串往返存取），并支持索引器 / `GetValue<T>()` 的 JSON 路径 Lambda 映射（`JsonExtract` / `JsonValue` 等 SQL 函数）。
+- `ServiceInvokeInterceptor` 新增三个**注入式事件接口** `IServiceInvokingEvent` / `IServiceInvokedEvent` / `IServiceExceptionEvent`，分别于服务方法执行前、成功返回后、抛出异常后回调；`ServiceInvokeContext` 携带原始参数（不做掩码）、耗时与返回值。三者可独立实现、通过 DI 注册，且不影响调用流程。
 
 ### 修复
 

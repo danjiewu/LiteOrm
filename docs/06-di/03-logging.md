@@ -1,4 +1,4 @@
-﻿# 日志与诊断
+# 日志与诊断
 
 LiteOrm 基于 `Microsoft.Extensions.Logging` 输出运行日志。只要宿主应用已经配置了日志提供程序（如 Console、Debug、Serilog），LiteOrm 的服务调用日志、异常日志和慢查询日志就会进入同一套日志管道。
 
@@ -196,58 +196,60 @@ public class PaymentRequest : ILogable
 
 这类对象被写入服务日志时，会优先使用 `ToLog()` 的结果。
 
-## 5. `ExceptionHandling`：全局服务异常处理事件
+## 5. 服务调用事件：监听调用生命周期
 
-`ServiceInvokeInterceptor.ExceptionHandling` 是一个**全局静态事件**，用于在服务方法抛出异常时追加统一处理逻辑，例如：
+`ServiceInvokeInterceptor` 通过三个**通过依赖注入注册**的事件接口，让订阅者观察服务方法的调用生命周期，适合做指标埋点、审计、统一告警等横切逻辑。
 
-- 记录业务告警
-- 补充审计信息
-- 把特定异常转换成约定返回值
+| 接口 | 触发时机 | 上下文 |
+|------|----------|--------|
+| `IServiceInvokingEvent.OnInvoking` | 服务方法执行前 | `ServiceInvokeContext` |
+| `IServiceInvokedEvent.OnInvoked` | 服务方法成功返回后（已回填耗时与返回值） | `ServiceInvokeContext` |
+| `IServiceExceptionEvent.OnException` | 服务方法抛出异常后 | `ServiceExceptionContext` |
 
-订阅事件后，可在事件处理器中读取 `ServiceExceptionContext` 上下文，并通过 `context.Handle(...)` 把异常转成正常返回结果。
+三个回调均为**通知性质**：不影响调用流程，也不改变返回值。异常仍会原样向上抛出。
+
+订阅者只需实现关心的接口（可各自独立注册）：
 
 ```csharp
-ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
+public class MetricEvent : IServiceInvokedEvent, IServiceExceptionEvent
 {
-    if (context.MethodName == nameof(IOrderService.SubmitAsync))
+    public void OnInvoked(ServiceInvokeContext context)
     {
-        // 记录告警、补充审计等
+        // 记录 context.ServiceName / context.MethodName / context.Duration
     }
-};
+
+    public void OnException(ServiceExceptionContext context)
+    {
+        // 统一告警、补登
+    }
+}
+```
+
+注册示例：
+
+```csharp
+services.AddScoped<MetricEvent>();
+services.AddScoped<IServiceInvokedEvent>(sp => sp.GetRequiredService<MetricEvent>());
+services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<MetricEvent>());
 ```
 
 ### 5.1 触发时机
 
-当服务方法抛出异常时，`ServiceInvokeInterceptor` 会按下面顺序处理：
+- 调用前：创建 `ServiceInvokeContext` 并触发 `OnInvoking`。
+- 成功返回后：回填 `Duration` 与 `Result`，触发 `OnInvoked`。
+- 抛出异常后：创建 `ServiceExceptionContext` 并触发 `OnException`，随后记日志并原样抛出异常。
 
-1. 创建 `ServiceExceptionContext`
-2. 触发全局 `ServiceInvokeInterceptor.ExceptionHandling` 事件
-3. 如果事件标记为已处理，则返回处理结果；否则继续抛出原异常
+> 嵌套调用（同一拦截器已处理中的情况）不会重复触发 `OnInvoking` / `OnInvoked`。
 
-`RemoteServiceInvokeInterceptor` 同样提供了 `RemoteServiceInvokeInterceptor.ExceptionHandling` 事件，行为一致。
+### 5.2 `ServiceInvokeContext` 里能拿到什么
 
-### 5.2 把异常转成结果
-
-在事件处理器中调用 `context.Handle(...)` 即可把异常标记为已处理：
-
-```csharp
-ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
-{
-    if (context.Exception is TimeoutException)
-        context.Handle(123); // 把超时异常转成约定返回值
-};
-```
-
-调用 `context.Handle(123)` 后，拦截器会把这次调用视为“已处理”，并直接返回 `123`。
-
-- 对无返回值方法（`void` / `Task`），调用无参 `context.Handle()` 即可吞掉异常。
-- 对 `Task<T>` 方法，返回值会按 `T` 的类型构造。
-
-> 如果不调用 `context.Handle(...)`，异常仍会继续抛出，适合只做告警、埋点、补充日志的场景。
+- `context.ServiceName` / `context.MethodName` / `context.ServiceType`：当前服务与方法
+- `context.Arguments`：原始参数（不进行掩码处理）
+- `context.SessionID`：当前会话 ID
+- `context.Duration`：方法耗时（仅 `OnInvoked` 后有效）
+- `context.Result`：方法返回值（仅 `OnInvoked` 后有效）
 
 ### 5.3 `ServiceExceptionContext` 里能拿到什么
-
-事件处理器中通常会用到这些信息：
 
 - `context.Exception`：原始异常
 - `context.ServiceName` / `context.MethodName`：当前服务与方法
@@ -255,7 +257,7 @@ ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
 - `context.SessionID`：当前会话 ID
 - `context.SqlStack`：当前 SQL 栈
 
-因此它既能做日志增强，也能做“按异常类型决定是否降级返回”的判断。
+> `RemoteServiceInvokeInterceptor` 为远程服务保留了 `RemoteServiceInvokeInterceptor.ExceptionHandling` 事件，可直接把异常转成返回结果；本地 `ServiceInvokeInterceptor` 已改用上述注入式异常事件，异常不再支持通过 `.Handle()` 抑制。
 
 ## 6. 慢查询与日志量控制
 
@@ -274,7 +276,7 @@ ServiceInvokeInterceptor.MaxExpandedLogLength = 20;
 1. 给业务服务接口加 `ServiceLog`，把日志策略放在 Service 边界，而不是控制器里零散打印。
 2. 密码、令牌、密钥、身份证号等敏感值，一律用 `[Log(false)]` 或自定义 `ILogable` 脱敏。
 3. 开发阶段可用 `Debug + Full`，生产环境更建议按业务重要性收敛到 `Information` 或 `Warning`。
-4. 通过 `ServiceInvokeInterceptor.ExceptionHandling` 全局事件做统一告警、补偿和异常转结果。
+4. 通过注入的 `IServiceExceptionEvent` 事件做统一告警、补充与补偿。
 5. 高频、低价值的方法可用 `ServiceLogLevel.None` 降噪。
 
 ## 相关链接

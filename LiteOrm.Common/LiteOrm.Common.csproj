@@ -22,6 +22,8 @@
       - 数值类型互转默认注册；值转换机制优化。
       - 补全各数据库 SQL 函数方言注册；新增 DefaultFunctionSqlHandler 与 RegisterFunctionSqlHandler(name)。
       - 字符串常量（Expr.Const）可直接内联为 SQL 字面量（TryAppendSqlLiteral）。
+      - JsonNode 类型属性自动映射为 DbValueType.Json 列；支持索引器 / GetValue&lt;T&gt;() 的 JSON 路径 Lambda 映射。
+      - 新增 IEntityServiceEvent&lt;T&gt; / EntityServiceEventBase&lt;T&gt; 实体服务事件观察者接口（增删改等操作前后回调，Before 返回 false 可取消；批量逐条触发单条事件）。
       - 修复 SortProperty 未排除索引器导致的循环依赖误判；修复实体对象裸值绑定错误；SearchAs 自动补充 AS 别名。
 
       8.1.3:

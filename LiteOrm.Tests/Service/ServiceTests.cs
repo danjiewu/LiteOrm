@@ -1,8 +1,12 @@
 using LiteOrm.Common;
+using LiteOrm.DependencyInjection;
 using LiteOrm.Service;
 using LiteOrm.Tests.Infrastructure;
 using LiteOrm.Tests.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Collections.Generic;
 using System.ComponentModel;
 using Xunit;
 
@@ -1310,5 +1314,189 @@ namespace LiteOrm.Tests
         }
 
         #endregion
+
+        [Fact]
+        public async Task EntityService_Events_ShouldFireOnCrud()
+        {
+            using var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+                .ConfigureAppConfiguration(cfg =>
+                {
+                    cfg.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["LiteOrm:Default"] = "SQLite",
+                        ["LiteOrm:DataSources:0:Name"] = "SQLite",
+                        ["LiteOrm:DataSources:0:ConnectionString"] = "Data Source=events.db",
+                        ["LiteOrm:DataSources:0:Provider"] = "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+                        ["LiteOrm:DataSources:0:SyncTable"] = "true"
+                    });
+                })
+                .RegisterLiteOrm()
+                .ConfigureServices(s => s.AddScoped<IEntityServiceEvent<TestUser>, RecordingEvent>())
+                .Build();
+
+            await host.StartAsync(TestContext.Current.CancellationToken);
+            try
+            {
+                using var scope = host.Services.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IEntityService<TestUser>>();
+                var evt = (RecordingEvent)scope.ServiceProvider.GetRequiredService<IEntityServiceEvent<TestUser>>();
+
+                var user = new TestUser { Name = "EventUser", Age = 20, CreateTime = DateTime.Now };
+
+                Assert.True(service.Insert(user));
+                Assert.Equal(new[] { nameof(RecordingEvent.OnInserting), nameof(RecordingEvent.OnInserted) }, evt.Calls);
+
+                evt.Calls.Clear();
+                user.Name = "EventUser_Updated";
+                Assert.True(service.Update(user));
+                Assert.Equal(new[] { nameof(RecordingEvent.OnUpdating), nameof(RecordingEvent.OnUpdated) }, evt.Calls);
+
+                evt.Calls.Clear();
+                Assert.True(service.Delete(user));
+                Assert.Equal(new[] { nameof(RecordingEvent.OnDeleting), nameof(RecordingEvent.OnDeleted) }, evt.Calls);
+
+                // DeleteID
+                var idUser = new TestUser { Name = "IDUser", Age = 5, CreateTime = DateTime.Now };
+                service.Insert(idUser);
+                evt.Calls.Clear();
+                Assert.True(service.DeleteID(idUser.Id));
+                Assert.Equal(new[] { nameof(RecordingEvent.OnDeleteIDing), nameof(RecordingEvent.OnDeleteIDed) }, evt.Calls);
+
+                // UpdateAll / DeleteAll
+                var allUser = new TestUser { Name = "AllUser", Age = 8, CreateTime = DateTime.Now };
+                service.Insert(allUser);
+                evt.Calls.Clear();
+                var updateExpr = new UpdateExpr
+                {
+                    Table = new TableExpr(typeof(TestUser)),
+                    Sets = new System.Collections.Generic.List<SetItem>
+                    {
+                        new(Expr.Prop("Age"), Expr.Prop("Age") + Expr.Const(10))
+                    },
+                    Where = Expr.Lambda<TestUser>(u => u.Name == "AllUser")
+                };
+                Assert.Equal(1, service.UpdateAll(updateExpr));
+                Assert.Equal(new[] { nameof(RecordingEvent.OnUpdateAlling), nameof(RecordingEvent.OnUpdateAlled) }, evt.Calls);
+
+                evt.Calls.Clear();
+                Assert.Equal(1, service.DeleteAll(Expr.Lambda<TestUser>(u => u.Name == "AllUser")));
+                Assert.Equal(new[] { nameof(RecordingEvent.OnDeleteAlling), nameof(RecordingEvent.OnDeleteAlled) }, evt.Calls);
+
+                // BatchInsert / BatchDeleteID：批量循环到单条事件
+                var b1 = new TestUser { Name = "BatchID1", Age = 11, CreateTime = DateTime.Now };
+                var b2 = new TestUser { Name = "BatchID2", Age = 12, CreateTime = DateTime.Now };
+                evt.Calls.Clear();
+                service.BatchInsert(new[] { b1, b2 });
+                Assert.Equal(new[] { nameof(RecordingEvent.OnInserting), nameof(RecordingEvent.OnInserting), nameof(RecordingEvent.OnInserted), nameof(RecordingEvent.OnInserted) }, evt.Calls);
+                evt.Calls.Clear();
+                service.BatchDeleteID(new object[] { b1.Id, b2.Id });
+                Assert.Equal(new[] { nameof(RecordingEvent.OnBatchDeleteIDing), nameof(RecordingEvent.OnBatchDeleteIDed) }, evt.Calls);
+
+                // Before 回调返回 false 时取消操作
+                evt.Calls.Clear();
+                evt.Block = true;
+                Assert.False(service.Insert(new TestUser { Name = "Blocked", Age = 1, CreateTime = DateTime.Now }));
+                Assert.Equal(new[] { nameof(RecordingEvent.OnInserting) }, evt.Calls);
+            }
+            finally
+            {
+                await host.StopAsync(TestContext.Current.CancellationToken);
+                host.Dispose();
+            }
+        }
+
+        [Fact]
+        public async Task ServiceInvokeEvent_ShouldFireOnInvocation()
+        {
+            using var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+                .ConfigureAppConfiguration(cfg =>
+                {
+                    cfg.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["LiteOrm:Default"] = "SQLite",
+                        ["LiteOrm:DataSources:0:Name"] = "SQLite",
+                        ["LiteOrm:DataSources:0:ConnectionString"] = "Data Source=invokeevent.db",
+                        ["LiteOrm:DataSources:0:Provider"] = "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+                        ["LiteOrm:DataSources:0:SyncTable"] = "true"
+                    });
+                })
+                .RegisterLiteOrm()
+                .ConfigureServices(s =>
+                {
+                    s.AddScoped<RecordingInvokeEvent>();
+                    s.AddScoped<IServiceInvokingEvent>(sp => sp.GetRequiredService<RecordingInvokeEvent>());
+                    s.AddScoped<IServiceInvokedEvent>(sp => sp.GetRequiredService<RecordingInvokeEvent>());
+                    s.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<RecordingInvokeEvent>());
+                })
+                .Build();
+
+            await host.StartAsync(TestContext.Current.CancellationToken);
+            try
+            {
+                using var scope = host.Services.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+                var evt = scope.ServiceProvider.GetRequiredService<RecordingInvokeEvent>();
+
+                await service.InsertAsync(new TestUser { Name = "InvokeEventUser", Age = 3, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+
+                Assert.Contains(evt.Calls, c => c.StartsWith("OnInvoking:"));
+                Assert.Contains(evt.Calls, c => c.StartsWith("OnInvoked:"));
+                int invokingIdx = evt.Calls.FindIndex(c => c.StartsWith("OnInvoking:"));
+                int invokedIdx = evt.Calls.FindIndex(c => c.StartsWith("OnInvoked:"));
+                Assert.InRange(invokingIdx, 0, invokedIdx);
+            }
+            finally
+            {
+                await host.StopAsync(TestContext.Current.CancellationToken);
+                host.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// 记录事件回调调用的测试订阅者。
+        /// </summary>
+        private sealed class RecordingEvent : EntityServiceEventBase<TestUser>
+        {
+            public List<string> Calls { get; } = new List<string>();
+
+            /// <summary>
+            /// 为 <see langword="true"/> 时，Before 回调返回 false 以取消操作。
+            /// </summary>
+            public bool Block { get; set; }
+
+            public override bool OnInserting(TestUser entity) { Calls.Add(nameof(OnInserting)); return !Block; }
+            public override bool OnUpdating(TestUser entity) { Calls.Add(nameof(OnUpdating)); return !Block; }
+            public override bool OnDeleting(TestUser entity) { Calls.Add(nameof(OnDeleting)); return !Block; }
+
+            public override void OnInserted(TestUser entity) => Calls.Add(nameof(OnInserted));
+            public override void OnUpdated(TestUser entity) => Calls.Add(nameof(OnUpdated));
+            public override void OnDeleted(TestUser entity) => Calls.Add(nameof(OnDeleted));
+
+            public override bool OnDeleteIDing(object id, string[] tableArgs) { Calls.Add(nameof(OnDeleteIDing)); return !Block; }
+            public override void OnDeleteIDed(object id, string[] tableArgs) => Calls.Add(nameof(OnDeleteIDed));
+
+            public override bool OnBatchDeleteIDing(System.Collections.IEnumerable ids, string[] tableArgs) { Calls.Add(nameof(OnBatchDeleteIDing)); return !Block; }
+            public override void OnBatchDeleteIDed(System.Collections.IEnumerable ids, string[] tableArgs) => Calls.Add(nameof(OnBatchDeleteIDed));
+
+            public override bool OnUpdateAlling(UpdateExpr expr, string[] tableArgs) { Calls.Add(nameof(OnUpdateAlling)); return !Block; }
+            public override void OnUpdateAlled(int count, UpdateExpr expr, string[] tableArgs) => Calls.Add(nameof(OnUpdateAlled));
+
+            public override bool OnDeleteAlling(LogicExpr expr, string[] tableArgs) { Calls.Add(nameof(OnDeleteAlling)); return !Block; }
+            public override void OnDeleteAlled(int count, LogicExpr expr, string[] tableArgs) => Calls.Add(nameof(OnDeleteAlled));
+        }
+
+        /// <summary>
+        /// 记录服务调用事件回调调用的测试订阅者。
+        /// </summary>
+        private sealed class RecordingInvokeEvent : IServiceInvokingEvent, IServiceInvokedEvent, IServiceExceptionEvent
+        {
+            public List<string> Calls { get; } = new List<string>();
+
+            public void OnInvoking(ServiceInvokeContext context) => Calls.Add($"{nameof(OnInvoking)}:{context.ServiceName}.{context.MethodName}");
+
+            public void OnInvoked(ServiceInvokeContext context) => Calls.Add($"{nameof(OnInvoked)}:{context.ServiceName}.{context.MethodName}");
+
+            public void OnException(ServiceExceptionContext context) => Calls.Add($"{nameof(OnException)}:{context.ServiceName}.{context.MethodName}");
+        }
     }
 }

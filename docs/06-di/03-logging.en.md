@@ -1,4 +1,4 @@
-﻿# Logging and Diagnostics
+# Logging and Diagnostics
 
 LiteOrm writes runtime logs through `Microsoft.Extensions.Logging`. If the host application already has logging providers configured, such as Console, Debug, or Serilog, LiteOrm service-call logs, exception logs, and slow-query logs flow through the same pipeline.
 
@@ -196,58 +196,60 @@ public class PaymentRequest : ILogable
 
 When such an object is logged by the interceptor, LiteOrm uses `ToLog()`.
 
-## 5. `ExceptionHandling`: global service exception event
+## 5. Service invoke events: observing the call lifecycle
 
-`ServiceInvokeInterceptor.ExceptionHandling` is a **global static event** that runs when a service method throws an exception. Typical uses include:
+`ServiceInvokeInterceptor` exposes three **dependency-injected** event interfaces so subscribers can observe a service method's lifecycle — useful for metrics, auditing, and unified alerting.
 
-- sending alerts
-- adding audit records
-- converting a known exception into an agreed fallback result
+| Interface | When it runs | Context |
+|-----------|--------------|---------|
+| `IServiceInvokingEvent.OnInvoking` | right before the service method runs | `ServiceInvokeContext` |
+| `IServiceInvokedEvent.OnInvoked` | after the service method returns (duration and result are filled in) | `ServiceInvokeContext` |
+| `IServiceExceptionEvent.OnException` | when the service method throws | `ServiceExceptionContext` |
 
-After subscribing, the handler can read the `ServiceExceptionContext` and call `context.Handle(...)` to convert the exception into a normal return value.
+All three callbacks are **notification-only**: they do not affect the call flow or the return value, and an exception is always rethrown as-is.
+
+A subscriber only implements the interfaces it cares about (each can be registered independently):
 
 ```csharp
-ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
+public class MetricEvent : IServiceInvokedEvent, IServiceExceptionEvent
 {
-    if (context.MethodName == nameof(IOrderService.SubmitAsync))
+    public void OnInvoked(ServiceInvokeContext context)
     {
-        // alert, audit, etc.
+        // record context.ServiceName / context.MethodName / context.Duration
     }
-};
+
+    public void OnException(ServiceExceptionContext context)
+    {
+        // unified alerting and logging
+    }
+}
 ```
 
-### 5.1 When it runs
-
-When a service method throws, `ServiceInvokeInterceptor` handles it in this order:
-
-1. create `ServiceExceptionContext`
-2. raise the global `ServiceInvokeInterceptor.ExceptionHandling` event
-3. if the event marks it as handled, return the handled result; otherwise rethrow the original exception
-
-`RemoteServiceInvokeInterceptor` exposes the same `RemoteServiceInvokeInterceptor.ExceptionHandling` event with identical behavior.
-
-### 5.2 Converting an exception into a result
-
-Call `context.Handle(...)` inside the handler to mark the exception as handled:
+Registration example:
 
 ```csharp
-ServiceInvokeInterceptor.ExceptionHandling += (sender, context) =>
-{
-    if (context.Exception is TimeoutException)
-        context.Handle(123); // convert timeout into an agreed fallback
-};
+services.AddScoped<MetricEvent>();
+services.AddScoped<IServiceInvokedEvent>(sp => sp.GetRequiredService<MetricEvent>());
+services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<MetricEvent>());
 ```
 
-After `context.Handle(123)`, the interceptor treats the call as handled and returns `123`.
+### 5.1 When each runs
 
-- For void methods (`void` / `Task`), call the parameterless `context.Handle()` to swallow the exception.
-- For `Task<T>` methods, the result is built using `T`.
+- Before: create `ServiceInvokeContext` and raise `OnInvoking`.
+- After a successful return: fill `Duration` and `Result`, then raise `OnInvoked`.
+- On exception: create `ServiceExceptionContext`, raise `OnException`, then log and rethrow the original exception.
 
-> If you do not call `context.Handle(...)`, the exception still propagates, which is fine for alerting, metrics, and extra logging.
+> Nested calls (the same interceptor already in progress) do not re-raise `OnInvoking` / `OnInvoked`.
+
+### 5.2 What `ServiceInvokeContext` contains
+
+- `context.ServiceName` / `context.MethodName` / `context.ServiceType`: current service and method
+- `context.Arguments`: raw arguments (no masking)
+- `context.SessionID`: current session ID
+- `context.Duration`: elapsed time (valid only in `OnInvoked`)
+- `context.Result`: return value (valid only in `OnInvoked`)
 
 ### 5.3 What `ServiceExceptionContext` contains
-
-The most useful members in the handler are usually:
 
 - `context.Exception`: the original exception
 - `context.ServiceName` / `context.MethodName`: current service and method
@@ -255,7 +257,7 @@ The most useful members in the handler are usually:
 - `context.SessionID`: current session ID
 - `context.SqlStack`: current SQL stack
 
-So the event can be used both for richer diagnostics and for exception-to-result decisions.
+> `RemoteServiceInvokeInterceptor` still exposes `RemoteServiceInvokeInterceptor.ExceptionHandling` so a remote call can convert an exception into a result. The local `ServiceInvokeInterceptor` now uses the injected exception event above and no longer supports suppressing exceptions via `.Handle()`.
 
 ## 6. Slow-query and volume controls
 
@@ -274,7 +276,7 @@ ServiceInvokeInterceptor.MaxExpandedLogLength = 20;
 1. Put `ServiceLog` on service interfaces so logging stays aligned with service boundaries.
 2. Treat passwords, tokens, keys, and sensitive identifiers as opt-out-by-default: use `[Log(false)]` or a custom `ILogable`.
 3. Use `Debug + Full` during local troubleshooting, then narrow to `Information` or `Warning` in production.
-4. Use the global `ServiceInvokeInterceptor.ExceptionHandling` event for unified alerts, compensation, and exception-to-result conversion.
+4. Use the injected `IServiceExceptionEvent` event for unified alerts, compensation, and extra logging.
 5. Silence high-frequency, low-value methods with `ServiceLogLevel.None`.
 
 ## Related Links

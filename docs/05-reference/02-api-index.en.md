@@ -156,7 +156,7 @@ Related guides:
 
 - `[Transaction]`
 
-- `ServiceInvokeInterceptor.ExceptionHandling`
+- `IServiceInvokingEvent` / `IServiceInvokedEvent` / `IServiceExceptionEvent`
 - `SessionManager`
 - `IArged` / `TableArgs`
 - window function extensions

@@ -22,6 +22,9 @@
 - 补全各数据库 SQL 函数方言注册。
 - Oracle 标识符不再强制转大写。
 - 字符串常量可直接内联为 SQL 字面量（TryAppendSqlLiteral）。
+- 破坏性变更：移除 EntityService 的 *Core 保护方法（InsertCore/UpdateCore/DeleteCore/DeleteIDCore/UpdateOrInsertCore 及异步版本），逻辑内联到对应公开方法。
+- 实体事件：EntityService 接入 IEntityServiceEvent&lt;T&gt;，在增删改、UpdateOrInsert、DeleteID、DeleteAll、UpdateAll 等操作前后触发回调，Before 返回 false 可取消；批量方法逐条触发单条事件。
+- 新增 JsonNode 类型属性支持：自动映射为 DbValueType.Json 列，支持索引器 / GetValue&lt;T&gt;() 的 JSON 路径 Lambda 查询。
 - 修复 SearchAs 自动补充 AS 别名；SortProperty 排除索引器；SearchAsAsync 补充 CancellationToken。
 
 8.1.3:

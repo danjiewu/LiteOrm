@@ -1,115 +1,107 @@
 using LiteOrm.Common;
 using LiteOrm.DependencyInjection;
 using LiteOrm.Service;
-using LiteOrm.Tests.Infrastructure;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
 
 namespace LiteOrm.Tests.Service
 {
-    [Collection("Database")]
-    public class ServiceExceptionHookFlowTests : TestBase
+    public class ServiceExceptionHookFlowTests
     {
-        public ServiceExceptionHookFlowTests(DatabaseFixture fixture) : base(fixture)
+        private static IHost BuildHost(Action<IServiceCollection> configureServices)
         {
+            return Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+                .ConfigureAppConfiguration(cfg =>
+                {
+                    cfg.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["LiteOrm:Default"] = "SQLite",
+                        ["LiteOrm:DataSources:0:Name"] = "SQLite",
+                        ["LiteOrm:DataSources:0:ConnectionString"] = "Data Source=excevent.db",
+                        ["LiteOrm:DataSources:0:Provider"] = "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite",
+                        ["LiteOrm:DataSources:0:SyncTable"] = "true"
+                    });
+                })
+                .RegisterLiteOrm()
+                .ConfigureServices(configureServices)
+                .Build();
+        }
+
+        private static Action<IServiceCollection> ConfigureExceptionEvent() => s =>
+        {
+            s.AddScoped<RecordingExceptionEvent>();
+            s.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<RecordingExceptionEvent>());
+        };
+
+        /// <summary>
+        /// 记录异常事件回调调用的测试订阅者。
+        /// </summary>
+        private sealed class RecordingExceptionEvent : IServiceExceptionEvent
+        {
+            public List<string> Calls { get; } = new List<string>();
+
+            public void OnException(ServiceExceptionContext context) => Calls.Add(context.MethodName);
         }
 
         [Fact]
-        public void GlobalExceptionHandlingEvent_ShouldHandleExceptionWithResult()
+        public async Task ServiceExceptionEvent_ShouldFireAndRethrow()
         {
-            var service = ServiceProvider.GetRequiredService<IExceptionHandlingTestService>();
-            EventHandler<ServiceExceptionContext> handler = (sender, context) =>
-            {
-                if (context.MethodName == nameof(IExceptionHandlingTestService.ThrowWithGlobalHandler))
-                    context.Handle(789);
-            };
-
-            ServiceInvokeInterceptor.ExceptionHandling += handler;
+            using var host = BuildHost(ConfigureExceptionEvent());
+            await host.StartAsync(TestContext.Current.CancellationToken);
             try
             {
-                var result = service.ThrowWithGlobalHandler();
+                using var scope = host.Services.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IExceptionHandlingTestService>();
+                var evt = scope.ServiceProvider.GetRequiredService<RecordingExceptionEvent>();
 
-                Assert.Equal(789, result);
+                var ex = Assert.Throws<InvalidOperationException>(() => service.ThrowUnhandled());
+                Assert.Equal("unhandled", ex.Message);
+                Assert.Contains(nameof(IExceptionHandlingTestService.ThrowUnhandled), evt.Calls);
+
+                evt.Calls.Clear();
+                var asyncEx = await Assert.ThrowsAsync<InvalidOperationException>(() => service.ThrowAsyncWithGlobalHandler());
+                Assert.Equal("async", asyncEx.Message);
+                Assert.Contains(nameof(IExceptionHandlingTestService.ThrowAsyncWithGlobalHandler), evt.Calls);
             }
             finally
             {
-                ServiceInvokeInterceptor.ExceptionHandling -= handler;
+                await host.StopAsync(TestContext.Current.CancellationToken);
+                host.Dispose();
             }
         }
 
         [Fact]
-        public void GlobalExceptionHandlingEvent_ShouldHandleVoidException()
+        public async Task ServiceExceptionEvent_Nested_ShouldNotifyAndRethrowOriginal()
         {
-            var service = ServiceProvider.GetRequiredService<IExceptionHandlingTestService>();
-            EventHandler<ServiceExceptionContext> handler = (sender, context) =>
-            {
-                if (context.MethodName == nameof(IExceptionHandlingTestService.ThrowVoid))
-                    context.Handle();
-            };
-
-            ServiceInvokeInterceptor.ExceptionHandling += handler;
+            using var host = BuildHost(ConfigureExceptionEvent());
+            await host.StartAsync(TestContext.Current.CancellationToken);
             try
             {
-                service.ThrowVoid();
+                using var scope = host.Services.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IOuterExceptionHandlingTestService>();
+                var evt = scope.ServiceProvider.GetRequiredService<RecordingExceptionEvent>();
+
+                var ex = Assert.Throws<InvalidOperationException>(() => service.CallInnerThrow());
+                Assert.Equal("nested", ex.Message);
+                Assert.Contains(nameof(IInnerExceptionHandlingTestService.ThrowNested), evt.Calls);
             }
             finally
             {
-                ServiceInvokeInterceptor.ExceptionHandling -= handler;
+                await host.StopAsync(TestContext.Current.CancellationToken);
+                host.Dispose();
             }
-        }
-
-        [Fact]
-        public async Task GlobalExceptionHandlingEvent_ShouldHandleAsyncExceptionWithResult()
-        {
-            var service = ServiceProvider.GetRequiredService<IExceptionHandlingTestService>();
-            EventHandler<ServiceExceptionContext> handler = (sender, context) =>
-            {
-                if (context.MethodName == nameof(IExceptionHandlingTestService.ThrowAsyncWithGlobalHandler))
-                    context.Handle(456);
-            };
-
-            ServiceInvokeInterceptor.ExceptionHandling += handler;
-            try
-            {
-                var result = await service.ThrowAsyncWithGlobalHandler();
-
-                Assert.Equal(456, result);
-            }
-            finally
-            {
-                ServiceInvokeInterceptor.ExceptionHandling -= handler;
-            }
-        }
-
-        [Fact]
-        public void UnhandledException_ShouldRethrow()
-        {
-            var service = ServiceProvider.GetRequiredService<IExceptionHandlingTestService>();
-
-            var ex = Assert.Throws<InvalidOperationException>(() => service.ThrowUnhandled());
-
-            Assert.Equal("unhandled", ex.Message);
-        }
-
-        [Fact]
-        public void NestedServiceCall_ShouldRethrowOriginalException()
-        {
-            var service = ServiceProvider.GetRequiredService<IOuterExceptionHandlingTestService>();
-
-            var ex = Assert.Throws<InvalidOperationException>(() => service.CallInnerThrow());
-
-            Assert.Equal("nested", ex.Message);
         }
     }
 
     public interface IExceptionHandlingTestService
     {
-        int ThrowWithGlobalHandler();
-        void ThrowVoid();
-        Task<int> ThrowAsyncWithGlobalHandler();
         int ThrowUnhandled();
+        Task<int> ThrowAsyncWithGlobalHandler();
     }
 
     public interface IOuterExceptionHandlingTestService
@@ -121,24 +113,29 @@ namespace LiteOrm.Tests.Service
     [Intercept(typeof(ServiceInvokeInterceptor))]
     public class ExceptionHandlingTestService : IExceptionHandlingTestService
     {
-        public int ThrowWithGlobalHandler()
+        public int ThrowUnhandled()
         {
-            throw new InvalidOperationException("global");
-        }
-
-        public void ThrowVoid()
-        {
-            throw new InvalidOperationException("void");
+            throw new InvalidOperationException("unhandled");
         }
 
         public Task<int> ThrowAsyncWithGlobalHandler()
         {
             throw new InvalidOperationException("async");
         }
+    }
 
-        public int ThrowUnhandled()
+    public interface IInnerExceptionHandlingTestService
+    {
+        void ThrowNested();
+    }
+
+    [AutoRegister(Lifetime = Lifetime.Scoped)]
+    [Intercept(typeof(ServiceInvokeInterceptor))]
+    public class InnerExceptionHandlingTestService : IInnerExceptionHandlingTestService
+    {
+        public void ThrowNested()
         {
-            throw new InvalidOperationException("unhandled");
+            throw new InvalidOperationException("nested");
         }
     }
 
@@ -156,21 +153,6 @@ namespace LiteOrm.Tests.Service
         public void CallInnerThrow()
         {
             _innerService.ThrowNested();
-        }
-    }
-
-    public interface IInnerExceptionHandlingTestService
-    {
-        void ThrowNested();
-    }
-
-    [AutoRegister(Lifetime = Lifetime.Scoped)]
-    [Intercept(typeof(ServiceInvokeInterceptor))]
-    public class InnerExceptionHandlingTestService : IInnerExceptionHandlingTestService
-    {
-        public void ThrowNested()
-        {
-            throw new InvalidOperationException("nested");
         }
     }
 }
