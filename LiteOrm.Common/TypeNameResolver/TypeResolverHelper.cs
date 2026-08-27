@@ -112,26 +112,17 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 按名称查找类型。解析顺序：
-        /// 1. 自定义注册（<see cref="Register"/>）；
-        /// 2. 精确全名匹配（含命名空间或程序集限定名）；
-        /// 3. 忽略大小写再匹配（若前两步均未命中）。
+        /// 按名称查找类型。解析顺序：自定义注册 → 精确全名匹配 → 忽略大小写匹配。
         /// <para>
-        /// 输入名称中的空格、制表符、换行等非实质性字符会在查找前自动剥离，
-        /// 避免因输入格式差异（如 <c>"List &lt; int &gt;"</c> vs <c>"List&lt;int&gt;"</c>）导致不匹配。
-        /// </para>
-        /// <para>
-        /// 结果按 <paramref name="typeName"/> 原始值缓存，多次调用同一输入不会重复解析。
+        /// 查找前会剥离名称中的空格/制表/换行等非实质性字符以避免输入格式差异导致的不匹配。
         /// </para>
         /// <para>
         /// 泛型类型应使用 CLR 名称格式（含反引号 arity 后缀），如 <c>IEntityService`1</c>，
         /// 避免与同名的非泛型类型冲突。
         /// </para>
         /// <para>
-        /// AOT 模式下仅返回通过 <see cref="Register"/> 预注册的类型，其公共构造函数
-        /// 由 <c>[DynamicallyAccessedMembers]</c> 链上的注解保留；非 AOT 模式下
-        /// 回退到 <see cref="Type.GetType(string)"/> 与程序集扫描，此时返回的类型
-        /// 不保证构造函数被保留（调用方需自行处理）。
+        /// AOT 模式下仅返回通过 <see cref="Register"/> 预注册的类型；非 AOT 模式下
+        /// 回退到 <see cref="Type.GetType(string)"/> 与程序集扫描（返回的类型不保证构造函数被保留）。
         /// </para>
         /// </summary>
         /// <param name="typeName">类型名称，可以是全名、短名或程序集限定名。泛型类型应使用 <c>Foo`1</c> 格式。</param>
@@ -146,10 +137,9 @@ namespace LiteOrm.Common
             if (string.IsNullOrEmpty(typeName)) return null;
             return _findTypeCache.GetOrAdd(typeName, t =>
             {
-                // 先对输入做规范化处理（剥离空格等非实质性字符）
+                // 剥离空白等非实质性字符后精确匹配，未命中则忽略大小写回退
                 var normalized = StripNonSignificantChars(t);
                 var result = FindTypeCore(normalized);
-                // 未命中时忽略大小写再匹配
                 if (result is null)
                     result = FindTypeCaseInsensitive(normalized);
                 return result;
@@ -218,6 +208,8 @@ namespace LiteOrm.Common
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2057",
             Justification = "Type.GetType is only called when RuntimeFeature.IsDynamicCodeSupported is true (JIT mode); under AOT the method returns early via the pre-registered map.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2096",
+            Justification = "Case-insensitive GetType is only called when RuntimeFeature.IsDynamicCodeSupported is true (JIT mode); under AOT the method returns early via the pre-registered map.")]
         [UnconditionalSuppressMessage("Trimming", "IL2026",
             Justification = "Assembly.GetType is only called when RuntimeFeature.IsDynamicCodeSupported is true (JIT mode); under AOT the method returns early via the pre-registered map.")]
         [UnconditionalSuppressMessage("Trimming", "IL2073",
@@ -226,10 +218,14 @@ namespace LiteOrm.Common
         [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         private static Type? FindTypeCaseInsensitive(string typeName)
         {
-            // AOT/裁剪模式下动态查找不可用，仅依赖不区分大小写的注册匹配
+            // 不区分大小写的注册匹配（AOT/JIT 均适用）
+            var registered = _nameToType
+                .FirstOrDefault(kv => string.Equals(kv.Key, typeName, StringComparison.OrdinalIgnoreCase)).Value;
+            if (registered != null) return registered;
+
+            // AOT/裁剪模式下动态查找不可用，仅依赖预注册映射
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
-                return _nameToType.FirstOrDefault(kv =>
-                    string.Equals(kv.Key, typeName, StringComparison.OrdinalIgnoreCase)).Value;
+                return null;
 
             // 不区分大小写的程序集限定名/全名匹配
             var byGetType = Type.GetType(typeName, throwOnError: false, ignoreCase: true);
