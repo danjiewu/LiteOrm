@@ -1,5 +1,6 @@
 using LiteOrm.Common;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace LiteOrm.CodeGen
@@ -46,6 +47,8 @@ namespace LiteOrm.CodeGen
         /// </summary>
         /// <param name="initTable">指示是否初始化表信息。</param>
         /// <returns>返回一个新的 <see cref="SqlBuildContext"/> 实例。</returns>
+        [UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "ObjectType (runtime target entity type, guaranteed to be a [Table] type by the caller) is passed to GetTableView; its metadata is preserved via [Table] plus the source generator.")]
         public SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
             if (initTable)

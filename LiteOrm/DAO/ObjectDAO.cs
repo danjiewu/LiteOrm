@@ -352,6 +352,8 @@ namespace LiteOrm
         /// <param name="values">包含要转换的数据的对象集合。</param>
         /// <param name="columns">要在 DataTable 中创建的列定义集合。</param>
         /// <returns>返回填充了集合数据的 DataTable 实例。</returns>
+        [UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "PropertyType.GetUnderlyingType only inspects Nullable<T> metadata; column types are preserved via [Table] metadata and the source generator.")]
         protected DataTable ToDataTable(IEnumerable<T> values, ColumnDefinition[] columns)
         {
             DataTable dt = new DataTable(FactTableName);

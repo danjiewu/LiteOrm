@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 
@@ -90,6 +91,8 @@ namespace LiteOrm
         /// <summary>
         /// 获取 PostgreSql 列类型。
         /// </summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "column.PropertyType (a framework property) carries no annotation; column types are preserved via [Table] metadata plus the source generator.")]
         protected override string GetSqlTypeDefinition(ColumnDefinition column)
         {
             if (column.IsIdentity)

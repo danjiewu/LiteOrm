@@ -88,7 +88,9 @@ namespace LiteOrm.CodeGen
         /// <param name="objectTypes">实体类型集合。</param>
         /// <returns>所有实体类型的 ddl 语句集合。</returns>
         /// <exception cref="ArgumentNullException">当 <paramref name="objectTypes"/> 为 null 时抛出。</exception>
-        public IEnumerable<string> GenerateDdl([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] IEnumerable<Type> objectTypes)
+        [UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "objectTypes elements are entity types; IEnumerable<Type> elements cannot declare DynamicallyAccessedMembers, so suppression is scoped locally and preservation relies on [Table] plus the source generator.")]
+        public IEnumerable<string> GenerateDdl(IEnumerable<Type> objectTypes)
         {
             if (objectTypes == null) throw new ArgumentNullException(nameof(objectTypes));
 

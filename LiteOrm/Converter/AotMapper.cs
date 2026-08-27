@@ -33,7 +33,7 @@ namespace LiteOrm
     /// 全程不使用 <c>Expression.Compile</c>，不开动态代码；目标类型元数据由构造方通过
     /// <see cref="DynamicallyAccessedMemberTypes"/> 保证在裁剪后保留。
     /// </remarks>
-    internal sealed class AotReflectionMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>
+    internal sealed class AotMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>
     {
         private readonly ConstructorInfo _ctor;
         private readonly bool _useCtorArgs;
@@ -48,7 +48,7 @@ namespace LiteOrm
         /// 初始化映射器：检测 <typeparamref name="TResult"/> 是否具有公开无参构造函数，来决定普通类型（属性 setter）或
         /// 匿名/构造类型（构造函数参数）映射模式，并将 <paramref name="specs"/> 固化为并行数组。
         /// </summary>
-        public AotReflectionMapper(IReadOnlyList<ColumnReadSpec> specs)
+        public AotMapper(IReadOnlyList<ColumnReadSpec> specs)
         {
             var paramless = typeof(TResult).GetConstructor(Type.EmptyTypes);
             _ctor = paramless ?? typeof(TResult).GetConstructors()[0]; // 匿名类型通常仅一个公开构造函数
@@ -121,6 +121,8 @@ namespace LiteOrm
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2072",
             Justification = "Activator.CreateInstance is only called for value types (reference types use null); the default constructor of a value type requires no extra trim-preservation.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2067",
+            Justification = "Activator.CreateInstance(Type) requires PublicParameterlessConstructor; it is only called for value types (reference types return null), whose default constructor needs no extra trim preservation.")]
 #endif
         private static object? CreateDefaultValue(Type type)
         {

@@ -144,6 +144,8 @@ namespace LiteOrm
         /// <param name="dbConverter">数据库值转换器，用于推断 <see cref="DbValueType.Default"/> 列的 <see cref="DbType"/>。</param>
         /// <returns>编译后的映射委托，实际类型为 <see cref="Func{AutoLockDataReader, TResult}"/>。</returns>
         [RequiresDynamicCode("Converter dynamic creation relies on MakeGenericMethod; not supported under NativeAOT.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2060",
+            Justification = "MakeGenericMethod runs only on the JIT path (dynamic code available, guarded by RequiresDynamicCode); under AOT the source-generated mapping path is used.")]
         public static Delegate GetConverterByType(Type resultType, IDbConverter dbConverter)
         {
             return _cacheByType.GetOrAdd(resultType,
@@ -175,6 +177,8 @@ namespace LiteOrm
                     (suggestRegisterMapper ? ", or call DataReaderConverter.RegisterMapper first." : "."));
         }
 
+        [UnconditionalSuppressMessage("Trimming", "IL2091",
+            Justification = "TResult only declares PublicParameterlessConstructor while EnsureDynamicCode/AotMapper require PublicConstructors; this call runs on the JIT inlining path and throws first under AOT.")]
         private static Func<AutoLockDataReader, TResult> CompileConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IDbConverter dbConverter)
         {
             // AOT：无动态代码，经反射 + 转换委托构建映射
@@ -234,7 +238,7 @@ namespace LiteOrm
             List<ColumnReadSpec> specs = resultType.GetConstructor(Type.EmptyTypes) != null
                 ? BuildPropertySpecs(reader, dbConverter, resultType)
                 : BuildCtorSpecs(reader, dbConverter, resultType);
-            return new AotReflectionMapper<TResult>(specs).Map;
+            return new AotMapper<TResult>(specs).Map;
         }
 
         /// <summary>具名类型：按列名匹配可写属性，构建属性 setter 映射规范（AOT 反射路径）。</summary>
@@ -255,6 +259,8 @@ namespace LiteOrm
         }
 
         /// <summary>匿名/构造类型：按公开构造函数参数名匹配列名，构建构造函数参数映射规范（AOT 反射路径）。</summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2070",
+            Justification = "resultType is only used to read public-constructor metadata (anonymous/ctor types are either mapper-registered or throw under AOT).")]
         private static List<ColumnReadSpec> BuildCtorSpecs(DbDataReader reader, IDbConverter dbConverter, Type resultType)
         {
             var ctor = resultType.GetConstructors()[0]; // 匿名类型通常仅一个公开构造函数
@@ -279,6 +285,8 @@ namespace LiteOrm
         }
 
         /// <summary>按 <see cref="SqlTable.SelectColumns"/> 位置构建实体映射（Search，AOT 反射路径）。</summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2091",
+            Justification = "TResult only declares PublicParameterlessConstructor while AotMapper requires PublicConstructors; mapping availability on the AOT reflection path is guaranteed by the caller.")]
         private static Func<AutoLockDataReader, TResult> CompileAotColumnsMapper<
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IList<SqlColumn> selectColumns, IDbConverter dbConverter)
         {
@@ -291,7 +299,7 @@ namespace LiteOrm
                 if (prop == null || !prop.CanWrite) continue;
                 specs.Add(BuildColumnReadSpecFromColumn(i, column, prop, dbConverter));
             }
-            return new AotReflectionMapper<TResult>(specs).Map;
+            return new AotMapper<TResult>(specs).Map;
         }
 
         private static ColumnReadSpec BuildColumnReadSpecFromProperty(
@@ -356,6 +364,8 @@ namespace LiteOrm
 
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, the reflection mapper is used instead of invoking Expression.Compile")]
+        [UnconditionalSuppressMessage("Trimming", "IL2091",
+            Justification = "TResult only declares PublicProperties/NonPublicProperties while EnsureDynamicCode requires PublicConstructors; the JIT inlining path is guarded by RuntimeFeature.IsDynamicCodeSupported.")]
 #endif
         private static Func<AutoLockDataReader, TResult> CompileScalarConverter<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(ParameterExpression readerParam, IDbConverter dbConverter)
         {
@@ -524,6 +534,8 @@ namespace LiteOrm
         /// 后续是否需要 <see cref="IDbValueConverter"/> 转换由 <see cref="BuildTypedReadExpression"/> 决定。
         /// </summary>
         [RequiresDynamicCode("The code for building the raw read expression used MakeGenericMethod and might not be available.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2060",
+            Justification = "MakeGenericMethod builds the expression tree for binary columns; it is only invoked on this method (RequiresDynamicCode) and the JIT inlining paths.")]
         private static Expression BuildRawReadExpression(
             ParameterExpression readerParam, Expression ordinalExpr, Type coreType, DbType? dbType)
         {
@@ -635,6 +647,8 @@ namespace LiteOrm
         /// 返回其后端 <see cref="IDbValueConverter{TDbType,TValueType}.DbReadConverter"/> 委托及其输入类型 <c>TDb</c>；
         /// 未命中或读取委托为 null 时返回 (null, <paramref name="coreType"/>)。供编译期常量转换器内联调用（一次查找，非每行）。
         /// </summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2075",
+            Justification = "converter is an IDbValueConverter instance whose generic IDbValueConverter<,> interface and DbReadConverter member always exist; interface metadata from GetType() is always available.")]
         private static (Delegate?, Type) TryGetTypedReadDelegate(IDbValueConverter converter, Type coreType)
         {
             foreach (Type iface in converter.GetType().GetInterfaces())
@@ -655,6 +669,8 @@ namespace LiteOrm
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "In AOT scenarios, an exception is thrown instead of invoking Expression.Compile")]
 #endif
+        [UnconditionalSuppressMessage("Trimming", "IL2091",
+            Justification = "TResult only declares PublicParameterlessConstructor while EnsureDynamicCode requires PublicConstructors; the JIT inlining path and the source-generated (AOT) mapper each provide a fallback.")]
         private static Func<AutoLockDataReader, TResult> CompileConverterByColumns<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(IList<SqlColumn> selectColumns, IDbConverter dbConverter)
         {
             if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)

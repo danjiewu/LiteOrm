@@ -38,7 +38,7 @@ public class DemoOrder : ObjectBase
 
     [DisplayName("状态")]
     [Column("Status")]
-    public string Status { get; set; } = DemoOrderStatuses.Pending;
+    public DemoOrderStatuses Status { get; set; } = DemoOrderStatuses.Pending;
 
     [DisplayName("备注")]
     [Column("Note")]
@@ -73,24 +73,11 @@ public class DemoOrderView : DemoOrder
     public string? DepartmentName { get; set; }
 }
 
-public static class DemoOrderStatuses
+public enum DemoOrderStatuses
 {
-    public const string Pending = "Pending";
-    public const string Paid = "Paid";
-    public const string Shipped = "Shipped";
-    public const string Completed = "Completed";
-    public const string Cancelled = "Cancelled";
-
-    public static readonly string[] All =
-    [
-        Pending,
-        Paid,
-        Shipped,
-        Completed,
-        Cancelled
-    ];
-
-    public static bool IsValid(string? status) =>
-        !string.IsNullOrWhiteSpace(status) &&
-        All.Any(item => string.Equals(item, status, StringComparison.OrdinalIgnoreCase));
+    Pending,
+    Paid,
+    Shipped,
+    Completed,
+    Cancelled
 }

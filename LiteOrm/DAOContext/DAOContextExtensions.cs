@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
@@ -33,7 +33,9 @@ namespace LiteOrm
         /// <summary>
         /// 批量确保多个实体类型对应的表结构在数据库中存在。
         /// </summary>
-        public static void EnsureTables(this DAOContext daoContext, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]IEnumerable<Type> objectTypes)
+        [UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "objectTypes elements are caller-supplied entity types; IEnumerable<Type> elements cannot declare DynamicallyAccessedMembers, so suppression is scoped locally and preservation relies on [Table] plus the source generator.")]
+        public static void EnsureTables(this DAOContext daoContext, IEnumerable<Type> objectTypes)
         {
             DAOContextPool? pool = daoContext.Pool?.MasterPool;
             if (pool != daoContext.Pool) return;
@@ -45,7 +47,9 @@ namespace LiteOrm
         /// <summary>
         /// 批量确保多个实体类型对应的表结构在数据库中存在（异步版本）。
         /// </summary>
-        public static async Task EnsureTablesAsync(this DAOContext daoContext, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] IEnumerable<Type> objectTypes)
+        [UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "objectTypes elements are caller-supplied entity types; IEnumerable<Type> elements cannot declare DynamicallyAccessedMembers, so suppression is scoped locally and preservation relies on [Table] plus the source generator.")]
+        public static async Task EnsureTablesAsync(this DAOContext daoContext, IEnumerable<Type> objectTypes)
         {
             DAOContextPool? pool = daoContext.Pool?.MasterPool;
             if (pool != daoContext.Pool) return;

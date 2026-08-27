@@ -457,6 +457,8 @@ namespace LiteOrm
         /// <param name="valueType">实体属性 / .NET 值类型，Nullable类型会取其基础类型。</param>
         /// <param name="dbValueType">数据库取值类型。</param>
         /// <returns>注册的转换器；未注册时返回 null。</returns>
+        [UnconditionalSuppressMessage("Trimming", "IL2067",
+            Justification = "GetUnderlyingType only inspects Nullable<T> metadata; valueType is a runtime-known type that needs no additional members preserved.")]
         public IDbValueConverter? GetDbValueConverter(Type valueType, DbValueType dbValueType)
         {
             Type coreType = valueType.GetUnderlyingType() ?? valueType;
@@ -492,6 +494,8 @@ namespace LiteOrm
         /// </summary>
         /// <param name="type">要转换的 .NET 类型，支持 Nullable 类型</param>
         /// <returns>对应的数据库取值类型</returns>
+        [UnconditionalSuppressMessage("Trimming", "IL2067",
+            Justification = "GetUnderlyingType only inspects Nullable<T> metadata; type is a runtime-known type that needs no additional members preserved.")]
         public DbValueType GetDbValueType(Type type)
         {
             if (type is null) throw new ArgumentNullException(nameof(type));

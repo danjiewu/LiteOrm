@@ -49,6 +49,8 @@ namespace LiteOrm
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("AOT", "IL3050",
             Justification = "RegisterByAssemblyScan is only called when RuntimeFeature.IsDynamicCodeSupported is true (JIT mode); under AOT, the ApplyGenerated path is used instead.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2026",
+            Justification = "RegisterByAssemblyScan (RequiresUnreferencedCode) is guarded by RuntimeFeature.IsDynamicCodeSupported; under AOT, ApplyGenerated is used and no assembly scanning occurs.")]
 #endif
         public static void Apply(IServiceCollection services)
         {
@@ -133,6 +135,8 @@ namespace LiteOrm
             _ => ServiceLifetime.Singleton
         };
 
+        [UnconditionalSuppressMessage("Trimming", "IL2067",
+            Justification = "DI Add* overloads require types to expose PublicConstructors; RegisterType is only called on the JIT runtime-registration path (RegisterByAssemblyScan), where types come from assembly scanning.")]
         private static void RegisterType(IServiceCollection services, ServiceLifetime lifetime, object? key, Type? serviceType, Type implementationType)
         {
 #if NET8_0_OR_GREATER
@@ -202,6 +206,8 @@ namespace LiteOrm
         /// <see cref="RegisterPolicy.Self"/>：仅实现类型自身。
         /// </para>
         /// </summary>
+        [UnconditionalSuppressMessage("Trimming", "IL2070",
+            Justification = "GetInterfaces() operates on runtime-scanned types; it is only used on the JIT registration path (RegisterByAssemblyScan), and interfaces + their members are preserved under AOT by the source generator.")]
         private static List<Type> GetServiceTypes(Type implementationType, AutoRegisterAttribute attr)
         {
             var serviceTypes = new List<Type>();
