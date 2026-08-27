@@ -104,22 +104,33 @@ namespace LiteOrm
             //预注册读取器
             Task.Run(() =>
             {
-                int sucessCount = 0;
+                int successCount = 0;
                 int failedCount = 0;
                 foreach (var tableGroup in tableGroupsByDataSource)
                 {
-                    var pool = _daoContextPoolFactory.GetPool(tableGroup.Key)!;
+                    var pool = _daoContextPoolFactory.GetPool(tableGroup.Key);
+                    if(pool is null)
+                    {
+                        _logger?.LogWarning("No connection pool found for data source '{DataSource}', skipping pre-registration of data reader converters", tableGroup.Key);
+                        continue;
+                    }
                     foreach (var type in tableGroup)
                     {
                         try
                         {
                             DataReaderConverter.GetConverterByType(type, pool.SqlBuilder);
-                            sucessCount++;
+                            successCount++;
                         }
-                        catch { failedCount++; }
+                        catch (Exception ex)
+                        {
+                            {
+                                _logger?.LogWarning(ex, "Failed to pre-register data reader converter for type '{Type}' (data source: '{DataSource}')", type.FullName, tableGroup.Key);
+                                failedCount++;
+                            }
+                        }
                     }
                 }
-                _logger?.LogInformation("Pre-registered {SucessCount} data reader converters, {FailedCount} failed", sucessCount, failedCount);
+                _logger?.LogInformation("Pre-registered {SucessCount} data reader converters, {FailedCount} failed", successCount, failedCount);
             });
 
             // 循环执行各个数据源的同步任务
@@ -143,6 +154,12 @@ namespace LiteOrm
                     _logger?.LogInformation("Syncing data source '{DataSource}' with {Count} entity type(s)", ds.Name, currentDsTypes.Count);
 
                     var context = pool.PeekContext();
+                    if (context is null)
+                    {
+                        _logger?.LogWarning("Failed to obtain a connection context for data source '{DataSource}', skipping sync", ds.Name);
+                        return;
+                    }
+
                     try
                     {
 

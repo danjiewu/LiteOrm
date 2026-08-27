@@ -84,6 +84,8 @@ namespace LiteOrm
                 services.AddScoped(typeof(EntityViewService<>));
                 services.AddScoped(typeof(IEntityService<>), typeof(EntityService<>));
                 services.AddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
+                services.AddScoped(typeof(IEntityServiceAsync<>), typeof(EntityService<>));
+                services.AddScoped(typeof(IEntityViewServiceAsync<>), typeof(EntityViewService<>));
             }
 
             // 追加自定义服务注册
