@@ -91,12 +91,8 @@ namespace LiteOrm
             .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null)
             .ToList();
 
-            Task.Run(() =>
-            {
-                foreach (var tableType in tableTypes) { DataReaderConverter.GetConverterByType(tableType); }
-            });
-
             tableTypes = tableTypes.Where(t => !typeof(IArged).IsAssignableFrom(t)).ToList();
+
 
             // 按数据源名称对实体类型进行分组  
             var tableGroupsByDataSource = tableTypes.GroupBy(t =>
@@ -104,6 +100,27 @@ namespace LiteOrm
                 var attr = t.GetCustomAttribute<TableAttribute>();
                 return attr!.DataSource ?? _dataSourceProvider.DefaultDataSourceName;
             }).ToList();
+
+            //预注册读取器
+            Task.Run(() =>
+            {
+                int sucessCount = 0;
+                int failedCount = 0;
+                foreach (var tableGroup in tableGroupsByDataSource)
+                {
+                    var pool = _daoContextPoolFactory.GetPool(tableGroup.Key)!;
+                    foreach (var type in tableGroup)
+                    {
+                        try
+                        {
+                            DataReaderConverter.GetConverterByType(type, pool.SqlBuilder);
+                            sucessCount++;
+                        }
+                        catch { failedCount++; }
+                    }
+                }
+                _logger?.LogInformation("Pre-registered {SucessCount} data reader converters, {FailedCount} failed", sucessCount, failedCount);
+            });
 
             // 循环执行各个数据源的同步任务
             var syncTasks = syncDataSources.Select(async ds =>
@@ -128,11 +145,12 @@ namespace LiteOrm
                     var context = pool.PeekContext();
                     try
                     {
-                        // 直接为每个实体类型的表创建结构
+
                         foreach (var type in currentDsTypes)
                         {
                             try
                             {
+                                // 直接为每个实体类型的表创建结构
                                 await context.EnsureTableAsync(type).ConfigureAwait(false);
                             }
                             catch (Exception ex)

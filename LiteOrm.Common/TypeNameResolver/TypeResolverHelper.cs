@@ -114,9 +114,14 @@ namespace LiteOrm.Common
         /// <summary>
         /// 按名称查找类型。解析顺序：
         /// 1. 自定义注册（<see cref="Register"/>）；
-        /// 2. 精确全名匹配（含命名空间或程序集限定名）。
+        /// 2. 精确全名匹配（含命名空间或程序集限定名）；
+        /// 3. 忽略大小写再匹配（若前两步均未命中）。
         /// <para>
-        /// 结果按 typeName 缓存。
+        /// 输入名称中的空格、制表符、换行等非实质性字符会在查找前自动剥离，
+        /// 避免因输入格式差异（如 <c>"List &lt; int &gt;"</c> vs <c>"List&lt;int&gt;"</c>）导致不匹配。
+        /// </para>
+        /// <para>
+        /// 结果按 <paramref name="typeName"/> 原始值缓存，多次调用同一输入不会重复解析。
         /// </para>
         /// <para>
         /// 泛型类型应使用 CLR 名称格式（含反引号 arity 后缀），如 <c>IEntityService`1</c>，
@@ -139,7 +144,16 @@ namespace LiteOrm.Common
         public static Type? FindType(string typeName)
         {
             if (string.IsNullOrEmpty(typeName)) return null;
-            return _findTypeCache.GetOrAdd(typeName, FindTypeCore);
+            return _findTypeCache.GetOrAdd(typeName, t =>
+            {
+                // 先对输入做规范化处理（剥离空格等非实质性字符）
+                var normalized = StripNonSignificantChars(t);
+                var result = FindTypeCore(normalized);
+                // 未命中时忽略大小写再匹配
+                if (result is null)
+                    result = FindTypeCaseInsensitive(normalized);
+                return result;
+            });
         }
 
 #if NET8_0_OR_GREATER
@@ -169,6 +183,61 @@ namespace LiteOrm.Common
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 var type = assembly.GetType(typeName);
+                if (type != null) return type;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 剥离类型名称中的非实质性字符（空格、制表符、换行、回车），用于忽略输入格式差异的匹配。
+        /// </summary>
+        /// <param name="typeName">原始类型名称。</param>
+        /// <returns>剥离非实质性字符后的名称（无变化时返回原串）。</returns>
+        private static string StripNonSignificantChars(string typeName)
+        {
+            if (typeName.IndexOfAny(WhitespaceChars) < 0) return typeName;
+            var chars = new char[typeName.Length];
+            int write = 0;
+            foreach (char c in typeName)
+            {
+                if (c == ' ' || c == '\t' || c == '\r' || c == '\n') continue;
+                chars[write++] = c;
+            }
+            return new string(chars, 0, write);
+        }
+
+        private static readonly char[] WhitespaceChars = { ' ', '\t', '\r', '\n' };
+
+        /// <summary>
+        /// 忽略大小写查找类型：对自定义注册做不区分大小写匹配；
+        /// AOT/裁剪模式与 <see cref="FindTypeCore"/> 一致仅查预注册映射。
+        /// </summary>
+        /// <param name="typeName">规范化后的类型名称。</param>
+        /// <returns>匹配到的类型；未找到时返回 null。</returns>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2057",
+            Justification = "Type.GetType is only called when RuntimeFeature.IsDynamicCodeSupported is true (JIT mode); under AOT the method returns early via the pre-registered map.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2026",
+            Justification = "Assembly.GetType is only called when RuntimeFeature.IsDynamicCodeSupported is true (JIT mode); under AOT the method returns early via the pre-registered map.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2073",
+            Justification = "Return type annotation is satisfied on the AOT path (pre-registered types preserve all members); the Type returned on the JIT path is naturally available via reflection.")]
+#endif
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        private static Type? FindTypeCaseInsensitive(string typeName)
+        {
+            // AOT/裁剪模式下动态查找不可用，仅依赖不区分大小写的注册匹配
+            if (!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported)
+                return _nameToType.FirstOrDefault(kv =>
+                    string.Equals(kv.Key, typeName, StringComparison.OrdinalIgnoreCase)).Value;
+
+            // 不区分大小写的程序集限定名/全名匹配
+            var byGetType = Type.GetType(typeName, throwOnError: false, ignoreCase: true);
+            if (byGetType != null) return byGetType;
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var type = assembly.GetType(typeName, throwOnError: false, ignoreCase: true);
                 if (type != null) return type;
             }
 

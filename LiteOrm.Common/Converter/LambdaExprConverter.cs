@@ -115,6 +115,48 @@ namespace LiteOrm.Common
             _typeMemberHandlers[(type, memberName)] = handler ?? DefaultMemberHandler;
         }
 
+        /// <summary>
+        /// 查询按方法名注册的方法处理器；未找到返回 <c>null</c>。
+        /// </summary>
+        /// <param name="methodName">方法名称。</param>
+        /// <returns>已注册的方法处理器，若未注册则返回 <c>null</c>。</returns>
+        public static Func<MethodCallExpression, LambdaExprConverter, Expr>? FindMethodHandler(string methodName)
+        {
+            if (String.IsNullOrEmpty(methodName)) throw new ArgumentNullException(nameof(methodName));
+            return _methodNameHandlers.TryGetValue(methodName, out var handler) ? handler : null;
+        }
+
+        /// <summary>
+        /// 查询按 类型+方法名 注册的方法处理器；未找到返回 <c>null</c>。
+        /// 与 <see cref="ConvertMethodCall"/> 的类型级解析顺序一致，便于在自定义处理器中回退到原处理器。
+        /// </summary>
+        /// <param name="type">目标类型。</param>
+        /// <param name="methodName">方法名称。</param>
+        /// <returns>已注册的方法处理器，若未注册则返回 <c>null</c>。</returns>
+        public static Func<MethodCallExpression, LambdaExprConverter, Expr>? FindMethodHandler(Type type, string methodName)
+        {
+            if (String.IsNullOrEmpty(methodName)) throw new ArgumentNullException(nameof(methodName));
+            if (type is null || !_typeMethodHandlers.TryGetValue((type, methodName), out var handler)) return null;
+            return handler;
+        }
+
+        /// <summary>
+        /// 查询指定方法调用当前会命中的方法处理器（类型处理器优先，其次方法名处理器）；
+        /// 与 <see cref="ConvertMethodCall"/> 的解析顺序一致，未找到返回 <c>null</c>。
+        /// </summary>
+        /// <param name="node">方法调用表达式。</param>
+        /// <returns>命中的方法处理器，若未命中则返回 <c>null</c>。</returns>
+        public static Func<MethodCallExpression, LambdaExprConverter, Expr>? FindMethodHandler(MethodCallExpression node)
+        {
+            if (node is null) throw new ArgumentNullException(nameof(node));
+            var type = node.Method.DeclaringType;
+            if (type != null && _typeMethodHandlers.TryGetValue((type, node.Method.Name), out var typeHandler) && typeHandler != null)
+                return typeHandler;
+            if (node.Method.Name.Length > 0 && _methodNameHandlers.TryGetValue(node.Method.Name, out var nameHandler) && nameHandler != null)
+                return nameHandler;
+            return null;
+        }
+
         #endregion 静态成员
 
         /// <summary>

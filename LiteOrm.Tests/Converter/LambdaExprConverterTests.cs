@@ -1,5 +1,7 @@
 using LiteOrm.Common;
+using LiteOrm.Pgsql;
 using LiteOrm.Tests.Models;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using Xunit;
@@ -341,6 +343,60 @@ namespace LiteOrm.Tests
             var func = Assert.IsType<FunctionExpr>(result);
             Assert.Equal("Abs", func.FunctionName);
             Assert.Single(func.Args);
+        }
+
+        #endregion
+
+        #region 查询 Handler 与 Pgsql 数组方法
+
+        [Fact]
+        public void FindMethodHandler_ReturnsRegistered_NameHandler()
+        {
+            // 全局方法名 Contains 已由 LiteOrmLambdaHandlerInitializer 注册
+            var handler = LambdaExprConverter.FindMethodHandler(nameof(Enumerable.Contains));
+            Assert.NotNull(handler);
+            var instanceHandler = LambdaExprConverter.FindMethodHandler(typeof(string), nameof(string.Contains));
+            Assert.NotNull(instanceHandler);
+            Assert.Null(LambdaExprConverter.FindMethodHandler("__not_registered__"));
+        }
+
+        [Fact]
+        public void PgsqlRegister_ArrayContains_MapsToAny()
+        {
+            // 注册 Pgsql 专用处理器（全局副作用通过回退原处理器保持兼容）
+            PgsqlLambdaHandlerInitializer.Register();
+
+            int[] tags = { 1, 2, 3 };
+            Expression<Func<TestUser, bool>> expr = u => tags.Contains(3);
+            var result = Assert.IsType<LogicBinaryExpr>(LambdaExprConverter.ToLogicExpr(expr));
+
+            // 数组属性 → element = ANY(array)
+            Assert.Equal(LogicOperator.Equal, result.Operator);
+            var any = Assert.IsType<FunctionExpr>(result.Right);
+            Assert.Equal("ANY", any.FunctionName);
+        }
+
+        [Fact]
+        public void PgsqlRegister_StringContains_FallsBackToTypeHandler()
+        {
+            PgsqlLambdaHandlerInitializer.Register();
+
+            // string.Contains 由类型级处理器接管（仍为 LIKE 语义），不受全局名处理器覆盖影响
+            Expression<Func<TestUser, bool>> expr = u => u.Name!.Contains("ab");
+            var result = Assert.IsType<LogicBinaryExpr>(LambdaExprConverter.ToLogicExpr(expr));
+            Assert.Equal(LogicOperator.Contains, result.Operator);
+        }
+
+        [Fact]
+        public void PgsqlRegister_ListContains_FallsBackToOriginalHandler()
+        {
+            PgsqlLambdaHandlerInitializer.Register();
+
+            // 非数组集合（List）→ 回退到查询到的原处理器（IN 语义）
+            var names = new List<string> { "a", "b" };
+            Expression<Func<TestUser, bool>> expr = u => names.Contains("a");
+            var result = Assert.IsType<LogicBinaryExpr>(LambdaExprConverter.ToLogicExpr(expr));
+            Assert.Equal(LogicOperator.In, result.Operator);
         }
 
         #endregion

@@ -36,6 +36,21 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public void DbValueTypeMap_DbTypeToReaderReturnType_CorrespondsToClrTypes()
+        {
+            // 数据库值类型 ↔ .NET CLR 类型对应关系（读取方法返回类型）：
+            // 便于 RegisterDbValueConverter 声明与读取返回一致的 TDbType。
+            Assert.Equal(typeof(DateTimeOffset), DbValueTypeMap.GetReaderReturnType(DbType.DateTimeOffset));
+            Assert.Equal(typeof(DateTime), DbValueTypeMap.GetReaderReturnType(DbType.DateTime));
+            Assert.Equal(typeof(DateTime), DbValueTypeMap.GetReaderReturnType(DbType.Date));
+            Assert.Equal(typeof(int), DbValueTypeMap.GetReaderReturnType(DbType.Int32));
+            Assert.Equal(typeof(string), DbValueTypeMap.GetReaderReturnType(DbType.String));
+            // 双向一致：DbValueType.DateTimeOffset ↔ System.DateTimeOffset
+            Assert.Equal(typeof(DateTimeOffset), DbValueType.DateTimeOffset.ToType());
+            Assert.Equal(DbValueType.DateTimeOffset, DbValueTypeMap.GetDbValueType(typeof(DateTimeOffset)));
+        }
+
+        [Fact]
         public void GetDbValueType_CollectionProperty_InfersArray()
         {
             var table = new AttributeTableInfoProvider().GetTableDefinition(typeof(PgsqlArrayModel))!;

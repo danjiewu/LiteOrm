@@ -26,11 +26,12 @@ namespace LiteOrm
         /// 返回指定类型对应的Sqlite数据库类型。
         /// </summary>
         /// <returns></returns>
-        /// <remarks>SQLite 中 DateTime、TimeSpan、DateTimeOffset 映射为 String。</remarks>
+        /// <remarks>SQLite 中 DateTime、TimeSpan、DateTimeOffset（含 Date/DateTime2）均映射为 String（以文本存储）。</remarks>
         public override DbType ToDbType(DbValueType dbValueType)
         {
             var scalar = dbValueType.StripArray();
-            if (scalar == DbValueType.DateTime || scalar == DbValueType.Time || scalar == DbValueType.DateTimeOffset)
+            if (scalar is DbValueType.Date or DbValueType.DateTime or DbValueType.DateTime2
+                or DbValueType.Time or DbValueType.DateTimeOffset)
                 return DbType.String;
             return base.ToDbType(dbValueType);
         }

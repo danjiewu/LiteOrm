@@ -16,7 +16,7 @@
     <Description>LiteOrm.Common 公共库：LiteOrm 的共享核心，提供表达式树（Expr）、SQL 片段、表元数据（TableInfoProvider）、特性与公共接口，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
       8.1.4:
-      - 破坏性变更：复杂类型（数组/集合/Json/自定义类）属性不再自动映射为列，须显式标注 [Column]。
+      - 破坏性变更：复杂类型（数组/集合/自定义类）属性不再自动映射为列，须显式标注 [Column]。
       - 新增 Regex Lambda 映射：IsMatch/Match().Success→REGEXP_LIKE、Replace→REGEXP_REPLACE、Match().Value→REGEXP_SUBSTR、Match().Index→REGEXP_INSTR-1；支持静态/实例/闭包变量形式。
       - ColumnAttribute/ForeignColumnAttribute 新增 ConverterType 声明列级转换器。
       - 数值类型互转默认注册；值转换机制优化。

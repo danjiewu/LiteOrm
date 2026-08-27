@@ -47,6 +47,10 @@ namespace LiteOrm
                 new[] { typeof(Exception), typeof(int), typeof(string), typeof(Type) },
                 null);
 
+        // Convert.ChangeType(object, Type)：编译期经委托引用解析 MethodInfo
+        private static readonly MethodInfo _changeTypeMethodInfo =
+            ((Func<object, Type, object>)Convert.ChangeType).Method;
+
         /// <summary>
         /// 按 <see cref="DbType"/> 选择最自然的类型化读取方法。
         /// <see cref="DbType.Binary"/> 单独处理（<see cref="DbDataReader.GetFieldValue{T}"/> 或 <see cref="DbDataReader.GetStream"/>）。
@@ -140,10 +144,10 @@ namespace LiteOrm
         /// <param name="dbConverter">数据库值转换器，用于推断 <see cref="DbValueType.Default"/> 列的 <see cref="DbType"/>。</param>
         /// <returns>编译后的映射委托，实际类型为 <see cref="Func{AutoLockDataReader, TResult}"/>。</returns>
         [RequiresDynamicCode("Converter dynamic creation relies on MakeGenericMethod; not supported under NativeAOT.")]
-        public static Delegate GetConverterByType(Type resultType, IDbConverter? dbConverter = null)
+        public static Delegate GetConverterByType(Type resultType, IDbConverter dbConverter)
         {
             return _cacheByType.GetOrAdd(resultType,
-                t => (Delegate)_getConverterByTypeMethod!.MakeGenericMethod(t).Invoke(null, new object?[] { dbConverter })!);
+                t => (Delegate)_getConverterByTypeMethod!.MakeGenericMethod(t).Invoke(null, new object[] { dbConverter })!);
         }
 
         private static string BuildColumnKey(DbDataReader reader)
@@ -544,8 +548,8 @@ namespace LiteOrm
         /// 编译期安全的「严格直接赋值」转换：
         /// 优先尝试直接 <c>Expression.Convert</c>（合法数值/引用转换，如 int→long 在树构建期即可转换）；
         /// 若该配对在树构建期即切线抛 <see cref="InvalidOperationException"/> No coercion（如 string→TimeSpan/DateTime），
-        /// 则退而装箱为 object 后再转 <paramref name="coreType"/>（unbox.any/castclass，构建期不再抛错），
-        /// 把不兼容推迟到运行期读取该行时以 <see cref="InvalidCastException"/> 报错（避免整棵 mapper 因单列类型不匹配而编译失败）。
+        /// 则退而装箱为 object 后经 <see cref="Convert.ChangeType(object, Type)"/> 按 <c>IConvertible</c> 兼容转换到
+        /// <paramref name="coreType"/>，最后再强转回目标类型。
         /// </summary>
         private static Expression ConvertRuntimeSafe(Expression valueExpr, Type coreType)
         {
@@ -554,8 +558,13 @@ namespace LiteOrm
                 return Expression.Convert(valueExpr, coreType);
             }
             catch (InvalidOperationException)
-            {
-                return Expression.Convert(Expression.Convert(valueExpr, typeof(object)), coreType);
+            {                
+                return Expression.Convert(
+                    Expression.Call(
+                        _changeTypeMethodInfo,
+                        Expression.Convert(valueExpr, typeof(object)),
+                        Expression.Constant(coreType, typeof(Type))),
+                    coreType);
             }
         }
 

@@ -102,20 +102,20 @@ namespace LiteOrm
 
             // Oracle 方言：bool 以整数 1/0 写入（Oracle 无布尔类型）。
             // 通过派生类型注册，这些注册优先于 SqlBuilder 上的默认注册。
-            OracleBuilder.Instance.RegisterDbValueConverter(DbValueType.Boolean, (long v) => v != 0, b => b ? 1 : 0);
+            OracleBuilder.Instance.RegisterDbValueConverter(DbValueType.Boolean, (int v) => v != 0, b => b ? 1 : 0);
 
-            // SQLite 方言：DateTime/DateTimeOffset/TimeSpan 以字符串存储（SQLite 无原生日期/时间类型）。
-            foreach (DbValueType dateType in _dateDbValueTypes)
+            // SQLite 方言：Date/DateTime/DateTime2/DateTimeOffset/Time 均以文本存储（SQLite 无原生日期/时间类型）。
+            // SQLiteBuilder.ToDbType 将其均映射为 String，故以下转换器 TDbType=string 与 GetString 读取返回严格一致；
+            // 对每个日期 DbValueType 统一注册 DateTime 与 DateTimeOffset 两个值类型的字符串转换器（覆盖基类的恒等/DateTime 恒等注册）。
+            foreach (DbValueType dateType in _sqliteDateDbValueTypes)
             {
                 SQLiteBuilder.Instance.RegisterDbValueConverter(dateType,
                     (string s) => DateTime.Parse(s), d => d.ToString("yyyy-MM-dd HH:mm:ss.fff"));
                 SQLiteBuilder.Instance.RegisterDbValueConverter(dateType,
                     (string s) => DateTimeOffset.Parse(s), d => d.ToString("yyyy-MM-dd HH:mm:ss.fff zzz"));
             }
-            SQLiteBuilder.Instance.RegisterDbValueConverter(DbValueType.DateTimeOffset,
-                (string s) => DateTime.Parse(s), d => d.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-            SQLiteBuilder.Instance.RegisterDbValueConverter(DbValueType.DateTimeOffset,
-                (string s) => DateTimeOffset.Parse(s), d => d.ToString("yyyy-MM-dd HH:mm:ss.fff zzz"));
+
+            // Time：以文本存储，使用 TimeSpan 字符串转换器
             SQLiteBuilder.Instance.RegisterDbValueConverter(DbValueType.Time,
                 (string s) => ParseToTimeSpan(s), t => t.ToString("c"));
         }
@@ -128,6 +128,12 @@ namespace LiteOrm
         private static readonly DbValueType[] _dateDbValueTypes =
         {
             DbValueType.Date, DbValueType.DateTime, DbValueType.DateTime2
+        };
+
+        /// <summary>SQLite 中以文本存储的日期/日期时间 DbValueType（`ToDbType` 均映射为 String）。</summary>
+        private static readonly DbValueType[] _sqliteDateDbValueTypes =
+        {
+            DbValueType.Date, DbValueType.DateTime, DbValueType.DateTime2, DbValueType.DateTimeOffset
         };
 
         /// <summary>

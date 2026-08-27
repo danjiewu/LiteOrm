@@ -150,6 +150,7 @@ namespace LiteOrm.Common
             [DbType.DateTime] = typeof(DateTime),
             [DbType.Date] = typeof(DateTime),
             [DbType.DateTime2] = typeof(DateTime),
+            [DbType.DateTimeOffset] = typeof(DateTimeOffset),
             [DbType.Guid] = typeof(Guid),
             [DbType.Binary] = typeof(byte[]),
         };

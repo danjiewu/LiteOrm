@@ -6,7 +6,7 @@ namespace LiteOrm.Pgsql
     /// PostgreSQL 专用的 <see cref="ValueTypeExpr"/> 扩展方法。
     /// <para>
     /// 这些扩展仅构造 <see cref="FunctionExpr"/> / <see cref="LogicBinaryExpr"/>，SQL 具体生成
-    /// 由 <see cref="LiteOrmSqlFunctionInitializer"/> 注册的函数处理器完成（针对 PostgreSQL 方言）。
+    /// 由 LiteOrm 库 LiteOrmSqlFunctionInitializer 注册的函数处理器完成（针对 PostgreSQL 方言）。
     /// 在非 PostgreSQL 方言下使用这些扩展生成的表达式可能无法正确翻译，请仅用于 PgSQL 场景。
     /// </para>
     /// </summary>

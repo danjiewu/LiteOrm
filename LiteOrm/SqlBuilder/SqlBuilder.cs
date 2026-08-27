@@ -454,15 +454,16 @@ namespace LiteOrm
         /// <summary>
         /// 获取按 (值类型, 数据库取值类型) 沿 SqlBuilder 继承链查找注册的转换器（读取与写入共用注册表，方言注册优先于基类）。
         /// </summary>
-        /// <param name="valueType">实体属性 / .NET 值类型。</param>
+        /// <param name="valueType">实体属性 / .NET 值类型，Nullable类型会取其基础类型。</param>
         /// <param name="dbValueType">数据库取值类型。</param>
         /// <returns>注册的转换器；未注册时返回 null。</returns>
         public IDbValueConverter? GetDbValueConverter(Type valueType, DbValueType dbValueType)
         {
+            Type coreType = valueType.GetUnderlyingType() ?? valueType;
             Type builderType = this.GetType();
             while (typeof(SqlBuilder).IsAssignableFrom(builderType))
             {
-                if (GetDbValueConverterMap(builderType).TryGetConverter((valueType, dbValueType), out IDbValueConverter? converter))
+                if (GetDbValueConverterMap(builderType).TryGetConverter((coreType, dbValueType), out IDbValueConverter? converter))
                 {
                     return converter;
                 }
@@ -530,7 +531,7 @@ namespace LiteOrm
                 DbValueType.Single or DbValueType.UInt32 or DbValueType.Int32 => 4,
                 DbValueType.Int64 or DbValueType.UInt64 or DbValueType.Double => 8,
                 DbValueType.String or DbValueType.AnsiString or DbValueType.AnsiStringFixedLength or DbValueType.StringFixedLength => 255,
-                DbValueType.Xml => 1 << 16,
+                DbValueType.Json or DbValueType.Jsonb or DbValueType.Xml => 1 << 16,
                 DbValueType.Binary => Int32.MaxValue,
                 _ => 0
             };

@@ -814,10 +814,18 @@ namespace LiteOrm.Generators
                 string readLocal = $"d_{i}";
                 // 非泛型读取委托（object→object），以 GetValue 为输入；分支内各自强转/类型化读取，无外层包裹
                 sb.AppendLine($"            var {readLocal} = {e.SafeName}_conv_{i}?.DbReadConverter;");
-                string? typedRead = GetTypedReadMethodName(tw);
-                string fallback = typedRead != null
-                    ? $"reader.{typedRead}({i})"
-                    : $"({type})reader.GetValue({i})!";
+                // 选择类型化读取方法：列显式声明 DbType 时优先按 DbType 推断（与运行时 _dbTypeReaderMethods 一致），否则按属性 CLR 类型推断
+                string? typedRead = GetTypedReadMethodNameFromDbType(c.DbType) ?? GetTypedReadMethodName(tw);
+                string fallback;
+                if (typedRead != null)
+                    // 统一强转为属性类型，避免 DbType 推断出的读取类型与属性类型不一致导致生成代码编译失败
+                    fallback = $"({type})reader.{typedRead}({i})";
+                else if (type.Contains("[]"))
+                    // 数组（如 byte[]）：Convert.ChangeType 无法转换，保持直接强转
+                    fallback = $"({type})reader.GetValue({i})!";
+                else
+                    // 无类型化读取方法：用 Convert.ChangeType 将 GetValue 结果转换为目标类型（更宽容，兼容 DB 返回兼容但不同 CLR 类型）
+                    fallback = $"({type})Convert.ChangeType(reader.GetValue({i}), typeof({tw}))";
                 string readExpr = $"{readLocal} != null ? ({type}){readLocal}(reader.GetValue({i})!) : {fallback}";
                 // default({type}) 使用完整属性类型：可空属性（如 Guid?/string）的默认值即为 null
                 sb.AppendLine($"            entity.{c.PropertyName} = reader.IsDBNull({i}) ? default({type})! : {readExpr};");
@@ -865,6 +873,31 @@ namespace LiteOrm.Generators
             if (type.EndsWith("?") && !type.EndsWith("??"))
                 return type.Substring(0, type.Length - 1);
             return type;
+        }
+
+        /// <summary>
+        /// 根据列声明的 <see cref="DbValueType"/>（枚举名）推断类型化读取方法名，与运行时
+        /// <c>DataReaderConverter._dbTypeReaderMethods</c> 的 DbType 映射保持一致；
+        /// 无对应方法（Object/Json/Array/Binary/Time/DateTimeOffset/SByte/UInt* 等）返回 null。
+        /// </summary>
+        private static string? GetTypedReadMethodNameFromDbType(string? dbType)
+        {
+            if (string.IsNullOrEmpty(dbType)) return null;
+            return dbType switch
+            {
+                "AnsiString" or "AnsiStringFixedLength" or "String" or "StringFixedLength" or "Xml" or "Char" => "GetString",
+                "Boolean" => "GetBoolean",
+                "Byte" => "GetByte",
+                "Int16" => "GetInt16",
+                "Int32" => "GetInt32",
+                "Int64" => "GetInt64",
+                "Single" => "GetFloat",
+                "Double" => "GetDouble",
+                "Decimal" or "Currency" or "VarNumeric" => "GetDecimal",
+                "Date" or "DateTime" or "DateTime2" => "GetDateTime",
+                "Guid" => "GetGuid",
+                _ => null,
+            };
         }
 
         /// <summary>
