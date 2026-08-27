@@ -43,6 +43,8 @@ namespace LiteOrm.Common
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             if (type is null) throw new ArgumentNullException(nameof(type));
 
+            name = StripNonSignificantChars(name);
+
             // 覆盖旧的类型→名称映射（同一类型可能换了新名字）
             _typeToName[type] = name;
             _nameToType[name] = type;

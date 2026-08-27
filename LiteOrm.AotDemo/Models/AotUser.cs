@@ -16,11 +16,20 @@ namespace LiteOrm.AotDemo.Models
 
         [Column("Age")]
         public int Age { get; set; }
+        [Column("Role", DbType = DbValueType.Int32)]
+        public UserRole Role { get; set; }
 
         [Column("CreateTime")]
         public DateTime CreateTime { get; set; }
         [Column("Guid")]
         public Guid Guid { get; set; }
+    }
+
+    public enum UserRole
+    {
+        Manager = 1,
+        Staff = 2,
+        Boss = 3
     }
 
     /// <summary>

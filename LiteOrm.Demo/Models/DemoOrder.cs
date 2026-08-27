@@ -38,7 +38,7 @@ public class DemoOrder : ObjectBase
 
     [DisplayName("状态")]
     [Column("Status")]
-    public DemoOrderStatuses Status { get; set; } = DemoOrderStatuses.Pending;
+    public DemoOrderStatuses? Status { get; set; } = DemoOrderStatuses.Pending;
 
     [DisplayName("备注")]
     [Column("Note")]
