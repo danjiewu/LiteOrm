@@ -7,7 +7,6 @@ using LiteOrm.DependencyInjection;
 using LiteOrm.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using MyAssist.Data.CBOSS;
 using Oracle.ManagedDataAccess.Client;
 using System.Data;
 using System.Data.Common;
@@ -45,8 +44,6 @@ using (var initScope = host.Services.CreateScope())
 using (var scope = host.Services.CreateScope())
 {
     var serviceFactory = scope.ServiceProvider.GetRequiredService<ServiceFactory>();
-    var service = scope.ServiceProvider.GetService<IEntityViewService<BossProduct>>();
-    var product = service.SearchOne(null);
     // 1. 表达式全方案演示 (1.1-1.5: 基础、比较、结构化、Lambda转换、删除)
     ExprTypeDemo.RunAll();
 
