@@ -20,6 +20,9 @@ namespace LiteOrm.Service
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnUpdating"/>
         public virtual bool OnUpdating(T entity) => true;
 
+        /// <inheritdoc cref="IEntityServiceEvent{T}.OnUpdatingOrInserting"/>
+        public virtual bool OnUpdatingOrInserting(T entity) => true;
+
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnDeleting"/>
         public virtual bool OnDeleting(T entity) => true;
 
@@ -40,6 +43,9 @@ namespace LiteOrm.Service
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnUpdated"/>
         public virtual void OnUpdated(T entity) { }
+
+        /// <inheritdoc cref="IEntityServiceEvent{T}.OnUpdatedOrInserted"/>
+        public virtual void OnUpdatedOrInserted(T entity) { }
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnDeleted"/>
         public virtual void OnDeleted(T entity) { }

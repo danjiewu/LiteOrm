@@ -41,16 +41,16 @@ using var scope = provider.CreateScope();
 var userService = scope.ServiceProvider.GetRequiredService<IAotUserService>();
 
 Console.WriteLine("=== 1. Insert（单条） ===");
-userService.Insert(new AotUser { UserName = "alice", Age = 30, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Info = JsonNode.Parse("""{"Level":"gold","Tags":["vip","beta"]}""") });
-userService.Insert(new AotUser { UserName = "bob", Age = 25, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Info = JsonNode.Parse("""{"Level":"silver"}""") });
-await userService.InsertAsync(new AotUser { UserName = "carol", Age = 28, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Info = JsonNode.Parse("""{"Level":"free"}""") });
+userService.Insert(new AotUser { UserName = "alice", Age = 30, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Info = JsonNode.Parse("""{"Level":"gold","Tags":["vip","beta"]}"""), Duration = TimeSpan.FromSeconds(10) });
+userService.Insert(new AotUser { UserName = "bob", Age = 25, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Info = JsonNode.Parse("""{"Level":"silver"}"""), Duration = TimeSpan.FromSeconds(5) });
+await userService.InsertAsync(new AotUser { UserName = "carol", Age = 28, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Info = JsonNode.Parse("""{"Level":"free"}"""), Duration = TimeSpan.FromSeconds(15) });
 Console.WriteLine("Inserted alice / bob (sync, with JsonNode Info), carol (async).");
 
 Console.WriteLine("\n=== 2. BatchInsert（批量插入） ===");
 userService.BatchInsert(new[]
 {
-    new AotUser { UserName = "dave", Age = 22, CreateTime = DateTime.Now, Guid = Guid.NewGuid() },
-    new AotUser { UserName = "eve", Age = 35, CreateTime = DateTime.Now, Guid = Guid.NewGuid() },
+    new AotUser { UserName = "dave", Age = 22, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Duration = TimeSpan.FromSeconds(10) },
+    new AotUser { UserName = "eve", Age = 35, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Duration = TimeSpan.FromSeconds(5) },
 });
 Console.WriteLine("BatchInsert dave / eve.");
 
@@ -64,7 +64,7 @@ var users = userService.Search(Expr.Prop("Age") > 20);
 Console.WriteLine($"Search(Age > 20) found {users.Count} users:");
 foreach (var u in users)
 {
-    Console.WriteLine($"  Id={u.Id}, UserName={u.UserName}, Age={u.Age}, Info={u.Info?.ToJsonString()}");
+    Console.WriteLine($"  Id={u.Id}, UserName={u.UserName}, Age={u.Age}, Info={u.Info?.ToJsonString()}, Duration={u.Duration}");
 }
 
 Console.WriteLine("\n=== 4. SearchOne ===");
@@ -82,17 +82,17 @@ var projected = userService.SearchAs(u => u.Where(x => x.Age > 20));
 Console.WriteLine($"SearchAs<AotUserView>(Age > 20) found {projected.Count}:");
 foreach (var v in projected)
 {
-    Console.WriteLine($"  Id={v.Id}, UserName={v.UserName}, Age={v.Age}");
+    Console.WriteLine($"  Id={v.Id}, UserName={v.UserName}, Age={v.Age}, Duration={v.Duration}");
 }
 
-var oneAs = userService.SearchOneAs(u => u.Where(x => x.UserName == "bob").Select(x => new { Id = x.Id, Name = x.UserName, Age = x.Age }));
-Console.WriteLine(oneAs is null ? "bob (as view) not found" : $"SearchOneAs<AotUserView>(UserName == bob): Id={oneAs.Id}, Name={oneAs.Name}, Age={oneAs.Age}");
+var oneAs = userService.SearchOneAs(u => u.Where(x => x.UserName == "bob").Select(x => new { Id = x.Id, Name = x.UserName, Age = x.Age, Duration = x.Duration }));
+Console.WriteLine(oneAs is null ? "bob (as view) not found" : $"SearchOneAs<AotUserView>(UserName == bob): Id={oneAs.Id}, Name={oneAs.Name}, Age={oneAs.Age}, Duration={oneAs.Duration}");
 
 var projectedAsync = await userService.SearchAsAsync(u => u.Where(x => x.Age > 20));
 Console.WriteLine($"SearchAsAsync<AotUserView>(Age > 20) found {projectedAsync.Count}.");
 
 var oneAsAsync = await userService.SearchOneAsAsync(u => u.Where(x => x.UserName == "carol"));
-Console.WriteLine(oneAsAsync is null ? "carol (as view, async) not found" : $"SearchOneAsAsync<AotUserView>(UserName == carol): Id={oneAsAsync.Id}, Age={oneAsAsync.Age}");
+Console.WriteLine(oneAsAsync is null ? "carol (as view, async) not found" : $"SearchOneAsAsync<AotUserView>(UserName == carol): Id={oneAsAsync.Id}, Age={oneAsAsync.Age}, Duration={oneAsAsync.Duration}");
 
 var anon = userService.SearchAs(u => u.Where(x => x.Age > 20).Select(x => new { x.Id, x.UserName }));
 Console.WriteLine($"SearchAs<anonymous>(Age > 20) found {anon.Count}: {string.Join(", ", anon.Select(a => $"{a.Id}:{a.UserName}"))}");
@@ -106,7 +106,7 @@ if (alice is not null)
 }
 userService.BatchUpdate(projected.Take(2).Cast<AotUser>().ToArray()); // 同一条记录批量更新（幂等演示）
 Console.WriteLine("BatchUpdate executed (top 2 viewed users, no-op data).");
-userService.UpdateOrInsert(new AotUser { UserName = "frank", Age = 40, CreateTime = DateTime.Now, Guid = Guid.NewGuid() });
+userService.UpdateOrInsert(new AotUser { UserName = "frank", Age = 40, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Duration = TimeSpan.FromSeconds(15) });
 Console.WriteLine("UpdateOrInsert frank (auto-inserted).");
 
 Console.WriteLine("\n=== 7. UpdateAll（批量条件更新） ===");

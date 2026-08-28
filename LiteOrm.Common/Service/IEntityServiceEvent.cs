@@ -39,6 +39,17 @@ namespace LiteOrm.Service
         bool OnUpdating(T entity);
 
         /// <summary>
+        /// 更新或插入（upsert）前回调。
+        /// </summary>
+        /// <remarks>
+        /// 针对 <c>UpdateOrInsert</c> 的专用钩子；无论最终是更新还是插入，操作执行前都会触发。
+        /// 与 <see cref="OnUpdating"/> 并存：仅关心 upsert 的下游可订阅此钩子。
+        /// </remarks>
+        /// <param name="entity">即将更新或插入的实体。</param>
+        /// <returns><see langword="false"/> 表示取消本次更新或插入。</returns>
+        bool OnUpdatingOrInserting(T entity);
+
+        /// <summary>
         /// 删除前回调。
         /// </summary>
         /// <param name="entity">即将删除的实体。</param>
@@ -60,6 +71,15 @@ namespace LiteOrm.Service
         /// </summary>
         /// <param name="entity">已更新的实体。</param>
         void OnUpdated(T entity);
+
+        /// <summary>
+        /// 更新或插入（upsert）成功后回调。
+        /// </summary>
+        /// <remarks>
+        /// 针对 <c>UpdateOrInsert</c> 的专用钩子；无论最终是更新还是插入，操作成功后都会触发。
+        /// </remarks>
+        /// <param name="entity">已更新或插入的实体。</param>
+        void OnUpdatedOrInserted(T entity);
 
         /// <summary>
         /// 删除成功后回调。

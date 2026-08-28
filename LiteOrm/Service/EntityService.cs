@@ -421,7 +421,7 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务，任务结果为是否操作成功。</returns>
         public async virtual Task<bool> UpdateOrInsertAsync(T entity, CancellationToken cancellationToken = default)
         {
-            if (!Notify(l => l.OnUpdating(entity)))
+            if (!Notify(l => l.OnUpdatingOrInserting(entity)))
                 return false;
             var dao = ObjectDAO;
             if (entity is IArged arg)
@@ -429,10 +429,10 @@ namespace LiteOrm.Service
             switch (await dao.UpdateOrInsertAsync(entity, cancellationToken))
             {
                 case UpdateOrInsertResult.Inserted:
-                    Notify(l => l.OnInserted(entity));
+                    Notify(l => l.OnUpdatedOrInserted(entity));
                     return true;
                 case UpdateOrInsertResult.Updated:
-                    Notify(l => l.OnUpdated(entity));
+                    Notify(l => l.OnUpdatedOrInserted(entity));
                     return true;
                 default:
                     return false;
@@ -451,7 +451,7 @@ namespace LiteOrm.Service
         /// <returns>是否操作成功（插入或更新）。</returns>
         public virtual bool UpdateOrInsert(T entity)
         {
-            if (!Notify(l => l.OnUpdating(entity)))
+            if (!Notify(l => l.OnUpdatingOrInserting(entity)))
                 return false;
             var dao = ObjectDAO;
             if (entity is IArged arg)
@@ -459,10 +459,10 @@ namespace LiteOrm.Service
             switch (dao.UpdateOrInsert(entity))
             {
                 case UpdateOrInsertResult.Inserted:
-                    Notify(l => l.OnInserted(entity));
+                    Notify(l => l.OnUpdatedOrInserted(entity));
                     return true;
                 case UpdateOrInsertResult.Updated:
-                    Notify(l => l.OnUpdated(entity));
+                    Notify(l => l.OnUpdatedOrInserted(entity));
                     return true;
                 default:
                     return false;

@@ -1351,9 +1351,28 @@ namespace LiteOrm.Tests
                 Assert.True(service.Update(user));
                 Assert.Equal(new[] { nameof(RecordingEvent.OnUpdating), nameof(RecordingEvent.OnUpdated) }, evt.Calls);
 
+                // UpdateOrInsert（更新）：触发专用的 upsert 钩子，而非 OnUpdating/OnUpdated
+                evt.Calls.Clear();
+                user.Name = "EventUser_Upsert_Update";
+                Assert.True(service.UpdateOrInsert(user));
+                Assert.Equal(new[] { nameof(RecordingEvent.OnUpdatingOrInserting), nameof(RecordingEvent.OnUpdatedOrInserted) }, evt.Calls);
+
+                // UpdateOrInsert（插入）：同样只触发专用的 upsert 钩子
+                evt.Calls.Clear();
+                var newUpsertUser = new TestUser { Name = "EventUser_Upsert_Insert", Age = 21, CreateTime = DateTime.Now };
+                Assert.True(service.UpdateOrInsert(newUpsertUser));
+                Assert.Equal(new[] { nameof(RecordingEvent.OnUpdatingOrInserting), nameof(RecordingEvent.OnUpdatedOrInserted) }, evt.Calls);
+
                 evt.Calls.Clear();
                 Assert.True(service.Delete(user));
                 Assert.Equal(new[] { nameof(RecordingEvent.OnDeleting), nameof(RecordingEvent.OnDeleted) }, evt.Calls);
+
+                // Before 回调返回 false 时取消 upsert 操作
+                evt.Calls.Clear();
+                evt.Block = true;
+                Assert.False(service.UpdateOrInsert(new TestUser { Name = "BlockedUpsert", Age = 2, CreateTime = DateTime.Now }));
+                Assert.Equal(new[] { nameof(RecordingEvent.OnUpdatingOrInserting) }, evt.Calls);
+                evt.Block = false;
 
                 // DeleteID
                 var idUser = new TestUser { Name = "IDUser", Age = 5, CreateTime = DateTime.Now };
@@ -1466,10 +1485,12 @@ namespace LiteOrm.Tests
 
             public override bool OnInserting(TestUser entity) { Calls.Add(nameof(OnInserting)); return !Block; }
             public override bool OnUpdating(TestUser entity) { Calls.Add(nameof(OnUpdating)); return !Block; }
+            public override bool OnUpdatingOrInserting(TestUser entity) { Calls.Add(nameof(OnUpdatingOrInserting)); return !Block; }
             public override bool OnDeleting(TestUser entity) { Calls.Add(nameof(OnDeleting)); return !Block; }
 
             public override void OnInserted(TestUser entity) => Calls.Add(nameof(OnInserted));
             public override void OnUpdated(TestUser entity) => Calls.Add(nameof(OnUpdated));
+            public override void OnUpdatedOrInserted(TestUser entity) => Calls.Add(nameof(OnUpdatedOrInserted));
             public override void OnDeleted(TestUser entity) => Calls.Add(nameof(OnDeleted));
 
             public override bool OnDeleteIDing(object id, string[] tableArgs) { Calls.Add(nameof(OnDeleteIDing)); return !Block; }

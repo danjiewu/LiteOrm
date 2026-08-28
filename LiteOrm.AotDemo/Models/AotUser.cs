@@ -27,13 +27,15 @@ namespace LiteOrm.AotDemo.Models
 
         [Column("Info")]
         public JsonNode? Info { get; set; }
+        [Column("Duration")]
+        public TimeSpan Duration { get; set; }
     }
 
     public enum UserRole
     {
         Staff,
-        Manager ,        
-        Admin 
+        Manager,
+        Admin
     }
 
     /// <summary>
