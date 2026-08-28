@@ -71,6 +71,12 @@ Console.WriteLine("\n=== 4. SearchOne ===");
 var alice = userService.SearchOne(Expr.Prop("UserName") == "alice");
 Console.WriteLine(alice is null ? "alice not found" : $"alice: Id={alice.Id}, Age={alice.Age}, Info={alice.Info?.ToJsonString()}");
 
+Console.WriteLine("\n=== 4.5 SearchAs：JsonNode Lambda 过滤（JSON 字段查询） ===");
+var goldUsers = userService.SearchAs(u => u.Where(x => x.Info!["Level"]!.GetValue<string>() == "gold"));
+Console.WriteLine($"SearchAs (Info['Level']=='gold') found {goldUsers.Count} users:");
+foreach (var v in goldUsers)
+    Console.WriteLine($"  {v.UserName}: {v.Info?.ToJsonString()}");
+
 Console.WriteLine("\n=== 5. SearchAs / SearchOneAs（Lambda 投影到 AotUserView） ===");
 var projected = userService.SearchAs(u => u.Where(x => x.Age > 20));
 Console.WriteLine($"SearchAs<AotUserView>(Age > 20) found {projected.Count}:");

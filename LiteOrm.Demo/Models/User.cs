@@ -1,4 +1,5 @@
-﻿using LiteOrm.Common;
+using LiteOrm.Common;
+using System.Text.Json.Nodes;
 
 namespace LiteOrm.Demo.Models
 {
@@ -40,7 +41,14 @@ namespace LiteOrm.Demo.Models
         [Column("DeptId")]
         [ForeignType(typeof(Department), Alias = "Dept")]
         public int? DeptId { get; set; }
+
+        /// <summary>
+        /// JsonNode 复杂列：以 JSON 文本存储，经列级 <see cref="JsonNodeConverter"/> 读写。
+        /// </summary>
+        [Column("Info")]
+        public JsonNode? Info { get; set; }
     }
+
 
     /// <summary>
     /// 用户视图实体，包含关联的外表字段
