@@ -169,8 +169,12 @@ namespace LiteOrm
         protected override string GetSqlTypeDefinition(ColumnDefinition column)
         {
             DbValueType dbValueType = column.GetDbValueType(this);
-            if (dbValueType == DbValueType.Json || dbValueType == DbValueType.Jsonb) return "JSON";
-            return base.GetSqlTypeDefinition(column);
+            return  dbValueType switch
+            {
+                DbValueType.Json or DbValueType.Jsonb => "JSON",
+                DbValueType.Guid => "CHAR(36)",
+                _ => base.GetSqlTypeDefinition(column)
+            };
         }
 
         /// <summary>
