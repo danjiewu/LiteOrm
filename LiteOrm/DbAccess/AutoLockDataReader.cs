@@ -220,6 +220,27 @@ namespace LiteOrm
             return _innerReader.GetByte(i);
         }
 
+
+        /// <summary>
+        /// 构造类型化读取委托时，对 <see cref="DbType.Time"/> 读取 <see cref="TimeSpan"/>。
+        /// 通过普通方法调用而非 MakeGenericMethod，保证 AOT 裁剪安全。
+        /// </summary>
+        public virtual TimeSpan GetTimeSpan(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetFieldValue<TimeSpan>(i);
+        }
+
+        /// <summary>
+        /// 获取指定列的字节数组。
+        /// </summary>
+        /// <returns></returns>
+        public virtual byte[] GetBytes(int i)
+        {
+            EnsureNotDisposed();
+            return _innerReader.GetFieldValue<byte[]>(i);
+        }
+
         /// <summary>
         /// 从指定列偏移量开始，将字节流从指定的列索引读入作为偏移量开始的缓冲区。
         /// </summary>

@@ -34,7 +34,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 对象类型
         /// </summary>
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
         public Type DefinitionType
         {
             get { return Definition.ObjectType; }

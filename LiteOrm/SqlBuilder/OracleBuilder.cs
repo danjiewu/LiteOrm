@@ -44,6 +44,7 @@ namespace LiteOrm
             if (scalar == DbValueType.DateTime) return DbType.Date;
             // Time 以 TimeSpan 值绑定 INTERVAL DAY TO SECOND 列，交由驱动推断（DbType.Time 会被 ODP.NET 映射为 TIMESTAMP）
             if (scalar == DbValueType.Time) return DbType.Object;
+            if (scalar == DbValueType.Guid) return DbType.Binary;
             return base.ToDbType(dbValueType);
         }
 
@@ -281,6 +282,8 @@ namespace LiteOrm
                     return "DATE";
                 case DbType.Boolean:
                     return "NUMBER(1)";
+                case DbType.Guid:
+                    return "RAW(16)";
                 default:
                     return base.GetSqlTypeDefinition(column);
             }

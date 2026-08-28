@@ -29,7 +29,7 @@ namespace LiteOrm
     /// 提供强类型的数据访问接口。
     /// </remarks>
     [AutoRegister(Lifetime = Lifetime.Scoped)]
-    public class ObjectDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : DAOBase, IObjectDAO<T>
+    public class ObjectDAO<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : DAOBase, IObjectDAO<T>
     {
         /// <summary>
         /// 初始化 <see cref="ObjectDAO{T}"/> 类的新实例。
@@ -45,7 +45,7 @@ namespace LiteOrm
         /// </summary>
         public override Type ObjectType
         {
-            [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [return: DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             get { return typeof(T); }
         }
         /// <summary>

@@ -19,29 +19,6 @@ namespace System.Diagnostics.CodeAnalysis
 
         public DynamicallyAccessedMemberTypes MemberTypes { get; }
     }
-
-    /// <summary>
-    /// Polyfill for .NET 5+ DynamicallyAccessedMemberTypes enum.
-    /// </summary>
-    [Flags]
-    internal enum DynamicallyAccessedMemberTypes
-    {
-        None = 0,
-        PublicParameterlessConstructor = 0x0001,
-        PublicConstructors = 0x0002,
-        NonPublicConstructors = 0x0004,
-        PublicMethods = 0x0008,
-        NonPublicMethods = 0x0010,
-        PublicFields = 0x0020,
-        NonPublicFields = 0x0040,
-        PublicProperties = 0x0080,
-        NonPublicProperties = 0x0100,
-        PublicEvents = 0x0200,
-        NonPublicEvents = 0x0400,
-        NestedTypes = 0x0800,
-        Interfaces = 0x1000,
-        All = ~None,
-    }
 }
 
 #if !NET7_0_OR_GREATER

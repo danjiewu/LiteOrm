@@ -61,7 +61,7 @@ namespace LiteOrm.CodeGen
         /// <exception cref="ArgumentNullException">当 <paramref name="objectType"/> 为 null 时抛出。</exception>
         /// <exception cref="InvalidOperationException">当 <see cref="TableInfoProvider.Instance"/> 未设置或未找到对应的连接池时抛出。</exception>
         /// <exception cref="InvalidOperationException">当 <see cref="TableDefinition.DataSource"/> 未设置或无效时抛出。</exception>
-        public List<string> GenerateDdl([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]Type objectType, string[]? tableArgs = null)
+        public List<string> GenerateDdl([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]Type objectType, string[]? tableArgs = null)
         {
             if (objectType == null) throw new ArgumentNullException(nameof(objectType));
             if (TableInfoProvider.Instance == null) throw new InvalidOperationException("TableInfoProvider.Instance is not set.");

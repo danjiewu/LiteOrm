@@ -70,7 +70,7 @@ namespace LiteOrm.Common
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2073", Justification = "ConcurrentDictionary.GetOrAdd returns a Type that is naturally available under JIT; under AOT, RequiresDynamicCode indicates this path is unavailable and closed generic types must be pre-registered.")]
 #endif
-        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        [return: DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
         public Type? GetType(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;

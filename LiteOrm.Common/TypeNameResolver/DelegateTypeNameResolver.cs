@@ -33,7 +33,7 @@ namespace LiteOrm.Common
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2073", Justification = "The Type returned by the delegate is user-supplied; callers must ensure annotation requirements. Under AOT, users should use the pre-registration path.")]
 #endif
-        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        [return: DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
         public Type? GetType(string name)
             => _getType(name);
     }

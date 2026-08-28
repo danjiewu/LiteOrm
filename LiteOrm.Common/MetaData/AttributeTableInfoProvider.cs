@@ -35,7 +35,7 @@ namespace LiteOrm
         /// <param name="objectType">对象类型</param>
         /// <returns>表定义</returns>
         public override TableDefinition? GetTableDefinition(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType)
         {
             if (objectType is null) return null;
@@ -56,7 +56,7 @@ namespace LiteOrm
         /// <param name="objectType">对象类型</param>
         /// <returns>表信息</returns>
         public override TableView? GetTableView(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType)
         {
             if (objectType is null) return null;
@@ -73,7 +73,7 @@ namespace LiteOrm
 
         #region
         private TableDefinition? GenerateTableDefinition(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType)
         {
             TableAttribute? tableAttribute = objectType.GetAttribute<TableAttribute>();
@@ -179,7 +179,7 @@ namespace LiteOrm
         }
 
         private TableView? GenerateTableView(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType)
         {
             var tableDef = GetTableDefinition(objectType);

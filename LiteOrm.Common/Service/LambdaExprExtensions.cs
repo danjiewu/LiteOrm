@@ -22,7 +22,7 @@ namespace LiteOrm.Common
         /// <param name="expression">定义删除条件的 Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>受影响的行数。</returns>
-        public static int Delete<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityService<T> entityService, Expression<Func<T, bool>> expression, params string[] tableArgs)
+        public static int Delete<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityService<T> entityService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return entityService.DeleteAll(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
@@ -36,7 +36,7 @@ namespace LiteOrm.Common
         /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>符合条件的实体对象列表。</returns>
-        public static List<T> Search<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null)
+        public static List<T> Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return entityViewService.Search(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
@@ -50,7 +50,7 @@ namespace LiteOrm.Common
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>符合条件的实体对象列表。</returns>
-        public static List<T> Search<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewService<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null)
+        public static List<T> Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewService<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null)
         {
             return entityViewService.Search(Expr.Query(expression), tableArgs);
         }
@@ -63,7 +63,7 @@ namespace LiteOrm.Common
         /// <param name="expression">定义搜索条件的 Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>第一个符合条件的实体对象；如果没有找到则返回 null。</returns>
-        public static T SearchOne<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null)
+        public static T SearchOne<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return entityViewService.SearchOne(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
@@ -77,7 +77,7 @@ namespace LiteOrm.Common
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>第一个符合条件的实体对象；如果没有找到则返回 null。</returns>
-        public static T SearchOne<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewService<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null)
+        public static T SearchOne<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewService<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null)
         {
             return entityViewService.SearchOne(Expr.Query(expression), tableArgs);
         }
@@ -85,7 +85,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 使用 Lambda 表达式检查是否存在符合条件的实体。
         /// </summary>
-        public static bool Exists<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, params string[] tableArgs)
+        public static bool Exists<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return entityViewService.Exists(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
@@ -94,7 +94,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 使用 Lambda 表达式获取符合条件的实体总数。
         /// </summary>
-        public static int Count<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, params string[] tableArgs)
+        public static int Count<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewService<T> entityViewService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return entityViewService.Count(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
@@ -109,7 +109,7 @@ namespace LiteOrm.Common
         /// <param name="expression">定义更新条件的 Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>受影响的行数。</returns>
-        public static int UpdateAll<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityService<T> entityService, Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> expression, params string[] tableArgs)
+        public static int UpdateAll<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityService<T> entityService, Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
             return entityService.UpdateAll(Expr.Update(updateExpression, expression), tableArgs);
         }
@@ -117,7 +117,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 使用 Lambda 表达式异步检查是否存在符合条件的实体。
         /// </summary>
-        public static Task<bool> ExistsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public static Task<bool> ExistsAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return entityViewService.ExistsAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
@@ -126,7 +126,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 使用 Lambda 表达式异步获取符合条件的实体总数。
         /// </summary>
-        public static Task<int> CountAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public static Task<int> CountAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return entityViewService.CountAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
@@ -135,7 +135,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 使用 Lambda 表达式异步根据主键删除实体。
         /// </summary>
-        public static Task<bool> DeleteIDAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityServiceAsync<T> entityService, object id, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public static Task<bool> DeleteIDAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityServiceAsync<T> entityService, object id, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityService.DeleteIDAsync(id, tableArgs, cancellationToken);
         }
@@ -149,7 +149,7 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步删除操作的任务，结果包含受影响的行数。</returns>
-        public static Task<int> DeleteAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public static Task<int> DeleteAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return entityService.DeleteAllAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
@@ -164,7 +164,7 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步搜索操作的任务，结果包含符合条件的实体对象列表。</returns>
-        public static Task<List<T>> SearchAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public static Task<List<T>> SearchAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return entityViewService.SearchAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
@@ -179,7 +179,7 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步搜索操作的任务，结果包含符合条件的实体对象列表。</returns>
-        public static Task<List<T>> SearchAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public static Task<List<T>> SearchAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityViewService.SearchAsync(Expr.Query(expression), tableArgs, cancellationToken);
         }
@@ -193,7 +193,7 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步搜索操作的任务，结果包含符合条件的单个实体对象，未找到则返回 null。</returns>
-        public static Task<T> SearchOneAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public static Task<T> SearchOneAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return entityViewService.SearchOneAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
@@ -208,7 +208,7 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步搜索操作的任务，结果包含符合条件的单个实体对象，未找到则返回 null。</returns>
-        public static Task<T> SearchOneAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public static Task<T> SearchOneAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityViewService.SearchOneAsync(Expr.Query(expression), tableArgs, cancellationToken);
         }
@@ -223,7 +223,7 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步更新操作的任务，结果包含受影响的行数。</returns>
-        public static Task<int> UpdateAllAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public static Task<int> UpdateAllAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             return entityService.UpdateAllAsync(Expr.Update(updateExpression, expression), tableArgs, cancellationToken);
         }
@@ -237,7 +237,7 @@ namespace LiteOrm.Common
         /// <param name="expression">定义查询与投影的 IQueryable Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>投影后的结果列表。</returns>
-        public static List<TResult> SearchAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(
+        public static List<TResult> SearchAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
             this IEntityViewService<T> entityViewService,
             Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
             string[]? tableArgs = null)
@@ -255,7 +255,7 @@ namespace LiteOrm.Common
         /// <param name="expression">定义查询与投影的 IQueryable Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>第一个符合条件的投影结果；未找到时返回默认值。</returns>
-        public static TResult SearchOneAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(
+        public static TResult SearchOneAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
             this IEntityViewService<T> entityViewService,
             Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
             string[]? tableArgs = null)
@@ -274,7 +274,7 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步查询的任务，结果包含投影后的列表。</returns>
-        public static Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(
+        public static Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
             this IEntityViewServiceAsync<T> entityViewService,
             Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
             string[]? tableArgs = null,
@@ -294,7 +294,7 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步查询的任务，结果包含第一个符合条件的投影结果；未找到时返回默认值。</returns>
-        public static Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(
+        public static Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
             this IEntityViewServiceAsync<T> entityViewService,
             Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
             string[]? tableArgs = null,
@@ -307,7 +307,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 将 Lambda 转换得到的片段包装为 <see cref="SelectExpr"/>（若本身已是 <see cref="SelectExpr"/> 则直接返回）。
         /// </summary>
-        private static SelectExpr ToSelectExpr<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(Expr expr)
+        private static SelectExpr ToSelectExpr<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(Expr expr)
         {
             if (expr is SelectExpr selectExpr) return selectExpr;
             var selects = new List<SelectItemExpr>();

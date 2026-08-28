@@ -102,6 +102,8 @@ namespace LiteOrm
             // Oracle 方言：bool 以整数 1/0 写入（Oracle 无布尔类型）。
             // 通过派生类型注册，这些注册优先于 SqlBuilder 上的默认注册。
             OracleBuilder.Instance.RegisterDbValueConverter(DbValueType.Boolean, (int v) => v != 0, b => b ? 1 : 0);
+            // Oracle 方言：Guid 以字节数组写入（Oracle 无 Guid 类型）。
+            OracleBuilder.Instance.RegisterDbValueConverter(DbValueType.Guid,(byte[] b) => new Guid(b), g => g.ToByteArray());
 
             // SQLite 方言：Date/DateTime/DateTime2/DateTimeOffset/Time 均以文本存储（SQLite 无原生日期/时间类型）。
             // SQLiteBuilder.ToDbType 将其均映射为 String，故以下转换器 TDbType=string 与 GetString 读取返回严格一致；

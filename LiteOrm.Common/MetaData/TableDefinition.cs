@@ -17,7 +17,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="objectType">对应的实体类型。</param>
         /// <param name="columns">列定义集合。</param>
-        public TableDefinition([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        public TableDefinition([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
         Type objectType, ICollection<ColumnDefinition> columns) :
             base(new List<ColumnDefinition>(columns).ConvertAll<SqlColumn>(column => column))
         {
@@ -36,7 +36,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取对应的实体类型。
         /// </summary>
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
         public Type ObjectType { get; }
 
         /// <summary>

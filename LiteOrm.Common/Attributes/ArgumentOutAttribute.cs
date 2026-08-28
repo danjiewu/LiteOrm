@@ -166,7 +166,7 @@ namespace LiteOrm.Common
         /// 通过 <see cref="TableInfoProvider.Instance"/> 元数据解析类型上的 Identity 属性。
         /// 若未注册 <see cref="TableInfoProvider.Instance"/> 或该类型无 Identity 列，则返回 null。
         /// </summary>
-        private static PropertyInfo? ResolveIdentityProperty([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type type)
+        private static PropertyInfo? ResolveIdentityProperty([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] Type type)
         {
             var provider = TableInfoProvider.Instance;
             if (provider is null) return null;

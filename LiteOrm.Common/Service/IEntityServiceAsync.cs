@@ -14,7 +14,7 @@ namespace LiteOrm.Service
     [Service]
     [ServicePermission(false)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    public interface IEntityServiceAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : IEntityServiceAsync
+    public interface IEntityServiceAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : IEntityServiceAsync
     {
         /// <summary>
         /// 异步新增实体

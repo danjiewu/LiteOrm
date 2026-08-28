@@ -10,7 +10,7 @@ namespace LiteOrm.Common
     /// 实体类的增删改等基本操作的泛型接口
     /// </summary>
     /// <typeparam name="T">实体类类型</typeparam>
-    public interface IObjectDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : IObjectDAOAsync<T>, IObjectDAO
+    public interface IObjectDAO<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : IObjectDAOAsync<T>, IObjectDAO
     {
         /// <summary>
         /// 添加对象

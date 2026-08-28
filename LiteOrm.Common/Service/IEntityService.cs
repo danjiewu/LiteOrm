@@ -57,7 +57,7 @@ namespace LiteOrm.Service
     [Service]
     [ServicePermission(false)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
-    public interface IEntityService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : IEntityService
+    public interface IEntityService<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : IEntityService
     {
         /// <summary>
         /// 新增实体

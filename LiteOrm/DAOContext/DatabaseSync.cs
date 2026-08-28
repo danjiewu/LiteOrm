@@ -44,7 +44,7 @@ namespace LiteOrm
         /// <param name="objectType">实体类型。</param>
         /// <param name="tableName">解析后的表名（已应用 tableArgs）。</param>
         /// <returns>若需要同步返回 true，否则返回 false。</returns>
-        protected bool ShouldSyncTable([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        protected bool ShouldSyncTable([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType, string tableName)
         {
             bool defaultSync = _daoContextPool.SyncTable;
@@ -91,7 +91,7 @@ namespace LiteOrm
         /// <summary>
         /// 生成表名和对象类型的联合主键。
         /// </summary>
-        private static string GetTableTypeKey(string tableName, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        private static string GetTableTypeKey(string tableName, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType)
             => $"{tableName}|{objectType.FullName}";
 
@@ -99,7 +99,7 @@ namespace LiteOrm
         /// 确保指定表已在数据库中存在且包含所有必要的列。
         /// 同步版本，供 DAO 在命令构建前调用。
         /// </summary>
-        public void EnsureTable(DAOContext daoContext, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        public void EnsureTable(DAOContext daoContext, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType, string[]? tableArgs = null)
         {
             if (typeof(IArged).IsAssignableFrom(objectType) && (tableArgs == null || tableArgs.Length == 0)) return;
@@ -117,7 +117,7 @@ namespace LiteOrm
         /// 确保指定表已在数据库中存在且包含所有必要的列。
         /// 异步版本，供初始化器调用。
         /// </summary>
-        public async Task EnsureTableAsync(DAOContext daoContext, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        public async Task EnsureTableAsync(DAOContext daoContext, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType, string[]? tableArgs = null)
         {
             if (typeof(IArged).IsAssignableFrom(objectType) && (tableArgs == null || tableArgs.Length == 0)) return;
@@ -135,7 +135,7 @@ namespace LiteOrm
         /// 根据实体类型与动态表名参数解析出最终的表名。
         /// </summary>
         /// <returns>解析后的表名；若该类型无表定义则返回 null。</returns>
-        private static string? ResolveTableName([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        private static string? ResolveTableName([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType, string[]? tableArgs)
         {
             var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(objectType);
@@ -154,7 +154,7 @@ namespace LiteOrm
         /// <param name="objectType">实体类型。</param>
         /// <param name="tableArgs">动态表名参数，适用于实现了 <see cref="IArged"/> 的类型。</param>
         /// <returns>需要执行的 DDL 语句列表（CREATE TABLE、ADD COLUMN、CREATE INDEX）。</returns>
-        public List<string> ResolveEnsureTableDdl(DAOContext daoContext, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        public List<string> ResolveEnsureTableDdl(DAOContext daoContext, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType, string[]? tableArgs = null)
         {
             var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(objectType);
@@ -187,7 +187,7 @@ namespace LiteOrm
         /// <summary>
         /// 根据实体类型和数据库当前状态，计算出需要执行的 DDL 语句列表（异步版本）。
         /// </summary>
-        public async Task<List<string>> ResolveEnsureTableDdlAsync(DAOContext daoContext, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        public async Task<List<string>> ResolveEnsureTableDdlAsync(DAOContext daoContext, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType, string[]? tableArgs = null)
         {
             var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(objectType);
@@ -533,7 +533,7 @@ namespace LiteOrm
         /// <param name="objectType">待同步的实体类型。</param>
         /// <param name="tableName">解析后的表名（已应用 tableArgs）。</param>
         /// <param name="defaultSync">基于连接池级 <see cref="DAOContextPool.SyncTable"/> 的默认决策。</param>
-        public TableSyncingEventArgs([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        public TableSyncingEventArgs([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType, string tableName, bool defaultSync)
         {
             ObjectType = objectType;

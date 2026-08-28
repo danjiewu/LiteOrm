@@ -196,7 +196,7 @@ namespace LiteOrm.Common
     /// 支持使用 DAO/PreparedSql 按需创建命令，或通过预构造的 <see cref="DbCommandProxy"/> 重用命令。
     /// </summary>
     /// <typeparam name="TResult">查询行转换后返回的元素类型。</typeparam>
-    public class EnumerableResult<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult> : CommandResult<List<TResult>>, IEnumerable<TResult>, IAsyncEnumerable<TResult>, IEnumerableResult
+    public class EnumerableResult<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult> : CommandResult<List<TResult>>, IEnumerable<TResult>, IAsyncEnumerable<TResult>, IEnumerableResult
     {
         private readonly Func<AutoLockDataReader, TResult>? _readerFunc;
 

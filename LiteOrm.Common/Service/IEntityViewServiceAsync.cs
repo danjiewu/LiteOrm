@@ -16,7 +16,7 @@ namespace LiteOrm.Service
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     public interface IEntityViewServiceAsync<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] 
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] 
         T> : IEntityViewServiceAsync
     {
         /// <summary>
@@ -69,7 +69,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>结果列表</returns>
         [ServiceMethod]
-        Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default);
+        Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(SelectExpr? selectExpr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// 异步获取单个符合条件的实体，并将结果转换为指定类型的对象。
@@ -80,7 +80,7 @@ namespace LiteOrm.Service
         /// <param name="cancellationToken">取消令牌 </param>
         /// <returns>结果对象</returns>
         [ServiceMethod]
-        Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr? selectExpr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default);
+        Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(SelectExpr? selectExpr = null, string[]? tableArgs = null, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

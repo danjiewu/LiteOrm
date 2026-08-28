@@ -24,22 +24,37 @@ namespace System.Diagnostics.CodeAnalysis
     /// Polyfill for .NET 5+ DynamicallyAccessedMemberTypes enum.
     /// </summary>
     [Flags]
-    internal enum DynamicallyAccessedMemberTypes
+    public enum DynamicallyAccessedMemberTypes
     {
+        /// <summary>不指定任何成员。</summary>
         None = 0,
+        /// <summary>公开的无参构造函数。</summary>
         PublicParameterlessConstructor = 0x0001,
+        /// <summary>全部公开构造函数。</summary>
         PublicConstructors = 0x0002,
+        /// <summary>全部非公开构造函数。</summary>
         NonPublicConstructors = 0x0004,
+        /// <summary>公开方法。</summary>
         PublicMethods = 0x0008,
+        /// <summary>非公开方法。</summary>
         NonPublicMethods = 0x0010,
+        /// <summary>公开字段。</summary>
         PublicFields = 0x0020,
+        /// <summary>非公开字段。</summary>
         NonPublicFields = 0x0040,
+        /// <summary>公开属性。</summary>
         PublicProperties = 0x0080,
+        /// <summary>非公开属性。</summary>
         NonPublicProperties = 0x0100,
+        /// <summary>公开事件。</summary>
         PublicEvents = 0x0200,
+        /// <summary>非公开事件。</summary>
         NonPublicEvents = 0x0400,
+        /// <summary>嵌套类型。</summary>
         NestedTypes = 0x0800,
+        /// <summary>接口及其默认实现。</summary>
         Interfaces = 0x1000,
+        /// <summary>所有成员。</summary>
         All = ~None,
     }
 }

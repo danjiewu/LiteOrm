@@ -54,7 +54,7 @@ namespace LiteOrm.Service
     /// </code>
     /// </remarks>
     [AutoRegister(Lifetime = Lifetime.Scoped)]
-    public class EntityService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TView> : EntityViewService<TView>, IEntityService<T>, IEntityServiceAsync<T>, IEntityService, IEntityServiceAsync
+    public class EntityService<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TView> : EntityViewService<TView>, IEntityService<T>, IEntityServiceAsync<T>, IEntityService, IEntityServiceAsync
     where TView : T
     {
         /// <summary>
@@ -1036,7 +1036,7 @@ namespace LiteOrm.Service
     /// 它简化了在这种常见场景中的类型参数传递。
     /// </remarks>
     /// <typeparam name="T">实体类型，同时也是实体视图类型。</typeparam>
-    public class EntityService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : EntityService<T, T>
+    public class EntityService<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : EntityService<T, T>
     {
         /// <summary>
         /// 初始化 <see cref="EntityService{T}"/> 类的新实例。

@@ -31,9 +31,9 @@ namespace LiteOrm
     /// 读取转换委托由构造方（<see cref="DataReaderConverter"/>）在构建 <see cref="ColumnReadSpec"/> 时一次解析好；<see cref="Map"/>
     /// 逐行读取并为属性赋值或填充构造参数，方法组可直接作为 <see cref="Func{T, TResult}"/> 委托挂载。
     /// 全程不使用 <c>Expression.Compile</c>，不开动态代码；目标类型元数据由构造方通过
-    /// <see cref="DynamicallyAccessedMemberTypes"/> 保证在裁剪后保留。
+    /// <see cref="DynamicallyAccessedMembersAttribute"/> 保证在裁剪后保留。
     /// </remarks>
-    internal sealed class AotMapper<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>
+    internal sealed class AotMapper<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>
     {
         private readonly ConstructorInfo _ctor;
         private readonly bool _useCtorArgs;

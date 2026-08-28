@@ -26,6 +26,9 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="objectType">非可空值类型。</param>
         /// <returns>该值类型的零值（装箱后）。</returns>
+        /// <remarks>
+        /// <c>DynamicallyAccessedMembers</c> 声明 <paramref name="objectType"/> 需保留公开/非公开构造函数，
+        /// </remarks>
         public static object CreateDefaultValue([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors)] Type objectType)
         {
 #if NET5_0_OR_GREATER

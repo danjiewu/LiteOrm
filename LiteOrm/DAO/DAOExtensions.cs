@@ -10,7 +10,7 @@ namespace LiteOrm
     /// DAO 扩展方法 - 提供基于 Lambda 表达式的查询扩展
     /// </summary>
     public static class DAOExtensions
-    {
+    {        
         #region IDataViewDAO Lambda 扩展
 
         /// <summary>
@@ -20,7 +20,7 @@ namespace LiteOrm
         /// <param name="dataViewDao">IDataViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 Lambda 表达式。</param>
         /// <returns>查询结果数据表。</returns>
-        public static DataTableResult Search<T>(this IDataViewDAO<T> dataViewDao, Expression<Func<T, bool>> expression)
+        public static DataTableResult Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IDataViewDAO<T> dataViewDao, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return dataViewDao.Search(lambdaConvert.ToLogicExpr()!);
@@ -34,7 +34,8 @@ namespace LiteOrm
         /// <param name="dataViewDao">IDataViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <returns>查询结果数据表。</returns>
-        public static DataTableResult Search<TInput, TResult>(this IDataViewDAO<TInput> dataViewDao, Expression<Func<IQueryable<TInput>, IQueryable<TResult>>> expression)
+        public static DataTableResult Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TInput,
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(this IDataViewDAO<TInput> dataViewDao, Expression<Func<IQueryable<TInput>, IQueryable<TResult>>> expression)
         {
             return dataViewDao.Search(Expr.Query(expression));
         }
@@ -47,7 +48,7 @@ namespace LiteOrm
         /// <param name="propertyNames">要查询的字段名称列表。</param>
         /// <param name="expression">定义查询条件的 Lambda 表达式。</param>
         /// <returns>查询结果数据表。</returns>
-        public static DataTableResult Search<T>(this IDataViewDAO<T> dataViewDao, string[] propertyNames, Expression<Func<T, bool>> expression)
+        public static DataTableResult Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IDataViewDAO<T> dataViewDao, string[] propertyNames, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return dataViewDao.Search(propertyNames, lambdaConvert.ToLogicExpr()!);
@@ -62,7 +63,8 @@ namespace LiteOrm
         /// <param name="propertyNames">要查询的字段名称列表。</param>
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <returns>查询结果数据表。</returns>
-        public static DataTableResult Search<TInput, TResult>(this IDataViewDAO<TInput> dataViewDao, string[] propertyNames, Expression<Func<IQueryable<TInput>, IQueryable<TResult>>> expression)
+        public static DataTableResult Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TInput,
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(this IDataViewDAO<TInput> dataViewDao, string[] propertyNames, Expression<Func<IQueryable<TInput>, IQueryable<TResult>>> expression)
         {
             return dataViewDao.Search(propertyNames, Expr.Query(expression));
         }
@@ -78,7 +80,7 @@ namespace LiteOrm
         /// <param name="objectViewDao">IObjectViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 Lambda 表达式。</param>
         /// <returns>符合条件的对象枚举。</returns>
-        public static EnumerableResult<T> Search<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
+        public static EnumerableResult<T> Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return objectViewDao.Search(lambdaConvert.ToLogicExpr()!);
@@ -91,7 +93,7 @@ namespace LiteOrm
         /// <param name="objectViewDao">IObjectViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <returns>符合条件的对象枚举。</returns>
-        public static EnumerableResult<T> Search<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<IQueryable<T>, IQueryable<T>>> expression)
+        public static EnumerableResult<T> Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<IQueryable<T>, IQueryable<T>>> expression)
         {
             return objectViewDao.Search(Expr.Query(expression));
         }
@@ -103,7 +105,7 @@ namespace LiteOrm
         /// <param name="objectViewDao">IObjectViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 Lambda 表达式。</param>
         /// <returns>符合条件的对象个数。</returns>
-        public static ValueResult<int> Count<T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
+        public static ValueResult<int> Count<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return objectViewDao.Count(lambdaConvert.ToLogicExpr()!);
@@ -116,7 +118,7 @@ namespace LiteOrm
         /// <param name="objectViewDao">IObjectViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 Lambda 表达式。</param>
         /// <returns>符合条件的对象是否存在。</returns>
-        public static ValueResult<bool> Exists<T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
+        public static ValueResult<bool> Exists<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<T, bool>> expression)
         {
             var lambdaConvert = new LambdaExprConverter(expression);
             return objectViewDao.Exists(lambdaConvert.ToLogicExpr()!);

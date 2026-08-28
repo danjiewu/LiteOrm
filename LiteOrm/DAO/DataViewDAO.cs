@@ -13,7 +13,7 @@ namespace LiteOrm
     /// </summary>
     /// <typeparam name="T">实体类型</typeparam>
     [AutoRegister(Lifetime = Lifetime.Scoped)]
-    public class DataViewDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : DAOBase, IDataViewDAO<T>
+    public class DataViewDAO<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : DAOBase, IDataViewDAO<T>
     {
         /// <summary>
         /// 初始化 <see cref="DataViewDAO{T}"/> 类的新实例。
@@ -27,7 +27,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取实体类型信息。
         /// </summary>
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
         public override Type ObjectType => typeof(T);
 
         /// <summary>

@@ -15,7 +15,7 @@ namespace LiteOrm.Service
     [ServicePermission(true)]
     [ServiceLog(LogLevel = ServiceLogLevel.Debug)]
     public interface IEntityViewService<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] 
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] 
         T> : IEntityViewService
     {
         /// <summary>
@@ -60,7 +60,7 @@ namespace LiteOrm.Service
         /// <returns></returns>
         [ServiceMethod]
         List<TResult> SearchAs<
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             TResult>(SelectExpr selectExpr, params string[] tableArgs);
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace LiteOrm.Service
         /// <returns></returns>
         [ServiceMethod]
         TResult SearchOneAs<
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             TResult>(SelectExpr selectExpr, params string[] tableArgs);
     }
 

@@ -37,7 +37,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体对象类型。</param>
         /// <returns>返回对应的 <see cref="TableDefinition"/> 信息。</returns>
         public abstract TableDefinition? GetTableDefinition(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType);
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体对象类型。</param>
         /// <returns>返回对应的 <see cref="TableView"/> 信息。</returns>
         public abstract TableView? GetTableView(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType);
     }
 }

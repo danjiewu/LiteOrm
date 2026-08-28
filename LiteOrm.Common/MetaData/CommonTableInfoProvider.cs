@@ -47,7 +47,7 @@ namespace LiteOrm.Common
 
         /// <inheritdoc />
         public override TableDefinition? GetTableDefinition(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType)
         {
             if (objectType is null) return null;
@@ -66,7 +66,7 @@ namespace LiteOrm.Common
 
         /// <inheritdoc />
         public override TableView? GetTableView(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType)
         {
             if (objectType is null) return null;

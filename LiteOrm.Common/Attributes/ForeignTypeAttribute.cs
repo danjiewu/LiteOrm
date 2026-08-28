@@ -9,13 +9,13 @@ namespace LiteOrm.Common
     [AttributeUsage(AttributeTargets.Property, AllowMultiple = true, Inherited = true)]
     public class ForeignTypeAttribute : System.Attribute
     {
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
         private Type _objectType = null!;
         /// <summary>
         /// 关联的外部实体类型
         /// </summary>
         /// <param name="objectType">外部实体的类型</param>
-        public ForeignTypeAttribute([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType)
+        public ForeignTypeAttribute([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] Type objectType)
         {
             this._objectType = objectType;
         }
@@ -23,7 +23,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 外部实体类型
         /// </summary>
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
         public Type ObjectType
         {
             get { return _objectType; }

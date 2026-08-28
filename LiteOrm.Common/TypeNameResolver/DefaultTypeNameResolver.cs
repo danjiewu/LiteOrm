@@ -29,7 +29,7 @@ namespace LiteOrm.Common
         }
 
         /// <inheritdoc />
-        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        [return: DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
         public Type? GetType(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;

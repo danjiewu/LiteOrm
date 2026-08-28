@@ -19,7 +19,7 @@ namespace LiteOrm.Common
         /// <param name="objectType">实体类型。</param>
         /// <param name="query">查询条件的键值对集合。</param>
         /// <returns>生成的逻辑表达式。</returns>
-        public static LogicExpr? Parse([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType, IEnumerable<KeyValuePair<string, string>> query)
+        public static LogicExpr? Parse([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] Type objectType, IEnumerable<KeyValuePair<string, string>> query)
         {
             LogicExpr? expr = null;
             foreach (var kv in query)
@@ -40,7 +40,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型参数。</typeparam>
         /// <param name="query">查询条件的键值对集合。</param>
         /// <returns>生成的逻辑表达式。</returns>
-        public static LogicExpr? Parse<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(IEnumerable<KeyValuePair<string, string>> query)
+        public static LogicExpr? Parse<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(IEnumerable<KeyValuePair<string, string>> query)
         {
             return Parse(typeof(T), query);
         }
@@ -53,7 +53,7 @@ namespace LiteOrm.Common
         /// <param name="query">查询条件的键值对集合。</param>
         /// <param name="pagesize">每页的记录数。</param>
         /// <returns>生成的分页查询表达式。</returns>
-        public static Expr ParsePagedQuery([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType, IEnumerable<KeyValuePair<string, string>> query, int pagesize = 10)
+        public static Expr ParsePagedQuery([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] Type objectType, IEnumerable<KeyValuePair<string, string>> query, int pagesize = 10)
         {
             LogicExpr? expr = null;
             List<OrderByItemExpr> orderBys = new List<OrderByItemExpr>();
@@ -95,7 +95,7 @@ namespace LiteOrm.Common
         /// <param name="query">查询条件的键值对集合。</param>
         /// <param name="pagesize">每页的记录数。</param>
         /// <returns>生成的分页查询表达式。</returns>
-        public static Expr ParsePagedQuery<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T>(IEnumerable<KeyValuePair<string, string>> query, int pagesize = 10)
+        public static Expr ParsePagedQuery<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(IEnumerable<KeyValuePair<string, string>> query, int pagesize = 10)
         {
             return ParsePagedQuery(typeof(T), query, pagesize);
         }

@@ -30,7 +30,7 @@ namespace LiteOrm
     /// 它支持与 TableJoinAttribute 定义的多表关联进行查询。
     /// </remarks>
     [AutoRegister(Lifetime = Lifetime.Scoped)]
-    public class ObjectViewDAO<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] T> : DAOBase, IObjectViewDAO<T>
+    public class ObjectViewDAO<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : DAOBase, IObjectViewDAO<T>
     {
         /// <summary>
         /// 初始化 <see cref="ObjectViewDAO{T}"/> 类的新实例。
@@ -47,7 +47,7 @@ namespace LiteOrm
         /// </summary>
         public override Type ObjectType
         {
-            [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [return: DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             get { return typeof(T); }
         }
 
@@ -225,7 +225,7 @@ namespace LiteOrm
         /// <param name="selectExpr">SELECT 表达式。</param>
         /// <param name="readerFunc">读取器转换函数，为 null 时使用默认转换。</param>
         /// <returns>自定义类型的集合。</returns>
-        public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(SelectExpr selectExpr, Func<AutoLockDataReader, TResult>? readerFunc = null)
+        public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(SelectExpr selectExpr, Func<AutoLockDataReader, TResult>? readerFunc = null)
         {
             var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
             return new EnumerableResult<TResult>(this, prepared, readerFunc);
@@ -238,7 +238,7 @@ namespace LiteOrm
         /// <param name="expr">Lambda 表达式，用于生成 SQL 查询</param>
         /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverterByTable{TResult}(IDbConverter)"/></param>
         /// <returns></returns>
-        public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<AutoLockDataReader, TResult>? readerFunc = null)
+        public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<AutoLockDataReader, TResult>? readerFunc = null)
         {
             var seg = LambdaExprConverter.ToSqlSegment(expr);
             seg = ToSelectExpr(seg);
@@ -274,7 +274,7 @@ namespace LiteOrm
         /// var users = objectViewDAO.SearchAs&lt;User&gt;($"WHERE {Expr.Prop("Age") > 20 }");
         /// </code>
         /// </example>
-        public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
+        public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody)
         {
             return new EnumerableResult<TResult>(this, sqlBody.GetResult());
         }

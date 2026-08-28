@@ -109,7 +109,7 @@ namespace LiteOrm.Common
         /// <param name="syncTable">表结构同步模式。</param>
         /// <param name="columns">列信息集合。</param>
         public TableInfo(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType,
             string name,
             string? dataSource,
@@ -126,7 +126,7 @@ namespace LiteOrm.Common
         /// <summary>
         /// 实体类型。
         /// </summary>
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)]
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
         public Type ObjectType { get; }
 
         /// <summary>

@@ -21,7 +21,7 @@ namespace LiteOrm.Common
         /// 根据对象类型初始化
         /// </summary>
         /// <param name="objectType">对象类型</param>
-        public FromExpr([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties)] Type objectType)
+        public FromExpr([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] Type objectType)
         {
             Source = new TableExpr(objectType);
         }
