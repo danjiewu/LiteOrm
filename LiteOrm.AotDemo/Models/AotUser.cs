@@ -16,8 +16,8 @@ namespace LiteOrm.AotDemo.Models
 
         [Column("Age")]
         public int Age { get; set; }
-        [Column("Role", DbType = DbValueType.Int32)]
-        public UserRole Role { get; set; }
+        [Column("Role")]
+        public UserRole? Role { get; set; }
 
         [Column("CreateTime")]
         public DateTime CreateTime { get; set; }
@@ -27,9 +27,9 @@ namespace LiteOrm.AotDemo.Models
 
     public enum UserRole
     {
-        Manager = 1,
-        Staff = 2,
-        Boss = 3
+        Staff,
+        Manager ,        
+        Admin 
     }
 
     /// <summary>

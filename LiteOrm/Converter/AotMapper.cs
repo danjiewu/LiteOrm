@@ -104,12 +104,30 @@ namespace LiteOrm
             int count = _handlers.Length;
             for (int i = 0; i < count; i++)
             {
-                if (reader.IsDBNull(_ordinals[i])) continue; // 保持默认值
+                if (reader.IsDBNull(_ordinals[i])) continue; // 保持默认值                
+                if (_handlers[i] == null)
+                {
+                    var converter = reader.DbConverter;
+                    Type dbValueType = reader.GetFieldType(i);
+                    Type coreType = _cores[i];
+                    var valueConverter = converter.GetDbValueConverter(coreType, converter.GetDbValueType(dbValueType));
+                    if (valueConverter?.DbReadConverter != null)
+                        _handlers[i] = valueConverter?.DbReadConverter;
+                    else if (coreType.IsAssignableFrom(dbValueType))
+                        _handlers[i] = new DbConvertHandler(o => o);
+                    else if (coreType.IsEnum)
+                    {
+                        if (dbValueType.IsPrimitive)
+                            _handlers[i] = new DbConvertHandler(o => Enum.ToObject(coreType, o));
+                        else
+                            _handlers[i] = new DbConvertHandler(o => Enum.Parse(coreType, o.ToString()!, ignoreCase: true));
+                    }
+                    else
+                        _handlers[i] = new DbConvertHandler(o => Convert.ChangeType(o, coreType));
+                }
+                DbConvertHandler handler = _handlers[i]!;
                 object raw = reader.GetValue(_ordinals[i]);
-                DbConvertHandler? handler = _handlers[i];
-                object? value = handler != null
-                    ? handler(raw)
-                    : Convert.ChangeType(raw, _cores[i]);
+                object value = handler(raw);
                 if (_useCtorArgs) args![_paramIndexes![i]] = value;
                 else _props![i].SetValue(instance, value);
             }

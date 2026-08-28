@@ -149,7 +149,7 @@ namespace LiteOrm
         /// 获取或设置上下文连续执行失败的上限。达到该值后上下文被标记为失效，
         /// 不再被连接池复用。0 表示不启用失效检测。默认为 <see cref="DefaultMaxFailureLimit"/>。
         /// </summary>
-        public int MaxConsecutiveFailures { get; set; } = DefaultMaxFailureLimit;
+        public int MaxFailureLimit { get; set; } = DefaultMaxFailureLimit;
 
         /// <summary>
         /// 获取或设置该连接池是否为只读连接池。
@@ -445,7 +445,7 @@ namespace LiteOrm
                 {
                     IsReadOnly = IsReadOnlyPool,
                     KeepAliveDuration = KeepAliveDuration,
-                    MaxFailureLimit = MaxConsecutiveFailures
+                    MaxFailureLimit = MaxFailureLimit
                 };
                 _logger?.LogDebug("Pool '{PoolName}': new connection created (ContextId: {ContextId}).", Name, context.Id);
                 if (OnContextCreated != null) OnContextCreated(context);

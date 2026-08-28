@@ -372,8 +372,8 @@ namespace LiteOrm.Generators
                     // 无 ColumnAttribute 的属性：根据类型推断。
                     // 复杂类型（数组/集合 → null、Json/Jsonb/自定义类 → "Object"）不自动生成列元信息，
                     // 必须显式加 [Column] 特性（可含 DbType）才会生成列。
-                    var dbType = InferDbTypeFull(prop.Type, symbols);
-                    if (dbType is null or "Object" or "Json" or "Jsonb")
+                    var dbType = InferDbTypeFull(prop.Type);
+                    if (dbType is null or "Object")
                         continue;
 
                     info.Columns.Add(new ColumnInfo
@@ -550,7 +550,7 @@ namespace LiteOrm.Generators
             return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
 
-        private static string InferDbType(ITypeSymbol type, ResolvedSymbols symbols)
+        private static string InferDbType(ITypeSymbol type)
         {
             var t = type;
             if (t is INamedTypeSymbol nts && nts.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T && nts.IsGenericType)
@@ -582,7 +582,7 @@ namespace LiteOrm.Generators
         /// 与运行时 <see cref="DbValueTypeMap.InferFromPropertyType"/> 对齐的完整类型推断，
         /// 补齐 Guid、byte[]、DateTimeOffset、TimeSpan 以及数组/集合类型的 AOT 推断。
         /// </summary>
-        private static string? InferDbTypeFull(ITypeSymbol type, ResolvedSymbols symbols)
+        private static string? InferDbTypeFull(ITypeSymbol type)
         {
             var t = type;
             if (t is INamedTypeSymbol nts && nts.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T && nts.IsGenericType)
@@ -648,7 +648,7 @@ namespace LiteOrm.Generators
         }
 
         // ──────────────────────────────────────────────────────────────
-        // 1. 注册表信息到 CommonTableInfoProvider（AOT 表元信息统一由 CommonTableInfoProvider 承载，不再生成 SourceGeneratedTableInfoProvider）
+        // 1. 注册表信息到 CommonTableInfoProvider
         // ──────────────────────────────────────────────────────────────
         private static string GenerateTableInfoRegistration(List<EntityInfo> entities, ResolvedSymbols symbols)
         {
@@ -682,8 +682,9 @@ namespace LiteOrm.Generators
                     // ForeignColumn 投影列不是真实表列，不写入表元信息
                     if (c.IsForeign) continue;
                     int dbTypeInt = -1;
-                    if (!string.IsNullOrEmpty(c.DbType) && c.DbType != "Object" && c.DbType != "Default")
-                        dbTypeInt = GetEnumMemberValue(symbols.DbType, c.DbType!);
+                    string dbType = c.DbType ?? InferDbType(c.Symbol.Type);
+                    if (!string.IsNullOrEmpty(dbType) && dbType != "Object" && dbType != "Default")
+                        dbTypeInt = GetEnumMemberValue(symbols.DbType, dbType!);
                     if (dbTypeInt < 0) dbTypeInt = -1;
 
                     sb.AppendLine("                        new global::LiteOrm.Common.ColumnInfo");
@@ -812,10 +813,11 @@ namespace LiteOrm.Generators
                 string type = c.PropertyType.Replace("global::", "");
                 string tw = StripNullable(type);
                 string readLocal = $"d_{i}";
+                string dbType = c.DbType ?? InferDbType(c.Symbol.Type);
                 // 非泛型读取委托（object→object），以 GetValue 为输入；分支内各自强转/类型化读取，无外层包裹
                 sb.AppendLine($"            var {readLocal} = {e.SafeName}_conv_{i}?.DbReadConverter;");
                 // 选择类型化读取方法：列显式声明 DbType 时优先按 DbType 推断（与运行时 _dbTypeReaderMethods 一致），否则按属性 CLR 类型推断
-                string? typedRead = GetTypedReadMethodNameFromDbType(c.DbType) ?? GetTypedReadMethodName(tw);
+                string? typedRead = GetTypedReadMethodNameFromDbType(dbType) ?? GetTypedReadMethodName(tw);
                 string fallback;
                 if (typedRead != null)
                     // 统一强转为属性类型，避免 DbType 推断出的读取类型与属性类型不一致导致生成代码编译失败
@@ -840,7 +842,7 @@ namespace LiteOrm.Generators
         /// </summary>
         private static bool IsComplexColumn(ColumnInfo c)
         {
-            if (c.DbType is "Json" or "Jsonb" or "Object" or "Array")
+            if (c.DbType is "Object" or "Array")
                 return true;
 
             var type = c.Symbol.Type;
@@ -856,9 +858,10 @@ namespace LiteOrm.Generators
         /// </summary>
         private static string? GetReadDbValueTypeExpr(ColumnInfo c, ResolvedSymbols symbols)
         {
-            if (string.IsNullOrEmpty(c.DbType) || c.DbType == "Object" || c.DbType == "Default")
+            string dbType = c.DbType ?? InferDbType(c.Symbol.Type);
+            if (string.IsNullOrEmpty(dbType) || dbType == "Object" || dbType == "Default")
                 return null;
-            int dbTypeInt = GetEnumMemberValue(symbols.DbType, c.DbType!);
+            int dbTypeInt = GetEnumMemberValue(symbols.DbType, dbType!);
             if (dbTypeInt < 0) return null;
             return $"(global::LiteOrm.Common.DbValueType)({dbTypeInt})";
         }
