@@ -53,6 +53,48 @@ namespace LiteOrm.Benchmark
         [LiteOrm.Common.Column("CreateTime", ColumnMode = ColumnMode.Final)]
         [SqlSugar.SugarColumn]
         public DateTime CreateTime { get; set; }
+
+        /// <summary>
+        /// 全局唯一标识（Guid 类型）
+        /// </summary>
+        [LiteOrm.Common.Column("Uid")]
+        [SqlSugar.SugarColumn]
+        public Guid Uid { get; set; }
+
+        /// <summary>
+        /// 薪资（decimal 类型）
+        /// </summary>
+        [LiteOrm.Common.Column("Salary")]
+        [SqlSugar.SugarColumn]
+        public decimal Salary { get; set; }
+
+        /// <summary>
+        /// 是否启用（bool 类型）
+        /// </summary>
+        [LiteOrm.Common.Column("IsActive")]
+        [SqlSugar.SugarColumn]
+        public bool IsActive { get; set; }
+
+        /// <summary>
+        /// 评分（double 类型）
+        /// </summary>
+        [LiteOrm.Common.Column("Score")]
+        [SqlSugar.SugarColumn]
+        public double Score { get; set; }
+
+        /// <summary>
+        /// 登录次数（long 类型）
+        /// </summary>
+        [LiteOrm.Common.Column("LoginCount")]
+        [SqlSugar.SugarColumn]
+        public long LoginCount { get; set; }
+
+        /// <summary>
+        /// 备注（string 类型）
+        /// </summary>
+        [LiteOrm.Common.Column("Remark")]
+        [SqlSugar.SugarColumn]
+        public string Remark { get; set; }
     }
 
     /// <summary>

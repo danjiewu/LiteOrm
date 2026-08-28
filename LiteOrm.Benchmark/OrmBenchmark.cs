@@ -53,6 +53,27 @@ namespace LiteOrm.Benchmark
         }
 
         /// <summary>
+        /// 统一构造含多种属性类型的 <see cref="BenchmarkUser"/>，供各 ORM 的 Insert/Seed 使用，
+        /// 保证各框架映射到相同的数据列集合，公平对比不同类型属性的读写成本。
+        /// </summary>
+        private static BenchmarkUser NewBenchmarkUser(string name, int age, string email)
+        {
+            return new BenchmarkUser
+            {
+                Name = name,
+                Age = age,
+                Email = email,
+                CreateTime = DateTime.Now,
+                Uid = Guid.NewGuid(),
+                Salary = age * 100m + 0.50m,
+                IsActive = (age & 1) == 0,
+                Score = age * 1.25,
+                LoginCount = age * 7L,
+                Remark = "benchmark-" + name
+            };
+        }
+
+        /// <summary>
         /// 批量插入：构建单条多行 VALUES INSERT 语句（分块避免 MySQL 参数上限 65535）
         /// </summary>
         private static async Task ExecuteBatchInsertAsync(DbConnection conn, IReadOnlyList<BenchmarkUser> users, DbTransaction trans)
@@ -61,16 +82,22 @@ namespace LiteOrm.Benchmark
             for (int offset = 0; offset < users.Count; offset += chunkSize)
             {
                 var chunk = users.Skip(offset).Take(chunkSize).ToList();
-                var sb = new StringBuilder("INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime) VALUES ");
+                var sb = new StringBuilder("INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime, Uid, Salary, IsActive, Score, LoginCount, Remark) VALUES ");
                 var p = new Dapper.DynamicParameters();
                 for (int i = 0; i < chunk.Count; i++)
                 {
                     if (i > 0) sb.Append(',');
-                    sb.Append($"(@N{i},@A{i},@E{i},@T{i})");
+                    sb.Append($"(@N{i},@A{i},@E{i},@T{i},@U{i},@S{i},@B{i},@Sc{i},@L{i},@R{i})");
                     p.Add($"N{i}", chunk[i].Name);
                     p.Add($"A{i}", chunk[i].Age);
                     p.Add($"E{i}", chunk[i].Email);
                     p.Add($"T{i}", chunk[i].CreateTime);
+                    p.Add($"U{i}", chunk[i].Uid);
+                    p.Add($"S{i}", chunk[i].Salary);
+                    p.Add($"B{i}", chunk[i].IsActive);
+                    p.Add($"Sc{i}", chunk[i].Score);
+                    p.Add($"L{i}", chunk[i].LoginCount);
+                    p.Add($"R{i}", chunk[i].Remark);
                 }
                 await conn.ExecuteAsync(sb.ToString(), p, trans);
             }
@@ -86,19 +113,25 @@ namespace LiteOrm.Benchmark
             for (int offset = 0; offset < users.Count; offset += chunkSize)
             {
                 var chunk = users.Skip(offset).Take(chunkSize).ToList();
-                var sb = new StringBuilder("INSERT INTO BenchmarkUser (Id, Name, Age, Email, CreateTime) VALUES ");
+                var sb = new StringBuilder("INSERT INTO BenchmarkUser (Id, Name, Age, Email, CreateTime, Uid, Salary, IsActive, Score, LoginCount, Remark) VALUES ");
                 var p = new Dapper.DynamicParameters();
                 for (int i = 0; i < chunk.Count; i++)
                 {
                     if (i > 0) sb.Append(',');
-                    sb.Append($"(@I{i},@N{i},@A{i},@E{i},@T{i})");
+                    sb.Append($"(@I{i},@N{i},@A{i},@E{i},@T{i},@U{i},@S{i},@B{i},@Sc{i},@L{i},@R{i})");
                     p.Add($"I{i}", chunk[i].Id);
                     p.Add($"N{i}", chunk[i].Name);
                     p.Add($"A{i}", chunk[i].Age);
                     p.Add($"E{i}", chunk[i].Email);
                     p.Add($"T{i}", chunk[i].CreateTime);
+                    p.Add($"U{i}", chunk[i].Uid);
+                    p.Add($"S{i}", chunk[i].Salary);
+                    p.Add($"B{i}", chunk[i].IsActive);
+                    p.Add($"Sc{i}", chunk[i].Score);
+                    p.Add($"L{i}", chunk[i].LoginCount);
+                    p.Add($"R{i}", chunk[i].Remark);
                 }
-                sb.Append(" ON DUPLICATE KEY UPDATE Name=VALUES(Name), Age=VALUES(Age), Email=VALUES(Email)");
+                sb.Append(" ON DUPLICATE KEY UPDATE Name=VALUES(Name), Age=VALUES(Age), Email=VALUES(Email), Salary=VALUES(Salary), IsActive=VALUES(IsActive), Score=VALUES(Score), LoginCount=VALUES(LoginCount), Remark=VALUES(Remark)");
                 await conn.ExecuteAsync(sb.ToString(), p, trans);
             }
         }
@@ -233,7 +266,7 @@ namespace LiteOrm.Benchmark
 
                     // EF Core 种子
                     Console.WriteLine("Seeding EF Core...");
-                    var efUsers = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = $"User{i}", Age = 20 + (i % 50), Email = $"user{i}@example.com", CreateTime = DateTime.Now }).ToList();
+                    var efUsers = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
                     efCtx.BenchmarkUsers.AddRange(efUsers);
                     efCtx.SaveChanges();
                     var efLogs = efUsers.Select(u => new BenchmarkLog { UserId = u.Id, Message = $"Log for {u.Name}", LogTime = DateTime.Now }).ToList();
@@ -242,14 +275,14 @@ namespace LiteOrm.Benchmark
 
                     // SqlSugar 种子
                     Console.WriteLine("Seeding SqlSugar...");
-                    var sugarUsers = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = $"User{i}", Age = 20 + (i % 50), Email = $"user{i}@example.com", CreateTime = DateTime.Now }).ToList();
+                    var sugarUsers = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
                     sugar.Insertable(sugarUsers).ExecuteCommand();
                     var sugarLogs = sugar.Queryable<BenchmarkUser>().ToList().Select(u => new BenchmarkLog { UserId = u.Id, Message = $"Log for {u.Name}", LogTime = DateTime.Now }).ToList();
                     sugar.Insertable(sugarLogs).ExecuteCommand();
 
                     // FreeSql 种子
                     Console.WriteLine("Seeding FreeSql...");
-                    var fsqlUsers = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = $"User{i}", Age = 20 + (i % 50), Email = $"user{i}@example.com", CreateTime = DateTime.Now }).ToList();
+                    var fsqlUsers = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
                     fsql.Insert(fsqlUsers).ExecuteAffrows();
                     var fsqlLogs = fsql.Select<BenchmarkUser>().ToList().Select(u => new BenchmarkLog { UserId = u.Id, Message = $"Log for {u.Name}", LogTime = DateTime.Now }).ToList();
                     fsql.Insert(fsqlLogs).ExecuteAffrows();
@@ -257,7 +290,7 @@ namespace LiteOrm.Benchmark
                     // LiteOrm 种子
                     Console.WriteLine("Seeding LiteOrm...");
                     var userDao = scope.ServiceProvider.GetRequiredService<ObjectDAO<BenchmarkUser>>();
-                    var liteUsers = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = $"User{i}", Age = 20 + (i % 50), Email = $"user{i}@example.com", CreateTime = DateTime.Now }).ToList();
+                    var liteUsers = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
                     userDao.BatchInsertAsync(liteUsers).GetAwaiter().GetResult();
 
                     var userViewDao = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<BenchmarkUser>>();
@@ -292,7 +325,7 @@ namespace LiteOrm.Benchmark
             {
                 var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
                 db.ChangeTracker.AutoDetectChangesEnabled = false;
-                var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "EF", Age = 25, Email = "ef@test.com", CreateTime = DateTime.Now }).ToList();
+                var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("EF", 25, "ef@test.com")).ToList();
                 await db.BenchmarkUsers.AddRangeAsync(users);
                 db.ChangeTracker.DetectChanges();
                 await db.SaveChangesAsync();
@@ -305,7 +338,7 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
-                var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Sugar", Age = 25, Email = "sugar@test.com", CreateTime = DateTime.Now }).ToList();
+                var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("Sugar", 25, "sugar@test.com")).ToList();
                 await sugar.Insertable(users).ExecuteCommandAsync();
             }
         }
@@ -317,7 +350,7 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
-                var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Lite", Age = 25, Email = "lite@test.com", CreateTime = DateTime.Now }).ToList();
+                var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("Lite", 25, "lite@test.com")).ToList();
                 await service.BatchInsertAsync(users);
             }
         }
@@ -330,7 +363,7 @@ namespace LiteOrm.Benchmark
                 await conn.OpenAsync();
                 using (var trans = conn.BeginTransaction())
                 {
-                    var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "Dapper", Age = 25, Email = "dapper@test.com", CreateTime = DateTime.Now }).ToList();
+                    var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("Dapper", 25, "dapper@test.com")).ToList();
                     await ExecuteBatchInsertAsync(conn, users, trans);
                     trans.Commit();
                 }
@@ -343,7 +376,7 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
-                var users = Enumerable.Range(1, BatchCount).Select(i => new BenchmarkUser { Name = "FreeSql", Age = 25, Email = "freesql@test.com", CreateTime = DateTime.Now }).ToList();
+                var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("FreeSql", 25, "freesql@test.com")).ToList();
                 await fsql.Insert(users).ExecuteAffrowsAsync();
             }
         }
@@ -469,13 +502,7 @@ namespace LiteOrm.Benchmark
                 }
 
                 string tag = Guid.NewGuid().ToString("N").Substring(0, 6);
-                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser
-                {
-                    Name = "EF_Upsert_I",
-                    Age = localRandom.Next(20, 60),
-                    Email = $"ef_upsert_{tag}_{i}@test.com",
-                    CreateTime = DateTime.Now
-                }).ToList();
+                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => NewBenchmarkUser("EF_Upsert_I", localRandom.Next(20, 60), $"ef_upsert_{tag}_{i}@test.com")).ToList();
 
                 await db.BenchmarkUsers.AddRangeAsync(newUsers);
                 db.ChangeTracker.DetectChanges();
@@ -491,7 +518,7 @@ namespace LiteOrm.Benchmark
                 var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
                 var existingUsers = await sugar.Queryable<BenchmarkUser>().Take(BatchCount / 2).ToListAsync();
                 foreach (var u in existingUsers) { u.Name = "Sugar_Upsert_U"; u.Age = _random.Next(20, 60); }
-                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Sugar_Upsert_I", Age = _random.Next(20, 60), Email = $"sugar_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
+                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => NewBenchmarkUser("Sugar_Upsert_I", _random.Next(20, 60), $"sugar_upsert{i}@test.com")).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();
                 await sugar.Storageable(all).ExecuteCommandAsync();
             }
@@ -508,7 +535,7 @@ namespace LiteOrm.Benchmark
                 var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
                 var existingUsers = await viewService.SearchAsync(new SectionExpr(0, BatchCount / 2));
                 foreach (var u in existingUsers) { u.Name = "Lite_Upsert_U"; u.Age = _random.Next(20, 60); }
-                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Lite_Upsert_I", Age = _random.Next(20, 60), Email = $"lite_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
+                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => NewBenchmarkUser("Lite_Upsert_I", _random.Next(20, 60), $"lite_upsert{i}@test.com")).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();
                 await service.BatchUpdateOrInsertAsync(all);
             }
@@ -525,7 +552,7 @@ namespace LiteOrm.Benchmark
                 using (var trans = conn.BeginTransaction())
                 {
                     foreach (var u in existingUsers) { u.Name = "Dapper_Upsert_U"; u.Age = _random.Next(20, 60); }
-                    var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "Dapper_Upsert_I", Age = _random.Next(20, 60), Email = $"dapper_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
+                    var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => NewBenchmarkUser("Dapper_Upsert_I", _random.Next(20, 60), $"dapper_upsert{i}@test.com")).ToList();
                     // 合并已有 + 新增，单条 INSERT ... ON DUPLICATE KEY UPDATE 完成全部
                     var all = existingUsers.Concat(newUsers).ToList();
                     if (all.Count > 0)
@@ -543,7 +570,7 @@ namespace LiteOrm.Benchmark
                 var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
                 var existingUsers = await fsql.Select<BenchmarkUser>().Limit(BatchCount / 2).ToListAsync();
                 foreach (var u in existingUsers) { u.Name = "FreeSql_Upsert_U"; u.Age = _random.Next(20, 60); }
-                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => new BenchmarkUser { Name = "FreeSql_Upsert_I", Age = _random.Next(20, 60), Email = $"freesql_upsert{i}@test.com", CreateTime = DateTime.Now }).ToList();
+                var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => NewBenchmarkUser("FreeSql_Upsert_I", _random.Next(20, 60), $"freesql_upsert{i}@test.com")).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();
                 await fsql.InsertOrUpdate<BenchmarkUser>().SetSource(all).ExecuteAffrowsAsync();
             }
