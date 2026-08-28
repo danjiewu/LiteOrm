@@ -454,7 +454,15 @@ namespace LiteOrm.Generators
             if (TryGetNamedArg(colAttr.NamedArguments, "IsTimestamp", out var ts) && ts.Value is bool bTs) info.IsTimestamp = bTs;
             if (TryGetNamedArg(colAttr.NamedArguments, "IsIndex", out var idx) && idx.Value is bool bIdx) info.IsIndex = bIdx;
             if (TryGetNamedArg(colAttr.NamedArguments, "IsUnique", out var uq) && uq.Value is bool bUq) info.IsUnique = bUq;
-            if (TryGetNamedArg(colAttr.NamedArguments, "AllowNull", out var an) && an.Value is bool bAn) info.AllowNull = bAn;
+            if (TryGetNamedArg(colAttr.NamedArguments, "AllowNull", out var an) && an.Value is bool bAn)
+            {
+                info.AllowNull = bAn;
+            }
+            else
+            {
+                // 未显式指定 AllowNull 时，按属性类型推断：值类型（非 Nullable<T>）为 false，引用类型或 Nullable<T> 为 true
+                info.AllowNull = !prop.Type.IsValueType || (prop.Type is INamedTypeSymbol nts && nts.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T);
+            }
             if (TryGetNamedArg(colAttr.NamedArguments, "Length", out var len) && len.Value is int iLen) info.Length = iLen;
             if (TryGetNamedArg(colAttr.NamedArguments, "DefaultValue", out var dv) && !dv.IsNull) info.DefaultValue = dv.Value?.ToString();
             if (TryGetNamedArg(colAttr.NamedArguments, "IdentityExpression", out var ie) && !ie.IsNull) info.IdentityExpression = ie.Value?.ToString();
