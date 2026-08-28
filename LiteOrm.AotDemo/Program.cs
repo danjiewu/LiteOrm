@@ -5,6 +5,7 @@ using LiteOrm.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Text.Json.Nodes;
 
 // ──────────────────────────────────────────────────────────────────
 // LiteOrm.AotDemo
@@ -40,10 +41,10 @@ using var scope = provider.CreateScope();
 var userService = scope.ServiceProvider.GetRequiredService<IAotUserService>();
 
 Console.WriteLine("=== 1. Insert（单条） ===");
-userService.Insert(new AotUser { UserName = "alice", Age = 30, CreateTime = DateTime.Now, Guid = Guid.NewGuid() });
-userService.Insert(new AotUser { UserName = "bob", Age = 25, CreateTime = DateTime.Now, Guid = Guid.NewGuid() });
-await userService.InsertAsync(new AotUser { UserName = "carol", Age = 28, CreateTime = DateTime.Now, Guid = Guid.NewGuid() });
-Console.WriteLine("Inserted alice / bob (sync), carol (async).");
+userService.Insert(new AotUser { UserName = "alice", Age = 30, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Info = JsonNode.Parse("""{"Level":"gold","Tags":["vip","beta"]}""") });
+userService.Insert(new AotUser { UserName = "bob", Age = 25, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Info = JsonNode.Parse("""{"Level":"silver"}""") });
+await userService.InsertAsync(new AotUser { UserName = "carol", Age = 28, CreateTime = DateTime.Now, Guid = Guid.NewGuid(), Info = JsonNode.Parse("""{"Level":"free"}""") });
+Console.WriteLine("Inserted alice / bob (sync, with JsonNode Info), carol (async).");
 
 Console.WriteLine("\n=== 2. BatchInsert（批量插入） ===");
 userService.BatchInsert(new[]
@@ -63,12 +64,12 @@ var users = userService.Search(Expr.Prop("Age") > 20);
 Console.WriteLine($"Search(Age > 20) found {users.Count} users:");
 foreach (var u in users)
 {
-    Console.WriteLine($"  Id={u.Id}, UserName={u.UserName}, Age={u.Age}");
+    Console.WriteLine($"  Id={u.Id}, UserName={u.UserName}, Age={u.Age}, Info={u.Info?.ToJsonString()}");
 }
 
 Console.WriteLine("\n=== 4. SearchOne ===");
 var alice = userService.SearchOne(Expr.Prop("UserName") == "alice");
-Console.WriteLine(alice is null ? "alice not found" : $"alice: Id={alice.Id}, Age={alice.Age}");
+Console.WriteLine(alice is null ? "alice not found" : $"alice: Id={alice.Id}, Age={alice.Age}, Info={alice.Info?.ToJsonString()}");
 
 Console.WriteLine("\n=== 5. SearchAs / SearchOneAs（Lambda 投影到 AotUserView） ===");
 var projected = userService.SearchAs(u => u.Where(x => x.Age > 20));

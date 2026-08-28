@@ -95,10 +95,9 @@ namespace LiteOrm
             foreach (DbValueType stringType in _stringDbValueTypes)
                 sqlBuilder.RegisterDbValueConverter<SqlBuilder, string, string>(stringType, null, null);
 
-            // JsonNode ↔ Json 列（默认映射到 DbValueType.Json，以字符串存储）
-            sqlBuilder.RegisterDbValueConverter(DbValueType.Json,
-                (string s) => JsonNode.Parse(s),
-                (JsonNode? n) => n?.ToJsonString() ?? "null");
+            // JsonNode ↔ Json 列（默认映射到 DbValueType.Json，以字符串存储，同时注册 String 到 JsonNode 映射）
+            sqlBuilder.RegisterDbValueConverter(DbValueType.Json, (string s) => JsonNode.Parse(s), (JsonNode? n) => n?.ToJsonString() ?? "null");
+            sqlBuilder.RegisterDbValueConverter(DbValueType.String, (string s) => JsonNode.Parse(s), (JsonNode? n) => n?.ToJsonString() ?? "null");
 
             // Oracle 方言：bool 以整数 1/0 写入（Oracle 无布尔类型）。
             // 通过派生类型注册，这些注册优先于 SqlBuilder 上的默认注册。

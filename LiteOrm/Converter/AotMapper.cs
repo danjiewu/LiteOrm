@@ -108,16 +108,16 @@ namespace LiteOrm
                 if (_handlers[i] == null)
                 {
                     var converter = reader.DbConverter;
-                    Type dbValueType = reader.GetFieldType(i);
+                    Type fieldType = reader.GetFieldType(_ordinals[i]);
                     Type coreType = _cores[i];
-                    var valueConverter = converter.GetDbValueConverter(coreType, converter.GetDbValueType(dbValueType));
+                    var valueConverter = converter.GetDbValueConverter(coreType, converter.GetDbValueType(fieldType));
                     if (valueConverter?.DbReadConverter != null)
                         _handlers[i] = valueConverter?.DbReadConverter;
-                    else if (coreType.IsAssignableFrom(dbValueType))
+                    else if (coreType.IsAssignableFrom(fieldType))
                         _handlers[i] = new DbConvertHandler(o => o);
                     else if (coreType.IsEnum)
                     {
-                        if (dbValueType.IsPrimitive)
+                        if (fieldType.IsPrimitive)
                             _handlers[i] = new DbConvertHandler(o => Enum.ToObject(coreType, o));
                         else
                             _handlers[i] = new DbConvertHandler(o => Enum.Parse(coreType, o.ToString()!, ignoreCase: true));

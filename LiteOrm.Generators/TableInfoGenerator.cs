@@ -475,8 +475,8 @@ namespace LiteOrm.Generators
             else
                 info.DbType = null;
 
-            // ValueConverterType: typeof(X) 形式的命名参数，值为 INamedTypeSymbol
-            if (TryGetNamedArg(colAttr.NamedArguments, "ValueConverterType", out var vct) && !vct.IsNull && vct.Value is INamedTypeSymbol converterSymbol)
+            // ConverterType: typeof(X) 形式的命名参数，值为 INamedTypeSymbol
+            if (TryGetNamedArg(colAttr.NamedArguments, "ConverterType", out var cvt) && !cvt.IsNull && cvt.Value is INamedTypeSymbol converterSymbol)
                 info.ConverterType = converterSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
             // 计算列表达式（非实际列）
