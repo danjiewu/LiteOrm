@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
-namespace LiteOrm
+namespace LiteOrm.Converter
 {
     /// <summary>列读取规范：一条被读取列到目标成员的映射（列序号、核心类型、读取转换委托，以及「属性 setter」或「构造函数参数」目标之一）。</summary>
     internal struct ColumnReadSpec

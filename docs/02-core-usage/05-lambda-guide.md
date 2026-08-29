@@ -230,22 +230,98 @@ var list = await userService.SearchAsAsync(
 
 > `SearchAs` 的 Lambda 会被转换为 `SelectExpr` 后执行（等价于 [查询总览](./04-query-overview.md#3-search-vs-searchas) 中的 `SelectExpr` 用法）。结果映射由 `DataReaderConverter` 完成：未注册的普通类 / 匿名类按「成员名 ↔ 列别名」匹配，注册过的实体类型按位置匹配——建议优先使用 DTO / 匿名类投影。分表时通过 `tableArgs` 参数指定分表名。
 
-## 7. 常见问题
+## 7. JsonNode 查询
 
-### 6.1 Lambda 中不支持的方法会怎样？
+LiteOrm 原生支持 `System.Text.Json.Nodes.JsonNode`（含 `JsonObject`、`JsonArray`、`JsonValue`）类型的属性——自动映射为 JSON 列（字符串存储），并支持在 Lambda 中直接通过索引器和 `GetValue<T>()` 查询 JSON 字段。
+
+> JsonNode 属性的自动映射与序列化机制详见 [数据映射与值转换](../03-advanced-topics/11-data-mapping.md#8-jsonnode-映射导航)。
+
+### 7.1 基础用法：索引器访问
+
+`JsonNode` 索引器（`this[string]` / `this[int]`）会被翻译为 `JsonExtract` 函数，返回 JSON 片段：
+
+```csharp
+// 查询 Settings 中 name 为 "admin" 的配置
+var result = await configDAO.SearchAsync(
+    c => c.Settings!["name"].GetValue<string>() == "admin"
+);
+
+// 嵌套访问：Settings.profile.age > 18
+var adults = await configDAO.SearchAsync(
+    c => c.Settings!["profile"]["age"].GetValue<int>() > 18
+);
+
+// 数组访问：Settings.tags[0] == "vip"
+var vips = await configDAO.SearchAsync(
+    c => c.Settings!["tags"][0].GetValue<string>() == "vip"
+);
+```
+
+### 7.2 标量值提取：`GetValue<T>()`
+
+`GetValue<T>()` 会被翻译为 `JsonValue` 函数，用于提取标量值（字符串、数字、布尔等）：
+
+| C# 写法 | 映射函数 | 说明 |
+|---------|---------|------|
+| `json["key"].GetValue<string>()` | `JsonValue` | 提取字符串标量 |
+| `json["key"].GetValue<int>()` | `JsonValue` | 提取整数标量 |
+| `json["key"].GetValue<bool>()` | `JsonValue` | 提取布尔标量 |
+| `json["key"]` (无 GetValue) | `JsonExtract` | 返回 JSON 片段，用于继续索引 |
+
+```csharp
+// 提取数值并比较
+var result = await configDAO.SearchAsync(
+    c => c.Settings!["score"].GetValue<int>() >= 90
+);
+
+// 提取布尔值
+var enabled = await configDAO.SearchAsync(
+    c => c.Settings!["enabled"].GetValue<bool>() == true
+);
+```
+
+### 7.3 索引链与路径规则
+
+LiteOrm 会自动解析连续的索引器调用，拼接为正确的 JSON 路径：
+
+- **字符串键** → 点号路径（`$.name`）
+- **整数索引** → 方括号路径（`$[0]`）
+- **混合嵌套** → 组合路径（`$.items[0].name`）
+
+```csharp
+// 等价于 JSON 路径 $.items[2].price
+var price = await configDAO.SearchAsync(
+    c => c.Settings!["items"][2]["price"].GetValue<decimal>() > 100
+);
+```
+
+> 如果索引键是**常量**（字符串或整数），路径会在编译期拼接完成；如果是动态变量，则在运行时拼接。两种方式都支持。
+
+### 7.4 各数据库 JSON 函数映射
+
+| 通用函数名 | SQL Server | MySQL | PostgreSQL | SQLite | Oracle |
+|-----------|-----------|-------|------------|--------|--------|
+| **JsonExtract** | `JSON_QUERY` | `JSON_EXTRACT` | `->` 运算符 | `json_extract` | `JSON_QUERY` |
+| **JsonValue** | `JSON_VALUE` | `JSON_UNQUOTE(JSON_EXTRACT(...))` | `->>` 运算符 | `json_extract` | `JSON_VALUE` |
+
+不同数据库对 JSON 函数的支持程度不同，请根据实际使用的数据库验证。如需在 `Expr` 中手动构建 JSON 查询，见 [表达式扩展](../04-extensibility/01-expression-extension.md#9-json-函数扩展)。
+
+## 8. 常见问题
+
+### 8.1 Lambda 中不支持的方法会怎样？
 
 如果 Lambda 中调用了未注册处理器的方法（即 `LiteOrmLambdaHandlerInitializer` 未覆盖的方法），LiteOrm 会在解析阶段抛出异常，提示该方法不被支持。这是设计上的安全保障——不会静默忽略未知方法，而是让开发者尽早发现问题。
 
 如需支持自定义方法，可以参考 `LiteOrmLambdaHandlerInitializer` 中的注册方式，通过 `LambdaExprConverter.RegisterMethodHandler` 注册自定义处理器。
 
-### 6.2 Lambda 与 Expr 如何互转？
+### 8.2 Lambda 与 Expr 如何互转？
 
 - **Lambda → Expr**：Lambda 表达式在解析阶段会自动转换为 `Expr` 树。也可以通过 `Expr.Lambda<T>(u => ...)` 手动将 Lambda 转成 `LogicExpr`，便于与手写 Expr 组合使用。
 - **Expr → Lambda**：在 Lambda 中可以通过 `ExprExtensions.To()` 方法嵌入已有的 `Expr` 对象，例如 `u => u.IsActive && extra.To<bool>()`，其中 `extra` 是外部构建的 `LogicExpr`。
 
 详细用法见 [Lambda 与 Expr 组合使用](./09-lambda-expr-mixing.md)。
 
-### 6.3 Lambda 性能是否有额外开销？
+### 8.3 Lambda 性能是否有额外开销？
 
 Lambda 查询在**解析阶段**会将表达式树转换为 `Expr` 对象，这个转换只发生一次（每次查询调用时）。一旦转换为 `Expr`，后续的 SQL 生成流程与手写 `Expr` 完全一致，**没有额外的运行时开销**。
 

@@ -347,7 +347,125 @@ LambdaExprConverter.RegisterMethodHandler("IsValid", (node, converter) => {
 });
 ```
 
-## 9. 默认注册的 Lambda 方法
+## 9. JSON 函数扩展
+
+LiteOrm 内置了一套通用 JSON 函数（`JsonExprExtensions`，命名空间 `LiteOrm.Common`），可以通过 `Expr` 或 Lambda 直接构造 JSON 查询，由各方言 SqlBuilder 映射为对应数据库的原生 JSON 函数。
+
+> 在 Lambda 中使用 `JsonNode` 索引器和 `GetValue<T>()` 的写法见 [Lambda 查询指南](../02-core-usage/05-lambda-guide.md#7-jsonnode-查询)。JsonNode 属性的自动映射与序列化机制见 [数据映射与值转换](../03-advanced-topics/11-data-mapping.md#8-jsonnode-映射导航)。
+
+### 9.1 通用 JSON 函数一览
+
+| 通用函数名 | 作用 | 返回类型 |
+|-----------|------|---------|
+| `JsonExtract(expr, path)` | 提取 JSON 片段（对象/数组） | JSON |
+| `JsonValue(expr, path)` | 提取标量值（字符串/数字/布尔） | 标量 |
+| `JsonQuery(expr, path)` | 提取 JSON 片段（同 JsonExtract，部分数据库有差异） | JSON |
+| `JsonContains(expr, candidate)` | 判断 JSON 是否包含指定元素 | bool |
+| `JsonObject(key1, val1, key2, val2, ...)` | 构造 JSON 对象 | JSON |
+| `JsonArray(val1, val2, ...)` | 构造 JSON 数组 | JSON |
+| `IsJson(expr)` | 判断是否为合法 JSON | bool |
+
+### 9.2 在 Expr 中使用
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 提取 JSON 字段（返回 JSON 片段，可继续嵌套提取）
+var expr = Prop("Settings").JsonExtract("$.name");
+
+// 提取标量值
+var nameExpr = Prop("Settings").JsonValue("$.profile.name");
+
+// 用于 WHERE 条件
+var adults = await userDAO.SearchAsync(
+    Prop("Settings").JsonValue("$.age").As<int>() >= 18
+);
+
+// 嵌套 JSON 路径
+var firstTag = Prop("Settings").JsonExtract("$.tags[0]");
+
+// 构造 JSON 对象
+var objExpr = Expr.JsonObject(
+    "name", Prop("UserName"),
+    "age", Prop("Age")
+);
+
+// 构造 JSON 数组
+var arrExpr = Expr.JsonArray(Prop("Id"), Prop("UserName"));
+
+// 判断是否为合法 JSON
+var valid = await userDAO.SearchAsync(Prop("Settings").IsJson());
+```
+
+### 9.3 各数据库 JSON 函数映射
+
+| 通用函数 | SQL Server | MySQL | PostgreSQL | SQLite | Oracle |
+|---------|-----------|-------|------------|--------|--------|
+| `JsonExtract` | `JSON_QUERY` | `JSON_EXTRACT` | `->` 运算符 | `json_extract` | `JSON_QUERY` |
+| `JsonValue` | `JSON_VALUE` | `JSON_UNQUOTE(JSON_EXTRACT(...))` | `->>` 运算符 | `json_extract` | `JSON_VALUE` |
+| `JsonQuery` | `JSON_QUERY` | `JSON_EXTRACT` | `->` 运算符 | `json_extract` | `JSON_QUERY` |
+| `JsonContains` | - | `JSON_CONTAINS` | `@>` 运算符 | - | - |
+| `JsonObject` | `JSON_OBJECT` | `JSON_OBJECT` | `jsonb_build_object` | `json_object` | `JSON_OBJECT` |
+| `JsonArray` | `JSON_ARRAY` | `JSON_ARRAY` | `jsonb_build_array` | `json_array` | `JSON_ARRAY` |
+| `IsJson` | `ISJSON` | `JSON_VALID` | - | `json_valid` | `IS JSON` |
+
+> 不同数据库对 JSON 函数的支持程度不同。标有 `-` 的表示该数据库暂无原生映射，使用时需注意。PostgreSQL 的 `JsonContains` 使用 `jsonb` 类型的 `@>` 运算符，列类型需为 jsonb。
+
+### 9.4 PostgreSQL 专用 JSON/JSONB 扩展
+
+PostgreSQL 方言提供了更丰富的 jsonb 专用扩展（命名空间 `LiteOrm.Pgsql`）：
+
+| 函数 | 说明 |
+|------|------|
+| `JsonbExtractPath(expr, path...)` | 提取 jsonb 路径（等价 `#>`） |
+| `JsonbExtractPathText(expr, path...)` | 提取路径文本（等价 `#>>`） |
+| `JsonbContains(jsonbExpr, candidateExpr)` | jsonb 包含判断（`@>` 运算符） |
+| `JsonbBuildObject(key, val, ...)` | 构造 jsonb 对象 |
+| `JsonbBuildArray(val, ...)` | 构造 jsonb 数组 |
+
+### 9.5 Lambda 中的 JsonNode 索引器是如何映射的
+
+在 Lambda 中对 `JsonNode` 使用索引器（`entity.JsonProp["key"]`）或 `GetValue<T>()` 时，`LiteOrmLambdaHandlerInitializer` 中注册的处理器会将其转换为 `FunctionExpr("JsonExtract", ...)` 或 `FunctionExpr("JsonValue", ...)`，然后由 SqlBuilder 按方言输出对应的原生 SQL。
+
+转换链路：
+
+```
+entity.Settings["profile"]["age"].GetValue<int>()
+        ↓  Lambda 解析
+BuildJsonAccess() 递归解析索引链，拼接路径 "$.profile.age"
+        ↓
+new FunctionExpr("JsonValue", PropertyExpr("Settings"), ValueExpr("$.profile.age"))
+        ↓  SqlBuilder 方言映射
+JSON_UNQUOTE(JSON_EXTRACT(Settings, '$.profile.age'))   (MySQL)
+Settings ->> '$.profile.age'                              (PostgreSQL)
+json_extract(Settings, '$.profile.age')                   (SQLite)
+JSON_VALUE(Settings, '$.profile.age')                     (SQL Server / Oracle)
+```
+
+### 9.6 自定义 JSON 函数
+
+如果需要扩展自定义的 JSON 函数，注册方式与普通函数相同：
+
+```csharp
+// 注册 Lambda 方法处理器
+LambdaExprConverter.RegisterMethodHandler(typeof(JsonNode), "GetArrayLength", (node, converter) =>
+{
+    var baseExpr = converter.ConvertInternal(node.Object!) as ValueTypeExpr;
+    return new FunctionExpr("JSON_LENGTH", baseExpr);
+});
+
+// 注册 MySQL 方言的 SQL 处理器
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("JSON_LENGTH",
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
+     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+{
+    outSql.Append("JSON_LENGTH(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
+});
+```
+
+## 10. 默认注册的 Lambda 方法
 
 LiteOrm 在首次访问对应组件时通过 `LiteOrmLambdaHandlerInitializer` 和 `LiteOrmSqlFunctionInitializer` 自动注册了大量默认方法（分别由 `LambdaExprConverter` 和 `SqlBuilder` 的静态构造函数触发）：
 
@@ -394,7 +512,7 @@ var dt = await dao.Search(Expr.Query<TestUser, IQueryable<object>>(q => q
     .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })));
 ```
 
-## 10. 默认注册的 SqlFunction（跨数据库）
+## 11. 默认注册的 SqlFunction（跨数据库）
 
 LiteOrm 在首次访问 `SqlBuilder` 时通过 `LiteOrmSqlFunctionInitializer` 自动注册了以下跨数据库 SqlFunction：
 
@@ -438,7 +556,7 @@ LiteOrm 在首次访问 `SqlBuilder` 时通过 `LiteOrmSqlFunctionInitializer` �
 - 通用 JSON 函数（`JsonExprExtensions`，命名空间 `LiteOrm.Common`）：`JsonExtract` / `JsonValue` / `JsonQuery` / `JsonContains` / `JsonObject` / `JsonArray` / `IsJson`，由各方言映射为原生函数（MySQL `JSON_EXTRACT` 等、SQLite `json_extract` 等、SQL Server `JSON_VALUE`/`JSON_QUERY`、Oracle `JSON_VALUE`/`JSON_QUERY`、PostgreSQL `->`/`->>`/`@>`）。
 - PgSQL 专用扩展（`LiteOrm.Pgsql` 命名空间）：`ArrayToString`、`ArrayAppend`、`Any`、`Contains`、`JsonbExtractPath`、`JsonbExtractPathText`、`JsonbContains`、`JsonbBuildObject`、`JsonbBuildArray`。
 
-## 11. 补充建议
+## 12. 补充建议
 
 - 自定义表达式时，优先复用现有 `FunctionExpr`、`LogicBinaryExpr`、`PropertyExpr` 等基础表达式类型，避免重复造轮子。
 - 如果同一个函数需要适配多个数据库，请把差异留在不同的 `SqlBuilder` 处理器中，而不是把分支判断散落在业务代码里。

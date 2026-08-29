@@ -1,4 +1,5 @@
 using LiteOrm.Common;
+using LiteOrm.Converter;
 using LiteOrm.Service;
 using LiteOrm.Tests.Infrastructure;
 using LiteOrm.Tests.Models;

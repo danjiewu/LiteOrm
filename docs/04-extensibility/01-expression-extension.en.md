@@ -347,7 +347,125 @@ LambdaExprConverter.RegisterMethodHandler("IsValid", (node, converter) => {
 });
 ```
 
-## 9. Default Registered Lambda Methods
+## 9. JSON Function Extensions
+
+LiteOrm includes a set of generic JSON functions (`JsonExprExtensions`, namespace `LiteOrm.Common`) that can be used directly via `Expr` or Lambda, with each dialect's SqlBuilder mapping them to the corresponding database's native JSON functions.
+
+> For using `JsonNode` indexers and `GetValue<T>()` in Lambda, see the [Lambda Guide](../02-core-usage/05-lambda-guide.en.md#7-jsonnode-queries). For auto-mapping and serialization of JsonNode properties, see [Data Mapping & Value Conversion](../03-advanced-topics/11-data-mapping.en.md#8-jsonnode-mapping-navigation).
+
+### 9.1 Generic JSON Function Overview
+
+| Generic Function | Purpose | Return Type |
+|-----------------|---------|-------------|
+| `JsonExtract(expr, path)` | Extract JSON fragment (object/array) | JSON |
+| `JsonValue(expr, path)` | Extract scalar value (string/number/boolean) | scalar |
+| `JsonQuery(expr, path)` | Extract JSON fragment (same as JsonExtract, dialect differences) | JSON |
+| `JsonContains(expr, candidate)` | Check if JSON contains the specified element | bool |
+| `JsonObject(key1, val1, key2, val2, ...)` | Construct JSON object | JSON |
+| `JsonArray(val1, val2, ...)` | Construct JSON array | JSON |
+| `IsJson(expr)` | Check if value is valid JSON | bool |
+
+### 9.2 Using in Expr
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// Extract JSON field (returns JSON fragment, can be further nested)
+var expr = Prop("Settings").JsonExtract("$.name");
+
+// Extract scalar value
+var nameExpr = Prop("Settings").JsonValue("$.profile.name");
+
+// Used in WHERE condition
+var adults = await userDAO.SearchAsync(
+    Prop("Settings").JsonValue("$.age").As<int>() >= 18
+);
+
+// Nested JSON path
+var firstTag = Prop("Settings").JsonExtract("$.tags[0]");
+
+// Construct JSON object
+var objExpr = Expr.JsonObject(
+    "name", Prop("UserName"),
+    "age", Prop("Age")
+);
+
+// Construct JSON array
+var arrExpr = Expr.JsonArray(Prop("Id"), Prop("UserName"));
+
+// Check if valid JSON
+var valid = await userDAO.SearchAsync(Prop("Settings").IsJson());
+```
+
+### 9.3 JSON Function Mapping by Database
+
+| Generic Function | SQL Server | MySQL | PostgreSQL | SQLite | Oracle |
+|-----------------|-----------|-------|------------|--------|--------|
+| `JsonExtract` | `JSON_QUERY` | `JSON_EXTRACT` | `->` operator | `json_extract` | `JSON_QUERY` |
+| `JsonValue` | `JSON_VALUE` | `JSON_UNQUOTE(JSON_EXTRACT(...))` | `->>` operator | `json_extract` | `JSON_VALUE` |
+| `JsonQuery` | `JSON_QUERY` | `JSON_EXTRACT` | `->` operator | `json_extract` | `JSON_QUERY` |
+| `JsonContains` | - | `JSON_CONTAINS` | `@>` operator | - | - |
+| `JsonObject` | `JSON_OBJECT` | `JSON_OBJECT` | `jsonb_build_object` | `json_object` | `JSON_OBJECT` |
+| `JsonArray` | `JSON_ARRAY` | `JSON_ARRAY` | `jsonb_build_array` | `json_array` | `JSON_ARRAY` |
+| `IsJson` | `ISJSON` | `JSON_VALID` | - | `json_valid` | `IS JSON` |
+
+> Different databases have varying levels of JSON function support. Entries marked with `-` indicate no native mapping is currently available. PostgreSQL's `JsonContains` uses the `@>` operator on `jsonb` types, so the column type must be jsonb.
+
+### 9.4 PostgreSQL-Specific JSON/JSONB Extensions
+
+The PostgreSQL dialect provides richer jsonb-specific extensions (namespace `LiteOrm.Pgsql`):
+
+| Function | Description |
+|----------|-------------|
+| `JsonbExtractPath(expr, path...)` | Extract jsonb path (equivalent to `#>`) |
+| `JsonbExtractPathText(expr, path...)` | Extract path text (equivalent to `#>>`) |
+| `JsonbContains(jsonbExpr, candidateExpr)` | jsonb containment check (`@>` operator) |
+| `JsonbBuildObject(key, val, ...)` | Construct jsonb object |
+| `JsonbBuildArray(val, ...)` | Construct jsonb array |
+
+### 9.5 How JsonNode Indexers Map in Lambda
+
+When using indexers (`entity.JsonProp["key"]`) or `GetValue<T>()` on `JsonNode` in Lambda expressions, handlers registered in `LiteOrmLambdaHandlerInitializer` convert them into `FunctionExpr("JsonExtract", ...)` or `FunctionExpr("JsonValue", ...)`, which SqlBuilder then renders into dialect-specific native SQL.
+
+Conversion chain:
+
+```
+entity.Settings["profile"]["age"].GetValue<int>()
+        ↓  Lambda parsing
+BuildJsonAccess() recursively resolves index chain, building path "$.profile.age"
+        ↓
+new FunctionExpr("JsonValue", PropertyExpr("Settings"), ValueExpr("$.profile.age"))
+        ↓  SqlBuilder dialect mapping
+JSON_UNQUOTE(JSON_EXTRACT(Settings, '$.profile.age'))   (MySQL)
+Settings ->> '$.profile.age'                              (PostgreSQL)
+json_extract(Settings, '$.profile.age')                   (SQLite)
+JSON_VALUE(Settings, '$.profile.age')                     (SQL Server / Oracle)
+```
+
+### 9.6 Custom JSON Functions
+
+To extend with custom JSON functions, register them the same way as regular functions:
+
+```csharp
+// Register Lambda method handler
+LambdaExprConverter.RegisterMethodHandler(typeof(JsonNode), "GetArrayLength", (node, converter) =>
+{
+    var baseExpr = converter.ConvertInternal(node.Object!) as ValueTypeExpr;
+    return new FunctionExpr("JSON_LENGTH", baseExpr);
+});
+
+// Register SQL handler for MySQL dialect
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("JSON_LENGTH",
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
+     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+{
+    outSql.Append("JSON_LENGTH(");
+    expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
+    outSql.Append(')');
+});
+```
+
+## 10. Default Registered Lambda Methods
 
 LiteOrm automatically registers many default methods on first access through `LiteOrmLambdaHandlerInitializer` and `LiteOrmSqlFunctionInitializer` (triggered by the static constructors of `LambdaExprConverter` and `SqlBuilder` respectively):
 
@@ -394,7 +512,7 @@ var dt = await dao.Search(Expr.Query<TestUser, IQueryable<object>>(q => q
     .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })));
 ```
 
-## 10. Default Registered SqlFunctions (Cross-Database)
+## 11. Default Registered SqlFunctions (Cross-Database)
 
 LiteOrm automatically registers the following cross-database SqlFunctions on first access to `SqlBuilder` through `LiteOrmSqlFunctionInitializer`:
 
@@ -438,14 +556,14 @@ LiteOrm automatically registers the following cross-database SqlFunctions on fir
 - Common JSON functions (`JsonExprExtensions`, namespace `LiteOrm.Common`): `JsonExtract` / `JsonValue` / `JsonQuery` / `JsonContains` / `JsonObject` / `JsonArray` / `IsJson`, mapped to native functions per dialect (MySQL `JSON_EXTRACT` and friends, SQLite `json_extract` and friends, SQL Server `JSON_VALUE`/`JSON_QUERY`, Oracle `JSON_VALUE`/`JSON_QUERY`, PostgreSQL `->`/`->>`/`@>`).
 - PgSQL-specific extensions (namespace `LiteOrm.Pgsql`): `ArrayToString`, `ArrayAppend`, `Any`, `Contains`, `JsonbExtractPath`, `JsonbExtractPathText`, `JsonbContains`, `JsonbBuildObject`, `JsonbBuildArray`.
 
-## 11. Best Practices
+## 12. Best Practices
 
 - When creating custom expressions, prefer reusing existing base expression types like `FunctionExpr`, `LogicBinaryExpr`, `PropertyExpr` to avoid reinventing the wheel.
 - If the same function needs to adapt to multiple databases, keep the differences in different `SqlBuilder` handlers rather than scattering branch logic throughout business code.
 - For function extensions that can be affected by external input, combining with the [Function Validator](./02-function-validator.en.md) is recommended.
 - For extensions targeting legacy or private databases, writing examples and generated SQL samples simultaneously is recommended for regression verification.
 
-## 12. Related Links
+## 13. Related Links
 
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/08-associations.en.md)

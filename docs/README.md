@@ -34,6 +34,8 @@
 |[性能](./03-advanced-topics/03-performance.md)|[Performance](./03-advanced-topics/03-performance.en.md)|性能调优建议|
 |[窗口函数](./03-advanced-topics/04-window-functions.md)|[Window Functions](./03-advanced-topics/04-window-functions.en.md)|窗口函数支持|
 |[自定义分页](./03-advanced-topics/05-custom-paging.md)|[Custom Paging](./03-advanced-topics/05-custom-paging.en.md)|分页方案扩展|
+|[AOT 支持](./03-advanced-topics/06-aot.md)|[AOT Support](./03-advanced-topics/06-aot.en.md)|NativeAOT 裁剪与源生成器|
+|[数据映射与值转换](./03-advanced-topics/11-data-mapping.md)|[Data Mapping](./03-advanced-topics/11-data-mapping.en.md)|值转换器、DataReader 映射、AOT 差异与自定义扩展|
 |[安全性](./03-advanced-topics/08-security.md)|[Security](./03-advanced-topics/08-security.en.md)|SQL 注入防护与安全机制|
 |[远程服务](./03-advanced-topics/09-remote-service.md)|[Remote Service](./03-advanced-topics/09-remote-service.en.md)|Remote 客户端与服务端使用|
 
