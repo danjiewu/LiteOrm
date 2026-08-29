@@ -112,7 +112,7 @@ graph TD
 ```
 
 Key points:
-- **The Get method is decided by the column's DbValueType** (first step): the framework first resolves the column to a `DbValueType` (given by **that database Builder's `GetDbValueType(propertyType)`**), maps it to a `DbType`, then picks the typed read method accordingly — `String→GetString`, `Binary→GetBytes`, `Int32→GetInt32`… which determines the raw-value type fed to the converter. Therefore **the column's DbValueType must match its actual storage type, or the wrong Get method is called** (scenario in [7.3 VARBINARY example](#73-overriding-for-a-specific-database)).
+- **The Get method is decided by the column's DbValueType** (first step): the framework first resolves the column to a `DbValueType` (given by **that database Builder's `GetDbValueType(propertyType)`**), maps it to a `DbType`, then picks the typed read method accordingly — `String→GetString`, `Binary→GetBytes`, `Int32→GetInt32`… which determines the raw-value type fed to the converter. Therefore **the column's DbValueType must match its actual storage type, or the wrong Get method is called** (scenario in [6.3 VARBINARY example](#63-overriding-for-a-specific-database)).
 - **Null handling is independent of the converter**: nullable/reference types get `null`, non-nullable value types get that type's zero value (`default`). The converter delegate itself does not handle null.
 - **The converter's input type** (`TDbType`) must align with the return type of the Get method picked in the first step (e.g., `Binary→byte[]`, `String→string`), so the raw value can directly hit the strongly-typed delegate and avoid runtime bridging.
 
@@ -202,6 +202,14 @@ At startup (first access to `SqlBuilder` triggers static initialization), the fr
 
 > These cover common conventions only. When dialect differences are significant, use `RegisterDbValueConverter` to add or override behavior as needed.
 
+### 3.3 JsonNode Mapping (Navigation)
+
+`JsonNode` (`JsonObject` / `JsonArray` / `JsonValue`) enjoys first-class treatment in LiteOrm:
+
+- **Auto-mapping**: properties of type `JsonNode` are automatically mapped to JSON columns (stored as strings) with automatic serialization/deserialization (see the base default conversions in [3.1](#31-base-default-conversions-common-to-all-databases)).
+- **Lambda queries**: indexers and `GetValue<T>()` can query JSON fields directly — see [Lambda Query Guide](../02-core-usage/05-lambda-guide.en.md#7-jsonnode-queries).
+- **Expr expressions**: functions such as `JsonExtract`, `JsonValue`, `JsonQuery`, `JsonContains`, `JsonObject`, `JsonArray`, `IsJson` are supported — see [Expression Extension](../04-extensibility/01-expression-extension.en.md#9-json-function-extensions).
+
 ## 4. Column-Level Converters
 
 When a **specific column** needs a special type (e.g., enums, custom value objects), the column-level converter is the simplest approach — it has the highest priority and affects only that column.
@@ -236,21 +244,13 @@ All three behave identically: per column, do an `IsDBNull` check → get that co
 
 > Tip: normal runtime code can rely on the JIT path; for NativeAOT builds, mark entities `[Table]` to hit the source-generator implementation for near-JIT performance.
 
-## 6. JsonNode Mapping (Navigation)
-
-`JsonNode` (`JsonObject` / `JsonArray` / `JsonValue`) enjoys first-class treatment in LiteOrm:
-
-- **Auto-mapping**: properties of type `JsonNode` are automatically mapped to JSON columns (stored as strings) with automatic serialization/deserialization (see the base default conversions in [Chapter 3](#3-built-in-default-conversions)).
-- **Lambda queries**: indexers and `GetValue<T>()` can query JSON fields directly — see [Lambda Query Guide](../02-core-usage/05-lambda-guide.en.md#7-jsonnode-queries).
-- **Expr expressions**: functions such as `JsonExtract`, `JsonValue`, `JsonQuery`, `JsonContains`, `JsonObject`, `JsonArray`, `IsJson` are supported — see [Expression Extension](../04-extensibility/01-expression-extension.en.md#9-json-function-extensions).
-
-## 7. Complete Example: Custom IP Address Converter
+## 6. Complete Example: Custom IP Address Converter
 
 A full example showing how to customize a converter and make it work for all databases.
 
 **Scenario**: the business uses `System.Net.IPAddress` for IP addresses, stored as `VARCHAR(45)` strings. Implement an `IPAddress ↔ string` bidirectional conversion.
 
-### 7.1 Implement the Converter
+### 6.1 Implement the Converter
 
 ```csharp
 using System.Net;
@@ -278,7 +278,7 @@ public sealed class IPAddressConverter : IDbValueConverter<string, IPAddress>
 
 > Null values are handled uniformly by the framework; the converter itself does not handle null.
 
-### 7.2 Global Registration (Recommended; Applies to All Databases)
+### 6.2 Global Registration (Recommended; Applies to All Databases)
 
 **Register once with `T = SqlBuilder`** as the base fallback for all databases:
 
@@ -328,7 +328,7 @@ var server = await serverDAO.GetObjectAsync(1);
 Console.WriteLine(server.IpAddress); // 192.168.1.100
 ```
 
-### 7.3 Overriding for a Specific Database
+### 6.3 Overriding for a Specific Database
 
 If one database stores IPs as `VARBINARY`, you need to do **two** things: register a `byte[] ↔ IPAddress` converter, **and** make that database resolve the `IPAddress` column to the `Binary` DbValueType (see [2.2 Read Direction](#22-read-direction-database-value--net-value): otherwise the framework still calls `GetString` per the `String` type, mismatching the binary data).
 
@@ -354,7 +354,7 @@ public class MySqlBinaryIpBuilder : MySqlBuilder
 
 > Key point: registering the converter only solves "byte[] ↔ IPAddress"; for the column to be correctly read as `byte[]`, its DbValueType must be `Binary`. Both are required. If you don't want to subclass the Builder for one dialect, you can instead use `DbValueTypeMap.Set(typeof(IPAddress), DbValueType.Binary)` globally — but that affects all databases, so use with care.
 
-### 7.4 Column-Level Usage (When Global Registration Does Not Apply)
+### 6.4 Column-Level Usage (When Global Registration Does Not Apply)
 
 If only an individual column needs a special conversion and you don't want to affect the whole app, use `ConverterType` on the property:
 
@@ -365,7 +365,7 @@ public IPAddress? IpAddress { get; set; }
 
 The column level has the highest priority and overrides both global and dialect registrations.
 
-### 7.5 Robustness Tips
+### 6.5 Robustness Tips
 
 In production, use `TryParse` as a fallback so dirty data doesn't fail entire queries:
 
@@ -378,7 +378,7 @@ DbConvertHandler<string, IPAddress>? IDbValueConverter<string, IPAddress>.DbRead
 
 > Exceptions from column-level converters (JIT path) are wrapped by the mapper with column name/ordinal for easier diagnosis.
 
-## 8. AOT vs Non-AOT Differences
+## 7. AOT vs Non-AOT Differences
 
 | Dimension | JIT (Non-AOT) | AOT (NativeAOT) |
 |-----------|---------------|-----------------|
@@ -394,7 +394,7 @@ AOT performance tips:
 2. Implement both generic and non-generic interfaces; the source-generator path prefers the generic version.
 3. Prefer known strongly-typed entities over anonymous-type projections.
 
-## 9. FAQ
+## 8. FAQ
 
 ### Q1: Why isn't my column-level converter working?
 

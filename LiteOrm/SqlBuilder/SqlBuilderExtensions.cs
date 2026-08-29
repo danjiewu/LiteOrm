@@ -53,6 +53,33 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 注册双向数据库值转换器。注册主键为 (值类型, 目标数据库取值类型)，读取与写入共用同一注册表：        /// 读取委托接收 <typeparamref name="TDbType"/> 类型的数据库原始值，写入委托返回数据库可接受的值
+        /// （<typeparamref name="TValueType"/> → object，null 应转换为 <see cref="DBNull.Value"/>）。
+        /// </summary>
+        /// <remarks>
+        /// <para><typeparamref name="TDbType"/> 是数据库驱动实际返回的原始值 CLR 类型（读取委托的输入类型），
+        /// 必须与 <paramref name="targetType"/> 经 <see cref="DbValueTypeMap.ToDbType(DbValueType)"/> 得到 <see cref="System.Data.DbType"/>
+        /// 后所选读取方法（<c>GetInt32/GetString/GetDateTime/GetGuid…</c>）的返回类型匹配，可参考
+        /// <see cref="DbValueTypeMap.GetReaderReturnType(System.Data.DbType)"/>。示例：
+        /// <c>Int32→int、Int64→long、String→string、DateTime→DateTime、Guid→Guid、
+        /// Json/Jsonb→string、Binary→byte[]、Object 及 <see cref="DbValueType.SByte"/>/<see cref="DbValueType.UInt16"/>/
+        /// <see cref="DbValueType.UInt32"/>/<see cref="DbValueType.UInt64"/>/<see cref="DbValueType.Time"/>/
+        /// <see cref="DbValueType.DateTimeOffset"/> 等无类型化读取方法的类型→object</c>。</para>
+        /// <para>当声明的 <typeparamref name="TDbType"/> 与实际读取返回类型不一致时，框架会经非泛型委托的装箱 / <c>Convert.ChangeType</c>
+        /// 或编译期映射的隐式转换桥接——功能可用但不推荐；声明正确的类型可保证读取类型严格并命中强类型
+        /// <see cref="IDbValueConverter{TDbType,TValueType}"/> 泛型匹配。</para>
+        /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
+        /// <typeparam name="TDbType">数据库驱动返回的数据库值 CLR 类型（读取委托的输入类型）；须与 <paramref name="targetType"/> 的读取方法返回类型一致。</typeparam>
+        /// <typeparam name="TValueType">实体属性 / .NET 值类型。</typeparam>
+        /// <param name="sqlBuilder">要注册转换器的 SQL 构建器实例。</param>
+        /// <param name="targetType">目标数据库取值类型。</param>
+        /// <param name="converter">要注册的双向数据库值转换器。</param>
+        public static void RegisterDbValueConverter<T, TDbType, TValueType>(this T sqlBuilder, DbValueType targetType, IDbValueConverter<TDbType, TValueType> converter) where T : SqlBuilder
+        {
+            SqlBuilder.GetDbValueConverterMap<T>().RegisterConverter(converter, targetType);
+        }
+
+        /// <summary>
         /// 注册函数的 SQL 语句处理器
         /// </summary>
         /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>

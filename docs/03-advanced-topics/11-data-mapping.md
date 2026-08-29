@@ -112,7 +112,7 @@ graph TD
 ```
 
 要点：
-- **读取方法由列的 DbValueType 决定**（第一步）：框架先把列解析为 `DbValueType`（由**该数据库 Builder 的 `GetDbValueType(属性类型)`** 给出），再映射为 `DbType` 并据此选择类型化读取方法——`String→GetString`、`Binary→GetBytes`、`Int32→GetInt32`…进而决定送入转换器的原始值类型。因此**列的 DbValueType 必须与列实际存储类型一致，否则会调错 Get 方法**（场景见 [7.3 VARBINARY 示例](#73-某数据库需要覆盖)）。
+- **读取方法由列的 DbValueType 决定**（第一步）：框架先把列解析为 `DbValueType`（由**该数据库 Builder 的 `GetDbValueType(属性类型)`** 给出），再映射为 `DbType` 并据此选择类型化读取方法——`String→GetString`、`Binary→GetBytes`、`Int32→GetInt32`…进而决定送入转换器的原始值类型。因此**列的 DbValueType 必须与列实际存储类型一致，否则会调错 Get 方法**（场景见 [6.3 VARBINARY 示例](#63-某数据库需要覆盖)）。
 - **空值独立于转换器处理**：可空类型/引用类型得 `null`，非可空值类型得该类型的零值（`default`）。转换委托本身不处理 null。
 - **转换器的输入类型**（`TDbType`）必须与第一步选定的 Get 方法返回类型对齐（如 `Binary→byte[]`、`String→string`），这样读到原始值后能直接命中强类型委托、避免运行时桥接。
 
@@ -204,6 +204,14 @@ SqlBuilder.Instance.RegisterDbValueConverter<SqlBuilder, TDbType, TValueType>(
 
 > 这些只覆盖常见约定。方言之间差异较大时，应通过 `RegisterDbValueConverter` 按需增补或覆盖。
 
+### 3.3 JsonNode 映射（导航）
+
+`JsonNode`（`JsonObject` / `JsonArray` / `JsonValue`）在 LiteOrm 中享有一等公民待遇：
+
+- **自动映射**：属性类型为 `JsonNode` 时自动映射为 JSON 列（字符串存储），自动序列化/反序列化（见上文[3.1](#31-基类默认转换所有数据库通用)的基类默认转换）。
+- **Lambda 查询**：支持索引器和 `GetValue<T>()` 直接查询 JSON 字段，详见 [Lambda 查询指南](../02-core-usage/05-lambda-guide.md#7-jsonnode-查询)。
+- **Expr 表达式**：支持 `JsonExtract`、`JsonValue`、`JsonQuery`、`JsonContains`、`JsonObject`、`JsonArray`、`IsJson` 等函数，详见 [表达式扩展](../04-extensibility/01-expression-extension.md#9-json-函数扩展)。
+
 ## 4. 列级转换器
 
 当某**个别列**需要特殊类型（如枚举、自定义值对象）时，用列级转换器最简单——它优先级最高，只影响这一列。
@@ -238,21 +246,13 @@ Mapper 把数据库返回的行逐列填充到实体对象，它决定"读方向
 
 > 选择建议：常规运行时代码可以放心依赖 JIT 路径；在 NativeAOT 发布时，请确保实体标注 `[Table]` 以命中源生成器实现，获得接近 JIT 的性能。
 
-## 6. JsonNode 映射（导航）
-
-`JsonNode`（`JsonObject` / `JsonArray` / `JsonValue`）在 LiteOrm 中享有一等公民待遇：
-
-- **自动映射**：属性类型为 `JsonNode` 时自动映射为 JSON 列（字符串存储），自动序列化/反序列化（见[第 3 章](#3-内置默认转换)的基类默认转换）。
-- **Lambda 查询**：支持索引器和 `GetValue<T>()` 直接查询 JSON 字段，详见 [Lambda 查询指南](../02-core-usage/05-lambda-guide.md#7-jsonnode-查询)。
-- **Expr 表达式**：支持 `JsonExtract`、`JsonValue`、`JsonQuery`、`JsonContains`、`JsonObject`、`JsonArray`、`IsJson` 等函数，详见 [表达式扩展](../04-extensibility/01-expression-extension.md#9-json-函数扩展)。
-
-## 7. 完整示例：自定义 IP 地址转换器
+## 6. 完整示例：自定义 IP 地址转换器
 
 用一个完整例子演示如何自定义转换器并对所有数据库生效。
 
 **场景**：业务中用 `System.Net.IPAddress` 表示 IP 地址，数据库以 `VARCHAR(45)` 字符串存储。实现 `IPAddress ↔ string` 双向转换。
 
-### 7.1 实现转换器
+### 6.1 实现转换器
 
 ```csharp
 using System.Net;
@@ -280,7 +280,7 @@ public sealed class IPAddressConverter : IDbValueConverter<string, IPAddress>
 
 > 空值由框架统一处理，转换器本身不处理 null。
 
-### 7.2 全局注册（推荐，对所有数据库生效）
+### 6.2 全局注册（推荐，对所有数据库生效）
 
 **使用 `T = SqlBuilder` 注册一次**，即可作为所有数据库的保底转换：
 
@@ -330,7 +330,7 @@ var server = await serverDAO.GetObjectAsync(1);
 Console.WriteLine(server.IpAddress); // 192.168.1.100
 ```
 
-### 7.3 某数据库需要覆盖
+### 6.3 某数据库需要覆盖
 
 若某个数据库改用 `VARBINARY` 存 IP，需要同时做两件事：**注册 `byte[] ↔ IPAddress` 转换器**，并**让该数据库把 `IPAddress` 列解析为 `Binary` 的 DbValueType**（见 [2.2 读取原理](#22-读取方向数据库值--net-值)：否则框架读取时仍按 `String` 调用 `GetString`，与二进制数据不符）。
 
@@ -356,7 +356,7 @@ public class MySqlBinaryIpBuilder : MySqlBuilder
 
 > 要点：注册转换器只解决"byte[] 与 IPAddress 互转"，列能正确读成 `byte[]` 还依赖列 DbValueType 为 `Binary`。二者缺一不可。若不想为某方言单独子类化 Builder，也可用 `DbValueTypeMap.Set(typeof(IPAddress), DbValueType.Binary)` 全局声明——但那样会影响所有数据库，需谨慎。
 
-### 7.4 列级使用（全局注册不适用时）
+### 6.4 列级使用（全局注册不适用时）
 
 若仅个别列需要特殊转换、不想全局影响，可在属性上标注 `ConverterType`：
 
@@ -367,7 +367,7 @@ public IPAddress? IpAddress { get; set; }
 
 列级优先级最高，会覆盖全局注册与方言注册。
 
-### 7.5 健壮性建议
+### 6.5 健壮性建议
 
 生产环境建议用 `TryParse` 兜底，避免脏数据使整条查询失败：
 
@@ -380,7 +380,7 @@ DbConvertHandler<string, IPAddress>? IDbValueConverter<string, IPAddress>.DbRead
 
 > 列级转换器（JIT 路径）的异常会被映射器包装，抛出带列名/序号的异常信息，便于定位。
 
-## 8. AOT 与非 AOT 的差异
+## 7. AOT 与非 AOT 的差异
 
 | 维度 | JIT（非 AOT） | AOT（NativeAOT） |
 |------|--------------|-----------------|
@@ -396,7 +396,7 @@ AOT 性能建议：
 2. 转换器同时实现泛型与非泛型接口，源生成器路径会优先用泛型版本。
 3. 减少匿名类型投影，多用已知强类型实体。
 
-## 9. 常见问题
+## 8. 常见问题
 
 ### Q1：为什么列级转换器没有生效？
 
