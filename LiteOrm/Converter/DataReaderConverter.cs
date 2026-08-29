@@ -13,7 +13,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 
-namespace LiteOrm.Converter
+namespace LiteOrm
 {
     /// <summary>
     /// 通过动态编译创建将 <see cref="AutoLockDataReader"/> 行映射到对象的委托。

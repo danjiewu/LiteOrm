@@ -1,6 +1,5 @@
 using LiteOrm.CodeGen;
 using LiteOrm.Common;
-using LiteOrm.Converter;
 using LiteOrm.Tests.Infrastructure;
 using LiteOrm.Tests.Models;
 
