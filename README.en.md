@@ -470,7 +470,7 @@ At query time, you can explicitly specify shard arguments through `tableArgs`, `
 
 
 
-Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0.4, Linux Ubuntu 24.04 LTS, Intel Xeon Silver 4314 CPU 2.40GHz, MySQL):
+Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0.11, Linux Ubuntu 24.04.4 LTS, Intel Xeon Silver 4314 CPU 2.40GHz, MySQL):
 
 
 
@@ -478,13 +478,13 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 
 
 
-| Framework | 100 rows | 1000 rows | 5000 rows |
-|:----------| --------:| ---------:| ---------:|
-| **LiteOrm** | **3.98** | **16.39** | **75.62** |
-| SqlSugar | 4.33 | 19.12 | 98.15 |
-| FreeSql | 4.36 | 18.48 | 85.00 |
-| EF Core | 18.50 | 150.35 | 670.19 |
-| Dapper | 26.19 | 215.12 | 1,129.57 |
+| Framework | 100 rows | 1000 rows | 10000 rows |
+|:----------| --------:| ---------:| ----------:|
+| **LiteOrm** | **4.71** | **22.13** | **178.12** |
+| SqlSugar | 5.92 | 36.64 | 352.86 |
+| FreeSql | 6.30 | 41.47 | 332.71 |
+| EF Core | 21.13 | 210.10 | 1,837.48 |
+| Dapper | 5.28 | 27.84 | 266.28 |
 
 
 
@@ -492,13 +492,13 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 
 
 
-| Framework | 100 rows | 1000 rows | 5000 rows |
-|:----------| --------:| ---------:| ---------:|
-| **LiteOrm** | **4.84** | **25.36** | **118.70** |
-| SqlSugar | 6.39 | 42.62 | 232.66 |
-| FreeSql | 5.88 | 40.31 | 175.58 |
-| EF Core | 17.26 | 126.44 | 575.32 |
-| Dapper | 28.63 | 248.71 | 1,213.51 |
+| Framework | 100 rows | 1000 rows | 10000 rows |
+|:----------| --------:| ---------:| ----------:|
+| **LiteOrm** | **6.02** | **30.77** | **280.36** |
+| SqlSugar | 8.31 | 74.03 | 734.61 |
+| FreeSql | 8.08 | 67.50 | 570.89 |
+| EF Core | 17.31 | 176.71 | 1,374.47 |
+| Dapper | 6.37 | 44.00 | 355.83 |
 
 
 
@@ -506,13 +506,13 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 
 
 
-| Framework | 100 rows | 1000 rows | 5000 rows |
-|:----------| --------:| ---------:| ---------:|
-| LiteOrm | 7.54 | 23.72 | 103.52 |
-| SqlSugar | 10.36 | 106.11 | 1,741.49 |
-| **FreeSql** | **5.53** | **19.11** | **103.06** |
-| EF Core | 19.05 | 135.88 | 589.07 |
-| Dapper | 29.09 | 247.51 | 1,248.91 |
+| Framework | 100 rows | 1000 rows | 10000 rows |
+|:----------| --------:| ---------:| ----------:|
+| LiteOrm | 6.89 | **27.72** | **247.92** |
+| SqlSugar | 12.83 | 129.97 | 7,042.44 |
+| FreeSql | 6.59 | 31.31 | 257.39 |
+| EF Core | 19.85 | 221.15 | 1,538.52 |
+| Dapper | **5.99** | 33.31 | 327.69 |
 
 
 
@@ -520,13 +520,13 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 
 
 
-| Framework | 100 rows | 1000 rows | 5000 rows |
-|:----------| --------:| --------:| --------:|
-| **LiteOrm** | **1.36** | 9.35 | 43.94 |
-| SqlSugar | 2.29 | 22.10 | 89.97 |
-| FreeSql | 1.75 | 9.10 | **43.89** |
-| EF Core | 4.93 | 15.62 | 55.16 |
-| Dapper | 1.48 | **9.07** | 45.64 |
+| Framework | 100 rows | 1000 rows | 10000 rows |
+|:----------| --------:| ---------:| ----------:|
+| **LiteOrm** | **1.41** | **8.09** | **78.65** |
+| SqlSugar | 2.33 | 20.65 | 179.25 |
+| FreeSql | 1.94 | 10.37 | 101.45 |
+| EF Core | 3.03 | 15.43 | 162.80 |
+| Dapper | 1.64 | 10.12 | 98.68 |
 
 
 
@@ -536,11 +536,11 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 
 | Framework | Insert | Update | Upsert | Join Query |
 |:----------| ------:| ------:| ------:| ---------:|
-| **LiteOrm** | **862.82** | **1,189.03** | **1,973.38** | **230.38** |
-| SqlSugar | 4,573.59 | 7,679.63 | 35,952.88 | 9,228.26 |
-| FreeSql | 4,667.20 | 6,917.50 | 2,256.36 | 866.52 |
-| EF Core | 12,503.04 | 9,044.24 | 9,005.39 | 2,198.05 |
-| Dapper | 2,476.36 | 3,093.19 | 2,798.36 | 418.43 |
+| **LiteOrm** | **1,698.87** | **2,324.10** | **2,165.41** | **242.54** |
+| SqlSugar | 8,840.12 | 14,922.50 | 41,965.50 | 9,226.28 |
+| FreeSql | 11,461.28 | 15,545.64 | 4,582.20 | 1,322.68 |
+| EF Core | 31,350.14 | 24,131.62 | 25,801.93 | 9,467.87 |
+| Dapper | 5,371.92 | 6,408.03 | 5,915.40 | 669.82 |
 
 
 

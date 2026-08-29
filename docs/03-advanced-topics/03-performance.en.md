@@ -399,11 +399,11 @@ public long ContentId { get; set; }  // Foreign key reference
 
 LiteOrm's performance advantages compared to other ORMs:
 
-| Operation | LiteOrm | EF Core | Dapper |
-|-----------|---------|---------|--------|
-| Insert 1000 rows | ~16ms | ~150ms | ~215ms |
-| Update 1000 rows | ~25ms | ~126ms | ~248ms |
-| JOIN query | ~9ms | ~15ms | ~9ms |
+| Operation | LiteOrm | EF Core | Dapper | SqlSugar | FreeSql |
+|-----------|---------|---------|--------|----------|---------|
+| Insert 1000 rows | ~22ms | ~210ms | ~28ms | ~37ms | ~41ms |
+| Update 1000 rows | ~31ms | ~177ms | ~44ms | ~74ms | ~68ms |
+| JOIN query | ~8ms | ~15ms | ~10ms | ~21ms | ~10ms |
 
 ### 10.1 Test Environment
 
@@ -412,13 +412,13 @@ The benchmark data above is based on the following configuration (per `LiteOrm.B
 | Configuration | Value |
 |---------------|-------|
 | Test framework | BenchmarkDotNet v0.15.8 |
-| .NET version | .NET 10 (net10.0), runtime .NET 10.0.4 |
-| Runtime | X64 RyuJIT x86-64-v3 |
-| OS | Windows 11 (10.0.22631) |
-| CPU | 13th Gen Intel Core i5-13400F 2.50GHz (16 logical / 10 physical cores) |
+| .NET version | .NET SDK 10.0.111, runtime .NET 10.0.11 (net10.0) |
+| Runtime | X64 RyuJIT x86-64-v4 |
+| OS | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
+| CPU | Intel Xeon Silver 4314 CPU 2.40GHz (1 CPU, 4 logical / 4 physical cores) |
 | Database | MySQL (default; switchable to SQLite or Oracle via `appsettings.json`) |
 | Test data volume | BatchCount: 10 / 100 / 1000 / 10000 rows |
-| Benchmark mode | `[MemoryDiagnoser]` + `[MediumRunJob]` |
+| Benchmark mode | `[MemoryDiagnoser]` + `[MediumRunJob]` (Job=MediumRun, IterationCount=15, LaunchCount=2, WarmupCount=10) |
 | Compared ORMs | LiteOrm, EF Core, Dapper, SqlSugar, FreeSql |
 
 > Full BenchmarkDotNet reports are located in `LiteOrm.Benchmark/BenchmarkDotNet.Artifacts/results/`. The table above is a simplified summary; the actual reports contain complete measurements across different BatchCount values.

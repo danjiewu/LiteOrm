@@ -399,11 +399,11 @@ public long ContentId { get; set; }  // 外键引用
 
 LiteOrm 相比其他 ORM 的性能优势：
 
-| 操作 | LiteOrm | EF Core | Dapper |
-|------|---------|---------|--------|
-| 插入 1000 条 | ~16ms | ~150ms | ~215ms |
-| 更新 1000 条 | ~25ms | ~126ms | ~248ms |
-| 关联查询 | ~9ms | ~15ms | ~9ms |
+| 操作 | LiteOrm | EF Core | Dapper | SqlSugar | FreeSql |
+|------|---------|---------|--------|----------|---------|
+| 插入 1000 条 | ~22ms | ~210ms | ~28ms | ~37ms | ~41ms |
+| 更新 1000 条 | ~31ms | ~177ms | ~44ms | ~74ms | ~68ms |
+| 关联查询 | ~8ms | ~15ms | ~10ms | ~21ms | ~10ms |
 
 ### 10.1 测试环境
 
@@ -412,13 +412,13 @@ LiteOrm 相比其他 ORM 的性能优势：
 | 配置项 | 值 |
 |--------|-----|
 | 测试框架 | BenchmarkDotNet v0.15.8 |
-| .NET 版本 | .NET 10 (net10.0)，运行时 .NET 10.0.4 |
-| 运行时 | X64 RyuJIT x86-64-v3 |
-| 操作系统 | Windows 11 (10.0.22631) |
-| CPU | 13th Gen Intel Core i5-13400F 2.50GHz（16 逻辑核心 / 10 物理核心） |
+| .NET 版本 | .NET SDK 10.0.111，运行时 .NET 10.0.11 (net10.0) |
+| 运行时 | X64 RyuJIT x86-64-v4 |
+| 操作系统 | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
+| CPU | Intel Xeon Silver 4314 CPU 2.40GHz（1 CPU，4 逻辑核心 / 4 物理核心） |
 | 数据库 | MySQL（默认；可通过 `appsettings.json` 切换为 SQLite 或 Oracle） |
 | 测试数据量 | BatchCount: 10 / 100 / 1000 / 10000 条 |
-| 基准模式 | `[MemoryDiagnoser]` + `[MediumRunJob]` |
+| 基准模式 | `[MemoryDiagnoser]` + `[MediumRunJob]`（Job=MediumRun，IterationCount=15，LaunchCount=2，WarmupCount=10） |
 | 对比对象 | LiteOrm、EF Core、Dapper、SqlSugar、FreeSql |
 
 > 完整的 BenchmarkDotNet 报告位于 `LiteOrm.Benchmark/BenchmarkDotNet.Artifacts/results/` 目录下。上表数据为简化汇总，实际报告包含不同 BatchCount 下的完整测量结果。
