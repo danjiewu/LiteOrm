@@ -295,16 +295,29 @@ namespace LiteOrm.Service
         /// <returns>表示异步操作的任务。</returns>
         public async virtual Task BatchUpdateOrInsertAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
+            var items = entities as IReadOnlyList<T> ?? entities.ToList();
+            var remaining = new List<T>(items.Count);
+            foreach (var item in items)
+            {
+                if (Notify(l => l.OnUpdatingOrInserting(item)))
+                    remaining.Add(item);
+            }
+            if (remaining.Count == 0)
+                return;
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
+                var groups = remaining.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     await ObjectDAO.WithArgs(group.Key).BatchUpdateOrInsertAsync(group, cancellationToken);
                 }
             }
             else
-                await ObjectDAO.BatchUpdateOrInsertAsync(entities, cancellationToken);
+                await ObjectDAO.BatchUpdateOrInsertAsync(remaining, cancellationToken);
+            foreach (var item in remaining)
+            {
+                Notify(l => l.OnUpdatedOrInserted(item));
+            }
         }
 
         /// <summary>
@@ -630,16 +643,29 @@ namespace LiteOrm.Service
         /// <param name="entities">要处理的实体集合。</param>
         public virtual void BatchUpdateOrInsert(IEnumerable<T> entities)
         {
+            var items = entities as IReadOnlyList<T> ?? entities.ToList();
+            var remaining = new List<T>(items.Count);
+            foreach (var item in items)
+            {
+                if (Notify(l => l.OnUpdatingOrInserting(item)))
+                    remaining.Add(item);
+            }
+            if (remaining.Count == 0)
+                return;
             if (typeof(IArged).IsAssignableFrom(typeof(T)))
             {
-                var groups = entities.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
+                var groups = remaining.ToLookup(t => ((IArged)t!).TableArgs!, StringArrayEqualityComparer.Instance);
                 foreach (var group in groups)
                 {
                     ObjectDAO.WithArgs(group.Key).BatchUpdateOrInsert(group);
                 }
             }
             else
-                ObjectDAO.BatchUpdateOrInsert(entities);
+                ObjectDAO.BatchUpdateOrInsert(remaining);
+            foreach (var item in remaining)
+            {
+                Notify(l => l.OnUpdatedOrInserted(item));
+            }
         }
 
         /// <summary>
