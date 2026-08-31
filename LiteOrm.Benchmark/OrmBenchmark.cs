@@ -1040,7 +1040,7 @@ namespace LiteOrm.Benchmark
             for (int i = 0; i < SingleLoopCount; i++)
             {
                 int id = (i % SingleLoopCount) + 1;
-                var u = (await service.SearchAsync(q => q.Where(x => x.Id == id))).FirstOrDefault();
+                var u = await service.GetObjectAsync(id);
             }
         }
 

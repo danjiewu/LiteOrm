@@ -68,6 +68,7 @@ namespace LiteOrm
         /// <para>当声明的 <typeparamref name="TDbType"/> 与实际读取返回类型不一致时，框架会经非泛型委托的装箱 / <c>Convert.ChangeType</c>
         /// 或编译期映射的隐式转换桥接——功能可用但不推荐；声明正确的类型可保证读取类型严格并命中强类型
         /// <see cref="IDbValueConverter{TDbType,TValueType}"/> 泛型匹配。</para>
+        /// </remarks>
         /// <typeparam name="T">SQL 构建器的具体类型。</typeparam>
         /// <typeparam name="TDbType">数据库驱动返回的数据库值 CLR 类型（读取委托的输入类型）；须与 <paramref name="targetType"/> 的读取方法返回类型一致。</typeparam>
         /// <typeparam name="TValueType">实体属性 / .NET 值类型。</typeparam>
