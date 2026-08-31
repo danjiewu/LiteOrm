@@ -24,6 +24,7 @@ namespace LiteOrm.Benchmark
         private IHost? _host;
         private IServiceProvider _serviceProvider => _host!.Services;
         private readonly Random _random = new Random();
+        private const int SingleLoopCount = 1000;
 
         private string? _connectionString;
         private string? _provider; // e.g. MySql, SQLite, Oracle
@@ -575,6 +576,311 @@ namespace LiteOrm.Benchmark
                 await fsql.InsertOrUpdate<BenchmarkUser>().SetSource(all).ExecuteAffrowsAsync();
             }
         }
+        #endregion
+
+        #region Single Insert (1000 iterations)
+
+        [Benchmark]
+        public async Task EFCore_SingleInsert_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
+            db.ChangeTracker.AutoDetectChangesEnabled = false;
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                var user = NewBenchmarkUser("EF_SI", 25, $"ef_si{i}@test.com");
+                await db.BenchmarkUsers.AddAsync(user);
+                db.ChangeTracker.DetectChanges();
+                await db.SaveChangesAsync();
+                db.Entry(user).State = EntityState.Detached;
+            }
+        }
+
+        [Benchmark]
+        public async Task SqlSugar_SingleInsert_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                var user = NewBenchmarkUser("S_SI", 25, $"s_si{i}@test.com");
+                await sugar.Insertable(user).ExecuteCommandAsync();
+            }
+        }
+
+        [Benchmark]
+        public async Task LiteOrm_SingleInsert_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                var user = NewBenchmarkUser("L_SI", 25, $"l_si{i}@test.com");
+                await service.InsertAsync(user);
+            }
+        }
+
+        [Benchmark]
+        public async Task Dapper_SingleInsert_Async()
+        {
+            using var conn = CreateDbConnection();
+            await conn.OpenAsync();
+            using var trans = conn.BeginTransaction();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                var user = NewBenchmarkUser("D_SI", 25, $"d_si{i}@test.com");
+                await conn.ExecuteAsync(
+                    "INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime, Uid, Salary, IsActive, Score, LoginCount, Remark) VALUES (@Name, @Age, @Email, @CreateTime, @Uid, @Salary, @IsActive, @Score, @LoginCount, @Remark)",
+                    user, trans);
+            }
+            trans.Commit();
+        }
+
+        [Benchmark]
+        public async Task FreeSql_SingleInsert_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                var user = NewBenchmarkUser("F_SI", 25, $"f_si{i}@test.com");
+                await fsql.Insert(user).ExecuteAffrowsAsync();
+            }
+        }
+
+        #endregion
+
+        #region Single Update (1000 iterations)
+
+        [Benchmark]
+        public async Task EFCore_SingleUpdate_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
+            db.ChangeTracker.AutoDetectChangesEnabled = false;
+            var users = await db.BenchmarkUsers.AsNoTracking().Take(SingleLoopCount).ToListAsync();
+            if (users.Count == 0) return;
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                var u = users[i % users.Count];
+                u.Name = "EF_SU" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                u.Age = _random.Next(20, 60);
+                u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
+                db.BenchmarkUsers.Update(u);
+                await db.SaveChangesAsync();
+                db.Entry(u).State = EntityState.Detached;
+            }
+        }
+
+        [Benchmark]
+        public async Task SqlSugar_SingleUpdate_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
+            var users = await sugar.Queryable<BenchmarkUser>().Take(SingleLoopCount).ToListAsync();
+            if (users.Count == 0) return;
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                var u = users[i % users.Count];
+                u.Name = "S_SU" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                u.Age = _random.Next(20, 60);
+                u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
+                await sugar.Updateable(u).ExecuteCommandAsync();
+            }
+        }
+
+        [Benchmark]
+        public async Task LiteOrm_SingleUpdate_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
+            var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
+            var users = (await viewService.SearchAsync(new SectionExpr(0, SingleLoopCount))).ToList();
+            if (users.Count == 0) return;
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                var u = users[i % users.Count];
+                u.Name = "L_SU" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                u.Age = _random.Next(20, 60);
+                u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
+                await service.UpdateAsync(u);
+            }
+        }
+
+        [Benchmark]
+        public async Task Dapper_SingleUpdate_Async()
+        {
+            using var conn = CreateDbConnection();
+            await conn.OpenAsync();
+            var selectSql = (_provider ?? "").ToLower().Contains("oracle")
+                ? $"SELECT * FROM BenchmarkUser WHERE ROWNUM <= {SingleLoopCount}"
+                : $"SELECT * FROM BenchmarkUser LIMIT {SingleLoopCount}";
+            var users = (await conn.QueryAsync<BenchmarkUser>(selectSql)).ToList();
+            if (users.Count == 0) return;
+            using var trans = conn.BeginTransaction();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                var u = users[i % users.Count];
+                u.Name = "D_SU" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                u.Age = _random.Next(20, 60);
+                u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
+                await conn.ExecuteAsync(
+                    "UPDATE BenchmarkUser SET Name=@Name, Age=@Age, Email=@Email WHERE Id=@Id",
+                    u, trans);
+            }
+            trans.Commit();
+        }
+
+        [Benchmark]
+        public async Task FreeSql_SingleUpdate_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
+            var users = await fsql.Select<BenchmarkUser>().Limit(SingleLoopCount).ToListAsync();
+            if (users.Count == 0) return;
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                var u = users[i % users.Count];
+                u.Name = "F_SU" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                u.Age = _random.Next(20, 60);
+                u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
+                await fsql.Update<BenchmarkUser>().SetSource(u).ExecuteAffrowsAsync();
+            }
+        }
+
+        #endregion
+
+        #region Single Upsert (1000 iterations)
+
+        [Benchmark]
+        public async Task EFCore_SingleUpsert_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
+            db.ChangeTracker.AutoDetectChangesEnabled = false;
+            var existing = await db.BenchmarkUsers.AsNoTracking().Take(SingleLoopCount).ToListAsync();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                if (i % 2 == 0 && existing.Count > 0)
+                {
+                    var u = existing[i % existing.Count];
+                    u.Name = "EF_SX_U" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                    u.Age = _random.Next(20, 60);
+                    db.BenchmarkUsers.Update(u);
+                    await db.SaveChangesAsync();
+                    db.Entry(u).State = EntityState.Detached;
+                }
+                else
+                {
+                    var user = NewBenchmarkUser("EF_SX_I", 25, $"ef_sx{i}@test.com");
+                    await db.BenchmarkUsers.AddAsync(user);
+                    db.ChangeTracker.DetectChanges();
+                    await db.SaveChangesAsync();
+                    db.Entry(user).State = EntityState.Detached;
+                }
+            }
+        }
+
+        [Benchmark]
+        public async Task SqlSugar_SingleUpsert_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
+            var existing = await sugar.Queryable<BenchmarkUser>().Take(SingleLoopCount).ToListAsync();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                if (i % 2 == 0 && existing.Count > 0)
+                {
+                    var u = existing[i % existing.Count];
+                    u.Name = "S_SX_U" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                    u.Age = _random.Next(20, 60);
+                    await sugar.Storageable(u).ExecuteCommandAsync();
+                }
+                else
+                {
+                    var user = NewBenchmarkUser("S_SX_I", 25, $"s_sx{i}@test.com");
+                    await sugar.Storageable(user).ExecuteCommandAsync();
+                }
+            }
+        }
+
+        [Benchmark]
+        public async Task LiteOrm_SingleUpsert_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
+            var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
+            var existing = (await viewService.SearchAsync(new SectionExpr(0, SingleLoopCount))).ToList();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                if (i % 2 == 0 && existing.Count > 0)
+                {
+                    var u = existing[i % existing.Count];
+                    u.Name = "L_SX_U" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                    u.Age = _random.Next(20, 60);
+                    await service.UpdateOrInsertAsync(u);
+                }
+                else
+                {
+                    var user = NewBenchmarkUser("L_SX_I", 25, $"l_sx{i}@test.com");
+                    await service.UpdateOrInsertAsync(user);
+                }
+            }
+        }
+
+        [Benchmark]
+        public async Task Dapper_SingleUpsert_Async()
+        {
+            using var conn = CreateDbConnection();
+            await conn.OpenAsync();
+            var selectSql = (_provider ?? "").ToLower().Contains("oracle")
+                ? $"SELECT * FROM BenchmarkUser WHERE ROWNUM <= {SingleLoopCount}"
+                : $"SELECT * FROM BenchmarkUser LIMIT {SingleLoopCount}";
+            var existing = (await conn.QueryAsync<BenchmarkUser>(selectSql)).ToList();
+            using var trans = conn.BeginTransaction();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                BenchmarkUser u;
+                if (i % 2 == 0 && existing.Count > 0)
+                {
+                    u = existing[i % existing.Count];
+                    u.Name = "D_SX_U" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                    u.Age = _random.Next(20, 60);
+                }
+                else
+                {
+                    u = NewBenchmarkUser("D_SX_I", 25, $"d_sx{i}@test.com");
+                }
+                await conn.ExecuteAsync(
+                    "INSERT INTO BenchmarkUser (Id, Name, Age, Email, CreateTime, Uid, Salary, IsActive, Score, LoginCount, Remark) VALUES (@Id, @Name, @Age, @Email, @CreateTime, @Uid, @Salary, @IsActive, @Score, @LoginCount, @Remark) ON DUPLICATE KEY UPDATE Name=VALUES(Name), Age=VALUES(Age), Email=VALUES(Email)",
+                    u, trans);
+            }
+            trans.Commit();
+        }
+
+        [Benchmark]
+        public async Task FreeSql_SingleUpsert_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
+            var existing = await fsql.Select<BenchmarkUser>().Limit(SingleLoopCount).ToListAsync();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                if (i % 2 == 0 && existing.Count > 0)
+                {
+                    var u = existing[i % existing.Count];
+                    u.Name = "F_SX_U" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                    u.Age = _random.Next(20, 60);
+                    await fsql.InsertOrUpdate<BenchmarkUser>().SetSource(u).ExecuteAffrowsAsync();
+                }
+                else
+                {
+                    var user = NewBenchmarkUser("F_SX_I", 25, $"f_sx{i}@test.com");
+                    await fsql.InsertOrUpdate<BenchmarkUser>().SetSource(user).ExecuteAffrowsAsync();
+                }
+            }
+        }
+
         #endregion
 
         #region Async Join Query
