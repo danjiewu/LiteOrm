@@ -17,19 +17,20 @@ using LiteOrm.Service;
 
 namespace LiteOrm.Benchmark
 {
-    [MemoryDiagnoser]
-    [MediumRunJob]
-    public class OrmBenchmark
+    /// <summary>
+    /// 基准测试共享基类：封装 DI 容器构建、表初始化、种子数据、辅助构建方法等通用逻辑。
+    /// 批量评测与单条评测分别继承此类，仅需提供各自的种子数量。
+    /// </summary>
+    public abstract class OrmBenchmarkBase
     {
-        private IHost? _host;
-        private IServiceProvider _serviceProvider => _host!.Services;
-        private readonly Random _random = new Random();
-        private const int SingleLoopCount = 1000;
+        protected IHost? _host;
+        protected IServiceProvider _serviceProvider => _host!.Services;
+        protected readonly Random _random = new Random();
 
-        private string? _connectionString;
-        private string? _provider; // e.g. MySql, SQLite, Oracle
-        private string? _providerTypeName; // connection type assembly qualified name from config
-        private record DataSourceConfig
+        protected string? _connectionString;
+        protected string? _provider; // e.g. MySql, SQLite, Oracle
+        protected string? _providerTypeName; // connection type assembly qualified name from config
+        protected record DataSourceConfig
         {
             public string? Name { get; init; }
             public string? ConnectionString { get; init; }
@@ -37,7 +38,7 @@ namespace LiteOrm.Benchmark
             public bool SyncTable { get; init; }
         }
 
-        private DbConnection CreateDbConnection()
+        protected DbConnection CreateDbConnection()
         {
             var p = (_provider ?? "").ToLower();
             if (p.Contains("sqlite"))
@@ -57,7 +58,7 @@ namespace LiteOrm.Benchmark
         /// 统一构造含多种属性类型的 <see cref="BenchmarkUser"/>，供各 ORM 的 Insert/Seed 使用，
         /// 保证各框架映射到相同的数据列集合，公平对比不同类型属性的读写成本。
         /// </summary>
-        private static BenchmarkUser NewBenchmarkUser(string name, int age, string email)
+        protected static BenchmarkUser NewBenchmarkUser(string name, int age, string email)
         {
             return new BenchmarkUser
             {
@@ -77,7 +78,7 @@ namespace LiteOrm.Benchmark
         /// <summary>
         /// 批量插入：构建单条多行 VALUES INSERT 语句（分块避免 MySQL 参数上限 65535）
         /// </summary>
-        private static async Task ExecuteBatchInsertAsync(DbConnection conn, IReadOnlyList<BenchmarkUser> users, DbTransaction trans)
+        protected static async Task ExecuteBatchInsertAsync(DbConnection conn, IReadOnlyList<BenchmarkUser> users, DbTransaction trans)
         {
             const int chunkSize = 2000;
             for (int offset = 0; offset < users.Count; offset += chunkSize)
@@ -108,7 +109,7 @@ namespace LiteOrm.Benchmark
         /// 批量更新/插入：INSERT ... ON DUPLICATE KEY UPDATE（MySQL 批量更新模式）
         /// 用单条 SQL 完成全部行的更新，避免逐行 UPDATE
         /// </summary>
-        private static async Task ExecuteBatchUpsertAsync(DbConnection conn, IReadOnlyList<BenchmarkUser> users, DbTransaction trans)
+        protected static async Task ExecuteBatchUpsertAsync(DbConnection conn, IReadOnlyList<BenchmarkUser> users, DbTransaction trans)
         {
             const int chunkSize = 2000;
             for (int offset = 0; offset < users.Count; offset += chunkSize)
@@ -137,10 +138,11 @@ namespace LiteOrm.Benchmark
             }
         }
 
-        [Params(10, 100, 1000, 10000)]
-        public int BatchCount { get; set; }
-        [GlobalSetup]
-        public void Setup()
+        /// <summary>
+        /// 构建 DI 容器、初始化表结构、插入种子数据。
+        /// </summary>
+        /// <param name="seedCount">每个 ORM 要插入的种子记录数。</param>
+        protected void SetupCore(int seedCount)
         {
             try
             {
@@ -267,7 +269,7 @@ namespace LiteOrm.Benchmark
 
                     // EF Core 种子
                     Console.WriteLine("Seeding EF Core...");
-                    var efUsers = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
+                    var efUsers = Enumerable.Range(1, seedCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
                     efCtx.BenchmarkUsers.AddRange(efUsers);
                     efCtx.SaveChanges();
                     var efLogs = efUsers.Select(u => new BenchmarkLog { UserId = u.Id, Message = $"Log for {u.Name}", LogTime = DateTime.Now }).ToList();
@@ -276,14 +278,14 @@ namespace LiteOrm.Benchmark
 
                     // SqlSugar 种子
                     Console.WriteLine("Seeding SqlSugar...");
-                    var sugarUsers = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
+                    var sugarUsers = Enumerable.Range(1, seedCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
                     sugar.Insertable(sugarUsers).ExecuteCommand();
                     var sugarLogs = sugar.Queryable<BenchmarkUser>().ToList().Select(u => new BenchmarkLog { UserId = u.Id, Message = $"Log for {u.Name}", LogTime = DateTime.Now }).ToList();
                     sugar.Insertable(sugarLogs).ExecuteCommand();
 
                     // FreeSql 种子
                     Console.WriteLine("Seeding FreeSql...");
-                    var fsqlUsers = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
+                    var fsqlUsers = Enumerable.Range(1, seedCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
                     fsql.Insert(fsqlUsers).ExecuteAffrows();
                     var fsqlLogs = fsql.Select<BenchmarkUser>().ToList().Select(u => new BenchmarkLog { UserId = u.Id, Message = $"Log for {u.Name}", LogTime = DateTime.Now }).ToList();
                     fsql.Insert(fsqlLogs).ExecuteAffrows();
@@ -291,7 +293,7 @@ namespace LiteOrm.Benchmark
                     // LiteOrm 种子
                     Console.WriteLine("Seeding LiteOrm...");
                     var userDao = scope.ServiceProvider.GetRequiredService<ObjectDAO<BenchmarkUser>>();
-                    var liteUsers = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
+                    var liteUsers = Enumerable.Range(1, seedCount).Select(i => NewBenchmarkUser($"User{i}", 20 + (i % 50), $"user{i}@example.com")).ToList();
                     userDao.BatchInsertAsync(liteUsers).GetAwaiter().GetResult();
 
                     var userViewDao = scope.ServiceProvider.GetRequiredService<ObjectViewDAO<BenchmarkUser>>();
@@ -309,8 +311,20 @@ namespace LiteOrm.Benchmark
                 throw;
             }
         }
+    }
 
+    /// <summary>
+    /// 批量操作与联表查询评测，数据量由 <see cref="BatchCount"/> 参数控制。
+    /// </summary>
+    [MemoryDiagnoser]
+    [MediumRunJob]
+    public class OrmBenchmark : OrmBenchmarkBase
+    {
+        [Params(10, 100, 1000, 10000)]
+        public int BatchCount { get; set; }
 
+        [GlobalSetup]
+        public void Setup() => SetupCore(BatchCount);
 
         [GlobalCleanup]
         public void Cleanup()
@@ -493,7 +507,7 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
-                db.ChangeTracker.AutoDetectChangesEnabled = false; 
+                db.ChangeTracker.AutoDetectChangesEnabled = false;
                 var existingUsers = await db.BenchmarkUsers.Take(BatchCount / 2).ToListAsync();
                 var localRandom = new Random();
                 foreach (var u in existingUsers)
@@ -577,6 +591,114 @@ namespace LiteOrm.Benchmark
             }
         }
         #endregion
+
+        #region Async Join Query
+        [Benchmark]
+        public async Task EFCore_JoinQuery_Async()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
+                var list = await db.BenchmarkLogs
+                    .Include(l => l.User)
+                    .Where(l => l.User.Age < 30)
+                    .OrderByDescending(l => l.Id)
+                    .Skip(0).Take(BatchCount)
+                    .ToListAsync();
+            }
+        }
+
+        [Benchmark]
+        public async Task SqlSugar_JoinQuery_Async()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
+                var list = await sugar.Queryable<BenchmarkLog, BenchmarkUser>((l, u) => l.UserId == u.Id)
+                    .Where((l, u) => u.Age < 30)
+                    .OrderBy((l, u) => l.Id, OrderByType.Desc)
+                    .Select((l, u) => new { l.Id, l.Message, UserName = u.Name })
+                    .Skip(0).Take(BatchCount)
+                    .ToListAsync();
+            }
+        }
+
+        [Benchmark]
+        public async Task LiteOrm_JoinQuery_Async()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var service = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkLogView>>();
+                var list = await service.SearchAsync(q => q.Where(l => l.Age < 30)
+                          .OrderByDescending(l => l.Id)
+                          .Skip(0).Take(BatchCount)
+                );
+            }
+        }
+
+
+        [Benchmark]
+        public async Task Dapper_JoinQuery_Async()
+        {
+            using (var conn = CreateDbConnection())
+            {
+                await conn.OpenAsync();
+                string sql;
+                if ((_provider ?? "").ToLower().Contains("oracle"))
+                {
+                    sql = $@"SELECT l.*, u.* FROM BenchmarkLog l 
+                             INNER JOIN BenchmarkUser u ON l.UserId = u.Id 
+                             WHERE u.Age < 30 
+                             ORDER BY l.Id DESC 
+                             FETCH FIRST {BatchCount} ROWS ONLY";
+                }
+                else
+                {
+                    sql = $@"SELECT l.*, u.* FROM BenchmarkLog l 
+                             INNER JOIN BenchmarkUser u ON l.UserId = u.Id 
+                             WHERE u.Age < 30 
+                             ORDER BY l.Id DESC 
+                             LIMIT {BatchCount} OFFSET 0";
+                }
+                var list = await conn.QueryAsync<BenchmarkLog, BenchmarkUser, BenchmarkLog>(sql, (log, user) => { log.User = user; return log; });
+            }
+        }
+
+        [Benchmark]
+        public async Task FreeSql_JoinQuery_Async()
+        {
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
+                var list = await fsql.Select<BenchmarkLog>()
+                    .InnerJoin(a => a.UserId == a.User.Id)
+                    .Where(a => a.User.Age < 30)
+                    .OrderByDescending(a => a.Id)
+                    .Skip(0).Limit(BatchCount)
+                    .ToListAsync();
+            }
+        }
+        #endregion
+    }
+
+    /// <summary>
+    /// 单条 Insert / Update / Upsert 评测，固定循环 <see cref="SingleLoopCount"/>（1000）次，
+    /// 不参与 <c>BatchCount</c> 参数化。
+    /// </summary>
+    [MemoryDiagnoser]
+    [MediumRunJob]
+    public class OrmSingleBenchmark : OrmBenchmarkBase
+    {
+        private const int SingleLoopCount = 1000;
+
+        [GlobalSetup]
+        public void Setup() => SetupCore(SingleLoopCount);
+
+        [GlobalCleanup]
+        public void Cleanup()
+        {
+            _host?.Dispose();
+        }
 
         #region Single Insert (1000 iterations)
 
@@ -883,92 +1005,70 @@ namespace LiteOrm.Benchmark
 
         #endregion
 
-        #region Async Join Query
+        #region Single Get (1000 iterations)
+
         [Benchmark]
-        public async Task EFCore_JoinQuery_Async()
+        public async Task EFCore_SingleGet_Async()
         {
-            using (var scope = _serviceProvider.CreateScope())
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
+            db.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+            for (int i = 0; i < SingleLoopCount; i++)
             {
-                var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
-                var list = await db.BenchmarkLogs
-                    .Include(l => l.User)
-                    .Where(l => l.User.Age < 30)
-                    .OrderByDescending(l => l.Id)
-                    .Skip(0).Take(BatchCount)
-                    .ToListAsync();
+                int id = (i % SingleLoopCount) + 1;
+                var u = await db.BenchmarkUsers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
             }
         }
 
         [Benchmark]
-        public async Task SqlSugar_JoinQuery_Async()
+        public async Task SqlSugar_SingleGet_Async()
         {
-            using (var scope = _serviceProvider.CreateScope())
+            using var scope = _serviceProvider.CreateScope();
+            var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
+            for (int i = 0; i < SingleLoopCount; i++)
             {
-                var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
-                var list = await sugar.Queryable<BenchmarkLog, BenchmarkUser>((l, u) => l.UserId == u.Id)
-                    .Where((l, u) => u.Age < 30)
-                    .OrderBy((l, u) => l.Id, OrderByType.Desc)
-                    .Select((l, u) => new { l.Id, l.Message, UserName = u.Name })
-                    .Skip(0).Take(BatchCount)
-                    .ToListAsync();
+                int id = (i % SingleLoopCount) + 1;
+                var u = await sugar.Queryable<BenchmarkUser>().Where(x => x.Id == id).FirstAsync();
             }
         }
 
         [Benchmark]
-        public async Task LiteOrm_JoinQuery_Async()
+        public async Task LiteOrm_SingleGet_Async()
         {
-            using (var scope = _serviceProvider.CreateScope())
+            using var scope = _serviceProvider.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
+            for (int i = 0; i < SingleLoopCount; i++)
             {
-                var service = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkLogView>>();
-                var list = await service.SearchAsync(q => q.Where(l => l.Age < 30)
-                          .OrderByDescending(l => l.Id)
-                          .Skip(0).Take(BatchCount)
-                );
-            }
-        }
-
-
-        [Benchmark]
-        public async Task Dapper_JoinQuery_Async()
-        {
-            using (var conn = CreateDbConnection())
-            {
-                await conn.OpenAsync();
-                string sql;
-                if ((_provider ?? "").ToLower().Contains("oracle"))
-                {
-                    sql = $@"SELECT l.*, u.* FROM BenchmarkLog l 
-                             INNER JOIN BenchmarkUser u ON l.UserId = u.Id 
-                             WHERE u.Age < 30 
-                             ORDER BY l.Id DESC 
-                             FETCH FIRST {BatchCount} ROWS ONLY";
-                }
-                else
-                {
-                    sql = $@"SELECT l.*, u.* FROM BenchmarkLog l 
-                             INNER JOIN BenchmarkUser u ON l.UserId = u.Id 
-                             WHERE u.Age < 30 
-                             ORDER BY l.Id DESC 
-                             LIMIT {BatchCount} OFFSET 0";
-                }
-                var list = await conn.QueryAsync<BenchmarkLog, BenchmarkUser, BenchmarkLog>(sql, (log, user) => { log.User = user; return log; });
+                int id = (i % SingleLoopCount) + 1;
+                var u = (await service.SearchAsync(q => q.Where(x => x.Id == id))).FirstOrDefault();
             }
         }
 
         [Benchmark]
-        public async Task FreeSql_JoinQuery_Async()
+        public async Task Dapper_SingleGet_Async()
         {
-            using (var scope = _serviceProvider.CreateScope())
+            using var conn = CreateDbConnection();
+            await conn.OpenAsync();
+            for (int i = 0; i < SingleLoopCount; i++)
             {
-                var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
-                var list = await fsql.Select<BenchmarkLog>()
-                    .InnerJoin(a => a.UserId == a.User.Id)
-                    .Where(a => a.User.Age < 30)
-                    .OrderByDescending(a => a.Id)
-                    .Skip(0).Limit(BatchCount)
-                    .ToListAsync();
+                int id = (i % SingleLoopCount) + 1;
+                var u = await conn.QueryFirstOrDefaultAsync<BenchmarkUser>(
+                    "SELECT * FROM BenchmarkUser WHERE Id=@Id", new { Id = id });
             }
         }
+
+        [Benchmark]
+        public async Task FreeSql_SingleGet_Async()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
+            for (int i = 0; i < SingleLoopCount; i++)
+            {
+                int id = (i % SingleLoopCount) + 1;
+                var u = await fsql.Select<BenchmarkUser>().Where(x => x.Id == id).FirstAsync();
+            }
+        }
+
         #endregion
     }
 

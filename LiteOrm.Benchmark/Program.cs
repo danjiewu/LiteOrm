@@ -9,7 +9,8 @@ namespace LiteOrm.Benchmark
         {
             var config = ManualConfig.Create(DefaultConfig.Instance)
                 .WithOptions(ConfigOptions.DisableOptimizationsValidator);
-            var summary = BenchmarkRunner.Run<OrmBenchmark>(config, args);
+            BenchmarkRunner.Run<OrmBenchmark>(config, args);
+            BenchmarkRunner.Run<OrmSingleBenchmark>(config, args);
         }
     }
 }
