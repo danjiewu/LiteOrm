@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 using Dapper;
 using FreeSql;
 using LiteOrm.Common;
-using LiteOrm.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -160,9 +159,11 @@ namespace LiteOrm.Benchmark
                             logging.Services.Remove(provider);
                         }
                     })
-                    .RegisterLiteOrm()
                     .ConfigureServices((Action<HostBuilderContext, IServiceCollection>)((context, services) =>
                     {
+                        // LiteOrm 核心注册（Microsoft DI，不再依赖 LiteOrm.DependencyInjection）
+                        services.AddLiteOrm();
+
                         // Support switching provider via LiteOrm section in configuration
                         var liteOrmSection = context.Configuration.GetSection("LiteOrm");
                         _provider = liteOrmSection.GetValue<string>("Default") ?? "MySql";
@@ -262,6 +263,19 @@ namespace LiteOrm.Benchmark
 
                     var efCtx = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
                     efCtx.Database.EnsureCreated();
+
+                    // LiteOrm 建表（AddLiteOrm 不自动同步表结构，手动确保表存在）
+                    var daoContextPoolFactory = scope.ServiceProvider.GetRequiredService<DAOContextPoolFactory>();
+                    var liteOrmContext = daoContextPoolFactory.PeekContext(_provider);
+                    try
+                    {
+                        liteOrmContext.EnsureTable(typeof(BenchmarkUser));
+                        liteOrmContext.EnsureTable(typeof(BenchmarkLog));
+                    }
+                    finally
+                    {
+                        daoContextPoolFactory.ReturnContext(liteOrmContext);
+                    }
                     Console.WriteLine("Tables cleaning and rebuilding completed.");
 
                     // 2. 插入种子数据
@@ -340,10 +354,12 @@ namespace LiteOrm.Benchmark
             {
                 var db = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
                 db.ChangeTracker.AutoDetectChangesEnabled = false;
+                await using var tx = await db.Database.BeginTransactionAsync();
                 var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("EF", 25, "ef@test.com")).ToList();
                 await db.BenchmarkUsers.AddRangeAsync(users);
                 db.ChangeTracker.DetectChanges();
                 await db.SaveChangesAsync();
+                await tx.CommitAsync();
             }
         }
 
@@ -353,8 +369,18 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
-                var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("Sugar", 25, "sugar@test.com")).ToList();
-                await sugar.Insertable(users).ExecuteCommandAsync();
+                sugar.Ado.BeginTran();
+                try
+                {
+                    var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("Sugar", 25, "sugar@test.com")).ToList();
+                    await sugar.Insertable(users).ExecuteCommandAsync();
+                    sugar.Ado.CommitTran();
+                }
+                catch
+                {
+                    sugar.Ado.RollbackTran();
+                    throw;
+                }
             }
         }
 
@@ -364,9 +390,13 @@ namespace LiteOrm.Benchmark
         {
             using (var scope = _serviceProvider.CreateScope())
             {
+                var sessionManager = scope.ServiceProvider.GetRequiredService<SessionManager>();
                 var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
-                var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("Lite", 25, "lite@test.com")).ToList();
-                await service.BatchInsertAsync(users);
+                await sessionManager.ExecuteInTransactionAsync(async sm =>
+                {
+                    var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("Lite", 25, "lite@test.com")).ToList();
+                    await service.BatchInsertAsync(users);
+                });
             }
         }
 
@@ -391,8 +421,18 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
-                var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("FreeSql", 25, "freesql@test.com")).ToList();
-                await fsql.Insert(users).ExecuteAffrowsAsync();
+                var poolObj = fsql.Ado.MasterPool.Get();
+                try
+                {
+                    using var tx = poolObj.Value.BeginTransaction();
+                    var users = Enumerable.Range(1, BatchCount).Select(i => NewBenchmarkUser("FreeSql", 25, "freesql@test.com")).ToList();
+                    await fsql.Insert(users).WithTransaction(tx).ExecuteAffrowsAsync();
+                    tx.Commit();
+                }
+                finally
+                {
+                    fsql.Ado.MasterPool.Return(poolObj, true);
+                }
             }
         }
 
@@ -415,7 +455,9 @@ namespace LiteOrm.Benchmark
                     u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                 }
                 db.ChangeTracker.DetectChanges();
+                await using var tx = await db.Database.BeginTransactionAsync();
                 await db.SaveChangesAsync();
+                await tx.CommitAsync();
             }
         }
 
@@ -434,7 +476,17 @@ namespace LiteOrm.Benchmark
                     u.Age = _random.Next(20, 60);
                     u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                 }
-                await sugar.Updateable(users).ExecuteCommandAsync();
+                sugar.Ado.BeginTran();
+                try
+                {
+                    await sugar.Updateable(users).ExecuteCommandAsync();
+                    sugar.Ado.CommitTran();
+                }
+                catch
+                {
+                    sugar.Ado.RollbackTran();
+                    throw;
+                }
             }
         }
 
@@ -447,6 +499,7 @@ namespace LiteOrm.Benchmark
             {
                 var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
                 var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
+                var sessionManager = scope.ServiceProvider.GetRequiredService<SessionManager>();
                 var users = await viewService.SearchAsync(new SectionExpr(0, BatchCount));
                 foreach (var u in users)
                 {
@@ -454,7 +507,10 @@ namespace LiteOrm.Benchmark
                     u.Age = _random.Next(20, 60);
                     u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                 }
-                await service.BatchUpdateAsync(users);
+                await sessionManager.ExecuteInTransactionAsync(async sm =>
+                {
+                    await service.BatchUpdateAsync(users);
+                });
             }
         }
 
@@ -495,7 +551,17 @@ namespace LiteOrm.Benchmark
                     u.Age = _random.Next(20, 60);
                     u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                 }
-                await fsql.Update<BenchmarkUser>().SetSource(users).ExecuteAffrowsAsync();
+                var poolObj = fsql.Ado.MasterPool.Get();
+                try
+                {
+                    using var tx = poolObj.Value.BeginTransaction();
+                    await fsql.Update<BenchmarkUser>().SetSource(users).WithTransaction(tx).ExecuteAffrowsAsync();
+                    tx.Commit();
+                }
+                finally
+                {
+                    fsql.Ado.MasterPool.Return(poolObj, true);
+                }
             }
         }
         #endregion
@@ -521,7 +587,9 @@ namespace LiteOrm.Benchmark
 
                 await db.BenchmarkUsers.AddRangeAsync(newUsers);
                 db.ChangeTracker.DetectChanges();
+                await using var tx = await db.Database.BeginTransactionAsync();
                 await db.SaveChangesAsync();
+                await tx.CommitAsync();
             }
         }
 
@@ -535,7 +603,17 @@ namespace LiteOrm.Benchmark
                 foreach (var u in existingUsers) { u.Name = "Sugar_Upsert_U"; u.Age = _random.Next(20, 60); }
                 var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => NewBenchmarkUser("Sugar_Upsert_I", _random.Next(20, 60), $"sugar_upsert{i}@test.com")).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();
-                await sugar.Storageable(all).ExecuteCommandAsync();
+                sugar.Ado.BeginTran();
+                try
+                {
+                    await sugar.Storageable(all).ExecuteCommandAsync();
+                    sugar.Ado.CommitTran();
+                }
+                catch
+                {
+                    sugar.Ado.RollbackTran();
+                    throw;
+                }
             }
         }
 
@@ -548,11 +626,15 @@ namespace LiteOrm.Benchmark
             {
                 var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkUser>>();
                 var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<BenchmarkUser>>();
+                var sessionManager = scope.ServiceProvider.GetRequiredService<SessionManager>();
                 var existingUsers = await viewService.SearchAsync(new SectionExpr(0, BatchCount / 2));
                 foreach (var u in existingUsers) { u.Name = "Lite_Upsert_U"; u.Age = _random.Next(20, 60); }
                 var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => NewBenchmarkUser("Lite_Upsert_I", _random.Next(20, 60), $"lite_upsert{i}@test.com")).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();
-                await service.BatchUpdateOrInsertAsync(all);
+                await sessionManager.ExecuteInTransactionAsync(async sm =>
+                {
+                    await service.BatchUpdateOrInsertAsync(all);
+                });
             }
         }
 
@@ -587,7 +669,17 @@ namespace LiteOrm.Benchmark
                 foreach (var u in existingUsers) { u.Name = "FreeSql_Upsert_U"; u.Age = _random.Next(20, 60); }
                 var newUsers = Enumerable.Range(1, BatchCount / 2).Select(i => NewBenchmarkUser("FreeSql_Upsert_I", _random.Next(20, 60), $"freesql_upsert{i}@test.com")).ToList();
                 var all = existingUsers.Concat(newUsers).ToList();
-                await fsql.InsertOrUpdate<BenchmarkUser>().SetSource(all).ExecuteAffrowsAsync();
+                var poolObj = fsql.Ado.MasterPool.Get();
+                try
+                {
+                    using var tx = poolObj.Value.BeginTransaction();
+                    await fsql.InsertOrUpdate<BenchmarkUser>().SetSource(all).WithTransaction(tx).ExecuteAffrowsAsync();
+                    tx.Commit();
+                }
+                finally
+                {
+                    fsql.Ado.MasterPool.Return(poolObj, true);
+                }
             }
         }
         #endregion
@@ -747,15 +839,13 @@ namespace LiteOrm.Benchmark
         {
             using var conn = CreateDbConnection();
             await conn.OpenAsync();
-            using var trans = conn.BeginTransaction();
             for (int i = 0; i < SingleLoopCount; i++)
             {
                 var user = NewBenchmarkUser("D_SI", 25, $"d_si{i}@test.com");
                 await conn.ExecuteAsync(
                     "INSERT INTO BenchmarkUser (Name, Age, Email, CreateTime, Uid, Salary, IsActive, Score, LoginCount, Remark) VALUES (@Name, @Age, @Email, @CreateTime, @Uid, @Salary, @IsActive, @Score, @LoginCount, @Remark)",
-                    user, trans);
+                    user);
             }
-            trans.Commit();
         }
 
         [Benchmark]
@@ -839,7 +929,6 @@ namespace LiteOrm.Benchmark
                 : $"SELECT * FROM BenchmarkUser LIMIT {SingleLoopCount}";
             var users = (await conn.QueryAsync<BenchmarkUser>(selectSql)).ToList();
             if (users.Count == 0) return;
-            using var trans = conn.BeginTransaction();
             for (int i = 0; i < SingleLoopCount; i++)
             {
                 var u = users[i % users.Count];
@@ -848,9 +937,8 @@ namespace LiteOrm.Benchmark
                 u.Email = Guid.NewGuid().ToString("N").Substring(0, 10) + "@test.com";
                 await conn.ExecuteAsync(
                     "UPDATE BenchmarkUser SET Name=@Name, Age=@Age, Email=@Email WHERE Id=@Id",
-                    u, trans);
+                    u);
             }
-            trans.Commit();
         }
 
         [Benchmark]
@@ -959,7 +1047,6 @@ namespace LiteOrm.Benchmark
                 ? $"SELECT * FROM BenchmarkUser WHERE ROWNUM <= {SingleLoopCount}"
                 : $"SELECT * FROM BenchmarkUser LIMIT {SingleLoopCount}";
             var existing = (await conn.QueryAsync<BenchmarkUser>(selectSql)).ToList();
-            using var trans = conn.BeginTransaction();
             for (int i = 0; i < SingleLoopCount; i++)
             {
                 BenchmarkUser u;
@@ -975,9 +1062,8 @@ namespace LiteOrm.Benchmark
                 }
                 await conn.ExecuteAsync(
                     "INSERT INTO BenchmarkUser (Id, Name, Age, Email, CreateTime, Uid, Salary, IsActive, Score, LoginCount, Remark) VALUES (@Id, @Name, @Age, @Email, @CreateTime, @Uid, @Salary, @IsActive, @Score, @LoginCount, @Remark) ON DUPLICATE KEY UPDATE Name=VALUES(Name), Age=VALUES(Age), Email=VALUES(Email)",
-                    u, trans);
+                    u);
             }
-            trans.Commit();
         }
 
         [Benchmark]
