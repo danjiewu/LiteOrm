@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
 using System.Text.Json;
 using LiteOrm.Common;
@@ -89,6 +91,11 @@ namespace LiteOrm.Remote.Server
     {
         /// <summary>
         /// 注册远程服务服务端到 DI 容器。
+        /// <para>
+        /// 通过 <paramref name="configure"/> 回调构建默认选项；若要使用注入工厂方式配置，
+        /// 可调用 <see cref="AddRemoteServerOptions"/> 注册 <see cref="RemoteServerOptions"/> 工厂，
+        /// 运行时以工厂构造的选项为准（覆盖 <paramref name="configure"/>）。
+        /// </para>
         /// 默认使用 <see cref="DefaultServiceTypeResolver"/>（全程序集短名扫描）解析服务类型，
         /// 可通过 <see cref="RemoteServerOptions.ServiceTypeResolver"/> 或 <see cref="RemoteServerOptions.TypeNameResolverFactory"/> 替换。
         /// 服务类型解析优先级：<see cref="RemoteServerOptions.TypeNameResolverFactory"/> &gt; <see cref="RemoteServerOptions.ServiceTypeResolver"/>。
@@ -108,21 +115,24 @@ namespace LiteOrm.Remote.Server
             var options = new RemoteServerOptions();
             configure?.Invoke(options);
 
-            // 自动扫描带 [Service] 特性的接口，通过 TypeResolverHelper.Register 注册名称映射
             if (options.AutoRegisterEntityServices)
             {
+                // 自动扫描带 [Service] 特性的接口，通过 TypeResolverHelper.Register 注册名称映射
                 AutoRegisterServiceTypes(options.Assemblies);
             }
 
-            // 注册 ITypeNameResolver：工厂优先，否则使用实例（默认 DefaultServiceTypeResolver）
-            if (options.TypeNameResolverFactory is not null)
+            // 注册 RemoteServerOptions 单例：若通过 AddRemoteServerOptions 注册了工厂，则以工厂构造的选项为准（运行时覆盖）。
+            services.TryAddSingleton(options);
+
+            // 注册 ITypeNameResolver：工厂优先，否则使用实例（默认 DefaultServiceTypeResolver）。
+            // 延迟从 DI 解析选项，以支持 AddRemoteServerOptions 工厂在运行时提供解析器配置。
+            services.TryAddSingleton<ITypeNameResolver>(sp =>
             {
-                services.AddSingleton(options.TypeNameResolverFactory);
-            }
-            else
-            {
-                services.AddSingleton(options.ServiceTypeResolver);
-            }
+                var serverOptions = sp.GetRequiredService<RemoteServerOptions>();
+                return serverOptions.TypeNameResolverFactory is not null
+                    ? serverOptions.TypeNameResolverFactory(sp)
+                    : serverOptions.ServiceTypeResolver;
+            });
 
             // IHttpContextAccessor 是 IRemoteAuthenticationHandler 实现的常用依赖
             services.AddHttpContextAccessor();
@@ -137,7 +147,39 @@ namespace LiteOrm.Remote.Server
             }
 
             services.AddScoped<RemoteServiceDispatcher>();
-            services.AddSingleton(options);
+            return services;
+        }
+
+        /// <summary>
+        /// 以工厂方式注册 <see cref="RemoteServerOptions"/> 到 DI 容器，便于在配置服务(<see cref="IConfiguration"/>)或其他 DI 服务基础上构造参数。
+        /// <para>
+        /// 工厂接收 <see cref="IServiceProvider"/>，可从其中解析 <see cref="IConfiguration"/> 等依赖后返回选项。
+        /// 若同时调用了 <see cref="AddRemoteServer(Action{RemoteServerOptions})"/>，则运行时以本工厂构造的选项为准。
+        /// </para>
+        /// </summary>
+        /// <param name="services">服务集合。</param>
+        /// <param name="optionsFactory">选项工厂，接收 <see cref="IServiceProvider"/>，返回 <see cref="RemoteServerOptions"/>。</param>
+        /// <returns>返回修改后的服务集合以支持链式调用。</returns>
+        /// <example>
+        /// <code>
+        /// services.AddRemoteServerOptions(sp =>
+        /// {
+        ///     var config = sp.GetRequiredService&lt;IConfiguration&gt;();
+        ///     return new RemoteServerOptions
+        ///     {
+        ///         InvokePath = config["MyServer:InvokePath"],
+        ///         SignInPath = config["MyServer:SignInPath"],
+        ///     };
+        /// });
+        /// </code>
+        /// </example>
+        public static IServiceCollection AddRemoteServerOptions(
+            this IServiceCollection services,
+            Func<IServiceProvider, RemoteServerOptions> optionsFactory)
+        {
+            if (optionsFactory is null)
+                throw new ArgumentNullException(nameof(optionsFactory));
+            services.AddSingleton(optionsFactory);
             return services;
         }
 

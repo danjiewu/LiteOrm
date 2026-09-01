@@ -1,7 +1,9 @@
 using Castle.DynamicProxy;
 using LiteOrm.Common;
 using LiteOrm.Service;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
@@ -43,7 +45,12 @@ namespace LiteOrm.Remote
         }
 
         /// <summary>
-        /// 注册LiteOrm框架到主机构建器，并允许配置选项
+        /// 注册LiteOrm框架到主机构建器，并允许配置选项。
+        /// <para>
+        /// 通过 <paramref name="configureOptions"/> 回调构建默认选项；若要使用注入工厂方式配置，
+        /// 可在 <c>ConfigureServices</c> 中调用 <see cref="AddRemoteOptions"/> 注册 <see cref="LiteOrmOptions"/> 工厂，
+        /// 运行时以工厂构造的选项为准（覆盖 <paramref name="configureOptions"/>）。
+        /// </para>
         /// </summary>
         /// <param name="hostBuilder">主机构建器</param>
         /// <param name="configureOptions">配置选项的回调函数</param>
@@ -60,39 +67,36 @@ namespace LiteOrm.Remote
                 throw new InvalidOperationException("Failed to initialize LiteOrm options", ex);
             }
 
-            // IServiceCollection 注册 IRemoteServiceTransport（HttpRemoteServiceTransport 或用户自定义实现）
-            hostBuilder = hostBuilder.ConfigureServices((hostContext, services) =>
+            return hostBuilder.ConfigureServices((hostContext, services) =>
             {
-                // 自定义凭据解析器通常依赖 IHttpContextAccessor，
-                // 调用方需自行调用 services.AddHttpContextAccessor() 注册（避免在客户端库中硬依赖 ASP.NET Core）。
+                // 1. 将默认选项注册进 DI：若通过 AddRemoteOptions 注册了工厂，用户工厂优先（运行时覆盖 configureOptions）。
+                services.TryAddSingleton(options);
 
-                // 注册 ICredentialsResolver：工厂优先，否则使用实例
-                // 仅在用户提供时注册，未注册时 HttpRemoteServiceTransport 接受 null resolver 进行匿名调用
-                if (options.CredentialsResolverFactory is not null)
+                // 2. 注册 ICredentialsResolver：工厂优先，其次实例；未提供时解析为 null 进行匿名连接。
+                //    延迟从 DI 解析选项，以支持 AddRemoteOptions 工厂在运行时提供参数。
+                //    自定义凭据解析器通常依赖 IHttpContextAccessor，
+                //    调用方需自行调用 services.AddHttpContextAccessor() 注册（避免在客户端库中硬依赖 ASP.NET Core）。
+                services.TryAddSingleton<ICredentialsResolver>(sp =>
                 {
-                    services.AddSingleton<ICredentialsResolver>(options.CredentialsResolverFactory);
-                }
-                else if (options.CredentialsResolver is not null)
-                {
-                    services.AddSingleton<ICredentialsResolver>(options.CredentialsResolver);
-                }
+                    var opts = sp.GetRequiredService<LiteOrmOptions>();
+                    if (opts.CredentialsResolverFactory is not null)
+                        return opts.CredentialsResolverFactory(sp);
+                    return opts.CredentialsResolver!;
+                });
 
-                if (options.TransportFactory is not null)
+                // 3. 注册 IRemoteServiceTransport（HttpRemoteServiceTransport 或用户自定义实现），统一延迟解析选项。
+                services.TryAddSingleton<IRemoteServiceTransport>(sp =>
                 {
-                    // 用户自定义传输层工厂：工厂优先，便于在传输层中注入其他 DI 服务
-                    services.AddSingleton<IRemoteServiceTransport>(options.TransportFactory);
-                }
-                else if (options.Transport is not null)
-                {
+                    var opts = sp.GetRequiredService<LiteOrmOptions>();
+
                     // 用户自定义传输层实例：原样注册为 Singleton
-                    services.AddSingleton<IRemoteServiceTransport>(options.Transport);
-                }
-                else if (options.RemoteServiceUri is not null)
-                {
+                    if (opts.Transport is not null)
+                        return opts.Transport;
+
                     // 默认 HttpRemoteServiceTransport，统一注册为 Singleton。
                     // 多用户会话隔离由 ICredentialsResolver 实现自行管理（如基于 HttpContext 的动态票据解析），
                     // 不依赖每个 Scope 一份 HttpClient，因此 Singleton 即可。
-                    services.AddSingleton<IRemoteServiceTransport>(sp =>
+                    if (opts.RemoteServiceUri is not null)
                     {
 #if NET8_0_OR_GREATER
                         var handler = new SocketsHttpHandler
@@ -106,20 +110,18 @@ namespace LiteOrm.Remote
                             UseCookies = false, // 禁用自动 Cookie 处理，由 ICredentialsResolver 管理票据，避免多用户串号
                         };
 #endif
-                        var httpClient = new HttpClient(handler) { BaseAddress = options.RemoteServiceUri };
-                        options.ConfigureHttpClient?.Invoke(httpClient);
+                        var httpClient = new HttpClient(handler) { BaseAddress = opts.RemoteServiceUri };
+                        opts.ConfigureHttpClient?.Invoke(httpClient);
 
                         // 解析 ICredentialsResolver：若 DI 中已注册则使用，否则匿名连接
                         var resolver = sp.GetService<ICredentialsResolver>();
-                        return new HttpRemoteServiceTransport(httpClient, resolver, options.RemoteServicePath);
-                    });
-                }
-                else
-                {
+                        return new HttpRemoteServiceTransport(httpClient, resolver, opts.RemoteServicePath);
+                    }
+
                     throw new InvalidOperationException(
-                        "LiteOrm.Remote requires either LiteOrmOptions.Transport, LiteOrmOptions.TransportFactory or LiteOrmOptions.RemoteServiceUri to be set. " +
-                        "Configure one of them in RegisterLiteOrmRemote(opts => { ... }).");
-                }
+                        "LiteOrm.Remote requires either LiteOrmOptions.Transport or LiteOrmOptions.RemoteServiceUri to be set. " +
+                        "Configure one of them in RegisterLiteOrmRemote(opts => { ... }) or register a factory via AddRemoteOptions(...).");
+                });
 
                 services.AddSingleton<RemoteServiceInvokeInterceptor>();
                 services.AddScoped<ServiceGenerateInterceptor>();
@@ -138,8 +140,40 @@ namespace LiteOrm.Remote
                     services.AddScoped(typeof(IEntityViewServiceAsync<>), typeof(RemoteViewServiceAsyncProxy<>));
                 }
             });
+        }
 
-            return hostBuilder;
+        /// <summary>
+        /// 以工厂方式注册 <see cref="LiteOrmOptions"/> 到 DI 容器，便于在配置服务(<see cref="IConfiguration"/>)或其他 DI 服务基础上构造参数。
+        /// <para>
+        /// 工厂接收 <see cref="IServiceProvider"/>，可从其中解析 <see cref="IConfiguration"/> 等依赖后返回选项。
+        /// 若同时调用了 <see cref="RegisterLiteOrmRemote"/>，则运行时以本工厂构造的选项为准（覆盖 configureOptions）。
+        /// </para>
+        /// </summary>
+        /// <param name="services">服务集合。</param>
+        /// <param name="optionsFactory">选项工厂，接收 <see cref="IServiceProvider"/>，返回 <see cref="LiteOrmOptions"/>。</param>
+        /// <returns>返回修改后的服务集合以支持链式调用。</returns>
+        /// <example>
+        /// <code>
+        /// builder.ConfigureServices(services =>
+        ///     services.AddRemoteOptions(sp =>
+        ///     {
+        ///         var config = sp.GetRequiredService&lt;IConfiguration&gt;();
+        ///         return new LiteOrmOptions
+        ///         {
+        ///             RemoteServiceUri = new Uri(config["MyRemote:Uri"]),
+        ///             RemoteServicePath = config["MyRemote:Path"],
+        ///         };
+        ///     }));
+        /// </code>
+        /// </example>
+        public static IServiceCollection AddRemoteOptions(
+            this IServiceCollection services,
+            Func<IServiceProvider, LiteOrmOptions> optionsFactory)
+        {
+            if (optionsFactory is null)
+                throw new ArgumentNullException(nameof(optionsFactory));
+            services.AddSingleton(optionsFactory);
+            return services;
         }
 
         /// <summary>
@@ -206,17 +240,8 @@ namespace LiteOrm.Remote
 
             /// <summary>
             /// 自定义的远程调用传输层实例。若设置则优先使用，覆盖 <see cref="RemoteServiceUri"/> 的默认 HTTP 注册。
-            /// <para>
-            /// 若同时设置了 <see cref="TransportFactory"/>，则工厂优先。
-            /// </para>
             /// </summary>
             public IRemoteServiceTransport? Transport { get; set; }
-
-            /// <summary>
-            /// 自定义的远程调用传输层工厂。接收 <see cref="IServiceProvider"/>，返回 <see cref="IRemoteServiceTransport"/> 实例。
-            /// 优先级高于 <see cref="Transport"/>，便于在传输层中注入其他 DI 服务（如 <see cref="ICredentialsResolver"/>）。
-            /// </summary>
-            public Func<IServiceProvider, IRemoteServiceTransport>? TransportFactory { get; set; }
 
             /// <summary>
             /// 是否自动注册所有实体服务为远程代理。默认为 true。

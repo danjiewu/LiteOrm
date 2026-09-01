@@ -242,10 +242,21 @@ namespace LiteOrm.Tests
         [Fact]
         public void RegisterLiteOrmRemote_Without_Transport_Or_Uri_Throws()
         {
-            var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder();
-            var ex = Assert.Throws<InvalidOperationException>(() =>
-                host.RegisterLiteOrmRemote().Build());
-            Assert.Contains("RemoteServiceUri", ex.Message);
+            var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+                .RegisterLiteOrmRemote()
+                .Build();
+            try
+            {
+                // 传输层现为延迟解析（工厂模式）：未配置 Transport/RemoteServiceUri 时，
+                // 首次解析 IRemoteServiceTransport 触发校验异常。
+                var ex = Assert.Throws<InvalidOperationException>(() =>
+                    host.Services.GetRequiredService<IRemoteServiceTransport>());
+                Assert.Contains("RemoteServiceUri", ex.Message);
+            }
+            finally
+            {
+                host.Dispose();
+            }
         }
 
         [Fact]
@@ -279,6 +290,36 @@ namespace LiteOrm.Tests
             finally
             {
                 await host.StopAsync(TestContext.Current.CancellationToken);
+                host.Dispose();
+            }
+        }
+
+        [Fact]
+        public void AddRemoteOptions_Factory_Overrides_Parameters_From_DI()
+        {
+            // 不通过 RegisterLiteOrmRemote(configure) 配置远程地址，而是用注入工厂从 DI 构造选项。
+            var stub = new StubTransport(req => Ok(1));
+            var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+                .ConfigureServices((hostContext, services) =>
+                    services.AddRemoteOptions(sp =>
+                    {
+                        Assert.NotNull(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>());
+                        return new LiteOrmRemoteExtensions.LiteOrmOptions
+                        {
+                            Transport = stub,
+                        };
+                    }))
+                .RegisterLiteOrmRemote()
+                .Build();
+
+            try
+            {
+                using var scope = host.Services.CreateScope();
+                var resolvedTransport = scope.ServiceProvider.GetRequiredService<IRemoteServiceTransport>();
+                Assert.Same(stub, resolvedTransport);
+            }
+            finally
+            {
                 host.Dispose();
             }
         }
