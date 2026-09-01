@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.1.4.0</AssemblyVersion>
-		<FileVersion>8.1.4.0</FileVersion>
+		<AssemblyVersion>8.1.5.0</AssemblyVersion>
+		<FileVersion>8.1.5.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.1.4</VersionPrefix>
+		<VersionPrefix>8.1.5</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,6 +16,9 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
+8.1.5:
+- 新增 AddLiteOrmOptions() 注入工厂：AddLiteOrm() 的选项可经 IServiceProvider（如 IConfiguration）构造，工厂优先于 configure 回调。
+
 8.1.4:
 - 破坏性变更：复杂类型属性不再自动映射为列（须显式 [Column]）；EntityService&lt;T&gt; 构造函数改为接收 IServiceProvider。
 - 新增 Regex Lambda 映射（REGEXP_LIKE/REPLACE/SUBSTR/INSTR），MySQL/PostgreSQL 使用原生运算符。

@@ -6,10 +6,15 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程调用服务端</Description>
-    <AssemblyVersion>8.1.4.0</AssemblyVersion>
-    <FileVersion>8.1.4.0</FileVersion>
-    <VersionPrefix>8.1.4</VersionPrefix>
+    <AssemblyVersion>8.1.5.0</AssemblyVersion>
+    <FileVersion>8.1.5.0</FileVersion>
+    <VersionPrefix>8.1.5</VersionPrefix>
     <PackageReleaseNotes>
+8.1.5:
+- 注册方式重构为「配置回调 + 注入工厂」：新增 AddRemoteServerOptions() 工厂，选项可经 IServiceProvider（如 IConfiguration）构造，运行时工厂优先于 configure 回调。
+- RemoteServerOptions 与 ITypeNameResolver 改为延迟解析，支持工厂在运行时提供解析器配置。
+- 同步 LiteOrm.Common 8.1.5。
+
 8.1.4:
 - 同步 LiteOrm.Common 8.1.4（Regex Lambda 支持、复杂类型映射变更、SQL 函数方言补全、字符串常量内联）。
 - 增加泛型方法支持。

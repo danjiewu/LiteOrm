@@ -6,10 +6,15 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程服务调用</Description>
-    <AssemblyVersion>8.1.4.0</AssemblyVersion>
-    <FileVersion>8.1.4.0</FileVersion>
-    <VersionPrefix>8.1.4</VersionPrefix>
+    <AssemblyVersion>8.1.5.0</AssemblyVersion>
+    <FileVersion>8.1.5.0</FileVersion>
+    <VersionPrefix>8.1.5</VersionPrefix>
     <PackageReleaseNotes>
+8.1.5:
+- 注册方式重构为「配置回调 + 注入工厂」：新增 AddRemoteOptions() 工厂，选项可经 IServiceProvider（如 IConfiguration）构造，运行时工厂优先于 configure 回调。
+- 移除 LiteOrmOptions.TransportFactory，自定义传输层统一通过 Transport 实例或 AddRemoteOptions() 工厂注册；IRemoteServiceTransport 改为延迟解析，未配置时在校验阶段抛出。
+- 同步 LiteOrm.Common 8.1.5。
+
 8.1.4:
 - 同步 LiteOrm.Common 8.1.4（Regex Lambda 支持、复杂类型映射变更、SQL 函数方言补全、字符串常量内联）。
 - RemoteViewServiceAsyncProxy 的 SearchAsAsync / SearchOneAsAsync 补充 CancellationToken 参数。

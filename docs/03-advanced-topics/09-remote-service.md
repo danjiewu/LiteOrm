@@ -214,6 +214,23 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `AutoRegisterEntityServices` | `bool` | `true` | 自动扫描带 `[Service]` 特性的接口 |
 | `Assemblies` | `Assembly[]?` | `null` | 扫描程序集列表，未设置则扫描所有引用程序集 |
 
+#### 通过 `AddRemoteServerOptions()` 注入工厂读取配置
+
+`AddRemoteServerOptions()` 以工厂方式注册 `RemoteServerOptions`，工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数。运行时以工厂构造的选项为准（优先于 `AddRemoteServer` 的 `configure` 回调）：
+
+```csharp
+builder.Services.AddRemoteServerOptions(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    return new RemoteServerOptions
+    {
+        InvokePath = config["RemoteServer:InvokePath"] ?? "api/remote/invoke",
+        EnableAuthentication = config.GetValue<bool>("RemoteServer:EnableAuthentication", true),
+    };
+});
+builder.Services.AddRemoteServer();
+```
+
 ### 4.2 客户端配置（`LiteOrmOptions`）
 
 | 属性 | 类型 | 说明 |
@@ -224,12 +241,33 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `CredentialsResolver` | `ICredentialsResolver?` | 凭据解析器实例。每次 `InvokeAsync` 时通过该解析器获取身份票据并写入 HTTP 请求头；为 `null` 表示匿名连接 |
 | `CredentialsResolverFactory` | `Func<IServiceProvider, ICredentialsResolver>?` | 凭据解析器工厂，接收 `IServiceProvider`，返回 `ICredentialsResolver` 实例。优先级高于 `CredentialsResolver`，便于在解析器中注入其他 DI 服务 |
 | `ConfigureHttpClient` | `Action<HttpClient>?` | 配置内部 `HttpClient`（超时、默认请求头等） |
-| `Transport` | `IRemoteServiceTransport?` | 自定义传输层实例。设置后优先于 `RemoteServiceUri`；若同时设置了 `TransportFactory`，则工厂优先 |
-| `TransportFactory` | `Func<IServiceProvider, IRemoteServiceTransport>?` | 自定义传输层工厂，接收 `IServiceProvider`，返回 `IRemoteServiceTransport` 实例。优先级高于 `Transport`，便于在传输层中注入其他 DI 服务（如 `ICredentialsResolver`） |
+| `Transport` | `IRemoteServiceTransport?` | 自定义传输层实例。设置后优先于 `RemoteServiceUri` |
 | `AutoRegisterEntityServices` | `bool` | 是否自动注册所有实体服务为远程代理，默认 `true` |
 | `Assemblies` | `Assembly[]?` | 自定义接口扫描程序集列表，未设置则扫描所有引用程序集 |
 
-> **必填项**：`Transport`、`TransportFactory` 或 `RemoteServiceUri` 至少设置一个，否则注册时抛出 `InvalidOperationException`。
+> **必填项**：`Transport` 或 `RemoteServiceUri` 至少设置一个，否则解析 `IRemoteServiceTransport` 时抛出 `InvalidOperationException`。
+
+#### 通过 `AddRemoteOptions()` 注入工厂读取配置
+
+`AddRemoteOptions()` 以工厂方式注册 `LiteOrmOptions`，工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数。运行时以工厂构造的选项为准（优先于 `RegisterLiteOrmRemote` 的 `configure` 回调），适合将连接参数集中放在 `appsettings.json` 的场景：
+
+```csharp
+var host = Host.CreateDefaultBuilder(args)
+    .ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
+    {
+        var config = sp.GetRequiredService<IConfiguration>();
+        return new LiteOrmOptions
+        {
+            RemoteServiceUri = new Uri(config["RemoteService:Uri"]!),
+            RemoteServicePath = config["RemoteService:Path"] ?? "api/remote/invoke",
+            ConfigureHttpClient = client => client.Timeout = TimeSpan.FromSeconds(30),
+        };
+    }))
+    .RegisterLiteOrmRemote()
+    .Build();
+```
+
+自定义传输层同样通过工厂返回 `Transport` 实例注入（见 [5.2](#52-服务端实现-iremoteauthenticationhandler) 的 JWT 示例）。
 
 #### HTTP 客户端调优示例
 
@@ -466,31 +504,33 @@ public class JwtAuthHandler : IRemoteAuthenticationHandler
 
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmRemote(opts =>
+    .ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
     {
-        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+        var opts = new LiteOrmOptions
+        {
+            RemoteServiceUri = new Uri("http://localhost:5000"),
+        };
 
         // 使用 CredentialsResolverFactory 注册 StaticCredentialsResolver
-        opts.CredentialsResolverFactory = sp =>
+        opts.CredentialsResolverFactory = sp2 =>
         {
             var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
             opts.ConfigureHttpClient?.Invoke(httpClient);
             return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
         };
 
-        // 使用 TransportFactory 构造传输层，从 DI 解析 ICredentialsResolver 注入
-        opts.TransportFactory = sp =>
+        // 通过 Transport 注入传输层，从 DI 解析 ICredentialsResolver（由上面的工厂提供）
+        var resolver = sp.GetRequiredService<ICredentialsResolver>();
+        var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+        opts.ConfigureHttpClient?.Invoke(httpClient);
+        opts.Transport = new HttpRemoteServiceTransport(httpClient, resolver)
         {
-            var resolver = sp.GetRequiredService<ICredentialsResolver>();
-            var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
-            opts.ConfigureHttpClient?.Invoke(httpClient);
-            return new HttpRemoteServiceTransport(httpClient, resolver)
-            {
-                TicketHeaderName = "Authorization",  // 默认 Cookie，JWT 改为 Authorization
-                TicketFormat = "Bearer {0}",         // 拼接为 "Bearer <token>"
-            };
+            TicketHeaderName = "Authorization",  // 默认 Cookie，JWT 改为 Authorization
+            TicketFormat = "Bearer {0}",         // 拼接为 "Bearer <token>"
         };
-    })
+        return opts;
+    }))
+    .RegisterLiteOrmRemote()
     .Build();
 
 // 启动时登录一次，获取 JWT token
@@ -589,27 +629,30 @@ graph LR
 ```csharp
 builder.Services.AddHttpContextAccessor(); // 必须注册
 
-builder.Host.RegisterLiteOrmRemote(opts =>
+builder.Host.ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
 {
-    opts.RemoteServiceUri = new Uri("http://localhost:5000");
-    opts.CredentialsResolverFactory = sp =>
+    var opts = new LiteOrmOptions
     {
-        var httpCtxAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+        RemoteServiceUri = new Uri("http://localhost:5000"),
+    };
+
+    opts.CredentialsResolverFactory = sp2 =>
+    {
+        var httpCtxAccessor = sp2.GetRequiredService<IHttpContextAccessor>();
         return new HttpContextTicketResolver(httpCtxAccessor);
     };
-    // 使用 TransportFactory 构造传输层，注入 ICredentialsResolver 并设置票据头
-    opts.TransportFactory = sp =>
+
+    // 通过 Transport 注入传输层，注入 ICredentialsResolver 并设置票据头
+    var resolver = sp.GetRequiredService<ICredentialsResolver>();
+    var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+    opts.ConfigureHttpClient?.Invoke(httpClient);
+    opts.Transport = new HttpRemoteServiceTransport(httpClient, resolver)
     {
-        var resolver = sp.GetRequiredService<ICredentialsResolver>();
-        var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
-        opts.ConfigureHttpClient?.Invoke(httpClient);
-        return new HttpRemoteServiceTransport(httpClient, resolver)
-        {
-            TicketHeaderName = "Cookie",   // 转发浏览器 Cookie 到远程服务
-            TicketFormat = "{0}",
-        };
+        TicketHeaderName = "Cookie",   // 转发浏览器 Cookie 到远程服务
+        TicketFormat = "{0}",
     };
-});
+    return opts;
+}));
 
 // 自定义 ICredentialsResolver：从 HttpContext 读取当前用户的票据
 public class HttpContextTicketResolver : ICredentialsResolver

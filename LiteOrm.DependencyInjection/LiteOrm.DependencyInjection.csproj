@@ -3,11 +3,11 @@
 	<PropertyGroup>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<RootNamespace>LiteOrm.DependencyInjection</RootNamespace>
-		<AssemblyVersion>8.1.4.0</AssemblyVersion>
-		<FileVersion>8.1.4.0</FileVersion>
+		<AssemblyVersion>8.1.5.0</AssemblyVersion>
+		<FileVersion>8.1.5.0</FileVersion>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<VersionPrefix>8.1.4</VersionPrefix>
+		<VersionPrefix>8.1.5</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm.DependencyInjection</Title>
 		<Authors>danjiewu</Authors>
@@ -18,6 +18,10 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
+8.1.5:
+- 新增 RegisterLiteOrmOptions() 注入工厂：RegisterLiteOrm() 的选项可经 IServiceProvider（如 IConfiguration）构造，工厂优先于 configure 回调。
+- 同步 LiteOrm.Common 8.1.5 / LiteOrm 8.1.5。
+
 8.1.4:
 - 同步 LiteOrm.Common 8.1.4 / LiteOrm 8.1.4（Regex Lambda 支持、复杂类型映射变更、SQL 函数方言补全、字符串常量内联）。
 - 破坏性变更：ServiceInvokeInterceptor 移除静态 ExceptionHandling 事件，改用注入式事件接口 IServiceInvokingEvent / IServiceInvokedEvent / IServiceExceptionEvent（异常通知后原样抛出）。

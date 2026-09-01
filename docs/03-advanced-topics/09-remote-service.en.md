@@ -214,6 +214,23 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `AutoRegisterEntityServices` | `bool` | `true` | Auto-scan interfaces with `[Service]` attribute |
 | `Assemblies` | `Assembly[]?` | `null` | Scan assembly list; scans all referenced assemblies if not set |
 
+#### Read configuration via the `AddRemoteServerOptions()` injected factory
+
+`AddRemoteServerOptions()` registers `RemoteServerOptions` via a factory that receives `IServiceProvider`, from which dependencies such as `IConfiguration` can be resolved. At runtime the factory-built options take precedence (over the `configure` callback of `AddRemoteServer`):
+
+```csharp
+builder.Services.AddRemoteServerOptions(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    return new RemoteServerOptions
+    {
+        InvokePath = config["RemoteServer:InvokePath"] ?? "api/remote/invoke",
+        EnableAuthentication = config.GetValue<bool>("RemoteServer:EnableAuthentication", true),
+    };
+});
+builder.Services.AddRemoteServer();
+```
+
 ### 4.2 Client Configuration (`LiteOrmOptions`)
 
 | Property | Type | Description |
@@ -224,12 +241,33 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `CredentialsResolver` | `ICredentialsResolver?` | Credentials resolver instance. On each `InvokeAsync`, the resolver provides an identity ticket written to the HTTP request header; `null` means anonymous connection |
 | `CredentialsResolverFactory` | `Func<IServiceProvider, ICredentialsResolver>?` | Credentials resolver factory. Receives `IServiceProvider`, returns `ICredentialsResolver` instance. Takes precedence over `CredentialsResolver`, allowing DI service injection in the resolver |
 | `ConfigureHttpClient` | `Action<HttpClient>?` | Configure the internal `HttpClient` (timeout, default headers, etc.) |
-| `Transport` | `IRemoteServiceTransport?` | Custom transport layer instance. Takes precedence over `RemoteServiceUri`; if `TransportFactory` is also set, the factory takes precedence |
-| `TransportFactory` | `Func<IServiceProvider, IRemoteServiceTransport>?` | Custom transport layer factory. Receives `IServiceProvider`, returns `IRemoteServiceTransport` instance. Takes precedence over `Transport`, allowing DI service injection in the transport layer (e.g. `ICredentialsResolver`) |
+| `Transport` | `IRemoteServiceTransport?` | Custom transport layer instance. Takes precedence over `RemoteServiceUri` |
 | `AutoRegisterEntityServices` | `bool` | Whether to auto-register all entity services as remote proxies, default `true` |
 | `Assemblies` | `Assembly[]?` | Custom interface scan assembly list; scans all referenced assemblies if not set |
 
-> **Required**: At least one of `Transport`, `TransportFactory`, or `RemoteServiceUri` must be set, otherwise `InvalidOperationException` is thrown during registration.
+> **Required**: At least one of `Transport` or `RemoteServiceUri` must be set, otherwise `InvalidOperationException` is thrown when resolving `IRemoteServiceTransport`.
+
+#### Read configuration via the `AddRemoteOptions()` injected factory
+
+`AddRemoteOptions()` registers `LiteOrmOptions` via a factory that receives `IServiceProvider`, from which dependencies such as `IConfiguration` can be resolved. At runtime the factory-built options take precedence (over the `configure` callback of `RegisterLiteOrmRemote`), which suits keeping connection parameters centralized in `appsettings.json`:
+
+```csharp
+var host = Host.CreateDefaultBuilder(args)
+    .ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
+    {
+        var config = sp.GetRequiredService<IConfiguration>();
+        return new LiteOrmOptions
+        {
+            RemoteServiceUri = new Uri(config["RemoteService:Uri"]!),
+            RemoteServicePath = config["RemoteService:Path"] ?? "api/remote/invoke",
+            ConfigureHttpClient = client => client.Timeout = TimeSpan.FromSeconds(30),
+        };
+    }))
+    .RegisterLiteOrmRemote()
+    .Build();
+```
+
+Custom transport layers are likewise injected through the factory via a `Transport` instance (see the JWT example in [5.2](#52-implementing-iremoteauthenticationhandler-on-the-server)).
 
 #### HTTP client tuning example
 
@@ -466,31 +504,33 @@ public class JwtAuthHandler : IRemoteAuthenticationHandler
 
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmRemote(opts =>
+    .ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
     {
-        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+        var opts = new LiteOrmOptions
+        {
+            RemoteServiceUri = new Uri("http://localhost:5000"),
+        };
 
         // Register StaticCredentialsResolver via CredentialsResolverFactory
-        opts.CredentialsResolverFactory = sp =>
+        opts.CredentialsResolverFactory = sp2 =>
         {
             var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
             opts.ConfigureHttpClient?.Invoke(httpClient);
             return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
         };
 
-        // Use TransportFactory to build the transport layer, resolving ICredentialsResolver from DI
-        opts.TransportFactory = sp =>
+        // Inject the transport layer via Transport, resolving ICredentialsResolver from DI (provided by the factory above)
+        var resolver = sp.GetRequiredService<ICredentialsResolver>();
+        var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+        opts.ConfigureHttpClient?.Invoke(httpClient);
+        opts.Transport = new HttpRemoteServiceTransport(httpClient, resolver)
         {
-            var resolver = sp.GetRequiredService<ICredentialsResolver>();
-            var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
-            opts.ConfigureHttpClient?.Invoke(httpClient);
-            return new HttpRemoteServiceTransport(httpClient, resolver)
-            {
-                TicketHeaderName = "Authorization",  // default Cookie; switch to Authorization for JWT
-                TicketFormat = "Bearer {0}",         // produces "Bearer <token>"
-            };
+            TicketHeaderName = "Authorization",  // default Cookie; switch to Authorization for JWT
+            TicketFormat = "Bearer {0}",         // produces "Bearer <token>"
         };
-    })
+        return opts;
+    }))
+    .RegisterLiteOrmRemote()
     .Build();
 
 // Log in once at startup to obtain the JWT token
@@ -590,27 +630,30 @@ graph LR
 ```csharp
 builder.Services.AddHttpContextAccessor(); // required
 
-builder.Host.RegisterLiteOrmRemote(opts =>
+builder.Host.ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
 {
-    opts.RemoteServiceUri = new Uri("http://localhost:5000");
-    opts.CredentialsResolverFactory = sp =>
+    var opts = new LiteOrmOptions
     {
-        var httpCtxAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+        RemoteServiceUri = new Uri("http://localhost:5000"),
+    };
+
+    opts.CredentialsResolverFactory = sp2 =>
+    {
+        var httpCtxAccessor = sp2.GetRequiredService<IHttpContextAccessor>();
         return new HttpContextTicketResolver(httpCtxAccessor);
     };
-    // Use TransportFactory to build the transport layer with DI injection and configure the ticket header
-    opts.TransportFactory = sp =>
+
+    // Inject the transport layer via Transport with DI injection and configure the ticket header
+    var resolver = sp.GetRequiredService<ICredentialsResolver>();
+    var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+    opts.ConfigureHttpClient?.Invoke(httpClient);
+    opts.Transport = new HttpRemoteServiceTransport(httpClient, resolver)
     {
-        var resolver = sp.GetRequiredService<ICredentialsResolver>();
-        var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
-        opts.ConfigureHttpClient?.Invoke(httpClient);
-        return new HttpRemoteServiceTransport(httpClient, resolver)
-        {
-            TicketHeaderName = "Cookie",   // forward browser cookie to the remote service
-            TicketFormat = "{0}",
-        };
+        TicketHeaderName = "Cookie",   // forward browser cookie to the remote service
+        TicketFormat = "{0}",
     };
-});
+    return opts;
+}));
 
 // Custom ICredentialsResolver: reads the current user's ticket from HttpContext
 public class HttpContextTicketResolver : ICredentialsResolver
