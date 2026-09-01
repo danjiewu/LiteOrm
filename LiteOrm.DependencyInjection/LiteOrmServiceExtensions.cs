@@ -8,6 +8,7 @@ using LiteOrm.Common;
 using LiteOrm.Service;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
@@ -62,6 +63,11 @@ namespace LiteOrm.DependencyInjection
 
         /// <summary>
         /// 注册 LiteOrm 框架到主机构建器，并允许配置选项。
+        /// <para>
+        /// 通过 <paramref name="configureOptions"/> 回调驱动注册期配置；若要使用注入工厂方式配置，
+        /// 可调用 <see cref="RegisterLiteOrmOptions"/> 注册 <see cref="LiteOrmOptions"/> 工厂，
+        /// 运行时可通过 DI 解析到该工厂构造的选项（覆盖 <paramref name="configureOptions"/>）。
+        /// </para>
         /// </summary>
         /// <param name="hostBuilder">主机构建器。</param>
         /// <param name="configureOptions">配置选项的回调函数。</param>
@@ -78,7 +84,11 @@ namespace LiteOrm.DependencyInjection
                 throw new InvalidOperationException("Failed to initialize LiteOrm options", ex);
             }
 
-            return hostBuilder.UseServiceProviderFactory(new AutofacServiceProviderFactory())
+            return hostBuilder
+                // 将选项注册进 DI（IServiceCollection 通道，TryAddSingleton）：
+                // 若用户已通过 RegisterLiteOrmOptions 注册了工厂，则工厂优先（运行时覆盖 configureOptions）。
+                .ConfigureServices((_, services) => services.TryAddSingleton(options))
+                .UseServiceProviderFactory(new AutofacServiceProviderFactory())
                 .ConfigureContainer<ContainerBuilder>(builder =>
                 {
                     var logger = options.LoggerFactory?.CreateLogger(nameof(LiteOrmServiceExtensions));
@@ -172,6 +182,40 @@ namespace LiteOrm.DependencyInjection
                         ScopeExtensions.RegisterScope(container);
                     });
                 });
+        }
+
+        /// <summary>
+        /// 以工厂方式注册 <see cref="LiteOrmOptions"/> 到 DI 容器，便于在配置服务(<see cref="IConfiguration"/>)或其他 DI 服务基础上构造参数。
+        /// <para>
+        /// 工厂接收 <see cref="IServiceProvider"/>，可从其中解析 <see cref="IConfiguration"/> 等依赖后返回选项。
+        /// 若同时调用了 <see cref="RegisterLiteOrm(IHostBuilder, Action{LiteOrmOptions})"/>，
+        /// 则运行时解析 <see cref="LiteOrmOptions"/> 时以本工厂构造的选项为准（覆盖 configureOptions）。
+        /// </para>
+        /// </summary>
+        /// <param name="services">服务集合。</param>
+        /// <param name="optionsFactory">选项工厂，接收 <see cref="IServiceProvider"/>，返回 <see cref="LiteOrmOptions"/>。</param>
+        /// <returns>返回修改后的服务集合以支持链式调用。</returns>
+        /// <example>
+        /// <code>
+        /// builder.ConfigureServices(services =>
+        ///     services.RegisterLiteOrmOptions(sp =>
+        ///     {
+        ///         var config = sp.GetRequiredService&lt;IConfiguration&gt;();
+        ///         return new LiteOrmServiceExtensions.LiteOrmOptions
+        ///         {
+        ///             AutoRegisterServices = config.GetValue&lt;bool&gt;("LiteOrm:AutoRegisterServices"),
+        ///         };
+        ///     }));
+        /// </code>
+        /// </example>
+        public static IServiceCollection RegisterLiteOrmOptions(
+            this IServiceCollection services,
+            Func<IServiceProvider, LiteOrmOptions> optionsFactory)
+        {
+            if (optionsFactory is null)
+                throw new ArgumentNullException(nameof(optionsFactory));
+            services.AddSingleton(optionsFactory);
+            return services;
         }
 
         /// <summary>
