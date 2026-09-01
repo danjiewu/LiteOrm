@@ -12,7 +12,7 @@ namespace LiteOrm.Benchmark
     /// 该类定义了用于基准测试的用户模型，包含基本的用户信息字段
     /// 同时支持LiteOrm、SqlSugar和EF Core三种ORM框架
     /// </remarks>
-    [LiteOrm.Common.Table("BenchmarkUser")]
+    [LiteOrm.Common.Table("BenchmarkUser", SyncTable = SyncTableMode.Always)]
     [SqlSugar.SugarTable("BenchmarkUser")]
     [System.ComponentModel.DataAnnotations.Schema.Table("BenchmarkUser")]
     public class BenchmarkUser
@@ -104,7 +104,7 @@ namespace LiteOrm.Benchmark
     /// 该类定义了用于基准测试的日志模型，包含日志信息和关联的用户ID
     /// 同时支持LiteOrm、SqlSugar和EF Core三种ORM框架
     /// </remarks>
-    [LiteOrm.Common.Table("BenchmarkLog")]
+    [LiteOrm.Common.Table("BenchmarkLog", SyncTable = SyncTableMode.Always)]
     [SqlSugar.SugarTable("BenchmarkLog")]
     [System.ComponentModel.DataAnnotations.Schema.Table("BenchmarkLog")]
     public class BenchmarkLog

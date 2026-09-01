@@ -264,18 +264,6 @@ namespace LiteOrm.Benchmark
                     var efCtx = scope.ServiceProvider.GetRequiredService<BenchmarkDbContext>();
                     efCtx.Database.EnsureCreated();
 
-                    // LiteOrm 建表（AddLiteOrm 不自动同步表结构，手动确保表存在）
-                    var daoContextPoolFactory = scope.ServiceProvider.GetRequiredService<DAOContextPoolFactory>();
-                    var liteOrmContext = daoContextPoolFactory.PeekContext(_provider);
-                    try
-                    {
-                        liteOrmContext.EnsureTable(typeof(BenchmarkUser));
-                        liteOrmContext.EnsureTable(typeof(BenchmarkLog));
-                    }
-                    finally
-                    {
-                        daoContextPoolFactory.ReturnContext(liteOrmContext);
-                    }
                     Console.WriteLine("Tables cleaning and rebuilding completed.");
 
                     // 2. 插入种子数据
